@@ -61,7 +61,7 @@ func TestOpenAICodexResponses_RequestMatchesCodexProtocol(t *testing.T) {
 	})
 	stream, err := provider.Stream(context.Background(), transcript, StreamOptions{
 		MaxTokens:   1000,
-		Thinking:    ThinkingHigh,
+		Thinking:    ThinkingLevelHigh,
 		IsReasoning: true,
 		SessionID:   "sess",
 		Transport:   TransportSSE,
@@ -141,7 +141,7 @@ func TestOpenAICodexResponses_ReasoningOffUsesModelOffMapping(t *testing.T) {
 	})
 	stream, err := provider.Stream(context.Background(), NormalizeContext(Context{Messages: []Message{UserMessage{Content: UserText("hi")}}}), StreamOptions{
 		Transport: TransportSSE,
-		Thinking:  ThinkingOff,
+		Thinking:  "",
 		OnPayload: func(value any, _ *Model) (any, error) {
 			encoded, marshalErr := json.Marshal(value)
 			if marshalErr == nil {

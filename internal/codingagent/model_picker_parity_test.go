@@ -8,7 +8,9 @@ import (
 	"path/filepath"
 	"slices"
 	"strings"
+	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/MichaelKinsy/PiG/agent"
 	"github.com/MichaelKinsy/PiG/ai"
@@ -29,14 +31,15 @@ func modelPickerTestMode(t *testing.T) *InteractiveMode {
 	registry := NewModelRegistry(dir)
 	// Catalog refresh can outlive picker cancellation. Keep its unrelated cache in memory; settings remain file-backed to verify default persistence.
 	registry.SetModelsStore(ai.NewInMemoryModelsStore())
-	m := NewInteractiveMode(InteractiveOptions{AgentDir: dir, CWD: t.TempDir(), Model: current, SettingsManager: sm, ModelRegistry: registry, ModelBuilder: func(spec string) (*ai.Model, error) {
+	m := NewInteractiveMode(nil, InteractiveModeOptions{AgentDir: dir, CWD: t.TempDir(), Model: current, SettingsManager: sm, ModelRegistry: registry, ModelBuilder: func(spec string) (*ai.Model, error) {
 		return &ai.Model{ID: spec, Provider: captureStreamOptionsProvider{}}, nil
 	}})
 	m.chatContainer = tui.NewContainer()
 	m.tuiInst = tui.NewWithOutput(io.Discard, 100, 35)
+	m.installRenderDispatcher()
 	m.editor = tui.NewEditor()
-	m.statusLine = NewStatusLine(current, "", nil)
-	m.agent = agent.NewAgent(agent.AgentOptions{Model: current})
+	m.statusLine = NewFooterComponent(current, "", nil)
+	m.agent = mustNewAgent(agent.AgentOptions{Model: current})
 	m.setModalInputChannel(make(chan []byte, 2))
 	return m
 }
@@ -143,6 +146,8 @@ func TestModelPickerReopensInScopeOrderAfterSavingDefault(t *testing.T) {
 
 	var output bytes.Buffer
 	m.tuiInst = tui.NewWithOutput(&output, 100, 35)
+	// The picker's frame requests run on the owner loop, as in production; a timer render would race the read of output.
+	m.installRenderDispatcher()
 	input <- []byte("\x1b")
 	if _, accepted := m.buildSlashContext(context.Background()).PickModel(""); accepted {
 		t.Fatal("reopened picker accepted Escape")
@@ -202,5 +207,43 @@ func TestModelPickerPersistsOnlyExplicitDefault(t *testing.T) {
 				t.Fatalf("scope=%v, saved scope=%v, want %v", m.scopedModelIDs, m.opts.SettingsManager.GetEnabledModels(), wantScope)
 			}
 		})
+	}
+}
+
+// model-selector.ts:184-221: the catalog refresh outcome is applied to the picker on the loop that owns it. The selector's refresh goroutine
+// reaches the picker only through TUI.PostToOwner, and the modal loop that reads the picker's keys runs the posted task, so the picker's state has
+// one writer at a time (-race: the refresh's updateList and HandleInput share m.filtered).
+func TestModelPickerAppliesTheCatalogRefreshOutcomeOnTheModalLoop(t *testing.T) {
+	m := modelPickerTestMode(t)
+	models := `{"providers":{"capture":{"baseUrl":"http://127.0.0.1:1/v1","api":"openai-completions","apiKey":"fixture-key","models":[{"id":"model-one","name":"Model One"}]}}}`
+	if err := os.WriteFile(filepath.Join(m.opts.AgentDir, "models.json"), []byte(models), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	m.opts.ModelRegistry.Refresh()
+	m.opts.Model = &ai.Model{ID: "model-one", Provider: captureStreamOptionsProvider{}}
+	var posted atomic.Int32
+	m.tuiInst.SetOwnerDispatcher(func(ctx context.Context, fn func()) error {
+		posted.Add(1)
+		return m.postToMain(ctx, fn)
+	})
+	m.setModalInputChannel(make(chan []byte, 3))
+	input, release := m.acquireModalInputChannel()
+	defer release()
+	done := make(chan bool, 1)
+	go func() {
+		_, accepted := m.buildSlashContext(context.Background()).PickModel("")
+		done <- accepted
+	}()
+	deadline := time.After(10 * time.Second)
+	for posted.Load() == 0 {
+		select {
+		case <-deadline:
+			t.Fatal("the catalog refresh outcome never reached the owner loop")
+		case <-time.After(5 * time.Millisecond):
+		}
+	}
+	input <- []byte("\x1b")
+	if accepted := <-done; accepted {
+		t.Fatal("Escape accepted a model")
 	}
 }

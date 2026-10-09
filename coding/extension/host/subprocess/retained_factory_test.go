@@ -9,7 +9,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/MichaelKinsy/PiG/agent"
 	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/internal/testenv"
 )
@@ -47,7 +46,7 @@ func retainedProbeOf(t *testing.T, h *Host, name string) retainedProbe {
 			t.Fatalf("probe %s: %v", name, err)
 		}
 		var probe retainedProbe
-		if err := json.Unmarshal([]byte(result.(agent.AgentToolResult).Text()), &probe); err != nil {
+		if err := json.Unmarshal([]byte(result.Text()), &probe); err != nil {
 			t.Fatal(err)
 		}
 		return probe
@@ -90,6 +89,7 @@ func retainedNodeExtension(t *testing.T, root, file string, typed bool) (ExtConf
 
 // The probed Pi behavior: two reloads evaluate a .ts module three times and an .mjs module once, with a factory call for every load.
 func TestNodeReloadReinvokesFactoriesInTheRetainedProcessWithPiLoaderRules(t *testing.T) {
+	skipWithoutNodeExtensions(t)
 	t.Parallel()
 	nodeCellRequireNode(t)
 	root := t.TempDir()
@@ -134,6 +134,7 @@ func TestNodeReloadReinvokesFactoriesInTheRetainedProcessWithPiLoaderRules(t *te
 
 // A retired generation leaves the shared event bus with its runtime: a listener registered by the old factory must not hear an emit after the reload (Pi's runtime.trackEventBusSubscription).
 func TestNodeReloadRetiresTheOldGenerationBusListeners(t *testing.T) {
+	skipWithoutNodeExtensions(t)
 	nodeCellRequireNode(t)
 	root := t.TempDir()
 	entry := filepath.Join(root, "bus.mjs")
@@ -176,6 +177,7 @@ export default function (pi) {
 
 // A strictly isolated Node extension keeps its own process, and /reload still re-invokes its factory in that process.
 func TestNodeIsolatedReloadReinvokesFactoryInTheRetainedProcess(t *testing.T) {
+	skipWithoutNodeExtensions(t)
 	nodeCellRequireNode(t)
 	root := t.TempDir()
 	mjs, log := retainedNodeExtension(t, root, "isolated-keeps.mjs", false)
@@ -203,6 +205,7 @@ func TestNodeIsolatedReloadReinvokesFactoryInTheRetainedProcess(t *testing.T) {
 
 // Pi re-invokes extension factories in the same runtime on every Session replacement (agent-session-runtime.ts creates a new resource loader; the module-level extension cache survives). A replacement Host claims the processes its predecessor parked in the shared RuntimeRetention.
 func TestSessionReplacementHostClaimsTheParkedProcess(t *testing.T) {
+	skipWithoutNodeExtensions(t)
 	for _, isolation := range []string{"", "isolated"} {
 		t.Run("isolation="+isolation, func(t *testing.T) {
 			nodeCellRequireNode(t)
@@ -243,6 +246,7 @@ func TestSessionReplacementHostClaimsTheParkedProcess(t *testing.T) {
 
 // Pi's reload() clears the factory cache once and then caches every factory it loads (resource-loader.ts reload, loader.ts loadExtensionsInternal), so a later same-cwd Session replacement calls each cached .ts factory without re-evaluating its module. A Node cell admits its members one at a time, and each reload admission must not evict the factory an earlier member of the same reload cached.
 func TestSessionReplacementAfterReloadReusesEveryCachedFactory(t *testing.T) {
+	skipWithoutNodeExtensions(t)
 	nodeCellRequireNode(t)
 	root := t.TempDir()
 	firstTS, firstLog := retainedNodeExtension(t, root, "first-cached.ts", true)
@@ -285,6 +289,7 @@ func TestSessionReplacementAfterReloadReusesEveryCachedFactory(t *testing.T) {
 
 // Pi keys its factory cache by the resolved configured cwd (loader.ts useExtensionCacheCwd uses resolvePath, not realpath). An isolated Node process's first generation must use the Host's cwd too: through a symlinked cwd the kernel reports the physical path, and comparing that with the next admission's configured cwd would clear the cache on a same-cwd Session replacement.
 func TestIsolatedSessionReplacementKeepsTheCacheThroughASymlinkedCwd(t *testing.T) {
+	skipWithoutNodeExtensions(t)
 	nodeCellRequireNode(t)
 	root := t.TempDir()
 	ts, log := retainedNodeExtension(t, root, "isolated-cached.ts", true)
@@ -320,6 +325,7 @@ func TestIsolatedSessionReplacementKeepsTheCacheThroughASymlinkedCwd(t *testing.
 
 // A process the replacement Session's plan does not claim ends with the replacement's load instead of staying parked.
 func TestSessionReplacementReleasesUnclaimedParkedProcesses(t *testing.T) {
+	skipWithoutNodeExtensions(t)
 	nodeCellRequireNode(t)
 	root := t.TempDir()
 	dropped, _ := retainedNodeExtension(t, root, "dropped.mjs", false)
@@ -362,6 +368,7 @@ func TestSessionReplacementReleasesUnclaimedParkedProcesses(t *testing.T) {
 
 // Crash recovery (D20/D56) owns the process a reload retained: the crash still quarantines only the culprit, restarts the healthy members together in a fresh process, and never replays the interrupted callback.
 func TestNodeCrashAfterRetainedReloadRecoversWithoutReplay(t *testing.T) {
+	skipWithoutNodeExtensions(t)
 	t.Parallel()
 	h, configs, trace := nodeRecoveryFixture(t, 3)
 	h.SetConfigLoader(func() ([]ExtConfig, error) { return configs, nil })
@@ -418,6 +425,7 @@ func TestNodeCrashAfterRetainedReloadRecoversWithoutReplay(t *testing.T) {
 
 // A strictly isolated extension that crashes after a retained reload restarts under its supervisor in a fresh process, and a later reload retains that one.
 func TestNodeIsolatedCrashAfterRetainedReloadRestarts(t *testing.T) {
+	skipWithoutNodeExtensions(t)
 	t.Parallel()
 	nodeCellRequireNode(t)
 	root := t.TempDir()
@@ -474,6 +482,7 @@ func TestNodeIsolatedCrashAfterRetainedReloadRestarts(t *testing.T) {
 
 // A Session replacement can build the successor's Host while the outgoing Host is still held open by a running command handler, and retire the outgoing Host afterwards. The successor claims the live process, and the late Retain parks nothing: the process ends with the successor's Host, not never.
 func TestSessionReplacementSuccessorLoadsBeforeTheOutgoingHostRetires(t *testing.T) {
+	skipWithoutNodeExtensions(t)
 	nodeCellRequireNode(t)
 	root := t.TempDir()
 	mjs, _ := retainedNodeExtension(t, root, "overlap.mjs", false)
@@ -528,6 +537,7 @@ func retainedShareOf(h *Host, name string) *processShare {
 
 // Isolated Node extensions start concurrently, and each start claims from the retention every live process registered so far. A process must be complete when it becomes claimable: the race detector reports a claim that reads a spawner's exit channel while that spawner is still assigning it.
 func TestConcurrentIsolatedStartsClaimOnlyCompleteProcesses(t *testing.T) {
+	skipWithoutNodeExtensions(t)
 	t.Parallel()
 	nodeCellRequireNode(t)
 	root := t.TempDir()
@@ -557,6 +567,7 @@ func TestConcurrentIsolatedStartsClaimOnlyCompleteProcesses(t *testing.T) {
 
 // Reload returns only after the retiring generation has finished its teardown. The old generation runs a handler that ignores the abort and ends 300ms after it starts; its runtime closes the connection only once that handler has drained, so a Retire that did not wait would return with the handler still running.
 func TestNodeReloadWaitsForTheOldGenerationToDrainItsHandlers(t *testing.T) {
+	skipWithoutNodeExtensions(t)
 	nodeCellRequireNode(t)
 	root := t.TempDir()
 	marker := filepath.Join(root, "drained")
@@ -609,6 +620,7 @@ export default function (pi) {
 
 // Pi /reload keeps a native ESM .js entry (a "type": "module" package) in Node's module cache: jiti imports it natively, so an edit, even a syntax error, is not seen, and the factory runs again with the module's state. Probed with Pi 0.87.1's own loadExtensionsCached after clearExtensionCache per reload: old-1, old-2, old-3 and no load error. PiG evaluates an edited ES module entry again (D93), so an edit runs, an edit that breaks the module fails its load as an edited TypeScript extension's does in Pi, and the next valid edit loads; an unedited reload keeps the module and its state.
 func TestNodeReloadEvaluatesAnEditedTypeModuleJsEntryAgain(t *testing.T) {
+	skipWithoutNodeExtensions(t)
 	nodeCellRequireNode(t)
 	root := t.TempDir()
 	dir := filepath.Join(root, "ext")
@@ -658,7 +670,7 @@ export default function (pi) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		return result.(agent.AgentToolResult).Text()
+		return result.Text()
 	}
 	reload := func() []string {
 		t.Helper()

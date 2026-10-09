@@ -26,7 +26,7 @@ func TestSessionCustomToolsDefaultToParallel(t *testing.T) {
 				Value string `json:"value"`
 			}
 			if err := json.Unmarshal(raw, &args); err != nil {
-				return nil, err
+				return extension.AgentToolResult{}, err
 			}
 			entered <- args.Value
 			<-release

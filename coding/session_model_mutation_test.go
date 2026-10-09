@@ -24,7 +24,7 @@ func TestModelMutationsAreSessionOnly(t *testing.T) {
 				t.Fatal(err)
 			}
 			model := fakeModel()
-			model.Capabilities.MaxThinking = ai.ThinkingHigh
+			model.Capabilities.MaxThinking = ai.ThinkingLevelHigh
 			sess, err := NewSession(svcs, SessionOptions{Model: model})
 			if err != nil {
 				t.Fatal(err)
@@ -62,8 +62,8 @@ func TestModelMutationsAreSessionOnly(t *testing.T) {
 			} else if sess.Model().ID != "next" {
 				t.Errorf("model = %s", sess.Model().ID)
 			}
-			entries := sess.Inner().Entries()
-			last := entries[len(entries)-1].Base.Type
+			entries := sess.Inner().GetEntries()
+			last := entries[len(entries)-1].Base().Type
 			want := "model_change"
 			if operation == "thinking" {
 				want = "thinking_level_change"
@@ -84,7 +84,7 @@ func TestModelSwitchDoesNotReplaceGlobalThinkingPreference(t *testing.T) {
 		t.Fatal(err)
 	}
 	model := fakeModel()
-	model.Capabilities.MaxThinking = ai.ThinkingHigh
+	model.Capabilities.MaxThinking = ai.ThinkingLevelHigh
 	sess, err := NewSession(svcs, SessionOptions{Model: model})
 	if err != nil {
 		t.Fatal(err)

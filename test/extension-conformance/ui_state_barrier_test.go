@@ -26,8 +26,8 @@ func (u *stateBarrierUI) GetTheme(name string) (extension.Theme, error) {
 	}
 	return map[string]any{"name": "light", "foregrounds": map[string]string{"accent": "\x1b[38;2;1;2;3m"}, "backgrounds": map[string]string{}, "mode": "truecolor"}, nil
 }
-func (u *stateBarrierUI) SetTheme(name any) extension.SetThemeResult {
-	return extension.SetThemeResult{Success: false, Error: "Theme not found: " + name.(string)}
+func (u *stateBarrierUI) SetTheme(name extension.ThemeSelection) extension.SetThemeResult {
+	return extension.SetThemeResult{Success: false, Error: "Theme not found: " + string(name.(extension.ThemeName))}
 }
 
 // Pi interactive-mode.ts:2572-2585,2623: getters and the synchronous theme result reflect actual host state, including a dialog's expansion change.

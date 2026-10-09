@@ -1,4 +1,3 @@
-# SPDX-FileCopyrightText: Copyright Hewlett Packard Enterprise Development LP
 # SPDX-License-Identifier: MIT
 """Profile pig round trips against the mock model with PIG_PROFILE, then summarize with go tool pprof."""
 import glob

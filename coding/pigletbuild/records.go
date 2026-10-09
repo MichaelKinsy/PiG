@@ -10,6 +10,7 @@ import (
 	"io"
 	"io/fs"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"runtime"
 	"slices"
@@ -204,11 +205,41 @@ func buildBinaryRecords(lock buildLock, p *piglet.Piglet, artifactPath string) (
 			Policy: "basic", Passed: true,
 			Checks: []string{"artifact-sha256", "artifact-version-smoke", "extension-plan", "piglet-and-origins"},
 		},
+		Strip: binaryStripEntries(p), StripKeep: binaryStripIDs(p.Strip.KeepLists()), StripTable: binaryStripIDs(piglet.StripTable()),
 	})
 	if err != nil {
 		return binaryBuildRecords{}, fmt.Errorf("build Piglet Binary record: %w", err)
 	}
 	return binaryBuildRecords{Resolution: lock.ResolutionRecord, Binary: binaryRecord}, nil
+}
+
+// binaryStripEntries lists the Piglet's stripped built-ins for the Binary record.
+// pig additive (D92): the strip list is part of the Binary identity and digest.
+func binaryStripEntries(p *piglet.Piglet) []pigletartifact.StripEntry {
+	ids := p.Strip.StrippedIDs()
+	if len(ids) == 0 {
+		return nil
+	}
+	entries := make([]pigletartifact.StripEntry, len(ids))
+	for i, id := range ids {
+		entries[i] = pigletartifact.StripEntry{Kind: id.Kind, ID: id.ID, Disposition: id.Disposition}
+	}
+	return entries
+}
+
+// binaryStripIDs converts strip ID lists for the Binary record: the keep-mode
+// lists (stripKeep) or the building core's strip table (stripTable).
+// pig additive (D92): keep mode states its intent in the record, and the
+// table lets a later core report the built-ins it adds.
+func binaryStripIDs(lists []piglet.StripIDList) []pigletartifact.StripIDs {
+	if len(lists) == 0 {
+		return nil
+	}
+	out := make([]pigletartifact.StripIDs, len(lists))
+	for i, list := range lists {
+		out[i] = pigletartifact.StripIDs{Kind: list.Kind, IDs: list.IDs}
+	}
+	return out
 }
 
 func buildNativeLock(p *piglet.Piglet, cells []subprocess.CellSpec, opts Options, source pigSource) (buildLock, error) {
@@ -353,6 +384,35 @@ func buildInputs(p *piglet.Piglet, cells []subprocess.CellSpec) ([]buildInput, e
 			packageAlias = alias
 		}
 		inputs = append(inputs, buildInput{Kind: "skill", Name: skill.Entry.Name, Source: source, Package: packageAlias, Digest: digest})
+	}
+	// pig additive (D91): the frontend member's source is part of the
+	// Binary's identity.
+	frontendDir, err := p.FrontendDir()
+	if err != nil {
+		return nil, err
+	}
+	if frontendDir != "" {
+		digest, err := hashTree(frontendDir)
+		if err != nil {
+			return nil, fmt.Errorf("lock frontend: %w", err)
+		}
+		inputs = append(inputs, buildInput{Kind: "frontend", Name: "frontend", Source: "content-addressed", Digest: digest})
+		// The member's go.mod and go.sum pin its external modules; a local
+		// replacement, which the fused build promotes, is pinned by its source.
+		replacements, err := localGoReplacementDirs(frontendDir)
+		if err != nil {
+			return nil, fmt.Errorf("lock frontend local Go replacements: %w", err)
+		}
+		for i, replacement := range replacements {
+			replacementDigest, err := goModuleDigest(replacement)
+			if err != nil {
+				return nil, fmt.Errorf("lock frontend local Go replacement %s: %w", replacement, err)
+			}
+			inputs = append(inputs, buildInput{
+				Kind: "frontend-dependency", Name: fmt.Sprintf("frontend:go-replace:%d", i),
+				Source: "local:" + filepath.ToSlash(replacement), Digest: replacementDigest,
+			})
+		}
 	}
 	slices.SortFunc(inputs, func(a, b buildInput) int {
 		if value := strings.Compare(a.Kind, b.Kind); value != 0 {
@@ -642,7 +702,8 @@ func toolchainVersions(cells []subprocess.CellSpec) (map[string]string, error) {
 		case "rust":
 			commands["rust"] = []string{"cargo", "--version"}
 		case "python":
-			commands["python"] = []string{"python3", "--version"}
+			// The interpreter the cell runs with: python or python3 on Windows (python3.exe there is often the Store alias).
+			commands["python"] = []string{toolchain.PythonExecutable(runtime.GOOS, exec.LookPath), "--version"}
 		case "node":
 			commands["node"] = []string{"node", "--version"}
 		}

@@ -203,19 +203,25 @@ func ErroredObservation(task EvalTask) EvalObservation {
 	return EvalObservation{EvalRunIdentity: taskIdentity(task), Outcome: EvalOutcomeErrored}
 }
 
+// taskIdentityDigest is the SHA-256 of JSON.stringify([evalSet, caseId, variant, model, runNumber]), which names a
+// task's artifact directories.
+func taskIdentityDigest(task EvalTask) ([sha256.Size]byte, error) {
+	identity, err := json.Marshal([]any{task.EvalSet, task.CaseID, task.Variant, task.Model, task.RunNumber})
+	if err == nil {
+		identity, err = jsonstringify.Canonicalize(identity)
+	}
+	return sha256.Sum256(identity), err
+}
+
 func persistSession(run *harnessRunResult, task EvalTask, artifactDirectory string) error {
 	var session string
 	if raw, ok := run.Artifacts[PiSessionSnapshotArtifact]; !ok || isNull(raw) || json.Unmarshal(raw, &session) != nil {
 		return nil
 	}
-	identity, err := json.Marshal([]any{task.EvalSet, task.CaseID, task.Variant, task.Model, task.RunNumber})
+	digest, err := taskIdentityDigest(task)
 	if err != nil {
 		return err
 	}
-	if identity, err = jsonstringify.Canonicalize(identity); err != nil {
-		return err
-	}
-	digest := sha256.Sum256(identity)
 	directory := filepath.Join(artifactDirectory, string(task.Variant), "sessions", hex.EncodeToString(digest[:]))
 	if err := os.MkdirAll(directory, 0o700); err != nil {
 		return err

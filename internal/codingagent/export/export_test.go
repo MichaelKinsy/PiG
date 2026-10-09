@@ -1,5 +1,9 @@
 package export
 
+// pi: packages/coding-agent/src/core/export-html/tool-renderer.ts
+
+// pi: packages/coding-agent/src/core/export-html/index.ts
+
 import (
 	"encoding/base64"
 	"encoding/json"
@@ -9,7 +13,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/MichaelKinsy/PiG/agent"
 	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/tui"
 )
@@ -17,6 +20,7 @@ import (
 type testComponent struct{ lines []string }
 
 func (c testComponent) Render(width int) []string { return c.lines }
+func (testComponent) Invalidate()                 {}
 
 // mustRaw marshals v to json.RawMessage. Panics on error.
 func mustRaw(v any) json.RawMessage {
@@ -279,7 +283,7 @@ func TestRenderCustomTools_PrerendersExtensionToolHTML(t *testing.T) {
 				return testComponent{lines: []string{"\x1b[31mCALL\x1b[0m"}}
 			},
 			RenderResult: func(result extension.AgentToolResult, options extension.ToolRenderResultOptions, theme extension.Theme, context extension.ToolRenderContext) extension.Component {
-				toolResult := result.(agent.AgentToolResult)
+				toolResult := result
 				if options.Expanded {
 					return testComponent{lines: []string{"", "\x1b[32mRESULT: " + toolResult.Text() + "\x1b[0m", ""}}
 				}
@@ -344,12 +348,12 @@ func TestGenerateThemeVars_IncludesScrollbarThumb(t *testing.T) {
 	// Export reads the selected theme and the system theme before any selection (upstream 0.99.2 theme.ts:904), so the dark theme this test names is selected first.
 	t.Cleanup(func() { tui.SetTheme("dark") })
 	tui.SetTheme("dark")
-	css := generateThemeVars()
+	css := generateThemeVars(tui.ExportTheme())
 	thumb := extractCSSVar(css, "scrollbarThumb")
 	if thumb == "" {
 		t.Fatalf("HTML theme vars omit --scrollbarThumb:\n%s", css)
 	}
-	if want := tui.ActiveTheme().Colors()["scrollbarThumb"]; thumb != want {
+	if want := tui.ActiveTheme().GetResolvedThemeColors()["scrollbarThumb"]; thumb != want {
 		t.Fatalf("--scrollbarThumb = %q, want the theme's %q", thumb, want)
 	}
 	if extractCSSVar(css, "scrollbarTrack") == "" {
@@ -375,6 +379,7 @@ type remoteComponent struct {
 }
 
 func (c remoteComponent) Render(int) []string { return nil }
+func (c remoteComponent) Invalidate()         {}
 func (c remoteComponent) RenderNow(int) ([]string, bool, bool) {
 	*c.calls++
 	return c.lines, false, c.answered
@@ -440,7 +445,7 @@ func TestExportFromFileWithToolsStateControlsSystemPromptAndTools(t *testing.T) 
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			out := filepath.Join(dir, strings.ReplaceAll(tc.name, " ", "-")+".html")
-			if _, err := ExportFromFileWithTools(input, out, nil, "", tc.state); err != nil {
+			if _, err := ExportFromFileWithTools(input, out, nil, "", tc.state, ""); err != nil {
 				t.Fatal(err)
 			}
 			html, err := os.ReadFile(out)

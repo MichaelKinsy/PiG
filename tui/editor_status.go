@@ -35,6 +35,12 @@ func (e *Editor) NeedsRedraw() bool {
 	return dirty
 }
 
+// pig additive (D91): SurfaceLive reports that the embedded indicator, which changes without
+// invalidating the editor, draws in the editor.
+func (e *Editor) SurfaceLive() bool {
+	return e.EmbedWorkingStatus && e.workingStatusIndicator != nil
+}
+
 // renderStatusBorder mirrors CustomEditor.renderTopBorder, retaining a centered
 // overflow label when the complete status or spinner can fit to its left.
 func (e *Editor) renderStatusBorder(width, hiddenLineCount int, fallback string) string {
@@ -43,7 +49,7 @@ func (e *Editor) renderStatusBorder(width, hiddenLineCount int, fallback string)
 	}
 	indicator := e.workingStatusIndicator
 	if indicator.Kind == "working" {
-		loader := &Loader{Message: indicator.Message, Frame: indicator.Frame, Frames: indicator.Frames, IndicatorVerbatim: indicator.IndicatorVerbatim, SpinnerColor: e.borderSGR(), MessageColor: e.borderSGR()}
+		loader := &Loader{Message: indicator.Message, Frame: indicator.Frame, Frames: indicator.Frames, IndicatorVerbatim: indicator.IndicatorVerbatim, spinnerColorFn: e.colorEditorBorder, messageColorFn: e.colorEditorBorder}
 		indicator = &StatusIndicator{Loader: loader, Kind: indicator.Kind}
 	}
 	status := indicator.RenderInBorder(max(1, width-5))
@@ -64,7 +70,7 @@ func (e *Editor) renderStatusBorder(width, hiddenLineCount int, fallback string)
 		status = indicator.RenderSpinnerInBorder(width)
 		statusWidth = widthx.VisibleWidth(status)
 	}
-	color := func(text string) string { return e.borderSGR() + text + "\x1b[0m" }
+	color := e.colorEditorBorder
 	if canFitOverflow() {
 		leftWidth := 3 + statusWidth + 1
 		return color("── ") + status + color(" "+strings.Repeat("─", overflowStart-leftWidth)+overflowLabel+strings.Repeat("─", width-overflowStart-overflowWidth))

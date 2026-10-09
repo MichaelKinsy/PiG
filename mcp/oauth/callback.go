@@ -69,20 +69,11 @@ type pendingCallback struct {
 	path string
 }
 
-// CallbackWait is a registered wait for one OAuth state.
-type CallbackWait struct {
-	result chan callbackResult
-}
+type callbackRegisteredKey struct{}
 
-// Wait blocks until the callback arrives, the wait times out, the server
-// closes, or ctx ends.
-func (w *CallbackWait) Wait(ctx context.Context) (OAuthCallback, error) {
-	select {
-	case r := <-w.result:
-		return r.callback, r.err
-	case <-ctx.Done():
-		return OAuthCallback{}, context.Cause(ctx)
-	}
+// WithCallbackRegistered returns a context that makes [OAuthCallbackServer.WaitForCallback] call registered once the state is pending and before it blocks. Upstream's waitForCallback registers the state when it is called, before the caller's next statement; a Go caller that waits on its own goroutine uses this to act (for example, show the authorization URL) only after the callback can be received.
+func WithCallbackRegistered(ctx context.Context, registered func()) context.Context {
+	return context.WithValue(ctx, callbackRegisteredKey{}, registered)
 }
 
 // OAuthCallbackServer is a loopback HTTP server that receives the OAuth
@@ -149,20 +140,19 @@ func ListenOAuthCallbackServer(options OAuthCallbackServerOptions) (*OAuthCallba
 	return s, nil
 }
 
-// WaitForCallback registers a wait for the authorization response with state.
-// It fails when state is already pending. With a non-empty path (upstream's
-// optional `path`), a response on another path fails, so a server-specific
-// redirect URI can tell authorization servers apart (RFC 9700 section
-// 4.4.2.2).
-func (s *OAuthCallbackServer) WaitForCallback(state string, path ...string) (*CallbackWait, error) {
+// WaitForCallback waits for the authorization response with state and returns its code, state and iss. It fails when state is already
+// pending, when the wait times out, when the server closes and when ctx ends. With a non-empty path (upstream's optional `path`), a
+// response on another path fails, so a server-specific redirect URI can tell authorization servers apart (RFC 9700 section 4.4.2.2).
+// See [WithCallbackRegistered] for acting once the state is pending.
+func (s *OAuthCallbackServer) WaitForCallback(ctx context.Context, state string, path ...string) (OAuthCallback, error) {
 	only := ""
 	if len(path) > 0 {
 		only = path[0]
 	}
 	s.mu.Lock()
-	defer s.mu.Unlock()
 	if _, ok := s.pending[state]; ok {
-		return nil, errors.New("OAuth state is already pending")
+		s.mu.Unlock()
+		return OAuthCallback{}, errors.New("OAuth state is already pending")
 	}
 	entry := &pendingCallback{result: make(chan callbackResult, 1), path: only}
 	entry.timer = time.AfterFunc(s.timeout, func() {
@@ -177,7 +167,16 @@ func (s *OAuthCallbackServer) WaitForCallback(state string, path ...string) (*Ca
 		}
 	})
 	s.pending[state] = entry
-	return &CallbackWait{result: entry.result}, nil
+	s.mu.Unlock()
+	if registered, ok := ctx.Value(callbackRegisteredKey{}).(func()); ok && registered != nil {
+		registered()
+	}
+	select {
+	case r := <-entry.result:
+		return r.callback, r.err
+	case <-ctx.Done():
+		return OAuthCallback{}, context.Cause(ctx)
+	}
 }
 
 // Close rejects every pending wait and stops the server.

@@ -1,5 +1,7 @@
 package jsonl_test
 
+// pi: packages/durable/src/storage/jsonl/storage.ts
+
 // Ports packages/durable/test/jsonl-storage.test.ts
 
 import (
@@ -14,6 +16,8 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+
+	chorddelta "github.com/MichaelKinsy/PiG/chord/delta"
 
 	"github.com/MichaelKinsy/PiG/durable"
 	"github.com/MichaelKinsy/PiG/durable/durabletest"
@@ -451,6 +455,10 @@ func reclaimFiles(t *testing.T, directory string) []string {
 	return names
 }
 
+// Pi: packages/durable/src/storage/jsonl/storage.ts:277 (commit).
+// Pi: packages/durable/src/storage/jsonl/storage.ts:36 (conversation, document, entry).
+// Pi: packages/durable/src/storage/jsonl/storage.ts:365 (findDocument).
+// Pi: packages/durable/src/storage/jsonl/storage.ts:345 (task).
 func TestPicoJsonlStoragePublicationAndRecovery(t *testing.T) {
 	t.Run("opens through the Node adapter", func(t *testing.T) {
 		directory := tempDirectory(t)
@@ -468,9 +476,9 @@ func TestPicoJsonlStoragePublicationAndRecovery(t *testing.T) {
 		taskId := mint[durable.TaskId](t, storage)
 		documentId := mint[durable.DocumentId](t, storage)
 		commit(t, storage, durable.TaskWrite{Value: pendingTask(taskId, "ready")})
-		commit(t, storage, durable.DocumentCreateWrite{Record: sessionDocument(documentId, "test.document"), Content: base(durable.JsonObject{"count": 0})})
+		commit(t, storage, durable.DocumentCreateWrite{Record: sessionDocument(documentId, "test.document"), Content: base(chorddelta.JsonObjectOf("count", 0))})
 		commit(t, storage, durable.DocumentChangeWrite{Id: documentId, Content: delta()})
-		commit(t, storage, durable.DocumentChangeWrite{Id: documentId, Content: base(durable.JsonObject{"count": 1})})
+		commit(t, storage, durable.DocumentChangeWrite{Id: documentId, Content: base(chorddelta.JsonObjectOf("count", 1))})
 		expectLength(t, readLines(t, file(directory, "task", int64(taskId))), 1)
 		expectLength(t, readLines(t, file(directory, "doc", int64(documentId))), 1)
 
@@ -572,8 +580,8 @@ func TestPicoJsonlStoragePublicationAndRecovery(t *testing.T) {
 			secondId := mint[durable.DocumentId](t, storage)
 			instrumented.fail(injectedFailure)
 			_, err := storage.Commit(testContext, []durable.StorageWrite{
-				durable.DocumentCreateWrite{Record: sessionDocument(firstId, "first"), Content: base(durable.JsonObject{"text": "α"})},
-				durable.DocumentCreateWrite{Record: sessionDocument(secondId, "second"), Content: base(durable.JsonObject{"text": "β"})},
+				durable.DocumentCreateWrite{Record: sessionDocument(firstId, "first"), Content: base(chorddelta.JsonObjectOf("text", "α"))},
+				durable.DocumentCreateWrite{Record: sessionDocument(secondId, "second"), Content: base(chorddelta.JsonObjectOf("text", "β"))},
 			})
 			expectError(t, err, "poisoned")
 			_, err = storage.Document(testContext, firstId, durable.CurrentPoint)
@@ -590,7 +598,7 @@ func TestPicoJsonlStoragePublicationAndRecovery(t *testing.T) {
 				if document == nil {
 					t.Fatalf("document %d is missing", id)
 				}
-				expectEqual(t, document.Value, durable.JsonObject{"text": text})
+				expectEqual(t, document.Value, chorddelta.JsonObjectOf("text", text))
 			}
 		})
 	}
@@ -608,8 +616,8 @@ func TestPicoJsonlStoragePublicationAndRecovery(t *testing.T) {
 			secondId := mint[durable.DocumentId](t, storage)
 			instrumented.fail(injectedFailure)
 			_, err := storage.Commit(testContext, []durable.StorageWrite{
-				durable.DocumentCreateWrite{Record: sessionDocument(firstId, "flush.first"), Content: base(durable.JsonObject{})},
-				durable.DocumentCreateWrite{Record: sessionDocument(secondId, "flush.second"), Content: base(durable.JsonObject{})},
+				durable.DocumentCreateWrite{Record: sessionDocument(firstId, "flush.first"), Content: base(chorddelta.NewJsonObject(0))},
+				durable.DocumentCreateWrite{Record: sessionDocument(secondId, "flush.second"), Content: base(chorddelta.NewJsonObject(0))},
 			})
 			expectError(t, err, "poisoned")
 			reopened := open(t, directory)
@@ -630,8 +638,8 @@ func TestPicoJsonlStoragePublicationAndRecovery(t *testing.T) {
 			secondId := mint[durable.DocumentId](t, storage)
 			instrumented.clear()
 			commit(t, storage,
-				durable.DocumentCreateWrite{Record: sessionDocument(secondId, "second"), Content: base(durable.JsonObject{})},
-				durable.DocumentCreateWrite{Record: sessionDocument(firstId, "first"), Content: base(durable.JsonObject{})},
+				durable.DocumentCreateWrite{Record: sessionDocument(secondId, "second"), Content: base(chorddelta.NewJsonObject(0))},
+				durable.DocumentCreateWrite{Record: sessionDocument(firstId, "first"), Content: base(chorddelta.NewJsonObject(0))},
 			)
 			first := fmt.Sprintf("doc-%d.jsonl", firstId)
 			second := fmt.Sprintf("doc-%d.jsonl", secondId)
@@ -643,7 +651,7 @@ func TestPicoJsonlStoragePublicationAndRecovery(t *testing.T) {
 			expectEqual(t, instrumented.operations, expected)
 
 			instrumented.clear()
-			commit(t, storage, durable.DocumentChangeWrite{Id: firstId, Content: base(durable.JsonObject{"checkpoint": true})})
+			commit(t, storage, durable.DocumentChangeWrite{Id: firstId, Content: base(chorddelta.JsonObjectOf("checkpoint", true))})
 			expected = []string{"append:" + first}
 			if fsync {
 				expected = append(expected, "flush:"+first)
@@ -687,18 +695,18 @@ func TestPicoJsonlStoragePublicationAndRecovery(t *testing.T) {
 			storage := openStorage(t, directory, instrumented, jsonl.JsonlStorageOptions{})
 			createRoot(t, storage)
 			id := mint[durable.DocumentId](t, storage)
-			commit(t, storage, durable.DocumentCreateWrite{Record: sessionDocument(id, "test.document"), Content: base(durable.JsonObject{"count": 0})})
+			commit(t, storage, durable.DocumentCreateWrite{Record: sessionDocument(id, "test.document"), Content: base(chorddelta.JsonObjectOf("count", 0))})
 			commit(t, storage, durable.DocumentChangeWrite{Id: id, Content: delta(durable.Op{"s", []any{"count"}, 1})})
 
 			instrumented.fail(injectedFailure)
-			if seq := commit(t, storage, durable.DocumentChangeWrite{Id: id, Content: base(durable.JsonObject{"count": 2})}); seq != 4 {
+			if seq := commit(t, storage, durable.DocumentChangeWrite{Id: id, Content: base(chorddelta.JsonObjectOf("count", 2))}); seq != 4 {
 				t.Fatalf("seq = %d, want 4", seq)
 			}
-			expectEqual(t, documentValue(t, storage, id), durable.JsonObject{"count": 2})
+			expectEqual(t, documentValue(t, storage, id), chorddelta.JsonObjectOf("count", 2))
 			mustDo(t, storage.Close(testContext))
 
 			reopened := open(t, directory)
-			expectEqual(t, documentValue(t, reopened, id), durable.JsonObject{"count": 2})
+			expectEqual(t, documentValue(t, reopened, id), chorddelta.JsonObjectOf("count", 2))
 			expectLength(t, readLines(t, file(directory, "doc", int64(id))), 1)
 			expectEqual(t, reclaimFiles(t, directory), []string{})
 		})
@@ -716,7 +724,7 @@ func TestPicoJsonlStoragePublicationAndRecovery(t *testing.T) {
 				durable.TaskWrite{Value: pendingTask(taskId, "ready")},
 				durable.DocumentCreateWrite{
 					Record:  durable.DocumentCreate{Id: id, Kind: "task.document", Scope: durable.DocumentRecordScope{Kind: durable.ScopeTask, TaskId: taskId}},
-					Content: base(durable.JsonObject{"count": 1}),
+					Content: base(chorddelta.JsonObjectOf("count", 1)),
 				},
 			)
 			instrumented.fail(failure{"remove", 1, mode})
@@ -745,27 +753,27 @@ func TestPicoJsonlStoragePublicationAndRecovery(t *testing.T) {
 			storage := openStorage(t, directory, instrumented, jsonl.JsonlStorageOptions{Fsync: true})
 			createRoot(t, storage)
 			id := mint[durable.DocumentId](t, storage)
-			commit(t, storage, durable.DocumentCreateWrite{Record: sessionDocument(id, "test.document"), Content: base(durable.JsonObject{"count": 0})})
+			commit(t, storage, durable.DocumentCreateWrite{Record: sessionDocument(id, "test.document"), Content: base(chorddelta.JsonObjectOf("count", 0))})
 			instrumented.fail(failure{"flush", 2, mode})
-			if seq := commit(t, storage, durable.DocumentChangeWrite{Id: id, Content: base(durable.JsonObject{"count": 2})}); seq != 3 {
+			if seq := commit(t, storage, durable.DocumentChangeWrite{Id: id, Content: base(chorddelta.JsonObjectOf("count", 2))}); seq != 3 {
 				t.Fatalf("seq = %d, want 3", seq)
 			}
 			sidecar := fmt.Sprintf("doc-%d.jsonl", id)
 			expectEqual(t, instrumented.operations, []string{"append:" + sidecar, "flush:" + sidecar, "append:main.jsonl", "flush:main.jsonl"})
-			expectEqual(t, documentValue(t, storage, id), durable.JsonObject{"count": 2})
+			expectEqual(t, documentValue(t, storage, id), chorddelta.JsonObjectOf("count", 2))
 			expectLength(t, readLines(t, file(directory, "doc", int64(id))), 2)
 			mustDo(t, storage.Close(testContext))
 
 			recoveryEnv := newInstrumentedEnv(directory)
 			recoveryEnv.fail(failure{"flush", 1, mode})
 			deferred := openStorage(t, directory, recoveryEnv, jsonl.JsonlStorageOptions{Fsync: true})
-			expectEqual(t, documentValue(t, deferred, id), durable.JsonObject{"count": 2})
+			expectEqual(t, documentValue(t, deferred, id), chorddelta.JsonObjectOf("count", 2))
 			expectEqual(t, recoveryEnv.operations, []string{"flush:main.jsonl"})
 			expectLength(t, readLines(t, file(directory, "doc", int64(id))), 2)
 			mustDo(t, deferred.Close(testContext))
 
 			reclaimed := openStorage(t, directory, nil, jsonl.JsonlStorageOptions{Fsync: true})
-			expectEqual(t, documentValue(t, reclaimed, id), durable.JsonObject{"count": 2})
+			expectEqual(t, documentValue(t, reclaimed, id), chorddelta.JsonObjectOf("count", 2))
 			expectLength(t, readLines(t, file(directory, "doc", int64(id))), 1)
 		})
 	}
@@ -777,9 +785,9 @@ func TestPicoJsonlStoragePublicationAndRecovery(t *testing.T) {
 			storage := openStorage(t, directory, instrumented, jsonl.JsonlStorageOptions{Fsync: true})
 			createRoot(t, storage)
 			id := mint[durable.DocumentId](t, storage)
-			commit(t, storage, durable.DocumentCreateWrite{Record: sessionDocument(id, "test.document"), Content: base(durable.JsonObject{"count": 0})})
+			commit(t, storage, durable.DocumentCreateWrite{Record: sessionDocument(id, "test.document"), Content: base(chorddelta.JsonObjectOf("count", 0))})
 			instrumented.fail(failure{"flush", 3, mode})
-			if seq := commit(t, storage, durable.DocumentChangeWrite{Id: id, Content: base(durable.JsonObject{"count": 2})}); seq != 3 {
+			if seq := commit(t, storage, durable.DocumentChangeWrite{Id: id, Content: base(chorddelta.JsonObjectOf("count", 2))}); seq != 3 {
 				t.Fatalf("seq = %d, want 3", seq)
 			}
 			instrumented.clear()
@@ -787,7 +795,7 @@ func TestPicoJsonlStoragePublicationAndRecovery(t *testing.T) {
 			mustDo(t, storage.Close(testContext))
 
 			reopened := openStorage(t, directory, nil, jsonl.JsonlStorageOptions{Fsync: true})
-			expectEqual(t, documentValue(t, reopened, id), durable.JsonObject{"count": 3})
+			expectEqual(t, documentValue(t, reopened, id), chorddelta.JsonObjectOf("count", 3))
 			expectLength(t, readLines(t, file(directory, "doc", int64(id))), 2)
 		})
 	}
@@ -821,12 +829,12 @@ func TestPicoJsonlStoragePublicationAndRecovery(t *testing.T) {
 		storage := open(t, directory)
 		createRoot(t, storage)
 		id := mint[durable.DocumentId](t, storage)
-		commit(t, storage, durable.DocumentCreateWrite{Record: sessionDocument(id, "test.document"), Content: base(durable.JsonObject{"count": 0})})
-		commit(t, storage, durable.DocumentChangeWrite{Id: id, Content: base(durable.JsonObject{"count": 10})})
+		commit(t, storage, durable.DocumentCreateWrite{Record: sessionDocument(id, "test.document"), Content: base(chorddelta.JsonObjectOf("count", 0))})
+		commit(t, storage, durable.DocumentChangeWrite{Id: id, Content: base(chorddelta.JsonObjectOf("count", 10))})
 		commit(t, storage, durable.DocumentChangeWrite{Id: id, Content: delta(durable.Op{"s", []any{"count"}, 11})})
 		expectLength(t, readLines(t, file(directory, "doc", int64(id))), 2)
 		reopened := open(t, directory)
-		expectEqual(t, documentValue(t, reopened, id), durable.JsonObject{"count": 11})
+		expectEqual(t, documentValue(t, reopened, id), chorddelta.JsonObjectOf("count", 11))
 	})
 
 	t.Run("never reclaims rewindable document history, including after a base and retirement", func(t *testing.T) {
@@ -839,15 +847,15 @@ func TestPicoJsonlStoragePublicationAndRecovery(t *testing.T) {
 			Scope:   durable.DocumentRecordScope{Kind: durable.ScopeConversation, ConversationId: durable.ROOT_CONVERSATION_ID},
 			History: durable.HistoryRewindable, Fork: durable.ForkAsOf,
 		}
-		createdAt := commit(t, storage, durable.DocumentCreateWrite{Record: record, Content: base(durable.JsonObject{"count": 0})})
+		createdAt := commit(t, storage, durable.DocumentCreateWrite{Record: record, Content: base(chorddelta.JsonObjectOf("count", 0))})
 		changedAt := commit(t, storage, durable.DocumentChangeWrite{Id: id, Content: delta(durable.Op{"s", []any{"count"}, 1})})
-		commit(t, storage, durable.DocumentChangeWrite{Id: id, Content: base(durable.JsonObject{"count": 2})})
+		commit(t, storage, durable.DocumentChangeWrite{Id: id, Content: base(chorddelta.JsonObjectOf("count", 2))})
 		commit(t, storage, durable.DocumentRetireWrite{Id: id})
 
 		expectLength(t, readLines(t, file(directory, "doc", int64(id))), 3)
 		reopened := open(t, directory)
-		expectEqual(t, must(reopened.Document(testContext, id, durable.AtSeq(createdAt))).Value, durable.JsonObject{"count": 0})
-		expectEqual(t, must(reopened.Document(testContext, id, durable.AtSeq(changedAt))).Value, durable.JsonObject{"count": 1})
+		expectEqual(t, must(reopened.Document(testContext, id, durable.AtSeq(createdAt))).Value, chorddelta.JsonObjectOf("count", 0))
+		expectEqual(t, must(reopened.Document(testContext, id, durable.AtSeq(changedAt))).Value, chorddelta.JsonObjectOf("count", 1))
 		document, err := reopened.Document(testContext, id, durable.CurrentPoint)
 		expectNil(t, document, err)
 		expectLength(t, readLines(t, file(directory, "doc", int64(id))), 3)
@@ -863,18 +871,18 @@ func TestPicoJsonlStoragePublicationAndRecovery(t *testing.T) {
 		taskDocumentId := mint[durable.DocumentId](t, storage)
 		createdAt := commit(t, storage,
 			durable.TaskWrite{Value: pendingTask(taskId, "ready")},
-			durable.DocumentCreateWrite{Record: sessionDocument(sessionId, "session"), Content: base(durable.JsonObject{})},
+			durable.DocumentCreateWrite{Record: sessionDocument(sessionId, "session"), Content: base(chorddelta.NewJsonObject(0))},
 			durable.DocumentCreateWrite{
 				Record: durable.DocumentCreate{
 					Id: latestId, Kind: "latest",
 					Scope:   durable.DocumentRecordScope{Kind: durable.ScopeConversation, ConversationId: durable.ROOT_CONVERSATION_ID},
 					History: durable.HistoryLatest, Fork: durable.ForkCurrent,
 				},
-				Content: base(durable.JsonObject{}),
+				Content: base(chorddelta.NewJsonObject(0)),
 			},
 			durable.DocumentCreateWrite{
 				Record:  durable.DocumentCreate{Id: taskDocumentId, Kind: "task", Scope: durable.DocumentRecordScope{Kind: durable.ScopeTask, TaskId: taskId}},
-				Content: base(durable.JsonObject{}),
+				Content: base(chorddelta.NewJsonObject(0)),
 			},
 		)
 		retiredAt := commit(t, storage,
@@ -914,7 +922,7 @@ func TestPicoJsonlStoragePublicationAndRecovery(t *testing.T) {
 		storage := open(t, directory)
 		createRoot(t, storage)
 		documentId := mint[durable.DocumentId](t, storage)
-		commit(t, storage, durable.DocumentCreateWrite{Record: sessionDocument(documentId, "test.document"), Content: base(durable.JsonObject{"text": "kept"})})
+		commit(t, storage, durable.DocumentCreateWrite{Record: sessionDocument(documentId, "test.document"), Content: base(chorddelta.JsonObjectOf("text", "kept"))})
 		sidecarPath := file(directory, "doc", int64(documentId))
 		mainPath := filepath.Join(directory, "main.jsonl")
 		sidecarSize := must(os.Stat(sidecarPath)).Size()
@@ -966,7 +974,7 @@ func TestPicoJsonlStoragePublicationAndRecovery(t *testing.T) {
 		storage := open(t, directory)
 		createRoot(t, storage)
 		documentId := mint[durable.DocumentId](t, storage)
-		commit(t, storage, durable.DocumentCreateWrite{Record: sessionDocument(documentId, "test.document"), Content: base(durable.JsonObject{})})
+		commit(t, storage, durable.DocumentCreateWrite{Record: sessionDocument(documentId, "test.document"), Content: base(chorddelta.NewJsonObject(0))})
 		mustDo(t, os.WriteFile(file(directory, "doc", int64(documentId)), nil, 0o600))
 		_, err := openJsonl(directory)
 		expectError(t, err, "Missing confirmed sidecar record")
@@ -977,7 +985,7 @@ func TestPicoJsonlStoragePublicationAndRecovery(t *testing.T) {
 		storage := open(t, directory)
 		createRoot(t, storage)
 		documentId := mint[durable.DocumentId](t, storage)
-		commit(t, storage, durable.DocumentCreateWrite{Record: sessionDocument(documentId, "test.document"), Content: base(durable.JsonObject{"count": 0})})
+		commit(t, storage, durable.DocumentCreateWrite{Record: sessionDocument(documentId, "test.document"), Content: base(chorddelta.JsonObjectOf("count", 0))})
 		commit(t, storage, durable.DocumentChangeWrite{Id: documentId, Content: delta(durable.Op{"s", []any{"count"}, 1})})
 		path := file(directory, "doc", int64(documentId))
 		lines := readLines(t, path)
@@ -1005,7 +1013,7 @@ func TestPicoJsonlStoragePublicationAndRecovery(t *testing.T) {
 		storage := open(t, directory)
 		createRoot(t, storage)
 		documentId := mint[durable.DocumentId](t, storage)
-		commit(t, storage, durable.DocumentCreateWrite{Record: sessionDocument(documentId, "test.document"), Content: base(durable.JsonObject{})})
+		commit(t, storage, durable.DocumentCreateWrite{Record: sessionDocument(documentId, "test.document"), Content: base(chorddelta.NewJsonObject(0))})
 		path := file(directory, "doc", int64(documentId))
 		var record map[string]any
 		mustDo(t, json.Unmarshal(bytes.TrimSpace(must(os.ReadFile(path))), &record))
@@ -1048,4 +1056,19 @@ func TestJsonlStorageRejectsSameCommitSidecarRecordsOutOfOrdinalOrder(t *testing
 	mustDo(t, os.WriteFile(path, []byte(lines[1]+"\n"+lines[0]+"\n"), 0o600))
 	_, err := openJsonl(directory)
 	expectError(t, err, fmt.Sprintf("Sidecar records are out of order in task-%d.jsonl", taskId))
+}
+
+// Records read back from the JSONL files keep their dynamic members' key order, as JSON.parse gives Pi; the reopening storage reads
+// every record from its file.
+func TestJsonlStorageKeepsRecordKeyOrder(t *testing.T) {
+	directory := t.TempDir()
+	current, err := openJsonl(directory)
+	if err != nil {
+		t.Fatal(err)
+	}
+	storage := &reopeningStorage{current: current, directory: directory}
+	defer func() { _ = storage.Close(testContext) }()
+	if err := durabletest.CheckRecordKeyOrder(storage); err != nil {
+		t.Fatal(err)
+	}
 }

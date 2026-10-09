@@ -67,21 +67,20 @@ func emitSessionShutdown(runner *inproc.Runner, reason string) {
 // they can inspect what pi loaded without re-discovering resources.
 func emitBeforeAgentStart(
 	runner *inproc.Runner,
-	prompt, systemPrompt string,
+	prompt string,
 	systemPromptOptions extension.BuildSystemPromptOptions,
 ) *extension.BeforeAgentStartCombinedResult {
-	return emitBeforeAgentStartWithImages(context.Background(), runner, prompt, nil, systemPrompt, systemPromptOptions)
+	return emitBeforeAgentStartWithImages(context.Background(), runner, prompt, nil, systemPromptOptions)
 }
 
-func emitBeforeAgentStartWithImages(ctx context.Context, runner *inproc.Runner, prompt string, images []ai.ImageContent, systemPrompt string, systemPromptOptions extension.BuildSystemPromptOptions) *extension.BeforeAgentStartCombinedResult {
+func emitBeforeAgentStartWithImages(ctx context.Context, runner *inproc.Runner, prompt string, images []ai.ImageContent, systemPromptOptions extension.BuildSystemPromptOptions) *extension.BeforeAgentStartCombinedResult {
 	if runner == nil || !runner.HasHandlers(EventBeforeAgentStart) {
 		return nil
 	}
 	result, err := runner.EmitBeforeAgentStart(
 		ctx,
 		prompt,
-		extensionImages(images),
-		systemPrompt,
+		images,
 		systemPromptOptions,
 	)
 	if err != nil {
@@ -104,14 +103,9 @@ func emitAgentStart(runner *inproc.Runner) {
 // upstream: agent-session.ts:618: includes messages.
 func emitAgentEnd(runner *inproc.Runner, messages []agent.AgentMessage, willRetry bool) {
 	if runner != nil && runner.HasHandlers(EventAgentEnd) {
-		// Convert []agent.AgentMessage → []any for extension type alias.
-		msgs := make([]extension.AgentMessage, len(messages))
-		for i, m := range messages {
-			msgs[i] = m
-		}
 		_, _ = runner.Emit(context.Background(), extension.AgentEndEvent{
 			Type:     EventAgentEnd,
-			Messages: msgs,
+			Messages: messages,
 		})
 	}
 }
@@ -121,10 +115,11 @@ func emitAgentEnd(runner *inproc.Runner, messages []agent.AgentMessage, willRetr
 // will run).
 // upstream: agent-session.ts:579 (_emitAgentSettled), called from the
 // _runAgentPrompt finally at agent-session.ts:1069.
-func emitAgentSettled(runner *inproc.Runner) {
+func emitAgentSettled(runner *inproc.Runner, aborted bool) {
 	if runner != nil && runner.HasHandlers(EventAgentSettled) {
 		_, _ = runner.Emit(context.Background(), extension.AgentSettledEvent{
-			Type: EventAgentSettled,
+			Type:    EventAgentSettled,
+			Aborted: aborted,
 		})
 	}
 }
@@ -147,9 +142,7 @@ func emitTurnEnd(runner *inproc.Runner, event agent.TurnEndEvent) {
 	if runner != nil && runner.HasHandlers(EventTurnEnd) {
 		// Convert []agent.ToolResultMessage → []any for extension type alias.
 		trs := make([]extension.ToolResultMessage, len(event.ToolResults))
-		for i, tr := range event.ToolResults {
-			trs[i] = tr
-		}
+		copy(trs, event.ToolResults)
 		_, _ = runner.Emit(context.Background(), extension.TurnEndEvent{
 			Type:               EventTurnEnd,
 			TurnIndex:          event.TurnIndex,
@@ -376,6 +369,7 @@ func emitToolExecutionEnd(runner *inproc.Runner, event agent.ToolExecutionEndEve
 			Result:     extensionToolResult(event.Result),
 			WireResult: extensionToolResultWire(event.Result),
 			IsError:    event.IsError,
+			DurationMs: event.DurationMs,
 
 			ParentToolCallID: event.ParentToolCallID,
 		})
@@ -398,7 +392,7 @@ func DispatchAgentLoopEvent(runner *inproc.Runner, ev agent.AgentEvent, currentM
 	case agent.AgentEndEvent:
 		emitAgentEnd(runner, e.Messages, e.WillRetry)
 	case agent.AgentSettledEvent:
-		emitAgentSettled(runner)
+		emitAgentSettled(runner, e.Aborted)
 	case agent.TurnStartEvent:
 		emitTurnStart(runner, e.TurnIndex)
 	case agent.TurnEndEvent:
@@ -478,7 +472,7 @@ func RunInputHandlers(ctx context.Context, runner *inproc.Runner, text string, i
 	if runner == nil || !runner.HasHandlers(EventInput) {
 		return text, images, false, nil
 	}
-	result, err := runner.EmitInput(ctx, text, extensionImages(images), source, streamingBehavior)
+	result, err := runner.EmitInput(ctx, text, images, source, streamingBehavior)
 	if err != nil {
 		return text, images, false, err
 	}
@@ -487,35 +481,10 @@ func RunInputHandlers(ctx context.Context, runner *inproc.Runner, text string, i
 		return "", nil, true, nil
 	case extension.InputEventResultTransform:
 		if result.Images != nil {
-			images = imagesFromExtension(result.Images)
+			images = result.Images
 		}
 		return result.Text, images, false, nil
 	default:
 		return text, images, false, nil
-	}
-}
-
-// emitThinkingLevelSelect dispatches a thinking_level_select event when the
-// user changes the active thinking level. Mirrors upstream thinking-level
-// selection events.
-func emitThinkingLevelSelect(runner *inproc.Runner, level, previousLevel string) {
-	if runner != nil && runner.HasHandlers(EventThinkingLevelSelect) {
-		_, _ = runner.Emit(context.Background(), extension.ThinkingLevelSelectEvent{
-			Type:          EventThinkingLevelSelect,
-			Level:         level,
-			PreviousLevel: previousLevel,
-		})
-	}
-}
-
-// modelToExtModel converts an ai.Model to extension.Model (map[string]any).
-// Matches upstream's model payload shape in model_select events.
-func modelToExtModel(m *ai.Model) extension.Model {
-	if m == nil {
-		return nil
-	}
-	return map[string]any{
-		"id":          m.ID,
-		"displayName": m.DisplayName,
 	}
 }

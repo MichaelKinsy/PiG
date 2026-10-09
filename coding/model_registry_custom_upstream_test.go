@@ -9,7 +9,7 @@ import (
 	"github.com/MichaelKinsy/PiG/ai"
 )
 
-func registryFromJSON(t *testing.T, raw string) *Services {
+func registryFromJSON(t *testing.T, raw string) *AgentSessionServices {
 	t.Helper()
 	var providers map[string]any
 	if err := json.Unmarshal([]byte(raw), &providers); err != nil {
@@ -17,7 +17,7 @@ func registryFromJSON(t *testing.T, raw string) *Services {
 	}
 	return registryTestServices(t, "", providers)
 }
-func mustRegistryModel(t *testing.T, s *Services, provider, id string) *ai.Model {
+func mustRegistryModel(t *testing.T, s *AgentSessionServices, provider, id string) *ai.Model {
 	t.Helper()
 	m := s.Registry().Find(provider, id)
 	if m == nil {
@@ -25,7 +25,7 @@ func mustRegistryModel(t *testing.T, s *Services, provider, id string) *ai.Model
 	}
 	return m
 }
-func assertRegistryNoError(t *testing.T, s *Services) {
+func assertRegistryNoError(t *testing.T, s *AgentSessionServices) {
 	t.Helper()
 	if err := s.Registry().GetError(); err != "" {
 		t.Fatal(err)

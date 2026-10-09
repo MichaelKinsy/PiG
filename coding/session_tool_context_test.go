@@ -39,7 +39,7 @@ func TestSessionToolCallsGetAToolContextForTheirCallID(t *testing.T) {
 		t.Fatal("the tool call got no tool context")
 	}
 	// A Session binds executeTool (agent-session.ts:3382), so the nested call runs through NestedToolCallRunner: ids start at `<caller>/1` (nested-tool-calls.ts:180) and an unknown tool fails in the tool pipeline. `<caller>/0` is only the unbound runner's outcome (runner.ts:965-976).
-	result, _ := got.outcome.Result.(agent.AgentToolResult)
+	result := got.outcome.Result
 	if got.outcome.ToolCall.ID != got.id+"/1" || !got.outcome.IsError || len(result.Content) != 1 || result.Content[0] != (ai.TextContent{Text: "Tool other not found"}) {
 		t.Fatalf("nested outcome = %+v for call %q", got.outcome, got.id)
 	}

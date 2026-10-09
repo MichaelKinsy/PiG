@@ -7,7 +7,7 @@ import (
 
 func TestValidateMappingBehaviorContractsRequiresClosedHandleInputContract(t *testing.T) {
 	entry := mappingEntry{
-		ID:     "pkg:coding-agent/.#ModelSelector::property:handleInput",
+		ID:     "pkg:coding-agent/.#ModelSelectorComponent::property:handleInput",
 		Layers: map[string]string{"behavior": "complete"},
 	}
 	problems := validateMappingBehaviorContracts(entry, map[string]string{})

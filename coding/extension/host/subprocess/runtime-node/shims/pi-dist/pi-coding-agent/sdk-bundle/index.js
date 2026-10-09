@@ -6,10 +6,10 @@ import {
   loadMcpConfig,
   openBrowser,
   updateMcpServerConfig
-} from "./chunk-MOFNYD55.js";
+} from "./chunk-IV7PGGPV.js";
 import {
   ArminComponent
-} from "./chunk-6FWVW2J5.js";
+} from "./chunk-HAVIQ2BN.js";
 import {
   AgentSession,
   BUG_REPORT_CUSTOM_ENTRY_TYPE,
@@ -122,7 +122,7 @@ import {
   wrapRegisteredTools,
   writeBugReportArchive,
   writeRawStdout
-} from "./chunk-XKIXC7ST.js";
+} from "./chunk-5PYVJCJM.js";
 import {
   convertToPng,
   createBashToolDefinition,
@@ -156,7 +156,7 @@ import {
   resolveReadPath,
   withFileMutationQueue,
   writeRenderers
-} from "./chunk-TQVQARUB.js";
+} from "./chunk-3WVBPXSG.js";
 import {
   CODEMODE_TOOL_NAME,
   TOOL_SEARCH_TOOL_NAME,
@@ -164,7 +164,7 @@ import {
   createToolSearchToolDefinition,
   isCodemodeTool,
   isToolSearchTool
-} from "./chunk-BP7BM6EW.js";
+} from "./chunk-LXMQZ4LI.js";
 import {
   addUsageToTotals,
   createUsageTotals,
@@ -172,22 +172,22 @@ import {
 } from "./chunk-M5LAR3ND.js";
 import "./chunk-RUCWNNX6.js";
 import {
-  LIST_MCP_RESOURCES_TOOL,
-  LIST_MCP_RESOURCE_TEMPLATES_TOOL,
-  READ_MCP_RESOURCE_TOOL,
   createMcpResourceToolDefinitions,
   createMcpToolDefinition,
   createMcpToolName,
   createMcpToolRenderers
-} from "./chunk-4ADCFCS2.js";
+} from "./chunk-MT4ACEHI.js";
 import {
   AuthStorage,
+  LIST_MCP_RESOURCES_TOOL,
+  LIST_MCP_RESOURCE_TEMPLATES_TOOL,
+  READ_MCP_RESOURCE_TOOL,
   ReadOnlyAuthStorage,
   getMcpToolExposure,
   mcpNamespace,
   raceWithAbortSignal,
   readStoredCredential
-} from "./chunk-SDVV3MJA.js";
+} from "./chunk-74O2H2KA.js";
 import {
   DEFAULT_MAX_BYTES,
   DEFAULT_MAX_LINES,
@@ -202,7 +202,7 @@ import {
   truncateLine,
   truncateTail,
   truncateToVisualLines
-} from "./chunk-EDGTPAH6.js";
+} from "./chunk-ZQYGA4IN.js";
 import {
   APP_NAME,
   APP_TITLE,
@@ -268,7 +268,7 @@ import {
   stripBom,
   theme,
   waitForChildProcess
-} from "./chunk-H7ICR3WT.js";
+} from "./chunk-UMGFL43X.js";
 import {
   __name
 } from "./chunk-SHUYVCID.js";
@@ -309,6 +309,7 @@ function createCodemodeExtension(options = {}) {
         appendEntry: /* @__PURE__ */ __name((customType, data) => pi.appendEntry(customType, data), "appendEntry"),
         models: options.models ?? true,
         getToolNamespace: /* @__PURE__ */ __name((name) => pi.getAllTools().find((tool) => tool.name === name)?.namespace, "getToolNamespace"),
+        getToolGuidelines: /* @__PURE__ */ __name(() => new Map(pi.getAllTools().map((tool) => [tool.name, tool.promptGuidelines ?? []])), "getToolGuidelines"),
         getMode: /* @__PURE__ */ __name(() => options.mode ?? readMode(pi), "getMode"),
         getInlineBudget: /* @__PURE__ */ __name(() => options.inlineBudget ?? readInlineBudget(pi), "getInlineBudget")
       }),
@@ -323,7 +324,7 @@ var codemode_default = createCodemodeExtension();
 import { join as join2, resolve } from "node:path";
 
 // pi-dist/pi-coding-agent/extensions/mcp/runtime.lazy.js
-var loadMcpRuntime = /* @__PURE__ */ __name(() => import("./chunk-VQASTC2W.js"), "loadMcpRuntime");
+var loadMcpRuntime = /* @__PURE__ */ __name(() => import("./chunk-7JYFZT2H.js"), "loadMcpRuntime");
 
 // pi-dist/pi-coding-agent/extensions/mcp/ui.js
 import { Container as Container2, Input, SelectList, Spacer, Text as Text2, truncateToWidth, visibleWidth } from "../../../pi-tui.mjs";
@@ -437,20 +438,20 @@ async function copyViaWindowsClipboard(text) {
 }
 __name(copyViaWindowsClipboard, "copyViaWindowsClipboard");
 async function readClipboardText() {
+  const commands = [];
+  if (process.env.TERMUX_VERSION)
+    commands.push(["termux-clipboard-get", []]);
   if (platform() === "linux") {
-    const commands = [];
-    if (process.env.TERMUX_VERSION)
-      commands.push(["termux-clipboard-get", []]);
     if (process.env.WAYLAND_DISPLAY)
       commands.push(["wl-paste", ["--no-newline", "--type", "text"]]);
     if (process.env.DISPLAY) {
       commands.push(["xclip", ["-selection", "clipboard", "-out"]], ["xsel", ["--clipboard", "--output"]]);
     }
-    for (const [command, args] of commands) {
-      const bytes = await runClipboardCommand(command, args, { timeoutMs: 5e3 });
-      if (bytes !== void 0)
-        return bytes.toString("utf8") || null;
-    }
+  }
+  for (const [command, args] of commands) {
+    const bytes = await runClipboardCommand(command, args, { timeoutMs: 5e3 });
+    if (bytes !== void 0)
+      return bytes.toString("utf8") || null;
   }
   try {
     return await getNativeClipboard()?.getText() || null;
@@ -518,10 +519,10 @@ async function copyToClipboard(text) {
     return;
   if (oversized)
     throw new Error("Clipboard unavailable: text exceeds the OSC 52 size limit");
+  if (env.TERMUX_VERSION) {
+    throw new Error("Clipboard unavailable: install the Termux:API app and `termux-api` package");
+  }
   if (p === "linux") {
-    if (env.TERMUX_VERSION) {
-      throw new Error("Clipboard unavailable: install the Termux:API app and `termux-api` package");
-    }
     if (env.WAYLAND_DISPLAY) {
       throw new Error("Clipboard unavailable: install `wl-clipboard` (`wl-copy`) or check Wayland access");
     }
@@ -682,8 +683,16 @@ var McpManagerView = class {
       });
     });
   }
-  status(title, message) {
-    this.setContent(frame(this.theme, title, [new Spacer(1), new Text2(this.theme.fg("muted", message), 1, 0)]));
+  status(title, message, onCancel) {
+    const body = [new Spacer(1), new Text2(this.theme.fg("muted", message), 1, 0)];
+    if (!onCancel) {
+      this.setContent(frame(this.theme, title, body));
+      return;
+    }
+    this.setContent(frame(this.theme, title, body, keyHint("tui.select.cancel", "cancel")), (data) => {
+      if (this.keybindings.matches(data, "tui.select.cancel"))
+        onCancel();
+    });
   }
   redirectUrl(title, authorizationUrl, signal) {
     return new Promise((resolve7) => {
@@ -899,13 +908,11 @@ function createMcpExtension(options = {}) {
     let configErrors = [];
     let projectConfig;
     let overridden = [];
-    let sessionActive = false;
     let autoEnableCodemode = true;
     let warnedUnreachable = false;
     let pending;
     let waitedForStartup = false;
     const startupWaitMs = options.startupWaitMs ?? DEFAULT_STARTUP_WAIT_MS;
-    let generation = 0;
     let sessionCwd = process.cwd();
     let credentials = options.credentials;
     let modelRegistry;
@@ -914,6 +921,15 @@ function createMcpExtension(options = {}) {
     const updateConfig = options.updateConfig ?? ((entry, patch) => updateMcpServerConfig(entry.override ?? entry.source, entry.name, patch, {
       override: entry.override !== void 0
     }));
+    let session = new AbortController();
+    session.abort();
+    const backgroundActions = /* @__PURE__ */ new Set();
+    const track = /* @__PURE__ */ __name((work) => {
+      const task = work.then(() => void 0, () => void 0);
+      backgroundActions.add(task);
+      void task.finally(() => backgroundActions.delete(task));
+      return work;
+    }, "track");
     const listeners = /* @__PURE__ */ new Set();
     const emitChange = /* @__PURE__ */ __name(() => {
       for (const listener of listeners)
@@ -987,8 +1003,19 @@ function createMcpExtension(options = {}) {
           exposure: getMcpToolExposure(entry.config, tool.name),
           namespace,
           timeoutMs: connection.timeoutMs,
-          getClient: /* @__PURE__ */ __name(async () => connection, "getClient"),
-          readableResources: /* @__PURE__ */ __name(() => resourceServers().includes(connection), "readableResources")
+          getClient: /* @__PURE__ */ __name(async () => {
+            const current2 = findServer(server);
+            if (!current2 || !isEnabled(current2))
+              throw new Error(`MCP server "${server}" is disabled.`);
+            const client = current2.connection;
+            if (!client)
+              throw new Error(`MCP server "${server}" is still starting.`);
+            if (getMcpToolExposure(current2.entry.config, tool.name) === "hidden" || client.state === "connected" && !client.tools.some((offered) => offered.name === tool.name)) {
+              throw new Error(`MCP tool "${server}/${tool.name}" is no longer available.`);
+            }
+            return client;
+          }, "getClient"),
+          readableResources: /* @__PURE__ */ __name(() => resourceServers().some((current2) => current2.name === server), "readableResources")
         });
         definitions.set(definition.name, definition);
         pi.registerTool(definition);
@@ -1085,8 +1112,10 @@ function createMcpExtension(options = {}) {
       await Promise.allSettled(signedIn.map(([connection]) => connection.reconnect()));
       ensureDiscoveryActive(ctx);
     }, "reconnectSignedIn");
-    const createConnection = /* @__PURE__ */ __name(async (server) => {
+    const createConnection = /* @__PURE__ */ __name(async (server, isCurrent) => {
       const runtime = await loadMcpRuntime();
+      if (!isCurrent())
+        return void 0;
       const connection = new runtime.McpServerConnection({
         entry: server.entry,
         cwd: sessionCwd,
@@ -1094,20 +1123,32 @@ function createMcpExtension(options = {}) {
         credentials: getCredentials(runtime),
         providerToken: /* @__PURE__ */ __name(async (provider) => modelRegistry?.getApiKeyForProvider(provider), "providerToken"),
         log: getServerLog(runtime),
-        onTools: registerTools,
-        onChange: onConnectionChange
+        onTools: /* @__PURE__ */ __name((connection2) => {
+          if (isCurrent())
+            registerTools(connection2);
+        }, "onTools"),
+        onChange: /* @__PURE__ */ __name((connection2) => {
+          if (isCurrent())
+            onConnectionChange(connection2);
+          else
+            tokensAtSignIn.delete(connection2);
+        }, "onChange")
       });
       server.connection = connection;
       emitChange();
       return connection;
     }, "createConnection");
-    const startConnection = /* @__PURE__ */ __name((server, isCurrent, after) => {
+    const startConnection = /* @__PURE__ */ __name((server, after) => {
+      const { signal } = session;
+      const attempt = /* @__PURE__ */ Symbol();
+      server.attempt = attempt;
+      const isCurrent = /* @__PURE__ */ __name(() => !signal.aborted && server.attempt === attempt && isEnabled(server) && servers.includes(server), "isCurrent");
       const ready = (async () => {
         await after;
         if (!isCurrent())
           return;
-        const connection = await createConnection(server);
-        if (!isCurrent())
+        const connection = await createConnection(server, isCurrent);
+        if (!connection || !isCurrent())
           return;
         await connection.getClient().catch(() => void 0);
       })();
@@ -1115,19 +1156,23 @@ function createMcpExtension(options = {}) {
       return ready;
     }, "startConnection");
     const waitForServers = /* @__PURE__ */ __name(async (waiting, signal) => {
-      const ready = waiting.flatMap((server) => server.ready ? [server.ready] : []);
-      if (ready.length === 0 || signal?.aborted)
-        return;
-      let onAbort;
-      await Promise.race([
-        Promise.all(ready),
-        new Promise((resolve7) => {
-          onAbort = /* @__PURE__ */ __name(() => resolve7(), "onAbort");
-          signal?.addEventListener("abort", onAbort, { once: true });
-        })
-      ]);
-      if (onAbort)
-        signal?.removeEventListener("abort", onAbort);
+      for (; ; ) {
+        const ready = waiting.flatMap((server) => isEnabled(server) && servers.includes(server) && server.ready ? [{ server, ready: server.ready }] : []);
+        if (ready.length === 0 || signal?.aborted)
+          return;
+        let onAbort;
+        await Promise.race([
+          Promise.all(ready.map((attempt) => attempt.ready)),
+          new Promise((resolve7) => {
+            onAbort = /* @__PURE__ */ __name(() => resolve7(), "onAbort");
+            signal?.addEventListener("abort", onAbort, { once: true });
+          })
+        ]);
+        if (onAbort)
+          signal?.removeEventListener("abort", onAbort);
+        if (signal?.aborted || ready.every((attempt) => !isEnabled(attempt.server) || !servers.includes(attempt.server) || attempt.ready === attempt.server.ready))
+          return;
+      }
     }, "waitForServers");
     const reportProblems = /* @__PURE__ */ __name((ctx, only) => {
       const lines = only ? [] : configErrors.map((error) => `config: ${error}`);
@@ -1155,20 +1200,22 @@ Run /mcp to fix.`, "warning");
       server.entry = { ...entry, config: { ...entry.config, ...patch } };
       return void 0;
     }, "saveConfig");
-    const signIn = /* @__PURE__ */ __name(async (server, prompt) => {
+    const signIn = /* @__PURE__ */ __name(async (server, prompt, cancel) => {
       const connection = server.connection;
       const url = connection?.oauthUrl;
       if (!connection || !url)
         return `MCP server "${server.entry.name}" does not use OAuth.`;
       const runtime = await loadMcpRuntime();
+      const signal = cancel ? AbortSignal.any([session.signal, cancel]) : session.signal;
       try {
-        await runtime.signInMcpServer({
+        await track(runtime.signInMcpServer({
           serverUrl: url,
           store: getCredentials(runtime).forServer(server.entry.name, url),
           settings: connection.oauthSettings(),
           challenge: connection.challenge,
-          prompt
-        });
+          prompt,
+          signal
+        }));
       } catch (error) {
         if (error instanceof runtime.McpSignInCancelledError)
           return "Sign-in cancelled.";
@@ -1195,8 +1242,14 @@ Run /mcp to fix.`, "warning");
       const connection = server.connection;
       if (!connection)
         return `MCP server "${server.entry.name}" is disabled.`;
-      try {
+      const previous = server.ready;
+      const ready = (async () => {
+        await previous;
         await connection.reconnect();
+      })();
+      server.ready = ready.catch(() => void 0);
+      try {
+        await ready;
         return void 0;
       } catch (error) {
         return errorMessage(error);
@@ -1208,13 +1261,23 @@ Run /mcp to fix.`, "warning");
         return failed;
       if (!enabled) {
         const connection = server.connection;
+        server.attempt = void 0;
         server.connection = void 0;
+        if (connection) {
+          server.closing = Promise.all([connection.close(), server.ready]).then(() => void 0);
+        }
+        const closing = server.closing;
         hideTools(server.entry.name);
         emitChange();
-        await connection?.close();
+        try {
+          await closing;
+        } finally {
+          if (server.closing === closing)
+            server.closing = void 0;
+        }
         return void 0;
       }
-      await startConnection(server, () => true);
+      await startConnection(server, server.closing);
       return void 0;
     }, "setEnabled");
     const setExposure = /* @__PURE__ */ __name((server, exposure) => {
@@ -1343,8 +1406,10 @@ Run /mcp to fix.`, "warning");
     }, "chooseExposure");
     const signInWithUi = /* @__PURE__ */ __name((ui, server) => {
       const title = `Sign in to ${server.entry.name}`;
+      const cancel = new AbortController();
+      const status = /* @__PURE__ */ __name((message) => ui.status(title, message, () => cancel.abort()), "status");
       let authorizationUrl = "";
-      ui.status(title, "Contacting the authorization server\u2026");
+      status("Contacting the authorization server\u2026");
       return signIn(server, {
         showAuthorizationUrl: /* @__PURE__ */ __name((url) => {
           authorizationUrl = url.href;
@@ -1352,21 +1417,36 @@ Run /mcp to fix.`, "warning");
         }, "showAuthorizationUrl"),
         promptForRedirectUrl: /* @__PURE__ */ __name(async (signal) => {
           const value = await ui.redirectUrl(title, authorizationUrl, signal);
-          ui.status(title, "Connecting\u2026");
+          status("Connecting\u2026");
           return value;
         }, "promptForRedirectUrl")
-      });
+      }, cancel.signal);
     }, "signInWithUi");
+    const runInBackground = /* @__PURE__ */ __name((ctx, server, operation) => {
+      const ready = operation();
+      const attempt = server.attempt;
+      const { signal } = session;
+      const finish = /* @__PURE__ */ __name((message) => {
+        if (signal.aborted || server.attempt !== attempt || !servers.includes(server))
+          return;
+        server.message = message;
+        ensureDiscoveryActive(ctx);
+        emitChange();
+      }, "finish");
+      void track(ready.then(finish, (error) => finish(errorMessage(error))));
+    }, "runInBackground");
     const runAction = /* @__PURE__ */ __name(async (ui, ctx, server, action) => {
-      const { name } = server.entry;
+      const { signal } = session;
       let message;
       switch (action) {
         case "signin":
           message = await signInWithUi(ui, server);
           break;
         case "reconnect":
-          ui.status(`MCP server ${name}`, "Reconnecting\u2026");
-          await reconnect(server);
+          runInBackground(ctx, server, async () => {
+            await reconnect(server);
+            return void 0;
+          });
           break;
         case "signout":
           await signOut(server);
@@ -1382,11 +1462,12 @@ Run /mcp to fix.`, "warning");
         case "enable-project":
         case "disable-project": {
           const enable = action.startsWith("enable");
-          ui.status(`MCP server ${name}`, enable ? "Connecting\u2026" : "Disconnecting\u2026");
-          message = await setEnabled(server, enable, action.endsWith("-project"));
+          runInBackground(ctx, server, () => setEnabled(server, enable, action.endsWith("-project")));
           break;
         }
       }
+      if (signal.aborted)
+        return;
       server.message = message;
       ensureDiscoveryActive(ctx);
       emitChange();
@@ -1461,6 +1542,7 @@ Run /mcp to fix.`, "warning");
         ctx.ui.notify(`Signing in to MCP server "${name}" requires interactive mode.`, "error");
         return;
       }
+      const { signal } = session;
       let failure;
       if (ctx.mode === "tui") {
         await showMcpManager(ctx, async (ui) => {
@@ -1473,9 +1555,11 @@ Run /mcp to fix.`, "warning");
 ${url.href}`, "info");
             openUrl(url.href);
           }, "showAuthorizationUrl"),
-          promptForRedirectUrl: /* @__PURE__ */ __name((signal) => ctx.ui.input(`Waiting for sign-in to "${name}". If the browser cannot reach this machine, paste the URL it was redirected to.`, "http://127.0.0.1:.../callback?code=...", { signal }), "promptForRedirectUrl")
+          promptForRedirectUrl: /* @__PURE__ */ __name((signal2) => ctx.ui.input(`Waiting for sign-in to "${name}". If the browser cannot reach this machine, paste the URL it was redirected to.`, "http://127.0.0.1:.../callback?code=...", { signal: signal2 }), "promptForRedirectUrl")
         });
       }
+      if (signal.aborted)
+        return;
       if (failure) {
         ctx.ui.notify(failure, failure === "Sign-in cancelled." ? "info" : "error");
         return;
@@ -1492,8 +1576,8 @@ ${url.href}`, "info");
       waitedForStartup = false;
       sessionCwd = ctx.cwd;
       modelRegistry = ctx.modelRegistry;
-      const current = ++generation;
-      sessionActive = true;
+      session = new AbortController();
+      const { signal } = session;
       configuredEntries = loaded.servers;
       const registered = registeredServers();
       overridden = registered.overridden;
@@ -1506,9 +1590,8 @@ ${url.href}`, "info");
         return;
       }
       const runtime = new Promise((resolve7) => setImmediate(resolve7)).then(() => loadMcpRuntime());
-      const isCurrent = /* @__PURE__ */ __name(() => current === generation, "isCurrent");
-      pending = Promise.all(enabled.map((server) => startConnection(server, isCurrent, runtime))).then(() => {
-        if (isCurrent())
+      pending = Promise.all(enabled.map((server) => startConnection(server, runtime))).then(() => {
+        if (!signal.aborted)
           reportProblems(ctx);
       }).catch((error) => {
         try {
@@ -1549,16 +1632,19 @@ ${url.href}`, "info");
       const tool = pi.getAllTools().find((candidate) => candidate.name === event.toolName);
       if (!tool)
         return;
-      const pendingServers = servers.filter((server) => isEnabled(server) && server.connection?.state !== "connected" && server.ready);
-      if (pendingServers.length === 0)
+      const readyServers = servers.filter((server) => isEnabled(server) && server.ready);
+      if (readyServers.length === 0)
         return;
       let waiting = [];
       if (isCodemodeTool(tool)) {
         const { code } = event.input;
         const source = typeof code === "string" ? code : "";
-        waiting = pendingServers.filter((server) => scriptNeedsServer(source, server.entry.name));
+        waiting = readyServers.filter((server) => scriptNeedsServer(source, server.entry.name));
       } else if (isToolSearchTool(tool) || RESOURCE_TOOL_NAMES.has(tool.name)) {
-        waiting = pendingServers;
+        waiting = readyServers;
+      } else {
+        const owner = toolOwners.get(event.toolName)?.split("\0", 1)[0];
+        waiting = readyServers.filter((server) => server.entry.name === owner);
       }
       await waitForServers(waiting, ctx.signal);
     });
@@ -1567,9 +1653,9 @@ ${url.href}`, "info");
         await reconnectSignedIn(ctx);
     });
     pi.on("mcp_servers_change", async (_event, ctx) => {
-      if (!sessionActive)
+      const { signal } = session;
+      if (signal.aborted)
         return;
-      const current = generation;
       const registered = registeredServers();
       overridden = registered.overridden;
       const next = new Map(registered.servers.map((server) => [server.entry.name, server]));
@@ -1583,11 +1669,11 @@ ${url.href}`, "info");
       ensureDiscoveryActive(ctx);
       await Promise.all(removed.map((server) => server.connection?.close()));
       const connecting = added.filter(isEnabled);
-      if (current !== generation || connecting.length === 0)
+      if (signal.aborted || connecting.length === 0)
         return;
       try {
-        await Promise.all(connecting.map((server) => startConnection(server, () => current === generation)));
-        if (current !== generation) {
+        await Promise.all(connecting.map((server) => startConnection(server)));
+        if (signal.aborted) {
           await Promise.all(connecting.map((server) => server.connection?.close()));
           return;
         }
@@ -1595,17 +1681,16 @@ ${url.href}`, "info");
         ctx.ui.notify(`MCP failed to load: ${errorMessage(error)}`, "error");
         return;
       }
-      if (current !== generation)
+      if (signal.aborted)
         return;
       reportProblems(ctx, connecting);
     });
     pi.on("session_shutdown", async () => {
-      sessionActive = false;
-      generation++;
+      session.abort();
       const closing = connections();
       servers = [];
       emitChange();
-      await Promise.all(closing.map((connection) => connection.close()));
+      await Promise.all([...backgroundActions, ...closing.map((connection) => connection.close())]);
     });
     pi.registerCommand("mcp", {
       description: "Manage MCP servers: sign in, reconnect, enable or disable, and change exposure",
@@ -1626,19 +1711,21 @@ ${url.href}`, "info");
         return items.length > 0 ? items : null;
       }, "getArgumentCompletions"),
       handler: /* @__PURE__ */ __name(async (args, ctx) => {
-        await pending;
         const [action, name, ...extra] = args.trim().split(/\s+/).filter(Boolean);
         if (action === void 0) {
           if (ctx.mode === "tui")
             await showMcpManager(ctx, (ui) => manage(ui, ctx));
-          else
+          else {
+            await pending;
             ctx.ui.notify(formatStatus(), "info");
+          }
           return;
         }
         if (extra.length > 0) {
           ctx.ui.notify(MCP_USAGE, "warning");
           return;
         }
+        await pending;
         switch (action) {
           case "login": {
             const server = await pickServer(name, ctx, oauthPick);
@@ -4665,6 +4752,7 @@ var HuggingFaceClient = class {
 // pi-dist/pi-coding-agent/extensions/llama/provider.js
 import { isModelType } from "../../pi-ai/sdk-bundle/index.js";
 import { llamaCppClassifyApi } from "../../pi-ai/api/llama-cpp-classify.lazy.js";
+import { typesafeSystemOneApi } from "../../pi-ai/api/typesafe-system-one.lazy.js";
 import { stream, streamSimple } from "../../pi-ai/sdk-bundle/compat.js";
 var LLAMA_PROVIDER_ID = "llama.cpp";
 var DEFAULT_LLAMA_SERVER_URL = "http://127.0.0.1:8080";
@@ -4722,20 +4810,33 @@ function contextWindowOf(model, cachedContextWindow) {
   return trainingContextWindow && trainingContextWindow > 0 ? trainingContextWindow : 128e3;
 }
 __name(contextWindowOf, "contextWindowOf");
+function isDecisionModel(model) {
+  return model.architecture?.output_modalities?.includes("decisions") === true;
+}
+__name(isDecisionModel, "isDecisionModel");
+function isChatModel(model) {
+  return !isDecisionModel(model) || model.architecture?.output_modalities?.includes("text") === true;
+}
+__name(isChatModel, "isChatModel");
 function toPiClassifierModel(model, serverUrl, cachedContextWindow) {
+  const decision = isDecisionModel(model);
   return {
     type: "classifier",
     id: model.id,
     name: model.id,
-    api: "llama-cpp-classify",
+    api: decision ? "typesafe-system-one" : "llama-cpp-classify",
     provider: LLAMA_PROVIDER_ID,
-    baseUrl: serverUrl,
+    baseUrl: decision ? llamaInferenceUrl(serverUrl) : serverUrl,
     input: ["text"],
     cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
     contextWindow: contextWindowOf(model, cachedContextWindow)
   };
 }
 __name(toPiClassifierModel, "toPiClassifierModel");
+function isLlamaClassifierModel(model) {
+  return isModelType(model, "classifier") && (model.api === "llama-cpp-classify" || model.api === "typesafe-system-one");
+}
+__name(isLlamaClassifierModel, "isLlamaClassifierModel");
 function toPiModel(model, serverUrl, props, cachedContextWindow) {
   const contextWindow = contextWindowOf(model, cachedContextWindow);
   const reasoning = props?.chat_template?.includes("enable_thinking") === true;
@@ -4768,10 +4869,11 @@ __name(toPiModel, "toPiModel");
 function createLlamaProvider() {
   let models = [];
   let classifiers = [];
-  const classifier = llamaCppClassifyApi();
+  const fallbackClassifier = llamaCppClassifyApi();
+  const decisionClassifier = typesafeSystemOneApi();
   const setCatalog = /* @__PURE__ */ __name((catalog, serverUrl, options = {}) => {
     const selectable = catalog.filter((model) => modelIsSelectable(model, options.routerAutoload === true));
-    models = selectable.map((model) => toPiModel(model, serverUrl));
+    models = selectable.filter(isChatModel).map((model) => toPiModel(model, serverUrl));
     classifiers = selectable.map((model) => toPiClassifierModel(model, serverUrl));
   }, "setCatalog");
   const provider = {
@@ -4823,7 +4925,7 @@ function createLlamaProvider() {
       if (context.stored) {
         const stored = context.stored.models.filter((model) => model.provider === LLAMA_PROVIDER_ID);
         const restored = stored.filter((model) => isModelType(model, "chat") && model.api === "openai-completions");
-        const restoredClassifiers = stored.filter((model) => isModelType(model, "classifier") && model.api === "llama-cpp-classify");
+        const restoredClassifiers = stored.filter(isLlamaClassifierModel);
         for (const model of [...restored, ...restoredClassifiers]) {
           cachedContextWindows.set(model.id, model.contextWindow);
         }
@@ -4849,7 +4951,7 @@ function createLlamaProvider() {
       if (context.signal.aborted)
         return;
       const selectable = catalog.filter((model) => modelIsSelectable(model, routerAutoload));
-      const refreshed = await Promise.all(selectable.map(async (model) => {
+      const refreshed = await Promise.all(selectable.filter(isChatModel).map(async (model) => {
         const cachedContextWindow = cachedContextWindows.get(model.id);
         if (model.status.value !== "loaded")
           return toPiModel(model, serverUrl, void 0, cachedContextWindow);
@@ -4869,7 +4971,7 @@ function createLlamaProvider() {
     }, "refreshModels"),
     stream: /* @__PURE__ */ __name((model, context, options) => stream(model, context, options), "stream"),
     streamSimple: /* @__PURE__ */ __name((model, context, options) => streamSimple(model, context, options), "streamSimple"),
-    classify: /* @__PURE__ */ __name((model, context, options) => classifier.classify(model, context, options), "classify")
+    classify: /* @__PURE__ */ __name((model, context, options) => (model.api === "typesafe-system-one" ? decisionClassifier : fallbackClassifier).classify(model, context, options), "classify")
   };
   return { provider, setCatalog };
 }
@@ -5528,7 +5630,7 @@ var builtInExtensions = [
 ];
 
 // pi-dist/pi-coding-agent/extensions/mcp/cli.lazy.js
-var loadMcpCommand = /* @__PURE__ */ __name(() => import("./chunk-PP6TQO2O.js"), "loadMcpCommand");
+var loadMcpCommand = /* @__PURE__ */ __name(() => import("./chunk-ONCXY5DA.js"), "loadMcpCommand");
 
 // pi-dist/pi-coding-agent/migrations.js
 import chalk4 from "../../../chalk/source/index.js";
@@ -5593,10 +5695,10 @@ function migrateSessionsFromAgentRoot() {
   for (const file of files) {
     try {
       const content = readFileSync3(file, "utf8");
-      const firstLine2 = content.split("\n")[0];
-      if (!firstLine2?.trim())
+      const firstLine3 = content.split("\n")[0];
+      if (!firstLine3?.trim())
         continue;
-      const header = JSON.parse(firstLine2);
+      const header = JSON.parse(firstLine3);
       if (header.type !== "session" || !header.cwd)
         continue;
       const cwd = header.cwd;
@@ -7300,26 +7402,32 @@ var BashExecutionComponent = class extends Container11 {
   fullOutputPath;
   expanded = false;
   contentContainer;
-  constructor(command, ui, excludeFromContext = false) {
+  /** `dim` marks `!!` commands, whose output is excluded from the model context. */
+  colorKey;
+  outputPad;
+  constructor(command, ui, excludeFromContext = false, outputPad = 1) {
     super();
     this.command = command;
-    const colorKey = excludeFromContext ? "dim" : "bashMode";
-    const borderColor = /* @__PURE__ */ __name((str) => theme.fg(colorKey, str), "borderColor");
+    this.colorKey = excludeFromContext ? "dim" : "bashMode";
+    this.outputPad = outputPad;
+    const borderColor = /* @__PURE__ */ __name((str) => theme.fg(this.colorKey, str), "borderColor");
     this.addChild(new Spacer10(1));
     this.addChild(new DynamicBorder(borderColor));
     this.contentContainer = new Container11();
     this.addChild(this.contentContainer);
-    const header = new Text11(theme.fg(colorKey, theme.bold(`$ ${command}`)), 1, 0);
-    this.contentContainer.addChild(header);
-    this.loader = new Loader2(ui, (spinner) => theme.fg(colorKey, spinner), (text) => theme.fg("muted", text), `Running... (${keyText("tui.select.cancel")} to cancel)`);
-    this.contentContainer.addChild(this.loader);
+    this.loader = new Loader2(ui, (spinner) => theme.fg(this.colorKey, spinner), (text) => theme.fg("muted", text), `Running... (${keyText("tui.select.cancel")} to cancel)`);
     this.addChild(new DynamicBorder(borderColor));
+    this.updateDisplay();
   }
   /**
    * Set whether the output is expanded (shows full output) or collapsed (preview only).
    */
   setExpanded(expanded) {
     this.expanded = expanded;
+    this.updateDisplay();
+  }
+  setOutputPad(outputPad) {
+    this.outputPad = outputPad;
     this.updateDisplay();
   }
   invalidate() {
@@ -7355,13 +7463,13 @@ var BashExecutionComponent = class extends Container11 {
     const previewLogicalLines = availableLines.slice(-PREVIEW_LINES);
     const hiddenLineCount = availableLines.length - previewLogicalLines.length;
     this.contentContainer.clear();
-    const header = new Text11(theme.fg("bashMode", theme.bold(`$ ${this.command}`)), 1, 0);
+    const header = new Text11(theme.fg(this.colorKey, theme.bold(`$ ${this.command}`)), this.outputPad, 0);
     this.contentContainer.addChild(header);
     if (availableLines.length > 0) {
       if (this.expanded) {
         const displayText = availableLines.map((line) => theme.fg("muted", line)).join("\n");
         this.contentContainer.addChild(new Text11(`
-${displayText}`, 1, 0));
+${displayText}`, this.outputPad, 0));
       } else {
         const styledOutput = previewLogicalLines.map((line) => theme.fg("muted", line)).join("\n");
         const styledInput = `
@@ -7371,7 +7479,7 @@ ${styledOutput}`;
         this.contentContainer.addChild({
           render: /* @__PURE__ */ __name((width) => {
             if (cachedLines === void 0 || cachedWidth !== width) {
-              const result = truncateToVisualLines(styledInput, PREVIEW_LINES, width, 1);
+              const result = truncateToVisualLines(styledInput, PREVIEW_LINES, width, this.outputPad);
               cachedLines = result.visualLines;
               cachedWidth = width;
             }
@@ -7406,7 +7514,7 @@ ${styledOutput}`;
       }
       if (statusParts.length > 0) {
         this.contentContainer.addChild(new Text11(`
-${statusParts.join("\n")}`, 1, 0));
+${statusParts.join("\n")}`, this.outputPad, 0));
       }
     }
   }
@@ -7433,8 +7541,8 @@ var BranchSummaryMessageComponent = class extends Box {
   expanded = false;
   message;
   markdownTheme;
-  constructor(message, markdownTheme = getMarkdownTheme()) {
-    super(1, 1, (t) => theme.bg("customMessageBg", t));
+  constructor(message, markdownTheme = getMarkdownTheme(), outputPad = 1) {
+    super(outputPad, 1, (t) => theme.bg("customMessageBg", t));
     this.message = message;
     this.markdownTheme = markdownTheme;
     this.updateDisplay();
@@ -7442,6 +7550,9 @@ var BranchSummaryMessageComponent = class extends Box {
   setExpanded(expanded) {
     this.expanded = expanded;
     this.updateDisplay();
+  }
+  setOutputPad(outputPad) {
+    this.setPaddingX(outputPad);
   }
   invalidate() {
     super.invalidate();
@@ -7479,8 +7590,8 @@ var CompactionSummaryMessageComponent = class extends Box2 {
   expanded = false;
   message;
   markdownTheme;
-  constructor(message, markdownTheme = getMarkdownTheme()) {
-    super(1, 1, (t) => theme.bg("customMessageBg", t));
+  constructor(message, markdownTheme = getMarkdownTheme(), outputPad = 1) {
+    super(outputPad, 1, (t) => theme.bg("customMessageBg", t));
     this.message = message;
     this.markdownTheme = markdownTheme;
     this.updateDisplay();
@@ -7488,6 +7599,9 @@ var CompactionSummaryMessageComponent = class extends Box2 {
   setExpanded(expanded) {
     this.expanded = expanded;
     this.updateDisplay();
+  }
+  setOutputPad(outputPad) {
+    this.setPaddingX(outputPad);
   }
   invalidate() {
     super.invalidate();
@@ -7628,10 +7742,12 @@ var CustomEntryComponent = class extends Container14 {
   renderer;
   customComponent;
   _expanded = false;
-  constructor(entry, renderer) {
+  outputPad;
+  constructor(entry, renderer, outputPad = 1) {
     super();
     this.entry = entry;
     this.renderer = renderer;
+    this.outputPad = outputPad;
     this.rebuild();
   }
   hasContent() {
@@ -7642,6 +7758,10 @@ var CustomEntryComponent = class extends Container14 {
       this._expanded = expanded;
       this.rebuild();
     }
+  }
+  setOutputPad(outputPad) {
+    this.outputPad = outputPad;
+    this.rebuild();
   }
   invalidate() {
     super.invalidate();
@@ -7655,7 +7775,7 @@ var CustomEntryComponent = class extends Container14 {
       component = this.renderer(this.entry, { expanded: this._expanded }, theme);
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      const box = new Box3(1, 1, (text) => theme.bg("customMessageBg", text));
+      const box = new Box3(this.outputPad, 1, (text) => theme.bg("customMessageBg", text));
       box.addChild(new Text14(theme.fg("error", `[${this.entry.customType}] renderer failed: ${message}`), 0, 0));
       component = box;
     }
@@ -7726,6 +7846,7 @@ var CustomMessageComponent = class extends Container15 {
     }
     this.addChild(this.box);
     this.box.clear();
+    this.box.setPaddingX(this.outputPad);
     const label = theme.fg("customMessageLabel", `\x1B[1m[${this.message.customType}]\x1B[22m`);
     this.box.addChild(new Text15(label, 0, 0));
     this.box.addChild(new Spacer14(1));
@@ -7790,7 +7911,7 @@ function playEasterEgg3d(tui, egg) {
   if (tui.hasOverlay())
     return true;
   const screen = tui.getScreenLines();
-  import("./chunk-ICOM4WIN.js").then((module) => module.playEasterEgg3d(tui, screen, egg), () => {
+  import("./chunk-SW7WNE7Y.js").then((module) => module.playEasterEgg3d(tui, screen, egg), () => {
   });
   return true;
 }
@@ -9896,7 +10017,7 @@ var SettingsSelectorComponent = class extends Container22 {
     items.splice(editorPaddingIndex + 1, 0, {
       id: "output-padding",
       label: "Output padding",
-      description: "Horizontal padding for user messages, assistant messages, and thinking",
+      description: "Horizontal padding for messages, tool output, and command output",
       currentValue: String(config.outputPad),
       values: ["0", "1"]
     });
@@ -10050,8 +10171,8 @@ var SkillInvocationMessageComponent = class extends Box5 {
   expanded = false;
   skillBlock;
   markdownTheme;
-  constructor(skillBlock, markdownTheme = getMarkdownTheme()) {
-    super(1, 1, (t) => theme.bg("customMessageBg", t));
+  constructor(skillBlock, markdownTheme = getMarkdownTheme(), outputPad = 1) {
+    super(outputPad, 1, (t) => theme.bg("customMessageBg", t));
     this.skillBlock = skillBlock;
     this.markdownTheme = markdownTheme;
     this.updateDisplay();
@@ -10059,6 +10180,9 @@ var SkillInvocationMessageComponent = class extends Box5 {
   setExpanded(expanded) {
     this.expanded = expanded;
     this.updateDisplay();
+  }
+  setOutputPad(outputPad) {
+    this.setPaddingX(outputPad);
   }
   invalidate() {
     super.invalidate();
@@ -10318,6 +10442,7 @@ var ToolExecutionComponent = class extends Container25 {
   expanded = false;
   showImages;
   imageWidthCells;
+  outputPad;
   isPartial = true;
   toolDefinition;
   ui;
@@ -10334,6 +10459,7 @@ var ToolExecutionComponent = class extends Container25 {
     this.toolDefinition = toolDefinition;
     this.showImages = options.showImages ?? true;
     this.imageWidthCells = options.imageWidthCells ?? 60;
+    this.outputPad = options.outputPad ?? 1;
     this.ui = ui;
     this.cwd = cwd;
     this.addChild(new Spacer23(1));
@@ -10376,7 +10502,9 @@ var ToolExecutionComponent = class extends Container25 {
       isPartial: this.isPartial,
       expanded: this.expanded,
       showImages: this.showImages,
-      isError: this.result?.isError ?? false
+      isError: this.result?.isError ?? false,
+      durationMs: this.isPartial ? void 0 : this.result?.durationMs,
+      outputPad: this.outputPad
     };
   }
   createCallFallback() {
@@ -10426,6 +10554,10 @@ var ToolExecutionComponent = class extends Container25 {
   }
   setExpanded(expanded) {
     this.expanded = expanded;
+    this.updateDisplay();
+  }
+  setOutputPad(outputPad) {
+    this.outputPad = outputPad;
     this.updateDisplay();
   }
   setShowImages(show) {
@@ -10488,6 +10620,7 @@ var ToolExecutionComponent = class extends Container25 {
       const renderContainer = this.getRenderShell() === "self" ? this.selfRenderContainer : this.contentBox;
       if (renderContainer instanceof Box6) {
         renderContainer.setBgFn(bgFn);
+        renderContainer.setPaddingX(this.outputPad);
       }
       renderContainer.clear();
       const callRenderer = this.getCallRenderer();
@@ -10532,6 +10665,7 @@ var ToolExecutionComponent = class extends Container25 {
       }
     } else {
       this.contentText.setCustomBgFn(bgFn);
+      this.contentText.setPaddingX(this.outputPad);
       this.contentText.setText(this.formatToolExecution());
       hasContent = true;
     }
@@ -11913,6 +12047,104 @@ var UserMessageSelectorComponent = class extends Container29 {
   }
 };
 
+// pi-dist/pi-coding-agent/modes/interactive/program-status-reporter.js
+function firstLine2(text) {
+  return text?.split(/\r?\n/, 1)[0]?.trim() || "Error";
+}
+__name(firstLine2, "firstLine");
+var ProgramStatusReporter = class {
+  static {
+    __name(this, "ProgramStatusReporter");
+  }
+  getTerminal;
+  getSessionName;
+  runActive = false;
+  compacting = false;
+  /** Outcome of the current run, reported once it settles. */
+  runResult = { state: "done" };
+  /** Status while no run is active. */
+  restingStatus = { state: "idle" };
+  /** Open dialogs by source, in the order they opened. The most recent one is reported. */
+  blocked = /* @__PURE__ */ new Map();
+  lastReport;
+  constructor(getTerminal, getSessionName) {
+    this.getTerminal = getTerminal;
+    this.getSessionName = getSessionName;
+  }
+  handleEvent(event) {
+    switch (event.type) {
+      case "agent_start":
+        this.runActive = true;
+        this.runResult = { state: "done" };
+        break;
+      case "message_end":
+        if (event.message.role !== "assistant")
+          return;
+        this.runResult = event.message.stopReason === "error" ? { state: "error", message: firstLine2(event.message.errorMessage) } : { state: "done" };
+        break;
+      case "compaction_start":
+        this.compacting = true;
+        break;
+      case "compaction_end":
+        this.compacting = false;
+        if (this.runActive) {
+          if (event.aborted)
+            this.runResult = { state: "idle" };
+          else if (event.errorMessage)
+            this.runResult = { state: "error", message: firstLine2(event.errorMessage) };
+        } else if (event.aborted) {
+          this.restingStatus = { state: "idle" };
+        } else if (event.reason === "manual") {
+          this.restingStatus = event.errorMessage ? { state: "error", message: firstLine2(event.errorMessage) } : { state: "done" };
+        }
+        break;
+      case "agent_settled":
+        this.runActive = false;
+        this.restingStatus = event.aborted ? { state: "idle" } : this.runResult;
+        break;
+      case "session_info_changed":
+        break;
+      default:
+        return;
+    }
+    this.report();
+  }
+  /** Report `blocked` for a dialog until it is cleared with `undefined`. Reopening a source replaces it. */
+  setBlocked(source, status) {
+    this.blocked.delete(source);
+    if (status)
+      this.blocked.set(source, status);
+    this.report();
+  }
+  /** Forget the previous session's run, for example after switching sessions. */
+  reset() {
+    this.runActive = false;
+    this.compacting = false;
+    this.runResult = { state: "done" };
+    this.restingStatus = { state: "idle" };
+    this.report();
+  }
+  report() {
+    const status = { ...this.currentStatus(), app: APP_NAME };
+    const key = JSON.stringify(status);
+    if (key === this.lastReport)
+      return;
+    this.lastReport = key;
+    this.getTerminal().setProgramStatus(status);
+  }
+  currentStatus() {
+    const blocked = [...this.blocked.values()].at(-1);
+    if (blocked)
+      return { state: "blocked", ...blocked };
+    if (this.compacting)
+      return { state: "working", message: "Compacting context" };
+    const status = this.runActive ? { state: "working" } : this.restingStatus;
+    if (status.state === "working" || status.state === "done")
+      return { ...status, message: this.getSessionName() };
+    return status;
+  }
+};
+
 // pi-dist/pi-coding-agent/modes/interactive/tui-renderer.js
 import { ProcessTerminal as ProcessTerminal2, TuiAltScreen as TuiAltScreen2, TuiMainScreen as TuiMainScreen2 } from "../../../pi-tui.mjs";
 function createInteractiveTui(options) {
@@ -12211,6 +12443,8 @@ var InteractiveMode = class _InteractiveMode {
   compactionQueuedMessages = [];
   // Shutdown state
   shutdownRequested = false;
+  /** Reports working, blocked, done, and error states to terminals that support OSC 7501. */
+  programStatus = new ProgramStatusReporter(() => this.ui.terminal, () => this.sessionManager.getSessionName());
   /** The `/bug` hint is shown at most once per session so error output stays readable. */
   bugReportHintShown = false;
   installChangeWarningShown = false;
@@ -12570,6 +12804,7 @@ var InteractiveMode = class _InteractiveMode {
     this.ui.setFocus(this.editor);
     this.ui.start();
     this.isInitialized = true;
+    this.programStatus.report();
     this.ensurePngTranscoder();
     this.themeController.applyFromSettings();
     await this.themeController.waitForTerminalColors();
@@ -13398,6 +13633,7 @@ ${warningLines()}`, 0, 0));
     const session = this.session;
     this.unsubscribe?.();
     this.unsubscribe = void 0;
+    this.programStatus.reset();
     this.applyRuntimeSettings();
     if (options.renderBeforeBind) {
       this.renderCurrentSessionState();
@@ -13883,7 +14119,7 @@ ${warningLines()}`, 0, 0));
   /**
    * Show a selector for extensions.
    */
-  showExtensionSelector(title, options, opts) {
+  showExtensionSelector(title, options, opts, blocked = { kind: "question", message: title }) {
     return new Promise((resolve7) => {
       if (opts?.signal?.aborted) {
         resolve7(void 0);
@@ -13907,6 +14143,7 @@ ${warningLines()}`, 0, 0));
       this.editorContainer.clear();
       this.editorContainer.addChild(this.extensionSelector);
       this.ui.setFocus(this.extensionSelector);
+      this.programStatus.setBlocked("extension-dialog", blocked);
       this.ui.requestRender();
     });
   }
@@ -13918,6 +14155,7 @@ ${warningLines()}`, 0, 0));
     this.editorContainer.clear();
     this.editorContainer.addChild(this.editor);
     this.extensionSelector = void 0;
+    this.programStatus.setBlocked("extension-dialog", void 0);
     this.ui.setFocus(this.editor);
     this.ui.requestRender();
   }
@@ -13926,7 +14164,10 @@ ${warningLines()}`, 0, 0));
    */
   async showExtensionConfirm(title, message, opts) {
     const result = await this.showExtensionSelector(`${title}
-${message}`, ["Yes", "No"], opts);
+${message}`, ["Yes", "No"], opts, {
+      kind: "permission",
+      message: title
+    });
     return result === "Yes";
   }
   async promptForMissingSessionCwd(error) {
@@ -13960,6 +14201,7 @@ ${message}`, ["Yes", "No"], opts);
       this.editorContainer.clear();
       this.editorContainer.addChild(this.extensionInput);
       this.ui.setFocus(this.extensionInput);
+      this.programStatus.setBlocked("extension-dialog", { kind: "question", message: title });
       this.ui.requestRender();
     });
   }
@@ -13971,6 +14213,7 @@ ${message}`, ["Yes", "No"], opts);
     this.editorContainer.clear();
     this.editorContainer.addChild(this.editor);
     this.extensionInput = void 0;
+    this.programStatus.setBlocked("extension-dialog", void 0);
     this.ui.setFocus(this.editor);
     this.ui.requestRender();
   }
@@ -13990,6 +14233,7 @@ ${message}`, ["Yes", "No"], opts);
       this.editorContainer.clear();
       this.editorContainer.addChild(this.extensionEditor);
       this.ui.setFocus(this.extensionEditor);
+      this.programStatus.setBlocked("extension-dialog", { kind: "question", message: title });
       this.ui.requestRender();
     });
   }
@@ -14000,6 +14244,7 @@ ${message}`, ["Yes", "No"], opts);
     this.editorContainer.clear();
     this.editorContainer.addChild(this.editor);
     this.extensionEditor = void 0;
+    this.programStatus.setBlocked("extension-dialog", void 0);
     this.ui.setFocus(this.editor);
     this.ui.requestRender();
   }
@@ -14463,6 +14708,7 @@ ${message}`, ["Yes", "No"], opts);
       await this.init();
     }
     this.footer.invalidate();
+    this.programStatus.handleEvent(event);
     switch (event.type) {
       case "agent_start":
         this.pendingTools.clear();
@@ -14559,7 +14805,8 @@ ${message}`, ["Yes", "No"], opts);
               if (!this.pendingTools.has(content.id)) {
                 const component = new ToolExecutionComponent(content.name, content.id, content.arguments, {
                   showImages: this.settingsManager.getShowImages(),
-                  imageWidthCells: this.settingsManager.getImageWidthCells()
+                  imageWidthCells: this.settingsManager.getImageWidthCells(),
+                  outputPad: this.outputPad
                 }, this.getRegisteredToolDefinition(content.name), this.ui, this.sessionManager.getCwd());
                 component.setExpanded(this.toolOutputExpanded);
                 this.chatContainer.addChild(component);
@@ -14621,7 +14868,8 @@ ${message}`, ["Yes", "No"], opts);
         if (!component) {
           component = new ToolExecutionComponent(event.toolName, event.toolCallId, event.args, {
             showImages: this.settingsManager.getShowImages(),
-            imageWidthCells: this.settingsManager.getImageWidthCells()
+            imageWidthCells: this.settingsManager.getImageWidthCells(),
+            outputPad: this.outputPad
           }, this.getRegisteredToolDefinition(event.toolName), this.ui, this.sessionManager.getCwd());
           component.setExpanded(this.toolOutputExpanded);
           this.chatContainer.addChild(component);
@@ -14644,7 +14892,7 @@ ${message}`, ["Yes", "No"], opts);
           this.maybeShowInstallChangeWarning();
         const component = this.pendingTools.get(event.toolCallId);
         if (component) {
-          component.updateResult({ ...event.result, isError: event.isError });
+          component.updateResult({ ...event.result, isError: event.isError, durationMs: event.durationMs });
           this.pendingTools.delete(event.toolCallId);
           this.ui.requestRender();
         }
@@ -14816,7 +15064,7 @@ ${message}`, ["Yes", "No"], opts);
     if (!renderer) {
       return;
     }
-    const component = new CustomEntryComponent(entry, renderer);
+    const component = new CustomEntryComponent(entry, renderer, this.outputPad);
     component.setExpanded(this.toolOutputExpanded);
     if (!component.hasContent()) {
       return;
@@ -14833,7 +15081,7 @@ ${message}`, ["Yes", "No"], opts);
   addMessageToChat(message, options) {
     switch (message.role) {
       case "bashExecution": {
-        const component = new BashExecutionComponent(message.command, this.ui, message.excludeFromContext);
+        const component = new BashExecutionComponent(message.command, this.ui, message.excludeFromContext, this.outputPad);
         if (message.output) {
           component.appendOutput(message.output);
         }
@@ -14852,14 +15100,14 @@ ${message}`, ["Yes", "No"], opts);
       }
       case "compactionSummary": {
         this.chatContainer.addChild(new Spacer27(1));
-        const component = new CompactionSummaryMessageComponent(message, this.getMarkdownThemeWithSettings());
+        const component = new CompactionSummaryMessageComponent(message, this.getMarkdownThemeWithSettings(), this.outputPad);
         component.setExpanded(this.toolOutputExpanded);
         this.chatContainer.addChild(component);
         break;
       }
       case "branchSummary": {
         this.chatContainer.addChild(new Spacer27(1));
-        const component = new BranchSummaryMessageComponent(message, this.getMarkdownThemeWithSettings());
+        const component = new BranchSummaryMessageComponent(message, this.getMarkdownThemeWithSettings(), this.outputPad);
         component.setExpanded(this.toolOutputExpanded);
         this.chatContainer.addChild(component);
         break;
@@ -14874,7 +15122,7 @@ ${message}`, ["Yes", "No"], opts);
           }
           const skillBlock = parseSkillBlock(textContent);
           if (skillBlock) {
-            const component = new SkillInvocationMessageComponent(skillBlock, this.getMarkdownThemeWithSettings());
+            const component = new SkillInvocationMessageComponent(skillBlock, this.getMarkdownThemeWithSettings(), this.outputPad);
             component.setExpanded(this.toolOutputExpanded);
             this.chatContainer.addChild(component);
             if (skillBlock.userMessage) {
@@ -14933,7 +15181,8 @@ ${message}`, ["Yes", "No"], opts);
           if (content.type === "toolCall") {
             const component = new ToolExecutionComponent(content.name, content.id, content.arguments, {
               showImages: this.settingsManager.getShowImages(),
-              imageWidthCells: this.settingsManager.getImageWidthCells()
+              imageWidthCells: this.settingsManager.getImageWidthCells(),
+              outputPad: this.outputPad
             }, this.getRegisteredToolDefinition(content.name), this.ui, this.sessionManager.getCwd());
             component.setExpanded(this.toolOutputExpanded);
             this.chatContainer.addChild(component);
@@ -14978,6 +15227,8 @@ ${message}`, ["Yes", "No"], opts);
    * @param options.populateHistory Add user messages to editor history
    */
   renderSessionEntries(entries, options = {}) {
+    if (this.renderer instanceof TuiAltScreen3)
+      this.renderer.resetTextSelection();
     const items = entries.flatMap((entry) => {
       if (entry.type === "custom" || entry.type === "usage" && entry.kind === "cache_warm") {
         return [entry];
@@ -15795,19 +16046,14 @@ ${packageLines}`, 1, 0));
         onOutputPadChange: /* @__PURE__ */ __name((padding) => {
           this.settingsManager.setOutputPad(padding);
           this.outputPad = padding;
-          if (this.streamingComponent || this.session.isStreaming) {
-            for (const child of this.chatContainer.children) {
-              if (child instanceof AssistantMessageComponent || child instanceof CustomMessageComponent || child instanceof UserMessageComponent) {
+          for (const container of [this.chatContainer, this.pendingMessagesContainer]) {
+            for (const child of container.children) {
+              if ("setOutputPad" in child && typeof child.setOutputPad === "function") {
                 child.setOutputPad(padding);
               }
             }
-            if (this.streamingComponent) {
-              this.streamingComponent.setOutputPad(padding);
-            }
-            this.ui.requestRender();
-            return;
           }
-          this.rebuildChatFromMessages();
+          this.ui.requestRender();
         }, "onOutputPadChange"),
         onAutocompleteMaxVisibleChange: /* @__PURE__ */ __name((maxVisible) => {
           this.settingsManager.setAutocompleteMaxVisible(maxVisible);
@@ -16671,7 +16917,7 @@ ${packageLines}`, 1, 0));
       this.ui.requestRender();
     }, "restoreEditor");
     try {
-      await this.loginProvider(dialog, providerId, "api_key");
+      await this.loginProvider(dialog, providerId, providerName, "api_key");
       restoreEditor3();
       await this.completeProviderAuthentication(providerId, providerName, "api_key", previousModel);
     } catch (error) {
@@ -16750,12 +16996,17 @@ ${packageLines}`, 1, 0));
       dialog.showProgress(event.message);
     }
   }
-  async loginProvider(dialog, providerId, method) {
-    await this.session.modelRuntime.login(providerId, method, {
-      signal: dialog.signal,
-      prompt: /* @__PURE__ */ __name((prompt) => this.showAuthPrompt(dialog, prompt, providerId), "prompt"),
-      notify: /* @__PURE__ */ __name((event) => this.notifyAuthDialog(dialog, event), "notify")
-    }, { getDeviceId: /* @__PURE__ */ __name(() => this.settingsManager.getOrCreateDeviceId(), "getDeviceId") });
+  async loginProvider(dialog, providerId, providerName, method) {
+    this.programStatus.setBlocked("login", { kind: "auth", message: `Log in to ${providerName}` });
+    try {
+      await this.session.modelRuntime.login(providerId, method, {
+        signal: dialog.signal,
+        prompt: /* @__PURE__ */ __name((prompt) => this.showAuthPrompt(dialog, prompt, providerId), "prompt"),
+        notify: /* @__PURE__ */ __name((event) => this.notifyAuthDialog(dialog, event), "notify")
+      }, { getDeviceId: /* @__PURE__ */ __name(() => this.settingsManager.getOrCreateDeviceId(), "getDeviceId") });
+    } finally {
+      this.programStatus.setBlocked("login", void 0);
+    }
   }
   async showLoginDialog(providerId, providerName, onBack) {
     const previousModel = this.session.model;
@@ -16772,7 +17023,7 @@ ${packageLines}`, 1, 0));
       this.ui.requestRender();
     }, "restoreEditor");
     try {
-      await this.loginProvider(dialog, providerId, "oauth");
+      await this.loginProvider(dialog, providerId, providerName, "oauth");
       restoreEditor3();
       await this.completeProviderAuthentication(providerId, providerName, "oauth", previousModel);
       if (providerId === RADIUS_PROVIDER_ID)
@@ -17343,7 +17594,7 @@ ${theme.fg("muted", debugLogPath)}`, 1, 1));
     }
     if (eventResult?.result) {
       const result = eventResult.result;
-      this.bashComponent = new BashExecutionComponent(command, this.ui, excludeFromContext);
+      this.bashComponent = new BashExecutionComponent(command, this.ui, excludeFromContext, this.outputPad);
       if (this.session.isStreaming) {
         this.pendingMessagesContainer.addChild(this.bashComponent);
         this.pendingBashComponents.push(this.bashComponent);
@@ -17360,7 +17611,7 @@ ${theme.fg("muted", debugLogPath)}`, 1, 1));
       return;
     }
     const isDeferred = this.session.isStreaming;
-    this.bashComponent = new BashExecutionComponent(command, this.ui, excludeFromContext);
+    this.bashComponent = new BashExecutionComponent(command, this.ui, excludeFromContext, this.outputPad);
     if (isDeferred) {
       this.pendingMessagesContainer.addChild(this.bashComponent);
       this.pendingBashComponents.push(this.bashComponent);
@@ -19732,6 +19983,24 @@ function activateManagedRelease(managedRoot, version) {
   }
 }
 __name(activateManagedRelease, "activateManagedRelease");
+function pruneManagedReleases(managedRoot, activeVersion) {
+  const releasesRoot = join14(managedRoot, "releases");
+  let entries;
+  try {
+    entries = readdirSync2(releasesRoot);
+  } catch {
+    return;
+  }
+  for (const entry of entries) {
+    if (entry === activeVersion || entry === VERSION || !MANAGED_RELEASE_VERSION_RE.test(entry))
+      continue;
+    try {
+      rmSync6(join14(releasesRoot, entry), { force: true, recursive: true });
+    } catch {
+    }
+  }
+}
+__name(pruneManagedReleases, "pruneManagedReleases");
 function cleanupManagedStaging(managedRoot) {
   const stagingRoot = join14(managedRoot, "staging");
   try {
@@ -19789,6 +20058,7 @@ async function runManagedSelfUpdate(managedRoot, version) {
     if (existsSync8(releaseDir)) {
       verifyManagedRelease(releaseDir, version);
       activateManagedRelease(managedRoot, version);
+      pruneManagedReleases(managedRoot, version);
       return;
     }
     mkdirSync5(stagingRoot, { recursive: true });
@@ -19803,6 +20073,7 @@ async function runManagedSelfUpdate(managedRoot, version) {
     verifyManagedRelease(stageDir, version);
     renameSync3(stageDir, releaseDir);
     activateManagedRelease(managedRoot, version);
+    pruneManagedReleases(managedRoot, version);
   } finally {
     if (stageDir)
       rmSync6(stageDir, { force: true, recursive: true });
@@ -21125,6 +21396,7 @@ async function main(args, options) {
         additionalPromptTemplatePaths: resolvedPromptTemplatePaths,
         additionalThemePaths: resolvedThemePaths,
         noExtensions: parsed.noExtensions,
+        disabledBuiltinExtensions: parsed.noMcp ? ["mcp"] : void 0,
         noSkills: parsed.noSkills,
         noPromptTemplates: parsed.noPromptTemplates,
         noThemes: parsed.noThemes,

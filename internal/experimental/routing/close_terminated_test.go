@@ -57,6 +57,8 @@ func (handle *gatedTerminationHandle) TerminalError() error {
 func (*gatedTerminationHandle) Close(context.Context) error { return nil }
 
 // upstream: packages/server/src/session-router.ts:#open registers `handle.terminated?.then(invalidate)`. Upstream runs that continuation as a microtask, before any later event such as a Close, so a Close that follows a Harness termination never releases through the retired handle. Go runs the watcher on its own goroutine, so closeInternal must apply an already-signalled termination before it snapshots attachments.
+// Pi source: packages/server/src/session-router.ts:293-300 (handle.terminated.then).
+// mutation-checked: negating the condition `r.options.IsClosing() || disconnected` at session_router.go:298 fails it.
 func TestRouterCloseAppliesTerminationSignalledBeforeClose(t *testing.T) {
 	handle := &gatedTerminationHandle{terminated: make(chan struct{}), entered: make(chan struct{}), release: make(chan struct{})}
 	host := routing.ServerHost{

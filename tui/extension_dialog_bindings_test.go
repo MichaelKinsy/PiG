@@ -22,6 +22,9 @@ type dialogProbe struct {
 	Bindings  map[string][]string `json:"bindings"`
 	Options   []string            `json:"options"`
 	Keys      []string            `json:"keys"`
+	//portlint:allow emptydrop the oracle input treats an absent provider list and an empty one alike
+	Providers     []map[string]any `json:"providers,omitempty"`
+	InitialSearch string           `json:"initialSearch,omitempty"`
 }
 
 type dialogProbeState struct {
@@ -81,10 +84,11 @@ func TestExtensionDialogsMatchPiBindingsAndPalette(t *testing.T) {
 		SetTheme(probe.Theme)
 		definitions := TUIKeybindingDefinitionsFor(HostKeybindingPlatform())
 		definitions["app.tools.expand"] = TUIKeybindingDef{DefaultKeys: []string{"ctrl+o"}}
+		restoreKeybindingsAfterTest(t)
 		SetKeybindings(NewKeybindingsManager(definitions, probe.Bindings))
 		toggles := 0
-		selector := NewExtensionSelector("Rigidity probe", probe.Options, func() { toggles++ })
-		field := NewExtensionInputComponent("Rigidity probe", "")
+		selector := NewExtensionSelectorComponent("Rigidity probe", probe.Options, nil, nil, ExtensionSelectorOptions{OnToggleToolsExpanded: func() { toggles++ }})
+		field := NewExtensionInputComponent("Rigidity probe", "", nil, nil)
 		render, handle := selector.Render, selector.HandleInput
 		done, cancelled, value := selector.Done, selector.Cancelled, selector.SelectedValue
 		if probe.Kind == "input" {
@@ -144,6 +148,7 @@ func TestExtensionDialogCountdownMatchesPi(t *testing.T) {
 	}
 	expected := piDialogOracle(t, probes)
 	previousBindings, previousTheme, previousCaps := GetKeybindings(), ActiveTheme(), GetCapabilities()
+	restoreKeybindingsAfterTest(t)
 	t.Cleanup(func() {
 		SetKeybindings(previousBindings)
 		SetCapabilities(previousCaps)
@@ -152,15 +157,14 @@ func TestExtensionDialogCountdownMatchesPi(t *testing.T) {
 	for i, probe := range probes {
 		SetCapabilities(TerminalCapabilities{TrueColor: probe.TrueColor})
 		SetTheme(probe.Theme)
-		SetKeybindings(NewKeybindingsManager(TUIKeybindingDefinitionsFor(HostKeybindingPlatform()), nil))
 		var got dialogProbeResult
 		synctest.Test(t, func(t *testing.T) {
 			title := probe.Title
 			if title == "" {
 				title = "Rigidity probe"
 			}
-			selector := NewExtensionSelector(title, probe.Options)
-			field := NewExtensionInputComponent(title, "")
+			selector := NewExtensionSelectorComponent(title, probe.Options, nil, nil)
+			field := NewExtensionInputComponent(title, "", nil, nil)
 			render, handle := selector.Render, selector.HandleInput
 			done, cancelled, value := selector.Done, selector.Cancelled, selector.SelectedValue
 			tick, expire := selector.SetCountdown, selector.Cancel
@@ -234,11 +238,11 @@ func BenchmarkExtensionDialogRemapping(b *testing.B) {
 	options := []string{"first", "second", "third"}
 	b.ReportAllocs()
 	for b.Loop() {
-		selector := NewExtensionSelector("Pick a task", options)
+		selector := NewExtensionSelectorComponent("Pick a task", options, nil, nil)
 		selector.HandleInput("j")
 		selector.Render(100)
 		selector.HandleInput("\x13")
-		input := NewExtensionInputComponent("Task name", "")
+		input := NewExtensionInputComponent("Task name", "", nil, nil)
 		input.HandleInput("first")
 		input.HandleInput("\r")
 		input.HandleInput("-second")

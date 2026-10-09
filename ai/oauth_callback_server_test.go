@@ -1,8 +1,12 @@
 package ai
 
 import (
+	"bufio"
 	"context"
 	"errors"
+	"fmt"
+	"net"
+	"net/url"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -68,5 +72,39 @@ func TestWaitForCallbackOrManualInputReportsLoginCancelled(t *testing.T) {
 	cancel()
 	if err := <-errs; err == nil || err.Error() != "Login cancelled" {
 		t.Fatalf("err=%v", err)
+	}
+}
+
+// callback-server.ts parses request.url with new URL(request.url, "http://localhost"). The pathname keeps its
+// percent-encoding, so "/%63allback" is not "/callback", while "%2e" segments and backslashes resolve as dot segments
+// and separators, and URLSearchParams keeps a ";" in the code. The second request claims the sign-in, so the third,
+// matched after the claim, gets 409.
+func TestOAuthCallbackServerMatchesTheWHATWGPathname(t *testing.T) {
+	server := startTestCallbackServer(t, t.Context(), stringCallbackOptions(nil))
+	redirect, err := url.Parse(server.RedirectURI)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, tc := range []struct {
+		requestURI string
+		status     int
+	}{
+		{"/%63allback?code=x", 404},
+		{"/other/%2e%2e/callback?code=a;b", 200},
+		{`/x\..\callback?code=y`, 409},
+	} {
+		conn, err := net.Dial("tcp", redirect.Host)
+		if err != nil {
+			t.Fatal(err)
+		}
+		_, _ = fmt.Fprintf(conn, "GET %s HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n", tc.requestURI)
+		line, err := bufio.NewReader(conn).ReadString('\n')
+		_ = conn.Close()
+		if err != nil || !strings.Contains(line, fmt.Sprintf(" %d ", tc.status)) {
+			t.Fatalf("%s: status line %q (err %v), want %d", tc.requestURI, line, err, tc.status)
+		}
+	}
+	if value, ok, err := server.Wait(); err != nil || !ok || value != "completed:a;b" {
+		t.Fatalf("wait = %q %v %v", value, ok, err)
 	}
 }

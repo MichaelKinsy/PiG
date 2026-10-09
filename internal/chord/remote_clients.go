@@ -1,6 +1,7 @@
 package chord
 
 import (
+	"context"
 	"fmt"
 )
 
@@ -30,4 +31,20 @@ func UseRemoteClient[T any](binding RemoteServices, definition ServiceDefinition
 		return zero, err
 	}
 	return AdaptRemoteClient(definition, service)
+}
+
+// ObserveRemoteClient observes every live instance of a keyed service and passes each instance's registered typed client view to
+// handler, as upstream RemoteServices.observe<T>(service, handler) passes the typed proxy (consumer.ts:496-523). A process-local
+// service is rejected before the allowlist check, as upstream's #assertRemotable. The returned stop function is idempotent.
+func ObserveRemoteClient[T any](binding RemoteServices, definition ServiceDefinition[T], handler func(context.Context, T) error) (func(), error) {
+	if definition.Local() {
+		return nil, remoteError(ErrServiceNotAllowed, "Service %s is process-local", definition.Id())
+	}
+	return binding.Observe(definition.Id(), func(ctx context.Context, service *RemoteService) error {
+		client, err := AdaptRemoteClient(definition, service)
+		if err != nil {
+			return err
+		}
+		return handler(ctx, client)
+	})
 }

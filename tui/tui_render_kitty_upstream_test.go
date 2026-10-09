@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 	"testing"
+	"time"
 )
 
 func upstreamKittyImageRows(t *testing.T, cells int) []string {
@@ -11,7 +12,7 @@ func upstreamKittyImageRows(t *testing.T, cells int) []string {
 	SetCapabilities(TerminalCapabilities{Images: ImageProtocolKitty, TrueColor: true, Hyperlinks: true})
 	SetCellDimensions(CellDimensions{WidthPx: 10, HeightPx: 10})
 	t.Cleanup(func() { ResetCapabilitiesCache(); SetCellDimensions(CellDimensions{WidthPx: 9, HeightPx: 18}) })
-	image := NewImage("AAAA", "image/png", ImageOptions{MaxWidthCells: cells}, &ImageDimensions{WidthPx: cells * 10, HeightPx: cells * 10})
+	image := NewImage("AAAA", "image/png", DefaultImageTheme(), ImageOptions{MaxWidthCells: cells}, &ImageDimensions{WidthPx: cells * 10, HeightPx: cells * 10})
 	image.Theme = ImageTheme{FallbackColor: func(value string) string { return value }}
 	return image.Render(40)
 }
@@ -50,7 +51,7 @@ func TestUpstreamTUIRenderKittyCleanup(t *testing.T) {
 		upstreamContains(t, writes, "\r\n\r\n\x1b[2A"+rows[0]+"\x1b[2B")
 		upstreamExcludes(t, writes, rows[0]+"\r\n\x1b[0m")
 	})
-	// .upstream/v0.87.1/packages/tui/test/tui-render.test.ts:386
+	// .upstream/v1.1.0/packages/tui/test/tui-render.test.ts:387 (requestRender(true) since 1.1.0)
 	t.Run("does not use cursor-up placement for Kitty images taller than the viewport", func(t *testing.T) {
 		rows := upstreamKittyImageRows(t, 6)
 		h := newUpstreamRenderHarness(t, 40, 5)
@@ -60,7 +61,7 @@ func TestUpstreamTUIRenderKittyCleanup(t *testing.T) {
 		}
 		lines := append([]string{"before"}, rows...)
 		lines = append(lines, "after")
-		h.ui.ForceFullRender()
+		h.ui.RequestRender(true)
 		writes := h.render(lines)
 		upstreamContains(t, writes, rows[0])
 		upstreamExcludes(t, writes, fmt.Sprintf("\x1b[%dA%s", len(rows)-1, rows[0]))
@@ -83,11 +84,12 @@ func TestUpstreamTUIRenderKittyCleanup(t *testing.T) {
 		assertKittyDeleteBefore(t, writes, 88, image)
 		upstreamExcludes(t, writes, "\x1b[2J")
 	})
-	// .upstream/v0.87.1/packages/tui/test/tui-render.test.ts:483
+	// .upstream/v1.1.0/packages/tui/test/tui-render.test.ts:484 (requestRender(true) since 1.1.0)
 	t.Run("deletes previously rendered image ids during full redraws", func(t *testing.T) {
 		h := newUpstreamRenderHarness(t, 40, 10)
 		h.render([]string{EncodeKitty("AAAA", 2, 2, 77, false)})
-		h.ui.ForceFullRender()
+		h.ui.afterFunc = func(time.Duration, func()) stoppableTimer { return stoppedOracleTimer{} } // the forced request must not render on a timer goroutine while the test reads h.output
+		h.ui.RequestRender(true)
 		writes := h.render([]string{"plain text"})
 		assertKittyDeleteBefore(t, writes, 77, "\x1b[2J")
 	})

@@ -8,6 +8,8 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/MichaelKinsy/PiG/coding/extension/factoryload"
+
 	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/coding/piglogin"
 	"github.com/MichaelKinsy/PiG/tui"
@@ -45,13 +47,12 @@ type previewRenderer interface {
 	HandleInput(data string)
 }
 
-func (u *fakeUI) Custom(_ context.Context, factory any, opts any) (any, error) {
+func (u *fakeUI) Custom(_ context.Context, factory extension.CustomFactory, opts *extension.CustomOptions) (any, error) {
 	call := customCall{}
-	if options, ok := opts.(extension.CustomOptions); ok {
-		call.overlay = options.Overlay
+	if opts != nil {
+		call.overlay = opts.Overlay
 	}
-	build, _ := factory.(extension.CustomFactory)
-	component, err := build(nil, tui.ActiveTheme(), nil, func(any) { call.closed = true })
+	component, err := factory(nil, tui.ActiveTheme(), nil, func(any) { call.closed = true })
 	if err != nil {
 		return nil, err
 	}
@@ -72,7 +73,8 @@ func (u *fakeUI) SetLogin(definition extension.LoginDefinition) error {
 	return nil
 }
 
-func (u *fakeUI) SetHeader(factory any) {
+func (u *fakeUI) SetHeader(build extension.HeaderFactory) {
+	factory := frameOf(build, 2)
 	u.mu.Lock()
 	defer u.mu.Unlock()
 	u.headers = append(u.headers, factory)
@@ -111,7 +113,7 @@ func newSpriteHarness(t *testing.T) *spriteHarness {
 	root := t.TempDir()
 	t.Setenv("PIG_HOME", root)
 	piglogin.Refresh()
-	ext, err := piglogin.Extension()
+	ext, err := factoryload.LoadExtensionFromFactory(piglogin.Extension, ".", extension.CreateEventBus(), extension.CreateExtensionRuntime(), "builtin:pig-login")
 	if err != nil {
 		t.Fatal(err)
 	}

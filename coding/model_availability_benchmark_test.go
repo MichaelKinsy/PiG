@@ -24,7 +24,7 @@ func BenchmarkModelAvailabilitySnapshot(b *testing.B) {
 			if err := os.WriteFile(filepath.Join(dir, "models.json"), data, 0o600); err != nil {
 				b.Fatal(err)
 			}
-			services, err := NewServices(ServicesOptions{AgentDir: dir, CWD: b.TempDir()})
+			services, err := CreateAgentSessionServices(CreateAgentSessionServicesOptions{AgentDir: dir, CWD: b.TempDir()})
 			if err != nil {
 				b.Fatal(err)
 			}

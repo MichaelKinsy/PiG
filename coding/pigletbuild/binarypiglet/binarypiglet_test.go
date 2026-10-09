@@ -23,6 +23,7 @@ func TestParse(t *testing.T) {
 		"name only":    {"name: x\n", false},
 		"with model":   {"name: x\nmodel:\n  provider: github-copilot\n  name: gpt-5-mini\n", true},
 		"with prompt":  {"name: x\nsystemPrompt:\n  text: hello\n", true},
+		"with strip":   {"name: x\nstrip:\n  tools: [grep]\n", true},
 	}
 	for name, tc := range cases {
 		t.Run(name, func(t *testing.T) {
@@ -87,7 +88,7 @@ func marshal(t *testing.T, v any) []byte {
 // Stock Pig builds without a resolution record run unchanged.
 func TestVerify_StockIsNoop(t *testing.T) {
 	swapBaked(t, nil, nil)
-	if err := Verify(); err != nil {
+	if _, err := Verify(); err != nil {
 		t.Fatalf("Verify() with no closure = %v, want nil", err)
 	}
 }
@@ -110,7 +111,7 @@ func TestIsPigletBinary(t *testing.T) {
 func TestVerify_ValidClosurePasses(t *testing.T) {
 	yaml := []byte("name: t\n")
 	swapBaked(t, yaml, marshal(t, resolutionFor(t, yaml)))
-	if err := Verify(); err != nil {
+	if _, err := Verify(); err != nil {
 		t.Fatalf("Verify() on a valid closure = %v, want nil", err)
 	}
 }
@@ -120,7 +121,7 @@ func TestVerify_ValidClosurePasses(t *testing.T) {
 func TestVerify_PigletDigestMismatchFails(t *testing.T) {
 	closure := marshal(t, resolutionFor(t, []byte("name: built\n")))
 	swapBaked(t, []byte("name: swapped\n"), closure)
-	err := Verify()
+	_, err := Verify()
 	if err == nil || !strings.Contains(err.Error(), "does not match its closure") {
 		t.Fatalf("Verify() = %v, want a piglet/closure mismatch error", err)
 	}
@@ -137,7 +138,7 @@ func TestVerify_TamperedRecordFails(t *testing.T) {
 	resolution := document["resolution"].(map[string]any)
 	resolution["sourceDigest"] = "sha256:" + strings.Repeat("b", 64)
 	swapBaked(t, yaml, marshal(t, document))
-	err := Verify()
+	_, err := Verify()
 	if err == nil || !strings.Contains(err.Error(), "failed verification") {
 		t.Fatalf("Verify() = %v, want a verification failure", err)
 	}
@@ -147,7 +148,7 @@ func TestVerify_TamperedRecordFails(t *testing.T) {
 // fail-closed condition.
 func TestVerify_MalformedClosureFails(t *testing.T) {
 	swapBaked(t, []byte("name: t\n"), []byte("{ not json"))
-	err := Verify()
+	_, err := Verify()
 	if err == nil || !strings.Contains(err.Error(), "decode baked Piglet closure") {
 		t.Fatalf("Verify() = %v, want a decode error", err)
 	}

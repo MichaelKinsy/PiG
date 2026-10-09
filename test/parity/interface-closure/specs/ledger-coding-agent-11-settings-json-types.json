@@ -1,0 +1,45 @@
+[
+ {
+  "ids": [
+   "pkg:coding-agent/.#CompactionSettings"
+  ],
+  "targets": [
+   "internal/codingagent/settings.go#CompactionSettingsJSON"
+  ],
+  "struct": {
+   "file": "internal/codingagent/settings.go",
+   "type": "CompactionSettingsJSON"
+  },
+  "production": [
+   "call:coding/cli/rpc_mode.go#runRPCMode"
+  ],
+  "evidence": [
+   "test:internal/codingagent/settings_compaction_upstream_test.go#TestSettingsManagerCompactionUpstream",
+   "test:internal/codingagent/settings_compaction_snapshot_test.go#TestCompactionSettingsReadOneSnapshot"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "CompactionSettings: Go CompactionSettingsJSON is the settings-file shape (every field optional: *bool, *float64 for JavaScript numbers, modelOverrides map of CompactionModelOverride); not the resolved compaction.CompactionSettings."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#RetrySettings"
+  ],
+  "targets": [
+   "internal/codingagent/settings.go#RetrySettingsJSON"
+  ],
+  "struct": {
+   "file": "internal/codingagent/settings.go",
+   "type": "RetrySettingsJSON"
+  },
+  "production": [
+   "call:coding/session.go#Session.SetAutoRetryEnabled"
+  ],
+  "evidence": [
+   "test:internal/codingagent/settings_manager_upstream_test.go#TestUpstreamSettingsManager",
+   "test:coding/sdk_stream_options_upstream_test.go#TestSDKForwardsProviderRetrySettings",
+   "test:coding/cli/main_test.go#TestConfigureHTTPDispatcherFromSettings_WiresProviderRetry"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "RetrySettings: Go RetrySettingsJSON is the settings-file shape (optional pointers keep an explicit 0) with provider nested as ProviderRetrySettings."
+ }
+]

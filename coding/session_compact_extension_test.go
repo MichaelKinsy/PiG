@@ -2,6 +2,7 @@ package coding
 
 import (
 	"context"
+	"encoding/json"
 	"strings"
 	"testing"
 )
@@ -17,13 +18,21 @@ func TestCompactForExtensionReturnsUpstreamResultShape(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	shape, ok := result.(map[string]any)
-	summary, _ := shape["summary"].(string)
-	if !ok || !strings.HasPrefix(summary, "extension-requested summary") || shape["firstKeptEntryId"] == "" {
+	if !strings.HasPrefix(result.Summary, "extension-requested summary") || result.FirstKeptEntryID == "" || result.TokensBefore == 0 || result.EstimatedTokensAfter == nil {
 		t.Fatalf("result = %#v", result)
 	}
-	if _, ok := shape["tokensBefore"]; !ok {
-		t.Fatalf("result lacks tokensBefore: %#v", result)
+	raw, err := json.Marshal(result)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var wire map[string]any
+	if err := json.Unmarshal(raw, &wire); err != nil {
+		t.Fatal(err)
+	}
+	for _, key := range []string{"summary", "firstKeptEntryId", "tokensBefore", "estimatedTokensAfter"} {
+		if _, ok := wire[key]; !ok {
+			t.Fatalf("wire result lacks upstream key %s: %s", key, raw)
+		}
 	}
 
 	if _, err := sess.CompactForExtension(context.Background(), ""); err == nil {

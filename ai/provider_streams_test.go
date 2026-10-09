@@ -6,6 +6,7 @@ import (
 	"testing"
 )
 
+// packages/ai/src/types.ts:295-300 (fetchDeferred, cancelDeferred).
 func TestLazyAPISetupOrderingCancellationAndLoadFailure(t *testing.T) {
 	started := make(chan struct{})
 	ctx, cancel := context.WithCancel(t.Context())

@@ -259,12 +259,25 @@ func mergePiglets(base, child *Piglet) (*Piglet, error) {
 	if child.present["secrets"] {
 		result.Secrets = slices.Clone(child.Secrets)
 	}
+	if child.present["slots"] && child.Slots != nil && child.Slots.Frontend != nil {
+		if result.Slots == nil {
+			result.Slots = &Slots{}
+		}
+		member := *child.Slots.Frontend
+		result.Slots.Frontend = &member
+	}
+	// pig additive (D92): strip lists merge down the extends chain; keep mode
+	// is inherited per list.
+	var err error
+	result.Strip, err = mergeStrip(result.Strip, child.Strip)
+	if err != nil {
+		return nil, err
+	}
 
 	if result.Packages == nil {
 		result.Packages = map[string]string{}
 	}
 	maps.Copy(result.Packages, child.Packages)
-	var err error
 	result.Extensions, err = mergeNamed(result.Extensions, child.Extensions, func(v ExtensionEntry) string { return v.Name })
 	if err != nil {
 		return nil, err
@@ -321,6 +334,18 @@ func applyRemovals(p *Piglet, remove *RemoveSpec) error {
 		return err
 	}
 	p.Skills, err = removeNamed(p.Skills, remove.Skills, func(v SkillEntry) string { return v.Name }, "skills")
+	if err != nil {
+		return err
+	}
+	for _, id := range remove.Slots {
+		// validateSlots admits only known slot IDs, and frontend is the only
+		// one.
+		if p.Slots == nil || p.Slots.Frontend == nil {
+			return fmt.Errorf("remove.slots: %q is absent", id)
+		}
+		p.Slots = nil
+	}
+	p.Strip, err = removeStrip(p.Strip, remove.Strip)
 	return err
 }
 
@@ -419,6 +444,10 @@ func rejectUnsafeWidening(base, child *Piglet) error {
 		if previous, exists := baseExtensions[extension.Name]; exists && extensionWidens(previous, extension) {
 			widened = append(widened, "extension/"+extension.Name)
 		}
+	}
+	// pig additive (D92): re-enabling an inherited strip entry widens the base.
+	if child.Extends != nil && child.Extends.Remove != nil {
+		widened = append(widened, stripWidening(child.Extends.Remove.Strip)...)
 	}
 	if len(widened) > 0 {
 		slices.Sort(widened)
@@ -544,6 +573,13 @@ func anchorPigletLocalPaths(p *Piglet, path, workspace string) error {
 			return fmt.Errorf("systemPrompt.file: %w", err)
 		}
 		p.SystemPrompt.File = anchored
+	}
+	if p.Slots != nil && p.Slots.Frontend != nil {
+		anchored, err := anchorPigletPath(base, p.Slots.Frontend.Member)
+		if err != nil {
+			return fmt.Errorf("slots.frontend.member: %w", err)
+		}
+		p.Slots.Frontend.dir = anchored
 	}
 	if p.AgentEnv != nil && p.AgentEnv.Source != "" {
 		anchored, err := anchorTypedLocalSource(p.AgentEnv.Source, base, sourceref.BareNPM)
@@ -707,6 +743,8 @@ func clonePiglet(p *Piglet) *Piglet {
 			remove.Packages = slices.Clone(remove.Packages)
 			remove.Extensions = slices.Clone(remove.Extensions)
 			remove.Skills = slices.Clone(remove.Skills)
+			remove.Slots = slices.Clone(remove.Slots)
+			remove.Strip = cloneStrip(remove.Strip)
 			value.Remove = &remove
 		}
 		extends = &value
@@ -766,6 +804,15 @@ func clonePiglet(p *Piglet) *Piglet {
 		value.Targets = slices.Clone(value.Targets)
 		build = &value
 	}
+	var slots *Slots
+	if p.Slots != nil {
+		value := *p.Slots
+		if value.Frontend != nil {
+			member := *value.Frontend
+			value.Frontend = &member
+		}
+		slots = &value
+	}
 	var release *ReleaseSpec
 	if p.Release != nil {
 		value := *p.Release
@@ -774,8 +821,8 @@ func clonePiglet(p *Piglet) *Piglet {
 	return &Piglet{
 		Name: p.Name, Description: p.Description,
 		Extends: extends, BuiltinTools: cloneStringList(p.BuiltinTools), Packages: maps.Clone(p.Packages), Extensions: extensions, Skills: skills,
-		Discovery: discovery, SystemPrompt: prompt, AgentEnv: environment, Model: model,
-		Build: build, Release: release, Secrets: slices.Clone(p.Secrets),
+		Discovery: discovery, SystemPrompt: prompt, AgentEnv: environment, Model: model, Slots: slots,
+		Build: build, Release: release, Secrets: slices.Clone(p.Secrets), Strip: cloneStrip(p.Strip),
 		sourceDir: p.sourceDir, sourcePath: p.sourcePath, present: maps.Clone(p.present), nullFields: maps.Clone(p.nullFields),
 		lineage: slices.Clone(p.lineage), effectiveDigest: p.effectiveDigest, graphDigest: p.graphDigest,
 		workspaceRoot: p.workspaceRoot, devContainerPath: p.devContainerPath,

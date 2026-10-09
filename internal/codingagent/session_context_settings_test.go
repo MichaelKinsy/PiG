@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"reflect"
 	"testing"
+
+	"github.com/MichaelKinsy/PiG/internal/sessionentry"
 )
 
 // Pi session-manager.ts:getSessionContextSettings uses the latest applicable raw-path state, including assistant metadata that survives context edits or compaction.
@@ -29,7 +31,7 @@ func TestGetSessionContextSettingsBoundaries(t *testing.T) {
 				if err := json.Unmarshal([]byte(raw), &base); err != nil {
 					t.Fatal(err)
 				}
-				entries = append(entries, NewSessionEntry(json.RawMessage(raw), base))
+				entries = append(entries, sessionentry.DecodeSessionEntry(json.RawMessage(raw)))
 			}
 			thinking, model := GetSessionContextSettings(entries)
 			if thinking != tc.thinking || !reflect.DeepEqual(model, tc.model) {

@@ -217,12 +217,12 @@
   },
   {
     "upstream": "packages/coding-agent/src/extensions/index.ts",
-    "package": "./cmd/pig",
+    "package": "./coding/cli",
     "tests": [
       "TestStartBuiltInLlamaRestoresTheStoredCatalog"
     ],
     "upstream_reference": "packages/coding-agent/src/extensions/index.ts; core/agent-session-services.ts cache-only modelRuntime.refresh at initialization",
-    "mutation": "cmd/pig/llama.go: host.Refresh(ctx, false) -> _ = ctx; compiled test FAIL (go test -overlay without -cover), baseline PASS"
+    "mutation": "coding/cli/llama.go: host.Refresh(ctx, false) -> _ = ctx; compiled test FAIL (go test -overlay without -cover), baseline PASS"
   },
   {
     "upstream": "packages/coding-agent/src/utils/sleep.ts",

@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"slices"
 	"strings"
 	"sync"
 	"testing"
@@ -347,6 +348,10 @@ func TestClientCancelsAbortedAndTimedOutRequests(t *testing.T) {
 		}
 	}
 	jsonEqual(t, cancelled, `{"jsonrpc":"2.0","method":"notifications/cancelled","params":{"requestId":2,"reason":"stop"}}`)
+	// Pi builds `{ requestId: id, ...(reason ? { reason } : {}) }` (client.ts), so requestId leads on the wire.
+	if string(cancelled.Params) != `{"requestId":2,"reason":"stop"}` {
+		t.Fatalf("cancelled params bytes = %s, want requestId before reason", cancelled.Params)
+	}
 
 	_, err := client.CallTool(t.Context(), "wait", map[string]any{}, mcp.RequestOptions{TimeoutMs: 5})
 	if _, ok := errors.AsType[*mcp.McpTimeoutError](err); !ok {
@@ -366,6 +371,10 @@ func waitFor(t *testing.T, condition func() bool) {
 	}
 }
 
+// Pi source: packages/mcp/src/transports/in-memory.ts
+// mutation-checked: zeroing the results of InMemoryTransport.EmitError fails it
+// Pi: packages/mcp/src/transports/in-memory.ts:35 (emitError)
+// packages/mcp/src/transports/in-memory.ts:35-36: emitError(error) reports a transport error to the listeners.
 func TestClientReportsTransportErrorsWithoutFailingPendingRequests(t *testing.T) {
 	clientTransport, server := createServer(t)
 	client := mcp.NewClient(mcp.ClientOptions{Implementation: mcp.Implementation{Name: "test-client", Version: "1.0.0"}})
@@ -552,5 +561,33 @@ func TestClientAnswersRootsListAndDispatchesNotifications(t *testing.T) {
 		return false
 	})
 	jsonEqual(t, answer, `{"jsonrpc":"2.0","id":"roots","result":{"roots":[{"uri":"file:///workspace","name":"workspace"}]}}`)
+	_ = client.Close()
+}
+
+// upstream: packages/mcp/src/client.ts:143-150: a tools/call result whose blocks hold members of another JSON type reaches the
+// caller (callTool resolves); toLlmContent then renders the values (content.ts blockToLlmContent).
+func TestClientCallToolResolvesResultsWithIllTypedBlockMembers(t *testing.T) {
+	client, server := connect(t)
+	server.setHandler("tools/call", func(mcp.JSONRPCMessage) (any, error) {
+		return map[string]any{
+			"content": []any{map[string]any{"type": "resource_link", "name": 5, "uri": true}, "stray", map[string]any{"type": "audio"}},
+			"isError": "yes",
+		}, nil
+	})
+	result, err := client.CallTool(t.Context(), "odd", nil, mcp.RequestOptions{})
+	if err != nil {
+		t.Fatalf("callTool rejected a result upstream passes through: %v", err)
+	}
+	var texts []string
+	for _, block := range mcp.ToLLMContent(*result) {
+		texts = append(texts, block.Text)
+	}
+	want := []string{"5: true", "[unsupported MCP content undefined]", "[audio undefined omitted]"}
+	if !slices.Equal(texts, want) {
+		t.Fatalf("content = %q, want %q", texts, want)
+	}
+	if result.IsError == nil || !*result.IsError {
+		t.Fatalf("isError = %v, want the truthiness of \"yes\"", result.IsError)
+	}
 	_ = client.Close()
 }

@@ -21,25 +21,16 @@
 package tools
 
 import (
-	"slices"
 	"strings"
 	"unicode/utf16"
 	"unicode/utf8"
+
+	"github.com/MichaelKinsy/PiG/internal/truncate"
+	"github.com/MichaelKinsy/PiG/tui"
 )
 
-// splitLinesForCounting splits content into lines for truncation counting,
-// treating a trailing newline as a line terminator rather than an empty
-// final line. Mirrors upstream splitLinesForCounting (truncate.ts v0.75.5).
-func splitLinesForCounting(content string) []string {
-	if len(content) == 0 {
-		return nil
-	}
-	lines := strings.Split(content, "\n")
-	if strings.HasSuffix(content, "\n") {
-		lines = lines[:len(lines)-1]
-	}
-	return lines
-}
+// splitLinesForCounting is upstream splitLinesForCounting (truncate.ts): a trailing newline terminates the last line.
+func splitLinesForCounting(content string) []string { return truncate.SplitLinesForCounting(content) }
 
 // Mirrors upstream defaults exactly.
 // These supersede the older 200_000 figure that lived in tools.go.
@@ -49,103 +40,50 @@ const (
 	GrepMaxLineLengthUpstream = 500       // upstream GREP_MAX_LINE_LENGTH
 )
 
-// TruncationResult captures every fact a renderer needs to format the
-// "[Showing lines X-Y of Z. Full output: <path>]" warning row.
-//
-// Layout matches upstream TruncationResult:
-//
-//	{ content, truncated, truncatedBy, totalLines, totalBytes,
-//	  outputLines, outputBytes, lastLinePartial, firstLineExceedsLimit,
-//	  maxLines, maxBytes }
-type TruncationResult struct {
-	Content     string `json:"content"`
-	Truncated   bool   `json:"truncated"`
-	TruncatedBy string `json:"truncatedBy"` // "lines" | "bytes" | ""
-	TotalLines  int    `json:"totalLines"`
-	TotalBytes  int    `json:"totalBytes"`
-	OutputLines int    `json:"outputLines"`
-	OutputBytes int    `json:"outputBytes"`
-	// LastLinePartial: the last line of the original output is the
-	// only one that fit (and was truncated from its end). Bash-only
-	// edge case.
-	LastLinePartial bool `json:"lastLinePartial"`
-	// FirstLineExceedsLimit: head-truncation case where the first line
-	// alone exceeds maxBytes. We return empty content and let the
-	// caller decide.
-	FirstLineExceedsLimit bool `json:"firstLineExceedsLimit"`
-	MaxLines              int  `json:"maxLines"`
-	MaxBytes              int  `json:"maxBytes"`
+// TruncationResult is upstream TruncationResult (truncate.ts). Its definition lives in the tui package, which BashExecutionComponent.SetComplete
+// takes, and this package imports tui.
+type TruncationResult = tui.TruncationResult
+
+// TruncationOptions is upstream TruncationOptions (truncate.ts:40): the limits truncateHead and truncateTail apply. A nil
+// limit takes its default, like an omitted upstream option; a limit of 0 is used as given.
+type TruncationOptions struct {
+	// MaxLines defaults to DefaultMaxLines.
+	MaxLines *int
+	// MaxBytes defaults to DefaultMaxBytes.
+	MaxBytes *int
+}
+
+// limits resolves the options to the line and byte limits to apply (truncate.ts:79-80).
+func (options TruncationOptions) limits() (maxBytes, maxLines int) {
+	maxBytes, maxLines = DefaultMaxBytes, DefaultMaxLines
+	if options.MaxBytes != nil {
+		maxBytes = *options.MaxBytes
+	}
+	if options.MaxLines != nil {
+		maxLines = *options.MaxLines
+	}
+	return maxBytes, maxLines
+}
+
+// truncationLimits is TruncationOptions with both limits set.
+func truncationLimits(maxBytes, maxLines int) TruncationOptions {
+	return TruncationOptions{MaxBytes: &maxBytes, MaxLines: &maxLines}
 }
 
 // TruncateTail keeps the last lines/bytes of content. Used for bash
 // output (errors and final results live at the end).
-//
-// maxBytes and maxLines are used as given, like upstream's options (only an
-// omitted option falls back to a default there); callers pass the defaults.
-func TruncateTail(content string, maxBytes, maxLines int) TruncationResult {
-	totalBytes := len(content)
-	lines := splitLinesForCounting(content)
-	totalLines := len(lines)
-
-	if totalLines <= maxLines && totalBytes <= maxBytes {
-		return TruncationResult{
-			Content:     content,
-			Truncated:   false,
-			TotalLines:  totalLines,
-			TotalBytes:  totalBytes,
-			OutputLines: totalLines,
-			OutputBytes: totalBytes,
-			MaxLines:    maxLines,
-			MaxBytes:    maxBytes,
-		}
-	}
-
-	// Walk backwards collecting lines that still fit, newest first; reversed
-	// once below. Prepending each line was quadratic in the kept lines, and
-	// streaming snapshots run this on every throttled update.
-	var collected []string
-	outputBytes := 0
-	truncatedBy := "lines"
-	lastLinePartial := false
-	for i := len(lines) - 1; i >= 0 && len(collected) < maxLines; i-- {
-		line := lines[i]
-		// +1 for the joining newline, except for the very first line
-		// added (which has no preceding newline in the joined output).
-		extra := 0
-		if len(collected) > 0 {
-			extra = 1
-		}
-		lineBytes := len(line) + extra
-		if outputBytes+lineBytes > maxBytes {
-			truncatedBy = "bytes"
-			if len(collected) == 0 {
-				// Edge: this single line is bigger than maxBytes.
-				// Take its END (last `maxBytes` bytes), respecting
-				// UTF-8 boundaries.
-				partial := tailNBytesUTF8(line, maxBytes)
-				collected = append(collected, partial)
-				outputBytes = len(partial)
-				lastLinePartial = true
-			}
-			break
-		}
-		collected = append(collected, line)
-		outputBytes += lineBytes
-	}
-	slices.Reverse(collected)
-	if len(collected) >= maxLines && outputBytes <= maxBytes {
-		truncatedBy = "lines"
-	}
-	out := strings.Join(collected, "\n")
+func TruncateTail(content string, options TruncationOptions) TruncationResult {
+	maxBytes, maxLines := options.limits()
+	tail := truncate.TruncateTail(content, maxBytes, maxLines)
 	return TruncationResult{
-		Content:         out,
-		Truncated:       true,
-		TruncatedBy:     truncatedBy,
-		TotalLines:      totalLines,
-		TotalBytes:      totalBytes,
-		OutputLines:     len(collected),
-		OutputBytes:     len(out),
-		LastLinePartial: lastLinePartial,
+		Content:         tail.Content,
+		Truncated:       tail.Truncated,
+		TruncatedBy:     tail.TruncatedBy,
+		TotalLines:      tail.TotalLines,
+		TotalBytes:      tail.TotalBytes,
+		OutputLines:     tail.OutputLines,
+		OutputBytes:     tail.OutputBytes,
+		LastLinePartial: tail.LastLinePartial,
 		MaxLines:        maxLines,
 		MaxBytes:        maxBytes,
 	}
@@ -160,7 +98,8 @@ func TruncateTail(content string, maxBytes, maxLines int) TruncationResult {
 // maxBytes, the result is empty content with `FirstLineExceedsLimit`
 // set so the caller can emit the upstream `[First line exceeds N
 // limit]` warning.
-func TruncateHead(content string, maxBytes, maxLines int) TruncationResult {
+func TruncateHead(content string, options TruncationOptions) TruncationResult {
+	maxBytes, maxLines := options.limits()
 	totalBytes := len(content)
 	lines := splitLinesForCounting(content)
 	totalLines := len(lines)
@@ -247,20 +186,6 @@ func FormatTruncationWarning(tr TruncationResult) string {
 	return "[Truncated: " + itoa(tr.OutputLines) + " lines shown (" + FormatSize(tr.MaxBytes) + " limit)]"
 }
 
-// tailNBytesUTF8 returns the last n bytes of s, advanced forward to
-// the next UTF-8 character boundary so we don't return invalid runes.
-func tailNBytesUTF8(s string, n int) string {
-	if len(s) <= n {
-		return s
-	}
-	start := len(s) - n
-	// 0xC0 mask: 10xxxxxx is a continuation byte; advance past it.
-	for start < len(s) && (s[start]&0xC0) == 0x80 {
-		start++
-	}
-	return s[start:]
-}
-
 // FormatSize renders a byte count as "123B" / "12.3KB" / "1.2MB".
 // Mirrors upstream `formatSize`.
 func FormatSize(bytes int) string {
@@ -304,16 +229,22 @@ func fmtFloat(f float64, suffix string) string {
 	return itoa(int(whole)) + "." + string('0'+byte(frac)) + suffix
 }
 
+// TruncateLineResult is upstream's `{ text: string; wasTruncated: boolean }`.
+type TruncateLineResult struct {
+	Text         string
+	WasTruncated bool
+}
+
 // TruncateLine mirrors upstream truncateLine: a line longer than maxChars
 // UTF-16 code units (JavaScript string length) is cut to maxChars units plus
 // "... [truncated]". A cut inside a surrogate pair leaves U+FFFD, as the
 // lone surrogate JavaScript would keep serializes to.
-func TruncateLine(line string, maxChars int) (string, bool) {
+func TruncateLine(line string, maxChars int) TruncateLineResult {
 	if maxChars <= 0 {
 		maxChars = GrepMaxLineLengthUpstream
 	}
 	if jsLength(line) <= maxChars {
-		return line, false
+		return TruncateLineResult{Text: line}
 	}
 	var b strings.Builder
 	units := 0
@@ -328,7 +259,7 @@ func TruncateLine(line string, maxChars int) (string, bool) {
 		b.WriteRune(r)
 		units += n
 	}
-	return b.String() + "... [truncated]", true
+	return TruncateLineResult{Text: b.String() + "... [truncated]", WasTruncated: true}
 }
 
 // MiddleTruncationResult mirrors upstream MiddleTruncationResult.

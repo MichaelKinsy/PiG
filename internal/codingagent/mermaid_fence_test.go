@@ -1,3 +1,5 @@
+//go:build !pig_strip_mermaid
+
 package codingagent
 
 import (
@@ -6,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/coding/extension"
+	"github.com/MichaelKinsy/PiG/coding/extension/markdowntransform"
 	"github.com/MichaelKinsy/PiG/tui"
 )
 
@@ -30,8 +33,8 @@ func TestMermaidLongFenceAssistantBlock(t *testing.T) {
 	transform := createMermaidMarkdownTransformer(func() string { return "streaming" }, nil)
 	render := func(length int) []string {
 		fence := strings.Repeat("`", length)
-		block := tui.NewAssistantMessageBlock(false)
-		block.SetMarkdownTransform(createMarkdownTransform(extension.MarkdownMessageAssistant, false, []extension.MarkdownTransformer{transform}))
+		block := tui.NewAssistantMessageComponent(nil, false, nil, "", nil, nil)
+		block.SetMarkdownTransform(markdowntransform.CreateMarkdownTransform(extension.MarkdownMessageAssistant, false, []extension.MarkdownTransformer{transform}))
 		block.SetTextDelta(fence + "mermaid\nflowchart LR\n  A --> B\n" + fence)
 		return block.Render(80)
 	}

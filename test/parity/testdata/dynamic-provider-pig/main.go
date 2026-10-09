@@ -22,7 +22,7 @@ func main() {
 	for _, phase := range []string{"top-level", "session-start", "command", "native-top-level", "native-command"} {
 		dir, err := os.MkdirTemp(root, "case-")
 		must(err)
-		services, err := coding.NewServices(coding.ServicesOptions{CWD: dir, AgentDir: dir})
+		services, err := coding.CreateAgentSessionServices(coding.CreateAgentSessionServicesOptions{CWD: dir, AgentDir: dir})
 		must(err)
 		model, err := coding.BuildModel("anthropic/claude-sonnet-4-5", services)
 		must(err)
@@ -39,7 +39,7 @@ func main() {
 					return &ai.AuthResult{Auth: ai.ModelAuth{APIKey: "test-key"}, Source: "test"}, nil
 				}}}}))
 			} else {
-				must(services.Registry().RegisterProvider("anthropic", extension.ProviderConfig{BaseURL: url}))
+				must(services.Registry().RegisterExtensionProvider("anthropic", extension.ProviderConfig{BaseURL: url}))
 			}
 		}
 		ext := extension.Extension{Path: "dynamic"}

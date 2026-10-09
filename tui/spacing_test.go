@@ -8,17 +8,17 @@ import (
 func TestMultiTurnSpacing(t *testing.T) {
 	c := NewContainer()
 	// First user msg (no spacer)
-	c.Add(NewUserMessageBlock("first message"))
+	c.Add(NewUserMessageComponent("first message", nil, 1, nil))
 	// Assistant reply
-	amb := NewAssistantMessageBlock(false)
+	amb := NewAssistantMessageComponent(nil, false, nil, "", nil, nil)
 	amb.SetTextDelta("Hello")
 	c.Add(amb)
 	// Spacer before second user msg (mirrors upstream Spacer(1))
 	c.Add(NewSpacer(1))
 	// Second user msg
-	c.Add(NewUserMessageBlock("second message"))
+	c.Add(NewUserMessageComponent("second message", nil, 1, nil))
 	// Second assistant reply
-	amb2 := NewAssistantMessageBlock(false)
+	amb2 := NewAssistantMessageComponent(nil, false, nil, "", nil, nil)
 	amb2.SetTextDelta("World")
 	c.Add(amb2)
 
@@ -26,7 +26,7 @@ func TestMultiTurnSpacing(t *testing.T) {
 
 	// Check that there are TWO blank-looking lines between "Hello" and "second message":
 	// 1. Spacer(1) blank line
-	// 2. UserMessageBlock top-pad (bg-painted, normalizes to blank)
+	// 2. UserMessageComponent top-pad (bg-painted, normalizes to blank)
 	helloIdx := -1
 	secondIdx := -1
 	for i, l := range lines {

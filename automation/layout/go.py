@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# SPDX-FileCopyrightText: Copyright Hewlett Packard Enterprise Development LP
 # SPDX-License-Identifier: MIT
 """Move implementation trees and rewrite parsed Go literals, not arbitrary text."""
 import argparse
@@ -47,7 +46,7 @@ SOURCE_REPLACEMENTS = {
         ('// The package exposes three public types that compose into a working', '// The package exposes three types that compose into a working'),
         ('//   - examples/sdk/main.go: minimal embedding example', '//   - examples/sdk/main.go: minimal in-tree session example'),
     ],
-    "cmd/pig/main.go": [
+    "coding/cli/main.go": [
         ('// Construct the SDK Services container. Mirrors what library\n\t// consumers of github.com/MichaelKinsy/PiG/internal/coding will do;\n\t// the binary uses the same path so SDK + CLI share the same\n\t// startup semantics.', '// Construct the shared Services container for all execution modes.'),
     ],
     "coding/extension/doc.go": [

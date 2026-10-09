@@ -1,5 +1,9 @@
 package experimental
 
+// pi: packages/coding-agent/src/experimental/client-tui.ts
+
+// pi: packages/coding-agent/src/experimental/client-tui-chat.ts
+
 import (
 	"bytes"
 	"context"
@@ -16,6 +20,7 @@ import (
 
 	"github.com/MichaelKinsy/PiG/agent"
 	"github.com/MichaelKinsy/PiG/ai"
+	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/durable"
 	"github.com/MichaelKinsy/PiG/durable/harness"
 	"github.com/MichaelKinsy/PiG/internal/chord"
@@ -43,7 +48,7 @@ func TestClientChatViewReusesStreamingComponentAndRebasesDivergentPrefix(t *test
 	})
 	assistant := ai.AssistantMessage{Content: []ai.AssistantContentBlock{ai.TextContent{Text: "partial"}}}
 	streamingView := conversationView([]durable.EntryRecord{userEntry(1, "before")}, &harness.LiveState{Run: &harness.LiveRun{TaskId: 1}, Generation: generationOf(assistant)}, nil)
-	var streaming *tui.AssistantMessageBlock
+	var streaming *tui.AssistantMessageComponent
 	var beforeChildren int
 	if err := observation.Executor.RunOnMain(t.Context(), func() {
 		if err := view.Apply(streamingView); err != nil {
@@ -186,7 +191,7 @@ func TestClientTuiPromptPreservesBackgroundServiceContext(t *testing.T) {
 	if err := chord.Provide[services.AgentController](provider, services.AgentControllerDefinition, probe); err != nil {
 		t.Fatal(err)
 	}
-	binding, err := chord.CreateRemoteServiceBinding(chord.RemoteServiceBindingOptions{Services: []string{services.AgentControllerDefinition.Id()}, Transport: chord.NewLoopbackTransport(provider)})
+	binding, err := chord.CreateRemoteServiceBinding(chord.RemoteServiceBindingOptions{Services: chord.ServiceIDs(services.AgentControllerDefinition.Id()), Transport: chord.NewLoopbackTransport(provider)})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -580,7 +585,7 @@ func TestClientTuiStagedLaneCommitFencesAndUpdates(t *testing.T) {
 				t.Cleanup(func() { release(); <-closed })
 				<-lifetime.Done()
 			case "initialization error":
-				if err := state.Replace(context.Background(), services.ConversationView{Docs: map[string]durable.JsonObject{services.LiveDocKind: {"run": "not a run"}}}); err != nil {
+				if err := state.Replace(context.Background(), services.ConversationView{Docs: harness.ViewDocsOf(harness.ViewDocs{}, services.LiveDocKind, delta.JsonObjectOf("run", "not a run"))}); err != nil {
 					t.Fatal(err)
 				}
 			}
@@ -720,7 +725,7 @@ func TestClientTuiLoopbackSourcesRetainBindingsAcrossScopes(t *testing.T) {
 		t.Fatal(err)
 	}
 	server, closeBindings := newClientTuiLoopbackServer(t, "source-fixture", serverProvider, sessionProvider, connection, attachment)
-	scope, err := server.Server.Open(chord.RemoteServiceSourceOpenOptions{Services: []string{services.SessionDirectoryDefinition.Id()}})
+	scope, err := server.Server.Open(chord.RemoteServiceSourceOpenOptions{Services: chord.ServiceIDs(services.SessionDirectoryDefinition.Id())})
 	if err != nil {
 		t.Fatal(err)
 	}

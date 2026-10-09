@@ -1,0 +1,40 @@
+[
+ {
+  "ids": [
+   "pkg:codemode/.#RenderDeclarationsOptions"
+  ],
+  "targets": [
+   "codemode/declarations.go#RenderDeclarationsOptions"
+  ],
+  "struct": {
+   "file": "codemode/declarations.go",
+   "type": "RenderDeclarationsOptions"
+  },
+  "production": [
+   "call:codemode/declarations.go#RenderDeclarations"
+  ],
+  "evidence": [
+   "test:codemode/upstream_oracle_test.go#TestRenderDeclarationsMatchesPi",
+   "test:codemode/declarations_test.go#TestRenderDeclarationsEscapesCommentTerminatorsInDescriptions"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "RenderDeclarationsOptions: Go RenderDeclarationsOptions has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+ },
+ {
+  "ids": [
+   "pkg:codemode/.#mcpStructuredContentSchema",
+   "pkg:codemode/declarations#mcpStructuredContentSchema"
+  ],
+  "targets": [
+   "codemode/declarations.go#McpStructuredContentSchema"
+  ],
+  "production": [
+   "call:coding/extension/builtin/codemode/description.go#CreateDescription"
+  ],
+  "evidence": [
+   "test:codemode/declarations_test.go#TestRenderToolSignatureRendersMCPCallToolResultOutputSchemasAsCallToolResult"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "mcpStructuredContentSchema: Go McpStructuredContentSchema has the upstream parameters and result (signatures reviewed); callers attributed by go/types."
+ }
+]

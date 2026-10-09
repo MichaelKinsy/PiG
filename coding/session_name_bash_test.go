@@ -43,7 +43,7 @@ func TestSessionNameHandlerBashDoesNotBlockPublication(t *testing.T) {
 							close(second)
 							return nil, nil
 						}
-						result, err := s.ExecuteBashWithOperations(args[1].(context.Context), "printf verifier", false, nil, sessionNameBashOperations{release: release}, nil)
+						result, err := s.ExecuteBash(args[1].(context.Context), "printf verifier", nil, &ExecuteBashOptions{Operations: sessionNameBashOperations{release: release}})
 						if err != nil {
 							t.Errorf("ExecuteBashWithOperations: %v", err)
 						}

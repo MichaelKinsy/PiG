@@ -1,3 +1,5 @@
+//go:build !pig_strip_codemode
+
 package coding
 
 import (
@@ -5,6 +7,7 @@ import (
 	"encoding/json"
 	"math"
 	"os"
+	"path/filepath"
 	"reflect"
 	"regexp"
 	"runtime"
@@ -22,35 +25,6 @@ import (
 // Ports packages/coding-agent/test/suite/agent-session-codemode.test.ts (Pi 1.0.0, 21 cases: 19 here, and 2 session-free cases plus the session-free half of "declares models only for the session's own codemode tool" in coding/extension/builtin/codemode/session_free_upstream_test.go). The built-in codemode
 // extension is Pi's own code in the Node cell (docs/specs/builtin-codemode-tool-search.md); the Session, the nested-tool
 // pipeline (ctx.executeTool), tool exposure and the settings, classifier and usage plumbing are other families'.
-
-const tinyPNGBase64 = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFBQIAX8jx0gAAAABJRU5ErkJggg=="
-
-var tinyPNGLabel = regexp.MustCompile(`^\[Image saved to (\S+\.png) \(image/png, \d+B\)\]$`)
-
-// checkSavedImages is upstream's checkSavedImages: it replaces the `[Image saved to ...]` labels in text with `<saved>`
-// after checking that each file holds the tiny PNG, and removes the files.
-func checkSavedImages(t *testing.T, text string) string {
-	t.Helper()
-	lines := strings.Split(text, "\n")
-	for i, line := range lines {
-		match := tinyPNGLabel.FindStringSubmatch(line)
-		if match == nil {
-			continue
-		}
-		data, err := os.ReadFile(match[1])
-		if err != nil {
-			t.Fatal(err)
-		}
-		if got := base64.StdEncoding.EncodeToString(data); got != tinyPNGBase64 {
-			t.Errorf("saved image %s = %q, want the tiny PNG", match[1], got)
-		}
-		if err := os.Remove(match[1]); err != nil {
-			t.Fatal(err)
-		}
-		lines[i] = "<saved>"
-	}
-	return strings.Join(lines, "\n")
-}
 
 func codemodeCall(code string) scriptedResponse {
 	return boundaryToolReply("codemode", ai.JsonObject{"code": code}, ai.StopReasonToolUse)
@@ -204,11 +178,32 @@ func TestUpstreamAgentSessionCodemodeTool(t *testing.T) {
 		if strings.Contains(requestPrompts[1], "\n- read: ") || !strings.Contains(requestPrompts[1], "\n- codemode: ") || strings.Contains(h.session.SystemPrompt(), "\n- read: ") {
 			t.Errorf("prompt = %q, session prompt = %q", requestPrompts[1], h.session.SystemPrompt())
 		}
+		// Hidden tools' guidelines move from the rules to their codemode sections (#10343).
+		if strings.Contains(requestPrompts[1], "Use read to examine files") || !strings.Contains(description("codemode"), "- Use read to examine files instead of cat or sed.") {
+			t.Errorf("read guideline in the prompt %q, codemode description %q", requestPrompts[1], description("codemode"))
+		}
 
 		// Without codemode, tools keep their plain descriptions.
 		h.session.SetActiveToolsByName([]string{"echo"})
 		if got := description("echo"); got != "Echo text back.\n\nSecond paragraph." {
 			t.Errorf("echo description = %q", got)
+		}
+	})
+
+	// .upstream/v1.0.4/packages/coding-agent/test/suite/agent-session-codemode.test.ts:187 (#10343)
+	t.Run("shows the guidelines of tools that do not fit the inline budget through describeTool()", func(t *testing.T) {
+		h := setup(t)
+		h.setCodemodeMode(t, "only")
+		h.setCodemodeInlineBudget(t, 0)
+		h.session.SetActiveToolsByName([]string{"read", "codemode"})
+		for _, tool := range h.session.Tools() {
+			if tool.Name() == "codemode" && strings.Contains(tool.Schema().Description, "### `read`") {
+				t.Fatalf("codemode description lists read despite the zero budget: %q", tool.Schema().Description)
+			}
+		}
+		result := codemodeRun(t, h, `text(await describeTool("read"))`)
+		if got := codemodeResultText(t, result); !strings.Contains(got, "- Use read to examine files instead of cat or sed.") {
+			t.Errorf("describeTool(read) = %q", got)
 		}
 	})
 
@@ -227,7 +222,7 @@ func TestUpstreamAgentSessionCodemodeTool(t *testing.T) {
 		if result.IsError {
 			t.Error("isError")
 		}
-		if got, want := codemodeResultText(t, result), `files 2`+"\n"+`echo,stats,screenshot`+"\n"+`{"a":"echo: one","b":"echo: two","names":["a","b"]}`; got != want {
+		if got, want := codemodeResultText(t, result), "==> text 1/2 <==\necho,stats,screenshot\n==> text 2/2 <==\n"+`{"a":"echo: one","b":"echo: two","names":["a","b"]}`+"\n<console_output>\nfiles 2\n</console_output>"; got != want {
 			t.Errorf("result = %q, want %q", got, want)
 		}
 		details := codemodeDetailsOf(t, result)
@@ -338,20 +333,65 @@ func TestUpstreamAgentSessionCodemodeTool(t *testing.T) {
 						`)
 		// The same image shown twice is saved once, so both labels name one file.
 		lines := strings.Split(codemodeResultText(t, result), "\n")
-		if want := []string{"captured", lines[1], "<image>", lines[1], "<image>", "after"}; !slices.Equal(lines, want) || !tinyPNGLabel.MatchString(lines[1]) {
+		if want := []string{"==> text 1/2 <==", "captured", lines[2], "<image>", lines[2], "<image>", "==> text 2/2 <==", "after"}; !slices.Equal(lines, want) || !tinyPNGLabel.MatchString(lines[2]) {
 			t.Fatalf("result lines = %q, want %q", lines, want)
 		}
-		if got := checkSavedImages(t, lines[1]); got != "<saved>" {
+		if got := checkSavedImages(t, lines[2]); got != "<saved>" {
 			t.Errorf("saved label = %q", got)
 		}
-		if image, ok := result.Content[3].(ai.ImageContent); !ok || image.Data != tinyPNGBase64 || image.MimeType != "image/png" {
-			t.Errorf("content[3] = %#v", result.Content[3])
+		if image, ok := result.Content[2].(ai.ImageContent); !ok || image.Data != tinyPNGBase64 || image.MimeType != "image/png" {
+			t.Errorf("content[2] = %#v", result.Content[2])
+		}
+	})
+
+	// agent-session-codemode.test.ts (v1.1.0) "marks where each text item starts and puts console lines last in one text
+	// block": providers join adjacent text blocks with nothing or a newline, so the output is one block.
+	t.Run("marks where each text item starts and puts console lines last in one text block", func(t *testing.T) {
+		h := setup(t)
+		result := codemodeRun(t, h, "text(\"one\\ntwo\");\nconsole.log(\"a\");\nconsole.log(\"b\");\ntext(\"three\\n\");\nreturn 4;")
+		if len(result.Content) != 2 {
+			t.Fatalf("content = %#v, want the header and one text block", result.Content)
+		}
+		if got, want := codemodeResultText(t, result), "==> text 1/3 <==\none\ntwo\n==> text 2/3 <==\nthree\n==> text 3/3 <==\n4\n<console_output>\na\nb\n</console_output>"; got != want {
+			t.Errorf("result = %q, want %q", got, want)
+		}
+	})
+
+	// https://github.com/earendil-works/pi/issues/10251
+	t.Run("resolves read calls to text for text files and to image blocks that image() shows", func(t *testing.T) {
+		h := setup(t)
+		pixel, err := base64.StdEncoding.DecodeString(tinyPNGBase64)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for name, data := range map[string][]byte{"notes.txt": []byte("hello"), "pixel.png": pixel} {
+			if err := os.WriteFile(filepath.Join(h.session.CWD(), name), data, 0o600); err != nil {
+				t.Fatal(err)
+			}
+		}
+		h.session.SetActiveToolsByName([]string{"read", "codemode"})
+		// The harness's extension runner has a cwd of its own, so the paths are absolute where upstream's are relative.
+		notes, _ := json.Marshal(filepath.Join(h.session.CWD(), "notes.txt"))
+		shotPath, _ := json.Marshal(filepath.Join(h.session.CWD(), "pixel.png"))
+		result := codemodeRun(t, h, `text(await tools.read({ path: `+string(notes)+` }));
+const shot = await tools.read({ path: `+string(shotPath)+` });
+text(shot.note);
+image(shot);`)
+		if result.IsError {
+			t.Fatalf("result failed: %+v", result.Content)
+		}
+		if got, want := checkSavedImages(t, codemodeResultText(t, result)), "==> text 1/2 <==\nhello\n==> text 2/2 <==\nRead image file [image/png]\n[Current model does not support images. The image will be omitted from this request.]\n<saved>\n<image>"; got != want {
+			// The harness model does not declare image input, so read's note says so, as it does for a text-only model upstream.
+			t.Errorf("result = %q, want %q", got, want)
+		}
+		if image, ok := result.Content[len(result.Content)-1].(ai.ImageContent); !ok || image.Data != tinyPNGBase64 || image.MimeType != "image/png" {
+			t.Errorf("last content = %#v", result.Content[len(result.Content)-1])
 		}
 	})
 
 	t.Run("reports script failures as results that keep partial output and the calls that ran", func(t *testing.T) {
 		h := setup(t)
-		result := codemodeRun(t, h, "text(\"partial\");\nawait tools.echo({ text: \"x\" });\nthrow new Error(\"boom\");")
+		result := codemodeRun(t, h, "text(\"partial\");\nconsole.log(\"log\");\nawait tools.echo({ text: \"x\" });\nthrow new Error(\"boom\");")
 		if !result.IsError {
 			t.Error("isError = false")
 		}
@@ -359,10 +399,10 @@ func TestUpstreamAgentSessionCodemodeTool(t *testing.T) {
 			t.Errorf("header = %q", header.Text)
 		}
 		text := codemodeResultText(t, result)
-		if !regexp.MustCompile(`^partial\nScript error:\nError: boom\n`).MatchString(text) {
+		if !regexp.MustCompile(`^partial\n<console_output>\nlog\n</console_output>\nScript error:\nError: boom\n`).MatchString(text) {
 			t.Errorf("text = %q", text)
 		}
-		for _, want := range []string{"codemode.js:3", "Tool calls made before the failure (they are not undone): echo (ok)"} {
+		for _, want := range []string{"codemode.js:4", "Tool calls made before the failure (they are not undone): echo (ok)"} {
 			if !strings.Contains(text, want) {
 				t.Errorf("text %q lacks %q", text, want)
 			}
@@ -440,7 +480,7 @@ func TestUpstreamCodemodeOptionsAndStore(t *testing.T) {
 
 	t.Run("truncates output to the token budget and spills the full text", func(t *testing.T) {
 		h := setup(t)
-		result := codemodeRun(t, h, "// @options: {\"max_output_tokens\": 10}\nfor (let i = 0; i < 100; i++) text(\"row \" + i);\nimage(\"data:image/png;base64,"+tinyPNGBase64+"\");")
+		result := codemodeRun(t, h, "// @options: {\"max_output_tokens\": 30}\nfor (let i = 0; i < 100; i++) text(\"row \" + i);\nimage(\"data:image/png;base64,"+tinyPNGBase64+"\");")
 		path := codemodeDetailsOf(t, result).FullOutputPath
 		if path == "" {
 			t.Fatal("No spill file")
@@ -476,10 +516,21 @@ func TestUpstreamCodemodeOptionsAndStore(t *testing.T) {
 		}
 		var want []string
 		for i := range 100 {
-			want = append(want, "row "+strconv.Itoa(i))
+			want = append(want, "==> text "+strconv.Itoa(i+1)+"/100 <==\nrow "+strconv.Itoa(i))
 		}
 		if string(data) != strings.Join(want, "\n") {
 			t.Errorf("spill file = %.80q", data)
+		}
+
+		// execute.ts joins adjacent text items before truncation (v1.1.0), so a text item that ends in a newline adds none.
+		trailing := codemodeRun(t, h, "// @options: {\"max_output_tokens\": 1}\ntext(\"first line\\n\");\ntext(\"second line\");")
+		trailingPath := codemodeDetailsOf(t, trailing).FullOutputPath
+		if trailingPath == "" {
+			t.Fatal("no spill file for the trailing-newline output")
+		}
+		defer os.Remove(trailingPath)
+		if data, err := os.ReadFile(trailingPath); err != nil || string(data) != "==> text 1/2 <==\nfirst line\n==> text 2/2 <==\nsecond line" {
+			t.Errorf("spill file = %q, %v", data, err)
 		}
 
 		small := codemodeRun(t, h, "return { ok: true };")
@@ -560,8 +611,8 @@ func TestUpstreamCodemodeOptionsAndStore(t *testing.T) {
 		codemodeRun(t, h, increment)
 		var firstPrompt string
 		for _, entry := range h.session.Inner().GetBranch() {
-			if entry.Base.Type == "message" {
-				firstPrompt = entry.Base.ID
+			if entry.Base().Type == "message" {
+				firstPrompt = entry.Base().ID
 				break
 			}
 		}
@@ -643,6 +694,8 @@ func TestUpstreamCodemodeModels(t *testing.T) {
 
 	t.Run("lists models and classifies with catalog auth, ignoring script-supplied fields", func(t *testing.T) {
 		h, observed, maxActive := setup(t)
+		// Pi's limiter admits four calls at once: the six classifications must fill the first wave of four before any completes.
+		h.classifierFirstWave.Store(4)
 		result := codemodeRun(t, h, `
 			const [model] = await models.getAvailableOfType("classifier", "scorer");
 			const listed = await models.getModelsOfType("classifier");
@@ -732,15 +785,15 @@ func TestUpstreamCodemodeModels(t *testing.T) {
 			t.Errorf("isError: %s", codemodeResultText(t, result))
 		}
 		lines := strings.Split(checkSavedImages(t, codemodeResultText(t, result)), "\n")
-		if lines[0] != "painted a fox" {
-			t.Errorf("text = %q, want %q", lines[0], "painted a fox")
+		if lines[0] != "==> text 1/2 <==" || lines[1] != "painted a fox" {
+			t.Errorf("text = %q, want the header and %q", lines[:2], "painted a fox")
 		}
-		if len(lines) < 3 || lines[1] != "<saved>" || lines[2] != "<image>" {
+		if len(lines) < 5 || lines[2] != "<saved>" || lines[3] != "<image>" || lines[4] != "==> text 2/2 <==" {
 			t.Fatalf("result lines = %q, want the text, then <saved>, <image>, then the returned value", lines)
 		}
 		var value map[string]any
-		if err := json.Unmarshal([]byte(strings.Join(lines[3:], "\n")), &value); err != nil {
-			t.Fatalf("returned value %q: %v", strings.Join(lines[3:], "\n"), err)
+		if err := json.Unmarshal([]byte(strings.Join(lines[5:], "\n")), &value); err != nil {
+			t.Fatalf("returned value %q: %v", strings.Join(lines[5:], "\n"), err)
 		}
 		want := map[string]any{
 			"id":         "painter",
@@ -751,8 +804,8 @@ func TestUpstreamCodemodeModels(t *testing.T) {
 		if !reflect.DeepEqual(value, want) {
 			t.Errorf("value = %v, want %v", value, want)
 		}
-		if len(result.Content) < 4 || !reflect.DeepEqual(result.Content[3], ai.ToolResultMessageContent(ai.ImageContent{Data: tinyPNGBase64, MimeType: "image/png"})) {
-			t.Errorf("content = %#v, want the generated image at index 3", result.Content)
+		if len(result.Content) < 3 || !reflect.DeepEqual(result.Content[2], ai.ToolResultMessageContent(ai.ImageContent{Data: tinyPNGBase64, MimeType: "image/png"})) {
+			t.Errorf("content = %#v, want the generated image at index 2", result.Content)
 		}
 		requests := imageRequests()
 		var pairs [][2]string
@@ -812,9 +865,18 @@ func TestUpstreamCodemodeModels(t *testing.T) {
 		result := codemodeRun(t, h, `
 			const model = await models.getModelOfType("classifier", "scorer", "judge");
 			const failed = await models.classify(model, { state: { text: "explode" }, questions: `+questions+` });
+			const textOnly = await models.classify(model, {
+				state: { text: "good" },
+				images: [{ type: "image", data: "aW1hZ2U=", mimeType: "image/png" }],
+				questions: `+questions+`,
+			});
 			const attempt = async (fn) => { try { await fn(); return "ok"; } catch (error) { return error.message; } };
 			return {
 				failed: [failed.stopReason, failed.errorMessage],
+				textOnly: [textOnly.stopReason, textOnly.errorMessage],
+				badClassifierImage: await attempt(() =>
+					models.classify(model, { state: {}, images: [{ data: "aW1hZ2U=" }], questions: `+questions+` }),
+				),
 				badType: await attempt(() => models.getModelsOfType("video")),
 				unknown: await attempt(() => models.classify({ provider: "scorer", id: "nope" }, {})),
 				noModel: await attempt(() => models.classify("judge", {})),
@@ -831,21 +893,29 @@ func TestUpstreamCodemodeModels(t *testing.T) {
 			t.Fatalf("isError: %s", codemodeResultText(t, result))
 		}
 		var value struct {
-			Failed         []string `json:"failed"`
-			BadType        string   `json:"badType"`
-			Unknown        string   `json:"unknown"`
-			NoModel        string   `json:"noModel"`
-			UndefinedModel string   `json:"undefinedModel"`
-			NoState        string   `json:"noState"`
-			BadQuestion    string   `json:"badQuestion"`
-			BadImage       string   `json:"badImage"`
-			BadSplit       string   `json:"badSplit"`
+			Failed             []string `json:"failed"`
+			TextOnly           []string `json:"textOnly"`
+			BadClassifierImage string   `json:"badClassifierImage"`
+			BadType            string   `json:"badType"`
+			Unknown            string   `json:"unknown"`
+			NoModel            string   `json:"noModel"`
+			UndefinedModel     string   `json:"undefinedModel"`
+			NoState            string   `json:"noState"`
+			BadQuestion        string   `json:"badQuestion"`
+			BadImage           string   `json:"badImage"`
+			BadSplit           string   `json:"badSplit"`
 		}
 		if err := json.Unmarshal([]byte(codemodeResultText(t, result)), &value); err != nil {
 			t.Fatal(err)
 		}
 		if !reflect.DeepEqual(value.Failed, []string{"error", "classifier exploded"}) {
 			t.Errorf("failed = %v", value.Failed)
+		}
+		if !reflect.DeepEqual(value.TextOnly, []string{"error", "Model scorer/judge does not accept image input"}) {
+			t.Errorf("textOnly = %v", value.TextOnly)
+		}
+		if want := "models.classify() context.images[0] must be an image block, got { data }."; !strings.Contains(value.BadClassifierImage, want) {
+			t.Errorf("badClassifierImage = %q, want it to contain %q", value.BadClassifierImage, want)
 		}
 		if !strings.Contains(value.BadType, `Unknown model type "video"`) {
 			t.Errorf("badType = %q", value.BadType)
@@ -867,7 +937,8 @@ func TestUpstreamCodemodeModels(t *testing.T) {
 			}
 		}
 		calls := codemodeDetailsOf(t, result).Calls
-		if len(calls) != 1 || calls[0].Name != "models.classify" || calls[0].Status != "error" || calls[0].Error != "classifier exploded" {
+		if len(calls) != 2 || calls[0].Name != "models.classify" || calls[0].Status != "error" || calls[0].Error != "classifier exploded" ||
+			calls[1].Name != "models.classify" || calls[1].Status != "error" || calls[1].Error != "Model scorer/judge does not accept image input" {
 			t.Errorf("nested calls = %+v", calls)
 		}
 		if result.Usage != nil {

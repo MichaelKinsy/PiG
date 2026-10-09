@@ -61,20 +61,20 @@ func upstreamTreeSession(t *testing.T, leaf string, entries ...treeCaseEntry) *S
 	return session
 }
 
-func upstreamTree(t *testing.T, leaf string, entries ...treeCaseEntry) *tui.TreeSelect {
+func upstreamTree(t *testing.T, leaf string, entries ...treeCaseEntry) *tui.TreeSelectorComponent {
 	t.Helper()
 	session := upstreamTreeSession(t, leaf, entries...)
-	return upstreamTreeFromRoot(session, session.Tree(), leaf)
+	return upstreamTreeFromRoot(session, session.treeRoot(), leaf)
 }
 
-func upstreamTreeFromRoot(session *Session, root *SessionTreeNode, leaf string) *tui.TreeSelect {
-	selector := tui.NewTreeSelect("Session tree", &treeNodeAdapter{n: root, f: newTreeRowFormatter(session)})
+func upstreamTreeFromRoot(session *Session, root *SessionTreeNode, leaf string) *tui.TreeSelectorComponent {
+	selector := tui.NewTreeSelectorComponent("Session tree", &treeNodeAdapter{n: root, f: newTreeRowFormatter(session)})
 	selector.MaxVisibleLines = tui.TreeVisibleLines(24)
 	selector.SetInitialCursor(leaf, "")
 	return selector
 }
 
-func selectedTreeID(selector *tui.TreeSelect) string {
+func selectedTreeID(selector *tui.TreeSelectorComponent) string {
 	// The current native selector has no highlighted-node accessor. Read its entry identity without confirming, copying its atomic state, or adding a test-only production API.
 	value := reflect.ValueOf(selector).Elem()
 	rows := value.FieldByName("rows")
@@ -84,7 +84,7 @@ func selectedTreeID(selector *tui.TreeSelect) string {
 	}
 	return rows.Index(cursor).FieldByName("id").String()
 }
-func assertTreeSelection(t *testing.T, selector *tui.TreeSelect, want string) {
+func assertTreeSelection(t *testing.T, selector *tui.TreeSelectorComponent, want string) {
 	t.Helper()
 	if got := selectedTreeID(selector); got != want {
 		t.Fatalf("selected = %q, want %q\n%s", got, want, strings.Join(selector.Render(200), "\n"))
@@ -117,7 +117,7 @@ func TestTreeSelectorUpstream(t *testing.T) {
 		assertTreeSelection(t, selector, "asst-1")
 		// Pi passes initialFilterMode "all" through the constructor (tree-selector.test.ts:182-193).
 		session := upstreamTreeSession(t, "edit-1", treeUser("user-1", "", "hello"), treeAssistant("asst-1", "user-1", "hi"), treeCaseEntry{id: "edit-1", parent: "asst-1", kind: "context_edit", extra: map[string]any{"targetId": "asst-1", "replacement": nil}})
-		selector = tui.NewTreeSelectWithInitialFilter("Session tree", &treeNodeAdapter{n: session.Tree(), f: newTreeRowFormatter(session)}, "all")
+		selector = tui.NewTreeSelectWithInitialFilter("Session tree", &treeNodeAdapter{n: session.treeRoot(), f: newTreeRowFormatter(session)}, "all")
 		selector.MaxVisibleLines = tui.TreeVisibleLines(24)
 		selector.SetInitialCursor("edit-1", "")
 		if got := stripANSITest(strings.Join(selector.Render(200), "\n")); !strings.Contains(got, "[context omit: asst-1]") {
@@ -169,7 +169,7 @@ func TestTreeSelectorUpstream(t *testing.T) {
 	// .upstream/v0.87.1/packages/coding-agent/test/tree-selector.test.ts:336
 	t.Run("toggles label timestamps for labeled nodes", func(t *testing.T) {
 		session := upstreamTreeSession(t, "asst-1", treeUser("user-1", "", "hello"), treeAssistant("asst-1", "user-1", "hi"))
-		root := session.Tree()
+		root := session.treeRoot()
 		root.Children[0].Label = "checkpoint"
 		root.Children[0].LabelTimestamp = time.Date(2026, 3, 28, 14, 32, 0, 0, time.Local).UTC().Format(time.RFC3339)
 		selector := upstreamTreeFromRoot(session, root, "asst-1")
@@ -312,7 +312,7 @@ func testTreeCopyUsesProductionPickerAndClipboardRoute(t *testing.T) {
 	var releaseOnce sync.Once
 	release := func() { releaseOnce.Do(func() { close(releaseCopy) }) }
 	m := &InteractiveMode{
-		opts:    InteractiveOptions{SessionHandle: &recordingCompactHandle{inner: session}},
+		opts:    InteractiveModeOptions{SessionHandle: &recordingCompactHandle{inner: session}},
 		tuiInst: renderer, chatContainer: tui.NewContainer(), backgroundCtx: t.Context(),
 		uiTaskCh: make(chan func(), 1), modalInputCh: make(chan []byte, 2),
 		copyClipboard: func(text string) error { copied = text; <-releaseCopy; return nil },
@@ -343,7 +343,7 @@ func testTreeCopyUsesProductionPickerAndClipboardRoute(t *testing.T) {
 }
 
 type treeCaptureRenderer struct {
-	*tui.TUI
+	*tui.TuiMainScreen
 	capture func()
 }
 
@@ -361,7 +361,7 @@ func TestTreeCopyCompletionPaintsBeforeDialogCloses(t *testing.T) {
 			session := upstreamTreeSession(t, "asst-1", treeUser("user-1", "", "hello"), treeAssistant("asst-1", "user-1", "copy text"))
 			input := make(chan []byte, 2)
 			input <- []byte("\x18")
-			m := &InteractiveMode{opts: InteractiveOptions{SessionHandle: &recordingCompactHandle{inner: session}}, chatContainer: tui.NewContainer(), editorContainer: tui.NewContainer(), editor: tui.NewEditor(), runCtx: ctx, backgroundCtx: ctx, uiTaskCh: make(chan func(), 1), modalInputCh: input, copyClipboard: func(string) error { return nil }}
+			m := &InteractiveMode{opts: InteractiveModeOptions{SessionHandle: &recordingCompactHandle{inner: session}}, chatContainer: tui.NewContainer(), editorContainer: tui.NewContainer(), editor: tui.NewEditor(), runCtx: ctx, backgroundCtx: ctx, uiTaskCh: make(chan func(), 1), modalInputCh: input, copyClipboard: func(string) error { return nil }}
 			if editorSlot {
 				m.layout = tui.NewContainer(m.chatContainer, m.editorContainer)
 			}
@@ -369,7 +369,7 @@ func TestTreeCopyCompletionPaintsBeforeDialogCloses(t *testing.T) {
 			base := tui.NewWithOutput(io.Discard, 120, 40)
 			base.SetRenderDispatcher(func(func()) {})
 			t.Cleanup(base.CancelPendingRender)
-			m.tuiInst = &treeCaptureRenderer{TUI: base, capture: func() {
+			m.tuiInst = &treeCaptureRenderer{TuiMainScreen: base, capture: func() {
 				if !painted && strings.Contains(stripANSITest(strings.Join(m.chatContainer.Render(120), "\n")), "Copied selected message to clipboard") {
 					painted = true
 					input <- []byte("\x1b")
@@ -394,7 +394,7 @@ func TestTreeCopyCompletionPaintsBeforeDialogCloses(t *testing.T) {
 	}
 }
 
-func findTreeByDown(t *testing.T, selector *tui.TreeSelect, want string) {
+func findTreeByDown(t *testing.T, selector *tui.TreeSelectorComponent, want string) {
 	t.Helper()
 	for range 20 {
 		selector.HandleInput("\x1b[B")
@@ -421,10 +421,10 @@ func TestTreeSelectorOpensInConfiguredFilterMode(t *testing.T) {
 		t.Run("treeFilterMode="+tc.mode, func(t *testing.T) {
 			session := upstreamTreeSession(t, "asst-2", simpleBranchEntries()...)
 			m := &InteractiveMode{
-				opts:    InteractiveOptions{SessionHandle: &recordingCompactHandle{inner: session}, Settings: Settings{TreeFilterMode: tc.mode}},
+				opts:    InteractiveModeOptions{SessionHandle: &recordingCompactHandle{inner: session}, Settings: Settings{TreeFilterMode: tc.mode}},
 				tuiInst: tui.NewWithOutput(io.Discard, 120, 40),
 			}
-			selector := m.newSessionTreeSelect(session.Tree(), "")
+			selector := m.newSessionTreeSelect(session.treeRoot(), "")
 			assertTreeSelection(t, selector, tc.wantSelected)
 			rendered := stripANSITest(strings.Join(selector.Render(200), "\n"))
 			if tc.hidden != "" && strings.Contains(rendered, tc.hidden) {
@@ -449,7 +449,7 @@ func TestPickTreeEntryUsesConfiguredFilterMode(t *testing.T) {
 			renderer.SetRenderDispatcher(func(func()) {})
 			t.Cleanup(renderer.CancelPendingRender)
 			m := &InteractiveMode{
-				opts: InteractiveOptions{SessionHandle: &recordingCompactHandle{inner: session},
+				opts: InteractiveModeOptions{SessionHandle: &recordingCompactHandle{inner: session},
 					SettingsManager: &SettingsManager{merged: Settings{TreeFilterMode: tc.mode}}},
 				tuiInst: renderer, chatContainer: tui.NewContainer(), backgroundCtx: t.Context(),
 				uiTaskCh: make(chan func(), 1), modalInputCh: make(chan []byte, 1),

@@ -33,42 +33,57 @@ func (m *InteractiveMode) scopedModelItems(items []tui.ModelSelectorItem) []tui.
 	return scoped
 }
 
-type modelSelectorRefresh struct {
-	models       []tui.ModelSelectorItem
-	updateModels bool
-	errorText    string
+// modelSelectorRuntime is the ModelRuntime the model selector reads (model-selector.ts modelRuntime): the registry's models, its load error and its
+// catalog refresh. After a refresh the footer's provider information is updated on the owner loop.
+type modelSelectorRuntime struct {
+	m        *InteractiveMode
+	registry *ModelRegistry
+}
+
+func (r modelSelectorRuntime) GetAvailableSnapshot() []*ai.Model {
+	return r.registry.GetAvailableModelData()
+}
+
+func (r modelSelectorRuntime) GetModel(provider, id string) *ai.Model {
+	for _, model := range r.registry.GetAllModelData() {
+		if model.ProviderID() == provider && model.ModelID() == id {
+			return model
+		}
+	}
+	return nil
+}
+
+func (r modelSelectorRuntime) GetError() string { return r.registry.LoadError() }
+
+// Refresh is ModelRuntime.refresh as the selector reaches it: the interactive mode's shared all-catalog refresh. A refresh that the context
+// ended is an aborted result (model-catalog-refresh.ts raceWithAbortSignal), and a settled one republishes the provider info on the main loop.
+func (r modelSelectorRuntime) Refresh(ctx context.Context, _ ...ai.ModelsRefreshOptions) ai.ModelsRefreshResult {
+	result, err := RefreshModelCatalogs(ctx, r.registry)
+	if err != nil {
+		return ai.ModelsRefreshResult{Aborted: true}
+	}
+	r.m.runOnMain(ctx, r.m.updateProviderInfo)
+	return ai.ModelsRefreshResult{Aborted: result.Aborted, Errors: result.Errors, ErrorOrder: result.failedProviders()}
 }
 
 func (m *InteractiveMode) pickModel(ctx context.Context, initialQuery string) (spec string, accepted, persist bool) {
-	items := m.availableModelItems()
-	selector := tui.NewModelSelector("Select model", m.scopedModelItems(items), items, modelSpec(m.opts.Model))
+	runtime := modelSelectorRuntime{m: m, registry: m.modelRegistryOrDefault()}
+	var defaultModel *tui.DefaultModelReference
 	if sm := m.opts.SettingsManager; sm != nil && sm.GetDefaultProvider() != "" && sm.GetDefaultModel() != "" {
-		selector.SetDefaultModel(sm.GetDefaultProvider() + "/" + sm.GetDefaultModel())
+		defaultModel = &tui.DefaultModelReference{Provider: sm.GetDefaultProvider(), ID: sm.GetDefaultModel()}
 	}
-	selector.SetFilter(initialQuery)
-	selector.SetStatus("Refreshing model catalogs…")
-	// upstream: packages/coding-agent/src/modes/interactive/components/model-selector.ts:refreshModels
-	refreshCtx, cancel := context.WithTimeout(ctx, 15*time.Second)
-	refresh := make(chan modelSelectorRefresh, 1)
-	done := make(chan struct{})
-	go func() {
-		defer close(done)
-		result, err := RefreshModelCatalogs(refreshCtx, m.opts.ModelRegistry)
-		refreshed := modelSelectorRefresh{updateModels: err == nil, errorText: modelCatalogRefreshError(result, err)}
-		if err == nil {
-			refreshed.models = m.availableModelItems()
-			if refreshed.errorText == "" && m.opts.ModelRegistry != nil {
-				refreshed.errorText = m.opts.ModelRegistry.LoadError()
-			}
+	var scoped []tui.ScopedModelItem
+	for _, item := range m.scopedModelItems(m.availableModelItems()) {
+		if model := runtime.GetModel(item.Provider, item.ID); model != nil {
+			scoped = append(scoped, tui.ScopedModelItem{Model: model})
 		}
-		refresh <- refreshed
-	}()
-	defer func() {
-		cancel()
-		<-done
-	}()
-	spec, accepted = m.runEditorSlotModelSelector(ctx, selector, refresh)
-	return spec, accepted, accepted && selector.SelectedAsDefault()
+	}
+	asDefault := false
+	selector := tui.NewModelSelectorComponent(m.tuiInst, m.opts.Model, runtime, scoped,
+		func(*ai.Model) {}, func() {}, initialQuery, func(*ai.Model) { asDefault = true }, defaultModel)
+	defer selector.Dispose()
+	spec, accepted = m.runEditorSlotModelSelector(ctx, selector)
+	return spec, accepted, accepted && asDefault
 }
 
 func (result CatalogRefreshResult) failedProviders() []string {

@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"testing"
+
+	"github.com/MichaelKinsy/PiG/internal/sessionentry"
 )
 
 // Pi's sessionEntryToContextMessages uses Date.getTime(): integer milliseconds,
@@ -26,7 +28,7 @@ func TestExtensionSessionTimestampUsesMilliseconds(t *testing.T) {
 
 func TestExtensionSessionReadRejectsCorruptRetainedEntry(t *testing.T) {
 	s := NewSession("corrupt", "/test")
-	s.entries = []SessionEntry{{raw: json.RawMessage(`{"type":`)}}
+	s.entries = []SessionEntry{sessionentry.DecodeSessionEntry(json.RawMessage(`{"type":`))}
 	if _, err := ExtensionSessionRead(ExtensionSessionView{Session: s}, "getEntries", nil); err == nil {
 		t.Fatal("corrupt retained entry was silently discarded")
 	}

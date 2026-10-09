@@ -1,0 +1,258 @@
+[
+ {
+  "ids": [
+   "pkg:codemode/.#CodemodeSandbox"
+  ],
+  "targets": [
+   "codemode/sandbox.go#Sandbox"
+  ],
+  "production": [
+   "call:coding/extension/builtin/codemode/execute.go#Execute"
+  ],
+  "evidence": [
+   "test:codemode/sandbox_test.go#TestSupportsRegisterAndUnregisterBetweenExecutions",
+   "test:codemode/sandbox_lists_test.go#TestSandboxExposesRegisteredToolsAndGlobalsSeparatelyInOrder"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; a rejection is the returned error. AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "CodemodeSandbox is the Go struct Sandbox; each member was mapped individually.",
+  "properties": {
+   "globals": {
+    "targets": [
+     "codemode/sandbox.go#Sandbox.Globals"
+    ],
+    "evidence": [
+     "test:codemode/sandbox_lists_test.go#TestSandboxExposesRegisteredToolsAndGlobalsSeparatelyInOrder"
+    ],
+    "production": [
+     "call:coding/extension/builtin/codemode/execute.go#Execute"
+    ],
+    "rationale": "The globals array property is the method Globals(), a copy in registration order."
+   },
+   "close": {
+    "targets": [
+     "codemode/sandbox.go#Sandbox.Close"
+    ],
+    "evidence": [
+     "test:codemode/sandbox_test.go#TestRejectsExecuteAfterClose",
+     "test:codemode/lifetime_test.go#TestExecuteReturnsOnlyAfterTheVMIsClosedForEveryTerminalKind"
+    ],
+    "production": [
+     "call:coding/extension/builtin/codemode/execute.go#Execute"
+    ],
+    "rationale": "CodemodeSandbox.close is the Go method codemode.Sandbox.Close; signature reviewed against the upstream declaration (a Promise or rejection is the returned error; AbortSignal is the ctx argument; options are the ExecuteOptions struct)."
+   },
+   "execute": {
+    "targets": [
+     "codemode/sandbox.go#Sandbox.Execute"
+    ],
+    "evidence": [
+     "test:codemode/sandbox_test.go#TestTerminatesASynchronousInfiniteLoopOnTimeout",
+     "test:codemode/sandbox_test.go#TestSupportsRegisterAndUnregisterBetweenExecutions"
+    ],
+    "production": [
+     "call:coding/extension/builtin/codemode/execute.go#Execute"
+    ],
+    "rationale": "CodemodeSandbox.execute is the Go method codemode.Sandbox.Execute; signature reviewed against the upstream declaration (a Promise or rejection is the returned error; AbortSignal is the ctx argument; options are the ExecuteOptions struct)."
+   },
+   "registerTool": {
+    "targets": [
+     "codemode/sandbox.go#Sandbox.RegisterTool"
+    ],
+    "evidence": [
+     "test:codemode/sandbox_test.go#TestSupportsRegisterAndUnregisterBetweenExecutions"
+    ],
+    "production": [
+     "call:codemode/sandbox.go#NewSandbox"
+    ],
+    "rationale": "CodemodeSandbox.registerTool is the Go method codemode.Sandbox.RegisterTool; signature reviewed against the upstream declaration (a Promise or rejection is the returned error; AbortSignal is the ctx argument; options are the ExecuteOptions struct)."
+   },
+   "tools": {
+    "targets": [
+     "codemode/sandbox.go#Sandbox.Tools"
+    ],
+    "evidence": [
+     "test:codemode/sandbox_test.go#TestSupportsRegisterAndUnregisterBetweenExecutions"
+    ],
+    "production": [
+     "public-api:codemode/sandbox.go#Sandbox.Tools"
+    ],
+    "rationale": "CodemodeSandbox.tools is the Go method codemode.Sandbox.Tools; signature reviewed against the upstream declaration (a Promise or rejection is the returned error; AbortSignal is the ctx argument; options are the ExecuteOptions struct)."
+   },
+   "unregisterTool": {
+    "targets": [
+     "codemode/sandbox.go#Sandbox.UnregisterTool"
+    ],
+    "evidence": [
+     "test:codemode/sandbox_test.go#TestSupportsRegisterAndUnregisterBetweenExecutions"
+    ],
+    "production": [
+     "public-api:codemode/sandbox.go#Sandbox.UnregisterTool"
+    ],
+    "rationale": "CodemodeSandbox.unregisterTool is the Go method codemode.Sandbox.UnregisterTool; signature reviewed against the upstream declaration (a Promise or rejection is the returned error; AbortSignal is the ctx argument; options are the ExecuteOptions struct)."
+   }
+  }
+ },
+ {
+  "ids": [
+   "pkg:codemode/.#CodemodeSandbox::construct:0"
+  ],
+  "targets": [
+   "codemode/sandbox.go#NewSandbox"
+  ],
+  "production": [
+   "call:coding/extension/builtin/codemode/execute.go#Execute"
+  ],
+  "evidence": [
+   "test:codemode/sandbox_lists_test.go#TestSandboxRejectsInvalidReservedDuplicateAndConflictingGlobals",
+   "test:codemode/sandbox_lists_test.go#TestSandboxExposesRegisteredToolsAndGlobalsSeparatelyInOrder"
+  ],
+  "rationale": "`new CodemodeSandbox(options)` is NewSandbox(SandboxOptions), which returns the validation error where upstream throws."
+ },
+ {
+  "ids": [
+   "pkg:codemode/.#CodemodeExecuteOptions"
+  ],
+  "targets": [
+   "codemode/types.go#ExecuteOptions"
+  ],
+  "production": [
+   "call:coding/extension/builtin/codemode/execute.go#Execute"
+  ],
+  "evidence": [
+   "test:codemode/sandbox_test.go#TestAbortsViaContextAndCancelsInFlightCalls"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; a rejection is the returned error. AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "CodemodeExecuteOptions is the Go struct ExecuteOptions; signal is the ctx argument of Sandbox.Execute.",
+  "properties": {
+   "signal": {
+    "targets": [
+     "codemode/sandbox.go#Sandbox.Execute"
+    ],
+    "evidence": [
+     "test:codemode/sandbox_test.go#TestAbortsViaContextAndCancelsInFlightCalls"
+    ],
+    "production": [
+     "call:coding/extension/builtin/codemode/execute.go#Execute"
+    ],
+    "rationale": "The AbortSignal is the context.Context argument of Execute; cancelling it aborts the execution with the context's cause as the message."
+   },
+   "store": {
+    "targets": [
+     "codemode/types.go#ExecuteOptions.Store"
+    ],
+    "evidence": [
+     "test:codemode/sandbox_test.go#TestRejectsInvalidKeysValuesAndOversizedWritesInsideTheScript"
+    ],
+    "production": [
+     "call:coding/extension/builtin/codemode/execute.go#Execute"
+    ],
+    "rationale": "Store holds JSON text per key where upstream holds unknown values; load(key) reads it."
+   },
+   "timeoutMs": {
+    "targets": [
+     "codemode/types.go#ExecuteOptions.TimeoutMs"
+    ],
+    "evidence": [
+     "test:codemode/sandbox_test.go#TestTerminatesASynchronousInfiniteLoopOnTimeout",
+     "test:codemode/sandbox_test.go#TestRunsWithoutADeadlineWhenTimeoutIsInfinity"
+    ],
+    "production": [
+     "call:coding/extension/builtin/codemode/execute.go#Execute"
+    ],
+    "rationale": "TimeoutMs; zero is undefined (keep the sandbox's) and +Inf disables the deadline."
+   }
+  }
+ },
+ {
+  "ids": [
+   "pkg:codemode/.#CodemodeSandboxOptions::property:tools"
+  ],
+  "targets": [
+   "codemode/types.go#SandboxOptions.Tools"
+  ],
+  "production": [
+   "call:coding/extension/builtin/codemode/execute.go#Execute"
+  ],
+  "evidence": [
+   "test:codemode/sandbox_test.go#TestSupportsRegisterAndUnregisterBetweenExecutions",
+   "test:codemode/sandbox_lists_test.go#TestSandboxExposesRegisteredToolsAndGlobalsSeparatelyInOrder"
+  ],
+  "rationale": "SandboxOptions.Tools."
+ },
+ {
+  "ids": [
+   "pkg:codemode/.#CodemodeSandboxOptions::property:globals"
+  ],
+  "targets": [
+   "codemode/types.go#SandboxOptions.Globals"
+  ],
+  "production": [
+   "call:coding/extension/builtin/codemode/execute.go#Execute"
+  ],
+  "evidence": [
+   "test:codemode/sandbox_lists_test.go#TestSandboxRejectsInvalidReservedDuplicateAndConflictingGlobals",
+   "test:codemode/sandbox_lists_test.go#TestSandboxExposesRegisteredToolsAndGlobalsSeparatelyInOrder"
+  ],
+  "rationale": "SandboxOptions.Globals; names are validated at construction."
+ },
+ {
+  "ids": [
+   "pkg:codemode/.#CodemodeSandboxOptions::property:timeoutMs"
+  ],
+  "targets": [
+   "codemode/types.go#SandboxOptions.TimeoutMs"
+  ],
+  "production": [
+   "call:coding/extension/builtin/codemode/execute.go#Execute"
+  ],
+  "evidence": [
+   "test:codemode/sandbox_test.go#TestTerminatesASynchronousInfiniteLoopOnTimeout"
+  ],
+  "rationale": "SandboxOptions.TimeoutMs; zero is undefined (300000)."
+ },
+ {
+  "ids": [
+   "pkg:codemode/.#CodemodeSandboxOptions::property:memoryLimitBytes"
+  ],
+  "targets": [
+   "codemode/types.go#SandboxOptions.MemoryLimitBytes"
+  ],
+  "production": [
+   "call:coding/extension/builtin/codemode/execute.go#Execute"
+  ],
+  "evidence": [
+   "test:codemode/lifetime_test.go#TestExecuteReturnsOnlyAfterTheVMIsClosedForEveryTerminalKind"
+  ],
+  "rationale": "SandboxOptions.MemoryLimitBytes (uint32); zero is undefined (no limit beyond the wasm32 space)."
+ },
+ {
+  "ids": [
+   "pkg:codemode/.#CodemodeToolContext"
+  ],
+  "targets": [
+   "codemode/types.go#Tool"
+  ],
+  "production": [
+   "call:codemode/execution.go#execution.run"
+  ],
+  "evidence": [
+   "test:codemode/sandbox_test.go#TestAbortsViaContextAndCancelsInFlightCalls"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; a rejection is the returned error. AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "CodemodeToolContext has one member, signal, which is the context.Context first argument of Tool.Execute (Tool's comment records the mapping).",
+  "properties": {
+   "signal": {
+    "targets": [
+     "codemode/types.go#Tool.Execute"
+    ],
+    "evidence": [
+     "test:codemode/sandbox_test.go#TestAbortsViaContextAndCancelsInFlightCalls"
+    ],
+    "production": [
+     "call:codemode/execution.go#execution.run"
+    ],
+    "rationale": "The tool's AbortSignal is the ctx passed to Tool.Execute, cancelled when the script finishes, times out, is aborted or the sandbox closes."
+   }
+  }
+ }
+]

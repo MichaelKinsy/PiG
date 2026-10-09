@@ -1,0 +1,56 @@
+# Behavior family: slash-commands
+# Surface: the text of the `mcp_servers` prompt section (extensions/mcp/index.ts renderServersSection)
+#
+# Upstream evidence (pinned pi 1.1.0): the agent directory configures one enabled stdio server with a description (`sleep 300`,
+# which never answers `initialize`) and codemode exposure. After the first prompt, the system message holds the section:
+# the intro that says codemode scripts call the tools of `codemode` servers, then the server's line with its namespace, how
+# its tools are reached and its description. testdata/mcp-prompt-section.ts prints that text through `/mcp-section-text`. The
+# crop is the printed text. The comparator is output_equal.
+
+# Mutation (compiling): the server line without its description (coding/mcpext/extension.go serverSummary) fails this scenario.
+name = "23-mcp-servers-section-text"
+description = "Both binaries render the same mcp_servers prompt section for a configured codemode server."
+covers = [
+  "packages/coding-agent/src/extensions/mcp/index.ts",
+]
+tags = ["fast", "hermetic", "tui"]
+driver = "interactive-tmux"
+model = "test-faux/faux-1"
+
+[tmux]
+width = 100
+height = 35
+ready_pattern_pig = "[Context]"
+ready_pattern_pi = "[Context]"
+ready_timeout_seconds = 25
+capture_start = "mcp-text-begin"
+capture_end = "mcp-text-end"
+capture_start_last = true
+
+[[tmux.steps]]
+keys = ["hello", "Enter"]
+wait_contains = ["hello"]
+wait_timeout_seconds = 15
+settle_seconds = 3
+
+[[tmux.steps]]
+keys = ["/mcp-section-text", "Enter"]
+wait_contains = ["mcp-text-end"]
+wait_timeout_seconds = 10
+settle_seconds = 1
+
+[env]
+override_base_args = true
+pig = ["PIG_TEST_FAUX=1", "PIG_CODING_AGENT_DIR=testdata/mcp-slow-pig-agent"]
+pi = ["PI_CODING_AGENT_DIR=testdata/mcp-slow-pi-agent", "PI_SKIP_VERSION_CHECK=1"]
+pig_args = ["--session-dir", "{{TEMP}}/sessions"]
+pi_args = ["--session-dir", "{{TEMP}}/sessions"]
+pig_extensions = ["../../testdata/mcp-prompt-section.ts"]
+pi_extensions = ["../../testdata/test-faux-provider.ts", "../../testdata/mcp-prompt-section.ts"]
+
+[assert]
+both_reach_ready = true
+both_contain = ["mcp__slow (codemode): Never answers initialize"]
+both_not_contain = ["unknown command", "panic:", "goroutine "]
+output_equal = true
+runs = 3

@@ -1,3 +1,5 @@
+//go:build !pig_strip_node_extensions
+
 package subprocess
 
 import (
@@ -7,7 +9,6 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/MichaelKinsy/PiG/agent"
 	"github.com/MichaelKinsy/PiG/internal/coding/pigversion"
 )
 
@@ -88,7 +89,7 @@ func Extension() *sdk.Extension {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if got := result.(agent.AgentToolResult).Text(); got != `{"a":true,"c":true}` {
+		if got := result.Text(); got != `{"a":true,"c":true}` {
 			t.Errorf("bus after reload=%v: %s", reload, got)
 		}
 		if reload {

@@ -281,7 +281,7 @@ func (m *SessionWorkerManager) handleOperationResponse(peerID string, message se
 	var failure error
 	if response.Type == "operation_error" {
 		if response.Code != "" {
-			failure = &chord.RemoteServiceError{Code: response.Code, Message: response.Message}
+			failure = chord.NewRemoteServiceError(response.Code, response.Message)
 		} else {
 			failure = fmt.Errorf("Session worker operation failed: %s", response.Message)
 		}

@@ -12,6 +12,8 @@ const CLIENT_ID = decode("OWQxYzI1MGEtZTYxYi00NGQ5LTg4ZWQtNTk0NGQxOTYyZjVl");
 const AUTHORIZE_URL = "https://claude.ai/oauth/authorize";
 const TOKEN_URL = "https://platform.claude.com/v1/oauth/token";
 const CALLBACK_HOST = getProviderEnvValue("PI_OAUTH_CALLBACK_HOST") || "127.0.0.1";
+// Preferred so the port can be forwarded into containers or over SSH. Anthropic accepts any loopback port,
+// so login falls back to a free port when this one cannot be bound (#10571).
 const CALLBACK_PORT = 53692;
 const CALLBACK_PATH = "/callback";
 const REDIRECT_URI = `http://localhost:${CALLBACK_PORT}${CALLBACK_PATH}`;
@@ -111,21 +113,27 @@ async function exchangeAuthorizationCode(code, state, verifier, redirectUri, sig
 }
 async function loginAnthropic(interaction) {
     const { verifier, challenge } = await generatePKCE();
-    const callback = await startOAuthCallbackServer({
+    const startCallbackServer = (port) => startOAuthCallbackServer({
         providerName: "Anthropic",
         host: CALLBACK_HOST,
-        port: CALLBACK_PORT,
+        port,
         path: CALLBACK_PATH,
+        redirectHost: "localhost",
         state: verifier,
         complete: async (code) => code,
         signal: interaction.signal,
-    }).catch(() => undefined);
+    });
+    // Without a callback server, login continues with the pasted redirect URL.
+    const callback = await startCallbackServer(CALLBACK_PORT)
+        .catch(() => startCallbackServer(0))
+        .catch(() => undefined);
+    const redirectUri = callback?.redirectUri ?? REDIRECT_URI;
     try {
         const authParams = new URLSearchParams({
             code: "true",
             client_id: CLIENT_ID,
             response_type: "code",
-            redirect_uri: REDIRECT_URI,
+            redirect_uri: redirectUri,
             scope: SCOPES,
             code_challenge: challenge,
             code_challenge_method: "S256",
@@ -138,7 +146,7 @@ async function loginAnthropic(interaction) {
         });
         const result = await waitForCallbackOrManualInput(interaction, callback, {
             message: "Complete login in your browser, or paste the authorization code / redirect URL here:",
-            placeholder: REDIRECT_URI,
+            placeholder: redirectUri,
         });
         let code;
         let state = verifier;
@@ -155,7 +163,7 @@ async function loginAnthropic(interaction) {
         if (!code)
             throw new Error("Missing authorization code");
         interaction.notify({ type: "progress", message: "Exchanging authorization code for tokens..." });
-        return await exchangeAuthorizationCode(code, state, verifier, REDIRECT_URI, interaction.signal);
+        return await exchangeAuthorizationCode(code, state, verifier, redirectUri, interaction.signal);
     }
     finally {
         callback?.close();

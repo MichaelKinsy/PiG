@@ -44,16 +44,16 @@ func TestCopy(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		out := copied.(map[string]any)
-		if !reflect.DeepEqual(copied, input) {
+		out := copied.(*Object)
+		if !reflect.DeepEqual(plain(copied), input) {
 			t.Fatalf("copy = %v", copied)
 		}
-		left, right := out["left"].(map[string]any), out["right"].(map[string]any)
-		left["value"] = 9.0
-		if shared["value"] != 1.0 || right["value"] != 1.0 {
+		left, right := out.Value("left").(*Object), out.Value("right").(*Object)
+		left.Set("value", 9.0)
+		if shared["value"] != 1.0 || right.Value("value") != 1.0 {
 			t.Fatal("copy aliases the source or its sibling")
 		}
-		out["extra"] = true
+		out.Set("extra", true)
 		if _, present := input["extra"]; present {
 			t.Fatal("copy aliases the root")
 		}
@@ -64,7 +64,7 @@ func TestCopy(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if want := map[string]any{"i": 3.0, "u": 4.0, "f": 0.5}; !reflect.DeepEqual(copied, want) {
+		if want := map[string]any{"i": 3.0, "u": 4.0, "f": 0.5}; !reflect.DeepEqual(plain(copied), want) {
 			t.Fatalf("copy = %#v", copied)
 		}
 	})
@@ -74,8 +74,8 @@ func TestCopy(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		inner, present := copied.(map[string]any)["__proto__"]
-		if !present || !reflect.DeepEqual(inner, map[string]any{"safe": true}) {
+		inner, present := copied.(*Object).Get("__proto__")
+		if !present || !reflect.DeepEqual(plain(inner), map[string]any{"safe": true}) {
 			t.Fatalf("copy = %#v", copied)
 		}
 	})
@@ -115,7 +115,7 @@ func TestStored(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if want := map[string]any{"name": "a", "count": 2.0}; !reflect.DeepEqual(stored, want) {
+	if want := map[string]any{"name": "a", "count": 2.0}; !reflect.DeepEqual(plain(stored), want) {
 		t.Fatalf("stored = %#v", stored)
 	}
 	if _, err := Stored(make(chan int)); err == nil {
@@ -168,6 +168,25 @@ func TestOmitsUnsetObjectEntriesWithoutNormalizingArrays(t *testing.T) {
 			t.Fatalf("Copy(%v) = %v, %v; a null entry is data, not an unset entry", kept, copied, err)
 		}
 	}
+}
+
+// plain converts *Object values to map[string]any for comparison with Go literals.
+func plain(value any) any {
+	switch typed := value.(type) {
+	case *Object:
+		out := make(map[string]any, typed.Len())
+		for key, item := range typed.All() {
+			out[key] = plain(item)
+		}
+		return out
+	case []any:
+		out := make([]any, len(typed))
+		for at, item := range typed {
+			out[at] = plain(item)
+		}
+		return out
+	}
+	return value
 }
 
 func mustJSONText(t *testing.T, value any) string {

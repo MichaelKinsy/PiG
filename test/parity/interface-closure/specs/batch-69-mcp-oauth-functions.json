@@ -1,0 +1,51 @@
+[
+ {
+  "ids": [
+   "pkg:mcp/oauth#adaptOAuthProvider"
+  ],
+  "targets": [
+   "mcp/oauth/flow.go#AdaptOAuthProvider"
+  ],
+  "production": [
+   "public-api:mcp/oauth/flow.go#AdaptOAuthProvider"
+  ],
+  "evidence": [
+   "test:mcp/oauth/oauth_test.go#TestMCPOAuthAsksForAuthorizationInsteadOfRefreshingWhenTheServerNeedsMoreScope",
+   "test:mcp/oauth/oauth_test.go#TestMCPOAuthDiscoversRegistersAuthorizesWithPKCEAndRefreshesOn401"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "adaptOAuthProvider: Go AdaptOAuthProvider has the upstream parameters and result (signatures reviewed); callers attributed by go/types."
+ },
+ {
+  "ids": [
+   "pkg:mcp/oauth#discoverAuthorizationServerMetadata"
+  ],
+  "targets": [
+   "mcp/oauth/discovery.go#DiscoverAuthorizationServerMetadata"
+  ],
+  "production": [
+   "call:mcp/oauth/discovery.go#DiscoverOAuthServerInfo"
+  ],
+  "evidence": [
+   "test:mcp/oauth/oauth_test.go#TestMCPOAuthRejectsAuthorizationMetadataWhoseIssuerDoesNotMatchDiscovery"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; a rejection is the returned error. The three discovery options (fetch, protocolVersion, skipIssuerValidation) are fields of DiscoveryOptions; no AbortSignal in the upstream options (ctx is the Go cancellation argument).",
+  "rationale": "discoverAuthorizationServerMetadata: Go DiscoverAuthorizationServerMetadata has the upstream parameters and result (signatures reviewed); callers attributed by go/types."
+ },
+ {
+  "ids": [
+   "pkg:mcp/oauth#selectResource"
+  ],
+  "targets": [
+   "mcp/oauth/discovery.go#SelectResource"
+  ],
+  "production": [
+   "call:mcp/oauth/flow.go#runFlow"
+  ],
+  "evidence": [
+   "test:mcp/oauth/upstream_oracle_test.go#TestSelectResourceMatchesPi"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "selectResource: Go SelectResource has the upstream parameters and result (signatures reviewed); callers attributed by go/types."
+ }
+]

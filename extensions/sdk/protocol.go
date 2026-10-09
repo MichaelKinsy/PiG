@@ -210,11 +210,24 @@ type callResultMsg struct {
 	notifySeq uint64
 }
 
-// widgetPushMsg carries a string list widget. It has no width: the host lays
-// the list out at its own width, as Pi does for setWidget(key, string[]).
+// widgetPushMsg carries a string list widget or a widget view. It has no
+// width: the host lays the list out, and renders the view, at its own width,
+// as Pi does for setWidget(key, string[]). A view push carries no lines.
 type widgetPushMsg struct {
-	Key   string   `json:"key"`
-	Lines []string `json:"lines"`
+	Key   string          `json:"key"`
+	Lines []string        `json:"lines"`
+	View  json.RawMessage `json:"view,omitempty"`
+}
+
+func (m widgetPushMsg) MarshalJSON() ([]byte, error) {
+	if m.View != nil {
+		return json.Marshal(struct {
+			Key  string          `json:"key"`
+			View json.RawMessage `json:"view"`
+		}{m.Key, m.View})
+	}
+	type lines widgetPushMsg
+	return json.Marshal(lines(m))
 }
 
 type cancelMsg struct {
@@ -273,6 +286,10 @@ type conn struct {
 	// can wait until the loop has applied every notification that preceded
 	// its result.
 	notifications atomic.Uint64
+
+	// images is the set of image refs whose bytes a frame on this
+	// connection carried (D107).
+	images sentImages
 }
 
 type pendingCall struct {
@@ -603,5 +620,13 @@ func (c *conn) pushWidget(key string, lines []string) error {
 	return c.send(envelope{
 		Type:       msgWidgetPush,
 		WidgetPush: &widgetPushMsg{Key: key, Lines: lines},
+	})
+}
+
+// pushWidgetView sends a widget_push message carrying a view and no lines.
+func (c *conn) pushWidgetView(key string, view json.RawMessage) error {
+	return c.send(envelope{
+		Type:       msgWidgetPush,
+		WidgetPush: &widgetPushMsg{Key: key, View: view},
 	})
 }

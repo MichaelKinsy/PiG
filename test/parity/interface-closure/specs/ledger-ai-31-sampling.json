@@ -1,0 +1,35 @@
+[
+ {
+  "ids": [
+   "pkg:ai/.#SamplingParams",
+   "pkg:ai/compat#SamplingParams"
+  ],
+  "targets": [
+   "ai/types.go#SamplingParams"
+  ],
+  "production": [
+   "call:ai/simple_options.go#ResolveSamplingParams"
+  ],
+  "evidence": [
+   "test:ai/interface_ledger_test.go#TestResolveSamplingParamsMergesDefaultsLevelAndRequestInOrderLikeUpstream"
+  ],
+  "rationale": "SamplingParams is a Go alias of the map type upstream spells as Record/Partial<Record<ModelThinkingLevel, SamplingParams>>; the tests drive the per-level merge through stream and streamSimple."
+ },
+ {
+  "ids": [
+   "pkg:ai/.#SamplingParamsByThinkingLevel",
+   "pkg:ai/compat#SamplingParamsByThinkingLevel"
+  ],
+  "targets": [
+   "ai/types.go#SamplingParamsByThinkingLevel"
+  ],
+  "production": [
+   "call:internal/codingagent/model_registry.go#cloneSamplingParamsByThinkingLevel"
+  ],
+  "evidence": [
+   "test:ai/sampling_options_upstream_test.go#TestSamplingParamsByThinkingLevelDirectStreamUpstream",
+   "test:ai/sampling_options_upstream_test.go#TestSamplingParamsByThinkingLevelStreamSimpleUpstream"
+  ],
+  "rationale": "SamplingParamsByThinkingLevel is a Go alias of the map type upstream spells as Record/Partial<Record<ModelThinkingLevel, SamplingParams>>; the tests drive the per-level merge through stream and streamSimple."
+ }
+]

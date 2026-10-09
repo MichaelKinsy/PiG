@@ -1,0 +1,27 @@
+# Behavior family: tui-components (coding-agent CustomEditor top border)
+# Pi 1.1.0 probe: CustomEditor with embedWorkingStatus and a WorkingStatusIndicator (custom frames, empty and long messages, spinner ticks,
+# both themes, off and high thinking border colours), typed rows scrolled out of view, rendered at widths 2 to 80 (every width 2 to 64 for the
+# points where the overflow label and the status stop fitting); every row is compared byte for byte. The Go test TestEditorStatusBorderMatchesPi
+# runs the same corpus against the installed Pi; this scenario compares the two printed streams.
+name = "32-editor-status-border"
+description = "The editor's working status in the top border, with the overflow label, renders as in Pi."
+covers = ["packages/coding-agent/src/modes/interactive/components/custom-editor.ts"]
+tags = ["fast", "hermetic", "tui"]
+driver = "cli-mode"
+
+[env]
+override_base_args = true
+pig_bin = "/usr/bin/env"
+pi_bin = "/usr/bin/env"
+pig_args = ["node", "./test/parity/testdata/editor-status-pig.mjs"]
+pi_args = ["node", "./test/parity/testdata/editor-status-pi.mjs"]
+
+[cli]
+cwd = "../../../.."
+timeout_seconds = 240
+
+[assert]
+exit_code = 0
+output_equal = true
+both_contain = ['more', 'Working']
+runs = 2

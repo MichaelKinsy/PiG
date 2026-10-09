@@ -59,6 +59,8 @@ func wantColorError(t *testing.T, err error, pattern string) {
 }
 
 // .upstream/v0.99.2/packages/tui/test/colors.test.ts:15.
+// Pi source: packages/tui/src/colors.ts
+// mutation-checked: dropping the reads and writes of TextStyle.Bg, TextStyle.Fg fails it
 func TestUpstreamColors(t *testing.T) {
 	// colors.test.ts:16.
 	t.Run("parses hex and OKLCH colors and rejects everything else", func(t *testing.T) {
@@ -124,4 +126,30 @@ func TestUpstreamColors(t *testing.T) {
 			t.Fatalf("256-color style = %q", got)
 		}
 	})
+}
+
+// colors.ts discriminates its Color union on `kind`: indexedColor, rgbColor and oklchColor build "indexed", "rgb" and "oklch".
+func TestColorKindDiscriminator(t *testing.T) {
+	for _, tc := range []struct {
+		color Color
+		want  string
+	}{
+		{IndexedColor{Index: 3}, "indexed"},
+		{RgbColorValue{R: 1, G: 2, B: 3}, "rgb"},
+		{OklchColorValue{L: 0.5, C: 0.1, H: 20}, "oklch"},
+	} {
+		if got := tc.color.Kind(); got != tc.want {
+			t.Errorf("%T.Kind() = %q, want %q", tc.color, got, tc.want)
+		}
+	}
+	// parseColor yields each variant with its own kind.
+	for input, want := range map[string]string{"#ff0000": "rgb", "oklch(0.5 0.1 20)": "oklch"} {
+		c, err := ParseColor(input)
+		if err != nil || c.Kind() != want {
+			t.Errorf("ParseColor(%q) = %#v, %v; want kind %q", input, c, err, want)
+		}
+	}
+	if c, err := ParseColor(7); err != nil || c.Kind() != "indexed" {
+		t.Errorf("ParseColor(7) = %#v, %v; want kind indexed", c, err)
+	}
 }

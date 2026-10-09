@@ -4,8 +4,8 @@ import (
 	"errors"
 	"fmt"
 	"slices"
-	"strings"
 
+	"github.com/MichaelKinsy/PiG/internal/jsstring"
 	"github.com/MichaelKinsy/PiG/tui"
 )
 
@@ -13,12 +13,12 @@ import (
 
 // handleLoginCommand mirrors Pi's handleLoginCommand (interactive-mode.ts:5775-5795).
 func handleLoginCommand(sc *SlashContext) error {
-	ref := strings.ToLower(strings.TrimSpace(sc.Args))
+	ref := jsstring.ToLower(jsstring.Trim(sc.Args))
 	if ref == "" {
 		return showLoginAuthTypeSelector(sc, nil)
 	}
 	matches := slices.DeleteFunc(slices.Clone(sc.LoginProviders()), func(p tui.OAuthProvider) bool {
-		return strings.ToLower(p.ID) != ref && strings.ToLower(p.Name) != ref
+		return jsstring.ToLower(p.ID) != ref && jsstring.ToLower(p.Name) != ref
 	})
 	if len(matches) == 1 {
 		return startProviderLogin(sc, matches[0], nil)
@@ -109,6 +109,10 @@ func handleLogoutCommand(sc *SlashContext) error {
 		return nil
 	}
 	if err := sc.Logout(provider.ID); err != nil {
+		// upstream: interactive-mode.ts:6018-6023
+		if _, ok := errors.AsType[*CredentialSynchronizationError](err); ok {
+			return fmt.Errorf("Credentials removed for %s, but local model state could not be synchronized: %s", provider.Name, err.Error())
+		}
 		return fmt.Errorf("Logout failed: %w", err)
 	}
 	message := "Logged out of " + provider.Name

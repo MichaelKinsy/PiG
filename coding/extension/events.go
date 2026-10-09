@@ -123,8 +123,9 @@ type SessionBeforeCompactEvent struct {
 
 // SessionBeforeCompactResult: upstream types.ts SessionBeforeCompactResult.
 type SessionBeforeCompactResult struct {
-	Cancel     bool             `json:"cancel,omitempty"`
-	Compaction CompactionResult `json:"compaction,omitempty"`
+	Cancel bool `json:"cancel,omitempty"`
+	// Compaction is the extension-supplied CompactionResult (types.ts:1472); a subprocess extension's raw JSON result reaches the host undecoded.
+	Compaction *CompactionResult `json:"compaction,omitempty"`
 }
 
 // SessionCompactEvent: upstream types.ts SessionCompactEvent.
@@ -174,13 +175,13 @@ type SessionBeforeTreeEvent struct {
 	Signal      context.Context `json:"-"`
 }
 
-// SessionBeforeTreeResult: upstream types.ts SessionBeforeTreeResult.
+// SessionBeforeTreeResult: upstream types.ts SessionBeforeTreeResult. A nil pointer is a field the handler left undefined, so the navigation keeps its own value; an explicit false or empty string overrides it.
 type SessionBeforeTreeResult struct {
 	Cancel              bool                            `json:"cancel,omitempty"`
 	Summary             *SessionBeforeTreeResultSummary `json:"summary,omitempty"`
-	CustomInstructions  string                          `json:"customInstructions,omitempty"`
-	ReplaceInstructions bool                            `json:"replaceInstructions,omitempty"`
-	Label               string                          `json:"label,omitempty"`
+	CustomInstructions  *string                         `json:"customInstructions,omitempty"`
+	ReplaceInstructions *bool                           `json:"replaceInstructions,omitempty"`
+	Label               *string                         `json:"label,omitempty"`
 }
 
 // SessionBeforeTreeResultSummary mirrors the inline `summary` object on
@@ -189,7 +190,7 @@ type SessionBeforeTreeResultSummary struct {
 	Summary string `json:"summary"`
 	Details any    `json:"details,omitempty"`
 	// Usage is the pi-ai Usage of the extension's summarization call.
-	Usage any `json:"usage,omitempty"`
+	Usage *ai.Usage `json:"usage,omitempty"`
 }
 
 // UnmarshalJSON keeps the member order of the `details` object the extension wrote.
@@ -206,11 +207,11 @@ func (s *SessionBeforeTreeResultSummary) UnmarshalJSON(data []byte) error {
 // no leaf. We use *string so json.Marshal emits null on nil and so the
 // distinction survives a marshal/unmarshal cycle.
 type SessionTreeEvent struct {
-	Type          string             `json:"type"`
-	NewLeafID     *string            `json:"newLeafId"`
-	OldLeafID     *string            `json:"oldLeafId"`
-	SummaryEntry  BranchSummaryEntry `json:"summaryEntry,omitempty"`
-	FromExtension bool               `json:"fromExtension,omitempty"`
+	Type          string              `json:"type"`
+	NewLeafID     *string             `json:"newLeafId"`
+	OldLeafID     *string             `json:"oldLeafId"`
+	SummaryEntry  *BranchSummaryEntry `json:"summaryEntry,omitempty"`
+	FromExtension bool                `json:"fromExtension,omitempty"`
 }
 
 // ─── Agent Events ────────────────────────────────────────────────────────
@@ -310,7 +311,7 @@ type BeforeAgentStartEventResult struct {
 type CustomMessageRef struct {
 	CustomType string `json:"customType"`
 	Content    any    `json:"content"`
-	Display    any    `json:"display,omitempty"`
+	Display    bool   `json:"display"`
 	Details    any    `json:"details,omitempty"`
 }
 
@@ -343,6 +344,8 @@ type AgentBeforeSettleEvent struct {
 // continuation will run.
 type AgentSettledEvent struct {
 	Type string `json:"type"`
+	// Aborted is whether the run ended because it was aborted, for example with Escape.
+	Aborted bool `json:"aborted"`
 }
 
 // UIPromptKind mirrors upstream types.ts UIPromptKind:
@@ -392,57 +395,71 @@ const (
 	AgentActivityError     AgentActivityOutcome = "error"
 )
 
+// SessionBoundaryDraftType is the discriminator of the SessionBoundaryDraft union: the type of each upstream member.
+type SessionBoundaryDraftType string
+
+const (
+	// SessionBoundaryDraftCustom is upstream CustomEntryDraft.
+	SessionBoundaryDraftCustom SessionBoundaryDraftType = "custom"
+	// SessionBoundaryDraftCustomMessage is upstream CustomMessageEntryDraft.
+	SessionBoundaryDraftCustomMessage SessionBoundaryDraftType = "custom_message"
+	// SessionBoundaryDraftContextEdit is upstream ContextEditEntryDraft.
+	SessionBoundaryDraftContextEdit SessionBoundaryDraftType = "context_edit"
+	// SessionBoundaryDraftCompaction is upstream CompactionEntryDraft.
+	SessionBoundaryDraftCompaction SessionBoundaryDraftType = "compaction"
+)
+
 // SessionBoundaryDraft is the wire representation of upstream's closed
 // SessionBoundaryDraft union. Fields apply according to Type.
 type SessionBoundaryDraft struct {
-	Type             string          `json:"type"`
-	CustomType       string          `json:"customType,omitempty"`
-	Data             any             `json:"data,omitempty"`
-	Content          any             `json:"content,omitempty"`
-	Display          bool            `json:"display,omitempty"`
-	Details          any             `json:"details,omitempty"`
-	TargetID         string          `json:"targetId,omitempty"`
-	Replacement      json.RawMessage `json:"replacement,omitempty"`
-	Summary          string          `json:"summary,omitempty"`
-	FirstKeptEntryID *string         `json:"firstKeptEntryId,omitempty"`
-	Usage            *ai.Usage       `json:"usage,omitempty"`
+	Type             SessionBoundaryDraftType `json:"type"`
+	CustomType       string                   `json:"customType,omitempty"`
+	Data             any                      `json:"data,omitempty"`
+	Content          any                      `json:"content,omitempty"`
+	Display          bool                     `json:"display,omitempty"`
+	Details          any                      `json:"details,omitempty"`
+	TargetID         string                   `json:"targetId,omitempty"`
+	Replacement      json.RawMessage          `json:"replacement,omitempty"`
+	Summary          string                   `json:"summary,omitempty"`
+	FirstKeptEntryID *string                  `json:"firstKeptEntryId,omitempty"`
+	Usage            *ai.Usage                `json:"usage,omitempty"`
 }
 
 // MarshalJSON preserves each upstream union member's required fields,
 // including null firstKeptEntryId and replacement values.
 func (d SessionBoundaryDraft) MarshalJSON() ([]byte, error) {
 	switch d.Type {
-	case "custom":
+	case SessionBoundaryDraftCustom:
 		return json.Marshal(struct {
-			Type       string `json:"type"`
-			CustomType string `json:"customType"`
-			Data       any    `json:"data,omitempty"`
+			Type       SessionBoundaryDraftType `json:"type"`
+			CustomType string                   `json:"customType"`
+			Data       any                      `json:"data,omitempty"`
 		}{d.Type, d.CustomType, d.Data})
-	case "custom_message":
+	case SessionBoundaryDraftCustomMessage:
 		return json.Marshal(struct {
-			Type       string `json:"type"`
-			CustomType string `json:"customType"`
-			Content    any    `json:"content"`
-			Display    bool   `json:"display"`
-			Details    any    `json:"details,omitempty"`
+			Type       SessionBoundaryDraftType `json:"type"`
+			CustomType string                   `json:"customType"`
+			Content    any                      `json:"content"`
+			Display    bool                     `json:"display"`
+			Details    any                      `json:"details,omitempty"`
 		}{d.Type, d.CustomType, d.Content, d.Display, d.Details})
-	case "context_edit":
+	case SessionBoundaryDraftContextEdit:
 		replacement := d.Replacement
 		if len(replacement) == 0 {
 			replacement = json.RawMessage("null")
 		}
 		return json.Marshal(struct {
-			Type        string          `json:"type"`
-			TargetID    string          `json:"targetId"`
-			Replacement json.RawMessage `json:"replacement"`
+			Type        SessionBoundaryDraftType `json:"type"`
+			TargetID    string                   `json:"targetId"`
+			Replacement json.RawMessage          `json:"replacement"`
 		}{d.Type, d.TargetID, replacement})
-	case "compaction":
+	case SessionBoundaryDraftCompaction:
 		return json.Marshal(struct {
-			Type             string    `json:"type"`
-			Summary          string    `json:"summary"`
-			FirstKeptEntryID *string   `json:"firstKeptEntryId"`
-			Details          any       `json:"details,omitempty"`
-			Usage            *ai.Usage `json:"usage,omitempty"`
+			Type             SessionBoundaryDraftType `json:"type"`
+			Summary          string                   `json:"summary"`
+			FirstKeptEntryID *string                  `json:"firstKeptEntryId"`
+			Details          any                      `json:"details,omitempty"`
+			Usage            *ai.Usage                `json:"usage,omitempty"`
 		}{d.Type, d.Summary, d.FirstKeptEntryID, d.Details, d.Usage})
 	default:
 		type plain SessionBoundaryDraft
@@ -467,7 +484,7 @@ type ProjectedSessionEntry struct {
 type BoundaryContextPreview struct {
 	ContextEntries  []ProjectedSessionEntry `json:"contextEntries"`
 	ContextMessages []AgentMessage          `json:"contextMessages"`
-	LLMMessages     []any                   `json:"llmMessages"`
+	LLMMessages     []ai.Message            `json:"llmMessages"`
 	PendingMessages []AgentMessage          `json:"pendingMessages"`
 	CanContinue     bool                    `json:"canContinue"`
 }
@@ -486,6 +503,9 @@ type BoundaryResult struct {
 	Entries  *[]SessionBoundaryDraft `json:"entries,omitempty"`
 	Continue *bool                   `json:"continue,omitempty"`
 }
+
+// TurnEndEventResult mirrors upstream's BoundaryResult alias for turn_end handlers.
+type TurnEndEventResult = BoundaryResult
 
 // AgentBeforeSettleEventResult mirrors upstream's BoundaryResult alias.
 type AgentBeforeSettleEventResult = BoundaryResult
@@ -592,6 +612,9 @@ type ToolExecutionEndEvent struct {
 	// WireResult is the value the event carries for Result on the extension wire, with its members in the order the tool wrote them: a map in Result sorts them. Nil when Result marshals as it is.
 	WireResult any  `json:"-"`
 	IsError    bool `json:"isError"`
+	// DurationMs is the milliseconds execute() took, measured with a monotonic clock; absent when the tool did not run.
+	// upstream: types.ts ToolExecutionEndEvent.durationMs
+	DurationMs *int64 `json:"durationMs,omitempty"`
 	// ParentToolCallID is set when another tool (for example a codemode script)
 	// made this call. upstream: parentToolCallId?: string
 	ParentToolCallID string `json:"parentToolCallId,omitempty"`
@@ -627,9 +650,9 @@ type ModelSelectEvent struct {
 
 // ThinkingLevelSelectEvent: upstream types.ts ThinkingLevelSelectEvent.
 type ThinkingLevelSelectEvent struct {
-	Type          string `json:"type"`
-	Level         string `json:"level"`
-	PreviousLevel string `json:"previousLevel"`
+	Type          string                `json:"type"`
+	Level         ai.ModelThinkingLevel `json:"level"`
+	PreviousLevel ai.ModelThinkingLevel `json:"previousLevel"`
 }
 
 // ─── User Bash Events ────────────────────────────────────────────────────
@@ -737,67 +760,75 @@ type ToolCallEventBase struct {
 	WireInput *json.RawMessage `json:"-"`
 }
 
-// BashToolCallEvent: upstream types.ts BashToolCallEvent.
-type BashToolCallEvent struct {
-	ToolCallEventBase
-	ToolName string        `json:"toolName"` // "bash"
-	Input    BashToolInput `json:"input"`
-}
-
-// PowerShellToolCallEvent: upstream types.ts PowerShellToolCallEvent.
-type PowerShellToolCallEvent struct {
-	ToolCallEventBase
-	ToolName string              `json:"toolName"` // "powershell"
-	Input    PowerShellToolInput `json:"input"`
-}
-
-// ReadToolCallEvent: upstream types.ts ReadToolCallEvent.
-type ReadToolCallEvent struct {
-	ToolCallEventBase
-	ToolName string        `json:"toolName"` // "read"
-	Input    ReadToolInput `json:"input"`
-}
-
-// EditToolCallEvent: upstream types.ts EditToolCallEvent.
-type EditToolCallEvent struct {
-	ToolCallEventBase
-	ToolName string        `json:"toolName"` // "edit"
-	Input    EditToolInput `json:"input"`
-}
-
-// WriteToolCallEvent: upstream types.ts WriteToolCallEvent.
-type WriteToolCallEvent struct {
-	ToolCallEventBase
-	ToolName string         `json:"toolName"` // "write"
-	Input    WriteToolInput `json:"input"`
-}
-
-// GrepToolCallEvent: upstream types.ts GrepToolCallEvent.
-type GrepToolCallEvent struct {
-	ToolCallEventBase
-	ToolName string        `json:"toolName"` // "grep"
-	Input    GrepToolInput `json:"input"`
-}
-
-// FindToolCallEvent: upstream types.ts FindToolCallEvent.
-type FindToolCallEvent struct {
-	ToolCallEventBase
-	ToolName string        `json:"toolName"` // "find"
-	Input    FindToolInput `json:"input"`
-}
-
-// LsToolCallEvent: upstream types.ts LsToolCallEvent.
-type LsToolCallEvent struct {
-	ToolCallEventBase
-	ToolName string      `json:"toolName"` // "ls"
-	Input    LsToolInput `json:"input"`
-}
-
-// CustomToolCallEvent: upstream types.ts CustomToolCallEvent.
+// CustomToolCallEvent: upstream types.ts CustomToolCallEvent. It also stands for the nine upstream per-tool variants (Bash, PowerShell, Read, Edit, Write, Grep, Find and Ls ToolCallEvent), which differ from it only in the compile-time type of `input`; the Session emits this type for every tool.
 type CustomToolCallEvent struct {
 	ToolCallEventBase
 	ToolName string         `json:"toolName"`
 	Input    map[string]any `json:"input"`
+}
+
+// IsToolCallEventType reports whether event is a tool call of the named tool. It narrows nothing: a caller that needs the variant type-asserts after the test, as upstream's type guard narrows the event.
+// Mirrors upstream types.ts isToolCallEventType, which compares event.toolName with toolName.
+func IsToolCallEventType(toolName string, event ToolCallEvent) bool {
+	if event, ok := event.(CustomToolCallEvent); ok {
+		return event.ToolName == toolName
+	}
+	return false
+}
+
+// toolResultName is the toolName of a tool_result event, whichever union member carries it.
+func toolResultName(event ToolResultEvent) (string, bool) {
+	switch event := event.(type) {
+	case BashToolResultEvent:
+		return event.ToolName, true
+	case PowerShellToolResultEvent:
+		return event.ToolName, true
+	case ReadToolResultEvent:
+		return event.ToolName, true
+	case EditToolResultEvent:
+		return event.ToolName, true
+	case WriteToolResultEvent:
+		return event.ToolName, true
+	case GrepToolResultEvent:
+		return event.ToolName, true
+	case FindToolResultEvent:
+		return event.ToolName, true
+	case LsToolResultEvent:
+		return event.ToolName, true
+	case CustomToolResultEvent:
+		return event.ToolName, true
+	}
+	return "", false
+}
+
+// IsBashToolResult reports whether event is the result of the bash tool. upstream: types.ts:1315 isBashToolResult, e.toolName === "bash".
+// It narrows nothing: the Session emits CustomToolResultEvent for every tool, and a caller that needs a variant type-asserts after the test.
+func IsBashToolResult(event ToolResultEvent) bool { return toolResultNamed(event, "bash") }
+
+// IsPowerShellToolResult reports whether event is the result of the powershell tool. upstream: types.ts:1318 isPowerShellToolResult.
+func IsPowerShellToolResult(event ToolResultEvent) bool { return toolResultNamed(event, "powershell") }
+
+// IsReadToolResult reports whether event is the result of the read tool. upstream: types.ts:1321 isReadToolResult.
+func IsReadToolResult(event ToolResultEvent) bool { return toolResultNamed(event, "read") }
+
+// IsEditToolResult reports whether event is the result of the edit tool. upstream: types.ts:1324 isEditToolResult.
+func IsEditToolResult(event ToolResultEvent) bool { return toolResultNamed(event, "edit") }
+
+// IsWriteToolResult reports whether event is the result of the write tool. upstream: types.ts:1327 isWriteToolResult.
+func IsWriteToolResult(event ToolResultEvent) bool { return toolResultNamed(event, "write") }
+
+// IsGrepToolResult reports whether event is the result of the grep tool. upstream: types.ts:1330 isGrepToolResult.
+func IsGrepToolResult(event ToolResultEvent) bool { return toolResultNamed(event, "grep") }
+
+// IsFindToolResult reports whether event is the result of the find tool. upstream: types.ts:1333 isFindToolResult.
+func IsFindToolResult(event ToolResultEvent) bool { return toolResultNamed(event, "find") }
+
+// IsLsToolResult reports whether event is the result of the ls tool. upstream: types.ts:1336 isLsToolResult.
+func IsLsToolResult(event ToolResultEvent) bool { return toolResultNamed(event, "ls") }
+
+func toolResultNamed(event ToolResultEvent, name string) bool {
+	got, ok := toolResultName(event)
+	return ok && got == name
 }
 
 // ToolCallEventResult: upstream types.ts ToolCallEventResult.
@@ -854,11 +885,11 @@ func ToolResultDetailsFor(details any) any {
 	return details
 }
 
-// ToolTruncation is the upstream TruncationResult wire shape (truncate.ts:15).
+// TruncationResult is the upstream TruncationResult wire shape (truncate.ts:15).
 // It is attached as the `truncation` field of read/bash/grep/find/ls tool
 // result details when output was truncated. All fields are present in a real
 // truncation object (it is only attached when truncation occurred).
-type ToolTruncation struct {
+type TruncationResult struct {
 	Content               string `json:"content"`
 	Truncated             bool   `json:"truncated"`
 	TruncatedBy           string `json:"truncatedBy"` // "lines" | "bytes"
@@ -875,8 +906,8 @@ type ToolTruncation struct {
 // BashToolDetails mirrors upstream bash.ts:31. Attached only when output
 // was truncated.
 type BashToolDetails struct {
-	Truncation     *ToolTruncation `json:"truncation,omitempty"`
-	FullOutputPath string          `json:"fullOutputPath,omitempty"`
+	Truncation     *TruncationResult `json:"truncation,omitempty"`
+	FullOutputPath string            `json:"fullOutputPath,omitempty"`
 }
 
 // PowerShellToolDetails is the bash details shape (upstream powershell.ts).
@@ -885,26 +916,26 @@ type PowerShellToolDetails = BashToolDetails
 // ReadToolDetails mirrors upstream read.ts:28. Attached only when output
 // was truncated (or the first line exceeded the byte limit).
 type ReadToolDetails struct {
-	Truncation *ToolTruncation `json:"truncation,omitempty"`
+	Truncation *TruncationResult `json:"truncation,omitempty"`
 }
 
 // GrepToolDetails mirrors upstream grep.ts:41. Sparse fields retain the requested numeric limit without rounding.
 type GrepToolDetails struct {
-	Truncation        *ToolTruncation `json:"truncation,omitempty"`
-	MatchLimitReached float64         `json:"matchLimitReached,omitempty"`
-	LinesTruncated    bool            `json:"linesTruncated,omitempty"`
+	Truncation        *TruncationResult `json:"truncation,omitempty"`
+	MatchLimitReached float64           `json:"matchLimitReached,omitempty"`
+	LinesTruncated    bool              `json:"linesTruncated,omitempty"`
 }
 
 // FindToolDetails mirrors upstream find.ts:32.
 type FindToolDetails struct {
-	Truncation         *ToolTruncation `json:"truncation,omitempty"`
-	ResultLimitReached *float64        `json:"resultLimitReached,omitempty"`
+	Truncation         *TruncationResult `json:"truncation,omitempty"`
+	ResultLimitReached *float64          `json:"resultLimitReached,omitempty"`
 }
 
 // LsToolDetails mirrors upstream ls.ts:23, including fractional requested limits.
 type LsToolDetails struct {
-	Truncation        *ToolTruncation `json:"truncation,omitempty"`
-	EntryLimitReached float64         `json:"entryLimitReached,omitempty"`
+	Truncation        *TruncationResult `json:"truncation,omitempty"`
+	EntryLimitReached float64           `json:"entryLimitReached,omitempty"`
 }
 
 // BashToolResultEvent: upstream types.ts BashToolResultEvent.
@@ -992,11 +1023,9 @@ type ToolResultEventResult struct {
 	// IsError is nil when the handler leaves the error flag unchanged, as
 	// upstream's optional `isError?: boolean` is undefined.
 	IsError *bool `json:"isError,omitempty"`
-	// Usage mirrors upstream ToolResultEventResult.usage (pi-ai Usage). Carried
-	// untyped over the extension wire boundary, consistent with Details above and
-	// the AgentMessage alias; folded into session usage totals by the
-	// deferred-tools accounting path.
-	Usage any `json:"usage,omitempty"`
+	// Usage replaces the tool's own usage in the session usage totals; nil keeps it.
+	// upstream: ToolResultEventResult.usage?: Usage
+	Usage *ai.Usage `json:"usage,omitempty"`
 }
 
 // UnmarshalJSON keeps the member order of the `details` object the handler wrote.
@@ -1007,32 +1036,15 @@ func (r *ToolResultEventResult) UnmarshalJSON(data []byte) error {
 
 // ─── Union event aliases ──────────────────────────────────────────────────
 
-// ToolCallEvent is the sealed union of per-tool ToolCallEvent variants.
-// Mirrors upstream's `export type ToolCallEvent = | BashToolCallEvent |
-// PowerShellToolCallEvent | ReadToolCallEvent | EditToolCallEvent | WriteToolCallEvent |
-// GrepToolCallEvent | FindToolCallEvent | LsToolCallEvent |
-// CustomToolCallEvent` (types.ts:810).
-//
-// Package-sealed via the unexported `isToolCallEvent` marker method: only
-// the nine variant structs declared in this package can satisfy it.
-// Authors handle the union via a type switch on the concrete variant.
-// Custom UnmarshalJSON in marshalling.go probes the `toolName` field to
-// dispatch to the correct variant when reading session JSONL.
+// ToolCallEvent is the event a tool_call handler receives. Pi's `ToolCallEvent` union (types.ts:810) has one member per built-in tool plus CustomToolCallEvent; the variants differ only in the compile-time type of `input`, and Pi's runtime emits the same object shape for every tool. The Session emits [CustomToolCallEvent] for every tool, so it is the one Go representation: a handler reads `ToolName` and the `Input` map. Package-sealed through the unexported `isToolCallEvent` marker.
 //
 // upstream: types.ts:810
 type ToolCallEvent interface {
+	ExtensionEvent
 	isToolCallEvent()
 }
 
-func (BashToolCallEvent) isToolCallEvent()       {}
-func (PowerShellToolCallEvent) isToolCallEvent() {}
-func (ReadToolCallEvent) isToolCallEvent()       {}
-func (EditToolCallEvent) isToolCallEvent()       {}
-func (WriteToolCallEvent) isToolCallEvent()      {}
-func (GrepToolCallEvent) isToolCallEvent()       {}
-func (FindToolCallEvent) isToolCallEvent()       {}
-func (LsToolCallEvent) isToolCallEvent()         {}
-func (CustomToolCallEvent) isToolCallEvent()     {}
+func (CustomToolCallEvent) isToolCallEvent() {}
 
 // ToolResultEvent is the sealed union of per-tool ToolResultEvent variants.
 // Mirrors upstream's `export type ToolResultEvent = | BashToolResultEvent |
@@ -1043,6 +1055,7 @@ func (CustomToolCallEvent) isToolCallEvent()     {}
 //
 // upstream: types.ts:869
 type ToolResultEvent interface {
+	ExtensionEvent
 	isToolResultEvent()
 }
 

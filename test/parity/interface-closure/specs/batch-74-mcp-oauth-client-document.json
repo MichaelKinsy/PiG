@@ -1,0 +1,23 @@
+[
+ {
+  "ids": [
+   "pkg:mcp/oauth#OAuthClientMetadataDocument"
+  ],
+  "targets": [
+   "mcp/oauth/flow.go#OAuthClientMetadataDocument"
+  ],
+  "struct": {
+   "file": "mcp/oauth/flow.go",
+   "type": "OAuthClientMetadataDocument"
+  },
+  "production": [
+   "call:coding/mcpext/oauth.go#clientMetadataDocument"
+  ],
+  "evidence": [
+   "test:mcp/oauth/provider_hooks_test.go#TestMCPOAuthUsesTheProvidersClientMetadataDocumentInsteadOfRegistering",
+   "test:mcp/oauth/provider_state_test.go#TestMcpOAuthProviderForwardsTheClientMetadataDocumentCallback"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "OAuthClientMetadataDocument: Go OAuthClientMetadataDocument has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+ }
+]

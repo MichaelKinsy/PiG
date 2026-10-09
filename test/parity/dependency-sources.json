@@ -25,5 +25,14 @@
     "source": "test/parity/dependency-sources/@anthropic-ai/sdk/0.129.0/lib/credentials/oidc-federation.mjs",
     "sha256": "076aedf8993c689ea2898b75f15518b6ff2ee79012420dc6281b45b0cf114146",
     "integrity": "sha512-MH7LB20kNpGLUpPTe2OG5XvL/KhX8HUO9XyBaFjgFk6TLS4Xjt0VPIuMKywe7POKKPslX+QxSlVok9e+8kG5Nw=="
+  },
+  {
+    "reference": "node_modules/typebox/build/system/settings/settings.mjs",
+    "manifest": "packages/coding-agent/package.json",
+    "package": "typebox",
+    "version": "1.3.27",
+    "source": "test/parity/dependency-sources/typebox/1.3.27/build/system/settings/settings.mjs",
+    "sha256": "d5d2395001e8990a3c23a105440db862bbb9989d7038176e511c009adf60a97d",
+    "integrity": "sha512-zu+jc1pcy4UiNThxikUr36f0Rybk9PEeCg/NE6adeWr/SKsdNO4EzZHYRDlv2YCVAfj3Odq3dESSo/jNyoBXzA=="
   }
 ]

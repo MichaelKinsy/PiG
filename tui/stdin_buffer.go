@@ -1,4 +1,3 @@
-// SPDX-FileCopyrightText: Copyright Hewlett Packard Enterprise Development LP
 // SPDX-FileCopyrightText: Copyright (c) 2025 Mario Zechner
 // SPDX-FileCopyrightText: Copyright (c) 2025 opentui
 // SPDX-License-Identifier: MIT
@@ -38,6 +37,8 @@ type StdinBuffer struct {
 	escapeTimeout  time.Duration
 	// utf8Pending holds the leading bytes of a character split across reads.
 	utf8Pending []byte
+	// events are the "data" and "paste" listeners (stdin-buffer.ts extends EventEmitter).
+	events stdinListeners
 }
 
 // StdinBufferOptions mirrors upstream StdinBufferOptions. A zero field keeps
@@ -143,6 +144,7 @@ func (b *StdinBuffer) ProcessString(s string) []string {
 			b.pasteBuffer = ""
 			b.pendingKittyCP = 0
 			out := []string{bracketedPasteStart + payload + bracketedPasteEnd}
+			b.Emit(StdinBufferEventPaste, payload)
 			if remaining != "" {
 				out = append(out, b.ProcessString(remaining)...)
 			}
@@ -154,11 +156,9 @@ func (b *StdinBuffer) ProcessString(s string) []string {
 	if start := strings.Index(b.buffer, bracketedPasteStart); start >= 0 {
 		var out []string
 		if start > 0 {
-			result, remainder := extractCompleteSequences(b.buffer[:start])
+			// An incomplete sequence directly before the paste marker is dropped, as upstream process() ignores that remainder.
+			result, _ := extractCompleteSequences(b.buffer[:start])
 			out = b.emitDataSequence(out, result...)
-			if remainder != "" {
-				out = b.emitDataSequence(out, remainder)
-			}
 		}
 		b.pendingKittyCP = 0
 		b.buffer = b.buffer[start+len(bracketedPasteStart):]
@@ -172,6 +172,7 @@ func (b *StdinBuffer) ProcessString(s string) []string {
 			b.pasteBuffer = ""
 			b.pendingKittyCP = 0
 			out = append(out, bracketedPasteStart+payload+bracketedPasteEnd)
+			b.Emit(StdinBufferEventPaste, payload)
 			if remaining != "" {
 				out = append(out, b.ProcessString(remaining)...)
 			}
@@ -201,6 +202,9 @@ func (b *StdinBuffer) GetBuffer() string { return b.buffer }
 func (b *StdinBuffer) HasPendingFlush() bool {
 	return b.buffer != ""
 }
+
+// Destroy releases the buffer the way terminal.ts stop() does: it clears pending input (stdin-buffer.ts:441-443 destroy calls clear).
+func (b *StdinBuffer) Destroy() { b.Clear() }
 
 func (b *StdinBuffer) Clear() {
 	b.buffer = ""
@@ -268,6 +272,7 @@ func (b *StdinBuffer) emitDataSequence(out []string, sequences ...string) []stri
 			b.pendingKittyCP = 0
 		}
 		out = append(out, sequence)
+		b.Emit(StdinBufferEventData, sequence)
 	}
 	return out
 }

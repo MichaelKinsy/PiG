@@ -2,6 +2,7 @@ package codemode
 
 import (
 	"context"
+	"crypto/sha256"
 	"errors"
 	"fmt"
 	"slices"
@@ -32,14 +33,18 @@ type Sandbox struct {
 	closed  bool
 	running map[*execution]struct{}
 
-	// loaded is the engine of a custom Wasm module, kept after the first successful load.
+	// prelude is the source evaluated before each script; tests replace it to send the host payloads the real prelude
+	// never produces, as upstream's host tests replace the worker.
+	prelude string
+
+	// loaded is the shared engine of a custom Wasm module, kept after the first successful load. The process owns it.
 	loadMu sync.Mutex
 	loaded *engine
 }
 
 // NewSandbox validates the globals and registers the tools.
 func NewSandbox(options SandboxOptions) (*Sandbox, error) {
-	s := &Sandbox{options: options, running: map[*execution]struct{}{}}
+	s := &Sandbox{options: options, running: map[*execution]struct{}{}, prelude: PreludeSource}
 	if s.options.TimeoutMs == 0 {
 		s.options.TimeoutMs = defaultTimeoutMs
 	}
@@ -161,12 +166,8 @@ func (s *Sandbox) Close() error {
 		e.abort("Sandbox closed")
 	}
 	s.loadMu.Lock()
-	loaded := s.loaded
 	s.loaded = nil
 	s.loadMu.Unlock()
-	if loaded != nil {
-		return loaded.close(context.Background())
-	}
 	return nil
 }
 
@@ -206,11 +207,40 @@ func (s *Sandbox) engine(ctx context.Context) (*engine, error) {
 	if err != nil {
 		return nil, err
 	}
-	e, err := newEngine(context.WithoutCancel(ctx), wasm, s.options.CacheDir, s.options.MemoryLimitBytes)
+	e, err := customEngine(context.WithoutCancel(ctx), wasm, s.options.CacheDir, s.options.MemoryLimitBytes)
 	if err != nil {
 		return nil, err
 	}
 	s.loaded = e
+	return e, nil
+}
+
+// customEngineKey identifies a compiled custom module: its content, the compilation cache location and the heap limit.
+type customEngineKey struct {
+	digest      [sha256.Size]byte
+	cacheDir    string
+	memoryLimit uint32
+}
+
+var (
+	customEnginesMu sync.Mutex
+	customEngines   = map[customEngineKey]*engine{}
+)
+
+// customEngine compiles a custom module once per process and shares it between the sandboxes that load the same bytes, as Pi's loadQuickJSWasm compiles a module once per process (wasm.ts:14-35) and every
+// sandbox given that module uses the one compilation. A failed compile is not kept, so the next call retries it.
+func customEngine(ctx context.Context, wasm []byte, cacheDir string, memoryLimit uint32) (*engine, error) {
+	key := customEngineKey{sha256.Sum256(wasm), cacheDir, memoryLimit}
+	customEnginesMu.Lock()
+	defer customEnginesMu.Unlock()
+	if e := customEngines[key]; e != nil {
+		return e, nil
+	}
+	e, err := newEngine(ctx, wasm, cacheDir, memoryLimit)
+	if err != nil {
+		return nil, err
+	}
+	customEngines[key] = e
 	return e, nil
 }
 

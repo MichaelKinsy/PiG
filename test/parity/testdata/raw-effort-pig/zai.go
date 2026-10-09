@@ -11,7 +11,7 @@ import (
 	"github.com/MichaelKinsy/PiG/coding"
 )
 
-func zaiRows(services *coding.Services) [][]any {
+func zaiRows(services *coding.AgentSessionServices) [][]any {
 	requests := make(chan map[string]any, 1)
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var body map[string]any

@@ -20,7 +20,7 @@ func TestAbortedRunDeliversTerminalEvents(t *testing.T) {
 		provider := &scriptedProvider{respond: func(_ int, req scriptedRequest) *ai.AssistantMessageEventStream {
 			return abortableStream(req.ctx, started)
 		}}
-		a := NewAgent(AgentOptions{Model: scriptedModel(provider), EventCh: events})
+		a := mustNewAgent(AgentOptions{Model: scriptedModel(provider), EventCh: events})
 		go func() {
 			<-started
 			cancel()
@@ -52,7 +52,7 @@ func TestEventDoneReleasesBlockedEmit(t *testing.T) {
 	done := make(chan struct{})
 	close(done)
 	provider := &scriptedProvider{respond: replyText("ok")}
-	a := NewAgent(AgentOptions{Model: scriptedModel(provider), EventCh: make(chan AgentEvent), EventDone: done})
+	a := mustNewAgent(AgentOptions{Model: scriptedModel(provider), EventCh: make(chan AgentEvent), EventDone: done})
 	if _, err := a.Send(context.Background(), "hi"); err != nil {
 		t.Fatalf("Send: %v", err)
 	}
@@ -73,7 +73,7 @@ func (cancelledStartProvider) Stream(ctx context.Context, _ ai.TranscriptContext
 func TestCancelledStreamStartEndsAborted(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
-	a := NewAgent(AgentOptions{Model: &ai.Model{ID: "m", Provider: cancelledStartProvider{}}})
+	a := mustNewAgent(AgentOptions{Model: &ai.Model{ID: "m", Provider: cancelledStartProvider{}}})
 	messages, err := a.Send(ctx, "hi")
 	if !errors.Is(err, context.Canceled) {
 		t.Fatalf("Send error %v, want context.Canceled", err)

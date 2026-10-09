@@ -101,8 +101,11 @@ func (content ImageContent) MarshalJSON() ([]byte, error) {
 	return marshalContent(content.contentType(), payload(content))
 }
 
-// JSONObject is a provider-facing JSON object.
-type JsonObject map[string]any
+// JsonValue is any JSON value: null, a boolean, a number, a string, an array or a JsonObject (types.ts:458).
+type JsonValue = any
+
+// JsonObject is a provider-facing JSON object (types.ts:459).
+type JsonObject map[string]JsonValue
 
 // ToolCall is a tool invocation block in an assistant message. Streaming OpenAI calls also serialize provider scratch fields until finalization or failure. Arguments is read and edited as a Go map; the member order the model sent is kept beside it and is written by ArgumentsJSON and MarshalJSON.
 type ToolCall struct {
@@ -164,6 +167,22 @@ func (content *ToolCall) UnmarshalJSON(data []byte) error {
 	}
 	*content = ToolCall(decoded)
 	return nil
+}
+
+// NewDecodedToolCall returns the tool call that decoding {"id":...,"name":...,"arguments":rawArguments,...} yields: the
+// arguments object and the member order of its objects, which rawArguments, the JSON text of the arguments value, fixes.
+// A caller that has already parsed the object uses it to skip the general decode.
+// pig additive (D104): builds a decoded tool call for the single-pass entry decoder.
+func NewDecodedToolCall(id, name, thoughtSignature, namespace string, arguments JsonObject, rawArguments []byte) (ToolCall, error) {
+	call := ToolCall{ID: id, Name: name, Arguments: arguments, ThoughtSignature: thoughtSignature, Namespace: namespace}
+	if len(rawArguments) > 0 {
+		order, err := readSchemaObjectOrder(rawArguments)
+		if err != nil {
+			return ToolCall{}, err
+		}
+		call.argumentOrder = order
+	}
+	return call, nil
 }
 
 func marshalContent(contentType string, content any) ([]byte, error) {
@@ -379,10 +398,28 @@ const (
 // "grammar" (Lark/regex grammar variants). Mirrors upstream
 // ConstrainedSamplingConfig; upstream's `false` maps to a nil pointer.
 type ConstrainedSamplingConfig struct {
-	Type     string                   `json:"type"`               // "json_schema" | "grammar"
-	Strict   string                   `json:"strict,omitempty"`   // json_schema: "prefer" | "require"
-	Variants map[GrammarFormat]string `json:"variants,omitempty"` // grammar: format → definition
+	Type     ConstrainedSamplingType   `json:"type"`
+	Strict   ConstrainedSamplingStrict `json:"strict,omitempty"`   // json_schema only
+	Variants GrammarVariants           `json:"variants,omitempty"` // grammar only: format → definition
 }
+
+// ConstrainedSamplingType is the discriminator of ConstrainedSamplingConfig: `"json_schema" | "grammar"`.
+// upstream: packages/ai/src/types.ts:707-715
+type ConstrainedSamplingType string
+
+const (
+	ConstrainedSamplingJSONSchema ConstrainedSamplingType = "json_schema"
+	ConstrainedSamplingGrammar    ConstrainedSamplingType = "grammar"
+)
+
+// ConstrainedSamplingStrict is how strictly a json_schema tool must be sampled: `"prefer" | "require"`.
+// upstream: packages/ai/src/types.ts:709-711
+type ConstrainedSamplingStrict string
+
+const (
+	ConstrainedSamplingStrictPrefer  ConstrainedSamplingStrict = "prefer"
+	ConstrainedSamplingStrictRequire ConstrainedSamplingStrict = "require"
+)
 
 // ─── Streaming Protocol ───────────────────────────────────────────────────────
 
@@ -428,13 +465,13 @@ type UsageCost struct {
 // DeferredHandle identifies a provider-side deferred response and the data
 // required to retrieve it later.
 type DeferredHandle struct {
-	Provider    string `json:"provider"`
-	ModelID     string `json:"modelId"`
-	API         API    `json:"api"`
-	ID          string `json:"id"`
-	ExpiresAt   *int64 `json:"expiresAt,omitempty"`
-	PollAfterMS *int64 `json:"pollAfterMs,omitempty"`
-	Data        any    `json:"data,omitempty"`
+	Provider    string    `json:"provider"`
+	ModelID     string    `json:"modelId"`
+	API         API       `json:"api"`
+	ID          string    `json:"id"`
+	ExpiresAt   *int64    `json:"expiresAt,omitempty"`
+	PollAfterMS *int64    `json:"pollAfterMs,omitempty"`
+	Data        JsonValue `json:"data,omitempty"`
 }
 
 // DiagnosticErrorInfo is a redacted, serializable error summary attached to
@@ -489,30 +526,47 @@ const (
 	SessionAffinityOpenRouter SessionAffinityFormat = "openrouter"
 )
 
+// ThinkingLevel is the reasoning effort a request can ask for (types.ts ThinkingLevel). It has no "off": an omitted level means no reasoning request.
 type ThinkingLevel string
 
+// ModelThinkingLevel is "off" or a ThinkingLevel (types.ts ModelThinkingLevel); it is the level a model supports, maps and clamps to.
+type ModelThinkingLevel string
+
+// ReasoningOption is the request option for a model level: "off" is no request (the `reasoning` option omitted), every other level is itself.
+func (level ModelThinkingLevel) ReasoningOption() ThinkingLevel {
+	if level == ThinkingOff {
+		return ""
+	}
+	return ThinkingLevel(level)
+}
+
+// The request levels of ThinkingLevel.
 const (
-	ThinkingOff     ThinkingLevel = "off"
-	ThinkingNone    ThinkingLevel = ThinkingOff // backward-compatible alias
-	ThinkingMinimal ThinkingLevel = "minimal"   // lightest reasoning: mirrors upstream "minimal"
-	ThinkingLow     ThinkingLevel = "low"
-	ThinkingMedium  ThinkingLevel = "medium"
-	ThinkingHigh    ThinkingLevel = "high"
-	// ThinkingXHigh is supported only by models that explicitly declare
-	// MaxThinking = ThinkingXHigh in their Capabilities.
-	// Mirrors upstream THINKING_LEVELS_WITH_XHIGH (agent-session.ts:232).
-	ThinkingXHigh ThinkingLevel = "xhigh"
-	// ThinkingMax is supported only by models that explicitly map "max" in
-	// their thinkingLevelMap (e.g. Claude Opus 4.6 adaptive thinking). Like
-	// xhigh it clamps to "high" for budget-based and non-supporting providers.
-	// Mirrors upstream ThinkingLevel "max" (ai/types.ts:79).
-	ThinkingMax ThinkingLevel = "max"
+	ThinkingLevelMinimal ThinkingLevel = "minimal"
+	ThinkingLevelLow     ThinkingLevel = "low"
+	ThinkingLevelMedium  ThinkingLevel = "medium"
+	ThinkingLevelHigh    ThinkingLevel = "high"
+	// ThinkingLevelXHigh is supported only by models whose thinkingLevelMap maps "xhigh".
+	ThinkingLevelXHigh ThinkingLevel = "xhigh"
+	// ThinkingLevelMax is supported only by models whose thinkingLevelMap maps "max" (for example Claude Opus 4.6 adaptive thinking). Like xhigh it clamps down for models that do not map it.
+	ThinkingLevelMax ThinkingLevel = "max"
+)
+
+// The levels of ModelThinkingLevel: "off" and the request levels.
+const (
+	ThinkingOff     ModelThinkingLevel = "off"
+	ThinkingMinimal ModelThinkingLevel = "minimal"
+	ThinkingLow     ModelThinkingLevel = "low"
+	ThinkingMedium  ModelThinkingLevel = "medium"
+	ThinkingHigh    ModelThinkingLevel = "high"
+	ThinkingXHigh   ModelThinkingLevel = "xhigh"
+	ThinkingMax     ModelThinkingLevel = "max"
 )
 
 // thinkingLevelOrder maps each ThinkingLevel to its ordinal position
 // in the canonical order (off < minimal < low < medium < high < xhigh).
 // String comparison is NOT equivalent because "off" > "high" lexicographically.
-var thinkingLevelOrder = map[ThinkingLevel]int{
+var thinkingLevelOrder = map[ModelThinkingLevel]int{
 	ThinkingOff:     0,
 	ThinkingMinimal: 1,
 	ThinkingLow:     2,
@@ -525,7 +579,7 @@ var thinkingLevelOrder = map[ThinkingLevel]int{
 // CompareThinkingLevels returns -1, 0, or +1 comparing a and b by
 // semantic order (off < minimal < low < medium < high < xhigh).
 // Unknown levels sort before "off".
-func CompareThinkingLevels(a, b ThinkingLevel) int {
+func CompareThinkingLevels(a, b ModelThinkingLevel) int {
 	oa, ob := thinkingLevelOrder[a], thinkingLevelOrder[b]
 	if oa < ob {
 		return -1
@@ -536,7 +590,6 @@ func CompareThinkingLevels(a, b ThinkingLevel) int {
 	return 0
 }
 
-type ModelThinkingLevel = ThinkingLevel
 type ThinkingLevelMap = map[ModelThinkingLevel]*string
 
 // SamplingParams holds free-form request body sampling keys such as temperature, top_p, top_k, min_p or repetition_penalty.
@@ -599,6 +652,30 @@ func (fetch FetchFunction) RoundTrip(request *http.Request) (*http.Response, err
 	return fetch(request)
 }
 
+// BedrockThinkingDisplay is how Bedrock Claude returns thinking content; it has the values of AnthropicThinkingDisplay.
+// Mirrors upstream BedrockThinkingDisplay (api/bedrock-converse-stream.ts:77).
+type BedrockThinkingDisplay = AnthropicThinkingDisplay
+
+// ToolChoice is the provider-neutral tool choice: let the model decide, or call no tool.
+// Mirrors upstream ToolChoice (types.ts:84).
+type ToolChoice string
+
+const (
+	ToolChoiceAuto ToolChoice = "auto"
+	ToolChoiceNone ToolChoice = "none"
+)
+
+// toolChoiceName returns the name of a string or ToolChoice tool choice.
+func toolChoiceName(choice any) (string, bool) {
+	switch value := choice.(type) {
+	case string:
+		return value, true
+	case ToolChoice:
+		return string(value), true
+	}
+	return "", false
+}
+
 // StreamOptions are the options for a streaming LLM call.
 type StreamOptions struct {
 	// TelemetryContext parents provider request spans; nil means no recording backend.
@@ -611,7 +688,11 @@ type StreamOptions struct {
 	// Region selects the Bedrock request region. An inference-profile ARN's embedded region takes precedence.
 	Region string `json:"region,omitempty"`
 	// Profile selects the AWS shared credentials profile for a Bedrock request.
-	Profile     string `json:"profile,omitempty"`
+	Profile string `json:"profile,omitempty"`
+	// Project is the Google Cloud project of a Vertex AI request; it takes precedence over the provider configuration and GOOGLE_CLOUD_PROJECT/GCLOUD_PROJECT (GoogleVertexOptions.project).
+	Project string `json:"project,omitempty"`
+	// Location is the Google Cloud location of a Vertex AI request; it takes precedence over the provider configuration and GOOGLE_CLOUD_LOCATION (GoogleVertexOptions.location).
+	Location    string `json:"location,omitempty"`
 	Temperature float64
 	// TemperatureSet distinguishes an explicit zero temperature from omission.
 	// Non-zero Temperature values remain present for existing callers.
@@ -623,9 +704,17 @@ type StreamOptions struct {
 	GoogleThinking       *GoogleThinkingOptions `json:"thinking,omitempty"`
 	ThinkingEnabled      *bool                  `json:"thinkingEnabled,omitempty"`
 	ThinkingBudgetTokens *int                   `json:"thinkingBudgetTokens,omitempty"`
-	Effort               string                 `json:"effort,omitempty"`
-	InterleavedThinking  *bool                  `json:"interleavedThinking,omitempty"`
-	RequestMetadata      map[string]string      `json:"requestMetadata,omitempty"`
+	Effort               AnthropicEffort        `json:"effort,omitempty"`
+	// ThinkingDisplay controls how Anthropic returns thinking content. Empty means "summarized" when thinking is enabled (anthropic-messages.ts:271, :1238, :1246).
+	ThinkingDisplay     AnthropicThinkingDisplay `json:"thinkingDisplay,omitempty"`
+	InterleavedThinking *bool                    `json:"interleavedThinking,omitempty"`
+	RequestMetadata     map[string]string        `json:"requestMetadata,omitempty"`
+	// BearerToken is the Bedrock bearer token; it takes precedence over APIKey and AWS_BEARER_TOKEN_BEDROCK (BedrockOptions.bearerToken).
+	BearerToken string `json:"bearerToken,omitempty"`
+	// ServiceTier is the OpenAI Responses and Codex service_tier request value (OpenAIResponsesOptions.serviceTier).
+	ServiceTier string `json:"serviceTier,omitempty"`
+	// TextVerbosity is the Codex text verbosity ("low", "medium" or "high"); empty is "low" (OpenAICodexResponsesOptions.textVerbosity).
+	TextVerbosity string `json:"textVerbosity,omitempty"`
 	// ReasoningEffort is the raw OpenAI-compatible or Mistral API effort. Unlike the provider-neutral Thinking level, it is mapped but not clamped so the provider can reject unsupported values.
 	ReasoningEffort string
 	// ReasoningSummary is the raw OpenAI Responses reasoning summary mode ("auto", "detailed" or "concise"). Without an effort it requests medium effort.
@@ -656,13 +745,20 @@ type StreamOptions struct {
 	CacheRetention CacheRetention
 	// SessionID is passed to the provider for prompt caching (OpenAI prompt_cache_key). When non-empty and the provider supports it, repeated calls with the same session ID can reuse cached prompt processing. Mirrors upstream openai-completions.ts:449.
 	SessionID string
-	// ToolChoice selects provider-neutral automatic/no-tool behavior or a
+	// ToolChoice selects provider-neutral automatic/no-tool behavior (a ToolChoice or its string) or a
 	// provider-specific choice object. Anthropic and Bedrock also accept "any" and
 	// {"type":"tool","name":...}.
 	ToolChoice any
+	// Debug asks a pi-messages backend for debug metadata such as routing response headers (pi-messages.ts PiMessagesOptions.debug).
+	Debug bool `json:"debug,omitempty"`
 	// Metadata contains optional provider request metadata. Providers extract
 	// recognized fields and ignore the rest.
 	Metadata map[string]any
+	// AzureAPIVersion, AzureResourceName, AzureBaseURL and AzureDeploymentName are the per-request Azure endpoint options (AzureEndpointOptions, api/azure-openai-config.ts:7). Each outranks the matching AZURE_OPENAI_* variable.
+	AzureAPIVersion     string `json:"azureApiVersion,omitempty"`
+	AzureResourceName   string `json:"azureResourceName,omitempty"`
+	AzureBaseURL        string `json:"azureBaseUrl,omitempty"`
+	AzureDeploymentName string `json:"azureDeploymentName,omitempty"`
 	// Transport requests a provider-specific streaming transport.
 	// Empty lets the provider choose its default.
 	Transport Transport
@@ -872,4 +968,42 @@ type Model struct {
 	PromptCache                   ModelPromptCache
 	// InputLimits mirrors upstream Model.inputLimits.
 	InputLimits *ModelInputLimits
+	// catalog is the persisted record this model was decoded from; it keeps the fields the model has no member for.
+	catalog *catalogShape
 }
+
+// AnthropicEffort is the Anthropic output_config effort level (anthropic-messages.ts:186).
+type AnthropicEffort string
+
+const (
+	AnthropicEffortLow    AnthropicEffort = "low"
+	AnthropicEffortMedium AnthropicEffort = "medium"
+	AnthropicEffortHigh   AnthropicEffort = "high"
+	AnthropicEffortXHigh  AnthropicEffort = "xhigh"
+	AnthropicEffortMax    AnthropicEffort = "max"
+)
+
+// ThinkingTokenBudgetField is the top-level request field that caps reasoning tokens on OpenAI-compatible servers.
+//
+// upstream: packages/ai/src/types.ts:101
+type ThinkingTokenBudgetField string
+
+// The request fields an OpenAI-compatible server reads a reasoning-token cap from.
+const (
+	ThinkingTokenBudgetFieldThinkingTokenBudget  ThinkingTokenBudgetField = "thinking_token_budget"
+	ThinkingTokenBudgetFieldThinkingBudget       ThinkingTokenBudgetField = "thinking_budget"
+	ThinkingTokenBudgetFieldThinkingBudgetTokens ThinkingTokenBudgetField = "thinking_budget_tokens"
+)
+
+// GrammarVariants maps a grammar format to its definition.
+//
+// upstream: packages/ai/src/types.ts:698
+type GrammarVariants = map[GrammarFormat]string
+
+// AnthropicThinkingDisplay selects whether thinking blocks carry summarized text or an empty field (anthropic-messages.ts:188).
+type AnthropicThinkingDisplay string
+
+const (
+	AnthropicThinkingDisplaySummarized AnthropicThinkingDisplay = "summarized"
+	AnthropicThinkingDisplayOmitted    AnthropicThinkingDisplay = "omitted"
+)

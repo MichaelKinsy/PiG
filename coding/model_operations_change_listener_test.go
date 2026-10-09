@@ -28,7 +28,7 @@ func TestPublicChangeListenerDoesNotSilenceTheExtensionCatalogPublication(t *tes
 	var callerNotified atomic.Int32
 	detachCaller := services.ModelRuntime().SetChangeListener(func() { callerNotified.Add(1) })
 	defer detachCaller()
-	if err := services.Registry().RegisterProvider("listener-provider", extensionRegistration("https://listener.invalid/v1", "test-key", "one")); err != nil {
+	if err := services.Registry().RegisterExtensionProvider("listener-provider", extensionRegistration("https://listener.invalid/v1", "test-key", "one")); err != nil {
 		t.Fatal(err)
 	}
 	if callerNotified.Load() == 0 {

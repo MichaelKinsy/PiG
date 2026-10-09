@@ -114,8 +114,7 @@ func (r *run) nestedCall(tool extension.AgentTool) func(context.Context, json.Ra
 }
 
 func resultOf(outcome extension.AgentToolCallOutcome) agent.AgentToolResult {
-	result, _ := outcome.Result.(agent.AgentToolResult)
-	return result
+	return outcome.Result
 }
 
 // isNamespaceName reports whether query names the namespace: its name, its script identifier (`mcp__dev-radius` is

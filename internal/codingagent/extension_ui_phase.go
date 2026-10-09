@@ -47,7 +47,7 @@ func (m *InteractiveMode) beforeSessionFork(ctx context.Context, entryID, positi
 	})
 }
 
-func (m *InteractiveMode) awaitSessionBefore(ctx context.Context, eventType string, event any) (bool, error) {
+func (m *InteractiveMode) awaitSessionBefore(ctx context.Context, eventType string, event extension.ExtensionEvent) (bool, error) {
 	runner := m.newRunner
 	if runner == nil || !runner.HasHandlers(eventType) {
 		return false, nil

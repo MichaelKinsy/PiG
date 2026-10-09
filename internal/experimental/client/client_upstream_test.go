@@ -21,9 +21,9 @@ func TestClientUpstream(t *testing.T) {
 	t.Run("requires a canonical UUIDv4 server identity", func(t *testing.T) {
 		// upstream: packages/client/test/client.test.ts:44
 		t.Parallel()
-		_, err := NewClient(ClientOptions{ServerId: "invalid-server", TransportFactory: func(_ context.Context, _ ByteTransportHandlers, complete func(ByteTransport, error)) {
+		_, err := NewClient(ClientOptions{ServerId: "invalid-server", TransportFactory: callbackFactory(func(_ context.Context, _ ByteTransportHandlers, complete func(callbackByteTransport, error)) {
 			complete(nil, errors.New("unreachable"))
-		}})
+		})})
 		if err == nil || !strings.Contains(err.Error(), "serverId") {
 			t.Fatalf("NewClient error = %v; want a serverId error", err)
 		}
@@ -284,7 +284,7 @@ func TestClientUpstream(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		client, err := NewClient(ClientOptions{ServerId: testServerId, TransportFactory: func(_ context.Context, handlers ByteTransportHandlers, complete func(ByteTransport, error)) {
+		client, err := NewClient(ClientOptions{ServerId: testServerId, TransportFactory: callbackFactory(func(_ context.Context, handlers ByteTransportHandlers, complete func(callbackByteTransport, error)) {
 			handlers.OnData(hello)
 			complete(&funcTransport{
 				send: func(_ []byte, done func(error)) {
@@ -295,7 +295,7 @@ func TestClientUpstream(t *testing.T) {
 				},
 				close: func() { mu.Lock(); closeCount++; mu.Unlock() },
 			}, nil)
-		}})
+		})})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -322,7 +322,7 @@ func TestClientUpstream(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		client, err := NewClient(ClientOptions{ServerId: testServerId, TransportFactory: func(_ context.Context, handlers ByteTransportHandlers, complete func(ByteTransport, error)) {
+		client, err := NewClient(ClientOptions{ServerId: testServerId, TransportFactory: callbackFactory(func(_ context.Context, handlers ByteTransportHandlers, complete func(callbackByteTransport, error)) {
 			complete(&funcTransport{
 				send: func(_ []byte, done func(error)) {
 					handlers.OnData(helloError)
@@ -330,7 +330,7 @@ func TestClientUpstream(t *testing.T) {
 				},
 				close: func() { mu.Lock(); closeCount++; mu.Unlock() },
 			}, nil)
-		}})
+		})})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -354,7 +354,7 @@ func TestClientUpstream(t *testing.T) {
 		first, second := newMemoryByteServer(""), newMemoryByteServer("")
 		var mu sync.Mutex
 		connection := 0
-		client, err := NewClient(ClientOptions{ServerId: testServerId, TransportFactory: func(ctx context.Context, handlers ByteTransportHandlers, complete func(ByteTransport, error)) {
+		client, err := NewClient(ClientOptions{ServerId: testServerId, TransportFactory: callbackFactory(func(ctx context.Context, handlers ByteTransportHandlers, complete func(callbackByteTransport, error)) {
 			mu.Lock()
 			server := first
 			if connection > 0 {
@@ -363,7 +363,7 @@ func TestClientUpstream(t *testing.T) {
 			connection++
 			mu.Unlock()
 			server.factory()(ctx, handlers, complete)
-		}})
+		})})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -480,13 +480,13 @@ func TestClientUpstream(t *testing.T) {
 	})
 }
 
-// funcTransport is an inline ByteTransport, as upstream's object literals with send and close.
+// funcTransport is an inline callbackByteTransport, as upstream's object literals with send and close.
 type funcTransport struct {
 	send  func([]byte, func(error))
 	close func()
 }
 
-func (transport *funcTransport) Send(chunk []byte, complete func(error)) {
+func (transport *funcTransport) Submit(chunk []byte, complete func(error)) {
 	transport.send(chunk, complete)
 }
 func (transport *funcTransport) Close() { transport.close() }

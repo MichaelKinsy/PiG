@@ -1,5 +1,7 @@
 package codingagent
 
+// pi: packages/coding-agent/src/utils/windows-self-update.ts
+
 import (
 	"os"
 	"path/filepath"

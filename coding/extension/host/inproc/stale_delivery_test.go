@@ -55,3 +55,25 @@ func TestEmitAfterInvalidateDeliversWithStaleContext(t *testing.T) {
 		}
 	}
 }
+
+// A reload builds the replacement runner over the outgoing runner's ExtensionRuntime (the host's registrations); retiring the outgoing runner must not make that shared runtime, and so every context of the replacement, report stale (Pi creates a fresh runtime per reload, runner.ts invalidate).
+func TestInvalidateKeepingRuntimeLeavesTheReplacementActive(t *testing.T) {
+	previous := inproc.NewRunner(nil, "/tmp")
+	replacement := inproc.NewRunner(nil, "/tmp", previous.Runtime())
+
+	previous.InvalidateKeepingRuntime("")
+
+	if !previous.IsStale() {
+		t.Fatal("the outgoing runner must be stale")
+	}
+	if err := replacement.Runtime().AssertActive(); err != nil {
+		t.Fatalf("the shared runtime must stay active for the replacement, got %v", err)
+	}
+
+	other := inproc.NewRunner(nil, "/tmp")
+	replaced := inproc.NewRunner(nil, "/tmp", other.Runtime())
+	other.Invalidate("")
+	if err := replaced.Runtime().AssertActive(); err == nil {
+		t.Fatal("Invalidate must still make the runner's runtime stale")
+	}
+}

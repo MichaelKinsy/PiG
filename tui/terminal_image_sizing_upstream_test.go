@@ -27,7 +27,7 @@ func TestUpstreamImageCellSizing(t *testing.T) {
 		SetCapabilities(TerminalCapabilities{Images: protocol, TrueColor: true, Hyperlinks: true})
 	}
 	newImage := func(dimensions ImageDimensions, options ImageOptions) *Image {
-		return NewImage("AAAA", "image/png", options, &dimensions)
+		return NewImage("AAAA", "image/png", DefaultImageTheme(), options, &dimensions)
 	}
 
 	t.Run("Kitty", func(t *testing.T) {

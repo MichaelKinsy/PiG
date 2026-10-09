@@ -11,38 +11,52 @@ package tui
 
 import (
 	"fmt"
+	"strings"
+
+	"github.com/MichaelKinsy/PiG/extensions/sdk/frontend"
+	"github.com/MichaelKinsy/PiG/internal/lazyregexp"
 )
+
+// AuthMethod is an auth method of a provider option: an ai.APIKeyAuth or ai.OAuthAuth.
+type AuthMethod interface {
+	AuthMethodName() string
+}
 
 // OAuthProvider is one entry in the auth provider selector.
 type OAuthProvider struct {
-	ID         string // e.g. "github-copilot"
-	Name       string // display name
-	AuthType   string // "oauth" or "api_key"
-	MethodName string
-	LoginLabel string
+	ID       string // e.g. "github-copilot"
+	Name     string // display name
+	AuthType string // "oauth" or "api_key"
+	// Method is the provider's auth method (Pi's `method?: ApiKeyAuth | OAuthAuth`); the selector searches its name.
+	Method AuthMethod
 	// Subscription reports whether the provider's OAuth sign-in is backed by a subscription. False labels it as an account; nil keeps the "subscription" label (oauth-selector.ts:20-24).
 	Subscription *bool
 
-	// Stored indicates auth.json contains a stored credential for this provider.
-	Stored bool
-	// StoredType is the type of the stored credential when Stored is true.
-	StoredType string // "oauth" or "api_key"
-	// AuthStatusSource/Label mirror ai.AuthStatus for API-key providers.
-	AuthStatusSource string // "", "stored", "environment", "runtime", "fallback", "models_json_key", "models_json_command"
-	AuthStatusLabel  string
+	// Status is the provider's configured auth, or nil when it has none (Pi's `status?: AuthCheck`).
+	Status AuthCheck
 }
 
-// OAuthSelector renders the bordered provider picker (port of
+// AuthCheck reports that a provider's auth is configured: its type ("oauth" or "api_key") and, when known, where it comes
+// from (an ai.AuthCheck).
+type AuthCheck interface {
+	AuthCheckType() string
+	AuthCheckSource() string
+}
+
+// OAuthSelectorComponent renders the bordered provider picker (port of
 // OAuthSelectorComponent in oauth-selector.ts).
-type OAuthSelector struct {
-	invalidatable
-	mode      string // "login" or "logout"
-	providers []OAuthProvider
-	filtered  []OAuthProvider
-	cursor    int
-	done      bool
-	cancelled bool
-	search    *TextInput
+type OAuthSelectorComponent struct {
+	Container
+	listContainer *Container
+	mode          string // "login" or "logout"
+	onSelect      func(providerID, authType string)
+	onCancel      func()
+	providers     []OAuthProvider
+	filtered      []OAuthProvider
+	cursor        int
+	done          bool
+	cancelled     bool
+	search        *TextInput
 	// showAuthTypeLabels mirrors upstream: label rows with their auth type
 	// only when the list mixes subscription and API-key entries.
 	showAuthTypeLabels bool
@@ -73,15 +87,27 @@ func subscriptionArg(subscription *bool) []bool {
 	return []bool{*subscription}
 }
 
-// NewOAuthSelector constructs the picker.
-func NewOAuthSelector(mode string, providers []OAuthProvider, initialSearch ...string) *OAuthSelector {
-	sel := &OAuthSelector{
+// SetFocused records TUI focus and propagates it to the search input for IME cursor positioning (upstream `set focused`).
+func (s *OAuthSelectorComponent) SetFocused(focused bool) {
+	s.mu.Lock() // a render holds the container's read lock while it draws the search input
+	defer s.mu.Unlock()
+	s.search.SetFocused(focused)
+}
+
+// NewOAuthSelectorComponent constructs the picker. onSelect receives the chosen provider's id and auth type and onCancel runs on cancel (upstream onSelect/onCancel); nil callbacks are skipped.
+func NewOAuthSelectorComponent(mode string, providers []OAuthProvider, onSelect func(providerID, authType string), onCancel func(), initialSearch ...string) *OAuthSelectorComponent {
+	sel := &OAuthSelectorComponent{
+		onSelect:  onSelect,
+		onCancel:  onCancel,
 		mode:      mode,
 		providers: append([]OAuthProvider(nil), providers...),
 		filtered:  append([]OAuthProvider(nil), providers...),
-		search:    NewTextInput(""),
+		search:    NewInput(InputOptions{}),
+
+		listContainer: NewContainer(),
 	}
-	sel.search.Focused = true
+	sel.search.SetFocused(false)
+	sel.search.OnSubmit = func(string) { sel.confirm() }
 	authTypes := map[string]bool{}
 	for _, p := range providers {
 		authTypes[p.AuthType] = true
@@ -91,38 +117,50 @@ func NewOAuthSelector(mode string, providers []OAuthProvider, initialSearch ...s
 		sel.search.SetText(initialSearch[0])
 		sel.applyFilter()
 	}
+	// upstream: oauth-selector.ts constructor children.
+	title := "Select provider to configure:"
+	if mode == "logout" {
+		title = "Select provider to logout:"
+	}
+	t := ActiveTheme()
+	sel.Add(NewDynamicBorder())
+	sel.Add(NewSpacer(1))
+	sel.Add(NewTruncatedText(t.Fg("accent", t.Bold(title)), 1, 0))
+	sel.Add(NewSpacer(1))
+	sel.Add(sel.search)
+	sel.Add(NewSpacer(1))
+	sel.Add(sel.listContainer)
+	sel.Add(NewSpacer(1))
+	sel.Add(NewDynamicBorder())
+	sel.updateList()
 	return sel
 }
 
 // Done reports whether the user selected or cancelled.
-func (s *OAuthSelector) Done() bool { return s.done }
+func (s *OAuthSelectorComponent) Done() bool { return s.done }
 
 // Cancelled reports whether Esc was pressed.
-func (s *OAuthSelector) Cancelled() bool { return s.cancelled }
+func (s *OAuthSelectorComponent) Cancelled() bool { return s.cancelled }
 
 // SelectedID returns the selected provider ID, or "" on cancel.
-func (s *OAuthSelector) SelectedID() string {
+func (s *OAuthSelectorComponent) SelectedID() string {
 	if s.cancelled || s.cursor < 0 || s.cursor >= len(s.filtered) {
 		return ""
 	}
 	return s.filtered[s.cursor].ID
 }
 
-// SelectedProvider returns the selected method, including its auth type in mixed lists.
-func (s *OAuthSelector) SelectedProvider() OAuthProvider {
-	if s.SelectedID() == "" {
-		return OAuthProvider{}
-	}
-	return s.filtered[s.cursor]
-}
-
-func (s *OAuthSelector) applyFilter() {
+func (s *OAuthSelectorComponent) applyFilter() {
 	query := ""
 	if s.search != nil {
 		query = s.search.Text()
 	}
 	s.filtered = FuzzyFilter(s.providers, query, func(p OAuthProvider) string {
-		return p.Name + " " + p.ID + " " + p.AuthType + " " + p.MethodName
+		methodName := ""
+		if p.Method != nil {
+			methodName = p.Method.AuthMethodName()
+		}
+		return p.Name + " " + p.ID + " " + p.AuthType + " " + methodName
 	})
 	if s.cursor >= len(s.filtered) {
 		s.cursor = len(s.filtered) - 1
@@ -132,75 +170,34 @@ func (s *OAuthSelector) applyFilter() {
 	}
 }
 
-// FormatAuthSelectorProviderStatus mirrors upstream formatAuthSelectorProviderStatus: the themed suffix describing
-// whether and how a login option is configured, for example " ✓ configured".
-func FormatAuthSelectorProviderStatus(p OAuthProvider) string { return authSelectorIndicator(p) }
+// authSelectorEnvVarSource matches a status source that lists environment variable names (oauth-selector.ts:49).
+var authSelectorEnvVarSource = lazyregexp.New(`^[A-Z][A-Z0-9_]*(?:, [A-Z][A-Z0-9_]*)*$`)
 
-func authSelectorIndicator(p OAuthProvider) string {
+// FormatAuthSelectorProviderStatus is upstream formatAuthSelectorProviderStatus (oauth-selector.ts:36-53): the themed suffix
+// describing whether and how a login option is configured, for example " ✓ configured".
+func FormatAuthSelectorProviderStatus(p OAuthProvider) string {
 	th := ActiveTheme()
-	configuredOtherLabel := func(kind string) string {
-		return FormatAuthSelectorProviderType(kind, subscriptionArg(p.Subscription)...) + " configured"
+	if p.Status == nil {
+		return th.Fg("muted", " • not configured")
 	}
-	if p.Stored {
-		if p.StoredType == p.AuthType {
-			switch p.AuthStatusSource {
-			case "", "OAuth", "stored credential":
-				return th.Success + " ✓ configured" + th.Reset
-			default:
-				return th.Success + " ✓ " + p.AuthStatusSource + th.Reset
-			}
-		}
-		return th.Muted + " • " + th.Reset + th.Warning + configuredOtherLabel(p.StoredType) + th.Reset
+	statusType, source := p.Status.AuthCheckType(), p.Status.AuthCheckSource()
+	if statusType != p.AuthType {
+		label := FormatAuthSelectorProviderType(statusType, subscriptionArg(p.Subscription)...) + " configured"
+		return th.Fg("muted", " • ") + th.Fg("warning", label)
 	}
-	if p.AuthType != "api_key" {
-		if p.AuthStatusSource != "" {
-			return th.Muted + " • " + th.Reset + th.Warning + configuredOtherLabel("api_key") + th.Reset
-		}
-		return th.Muted + " • not configured" + th.Reset
+	if source == "" || source == "OAuth" || source == "stored credential" {
+		return th.Fg("success", " ✓ configured")
 	}
-	switch p.AuthStatusSource {
-	case "environment":
-		label := p.AuthStatusLabel
-		if label == "" {
-			label = "API key"
-		}
-		return th.Success + " ✓ env: " + label + th.Reset
-	case "runtime":
-		return th.Success + " ✓ runtime API key" + th.Reset
-	case "fallback":
-		return th.Success + " ✓ fallback" + th.Reset
-	case "models_json_key":
-		return th.Success + " ✓ key in models.json" + th.Reset
-	case "models_json_command":
-		return th.Success + " ✓ command in models.json" + th.Reset
-	default:
-		return th.Muted + " • not configured" + th.Reset
+	if authSelectorEnvVarSource.MatchString(source) {
+		source = "env: " + source
 	}
+	return th.Fg("success", " ✓ "+source)
 }
 
-// Render returns ANSI lines for the bordered overlay.
-func (s *OAuthSelector) Render(width int) []string {
+// updateList rebuilds the provider rows with the current theme (oauth-selector.ts updateList).
+func (s *OAuthSelectorComponent) updateList() {
 	t := ActiveTheme()
-	border := NewDynamicBorder("")
-	// Upstream renders the title and every list row as TruncatedText(..., 1, 0):
-	// one cell of padding, truncated to the width, padded to full width.
-	truncated := func(content string) string { return NewPaddedTruncatedText(content, 1, 0).Render(width)[0] }
-
-	var lines []string
-	lines = append(lines, border.Render(width)...)
-	lines = append(lines, "")
-
-	title := "Select provider to configure:"
-	if s.mode == "logout" {
-		title = "Select provider to logout:"
-	}
-	lines = append(lines, truncated(t.Accent+"\x1b[1m"+title+SGRBoldDimReset+t.Reset))
-	lines = append(lines, "")
-	if s.search != nil {
-		lines = append(lines, s.search.Render(width)...)
-		lines = append(lines, "")
-	}
-
+	s.listContainer.Clear()
 	// Upstream shows a window of maxVisible rows centered on the selection,
 	// followed by a "(n/total)" row when the list is clipped.
 	startIndex := max(0, min(s.cursor-authSelectorMaxVisible/2, len(s.filtered)-authSelectorMaxVisible))
@@ -209,18 +206,18 @@ func (s *OAuthSelector) Render(width int) []string {
 		p := s.filtered[i]
 		authTypeLabel := ""
 		if s.showAuthTypeLabels {
-			authTypeLabel = t.Muted + " [" + FormatAuthSelectorProviderType(p.AuthType, subscriptionArg(p.Subscription)...) + "]" + t.Reset
+			authTypeLabel = t.Fg("muted", " ["+FormatAuthSelectorProviderType(p.AuthType, subscriptionArg(p.Subscription)...)+"]")
 		}
 		var line string
 		if i == s.cursor {
-			line = t.Accent + "→ " + t.Reset + t.Accent + p.Name + t.Reset
+			line = t.Fg("accent", "→ ") + t.Fg("accent", p.Name)
 		} else {
-			line = "  " + t.Text + p.Name + t.Reset
+			line = "  " + t.Fg("text", p.Name)
 		}
-		lines = append(lines, truncated(line+authTypeLabel+authSelectorIndicator(p)))
+		s.listContainer.Add(NewTruncatedText(line+authTypeLabel+FormatAuthSelectorProviderStatus(p), 1, 0))
 	}
 	if startIndex > 0 || endIndex < len(s.filtered) {
-		lines = append(lines, truncated(t.Muted+fmt.Sprintf("  (%d/%d)", s.cursor+1, len(s.filtered))+t.Reset))
+		s.listContainer.Add(NewTruncatedText(t.Fg("muted", fmt.Sprintf("  (%d/%d)", s.cursor+1, len(s.filtered))), 1, 0))
 	}
 
 	if len(s.filtered) == 0 {
@@ -232,16 +229,23 @@ func (s *OAuthSelector) Render(width int) []string {
 				msg = "No providers logged in. Use /login first."
 			}
 		}
-		lines = append(lines, truncated(t.Muted+"  "+msg+t.Reset))
+		s.listContainer.Add(NewTruncatedText(t.Fg("muted", "  "+msg), 1, 0))
 	}
+}
 
-	lines = append(lines, "")
-	lines = append(lines, border.Render(width)...)
-	return lines
+// confirm selects the highlighted provider; an empty filtered list selects nothing (the Input's onSubmit and tui.select.confirm).
+func (s *OAuthSelectorComponent) confirm() {
+	if len(s.filtered) > 0 {
+		s.done = true
+		if s.onSelect != nil && s.cursor >= 0 && s.cursor < len(s.filtered) {
+			provider := s.filtered[s.cursor]
+			s.onSelect(provider.ID, provider.AuthType)
+		}
+	}
 }
 
 // HandleInput processes navigation, select, and cancel keys.
-func (s *OAuthSelector) HandleInput(data string) {
+func (s *OAuthSelectorComponent) HandleInput(data string) {
 	if s.done {
 		return
 	}
@@ -255,21 +259,72 @@ func (s *OAuthSelector) HandleInput(data string) {
 		if s.cursor < len(s.filtered)-1 {
 			s.cursor++
 		}
-	case kb.Matches(data, KBSelectConfirm) || data == "\n":
-		if len(s.filtered) > 0 {
-			s.done = true
-		}
+	case kb.Matches(data, KBSelectConfirm):
+		s.confirm()
 	case kb.Matches(data, KBSelectCancel):
 		s.done = true
 		s.cancelled = true
+		if s.onCancel != nil {
+			s.onCancel()
+		}
 	default:
 		if s.search != nil {
 			s.search.HandleInput(data)
 			s.applyFilter()
 		}
 	}
+	s.updateList()
 	s.Invalidate()
 }
 
+// NativeNode reports the picker as a selector whose item ids are the
+// providers' ids, followed by ":" and the auth type in a list that mixes
+// auth types, where one provider can appear once per auth type. pig additive
+// (D91): each row's auth type label, in a mixed list, and its status
+// indicator are its detail, and an empty list reports the empty message as
+// the status.
+func (s *OAuthSelectorComponent) NativeNode() (frontend.Node, bool) {
+	node := frontend.Selector{
+		Title:      "Select provider to configure:",
+		Searchable: s.search != nil,
+		Items:      make([]frontend.SelectorItem, len(s.filtered)),
+	}
+	if s.mode == "logout" {
+		node.Title = "Select provider to logout:"
+	}
+	if s.search != nil {
+		node.Query = s.search.Text()
+	}
+	for i, p := range s.filtered {
+		id, detail := p.ID, plainText(FormatAuthSelectorProviderStatus(p))
+		if s.showAuthTypeLabels {
+			id += ":" + p.AuthType
+			detail = " [" + FormatAuthSelectorProviderType(p.AuthType, subscriptionArg(p.Subscription)...) + "]" + detail
+		}
+		node.Items[i] = frontend.SelectorItem{ID: id, Label: p.Name, Detail: strings.TrimSpace(detail)}
+	}
+	if s.cursor >= 0 && s.cursor < len(node.Items) {
+		node.Selected = node.Items[s.cursor].ID
+	}
+	if len(s.filtered) == 0 {
+		switch {
+		case len(s.providers) > 0:
+			node.Status = "No matching providers"
+		case s.mode == "login":
+			node.Status = "No providers available"
+		default:
+			node.Status = "No providers logged in. Use /login first."
+		}
+	}
+	return node, true
+}
+
 // Compile-time check.
-var _ Component = (*OAuthSelector)(nil)
+var _ Component = (*OAuthSelectorComponent)(nil)
+
+// Focused reports whether the search input holds the TUI focus (upstream `get focused`).
+func (s *OAuthSelectorComponent) Focused() bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.search.Focused
+}

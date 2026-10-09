@@ -18,7 +18,7 @@ import (
 )
 
 func TestBuildModelUsesGeneratedProviderAPI(t *testing.T) {
-	svcs, err := NewServices(ServicesOptions{CWD: t.TempDir(), AgentDir: t.TempDir()})
+	svcs, err := CreateAgentSessionServices(CreateAgentSessionServicesOptions{CWD: t.TempDir(), AgentDir: t.TempDir()})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -84,7 +84,7 @@ func TestPiMessagesModelsJSONProviderStreamsThroughModelRuntime(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(agentDir, "models.json"), []byte(config), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	svcs, err := NewServices(ServicesOptions{CWD: t.TempDir(), AgentDir: agentDir})
+	svcs, err := CreateAgentSessionServices(CreateAgentSessionServicesOptions{CWD: t.TempDir(), AgentDir: agentDir})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -105,7 +105,7 @@ func TestPiMessagesModelsJSONProviderStreamsThroughModelRuntime(t *testing.T) {
 
 func TestPublishedRadiusMetadataReachesModelRuntime(t *testing.T) {
 	t.Setenv("RADIUS_API_KEY", "fixture-key")
-	services, err := NewServices(ServicesOptions{CWD: t.TempDir(), AgentDir: t.TempDir()})
+	services, err := CreateAgentSessionServices(CreateAgentSessionServicesOptions{CWD: t.TempDir(), AgentDir: t.TempDir()})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -130,7 +130,7 @@ func TestBuildModelDoesNotAliasGeneratedFallbackMetadata(t *testing.T) {
 	generated.Compat.AllowedFallbackModels[0].Cost.Tiers = []ai.CostTier{{InputTokensAbove: 1, InputCostPer1M: 2}}
 	defer func() { generated.Compat.AllowedFallbackModels[0].Cost.Tiers = originalTiers }()
 
-	svcs, err := NewServices(ServicesOptions{CWD: t.TempDir(), AgentDir: t.TempDir()})
+	svcs, err := CreateAgentSessionServices(CreateAgentSessionServicesOptions{CWD: t.TempDir(), AgentDir: t.TempDir()})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -168,7 +168,7 @@ func TestBuildModelGatesAttributionHeadersOnInstallTelemetrySetting(t *testing.T
 	if err := os.WriteFile(filepath.Join(agentDir, "models.json"), []byte(models), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	services, err := NewServices(ServicesOptions{CWD: t.TempDir(), AgentDir: agentDir})
+	services, err := CreateAgentSessionServices(CreateAgentSessionServicesOptions{CWD: t.TempDir(), AgentDir: agentDir})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -250,7 +250,7 @@ func TestRadiusGatewayCatalogAndStreamThroughModelRuntime(t *testing.T) {
 	if err := auth.Set("radius-dev", ai.Credential{Type: ai.CredentialOAuth, Access: "stale", Refresh: "old-refresh", Expires: 1}); err != nil {
 		t.Fatal(err)
 	}
-	svcs, err := NewServices(ServicesOptions{CWD: t.TempDir(), AgentDir: agentDir})
+	svcs, err := CreateAgentSessionServices(CreateAgentSessionServicesOptions{CWD: t.TempDir(), AgentDir: agentDir})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -288,7 +288,7 @@ func TestRadiusGatewayCatalogAndStreamThroughModelRuntime(t *testing.T) {
 	if _, err := os.Stat(filepath.Join(agentDir, "models-store.json")); err != nil {
 		t.Fatalf("models-store.json was not written: %v", err)
 	}
-	restoredServices, err := NewServices(ServicesOptions{CWD: t.TempDir(), AgentDir: agentDir})
+	restoredServices, err := CreateAgentSessionServices(CreateAgentSessionServicesOptions{CWD: t.TempDir(), AgentDir: agentDir})
 	if err != nil {
 		t.Fatal(err)
 	}

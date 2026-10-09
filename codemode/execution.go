@@ -4,9 +4,9 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"math"
+	"strconv"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -95,7 +95,7 @@ func (e *execution) isFinished() bool {
 
 // abort ends the execution as aborted and waits for it to exit.
 func (e *execution) abort(message string) {
-	e.finish(&Error{Kind: ErrorAborted, Message: message}, nil, "")
+	e.finish(&Error{Kind: ErrorAborted, Message: message}, nil, StoreWrites{})
 	<-e.exited
 }
 
@@ -104,10 +104,10 @@ func (e *execution) run(ctx context.Context) Result {
 	e.callCtx = context.WithoutCancel(ctx)
 
 	if ctx.Err() != nil {
-		e.finish(&Error{Kind: ErrorAborted, Message: abortMessage(ctx)}, nil, "")
+		e.finish(&Error{Kind: ErrorAborted, Message: abortMessage(ctx)}, nil, StoreWrites{})
 	} else {
 		stop := context.AfterFunc(ctx, func() {
-			e.finish(&Error{Kind: ErrorAborted, Message: abortMessage(ctx)}, nil, "")
+			e.finish(&Error{Kind: ErrorAborted, Message: abortMessage(ctx)}, nil, StoreWrites{})
 		})
 		e.mu.Lock()
 		e.stopCtx = stop
@@ -116,14 +116,14 @@ func (e *execution) run(ctx context.Context) Result {
 
 	if !e.isFinished() {
 		if eng, err := e.sandbox.engine(ctx); err != nil {
-			e.finish(loadError(err), nil, "")
+			e.finish(loadError(err), nil, StoreWrites{})
 		} else if !e.isFinished() {
 			e.startDeadline()
 			e.drive(eng)
 		}
 	}
 	// A VM that returned without a verdict (it cannot: the loop ends only on finish) still ends here.
-	e.finish(&Error{Kind: ErrorSandbox, Message: "The VM exited before the script settled"}, nil, "")
+	e.finish(&Error{Kind: ErrorSandbox, Message: "The VM exited before the script settled"}, nil, StoreWrites{})
 	e.calls.Wait()
 	e.mu.Lock()
 	if e.grace != nil {
@@ -138,13 +138,14 @@ func (e *execution) run(ctx context.Context) Result {
 
 // startDeadline arms the timeout once the module is ready. Compiling the module happens once per process and is not
 // the script's time, so it does not count against the deadline (upstream's deadline also spans its much shorter
-// wasm load, host.ts:110-114).
+// wasm load, host.ts:147-151). As `Number.isFinite(options.timeoutMs)` gates it upstream, NaN and both infinities arm no
+// deadline.
 func (e *execution) startDeadline() {
-	if !math.IsInf(e.timeoutMs, 1) {
+	if !math.IsInf(e.timeoutMs, 0) && !math.IsNaN(e.timeoutMs) {
 		timeout := time.Duration(min(e.timeoutMs*float64(time.Millisecond), float64(math.MaxInt64)))
 		e.mu.Lock()
 		e.timer = time.AfterFunc(timeout, func() {
-			e.finish(&Error{Kind: ErrorTimeout, Message: timeoutMessage(e.timeoutMs)}, nil, "")
+			e.finish(&Error{Kind: ErrorTimeout, Message: timeoutMessage(e.timeoutMs)}, nil, StoreWrites{})
 		})
 		e.mu.Unlock()
 	}
@@ -165,13 +166,13 @@ func (e *execution) drive(eng *engine) {
 			if !ok {
 				panic(r)
 			}
-			e.finish(&Error{Kind: ErrorSandbox, Message: trap.Error()}, nil, "")
+			e.finish(&Error{Kind: ErrorSandbox, Message: trap.Error()}, nil, StoreWrites{})
 		}
 	}()
 	var err error
 	machine, err = eng.newVM(e.callCtx, e.sandbox.options.MemoryLimitBytes, &e.interrupt)
 	if err != nil {
-		e.finish(&Error{Kind: ErrorSandbox, Message: "Failed to start the VM: " + err.Error()}, nil, "")
+		e.finish(&Error{Kind: ErrorSandbox, Message: "Failed to start the VM: " + err.Error()}, nil, StoreWrites{})
 		return
 	}
 	e.machine.Store(machine)
@@ -192,7 +193,7 @@ func (e *execution) drive(eng *engine) {
 // finish records the outcome; only the first call counts. It cancels every pending nested call and stops the VM.
 //
 // Ports packages/codemode/src/runtime/host.ts (Execution.finish).
-func (e *execution) finish(failure *Error, value json.RawMessage, writes string) {
+func (e *execution) finish(failure *Error, value json.RawMessage, writes StoreWrites) {
 	e.mu.Lock()
 	if e.finished {
 		e.mu.Unlock()
@@ -219,12 +220,10 @@ func (e *execution) finish(failure *Error, value json.RawMessage, writes string)
 	if failure != nil {
 		e.result = Result{Error: failure, Output: output, Calls: calls}
 	} else {
-		storeWrites, err := parseStoreWrites(writes)
-		if err != nil {
-			e.result = Result{Error: &Error{Kind: ErrorSandbox, Message: err.Error()}, Output: output, Calls: calls}
-		} else {
-			e.result = Result{OK: true, Value: value, Output: output, Calls: calls, StoreWrites: storeWrites}
+		if writes.Set == nil {
+			writes.Set = map[string]json.RawMessage{}
 		}
+		e.result = Result{OK: true, Value: value, Output: output, Calls: calls, StoreWrites: writes}
 	}
 	e.mu.Unlock()
 	if stopCtx != nil {
@@ -250,32 +249,110 @@ func millisSince(start, now time.Time) float64 {
 	return float64(now.Sub(start)) / float64(time.Millisecond)
 }
 
-// parseStoreWrites decodes the prelude's list of [key, jsonText?] pairs.
+// bridgeError is a payload from the prelude that does not decode. The prelude runs in the same VM as the script, so a
+// script that patches built-ins (for example Array.prototype.toJSON) could make it send malformed data; the execution
+// then fails as a sandbox error.
+//
+// Ports packages/codemode/src/runtime/host.ts (BridgeError).
+type bridgeError string
+
+func (b bridgeError) Error() string { return string(b) }
+
+// bridgeBroken is the sandbox error for a payload that does not decode.
+func bridgeBroken(reason string) *Error {
+	return &Error{Kind: ErrorSandbox, Message: "Sandbox bridge broken: " + reason + ". The script may have modified built-ins such as a prototype's toJSON."}
+}
+
+// parseBridgeJSON validates a JSON payload.
+//
+// Ports packages/codemode/src/runtime/host.ts (parseBridgeJson).
+func parseBridgeJSON(text, what string) (json.RawMessage, error) {
+	if !json.Valid([]byte(text)) {
+		return nil, bridgeError(what + " is not valid JSON")
+	}
+	return json.RawMessage(text), nil
+}
+
+// isJSONString reports whether raw is a JSON string.
+func isJSONString(raw json.RawMessage) bool {
+	return len(raw) > 0 && raw[0] == '"'
+}
+
+// parseStoreWrites decodes the prelude's list of [key, jsonText?] pairs and checks every entry.
+//
+// Ports packages/codemode/src/runtime/host.ts (parseStoreWrites).
 func parseStoreWrites(writes string) (StoreWrites, error) {
 	result := StoreWrites{Set: map[string]json.RawMessage{}}
-	if writes == "" {
-		return result, nil
+	parsed, err := parseBridgeJSON(writes, "store writes")
+	if err != nil {
+		return StoreWrites{}, err
 	}
-	var pairs [][]json.RawMessage
-	if err := json.Unmarshal([]byte(writes), &pairs); err != nil {
-		return StoreWrites{}, fmt.Errorf("invalid store writes: %w", err)
+	if parsed[0] != '[' {
+		return StoreWrites{}, bridgeError("store writes are not an array")
 	}
-	for _, pair := range pairs {
-		var key string
-		if len(pair) == 0 || json.Unmarshal(pair[0], &key) != nil {
-			return StoreWrites{}, errors.New("invalid store write")
+	var entries []json.RawMessage
+	if err := json.Unmarshal(parsed, &entries); err != nil {
+		return StoreWrites{}, bridgeError("store writes are not an array")
+	}
+	malformed := bridgeError("store writes contain a malformed entry")
+	for _, raw := range entries {
+		var entry []json.RawMessage
+		if raw[0] != '[' || json.Unmarshal(raw, &entry) != nil || len(entry) == 0 || !isJSONString(entry[0]) ||
+			(len(entry) != 1 && (len(entry) != 2 || !isJSONString(entry[1]))) {
+			return StoreWrites{}, malformed
 		}
-		if len(pair) < 2 {
+		var key string
+		if err := json.Unmarshal(entry[0], &key); err != nil {
+			return StoreWrites{}, malformed
+		}
+		if len(entry) == 1 {
 			result.Delete = append(result.Delete, key)
 			continue
 		}
 		var text string
-		if err := json.Unmarshal(pair[1], &text); err != nil {
-			return StoreWrites{}, errors.New("invalid store write value")
+		if err := json.Unmarshal(entry[1], &text); err != nil {
+			return StoreWrites{}, malformed
 		}
-		result.Set[key] = json.RawMessage(text)
+		value, err := parseBridgeJSON(text, "store value for "+marshalNoEscape(key))
+		if err != nil {
+			return StoreWrites{}, err
+		}
+		result.Set[key] = value
 	}
 	return result, nil
+}
+
+// parseScriptError decodes the prelude's description of a thrown error.
+//
+// Ports packages/codemode/src/runtime/host.ts (parseScriptError).
+func parseScriptError(text string) (*Error, error) {
+	parsed, err := parseBridgeJSON(text, "script error")
+	if err != nil {
+		return nil, err
+	}
+	// typeof null and typeof a primitive are not "object"; an array is, and has no message.
+	if parsed[0] != '{' && parsed[0] != '[' {
+		return nil, bridgeError("script error is not an object")
+	}
+	var fields struct {
+		Name    json.RawMessage `json:"name"`
+		Message json.RawMessage `json:"message"`
+		Stack   json.RawMessage `json:"stack"`
+	}
+	malformed := bridgeError("script error is malformed")
+	if parsed[0] == '[' || json.Unmarshal(parsed, &fields) != nil || !isJSONString(fields.Message) ||
+		(fields.Name != nil && !isJSONString(fields.Name)) || (fields.Stack != nil && !isJSONString(fields.Stack)) {
+		return nil, malformed
+	}
+	failure := &Error{Kind: ErrorScript}
+	if fields.Name != nil {
+		_ = json.Unmarshal(fields.Name, &failure.Name)
+	}
+	_ = json.Unmarshal(fields.Message, &failure.Message)
+	if fields.Stack != nil {
+		_ = json.Unmarshal(fields.Stack, &failure.Stack)
+	}
+	return failure, nil
 }
 
 // worker drives the VM the way packages/codemode/src/runtime/worker.ts does: it evaluates the prelude, starts the
@@ -287,14 +364,8 @@ type worker struct {
 	settleFn, runFn, stl uint32
 }
 
-type describedError struct {
-	Name    string `json:"name"`
-	Message string `json:"message"`
-	Stack   string `json:"stack"`
-}
-
 func (w *worker) crash(message string) {
-	w.e.finish(&Error{Kind: ErrorSandbox, Message: message}, nil, "")
+	w.e.finish(&Error{Kind: ErrorSandbox, Message: message}, nil, StoreWrites{})
 }
 
 // failed reports whether an exception should end the execution as a crash. An exception after finish is the
@@ -347,7 +418,7 @@ func (w *worker) start() {
 		w.handleBridge(a)
 		return vm.undefined
 	})
-	prelude, x := vm.eval(PreludeSource, "codemode-prelude.js")
+	prelude, x := vm.eval(e.sandbox.prelude, "codemode-prelude.js")
 	if w.failed(x) {
 		return
 	}
@@ -393,7 +464,7 @@ func (w *worker) finishScriptError(x *jsException) {
 	} else {
 		stack = head
 	}
-	w.e.finish(&Error{Kind: ErrorScript, Name: x.name, Message: x.message, Stack: stack}, nil, "")
+	w.e.finish(&Error{Kind: ErrorScript, Name: x.name, Message: x.message, Stack: stack}, nil, StoreWrites{})
 }
 
 // drain runs queued jobs, then fails a script that waits on nothing that can ever resume it.
@@ -457,31 +528,50 @@ func (w *worker) handleBridge(a []uint32) {
 		typ, _ := arg(1)
 		b, _ := arg(2)
 		c, _ := arg(3)
-		item := OutputItem{Type: "text", Text: b}
-		if typ == "image" {
-			item = OutputItem{Type: "image", Data: b, MimeType: c}
+		item := OutputItem{Type: OutputItemText, Text: b}
+		switch typ {
+		case "image":
+			item = OutputItem{Type: OutputItemImage, Data: b, MimeType: c}
+		case "console":
+			item.Console = true
 		}
 		e.mu.Lock()
 		e.output = append(e.output, item)
 		e.mu.Unlock()
 	case "done":
-		if vm.toBool(a[1]) {
-			value, defined := arg(2)
-			writes, _ := arg(3)
-			var raw json.RawMessage
-			if defined {
-				raw = json.RawMessage(value)
-			}
-			e.finish(nil, raw, writes)
-			return
-		}
+		// Decode everything before finish, which must not fail once it starts.
 		text, _ := arg(2)
-		var parsed describedError
-		if err := json.Unmarshal([]byte(text), &parsed); err != nil {
-			e.finish(&Error{Kind: ErrorSandbox, Message: "invalid script error: " + err.Error()}, nil, "")
+		if !vm.toBool(a[1]) {
+			failure, err := parseScriptError(text)
+			if err != nil {
+				e.finish(bridgeBroken(err.Error()), nil, StoreWrites{})
+				return
+			}
+			e.finish(failure, nil, StoreWrites{})
 			return
 		}
-		e.finish(&Error{Kind: ErrorScript, Name: parsed.Name, Message: parsed.Message, Stack: parsed.Stack}, nil, "")
+		value, defined := arg(2)
+		writes, writesDefined := arg(3)
+		if !writesDefined {
+			e.finish(bridgeBroken("unknown message from the worker"), nil, StoreWrites{})
+			return
+		}
+		var raw json.RawMessage
+		if defined {
+			var err error
+			if raw, err = parseBridgeJSON(value, "return value"); err != nil {
+				e.finish(bridgeBroken(err.Error()), nil, StoreWrites{})
+				return
+			}
+		}
+		storeWrites, err := parseStoreWrites(writes)
+		if err != nil {
+			e.finish(bridgeBroken(err.Error()), nil, StoreWrites{})
+			return
+		}
+		e.finish(nil, raw, storeWrites)
+	default:
+		e.finish(bridgeBroken("unknown message from the worker"), nil, StoreWrites{})
 	}
 }
 
@@ -494,6 +584,11 @@ func (e *execution) startCall(id int, isTool bool, name, args string, argsDefine
 	e.mu.Lock()
 	if e.finished {
 		e.mu.Unlock()
+		return
+	}
+	if _, duplicate := e.pending[id]; duplicate {
+		e.mu.Unlock()
+		e.finish(bridgeBroken("duplicate call id "+strconv.Itoa(id)), nil, StoreWrites{})
 		return
 	}
 	if isTool {

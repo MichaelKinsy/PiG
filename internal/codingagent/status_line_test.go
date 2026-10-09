@@ -14,7 +14,7 @@ import (
 
 // Footer must render the bare model id stored in ai.Model.ID (e.g.
 // "gpt-4o"). Upstream footer.ts:134 uses `state.model?.id` which is
-// always the bare catalog id. cmd/pig/model.go now stores the bare id
+// always the bare catalog id. coding/cli/model.go now stores the bare id
 // at the source (changed from FQ spec in the footer-tighten loop,
 // 2026-05-15).
 func TestRenderFooterBareModelID(t *testing.T) {
@@ -92,7 +92,7 @@ func TestRenderFooterExperimentalIndicator(t *testing.T) {
 }
 
 func TestAC53CustomFooterOwnsKeyedStatusRendering(t *testing.T) {
-	status := NewStatusLine(nil, "", nil)
+	status := NewFooterComponent(nil, "", nil)
 	status.SetExtensionStatus("zeta", "second")
 	status.SetExtensionStatus("alpha", "first")
 	status.SetSuppressedByExtFooter(true)
@@ -113,7 +113,7 @@ func TestAC53CustomFooterOwnsKeyedStatusRendering(t *testing.T) {
 }
 
 // When model.ID is a bare id (no provider prefix), footer renders it verbatim.
-// This is the standard case since cmd/pig/model.go stores bare IDs.
+// This is the standard case since coding/cli/model.go stores bare IDs.
 func TestRenderFooterBareIDVerbatim(t *testing.T) {
 	prov := ai.NewFauxProvider(ai.FauxConfig{ProviderID: "openai"})
 	model := &ai.Model{
@@ -169,37 +169,17 @@ func TestFormatTokens(t *testing.T) {
 	}
 }
 
-func TestFormatDuration(t *testing.T) {
-	cases := []struct {
-		in   time.Duration
+// footer.ts:140-150: at most 70% the context text is plain, above 70% it takes the theme's warning colour and above 90% its error
+// colour (theme.fg, not fixed ANSI codes).
+func TestColorContextDisplayBands(t *testing.T) {
+	th := tui.ActiveTheme()
+	for _, tc := range []struct {
+		pct  float64
 		want string
-	}{
-		{0, "0.0s"},
-		{1200 * time.Millisecond, "1.2s"},
-		{59*time.Second + 900*time.Millisecond, "59.9s"},
-		{61 * time.Second, "1m01s"},
-		{4*time.Minute + 5*time.Second, "4m05s"},
-	}
-	for _, tc := range cases {
-		if got := formatDuration(tc.in); got != tc.want {
-			t.Errorf("formatDuration(%v)=%q want %q", tc.in, got, tc.want)
+	}{{10, "x"}, {70, "x"}, {70.1, th.Fg("warning", "x")}, {90, th.Fg("warning", "x")}, {90.1, th.Fg("error", "x")}} {
+		if got := colorContextDisplay(tc.pct, "x"); got != tc.want {
+			t.Errorf("colorContextDisplay(%v) = %q, want %q", tc.pct, got, tc.want)
 		}
-	}
-}
-
-func TestColorContextPercentBands(t *testing.T) {
-	// <=70% = no color (plain)
-	p10 := colorContextPercent(10)
-	if strings.Contains(p10, "\033[") {
-		t.Errorf("<=70%% should have no color: %q", p10)
-	}
-	// >70% = yellow
-	if !strings.Contains(colorContextPercent(75), "\033[33m") {
-		t.Error(">70%% should be yellow (33m)")
-	}
-	// >90% = red
-	if !strings.Contains(colorContextPercent(95), "\033[31m") {
-		t.Error(">90%% should be red (31m)")
 	}
 }
 
@@ -360,7 +340,7 @@ func TestRenderFooterThinkingLevel(t *testing.T) {
 		DisplayName: "claude-sonnet-4",
 		Capabilities: ai.ModelCapabilities{
 			ContextWindow: 200_000,
-			MaxThinking:   ai.ThinkingHigh,
+			MaxThinking:   ai.ThinkingLevelHigh,
 		},
 	}
 	lines := renderFooter(footerData{
@@ -395,7 +375,7 @@ func TestRenderFooterAutoCompactDisabled(t *testing.T) {
 }
 
 func TestStatusLineContextUsageKeepsLastTurn(t *testing.T) {
-	s := NewStatusLine(nil, "", nil)
+	s := NewFooterComponent(nil, "", nil)
 	s.SetTurnContextUsage(&ai.Usage{Input: 100, Output: 50, CacheRead: 10, CacheWrite: 5})
 	s.SetTurnContextUsage(&ai.Usage{Input: 200, Output: 75, CacheRead: 20, CacheWrite: 15})
 	// contextTokens is the LAST turn's total, not cumulative.
@@ -534,7 +514,7 @@ func TestRenderFooterSingleProvider(t *testing.T) {
 
 func TestStatusLineProjectedContextUnknownAndRecovered(t *testing.T) {
 	model := &ai.Model{Capabilities: ai.ModelCapabilities{ContextWindow: 128000}}
-	status := NewStatusLine(model, "", nil)
+	status := NewFooterComponent(model, "", nil)
 	status.SetContextUsage(nil, 128000)
 	unknown := strings.Join(status.Render(120), "\n")
 	if !strings.Contains(unknown, "?/128k") || strings.Contains(unknown, "0.0%/128k") {
@@ -556,7 +536,7 @@ func TestStatusLineProjectedContextUnknownAndRecovered(t *testing.T) {
 
 func TestStatusLineModelSwitchUsesCurrentContextWindow(t *testing.T) {
 	for _, unknown := range []bool{false, true} {
-		status := NewStatusLine(&ai.Model{Capabilities: ai.ModelCapabilities{ContextWindow: 128000}}, "", nil)
+		status := NewFooterComponent(&ai.Model{Capabilities: ai.ModelCapabilities{ContextWindow: 128000}}, "", nil)
 		tokens := 64000
 		if unknown {
 			status.SetContextUsage(nil, 128000)
@@ -585,7 +565,7 @@ func TestStatusLineHoldsNoHandleOnTheRepository(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(repo, ".git", "HEAD"), []byte("ref: refs/heads/trunk\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	status := NewStatusLine(nil, "", nil)
+	status := NewFooterComponent(nil, "", nil)
 	status.SetCwd(repo)
 	if got := status.gitBranch; got != "trunk" {
 		t.Fatalf("branch = %q, want trunk", got)

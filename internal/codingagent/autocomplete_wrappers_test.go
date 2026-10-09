@@ -21,7 +21,7 @@ func (autocompleteStackError) ErrorStack() string {
 }
 
 func TestAutocompleteFailureReachesUncaughtCrash(t *testing.T) {
-	m := &InteractiveMode{opts: InteractiveOptions{AgentDir: t.TempDir()}}
+	m := &InteractiveMode{opts: InteractiveModeOptions{AgentDir: t.TempDir()}}
 	func() {
 		defer func() {
 			value := recover()

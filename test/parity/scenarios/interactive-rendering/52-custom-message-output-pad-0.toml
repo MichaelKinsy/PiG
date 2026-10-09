@@ -1,0 +1,39 @@
+# Behavior family: interactive-rendering
+# Upstream evidence: real Pi 1.1.0 (extensions/sdk-ts/node_modules) run side by side with PiG in tmux at 100x35, resuming the staged session of
+# 12-custom-message. Pi 1.1.0 custom-message.ts sets the default Box's padding from outputPad (`this.box.setPaddingX(this.outputPad)`, #10557); 1.0.4 kept a fixed 1.
+# Surface: with "outputPad": 0 in settings.json the default custom message box's text rows start in column 0. The comparison is the byte-exact escaped capture.
+
+name = "52-custom-message-output-pad-0"
+description = "The default custom message box has no horizontal padding when outputPad is 0."
+covers = [
+  "packages/coding-agent/src/modes/interactive/components/custom-message.ts",
+]
+tags = ["fast", "hermetic", "tui"]
+driver = "interactive-tmux"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_CODING_AGENT_DIR=testdata/pig-agent-output-pad-0"]
+pi = ["PI_CODING_AGENT_DIR=testdata/pi-agent-output-pad-0", "PI_SKIP_VERSION_CHECK=1"]
+pi_extensions = ["../../testdata/test-faux-provider.ts"]
+pig_args = ["--no-extensions", "--session-dir", "sessions", "-c"]
+pi_args = ["--session-dir", "sessions", "-c"]
+
+[tmux]
+width = 100
+height = 35
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "(auto)"
+ready_timeout_seconds = 30
+cwd = "testdata/custom-msg-cwd"
+capture_start = "[testNotice]"
+capture_end = "extension."
+
+[assert]
+both_reach_ready = true
+both_not_contain = ["panic:", "goroutine ", "unknown command"]
+both_contain = ["[testNotice]", "custom notice from an extension"]
+# The theme-owned background and foreground now match the exact Pi cell styles.
+escaped_output_equal = true
+runtime_ratio_max = 2.0
+runs = 3

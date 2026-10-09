@@ -66,10 +66,10 @@ func run() error {
 		}
 	}))
 	defer server.Close()
-	provider := ai.NewAzureOpenAIResponsesProvider(ai.AzureOpenAIResponsesConfig{APIKey: "test", Model: "gpt-4o-mini", AzureDeploymentName: "image-deployment", BaseURL: server.URL})
+	provider := ai.NewAzureOpenAIResponsesProvider(ai.AzureOpenAIResponsesConfig{APIKey: "test", Model: "gpt-4o-mini", BaseURL: server.URL})
 	defer func() { _ = provider.Close() }()
 	request := ai.Context{Messages: []ai.Message{ai.UserMessage{Content: ai.UserText("Describe the image.")}}, Tools: []ai.ToolSchema{{Name: "image", Parameters: ai.JsonObject{"type": "object", "properties": ai.JsonObject{}}}}}
-	stream, err := provider.Stream(context.Background(), ai.NormalizeContext(request), ai.StreamOptions{})
+	stream, err := provider.Stream(context.Background(), ai.NormalizeContext(request), ai.StreamOptions{AzureDeploymentName: "image-deployment"})
 	if err != nil {
 		return err
 	}
@@ -79,7 +79,7 @@ func run() error {
 	}
 	call := first.Content[0].(ai.ToolCall)
 	request.Messages = append(request.Messages, *first, ai.ToolResultMessage{ToolCallID: call.ID, ToolName: call.Name, Content: []ai.ToolResultMessageContent{ai.TextContent{Text: "A red circle."}, ai.ImageContent{MimeType: "image/png", Data: base64.StdEncoding.EncodeToString(data)}}})
-	stream, err = provider.Stream(context.Background(), ai.NormalizeContext(request), ai.StreamOptions{})
+	stream, err = provider.Stream(context.Background(), ai.NormalizeContext(request), ai.StreamOptions{AzureDeploymentName: "image-deployment"})
 	if err != nil {
 		return err
 	}

@@ -31,7 +31,7 @@ func TestPairReviewResumeWithoutThinkingEntryUsesSettings(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if err := history.AppendModelSwitch("openai", "gpt-5", ""); err != nil {
+			if _, err := history.AppendModelChange("openai", "gpt-5"); err != nil {
 				t.Fatal(err)
 			}
 			_, err = history.AppendMessage(agent.AgentMessage{Assistant: &agent.AssistantMessage{Role: agent.RoleAssistant, Provider: "openai", ModelID: "gpt-5", API: ai.APIOpenAIResponses, Content: []ai.AssistantContentBlock{ai.TextContent{Text: "history"}}, StopReason: ai.StopReasonStop, Usage: &ai.Usage{}}})

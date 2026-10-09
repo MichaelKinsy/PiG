@@ -1,5 +1,7 @@
 package ai
 
+import "github.com/MichaelKinsy/PiG/internal/pigstrip"
+
 // Go links provider factories statically instead of using dynamic imports.
 
 // ProviderFactory creates a Provider from an API key and model spec.
@@ -10,13 +12,6 @@ type ProviderFactory func(apiKey, model, baseURL string) Provider
 var builtInProviders = map[API]ProviderFactory{
 	APIOpenAICompletions: func(apiKey, model, baseURL string) Provider {
 		return NewOpenAIProvider(OpenAIConfig{
-			APIKey:  apiKey,
-			Model:   model,
-			BaseURL: baseURL,
-		})
-	},
-	APIMistralConversations: func(apiKey, model, baseURL string) Provider {
-		return NewMistralProvider(MistralConfig{
 			APIKey:  apiKey,
 			Model:   model,
 			BaseURL: baseURL,
@@ -67,17 +62,14 @@ var builtInProviders = map[API]ProviderFactory{
 			ProviderID: string(APIPiMessages),
 		})
 	},
-	APIGoogleVertex: func(apiKey, model, baseURL string) Provider {
-		return NewGoogleVertexProvider(GoogleVertexConfig{
-			APIKey:  apiKey,
-			Model:   model,
-			BaseURL: baseURL,
-		})
-	},
 }
 
 // LookupBuiltInProvider returns the factory for a built-in API, if registered.
 func LookupBuiltInProvider(api API) (ProviderFactory, bool) {
+	// pig additive (D92): an API a Piglet strips (strip.apis) is not registered, as in a Binary that compiles it out.
+	if pigstrip.Has(pigstrip.ListAPIs, string(api)) {
+		return nil, false
+	}
 	f, ok := builtInProviders[api]
 	return f, ok
 }
@@ -86,7 +78,10 @@ func LookupBuiltInProvider(api API) (ProviderFactory, bool) {
 func RegisteredAPIs() []API {
 	apis := make([]API, 0, len(builtInProviders))
 	for api := range builtInProviders {
-		apis = append(apis, api)
+		// pig additive (D92): see LookupBuiltInProvider.
+		if !pigstrip.Has(pigstrip.ListAPIs, string(api)) {
+			apis = append(apis, api)
+		}
 	}
 	return apis
 }

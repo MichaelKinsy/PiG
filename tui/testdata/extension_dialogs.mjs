@@ -10,12 +10,14 @@ const { setKeybindings, setCapabilities } = await load("node_modules/@earendil-w
 const { KeybindingsManager } = await load("dist/core/keybindings.js");
 const { initTheme } = await load("dist/modes/interactive/theme/theme.js");
 const { ExtensionSelectorComponent } = await load("dist/modes/interactive/components/extension-selector.js");
+const { OAuthSelectorComponent } = await load("dist/modes/interactive/components/oauth-selector.js");
 const { ExtensionInputComponent } = await load("dist/modes/interactive/components/extension-input.js");
 // CountdownTimer's interval callback runs when a probe sends "<tick>".
 let intervals = [];
 globalThis.setInterval = (callback) => intervals.push(callback);
 globalThis.clearInterval = (id) => { intervals[id - 1] = undefined; };
 let input = "";
+process.stdin.setEncoding("utf8"); // decode across chunk boundaries: `input += chunk` on Buffers splits a multi-byte character at a 64 KiB edge
 for await (const chunk of process.stdin) input += chunk;
 const cases = JSON.parse(input);
 const results = cases.map((test) => {
@@ -28,7 +30,9 @@ const results = cases.map((test) => {
   intervals = [];
   const title = test.title ?? "Rigidity probe";
   const timed = test.timeout ? { tui: { requestRender() {} }, timeout: test.timeout } : {};
-  const component = test.kind === "input"
+  const component = test.kind === "oauth"
+    ? new OAuthSelectorComponent(test.mode ?? "login", test.providers, (id, authType) => submit(id + "/" + authType), cancel, test.initialSearch)
+    : test.kind === "input"
     ? new ExtensionInputComponent(title, undefined, submit, cancel, timed)
     : new ExtensionSelectorComponent(title, test.options, submit, cancel, { onToggleToolsExpanded: () => toggles++, ...timed });
   component.focused = true;

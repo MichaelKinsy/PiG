@@ -28,55 +28,42 @@ func (p *nativeOAuthProxy) LoginContext(ctx context.Context, callbacks ai.OAuthL
 	p.host.setOAuthLoginSession(p.owner, callbacks)
 	defer p.host.clearOAuthLoginSession(p.owner)
 	data, err := p.proxy.objectCall(ctx, "auth.oauth.login", map[string]any{}, func(data json.RawMessage) (json.RawMessage, error) {
-		var request struct {
-			Method string `json:"method"`
-			Params struct {
-				Prompt json.RawMessage `json:"prompt"`
-				Event  json.RawMessage `json:"event"`
-			} `json:"params"`
-		}
-		if err := json.Unmarshal(data, &request); err != nil {
+		callback, err := decodeNativeLoginCallback(data)
+		if err != nil {
 			return nil, err
 		}
-		payload := request.Params.Prompt
-		if request.Method == "notify" {
-			payload = request.Params.Event
-		}
-		var kind struct {
-			Type string `json:"type"`
-		}
-		if err := json.Unmarshal(payload, &kind); err != nil {
-			return nil, err
-		}
-		method := ""
-		switch request.Method {
-		case "prompt":
+		var method string
+		switch callback.prompt.(type) {
+		case nil:
+		case ai.AuthTextPrompt, ai.AuthSecretPrompt:
 			method = CallOAuthOnPrompt
-			if kind.Type == "select" {
-				method = CallOAuthOnSelect
-			}
-			if kind.Type == "manual_code" {
-				method = CallOAuthOnManualCodeInput
-			}
-		case "notify":
-			method = CallOAuthOnProgress
-			if kind.Type == "auth_url" {
-				method = CallOAuthOnAuth
-			}
-			if kind.Type == "device_code" {
-				method = CallOAuthOnDeviceCode
-			}
+		case ai.AuthSelectPrompt:
+			method = CallOAuthOnSelect
+		case ai.AuthManualCodePrompt:
+			method = CallOAuthOnManualCodeInput
 		default:
-			return nil, fmt.Errorf("unexpected login callback %s", request.Method)
+			return nil, fmt.Errorf("unhandled login prompt type %q", callback.prompt.Type())
 		}
-		result, err := p.host.handleOAuthCallback(ctx, p.owner, &CallPayload{Method: method, Args: payload})
+		switch callback.event.(type) {
+		case nil:
+		case ai.AuthURLEvent:
+			method = CallOAuthOnAuth
+		case ai.AuthDeviceCodeEvent:
+			method = CallOAuthOnDeviceCode
+		// The bridge's login session shows an info or progress message through its progress callback.
+		case ai.AuthInfoEvent, ai.AuthProgressEvent:
+			method = CallOAuthOnProgress
+		default:
+			return nil, fmt.Errorf("unhandled login event type %q", callback.event.Type())
+		}
+		result, err := p.host.handleOAuthCallback(ctx, p.owner, &CallPayload{Method: method, Args: callback.payload})
 		if err != nil {
 			return nil, err
 		}
 		if result.Error != nil {
 			return nil, result.Error.ToError()
 		}
-		if request.Method == "notify" {
+		if callback.event != nil {
 			return json.RawMessage("null"), nil
 		}
 		var answer struct {
@@ -91,6 +78,17 @@ func (p *nativeOAuthProxy) LoginContext(ctx context.Context, callbacks ai.OAuthL
 		}
 		return json.Marshal(answer.Value)
 	})
+	if err != nil {
+		return ai.OAuthCredentials{}, err
+	}
+	var result ai.OAuthCredentials
+	err = json.Unmarshal(data, &result)
+	return result, err
+}
+
+// LoginInteraction runs the provider object's auth.oauth.login with Pi's AuthInteraction, as Pi's login dialog does (interactive-mode.ts:6315-6336 loginProvider): each prompt and event reaches the interaction as the flow sent it, an info event with its links included.
+func (p *nativeOAuthProxy) LoginInteraction(ctx context.Context, interaction ai.AuthInteraction) (ai.OAuthCredentials, error) {
+	data, err := p.proxy.objectCall(ctx, "auth.oauth.login", map[string]any{}, nativeAuthInteraction(ctx, interaction))
 	if err != nil {
 		return ai.OAuthCredentials{}, err
 	}

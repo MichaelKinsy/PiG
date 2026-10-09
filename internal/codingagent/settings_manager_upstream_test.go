@@ -318,12 +318,12 @@ func TestUpstreamSettingsManager(t *testing.T) {
 
 	t.Run("retry settings", func(t *testing.T) {
 		t.Run("defaults and overrides agent retry delay cap", func(t *testing.T) {
-			if got := NewInMemorySettingsManager(Settings{}).GetRetrySettings(); got != (RetryConfig{Enabled: true, MaxRetries: 3, BaseDelayMs: 2000, MaxDelayMs: 60000}) {
+			if got := NewInMemorySettingsManager(Settings{}).GetRetrySettings(); got != (RetryConfig{Enabled: true, MaxRetries: 3, BaseDelayMs: 2000, MaxAgentDelayMs: 60000}) {
 				t.Fatalf("defaults = %#v", got)
 			}
 			enabled, maxRetries, base, maxDelay := true, 10, 500, 5000
 			custom := NewInMemorySettingsManager(Settings{Retry: &RetrySettingsJSON{Enabled: &enabled, MaxRetries: &maxRetries, BaseDelayMs: &base, MaxAgentDelayMs: &maxDelay}})
-			if got := custom.GetRetrySettings(); got != (RetryConfig{Enabled: true, MaxRetries: 10, BaseDelayMs: 500, MaxDelayMs: 5000}) {
+			if got := custom.GetRetrySettings(); got != (RetryConfig{Enabled: true, MaxRetries: 10, BaseDelayMs: 500, MaxAgentDelayMs: 5000}) {
 				t.Fatalf("overrides = %#v", got)
 			}
 		})

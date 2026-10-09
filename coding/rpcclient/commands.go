@@ -309,6 +309,14 @@ func (c *RpcClient) GetCommands() ([]RpcSlashCommand, error) {
 	return data.Commands, err
 }
 
+// GetExtensions lists the resolved paths of the loaded extensions in load order.
+func (c *RpcClient) GetExtensions() ([]string, error) {
+	data, err := sendFor[struct {
+		Paths []string `json:"paths"`
+	}](c, command("get_extensions"))
+	return data.Paths, err
+}
+
 // WaitForIdle waits for the next agent_settled event (upstream default
 // timeout: DefaultTimeout).
 func (c *RpcClient) WaitForIdle(timeout time.Duration) error {

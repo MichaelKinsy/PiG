@@ -2,6 +2,7 @@ package tui
 
 import (
 	"reflect"
+	"slices"
 	"testing"
 )
 
@@ -136,10 +137,10 @@ func TestTUIKeybindingsManager_GetUserAndResolvedBindings(t *testing.T) {
 	}
 
 	resolved := kb.GetResolvedBindings()
-	if got := resolved[KBSelectCancel]; got != "ctrl+q" {
-		t.Fatalf("resolved cancel = %#v want ctrl+q", got)
+	if got := resolved[KBSelectCancel]; !reflect.DeepEqual(got, []string{"ctrl+q"}) {
+		t.Fatalf("resolved cancel = %#v want [ctrl+q]", got)
 	}
-	if got, ok := resolved[KBEditorCursorLeft].([]string); !ok || !reflect.DeepEqual(got, []string{"left", "ctrl+b"}) {
+	if got := resolved[KBEditorCursorLeft]; !reflect.DeepEqual(got, []string{"left", "ctrl+b"}) {
 		t.Fatalf("resolved cursorLeft = %#v want []string{left, ctrl+b}", resolved[KBEditorCursorLeft])
 	}
 	if _, ok := resolved[KBEditorCursorUp]; !ok {
@@ -243,10 +244,41 @@ func TestTUIKeybindingsUpstream(t *testing.T) {
 	// upstream: packages/tui/test/keybindings.test.ts:67
 	t.Run("still reports direct user binding conflicts without evicting defaults", func(t *testing.T) {
 		manager := newManager(map[string][]string{KBInputSubmit: {"ctrl+x"}, KBSelectConfirm: {"ctrl+x"}})
-		want := []TUIKeybindingConflict{{Key: "ctrl+x", Actions: []string{KBInputSubmit, KBSelectConfirm}}}
+		want := []TUIKeybindingConflict{{Key: "ctrl+x", Keybindings: []string{KBInputSubmit, KBSelectConfirm}}}
 		if got := manager.GetConflicts(); !reflect.DeepEqual(got, want) {
 			t.Fatalf("conflicts=%#v, want %#v", got, want)
 		}
 		assertKeys(t, manager, KBEditorCursorLeft, []string{"left", "ctrl+b"})
 	})
+
+	// packages/tui/src/keybindings.ts KeybindingsManager.rebuild skips a user id the definitions do not hold, so it claims no key.
+	t.Run("does not report a conflict for an id the definitions do not hold", func(t *testing.T) {
+		manager := newManager(map[string][]string{"app.unknown": {"ctrl+x"}, KBSelectConfirm: {"ctrl+x"}})
+		if got := manager.GetConflicts(); len(got) != 0 {
+			t.Fatalf("conflicts=%#v, want none", got)
+		}
+	})
+}
+
+// upstream: packages/tui/src/keybindings.ts getKeybindings() falls back to TUI_KEYBINDINGS, which has no platform
+// column; only coding-agent KEYBINDINGS changes undo and the alt-screen keys on Windows and WSL. Probed: Pi's
+// getKeybindings() returns the same keys with and without WSL_DISTRO_NAME.
+func TestTUIDefaultKeybindingsIgnoreThePlatform(t *testing.T) {
+	want := map[TUIKeybinding][]string{
+		KBEditorUndo:              {"ctrl+-"},
+		KBAltScreenPreviousPrompt: {"ctrl+shift+up", "ctrl+up"},
+		KBAltScreenNextPrompt:     {"ctrl+shift+down", "ctrl+down"},
+		KBAltScreenSearch:         {"ctrl+shift+f"},
+	}
+	defaults := NewTUIKeybindingsManager(nil)
+	for action, keys := range want {
+		if got := defaults.GetKeys(action); !slices.Equal(got, keys) {
+			t.Errorf("default %s = %v, want %v", action, got, keys)
+		}
+	}
+	for _, platform := range []KeybindingPlatform{KeybindingPlatformWin32, KeybindingPlatformLinuxWSL} {
+		if got := TUIKeybindingDefinitionsFor(platform)[KBEditorUndo].DefaultKeys; slices.Equal(got, want[KBEditorUndo]) {
+			t.Errorf("%v undo = %v; the coding agent's platform table must keep its own key", platform, got)
+		}
+	}
 }

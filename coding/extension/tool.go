@@ -31,6 +31,11 @@ type ToolRenderContext struct {
 	Expanded         bool      `json:"expanded"`
 	ShowImages       bool      `json:"showImages"`
 	IsError          bool      `json:"isError"`
+	// OutputPad is the horizontal padding configured by the outputPad setting. Renderers with renderShell "self" apply it themselves.
+	OutputPad int `json:"outputPad"`
+	// DurationMs is the recorded execution time of a final result in milliseconds. Nil while the result is partial and for results
+	// stored without one. upstream: types.ts:496 ToolRenderContext.durationMs
+	DurationMs *int64 `json:"durationMs,omitempty"`
 	// Card identifies the tool card being rendered. Go mechanic (not a
 	// divergence): a renderer that runs in an extension process keeps State
 	// and its last component there, so the host names the card they belong
@@ -208,6 +213,8 @@ type ToolInfo struct {
 	Parameters       json.RawMessage `json:"parameters"`
 	PromptGuidelines []string        `json:"promptGuidelines,omitempty"`
 	SourceInfo       SourceInfo      `json:"sourceInfo"`
+	// Source is PiG's per-tool source attribution (D23): "builtin", the registering extension's name, or the tool's declared source. It is not part of upstream's ToolInfo.
+	Source string `json:"-"`
 	// Exposure, Namespace, and Annotations mirror upstream ToolInfo. upstream: types.ts:2063
 	Exposure    ToolExposure     `json:"exposure,omitempty"`
 	Namespace   *ToolNamespace   `json:"namespace,omitempty"`
@@ -219,6 +226,8 @@ type ToolInfo struct {
 type RegisteredTool struct {
 	Definition ToolDefinition `json:"definition"`
 	SourceInfo SourceInfo     `json:"sourceInfo"`
+	// Source is PiG's per-tool source attribution (D23): the tool's declared source, or the registering extension's name. It is not part of upstream's RegisteredTool and is empty for tools no extension registered.
+	Source string `json:"-"`
 }
 
 // CallOrder is a reserved place in a tool's call order. Wait returns when every earlier reservation was released;

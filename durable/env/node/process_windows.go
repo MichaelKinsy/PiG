@@ -68,14 +68,7 @@ func platformShellConfig(ctx context.Context) (shellConfig, error) {
 	for index, candidate := range candidates {
 		searched[index] = "  " + candidate
 	}
-	return shellConfig{}, &durableenv.ExecutionError{
-		Code: durableenv.ExecutionErrorShellUnavailable,
-		Message: "No bash shell found. Options:\n" +
-			"  1. Install Git for Windows: https://git-scm.com/download/win\n" +
-			"  2. Add your bash to PATH (Cygwin, MSYS2, etc.)\n" +
-			"  3. Configure an explicit shellPath\n\n" +
-			"Searched Git Bash in:\n" + strings.Join(searched, "\n"),
-	}
+	return shellConfig{}, durableenv.NewExecutionError(durableenv.ExecutionErrorShellUnavailable, "No bash shell found. Options:\n"+"  1. Install Git for Windows: https://git-scm.com/download/win\n"+"  2. Add your bash to PATH (Cygwin, MSYS2, etc.)\n"+"  3. Configure an explicit shellPath\n\n"+"Searched Git Bash in:\n"+strings.Join(searched, "\n"), nil)
 }
 
 func signalExitCode(syscall.WaitStatus) (int, bool) { return 0, false }

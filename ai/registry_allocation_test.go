@@ -75,8 +75,8 @@ func referenceCapabilities(m *GeneratedModel) ModelCapabilities {
 		Capabilities:     ModelCapabilities{MaxThinking: thinkingMaxLevel(m.Reasoning, m.ThinkingLevelMap)},
 		ThinkingLevelMap: cloneThinkingLevelMap(m.ThinkingLevelMap),
 	}) {
-		if CompareThinkingLevels(level, caps.MaxThinking) > 0 {
-			caps.MaxThinking = level
+		if CompareThinkingLevels(level, ModelThinkingLevel(caps.MaxThinking)) > 0 {
+			caps.MaxThinking = level.ReasoningOption()
 		}
 	}
 	return caps

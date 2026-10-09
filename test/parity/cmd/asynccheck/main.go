@@ -15,21 +15,12 @@ import (
 	"github.com/BurntSushi/toml"
 
 	"github.com/MichaelKinsy/PiG/coding"
+	"github.com/MichaelKinsy/PiG/test/parity/upstreampackages"
 )
 
 var (
-	trackedPackages = []struct {
-		root string
-		name string
-	}{
-		{root: "packages/agent", name: "@earendil-works/pi-agent-core"},
-		{root: "packages/ai", name: "@earendil-works/pi-ai"},
-		{root: "packages/codemode", name: "@earendil-works/pi-codemode"},
-		{root: "packages/coding-agent", name: "@earendil-works/pi-coding-agent"},
-		{root: "packages/mcp", name: "@earendil-works/pi-mcp"},
-		{root: "packages/tui", name: "@earendil-works/pi-tui"},
-	}
-	asyncPattern = regexp.MustCompile(`\basync\b|\bPromise\s*[<.(]|\.then\s*\(|\.catch\s*\(|\.finally\s*\(`)
+	trackedPackages = upstreampackages.All()
+	asyncPattern    = regexp.MustCompile(`\basync\b|\bPromise\s*[<.(]|\.then\s*\(|\.catch\s*\(|\.finally\s*\(`)
 )
 
 type asyncManifest struct {
@@ -87,7 +78,7 @@ func main() {
 func discoverAsyncSources(root string) ([]string, error) {
 	var paths []string
 	for _, pkg := range trackedPackages {
-		manifestPath := filepath.Join(root, filepath.FromSlash(pkg.root), "package.json")
+		manifestPath := filepath.Join(root, filepath.FromSlash(pkg.Root), "package.json")
 		body, err := os.ReadFile(manifestPath)
 		if err != nil {
 			return nil, err
@@ -99,10 +90,10 @@ func discoverAsyncSources(root string) ([]string, error) {
 		if err := json.Unmarshal(body, &manifest); err != nil {
 			return nil, fmt.Errorf("%s: %w", manifestPath, err)
 		}
-		if manifest.Name != pkg.name || manifest.Version != coding.UpstreamVersion {
-			return nil, fmt.Errorf("%s: got %q version %q, want %q version %q", manifestPath, manifest.Name, manifest.Version, pkg.name, coding.UpstreamVersion)
+		if manifest.Name != pkg.Name || manifest.Version != coding.UpstreamVersion {
+			return nil, fmt.Errorf("%s: got %q version %q, want %q version %q", manifestPath, manifest.Name, manifest.Version, pkg.Name, coding.UpstreamVersion)
 		}
-		base := filepath.Join(root, filepath.FromSlash(pkg.root), "src")
+		base := filepath.Join(root, filepath.FromSlash(pkg.Root), "src")
 		if _, err := os.Stat(base); err != nil {
 			return nil, fmt.Errorf("tracked root %s: %w", base, err)
 		}

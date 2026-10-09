@@ -1,9 +1,12 @@
+//go:build !pig_strip_bedrock_converse_stream
+
 package ai
 
 // Ports packages/ai/src/api/bedrock-converse-stream.ts
 // ConverseStream uses the AWS SDK transport with request-scoped proxy, region, and credential selection.
 
 import (
+	"cmp"
 	"context"
 	"encoding/base64"
 	"encoding/json"
@@ -12,11 +15,13 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"slices"
 	"strings"
 	"time"
 	"unicode"
 
 	"github.com/MichaelKinsy/PiG/internal/lazyregexp"
+	"github.com/MichaelKinsy/PiG/internal/pigstrip"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	awsmiddleware "github.com/aws/aws-sdk-go-v2/aws/middleware"
@@ -131,6 +136,11 @@ func (p *BedrockProvider) Stream(ctx context.Context, transcript TranscriptConte
 
 	inf := &btypes.InferenceConfiguration{}
 	maxTokens := opts.MaxTokens
+	// upstream: packages/ai/src/api/bedrock-converse-stream.ts:streamSimple sends adjustMaxTokensForThinking's maxTokens, clamped to the context, with the matching thinking budget.
+	adjusted, thinkingBudget := adjustBedrockBudgetThinking(modelMeta, p.modelName, transcript, opts)
+	if adjusted > 0 {
+		maxTokens = adjusted
+	}
 	// upstream: packages/ai/src/api/bedrock-converse-stream.ts:inferenceMaxTokens
 	if maxTokens == 0 && isAnthropicClaudeBedrockModel(modelMeta.ID, modelMeta.DisplayName) {
 		maxTokens = modelMeta.Capabilities.MaxOutputTokens
@@ -152,7 +162,7 @@ func (p *BedrockProvider) Stream(ctx context.Context, transcript TranscriptConte
 		ToolConfig:      tools,
 		RequestMetadata: opts.RequestMetadata,
 	}
-	if extra := buildBedrockAdditionalFields(modelMeta, p.modelName, opts); extra != nil {
+	if extra := buildBedrockAdditionalFieldsWithBudget(modelMeta, p.modelName, opts, thinkingBudget); extra != nil {
 		input.AdditionalModelRequestFields = bdoc.NewLazyDocument(extra)
 	}
 	if opts.OnPayload != nil {
@@ -288,7 +298,7 @@ func loadBedrockConfig(ctx context.Context, baseURL, modelID string, options Str
 	if err != nil {
 		return aws.Config{}, fmt.Errorf("load AWS config: %w", err)
 	}
-	if token := firstNonEmptyString(options.APIKey, getProviderEnvValue("AWS_BEARER_TOKEN_BEDROCK", env)); token != "" && !skipAuth {
+	if token := firstNonEmptyString(options.BearerToken, options.APIKey, getProviderEnvValue("AWS_BEARER_TOKEN_BEDROCK", env)); token != "" && !skipAuth {
 		cfg.BearerAuthTokenProvider = staticBearerTokenProvider(token)
 		cfg.AuthSchemePreference = []string{"httpBearerAuth"}
 	}
@@ -476,7 +486,7 @@ func supportsBedrockPromptCaching(modelID, modelName string, env ProviderEnv) bo
 		return getProviderEnvValue("AWS_BEDROCK_FORCE_CACHE", env) == "1"
 	}
 	for _, candidate := range candidates {
-		if strings.Contains(candidate, "fable-5") || strings.Contains(candidate, "opus-5") || strings.Contains(candidate, "sonnet-5") {
+		if strings.Contains(candidate, "fable-5") || strings.Contains(candidate, "opus-5") || strings.Contains(candidate, "sonnet-5") || strings.Contains(candidate, "haiku-5") {
 			return true
 		}
 	}
@@ -494,7 +504,7 @@ func supportsBedrockThinkingSignatureWithName(modelID, modelName string) bool {
 
 func supportsBedrockAdaptiveThinkingWithName(modelID, modelName string) bool {
 	for _, candidate := range bedrockModelMatchCandidates(modelID, modelName) {
-		if strings.Contains(candidate, "opus-4-6") || strings.Contains(candidate, "opus-4-7") || strings.Contains(candidate, "opus-4-8") || strings.Contains(candidate, "opus-5") || strings.Contains(candidate, "sonnet-4-6") || strings.Contains(candidate, "sonnet-5") || strings.Contains(candidate, "fable-5") {
+		if strings.Contains(candidate, "opus-4-6") || strings.Contains(candidate, "opus-4-7") || strings.Contains(candidate, "opus-4-8") || strings.Contains(candidate, "opus-5") || strings.Contains(candidate, "sonnet-4-6") || strings.Contains(candidate, "sonnet-5") || strings.Contains(candidate, "haiku-5") || strings.Contains(candidate, "fable-5") {
 			return true
 		}
 	}
@@ -848,7 +858,7 @@ func convertBedrockTools(tools []ToolSchema, toolChoice any, supportsStrictMode 
 		}
 		toolChoice = value
 	}
-	choice, _ := toolChoice.(string)
+	choice, _ := toolChoiceName(toolChoice)
 	if choice == "none" {
 		return nil, nil
 	}
@@ -912,24 +922,46 @@ func isGovCloudBedrockTarget(model *Model, opts StreamOptions) bool {
 
 // buildBedrockAdditionalFields omits thinking.display for GovCloud targets in both adaptive and budget-based requests.
 func buildBedrockAdditionalFields(model *Model, modelName string, opts StreamOptions) map[string]any {
-	if opts.Thinking == "" || opts.Thinking == ThinkingOff || !opts.IsReasoning {
+	return buildBedrockAdditionalFieldsWithBudget(model, modelName, opts, nil)
+}
+
+// bedrockBudgetThinking reports whether the request uses budget-based Claude thinking.
+func bedrockBudgetThinking(model *Model, modelName string, opts StreamOptions) bool {
+	return opts.Thinking != "" && opts.IsReasoning && model != nil && isAnthropicClaudeBedrockModel(model.ID, modelName) && !supportsBedrockAdaptiveThinkingWithName(model.ID, modelName)
+}
+
+// adjustBedrockBudgetThinking is the budget-based branch of upstream streamSimple (bedrock-converse-stream.ts:552-575): the request's maxTokens becomes adjustMaxTokensForThinking's, clamped to the context, and the thinking budget is capped to leave 1024 tokens of answer room. It returns 0 and nil when the request does not use budget-based thinking or the model has no output cap.
+func adjustBedrockBudgetThinking(model *Model, modelName string, transcript TranscriptContext, opts StreamOptions) (maxTokens int, budget *int) {
+	if !bedrockBudgetThinking(model, modelName, opts) || model.Capabilities.MaxOutputTokens <= 0 {
+		return 0, nil
+	}
+	adjustedMax, adjustedBudget := AdjustMaxTokensForThinking(maxTokensPtr(opts.MaxTokens), model.Capabilities.MaxOutputTokens, string(ModelThinkingLevel(opts.Thinking)), opts.ThinkingBudgets)
+	maxTokens = ClampMaxTokensToContext(model, transcript, adjustedMax)
+	return maxTokens, new(min(adjustedBudget, max(0, maxTokens-MinAnswerTokens)))
+}
+
+func buildBedrockAdditionalFieldsWithBudget(model *Model, modelName string, opts StreamOptions, budgetOverride *int) map[string]any {
+	if opts.Thinking == "" || !opts.IsReasoning {
 		return nil
 	}
-	if model == nil || !isAnthropicClaudeBedrockModel(model.ID, modelName) {
+	if model == nil {
 		return nil
+	}
+	if !isAnthropicClaudeBedrockModel(model.ID, modelName) {
+		return bedrockOpenAIReasoningFields(model, modelName, ModelThinkingLevel(opts.Thinking))
 	}
 
 	thinking := map[string]any{}
 	isGovCloud := isGovCloudBedrockTarget(model, opts)
 	if !isGovCloud {
-		thinking["display"] = "summarized"
+		thinking["display"] = string(cmp.Or(opts.ThinkingDisplay, AnthropicThinkingDisplaySummarized))
 	}
 
 	if supportsBedrockAdaptiveThinkingWithName(model.ID, modelName) {
 		thinking["type"] = "adaptive"
 		result := map[string]any{
 			"thinking":      thinking,
-			"output_config": map[string]any{"effort": mapBedrockThinkingEffort(model, opts.Thinking)},
+			"output_config": map[string]any{"effort": mapBedrockThinkingEffort(model, ModelThinkingLevel(opts.Thinking))},
 		}
 		// Replayed signed thinking blocks are bound to the system prompt and tools they were
 		// created with. Bedrock 400s on replay after either changes unless stale blocks are
@@ -941,23 +973,17 @@ func buildBedrockAdditionalFields(model *Model, modelName string, opts StreamOpt
 		return result
 	}
 
-	budget := 0
-	if model.Capabilities.MaxOutputTokens > 0 {
-		adjustedMax, adjustedBudget := AdjustMaxTokensForThinking(maxTokensPtr(opts.MaxTokens), model.Capabilities.MaxOutputTokens, string(opts.Thinking), nil)
-		_ = adjustedMax // Mirrors upstream: the helper owns the budget calculation; Bedrock sends only the thinking budget here.
-		budget = adjustedBudget
-	} else {
-		defaults := map[ThinkingLevel]int{
-			ThinkingMinimal: 1024,
-			ThinkingLow:     2048,
-			ThinkingMedium:  8192,
-			ThinkingHigh:    16384,
-			ThinkingXHigh:   16384,
-			ThinkingMax:     16384,
-		}
-		budget = defaults[opts.Thinking]
+	// upstream: bedrock-converse-stream.ts:buildAdditionalModelRequestFields: thinkingBudgets[level] ?? defaultBudgets[reasoning], with xhigh and max reading the high budget.
+	var budget int
+	switch {
+	case budgetOverride != nil:
+		budget = *budgetOverride
+	case model.Capabilities.MaxOutputTokens > 0:
+		_, budget = AdjustMaxTokensForThinking(maxTokensPtr(opts.MaxTokens), model.Capabilities.MaxOutputTokens, string(ModelThinkingLevel(opts.Thinking)), opts.ThinkingBudgets)
+	default:
+		budget = ThinkingBudgetForLevel(string(ModelThinkingLevel(opts.Thinking)), opts.ThinkingBudgets)
 		if budget <= 0 {
-			budget = defaults[ThinkingHigh]
+			budget = DefaultThinkingBudgets().High
 		}
 	}
 	thinking["type"], thinking["budget_tokens"] = "enabled", budget
@@ -969,13 +995,31 @@ func buildBedrockAdditionalFields(model *Model, modelName string, opts StreamOpt
 	return result
 }
 
+// bedrockOpenAIReasoningFields is the reasoning request field of an OpenAI model on Bedrock: gpt-oss takes a flat reasoning_effort that only accepts low, medium and high; other GPT models (GPT-5.x, GPT-6) take a nested reasoning.effort and reject minimal. Other models get none (#9331).
+// upstream: packages/ai/src/api/bedrock-converse-stream.ts:buildAdditionalModelRequestFields, OPENAI_GPT_EFFORT, OPENAI_GPT_OSS_EFFORT
+func bedrockOpenAIReasoningFields(model *Model, modelName string, level ModelThinkingLevel) map[string]any {
+	candidates := bedrockModelMatchCandidates(model.ID, modelName)
+	if slices.ContainsFunc(candidates, func(s string) bool { return strings.Contains(s, "gpt-oss") }) {
+		effort := map[ModelThinkingLevel]string{ThinkingMinimal: "low", ThinkingLow: "low", ThinkingMedium: "medium", ThinkingHigh: "high", ThinkingXHigh: "high", ThinkingMax: "high"}[level]
+		return map[string]any{"reasoning_effort": effort}
+	}
+	if slices.ContainsFunc(candidates, func(s string) bool { return strings.Contains(s, "gpt-") }) {
+		effort := map[ModelThinkingLevel]string{ThinkingMinimal: "low", ThinkingLow: "low", ThinkingMedium: "medium", ThinkingHigh: "high", ThinkingXHigh: "xhigh", ThinkingMax: "max"}[level]
+		if mapped := model.ThinkingLevelMap[level]; mapped != nil {
+			effort = *mapped
+		}
+		return map[string]any{"reasoning": map[string]any{"effort": effort}}
+	}
+	return nil
+}
+
 // supportsBedrockThinkingBlockBinding reports whether the model accepts
 // thinking.block_binding. Opus 4.6 and Sonnet 4.6 reject it with
 // "thinking.adaptive.block_binding: Extra inputs are not permitted".
 // upstream: packages/ai/src/api/bedrock-converse-stream.ts:supportsThinkingBlockBinding
 func supportsBedrockThinkingBlockBinding(modelID, modelName string) bool {
 	for _, s := range bedrockModelMatchCandidates(modelID, modelName) {
-		if strings.Contains(s, "opus-4-7") || strings.Contains(s, "opus-4-8") || strings.Contains(s, "opus-5") || strings.Contains(s, "sonnet-5") || strings.Contains(s, "fable-5") {
+		if strings.Contains(s, "opus-4-7") || strings.Contains(s, "opus-4-8") || strings.Contains(s, "opus-5") || strings.Contains(s, "sonnet-5") || strings.Contains(s, "haiku-5") || strings.Contains(s, "fable-5") {
 			return true
 		}
 	}
@@ -989,14 +1033,14 @@ func supportsNativeXhighEffort(model *Model) bool {
 		return false
 	}
 	for _, s := range bedrockModelMatchCandidates(model.ID, model.DisplayName) {
-		if strings.Contains(s, "opus-4-7") || strings.Contains(s, "opus-4-8") || strings.Contains(s, "opus-5") || strings.Contains(s, "sonnet-5") || strings.Contains(s, "fable-5") {
+		if strings.Contains(s, "opus-4-7") || strings.Contains(s, "opus-4-8") || strings.Contains(s, "opus-5") || strings.Contains(s, "sonnet-5") || strings.Contains(s, "haiku-5") || strings.Contains(s, "fable-5") {
 			return true
 		}
 	}
 	return false
 }
 
-func mapBedrockThinkingEffort(model *Model, level ThinkingLevel) string {
+func mapBedrockThinkingEffort(model *Model, level ModelThinkingLevel) string {
 	// upstream: packages/ai/src/api/bedrock-converse-stream.ts:mapThinkingLevelToEffort
 	if level == ThinkingXHigh && supportsNativeXhighEffort(model) {
 		return "xhigh"
@@ -1284,7 +1328,7 @@ func appendBedrockFailureDiagnostic(message *AssistantMessage, err error, fallba
 	if len(details) == 0 {
 		return
 	}
-	message.Diagnostics = append(message.Diagnostics, AssistantMessageDiagnostic{Type: "bedrock_response_failure", Timestamp: time.Now().UnixMilli(), Details: details})
+	AppendAssistantMessageDiagnostic(message, AssistantMessageDiagnostic{Type: "bedrock_response_failure", Timestamp: time.Now().UnixMilli(), Details: details})
 }
 
 func failBedrockResponse(ctx context.Context, builder *assistantStreamBuilder, err error, requestID string, streaming bool) {
@@ -1345,6 +1389,38 @@ func bedrockDataRetentionHint(message string) string {
 		return " See https://docs.aws.amazon.com/bedrock/latest/userguide/data-retention.html for supported data retention modes."
 	}
 	return ""
+}
+
+// mapBedrockTransportError applies the same categories at the AWS SDK boundary. Modeled HTTP/service errors remain untouched so status and Bedrock exception classification continue to control overflow and retry behavior.
+func mapBedrockTransportError(ctx context.Context, err error, message string) error {
+	if err == nil {
+		return nil
+	}
+	if contextErr := contextTransportError(ctx); contextErr != nil {
+		return contextErr
+	}
+	if !isGoTransportError(err) {
+		return err
+	}
+	return &nodeTransportError{message: message, cause: err}
+}
+
+// awsResponseErrorStatus reports the HTTP status of an AWS SDK response error in err's chain.
+func awsResponseErrorStatus(err error) (int, bool) {
+	response, ok := errors.AsType[*smithyhttp.ResponseError](err)
+	if !ok {
+		return 0, false
+	}
+	return response.HTTPStatusCode(), true
+}
+
+// NewBedrockAPIProvider builds the bedrock-converse-stream provider for model, the provider every model-to-provider factory uses.
+func NewBedrockAPIProvider(model Model) (Provider, error) {
+	// pig additive (D92): a Piglet's strip.apis disables Bedrock at runtime the way a pig_strip_bedrock_converse_stream build compiles it out.
+	if pigstrip.Has(pigstrip.ListAPIs, string(APIBedrockConverseStream)) {
+		return nil, strippedBedrockError(&model)
+	}
+	return NewBedrockProviderWithModel(model), nil
 }
 
 func init() {

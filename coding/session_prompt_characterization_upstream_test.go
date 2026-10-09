@@ -72,7 +72,7 @@ func TestUpstreamSessionPromptCharacterization(t *testing.T) {
 		h := newQueueCharacterizationHarness(t, extension.Extension{}, nil)
 		recordPromptCharacterization(t, h, 44)
 		h.provider.responses = []scriptedResponse{fauxReply("hello", ai.StopReasonStop, 0)}
-		if _, err := h.session.Prompt(t.Context(), "hi", nil); err != nil {
+		if err := h.session.Prompt(t.Context(), "hi", nil); err != nil {
 			t.Fatal(err)
 		}
 		if got := promptCharacterizationRoles(h); !reflect.DeepEqual(got, []string{"system", "user", "assistant"}) {
@@ -92,7 +92,7 @@ func TestUpstreamSessionPromptCharacterization(t *testing.T) {
 		h := newQueueCharacterizationHarness(t, extension.Extension{}, []agent.AgentTool{tool})
 		recordPromptCharacterization(t, h, 57)
 		h.provider.responses = []scriptedResponse{bashPersistenceEchoCalls("hello"), fauxReply("done", ai.StopReasonStop, 0)}
-		if _, err := h.session.Prompt(t.Context(), "start", nil); err != nil {
+		if err := h.session.Prompt(t.Context(), "start", nil); err != nil {
 			t.Fatal(err)
 		}
 		if !reflect.DeepEqual(toolRuns, []string{"hello"}) {
@@ -125,7 +125,7 @@ func TestUpstreamSessionPromptCharacterization(t *testing.T) {
 			}
 			return fauxReply(fmt.Sprintf("tool results: %d", count), ai.StopReasonStop, 0)(messages)
 		}}
-		if _, err := h.session.Prompt(t.Context(), "run tools", nil); err != nil {
+		if err := h.session.Prompt(t.Context(), "run tools", nil); err != nil {
 			t.Fatal(err)
 		}
 		slices.Sort(toolRuns)
@@ -151,7 +151,7 @@ func TestUpstreamSessionPromptCharacterization(t *testing.T) {
 		h := newQueueCharacterizationHarness(t, queueCommandExtension(func(_ context.Context, args string) error { commandRuns = append(commandRuns, args); return nil }), nil)
 		recordPromptCharacterization(t, h, 313)
 		h.provider.responses = []scriptedResponse{fauxReply("should stay queued", ai.StopReasonStop, 0)}
-		if _, err := h.session.Prompt(t.Context(), "/testcmd hello world", nil); err != nil {
+		if err := h.session.Prompt(t.Context(), "/testcmd hello world", nil); err != nil {
 			t.Fatal(err)
 		}
 		if !reflect.DeepEqual(commandRuns, []string{"hello world"}) {
@@ -173,7 +173,7 @@ func TestUpstreamSessionPromptCharacterization(t *testing.T) {
 		}}}}, nil)
 		recordPromptCharacterization(t, h, 378)
 		h.provider.responses = []scriptedResponse{fauxReply("ok", ai.StopReasonStop, 0)}
-		if _, err := h.session.Prompt(t.Context(), "idle", &PromptOptions{StreamingBehavior: extension.DeliverAsFollowUp}); err != nil {
+		if err := h.session.Prompt(t.Context(), "idle", &PromptOptions{StreamingBehavior: extension.DeliverAsFollowUp}); err != nil {
 			t.Fatal(err)
 		}
 		if len(inputEvents) != 1 {
@@ -193,7 +193,7 @@ func TestUpstreamSessionPromptCharacterization(t *testing.T) {
 		waiting.setResponses(fauxToolCall("wait"), fauxReply("done", ai.StopReasonStop, 0))
 		<-waiting.waitForToolStart
 		recordPromptCharacterization(t, waiting.h, 398)
-		if _, err := waiting.h.session.Prompt(t.Context(), "queued", &PromptOptions{StreamingBehavior: extension.DeliverAsFollowUp}); err != nil {
+		if err := waiting.h.session.Prompt(t.Context(), "queued", &PromptOptions{StreamingBehavior: extension.DeliverAsFollowUp}); err != nil {
 			t.Fatal(err)
 		}
 		behaviors := []string{}
@@ -212,7 +212,7 @@ func TestUpstreamSessionPromptCharacterization(t *testing.T) {
 		waiting.setResponses(fauxToolCall("wait"), fauxReply("done", ai.StopReasonStop, 0))
 		<-waiting.waitForToolStart
 		recordPromptCharacterization(t, waiting.h, 452)
-		_, err := waiting.h.session.Prompt(t.Context(), "second", nil)
+		err := waiting.h.session.Prompt(t.Context(), "second", nil)
 		if err == nil || !strings.Contains(err.Error(), "Agent is already processing. Specify streamingBehavior ('steer' or 'followUp') to queue the message.") {
 			t.Fatalf("error=%v", err)
 		}
@@ -239,7 +239,7 @@ func TestUpstreamSessionPromptCharacterization(t *testing.T) {
 				if err := json.Unmarshal(raw, &preparation); err != nil {
 					return nil, err
 				}
-				return extension.SessionBeforeCompactResult{Compaction: map[string]any{"summary": "manual compacted", "firstKeptEntryId": preparation.FirstKeptEntryID, "tokensBefore": preparation.TokensBefore, "details": map[string]any{}}}, nil
+				return extension.SessionBeforeCompactResult{Compaction: &extension.CompactionResult{Summary: "manual compacted", FirstKeptEntryID: preparation.FirstKeptEntryID, TokensBefore: preparation.TokensBefore, Details: map[string]any{}}}, nil
 			}},
 		}}})
 		if err := h.session.services.Auth().Set("faux", ai.Credential{Type: ai.CredentialAPIKey, Key: "faux-key"}); err != nil {
@@ -248,12 +248,12 @@ func TestUpstreamSessionPromptCharacterization(t *testing.T) {
 		recordPromptCharacterization(t, h, 497)
 		h.provider.responses = []scriptedResponse{fauxReply("one", ai.StopReasonStop, 0), fauxReply("two", ai.StopReasonStop, 0)}
 		for _, text := range []string{"first", "second"} {
-			if _, err := h.session.Prompt(t.Context(), text, nil); err != nil {
+			if err := h.session.Prompt(t.Context(), text, nil); err != nil {
 				t.Fatal(err)
 			}
 		}
 		done := make(chan error, 1)
-		go func() { done <- h.session.Compact(t.Context(), "") }()
+		go func() { _, err := h.session.Compact(t.Context(), ""); done <- err }()
 		defer func() {
 			release()
 			if err := <-done; err != nil {
@@ -261,7 +261,7 @@ func TestUpstreamSessionPromptCharacterization(t *testing.T) {
 			}
 		}()
 		<-started
-		_, err := h.session.Prompt(t.Context(), "third", nil)
+		err := h.session.Prompt(t.Context(), "third", nil)
 		if err == nil || !strings.Contains(err.Error(), "Cannot submit a prompt while compaction is in progress. Wait for compaction to finish and retry.") {
 			t.Fatalf("error=%v", err)
 		}
@@ -272,14 +272,14 @@ func TestUpstreamSessionPromptCharacterization(t *testing.T) {
 		h := newQueueCharacterizationHarness(t, extension.Extension{}, nil)
 		recordPromptCharacterization(t, h, 543)
 		h.session.Agent().SetModel(nil)
-		if _, err := h.session.Prompt(t.Context(), "hi", nil); err == nil || !strings.Contains(err.Error(), "No model selected.") {
+		if err := h.session.Prompt(t.Context(), "hi", nil); err == nil || !strings.Contains(err.Error(), "No model selected.") {
 			t.Fatalf("error=%v", err)
 		}
 	})
 	// upstream: packages/coding-agent/test/suite/agent-session-prompt.test.ts:551.
 	t.Run("throws when prompting without configured auth", func(t *testing.T) {
 		h := newModelExtensionHarness(t, []bool{false}, "", false, extension.Extension{}, nil)
-		if _, err := h.session.Prompt(t.Context(), "hi", nil); err == nil || !strings.Contains(err.Error(), "No API key found for faux.") {
+		if err := h.session.Prompt(t.Context(), "hi", nil); err == nil || !strings.Contains(err.Error(), "No API key found for faux.") {
 			t.Fatalf("error=%v", err)
 		}
 	})

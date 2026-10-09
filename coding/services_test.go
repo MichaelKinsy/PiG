@@ -19,9 +19,9 @@ func withTempHome(t *testing.T) string {
 
 func TestNewServicesDefaults(t *testing.T) {
 	withTempHome(t)
-	srv, err := NewServices(ServicesOptions{})
+	srv, err := CreateAgentSessionServices(CreateAgentSessionServicesOptions{})
 	if err != nil {
-		t.Fatalf("NewServices: %v", err)
+		t.Fatalf("CreateAgentSessionServices: %v", err)
 	}
 	if srv == nil {
 		t.Fatal("nil services")
@@ -42,7 +42,7 @@ func TestNewServicesDefaults(t *testing.T) {
 
 func TestNewServicesAuthDirSelectsCorrectFile(t *testing.T) {
 	tmp := withTempHome(t)
-	srv, err := NewServices(ServicesOptions{
+	srv, err := CreateAgentSessionServices(CreateAgentSessionServicesOptions{
 		AgentDir: filepath.Join(tmp, "agent"),
 	})
 	if err != nil {
@@ -65,7 +65,7 @@ func TestNewServicesAuthDirSelectsCorrectFile(t *testing.T) {
 func TestNewServicesExplicitCWDIsHonored(t *testing.T) {
 	withTempHome(t)
 	tmp := t.TempDir()
-	srv, err := NewServices(ServicesOptions{CWD: tmp})
+	srv, err := CreateAgentSessionServices(CreateAgentSessionServicesOptions{CWD: tmp})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -80,7 +80,7 @@ func TestServicesAreImmutableAfterConstruction(t *testing.T) {
 	// adds e.g. SetCWD, this test should also be updated to either
 	// remove the immutability claim from godoc or keep the contract.
 	withTempHome(t)
-	srv, _ := NewServices(ServicesOptions{})
+	srv, _ := CreateAgentSessionServices(CreateAgentSessionServicesOptions{})
 
 	cwdBefore := srv.CWD()
 	dirBefore := srv.AgentDir()
@@ -107,7 +107,7 @@ func TestNewServicesReturnsErrorOnUnusableAuthDir(t *testing.T) {
 		t.Fatal(err)
 	}
 	bad := filepath.Join(notADir, "agent")
-	_, err := NewServices(ServicesOptions{AgentDir: bad})
+	_, err := CreateAgentSessionServices(CreateAgentSessionServicesOptions{AgentDir: bad})
 	if err == nil {
 		t.Fatal("expected error for unwritable AgentDir")
 	}
@@ -133,7 +133,7 @@ func TestServicesSettingsReflectsProjectOverlay(t *testing.T) {
 	if err := os.WriteFile(projFile, []byte(`{"theme": "my-project-theme"}`), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	srv, err := NewServices(ServicesOptions{
+	srv, err := CreateAgentSessionServices(CreateAgentSessionServicesOptions{
 		CWD:      cwd,
 		AgentDir: filepath.Join(tmp, "agent"),
 	})

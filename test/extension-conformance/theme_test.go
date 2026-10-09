@@ -126,6 +126,7 @@ func tuiStyleFrom(t *testing.T, options map[string]any) tui.ThemeStyle {
 	return style
 }
 
+// Pi: packages/coding-agent/src/modes/interactive/theme/theme.ts:124 (ThemeStyle.fg); packages/coding-agent/src/modes/interactive/theme/theme.ts:125 (ThemeStyle.bg); packages/coding-agent/src/modes/interactive/theme/theme.ts:66 (TextAttributes.dim); packages/tui/src/colors.ts:48 (TextAttributes.underline); packages/tui/src/colors.ts:49 (TextAttributes.inverse); packages/tui/src/colors.ts:50 (TextAttributes.strikethrough).
 func TestThemeAcrossSDKs(t *testing.T) {
 	eachModelTypesPlacement(t, func(t *testing.T, r *modelTypesRig) {
 		// theme-style.test.ts:108-117: the terminal's reported colors resolve a token set to the default.
@@ -141,7 +142,7 @@ func TestThemeAcrossSDKs(t *testing.T) {
 				t.Errorf("%s: appearance = %v, want %s", mode, report["appearance"], want)
 			}
 			wantColors := map[string]any{}
-			values := theme.ColorValues()
+			values := theme.Colors()
 			for _, token := range themeProbeTokens {
 				if color, ok := values[token]; ok {
 					wantColors[token] = hostColor(color)
@@ -171,7 +172,7 @@ func TestThemeAcrossSDKs(t *testing.T) {
 	})
 }
 
-// ctx.ui.theme.fg closes a faint token with SGR 22;39 (.upstream/v0.99.2/packages/coding-agent/src/modes/interactive/theme/theme.ts:361-365, 399-402): the palette's opening for a faint token ends in SGR 2, which SGR 39 alone would leave open past the text. Only the system theme has faint tokens, so the row uses it with no terminal colors reported, the case Pi's systemIndexedColors makes its neutral tokens faint for. Every foreground token of the theme is compared with the host's own Theme.FgText, and an unknown token leaves the text unstyled.
+// ctx.ui.theme.fg closes a faint token with SGR 22;39 (.upstream/v0.99.2/packages/coding-agent/src/modes/interactive/theme/theme.ts:361-365, 399-402): the palette's opening for a faint token ends in SGR 2, which SGR 39 alone would leave open past the text. Only the system theme has faint tokens, so the row uses it with no terminal colors reported, the case Pi's systemIndexedColors makes its neutral tokens faint for. Every foreground token of the theme is compared with the host's own Theme.FgText, and an unknown token throws `Unknown theme color: <token>` in every SDK, as Pi 1.0.4's theme.ts:361-376 does.
 func TestThemeFaintForegroundAcrossSDKs(t *testing.T) {
 	eachModelTypesPlacement(t, func(t *testing.T, r *modelTypesRig) {
 		tui.SetTerminalColors(tui.TerminalColors{})
@@ -196,7 +197,11 @@ func TestThemeFaintForegroundAcrossSDKs(t *testing.T) {
 		report := r.toolWith("theme_probe", map[string]any{"fgTokens": tokens})
 		got, _ := report["fgs"].(map[string]any)
 		for _, token := range tokens {
-			if want := theme.FgText(token, "x"); got[token] != want {
+			want := "throw:Unknown theme color: " + token
+			if token != "notAToken" {
+				want = theme.Fg(token, "x")
+			}
+			if got[token] != want {
 				t.Errorf("fg(%q) = %q, want the host's %q", token, got[token], want)
 			}
 		}

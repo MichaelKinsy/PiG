@@ -113,6 +113,8 @@ type harnessOptions struct {
 	runtime *extension.ExtensionRuntime
 	// sessionManager is the in-memory session an emptySessionManager harness opens instead of a new one (the suite harness's options.sessionManager), so a second harness resumes the first one's transcript.
 	sessionManager *icodingagent.Session
+	// allowedTools and excludedTools are the Session's `--tools` and `--exclude-tools` entries (names or patterns).
+	allowedTools, excludedTools map[string]struct{}
 }
 
 type recoveryHarness struct {
@@ -138,7 +140,7 @@ func newRecoveryHarness(t *testing.T, opts harnessOptions, responses ...scripted
 	if err := os.WriteFile(filepath.Join(agentDir, "settings.json"), []byte(settings), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	services, err := NewServices(ServicesOptions{CWD: t.TempDir(), AgentDir: agentDir})
+	services, err := CreateAgentSessionServices(CreateAgentSessionServicesOptions{CWD: t.TempDir(), AgentDir: agentDir})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -163,7 +165,7 @@ func newRecoveryHarness(t *testing.T, opts harnessOptions, responses ...scripted
 		}
 		runner = inproc.NewRunner(loaded, t.TempDir(), opts.runtime)
 	}
-	options := SessionOptions{Model: model, SkipBuiltinTools: !opts.defaultTools, Tools: opts.tools, Runner: runner, SystemPromptResources: opts.resources}
+	options := SessionOptions{Model: model, SkipBuiltinTools: !opts.defaultTools, Tools: opts.tools, Runner: runner, SystemPromptResources: opts.resources, AllowedTools: opts.allowedTools, ExcludedTools: opts.excludedTools}
 	if opts.emptySessionManager {
 		options.existing = opts.sessionManager
 		if options.existing == nil {
@@ -219,8 +221,8 @@ func (h *recoveryHarness) settle(t *testing.T) []agent.AgentEvent {
 
 func (h *recoveryHarness) entries(entryType string) []icodingagent.SessionEntry {
 	var out []icodingagent.SessionEntry
-	for _, entry := range h.session.Inner().Entries() {
-		if entry.Base.Type == entryType {
+	for _, entry := range h.session.Inner().GetEntries() {
+		if entry.Base().Type == entryType {
 			out = append(out, entry)
 		}
 	}
@@ -246,9 +248,9 @@ func messageEntryIDs(t *testing.T, h *recoveryHarness, match func(*agent.Assista
 	t.Helper()
 	var ids []string
 	for _, entry := range h.entries("message") {
-		message, ok := entry.AsMessage()
+		message, ok := entry.(icodingagent.MessageEntry)
 		if ok && message.Message.Assistant != nil && match(message.Message.Assistant) {
-			ids = append(ids, entry.Base.ID)
+			ids = append(ids, entry.Base().ID)
 		}
 	}
 	return ids
@@ -274,8 +276,8 @@ func summaryFromPreparation(summary string) extension.Extension {
 			if err := json.Unmarshal(raw, &prep); err != nil {
 				return nil, err
 			}
-			return extension.SessionBeforeCompactResult{Compaction: map[string]any{
-				"summary": summary, "firstKeptEntryId": prep.FirstKeptEntryID, "tokensBefore": prep.TokensBefore,
+			return extension.SessionBeforeCompactResult{Compaction: &extension.CompactionResult{
+				Summary: summary, FirstKeptEntryID: prep.FirstKeptEntryID, TokensBefore: prep.TokensBefore,
 			}}, nil
 		}},
 	}}

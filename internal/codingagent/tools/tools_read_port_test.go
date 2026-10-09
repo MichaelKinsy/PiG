@@ -27,6 +27,7 @@ func requireTextParts(t *testing.T, result agent.AgentToolResult, present, absen
 	}
 }
 
+// Pi: packages/coding-agent/src/core/tools/read.ts:41 (ReadToolDetails.truncation).
 func TestToolsReadPort(t *testing.T) {
 	// .upstream/v0.87.1/packages/coding-agent/test/tools.test.ts:81
 	t.Run("should read file contents that fit within limits", func(t *testing.T) {

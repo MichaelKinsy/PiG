@@ -23,9 +23,9 @@ func TestMarshalInputEventResult(t *testing.T) {
 		{"transform_with_images", InputEventResultTransform{
 			Text: "see this",
 			Images: []ImageContent{
-				map[string]any{"type": "image", "source": "data:image/png;base64,xxx"},
+				ImageContent{Data: "xxx", MimeType: "image/png"},
 			},
-		}, `{"action":"transform","text":"see this","images":[{"source":"data:image/png;base64,xxx","type":"image"}]}`},
+		}, `{"action":"transform","text":"see this","images":[{"type":"image","data":"xxx","mimeType":"image/png"}]}`},
 		{"nil", nil, `null`},
 	}
 	for _, tc := range cases {
@@ -62,9 +62,9 @@ func TestUnmarshalInputEventResult(t *testing.T) {
 		{"continue", `{"action":"continue"}`, InputEventResultContinue{}, ""},
 		{"handled", `{"action":"handled"}`, InputEventResultHandled{}, ""},
 		{"transform_text_only", `{"action":"transform","text":"hi"}`, InputEventResultTransform{Text: "hi"}, ""},
-		{"transform_with_images", `{"action":"transform","text":"x","images":[{"type":"image","source":"s"}]}`, InputEventResultTransform{
+		{"transform_with_images", `{"action":"transform","text":"x","images":[{"type":"image","data":"s","mimeType":"image/png"}]}`, InputEventResultTransform{
 			Text:   "x",
-			Images: []ImageContent{map[string]any{"type": "image", "source": "s"}},
+			Images: []ImageContent{{Data: "s", MimeType: "image/png"}},
 		}, ""},
 		{"missing_action", `{}`, nil, "missing action discriminator"},
 		{"unknown_action", `{"action":"explode"}`, nil, "unknown action"},
@@ -101,7 +101,7 @@ func TestInputEventResult_RoundTrip(t *testing.T) {
 		InputEventResultTransform{Text: "hello"},
 		InputEventResultTransform{
 			Text:   "with images",
-			Images: []ImageContent{map[string]any{"type": "image", "source": "data:..."}},
+			Images: []ImageContent{{Data: "data:...", MimeType: "image/png"}},
 		},
 	}
 	for i, want := range cases {
@@ -118,80 +118,6 @@ func TestInputEventResult_RoundTrip(t *testing.T) {
 			gotData, _ := MarshalInputEventResult(got)
 			if string(gotData) != string(data) {
 				t.Errorf("[%d] round-trip drift:\n  before: %s\n   after: %s", i, data, gotData)
-			}
-		})
-	}
-}
-
-// TestToolCallEvent_RoundTripPerVariant asserts every builtin variant of
-// ToolCallEvent and a custom variant round-trip without loss.
-func TestToolCallEvent_RoundTripPerVariant(t *testing.T) {
-	cases := []struct {
-		name string
-		in   ToolCallEvent
-	}{
-		{"bash", BashToolCallEvent{
-			ToolCallEventBase: ToolCallEventBase{Type: "tool_call", ToolCallID: "call_1"},
-			ToolName:          "bash",
-			Input:             map[string]any{"command": "ls"},
-		}},
-		{"powershell", PowerShellToolCallEvent{
-			ToolCallEventBase: ToolCallEventBase{Type: "tool_call", ToolCallID: "call_ps"},
-			ToolName:          "powershell",
-			Input:             map[string]any{"command": "Get-ChildItem", "timeout": float64(5)},
-		}},
-		{"read", ReadToolCallEvent{
-			ToolCallEventBase: ToolCallEventBase{Type: "tool_call", ToolCallID: "call_2"},
-			ToolName:          "read",
-			Input:             map[string]any{"path": "/etc/hosts"},
-		}},
-		{"edit", EditToolCallEvent{
-			ToolCallEventBase: ToolCallEventBase{Type: "tool_call", ToolCallID: "call_3"},
-			ToolName:          "edit",
-			Input:             map[string]any{"path": "f"},
-		}},
-		{"write", WriteToolCallEvent{
-			ToolCallEventBase: ToolCallEventBase{Type: "tool_call", ToolCallID: "call_4"},
-			ToolName:          "write",
-			Input:             map[string]any{"path": "f", "content": "x"},
-		}},
-		{"grep", GrepToolCallEvent{
-			ToolCallEventBase: ToolCallEventBase{Type: "tool_call", ToolCallID: "call_5"},
-			ToolName:          "grep",
-			Input:             map[string]any{"pattern": "foo"},
-		}},
-		{"find", FindToolCallEvent{
-			ToolCallEventBase: ToolCallEventBase{Type: "tool_call", ToolCallID: "call_6"},
-			ToolName:          "find",
-			Input:             map[string]any{"name": "*.go"},
-		}},
-		{"ls", LsToolCallEvent{
-			ToolCallEventBase: ToolCallEventBase{Type: "tool_call", ToolCallID: "call_7"},
-			ToolName:          "ls",
-			Input:             map[string]any{"path": "/"},
-		}},
-		{"custom", CustomToolCallEvent{
-			ToolCallEventBase: ToolCallEventBase{Type: "tool_call", ToolCallID: "call_8"},
-			ToolName:          "my_custom_tool",
-			Input:             map[string]any{"foo": "bar"},
-		}},
-	}
-	for _, tc := range cases {
-		t.Run(tc.name, func(t *testing.T) {
-			data, err := MarshalToolCallEvent(tc.in)
-			if err != nil {
-				t.Fatalf("marshal: %v", err)
-			}
-			got, err := UnmarshalToolCallEvent(data)
-			if err != nil {
-				t.Fatalf("unmarshal: %v", err)
-			}
-			gotData, err := MarshalToolCallEvent(got)
-			if err != nil {
-				t.Fatalf("re-marshal: %v", err)
-			}
-			if string(gotData) != string(data) {
-				t.Errorf("round-trip drift:\n  before: %s\n   after: %s", data, gotData)
 			}
 		})
 	}
@@ -264,39 +190,6 @@ func TestToolResultEvent_RoundTripPerVariant(t *testing.T) {
 	}
 }
 
-// TestUnmarshalToolCallEvent_DispatchByName verifies the discriminator
-// dispatch is correct  a wire payload with toolName=\"bash\" must produce
-// a BashToolCallEvent, not any other variant.
-func TestUnmarshalToolCallEvent_DispatchByName(t *testing.T) {
-	cases := []struct {
-		toolName string
-		wantType string
-	}{
-		{"bash", "BashToolCallEvent"},
-		{"powershell", "PowerShellToolCallEvent"},
-		{"read", "ReadToolCallEvent"},
-		{"edit", "EditToolCallEvent"},
-		{"write", "WriteToolCallEvent"},
-		{"grep", "GrepToolCallEvent"},
-		{"find", "FindToolCallEvent"},
-		{"ls", "LsToolCallEvent"},
-		{"my_third_party_tool", "CustomToolCallEvent"},
-	}
-	for _, tc := range cases {
-		t.Run(tc.toolName, func(t *testing.T) {
-			payload := `{"type":"tool_call","toolCallId":"x","toolName":"` + tc.toolName + `","input":{}}`
-			got, err := UnmarshalToolCallEvent([]byte(payload))
-			if err != nil {
-				t.Fatalf("unmarshal: %v", err)
-			}
-			gotType := goTypeName(got)
-			if gotType != tc.wantType {
-				t.Errorf("toolName=%q produced %s, want %s", tc.toolName, gotType, tc.wantType)
-			}
-		})
-	}
-}
-
 func TestProviderModelConfigJSONRoundTrip_ThinkingLevelMapAndBaseURL(t *testing.T) {
 	high := "HIGH"
 	payload := ProviderModelConfig{
@@ -347,18 +240,6 @@ func TestProviderModelConfigJSONRoundTrip_ThinkingLevelMapAndBaseURL(t *testing.
 	}
 }
 
-// TestUnmarshalToolCallEvent_MissingDiscriminator covers the empty-toolName
-// error path. (Upstream never emits this; the guard is defence-in-depth.)
-func TestUnmarshalToolCallEvent_MissingDiscriminator(t *testing.T) {
-	_, err := UnmarshalToolCallEvent([]byte(`{"type":"tool_call","toolCallId":"x"}`))
-	if err == nil {
-		t.Fatal("expected error for missing toolName")
-	}
-	if !strings.Contains(err.Error(), "missing toolName") {
-		t.Errorf("error = %q, want contains \"missing toolName\"", err.Error())
-	}
-}
-
 // TestUnmarshalToolResultEvent_MissingDiscriminator mirrors the above.
 func TestUnmarshalToolResultEvent_MissingDiscriminator(t *testing.T) {
 	_, err := UnmarshalToolResultEvent([]byte(`{"type":"tool_result","toolCallId":"x"}`))
@@ -398,37 +279,6 @@ func TestSealedInterfaces_PackageSealed(t *testing.T) {
 	}
 }
 
-// TestUnmarshalToolCallEvent_UpstreamFixture is the wire-compat smoke
-// check: a JSON blob shaped exactly as upstream pi would write it on
-// disk (session JSONL) must unmarshal cleanly through pig and re-marshal
-// to a payload that contains all the original fields.
-func TestUnmarshalToolCallEvent_UpstreamFixture(t *testing.T) {
-	// Hand-shaped to mirror upstream's session-write format. If upstream
-	// changes its on-disk shape, this test fails; that's the point.
-	payload := `{"type":"tool_call","toolCallId":"call_abc","toolName":"bash","input":{"command":"ls -la","cwd":"/tmp"}}`
-	got, err := UnmarshalToolCallEvent([]byte(payload))
-	if err != nil {
-		t.Fatalf("unmarshal: %v", err)
-	}
-	bash, ok := got.(BashToolCallEvent)
-	if !ok {
-		t.Fatalf("dispatch produced %T, want BashToolCallEvent", got)
-	}
-	if bash.ToolCallID != "call_abc" || bash.ToolName != "bash" {
-		t.Errorf("field drift: got %+v", bash)
-	}
-	// Re-marshal must contain every input field.
-	out, err := MarshalToolCallEvent(got)
-	if err != nil {
-		t.Fatalf("re-marshal: %v", err)
-	}
-	for _, want := range []string{`"toolCallId":"call_abc"`, `"toolName":"bash"`, `"command":"ls -la"`, `"cwd":"/tmp"`} {
-		if !strings.Contains(string(out), want) {
-			t.Errorf("re-marshalled payload missing %s; got %s", want, out)
-		}
-	}
-}
-
 // goTypeName returns the unqualified type name of v (e.g. "BashToolCallEvent")
 // for use in dispatch-correctness assertions.
 func goTypeName(v any) string {
@@ -455,15 +305,6 @@ func TestMarshal_NoHTMLEscape(t *testing.T) {
 			want: []string{"a && b"},
 		},
 		{
-			name: "BashToolCallEvent_with_redirects",
-			in: BashToolCallEvent{
-				ToolCallEventBase: ToolCallEventBase{Type: "tool_call", ToolCallID: "1"},
-				ToolName:          "bash",
-				Input:             map[string]any{"command": "ls && pwd > /tmp/o < /dev/null"},
-			},
-			want: []string{"ls && pwd > /tmp/o < /dev/null"},
-		},
-		{
 			name: "CustomToolResultEvent_with_html",
 			in: CustomToolResultEvent{
 				ToolResultEventBase: ToolResultEventBase{Type: "tool_result", ToolCallID: "x"},
@@ -482,8 +323,6 @@ func TestMarshal_NoHTMLEscape(t *testing.T) {
 			switch v := tc.in.(type) {
 			case InputEventResult:
 				out, err = MarshalInputEventResult(v)
-			case ToolCallEvent:
-				out, err = MarshalToolCallEvent(v)
 			case ToolResultEvent:
 				out, err = MarshalToolResultEvent(v)
 			default:
@@ -530,19 +369,9 @@ func TestSealedInterface_AllVariantsImplement(t *testing.T) {
 		}
 	})
 
-	t.Run("ToolCallEvent_9_variants", func(t *testing.T) {
-		variants := []ToolCallEvent{
-			BashToolCallEvent{},
-			PowerShellToolCallEvent{},
-			ReadToolCallEvent{},
-			EditToolCallEvent{},
-			WriteToolCallEvent{},
-			GrepToolCallEvent{},
-			FindToolCallEvent{},
-			LsToolCallEvent{},
-			CustomToolCallEvent{},
-		}
-		if got, want := len(variants), 9; got != want {
+	t.Run("ToolCallEvent_1_variant", func(t *testing.T) {
+		variants := []ToolCallEvent{CustomToolCallEvent{}}
+		if got, want := len(variants), 1; got != want {
 			t.Errorf("ToolCallEvent variants: got %d, want %d", got, want)
 		}
 	})
@@ -567,39 +396,10 @@ func TestSealedInterface_AllVariantsImplement(t *testing.T) {
 
 // ─── Hardening: distinct-toolName guard ───────────────────────────────────
 
-// TestToolNames_AreDistinct asserts that no two ToolCallEvent variants
-// (likewise ToolResultEvent) share a `toolName` discriminator. If they
+// TestToolNames_AreDistinct asserts that no two ToolResultEvent variants share a `toolName` discriminator. If they
 // did, UnmarshalToolCallEvent would dispatch to whichever case appears
 // first in the switch: silent data loss for the second.
 func TestToolNames_AreDistinct(t *testing.T) {
-	t.Run("ToolCallEvent", func(t *testing.T) {
-		// Each (variant, expectedToolName) pair. If a future contributor
-		// adds a variant whose ToolName matches an existing one, this
-		// fails.
-		seen := map[string]string{}
-		pairs := []struct {
-			variant  ToolCallEvent
-			toolName string
-		}{
-			{BashToolCallEvent{ToolName: "bash"}, "bash"},
-			{PowerShellToolCallEvent{ToolName: "powershell"}, "powershell"},
-			{ReadToolCallEvent{ToolName: "read"}, "read"},
-			{EditToolCallEvent{ToolName: "edit"}, "edit"},
-			{WriteToolCallEvent{ToolName: "write"}, "write"},
-			{GrepToolCallEvent{ToolName: "grep"}, "grep"},
-			{FindToolCallEvent{ToolName: "find"}, "find"},
-			{LsToolCallEvent{ToolName: "ls"}, "ls"},
-			// CustomToolCallEvent has no fixed toolName by design: third-party
-			// tools name themselves. Excluded from the distinct check.
-		}
-		for _, p := range pairs {
-			if existing, ok := seen[p.toolName]; ok {
-				t.Errorf("toolName=%q claimed by %s and %s", p.toolName, existing, goTypeName(p.variant))
-			}
-			seen[p.toolName] = goTypeName(p.variant)
-		}
-	})
-
 	t.Run("ToolResultEvent", func(t *testing.T) {
 		seen := map[string]string{}
 		pairs := []struct {
@@ -622,4 +422,21 @@ func TestToolNames_AreDistinct(t *testing.T) {
 			seen[p.toolName] = goTypeName(p.variant)
 		}
 	})
+}
+
+// messages.ts:46-53 CustomMessage.display is a boolean, and sendMessage's Pick keeps it: the member is always written, and a value
+// that is not a boolean is not a message (agent-session.ts:2275-2290 reads message.display as the flag the message is stored with).
+func TestCustomMessageRefDisplayIsABoolean(t *testing.T) {
+	data, err := json.Marshal(CustomMessageRef{CustomType: "note", Content: "c"})
+	if err != nil || !strings.Contains(string(data), `"display":false`) {
+		t.Fatalf("marshal = %s, %v; want an explicit display:false", data, err)
+	}
+	var shown CustomMessageRef
+	if err := json.Unmarshal([]byte(`{"customType":"note","content":"c","display":true}`), &shown); err != nil || !shown.Display {
+		t.Fatalf("unmarshal display:true = %+v, %v", shown, err)
+	}
+	var bad CustomMessageRef
+	if err := json.Unmarshal([]byte(`{"customType":"note","content":"c","display":"yes"}`), &bad); err == nil {
+		t.Fatalf("display:\"yes\" decoded as %+v", bad)
+	}
 }

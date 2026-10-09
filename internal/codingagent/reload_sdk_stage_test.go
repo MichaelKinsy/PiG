@@ -34,7 +34,7 @@ func TestReloadStagesTheSDKBeforeRebuildingExtensions(t *testing.T) {
 	var order []string
 	host := &orderRecordingHost{onReload: func() { order = append(order, "rebuild") }}
 
-	m := reloadTestMode(InteractiveOptions{
+	m := reloadTestMode(InteractiveModeOptions{
 		SubprocessHost:     host,
 		StageExtensionSDKs: func() error { order = append(order, "stage"); return nil },
 	})
@@ -56,7 +56,7 @@ func TestReloadContinuesAndReportsWhenStagingFails(t *testing.T) {
 	rebuilt := false
 	host := &orderRecordingHost{onReload: func() { rebuilt = true }}
 
-	m := reloadTestMode(InteractiveOptions{
+	m := reloadTestMode(InteractiveModeOptions{
 		SubprocessHost:     host,
 		StageExtensionSDKs: func() error { return errors.New("disk full") },
 	})
@@ -84,7 +84,7 @@ func TestReloadWithoutAStagingHookStillRebuilds(t *testing.T) {
 	rebuilt := false
 	host := &orderRecordingHost{onReload: func() { rebuilt = true }}
 
-	m := reloadTestMode(InteractiveOptions{SubprocessHost: host})
+	m := reloadTestMode(InteractiveModeOptions{SubprocessHost: host})
 	if err := m.buildSlashContext(t.Context()).Reload(); err != nil {
 		t.Fatal(err)
 	}
@@ -97,13 +97,13 @@ func TestReloadWithoutAStagingHookStillRebuilds(t *testing.T) {
 // reloadTestMode builds the minimum InteractiveMode the Reload closure touches.
 // The editor is real because the closure rebuilds autocomplete on it, which the
 // production path always has by construction.
-func reloadTestMode(opts InteractiveOptions) *InteractiveMode {
+func reloadTestMode(opts InteractiveModeOptions) *InteractiveMode {
 	m := &InteractiveMode{runCtx: context.Background(), opts: opts}
 	m.editor = tui.NewEditor()
 	m.chatContainer = tui.NewContainer()
 	m.loadedResourcesContainer = tui.NewContainer()
 	m.tuiInst = tui.NewWithOutput(io.Discard, 80, 24)
-	m.agent = agent.NewAgent(agent.AgentOptions{})
+	m.agent = mustNewAgent(agent.AgentOptions{})
 	return m
 }
 
@@ -145,7 +145,7 @@ func TestReloadDiagnosticsListUnresolvedExtensions(t *testing.T) {
 	restoreStartupTheme(t) // Reload applies the theme setting, which selects the process-wide active theme.
 	issue := "/pkg/extensions/bad: Failed to load extension: no factory"
 	host := &reportingHost{report: &subprocess.ReloadReport{Issues: []string{issue}}}
-	m := reloadTestMode(InteractiveOptions{SubprocessHost: host})
+	m := reloadTestMode(InteractiveModeOptions{SubprocessHost: host})
 	slash := m.buildSlashContext(context.Background())
 	if err := slash.Reload(); err != nil {
 		t.Fatal(err)
@@ -178,7 +178,7 @@ func TestReloadSummaryMatchesUpstreamStatus(t *testing.T) {
 // into the prior reload's component, which produces no new terminal evidence.
 func TestRepeatedReloadRebuildsChatBeforeCompletionStatus(t *testing.T) {
 	restoreStartupTheme(t) // Reload applies the theme setting, which selects the process-wide active theme.
-	m := reloadTestMode(InteractiveOptions{})
+	m := reloadTestMode(InteractiveModeOptions{})
 
 	if err := reloadHandler(m.buildSlashContext(t.Context())); err != nil {
 		t.Fatal(err)
@@ -202,7 +202,7 @@ func TestRepeatedReloadRebuildsChatBeforeCompletionStatus(t *testing.T) {
 // reload's chat rebuild.
 func TestReloadKeepsPromptConflictsAfterChatRebuild(t *testing.T) {
 	restoreStartupTheme(t) // Reload applies the theme setting, which selects the process-wide active theme.
-	m := reloadTestMode(InteractiveOptions{})
+	m := reloadTestMode(InteractiveModeOptions{})
 	path := filepath.Join(t.TempDir(), "broken.md")
 	if err := os.WriteFile(path, []byte("---\ndescription: [unterminated\n---\nBody"), 0o600); err != nil {
 		t.Fatal(err)
@@ -230,7 +230,7 @@ func TestReloadShowsExtensionPromptConflictsOnce(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	m := reloadTestMode(InteractiveOptions{CWD: dir, PromptPaths: []string{local}})
+	m := reloadTestMode(InteractiveModeOptions{CWD: dir, PromptPaths: []string{local}})
 	m.newRunner = inproc.NewRunner([]extension.Extension{{
 		Path: filepath.Join(dir, "dynamic-ext.ts"),
 		Handlers: map[string][]extension.HandlerFn{
@@ -272,7 +272,7 @@ func TestReloadRebuildsChatWithReloadedDisplaySettings(t *testing.T) {
 	if _, err := session.AppendMessage(agent.AgentMessage{Assistant: reply}); err != nil {
 		t.Fatal(err)
 	}
-	m := reloadTestMode(InteractiveOptions{
+	m := reloadTestMode(InteractiveModeOptions{
 		SettingsManager: sm,
 		Settings:        sm.Get(),
 		SessionHandle:   &recordingCompactHandle{inner: session},
@@ -316,7 +316,7 @@ func TestThinkingToggleSurvivesReload(t *testing.T) {
 	restoreStartupTheme(t) // Reload applies the theme setting, which selects the process-wide active theme.
 	dir := t.TempDir()
 	sm := NewSettingsManager(dir, dir)
-	m := reloadTestMode(InteractiveOptions{SettingsManager: sm, Settings: sm.Get()})
+	m := reloadTestMode(InteractiveModeOptions{SettingsManager: sm, Settings: sm.Get()})
 	m.hideThinking = sm.Get().HideThinkingBlock
 
 	m.toggleThinkingVisibility()
@@ -350,7 +350,7 @@ func TestReloadListsAFailingExtensionOnce(t *testing.T) {
 	host.SetConfigLoader(func() ([]subprocess.ExtConfig, error) {
 		return []subprocess.ExtConfig{{Name: "broken", Source: broken, Enabled: true}}, nil
 	})
-	m := reloadTestMode(InteractiveOptions{SubprocessHost: host})
+	m := reloadTestMode(InteractiveModeOptions{SubprocessHost: host})
 	slash := m.buildSlashContext(context.Background())
 	if err := slash.Reload(); err != nil {
 		t.Fatal(err)
@@ -424,7 +424,7 @@ func TestReloadIncludesBuiltinExtensionsInLoadOrderAndConflicts(t *testing.T) {
 	builtin := extension.Extension{
 		Name: "piglet", Path: "builtin:piglet", Tools: tool("shared"), Flags: flag("mode"),
 	}
-	m := reloadTestMode(InteractiveOptions{
+	m := reloadTestMode(InteractiveModeOptions{
 		CWD:               t.TempDir(),
 		SubprocessHost:    host,
 		BuiltinExtensions: []extension.Extension{builtin},
@@ -454,7 +454,7 @@ func TestReloadReconstructsBuiltinFactories(t *testing.T) {
 			if withHost {
 				host = &orderRecordingHost{}
 			}
-			m := reloadTestMode(InteractiveOptions{
+			m := reloadTestMode(InteractiveModeOptions{
 				CWD:               t.TempDir(),
 				SubprocessHost:    host,
 				BuiltinExtensions: []extension.Extension{{Name: "builtin-0"}},
@@ -507,7 +507,7 @@ func TestReloadListsExtensionToolConflicts(t *testing.T) {
 	host.SetConfigLoader(func() ([]subprocess.ExtConfig, error) {
 		return []subprocess.ExtConfig{{Name: "ask", Source: paths[0], Enabled: true}, {Name: "ask", Source: paths[1], Enabled: true}}, nil
 	})
-	m := reloadTestMode(InteractiveOptions{SubprocessHost: host})
+	m := reloadTestMode(InteractiveModeOptions{SubprocessHost: host})
 	slash := m.buildSlashContext(context.Background())
 	if err := slash.Reload(); err != nil {
 		t.Fatal(err)

@@ -96,6 +96,20 @@ func TestKeepGoBuildCachesSurvivesAHomeChange(t *testing.T) {
 	t.Setenv("HOME", home)
 	t.Setenv("USERPROFILE", home)
 	t.Setenv("XDG_CACHE_HOME", filepath.Join(home, "cache"))
+	t.Setenv("XDG_CONFIG_HOME", "")
+	// Where the configuration directory follows HOME (not on Windows), a fresh one has no telemetry mode, so the go command starts a detached telemetry child that writes there after go env exits and after this test removed home. Mode off starts neither counters nor the child.
+	config, err := os.UserConfigDir()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if rel, err := filepath.Rel(home, config); err == nil && filepath.IsLocal(rel) {
+		if err := os.MkdirAll(filepath.Join(config, "go", "telemetry"), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(config, "go", "telemetry", "mode"), []byte("off"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
 	if got := goEnv(); got != want {
 		t.Fatalf("go env after a HOME change = %q, want the caches %q", got, want)
 	}

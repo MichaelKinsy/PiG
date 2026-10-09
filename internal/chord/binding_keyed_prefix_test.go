@@ -44,7 +44,7 @@ func TestBeginRebindRevokesKeyedHandleBeforeSubscriptionRelease(t *testing.T) {
 	service := <-observed
 	operation := fixture.binding.BeginRebind(t.Context(), false)
 	_, err = service.Call(t.Context(), "add", 1, "late")
-	if !IsRemoteServiceErrorCode(err, ErrServiceStaleInstance) {
+	if !hasRemoteServiceErrorCode(err, ErrServiceStaleInstance) {
 		t.Fatalf("retained keyed handle error=%v, want stale instance", err)
 	}
 	unblock()

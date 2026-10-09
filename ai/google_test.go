@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"reflect"
 	"strings"
 	"testing"
 )
@@ -237,7 +238,7 @@ func TestGoogleConvertMessages_ErrorResult(t *testing.T) {
 
 func TestGeminiThinkingBudget(t *testing.T) {
 	tests := []struct {
-		level ThinkingLevel
+		level ModelThinkingLevel
 		model string
 		want  int
 	}{
@@ -257,7 +258,7 @@ func TestGeminiThinkingBudget(t *testing.T) {
 func TestGeminiThinkingLevel(t *testing.T) {
 	// Google model metadata, not model-name special cases, selects each native level.
 	tests := []struct {
-		level  ThinkingLevel
+		level  ModelThinkingLevel
 		model  string
 		mapped string
 		want   string
@@ -268,7 +269,7 @@ func TestGeminiThinkingLevel(t *testing.T) {
 		{ThinkingMedium, "gemini-3-flash", "medium", "MEDIUM"},
 	}
 	for _, test := range tests {
-		model := &Model{ID: test.model, Capabilities: ModelCapabilities{MaxThinking: ThinkingHigh}, ThinkingLevelMap: ThinkingLevelMap{test.level: new(test.mapped)}}
+		model := &Model{ID: test.model, Capabilities: ModelCapabilities{MaxThinking: ThinkingLevelHigh}, ThinkingLevelMap: ThinkingLevelMap{test.level: new(test.mapped)}}
 		config, err := buildGeminiThinkingConfig(model, test.level, true, nil)
 		if err != nil || config == nil || config.ThinkingLevel != test.want {
 			t.Errorf("level %q/%q = %#v, %v; want %s", test.level, test.model, config, err, test.want)
@@ -306,5 +307,33 @@ func TestGoogleConvertMessages_FunctionResponseCarriesToolName(t *testing.T) {
 	response := output[len(output)-1].Parts[0].FunctionResponse
 	if response == nil || response.Name != "search" {
 		t.Fatalf("function response = %#v", response)
+	}
+}
+
+// google-shared.ts:191-200: convertMessages(model, context) collapses system messages, drops the leading one and converts the rest; the public wrapper equals the split path the provider used.
+func TestConvertGoogleMessagesEqualsTheSplitPath(t *testing.T) {
+	transcript := NormalizeContext(Context{
+		SystemPrompt: "be brief",
+		Messages: []Message{
+			UserMessage{Content: UserText("hello"), Timestamp: 1},
+			AssistantMessage{API: APIGoogleGenerativeAI, Provider: "google", Model: "gemini-test", StopReason: StopReasonStop, Content: []AssistantContentBlock{TextContent{Text: "hi"}}, Timestamp: 2},
+			UserMessage{Content: UserContentBlocks{TextContent{Text: "again"}}, Timestamp: 3},
+		},
+	})
+	model := &Model{ID: "gemini-test", ProviderMeta: ProviderMetadata{ProviderID: "google", API: APIGoogleGenerativeAI}, Capabilities: ModelCapabilities{SupportsImages: true}}
+	got := ConvertGoogleMessages(model, transcript)
+	want := geminiConvertMessages(WithoutInitialSystemMessage(prepareProviderToolFlow(CollapseSystemMessages(transcript)).Messages()), "google", "gemini-test", true)
+	if len(got) != 3 || !reflect.DeepEqual(got, want) {
+		t.Fatalf("got %+v want %+v", got, want)
+	}
+	if got[0].Role != "user" || got[1].Role != "model" {
+		t.Fatalf("roles = %q, %q", got[0].Role, got[1].Role)
+	}
+	for _, content := range got {
+		for _, part := range content.Parts {
+			if part.Text != nil && *part.Text == "be brief" {
+				t.Fatal("the leading system prompt is sent as systemInstruction, not as content")
+			}
+		}
 	}
 }

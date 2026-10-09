@@ -1,5 +1,9 @@
 package tools
 
+// pi: packages/coding-agent/src/core/tools/edit-diff.ts
+
+// pi: packages/coding-agent/src/core/tools/edit.ts
+
 import (
 	"context"
 	"encoding/json"
@@ -250,5 +254,33 @@ func TestEditSingleObjectEditsExecutes(t *testing.T) {
 	}
 	if got, _ := os.ReadFile(path); string(got) != "b\n" {
 		t.Fatalf("file = %q", got)
+	}
+}
+
+// prepareEditArguments (edit.ts:103-133) assigns args.edits in place and returns { ...rest, edits }: the members keep the
+// order the model sent them in, and a new edits member goes last. The prepared arguments are what a tool_call handler
+// sees (#165: Pi keeps a tool_call input's members in order).
+func TestEditPrepareArgumentsKeepsMemberOrder(t *testing.T) {
+	et := &EditTool{}
+	for _, tc := range []struct{ name, input, want string }{
+		{"legacy", `{"zeta":1,"oldText":"a","path":"f","newText":"b","alpha":true}`, `{"zeta":1,"path":"f","alpha":true,"edits":[{"oldText":"a","newText":"b"}]}`},
+		{"legacy keeps edits in place", `{"edits":[{"oldText":"x","newText":"y"}],"path":"f","oldText":"a","newText":"b"}`, `{"edits":[{"oldText":"x","newText":"y"},{"oldText":"a","newText":"b"}],"path":"f"}`},
+		{"string edits keep place", `{"z":0,"edits":"[{\"oldText\":\"a\",\"newText\":\"b\"}]","path":"f"}`, `{"z":0,"edits":[{"oldText":"a","newText":"b"}],"path":"f"}`},
+		{"single edit", `{"path":"f","a":1,"edits":{"oldText":"a","newText":"b"},"b":2}`, `{"path":"f","a":1,"edits":[{"oldText":"a","newText":"b"}],"b":2}`},
+		{"html is not escaped", `{"path":"f","oldText":"<a>","newText":"&"}`, `{"path":"f","edits":[{"oldText":"<a>","newText":"&"}]}`},
+		// JSON.parse throws on a vertical tab or U+00A0 before the array, so edits stays a string.
+		{"string edits with non-JSON whitespace", `{"path":"f","edits":"\u000b[{\"oldText\":\"a\",\"newText\":\"b\"}]"}`, `{"path":"f","edits":"\u000b[{\"oldText\":\"a\",\"newText\":\"b\"}]"}`},
+		{"string edits with no-break space", `{"path":"f","edits":"\u00a0[{\"oldText\":\"a\",\"newText\":\"b\"}]"}`, `{"path":"f","edits":"\u00a0[{\"oldText\":\"a\",\"newText\":\"b\"}]"}`},
+		{"string edits with JSON whitespace", `{"path":"f","edits":" \n\t[{\"oldText\":\"a\",\"newText\":\"b\"}]\r "}`, `{"path":"f","edits":[{"oldText":"a","newText":"b"}]}`},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			got, err := et.PrepareArguments(json.RawMessage(tc.input))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if string(got) != tc.want {
+				t.Fatalf("prepared = %s\nwant      %s", got, tc.want)
+			}
+		})
 	}
 }

@@ -1,6 +1,6 @@
 # Message types
 
-PiG uses one message format in session files, in JSON and RPC events, and in the Go SDK. This page defines the messages and the content blocks inside them. The JSON field names match Pi 1.0.3, except that PiG does not yet carry the `nestedCalls` record that Pi 1.0.3 adds to tool result messages.
+PiG uses one message format in session files, in JSON and RPC events, and in the Go SDK. This page defines the messages and the content blocks inside them. The JSON field names match Pi 1.1.0.
 
 Every message has a `role` field that names its type. A message `timestamp` is a Unix time in milliseconds. Session entries use ISO 8601 timestamps instead. See [session file format](/docs/latest/session-format).
 
@@ -113,8 +113,6 @@ A system message sets the instructions and the tool set from its position in the
 
 The first system message declares the starting prompt and tools. Replay the later ones in order to get the current state.
 
-Pi's `message-types.md` also lists a `replace` field. The Pi 1.0.3 source does not define that field, and PiG does not read or write it.
-
 Go type: `ai.SystemMessage`.
 
 ### User message
@@ -150,6 +148,7 @@ Go type: `agent.UserMessage`, or `ai.UserMessage` for a provider request.
 | `errorMessage` | string, optional | The error text when `stopReason` is `error` or `aborted`. |
 | `rawStopReason` | string, optional | The provider's own stop reason. |
 | `endTurn` | boolean, optional | Whether the provider marked the end of its turn. |
+| `durationMs` | number, optional | Milliseconds from the request start until the response ended, measured with a monotonic clock for every provider. Absent in older messages and for deferred results fetched later. |
 
 `stopReason` is one of these values:
 
@@ -180,7 +179,9 @@ Go type: `agent.AssistantMessage`, or `ai.AssistantMessage` for a provider reque
 | `content` | array | Text and image blocks that the model sees. |
 | `details` | any, optional | Tool-specific data for renderers and extensions. The model does not see it. |
 | `usage` | object, optional | Model usage of the tool itself. |
+| `nestedCalls` | object, optional | The calls this tool made to other tools, for example from a codemode script: `calls`, each with `id`, `name`, `status` (`ok`, `error` or `unfinished`), and optional `arguments`, `argumentsBytes`, `durationMs` and `error`; and `complete`, which is `false` when calls were dropped, arguments were omitted or calls had not finished. The record is kept in the session; the model does not see it. |
 | `isError` | boolean | Whether the tool failed. |
+| `durationMs` | number, optional | Milliseconds the tool's `execute()` took, measured with a monotonic clock and excluding hooks. Absent in older messages and for a call that did not run. |
 
 Go type: `agent.ToolResultMessage`.
 

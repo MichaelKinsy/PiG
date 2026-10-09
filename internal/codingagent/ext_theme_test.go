@@ -3,6 +3,8 @@ package codingagent
 import (
 	"testing"
 
+	"github.com/MichaelKinsy/PiG/coding/extension"
+
 	"github.com/MichaelKinsy/PiG/tui"
 )
 
@@ -40,7 +42,7 @@ func TestExtensionThemeAPIsAreWired(t *testing.T) {
 		t.Errorf("GetTheme(no-such-theme) = %v, %v, want absence as in Pi theme.ts:570-575", got, err)
 	}
 
-	if got := ui.SetTheme("light"); !got.Success {
+	if got := ui.SetTheme(extension.ThemeName("light")); !got.Success {
 		t.Errorf("SetTheme(light) = %+v, want success", got)
 	}
 	if got := tui.ActiveTheme().Name; got != "light" {
@@ -49,14 +51,14 @@ func TestExtensionThemeAPIsAreWired(t *testing.T) {
 
 	// upstream 0.99.1 theme.ts setTheme catches a missing name, falls back to the system theme, and returns failure.
 	// The controller disables automatic sync before attempting the load.
-	if got := ui.SetTheme("no-such-theme"); got.Success || got.Error != "Theme not found: no-such-theme" {
+	if got := ui.SetTheme(extension.ThemeName("no-such-theme")); got.Success || got.Error != "Theme not found: no-such-theme" {
 		t.Errorf("SetTheme(no-such-theme) = %+v", got)
 	}
 	if after := tui.ActiveTheme().Name; after != tui.SystemThemeName {
 		t.Errorf("refused SetTheme fallback = %q, want system", after)
 	}
 
-	if got := ui.SetTheme(42); got.Success {
+	if got := ui.SetTheme(nil); got.Success {
 		t.Error("SetTheme(42) succeeded; only a theme name is accepted")
 	}
 }
@@ -65,5 +67,32 @@ func TestExtensionThemeAPIsAreWired(t *testing.T) {
 // settings for persistence, and no TUI instance so rendering is skipped.
 func newThemeTestMode(t *testing.T) *InteractiveMode {
 	t.Helper()
-	return &InteractiveMode{opts: InteractiveOptions{Settings: Settings{Theme: "dark"}}}
+	return &InteractiveMode{opts: InteractiveModeOptions{Settings: Settings{Theme: "dark"}}}
+}
+
+// upstream: interactive-mode.ts:2670-2672 setTheme(themeOrName): a Theme object goes to themeController.setThemeInstance (theme-controller.ts:138,
+// theme.ts:795) and nothing is persisted; the instance becomes the active theme under the in-memory name.
+func TestExtensionSetThemeAcceptsAThemeInstance(t *testing.T) {
+	pinTrueColorCapabilities(t)
+	restoreStartupTheme(t)
+	tui.SetThemeRegistry(tui.NewThemeRegistry())
+	tui.SetThemeByName("dark")
+	ui := &ExtUIContext{m: newThemeTestMode(t)}
+	saved := ui.m.opts.Settings.Theme
+
+	copied := *tui.ActiveTheme()
+	instance := &copied
+	instance.Name = "mine"
+	if got := ui.SetTheme(extension.ThemeInstance{Theme: instance}); !got.Success {
+		t.Fatalf("SetTheme(instance) = %+v, want success", got)
+	}
+	if tui.ActiveTheme() != instance {
+		t.Fatalf("active theme = %p (%s), want the instance", tui.ActiveTheme(), tui.ActiveTheme().Name)
+	}
+	if got := ui.m.opts.Settings.Theme; got != saved {
+		t.Fatalf("an instance changed the stored theme setting %q -> %q", saved, got)
+	}
+	if got := ui.SetTheme(extension.ThemeInstance{}); got.Success {
+		t.Fatal("SetTheme with no theme succeeded")
+	}
 }

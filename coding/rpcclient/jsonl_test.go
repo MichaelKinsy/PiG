@@ -26,6 +26,7 @@ func TestReadJSONLLinesFramesSplitRecords(t *testing.T) {
 	}
 }
 
+// packages/coding-agent/src/modes/rpc/rpc-client.ts:172 (RpcClient.onEvent).
 func TestRpcClientReadStdoutDrainsAfterCallbacksStop(t *testing.T) {
 	// Upstream's detach removes listeners without closing or pausing stdout.
 	input := strings.NewReader("{\"type\":\"ready\"}\n{\"type\":\"tick\"}\n{\"type\":\"tick\"}\nunterminated")
@@ -47,6 +48,7 @@ func TestRpcClientReadStdoutDrainsAfterCallbacksStop(t *testing.T) {
 
 // TestRpcClientReadStdoutParsesSplitInvalidBlankAndUnterminatedRecords drives
 // the client's production JSON parser after one-byte JSONL framing.
+// packages/coding-agent/src/modes/rpc/rpc-client.ts:172 (RpcClient.onEvent).
 func TestRpcClientReadStdoutParsesSplitInvalidBlankAndUnterminatedRecords(t *testing.T) {
 	client := NewRpcClient(RpcClientOptions{})
 	var got []string

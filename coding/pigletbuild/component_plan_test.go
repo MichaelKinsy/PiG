@@ -274,3 +274,55 @@ func TestAC2AdapterPreservesRuntimeDecisions(t *testing.T) {
 		t.Fatalf("review component = %#v", plan.Components[1])
 	}
 }
+
+// A TypeScript or JavaScript extension is a Node subprocess component that the
+// Binary carries (binary materialization) and runs with the user's installed
+// Node, so the plan records its node runtime, packed or isolated. Without the
+// runtime the plan refused every Piglet with a Node extension.
+func TestComponentPlanRecordsTheNodeRuntime(t *testing.T) {
+	t.Parallel()
+
+	const digest = "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+	for _, strategy := range []subprocess.CellStrategy{subprocess.CellStrategyPackedNode, subprocess.CellStrategyIsolated} {
+		cells := []subprocess.CellSpec{
+			{
+				Strategy: subprocess.CellStrategyPackedGo, Language: "go",
+				Extensions: []subprocess.ExtConfig{{Name: "review"}},
+			},
+			{
+				Strategy: strategy, Language: "node",
+				Extensions: []subprocess.ExtConfig{{Name: "notes"}},
+			},
+		}
+		target := Target{OS: runtime.GOOS, Arch: runtime.GOARCH}
+		delivery := BuildPlan(extensionInputsFromCells(cells), Options{
+			Targets: []Target{target}, Sandbox: Sandbox{Native: target},
+		})
+		plan, err := buildPigletComponentPlan(cells, delivery, []buildInput{
+			{Kind: "extension", Name: "review", Source: "package:base", Package: "base", Digest: digest},
+			{Kind: "extension", Name: "notes", Source: "content-addressed", Digest: digest},
+		})
+		if err != nil {
+			t.Fatalf("%s node cell: %v", strategy, err)
+		}
+		var notes *pigletartifact.Component
+		for i := range plan.Components {
+			if plan.Components[i].Name == "notes" {
+				notes = &plan.Components[i]
+			}
+		}
+		if notes == nil || notes.Realization != pigletartifact.RealizationSubprocess || notes.Materialization != pigletartifact.MaterializationBinary || notes.Runtime == nil || notes.Runtime.Name != "node" {
+			t.Fatalf("%s node cell: notes component = %#v", strategy, notes)
+		}
+	}
+
+	// The plan still refuses a Node subprocess component that records no runtime.
+	_, err := pigletartifact.BuildPlan([]pigletartifact.ComponentInput{{
+		Kind: pigletartifact.ComponentKindExtension, Name: "notes", Language: "node",
+		Origin:          pigletartifact.Origin{Source: "content-addressed", Digest: digest},
+		Materialization: pigletartifact.MaterializationBinary,
+	}})
+	if err == nil || !strings.Contains(err.Error(), `"extension/notes" node subprocess requires a runtime`) {
+		t.Fatalf("node component without a runtime: plan error = %v, want a node subprocess runtime error", err)
+	}
+}

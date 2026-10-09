@@ -1,6 +1,9 @@
 package pigletbuild
 
-import "testing"
+import (
+	"slices"
+	"testing"
+)
 
 func TestBuildPlanAutomaticallyFusesCompatibleGo(t *testing.T) {
 	host := Target{OS: "darwin", Arch: "arm64"}
@@ -59,19 +62,32 @@ func TestBuildPlanUsesBuilderCrossToolchains(t *testing.T) {
 	}
 }
 
-func TestValidateRejectsUnresolvedAndEmptyPiglets(t *testing.T) {
+// A Piglet whose listed extensions resolve to none still fails with the old
+// error; a Piglet that lists none (an empty base) builds.
+func TestValidateRejectsUnresolvedPigletsAndAcceptsEmptyBases(t *testing.T) {
 	host := Target{OS: "darwin", Arch: "arm64"}
 	plan := BuildPlan([]ExtensionInput{{Name: "go", Language: Go, Fusible: true}}, Options{
 		Targets: []Target{host}, Sandbox: Sandbox{Native: host},
 	})
-	if verdict := Validate(plan, nil, 1, false); !verdict.OK {
+	if verdict := Validate(plan, nil, 1, 1, false, false); !verdict.OK {
 		t.Fatalf("verdict = %#v", verdict)
 	}
-	if verdict := Validate(plan, []string{"missing"}, 1, false); verdict.OK || len(verdict.Blockers) != 1 {
+	if verdict := Validate(plan, []string{"missing"}, 2, 1, false, false); verdict.OK || len(verdict.Blockers) != 1 {
 		t.Fatalf("unresolved verdict = %#v", verdict)
 	}
-	if verdict := Validate(BuildPlan(nil, Options{Targets: []Target{host}, Sandbox: Sandbox{Native: host}}), nil, 0, false); verdict.OK {
-		t.Fatalf("empty verdict = %#v", verdict)
+	empty := BuildPlan(nil, Options{Targets: []Target{host}, Sandbox: Sandbox{Native: host}})
+	verdict := Validate(empty, []string{`extension "missing": no origin resolved`}, 1, 0, false, false)
+	if verdict.OK || !slices.Equal(verdict.Blockers, []string{`unresolved extension: extension "missing": no origin resolved`, "piglet resolves to no extensions"}) {
+		t.Fatalf("listed but unresolved verdict = %#v", verdict)
+	}
+	if verdict := Validate(empty, nil, 1, 0, false, false); verdict.OK || !slices.Equal(verdict.Blockers, []string{"piglet resolves to no extensions"}) {
+		t.Fatalf("listed scoping-only verdict = %#v", verdict)
+	}
+	if verdict := Validate(empty, nil, 0, 0, false, false); !verdict.OK {
+		t.Fatalf("empty base verdict = %#v", verdict)
+	}
+	if verdict := Validate(empty, nil, 0, 0, true, false); !verdict.OK {
+		t.Fatalf("frontend-only verdict = %#v", verdict)
 	}
 }
 
@@ -81,7 +97,7 @@ func TestValidateRejectsNonFusedExtensionWhenRequired(t *testing.T) {
 		{Name: "login", Language: Go, Fusible: true},
 		{Name: "runner", Language: Python, NotFusibleReason: "language:python"},
 	}, Options{Targets: []Target{host}, Sandbox: Sandbox{Native: host}})
-	verdict := Validate(plan, nil, 2, true)
+	verdict := Validate(plan, nil, 2, 2, false, true)
 	if verdict.OK || len(verdict.Blockers) != 1 {
 		t.Fatalf("verdict = %#v", verdict)
 	}

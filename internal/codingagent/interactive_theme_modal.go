@@ -21,9 +21,9 @@ func (m *InteractiveMode) readModalInput(input <-chan []byte) ([]byte, bool) {
 	return waitModalValue(m, input, func(buf []byte) bool { return m.consumeModalHostInput(string(buf)) })
 }
 
-// consumeModalHostInput runs the input stages that precede a selector's own handler: terminal theme replies, then, in fullscreen, the alternate screen's viewport listener and the focused transcript search. Upstream TUI runs input listeners, including the alternate screen's handleViewportInput, before the focused component (tui-alt-screen.ts handleViewportInput; tui.ts handleInput), so PageUp, PageDown, ctrl+home, ctrl+end, the wheel and ctrl+shift+f move the viewport while an editor-slot selector has focus.
+// consumeModalHostInput runs the input stages that precede a selector's own handler: a frontend session's replies and events (pig additive, D91), terminal theme replies, then, in fullscreen, the alternate screen's viewport listener and the focused transcript search. Upstream TUI runs input listeners, including the alternate screen's handleViewportInput, before the focused component (tui-alt-screen.ts handleViewportInput; tui.ts handleInput), so PageUp, PageDown, ctrl+home, ctrl+end, the wheel and ctrl+shift+f move the viewport while an editor-slot selector has focus.
 func (m *InteractiveMode) consumeModalHostInput(data string) bool {
-	if m.consumeTerminalThemeInput(data) {
+	if m.frontendInput(data) || m.consumeTerminalThemeInput(data) {
 		return true
 	}
 	if m.altScreen == nil {

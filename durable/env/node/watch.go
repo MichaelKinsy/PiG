@@ -14,6 +14,7 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
+	"math"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -28,15 +29,25 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
 )
 
+// nodeTimerDelay is the wait of setTimeout(callback, ms): Node runs a delay below 1 or above 2^31-1 after 1 ms.
+func nodeTimerDelay(ms int) time.Duration {
+	if ms < 1 || ms > math.MaxInt32 {
+		ms = 1
+	}
+	return time.Duration(ms) * time.Millisecond
+}
+
 // NodeWatchOptions is how NodeExecutionEnv watches.
 type NodeWatchOptions struct {
 	// Mode forces a mode. By default polling is chosen on Windows, where native watchers keep directories open and so
 	// block renaming their parents, and for file systems that do not report remote changes.
 	Mode durableenv.WatchMode
-	// PollIntervalMs is the interval between snapshots in polling mode; 0 is the default 2000 ms.
-	PollIntervalMs int
-	// MaxDirectories is the most directories one watcher covers; 0 is the default 10,000.
-	MaxDirectories int
+	// PollIntervalMs is the interval between snapshots in polling mode; nil is the default 2000 ms. Like a Node timer delay,
+	// a value below 1 or above 2^31-1 waits 1 ms.
+	PollIntervalMs *int
+	// MaxDirectories is the most directories one watcher covers; nil is the default 10,000. Any set value is the limit, so
+	// 0 refuses every directory.
+	MaxDirectories *int
 }
 
 const (
@@ -93,6 +104,26 @@ type snapshotEntry struct {
 }
 
 type snapshot map[string]snapshotEntry
+
+// installedWatch is the identity of what a native watcher was installed on. alias is set for a target that is a
+// symbolic link to a file: the path with every link resolved, which names that watcher's events where fsnotify follows
+// the link itself (kqueue on macOS and the BSDs).
+type installedWatch struct {
+	dev, ino uint64
+	alias    string
+}
+
+// scanResult is a scan: the snapshot, and targets that are symbolic links to files, whose files need their own watchers.
+type scanResult struct {
+	snapshot    snapshot
+	linkedFiles map[string]bool
+}
+
+// isDenied reports a failure for lack of permission.
+func isDenied(err error) bool {
+	code := errnoCode(err)
+	return code == "EACCES" || code == "EPERM"
+}
 
 type budgetExceeded struct{ limit int }
 
@@ -167,15 +198,19 @@ type nodeFileWatcher struct {
 	// deliverMu is held while a change is delivered, so a delivery never starts after Close has set closed.
 	deliverMu sync.Mutex
 
-	mu      sync.Mutex
-	mode    durableenv.WatchMode
-	fsw     *fsnotify.Watcher
-	watched map[string]bool
-	events  map[string]bool
-	timer   *time.Timer
-	running chan struct{}
-	dirty   bool
-	closed  bool
+	mu   sync.Mutex
+	mode durableenv.WatchMode
+	fsw  *fsnotify.Watcher
+	// watched is the identity of what each native watcher was installed on: a path replaced by another file or directory needs a new one.
+	watched map[string]installedWatch
+	// linkAliases maps the resolved path of each watched symbolic-link target to that target, so an event named by the
+	// file the link points to reports the target, as upstream's #onLinkedFileEvent does whatever the event names.
+	linkAliases map[string]string
+	events      map[string]bool
+	timer       *time.Timer
+	running     chan struct{}
+	dirty       bool
+	closed      bool
 }
 
 var _ durableenv.FileWatcher = (*nodeFileWatcher)(nil)
@@ -227,14 +262,15 @@ func openFileWatcher(targets []durableenv.WatchTarget, resolve func(string) stri
 		pollInterval:   defaultPoll,
 		maxDirectories: defaultMaxDirs,
 		snapshot:       snapshot{},
-		watched:        map[string]bool{},
+		watched:        map[string]installedWatch{},
+		linkAliases:    map[string]string{},
 		events:         map[string]bool{},
 	}
-	if options.PollIntervalMs > 0 {
-		watcher.pollInterval = time.Duration(options.PollIntervalMs) * time.Millisecond
+	if options.PollIntervalMs != nil {
+		watcher.pollInterval = nodeTimerDelay(*options.PollIntervalMs)
 	}
-	if options.MaxDirectories > 0 {
-		watcher.maxDirectories = options.MaxDirectories
+	if options.MaxDirectories != nil {
+		watcher.maxDirectories = *options.MaxDirectories
 	}
 	if mode == durableenv.WatchNative {
 		fsw, err := fsnotify.NewWatcher()
@@ -258,7 +294,7 @@ func openFileWatcher(targets []durableenv.WatchTarget, resolve func(string) stri
 	if err != nil {
 		watcher.stop()
 		if _, ok := errors.AsType[budgetExceeded](err); ok {
-			return nil, &durableenv.FileError{Code: durableenv.FileErrorInvalid, Message: err.Error()}
+			return nil, durableenv.NewFileError(durableenv.FileErrorInvalid, err.Error(), "", nil)
 		}
 		return nil, err
 	}
@@ -308,6 +344,7 @@ func (watcher *nodeFileWatcher) stop() {
 	fsw := watcher.fsw
 	watcher.fsw = nil
 	clear(watcher.watched)
+	clear(watcher.linkAliases)
 	watcher.mu.Unlock()
 	if fsw != nil {
 		_ = fsw.Close()
@@ -398,10 +435,14 @@ func (watcher *nodeFileWatcher) runFlush() {
 		if err != nil {
 			fileError, ok := errors.AsType[*durableenv.FileError](err)
 			if !ok {
-				fileError = &durableenv.FileError{Code: durableenv.FileErrorInvalid, Message: err.Error(), Cause: err}
+				code := durableenv.FileErrorInvalid
+				if isDenied(err) {
+					code = durableenv.FileErrorPermissionDenied
+				}
+				fileError = durableenv.NewFileError(code, err.Error(), "", err)
 			}
 			if _, ok := errors.AsType[budgetExceeded](err); ok {
-				fileError = &durableenv.FileError{Code: durableenv.FileErrorInvalid, Message: err.Error()}
+				fileError = durableenv.NewFileError(durableenv.FileErrorInvalid, err.Error(), "", nil)
 			}
 			watcher.deliver(durableenv.WatchChangeError{Error: fileError})
 			watcher.stop()
@@ -437,20 +478,25 @@ func (watcher *nodeFileWatcher) sync(report bool) (map[string]bool, error) {
 		if closed {
 			break
 		}
-		next, err := watcher.scan(mode)
+		scan, err := watcher.scan(mode)
 		if err != nil {
 			return nil, err
 		}
+		// Closed during the scan: installing watchers now would leak them.
+		watcher.mu.Lock()
+		closed, mode = watcher.closed, watcher.mode
+		watcher.mu.Unlock()
+		if closed {
+			break
+		}
+		next := scan.snapshot
 		if report {
 			for _, path := range watcher.diff(watcher.snapshot, next) {
 				changed[path] = true
 			}
 		}
 		watcher.snapshot = next
-		watcher.mu.Lock()
-		mode = watcher.mode
-		watcher.mu.Unlock()
-		if mode == durableenv.WatchPolling || !watcher.reconcileWatchers(next) {
+		if mode == durableenv.WatchPolling || !watcher.reconcileWatchers(scan) {
 			break
 		}
 		// Something written into a new directory before its watcher existed shows up in the next round.
@@ -490,12 +536,23 @@ func (watcher *nodeFileWatcher) reported(path string) string {
 	return path
 }
 
-func (watcher *nodeFileWatcher) scan(mode durableenv.WatchMode) (snapshot, error) {
+func (watcher *nodeFileWatcher) scan(mode durableenv.WatchMode) (scanResult, error) {
 	result := snapshot{}
-	directories := 0
-	countDirectory := func() error {
-		directories++
-		if directories > watcher.maxDirectories {
+	linkedFiles := map[string]bool{}
+	// Directories are counted once, but traversed once per target: overlapping targets differ in recursion and exclusions,
+	// and an entry recorded for one target must still be descended into for another.
+	counted := map[string]bool{}
+	type traversal struct {
+		target    int
+		directory string
+	}
+	traversed := map[traversal]bool{}
+	// listed is the kind of each listed entry, not following links: a target that links to a directory is recorded by stat,
+	// but symbolic links below a recursive target are not followed.
+	listed := map[string]entryKind{}
+	countDirectory := func(path string) error {
+		counted[path] = true
+		if len(counted) > watcher.maxDirectories {
 			return budgetExceeded{limit: watcher.maxDirectories}
 		}
 		return nil
@@ -510,10 +567,19 @@ func (watcher *nodeFileWatcher) scan(mode durableenv.WatchMode) (snapshot, error
 		}
 		result[path] = entryOf(path, info, follow, hash)
 	}
-	var scanDirectory func(target resolvedTarget, directory string) error
-	scanDirectory = func(target resolvedTarget, directory string) error {
+	var scanDirectory func(index int, target resolvedTarget, directory string) error
+	scanDirectory = func(index int, target resolvedTarget, directory string) error {
+		key := traversal{index, directory}
+		if traversed[key] {
+			return nil
+		}
+		traversed[key] = true
 		names, err := readDirNames(directory)
 		if err != nil {
+			// The watched directory itself must be readable; below it, unreadable directories are skipped.
+			if directory == target.path && isDenied(err) {
+				return err
+			}
 			switch errnoCode(err) {
 			case "ENOENT", "EACCES", "EPERM", "ENOTDIR":
 				return nil
@@ -525,26 +591,31 @@ func (watcher *nodeFileWatcher) scan(mode durableenv.WatchMode) (snapshot, error
 				continue
 			}
 			path := filepath.Join(directory, name)
-			if _, seen := result[path]; seen {
-				continue
+			kind, known := listed[path]
+			if !known {
+				info, err := os.Lstat(path)
+				if err != nil {
+					continue
+				}
+				kind = entryOf(path, info, false, "").kind
+				listed[path] = kind
+				// A target's own entry (following links) wins over its listing by another target.
+				if _, seen := result[path]; !seen {
+					record(path, info, false)
+				}
 			}
-			info, err := os.Lstat(path)
-			if err != nil {
-				continue
-			}
-			record(path, info, false)
-			if target.recursive && info.IsDir() {
-				if err := countDirectory(); err != nil {
+			if target.recursive && kind == kindDirectory {
+				if err := countDirectory(path); err != nil {
 					return err
 				}
-				if err := scanDirectory(target, path); err != nil {
+				if err := scanDirectory(index, target, path); err != nil {
 					return err
 				}
 			}
 		}
 		return nil
 	}
-	for _, target := range watcher.targets {
+	for index, target := range watcher.targets {
 		for _, ancestor := range ancestorsOf(target.path) {
 			if _, seen := result[ancestor]; seen {
 				continue
@@ -556,28 +627,42 @@ func (watcher *nodeFileWatcher) scan(mode durableenv.WatchMode) (snapshot, error
 				result[ancestor] = entry
 			}
 		}
-		// The target itself may be a symbolic link to what is watched; follow it.
+		// The target itself may be a symbolic link to what is watched; follow it. A missing target is watched for its
+		// creation; one that cannot be reached for lack of permission fails.
 		info, err := os.Stat(target.path)
 		if err != nil {
+			if isDenied(err) {
+				return scanResult{}, err
+			}
 			continue
 		}
 		record(target.path, info, true)
-		if info.IsDir() {
-			if err := countDirectory(); err != nil {
-				return nil, err
+		if info.Mode().IsRegular() {
+			if link, err := os.Lstat(target.path); err == nil && link.Mode()&fs.ModeSymlink != 0 {
+				linkedFiles[target.path] = true
 			}
-			if err := scanDirectory(target, target.path); err != nil {
-				return nil, err
+		}
+		if info.IsDir() {
+			if err := countDirectory(target.path); err != nil {
+				return scanResult{}, err
+			}
+			if err := scanDirectory(index, target, target.path); err != nil {
+				return scanResult{}, err
 			}
 		}
 	}
-	return result, nil
+	return scanResult{snapshot: result, linkedFiles: linkedFiles}, nil
 }
 
-// reconcileWatchers watches every existing ancestor of each target, each target directory, and each directory below a
+// reconcileWatchers watches every existing ancestor of each target, each target directory, each target that is a
+// symbolic link to a file (changes to that file are not events of the link's directory), and each directory below a
 // recursive target. It returns whether a watcher was added.
-func (watcher *nodeFileWatcher) reconcileWatchers(snap snapshot) bool {
+func (watcher *nodeFileWatcher) reconcileWatchers(scan scanResult) bool {
+	snap := scan.snapshot
 	wanted := map[string]bool{}
+	for path := range scan.linkedFiles {
+		wanted[path] = true
+	}
 	for _, target := range watcher.targets {
 		for _, ancestor := range ancestorsOf(target.path) {
 			if snap[ancestor].kind == kindDirectory {
@@ -600,14 +685,28 @@ func (watcher *nodeFileWatcher) reconcileWatchers(snap snapshot) bool {
 	watcher.mu.Lock()
 	fsw := watcher.fsw
 	var remove, add []string
-	for path := range watcher.watched {
-		if !wanted[path] {
+	removeAliases := map[string]string{}
+	for path, installed := range watcher.watched {
+		entry, present := snap[path]
+		// Gone, or replaced: a watcher follows the inode it was installed on, not the path.
+		if !wanted[path] || !present || entry.dev != installed.dev || entry.ino != installed.ino {
 			remove = append(remove, path)
 			delete(watcher.watched, path)
+			if installed.alias != "" {
+				delete(watcher.linkAliases, installed.alias)
+				// A backend that registered the link under its resolved path removes it only by that path, unless
+				// that path is also the entry of a watched directory, whose watcher the backend shares.
+				if _, shared := watcher.watched[filepath.Dir(installed.alias)]; !shared {
+					removeAliases[path] = installed.alias
+				}
+			}
 		}
 	}
 	for path := range wanted {
-		if !watcher.watched[path] {
+		if _, present := snap[path]; !present {
+			continue
+		}
+		if _, installed := watcher.watched[path]; !installed {
 			add = append(add, path)
 		}
 	}
@@ -616,7 +715,11 @@ func (watcher *nodeFileWatcher) reconcileWatchers(snap snapshot) bool {
 		return false
 	}
 	for _, path := range remove {
-		_ = fsw.Remove(path)
+		if err := fsw.Remove(path); err != nil {
+			if alias, ok := removeAliases[path]; ok {
+				_ = fsw.Remove(alias)
+			}
+		}
 	}
 	slices.Sort(add)
 	added := false
@@ -630,9 +733,19 @@ func (watcher *nodeFileWatcher) reconcileWatchers(snap snapshot) bool {
 			watcher.switchToPolling()
 			return false
 		}
+		var alias string
+		if scan.linkedFiles[path] {
+			if resolved, err := filepath.EvalSymlinks(path); err == nil && resolved != path {
+				alias = resolved
+			}
+		}
 		watcher.mu.Lock()
 		if !watcher.closed {
-			watcher.watched[path] = true
+			entry := snap[path]
+			watcher.watched[path] = installedWatch{dev: entry.dev, ino: entry.ino, alias: alias}
+			if alias != "" {
+				watcher.linkAliases[alias] = path
+			}
 		}
 		watcher.mu.Unlock()
 		added = true
@@ -650,6 +763,7 @@ func (watcher *nodeFileWatcher) switchToPolling() {
 	fsw := watcher.fsw
 	watcher.fsw = nil
 	clear(watcher.watched)
+	clear(watcher.linkAliases)
 	if watcher.timer != nil {
 		watcher.timer.Stop()
 		watcher.timer = nil
@@ -687,13 +801,18 @@ func (watcher *nodeFileWatcher) onEvent(path string) {
 	if watcher.closed {
 		return
 	}
+	// The file a linked target points to changed: report the target.
+	if link, ok := watcher.linkAliases[path]; ok {
+		watcher.events[link] = true
+		watcher.scheduleFlushLocked()
+	}
 	// Events about unrelated siblings of an ancestor, or about excluded entries, are ignored.
 	relevant := watcher.inScope(path)
 	if relevant {
 		watcher.events[watcher.reported(path)] = true
 	}
 	// An event on a watched directory itself names no entry: the directory may have gone, so rescan.
-	if relevant || watcher.watched[path] {
+	if _, watched := watcher.watched[path]; relevant || watched {
 		watcher.scheduleFlushLocked()
 	}
 }

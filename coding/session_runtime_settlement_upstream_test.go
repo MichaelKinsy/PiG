@@ -6,6 +6,8 @@ import (
 	"reflect"
 	"testing"
 
+	icodingagent "github.com/MichaelKinsy/PiG/internal/codingagent"
+
 	"github.com/MichaelKinsy/PiG/agent"
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/coding/extension"
@@ -36,7 +38,7 @@ func TestRuntimeOriginalSettlesActiveResponse(t *testing.T) {
 			if switching {
 				var roles []string
 				for _, entry := range h.runtime.Session().Entries() {
-					if message, ok := entry.AsMessage(); ok {
+					if message, ok := entry.(icodingagent.MessageEntry); ok {
 						roles = append(roles, message.Message.Role())
 					}
 				}
@@ -59,7 +61,7 @@ func TestRuntimeOriginalSettlesActiveResponse(t *testing.T) {
 	h.provider.mu.Unlock()
 	outgoing := h.runtime.Session()
 	prompt := make(chan error, 1)
-	go func() { _, err := outgoing.Prompt(t.Context(), "start blocking tool"); prompt <- err }()
+	go func() { err := outgoing.Prompt(t.Context(), "start blocking tool"); prompt <- err }()
 	joined := false
 	t.Cleanup(func() {
 		outgoing.RequestAbort()
@@ -95,8 +97,8 @@ func TestRuntimeOriginalSettlesActiveResponse(t *testing.T) {
 		t.Fatal(err)
 	}
 	var roles []string
-	for _, entry := range loaded.Entries() {
-		if message, ok := entry.AsMessage(); ok {
+	for _, entry := range loaded.GetEntries() {
+		if message, ok := entry.(icodingagent.MessageEntry); ok {
 			roles = append(roles, message.Message.Role())
 		}
 	}

@@ -151,6 +151,9 @@ class Provider:
     base_url: str | None = None
     headers: dict | None = None
     filter_models: Callable[[list[dict], dict | None], list[dict]] | None = None
+    # ``get_all_models`` lists the models of every type (without it ``get_models`` does) and ``filter_all_models`` filters them by credential (without it ``filter_models`` filters the chat models). Pi ``Provider.getAllModels`` / ``filterAllModels``.
+    get_all_models: Callable[[], list[dict]] | None = None
+    filter_all_models: Callable[[list[dict], dict | None], list[dict]] | None = None
     refresh_models: Callable[[RefreshModelsContext], None] | None = None
     fetch_deferred: Callable[[dict, dict, ProviderStreamOptions], Any] | None = None
     cancel_deferred: Callable[[dict, dict, ProviderStreamOptions], None] | None = None
@@ -160,7 +163,7 @@ class Provider:
 
 
 def _method(provider, method):
-    aliases = {"getModels": "get_models", "filterModels": "filter_models", "refreshModels": "refresh_models", "streamSimple": "stream_simple", "fetchDeferred": "fetch_deferred", "cancelDeferred": "cancel_deferred", "generateImages": "generate_images", "apiKey": "api_key", "toAuth": "to_auth"}
+    aliases = {"getModels": "get_models", "getAllModels": "get_all_models", "filterModels": "filter_models", "filterAllModels": "filter_all_models", "refreshModels": "refresh_models", "streamSimple": "stream_simple", "fetchDeferred": "fetch_deferred", "cancelDeferred": "cancel_deferred", "generateImages": "generate_images", "apiKey": "api_key", "toAuth": "to_auth"}
     obj = provider
     for part in method.split("."):
         obj = getattr(obj, aliases.get(part, part), None)
@@ -169,14 +172,14 @@ def _method(provider, method):
     return obj
 
 
-METHODS = ("getModels", "filterModels", "refreshModels", "stream", "streamSimple", "fetchDeferred", "cancelDeferred", "generateImages", "classify", "auth.apiKey.check", "auth.apiKey.resolve", "auth.apiKey.login", "auth.oauth.login", "auth.oauth.refresh", "auth.oauth.toAuth")
+METHODS = ("getModels", "getAllModels", "filterModels", "filterAllModels", "refreshModels", "stream", "streamSimple", "fetchDeferred", "cancelDeferred", "generateImages", "classify", "auth.apiKey.check", "auth.apiKey.resolve", "auth.apiKey.login", "auth.oauth.login", "auth.oauth.refresh", "auth.oauth.toAuth")
 
 
 def declaration(provider, key):
     if not provider.id.strip():
         raise ValueError("Provider id must not be empty")
     try:
-        models = provider.get_models()
+        models = provider.get_all_models() if provider.get_all_models else provider.get_models()
     except Exception:
         # Pi Models treats a throwing getModels as an empty catalog at registration.
         models = []
@@ -235,9 +238,9 @@ def dispatch_provider(extension, ctx, request):
     if fn is None:
         raise RuntimeError(f"Provider method {method} is absent")
     signal = ctx._cancelled
-    if method == "getModels":
+    if method in ("getModels", "getAllModels"):
         return fn()
-    if method == "filterModels":
+    if method in ("filterModels", "filterAllModels"):
         models = args["models"]
         result = fn(models, args.get("credential"))
         return {"models": result, "indices": [next((i for i, original in enumerate(models) if original is model), -1) for model in result]}
@@ -385,16 +388,19 @@ def remote_provider(context, decl):
     for wire, field_name in (("generateImages", "generate_images"), ("classify", "classify")):
         if wire in methods:
             setattr(provider, field_name, lambda model, request, options=None, wire=wire: invoke(wire, {"model": model, "context": request, "options": options.values if options else {}}, signal=options.signal if options else None))
-    if "filterModels" in methods:
-        def filter_models(models, credential):
-            result = invoke("filterModels", {"models": models, "credential": credential})
-            for i, index in enumerate(result["indices"]):
-                if index >= 0:
-                    models[index].clear()
-                    models[index].update(result["models"][i])
-                    result["models"][i] = models[index]
-            return result["models"]
-        provider.filter_models = filter_models
+    if "getAllModels" in methods:
+        provider.get_all_models = lambda: invoke("getAllModels")
+    for wire, field_name in (("filterModels", "filter_models"), ("filterAllModels", "filter_all_models")):
+        if wire in methods:
+            def filter_models(models, credential, wire=wire):
+                result = invoke(wire, {"models": models, "credential": credential})
+                for i, index in enumerate(result["indices"]):
+                    if index >= 0:
+                        models[index].clear()
+                        models[index].update(result["models"][i])
+                        result["models"][i] = models[index]
+                return result["models"]
+            setattr(provider, field_name, filter_models)
     if "refreshModels" in methods:
         def refresh(input):
             def publish(args):

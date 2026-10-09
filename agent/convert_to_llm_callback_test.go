@@ -14,7 +14,7 @@ func TestConvertToLlmWaitsAndReportsFailureWithoutCallingProvider(t *testing.T) 
 	synctest.Test(t, func(t *testing.T) {
 		release := make(chan struct{})
 		provider := &scriptedProvider{respond: replyText("unexpected")}
-		a := NewAgent(AgentOptions{Model: scriptedModel(provider), ConvertToLlm: func([]AgentMessage) ([]ai.Message, error) { <-release; return nil, errors.New("conversion failed") }})
+		a := mustNewAgent(AgentOptions{Model: scriptedModel(provider), ConvertToLlm: func([]AgentMessage) ([]ai.Message, error) { <-release; return nil, errors.New("conversion failed") }})
 		done := sendAsync(t, a, "hello")
 		synctest.Wait()
 		if !a.IsStreaming() || provider.calls() != 0 {

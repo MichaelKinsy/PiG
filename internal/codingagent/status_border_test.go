@@ -8,6 +8,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/MichaelKinsy/PiG/coding/extension"
+
 	"github.com/MichaelKinsy/PiG/agent"
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/tui"
@@ -15,7 +17,7 @@ import (
 )
 
 func TestWorkingStatusUsesEditorBorder(t *testing.T) {
-	m := NewInteractiveMode(InteractiveOptions{CWD: t.TempDir()})
+	m := NewInteractiveMode(nil, InteractiveModeOptions{CWD: t.TempDir()})
 	m.editor = tui.NewEditor()
 	m.editor.EmbedWorkingStatus = true
 	m.statusContainer = tui.NewContainer()
@@ -64,15 +66,15 @@ func TestWorkingStatusStaysVisibleThroughPendingAndRunningToolsUntilAgentEnd(t *
 
 func statusBorderMode(t *testing.T, embedded bool) *InteractiveMode {
 	t.Helper()
-	m := NewInteractiveMode(InteractiveOptions{CWD: t.TempDir()})
+	m := NewInteractiveMode(nil, InteractiveModeOptions{CWD: t.TempDir()})
 	m.editor = tui.NewEditor()
 	m.editor.EmbedWorkingStatus = embedded
 	m.statusContainer = tui.NewContainer()
 	m.chatContainer = tui.NewContainer()
 	m.pendingMessagesContainer = tui.NewContainer()
 	m.tuiInst = tui.NewWithOutput(io.Discard, 80, 24)
-	m.statusLine = NewStatusLine(nil, "", nil)
-	m.agent = agent.NewAgent(agent.AgentOptions{})
+	m.statusLine = NewFooterComponent(nil, "", nil)
+	m.agent = mustNewAgent(agent.AgentOptions{})
 	return m
 }
 
@@ -128,13 +130,14 @@ func TestStatusBorderFallbackAndIdleRows(t *testing.T) {
 	}
 }
 
+// Pi: packages/coding-agent/src/core/extensions/types.ts:138 (WorkingIndicatorOptions.intervalMs).
 func TestWorkingStatusOptionsAndVisibility(t *testing.T) {
 	m := statusBorderMode(t, true)
 	m.isIdle = false
 	m.startWorkingLoader()
 	ui := &ExtUIContext{m: m}
 	ui.SetWorkingMessage("Indexing")
-	ui.SetWorkingIndicator(map[string]any{"frames": []string{"A", "B"}, "intervalMs": 200})
+	ui.SetWorkingIndicator(extension.WorkingIndicatorOptions{Frames: new([]string{"A", "B"}), IntervalMs: new(float64(200))})
 	if got := widthx.StripAnsi(m.editor.Render(80)[0]); !strings.Contains(got, "── A Indexing ") {
 		t.Fatalf("custom status=%q", got)
 	}
@@ -146,7 +149,7 @@ func TestWorkingStatusOptionsAndVisibility(t *testing.T) {
 	if m.activeStatusIndicator.Frame != 1 {
 		t.Fatal("custom interval did not advance")
 	}
-	ui.SetWorkingIndicator(map[string]any{"frames": []string{}})
+	ui.SetWorkingIndicator(extension.WorkingIndicatorOptions{Frames: new([]string{})})
 	if got := widthx.StripAnsi(m.editor.Render(80)[0]); !strings.Contains(got, "── Indexing ") {
 		t.Fatalf("hidden spinner=%q", got)
 	}
@@ -158,7 +161,7 @@ func TestWorkingStatusOptionsAndVisibility(t *testing.T) {
 	if m.activeStatusIndicator == nil {
 		t.Fatal("working visibility did not restore indicator")
 	}
-	ui.SetWorkingIndicator(nil)
+	ui.SetWorkingIndicator(extension.WorkingIndicatorOptions{})
 	ui.SetWorkingMessage("")
 	if got := widthx.StripAnsi(m.editor.Render(80)[0]); !strings.Contains(got, "── ⠋ Working ") {
 		t.Fatalf("reset status=%q", got)
@@ -218,13 +221,14 @@ func TestStatusTickStopsWithOwnerContext(t *testing.T) {
 	}
 }
 
+// Pi: packages/coding-agent/src/core/extensions/types.ts:135 (WorkingIndicatorOptions.frames).
 func TestWorkingOptionsAreOwnedAndSurviveCallerMutation(t *testing.T) {
 	m := statusBorderMode(t, true)
 	m.startWorkingLoader()
 	m.runCtx = t.Context()
 	ui := &ExtUIContext{m: m}
 	frames := []string{"source"}
-	ui.SetWorkingIndicator(map[string]any{"frames": frames})
+	ui.SetWorkingIndicator(extension.WorkingIndicatorOptions{Frames: new(frames)})
 	frames[0] = "mutated"
 	if m.activeStatusIndicator.Frames[0] != "⠋" {
 		t.Fatal("extension mutated UI off owner loop")

@@ -1,5 +1,5 @@
 # Behavior family: interactive-rendering
-# Surface: UserMessageBlock: bg-painted box with markdown content
+# Surface: UserMessageComponent: bg-painted box with markdown content
 #
 # Upstream evidence (pi v0.69.0, 2026-05-15):
 #   pi --no-extensions -e test/parity/testdata/test-faux-provider.ts --model test-faux/faux-1

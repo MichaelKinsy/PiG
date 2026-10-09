@@ -6,17 +6,19 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/MichaelKinsy/PiG/coding/extension"
+
 	"github.com/MichaelKinsy/PiG/tui"
 )
 
 // themeRendererSpy counts the repaints the theme change requests.
 type themeRendererSpy struct {
-	tui.Renderer
+	tui.TUI
 	invalidates, requests int
 }
 
-func (s *themeRendererSpy) Invalidate()    { s.invalidates++ }
-func (s *themeRendererSpy) RequestRender() { s.requests++ }
+func (s *themeRendererSpy) Invalidate()           { s.invalidates++ }
+func (s *themeRendererSpy) RequestRender(...bool) { s.requests++ }
 
 func themeSettingsMode(t *testing.T) (*ExtUIContext, *SettingsManager, string, *themeRendererSpy) {
 	t.Helper()
@@ -41,7 +43,7 @@ func TestExtensionSetThemePersistsToSettingsManagerUpstream(t *testing.T) {
 	if got := sm.GetTheme(); got != "dark" {
 		t.Fatalf("initial stored theme=%q, want dark", got)
 	}
-	result := ui.SetTheme("light")
+	result := ui.SetTheme(extension.ThemeName("light"))
 	if !result.Success {
 		t.Fatalf("SetTheme(light)=%+v", result)
 	}
@@ -64,7 +66,7 @@ func TestExtensionSetThemePersistsToSettingsManagerUpstream(t *testing.T) {
 func TestExtensionSetThemeDoesNotPersistInvalidNamesUpstream(t *testing.T) {
 	ui, sm, path, renderer := themeSettingsMode(t)
 	tui.SetThemeByName("light", false)
-	result := ui.SetTheme("__missing_theme__")
+	result := ui.SetTheme(extension.ThemeName("__missing_theme__"))
 	if result.Success || result.Error != "Theme not found: __missing_theme__" {
 		t.Fatalf("SetTheme(__missing_theme__)=%+v", result)
 	}

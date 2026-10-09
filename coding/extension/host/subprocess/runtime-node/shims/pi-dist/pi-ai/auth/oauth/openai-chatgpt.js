@@ -11,7 +11,7 @@ import { getProviderEnvValue } from "../../utils/provider-env.js";
 import { generatePKCE } from "./pkce.js";
 // every login registers a new client with this ID; OpenAI returns the issued client ID in the callback
 const DYNAMIC_CLIENT_ID = "dynamic_agent_client";
-const AGENT_NAME_HINT = "Pi";
+const AGENT_NAME_HINT = "PiG";
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const AUTHORIZE_URL = "https://auth.openai.com/api/accounts/authorize";
 const TOKEN_URL = "https://auth.openai.com/api/accounts/oauth/token";
@@ -204,7 +204,7 @@ async function loginOpenAIChatGPT(interaction, options) {
     const authorizationUrl = new URL(AUTHORIZE_URL);
     authorizationUrl.search = new URLSearchParams({
         client_id: DYNAMIC_CLIENT_ID,
-        agent_name_hint: AGENT_NAME_HINT,
+        agent_name_hint: options?.agentName ?? AGENT_NAME_HINT,
         ext_agent_host_id: hostId,
         response_type: "code",
         redirect_uri: REDIRECT_URI,

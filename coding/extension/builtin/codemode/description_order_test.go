@@ -16,14 +16,14 @@ func TestCodemodeDescriptionPlacesTheCheapestToolOfAGroupFirst(t *testing.T) {
 	short := agentTool("a_short", "Short.")
 	// The long tool is registered first; a budget that fits only one section must pick the short one.
 	budget := 60
-	description := codemode.CreateDescription([]extension.AgentTool{long, short}, codemode.DescriptionOptions{InlineBudget: &budget})
+	description := mustDescription(t, []extension.AgentTool{long, short}, codemode.DescriptionOptions{InlineBudget: &budget})
 	mustContain(t, description, "Nested tools:", "### `a_short`")
 	mustNotContain(t, description, "### `z_long`")
 }
 
 func TestCodemodeDescriptionOrdersGroupsWithoutANamespaceThenNamespacesByName(t *testing.T) {
 	zeta, alpha, plain := agentTool("zeta_tool", "Z."), agentTool("alpha_tool", "A."), agentTool("plain_tool", "P.")
-	description := codemode.CreateDescription([]extension.AgentTool{zeta, alpha, plain}, codemode.DescriptionOptions{Namespaces: map[string]extension.ToolNamespace{
+	description := mustDescription(t, []extension.AgentTool{zeta, alpha, plain}, codemode.DescriptionOptions{Namespaces: map[string]extension.ToolNamespace{
 		"zeta_tool": {Name: "zeta"}, "alpha_tool": {Name: "Alpha"},
 	}})
 	plainAt, alphaAt, zetaAt := strings.Index(description, "### `plain_tool`"), strings.Index(description, "## Alpha"), strings.Index(description, "## zeta")

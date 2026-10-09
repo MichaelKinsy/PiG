@@ -36,13 +36,13 @@ func TestEditorSlotSelectorYieldsViewportKeysInFullscreen(t *testing.T) {
 				}
 			}
 			items := []tui.ModelSelectorItem{{Provider: "fixture", ID: "model-two"}, {Provider: "fixture", ID: "model-one"}}
-			selector := tui.NewModelSelector("Select model", nil, items, "fixture/model-two")
+			selector := tui.NewStaticModelSelectorComponent("Select model", nil, items, "fixture/model-two")
 			selector.SetFilter("model")
 			selector.HandleInput("\x1b[B")
 
 			result := make(chan string, 1)
 			go func() {
-				spec, _ := m.runEditorSlotModelSelector(m.runCtx, selector, nil)
+				spec, _ := m.runEditorSlotModelSelector(m.runCtx, selector)
 				result <- spec
 			}()
 			input := waitForModalRoute(t, m)

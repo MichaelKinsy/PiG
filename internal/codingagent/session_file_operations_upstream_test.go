@@ -1,4 +1,3 @@
-// SPDX-FileCopyrightText: Copyright Hewlett Packard Enterprise Development LP
 // SPDX-FileCopyrightText: Copyright (c) 2025 Mario Zechner
 // SPDX-License-Identifier: MIT
 
@@ -65,7 +64,7 @@ func TestLoadEntriesFromFileUpstream(t *testing.T) {
 			if tc.want == 2 {
 				for i, want := range []string{"session", "message"} {
 					var e SessionEntryBase
-					if err := json.Unmarshal(entries[i], &e); err != nil {
+					if err := json.Unmarshal(entries[i].Raw(), &e); err != nil {
 						t.Fatal(err)
 					}
 					if e.Type != want {
@@ -185,8 +184,8 @@ func TestLoadEntriesFromFileUpstream(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if s.ID() != "abc" || len(s.Entries()) != 1 {
-			t.Fatalf("id=%s entries=%d", s.ID(), len(s.Entries()))
+		if s.ID() != "abc" || len(s.GetEntries()) != 1 {
+			t.Fatalf("id=%s entries=%d", s.ID(), len(s.GetEntries()))
 		}
 		messages := s.BuildContext(nil)
 		if len(messages) != 1 || messages[0].User == nil || extractUserText(messages[0]) != "hi" || messages[0].User.Timestamp != 1 {
@@ -327,8 +326,8 @@ func TestSessionFileOperationsUpstream(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if s.ID() == "" || s.Header().Type != "session" {
-			t.Fatal(s.Header())
+		if s.ID() == "" || s.GetHeader().Type != "session" {
+			t.Fatal(s.GetHeader())
 		}
 		records := readJSONLLines(t, path)
 		if len(records) != 1 || records[0]["type"] != "session" || records[0]["id"] != s.ID() {
@@ -388,7 +387,7 @@ func TestSessionFileOperationsUpstream(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if one.ID() != two.ID() || two.Header().Type != "session" {
+		if one.ID() != two.ID() || two.GetHeader().Type != "session" {
 			t.Fatal("identity changed")
 		}
 	})
@@ -417,10 +416,10 @@ func TestSessionFileCreationUpstream(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if err := s.AppendModelSwitch("anthropic", "claude-sonnet-4-5", ""); err != nil {
+		if _, err := s.AppendModelChange("anthropic", "claude-sonnet-4-5"); err != nil {
 			t.Fatal(err)
 		}
-		if err := s.AppendThinkingLevelChange("off"); err != nil {
+		if _, err := s.AppendThinkingLevelChange("off"); err != nil {
 			t.Fatal(err)
 		}
 		if _, err := os.Stat(s.Path()); !os.IsNotExist(err) {
@@ -435,7 +434,7 @@ func TestSessionFileCreationUpstream(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if err := s.AppendModelSwitch("anthropic", "claude-sonnet-4-5", ""); err != nil {
+		if _, err := s.AppendModelChange("anthropic", "claude-sonnet-4-5"); err != nil {
 			t.Fatal(err)
 		}
 		upstreamSessionUser(t, s, "first question")

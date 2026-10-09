@@ -2,6 +2,7 @@ package sdk
 
 import (
 	"reflect"
+	"slices"
 	"strings"
 	"testing"
 
@@ -76,11 +77,12 @@ func TestToolPrepareLoadoutRunsInTheExtension(t *testing.T) {
 	defer surfaceShutdown(t, host, done)
 
 	payload := mustJSON(t, map[string]any{
-		"declared":   []AgentTool{orchestratorTool("echo", "Echo text."), orchestratorTool("run_tools", "Runs tools.")},
-		"callable":   []AgentTool{orchestratorTool("echo", "Echo text."), orchestratorTool("helper", "Only reachable from other tools.")},
-		"registered": []AgentTool{orchestratorTool("echo", "Echo text."), orchestratorTool("helper", "h"), orchestratorTool("run_tools", "Runs tools.")},
-		"exposures":  map[string]string{"echo": "direct", "helper": "codemode", "run_tools": "model-only"},
-		"namespaces": map[string]any{"helper": map[string]any{"name": "group", "description": "A group"}},
+		"declared":         []AgentTool{orchestratorTool("echo", "Echo text."), orchestratorTool("run_tools", "Runs tools.")},
+		"callable":         []AgentTool{orchestratorTool("echo", "Echo text."), orchestratorTool("helper", "Only reachable from other tools.")},
+		"registered":       []AgentTool{orchestratorTool("echo", "Echo text."), orchestratorTool("helper", "h"), orchestratorTool("run_tools", "Runs tools.")},
+		"exposures":        map[string]string{"echo": "direct", "helper": "codemode", "run_tools": "model-only"},
+		"namespaces":       map[string]any{"helper": map[string]any{"name": "group", "description": "A group"}},
+		"promptGuidelines": map[string][]string{"echo": {"Echo with care.", "Quote the text."}},
 	})
 	_, resp := runSurfaceRequest(t, host, "loadout-1", &requestMsg{Method: "tool_prepare_loadout", Tool: "run_tools", Args: json.RawMessage(payload)}, nil)
 	if resp.Error != nil {
@@ -99,6 +101,9 @@ func TestToolPrepareLoadoutRunsInTheExtension(t *testing.T) {
 	}
 	if ns := loadout.GetNamespace("helper"); ns == nil || ns.Name != "group" || ns.Description != "A group" || loadout.GetNamespace("echo") != nil {
 		t.Fatalf("namespaces do not follow the payload: %+v", ns)
+	}
+	if got := loadout.GetPromptGuidelines("echo"); !slices.Equal(got, []string{"Echo with care.", "Quote the text."}) || len(loadout.GetPromptGuidelines("helper")) != 0 {
+		t.Fatalf("prompt guidelines do not follow the payload: %v", got)
 	}
 
 	// types.ts:607: `ToolLoadoutChanges | undefined`. No changes is null on the wire, and a tool asked about an unknown name fails the request.

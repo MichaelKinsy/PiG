@@ -3,11 +3,9 @@
 package harness
 
 import (
-	"maps"
-	"slices"
-
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/durable"
+	"github.com/MichaelKinsy/PiG/internal/chord/chordjson"
 )
 
 // AssignJson assigns value at target[key] leaf by leaf. Chord records a container assignment as one full set and only emits an append when a string leaf is reassigned with a longer string, so writing the partial whole would store and publish the complete message on every flush.
@@ -40,13 +38,27 @@ func (slot arraySlot) set(value any) error { return slot.array.Set(slot.index, v
 func assignSlot(slot jsonSlot, value durable.JsonValue) error {
 	current := slot.get()
 	if object, ok := current.(*delta.Object); ok {
-		if record, isRecord := value.(map[string]any); isRecord {
+		if record, isRecord := value.(*delta.JsonObject); isRecord {
 			for _, name := range object.Keys() {
-				if _, kept := record[name]; !kept {
+				if !record.Has(name) {
 					object.Delete(name)
 				}
 			}
-			for _, name := range jsonKeys(record) {
+			for name, item := range record.All() {
+				if err := assignSlot(objectSlot{object, name}, item); err != nil {
+					return err
+				}
+			}
+			return nil
+		}
+		// A Go map has no insertion order; it is a record whose members are visited in own-key order, as Chord copies one at its boundary.
+		if record, isRecord := value.(map[string]any); isRecord {
+			for _, name := range object.Keys() {
+				if _, has := record[name]; !has {
+					object.Delete(name)
+				}
+			}
+			for _, name := range chordjson.MapOwnKeys(record) {
 				if err := assignSlot(objectSlot{object, name}, record[name]); err != nil {
 					return err
 				}
@@ -83,7 +95,14 @@ func isLeaf(value any) bool {
 	return false
 }
 
-// jsonKeys returns a decoded object's keys. A Go map does not keep upstream's insertion order, so members are assigned in sorted order; the resulting value is the same.
-func jsonKeys(record map[string]any) []string {
-	return slices.Sorted(maps.Keys(record))
+// jsonMember reads key from a decoded JSON object. Document values are *delta.JsonObject; a task record's
+// durable.JsonValue fields (checkpoint, input, outcome) decode through encoding/json as map[string]any.
+func jsonMember(value any, key string) any {
+	switch object := value.(type) {
+	case *delta.JsonObject:
+		return object.Value(key)
+	case map[string]any:
+		return object[key]
+	}
+	return nil
 }

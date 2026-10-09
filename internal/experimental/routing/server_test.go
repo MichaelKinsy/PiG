@@ -55,9 +55,9 @@ func TestServerRejectsConcurrentStartCallsWithoutLeakingTheUnixListener(t *testi
 	server := newTestServer(t, routing.ServerOptions{Listeners: []routing.ServerListener{gated}})
 	t.Cleanup(func() { _ = server.Close() })
 	starting := make(chan error, 1)
-	go func() { starting <- server.Start() }()
+	go func() { starting <- startError(server) }()
 	<-gated.entered
-	expectError(t, server.Start(), "starting")
+	expectError(t, startError(server), "starting")
 	close(gated.release)
 	if err := <-starting; err != nil {
 		t.Fatal(err)
@@ -166,7 +166,7 @@ func TestServerRejectsCloseAndClosedWhenListenerShutdownFails(t *testing.T) {
 	failure := errors.New("listener close failed")
 	listener := &failingCloseListener{failure: failure}
 	server := newTestServer(t, routing.ServerOptions{Listeners: []routing.ServerListener{listener}})
-	if err := server.Start(); err != nil {
+	if err := startError(server); err != nil {
 		t.Fatal(err)
 	}
 	// server.test.ts:127-128 rejects.toBe(failure) for both close() and closed: the listener's own error, not a wrapper.

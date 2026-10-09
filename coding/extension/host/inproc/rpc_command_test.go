@@ -11,8 +11,8 @@ import (
 )
 
 func TestRPCCommandResolutionPreservesExtensionAndRegistrationOrder(t *testing.T) {
-	firstSource := map[string]any{"path": "/ext/first", "source": "local", "scope": "user", "origin": "top-level"}
-	secondSource := map[string]any{"path": "/ext/second", "source": "pkg:second", "scope": "project", "origin": "package", "baseDir": "/pkg"}
+	firstSource := extension.SourceInfo{Path: "/ext/first", Source: "local", Scope: "user", Origin: "top-level"}
+	secondSource := extension.SourceInfo{Path: "/ext/second", Source: "pkg:second", Scope: "project", Origin: "package", BaseDir: "/pkg"}
 	first := extension.Extension{
 		Name: "first", Path: "/ext/first", SourceInfo: firstSource,
 		Commands: map[string]extension.RegisteredCommand{
@@ -38,10 +38,10 @@ func TestRPCCommandResolutionPreservesExtensionAndRegistrationOrder(t *testing.T
 	if want := []string{"z", "dup:1", "dup:2", "a"}; !slices.Equal(got, want) {
 		t.Fatalf("commands=%v want=%v", got, want)
 	}
-	if commands[0].SourceInfo == nil || commands[1].SourceInfo == nil || commands[2].SourceInfo == nil || commands[3].SourceInfo == nil {
+	if commands[0].SourceInfo == (extension.SourceInfo{}) || commands[1].SourceInfo == (extension.SourceInfo{}) || commands[2].SourceInfo == (extension.SourceInfo{}) || commands[3].SourceInfo == (extension.SourceInfo{}) {
 		t.Fatalf("sourceInfo not stamped: %#v", commands)
 	}
-	if commands[0].SourceInfo.(map[string]any)["path"] != "/ext/first" || commands[2].SourceInfo.(map[string]any)["path"] != "/ext/second" {
+	if commands[0].SourceInfo.Path != "/ext/first" || commands[2].SourceInfo.Path != "/ext/second" {
 		t.Fatalf("sourceInfo=%#v", commands)
 	}
 }

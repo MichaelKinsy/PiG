@@ -12,11 +12,11 @@ import (
 
 func TestAgentSystemTranscriptBaseline(t *testing.T) {
 	tool := echoScriptTool("echo")
-	a := NewAgent(AgentOptions{SystemPrompt: "You are helpful.", Tools: []AgentTool{tool}})
+	a := mustNewAgent(AgentOptions{SystemPrompt: "You are helpful.", Tools: []AgentTool{tool}})
 	if got := roles(a.Messages()); !reflect.DeepEqual(got, []string{"system"}) {
 		t.Fatalf("initial roles %v", got)
 	}
-	if _, err := a.Continue(context.Background()); !errors.Is(err, ErrNoMessagesToContinue) {
+	if _, err := a.ContinueMessages(context.Background()); !errors.Is(err, ErrNoMessagesToContinue) {
 		t.Fatalf("system-only continuation: %v", err)
 	}
 	if err := a.Reset(); err != nil {
@@ -29,7 +29,7 @@ func TestAgentSystemTranscriptBaseline(t *testing.T) {
 
 func TestAgentDeclaresToolLoadoutChanges(t *testing.T) {
 	p := &scriptedProvider{respond: replyText("done")}
-	a := NewAgent(AgentOptions{Model: scriptedModel(p), SystemPrompt: "You are helpful.", Tools: []AgentTool{echoScriptTool("first")}})
+	a := mustNewAgent(AgentOptions{Model: scriptedModel(p), SystemPrompt: "You are helpful.", Tools: []AgentTool{echoScriptTool("first")}})
 	mustSend(t, a, "one")
 	a.SetTools([]AgentTool{echoScriptTool("second")})
 	mustSend(t, a, "two")
@@ -55,7 +55,7 @@ func TestAgentDeclaresToolLoadoutChanges(t *testing.T) {
 
 func TestAgentRewritesPendingToolDeclarations(t *testing.T) {
 	p := &scriptedProvider{respond: replyText("done")}
-	a := NewAgent(AgentOptions{Model: scriptedModel(p), SystemPrompt: "base", Tools: []AgentTool{echoScriptTool("first")}})
+	a := mustNewAgent(AgentOptions{Model: scriptedModel(p), SystemPrompt: "base", Tools: []AgentTool{echoScriptTool("first")}})
 	var pending AgentMessage
 	raw := []byte(`{"role":"system","content":"","sections":{"note":"keep"},"toolsAdded":[{"name":"second","parameters":{"type":"object"}}],"toolsRemoved":[{"name":"first"}],"timestamp":1}`)
 	if err := json.Unmarshal(raw, &pending); err != nil {
@@ -91,7 +91,7 @@ func echoScriptTool(name string) *scriptTool {
 
 func TestAgentForcedSystemPromptPreservesTranscript(t *testing.T) {
 	p := &scriptedProvider{respond: replyText("done")}
-	a := NewAgent(AgentOptions{Model: scriptedModel(p), SystemPrompt: "base", Tools: []AgentTool{echoScriptTool("echo")}})
+	a := mustNewAgent(AgentOptions{Model: scriptedModel(p), SystemPrompt: "base", Tools: []AgentTool{echoScriptTool("echo")}})
 	a.SetSystemPrompt("forced")
 	mustSend(t, a, "hello")
 	request := p.request(1).transcript.Messages()
@@ -108,7 +108,7 @@ func TestAgentForcedSystemPromptPreservesTranscript(t *testing.T) {
 
 func TestAgentMergesToolChangesIntoPendingSystemMessage(t *testing.T) {
 	p := &scriptedProvider{respond: replyText("done")}
-	a := NewAgent(AgentOptions{Model: scriptedModel(p), SystemPrompt: "base"})
+	a := mustNewAgent(AgentOptions{Model: scriptedModel(p), SystemPrompt: "base"})
 	a.SetTools([]AgentTool{echoScriptTool("echo")})
 	pending := AgentMessage{System: &ai.SystemMessage{Content: ai.SystemText(""), Sections: ai.OrderedSections{{Name: "skills", Value: new("keep")}}, Timestamp: 1}}
 	if _, err := a.SendMessages(context.Background(), []AgentMessage{pending, userMessage("hi")}); err != nil {
@@ -131,7 +131,7 @@ func BenchmarkAgentToolLoadoutPrompt(b *testing.B) {
 	tools := []AgentTool{echoScriptTool("read"), echoScriptTool("write"), echoScriptTool("bash")}
 	for b.Loop() {
 		p := &scriptedProvider{respond: replyText("done")}
-		a := NewAgent(AgentOptions{Model: scriptedModel(p), SystemPrompt: "instructions", Tools: tools})
+		a := mustNewAgent(AgentOptions{Model: scriptedModel(p), SystemPrompt: "instructions", Tools: tools})
 		if _, err := a.Send(context.Background(), "hello"); err != nil {
 			b.Fatal(err)
 		}

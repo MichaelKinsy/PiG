@@ -56,7 +56,7 @@ func probe(test fixture) error {
 	}
 	model := entry.ToModel()
 	model.Capabilities = entry.ToCapabilities()
-	model.Capabilities.MaxThinking = ai.ThinkingHigh
+	model.Capabilities.MaxThinking = ai.ThinkingLevelHigh
 	if test.Strip {
 		model.ProviderMeta.Compat = nil
 	}

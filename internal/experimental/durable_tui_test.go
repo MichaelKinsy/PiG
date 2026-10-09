@@ -1,5 +1,9 @@
 package experimental
 
+// pi: packages/coding-agent/src/experimental/durable/tui.ts
+
+// pi: packages/coding-agent/src/experimental/vacation/tui.ts
+
 import (
 	"context"
 	"reflect"
@@ -10,6 +14,7 @@ import (
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/ai"
+	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/durable"
 	"github.com/MichaelKinsy/PiG/durable/harness"
 	"github.com/MichaelKinsy/PiG/internal/codingagent"
@@ -75,7 +80,7 @@ func (fixture *durableTuiFixture) apply(state durableagent.DurableView) {
 
 func stateOf(entries []durable.EntryRecord, live *harness.LiveState, inbox *harness.InboxState) durableagent.DurableView {
 	view := conversationView(entries, live, inbox)
-	view.Docs["pi.agent"] = jsonObjectOf(map[string]any{"model": map[string]any{"provider": "scripted", "modelId": "model"}, "thinkingLevel": "low"})
+	view.Docs = harness.ViewDocsOf(view.Docs, "pi.agent", jsonObjectOf(map[string]any{"model": map[string]any{"provider": "scripted", "modelId": "model"}, "thinkingLevel": "low"}))
 	return durableagent.DurableView{
 		Session:       durableagent.SessionSummary{ID: "s", Directory: "/sessions/s", CWD: "/work/project"},
 		Conversation:  view,
@@ -215,7 +220,7 @@ func TestDurableTuiShowsTheQueueAndTheNewestNotices(t *testing.T) {
 	fixture := newDurableTuiFixture(t)
 	inbox := &harness.InboxState{Items: []harness.InboxItem{
 		{Id: 1, Mode: harness.InboxFollowUp, Content: "after   this"},
-		{Id: 2, Mode: harness.InboxWrite, Entry: durable.JsonObject{"kind": "pi.reset"}},
+		{Id: 2, Mode: harness.InboxWrite, Entry: delta.JsonObjectOf("kind", "pi.reset")},
 	}}
 	state := stateOf(nil, nil, inbox)
 	for index, message := range []string{"one", "two", "three", "four", "five"} {
@@ -264,10 +269,10 @@ func TestDurableTuiFooter(t *testing.T) {
 	answer := textMessage("hi")
 	answer.Usage = ai.Usage{Input: 800, Output: 12_500, TotalTokens: 920}
 	state := stateOf([]durable.EntryRecord{userEntry(1, "q"), assistantEntry(2, answer)}, nil, nil)
-	state.Conversation.Docs["pi.usage"] = jsonObjectOf(harness.UsageState{
+	state.Conversation.Docs = harness.ViewDocsOf(state.Conversation.Docs, "pi.usage", jsonObjectOf(harness.UsageState{
 		Models: map[string]ai.Usage{"scripted/model": {Input: 800, Output: 12_500, CacheRead: 1250, Cost: ai.UsageCost{Total: 0.0125}}},
 		Tools:  map[string]ai.Usage{"bash": {Input: 200, Cost: ai.UsageCost{Total: 0.0005}}},
-	})
+	}))
 	fixture.apply(state)
 	lines := fixture.lines()
 	// 920 of 1000 context tokens is over ninety percent.
@@ -533,7 +538,7 @@ func TestDurableTuiFooterColorsAFullContext(t *testing.T) {
 			}
 		}
 		percent := tui.JSToFixed(float64(test.tokens)/10, 1) + "%/1.0k"
-		colored := tui.ActiveTheme().FgText("error", percent)
+		colored := tui.ActiveTheme().Fg("error", percent)
 		if got := strings.Contains(raw, colored); got != test.colored {
 			t.Fatalf("%d tokens: error color %v, want %v in %q", test.tokens, got, test.colored, raw)
 		}
@@ -546,7 +551,7 @@ func TestDurableTuiEditorBorderFollowsTheThinkingLevel(t *testing.T) {
 	theme := tui.ActiveTheme()
 	border := func(level string) string {
 		state := stateOf(nil, nil, nil)
-		state.Conversation.Docs["pi.agent"] = jsonObjectOf(map[string]any{"thinkingLevel": level})
+		state.Conversation.Docs = harness.ViewDocsOf(state.Conversation.Docs, "pi.agent", jsonObjectOf(map[string]any{"thinkingLevel": level}))
 		fixture.apply(state)
 		for _, line := range fixture.view.editorSlot.Render(80) {
 			if strings.Contains(widthx.StripAnsi(line), "───") {
@@ -557,7 +562,7 @@ func TestDurableTuiEditorBorderFollowsTheThinkingLevel(t *testing.T) {
 		return ""
 	}
 	low, high := border("low"), border("high")
-	if !strings.Contains(low, theme.Fg("thinkingLow")) || !strings.Contains(high, theme.Fg("thinkingHigh")) || strings.Contains(high, theme.Fg("thinkingLow")) {
+	if !strings.Contains(low, theme.GetFgAnsi("thinkingLow")) || !strings.Contains(high, theme.GetFgAnsi("thinkingHigh")) || strings.Contains(high, theme.GetFgAnsi("thinkingLow")) {
 		t.Fatalf("borders %q and %q do not carry the colors of their levels", low, high)
 	}
 }

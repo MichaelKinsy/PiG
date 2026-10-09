@@ -197,7 +197,12 @@ func resolveCodexWebSocketURL(endpoint string) (string, error) {
 }
 
 func codexWebSocketHeaders(base map[string]string, options ProviderHeaders, token, accountID, requestID string) http.Header {
-	headers := make(http.Header, len(base)+5)
+	headers := make(http.Header, len(base)+7)
+	// Defaults first so model and caller headers override them (buildBaseCodexHeaders, #10429).
+	// pig divergence (D26): PiG names itself as the Codex originator.
+	headers.Set("originator", pigidentity.CodexOriginator)
+	// pig divergence (D65): the default User-Agent is PiG's product identity.
+	headers.Set("User-Agent", PiUserAgent())
 	for name, value := range base {
 		headers.Set(name, value)
 	}
@@ -210,11 +215,6 @@ func codexWebSocketHeaders(base map[string]string, options ProviderHeaders, toke
 	}
 	headers.Set("Authorization", "Bearer "+token)
 	headers.Set("chatgpt-account-id", accountID)
-	// pig divergence (D26): PiG names itself as the Codex originator.
-	headers.Set("originator", pigidentity.CodexOriginator)
-	// pig divergence (D65): Codex applies PiG's product identity after model
-	// and request headers, preserving upstream precedence.
-	headers.Set("User-Agent", PiUserAgent())
 	headers.Set("OpenAI-Beta", codexWebSocketBeta)
 	headers.Set("x-client-request-id", requestID)
 	headers.Set("session-id", requestID)
@@ -556,7 +556,7 @@ func (p *openAIResponsesProvider) startCodexWebSocketAttempt(ctx context.Context
 
 	builder := newAssistantStreamBuilder(ctx, APIOpenAICodexResponses, p.cfg.ProviderID, p.cfg.Model)
 	builder.modelCost = opts.ModelCost
-	builder.requestServiceTier, _ = opts.SamplingParams["service_tier"].(string)
+	builder.requestServiceTier = requestServiceTierOf(opts)
 	builder.setProviderEventObserver(opts, providerEventModel(p.cfg.ModelMetadata, APIOpenAICodexResponses, p.cfg.ProviderID, p.cfg.Model))
 	var messageType int
 	var first []byte

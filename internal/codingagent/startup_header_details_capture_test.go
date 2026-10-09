@@ -20,7 +20,7 @@ func TestBuiltInHeaderOnboardingKeepsStartupDetailsCapture(t *testing.T) {
 		{startup: "header", later: false, want: "Press ctrl+o to show full startup help."},
 	} {
 		m := &InteractiveMode{
-			opts:        InteractiveOptions{LoginVisible: true},
+			opts:        InteractiveModeOptions{LoginVisible: true},
 			keybindings: km,
 			extHeader:   newSpecialLinesComponent(nil),
 			tuiInst:     tui.NewWithOutput(io.Discard, 100, 40),

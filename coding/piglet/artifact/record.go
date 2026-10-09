@@ -91,6 +91,35 @@ type BinaryInput struct {
 	Artifact          Artifact
 	Verification      Verification
 	Environment       *EnvironmentBinding
+	// Strip lists the built-ins the Binary's Piglet strips.
+	Strip []StripEntry
+	// StripKeep lists the Piglet's keep-mode strip lists and their kept IDs.
+	StripKeep []StripIDs
+	// StripTable is the generated strip table of the core that built the
+	// Binary.
+	StripTable []StripIDs
+}
+
+// StripEntry is one built-in a Piglet Binary strips. Kind is tool, command,
+// extension, api or feature; ID is the stable strip ID; Disposition is binary
+// when the Binary does not link the built-in, and runtime when it stays
+// compiled in and is disabled at startup.
+// pig additive (D92): the strip list is part of the Binary identity and digest.
+type StripEntry struct {
+	Kind        string `json:"kind"`
+	ID          string `json:"id"`
+	Disposition string `json:"disposition"`
+}
+
+// StripIDs is one strip list's IDs by kind. In stripKeep it is a keep-mode
+// list and the IDs it keeps (an empty list keeps nothing); in stripTable it is
+// the list's part of the building core's generated strip table. Strip states
+// the expanded result, stripKeep the intent, and stripTable lets a later core
+// name the built-ins it adds.
+// pig additive (D92): keep mode and the strip delta report.
+type StripIDs struct {
+	Kind string   `json:"kind"`
+	IDs  []string `json:"ids"`
 }
 
 // Binary is the immutable payload of a piglet-binary record.
@@ -109,6 +138,9 @@ type Binary struct {
 	Artifact              Artifact            `json:"artifact"`
 	Verification          Verification        `json:"verification"`
 	Environment           *EnvironmentBinding `json:"environment,omitempty"`
+	Strip                 []StripEntry        `json:"strip,omitempty"`
+	StripKeep             []StripIDs          `json:"stripKeep,omitempty"`
+	StripTable            []StripIDs          `json:"stripTable,omitempty"`
 }
 
 // Record is the first-production Piglet record envelope.
@@ -188,6 +220,12 @@ func NewBinaryRecord(piglet, releaseVersion string, createdAt time.Time, resolut
 		environment.ImageDigest = strings.TrimSpace(environment.ImageDigest)
 		binary.Environment = &environment
 	}
+	if len(input.Strip) > 0 {
+		binary.Strip = slices.Clone(input.Strip)
+		slices.SortFunc(binary.Strip, compareStripEntries)
+	}
+	binary.StripKeep = canonicalStripIDs(input.StripKeep)
+	binary.StripTable = canonicalStripIDs(input.StripTable)
 	for name, version := range input.Toolchains {
 		name = strings.TrimSpace(name)
 		if _, duplicate := binary.Toolchains[name]; duplicate {
@@ -354,6 +392,74 @@ func validateBinary(binary Binary) error {
 		}
 		if err := validateDigest(binary.Environment.ImageDigest); err != nil {
 			return fmt.Errorf("Piglet Binary environment image: %w", err)
+		}
+	}
+	for i, entry := range binary.Strip {
+		switch entry.Kind {
+		case "tool", "command", "extension", "api", "feature":
+		default:
+			return fmt.Errorf("Piglet Binary strip kind %q is unsupported", entry.Kind)
+		}
+		if entry.ID == "" || entry.ID != strings.TrimSpace(entry.ID) {
+			return fmt.Errorf("Piglet Binary strip ID %q is empty or non-canonical", entry.ID)
+		}
+		if entry.Disposition != "runtime" && entry.Disposition != "binary" {
+			return fmt.Errorf("Piglet Binary strip disposition %q is unsupported", entry.Disposition)
+		}
+		if i > 0 && compareStripEntries(binary.Strip[i-1], entry) >= 0 {
+			return fmt.Errorf("Piglet Binary strip entries are unsorted or duplicate")
+		}
+	}
+	for _, field := range []struct {
+		name  string
+		lists []StripIDs
+	}{{"stripKeep", binary.StripKeep}, {"stripTable", binary.StripTable}} {
+		if err := validateStripIDs(field.name, field.lists); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func compareStripEntries(a, b StripEntry) int {
+	return cmp.Or(cmp.Compare(a.Kind, b.Kind), cmp.Compare(a.ID, b.ID))
+}
+
+// canonicalStripIDs sorts lists by kind and each list's IDs, and gives an
+// empty list a non-nil ID slice, so "keeps nothing" survives the record.
+func canonicalStripIDs(lists []StripIDs) []StripIDs {
+	if len(lists) == 0 {
+		return nil
+	}
+	out := make([]StripIDs, len(lists))
+	for i, list := range lists {
+		out[i] = StripIDs{Kind: list.Kind, IDs: append([]string{}, list.IDs...)}
+		slices.Sort(out[i].IDs)
+	}
+	slices.SortFunc(out, func(a, b StripIDs) int { return cmp.Compare(a.Kind, b.Kind) })
+	return out
+}
+
+func validateStripIDs(field string, lists []StripIDs) error {
+	for i, list := range lists {
+		switch list.Kind {
+		case "tool", "command", "extension", "api", "feature":
+		default:
+			return fmt.Errorf("Piglet Binary %s kind %q is unsupported", field, list.Kind)
+		}
+		if i > 0 && lists[i-1].Kind >= list.Kind {
+			return fmt.Errorf("Piglet Binary %s kinds are unsorted or duplicate", field)
+		}
+		if list.IDs == nil {
+			return fmt.Errorf("Piglet Binary %s %s IDs are missing", field, list.Kind)
+		}
+		for j, id := range list.IDs {
+			if id == "" || id != strings.TrimSpace(id) {
+				return fmt.Errorf("Piglet Binary %s ID %q is empty or non-canonical", field, id)
+			}
+			if j > 0 && list.IDs[j-1] >= id {
+				return fmt.Errorf("Piglet Binary %s %s IDs are unsorted or duplicate", field, list.Kind)
+			}
 		}
 	}
 	return nil

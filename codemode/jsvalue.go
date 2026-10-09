@@ -1,15 +1,15 @@
 package codemode
 
 import (
-	"bytes"
 	"encoding/json"
-	"errors"
-	"io"
 	"math"
 	"sort"
 	"strconv"
 	"strings"
 	"unicode/utf16"
+	"unicode/utf8"
+
+	"github.com/MichaelKinsy/PiG/internal/jsstring"
 )
 
 // object is a decoded JSON object that keeps JavaScript's property order: canonical array-index keys ascending,
@@ -50,59 +50,139 @@ func (o *object) order() []string {
 	return append(indexes, others...)
 }
 
-// decodeJSON decodes one JSON value, rejecting trailing data like JSON.parse.
+// decodeJSON decodes one JSON value, rejecting trailing data like JSON.parse. A \uXXXX escape naming an unpaired
+// surrogate stays a WTF-8 sequence, as it stays a lone unit in a JavaScript string; encoding/json would replace it.
 func decodeJSON(data []byte) (any, error) {
-	dec := json.NewDecoder(bytes.NewReader(data))
-	dec.UseNumber()
-	v, err := decodeValue(dec)
-	if err != nil {
-		return nil, err
+	if !json.Valid(data) {
+		var discard any
+		return nil, json.Unmarshal(data, &discard)
 	}
-	if _, err := dec.Token(); !errors.Is(err, io.EOF) {
-		return nil, errors.New("unexpected data after the JSON value")
-	}
+	d := jsonDecoder{text: data}
+	d.space()
+	v := d.value()
 	return v, nil
 }
 
-func decodeValue(dec *json.Decoder) (any, error) {
-	tok, err := dec.Token()
-	if err != nil {
-		return nil, err
+// jsonDecoder reads text that json.Valid accepted.
+type jsonDecoder struct {
+	text []byte
+	pos  int
+}
+
+func (d *jsonDecoder) space() {
+	for d.pos < len(d.text) && strings.IndexByte(" \t\r\n", d.text[d.pos]) >= 0 {
+		d.pos++
 	}
-	delim, ok := tok.(json.Delim)
-	if !ok {
-		return tok, nil
-	}
-	if delim == '[' {
-		arr := []any{}
-		for dec.More() {
-			v, err := decodeValue(dec)
-			if err != nil {
-				return nil, err
+}
+
+func (d *jsonDecoder) value() any {
+	switch c := d.text[d.pos]; c {
+	case '{':
+		d.pos++
+		obj := &object{vals: map[string]any{}}
+		d.space()
+		if d.text[d.pos] == '}' {
+			d.pos++
+			return obj
+		}
+		for {
+			d.space()
+			key := d.str()
+			d.space()
+			d.pos++ // ':'
+			d.space()
+			v := d.value()
+			if _, seen := obj.vals[key]; !seen {
+				obj.keys = append(obj.keys, key)
 			}
-			arr = append(arr, v)
+			obj.vals[key] = v
+			d.space()
+			d.pos++ // ',' or '}'
+			if d.text[d.pos-1] == '}' {
+				return obj
+			}
 		}
-		_, err := dec.Token()
-		return arr, err
+	case '[':
+		d.pos++
+		arr := []any{}
+		d.space()
+		if d.text[d.pos] == ']' {
+			d.pos++
+			return arr
+		}
+		for {
+			d.space()
+			arr = append(arr, d.value())
+			d.space()
+			d.pos++ // ',' or ']'
+			if d.text[d.pos-1] == ']' {
+				return arr
+			}
+		}
+	case '"':
+		return d.str()
+	case 't':
+		d.pos += 4
+		return true
+	case 'f':
+		d.pos += 5
+		return false
+	case 'n':
+		d.pos += 4
+		return nil
+	default:
+		start := d.pos
+		for d.pos < len(d.text) && strings.IndexByte("+-0123456789.eE", d.text[d.pos]) >= 0 {
+			d.pos++
+		}
+		return json.Number(d.text[start:d.pos])
 	}
-	obj := &object{vals: map[string]any{}}
-	for dec.More() {
-		keyTok, err := dec.Token()
-		if err != nil {
-			return nil, err
-		}
-		key := keyTok.(string)
-		v, err := decodeValue(dec)
-		if err != nil {
-			return nil, err
-		}
-		if _, seen := obj.vals[key]; !seen {
-			obj.keys = append(obj.keys, key)
-		}
-		obj.vals[key] = v
+}
+
+// str reads a string literal into WTF-8.
+func (d *jsonDecoder) str() string {
+	d.pos++ // opening quote
+	start := d.pos
+	for d.text[d.pos] != '"' && d.text[d.pos] != '\\' {
+		d.pos++
 	}
-	_, err = dec.Token()
-	return obj, err
+	if d.text[d.pos] == '"' {
+		s := string(d.text[start:d.pos])
+		d.pos++
+		return s
+	}
+	units := utf16.Encode([]rune(string(d.text[start:d.pos])))
+	for d.text[d.pos] != '"' {
+		if d.text[d.pos] != '\\' {
+			r, size := utf8.DecodeRune(d.text[d.pos:])
+			units = utf16.AppendRune(units, r)
+			d.pos += size
+			continue
+		}
+		d.pos++
+		escape := d.text[d.pos]
+		d.pos++
+		switch escape {
+		case 'b':
+			units = append(units, '\b')
+		case 'f':
+			units = append(units, '\f')
+		case 'n':
+			units = append(units, '\n')
+		case 'r':
+			units = append(units, '\r')
+		case 't':
+			units = append(units, '\t')
+		case 'u':
+			unit, _ := strconv.ParseUint(string(d.text[d.pos:d.pos+4]), 16, 16)
+			units = append(units, uint16(unit))
+			d.pos += 4
+		default:
+			units = append(units, uint16(escape))
+		}
+	}
+	d.pos++
+	return jsstring.FromUTF16(units)
 }
 
 // jsNumberString formats f like Number.prototype.toString.
@@ -132,7 +212,19 @@ func jsNumberString(f float64) string {
 func jsQuote(s string) string {
 	var b strings.Builder
 	b.WriteByte('"')
-	for _, r := range s {
+	units := jsstring.ToUTF16(s)
+	for i := 0; i < len(units); i++ {
+		r := rune(units[i])
+		if r >= 0xd800 && r <= 0xdbff && i+1 < len(units) && units[i+1] >= 0xdc00 && units[i+1] <= 0xdfff {
+			b.WriteRune(utf16.DecodeRune(r, rune(units[i+1])))
+			i++
+			continue
+		}
+		if r >= 0xd800 && r <= 0xdfff {
+			b.WriteString(`\u`)
+			b.WriteString(strconv.FormatUint(uint64(r), 16))
+			continue
+		}
 		switch {
 		case r == '"':
 			b.WriteString(`\"`)
@@ -193,7 +285,7 @@ func jsStringify(v any) string {
 
 // compareUTF16 orders strings by UTF-16 code units, like Array.prototype.sort's default.
 func compareUTF16(a, b string) int {
-	ua, ub := utf16.Encode([]rune(a)), utf16.Encode([]rune(b))
+	ua, ub := jsstring.ToUTF16(a), jsstring.ToUTF16(b)
 	for i := 0; i < len(ua) && i < len(ub); i++ {
 		if ua[i] != ub[i] {
 			if ua[i] < ub[i] {

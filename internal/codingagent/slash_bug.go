@@ -149,8 +149,8 @@ func buildBugReportBundle(sc *SlashContext, choices bugReportChoices, summary *s
 	if session != nil {
 		inputs.SessionID = session.ID()
 		inputs.CWD = session.CWD()
-		inputs.Header = session.Header()
-		inputs.Entries = session.Entries()
+		inputs.Header = session.GetHeader()
+		inputs.Entries = session.GetEntries()
 		inputs.Branch = BugReportBranch(session)
 	}
 	now := time.Now()

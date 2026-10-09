@@ -21,15 +21,16 @@ type nativeClipboardText func(context.Context) (*string, error)
 
 // readClipboardText returns the system clipboard text, or "" when there is
 // none or it cannot be read. Mirrors upstream readClipboardText
-// (utils/clipboard.ts): on Linux it tries termux-clipboard-get, wl-paste, then
-// xclip and xsel in that order before the native helper's getText, which is
-// the only reader on macOS and Windows.
+// (utils/clipboard.ts): termux-clipboard-get runs under Termux on any platform;
+// on Linux wl-paste, then xclip and xsel follow, all before the native
+// helper's getText, which is the only reader on macOS and Windows.
 func readClipboardText(parent context.Context) string {
 	var commands [][]string
+	// Termux reports its platform as android, not linux (#10391).
+	if clipboardEnv("TERMUX_VERSION") != "" {
+		commands = append(commands, []string{"termux-clipboard-get"})
+	}
 	if clipboardGOOS == "linux" {
-		if clipboardEnv("TERMUX_VERSION") != "" {
-			commands = append(commands, []string{"termux-clipboard-get"})
-		}
 		if clipboardEnv("WAYLAND_DISPLAY") != "" {
 			commands = append(commands, []string{"wl-paste", "--no-newline", "--type", "text"})
 		}
@@ -108,13 +109,13 @@ func (m *InteractiveMode) handleRightClickPaste() {
 		return
 	}
 	altScreen := m.altScreen
-	target := altScreen.FocusedComponent()
+	target := altScreen.GetFocusedComponent()
 	handler, ok := target.(interface{ HandleInput(data string) })
 	if !ok {
 		return
 	}
 	m.readClipboardTextAsync(func(text string) {
-		if m.altScreen != altScreen || altScreen.FocusedComponent() != target {
+		if m.altScreen != altScreen || altScreen.GetFocusedComponent() != target {
 			return
 		}
 		handler.HandleInput(bracketedPaste(text))

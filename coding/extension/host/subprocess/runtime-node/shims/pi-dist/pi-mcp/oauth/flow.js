@@ -10,6 +10,19 @@ import { parseClientInformation, parseOAuthTokens, } from "./types.js";
 function loopback(hostname) {
     return hostname === "localhost" || hostname === "127.0.0.1" || hostname === "[::1]" || hostname === "::1";
 }
+/**
+ * The OpenID Connect `application_type` for `redirect_uris` (MCP SEP-837). Without one, OpenID Connect servers
+ * assume `web`, which rejects http loopback redirect URIs. Loopback hosts and custom schemes are native (RFC 8252).
+ */
+function applicationType(redirectUris) {
+    const native = redirectUris.some((uri) => {
+        if (!URL.canParse(uri))
+            return false;
+        const url = new URL(uri);
+        return (url.protocol !== "http:" && url.protocol !== "https:") || loopback(url.hostname);
+    });
+    return native ? "native" : "web";
+}
 function secureEndpoint(value) {
     const url = new URL(value);
     if (url.protocol !== "https:" && !loopback(url.hostname))
@@ -87,7 +100,12 @@ async function tokenRequest(authorizationServerUrl, options, params) {
     else {
         applyClientAuthentication(selectClientAuthMethod(options.clientInformation, options.metadata?.token_endpoint_auth_methods_supported ?? []), options.clientInformation, headers, params);
     }
-    const response = await (options.fetch ?? globalThis.fetch)(url, { method: "POST", headers, body: params });
+    const response = await (options.fetch ?? globalThis.fetch)(url, {
+        method: "POST",
+        headers,
+        body: params,
+        signal: options.signal,
+    });
     const text = await response.text();
     let value;
     try {
@@ -109,7 +127,12 @@ export async function registerClient(authorizationServerUrl, options) {
     const response = await (options.fetch ?? globalThis.fetch)(new URL(endpoint ?? new URL("/register", authorizationServerUrl)), {
         method: "POST",
         headers: { Accept: "application/json", "content-type": "application/json" },
-        body: JSON.stringify({ ...options.clientMetadata, ...(options.scope ? { scope: options.scope } : {}) }),
+        body: JSON.stringify({
+            ...options.clientMetadata,
+            application_type: options.clientMetadata.application_type ?? applicationType(options.clientMetadata.redirect_uris),
+            ...(options.scope ? { scope: options.scope } : {}),
+        }),
+        signal: options.signal,
     });
     if (!response.ok)
         throw new OAuthRegistrationError(response.status, await response.text());
@@ -152,6 +175,7 @@ async function runFlow(provider, options) {
                 (await discoverAuthorizationServerMetadata(cached.authorizationServerUrl, {
                     fetch: options.fetch,
                     skipIssuerValidation: options.skipIssuerValidation,
+                    signal: options.signal,
                 })),
             resourceMetadata: cached.resourceMetadata,
         }
@@ -160,6 +184,7 @@ async function runFlow(provider, options) {
             authorizationServerMetadataUrl: metadataUrl,
             fetch: options.fetch,
             skipIssuerValidation: options.skipIssuerValidation,
+            signal: options.signal,
         });
     if (!metadataUrl) {
         await provider.saveDiscoveryState?.({
@@ -189,6 +214,7 @@ async function runFlow(provider, options) {
             clientMetadata: provider.clientMetadata,
             scope,
             fetch: options.fetch,
+            signal: options.signal,
         });
         await provider.saveClientInformation(client);
     }
@@ -200,6 +226,7 @@ async function runFlow(provider, options) {
         resource,
         addClientAuthentication: provider.addClientAuthentication,
         fetch: options.fetch,
+        signal: options.signal,
     };
     if (options.authorizationCode) {
         // RFC 9207: never send a code from another authorization server to this one.
@@ -231,7 +258,7 @@ async function runFlow(provider, options) {
             return "AUTHORIZED";
         }
         catch (error) {
-            if (error instanceof OAuthInsecureEndpointError)
+            if (options.signal?.aborted || error instanceof OAuthInsecureEndpointError)
                 throw error;
             if (error instanceof OAuthError && error.code !== "server_error")
                 throw error;

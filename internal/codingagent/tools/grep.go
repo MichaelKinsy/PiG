@@ -38,6 +38,36 @@ type GrepTool struct {
 	CWD    string
 	RgPath string
 	Tools  *ToolsManager
+	// Operations delegates the filesystem reads; nil selects the local filesystem (upstream options.operations).
+	Operations *GrepOperations
+}
+
+// GrepOperations is upstream's GrepOperations: pluggable path and file reads for the search path and the context lines.
+// Ports packages/coding-agent/src/core/tools/grep.ts.
+type GrepOperations struct {
+	// IsDirectory reports whether the path is a directory and fails when it does not exist.
+	IsDirectory func(absolutePath string) (bool, error)
+	// ReadFile reads a file for its context lines.
+	ReadFile func(absolutePath string) (string, error)
+}
+
+func (t *GrepTool) operations() GrepOperations {
+	if t.Operations != nil {
+		return *t.Operations
+	}
+	return GrepOperations{
+		IsDirectory: func(path string) (bool, error) {
+			info, err := os.Stat(path)
+			if err != nil {
+				return false, err
+			}
+			return info.IsDir(), nil
+		},
+		ReadFile: func(path string) (string, error) {
+			data, err := os.ReadFile(path)
+			return string(data), err
+		},
+	}
 }
 
 func (t *GrepTool) Name() string  { return "grep" }
@@ -100,11 +130,11 @@ func (t *GrepTool) Execute(ctx context.Context, _ string, rawParams json.RawMess
 	if err != nil {
 		return agent.AgentToolResult{}, err
 	}
-	info, err := os.Stat(searchPath)
+	ops := t.operations()
+	isDirectory, err := ops.IsDirectory(searchPath)
 	if err != nil {
 		return grepError("Path not found: " + searchPath), nil
 	}
-	isDirectory := info.IsDir()
 
 	contextValue := 0.0
 	if p.Context != nil && *p.Context > 0 {
@@ -151,7 +181,7 @@ func (t *GrepTool) Execute(ctx context.Context, _ string, rawParams json.RawMess
 		return agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: "No matches found"}}}, nil
 	}
 
-	f := grepFormatter{searchPath: searchPath, isDirectory: isDirectory, contextValue: contextValue, fileCache: map[string][]string{}}
+	f := grepFormatter{searchPath: searchPath, isDirectory: isDirectory, contextValue: contextValue, fileCache: map[string][]string{}, readFile: ops.ReadFile}
 	var outputLines []string
 	for _, m := range matches {
 		outputLines = append(outputLines, f.formatMatch(m)...)
@@ -159,7 +189,7 @@ func (t *GrepTool) Execute(ctx context.Context, _ string, rawParams json.RawMess
 
 	// No line limit: the match limit already capped rows.
 	// Number.MAX_SAFE_INTEGER is observable in the truncation details, even though only bytes cap this tool.
-	tr := TruncateHead(strings.Join(outputLines, "\n"), DefaultMaxBytes, 1<<53-1)
+	tr := TruncateHead(strings.Join(outputLines, "\n"), truncationLimits(DefaultMaxBytes, 1<<53-1))
 	output := tr.Content
 	var notices []string
 	details := &GrepDetails{}
@@ -275,6 +305,7 @@ func parseRipgrepMatch(line string) (*grepMatch, bool) {
 	if d.Path == nil || d.Path.Text == nil || *d.Path.Text == "" || d.LineNumber == nil {
 		return nil, true
 	}
+	//portlint:allow numbers ripgrep reports a line number as a small positive integer, so the conversion cannot leave the int range
 	m := &grepMatch{filePath: *d.Path.Text, lineNumber: int(*d.LineNumber)}
 	if d.Lines != nil {
 		m.lineText = d.Lines.Text
@@ -288,6 +319,7 @@ type grepFormatter struct {
 	isDirectory    bool
 	contextValue   float64
 	fileCache      map[string][]string
+	readFile       func(absolutePath string) (string, error)
 	linesTruncated bool
 }
 
@@ -305,9 +337,9 @@ func (f *grepFormatter) fileLines(filePath string) []string {
 		return lines
 	}
 	var lines []string
-	if data, err := os.ReadFile(filePath); err == nil {
+	if text, err := f.readFile(filePath); err == nil {
 		var decoder utf8StreamDecoder
-		content := strings.ReplaceAll(decoder.decode(data, false), "\r\n", "\n")
+		content := strings.ReplaceAll(decoder.decode([]byte(text), false), "\r\n", "\n")
 		lines = strings.Split(strings.ReplaceAll(content, "\r", "\n"), "\n")
 	}
 	f.fileCache[filePath] = lines
@@ -315,7 +347,8 @@ func (f *grepFormatter) fileLines(filePath string) []string {
 }
 
 func (f *grepFormatter) truncate(line string) string {
-	text, wasTruncated := TruncateLine(line, GrepMaxLineLength)
+	truncated := TruncateLine(line, GrepMaxLineLength)
+	text, wasTruncated := truncated.Text, truncated.WasTruncated
 	if wasTruncated {
 		f.linesTruncated = true
 	}
@@ -342,7 +375,9 @@ func (f *grepFormatter) formatMatch(m grepMatch) []string {
 	var block []string
 	for current := start; current <= end; current++ {
 		lineText := ""
+		//portlint:allow numbers current is at most the end bound, which is at most len(lines), so the conversion stays in range
 		if current == math.Trunc(current) && current >= 1 && int(current) <= len(lines) {
+			//portlint:allow numbers the guard above bounds current by len(lines)
 			lineText = lines[int(current)-1]
 		}
 		truncated := f.truncate(strings.ReplaceAll(lineText, "\r", ""))

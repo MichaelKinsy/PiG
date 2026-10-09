@@ -12,7 +12,7 @@ func TestInitialThinkingPrecedence(t *testing.T) {
 	for _, tc := range []struct {
 		name           string
 		model          bool
-		explicit, want ai.ThinkingLevel
+		explicit, want ai.ModelThinkingLevel
 	}{
 		{"explicit off", true, ai.ThinkingOff, ai.ThinkingOff},
 		{"model preference", true, "", ai.ThinkingLow},
@@ -31,7 +31,7 @@ func TestInitialThinkingPrecedence(t *testing.T) {
 			if tc.model {
 				model = fakeModel()
 				model.ProviderMeta.ProviderID = "fake"
-				model.Capabilities.MaxThinking = ai.ThinkingHigh
+				model.Capabilities.MaxThinking = ai.ThinkingLevelHigh
 			}
 			session, err := NewSession(svcs, SessionOptions{Model: model, ThinkingLevel: tc.explicit, SkipBuiltinTools: true, NoSession: true})
 			if err != nil {
@@ -45,13 +45,13 @@ func TestInitialThinkingPrecedence(t *testing.T) {
 			if got := session.ThinkingLevel(); got != tc.want {
 				t.Fatalf("state=%s want=%s", got, tc.want)
 			}
-			var levels []ai.ThinkingLevel
+			var levels []ai.ModelThinkingLevel
 			for _, entry := range session.Entries() {
-				if entry.Base.Type != "thinking_level_change" {
+				if entry.Base().Type != "thinking_level_change" {
 					continue
 				}
 				var value struct {
-					ThinkingLevel ai.ThinkingLevel `json:"thinkingLevel"`
+					ThinkingLevel ai.ModelThinkingLevel `json:"thinkingLevel"`
 				}
 				if err := json.Unmarshal(entry.Raw(), &value); err != nil {
 					t.Fatal(err)

@@ -1,5 +1,7 @@
 package experimental
 
+// pi: packages/coding-agent/src/experimental/plugins/bundled.ts
+
 import (
 	"context"
 	"crypto/sha256"
@@ -316,7 +318,7 @@ func TestNodeFacetsRemoteMethodsAndState(t *testing.T) {
 const Counter = defineService("test.node-counter");
 export default {id:"counter",setup(env){
   const state=env.replicatedState({value:1});
-  env.provide(Counter,{state,async add(amount,context){state.change(context,draft=>{draft.value+=amount;});return state.value.value;}});
+  env.provide(Counter,{state,async add(amount,context){state.change(context,draft=>{draft.value+=amount;});return state.value.value;},async put(context){state.change(context,draft=>{draft.item={z:1,a:{y:2,b:3}};});return 0;}});
 }};
 `)
 	result, err := BundleFacets(t.Context(), BundleFacetsOptions{Plugin: FacetBundlePlugin{Id: "counter"}, Entries: []FacetEntrySource{{Name: "session", Source: entry}}, Outdir: filepath.Join(root, "bundle")})
@@ -341,7 +343,7 @@ export default {id:"counter",setup(env){
 			t.Error(err)
 		}
 	})
-	binding, err := chord.CreateRemoteServiceBinding(chord.RemoteServiceBindingOptions{Services: []string{"test.node-counter"}, Transport: chord.NewLoopbackTransport(host.Services())})
+	binding, err := chord.CreateRemoteServiceBinding(chord.RemoteServiceBindingOptions{Services: chord.ServiceIDs("test.node-counter"), Transport: chord.NewLoopbackTransport(host.Services())})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -374,9 +376,16 @@ export default {id:"counter",setup(env){
 	if err != nil || value != 5 {
 		t.Fatalf("add=%d, %v", value, err)
 	}
-	want := []chord.JsonValue{map[string]any{"value": float64(1)}, map[string]any{"value": float64(5)}}
-	if !reflect.DeepEqual(values, want) {
-		t.Fatalf("state publications=%#v, want %#v", values, want)
+	if got, _ := json.Marshal(values); string(got) != `[{"value":1},{"value":5}]` {
+		t.Fatalf("state publications=%s, want [{\"value\":1},{\"value\":5}]", got)
+	}
+	// The facet's "s" operation carries an object; the host decodes it with delta.Ops, so the replica keeps the facet's key order (JSON.parse), not a Go map's sorted order.
+	// mutation-checked: decoding nodeFacetHostRequest.Ops as a plain []chord.Op fails it.
+	if _, err := chord.CallResult[int](t.Context(), counter, "put"); err != nil {
+		t.Fatal(err)
+	}
+	if got, _ := json.Marshal(values[len(values)-1]); string(got) != `{"value":5,"item":{"z":1,"a":{"y":2,"b":3}}}` {
+		t.Fatalf("state publication=%s, want the facet's key order", got)
 	}
 	if err := host.Dispose(t.Context()); err != nil {
 		t.Fatal(err)
@@ -448,7 +457,7 @@ export default {id:"observer",setup(env){
 			}
 		}
 	})
-	binding, err := chord.CreateRemoteServiceBinding(chord.RemoteServiceBindingOptions{Services: []string{"test.node-observe-log"}, Transport: chord.NewLoopbackTransport(host.Services())})
+	binding, err := chord.CreateRemoteServiceBinding(chord.RemoteServiceBindingOptions{Services: chord.ServiceIDs("test.node-observe-log"), Transport: chord.NewLoopbackTransport(host.Services())})
 	if err != nil {
 		t.Fatal(err)
 	}

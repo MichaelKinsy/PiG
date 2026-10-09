@@ -27,16 +27,16 @@ func TestCompactionTrimIndex(t *testing.T) {
 	_, _ = sess.AppendMessage(mkUserMsg("u4"))
 	_, _ = sess.AppendMessage(mkAssistantMsg("a4"))
 
-	leaf := sess.LeafID()
+	leaf := sess.GetLeafID()
 	if leaf == nil {
 		t.Fatal("no leaf")
 	}
-	raw := sess.Branch(*leaf)
+	raw := sess.GetBranch(*leaf)
 	branch := make([]parsedEntry, len(raw))
 	wantStart := -1
 	for i, e := range raw {
 		branch[i] = parsedEntry{entry: e}
-		if e.Base.ID == keepID {
+		if e.Base().ID == keepID {
 			wantStart = i
 		}
 	}
@@ -54,7 +54,7 @@ func TestCompactionTrimIndex(t *testing.T) {
 	// (which pig renders as a chip, not a message).
 	trimMsgs := 0
 	for i := got; i < len(branch); i++ {
-		if branch[i].entry.Base.Type == "message" {
+		if branch[i].entry.Base().Type == "message" {
 			trimMsgs++
 		}
 	}
@@ -77,8 +77,8 @@ func TestCompactionTrimIndexNoCompaction(t *testing.T) {
 	_, _ = sess.AppendMessage(mkUserMsg("u1"))
 	_, _ = sess.AppendMessage(mkAssistantMsg("a1"))
 
-	leaf := sess.LeafID()
-	raw := sess.Branch(*leaf)
+	leaf := sess.GetLeafID()
+	raw := sess.GetBranch(*leaf)
 	branch := make([]parsedEntry, len(raw))
 	for i, e := range raw {
 		branch[i] = parsedEntry{entry: e}

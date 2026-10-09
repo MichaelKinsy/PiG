@@ -11,6 +11,7 @@ import (
 	"github.com/MichaelKinsy/PiG/agent"
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/coding/extension"
+	"github.com/MichaelKinsy/PiG/coding/extension/markdowntransform"
 	"github.com/MichaelKinsy/PiG/internal/codingagent/tools"
 	"github.com/MichaelKinsy/PiG/tui"
 )
@@ -19,11 +20,24 @@ func (m *InteractiveMode) appendToChat(comp tui.Component) {
 	m.chatContainer.Add(comp)
 }
 
-func (m *InteractiveMode) newUserMessageBlock(text string) *tui.UserMessageBlock {
-	block := tui.NewUserMessageBlock(text)
-	block.SetOutputPad(m.outputPad)
+// markdownThemeWithSettings is getMarkdownThemeWithSettings (interactive-mode.ts:1378): the active theme's markdown theme with the
+// codeBlockIndent setting, read when the component is built.
+func (m *InteractiveMode) markdownThemeWithSettings() *tui.MarkdownTheme {
+	theme := tui.GetMarkdownTheme()
+	var indent string
+	if m.opts.SettingsManager != nil {
+		indent = m.opts.SettingsManager.GetCodeBlockIndent()
+	} else {
+		indent = m.opts.Settings.GetCodeBlockIndent()
+	}
+	theme.CodeBlockIndent = &indent
+	return &theme
+}
+
+func (m *InteractiveMode) newUserMessageBlock(text string) *tui.UserMessageComponent {
+	block := tui.NewUserMessageComponent(text, m.markdownThemeWithSettings(), m.outputPad, nil)
 	block.SetMarkdownTransform(func(markdown string, width int) string {
-		return createMarkdownTransform(extension.MarkdownMessageUser, false, m.markdownTransformers())(markdown, width)
+		return markdowntransform.CreateMarkdownTransform(extension.MarkdownMessageUser, false, m.markdownTransformers())(markdown, width)
 	})
 	block.SetMarkdownTransformState(func() string {
 		state := m.mermaidRenderingMode()
@@ -38,8 +52,11 @@ func (m *InteractiveMode) newUserMessageBlock(text string) *tui.UserMessageBlock
 	return block
 }
 
-func (m *InteractiveMode) newAssistantMessageBlock() *tui.AssistantMessageBlock {
-	block := tui.NewAssistantMessageBlock(m.hideThinking)
+func (m *InteractiveMode) newAssistantMessageBlock() *tui.AssistantMessageComponent {
+	block := tui.NewAssistantMessageComponent(nil, m.hideThinking, m.markdownThemeWithSettings(), "", nil, nil)
+	if m.hiddenThinkingLabel != "" {
+		block.SetHiddenThinkingLabel(m.hiddenThinkingLabel)
+	}
 	block.SetOutputPad(m.outputPad)
 	block.SetMarkdownTransform(m.assistantMarkdownTransform(block, extension.MarkdownMessageAssistant))
 	block.SetThinkingMarkdownTransform(m.assistantMarkdownTransform(block, extension.MarkdownMessageAssistantThinking))
@@ -58,7 +75,7 @@ func (m *InteractiveMode) disposeMarkdownBlocks() {
 
 // Ports packages/coding-agent/src/modes/interactive/components/markdown-transform.ts.
 // asyncMarkdownTransform snapshots UI-owned inputs before starting the complete chain off-loop. New content remains unpublished until every transformer has answered.
-func (m *InteractiveMode) asyncMarkdownTransform(block *tui.AssistantMessageBlock, messageType extension.MarkdownMessageType, invalidate func()) *tui.AsyncMarkdownTransform {
+func (m *InteractiveMode) asyncMarkdownTransform(block *tui.AssistantMessageComponent, messageType extension.MarkdownMessageType, invalidate func()) *tui.AsyncMarkdownTransform {
 	if m.backgroundCtx == nil || m.newRunner == nil || len(m.newRunner.GetMarkdownTransformers()) == 0 {
 		return nil
 	}
@@ -80,7 +97,7 @@ func (m *InteractiveMode) asyncMarkdownTransform(block *tui.AssistantMessageBloc
 			// Logical replacement revokes publication, not admitted chain execution. The captured Mode context owns invocation cancellation; subprocess inactivity and disconnect remain independent exit conditions.
 			lifetime := m.backgroundCtx
 			return func(context.Context) string {
-				return applyMarkdownTransformers(markdown, extension.MarkdownTransformContext{
+				return markdowntransform.ApplyMarkdownTransformers(markdown, extension.MarkdownTransformContext{
 					Context: lifetime, MessageType: messageType, IsStreaming: streaming, AvailableWidth: width,
 				}, transformers)
 			}
@@ -89,24 +106,20 @@ func (m *InteractiveMode) asyncMarkdownTransform(block *tui.AssistantMessageBloc
 }
 
 // updateAssistantMessageBlock applies the authoritative content snapshot and terminal state on both live events and session redraws. Tool calls are invisible boundaries between thinking runs.
-func updateAssistantMessageBlock(block *tui.AssistantMessageBlock, message *agent.AssistantMessage) {
+func updateAssistantMessageBlock(block *tui.AssistantMessageComponent, message *agent.AssistantMessage) {
 	message = message.Observe()
-	segments := make([]tui.AssistantSegment, 0, len(message.Content))
-	hasToolCalls := false
+	view := tui.AssistantMessage{StopReason: string(message.StopReason), ErrorMessage: message.ErrorMessage}
 	for _, content := range message.Content {
 		switch c := content.(type) {
 		case ai.TextContent:
-			segments = append(segments, tui.AssistantSegment{Text: c.Text})
+			view.Content = append(view.Content, tui.AssistantContentBlock{Type: "text", Text: c.Text})
 		case ai.ThinkingContent:
-			segments = append(segments, tui.AssistantSegment{Thinking: true, Text: c.Thinking})
+			view.Content = append(view.Content, tui.AssistantContentBlock{Type: "thinking", Thinking: c.Thinking})
 		case ai.ToolCall:
-			hasToolCalls = true
-			segments = append(segments, tui.AssistantSegment{})
+			view.Content = append(view.Content, tui.AssistantContentBlock{Type: "toolCall"})
 		}
 	}
-	block.SetContent(segments)
-	block.SetHasToolCalls(hasToolCalls)
-	block.SetTerminalError(string(message.StopReason), message.ErrorMessage)
+	block.UpdateContent(view)
 }
 
 // assistantMarkdownTransform builds the display-only transform for assistant text or thinking with its distinct messageType and this block's live streaming state, mode, and theme.
@@ -124,10 +137,10 @@ func updateAssistantMessageBlock(block *tui.AssistantMessageBlock, message *agen
 //
 // The built-in Mermaid transformer runs first, then the transformers
 // extensions registered, in load order (upstream getMarkdownTransformers).
-func (m *InteractiveMode) assistantMarkdownTransform(block *tui.AssistantMessageBlock, messageType extension.MarkdownMessageType) func(string, int) string {
+func (m *InteractiveMode) assistantMarkdownTransform(block *tui.AssistantMessageComponent, messageType extension.MarkdownMessageType) func(string, int) string {
 	return func(markdown string, width int) string {
 		streaming := m.evCurrentBlock == block && m.hasActiveAgentTurn()
-		return createMarkdownTransform(messageType, streaming, m.markdownTransformers())(markdown, width)
+		return markdowntransform.CreateMarkdownTransform(messageType, streaming, m.markdownTransformers())(markdown, width)
 	}
 }
 
@@ -145,7 +158,7 @@ func (m *InteractiveMode) markdownTransformers() []extension.MarkdownTransformer
 
 // assistantMarkdownTransformState fingerprints the live state
 // assistantMarkdownTransform reads, for the Markdown render cache key.
-func (m *InteractiveMode) assistantMarkdownTransformState(block *tui.AssistantMessageBlock) func() string {
+func (m *InteractiveMode) assistantMarkdownTransformState(block *tui.AssistantMessageComponent) func() string {
 	return func() string {
 		streaming := m.evCurrentBlock == block && m.hasActiveAgentTurn()
 		state := m.mermaidRenderingMode()
@@ -164,19 +177,24 @@ func (m *InteractiveMode) assistantMarkdownTransformState(block *tui.AssistantMe
 // manager is present. Mirrors settings-manager.ts getMermaidRenderingMode.
 func (m *InteractiveMode) mermaidRenderingMode() string {
 	if m.opts.SettingsManager != nil {
-		return m.opts.SettingsManager.GetMermaidRenderingMode()
+		return string(m.opts.SettingsManager.GetMermaidRenderingMode())
 	}
 	return "streaming"
 }
 
 // appendChatBlock appends a standalone text/markdown block preceded by a
 // blank spacer line. Use this for error messages, status messages, and
-// login flow messages: any content that is NOT an AssistantMessageBlock
+// login flow messages: any content that is NOT an AssistantMessageComponent
 // (which handles its own leading spacer). Mirrors upstream's pattern of
 // inserting new Spacer(1) before standalone chat additions.
 func (m *InteractiveMode) appendChatBlock(comp tui.Component) {
 	m.chatContainer.Add(tui.NewSpacer(1))
 	m.chatContainer.Add(comp)
+}
+
+// addCacheMissNotice shows a formatted cache-miss notice: a spacer, then the text in the theme warning color at padding 1 (interactive-mode.ts addCacheMissNotice).
+func (m *InteractiveMode) addCacheMissNotice(notice string) {
+	m.appendChatBlock(themedNotice("warning", notice, 1))
 }
 
 // noticeFg and noticeBold style notice text as upstream theme.fg and
@@ -194,27 +212,33 @@ func binaryUpdateNoticeBody(t *tui.Theme, latestVersion, command string) string 
 		"\n" + noticeFg(t.Muted, fmt.Sprintf("New version %s is available. Run ", latestVersion)) + noticeFg(t.Accent, command)
 }
 
-// showNewVersionNotification appends the startup update notice. Mirrors
-// upstream showNewVersionNotification (interactive-mode.ts:4475): the heading
-// block, the release note as a muted Markdown block between spacers, and the
-// Changelog line, each padded by one column.
-func (m *InteractiveMode) showNewVersionNotification(update *BinaryUpdate) {
+// showNewVersionNotification appends the startup update notice: the heading block, the release note as a muted Markdown block
+// between spacers, and the Changelog line, each padded by one column.
+//
+// upstream: packages/coding-agent/src/modes/interactive/interactive-mode.ts:4635 (showNewVersionNotification)
+func (m *InteractiveMode) showNewVersionNotification(release LatestPiRelease) {
 	t := tui.ActiveTheme()
-	blocks := []tui.Component{tui.NewThemedText(func() string { return binaryUpdateNoticeBody(tui.ActiveTheme(), update.LatestVersion, update.Command) }, 1, 0)}
-	if note := strings.TrimSpace(update.Notes); note != "" {
+	var note string
+	if release.Note != nil {
+		note = strings.TrimSpace(*release.Note)
+	}
+	// pig divergence (D39): Pi links its fixed pi.dev changelog; a release note that is a bare URL is pig's changelog link.
+	changelogURL, note := splitBinaryUpdateNotes(note)
+	blocks := []tui.Component{tui.NewThemedText(func() string { return binaryUpdateNoticeBody(tui.ActiveTheme(), release.Version, AppName+" update") }, 1, 0)}
+	if note != "" {
 		muted := func(text string) string { return noticeFg(t.Muted, text) }
 		blocks = append(blocks,
 			tui.NewSpacer(1),
-			tui.NewMarkdownWithOptions(note, 1, 0, nil, &tui.DefaultTextStyle{Color: muted}, nil),
+			tui.NewMarkdownWithOptions(note, 1, 0, m.markdownThemeWithSettings(), &tui.DefaultTextStyle{Color: muted}, nil),
 			tui.NewSpacer(1),
 		)
 	}
-	if update.ChangelogURL != "" {
+	if changelogURL != "" {
 		blocks = append(blocks, tui.NewThemedText(func() string {
 			t := tui.ActiveTheme()
-			link := noticeFg(t.Accent, update.ChangelogURL)
+			link := noticeFg(t.Accent, changelogURL)
 			if tui.GetCapabilities().Hyperlinks {
-				link = tui.Hyperlink(link, update.ChangelogURL)
+				link = tui.Hyperlink(link, changelogURL)
 			}
 			return noticeFg(t.Muted, "Changelog: ") + link
 		}, 1, 0))
@@ -249,13 +273,20 @@ func packageUpdateNoticeBody(t *tui.Theme, packages []string) string {
 	return body.String()
 }
 
+// ShowPackageUpdateNotification adds the bordered "Package Updates Available" notice naming the packages to the chat.
+//
+// upstream: interactive-mode.ts:4627 (showPackageUpdateNotification)
+func (m *InteractiveMode) ShowPackageUpdateNotification(packages []string) {
+	m.appendBorderedNotice(tui.NewThemedText(func() string { return packageUpdateNoticeBody(tui.ActiveTheme(), packages) }, 1, 0))
+}
+
 // finishPackageUpdateCheck shows the startup package update notice. On Windows
 // it then restores pig's title, because npm can overwrite the shared console
 // title while it checks package versions. Mirrors upstream run(), which
 // restores the title in the check's finally on win32.
 func (m *InteractiveMode) finishPackageUpdateCheck(goos string, updates []string) {
 	if len(updates) > 0 {
-		m.appendBorderedNotice(tui.NewThemedText(func() string { return packageUpdateNoticeBody(tui.ActiveTheme(), updates) }, 1, 0))
+		m.ShowPackageUpdateNotification(updates)
 	}
 	if goos == "windows" {
 		m.updateTerminalTitle()
@@ -286,6 +317,17 @@ func (m *InteractiveMode) appendBorderedNotice(blocks ...tui.Component) {
 	m.tuiInst.Render()
 }
 
+// lastAssistantMessageText is session.getLastAssistantText(), which /copy reads (interactive-mode.ts handleCopyCommand): empty when the Session has no assistant text.
+func (m *InteractiveMode) lastAssistantMessageText() string {
+	if m.opts.SessionHandle == nil {
+		return ""
+	}
+	if text := m.opts.SessionHandle.LastAssistantText(); text != nil {
+		return *text
+	}
+	return ""
+}
+
 // handleCopyCommand copies to the clipboard and confirms it. Ports upstream
 // handleCopyCommand (interactive-mode.ts): with preferSelection, an active
 // fullscreen selection is copied when automatic copy-on-select is off;
@@ -296,7 +338,7 @@ func (m *InteractiveMode) handleCopyCommand(flashConfirmation, preferSelection b
 		m.altScreen.CopyActiveSelectionToClipboard()
 		return
 	}
-	text := m.lastAssistantText
+	text := m.lastAssistantMessageText()
 	if text == "" {
 		m.showError("No agent messages to copy yet.")
 		return
@@ -392,7 +434,7 @@ func (m *InteractiveMode) showStatus(msg string) {
 	} else {
 		spacer := tui.NewSpacer(1)
 		m.lastStatusMessage = msg
-		text := tui.NewThemedText(func() string { return tui.ActiveTheme().FgText("dim", m.lastStatusMessage) }, 1, 0)
+		text := tui.NewThemedText(func() string { return tui.ActiveTheme().Fg("dim", m.lastStatusMessage) }, 1, 0)
 		m.chatContainer.Add(spacer)
 		m.chatContainer.Add(text)
 		m.lastStatusSpacer = spacer
@@ -426,5 +468,5 @@ func (m *InteractiveMode) setWorkingVisible(visible bool) {
 
 // themedNotice is a chat notice whose color follows theme changes: ThemedText rebuilds it after the UI invalidates the chat (interactive-mode.ts ThemedText call sites).
 func themedNotice(token, message string, paddingX int) *tui.ThemedText {
-	return tui.NewThemedText(func() string { return tui.ActiveTheme().FgText(token, message) }, paddingX, 0)
+	return tui.NewThemedText(func() string { return tui.ActiveTheme().Fg(token, message) }, paddingX, 0)
 }

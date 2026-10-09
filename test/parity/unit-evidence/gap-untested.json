@@ -1,0 +1,369 @@
+[
+  {
+    "upstream": "packages/ai/src/api/azure-openai-config.ts",
+    "package": "./ai",
+    "tests": [
+      "TestResolveAzureBaseURLDoesNotTrimTheResourceName",
+      "TestResolveAzureConfigPrecedence",
+      "TestAzureUpstreamBaseURL",
+      "TestResolveAzureDeploymentNameParsesTheMapLikePi",
+      "TestResolveAzureConfigDoesNotTrimTheAPIVersion",
+      "TestNormalizeAzureBaseURLUsesECMAScriptTrim"
+    ],
+    "upstream_reference": "packages/ai/src/api/azure-openai-config.ts:37-107 (normalizeAzureBaseUrl, resolveAzureBaseUrl, resolveAzureConfig)",
+    "mutation": "ai/azure_config.go: resourceName := cmp.Or(options.ResourceName, -> firstNonEmptyString(options.ResourceName, (blank resource name trimmed away, TestResolveAzureBaseURLDoesNotTrimTheResourceName FAIL); defaultAzureAPIVersion -> \"v2\" (TestResolveAzureConfigPrecedence FAIL); normalizedPath == \"/openai/v1/responses\" -> \"/openai/v1/responsesX\" (TestAzureUpstreamBaseURL FAIL); cmp.Or(options.APIVersion, ...) -> firstNonEmptyString(options.APIVersion, ...) (TestResolveAzureConfigDoesNotTrimTheAPIVersion FAIL); normalizeAzureBaseURL trimJSWhitespace(baseURL) -> strings.TrimSpace(baseURL) (TestNormalizeAzureBaseURLUsesECMAScriptTrim FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/ai/src/api/typesafe-system-one.ts",
+    "package": "./ai",
+    "tests": [
+      "TestTypesafeSystemOneUpstream"
+    ],
+    "upstream_reference": "packages/ai/test/typesafe-system-one.test.ts:50-111; packages/ai/src/api/typesafe-system-one.ts",
+    "mutation": "ai/system_one.go: serviceURL(model.BaseURL, \"systemone\") -> serviceURL(model.BaseURL, \"system\") (TestTypesafeSystemOneUpstream FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/ai/src/api/cloudflare-workers-ai-system-one.ts",
+    "package": "./ai",
+    "tests": [
+      "TestCloudflareWorkersAISystemOneUpstream",
+      "TestCloudflareSystemOneEnvelopeErrors"
+    ],
+    "upstream_reference": "packages/ai/test/cloudflare-workers-ai-system-one.test.ts:59-145; packages/ai/src/api/cloudflare-workers-ai-system-one.ts:5-13",
+    "mutation": "ai/system_one.go: state != \"Completed\" -> state != \"Complete\" (TestCloudflareWorkersAISystemOneUpstream FAIL); strings.Join(messages, \"; \") -> strings.Join(messages, \", \") (TestCloudflareSystemOneEnvelopeErrors FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/ai/src/api/system-one-shared.ts",
+    "package": "./ai",
+    "tests": [
+      "TestSystemOneSharedAnswerValidation",
+      "TestSystemOneSharedUsage"
+    ],
+    "upstream_reference": "packages/ai/src/api/system-one-shared.ts:63-146 (requiredNumber, probabilities, parseAnswers, tokenCount, parseUsage)",
+    "mutation": "ai/system_one.go: usage.TotalTokens = usage.Input + usage.Output -> usage.TotalTokens = usage.Input (TestSystemOneSharedUsage FAIL); if !hasInput && !hasOutput { -> if !hasInput { (TestSystemOneSharedUsage/output_only FAIL); did not return a score answer -> did not return a scor answer (TestSystemOneSharedAnswerValidation FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/ai/src/api/llama-cpp-classify.ts",
+    "package": "./ai",
+    "tests": [
+      "TestLlamaCppClassifyUpstream"
+    ],
+    "upstream_reference": "packages/ai/test/llama-cpp-classify.test.ts:117-; packages/ai/src/api/llama-cpp-classify.ts",
+    "mutation": "ai/llama_cpp_classify.go: (float64(n*peak)-1)/(n-1) -> (float64(n*peak))/(n-1) (TestLlamaCppClassifyUpstream FAIL); score += float64(i)*probability -> float64(i+1)*probability (FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/ai/src/utils/model-operations.ts",
+    "package": "./ai",
+    "tests": [
+      "TestModelOperations"
+    ],
+    "upstream_reference": "packages/ai/src/utils/model-operations.ts:17-70",
+    "mutation": "ai/model_types.go: imageErrorResult aborted branch if aborted { -> if false { (TestModelOperations FAIL); ai/model_types.go: m.Type == \"\" -> m.Type == \"x\" (FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/ai/src/providers/typesafe.models.ts",
+    "package": "./ai",
+    "tests": [
+      "TestClassifierModelsUpstream"
+    ],
+    "upstream_reference": "packages/ai/test/classifier-models.test.ts:114 (typesafe/jev-latest catalog entry: API, provider, 64000-token context window); packages/ai/src/providers/typesafe.models.ts",
+    "mutation": "ai/classifier_models_generated.go: typesafe jev-latest ContextWindow: 64000 -> 64001 (TestClassifierModelsUpstream/exposes_Jev_only_through_classifier_catalog_accessors FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/ai/src/providers/typesafe.ts",
+    "package": "./ai",
+    "tests": [
+      "TestClassifierModelsUpstream",
+      "TestTypesafeSystemOneUpstream"
+    ],
+    "upstream_reference": "packages/ai/test/classifier-models.test.ts:114; packages/ai/src/providers/typesafe.ts (provider carries the typesafe-system-one classifier API)",
+    "mutation": "ai/builtin_providers.go: case \"typesafe\", \"opencode\" -> case \"opencode\" (typesafe provider loses its classifier; TestClassifierModelsUpstream FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/ai/src/utils/models-error.ts",
+    "package": "./ai",
+    "tests": [
+      "TestNewModelsErrorCauseDetail",
+      "TestErrorDetailsUseECMAScriptTrim"
+    ],
+    "upstream_reference": "packages/ai/src/utils/models-error.ts:3-21",
+    "mutation": "ai/auth_resolve.go: message + \": \" + detail -> message + \" \" + detail (TestNewModelsErrorCauseDetail FAIL); !strings.Contains(message, detail) -> true (FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/ai/src/utils/overflow.ts",
+    "package": "./ai",
+    "tests": [
+      "TestOverflowPatternsEachMatchTheirProviderMessage",
+      "TestOverflowUsageBoundaries",
+      "TestOverflowUpstream",
+      "TestIsContextOverflowUpstreamCases",
+      "TestOverflowPatternsFoldCaseLikeJavaScript"
+    ],
+    "upstream_reference": "packages/ai/src/utils/overflow.ts:37-80,137-177; packages/ai/test/overflow.test.ts",
+    "mutation": "ai/overflow.go: Cerebras pattern jsSpaceClass + `*(?:status code)?` -> `\\s*(?:status code)?` (TestOverflowPatternsEachMatchTheirProviderMessage FAIL); float64(contextWindow)*0.99 -> *0.98 (TestOverflowUsageBoundaries FAIL); Gemini pattern jsDotClass + `*` -> `.*` (TestOverflowPatternsEachMatchTheirProviderMessage FAIL: Go \".\" matches \\r, U+2028, U+2029); lazyregexp.NewJSIgnoreCase(`too many tokens`) -> lazyregexp.New(`(?i)too many tokens`) (Go folds U+017F onto s; TestOverflowPatternsFoldCaseLikeJavaScript FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/ai/src/auth/context.ts",
+    "package": "./ai",
+    "tests": [
+      "TestDefaultProviderAuthContext"
+    ],
+    "upstream_reference": "packages/ai/src/auth/context.ts:19-43",
+    "mutation": "ai/auth_resolve.go: path = home + path[1:] -> path = home + path (TestDefaultProviderAuthContext FAIL); trimJSWhitespace(value) == \"\" -> strings.TrimSpace(value) == \"\" (FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/ai/src/compat/extension-oauth-types.ts",
+    "package": "./coding/extension/host/subprocess",
+    "tests": [
+      "TestOAuthProxy_LoginRelaysTheLegacyCallbackSurface",
+      "TestOAuthProxy_LoginRelaysCallbacks"
+    ],
+    "upstream_reference": "packages/ai/src/compat/extension-oauth-types.ts:4-45 (type-only legacy OAuth callback and prompt contracts, exercised through the extension OAuth wire)",
+    "mutation": "coding/extension/host/subprocess/oauth_bridge.go: Placeholder: w.Placeholder, AllowEmpty: w.AllowEmpty -> Placeholder: w.Placeholder (TestOAuthProxy_LoginRelaysTheLegacyCallbackSurface FAIL); b, _ := json.Marshal(OAuthInputResult{Cancel: true}) -> OAuthInputResult{Value: \"\"} (FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/coding-agent/src/utils/output-files.ts",
+    "package": "./internal/outputfiles",
+    "tests": [
+      "TestCreateIsExclusive",
+      "TestWriteFileIsUserOnlyInTheTempDirectory",
+      "TestCreateStreamIsUserOnlyAndWritable",
+      "TestPathsAreUnique",
+      "TestCreateStreamKeepsThePathWhenTheDirectoryIsMissing",
+      "TestOutputFilesUseNodeTmpdir",
+      "TestNodeTmpdir"
+    ],
+    "upstream_reference": "packages/coding-agent/src/utils/output-files.ts:14-34 (0o600 mode, wx exclusive create, <prefix>-<16 hex><ext> in tmpdir, stream path kept on open failure); tmpdir is Node os.tmpdir() (TMPDIR, TMP, TEMP on POSIX; TEMP, TMP, SystemRoot\\temp on Windows)",
+    "mutation": "internal/outputfiles/outputfiles.go: os.O_EXCL -> os.O_TRUNC (TestCreateIsExclusive FAIL); Mode 0o600 -> 0o644 (TestWriteFileIsUserOnlyInTheTempDirectory FAIL); hex.EncodeToString(id[:]) -> id[:4] (FAIL); nodeTmpdir(runtime.GOOS, os.Getenv) -> os.TempDir() (TestOutputFilesUseNodeTmpdir FAIL); TMP/TEMP fallback removed (TestNodeTmpdir FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/coding-agent/src/utils/ansi.ts",
+    "package": "./internal/codingagent/tools",
+    "tests": [
+      "TestStripANSIMatchesTheReferencePatternOnGeneratedInputs",
+      "TestStripANSIFinalByteSet",
+      "TestStripANSI_UpstreamCases"
+    ],
+    "upstream_reference": "packages/coding-agent/test/ansi-utils.test.ts:30-76; packages/coding-agent/src/utils/ansi.ts:30-60 (stripAnsi is implemented by internal/codingagent/tools/sanitize.go StripANSI)",
+    "mutation": "internal/codingagent/tools/sanitize.go: final-byte class [\\dA-PR-TZcf-nq-uy=><~] -> [\\dA-PR-TZcf-mq-uy=><~] (TestStripANSIFinalByteSet FAIL); ST (?:\\x07|\\x1b\\\\|\\x{9c}) -> (?:\\x07|\\x1b\\\\) (TestStripANSIMatchesTheReferencePatternOnGeneratedInputs FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/coding-agent/src/utils/child-process.ts",
+    "package": "./internal/childwait",
+    "tests": [
+      "TestGraceIsTheUpstreamExitStdioGrace",
+      "TestWaitIdleRearmsOnEveryChunk",
+      "TestWaitIdleReleasesAQuietHeldPipe",
+      "TestPipesWaitReleasesAHeldPipeAndDiscardsLateData"
+    ],
+    "upstream_reference": "packages/coding-agent/src/utils/child-process.ts:15,38-130 (EXIT_STDIO_GRACE_MS, waitForChildProcess; earendil-works/pi#5303)",
+    "mutation": "internal/childwait/wait.go: Grace 100ms -> 101ms (TestGraceIsTheUpstreamExitStdioGrace FAIL); waitIdle activity re-arm timer.Reset(Grace) removed (TestWaitIdleRearmsOnEveryChunk FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/coding-agent/src/utils/child-process.ts",
+    "package": "./internal/crossspawn",
+    "tests": [
+      "TestWindowsPlanShebangDoesNotAddShell",
+      "TestWindowsPlanNativeExecutableHasNoShell",
+      "TestWindowsPlanCmdShimMatcherMatchesCrossSpawn",
+      "TestWindowsEscapingMatchesPinnedCrossSpawn"
+    ],
+    "upstream_reference": "packages/coding-agent/src/utils/child-process.ts:19-34 (spawnProcess/spawnProcessSync route Windows through cross-spawn 7.0.6)",
+    "mutation": "internal/crossspawn/windows_plan.go: readShebang(file) -> \"\" (shebang routing dropped, TestWindowsPlanShebangDoesNotAddShell FAIL); cmdShim .cmd$ -> .cmx$ (TestWindowsPlanCmdShimMatcherMatchesCrossSpawn FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/coding-agent/src/utils/html.ts",
+    "package": "./tui",
+    "tests": [
+      "TestDecodeHTMLEntity",
+      "TestDecodeHTMLEntityAt"
+    ],
+    "upstream_reference": "packages/coding-agent/src/utils/html.ts:6-51",
+    "mutation": "tui/highlight.go: len(jsstring.ToUTF16(html[index:semicolon])) -> len(html[index:semicolon]) (TestDecodeHTMLEntityAt/astral_characters_count_as_two_units FAIL); codePoint > 0x10ffff -> 0x10fffe (TestDecodeHTMLEntity FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/coding-agent/src/utils/clipboard-command.ts",
+    "package": "./internal/codingagent",
+    "tests": [
+      "TestRunClipboardCommandDefaultTimeoutIsThreeSeconds",
+      "TestClipboardCommandUpstream",
+      "TestRunClipboardCommand",
+      "TestClipboardOutputOverflowCancelsCommand",
+      "TestClipboardImageCommandEnforcesDefaultBufferLimit"
+    ],
+    "upstream_reference": "packages/coding-agent/src/utils/clipboard-command.ts:4-44; packages/coding-agent/test/clipboard-command.test.ts",
+    "mutation": "internal/codingagent/clipboard_copy.go: default timeout 3 * time.Second -> 4 * time.Second (TestRunClipboardCommandDefaultTimeoutIsThreeSeconds FAIL); maxBytes 50 MiB -> 51 MiB (TestClipboardImageCommandEnforcesDefaultBufferLimit FAIL); limitedWriter len(p) > remaining -> >= (TestClipboardOutputOverflowCancelsCommand FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/coding-agent/src/utils/clipboard.ts",
+    "package": "./internal/codingagent",
+    "tests": [
+      "TestCopyToClipboardOSC52PayloadBoundary",
+      "TestCopyToClipboardWSLEscapesSingleQuotesInThePowerShellPath",
+      "TestCopyToClipboardWSLInWindowsTerminalPrefersOSC52",
+      "TestReadClipboardTextCommandResultStopsFallback"
+    ],
+    "upstream_reference": "packages/coding-agent/src/utils/clipboard.ts:9-144; packages/coding-agent/test/clipboard.test.ts",
+    "mutation": "internal/codingagent/clipboard_copy.go: maxOSC52EncodedLength 100_000 -> 100_004 (TestCopyToClipboardOSC52PayloadBoundary/over FAIL); strings.ReplaceAll(winPath, quote, doubled quote) -> winPath (TestCopyToClipboardWSLEscapesSingleQuotesInThePowerShellPath FAIL); internal/codingagent/clipboard_text.go: swap xclip and xsel order (TestReadClipboardTextCommandResultStopsFallback FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/coding-agent/src/core/telemetry.ts",
+    "package": "./internal/codingagent",
+    "tests": [
+      "TestInstallTelemetryEnvFlag",
+      "TestSettingsManager_IsInstallTelemetryEnabled"
+    ],
+    "upstream_reference": "packages/coding-agent/src/core/telemetry.ts:3-13",
+    "mutation": "internal/codingagent/settings.go: case \"1\", \"true\", \"yes\" -> case \"1\", \"true\" (TestInstallTelemetryEnvFlag FAIL); os.LookupEnv ok -> ok && env != \"\" (empty PI_TELEMETRY no longer overrides the setting, TestInstallTelemetryEnvFlag FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/coding-agent/src/core/provider-attribution.ts",
+    "package": "./coding",
+    "tests": [
+      "TestProviderAttributionHostMatchingIsExact",
+      "TestProviderAttributionWrapperRequestHeadersReplaceConfigured",
+      "TestMergeProviderAttributionHeadersMatchesPinnedProvidersAndHosts",
+      "TestMergeProviderAttributionHeadersUsesSourceOrder"
+    ],
+    "upstream_reference": "packages/coding-agent/src/core/provider-attribution.ts:12-86",
+    "mutation": "coding/model.go: matchesProviderHost == expectedHost -> strings.HasSuffix(host, expectedHost) (TestProviderAttributionHostMatchingIsExact FAIL); providerID == \"opencode\" || providerID == \"opencode-go\" -> providerID == \"opencode\" (FAIL); configured/request header source order swapped in the wrapper (TestProviderAttributionWrapperRequestHeadersReplaceConfigured FAIL); matchesProviderHost nodeurl.ParseHTTPURL -> url.Parse + strings.ToLower (TestProviderAttributionHostMatchingIsExact FAIL on leading space, tab/newline, https:host, backslash path, percent-encoded host, invalid port, non-special scheme case); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/tui/src/native-modifiers.ts",
+    "package": "./tui",
+    "tests": [
+      "TestNativeModifierKeysWithoutAHelper",
+      "TestIsNativeModifierPressedUnknownKey"
+    ],
+    "upstream_reference": "packages/tui/src/native-modifiers.ts:5-13; packages/tui/src/native-platform.ts ModifierKey (macOS and Windows helpers are covered by internal/nativeplatform/modifiers_darwin_test.go on darwin CI; this Linux evidence pins the no-helper false result and the key names)",
+    "mutation": "internal/nativeplatform/modifiers_other.go: isModifierPressed returns false -> true (TestNativeModifierKeysWithoutAHelper FAIL); tui/native_modifiers.go: ModifierCommand \"command\" -> \"cmd\" (FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/coding-agent/src/modes/interactive/components/thinking-selector.ts",
+    "package": "./internal/codingagent",
+    "tests": [
+      "TestThinkingSelectorDescribesEveryLevel",
+      "TestThinkingSelectorKeepsTheHighlightedLevelWhileFiltering",
+      "TestThinkingSelectorKeepsCurrentLevelMarkedWhileBrowsing",
+      "TestThinkingSelectorUsesTheConfiguredSaveBinding",
+      "TestThinkingSelectorSearchSelectAndCancel"
+    ],
+    "upstream_reference": "packages/coding-agent/src/modes/interactive/components/thinking-selector.ts:21-135; packages/coding-agent/test/thinking-selector.test.ts",
+    "mutation": "internal/codingagent/thinking_selector.go: description += \" \u00b7 default\" -> \" (default)\" (TestThinkingSelectorDescribesEveryLevel FAIL); applyFilter selected-value preservation disabled (TestThinkingSelectorKeepsTheHighlightedLevelWhileFiltering FAIL); label \"\u2713 \" -> \"* \" (FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/coding-agent/src/modes/interactive/components/auth-url.ts",
+    "package": "./tui",
+    "tests": [
+      "TestAuthURLRendersAndReportsTheCopyOutcome",
+      "TestAuthURLCopyLoginDialogCopiesTheAuthURLInsteadOfTypingIntoTheCodeInput",
+      "TestAuthURLCopyLoginDialogIgnoresTheCopyKeyWithoutAnAuthURL"
+    ],
+    "upstream_reference": "packages/coding-agent/src/modes/interactive/components/auth-url.ts:12-39; packages/coding-agent/test/auth-url-copy.test.ts",
+    "mutation": "tui/auth_url.go: failed-copy hint err.Error() -> \"failed\" (TestAuthURLRendersAndReportsTheCopyOutcome FAIL); click hint Hyperlink(clickHint, a.url) -> clickHint (FAIL); requestRender after copy removed (FAIL); success/error/accent theme roles swapped (TestAuthURLRendersAndReportsTheCopyOutcome FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/coding-agent/src/modes/interactive/session-share.ts",
+    "package": "./internal/codingagent",
+    "tests": [
+      "TestShareExportAddsPresentationDataWithoutChangingConversationLinks",
+      "TestNewShareStateRecordsActiveToolSchemas",
+      "TestNewShareStateKeepsToolParameterOrder",
+      "TestShareSessionKeepsConcurrentExportsIsolated",
+      "TestAgentStateSystemPromptReplaysTranscriptSystemMessages"
+    ],
+    "upstream_reference": "packages/coding-agent/src/modes/interactive/session-share.ts:23-57 (createShareTrailingEntries, exportSessionForShare); packages/coding-agent/test/session-share.test.ts; upload path is D64",
+    "mutation": "internal/codingagent/session_share.go: CustomType \"pi.share\" -> \"pi.shared\" (TestShareExportAddsPresentationDataWithoutChangingConversationLinks FAIL); ParentID: parentID -> nil (FAIL); orderedToolParameters(schema) -> schema.Parameters (TestNewShareStateKeepsToolParameterOrder FAIL); share entry Timestamp: timestamp -> \"\" (TestShareExportAddsPresentationDataWithoutChangingConversationLinks FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/coding-agent/src/core/tools/powershell.ts",
+    "package": "./internal/codingagent/tools",
+    "tests": [
+      "TestPowerShellConfigResolutionOrder",
+      "TestPowerShellToolShellConfig",
+      "TestPowerShellArgsUseProcessLocalExecutionPolicyBypass",
+      "TestPowerShellToolSchema"
+    ],
+    "upstream_reference": "packages/coding-agent/src/core/tools/powershell.ts:9-45; packages/coding-agent/test/powershell-tool.test.ts:13 (win32-only execution case: TestPowerShellToolExecute, CI-PENDING on Windows CI)",
+    "mutation": "internal/codingagent/tools/powershell.go: candidate order pwsh.exe,powershell.exe -> reversed (TestPowerShellConfigResolutionOrder FAIL); UTF-8 output prefix emptied (TestPowerShellToolShellConfig FAIL); tempFilePrefix \"pi-powershell\" -> \"pi-bash\" (FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/coding-agent/src/experimental/session-catalog.ts",
+    "package": "./internal/experimental",
+    "tests": [
+      "TestSessionIDs",
+      "TestCreateSessionRejectsDuplicateAndInvalidIDs",
+      "TestCreateSessionWritesTheCatalogLayout",
+      "TestListSessionsSkipsEntriesWithoutValidMetadata",
+      "TestReadSessionAcceptsAnyFiniteCreatedAt"
+    ],
+    "upstream_reference": "packages/coding-agent/src/experimental/session-catalog.ts",
+    "mutation": "internal/experimental/session_catalog.go: session ID pattern {0,127} -> {0,128} (TestSessionIDs FAIL); os.Mkdir -> os.MkdirAll (TestCreateSessionRejectsDuplicateAndInvalidIDs FAIL); createdAt validity check disabled (TestListSessionsSkipsEntriesWithoutValidMetadata FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/coding-agent/src/experimental/services/models.ts",
+    "package": "./internal/experimental/services",
+    "tests": [
+      "TestServiceContracts",
+      "TestModelsActivationCatalogAndRefreshWithoutRuntime"
+    ],
+    "upstream_reference": "packages/coding-agent/src/experimental/services/models.ts (Models service contract and ModelsState wire shape)",
+    "mutation": "internal/experimental/services/models.go: json:\"thinkingLevel\" -> json:\"thinking\" (TestServiceContracts/initial FAIL); json:\"errors,omitzero\" -> json:\"errors\" (TestServiceContracts/initial FAIL); \"pi.models\" -> \"pi.model\" (TestServiceContracts FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/coding-agent/src/experimental/services/models-provider.ts",
+    "package": "./internal/experimental/services",
+    "tests": [
+      "TestModelsActivationCatalogAndRefreshWithoutRuntime",
+      "TestModelsThinkingValidationCycleAndNoPersistence",
+      "TestModelsSelectConfiguresClampsAndPersists",
+      "TestModelsRefreshWarningFailureAndCancellation",
+      "TestModelsFacetOnConcreteChordHost"
+    ],
+    "upstream_reference": "packages/coding-agent/src/experimental/services/models-provider.ts:87-120",
+    "mutation": "internal/experimental/services/models_provider.go: cycle index +1 removed (TestModelsThinkingValidationCycleAndNoPersistence FAIL); refresh warning status -> done (TestModelsRefreshWarningFailureAndCancellation FAIL); ClampThinkingLevel dropped (TestModelsSelectConfiguresClampsAndPersists FAIL); facet id \"@pi/models\" -> \"@pi/model\" (TestModelsFacetOnConcreteChordHost FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/coding-agent/src/experimental/services/transcript.ts",
+    "package": "./internal/experimental/services",
+    "tests": [
+      "TestPortWave08ExperimentalTranscriptProvider"
+    ],
+    "upstream_reference": "packages/coding-agent/src/experimental/services/transcript.ts (Transcript service state member, remote replica)",
+    "mutation": "internal/experimental/services/transcript.go: remote.service.State(\"state\") -> State(\"states\") (TestPortWave08ExperimentalTranscriptProvider FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/coding-agent/src/experimental/services/transcript-provider.ts",
+    "package": "./internal/experimental/services",
+    "tests": [
+      "TestTranscriptServiceFacetOwnsAndDisposesTheViewState",
+      "TestPortWave08ExperimentalTranscriptProvider"
+    ],
+    "upstream_reference": "packages/coding-agent/src/experimental/services/transcript-provider.ts:6-13; packages/coding-agent/test/experimental-transcript-provider.test.ts:11",
+    "mutation": "internal/experimental/services/transcript_provider.go: env.Own state.Dispose() removed (TestTranscriptServiceFacetOwnsAndDisposesTheViewState FAIL); facet id \"@pi/transcript\" -> \"@pi/transcripts\" (FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/coding-agent/src/experimental/services/worker.ts",
+    "package": "./internal/experimental",
+    "tests": [
+      "TestSessionWorkerServicesReloadFailureKeepsTheRunningGeneration",
+      "TestSessionWorkerServicesDisposeReportsPluginCleanupFailure",
+      "TestSessionWorkerServicesReloadReportsLoaderFailure",
+      "TestPortWave07ExperimentalPluginReload",
+      "TestSessionWorkerServicesDisposeWaitsForTheRunningReload"
+    ],
+    "upstream_reference": "packages/coding-agent/src/experimental/services/worker.ts:91-152 (reload cutover and cleanup, dispose awaits reloadTail, dispose aggregation); packages/coding-agent/test/experimental-plugin-reload.test.ts:9",
+    "mutation": "internal/experimental/services/worker.go: candidate cleanup on failed reload disabled (TestSessionWorkerServicesReloadFailureKeepsTheRunningGeneration FAIL); services.loadedPlugins = candidate removed (FAIL); plugin facet set no longer disposed by Dispose (TestSessionWorkerServicesDisposeReportsPluginCleanupFailure FAIL); Dispose services.reloads.wait() removed (TestSessionWorkerServicesDisposeWaitsForTheRunningReload FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/coding-agent/src/experimental/services/agent-controller-provider.ts",
+    "package": "./internal/experimental/services",
+    "tests": [
+      "TestAgentControllerProviderMapsOutcomes",
+      "TestAgentControllerProviderWaitForPrompt",
+      "TestUpstreamAgentController"
+    ],
+    "upstream_reference": "packages/coding-agent/src/experimental/services/agent-controller-provider.ts:18-95",
+    "mutation": "internal/experimental/services/agent_controller_provider.go: parseSubmissionID leading-zero rejection removed (TestAgentControllerProviderMapsOutcomes FAIL); id > maxSafeJSInteger -> +1 (FAIL); answer text += -> = (TestAgentControllerProviderWaitForPrompt FAIL); toAgentError busy code -> operation_failed (FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  }
+]

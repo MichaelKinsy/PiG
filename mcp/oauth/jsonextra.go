@@ -57,26 +57,34 @@ func marshalWithExtra(known any, extra map[string]json.RawMessage) ([]byte, erro
 	return append(out, '}'), nil
 }
 
-// unmarshalWithExtra fills known and returns the members no known field
-// claims.
+// unmarshalWithExtra fills known from the members whose names its fields claim and returns the rest. JavaScript reads
+// a member by its exact name, so known decodes only exact matches: encoding/json would also fill a field from a member
+// that differs in case, and fail on one of another type.
 func unmarshalWithExtra(data []byte, known any) (map[string]json.RawMessage, error) {
-	if err := json.Unmarshal(data, known); err != nil {
-		return nil, err
-	}
 	var fields map[string]json.RawMessage
 	if err := json.Unmarshal(data, &fields); err != nil {
 		return nil, err
 	}
 	keys := map[string]bool{}
 	knownKeys(reflect.TypeOf(known).Elem(), keys)
+	claimed := map[string]json.RawMessage{}
 	var extra map[string]json.RawMessage
 	for name, value := range fields {
-		if !keys[name] {
-			if extra == nil {
-				extra = map[string]json.RawMessage{}
-			}
-			extra[name] = value
+		if keys[name] {
+			claimed[name] = value
+			continue
 		}
+		if extra == nil {
+			extra = map[string]json.RawMessage{}
+		}
+		extra[name] = value
+	}
+	exact, err := json.Marshal(claimed)
+	if err != nil {
+		return nil, err
+	}
+	if err := json.Unmarshal(exact, known); err != nil {
+		return nil, err
 	}
 	return extra, nil
 }

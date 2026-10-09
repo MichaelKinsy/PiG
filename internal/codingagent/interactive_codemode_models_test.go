@@ -1,6 +1,10 @@
+//go:build !pig_strip_codemode
+
 package codingagent_test
 
 import (
+	"github.com/MichaelKinsy/PiG/coding/extension/factoryload"
+
 	"context"
 	"encoding/json"
 	"strings"
@@ -17,7 +21,7 @@ import (
 
 // interactiveCodemodeBuild is one Session build of the interactive mode: the Services, a Session whose runner carries the built-in codemode extension (as the CLI builds it for every mode), and a classifier provider named "scorer".
 type interactiveCodemodeBuild struct {
-	services *coding.Services
+	services *coding.AgentSessionServices
 	runner   *inproc.Runner
 	session  *coding.Session
 }
@@ -25,7 +29,7 @@ type interactiveCodemodeBuild struct {
 func newInteractiveCodemodeBuild(t *testing.T) interactiveCodemodeBuild {
 	t.Helper()
 	t.Setenv("PIG_HOME", t.TempDir())
-	services, err := coding.NewServices(coding.ServicesOptions{CWD: t.TempDir(), AgentDir: t.TempDir()})
+	services, err := coding.CreateAgentSessionServices(coding.CreateAgentSessionServicesOptions{CWD: t.TempDir(), AgentDir: t.TempDir()})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -36,7 +40,7 @@ func newInteractiveCodemodeBuild(t *testing.T) interactiveCodemodeBuild {
 	if err != nil {
 		t.Fatal(err)
 	}
-	ext, err := entry.Factory()
+	ext, err := factoryload.LoadExtensionFromFactory(entry.Factory, ".", extension.CreateEventBus(), extension.CreateExtensionRuntime(), entry.Path())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -64,8 +68,8 @@ func newInteractiveCodemodeBuild(t *testing.T) interactiveCodemodeBuild {
 	return interactiveCodemodeBuild{services: services, runner: runner, session: session}
 }
 
-func (b interactiveCodemodeBuild) options() icodingagent.InteractiveOptions {
-	return icodingagent.InteractiveOptions{
+func (b interactiveCodemodeBuild) options() icodingagent.InteractiveModeOptions {
+	return icodingagent.InteractiveModeOptions{
 		CWD: b.services.CWD(), AgentDir: b.services.AgentDir(), SessionHandle: b.session, SettingsManager: b.services.SettingsManager(),
 		Settings: b.services.SettingsManager().Get(), ExtensionRunner: b.runner, ModelRegistry: b.services.Registry().ModelRegistry,
 		NoSkills: true, NoThemes: true, NoPromptTemplates: true,
@@ -129,7 +133,7 @@ const codemodeModelsScript = `
 func TestInteractiveCodemodeScriptsReachModelsThroughReplacement(t *testing.T) {
 	first := newInteractiveCodemodeBuild(t)
 	h := icodingagent.NewTestHarness(t, first.options(), nil)
-	if err := first.session.BindExtensions(t.Context()); err != nil {
+	if err := first.session.BindExtensions(t.Context(), coding.ExtensionBindings{}); err != nil {
 		t.Fatal(err)
 	}
 	first.requireSessionRegistry(t, "initial interactive Session")

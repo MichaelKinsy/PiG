@@ -1,9 +1,13 @@
 package mcpext_test
 
+// pi: packages/coding-agent/src/extensions/mcp/index.ts
+
 import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"os"
+	"path/filepath"
 	"regexp"
 	"slices"
 	"strings"
@@ -66,6 +70,8 @@ func (l *callLog) all() []string {
 type fakeServerOptions struct {
 	instructions    string
 	initializeDelay time.Duration
+	// raw answers a method with exactly this JSON, so a test controls the member order and the members a server sends.
+	raw map[string]string
 }
 
 // createFakeServer is createFakeServer of agent-session-mcp.test.ts: a minimal
@@ -79,6 +85,9 @@ func createFakeServer(calls *callLog, listTools func() []map[string]any, resourc
 	respond := func(request mcp.JSONRPCMessage) any {
 		var params map[string]any
 		_ = json.Unmarshal(request.Params, &params)
+		if raw, ok := opts.raw[request.Method]; ok {
+			return json.RawMessage(raw)
+		}
 		switch request.Method {
 		case "initialize":
 			caps := map[string]any{"tools": map[string]any{}}
@@ -152,7 +161,12 @@ type setupOptions struct {
 	withoutToolSearch  bool
 	description        string
 	instructions       string
-	other              func(host *fakeHost)
+	raw                map[string]string
+	// configPath is the mcp.json that defines the server, so SetEnabled can save to it.
+	configPath string
+	other      func(host *fakeHost)
+	// connectDelay is the delay of the answer to `initialize` of the nth connection (from 0); nil answers at once.
+	connectDelay func(n int) time.Duration
 }
 
 type sessionHarness struct {
@@ -190,12 +204,21 @@ func setupSession(t *testing.T, exposure extension.McpExposure, listTools func()
 	}
 	config := extension.McpServerConfig{URL: "http://unused.invalid", Exposure: exposure, ToolExposure: options.toolExposure, Description: options.description}
 	entry := mcpext.McpServerEntry{Name: "docs", Config: config, Source: "test"}
+	if options.configPath != "" {
+		entry.Source, entry.Scope = options.configPath, "global"
+	}
 	h.ext = mcpext.New(h.host, mcpext.Options{
-		LoadConfig: func(mcpext.EventContext) mcpext.LoadedMcpConfig {
+		LoadConfig: func(context.Context) mcpext.LoadedMcpConfig {
 			return mcpext.LoadedMcpConfig{Servers: []mcpext.McpServerEntry{entry}, AutoEnableCodemode: options.autoEnableCodemode}
 		},
 		CreateTransport: func(mcpext.McpServerEntry, string, mcp.AuthProvider) (mcp.Transport, error) {
-			client, server := createFakeServer(h.calls, listTools, options.resources, fakeServerOptions{instructions: options.instructions})
+			serverOptions := fakeServerOptions{instructions: options.instructions, raw: options.raw}
+			h.servers2.mu.Lock()
+			if options.connectDelay != nil {
+				serverOptions.initializeDelay = options.connectDelay(len(h.servers2.list))
+			}
+			h.servers2.mu.Unlock()
+			client, server := createFakeServer(h.calls, listTools, options.resources, serverOptions)
 			h.servers2.mu.Lock()
 			h.servers2.list = append(h.servers2.list, server)
 			h.servers2.mu.Unlock()
@@ -249,7 +272,7 @@ func (h *sessionHarness) execute(t *testing.T, tool string, params string) (agen
 	if err != nil {
 		return agent.AgentToolResult{}, err
 	}
-	return raw.(agent.AgentToolResult), nil
+	return raw, nil
 }
 
 func TestAgentSessionMCPDeclaresDirectlyExposedMCPToolsToTheModel(t *testing.T) {
@@ -596,7 +619,7 @@ func TestAgentSessionMCPDoesNotActivateAnotherExtensionsToolNamedCodemode(t *tes
 	h.host.registerFrom("another-extension", extension.ToolDefinition{Name: "codemode", Exposure: extension.ToolExposureCodemode, Description: "Another extension's codemode tool."}, false)
 	entry := mcpext.McpServerEntry{Name: "docs", Config: extension.McpServerConfig{URL: "http://unused.invalid"}, Source: "test"}
 	h.ext = mcpext.New(h.host, mcpext.Options{
-		LoadConfig: func(mcpext.EventContext) mcpext.LoadedMcpConfig {
+		LoadConfig: func(context.Context) mcpext.LoadedMcpConfig {
 			return mcpext.LoadedMcpConfig{Servers: []mcpext.McpServerEntry{entry}}
 		},
 		CreateTransport: func(mcpext.McpServerEntry, string, mcp.AuthProvider) (mcp.Transport, error) {
@@ -628,7 +651,7 @@ type slowConfig struct {
 	toolExposure *extension.OrderedExposures
 	name         string
 	instructions string
-	startupWait  time.Duration
+	startupWait  *int
 }
 
 func setupSlow(t *testing.T, config slowConfig, initializeDelay time.Duration) *slowHarness {
@@ -644,7 +667,7 @@ func setupSlow(t *testing.T, config slowConfig, initializeDelay time.Duration) *
 		Config: extension.McpServerConfig{URL: "http://unused.invalid", Exposure: config.exposure, ToolExposure: config.toolExposure},
 	}
 	h.ext = mcpext.New(h.host, mcpext.Options{
-		LoadConfig: func(mcpext.EventContext) mcpext.LoadedMcpConfig {
+		LoadConfig: func(context.Context) mcpext.LoadedMcpConfig {
 			return mcpext.LoadedMcpConfig{Servers: []mcpext.McpServerEntry{entry}}
 		},
 		CreateTransport: func(mcpext.McpServerEntry, string, mcp.AuthProvider) (mcp.Transport, error) {
@@ -652,9 +675,9 @@ func setupSlow(t *testing.T, config slowConfig, initializeDelay time.Duration) *
 			_ = server.Start()
 			return client, nil
 		},
-		StartupWait: config.startupWait,
-		Credentials: mcpext.NewMcpOAuthCredentialStoreWithBackend(&mcpext.InMemoryAuthStorageBackend{}, ""),
-		LogPath:     t.TempDir() + "/mcp.log",
+		StartupWaitMs: config.startupWait,
+		Credentials:   mcpext.NewMcpOAuthCredentialStoreWithBackend(&mcpext.InMemoryAuthStorageBackend{}, ""),
+		LogPath:       t.TempDir() + "/mcp.log",
 	})
 	h.ctx = eventContext(t.TempDir(), h.notes)
 	t.Cleanup(h.ext.SessionShutdown)
@@ -856,13 +879,26 @@ func TestAgentSessionMCPHoldsTheFirstPromptForServersWithDirectTools(t *testing.
 }
 
 func TestAgentSessionMCPHoldsTheFirstPromptForServersWithDirectToolsOnlyUpToTheStartupWait(t *testing.T) {
-	h := setupSlow(t, slowConfig{exposure: extension.McpExposureDirect, startupWait: 20 * time.Millisecond}, never)
+	h := setupSlow(t, slowConfig{exposure: extension.McpExposureDirect, startupWait: new(20)}, never)
 
 	within(t, "before_agent_start", 5*time.Second, h.prompt)
 
 	if got := h.host.GetActiveTools(); len(got) != 0 {
 		t.Fatalf("active tools = %v", got)
 	}
+	want := []string{"MCP servers are still connecting; their tools become available once connected."}
+	if got := h.notes.all(); !slices.Equal(got, want) {
+		t.Fatalf("notifications = %q", got)
+	}
+}
+
+// A startupWaitMs of 0 is a wait of 0 ms, not the 10 s default: index.ts:294 applies the default only with `??`, so the first prompt
+// does not wait for a server that is still connecting (index.ts:1050-1052 setTimeout(..., 0)).
+func TestAgentSessionMCPStartupWaitOfZeroDoesNotHoldTheFirstPrompt(t *testing.T) {
+	h := setupSlow(t, slowConfig{exposure: extension.McpExposureDirect, startupWait: new(0)}, never)
+
+	within(t, "before_agent_start", 2*time.Second, h.prompt)
+
 	want := []string{"MCP servers are still connecting; their tools become available once connected."}
 	if got := h.notes.all(); !slices.Equal(got, want) {
 		t.Fatalf("notifications = %q", got)
@@ -888,7 +924,7 @@ func setupRegistered(t *testing.T, configured []mcpext.McpServerEntry) (*session
 	connected := &serverList{}
 	h := &sessionHarness{host: host, calls: &callLog{}, servers: &serverSet{}, notes: &notifications{}}
 	h.ext = mcpext.New(host, mcpext.Options{
-		LoadConfig: func(mcpext.EventContext) mcpext.LoadedMcpConfig { return mcpext.LoadedMcpConfig{Servers: configured} },
+		LoadConfig: func(context.Context) mcpext.LoadedMcpConfig { return mcpext.LoadedMcpConfig{Servers: configured} },
 		CreateTransport: func(entry mcpext.McpServerEntry, _ string, _ mcp.AuthProvider) (mcp.Transport, error) {
 			connected.add(entry)
 			client, server := createFakeServer(&callLog{}, func() []map[string]any { return serverTools }, false)
@@ -1002,5 +1038,162 @@ func TestAgentSessionMCPTrimsServerInstructionsAsJavaScriptDoes(t *testing.T) {
 	}
 	if !found {
 		t.Fatal("no mcp__docs tool registered")
+	}
+}
+
+// upstream mcp/resources.ts `listed` and read: the client hands the server's list items and read contents through as
+// the server sent them (`{ ...item, name: item.name ?? item.uri }`), so the tools list them with the members of the
+// server in the server's order, whatever members that are, minus `_meta` and `icons`.
+func TestAgentSessionMCPResourceToolsKeepTheMembersAndOrderTheServerSent(t *testing.T) {
+	h := setupSession(t, extension.McpExposureDirect, nil, setupOptions{resources: true, raw: map[string]string{
+		"resources/list":           `{"resources":[{"mimeType":"text/plain","uri":"docs://a","icons":[],"x-vendor":{"rank":2},"_meta":{"k":1},"size":12},{"uri":"docs://b","annotations":{"priority":1}}]}`,
+		"resources/templates/list": `{"resourceTemplates":[{"name":"page","vendor":true,"uriTemplate":"docs://pages/{slug}"},{"uriTemplate":"docs://t/{x}"}]}`,
+		"resources/read":           `{"contents":[{"text":"hello","uri":"docs://a","x-vendor":1,"mimeType":"text/plain","_meta":{"k":1}}]}`,
+	}})
+	h.start()
+	listed, err := h.execute(t, "list_mcp_resources", `{"server":"docs"}`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := `{"server":"docs","resources":[{"server":"docs","mimeType":"text/plain","uri":"docs://a","x-vendor":{"rank":2},"size":12,"name":"docs://a"},{"server":"docs","uri":"docs://b","annotations":{"priority":1},"name":"docs://b"}]}`
+	if got := textOfResult(t, listed); got != want {
+		t.Fatalf("resources\n got %s\nwant %s", got, want)
+	}
+	templates, err := h.execute(t, "list_mcp_resource_templates", `{}`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want = `{"resourceTemplates":[{"server":"docs","name":"page","vendor":true,"uriTemplate":"docs://pages/{slug}"},{"server":"docs","uriTemplate":"docs://t/{x}","name":"docs://t/{x}"}]}`
+	if got := textOfResult(t, templates); got != want {
+		t.Fatalf("templates\n got %s\nwant %s", got, want)
+	}
+	read, err := h.execute(t, "read_mcp_resource", `{"server":"docs","uri":"docs://a"}`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	structured := string(read.StructuredContent)
+	want = `{"server":"docs","uri":"docs://a","contents":[{"text":"hello","uri":"docs://a","x-vendor":1,"mimeType":"text/plain"}]}`
+	if structured != want {
+		t.Fatalf("read\n got %s\nwant %s", structured, want)
+	}
+}
+
+// index.ts hideTools and registerTools iterate `serverTools`, a Set, in insertion order: the order the server listed its
+// tools. Tools the server drops, and the tools of a disabled server, are re-registered hidden in that order.
+func TestAgentSessionMCPHidesToolsInTheOrderTheServerListedThem(t *testing.T) {
+	tool := func(name string) map[string]any {
+		return map[string]any{"name": name, "inputSchema": map[string]any{"type": "object"}}
+	}
+	listed := []map[string]any{tool("zeta"), tool("alpha"), tool("mid"), tool("beta")}
+	hidden := func(h *sessionHarness) []string {
+		h.host.mu.Lock()
+		defer h.host.mu.Unlock()
+		var names []string
+		for _, registration := range h.host.registrations {
+			if name, exposure, _ := strings.Cut(registration, ":"); exposure == "hidden" {
+				names = append(names, name)
+			}
+		}
+		return names
+	}
+	want := []string{"mcp__docs__zeta", "mcp__docs__alpha", "mcp__docs__mid", "mcp__docs__beta"}
+
+	t.Run("dropped by the server", func(t *testing.T) {
+		var mu sync.Mutex
+		tools := listed
+		h := setupSession(t, extension.McpExposureDirect, func() []map[string]any {
+			mu.Lock()
+			defer mu.Unlock()
+			return tools
+		}, setupOptions{})
+		h.start()
+		mu.Lock()
+		tools = []map[string]any{}
+		mu.Unlock()
+		if err := h.serverTransport().Send(mcp.NewNotification("notifications/tools/list_changed", nil)); err != nil {
+			t.Fatal(err)
+		}
+		waitFor(t, "the tools to be hidden", func() bool { return len(hidden(h)) >= len(want) })
+		if got := hidden(h); !slices.Equal(got, want) {
+			t.Fatalf("hidden in order %v, want %v", got, want)
+		}
+	})
+
+	t.Run("disabled", func(t *testing.T) {
+		configPath := filepath.Join(t.TempDir(), "mcp.json")
+		if err := os.WriteFile(configPath, []byte(`{"mcpServers":{"docs":{"url":"http://unused.invalid"}}}`), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		h := setupSession(t, extension.McpExposureDirect, func() []map[string]any { return listed }, setupOptions{configPath: configPath})
+		h.start()
+		if failed := h.ext.SetEnabled(h.ctx, "docs", false); failed != "" {
+			t.Fatal(failed)
+		}
+		if got := hidden(h); !slices.Equal(got, want) {
+			t.Fatalf("hidden in order %v, want %v", got, want)
+		}
+	})
+}
+
+// upstream mcp/resources.ts jsonResult and read: the listing is `JSON.stringify(payload)` and the structured content the
+// object JSON.parse made of the server's entries, so integer-like keys come first, numbers and strings take
+// JSON.stringify's form, and `<`, `&` and `>` are not escaped. Expected values are node's output for the same JSON.
+func TestAgentSessionMCPResourceToolsWriteTheServersEntriesAsJSONStringifyDoes(t *testing.T) {
+	h := setupSession(t, extension.McpExposureDirect, nil, setupOptions{resources: true, raw: map[string]string{
+		"resources/list":           `{"resources":[{"uri":"docs://a", "x": { "k" : [1, 2.0] }, "2":"two", "1":"one", "d":"\u00e9<&>", "e": 1e2, "_meta":{"a":1}}]}`,
+		"resources/templates/list": `{"resourceTemplates":[]}`,
+		"resources/read":           `{"contents":[{"text":"<hello>","uri":"docs://a", "10":0, "y": { "z" : 1.50 }, "_meta":{}}]}`,
+	}})
+	h.start()
+	listed, err := h.execute(t, "list_mcp_resources", `{"server":"docs"}`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := `{"server":"docs","resources":[{"1":"one","2":"two","server":"docs","uri":"docs://a","x":{"k":[1,2]},"d":"é<&>","e":100,"name":"docs://a"}]}`
+	if got := textOfResult(t, listed); got != want {
+		t.Fatalf("text\n got %s\nwant %s", got, want)
+	}
+	if got := string(listed.StructuredContent); got != want {
+		t.Fatalf("structured content\n got %s\nwant %s", got, want)
+	}
+	read, err := h.execute(t, "read_mcp_resource", `{"server":"docs","uri":"docs://a"}`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want = `{"server":"docs","uri":"docs://a","contents":[{"10":0,"text":"<hello>","uri":"docs://a","y":{"z":1.5}}]}`
+	if got := string(read.StructuredContent); got != want {
+		t.Fatalf("read\n got %s\nwant %s", got, want)
+	}
+}
+
+// upstream mcp/resources.ts stringArgument: `value.trim() || undefined`, so a BOM around the server name is dropped.
+func TestAgentSessionMCPResourceToolsTrimServerArgumentsLikeJavaScript(t *testing.T) {
+	h := setupSession(t, extension.McpExposureDirect, nil, setupOptions{resources: true})
+	h.start()
+	listed, err := h.execute(t, "list_mcp_resources", `{"server":"\uFEFFdocs\uFEFF"}`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := textOfResult(t, listed); !strings.HasPrefix(got, `{"server":"docs","resources":[`) {
+		t.Fatalf("listed %s", got)
+	}
+}
+
+// A zero startup wait still lets servers that are already connected win: Promise.all over settled ready promises resolves in a
+// microtask, before the setTimeout(..., 0) macrotask (index.ts:1047-1052), so the first prompt does not notify. Go's select picks at
+// random between a closed ready channel and a fired timer, so the run repeats to catch a nondeterministic notification.
+func TestAgentSessionMCPZeroStartupWaitDoesNotNotifyForAConnectedServer(t *testing.T) {
+	for range 40 {
+		h := setupSlow(t, slowConfig{exposure: extension.McpExposureDirect, startupWait: new(0)}, 0)
+		within(t, "the startup connection", 5*time.Second, h.ext.Pending)
+		if !toolRegistered(h.host, "mcp__slow__search") {
+			t.Fatal("precondition: the server connected and registered its tools")
+		}
+
+		within(t, "before_agent_start", 5*time.Second, h.prompt)
+
+		if got := h.notes.all(); len(got) != 0 {
+			t.Fatalf("notifications = %q, want none for a server that is already connected", got)
+		}
 	}
 }

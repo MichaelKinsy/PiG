@@ -95,6 +95,8 @@ build:
 | `discovery` | Permit or reject ambient workspace and user Resources. |
 | `secrets` | Declare logical secret requirements without storing values. |
 | `agentEnv` | Require an image, Dev Container, or typed environment source. |
+| `slots` | Replace a part of PiG with a fused Go member. `frontend` is the only slot (D91); see [Piglet Binaries](piglet-binaries.md#frontend-members). |
+| `strip` | Strip built-in tools, slash commands, built-in extensions, model APIs, and features; a Piglet Binary compiles most of them out (D92). |
 | `release` | Set release identity. |
 | `build` | Set portable Binary target, output, and realization requirements. |
 
@@ -143,6 +145,115 @@ extensions:
 Root `tools` restricts built-in tools only, so this role cannot write, edit, or run bash. Extension tools are listed per extension under `extensions[].tools`; here the active tools are exactly `read` and `web_search`.
 
 Command-line and platform policy can narrow these lists. They do not silently widen a Piglet.
+
+## Strip built-ins
+
+A Piglet can disable PiG built-ins with `strip` (D92). Pi has no equivalent; a Stock PiG run without a Piglet strip list is unchanged.
+
+`slots` and `strip` are one model. Every part of PiG a Piglet can change is a slot, and a Piglet does one of three things with it: it keeps PiG's own part (the default), replaces it with a fused member under `slots` (today only `frontend`, D91), or strips it under `strip`. Both inherit down the `extends` chain and both come off with `extends.remove`: `remove.slots` restores PiG's part, and `remove.strip` re-enables a stripped built-in.
+
+```yaml
+name: lean-reviewer
+tools: [read, grep, find, ls, bash]
+strip:
+  tools: [bash]
+  commands: [/share, /export]
+  extensions: [mcp, codemode]
+  features: [themes, experimental-server]
+```
+
+Each entry is a stable ID. The IDs come from a generated table (`internal/pigstrip/ids_generated.go`) that `make generate` rebuilds from the registrations, so an unknown or renamed ID fails when the Piglet resolves, and the error names the ID.
+
+| List | IDs | Effect |
+|---|---|---|
+| `tools` | built-in tool names: `bash`, `edit`, `find`, `grep`, `ls`, `powershell`, `read`, `write` | The tool joins the `--exclude-tools` denylist. It leaves the tool registry, the active tools, and the system prompt. The effective built-in set is root `tools` minus `strip.tools`. An extension tool with the same name is excluded too. |
+| `commands` | built-in slash commands with the leading slash, for example `/share`, and the active Piglet's `/piglet` | The command leaves the command registry and autocomplete; a stripped `/piglet` also leaves RPC `get_commands` and an extension's `getCommands`. Typed text such as `/share` goes to the model like any unknown slash command, so an extension can register the name. |
+| `extensions` | built-in extensions: `codemode`, `llama.cpp`, `mcp`, `pig-login`, `tool-search` | The extension does not load: a settings entry or `-e builtin:<name>` is dropped silently, as Pi's `--no-mcp` drops MCP. A stripped `llama.cpp` starts no llama host. A stripped `mcp` makes no Radius MCP offer after a Radius `/login`. A Binary compiles each one out; `pig mcp` in a Binary without MCP reports the strip. |
+| `apis` | `bedrock-converse-stream`, `google-vertex`, `mistral-conversations` | The API's models are offered nowhere: not by `--list-models`, `/model` and the model selector, model cycling, the `--models` scope, the startup default model, RPC `get_available_models`, or an extension's model registry. `--model` or `--provider` naming one, and building one, fail with the strip message: `Provider amazon-bedrock: API bedrock-converse-stream is stripped from this Piglet (strip.apis: bedrock-converse-stream)`. A Binary compiles the implementation out (for Bedrock, the whole AWS SDK). |
+| `features` | `themes`, `skills`, `prompt-templates`, `experimental-server`, `node-extensions`, `extension-sdk-go`, `extension-sdk-rust`, `extension-sdk-python`, `syntax-highlight`, `word-dictionaries`, `mermaid`, `export-html`, `self-update`, `changelog`, `docs`, `piglet-builder` | `themes`, `skills`, and `prompt-templates` turn on Pi's `--no-themes`, `--no-skills`, and `--no-prompt-templates` and drop `--theme`, `--skill`, and `--prompt-template` paths; a Piglet cannot strip `skills` and also declare `skills` entries. `experimental-server` leaves `server` and `client` to the stable CLI. `node-extensions` and the `extension-sdk-*` IDs remove the runtime for TypeScript and JavaScript extensions and the SDKs for Go, Rust and Python source extensions; such an extension then fails to load with a strip message, and a Piglet cannot strip a runtime its own extensions need. `syntax-highlight` renders code blocks without token colors, `word-dictionaries` treats a run of CJK, Thai, Lao, Khmer or Burmese text as one word, `mermaid` leaves mermaid fences raw. `export-html`, `self-update`, `docs` and `piglet-builder` make HTML export, `pig update self`, `pig docs` and `pig piglet build`/`publish` report the strip; `docs` also drops the docs section of the system prompt. `changelog` removes `/changelog` and the startup What's New notice. |
+
+A Piglet can't strip every tool and `/quit`. Stripping `/quit` alone is allowed, since Ctrl+D and a double Ctrl+C still exit, and so is stripping every built-in tool alone, which makes a chat-only Piglet. A strip list that names every built-in tool and `/quit` together, on its own or through its `extends` chain, fails when the Piglet resolves, so `pig piglet validate`, `pig piglet build` and `pig --piglet` refuse it:
+
+```text
+strip.tools and strip.commands: a Piglet can't strip every tool and /quit (strip.tools: bash, edit, find, grep, ls, powershell, read, write; strip.commands: /quit); keep at least one tool or /quit
+```
+
+### Keep mode
+
+A list under `strip.keep` turns that list around: it names the built-ins that stay, and every other ID of that list is stripped, including the IDs a later PiG adds. Use keep mode for a minimal base that should stay minimal as PiG and Pi gain built-ins; use the deny lists above for a Piglet that should take up new built-ins.
+
+```yaml
+name: pig-core
+strip:
+  commands: [/share]              # deny mode: strip these
+  keep:                           # keep mode: strip everything else in the list
+    tools: [read, bash, edit, write]
+    extensions: []                # no built-in extension, now or later
+```
+
+- One list is in deny mode or in keep mode in one Piglet file, never both: `strip.tools` and `strip.keep.tools` together fail.
+- `strip.keep` has no `keep` of its own, and keep IDs come from the same table as deny IDs, so an unknown or renamed keep ID fails and the error names it (`strip.keep.extensions[0]: unknown extension ID ...`).
+- `keep.<list>: []` keeps nothing from that list. A keep list with no value (`extensions:` alone) fails instead of keeping everything: write `[]`.
+- PiG expands keep mode when the Piglet resolves, against the strip table of the PiG that runs it: the stripped IDs are the list's IDs minus the kept ones. Everything after that (the runtime strip, a Binary's build tags, the record, `pig piglet show`) works on the expanded list, and the floor below holds for it: `keep.tools: []` with `commands: [/quit]` fails.
+- `strip.keep.tools` removes the other tools from the registry and the prompt. The root `tools:` allow-list only narrows the active set.
+
+Strip lists merge down the `extends` chain list by list:
+
+| Base | Child | Result | Widening? |
+|---|---|---|---|
+| deny `D` | `strip.<list>: [x]` | deny `D` and `x` | no |
+| keep `K` | `strip.<list>: [x]` | keep `K` without `x` | no |
+| keep `K` | `keep.<list>: K2` | keep `K2`; naming an ID outside `K` fails and points to `extends.remove.strip` | no |
+| deny `D` | `keep.<list>: K2` | keep `K2`; naming an ID in `D` fails the same way | no |
+| keep `K` | `extends.remove.strip.<list>: [x]` | keep `K` and `x` | yes: needs `extends.allowWiden: true` |
+| keep `K` | nothing for the list | keep `K`; IDs a later PiG adds stay stripped down the whole chain | no |
+
+A child can't return a keep-mode list to deny mode, because that would let in every built-in a later PiG adds. `extends.remove.strip.keep.<list>` fails and names the list; re-enable single IDs with `extends.remove.strip.<list>` instead.
+
+### Inheritance and `pig piglet show`
+
+Deny lists union down the `extends` chain. A child adds entries with its own `strip`. To re-enable an inherited entry, in either mode, name it under `extends.remove.strip` and set `extends.allowWiden: true`; without `allowWiden`, resolution fails with a capability widening error.
+
+```yaml
+name: reviewer-with-shell
+extends:
+  source: local:./lean-reviewer.yaml
+  allowWiden: true
+  remove:
+    strip:
+      tools: [bash]
+```
+
+`pig piglet show` lists the changed slots in one `Slots` section, each named by its manifest path. A keep-mode list shows its kept IDs above the expanded rows:
+
+```text
+Slots:
+  frontend  replaced(/work/pig-tern/frontend)
+  extensions  keep([])
+  tools.bash  stripped(runtime)
+  commands./share  stripped(runtime)
+  extensions.codemode  stripped(binary)
+  extensions.llama.cpp  stripped(binary)
+  extensions.mcp  stripped(binary)
+  extensions.pig-login  stripped(binary)
+  extensions.tool-search  stripped(binary)
+```
+
+Each stripped ID shows the disposition its Piglet Binary gives it: `stripped(binary)` when the Binary does not link the built-in at all, `stripped(runtime)` when it stays compiled in and is disabled at startup. Tools, commands, `themes`, `skills` and `prompt-templates` are runtime; every other ID is binary. When Stock PiG runs the Piglet, it disables every entry at runtime with the same message or fallback, except that the CLI subcommands (`pig docs`, `pig piglet build`, `pig update`, `--export`) are only removed in the Binary.
+
+`strip.tools` names exact built-in tool IDs. It takes no `*` patterns: MCP tool names depend on the servers a user configures and cannot be checked when the Piglet resolves. To drop MCP tools, strip `extensions: [mcp]`.
+
+### Strip delta report
+
+When PiG has built a Binary of the Piglet before, `pig piglet build` and `pig piglet show` compare the strip table of the running PiG with the one that Binary was built against (its record keeps it) and print what changed:
+
+```text
+Strip table: PiG 0.4.2 → 0.4.3 adds 3 built-in IDs
+  left out (keep mode):     extensions.memory, features.voice
+  now included (deny mode): commands./plan
+```
+
+"Left out" lists the new IDs a keep-mode list strips; "now included" lists the new IDs a deny-mode list leaves enabled. With no new IDs the report is one line, `Strip table: PiG 0.4.2 → 0.4.3 adds no built-in IDs`. It prints on every build, before the build runs, and `--json` output carries it as `stripDelta`. `pig piglet show` without `--effective` reads the list modes of a child Piglet from the record, since the child's file alone does not state its base's keep mode.
 
 ## Discovery
 
@@ -263,7 +374,7 @@ An active Piglet adds a read-only command:
 /piglet
 ```
 
-Bare Stock PiG does not register this command because no Piglet is active.
+Bare Stock PiG does not register this command because no Piglet is active. A Piglet that strips it (`strip.commands: [/piglet]`) runs without it, so typed `/piglet` goes to the model like any unknown slash command, as in Pi.
 
 Select a different Piglet in a separate `pig` invocation. Piglets do not bind existing session history to one composition. New work in a resumed session uses the current invocation's tools, policy, secrets, and environment.
 

@@ -14,6 +14,7 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -61,6 +62,7 @@ func TestShellExecutesCommandsInCwdWithEnvOverrides(t *testing.T) {
 	}
 }
 
+// mutation-checked: dropping the reads and writes of ShellExecOptions.Env fails it
 func TestShellAppliesStringShellEnvironmentOverrides(t *testing.T) {
 	cases := []struct {
 		description string
@@ -88,6 +90,9 @@ func TestShellAppliesStringShellEnvironmentOverrides(t *testing.T) {
 	}
 }
 
+// mutation-checked: dropping the reads and writes of ShellExecOptions.InheritEnv fails it
+// Pi: packages/durable/src/env/index.ts:254 (inheritEnv)
+// packages/durable/src/env/index.ts:254: ShellExecOptions.inheritEnv false replaces the default environment.
 func TestShellCanReplaceRatherThanInheritTheDefaultShellEnvironment(t *testing.T) {
 	const inheritedKey, configuredKey, explicitKey = "PI_NODE_ENV_INHERITED_TEST", "PI_NODE_ENV_CONFIGURED_TEST", "PI_NODE_ENV_EXPLICIT_TEST"
 	t.Setenv(inheritedKey, "host")
@@ -169,6 +174,7 @@ func killRecordedProcess(pidFile string) {
 	_ = killProcessTree(pid)
 }
 
+// packages/durable/src/env/node.ts:1221 cleanup kills the process tree of every active child and clears the set, so a running exec settles as a result rather than an error.
 func TestShellCleanupTerminatesActiveShellProcesses(t *testing.T) {
 	env, _ := newTestEnv(t)
 	type outcome struct {
@@ -187,7 +193,8 @@ func TestShellCleanupTerminatesActiveShellProcesses(t *testing.T) {
 		}
 		time.Sleep(10 * time.Millisecond)
 	}
-	mustDo(t, env.Cleanup(background))
+	var shell durableenv.Shell = env
+	mustDo(t, shell.Cleanup(background))
 	select {
 	case got := <-done:
 		// Upstream: the killed shell settles as a result, not an error.
@@ -208,6 +215,29 @@ func TestShellStreamsCombinedStdoutAndStderr(t *testing.T) {
 	}
 	if !strings.Contains(output, "out") || !strings.Contains(output, "err") {
 		t.Fatalf("output = %q", output)
+	}
+}
+
+// ShellOutputInfo.stream (packages/durable/src/env/types.ts) names the stream each OnOutput chunk came from; the Go port labels chunks the same way.
+// mutation-checked: dropping the reads and writes of ShellExecOptions.OnOutput, ShellOutputInfo.Stream fails it
+// Pi: packages/durable/src/env/index.ts:257 (stream)
+// packages/durable/src/env/index.ts:298: ShellOutputInfo.stream is "stdout" or "stderr".
+func TestShellOutputInfoNamesTheStreamOfEachChunk(t *testing.T) {
+	env, _ := newTestEnv(t)
+	var mu sync.Mutex
+	streams := map[durableenv.ShellStream]string{}
+	_, err := env.Exec(background, "printf out; sleep 0.1; printf err >&2", &durableenv.ShellExecOptions{
+		OnOutput: func(_ context.Context, text string, info durableenv.ShellOutputInfo) {
+			mu.Lock()
+			defer mu.Unlock()
+			streams[info.Stream] += text
+		},
+	})
+	mustDo(t, err)
+	mu.Lock()
+	defer mu.Unlock()
+	if streams[durableenv.ShellStdout] != "out" || streams[durableenv.ShellStderr] != "err" || len(streams) != 2 {
+		t.Fatalf("chunks by stream = %v, want stdout=out and stderr=err", streams)
 	}
 }
 
@@ -238,6 +268,7 @@ func TestShellReturnsNonZeroCommandExitCodesAsSuccessfulExecutionResults(t *test
 }
 
 // Regression test for https://github.com/earendil-works/pi/issues/8992
+// mutation-checked: dropping the reads and writes of ShellExecResult.ExitCode fails it
 func TestShellMapsSignalKilledProcessesToANonZeroExitCode(t *testing.T) {
 	skipOnWindows(t)
 	env, _ := newTestEnv(t)
@@ -323,6 +354,7 @@ func TestShellReturnsAnAbortedResultForPreAbortedAndAbortedCommands(t *testing.T
 // must be consumed. Go's Start returns that failure synchronously and every
 // caller of killProcessTree discards it.
 
+// packages/durable/src/env/index.ts:240-248: ShellSpillOptions.afterBytes and afterLines start the spill, and the result carries spillPath.
 func TestShellDoesNotCreateASpillBeforeOutputCrossesItsThresholds(t *testing.T) {
 	env, _ := newTestEnv(t)
 	result := must(env.Exec(background, "printf short", &durableenv.ShellExecOptions{Spill: &durableenv.ShellSpillOptions{AfterBytes: 100, AfterLines: 10}}))
@@ -349,6 +381,8 @@ func TestShellPreservesExactRawBytesInTheSpillWhileStreamingDecodedText(t *testi
 	}
 }
 
+// mutation-checked: dropping the reads and writes of ExecutionError.SpillPath fails it
+// Pi: packages/durable/src/env/index.ts:68 (spillPath)
 func TestShellReportsTheSpillOfACommandThatTimesOut(t *testing.T) {
 	env, _ := newTestEnv(t)
 	_, err := env.Exec(background, "printf 12345678901234567890; sleep 5", &durableenv.ShellExecOptions{Timeout: new(0.3), Spill: &durableenv.ShellSpillOptions{AfterBytes: 10, AfterLines: 10}})
@@ -374,6 +408,7 @@ func (env *failingSpillEnv) CreateTempFile(ctx context.Context, options *durable
 	return env.NodeExecutionEnv.CreateTempFile(ctx, options)
 }
 
+// packages/durable/src/env/index.ts:240-248: ShellSpillOptions.afterBytes and afterLines start the spill, and the result carries spillPath.
 func TestShellFailsRatherThanSilentlyLosingARequestedSpill(t *testing.T) {
 	env := &failingSpillEnv{NewNodeExecutionEnv(NodeExecutionEnvOptions{Cwd: t.TempDir()})}
 	env.Self = env
@@ -384,6 +419,7 @@ func TestShellFailsRatherThanSilentlyLosingARequestedSpill(t *testing.T) {
 	}
 }
 
+// packages/durable/src/env/index.ts:240-248: ShellSpillOptions.afterBytes and afterLines start the spill, and the result carries spillPath.
 func TestShellPreservesCompleteLargeOutputInTheSpill(t *testing.T) {
 	env, _ := newTestEnv(t)
 	const size = 500_000
@@ -421,6 +457,12 @@ func TestShellStreamsEveryLineAndSpillsThemAllOnceOutputCrossesItsLineThreshold(
 // Not upstream cases: they pin node.ts's line count of "complete or partial
 // lines" (a final line without a newline counts; a trailing newline does not
 // start another) and the final decoder flush.
+// mutation-checked: dropping the reads and writes of ShellExecOptions.Spill, ShellExecResult.SpillPath, ShellSpillOptions.AfterBytes, ShellSpillOptions.AfterLines fails it
+// Pi: packages/durable/src/env/index.ts:67 (spill)
+// Pi: packages/durable/src/env/index.ts:68 (spillPath)
+// Pi: packages/durable/src/env/index.ts:240 (afterBytes)
+// Pi: packages/durable/src/env/index.ts:242 (afterLines)
+// packages/durable/src/env/index.ts:240-248: ShellSpillOptions.afterBytes and afterLines start the spill, and the result carries spillPath.
 func TestShellCountsAPartialFinalLineAgainstTheSpillLineThreshold(t *testing.T) {
 	env, _ := newTestEnv(t)
 	spill := &durableenv.ShellExecOptions{Spill: &durableenv.ShellSpillOptions{AfterBytes: 1024, AfterLines: 2}}

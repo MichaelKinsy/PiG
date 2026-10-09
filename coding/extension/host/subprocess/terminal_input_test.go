@@ -132,7 +132,7 @@ func TestTerminalInputRequestEndsWithItsContext(t *testing.T) {
 	}()
 	bridge := NewUIBridge(func() {})
 	bridge.SetUIContext(ui)
-	bridge.RegisterExtConn("test-ext", conn)
+	bridge.RegisterExtConn("test-ext", conn, false)
 	if _, err := bridge.handleOnTerminalInput("test-ext", nil); err != nil {
 		t.Fatal(err)
 	}
@@ -161,7 +161,7 @@ func TestTerminalInputResubscribeRetiresTheEarlierListener(t *testing.T) {
 
 	restarted, _ := net.Pipe()
 	defer func() { _ = restarted.Close() }()
-	bridge.RegisterExtConn("test-ext", NewConn("test-ext", restarted))
+	bridge.RegisterExtConn("test-ext", NewConn("test-ext", restarted), false)
 	if _, err := bridge.handleOnTerminalInput("test-ext", nil); err != nil {
 		t.Fatal(err)
 	}
@@ -230,7 +230,7 @@ func newTerminalInputBridgeWithVerdict(t *testing.T, ui extension.UIContext, res
 
 	bridge := NewUIBridge(func() {})
 	bridge.SetUIContext(ui)
-	bridge.RegisterExtConn("test-ext", conn)
+	bridge.RegisterExtConn("test-ext", conn, false)
 	if _, err := bridge.handleOnTerminalInput("test-ext", nil); err != nil {
 		t.Fatalf("handleOnTerminalInput: %v", err)
 	}
@@ -274,6 +274,7 @@ func writeEnvelope(c net.Conn, env *Envelope) error {
 // ordinary key, then unsubscribe. The node shim previously threw on
 // onTerminalInput, so every pi extension reading raw input was dead under pig.
 func TestTerminalInputNodeShimEndToEnd(t *testing.T) {
+	skipWithoutNodeExtensions(t)
 	if testing.Short() {
 		t.Skip("skipping integration test in short mode")
 	}

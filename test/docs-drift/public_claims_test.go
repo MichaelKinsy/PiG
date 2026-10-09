@@ -65,7 +65,7 @@ func TestPublicClaimsCheckAcceptsSupportedStatements(t *testing.T) {
 			"This page does not claim HPE sponsorship or that PiG is sponsored by an Open Source Program Office.\n" +
 			"The ledgers were last reviewed against Pi 9.9.0.\n",
 		// Comments are not user-visible; only string literals are checked.
-		"cmd/pig/help.go": "package main\n\n// This comment may say full parity.\nconst help = \"pig targets Pi 9.9.9\"\n",
+		"coding/cli/help.go": "package main\n\n// This comment may say full parity.\nconst help = \"pig targets Pi 9.9.9\"\n",
 	})
 	if output, err := runPublicClaims(t, root); err != nil {
 		t.Fatalf("supported statements were rejected:\n%s", output)
@@ -79,7 +79,7 @@ func TestPublicClaimsCheckRejectsContradictedStatements(t *testing.T) {
 			"It tracks Pi 9.8.0 and Pi 9.9.0.\n" +
 			"Porting is 352/359 ported (98.1%).\n" +
 			"PiG is sponsored by HPE's Open Source Program Office.\n",
-		"cmd/pig/help.go":          "package main\n\nconst help = `pig\nmirrors every Pi command`\n\nvar desc = \"a drop-in replacement for Pi 9.7.0\"\n",
+		"coding/cli/help.go":       "package main\n\nconst help = `pig\nmirrors every Pi command`\n\nvar desc = \"a drop-in replacement for Pi 9.7.0\"\n",
 		"docs/site/app/strings.ts": "export const tagline = 'PiG is feature-complete';\n",
 	})
 	output, err := runPublicClaims(t, root)
@@ -96,10 +96,50 @@ func TestPublicClaimsCheckRejectsContradictedStatements(t *testing.T) {
 		"98.1% is not a current porting (80.0%) or verification (75.0%) figure",
 		"352/359 is not the current 40/50 porting",
 		"unrecorded claim 'sponsored by'",
-		"cmd/pig/help.go:4: phrase: forbidden phrase 'every Pi command'",
-		"cmd/pig/help.go:6: phrase: forbidden phrase 'drop-in replacement'",
-		"cmd/pig/help.go:6: version: Pi 9.7.0 is not the pinned Pi 9.9.9",
+		"coding/cli/help.go:4: phrase: forbidden phrase 'every Pi command'",
+		"coding/cli/help.go:6: phrase: forbidden phrase 'drop-in replacement'",
+		"coding/cli/help.go:6: version: Pi 9.7.0 is not the pinned Pi 9.9.9",
 		"docs/site/app/strings.ts:1: phrase: forbidden phrase 'feature-complete'",
+	} {
+		if !strings.Contains(output, want) {
+			t.Errorf("output does not report %q:\n%s", want, output)
+		}
+	}
+}
+
+// The generated block states the per-scope and per-package figures as well as the headline;
+// prose may quote any of them and nothing else. Each figure below appears in exactly one
+// place of the block, so dropping the scope lines, the package rows or the behavioral
+// side of either fails, and figures after the END marker are not part of the block.
+func TestPublicClaimsCheckAcceptsEveryFigureOfTheGeneratedBlock(t *testing.T) {
+	agents := "<!-- BEGIN COVERAGE -->\n**Porting:** 40 / 50 intended-portable entries ✅ (80.0%); **Verification:** 30 behavioral (75.0%), 10 untested.\n\n" +
+		"| package | src files | n/a | intended | ✅ | 🟡 | ⬜ | ported | behavioral |\n|---|---:|---:|---:|---:|---:|---:|---:|---:|\n" +
+		"| `core` | 20 | 2 | 18 | 15 | 3 | 0 | 83.3% | 60.0% |\n" +
+		"| `edge` | 15 | 3 | 12 | 7 | 5 | 0 | 58.3% | 42.9% |\n\n" +
+		"- **Core packages (core, edge):** 22 / 30 intended-portable files ✅ (73.3%) from 35 rows; 12 behavioral (54.5%), 1 weak-only, 9 untested.\n" +
+		"<!-- END COVERAGE -->\n\n" +
+		"| `stale` | 12 | 0 | 12 | 11 | 1 | 0 | 91.7% | 91.7% |\n" +
+		"- **Stale scope:** 11 / 12 intended-portable files ✅ (91.7%) from 12 rows; 10 behavioral (90.9%), 0 weak-only, 1 untested.\n"
+	root := writeClaimsFixture(t, map[string]string{
+		"AGENTS.md": agents,
+		"docs/site/docs/index.md": "Core packages: 22/30 ported (73.3%), 12/22 ported verified (54.5%).\n" +
+			"The core package is 83.3% ported and 60.0% verified; edge is 58.3% ported and 42.9% verified.\n" +
+			"The whole port is 40/50 (80.0%).\n",
+	})
+	if output, err := runPublicClaims(t, root); err != nil {
+		t.Fatalf("figures of the generated block were rejected:\n%s", output)
+	}
+	root = writeClaimsFixture(t, map[string]string{
+		"AGENTS.md":               agents,
+		"docs/site/docs/index.md": "Core packages: 16/18 ported (88.8%).\nThe stale scope: 11/12 ported (91.7%), 90.9% verified.\n",
+	})
+	output, err := runPublicClaims(t, root)
+	if err == nil {
+		t.Fatalf("a figure the block does not state passed:\n%s", output)
+	}
+	for _, want := range []string{
+		"88.8% is not a current porting", "16/18 is not the current 40/50 porting",
+		"91.7% is not a current porting", "90.9% is not a current porting", "11/12 is not the current 40/50 porting",
 	} {
 		if !strings.Contains(output, want) {
 			t.Errorf("output does not report %q:\n%s", want, output)
@@ -186,15 +226,15 @@ func TestPublicClaimsCheckRejectsUndocumentedPigletCommandsOutsidePlannedSection
 
 func TestPublicClaimsGoLexicalBoundaries(t *testing.T) {
 	root := writeClaimsFixture(t, map[string]string{
-		"cmd/pig/help.go": "package main\n/* \"full parity\"\n`every Pi command` */\n// \"same requests\"\nvar quote = '\"'\nvar slash = '/'\nconst text = \"https://example.test/\\\" full parity\"\nconst raw = `https://example.test/\nevery Pi command`\n",
+		"coding/cli/help.go": "package main\n/* \"full parity\"\n`every Pi command` */\n// \"same requests\"\nvar quote = '\"'\nvar slash = '/'\nconst text = \"https://example.test/\\\" full parity\"\nconst raw = `https://example.test/\nevery Pi command`\n",
 	})
 	output, err := runPublicClaims(t, root)
 	if err == nil {
 		t.Fatalf("claims hidden by lexical boundaries passed: %s", output)
 	}
 	for _, want := range []string{
-		"cmd/pig/help.go:7: phrase: forbidden phrase 'full parity'",
-		"cmd/pig/help.go:9: phrase: forbidden phrase 'every Pi command'",
+		"coding/cli/help.go:7: phrase: forbidden phrase 'full parity'",
+		"coding/cli/help.go:9: phrase: forbidden phrase 'every Pi command'",
 	} {
 		if !strings.Contains(output, want) {
 			t.Errorf("missing %q in %s", want, output)

@@ -1,0 +1,57 @@
+# Behavior family: slash-commands
+# Surface: the `mcp_servers` prompt section reaches the transcript in interactive mode (extensions/mcp/index.ts before_agent_start,
+# core/agent-session.ts prompt)
+#
+# Upstream evidence (pinned pi 1.1.0): the agent directory configures one enabled stdio server with a description (`sleep 300`,
+# which never answers `initialize`) and codemode exposure. The first prompt's system message holds the sections the run
+# was built from, `mcp_servers` last. testdata/mcp-prompt-section.ts reports the section names of the session's system
+# messages through `/mcp-section`. The crop is that report. The comparator is output_equal.
+
+# Mutation (compiling): beginRunPrompt not publishing the run to the Session (internal/codingagent/interactive_run_prompt.go
+# publishRunPrompt) fails this scenario: PiG's system message lacks `mcp_servers`, as before the fix.
+name = "22-mcp-servers-section-in-transcript"
+description = "Both binaries record the mcp_servers prompt section in the first system message of an interactive session."
+covers = [
+  "packages/coding-agent/src/extensions/mcp/index.ts",
+]
+tags = ["fast", "hermetic", "tui"]
+driver = "interactive-tmux"
+model = "test-faux/faux-1"
+
+[tmux]
+width = 100
+height = 35
+ready_pattern_pig = "[Context]"
+ready_pattern_pi = "[Context]"
+ready_timeout_seconds = 25
+capture_start = "mcp-section:"
+capture_end = "mcp-section-end"
+capture_start_last = true
+
+[[tmux.steps]]
+keys = ["hello", "Enter"]
+wait_contains = ["hello"]
+wait_timeout_seconds = 15
+settle_seconds = 3
+
+[[tmux.steps]]
+keys = ["/mcp-section", "Enter"]
+wait_contains = ["mcp-section-end"]
+wait_timeout_seconds = 10
+settle_seconds = 1
+
+[env]
+override_base_args = true
+pig = ["PIG_TEST_FAUX=1", "PIG_CODING_AGENT_DIR=testdata/mcp-slow-pig-agent"]
+pi = ["PI_CODING_AGENT_DIR=testdata/mcp-slow-pi-agent", "PI_SKIP_VERSION_CHECK=1"]
+pig_args = ["--session-dir", "{{TEMP}}/sessions"]
+pi_args = ["--session-dir", "{{TEMP}}/sessions"]
+pig_extensions = ["../../testdata/mcp-prompt-section.ts"]
+pi_extensions = ["../../testdata/test-faux-provider.ts", "../../testdata/mcp-prompt-section.ts"]
+
+[assert]
+both_reach_ready = true
+both_contain = ["mcp_servers"]
+both_not_contain = ["unknown command", "panic:", "goroutine "]
+output_equal = true
+runs = 3

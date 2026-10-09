@@ -44,7 +44,7 @@ func (h *altHarness) send(inputs ...string) {
 		if h.tui.HandleViewportInput(data) || h.tui.HandleFocusedSearchInput(data) {
 			continue
 		}
-		if focused, ok := h.tui.FocusedComponent().(InputHandler); ok && ShouldDeliverKey(h.tui.FocusedComponent(), data) {
+		if focused, ok := h.tui.GetFocusedComponent().(InputHandler); ok && ShouldDeliverKey(h.tui.GetFocusedComponent(), data) {
 			focused.HandleInput(data)
 		}
 	}
@@ -90,7 +90,7 @@ func columnOf(row, needle string, last bool) int {
 }
 
 func transcriptOverDock(transcript Component, dock Component, dockBasis *int) *VStack {
-	return NewVStack([]StackChild{
+	return NewVStack([]StackEntry{
 		{Component: transcript, StackEntryOptions: StackEntryOptions{Basis: new(0), Grow: new(1), MinSize: new(1)}},
 		{Component: dock, StackEntryOptions: StackEntryOptions{Basis: dockBasis, Shrink: new(0), MinSize: new(1)}},
 	}, StackOptions{})
@@ -217,7 +217,7 @@ func TestAltScreenAltWheelScrollsFaster(t *testing.T) {
 func TestAltScreenDoesNotRedispatchMissesThroughHorizontalLayouts(t *testing.T) {
 	h := newAltHarness(t, 20, 2, TuiAltScreenOptions{})
 	list := &mouseProbe{lines: []string{"A", "B"}, result: &TuiMouseEventResult{Handled: true}}
-	h.tui.SetLayoutRoot(NewHStack([]StackChild{
+	h.tui.SetLayoutRoot(NewHStack([]StackEntry{
 		{Component: list, StackEntryOptions: StackEntryOptions{Basis: new(10)}},
 		{Component: NewText("plain"), StackEntryOptions: StackEntryOptions{Basis: new(10)}},
 	}, StackOptions{}))
@@ -892,7 +892,7 @@ func TestAltScreenFocusesAndCapturesMouseAwareComponents(t *testing.T) {
 	if !slices.Equal(events, []TuiMouseEventType{MousePress, MouseDrag, MouseRelease}) {
 		t.Fatalf("events = %v", events)
 	}
-	if h.tui.FocusedComponent() != component {
+	if h.tui.GetFocusedComponent() != component {
 		t.Fatal("a focus result focuses the component")
 	}
 }
@@ -962,7 +962,7 @@ func TestAltScreenFocusedOverlayOwnsWheelAndKeys(t *testing.T) {
 	h.start()
 	topBefore := h.tui.ViewportTop()
 	overlay := &inputRecorder{lines: []string{"overlay"}}
-	handle := h.tui.OpenOverlay(overlay, OverlayOptions{})
+	handle := h.tui.ShowOverlay(overlay, OverlayOptions{})
 	h.render()
 	keys := []string{"\x1b[5~", "\x1b[6~", "\x1bOH", "\x1bOF", "\x1b[<64;10;3M"}
 	h.send(keys...)
@@ -985,12 +985,12 @@ func TestAltScreenUnfocusedOverlaysKeepViewportScrolling(t *testing.T) {
 	h.tui.SetFocus(editor)
 	h.start()
 	topBefore := h.tui.ViewportTop()
-	hidden := h.tui.OpenOverlay(&inputRecorder{lines: []string{"hidden"}}, OverlayOptions{})
+	hidden := h.tui.ShowOverlay(&inputRecorder{lines: []string{"hidden"}}, OverlayOptions{})
 	hidden.setHidden(true)
 	nonCapturing := &inputRecorder{lines: []string{"non-capturing"}}
-	h.tui.OpenOverlay(nonCapturing, OverlayOptions{nonCapturing: true})
+	h.tui.ShowOverlay(nonCapturing, OverlayOptions{nonCapturing: true})
 	unfocused := &inputRecorder{lines: []string{"unfocused"}}
-	h.tui.OpenOverlay(unfocused, OverlayOptions{}).unfocus()
+	h.tui.ShowOverlay(unfocused, OverlayOptions{}).unfocus()
 	h.render()
 	h.send("\x1b[5~", "\x1b[<64;10;3M")
 	if h.tui.ViewportTop() >= topBefore || len(nonCapturing.inputs) != 0 || len(unfocused.inputs) != 0 {
@@ -1007,11 +1007,11 @@ func TestAltScreenDelegatingOverlayKeepsFocusOnNestedInputClick(t *testing.T) {
 	input.SetText("hi")
 	overlay := &delegatingOverlay{Container: NewContainer(input), input: input}
 	h.start()
-	h.tui.OpenOverlay(overlay, OverlayOptions{anchor: overlayTopLeft, width: overlayCells(20)})
+	h.tui.ShowOverlay(overlay, OverlayOptions{anchor: overlayTopLeft, width: overlayCells(20)})
 	h.render()
 	h.send("\x1b[<0;5;1M", "\x1b[<0;5;1m", "!")
-	if input.Text() != "hi!" || h.tui.FocusedComponent() != overlay {
-		t.Fatalf("value=%q focused=%v", input.Text(), h.tui.FocusedComponent())
+	if input.Text() != "hi!" || h.tui.GetFocusedComponent() != overlay {
+		t.Fatalf("value=%q focused=%v", input.Text(), h.tui.GetFocusedComponent())
 	}
 }
 
@@ -1039,4 +1039,35 @@ func (c *funcMouseComponent) HandleMouse(event TuiMouseEvent) *TuiMouseDispatchR
 		return nil
 	}
 	return &TuiMouseDispatchResult{TuiMouseEventResult: *result}
+}
+
+// TestAltScreenCopySelectionResultOutcomes pins the three outcomes of Pi's copySelection result (`boolean | string`, tui-alt-screen.ts:198)
+// carried by CopySelection's error: nil is true ("Copied!"), an error with a non-empty message is that string, and an error with an
+// empty message is false ("Copy failed").
+func TestAltScreenCopySelectionResultOutcomes(t *testing.T) {
+	for _, tc := range []struct {
+		name   string
+		err    error
+		want   string
+		copied bool
+	}{
+		{"true", nil, "Copied!", true},
+		{"string", errors.New("Clipboard unavailable: install wl-clipboard"), "Clipboard unavailable: install wl-clipboard", false},
+		{"false", errors.New(""), "Copy failed", false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			copyOnSelect := false
+			h := newAltHarness(t, 80, 4, TuiAltScreenOptions{CopyOnSelect: &copyOnSelect, CopySelection: func(string) error { return tc.err }})
+			h.tui.Add(NewText("alpha\nbeta\ngamma\ndelta"))
+			h.start()
+			h.send("\x1b[<0;1;1M", "\x1b[<32;4;2M", "\x1b[<0;4;2m")
+			if got := h.tui.CopyActiveSelectionToClipboard(); got != tc.copied {
+				t.Fatalf("copied = %v, want %v", got, tc.copied)
+			}
+			h.render()
+			if !h.viewportHas(tc.want) {
+				t.Fatalf("flash rows = %q, want %q", h.viewport(), tc.want)
+			}
+		})
+	}
 }

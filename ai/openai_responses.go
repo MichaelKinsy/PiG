@@ -31,6 +31,8 @@ type OpenAIResponsesConfig struct {
 	api API
 	// requestModel selects a deployment on the wire without changing logical model identity or replay capabilities.
 	requestModel string
+	// azure resolves the Azure endpoint and deployment per request (NewAzureOpenAIResponsesProvider).
+	azure *azureResponsesEndpoint
 	// BaseURL is the API base (default: https://api.openai.com/v1).
 	BaseURL string
 	// APIKey is the bearer token.
@@ -57,7 +59,6 @@ type OpenAIResponsesConfig struct {
 	// BaseURLIsEndpoint means BaseURL/GetBaseURL already resolves to the
 	// final Responses endpoint and should not have /responses appended.
 	BaseURLIsEndpoint bool
-	forceUserAgent    bool
 	// IsReasoning indicates this model supports extended reasoning.
 	IsReasoning bool
 
@@ -203,9 +204,9 @@ func getPromptCacheOptions(compat responsesCompat, retention string) map[string]
 
 // ─── Request wire types ──────────────────────────────────────────────────────
 
-// respInputItem is one element of the Responses API "input" array.
+// ResponsesInputItem is one element of the Responses API "input" array.
 // Upstream: ResponseInput (union of message | function_call | function_call_output | reasoning).
-type respInputItem struct {
+type ResponsesInputItem struct {
 	// Common
 	Type string `json:"type,omitempty"`
 	Role string `json:"role,omitempty"`
@@ -225,7 +226,7 @@ type respInputItem struct {
 	// For type=tool_search_call / tool_search_output: "client"
 	Execution string `json:"execution,omitempty"`
 	// For type=additional_tools / tool_search_output
-	Tools []respTool `json:"tools,omitempty"`
+	Tools []ResponsesTool `json:"tools,omitempty"`
 
 	// For type=custom_tool_call (grammar tools): the raw string input.
 	Input string `json:"input,omitempty"`
@@ -238,10 +239,10 @@ type respInputItem struct {
 	EncryptedContent json.RawMessage `json:"encrypted_content,omitempty"`
 }
 
-// respTool is one entry of the Responses API "tools" array. A function tool
+// ResponsesTool is one entry of the Responses API "tools" array. A function tool
 // carries parameters (+ strict when the model supports strict mode); a grammar
 // (custom) tool carries a format block instead. Mirrors upstream OpenAITool.
-type respTool struct {
+type ResponsesTool struct {
 	Type        string         `json:"type"` // "function" | "custom"
 	Name        string         `json:"name"`
 	Description string         `json:"description"`
@@ -249,8 +250,8 @@ type respTool struct {
 	// Strict is a tri-state: absent (nil), null, true, or false. The default
 	// varies by provider (generic omits it; codex sends null; strict-mode models
 	// send false), so it is a raw JSON token rather than *bool.
-	Strict json.RawMessage `json:"strict,omitempty"`
-	Format *respToolFormat `json:"format,omitempty"`
+	Strict json.RawMessage      `json:"strict,omitempty"`
+	Format *ResponsesToolFormat `json:"format,omitempty"`
 	// DeferLoading marks a tool loaded by a synthetic tool_search_output.
 	DeferLoading bool `json:"defer_loading,omitempty"`
 }
@@ -261,9 +262,9 @@ type respToolSearchArguments struct {
 	Limit int    `json:"limit"`
 }
 
-// respToolFormat is a grammar (custom) tool's constrained-sampling format.
+// ResponsesToolFormat is a grammar (custom) tool's constrained-sampling format.
 // Mirrors upstream OpenAITool custom.format.
-type respToolFormat struct {
+type ResponsesToolFormat struct {
 	Type       string `json:"type"`   // "grammar"
 	Syntax     string `json:"syntax"` // "lark" | "regex"
 	Definition string `json:"definition"`
@@ -280,7 +281,7 @@ type respRequest struct {
 	Input                json.RawMessage   `json:"input"`
 	Stream               bool              `json:"stream"`
 	Instructions         string            `json:"instructions,omitempty"`
-	Tools                []respTool        `json:"tools,omitempty"`
+	Tools                []ResponsesTool   `json:"tools,omitempty"`
 	ToolChoice           any               `json:"tool_choice,omitempty"`
 	ParallelToolCalls    *bool             `json:"parallel_tool_calls,omitempty"`
 	Text                 map[string]string `json:"text,omitempty"`
@@ -450,12 +451,12 @@ func (p *openAIResponsesProvider) samplingModel(opts StreamOptions) *Model {
 }
 
 // responsesSamplingLevel is the thinking level whose sampling overrides apply: the request effort, else the simple reasoning level, else medium for a summary-only request, else off (openai-responses.ts buildParams).
-func responsesSamplingLevel(opts StreamOptions) ThinkingLevel {
+func responsesSamplingLevel(opts StreamOptions) ModelThinkingLevel {
 	switch {
 	case opts.ReasoningEffort != "":
-		return ThinkingLevel(opts.ReasoningEffort)
-	case opts.Thinking != "" && opts.Thinking != ThinkingOff:
-		return opts.Thinking
+		return ModelThinkingLevel(opts.ReasoningEffort)
+	case opts.Thinking != "":
+		return ModelThinkingLevel(opts.Thinking)
 	case opts.ReasoningSummary != "":
 		return ThinkingMedium
 	}
@@ -467,7 +468,7 @@ func (p *openAIResponsesProvider) resolvedModel() *Model {
 	if p.cfg.ModelMetadata != nil {
 		return p.cfg.ModelMetadata
 	}
-	model := &Model{ID: p.cfg.Model, Capabilities: ModelCapabilities{MaxThinking: ThinkingHigh}}
+	model := &Model{ID: p.cfg.Model, Capabilities: ModelCapabilities{MaxThinking: ThinkingLevelHigh}}
 	if generated, ok := p.resolveResponsesModel(); ok {
 		model = generated.ToModel()
 	}
@@ -543,70 +544,131 @@ func convertResponsesToolResultOutput(content []ToolResultMessageContent, modelS
 	return raw
 }
 
-// instructionRole mirrors upstream convertResponsesMessages instructionRole:
-// developer for reasoning models unless compat sets supportsDeveloperRole
+// ConvertResponsesMessagesOptions mirrors upstream ConvertResponsesMessagesOptions (openai-responses-shared.ts:124).
+type ConvertResponsesMessagesOptions struct {
+	// IncludeSystemPrompt nil is true: the transcript's leading system message becomes the first input item.
+	IncludeSystemPrompt *bool
+	// GrammarToolInputProperties maps a grammar tool's name to the argument property its custom input carries.
+	GrammarToolInputProperties map[string]string
+	// SupportsMidConvoSystemMessages sends later system messages in place; otherwise they fold into the leading prompt.
+	SupportsMidConvoSystemMessages bool
+	SupportsAdditionalTools        bool
+	SupportsToolSearch             bool
+	ToolOptions                    ConvertResponsesToolsOptions
+}
+
+// responsesMessageConverter holds what convertResponsesMessages reads from its model and options.
+type responsesMessageConverter struct {
+	providerID, modelID      string
+	api                      API
+	instructionRole          string
+	supportsImages           bool
+	allowedToolCallProviders map[string]bool
+	options                  ConvertResponsesMessagesOptions
+}
+
+// responsesInstructionRole is upstream's instructionRole: developer for reasoning models unless compat sets supportsDeveloperRole
 // false, otherwise system.
-func (p *openAIResponsesProvider) instructionRole() string {
-	if p.cfg.IsReasoning && (p.cfg.Compat == nil || p.cfg.Compat.SupportsDeveloperRole == nil || *p.cfg.Compat.SupportsDeveloperRole) {
+func responsesInstructionRole(isReasoning bool, supportsDeveloperRole *bool) string {
+	if isReasoning && (supportsDeveloperRole == nil || *supportsDeveloperRole) {
 		return "developer"
 	}
 	return "system"
+}
+
+// instructionRole is the role of a system message's text for this provider.
+func (p *openAIResponsesProvider) instructionRole() string {
+	var supportsDeveloperRole *bool
+	if p.cfg.Compat != nil {
+		supportsDeveloperRole = p.cfg.Compat.SupportsDeveloperRole
+	}
+	return responsesInstructionRole(p.cfg.IsReasoning, supportsDeveloperRole)
+}
+
+// messageConverter is the converter for this provider's configured model and compat flags.
+func (p *openAIResponsesProvider) messageConverter(compat responsesCompat, grammarProps map[string]string) responsesMessageConverter {
+	allowed := responsesToolCallProviders
+	if p.api() == APIAzureOpenAIResponses {
+		allowed = azureToolCallProviders
+	}
+	return responsesMessageConverter{
+		providerID:               p.cfg.ProviderID,
+		modelID:                  p.cfg.Model,
+		api:                      p.api(),
+		instructionRole:          p.instructionRole(),
+		supportsImages:           p.modelSupportsImages(),
+		allowedToolCallProviders: allowed,
+		options: ConvertResponsesMessagesOptions{
+			GrammarToolInputProperties:     grammarProps,
+			SupportsMidConvoSystemMessages: compat.SupportsMidConvoSystemMessages,
+			SupportsAdditionalTools:        compat.SupportsAdditionalTools,
+			SupportsToolSearch:             compat.SupportsToolSearch,
+			ToolOptions:                    p.responsesToolOptions(compat),
+		},
+	}
 }
 
 // systemToolAdditions mirrors upstream appendSystemToolAdditions: when the
 // transcript anchors additions, a later system message's added tools load in
 // place as an additional_tools item, or else as a synthetic client
 // tool_search_call and tool_search_output pair.
-func (p *openAIResponsesProvider) systemToolAdditions(message SystemMessage, seed string, anchorsAdditions bool) ([]respInputItem, error) {
-	compat := getResponsesCompat(p.cfg.Compat, p.cfg.StrictModeDefault)
-	if !anchorsAdditions || len(message.ToolsAdded) == 0 || (!compat.SupportsAdditionalTools && !compat.SupportsToolSearch) {
+func (c responsesMessageConverter) systemToolAdditions(message SystemMessage, seed string, anchorsAdditions bool) ([]ResponsesInputItem, error) {
+	if !anchorsAdditions || len(message.ToolsAdded) == 0 || (!c.options.SupportsAdditionalTools && !c.options.SupportsToolSearch) {
 		return nil, nil
 	}
-	tools, err := p.convertTools(message.ToolsAdded, compat.SupportsStrictMode, compat.SupportsOpenAIGrammarTools)
+	options := c.options.ToolOptions
+	if c.options.SupportsAdditionalTools {
+		tools, err := ConvertResponsesTools(message.ToolsAdded, options)
+		if err != nil {
+			return nil, err
+		}
+		return []ResponsesInputItem{{Type: "additional_tools", Role: "developer", Tools: tools}}, nil
+	}
+	options.ToolSearchResult = true
+	tools, err := ConvertResponsesTools(message.ToolsAdded, options)
 	if err != nil {
 		return nil, err
-	}
-	if compat.SupportsAdditionalTools {
-		return []respInputItem{{Type: "additional_tools", Role: "developer", Tools: tools}}, nil
 	}
 	names := make([]string, len(message.ToolsAdded))
 	for i, tool := range message.ToolsAdded {
 		names[i] = tool.Name
-		tools[i].DeferLoading = true
 	}
-	callID := "pi_tool_load_" + shortHash32(seed+":"+strings.Join(names, ","))
+	callID := "pi_tool_load_" + ShortHash(seed+":"+strings.Join(names, ","))
 	arguments, _ := json.Marshal(respToolSearchArguments{Query: strings.Join(names, " "), Limit: len(names)})
-	return []respInputItem{
+	return []ResponsesInputItem{
 		{Type: "tool_search_call", CallID: callID, Execution: "client", Status: "completed", Arguments: arguments},
 		{Type: "tool_search_output", CallID: callID, Execution: "client", Status: "completed", Tools: tools},
 	}, nil
 }
 
-func (p *openAIResponsesProvider) convertMessages(messages []Message, grammarProps map[string]string) ([]respInputItem, error) {
+func (p *openAIResponsesProvider) convertMessages(messages []Message, grammarProps map[string]string) ([]ResponsesInputItem, error) {
 	return p.convertAnchoredMessages(messages, grammarProps, false)
 }
 
 // convertAnchoredMessages converts the conversation after the leading system
 // message; anchorsAdditions is ResolveTranscriptTools over the whole
 // transcript.
-func (p *openAIResponsesProvider) convertAnchoredMessages(messages []Message, grammarProps map[string]string, anchorsAdditions bool) ([]respInputItem, error) {
-	var items []respInputItem
+func (p *openAIResponsesProvider) convertAnchoredMessages(messages []Message, grammarProps map[string]string, anchorsAdditions bool) ([]ResponsesInputItem, error) {
+	return p.messageConverter(getResponsesCompat(p.cfg.Compat, p.cfg.StrictModeDefault), grammarProps).convertAnchored(messages, anchorsAdditions)
+}
+
+// convertAnchored converts the conversation after the leading system message.
+func (c responsesMessageConverter) convertAnchored(messages []Message, anchorsAdditions bool) ([]ResponsesInputItem, error) {
+	items := []ResponsesInputItem{}
 	messageIndex := 0
-	supportsImages := p.modelSupportsImages()
-	targetAPI := p.api()
-	targetModel := p.cfg.Model
+	supportsImages := c.supportsImages
 	normalizedToolIDs := make(map[string]string)
 	for _, message := range messages {
 		switch message := message.(type) {
 		case SystemMessage:
-			additions, err := p.systemToolAdditions(message, fmt.Sprintf("system:%d", messageIndex), anchorsAdditions)
+			additions, err := c.systemToolAdditions(message, fmt.Sprintf("system:%d", messageIndex), anchorsAdditions)
 			if err != nil {
 				return nil, err
 			}
 			items = append(items, additions...)
 			if text := RenderSystemMessageUpdate(message); text != "" {
 				content, _ := json.Marshal(sanitizeSurrogates(text))
-				items = append(items, respInputItem{Role: p.instructionRole(), Content: content})
+				items = append(items, ResponsesInputItem{Role: c.instructionRole, Content: content})
 			}
 		case UserMessage:
 			var parts []map[string]string
@@ -627,7 +689,7 @@ func (p *openAIResponsesProvider) convertAnchoredMessages(messages []Message, gr
 				continue
 			}
 			content, _ := json.Marshal(parts)
-			items = append(items, respInputItem{Role: "user", Content: content})
+			items = append(items, ResponsesInputItem{Role: "user", Content: content})
 		case ToolResultMessage:
 			callID := message.ToolCallID
 			if normalized, exists := normalizedToolIDs[callID]; exists {
@@ -637,20 +699,20 @@ func (p *openAIResponsesProvider) convertAnchoredMessages(messages []Message, gr
 				callID = before
 			}
 			resultType := "function_call_output"
-			if _, isGrammar := grammarProps[message.ToolName]; isGrammar {
+			if _, isGrammar := c.options.GrammarToolInputProperties[message.ToolName]; isGrammar {
 				resultType = "custom_tool_call_output"
 			}
-			items = append(items, respInputItem{Type: resultType, CallID: callID, Output: convertResponsesToolResultOutput(message.Content, supportsImages)})
+			items = append(items, ResponsesInputItem{Type: resultType, CallID: callID, Output: convertResponsesToolResultOutput(message.Content, supportsImages)})
 		case AssistantMessage:
-			sameProviderAPI := message.Provider == p.cfg.ProviderID && message.API == targetAPI
-			sameModel := sameProviderAPI && message.Model == targetModel
+			sameProviderAPI := message.Provider == c.providerID && message.API == c.api
+			sameModel := sameProviderAPI && message.Model == c.modelID
 			initialItemCount := len(items)
 			textBlockIndex := 0
 			for _, block := range message.Content {
 				switch block := block.(type) {
 				case ThinkingContent:
 					if block.ThinkingSignature != "" {
-						var reasoning respInputItem
+						var reasoning ResponsesInputItem
 						if json.Unmarshal([]byte(block.ThinkingSignature), &reasoning) == nil && reasoning.Type == "reasoning" {
 							items = append(items, reasoning)
 						}
@@ -666,22 +728,22 @@ func (p *openAIResponsesProvider) convertAnchoredMessages(messages []Message, gr
 						if signedID != "" {
 							id = signedID
 							if len(id) > 64 {
-								id = "msg_" + shortHash32(id)
+								id = "msg_" + ShortHash(id)
 							}
 						}
 						phase = signedPhase
 					}
 					textBlockIndex++
 					content, _ := json.Marshal([]map[string]any{{"type": "output_text", "text": text, "annotations": []any{}}})
-					items = append(items, respInputItem{Type: "message", Role: "assistant", Content: content, Status: "completed", ID: id, Phase: phase})
+					items = append(items, ResponsesInputItem{Type: "message", Role: "assistant", Content: content, Status: "completed", ID: id, Phase: phase})
 				case ToolCall:
 					normalized := block.ID
 					if !sameModel {
-						normalized = normalizeResponsesToolCallID(block.ID, p.cfg.ProviderID, p.api(), !sameProviderAPI)
+						normalized = normalizeResponsesToolCallID(block.ID, c.allowedToolCallProviders, c.providerID, !sameProviderAPI)
 					}
 					normalizedToolIDs[block.ID] = normalized
 					callID, itemID, _ := strings.Cut(normalized, "|")
-					property, isGrammar := grammarProps[block.Name]
+					property, isGrammar := c.options.GrammarToolInputProperties[block.Name]
 					// A different-model replay omits the item id to avoid reasoning pairing validation. An id that does not
 					// match the replayed item type is dropped too: function_call ids must be fc_* and custom_tool_call ids
 					// ctc_*, foreign ids are normalized to fc_*, and a call can switch type when grammar tool support differs.
@@ -701,11 +763,11 @@ func (p *openAIResponsesProvider) convertAnchoredMessages(messages []Message, gr
 						if err != nil {
 							return nil, err
 						}
-						items = append(items, respInputItem{Type: "custom_tool_call", ID: itemID, CallID: callID, Name: block.Name, Namespace: namespace, Input: sanitizeSurrogates(input)})
+						items = append(items, ResponsesInputItem{Type: "custom_tool_call", ID: itemID, CallID: callID, Name: block.Name, Namespace: namespace, Input: sanitizeSurrogates(input)})
 					} else {
 						arguments, _ := block.ArgumentsJSON()
 						encoded, _ := json.Marshal(string(arguments))
-						items = append(items, respInputItem{Type: "function_call", ID: itemID, CallID: callID, Name: block.Name, Namespace: namespace, Arguments: encoded})
+						items = append(items, ResponsesInputItem{Type: "function_call", ID: itemID, CallID: callID, Name: block.Name, Namespace: namespace, Arguments: encoded})
 					}
 				}
 			}
@@ -714,6 +776,52 @@ func (p *openAIResponsesProvider) convertAnchoredMessages(messages []Message, gr
 			}
 		}
 		messageIndex++
+	}
+	return items, nil
+}
+
+// prepareResponsesTranscript resolves the transcript's system updates, transforms its messages for the model and resolves which
+// tools the request carries (convertResponsesMessages: resolveTranscript, transformMessages, resolveTranscriptTools).
+func prepareResponsesTranscript(model *Model, transcript TranscriptContext, supportsMidConvoSystemMessages, supportsToolAdditions bool) ([]Message, TranscriptTools) {
+	messages := TransformMessages(ResolveTranscript(transcript, supportsMidConvoSystemMessages).Messages(), model, nil)
+	return messages, ResolveTranscriptTools(messages, supportsToolAdditions)
+}
+
+// withLeadingSystem puts the transcript's leading system message, when it has text, before the converted conversation.
+func (c responsesMessageConverter) withLeadingSystem(messages []Message, items []ResponsesInputItem) []ResponsesInputItem {
+	systemPrompt := GetCurrentSystemPrompt(messages[:min(1, len(messages))])
+	if systemPrompt == "" {
+		return items
+	}
+	content, _ := json.Marshal(sanitizeSurrogates(systemPrompt))
+	return append([]ResponsesInputItem{{Role: c.instructionRole, Content: content}}, items...)
+}
+
+// ConvertResponsesMessages converts a transcript to the Responses API "input" array for model: the leading system message (unless
+// options.IncludeSystemPrompt is false), user, assistant and tool-result messages, with tool-call ids normalized for the providers
+// in allowedToolCallProviders.
+// Ports packages/ai/src/api/openai-responses-shared.ts convertResponsesMessages.
+func ConvertResponsesMessages(model *Model, transcript TranscriptContext, allowedToolCallProviders map[string]bool, options ConvertResponsesMessagesOptions) ([]ResponsesInputItem, error) {
+	messages, transcriptTools := prepareResponsesTranscript(model, transcript, options.SupportsMidConvoSystemMessages, options.SupportsAdditionalTools || options.SupportsToolSearch)
+	var supportsDeveloperRole *bool
+	if model.ProviderMeta.Compat != nil {
+		supportsDeveloperRole = model.ProviderMeta.Compat.SupportsDeveloperRole
+	}
+	converter := responsesMessageConverter{
+		providerID:               model.ProviderMeta.ProviderID,
+		modelID:                  model.ID,
+		api:                      model.ProviderMeta.API,
+		instructionRole:          responsesInstructionRole(model.ProviderMeta.Reasoning, supportsDeveloperRole),
+		supportsImages:           slices.Contains(model.Input, "image"),
+		allowedToolCallProviders: allowedToolCallProviders,
+		options:                  options,
+	}
+	items, err := converter.convertAnchored(WithoutInitialSystemMessage(messages), transcriptTools.AnchorsAdditions)
+	if err != nil {
+		return nil, err
+	}
+	if options.IncludeSystemPrompt == nil || *options.IncludeSystemPrompt {
+		items = converter.withLeadingSystem(messages, items)
 	}
 	return items, nil
 }
@@ -758,9 +866,9 @@ func normalizeResponsesIDPart(part string) string {
 }
 
 // buildForeignResponsesItemID mirrors upstream buildForeignResponsesItemId:
-// fc_<shortHash>, capped at 64. shortHash32 is byte-identical to upstream shortHash.
+// fc_<shortHash>, capped at 64. ShortHash is byte-identical to upstream shortHash.
 func buildForeignResponsesItemID(itemID string) string {
-	normalized := "fc_" + shortHash32(itemID)
+	normalized := "fc_" + ShortHash(itemID)
 	if len(normalized) > 64 {
 		normalized = normalized[:64]
 	}
@@ -768,11 +876,7 @@ func buildForeignResponsesItemID(itemID string) string {
 }
 
 // normalizeResponsesToolCallID normalizes cross-model IDs for supported target providers. Source provider/API identity, not an item prefix, determines whether the item needs a foreign namespace.
-func normalizeResponsesToolCallID(id, providerID string, api API, foreign bool) string {
-	allowed := responsesToolCallProviders
-	if api == APIAzureOpenAIResponses {
-		allowed = azureToolCallProviders
-	}
+func normalizeResponsesToolCallID(id string, allowed map[string]bool, providerID string, foreign bool) string {
 	// upstream: packages/ai/src/api/openai-responses-shared.ts:normalizeToolCallId
 	if !allowed[providerID] {
 		return normalizeResponsesIDPart(id)
@@ -794,50 +898,74 @@ func normalizeResponsesToolCallID(id, providerID string, api API, foreign bool) 
 	return callID + "|" + itemID
 }
 
-// convertTools maps tools to the Responses API "tools" array. A grammar
-// constrained-sampling tool becomes a custom tool with a format block; a
-// json_schema constrained tool requests strict mode when supported; a plain
-// tool emits strict only when the model supports strict mode (default false,
-// so strict is omitted for most models). Mirrors upstream convertResponsesTools.
-func (p *openAIResponsesProvider) convertTools(tools []ToolSchema, supportsStrictMode, supportsGrammar bool) ([]respTool, error) {
-	out := make([]respTool, 0, len(tools))
+// ResponsesStrictDefault is the strict field of a function tool that no constrained-sampling request decides: absent from the
+// options or false emits false, true emits true and null emits null (convertResponsesTools options.strict: boolean | null).
+type ResponsesStrictDefault int
+
+const (
+	ResponsesStrictFalse ResponsesStrictDefault = iota
+	ResponsesStrictTrue
+	ResponsesStrictNull
+)
+
+// ConvertResponsesToolsOptions mirrors upstream ConvertResponsesToolsOptions (openai-responses-shared.ts:132).
+type ConvertResponsesToolsOptions struct {
+	// Strict is the strict field of a function tool that no constrained-sampling request decides.
+	Strict ResponsesStrictDefault
+	// SupportsStrictMode nil is true, as `options?.supportsStrictMode ?? true`.
+	SupportsStrictMode *bool
+	// SupportsOpenAIGrammarTools nil is false.
+	SupportsOpenAIGrammarTools bool
+	// ToolSearchResult marks every tool as loaded by a tool_search_output (defer_loading).
+	ToolSearchResult bool
+}
+
+// ConvertResponsesTools maps tools to the Responses API "tools" array. A grammar constrained-sampling tool becomes a custom tool
+// with a format block; a json_schema constrained tool requests strict mode when supported; any other function tool takes the
+// default strict value and emits it only when the model supports strict mode.
+// Ports packages/ai/src/api/openai-responses-shared.ts convertResponsesTools.
+func ConvertResponsesTools(tools []ToolSchema, options ConvertResponsesToolsOptions) ([]ResponsesTool, error) {
+	supportsStrictMode := options.SupportsStrictMode == nil || *options.SupportsStrictMode
+	out := make([]ResponsesTool, 0, len(tools))
 	for _, t := range tools {
-		grammar, err := resolveGrammarConstrainedSampling(t, supportsGrammar)
+		grammar, err := resolveGrammarConstrainedSampling(t, options.SupportsOpenAIGrammarTools)
 		if err != nil {
 			return nil, err
 		}
 		if grammar != nil {
-			out = append(out, respTool{
-				Type:        "custom",
-				Name:        t.Name,
-				Description: t.Description,
-				Format: &respToolFormat{
-					Type:       "grammar",
-					Syntax:     grammar.Format,
-					Definition: grammar.Definition,
-				},
+			out = append(out, ResponsesTool{
+				Type:         "custom",
+				Name:         t.Name,
+				Description:  t.Description,
+				Format:       &ResponsesToolFormat{Type: "grammar", Syntax: grammar.Format, Definition: grammar.Definition},
+				DeferLoading: options.ToolSearchResult,
 			})
 			continue
 		}
-		strict, err := resolveJSONSchemaStrictSampling(t, supportsStrictMode, nil)
+		constrained, err := resolveJSONSchemaStrictSampling(t, supportsStrictMode, nil)
 		if err != nil {
 			return nil, err
 		}
-		parameters, err := getJSONSchemaToolParameters(t, strict)
+		strict := options.Strict
+		if constrained != nil && *constrained {
+			strict = ResponsesStrictTrue
+		}
+		parameters, err := getJSONSchemaToolParameters(t, new(strict == ResponsesStrictTrue))
 		if err != nil {
 			return nil, err
 		}
-		ft := respTool{
-			Type:        "function",
-			Name:        t.Name,
-			Description: t.Description,
-			Parameters:  parameters,
+		ft := ResponsesTool{
+			Type:         "function",
+			Name:         t.Name,
+			Description:  t.Description,
+			Parameters:   parameters,
+			DeferLoading: options.ToolSearchResult,
 		}
 		if supportsStrictMode {
-			switch {
-			case strict != nil && *strict:
+			switch strict {
+			case ResponsesStrictTrue:
 				ft.Strict = json.RawMessage("true")
-			case p.cfg.StrictToolNull:
+			case ResponsesStrictNull:
 				ft.Strict = json.RawMessage("null")
 			default:
 				ft.Strict = json.RawMessage("false")
@@ -848,42 +976,47 @@ func (p *openAIResponsesProvider) convertTools(tools []ToolSchema, supportsStric
 	return out, nil
 }
 
+// responsesToolOptions are the convertResponsesTools options this provider passes: its compat flags and, for Codex, strict: null.
+func (p *openAIResponsesProvider) responsesToolOptions(compat responsesCompat) ConvertResponsesToolsOptions {
+	options := ConvertResponsesToolsOptions{SupportsStrictMode: &compat.SupportsStrictMode, SupportsOpenAIGrammarTools: compat.SupportsOpenAIGrammarTools}
+	if p.cfg.StrictToolNull {
+		options.Strict = ResponsesStrictNull
+	}
+	return options
+}
+
 // ─── Stream ──────────────────────────────────────────────────────────────────
 
 // Stream returns before HTTP setup settles. Successful setup admits start before waiting for body data.
 func (p *openAIResponsesProvider) Stream(ctx context.Context, transcript TranscriptContext, opts StreamOptions) (*AssistantMessageEventStream, error) {
+	if p.cfg.azure != nil {
+		p = p.cfg.azure.resolve(p, opts)
+	}
 	ctx = withProviderRequestOptions(ctx, opts)
 	if err := validateProviderRequest(ctx, transcript); err != nil {
 		return nil, fmt.Errorf("openai-responses: invalid transcript: %w", err)
 	}
 	compat := getResponsesCompat(p.cfg.Compat, p.cfg.StrictModeDefault)
-	resolved := ResolveTranscript(transcript, compat.SupportsMidConvoSystemMessages)
-	messages := resolved.Messages()
 	target := &Model{ID: p.cfg.Model, ProviderMeta: ProviderMetadata{API: p.api(), ProviderID: p.cfg.ProviderID}, Input: []string{"text"}}
 	if p.modelSupportsImages() {
 		target.Input = append(target.Input, "image")
 	}
-	messages = TransformMessages(messages, target, nil)
-	conversation := WithoutInitialSystemMessage(messages)
-	transcriptTools := ResolveTranscriptTools(messages, compat.SupportsAdditionalTools || compat.SupportsToolSearch)
+	messages, transcriptTools := prepareResponsesTranscript(target, transcript, compat.SupportsMidConvoSystemMessages, compat.SupportsAdditionalTools || compat.SupportsToolSearch)
 	tools := transcriptTools.RequestTools
 	grammarProps, err := createGrammarToolInputProperties(GetDeclaredTools(messages), compat.SupportsOpenAIGrammarTools)
 	if err != nil {
 		return nil, err
 	}
-	msgs, err := p.convertAnchoredMessages(conversation, grammarProps, transcriptTools.AnchorsAdditions)
+	converter := p.messageConverter(compat, grammarProps)
+	msgs, err := converter.convertAnchored(WithoutInitialSystemMessage(messages), transcriptTools.AnchorsAdditions)
 	if err != nil {
 		return nil, err
 	}
-	if p.cfg.ProviderID == string(APIOpenAICodexResponses) && opts.Thinking != ThinkingOff && opts.Thinking != "" {
-		opts.Thinking = ClampThinkingLevel(p.resolvedModel(), opts.Thinking)
+	if p.cfg.ProviderID == string(APIOpenAICodexResponses) && opts.Thinking != "" {
+		opts.Thinking = ClampThinkingLevel(p.resolvedModel(), ModelThinkingLevel(opts.Thinking)).ReasoningOption()
 	}
 	if !p.cfg.Codex {
-		if systemPrompt := GetCurrentSystemPrompt(messages[:min(1, len(messages))]); systemPrompt != "" {
-			sysContent, _ := json.Marshal(sanitizeSurrogates(systemPrompt))
-			sys := respInputItem{Role: p.instructionRole(), Content: sysContent}
-			msgs = append([]respInputItem{sys}, msgs...)
-		}
+		msgs = converter.withLeadingSystem(messages, msgs)
 	}
 
 	// upstream resolves the API key before it builds the request: Sign in with ChatGPT changes the request fields.
@@ -908,6 +1041,7 @@ func (p *openAIResponsesProvider) Stream(ctx context.Context, transcript Transcr
 	}
 	store := false
 	req.Store = &store
+	req.ServiceTier = opts.ServiceTier
 	if p.cfg.Codex {
 		req.Instructions = "You are a helpful assistant."
 		if initial := GetInitialSystemMessage(messages); initial != nil {
@@ -915,7 +1049,7 @@ func (p *openAIResponsesProvider) Stream(ctx context.Context, transcript Transcr
 				req.Instructions = sanitizeSurrogates(prompt)
 			}
 		}
-		req.Text = map[string]string{"verbosity": "low"}
+		req.Text = map[string]string{"verbosity": cmp.Or(opts.TextVerbosity, "low")}
 		req.ToolChoice = "auto"
 		parallel := true
 		req.ParallelToolCalls = &parallel
@@ -928,7 +1062,7 @@ func (p *openAIResponsesProvider) Stream(ctx context.Context, transcript Transcr
 		req.ToolChoice = opts.ToolChoice
 	}
 	if len(tools) > 0 {
-		convertedTools, err := p.convertTools(tools, compat.SupportsStrictMode, compat.SupportsOpenAIGrammarTools)
+		convertedTools, err := ConvertResponsesTools(tools, p.responsesToolOptions(compat))
 		if err != nil {
 			return nil, err
 		}
@@ -949,11 +1083,11 @@ func (p *openAIResponsesProvider) Stream(ctx context.Context, transcript Transcr
 		model := p.resolvedModel()
 		if model.Capabilities.MaxThinking == "" {
 			model = new(*model)
-			model.Capabilities.MaxThinking = ThinkingHigh
+			model.Capabilities.MaxThinking = ThinkingLevelHigh
 		}
-		clamped := opts.Thinking
+		clamped := ModelThinkingLevel(opts.Thinking)
 		if opts.ReasoningEffort != "" {
-			clamped = ThinkingLevel(opts.ReasoningEffort)
+			clamped = ModelThinkingLevel(opts.ReasoningEffort)
 		} else if clamped != ThinkingOff && clamped != "" {
 			clamped = ClampThinkingLevel(model, clamped)
 		}
@@ -1008,8 +1142,12 @@ func (p *openAIResponsesProvider) Stream(ctx context.Context, transcript Transcr
 	}
 
 	payload := any(req)
-	// Last so model and request sampling parameters override named request fields (openai-responses.ts buildParams).
-	samplingParams := ResolveSamplingParams(p.samplingModel(opts), responsesSamplingLevel(opts), opts.SamplingParams)
+	// Last so model and request sampling parameters override named request fields (openai-responses.ts:383-385 buildParams).
+	// openai-codex-responses.ts buildRequestBody applies no sampling parameters.
+	var samplingParams map[string]any
+	if !p.cfg.Codex {
+		samplingParams = ResolveSamplingParams(p.samplingModel(opts), responsesSamplingLevel(opts), opts.SamplingParams)
+	}
 	if samplingParams != nil {
 		encoded, err := json.Marshal(req)
 		if err != nil {
@@ -1088,6 +1226,8 @@ func (p *openAIResponsesProvider) Stream(ctx context.Context, transcript Transcr
 	httpReq.Header.Set("User-Agent", PiUserAgent())
 	if p.cfg.Codex {
 		httpReq.Header.Set("Accept", "text/event-stream")
+		// pig divergence (D26): PiG names itself as the Codex originator. Like the User-Agent it is a default: model and caller headers override it (openai-codex-responses.ts buildBaseCodexHeaders, #10429).
+		httpReq.Header.Set("originator", pigidentity.CodexOriginator)
 	}
 	if apiKey != "" {
 		if p.cfg.ProviderID == "cloudflare-ai-gateway" {
@@ -1135,8 +1275,6 @@ func (p *openAIResponsesProvider) Stream(ctx context.Context, transcript Transcr
 	if p.cfg.Codex {
 		httpReq.Header.Set("Authorization", "Bearer "+apiKey)
 		httpReq.Header.Set("chatgpt-account-id", accountID)
-		// pig divergence (D26): PiG names itself as the Codex originator.
-		httpReq.Header.Set("originator", pigidentity.CodexOriginator)
 		httpReq.Header.Set("OpenAI-Beta", "responses=experimental")
 		httpReq.Header.Set("Accept", "text/event-stream")
 		httpReq.Header.Set("Content-Type", "application/json")
@@ -1147,15 +1285,9 @@ func (p *openAIResponsesProvider) Stream(ctx context.Context, transcript Transcr
 			httpReq.Header.Set("x-client-request-id", sessionID)
 		}
 	}
-	if p.cfg.forceUserAgent {
-		// pig divergence (D65): Codex reapplies PiG's product identity after
-		// model and request headers, preserving upstream precedence.
-		httpReq.Header.Set("User-Agent", PiUserAgent())
-	}
-
 	builder := newObservedProviderBuilder(ctx, p.api(), p.cfg.ProviderID, p.cfg.Model)
 	builder.modelCost = opts.ModelCost
-	builder.requestServiceTier, _ = opts.SamplingParams["service_tier"].(string)
+	builder.requestServiceTier = requestServiceTierOf(opts)
 	builder.setProviderEventObserver(opts, providerEventModel(p.cfg.ModelMetadata, p.api(), p.cfg.ProviderID, p.cfg.Model))
 	if p.api() == APIOpenAIResponses {
 		builder.errorMessage = withChatGPTUsageLink
@@ -1309,8 +1441,75 @@ func (p *openAIResponsesProvider) parseResponsesSSE(ctx context.Context, r io.Re
 	p.parseResponses(ctx, decoder, builder, grammarProps)
 }
 
+// OpenAIResponsesStreamOptions is openai-responses-shared.ts OpenAIResponsesStreamOptions: what a Responses adapter injects into
+// processResponsesStream.
+type OpenAIResponsesStreamOptions struct {
+	// OnProviderStreamEvent observes each wire event before it is mapped, with the model processResponsesStream was given; its error ends
+	// the stream. Nil observes nothing. It is StreamOptions.OnProviderStreamEvent (openai-responses-shared.ts:111).
+	OnProviderStreamEvent func(ctx context.Context, data any, model *Model) error
+	// ServiceTier is the request's service tier, which prices a response that reports none.
+	ServiceTier string
+	// GrammarToolInputProperties names the input property of each grammar tool by tool name.
+	GrammarToolInputProperties map[string]string
+	// ResolveServiceTier picks the tier that prices a response from the response's tier and the request's; nil picks the response's
+	// tier, then the request's.
+	ResolveServiceTier func(responseServiceTier, requestServiceTier string) string
+	// ApplyServiceTierPricing scales the response's priced usage by its tier; nil leaves the usage at the default rate.
+	ApplyServiceTierPricing func(usage *Usage, serviceTier string)
+
+	// transport is how Go reads the stream: Codex frames and their termination are not part of the shared function upstream.
+	transport responsesStreamTransport
+	// model is processResponsesStream's model argument, the one OnProviderStreamEvent receives.
+	model *Model
+}
+
+// responsesStreamTransport holds the Codex-only stream handling that openai-codex-responses.ts keeps outside processResponsesStream.
+type responsesStreamTransport struct {
+	codex                 bool
+	ignoreSSEErrorObjects bool
+	finishCodexSSE        func(ctx context.Context, builder *assistantStreamBuilder, decoder providerSSEDecoder, sawTerminal bool)
+}
+
 // parseResponses is processResponsesStream over an already constructed record decoder.
 func (p *openAIResponsesProvider) parseResponses(ctx context.Context, decoder providerSSEDecoder, builder *assistantStreamBuilder, grammarProps map[string]string) {
+	options := &OpenAIResponsesStreamOptions{
+		OnProviderStreamEvent:      builder.providerEventOption,
+		model:                      builder.providerEventModel,
+		ServiceTier:                builder.requestServiceTier,
+		GrammarToolInputProperties: grammarProps,
+		transport: responsesStreamTransport{
+			codex: p.cfg.Codex, ignoreSSEErrorObjects: p.cfg.ignoreSSEErrorObjects,
+			finishCodexSSE: p.finishCodexSSE,
+		},
+	}
+	if p.cfg.Codex {
+		options.ResolveServiceTier = resolveCodexServiceTier
+	}
+	if !p.cfg.SkipServiceTierPricing {
+		options.ApplyServiceTierPricing = func(usage *Usage, serviceTier string) {
+			applyServiceTierPricing(usage, serviceTier, p.cfg.Model, p.cfg.Codex)
+		}
+	}
+	processResponsesStream(ctx, decoder, builder, options)
+}
+
+// resolveCodexServiceTier is openai-codex-responses.ts resolveCodexServiceTier: a Codex response that reports "default" for a flex or
+// priority request is priced at the requested tier.
+func resolveCodexServiceTier(responseServiceTier, requestServiceTier string) string {
+	if responseServiceTier == "default" && (requestServiceTier == "flex" || requestServiceTier == "priority") {
+		return requestServiceTier
+	}
+	return cmp.Or(responseServiceTier, requestServiceTier)
+}
+
+// processResponsesStream maps an OpenAI Responses event stream onto builder (openai-responses-shared.ts processResponsesStream).
+func processResponsesStream(ctx context.Context, decoder providerSSEDecoder, builder *assistantStreamBuilder, options *OpenAIResponsesStreamOptions) {
+	grammarProps := options.GrammarToolInputProperties
+	codex := options.transport.codex
+	builder.providerEvent = nil
+	if options.OnProviderStreamEvent != nil {
+		builder.providerEvent = func(data any) error { return options.OnProviderStreamEvent(ctx, data, options.model) }
+	}
 	// Track current item state for multi-event sequences.
 	type currentState struct {
 		itemType     string
@@ -1372,7 +1571,7 @@ func (p *openAIResponsesProvider) parseResponses(ctx context.Context, decoder pr
 	sawTerminal := false
 	_, codexSSE := decoder.(*codexSSEDecoder)
 	for decoder.Next() {
-		if p.cfg.Codex && !codexSSE && ctx.Err() != nil {
+		if codex && !codexSSE && ctx.Err() != nil {
 			builder.failUnfinished(StopReasonAborted, errors.New("Request was aborted"))
 			return
 		}
@@ -1387,14 +1586,14 @@ func (p *openAIResponsesProvider) parseResponses(ctx context.Context, decoder pr
 			return
 		}
 		// Codex observes the raw event before mapping it (mapCodexEvents). processResponsesStream still awaits its own, empty, observer for it.
-		if p.cfg.Codex {
+		if codex {
 			builder.awaitProviderEvent()
 		} else if err := builder.observeProviderEvent([]byte(data)); err != nil {
 			builder.failUnfinished(StopReasonError, err)
 			return
 		}
 
-		if !p.cfg.ignoreSSEErrorObjects {
+		if !options.transport.ignoreSSEErrorObjects {
 			if errorMessage, ok := openAIStreamErrorMessage(event.StreamError); ok {
 				builder.failUnfinished(StopReasonError, errors.New(errorMessage))
 				return
@@ -1546,7 +1745,7 @@ func (p *openAIResponsesProvider) parseResponses(ctx context.Context, decoder pr
 			delete(states, event.OutputIndex)
 
 		case "response.completed", "response.incomplete", "response.done":
-			if event.Type == "response.done" && !p.cfg.Codex {
+			if event.Type == "response.done" && !codex {
 				continue
 			}
 			if event.Response == nil {
@@ -1593,17 +1792,19 @@ func (p *openAIResponsesProvider) parseResponses(ctx context.Context, decoder pr
 					TotalTokens: u.TotalTokens,
 				}
 				builder.calculateCost(usage)
-				if !p.cfg.SkipServiceTierPricing {
-					serviceTier := event.Response.ServiceTier
-					if p.cfg.Codex && (serviceTier == "" || (serviceTier == "default" && (builder.requestServiceTier == "flex" || builder.requestServiceTier == "priority"))) {
-						serviceTier = builder.requestServiceTier
+				if options.ApplyServiceTierPricing != nil {
+					var serviceTier string
+					if options.ResolveServiceTier != nil {
+						serviceTier = options.ResolveServiceTier(event.Response.ServiceTier, options.ServiceTier)
+					} else {
+						serviceTier = cmp.Or(event.Response.ServiceTier, options.ServiceTier)
 					}
-					applyServiceTierPricing(usage, serviceTier, p.cfg.Model, p.cfg.Codex)
+					options.ApplyServiceTierPricing(usage, serviceTier)
 				}
 				builder.setUsage(usage)
 			}
 			rawStopReason := event.Response.Status
-			if p.cfg.Codex && !codexResponseStatuses[rawStopReason] {
+			if codex && !codexResponseStatuses[rawStopReason] {
 				rawStopReason = ""
 				event.Response.Status = ""
 			}
@@ -1625,7 +1826,7 @@ func (p *openAIResponsesProvider) parseResponses(ctx context.Context, decoder pr
 			builder.partial.StopReason = stopReason
 			builder.partial.ErrorMessage = errorMessage
 			sawTerminal = true
-			if p.cfg.Codex && !codexSSE {
+			if codex && !codexSSE {
 				if unfinished := unfinishedToolCallError(builder); unfinished != nil {
 					builder.failUnfinished(StopReasonError, unfinished)
 				} else if stopReason == StopReasonError {
@@ -1659,10 +1860,10 @@ func (p *openAIResponsesProvider) parseResponses(ctx context.Context, decoder pr
 	}
 
 	if codexSSE {
-		p.finishCodexSSE(ctx, builder, decoder, sawTerminal)
+		options.transport.finishCodexSSE(ctx, builder, decoder, sawTerminal)
 		return
 	}
-	if p.cfg.Codex && ctx.Err() != nil {
+	if codex && ctx.Err() != nil {
 		builder.failUnfinished(StopReasonAborted, errors.New("Request was aborted"))
 		return
 	}
@@ -1694,7 +1895,7 @@ func (p *openAIResponsesProvider) parseResponses(ctx context.Context, decoder pr
 		return
 	}
 	if err := ctx.Err(); err != nil {
-		if p.cfg.Codex {
+		if codex {
 			err = errors.New("Request was aborted")
 		} else {
 			err = errors.New("OpenAI Responses stream ended before a terminal response event")
@@ -1715,17 +1916,24 @@ func joinResponseItemText(parts []respOutputContent) string {
 	return strings.Join(values, "\n\n")
 }
 
+// TextSignatureV1 is the JSON payload an OpenAI Responses text block keeps in TextContent.TextSignature (types.ts TextSignatureV1). V is always 1; Phase is "commentary" or "final_answer" when set.
+type TextSignatureV1 struct {
+	V     int    `json:"v"`
+	ID    string `json:"id"`
+	Phase string `json:"phase,omitempty"`
+}
+
 func parseResponsesTextSignature(signature string) (id, phase string, ok bool) {
 	if signature == "" {
 		return "", "", false
 	}
 	if strings.HasPrefix(signature, "{") {
 		var parsed struct {
-			Version int     `json:"v"`
-			ID      *string `json:"id"`
-			Phase   string  `json:"phase"`
+			V     int     `json:"v"`
+			ID    *string `json:"id"`
+			Phase string  `json:"phase"`
 		}
-		if json.Unmarshal([]byte(signature), &parsed) == nil && parsed.Version == 1 && parsed.ID != nil {
+		if json.Unmarshal([]byte(signature), &parsed) == nil && parsed.V == 1 && parsed.ID != nil {
 			if parsed.Phase != "commentary" && parsed.Phase != "final_answer" {
 				parsed.Phase = ""
 			}
@@ -1736,11 +1944,7 @@ func parseResponsesTextSignature(signature string) (id, phase string, ok bool) {
 }
 
 func encodeResponsesTextSignature(id, phase string) string {
-	signature := struct {
-		Version int    `json:"v"`
-		ID      string `json:"id"`
-		Phase   string `json:"phase,omitempty"`
-	}{Version: 1, ID: id}
+	signature := TextSignatureV1{V: 1, ID: id}
 	if phase == "commentary" || phase == "final_answer" {
 		signature.Phase = phase
 	}
@@ -1790,4 +1994,10 @@ func mapRespStatus(status, incompleteReason string) (StopReason, string) {
 	default:
 		return StopReasonError, "openai-responses: unhandled stop reason: " + status
 	}
+}
+
+// requestServiceTierOf is the requested tier that prices a response without its own tier: the serviceTier option, not a
+// sampling parameter that overrode the request field (openai-responses.ts:196, openai-codex-responses.ts:674).
+func requestServiceTierOf(opts StreamOptions) string {
+	return opts.ServiceTier
 }

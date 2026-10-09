@@ -164,7 +164,7 @@ func assertPromptSelectedTools(t *testing.T, exts []extension.Extension, names [
 		{"repair", []string{"read", "bash"}, names[len(names)-1:]},
 	} {
 		base := slices.Clone(tc.base)
-		result, err := runner.EmitBeforeAgentStart(t.Context(), tc.prompt, nil, "base", extension.BuildSystemPromptOptions{SelectedTools: base})
+		result, err := runner.EmitBeforeAgentStart(t.Context(), tc.prompt, nil, extension.BuildSystemPromptOptions{SelectedTools: base})
 		if tc.prompt == "null" || tc.prompt == "repair" && len(names) == 1 {
 			if err == nil || err.Error() != "Cannot read properties of null (reading 'length')" {
 				t.Fatalf("null selectedTools: result=%+v err=%v reported=%v", result, err, reported)

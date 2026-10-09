@@ -7,8 +7,11 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
+	"strconv"
 	"strings"
 
+	jsjson "github.com/MichaelKinsy/PiG/extensions/sdk/json"
+	"github.com/MichaelKinsy/PiG/internal/pigstrip"
 	"github.com/MichaelKinsy/PiG/tui"
 )
 
@@ -19,9 +22,10 @@ type KeybindingDefinition struct {
 	Description string
 }
 
+// KeybindingConflict is upstream KeybindingConflict: a key claimed by more than one keybinding.
 type KeybindingConflict struct {
-	Key     KeyID
-	Actions []string
+	Key         KeyID
+	Keybindings []string
 }
 
 type KeybindingsManager struct {
@@ -215,35 +219,38 @@ var keyIDInputs = map[KeyID][]string{
 	"ctrl+backspace": {"\x17"},
 }
 
-// keyIDDisplay returns human-readable display text for a key ID.
-func keyIDDisplay(id KeyID) string {
-	// Capitalize each segment: "ctrl+o" → "Ctrl+O", "alt+up" → "Alt+Up".
-	parts := strings.Split(string(id), "+")
-	for i, p := range parts {
-		if len(p) > 0 {
-			parts[i] = strings.ToUpper(p[:1]) + p[1:]
-		}
-	}
-	return strings.Join(parts, "+")
-}
-
 func KeybindingsFile(agentDir string) string {
 	return filepath.Join(agentDir, "keybindings.json")
 }
 
+// NewKeybindingsManager is upstream KeybindingsManager.create(agentDir): it loads agentDir's keybindings.json. An empty
+// agentDir is `new KeybindingsManager()`, which has no config file, so Reload keeps the current user bindings.
 func NewKeybindingsManager(agentDir string) *KeybindingsManager {
+	if agentDir == "" {
+		return NewKeybindingsManagerFromBindings(nil, "")
+	}
+	configPath := KeybindingsFile(agentDir)
+	return NewKeybindingsManagerFromBindings(loadKeybindingsFile(configPath), configPath)
+}
+
+// NewKeybindingsManagerFromBindings is upstream's `new KeybindingsManager(userBindings, configPath)` (keybindings.ts:374): the
+// merged KEYBINDINGS table with the given user bindings, and the file Reload reads. An empty configPath has no file.
+func NewKeybindingsManagerFromBindings(userBindings map[string][]KeyID, configPath string) *KeybindingsManager {
 	km := &KeybindingsManager{
 		definitions:  appKeybindingDefinitions,
 		ordered:      slices.Clone(appKeybindingOrder),
 		userBindings: map[string][]KeyID{},
 		resolved:     map[string][]KeyID{},
-		configPath:   KeybindingsFile(agentDir),
+		configPath:   configPath,
 		platform:     tui.HostKeybindingPlatform(),
+	}
+	for action, keys := range userBindings {
+		km.userBindings[action] = slices.Clone(keys)
 	}
 	km.rebuild()
 	km.syncToTUI()
 	tui.SetAppKeyTextResolver(func(action string) string {
-		keys := km.Get(action)
+		keys := km.GetKeys(action)
 		if len(keys) == 0 {
 			return ""
 		}
@@ -253,9 +260,6 @@ func NewKeybindingsManager(agentDir string) *KeybindingsManager {
 		}
 		return tui.FormatKeyText(strings.Join(parts, "/"), false)
 	})
-	if agentDir != "" {
-		_ = km.Reload()
-	}
 	return km
 }
 
@@ -263,14 +267,12 @@ func DefaultKeybindingsManager() *KeybindingsManager {
 	return NewKeybindingsManager("")
 }
 
+// normalizeKeys is the tui keybindings.ts normalizeKeys: the keys without repeats, in order. A key is kept as written, so "CTRL+X" and
+// "ctrl+x" are two keys, and an empty key stays.
 func normalizeKeys(keys []KeyID) []KeyID {
 	seen := map[KeyID]struct{}{}
 	out := make([]KeyID, 0, len(keys))
 	for _, key := range keys {
-		key = KeyID(strings.TrimSpace(strings.ToLower(string(key))))
-		if key == "" {
-			continue
-		}
 		if _, ok := seen[key]; ok {
 			continue
 		}
@@ -283,8 +285,13 @@ func normalizeKeys(keys []KeyID) []KeyID {
 func (km *KeybindingsManager) rebuild() {
 	km.resolved = make(map[string][]KeyID, len(km.definitions))
 	km.conflicts = nil
+	definitions := keybindingDefinitionsFor(km.platform)
 	userClaims := map[KeyID][]string{}
 	for action, keys := range km.userBindings {
+		// upstream: packages/tui/src/keybindings.ts:KeybindingsManager.rebuild skips a user id that KEYBINDINGS does not define.
+		if _, ok := definitions[action]; !ok {
+			continue
+		}
 		for _, key := range normalizeKeys(keys) {
 			userClaims[key] = append(userClaims[key], action)
 		}
@@ -292,7 +299,7 @@ func (km *KeybindingsManager) rebuild() {
 	for key, actions := range userClaims {
 		if len(actions) > 1 {
 			slices.Sort(actions)
-			km.conflicts = append(km.conflicts, KeybindingConflict{Key: key, Actions: actions})
+			km.conflicts = append(km.conflicts, KeybindingConflict{Key: key, Keybindings: actions})
 		}
 	}
 	for _, action := range km.ordered {
@@ -307,7 +314,38 @@ func (km *KeybindingsManager) rebuild() {
 	for action, keys := range km.userBindings {
 		userBindings[action] = slices.Clone(keys)
 	}
-	km.merged = tui.NewKeybindingsManager(keybindingDefinitionsFor(km.platform), userBindings)
+	// pig additive (D92): an action whose built-in the process strips resolves to no key, as if the user unbound it.
+	for action := range appActionOwners {
+		if appActionStripped(action) {
+			km.resolved[action] = nil
+			userBindings[action] = []string{}
+		}
+	}
+	km.merged = tui.NewKeybindingsManager(definitions, userBindings)
+}
+
+// stripOwner is the strip entry of the built-in an app action runs.
+type stripOwner struct{ list, id string }
+
+// appActionOwners are the built-ins the app actions that run one directly belong to. The session actions run their slash
+// command through the registry, so a stripped command makes them do nothing; they are listed so their keys resolve to none
+// too.
+var appActionOwners = map[string]stripOwner{
+	"app.model.select":        {pigstrip.ListCommands, "/model"},
+	"app.model.cycleForward":  {pigstrip.ListCommands, "/model"},
+	"app.model.cycleBackward": {pigstrip.ListCommands, "/model"},
+	"app.thinking.cycle":      {pigstrip.ListCommands, "/thinking"},
+	"app.message.copy":        {pigstrip.ListCommands, "/copy"},
+	"app.session.new":         {pigstrip.ListCommands, "/new"},
+	"app.session.tree":        {pigstrip.ListCommands, "/tree"},
+	"app.session.fork":        {pigstrip.ListCommands, "/fork"},
+	"app.session.resume":      {pigstrip.ListCommands, "/resume"},
+}
+
+// appActionStripped reports whether the process strips the built-in action runs.
+func appActionStripped(action string) bool {
+	owner, ok := appActionOwners[action]
+	return ok && pigstrip.Has(owner.list, owner.id)
 }
 
 func migrateKeybindingsConfig(raw map[string]any) (map[string]any, bool) {
@@ -330,51 +368,65 @@ func migrateKeybindingsConfig(raw map[string]any) (map[string]any, bool) {
 	return out, migrated
 }
 
+// decodeKeybindingsConfig is upstream toKeybindingsConfig (keybindings.ts:306): a string binding and an array whose every entry is a
+// string are kept exactly as written; any other value drops the binding. The keys are not normalized here: the manager's resolver does.
 func decodeKeybindingsConfig(raw map[string]any) map[string][]KeyID {
 	config := map[string][]KeyID{}
 	for key, value := range raw {
 		switch v := value.(type) {
 		case string:
-			config[key] = normalizeKeys([]KeyID{KeyID(v)})
+			config[key] = []KeyID{KeyID(v)}
 		case []any:
-			var keys []KeyID
+			keys := make([]KeyID, 0, len(v))
+			valid := true
 			for _, item := range v {
-				if s, ok := item.(string); ok {
-					keys = append(keys, KeyID(s))
+				s, ok := item.(string)
+				if !ok {
+					valid = false
+					break
 				}
+				keys = append(keys, KeyID(s))
 			}
-			config[key] = normalizeKeys(keys)
+			if valid {
+				config[key] = keys
+			}
 		}
 	}
 	return config
 }
 
-func (km *KeybindingsManager) Reload() error {
+// Reload is upstream reload(): without a config file it does nothing; otherwise the file replaces the user bindings.
+func (km *KeybindingsManager) Reload() {
 	if km.configPath == "" {
-		km.userBindings = map[string][]KeyID{}
-		km.rebuild()
-		km.syncToTUI()
-		return nil
+		return
 	}
-	data, err := os.ReadFile(km.configPath)
-	if err != nil {
-		if os.IsNotExist(err) {
-			km.userBindings = map[string][]KeyID{}
-			km.rebuild()
-			km.syncToTUI()
-			return nil
-		}
-		return err
-	}
-	var raw map[string]any
-	if err := json.Unmarshal(data, &raw); err != nil {
-		return err
-	}
-	migrated, _ := migrateKeybindingsConfig(raw)
-	km.userBindings = decodeKeybindingsConfig(migrated)
+	km.userBindings = loadKeybindingsFile(km.configPath)
 	km.rebuild()
 	km.syncToTUI()
-	return nil
+}
+
+// loadKeybindingsFile is upstream KeybindingsManager.loadFromFile: a missing or unreadable file, a parse error and a value
+// that is not an object (loadRawConfig answers undefined) yield no user bindings; a leading BOM is stripped.
+func loadKeybindingsFile(path string) map[string][]KeyID {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return map[string][]KeyID{}
+	}
+	data = bytes.TrimPrefix(data, []byte("\xef\xbb\xbf"))
+	var raw map[string]any
+	if jsjson.Unmarshal(data, &raw) != nil || raw == nil {
+		// loadRawConfig accepts any object, and an array is one: Object.entries lists its indexes as keys.
+		var list []any
+		if jsjson.Unmarshal(data, &list) != nil || list == nil {
+			return map[string][]KeyID{}
+		}
+		raw = make(map[string]any, len(list))
+		for i, value := range list {
+			raw[strconv.Itoa(i)] = value
+		}
+	}
+	migrated, _ := migrateKeybindingsConfig(raw)
+	return decodeKeybindingsConfig(migrated)
 }
 
 // syncToTUI installs upstream's merged KEYBINDINGS table and the user
@@ -431,16 +483,20 @@ func (km *KeybindingsManager) Save(path string) error {
 	return os.WriteFile(path, buf.Bytes(), 0o644)
 }
 
-func (km *KeybindingsManager) Get(action string) []KeyID {
-	keys := km.resolved[action]
+// GetKeys is upstream getKeys: a copy of the keys resolved for a keybinding.
+func (km *KeybindingsManager) GetKeys(action string) []KeyID {
+	// The merged table holds the tui.* and the app.* actions, as upstream's KeybindingsManager extends the tui manager.
+	keys := km.merged.GetKeys(action)
 	out := make([]KeyID, len(keys))
-	copy(out, keys)
+	for i, key := range keys {
+		out[i] = KeyID(key)
+	}
 	return out
 }
 
-// ResolvedBindings returns a detached snapshot of every canonical action's
-// resolved key IDs for extension-shortcut conflict checks.
-func (km *KeybindingsManager) ResolvedBindings() map[string][]string {
+// GetResolvedBindings returns a detached snapshot of the resolved key IDs of every app.* action, which the extension
+// shortcut conflict check read before it used GetEffectiveConfig, which also covers the tui.* actions.
+func (km *KeybindingsManager) GetResolvedBindings() map[string][]string {
 	if km == nil {
 		return nil
 	}
@@ -449,17 +505,6 @@ func (km *KeybindingsManager) ResolvedBindings() map[string][]string {
 		resolved[action] = slices.Clone(km.resolved[action])
 	}
 	return resolved
-}
-
-// DisplayFor returns a human-readable key hint for the first binding of
-// the given action (e.g. "Alt+Up"). Returns the raw KeyID if no
-// display mapping exists.
-func (km *KeybindingsManager) DisplayFor(action string) string {
-	keys := km.resolved[action]
-	if len(keys) == 0 {
-		return action
-	}
-	return keyIDDisplay(keys[0])
 }
 
 // KeyText returns the un-capitalized display text for every key bound to action,
@@ -518,14 +563,17 @@ func (km *KeybindingsManager) Resolve(input string) string {
 func (km *KeybindingsManager) SetUserBindings(bindings map[string][]KeyID) {
 	km.userBindings = map[string][]KeyID{}
 	for k, v := range bindings {
-		km.userBindings[k] = normalizeKeys(v)
+		km.userBindings[k] = slices.Clone(v)
 	}
 	km.rebuild()
 }
 
-func (km *KeybindingsManager) Conflicts() []KeybindingConflict {
+// GetConflicts is upstream getConflicts: the keys that more than one user binding claims, each with its own copy of the keybindings.
+func (km *KeybindingsManager) GetConflicts() []KeybindingConflict {
 	out := make([]KeybindingConflict, len(km.conflicts))
-	copy(out, km.conflicts)
+	for i, conflict := range km.conflicts {
+		out[i] = KeybindingConflict{Key: conflict.Key, Keybindings: slices.Clone(conflict.Keybindings)}
+	}
 	return out
 }
 
@@ -547,4 +595,76 @@ func (km *KeybindingsManager) ExtensionKeybindingTable() map[string]any {
 		userBindings[action] = slices.Clone(keys)
 	}
 	return map[string]any{"definitions": definitions, "userBindings": userBindings}
+}
+
+// GetDefinition returns the definition of an action in the merged tui.* and app.* table for the manager's platform, and whether the table has one (keybindings.ts getDefinition over KEYBINDINGS).
+func (km *KeybindingsManager) GetDefinition(action string) (KeybindingDefinition, bool) {
+	definition, ok := km.merged.GetDefinition(action)
+	if !ok {
+		return KeybindingDefinition{}, false
+	}
+	return KeybindingDefinition{DefaultKeys: slices.Clone(definition.DefaultKeys), Description: definition.Description}, true
+}
+
+// GetUserBindings returns a copy of the user's overrides (keybindings.ts getUserBindings).
+func (km *KeybindingsManager) GetUserBindings() map[string][]KeyID {
+	out := make(map[string][]KeyID, len(km.userBindings))
+	for action, keys := range km.userBindings {
+		out[action] = slices.Clone(keys)
+	}
+	return out
+}
+
+// KeybindingValue is one entry of a keybindings config, `KeyId | KeyId[]` (tui keybindings.ts KeybindingsConfig): Key holds a single binding, Keys
+// a list. JSON reads and writes the string or the array it was given.
+type KeybindingValue struct {
+	Key  string
+	Keys []string
+}
+
+// MarshalJSON writes the list when Keys is set and the single key otherwise.
+func (v KeybindingValue) MarshalJSON() ([]byte, error) {
+	if v.Keys != nil {
+		return json.Marshal(v.Keys)
+	}
+	return json.Marshal(v.Key)
+}
+
+// UnmarshalJSON reads a string as the single key and an array as the list.
+func (v *KeybindingValue) UnmarshalJSON(data []byte) error {
+	var list []string
+	if err := json.Unmarshal(data, &list); err == nil {
+		*v = KeybindingValue{Keys: list}
+		return nil
+	}
+	var key string
+	if err := json.Unmarshal(data, &key); err != nil {
+		return fmt.Errorf("a keybinding is a key or a list of keys: %s", data)
+	}
+	*v = KeybindingValue{Key: key}
+	return nil
+}
+
+// GetEffectiveConfig returns every action's resolved binding as the keybindings config holds it: the key for a single binding, the list for several (keybindings.ts getEffectiveConfig, which is getResolvedBindings of the merged table).
+func (km *KeybindingsManager) GetEffectiveConfig() map[string]KeybindingValue {
+	resolved := km.merged.GetResolvedBindings()
+	config := make(map[string]KeybindingValue, len(resolved))
+	for action, keys := range resolved {
+		if len(keys) == 1 {
+			config[action] = KeybindingValue{Key: keys[0]}
+		} else {
+			config[action] = KeybindingValue{Keys: append([]string{}, keys...)}
+		}
+	}
+	return config
+}
+
+// effectiveBindings is getEffectiveConfig's resolved keys of every action of the merged table, tui.* and app.* alike, in the Go form
+// tui.KeybindingsConfig that Runner.Shortcuts reads (interactive-mode.ts:2242 passes getEffectiveConfig() to extensionRunner.getShortcuts,
+// so the reserved tui.* keys are in the shortcut conflict check).
+func (km *KeybindingsManager) effectiveBindings() tui.KeybindingsConfig {
+	if km == nil {
+		return nil
+	}
+	return km.merged.GetResolvedBindings()
 }

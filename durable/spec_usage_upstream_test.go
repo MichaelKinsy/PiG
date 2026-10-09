@@ -3,6 +3,8 @@ package durable
 import (
 	"context"
 	"testing"
+
+	"github.com/MichaelKinsy/PiG/chord/delta"
 )
 
 // Ports packages/durable/test/spec-usage.test.ts, the root-package examples: the plan-mode and container documents
@@ -42,14 +44,12 @@ type paymentsService interface {
 
 func specUsageExamples(session Session, conversationId ConversationId, payments paymentsService, newKey func() string, receiptEntry func(receipt) EntryDraft) (map[string]func(context.Context) error, Task[JsonValue, charge, paymentResult, struct{}]) {
 	planModeDoc := DefineDoc(DocDefinition[planMode]{
-		CommonDocDefinition: CommonDocDefinition[planMode]{Kind: "app.plan-mode", Version: 1},
+		CommonDocDefinition: CommonDocDefinition[planMode]{Kind: "app.plan-mode", Version: 1, Initial: func() planMode { return planMode{Enabled: false} }},
 		DocumentSemantics:   DocumentSemantics{Scope: ScopeConversation, History: HistoryLatest, Fork: ForkCurrent},
-		Initial:             func() planMode { return planMode{Enabled: false} },
 	})
 	containerDoc := DefineDoc(DocDefinition[container]{
-		CommonDocDefinition: CommonDocDefinition[container]{Kind: "app.container", Version: 1},
+		CommonDocDefinition: CommonDocDefinition[container]{Kind: "app.container", Version: 1, Initial: func() container { return container{Image: "node:22"} }},
 		DocumentSemantics:   DocumentSemantics{Scope: ScopeConversation, History: HistoryLatest, Fork: ForkCurrent},
-		Initial:             func() container { return container{Image: "node:22"} },
 	})
 
 	type paymentRuntime = TaskRuntime[JsonValue, charge, paymentResult, struct{}]
@@ -139,7 +139,7 @@ func specUsageExamples(session Session, conversationId ConversationId, payments 
 					return nil, err
 				}
 				// further table writes are fine
-				_, err = CreateTask(tx, follow, JsonObject{}, TaskOptions{Ownership: TaskOwnership{Kind: TaskOwnedByConversation}, ConversationId: &conversationId})
+				_, err = CreateTask(tx, follow, delta.NewJsonObject(0), TaskOptions{Ownership: TaskOwnership{Kind: TaskOwnedByConversation}, ConversationId: &conversationId})
 				return nil, err
 			})
 			return err

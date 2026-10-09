@@ -1,5 +1,15 @@
 package experimental
 
+// pi: packages/coding-agent/src/cli/experimental/cli.ts
+
+// pi: packages/coding-agent/src/cli/experimental/commands/server.ts
+
+// pi: packages/coding-agent/src/cli/experimental/command.ts
+
+// pi: packages/coding-agent/src/cli/experimental/command-options.ts
+
+// pi: packages/coding-agent/src/cli/experimental/commands/client.ts
+
 import (
 	"context"
 	"errors"

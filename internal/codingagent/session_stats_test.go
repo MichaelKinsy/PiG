@@ -6,6 +6,8 @@ import (
 	"os"
 	"testing"
 
+	"github.com/MichaelKinsy/PiG/internal/sessionentry"
+
 	"github.com/MichaelKinsy/PiG/agent"
 	"github.com/MichaelKinsy/PiG/ai"
 )
@@ -27,7 +29,7 @@ func TestLoadedSessionStatsIncludeAllEntriesAndUsage(t *testing.T) {
 	if _, err := session.AppendMessage(agent.AgentMessage{ToolResult: &agent.ToolResultMessage{Role: agent.RoleToolResult, ToolCallID: "call", Usage: &ai.Usage{Input: 1, Output: 1, Cost: ai.UsageCost{Total: 0.05}}}}); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := session.AppendCompaction("summary", *session.LeafID(), 1, nil, false, &ai.Usage{Input: 3, Output: 1, Cost: ai.UsageCost{Total: 0.1}}); err != nil {
+	if _, err := session.AppendCompaction("summary", *session.GetLeafID(), 1, nil, false, &ai.Usage{Input: 3, Output: 1, Cost: ai.UsageCost{Total: 0.1}}); err != nil {
 		t.Fatal(err)
 	}
 
@@ -47,7 +49,7 @@ func TestLoadedSessionStatsIncludeAllEntriesAndUsage(t *testing.T) {
 func TestSessionAccountingAcceptsStringMessageContent(t *testing.T) {
 	session := NewSession("string-content", "/tmp")
 	raw := json.RawMessage(`{"type":"message","id":"legacy-user","parentId":null,"timestamp":"2025-01-01T00:00:00Z","message":{"role":"user","content":"hello","timestamp":1}}`)
-	if err := session.AppendEntry(NewSessionEntry(raw, SessionEntryBase{Type: "message", ID: "legacy-user", Timestamp: "2025-01-01T00:00:00Z"})); err != nil {
+	if err := session.AppendEntry(sessionentry.DecodeSessionEntry(raw)); err != nil {
 		t.Fatal(err)
 	}
 	stats := session.Accounting()
@@ -61,7 +63,7 @@ func TestSessionStatsCacheWasteResetsAtSummary(t *testing.T) {
 	appendAssistant := func(id string, usage *ai.Usage) {
 		t.Helper()
 		entry := MessageEntry{
-			SessionEntryBase: SessionEntryBase{Type: "message", ID: id, ParentID: session.LeafID(), Timestamp: "2025-01-01T00:00:00Z"},
+			SessionEntryBase: SessionEntryBase{Type: "message", ID: id, ParentID: session.GetLeafID(), Timestamp: "2025-01-01T00:00:00Z"},
 			Message: agent.AgentMessage{Assistant: &agent.AssistantMessage{
 				Role: "assistant", Provider: "custom", ModelID: "model", Timestamp: 1, Usage: usage,
 			}},

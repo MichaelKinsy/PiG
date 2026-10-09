@@ -1,0 +1,2 @@
+### Fixed
+- An extension custom message whose content is a block array (text or images), or an empty string, now reaches the model as a user message, as in Pi; it was dropped before. Branch summaries, compaction summaries, bash executions and custom messages are now sent as text-block arrays, so Anthropic Messages and OpenAI Completions requests carry the same content shape as Pi. Any of these messages ends pending tool calls like a user turn.

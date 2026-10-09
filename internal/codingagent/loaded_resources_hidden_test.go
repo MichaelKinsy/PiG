@@ -34,7 +34,7 @@ func TestShowLoadedResourcesOmitsHiddenExtensions(t *testing.T) {
 		hidden("codemode"),
 	}, agentDir)
 	m := &InteractiveMode{
-		opts:                     InteractiveOptions{CWD: t.TempDir(), AgentDir: agentDir, NoThemes: true},
+		opts:                     InteractiveModeOptions{CWD: t.TempDir(), AgentDir: agentDir, NoThemes: true},
 		newRunner:                runner,
 		loadedResourcesContainer: tui.NewContainer(),
 		resourceSourceInfo:       map[string]ResourceSourceInfo{},
@@ -56,7 +56,7 @@ func TestShowLoadedResourcesOmitsHiddenExtensions(t *testing.T) {
 	}
 
 	onlyHidden := &InteractiveMode{
-		opts:                     InteractiveOptions{CWD: t.TempDir(), AgentDir: agentDir, NoThemes: true},
+		opts:                     InteractiveModeOptions{CWD: t.TempDir(), AgentDir: agentDir, NoThemes: true},
 		newRunner:                inproc.NewRunner([]extension.Extension{hidden("tool-search")}, agentDir),
 		loadedResourcesContainer: tui.NewContainer(),
 		resourceSourceInfo:       map[string]ResourceSourceInfo{},

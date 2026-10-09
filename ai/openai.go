@@ -103,15 +103,15 @@ type OpenAICompat struct {
 	SendSessionAffinityHeaders *bool  `json:"sendSessionAffinityHeaders,omitempty"`
 	SupportsStrictMode         *bool  `json:"supportsStrictMode,omitempty"`
 	// OpenRouterRouting contains OpenRouter-specific routing config.
-	OpenRouterRouting  map[string]any `json:"openRouterRouting,omitempty"`
-	ChatTemplateKwargs map[string]any `json:"chatTemplateKwargs,omitempty"`
-	VLLMPriority       *float64       `json:"vllmPriority,omitempty"`
-	// VercelGatewayRouting contains Vercel gateway routing config.
-	VercelGatewayRouting            map[string]any `json:"vercelGatewayRouting,omitempty"`
-	SupportsLongCacheRetention      *bool          `json:"supportsLongCacheRetention,omitempty"`
-	SendSessionIdHeader             *bool          `json:"sendSessionIdHeader,omitempty"`
-	SupportsEagerToolInputStreaming *bool          `json:"supportsEagerToolInputStreaming,omitempty"`
-	SupportsCacheControlOnTools     *bool          `json:"supportsCacheControlOnTools,omitempty"`
+	OpenRouterRouting  OpenRouterRouting                 `json:"openRouterRouting,omitempty"`
+	ChatTemplateKwargs map[string]ChatTemplateKwargValue `json:"chatTemplateKwargs,omitempty"`
+	VLLMPriority       *float64                          `json:"vllmPriority,omitempty"`
+	// VercelGatewayRouting contains Vercel AI Gateway routing preferences.
+	VercelGatewayRouting            *VercelGatewayRouting `json:"vercelGatewayRouting,omitempty"`
+	SupportsLongCacheRetention      *bool                 `json:"supportsLongCacheRetention,omitempty"`
+	SendSessionIdHeader             *bool                 `json:"sendSessionIdHeader,omitempty"`
+	SupportsEagerToolInputStreaming *bool                 `json:"supportsEagerToolInputStreaming,omitempty"`
+	SupportsCacheControlOnTools     *bool                 `json:"supportsCacheControlOnTools,omitempty"`
 	// ForceAdaptiveThinking forces adaptive thinking (type: "adaptive"
 	// + output_config.effort) regardless of model ID. Built-in models
 	// set this in generated metadata. Custom Anthropic-compatible
@@ -147,7 +147,7 @@ type OpenAICompat struct {
 	ChatTemplateArgs            map[string]any `json:"chatTemplateArgs,omitempty"`
 	SupportsThinkingTokenBudget *bool          `json:"supportsThinkingTokenBudget,omitempty"`
 	// ThinkingTokenBudgetField selects the budget wire field and takes precedence over SupportsThinkingTokenBudget.
-	ThinkingTokenBudgetField       string                          `json:"thinkingTokenBudgetField,omitempty"`
+	ThinkingTokenBudgetField       ThinkingTokenBudgetField        `json:"thinkingTokenBudgetField,omitempty"`
 	SupportsAdditionalTools        *bool                           `json:"supportsAdditionalTools,omitempty"`
 	SupportsMidConvoEffort         *bool                           `json:"supportsMidConvoEffort,omitempty"`
 	SupportsMidConvoSystemMessages *bool                           `json:"supportsMidConvoSystemMessages,omitempty"`
@@ -182,7 +182,7 @@ func (p *openAIProvider) thinkingModel() *Model {
 	if p.cfg.ModelMetadata != nil {
 		return p.cfg.ModelMetadata
 	}
-	model := &Model{ID: p.cfg.Model, Capabilities: ModelCapabilities{MaxThinking: ThinkingHigh}}
+	model := &Model{ID: p.cfg.Model, Capabilities: ModelCapabilities{MaxThinking: ThinkingLevelHigh}}
 	if generated, ok := LookupModelExact(p.cfg.ProviderID + "/" + p.cfg.Model); ok {
 		model = generated.ToModel()
 	} else if p.cfg.ProviderID == "openrouter" {
@@ -214,12 +214,12 @@ func (p *openAIProvider) samplingModel(reasoning bool) *Model {
 }
 
 // completionsSamplingLevel is the thinking level whose sampling overrides apply: the request effort, else the simple reasoning level, else off (openai-completions.ts buildParams).
-func completionsSamplingLevel(opts StreamOptions) ThinkingLevel {
+func completionsSamplingLevel(opts StreamOptions) ModelThinkingLevel {
 	switch {
 	case opts.ReasoningEffort != "":
-		return ThinkingLevel(opts.ReasoningEffort)
+		return ModelThinkingLevel(opts.ReasoningEffort)
 	case opts.Thinking != "":
-		return opts.Thinking
+		return ModelThinkingLevel(opts.Thinking)
 	}
 	return ThinkingOff
 }
@@ -282,7 +282,7 @@ func (p *openAIProvider) cacheControlFormat() string {
 }
 
 // convertMessagesWithCompat wraps convertMessages with compat-aware transformations:
-// - requiresAssistantAfterToolResult: inserts empty assistant messages
+// - requiresAssistantAfterToolResult: inserts assistant bridge messages
 // - requiresToolResultName: adds name field to tool result messages
 // - requiresThinkingAsText: converts thinking blocks to <thinking> text
 // Mirrors upstream openai-completions.ts convertMessages (lines 680-870).
@@ -328,9 +328,10 @@ func (p *openAIProvider) convertMessagesWithCompat(msgs []Message, grammarProps 
 			m.Content = ""
 		}
 		// requiresAssistantAfterToolResult: if this is a user message and the
-		// previous message was a tool result, insert an empty assistant message.
+		// previous message was a tool result, insert the synthetic assistant message
+		// of openai-completions.ts:1241-1246 and :1452-1456.
 		if requiresAssistant && m.Role == "user" && i > 0 && out[i-1].Role == "tool" {
-			result = append(result, oaiMessage{Role: "assistant", Content: ""})
+			result = append(result, oaiMessage{Role: "assistant", Content: "I have processed the tool results."})
 		}
 		// requiresToolResultName: add ToolName to tool messages.
 		if requiresName && m.Role == "tool" && m.ToolName == "" {
@@ -620,11 +621,11 @@ func qwenReasoningEffort(reasoningOn, supportsReasoningEffort bool, mappedEffort
 	return mappedEffort()
 }
 
-// thinkingToReasoningEffort maps a ThinkingLevel to an OpenAI-compatible
+// thinkingToReasoningEffort maps a ModelThinkingLevel to an OpenAI-compatible
 // reasoning_effort string using the model's thinkingLevelMap when present.
 // Returns "" when the requested level maps to disabled reasoning so callers
 // can omit the field entirely.
-func thinkingToReasoningEffort(model *Model, level ThinkingLevel) string {
+func thinkingToReasoningEffort(model *Model, level ModelThinkingLevel) string {
 	if model == nil {
 		if level == ThinkingOff || level == "" {
 			return ""
@@ -1171,11 +1172,11 @@ func DetectCompat(providerID, baseURL string) *OpenAICompat {
 
 var toolCallIDForbidden = lazyregexp.New(`[^a-zA-Z0-9_-]`)
 
-// shortHash32 ports upstream packages/ai/src/utils/hash.ts shortHash: a 32-bit
+// ShortHash ports upstream packages/ai/src/utils/hash.ts shortHash: a 32-bit
 // non-cryptographic hash rendered as two base36 numbers. Iterating UTF-16 code
 // units with uint32 arithmetic (matching JS Math.imul low-32-bit wrap and `>>>`)
 // keeps the output byte-identical to upstream for the tool-call ids it hashes.
-func shortHash32(s string) string {
+func ShortHash(s string) string {
 	var h1 uint32 = 0xdeadbeef
 	var h2 uint32 = 0x41c6ce57
 	for _, unit := range utf16.Encode([]rune(s)) {
@@ -1206,7 +1207,7 @@ func normalizeCompletionsToolCallID(id, providerID string) string {
 		if len(combined) <= 40 {
 			return combined
 		}
-		hash := shortHash32(id)
+		hash := ShortHash(id)
 		if len(hash) > 8 {
 			hash = hash[:8]
 		}
@@ -1332,6 +1333,94 @@ func (p *openAIProvider) convertTools(tools []ToolSchema) ([]oaiTool, error) {
 
 // ─── Stream ───────────────────────────────────────────────────────────────────
 
+// completionsConversion is a transcript converted for a chat-completions request.
+type completionsConversion struct {
+	// messages is the resolved and transformed transcript, the leading system message included.
+	messages []Message
+	tools    TranscriptTools
+	// grammarProps is the grammar tool input property map the conversion used.
+	grammarProps map[string]string
+	// chat is the request's messages: the instruction message first, then the conversation.
+	chat []oaiMessage
+}
+
+// convertTranscript resolves, transforms and converts a transcript for the provider's model and compat. A nil
+// grammarProps is derived from the transcript's declared tools, as Pi's createGrammarToolInputProperties default does.
+func (p *openAIProvider) convertTranscript(transcript TranscriptContext, grammarProps map[string]string, isReasoning bool) (completionsConversion, error) {
+	supportsMidConversation := p.compatBool(func(c *OpenAICompat) *bool { return c.SupportsMidConvoSystemMessages }, false)
+	resolved := ResolveTranscript(transcript, supportsMidConversation)
+	messages := resolved.Messages()
+	target := &Model{ID: p.cfg.Model, ProviderMeta: ProviderMetadata{API: APIOpenAICompletions, ProviderID: p.cfg.ProviderID}, Input: []string{"text"}}
+	if p.modelSupportsImages() {
+		target.Input = append(target.Input, "image")
+	}
+	messages = TransformMessages(messages, target, nil)
+	conversation := WithoutInitialSystemMessage(messages)
+	// Kimi loads later tool additions in tool-bearing system messages; the
+	// request tools then hold only the initial tools.
+	transcriptTools := ResolveTranscriptTools(messages, supportsMidConversation && p.compatBool(func(c *OpenAICompat) *bool { return c.SupportsMidConvoToolAdditions }, false))
+	if grammarProps == nil {
+		// grammarProps maps a grammar tool's name to the single string property that
+		// carries its constrained input. It is derived once from every declared tool and
+		// threaded into message replay, tool conversion, and stream reconstruction so
+		// custom (grammar) tool calls round-trip. Mirrors openai-completions.ts:229.
+		supportsGrammar := p.compatBool(func(c *OpenAICompat) *bool { return c.SupportsOpenAIGrammarTools }, false)
+		var err error
+		grammarProps, err = createGrammarToolInputProperties(GetDeclaredTools(messages), supportsGrammar)
+		if err != nil {
+			return completionsConversion{}, err
+		}
+	}
+	msgs, err := p.convertMessagesWithCompat(conversation, grammarProps, p.systemPromptRole(isReasoning), transcriptTools.AnchorsAdditions)
+	if err != nil {
+		return completionsConversion{}, err
+	}
+	if isReasoning && p.compatBool(func(c *OpenAICompat) *bool { return c.RequiresReasoningContentOnAssistantMessages }, false) {
+		for i := range msgs {
+			if msgs[i].Role == "assistant" && msgs[i].ReasoningContent == nil {
+				empty := ""
+				msgs[i].ReasoningContent = &empty
+			}
+		}
+	}
+	if systemPrompt := GetCurrentSystemPrompt(messages[:min(1, len(messages))]); systemPrompt != "" {
+		role := p.systemPromptRole(isReasoning)
+		msgs = append([]oaiMessage{{Role: role, Content: sanitizeSurrogates(systemPrompt)}}, msgs...)
+	}
+	return completionsConversion{messages: messages, tools: transcriptTools, grammarProps: grammarProps, chat: msgs}, nil
+}
+
+// OpenAIChatMessage is one message of a chat-completions request.
+type OpenAIChatMessage = oaiMessage
+
+// ConvertCompletionsMessagesOptions are the options of [ConvertCompletionsMessages].
+//
+// Ports packages/ai/src/api/openai-completions.ts (ConvertCompletionsMessagesOptions).
+type ConvertCompletionsMessagesOptions struct {
+	// GrammarToolInputProperties maps a grammar tool's name to its constrained input property. Nil derives it from the transcript.
+	GrammarToolInputProperties map[string]string
+}
+
+// ConvertCompletionsMessages converts a transcript to the messages of an openai-completions request for model and
+// compat: the transcript is resolved and transformed for the model, and the instruction message leads. A nil compat
+// resolves every flag to its default.
+//
+// Ports packages/ai/src/api/openai-completions.ts (convertMessages).
+func ConvertCompletionsMessages(model *Model, transcript TranscriptContext, compat *OpenAICompat, options ConvertCompletionsMessagesOptions) ([]OpenAIChatMessage, error) {
+	p := &openAIProvider{cfg: OpenAIConfig{
+		BaseURL:       model.ProviderMeta.BaseURL,
+		Model:         model.ID,
+		ModelMetadata: model,
+		ProviderID:    model.ProviderMeta.ProviderID,
+		Compat:        compat,
+	}}
+	conversion, err := p.convertTranscript(transcript, options.GrammarToolInputProperties, model.ProviderMeta.Reasoning)
+	if err != nil {
+		return nil, err
+	}
+	return conversion.chat, nil
+}
+
 // Stream returns before HTTP setup settles. Successful setup admits start before waiting for body data.
 func (p *openAIProvider) Stream(ctx context.Context, transcript TranscriptContext, opts StreamOptions) (*AssistantMessageEventStream, error) {
 	if p.cfg.azure != nil {
@@ -1345,44 +1434,11 @@ func (p *openAIProvider) Stream(ctx context.Context, transcript TranscriptContex
 	if err := validateProviderRequest(ctx, transcript); err != nil {
 		return nil, fmt.Errorf("openai: invalid transcript: %w", err)
 	}
-	supportsMidConversation := p.compatBool(func(c *OpenAICompat) *bool { return c.SupportsMidConvoSystemMessages }, false)
-	resolved := ResolveTranscript(transcript, supportsMidConversation)
-	messages := resolved.Messages()
-	target := &Model{ID: p.cfg.Model, ProviderMeta: ProviderMetadata{API: APIOpenAICompletions, ProviderID: p.cfg.ProviderID}, Input: []string{"text"}}
-	if p.modelSupportsImages() {
-		target.Input = append(target.Input, "image")
-	}
-	messages = TransformMessages(messages, target, nil)
-	conversation := WithoutInitialSystemMessage(messages)
-	// Kimi loads later tool additions in tool-bearing system messages; the
-	// request tools then hold only the initial tools.
-	transcriptTools := ResolveTranscriptTools(messages, supportsMidConversation && p.compatBool(func(c *OpenAICompat) *bool { return c.SupportsMidConvoToolAdditions }, false))
-	tools := transcriptTools.RequestTools
-	// grammarProps maps a grammar tool's name to the single string property that
-	// carries its constrained input. It is derived once from every declared tool and
-	// threaded into message replay, tool conversion, and stream reconstruction so
-	// custom (grammar) tool calls round-trip. Mirrors openai-completions.ts:229.
-	supportsGrammar := p.compatBool(func(c *OpenAICompat) *bool { return c.SupportsOpenAIGrammarTools }, false)
-	grammarProps, err := createGrammarToolInputProperties(GetDeclaredTools(messages), supportsGrammar)
+	conversion, err := p.convertTranscript(transcript, nil, opts.IsReasoning)
 	if err != nil {
 		return nil, err
 	}
-	msgs, err := p.convertMessagesWithCompat(conversation, grammarProps, p.systemPromptRole(opts.IsReasoning), transcriptTools.AnchorsAdditions)
-	if err != nil {
-		return nil, err
-	}
-	if opts.IsReasoning && p.compatBool(func(c *OpenAICompat) *bool { return c.RequiresReasoningContentOnAssistantMessages }, false) {
-		for i := range msgs {
-			if msgs[i].Role == "assistant" && msgs[i].ReasoningContent == nil {
-				empty := ""
-				msgs[i].ReasoningContent = &empty
-			}
-		}
-	}
-	if systemPrompt := GetCurrentSystemPrompt(messages[:min(1, len(messages))]); systemPrompt != "" {
-		role := p.systemPromptRole(opts.IsReasoning)
-		msgs = append([]oaiMessage{{Role: role, Content: sanitizeSurrogates(systemPrompt)}}, msgs...)
-	}
+	messages, msgs, tools, grammarProps := conversion.messages, conversion.chat, conversion.tools.RequestTools, conversion.grammarProps
 
 	req := oaiRequest{
 		Model:    cmp.Or(p.cfg.requestModel, p.cfg.Model),
@@ -1394,7 +1450,10 @@ func (p *openAIProvider) Stream(ctx context.Context, transcript TranscriptContex
 		return nil, err
 	}
 	req.Tools = requestTools
-	req.ToolChoice = opts.ToolChoice
+	// openai-completions.ts:869 `if (options?.toolChoice)`: an empty choice is falsy and is not sent.
+	if name, ok := toolChoiceName(opts.ToolChoice); !ok || name != "" {
+		req.ToolChoice = opts.ToolChoice
+	}
 	if len(tools) > 0 && p.cfg.Compat != nil && p.cfg.Compat.ZaiToolStream != nil && *p.cfg.Compat.ZaiToolStream {
 		req.ToolStream = new(true)
 	}
@@ -1438,14 +1497,14 @@ func (p *openAIProvider) Stream(ctx context.Context, transcript TranscriptContex
 		model := p.thinkingModel()
 		if model.Capabilities.MaxThinking == "" {
 			model = new(*model)
-			model.Capabilities.MaxThinking = ThinkingHigh
+			model.Capabilities.MaxThinking = ThinkingLevelHigh
 		}
 		// Native API effort is mapped without clamping. Omitted and disabled reasoning stay off.
-		clamped := opts.Thinking
+		clamped := ModelThinkingLevel(opts.Thinking)
 		if opts.ReasoningEffort != "" {
-			clamped = ThinkingLevel(opts.ReasoningEffort)
+			clamped = ModelThinkingLevel(opts.ReasoningEffort)
 		} else if clamped != ThinkingOff && clamped != "" {
-			clamped = ClampThinkingLevel(model, opts.Thinking)
+			clamped = ClampThinkingLevel(model, ModelThinkingLevel(opts.Thinking))
 		}
 		thinkingFormat := "openai"
 		if p.cfg.Compat != nil && p.cfg.Compat.ThinkingFormat != "" {
@@ -1585,12 +1644,12 @@ func (p *openAIProvider) Stream(ctx context.Context, transcript TranscriptContex
 		}
 
 		if p.cfg.Compat != nil {
-			thinkingBudgetField = p.cfg.Compat.ThinkingTokenBudgetField
+			thinkingBudgetField = string(p.cfg.Compat.ThinkingTokenBudgetField)
 		}
 		if thinkingBudgetField == "" && p.compatBool(func(c *OpenAICompat) *bool { return c.SupportsThinkingTokenBudget }, false) {
-			thinkingBudgetField = "thinking_token_budget"
+			thinkingBudgetField = string(ThinkingTokenBudgetFieldThinkingTokenBudget)
 		}
-		if thinkingBudgetField == "thinking_token_budget" && thinkingBudget > 0 {
+		if thinkingBudgetField == string(ThinkingTokenBudgetFieldThinkingTokenBudget) && thinkingBudget > 0 {
 			req.ThinkingTokenBudget = thinkingBudget
 		}
 	}
@@ -1599,22 +1658,17 @@ func (p *openAIProvider) Stream(ctx context.Context, transcript TranscriptContex
 	if p.cfg.Compat != nil && p.cfg.Compat.OpenRouterRouting != nil {
 		req.Provider = p.cfg.Compat.OpenRouterRouting
 	}
-	// Vercel AI Gateway provider routing preferences (only/order). Gated on the
-	// Vercel gateway host. Mirrors openai-completions.ts:618-627.
-	if p.cfg.Compat != nil && p.cfg.Compat.VercelGatewayRouting != nil && strings.Contains(p.cfg.BaseURL, "ai-gateway.vercel.sh") {
+	// Vercel AI Gateway provider routing preferences. Pi applies them to every request whose compat sets them, with no base URL gate (openai-completions.ts:992-1001).
+	if p.cfg.Compat != nil && p.cfg.Compat.VercelGatewayRouting != nil && (p.cfg.Compat.VercelGatewayRouting.Only != nil || p.cfg.Compat.VercelGatewayRouting.Order != nil) {
 		routing := p.cfg.Compat.VercelGatewayRouting
-		only, hasOnly := routing["only"]
-		order, hasOrder := routing["order"]
-		if hasOnly || hasOrder {
-			gatewayOptions := map[string]any{}
-			if hasOnly {
-				gatewayOptions["only"] = only
-			}
-			if hasOrder {
-				gatewayOptions["order"] = order
-			}
-			req.ProviderOptions = map[string]any{"gateway": gatewayOptions}
+		gatewayOptions := map[string]any{}
+		if routing.Only != nil {
+			gatewayOptions["only"] = routing.Only
 		}
+		if routing.Order != nil {
+			gatewayOptions["order"] = routing.Order
+		}
+		req.ProviderOptions = map[string]any{"gateway": gatewayOptions}
 	}
 	// Prompt-cache body fields and session-affinity headers have independent provider gates.
 	cacheRetention := resolveCompletionsCacheRetention(opts.CacheRetention, mergeProviderEnv(p.cfg.Env, opts.Env))
@@ -1640,7 +1694,7 @@ func (p *openAIProvider) Stream(ctx context.Context, transcript TranscriptContex
 	payload := any(req)
 	// Last so model and request sampling parameters override named request fields (openai-completions.ts buildParams).
 	samplingParams := ResolveSamplingParams(p.samplingModel(opts.IsReasoning), completionsSamplingLevel(opts), opts.SamplingParams)
-	if samplingParams != nil || (thinkingBudget > 0 && thinkingBudgetField != "" && thinkingBudgetField != "thinking_token_budget") {
+	if samplingParams != nil || (thinkingBudget > 0 && thinkingBudgetField != "" && thinkingBudgetField != string(ThinkingTokenBudgetFieldThinkingTokenBudget)) {
 		encoded, err := json.Marshal(req)
 		if err != nil {
 			return nil, fmt.Errorf("openai: marshal sampling base: %w", err)
@@ -1649,7 +1703,7 @@ func (p *openAIProvider) Stream(ctx context.Context, transcript TranscriptContex
 		if err := json.Unmarshal(encoded, &merged); err != nil {
 			return nil, fmt.Errorf("openai: decode sampling base: %w", err)
 		}
-		if thinkingBudget > 0 && thinkingBudgetField != "" && thinkingBudgetField != "thinking_token_budget" {
+		if thinkingBudget > 0 && thinkingBudgetField != "" && thinkingBudgetField != string(ThinkingTokenBudgetFieldThinkingTokenBudget) {
 			merged[thinkingBudgetField] = thinkingBudget
 		}
 		maps.Copy(merged, samplingParams)
@@ -1773,7 +1827,7 @@ func (p *openAIProvider) streamResponse(ctx context.Context, request *http.Reque
 	})
 }
 
-func resolveClampedThinkingBudget(level ThinkingLevel, custom *ThinkingBudgets, ceiling int) int {
+func resolveClampedThinkingBudget(level ModelThinkingLevel, custom *ThinkingBudgets, ceiling int) int {
 	budgets := DefaultThinkingBudgets()
 	if custom != nil {
 		if custom.Minimal != 0 {
@@ -1798,7 +1852,7 @@ func resolveClampedThinkingBudget(level ThinkingLevel, custom *ThinkingBudgets, 
 	case ThinkingMedium:
 		budget = budgets.Medium
 	}
-	return min(budget, max(0, ceiling-1024))
+	return ClampThinkingBudgetToAnswerRoom(budget, ceiling)
 }
 
 func resolveChatTemplateValues(config map[string]any, reasoningOn bool, effort func() string, offEffort func() (string, bool), budget int) map[string]any {

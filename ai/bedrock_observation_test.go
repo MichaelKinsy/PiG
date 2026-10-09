@@ -1,3 +1,5 @@
+//go:build !pig_strip_bedrock_converse_stream
+
 package ai
 
 import (
@@ -193,15 +195,34 @@ func (server *bedrockFixtureServer) serve() {
 
 var bedrockTimestamp = regexp.MustCompile(`"timestamp":\d{10,}`)
 
+// bedrockDuration keeps only the presence of durationMs, which Pi 1.1.0 sets from wall time on the final message (event-stream.ts:127-128).
+var bedrockDuration = regexp.MustCompile(`"durationMs":\d+`)
+
 func canonicalBedrockJSON(t *testing.T, raw []byte) any {
 	t.Helper()
 	if len(raw) == 0 {
 		return nil
 	}
 	var value any
-	if err := json.Unmarshal(bedrockTimestamp.ReplaceAll(raw, []byte(`"timestamp":0`)), &value); err != nil {
+	if err := json.Unmarshal(bedrockDuration.ReplaceAll(bedrockTimestamp.ReplaceAll(raw, []byte(`"timestamp":0`)), []byte(`"durationMs":0`)), &value); err != nil {
 		t.Fatalf("%v in %s", err, raw)
 	}
+	// durationMs is a monotonic reading that differs in every run of Pi and Go.
+	var drop func(any)
+	drop = func(node any) {
+		switch node := node.(type) {
+		case map[string]any:
+			delete(node, "durationMs")
+			for _, item := range node {
+				drop(item)
+			}
+		case []any:
+			for _, item := range node {
+				drop(item)
+			}
+		}
+	}
+	drop(value)
 	return value
 }
 

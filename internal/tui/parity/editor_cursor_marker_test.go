@@ -2,6 +2,7 @@ package parity
 
 import (
 	"bytes"
+	"context"
 	"strings"
 	"testing"
 
@@ -11,7 +12,7 @@ import (
 
 type singleSuggestionProvider struct{}
 
-func (singleSuggestionProvider) GetSuggestions(lines []string, cursorLine, cursorCol int) *tui.AutocompleteSuggestions {
+func (singleSuggestionProvider) GetSuggestions(_ context.Context, lines []string, cursorLine, cursorCol int, _ tui.AutocompleteSuggestionOptions) *tui.AutocompleteSuggestions {
 	if len(lines) == 0 || !strings.HasPrefix(lines[cursorLine], "/") {
 		return nil
 	}

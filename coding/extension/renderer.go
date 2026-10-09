@@ -1,31 +1,22 @@
 package extension
 
-import "context"
+import "github.com/MichaelKinsy/PiG/coding/extension/markdowntransform"
 
-// MarkdownMessageType identifies the transcript message being transformed for
-// display. Transformers never change model context or persisted message data.
-type MarkdownMessageType string
+// MarkdownMessageType identifies the transcript message being transformed for display. It is
+// [markdowntransform.MarkdownMessageType], shared with the tui message components.
+type MarkdownMessageType = markdowntransform.MarkdownMessageType
 
 const (
-	MarkdownMessageUser      MarkdownMessageType = "user"
-	MarkdownMessageAssistant MarkdownMessageType = "assistant"
-	// MarkdownMessageAssistantThinking marks the reasoning/thinking trace of an
-	// assistant turn. Mirrors upstream MarkdownTransformContext.messageType
-	// "assistant-thinking"; the built-in Mermaid transformer skips it.
-	MarkdownMessageAssistantThinking MarkdownMessageType = "assistant-thinking"
+	MarkdownMessageUser              = markdowntransform.MarkdownMessageUser
+	MarkdownMessageAssistant         = markdowntransform.MarkdownMessageAssistant
+	MarkdownMessageAssistantThinking = markdowntransform.MarkdownMessageAssistantThinking
 )
 
-// MarkdownTransformContext mirrors upstream MarkdownTransformContext.
-type MarkdownTransformContext struct {
-	// Context owns the off-loop host generation; it is not part of Pi's wire context.
-	Context        context.Context     `json:"-"`
-	MessageType    MarkdownMessageType `json:"messageType"`
-	IsStreaming    bool                `json:"isStreaming"`
-	AvailableWidth int                 `json:"availableWidth"`
-}
+// MarkdownTransformContext mirrors upstream MarkdownTransformContext. It is [markdowntransform.MarkdownTransformContext].
+type MarkdownTransformContext = markdowntransform.MarkdownTransformContext
 
-// MarkdownTransformer performs a synchronous display-only Markdown rewrite.
-type MarkdownTransformer func(markdown string, context MarkdownTransformContext) string
+// MarkdownTransformer performs a synchronous display-only Markdown rewrite. It is [markdowntransform.MarkdownTransformer].
+type MarkdownTransformer = markdowntransform.MarkdownTransformer
 
 // MessageRenderOptions is passed to a [MessageRenderer].
 type MessageRenderOptions struct {
@@ -39,7 +30,7 @@ type MessageRenderOptions struct {
 // the default renderer.
 //
 // The Go signature drops the TS generic parameter T: the message's data
-// is carried on [CustomMessage] (currently `any`) and the renderer
+// is carried on [CustomMessage] (Content and Details are `any`) and the renderer
 // type-asserts as needed. This avoids the compilation explosion of N
 // generic instantiations across the host package and matches how
 // subprocess extensions see this surface (untyped JSON over the wire).
@@ -60,7 +51,7 @@ type EntryRenderOptions struct {
 // or returns nil to fall back to the default renderer.
 //
 // As with [MessageRenderer], the Go signature drops the TS generic parameter T:
-// the entry's data is carried on [CustomEntry] (currently `any`) and the
+// the entry's data is carried on [CustomEntry].Data (`any`) and the
 // renderer type-asserts as needed.
 type EntryRenderer = func(
 	entry CustomEntry,

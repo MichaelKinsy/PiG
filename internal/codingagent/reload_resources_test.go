@@ -48,7 +48,7 @@ func TestReplaceExtensionRunner_PreservesBuiltinAndUI(t *testing.T) {
 	m := &InteractiveMode{
 		tuiInst: tui.NewWithOutput(io.Discard, 80, 24),
 		layout:  tui.NewContainer(),
-		opts: InteractiveOptions{
+		opts: InteractiveModeOptions{
 			CWD: t.TempDir(),
 			BuiltinExtensions: []extension.Extension{{
 				Name:     "piglet",
@@ -80,7 +80,7 @@ func TestReplaceExtensionRunner_PreservesBuiltinAndUI(t *testing.T) {
 
 func TestInteractiveModeReplaceExtensionRunner_RefreshesAgentTools(t *testing.T) {
 	m := &InteractiveMode{
-		opts: InteractiveOptions{
+		opts: InteractiveModeOptions{
 			CWD:      t.TempDir(),
 			Settings: Settings{},
 			BridgeExtensionTools: func(rts []extension.RegisteredTool) ([]agent.AgentTool, []error) {
@@ -90,7 +90,7 @@ func TestInteractiveModeReplaceExtensionRunner_RefreshesAgentTools(t *testing.T)
 				return []agent.AgentTool{namedTool{name: "extra"}}, nil
 			},
 		},
-		agent: agent.NewAgent(agent.AgentOptions{Tools: []agent.AgentTool{namedTool{name: "old"}}}),
+		agent: mustNewAgent(agent.AgentOptions{Tools: []agent.AgentTool{namedTool{name: "old"}}}),
 	}
 	oldRunner := m.newRunner
 	exts := []extension.Extension{{
@@ -138,7 +138,7 @@ func TestReloadRefreshesExtensionShortcuts(t *testing.T) {
 
 	m := &InteractiveMode{
 		runCtx: context.Background(),
-		opts:   InteractiveOptions{CWD: t.TempDir()},
+		opts:   InteractiveModeOptions{CWD: t.TempDir()},
 	}
 	m.newRunner = inproc.NewRunner([]extension.Extension{shortcut("old", "ctrl+shift+left", oldCalls)}, m.opts.CWD)
 	m.setupExtensionShortcutListener(m.runCtx)
@@ -233,7 +233,7 @@ func TestReloadRefreshesRealSubprocessShortcuts(t *testing.T) {
 	}
 	defer host.Shutdown("test complete")
 
-	m := &InteractiveMode{runCtx: ctx, opts: InteractiveOptions{CWD: root, SubprocessHost: host}}
+	m := &InteractiveMode{runCtx: ctx, opts: InteractiveModeOptions{CWD: root, SubprocessHost: host}}
 	m.newRunner = inproc.NewRunner([]extension.Extension{*ext}, root)
 	m.setupExtensionShortcutListener(ctx)
 	if !m.notifyTerminalInput("\x1b[1;6C") {
@@ -369,7 +369,7 @@ func TestInteractiveModeExtendResourcesFromExtensions_MergesDiscoveredPaths(t *t
 
 	var rebuilt bool
 	m := &InteractiveMode{
-		opts: InteractiveOptions{
+		opts: InteractiveModeOptions{
 			CWD:      cwd,
 			AgentDir: t.TempDir(),
 			RebuildSystemPrompt: func(skills []*SkillDef, contextFiles []ContextFile) (string, extension.BuildSystemPromptOptions) {
@@ -377,7 +377,7 @@ func TestInteractiveModeExtendResourcesFromExtensions_MergesDiscoveredPaths(t *t
 				return "rebuilt prompt", extension.BuildSystemPromptOptions{Cwd: cwd}
 			},
 		},
-		agent: agent.NewAgent(agent.AgentOptions{}),
+		agent: mustNewAgent(agent.AgentOptions{}),
 		newRunner: inproc.NewRunner([]extension.Extension{{
 			Path: "/tmp/dynamic-ext.ts",
 			Handlers: map[string][]extension.HandlerFn{
@@ -456,7 +456,7 @@ func TestResourceLoaderUpstreamExtensionResources(t *testing.T) {
 			if fileURL {
 				input = fileURLForTest(skillDir).String()
 			}
-			m := &InteractiveMode{opts: InteractiveOptions{CWD: root, AgentDir: t.TempDir()}}
+			m := &InteractiveMode{opts: InteractiveModeOptions{CWD: root, AgentDir: t.TempDir()}}
 			m.newRunner = inproc.NewRunner([]extension.Extension{{Path: filepath.Join(root, source+".ts"), Handlers: map[string][]extension.HandlerFn{
 				EventResourcesDiscover: {func(...any) (any, error) {
 					return &extension.ResourcesDiscoverResult{SkillPaths: []string{input}, PromptPaths: []string{promptPath}}, nil
@@ -465,7 +465,7 @@ func TestResourceLoaderUpstreamExtensionResources(t *testing.T) {
 			if err := m.extendResourcesFromExtensions(t.Context(), "startup"); err != nil {
 				t.Fatal(err)
 			}
-			if len(m.opts.Skills) != 1 || m.opts.Skills[0].Name != skillName || m.opts.Skills[0].Path != skillPath || len(m.opts.SkillDiagnostics) != 0 {
+			if len(m.opts.Skills) != 1 || m.opts.Skills[0].Name != skillName || m.opts.Skills[0].FilePath != skillPath || len(m.opts.SkillDiagnostics) != 0 {
 				t.Fatalf("skills=%#v diagnostics=%v", m.opts.Skills, m.opts.SkillDiagnostics)
 			}
 			wantSkillSource := PiSourceInfo{Path: skillPath, Source: "extension:" + source, Scope: "temporary", Origin: "top-level", BaseDir: root}
@@ -494,7 +494,7 @@ func TestResourceLoaderUpstreamNoSkillsReload(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, paths := range [][]string{nil, {root}} {
-		m := &InteractiveMode{opts: InteractiveOptions{CWD: root, NoSkills: true, SkillPaths: paths}}
+		m := &InteractiveMode{opts: InteractiveModeOptions{CWD: root, NoSkills: true, SkillPaths: paths}}
 		m.reloadSkillsFromPaths()
 		if len(paths) == 0 {
 			if len(m.opts.Skills) != 0 {
@@ -531,7 +531,7 @@ func TestResourceLoaderUpstreamDisabledDiscoveryKeepsExtensions(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	m := &InteractiveMode{opts: InteractiveOptions{CWD: root, NoSkills: true, NoPromptTemplates: true, NoThemes: true}}
+	m := &InteractiveMode{opts: InteractiveModeOptions{CWD: root, NoSkills: true, NoPromptTemplates: true, NoThemes: true}}
 	agg := &extension.ResourcesDiscoverAggregateResult{
 		SkillPaths:  []extension.AttributedResourcePath{{Path: filepath.Dir(skillPath), ExtensionPath: "/custom.ts"}},
 		PromptPaths: []extension.AttributedResourcePath{{Path: promptPath, ExtensionPath: "/custom.ts"}},
@@ -559,7 +559,7 @@ func contains(items []string, want string) bool {
 // command of an extension that is no longer loaded is gone, not left
 // registered against a stopped runtime.
 func TestReloadDropsCommandsOfRemovedExtensions(t *testing.T) {
-	m := &InteractiveMode{runCtx: context.Background(), slashRegistry: NewSlashRegistry(), opts: InteractiveOptions{CWD: t.TempDir()}}
+	m := &InteractiveMode{runCtx: context.Background(), slashRegistry: NewSlashRegistry(), opts: InteractiveModeOptions{CWD: t.TempDir()}}
 	byeHandler := func(context.Context, string) error { return nil }
 	m.newRunner = inproc.NewRunner([]extension.Extension{
 		{Name: "bye", Commands: map[string]extension.RegisteredCommand{"bye": {Name: "bye", Description: "Say bye", Handler: byeHandler}}, CommandOrder: []string{"bye"}},

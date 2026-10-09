@@ -59,3 +59,7 @@ reason = "The loopback provider receives an allocated port; preserve scheme, hos
 paths = ["/**/timestamp"]
 kind = "timestamp"
 reason = "Independent clocks vary; preserve numeric/string type and valid timestamp syntax instead of accepting arbitrary substituted values."
+[[assert.json_aliases]]
+paths = ["/**/durationMs"]
+kind = "duration"
+reason = "Pi 1.1.0 times each response and tool run with a monotonic clock (event-stream.ts, agent-loop.ts), so the whole-millisecond value differs between runs; retain the field's presence, its position and its number spelling."

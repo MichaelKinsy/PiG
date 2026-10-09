@@ -20,6 +20,8 @@ func (builder *assistantStreamBuilder) setProviderEventObserver(opts StreamOptio
 		return
 	}
 	ctx := builder.ctx
+	builder.providerEventOption = opts.OnProviderStreamEvent
+	builder.providerEventModel = model
 	builder.providerEvent = func(data any) error { return opts.OnProviderStreamEvent(ctx, data, model) }
 }
 

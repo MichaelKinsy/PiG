@@ -21,6 +21,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/MichaelKinsy/PiG/coding/extension"
+
 	"github.com/MichaelKinsy/PiG/coding/piglogin"
 	"github.com/MichaelKinsy/PiG/internal/coding/pigversion"
 	"github.com/MichaelKinsy/PiG/tui"
@@ -109,7 +111,7 @@ func TestPigLogoAnimationMatchesPinnedPi(t *testing.T) {
 		{name: "narrow screen hides the hint", width: 14, height: 8, logoColumn: 1, logoRow: 1, variant: piglogin.Default(), foreground: logoRgb{220, 220, 220}, bg: logoRgb{20, 20, 20}, appearance: "dark", renderMs: []float64{0, 400, 1500, 2600, 3000}, closeMs: 3100, closeKind: "key"},
 		{name: "text mark and kratos, exit while running", width: 90, height: 26, logoColumn: 1, logoRow: 1, textMark: true, variant: piglogin.FindVariant("kratos"), foreground: logoRgb{220, 220, 220}, bg: logoRgb{12, 14, 18}, appearance: "dark", renderMs: []float64{0, 700, 4400, 4500, 4560, 4700, 6000}, closeMs: 6100, closeKind: "key"},
 	}
-	colors := tui.ActiveTheme().ColorValues()
+	colors := tui.ActiveTheme().Colors()
 	theme := map[string]logoRgb{"text": logoToRgb(colors["text"]), "muted": logoToRgb(colors["muted"]), "dim": logoToRgb(colors["dim"])}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -179,7 +181,7 @@ func TestPigLogoAnimationMatchesPinnedPi(t *testing.T) {
 				"upstream": pigversion.UpstreamVersion, "width": tc.width, "height": tc.height,
 				"screen": options.screen, "logoColumn": tc.logoColumn, "logoRow": tc.logoRow,
 				"foreground": tc.foreground, "background": tc.bg, "appearance": tc.appearance,
-				"theme": theme, "colorMode": string(tui.ActiveTheme().ColorMode()),
+				"theme": theme, "colorMode": string(tui.ActiveTheme().GetColorMode()),
 				"blocks": oracleBlocks(a.blocks), "radius": pigLogoRadius,
 				"centerX": pigLogoCenterX, "centerY": pigLogoCenterY, "pixel": pigLogoPixel,
 				"headCells": piglogin.HeadCells, "headRows": piglogin.HeadRows,
@@ -258,7 +260,7 @@ func newLogoClickMode(t *testing.T, width, height int) (*InteractiveMode, *tui.T
 	alt := tui.NewTuiAltScreenWithOutput(&output, width, height, tui.TuiAltScreenOptions{})
 	alt.SetCopyOnSelect(false)
 	m := &InteractiveMode{
-		opts:          InteractiveOptions{LoginVisible: true},
+		opts:          InteractiveModeOptions{LoginVisible: true},
 		keybindings:   km,
 		extHeader:     newSpecialLinesComponent(nil),
 		tuiInst:       alt,
@@ -343,7 +345,7 @@ func TestClickingTheHeaderPigPlaysTheAnimation(t *testing.T) {
 		t.Fatal("a click on the pig did not start the animation")
 	}
 	runOwnerTasks(t, m, func() bool { return m.logoAnimation != nil })
-	if !alt.HasOverlay() || alt.FocusedComponent() != tui.Component(m.logoAnimation) {
+	if !alt.HasOverlay() || alt.GetFocusedComponent() != tui.Component(m.logoAnimation) {
 		t.Fatal("the animation is not a focused overlay")
 	}
 	animation := m.logoAnimation
@@ -416,7 +418,7 @@ func TestHeaderPigClickNeedsTheBuiltInSprite(t *testing.T) {
 	t.Run("extension header", func(t *testing.T) {
 		m, _ := newLogoClickMode(t, 100, 30)
 		ui := &ExtUIContext{m: m}
-		ui.SetHeader([]string{"custom header", "second line"})
+		ui.SetHeader(extension.FrameHeader([]string{"custom header", "second line"}, 0))
 		m.tuiInst.Render()
 		clickCell(t, m, 3, 2)
 		if m.logoAnimationPlaying {
@@ -513,7 +515,7 @@ func TestClickingTheTextMarkPlaysTheAnimation(t *testing.T) {
 func TestHeaderPigClickIgnoredWhileAnOverlayOrTheAnimationIsOpen(t *testing.T) {
 	pinHeaderTerminal(t, tui.TerminalColorModeTrueColor)
 	m, alt := newLogoClickMode(t, 100, 30)
-	other := alt.OpenOverlay(tui.NewText("dialog"), tui.OverlaySpec{Anchor: "center"}.Options())
+	other := alt.ShowOverlay(tui.NewText("dialog"), tui.OverlaySpec{Anchor: "center"}.Options())
 	m.playPigLogoAnimation(1, 1, piglogin.HeadCells, piglogin.HeadRows)
 	if m.logoAnimationPlaying {
 		t.Fatal("played over an open overlay")
@@ -535,9 +537,9 @@ func TestHeaderPigClickIgnoredWhileAnOverlayOrTheAnimationIsOpen(t *testing.T) {
 
 	m2, alt2 := newLogoClickMode(t, 100, 30)
 	m2.playPigLogoAnimation(1, 1, piglogin.HeadCells, piglogin.HeadRows)
-	dialog := alt2.OpenOverlay(tui.NewText("dialog"), tui.OverlaySpec{Anchor: "center"}.Options())
+	dialog := alt2.ShowOverlay(tui.NewText("dialog"), tui.OverlaySpec{Anchor: "center"}.Options())
 	runOwnerTasks(t, m2, func() bool { return !m2.logoAnimationPlaying })
-	if m2.logoAnimation != nil || alt2.FocusedComponent() == nil {
+	if m2.logoAnimation != nil || alt2.GetFocusedComponent() == nil {
 		t.Fatal("the animation opened over a newer overlay")
 	}
 	dialog.Hide()
@@ -567,7 +569,7 @@ func TestPigLogoAnimationColors(t *testing.T) {
 	if theme.Appearance() == "dark" {
 		wantBackground = logoRgb{0, 0, 0}
 	}
-	if a := m.logoAnimation; a == nil || a.foreground != logoToRgb(theme.ColorValues()["text"]) || a.background != wantBackground {
+	if a := m.logoAnimation; a == nil || a.foreground != logoToRgb(theme.Colors()["text"]) || a.background != wantBackground {
 		t.Fatalf("fallback colors: %+v", m.logoAnimation)
 	}
 	m.disposeLogoAnimation()

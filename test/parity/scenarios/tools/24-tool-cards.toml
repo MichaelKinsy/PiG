@@ -1,0 +1,27 @@
+# Behavior family: tools (interactive tool cards)
+# Pi 1.1.0 probe: ToolExecutionComponent built with createAllToolDefinitions(cwd) for read, write, edit, bash, grep, find and ls, driven
+# through pending, partial, result, error, truncation, image, odd-argument and syntax-highlight cases, collapsed and expanded, in both
+# themes at widths 80 and 28; each probe's rows are compared byte for byte (colours, backgrounds, padding). The Go test
+# TestBuiltinToolCardsMatchPi runs the same corpus against the installed Pi; this scenario compares the two printed streams.
+name = "24-tool-cards"
+description = "Built-in tool cards render the same rows as Pi."
+covers = ["packages/coding-agent/src/core/tools/renderers/read.ts", "packages/coding-agent/src/core/tools/renderers/write.ts", "packages/coding-agent/src/core/tools/renderers/bash.ts", "packages/coding-agent/src/core/tools/renderers/grep.ts", "packages/coding-agent/src/core/tools/renderers/find.ts", "packages/coding-agent/src/core/tools/renderers/ls.ts"]
+tags = ["fast", "hermetic", "tui"]
+driver = "cli-mode"
+
+[env]
+override_base_args = true
+pig_bin = "/usr/bin/env"
+pi_bin = "/usr/bin/env"
+pig_args = ["node", "./test/parity/testdata/tool-cards-pig.mjs"]
+pi_args = ["node", "./test/parity/testdata/tool-cards-pi.mjs"]
+
+[cli]
+cwd = "../../../.."
+timeout_seconds = 240
+
+[assert]
+exit_code = 0
+output_equal = true
+both_contain = ['make test', 'notes.txt', 'needle']
+runs = 2

@@ -1,4 +1,4 @@
-# Bedrock ConverseStream oracle (Pi 1.0.3, `@aws-sdk/client-bedrock-runtime` 3.1127.0, `@smithy/core` 3.35.1)
+# Bedrock ConverseStream oracle (Pi 1.1.0, `@aws-sdk/client-bedrock-runtime` 3.1127.0, `@smithy/core` 3.35.1)
 
 `probe.mjs` drives Pi's real `bedrock-converse-stream` pipeline (pi-ai provider, AWS SDK client, smithy event-stream deserializer, Node `Http2Stream`/`IncomingMessage` `Readable`) and records what each consumer observes and when. `inputs.json` exports the axes and the exact `application/vnd.amazon.eventstream` bodies (base64, one frame per entry). `pi.json` is the raw oracle. Do not replace either with Go output.
 
@@ -23,7 +23,7 @@ Every provider call passes `onPayload` and `onResponse` as `sdk.ts:349-388` does
 ## Replays
 
 - `ai/bedrock_observation_test.go` replays the HTTP/1 direct and result-only cases through PiG's provider at Pi's `(epoch, tick)`, and the cancel cases by events and terminal message (Pi's abort listeners run inside `controller.abort()`; PiG delivers the cancellation as an external completion).
-- `cmd/pig/rpc_bedrock_observation_test.go` runs the real binary for the 12 HTTP/1 `rpc` rows.
+- `coding/cli/rpc_bedrock_observation_test.go` runs the real binary for the 12 HTTP/1 `rpc` rows.
 - `../check.mjs` (`node check.mjs <pig> 200 bedrock-converse-stream`) is the multi-provider start-state check; `frames.mjs` builds its fixture.
 - `chain.mjs` records job positions of the AWS SDK stack alone (`chain.json`): the two constants of `ai/bedrock_stream_pipeline.go` (`bedrockClientSendPrefixHops`, `bedrockClientSendReturnHops`) and their hook variants come from it.
 - `ai/testdata/bedrock-eventstream/probe.mjs` records what the real AWS SDK and `@smithy/core` event-stream stack yields or throws for 40 byte sequences (`golden.json`); `ai/bedrock_eventstream_test.go` replays them through PiG's framing and decoding.

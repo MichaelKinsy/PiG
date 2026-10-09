@@ -1,5 +1,5 @@
 # Behavior family: interactive-rendering
-# Surface: AssistantMessageBlock: plain text rendering with left-pad and spacer
+# Surface: AssistantMessageComponent: plain text rendering with left-pad and spacer
 #
 # Upstream evidence (pi v0.69.0, 2026-05-15):
 #   pi --no-extensions -e test/parity/testdata/test-faux-provider.ts --model test-faux/faux-1
@@ -9,7 +9,7 @@
 #   raw cropped upstream block:
 #     Hello world
 #
-# This exercises the AssistantMessageBlock rendering path: Spacer(1) for
+# This exercises the AssistantMessageComponent rendering path: Spacer(1) for
 # the leading blank line, 1-column left-pad, markdown-rendered text.
 # The faux provider echoes the input text back verbatim, giving us a
 # deterministic two-word response.

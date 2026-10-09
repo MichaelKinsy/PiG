@@ -1210,6 +1210,10 @@ var Box = class {
   setBgFn(bgFn) {
     this.bgFn = bgFn;
   }
+  setPaddingX(paddingX) {
+    this.paddingX = paddingX;
+    this.invalidateCache();
+  }
   invalidateCache() {
     this.cache = void 0;
   }
@@ -1326,6 +1330,10 @@ var Text = class {
     this.cachedText = void 0;
     this.cachedWidth = void 0;
     this.cachedLines = void 0;
+  }
+  setPaddingX(paddingX) {
+    this.paddingX = paddingX;
+    this.invalidate();
   }
   invalidate() {
     this.cachedText = void 0;
@@ -6828,6 +6836,43 @@ import { getKeybindings as getKeybindings8, KeybindingsManager, setKeybindings, 
 import { decodeKittyPrintable as decodeKittyPrintable2, isKeyRelease as isKeyRelease2, isKeyRepeat, isKittyProtocolActive, Key, matchesKey as matchesKey2, parseKey, setKittyProtocolActive as setKittyProtocolActive2 } from "../keys.js";
 import { getNativeClipboard } from "../native-platform.js";
 
+// pi-dist/pi-tui/program-status.js
+var PROGRAM_STATUS_QUERY = "\x1B]7501;?\x1B\\";
+function isProgramStatusReply(sequence) {
+  return /^\x1b\]7501;\?[^\x07\x1b]*(?:\x07|\x1b\\)$/.test(sequence);
+}
+__name(isProgramStatusReply, "isProgramStatusReply");
+var APP_PATTERN = /^[A-Za-z0-9_.+-]{1,32}$/;
+var CONTROL_CHARACTERS = /[\u0000-\u001f\u007f-\u009f]+/g;
+var MAX_MESSAGE_BYTES = 2048;
+function truncateUtf8(text, maxBytes) {
+  if (Buffer.byteLength(text, "utf8") <= maxBytes)
+    return text;
+  let bytes = 0;
+  let end = 0;
+  for (const char of text) {
+    const size = Buffer.byteLength(char, "utf8");
+    if (bytes + size > maxBytes)
+      break;
+    bytes += size;
+    end += char.length;
+  }
+  return text.slice(0, end);
+}
+__name(truncateUtf8, "truncateUtf8");
+function formatProgramStatus(status) {
+  const pairs = [`state=${status.state}`];
+  if (status.app !== void 0 && APP_PATTERN.test(status.app))
+    pairs.push(`app=${status.app}`);
+  if (status.state === "blocked" && status.kind)
+    pairs.push(`kind=${status.kind}`);
+  const message = truncateUtf8((status.message ?? "").replace(CONTROL_CHARACTERS, " ").trim(), MAX_MESSAGE_BYTES);
+  if (message)
+    pairs.push(`msg=${Buffer.from(message, "utf8").toString("base64")}`);
+  return `\x1B]7501;${pairs.join(":")}\x1B\\`;
+}
+__name(formatProgramStatus, "formatProgramStatus");
+
 // pi-dist/pi-tui/stdin-buffer.js
 import { EventEmitter } from "events";
 var ESC = "\x1B";
@@ -7143,7 +7188,8 @@ var TERMINAL_PROGRESS_CLEAR_SEQUENCE = "\x1B]9;4;0\x07";
 var NATIVE_SHIFT_ENTER_SEQUENCE = "\x1B[13;2u";
 var DESIRED_KITTY_KEYBOARD_PROTOCOL_FLAGS = 7;
 var KEYBOARD_PROTOCOL_RESPONSE_FRAGMENT_TIMEOUT_MS = 150;
-var KITTY_KEYBOARD_PROTOCOL_QUERY = `\x1B[>${DESIRED_KITTY_KEYBOARD_PROTOCOL_FLAGS}u\x1B[?u\x1B[c`;
+var KITTY_KEYBOARD_PROTOCOL_QUERY = `\x1B[>${DESIRED_KITTY_KEYBOARD_PROTOCOL_FLAGS}u\x1B[?u`;
+var DEVICE_ATTRIBUTES_QUERY = "\x1B[c";
 function parseKeyboardProtocolNegotiationSequence(sequence) {
   const kittyFlags = sequence.match(/^\x1b\[\?(\d+)u$/);
   if (kittyFlags) {
@@ -7208,6 +7254,12 @@ var ProcessTerminal = class {
   stdinBuffer;
   stdinDataHandler;
   progressInterval;
+  /** Latest program status, kept across stop() so start() can report it again. */
+  programStatus;
+  /** Whether the terminal confirmed OSC 7501 support since the last start(), or `PI_PROGRAM_STATUS=1`. */
+  programStatusSupported = false;
+  /** The support query was sent and its DA1 sentinel has not arrived yet. */
+  programStatusQueryPending = false;
   writeLogPath = (() => {
     const env = process.env.PI_TUI_WRITE_LOG || "";
     if (!env)
@@ -7254,6 +7306,14 @@ var ProcessTerminal = class {
   setupStdinBuffer() {
     this.stdinBuffer = new StdinBuffer({ escapeTimeout: resolveEscapeTimeoutMs() });
     this.stdinBuffer.on("data", (sequence) => {
+      if (isProgramStatusReply(sequence)) {
+        if (this.programStatusQueryPending) {
+          this.programStatusQueryPending = false;
+          this.programStatusSupported = true;
+          this.writeProgramStatus();
+        }
+        return;
+      }
       const negotiation = this.readKeyboardProtocolNegotiationSequence(sequence);
       if (negotiation === "pending") {
         this.scheduleKeyboardProtocolNegotiationBufferFlush();
@@ -7285,6 +7345,9 @@ var ProcessTerminal = class {
    * - 1 = disambiguate escape codes
    * - 2 = report event types (press/repeat/release)
    * - 4 = report alternate keys (shifted key, base layout key)
+   *
+   * The OSC 7501 program status query shares the DA sentinel: a terminal that supports it replies
+   * before DA. `PI_PROGRAM_STATUS=1` or `0` skips the query.
    */
   queryAndEnableKittyProtocol() {
     this.setupStdinBuffer();
@@ -7292,7 +7355,12 @@ var ProcessTerminal = class {
     this.keyboardProtocolPushed = true;
     this.pendingKeyboardProtocolDeviceAttributes += 1;
     this.clearKeyboardProtocolNegotiationBuffer();
-    process.stdout.write(KITTY_KEYBOARD_PROTOCOL_QUERY);
+    const programStatusOverride = process.env.PI_PROGRAM_STATUS;
+    this.programStatusSupported = programStatusOverride === "1";
+    this.programStatusQueryPending = programStatusOverride !== "1" && programStatusOverride !== "0";
+    const programStatusQuery = this.programStatusQueryPending ? PROGRAM_STATUS_QUERY : "";
+    process.stdout.write(`${KITTY_KEYBOARD_PROTOCOL_QUERY}${programStatusQuery}${DEVICE_ATTRIBUTES_QUERY}`);
+    this.writeProgramStatus();
   }
   handleKeyboardProtocolNegotiationSequence(negotiationSequence) {
     this.clearKeyboardProtocolNegotiationBuffer();
@@ -7300,6 +7368,8 @@ var ProcessTerminal = class {
       if (this.pendingKeyboardProtocolDeviceAttributes === 0)
         return false;
       this.pendingKeyboardProtocolDeviceAttributes -= 1;
+      if (this.pendingKeyboardProtocolDeviceAttributes === 0)
+        this.programStatusQueryPending = false;
     }
     if (negotiationSequence.type === "kitty-flags") {
       if (negotiationSequence.flags !== 0) {
@@ -7441,6 +7511,11 @@ var ProcessTerminal = class {
     if (this.clearProgressInterval()) {
       process.stdout.write(TERMINAL_PROGRESS_CLEAR_SEQUENCE);
     }
+    if (this.programStatusSupported && this.programStatus) {
+      process.stdout.write(formatProgramStatus({ state: "clear" }));
+    }
+    this.programStatusSupported = false;
+    this.programStatusQueryPending = false;
     process.stdout.write("\x1B[?2004l");
     const shouldDisableKittyProtocol = this.keyboardProtocolPushed || this._kittyProtocolActive;
     this.clearKeyboardProtocolNegotiationBuffer();
@@ -7508,6 +7583,16 @@ var ProcessTerminal = class {
   }
   setTitle(title) {
     process.stdout.write(`\x1B]0;${title}\x07`);
+  }
+  setProgramStatus(status) {
+    this.programStatus = status.state === "clear" ? void 0 : status;
+    if (this.programStatusSupported)
+      process.stdout.write(formatProgramStatus(status));
+  }
+  writeProgramStatus() {
+    if (this.programStatusSupported && this.programStatus) {
+      process.stdout.write(formatProgramStatus(this.programStatus));
+    }
   }
   setProgress(active) {
     if (active) {
@@ -8393,6 +8478,11 @@ var TuiAltScreen = class extends TuiBase {
     if (!text)
       return false;
     return this.copyTextToClipboard(text);
+  }
+  /** Drop the text selection and multi-click history, e.g. before the host replaces the transcript. */
+  resetTextSelection() {
+    this.clearTextSelection();
+    this.lastClick = void 0;
   }
   /** The lines of the last rendered frame, one per terminal row, as written to the terminal. */
   getScreenLines() {
@@ -10305,6 +10395,7 @@ export {
   encodeITerm2,
   encodeKitty,
   foregroundAnsi,
+  formatProgramStatus,
   fuzzyFilter,
   fuzzyMatch,
   getCapabilities4 as getCapabilities,

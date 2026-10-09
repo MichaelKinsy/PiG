@@ -1,0 +1,25 @@
+# Upstream evidence: Pi 1.1.0 packages/tui/src/components/h-stack.ts, v-stack.ts, stack.ts (allocateStackSizes) and scroll-view.ts render, run on real components over a fixed-seed corpus of 700 stacks plus ScrollView in each scrollbar mode.
+# Children are wrapped text and fixed rows (plain, styled, too wide, empty) with basis, grow, shrink, min, max and visibility options, gaps and every alignment, rendered at widths 0 to 80.
+# Exact equality of the JSON lines (one per probe); no normalization. The Pig probe is a Go test whose observations the wrapper prints, so a failing test fails the run.
+name = "29-stack-render"
+description = "HStack, VStack and ScrollView render the same rows as Pi for a corpus of option combinations."
+covers = ["packages/tui/src/components/h-stack.ts", "packages/tui/src/components/v-stack.ts", "packages/tui/src/components/scroll-view.ts"]
+tags = ["fast", "hermetic", "tui"]
+driver = "cli-mode"
+
+[env]
+override_base_args = true
+pig_bin = "/usr/bin/env"
+pi_bin = "/usr/bin/env"
+pig_args = ["node", "./test/parity/testdata/stack-render-pig.mjs"]
+pi_args = ["node", "./test/parity/testdata/stack-render-pi.mjs"]
+
+[cli]
+cwd = "../../../.."
+timeout_seconds = 180
+
+[assert]
+exit_code = 0
+output_equal = true
+both_contain = ['wraps in narrow columns', 'styled words']
+runs = 3

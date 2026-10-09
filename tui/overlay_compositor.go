@@ -172,6 +172,11 @@ func resolveOverlayCol(anchor overlayAnchor, width, available, marginLeft int) i
 type modalOverlay struct {
 	component Component
 	title     string
+	// framed and framedWidth are the last boxed render and its width, which
+	// FrontendView describes (D107). They are written and read on the loop
+	// that renders the overlay.
+	framed      []string
+	framedWidth int
 }
 
 func (m *modalOverlay) Render(width int) []string {
@@ -180,16 +185,36 @@ func (m *modalOverlay) Render(width int) []string {
 
 func (m *modalOverlay) renderModal(width, height int) []string {
 	if width < 3 || height == 1 {
+		m.framed, m.framedWidth = nil, 0
 		return m.component.Render(max(1, width))
 	}
 	lines := m.component.Render(max(1, width-2))
 	if height <= 0 {
 		height = len(lines) + 2
 	}
-	return drawBox(m.title, lines, width, height)
+	m.framed, m.framedWidth = drawBox(m.title, lines, width, height), width
+	return m.framed
 }
 
 func (m *modalOverlay) Invalidate() { m.component.Invalidate() }
+
+// HandleMouse hands an event inside the box to the framed component, at
+// its own cells, as the component would take it without PiG's titled box,
+// which Pi's ui.custom does not have.
+func (m *modalOverlay) HandleMouse(event TuiMouseEvent) *TuiMouseDispatchResult {
+	if m.framed == nil {
+		return DispatchMouseEvent(m.component, event)
+	}
+	inner := len(m.framed) - 2
+	if event.X < 1 || event.X >= m.framedWidth-1 || event.Y < 1 || event.Y > inner {
+		return nil
+	}
+	event.X--
+	event.Y--
+	event.Width = max(1, m.framedWidth-2)
+	event.Height = inner
+	return DispatchMouseEvent(m.component, event)
+}
 
 func renderOverlayEntry(entry *overlayEntry, width int, maxHeight int, hasMaxHeight bool) []string {
 	var lines []string
@@ -286,7 +311,7 @@ func composeOverlaySnapshotWithStats(background []string, snapshot overlayStateS
 			if overlay.opaque {
 				result[index] = overlayLine(result[index], line, overlay.col, termWidth)
 			} else {
-				result[index] = compositeTuiLine(result[index], line, overlay.col, overlay.width, termWidth)
+				result[index] = CompositeTuiLine(result[index], line, overlay.col, overlay.width, termWidth)
 			}
 			stats.ComposedOutputBytes += len(result[index])
 		}

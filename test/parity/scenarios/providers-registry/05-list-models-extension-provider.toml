@@ -11,7 +11,7 @@
 # loaded, and registered the extension provider through the public registration contract,
 # so a generic extension provider never appeared in --list-models. pig now loads
 # extensions and registers their providers before the --list-models handler
-# (cmd/pig/main.go), matching upstream. Proven red locally: listing against a
+# (coding/cli/main.go), matching upstream. Proven red locally: listing against a
 # registry built before extensions load omits parity-prov; after the reorder it
 # appears.
 #

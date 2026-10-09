@@ -18,7 +18,7 @@ func TestAssistantIgnoresUpdatesBeforeStart(t *testing.T) {
 		t.Fatal(err)
 	}
 	var starts, updates, ends int
-	a := NewAgent(AgentOptions{OnEvent: func(event AgentEvent) {
+	a := mustNewAgent(AgentOptions{OnEvent: func(event AgentEvent) {
 		switch event.(type) {
 		case MessageStartEvent:
 			starts++
@@ -28,7 +28,7 @@ func TestAssistantIgnoresUpdatesBeforeStart(t *testing.T) {
 			ends++
 		}
 	}})
-	message, _, err := a.consumeStream(t.Context(), stream, nil, "")
+	message, _, err := a.testHost().consumeStream(t.Context(), stream, nil, "")
 	if err != nil {
 		t.Fatal(err)
 	}

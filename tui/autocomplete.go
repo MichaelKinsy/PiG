@@ -43,8 +43,14 @@ type AutocompleteSuggestions struct {
 // command. Matches upstream's `SlashCommand` interface in
 // autocomplete.ts. GetArgumentCompletions is optional; nil means
 // the command takes no completable arguments.
+//
+// A SlashCommand also stands for the other member of upstream's `SlashCommand | AutocompleteItem` list: an entry with no Name and a Value is an AutocompleteItem
+// (autocomplete.ts:304,308, `"name" in cmd ? cmd.name : cmd.value`); its Label is not read, and it takes no arguments.
 type SlashCommand struct {
-	Name                   string
+	Name string
+	// Value and Label are the AutocompleteItem form of an entry: Value names the command when Name is empty.
+	Value                  string
+	Label                  string
 	Description            string
 	ArgumentHint           string
 	GetArgumentCompletions func(argPrefix string) []AutocompleteItem
@@ -52,24 +58,29 @@ type SlashCommand struct {
 	AwaitArgumentCompletions func(argPrefix string) ([]AutocompleteItem, error)
 }
 
+// commandName is the name the command list matches: Name, or an AutocompleteItem entry's Value (autocomplete.ts:344-345,382).
+func (c SlashCommand) commandName() string {
+	if c.Name != "" {
+		return c.Name
+	}
+	return c.Value
+}
+
+// AutocompleteSuggestionOptions is the `{ signal, force }` options bag of upstream getSuggestions (autocomplete.ts:281); the signal is the context.
+type AutocompleteSuggestionOptions struct {
+	// Force is Tab completion with the popup closed: naked path completion is offered even when the prefix does not look path-like yet.
+	Force bool
+}
+
 // AutocompleteProvider supplies the local synchronous portion of a query. Deferred callbacks and filesystem searches are captured by AsyncSuggestionPlanner and AsyncFileSearcher; extension chains use AsyncAutocompleteProvider.
 type AutocompleteProvider interface {
 	// GetSuggestions returns suggestions for the given buffer state.
 	// Return nil when no popup should be shown (no match, wrong context).
-	GetSuggestions(lines []string, cursorLine, cursorCol int) *AutocompleteSuggestions
+	GetSuggestions(ctx context.Context, lines []string, cursorLine, cursorCol int, options AutocompleteSuggestionOptions) *AutocompleteSuggestions
 
 	// ApplyCompletion edits the buffer to insert `item.Value` in place
 	// of the trailing `prefix`. Returns the new buffer + cursor.
 	ApplyCompletion(lines []string, cursorLine, cursorCol int, item AutocompleteItem, prefix string) (newLines []string, newLine, newCol int)
-}
-
-// ForcefulAutocompleteProvider is an optional extension implemented by
-// providers that support "force" file-completion, triggered by Tab when
-// the popup is closed and the buffer is not in a slash-command-name
-// context. Mirrors upstream `AutocompleteProvider.getSuggestions`
-// `{force: true}` branch (autocomplete.ts:281).
-type ForcefulAutocompleteProvider interface {
-	GetSuggestionsForce(lines []string, cursorLine, cursorCol int) *AutocompleteSuggestions
 }
 
 // SlashOnlyProvider serves command names and their immediate or awaited argument completions. It does not perform path or attachment completion.
@@ -92,7 +103,7 @@ func NewSlashOnlyProvider(cmds []SlashCommand) *SlashOnlyProvider {
 //
 // Mirrors `CombinedAutocompleteProvider.getSuggestions` slash branch
 // (autocomplete.ts:262-342): minus the `@`/path branches.
-func (p *SlashOnlyProvider) GetSuggestions(lines []string, cursorLine, cursorCol int) *AutocompleteSuggestions {
+func (p *SlashOnlyProvider) GetSuggestions(ctx context.Context, lines []string, cursorLine, cursorCol int, options AutocompleteSuggestionOptions) *AutocompleteSuggestions {
 	if cursorLine < 0 || cursorLine >= len(lines) {
 		return nil
 	}
@@ -116,7 +127,7 @@ func (p *SlashOnlyProvider) GetSuggestions(lines []string, cursorLine, cursorCol
 		}
 		all := make([]item, 0, len(p.Commands))
 		for i, c := range p.Commands {
-			all = append(all, item{cmd: c, text: c.Name, idx: i})
+			all = append(all, item{cmd: c, text: c.commandName(), idx: i})
 		}
 		// Upstream autocomplete.ts matches skill commands by their bare name
 		// first, then by their full skill: name, so `/skill` lists skills whose
@@ -150,8 +161,8 @@ func (p *SlashOnlyProvider) GetSuggestions(lines []string, cursorLine, cursorCol
 				}
 			}
 			out = append(out, AutocompleteItem{
-				Value:       f.cmd.Name,
-				Label:       f.cmd.Name,
+				Value:       f.cmd.commandName(),
+				Label:       f.cmd.commandName(),
 				Description: desc,
 			})
 		}
@@ -161,7 +172,7 @@ func (p *SlashOnlyProvider) GetSuggestions(lines []string, cursorLine, cursorCol
 	// `/<cmd> <args>`: argument completion path.
 	name, argText, _ := slashArgumentPrefix(before)
 	for _, c := range p.Commands {
-		if c.Name != name {
+		if c.commandName() != name {
 			continue
 		}
 		if c.GetArgumentCompletions == nil {
@@ -199,7 +210,7 @@ func (p *SlashOnlyProvider) SuggestionTask(lines []string, line, col int, _ bool
 		return "", nil, false
 	}
 	for _, command := range p.Commands {
-		if command.Name == name && command.AwaitArgumentCompletions != nil {
+		if command.commandName() == name && command.AwaitArgumentCompletions != nil {
 			return prefix, func(ctx context.Context) ([]AutocompleteItem, error) {
 				if err := ctx.Err(); err != nil {
 					return nil, err

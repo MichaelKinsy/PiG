@@ -1,0 +1,26 @@
+# Upstream evidence: Pi 1.1.0 packages/tui/src/tui.ts:1044-1120 (TuiBase.handleTerminalInput), driven through a real TuiMainScreen's terminal start() callback.
+# Seven cases cover the listener chain (transform, consume, empty replacement), the debug key (callback required, after the listeners), the key-release filter
+# (wantsKeyRelease, listeners see releases) and the overlay visibility redirect. Pig's side is tui.HandleTerminalInput, the method cmd/pig's config selector drives.
+# Exact equality of the JSON observation lines; no normalization. The Pig probe is a Go test whose observations the wrapper prints, so a failing test fails the run.
+name = "26-terminal-input-pipeline"
+description = "The renderer's terminal input path orders listeners, debug key, release filter and overlay focus as Pi's handleTerminalInput does."
+covers = ["packages/tui/src/tui.ts"]
+tags = ["fast", "hermetic", "tui"]
+driver = "cli-mode"
+
+[env]
+override_base_args = true
+pig_bin = "/usr/bin/env"
+pi_bin = "/usr/bin/env"
+pig_args = ["node", "./test/parity/testdata/terminal-input-pipeline-pig.mjs"]
+pi_args = ["node", "./test/parity/testdata/terminal-input-pipeline-pi.mjs"]
+
+[cli]
+cwd = "../../../.."
+timeout_seconds = 120
+
+[assert]
+exit_code = 0
+output_equal = true
+both_contain = ['"case":"listener-replaces-the-debug-key","calls":0,"focus":["z"]', '"case":"key-release-needs-wants-key-release","plain":[],"aware":["\u001b[97;1:3u"]', '"case":"overlay-visibility-callback-redirects-input","overlay":["a"],"base":["b"]']
+runs = 3

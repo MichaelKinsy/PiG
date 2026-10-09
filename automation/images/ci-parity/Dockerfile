@@ -1,4 +1,3 @@
-# SPDX-FileCopyrightText: Copyright Hewlett Packard Enterprise Development LP
 # SPDX-License-Identifier: MIT
 
 ARG GO_BUILDER=cgr.dev/chainguard/go:latest-dev@sha256:72f9b391f511f88e7154aaaa5ee1e27fb6594575d9a406940f49786b30172803
@@ -33,7 +32,7 @@ RUN apk update \
 
 FROM toolchain-base AS pi-oracle
 # PI_VERSION must equal coding.UpstreamVersion; make compliance checks it.
-ARG PI_VERSION=1.0.3
+ARG PI_VERSION=1.1.0
 COPY automation/images/ci-parity/package.json automation/images/ci-parity/package-lock.json /opt/pig/pi/
 RUN npm ci --prefix /opt/pig/pi --omit=dev --ignore-scripts --no-audit --no-fund \
   && mkdir -p /opt/pig/pi/bin \

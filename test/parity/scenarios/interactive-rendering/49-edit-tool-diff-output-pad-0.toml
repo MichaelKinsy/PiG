@@ -1,0 +1,64 @@
+# Behavior family: interactive-rendering
+# Upstream evidence: real Pi 1.1.0 (extensions/sdk-ts/node_modules) run side by side with PiG in tmux at 100x35; no number was copied from the
+# 1.0.4 sources. Pi 1.0.4 ignored outputPad here (#10557 added it).
+# Surface: outputPad 0 reaches tool output (Pi 1.1.0 #10557, tool-execution.ts outputPad, edit.ts renderers). With "outputPad": 0 in settings.json
+# the tool card's rows start in column 0 instead of column 1. Pi 1.0.4 padded tool cards by one cell whatever the setting. The crop starts at the
+# user message so the card's first row is inside it.
+
+name = "49-edit-tool-diff-output-pad-0"
+description = "Edit tool call box and result rows have no horizontal padding when outputPad is 0."
+covers = [
+  "packages/coding-agent/src/modes/interactive/components/diff.ts",
+  "packages/coding-agent/src/core/tools/edit-diff.ts",
+]
+tags = ["fast", "hermetic", "tui"]
+driver = "interactive-tmux"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_CODING_AGENT_DIR=testdata/pig-agent-output-pad-0"]
+pi = ["PI_CODING_AGENT_DIR=testdata/pi-agent-output-pad-0", "PI_SKIP_VERSION_CHECK=1"]
+pi_extensions = ["../../testdata/test-faux-provider.ts"]
+pig_args = ["--no-extensions", "--session-dir", "{{TEMP}}/sessions"]
+pi_args = ["--session-dir", "{{TEMP}}/sessions"]
+
+[tmux]
+width = 100
+height = 35
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "(auto)"
+ready_timeout_seconds = 30
+# Per-binary CWD snapshot: both pi and pig get an independent ephemeral
+# copy of testdata/edit-cwd/ so concurrent mutation of parity-edit-target.txt
+# cannot race. Required for any scenario that mutates fixture files.
+cwd = "testdata/edit-cwd"
+capture_start = "Run: edit parity-edit-target.txt"
+capture_end = "edited"
+
+[[tmux.steps]]
+keys = ["Run: edit parity-edit-target.txt", "Enter"]
+settle_seconds = 5
+wait_contains = ["edit parity-edit-target.txt", "edited"]
+wait_timeout_seconds = 15
+
+[assert]
+both_reach_ready = true
+# The cropped block (edit header through "edited") must match byte-for-byte
+# with its SGR escapes: this locks the ported generateDiffString diff body
+# (line-numbered with 4 lines of context) and its theme colours against real pi.
+escaped_output_equal = true
+# Guard the legacy-shape fix: if dispatch reverts to validating before
+# preparing arguments, these strings reappear and the scenario fails.
+both_not_contain = [
+  "panic:",
+  "goroutine ",
+  "Validation failed for tool",
+  "additional properties",
+]
+# Both binaries must reach the post-tool assistant reply ("edited"),
+# proving the edit tool actually ran to completion in both. The faux
+# provider emits "edited" only on the tool-result follow-up, so its
+# presence proves the tool call dispatched without aborting.
+both_contain = ["edit parity-edit-target.txt", "edited"]
+runtime_ratio_max = 2.0
+runs = 1

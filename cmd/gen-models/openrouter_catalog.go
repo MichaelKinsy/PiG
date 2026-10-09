@@ -3,6 +3,7 @@ package main
 // Ports packages/ai/scripts/openrouter-catalog.ts.
 
 import (
+	"encoding/json"
 	"math"
 	"math/big"
 	"regexp"
@@ -13,6 +14,14 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/modelgen"
 )
 
+type openRouterPricing struct {
+	Prompt          string                      `json:"prompt"`
+	Completion      string                      `json:"completion"`
+	InputCacheRead  string                      `json:"input_cache_read"`
+	InputCacheWrite string                      `json:"input_cache_write"`
+	Overrides       []openRouterPricingOverride `json:"overrides"`
+}
+
 type openRouterModelListItem struct {
 	ID                  string   `json:"id"`
 	Name                string   `json:"name"`
@@ -22,18 +31,26 @@ type openRouterModelListItem struct {
 		InputModalities  []string `json:"input_modalities"`
 		OutputModalities []string `json:"output_modalities"`
 	} `json:"architecture"`
-	Pricing *struct {
-		Prompt          string `json:"prompt"`
-		Completion      string `json:"completion"`
-		InputCacheRead  string `json:"input_cache_read"`
-		InputCacheWrite string `json:"input_cache_write"`
-	} `json:"pricing"`
+	Pricing     *openRouterPricing `json:"pricing"`
 	TopProvider *struct {
 		ContextLength       int `json:"context_length"`
 		MaxCompletionTokens int `json:"max_completion_tokens"`
 	} `json:"top_provider"`
 	ContextLength int                                   `json:"context_length"`
 	Reasoning     *modelgen.OpenRouterReasoningMetadata `json:"reasoning"`
+}
+
+// openRouterPricingOverride is a conditional price: min_prompt_tokens selects prompt-length pricing, the utc_* fields time-of-day or weekday pricing.
+// The utc_* members keep their raw JSON because only their presence matters (openrouter-catalog.ts cost compares them with undefined).
+type openRouterPricingOverride struct {
+	MinPromptTokens *float64        `json:"min_prompt_tokens"`
+	UTCStart        json.RawMessage `json:"utc_start"`
+	UTCEnd          json.RawMessage `json:"utc_end"`
+	UTCDays         json.RawMessage `json:"utc_days"`
+	Prompt          string          `json:"prompt"`
+	Completion      string          `json:"completion"`
+	InputCacheRead  string          `json:"input_cache_read"`
+	InputCacheWrite string          `json:"input_cache_write"`
 }
 
 type openRouterImageModel struct {
@@ -92,11 +109,13 @@ func roundCost(value float64) float64 {
 	return math.Copysign(result, value)
 }
 
-// openRouterCost converts $/token pricing to $/million tokens (openrouter-catalog.ts cost).
+// openRouterCost converts $/token pricing to $/million tokens (openrouter-catalog.ts cost). Prompt-length overrides become request-wide tiers whose
+// missing rates keep the base price; time-of-day overrides are skipped because a cost cannot express them.
 func openRouterCost(model openRouterModelListItem) jsonCost {
-	price := func(value string) float64 {
+	// perMillion is openrouter-catalog.ts perMillion: an empty value takes the fallback.
+	perMillion := func(value string, fallback float64) float64 {
 		if value == "" {
-			value = "0"
+			return fallback
 		}
 		prefix := openRouterFloatPrefix.FindString(strings.TrimLeft(value, jsWhitespace))
 		if prefix == "" {
@@ -106,9 +125,23 @@ func openRouterCost(model openRouterModelListItem) jsonCost {
 		return roundCost(parsed * 1_000_000)
 	}
 	if model.Pricing == nil {
-		return jsonCost{Input: price(""), Output: price(""), CacheRead: price(""), CacheWrite: price("")}
+		return jsonCost{}
 	}
-	return jsonCost{Input: price(model.Pricing.Prompt), Output: price(model.Pricing.Completion), CacheRead: price(model.Pricing.InputCacheRead), CacheWrite: price(model.Pricing.InputCacheWrite)}
+	pricing := model.Pricing
+	base := jsonCost{Input: perMillion(pricing.Prompt, 0), Output: perMillion(pricing.Completion, 0), CacheRead: perMillion(pricing.InputCacheRead, 0), CacheWrite: perMillion(pricing.InputCacheWrite, 0)}
+	for _, override := range pricing.Overrides {
+		if override.MinPromptTokens == nil || override.UTCStart != nil || override.UTCEnd != nil || override.UTCDays != nil {
+			continue
+		}
+		base.Tiers = append(base.Tiers, jsonCostTier{
+			InputTokensAbove: int(*override.MinPromptTokens),
+			Input:            perMillion(override.Prompt, base.Input),
+			Output:           perMillion(override.Completion, base.Output),
+			CacheRead:        perMillion(override.InputCacheRead, base.CacheRead),
+			CacheWrite:       perMillion(override.InputCacheWrite, base.CacheWrite),
+		})
+	}
+	return base
 }
 
 // openRouterModalities keeps the distinct text and image entries in order.

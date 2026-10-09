@@ -1,5 +1,9 @@
 package durableagent
 
+// pi: packages/coding-agent/src/experimental/vacation/main.ts
+
+// pi: packages/coding-agent/src/experimental/durable/main.ts
+
 import "testing"
 
 // main.ts:5-11: --continue and -c select the newest session; any other argument is an error that names it.

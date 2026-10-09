@@ -30,8 +30,8 @@ func (handle *modelRequestCaptureHandle) StreamModel(ctx context.Context, model 
 func TestStreamForSubprocessPreservesFieldRichContextAndOptions(t *testing.T) {
 	base := &recordingCompactHandle{}
 	handle := &modelRequestCaptureHandle{recordingCompactHandle: base}
-	model := &ai.Model{ID: "model", ProviderMeta: ai.ProviderMetadata{ProviderID: "provider"}, Capabilities: ai.ModelCapabilities{MaxThinking: ai.ThinkingHigh}}
-	mode := &InteractiveMode{opts: InteractiveOptions{
+	model := &ai.Model{ID: "model", ProviderMeta: ai.ProviderMetadata{ProviderID: "provider"}, Capabilities: ai.ModelCapabilities{MaxThinking: ai.ThinkingLevelHigh}}
+	mode := &InteractiveMode{opts: InteractiveModeOptions{
 		SessionHandle: handle,
 		ModelBuilder:  func(string) (*ai.Model, error) { return model, nil },
 		Settings:      Settings{Transport: string(ai.TransportWebSocket)},
@@ -98,7 +98,7 @@ func TestStreamForSubprocessPreservesFieldRichContextAndOptions(t *testing.T) {
 	if result.Timestamp != 15 || result.Details == nil || result.Usage == nil || !result.IsError || len(result.Content) != 2 {
 		t.Fatalf("tool result = %#v", result)
 	}
-	wantOptions := ai.StreamOptions{MaxTokens: 2048, Temperature: 0.7, TemperatureSet: true, SamplingParams: map[string]any{"topP": 0.8}, ThinkingBudgets: &ai.ThinkingBudgets{Minimal: 101, Low: 202, Medium: 303, High: 404}, Thinking: ai.ThinkingHigh, ReasoningEffort: "medium", IsReasoning: true, Env: ai.ProviderEnv{"WIRE_ENV": "env-value", "SECOND_ENV": "distinct-value"}, Headers: ai.ProviderHeaders{"X-Wire": new("header-value"), "X-Remove": nil}, SessionID: "session-value", Transport: ai.TransportSSE}
+	wantOptions := ai.StreamOptions{MaxTokens: 2048, Temperature: 0.7, TemperatureSet: true, SamplingParams: map[string]any{"topP": 0.8}, ThinkingBudgets: &ai.ThinkingBudgets{Minimal: 101, Low: 202, Medium: 303, High: 404}, Thinking: ai.ThinkingLevelHigh, ReasoningEffort: "medium", IsReasoning: true, Env: ai.ProviderEnv{"WIRE_ENV": "env-value", "SECOND_ENV": "distinct-value"}, Headers: ai.ProviderHeaders{"X-Wire": new("header-value"), "X-Remove": nil}, SessionID: "session-value", Transport: ai.TransportSSE}
 	if !reflect.DeepEqual(handle.options, wantOptions) {
 		t.Fatalf("options = %#v, want %#v", handle.options, wantOptions)
 	}
@@ -128,7 +128,7 @@ func TestStreamForSubprocessFieldRichRequestReachesRealProviderWire(t *testing.T
 	defer server.Close()
 	provider := ai.NewOpenAIProvider(ai.OpenAIConfig{BaseURL: server.URL, Model: "wire-model", ProviderID: "wire", Compat: &ai.OpenAICompat{SendSessionAffinityHeaders: new(true), SupportsLongCacheRetention: new(true)}})
 	model := &ai.Model{ID: "wire-model", Provider: provider}
-	mode := &InteractiveMode{opts: InteractiveOptions{SessionHandle: &providerForwardingHandle{recordingCompactHandle: &recordingCompactHandle{}}, ModelBuilder: func(string) (*ai.Model, error) { return model, nil }}}
+	mode := &InteractiveMode{opts: InteractiveModeOptions{SessionHandle: &providerForwardingHandle{recordingCompactHandle: &recordingCompactHandle{}}, ModelBuilder: func(string) (*ai.Model, error) { return model, nil }}}
 	request := map[string]any{
 		"systemPrompt": "wire system", "messages": []any{map[string]any{"role": "user", "content": "wire user", "timestamp": float64(7)}},
 		"tools":       []any{map[string]any{"name": "wire_tool", "description": "wire tool", "parameters": map[string]any{"type": "object"}}},
@@ -163,7 +163,7 @@ func TestInteractiveModelProjectionPreservesPiModelShape(t *testing.T) {
 		ProviderMeta: ai.ProviderMetadata{ProviderID: "openrouter", API: ai.APIOpenAIResponses, BaseURL: "https://proxy.invalid/v1", Headers: map[string]string{"X-Test": "value"}, Compat: &ai.OpenAICompat{SupportsStrictMode: &strict}},
 	}
 	bridge := &captureUIBridge{}
-	mode := &InteractiveMode{opts: InteractiveOptions{Model: model, ModelLookup: func(string, string) *ai.Model { return model }, ModelCatalog: func() []*ai.Model { return []*ai.Model{model} }, SubprocessUIBridge: bridge}}
+	mode := &InteractiveMode{opts: InteractiveModeOptions{Model: model, ModelLookup: func(string, string) *ai.Model { return model }, ModelCatalog: func(...string) []*ai.Model { return []*ai.Model{model} }, SubprocessUIBridge: bridge}}
 	detach := mode.wireSubprocessHostCallbacks()
 	defer detach()
 	getModel := bridge.actions["getModel"].(func(string, string) map[string]any)
@@ -191,7 +191,7 @@ func TestInteractiveModelProjectionPreservesPiModelShape(t *testing.T) {
 func TestInteractiveModelProjectionDoesNotRestoreGeneratedValues(t *testing.T) {
 	model := &ai.Model{ID: "gpt-5.6-luna", DisplayName: "Configured Luna", Capabilities: ai.ModelCapabilities{InputCostPer1M: 0, CacheReadCostPer1M: 9, CacheWriteCostPer1M: 10}, ProviderMeta: ai.ProviderMetadata{ProviderID: "cloudflare-ai-gateway", Reasoning: false}}
 	bridge := &captureUIBridge{}
-	mode := &InteractiveMode{opts: InteractiveOptions{Model: model, SubprocessUIBridge: bridge}}
+	mode := &InteractiveMode{opts: InteractiveModeOptions{Model: model, SubprocessUIBridge: bridge}}
 	detach := mode.wireSubprocessHostCallbacks()
 	defer detach()
 	getModelInfo := bridge.actions["getModelInfo"].(func() map[string]any)
@@ -205,7 +205,7 @@ func TestInteractiveModelProjectionDoesNotRestoreGeneratedValues(t *testing.T) {
 }
 
 func TestStreamForSubprocessRejectsMissingAndMalformedFields(t *testing.T) {
-	mode := &InteractiveMode{opts: InteractiveOptions{SessionHandle: &modelRequestCaptureHandle{recordingCompactHandle: &recordingCompactHandle{}}, ModelBuilder: func(string) (*ai.Model, error) { return &ai.Model{ID: "model"}, nil }}}
+	mode := &InteractiveMode{opts: InteractiveModeOptions{SessionHandle: &modelRequestCaptureHandle{recordingCompactHandle: &recordingCompactHandle{}}, ModelBuilder: func(string) (*ai.Model, error) { return &ai.Model{ID: "model"}, nil }}}
 	for _, request := range []map[string]any{
 		{
 			"messages": []any{

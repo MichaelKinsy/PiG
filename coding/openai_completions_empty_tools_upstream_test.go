@@ -68,7 +68,7 @@ func captureCompletionsRuntime(t *testing.T, providerID, modelID string, request
 	if err := os.WriteFile(filepath.Join(agentDir, "models.json"), data, 0o600); err != nil {
 		t.Fatal(err)
 	}
-	services, err := NewServices(ServicesOptions{CWD: t.TempDir(), AgentDir: agentDir})
+	services, err := CreateAgentSessionServices(CreateAgentSessionServicesOptions{CWD: t.TempDir(), AgentDir: agentDir})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -84,13 +84,13 @@ func captureCompletionsRuntime(t *testing.T, providerID, modelID string, request
 }
 
 func BenchmarkModelRuntimeSimpleReplyBudget(b *testing.B) {
-	services, err := NewServices(ServicesOptions{CWD: b.TempDir(), AgentDir: b.TempDir()})
+	services, err := CreateAgentSessionServices(CreateAgentSessionServicesOptions{CWD: b.TempDir(), AgentDir: b.TempDir()})
 	if err != nil {
 		b.Fatal(err)
 	}
 	provider := &runtimeTestProvider{id: "benchmark", stream: func(_ context.Context, _ ai.TranscriptContext, options ai.StreamOptions) (*ai.AssistantMessageEventStream, error) {
-		if options.MaxTokens != 3904 {
-			return nil, fmt.Errorf("max tokens %d, want 3904", options.MaxTokens)
+		if options.MaxTokens != 3618 {
+			return nil, fmt.Errorf("max tokens %d, want 3618", options.MaxTokens)
 		}
 		stream, _ := runtimeTestTextStream("benchmark", "model", "ok")
 		return stream, nil
@@ -135,9 +135,9 @@ func TestOpenAICompletionsEmptyToolsUpstream(t *testing.T) {
 		// .upstream/v0.87.1/packages/ai/test/openai-completions-empty-tools.test.ts:112
 		{name: "sends explicit maxTokens", text: "hi", maxTokens: 1234, want: 1234},
 		// .upstream/v0.87.1/packages/ai/test/openai-completions-empty-tools.test.ts:129
-		{name: "clamps default maxTokens to remaining context", text: strings.Repeat("x", 8000), window: 10000, capTokens: 8000, want: 3904},
+		{name: "clamps default maxTokens to remaining context", text: strings.Repeat("x", 8000), window: 10000, capTokens: 8000, want: 3618},
 		// .upstream/v0.87.1/packages/ai/test/openai-completions-empty-tools.test.ts:146
-		{name: "clamps explicit maxTokens to remaining context", text: strings.Repeat("x", 8000), window: 10000, capTokens: 8000, maxTokens: 7000, want: 3904},
+		{name: "clamps explicit maxTokens to remaining context", text: strings.Repeat("x", 8000), window: 10000, capTokens: 8000, maxTokens: 7000, want: 3618},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			captured := captureCompletionsRuntime(t, "openai", "gpt-4o-mini", ai.Context{Messages: []ai.Message{ai.UserMessage{Content: ai.UserText(tc.text)}}}, ai.StreamOptions{APIKey: "test", MaxTokens: tc.maxTokens}, tc.window, tc.capTokens)
@@ -180,7 +180,7 @@ func TestOpenAICompletionsCloudflareEmptyToolsUpstream(t *testing.T) {
 		conservative bool
 	}{
 		// .upstream/v0.87.1/packages/ai/test/openai-completions-empty-tools.test.ts:163
-		{name: "uses conservative OpenAI-compatible fields for Cloudflare AI Gateway /compat models", model: "workers-ai/@cf/moonshotai/kimi-k2.6", options: ai.StreamOptions{MaxTokens: 1234, Thinking: ai.ThinkingHigh}, system: "You are helpful.", conservative: true},
+		{name: "uses conservative OpenAI-compatible fields for Cloudflare AI Gateway /compat models", model: "workers-ai/@cf/moonshotai/kimi-k2.6", options: ai.StreamOptions{MaxTokens: 1234, Thinking: ai.ThinkingLevelHigh}, system: "You are helpful.", conservative: true},
 		// .upstream/v0.87.1/packages/ai/test/openai-completions-empty-tools.test.ts:200
 		{name: "resolves Cloudflare AI Gateway base URL through provider auth", model: "workers-ai/@cf/moonshotai/kimi-k2.6"},
 		// .upstream/v0.87.1/packages/ai/test/openai-completions-empty-tools.test.ts:214

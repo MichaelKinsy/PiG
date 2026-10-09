@@ -1,5 +1,7 @@
 package source
 
+// pi: packages/coding-agent/src/utils/git.ts
+
 import (
 	"path/filepath"
 	"testing"
@@ -19,6 +21,10 @@ func TestParseCanonicalIdentity(t *testing.T) {
 		{name: "git shorthand", input: "git:github.com/acme/tools@v2", wantKind: KindGit, wantID: "git:github.com/acme/tools"},
 		{name: "git https", input: "https://github.com/acme/tools.git@v2", wantKind: KindGit, wantID: "git:github.com/acme/tools"},
 		{name: "git ssh prefixed", input: "git:git@github.com:acme/tools@v2", wantKind: KindGit, wantID: "git:github.com/acme/tools"},
+		// utils/git.ts parseGitUrl: git:// is a protocol URL (not the git: prefix followed by //), and the URL parser lowercases the host.
+		{name: "git protocol url", input: "git://github.com/acme/tools", wantKind: KindGit, wantID: "git:github.com/acme/tools"},
+		{name: "git protocol url pinned", input: "git://github.com/acme/tools.git@v2", wantKind: KindGit, wantID: "git:github.com/acme/tools"},
+		{name: "uppercase url host", input: "HTTPS://GITHUB.COM/acme/Tools", wantKind: KindGit, wantID: "git:github.com/acme/Tools"},
 		{name: "relative local", input: "resources/tool", bare: BareLocal, wantKind: KindLocal, wantID: "local:" + filepath.Join(base, "resources", "tool")},
 		{name: "contributed", input: "marketplace:example/tools", wantKind: KindContributed, wantID: "marketplace:example/tools"},
 	}
@@ -57,6 +63,10 @@ func TestParseGitURLMatchesUpstream(t *testing.T) {
 		{name: "prefixed SCP shorthand", source: "git:git@github.com:user/repo", host: "github.com", path: "user/repo", repo: "git@github.com:user/repo"},
 		{name: "prefixed host path shorthand", source: "git:github.com/user/repo", host: "github.com", path: "user/repo", repo: "https://github.com/user/repo"},
 		{name: "prefixed shorthand with ref", source: "git:git@github.com:user/repo@v1.0.0", host: "github.com", path: "user/repo", ref: "v1.0.0", repo: "git@github.com:user/repo"},
+		// WHATWG URL lowercases only special-scheme hosts: an ssh:// or git:// host of a generic (non-hosted) server keeps its case.
+		{name: "generic SSH URL keeps host case", source: "ssh://git@Git.Example.COM/team/repo", host: "Git.Example.COM", path: "team/repo", repo: "ssh://git@Git.Example.COM/team/repo"},
+		{name: "generic git URL keeps host case", source: "git://Git.Example.COM/team/repo", host: "Git.Example.COM", path: "team/repo", repo: "git://Git.Example.COM/team/repo"},
+		{name: "generic HTTPS URL lowercases host", source: "https://Git.Example.COM/team/repo", host: "git.example.com", path: "team/repo", repo: "https://Git.Example.COM/team/repo"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			got, err := Parse(tc.source, Options{Bare: BareReject})
@@ -148,10 +158,33 @@ func TestParseRejectsEscapingGitSubdirectory(t *testing.T) {
 	for _, source := range []string{
 		"git:https://github.com/acme/tools#subdirectory=../secret",
 		"git:https://github.com/acme/tools#subdirectory=/absolute",
-		"git:https://github.com/acme/tools#other=value",
 	} {
 		if _, err := Parse(source, Options{Bare: BareReject}); err == nil {
 			t.Fatalf("Parse(%q) succeeded", source)
+		}
+	}
+}
+
+// D110: a fragment starting with "subdirectory=" selects the subdirectory; any other fragment is a ref, as in Pi's parseGitUrl.
+func TestParseGitFragmentIsARefUnlessItIsSubdirectory(t *testing.T) {
+	for source, want := range map[string]Ref{
+		"git:https://github.com/acme/tools#other=value":            {GitRef: "other=value"},
+		"git:github.com/acme/tools#v1":                             {GitRef: "v1"},
+		"git:github.com/acme/tools#subdirectory=plugins":           {GitSubdir: "plugins"},
+		"git:github.com/acme/tools@v2#subdirectory=plugins/review": {GitRef: "v2", GitSubdir: "plugins/review"},
+		"git:github.com/acme/tools#v1#subdirectory=plugins":        {GitRef: "v1#subdirectory=plugins"},
+		"git:github.com/acme/tools#subdirectory=a#subdirectory=b":  {},
+		"git:github.com/acme/tools#subdirectoryx":                  {GitRef: "subdirectoryx"},
+	} {
+		got, err := Parse(source, Options{Bare: BareReject})
+		if len(want.GitRef) == 0 && len(want.GitSubdir) == 0 {
+			if err == nil {
+				t.Errorf("Parse(%q) succeeded: %+v", source, got)
+			}
+			continue
+		}
+		if err != nil || got.GitRef != want.GitRef || got.GitSubdir != want.GitSubdir {
+			t.Errorf("Parse(%q) = ref %q subdir %q, %v; want ref %q subdir %q", source, got.GitRef, got.GitSubdir, err, want.GitRef, want.GitSubdir)
 		}
 	}
 }

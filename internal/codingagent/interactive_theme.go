@@ -17,7 +17,7 @@ func (m *InteractiveMode) theme() presentationTheme {
 		state:      &m.themeState,
 		getSetting: m.settingsThemeSelection,
 		output:     m.themeOutput,
-		renderer:   func() tui.Renderer { return m.tuiInst },
+		renderer:   func() tui.TUI { return m.tuiInst },
 		showError:  m.showError,
 		post:       m.postToMain,
 		spawn:      func(task func()) { m.backgroundTasks.Go(task) },
@@ -40,6 +40,11 @@ func (m *InteractiveMode) getThemeSelection() *string { return m.theme().getThem
 func (m *InteractiveMode) themeOutput() io.Writer {
 	if m.themeState.output != nil {
 		return m.themeState.output
+	}
+	// pig additive (D91): while a frontend session draws, PiG writes to the
+	// terminal in turn with it.
+	if m.surface != nil {
+		return m.surface.TerminalOut()
 	}
 	if m.rendererOut != nil {
 		return m.rendererOut

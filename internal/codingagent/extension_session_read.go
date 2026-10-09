@@ -63,7 +63,7 @@ func ExtensionSessionInfo(view ExtensionSessionView) map[string]any {
 		"header":                nil,
 	}
 	if view.Session != nil {
-		info["header"] = view.Session.Header()
+		info["header"] = view.Session.GetHeader()
 	}
 	return info
 }
@@ -91,7 +91,7 @@ func newSessionReadLog(sess *Session) (sessionReadLog, error) {
 	if sess == nil {
 		return log, nil
 	}
-	for _, entry := range sess.Entries() {
+	for _, entry := range sess.GetEntries() {
 		raw := entry.Raw()
 		parsed := &sessionReadEntry{}
 		if err := json.Unmarshal(raw, parsed); err != nil {
@@ -106,7 +106,7 @@ func newSessionReadLog(sess *Session) (sessionReadLog, error) {
 		log.entries = append(log.entries, parsed)
 		log.byID[parsed.ID] = parsed
 	}
-	log.leafID = sess.LeafID()
+	log.leafID = sess.GetLeafID()
 	return log, nil
 }
 
@@ -567,12 +567,12 @@ func ExtensionSessionRead(view ExtensionSessionView, method string, args json.Ra
 		if view.Session == nil {
 			return nil, nil
 		}
-		return view.Session.LeafID(), nil
+		return view.Session.GetLeafID(), nil
 	case "getHeader":
 		if view.Session == nil {
 			return nil, nil
 		}
-		return view.Session.Header(), nil
+		return view.Session.GetHeader(), nil
 	}
 	log, err := newSessionReadLog(view.Session)
 	if err != nil {
@@ -641,6 +641,32 @@ func ExtensionSessionDir(override string) string {
 	return ExpandTildePath(override)
 }
 
+// HostActionBinder is what a mode's extension bridge offers the host actions bound on it (subprocess.UIBridge.SetHostAction).
+type HostActionBinder interface {
+	SetHostAction(key string, fn any)
+}
+
+// BindAppendEntryAction binds the host's appendEntry action, which every mode serves: upstream's pi.appendEntry and ctx.sessionManager.appendCustomEntry both
+// write the session's log (agent-session.ts _bindExtensionCore). current names the Session to append to, or the error that rejects the action before one
+// exists. appended, when set, runs after a successful append for the mode's own effect (RPC's entry_appended event, the interactive transcript) and gets the
+// direct append request, which only ctx.sessionManager.appendCustomEntry carries.
+func BindAppendEntryAction(bridge HostActionBinder, current func() (*Session, error), appended func(entry CustomEntry, direct *subprocess.DirectEntryAppend) error) {
+	bridge.SetHostAction("appendEntry", func(customType string, data any, direct *subprocess.DirectEntryAppend) error {
+		sess, err := current()
+		if err != nil {
+			return err
+		}
+		entry, err := AppendExtensionEntry(sess, customType, data, direct)
+		if err != nil {
+			return err
+		}
+		if appended == nil {
+			return nil
+		}
+		return appended(entry, direct)
+	})
+}
+
 // AppendExtensionEntry validates or allocates the identity and appends under one Session mutation lock. A rejected direct identity cannot overwrite an existing entry.
 func AppendExtensionEntry(sess *Session, customType string, data any, direct *subprocess.DirectEntryAppend) (CustomEntry, error) {
 	if sess == nil {
@@ -652,7 +678,7 @@ func AppendExtensionEntry(sess *Session, customType string, data any, direct *su
 	if err != nil {
 		return CustomEntry{}, err
 	}
-	entry := CustomEntry{SessionEntryBase: SessionEntryBase{Type: "custom", ID: id, ParentID: sess.LeafID(), Timestamp: timestamp}, CustomType: customType, Data: data}
+	entry := CustomEntry{SessionEntryBase: SessionEntryBase{Type: "custom", ID: id, ParentID: sess.GetLeafID(), Timestamp: timestamp}, CustomType: customType, Data: data}
 	if err := sess.AppendEntry(entry); err != nil {
 		return CustomEntry{}, err
 	}
@@ -677,7 +703,7 @@ func ExtensionEntryIdentity(sess *Session, direct *subprocess.DirectEntryAppend)
 		return "", "", fmt.Errorf("entry id must not be empty")
 	}
 	if sess != nil {
-		if _, exists := sess.EntryByID(direct.ID); exists {
+		if _, exists := sess.GetEntry(direct.ID); exists {
 			return "", "", fmt.Errorf("entry id %s already exists", direct.ID)
 		}
 	}

@@ -9,6 +9,7 @@ import (
 // Pi's getSessionStats returns an object literal whose first two keys are
 // sessionFile then sessionId; RPC get_session_stats serializes it in that
 // order.
+// Pi: packages/coding-agent/src/core/agent-session.ts:333 (SessionStats.sessionFile).
 func TestSessionStatsJSONKeyOrderMatchesPi(t *testing.T) {
 	data, err := json.Marshal(SessionStats{SessionID: "id", SessionFile: "/s.jsonl"})
 	if err != nil {

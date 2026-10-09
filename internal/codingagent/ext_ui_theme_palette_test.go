@@ -54,7 +54,7 @@ func TestExtensionThemePaletteCarriesAppearanceColorsAndMode(t *testing.T) {
 		if !ok {
 			t.Fatalf("%s: colors is %T", mode, palette["colors"])
 		}
-		values := theme.ColorValues()
+		values := theme.Colors()
 		if len(got) != len(values) {
 			t.Errorf("%s: %d colors, want one per token (%d)", mode, len(got), len(values))
 		}

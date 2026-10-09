@@ -11,6 +11,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/MichaelKinsy/PiG/internal/sessionentry"
+
 	"github.com/MichaelKinsy/PiG/agent"
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/tui"
@@ -28,7 +30,7 @@ func mustEntry(t *testing.T, v any) SessionEntry {
 	if err := json.Unmarshal(raw, &base); err != nil {
 		t.Fatalf("unmarshal base: %v", err)
 	}
-	return SessionEntry{raw: raw, Base: base}
+	return sessionentry.DecodeSessionEntry(raw)
 }
 
 func TestFormatTreeRow_AllEntryTypes(t *testing.T) {
@@ -36,8 +38,8 @@ func TestFormatTreeRow_AllEntryTypes(t *testing.T) {
 	th := tui.ActiveTheme()
 
 	// Pre-seed toolCallMap so the tool_result fixtures resolve.
-	f.toolCallMap["call-read-1"] = toolCallInfo{name: "read", input: map[string]any{"path": "foo.go"}}
-	f.toolCallMap["call-bash-1"] = toolCallInfo{name: "bash", input: map[string]any{"command": "ls -la"}}
+	f.toolCallMap["call-read-1"] = toolCallInfo{call: ai.ToolCall{Name: "read", Arguments: map[string]any{"path": "foo.go"}}}
+	f.toolCallMap["call-bash-1"] = toolCallInfo{call: ai.ToolCall{Name: "bash", Arguments: map[string]any{"command": "ls -la"}}}
 
 	cases := []struct {
 		name  string
@@ -102,11 +104,24 @@ func TestFormatTreeRow_AllEntryTypes(t *testing.T) {
 			want: fg(th.Muted, "[read: foo.go]"),
 		},
 		{
-			name: "message_tool_result_unknown_id_falls_back_to_bracketed_tool",
+			// tree-selector.ts: an unknown call id renders `[${toolMsg.toolName ?? "tool"}]`.
+			name: "message_tool_result_unknown_id_falls_back_to_bracketed_tool_name",
 			entry: mustEntry(t, map[string]any{
 				"type": "message", "id": "tr2", "parentId": nil, "timestamp": "",
 				"message": map[string]any{
 					"role": "toolResult", "toolCallId": "no-such-call", "toolName": "read",
+					"content": []any{map[string]any{"type": "text", "text": "out"}},
+					"isError": false, "timestamp": 1,
+				},
+			}),
+			want: fg(th.Muted, "[read]"),
+		},
+		{
+			name: "message_tool_result_unknown_id_without_name_falls_back_to_tool",
+			entry: mustEntry(t, map[string]any{
+				"type": "message", "id": "tr3", "parentId": nil, "timestamp": "",
+				"message": map[string]any{
+					"role": "toolResult", "toolCallId": "no-such-call",
 					"content": []any{map[string]any{"type": "text", "text": "out"}},
 					"isError": false, "timestamp": 1,
 				},
@@ -320,28 +335,13 @@ func TestFormatToolCall_PerToolFormatters(t *testing.T) {
 			name: "unknown_tool_truncates_args_at_40",
 			tool: "spawn",
 			args: map[string]any{"foo": strings.Repeat("x", 100)},
-			// Marshaled JSON: {"foo":"xxxx..."}; len > 40 → ellipsis.
-			// We assert prefix + "...]" + length to keep the test
-			// independent of insignificant key-ordering changes.
+			want: "[spawn: {\"foo\":\"" + strings.Repeat("x", 32) + "...]",
 		},
 	}
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			got := f.formatToolCall(tc.tool, tc.args)
-			if tc.want == "" {
-				// "unknown_tool_truncates_args_at_40" branch. Strip the
-				// uniform muted wrapping to assert the inner structure.
-				inner := stripANSI(got)
-				if !strings.HasPrefix(inner, "[spawn: ") || !strings.HasSuffix(inner, "...]") {
-					t.Errorf("unknown tool: got %q, want [spawn: <40chars>...]", inner)
-				}
-				// 40 chars of payload + bracket overhead.
-				if len(inner) != len("[spawn: ")+40+len("...]") {
-					t.Errorf("unknown tool truncation length wrong: %q (len=%d)", inner, len(inner))
-				}
-				return
-			}
+			got := f.formatToolCall(ai.ToolCall{Name: tc.tool, Arguments: tc.args})
 			// All tool-call rows are uniformly muted (upstream:
 			// theme.fg("muted", ...)).
 			if got != fg(muted, tc.want) {
@@ -391,12 +391,12 @@ func TestFormatTreeRow_LiveSessionToolUsePreWalk(t *testing.T) {
 	// Find the tool_result entry in the session and format it.
 	var trEntry SessionEntry
 	for _, e := range sess.entries {
-		if e.Base.ID == trID {
+		if e.Base().ID == trID {
 			trEntry = e
 			break
 		}
 	}
-	if trEntry.Base.ID == "" {
+	if trEntry.Base().ID == "" {
 		t.Fatalf("could not locate tool_result entry %q", trID)
 	}
 	got := f.FormatTreeRow(trEntry)
@@ -511,19 +511,41 @@ func TestFormatTreeRow_ScopedFgReset(t *testing.T) {
 	}
 }
 
-// upstream 0.99.1 theme.ts fg: the fg helpers of the /tree, session and shell renderers close a dim foreground with the faint reset, as Theme.FgText does.
+// upstream 0.99.1 theme.ts fg: the fg helpers of the /tree, session and shell renderers close a dim foreground with the faint reset, as Theme.Fg does.
 func TestForegroundHelpersCloseDimTokensLikeTheTheme(t *testing.T) {
 	restoreStartupTheme(t)
 	tui.SetThemeByName(tui.SystemThemeName)
 	th := tui.ActiveTheme()
-	prefix := th.Fg("dim")
+	prefix := th.GetFgAnsi("dim")
 	if !strings.HasSuffix(prefix, "\x1b[2m") {
 		t.Fatalf("system theme dim prefix = %q, want the faint attribute", prefix)
 	}
-	want := th.FgText("dim", "x")
+	want := th.Fg("dim", "x")
 	for name, got := range map[string]string{"fg": fg(prefix, "x"), "sessionFg": sessionFg(prefix, "x"), "themeFg": themeFg(prefix, "x")} {
 		if got != want {
 			t.Errorf("%s = %q, want %q", name, got, want)
+		}
+	}
+}
+
+// The custom-tool label is `[${name}: ${JSON.stringify(args).slice(0, 40)}${JSON.stringify(args).length > 40 ? "..." : ""}]`
+// (tree-selector.ts:996-999): the model's member order, <, > and & unescaped, and lengths in UTF-16 units. Node output:
+// [spawn: {"zeta":"a&b<c>","alpha":1}], [spawn: {"q":"éééééééééééééééééééééééééééééé"}] and
+// [spawn: {"q":"😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀...].
+func TestFormatToolCall_CustomToolMatchesJSONStringify(t *testing.T) {
+	f := newTreeRowFormatter(nil)
+	for _, tc := range []struct{ args, want string }{
+		{`{"zeta":"a&b<c>","alpha":1}`, `[spawn: {"zeta":"a&b<c>","alpha":1}]`},
+		{`{"q":"` + strings.Repeat("é", 30) + `"}`, `[spawn: {"q":"` + strings.Repeat("é", 30) + `"}]`},
+		{`{"q":"` + strings.Repeat("😀", 20) + `"}`, `[spawn: {"q":"` + strings.Repeat("😀", 17) + `...]`},
+	} {
+		var call ai.ToolCall
+		call.Name = "spawn"
+		if err := call.SetArgumentsJSON([]byte(tc.args)); err != nil {
+			t.Fatal(err)
+		}
+		if got := stripANSI(f.formatToolCall(call)); got != tc.want {
+			t.Errorf("formatToolCall(%s) = %q, want %q", tc.args, got, tc.want)
 		}
 	}
 }

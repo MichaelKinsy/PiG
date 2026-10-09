@@ -18,6 +18,14 @@ import (
 	"github.com/MichaelKinsy/PiG/coding/extension/host/invocation"
 )
 
+// ToolAbortGrace is how long an aborted extension tool call waits for the tool to settle after its AbortSignal fires.
+//
+// pig divergence (D111): Pi awaits an aborted tool indefinitely (agent-loop.ts:831-853); a subprocess call must not block the agent loop forever.
+const ToolAbortGrace = 3 * time.Second
+
+// ErrToolAborted fails an aborted extension tool call that did not settle within ToolAbortGrace. Its text is Pi's abort tool result (agent-loop.ts:623).
+var ErrToolAborted = errors.New("Operation aborted")
+
 // livenessClock supplies monotonic timers to the connection state machine.
 // Tests inject a manual clock; production uses the runtime monotonic clock.
 type livenessTimer interface {
@@ -75,6 +83,8 @@ type HandlerStalledError struct {
 	Extension        string
 	Operation        string
 	HeartbeatHealthy bool
+	// Settled closes when the abandoned handler's late response arrives or the connection ends. Nil when the request had nothing left to settle.
+	Settled <-chan struct{}
 }
 
 func (e *HandlerStalledError) Error() string {
@@ -105,12 +115,22 @@ type Conn struct {
 	beforeCancel func()
 	// inbound observes each decoded frame on the read loop, in wire order, before routing. Cross-process reference accounting uses it so a later release on this connection can never overtake an earlier transmission.
 	inbound func(*Envelope)
+	// onLoopTurned runs on the read loop for each NotifyLoopTurned frame, before the frames after it are read.
+	onLoopTurned func()
 	// onClosed runs once when the read loop ends.
 	onClosed func()
-	name     string
-	conn     net.Conn
-	closing  atomic.Bool
-	closed   atomic.Bool
+	// viewImages holds the image bytes this connection's views sent (D107).
+	viewImagesOnce sync.Once
+	viewImages     *viewImageStore
+	// reportView reports a rejected view of this connection's extension
+	// (D107). Set by the Host before the connection starts reading.
+	reportView func(surface string, err error)
+	name       string
+	conn       net.Conn
+	closing    atomic.Bool
+	closed     atomic.Bool
+	// modelRegistry records RegisterPayload.WantsModelRegistry. UIBridge.RegisterExtConn sets it and PublishModelCatalog reads it, both under the bridge's mutex.
+	modelRegistry bool
 
 	// Outgoing message queue. Writer goroutine drains this. A frame that is
 	// queued or being written is outstanding work, so the heartbeat runs while
@@ -123,7 +143,11 @@ type Conn struct {
 	// request ID → the sink for that request's tool_update notifications.
 	pendingMu sync.Mutex
 	pending   map[string]chan *Envelope
-	updates   map[string]func(json.RawMessage)
+	// abandoned holds the channel each stalled request closes when its late response or the connection end settles it; guarded by pendingMu.
+	abandoned map[string]chan struct{}
+	// abandonedClosed is set once the reader has exited: no late response can arrive.
+	abandonedClosed bool
+	updates         map[string]func(json.RawMessage)
 	// answered runs on the read loop when the response of a request routes to its waiter.
 	answered map[string]func()
 	// hostCalls counts, per request, the host calls the host applies for it.
@@ -219,6 +243,7 @@ func newConnWithOptions(name string, c net.Conn, options connOptions) *Conn {
 		conn:               c,
 		outCh:              make(chan outboundFrame, 64),
 		pending:            make(map[string]chan *Envelope),
+		abandoned:          make(map[string]chan struct{}),
 		updates:            make(map[string]func(json.RawMessage)),
 		answered:           make(map[string]func()),
 		hostCallCounts:     make(map[string]func(dialog bool, delta int)),
@@ -607,6 +632,7 @@ func (c *Conn) request(ctx context.Context, env *Envelope, inactivity time.Durat
 	}
 	// Wait for response or meaningful request activity.
 	cancelled := ctx.Done()
+	var abortGraceC <-chan time.Time
 	suspensionApplied := false
 	for {
 		select {
@@ -654,7 +680,7 @@ func (c *Conn) request(ctx context.Context, env *Envelope, inactivity time.Durat
 		case <-inactivityC:
 			_ = c.Send(&Envelope{Type: MsgCancel, ID: env.ID, Cancel: &CancelPayload{RequestID: env.ID, Reason: "handler inactivity"}})
 			c.cancelHostCalls(env.ID)
-			return nil, &HandlerStalledError{Extension: c.name, Operation: operation, HeartbeatHealthy: !c.closed.Load()}
+			return nil, &HandlerStalledError{Extension: c.name, Operation: operation, HeartbeatHealthy: !c.closed.Load(), Settled: c.abandon(env.ID)}
 		case <-cancelled:
 			if c.beforeCancel != nil {
 				c.beforeCancel()
@@ -669,13 +695,25 @@ func (c *Conn) request(ctx context.Context, env *Envelope, inactivity time.Durat
 				},
 			})
 			c.cancelHostCalls(env.ID)
-			if env.Request != nil && env.Request.Method == MethodProviderStream && (errors.Is(context.Cause(ctx), context.Canceled) || errors.Is(context.Cause(ctx), context.DeadlineExceeded)) {
+			if env.Request != nil && (env.Request.Method == MethodProviderStream || env.Request.Method == RequestUserBashExec) && (errors.Is(context.Cause(ctx), context.Canceled) || errors.Is(context.Cause(ctx), context.DeadlineExceeded)) {
 				// Pi forwards the native stream's own terminal event after signaling
-				// abort. The connection still owns liveness and closes on shutdown.
+				// abort, and executeBashWithOperations awaits operations.exec until it
+				// settles after its signal aborts (bash-executor.ts:120-128). The
+				// connection still owns liveness and closes on shutdown.
 				cancelled = nil
 				continue
 			}
+			if env.Request != nil && env.Request.Method == MethodToolCall {
+				// pig divergence (D111): the call waits ToolAbortGrace for the tool to settle, as Pi awaits tool.execute after its signal aborts (agent-loop.ts:831-853), and then fails as aborted instead of awaiting a tool that ignores its signal forever.
+				cancelled = nil
+				grace := c.clock.NewTimer(ToolAbortGrace)
+				defer grace.Stop()
+				abortGraceC = grace.C()
+				continue
+			}
 			return nil, ctx.Err()
+		case <-abortGraceC:
+			return nil, ErrToolAborted
 		}
 	}
 }
@@ -825,6 +863,7 @@ func (c *Conn) readLoop(ctx context.Context) {
 		}
 		// On reader exit, close inCh so the host knows we're done.
 		close(c.inCh)
+		c.settleAllAbandoned()
 		c.stopAbortForwards()
 		if c.onClosed != nil {
 			c.onClosed()
@@ -863,16 +902,17 @@ func (c *Conn) readLoop(ctx context.Context) {
 		}
 
 		// Read the JSON payload.
-		buf := make([]byte, msgLen)
-		_, err = io.ReadFull(c.conn, buf)
+		frame, err := readFrameBuffer(c.conn, int(msgLen))
 		if err != nil {
 			c.fail(&TransportError{Extension: c.name, Operation: "read", Err: err})
 			return
 		}
 
-		// Decode the envelope.
+		// Decode the envelope. Unmarshal copies every string and json.RawMessage it keeps, so the frame is free once it returns.
 		var env Envelope
-		if err := json.Unmarshal(buf, &env); err != nil {
+		err = json.Unmarshal(frame.data, &env)
+		frame.release()
+		if err != nil {
 			c.fail(&TransportError{Extension: c.name, Operation: "decode frame", Err: err})
 			return
 		}
@@ -903,6 +943,13 @@ func (c *Conn) readLoop(ctx context.Context) {
 			c.deliverToolUpdate(env.Notify.Args)
 			continue
 		}
+		// The host forwards a turn before this reader routes the response that follows it, so the forwarded frame precedes on every other connection whatever the host sends after that response.
+		if env.Type == MsgNotify && env.Notify != nil && env.Notify.Method == NotifyLoopTurned {
+			if c.onLoopTurned != nil {
+				c.onLoopTurned()
+			}
+			continue
+		}
 		if env.Type == MsgPong && env.Pong != nil {
 			select {
 			case c.pongCh <- env.Pong.Nonce:
@@ -917,6 +964,9 @@ func (c *Conn) readLoop(ctx context.Context) {
 				ch, ok := c.pending[env.ID]
 				answered := c.answered[env.ID]
 				c.pendingMu.Unlock()
+				if !ok {
+					c.settleAbandoned(env.ID)
+				}
 				if ok {
 					select {
 					case ch <- &env:
@@ -1342,6 +1392,40 @@ heartbeat:
 			}
 		}
 	next:
+	}
+}
+
+// abandon records a request whose caller stopped waiting and returns the channel that closes when its handler answers late or the connection ends.
+func (c *Conn) abandon(id string) <-chan struct{} {
+	c.pendingMu.Lock()
+	defer c.pendingMu.Unlock()
+	done := make(chan struct{})
+	if c.abandonedClosed {
+		close(done)
+		return done
+	}
+	c.abandoned[id] = done
+	return done
+}
+
+func (c *Conn) settleAbandoned(id string) {
+	c.pendingMu.Lock()
+	done, ok := c.abandoned[id]
+	delete(c.abandoned, id)
+	c.pendingMu.Unlock()
+	if ok {
+		close(done)
+	}
+}
+
+func (c *Conn) settleAllAbandoned() {
+	c.pendingMu.Lock()
+	abandoned := c.abandoned
+	c.abandoned = make(map[string]chan struct{})
+	c.abandonedClosed = true
+	c.pendingMu.Unlock()
+	for _, done := range abandoned {
+		close(done)
 	}
 }
 

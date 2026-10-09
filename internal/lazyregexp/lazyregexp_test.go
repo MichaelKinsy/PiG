@@ -1,4 +1,3 @@
-// SPDX-FileCopyrightText: Copyright Hewlett Packard Enterprise Development LP
 // SPDX-License-Identifier: MIT
 
 package lazyregexp
@@ -108,4 +107,91 @@ func TestConcurrentFirstUseCompilesOnce(t *testing.T) {
 			t.Fatalf("goroutine %d saw no match", i)
 		}
 	}
+}
+
+// A non-unicode JavaScript /i folds ASCII letters only: U+017F and U+212A do not match s and k, although Go's (?i) folds them. Expected
+// values measured with Node 24 (/too many tokens/i.test("too many tokenſ") === false; /[^x]/i.test("ſ") === true).
+func TestNewJSIgnoreCaseFoldsASCIILettersOnly(t *testing.T) {
+	for _, tc := range []struct {
+		expr, text string
+		want       bool
+	}{
+		{`too many tokens`, "too many tokens", true},
+		{`too many tokens`, "TOO MANY TOKENS", true},
+		{`too many tokens`, "Too Many ToKeNs", true},
+		{`too many tokens`, "too many tokenſ", false},
+		{`too many tokens`, "too many to\u212Aens", false},
+		{`wsl|microsoft`, "MicroſOft", false},
+		{`wsl|microsoft`, "MICROSOFT", true},
+		{`(?:a|s)+k`, "SSK", true},
+		{`(?:a|s)+k`, "ſſ\u212A", false},
+		// A class keeps the members the pattern wrote: ſ is in [^x], is not in [s], and is in [ſ].
+		{`^[^x]$`, "ſ", true},
+		{`^[^x]$`, "X", false},
+		{`^[^s]$`, "ſ", true},
+		{`^[^s]$`, "S", false},
+		{`^[s]$`, "S", true},
+		{`^[s]$`, "ſ", false},
+		{`^[a-z]+$`, "ABC", true},
+		{`^[a-z]+$`, "ſk", false},
+		{`^[ſ]$`, "ſ", true},
+		{`^[^\\/]+$`, "node_moduleſ", true},
+		{`^[^\\/]+$`, "a/b", false},
+		// Non-letters and escapes are unaffected.
+		{`\d{2}\.exe$`, "12.EXE", true},
+		{`é`, "É", true},
+		{`^\s*K$`, "\u212A", false},
+		// Non-ASCII letters fold onto the letters with the same JavaScript canonical form (String.prototype.toUpperCase when that yields
+		// one unit and does not reach ASCII), the written letter included. Node 24: /é/i.test("é"), /σ/i.test("ς") and /ǅ/i.test("ǆ") are
+		// true; /ω/i.test("\u2126"), /ß/i.test("ẞ") and /𐐀/i.test("𐐨") are false.
+		{`é`, "é", true},
+		{`É`, "é", true},
+		{`^naïve$`, "naïve", true},
+		{`^naïve$`, "NAÏVE", true},
+		{`σ`, "σ", true},
+		{`σ`, "ς", true},
+		{`µ`, "Μ", true},
+		{`ǅ`, "ǆ", true},
+		{`ǆ`, "Ǆ", true},
+		{`ω`, "\u2126", false},
+		{`\x{2126}`, "ω", false},
+		{`ß`, "ẞ", false},
+		{`ẞ`, "ß", false},
+		// U+1F80 and U+1F88 uppercase to two units, so each is its own canonical form although Go's simple mapping pairs them.
+		{"\u1f80", "\u1f88", false},
+		{"\u1f88", "\u1f80", false},
+		{"\U00010400", "\U00010428", false},
+		{`^[à-ÿ]$`, "À", true},
+		{`^[^é]$`, "É", false},
+		{`^[^é]$`, "é", false},
+		{`^[^ω]$`, "\u2126", true},
+		{`^\W$`, "ſ", true},
+		{`^\w$`, "ſ", false},
+		// A one-letter class next to a literal: the plain parse merges them into one literal.
+		{`[s]t`, "ST", true},
+		{`[s]t`, "ſt", false},
+		// "." is JavaScript's: no line terminator (Node 24: /rate.?limit/i.test("rate\rlimit") === false).
+		{`^rate.?limit$`, "rate-limit", true},
+		{`^rate.?limit$`, "rate\rlimit", false},
+		{`^rate.?limit$`, "rate\u2028limit", false},
+		{`^rate.?limit$`, "rate\u0085limit", true},
+		{`(?s)^rate.limit$`, "rate\rlimit", true},
+	} {
+		if got := NewJSIgnoreCase(tc.expr).MatchString(tc.text); got != tc.want {
+			t.Errorf("NewJSIgnoreCase(%q).MatchString(%q) = %v, want %v", tc.expr, tc.text, got, tc.want)
+		}
+	}
+	if got := NewJSIgnoreCase(`a+`).String(); got != `a+` {
+		t.Errorf("String() = %q, want the source expression", got)
+	}
+}
+
+func TestNewJSIgnoreCasePanicsLikeMustCompileOnFirstUse(t *testing.T) {
+	r := NewJSIgnoreCase(`a(`)
+	defer func() {
+		if recover() == nil {
+			t.Fatal("an invalid pattern did not panic on first use")
+		}
+	}()
+	r.MatchString("a")
 }

@@ -22,6 +22,12 @@ export function assertClassifierModel(model) {
         throw new ModelsError("provider", `Model ${model.provider}/${model.id} is not a classifier model`);
     }
 }
+/** Rejects classifier images for models whose catalog entry does not accept image input. */
+export function assertClassifierInputSupported(model, context) {
+    if (context.images?.length && !model.input.includes("image")) {
+        throw new ModelsError("provider", `Model ${model.provider}/${model.id} does not accept image input`);
+    }
+}
 export function imageErrorResult(model, error, aborted = false) {
     return {
         api: model.api,

@@ -73,6 +73,7 @@ func TestColorMixEndpointsAndHueWrap(t *testing.T) {
 	}
 }
 
+// Pi: packages/coding-agent/src/modes/interactive/theme/theme.ts:66 (TextAttributes.dim); packages/tui/src/colors.ts:48 (TextAttributes.underline); packages/tui/src/colors.ts:49 (TextAttributes.inverse); packages/tui/src/colors.ts:50 (TextAttributes.strikethrough).
 func TestStyleTextAttributeOrder(t *testing.T) {
 	got := StyleText("x", TextStyle{TextAttributes: TextAttributes{Bold: true, Dim: true, Underline: true, Inverse: true, Strikethrough: true}}, TerminalColorModeTrueColor)
 	if want := "\x1b[1m\x1b[2m\x1b[4m\x1b[7m\x1b[9mx\x1b[29m\x1b[27m\x1b[24m\x1b[22m"; got != want {

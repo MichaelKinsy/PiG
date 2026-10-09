@@ -124,7 +124,7 @@ func (m *InteractiveMode) setupExtensionShortcutListener(ctx context.Context) {
 	if m.newRunner == nil {
 		return
 	}
-	shortcuts := m.newRunner.Shortcuts(m.keybindings.ResolvedBindings())
+	shortcuts := m.newRunner.Shortcuts(m.keybindings.effectiveBindings())
 	if len(shortcuts) == 0 {
 		return
 	}

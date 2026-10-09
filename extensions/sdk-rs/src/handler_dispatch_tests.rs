@@ -18,7 +18,7 @@ use std::time::Duration;
 
 const WAIT: Duration = Duration::from_secs(5);
 
-struct Host {
+pub(super) struct Host {
     stream: UnixStream,
     socket: std::path::PathBuf,
     extension: Option<JoinHandle<std::io::Result<()>>>,
@@ -34,7 +34,7 @@ fn next_socket() -> std::path::PathBuf {
 }
 
 impl Host {
-    fn connect(ext: Extension) -> Host {
+    pub(super) fn connect(ext: Extension) -> Host {
         let socket = next_socket();
         let _ = std::fs::remove_file(&socket);
         let listener = UnixListener::bind(&socket).unwrap();
@@ -64,13 +64,13 @@ impl Host {
         host
     }
 
-    fn send(&mut self, env: Envelope) {
+    pub(super) fn send(&mut self, env: Envelope) {
         let data = serde_json::to_vec(&env).unwrap();
         self.stream.write_all(&(data.len() as u32).to_be_bytes()).unwrap();
         self.stream.write_all(&data).unwrap();
     }
 
-    fn read_until(&mut self, kind: &str) -> Envelope {
+    pub(super) fn read_until(&mut self, kind: &str) -> Envelope {
         loop {
             let mut header = [0u8; 4];
             self.stream
@@ -130,7 +130,7 @@ impl Host {
         });
     }
 
-    fn stop(mut self) {
+    pub(super) fn stop(mut self) {
         self.send(Envelope {
             msg_type: "shutdown".into(),
             ..Default::default()
@@ -295,10 +295,10 @@ fn request_handlers_complete_blocking_host_calls() {
             done_tx.lock().unwrap().send(()).unwrap();
         };
         match kind {
-            "event" => ext.on_event("agent_start", false, move |ctx, _| {
+            "event" => drop(ext.on_event("agent_start", false, move |ctx, _| {
                 finish(ctx);
                 None
-            }),
+            })),
             "command" => ext.command("go", "go", move |ctx, _| {
                 finish(ctx);
                 CommandResult::Ok

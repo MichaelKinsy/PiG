@@ -201,12 +201,17 @@ func newProviderProxy(ctx Context, decl providerObjectDeclaration) (*Provider, e
 	}
 	for _, method := range decl.Methods {
 		switch method {
-		case "getModels":
-			p.GetModels = func() ([]map[string]any, error) {
+		case "getModels", "getAllModels":
+			get := func() ([]map[string]any, error) {
 				return providerInvoke[[]map[string]any](ctx, decl, method, map[string]any{}, nil, nil)
 			}
-		case "filterModels":
-			p.FilterModels = func(models []map[string]any, credential map[string]any) ([]map[string]any, error) {
+			if method == "getAllModels" {
+				p.GetAllModels = get
+			} else {
+				p.GetModels = get
+			}
+		case "filterModels", "filterAllModels":
+			filter := func(models []map[string]any, credential map[string]any) ([]map[string]any, error) {
 				value, err := providerInvoke[struct {
 					Models  []map[string]any `json:"models"`
 					Indices []int            `json:"indices"`
@@ -222,6 +227,11 @@ func newProviderProxy(ctx Context, decl providerObjectDeclaration) (*Provider, e
 					}
 				}
 				return value.Models, nil
+			}
+			if method == "filterAllModels" {
+				p.FilterAllModels = filter
+			} else {
+				p.FilterModels = filter
 			}
 		case "auth.apiKey.check":
 			p.Auth.APIKey.Check = func(input APIKeyAuthInput) (*AuthCheck, error) {

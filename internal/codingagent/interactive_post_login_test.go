@@ -26,19 +26,19 @@ func newPostLoginTestMode(t *testing.T) *InteractiveMode {
 		t.Fatal(err)
 	}
 	registry.SetAuthStorage(auth)
-	m := NewInteractiveMode(InteractiveOptions{
+	m := NewInteractiveMode(nil, InteractiveModeOptions{
 		AgentDir: dir, CWD: t.TempDir(), DefaultModelPerProvider: DefaultModelPerProvider(), ModelRegistry: registry, SettingsManager: NewSettingsManager(t.TempDir(), dir),
 		ModelBuilder: func(spec string) (*ai.Model, error) {
 			provider, id, _ := strings.Cut(spec, "/")
-			return &ai.Model{ID: id, ProviderMeta: ai.ProviderMetadata{ProviderID: provider}, Capabilities: ai.ModelCapabilities{MaxThinking: ai.ThinkingHigh}}, nil
+			return &ai.Model{ID: id, ProviderMeta: ai.ProviderMetadata{ProviderID: provider}, Capabilities: ai.ModelCapabilities{MaxThinking: ai.ThinkingLevelHigh}}, nil
 		},
 	})
 	m.chatContainer = tui.NewContainer()
 	m.editorContainer = tui.NewContainer()
 	m.editor = tui.NewEditor()
 	m.tuiInst = tui.NewWithOutput(io.Discard, 200, 40)
-	m.statusLine = NewStatusLine(nil, "", nil)
-	m.agent = agent.NewAgent(agent.AgentOptions{})
+	m.statusLine = NewFooterComponent(nil, "", nil)
+	m.agent = mustNewAgent(agent.AgentOptions{})
 	m.backgroundCtx, m.backgroundCancel = context.WithCancel(t.Context())
 	t.Cleanup(func() { m.backgroundCancel(); m.backgroundTasks.Wait() })
 	return m

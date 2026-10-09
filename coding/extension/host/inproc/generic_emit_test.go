@@ -35,13 +35,13 @@ func TestEmit_NilEventReturnsNilNil(t *testing.T) {
 	}
 }
 
-// TestEmit_EventWithoutTypeFieldReturnsError: defensive: any value
-// passed to Emit must be a struct with a non-empty Type string field.
-func TestEmit_EventWithoutTypeFieldReturnsError(t *testing.T) {
+// TestEmit_NilEventPointerReturnsError: Emit takes the closed ExtensionEvent union (types.ts:1377), so a value without a Type field
+// no longer compiles; a nil event pointer still reaches Emit and is an error.
+func TestEmit_NilEventPointerReturnsError(t *testing.T) {
 	r := inproc.NewRunner(nil, ".")
-	_, err := r.Emit(context.Background(), 42)
+	_, err := r.Emit(context.Background(), (*extension.SessionStartEvent)(nil))
 	if err == nil {
-		t.Errorf("Emit(42) err = nil, want error")
+		t.Errorf("Emit(nil *SessionStartEvent) err = nil, want error")
 	}
 }
 
@@ -106,6 +106,8 @@ func TestEmit_DispatchOrderMatchesLoadOrder(t *testing.T) {
 // handlers do not run.
 //
 // upstream: runner.ts:685-690 (`if (result.cancel) return result;`)
+// packages/coding-agent/src/core/extensions/types.ts:1469 SessionBeforeForkResult.skipConversationRestore travels with the cancel result.
+// Pi: packages/coding-agent/src/core/extensions/types.ts:1469 (SessionBeforeForkResult.skipConversationRestore).
 func TestEmit_SessionBeforeForkCancelShortCircuits(t *testing.T) {
 	var thirdFired atomic.Int32
 	exts := []extension.Extension{
@@ -291,7 +293,7 @@ func TestEmit_HandlerCanReadExtensionContext(t *testing.T) {
 func TestEmit_AllSessionBeforeVariantsRecognized(t *testing.T) {
 	cases := []struct {
 		name      string
-		event     any
+		event     extension.ExtensionEvent
 		eventType string
 		result    any
 	}{

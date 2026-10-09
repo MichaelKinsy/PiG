@@ -11,6 +11,8 @@ import (
 	"testing"
 	"time"
 
+	icodingagent "github.com/MichaelKinsy/PiG/internal/codingagent"
+
 	"github.com/MichaelKinsy/PiG/agent"
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/coding/extension"
@@ -119,8 +121,8 @@ func TestAgentSessionMCPKeepsCodemodeOnlyMCPToolsCallableAcrossTreeNavigation(t 
 
 	var firstAssistant string
 	for _, entry := range h.session.Inner().GetBranch() {
-		if message, ok := entry.AsMessage(); ok && message.Message.Assistant != nil {
-			firstAssistant = entry.Base.ID
+		if message, ok := entry.(icodingagent.MessageEntry); ok && message.Message.Assistant != nil {
+			firstAssistant = entry.Base().ID
 			break
 		}
 	}
@@ -430,17 +432,18 @@ func TestAgentSessionMCPWarnsWhenDeferredMCPToolsHaveNeitherToolSearchNorCodemod
 	requireEqual(t, "notifications", h.notes.all(), []string{"MCP tools are only reachable from the codemode or tool_search tool, but neither is active; they cannot be called."})
 }
 
+// Pi: packages/coding-agent/src/core/extensions/types.ts:2044 (RegisteredTool.sourceInfo).
 func TestAgentSessionMCPDoesNotActivateAnotherExtensionsToolNamedCodemode(t *testing.T) {
 	// Registered first, so it wins over the codemode extension's codemode.
 	inactive := false
-	otherInfo := extension.SourceInfo(map[string]any{"path": "/extensions/other.ts", "source": "local", "scope": "temporary", "origin": "top-level"})
+	otherInfo := extension.SourceInfo(extension.SourceInfo{Path: "/extensions/other.ts", Source: "local", Scope: "temporary", Origin: "top-level"})
 	other := extension.Extension{
 		Name: "other", Path: "/extensions/other.ts", ResolvedPath: "/extensions/other.ts", SourceInfo: otherInfo,
 		Tools: map[string]extension.RegisteredTool{"codemode": {SourceInfo: otherInfo, Definition: extension.ToolDefinition{
 			Name: "codemode", Label: "codemode", Description: "Another extension's codemode tool.", Parameters: json.RawMessage(`{"type":"object","properties":{}}`),
 			DefaultActive: &inactive,
 			Execute: func(context.Context, string, json.RawMessage, extension.AgentToolUpdateCallback) (extension.AgentToolResult, error) {
-				return extension.AgentToolResult(nil), nil
+				return extension.AgentToolResult{}, nil
 			},
 		}}},
 		ToolOrder: []string{"codemode"},
@@ -631,7 +634,7 @@ func TestAgentSessionMCPHoldsTheFirstPromptForServersWithDirectTools(t *testing.
 }
 
 func TestAgentSessionMCPHoldsTheFirstPromptForServersWithDirectToolsOnlyUpToStartupWait(t *testing.T) {
-	h := setupSlow(t, mcpSessionOptions{startupWait: 20 * time.Millisecond}, extension.McpExposureDirect, never)
+	h := setupSlow(t, mcpSessionOptions{startupWait: new(20)}, extension.McpExposureDirect, never)
 	h.respond(boundaryReply("ready", ai.StopReasonStop, 0))
 
 	h.prompt(t, "start")
@@ -729,12 +732,12 @@ func TestAgentSessionMCPActivatesToolSearchForDeferredMCPToolsAndKeepsLoadedTool
 	branch := h.session.Inner().GetBranch()
 	var firstUser, last string
 	for _, entry := range branch {
-		if message, ok := entry.AsMessage(); ok && message.Message.User != nil && firstUser == "" {
-			firstUser = entry.Base.ID
+		if message, ok := entry.(icodingagent.MessageEntry); ok && message.Message.User != nil && firstUser == "" {
+			firstUser = entry.Base().ID
 		}
 	}
 	if len(branch) > 0 {
-		last = branch[len(branch)-1].Base.ID
+		last = branch[len(branch)-1].Base().ID
 	}
 	if firstUser == "" || last == "" {
 		t.Fatal("Missing entries")

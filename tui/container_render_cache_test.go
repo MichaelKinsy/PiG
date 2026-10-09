@@ -42,7 +42,7 @@ func TestContainerRenderReturnsIndependentSlice(t *testing.T) {
 func TestMainScreenCursorExtractionDoesNotMutateBorrowedContainerLines(t *testing.T) {
 	child := &cacheProbeComponent{lines: []string{"prompt " + widthx.CursorMarker + "here"}}
 	container := NewContainer(child)
-	renderer := &TUI{}
+	renderer := &TuiMainScreen{}
 
 	borrowed := container.renderBorrowed(80)
 	position, row, cursorFreeLine, ok := findCursorPosition(borrowed, 24)
@@ -186,7 +186,7 @@ func TestContainerThemeChangeInvalidatesBorrowedCache(t *testing.T) {
 	child := &cacheProbeComponent{lines: []string{ActiveTheme().Accent + "text"}}
 	child.alwaysDirty = false
 	markdown := NewMarkdown("**heading** and `code`")
-	tool := NewToolExecutionComponent("read", "file.go")
+	tool := newToolCardForTest("read", "file.go")
 	container := NewContainer(child, markdown, tool)
 	gotDark := slices.Clone(container.renderBorrowed(80))
 
@@ -301,5 +301,37 @@ func TestContainerRenderAllocationDoesNotScaleWithProductionHistory(t *testing.T
 	}
 	if delta := int64(fullLarge) - int64(fullSmall); delta > 2048 {
 		t.Fatalf("fullscreen steady allocation grew with history by %d B/frame", delta)
+	}
+}
+
+// invalidatingDuringRender is a child whose content changes, and is invalidated, after Render has built its lines but before the container returns: another goroutine's mutation lands there.
+type invalidatingDuringRender struct {
+	invalidatable
+	text  string
+	after func()
+}
+
+func (c *invalidatingDuringRender) Render(int) []string {
+	lines := []string{c.text}
+	if c.after != nil {
+		c.after()
+		c.after = nil
+	}
+	return lines
+}
+
+// An Invalidate that arrives while the child renders must not be consumed with the render that predates it: the next frame has to render the child again, as a mutation that precedes Render would.
+func TestContainerChildInvalidatedDuringRenderRendersAgain(t *testing.T) {
+	child := &invalidatingDuringRender{text: "old"}
+	child.after = func() {
+		child.text = "new"
+		child.Invalidate()
+	}
+	container := NewContainer(child)
+	if got := container.Render(40); !slices.Equal(got, []string{"old"}) {
+		t.Fatalf("first render = %q", got)
+	}
+	if got := container.Render(40); !slices.Equal(got, []string{"new"}) {
+		t.Fatalf("a change made while the child rendered stayed cached: %q, want [new]", got)
 	}
 }

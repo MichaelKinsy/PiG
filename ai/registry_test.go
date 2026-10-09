@@ -43,11 +43,11 @@ func TestRegistryHasModels(t *testing.T) {
 }
 
 // TestCatalogPin100 binds the generated catalog to the exact published Pi
-// 1.0.3 package. The expected values come from @earendil-works/pi-ai 1.0.3
+// 1.1.0 package. The expected values come from @earendil-works/pi-ai 1.1.0
 // providers/data, not from the Go generator output.
 func TestCatalogPin100(t *testing.T) {
-	if v := UpstreamVersionString(); v != "1.0.3" {
-		t.Fatalf("pin = %q want 1.0.3", v)
+	if v := UpstreamVersionString(); v != "1.1.0" {
+		t.Fatalf("pin = %q want 1.1.0", v)
 	}
 	opus, ok := LookupModelExact("anthropic/claude-opus-5-5")
 	if !ok || opus.API != APIAnthropicMessages || opus.ContextWindow != 1000000 {
@@ -98,18 +98,26 @@ func TestCatalogPin100(t *testing.T) {
 	}
 	// 1.0.2: NVIDIA adds Nemotron 3 Super; OpenRouter adds the Clef and Decider classifiers
 	// and reprices Llama 3.3 70B (pi-ai 1.0.2 providers/data nvidia.json, openrouter.json).
+	// 1.1.0 renames the Perplexity Decider to pplx-decider-v1.1-27b (providers/data/openrouter.json).
 	super, ok := LookupModelExact("nvidia/nvidia/nemotron-3-super-120b-a12b")
 	if !ok || super.ContextWindow != 262144 || !super.Reasoning {
 		t.Fatalf("1.0.2 NVIDIA Nemotron 3 Super = %+v, %t", super, ok)
 	}
-	for _, id := range []string{"cloudflare/clef", "cloudflare/clef-flash", "perplexity/pplx-decider-v1-27b"} {
+	for _, id := range []string{"cloudflare/clef", "cloudflare/clef-flash", "perplexity/pplx-decider-v1.1-27b"} {
 		if GetBuiltinClassifierModel("openrouter", id) == nil {
 			t.Fatalf("1.0.2 catalog is missing OpenRouter classifier %s", id)
 		}
 	}
 	llama, ok := LookupModelExact("openrouter/meta-llama/llama-3.3-70b-instruct")
-	if !ok || llama.InputCostPerMTokens != 0.1 || llama.OutputCostPerMTokens != 0.32 || llama.CacheReadCost != 0 {
-		t.Fatalf("1.0.3 OpenRouter Llama 3.3 70B = %+v, %t", llama, ok)
+	if !ok || llama.InputCostPerMTokens != 0.22 || llama.OutputCostPerMTokens != 0.5 || llama.CacheReadCost != 0.11 {
+		// 1.0.4 providers/data/openrouter.json reprices it again (1.0.3: 0.1, 0.32, no cache read).
+		t.Fatalf("1.0.4 OpenRouter Llama 3.3 70B = %+v, %t", llama, ok)
+	}
+	// 1.1.0 (providers/data/anthropic.json): Claude Haiku 5.5 is an adaptive-thinking model with 1M context and 100k-token pricing tiers.
+	haiku, ok := LookupModelExact("anthropic/claude-haiku-5-5")
+	if !ok || haiku.API != APIAnthropicMessages || haiku.ContextWindow != 1000000 || haiku.MaxOutputTokens != 128000 || !haiku.Reasoning || haiku.InputCostPerMTokens != 0.1 || haiku.OutputCostPerMTokens != 0.5 ||
+		haiku.Compat == nil || haiku.Compat.ForceAdaptiveThinking == nil || !*haiku.Compat.ForceAdaptiveThinking || len(haiku.Tiers) != 1 || haiku.Tiers[0].InputTokensAbove != 100000 {
+		t.Fatalf("1.1.0 Claude Haiku 5.5 = %+v, %t", haiku, ok)
 	}
 	// 1.0.3 (#9714): the Azure provider is "azure" and serves Foundry Chat Completions beside the Responses API.
 	if slices.Contains(GeneratedProviders, "azure-openai-responses") || !slices.Contains(GeneratedProviders, "azure") {
@@ -282,7 +290,7 @@ func TestGeneratedCatalogThinkingLevelMap(t *testing.T) {
 			t.Fatalf("off mapping = %v, %t; want explicit nil", mapped, ok)
 		}
 		levels := GetSupportedThinkingLevels(m.ToModel())
-		want := []ThinkingLevel{ThinkingMinimal, ThinkingLow, ThinkingMedium, ThinkingHigh}
+		want := []ModelThinkingLevel{ThinkingMinimal, ThinkingLow, ThinkingMedium, ThinkingHigh}
 		if len(levels) != len(want) {
 			t.Fatalf("supported thinking levels = %v, want %v", levels, want)
 		}
@@ -400,7 +408,7 @@ func TestGeneratedCatalogUpgradeSpotChecks(t *testing.T) {
 		wantReasoning       bool
 		wantCapabilities    []string
 		wantBaseURL         string
-		wantThinkingEntries map[ThinkingLevel]*string
+		wantThinkingEntries map[ModelThinkingLevel]*string
 	}{
 		{
 			spec:               "amazon-bedrock/au.anthropic.claude-opus-4-6-v1",
@@ -416,7 +424,7 @@ func TestGeneratedCatalogUpgradeSpotChecks(t *testing.T) {
 			wantReasoning:      true,
 			wantCapabilities:   []string{"text", "image"},
 			wantBaseURL:        "https://bedrock-runtime.us-east-1.amazonaws.com",
-			wantThinkingEntries: map[ThinkingLevel]*string{
+			wantThinkingEntries: map[ModelThinkingLevel]*string{
 				ThinkingMax: new("max"),
 			},
 		},
@@ -434,7 +442,7 @@ func TestGeneratedCatalogUpgradeSpotChecks(t *testing.T) {
 			wantReasoning:      true,
 			wantCapabilities:   []string{"text", "image"},
 			wantBaseURL:        "https://bedrock-runtime.us-east-1.amazonaws.com",
-			wantThinkingEntries: map[ThinkingLevel]*string{
+			wantThinkingEntries: map[ModelThinkingLevel]*string{
 				ThinkingMax: new("max"),
 			},
 		},
@@ -452,11 +460,11 @@ func TestGeneratedCatalogUpgradeSpotChecks(t *testing.T) {
 			wantReasoning:      true,
 			wantCapabilities:   []string{"text", "image"},
 			wantBaseURL:        "",
-			wantThinkingEntries: map[ThinkingLevel]*string{
-				ThinkingLevel("low"):     nil,
-				ThinkingLevel("minimal"): nil,
-				ThinkingLevel("off"):     nil,
-				ThinkingXHigh:            new("xhigh"),
+			wantThinkingEntries: map[ModelThinkingLevel]*string{
+				ModelThinkingLevel("low"):     nil,
+				ModelThinkingLevel("minimal"): nil,
+				ModelThinkingLevel("off"):     nil,
+				ThinkingXHigh:                 new("xhigh"),
 			},
 		},
 		{
@@ -489,7 +497,7 @@ func TestGeneratedCatalogUpgradeSpotChecks(t *testing.T) {
 			wantReasoning:      true,
 			wantCapabilities:   []string{"text", "image"},
 			wantBaseURL:        "https://api.individual.githubcopilot.com",
-			wantThinkingEntries: map[ThinkingLevel]*string{
+			wantThinkingEntries: map[ModelThinkingLevel]*string{
 				ThinkingOff:     nil,
 				ThinkingMinimal: new("low"),
 				ThinkingLow:     new("low"),
@@ -513,7 +521,7 @@ func TestGeneratedCatalogUpgradeSpotChecks(t *testing.T) {
 			wantReasoning:      true,
 			wantCapabilities:   []string{"text"},
 			wantBaseURL:        "https://chatgpt.com/backend-api",
-			wantThinkingEntries: map[ThinkingLevel]*string{
+			wantThinkingEntries: map[ModelThinkingLevel]*string{
 				ThinkingMinimal: new("low"),
 				ThinkingXHigh:   new("xhigh"),
 			},
@@ -532,7 +540,7 @@ func TestGeneratedCatalogUpgradeSpotChecks(t *testing.T) {
 			wantReasoning:      true,
 			wantCapabilities:   []string{"text", "image"},
 			wantBaseURL:        "",
-			wantThinkingEntries: map[ThinkingLevel]*string{
+			wantThinkingEntries: map[ModelThinkingLevel]*string{
 				ThinkingOff:   nil,
 				ThinkingXHigh: new("xhigh"),
 				ThinkingMax:   new("max"),
@@ -680,6 +688,9 @@ func TestCodegenByteIdentical(t *testing.T) {
 // while tolerating the two equivalent upstream sources' differing extensions.
 var sourceCommentRE = regexp.MustCompile(`(?m)^// Source: models\.generated\.(?:ts|js)$`)
 
+// normalizeSourceComment leaves the `// Upstream: @earendil-works/pi-ai <version>` line in place. Both sources emit it from
+// the pi-ai manifest one directory above the source (dist/../package.json or the mirror's src/../package.json), so the
+// comparison also proves the committed header names the release the catalog was generated from.
 func normalizeSourceComment(b []byte) []byte {
 	return sourceCommentRE.ReplaceAll(b, []byte("// Source: models.generated"))
 }

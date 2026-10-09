@@ -1,4 +1,4 @@
-// D82 W5 oracle for the pi-messages API (Pi 1.0.3, packages/ai/src/api/pi-messages.ts).
+// D82 W5 oracle for the pi-messages API (Pi 1.1.0, packages/ai/src/api/pi-messages.ts).
 //
 // Drives Pi's real pipeline for pi-messages against a loopback backend that serves the
 // pi-messages SSE wire protocol under two delivery shapes:
@@ -43,7 +43,7 @@ import { join } from 'node:path';
 
 const root = process.env.PI_PACKAGE_ROOT;
 const scope = root + '/node_modules/@earendil-works/';
-for (const [path, version] of [[root, '1.0.3'], [scope + 'pi-ai', '1.0.3'], [scope + 'pi-agent-core', '1.0.3']]) {
+for (const [path, version] of [[root, '1.1.0'], [scope + 'pi-ai', '1.1.0'], [scope + 'pi-agent-core', '1.1.0']]) {
   assert.equal(JSON.parse(await readFile(path + '/package.json', 'utf8')).version, version);
 }
 const outPath = process.argv[2];
@@ -301,7 +301,7 @@ for (const [name, fixture, delivery, abort] of [['pending-body', 'tool', 'pendin
   cancels.push({ name, fixture, delivery, abort, ...(await runPath('direct', fixture, fixtures[fixture], delivery, abort)) });
 }
 await writeFile(outPath, JSON.stringify({
-  piVersion: '1.0.3',
+  piVersion: '1.1.0',
   node: process.version,
   api: 'pi-messages',
   bodies: Object.fromEntries(Object.entries(fixtures).map(([name, records]) => [name, wire(records).join('')])),

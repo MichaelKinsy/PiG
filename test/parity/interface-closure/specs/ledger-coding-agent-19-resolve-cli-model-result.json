@@ -1,0 +1,23 @@
+[
+ {
+  "ids": [
+   "pkg:coding-agent/.#ResolveCliModelResult"
+  ],
+  "targets": [
+   "internal/codingagent/model_resolver.go#ResolveCliModelResult"
+  ],
+  "struct": {
+   "file": "internal/codingagent/model_resolver.go",
+   "type": "ResolveCliModelResult"
+  },
+  "production": [
+   "call:coding/cli/auth_check.go#CheckProviderAuth"
+  ],
+  "evidence": [
+   "test:coding/cli/model_resolver_cli_upstream_test.go#TestModelResolverCLIUpstream",
+   "test:coding/cli/startup_model_test.go#TestResolveCliModelMatchesUpstream"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "ResolveCliModelResult: Go ResolveCliModelResult has model (*RuntimeModel, nil for undefined), thinkingLevel, warning and error (empty string for undefined); the CLI resolver tests read all four."
+ }
+]

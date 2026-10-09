@@ -53,6 +53,11 @@ type ServiceMemberInitiator interface {
 	BeginServiceMember(ctx context.Context, member string, args []json.RawMessage) (*ServiceInvocation, error)
 }
 
+// ServiceMemberAdmitter lets an implementation run a member's synchronous prefix at admission, in call order, when it cannot expose a Promise-style initiator. provider.ts:234 applies a JavaScript member synchronously during invoke; a Go member that must take a position in shared ordered state (a mutation queue) reserves it here. AdmitServiceMember returns the context the member receives and a release that the provider calls once the member has finished, whether or not it consumed the reservation.
+type ServiceMemberAdmitter interface {
+	AdmitServiceMember(ctx context.Context, member string) (context.Context, func())
+}
+
 // InitiatingServiceTransport exposes the Promise-returning invocation boundary without inferring it from a blocking Go method.
 type InitiatingServiceTransport interface {
 	RemoteServiceTransport

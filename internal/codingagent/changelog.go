@@ -1,10 +1,12 @@
 package codingagent
 
 import (
+	"math"
 	"slices"
 	"strconv"
 	"strings"
 
+	"github.com/MichaelKinsy/PiG/internal/jsstring"
 	"github.com/MichaelKinsy/PiG/internal/lazyregexp"
 )
 
@@ -29,10 +31,9 @@ type ChangelogEntry struct {
 	Content string // includes the `## [x.y.z]` header line itself, trimmed
 }
 
-// versionHeaderRE mirrors upstream's regex from utils/changelog.ts:35.
-//
-//	/##\s+\[?(\d+)\.(\d+)\.(\d+)\]?/
-var versionHeaderRE = lazyregexp.New(`^##\s+\[?(\d+)\.(\d+)\.(\d+)\]?`)
+// versionHeaderRE is upstream's `/##\s+\[?(\d+)\.(\d+)\.(\d+)\]?/` (utils/changelog.ts): not anchored to the line start, and `\s` is JavaScript's
+// whitespace set.
+var versionHeaderRE = lazyregexp.New(`##[\t\n\v\f\r \x{a0}\x{1680}\x{2000}-\x{200a}\x{2028}\x{2029}\x{202f}\x{205f}\x{3000}\x{feff}]+\[?(\d+)\.(\d+)\.(\d+)\]?`)
 
 // ParseChangelog walks the markdown content of a CHANGELOG.md and
 // returns one ChangelogEntry per `## [x.y.z]`-style header. Order is
@@ -52,7 +53,7 @@ func ParseChangelog(content string) []ChangelogEntry {
 	flush := func() {
 		if currentVersion != nil && len(currentLines) > 0 {
 			entry := *currentVersion
-			entry.Content = strings.TrimSpace(strings.Join(currentLines, "\n"))
+			entry.Content = jsstring.Trim(strings.Join(currentLines, "\n"))
 			entries = append(entries, entry)
 		}
 	}
@@ -122,44 +123,65 @@ func changelogMarkdown(entries []ChangelogEntry) string {
 	}
 	parts := make([]string, 0, len(entries))
 	for _, entry := range slices.Backward(entries) {
-		parts = append(parts, entry.Content)
+		parts = append(parts, NormalizeChangelogLinks(entry.Content, entry.Version()))
 	}
 	return strings.Join(parts, "\n\n")
 }
 
-// compareVersions compares two ChangelogEntry values by version number.
-// Returns positive if v1 > v2, zero if equal, negative if v1 < v2.
-// Mirrors upstream compareVersions (utils/changelog.ts:76-80).
-func compareVersions(v1, v2 ChangelogEntry) int {
-	if v1.Major != v2.Major {
-		return v1.Major - v2.Major
-	}
-	if v1.Minor != v2.Minor {
-		return v1.Minor - v2.Minor
-	}
-	return v1.Patch - v2.Patch
-}
-
-// GetNewEntries returns the subset of entries whose version is strictly
-// newer than sinceVersion (a "x.y.z" string).
-// Mirrors upstream getNewEntries (utils/changelog.ts:84-96).
+// GetNewEntries returns the entries whose version is newer than sinceVersion. The last-seen version is read as upstream's
+// `lastVersion.split(".").map(Number)` does: each of the first three dot-separated parts is a JavaScript Number, and a part
+// that is missing or not a number counts as 0 (utils/changelog.ts getNewEntries).
 func GetNewEntries(entries []ChangelogEntry, sinceVersion string) []ChangelogEntry {
-	parts := strings.SplitN(sinceVersion, ".", 3)
-	parseNum := func(s string) int {
-		n, _ := strconv.Atoi(s)
-		return n
+	parts := strings.Split(sinceVersion, ".")
+	part := func(i int) float64 {
+		if i >= len(parts) {
+			return 0
+		}
+		if number := jsStringToNumber(parts[i]); number != 0 && !math.IsNaN(number) {
+			return number
+		}
+		return 0
 	}
-	var last ChangelogEntry
-	if len(parts) >= 3 {
-		last.Major = parseNum(parts[0])
-		last.Minor = parseNum(parts[1])
-		last.Patch = parseNum(parts[2])
-	}
+	last := [3]float64{part(0), part(1), part(2)}
 	var newer []ChangelogEntry
 	for _, e := range entries {
-		if compareVersions(e, last) > 0 {
-			newer = append(newer, e)
+		for i, value := range [3]float64{float64(e.Major), float64(e.Minor), float64(e.Patch)} {
+			if value == last[i] {
+				continue
+			}
+			if value > last[i] {
+				newer = append(newer, e)
+			}
+			break
 		}
 	}
 	return newer
+}
+
+var jsDecimalLiteral = lazyregexp.New(`^[+-]?(?:\d+\.?\d*|\.\d+)(?:[eE][+-]?\d+)?$`)
+
+// jsStringToNumber is Number(text) for a string: surrounding JavaScript whitespace is ignored, the empty string is 0, Infinity, decimal and
+// 0x/0o/0b literals convert and anything else is NaN.
+func jsStringToNumber(text string) float64 {
+	text = jsstring.Trim(text)
+	switch {
+	case text == "":
+		return 0
+	case text == "Infinity" || text == "+Infinity":
+		return math.Inf(1)
+	case text == "-Infinity":
+		return math.Inf(-1)
+	case jsDecimalLiteral.MatchString(text):
+		number, _ := strconv.ParseFloat(text, 64)
+		return number
+	}
+	if len(text) > 2 && text[0] == '0' {
+		base := map[byte]int{'x': 16, 'X': 16, 'o': 8, 'O': 8, 'b': 2, 'B': 2}[text[1]]
+		if base != 0 {
+			if number, err := strconv.ParseUint(text[2:], base, 64); err == nil && !strings.HasPrefix(text[2:], "+") {
+				return float64(number)
+			}
+		}
+	}
+	return math.NaN()
 }

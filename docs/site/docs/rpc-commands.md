@@ -13,6 +13,7 @@ This page lists the commands an RPC client writes to PiG on standard input, with
 | `clear_queue` | none | Remove queued steering and follow-up messages and return their text. |
 | `new_session` | optional `parentSession` | Replace the active Session with a fresh Session. |
 | `get_commands` | none | List extension, prompt-template, and Skill commands. |
+| `get_extensions` | none | List the resolved paths of the loaded extensions. |
 | `get_state` | none | Read current Session, queue, and model state. |
 | `set_model` | `provider`, `modelId` | Select an available model. |
 | `cycle_model` | none | Select the next available or scoped model. |
@@ -305,4 +306,12 @@ Each result contains:
 - `sourceInfo` with `path`, `source`, `scope`, `origin`, and optional `baseDir`.
 
 Built-in interactive slash commands are not RPC commands.
+
+## Loaded extensions
+
+```json
+{"type":"get_extensions"}
+```
+
+The result is `{"paths":[...]}`: the resolved path of each loaded extension in load order, hidden extensions included. PiG's built-in extensions appear as `builtin:<name>`. Pi's RPC protocol has no such command. Pi exposes the same list to in-process callers as `session.extensionRunner.getExtensionPaths()`, which its evaluation harness uses to reject unexpected extensions (D101).
 

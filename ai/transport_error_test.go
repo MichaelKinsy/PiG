@@ -7,12 +7,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strings"
-	"syscall"
 	"testing"
-	"time"
-
-	btypes "github.com/aws/aws-sdk-go-v2/service/bedrockruntime/types"
-	smithyhttp "github.com/aws/smithy-go/transport/http"
 )
 
 func transportErrorTestProvider(baseURL string) Provider {
@@ -139,56 +134,4 @@ func TestProviderRetryDelayErrorIsNotTransportFailure(t *testing.T) {
 	if !IsRetryableAssistantError(*result) {
 		t.Fatalf("provider retry delay should reach the outer retry classifier: %q", result.ErrorMessage)
 	}
-}
-
-func TestMistralTransportCancellationRemainsAborted(t *testing.T) {
-	requestStarted := make(chan struct{})
-	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
-		writer.Header().Set("Content-Type", "text/event-stream")
-		writer.WriteHeader(http.StatusOK)
-		writer.(http.Flusher).Flush()
-		close(requestStarted)
-		<-request.Context().Done()
-	}))
-	defer server.Close()
-
-	ctx, cancel := context.WithCancel(context.Background())
-	provider := NewMistralProvider(MistralConfig{BaseURL: server.URL, APIKey: "test-key", Model: "test-model"})
-	transcript := NormalizeContext(Context{Messages: []Message{UserMessage{Content: UserText("hello")}}})
-	stream, err := provider.Stream(ctx, transcript, StreamOptions{})
-	if err != nil {
-		t.Fatalf("Stream: %v", err)
-	}
-	<-requestStarted
-	cancel()
-
-	resultReady := make(chan *AssistantMessage, 1)
-	go func() { resultReady <- stream.Result() }()
-	select {
-	case result := <-resultReady:
-		if result.StopReason != StopReasonAborted || IsRetryableAssistantError(*result) {
-			t.Fatalf("result = reason %q error %q", result.StopReason, result.ErrorMessage)
-		}
-	case <-time.After(5 * time.Second):
-		t.Fatal("Mistral stream did not observe cancellation")
-	}
-}
-
-func TestBedrockRequestTransportFailureMatchesFetchFailure(t *testing.T) {
-	transportErr := &smithyhttp.RequestSendError{Err: &net.OpError{Op: "dial", Net: "tcp", Err: syscall.ECONNREFUSED}}
-	mapped := mapBedrockTransportError(context.Background(), transportErr, "fetch failed")
-	result := &AssistantMessage{StopReason: StopReasonError, ErrorMessage: formatBedrockError(mapped)}
-	assertRetryableTransportResult(t, result, "fetch failed")
-}
-
-func TestBedrockMidStreamTransportFailureMatchesTerminated(t *testing.T) {
-	events := make(chan btypes.ConverseStreamOutput)
-	close(events)
-	streamErr := &net.OpError{Op: "read", Net: "tcp", Err: syscall.ECONNRESET}
-	builder := newAssistantStreamBuilder(context.Background(), APIBedrockConverseStream, "amazon-bedrock", "test-model")
-	provider := &BedrockProvider{}
-	go provider.parseBedrockEvents(context.Background(), &fakeBedrockEventStream{events: events, err: streamErr}, builder, "")
-
-	result := builder.stream.Result()
-	assertRetryableTransportResult(t, result, "terminated")
 }

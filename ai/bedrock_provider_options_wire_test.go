@@ -1,0 +1,139 @@
+//go:build !pig_strip_bedrock_converse_stream
+
+package ai
+
+import (
+	"context"
+	"encoding/json"
+	"strings"
+	"testing"
+
+	smithymiddleware "github.com/aws/smithy-go/middleware"
+	smithyhttp "github.com/aws/smithy-go/transport/http"
+)
+
+func bedrockReservedHeaderOptions(value *string) StreamOptions {
+	options := requestHeaderOptions()
+	options.CacheRetention = CacheRetentionNone
+	options.Env = ProviderEnv{
+		"AWS_BEDROCK_SKIP_AUTH": "1",
+		"AWS_REGION":            "eu-test-1",
+	}
+	options.Headers["aUtHoRiZaTiOn"] = value
+	options.Headers["hOsT"] = value
+	options.Headers["X-AmZ-Date"] = value
+	return options
+}
+
+func assertBedrockReservedHeadersOwnedBySDK(t *testing.T, request capturedProviderRequest, serverURL string) {
+	t.Helper()
+	if got := request.header.Get("Authorization"); got == "" || got == "caller-reserved" {
+		t.Fatalf("Authorization = %q, want SDK signing value", got)
+	}
+	if got := request.header.Get("X-Amz-Date"); got == "" || got == "caller-reserved" {
+		t.Fatalf("X-Amz-Date = %q, want SDK signing value", got)
+	}
+	wantHost := strings.TrimPrefix(serverURL, "http://")
+	if request.host != wantHost {
+		t.Fatalf("Host = %q, want endpoint host %q", request.host, wantHost)
+	}
+}
+
+func TestBedrockReservedHeaderMiddlewarePreservesSDKValues(t *testing.T) {
+	for _, family := range []struct {
+		name   string
+		header string
+	}{
+		{name: "authorization", header: "aUtHoRiZaTiOn"},
+		{name: "host", header: "hOsT"},
+		{name: "x-amz", header: "X-AmZ-Date"},
+	} {
+		for _, value := range []*string{new("caller-reserved"), nil} {
+			name := "null"
+			if value != nil {
+				name = "string"
+			}
+			t.Run(family.name+"/"+name, func(t *testing.T) {
+				request := smithyhttp.NewStackRequest().(*smithyhttp.Request)
+				request.Header.Set(family.header, "sdk-owned")
+				middleware := bedrockHeadersMiddleware{headers: ProviderHeaders{family.header: value}}
+				_, _, err := middleware.HandleBuild(context.Background(), smithymiddleware.BuildInput{Request: request}, smithymiddleware.BuildHandlerFunc(
+					func(_ context.Context, input smithymiddleware.BuildInput) (smithymiddleware.BuildOutput, smithymiddleware.Metadata, error) {
+						got := input.Request.(*smithyhttp.Request).Header.Get(family.header)
+						if got != "sdk-owned" {
+							t.Fatalf("%s = %q, want SDK-owned value", family.header, got)
+						}
+						return smithymiddleware.BuildOutput{}, smithymiddleware.Metadata{}, nil
+					},
+				))
+				if err != nil {
+					t.Fatal(err)
+				}
+			})
+		}
+	}
+}
+
+func TestBedrockReservedHeadersCannotBeOverriddenOrDeleted(t *testing.T) {
+	for _, test := range []struct {
+		name  string
+		value *string
+	}{
+		{name: "string", value: new("caller-reserved")},
+		{name: "null", value: nil},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			server, requests := rejectingProviderServer(t)
+			t.Setenv("AWS_EC2_METADATA_DISABLED", "true")
+			provider := NewBedrockProvider("anthropic.claude-test", server.URL)
+			stream, err := provider.Stream(context.Background(), providerWireTranscript(), bedrockReservedHeaderOptions(test.value))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if result := stream.Result(); result.StopReason != StopReasonError {
+				t.Fatalf("want fixture rejection event, got %+v", result)
+			}
+			request := <-requests
+			assertPreparedProviderHeaders(t, request)
+			assertBedrockReservedHeadersOwnedBySDK(t, request, server.URL)
+		})
+	}
+}
+
+func TestBedrockAppliesPreparedHeadersAndRequestEnvironment(t *testing.T) {
+	server, requests := rejectingProviderServer(t)
+	t.Setenv("AWS_EC2_METADATA_DISABLED", "true")
+	// The cache-capable model makes the cache-retention assertion exercise real cache insertion.
+	provider := NewBedrockProvider("us.anthropic.claude-sonnet-4-5-20250929-v1:0", server.URL)
+	options := requestHeaderOptions()
+	options.CacheRetention = CacheRetentionNone
+	options.Env = ProviderEnv{
+		"AWS_BEDROCK_SKIP_AUTH": "1",
+		"AWS_REGION":            "eu-test-1",
+		"PI_CACHE_RETENTION":    "long",
+	}
+	stream, err := provider.Stream(context.Background(), providerWireTranscript(), options)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result := stream.Result(); result.StopReason != StopReasonError {
+		t.Fatalf("want fixture rejection event, got %+v", result)
+	}
+	request := <-requests
+	if got := request.header.Get("X-Configured"); got != "request" {
+		t.Fatalf("X-Configured = %q, want request", got)
+	}
+	if got := request.header.Get("X-Request"); got != "yes" {
+		t.Fatalf("X-Request = %q, want yes", got)
+	}
+	var body map[string]any
+	if err := json.Unmarshal(request.body, &body); err != nil {
+		t.Fatalf("decode Bedrock request: %v", err)
+	}
+	if _, exists := body["system"]; !exists {
+		t.Fatalf("Bedrock request has no system prompt: %#v", body)
+	}
+	if strings.Contains(string(request.body), `"cachePoint"`) {
+		t.Fatalf("explicit cacheRetention=none did not override the environment: %s", request.body)
+	}
+}

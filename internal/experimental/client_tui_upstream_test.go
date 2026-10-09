@@ -115,7 +115,7 @@ func TestExperimentalClientTuiUpstream(t *testing.T) {
 			}
 			var callsMu sync.Mutex
 			var selectedModels []services.ModelRef
-			var selectedThinking []ai.ThinkingLevel
+			var selectedThinking []ai.ModelThinkingLevel
 			models := &clientTuiModelsSpy{
 				clientTuiStateService: clientTuiStateService[*services.ModelsState]{modelsState},
 				selectModel: func(ctx context.Context, model services.ModelRef) error {
@@ -131,7 +131,7 @@ func TestExperimentalClientTuiUpstream(t *testing.T) {
 					notify()
 					return nil
 				},
-				selectThinking: func(ctx context.Context, level ai.ThinkingLevel) error {
+				selectThinking: func(ctx context.Context, level ai.ModelThinkingLevel) error {
 					if ctx == nil {
 						return errors.New("selectThinking requires a context")
 					}
@@ -414,7 +414,7 @@ func TestExperimentalClientTuiUpstream(t *testing.T) {
 			callsMu.Lock()
 			thinkingCalls := slices.Clone(selectedThinking)
 			callsMu.Unlock()
-			if !slices.Contains(thinkingCalls, ai.ThinkingLevel("high")) {
+			if !slices.Contains(thinkingCalls, ai.ModelThinkingLevel("high")) {
 				t.Fatalf("selectThinking calls = %#v, want high", thinkingCalls)
 			}
 			if got := modelsState.Value().Configuration.ThinkingLevel; got != "high" {
@@ -475,18 +475,18 @@ func (spy *clientTuiManagementSpy) Detach(ctx context.Context) error { return sp
 type clientTuiModelsSpy struct {
 	clientTuiStateService[*services.ModelsState]
 	selectModel    func(context.Context, services.ModelRef) error
-	selectThinking func(context.Context, ai.ThinkingLevel) error
+	selectThinking func(context.Context, ai.ModelThinkingLevel) error
 }
 
 func (*clientTuiModelsSpy) CycleThinking(context.Context) error { return nil }
-func (*clientTuiModelsSpy) GetThinkingLevels(context.Context) ([]ai.ThinkingLevel, error) {
-	return []ai.ThinkingLevel{"off", "high"}, nil
+func (*clientTuiModelsSpy) GetThinkingLevels(context.Context) ([]ai.ModelThinkingLevel, error) {
+	return []ai.ModelThinkingLevel{"off", "high"}, nil
 }
 func (*clientTuiModelsSpy) Refresh(context.Context) error { return nil }
 func (spy *clientTuiModelsSpy) Select(ctx context.Context, model services.ModelRef) error {
 	return spy.selectModel(ctx, model)
 }
-func (spy *clientTuiModelsSpy) SelectThinking(ctx context.Context, level ai.ThinkingLevel) error {
+func (spy *clientTuiModelsSpy) SelectThinking(ctx context.Context, level ai.ModelThinkingLevel) error {
 	return spy.selectThinking(ctx, level)
 }
 

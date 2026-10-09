@@ -20,11 +20,11 @@ func (s *clipboardNativeErrorEditorSpy) InsertTextAtCursor(text string) {
 }
 
 type clipboardNativeErrorRendererSpy struct {
-	tui.Renderer
+	tui.TUI
 	requests int
 }
 
-func (s *clipboardNativeErrorRendererSpy) RequestRender() { s.requests++ }
+func (s *clipboardNativeErrorRendererSpy) RequestRender(...bool) { s.requests++ }
 
 // Ports .upstream/v0.99.1/packages/coding-agent/test/clipboard-image-native-errors.test.ts:22-39. The native getImage call itself rejects; no generic reader or temporary-file failure substitutes for that boundary. Upstream's mock context supplies showError and expects no requestRender; Go's showError is the real one, which requests exactly one render for its own chat line, so that one request is the error's.
 func TestNativeImageErrorsAbortPasteWithoutReadingTextOrChangingEditor(t *testing.T) {

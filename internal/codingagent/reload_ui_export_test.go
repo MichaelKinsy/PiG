@@ -17,5 +17,8 @@ func (h *TestHarness) SetHideThinkingForReload(hidden bool) error {
 
 // ReloadUIState observes focus and display settings on the owner loop.
 func (h *TestHarness) ReloadUIState() (editorFocused, hideThinking bool) {
-	return h.m.tuiInst.FocusedComponent() == h.m.editor, h.m.hideThinking
+	return h.m.tuiInst.GetFocusedComponent() == h.m.editor, h.m.hideThinking
 }
+
+// SetTurnActive marks a run active or settled on the owner loop, as the run goroutine does.
+func (h *TestHarness) SetTurnActive(active bool) { h.Do(func() { h.m.turnActive.Store(active) }) }

@@ -13,6 +13,9 @@ export class InstanceDirectory {
     get observerCount() {
         return this.#observers.size;
     }
+    values() {
+        return this.#entries.values();
+    }
     get(key) {
         return this.#entries.get(key);
     }

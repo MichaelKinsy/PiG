@@ -76,18 +76,24 @@ func NewCombinedProvider(cmds []SlashCommand, baseDir, fdPath string) *CombinedP
 }
 
 // GetSuggestions implements upstream command, attachment and path matching. The Editor decides which contexts trigger queries automatically.
-func (p *CombinedProvider) GetSuggestions(lines []string, cursorLine, cursorCol int) *AutocompleteSuggestions {
-	return p.getSuggestions(lines, cursorLine, cursorCol, false)
+//
+// options.Force is upstream's {force: true}: Tab outside a slash-command-name context forces naked path completion even when the prefix does not look path-like yet. The signal is ctx; the file search that honors it runs through FileSearchTask.
+func (p *CombinedProvider) GetSuggestions(ctx context.Context, lines []string, cursorLine, cursorCol int, options AutocompleteSuggestionOptions) *AutocompleteSuggestions {
+	return p.getSuggestions(ctx, lines, cursorLine, cursorCol, options.Force)
 }
 
-// GetSuggestionsForce mirrors upstream getSuggestions(..., {force: true}).
-// Triggered by Tab outside a slash-command-name context to force naked
-// path completion even when the prefix doesn't look path-like yet.
-func (p *CombinedProvider) GetSuggestionsForce(lines []string, cursorLine, cursorCol int) *AutocompleteSuggestions {
-	return p.getSuggestions(lines, cursorLine, cursorCol, true)
+// ShouldTriggerFileCompletion reports whether Tab may force file completion at the cursor: it may not while the text before the cursor is a slash-command name (a trimmed leading "/" with no space), where the command list answers instead (upstream autocomplete.ts shouldTriggerFileCompletion). cursorCol is a byte offset into the line.
+func (p *CombinedProvider) ShouldTriggerFileCompletion(lines []string, cursorLine, cursorCol int) bool {
+	var line string
+	if cursorLine >= 0 && cursorLine < len(lines) {
+		line = lines[cursorLine]
+	}
+	before := line[:max(0, min(cursorCol, len(line)))]
+	trimmed := widthx.JSTrim(before)
+	return !strings.HasPrefix(trimmed, "/") || strings.Contains(trimmed, " ")
 }
 
-func (p *CombinedProvider) getSuggestions(lines []string, cursorLine, cursorCol int, force bool) *AutocompleteSuggestions {
+func (p *CombinedProvider) getSuggestions(ctx context.Context, lines []string, cursorLine, cursorCol int, force bool) *AutocompleteSuggestions {
 	if cursorLine < 0 || cursorLine >= len(lines) {
 		return nil
 	}
@@ -115,7 +121,7 @@ func (p *CombinedProvider) getSuggestions(lines []string, cursorLine, cursorCol 
 
 	// Slash-command branch, after leading whitespace (autocomplete.ts:338-339).
 	if !force && strings.HasPrefix(widthx.JSTrimStart(before), "/") {
-		return p.slash.GetSuggestions(lines, cursorLine, cursorCol)
+		return p.slash.GetSuggestions(ctx, lines, cursorLine, cursorCol, AutocompleteSuggestionOptions{})
 	}
 
 	// Mirrors upstream autocomplete.ts:358 + editor.ts forceFileAutocomplete.
@@ -162,7 +168,7 @@ func (p *CombinedProvider) SuggestionTask(lines []string, line, col int, force b
 			}
 			local := *p
 			local.asyncFileSearch = false
-			result := local.getSuggestions(lines, line, col, force)
+			result := local.getSuggestions(ctx, lines, line, col, force)
 			if result == nil {
 				return nil, ctx.Err()
 			}

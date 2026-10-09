@@ -1,5 +1,7 @@
 package codingagent
 
+// pi: packages/coding-agent/src/cli/session-picker.ts
+
 import (
 	"errors"
 	"io/fs"
@@ -37,7 +39,7 @@ func TestStartupSessionPickerDeletesLikePi(t *testing.T) {
 	first := listingPersistedSession(t, defaultSessionDir(cwd), cwd, "first")
 	second := listingPersistedSession(t, defaultSessionDir(cwd), cwd, "second")
 	manager := NewSessionManager(cwd)
-	selector := newStartupSessionSelector(
+	selector, _ := newStartupSessionSelector(
 		func(options SessionListOptions) ([]SessionInfo, error) { return manager.ListCurrentSessions(options) },
 		func(options SessionListOptions) ([]SessionInfo, error) { return manager.ListAllSessions(options) },
 		sessionSelectorInputBindings(t))

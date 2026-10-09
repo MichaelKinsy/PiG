@@ -1,0 +1,9 @@
+### Added
+- `pig extension upgrade [<name|path>...] [--all] [--dry-run] [--summary]` rewrites Go extensions written for an older SDK with tested, type-aware rules: the host-backed `Context` getters that now return `(value, error)`, the optional boolean fields that are now `*bool`, and `ContextUsage.Tokens` and `Percent`. It backs up the originals, prints a diff, rebuilds, and reports per extension. A change with no safe rewrite is reported with its remedy and left alone. It is a PiG addition (D109); Pi has no SDK to drift from. The extensions guide, section "Upgrade a Go extension written for an older SDK", shows an extension before and after the upgrade.
+- A Go extension whose build fails only on changed SDK symbols now reports `written for an older SDK`, naming each changed API with its old and new shape and the exact `pig extension upgrade` command. Interactive startup asks `Run pig extension upgrade <path>... now? [y/N]` before it exits, and on yes loads the upgraded extensions in the same process; print, JSON and RPC modes print the command and exit 1 with the same standard output as before.
+- The global `extensionsAutoUpgrade` setting (default false) runs those rules at startup and after `pig update`, with a backup and one line per extension. A project settings file cannot turn it on, and no agent-based fix runs.
+- When two loaded extensions register the same tool and one directory is a copy of the other, startup names both directories and suggests removing the older copy.
+- `make sdk-apidiff` fails an incompatible change to any package of the extension SDK module since the pinned release that lacks an upgrade rule or a release note.
+
+### Changed
+- `Context.SetEditorComponent` in the Go SDK takes an `EditorFactory` instead of `any`. The old `any` form accepted only nil, so only an extension that passed another value breaks, and `pig extension upgrade` reports it with the fix.

@@ -19,45 +19,33 @@ import (
 // DefaultRadiusGateway is the Radius gateway origin Pi uses by default.
 const DefaultRadiusGateway = "https://radius.pi.dev"
 
-// RadiusModelCost is the per-million-token pricing carried by a Radius model.
-type RadiusModelCost struct {
-	Input      float64    `json:"input"`
-	Output     float64    `json:"output"`
-	CacheRead  float64    `json:"cacheRead"`
-	CacheWrite float64    `json:"cacheWrite"`
-	Tiers      []CostTier `json:"tiers,omitempty"`
-}
-
 // RadiusGatewayModel is one model advertised by a Radius gateway's /v1/config.
 type RadiusGatewayModel struct {
+	// Type is Model.type, the optional "chat" a gateway may advertise (types.ts:1119); it travels through the spread of getRadiusModelsFromConfig.
+	Type             ModelType         `json:"type,omitempty"`
 	ID               string            `json:"id"`
 	Name             string            `json:"name"`
 	Reasoning        bool              `json:"reasoning"`
 	ThinkingLevelMap ThinkingLevelMap  `json:"thinkingLevelMap,omitempty"`
 	Input            []string          `json:"input"`
 	InputLimits      *ModelInputLimits `json:"inputLimits,omitempty"`
-	Cost             RadiusModelCost   `json:"cost"`
+	Cost             ModelCost         `json:"cost"`
 	PromptCache      ModelPromptCache  `json:"promptCache,omitempty"`
 	ContextWindow    int               `json:"contextWindow"`
 	MaxTokens        int               `json:"maxTokens"`
 	SamplingParams   map[string]any    `json:"samplingParams,omitempty"`
-	Headers          map[string]string `json:"headers,omitempty"`
-	Compat           *ModelCompat      `json:"compat,omitempty"`
+	// SamplingParamsByThinkingLevel is Model.samplingParamsByThinkingLevel: radius-config.ts sanitizeRadiusGatewayConfig and
+	// getRadiusModelsFromConfig spread each gateway model, so the field a gateway advertises reaches the Model<"pi-messages">.
+	//portlint:allow emptydrop a level missing from the map selects no sampling params, so an explicit empty map and an absent one resolve alike
+	SamplingParamsByThinkingLevel SamplingParamsByThinkingLevel `json:"samplingParamsByThinkingLevel,omitempty"`
+	Headers                       map[string]string             `json:"headers,omitempty"`
+	Compat                        *ModelCompat                  `json:"compat,omitempty"`
 }
 
 // RadiusGatewayConfig is the sanitized /v1/config document of a gateway.
 type RadiusGatewayConfig struct {
 	BaseURL string               `json:"baseUrl"`
 	Models  []RadiusGatewayModel `json:"models"`
-}
-
-// PiMessagesModel is Pi's Model<"pi-messages"> as served by a Radius provider:
-// a gateway model bound to its provider ID, API, and request base URL.
-type PiMessagesModel struct {
-	RadiusGatewayModel
-	API      API    `json:"api"`
-	Provider string `json:"provider"`
-	BaseURL  string `json:"baseUrl"`
 }
 
 // radiusModelFields names the upstream isRadiusGatewayModel type checks. Each
@@ -148,22 +136,52 @@ func GetRadiusCredentialConfig(credential *Credential) (RadiusGatewayConfig, boo
 	return sanitizeRadiusGatewayConfig(credential.GatewayConfig)
 }
 
-// GetRadiusModelsFromConfig binds a gateway catalog to providerID.
-func GetRadiusModelsFromConfig(providerID string, config RadiusGatewayConfig) []PiMessagesModel {
-	models := make([]PiMessagesModel, 0, len(config.Models))
+// GetRadiusModelsFromConfig binds a gateway catalog to providerID: Model<"pi-messages">[] (radius-config.ts:61).
+func GetRadiusModelsFromConfig(providerID string, config RadiusGatewayConfig) []*Model {
+	models := make([]*Model, 0, len(config.Models))
 	for _, model := range config.Models {
-		models = append(models, PiMessagesModel{RadiusGatewayModel: cloneRadiusGatewayModel(model), API: APIPiMessages, Provider: providerID, BaseURL: config.BaseURL})
+		models = append(models, piMessagesModel(providerID, config.BaseURL, model))
 	}
 	return models
 }
 
-// GetRadiusModels returns the legacy credential catalog bound to providerID.
-func GetRadiusModels(providerID string, credential *Credential) []PiMessagesModel {
+// GetRadiusModels returns the legacy credential catalog bound to providerID (radius-config.ts:70).
+func GetRadiusModels(providerID string, credential *Credential) []*Model {
 	config, ok := GetRadiusCredentialConfig(credential)
 	if !ok {
-		return []PiMessagesModel{}
+		return []*Model{}
 	}
 	return GetRadiusModelsFromConfig(providerID, config)
+}
+
+// piMessagesModel is the spread of getRadiusModelsFromConfig: the gateway model with api "pi-messages", the provider and the gateway base URL.
+func piMessagesModel(providerID, baseURL string, gateway RadiusGatewayModel) *Model {
+	gateway = cloneRadiusGatewayModel(gateway)
+	return chatModelFromRecord(modelsCatalogRecord{
+		Type: gateway.Type, ID: gateway.ID, Name: gateway.Name, API: APIPiMessages, Provider: providerID, BaseURL: baseURL,
+		Reasoning: gateway.Reasoning, ThinkingLevelMap: gateway.ThinkingLevelMap, Input: gateway.Input, InputLimits: gateway.InputLimits,
+		Cost: gateway.Cost, PromptCache: gateway.PromptCache, ContextWindow: gateway.ContextWindow, MaxTokens: gateway.MaxTokens,
+		SamplingParams: gateway.SamplingParams, SamplingParamsByThinkingLevel: gateway.SamplingParamsByThinkingLevel,
+		Headers: gateway.Headers, Compat: gateway.Compat,
+	})
+}
+
+// radiusGatewayModel is the gateway-model view of a Model<"pi-messages">: a deep copy, so no alias reaches the caller.
+func radiusGatewayModel(model *Model) RadiusGatewayModel {
+	capabilities := model.Capabilities
+	return cloneRadiusGatewayModel(RadiusGatewayModel{
+		Type: model.Type, ID: model.ID, Name: model.DisplayName, Reasoning: model.ProviderMeta.Reasoning,
+		ThinkingLevelMap: model.ThinkingLevelMap, Input: model.Input, InputLimits: model.InputLimits,
+		Cost:        ModelCost{Input: capabilities.InputCostPer1M, Output: capabilities.OutputCostPer1M, CacheRead: capabilities.CacheReadCostPer1M, CacheWrite: capabilities.CacheWriteCostPer1M, Tiers: capabilities.CostTiers},
+		PromptCache: model.PromptCache, ContextWindow: capabilities.ContextWindow, MaxTokens: capabilities.MaxOutputTokens,
+		SamplingParams: model.SamplingParams, SamplingParamsByThinkingLevel: model.SamplingParamsByThinkingLevel,
+		Headers: model.ProviderMeta.Headers, Compat: model.ProviderMeta.Compat,
+	})
+}
+
+// cloneRadiusModel deep-copies a Model<"pi-messages">.
+func cloneRadiusModel(model *Model) *Model {
+	return piMessagesModel(model.ProviderMeta.ProviderID, model.ProviderMeta.BaseURL, radiusGatewayModel(model))
 }
 
 func cloneRadiusGatewayModel(model RadiusGatewayModel) RadiusGatewayModel {
@@ -173,6 +191,13 @@ func cloneRadiusGatewayModel(model RadiusGatewayModel) RadiusGatewayModel {
 	model.Cost.Tiers = append([]CostTier(nil), model.Cost.Tiers...)
 	model.PromptCache = maps.Clone(model.PromptCache)
 	model.SamplingParams = maps.Clone(model.SamplingParams)
+	if model.SamplingParamsByThinkingLevel != nil {
+		levels := make(SamplingParamsByThinkingLevel, len(model.SamplingParamsByThinkingLevel))
+		for level, params := range model.SamplingParamsByThinkingLevel {
+			levels[level] = maps.Clone(params)
+		}
+		model.SamplingParamsByThinkingLevel = levels
+	}
 	model.Headers = cloneStringMap(model.Headers)
 	model.Compat = cloneCompat(model.Compat)
 	return model
@@ -196,11 +221,16 @@ func utf16Length(value string) int {
 	return length
 }
 
+// truncateUTF16 is value.slice(0, limit) in UTF-16 units. A cut inside a surrogate pair leaves the lone high surrogate, written as U+FFFD.
 func truncateUTF16(value string, limit int) string {
 	used := 0
 	for index, r := range value {
 		units := utf16Units(r)
 		if used+units > limit {
+			if units == 2 && used < limit {
+				// text.slice(0, limit) keeps the first half of the pair, a lone high surrogate, which is U+FFFD once encoded as UTF-8.
+				return value[:index] + "\uFFFD"
+			}
 			return value[:index]
 		}
 		used += units

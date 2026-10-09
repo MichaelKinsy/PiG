@@ -12,14 +12,21 @@ const (
 	serviceCatalogueMember   = "catalogue"
 	serviceSubscribeMember   = "subscribe"
 	serviceUnsubscribeMember = "unsubscribe"
-	controlCatalogue         = "catalogue"
-	controlSubscribe         = "subscribe"
-	controlUnsubscribe       = "unsubscribe"
+)
+
+// ServiceControlCallType is the discriminator of the ServiceControlCall union.
+type ServiceControlCallType string
+
+// The control calls a $chord.service call can decode to (services/wire.ts ServiceControlCall).
+const (
+	controlCatalogue   ServiceControlCallType = "catalogue"
+	controlSubscribe   ServiceControlCallType = "subscribe"
+	controlUnsubscribe ServiceControlCallType = "unsubscribe"
 )
 
 // ServiceControlCall is a decoded $chord.service control call.
 type ServiceControlCall struct {
-	Type           string
+	Type           ServiceControlCallType
 	SubscriptionId string
 	ServiceId      string
 	Mode           ServiceMode
@@ -75,10 +82,10 @@ func mustRaw(value any) json.RawMessage {
 }
 
 type wireMember struct {
-	Name     string `json:"name"`
-	Kind     string `json:"kind"`
-	Sequence *int   `json:"sequence,omitempty"`
-	Ops      []Op   `json:"ops,omitempty"`
+	Name     string            `json:"name"`
+	Kind     ServiceMemberKind `json:"kind"`
+	Sequence *int              `json:"sequence,omitempty"`
+	Ops      Ops               `json:"ops,omitzero"`
 }
 
 // MarshalJSON emits the upstream discriminated member shape.
@@ -119,12 +126,12 @@ func (member *ServiceMemberSnapshot) UnmarshalJSON(data []byte) error {
 }
 
 type wireUpdate struct {
-	Type     string          `json:"type"`
-	Instance json.RawMessage `json:"instance,omitempty"`
-	Member   string          `json:"member,omitempty"`
-	Sequence *int            `json:"sequence,omitempty"`
-	Ops      []Op            `json:"ops,omitempty"`
-	Snapshot json.RawMessage `json:"snapshot,omitempty"`
+	Type     ServiceProviderUpdateType `json:"type"`
+	Instance json.RawMessage           `json:"instance,omitempty"`
+	Member   string                    `json:"member,omitempty"`
+	Sequence *int                      `json:"sequence,omitempty"`
+	Ops      Ops                       `json:"ops,omitzero"`
+	Snapshot json.RawMessage           `json:"snapshot,omitempty"`
 }
 
 // MarshalJSON emits the upstream ServiceProviderUpdate union.
@@ -133,8 +140,8 @@ func (update ServiceProviderUpdate) MarshalJSON() ([]byte, error) {
 	var err error
 	switch update.Type {
 	case UpdateState:
-		if update.Address != nil {
-			wire.Instance = mustRaw(update.Address)
+		if update.Instance != nil {
+			wire.Instance = mustRaw(update.Instance)
 		}
 		sequence := update.Sequence
 		wire.Member, wire.Sequence, wire.Ops = update.Member, &sequence, update.Ops
@@ -149,7 +156,7 @@ func (update ServiceProviderUpdate) MarshalJSON() ([]byte, error) {
 	case UpdateSpawned:
 		wire.Instance, err = json.Marshal(update.Snapshot)
 	case UpdateClosed:
-		wire.Instance, err = json.Marshal(update.Address)
+		wire.Instance, err = json.Marshal(update.Instance)
 	default:
 		return nil, fmt.Errorf("invalid service provider update type %q", update.Type)
 	}
@@ -172,8 +179,8 @@ func (update *ServiceProviderUpdate) UnmarshalJSON(data []byte) error {
 			return errors.New("invalid service provider update")
 		}
 		if len(wire.Instance) > 0 {
-			result.Address = new(ServiceInstanceAddress)
-			if err := json.Unmarshal(wire.Instance, result.Address); err != nil {
+			result.Instance = new(ServiceInstanceAddress)
+			if err := json.Unmarshal(wire.Instance, result.Instance); err != nil {
 				return err
 			}
 		}
@@ -195,8 +202,8 @@ func (update *ServiceProviderUpdate) UnmarshalJSON(data []byte) error {
 			return err
 		}
 	case UpdateClosed:
-		result.Address = new(ServiceInstanceAddress)
-		if err := json.Unmarshal(wire.Instance, result.Address); err != nil {
+		result.Instance = new(ServiceInstanceAddress)
+		if err := json.Unmarshal(wire.Instance, result.Instance); err != nil {
 			return err
 		}
 	default:

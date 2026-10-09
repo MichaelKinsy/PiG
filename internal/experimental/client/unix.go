@@ -62,18 +62,13 @@ func CreateUnixTransportFactory(options UnixTransportOptions) (ByteTransportFact
 	if runtime.GOOS == "windows" {
 		return nil, errors.New("Unix transport is not supported on Windows")
 	}
-	return func(ctx context.Context, handlers ByteTransportHandlers, complete func(ByteTransport, error)) {
-		// The attempt context cancels the dial; completion transfers the established transport's lifetime to the Connection.
-		go func() {
-			connection, err := (&net.Dialer{}).DialContext(ctx, "unix", options.Path)
-			if err != nil {
-				complete(nil, err)
-				return
-			}
-			transport := newUnixByteTransport(connection, uint64(limit), handlers)
-			complete(transport, nil)
-			transport.read()
-		}()
+	return func(ctx context.Context, handlers ByteTransportHandlers) (ByteTransport, error) {
+		// The attempt context cancels the dial; the established transport's lifetime passes to the Connection with the transport.
+		connection, err := (&net.Dialer{}).DialContext(ctx, "unix", options.Path)
+		if err != nil {
+			return nil, err
+		}
+		return newUnixByteTransport(connection, uint64(limit), handlers), nil
 	}, nil
 }
 
@@ -106,13 +101,33 @@ func newUnixByteTransport(connection net.Conn, maxPendingBytes uint64, handlers 
 	return transport
 }
 func (transport *unixByteTransport) Done() <-chan struct{} { return transport.done }
+
+// startReading begins delivering the socket's data and close to the handlers.
+func (transport *unixByteTransport) startReading() { go transport.read() }
 func (transport *unixByteTransport) finished() {
 	if transport.parts.Add(-1) == 0 {
 		close(transport.done)
 	}
 }
 
-func (transport *unixByteTransport) Send(chunk []byte, complete func(error)) {
+// Send is upstream's send(): it admits the chunk behind the earlier ones and returns when the write settles. A cancelled ctx refuses a chunk that
+// is not admitted yet and stops the wait for one that is.
+func (transport *unixByteTransport) Send(ctx context.Context, chunk []byte) error {
+	if err := ctx.Err(); err != nil {
+		return context.Cause(ctx)
+	}
+	result := make(chan error, 1)
+	transport.Submit(chunk, func(err error) { result <- err })
+	select {
+	case err := <-result:
+		return err
+	case <-ctx.Done():
+		return context.Cause(ctx)
+	}
+}
+
+// Submit admits a send in invocation order and completes it exactly once, as upstream's send() settles its Promise.
+func (transport *unixByteTransport) Submit(chunk []byte, complete func(error)) {
 	transport.mu.Lock()
 	if transport.closed {
 		select {

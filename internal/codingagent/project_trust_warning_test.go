@@ -30,7 +30,7 @@ func TestProjectTrustWarningRendering(t *testing.T) {
 				}
 			}
 			m := &InteractiveMode{
-				opts:          InteractiveOptions{CWD: cwd, Settings: Settings{QuietStartup: tc.quiet}, SettingsManager: NewSettingsManagerWithProjectTrust(cwd, t.TempDir(), tc.trusted)},
+				opts:          InteractiveModeOptions{CWD: cwd, Settings: Settings{QuietStartup: tc.quiet}, SettingsManager: NewSettingsManagerWithProjectTrust(cwd, t.TempDir(), tc.trusted)},
 				chatContainer: tui.NewContainer(),
 			}
 			if tc.history {
@@ -46,7 +46,7 @@ func TestProjectTrustWarningRendering(t *testing.T) {
 					if tc.history {
 						want.Add(tui.NewSpacer(1))
 					}
-					want.Add(tui.NewPaddedText(tui.ActiveTheme().FgText("warning", "This project is not trusted. Project .pig resources and packages are ignored. Use /trust to save a trust decision, then restart pig."), 1, 0, nil))
+					want.Add(tui.NewPaddedText(tui.ActiveTheme().Fg("warning", "This project is not trusted. Project .pig resources and packages are ignored. Use /trust to save a trust decision, then restart pig."), 1, 0, nil))
 				}
 				if got, expected := m.chatContainer.Render(width), want.Render(width); !slices.Equal(got, expected) {
 					t.Errorf("width %d: rows = %q, want %q", width, got, expected)
@@ -61,7 +61,7 @@ func BenchmarkProjectTrustWarning(b *testing.B) {
 	if err := os.MkdirAll(filepath.Join(cwd, CONFIG_DIR_NAME, "extensions"), 0o755); err != nil {
 		b.Fatal(err)
 	}
-	m := &InteractiveMode{opts: InteractiveOptions{CWD: cwd, SettingsManager: NewSettingsManagerWithProjectTrust(cwd, b.TempDir(), false)}, chatContainer: tui.NewContainer()}
+	m := &InteractiveMode{opts: InteractiveModeOptions{CWD: cwd, SettingsManager: NewSettingsManagerWithProjectTrust(cwd, b.TempDir(), false)}, chatContainer: tui.NewContainer()}
 	b.ReportAllocs()
 	for b.Loop() {
 		m.chatContainer.Clear()

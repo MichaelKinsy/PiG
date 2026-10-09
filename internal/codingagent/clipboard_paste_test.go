@@ -48,6 +48,39 @@ func TestClipboardPasteWithoutAnImageInsertsText(t *testing.T) {
 	}
 }
 
+// Termux reports platform "android" (#10391): Ctrl+V inserts the text that
+// termux-clipboard-get returns.
+func TestClipboardPasteInsertsTermuxTextOnAndroid(t *testing.T) {
+	withEnv(t, map[string]string{})
+	var commands []string
+	useClipboardTextTestSeams(t, "android", map[string]string{"TERMUX_VERSION": "0.119"},
+		func(_ context.Context, name string, _ ...string) ([]byte, error) {
+			commands = append(commands, name)
+			return []byte("termux text"), nil
+		},
+		func() *tui.NativeClipboard { return nil },
+	)
+	m := newSwitchTuiProbe(t)
+	m.tuiInst.CancelPendingRender()
+	t.Cleanup(m.teardownCurrentTui)
+
+	m.handleClipboardImagePaste()
+	deadline := time.NewTimer(3 * time.Second)
+	defer deadline.Stop()
+	for m.editor.Text() != "termux text" {
+		select {
+		case task := <-m.uiTaskCh:
+			task()
+		case <-deadline.C:
+			t.Fatalf("editor = %q, want the Termux clipboard text", m.editor.Text())
+		}
+	}
+	m.clipboardReads.Wait()
+	if len(commands) != 1 || commands[0] != "termux-clipboard-get" {
+		t.Fatalf("commands = %v, want only termux-clipboard-get", commands)
+	}
+}
+
 // Under WSL the Linux clipboard does not receive Windows screenshots, so
 // upstream falls back to reading the Windows clipboard through PowerShell
 // (5 s timeout) when Linux has no image (GUARD-08).

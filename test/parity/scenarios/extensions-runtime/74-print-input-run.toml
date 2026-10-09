@@ -1,0 +1,47 @@
+# Behavior family: extensions-runtime
+# Scenario: the callback a print prompt's input handler queues runs during the run the input goes on to.
+#
+# The input continues, so Pi's prompt() goes on to the agent, here running the bash tool's child
+# process, whose I/O turns the event loop (agent-session.ts:1968-2000, Pi 1.1.0): the immediate
+# print-input-run.mjs queues in its input handler runs before session_shutdown. (The test-faux
+# provider itself streams through microtasks, so a run without a tool does not turn Pi's loop.) A Node runtime waits after answering a print prompt's input until the
+# host's next step; the run beginning (run_signal active) is that step for a process with no other
+# handler. Without it the immediate waited for the session_shutdown request.
+#
+# Upstream evidence (2026-10-08, Pi 1.1.0):
+#   PI_CODING_AGENT_DIR=testdata/pi-agent PRINT_INPUT_RUN_LOG=/tmp/print-input-run.log pi --no-extensions \
+#     -e ../../testdata/test-faux-provider.ts -e testdata/ext/print-input-run.mjs \
+#     --model test-faux/faux-1 --no-session --print "Run: expr 20 + 22"
+#   output: "42", exit 0
+#   /tmp/print-input-run.log: "input Run: expr 20 + 22", "input-immediate", "session_shutdown"
+
+name = "74-print-input-run"
+description = "Print mode runs the callback of a prompt's input handler during the run"
+covers = [
+  "packages/coding-agent/src/modes/print-mode.ts",
+  "packages/coding-agent/src/core/agent-session.ts",
+]
+tags = ["hermetic", "fast"]
+driver = "cli-mode"
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_HOME=testdata/pig-home", "PRINT_INPUT_RUN_LOG={{TEMP}}/print-input-run.log"]
+pi = ["PI_CODING_AGENT_DIR=testdata/pi-agent", "PRINT_INPUT_RUN_LOG={{TEMP}}/print-input-run.log"]
+pig_extensions = ["testdata/ext/print-input-run.mjs"]
+pi_extensions = [
+  "../../testdata/test-faux-provider.ts",
+  "testdata/ext/print-input-run.mjs",
+]
+
+[cli]
+args = ["--model", "test-faux/faux-1", "--no-session", "--print", "Run: expr 20 + 22"]
+artifact_path = "{{TEMP}}/print-input-run.log"
+timeout_seconds = 30
+
+[assert]
+exit_code = 0
+output_equal = true
+both_contain = ["42"]
+artifact_equal = true
+artifact_both_contain = ["input Run: expr 20 + 22\ninput-immediate\nsession_shutdown"]
+runs = 3

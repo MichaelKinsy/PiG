@@ -60,6 +60,12 @@ type AuthCheck struct {
 	Type   CredentialType
 }
 
+// AuthCheckType is the credential type the check found, "oauth" or "api_key" (the provider selector compares it with the option's auth type).
+func (c *AuthCheck) AuthCheckType() string { return string(c.Type) }
+
+// AuthCheckSource is where the configured auth comes from, as the provider selector prints it.
+func (c *AuthCheck) AuthCheckSource() string { return c.Source }
+
 // AuthContext is environment access for auth resolution. Env reports a
 // value only when it is set and not blank.
 type AuthContext struct {
@@ -109,12 +115,17 @@ type APIKeyAuth struct {
 	Resolve func(ctx context.Context, input APIKeyAuthInput) (*AuthResult, error)
 }
 
+// AuthMethodName is the method's display name, which the provider selector searches (oauth-selector.ts:136 `provider.method?.name`).
+func (a *APIKeyAuth) AuthMethodName() string { return a.Name }
+
 // LoginOptions is app-supplied context for Models.Login.
 type LoginOptions struct {
 	// GetDeviceID returns the stable ID of this app installation, for example sent to OpenAI as its agent host ID.
 	// Login flows call it only when they need it, so apps can create the ID on first use; it must return the same ID on
 	// every later call. Nil means the app supplies none.
 	GetDeviceID func() string
+	// AgentName is the name this app introduces itself with during login, for example OpenAI's agent name hint and the Codex originator. Nil means the flow's own default; an empty name is kept as given (auth/types.ts:206-213).
+	AgentName *string
 }
 
 // OAuthAuth refreshes stored OAuth credentials and derives request auth
@@ -129,6 +140,9 @@ type OAuthAuth struct {
 	// store is the D40 extension-owned credential store of the OAuth provider whose flow Login runs; a login through it saves there instead of the core credential store.
 	store OAuthCredentialStore
 }
+
+// AuthMethodName is the method's display name, which the provider selector searches (oauth-selector.ts:136 `provider.method?.name`).
+func (a *OAuthAuth) AuthMethodName() string { return a.Name }
 
 // ProviderAuth lists the auth methods a provider supports.
 type ProviderAuth struct {
@@ -165,6 +179,9 @@ type ModelsError struct {
 	Cause   error
 }
 
+// Name is the upstream `name` property.
+func (*ModelsError) Name() string { return "ModelsError" }
+
 // NewModelsError mirrors the upstream ModelsError constructor, including ECMAScript trimming of the cause detail.
 func NewModelsError(code ModelsErrorCode, message string, cause error) *ModelsError {
 	if cause != nil {
@@ -172,7 +189,8 @@ func NewModelsError(code ModelsErrorCode, message string, cause error) *ModelsEr
 			message = message + ": " + detail
 		}
 	}
-	return &ModelsError{Code: code, Message: message, Cause: cause}
+	e := &ModelsError{Code: code, Message: message, Cause: cause}
+	return e
 }
 
 func (e *ModelsError) Error() string { return e.Message }

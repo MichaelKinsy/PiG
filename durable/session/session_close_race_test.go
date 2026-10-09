@@ -16,7 +16,7 @@ import (
 var errCancelledClose = errors.New("caller stopped waiting")
 
 func newHookedSession(beforeClose func()) *session.SessionImpl {
-	return session.NewSessionImpl(sessiontest.NewControlledStorage(), session.Hooks{BeforeClose: beforeClose})
+	return session.NewSessionImpl(sessiontest.NewControlledStorage(), session.Hooks{BeforeClose: beforeClose}, nil)
 }
 
 // Upstream session.ts admits a commit synchronously: commitWith checks #assertUsable and enqueues on the line in one
@@ -99,13 +99,19 @@ func TestSessionCloseWithCancelledContextRejects(t *testing.T) {
 // rejected operation before the listeners have run. The Harness scheduler relies on this: its close listener sets the
 // closing state that decides whether a failed commit is reported. Under concurrency, an operation rejected with
 // "Session is closed" must therefore see the listeners' effects.
+// mutation-checked: zeroing the results of Session.SubscribeClose fails it (an unsubscribed listener must not run)
+// Pi: packages/durable/src/types.ts:907 (subscribeClose)
 func TestSessionRejectionAfterCloseBeganSeesTheCloseListeners(t *testing.T) {
 	for range 20 {
 		harness := open()
 		conversationId := createConversation(t, harness)
 		entered := make(chan struct{})
 		var ran atomic.Bool
-		harness.Session.SubscribeClose(func() {
+		var api durable.Session = harness.Session
+		var removedRan atomic.Bool
+		unsubscribe := api.SubscribeClose(func() { removedRan.Store(true) })
+		unsubscribe()
+		api.SubscribeClose(func() {
 			close(entered)
 			time.Sleep(5 * time.Millisecond)
 			ran.Store(true)
@@ -121,6 +127,9 @@ func TestSessionRejectionAfterCloseBeganSeesTheCloseListeners(t *testing.T) {
 		}
 		if !ran.Load() {
 			t.Fatal("the commit was rejected before the close listeners ran")
+		}
+		if removedRan.Load() {
+			t.Fatal("an unsubscribed close listener ran")
 		}
 		must(t, <-closed)
 	}

@@ -52,10 +52,10 @@ const (
 	// refreshSkew: access tokens this close to expiry are refreshed before they are sent.
 	// upstream: packages/coding-agent/src/extensions/mcp/oauth.ts:REFRESH_SKEW_MS
 	refreshSkew = 30 * time.Second
-	// refreshRequestTimeout bounds each request of a refresh, so it cannot hold
-	// the refresh lock or delay shutdown for long.
-	// upstream: packages/coding-agent/src/extensions/mcp/oauth.ts:REFRESH_REQUEST_TIMEOUT_MS
-	refreshRequestTimeout = 15 * time.Second
+	// oauthRequestTimeout bounds each request to the authorization server, so an unresponsive one cannot hold the refresh lock,
+	// delay shutdown, or keep a sign-in waiting for long.
+	// upstream: packages/coding-agent/src/extensions/mcp/oauth.ts:OAUTH_REQUEST_TIMEOUT_MS
+	oauthRequestTimeout = 15 * time.Second
 	// refreshLockStale: a refresh lock that its holder stopped renewing (the
 	// process was killed) is taken over after this.
 	// upstream: packages/coding-agent/src/extensions/mcp/oauth.ts:REFRESH_LOCK_STALE_MS
@@ -193,7 +193,7 @@ func NewMcpOAuthCredentialStoreWithBackend(backend AuthStorageBackend, lockDir s
 type storedStates = *orderedjson.Object
 
 func parseStates(content string) (storedStates, error) {
-	if strings.TrimSpace(content) == "" {
+	if strings.TrimFunc(content, isJSWhitespace) == "" {
 		return orderedjson.New(), nil
 	}
 	var parsed any
@@ -576,6 +576,12 @@ func (p *authProvider) running() *refreshFlight {
 	return p.current
 }
 
+// timedFetch is `timedFetch` of upstream's oauth.ts: fetch with oauthRequestTimeout per request, on top of the
+// request's own context.
+func timedFetch(fetch mcp.McpFetch) mcp.McpFetch {
+	return timeoutFetch{inner: orDefaultFetch(fetch), timeout: oauthRequestTimeout}
+}
+
 type timeoutFetch struct {
 	inner   mcp.McpFetch
 	timeout time.Duration
@@ -644,7 +650,7 @@ func (p *authProvider) refreshLocked(ctx context.Context, staleToken string, fet
 		return nil
 	}
 	if state == nil || state.Tokens == nil || state.Tokens.RefreshToken == "" {
-		return &oauth.McpOAuthAuthorizationRequiredError{}
+		return oauth.NewMcpOAuthAuthorizationRequiredError()
 	}
 	settings, err := p.options.Settings()
 	if err != nil {
@@ -669,18 +675,20 @@ func (p *authProvider) refreshLocked(ctx context.Context, staleToken string, fet
 	}
 	flow := oauth.OAuthFlowOptions{
 		ServerURL: p.options.ServerURL, AuthorizationServerMetadataURL: settings.AuthServerMetadataURL,
-		Fetch: timeoutFetch{inner: orDefaultFetch(fetch), timeout: refreshRequestTimeout},
+		Fetch: timeoutFetch{inner: orDefaultFetch(fetch), timeout: oauthRequestTimeout},
 	}
 	if challenge != nil {
 		flow.ResourceMetadataURL, flow.Scope = challenge.ResourceMetadataURL, challenge.Scope
 	}
-	// Refreshes the tokens, or reports that a new sign-in is needed.
+	// Refreshes the tokens, or reports that a new sign-in is needed. Not cancellable: a refresh the server
+	// answered may have rotated the refresh token, so its answer must be saved (the caller passes a context
+	// detached from the request).
 	result, err := oauth.AuthorizeMcp(ctx, provider, flow)
 	if err != nil {
 		return err
 	}
 	if result == oauth.OAuthRedirect {
-		return &oauth.McpOAuthAuthorizationRequiredError{}
+		return oauth.NewMcpOAuthAuthorizationRequiredError()
 	}
 	return nil
 }
@@ -709,7 +717,7 @@ func (p *authProvider) Token(ctx context.Context) (string, error) {
 		return "", nil
 	}
 	token := state.Tokens.AccessToken
-	expired := state.TokensExpireAt != nil && *state.TokensExpireAt-refreshSkew.Milliseconds() <= time.Now().UnixMilli()
+	expired := state.TokensExpireAt != nil && *state.TokensExpireAt-float64(refreshSkew.Milliseconds()) <= float64(time.Now().UnixMilli())
 	if !expired || state.Tokens.RefreshToken == "" {
 		return token, nil
 	}
@@ -730,7 +738,7 @@ func (p *authProvider) OnUnauthorized(ctx context.Context, unauthorized mcp.Unau
 	}
 	// A refresh keeps the granted scope, so more scope needs a new sign-in.
 	if challenge.Error == "insufficient_scope" {
-		return &oauth.McpOAuthAuthorizationRequiredError{}
+		return oauth.NewMcpOAuthAuthorizationRequiredError()
 	}
 	return p.refresh(ctx, unauthorized.Token, unauthorized.Fetch, &challenge)
 }
@@ -752,8 +760,8 @@ type McpSignInPrompt interface {
 	ShowAuthorizationURL(u *url.URL)
 	// PromptForRedirectURL asks for the redirect URL from the browser address
 	// bar, for when the browser cannot reach the loopback callback (for example
-	// over SSH). The context ends once the callback arrives. It returns an
-	// empty string when the user cancels.
+	// over SSH). The context ends once the callback arrives or the sign-in is
+	// cancelled. It returns an empty string when the user cancels.
 	PromptForRedirectURL(ctx context.Context) (string, error)
 }
 
@@ -770,7 +778,7 @@ type authorizationResponse struct {
 }
 
 func responseFromRedirectURL(input, state string, redirectURL *url.URL) (authorizationResponse, error) {
-	u, err := url.Parse(strings.TrimSpace(input))
+	u, err := url.Parse(strings.TrimFunc(input, isJSWhitespace))
 	if err != nil || u.Scheme == "" {
 		return authorizationResponse{}, errors.New("Expected the full redirect URL from the browser address bar")
 	}
@@ -806,17 +814,17 @@ type responseResult struct {
 	err      error
 }
 
-// waitForAuthorizationResponse waits for the browser callback or a pasted
-// redirect URL, whichever comes first. The prompt runs on a goroutine that
-// ends when the prompt returns; its result is dropped once the browser wins.
-// The callers register wait before they show the authorization URL: a browser
-// can reach the callback before this function runs.
-func waitForAuthorizationResponse(ctx context.Context, wait *oauth.CallbackWait, state string, redirectURL *url.URL, prompt McpSignInPrompt) (authorizationResponse, error) {
+// waitForAuthorizationResponse shows the authorization URL, then waits for the browser callback or a pasted redirect URL, whichever
+// comes first. The callback wait runs on a goroutine, as upstream's promise does; the URL is shown once the state is pending, so a
+// browser that follows the redirect at once reaches a registered wait. The prompt runs on a goroutine that ends when the prompt
+// returns; its result is dropped once the browser wins.
+func waitForAuthorizationResponse(ctx context.Context, callback *oauth.OAuthCallbackServer, authorizationURL, redirectURL *url.URL, state string, prompt McpSignInPrompt) (authorizationResponse, error) {
 	promptCtx, cancelPrompt := context.WithCancel(ctx)
 	defer cancelPrompt()
+	registered := make(chan struct{})
 	fromBrowser := make(chan responseResult, 1)
 	go func() {
-		received, err := wait.Wait(promptCtx)
+		received, err := callback.WaitForCallback(oauth.WithCallbackRegistered(promptCtx, func() { close(registered) }), state, pathOrSlash(redirectURL.EscapedPath()))
 		response := authorizationResponse{code: received.Code}
 		// The callback server drops an empty iss.
 		if received.Iss != "" {
@@ -824,6 +832,12 @@ func waitForAuthorizationResponse(ctx context.Context, wait *oauth.CallbackWait,
 		}
 		fromBrowser <- responseResult{response, err}
 	}()
+	select {
+	case <-registered:
+	case r := <-fromBrowser:
+		return r.response, r.err
+	}
+	prompt.ShowAuthorizationURL(authorizationURL)
 	fromUser := make(chan responseResult, 1)
 	go func() {
 		input, err := prompt.PromptForRedirectURL(promptCtx)
@@ -831,7 +845,7 @@ func waitForAuthorizationResponse(ctx context.Context, wait *oauth.CallbackWait,
 			fromUser <- responseResult{err: err}
 			return
 		}
-		if strings.TrimSpace(input) == "" {
+		if strings.TrimFunc(input, isJSWhitespace) == "" {
 			fromUser <- responseResult{err: &McpSignInCancelledError{}}
 			return
 		}
@@ -887,8 +901,12 @@ type SignInOptions struct {
 
 // SignInMcpServer signs in to an MCP server. It uses the stored refresh token
 // when possible; otherwise it runs the browser authorization code flow.
-// Tokens are saved to the store.
-func SignInMcpServer(ctx context.Context, options SignInOptions) error {
+// Tokens are saved to the store. Ending ctx stops the sign-in at any step with
+// [McpSignInCancelledError]; requests to the authorization server are also time-limited.
+func SignInMcpServer(ctx context.Context, options SignInOptions) (err error) {
+	if ctx.Err() != nil {
+		return &McpSignInCancelledError{}
+	}
 	if options.AppName == "" {
 		options.AppName = "pig"
 	}
@@ -926,6 +944,12 @@ func SignInMcpServer(ctx context.Context, options SignInOptions) error {
 		return err
 	}
 	defer func() { _ = callback.Close() }()
+	// Aborted requests fail with the context's cause; report them as the cancellation they are.
+	defer func() {
+		if err != nil && ctx.Err() != nil {
+			err = &McpSignInCancelledError{}
+		}
+	}()
 	redirectURL := callbackOptions.fixedRedirectURL
 	if redirectURL == "" {
 		redirectURL = callback.RedirectURL
@@ -955,7 +979,7 @@ func SignInMcpServer(ctx context.Context, options SignInOptions) error {
 	if err != nil {
 		return err
 	}
-	flow := oauth.OAuthFlowOptions{ServerURL: options.ServerURL, AuthorizationServerMetadataURL: options.Settings.AuthServerMetadataURL}
+	flow := oauth.OAuthFlowOptions{ServerURL: options.ServerURL, AuthorizationServerMetadataURL: options.Settings.AuthServerMetadataURL, Fetch: timeoutFetch{inner: orDefaultFetch(nil), timeout: oauthRequestTimeout}}
 	stepUp := options.Challenge != nil && options.Challenge.Error == "insufficient_scope"
 	var challengeScope string
 	if options.Challenge != nil {
@@ -998,14 +1022,7 @@ func SignInMcpServer(ctx context.Context, options SignInOptions) error {
 	if err != nil {
 		return err
 	}
-	// The wait is registered before the URL is shown: a browser that follows the
-	// redirect at once reaches the callback before this goroutine goes on.
-	wait, err := callback.WaitForCallback(state, pathOrSlash(authorizationRedirectURL.EscapedPath()))
-	if err != nil {
-		return err
-	}
-	options.Prompt.ShowAuthorizationURL(authorizationURL)
-	response, err := waitForAuthorizationResponse(ctx, wait, state, authorizationRedirectURL, options.Prompt)
+	response, err := waitForAuthorizationResponse(ctx, callback, authorizationURL, authorizationRedirectURL, state, options.Prompt)
 	if err != nil {
 		return err
 	}

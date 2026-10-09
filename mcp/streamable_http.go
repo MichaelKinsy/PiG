@@ -9,6 +9,7 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"net/http/httptrace"
 	"net/url"
 	"strings"
 	"sync"
@@ -66,7 +67,19 @@ type McpHttpError struct {
 	Body    string
 }
 
+// NewMcpHttpError is `new McpHttpError(status, message, body)`.
+func NewMcpHttpError(status int, message string, body string) *McpHttpError {
+	e := &McpHttpError{Status: status, Message: message, Body: body}
+	return e
+}
+
 func (e *McpHttpError) Error() string { return e.Message }
+
+// Name is the `name` property, "McpHttpError".
+func (e *McpHttpError) Name() string { return "McpHttpError" }
+
+// Cause is the `cause` property. No upstream constructor sets one, so it is always nil.
+func (e *McpHttpError) Cause() error { return nil }
 
 // McpAuthRequiredError is a 401 response.
 type McpAuthRequiredError struct {
@@ -77,14 +90,17 @@ type McpAuthRequiredError struct {
 	HasWWWAuthenticate bool
 }
 
-// NewAuthRequiredError builds the error for a 401 response.
-func NewAuthRequiredError(response *http.Response, body string) *McpAuthRequiredError {
-	e := &McpAuthRequiredError{McpHttpError: McpHttpError{Status: 401, Message: "MCP server requires authentication", Body: body}}
+// NewMcpAuthRequiredError is `new McpAuthRequiredError(response, body)`.
+func NewMcpAuthRequiredError(response *http.Response, body string) *McpAuthRequiredError {
+	e := &McpAuthRequiredError{McpHttpError: *NewMcpHttpError(401, "MCP server requires authentication", body)}
 	if values := response.Header.Values("Www-Authenticate"); len(values) > 0 {
 		e.WWWAuthenticate, e.HasWWWAuthenticate = strings.Join(values, ", "), true
 	}
 	return e
 }
+
+// Name is the `name` property, "McpAuthRequiredError".
+func (e *McpAuthRequiredError) Name() string { return "McpAuthRequiredError" }
 
 // Unwrap lets errors.As find the *McpHttpError.
 func (e *McpAuthRequiredError) Unwrap() error { return &e.McpHttpError }
@@ -92,10 +108,14 @@ func (e *McpAuthRequiredError) Unwrap() error { return &e.McpHttpError }
 // McpSessionExpiredError is a 404 response for an established session.
 type McpSessionExpiredError struct{ McpHttpError }
 
-// NewSessionExpiredError builds the error for an expired session.
-func NewSessionExpiredError(body string) *McpSessionExpiredError {
-	return &McpSessionExpiredError{McpHttpError{Status: 404, Message: "MCP session expired", Body: body}}
+// NewMcpSessionExpiredError is `new McpSessionExpiredError(body)`.
+func NewMcpSessionExpiredError(body string) *McpSessionExpiredError {
+	e := &McpSessionExpiredError{*NewMcpHttpError(404, "MCP session expired", body)}
+	return e
 }
+
+// Name is the `name` property, "McpSessionExpiredError".
+func (e *McpSessionExpiredError) Name() string { return "McpSessionExpiredError" }
 
 // Unwrap lets errors.As find the *McpHttpError.
 func (e *McpSessionExpiredError) Unwrap() error { return &e.McpHttpError }
@@ -103,10 +123,15 @@ func (e *McpSessionExpiredError) Unwrap() error { return &e.McpHttpError }
 func responseContentType(response *http.Response) string {
 	value := response.Header.Get("Content-Type")
 	before, _, _ := strings.Cut(value, ";")
-	return strings.ToLower(strings.TrimSpace(before))
+	return strings.ToLower(jsstring.Trim(before))
 }
 
-var insufficientScope = lazyregexp.New(`(?i)(?:^|[\s,])error="?insufficient_scope"?`)
+// jsSpace is the character class of JavaScript's \s, which RE2's \s is not (U+00A0, U+FEFF and the Unicode spaces are whitespace there).
+const jsSpace = `\t\n\v\f\r \x{a0}\x{1680}\x{2000}-\x{200a}\x{2028}\x{2029}\x{202f}\x{205f}\x{3000}\x{feff}`
+
+// insufficientScope is /(?:^|[\s,])error="?insufficient_scope"?/i. A non-unicode JavaScript RegExp's i flag folds ASCII letters only, so the letters
+// are spelled as classes: RE2's (?i) would also fold U+017F into s.
+var insufficientScope = lazyregexp.New(`(?:^|[` + jsSpace + `,])[eE][rR][rR][oO][rR]="?[iI][nN][sS][uU][fF][fF][iI][cC][iI][eE][nN][tT]_[sS][cC][oO][pP][eE]"?`)
 
 // needsAuthorization is true for a 401, or a 403 with an `insufficient_scope`
 // bearer challenge (step-up authorization).
@@ -132,7 +157,7 @@ func discardResponse(response *http.Response) {
 }
 
 func describeHTTPFailure(status int, body string) string {
-	text := strings.TrimSpace(body)
+	text := jsstring.Trim(body)
 	units := utf16.Encode([]rune(text))
 	snippet := text
 	if len(units) > errorMessageBodyChars {
@@ -172,7 +197,21 @@ type StreamableHTTPTransport struct {
 	closed          bool
 	sessionID       string
 	protocolVersion string
-	getStreamStart  bool
+	// lastToken is the access token of the latest request, which Close reuses instead of asking the auth provider.
+	lastToken      string
+	getStreamStart bool
+	// getStreamWritten reports that the GET stream's first request was written or failed; nil until the stream starts.
+	getStreamWritten func()
+}
+
+// signalGetStreamWritten calls getStreamWritten once the GET stream has started.
+func (t *StreamableHTTPTransport) signalGetStreamWritten() {
+	t.mu.Lock()
+	signal := t.getStreamWritten
+	t.mu.Unlock()
+	if signal != nil {
+		signal()
+	}
 }
 
 // NewStreamableHTTPTransport returns a transport for options.URL. It returns
@@ -208,7 +247,7 @@ func (t *StreamableHTTPTransport) Start() error {
 		return errors.New("MCP Streamable HTTP transport already started")
 	}
 	if t.closed {
-		return NewConnectionClosedError()
+		return NewMcpConnectionClosedError("")
 	}
 	t.started = true
 	return nil
@@ -238,7 +277,7 @@ func (t *StreamableHTTPTransport) isClosed() bool {
 // delivers.
 func (t *StreamableHTTPTransport) Send(message JSONRPCMessage) error {
 	if !t.isOpen() {
-		return NewConnectionClosedError()
+		return NewMcpConnectionClosedError("")
 	}
 	body, err := json.Marshal(message)
 	if err != nil {
@@ -266,7 +305,7 @@ func (t *StreamableHTTPTransport) Send(message JSONRPCMessage) error {
 	}
 	if response.StatusCode == http.StatusAccepted || response.StatusCode == http.StatusNoContent {
 		discardResponse(response)
-		return &McpHttpError{Status: response.StatusCode, Message: fmt.Sprintf("MCP server accepted request %s without a response", message.Method)}
+		return NewMcpHttpError(response.StatusCode, fmt.Sprintf("MCP server accepted request %s without a response", message.Method), "")
 	}
 	switch kind := responseContentType(response); kind {
 	case "application/json":
@@ -307,7 +346,7 @@ func (t *StreamableHTTPTransport) Send(message JSONRPCMessage) error {
 		if kind == "" {
 			kind = "missing"
 		}
-		return &McpHttpError{Status: response.StatusCode, Message: "Unsupported MCP response content type: " + kind}
+		return NewMcpHttpError(response.StatusCode, "Unsupported MCP response content type: "+kind, "")
 	}
 }
 
@@ -325,13 +364,17 @@ func (t *StreamableHTTPTransport) Close() error {
 	t.mu.Unlock()
 	t.cancel()
 	if started && sessionID != "" {
+		// Best effort: the session expires on the server anyway. The auth provider may refresh tokens over the
+		// network, so it is not asked here and closing never waits for a refresh.
 		ctx, cancel := context.WithTimeout(context.Background(), sessionDeleteTimeout)
-		if headers, _, err := t.headers(ctx, nil); err == nil {
-			if request, err := http.NewRequestWithContext(ctx, http.MethodDelete, t.URL.String(), nil); err == nil {
-				request.Header = headers
-				if response, err := t.fetch.Do(request); err == nil {
-					discardResponse(response)
-				}
+		// Best effort: the session expires on the server anyway. The auth provider may refresh tokens over the network, so it is not asked here and closing never waits for a refresh (streamable-http.ts close, #10565).
+		t.mu.Lock()
+		token := t.lastToken
+		t.mu.Unlock()
+		if request, err := http.NewRequestWithContext(ctx, http.MethodDelete, t.URL.String(), nil); err == nil {
+			request.Header = t.buildHeaders(nil, token)
+			if response, err := t.fetch.Do(request); err == nil {
+				discardResponse(response)
 			}
 		}
 		cancel()
@@ -362,6 +405,11 @@ func (t *StreamableHTTPTransport) authorizedFetch(method string, extra map[strin
 		if err != nil {
 			return nil, err
 		}
+		if method == http.MethodGet {
+			request = request.WithContext(httptrace.WithClientTrace(request.Context(), &httptrace.ClientTrace{
+				WroteRequest: func(httptrace.WroteRequestInfo) { t.signalGetStreamWritten() },
+			}))
+		}
 		request.Header = headers
 		response, err := t.fetch.Do(request)
 		if err != nil {
@@ -379,6 +427,20 @@ func (t *StreamableHTTPTransport) authorizedFetch(method string, extra map[strin
 }
 
 func (t *StreamableHTTPTransport) headers(ctx context.Context, extra map[string]string) (http.Header, string, error) {
+	var token string
+	if t.options.AuthProvider != nil {
+		var err error
+		if token, err = t.options.AuthProvider.Token(ctx); err != nil {
+			return nil, "", err
+		}
+	}
+	t.mu.Lock()
+	t.lastToken = token
+	t.mu.Unlock()
+	return t.buildHeaders(extra, token), token, nil
+}
+
+func (t *StreamableHTTPTransport) buildHeaders(extra map[string]string, token string) http.Header {
 	headers := http.Header{}
 	for name, value := range t.options.Headers {
 		headers.Set(name, value)
@@ -395,17 +457,10 @@ func (t *StreamableHTTPTransport) headers(ctx context.Context, extra map[string]
 	if version != "" {
 		headers.Set("MCP-Protocol-Version", version)
 	}
-	var token string
-	if t.options.AuthProvider != nil {
-		var err error
-		if token, err = t.options.AuthProvider.Token(ctx); err != nil {
-			return nil, "", err
-		}
-	}
 	if token != "" {
 		headers.Set("Authorization", "Bearer "+token)
 	}
-	return headers, token, nil
+	return headers
 }
 
 func (t *StreamableHTTPTransport) captureSession(response *http.Response) {
@@ -428,15 +483,15 @@ func (t *StreamableHTTPTransport) checkResponse(response *http.Response) error {
 	_ = response.Body.Close()
 	body := jsstring.Slice(jsstring.FromUTF8(bytes.TrimPrefix(data, []byte("\uFEFF"))), 0, maxErrorBodyBytes)
 	if response.StatusCode == http.StatusUnauthorized {
-		return NewAuthRequiredError(response, body)
+		return NewMcpAuthRequiredError(response, body)
 	}
 	t.mu.Lock()
 	hasSession := t.sessionID != ""
 	t.mu.Unlock()
 	if response.StatusCode == http.StatusNotFound && hasSession {
-		return NewSessionExpiredError(body)
+		return NewMcpSessionExpiredError(body)
 	}
-	return &McpHttpError{Status: response.StatusCode, Message: describeHTTPFailure(response.StatusCode, body), Body: body}
+	return NewMcpHttpError(response.StatusCode, describeHTTPFailure(response.StatusCode, body), body)
 }
 
 func (t *StreamableHTTPTransport) maxMessageBytes() int {
@@ -458,7 +513,7 @@ func (t *StreamableHTTPTransport) consumeSSE(stream io.Reader, cursor *streamCur
 		OnEvent: func(event SSEEvent) {
 			cursor.received = true
 			// Events without data prime resumption; other event types are not JSON-RPC.
-			if strings.TrimSpace(event.Data) == "" || (event.Event != "" && event.Event != "message") {
+			if jsstring.Trim(event.Data) == "" || (event.Event != "" && event.Event != "message") {
 				return
 			}
 			message, err := parseWireMessage([]byte(event.Data))
@@ -529,7 +584,7 @@ func (t *StreamableHTTPTransport) consumeResponseStream(body io.ReadCloser, requ
 	if failure != nil {
 		reason = failure.Error()
 	}
-	t.EmitMessage(NewErrorResponse(requestID, JSONRPCInternalError, "MCP response stream failed: "+reason, nil))
+	t.EmitMessage(NewErrorResponse(requestID, JSONRPCErrorCodes.InternalError, "MCP response stream failed: "+reason, nil))
 }
 
 func (t *StreamableHTTPTransport) startGetStream() {
@@ -543,11 +598,24 @@ func (t *StreamableHTTPTransport) startGetStream() {
 	}
 	t.getStreamStart = true
 	t.wg.Add(1)
+	written := make(chan struct{})
+	var once sync.Once
+	t.getStreamWritten = func() { once.Do(func() { close(written) }) }
 	t.mu.Unlock()
 	go func() {
 		defer t.wg.Done()
+		defer t.signalGetStreamWritten()
 		t.runGetStream()
 	}()
+	// The upstream transport issues the GET request before send returns, so it reaches the server before the client's
+	// next request. A goroutine can start late: wait until the first attempt has written its request or failed. Another
+	// McpFetch may not report its writes and is not waited for.
+	if _, ok := t.fetch.(*http.Client); ok {
+		select {
+		case <-written:
+		case <-t.ctx.Done():
+		}
+	}
 }
 
 // runGetStream keeps the server-to-client stream open, reconnecting with
@@ -556,6 +624,7 @@ func (t *StreamableHTTPTransport) runGetStream() {
 	cursor := &streamCursor{}
 	for attempt := 0; !t.isClosed(); {
 		stream, err := t.openSSEStream(cursor.lastEventID, cursor.hasEventID)
+		t.signalGetStreamWritten()
 		if err == nil {
 			// The server does not offer a GET stream.
 			if stream == nil {
@@ -616,7 +685,7 @@ func (t *StreamableHTTPTransport) openSSEStream(lastEventID string, hasLastEvent
 		if kind == "" {
 			kind = "missing"
 		}
-		return nil, &McpHttpError{Status: response.StatusCode, Message: "Unsupported MCP GET response content type: " + kind}
+		return nil, NewMcpHttpError(response.StatusCode, "Unsupported MCP GET response content type: "+kind, "")
 	}
 	return response.Body, nil
 }

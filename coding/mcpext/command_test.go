@@ -72,7 +72,7 @@ func newCommandHarnessWithCredentials(t *testing.T, backend mcpext.AuthStorageBa
 	}
 	calls := &callLog{}
 	h.ext = mcpext.New(host, mcpext.Options{
-		LoadConfig: func(mcpext.EventContext) mcpext.LoadedMcpConfig { return mcpext.LoadedMcpConfig{Servers: entries} },
+		LoadConfig: func(context.Context) mcpext.LoadedMcpConfig { return mcpext.LoadedMcpConfig{Servers: entries} },
 		CreateTransport: func(entry mcpext.McpServerEntry, _ string, _ mcp.AuthProvider) (mcp.Transport, error) {
 			if strings.HasPrefix(entry.Name, "fail-") {
 				return nil, errors.New("connection refused\nsecond line")
@@ -373,5 +373,50 @@ func TestMcpCommandCompletionsSplitOnJavaScriptWhitespace(t *testing.T) {
 		if len(items) != 1 || items[0].Value != want {
 			t.Errorf("CompleteCommand(%q) = %+v, want one item %q", prefix, items, want)
 		}
+	}
+}
+
+// sessionStartAPI is recordingAPI that keeps the session_start handler the factory registers.
+type sessionStartAPI struct {
+	recordingAPI
+	onSessionStart func(context.Context, extension.SessionStartEvent) error
+}
+
+func (*sessionStartAPI) GetMcpServers() []extension.RegisteredMcpServer { return nil }
+func (*sessionStartAPI) GetAllTools() []extension.ToolInfo              { return nil }
+func (*sessionStartAPI) GetActiveTools() []string                       { return nil }
+func (*sessionStartAPI) SetActiveTools([]string)                        {}
+func (*sessionStartAPI) RegisterTool(extension.ToolDefinition)          {}
+
+func (a *sessionStartAPI) OnSessionStart(handler func(context.Context, extension.SessionStartEvent) error) {
+	a.onSessionStart = handler
+}
+
+// index.ts:1111-1112: `pi.on("session_start", (_event, ctx) => ... options.loadConfig(ctx))`. The option receives the handler's own
+// extension context, which Go carries in the handler's context.Context (extension.FromContext).
+func TestMcpLoadConfigReceivesTheHandlersExtensionContext(t *testing.T) {
+	cwd := t.TempDir()
+	extCtx := extension.NewContext(cwd, nil, func() error { return nil }, extension.ContextActions{})
+	var got *extension.Context
+	api := &sessionStartAPI{}
+	ext := mcpext.Factory(mcpext.Options{
+		LogPath: t.TempDir() + "/mcp.log",
+		LoadConfig: func(ctx context.Context) mcpext.LoadedMcpConfig {
+			got = extension.FromContext(ctx)
+			return mcpext.LoadedMcpConfig{}
+		},
+	})(api)
+	t.Cleanup(ext.SessionShutdown)
+	if api.onSessionStart == nil {
+		t.Fatal("the factory registered no session_start handler")
+	}
+	if err := api.onSessionStart(extension.WithContext(context.Background(), extCtx), extension.SessionStartEvent{Type: "session_start", Reason: "startup"}); err != nil {
+		t.Fatal(err)
+	}
+	if got != extCtx {
+		t.Fatalf("loadConfig saw extension context %p, want the handler's %p", got, extCtx)
+	}
+	if gotCwd, err := got.CWD(); err != nil || gotCwd != cwd {
+		t.Fatalf("loadConfig context cwd = %q, %v, want %q", gotCwd, err, cwd)
 	}
 }

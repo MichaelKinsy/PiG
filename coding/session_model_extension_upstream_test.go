@@ -19,7 +19,7 @@ import (
 
 type modelExtensionHarness struct {
 	session  *Session
-	services *Services
+	services *AgentSessionServices
 	models   []*ai.Model
 	provider *scriptedProvider
 	runner   *inproc.Runner
@@ -34,7 +34,7 @@ func newModelExtensionHarness(t *testing.T, reasoning []bool, settings string, c
 	if err := os.WriteFile(filepath.Join(dir, "settings.json"), []byte(settings), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	services, err := NewServices(ServicesOptions{CWD: dir, AgentDir: dir})
+	services, err := CreateAgentSessionServices(CreateAgentSessionServicesOptions{CWD: dir, AgentDir: dir})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -48,7 +48,7 @@ func newModelExtensionHarness(t *testing.T, reasoning []bool, settings string, c
 		model.Capabilities.MaxOutputTokens = 8192
 		model.ProviderMeta.Reasoning = value
 		if value {
-			model.Capabilities.MaxThinking = ai.ThinkingHigh
+			model.Capabilities.MaxThinking = ai.ThinkingLevelHigh
 		}
 		raw = append(raw, model)
 	}
@@ -88,6 +88,7 @@ func newModelExtensionHarness(t *testing.T, reasoning []bool, settings string, c
 	return &modelExtensionHarness{session: session, services: services, models: models, provider: provider, runner: runner}
 }
 
+// Pi: packages/coding-agent/src/core/agent-session.ts:1653 (Session.setScopedModels); packages/coding-agent/src/core/agent-session.ts:2599 (Session.getAvailableThinkingLevels); packages/coding-agent/src/core/agent-session.ts:2627 (Session.cycleThinkingLevel).
 func TestSessionModelExtensionCyclesUpstream(t *testing.T) {
 	// .upstream/v0.87.1/packages/coding-agent/test/suite/agent-session-model-extension.test.ts:91
 	t.Run("cycleModel and cycleThinkingLevel are session-only by default", func(t *testing.T) {
@@ -141,14 +142,14 @@ func TestSessionModelExtensionCyclesUpstream(t *testing.T) {
 	t.Run("cycles xhigh before max when both are supported", func(t *testing.T) {
 		h := newModelExtensionHarness(t, []bool{true}, "", true, extension.Extension{}, nil)
 		h.models[0].ThinkingLevelMap = ai.ThinkingLevelMap{ai.ThinkingXHigh: new("xhigh"), ai.ThinkingMax: new("max")}
-		want := []ai.ThinkingLevel{ai.ThinkingOff, ai.ThinkingMinimal, ai.ThinkingLow, ai.ThinkingMedium, ai.ThinkingHigh, ai.ThinkingXHigh, ai.ThinkingMax}
+		want := []ai.ModelThinkingLevel{ai.ThinkingOff, ai.ThinkingMinimal, ai.ThinkingLow, ai.ThinkingMedium, ai.ThinkingHigh, ai.ThinkingXHigh, ai.ThinkingMax}
 		if got := h.session.AvailableThinkingLevels(); !reflect.DeepEqual(got, want) {
 			t.Fatalf("levels=%v", got)
 		}
 		if err := h.session.SetThinkingLevel(ai.ThinkingHigh); err != nil {
 			t.Fatal(err)
 		}
-		for _, wanted := range []ai.ThinkingLevel{ai.ThinkingXHigh, ai.ThinkingMax, ai.ThinkingOff} {
+		for _, wanted := range []ai.ModelThinkingLevel{ai.ThinkingXHigh, ai.ThinkingMax, ai.ThinkingOff} {
 			got, err := h.session.CycleThinkingLevel()
 			if err != nil || got != wanted {
 				t.Fatalf("cycle=%s, want %s err=%v", got, wanted, err)
@@ -163,8 +164,8 @@ func TestSessionModelExtensionExistingUpstream(t *testing.T) {
 		var events []string
 		ext := extension.Extension{Handlers: map[string][]extension.HandlerFn{"model_select": {func(args ...any) (any, error) {
 			event := args[0].(extension.ModelSelectEvent)
-			previous := event.PreviousModel.(*ai.Model)
-			model := event.Model.(*ai.Model)
+			previous := event.PreviousModel
+			model := event.Model
 			events = append(events, previous.ID+"->"+model.ID+":"+event.Source)
 			return nil, nil
 		}}}}
@@ -176,8 +177,8 @@ func TestSessionModelExtensionExistingUpstream(t *testing.T) {
 			t.Fatalf("model=%s events=%v", h.session.Model().ID, events)
 		}
 		var changes []string
-		for _, entry := range h.session.Inner().Entries() {
-			if entry.Base.Type == "model_change" {
+		for _, entry := range h.session.Inner().GetEntries() {
+			if entry.Base().Type == "model_change" {
 				var change struct {
 					Provider string `json:"provider"`
 					ModelID  string `json:"modelId"`

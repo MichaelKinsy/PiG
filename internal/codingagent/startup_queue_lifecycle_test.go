@@ -48,7 +48,7 @@ func TestStartupQueuedPromptsReachTheInputLoopInOrder(t *testing.T) {
 				provider := &startupQueueProvider{seen: make(chan capturedStreamRequest, len(tc.inputs)), failFirst: tc.failFirst}
 				model := &ai.Model{ID: "queued", Provider: provider, Capabilities: ai.ModelCapabilities{ContextWindow: 800000}}
 				m.opts.Model = model
-				m.agent = agent.NewAgent(agent.AgentOptions{Model: model})
+				m.agent = mustNewAgent(agent.AgentOptions{Model: model})
 				m.chatContainer, m.statusContainer = tui.NewContainer(), tui.NewContainer()
 				ctx, cancel := context.WithCancel(t.Context())
 				defer cancel()

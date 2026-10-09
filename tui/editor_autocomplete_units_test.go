@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"context"
 	"slices"
 	"testing"
 
@@ -15,7 +16,7 @@ type utf16CompletionProbe struct {
 	calls       int
 }
 
-func (p *utf16CompletionProbe) GetSuggestions(lines []string, row, col int) *AutocompleteSuggestions {
+func (p *utf16CompletionProbe) GetSuggestions(ctx context.Context, lines []string, row, col int, options AutocompleteSuggestionOptions) *AutocompleteSuggestions {
 	p.t.Helper()
 	p.calls++
 	if row != 0 || col != p.wantByteCol || !slices.Equal(jsstring.ToUTF16(lines[0]), p.wantUnits) {

@@ -127,6 +127,8 @@ type signedBlock struct {
 	envelope Envelope
 	manifest Manifest
 	execSize int64
+	// digest is the SHA-256 of the envelope bytes.
+	digest string
 }
 
 // readBlock returns the signature block at the end of file, found=false when
@@ -151,6 +153,8 @@ func readBlock(file io.ReaderAt, size int64) (signedBlock, bool, error) {
 	if _, err := file.ReadAt(raw, block.execSize); err != nil {
 		return signedBlock{}, true, err
 	}
+	sum := sha256.Sum256(raw)
+	block.digest = "sha256:" + hex.EncodeToString(sum[:])
 	envelope, err := ParseEnvelope(raw)
 	if err != nil {
 		return signedBlock{}, true, fmt.Errorf("Piglet %w", err)
@@ -175,9 +179,14 @@ func digestPrefix(file io.ReaderAt, size int64) (string, error) {
 	return "sha256:" + hex.EncodeToString(hash.Sum(nil)), nil
 }
 
+// hashExecutable hashes the executable bytes a signature binds.
+var hashExecutable = digestPrefix
+
 // verifyBlock checks the envelope signature with the key the manifest names
-// and binds the manifest to the executable bytes before the block.
-func verifyBlock(file io.ReaderAt, block signedBlock) (ed25519.PublicKey, error) {
+// and binds the manifest to the executable bytes before the block. With
+// hash false it trusts an earlier full check of the same bytes and binds
+// only the signed size.
+func verifyBlock(file io.ReaderAt, block signedBlock, hash bool) (ed25519.PublicKey, error) {
 	public, err := base64.StdEncoding.DecodeString(block.manifest.Signer.PublicKey)
 	if err != nil || len(public) != ed25519.PublicKeySize || block.manifest.Signer.KeyID != KeyID(public) {
 		return nil, fmt.Errorf("Piglet signature names an invalid ed25519 public key")
@@ -188,7 +197,10 @@ func verifyBlock(file io.ReaderAt, block signedBlock) (ed25519.PublicKey, error)
 	if block.manifest.Executable.Size != block.execSize {
 		return nil, fmt.Errorf("Piglet Binary is %d bytes before its signature block, signed manifest says %d", block.execSize, block.manifest.Executable.Size)
 	}
-	digest, err := digestPrefix(file, block.execSize)
+	if !hash {
+		return public, nil
+	}
+	digest, err := hashExecutable(file, block.execSize)
 	if err != nil {
 		return nil, err
 	}
@@ -253,23 +265,33 @@ func CheckFile(file *os.File, policy Policy) (Status, error) {
 	if err != nil {
 		return Status{}, err
 	}
-	block, found, err := readBlock(file, info.Size())
+	status, _, err := checkOpened(file, info.Size(), policy, nil)
+	return status, err
+}
+
+// checkOpened verifies the signature block of a file of size bytes under
+// policy. remembered, when set, reports whether an earlier full check vouches
+// for the executable bytes under block; those bytes are then not hashed.
+// hashed reports that this check hashed them.
+func checkOpened(file io.ReaderAt, size int64, policy Policy, remembered func(signedBlock) bool) (status Status, hashed bool, err error) {
+	block, found, err := readBlock(file, size)
 	if err != nil {
-		return Status{Signed: found}, err
+		return Status{Signed: found}, false, err
 	}
 	if !found {
-		return Status{}, unsignedError(policy)
+		return Status{}, false, unsignedError(policy)
 	}
-	status := Status{Signed: true, Manifest: block.manifest, KeyID: block.manifest.Signer.KeyID}
-	public, err := verifyBlock(file, block)
+	status = Status{Signed: true, Manifest: block.manifest, KeyID: block.manifest.Signer.KeyID}
+	hashed = remembered == nil || !remembered(block)
+	public, err := verifyBlock(file, block, hashed)
 	if err != nil {
-		return status, err
+		return status, hashed, err
 	}
 	_, status.Trusted = policy.Trust.Keys[status.KeyID]
 	for _, key := range policy.Embedded {
 		status.Embedded = status.Embedded || key.Equal(public)
 	}
-	return status, signerError(status, policy)
+	return status, hashed, signerError(status, policy)
 }
 
 func unsignedError(policy Policy) error {

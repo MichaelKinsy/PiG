@@ -1,7 +1,6 @@
 // extensions.go defines extension event names and the TUI-backed UI surface:
 //   - Event name constants
 //   - ToolCallEventResult (agent loop hook)
-//   - ExtensionUIContext interface + NoopUI (headless fallback)
 //   - ExtensionContext (shared mutable state for the agent loop)
 //   - SlashCommand type (used by slash_commands.go)
 //   - TUIUIContext (interactive mode UI)
@@ -86,34 +85,11 @@ type ToolCallEventResult struct {
 
 // ─── ExtensionUIContext ───────────────────────────────────────────────────────
 
-// ExtensionUIContext mirrors the upstream ExtensionUIContext interface.
-// In interactive mode this is backed by the TUI; in headless/print mode
-// it falls back to no-op implementations.
-type ExtensionUIContext interface {
-	Select(title string, options []string) (string, bool)
-	Confirm(title, message string) bool
-	Input(title, placeholder string) (string, bool)
-	Notify(message, level string)
-	SetStatus(key, text string)
-	SetWidget(key string, lines []string)
-}
-
-// NoopUI is a non-interactive ExtensionUIContext for headless mode.
-type NoopUI struct{}
-
-func (NoopUI) Select(_ string, _ []string) (string, bool) { return "", false }
-func (NoopUI) Confirm(_, _ string) bool                   { return false }
-func (NoopUI) Input(_, _ string) (string, bool)           { return "", false }
-func (NoopUI) Notify(_, _ string)                         {}
-func (NoopUI) SetStatus(_, _ string)                      {}
-func (NoopUI) SetWidget(_ string, _ []string)             {}
-
 // ─── ExtensionContext ─────────────────────────────────────────────────────────
 
 // ExtensionContext is shared mutable state for the agent loop.
 // Passed to slash command handlers and event bridges.
 type ExtensionContext struct {
-	UI      ExtensionUIContext
 	HasUI   bool
 	CWD     string
 	Session *Session
@@ -140,7 +116,7 @@ type SlashCommand struct {
 
 // TUIUIContext implements ExtensionUIContext for interactive mode.
 type TUIUIContext struct {
-	tui    tui.Renderer
+	tui    tui.TUI
 	mu     sync.Mutex
 	status map[string]string
 
@@ -153,7 +129,7 @@ type TUIUIContext struct {
 }
 
 // NewTUIUIContext creates a TUI-backed ExtensionUIContext.
-func NewTUIUIContext(t tui.Renderer) *TUIUIContext {
+func NewTUIUIContext(t tui.TUI) *TUIUIContext {
 	return &TUIUIContext{tui: t, status: make(map[string]string)}
 }
 
@@ -170,7 +146,7 @@ func NewTUIUIContext(t tui.Renderer) *TUIUIContext {
 // preserve-screen stop. This is pig's race-safe equivalent of upstream's
 // createInteractiveTuiReference stable reference for the extension UI context.
 // Falls back to the captured renderer when standalone (tests).
-func (u *TUIUIContext) withRenderer(op func(tui.Renderer)) {
+func (u *TUIUIContext) withRenderer(op func(tui.TUI)) {
 	if u.interactiveMode != nil {
 		u.interactiveMode.rendererMu.RLock()
 		defer u.interactiveMode.rendererMu.RUnlock()
@@ -188,13 +164,13 @@ func (u *TUIUIContext) renderNow() {
 			}
 		}()
 	}
-	u.withRenderer(tui.Renderer.Render)
+	u.withRenderer(tui.TUI.Render)
 }
-func (u *TUIUIContext) requestRender() { u.withRenderer(tui.Renderer.RequestRender) }
+func (u *TUIUIContext) requestRender() { u.withRenderer(func(ui tui.TUI) { ui.RequestRender() }) }
 
 func (u *TUIUIContext) Select(title string, options []string) (string, bool) {
 	if u.interactiveMode != nil && u.interactiveMode.layout != nil {
-		sel := tui.NewExtensionSelector(title, options)
+		sel := tui.NewExtensionSelectorComponent(title, options, nil, nil)
 		idx, ok := u.interactiveMode.runEditorSlotExtensionSelector(sel)
 		if !ok || idx < 0 || idx >= len(options) {
 			return "", false
@@ -211,7 +187,7 @@ func (u *TUIUIContext) Confirm(title, message string) bool {
 
 func (u *TUIUIContext) Input(title, placeholder string) (string, bool) {
 	if u.interactiveMode != nil && u.interactiveMode.layout != nil {
-		input := tui.NewExtensionInputComponent(title, placeholder)
+		input := tui.NewExtensionInputComponent(title, placeholder, nil, nil)
 
 		u.interactiveMode.layout.Remove(u.interactiveMode.editor)
 		u.interactiveMode.layout.Add(input)
@@ -279,7 +255,7 @@ func (u *TUIUIContext) SetStatus(key, text string) {
 	u.mu.Lock()
 	u.status[key] = text
 	u.mu.Unlock()
-	// Forward to the StatusLine so the footer renders extension statuses.
+	// Forward to the FooterComponent so the footer renders extension statuses.
 	if u.interactiveMode != nil && u.interactiveMode.statusLine != nil {
 		u.interactiveMode.statusLine.SetExtensionStatus(key, text)
 	}
@@ -289,7 +265,3 @@ func (u *TUIUIContext) SetStatus(key, text string) {
 func (u *TUIUIContext) SetWidget(key string, lines []string) {
 	u.requestRender()
 }
-
-// Ensure interface satisfaction
-var _ ExtensionUIContext = (*TUIUIContext)(nil)
-var _ ExtensionUIContext = NoopUI{}

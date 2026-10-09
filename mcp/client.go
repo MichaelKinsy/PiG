@@ -112,8 +112,8 @@ type Client struct {
 	incoming         map[string]context.CancelCauseFunc
 	requestHandlers  map[string]listenerEntry[RequestHandler]
 	notifications    map[string][]listenerEntry[NotificationListener]
-	errorListeners   []listenerEntry[func(error)]
-	closeListeners   []listenerEntry[func()]
+	errorListeners   []listenerEntry[ErrorListener]
+	closeListeners   []listenerEntry[CloseListener]
 	nextListenerID   int
 	disposers        []func()
 	wg               sync.WaitGroup
@@ -190,7 +190,7 @@ func (c *Client) ProtocolVersion() string {
 }
 
 func invalidError(message string) *McpError {
-	return &McpError{Code: JSONRPCInvalidRequest, Message: message}
+	return NewMcpError(JSONRPCErrorCodes.InvalidRequest, message, nil)
 }
 
 func objectFields(raw json.RawMessage) (map[string]json.RawMessage, bool) {
@@ -308,13 +308,16 @@ func validateReadResourceResult(raw json.RawMessage) (*ReadResourceResult, error
 	if err := json.Unmarshal(raw, &result); err != nil {
 		return nil, invalidError("Invalid contents in MCP resources/read result")
 	}
+	for i := range result.Contents {
+		result.Contents[i].Raw = contents[i]
+	}
 	return &result, nil
 }
 
 // validateCallToolResult: `content` is required by the spec, but servers that
 // only return `structuredContent` omit it (the SDK defaults it too).
 func validateCallToolResult(raw json.RawMessage) (*CallToolResult, error) {
-	fail := &McpError{Code: JSONRPCInvalidRequest, Message: "Invalid MCP tools/call result"}
+	fail := NewMcpError(JSONRPCErrorCodes.InvalidRequest, "Invalid MCP tools/call result", nil)
 	fields, ok := objectFields(raw)
 	if !ok {
 		return nil, fail
@@ -323,7 +326,7 @@ func validateCallToolResult(raw json.RawMessage) (*CallToolResult, error) {
 		return nil, fail
 	}
 	if structured, present := fields["structuredContent"]; present && !isJSONObject(structured) {
-		return nil, &McpError{Code: JSONRPCInvalidRequest, Message: "Invalid MCP tools/call structured content"}
+		return nil, NewMcpError(JSONRPCErrorCodes.InvalidRequest, "Invalid MCP tools/call structured content", nil)
 	}
 	var result CallToolResult
 	if err := json.Unmarshal(raw, &result); err != nil {
@@ -398,7 +401,7 @@ func (c *Client) initialize(ctx context.Context, transport Transport) (*Initiali
 	if err != nil {
 		return nil, err
 	}
-	if !slices.Contains(SupportedProtocolVersions, result.ProtocolVersion) {
+	if !slices.Contains(SupportedProtocolVersions, SupportedProtocolVersion(result.ProtocolVersion)) {
 		return nil, fmt.Errorf("MCP server selected unsupported protocol version %s", result.ProtocolVersion)
 	}
 	c.mu.Lock()
@@ -483,13 +486,13 @@ func (c *Client) OnNotification(method string, listener NotificationListener) (d
 }
 
 // OnError registers a listener for errors that do not fail a request.
-func (c *Client) OnError(listener func(error)) (dispose func()) {
+func (c *Client) OnError(listener ErrorListener) (dispose func()) {
 	return addListener(c, &c.errorListeners, listener)
 }
 
 // OnClose registers a listener called once when the connection closes,
 // whether the transport dropped or Close was called.
-func (c *Client) OnClose(listener func()) (dispose func()) {
+func (c *Client) OnClose(listener CloseListener) (dispose func()) {
 	return addListener(c, &c.closeListeners, listener)
 }
 
@@ -516,11 +519,29 @@ func (c *Client) ListTools(ctx context.Context, options RequestOptions) ([]Tool,
 	return tools, nil
 }
 
+// withDefaultName is `{ ...item, name: item.name ?? fallback }`: the entry as sent, with `name` appended when absent.
+func withDefaultName(raw json.RawMessage, item map[string]json.RawMessage, fallback string) json.RawMessage {
+	if _, present := item["name"]; present {
+		return raw
+	}
+	obj, err := orderedjson.Parse(raw)
+	if err != nil {
+		return raw
+	}
+	_ = obj.SetValue("name", fallback)
+	withName, err := obj.MarshalJSON()
+	if err != nil {
+		return raw
+	}
+	return withName
+}
+
 func toResource(raw json.RawMessage, item map[string]json.RawMessage) (Resource, error) {
 	resource, err := decodeItem[Resource](raw, "resources/list")
 	if err != nil {
 		return resource, err
 	}
+	resource.Raw = withDefaultName(raw, item, resource.URI)
 	if _, present := item["name"]; !present {
 		resource.Name = resource.URI
 	}
@@ -532,6 +553,7 @@ func toResourceTemplate(raw json.RawMessage, item map[string]json.RawMessage) (R
 	if err != nil {
 		return template, err
 	}
+	template.Raw = withDefaultName(raw, item, template.URITemplate)
 	if _, present := item["name"]; !present {
 		template.Name = template.URITemplate
 	}
@@ -688,7 +710,7 @@ func (c *Client) Close() error {
 	for _, dispose := range disposers {
 		dispose()
 	}
-	c.markClosed(NewConnectionClosedError())
+	c.markClosed(NewMcpConnectionClosedError(""))
 	var err error
 	if transport != nil {
 		err = transport.Close()
@@ -722,7 +744,7 @@ func (c *Client) requestInternal(ctx context.Context, method string, params any,
 	}
 	if ctx.Err() != nil {
 		c.mu.Unlock()
-		return nil, &McpAbortError{}
+		return nil, NewMcpAbortError("")
 	}
 	id := c.nextRequestID
 	c.nextRequestID++
@@ -786,7 +808,7 @@ func (c *Client) requestInternal(ctx context.Context, method string, params any,
 	// The spec forbids cancelling `initialize`. The callback needs c.mu, so it
 	// cannot run before the request is registered.
 	entry.stopAbort = context.AfterFunc(ctx, func() {
-		c.cancelPending(key, &McpAbortError{}, method != "initialize", abortReason(ctx))
+		c.cancelPending(key, NewMcpAbortError(""), method != "initialize", abortReason(ctx))
 	})
 	c.wg.Add(1)
 	c.mu.Unlock()
@@ -872,37 +894,40 @@ func (c *Client) requireTransportLocked(allowConnecting bool) (Transport, error)
 	if c.transport != nil && (c.state == ClientStateConnected || (allowConnecting && c.state == ClientStateConnecting)) {
 		return c.transport, nil
 	}
-	return nil, &McpConnectionClosedError{Message: fmt.Sprintf("MCP client is %s", c.state)}
+	return nil, NewMcpConnectionClosedError(fmt.Sprintf("MCP client is %s", c.state))
 }
 
 func (c *Client) handleMessage(message JSONRPCMessage) {
 	switch {
 	case message.IsResponse():
-		c.handleResponse(message)
+		response, _ := message.AsResponse()
+		c.handleResponse(response)
 	case message.IsRequest():
 		c.startRequest(message)
-	case message.IsNotification():
+	case IsJSONRPCNotification(message):
 		c.handleNotification(message.Method, message.Params)
 	default:
-		c.emitError(&McpError{Code: JSONRPCInvalidRequest, Message: "Received invalid JSON-RPC message"})
+		c.emitError(NewMcpError(JSONRPCErrorCodes.InvalidRequest, "Received invalid JSON-RPC message", nil))
 	}
 }
 
-func (c *Client) handleResponse(message JSONRPCMessage) {
-	key := message.ID.key()
+func (c *Client) handleResponse(message JSONRPCResponse) {
+	id := message.ResponseID()
+	key := id.key()
 	c.mu.Lock()
 	entry := c.pending[key]
 	if entry == nil {
 		c.mu.Unlock()
-		c.emitError(fmt.Errorf("Received response for unknown MCP request %s", message.ID.String()))
+		c.emitError(fmt.Errorf("Received response for unknown MCP request %s", id.String()))
 		return
 	}
 	c.removePendingLocked(key, entry)
 	c.mu.Unlock()
-	if message.Error != nil {
-		entry.done <- pendingResult{err: &McpError{Code: message.Error.Code, Message: message.Error.Message, Data: message.Error.Data}}
-	} else {
-		entry.done <- pendingResult{value: message.Result}
+	switch response := message.(type) {
+	case JSONRPCErrorResponse:
+		entry.done <- pendingResult{err: NewMcpError(response.Error.Code, response.Error.Message, response.Error.Data)}
+	case JSONRPCSuccessResponse:
+		entry.done <- pendingResult{value: response.Result}
 	}
 }
 
@@ -934,7 +959,7 @@ func (c *Client) startRequest(message JSONRPCMessage) {
 
 func (c *Client) serveRequest(ctx context.Context, transport Transport, handler RequestHandler, key string, message JSONRPCMessage) {
 	if handler == nil {
-		if err := transport.Send(NewErrorResponse(*message.ID, JSONRPCMethodNotFound, "Method not found: "+message.Method, nil)); err != nil {
+		if err := transport.Send(NewErrorResponse(*message.ID, JSONRPCErrorCodes.MethodNotFound, "Method not found: "+message.Method, nil)); err != nil {
 			c.emitError(err)
 		}
 		return
@@ -953,7 +978,7 @@ func (c *Client) serveRequest(ctx context.Context, transport Transport, handler 
 		if mcpErr, ok := errors.AsType[*McpError](err); ok {
 			response = NewErrorResponse(*message.ID, mcpErr.Code, mcpErr.Message, mcpErr.Data)
 		} else {
-			response = NewErrorResponse(*message.ID, JSONRPCInternalError, err.Error(), nil)
+			response = NewErrorResponse(*message.ID, JSONRPCErrorCodes.InternalError, err.Error(), nil)
 		}
 	} else {
 		if result == nil {
@@ -961,7 +986,7 @@ func (c *Client) serveRequest(ctx context.Context, transport Transport, handler 
 		}
 		raw, marshalErr := json.Marshal(result)
 		if marshalErr != nil {
-			response = NewErrorResponse(*message.ID, JSONRPCInternalError, marshalErr.Error(), nil)
+			response = NewErrorResponse(*message.ID, JSONRPCErrorCodes.InternalError, marshalErr.Error(), nil)
 		} else {
 			response = NewResult(*message.ID, raw)
 		}
@@ -1093,7 +1118,7 @@ func (c *Client) armTimeoutLocked(key string, entry *pendingRequest) {
 		if current != entry || renewed {
 			return
 		}
-		c.cancelPending(key, &McpTimeoutError{TimeoutMs: timeoutMs}, entry.cancellable, "Request timed out")
+		c.cancelPending(key, NewMcpTimeoutError(timeoutMs), entry.cancellable, "Request timed out")
 	})
 }
 
@@ -1113,12 +1138,7 @@ func (c *Client) cancelPending(key string, err error, notifyServer bool, reason 
 	c.mu.Unlock()
 	entry.done <- pendingResult{err: err}
 	if notify {
-		id := requestIDFromKey(key)
-		params := map[string]any{"requestId": id}
-		if reason != "" {
-			params["reason"] = reason
-		}
-		raw, _ := json.Marshal(params)
+		raw, _ := json.Marshal(CancelledNotification{RequestID: requestIDFromKey(key), Reason: reason})
 		go func() {
 			defer c.wg.Done()
 			if sendErr := transport.Send(NewNotification("notifications/cancelled", raw)); sendErr != nil {
@@ -1150,7 +1170,7 @@ func (c *Client) removePendingLocked(key string, entry *pendingRequest) {
 }
 
 func (c *Client) handleTransportClose() {
-	c.markClosed(NewConnectionClosedError())
+	c.markClosed(NewMcpConnectionClosedError(""))
 }
 
 // markClosed is idempotent: it rejects in-flight requests, aborts server
@@ -1173,7 +1193,7 @@ func (c *Client) markClosed(err error) {
 	}
 	incoming := c.incoming
 	c.incoming = map[string]context.CancelCauseFunc{}
-	var listeners []listenerEntry[func()]
+	var listeners []listenerEntry[CloseListener]
 	if !wasClosed {
 		listeners = append(listeners, c.closeListeners...)
 	}
@@ -1193,7 +1213,7 @@ func (c *Client) markClosed(err error) {
 
 func (c *Client) emitError(err error) {
 	c.mu.Lock()
-	listeners := append([]listenerEntry[func(error)](nil), c.errorListeners...)
+	listeners := append([]listenerEntry[ErrorListener](nil), c.errorListeners...)
 	c.mu.Unlock()
 	for _, l := range listeners {
 		l.fn(err)

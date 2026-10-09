@@ -6,7 +6,6 @@ package ai
 import (
 	"context"
 	"fmt"
-	"time"
 )
 
 // LazyAPICapabilities declares optional methods without loading the implementation.
@@ -114,7 +113,7 @@ func forwardLazySetup(ctx context.Context, turn *continuationTurn, executor *con
 		passthrough.resolve(struct{}{})
 		awaitContinuation(turn, passthrough)
 	}
-	message := &AssistantMessage{Content: []AssistantContentBlock{}, StopReason: StopReasonError, ErrorMessage: err.Error(), Timestamp: time.Now().UnixMilli()}
+	message := &AssistantMessage{Content: []AssistantContentBlock{}, StopReason: StopReasonError, ErrorMessage: err.Error(), Timestamp: outer.startedAt}
 	if model != nil {
 		message.API = model.ProviderMeta.API
 		message.Provider = modelProviderID(model)

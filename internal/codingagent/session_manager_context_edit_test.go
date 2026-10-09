@@ -134,7 +134,7 @@ func projectedTexts(messages []agent.AgentMessage) []string {
 
 func entryReplacementJSON(t *testing.T, sess *Session, id string) string {
 	t.Helper()
-	entry, ok := sess.EntryByID(id)
+	entry, ok := sess.GetEntry(id)
 	if !ok {
 		t.Fatalf("entry %s missing", id)
 	}
@@ -161,14 +161,14 @@ func TestSessionContextEditOmitsATargetOnlyFromModelProjection(t *testing.T) {
 		Timestamp:  time.Now().UnixMilli(),
 	}}
 	resultID := mustAppendContextMessage(t, sess, result)
-	resultRaw, _ := sess.EntryByID(resultID)
+	resultRaw, _ := sess.GetEntry(resultID)
 	rawBefore := string(resultRaw.Raw())
 	mustEdit(t, sess, assistantID, nil)
 	mustEdit(t, sess, resultID, nil)
 
 	messages := 0
-	for _, entry := range sess.Branch(*sess.LeafID()) {
-		if entry.Base.Type == "message" {
+	for _, entry := range sess.GetBranch(*sess.GetLeafID()) {
+		if entry.Base().Type == "message" {
 			messages++
 		}
 	}
@@ -178,7 +178,7 @@ func TestSessionContextEditOmitsATargetOnlyFromModelProjection(t *testing.T) {
 	if got := projectedRoles(sess.BuildSessionProjection().Messages); !slices.Equal(got, []string{"user"}) {
 		t.Fatalf("projected roles = %v, want [user]", got)
 	}
-	after, _ := sess.EntryByID(resultID)
+	after, _ := sess.GetEntry(resultID)
 	if string(after.Raw()) != rawBefore {
 		t.Fatalf("target entry changed:\n%s\n%s", rawBefore, after.Raw())
 	}
@@ -201,8 +201,8 @@ func TestSessionContextEditReplacesOnlyContentAndLetsTheLatestEditWin(t *testing
 	if projected[0].Assistant.Usage == nil || projected[0].Assistant.Usage.TotalTokens != 11 {
 		t.Fatalf("replacement changed usage: %#v", projected[0].Assistant.Usage)
 	}
-	raw, _ := sess.EntryByID(targetID)
-	original, _ := raw.AsMessage()
+	raw, _ := sess.GetEntry(targetID)
+	original, _ := raw.(MessageEntry)
 	if got := projectedText(original.Message); got != "original" {
 		t.Fatalf("raw entry text = %q, want original", got)
 	}
@@ -273,7 +273,7 @@ func TestSessionContextEditKeepsEditsBranchRelative(t *testing.T) {
 	if got := projectedText(sess.BuildSessionProjection().Messages[0]); got != "edited" {
 		t.Fatalf("edited projection = %q", got)
 	}
-	if err := sess.Fork(targetID); err != nil {
+	if err := sess.Branch(targetID); err != nil {
 		t.Fatal(err)
 	}
 	if got := projectedText(sess.BuildSessionProjection().Messages[0]); got != "original" {
@@ -287,7 +287,7 @@ func TestSessionContextEditUsesASelfReferencingCompactionToRetainNoPrecedingEntr
 	compactionID := mustCompact(t, sess, "exact handoff", "", 100)
 	mustAppendContextMessage(t, sess, contextEditUser("after"))
 
-	entry, _ := sess.EntryByID(compactionID)
+	entry, _ := sess.GetEntry(compactionID)
 	var compaction CompactionEntry
 	if err := json.Unmarshal(entry.Raw(), &compaction); err != nil {
 		t.Fatal(err)
@@ -323,7 +323,7 @@ func TestSessionContextEditSupportsRepeatedRetainNoneCompactions(t *testing.T) {
 	mustAppendContextMessage(t, sess, contextEditUser("also discarded"))
 	secondID := mustCompact(t, sess, "second handoff", "", 50)
 
-	entry, _ := sess.EntryByID(secondID)
+	entry, _ := sess.GetEntry(secondID)
 	var compaction CompactionEntry
 	if err := json.Unmarshal(entry.Raw(), &compaction); err != nil {
 		t.Fatal(err)
@@ -339,12 +339,12 @@ func TestSessionContextEditSupportsRepeatedRetainNoneCompactions(t *testing.T) {
 func TestSessionContextEditRejectsInvalidTargetsAndReplacements(t *testing.T) {
 	sess := NewSession("s", t.TempDir())
 	userID := mustAppendContextMessage(t, sess, contextEditUser("first"))
-	if err := sess.AppendModelSwitch("faux", "faux", ""); err != nil {
+	if _, err := sess.AppendModelChange("faux", "faux"); err != nil {
 		t.Fatal(err)
 	}
-	modelChangeID := *sess.LeafID()
+	modelChangeID := *sess.GetLeafID()
 	otherID := mustAppendContextMessage(t, sess, contextEditUser("other branch"))
-	if err := sess.Fork(userID); err != nil {
+	if err := sess.Branch(userID); err != nil {
 		t.Fatal(err)
 	}
 
@@ -364,7 +364,7 @@ func TestSessionContextEditRejectsInvalidTargetsAndReplacements(t *testing.T) {
 			t.Fatalf("%s: err = %v, want %q", tc.name, err, tc.want)
 		}
 	}
-	if err := sess.Fork(modelChangeID); err != nil {
+	if err := sess.Branch(modelChangeID); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := sess.AppendContextEdit(modelChangeID, nil); err == nil || err.Error() != "Entry "+modelChangeID+" does not contribute editable model content" {
@@ -384,8 +384,8 @@ func TestSessionContextEditEntryMatchesPiWireBytes(t *testing.T) {
 		{omitID, targetID, `,"targetId":"` + targetID + `","replacement":null}`},
 		{replaceID, omitID, `,"targetId":"` + targetID + `","replacement":{"content":"<keep & literal>"}}`},
 	} {
-		entry, _ := sess.EntryByID(tc.id)
-		want := `{"type":"context_edit","id":"` + tc.id + `","parentId":"` + tc.parent + `","timestamp":"` + entry.Base.Timestamp + `"` + tc.tail
+		entry, _ := sess.GetEntry(tc.id)
+		want := `{"type":"context_edit","id":"` + tc.id + `","parentId":"` + tc.parent + `","timestamp":"` + entry.Base().Timestamp + `"` + tc.tail
 		if got := string(entry.Raw()); got != want {
 			t.Fatalf("entry bytes:\n got %s\nwant %s", got, want)
 		}
@@ -411,7 +411,7 @@ func TestSessionContextEditRoundTripsPiSessionFilesByteForByte(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for i, entry := range sess.Entries() {
+	for i, entry := range sess.GetEntries() {
 		if string(entry.Raw()) != lines[i+1] {
 			t.Fatalf("entry %d changed:\n got %s\nwant %s", i, entry.Raw(), lines[i+1])
 		}
@@ -451,7 +451,7 @@ func TestAppendCompactionRecordsCurrentProjectedSystemState(t *testing.T) {
 		t.Fatal(err)
 	}
 	id := mustCompact(t, sess, "summary", "u1", 10)
-	entry, _ := sess.EntryByID(id)
+	entry, _ := sess.GetEntry(id)
 	var fields struct {
 		Timestamp     string          `json:"timestamp"`
 		SystemMessage json.RawMessage `json:"systemMessage"`

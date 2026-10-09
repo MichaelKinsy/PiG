@@ -8,7 +8,7 @@ import (
 	"github.com/MichaelKinsy/PiG/ai"
 )
 
-func registryWithOverride(t *testing.T, provider, id string, override map[string]any) *Services {
+func registryWithOverride(t *testing.T, provider, id string, override map[string]any) *AgentSessionServices {
 	return registryTestServices(t, "", map[string]any{provider: map[string]any{"modelOverrides": map[string]any{id: override}}})
 }
 func TestModelRegistryModelOverridesUpstream(t *testing.T) {

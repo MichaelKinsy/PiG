@@ -14,6 +14,7 @@ import (
 
 	"github.com/MichaelKinsy/PiG/agent"
 	"github.com/MichaelKinsy/PiG/ai"
+	"github.com/MichaelKinsy/PiG/internal/coding/pigversion"
 )
 
 func piDirectoryNode(t *testing.T, script string, args ...string) *exec.Cmd {
@@ -31,7 +32,7 @@ import {pathToFileURL} from 'node:url';
 import {join} from 'node:path';
 import {readFileSync} from 'node:fs';
 const root = process.argv[1];
-assert.equal(JSON.parse(readFileSync(join(root,'package.json'))).version, '1.0.3');
+assert.equal(JSON.parse(readFileSync(join(root,'package.json'))).version, '` + pigversion.UpstreamVersion + `');
 const load = name => import(pathToFileURL(join(root,'dist',name+'.js')).href);
 const {AuthStorage, ReadOnlyAuthStorage} = await load('core/auth-storage');
 const {SettingsManager} = await load('core/settings-manager');
@@ -238,7 +239,7 @@ console.log('done');
 		if err := trust.Set(filepath.Join(cwd, fmt.Sprintf("pig-%d", i)), new(true)); err != nil {
 			t.Fatal(err)
 		}
-		if err := models.Write(t.Context(), fmt.Sprintf("pig-%d", i), ai.ModelsStoreEntry{Models: []json.RawMessage{json.RawMessage(fmt.Sprintf(`{"id":"pig-model-%d"}`, i))}, ETag: fmt.Sprintf("pig-etag-%d", i)}); err != nil {
+		if err := models.Write(t.Context(), fmt.Sprintf("pig-%d", i), ai.ModelsStoreEntry{Models: mustStoredModels([]json.RawMessage{json.RawMessage(fmt.Sprintf(`{"id":"pig-model-%d"}`, i))}), ETag: fmt.Sprintf("pig-etag-%d", i)}); err != nil {
 			t.Fatal(err)
 		}
 	}

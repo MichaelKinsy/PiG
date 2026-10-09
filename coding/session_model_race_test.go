@@ -8,6 +8,7 @@ import (
 	"github.com/MichaelKinsy/PiG/ai"
 )
 
+// Pi: packages/coding-agent/src/core/agent-session.ts:2599 (Session.getAvailableThinkingLevels).
 func TestSessionReplaceInnerPublishesModelToConcurrentObservers(t *testing.T) {
 	model := fakeModel()
 	model.Capabilities.ContextWindow = 128000

@@ -1,5 +1,7 @@
 package experimental
 
+// pi: packages/coding-agent/src/experimental/coordinator.ts
+
 import (
 	"errors"
 	"net"

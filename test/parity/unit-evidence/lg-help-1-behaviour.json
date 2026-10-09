@@ -1,0 +1,11 @@
+[
+  {
+    "upstream": "packages/codemode/src/runtime/host.ts",
+    "package": "./codemode",
+    "tests": [
+      "TestSupportsRegisterAndUnregisterBetweenExecutions"
+    ],
+    "upstream_reference": "packages/codemode/test/sandbox.test.ts",
+    "mutation": "codemode/sandbox.go UnregisterTool: not removing the tool (value = true, want false), RegisterTool: duplicate check removed (second RegisterTool error = <nil>), UnregisterTool: returns false after removing (UnregisterTool(echo) = false); compiled tests FAIL, baseline PASS"
+  }
+]

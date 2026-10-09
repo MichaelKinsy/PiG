@@ -30,40 +30,6 @@ const GoDownloadBase = "https://go.dev/dl/"
 // about 70 MB.
 const maxArchiveBytes = 512 << 20
 
-// ConfigRoot is the PiG configuration root: $PIG_HOME, else
-// $XDG_CONFIG_HOME/pig, else ~/.pig, with a leading ~ expanded. It mirrors
-// codingagent.ConfigRoot, which imports this package.
-func ConfigRoot() (string, error) {
-	if root := os.Getenv("PIG_HOME"); root != "" {
-		return expandTilde(root)
-	}
-	if root := os.Getenv("XDG_CONFIG_HOME"); root != "" {
-		root, err := expandTilde(root)
-		if err != nil {
-			return "", err
-		}
-		return filepath.Join(root, "pig"), nil
-	}
-	home, err := os.UserHomeDir()
-	if err != nil {
-		return "", fmt.Errorf("locate home directory: %w", err)
-	}
-	return filepath.Join(home, ".pig"), nil
-}
-
-// expandTilde mirrors codingagent.ExpandTildePath.
-func expandTilde(path string) (string, error) {
-	rest, ok := strings.CutPrefix(path, "~/")
-	if path != "~" && !ok {
-		return path, nil
-	}
-	home, err := os.UserHomeDir()
-	if err != nil {
-		return "", fmt.Errorf("locate home directory: %w", err)
-	}
-	return filepath.Join(home, rest), nil
-}
-
 // ManagedGoRoot is the GOROOT of the PiG-managed Go toolchain.
 func ManagedGoRoot(configRoot string) string {
 	return filepath.Join(configRoot, "toolchains", "go")

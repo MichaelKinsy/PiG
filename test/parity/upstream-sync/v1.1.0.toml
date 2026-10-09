@@ -1,0 +1,653 @@
+from = "1.0.4"
+to = "1.1.0"
+
+[[files]]
+path = "packages/agent/src/agent-loop.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:agent/tool_duration_ms_test.go#TestAgentLoop_RecordsHowLongExecuteTookExcludingHooks", "test:agent/tool_duration_ms_test.go#TestAgentLoop_ThrownToolErrorRecordsDuration"]
+rationale = "The 1.1.0 change is durationMs: execute() is timed with a monotonic clock and rounded, the value rides the finalized outcome onto tool_execution_end and the tool-result message, and it is absent when the tool did not run. agent/tool_execution.go durationMs() and agent/run_tool_call.go carry it. Mutants: treating a tool that did not run as executed, and dropping DurationMs from the end event, fail both tests. The rounding mode (Math.round) is not pinned by a test."
+
+[[files]]
+path = "packages/agent/src/proxy.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:agent/proxy_test.go#TestStreamProxyReconstructsPartialsAndPreservesRequestAndTerminalMetadata"]
+rationale = "The 1.1.0 change replaces the private ProxyMessageEventStream with createAssistantMessageEventStream. agent/proxy.go already returns ai.NewAssistantMessageEventStream; the swap has no observable difference and the proxy stream cases pass unchanged. No mutant: nothing behavioral changed."
+
+[[files]]
+path = "packages/agent/src/types.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:agent/tool_duration_ms_test.go#TestAssistantMessageDurationMsRoundTrips", "test:agent/tool_duration_ms_test.go#TestAgentLoop_RecordsHowLongExecuteTookExcludingHooks"]
+rationale = "The 1.1.0 change adds optional durationMs to ToolResultMessage and to the tool_execution_end event. agent/agent.go carries both as *int64 with omitempty; the tool-duration test reads them from the event and the stored message."
+
+[[files]]
+path = "packages/ai/src/api/bedrock-converse-stream.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:ai/bedrock_openai_reasoning_upstream_test.go#TestBedrockClaudeHaiku5UsesAdaptiveThinkingWithNativeXhighAndBlockBinding", "test:ai/bedrock_openai_reasoning_upstream_test.go#TestSupportsBedrockPromptCachingForClaudeHaiku5", "test:ai/bedrock_openai_reasoning_upstream_test.go#TestBedrockSendsReasoningEffortForOpenAIGPTModels", "test:ai/bedrock_openai_reasoning_upstream_test.go#TestBedrockSendsFlatReasoningEffortForGPTOSSClampedToHigh"]
+rationale = "The 1.1.0 change adds haiku-5 to the Claude 5 families (prompt caching, adaptive thinking, native xhigh, block binding) and sends reasoning.effort for GPT models and a flat reasoning_effort for gpt-oss on Bedrock. ai/bedrock.go has all four haiku-5 sites and bedrockOpenAIReasoningFields. Renaming each haiku-5 match fails TestSupportsBedrockPromptCachingForClaudeHaiku5 or TestBedrockClaudeHaiku5UsesAdaptiveThinkingWithNativeXhighAndBlockBinding, and letting gpt-oss send xhigh fails TestBedrockSendsFlatReasoningEffortForGPTOSSClampedToHigh."
+
+[[files]]
+path = "packages/ai/src/api/classifier-shared.ts"
+change = "added"
+disposition = "ported"
+evidence = ["test:ai/system_one_shared_test.go#TestSystemOneSharedRequestHooks", "test:ai/system_one_shared_test.go#TestSystemOneSharedFailureMessages", "test:ai/system_one_shared_test.go#TestSystemOneSharedUsage", "test:ai/classifier_test.go#TestClassifierRetriesOnlyProviderErrors", "test:ai/openai_decisions_upstream_test.go#TestRetryClassifierRequestNoRetryStatuses"]
+rationale = "The 1.1.0 file is the request, retry, usage and isRecord code that System One and Decisions share. ai/classifier_http.go has PostClassifierRequest, ParseClassifierUsage and IsRecord. Mutants fail the cited tests: a missing API key check, dropping the onResponse call or the onPayload replacement (TestSystemOneSharedRequestHooks), changing the invalid-JSON message or the HTTP error label (TestSystemOneSharedFailureMessages; the last three survived every earlier test, so these tests are new), usage totals, cost and negative counts (TestSystemOneSharedUsage), the default retry budget (TestClassifierRetriesOnlyProviderErrors) and noRetryStatuses (TestRetryClassifierRequestNoRetryStatuses)."
+
+[[files]]
+path = "packages/ai/src/api/cloudflare-workers-ai-system-one.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:ai/system_one_shared_test.go#TestCloudflareSystemOneEnvelopeErrors"]
+rationale = "The only change moves the isRecord import to the new classifier-shared.ts. Go has one IsRecord in ai/classifier_http.go used by system_one.go. There is no observable difference, so no mutant applies."
+
+[[files]]
+path = "packages/ai/src/api/lazy.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:ai/lazy_stream_timestamp_test.go#TestLazyStreamSetupErrorTimestampIsTheRequestStart", "test:ai/lazy_api_upstream_test.go#TestLazyAPIDeferredCapabilitiesUpstream"]
+rationale = "The 1.1.0 change stamps a setup-error message with the time the request started instead of the time the error was built, so the event stream times it as a response that began at the request. ai/provider_streams.go forwardLazySetup uses the outer stream startedAt. Moving the stamp by 5 ms fails both tests."
+
+[[files]]
+path = "packages/ai/src/api/llama-cpp-classify.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:ai/llama_cpp_classify_upstream_test.go#TestLlamaCppClassifyUpstream"]
+rationale = "The 1.1.0 change rejects image input with llama.cpp classification does not support image input. ai/llama_cpp_classify.go does the same. Removing the check fails TestLlamaCppClassifyUpstream."
+
+[[files]]
+path = "packages/ai/src/api/mistral-conversations.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:ai/mistral_test.go#TestMapMistralStopReason", "test:ai/mistral_retry_finish_reason_test.go#TestMistralFinishReasonErrorIsRetryable"]
+rationale = "The 1.1.0 change makes a Mistral finish reason of error read Provider stopped with: error (server error), so the retry patterns match it. ai/mistral.go returns the same text. Dropping the suffix fails TestMapMistralStopReason, TestMistralRawStopReasonsUpstream, TestMistralFinishReasonErrorIsRetryable and TestMistralDirectMatchesPiTickOrder."
+
+[[files]]
+path = "packages/ai/src/api/openai-codex-responses.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:ai/user_agent_test.go#TestCodexModelAndCallerHeadersOverrideOriginatorAndUserAgent"]
+rationale = "The 1.1.0 change (#10429) sets the originator and User-Agent defaults first so model and caller headers override them. ai/openai_codex_responses.go builds the defaults then lets cfg.ExtraHeaders replace them case-insensitively. Ignoring the model headers fails TestCodexModelAndCallerHeadersOverrideOriginatorAndUserAgent. The default originator is PiG under D26."
+
+[[files]]
+path = "packages/ai/src/api/openai-decisions.lazy.ts"
+change = "added"
+disposition = "ported"
+evidence = ["test:ai/lazy_api_upstream_test.go#TestLazyAPIDeferredCapabilitiesUpstream", "test:ai/openai_decisions_upstream_test.go#TestOpenAIDecisionsUpstream"]
+rationale = "New in 1.1.0: the lazy wrapper of the Decisions classifier. ai.OpenAIDecisionsAPI wraps ClassifyOpenAIDecisions behind the same lazy-load contract as the other lazy APIs, whose setup-error timestamp is pinned by TestLazyAPIDeferredCapabilitiesUpstream. No mutant was run on the wrapper itself."
+
+[[files]]
+path = "packages/ai/src/api/openai-decisions.ts"
+change = "added"
+disposition = "ported"
+evidence = ["test:ai/openai_decisions_upstream_test.go#TestOpenAIDecisionsUpstream", "test:ai/openai_decisions_upstream_test.go#TestRetryClassifierRequestNoRetryStatuses"]
+rationale = "New in 1.1.0: the OpenAI Decisions classifier. ai/openai_decisions.go ports it, posting through PostClassifierRequest with the gateway-timeout statuses in noRetryStatuses. Dropping noRetryStatuses fails TestOpenAIDecisionsUpstream and TestRetryClassifierRequestNoRetryStatuses. The request mapping (questions to Decisions types, answers back by name) was mutation-checked only through the shared CalculateCost mutant, which fails TestOpenAIDecisionsUpstream; I ran no other mutant on this file."
+
+[[files]]
+path = "packages/ai/src/api/system-one-shared.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:ai/system_one_shared_test.go#TestSystemOneSharedAnswerValidation", "test:ai/system_one_shared_test.go#TestSystemOneSharedUsage", "test:ai/classifier_images_oracle_test.go#TestClassifierImagesMatchPi"]
+rationale = "The 1.1.0 change moves the request, retry and usage code into classifier-shared.ts and makes System One reject image input before any request. ai/system_one.go posts through PostClassifierRequest, parses usage through ParseClassifierUsage and rejects images. The usage mutants, the image check and the answer validation fail the cited tests; the shared request mutants are listed on the classifier-shared row."
+
+[[files]]
+path = "packages/ai/src/api/typesafe-system-one.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:ai/system_one_shared_test.go#TestSystemOneSharedAnswerValidation"]
+rationale = "The only change moves the isRecord import to the new classifier-shared.ts. Go has one IsRecord in ai/classifier_http.go used by system_one.go. There is no observable difference, so no mutant applies."
+
+[[files]]
+path = "packages/ai/src/auth/oauth/anthropic.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:ai/anthropic_oauth_lifecycle_test.go#TestAnthropicOAuthFallsBackToAFreeCallbackPortWhenThePreferredPortIsTaken"]
+rationale = "The 1.1.0 change (#10571) falls back to a free loopback port when the preferred callback port cannot be bound and uses the bound redirect URI for the authorization URL, the manual-input placeholder and the code exchange. ai/oauth_anthropic.go does the same. Sending the default redirect URI in the exchange fails the test. Dropping the fallback makes the test hang until its timeout, which is a failure but not an assertion."
+
+[[files]]
+path = "packages/ai/src/auth/oauth/openai-chatgpt.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:ai/login_agent_name_oracle_test.go#TestLoginAgentNameMatchesPi"]
+rationale = "The 1.1.0 change sends options.agentName as agent_name_hint, falling back to the default name. ai/oauth_openai_chatgpt.go does the same with the default name under D26. Ignoring the option fails TestLoginAgentNameMatchesPi."
+
+[[files]]
+path = "packages/ai/src/auth/oauth/openai-codex.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:ai/login_agent_name_oracle_test.go#TestLoginAgentNameMatchesPi"]
+rationale = "The 1.1.0 change passes options.agentName to createAuthorizationFlow so it becomes the Codex originator. ai/oauth_openai_codex.go does the same with PiG default originator under D26. Ignoring the option fails TestLoginAgentNameMatchesPi."
+
+[[files]]
+path = "packages/ai/src/auth/types.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:ai/login_agent_name_oracle_test.go#TestLoginAgentNameMatchesPi"]
+rationale = "The 1.1.0 change adds LoginOptions.agentName, the name an app introduces itself with during login. ai carries it as callbacks.AgentName. Ignoring it in the ChatGPT or Codex login fails TestLoginAgentNameMatchesPi, which probes both against Pi."
+
+[[files]]
+path = "packages/ai/src/models.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:ai/classifier_images_oracle_test.go#TestModelsClassifyChecksImageInputBeforeTheProvider", "test:ai/classifier_images_oracle_test.go#TestClassifierImagesMatchPi"]
+rationale = "The 1.1.0 change calls assertClassifierInputSupported in classify before the provider is called. ai/classifier.go does the same through ai.AssertClassifierInputSupported. Disabling the image check fails both tests."
+
+[[files]]
+path = "packages/ai/src/providers/faux.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:ai/faux_provider_upstream_test.go#TestFauxProviderCountsCachedCharactersUpToTheFirstDifference", "test:ai/faux_provider_upstream_test.go#TestFauxProviderRoundsCachedCharactersUp", "test:ai/faux_duration_test.go#TestFauxScriptedDurationMsReachesEveryMessage"]
+rationale = "The 1.1.0 change measures the cached prompt prefix per message instead of on one joined string; the counts are the same characters, rounded up to tokens. ai/faux.go compares the joined text. The upstream test did not pin the rounding, so TestFauxProviderRoundsCachedCharactersUp does: flooring the cache read, or shortening the prefix by one, fails it."
+
+[[files]]
+path = "packages/ai/src/providers/openai.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:ai/classifier_models_upstream_test.go#TestClassifierModelsUpstream"]
+rationale = "The 1.1.0 change lists the OpenAI classifier models and the openai-decisions classifier, and hides classifier models from ChatGPT OAuth credentials because the Decisions API rejects them. ai/builtin_providers.go has the classifier map and the OAuth filter. Keeping the classifiers for OAuth fails the OpenAI Decisions availability case of TestClassifierModelsUpstream."
+
+[[files]]
+path = "packages/ai/src/providers/radius.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:ai/radius_test.go#TestRadiusProviderOverlaysRefreshedModels", "test:ai/radius_test.go#TestRadiusProviderRestoresStoredCatalogOffline", "test:ai/radius_test.go#TestRadiusProviderExposesNoModelsWhenTheOrganizationDisabledAll"]
+rationale = "The 1.1.0 change makes a known gateway catalog replace the shipped baseline instead of overlaying it, because organization owners can disable models; an empty refreshed catalog exposes no models. Go still overlaid by id, so a disabled model reappeared; ai/radius.go GetModels now returns the dynamic catalog when one is known and the baseline before that. The three tests were red before the fix, and treating an empty catalog as unknown fails the no-models test."
+
+[[files]]
+path = "packages/ai/src/types.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:ai/tool_result_duration_test.go#TestAssistantMessageDurationMsWire", "test:ai/tool_result_duration_test.go#TestToolResultMessageDurationMsWire", "test:ai/classifier_images_oracle_test.go#TestClassifierImagesMatchPi", "test:ai/classifier_models_upstream_test.go#TestClassifierModelsUpstream"]
+rationale = "The 1.1.0 change adds the openai-decisions classifier API, AssistantMessage.durationMs, ToolResultMessage.durationMs and the classifier context images. ai carries all four. Renaming the tool-result wire key fails TestToolResultMessageDurationMsWire, and renaming the classifier API fails TestClassifierModelsUpstream and TestClassifierImagesMatchPi. Renaming the assistant wire key survived every existing test, so TestAssistantMessageDurationMsWire is new and fails that mutant."
+
+[[files]]
+path = "packages/ai/src/utils/estimate.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:ai/estimate_test.go#TestEstimateContextTokensReserves35CharactersPerTokenForNewText", "test:coding/openai_completions_empty_tools_upstream_test.go"]
+rationale = "ai/estimate.go charsPerToken is 3.5, so the input estimate that output limits subtract is ceil(chars / 3.5). The compaction estimate in agent/context_tokens.go stays at 4 as in compaction.ts."
+
+[[files]]
+path = "packages/ai/src/utils/event-stream.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:ai/event_stream_duration_upstream_test.go#TestAssistantMessageEventStreamTimesTheFinalMessage", "test:ai/event_stream_timing_test.go#TestAssistantMessageEventStreamTimingUpstream", "test:ai/event_stream_timing_cases_test.go#TestFauxProviderResponsesAreTimedByTheirTimestamp"]
+rationale = "The 1.1.0 change makes AssistantMessageEventStream time the final message: durationMs from the stream creation on a monotonic clock, unless the message has one, the stream is complete, or its timestamp predates the stream. ai/event_stream.go timeLocked does this. Dropping the timestamp check fails all three tests."
+
+[[files]]
+path = "packages/ai/src/utils/model-operations.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:ai/classifier_images_oracle_test.go#TestModelsClassifyChecksImageInputBeforeTheProvider", "test:ai/classifier_images_oracle_test.go#TestClassifierImagesMatchPi"]
+rationale = "The 1.1.0 change adds assertClassifierInputSupported, which rejects classifier images for a model whose catalog entry does not accept image input. ai.AssertClassifierInputSupported does the same. Disabling the image check fails both tests."
+
+[[files]]
+path = "packages/ai/src/utils/provider-retry.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:ai/provider_retry_request_upstream_test.go#TestRetryProviderRequestNoRetryStatuses", "test:ai/openai_decisions_upstream_test.go#TestRetryClassifierRequestNoRetryStatuses"]
+rationale = "The 1.1.0 change adds noRetryStatuses: a listed HTTP status fails at once although the default policy would retry it. ai/provider_retry.go NoRetryStatuses does the same. Disabling the check fails both tests."
+
+[[files]]
+path = "packages/ai/src/utils/retry.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:ai/retry_patterns_fold_test.go#TestServerBusyProviderErrorsAreRetryable", "test:ai/retry_patterns_fold_test.go#TestProviderRetryPatternsMatchLikeJavaScript"]
+rationale = "The 1.1.0 change (#10543) adds server_busy and servers are currently busy to the retryable provider-error patterns. ai/assistant_retry.go carries both. Removing the second pattern fails both tests."
+
+[[files]]
+path = "packages/codemode/src/runtime/prelude-source.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:codemode/sandbox_test.go#TestCollectsTextImageAndConsoleOutputInOrder"]
+rationale = "console.* reports its text through the \"console\" output kind instead of \"text\", and the prelude comment documents it. codemode/assets/prelude.js emits output(\"console\", ...) and the sandbox maps it to a text item with Console set; the output-order test asserts console.log and console.error items carry it."
+
+[[files]]
+path = "packages/codemode/src/runtime/worker.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:codemode/sandbox_test.go#TestCollectsTextImageAndConsoleOutputInOrder"]
+rationale = "The worker turns an output of kind \"console\" into `{ type: \"text\", text, console: true }`. codemode/execution.go sets Item.Console for the console kind; there is no worker thread in Go, the same translation sits in the QuickJS host."
+
+[[files]]
+path = "packages/codemode/src/types.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:codemode/sandbox_test.go#TestCollectsTextImageAndConsoleOutputInOrder", "test:codemode/output_item_type_test.go#TestOutputItemTypesAreTheUpstreamLiterals"]
+rationale = "CodemodeOutputItem gains `console?: true` on text items. codemode/types.go OutputItem has Console (json `console,omitempty`); the tests assert it on console output and the item type literals."
+
+[[files]]
+path = "packages/coding-agent/src/cli/args.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:coding/cli/args_upstream_test.go#TestArgsUpstream", "test:coding/cli/tools_modifiers_flag_test.go#TestToolsFlagModifiersChangeTheDefaultSelection"]
+rationale = "parseFlags validates a --tools list with codingagent.GetToolListError and reports a mixed or pattern list as an error diagnostic; help_upstream.txt carries the new help line and example."
+
+[[files]]
+path = "packages/coding-agent/src/core/agent-session.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:coding/session_agent_settled_aborted_test.go#TestAgentSettledReportsWhetherTheRunWasAborted", "test:coding/cli/rpc_agent_settled_aborted_test.go#TestRPCToolExecutionEndCarriesDurationMs", "test:coding/session_tool_modifiers_port_test.go#TestToolModifierOptionsSurviveReloadPort", "test:coding/session_tool_modifiers_port_test.go#TestInitialActiveToolNamesOutrankNoToolsBuiltin"]
+rationale = "Three changes: agent_settled carries aborted (the run-abort flag) to extensions and listeners, the relayed tool_execution_end carries durationMs when set, and the session keeps the `--tools` +name/-name entries (defaultToolModifiers) so a reload applies them to the reloaded defaultTools setting and a removed tool stays removed (sdk.ts usesDefaultTools: not under noTools). coding.Session does each; the tests cover the settled flag, the end-event duration and reload keeping -name removals and the noTools builtin selection."
+
+[[files]]
+path = "packages/coding-agent/src/core/bash-executor.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:coding/session_bash_persistence_upstream_test.go#TestUpstreamBashEscapeSequencesSplitAcrossChunks", "test:internal/codingagent/tools/sanitize_split_ansi_test.go#TestExecuteBashWithOperationsFlushesPendingANSIAtExit"]
+rationale = "executeBashWithOperations holds an unfinished escape sequence at the end of a chunk until the next chunk completes it, flushes it at exit, and skips chunks that sanitize to nothing (internal/codingagent/tools/bash_executor.go); ! and RPC bash share it through Session.ExecuteBash. Abort still returns the partial output."
+
+[[files]]
+path = "packages/coding-agent/src/core/export-html/tool-renderer.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:internal/codingagent/export/tool_render_context_test.go#TestRenderCustomToolsGivesRenderersTheExportContext"]
+rationale = "The 1.1.0 change adds durationMs: undefined and outputPad: 1 to the render context an export gives a custom renderer. internal/codingagent/export/tool_renderer.go sets OutputPad 1 and leaves DurationMs nil. The new test fails when OutputPad is 0 or when DurationMs is set."
+
+[[files]]
+path = "packages/coding-agent/src/core/extensions/types.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:coding/session_agent_settled_aborted_test.go#TestAgentSettledReportsWhetherTheRunWasAborted", "test:internal/codingagent/event_bridge_test.go#TestEmitToolExecutionEndForwardsDurationMs", "test:internal/codingagent/interactive_resume_tools_test.go#TestInteractiveMode_ResumeShellToolsShowRecordedDuration", "test:internal/codingagent/output_pad_test.go#TestOutputPad"]
+rationale = "The 1.1.0 change adds agent_settled.aborted, tool_execution_end.durationMs and the render context durationMs and outputPad. coding/session_run_state.go, internal/codingagent/event_bridge.go and internal/codingagent/tool_definition_renderers.go carry each. Reporting aborted as false fails TestAgentSettledReportsWhetherTheRunWasAborted and TestAgentSettledReportsAbortedToExtensions, dropping the event durationMs fails TestEmitToolExecutionEndForwardsDurationMs, dropping the render context durationMs fails TestInteractiveMode_ResumeShellToolsShowRecordedDuration, and hard-coding outputPad fails TestOutputPad."
+
+[[files]]
+path = "packages/coding-agent/src/core/model-runtime.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:coding/model_runtime_classifiers_upstream_test.go#TestModelRuntimeClassifiersUpstream"]
+rationale = "ModelRuntime.classify runs assertClassifierInputSupported before auth, so a model without image input never reaches the provider. coding/model_runtime_classify.go calls ai.AssertClassifierInputSupported at the same point; the classifiers test rejects classifier images for such a model and sends them to GPT-6 Luna."
+
+[[files]]
+path = "packages/coding-agent/src/core/nested-tool-calls.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:coding/nested_tool_calls_upstream_test.go#TestNestedToolCallRunnerAssignsIDsBelowTheCallerEmitsEventsWithTheParentIDAndRecordsTheCalls", "test:coding/nested_tool_calls_upstream_test.go#TestNestedToolCallRunnerRecordsCallsOfNestedToolsOnTheModelIssuedCall"]
+rationale = "A nested call outcome carries its durationMs onto the recorded call and the nested tool_execution_end event (#10549). The runner tests assert upstream's `durationMs: expect.any(Number)` on every recorded call."
+
+[[files]]
+path = "packages/coding-agent/src/core/sdk.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:coding/session_tool_modifiers_port_test.go#TestToolModifierOptionsChangeTheDefaultSelectionPort", "test:coding/session_tool_modifiers_port_test.go#TestInvalidToolModifierOptionsPort"]
+rationale = "SessionOptions.DefaultToolModifiers (createSessionToolRegistry) applies a +name/-name list to the default selection, to no tools under NoTools, and rejects a mixed or pattern list with Invalid tools option."
+
+[[files]]
+path = "packages/coding-agent/src/core/settings-manager.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:internal/codingagent/tool_modifiers_test.go#TestGetToolListErrorMatchesUpstream", "test:internal/codingagent/tool_modifiers_test.go#TestApplyToolModifiersMatchesUpstream"]
+rationale = "settings-manager.ts exports isToolModifier and the new getToolListError and applyToolModifiers (resolveDefaultTools now shares applyToolModifiers), and the outputPad comment changes (#10481, #10557). internal/codingagent/settings_default_tools.go has IsToolModifier, GetToolListError and ApplyToolModifiers with the same results; the tests port their cases (mixed lists, patterns, ordering, duplicate adds, removing absent tools)."
+
+[[files]]
+path = "packages/coding-agent/src/core/tools/renderers/bash.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:internal/codingagent/interactive_resume_tools_test.go#TestInteractiveMode_ResumeShellToolsShowRecordedDuration", "test:internal/codingagent/tool_render_shell_test.go#TestShellBodyRendererShowsTookForARecordedZeroDuration"]
+rationale = "A final shell result shows its recorded durationMs as the Took footer, the renderer clock only for live progress and for results stored without one (#10549). tool_builtin_renderers.go and tool_render_shell.go read ToolRenderContext.DurationMs first; the resume test renders stored results with a duration, and the zero-duration test pins that 0 still shows Took."
+
+[[files]]
+path = "packages/coding-agent/src/core/tools/renderers/edit.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:internal/codingagent/output_pad_edit_upstream_test.go#TestOutputPadSelfRenderedEditResult", "test:internal/codingagent/output_pad_test.go#TestOutputPad"]
+rationale = "The 1.1.0 change passes context.outputPad to the edit call box and uses it for the result text. editRenderCall and editRenderResult in internal/codingagent/tool_builtin_renderers.go do the same. Hard-coding padding 1 on the call box or the result text fails TestOutputPadSelfRenderedEditResult and TestOutputPad."
+
+[[files]]
+path = "packages/coding-agent/src/extensions/codemode/execute.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:coding/extension/builtin/codemode/format_output_test.go#TestFormatOutputSeparatesTextItemsAndGroupsConsoleLines", "test:coding/extension/builtin/codemode/format_output_test.go#TestJoinAdjacentTextStartsEachPartOnItsOwnLine", "test:coding/extension/builtin/codemode/execute_join_test.go#TestExecuteJoinsTheTextAndTheSavedImageLabel", "test:coding/extension/builtin/codemode/execute_join_test.go#TestExecuteJoinsTheScriptTextAndItsErrorIntoOneItem"]
+rationale = "The 1.1.0 change validates context.images, numbers text items with a ==> text N/M <== line when there is more than one, groups console lines into one console_output block, and joins adjacent text items before truncation and again after images are saved. coding/extension/builtin/codemode has each. Changing the header or the item count fails TestFormatOutputSeparatesTextItemsAndGroupsConsoleLines, changing the join separator fails TestJoinAdjacentTextStartsEachPartOnItsOwnLine, and dropping the join after saveImages fails the new TestExecuteJoinsTheTextAndTheSavedImageLabel (it survived every earlier test). The join before truncation is not observable: truncateOutput returns under-budget items unchanged and the later join merges them, so its removal survives and the row claims no mutant for it. Skipping the context.images validation fails TestModelsGlobalArgumentErrorsMatchPi."
+
+[[files]]
+path = "packages/coding-agent/src/extensions/codemode/tool.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:coding/extension/builtin/codemode/description_upstream_test.go#TestCodemodeDescriptionListsEverythingWithoutABudget", "test:coding/extension/builtin/codemode/description_namespace_test.go"]
+rationale = "The tool description gains the multi-item output paragraph (`==> text N/M <==`, <console_output>) and names the lookup helpers as `await searchTools(...)`, `await describeTool(name)` and `await describeNamespace(name)` (#10555). description_text.go carries both lines byte for byte and the description tests assert them."
+
+[[files]]
+path = "packages/coding-agent/src/extensions/llama/provider.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:internal/codingagent/llama/provider_decision_upstream_test.go#TestProviderExposesDecisionModelsReportedByTheCatalogAsNativeSystemOneClassifiers", "test:internal/codingagent/llama/provider_decision_upstream_test.go#TestProviderListsDecisionModelsThatAlsoOutputTextForChat"]
+rationale = "The 1.1.0 change treats a llama.cpp model whose output_modalities include decisions as a native System One classifier (typesafe-system-one at the inference URL), lists decision-only models for classification but not chat, skips chat-template queries for them, and restores either classifier API from the store. internal/codingagent/llama/provider.go has each piece. Dropping the chat filter, the System One routing in classify, the inference base URL, the also-outputs-text rule or the stored typesafe-system-one restore fails the two cited tests (and TestModelsProviderListsDecisionModelsAsSystemOneClassifiersOnly for the chat filter)."
+
+[[files]]
+path = "packages/coding-agent/src/extensions/mcp/cli.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:coding/mcp_oauth_session_upstream_test.go#TestAgentSessionMCPOAuthGivesUpOnPigMcpLoginAfterTimeoutAlsoWhileTheAuthorizationServerHangs"]
+rationale = "`pig mcp login --timeout` limits the whole sign-in, including requests to the authorization server (#10565): coding/mcpext/cli.go runs SignInMcpServer under context.WithTimeout of the command context, and the redirect prompt (waitForRedirectUrl) returns when that context ends instead of running its own timer. The timeout does not cover the reconnect after the sign-in."
+
+[[files]]
+path = "packages/coding-agent/src/extensions/mcp/index.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:coding/mcpext/responsive_test.go#TestMcpCommandOpensTheManagerBeforeTheStartupConnectionsFinish", "test:coding/mcpext/responsive_test.go#TestMcpManagerEnablesAServerInTheBackground", "test:coding/mcpext/responsive_test.go#TestMcpDirectToolCallWaitsForItsServersReconnect", "test:coding/mcpext/responsive_test.go#TestMcpPreparedToolCallResolvesTheConnectionWhenItExecutes", "test:coding/mcpext/manager_test.go#TestMcpManagerReconnectRunsInTheBackgroundWithoutAStatusScreen", "test:coding/mcp_oauth_session_upstream_test.go#TestAgentSessionMCPOAuthCancelsASignInWaitingOnTheAuthorizationServerWhenTheSessionShutsDown", "test:coding/mcp_oauth_session_upstream_test.go#TestAgentSessionMCPOAuthClosesTheSessionWithoutRefreshingAnExpiringToken"]
+rationale = "The manager stays responsive (#10562): `/mcp` opens before the startup connections finish, reconnect/enable/disable run in the background behind an attempt token, reconnects and replacements are serialized, direct tool calls wait for their own server, and a prepared call resolves the current connection when it executes. One session context replaces the generation counter (#10565): sign-ins stop on the cancel key and on session shutdown and are tracked so shutdown waits for them (coding/mcpext/extension.go, background.go, manager.go, command.go). Upstream added no test for #10562; the Go tests are PiG regression tests for its changelog and commit message."
+
+[[files]]
+path = "packages/coding-agent/src/extensions/mcp/oauth.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:coding/mcpext/oauth_cancel_test.go#TestSignInMcpServerReportsAnAbortedAuthorizationServerRequestAsACancellation", "test:coding/mcpext/oauth_cancel_test.go#TestSignInMcpServerStopsWhileWaitingForTheBrowser", "test:coding/mcpext/oauth_request_timeout_internal_test.go#TestSignInMcpServerGivesEveryAuthorizationServerRequestTheOAuthRequestTimeout", "test:coding/mcpext/oauth_request_timeout_internal_test.go#TestTimedFetchGivesEveryRequestTheOAuthRequestTimeout", "test:coding/mcp_oauth_session_upstream_test.go#TestAgentSessionMCPOAuthCancelsASignInWaitingOnTheAuthorizationServerWhenTheSessionShutsDown"]
+rationale = "signInMcpServer takes a signal that stops the sign-in at any step with McpSignInCancelledError, and every request to the authorization server times out after 15 s (timedFetch, OAUTH_REQUEST_TIMEOUT_MS): coding/mcpext/oauth.go maps the signal to the context of SignInMcpServer and timeoutFetch to timedFetch. The refresh the auth provider runs stays uncancellable."
+
+[[files]]
+path = "packages/coding-agent/src/extensions/mcp/ui.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:coding/mcpext/manager_test.go#TestMcpManagerStatusScreenCancelsTheRunningOperationWithTheCancelKey", "test:coding/mcpext/manager_test.go#TestMcpManagerStatusScreenIgnoresTheCancelKeyForOperationsThatCannotBeCancelled"]
+rationale = "McpUi.status takes onCancel and the status screen shows the cancel hint and calls it on the cancel key (coding/mcpext/manager.go Status); ported from test/mcp-manager-view.test.ts."
+
+[[files]]
+path = "packages/coding-agent/src/modes/interactive/components/bash-execution.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:tui/bash_execution_output_pad_test.go#TestBashExecutionSetOutputPadMatchesPi", "test:tui/bash_execution_output_pad_test.go#TestBashExecutionConstructorTakesTheUIAndTheOutputPad", "test:tui/output_pad_test.go#TestBashExecutionExcludedHeaderKeepsDimColor", "test:tui/output_pad_rows_upstream_test.go#TestOutputPadRendersAtZeroAndOne"]
+rationale = "The 1.1.0 change adds the outputPad constructor argument and setOutputPad, applies it to the header, output, status and preview rows, and colors the header with the dim key for a command excluded from context. tui/bash_execution.go does all of it. Hard-coding padding 1 on the header, output, status or preview row fails TestBashExecutionSetOutputPadMatchesPi, and an excluded command with a bashMode header fails TestBashExecutionExcludedHeaderKeepsDimColor."
+
+[[files]]
+path = "packages/coding-agent/src/modes/interactive/components/branch-summary-message.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:tui/summary_output_pad_test.go#TestMessageBoxesFollowOutputPad", "test:internal/codingagent/output_pad_blocks_test.go#TestResumedBranchSummaryAndSkillBlockUseOutputPadProduction"]
+rationale = "The box takes (message, markdownTheme, outputPad = 1) and setOutputPad changes its horizontal padding. tui.NewBranchSummaryMessageComponent takes the same positional arguments and has SetOutputPad; the tests change the pad on the component and resume a session into the interactive transcript at pads 0 and 1."
+
+[[files]]
+path = "packages/coding-agent/src/modes/interactive/components/compaction-summary-message.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:tui/compaction_summary_test.go#TestCompactionSummaryOutputPadIsTheHorizontalPadding", "test:tui/output_pad_upstream_test.go#TestSummaryMessageComponentsSetOutputPadMatchesPi", "test:tui/output_pad_rows_upstream_test.go#TestOutputPadRendersAtZeroAndOne"]
+rationale = "The 1.1.0 change gives the component an outputPad constructor argument and setOutputPad, which set its horizontal padding. tui/compaction_summary.go has both. Ignoring the constructor argument fails TestCompactionSummaryOutputPadIsTheHorizontalPadding and TestOutputPadRendersAtZeroAndOne, and a setter that keeps padding 1 fails TestSummaryMessageComponentsSetOutputPadMatchesPi."
+
+[[files]]
+path = "packages/coding-agent/src/modes/interactive/components/custom-entry.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:internal/codingagent/output_pad_blocks_test.go#TestCustomEntryFailureBoxUsesOutputPadProduction", "test:internal/codingagent/custom_entry_component_test.go#TestCustomEntryComponentRerendersOnExpandAndReportsContent"]
+rationale = "The component takes (entry, renderer, outputPad = 1), setOutputPad rebuilds, and the renderer-failed box uses the pad for its horizontal padding. NewCustomEntryComponent and SetOutputPad do the same; the production test draws a failing renderer at output pads 0 and 1 through the interactive chat."
+
+[[files]]
+path = "packages/coding-agent/src/modes/interactive/components/custom-message.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:tui/custom_message_component_test.go#TestCustomMessageComponentRebuildsWithOptions", "test:tui/summary_output_pad_test.go#TestMessageBoxesFollowOutputPad"]
+rationale = "rebuild() sets the box padding from outputPad on every rebuild, so setOutputPad takes effect. tui.CustomMessageComponent.SetOutputPad rebuilds the same way; the rebuild test changes the pad between 1 and 0 and the box test checks the label column."
+
+[[files]]
+path = "packages/coding-agent/src/modes/interactive/components/settings-selector.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:internal/codingagent/settings_selector_oracle_test.go#TestSettingsSelectorMatchesPi"]
+rationale = "Only the Output padding row's description changes, to \"Horizontal padding for messages, tool output, and command output\". settings_selector.go carries the new text, and the selector oracle compares every row's rendered frames with the pinned module."
+
+[[files]]
+path = "packages/coding-agent/src/modes/interactive/components/skill-invocation-message.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:tui/summary_output_pad_test.go#TestMessageBoxesFollowOutputPad", "test:internal/codingagent/output_pad_blocks_test.go#TestResumedBranchSummaryAndSkillBlockUseOutputPadProduction"]
+rationale = "The box takes (skillBlock, markdownTheme, outputPad = 1) and setOutputPad changes its horizontal padding. tui.NewSkillInvocationMessageComponent takes the same positional arguments and has SetOutputPad; the tests change the pad on the component and resume a session at pads 0 and 1."
+
+[[files]]
+path = "packages/coding-agent/src/modes/interactive/components/tool-execution.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:tui/tool_execution_output_pad_test.go#TestToolExecutionSetOutputPadMatchesPi", "test:tui/tool_execution_output_pad_test.go#TestToolExecutionDefinitionBoxFollowsOutputPad", "test:internal/codingagent/summary_output_pad_test.go#TestToolExecutionOptionsCarryOutputPadProduction", "test:internal/codingagent/output_pad_blocks_test.go#TestToolCardUsesOutputPadThroughTheEventPath", "test:internal/codingagent/tool_execution_component_upstream_test.go"]
+rationale = "The card takes an outputPad option (default 1), setOutputPad rebuilds, the render context carries outputPad and the final result's durationMs (undefined while partial), and the self-rendered box and content text take the pad (#10549, #10557). tui.ToolExecutionComponent has the OutputPad option, SetOutputPad and the DurationMs of a result; the tests assert the indent at pads 0 and 1, the options the interactive mode passes, and the recorded duration reaching the Took footer."
+
+[[files]]
+path = "packages/coding-agent/src/modes/interactive/interactive-mode.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:internal/codingagent/program_status_reporter_test.go#TestInteractiveModeForwardsAgentEventsToTheProgramStatusReporter", "test:internal/codingagent/program_status_reporter_test.go#TestExtensionDialogsReportBlockedWhileTheyAreOpen", "test:internal/codingagent/program_status_reporter_test.go#TestSlashCommandEditorReportsBlockedWhileItIsOpen", "test:internal/codingagent/program_status_reporter_test.go#TestAbortedExtensionDialogClearsItsBlockedStatus", "test:internal/codingagent/program_status_reporter_test.go#TestLoginReportsBlockedOnAuthUntilItEnds", "test:internal/codingagent/rebind_ui_upstream_test.go#TestRebindResetsProgramStatus", "test:internal/codingagent/output_pad_blocks_test.go#TestToolCardUsesOutputPadThroughTheEventPath", "test:internal/codingagent/output_pad_blocks_test.go#TestUserBashBlockUsesOutputPadProduction", "test:internal/codingagent/output_pad_blocks_test.go#TestCustomEntryFailureBoxUsesOutputPadProduction", "test:internal/codingagent/output_pad_blocks_test.go#TestResumedBranchSummaryAndSkillBlockUseOutputPadProduction", "test:internal/codingagent/bash_history_render_test.go#TestResumedBashExecutionEntryUsesOutputPad", "test:internal/codingagent/summary_output_pad_test.go#TestCompactionSummaryUsesOutputPadProduction", "test:internal/codingagent/output_pad_test.go#TestApplyOutputPadUpdatesBlocksInPlace", "test:internal/codingagent/settings_live_effects_test.go#TestOnSettingAppliedOutputPaddingReachesEveryChatAndPendingChild", "test:internal/codingagent/tool_execution_component_upstream_test.go#TestToolExecutionBashShowsRecordedDuration", "test:internal/codingagent/interactive_selection_reset_test.go#TestRenderSessionEntriesDropsFullscreenTextSelection"]
+rationale = "The 1.1.0 change adds the ProgramStatusReporter calls (agent events, extension dialogs as blocked question or permission, login as blocked auth, reset on session replacement), passes outputPad to every transcript component and tool card, forwards the tool durationMs into the live card, resets the fullscreen text selection when the transcript is rebuilt, and makes an outputPad change update the chat and pending children in place. internal/codingagent has each. Commenting out or hard-coding padding 1 at each site fails the cited tests: the agent-event forward, the dialog blocked status, the login status, the rebind reset, the tool card, user bash, custom entry, branch summary and skill, resumed bash and compaction pad sites, applyOutputPad (both containers), the selection reset and the tool durationMs. The slash-command editor status and the status clear after a dialog is aborted by its signal survived every earlier test, so TestSlashCommandEditorReportsBlockedWhileItIsOpen and TestAbortedExtensionDialogClearsItsBlockedStatus are new and fail those mutants. Not pinned: the two startup Report() calls in internal/codingagent/interactive.go. Removing both survived every test, so the initial idle status written once the TUI starts has no test, and the row claims no mutant for it."
+
+[[files]]
+path = "packages/coding-agent/src/modes/interactive/program-status-reporter.ts"
+change = "added"
+disposition = "ported"
+evidence = ["test:internal/codingagent/program_status_reporter_test.go#TestProgramStatusReporterReportsIdleWorkingAndDone", "test:internal/codingagent/program_status_reporter_test.go#TestInteractiveModeForwardsAgentEventsToTheProgramStatusReporter"]
+rationale = "internal/codingagent/program_status_reporter.go ports the reporter; the seven cases of program-status-reporter.test.ts are ported one Go test each, with the production path covered through InteractiveMode.handleAgentEvent."
+
+[[files]]
+path = "packages/coding-agent/src/package-manager-cli.ts"
+change = "modified"
+disposition = "designed-out"
+evidence = ["test:internal/codingagent/selfupdate_test.go#TestSelfReplaceAtWithCommitKeepsOnlyTheNewExecutable"]
+rationale = "The only 1.1.0 change is pruneManagedReleases (#10392), which deletes old npm managed-release directories after pi update and keeps the new release and the running one. A standalone pig has no release directory (D39): a replacement keeps only the new executable, which the test asserts, so there is nothing to prune."
+
+[[files]]
+path = "packages/coding-agent/src/utils/ansi.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:internal/codingagent/tools/sanitize_split_ansi_test.go#TestSplitIncompleteAnsiSuffix"]
+rationale = "splitIncompleteAnsiSuffix is SplitIncompleteAnsiSuffix (internal/codingagent/tools/sanitize.go): the 256-code-unit window, the leftmost unfinished OSC or CSI, and ESC-backslash termination, checked against Pi's own function on 20 inputs."
+
+[[files]]
+path = "packages/coding-agent/src/utils/clipboard.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:internal/codingagent/clipboard_read_text_test.go#TestReadClipboardTextTermuxReadsOnAndroid", "test:internal/codingagent/clipboard_copy_test.go#TestCopyToClipboardReportsTheTermuxAPIRequirementOnAndroid"]
+rationale = "The 1.1.0 change (#10391) hoists the Termux checks out of the linux branch: Termux reports platform android, so termux-clipboard-get and the Termux:API error apply on any platform. internal/codingagent/clipboard_text.go and clipboard_copy.go do the same. Mutants that restore the linux-only guard fail both tests."
+
+[[files]]
+path = "packages/coding-agent/src/utils/image-resize-core.ts"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "The change adds IMAGE_RESIZE_WORKER_RESPONSE_TYPE and ResizeImageWorkerResponse, the tag of Node worker-thread replies (#10527). Go resizes in-process with no worker message channel (PORT_MAP: image-resize-worker.ts), so there is no reply to tag."
+
+[[files]]
+path = "packages/coding-agent/src/utils/image-resize-worker.ts"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "The change tags the worker thread replies with IMAGE_RESIZE_WORKER_RESPONSE_TYPE so the parent can ignore the messages Node posts on the worker channel under node --watch (#10527). Go has no worker thread and no such channel."
+
+[[files]]
+path = "packages/coding-agent/src/utils/image-resize.ts"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "The change makes the parent worker listener ignore messages that are not tagged replies, such as the `watch:require` messages node --watch posts on the worker channel (#10527). Go resizes with goroutines in-process (internal/imageprocessing), so no message channel exists to filter."
+
+[[files]]
+path = "packages/durable/src/harness/agent.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:durable/harness/harness_generation_test.go#TestGeneration"]
+rationale = "HarnessSettings.ContextRetentionMs resolves to the default of ten minutes in ResolveSettings."
+
+[[files]]
+path = "packages/durable/src/harness/compaction.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:durable/harness/harness_compaction_test.go#TestManualCompaction"]
+rationale = "The compaction task reads its tail through TaskRuntime.Context with the Go ContextOptions, the form of { at: tail }."
+
+[[files]]
+path = "packages/durable/src/harness/context.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:durable/harness/harness_context_test.go#TestConversationContext", "test:durable/harness/harness_context_retention_test.go#TestContextRetention", "test:durable/harness/context_extend_test.go#TestTaskContextReadIsExtendedWithOnlyNewerEntries"]
+rationale = "The first system message leads the context, readContext takes the as-of entry, and a kept read is extended with only the newer entries (the D104 context cache)."
+
+[[files]]
+path = "packages/durable/src/harness/generation.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:durable/harness/harness_generation_test.go#TestGeneration"]
+rationale = "The generation task passes its cutoff in the Go ContextOptions, the form of { at: cutoff }."
+
+[[files]]
+path = "packages/durable/src/harness/harness.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:durable/harness/harness_context_test.go#TestConversationContext", "test:durable/harness/harness_tasks_times_test.go#TestTaskTimes"]
+rationale = "Conversation.Context reads as of an entry, Conversation.Entries forwards the scan order, and the Harness passes its clock to the Session."
+
+[[files]]
+path = "packages/durable/src/harness/scheduler.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:durable/harness/harness_context_retention_test.go#TestContextRetention"]
+rationale = "The scheduler keeps context reads for contextRetentionMs once idle, expires them on a timer, drops them at zero retention and at close, and treats a settings failure as zero retention."
+
+[[files]]
+path = "packages/durable/src/harness/tool.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:durable/harness/harness_tools_models_test.go#TestToolsAndHooksSeeTheHarnessModels", "test:durable/harness/harness_tools_models_test.go#TestToolResultRecordsHowLongExecuteTook"]
+rationale = "ToolExecutionApi.Models reaches tools and hooks, and the tool task records how long execute took in the result entry."
+
+[[files]]
+path = "packages/durable/src/harness/types.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:durable/harness/harness_tools_models_test.go#TestToolsAndHooksSeeTheHarnessModels", "test:durable/harness/harness_generation_test.go#TestGeneration"]
+rationale = "Models on the tool and hook API, contextRetentionMs in the settings and the context options are declared in durable and durable/harness."
+
+[[files]]
+path = "packages/durable/src/index.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:durable/harness/harness_tasks_times_test.go#TestTaskTimes"]
+rationale = "The barrel export of ScanOrder is the Go package surface (durable.ScanOrder)."
+
+[[files]]
+path = "packages/durable/src/session/session.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:durable/harness/harness_tasks_times_test.go#TestTaskTimes"]
+rationale = "CreateSession takes the clock that stamps task times."
+
+[[files]]
+path = "packages/durable/src/session/transaction.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:durable/harness/harness_tasks_times_test.go#TestTaskTimes"]
+rationale = "SetTask stamps startedAt at the first running state and endedAt at the first terminal state, keeping a candidate's earlier stamps."
+
+[[files]]
+path = "packages/durable/src/storage/memory.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:durable/storage/memory_storage_test.go#TestMemoryStorageConformance"]
+rationale = "MemoryStorage scans honour the order of conversation, entry, task and submission queries and cursors continue their order."
+
+[[files]]
+path = "packages/durable/src/storage/scan.ts"
+change = "added"
+disposition = "ported"
+evidence = ["test:durable/storage/memory_storage_test.go#TestMemoryStorageConformance"]
+rationale = "durable/storage/internal/scan resolves the requested order against a cursor and builds the next cursor."
+
+[[files]]
+path = "packages/durable/src/storage/sqlite/cloudflare.ts"
+change = "added"
+disposition = "ported"
+evidence = ["test:durable/storage/sqlite/cloudflare/cloudflare_test.go#TestDurableObjectStorageConformance"]
+rationale = "durable/storage/sqlite/cloudflare adapts a Durable Object ctx.storage SQL binding to SqliteDatabase."
+
+[[files]]
+path = "packages/durable/src/storage/sqlite/storage.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:durable/storage/sqlite/sqlite_storage_test.go#TestSqliteStorageConformance"]
+rationale = "SqliteStorage scans honour the order."
+
+[[files]]
+path = "packages/durable/src/testing/storage-conformance.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:durable/durabletest/storage_conformance_cases_test.go#TestCreateStorageConformanceCasesMatchUpstream"]
+rationale = "The scan-order cases are in durable/durabletest/storage_conformance.go."
+
+[[files]]
+path = "packages/durable/src/types.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:durable/storage/sqlite/sqlite_storage_test.go#TestSqliteStorageConformance"]
+rationale = "ScanOrder, Order on the scan queries, task startedAt and endedAt, Settings.ContextRetentionMs and the context options are declared in durable/types.go."
+
+[[files]]
+path = "packages/mcp/src/auth-provider.ts"
+change = "modified"
+disposition = "unchanged-observable"
+evidence = ["test:mcp/streamable_http_test.go#TestStreamableHTTPTransportClosesTheSessionWithTheLastRequestsTokenWithoutAskingTheAuthProvider"]
+rationale = "Only the doc comment of AuthProvider.token changes: it may refresh over the network, so the transport calls it only before requests whose answer it waits for. mcp/auth_provider.go carries the same contract; the behavior is in streamable-http.ts."
+
+[[files]]
+path = "packages/mcp/src/oauth/discovery.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:mcp/oauth/oauth_test.go#TestAuthorizeMcpStopsWhenItsContextEndsWithoutFallingBackToARedirect"]
+rationale = "The `signal` option of the discovery functions maps to the context.Context every discovery function already takes (mcp/oauth/discovery.go): cancelling it aborts the metadata requests."
+
+[[files]]
+path = "packages/mcp/src/oauth/flow.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:mcp/oauth/oauth_test.go#TestAuthorizeMcpStopsWhenItsContextEndsWithoutFallingBackToARedirect"]
+rationale = "The `signal` option of authorizeMcp, registerClient and the token requests maps to the context.Context of mcp/oauth/flow.go; an aborted refresh returns its error instead of falling back to a new authorization (runFlow)."
+
+[[files]]
+path = "packages/mcp/src/transports/streamable-http.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:mcp/streamable_http_test.go#TestStreamableHTTPTransportClosesTheSessionWithTheLastRequestsTokenWithoutAskingTheAuthProvider"]
+rationale = "close() sends the session DELETE with the token of the last request instead of asking the auth provider, which could refresh over the network first (mcp/streamable_http.go Close, buildHeaders, lastToken)."
+
+[[files]]
+path = "packages/tui/src/components/box.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:tui/output_pad_upstream_test.go#TestBoxSetPaddingXMatchesPi"]
+rationale = "Box.setPaddingX(paddingX) sets the horizontal padding and drops the render cache so the next render uses it (#10557). tui.Box.SetPaddingX does the same; the test renders before and after."
+
+[[files]]
+path = "packages/tui/src/components/text.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:tui/output_pad_upstream_test.go#TestTextSetPaddingXMatchesPi"]
+rationale = "Text.setPaddingX(paddingX) sets the horizontal padding and invalidates the cached lines (#10557). tui.Text.SetPaddingX does the same; the test renders before and after."
+
+[[files]]
+path = "packages/tui/src/index.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:tui/program_status_test.go#TestFormatProgramStatusUpstream"]
+rationale = "The 1.1.0 change to index.ts is the export of formatProgramStatus and the ProgramStatus type. tui/program_status.go exports FormatProgramStatus and ProgramStatus from package tui, and TestFormatProgramStatusUpstream calls them through the package API."
+
+[[files]]
+path = "packages/tui/src/program-status.ts"
+change = "added"
+disposition = "ported"
+evidence = ["test:tui/program_status_test.go#TestFormatProgramStatusUpstream", "test:tui/program_status_test.go#TestIsProgramStatusReplyUpstream"]
+rationale = "tui/program_status.go ports ProgramStatus, the OSC 7501 query, reply detection and formatting; the five cases of program-status.test.ts run in the two Upstream tests. Raising the message-size limit fails TestFormatProgramStatusUpstream."
+
+[[files]]
+path = "packages/tui/src/terminal-image.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:tui/terminal_image_upstream_test.go#TestUpstreamTerminalImageCapabilities"]
+rationale = "TERM_PROGRAM=herdr returns hyperlinks on and images off before outer-terminal detection (tui/terminal_image.go); PI_HYPERLINKS=0 still wins. D44's HERDR_ENV and HERDR_KITTY_GRAPHICS signal is kept ahead of it."
+
+[[files]]
+path = "packages/tui/src/terminal.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:tui/terminal_program_status_upstream_test.go#TestUpstreamTerminalProgramStatus", "test:tui/terminal_negotiation_upstream_test.go#TestUpstreamTerminalNegotiation"]
+rationale = "The 1.1.0 change to terminal.ts is OSC 7501 program status: setProgramStatus, the support query that shares the DA sentinel (the Kitty query no longer carries DA itself), the PI_PROGRAM_STATUS override, and re-reporting after a restart. tui/terminal.go ports each; the five program-status cases of terminal.test.ts run in TestUpstreamTerminalProgramStatus. Mutants: dropping the PI_PROGRAM_STATUS=0 skip and leaving the query pending across a restart both fail it."
+
+[[files]]
+path = "packages/tui/src/tui-alt-screen.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:tui/tui_alt_screen_test.go#TestAltScreenResetTextSelectionDropsSelectionAndClickHistory", "test:internal/codingagent/interactive_transcript_selection_test.go#TestRenderSessionEntriesDropsFullscreenSelection"]
+rationale = "resetTextSelection is TuiAltScreen.ResetTextSelection; renderSessionEntryList calls it before it replaces the transcript."

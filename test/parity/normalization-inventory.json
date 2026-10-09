@@ -12,7 +12,7 @@
     },
     {
       "source": "test/parity/runner/default_cwd.go",
-      "sha256": "70f915f678a7641ff0adfeccb304f766db8c4f1ba509e914b818770968c636c4",
+      "sha256": "c8caad79b85743fbace68384def8913e45967641fc5d41068d41358f49eaea7e",
       "reason": "D2/D22 fixture control balances prompt paths. Only terminal captures use length-preserving cwd digit substitution; process records retain raw paths unless an explicit JSON alias selects them."
     },
     {
@@ -37,12 +37,12 @@
     },
     {
       "source": "test/parity/runner/json_compare.go",
-      "sha256": "1485499edcf12cf5e1db283bbf9d616a1ad280f650610d18077337b2bd85b9ff",
+      "sha256": "fb271d829b9eee2dd3d3d2e9dd515697b584cabbd0d4a3d5b6c7491a2999e16b",
       "reason": "Parsed full records ignore object-member order and equivalent JSON number spelling only. Explicit scalar aliases preserve field presence, types, ordered arrays and bijective ID references; no ignored-field list exists."
     },
     {
       "source": "test/parity/testdata/list-limit-number-pi.mjs",
-      "sha256": "dc021e4e4c975b254cd96a3a21831beb67f8d0f7ffe372e13e230ecc4f0e879e",
+      "sha256": "9e2061f4582f677afcbaf9f3e62c42eea90a5c871d52cc038b53e3e923ef7803",
       "reason": "This numeric-renderer probe selects the complete warning-bracket text from Pi's actual renderResult output under an explicit unstyled fixture theme. It claims number/notice text only, not terminal layout or ANSI styling; full themed body rows are checked by the Go caller regression."
     },
     {
@@ -62,7 +62,7 @@
     },
     {
       "source": "test/parity/testdata/provider-wire-pig/main.go",
-      "sha256": "e7a02004af983310af86a281a521330e94bb219ff209b99b97ce9d4de30639ea",
+      "sha256": "f270ae029209c8026adf50b1d7944ed1d439c0f1e28913b1f9f1c3255c6e2754",
       "reason": "Legacy role/key/auth summaries are diagnostic only: wireBody now compares the entire captured HTTP request body alongside them. Aggregated provider response summaries do not prove mode events; real-provider RPC/JSON scenarios compare those separately."
     },
     {
@@ -72,7 +72,7 @@
     },
     {
       "source": "test/parity/testdata/session-collision-pi.mjs",
-      "sha256": "2b972b69e25aedb9477c0aa310b0fe2c058330417a86cd65250023cfe1f82ee1",
+      "sha256": "6302458b7c3d4ddfa7a02dca3a75a67fb752787d15381fa5a948c6f79caaf103",
       "reason": "This entry-allocation probe controls seed/duplicate/fresh entropy in the real Pi SessionManager and compares IDs, parent links, retained indexed content and generator calls. It makes no timestamp or whole-record claim; those contracts are covered by the Session wire probe."
     },
     {
@@ -87,7 +87,7 @@
     },
     {
       "source": "test/parity/testdata/test-faux-provider.ts",
-      "sha256": "78d62b34d0300ab599193877d6b1df71db2f3ec2f9fc65826a8d7add11aba95f",
+      "sha256": "305d41e77f3653adcee3ca31ca6ac84284f6b5f2af13402ba66b12ac56062cd8",
       "reason": "Canned followups exercise specific orchestration/rendering questions, not complete result metadata. Full RPC tool records and real-provider mode scenarios supply result acceptance independently of final prose."
     }
   ],
@@ -325,6 +325,12 @@
         },
         {
           "kind": "normalize_replace",
+          "pattern": "\"durationMs\":[0-9]+",
+          "with": "\"durationMs\":0",
+          "reason": "Pi 1.1.0 times each response and tool run with a monotonic clock, so the whole-millisecond value differs between runs; retain the field's presence, placement and number spelling."
+        },
+        {
+          "kind": "normalize_replace",
           "pattern": "\"timestamp\":\"[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\\.[0-9]{3}Z\"",
           "with": "\"timestamp\":\"2000-01-01T00:00:00.000Z\"",
           "reason": "Independent ISO wall clocks vary; preserve the string type and exact timestamp syntax."
@@ -334,6 +340,12 @@
           "pattern": "\"id\":\"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\"",
           "with": "\"id\":\"SESSION\"",
           "reason": "The header UUID is independently generated; no prompt text is replaced."
+        },
+        {
+          "kind": "normalize_replace",
+          "pattern": "\"durationMs\":[0-9]+",
+          "with": "\"durationMs\":0",
+          "reason": "Pi 1.1.0 measures each response and tool execution (#10549) with a monotonic clock; the value varies per run. Retain field placement, type and every other byte."
         }
       ]
     },
@@ -427,6 +439,61 @@
           "pattern": "\"[^\"\\r\\n]*/parity-snap-(PI|PIG)_CODING_AGENT_DIR-[^/\"\\r\\n]+/npm\"",
           "with": "\"AGENT/npm\"",
           "reason": "The binaries receive separate temporary agent directories."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/cli-utils/26-export-cli-missing-file.toml",
+      "transforms": [
+        {
+          "kind": "normalize_replace",
+          "pattern": "parity-cli-[0-9a-z-]+-(pig|pi)-[0-9]+",
+          "with": "parity-cli-run",
+          "reason": "D2: replace only this scenario's allocated temporary root."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/cli-utils/27-export-cli-directory.toml",
+      "transforms": [
+        {
+          "kind": "normalize_replace",
+          "pattern": "parity-cli-[0-9a-z-]+-(pig|pi)-[0-9]+",
+          "with": "parity-cli-run",
+          "reason": "D2: replace only this scenario's allocated temporary root."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/cli-utils/28-export-cli-not-a-session.toml",
+      "transforms": [
+        {
+          "kind": "normalize_replace",
+          "pattern": "parity-cli-[0-9a-z-]+-(pig|pi)-[0-9]+",
+          "with": "parity-cli-run",
+          "reason": "D2: replace only this scenario's allocated temporary root."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/cli-utils/29-export-cli-empty-file.toml",
+      "transforms": [
+        {
+          "kind": "normalize_replace",
+          "pattern": "parity-cli-[0-9a-z-]+-(pig|pi)-[0-9]+",
+          "with": "parity-cli-run",
+          "reason": "D2: replace only this scenario's allocated temporary root."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/cli-utils/30-export-cli-unwritable-output.toml",
+      "transforms": [
+        {
+          "kind": "normalize_replace",
+          "pattern": "parity-cli-[0-9a-z-]+-(pig|pi)-[0-9]+",
+          "with": "parity-cli-run",
+          "reason": "D2: replace only this scenario's allocated temporary root."
         }
       ]
     },
@@ -1317,6 +1384,13 @@
             "/**/timestamp"
           ],
           "reason": "Independent message wall clocks vary; no event, tool result or rendered HTML field is removed."
+        },
+        {
+          "kind": "duration",
+          "paths": [
+            "/**/durationMs"
+          ],
+          "reason": "Pi 1.1.0 measures each response and tool execution (#10549) with a monotonic clock; the value varies per run. Retain presence, type and position."
         }
       ]
     },
@@ -1909,6 +1983,92 @@
       ]
     },
     {
+      "scenario": "test/parity/scenarios/extensions-runtime/75-robust-notes-go.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "Run: ext tool robust_words"
+          },
+          "reason": "Owned visible surface: The go robust-notes extension draws Pi's screen for its tool, flag, events, appendEntry and overlay",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/extensions-runtime/75-robust-notes-node.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "Run: ext tool robust_words"
+          },
+          "reason": "Owned visible surface: The node robust-notes extension draws Pi's screen for its tool, flag, events, appendEntry and overlay",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/extensions-runtime/75-robust-notes-python.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "Run: ext tool robust_words"
+          },
+          "reason": "Owned visible surface: The python robust-notes extension draws Pi's screen for its tool, flag, events, appendEntry and overlay",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/extensions-runtime/75-robust-notes-rust.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "Run: ext tool robust_words"
+          },
+          "reason": "Owned visible surface: The rust robust-notes extension draws Pi's screen for its tool, flag, events, appendEntry and overlay",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/extensions-runtime/76-custom-overlay-mouse.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "MOUSE TOP",
+            "capture_end": "MOUSE END"
+          },
+          "reason": "Owned visible surface: Fullscreen clicks, a double click, a wheel step and a modified click reach an extension overlay's handleMouse with Pi's fields",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
       "scenario": "test/parity/scenarios/footer/01-footer-default.toml",
       "transforms": [
         {
@@ -2380,6 +2540,42 @@
             "capture_start": "escape to return"
           },
           "reason": "Owned visible surface: /arminsayshi in fullscreen plays the 3D egg's dissolve, starfield and return hint in the same cells as pi, not the inline image.",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/fullscreen/13-alt-screen-search-input.toml",
+      "transforms": [
+        {
+          "kind": "normalize_replace",
+          "pattern": "Took \\d+\\.\\ds",
+          "with": "Took Ns",
+          "reason": "The measured sub-second tool duration varies with scheduling; retain the label, units and surrounding cells."
+        },
+        {
+          "kind": "normalize_replace",
+          "pattern": "(?m)^[^\\n]*?│ expr",
+          "with": "│ expr",
+          "reason": "Startup-content text left of the search box differs because pig runs with --no-extensions; the box row itself is retained."
+        },
+        {
+          "kind": "normalize_replace",
+          "pattern": "(?m)^\\x1b\\[38;2;126;136;142m  [^\\n]*?└",
+          "with": "└",
+          "reason": "Startup-content text left of the search box's bottom border differs for the same reason; the border is retained."
+        },
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "┌────",
+            "capture_end_regex": "└────"
+          },
+          "reason": "Owned visible surface: Fullscreen transcript search: Ctrl+Shift+F opens the search box and typed text edits the query, with the match counter, identically in pig and pi.",
           "limitations": "No claim about output outside this crop or transient terminal bytes."
         },
         {
@@ -3209,6 +3405,42 @@
       ]
     },
     {
+      "scenario": "test/parity/scenarios/interactive-rendering/44-assistant-underscore-emphasis.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "reply with exactly: Use",
+            "capture_end_regex": "(?s)endmark.*endmark"
+          },
+          "reason": "Owned visible surface: User and assistant messages render underscore emphasis, strong emphasis, delimiter runs, bracketed link labels, inline HTML and strict strikethrough exactly as Pi's marked lexer does.",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/interactive-rendering/44-bash-execution-consecutive-blocks.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "$ echo aaa",
+            "capture_end_regex": "\\$ echo bbb"
+          },
+          "reason": "Owned visible surface: Two consecutive `!cmd` blocks are separated by exactly the second block's leading spacer row.",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
       "scenario": "test/parity/scenarios/interactive-rendering/45-bash-execution-exit-status.toml",
       "transforms": [
         {
@@ -3269,6 +3501,29 @@
       ]
     },
     {
+      "scenario": "test/parity/scenarios/interactive-rendering/47-bash-execution-output-pad-0.toml",
+      "transforms": [
+        {
+          "kind": "output_normalized_equal",
+          "reason": "Declared plain-text/layout surface: `!` command output has no horizontal padding when outputPad is 0, including the status row.",
+          "limitations": "ANSI, CR, trailing spaces and outer blank rows are not equality evidence."
+        },
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "────────────────────────────────────────────────────────────────────────────────",
+            "capture_end": "(exit 3)"
+          },
+          "reason": "Owned visible surface: `!` command output has no horizontal padding when outputPad is 0, including the status row.",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
       "scenario": "test/parity/scenarios/interactive-rendering/48-bash-execution-expand-hint.toml",
       "transforms": [
         {
@@ -3287,6 +3542,35 @@
       ]
     },
     {
+      "scenario": "test/parity/scenarios/interactive-rendering/48-tool-execution-bash-output-pad-0.toml",
+      "transforms": [
+        {
+          "kind": "normalize_replace",
+          "pattern": "Took \\d+\\.\\d+s",
+          "with": "Took Ns",
+          "reason": "Tool duration varies with process scheduling; only the numeric seconds in the Took label are replaced."
+        },
+        {
+          "kind": "output_normalized_equal",
+          "reason": "Declared plain-text/layout surface: Bash tool card rows have no horizontal padding when outputPad is 0.",
+          "limitations": "ANSI, CR, trailing spaces and outer blank rows are not equality evidence."
+        },
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "Run: expr 20 + 22",
+            "capture_end_regex": "Took \\d+\\.\\d+s"
+          },
+          "reason": "Owned visible surface: Bash tool card rows have no horizontal padding when outputPad is 0.",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
       "scenario": "test/parity/scenarios/interactive-rendering/49-bash-execution-collapse-hint.toml",
       "transforms": [
         {
@@ -3296,6 +3580,24 @@
             "capture_end_regex": "─{100}"
           },
           "reason": "Owned visible surface: After app.tools.expand, a 30-line `!` output shows every line and `(ctrl+o to collapse)` drawn by keyHint.",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/interactive-rendering/49-edit-tool-diff-output-pad-0.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "Run: edit parity-edit-target.txt",
+            "capture_end": "edited"
+          },
+          "reason": "Owned visible surface: Edit tool call box and result rows have no horizontal padding when outputPad is 0.",
           "limitations": "No claim about output outside this crop or transient terminal bytes."
         },
         {
@@ -3329,6 +3631,29 @@
       ]
     },
     {
+      "scenario": "test/parity/scenarios/interactive-rendering/50-compaction-summary-output-pad-0.toml",
+      "transforms": [
+        {
+          "kind": "output_normalized_equal",
+          "reason": "Declared plain-text/layout surface: The compaction summary box has no horizontal padding when outputPad is 0.",
+          "limitations": "ANSI, CR, trailing spaces and outer blank rows are not equality evidence."
+        },
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "[compaction]",
+            "capture_end": "expand)"
+          },
+          "reason": "Owned visible surface: The compaction summary box has no horizontal padding when outputPad is 0.",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
       "scenario": "test/parity/scenarios/interactive-rendering/51-bash-execution-byte-limit.toml",
       "transforms": [
         {
@@ -3344,6 +3669,47 @@
             "capture_end_regex": "─{200}"
           },
           "reason": "Owned visible surface: 600 lines of 101 bytes (60600 bytes) keep only the whole trailing lines within 50 KB, and the block shows Pi's truncation notice.",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/interactive-rendering/51-branch-summary-output-pad-0.toml",
+      "transforms": [
+        {
+          "kind": "output_normalized_equal",
+          "reason": "Declared plain-text/layout surface: The branch summary box has no horizontal padding when outputPad is 0.",
+          "limitations": "ANSI, CR, trailing spaces and outer blank rows are not equality evidence."
+        },
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "[branch]",
+            "capture_end": "expand)"
+          },
+          "reason": "Owned visible surface: The branch summary box has no horizontal padding when outputPad is 0.",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/interactive-rendering/52-custom-message-output-pad-0.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "[testNotice]",
+            "capture_end": "extension."
+          },
+          "reason": "Owned visible surface: The default custom message box has no horizontal padding when outputPad is 0.",
           "limitations": "No claim about output outside this crop or transient terminal bytes."
         },
         {
@@ -3371,6 +3737,24 @@
       ]
     },
     {
+      "scenario": "test/parity/scenarios/interactive-rendering/53-bash-execution-excluded-dim-header.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "────────────────────────────────────────────────────────────────────────────────",
+            "capture_end": "hello world"
+          },
+          "reason": "Owned visible surface: `!!` command blocks keep the dim color on the header, border and output once the command completes.",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
       "scenario": "test/parity/scenarios/interactive-rendering/53-resumed-bash-execution-poisoned.toml",
       "transforms": [
         {
@@ -3380,6 +3764,24 @@
             "capture_end": "poison-end"
           },
           "reason": "Owned visible surface: A resumed bashExecution message with no exit code or flags, a null exit code, empty output with a non-zero exit, a cancelled non-zero exit, truncation without a full-output path, or ANSI and carriage-return output renders as Pi renders it.",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/interactive-rendering/54-output-pad-setting-updates-bash-block.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "────────────────────────────────────────────────────────────────────────────────",
+            "capture_end": "hello world"
+          },
+          "reason": "Owned visible surface: Changing Output padding in /settings re-pads an existing `!` command block in place.",
           "limitations": "No claim about output outside this crop or transient terminal bytes."
         },
         {
@@ -3405,6 +3807,12 @@
         },
         {
           "kind": "normalize_replace",
+          "pattern": "\"durationMs\":[0-9]+",
+          "with": "\"durationMs\":0",
+          "reason": "Pi 1.1.0 times each response and tool run with a monotonic clock, so the whole-millisecond value differs between runs; retain the field's presence, placement and number spelling."
+        },
+        {
+          "kind": "normalize_replace",
           "pattern": "\"timestamp\":\"[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\\.[0-9]{3}Z\"",
           "with": "\"timestamp\":\"2000-01-01T00:00:00.000Z\"",
           "reason": "Independent ISO wall clocks vary; preserve the string type and exact timestamp syntax."
@@ -3414,6 +3822,12 @@
           "pattern": "\"id\":\"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\"",
           "with": "\"id\":\"SESSION\"",
           "reason": "The header UUID is independently generated; no message content or property order is replaced."
+        },
+        {
+          "kind": "normalize_replace",
+          "pattern": "\"durationMs\":[0-9]+",
+          "with": "\"durationMs\":0",
+          "reason": "Pi 1.1.0 measures each response and tool execution (#10549) with a monotonic clock; the value varies per run. Retain field placement, type and every other byte."
         }
       ]
     },
@@ -3448,6 +3862,13 @@
           "reason": "Independent session/message clocks vary; retain timestamp presence, type and valid syntax."
         },
         {
+          "kind": "duration",
+          "paths": [
+            "/**/durationMs"
+          ],
+          "reason": "Pi 1.1.0 times each response and tool run with a monotonic clock (event-stream.ts, agent-loop.ts), so the whole-millisecond value differs between runs; retain the field's presence, its position and its number spelling."
+        },
+        {
           "kind": "id",
           "paths": [
             "/*/id"
@@ -3462,6 +3883,13 @@
             "/**/sections/cwd"
           ],
           "reason": "D2: compare the exact isolated cwd root through its explicit alias, retaining its entire suffix."
+        },
+        {
+          "kind": "duration",
+          "paths": [
+            "/**/durationMs"
+          ],
+          "reason": "Pi 1.1.0 measures each response and tool execution (#10549) with a monotonic clock; the value varies per run. Retain presence, type and position."
         }
       ]
     },
@@ -3482,6 +3910,12 @@
         },
         {
           "kind": "normalize_replace",
+          "pattern": "\"durationMs\":[0-9]+",
+          "with": "\"durationMs\":0",
+          "reason": "Pi 1.1.0 times each response and tool run with a monotonic clock, so the whole-millisecond value differs between runs; retain the field's presence, placement and number spelling."
+        },
+        {
+          "kind": "normalize_replace",
           "pattern": "\"timestamp\":\"[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\\.[0-9]{3}Z\"",
           "with": "\"timestamp\":\"2000-01-01T00:00:00.000Z\"",
           "reason": "Independent ISO wall clocks vary; preserve the string type and exact timestamp syntax."
@@ -3497,6 +3931,12 @@
           "pattern": "\"wall_time_seconds\":[0-9.]+",
           "with": "\"wall_time_seconds\":0",
           "reason": "bash rounds wall time to 0.1 s (bash.ts:392), so a slow runner can differ by one step; the key, its type and its position stay."
+        },
+        {
+          "kind": "normalize_replace",
+          "pattern": "\"durationMs\":[0-9]+",
+          "with": "\"durationMs\":0",
+          "reason": "Pi 1.1.0 measures each response and tool execution (#10549) with a monotonic clock; the value varies per run. Retain field placement, type and every other byte."
         }
       ]
     },
@@ -3517,6 +3957,12 @@
         },
         {
           "kind": "normalize_replace",
+          "pattern": "\"durationMs\":[0-9]+",
+          "with": "\"durationMs\":0",
+          "reason": "Pi 1.1.0 times each response and tool run with a monotonic clock, so the whole-millisecond value differs between runs; retain the field's presence, placement and number spelling."
+        },
+        {
+          "kind": "normalize_replace",
           "pattern": "\"timestamp\":\"[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\\.[0-9]{3}Z\"",
           "with": "\"timestamp\":\"2000-01-01T00:00:00.000Z\"",
           "reason": "Independent ISO wall clocks vary; preserve the string type and exact timestamp syntax."
@@ -3532,6 +3978,12 @@
           "pattern": "\"wall_time_seconds\":[0-9.]+",
           "with": "\"wall_time_seconds\":0",
           "reason": "bash rounds wall time to 0.1 s (bash.ts:392), so a slow runner can differ by one step; the key, its type and its position stay."
+        },
+        {
+          "kind": "normalize_replace",
+          "pattern": "\"durationMs\":[0-9]+",
+          "with": "\"durationMs\":0",
+          "reason": "Pi 1.1.0 measures each response and tool execution (#10549) with a monotonic clock; the value varies per run. Retain field placement, type and every other byte."
         }
       ]
     },
@@ -3552,6 +4004,12 @@
         },
         {
           "kind": "normalize_replace",
+          "pattern": "\"durationMs\":[0-9]+",
+          "with": "\"durationMs\":0",
+          "reason": "Pi 1.1.0 times each response and tool run with a monotonic clock, so the whole-millisecond value differs between runs; retain the field's presence, placement and number spelling."
+        },
+        {
+          "kind": "normalize_replace",
           "pattern": "\"timestamp\":\"[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\\.[0-9]{3}Z\"",
           "with": "\"timestamp\":\"2000-01-01T00:00:00.000Z\"",
           "reason": "Independent ISO wall clocks vary; preserve the string type and exact timestamp syntax."
@@ -3567,6 +4025,12 @@
           "pattern": "\"wall_time_seconds\":[0-9.]+",
           "with": "\"wall_time_seconds\":0",
           "reason": "bash rounds wall time to 0.1 s (bash.ts:392), so a slow runner can differ by one step; the key, its type and its position stay."
+        },
+        {
+          "kind": "normalize_replace",
+          "pattern": "\"durationMs\":[0-9]+",
+          "with": "\"durationMs\":0",
+          "reason": "Pi 1.1.0 measures each response and tool execution (#10549) with a monotonic clock; the value varies per run. Retain field placement, type and every other byte."
         }
       ]
     },
@@ -3587,6 +4051,12 @@
         },
         {
           "kind": "normalize_replace",
+          "pattern": "\"durationMs\":[0-9]+",
+          "with": "\"durationMs\":0",
+          "reason": "Pi 1.1.0 times each response and tool run with a monotonic clock, so the whole-millisecond value differs between runs; retain the field's presence, placement and number spelling."
+        },
+        {
+          "kind": "normalize_replace",
           "pattern": "\"timestamp\":\"[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\\.[0-9]{3}Z\"",
           "with": "\"timestamp\":\"2000-01-01T00:00:00.000Z\"",
           "reason": "Independent ISO wall clocks vary; preserve the string type and exact timestamp syntax."
@@ -3602,6 +4072,12 @@
           "pattern": "\"wall_time_seconds\":[0-9.]+",
           "with": "\"wall_time_seconds\":0",
           "reason": "bash rounds wall time to 0.1 s (bash.ts:392), so a slow runner can differ by one step; the key, its type and its position stay."
+        },
+        {
+          "kind": "normalize_replace",
+          "pattern": "\"durationMs\":[0-9]+",
+          "with": "\"durationMs\":0",
+          "reason": "Pi 1.1.0 measures each response and tool execution (#10549) with a monotonic clock; the value varies per run. Retain field placement, type and every other byte."
         }
       ]
     },
@@ -3622,6 +4098,12 @@
         },
         {
           "kind": "normalize_replace",
+          "pattern": "\"durationMs\":[0-9]+",
+          "with": "\"durationMs\":0",
+          "reason": "Pi 1.1.0 times each response and tool run with a monotonic clock, so the whole-millisecond value differs between runs; retain the field's presence, placement and number spelling."
+        },
+        {
+          "kind": "normalize_replace",
           "pattern": "\"timestamp\":\"[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\\.[0-9]{3}Z\"",
           "with": "\"timestamp\":\"2000-01-01T00:00:00.000Z\"",
           "reason": "Independent ISO wall clocks vary; preserve the string type and exact timestamp syntax."
@@ -3637,6 +4119,12 @@
           "pattern": "\"wall_time_seconds\":[0-9.]+",
           "with": "\"wall_time_seconds\":0",
           "reason": "bash rounds wall time to 0.1 s (bash.ts:392), so a slow runner can differ by one step; the key, its type and its position stay."
+        },
+        {
+          "kind": "normalize_replace",
+          "pattern": "\"durationMs\":[0-9]+",
+          "with": "\"durationMs\":0",
+          "reason": "Pi 1.1.0 measures each response and tool execution (#10549) with a monotonic clock; the value varies per run. Retain field placement, type and every other byte."
         }
       ]
     },
@@ -3657,6 +4145,12 @@
         },
         {
           "kind": "normalize_replace",
+          "pattern": "\"durationMs\":[0-9]+",
+          "with": "\"durationMs\":0",
+          "reason": "Pi 1.1.0 times each response and tool run with a monotonic clock, so the whole-millisecond value differs between runs; retain the field's presence, placement and number spelling."
+        },
+        {
+          "kind": "normalize_replace",
           "pattern": "\"timestamp\":\"[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\\.[0-9]{3}Z\"",
           "with": "\"timestamp\":\"2000-01-01T00:00:00.000Z\"",
           "reason": "Independent ISO wall clocks vary; preserve the string type and exact timestamp syntax."
@@ -3666,6 +4160,12 @@
           "pattern": "\"id\":\"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\"",
           "with": "\"id\":\"SESSION\"",
           "reason": "The header UUID is independently generated; no message content or property order is replaced."
+        },
+        {
+          "kind": "normalize_replace",
+          "pattern": "\"durationMs\":[0-9]+",
+          "with": "\"durationMs\":0",
+          "reason": "Pi 1.1.0 measures each response and tool execution (#10549) with a monotonic clock; the value varies per run. Retain field placement, type and every other byte."
         },
         {
           "kind": "artifact_normalized_equal",
@@ -4708,6 +5208,24 @@
       ]
     },
     {
+      "scenario": "test/parity/scenarios/oauth/30-provider-object-login.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "AUTH-JSON-1BEGIN",
+            "capture_end": "AUTH-JSON-1END"
+          },
+          "reason": "Owned visible surface: A provider object's OAuth login (loginLabel, select prompt) and API-key login run from /login and save to auth.json, for the Go SDK and the Node runtime",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
       "scenario": "test/parity/scenarios/print/02-print-extension-command.toml",
       "transforms": [
         {
@@ -4854,6 +5372,13 @@
           "reason": "Session header wall clocks vary; retain timestamp presence and type."
         },
         {
+          "kind": "duration",
+          "paths": [
+            "/**/durationMs"
+          ],
+          "reason": "Pi 1.1.0 times each response and tool run with a monotonic clock (event-stream.ts, agent-loop.ts), so the whole-millisecond value differs between runs; retain the field's presence, its position and its number spelling."
+        },
+        {
           "kind": "path",
           "paths": [
             "/*/cwd"
@@ -4885,6 +5410,37 @@
             "capture_end_regex": "then restart pi(g)?\\."
           },
           "reason": "Owned visible surface: Explicitly denied trust still warns after the resumed transcript, with Pi's spacing.",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/project-trust/21-new-session-repaints-trust-warning.toml",
+      "transforms": [
+        {
+          "kind": "normalize_replace",
+          "pattern": "\\.pig",
+          "with": ".pi",
+          "reason": "D2: the warning names the project configuration directory; the crop holds no user content."
+        },
+        {
+          "kind": "normalize_replace",
+          "pattern": "restart pig\\.",
+          "with": "restart pi.",
+          "reason": "D2: only the warning's restart command names the host executable."
+        },
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "This project is not trusted.",
+            "capture_start_last": true,
+            "capture_end": "✓ New session started"
+          },
+          "reason": "Owned visible surface: After /new an untrusted project shows the trust warning again, above the new-session notice.",
           "limitations": "No claim about output outside this crop or transient terminal bytes."
         },
         {
@@ -4931,6 +5487,13 @@
             "/**/timestamp"
           ],
           "reason": "Session entry wall clocks differ between processes; field presence, type and valid timestamp syntax remain checked."
+        },
+        {
+          "kind": "duration",
+          "paths": [
+            "/**/durationMs"
+          ],
+          "reason": "Pi 1.1.0 times each response and tool run with a monotonic clock (event-stream.ts, agent-loop.ts), so the whole-millisecond value differs between runs; retain the field's presence, its position and its number spelling."
         }
       ]
     },
@@ -4951,9 +5514,21 @@
         },
         {
           "kind": "normalize_replace",
+          "pattern": "\"durationMs\":[0-9]+",
+          "with": "\"durationMs\":0",
+          "reason": "Pi 1.1.0 times each response and tool run with a monotonic clock, so the whole-millisecond value differs between runs; retain the field's presence, placement and number spelling."
+        },
+        {
+          "kind": "normalize_replace",
           "pattern": "\"timestamp\":\"[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\\.[0-9]{3}Z\"",
           "with": "\"timestamp\":\"2000-01-01T00:00:00.000Z\"",
           "reason": "Independent ISO wall clocks vary; preserve the string type and exact timestamp syntax."
+        },
+        {
+          "kind": "normalize_replace",
+          "pattern": "\"durationMs\":[0-9]+",
+          "with": "\"durationMs\":0",
+          "reason": "Pi 1.1.0 measures each response and tool execution (#10549) with a monotonic clock; the value varies per run. Retain field placement, type and every other byte."
         }
       ]
     },
@@ -5020,11 +5595,25 @@
           "reason": "Independent message wall clocks vary; retain field presence, type, string whitespace and every event."
         },
         {
+          "kind": "duration",
+          "paths": [
+            "/**/durationMs"
+          ],
+          "reason": "Pi 1.1.0 times each response and tool run with a monotonic clock (event-stream.ts, agent-loop.ts), so the whole-millisecond value differs between runs; retain the field's presence, its position and its number spelling."
+        },
+        {
           "kind": "path",
           "paths": [
             "/**/sections/cwd"
           ],
           "reason": "D2: alias only the exact isolated cwd embedded in the system section; retain its tags, whitespace and suffix."
+        },
+        {
+          "kind": "duration",
+          "paths": [
+            "/**/durationMs"
+          ],
+          "reason": "Pi 1.1.0 measures each response and tool execution (#10549) with a monotonic clock; the value varies per run. Retain presence, type and position."
         },
         {
           "kind": "canonical_json",
@@ -5043,6 +5632,13 @@
           "reason": "Independent message clocks vary; retain event order, field presence and timestamp type."
         },
         {
+          "kind": "duration",
+          "paths": [
+            "/**/durationMs"
+          ],
+          "reason": "Pi 1.1.0 times each response and tool run with a monotonic clock (event-stream.ts, agent-loop.ts), so the whole-millisecond value differs between runs; retain the field's presence, its position and its number spelling."
+        },
+        {
           "kind": "path",
           "paths": [
             "/**/sections/cwd"
@@ -5059,6 +5655,13 @@
           "group": "recovery-entry",
           "pattern": "^[a-f0-9]{8,16}$",
           "reason": "Recovery entry keys vary per process. A bijection preserves the appended entry's parent and omission target; no event or payload field is removed."
+        },
+        {
+          "kind": "duration",
+          "paths": [
+            "/**/durationMs"
+          ],
+          "reason": "Pi 1.1.0 measures each response and tool execution (#10549) with a monotonic clock; the value varies per run. Retain presence, type and position."
         }
       ]
     },
@@ -5092,6 +5695,13 @@
             "/**/timestamp"
           ],
           "reason": "Independent entry and message clocks vary; preserve field presence, timestamp type and syntax."
+        },
+        {
+          "kind": "duration",
+          "paths": [
+            "/**/durationMs"
+          ],
+          "reason": "Pi 1.1.0 measures each response and tool execution (#10549) with a monotonic clock; the value varies per run. Retain presence, type and position."
         }
       ]
     },
@@ -5149,7 +5759,8 @@
         {
           "kind": "duration",
           "paths": [
-            "/**/wall_time_seconds"
+            "/**/wall_time_seconds",
+            "/**/durationMs"
           ],
           "reason": "bash.ts:392 measures the command's wall clock and rounds it to 0.1 s, so a loaded host reports 0 or 0.1 for the same command; retain the field's presence, its position and Pi's one-decimal number spelling."
         },
@@ -5246,6 +5857,13 @@
           "pig": "Always read pig .md files",
           "pi": "Always read pi .md files",
           "reason": "D2/D22: this exact instruction prefix names the product documentation; retain completely, link-following instructions, and the TUI example."
+        },
+        {
+          "kind": "duration_ms",
+          "paths": [
+            "/**/durationMs"
+          ],
+          "reason": "Pi 1.1.0 (#10549) stamps durationMs from a monotonic clock, so two runs differ by whole milliseconds; retain the field's presence, placement and non-negative integer spelling."
         }
       ]
     },
@@ -5291,6 +5909,13 @@
           "reason": "Independent message and entry wall clocks vary; retain field presence, timestamp type and valid syntax."
         },
         {
+          "kind": "duration",
+          "paths": [
+            "/**/durationMs"
+          ],
+          "reason": "Pi 1.1.0 times each response and tool run with a monotonic clock (event-stream.ts, agent-loop.ts), so the whole-millisecond value differs between runs; retain the field's presence, its position and its number spelling."
+        },
+        {
           "kind": "id",
           "paths": [
             "/**/id",
@@ -5300,6 +5925,13 @@
           "group": "entry",
           "pattern": "^[a-f0-9]{8,16}$",
           "reason": "Generated entry keys vary per process. A bijection retains every parent and leaf reference; command and tool-call IDs stay literal."
+        },
+        {
+          "kind": "duration",
+          "paths": [
+            "/**/durationMs"
+          ],
+          "reason": "Pi 1.1.0 measures each response and tool execution (#10549) with a monotonic clock; the value varies per run. Retain presence, type and position."
         },
         {
           "kind": "canonical_json",
@@ -5352,6 +5984,13 @@
           "reason": "Independent message and entry clocks vary; retain field presence, type and valid timestamp syntax."
         },
         {
+          "kind": "duration",
+          "paths": [
+            "/**/durationMs"
+          ],
+          "reason": "Pi 1.1.0 times each response and tool run with a monotonic clock (event-stream.ts, agent-loop.ts), so the whole-millisecond value differs between runs; retain the field's presence, its position and its number spelling."
+        },
+        {
           "kind": "id",
           "paths": [
             "/**/id",
@@ -5361,6 +6000,13 @@
           "group": "entry",
           "pattern": "^[a-f0-9]{8,16}$",
           "reason": "Generated entry IDs vary per run. Preserve identity reuse and all parent/leaf references with one bijection; request and tool IDs stay literal."
+        },
+        {
+          "kind": "duration",
+          "paths": [
+            "/**/durationMs"
+          ],
+          "reason": "Pi 1.1.0 measures each response and tool execution (#10549) with a monotonic clock; the value varies per run. Retain presence, type and position."
         }
       ]
     },
@@ -5382,6 +6028,13 @@
           "reason": "Independent message and entry clocks vary; retain field presence, type and valid timestamp syntax."
         },
         {
+          "kind": "duration",
+          "paths": [
+            "/**/durationMs"
+          ],
+          "reason": "Pi 1.1.0 times each response and tool run with a monotonic clock (event-stream.ts, agent-loop.ts), so the whole-millisecond value differs between runs; retain the field's presence, its position and its number spelling."
+        },
+        {
           "kind": "id",
           "paths": [
             "/**/id",
@@ -5401,6 +6054,13 @@
           "group": "call",
           "pattern": "^read_[0-9]+_[0-9]+$",
           "reason": "Pi and PiG generate Google tool-call IDs as name_<Date.now()>_<counter> (google-generative-ai.ts:199); the clock differs per process. Preserve one bijection between the toolCall id, the tool execution id and the toolResult reference."
+        },
+        {
+          "kind": "duration",
+          "paths": [
+            "/**/durationMs"
+          ],
+          "reason": "Pi 1.1.0 measures each response and tool execution (#10549) with a monotonic clock; the value varies per run. Retain presence, type and position."
         }
       ]
     },
@@ -5422,6 +6082,13 @@
           "reason": "Independent message and entry clocks vary; retain field presence, type and valid timestamp syntax."
         },
         {
+          "kind": "duration",
+          "paths": [
+            "/**/durationMs"
+          ],
+          "reason": "Pi 1.1.0 times each response and tool run with a monotonic clock (event-stream.ts, agent-loop.ts), so the whole-millisecond value differs between runs; retain the field's presence, its position and its number spelling."
+        },
+        {
           "kind": "id",
           "paths": [
             "/**/id",
@@ -5431,6 +6098,13 @@
           "group": "entry",
           "pattern": "^[a-f0-9]{8,16}$",
           "reason": "Generated entry IDs vary per run. Preserve identity reuse and all parent/leaf references with one bijection; request and tool IDs stay literal."
+        },
+        {
+          "kind": "duration",
+          "paths": [
+            "/**/durationMs"
+          ],
+          "reason": "Pi 1.1.0 measures each response and tool execution (#10549) with a monotonic clock; the value varies per run. Retain presence, type and position."
         }
       ]
     },
@@ -5452,6 +6126,13 @@
           "reason": "Independent message and entry clocks vary; retain field presence, type and valid timestamp syntax."
         },
         {
+          "kind": "duration",
+          "paths": [
+            "/**/durationMs"
+          ],
+          "reason": "Pi 1.1.0 times each response and tool run with a monotonic clock (event-stream.ts, agent-loop.ts), so the whole-millisecond value differs between runs; retain the field's presence, its position and its number spelling."
+        },
+        {
           "kind": "id",
           "paths": [
             "/**/id",
@@ -5461,6 +6142,13 @@
           "group": "entry",
           "pattern": "^[a-f0-9]{8,16}$",
           "reason": "Generated entry IDs vary per run. Preserve identity reuse and all parent/leaf references with one bijection; request and tool IDs stay literal."
+        },
+        {
+          "kind": "duration",
+          "paths": [
+            "/**/durationMs"
+          ],
+          "reason": "Pi 1.1.0 measures each response and tool execution (#10549) with a monotonic clock; the value varies per run. Retain presence, type and position."
         }
       ]
     },
@@ -5528,6 +6216,13 @@
             "/**/timestamp"
           ],
           "reason": "Independent clocks vary; retain field presence, numeric/string type and timestamp syntax instead of replacing arbitrary values with zero."
+        },
+        {
+          "kind": "duration",
+          "paths": [
+            "/**/durationMs"
+          ],
+          "reason": "Pi 1.1.0 times each response and tool run with a monotonic clock (event-stream.ts, agent-loop.ts), so the whole-millisecond value differs between runs; retain the field's presence, its position and its number spelling."
         }
       ]
     },
@@ -5592,6 +6287,13 @@
             "/**/timestamp"
           ],
           "reason": "Independent clocks vary; preserve numeric/string type and valid timestamp syntax instead of accepting arbitrary substituted values."
+        },
+        {
+          "kind": "duration",
+          "paths": [
+            "/**/durationMs"
+          ],
+          "reason": "Pi 1.1.0 times each response and tool run with a monotonic clock (event-stream.ts, agent-loop.ts), so the whole-millisecond value differs between runs; retain the field's presence, its position and its number spelling."
         }
       ]
     },
@@ -5620,6 +6322,13 @@
             "/**/timestamp"
           ],
           "reason": "Independent entry and message clocks vary; preserve field presence, timestamp type and syntax."
+        },
+        {
+          "kind": "duration",
+          "paths": [
+            "/**/durationMs"
+          ],
+          "reason": "Pi 1.1.0 measures each response and tool execution (#10549) with a monotonic clock; the value varies per run. Retain presence, type and position."
         }
       ]
     },
@@ -5649,6 +6358,13 @@
             "/**/timestamp"
           ],
           "reason": "Independent message clocks vary; retain presence, numeric/string type and valid syntax."
+        },
+        {
+          "kind": "duration",
+          "paths": [
+            "/**/durationMs"
+          ],
+          "reason": "Pi 1.1.0 measures each response and tool execution (#10549) with a monotonic clock; the value varies per run. Retain presence, type and position."
         }
       ]
     },
@@ -5661,6 +6377,13 @@
             "/**/timestamp"
           ],
           "reason": "Independent message wall clocks differ; preserve all event order, content, display, details and command response fields."
+        },
+        {
+          "kind": "duration",
+          "paths": [
+            "/**/durationMs"
+          ],
+          "reason": "Pi 1.1.0 times each response and tool run with a monotonic clock (event-stream.ts, agent-loop.ts), so the whole-millisecond value differs between runs; retain the field's presence, its position and its number spelling."
         }
       ]
     },
@@ -5680,6 +6403,13 @@
             "/**/timestamp"
           ],
           "reason": "Independent message wall clocks vary; retain field presence, timestamp type and valid syntax."
+        },
+        {
+          "kind": "duration",
+          "paths": [
+            "/**/durationMs"
+          ],
+          "reason": "Pi 1.1.0 measures each response and tool execution (#10549) with a monotonic clock; the value varies per run. Retain presence, type and position."
         },
         {
           "kind": "canonical_json",
@@ -5707,9 +6437,17 @@
         {
           "kind": "duration",
           "paths": [
-            "/**/wall_time_seconds"
+            "/**/wall_time_seconds",
+            "/**/durationMs"
           ],
           "reason": "bash.ts:392 measures the command's wall clock and rounds it to 0.1 s, so a loaded host reports 0 or 0.1 for the same command; retain the field's presence, its position and Pi's one-decimal number spelling."
+        },
+        {
+          "kind": "duration_ms",
+          "paths": [
+            "/**/durationMs"
+          ],
+          "reason": "Pi 1.1.0 (#10549) stamps durationMs from a monotonic clock, so two runs differ by whole milliseconds; retain the field's presence, placement and non-negative integer spelling."
         },
         {
           "kind": "canonical_json",
@@ -5734,9 +6472,21 @@
         },
         {
           "kind": "normalize_replace",
+          "pattern": "\"durationMs\":[0-9]+",
+          "with": "\"durationMs\":0",
+          "reason": "Pi 1.1.0 times each response and tool run with a monotonic clock, so the whole-millisecond value differs between runs; retain the field's presence, placement and number spelling."
+        },
+        {
+          "kind": "normalize_replace",
           "pattern": "\"wall_time_seconds\":[0-9.]+",
           "with": "\"wall_time_seconds\":0",
           "reason": "bash rounds wall time to 0.1 s (bash.ts:392), so a slow runner can differ by one step; the key, its type and its position stay."
+        },
+        {
+          "kind": "normalize_replace",
+          "pattern": "\"durationMs\":[0-9]+",
+          "with": "\"durationMs\":0",
+          "reason": "Pi 1.1.0 measures each response and tool execution (#10549) with a monotonic clock; the value varies per run. Retain field placement, type and every other byte."
         }
       ]
     },
@@ -5769,8 +6519,246 @@
           "reason": "Generated entry keys vary per process. A bijection retains every parent and leaf reference; command and tool-call IDs stay literal."
         },
         {
+          "kind": "duration",
+          "paths": [
+            "/**/durationMs"
+          ],
+          "reason": "Pi 1.1.0 measures each response and tool execution (#10549) with a monotonic clock; the value varies per run. Retain presence, type and position."
+        },
+        {
           "kind": "canonical_json",
           "reason": "JSON object member order is not semantic. Raw stdout remains retained; fields and record order are not projected."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/rpc/44-rpc-tools-caller-order.toml",
+      "transforms": [
+        {
+          "kind": "path",
+          "paths": [
+            "/**/sections/cwd"
+          ],
+          "reason": "D2: alias only the exact isolated cwd embedded in the system section; retain its tags, whitespace and suffix."
+        },
+        {
+          "kind": "timestamp",
+          "paths": [
+            "/**/timestamp"
+          ],
+          "reason": "Independent message wall clocks vary; retain field presence, timestamp type and valid syntax."
+        },
+        {
+          "kind": "duration",
+          "paths": [
+            "/**/wall_time_seconds",
+            "/**/durationMs"
+          ],
+          "reason": "bash.ts:392 measures the command's wall clock and rounds it to 0.1 s, so a loaded host reports 0 or 0.1 for the same command; retain the field's presence, its position and Pi's one-decimal number spelling."
+        },
+        {
+          "kind": "duration_ms",
+          "paths": [
+            "/**/durationMs"
+          ],
+          "reason": "Pi 1.1.0 (#10549) stamps durationMs from a monotonic clock, so two runs differ by whole milliseconds; retain the field's presence, placement and non-negative integer spelling."
+        },
+        {
+          "kind": "canonical_json",
+          "reason": "JSON object member order is not semantic. Raw stdout remains retained; fields and record order are not projected."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/rpc/45-rpc-tools-flag-order.toml",
+      "transforms": [
+        {
+          "kind": "path",
+          "paths": [
+            "/**/sections/cwd"
+          ],
+          "reason": "D2: alias only the exact isolated cwd embedded in the system section; retain its tags, whitespace and suffix."
+        },
+        {
+          "kind": "timestamp",
+          "paths": [
+            "/**/timestamp"
+          ],
+          "reason": "Independent message wall clocks vary; retain field presence, timestamp type and valid syntax."
+        },
+        {
+          "kind": "duration",
+          "paths": [
+            "/**/durationMs"
+          ],
+          "reason": "Pi 1.1.0 measures each response and tool execution (#10549) with a monotonic clock; the value varies per run. Retain presence, type and position."
+        },
+        {
+          "kind": "canonical_json",
+          "reason": "JSON object member order is not semantic. Raw stdout remains retained; fields and record order are not projected."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/rpc/47-rpc-cycle-model-enabled-models.toml",
+      "transforms": [
+        {
+          "kind": "output_normalized_equal",
+          "reason": "Declared plain-text/layout surface: cycle_model cycles the models enabled by settings and reports isScoped.",
+          "limitations": "ANSI, CR, trailing spaces and outer blank rows are not equality evidence."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/rpc/48-rpc-model-thinking-serial.toml",
+      "transforms": [
+        {
+          "kind": "normalize_replace",
+          "pattern": "\"sessionId\":\"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\"",
+          "with": "\"sessionId\":\"00000000-0000-0000-0000-000000000000\"",
+          "reason": "Each process draws its own random UUID session id; retain the field placement and the UUID syntax."
+        },
+        {
+          "kind": "output_normalized_equal",
+          "reason": "Declared plain-text/layout surface: Serialized model and thinking commands across plain, reasoning and xhigh models.",
+          "limitations": "ANSI, CR, trailing spaces and outer blank rows are not equality evidence."
+        },
+        {
+          "kind": "canonical_json",
+          "reason": "JSON object member order is not semantic. Raw stdout remains retained; fields and record order are not projected."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/rpc/49-rpc-malformed-command-fields.toml",
+      "transforms": [
+        {
+          "kind": "normalize_replace",
+          "pattern": "\"sessionId\":\"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\"",
+          "with": "\"sessionId\":\"00000000-0000-0000-0000-000000000000\"",
+          "reason": "Each process draws its own random UUID session id; retain the field placement and the UUID syntax."
+        },
+        {
+          "kind": "output_normalized_equal",
+          "reason": "Declared plain-text/layout surface: RPC model and thinking commands across plain, reasoning and xhigh models.",
+          "limitations": "ANSI, CR, trailing spaces and outer blank rows are not equality evidence."
+        },
+        {
+          "kind": "canonical_json",
+          "reason": "JSON object member order is not semantic. Raw stdout remains retained; fields and record order are not projected."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/rpc/50-rpc-session-queries-after-chat.toml",
+      "transforms": [
+        {
+          "kind": "normalize_replace",
+          "pattern": "parity-snap-cwd-[0-9]{10}",
+          "with": "parity-snap-cwd-0000000000",
+          "reason": "Alias the isolated working-directory identity while preserving path suffixes and content."
+        },
+        {
+          "kind": "normalize_replace",
+          "pattern": "\"timestamp\":[0-9]+",
+          "with": "\"timestamp\":0",
+          "reason": "Independent numeric wall clocks vary; retain field placement, type and every other byte."
+        },
+        {
+          "kind": "normalize_replace",
+          "pattern": "\"timestamp\":\"[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\\.[0-9]{3}Z\"",
+          "with": "\"timestamp\":\"2000-01-01T00:00:00.000Z\"",
+          "reason": "Independent ISO wall clocks vary; preserve the string type and exact timestamp syntax."
+        },
+        {
+          "kind": "normalize_replace",
+          "pattern": "\"durationMs\":[0-9]+",
+          "with": "\"durationMs\":0",
+          "reason": "Pi 1.1.0 measures each response and tool execution (#10549) with a monotonic clock; the value varies per run. Retain field placement, type and every other byte."
+        },
+        {
+          "kind": "normalize_replace",
+          "pattern": "\"(id|parentId|leafId|entryId|targetId)\":\"[0-9a-f]{8}\"",
+          "with": "\"$1\":\"00000000\"",
+          "reason": "Session entry ids are random 8-hex strings per process; retain the field and the id syntax."
+        },
+        {
+          "kind": "normalize_replace",
+          "pattern": "[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}",
+          "with": "00000000-0000-0000-0000-000000000000",
+          "reason": "Each process draws its own random UUID session id; the session file name carries it too."
+        },
+        {
+          "kind": "normalize_replace",
+          "pattern": "parity-rpc-[0-9a-z-]+-(pi|pig)-[0-9]+",
+          "with": "parity-rpc-run",
+          "reason": "Each run's isolated temp directory is named for its binary and a random suffix; keep the path suffix and every other byte."
+        },
+        {
+          "kind": "normalize_replace",
+          "pattern": "2[0-9]{3}-[0-9]{2}-[0-9]{2}T[0-9]{2}-[0-9]{2}-[0-9]{2}-[0-9]{3}Z",
+          "with": "2000-01-01T00-00-00-000Z",
+          "reason": "The session file name starts with its creation time, which differs per process."
+        },
+        {
+          "kind": "output_normalized_equal",
+          "reason": "Declared plain-text/layout surface: Session query commands after a faux conversation answer like Pi 1.1.0.",
+          "limitations": "ANSI, CR, trailing spaces and outer blank rows are not equality evidence."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/rpc/51-rpc-continue-without-prior-session.toml",
+      "transforms": [
+        {
+          "kind": "output_normalized_equal",
+          "reason": "Declared plain-text/layout surface: --continue with no earlier session starts fresh without a warning",
+          "limitations": "ANSI, CR, trailing spaces and outer blank rows are not equality evidence."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/rpc/52-rpc-images-field-types.toml",
+      "transforms": [
+        {
+          "kind": "normalize_replace",
+          "pattern": "parity-snap-cwd-[0-9]{10}",
+          "with": "parity-snap-cwd-0000000000",
+          "reason": "Alias the isolated working-directory identity while preserving path suffixes and content."
+        },
+        {
+          "kind": "normalize_replace",
+          "pattern": "\"timestamp\":[0-9]+",
+          "with": "\"timestamp\":0",
+          "reason": "Independent numeric wall clocks vary; retain field placement, type and every other byte."
+        },
+        {
+          "kind": "normalize_replace",
+          "pattern": "\"timestamp\":\"[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\\.[0-9]{3}Z\"",
+          "with": "\"timestamp\":\"2000-01-01T00:00:00.000Z\"",
+          "reason": "Independent ISO wall clocks vary; preserve the string type and exact timestamp syntax."
+        },
+        {
+          "kind": "normalize_replace",
+          "pattern": "\"durationMs\":[0-9]+",
+          "with": "\"durationMs\":0",
+          "reason": "Pi 1.1.0 measures each response and tool execution (#10549) with a monotonic clock; the value varies per run. Retain field placement, type and every other byte."
+        },
+        {
+          "kind": "output_normalized_equal",
+          "reason": "Declared plain-text/layout surface: Malformed images in prompt, steer and follow_up answer with Pi's messages",
+          "limitations": "ANSI, CR, trailing spaces and outer blank rows are not equality evidence."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/rpc/54-rpc-resource-directory-order.toml",
+      "transforms": [
+        {
+          "kind": "normalize_replace",
+          "pattern": "(?:/|([A-Za-z]):\\\\\\\\)[^\"]*parity-snap-(PI|PIG)_CODING_AGENT_DIR-[0-9]+",
+          "with": "${1}<agent>",
+          "reason": "D2: the isolated agent-root prefix varies; retain resource paths, precedence and content."
         }
       ]
     },
@@ -5908,7 +6896,7 @@
         },
         {
           "kind": "output_normalized_equal",
-          "reason": "Declared plain-text/layout surface: /login subscription flow renders LoginDialog with GitHub Copilot device-code prompt",
+          "reason": "Declared plain-text/layout surface: /login subscription flow renders LoginDialogComponent with GitHub Copilot device-code prompt",
           "limitations": "ANSI, CR, trailing spaces and outer blank rows are not equality evidence."
         },
         {
@@ -5917,7 +6905,7 @@
             "capture_start": "Login to GitHub Copilot",
             "capture_end": "Enter code:"
           },
-          "reason": "Owned visible surface: /login subscription flow renders LoginDialog with GitHub Copilot device-code prompt",
+          "reason": "Owned visible surface: /login subscription flow renders LoginDialogComponent with GitHub Copilot device-code prompt",
           "limitations": "No claim about output outside this crop or transient terminal bytes."
         },
         {
@@ -6519,6 +7507,25 @@
       ]
     },
     {
+      "scenario": "test/parity/scenarios/settings/06-thinking-selector-search-editing.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "Thinking Level",
+            "capture_start_last": true,
+            "capture_end": "to set as default"
+          },
+          "reason": "Owned visible surface: Both binaries edit the /thinking search like an Input and keep the highlighted level while filtering.",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
       "scenario": "test/parity/scenarios/settings/07-settings-model-thinking-model-step.toml",
       "transforms": [
         {
@@ -6548,6 +7555,24 @@
             "capture_end": "Type to filter · Enter to select · Esc to go back"
           },
           "reason": "Owned visible surface: The model-thinking submenu preserves exact empty-search rendering and cannot confirm an absent model.",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/settings/08-settings-search-editing.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "> t",
+            "capture_end": "Type to search · Enter/Space to change · Esc to cancel"
+          },
+          "reason": "Owned visible surface: Both binaries edit the /settings search like an Input and reset the selection after a delegated key.",
           "limitations": "No claim about output outside this crop or transient terminal bytes."
         },
         {
@@ -6869,6 +7894,234 @@
             "capture_end": "Session name set: armin-end"
           },
           "reason": "Owned visible surface: Hidden Armin command converges to the complete accent-colored half-block bitmap: Pi's Armin, PiG's pig head (D87)",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/slash-commands/14-mcp-manager-menu.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "MCP servers",
+            "capture_end": "close",
+            "capture_start_last": true
+          },
+          "reason": "Owned visible surface: Both binaries open the /mcp manager with the configured servers listed.",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/slash-commands/15-mcp-server-detail.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "State: disabled",
+            "capture_end": "back",
+            "capture_start_last": true
+          },
+          "reason": "Owned visible surface: Both binaries open a server of the /mcp manager: its transport, config file, state and actions.",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/slash-commands/16-mcp-manager-while-connecting.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "MCP servers",
+            "capture_end": "close",
+            "capture_start_last": true
+          },
+          "reason": "Owned visible surface: Both binaries open the /mcp manager at once while a configured server is still connecting.",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/slash-commands/17-mcp-signin-status-cancel-hint.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "Sign in to issues",
+            "capture_end": "cancel",
+            "capture_start_last": true
+          },
+          "reason": "Owned visible surface: Both binaries show the sign-in screen of the /mcp manager with its cancel hint.",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/slash-commands/18-mcp-signin-cancel.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "Sign-in cancelled.",
+            "capture_end": "back",
+            "capture_start_last": true
+          },
+          "reason": "Owned visible surface: Both binaries cancel a sign-in of the /mcp manager that waits on the authorization server with Esc.",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/slash-commands/19-mcp-manager-empty-menu-cancel.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "after-close",
+            "capture_end": "after-close",
+            "capture_start_last": true
+          },
+          "reason": "Owned visible surface: Both binaries close the /mcp manager's empty servers menu with the cancel key.",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/slash-commands/20-mcp-signin-paste-redirect-url.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "Sign-in failed:",
+            "capture_end": "back",
+            "capture_start_last": true
+          },
+          "reason": "Owned visible surface: Both binaries reject a pasted redirect URL that belongs to another sign-in.",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/slash-commands/21-mcp-signin-redirect-screen-cancel.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "Sign-in cancelled.",
+            "capture_end": "back",
+            "capture_start_last": true
+          },
+          "reason": "Owned visible surface: Both binaries cancel the sign-in from the paste screen with the cancel key.",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/slash-commands/22-mcp-servers-section-in-transcript.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "mcp-section:",
+            "capture_end": "mcp-section-end",
+            "capture_start_last": true
+          },
+          "reason": "Owned visible surface: Both binaries record the mcp_servers prompt section in the first system message of an interactive session.",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/slash-commands/23-mcp-servers-section-text.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "mcp-text-begin",
+            "capture_end": "mcp-text-end",
+            "capture_start_last": true
+          },
+          "reason": "Owned visible surface: Both binaries render the same mcp_servers prompt section for a configured codemode server.",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/slash-commands/24-mcp-callback-error-page.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "callback-page-begin",
+            "capture_end": "callback-page-end",
+            "capture_start_last": true
+          },
+          "reason": "Owned visible surface: Both binaries answer a callback with an unknown state with the same error page.",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/slash-commands/25-mcp-tool-card.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "Run: mcp search cards",
+            "capture_end": "mcp-search-done",
+            "capture_start_last": true
+          },
+          "reason": "Owned visible surface: Both binaries render the card of an MCP tool call and its result the same way.",
           "limitations": "No claim about output outside this crop or transient terminal bytes."
         },
         {
@@ -7296,9 +8549,24 @@
         {
           "kind": "duration",
           "paths": [
-            "/**/wall_time_seconds"
+            "/**/durationMs"
+          ],
+          "reason": "Pi 1.1.0 times each response and tool run with a monotonic clock (event-stream.ts, agent-loop.ts), so the whole-millisecond value differs between runs; retain the field's presence, its position and its number spelling."
+        },
+        {
+          "kind": "duration",
+          "paths": [
+            "/**/wall_time_seconds",
+            "/**/durationMs"
           ],
           "reason": "bash.ts:392 measures the command's wall clock and rounds it to 0.1 s, so a loaded host reports 0 or 0.1 for the same command; retain the field's presence, its position and Pi's one-decimal number spelling."
+        },
+        {
+          "kind": "duration_ms",
+          "paths": [
+            "/**/durationMs"
+          ],
+          "reason": "Pi 1.1.0 (#10549) stamps durationMs from a monotonic clock, so two runs differ by whole milliseconds; retain the field's presence, placement and non-negative integer spelling."
         }
       ]
     },

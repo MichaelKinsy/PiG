@@ -20,13 +20,25 @@ func execOutcome(result extension.ExecResult, err error) string {
 	return "resolved:" + strconv.Itoa(result.Code)
 }
 
+// execReference is the Go reference for extension.API.Exec: the host's production ExecCommand behind the API method, as the host's
+// exec action runs it for an SDK (Pi's pi.exec, packages/coding-agent/src/core/extensions/types.ts:1724).
+type execReference struct {
+	extension.API
+	cwd string
+}
+
+func (r execReference) Exec(command string, args []string, options *extension.ExecOptions) (extension.ExecResult, error) {
+	return extension.ExecCommand(context.Background(), r.cwd, command, args, options)
+}
+
 // Pi's execCommand (core/exec.ts) spawns inside its Promise executor, so what
 // spawn throws rejects pi.exec with that error's message: Node's
 // ERR_INVALID_ARG_VALUE for an empty command or a NUL, and on Windows "spawn
 // EINVAL" for a .cmd or .bat program. A program that is not found resolves
 // with code 1. Every SDK must reject with the host's exact message: a code
 // prefix or a fallback such as "None:" or "call_failed:" is drift. The host's
-// exec is the production ExecCommand; the in-process call is the reference.
+// exec is the production ExecCommand; the in-process call is the reference (extension.API.Exec, Pi pi.exec,
+// packages/coding-agent/src/core/extensions/types.ts:1724).
 func TestExecRejectionsAcrossSDKs(t *testing.T) {
 	t.Parallel()
 	commands := []string{"", "tool.cmd", "TOOL.BAT ", "a\x00b", "pig-missing-program"}
@@ -35,8 +47,9 @@ func TestExecRejectionsAcrossSDKs(t *testing.T) {
 		t.Fatal(err)
 	}
 	var want []string
+	var api extension.API = execReference{cwd: t.TempDir()}
 	for _, command := range commands {
-		want = append(want, execOutcome(extension.ExecCommand(context.Background(), t.TempDir(), command, nil, nil))+":info")
+		want = append(want, execOutcome(api.Exec(command, nil, nil))+":info")
 	}
 	// The rows must exercise both rejections, not only resolutions.
 	if want[0] != "rejected:The argument 'file' cannot be empty. Received '':info" || want[3] != `rejected:The argument 'file' must be a string without null bytes. Received 'a\x00b':info` || want[4] != "resolved:1:info" {

@@ -18,7 +18,7 @@ import (
 
 func context9789Harness(t *testing.T, ext extension.Extension) *recoveryHarness {
 	t.Helper()
-	h := newRecoveryHarness(t, harnessOptions{tools: tools.CreateCodingTools(t.TempDir(), nil, ""), extension: ext, settings: `{"compaction":{"keepRecentTokens":1}}`})
+	h := newRecoveryHarness(t, harnessOptions{tools: tools.CreateCodingTools(t.TempDir(), nil), extension: ext, settings: `{"compaction":{"keepRecentTokens":1}}`})
 	h.session.SetActiveToolsByName([]string{"read", "bash", "edit", "write"})
 	return h
 }
@@ -55,7 +55,7 @@ func context9789Capture(h *recoveryHarness, text string) func(*testing.T) []ai.M
 
 func context9789Prompt(t *testing.T, h *recoveryHarness, text string) {
 	t.Helper()
-	if _, err := h.session.Prompt(t.Context(), text); err != nil {
+	if err := h.session.Prompt(t.Context(), text); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -86,7 +86,7 @@ func context9789ToolNames(messages []ai.Message) []string {
 }
 
 func context9789Slice(messages []extension.AgentMessage) []extension.AgentMessage {
-	index := slices.IndexFunc(messages, func(m extension.AgentMessage) bool { return m.(agent.AgentMessage).Role() == "compactionSummary" })
+	index := slices.IndexFunc(messages, func(m extension.AgentMessage) bool { return m.Role() == "compactionSummary" })
 	if index < 0 {
 		index = max(0, len(messages)-1)
 	} // Array.slice(-1) before compaction.
@@ -106,7 +106,7 @@ func context9789CompactionHook(ext *extension.Extension) {
 		if err := json.Unmarshal(raw, &prep); err != nil {
 			return nil, err
 		}
-		return extension.SessionBeforeCompactResult{Compaction: map[string]any{"summary": "extension summary", "firstKeptEntryId": prep.FirstKeptEntryID, "tokensBefore": prep.TokensBefore, "details": map[string]any{"source": "test"}}}, nil
+		return extension.SessionBeforeCompactResult{Compaction: &extension.CompactionResult{Summary: "extension summary", FirstKeptEntryID: prep.FirstKeptEntryID, TokensBefore: prep.TokensBefore, Details: map[string]any{"source": "test"}}}, nil
 	}}
 }
 
@@ -115,7 +115,7 @@ func context9789Compact(t *testing.T, h *recoveryHarness) {
 	h.provider.responses = []scriptedResponse{fauxReply("one", ai.StopReasonStop, 0), fauxReply("two", ai.StopReasonStop, 0)}
 	context9789Prompt(t, h, "first")
 	context9789Prompt(t, h, "second")
-	if err := h.session.Compact(t.Context(), ""); err != nil {
+	if _, err := h.session.Compact(t.Context(), ""); err != nil {
 		t.Fatal(err)
 	}
 	messages := h.session.Messages()
@@ -137,7 +137,7 @@ func TestUpstream9789SliceRetainsPromptAndTools(t *testing.T) {
 	request := context9789Capture(h, "after compaction")
 	context9789Prompt(t, h, "third")
 	for _, m := range seen {
-		if m.(agent.AgentMessage).Role() == "system" {
+		if m.Role() == "system" {
 			t.Error("context handler received system message")
 		}
 	}
@@ -239,7 +239,7 @@ func TestUpstream9789ContextWithSystemFollowsContext(t *testing.T) {
 			seen = args[0].(extension.ContextWithSystemEvent).Messages
 			messages := slices.Clone(seen)
 			for i, m := range messages {
-				message := m.(agent.AgentMessage)
+				message := m
 				if message.System != nil && message.System.ToolsAdded != nil {
 					system := *message.System
 					system.ToolsAdded = slices.DeleteFunc(slices.Clone(system.ToolsAdded), func(tool ai.ToolSchema) bool { return tool.Name == "bash" })
@@ -258,7 +258,7 @@ func TestUpstream9789ContextWithSystemFollowsContext(t *testing.T) {
 	context9789Compact(t, h)
 	request := context9789Capture(h, "after compaction")
 	context9789Prompt(t, h, "third")
-	if len(seen) < 2 || seen[0].(agent.AgentMessage).Role() != "system" || seen[1].(agent.AgentMessage).Role() != "compactionSummary" {
+	if len(seen) < 2 || seen[0].Role() != "system" || seen[1].Role() != "compactionSummary" {
 		t.Fatalf("restored context=%+v", seen)
 	}
 	active := h.session.ActiveToolNames()
@@ -275,7 +275,7 @@ func TestUpstream9789ContextWithSystemFollowsContext(t *testing.T) {
 func TestUpstream9789RemovedHeadReportsErrorButHonorsOutput(t *testing.T) {
 	ext := extension.Extension{Handlers: map[string][]extension.HandlerFn{"context_with_system": {func(args ...any) (any, error) {
 		messages := args[0].(extension.ContextWithSystemEvent).Messages
-		return &extension.ContextEventResult{Messages: slices.DeleteFunc(slices.Clone(messages), func(m extension.AgentMessage) bool { return m.(agent.AgentMessage).System != nil })}, nil
+		return &extension.ContextEventResult{Messages: slices.DeleteFunc(slices.Clone(messages), func(m extension.AgentMessage) bool { return m.System != nil })}, nil
 	}}}}
 	h := context9789Harness(t, ext)
 	var errors []string

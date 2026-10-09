@@ -1,5 +1,7 @@
 package tools
 
+// pi: packages/coding-agent/src/core/tools/truncate.ts
+
 import (
 	"strings"
 	"testing"
@@ -14,7 +16,7 @@ import (
 
 func TestTruncateHeadNotTruncated(t *testing.T) {
 	in := "a\nb\nc"
-	tr := TruncateHead(in, 1024, 100)
+	tr := TruncateHead(in, truncationLimits(1024, 100))
 	if tr.Truncated {
 		t.Errorf("not-truncated input flagged Truncated: %+v", tr)
 	}
@@ -31,7 +33,7 @@ func TestTruncateHeadLineCapBeforeByteCap(t *testing.T) {
 	// maxLines=3 so the line cap fires before the byte cap.
 	in := strings.Repeat("xx\n", 10)
 	in = strings.TrimRight(in, "\n") // 10 lines, ~30 bytes
-	tr := TruncateHead(in, 10000, 3)
+	tr := TruncateHead(in, truncationLimits(10000, 3))
 	if !tr.Truncated || tr.TruncatedBy != "lines" {
 		t.Errorf("expected Truncated=true, TruncatedBy=lines; got %+v", tr)
 	}
@@ -52,7 +54,7 @@ func TestTruncateHeadByteCapBeforeLineCap(t *testing.T) {
 	// maxBytes=30 should cut off after ~3 lines (10+1+10+1+10 = 32 hits the cap).
 	in := strings.Repeat("xxxxxxxxx\n", 50)
 	in = strings.TrimRight(in, "\n")
-	tr := TruncateHead(in, 30, 100)
+	tr := TruncateHead(in, truncationLimits(30, 100))
 	if !tr.Truncated || tr.TruncatedBy != "bytes" {
 		t.Errorf("expected Truncated=true, TruncatedBy=bytes; got %+v", tr)
 	}
@@ -72,7 +74,7 @@ func TestTruncateHeadByteCapBeforeLineCap(t *testing.T) {
 func TestTruncateHeadFirstLineExceedsLimit(t *testing.T) {
 	// Single line of 100 bytes, cap at 50.
 	in := strings.Repeat("y", 100)
-	tr := TruncateHead(in, 50, 100)
+	tr := TruncateHead(in, truncationLimits(50, 100))
 	if !tr.Truncated || !tr.FirstLineExceedsLimit {
 		t.Errorf("expected FirstLineExceedsLimit=true; got %+v", tr)
 	}
@@ -124,7 +126,7 @@ func TestTruncateHeadExactSuffixMatchesUpstream(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			tr := TruncateHead(tc.in, tc.maxBytes, tc.maxLines)
+			tr := TruncateHead(tc.in, truncationLimits(tc.maxBytes, tc.maxLines))
 			got := FormatTruncationWarning(tr)
 			if tc.want != "" {
 				if got != tc.want {
@@ -141,13 +143,37 @@ func TestTruncateHeadExactSuffixMatchesUpstream(t *testing.T) {
 
 // TOOL-20: a zero limit is a limit, as upstream's `??` keeps an explicit 0.
 func TestTruncateZeroLimitsAreLimits(t *testing.T) {
-	if tr := TruncateHead("abc\ndef", 0, 10); !tr.Truncated || tr.Content != "" || !tr.FirstLineExceedsLimit {
+	if tr := TruncateHead("abc\ndef", truncationLimits(0, 10)); !tr.Truncated || tr.Content != "" || !tr.FirstLineExceedsLimit {
 		t.Errorf("TruncateHead maxBytes 0 = %+v", tr)
 	}
-	if tr := TruncateHead("abc\ndef", 1024, 0); !tr.Truncated || tr.Content != "" || tr.TruncatedBy != "lines" {
+	if tr := TruncateHead("abc\ndef", truncationLimits(1024, 0)); !tr.Truncated || tr.Content != "" || tr.TruncatedBy != "lines" {
 		t.Errorf("TruncateHead maxLines 0 = %+v", tr)
 	}
-	if tr := TruncateTail("abc\ndef", 1024, 0); !tr.Truncated || tr.Content != "" {
+	if tr := TruncateTail("abc\ndef", truncationLimits(1024, 0)); !tr.Truncated || tr.Content != "" {
 		t.Errorf("TruncateTail maxLines 0 = %+v", tr)
+	}
+}
+
+// upstream: truncate.ts:79-80 `options.maxLines ?? DEFAULT_MAX_LINES`, `options.maxBytes ?? DEFAULT_MAX_BYTES`: an omitted
+// option takes its default, an explicit zero is used as given.
+func TestTruncationOptionsDefaultsApplyOnlyToOmittedLimits(t *testing.T) {
+	in := strings.Repeat("x\n", DefaultMaxLines+5)
+	for name, truncate := range map[string]func(string, TruncationOptions) TruncationResult{"head": TruncateHead, "tail": TruncateTail} {
+		t.Run(name, func(t *testing.T) {
+			tr := truncate(in, TruncationOptions{})
+			if !tr.Truncated || tr.MaxLines != DefaultMaxLines || tr.MaxBytes != DefaultMaxBytes || tr.OutputLines != DefaultMaxLines {
+				t.Errorf("defaults: truncated=%v maxLines=%d maxBytes=%d outputLines=%d", tr.Truncated, tr.MaxLines, tr.MaxBytes, tr.OutputLines)
+			}
+			zero := 0
+			tr = truncate("a\nb", TruncationOptions{MaxLines: &zero})
+			if !tr.Truncated || tr.MaxLines != 0 || tr.MaxBytes != DefaultMaxBytes || tr.Content != "" {
+				t.Errorf("explicit zero lines: %+v", tr)
+			}
+			three := 3
+			tr = truncate(in, TruncationOptions{MaxLines: &three})
+			if tr.OutputLines != 3 || tr.MaxBytes != DefaultMaxBytes {
+				t.Errorf("only lines set: outputLines=%d maxBytes=%d", tr.OutputLines, tr.MaxBytes)
+			}
+		})
 	}
 }

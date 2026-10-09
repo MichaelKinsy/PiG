@@ -57,26 +57,24 @@ func codexCreateState() (string, error) {
 }
 
 // parseCodexAuthorizationInput extracts code (and optional state) from user-pasted
-// input. Mirrors upstream parseAuthorizationInput in openai-codex.ts:50-77.
+// input. Mirrors upstream parseAuthorizationInput in openai-codex.ts:69-97.
 func parseCodexAuthorizationInput(input string) (code, state string) {
 	v := trimJSWhitespace(input)
 	if v == "" {
 		return "", ""
 	}
 	// Try as URL
-	if u, err := url.Parse(v); err == nil && u.Scheme != "" {
-		return u.Query().Get("code"), u.Query().Get("state")
+	if query, ok := authorizationURLQuery(v); ok {
+		return query.Get("code"), query.Get("state")
 	}
 	// code#state
-	if before, after, ok := strings.Cut(v, "#"); ok {
-		return before, after
+	if code, state, ok := authorizationFragmentPair(v); ok {
+		return code, state
 	}
 	// code=X&state=Y
 	if strings.Contains(v, "code=") {
-		q, qerr := url.ParseQuery(v)
-		if qerr == nil {
-			return q.Get("code"), q.Get("state")
-		}
+		query := authorizationQueryParams(v)
+		return query.Get("code"), query.Get("state")
 	}
 	return v, ""
 }
@@ -185,25 +183,43 @@ func postCodexTokenForm(ctx context.Context, form url.Values) (OAuthCredentials,
 	return creds, nil
 }
 
-// CodexAccountID extracts the chatgpt_account_id claim from a Codex access
-// token, if present. Mirrors upstream getAccountId (openai-codex.ts:281-285).
-// Returns "" if the token doesn't carry the expected JWT shape.
+// jsAtob is `atob(value)`: the forgiving-base64 decode of the WHATWG infra standard. It strips ASCII whitespace, drops one or two trailing "=" when
+// the length is a multiple of 4, and reads each decoded byte as one character U+0000 to U+00FF. The unpadded standard decoder rejects the rest: a
+// length of 1 mod 4, any character outside the standard alphabet ("-" and "_" included) and any other "=".
+func jsAtob(value string) (string, bool) {
+	value = strings.Map(func(r rune) rune {
+		if r == '\t' || r == '\n' || r == '\f' || r == '\r' || r == ' ' {
+			return -1
+		}
+		return r
+	}, value)
+	if len(value)%4 == 0 {
+		value = strings.TrimSuffix(strings.TrimSuffix(value, "="), "=")
+	}
+	data, err := base64.RawStdEncoding.DecodeString(value)
+	if err != nil {
+		return "", false
+	}
+	runes := make([]rune, len(data))
+	for i, b := range data {
+		runes[i] = rune(b)
+	}
+	return string(runes), true
+}
+
+// CodexAccountID is Pi's getAccountId (openai-codex.ts:310): the chatgpt_account_id claim of the access token, "" when the token lacks the JWT shape
+// or the claim. Pi's decodeJwt reads the payload with atob and JSON.parse, so the claim is read as Latin-1 characters of the decoded bytes.
 func CodexAccountID(accessToken string) string {
 	parts := strings.Split(accessToken, ".")
 	if len(parts) != 3 {
 		return ""
 	}
-	// Base64url decode the payload.
-	payload, err := base64.RawURLEncoding.DecodeString(parts[1])
-	if err != nil {
-		// Some tokens pad the payload; try the standard variant.
-		payload, err = base64.URLEncoding.DecodeString(parts[1])
-		if err != nil {
-			return ""
-		}
+	payload, ok := jsAtob(parts[1])
+	if !ok {
+		return ""
 	}
 	var claims map[string]any
-	if err := json.Unmarshal(payload, &claims); err != nil {
+	if err := json.Unmarshal([]byte(payload), &claims); err != nil {
 		return ""
 	}
 	auth, ok := claims[codexJWTClaimPath].(map[string]any)
@@ -434,8 +450,11 @@ func LoginOpenAICodex(ctx context.Context, callbacks OAuthLoginCallbacks) (OAuth
 		defer callback.Close()
 	}
 
-	// pig divergence (D26): PiG names itself as the OpenAI login's originator.
+	// pig divergence (D26): PiG names itself as the OpenAI login's originator. An app-supplied agentName replaces the default, as createAuthorizationFlow(options?.agentName) does (openai-codex.ts:363); an empty name is kept.
 	originator := pigidentity.CodexOriginator
+	if callbacks.AgentName != nil {
+		originator = *callbacks.AgentName
+	}
 	// Build the authorize URL with the exact parameter order upstream uses: URLSearchParams preserves insertion order and
 	// url.Values would alphabetize (openai-codex.ts:295-309).
 	authURL := codexAuthorizeURL +

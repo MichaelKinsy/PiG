@@ -16,7 +16,7 @@ func mustPrepare(t *testing.T, change *Change) *Prepared {
 }
 
 func TestTrackerNormalizesRestoredWritesAndKeepsStructuralNoOps(t *testing.T) {
-	tracker := Track(map[string]any{"items": []any{"a", "b"}, "nested": map[string]any{"count": 0.0}})
+	tracker := Track(JsonObjectOf("items", []any{"a", "b"}, "nested", JsonObjectOf("count", 0.0)))
 	change := tracker.BeginChange()
 	state := change.State()
 	if err := state.Object("nested").Set("count", 0); err != nil {
@@ -51,19 +51,19 @@ func TestTrackerNormalizesRestoredWritesAndKeepsStructuralNoOps(t *testing.T) {
 }
 
 func TestTrackerSharesSetPayloadsAndStructure(t *testing.T) {
-	tracker := Track(map[string]any{"items": []any{"a"}, "other": map[string]any{"label": "x"}})
+	tracker := Track(JsonObjectOf("items", []any{"a"}, "other", JsonObjectOf("label", "x")))
 	change := tracker.BeginChange()
-	if err := change.State().Set("other", map[string]any{"label": "y"}); err != nil {
+	if err := change.State().Set("other", JsonObjectOf("label", "y")); err != nil {
 		t.Fatal(err)
 	}
 	prepared := mustPrepare(t, change)
 	if len(prepared.Ops()) != 1 || prepared.Ops()[0][0] != "s" {
 		t.Fatalf("ops %v", prepared.Ops())
 	}
-	if !sameContainer(prepared.Ops()[0][2], prepared.Value()["other"]) {
+	if !sameContainer(prepared.Ops()[0][2], prepared.Value().Value("other")) {
 		t.Fatal("set payload must be the revision's container")
 	}
-	if !sameContainer(prepared.Value()["items"], prepared.Base()["items"]) {
+	if !sameContainer(prepared.Value().Value("items"), prepared.Base().Value("items")) {
 		t.Fatal("unchanged subtrees are structurally shared")
 	}
 	if err := tracker.Adopt(prepared); err != nil {
@@ -75,7 +75,7 @@ func TestTrackerSharesSetPayloadsAndStructure(t *testing.T) {
 }
 
 func TestTrackerRevokesDraftsAndRejectsNonStrictPlacements(t *testing.T) {
-	tracker := Track(map[string]any{"items": []any{}})
+	tracker := Track(JsonObjectOf("items", []any{}))
 	change := tracker.BeginChange()
 	state := change.State()
 	items := state.Array("items")
@@ -95,9 +95,9 @@ func TestTrackerRevokesDraftsAndRejectsNonStrictPlacements(t *testing.T) {
 }
 
 func TestTrackerFoldsLargeBatchesIntoRootReplacement(t *testing.T) {
-	initial := map[string]any{}
+	initial := NewJsonObject(0)
 	for index := range 4_100 {
-		initial[string(rune('a'+index%26))+string(rune(index))] = 0.0
+		initial.Set(string(rune('a'+index%26))+string(rune(index)), 0.0)
 	}
 	tracker := Track(initial)
 	change := tracker.BeginChange()
@@ -126,6 +126,8 @@ func assertRevoked(t *testing.T, use func()) {
 
 // Emptying an array through any removal path leaves it empty (Array.prototype.splice semantics) and records the
 // removal; an empty entry list must not read as an untouched array.
+// Pi source: packages/chord/src/delta/tracker.ts
+// mutation-checked: zeroing the results of Prepared.Base fails it
 func TestTrackerEmptiesArraysThroughEveryRemovalPath(t *testing.T) {
 	for name, remove := range map[string]func(*Array){
 		"splice": func(items *Array) {
@@ -138,7 +140,7 @@ func TestTrackerEmptiesArraysThroughEveryRemovalPath(t *testing.T) {
 		"setLen": func(items *Array) { items.SetLen(0) },
 	} {
 		t.Run(name, func(t *testing.T) {
-			tracker := Track(map[string]any{"items": []any{"x"}})
+			tracker := Track(JsonObjectOf("items", []any{"x"}))
 			change := tracker.BeginChange()
 			items := change.State().Array("items")
 			remove(items)
@@ -150,7 +152,7 @@ func TestTrackerEmptiesArraysThroughEveryRemovalPath(t *testing.T) {
 			}
 			items.Pop()
 			prepared := mustPrepare(t, change)
-			value := prepared.Value()["items"].([]any)
+			value := prepared.Value().Value("items").([]any)
 			if len(value) != 0 || len(prepared.Ops()) == 0 {
 				t.Fatalf("value %v ops %v", value, prepared.Ops())
 			}
@@ -167,22 +169,22 @@ func TestTrackerEmptiesArraysThroughEveryRemovalPath(t *testing.T) {
 func TestTrackerFoldsReservedKeyMutationsAtTheNearestSafeAncestor(t *testing.T) {
 	cases := []struct {
 		name   string
-		base   map[string]any
+		base   *JsonObject
 		mutate func(*Object) error
 		want   []Op
 	}{
-		{"reserved write", map[string]any{"tools": map[string]any{}, "total": 0.0},
-			func(state *Object) error { return state.Object("tools").Set("constructor", map[string]any{"n": 1}) },
-			[]Op{{"s", []any{"tools"}, map[string]any{"constructor": map[string]any{"n": 1.0}}}}},
-		{"reserved delete", map[string]any{"tools": map[string]any{"__proto__": 1.0, "x": 2.0}},
+		{"reserved write", JsonObjectOf("tools", NewJsonObject(0), "total", 0.0),
+			func(state *Object) error { return state.Object("tools").Set("constructor", JsonObjectOf("n", 1)) },
+			[]Op{{"s", []any{"tools"}, JsonObjectOf("constructor", JsonObjectOf("n", 1.0))}}},
+		{"reserved delete", JsonObjectOf("tools", JsonObjectOf("__proto__", 1.0, "x", 2.0)),
 			func(state *Object) error { state.Object("tools").Delete("__proto__"); return nil },
-			[]Op{{"s", []any{"tools"}, map[string]any{"x": 2.0}}}},
-		{"edit below a reserved segment", map[string]any{"tools": map[string]any{"prototype": map[string]any{"n": 1.0}}},
+			[]Op{{"s", []any{"tools"}, JsonObjectOf("x", 2.0)}}},
+		{"edit below a reserved segment", JsonObjectOf("tools", JsonObjectOf("prototype", JsonObjectOf("n", 1.0))),
 			func(state *Object) error { return state.Object("tools").Object("prototype").Set("n", 2) },
-			[]Op{{"s", []any{"tools"}, map[string]any{"prototype": map[string]any{"n": 2.0}}}}},
-		{"reserved root write", map[string]any{"a": 1.0},
+			[]Op{{"s", []any{"tools"}, JsonObjectOf("prototype", JsonObjectOf("n", 2.0))}}},
+		{"reserved root write", JsonObjectOf("a", 1.0),
 			func(state *Object) error { return state.Set("__proto__", "x") },
-			[]Op{{"r", map[string]any{"a": 1.0, "__proto__": "x"}}}},
+			[]Op{{"r", JsonObjectOf("a", 1.0, "__proto__", "x")}}},
 	}
 	for _, test := range cases {
 		t.Run(test.name, func(t *testing.T) {

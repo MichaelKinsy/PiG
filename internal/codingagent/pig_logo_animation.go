@@ -1421,7 +1421,7 @@ func (a *pigLogoAnimation) hint(width, height int, alpha float64, background log
 	if len(text) > width {
 		return nil
 	}
-	colors := tui.ActiveTheme().ColorValues()
+	colors := tui.ActiveTheme().Colors()
 	return &logoHint{
 		row:       height - 2,
 		start:     (width - len(text)) / 2,
@@ -1513,7 +1513,7 @@ func (a *pigLogoAnimation) ansi(key int, isBackground bool) string {
 		return value
 	}
 	color := tui.RgbColorValue{R: float64((key >> 16) & 255), G: float64((key >> 8) & 255), B: float64(key & 255)}
-	mode := tui.ActiveTheme().ColorMode()
+	mode := tui.ActiveTheme().GetColorMode()
 	var value string
 	if isBackground {
 		value = tui.BackgroundAnsi(color, mode)

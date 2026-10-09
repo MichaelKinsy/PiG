@@ -7,7 +7,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -25,14 +24,18 @@ type CreateAgentSessionRuntimeOptions struct {
 	AgentDir          string
 	SessionManager    *SessionManager
 	SessionStartEvent *extension.SessionStartEvent
-	// ProjectTrustUI is the UI a project trust prompt for CWD uses. Pi's projectTrustContext (main.ts createRuntime) carries it for a replacement that the interactive mode drives; the factory falls back to a headless context without it.
-	ProjectTrustUI extension.UIContext
+	// ProjectTrustContext is the trust context of CWD for a replacement that the interactive mode drives (agent-session-runtime.ts:40, 219); its UI serves the project trust prompt. The factory falls back to a headless context without it.
+	ProjectTrustContext *extension.ProjectTrustContext
 }
 
 // CreateAgentSessionRuntimeResult contains the constructed Session and its Services.
 type CreateAgentSessionRuntimeResult struct {
 	Session  *Session
-	Services *Services
+	Services *AgentSessionServices
+	// Diagnostics are the startup diagnostics of the construction. Runtime.Diagnostics returns them until a replacement applies its own.
+	Diagnostics []AgentSessionRuntimeDiagnostic
+	// ModelFallbackMessage reports a saved model that could not be restored, or that no model is available. Runtime.ModelFallbackMessage returns it until a replacement applies its own.
+	ModelFallbackMessage string
 	// Dispose requests retirement of factory-owned resources after logical Session disposal. It must not wait for callbacks that replacement has not invoked yet.
 	Dispose func(reason string)
 }
@@ -66,7 +69,34 @@ type runtimeReplacement struct {
 	drain func(context.Context) error
 }
 
+// NewAgentSessionRuntime is upstream's `new AgentSessionRuntime(session, services, createRuntime, diagnostics, modelFallbackMessage)` (agent-session-runtime.ts:81-93):
+// a Runtime that owns the given Session and its Services and retains createRuntime for later replacements. The Session must be the one constructed over services.
+// ctx bounds the Runtime's own cancellation signal, as a Go call bounds it; upstream's constructor has no such input.
+func NewAgentSessionRuntime(ctx context.Context, session *Session, services *AgentSessionServices, createRuntime CreateAgentSessionRuntimeFactory, diagnostics []AgentSessionRuntimeDiagnostic, modelFallbackMessage string) (*Runtime, error) {
+	if session == nil || services == nil || createRuntime == nil {
+		return nil, errors.New("coding: runtime Session, Services and factory are required")
+	}
+	abortCtx, abort := context.WithCancel(ctx)
+	runtime := &Runtime{
+		replacement: runtimeReplacement{createRuntime: createRuntime},
+		extCtx:      &icodingagent.ExtensionContext{CWD: services.CWD(), AbortSignal: abortCtx, AbortFunc: abort},
+	}
+	result := CreateAgentSessionRuntimeResult{Session: session, Services: services, Diagnostics: diagnostics, ModelFallbackMessage: modelFallbackMessage}
+	var event *extension.SessionStartEvent
+	if session.sessionStartEvent.Type != "" {
+		// The Session keeps the start event it was constructed with. Copy it: applyRuntime resets the Session's field before it reads event.
+		kept := session.sessionStartEvent
+		event = &kept
+	}
+	if err := runtime.applyRuntime(result, event); err != nil {
+		abort()
+		return nil, err
+	}
+	return runtime, nil
+}
+
 // CreateAgentSessionRuntime constructs the first Session and retains the same factory for later replacements. The caller binds extensions after subscribing to Session events.
+// upstream: agent-session-runtime.ts:426-438 (createAgentSessionRuntime: assert the cwd, run the factory, construct the AgentSessionRuntime over its result).
 func CreateAgentSessionRuntime(ctx context.Context, factory CreateAgentSessionRuntimeFactory, options CreateAgentSessionRuntimeOptions) (*Runtime, error) {
 	if factory == nil || options.SessionManager == nil {
 		return nil, errors.New("coding: runtime factory and SessionManager are required")
@@ -78,14 +108,18 @@ func CreateAgentSessionRuntime(ctx context.Context, factory CreateAgentSessionRu
 	if err != nil {
 		return nil, err
 	}
-	abortCtx, abort := context.WithCancel(ctx)
-	runtime := &Runtime{
-		replacement: runtimeReplacement{createRuntime: factory},
-		extCtx:      &icodingagent.ExtensionContext{CWD: options.CWD, AbortSignal: abortCtx, AbortFunc: abort},
+	if result.Session == nil || result.Services == nil {
+		return nil, errors.New("coding: runtime factory must return a Session and its Services")
 	}
-	if err := runtime.applyRuntime(result, options.SessionStartEvent); err != nil {
+	result.Session.sessionStartEvent = extension.SessionStartEvent{Type: "session_start", Reason: "startup"}
+	if options.SessionStartEvent != nil {
+		result.Session.sessionStartEvent = *options.SessionStartEvent
+	}
+	runtime, err := NewAgentSessionRuntime(ctx, result.Session, result.Services, factory, result.Diagnostics, result.ModelFallbackMessage)
+	if err != nil {
 		return nil, err
 	}
+	runtime.replacement.current.Load().Dispose = result.Dispose
 	return runtime, nil
 }
 
@@ -115,10 +149,10 @@ func (rt *Runtime) ExtensionCommandActions(session *Session) extension.CommandAc
 		return bound.ForkContext(context.Background(), entryID, options)
 	}
 	bound.SwitchSessionContext = func(ctx context.Context, path string, options *extension.SwitchSessionOptions) (extension.CancelledResult, error) {
-		return rt.SwitchSession(ctx, path, options)
+		return rt.SwitchSession(ctx, path, switchOptionsFromExtension(options))
 	}
 	bound.SwitchSession = func(path string, options *extension.SwitchSessionOptions) (extension.CancelledResult, error) {
-		return rt.SwitchSession(context.Background(), path, options)
+		return rt.SwitchSession(context.Background(), path, switchOptionsFromExtension(options))
 	}
 	// print-mode.ts:97-99 and rpc-mode.ts:341-343 bind reload to session.reload(); this Session's mode runs it.
 	bound.ReloadContext = func(ctx context.Context) error { return rt.reloadSession(ctx, session) }
@@ -257,18 +291,18 @@ func (rt *Runtime) teardownCurrent(ctx context.Context, reason, target string) e
 	return err
 }
 
-func (rt *Runtime) replaceRuntime(ctx context.Context, manager *SessionManager, reason string, trustUI extension.UIContext) error {
+func (rt *Runtime) replaceRuntime(ctx context.Context, manager *SessionManager, reason string, trustContext *extension.ProjectTrustContext) error {
 	previous := rt.Session().Path()
 	if err := rt.teardownCurrent(ctx, reason, manager.Path()); err != nil {
 		return err
 	}
-	return rt.createReplacement(ctx, manager, reason, previous, trustUI)
+	return rt.createReplacement(ctx, manager, reason, previous, trustContext)
 }
 
-func (rt *Runtime) createReplacement(ctx context.Context, manager *SessionManager, reason, previous string, trustUI extension.UIContext) error {
+func (rt *Runtime) createReplacement(ctx context.Context, manager *SessionManager, reason, previous string, trustContext *extension.ProjectTrustContext) error {
 	agentDir := rt.Services().AgentDir()
 	event := &extension.SessionStartEvent{Type: "session_start", Reason: reason, PreviousSessionFile: previous}
-	result, err := rt.replacement.createRuntime(ctx, CreateAgentSessionRuntimeOptions{CWD: manager.GetCwd(), AgentDir: agentDir, SessionManager: manager, SessionStartEvent: event, ProjectTrustUI: trustUI})
+	result, err := rt.replacement.createRuntime(ctx, CreateAgentSessionRuntimeOptions{CWD: manager.GetCwd(), AgentDir: agentDir, SessionManager: manager, SessionStartEvent: event, ProjectTrustContext: trustContext})
 	if err != nil {
 		return err
 	}
@@ -320,7 +354,7 @@ func (rt *Runtime) freshSessionManager(parent string) (*SessionManager, error) {
 	if !rt.Session().inner.IsPersisted() {
 		manager, err := NewInMemorySessionManager(rt.CWD())
 		if err == nil && parent != "" {
-			err = manager.NewSession(parent)
+			_, err = manager.NewSession(&icodingagent.NewSessionOptions{ParentSession: parent})
 		}
 		return manager, err
 	}
@@ -331,18 +365,31 @@ func (rt *Runtime) freshSessionManager(parent string) (*SessionManager, error) {
 	return newSessionManagerForDir(rt.Services(), rt.Session().inner.GetSessionDir()).Create(id, parent)
 }
 
-// SwitchSession loads and validates the destination before disposing the outgoing Session, then rebuilds its cwd-bound runtime.
-func (rt *Runtime) SwitchSession(ctx context.Context, path string, options ...*extension.SwitchSessionOptions) (extension.CancelledResult, error) {
-	return rt.SwitchSessionWithCWD(ctx, path, "", options...)
+// SwitchSessionOptions is the options object of AgentSessionRuntime.switchSession (agent-session-runtime.ts:196-201).
+type SwitchSessionOptions struct {
+	// CwdOverride replaces the Session's stored working directory when that directory no longer exists.
+	CwdOverride string
+	// WithSession runs against the replaced Session's context once the replacement settles.
+	WithSession func(*extension.ReplacedSessionContext) error
+	// ProjectTrustContextFactory returns the project trust context of the destination cwd; its UI serves the trust prompt.
+	ProjectTrustContextFactory func(cwd string) extension.ProjectTrustContext
 }
 
-// SwitchSessionWithCWD is SwitchSession with a working directory that replaces the Session's stored one when that directory no longer exists, as Pi's switchSession cwdOverride does.
-func (rt *Runtime) SwitchSessionWithCWD(ctx context.Context, path, cwdOverride string, options ...*extension.SwitchSessionOptions) (extension.CancelledResult, error) {
-	return rt.SwitchSessionWithProjectTrust(ctx, path, cwdOverride, nil, options...)
+// switchOptionsFromExtension carries the options an extension's switchSession call supplies; the extension API has no cwd override or trust factory.
+func switchOptionsFromExtension(options *extension.SwitchSessionOptions) *SwitchSessionOptions {
+	if options == nil {
+		return nil
+	}
+	return &SwitchSessionOptions{WithSession: options.WithSession}
 }
 
-// SwitchSessionWithProjectTrust is SwitchSessionWithCWD with Pi's projectTrustContextFactory (agent-session-runtime.ts:196-222): projectTrustUI receives the destination cwd and returns the UI the replacement's project trust prompt uses. A nil factory keeps the headless trust context.
-func (rt *Runtime) SwitchSessionWithProjectTrust(ctx context.Context, path, cwdOverride string, projectTrustUI func(cwd string) extension.UIContext, options ...*extension.SwitchSessionOptions) (extension.CancelledResult, error) {
+// SwitchSession loads and validates the destination before disposing the outgoing Session, then rebuilds its cwd-bound runtime (agent-session-runtime.ts:196-222).
+func (rt *Runtime) SwitchSession(ctx context.Context, path string, options ...*SwitchSessionOptions) (extension.CancelledResult, error) {
+	var opts SwitchSessionOptions
+	if len(options) > 0 && options[0] != nil {
+		opts = *options[0]
+	}
+	cwdOverride, projectTrustContext := opts.CwdOverride, opts.ProjectTrustContextFactory
 	before, err := rt.beforeSwitch(ctx, "resume", path)
 	if err != nil || before.Cancelled {
 		return before, err
@@ -358,18 +405,15 @@ func (rt *Runtime) SwitchSessionWithProjectTrust(ctx context.Context, path, cwdO
 	if err := icodingagent.AssertSessionCwdExists(manager, rt.CWD()); err != nil {
 		return extension.CancelledResult{}, err
 	}
-	var trustUI extension.UIContext
-	if projectTrustUI != nil {
-		trustUI = projectTrustUI(manager.GetCwd())
+	var trustContext *extension.ProjectTrustContext
+	if projectTrustContext != nil {
+		created := projectTrustContext(manager.GetCwd())
+		trustContext = &created
 	}
-	if err := rt.replaceRuntime(ctx, manager, "resume", trustUI); err != nil {
+	if err := rt.replaceRuntime(ctx, manager, "resume", trustContext); err != nil {
 		return extension.CancelledResult{}, err
 	}
-	var withSession func(*extension.ReplacedSessionContext) error
-	if len(options) > 0 && options[0] != nil {
-		withSession = options[0].WithSession
-	}
-	return extension.CancelledResult{}, rt.finishSessionReplacement(ctx, withSession)
+	return extension.CancelledResult{}, rt.finishSessionReplacement(ctx, opts.WithSession)
 }
 
 // RuntimeForkResult retains selectedText presence: it is absent for position at and for a cancelled fork.
@@ -403,18 +447,19 @@ func (rt *Runtime) Fork(ctx context.Context, entryID string, options *extension.
 			return RuntimeForkResult{Cancelled: true}, nil
 		}
 	}
-	entry, ok := rt.Session().inner.EntryByID(entryID)
+	entry, ok := rt.Session().inner.GetEntry(entryID)
 	if !ok {
 		return RuntimeForkResult{}, errors.New("Invalid entry ID for forking")
 	}
-	leaf := &entry.Base.ID
+	entryLeaf := entry.Base().ID
+	leaf := &entryLeaf
 	var selected *string
 	if position != "at" {
-		message, ok := entry.AsMessage()
+		message, ok := entry.(icodingagent.MessageEntry)
 		if !ok || message.Message.User == nil {
 			return RuntimeForkResult{}, errors.New("Invalid entry ID for forking")
 		}
-		leaf = entry.Base.ParentID
+		leaf = entry.Base().ParentID
 		selected = new(extractUserMessageText(message.Message.User.Content))
 	}
 	if source := rt.Session().inner; !source.IsPersisted() {
@@ -423,7 +468,7 @@ func (rt *Runtime) Fork(ctx context.Context, entryID string, options *extension.
 			return RuntimeForkResult{}, err
 		}
 		if leaf == nil {
-			if err := source.NewSession(previous); err != nil {
+			if _, err := source.NewSession(&icodingagent.NewSessionOptions{ParentSession: previous}); err != nil {
 				return RuntimeForkResult{}, err
 			}
 		} else if _, err := source.CreateBranchedSession(*leaf); err != nil {
@@ -497,7 +542,7 @@ func (rt *Runtime) ImportFromJsonl(ctx context.Context, input string, cwdOverrid
 		return before, err
 	}
 	if !alreadyStored {
-		if err := copyRuntimeImport(path, destination); err != nil {
+		if err := copyFileExclusive(path, destination); err != nil {
 			return extension.CancelledResult{}, err
 		}
 	}
@@ -514,33 +559,8 @@ func (rt *Runtime) ImportFromJsonl(ctx context.Context, input string, cwdOverrid
 	return extension.CancelledResult{}, rt.finishSessionReplacement(ctx, nil)
 }
 
-func copyRuntimeImport(source, destination string) error {
-	input, err := os.Open(source)
-	if err != nil {
-		return err
-	}
-	defer func() { _ = input.Close() }()
-	info, err := input.Stat()
-	if err != nil {
-		return err
-	}
-	output, err := os.OpenFile(destination, os.O_WRONLY|os.O_CREATE|os.O_EXCL, info.Mode().Perm())
-	if err != nil {
-		return err
-	}
-	_, copyErr := io.Copy(output, input)
-	modeErr := output.Chmod(info.Mode().Perm())
-	err = errors.Join(copyErr, modeErr, output.Close())
-	if err != nil {
-		if cleanupErr := os.Remove(destination); cleanupErr != nil && !errors.Is(cleanupErr, os.ErrNotExist) {
-			return errors.Join(err, cleanupErr)
-		}
-	}
-	return err
-}
-
 // SessionManagerFor returns the log a Session started with opts wraps, as NewSession selects it: the supplied manager, the opened resume path, or a new persisted or in-memory log. CreateAgentSessionRuntime needs the log before the factory runs.
-func SessionManagerFor(svcs *Services, opts SessionStartOptions) (*SessionManager, error) {
+func SessionManagerFor(svcs *AgentSessionServices, opts SessionStartOptions) (*SessionManager, error) {
 	if opts.SessionManager != nil {
 		return opts.SessionManager, nil
 	}

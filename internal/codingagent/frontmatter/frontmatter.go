@@ -4,15 +4,16 @@ package frontmatter
 import (
 	"strings"
 
-	"go.yaml.in/yaml/v3"
-
 	"github.com/MichaelKinsy/PiG/internal/text"
+	"github.com/MichaelKinsy/PiG/internal/yaml12"
 )
 
 // Doc is a parsed markdown-with-frontmatter file.
 type Doc struct {
 	// Frontmatter holds the YAML values from the document header.
 	Frontmatter map[string]any
+	// Value is what Pi's parseFrontmatter returns as `frontmatter`: the parsed header (`parsed ?? {}`), which is a mapping, or an array, string, number or boolean when the header is not a mapping. Frontmatter is the mapping, or empty.
+	Value any
 	// Body is the trimmed markdown content following the closing `---`.
 	Body string
 	// Err reports malformed YAML. The body remains available to callers that
@@ -26,26 +27,30 @@ type Doc struct {
 func Parse(content string) Doc {
 	s := strings.NewReplacer("\r\n", "\n", "\r", "\n").Replace(text.StripBom(content))
 	if !strings.HasPrefix(s, "---") {
-		return Doc{Frontmatter: map[string]any{}, Body: s}
+		return Doc{Frontmatter: map[string]any{}, Value: map[string]any{}, Body: s}
 	}
 	end := strings.Index(s[3:], "\n---")
 	if end < 0 {
-		return Doc{Frontmatter: map[string]any{}, Body: s}
+		return Doc{Frontmatter: map[string]any{}, Value: map[string]any{}, Body: s}
 	}
 	end += 3
 	// upstream: packages/coding-agent/src/utils/frontmatter.ts:extractFrontmatter
 	body := strings.Trim(s[end+4:], "\t\n\v\f\r \u00a0\u1680\u2000\u2001\u2002\u2003\u2004\u2005\u2006\u2007\u2008\u2009\u200a\u2028\u2029\u202f\u205f\u3000\ufeff")
 	fields := map[string]any{}
+	var value any = fields
 	if end > 3 {
-		var parsed any
-		if err := yaml.Unmarshal([]byte(s[4:end]), &parsed); err != nil {
-			return Doc{Frontmatter: map[string]any{}, Body: body, Err: compactMappingError(s[4:end], err)}
+		parsed, err := yaml12.Parse(s[4:end])
+		if err != nil {
+			return Doc{Frontmatter: map[string]any{}, Value: map[string]any{}, Body: body, Err: err}
 		}
+		// upstream: packages/coding-agent/src/utils/frontmatter.ts:parseFrontmatter reads `parsed ?? {}`; a document that is not a mapping carries no fields.
 		if parsedFields, ok := parsed.(map[string]any); ok {
-			fields = parsedFields
+			fields, value = parsedFields, parsedFields
+		} else if parsed != nil {
+			value = parsed
 		}
 	}
-	return Doc{Frontmatter: fields, Body: body}
+	return Doc{Frontmatter: fields, Value: value, Body: body}
 }
 
 func splitList(v string) []string {
@@ -125,4 +130,10 @@ func (d Doc) Bool(key string) bool {
 		}
 	}
 	return false
+}
+
+// Strip is upstream's stripFrontmatter (utils/frontmatter.ts:40): the body of content without its frontmatter. Malformed YAML in the header is an error, as upstream's parse throws.
+func Strip(content string) (string, error) {
+	doc := Parse(content)
+	return doc.Body, doc.Err
 }

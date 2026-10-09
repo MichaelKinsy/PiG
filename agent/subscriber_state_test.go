@@ -21,7 +21,7 @@ func TestAgentSubscribersObserveCompletedTranscript(t *testing.T) {
 				provider.respond = toolCallsThenText(toolCall("call", "noop", nil))
 				tools = []AgentTool{noopTool()}
 			}
-			a := NewAgent(AgentOptions{Model: scriptedModel(provider), Tools: tools})
+			a := mustNewAgent(AgentOptions{Model: scriptedModel(provider), Tools: tools})
 			var observed []string
 			a.Subscribe(func(_ context.Context, event AgentEvent) error {
 				switch e := event.(type) {
@@ -49,7 +49,7 @@ func TestAgentSubscribersObserveCompletedTranscript(t *testing.T) {
 func TestAgentRejectedContinuationPreservesErrorState(t *testing.T) {
 	for _, tail := range []string{"assistant", "empty", "system-only"} {
 		t.Run(tail, func(t *testing.T) {
-			a := NewAgent(AgentOptions{Model: scriptedModel(&scriptedProvider{respond: func(int, scriptedRequest) *ai.AssistantMessageEventStream { return errorStream(ai.StopReasonError) }})})
+			a := mustNewAgent(AgentOptions{Model: scriptedModel(&scriptedProvider{respond: func(int, scriptedRequest) *ai.AssistantMessageEventStream { return errorStream(ai.StopReasonError) }})})
 			mustSend(t, a, "fail")
 			switch tail {
 			case "empty":
@@ -57,7 +57,7 @@ func TestAgentRejectedContinuationPreservesErrorState(t *testing.T) {
 			case "system-only":
 				a.SetMessages([]AgentMessage{{System: &ai.SystemMessage{Content: ai.SystemText("system")}}})
 			}
-			if _, err := a.Continue(t.Context()); err == nil {
+			if _, err := a.ContinueMessages(t.Context()); err == nil {
 				t.Fatal("invalid continuation succeeded")
 			}
 			if a.ErrorMessage() != "error" {

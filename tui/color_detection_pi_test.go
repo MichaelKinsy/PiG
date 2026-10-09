@@ -108,13 +108,16 @@ func TestColorDetectionMatchesPi(t *testing.T) {
 			for name, expected := range want.Themes {
 				SetTheme(name)
 				got := ActiveTheme()
-				if got.ColorMode() != expected.Mode {
-					t.Errorf("%s mode = %s, Pi = %s", name, got.ColorMode(), expected.Mode)
+				if got.GetColorMode() != expected.Mode {
+					t.Errorf("%s mode = %s, Pi = %s", name, got.GetColorMode(), expected.Mode)
 				}
 				for token, ansi := range expected.Colors {
-					actual := got.Fg(token)
+					// Like Pi's getFgAnsi, GetFgAnsi panics for a background token, so each token is read from its own table.
+					var actual string
 					if strings.HasSuffix(token, "Bg") {
-						actual = got.Bg(token)
+						actual = got.GetBgAnsi(token)
+					} else {
+						actual = got.GetFgAnsi(token)
 					}
 					if actual != ansi {
 						t.Errorf("%s %s = %q, Pi = %q", name, token, actual, ansi)

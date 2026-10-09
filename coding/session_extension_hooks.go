@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"errors"
 	"maps"
 	"reflect"
 	"time"
@@ -151,26 +150,14 @@ func (s *Session) contextWithSystemPhase(ctx context.Context, runner *inproc.Run
 	if !runner.HasHandlers(icodingagent.EventContextWithSystem) {
 		return messages, nil
 	}
-	all := make([]extension.AgentMessage, len(messages))
-	for i, message := range messages {
-		all[i] = message
-	}
-	returned, err := runner.EmitContextWithSystem(ctx, all)
-	if err != nil {
-		return nil, err
-	}
-	converted, err := agentMessagesFromExtension(returned)
-	if err != nil {
-		return messages, nil
-	}
-	return converted, nil
+	return runner.EmitContextWithSystem(ctx, messages)
 }
 
 func (s *Session) contextPhase(ctx context.Context, runner *inproc.Runner, messages []agent.AgentMessage) ([]agent.AgentMessage, error) {
 	if !runner.HasHandlers(icodingagent.EventContext) {
 		return messages, nil
 	}
-	visible := make([]extension.AgentMessage, 0, len(messages))
+	visible := make([]agent.AgentMessage, 0, len(messages))
 	var systems []ai.Message
 	for _, message := range messages {
 		if message.System != nil {
@@ -189,10 +176,7 @@ func (s *Session) contextPhase(ctx context.Context, runner *inproc.Runner, messa
 	if !replaced && sameContextMessages(returned, visible) {
 		return messages, nil
 	}
-	converted, err := agentMessagesFromExtension(returned)
-	if err != nil {
-		return messages, nil
-	}
+	converted := returned
 	if !replaced && len(converted) == len(visible) {
 		// upstream restoreSystemMessages: an unchanged conversation (edited in
 		// place) keeps every system message where it was.
@@ -240,35 +224,6 @@ func sameContextMessages(returned, visible []extension.AgentMessage) bool {
 		}
 	}
 	return true
-}
-
-// agentMessagesFromExtension converts handler-returned messages back to agent
-// messages: in-process handlers return agent messages, subprocess handlers
-// return the upstream JSON shape.
-func agentMessagesFromExtension(messages []extension.AgentMessage) ([]agent.AgentMessage, error) {
-	out := make([]agent.AgentMessage, 0, len(messages))
-	for _, message := range messages {
-		switch value := message.(type) {
-		case agent.AgentMessage:
-			out = append(out, value)
-		case *agent.AgentMessage:
-			if value == nil {
-				return nil, errors.New("context handler returned a nil message")
-			}
-			out = append(out, *value)
-		default:
-			raw, err := json.Marshal(value)
-			if err != nil {
-				return nil, err
-			}
-			var decoded agent.AgentMessage
-			if err := json.Unmarshal(raw, &decoded); err != nil {
-				return nil, err
-			}
-			out = append(out, decoded)
-		}
-	}
-	return out, nil
 }
 
 // extensionProviderRequestHook emits before_provider_request with the
@@ -347,15 +302,11 @@ func (s *Session) extensionEventHook(ev agent.AgentEvent) {
 	if !runner.HasHandlers(icodingagent.EventMessageEnd) {
 		return
 	}
-	replacement, err := runner.EmitMessageEnd(icodingagent.AgentEventContext(ev), end.Message)
+	replacement, err := runner.EmitMessageEnd(icodingagent.AgentEventContext(ev), extension.MessageEndEvent{Type: "message_end", Message: end.Message})
 	if err != nil || replacement == nil {
 		return
 	}
-	converted, err := agentMessagesFromExtension([]extension.AgentMessage{replacement})
-	if err != nil {
-		return
-	}
-	replaceMessageInPlace(end.Message, normalizeReplacementContent(converted[0]))
+	replaceMessageInPlace(end.Message, normalizeReplacementContent(*replacement))
 }
 
 // normalizeReplacementContent gives a replacement with missing content an
@@ -420,9 +371,7 @@ func (s *Session) QueueAgentStartMessages(messages []extension.CustomMessageRef)
 			"content":    content,
 			"timestamp":  timestamp,
 		}
-		if message.Display != nil {
-			fields["display"] = message.Display
-		}
+		fields["display"] = message.Display
 		if message.Details != nil {
 			fields["details"] = message.Details
 		}
@@ -504,13 +453,22 @@ func toolResultEventUsage(usage *ai.Usage) any {
 }
 
 // ReloadExtensions is the runtime rebuild of upstream's reload() for the extensions the mode loaded again (agent-session.ts:3547-3567 _buildRuntime): a runner over them, bound to the Session, replaces the current one, which goes stale, and the tool registry is rebuilt so the tools a settings reload newly added to defaultTools activate and every extension tool that activates on registration is active again (agent-session.ts:3598-3609, RefreshToolsAfterReload). The caller binds its own UI and command actions to the returned runner and then emits session_start.
-func (s *Session) ReloadExtensions(extensions []extension.Extension) (*inproc.Runner, error) {
+func (s *Session) ReloadExtensions(extensions []extension.Extension, runtime ...*extension.ExtensionRuntime) (*inproc.Runner, error) {
 	previous := s.currentRunner()
-	runner := inproc.NewRunner(extensions, s.services.CWD())
+	var extensionRuntime *extension.ExtensionRuntime
+	if len(runtime) > 0 {
+		extensionRuntime = runtime[0]
+	}
+	runner := NewExtensionRunner(extensions, extensionRuntime, s.services.CWD(), s.inner, s.services.Registry())
 	s.bindExtensionCore(runner)
 	s.ReplaceRunner(runner)
 	if previous != nil {
-		previous.Invalidate("")
+		if len(runtime) != 0 && runtime[0] == previous.Runtime() {
+			// The factories registered against the runtime the previous runner binds: the rebuilt runner keeps it.
+			previous.InvalidateKeepingRuntime("")
+		} else {
+			previous.Invalidate("")
+		}
 	}
 	return runner, s.RefreshToolsAfterReload()
 }

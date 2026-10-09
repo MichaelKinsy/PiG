@@ -21,7 +21,7 @@ type McpOAuthState struct {
 	Tokens            *OAuthTokens            `json:"tokens,omitempty"`
 	// TokensExpireAt is when the access token expires, in milliseconds since
 	// the epoch, from expires_in at the time it was saved.
-	TokensExpireAt *int64               `json:"tokensExpireAt,omitempty"`
+	TokensExpireAt *float64             `json:"tokensExpireAt,omitempty"`
 	CodeVerifier   string               `json:"codeVerifier,omitempty"`
 	OAuthState     string               `json:"oauthState,omitempty"`
 	Discovery      *OAuthDiscoveryState `json:"discovery,omitempty"`
@@ -213,9 +213,9 @@ func (p *McpOAuthProvider) Tokens(ctx context.Context) (*OAuthTokens, error) {
 
 // SaveTokens stores tokens and their expiry.
 func (p *McpOAuthProvider) SaveTokens(ctx context.Context, tokens OAuthTokens) error {
-	var expiresAt *int64
+	var expiresAt *float64
 	if tokens.ExpiresIn != nil {
-		value := time.Now().UnixMilli() + int64(*tokens.ExpiresIn*1000)
+		value := float64(time.Now().UnixMilli()) + *tokens.ExpiresIn*1000
 		expiresAt = &value
 	}
 	return p.update(ctx, func(s *McpOAuthState) {

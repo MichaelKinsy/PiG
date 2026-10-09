@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"maps"
+	"math"
 	"regexp"
 	"slices"
 	"strconv"
@@ -24,6 +25,8 @@ const attachmentAutocompleteDebounce = 20 * time.Millisecond
 
 // Editor is a multi-line text input with undo/kill-ring support.
 type Editor struct {
+	// selectListTheme, when set by WithEditorTheme, styles the autocomplete popup in place of the active theme.
+	selectListTheme *SelectListTheme
 	invalidatable
 	// EmbedWorkingStatus opts into the coding-agent status border.
 	EmbedWorkingStatus     bool
@@ -49,16 +52,18 @@ type Editor struct {
 	autocompleteItems             []AutocompleteItem
 	autocompleteTriggerCharacters []rune
 	// Complete provider callbacks run on owned workers and publish only on the editor loop.
-	asyncAutocomplete             *AsyncAutocompleteProvider
-	autocompleteLifetime          context.Context
-	startAutocompleteTask         func(func())
-	startAutocompleteInput        func(AutocompleteWork)
-	autocompleteError             func(error)
-	autocompleteTaskDone          <-chan struct{}
-	autocompleteChanged           func(AutocompleteProvider)
-	asyncCancel                   context.CancelFunc
-	asyncSeq                      uint64
-	scheduleAsyncApply            func(func())
+	asyncAutocomplete      *AsyncAutocompleteProvider
+	autocompleteLifetime   context.Context
+	startAutocompleteTask  func(func())
+	startAutocompleteInput func(AutocompleteWork)
+	autocompleteError      func(error)
+	autocompleteTaskDone   <-chan struct{}
+	autocompleteChanged    func(AutocompleteProvider)
+	asyncCancel            context.CancelFunc
+	asyncSeq               uint64
+	scheduleAsyncApply     func(func())
+	// ui is the TUI the editor owns (editor.ts `tui`); nil for the host-driven form.
+	ui                            TUI
 	autocompleteRequestID         uint64
 	autocompleteCursor            int    // selected row index
 	autocompletePrefix            string // buffer slice the popup is matching against
@@ -77,6 +82,7 @@ type Editor struct {
 	autocompleteForced      bool
 	autocompleteFromAwaited bool
 	autocompleteMax         int // max visible rows (default 5)
+	autocompletePopupMax    int // the row limit the open popup was built with: Pi builds its SelectList once per suggestion update, so a later setAutocompleteMaxVisible only applies from the next one
 	paddingX                int
 
 	// Thinking-level border color.
@@ -144,6 +150,10 @@ type Editor struct {
 	// remote is an extension's editor component standing in for this
 	// editor (editor_remote.go), or nil.
 	remote *editorRemoteState
+	// inBase is set while a delegated component calls the editor's own editing.
+	inBase bool
+	// stockInstance holds this editor's own instance state while a delegated component's fresh instance stands in.
+	stockInstance *editorInstance
 }
 
 type editorState struct {
@@ -178,8 +188,76 @@ type layoutLine struct {
 	cursorPos int
 }
 
-func NewEditor() *Editor {
-	return &Editor{lines: []string{""}, inputHistIdx: -1, maxVisibleLines: 5, renderWidth: 80, wrapCacheWidth: -1}
+func NewEditor(options ...EditorOption) *Editor {
+	return newEditor(nil, options)
+}
+
+func newEditor(ui TUI, options []EditorOption) *Editor {
+	e := &Editor{ui: ui, lines: []string{""}, inputHistIdx: -1, maxVisibleLines: 5, renderWidth: 80, wrapCacheWidth: -1}
+	for _, option := range options {
+		option(e)
+	}
+	return e
+}
+
+// EditorOptions is editor.ts EditorOptions: PaddingX is the horizontal content padding (default 0, floored at 0) and AutocompleteMaxVisible the autocomplete row limit (default 5, clamped to 3..20).
+type EditorOptions struct {
+	PaddingX               *int
+	AutocompleteMaxVisible *int
+}
+
+// NewEditorWithTUI is editor.ts constructor(tui, theme, options): the editor owns ui, asks it to render after a padding, autocomplete-limit or autocomplete-result change, and derives its visible line count and page size from the terminal rows (max(5, floor(rows * 0.3)); editor.ts:536, :1962). A zero theme follows the active theme live. NewEditor is the host-driven form: the host sets SetMaxVisibleLines and renders itself.
+func NewEditorWithTUI(ui TUI, theme EditorTheme, options EditorOptions) *Editor {
+	var themed []EditorOption
+	if theme.BorderColor != nil {
+		themed = append(themed, WithEditorTheme(theme))
+	}
+	e := newEditor(ui, themed)
+	if options.PaddingX != nil {
+		e.paddingX = max(0, *options.PaddingX)
+	}
+	if options.AutocompleteMaxVisible != nil {
+		e.autocompleteMax = max(3, min(20, *options.AutocompleteMaxVisible))
+	}
+	return e
+}
+
+func (e *Editor) requestRender() {
+	if e.ui != nil {
+		e.ui.RequestRender()
+	}
+}
+
+// visibleLineLimit is the visual-line window: 30% of the terminal rows, at least 5, when the editor owns a TUI (editor.ts:536), else the host-set maxVisibleLines.
+func (e *Editor) visibleLineLimit() int {
+	if e.ui != nil {
+		if terminal := e.ui.Terminal(); terminal != nil && terminal.Rows() > 0 {
+			return max(5, int(math.Floor(float64(terminal.Rows())*0.3)))
+		}
+	}
+	if e.maxVisibleLines < 1 {
+		return 5
+	}
+	return e.maxVisibleLines
+}
+
+// EditorTheme styles an [Editor]: the border and the autocomplete list.
+//
+// upstream: packages/tui/src/components/editor.ts:237 (EditorTheme)
+type EditorTheme struct {
+	BorderColor func(text string) string
+	SelectList  SelectListTheme
+}
+
+// EditorOption configures NewEditor.
+type EditorOption func(*Editor)
+
+// WithEditorTheme renders the editor with theme instead of the active theme (the editor.ts constructor's theme argument): the border uses theme.BorderColor and the autocomplete popup uses theme.SelectList.
+func WithEditorTheme(theme EditorTheme) EditorOption {
+	return func(e *Editor) {
+		e.BorderColor = theme.BorderColor
+		e.selectListTheme = &theme.SelectList
+	}
 }
 
 // SetMaxVisibleLines updates the editor's maximum visible visual-line
@@ -218,12 +296,26 @@ func (e *Editor) SetPaddingX(padding int) {
 	}
 	e.paddingX = padding
 	e.Invalidate()
+	e.requestRender()
 	if e.remote != nil {
 		e.remote.remote.StateChanged()
 	}
 }
 
 // AutocompleteMaxVisible returns the maximum number of autocomplete rows.
+// setAutocompleteItems replaces the popup's items; a new popup takes the current row limit (createAutocompleteList).
+func (e *Editor) setAutocompleteItems(items []AutocompleteItem) {
+	e.autocompleteItems = items
+	e.autocompletePopupMax = e.AutocompleteMaxVisible()
+}
+
+func (e *Editor) popupMaxVisible() int {
+	if e.autocompletePopupMax == 0 {
+		return e.AutocompleteMaxVisible()
+	}
+	return e.autocompletePopupMax
+}
+
 func (e *Editor) AutocompleteMaxVisible() int {
 	if e.autocompleteMax == 0 {
 		return 5
@@ -238,8 +330,8 @@ func (e *Editor) SetAutocompleteMaxVisible(maxVisible int) {
 		return
 	}
 	e.autocompleteMax = maxVisible
-	e.refreshAutocomplete()
 	e.Invalidate()
+	e.requestRender()
 	if e.remote != nil {
 		e.remote.remote.StateChanged()
 	}
@@ -250,7 +342,7 @@ func (e *Editor) Text() string { return strings.Join(e.lines, "\n") }
 
 // SetText normalizes and replaces the document, resets paste/typing state, records a changed document for undo, and cancels completion without querying.
 func (e *Editor) SetText(text string) {
-	if e.remote != nil {
+	if e.forwards() {
 		e.remoteSetText(text)
 		return
 	}
@@ -275,7 +367,7 @@ func (e *Editor) SetText(text string) {
 
 // Clear resets the editor.
 func (e *Editor) Clear() {
-	if e.remote != nil {
+	if e.forwards() {
 		e.remoteSetText("")
 		return
 	}
@@ -305,7 +397,7 @@ func (e *Editor) Clear() {
 // to their stored content. Mirrors upstream editor.ts::getExpandedText
 // (.upstream/v0.69.0/packages/tui/src/components/editor.ts:929).
 func (e *Editor) GetExpandedText() string {
-	if e.remote != nil {
+	if e.forwards() && !e.remote.delegated {
 		return e.remoteExpandedText()
 	}
 	return e.expandPasteMarkers(e.Text())
@@ -337,7 +429,7 @@ func (e *Editor) ClearPastes() {
 
 // AddToHistory trims JavaScript whitespace and adds a submitted prompt for Up/Down navigation. It skips empty strings and consecutive duplicates and retains at most 100 entries.
 func (e *Editor) AddToHistory(text string) {
-	if e.remote != nil {
+	if e.forwards() {
 		e.remote.remote.AddToHistory(text)
 		return
 	}
@@ -529,24 +621,11 @@ func clonePastes(m map[int]string) map[int]string {
 
 // thinkingBorderSGR maps a thinking level string to the foreground SGR prefix of the editor's top divider: the level's theme token, as upstream theme.getThinkingBorderColor does. It returns "" for a level that has no token so the caller falls back to borderMuted.
 func thinkingBorderSGR(level string) string {
-	theme := ActiveTheme()
-	switch level {
-	case "off":
-		return theme.Fg("thinkingOff")
-	case "minimal":
-		return theme.Fg("thinkingMinimal")
-	case "low":
-		return theme.Fg("thinkingLow")
-	case "medium":
-		return theme.Fg("thinkingMedium")
-	case "high":
-		return theme.Fg("thinkingHigh")
-	case "xhigh":
-		return theme.Fg("thinkingXhigh")
-	case "max":
-		return theme.Fg("thinkingMax")
+	token := thinkingBorderToken(level)
+	if token == "" {
+		return ""
 	}
-	return ""
+	return ActiveTheme().GetFgAnsi(token)
 }
 
 // wrappedChunks returns the word-wrapped textChunk list for every logical line
@@ -632,7 +711,7 @@ func (e *Editor) layoutText(contentWidth int) []layoutLine {
 // right-padding cell upstream's cursorInPadding lets the cursor use.
 func (e *Editor) buildVisualLines(width, rowWidth int) []string {
 	var out []string
-	emitCursorMarker := e.Focused && len(e.autocompleteItems) == 0
+	emitCursorMarker := e.Focused // upstream editor.ts: const emitCursorMarker = this.focused; the hardware cursor stays on the text while the autocomplete popup is open
 	for _, line := range e.layoutText(width) {
 		if !line.hasCursor {
 			out = append(out, line.text)
@@ -749,11 +828,14 @@ func (e *Editor) colorEditorBorder(text string) string {
 	if e.BorderColor != nil {
 		return e.BorderColor(text)
 	}
-	reset := FgClose(e.borderSGR())
-	if e.IsBashMode() || thinkingBorderSGR(e.ThinkingLevel) != "" {
-		reset = "\x1b[0m"
+	theme := ActiveTheme()
+	if e.IsBashMode() {
+		return theme.GetBashModeBorderColor()(text)
 	}
-	return e.borderSGR() + text + reset
+	if thinkingBorderSGR(e.ThinkingLevel) != "" {
+		return theme.GetThinkingBorderColor(e.ThinkingLevel)(text)
+	}
+	return e.borderSGR() + text + FgClose(e.borderSGR())
 }
 
 func (e *Editor) renderTopBorder(width, hidden int) string {
@@ -774,7 +856,7 @@ func (e *Editor) Render(width int) []string {
 	if width < 1 {
 		width = 1
 	}
-	if e.remote != nil {
+	if e.forwards() {
 		return e.renderRemote(width)
 	}
 	// Build the full visual layout first (all chunks of all logical
@@ -792,10 +874,7 @@ func (e *Editor) Render(width int) []string {
 	visual := e.buildVisualLines(layoutWidth, contentWidth+min(paddingX, 1))
 	cursorVisualIdx := e.findCursorVisualLine(visual)
 
-	maxVis := e.maxVisibleLines
-	if maxVis < 1 {
-		maxVis = 5
-	}
+	maxVis := e.visibleLineLimit()
 	if cursorVisualIdx >= 0 {
 		if cursorVisualIdx < e.scrollOffset {
 			e.scrollOffset = cursorVisualIdx
@@ -816,7 +895,7 @@ func (e *Editor) Render(width int) []string {
 	e.renderedVisibleLineCount = len(visible)
 	// Mirrors upstream editor.ts render: every content row is padded to the
 	// content width, padding or not. The trailing cells matter beyond looks:
-	// compositeTuiLine keeps SGR codes only when a later cell follows them, so
+	// CompositeTuiLine keeps SGR codes only when a later cell follows them, so
 	// an unpadded row ending in the cursor's "\x1b[7m \x1b[0m" loses its reset
 	// under an overlay and paints the gap before the overlay inverse. A cursor
 	// appended past the content width sits in the right padding, which then
@@ -851,6 +930,10 @@ func (e *Editor) Render(width int) []string {
 		autocomplete := e.renderAutocomplete(contentWidth)
 		e.renderedAutocompleteHeight = len(autocomplete)
 		for i, line := range autocomplete {
+			// pig divergence (D66): a select-list row wider than a very narrow content width is clipped; Pi emits it over-wide.
+			if widthx.VisibleWidth(line) > contentWidth {
+				line = widthx.TruncateToWidth(line, contentWidth, "", false)
+			}
 			autocomplete[i] = padding + line + strings.Repeat(" ", max(0, contentWidth-widthx.VisibleWidth(line))) + padding
 		}
 		out = append(out, autocomplete...)
@@ -862,8 +945,8 @@ func (e *Editor) Render(width int) []string {
 // synthesized left click. Press, drag, and release remain unhandled so the
 // alternate-screen renderer can own text selection. Mirrors upstream
 // Editor.handleMouse. Autocomplete clicks retain the pressed item across scrolling.
-func (e *Editor) HandleMouse(event TuiMouseEvent) *TuiMouseDispatchResult {
-	if e.remote != nil {
+func (e *Editor) HandleMouse(event TuiMouseEvent) *TuiMouseEventResult {
+	if e.forwards() {
 		return e.remoteMouse(event)
 	}
 	autocompleteStartRow := e.renderedVisibleLineCount + 2
@@ -880,7 +963,7 @@ func (e *Editor) HandleMouse(event TuiMouseEvent) *TuiMouseDispatchResult {
 			target := max(0, min(e.autocompleteCursor+delta, len(e.autocompleteItems)-1))
 			e.AutocompleteMove(target - e.autocompleteCursor)
 			changed := e.autocompleteCursor != previous
-			return &TuiMouseDispatchResult{TuiMouseEventResult: TuiMouseEventResult{Handled: true, Focus: true, Render: new(changed)}}
+			return &TuiMouseEventResult{Handled: true, Focus: true, Render: new(changed)}
 		}
 		start, end := e.autocompleteVisibleRange()
 		itemIndex := start + event.Y - autocompleteStartRow
@@ -895,7 +978,7 @@ func (e *Editor) HandleMouse(event TuiMouseEvent) *TuiMouseDispatchResult {
 			e.autocompleteMousePressedIndex = new(itemIndex)
 			e.autocompleteCursor = itemIndex
 			e.Invalidate()
-			return &TuiMouseDispatchResult{TuiMouseEventResult: TuiMouseEventResult{Handled: true, Focus: true}}
+			return &TuiMouseEventResult{Handled: true, Focus: true}
 		case MouseClick:
 			if event.Button != MouseButtonLeft {
 				return nil
@@ -907,7 +990,7 @@ func (e *Editor) HandleMouse(event TuiMouseEvent) *TuiMouseDispatchResult {
 			e.autocompleteCursor = itemIndex
 			e.AutocompleteAccept()
 			e.Invalidate()
-			return &TuiMouseDispatchResult{TuiMouseEventResult: TuiMouseEventResult{Handled: true, Focus: true}}
+			return &TuiMouseEventResult{Handled: true, Focus: true}
 		default:
 			return nil
 		}
@@ -918,13 +1001,13 @@ func (e *Editor) HandleMouse(event TuiMouseEvent) *TuiMouseDispatchResult {
 	}
 	contentStartRow := 1 // The top border precedes content.
 	if event.Y < contentStartRow || event.Y >= contentStartRow+e.renderedVisibleLineCount {
-		return &TuiMouseDispatchResult{TuiMouseEventResult: TuiMouseEventResult{Handled: true, Focus: true}}
+		return &TuiMouseEventResult{Handled: true, Focus: true}
 	}
 
 	visualLines := e.buildVisualLineMap(e.renderWidth)
 	visualLineIndex := e.scrollOffset + event.Y - contentStartRow
 	if visualLineIndex < 0 || visualLineIndex >= len(visualLines) {
-		return &TuiMouseDispatchResult{TuiMouseEventResult: TuiMouseEventResult{Handled: true, Focus: true}}
+		return &TuiMouseEventResult{Handled: true, Focus: true}
 	}
 	visualLine := visualLines[visualLineIndex]
 	logicalLine := e.lines[visualLine.logicalLine]
@@ -958,15 +1041,12 @@ func (e *Editor) HandleMouse(event TuiMouseEvent) *TuiMouseDispatchResult {
 		e.refreshAutocomplete()
 	}
 	e.Invalidate()
-	return &TuiMouseDispatchResult{TuiMouseEventResult: TuiMouseEventResult{Handled: true, Focus: true}}
+	return &TuiMouseEventResult{Handled: true, Focus: true}
 }
 
 func (e *Editor) autocompleteVisibleRange() (start, end int) {
 	n := len(e.autocompleteItems)
-	maxVisible := e.autocompleteMax
-	if maxVisible <= 0 {
-		maxVisible = 5
-	}
+	maxVisible := e.popupMaxVisible()
 	start = max(0, min(e.autocompleteCursor-maxVisible/2, n-maxVisible))
 	end = min(start+maxVisible, n)
 	return start, end
@@ -988,19 +1068,20 @@ func (e *Editor) renderAutocomplete(width int) []string {
 	if len(e.autocompleteItems) == 0 {
 		return nil
 	}
-	list := &FilterableList{
-		Labels:       make([]string, len(e.autocompleteItems)),
-		Descriptions: make([]string, len(e.autocompleteItems)),
-		filtered:     make([]int, len(e.autocompleteItems)),
-		cursor:       e.autocompleteCursor,
-		MaxVisible:   e.AutocompleteMaxVisible(),
-	}
+	items := make([]SelectItem, len(e.autocompleteItems))
 	for i, item := range e.autocompleteItems {
-		list.Labels[i], list.Descriptions[i], list.filtered[i] = item.Label, item.Description, i
+		items[i] = SelectItem{Value: item.Label, Label: item.Label, Description: item.Description}
 	}
+	var layout SelectListLayoutOptions
 	if strings.HasPrefix(e.autocompletePrefix, "/") {
-		list.MinPrimaryColumnWidth, list.MaxPrimaryColumnWidth = 12, 32
+		layout.MinPrimaryColumnWidth, layout.MaxPrimaryColumnWidth = 12, 32
 	}
+	listTheme := GetSelectListTheme()
+	if e.selectListTheme != nil {
+		listTheme = *e.selectListTheme
+	}
+	list := NewSelectList(items, e.popupMaxVisible(), listTheme, layout)
+	list.SetSelectedIndex(e.autocompleteCursor)
 	return list.Render(width)
 }
 
@@ -1056,7 +1137,7 @@ func (e *Editor) RefreshAutocomplete() {
 
 // AutocompleteOpen reports whether the popup is currently visible.
 // Used by the host (interactive.go) to gate Esc/Enter handling.
-func (e *Editor) AutocompleteOpen() bool { return e.remote == nil && len(e.autocompleteItems) > 0 }
+func (e *Editor) AutocompleteOpen() bool { return !e.forwards() && len(e.autocompleteItems) > 0 }
 
 // AutocompleteCancel dismisses the popup without applying.
 func (e *Editor) AutocompleteCancel() {
@@ -1072,7 +1153,7 @@ func (e *Editor) AutocompleteCancel() {
 	if len(e.autocompleteItems) == 0 {
 		return
 	}
-	e.autocompleteItems = nil
+	e.setAutocompleteItems(nil)
 	e.autocompleteCursor = 0
 	e.autocompletePrefix = ""
 	e.Invalidate()
@@ -1095,19 +1176,19 @@ func (e *Editor) AutocompleteAccept() (submit bool) {
 	if !e.autocompleteFromAwaited && e.cursor != e.autocompleteQueryCursor {
 		res := e.getAutocompleteSuggestions(e.autocompleteForced)
 		if res == nil || len(res.Items) == 0 {
-			e.autocompleteItems = nil
+			e.setAutocompleteItems(nil)
 			e.autocompleteCursor = 0
 			e.autocompletePrefix = ""
 			e.Invalidate()
 			return false
 		}
-		e.autocompleteItems = res.Items
+		e.setAutocompleteItems(res.Items)
 		e.autocompletePrefix = res.Prefix
 		e.autocompleteQueryCursor = e.cursor
 		e.autocompleteCursor = bestAutocompleteMatchIndex(res.Items, res.Prefix)
 	} else if e.cursor != e.autocompleteQueryCursor {
 		// An awaited command result cannot be recomputed on the input loop. Reject a popup whose cursor belongs to older text.
-		e.autocompleteItems = nil
+		e.setAutocompleteItems(nil)
 		e.autocompleteCursor = 0
 		e.autocompletePrefix = ""
 		e.Invalidate()
@@ -1180,7 +1261,7 @@ func (e *Editor) forceFileAutocomplete() bool {
 		return true
 	}
 	e.autocompleteForced = true
-	e.autocompleteItems = res.Items
+	e.setAutocompleteItems(res.Items)
 	e.autocompletePrefix = res.Prefix
 	e.autocompleteQueryCursor = e.cursor
 	e.autocompleteCursor = bestAutocompleteMatchIndex(res.Items, res.Prefix)
@@ -1190,12 +1271,7 @@ func (e *Editor) forceFileAutocomplete() bool {
 
 func (e *Editor) getAutocompleteSuggestions(force bool) *AutocompleteSuggestions {
 	lines, row, byteCol := e.autocompleteView()
-	if force {
-		if provider, ok := e.autocomplete.(ForcefulAutocompleteProvider); ok {
-			return provider.GetSuggestionsForce(lines, row, byteCol)
-		}
-	}
-	return e.autocomplete.GetSuggestions(lines, row, byteCol)
+	return e.autocomplete.GetSuggestions(context.Background(), lines, row, byteCol, AutocompleteSuggestionOptions{Force: force})
 }
 
 func (e *Editor) applySingleForcedCompletion(item AutocompleteItem, prefix string) {
@@ -1205,7 +1281,7 @@ func (e *Editor) applySingleForcedCompletion(item AutocompleteItem, prefix strin
 	newLines, row, col := e.autocomplete.ApplyCompletion(lines, row, byteCol, item, prefix)
 	e.applyAutocompleteState(newLines, row, col)
 	e.autocompleteForced = false
-	e.autocompleteItems = nil
+	e.setAutocompleteItems(nil)
 	e.autocompleteCursor = 0
 	e.autocompletePrefix = ""
 	e.Invalidate()
@@ -1290,7 +1366,7 @@ func (e *Editor) refreshAutocomplete() {
 	// `interactive-mode.ts::isBashMode` checks.
 	if e.IsBashMode() {
 		if len(e.autocompleteItems) > 0 {
-			e.autocompleteItems = nil
+			e.setAutocompleteItems(nil)
 			e.autocompleteCursor = 0
 			e.autocompletePrefix = ""
 			e.Invalidate()
@@ -1302,7 +1378,7 @@ func (e *Editor) refreshAutocomplete() {
 		// Only clear synchronously when no async fd search is pending;
 		// otherwise keep the prior popup until fd returns to avoid flicker.
 		if fileTask == nil && len(e.autocompleteItems) > 0 {
-			e.autocompleteItems = nil
+			e.setAutocompleteItems(nil)
 			e.autocompleteCursor = 0
 			e.autocompletePrefix = ""
 			e.Invalidate()
@@ -1317,7 +1393,7 @@ func (e *Editor) refreshAutocomplete() {
 			return
 		}
 		e.autocompleteMousePressedIndex = nil
-		e.autocompleteItems = res.Items
+		e.setAutocompleteItems(res.Items)
 		e.autocompletePrefix = res.Prefix
 		e.autocompleteQueryCursor = cursor
 		e.autocompleteCursor = bestAutocompleteMatchIndex(res.Items, res.Prefix)
@@ -1375,7 +1451,7 @@ func (e *Editor) kickFileAutocomplete(baseRes *AutocompleteSuggestions, fileTask
 				return
 			}
 			e.autocompleteMousePressedIndex = nil
-			e.autocompleteItems = final
+			e.setAutocompleteItems(final)
 			e.autocompletePrefix = prefix
 			e.autocompleteQueryCursor = cursor
 			if e.autocompleteCursor >= len(final) {
@@ -1496,9 +1572,11 @@ func (e *Editor) handlePasteFlush(buf string) {
 			marker = fmt.Sprintf("[paste #%d %d chars]", id, charCount)
 		}
 		e.insert(marker)
+		e.notifyChange()
 		return
 	}
 	e.insert(text)
+	e.notifyChange()
 }
 
 func jsStringLength(text string) int { return jsstring.Length(text) }
@@ -1508,27 +1586,24 @@ func isJSWordChar(r rune) bool {
 }
 
 func (e *Editor) HandleInput(data string) {
-	if e.remote != nil {
+	if e.forwards() {
 		e.remote.remote.Input(data)
 		return
 	}
-	beforeText := e.Text()
-	notifyChange := true
-	defer func() {
-		if notifyChange && e.OnChange != nil && e.Text() != beforeText {
-			e.OnChange(e.Text())
-		}
-	}()
 
 	if e.jumpMode != "" {
 		if kb := GetTUIKeybindings(); kb.Matches(data, KBEditorJumpForward) || kb.Matches(data, KBEditorJumpBackward) {
 			e.jumpMode = ""
 			return
 		}
-		if len(data) > 0 && data[0] >= 0x20 {
+		printable, ok := DecodePrintableKey(data)
+		if !ok && len(data) > 0 && data[0] >= 0x20 {
+			printable, ok = data, true
+		}
+		if ok {
 			direction := e.jumpMode
 			e.jumpMode = ""
-			e.jumpToChar(data, direction)
+			e.jumpToChar(printable, direction)
 			return
 		}
 		e.jumpMode = ""
@@ -1537,6 +1612,13 @@ func (e *Editor) HandleInput(data string) {
 	// ─── Bracketed paste handling ────────────────────────────────────────
 	// Mirrors upstream editor.ts::handleInput bracketed paste mode.
 	// Content between \x1b[200~ and \x1b[201~ is treated as a single insert.
+	// A chunk that carries the start marker restarts paste mode: the earlier buffer is discarded, the first marker is removed,
+	// and any text around it joins the pasted content (upstream editor.ts handleInput).
+	if strings.Contains(data, "\x1b[200~") {
+		e.isInPaste = true
+		e.pasteBuffer = ""
+		data = strings.Replace(data, "\x1b[200~", "", 1)
+	}
 	if e.isInPaste {
 		e.pasteBuffer += data
 		if endIndex := strings.Index(e.pasteBuffer, "\x1b[201~"); endIndex >= 0 {
@@ -1553,22 +1635,13 @@ func (e *Editor) HandleInput(data string) {
 		}
 		return
 	}
-	if idx := strings.Index(data, "\x1b[200~"); idx >= 0 {
-		// Start of paste: process anything before the marker normally.
-		if idx > 0 {
-			e.HandleInput(data[:idx])
-		}
-		e.isInPaste = true
-		e.pasteBuffer = ""
-		remainder := data[idx+6:] // len("\x1b[200~") == 6
-		if remainder != "" {
-			e.HandleInput(remainder)
-		}
-		return
-	}
 
 	// Completion selection precedes ordinary editing. Async application remains owned by the host's input ticket.
 	kb := GetTUIKeybindings()
+	// Upstream editor.ts handleInput: "Ctrl+C - let parent handle (exit/clear)".
+	if kb.Matches(data, KBInputCopy) {
+		return
+	}
 	if len(e.autocompleteItems) > 0 {
 		switch {
 		case kb.Matches(data, KBSelectUp):
@@ -1581,11 +1654,12 @@ func (e *Editor) HandleInput(data string) {
 			e.AutocompleteCancel()
 			return
 		case kb.Matches(data, KBInputTab):
-			notifyChange = e.AutocompleteAccept()
+			if e.AutocompleteAccept() {
+				e.notifyChange()
+			}
 			return
 		case kb.Matches(data, KBSelectConfirm):
 			if !e.AutocompleteAccept() {
-				notifyChange = false
 				return
 			}
 		}
@@ -1689,11 +1763,11 @@ func (e *Editor) HandleInput(data string) {
 		// Mirrors upstream `tui.editor.deleteWordForward` (keybindings.ts:104).
 		e.deleteWordForward()
 		e.refreshAutocomplete()
-	case kb.Matches(data, KBEditorDeleteCharBack):
+	case matchesDeleteCharBackward(kb, data):
 		// backspace: delete char backward
 		e.backspace()
 		e.refreshAutocomplete()
-	case kb.Matches(data, KBEditorDeleteCharForward):
+	case matchesDeleteCharForward(kb, data):
 		// Delete key / Ctrl+D: forward delete
 		// Mirrors upstream editor.ts::forwardDelete (keybindings.ts:92).
 		e.forwardDelete()
@@ -1725,6 +1799,7 @@ func (e *Editor) HandleInput(data string) {
 			e.saveHistory()
 			text := e.killRing.Peek()
 			e.insert(text)
+			e.notifyChange()
 			e.lastAction = "yank"
 		}
 	case kb.Matches(data, KBEditorYankPop):
@@ -1739,6 +1814,7 @@ func (e *Editor) HandleInput(data string) {
 			// Re-insert the new top.
 			text := e.killRing.Peek()
 			e.insert(text)
+			e.notifyChange()
 			e.lastAction = "yank"
 		}
 	case kb.Matches(data, KBEditorUndo):
@@ -1782,7 +1858,17 @@ func (e *Editor) matchesActionBeforeHistory(kb *TUIKeybindingsManager, data stri
 			return true
 		}
 	}
-	return false
+	return matchesDeleteCharBackward(kb, data) || matchesDeleteCharForward(kb, data)
+}
+
+// matchesDeleteCharBackward is upstream editor.ts handleInput's `tui.editor.deleteCharBackward || matchesKey(data, "shift+backspace")`.
+func matchesDeleteCharBackward(kb *TUIKeybindingsManager, data string) bool {
+	return kb.Matches(data, KBEditorDeleteCharBack) || MatchesKeyID(data, "shift+backspace")
+}
+
+// matchesDeleteCharForward is upstream editor.ts handleInput's `tui.editor.deleteCharForward || matchesKey(data, "shift+delete")`.
+func matchesDeleteCharForward(kb *TUIKeybindingsManager, data string) bool {
+	return kb.Matches(data, KBEditorDeleteCharForward) || MatchesKeyID(data, "shift+delete")
 }
 
 func matchesEditorNewLine(data string, kb *TUIKeybindingsManager) bool {
@@ -1823,12 +1909,16 @@ func (e *Editor) submitValue() {
 	e.history = nil
 	e.inputHistSaved = nil
 	e.Invalidate()
+	if e.OnChange != nil {
+		e.OnChange("")
+	}
 	if e.OnSubmit != nil {
 		e.OnSubmit(result)
 	}
 }
 
 func (e *Editor) insertCharacter(char string) {
+	defer e.notifyChange()
 	if isWhitespaceChar(char) || e.lastAction != "type-word" {
 		e.saveHistory()
 	}
@@ -1880,7 +1970,7 @@ func (e *Editor) insertMultiLine(s string) {
 
 // InsertTextAtCursor inserts normalized single- or multi-line text as one undoable edit.
 func (e *Editor) InsertTextAtCursor(text string) {
-	if e.remote != nil {
+	if e.forwards() {
 		e.remote.remote.InsertTextAtCursor(text)
 		return
 	}
@@ -1897,6 +1987,7 @@ func (e *Editor) InsertTextAtCursor(text string) {
 }
 
 func (e *Editor) insertNewline() {
+	defer e.notifyChange()
 	e.saveHistory()
 	e.lastAction = ""
 	e.inputHistIdx = -1
@@ -1914,6 +2005,7 @@ func (e *Editor) insertNewline() {
 }
 
 func (e *Editor) backspace() {
+	defer e.notifyChange()
 	e.lastAction = ""
 	e.inputHistIdx = -1
 	e.inputHistSaved = nil
@@ -1993,6 +2085,7 @@ func (e *Editor) removePasteFromRegistry(targetID int) {
 // forwardDelete deletes the character at the cursor (Delete key / Ctrl+D).
 // Mirrors upstream editor.ts::forwardDelete.
 func (e *Editor) forwardDelete() {
+	defer e.notifyChange()
 	e.lastAction = ""
 	e.inputHistIdx = -1
 	e.inputHistSaved = nil
@@ -2141,7 +2234,7 @@ func (e *Editor) pageScroll(direction int) {
 	e.lastAction = ""
 	visual := e.buildVisualLineMap(e.renderWidth)
 	currentVisualLine := e.findCurrentVisualLine(visual)
-	pageSize := max(5, e.maxVisibleLines)
+	pageSize := max(5, e.visibleLineLimit())
 	targetVisualLine := currentVisualLine + direction*pageSize
 	targetVisualLine = max(0, min(len(visual)-1, targetVisualLine))
 	e.moveToVisualLine(visual, currentVisualLine, targetVisualLine)
@@ -2199,6 +2292,7 @@ func (e *Editor) undo() {
 	e.lastAction = ""
 	e.preferredVisualCol = nil
 	e.Invalidate()
+	e.notifyChange()
 }
 
 func (e *Editor) cursorWordBackward() {
@@ -2232,6 +2326,7 @@ func (e *Editor) cursorWordForward() {
 }
 
 func (e *Editor) deleteWordBackward() {
+	defer e.notifyChange()
 	e.inputHistIdx = -1
 	e.inputHistSaved = nil
 	l := e.cursor[0]
@@ -2265,6 +2360,7 @@ func (e *Editor) deleteWordBackward() {
 }
 
 func (e *Editor) deleteWordForward() {
+	defer e.notifyChange()
 	e.inputHistIdx = -1
 	e.inputHistSaved = nil
 	l := e.cursor[0]
@@ -2299,6 +2395,7 @@ func (e *Editor) deleteWordForward() {
 // kills the newline (joining with next line).
 // Mirrors upstream editor.ts::deleteToEndOfLine.
 func (e *Editor) deleteToLineEnd() {
+	defer e.notifyChange()
 	e.inputHistIdx = -1
 	e.inputHistSaved = nil
 	l := e.cursor[0]
@@ -2325,6 +2422,7 @@ func (e *Editor) deleteToLineEnd() {
 // If cursor is at col 0 and not on first line, kills the newline.
 // Mirrors upstream editor.ts::deleteToStartOfLine.
 func (e *Editor) deleteToLineStart() {
+	defer e.notifyChange()
 	e.inputHistIdx = -1
 	e.inputHistSaved = nil
 	l := e.cursor[0]
@@ -2357,6 +2455,7 @@ func (e *Editor) deleteYankedText() {
 	if text == "" {
 		return
 	}
+	defer e.notifyChange()
 	parts := strings.Split(text, "\n")
 	l, c := e.cursor[0], e.cursor[1]
 	startLine := l - len(parts) + 1

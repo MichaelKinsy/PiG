@@ -26,15 +26,15 @@ func TestSessionContextTransformReachesProviderAndTracksRunnerReplacement(t *tes
 		"context": {func(args ...any) (any, error) {
 			event := args[0].(extension.ContextEvent)
 			for _, message := range event.Messages {
-				if message.(agent.AgentMessage).System != nil {
+				if message.System != nil {
 					t.Fatal("conversation hook saw system")
 				}
 			}
-			return &extension.ContextEventResult{Messages: []extension.AgentMessage{map[string]any{"role": "user", "content": "replacement", "timestamp": 0}}}, nil
+			return &extension.ContextEventResult{Messages: []extension.AgentMessage{{User: &agent.UserMessage{Role: "user", Content: ai.UserText("replacement")}}}}, nil
 		}},
 		"context_with_system": {func(args ...any) (any, error) {
 			event := args[0].(extension.ContextWithSystemEvent)
-			head := event.Messages[0].(agent.AgentMessage).System
+			head := event.Messages[0].System
 			head.Content = ai.SystemText("request only")
 			head.Sections = nil
 			head.ToolsAdded = nil
@@ -80,7 +80,7 @@ func TestSessionCloneRetainsContextTransformAndTracksOwnRunner(t *testing.T) {
 		"context_with_system": {func(args ...any) (any, error) {
 			firstCalls++
 			event := args[0].(extension.ContextWithSystemEvent)
-			head := event.Messages[0].(agent.AgentMessage).System
+			head := event.Messages[0].System
 			firstSeen = append(firstSeen, ai.GetCurrentSystemPrompt([]ai.Message{*head}))
 			head.Content = ai.SystemText("request-first")
 			head.Sections = nil
@@ -188,7 +188,7 @@ func TestSessionStructuredContextTransformPrecedesForcedProjection(t *testing.T)
 	runner := inproc.NewRunner([]extension.Extension{{Path: "context", Handlers: map[string][]extension.HandlerFn{
 		"context_with_system": {func(args ...any) (any, error) {
 			event := args[0].(extension.ContextWithSystemEvent)
-			head := event.Messages[0].(agent.AgentMessage).System
+			head := event.Messages[0].System
 			seen = ai.GetCurrentSystemPrompt([]ai.Message{*head})
 			head.Sections = ai.OrderedSections{{Name: "preamble", Value: new("transformed")}}
 			return nil, nil

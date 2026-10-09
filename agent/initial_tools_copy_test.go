@@ -7,7 +7,7 @@ import "testing"
 // the transcript declaration captured by the constructor.
 func TestAgentCopiesInitialToolArray(t *testing.T) {
 	tools := []AgentTool{&scriptTool{name: "first"}}
-	a := NewAgent(AgentOptions{Tools: tools})
+	a := mustNewAgent(AgentOptions{Tools: tools})
 	tools[0] = &scriptTool{name: "second"}
 	if a.Tools()[0].Name() != "first" || a.Messages()[0].System.ToolsAdded[0].Name != "first" {
 		t.Fatal("caller mutated the initial executable loadout")

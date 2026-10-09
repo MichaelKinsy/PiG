@@ -25,8 +25,10 @@ const (
 )
 
 // ErrOAuthCancelled is returned by a value-returning login callback when the
-// user dismissed the host prompt.
-var ErrOAuthCancelled = errors.New("oauth prompt cancelled")
+// user dismissed the host prompt. Its message is Pi's "Login cancelled", the
+// rejection of a cancelled login prompt, so a flow that returns it ends the
+// login as cancelled.
+var ErrOAuthCancelled = errors.New("Login cancelled")
 
 // OAuthCredentials is Pi's OAuth token object (packages/ai/src/auth/types.ts OAuthCredentials). The JSON tags are the wire shape shared with the host and core (ai.OAuthCredentials).
 //

@@ -214,7 +214,8 @@ func outcomeAborted(reason string) durable.TaskOutcome[durable.JsonValue] {
 
 func expectOutcome(t *testing.T, got, want durable.TaskOutcome[durable.JsonValue]) {
 	t.Helper()
-	if !reflect.DeepEqual(got, want) {
+	// toEqual: the outcomes have the same JSON members, whatever form (map or ordered object) a result's objects take.
+	if !reflect.DeepEqual(jsonOf(t, got), jsonOf(t, want)) {
 		t.Fatalf("outcome %s, want %s", describeOutcome(got), describeOutcome(want))
 	}
 }
@@ -279,6 +280,8 @@ func tkNoopAbort[I, S, R, H any](context.Context, durable.RunningTask[I, S, R], 
 	return nil
 }
 
+// Pi TaskRuntime.memo: packages/durable/src/types.ts:204.
+// Pi TaskRuntime.outcomes: packages/durable/src/types.ts:212.
 func TestTaskPhases(t *testing.T) {
 	t.Run("continues one invocation through checkpoint progress and completes with a typed result", func(t *testing.T) {
 		seen := &syncList[int]{}
@@ -413,9 +416,8 @@ func TestTaskPhases(t *testing.T) {
 			Lines []string `json:"lines"`
 		}
 		progress := durable.DefineDoc(durable.DocDefinition[progressState]{
-			CommonDocDefinition: durable.CommonDocDefinition[progressState]{Kind: "test.task-progress", Version: 1},
+			CommonDocDefinition: durable.CommonDocDefinition[progressState]{Kind: "test.task-progress", Version: 1, Initial: func() progressState { return progressState{Lines: []string{}} }},
 			DocumentSemantics:   durable.DocumentSemantics{Scope: durable.ScopeTask},
-			Initial:             func() progressState { return progressState{Lines: []string{}} },
 		})
 		answer := durable.DefineEntry[durable.Never]("answer")
 		child := tkOneStep("test.child", func(ctx context.Context, _ stepRecord, runtime stepRuntime) error { return tkComplete(ctx, runtime) })
@@ -786,14 +788,14 @@ func TestTaskPhases(t *testing.T) {
 		if err := waitingBeforeUse.wait(testContext); err != nil {
 			t.Fatal(err)
 		}
-		mustConfigure(t, opened.root, AgentChange{ThinkingLevel: SetTo(ai.ThinkingLow)})
+		mustConfigure(t, opened.root, AgentChange{ThinkingLevel: SetTo(ai.ModelThinkingLevel(ai.ThinkingLow))})
 		beforeUse.resolve()
 		// Configured and installed after the first use: not seen until the next phase.
 		if err := waitingAfterUse.wait(testContext); err != nil {
 			t.Fatal(err)
 		}
 		addHooks(t, opened.registry, phases, &pingHooks{Ping: func() { pings.add("late") }})
-		mustConfigure(t, opened.root, AgentChange{ThinkingLevel: SetTo(ai.ThinkingHigh)})
+		mustConfigure(t, opened.root, AgentChange{ThinkingLevel: SetTo(ai.ModelThinkingLevel(ai.ThinkingHigh))})
 		afterUse.resolve()
 
 		tkWaitOutcome(t, opened.harness, id)

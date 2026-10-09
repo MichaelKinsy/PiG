@@ -128,7 +128,6 @@ type RegisterPayload struct {
 	Commands         []CommandDecl         `json:"commands,omitempty"`
 	Shortcuts        []ShortcutDecl        `json:"shortcuts,omitempty"`
 	Handlers         []HandlerDecl         `json:"handlers,omitempty"`
-	Widgets          []WidgetDecl          `json:"widgets,omitempty"`
 	Flags            []FlagDecl            `json:"flags,omitempty"`
 	Providers        []ProviderDecl        `json:"providers,omitempty"`
 	MessageRenderers []MessageRendererDecl `json:"message_renderers,omitempty"`
@@ -154,6 +153,14 @@ type RegisterPayload struct {
 	// exposes those readers synchronously over asynchronous IPC has no such
 	// moment and declares it here.
 	WantsSessionLog bool `json:"wants_session_log,omitempty"`
+
+	// WantsModelRegistry subscribes this extension to model-registry
+	// replication: the ready payload's Models and every model_registry_update
+	// notify. Runtimes whose ctx.modelRegistry readers can block on the host
+	// read getModelRegistryState on use and leave this false, so the host
+	// neither builds nor sends them a catalog snapshot; a runtime that answers
+	// those readers synchronously over asynchronous IPC declares it here.
+	WantsModelRegistry bool `json:"wants_model_registry,omitempty"`
 
 	// flagDefaults holds each flag's decoded default. validateRegisterPayload
 	// fills it, and rejects a default that is not valid JSON.
@@ -218,7 +225,6 @@ type ToolDecl struct {
 type CommandDecl struct {
 	Name        string `json:"name"`
 	Description string `json:"description"`
-	Args        string `json:"args,omitempty"` // Argument hint shown in /help
 	// ArgumentCompletions reports that the command defines upstream
 	// getArgumentCompletions. The host asks for them with
 	// RequestCommandArgumentCompletions.
@@ -236,11 +242,6 @@ type HandlerDecl struct {
 	Event     string `json:"event"`      // e.g. "tool_call", "session_start"
 	CanBlock  bool   `json:"can_block"`  // Whether the handler can block/mutate
 	HandlerID int    `json:"handler_id"` // Positive registration identity.
-}
-
-// WidgetDecl declares a widget the extension will push updates for.
-type WidgetDecl struct {
-	Key string `json:"key"` // Widget slot key
 }
 
 // FlagDecl declares a CLI flag the extension consumes.
@@ -300,7 +301,9 @@ const MethodProviderSync = "provider_sync"
 const MethodProviderObjectCallback = "provider_object_callback"
 const MethodProviderCall = "provider_call"
 const MethodProviderStream = "provider_stream"
-const CallProviderPublish = "provider.publish"
+
+// MethodToolCall runs a registered tool's execute.
+const MethodToolCall = "tool_call"
 const CallProviderCallback = "provider.callback"
 
 // ModelStreamCall invokes a registry stream or an already-resolved API leaf.
@@ -367,7 +370,7 @@ const (
 	CallOAuthOnProgress        = "oauth.cb.onProgress"        // Args: OAuthProgressWire.       No result.
 	CallOAuthOnPrompt          = "oauth.cb.onPrompt"          // Args: OAuthPromptWire.         Result: OAuthInputResult.
 	CallOAuthOnSelect          = "oauth.cb.onSelect"          // Args: OAuthSelectPromptWire.   Result: OAuthInputResult.
-	CallOAuthOnManualCodeInput = "oauth.cb.onManualCodeInput" // Args: none.                    Result: OAuthInputResult.
+	CallOAuthOnManualCodeInput = "oauth.cb.onManualCodeInput" // Args: none, or a provider object's manual_code AuthPrompt. Result: OAuthInputResult.
 )
 
 // OAuthCredentialsWire is the wire shape of OAuth credentials: Pi's complete token object, including provider-owned keys and the exact JavaScript expires value.
@@ -457,7 +460,7 @@ type ReadyPayload struct {
 	Width       int              `json:"width"`                  // Terminal width
 	Height      int              `json:"height,omitempty"`       // Terminal height (0 if unavailable)
 	Model       string           `json:"model,omitempty"`        // Active model name
-	Models      []map[string]any `json:"models,omitempty"`       // Complete registry snapshot for synchronous Node lookup
+	Models      []map[string]any `json:"models,omitempty"`       // Complete registry snapshot, sent only to a runtime that declared RegisterPayload.WantsModelRegistry
 	Theme       json.RawMessage  `json:"theme,omitempty"`        // Current theme data
 	State       *StatePayload    `json:"state,omitempty"`        // Initial extension-host state snapshot
 }
@@ -484,7 +487,11 @@ type StatePayload struct {
 	SystemPromptOptions json.RawMessage            `json:"systemPromptOptions,omitempty"`
 	Flags               map[string]json.RawMessage `json:"flags"`
 	HasUI               bool                       `json:"hasUI"`
-	FooterData          *FooterDataPayload         `json:"footerData,omitempty"`
+	// Frontend reports that a D91 frontend session draws the interactive
+	// mode (D107): the Node runtime derives views only then, and SDKs send
+	// frontend-only view annotations only then.
+	Frontend   bool               `json:"frontend,omitempty"`
+	FooterData *FooterDataPayload `json:"footerData,omitempty"`
 	// Settings is the effective settings object behind pi.getSettings() (global and project merged, with overrides).
 	Settings json.RawMessage `json:"settings,omitempty"`
 	// McpServers is every server registered by extensions, behind pi.getMcpServers().
@@ -587,6 +594,14 @@ type RequestPayload struct {
 // RequestWithSession (host→ext) runs the withSession callback that a newSession, fork or switchSession call registered under WithSessionArgs.Handle. The call's args name that handle in their withSession field. The host sends it after the replacement Session is bound and before the call returns, as Pi's finishSessionReplacement awaits withSession (agent-session-runtime.ts:187-194). Host calls whose parent is this request act on the replacement Session; the response settles the callback, and its error rejects the call.
 const RequestWithSession = "with_session"
 
+// RequestSetup (host→ext) runs the setup callback of a newSession call that named it under SetupArgs.Handle in its setup field (types.ts:411, agent-session-runtime.ts:254-257). The host sends it after the replacement Session is bound and before the withSession callback runs. Host calls whose parent is this request act on the replacement Session: sessionRead reads its SessionManager and sessionWrite appends to it (SessionManager.appendMessage, appendCustomEntry, appendCustomMessageEntry, appendSessionInfo, appendModelChange, appendThinkingLevelChange, appendLabelChange). The response settles the callback, and its error rejects the newSession call.
+const RequestSetup = "setup"
+
+// SetupArgs carries the setup callback handle.
+type SetupArgs struct {
+	Handle string `json:"handle"`
+}
+
 // WithSessionArgs carries the callback handle and the replacement Session's ready payload. A runtime that answers context getters from local state answers the replacement context from Ready.
 type WithSessionArgs struct {
 	Handle string        `json:"handle"`
@@ -600,6 +615,12 @@ const NotifyInvalidate = "invalidate"
 type InvalidateArgs struct {
 	Message string `json:"message"`
 }
+
+// NotifyReloadStarted (host→ext) tells a running generation that Host.Reload has begun, before the host writes the replacement generations' admissions to the process's control channel. In print and JSON mode a Node runtime that answered a prompt's last call or session_shutdown waits in place for the host's next step (Pi's print mode continues without an event-loop turn); this notification is that step for a reload, so the runtime returns to its event loop, which reads the admissions. It carries no arguments and changes no state; the Go, Rust and Python SDKs, which have no such wait, ignore it.
+const NotifyReloadStarted = "reload_started"
+
+// NotifyLoopTurned (Node runtime→host, then host→ext) tells the host that a handler yielded to its process's event loop, and the host tells every other Node process. Pi runs every extension on one event loop, so while one extension's handler awaits a timer, I/O or a child process, the callbacks another extension queued run, with a live ctx. In print and JSON mode a Node runtime sends it when a request's turn window closes with the request unanswered: after the handler's synchronous run and microtasks, once the short host calls Pi settles in microtasks have settled. The Conn read loop hands it to the host before it reads any later frame of the connection, such as that handler's response, and the host queues it on every connection of every other Node process, so each one reads it before anything the host sends after that response, such as invalidate. A Node runtime waiting for the host's next step after a prompt's last call or session_shutdown takes it as that step, and delivers the frames that follow it only after the immediates it had queued have run. It carries no arguments and changes no state; the Go, Rust and Python SDKs, which have no such wait, ignore it.
+const NotifyLoopTurned = "loop_turned"
 
 // TerminalInputArgs carries an ordered input and the UI values visible before its listener runs. Data and EditorText preserve UTF-16 units using WTF-8 in Go and surrogate escapes in JSON. Runtimes with synchronous local UI getters refresh those values before invoking the listener; host-query SDKs read the same live UI through their existing calls.
 type TerminalInputArgs struct {
@@ -741,6 +762,10 @@ const (
 	NotifyUICustomClose  = "ui.custom.close"
 	NotifyUICustomOpened = "ui.custom.opened"
 	CallUICustomControl  = "ui.custom.control"
+	// NotifyUICustomMouse (host→ext) hands a fullscreen
+	// mouse event to a ui.custom component that takes the mouse, as Pi's
+	// renderer calls its handleMouse.
+	NotifyUICustomMouse = "ui.custom.mouse"
 )
 
 type RemoteOverlayOpenPayload struct {
@@ -773,13 +798,407 @@ type RemoteOverlayInputPayload struct {
 	State *extension.RemoteOverlayState `json:"state,omitempty"`
 }
 
+// RemoteOverlayMousePayload is a NotifyUICustomMouse argument: Event is
+// local to the component's first rendered cell.
+type RemoteOverlayMousePayload struct {
+	Key   string                     `json:"key"`
+	Event extension.RemoteMouseEvent `json:"event"`
+}
+
 type RemoteOverlayRenderPayload struct {
-	Key   string   `json:"key"`
+	Key string `json:"key"`
+	// Lines are the frame's rows. Absent (nil) with a View, the view is
+	// authoritative and the host renders it (D107).
 	Lines []string `json:"lines"`
 	// Width is the terminal width the frame was laid out for (stale-frame
 	// key), not the overlay render width.
 	Width int    `json:"width,omitempty"`
 	Seq   uint64 `json:"seq,omitempty"`
+	// View is the frame's component structure, a [ViewPayload] (D107).
+	View json.RawMessage `json:"view,omitempty"`
+	// Mouse reports a component that takes the mouse:
+	// the host hands it NotifyUICustomMouse events inside its bounds.
+	Mouse bool `json:"mouse,omitempty"`
+}
+
+// pig additive (D107): the extension component kit. A view describes an
+// extension surface as Pi's tui components. With lines absent it is
+// authoritative: the host renders it with its tui ports. With lines present
+// (Node) it annotates them and survives only when rendering it reproduces
+// them byte for byte. See docs/plan/extension-component-kit.md.
+const (
+	// NotifyUIViewEvent (host→ext) reports a callback of an interactive view
+	// node (select-list, settings-list) of a ui.custom frame, in firing
+	// order after every ui.custom.input sent before it.
+	NotifyUIViewEvent = "ui.view.event"
+	// NotifyUIViewEvicted (host→ext) reports image refs whose bytes the
+	// host dropped; the next frame that references one sends its data again.
+	NotifyUIViewEvicted = "ui.view.evicted"
+)
+
+// View node kinds. Each mirrors the upstream pi-tui (or coding-agent
+// DynamicBorder) component of the same name; ViewKindLines is an opaque
+// range of rows a custom render(width) drew.
+const (
+	ViewKindContainer     = "container"
+	ViewKindBox           = "box"
+	ViewKindText          = "text"
+	ViewKindTruncatedText = "truncated-text"
+	ViewKindMarkdown      = "markdown"
+	ViewKindSpacer        = "spacer"
+	ViewKindDynamicBorder = "dynamic-border"
+	ViewKindSelectList    = "select-list"
+	ViewKindSettingsList  = "settings-list"
+	ViewKindImage         = "image"
+	ViewKindLoader        = "loader"
+	ViewKindHStack        = "hstack"
+	ViewKindVStack        = "vstack"
+	ViewKindLines         = "lines"
+	// The conversation kinds mirror the coding-agent components Pi exports
+	// to extensions (UserMessageComponent, AssistantMessageComponent,
+	// ToolExecutionComponent, BashExecutionComponent and renderDiff in a
+	// Text).
+	ViewKindUserMessage      = "user-message"
+	ViewKindAssistantMessage = "assistant-message"
+	ViewKindToolExecution    = "tool-execution"
+	ViewKindBashExecution    = "bash-execution"
+	ViewKindDiff             = "diff"
+)
+
+// Tool definitions of a tool-execution node: the renderers a closure-free
+// tool definition names.
+const (
+	// ViewToolDefinitionBuiltin is the built-in tool's definition when the
+	// tool name has one, and a definition without renderers otherwise: the
+	// card the main transcript draws for a tool without its own renderers.
+	ViewToolDefinitionBuiltin = "builtin"
+	// ViewToolDefinitionEmpty is a definition without renderers ({}).
+	ViewToolDefinitionEmpty = "empty"
+)
+
+// View event types: the upstream callbacks of SelectList (onSelect,
+// onCancel, onSelectionChange) and SettingsList (onChange, onCancel).
+const (
+	ViewEventSelect          = "select"
+	ViewEventCancel          = "cancel"
+	ViewEventSelectionChange = "selectionChange"
+	ViewEventChange          = "change"
+)
+
+// ViewPayload is one view: a component tree with the surface's focus,
+// theme overrides and the image bytes first sent with this frame.
+type ViewPayload struct {
+	Root ViewNode `json:"root"`
+	// Focus is the id of the select-list or settings-list that receives
+	// the keys it binds (ui.custom only).
+	Focus string `json:"focus,omitempty"`
+	// Theme overrides theme tokens for this surface only: token name to
+	// "#rrggbb".
+	//portlint:allow emptydrop the D107 view wire is PiG-owned with no Pi counterpart, and an absent and an empty theme mean the same: none
+	Theme map[string]string `json:"theme,omitempty"`
+	// Width is the cells the sender laid the frame's lines out at; required
+	// when the frame also carries lines.
+	Width int `json:"width,omitempty"`
+	// Images carries image bytes the first time a frame on the connection
+	// references them.
+	//portlint:allow emptydrop the D107 view wire is PiG-owned with no Pi counterpart, and an absent and an empty image list mean the same: none
+	Images []ViewImageData `json:"images,omitempty"`
+}
+
+// ViewNode is one component. Fields mirror the upstream constructor
+// parameters and state; an omitted field takes the upstream default.
+type ViewNode struct {
+	Kind string `json:"kind"`
+	// ID names the node; required and unique for select-list and
+	// settings-list.
+	ID string `json:"id,omitempty"`
+	//portlint:allow emptydrop the D107 view wire is PiG-owned with no Pi counterpart, and an absent and an empty child list mean the same: none
+	Children []ViewNode `json:"children,omitempty"`
+	// Stack holds the StackEntry options of a child of hstack or vstack.
+	Stack *ViewStackEntry `json:"stack,omitempty"`
+
+	// Text is the text of text, truncated-text and markdown.
+	Text     string `json:"text,omitempty"`
+	PaddingX *int   `json:"paddingX,omitempty"`
+	PaddingY *int   `json:"paddingY,omitempty"`
+	// Bg is the background token of box (bgFn) and text (customBgFn).
+	Bg string `json:"bg,omitempty"`
+	// Color is dynamic-border's foreground token (default "border").
+	Color            string         `json:"color,omitempty"`
+	DefaultTextStyle *ViewTextStyle `json:"defaultTextStyle,omitempty"`
+	RenderLatex      *bool          `json:"renderLatex,omitempty"`
+	// Lines is a spacer's line count.
+	Lines *int `json:"lines,omitempty"`
+	//portlint:allow emptydrop the D107 view wire is PiG-owned with no Pi counterpart, and an absent and an empty item list mean the same: none
+	Items         []ViewItem        `json:"items,omitempty"`
+	MaxVisible    *int              `json:"maxVisible,omitempty"`
+	Layout        *ViewSelectLayout `json:"layout,omitempty"`
+	SelectedIndex *int              `json:"selectedIndex,omitempty"`
+	Filter        *string           `json:"filter,omitempty"`
+	EnableSearch  bool              `json:"enableSearch,omitempty"`
+	// Ref names an image node's bytes.
+	Ref            string `json:"ref,omitempty"`
+	MimeType       string `json:"mimeType,omitempty"`
+	MaxWidthCells  *int   `json:"maxWidthCells,omitempty"`
+	MaxHeightCells *int   `json:"maxHeightCells,omitempty"`
+	// ImageID is upstream ImageOptions.imageId, the Kitty image id; an
+	// absent one is allocated by the host as upstream allocates it.
+	ImageID       *int   `json:"imageId,omitempty"`
+	Filename      string `json:"filename,omitempty"`
+	FallbackColor string `json:"fallbackColor,omitempty"`
+	// Message is a loader's message (default "Loading..."). On the wire an
+	// assistant-message's "message" is an object, [ViewNode.AssistantMessage].
+	Message      *string              `json:"message,omitempty"`
+	SpinnerColor string               `json:"spinnerColor,omitempty"`
+	MessageColor string               `json:"messageColor,omitempty"`
+	Indicator    *ViewLoaderIndicator `json:"indicator,omitempty"`
+	// Frame is a loader's current frame index (upstream currentFrame);
+	// the host's animation continues from it.
+	Frame *int `json:"frame,omitempty"`
+	// Gap and Align are StackOptions of hstack and vstack.
+	Gap   *int   `json:"gap,omitempty"`
+	Align string `json:"align,omitempty"`
+	// Content is a lines node's rows, drawn verbatim.
+	//portlint:allow emptydrop the D107 view wire is PiG-owned with no Pi counterpart, and an absent and an empty row list mean the same: none
+	Content []string `json:"content,omitempty"`
+	// Image, Progress and List are frontend-only annotations of a lines
+	// node: the rows depict that image, show a position in a range, or are
+	// a list with one item per row.
+	Image    *ViewImageRef `json:"image,omitempty"`
+	Progress *ViewProgress `json:"progress,omitempty"`
+	List     *ViewList     `json:"list,omitempty"`
+
+	// OutputPad is a user-message's and an assistant-message's outputPad
+	// (default 1).
+	OutputPad *int `json:"outputPad,omitempty"`
+	// AssistantMessage is an assistant-message's message, the wire's
+	// "message" object; nil before one arrives.
+	AssistantMessage    *ViewAssistantMessage `json:"-"`
+	HideThinkingBlock   bool                  `json:"hideThinkingBlock,omitempty"`
+	HiddenThinkingLabel *string               `json:"hiddenThinkingLabel,omitempty"`
+	IsStreaming         bool                  `json:"isStreaming,omitempty"`
+
+	// ToolName, ToolCallID, Args, ToolDefinition and Cwd are a
+	// tool-execution's constructor arguments; Args is any JSON value
+	// (default {}) and ToolDefinition a ViewToolDefinition* name (default
+	// builtin).
+	ToolName        string          `json:"toolName,omitempty"`
+	ToolCallID      string          `json:"toolCallId,omitempty"`
+	Args            json.RawMessage `json:"args,omitempty"`
+	ToolDefinition  string          `json:"toolDefinition,omitempty"`
+	Cwd             string          `json:"cwd,omitempty"`
+	ShowImages      *bool           `json:"showImages,omitempty"`
+	ImageWidthCells *int            `json:"imageWidthCells,omitempty"`
+	// ExecutionStarted, ArgsComplete, Result and IsPartial (default true)
+	// are a tool-execution's state; Expanded is a tool-execution's and a
+	// bash-execution's.
+	ExecutionStarted bool            `json:"executionStarted,omitempty"`
+	ArgsComplete     bool            `json:"argsComplete,omitempty"`
+	Expanded         bool            `json:"expanded,omitempty"`
+	Result           *ViewToolResult `json:"result,omitempty"`
+	IsPartial        *bool           `json:"isPartial,omitempty"`
+
+	// Command, ExcludeFromContext, Output and Complete are a
+	// bash-execution's: Output is the output appended so far and Complete
+	// the setComplete arguments, nil while the command runs.
+	Command            string            `json:"command,omitempty"`
+	ExcludeFromContext bool              `json:"excludeFromContext,omitempty"`
+	Output             string            `json:"output,omitempty"`
+	Complete           *ViewBashComplete `json:"complete,omitempty"`
+
+	// Diff and FilePath are a diff node's renderDiff arguments.
+	Diff     string `json:"diff,omitempty"`
+	FilePath string `json:"filePath,omitempty"`
+}
+
+// viewNodeWire is a ViewNode with its "message" as raw JSON: a loader's
+// string or an assistant-message's object.
+type viewNodeWire struct {
+	viewNodeFields
+	Message json.RawMessage `json:"message,omitempty"`
+}
+
+type viewNodeFields ViewNode
+
+// UnmarshalJSON reads "message" as a loader's string or an
+// assistant-message's object.
+func (n *ViewNode) UnmarshalJSON(data []byte) error {
+	var wire viewNodeWire
+	if err := json.Unmarshal(data, &wire); err != nil {
+		return err
+	}
+	*n = ViewNode(wire.viewNodeFields)
+	if len(wire.Message) == 0 || string(wire.Message) == "null" {
+		return nil
+	}
+	if wire.Message[0] == '"' {
+		var message string
+		if err := json.Unmarshal(wire.Message, &message); err != nil {
+			return err
+		}
+		n.Message = &message
+		return nil
+	}
+	var message ViewAssistantMessage
+	if err := json.Unmarshal(wire.Message, &message); err != nil {
+		return err
+	}
+	n.AssistantMessage = &message
+	return nil
+}
+
+// MarshalJSON writes "message" from Message, or from AssistantMessage after
+// the other fields.
+func (n ViewNode) MarshalJSON() ([]byte, error) {
+	data, err := json.Marshal(viewNodeFields(n))
+	if err != nil || n.AssistantMessage == nil {
+		return data, err
+	}
+	message, err := json.Marshal(n.AssistantMessage)
+	if err != nil {
+		return nil, err
+	}
+	data = append(data[:len(data)-1], `,"message":`...)
+	data = append(data, message...)
+	return append(data, '}'), nil
+}
+
+// ViewAssistantMessage is the part of upstream AssistantMessage that
+// AssistantMessageComponent draws. StopReason "" is "stop".
+type ViewAssistantMessage struct {
+	Content      []ViewContentBlock `json:"content"`
+	StopReason   string             `json:"stopReason,omitempty"`
+	ErrorMessage string             `json:"errorMessage,omitempty"`
+}
+
+// ViewContentBlock is a content block of an assistant message ("text" with
+// Text, "thinking" with Thinking, or "toolCall") or of a tool result ("text"
+// with Text, or "image" with Ref and MimeType).
+type ViewContentBlock struct {
+	Type     string `json:"type"`
+	Text     string `json:"text,omitempty"`
+	Thinking string `json:"thinking,omitempty"`
+	Ref      string `json:"ref,omitempty"`
+	MimeType string `json:"mimeType,omitempty"`
+}
+
+// ViewToolResult is the result a tool-execution's updateResult receives.
+type ViewToolResult struct {
+	Content []ViewContentBlock `json:"content"`
+	IsError bool               `json:"isError,omitempty"`
+	Details json.RawMessage    `json:"details,omitempty"`
+}
+
+// ViewBashComplete is a bash-execution's setComplete arguments: the exit
+// code (nil: unknown), whether it was cancelled, whether the output was
+// truncated, and where the full output is.
+type ViewBashComplete struct {
+	ExitCode       *int   `json:"exitCode,omitempty"`
+	Cancelled      bool   `json:"cancelled,omitempty"`
+	Truncated      bool   `json:"truncated,omitempty"`
+	FullOutputPath string `json:"fullOutputPath,omitempty"`
+}
+
+// ViewStackEntry mirrors upstream StackEntryOptions without visible. A nil
+// Basis is "auto".
+type ViewStackEntry struct {
+	Basis   *int `json:"basis,omitempty"`
+	Grow    *int `json:"grow,omitempty"`
+	Shrink  *int `json:"shrink,omitempty"`
+	MinSize *int `json:"minSize,omitempty"`
+	MaxSize *int `json:"maxSize,omitempty"`
+}
+
+// ViewTextStyle mirrors upstream Markdown DefaultTextStyle with tokens for
+// its color functions.
+type ViewTextStyle struct {
+	Color         string `json:"color,omitempty"`
+	BgColor       string `json:"bgColor,omitempty"`
+	Bold          bool   `json:"bold,omitempty"`
+	Italic        bool   `json:"italic,omitempty"`
+	Strikethrough bool   `json:"strikethrough,omitempty"`
+	Underline     bool   `json:"underline,omitempty"`
+}
+
+// ViewItem is a SelectItem (value, label, description) or a SettingItem
+// (id, label, description, currentValue, values, submenu).
+type ViewItem struct {
+	Value        string `json:"value,omitempty"`
+	ID           string `json:"id,omitempty"`
+	Label        string `json:"label,omitempty"`
+	Description  string `json:"description,omitempty"`
+	CurrentValue string `json:"currentValue,omitempty"`
+	//portlint:allow emptydrop the D107 view wire is PiG-owned with no Pi counterpart, and an absent and an empty value list mean the same: none
+	Values  []string  `json:"values,omitempty"`
+	Submenu *ViewNode `json:"submenu,omitempty"`
+}
+
+// ViewSelectLayout mirrors SelectListLayoutOptions without truncatePrimary.
+type ViewSelectLayout struct {
+	MinPrimaryColumnWidth *int `json:"minPrimaryColumnWidth,omitempty"`
+	MaxPrimaryColumnWidth *int `json:"maxPrimaryColumnWidth,omitempty"`
+}
+
+// ViewLoaderIndicator mirrors LoaderIndicatorOptions. A given indicator is
+// rendered verbatim, as upstream renders it; nil Frames are the default
+// spinner and an empty list hides it.
+type ViewLoaderIndicator struct {
+	Frames     *[]string `json:"frames,omitempty"`
+	IntervalMs int       `json:"intervalMs,omitempty"`
+}
+
+// ViewImageData is image bytes: Ref is the lowercase hex SHA-256 of the
+// decoded Data.
+type ViewImageData struct {
+	Ref      string `json:"ref"`
+	MimeType string `json:"mimeType"`
+	Data     string `json:"data"` // base64
+}
+
+// ViewImageRef names image bytes already sent on the connection.
+type ViewImageRef struct {
+	Ref string `json:"ref"`
+}
+
+// ViewProgress is a position in a range.
+type ViewProgress struct {
+	Value float64 `json:"value"`
+	Max   float64 `json:"max"`
+}
+
+// ViewList says a lines node's rows are a list: Items[i] is row i, so there
+// are as many items as rows. SelectedIndex is the highlighted item, or -1.
+type ViewList struct {
+	Items         []ViewListItem `json:"items"`
+	SelectedIndex int            `json:"selectedIndex"`
+}
+
+// ViewListItem is one row of a [ViewList]: its primary text, an optional
+// secondary text, and optional further cells of a table row (for example a
+// track's artist, album and length).
+type ViewListItem struct {
+	Label  string `json:"label"`
+	Detail string `json:"detail,omitempty"`
+	//portlint:allow emptydrop the D107 view wire is PiG-owned with no Pi counterpart, and an absent and an empty column list mean the same: none
+	Columns []string `json:"columns,omitempty"`
+}
+
+// ViewEventPayload is a NotifyUIViewEvent argument. Index is the item's
+// index among the shown (filtered) items for select and selectionChange; ID
+// and Value are the setting and its new value for change.
+type ViewEventPayload struct {
+	Key   string    `json:"key"`
+	Node  string    `json:"node"`
+	Type  string    `json:"type"`
+	Index int       `json:"index"`
+	Item  *ViewItem `json:"item,omitempty"`
+	ID    string    `json:"id,omitempty"`
+	Value string    `json:"value,omitempty"`
+}
+
+// ViewEvictedPayload is a NotifyUIViewEvicted argument.
+type ViewEvictedPayload struct {
+	Refs []string `json:"refs"`
 }
 
 type RemoteOverlayClosePayload struct {
@@ -811,9 +1230,12 @@ type CallResultPayload struct {
 // the lines are a frame a component rendered at that width; without one they
 // are a string list the host lays out as Pi's setWidget(key, string[]) does.
 type WidgetPushPayload struct {
-	Key   string   `json:"key"`             // Widget slot key (matches WidgetDecl.Key)
+	Key   string   `json:"key"`             // Widget slot key
 	Lines []string `json:"lines"`           // Frame rows or string list entries (may contain ANSI)
 	Width int      `json:"width,omitempty"` // Width the frame was rendered at (0 = a string list)
+	// View is the widget's component structure (D107); with Lines absent
+	// the host renders it at the widget's width.
+	View json.RawMessage `json:"view,omitempty"`
 }
 
 // ── Shutdown (host→ext) ──────────────────────────────────────────────────────
@@ -948,6 +1370,9 @@ func toolResultMemberOrder(data []byte) []string {
 // RenderResult is the structured result from a renderer execution.
 type RenderResult struct {
 	Lines []string `json:"lines,omitempty"`
+	// View is the rendered component's structure (D107); with Lines absent
+	// the host renders it at the requested width.
+	View json.RawMessage `json:"view,omitempty"`
 }
 
 // RequestRenderTool (host→ext) runs a tool's renderCall or renderResult for
@@ -1078,4 +1503,38 @@ type RenderToolContext struct {
 	Expanded         bool   `json:"expanded"`
 	ShowImages       bool   `json:"showImages"`
 	IsError          bool   `json:"isError"`
+	OutputPad        int    `json:"outputPad"`
+	// DurationMs is the recorded execution time of a final result in milliseconds. Absent while the result is partial and for results stored without one. upstream: ToolRenderContext.durationMs
+	DurationMs *int64 `json:"durationMs,omitempty"`
+}
+
+// pig additive (D19): a user_bash handler's `{ operations }` result carries functions that cannot cross the socket. The extension keeps the BashOperations object and the reply names it: `{"operations": {"handle": "<id>"}}`. The host wraps the handle in an extension.BashOperations whose Exec sends RequestUserBashExec to the owner connection, as Pi's runner holds the extension's own object (runner.ts isUserBashEventResult, types.ts UserBashEventResult).
+
+// RequestUserBashExec (host→ext) runs `operations.exec(command, cwd, { onData, signal, timeout, env })` of the object RequestPayload.Tool names. The extension streams each onData chunk as a NotifyToolUpdate whose result is a UserBashExecData, in order and before the response, and answers with a UserBashExecResult. The request's cancellation is the exec's signal. An error response is the exec's rejection.
+const RequestUserBashExec = "user_bash_exec"
+
+// UserBashExecArgs is the RequestUserBashExec argument. Timeout is seconds; Env, when present even if empty, replaces the inherited environment.
+type UserBashExecArgs struct {
+	Command string             `json:"command"`
+	Cwd     string             `json:"cwd"`
+	Timeout *float64           `json:"timeout,omitempty"`
+	Env     *map[string]string `json:"env,omitempty"`
+}
+
+// UserBashExecData is one onData chunk: the raw bytes, base64 encoded.
+type UserBashExecData struct {
+	Data string `json:"data"`
+}
+
+// UserBashExecResult is the RequestUserBashExec answer: Pi's `{ exitCode: number | null }`. A null exit code is a failed command.
+type UserBashExecResult struct {
+	ExitCode *int `json:"exitCode"`
+}
+
+// NotifyBashOperationsRelease (host→ext) reports that the host dropped the BashOperations object a user_bash reply named, so the extension drops its table entry. Args is a BashOperationsRelease.
+const NotifyBashOperationsRelease = "bash_operations_release"
+
+// BashOperationsRelease is the NotifyBashOperationsRelease argument.
+type BashOperationsRelease struct {
+	Handle string `json:"handle"`
 }

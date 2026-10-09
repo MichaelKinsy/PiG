@@ -1,0 +1,4 @@
+# Private cluster values and local run output never enter the repository.
+values.local.yaml
+*.local.yaml
+out/

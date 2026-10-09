@@ -1,3 +1,5 @@
+//go:build !pig_strip_mermaid
+
 package codingagent
 
 // Ports packages/coding-agent/src/modes/interactive/components/mermaid.ts (Marked HTML block ownership).

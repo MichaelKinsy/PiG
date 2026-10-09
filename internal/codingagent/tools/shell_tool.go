@@ -9,6 +9,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/MichaelKinsy/PiG/agent"
@@ -38,7 +39,25 @@ type shellToolConfig struct {
 	exposeSessionEnvironment bool
 	// binDir is prepended to PATH (upstream getShellEnv's getBinDir).
 	binDir string
+	// spawnHook adjusts the command, working directory and environment before the shell runs (upstream options.spawnHook).
+	spawnHook BashSpawnHook
 }
+
+// BashSpawnContext is upstream's BashSpawnContext: what a shell tool runs. Env holds KEY=VALUE entries, as os/exec takes them, where upstream has a process environment object.
+type BashSpawnContext struct {
+	Command string
+	CWD     string
+	Env     []string
+}
+
+// BashSpawnHook is upstream's BashSpawnHook: it receives the context a shell tool is about to run and returns the context to run.
+type BashSpawnHook func(context BashSpawnContext) BashSpawnContext
+
+// PowerShellSpawnContext is upstream's PowerShellSpawnContext, an alias of BashSpawnContext (powershell.ts:24).
+type PowerShellSpawnContext = BashSpawnContext
+
+// PowerShellSpawnHook is upstream's PowerShellSpawnHook, an alias of BashSpawnHook (powershell.ts:25).
+type PowerShellSpawnHook = BashSpawnHook
 
 // shellToolSchema mirrors createShellToolDefinition's name, description,
 // parameters, guidelines, and constrained sampling request.
@@ -97,7 +116,7 @@ type shellStructuredContent struct {
 // powershell, edit and write definitions request: { type: "json_schema",
 // strict: "prefer" }.
 func strictToolSampling() *ai.ConstrainedSamplingConfig {
-	return &ai.ConstrainedSamplingConfig{Type: "json_schema", Strict: "prefer"}
+	return &ai.ConstrainedSamplingConfig{Type: ai.ConstrainedSamplingJSONSchema, Strict: ai.ConstrainedSamplingStrictPrefer}
 }
 
 // FormatJSNumber mirrors JavaScript String(number) for a finite number.
@@ -144,7 +163,12 @@ func executeShellTool(ctx context.Context, cwd string, cfg shellToolConfig, rawP
 	if cfg.commandPrefix != "" {
 		command = cfg.commandPrefix + "\n" + command
 	}
-	env := sessionEnvironment(ctx, cfg.exposeSessionEnvironment, cfg.binDir)
+	// upstream: bash.ts resolveSpawnContext runs the hook after the session variables are in the environment.
+	spawn := BashSpawnContext{Command: command, CWD: cwd, Env: sessionEnvironment(ctx, cfg.exposeSessionEnvironment, cfg.binDir)}
+	if cfg.spawnHook != nil {
+		spawn = cfg.spawnHook(spawn)
+	}
+	command, cwd, env := spawn.Command, spawn.CWD, spawn.Env
 	output := NewOutputAccumulator(cfg.tempFilePrefix)
 	var updates *shellUpdateScheduler
 	if onUpdate != nil {
@@ -153,7 +177,11 @@ func executeShellTool(ctx context.Context, cwd string, cfg shellToolConfig, rawP
 		// output arrives. upstream: bash.ts:321-323
 		onUpdate(agent.AgentToolResult{Content: []ai.ToolResultMessageContent{}})
 	}
+	// bash.ts:277,323: data that arrives after the output finished is dropped before it reaches the accumulator.
+	var acceptingOutput atomic.Bool
+	acceptingOutput.Store(true)
 	finishOutput := func() OutputSnapshot {
+		acceptingOutput.Store(false)
 		output.Finish()
 		if updates != nil {
 			updates.finish()
@@ -166,7 +194,12 @@ func executeShellTool(ctx context.Context, cwd string, cfg shellToolConfig, rawP
 	startedAt := time.Now()
 	result, err := cfg.operations.Exec(ctx, command, cwd, BashOperationsExecOptions{
 		OnData: func(data []byte) {
-			output.Append(data)
+			if !acceptingOutput.Load() {
+				return
+			}
+			if err := output.Append(data); err != nil {
+				return
+			}
 			if updates != nil {
 				updates.schedule()
 			}

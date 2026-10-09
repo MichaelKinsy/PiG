@@ -1,12 +1,12 @@
-// Package chord ports Pi 1.0.0's packages/chord: replicated state, the remote service provider and its endpoint, the operation-stream replica binding, facet hosts and JSON-copy transports. The operation vocabulary lives in package delta, strict-JSON helpers in chordjson and context helpers in chordctx.
+// Package chord ports Pi's packages/chord: replicated state, the remote service provider and its endpoint, the operation-stream replica binding, facet hosts and JSON-copy transports. The operation vocabulary lives in package delta, strict-JSON helpers in chordjson and context helpers in chordctx.
 //
-// Upstream source: .upstream/v1.0.0/packages/chord/src/{types,api}.ts and services/{state,provider,consumer,instances,wire,errors,loopback}.ts.
+// Upstream source: packages/chord/src/{types,api}.ts and services/{state,provider,consumer,instances,wire,errors,loopback}.ts.
 //
 // Go mapping decisions (not wire changes):
 //   - Chord's Context is context.Context. Synthetic deliveries (hydration, provider lifecycle) use context.Background(), matching upstream's BACKGROUND_CONTEXT.
 //   - A service token is ServiceDefinition[T] created by DefineService.
-//   - Replicated state satisfies ReplicatedStateOf[T] and MutableReplicatedStateOf[T]. A state value is stored as its strict JSON representation; Value returns a detached decoded copy, which is the Go equivalent of upstream's immutable revisions. Mutate callbacks receive a detached decoded copy rather than upstream's revocable copy-on-write Draft proxy; the change is diffed against the stored revision by delta.Tracker.PrepareCandidate.
-//   - State delivery follows 1.0.0: each subscription serializes its callbacks and keeps at most 100 pending deliveries; a listener that is still working returns a Completion (the Go form of a Promise) through SubscribeAsync; subscriber failures go to the state's error reporter (SetUncaughtErrorReporter by default) and exact publication listeners' failures are returned by the publishing call.
+//   - Replicated state satisfies ReplicatedStateOf[T] and MutableReplicatedStateOf[T]. A state value is stored as its strict JSON representation; Value returns a detached decoded copy, which is the Go equivalent of upstream's immutable revisions. Change callbacks receive a detached decoded copy rather than upstream's revocable copy-on-write Draft proxy; the difference from the stored revision is replayed through the chord/delta overlay draft, so the batch comes from tracker.ts's emitter. Edit and EditArray hand the root's revocable draft (chord/delta Object or Array) to the callback, as upstream's change does.
+//   - State delivery follows Pi: each subscription serializes its callbacks and keeps at most 100 pending deliveries; a listener that is still working returns a Completion (the Go form of a Promise) through SubscribeAsync; subscriber failures go to the state's error reporter (SetUncaughtErrorReporter by default) and exact publication listeners' failures are returned by the publishing call.
 //   - Operations are Op tuples (delta.Op). Operation shape is not canonical upstream either; consumers depend only on the resulting value. A provider subscription buffers 100 updates and then rebaselines with a "reset" update.
 //   - A provider classifies a Go implementation by reflection over the service type's method set. Member names are the method names with a lower-case first letter ("CycleThinking" -> "cycleThinking"), which is the upstream TypeScript member name. A method member has the signature func(context.Context, args...) error or func(context.Context, args...) (R, error); a state member takes no arguments and returns a replicated state created by NewReplicatedState.
 //   - Go cannot synthesize a typed proxy, so the consumer side exposes an untyped RemoteService facade (Call, State, CallResult). Typed client adapters over that facade belong to the owning service lane, which registers them with RegisterRemoteClient (or passes FacetOptions.RemoteClients). A facet host needs one for every remotely exposable singleton a facet uses: in-host ones go through the host's internal loopback binding, as upstream, so retained state subscriptions follow provider replacement. Keyed in-host observation still resolves through the local registry.
@@ -21,6 +21,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"slices"
 )
 
 // ServiceMode is "singleton" or "keyed".
@@ -44,10 +45,13 @@ type ServiceInstanceAddress struct {
 	Generation int    `json:"generation"`
 }
 
+// ServiceMemberKind is a service member's kind (upstream ServiceMemberSnapshot["kind"]).
+type ServiceMemberKind string
+
 // Service member kinds.
 const (
-	MemberMethod = "method"
-	MemberState  = "state"
+	MemberMethod ServiceMemberKind = "method"
+	MemberState  ServiceMemberKind = "state"
 )
 
 // ServiceMemberSnapshot describes a method member, or a state member with its
@@ -55,7 +59,7 @@ const (
 // are serialized only for state members.
 type ServiceMemberSnapshot struct {
 	Name     string
-	Kind     string
+	Kind     ServiceMemberKind
 	Sequence int
 	Ops      []Op
 }
@@ -74,27 +78,31 @@ type ServiceSubscriptionSnapshot struct {
 	Instances []ServiceInstanceSnapshot `json:"instances"`
 }
 
+// ServiceProviderUpdateType is the closed `type` union of a provider update (types.ts ServiceProviderUpdate).
+type ServiceProviderUpdateType string
+
 // Provider update types.
 const (
-	UpdateState       = "state"
-	UpdateReset       = "reset"
-	UpdateUnavailable = "unavailable"
-	UpdateReplaced    = "replaced"
-	UpdateSpawned     = "spawned"
-	UpdateClosed      = "closed"
+	UpdateState       ServiceProviderUpdateType = "state"
+	UpdateReset       ServiceProviderUpdateType = "reset"
+	UpdateUnavailable ServiceProviderUpdateType = "unavailable"
+	UpdateReplaced    ServiceProviderUpdateType = "replaced"
+	UpdateSpawned     ServiceProviderUpdateType = "spawned"
+	UpdateClosed      ServiceProviderUpdateType = "closed"
 )
 
 // ServiceProviderUpdate is one ordered provider publication.
 //
-//   - "state": Address (nil for a singleton), Member, Sequence, Ops.
+//   - "state": Instance (nil for a singleton), Member, Sequence, Ops.
 //   - "reset": Reset, a full subscription snapshot whose every state member is a root replacement. A subscription is rebaselined this way when its pending updates overflow.
 //   - "unavailable": no fields.
 //   - "replaced": Snapshot.
 //   - "spawned": Snapshot (serialized under the upstream "instance" key).
-//   - "closed": Address (serialized under the upstream "instance" key).
+//   - "closed": Instance.
 type ServiceProviderUpdate struct {
-	Type     string
-	Address  *ServiceInstanceAddress
+	Type ServiceProviderUpdateType
+	// Instance is the `instance` address of a "state" or "closed" update (a spawned update carries its instance snapshot in Snapshot).
+	Instance *ServiceInstanceAddress
 	Member   string
 	Sequence int
 	Ops      []Op
@@ -150,14 +158,40 @@ type RemoteServiceError struct {
 	Message string
 }
 
-func (err *RemoteServiceError) Error() string { return err.Message }
-
-func remoteError(code RemoteServiceErrorCode, format string, args ...any) error {
-	return &RemoteServiceError{Code: code, Message: fmt.Sprintf(format, args...)}
+// NewRemoteServiceError is `new RemoteServiceError(code, message)`.
+func NewRemoteServiceError(code RemoteServiceErrorCode, message string) *RemoteServiceError {
+	err := &RemoteServiceError{Code: code, Message: message}
+	return err
 }
 
-// IsRemoteServiceErrorCode reports whether err is a RemoteServiceError with code.
-func IsRemoteServiceErrorCode(err error, code RemoteServiceErrorCode) bool {
+func (err *RemoteServiceError) Error() string { return err.Message }
+
+// Name is the `name` property, "RemoteServiceError".
+func (*RemoteServiceError) Name() string { return "RemoteServiceError" }
+
+func remoteError(code RemoteServiceErrorCode, format string, args ...any) error {
+	return NewRemoteServiceError(code, fmt.Sprintf(format, args...))
+}
+
+// RemoteServiceErrorCodes ports REMOTE_SERVICE_ERROR_CODES (services/errors.ts:1-10) in upstream order.
+var RemoteServiceErrorCodes = []RemoteServiceErrorCode{
+	ErrServiceNotAllowed, ErrServiceNotFound, ErrServiceModeMismatch, ErrServiceMemberNotFound,
+	ErrServiceMemberMismatch, ErrServiceInstanceNotFound, ErrServiceStaleInstance, ErrServiceInvalidValue,
+}
+
+// IsRemoteServiceErrorCode ports isRemoteServiceErrorCode (services/errors.ts:14): a type guard that is true for a string that is one of RemoteServiceErrorCodes.
+func IsRemoteServiceErrorCode(value any) bool {
+	text, ok := value.(string)
+	if !ok {
+		if code, isCode := value.(RemoteServiceErrorCode); isCode {
+			text, ok = string(code), true
+		}
+	}
+	return ok && slices.Contains(RemoteServiceErrorCodes, RemoteServiceErrorCode(text))
+}
+
+// hasRemoteServiceErrorCode reports whether err is a RemoteServiceError with code.
+func hasRemoteServiceErrorCode(err error, code RemoteServiceErrorCode) bool {
 	var remote *RemoteServiceError
 	return errors.As(err, &remote) && remote.Code == code
 }

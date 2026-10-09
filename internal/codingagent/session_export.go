@@ -2,8 +2,8 @@ package codingagent
 
 // session_export.go ports upstream core/session-export.ts: the current branch
 // serialized as a standalone JSONL session, with optional export-only entries
-// appended after it (the pi.share presentation entry). It also holds the
-// session-level HTML export of core/export-html/index.ts.
+// appended after it (the pi.share presentation entry). The session-level HTML
+// export of core/export-html/index.ts is in session_export_html.go.
 
 import (
 	"bytes"
@@ -15,10 +15,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/MichaelKinsy/PiG/coding/extension"
-	"github.com/MichaelKinsy/PiG/coding/extension/host/inproc"
 	"github.com/MichaelKinsy/PiG/extensions/sdk/json"
-	"github.com/MichaelKinsy/PiG/internal/codingagent/export"
+	"github.com/MichaelKinsy/PiG/internal/nodeerrno"
+	"github.com/MichaelKinsy/PiG/tui"
 )
 
 // TrailingEntries builds export-only entries appended after the branch. It
@@ -61,11 +60,11 @@ func SerializeSessionBranch(header SessionHeader, branch []SessionEntry, now tim
 	for _, entry := range branch {
 		rewritten, err := replaceJSONField(entry.Raw(), "parentId", parentID)
 		if err != nil {
-			return "", fmt.Errorf("entry %s: %w", entry.Base.ID, err)
+			return "", fmt.Errorf("entry %s: %w", entry.Base().ID, err)
 		}
 		b.Write(rewritten)
 		b.WriteByte('\n')
-		id := entry.Base.ID
+		id := entry.Base().ID
 		parentID = &id
 	}
 	if createTrailingEntries != nil {
@@ -98,57 +97,21 @@ func ExportSessionToJsonl(session *Session, outputPath string, createTrailingEnt
 	if err != nil {
 		return "", err
 	}
-	if err := os.MkdirAll(filepath.Dir(filePath), 0o755); err != nil {
-		return "", err
+	// session-export.ts:41-43 creates the directory only when it does not exist (existsSync follows links, so a file in its place fails at the write), and
+	// its errors are Node's: "EACCES: permission denied, mkdir '<dir>'", "ENOTDIR: not a directory, open '<path>'".
+	if dir := filepath.Dir(filePath); !pathExists(dir) {
+		if err := nodeerrno.MkdirAll(dir, 0o755); err != nil {
+			return "", err
+		}
 	}
-	content, err := SerializeSessionBranch(session.Header(), BugReportBranch(session), now, createTrailingEntries)
+	content, err := SerializeSessionBranch(session.GetHeader(), BugReportBranch(session), now, createTrailingEntries)
 	if err != nil {
 		return "", err
 	}
 	if err := os.WriteFile(filePath, []byte(content), 0o644); err != nil {
-		return "", err
+		return "", nodeerrno.FromPathError(err)
 	}
 	return filePath, nil
-}
-
-// ExportToolRenderers is upstream AgentSession's getToolRenderers for HTML
-// exports: the resolvers of runner's extensions in load order, then the tools
-// they registered. A nil runner draws no tool through renderers.
-// upstream: packages/coding-agent/src/core/agent-session.ts:exportToHtml (getToolRenderers)
-func ExportToolRenderers(runner *inproc.Runner) func(name string) *extension.ToolRenderers {
-	if runner == nil {
-		return nil
-	}
-	registered := export.ToolRenderersOf(runner.Tools())
-	return func(name string) *extension.ToolRenderers {
-		return runner.ResolveToolRenderers(name, func() *extension.ToolRenderers { return registered(name) })
-	}
-}
-
-// ExportSessionToHTML writes the session file as HTML the way upstream
-// exportSessionToHtml does and returns the path written. An in-memory session
-// (empty sessionFile) and a session whose file is not written yet fail with
-// upstream's messages. outputPath is normalized as upstream normalizePath does
-// and written relative to the process working directory without creating its
-// parent; an empty outputPath becomes pig-session-<session basename>.html.
-// state is the live agent state upstream passes to exportSessionToHtml: the
-// export embeds its system prompt and active tool schemas.
-func ExportSessionToHTML(sessionFile, outputPath string, getToolRenderers func(name string) *extension.ToolRenderers, cwd string, state ShareState) (string, error) {
-	if sessionFile == "" {
-		return "", errors.New("Cannot export in-memory session to HTML")
-	}
-	if _, err := os.Stat(sessionFile); err != nil {
-		return "", errors.New("Nothing to export yet - start a conversation first")
-	}
-	outputPath, err := normalizeSettingsPath(outputPath)
-	if err != nil {
-		return "", err
-	}
-	agentState := export.AgentState{SystemPrompt: state.SystemPrompt, Tools: make([]export.ToolSchema, len(state.Tools))}
-	for i, tool := range state.Tools {
-		agentState.Tools[i] = export.ToolSchema(tool)
-	}
-	return export.ExportFromFileWithTools(sessionFile, outputPath, getToolRenderers, cwd, &agentState)
 }
 
 // resolveExportPath mirrors upstream resolvePath(input, baseDir): expand a
@@ -229,4 +192,15 @@ func rewriteJSONField(raw json.RawMessage, field string, value any, remove bool)
 	}
 	out.WriteByte('}')
 	return out.Bytes(), nil
+}
+
+// ExportThemeName is the theme AgentSession.exportToHtml exports with (agent-session.ts exportToHtml): the first candidate
+// (the caller's themeName option, then the settings theme) that names a registered theme, or empty when none does.
+func ExportThemeName(candidates ...string) string {
+	for _, candidate := range candidates {
+		if candidate != "" && tui.ThemeByName(candidate) != nil {
+			return candidate
+		}
+	}
+	return ""
 }

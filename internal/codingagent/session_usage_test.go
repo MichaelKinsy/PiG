@@ -25,8 +25,8 @@ func TestCacheWarmingUsageCountsOnceWithoutAddingMessages(t *testing.T) {
 	if entry.Type != "usage" || entry.Kind != "cache_warm" || entry.Note != "extension override" {
 		t.Fatalf("entry = %+v", entry)
 	}
-	entries := session.Entries()
-	if len(entries) != 1 || entries[0].Base.Type != "usage" {
+	entries := session.GetEntries()
+	if len(entries) != 1 || entries[0].Base().Type != "usage" {
 		t.Fatalf("entries = %+v", entries)
 	}
 	stats := session.Accounting()
@@ -79,7 +79,7 @@ func TestUsageEntryWireShapeAndReload(t *testing.T) {
 	if want := []string{"type", "id", "parentId", "timestamp", "kind", "provider", "model", "usage"}; !reflect.DeepEqual(keys, want) {
 		t.Fatalf("keys = %v, want %v", keys, want)
 	}
-	if leaf := session.LeafID(); leaf == nil || *leaf != entry.ID {
+	if leaf := session.GetLeafID(); leaf == nil || *leaf != entry.ID {
 		t.Fatalf("usage entry did not become the leaf")
 	}
 	loaded, err := loadSessionFile(path)
@@ -189,7 +189,7 @@ func TestTreeTagsUsageEntries(t *testing.T) {
 
 func mustEntryByID(t *testing.T, session *Session, id string) SessionEntry {
 	t.Helper()
-	entry, ok := session.EntryByID(id)
+	entry, ok := session.GetEntry(id)
 	if !ok {
 		t.Fatalf("entry %s missing", id)
 	}

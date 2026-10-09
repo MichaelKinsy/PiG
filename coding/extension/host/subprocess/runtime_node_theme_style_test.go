@@ -1,6 +1,11 @@
 package subprocess
 
-import "testing"
+import (
+	"net/url"
+	"path/filepath"
+	"strconv"
+	"testing"
+)
 
 // ctx.ui.theme's appearance, colors and style in the Node runtime (.upstream/v0.99.2/packages/coding-agent/src/modes/interactive/theme/theme.ts:311-367). The host resolves the appearance and the concrete colors with the palette (the terminal's reported colors are the host's), so the runtime answers them from the palette; style is Pi's own over the palette's escape sequences. The vectors are the sequences the host's tui.ForegroundAnsi and BackgroundAnsi produce for each color in each mode; test/extension-conformance/theme_test.go compares every SDK with the host for the same colors.
 func TestNodeThemeAppearanceColorsAndStyle(t *testing.T) {
@@ -66,5 +71,36 @@ assert.equal(theme.style("x", { fg: "success" }), E + "38;2;7;8;9mx" + E + "39m"
 theme.setPalette(palette("truecolor", { modifiers: false }));
 assert.equal(theme.bold("x"), "x");
 assert.equal(theme.style("x", { bold: true }), E + "1mx" + E + "22m");
+`)
+}
+
+// ctx.ui.theme's bold, italic, underline, inverse and strikethrough are
+// chalk's, as upstream's Theme draws them (theme.ts bold..strikethrough):
+// chalk re-opens a style after an inner close of it and closes and re-opens
+// it around a line break, which pi-tui's Markdown relies on for strong text
+// nested in emphasis and for quoted lines. Pi's own Theme, with chalk at the
+// level the host's palette gives it, is the reference.
+func TestNodeThemeModifiersAreChalks(t *testing.T) {
+	path, err := filepath.Abs("runtime-node/theme-palette.mjs")
+	if err != nil {
+		t.Fatal(err)
+	}
+	palette := strconv.Quote((&url.URL{Scheme: "file", Path: filepath.ToSlash(path)}).String())
+	nodeModelTypesScript(t, `
+const { themeFromPalette } = await import(`+palette+`);
+const runtime = new Runtime("/ext/modifiers.mjs");
+const theme = runtime.ctx.ui.theme;
+const host = { name: "dark", foregrounds: { accent: "\x1b[38;5;4m" }, backgrounds: {}, modifiers: true, mode: "truecolor" };
+theme.setPalette(host);
+const pi = themeFromPalette(host);
+const texts = ["x", "", "a \x1b[3mquoted\x1b[23m line", "outer \x1b[1mstrong\x1b[22m tail", "two\nlines", "\x1b[4mu\x1b[24m\r\nnext", "\x1b[7mi\x1b[27m \x1b[9ms\x1b[29m"];
+for (const style of ["bold", "italic", "underline", "inverse", "strikethrough"]) {
+  for (const text of texts) assert.equal(theme[style](text), pi[style](text), style + " " + JSON.stringify(text));
+}
+assert.equal(theme.italic("a \x1b[3mquoted\x1b[23m line"), "\x1b[3ma \x1b[3mquoted\x1b[23m\x1b[3m line\x1b[23m");
+assert.equal(theme.bold("a\nb"), "\x1b[1ma\x1b[22m\n\x1b[1mb\x1b[22m");
+// Without the host's modifiers there are none, as chalk at level 0 draws none.
+theme.setPalette({ ...host, modifiers: false });
+assert.equal(theme.italic("a\nb"), "a\nb");
 `)
 }

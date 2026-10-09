@@ -21,7 +21,7 @@ func TestValidatePromptModelAuthReportsFailedOAuth(t *testing.T) {
 	if err := h.session.ValidatePromptModelAuth(t.Context()); err == nil || err.Error() != want {
 		t.Fatalf("error=%v, want %q", err, want)
 	}
-	if _, err := h.session.Prompt(t.Context(), "hi", nil); err == nil || err.Error() != want {
+	if err := h.session.Prompt(t.Context(), "hi", nil); err == nil || err.Error() != want {
 		t.Fatalf("prompt error=%v, want %q", err, want)
 	}
 }

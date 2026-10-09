@@ -39,15 +39,15 @@ type McpUi interface {
 	// Menu shows a menu and returns the chosen item's value; ok is false when the user cancelled or ctx ended.
 	// subscribe rebuilds the menu on every change, keeping the selected item.
 	Menu(ctx context.Context, build func() McpMenu, subscribe func(listener func()) (unsubscribe func())) (value string, ok bool)
-	// Status shows a message while an operation runs.
-	Status(title, message string)
+	// Status shows a message while an operation runs. With onCancel, the cancel key calls it.
+	Status(title, message string, onCancel func())
 	// RedirectURL shows the authorization URL and waits for a pasted redirect URL; ok is false when the user
 	// cancelled or ctx ended (the browser reached the callback).
 	RedirectURL(ctx context.Context, title, authorizationURL string) (value string, ok bool)
 }
 
 // ManagerHost is the terminal the manager view asks to draw again.
-type ManagerHost interface{ RequestRender() }
+type ManagerHost interface{ RequestRender(force ...bool) }
 
 // maxVisibleItems is the number of menu items shown before the list scrolls.
 // upstream: packages/coding-agent/src/extensions/mcp/ui.ts:MAX_VISIBLE_ITEMS
@@ -74,7 +74,7 @@ type McpManagerView struct {
 // NewMcpManagerView returns the view, showing "Loading…" until the manager shows its first menu.
 func NewMcpManagerView(host ManagerHost, theme *tui.Theme, keybindings *tui.TUIKeybindingsManager) *McpManagerView {
 	v := &McpManagerView{host: host, theme: theme, keybindings: keybindings}
-	v.content = v.frame("MCP servers", []tui.Component{tui.NewPaddedText(theme.FgText("muted", "Loading…"), 1, 1, nil)}, "")
+	v.content = v.frame("MCP servers", []tui.Component{tui.NewPaddedText(theme.Fg("muted", "Loading…"), 1, 1, nil)}, "")
 	return v
 }
 
@@ -83,16 +83,16 @@ func bold(text string) string { return "\x1b[1m" + text + "\x1b[22m" }
 // frame is a bordered container with a bold title, the body, and an optional footer.
 func (v *McpManagerView) frame(title string, body []tui.Component, footer string) *tui.Container {
 	container := tui.NewContainer()
-	container.Add(tui.NewDynamicBorder(v.theme.Fg("accent")))
-	container.Add(tui.NewPaddedText(v.theme.FgText("accent", bold(title)), 1, 0, nil))
+	container.Add(tui.NewDynamicBorder(func(text string) string { return v.theme.Fg("accent", text) }))
+	container.Add(tui.NewPaddedText(v.theme.Fg("accent", bold(title)), 1, 0, nil))
 	for _, child := range body {
 		container.Add(child)
 	}
 	if footer != "" {
 		container.Add(tui.NewSpacer(1))
-		container.Add(tui.NewPaddedText(v.theme.FgText("dim", footer), 1, 0, nil))
+		container.Add(tui.NewPaddedText(v.theme.Fg("dim", footer), 1, 0, nil))
 	}
-	container.Add(tui.NewDynamicBorder(v.theme.Fg("accent")))
+	container.Add(tui.NewDynamicBorder(func(text string) string { return v.theme.Fg("accent", text) }))
 	return container
 }
 
@@ -161,10 +161,10 @@ func (v *McpManagerView) Menu(ctx context.Context, build func() McpMenu, subscri
 		v.mu.Unlock()
 		var body []tui.Component
 		if menu.Details != "" {
-			body = append(body, tui.NewPaddedText(v.theme.FgText("muted", menu.Details), 1, 0, nil))
+			body = append(body, tui.NewPaddedText(v.theme.Fg("muted", menu.Details), 1, 0, nil))
 		}
 		if menu.Error != "" {
-			body = append(body, tui.NewPaddedText(v.theme.FgText("error", menu.Error), 1, 0, nil))
+			body = append(body, tui.NewPaddedText(v.theme.Fg("error", menu.Error), 1, 0, nil))
 		}
 		body = append(body, tui.NewSpacer(1))
 		if len(menu.Items) == 0 {
@@ -172,7 +172,7 @@ func (v *McpManagerView) Menu(ctx context.Context, build func() McpMenu, subscri
 			if empty == "" {
 				empty = "Nothing to show."
 			}
-			body = append(body, tui.NewPaddedText(v.theme.FgText("muted", empty), 1, 0, nil))
+			body = append(body, tui.NewPaddedText(v.theme.Fg("muted", empty), 1, 0, nil))
 			v.setContent(v.frame(menu.Title, body, v.keyHint(tui.KBSelectCancel, menu.CancelLabel)), func(data string) {
 				if v.keybindings.Matches(data, tui.KBSelectCancel) {
 					finish("", false)
@@ -238,9 +238,18 @@ func (v *McpManagerView) Menu(ctx context.Context, build func() McpMenu, subscri
 	}
 }
 
-// Status shows a message while an operation runs.
-func (v *McpManagerView) Status(title, message string) {
-	v.setContent(v.frame(title, []tui.Component{tui.NewSpacer(1), tui.NewPaddedText(v.theme.FgText("muted", message), 1, 0, nil)}, ""), nil, nil)
+// Status shows a message while an operation runs. With onCancel, the cancel key calls it.
+func (v *McpManagerView) Status(title, message string, onCancel func()) {
+	body := []tui.Component{tui.NewSpacer(1), tui.NewPaddedText(v.theme.Fg("muted", message), 1, 0, nil)}
+	if onCancel == nil {
+		v.setContent(v.frame(title, body, ""), nil, nil)
+		return
+	}
+	v.setContent(v.frame(title, body, v.keyHint(tui.KBSelectCancel, "cancel")), func(data string) {
+		if v.keybindings.Matches(data, tui.KBSelectCancel) {
+			onCancel()
+		}
+	}, nil)
 }
 
 // SetCopyToClipboard supplies the clipboard writer `app.message.copy` uses for the authorization URL on the sign-in
@@ -273,17 +282,17 @@ func (v *McpManagerView) RedirectURL(ctx context.Context, title, authorizationUR
 	})
 	body := []tui.Component{
 		tui.NewSpacer(1),
-		tui.NewPaddedText(v.theme.FgText("muted", "Approve access in your browser. If it did not open, visit:"), 1, 0, nil),
+		tui.NewPaddedText(v.theme.Fg("muted", "Approve access in your browser. If it did not open, visit:"), 1, 0, nil),
 		link,
 		tui.NewSpacer(1),
-		tui.NewPaddedText(v.theme.FgText("muted", "If the browser runs on another machine, paste the URL it was redirected to:"), 1, 0, nil),
+		tui.NewPaddedText(v.theme.Fg("muted", "If the browser runs on another machine, paste the URL it was redirected to:"), 1, 0, nil),
 		input,
 	}
 	footer := v.keyHint(tui.KBSelectConfirm, "submit") + " • " + v.keyHint(tui.KBSelectCancel, "cancel")
 	v.setContent(v.frame(title, body, footer), func(data string) {
 		switch {
 		case v.keybindings.Matches(data, tui.KBSelectConfirm):
-			if value := strings.TrimSpace(input.GetValue()); value != "" {
+			if value := strings.TrimFunc(input.GetValue(), isJSWhitespace); value != "" {
 				finish(value, true)
 			}
 		case v.keybindings.Matches(data, tui.KBSelectCancel):
@@ -430,7 +439,7 @@ func (e *Extension) serverMenu(name string) McpMenu {
 		return McpMenu{Title: name, Empty: "This server is no longer configured.", CancelLabel: "back"}
 	}
 	e.mu.Lock()
-	entry, connection, message, projectConfig := s.entry, s.connection, s.message, e.projectConfig
+	entry, connection, message, projectConfig := s.entry, s.connection.Load(), s.message, e.projectConfig
 	e.mu.Unlock()
 	saved := "saved to mcp.json"
 	switch {
@@ -515,7 +524,7 @@ func (e *Extension) showTools(ctx context.Context, ui McpUi, s *server) {
 		}
 		var items []tui.SelectItem
 		e.mu.Lock()
-		connection := s.connection
+		connection := s.connection.Load()
 		e.mu.Unlock()
 		if connection != nil {
 			for _, tool := range connection.Tools() {
@@ -560,19 +569,52 @@ func (e *Extension) chooseExposure(ctx context.Context, ui McpUi, s *server) str
 	return e.SetExposure(s.entry.Name, extension.McpExposure(choice))
 }
 
+// runInBackground keeps the subscribed menu usable while a connection opens or closes. begin runs at once; the
+// function it returns runs on a goroutine the extension owns and drains in [Extension.SessionShutdown]. Its message
+// shows in the manager unless the session ended or the server's attempt was replaced meanwhile.
+// upstream: packages/coding-agent/src/extensions/mcp/index.ts:runInBackground
+func (e *Extension) runInBackground(ec EventContext, s *server, begin func() func() string) {
+	wait := begin()
+	e.mu.Lock()
+	attempt, session := s.attempt, e.session
+	e.mu.Unlock()
+	e.background.Go(func() {
+		message := wait()
+		e.mu.Lock()
+		stale := session.Err() != nil || s.attempt != attempt || !slices.Contains(e.servers, s)
+		if !stale {
+			s.message = message
+		}
+		e.mu.Unlock()
+		if stale {
+			return
+		}
+		e.ensureDiscoveryActive(ec)
+		e.emitChange()
+	})
+}
+
 // runAction runs one action of the server menu. It returns what upstream's runAction throws: a sign-out whose
 // credentials could not be removed, which ends the manager.
-// upstream: packages/coding-agent/src/extensions/mcp/index.ts:643-685
+// upstream: packages/coding-agent/src/extensions/mcp/index.ts:runAction
 func (e *Extension) runAction(ctx context.Context, ui McpUi, ec EventContext, s *server, action string) error {
 	name := s.entry.Name
+	e.mu.Lock()
+	session := e.session
+	e.mu.Unlock()
 	var message string
 	switch action {
 	case "signin":
 		message = e.signInWithUI(ctx, ui, name)
 	case "reconnect":
-		// A failure shows as the connection's state and error.
-		ui.Status("MCP server "+name, "Reconnecting…")
-		e.Reconnect(ctx, name)
+		// Connection state and error already report failures, including required sign-ins.
+		e.runInBackground(ec, s, func() func() string {
+			wait := e.beginReconnect(name)
+			return func() string {
+				wait(session)
+				return ""
+			}
+		})
 	case "signout":
 		if _, err := e.SignOut(name); err != nil {
 			return err
@@ -583,12 +625,13 @@ func (e *Extension) runAction(ctx context.Context, ui McpUi, ec EventContext, s 
 		message = e.chooseExposure(ctx, ui, s)
 	case "enable", "disable", "enable-project", "disable-project":
 		enable := strings.HasPrefix(action, "enable")
-		status := "Disconnecting…"
-		if enable {
-			status = "Connecting…"
-		}
-		ui.Status("MCP server "+name, status)
-		message = e.SetEnabled(ec, name, enable, strings.HasSuffix(action, "-project"))
+		e.runInBackground(ec, s, func() func() string {
+			return e.beginSetEnabled(ec, name, enable, strings.HasSuffix(action, "-project"))
+		})
+	}
+	// The session ended meanwhile (for example during a sign-in), which made the event context stale.
+	if session.Err() != nil {
+		return nil
 	}
 	e.SetMessage(name, message)
 	e.EnsureDiscoveryActive(ec)
@@ -596,22 +639,27 @@ func (e *Extension) runAction(ctx context.Context, ui McpUi, ec EventContext, s 
 	return nil
 }
 
-// managerSignIn is the sign-in prompt of the manager: the authorization URL goes to the view, and a pasted redirect URL comes from it.
-// signInWithUI signs in with the manager view's sign-in screen, which shows the URL with a copy key.
+// signInWithUI signs in with the manager view's sign-in screen, which shows the URL with a copy key and cancels with
+// the cancel key at every step.
 // upstream: packages/coding-agent/src/extensions/mcp/index.ts:signInWithUi
 func (e *Extension) signInWithUI(ctx context.Context, ui McpUi, name string) string {
-	title := "Sign in to " + name
-	ui.Status(title, "Contacting the authorization server…")
-	return e.SignIn(ctx, name, &managerSignIn{e: e, ctx: ctx, ui: ui, title: title})
+	cancelCtx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	prompt := &managerSignIn{ui: ui, title: "Sign in to " + name, cancel: cancel, e: e}
+	prompt.status("Contacting the authorization server…")
+	return e.SignIn(cancelCtx, name, prompt)
 }
 
+// managerSignIn is the sign-in prompt of the manager: the authorization URL goes to the view, and a pasted redirect URL comes from it.
 type managerSignIn struct {
-	e     *Extension
-	ctx   context.Context
-	ui    McpUi
-	title string
-	url   string
+	e      *Extension
+	ui     McpUi
+	title  string
+	cancel context.CancelFunc
+	url    string
 }
+
+func (p *managerSignIn) status(message string) { p.ui.Status(p.title, message, p.cancel) }
 
 func (p *managerSignIn) ShowAuthorizationURL(u *url.URL) {
 	p.url = u.String()
@@ -620,7 +668,7 @@ func (p *managerSignIn) ShowAuthorizationURL(u *url.URL) {
 
 func (p *managerSignIn) PromptForRedirectURL(ctx context.Context) (string, error) {
 	value, _ := p.ui.RedirectURL(ctx, p.title, p.url)
-	p.ui.Status(p.title, "Connecting…")
+	p.status("Connecting…")
 	return value, nil
 }
 
@@ -644,3 +692,6 @@ func (e *Extension) Manage(ctx context.Context, ui McpUi, ec EventContext) error
 		}
 	}
 }
+
+// Dispose releases nothing: the view's work runs in the manage goroutine that Custom waits for.
+func (*McpManagerView) Dispose() {}

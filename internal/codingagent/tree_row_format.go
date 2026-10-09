@@ -6,7 +6,7 @@
 //
 // Pure presentation; selection / navigation / fork behaviour is
 // unchanged. Connector glyphs (├─ / └─ / │ ) are still produced by
-// tui.TreeSelect.flatten: this file only produces the trailing
+// tui.TreeSelectorComponent.flatten: this file only produces the trailing
 // label string.
 //
 // Why it lives in internal/codingagent rather than tui:
@@ -20,7 +20,6 @@
 package codingagent
 
 import (
-	"bytes"
 	"fmt"
 	"math"
 	"os"
@@ -29,6 +28,8 @@ import (
 
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/extensions/sdk/json"
+	"github.com/MichaelKinsy/PiG/internal/jsonstringify"
+	"github.com/MichaelKinsy/PiG/internal/jsstring"
 	"github.com/MichaelKinsy/PiG/tui"
 )
 
@@ -56,15 +57,14 @@ type treeRowFormatter struct {
 	// tree-selector.ts:289.
 	leafID string
 
-	// sess, when set, memoizes the per-entry AsMessage parse so /tree
-	// navigation over a long branch does not re-unmarshal every row on
-	// each render. Nil in unit tests that format standalone entries.
+	// sess, when set, counts the message entries that did not decode
+	// (Session.UndecodableCount). Nil in unit tests that format standalone
+	// entries and for a formatter built from a tree.
 	sess *Session
 }
 
 type toolCallInfo struct {
-	name  string
-	input map[string]any
+	call ai.ToolCall
 }
 
 func newTreeRowFormatter(s *Session) *treeRowFormatter {
@@ -80,13 +80,13 @@ func newTreeRowFormatter(s *Session) *treeRowFormatter {
 	if s == nil {
 		return f
 	}
-	if lid := s.LeafID(); lid != nil {
+	if lid := s.GetLeafID(); lid != nil {
 		f.leafID = *lid
 	}
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	for _, e := range s.entries {
-		if e.Base.Type != "message" {
+		if e.Base().Type != "message" {
 			continue
 		}
 		me, ok := f.asMessage(e)
@@ -98,9 +98,35 @@ func newTreeRowFormatter(s *Session) *treeRowFormatter {
 			if !ok || call.ID == "" {
 				continue
 			}
-			f.toolCallMap[call.ID] = toolCallInfo{name: call.Name, input: call.Arguments}
+			f.toolCallMap[call.ID] = toolCallInfo{call: call}
 		}
 	}
+	return f
+}
+
+// newTreeRowFormatterFromTree builds the formatter from the tree alone, as Pi's TreeSelectorComponent does: the tool-call map holds every
+// tool call of every message entry in the tree (tree-selector.ts:255-264) and the current leaf is always shown (tree-selector.ts:289).
+func newTreeRowFormatterFromTree(tree []*SessionTreeNode, currentLeafID *string) *treeRowFormatter {
+	f := newTreeRowFormatter(nil)
+	if currentLeafID != nil {
+		f.leafID = *currentLeafID
+	}
+	var walk func(nodes []*SessionTreeNode)
+	walk = func(nodes []*SessionTreeNode) {
+		for _, node := range nodes {
+			if node.Entry.Base().Type == "message" {
+				if me, ok := node.Entry.(MessageEntry); ok {
+					for _, blk := range me.Message.ContentBlocks() {
+						if call, ok := blk.(ai.ToolCall); ok && call.ID != "" {
+							f.toolCallMap[call.ID] = toolCallInfo{call: call}
+						}
+					}
+				}
+			}
+			walk(node.Children)
+		}
+	}
+	walk(tree)
 	return f
 }
 
@@ -112,7 +138,7 @@ func newTreeRowFormatter(s *Session) *treeRowFormatter {
 // visible per upstream isErrorOrAborted escape clause). WireMessage supplies
 // StopReason so the escape clause is active.
 func (f *treeRowFormatter) shouldSuppressInTree(e SessionEntry) bool {
-	if e.Base.Type != "message" {
+	if e.Base().Type != "message" {
 		return false
 	}
 	me, ok := f.asMessage(e)
@@ -123,7 +149,7 @@ func (f *treeRowFormatter) shouldSuppressInTree(e SessionEntry) bool {
 		return false
 	}
 	// Always show the current leaf.
-	if f.leafID != "" && e.Base.ID == f.leafID {
+	if f.leafID != "" && e.Base().ID == f.leafID {
 		return false
 	}
 	// Upstream isErrorOrAborted escape: aborted/errored turns stay visible
@@ -143,11 +169,11 @@ func (f *treeRowFormatter) asMessage(e SessionEntry) (MessageEntry, bool) {
 	if f.sess != nil {
 		return f.sess.messageFor(e)
 	}
-	return e.AsMessage()
+	return asMessage(e)
 }
 
 func (f *treeRowFormatter) FormatTreeRow(e SessionEntry) string {
-	switch e.Base.Type {
+	switch e.Base().Type {
 	case "message":
 		return f.formatMessage(e)
 
@@ -155,30 +181,30 @@ func (f *treeRowFormatter) FormatTreeRow(e SessionEntry) string {
 		var ent struct {
 			ModelID string `json:"modelId"`
 		}
-		_ = json.Unmarshal(e.raw, &ent)
+		_ = json.Unmarshal(e.Raw(), &ent)
 		return fg(tui.ActiveTheme().Dim, "[model: "+ent.ModelID+"]")
 
 	case "thinking_level_change":
 		var ent struct {
 			ThinkingLevel string `json:"thinkingLevel"`
 		}
-		_ = json.Unmarshal(e.raw, &ent)
+		_ = json.Unmarshal(e.Raw(), &ent)
 		return fg(tui.ActiveTheme().Dim, "[thinking: "+ent.ThinkingLevel+"]")
 
 	case "compaction":
 		var ent CompactionEntry
-		_ = json.Unmarshal(e.raw, &ent)
+		_ = json.Unmarshal(e.Raw(), &ent)
 		k := int(math.Round(float64(ent.TokensBefore) / 1000))
 		return fg(tui.ActiveTheme().BorderAccent, fmt.Sprintf("[compaction: %dk tokens]", k))
 
 	case "branch_summary":
 		var ent BranchSummaryEntry
-		_ = json.Unmarshal(e.raw, &ent)
+		_ = json.Unmarshal(e.Raw(), &ent)
 		return fg(tui.ActiveTheme().Warning, "[branch summary]: ") + normalizeText(ent.Summary)
 
 	case "label":
 		var ent LabelEntry
-		_ = json.Unmarshal(e.raw, &ent)
+		_ = json.Unmarshal(e.Raw(), &ent)
 		text := "(cleared)"
 		if ent.Label != nil {
 			text = *ent.Label
@@ -187,7 +213,7 @@ func (f *treeRowFormatter) FormatTreeRow(e SessionEntry) string {
 
 	case "custom":
 		var ent CustomEntry
-		_ = json.Unmarshal(e.raw, &ent)
+		_ = json.Unmarshal(e.Raw(), &ent)
 		return fg(tui.ActiveTheme().Dim, "[custom: "+ent.CustomType+"]")
 
 	case "context_edit":
@@ -196,12 +222,12 @@ func (f *treeRowFormatter) FormatTreeRow(e SessionEntry) string {
 
 	case "custom_message":
 		var ent CustomMessageEntry
-		_ = json.Unmarshal(e.raw, &ent)
+		_ = json.Unmarshal(e.Raw(), &ent)
 		return fg(tui.ActiveTheme().CustomMessageLabel, "["+ent.CustomType+"]: ") + normalizeText(extractCustomMessageText(ent))
 
 	case "session_info":
 		var ent SessionInfoEntry
-		_ = json.Unmarshal(e.raw, &ent)
+		_ = json.Unmarshal(e.Raw(), &ent)
 		if ent.Name == "" {
 			return fg(tui.ActiveTheme().Dim, "[title: empty]")
 		}
@@ -210,7 +236,7 @@ func (f *treeRowFormatter) FormatTreeRow(e SessionEntry) string {
 	case "bash_execution":
 		// Mirrors upstream tree-selector.ts label for bash entries.
 		var ent BashExecutionEntry
-		_ = json.Unmarshal(e.raw, &ent)
+		_ = json.Unmarshal(e.Raw(), &ent)
 		cmd := ent.Command
 		if len(cmd) > 50 {
 			cmd = cmd[:50] + "…"
@@ -234,7 +260,7 @@ func contextEditSummary(e SessionEntry) (mode, targetID string) {
 		TargetID    string          `json:"targetId"`
 		Replacement json.RawMessage `json:"replacement"`
 	}
-	_ = json.Unmarshal(e.raw, &ent)
+	_ = json.Unmarshal(e.Raw(), &ent)
 	if string(ent.Replacement) == "null" {
 		return "omit", ent.TargetID
 	}
@@ -251,9 +277,14 @@ func (f *treeRowFormatter) formatMessage(e SessionEntry) string {
 	// Tool-result rows render through the matching parent tool call.
 	if me.Message.ToolResult != nil {
 		if call, ok := f.toolCallMap[me.Message.ToolResult.ToolCallID]; ok {
-			return f.formatToolCall(call.name, call.input)
+			return f.formatToolCall(call.call)
 		}
-		return fg(tui.ActiveTheme().Muted, "[tool]")
+		// tree-selector.ts: `[${toolMsg.toolName ?? "tool"}]`; an absent name decodes to "".
+		toolName := me.Message.ToolResult.ToolName
+		if toolName == "" {
+			toolName = "tool"
+		}
+		return fg(tui.ActiveTheme().Muted, "["+toolName+"]")
 	}
 
 	text := normalizeText(extractMessageText(me))
@@ -293,7 +324,8 @@ func (f *treeRowFormatter) formatMessage(e SessionEntry) string {
 	}
 }
 
-func (f *treeRowFormatter) formatToolCall(name string, args map[string]any) string {
+func (f *treeRowFormatter) formatToolCall(call ai.ToolCall) string {
+	name, args := call.Name, map[string]any(call.Arguments)
 	muted := tui.ActiveTheme().Muted
 	switch name {
 	case "read":
@@ -359,22 +391,19 @@ func (f *treeRowFormatter) formatToolCall(name string, args map[string]any) stri
 		return fg(muted, "[ls: "+path+"]")
 
 	default:
-		// Custom tool: name + truncated JSON args.
-		// Upstream slices args to 40 chars and appends "..." when the
-		// FULL serialised length is >40 (tree-selector.ts:889-893).
-		// Use SetEscapeHTML(false) so && and similar chars aren't
-		// rendered as \u0026 in the /tree label.
-		var buf bytes.Buffer
-		enc := json.NewEncoder(&buf)
-		enc.SetEscapeHTML(false)
-		_ = enc.Encode(args)
-		s := strings.TrimRight(buf.String(), "\n")
-		ell := ""
-		if len(s) > 40 {
-			ell = "..."
-			s = s[:40]
+		// Custom tool: JSON.stringify(args).slice(0, 40), with "..." when the whole text is longer (tree-selector.ts:996-999).
+		// JSON.stringify keeps the model's member order and leaves <, > and & unescaped, and both lengths count UTF-16 units.
+		s := "{}"
+		if ordered, err := call.ArgumentsJSON(); err == nil {
+			if canonical, err := jsonstringify.Canonicalize(ordered); err == nil {
+				s = string(canonical)
+			}
 		}
-		return fg(muted, "["+name+": "+s+ell+"]")
+		ell := ""
+		if jsstring.Length(s) > 40 {
+			ell = "..."
+		}
+		return fg(muted, "["+name+": "+jsstring.Slice(s, 0, 40)+ell+"]")
 	}
 }
 

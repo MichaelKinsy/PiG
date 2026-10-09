@@ -17,7 +17,7 @@ func TestNewSessionUsesPerModelThinkingLevel(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(agentDir, "settings.json"), []byte(settings), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	svcs, err := NewServices(ServicesOptions{CWD: t.TempDir(), AgentDir: agentDir})
+	svcs, err := CreateAgentSessionServices(CreateAgentSessionServicesOptions{CWD: t.TempDir(), AgentDir: agentDir})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -28,7 +28,7 @@ func TestNewSessionUsesPerModelThinkingLevel(t *testing.T) {
 	defer func() { _ = rt.Close() }()
 	for _, tc := range []struct {
 		modelID string
-		want    ai.ThinkingLevel
+		want    ai.ModelThinkingLevel
 	}{
 		{"claude-sonnet-4-5", ai.ThinkingHigh},
 		{"claude-opus-4-8", ai.ThinkingLow},
@@ -58,7 +58,7 @@ func TestSetModelAppliesPerModelThinkingLevel(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(agentDir, "settings.json"), []byte(settings), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	svcs, err := NewServices(ServicesOptions{CWD: t.TempDir(), AgentDir: agentDir})
+	svcs, err := CreateAgentSessionServices(CreateAgentSessionServicesOptions{CWD: t.TempDir(), AgentDir: agentDir})
 	if err != nil {
 		t.Fatal(err)
 	}

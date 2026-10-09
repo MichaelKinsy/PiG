@@ -7,7 +7,9 @@ import (
 	"errors"
 	"fmt"
 	"iter"
+	"math"
 	"sync"
+	"time"
 )
 
 type eventDelivery struct {
@@ -41,6 +43,10 @@ type AssistantMessageEventStream struct {
 	// producer is the executor turn that owns pushes, if any. Only a producer under the executor publishes live partial views.
 	producer *continuationTurn
 
+	// startedAt is the wall-clock time in milliseconds and startedMono the monotonic reading of the stream's creation, which time the final message.
+	startedAt   int64
+	startedMono time.Time
+
 	terminal      bool
 	resolved      bool
 	result        *AssistantMessage
@@ -49,7 +55,19 @@ type AssistantMessageEventStream struct {
 
 // NewAssistantMessageEventStream creates an open stream.
 func NewAssistantMessageEventStream() *AssistantMessageEventStream {
-	return &AssistantMessageEventStream{done: make(chan struct{})}
+	//portlint:allow clock Pi stamps the stream with Date.now() and times durationMs with performance.now(); neither reads an injected clock (event-stream.ts:98-99)
+	now := time.Now()
+	return &AssistantMessageEventStream{done: make(chan struct{}), startedAt: now.UnixMilli(), startedMono: now}
+}
+
+// timeLocked sets durationMs on the final message of a response the stream saw start: the monotonic milliseconds since the stream's creation, unless the stream is complete, the message already has one, or its timestamp predates the stream, as a deferred result fetched later does.
+// upstream: event-stream.ts:99-129 (AssistantMessageEventStream.#time)
+func (s *AssistantMessageEventStream) timeLocked(message *AssistantMessage) {
+	if message == nil || s.terminal || s.startedMono.IsZero() || message.DurationMs != nil || message.Timestamp < s.startedAt {
+		return
+	}
+	//portlint:allow numbers an elapsed-milliseconds value is finite and far below the int64 range
+	message.DurationMs = new(max(int64(0), int64(math.Round(float64(time.Since(s.startedMono))/float64(time.Millisecond)))))
 }
 
 // Push appends an event. Pushes after termination are ignored, matching Pi's
@@ -90,11 +108,13 @@ func (s *AssistantMessageEventStream) push(event AssistantMessageEvent, replacem
 	terminal := false
 	switch event := event.(type) {
 	case DoneEvent:
+		s.timeLocked(event.Message)
 		s.publishTerminalLocked(event.Message, replacements)
 		s.terminal = true
 		s.result = event.Message
 		terminal = true
 	case ErrorEvent:
+		s.timeLocked(event.Error)
 		s.publishTerminalLocked(event.Error, replacements)
 		s.terminal = true
 		s.result = event.Error
@@ -219,6 +239,9 @@ func (s *AssistantMessageEventStream) End(result ...*AssistantMessage) {
 			continuation()
 		}
 	}()
+	if len(result) > 0 {
+		s.timeLocked(result[0])
+	}
 	s.terminal = true
 	if len(result) > 0 && !s.resolved {
 		s.publishTerminalLocked(result[0], assistantMessageReplacements{})

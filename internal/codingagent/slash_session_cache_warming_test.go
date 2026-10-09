@@ -5,14 +5,18 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/MichaelKinsy/PiG/tui"
 )
 
 // The /session "Cache Warming" block, byte for byte, as upstream
 // handleSessionCommand renders it between Tokens and Cost.
+// Pi: packages/coding-agent/src/core/cache-warmer.ts:101 (CacheWarmingDecision.expectedSavings); packages/coding-agent/src/core/cache-warmer.ts:93 (CacheWarmingDecision.phase); packages/coding-agent/src/core/cache-warmer.ts:95 (CacheWarmingDecision.warmCost); packages/coding-agent/src/core/cache-warmer.ts:97 (CacheWarmingDecision.missCost); packages/coding-agent/src/core/cache-warmer.ts:99 (CacheWarmingDecision.continuationProbability).
 func TestSessionHandlerRendersCacheWarmingSection(t *testing.T) {
-	const bold, dim, reset = "\x1b[1m", "\x1b[2m", "\x1b[22m"
+	// theme.bold is SGR 1/22; theme.fg("dim", label) is the theme's dim colour, not SGR 2 (interactive-mode.ts:6709-6760).
+	const bold, reset = "\x1b[1m", "\x1b[22m"
 	header := "\n" + bold + "Cache Warming" + reset + "\n"
-	line := func(label, value string) string { return dim + label + reset + " " + value + "\n" }
+	line := func(label, value string) string { return tui.ActiveTheme().Fg("dim", label) + " " + value + "\n" }
 	decision := &CacheWarmingDecision{
 		Phase: "streaming", WarmCost: 0.050025, MissCost: 0.575, ContinuationProbability: 1,
 		ExpectedSavings: 0.524975, EconomicsAvailable: true, Action: CacheWarmingActionWarm,

@@ -59,13 +59,16 @@ func awaitUpstreamSignal(t *testing.T, signal <-chan struct{}) {
 	}
 }
 
+// Pi: packages/coding-agent/src/core/extensions/types.ts:348 (Context.isIdle); packages/coding-agent/src/core/extensions/types.ts:406 (CommandContext.waitForIdle).
 func TestAgentSettledUpstream(t *testing.T) {
-	// .upstream/v0.87.1/packages/coding-agent/test/suite/regressions/6363-agent-settled-event.test.ts:29
+	// .upstream/v1.1.0/packages/coding-agent/test/suite/regressions/6363-agent-settled-event.test.ts:29
 	t.Run("emits one agent_settled event after automatic retry finishes", func(t *testing.T) {
 		var extensionEvents, publicEvents []string
+		var extensionAborted []bool
 		ext := extension.Extension{Handlers: map[string][]extension.HandlerFn{
 			"agent_end": {func(...any) (any, error) { extensionEvents = append(extensionEvents, "agent_end"); return nil, nil }},
 			"agent_settled": {func(args ...any) (any, error) {
+				extensionAborted = append(extensionAborted, args[0].(extension.AgentSettledEvent).Aborted)
 				idle, err := extension.FromContext(args[1].(context.Context)).IsIdle()
 				if err != nil {
 					return nil, err
@@ -76,12 +79,18 @@ func TestAgentSettledUpstream(t *testing.T) {
 		}}
 		h := newRecoveryHarness(t, harnessOptions{settings: `{"retry":{"enabled":true,"maxRetries":3,"baseDelayMs":1}}`, extension: ext}, fauxError("overloaded_error"), fauxReply("recovered", ai.StopReasonStop, 0))
 		var willRetry []bool
+		var settled []agent.AgentSettledEvent
 		h.session.Subscribe(func(event agent.AgentEvent) {
 			switch event := event.(type) {
 			case agent.AgentEndEvent:
 				willRetry = append(willRetry, event.WillRetry)
 			case agent.AgentSettledEvent:
 				publicEvents = append(publicEvents, "agent_settled")
+				settled = append(settled, event)
+				// upstream: 1.1.0 6363-agent-settled-event.test.ts:59 (#10607) expects {type:"agent_settled",aborted:false}.
+				if event.Aborted {
+					t.Errorf("public agent_settled aborted=true")
+				}
 			}
 		})
 		if _, err := h.session.Send(t.Context(), "test"); err != nil {
@@ -93,14 +102,21 @@ func TestAgentSettledUpstream(t *testing.T) {
 		if !reflect.DeepEqual(willRetry, []bool{true, false}) {
 			t.Fatalf("willRetry=%v", willRetry)
 		}
+		// 6363-agent-settled-event.test.ts:59 (1.1.0): the one settled event carries aborted:false.
+		if !reflect.DeepEqual(settled, []agent.AgentSettledEvent{{Aborted: false}}) {
+			t.Fatalf("settled events=%+v", settled)
+		}
 		if !reflect.DeepEqual(extensionEvents, []string{"agent_end", "agent_end", "agent_settled:true"}) {
 			t.Fatalf("extension events=%q", extensionEvents)
 		}
 		if !reflect.DeepEqual(publicEvents, []string{"agent_settled"}) {
 			t.Fatalf("public events=%q", publicEvents)
 		}
+		if !reflect.DeepEqual(extensionAborted, []bool{false}) {
+			t.Fatalf("extension agent_settled aborted=%v", extensionAborted)
+		}
 	})
-	// .upstream/v0.87.1/packages/coding-agent/test/suite/regressions/6363-agent-settled-event.test.ts:64
+	// .upstream/v1.1.0/packages/coding-agent/test/suite/regressions/6363-agent-settled-event.test.ts:64
 	t.Run("settles only after follow-ups queued by agent_end handlers run", func(t *testing.T) {
 		var queued bool
 		var idleStates []bool
@@ -145,7 +161,7 @@ func TestAgentSettledUpstream(t *testing.T) {
 			t.Fatalf("ends=%d settles=%d idle=%v", ends, settles, idleStates)
 		}
 	})
-	// .upstream/v0.87.1/packages/coding-agent/test/suite/regressions/6363-agent-settled-event.test.ts:92
+	// .upstream/v1.1.0/packages/coding-agent/test/suite/regressions/6363-agent-settled-event.test.ts:92
 	t.Run("extension command waitForIdle waits for session-level settlement", func(t *testing.T) {
 		synctest.Test(t, func(t *testing.T) {
 			release := make(chan struct{})

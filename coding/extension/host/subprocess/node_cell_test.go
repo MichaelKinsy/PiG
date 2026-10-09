@@ -124,6 +124,7 @@ func nodeCellRequireNode(t testing.TB) {
 // process, so this fails with "node processes = 5, want 1": the exact,
 // documented C1 finding in blog-pack/EXTENSION-ARCH.md.
 func TestNodeCellHostsFiveExtensionsInOneProcess(t *testing.T) {
+	skipWithoutNodeExtensions(t)
 	t.Parallel()
 	nodeCellRequireNode(t)
 	root := t.TempDir()
@@ -156,8 +157,8 @@ func TestNodeCellHostsFiveExtensionsInOneProcess(t *testing.T) {
 		if err != nil {
 			t.Fatalf("execute %s: %v", ext.Name, err)
 		}
-		if result == nil {
-			t.Fatalf("execute %s: nil result", ext.Name)
+		if len(result.Content) == 0 {
+			t.Fatalf("execute %s: no result content", ext.Name)
 		}
 	}
 
@@ -171,6 +172,7 @@ func TestNodeCellHostsFiveExtensionsInOneProcess(t *testing.T) {
 // one extension that throws at load is reported as an extension issue, and
 // the other 4 load and work, matching Pi's loader.ts continue-on-error.
 func TestNodeCellContinueOnErrorLoadsHealthyExtensions(t *testing.T) {
+	skipWithoutNodeExtensions(t)
 	t.Parallel()
 	nodeCellRequireNode(t)
 	root := t.TempDir()
@@ -223,6 +225,7 @@ func TestNodeCellContinueOnErrorLoadsHealthyExtensions(t *testing.T) {
 // (cell_plan.go PlanCells), so registration order becomes alphabetical by
 // name instead of config order (the documented C3/N1 finding).
 func TestNodeCellRegistrationOrderMatchesConfigOrder(t *testing.T) {
+	skipWithoutNodeExtensions(t)
 	t.Parallel()
 	nodeCellRequireNode(t)
 	root := t.TempDir()
@@ -269,6 +272,7 @@ func TestNodeCellRegistrationOrderMatchesConfigOrder(t *testing.T) {
 // On main this fails the same way as TestNodeCellHostsFiveExtensionsInOneProcess:
 // there is no Node cell, so 5 Node processes exist both before and after reload.
 func TestNodeCellReloadKeepsOneProcessForAllExtensions(t *testing.T) {
+	skipWithoutNodeExtensions(t)
 	t.Parallel()
 	nodeCellRequireNode(t)
 	root := t.TempDir()
@@ -323,6 +327,7 @@ func TestNodeCellReloadKeepsOneProcessForAllExtensions(t *testing.T) {
 // TestPackedCellFailureIsolatesFailingMember (reload_unresolved_test.go) for
 // the packed Go/Python case.
 func TestNodeCellProcessDeathStopsExtensionsAndReloadRecovers(t *testing.T) {
+	skipWithoutNodeExtensions(t)
 	t.Parallel()
 	nodeCellRequireNode(t)
 	root := t.TempDir()
@@ -409,10 +414,11 @@ loop:
 // TestNodeCellIsolatedEscapeHatchGetsOwnProcess is acceptance test 6: an
 // extension configured as isolated (Isolation: "isolated", mirroring the
 // existing --isolated / isolation-strict convention in
-// cmd/pig/extension_validate_command.go and cell_plan.go's
+// coding/cli/extension_validate_command.go and cell_plan.go's
 // isShareableIsolation) still gets its own process, separate from the shared
 // Node cell hosting the other extensions.
 func TestNodeCellIsolatedEscapeHatchGetsOwnProcess(t *testing.T) {
+	skipWithoutNodeExtensions(t)
 	t.Parallel()
 	nodeCellRequireNode(t)
 	root := t.TempDir()

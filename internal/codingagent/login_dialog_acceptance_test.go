@@ -83,7 +83,7 @@ func TestLoginProviderCancellationKeepsOldCredential(t *testing.T) {
 }
 
 func TestLoginArgumentAndBackNavigation(t *testing.T) {
-	providers := []tui.OAuthProvider{{ID: "dual", Name: "Dual", AuthType: "oauth", LoginLabel: "Sign in with Dual"}, {ID: "dual", Name: "Dual", AuthType: "api_key"}, {ID: "key", Name: "Only Key", AuthType: "api_key"}}
+	providers := []tui.OAuthProvider{{ID: "dual", Name: "Dual", AuthType: "oauth", Method: &ai.OAuthAuth{Name: "Dual", LoginLabel: "Sign in with Dual"}}, {ID: "dual", Name: "Dual", AuthType: "api_key"}, {ID: "key", Name: "Only Key", AuthType: "api_key"}}
 	for _, ref := range []string{"key", "ONLY KEY", "dual", "unknown", ""} {
 		t.Run(ref, func(t *testing.T) {
 			sc, _, _, _ := newTestSlashContext()
@@ -130,7 +130,7 @@ func TestLoginArgumentAndBackNavigation(t *testing.T) {
 }
 
 func TestLoginArgumentCompletionsUseProviderMetadata(t *testing.T) {
-	m := NewInteractiveMode(InteractiveOptions{AgentDir: t.TempDir()})
+	m := NewInteractiveMode(nil, InteractiveModeOptions{AgentDir: t.TempDir()})
 	items := m.loginArgCompletions("openrouter")
 	// Pi 1.0.0 labels an OAuth sign-in without isSubscription (providers/openrouter.ts) as an account (oauth-selector.ts:27-33).
 	if len(items) != 1 || items[0].Value != "openrouter" || items[0].Description != "OpenRouter · account/API key" {

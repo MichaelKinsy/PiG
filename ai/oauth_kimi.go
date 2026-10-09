@@ -57,7 +57,6 @@ func newKimiOAuthProvider() kimiOAuthProvider {
 	return kimiOAuthProvider{
 		client:    &http.Client{},
 		oauthHost: strings.TrimRight(host, "/"),
-		sleep:     abortableDeviceSleep,
 	}
 }
 
@@ -96,7 +95,11 @@ func (p kimiOAuthProvider) LoginContext(ctx context.Context, callbacks OAuthLogi
 	if expires <= 0 {
 		expires = kimiDeviceTimeoutSeconds
 	}
-	if err := p.sleep(ctx, time.Duration(interval*float64(time.Second))); err != nil {
+	loginSleep := p.sleep
+	if loginSleep == nil {
+		loginSleep = abortableDeviceSleep
+	}
+	if err := loginSleep(ctx, time.Duration(interval*float64(time.Second))); err != nil {
 		return OAuthCredentials{}, err
 	}
 	token, err := PollOAuthDeviceCodeFlow(ctx, DeviceCodePollOptions[kimiTokenResponse]{
@@ -117,6 +120,14 @@ func (p kimiOAuthProvider) RefreshToken(creds OAuthCredentials) (OAuthCredential
 	return p.RefreshTokenContext(context.Background(), creds)
 }
 
+// backoff waits between refresh attempts. A cancelled refresh fails with the cancellation cause, as upstream's sleep(delay, signal) rejects with signal.reason (kimi-coding.ts:218).
+func (p kimiOAuthProvider) backoff(ctx context.Context, delay time.Duration) error {
+	if p.sleep != nil {
+		return p.sleep(ctx, delay)
+	}
+	return Sleep(ctx, float64(delay)/float64(time.Millisecond))
+}
+
 // RefreshTokenContext refreshes tokens and backs off with the owning operation's cancellation.
 func (p kimiOAuthProvider) RefreshTokenContext(ctx context.Context, creds OAuthCredentials) (OAuthCredentials, error) {
 	if creds.Refresh == "" {
@@ -124,13 +135,13 @@ func (p kimiOAuthProvider) RefreshTokenContext(ctx context.Context, creds OAuthC
 	}
 	var lastErr error
 	for attempt := 0; attempt <= kimiRefreshMaxRetries; attempt++ {
+		if attempt > 0 {
+			if err := p.backoff(ctx, time.Second*time.Duration(1<<(attempt-1))); err != nil {
+				return OAuthCredentials{}, err
+			}
+		}
 		if ctx.Err() != nil {
 			return OAuthCredentials{}, errors.New("Kimi Code token refresh aborted")
-		}
-		if attempt > 0 {
-			if err := p.sleep(ctx, time.Second*time.Duration(1<<(attempt-1))); err != nil {
-				return OAuthCredentials{}, errors.New("Kimi Code token refresh aborted")
-			}
 		}
 		response, status, err := p.tokenRequest(ctx, url.Values{
 			"client_id":     {kimiOAuthClientID},
@@ -264,9 +275,13 @@ func kimiCredentials(token kimiTokenResponse) (OAuthCredentials, error) {
 	return creds, nil
 }
 
+// trustedHTTPURL is `trustedHttpUrl(value) !== null` (kimi-coding.ts:59): the verification URI is opened in the user's browser, so only http(s) URLs.
 func trustedHTTPURL(value string) bool {
-	parsed, err := url.Parse(value)
-	return err == nil && parsed.Host != "" && (parsed.Scheme == "https" || parsed.Scheme == "http")
+	if value == "" {
+		return false
+	}
+	_, ok := trustedURLHref(value, false)
+	return ok
 }
 
 func kimiDescription(value string) string {

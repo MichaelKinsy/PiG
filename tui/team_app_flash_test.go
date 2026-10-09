@@ -1,5 +1,7 @@
 package tui
 
+// pi: packages/tui/src/components/alt-screen-flash.ts
+
 import (
 	"fmt"
 	"slices"

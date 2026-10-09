@@ -49,7 +49,8 @@ var _ RemoteServices = (*RemoteServiceBinding)(nil)
 
 // RemoteServiceSourceOpenOptions is passed to RemoteServiceSource.Open.
 type RemoteServiceSourceOpenOptions struct {
-	Services     []string
+	// Services are the services to open (`readonly { readonly id: string }[]`, types.ts:308-312): a service definition, or a [ServiceID].
+	Services     []ServiceReference
 	AssertAccess func() error
 	OnError      func(error)
 }
@@ -274,7 +275,7 @@ func (lifecycle *facetLifecycle) dispose(ctx context.Context) error {
 	return joinErrors(errs)
 }
 
-type serviceReference struct {
+type facetServiceReference struct {
 	serviceId string
 	local     bool
 	mode      ServiceMode
@@ -295,8 +296,8 @@ type facetProvision struct {
 
 type facetRuntime struct {
 	facetId    string
-	requires   []serviceReference
-	provides   []serviceReference
+	requires   []facetServiceReference
+	provides   []facetServiceReference
 	lifecycle  *facetLifecycle
 	provisions []*facetProvision
 	// refs holds the one handle a facet receives for each singleton service it uses (upstream FacetEnvironment.use returns the same handle for the same service).
@@ -309,6 +310,15 @@ type facetRuntime struct {
 type FacetEnvironment struct {
 	kernel  *facetKernel
 	runtime *facetRuntime
+}
+
+// ReplicatedState is upstream FacetEnvironment.replicatedState(initial) (facets/host.ts:586): the facet must still be running, and the state's strict JSON
+// root is a copy that the caller no longer owns. It is a package function because a Go method cannot declare a type parameter.
+func ReplicatedState[T any](env *FacetEnvironment, initial T) (*MutableReplicatedState[T], error) {
+	if err := AssertFacetRunning(env, "create replicated state"); err != nil {
+		return nil, err
+	}
+	return NewReplicatedState(initial)
 }
 
 // Own gives the facet ownership of a cleanup, run in reverse order when the
@@ -334,17 +344,17 @@ func (env *FacetEnvironment) OnDeactivate(callback func(context.Context) error) 
 	return env.Own(callback)
 }
 
-func recordReference(target *[]serviceReference, serviceId string, local bool, mode ServiceMode) {
+func recordReference(target *[]facetServiceReference, serviceId string, local bool, mode ServiceMode) {
 	for _, reference := range *target {
 		if reference.serviceId == serviceId && reference.mode == mode {
 			return
 		}
 	}
-	*target = append(*target, serviceReference{serviceId: serviceId, local: local, mode: mode})
+	*target = append(*target, facetServiceReference{serviceId: serviceId, local: local, mode: mode})
 }
 
-// ProvideService declares and installs this facet's singleton implementation
-// of def. Remote (non-local) implementations are classified immediately.
+// ProvideService declares and installs this facet's singleton implementation of def. It checks only that the
+// implementation is an object; the host classifies a remote implementation's members when it installs it.
 func ProvideService[T any](env *FacetEnvironment, def ServiceDefinition[T], implementation T) error {
 	runtime := env.runtime
 	runtime.lifecycle.mu.Lock()
@@ -353,10 +363,8 @@ func ProvideService[T any](env *FacetEnvironment, def ServiceDefinition[T], impl
 	if err != nil {
 		return err
 	}
-	if !def.Local() {
-		if _, err := classifyImplementation[T](def.Id(), implementation); err != nil {
-			return err
-		}
+	if !isObjectImplementation(implementation) {
+		return fmt.Errorf("Service %s implementation must be an object", def.Id())
 	}
 	recordReference(&runtime.provides, def.Id(), def.Local(), ServiceSingleton)
 	runtime.provisions = append(runtime.provisions, &facetProvision{
@@ -429,9 +437,7 @@ func (spawner *ServiceSpawner[T]) Spawn(key string, implementation T) (func(), e
 	if installer != nil {
 		release, err := installer(key, implementation)
 		if err != nil {
-			spawner.mu.Lock()
-			spawner.instances.Delete(key)
-			spawner.mu.Unlock()
+			// Upstream keeps the staged instance when the installer throws, so the key stays taken for this facet's lifetime.
 			return nil, err
 		}
 		spawner.mu.Lock()
@@ -486,6 +492,9 @@ func ProvideMany[T any](env *FacetEnvironment, def ServiceDefinition[T]) (*Servi
 		validate: func(key string, implementation T) error {
 			if key == "" {
 				return errors.New("Facet service instance key must not be empty")
+			}
+			if !isObjectImplementation(implementation) {
+				return fmt.Errorf("Facet service %s implementation must be an object", def.Id())
 			}
 			if !def.Local() {
 				_, err := classifyImplementation[T](def.Id(), implementation)
@@ -855,17 +864,26 @@ type FacetHost struct {
 	kernel *facetKernel
 }
 
-// CreateFacetHost sets up, validates, assembles and activates facets in dependency order. Binding readiness uses a background context. On failure everything already set up is disposed.
-func CreateFacetHost(ctx context.Context, options FacetOptions) (*FacetHost, error) {
-	ids := map[string]bool{}
-	for _, facet := range options.Facets {
-		if facet.Id == "" {
-			return nil, errors.New("Facet ID must not be empty")
-		}
+// checkFacetIDs reports an empty ID anywhere in facets before a repeated one, as Pi checks every ID for each condition
+// in turn.
+func checkFacetIDs(facets []Facet, duplicate string) error {
+	if slices.ContainsFunc(facets, func(facet Facet) bool { return facet.Id == "" }) {
+		return errors.New("Facet ID must not be empty")
+	}
+	ids := make(map[string]bool, len(facets))
+	for _, facet := range facets {
 		if ids[facet.Id] {
-			return nil, errors.New("Facet IDs must be unique within a generation")
+			return errors.New(duplicate)
 		}
 		ids[facet.Id] = true
+	}
+	return nil
+}
+
+// CreateFacetHost sets up, validates, assembles and activates facets in dependency order. Binding readiness uses a background context. On failure everything already set up is disposed.
+func CreateFacetHost(ctx context.Context, options FacetOptions) (*FacetHost, error) {
+	if err := checkFacetIDs(options.Facets, "Facet IDs must be unique within a generation"); err != nil {
+		return nil, err
 	}
 	onError := options.OnError
 	if onError == nil {
@@ -960,7 +978,7 @@ func (kernel *facetKernel) activate(ctx context.Context, facets []Facet) (err er
 		records = append(records, record)
 	}
 	kernel.setPhase(phaseAssembling)
-	external, err := kernel.resolveExternalServices(ctx, records)
+	external, externalOrder, err := kernel.resolveExternalServices(ctx, records)
 	if err != nil {
 		return err
 	}
@@ -972,7 +990,7 @@ func (kernel *facetKernel) activate(ctx context.Context, facets []Facet) (err er
 	if err := kernel.assemble(); err != nil {
 		return err
 	}
-	if err := kernel.bindServices(external); err != nil {
+	if err := kernel.bindServices(external, externalOrder); err != nil {
 		return err
 	}
 	kernel.setPhase(phaseConnecting)
@@ -1011,7 +1029,7 @@ func (kernel *facetKernel) assemble() error {
 	var keyedIds []string
 	for _, provision := range provisions {
 		if !provision.local {
-			remote = append(remote, ServiceProviderDefinition{ServiceId: provision.serviceId, Mode: provision.kind})
+			remote = append(remote, ServiceProviderDefinition{Id: provision.serviceId, Mode: provision.kind})
 		}
 		if provision.kind == ServiceKeyed {
 			keyedIds = append(keyedIds, provision.serviceId)
@@ -1022,9 +1040,9 @@ func (kernel *facetKernel) assemble() error {
 		return err
 	}
 	kernel.provider = provider
-	var remoteIds []string
+	var remoteIds []ServiceReference
 	for _, definition := range remote {
-		remoteIds = append(remoteIds, definition.ServiceId)
+		remoteIds = append(remoteIds, ServiceID(definition.Id))
 	}
 	internal, err := CreateRemoteServiceBinding(RemoteServiceBindingOptions{
 		Services: remoteIds, Transport: NewLoopbackTransport(provider),
@@ -1051,7 +1069,7 @@ func (kernel *facetKernel) assemble() error {
 
 // resolveExternalServices opens each source for the requirements it owns
 // (upstream #resolveExternalServices).
-func (kernel *facetKernel) resolveExternalServices(ctx context.Context, records []*facetRuntime) (map[string]externalService, error) {
+func (kernel *facetKernel) resolveExternalServices(ctx context.Context, records []*facetRuntime) (map[string]externalService, []string, error) {
 	offered := map[string]externalService{}
 	catalogues := make([][]ServiceCatalogueEntry, len(kernel.sources))
 	if err := allOrFirstError(len(kernel.sources), func(index int) error {
@@ -1059,12 +1077,12 @@ func (kernel *facetKernel) resolveExternalServices(ctx context.Context, records 
 		catalogues[index] = entries
 		return err
 	}); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	for index, source := range kernel.sources {
 		for _, entry := range catalogues[index] {
 			if _, exists := offered[entry.ServiceId]; exists {
-				return nil, fmt.Errorf("Facet host service %s is offered by more than one source", entry.ServiceId)
+				return nil, nil, fmt.Errorf("Facet host service %s is offered by more than one source", entry.ServiceId)
 			}
 			offered[entry.ServiceId] = externalService{mode: entry.Mode, source: source}
 		}
@@ -1094,7 +1112,7 @@ func (kernel *facetKernel) resolveExternalServices(ctx context.Context, records 
 					}
 				}
 				if len(deferred) > 1 {
-					return nil, fmt.Errorf("Facet host service %s has more than one deferred source", requirement.serviceId)
+					return nil, nil, fmt.Errorf("Facet host service %s has more than one deferred source", requirement.serviceId)
 				}
 				if len(deferred) == 1 {
 					source, ok = externalService{mode: requirement.mode, source: deferred[0]}, true
@@ -1106,23 +1124,26 @@ func (kernel *facetKernel) resolveExternalServices(ctx context.Context, records 
 			}
 		}
 	}
-	for _, candidate := range kernel.sources {
-		var ids []string
-		for _, id := range externalOrder {
-			if external[id].source == candidate {
-				ids = append(ids, id)
-			}
+	// Sources open in the order of their first external requirement, as Pi groups the requirements in a Map keyed by
+	// source.
+	var opening []RemoteServiceSource
+	idsBySource := map[RemoteServiceSource][]string{}
+	for _, id := range externalOrder {
+		candidate := external[id].source
+		if _, seen := idsBySource[candidate]; !seen {
+			opening = append(opening, candidate)
 		}
-		if len(ids) == 0 {
-			continue
-		}
-		services, err := candidate.Open(RemoteServiceSourceOpenOptions{Services: ids, AssertAccess: kernel.assertServiceTargetAccess, OnError: kernel.onError})
+		idsBySource[candidate] = append(idsBySource[candidate], id)
+	}
+	for _, candidate := range opening {
+		ids := idsBySource[candidate]
+		services, err := candidate.Open(RemoteServiceSourceOpenOptions{Services: ServiceIDs(ids...), AssertAccess: kernel.assertServiceTargetAccess, OnError: kernel.onError})
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 		kernel.sourceBindings = append(kernel.sourceBindings, sourceBinding{source: candidate, services: services})
 	}
-	return external, nil
+	return external, externalOrder, nil
 }
 
 // bindServices binds each used singleton slot. In-host provisions bind to the
@@ -1130,7 +1151,8 @@ func (kernel *facetKernel) resolveExternalServices(ctx context.Context, records 
 // a loopback binding; the slot resolves to the same implementation the
 // provider invokes). External services bind through their source's
 // RemoteServices and the host's RemoteClients adapter.
-func (kernel *facetKernel) bindServices(external map[string]externalService) error {
+// bindServices binds external services in first-requirement order, the insertion order of upstream's external Map (host.ts:702).
+func (kernel *facetKernel) bindServices(external map[string]externalService, externalOrder []string) error {
 	for _, provision := range kernel.provisions() {
 		if provision.kind != ServiceSingleton {
 			continue
@@ -1155,7 +1177,8 @@ func (kernel *facetKernel) bindServices(external map[string]externalService) err
 		}
 		slot.bindRemote(adapt(remote), remote)
 	}
-	for serviceId, service := range external {
+	for _, serviceId := range externalOrder {
+		service := external[serviceId]
 		var services RemoteServices
 		for _, binding := range kernel.sourceBindings {
 			if binding.source == service.source {
@@ -1214,22 +1237,15 @@ func (kernel *facetKernel) reload(ctx context.Context, facets []Facet) error {
 		kernel.mu.Unlock()
 		return fmt.Errorf("Facet host cannot reload while %s", phase)
 	}
-	ids := map[string]bool{}
+	if err := checkFacetIDs(facets, "Reloaded facet IDs must be unique"); err != nil {
+		kernel.mu.Unlock()
+		return err
+	}
 	for _, facet := range facets {
-		var err error
-		switch {
-		case facet.Id == "":
-			err = errors.New("Facet ID must not be empty")
-		case ids[facet.Id]:
-			err = errors.New("Reloaded facet IDs must be unique")
-		case kernel.facets[facet.Id] == nil:
-			err = fmt.Errorf("Facet %s is not active", facet.Id)
-		}
-		if err != nil {
+		if kernel.facets[facet.Id] == nil {
 			kernel.mu.Unlock()
-			return err
+			return fmt.Errorf("Facet %s is not active", facet.Id)
 		}
-		ids[facet.Id] = true
 	}
 	kernel.phase = phaseReloading
 	kernel.mu.Unlock()
@@ -1540,12 +1556,12 @@ func sameFacetShape(left, right *facetRuntime) bool {
 	return sameReferences(left.requires, right.requires) && sameReferences(left.provides, right.provides)
 }
 
-func sameReferences(left, right []serviceReference) bool {
+func sameReferences(left, right []facetServiceReference) bool {
 	if len(left) != len(right) {
 		return false
 	}
 	for _, reference := range left {
-		if !slices.ContainsFunc(right, func(other serviceReference) bool {
+		if !slices.ContainsFunc(right, func(other facetServiceReference) bool {
 			return other.serviceId == reference.serviceId && other.mode == reference.mode
 		}) {
 			return false

@@ -24,7 +24,7 @@ func runnerProviderModelConfig(t *testing.T) extension.ProviderConfig {
 }
 
 func TestRunnerProviderQueueRetainsStreamCallback(t *testing.T) {
-	services, err := coding.NewServices(coding.ServicesOptions{CWD: t.TempDir(), AgentDir: t.TempDir()})
+	services, err := coding.CreateAgentSessionServices(coding.CreateAgentSessionServicesOptions{CWD: t.TempDir(), AgentDir: t.TempDir()})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -34,7 +34,7 @@ func TestRunnerProviderQueueRetainsStreamCallback(t *testing.T) {
 	calls := 0
 	config.StreamSimple = func(_ extension.Model, _ extension.AIContext, options extension.SimpleStreamOptions) extension.AssistantMessageEventStream {
 		calls++
-		if options.(ai.StreamOptions).APIKey != "provider-test-key" {
+		if options.APIKey != "provider-test-key" {
 			t.Error("queued callback lost its request credentials")
 		}
 		stream := ai.NewAssistantMessageEventStream()
@@ -58,7 +58,7 @@ func TestRunnerProviderQueueRetainsStreamCallback(t *testing.T) {
 }
 
 func TestRunnerProviderActionsOverrideRegistry(t *testing.T) {
-	services, err := coding.NewServices(coding.ServicesOptions{CWD: t.TempDir(), AgentDir: t.TempDir()})
+	services, err := coding.CreateAgentSessionServices(coding.CreateAgentSessionServicesOptions{CWD: t.TempDir(), AgentDir: t.TempDir()})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -96,9 +96,9 @@ func TestRunnerProviderActionsOverrideRegistry(t *testing.T) {
 }
 
 func TestUpstreamRunnerProviderRegistration(t *testing.T) {
-	newServices := func(t *testing.T) *coding.Services {
+	newServices := func(t *testing.T) *coding.AgentSessionServices {
 		t.Helper()
-		services, err := coding.NewServices(coding.ServicesOptions{CWD: t.TempDir(), AgentDir: t.TempDir()})
+		services, err := coding.CreateAgentSessionServices(coding.CreateAgentSessionServicesOptions{CWD: t.TempDir(), AgentDir: t.TempDir()})
 		if err != nil {
 			t.Fatal(err)
 		}

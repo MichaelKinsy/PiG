@@ -15,9 +15,10 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
-	"runtime"
 	"slices"
 	"strings"
+
+	"github.com/MichaelKinsy/PiG/internal/testenv"
 )
 
 // ─── Public API surface ──────────────────────────────────────────────────────
@@ -52,16 +53,12 @@ type UpstreamSurface struct {
 // ─── File discovery ──────────────────────────────────────────────────────────
 
 // upstreamTypesPath returns the absolute path to upstream's types.ts.
-// It walks up from this source file's directory to the repo root and joins
-// the well-known path. This works whether tests run from the package dir or
-// the repo root.
+// It joins the well-known path to the module root above the package directory the test binary runs in.
 func upstreamTypesPath() (string, error) {
-	_, thisFile, _, ok := runtime.Caller(0)
-	if !ok {
-		return "", fmt.Errorf("parity: cannot determine caller path")
+	repoRoot, err := testenv.ModuleRootPath()
+	if err != nil {
+		return "", fmt.Errorf("parity: %w", err)
 	}
-	// thisFile = .../pig/tests/upstream-parity/parser.go
-	repoRoot := filepath.Join(filepath.Dir(thisFile), "..", "..")
 	abs, err := filepath.Abs(filepath.Join(repoRoot,
 		".upstream", "current",
 		"packages", "coding-agent", "src", "core", "extensions", "types.ts",

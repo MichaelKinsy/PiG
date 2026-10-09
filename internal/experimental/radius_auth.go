@@ -1,6 +1,8 @@
 // Package experimental provides opt-in transports for the experimental Session runtime. It does not register CLI commands or select network endpoints.
 package experimental
 
+// Ports packages/coding-agent/src/experimental/radius-auth.ts.
+
 import (
 	"context"
 	"errors"

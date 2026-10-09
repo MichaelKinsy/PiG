@@ -60,7 +60,7 @@ func FormatToolCallWithArgs(title string, args json.RawMessage, theme *Theme, ex
 	if theme == nil {
 		theme = ActiveTheme()
 	}
-	header := theme.FgText("toolTitle", boldText(title))
+	header := theme.Fg("toolTitle", boldText(title))
 	entries, ok := toolCallArgEntries(args)
 	if !ok || len(entries) == 0 {
 		return header
@@ -83,7 +83,7 @@ func FormatToolCallWithArgs(title string, args json.RawMessage, theme *Theme, ex
 			text = strings.ReplaceAll(strings.ReplaceAll(text, "\t", "   "), "\r", "")
 			lines[i] = "  " + entry.key + ": " + strings.Join(strings.Split(text, "\n"), "\n    ")
 		}
-		return header + "\n" + theme.FgText("muted", strings.Join(lines, "\n"))
+		return header + "\n" + theme.Fg("muted", strings.Join(lines, "\n"))
 	}
 	pairs := make([]string, len(entries))
 	for i, entry := range entries {
@@ -94,5 +94,5 @@ func FormatToolCallWithArgs(title string, args json.RawMessage, theme *Theme, ex
 	if jsstring.Length(joined) > collapsedArgsChars {
 		preview = jsstring.Slice(joined, 0, collapsedArgsChars-3) + "..."
 	}
-	return header + " " + theme.FgText("muted", preview)
+	return header + " " + theme.Fg("muted", preview)
 }

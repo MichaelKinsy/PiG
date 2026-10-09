@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 	"reflect"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -122,6 +123,99 @@ func TestClassifierModelsUpstream(t *testing.T) {
 			}
 		})
 	}
+	// .upstream/v1.1.0/packages/ai/test/classifier-models.test.ts:166
+	t.Run("rejects images for classifier models without image input before calling the provider", func(t *testing.T) {
+		classifier := classifierTestModel("test", "text-only")
+		calls := 0
+		models := CreateModels()
+		models.SetProvider(CreateProvider(CreateProviderOptions{ID: "test", Auth: auth, Models: []AnyModel{classifier},
+			Classifiers: ProviderClassifierMap{"test-classifier": {Classify: func(_ context.Context, model *ClassifierModel, _ ClassifierContext, _ ClassifierOptions) (ClassifierResult, error) {
+				calls++
+				return ClassifierResult{API: model.API, Provider: model.Provider, Model: model.ID, Answers: ClassifierAnswers{}, StopReason: "stop", Timestamp: time.Now().UnixMilli()}, nil
+			}}}}))
+
+		withImages := classifierTestContext()
+		withImages.Images = []ImageContent{{Data: "aW1hZ2U=", MimeType: "image/png"}}
+		result := models.Classify(t.Context(), classifier, withImages)
+		emptyImages := classifierTestContext()
+		emptyImages.Images = []ImageContent{}
+		withoutImages := models.Classify(t.Context(), classifier, emptyImages)
+
+		if result.StopReason != "error" || result.ErrorMessage != "Model test/text-only does not accept image input" {
+			t.Errorf("result=%+v", result)
+		}
+		if withoutImages.StopReason != "stop" || calls != 1 {
+			t.Errorf("withoutImages=%+v calls=%d", withoutImages, calls)
+		}
+	})
+	// .upstream/v1.1.0/packages/ai/test/classifier-models.test.ts:195
+	t.Run("routes OpenAI GPT-6 Luna through the Decisions API with images", func(t *testing.T) {
+		models := BuiltinModels()
+		luna, _ := models.GetModelOfType(ModelTypeClassifier, "openai", "gpt-6-luna").(*ClassifierModel)
+		if luna == nil {
+			t.Fatal("missing OpenAI Decisions model")
+		}
+		if luna.API != "openai-decisions" || !reflect.DeepEqual(luna.Input, []string{"text", "image"}) || luna.ContextWindow != 922000 {
+			t.Fatalf("luna=%+v", luna)
+		}
+		// The chat entry with the same id stays separate.
+		if chat := models.GetModel("openai", "gpt-6-luna"); chat == nil || chat.ProviderMeta.API != APIOpenAIResponses {
+			t.Fatalf("chat=%+v", chat)
+		}
+
+		var urls []string
+		withImages := classifierTestContext()
+		withImages.Images = []ImageContent{{Data: "aW1hZ2U=", MimeType: "image/png"}}
+		result := models.Classify(t.Context(), luna, withImages, ModelsClassifierOptions{ClassifierOptions: ClassifierOptions{APIKey: "secret", APIKeySet: true, Fetch: clsClient(func(r *http.Request) (*http.Response, error) {
+			urls = append(urls, r.URL.String())
+			return clsJSON(200, `{"answers":[{"type":"predicate","name":"approved","probability":0.8}]}`), nil
+		})}})
+
+		if !reflect.DeepEqual(urls, []string{"https://api.openai.com/v1/decisions"}) {
+			t.Fatalf("urls=%v", urls)
+		}
+		if result.StopReason != "stop" || clsAnswer(t, result.Answers, "approved") != (ClassifierBoolAnswer{Probability: 0.8}) {
+			t.Fatalf("result=%+v", result)
+		}
+	})
+	// .upstream/v1.1.0/packages/ai/test/classifier-models.test.ts:226
+	t.Run("lists OpenAI Decisions models only for API key credentials", func(t *testing.T) {
+		apiKeyStore := NewInMemoryCredentialStore()
+		if _, err := apiKeyStore.Modify(t.Context(), "openai", func(*Credential) (*Credential, error) {
+			return &Credential{Type: CredentialAPIKey, Key: "secret"}, nil
+		}); err != nil {
+			t.Fatal(err)
+		}
+		oauthStore := NewInMemoryCredentialStore()
+		if _, err := oauthStore.Modify(t.Context(), "openai", func(*Credential) (*Credential, error) {
+			return &Credential{Type: CredentialOAuth, Access: "access", Refresh: "refresh", Expires: time.Now().UnixMilli() + 3_600_000}, nil
+		}); err != nil {
+			t.Fatal(err)
+		}
+		withAPIKey := BuiltinModels(CreateModelsOptions{Credentials: apiKeyStore})
+		withOAuth := BuiltinModels(CreateModelsOptions{Credentials: oauthStore})
+
+		ids := func(models []AnyModel) []string {
+			out := []string{}
+			for _, model := range models {
+				out = append(out, model.ModelID())
+			}
+			return out
+		}
+		available, err := withAPIKey.GetAvailableOfType(t.Context(), ModelTypeClassifier, "openai")
+		if err != nil || !reflect.DeepEqual(ids(available), []string{"gpt-6-luna"}) {
+			t.Fatalf("api key: %v err=%v", ids(available), err)
+		}
+		available, err = withOAuth.GetAvailableOfType(t.Context(), ModelTypeClassifier, "openai")
+		if err != nil || len(available) != 0 {
+			t.Fatalf("oauth: %v err=%v", ids(available), err)
+		}
+		// Chat models stay available with ChatGPT OAuth.
+		chat, err := withOAuth.GetAvailableOfType(t.Context(), ModelTypeChat, "openai")
+		if err != nil || !slices.Contains(ids(chat), "gpt-6-luna") {
+			t.Fatalf("chat with oauth: err=%v", err)
+		}
+	})
 	// .upstream/v0.99.1/packages/ai/test/classifier-models.test.ts:165
 	t.Run("routes OpenRouter classifier models through the System One API", func(t *testing.T) {
 		models := BuiltinModels()

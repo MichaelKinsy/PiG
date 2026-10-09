@@ -51,7 +51,7 @@ func (p *nativeProviderProxy) call(ctx context.Context, args map[string]any, upd
 	}
 	tool := p.declaration.Key
 	env := &Envelope{Type: MsgRequest, ID: fmt.Sprintf("r%d", p.conn.nextID.Add(1)), Request: &RequestPayload{Method: MethodProviderCall, Tool: tool, Args: data}}
-	if args["method"] == "getModels" || args["method"] == "filterModels" || args["method"] == "update" {
+	if args["method"] == "getModels" || args["method"] == "getAllModels" || args["method"] == "filterModels" || args["method"] == "filterAllModels" || args["method"] == "update" {
 		env.Request.Method = MethodProviderSync
 	}
 	if args["method"] == "stream" || args["method"] == "streamSimple" || args["method"] == "fetchDeferred" {
@@ -86,35 +86,78 @@ func (p *nativeProviderProxy) carrier() *extension.NativeProvider {
 	if p.declaration.BaseURL != nil {
 		baseURL = *p.declaration.BaseURL
 	}
+	var headers ai.ProviderHeaders
+	if p.declaration.Headers != nil {
+		headers = ai.ProviderHeadersFromStrings(*p.declaration.Headers)
+	}
 	carrier := &extension.NativeProvider{
+		Headers: headers,
 		IsCurrent: func() bool {
 			p.host.mu.Lock()
 			defer p.host.mu.Unlock()
 			return p.host.nativeProviders[p.conn][p.declaration.ID] == p
 		},
 		ID: p.declaration.ID, Name: p.declaration.Name, BaseURL: baseURL, Models: p.declaration.Models,
+		Auth:                     p.auth(context.Background()),
 		FilterModels:             p.filterModels,
 		CheckAuth:                p.checkAuth,
 		ResolveAuth:              p.resolveAuth,
 		ResolveRefreshCredential: p.refreshCredential,
 		RefreshModels:            p.refreshModels,
-		Stream:                   p.stream,
+		Stream: func(ctx context.Context, model *ai.Model, transcript ai.TranscriptContext, options ai.StreamOptions) (*ai.AssistantMessageEventStream, error) {
+			return p.stream(ctx, model, transcript, options, false)
+		},
+		StreamSimple: func(ctx context.Context, model *ai.Model, transcript ai.TranscriptContext, options ai.StreamOptions) (*ai.AssistantMessageEventStream, error) {
+			return p.stream(ctx, model, transcript, options, true)
+		},
 	}
 	p.operations(carrier)
 	return carrier
 }
 
 func (p *nativeProviderProxy) stream(ctx context.Context, model *ai.Model, transcript ai.TranscriptContext, options ai.StreamOptions, simple bool) (*ai.AssistantMessageEventStream, error) {
-	stream := ai.NewAssistantMessageEventStream()
 	method := "stream"
 	if simple {
 		method = "streamSimple"
 	}
+	return p.streamMethod(ctx, method, model, "context", map[string]any{"messages": transcript.Messages()}, nativeStreamOptions(options), options)
+}
+
+// fetchDeferred is Pi's Provider.fetchDeferred: the provider object resolves a deferred response from its handle and streams the result.
+// upstream: packages/ai/src/models.ts:209-213 (Provider.fetchDeferred), models.ts StreamDeferred
+func (p *nativeProviderProxy) fetchDeferred(ctx context.Context, model *ai.Model, handle ai.DeferredHandle, options ai.DeferredFetchOptions) (*ai.AssistantMessageEventStream, error) {
+	wire := nativeStreamOptions(options.StreamOptions)
+	if options.Wait != nil {
+		wire["wait"] = *options.Wait
+	}
+	return p.streamMethod(ctx, "fetchDeferred", model, "handle", handle, wire, options.StreamOptions)
+}
+
+// cancelDeferred is Pi's Provider.cancelDeferred.
+// upstream: packages/ai/src/models.ts:214 (Provider.cancelDeferred)
+func (p *nativeProviderProxy) cancelDeferred(ctx context.Context, model *ai.Model, handle ai.DeferredHandle, options ai.DeferredCancelOptions) error {
+	_, err := p.objectCall(ctx, "cancelDeferred", map[string]any{"model": extension.ModelInfo(model), "handle": handle, "options": nativeStreamOptions(options), "callbacks": []string{}}, nil)
+	return err
+}
+
+// streamMethod runs one streaming provider method (stream, streamSimple or fetchDeferred): payloadKey names the method's second argument, the transcript or the deferred handle.
+func (p *nativeProviderProxy) streamMethod(ctx context.Context, method string, model *ai.Model, payloadKey string, payload any, wireOptions map[string]any, options ai.StreamOptions) (*ai.AssistantMessageEventStream, error) {
+	stream := ai.NewAssistantMessageEventStream()
 	callbacks := []string{}
 	if options.OnPayload != nil {
 		callbacks = append(callbacks, "onPayload")
 	}
-	args := map[string]any{"method": method, "params": map[string]any{"model": extension.ModelInfo(model), "context": map[string]any{"messages": transcript.Messages()}, "options": nativeStreamOptions(options), "callbacks": callbacks}}
+	// Pi's streamSimple contract has the provider invoke options.onResponse after the response and before its body
+	// (coding-agent extensions/types.ts:1917-1920), which is how sdk.ts:387-433 handleProviderResponse reaches after_provider_response.
+	if options.OnResponse != nil {
+		callbacks = append(callbacks, "onResponse")
+	}
+	// The same contract lets the provider invoke options.onProviderStreamEvent(data, model) with parsed stream events before normalization
+	// (extensions/types.ts:1917-1919, ai types.ts:204), which sdk.ts handleProviderStreamEvent turns into provider_stream_event.
+	if options.OnProviderStreamEvent != nil {
+		callbacks = append(callbacks, "onProviderStreamEvent")
+	}
+	args := map[string]any{"method": method, "params": map[string]any{"model": extension.ModelInfo(model), payloadKey: payload, "options": wireOptions, "callbacks": callbacks}}
 	go func() {
 		operation, cancel := context.WithCancelCause(ctx)
 		defer cancel(nil)
@@ -140,22 +183,60 @@ func (p *nativeProviderProxy) stream(ctx context.Context, model *ai.Model, trans
 			}
 			terminal = event.EventType() == ai.EventDone || event.EventType() == ai.EventError
 		}, func(raw json.RawMessage) (json.RawMessage, error) {
-			if options.OnPayload == nil {
-				return nil, errors.New("native stream has no payload callback")
-			}
 			var callback struct {
+				Method string `json:"method"`
 				Params struct {
-					Payload any `json:"value"`
+					Payload json.RawMessage `json:"value"`
 				} `json:"params"`
 			}
 			if err := json.Unmarshal(raw, &callback); err != nil {
 				return nil, err
 			}
-			result, err := options.OnPayload(callback.Params.Payload, model)
-			if err != nil {
-				return nil, err
+			switch callback.Method {
+			case "onPayload":
+				if options.OnPayload == nil {
+					return nil, errors.New("native stream has no payload callback")
+				}
+				var payload any
+				if len(callback.Params.Payload) > 0 {
+					if err := json.Unmarshal(callback.Params.Payload, &payload); err != nil {
+						return nil, err
+					}
+				}
+				result, err := options.OnPayload(payload, model)
+				if err != nil {
+					return nil, err
+				}
+				return json.Marshal(result)
+			case "onResponse":
+				if options.OnResponse == nil {
+					return nil, errors.New("native stream has no response callback")
+				}
+				var response ai.ProviderResponse
+				if err := json.Unmarshal(callback.Params.Payload, &response); err != nil {
+					return nil, err
+				}
+				if err := options.OnResponse(operation, response, model); err != nil {
+					return nil, err
+				}
+				return json.RawMessage("null"), nil
+			case "onProviderStreamEvent":
+				if options.OnProviderStreamEvent == nil {
+					return nil, errors.New("native stream has no provider stream event callback")
+				}
+				var data any
+				if len(callback.Params.Payload) > 0 {
+					if err := json.Unmarshal(callback.Params.Payload, &data); err != nil {
+						return nil, err
+					}
+				}
+				if err := options.OnProviderStreamEvent(operation, data, model); err != nil {
+					return nil, err
+				}
+				return json.RawMessage("null"), nil
+			default:
+				return nil, fmt.Errorf("native provider callback %q is not handled", callback.Method)
 			}
-			return json.Marshal(result)
 		})
 		if terminal {
 			return
@@ -250,12 +331,9 @@ func (h *Host) registerNativeProvider(ctx context.Context, me *managedExt, conn 
 	h.nativeProviders[conn][declaration.ID] = p
 	h.mu.Unlock()
 	h.releaseProviderCallbacks(released)
-	if h.onRegisterNativeProvider == nil {
-		return errors.New("native provider registry is not bound")
-	}
 	var published sync.Once
 	publish := func() { published.Do(func() { h.publishNativeProvider(p) }); extension.CallInitiated(ctx) }
-	if err := h.onRegisterNativeProvider(extension.WithCallInitiation(ctx, publish), p.carrier()); err != nil {
+	if err := h.providerRuntime.RegisterNativeProviderCarrier(extension.WithCallInitiation(ctx, publish), p.carrier(), extConfigOrigin(me.config)); err != nil {
 		return err
 	}
 	publish()

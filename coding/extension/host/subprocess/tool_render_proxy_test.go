@@ -1,3 +1,5 @@
+//go:build !pig_strip_node_extensions
+
 package subprocess
 
 import (
@@ -27,7 +29,7 @@ const toolRendererExtension = `export default function (pi) {
     renderCall(args, _theme, context) {
       context.state.calls = (context.state.calls ?? 0) + 1;
       if (context.state.calls === 1) setTimeout(() => context.invalidate(), 5);
-      return line("call " + args.topic + " partial=" + context.isPartial + " last=" + (context.lastComponent ? "yes" : "no") + " calls=" + context.state.calls);
+      return line("call " + args.topic + " partial=" + context.isPartial + " last=" + (context.lastComponent ? "yes" : "no") + " calls=" + context.state.calls + " pad=" + context.outputPad);
     },
     renderResult(result, options, _theme, context) {
       const text = result.content.map((block) => block.text).join("|");
@@ -75,11 +77,11 @@ func TestNodeToolRenderersRunInTheExtensionProcess(t *testing.T) {
 	invalidated := make(chan struct{}, 4)
 	args := json.RawMessage(`{"topic":"alpha"}`)
 	renderContext := extension.ToolRenderContext{
-		Args: args, ToolCallID: "call-1", Card: "card-under-test", IsPartial: true,
+		Args: args, ToolCallID: "call-1", Card: "card-under-test", IsPartial: true, OutputPad: 1,
 		Invalidate: func() { invalidated <- struct{}{} },
 	}
 	call := card.RenderCall(args, nil, renderContext).(*toolRenderProxy)
-	waitForLines(t, call, 40, "call alpha partial=true last=no calls=1 w=40")
+	waitForLines(t, call, 40, "call alpha partial=true last=no calls=1 pad=1 w=40")
 	select {
 	case <-invalidated:
 	case <-time.After(5 * time.Second):
@@ -91,9 +93,9 @@ func TestNodeToolRenderersRunInTheExtensionProcess(t *testing.T) {
 	if again := card.RenderCall(args, nil, renderContext); again != call {
 		t.Fatal("renderCall with the last component returned a new proxy")
 	}
-	waitForLines(t, call, 40, "call alpha partial=false last=yes calls=2 w=40")
+	waitForLines(t, call, 40, "call alpha partial=false last=yes calls=2 pad=1 w=40")
 	// A resize renders the last component again without running renderCall.
-	waitForLines(t, call, 30, "call alpha partial=false last=yes calls=2 w=30")
+	waitForLines(t, call, 30, "call alpha partial=false last=yes calls=2 pad=1 w=30")
 
 	renderContext.LastComponent = nil
 	result := card.RenderResult(agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: "out"}}, Details: map[string]any{"k": "v"}}, extension.ToolRenderResultOptions{Expanded: true}, nil, renderContext).(*toolRenderProxy)
@@ -111,7 +113,7 @@ func TestNodeToolRenderersRunInTheExtensionProcess(t *testing.T) {
 	me := host.exts["renderers"]
 	me.toolRenders.release(toolRenderRelease{card: "card-under-test", conn: me.connection()})
 	fresh := card.RenderCall(args, nil, extension.ToolRenderContext{Args: args, Card: "card-under-test", Invalidate: func() {}}).(*toolRenderProxy)
-	waitForLines(t, fresh, 40, "call alpha partial=false last=no calls=1 w=40")
+	waitForLines(t, fresh, 40, "call alpha partial=false last=no calls=1 pad=0 w=40")
 }
 
 func waitForLines(t *testing.T, proxy *toolRenderProxy, width int, want ...string) {
@@ -150,11 +152,11 @@ func TestToolRenderersAcrossSDKs(t *testing.T) {
 			invalidated := make(chan struct{}, 4)
 			args := json.RawMessage(`{"topic":"alpha"}`)
 			renderContext := extension.ToolRenderContext{
-				Args: args, ToolCallID: "call-1", Card: "sdk-card", IsPartial: true,
+				Args: args, ToolCallID: "call-1", Card: "sdk-card", IsPartial: true, OutputPad: 1,
 				Invalidate: func() { invalidated <- struct{}{} },
 			}
 			call := card.RenderCall(args, nil, renderContext).(*toolRenderProxy)
-			waitForLines(t, call, 40, "call alpha partial=true calls=1 w=40")
+			waitForLines(t, call, 40, "call alpha partial=true calls=1 pad=1 w=40")
 			select {
 			case <-invalidated:
 			case <-time.After(10 * time.Second):
@@ -215,7 +217,7 @@ func Extension() *sdk.Extension {
             if calls == 1 {
                 render.Invalidate()
             }
-            return []string{fmt.Sprintf("call %%v partial=%%t calls=%%d w=%%d", args["topic"], render.IsPartial, calls, width)}, nil
+            return []string{fmt.Sprintf("call %%v partial=%%t calls=%%d pad=%%d w=%%d", args["topic"], render.IsPartial, calls, render.OutputPad, width)}, nil
         },
         Result: func(_ sdk.Context, result sdk.ToolRenderResult, options sdk.ToolRenderResultOptions, render sdk.ToolRenderContext, width int) ([]string, error) {
             details, _ := result.Details.(map[string]any)
@@ -244,7 +246,7 @@ def new_extension():
         render.state["calls"] = calls
         if calls == 1:
             render.invalidate()
-        return [f"call {args['topic']} partial={str(render.is_partial).lower()} calls={calls} w={width}"]
+        return [f"call {args['topic']} partial={str(render.is_partial).lower()} calls={calls} pad={render.output_pad} w={width}"]
 
     def render_result(_ctx, result, options, render, width):
         text = result["content"][0]["text"]
@@ -278,7 +280,7 @@ pub fn new_extension() -> Extension {
         if calls == 1 {
             render.invalidate();
         }
-        Ok(vec![format!("call {} partial={} calls={} w={}", args["topic"].as_str().unwrap_or(""), render.is_partial, calls, width)])
+        Ok(vec![format!("call {} partial={} calls={} pad={} w={}", args["topic"].as_str().unwrap_or(""), render.is_partial, calls, render.output_pad, width)])
     });
     ext.render_tool_result("card_tool", |_ctx, result, options, render, width| {
         let text = result.content[0]["text"].as_str().unwrap_or("").to_string();

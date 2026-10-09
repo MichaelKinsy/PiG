@@ -1,0 +1,19 @@
+[
+ {
+  "ids": [
+   "pkg:ai/.#DeferredCancelOptions",
+   "pkg:ai/compat#DeferredCancelOptions"
+  ],
+  "targets": [
+   "ai/models_runtime.go#DeferredCancelOptions"
+  ],
+  "production": [
+   "call:agent/agent_loop.go#loopRun.streamAssistantResponse"
+  ],
+  "evidence": [
+   "test:agent/agent_loop_upstream_test.go#TestAgentLoop_PreparesInitialRequestAfterPendingMessagesAndReplacesState",
+   "test:agent/agent_transcript_upstream_test.go#TestAgentLoop_BuildsProviderContextExclusivelyFromTranscriptMessages"
+  ],
+  "rationale": "DeferredCancelOptions is ProviderRequestOptions upstream; Go declares it as an alias of StreamOptions, which carries every ProviderRequestOptions field and the TransformHeaders the Models variant adds (the ProviderRequestOptions properties are all mapped to StreamOptions fields)."
+ }
+]

@@ -69,8 +69,8 @@ func readFauxOracle(t testing.TB) fauxOracle {
 }
 
 // provider builds the Go faux provider for one oracle fixture. Pi's fixture is packages/ai/src/providers/faux.ts with tokenSize {min,max} = 1.
-func (fixture fauxOracleFixture) provider() *fauxProvider {
-	provider := NewFauxProvider(FauxConfig{API: "faux-probe", ProviderID: "faux-probe", MinTokenSize: fixture.TokenSize, MaxTokenSize: fixture.TokenSize, TokensPerSecond: int(fixture.TokensPerSecond)})
+func (fixture fauxOracleFixture) provider() *FauxProviderHandle {
+	provider := NewFauxProvider(FauxConfig{API: "faux-probe", ProviderID: "faux-probe", TokenSize: &FauxTokenSize{Min: new(fixture.TokenSize), Max: new(fixture.TokenSize)}, TokensPerSecond: int(fixture.TokensPerSecond)})
 	if fixture.NoResponse {
 		return provider
 	}
@@ -84,17 +84,17 @@ func (fixture fauxOracleFixture) provider() *fauxProvider {
 		case "thinking":
 			response.Content = append(response.Content, FauxThinking(block.Thinking))
 		default:
-			response.Content = append(response.Content, FauxToolCall(block.Name, block.Arguments, block.ID))
+			response.Content = append(response.Content, FauxToolCall(block.Name, block.Arguments, &FauxToolCallOptions{ID: block.ID}))
 		}
 	}
 	switch fixture.Factory {
 	case "value":
-		provider.SetResponses([]FauxResponseStep{FauxFactoryStep(func(TranscriptContext, StreamOptions, *FauxProviderState, *Model) (FauxResponse, error) {
-			return response, nil
+		provider.SetResponses([]FauxResponseStep{FauxFactoryStep(func(TranscriptContext, StreamOptions, *FauxProviderState, *Model) (AssistantMessage, error) {
+			return response.AssistantMessage(), nil
 		})})
 	case "reject":
-		provider.SetResponses([]FauxResponseStep{FauxFactoryStep(func(TranscriptContext, StreamOptions, *FauxProviderState, *Model) (FauxResponse, error) {
-			return FauxResponse{}, errors.New("scripted factory failure")
+		provider.SetResponses([]FauxResponseStep{FauxFactoryStep(func(TranscriptContext, StreamOptions, *FauxProviderState, *Model) (AssistantMessage, error) {
+			return FauxResponse{}.AssistantMessage(), errors.New("scripted factory failure")
 		})})
 	default:
 		provider.SetResponses([]FauxResponseStep{FauxStaticStep(response)})
@@ -130,6 +130,10 @@ func fauxOracleComparable(t testing.TB, value any) []byte {
 			if value["role"] == "assistant" {
 				if _, ok := value["timestamp"].(json.Number); ok {
 					value["timestamp"] = json.Number("0")
+				}
+				// Pi 1.1.0 times each response (event-stream.ts:127-128); the value is wall time, so only its presence is compared.
+				if _, ok := value["durationMs"].(json.Number); ok {
+					value["durationMs"] = json.Number("0")
 				}
 			}
 			for key, item := range value {
@@ -217,7 +221,7 @@ func fauxTickObservation(t testing.TB, fixture fauxOracleFixture) []json.RawMess
 // fauxDeferredObservation replays probe.mjs `deferredTicks`: submission, a pending fetch, the final fetch and an unknown handle, each measured like `ticks`.
 func fauxDeferredObservation(t testing.TB) (records [][]int, results []*AssistantMessage) {
 	t.Helper()
-	provider := NewFauxProvider(FauxConfig{API: "faux-probe", ProviderID: "faux-probe", MinTokenSize: 1, MaxTokenSize: 1, Deferred: &FauxDeferredConfig{PendingFetches: 1, PollAfterMS: new(int64(5))}})
+	provider := NewFauxProvider(FauxConfig{API: "faux-probe", ProviderID: "faux-probe", TokenSize: &FauxTokenSize{Min: new(1), Max: new(1)}, Deferred: &FauxDeferredConfig{PendingFetches: 1, PollAfterMS: new(int64(5))}})
 	one := int64(1)
 	provider.SetResponses([]FauxResponseStep{FauxStaticStep(FauxResponse{Content: []FauxContentBlock{FauxText("one two three")}, Timestamp: &one})})
 	var pushed atomic.Int64
@@ -260,6 +264,7 @@ func fauxDeferredObservation(t testing.TB) (records [][]int, results []*Assistan
 	return records, results
 }
 
+// mutation-checked: the mutant "the faux provider ignores StreamOptions.Deferred" (ai/faux.go, the deferred branch of the stream) fails it.
 func TestFauxDeferredObservationOracle(t *testing.T) {
 	oracle := readFauxOracle(t)
 	records, results := fauxDeferredObservation(t)

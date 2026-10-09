@@ -5,15 +5,20 @@ import (
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/chord"
+	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/durable"
 )
 
 // Upstream observation.ts SessionSourceAttachment.publish drains from a microtask inside try/catch and disposes the
 // attachment on an unexpected listener failure; #drain resets #delivering in a finally.
+// Pi source: packages/chord/src/api.ts, packages/chord/src/services/state-internals.ts
+// mutation-checked: zeroing the results of ReplicatedStateSourceAttachment.Dispose fails it
+// Pi: packages/chord/src/services/state.ts:279 (dispose)
+// packages/chord/src/types.ts:84-100: a ReplicatedStateSourceAttachment is activated with the sole listener and disposed to stop delivery.
 func TestSessionSourceAttachmentIsolatesListenerFailure(t *testing.T) {
 	scheduler := newPending()
 	released := 0
-	source := newCommittedStateSource[durable.JsonObject](durable.JsonObject{"v": 0.0}, func() { released++ }, scheduler)
+	source := newCommittedStateSource[durable.JsonObject](delta.JsonObjectOf("v", 0.0), func() { released++ }, scheduler)
 	failing, err := source.Attach()
 	if err != nil {
 		t.Fatal(err)
@@ -31,12 +36,12 @@ func TestSessionSourceAttachmentIsolatesListenerFailure(t *testing.T) {
 	}); err != nil {
 		t.Fatal(err)
 	}
-	source.Advance(context.Background(), durable.JsonObject{"v": 1.0}, []durable.Op{{"s", []any{"v"}, 1.0}})
+	source.Advance(context.Background(), delta.JsonObjectOf("v", 1.0), []durable.Op{{"s", []any{"v"}, 1.0}})
 	scheduler.wait()
 	if !failing.(*sessionSourceAttachment[durable.JsonObject]).disposed {
 		t.Fatal("a failing listener disposes its attachment")
 	}
-	source.Advance(context.Background(), durable.JsonObject{"v": 2.0}, []durable.Op{{"s", []any{"v"}, 2.0}})
+	source.Advance(context.Background(), delta.JsonObjectOf("v", 2.0), []durable.Op{{"s", []any{"v"}, 2.0}})
 	scheduler.wait()
 	if len(delivered) != 2 || delivered[0] != 1 || delivered[1] != 2 {
 		t.Fatalf("the healthy attachment keeps receiving frames: %v", delivered)
@@ -54,12 +59,12 @@ func TestSessionSourceAttachmentIsolatesListenerFailure(t *testing.T) {
 // able to deliver later frames because delivering is reset.
 func TestSessionSourceAttachmentResetsDeliveringAfterPanic(t *testing.T) {
 	scheduler := newPending()
-	source := newCommittedStateSource[durable.JsonObject](durable.JsonObject{}, func() {}, scheduler)
+	source := newCommittedStateSource[durable.JsonObject](delta.NewJsonObject(0), func() {}, scheduler)
 	attachment, err := source.Attach()
 	if err != nil {
 		t.Fatal(err)
 	}
-	source.Advance(context.Background(), durable.JsonObject{"v": 1.0}, nil)
+	source.Advance(context.Background(), delta.JsonObjectOf("v", 1.0), nil)
 	calls := 0
 	func() {
 		defer func() {
@@ -74,7 +79,7 @@ func TestSessionSourceAttachmentResetsDeliveringAfterPanic(t *testing.T) {
 			}
 		})
 	}()
-	source.Advance(context.Background(), durable.JsonObject{"v": 2.0}, nil)
+	source.Advance(context.Background(), delta.JsonObjectOf("v", 2.0), nil)
 	scheduler.wait()
 	if calls != 2 {
 		t.Fatalf("calls %d, want 2", calls)
@@ -85,18 +90,18 @@ func TestSessionSourceAttachmentResetsDeliveringAfterPanic(t *testing.T) {
 // falls back to the newest value.
 func TestCommittedWatchOverflowReplacementFallsBackToValue(t *testing.T) {
 	scheduler := newPending()
-	watch := newCommittedWatch[durable.JsonObject](durable.JsonObject{}, func() {}, func() durable.JsonObject { return nil }, scheduler)
+	watch := newCommittedWatch[durable.JsonObject](delta.NewJsonObject(0), func() {}, func() durable.JsonObject { return nil }, scheduler)
 	for index := range maxPendingWatchFrames + 1 {
-		watch.Advance(context.Background(), durable.JsonObject{"v": float64(index)}, nil)
+		watch.Advance(context.Background(), delta.JsonObjectOf("v", float64(index)), nil)
 	}
 	if len(watch.pending) != 1 {
 		t.Fatalf("pending %d", len(watch.pending))
 	}
 	frame := watch.pending[0]
-	if frame.value == nil || frame.value["v"] != float64(maxPendingWatchFrames) {
+	if frame.value == nil || frame.value.Value("v") != float64(maxPendingWatchFrames) {
 		t.Fatalf("the overflow frame is the newest value: %#v", frame.value)
 	}
-	if replaced, ok := frame.ops[0][1].(durable.JsonObject); !ok || replaced["v"] != float64(maxPendingWatchFrames) {
+	if replaced, ok := frame.ops[0][1].(durable.JsonObject); !ok || replaced.Value("v") != float64(maxPendingWatchFrames) {
 		t.Fatalf("the overflow op replaces the root with the newest value: %#v", frame.ops)
 	}
 	_, _ = watch.Stop()

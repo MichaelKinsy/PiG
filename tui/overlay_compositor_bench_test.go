@@ -20,7 +20,7 @@ var overlayBenchmarkMatrix = []struct {
 }
 
 type overlayBenchmarkFixture struct {
-	base       *TUI
+	base       *TuiMainScreen
 	background []string
 	handles    []*OverlayHandle
 	frames     [][][]string
@@ -29,7 +29,7 @@ type overlayBenchmarkFixture struct {
 
 func newOverlayBenchmarkFixture(b *testing.B, width, height, overlayCount int, content string) overlayBenchmarkFixture {
 	b.Helper()
-	base := NewWithOutput(io.Discard, width, height)
+	base := newManualRenderTUI(io.Discard, width, height)
 	background := make([]string, height)
 	for row := range background {
 		background[row] = strings.Repeat(string(rune('a'+row%26)), width)
@@ -40,7 +40,7 @@ func newOverlayBenchmarkFixture(b *testing.B, width, height, overlayCount int, c
 		frames:   make([][][]string, overlayCount),
 	}
 	for i := range overlayCount {
-		handle := base.OpenOverlay(&recordingComponent{}, OverlayOptions{
+		handle := base.ShowOverlay(&recordingComponent{}, OverlayOptions{
 			width:  overlayPercent(60),
 			anchor: overlayTopLeft,
 			row:    overlayCells(i % max(1, height-8)),
@@ -157,8 +157,8 @@ func BenchmarkOverlaySnapshotReplacement256KiB(b *testing.B) {
 	// This isolates immutable ownership transfer. The string payload is already
 	// immutable, so replacement copies one slice of string headers and retains
 	// the 256 KiB payload; it intentionally does not copy 256 KiB per update.
-	base := NewWithOutput(io.Discard, 80, 24)
-	handle := base.OpenOverlay(&recordingComponent{}, OverlayOptions{})
+	base := newManualRenderTUI(io.Discard, 80, 24)
+	handle := base.ShowOverlay(&recordingComponent{}, OverlayOptions{})
 	geometry := base.updateOverlayGeometry(80, 24)
 	const payloadBytes = 256 << 10
 	frames := [2][]string{{strings.Repeat("x", payloadBytes)}, {strings.Repeat("y", payloadBytes)}}
@@ -194,8 +194,8 @@ func benchmarkOverlayLines(width int, content string, index, generation int) []s
 }
 
 func TestOverlayImmutableFramePayloadIsSharedUntilReplacement(t *testing.T) {
-	base := NewWithOutput(io.Discard, 80, 24)
-	handle := base.OpenOverlay(&recordingComponent{}, OverlayOptions{})
+	base := newManualRenderTUI(io.Discard, 80, 24)
+	handle := base.ShowOverlay(&recordingComponent{}, OverlayOptions{})
 	geometry := base.updateOverlayGeometry(80, 24)
 	if !base.replaceOverlaySnapshot(handle, geometry, 1, []string{"first", "second"}, true) {
 		t.Fatal("initial snapshot rejected")
@@ -226,8 +226,8 @@ func TestOverlayImmutableFramePayloadIsSharedUntilReplacement(t *testing.T) {
 }
 
 func TestOverlaySnapshotBuffersReclaimedAfterReplacementAndTeardown(t *testing.T) {
-	base := NewWithOutput(io.Discard, 80, 24)
-	handle := base.OpenOverlay(&recordingComponent{}, OverlayOptions{})
+	base := newManualRenderTUI(io.Discard, 80, 24)
+	handle := base.ShowOverlay(&recordingComponent{}, OverlayOptions{})
 	geometry := base.updateOverlayGeometry(80, 24)
 	large := []string{strings.Repeat("x", 1<<20)}
 	if !base.replaceOverlaySnapshot(handle, geometry, 1, large, true) {

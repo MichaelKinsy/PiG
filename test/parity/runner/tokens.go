@@ -6,9 +6,10 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"runtime"
 	"strings"
 	"testing"
+
+	"github.com/MichaelKinsy/PiG/internal/testenv"
 )
 
 // Hermetic per-run substitution tokens.
@@ -132,15 +133,13 @@ func containsLiteralTmpPath(parts []string) (string, bool) {
 // holds no-op shims (open, xdg-open, start) used by hermetic OAuth
 // scenarios to suppress real browser launches.
 //
-// Resolution uses runtime.Caller so it works whether tests are run from
-// the package dir or the repo root, in CI or locally.
+// go test runs the runner in its package directory, so the path holds under -trimpath and whatever directory invoked go test.
 func fakeBinDir() string {
-	_, thisFile, _, ok := runtime.Caller(0)
-	if !ok {
+	dir, err := testenv.PackageDirPath()
+	if err != nil {
 		return "test/parity/testdata/fake-bin"
 	}
-	// thisFile = .../parity/runner/tokens.go
-	return filepath.Join(filepath.Dir(filepath.Dir(thisFile)), "testdata", "fake-bin")
+	return filepath.Join(filepath.Dir(dir), "testdata", "fake-bin")
 }
 
 // shellQuote returns s safely quoted for inclusion in an inline shell

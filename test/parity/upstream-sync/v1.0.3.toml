@@ -103,7 +103,7 @@ rationale = "The full-output log of executeBash is created through the shared ou
 path = "packages/coding-agent/src/core/model-resolver.ts"
 change = "modified"
 disposition = "ported"
-evidence = ["test:cmd/pig/model_resolver_cli_upstream_test.go#TestModelResolverCLIUpstream", "test:internal/codingagent/auth_filter_test.go#TestAuthenticatedProviders_AzureEnvVar_Includes"]
+evidence = ["test:coding/cli/model_resolver_cli_upstream_test.go#TestModelResolverCLIUpstream", "test:internal/codingagent/auth_filter_test.go#TestAuthenticatedProviders_AzureEnvVar_Includes"]
 rationale = "defaultModelPerProvider keys azure (default model gpt-5.4)."
 
 [[files]]

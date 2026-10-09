@@ -45,7 +45,7 @@ func codexUpstreamContext() TranscriptContext {
 }
 func codexUpstreamProvider(t *testing.T, id string, transport http.RoundTripper) *openAIResponsesProvider {
 	t.Helper()
-	provider := NewOpenAICodexResponsesProvider(OpenAICodexResponsesConfig{APIKey: codexTestToken(t, "acc_test"), Model: id, ModelMetadata: &Model{ID: id, DisplayName: id, ProviderMeta: ProviderMetadata{API: APIOpenAICodexResponses, ProviderID: "openai-codex", Reasoning: true}, Input: []string{"text"}, Capabilities: ModelCapabilities{ContextWindow: 400000, MaxOutputTokens: 128000, MaxThinking: ThinkingHigh}}, ProviderID: "openai-codex"}).(*openAIResponsesProvider)
+	provider := NewOpenAICodexResponsesProvider(OpenAICodexResponsesConfig{APIKey: codexTestToken(t, "acc_test"), Model: id, ModelMetadata: &Model{ID: id, DisplayName: id, ProviderMeta: ProviderMetadata{API: APIOpenAICodexResponses, ProviderID: "openai-codex", Reasoning: true}, Input: []string{"text"}, Capabilities: ModelCapabilities{ContextWindow: 400000, MaxOutputTokens: 128000, MaxThinking: ThinkingLevelHigh}}, ProviderID: "openai-codex"}).(*openAIResponsesProvider)
 	if transport != nil {
 		provider.client = &http.Client{Transport: transport}
 	}
@@ -188,7 +188,7 @@ func TestCodexSSEAndPayloadUpstream(t *testing.T) {
 	}
 	for _, tc := range []struct {
 		name, id string
-		level    ThinkingLevel
+		level    ModelThinkingLevel
 		want     string
 	}{
 		// .upstream/v0.87.1/packages/ai/test/openai-codex-stream.test.ts:786
@@ -207,7 +207,7 @@ func TestCodexSSEAndPayloadUpstream(t *testing.T) {
 			provider.cfg.ModelMetadata.ThinkingLevelMap = ThinkingLevelMap{ModelThinkingLevel(tc.level): new(tc.want)}
 			options := StreamOptions{Transport: TransportSSE}
 			if tc.level == ThinkingXHigh {
-				options.Thinking = tc.level
+				options.Thinking = tc.level.ReasoningOption()
 			} else {
 				options.ReasoningEffort = string(tc.level)
 			}
@@ -270,7 +270,7 @@ func TestCodexSSEAndPayloadUpstream(t *testing.T) {
 			provider := codexUpstreamProvider(t, tc.id, codexRoundTripper(func(*http.Request) (*http.Response, error) {
 				return codexUpstreamHTTP(`data: {"type":"response.completed","response":{"status":"completed","service_tier":"default","usage":{"input_tokens":1000000,"output_tokens":1000000,"total_tokens":2000000,"input_tokens_details":{"cached_tokens":0}}}}` + "\n\n"), nil
 			}))
-			stream, err := provider.Stream(t.Context(), codexUpstreamContext(), StreamOptions{Transport: TransportSSE, SamplingParams: map[string]any{"service_tier": tc.tier}, ModelCost: ModelCost{Input: 1, Output: 2}})
+			stream, err := provider.Stream(t.Context(), codexUpstreamContext(), StreamOptions{Transport: TransportSSE, ServiceTier: tc.tier, ModelCost: ModelCost{Input: 1, Output: 2}})
 			if err != nil {
 				t.Fatal(err)
 			}

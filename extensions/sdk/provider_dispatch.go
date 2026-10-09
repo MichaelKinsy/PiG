@@ -86,14 +86,22 @@ func (e *Extension) dispatchProviderObject(ctx Context, req *requestMsg) (any, e
 		},
 	}
 	switch request.Method {
-	case "getModels":
-		models, err := provider.GetModels()
+	case "getModels", "getAllModels":
+		get := provider.GetModels
+		if request.Method == "getAllModels" {
+			get = provider.GetAllModels
+		}
+		models, err := get()
 		if models == nil && err == nil {
 			models = []map[string]any{}
 		}
 		return models, err
-	case "filterModels":
-		models, err := provider.FilterModels(args.Models, args.Credential)
+	case "filterModels", "filterAllModels":
+		filter := provider.FilterModels
+		if request.Method == "filterAllModels" {
+			filter = provider.FilterAllModels
+		}
+		models, err := filter(args.Models, args.Credential)
 		if err != nil {
 			return nil, err
 		}

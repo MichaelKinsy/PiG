@@ -73,3 +73,32 @@ func TestPigletOutputsPublishWhereLinksAreRefused(t *testing.T) {
 	}
 	assertPublished(artifact, "binary", 0o755)
 }
+
+// Where links are refused, the module source stage copies the module cache's read-only files; under umask 077 each copy keeps its source's mode, as a hard link would.
+func TestModuleSourceStagesWhereLinksAreRefused(t *testing.T) {
+	if !testenv.RunWithHardLinksRefused(t) {
+		return
+	}
+	syscall.Umask(0o077)
+	t.Setenv("PIG_HOME", t.TempDir())
+	moduleDir := fakeModuleTree(t)
+	goMod := filepath.Join(moduleDir, "go.mod")
+	if err := os.Chmod(goMod, 0o444); err != nil {
+		t.Fatal(err)
+	}
+	want, err := os.ReadFile(goMod)
+	if err != nil {
+		t.Fatal(err)
+	}
+	root, err := materializeModuleSource(moduleDir, "v9.8.7", "h1:refused=")
+	if err != nil {
+		t.Fatalf("materializeModuleSource: %v", err)
+	}
+	staged := filepath.Join(root, "go.mod")
+	if got, err := os.ReadFile(staged); err != nil || string(got) != string(want) {
+		t.Fatalf("staged go.mod = %q (err %v), want %q", got, err, want)
+	}
+	if info, err := os.Stat(staged); err != nil || info.Mode().Perm() != 0o444 {
+		t.Fatalf("staged go.mod mode = %v (err %v), want the module cache's 0444", info.Mode().Perm(), err)
+	}
+}

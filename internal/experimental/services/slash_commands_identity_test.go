@@ -1,11 +1,13 @@
 package services
 
+// pi: packages/coding-agent/src/experimental/services/slash-commands.ts
+
 import (
 	"context"
 	"testing"
 )
 
-// upstream: packages/coding-agent/src/experimental/services/slash-commands-provider.ts:50-60 creates a fresh frozen command copy for every registration and retains it across list snapshots.
+// upstream: packages/coding-agent/src/experimental/services/slash-commands-provider.ts:79-93 creates a fresh frozen command copy for every registration and retains it across list snapshots.
 func TestSlashCommandRegistrationAndCallbackOriginIdentity(t *testing.T) {
 	t.Parallel()
 	registry := NewSlashCommandRegistry()

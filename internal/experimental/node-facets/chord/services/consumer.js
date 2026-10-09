@@ -276,6 +276,23 @@ class KeyedBinding {
             return;
         try {
             switch (update.type) {
+                case "reset": {
+                    validateResetSnapshot(update.snapshot, this.#service.id, "keyed");
+                    const snapshots = new Map(update.snapshot.instances.map((snapshot) => [snapshot.instance.key, snapshot]));
+                    for (const instance of [...this.#instances.values()]) {
+                        if (snapshots.get(instance.key)?.instance?.generation !== instance.generation) {
+                            this.#instances.remove(instance);
+                        }
+                    }
+                    for (const snapshot of snapshots.values()) {
+                        const instance = this.#instances.get(snapshot.instance.key);
+                        if (instance === undefined)
+                            this.#spawn(snapshot, context);
+                        else
+                            instance.facade.install(snapshot, context);
+                    }
+                    break;
+                }
                 case "unavailable":
                 case "replaced":
                     throw new Error("Keyed service received a singleton lifecycle update");
@@ -459,7 +476,15 @@ export class RemoteServiceBindingImpl {
             if (!binding.active || binding.revision !== revision)
                 return;
             try {
-                if (update.type === "unavailable") {
+                if (update.type === "reset") {
+                    validateResetSnapshot(update.snapshot, serviceId, "singleton");
+                    const snapshot = update.snapshot.instances[0];
+                    if (snapshot === undefined)
+                        binding.facade.clear();
+                    else
+                        binding.facade.install(snapshot, context);
+                }
+                else if (update.type === "unavailable") {
                     binding.facade.clear();
                 }
                 else if (update.type === "replaced") {
@@ -508,6 +533,29 @@ export class RemoteServiceBindingImpl {
             throw new RemoteServiceError("service_mode_mismatch", `Remote service ${serviceId} is already used as ${existing}`);
         }
         this.#modes.set(serviceId, mode);
+    }
+}
+function validateResetSnapshot(snapshot, serviceId, mode) {
+    if (snapshot.serviceId !== serviceId ||
+        snapshot.mode !== mode ||
+        (mode === "singleton" && snapshot.instances.length > 1)) {
+        throw new Error("Remote service reset has the wrong service or mode");
+    }
+    const keys = new Set();
+    for (const instance of snapshot.instances) {
+        if (mode === "singleton" ? instance.instance !== undefined : instance.instance === undefined) {
+            throw new Error("Remote service reset has an invalid instance address");
+        }
+        if (instance.instance !== undefined) {
+            if (keys.has(instance.instance.key))
+                throw new Error("Remote service reset repeats an instance key");
+            keys.add(instance.instance.key);
+        }
+        for (const member of instance.members) {
+            if (member.kind === "state" && (member.ops.length !== 1 || member.ops[0]?.[0] !== "r")) {
+                throw new Error("Remote service reset must contain full root replacements");
+            }
+        }
     }
 }
 function validateMembers(members) {

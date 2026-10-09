@@ -9,7 +9,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"math"
 	"net/url"
 	"strings"
 	"time"
@@ -21,18 +20,19 @@ const (
 	ClassifierAPITypesafeSystemOne            ClassifierAPI = "typesafe-system-one"
 	ClassifierAPICloudflareWorkersAISystemOne ClassifierAPI = "cloudflare-workers-ai-system-one"
 	ClassifierAPILlamaCppClassify             ClassifierAPI = "llama-cpp-classify"
+	ClassifierAPIOpenAIDecisions              ClassifierAPI = "openai-decisions"
 )
 
-// systemOneWireRequest is the System One request body without the transport-specific envelope.
-type systemOneWireRequest struct {
-	state     JsonObject
-	questions systemOneWireQuestions
+// SystemOneWireRequest is the System One request body without the transport-specific envelope.
+type SystemOneWireRequest struct {
+	State     JsonObject
+	Questions SystemOneWireQuestions
 }
 
-// systemOneWireQuestions are the questions as System One names them: a public bool question is a wire-level noul.
-type systemOneWireQuestions ClassifierQuestions
+// SystemOneWireQuestions are the questions as System One names them: a public bool question is a wire-level noul.
+type SystemOneWireQuestions ClassifierQuestions
 
-func (q systemOneWireQuestions) MarshalJSON() ([]byte, error) {
+func (q SystemOneWireQuestions) MarshalJSON() ([]byte, error) {
 	return writeJSONObject(len(q), func(i int) string { return q[i].ID }, func(i int) ([]byte, error) {
 		if bool, ok := q[i].Question.(ClassifierBoolQuestion); ok {
 			return fmt.Appendf(nil, `{"type":"noul","instructions":%s,"criteria":{"true":%s,"false":%s}}`, marshalJSONString(bool.Instructions), marshalJSONString(bool.Criteria.True), marshalJSONString(bool.Criteria.False)), nil
@@ -41,20 +41,20 @@ func (q systemOneWireQuestions) MarshalJSON() ([]byte, error) {
 	})
 }
 
-// systemOneTransport holds the differences between services that serve System One models.
-type systemOneTransport struct {
-	// api is the classifier API this transport implements.
-	api ClassifierAPI
-	// label names the service in error messages.
-	label string
-	url   func(model ClassifierModel) string
-	// payload wraps the System One request in the service's request envelope.
-	payload func(model ClassifierModel, request systemOneWireRequest) map[string]any
-	// output extracts the System One output ({ answers, usage }) from the service's response envelope.
-	output func(body json.RawMessage) (map[string]json.RawMessage, error)
+// SystemOneTransport holds the differences between services that serve System One models.
+type SystemOneTransport struct {
+	// API is the classifier API this transport implements.
+	API ClassifierAPI
+	// Label names the service in error messages.
+	Label string
+	URL   func(model ClassifierModel) string
+	// Payload wraps the System One request in the service's request envelope.
+	Payload func(model ClassifierModel, request SystemOneWireRequest) map[string]any
+	// Output extracts the System One output ({ answers, usage }) from the service's response envelope.
+	Output func(body json.RawMessage) (map[string]json.RawMessage, error)
 }
 
-func requiredNumber(label string, value json.RawMessage, field string) (float64, error) {
+func RequiredNumber(label string, value json.RawMessage, field string) (float64, error) {
 	number, ok := finiteNumberOf(value)
 	if !ok {
 		return 0, fmt.Errorf("%s returned an invalid %s", label, field)
@@ -63,7 +63,7 @@ func requiredNumber(label string, value json.RawMessage, field string) (float64,
 }
 
 func parseProbabilities(label string, raw json.RawMessage, id string) ([]ClassifierProbability, error) {
-	if _, ok := jsonObjectOf(raw); !ok {
+	if !IsRecord(raw) {
 		return nil, fmt.Errorf("%s returned invalid probabilities for %s", label, id)
 	}
 	entries, err := orderedJSONObject(raw)
@@ -79,7 +79,7 @@ func parseProbabilities(label string, raw json.RawMessage, id string) ([]Classif
 	probabilities := make([]ClassifierProbability, 0, len(entries))
 	for _, index := range jsObjectKeyOrder(keys) {
 		entry := entries[index]
-		probability, err := requiredNumber(label, entry.value, fmt.Sprintf("probability for %s.%s", id, entry.key))
+		probability, err := RequiredNumber(label, entry.value, fmt.Sprintf("probability for %s.%s", id, entry.key))
 		if err != nil {
 			return nil, err
 		}
@@ -137,7 +137,7 @@ func parseAnswers(label string, raw json.RawMessage, request ClassifierContext) 
 			if err != nil {
 				return nil, err
 			}
-			confidence, err := requiredNumber(label, answer["confidence"], "confidence for "+id)
+			confidence, err := RequiredNumber(label, answer["confidence"], "confidence for "+id)
 			if err != nil {
 				return nil, err
 			}
@@ -146,11 +146,11 @@ func parseAnswers(label string, raw json.RawMessage, request ClassifierContext) 
 			if answerType != "score" {
 				return nil, fmt.Errorf("%s did not return a score answer for %s", label, id)
 			}
-			score, err := requiredNumber(label, answer["score"], "score for "+id)
+			score, err := RequiredNumber(label, answer["score"], "score for "+id)
 			if err != nil {
 				return nil, err
 			}
-			confidence, err := requiredNumber(label, answer["confidence"], "confidence for "+id)
+			confidence, err := RequiredNumber(label, answer["confidence"], "confidence for "+id)
 			if err != nil {
 				return nil, err
 			}
@@ -159,7 +159,7 @@ func parseAnswers(label string, raw json.RawMessage, request ClassifierContext) 
 			if answerType != "noul" {
 				return nil, fmt.Errorf("%s did not return a bool answer for %s", label, id)
 			}
-			probability, err := requiredNumber(label, answer["noul"], "probability for "+id)
+			probability, err := RequiredNumber(label, answer["noul"], "probability for "+id)
 			if err != nil {
 				return nil, err
 			}
@@ -169,93 +169,34 @@ func parseAnswers(label string, raw json.RawMessage, request ClassifierContext) 
 	return orderAnswers(answers), nil
 }
 
-func tokenCount(raw json.RawMessage, present bool) int {
-	if !present {
-		return 0
-	}
-	if value, ok := finiteNumberOf(raw); ok && value > 0 {
-		return int(math.Min(value, math.MaxInt32))
-	}
-	return 0
-}
-
-// parseUsage reads System One's { input_tokens, output_tokens } and prices it from the model catalog like chat usage.
-// A missing or malformed usage object leaves the result without usage instead of failing it.
-func parseUsage(raw json.RawMessage, model ClassifierModel) *Usage {
-	value, ok := jsonObjectOf(raw)
-	if !ok {
-		return nil
-	}
-	inputRaw, hasInput := value["input_tokens"]
-	outputRaw, hasOutput := value["output_tokens"]
-	if !hasInput && !hasOutput {
-		return nil
-	}
-	usage := Usage{Input: tokenCount(inputRaw, hasInput), Output: tokenCount(outputRaw, hasOutput)}
-	usage.TotalTokens = usage.Input + usage.Output
-	CalculateCost(&model, &usage)
-	return &usage
-}
-
-func systemOneRequestHeaders(model ClassifierModel, apiKey string, options ProviderHeaders) []classifierHeader {
-	return classifierRequestHeaders(ProviderHeadersFromStrings(map[string]string{"authorization": "Bearer " + apiKey, "content-type": "application/json"}), ProviderHeadersFromStrings(model.Headers), options)
-}
-
-// classifySystemOne runs one System One classification over the given transport.
-func classifySystemOne(ctx context.Context, transport systemOneTransport, model ClassifierModel, request ClassifierContext, options ClassifierOptions) ClassifierResult {
+// ClassifySystemOne runs one System One classification over the given transport.
+func ClassifySystemOne(ctx context.Context, transport SystemOneTransport, model ClassifierModel, request ClassifierContext, options ClassifierOptions) ClassifierResult {
 	output := ClassifierResult{API: model.API, Provider: model.Provider, Model: model.ID, Answers: ClassifierAnswers{}, StopReason: ClassifierStopReasonStop, Timestamp: time.Now().UnixMilli()}
 	fail := func(err error) ClassifierResult {
 		output.StopReason = ClassifierStopReasonError
 		if ctx.Err() != nil {
 			output.StopReason = ClassifierStopReasonAborted
 		}
-		output.ErrorMessage = classifierErrorMessage(err, transport.label)
+		output.ErrorMessage = classifierErrorMessage(err, transport.Label)
 		return output
 	}
-	if model.API != transport.api {
+	if model.API != transport.API {
 		return fail(fmt.Errorf("Unsupported classifier API: %s", model.API))
 	}
-	if options.APIKey == "" {
-		return fail(fmt.Errorf("No API key for provider: %s", model.Provider))
+	if len(request.Images) > 0 {
+		return fail(fmt.Errorf("%s does not support image input", transport.Label))
 	}
-	var payload any = transport.payload(model, systemOneWireRequest{state: request.State, questions: systemOneWireQuestions(request.Questions)})
-	if options.OnPayload != nil {
-		transformed, replace, err := options.OnPayload(payload, model)
-		if err != nil {
-			return fail(err)
-		}
-		if replace {
-			payload = transformed
-		}
-	}
-	body, err := marshalJSONValue(payload)
+	envelope, err := PostClassifierRequest(ctx, transport.Label, transport.URL(model), model, transport.Payload(model, SystemOneWireRequest{State: request.State, Questions: SystemOneWireQuestions(request.Questions)}), options, nil)
 	if err != nil {
 		return fail(err)
 	}
-	headers := systemOneRequestHeaders(model, options.APIKey, options.Headers)
-	target := transport.url(model)
-	response, err := retryClassifierRequest(ctx, options, func() (classifierResponse, error) {
-		return classifierPost(ctx, options, transport.label, target, headers, body)
-	})
-	if err != nil {
-		return fail(err)
-	}
-	if options.OnResponse != nil {
-		if err := options.OnResponse(ProviderResponse{Status: response.status, Headers: headersToRecord(response.headers)}, model); err != nil {
-			return fail(err)
-		}
-	}
-	var envelope json.RawMessage = response.body
-	if !json.Valid(envelope) {
-		return fail(errors.New("Unexpected response body: invalid JSON"))
-	}
-	result, err := transport.output(envelope)
+	result, err := transport.Output(envelope)
 	if err != nil {
 		return fail(err)
 	}
 	// Set before parsing answers: a request with malformed answers was still billed.
-	output.Usage = parseUsage(result["usage"], model)
-	answers, err := parseAnswers(transport.label, result["answers"], request)
+	output.Usage = ParseClassifierUsage(result["usage"], model)
+	answers, err := parseAnswers(transport.Label, result["answers"], request)
 	if err != nil {
 		return fail(err)
 	}
@@ -273,14 +214,14 @@ func serviceURL(baseURL, path string) string {
 
 // typesafeSystemOneTransport is TypeSafe's native System One protocol. OpenRouter serves the same protocol, so both
 // providers use this API with different base URLs.
-var typesafeSystemOneTransport = systemOneTransport{
-	api:   ClassifierAPITypesafeSystemOne,
-	label: "System One API",
-	url:   func(model ClassifierModel) string { return serviceURL(model.BaseURL, "systemone") },
-	payload: func(model ClassifierModel, request systemOneWireRequest) map[string]any {
-		return map[string]any{"model": model.ID, "state": request.state, "questions": request.questions}
+var typesafeSystemOneTransport = SystemOneTransport{
+	API:   ClassifierAPITypesafeSystemOne,
+	Label: "System One API",
+	URL:   func(model ClassifierModel) string { return serviceURL(model.BaseURL, "systemone") },
+	Payload: func(model ClassifierModel, request SystemOneWireRequest) map[string]any {
+		return map[string]any{"model": model.ID, "state": request.State, "questions": request.Questions}
 	},
-	output: func(body json.RawMessage) (map[string]json.RawMessage, error) {
+	Output: func(body json.RawMessage) (map[string]json.RawMessage, error) {
 		object, ok := jsonObjectOf(body)
 		if !ok {
 			return nil, errors.New("System One API returned an unexpected response")
@@ -292,7 +233,7 @@ var typesafeSystemOneTransport = systemOneTransport{
 // ClassifyTypesafeSystemOne runs TypeSafe's native System One protocol with public bool values mapped to wire-level
 // noul. OpenRouter, OpenCode Zen and Vercel AI Gateway serve the same protocol at other base URLs.
 func ClassifyTypesafeSystemOne(ctx context.Context, model ClassifierModel, request ClassifierContext, options ClassifierOptions) ClassifierResult {
-	return classifySystemOne(ctx, typesafeSystemOneTransport, model, request, options)
+	return ClassifySystemOne(ctx, typesafeSystemOneTransport, model, request, options)
 }
 
 const cloudflareSystemOneLabel = "Cloudflare Workers AI"
@@ -318,14 +259,14 @@ func cloudflareErrorMessage(errors json.RawMessage) string {
 // with { model, input }. The REST API wraps the model output in Cloudflare's API envelope. Third-party models such as
 // typesafe/jev add a run record: { success, result: { state: "Completed", result: { answers, usage } } }. Cloudflare-hosted
 // models such as @cf/cloudflare/clef return the output directly: { success, result: { model, answers, usage } }.
-var cloudflareSystemOneTransport = systemOneTransport{
-	api:   ClassifierAPICloudflareWorkersAISystemOne,
-	label: cloudflareSystemOneLabel,
-	url:   func(model ClassifierModel) string { return serviceURL(model.BaseURL, "run") },
-	payload: func(model ClassifierModel, request systemOneWireRequest) map[string]any {
-		return map[string]any{"model": model.ID, "input": map[string]any{"state": request.state, "questions": request.questions}}
+var cloudflareSystemOneTransport = SystemOneTransport{
+	API:   ClassifierAPICloudflareWorkersAISystemOne,
+	Label: cloudflareSystemOneLabel,
+	URL:   func(model ClassifierModel) string { return serviceURL(model.BaseURL, "run") },
+	Payload: func(model ClassifierModel, request SystemOneWireRequest) map[string]any {
+		return map[string]any{"model": model.ID, "input": map[string]any{"state": request.State, "questions": request.Questions}}
 	},
-	output: func(body json.RawMessage) (map[string]json.RawMessage, error) {
+	Output: func(body json.RawMessage) (map[string]json.RawMessage, error) {
 		object, ok := jsonObjectOf(body)
 		if !ok {
 			return nil, errors.New(cloudflareSystemOneLabel + " returned an unexpected response")
@@ -337,7 +278,7 @@ var cloudflareSystemOneTransport = systemOneTransport{
 		if !ok {
 			return nil, errors.New(cloudflareSystemOneLabel + " returned an unexpected response")
 		}
-		// upstream: packages/ai/src/api/cloudflare-workers-ai-system-one.ts:transport.output (`"answers" in result`).
+		// upstream: packages/ai/src/api/cloudflare-workers-ai-system-one.ts:transport.Output (`"answers" in result`).
 		if _, direct := run["answers"]; direct {
 			return run, nil
 		}
@@ -379,7 +320,7 @@ func jsJSONValueString(raw json.RawMessage) string {
 		}
 		return strings.Join(parts, ",")
 	}
-	if _, ok := jsonObjectOf(raw); ok {
+	if IsRecord(raw) {
 		return "[object Object]"
 	}
 	return string(bytes.TrimSpace(raw))
@@ -388,10 +329,10 @@ func jsJSONValueString(raw json.RawMessage) string {
 // ClassifyCloudflareWorkersAISystemOne runs System One models on the Workers AI REST endpoint, with public bool values
 // mapped to wire-level noul.
 func ClassifyCloudflareWorkersAISystemOne(ctx context.Context, model ClassifierModel, request ClassifierContext, options ClassifierOptions) ClassifierResult {
-	return classifySystemOne(ctx, cloudflareSystemOneTransport, model, request, options)
+	return ClassifySystemOne(ctx, cloudflareSystemOneTransport, model, request, options)
 }
 
-func classifierModule(classify func(context.Context, ClassifierModel, ClassifierContext, ClassifierOptions) ClassifierResult) *ProviderClassifier {
+func classifierModule(classify ClassifierFunction) *ProviderClassifier {
 	return &ProviderClassifier{Classify: func(ctx context.Context, model *ClassifierModel, request ClassifierContext, options ClassifierOptions) (ClassifierResult, error) {
 		return classify(ctx, *model, request, options), nil
 	}}

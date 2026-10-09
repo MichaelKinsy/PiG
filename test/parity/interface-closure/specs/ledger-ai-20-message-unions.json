@@ -1,0 +1,36 @@
+[
+ {
+  "ids": [
+   "pkg:ai/.#ToolResultMessage",
+   "pkg:ai/compat#ToolResultMessage"
+  ],
+  "targets": [
+   "ai/messages.go#ToolResultMessage"
+  ],
+  "production": [
+   "call:agent/messages.go#ConvertToLLM"
+  ],
+  "evidence": [
+   "test:ai/wire_shape_upstream_test.go#TestWireDiscriminatorsMatchUpstreamLiterals",
+   "test:ai/transcript_test.go#TestMessageJSONContainsOnlyVariantFields"
+  ],
+  "rationale": "ToolResultMessage<TDetails> is the single variant {role: \"toolResult\", ...}; Go ToolResultMessage has a field for every property (details is any, DetailsNull keeps an explicit null) and emits the role literal and exactly the upstream property names (wire test)."
+ },
+ {
+  "ids": [
+   "pkg:ai/.#Message",
+   "pkg:ai/compat#Message"
+  ],
+  "targets": [
+   "ai/messages.go#Message"
+  ],
+  "production": [
+   "call:agent/agent_loop.go#loopRun.streamAssistantResponse"
+  ],
+  "evidence": [
+   "test:ai/wire_shape_upstream_test.go#TestWireDiscriminatorsMatchUpstreamLiterals",
+   "test:ai/transcript_test.go#TestMessageJSONContainsOnlyVariantFields"
+  ],
+  "rationale": "Message is the union of the system, user, assistant and tool-result messages; Go declares it as the closed interface implemented by exactly those four types (each variant row is closed)."
+ }
+]

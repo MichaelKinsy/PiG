@@ -1,0 +1,73 @@
+# Behavior family: interactive-rendering
+# Upstream evidence: real Pi 1.1.0 (extensions/sdk-ts/node_modules) run side by side with PiG in tmux at 100x35. Pi 1.1.0 onOutputPadChange (interactive-mode.ts,
+# #10557) calls setOutputPad on every transcript child that has it, instead of rebuilding the transcript (and only while streaming, as 1.0.4 did), so the `!` block
+# that already exists changes padding in place.
+# Surface: run `!echo hello world`, open /settings, change "Output padding" from 1 to 0, close the selector. The crop runs from the block's top border to the output
+# line, so the header, the output row and their padding are inside it. Comparison is the byte-exact escaped capture.
+
+name = "54-output-pad-setting-updates-bash-block"
+description = "Changing Output padding in /settings re-pads an existing `!` command block in place."
+covers = [
+  "packages/coding-agent/src/modes/interactive/interactive-mode.ts",
+  "packages/coding-agent/src/modes/interactive/components/bash-execution.ts",
+  "packages/coding-agent/src/modes/interactive/components/settings-selector.ts",
+]
+tags = ["fast", "hermetic", "tui"]
+driver = "interactive-tmux"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_CODING_AGENT_DIR=testdata/pig-agent"]
+pi = ["PI_CODING_AGENT_DIR=testdata/pi-agent", "PI_SKIP_VERSION_CHECK=1"]
+pi_extensions = ["../../testdata/test-faux-provider.ts"]
+pig_args = ["--no-extensions", "--session-dir", "{{TEMP}}/sessions"]
+pi_args = ["--session-dir", "{{TEMP}}/sessions"]
+
+[tmux]
+width = 100
+height = 35
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "(auto)"
+ready_timeout_seconds = 30
+cwd = "testdata/bash-wrap-cwd"
+capture_start = "────────────────────────────────────────────────────────────────────────────────"
+capture_end = "hello world"
+
+[[tmux.steps]]
+keys = ["!echo hello world", "Enter"]
+settle_seconds = 3
+wait_contains = ["$ echo hello world", "hello world"]
+wait_timeout_seconds = 10
+
+[[tmux.steps]]
+keys = ["/settings", "Enter"]
+wait_contains = ["Type to search · Enter/Space to change · Esc to cancel"]
+wait_timeout_seconds = 10
+settle_seconds = 1
+
+# Synchronize the modal input-owner handoff before entering the filter.
+[[tmux.steps]]
+keys = ["Space"]
+settle_seconds = 1
+
+[[tmux.steps]]
+keys = ["output padding"]
+wait_contains = ["> output padding"]
+wait_timeout_seconds = 10
+settle_seconds = 1
+
+[[tmux.steps]]
+keys = ["Enter"]
+settle_seconds = 1
+
+[[tmux.steps]]
+keys = ["Escape"]
+settle_seconds = 2
+
+[assert]
+both_reach_ready = true
+both_contain = ["$ echo hello world", "hello world"]
+both_not_contain = ["unknown command", "panic:", "goroutine "]
+escaped_output_equal = true
+runtime_ratio_max = 2.0
+runs = 3

@@ -41,6 +41,7 @@ func TestBakePigletInlinesAgentShapeAndStripsBuildOrigins(t *testing.T) {
 		Skills:    []piglet.SkillEntry{{Name: "commit", Origins: []string{"local:" + skillDir}}},
 		Packages:  map[string]string{"base": "npm:@acme/base@1.0.0"},
 		Build:     &piglet.BuildSpec{OutputName: "pig-research"},
+		Slots:     &piglet.Slots{Frontend: &piglet.SlotMember{Member: "./tern"}},
 		Discovery: &piglet.Discovery{Skills: []string{"workspace"}},
 	}
 
@@ -67,8 +68,8 @@ func TestBakePigletInlinesAgentShapeAndStripsBuildOrigins(t *testing.T) {
 	if len(got.Skills) != 1 || got.Skills[0].Name != "commit" || got.Skills[0].Description != "Commit style" || got.Skills[0].Content != "Use the repo commit format." || len(got.Skills[0].Origins) != 0 {
 		t.Errorf("skills = %+v", got.Skills)
 	}
-	if len(got.Packages) != 0 || got.Build != nil {
-		t.Errorf("build-only source survived: packages=%+v build=%+v", got.Packages, got.Build)
+	if len(got.Packages) != 0 || got.Build != nil || got.Slots != nil {
+		t.Errorf("build-only source survived: packages=%+v build=%+v slots=%+v", got.Packages, got.Build, got.Slots)
 	}
 	if got.Discovery == nil || !slices.Equal(got.Discovery.Skills, []string{"workspace"}) {
 		t.Errorf("discovery = %+v", got.Discovery)

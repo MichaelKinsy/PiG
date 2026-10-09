@@ -370,6 +370,8 @@ type encOpts struct {
 	quoted bool
 	// escapeHTML causes '<', '>', and '&' to be escaped in JSON strings.
 	escapeHTML bool
+	// jsNumbers makes numbers print as JavaScript's JSON.stringify does: a non-finite number is null and negative zero is 0.
+	jsNumbers bool
 }
 
 type encoderFunc func(e *encodeState, v reflect.Value, opts encOpts)
@@ -569,7 +571,14 @@ type floatEncoder int // number of bits
 func (bits floatEncoder) encode(e *encodeState, v reflect.Value, opts encOpts) {
 	f := v.Float()
 	if math.IsInf(f, 0) || math.IsNaN(f) {
+		if opts.jsNumbers {
+			e.WriteString("null")
+			return
+		}
 		e.error(&UnsupportedValueError{v, strconv.FormatFloat(f, 'g', -1, int(bits))})
+	}
+	if opts.jsNumbers && f == 0 {
+		f = 0 // JSON.stringify(-0) is "0"
 	}
 
 	// Convert as if by ES6 number to string conversion.

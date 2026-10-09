@@ -1,61 +1,55 @@
 package tui
 
-// ShowImagesSelectorComponent renders a yes/no selector for image display.
+// showImagesSelectListLayout is SHOW_IMAGES_SELECT_LIST_LAYOUT (show-images-selector.ts:5-8).
+var showImagesSelectListLayout = SelectListLayoutOptions{MinPrimaryColumnWidth: 12, MaxPrimaryColumnWidth: 32}
+
+// ShowImagesSelectorComponent renders a yes/no selector for image display: a Container of border, SelectList, border
+// (show-images-selector.ts:14-52).
 type ShowImagesSelectorComponent struct {
-	invalidatable
-	list *FilterableList
+	Container
+	selectList *SelectList
 }
 
-// NewShowImagesSelector creates the selector. currentValue pre-selects
-// the matching entry. Confirm invokes onSelect; cancellation invokes onCancel.
-func NewShowImagesSelector(currentValue bool, onSelect func(bool), onCancel func()) *ShowImagesSelectorComponent {
-	list := NewFilterableList("Show Images", []string{"Yes", "No"})
-	list.EnableSearch = false
-	list.Descriptions = []string{"Show images inline in terminal", "Show text placeholder instead"}
-	list.MinPrimaryColumnWidth = 12 // upstream: packages/coding-agent/src/modes/interactive/components/show-images-selector.ts:SHOW_IMAGES_SELECT_LIST_LAYOUT
-	list.MaxPrimaryColumnWidth = 32
-	list.MaxVisible = 5
-	list.onSelect = func(index int) {
+// NewShowImagesSelectorComponent creates the selector. currentValue pre-selects the matching entry. Confirming an item
+// invokes onSelect with whether it is "yes"; the cancel key invokes onCancel. Each callback may be nil.
+func NewShowImagesSelectorComponent(currentValue bool, onSelect func(show bool), onCancel func()) *ShowImagesSelectorComponent {
+	items := []SelectItem{
+		{Value: "yes", Label: "Yes", Description: "Show images inline in terminal"},
+		{Value: "no", Label: "No", Description: "Show text placeholder instead"},
+	}
+	c := &ShowImagesSelectorComponent{}
+	c.Add(NewDynamicBorder())
+	c.selectList = NewSelectList(items, 5, GetSelectListTheme(), showImagesSelectListLayout)
+	if currentValue {
+		c.selectList.SetSelectedIndex(0)
+	} else {
+		c.selectList.SetSelectedIndex(1)
+	}
+	c.selectList.OnSelect = func(item SelectItem) {
 		if onSelect != nil {
-			onSelect(index == 0)
+			onSelect(item.Value == "yes")
 		}
 	}
-	list.onCancel = onCancel
-	if currentValue {
-		list.SetCursor(0)
-	} else {
-		list.SetCursor(1)
+	c.selectList.OnCancel = func() {
+		if onCancel != nil {
+			onCancel()
+		}
 	}
-
-	return &ShowImagesSelectorComponent{list: list}
+	c.Add(c.selectList)
+	c.Add(NewDynamicBorder())
+	return c
 }
 
-// List returns the underlying FilterableList for input handling.
-func (s *ShowImagesSelectorComponent) List() *FilterableList { return s.list }
+// GetSelectList returns the underlying SelectList (show-images-selector.ts getSelectList).
+func (s *ShowImagesSelectorComponent) GetSelectList() *SelectList { return s.selectList }
 
-// Render wraps the list with dynamic borders.
-func (s *ShowImagesSelectorComponent) Render(width int) []string {
-	border := NewDynamicBorder("")
-	var lines []string
-	lines = append(lines, border.Render(width)...)
-	lines = append(lines, s.list.Render(width)...)
-	lines = append(lines, border.Render(width)...)
-	return lines
-}
-
-// HandleInput delegates to the list.
+// HandleInput delegates to the list. A parent Container reuses this component's lines until it is invalidated, so a list change must invalidate it.
 func (s *ShowImagesSelectorComponent) HandleInput(data string) {
-	s.list.HandleInput(data)
+	s.selectList.HandleInput(data)
+	s.Invalidate()
 }
 
-// SelectedShowImages returns the boolean result after selection.
-// Returns (value, true) if a selection was made, (false, false) otherwise.
-func (s *ShowImagesSelectorComponent) SelectedShowImages() (bool, bool) {
-	if !s.list.Done() {
-		return false, false
-	}
-	if s.list.Cancelled() {
-		return false, false
-	}
-	return s.list.SelectedIndex() == 0, true
+// Render draws the container and clips a row wider than width, as ThemeSelectorComponent.Render does for its SelectList.
+func (s *ShowImagesSelectorComponent) Render(width int) []string {
+	return clipSelectListRows(s.Container.Render(width), width)
 }

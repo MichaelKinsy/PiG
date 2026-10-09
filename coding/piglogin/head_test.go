@@ -1,6 +1,8 @@
 package piglogin
 
 import (
+	"image/color"
+	"maps"
 	"os"
 	"path/filepath"
 	"slices"
@@ -112,4 +114,53 @@ func stripSGR(s string) string {
 		b.WriteByte(s[i])
 	}
 	return b.String()
+}
+
+// SameHead reports a sprite and its copy as the same head, and never two heads whose pixels differ: no pair of sprites,
+// and no copy with one input of its head changed (a pixel of its grid, a color the grid draws or an override). Each
+// change alters some sprite's head, and a changed wordmark leaves the head the same.
+func TestSameHeadMatchesHeadPixels(t *testing.T) {
+	changes := []func(*Variant){
+		func(v *Variant) { v.Sprite[7] = strings.Replace(v.Sprite[7], "P", "s", 1) },
+		func(v *Variant) { v.Body.R ^= 1 },
+		func(v *Variant) { v.Highlight.G ^= 1 },
+		func(v *Variant) { v.Snout.B ^= 1 },
+		func(v *Variant) { v.Blush.R ^= 1 },
+		func(v *Variant) { v.InnerEar.G ^= 1 },
+		func(v *Variant) { v.PaletteOverrides = map[byte]color.RGBA{'O': {1, 2, 3, 0xFF}} },
+	}
+	altered := make([]bool, len(changes))
+	variants := slices.Clone(Variants)
+	for _, variant := range Variants {
+		copyOf := func() Variant {
+			copied := variant
+			copied.Sprite = slices.Clone(MascotSpriteFor(variant))
+			copied.PaletteOverrides = maps.Clone(variant.PaletteOverrides)
+			return copied
+		}
+		if !SameHead(variant, copyOf()) {
+			t.Fatalf("%s is not the same head as its copy", variant.ID)
+		}
+		renamed := copyOf()
+		renamed.Name, renamed.Tagline, renamed.Logo = "renamed", "retold", &Logo{Period: color.RGBA{1, 2, 3, 0xFF}}
+		if !SameHead(variant, renamed) {
+			t.Fatalf("%s with another wordmark is not the same head", variant.ID)
+		}
+		for i, change := range changes {
+			changed := copyOf()
+			change(&changed)
+			altered[i] = altered[i] || !slices.Equal(HeadPixels(variant), HeadPixels(changed))
+			variants = append(variants, changed)
+		}
+	}
+	if i := slices.Index(altered, false); i >= 0 {
+		t.Fatalf("change %d alters no sprite's head", i)
+	}
+	for i, a := range variants {
+		for _, b := range variants[i:] {
+			if SameHead(a, b) && !slices.Equal(HeadPixels(a), HeadPixels(b)) {
+				t.Fatalf("SameHead(%s, %s) for heads whose pixels differ", a.ID, b.ID)
+			}
+		}
+	}
 }

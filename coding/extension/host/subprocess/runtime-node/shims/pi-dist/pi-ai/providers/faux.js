@@ -104,8 +104,23 @@ function messageToText(message) {
     }
     return toolResultToText(message);
 }
-function serializeContext(context) {
-    return context.messages.map((message) => `${message.role}:${messageToText(message)}`).join("\n\n");
+/** Length of the prompt text that joins `messages` with blank lines. */
+function joinedLength(messages, count = messages.length) {
+    let length = count > 0 ? (count - 1) * 2 : 0;
+    for (let index = 0; index < count; index++)
+        length += messages[index].length;
+    return length;
+}
+/**
+ * Length of the common prefix of the two joined prompts. Equal messages are compared whole; characters are compared
+ * only from the first message that differs.
+ */
+function commonPromptPrefixLength(previous, current) {
+    let index = 0;
+    while (index < previous.length && index < current.length && previous[index] === current[index])
+        index++;
+    const rest = (messages) => index === messages.length ? "" : (index > 0 ? "\n\n" : "") + messages.slice(index).join("\n\n");
+    return joinedLength(previous, index) + commonPrefixLength(rest(previous), rest(current));
 }
 function commonPrefixLength(a, b) {
     const length = Math.min(a.length, b.length);
@@ -116,8 +131,10 @@ function commonPrefixLength(a, b) {
     return index;
 }
 function withUsageEstimate(message, context, options, promptCache) {
-    const promptText = serializeContext(context);
-    const promptTokens = estimateTokens(promptText);
+    // One text per message; the whole prompt joins them with blank lines.
+    const prompt = context.messages.map((message) => `${message.role}:${messageToText(message)}`);
+    const promptLength = joinedLength(prompt);
+    const promptTokens = Math.ceil(promptLength / 4);
     const outputTokens = estimateTokens(assistantContentToText(message.content));
     let input = promptTokens;
     let cacheRead = 0;
@@ -126,15 +143,15 @@ function withUsageEstimate(message, context, options, promptCache) {
     if (sessionId && options?.cacheRetention !== "none") {
         const previousPrompt = promptCache.get(sessionId);
         if (previousPrompt) {
-            const cachedChars = commonPrefixLength(previousPrompt, promptText);
-            cacheRead = estimateTokens(previousPrompt.slice(0, cachedChars));
-            cacheWrite = estimateTokens(promptText.slice(cachedChars));
+            const cachedChars = commonPromptPrefixLength(previousPrompt, prompt);
+            cacheRead = Math.ceil(cachedChars / 4);
+            cacheWrite = Math.ceil((promptLength - cachedChars) / 4);
             input = Math.max(0, promptTokens - cacheRead);
         }
         else {
             cacheWrite = promptTokens;
         }
-        promptCache.set(sessionId, promptText);
+        promptCache.set(sessionId, prompt);
     }
     return {
         ...message,

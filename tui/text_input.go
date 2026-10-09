@@ -206,7 +206,8 @@ func (t *TextInput) HandleInput(data string) {
 		t.moveWordForward()
 		return
 	}
-	if printable, ok := DecodePrintableKey(data); ok {
+	// input.ts decodes only Kitty CSI-u text; a modifyOtherKeys sequence carries ESC and is rejected like any control input.
+	if printable, ok := DecodeKittyPrintable(data); ok {
 		t.insertCharacter(printable)
 		return
 	}

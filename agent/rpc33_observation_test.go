@@ -63,7 +63,7 @@ func TestAssistantHeldSinkObservesShallowMessage(t *testing.T) {
 				var result *ai.AssistantMessage
 				var ended, persisted *AssistantMessage
 				var order []string
-				a := NewAgent(AgentOptions{
+				a := mustNewAgent(AgentOptions{
 					OnEvent: func(ev AgentEvent) {
 						switch ev := ev.(type) {
 						case MessageStartEvent:
@@ -98,7 +98,7 @@ func TestAssistantHeldSinkObservesShallowMessage(t *testing.T) {
 					OnMessagePersist: func(message AgentMessage) error { persisted = message.Assistant; return nil },
 				})
 				// Cancellation drains the provider terminal response just as Agent.abort does.
-				message, _, consumeErr := a.consumeStream(context.WithoutCancel(ctx), stream, nil, "")
+				message, _, consumeErr := a.testHost().consumeStream(context.WithoutCancel(ctx), stream, nil, "")
 				if consumeErr != nil {
 					t.Fatal(consumeErr)
 				}
@@ -210,7 +210,7 @@ func TestAssistantHeldToolUpdateObservesFinalization(t *testing.T) {
 				t.Fatal(err)
 			}
 			observed := false
-			a := NewAgent(AgentOptions{OnEvent: func(event AgentEvent) {
+			a := mustNewAgent(AgentOptions{OnEvent: func(event AgentEvent) {
 				update, ok := event.(MessageUpdateEvent)
 				if !ok {
 					return
@@ -246,7 +246,7 @@ func TestAssistantHeldToolUpdateObservesFinalization(t *testing.T) {
 					t.Errorf("held final arguments=%v", call.Arguments)
 				}
 			}})
-			if _, _, err := a.consumeStream(context.WithoutCancel(ctx), stream, nil, ""); err != nil {
+			if _, _, err := a.testHost().consumeStream(context.WithoutCancel(ctx), stream, nil, ""); err != nil {
 				t.Fatal(err)
 			}
 			if !observed {
@@ -265,7 +265,7 @@ func TestAssistantUpdateRetainsFullProviderEvent(t *testing.T) {
 	event := ai.TextDeltaEvent{ContentIndex: 0, Delta: "one", Partial: partial}
 	var before, after, providerAfter AgentMessage
 	var retained *AssistantMessage
-	a := NewAgent(AgentOptions{OnEvent: func(ev AgentEvent) {
+	a := mustNewAgent(AgentOptions{OnEvent: func(ev AgentEvent) {
 		update := ev.(MessageUpdateEvent)
 		retained = update.Message.Assistant
 		encoded, err := json.Marshal(update.Message)
@@ -291,7 +291,7 @@ func TestAssistantUpdateRetainsFullProviderEvent(t *testing.T) {
 		}
 		providerAfter = AgentMessage{Assistant: agentAssistantMessage(provider)}
 	}})
-	a.emitAssistantUpdate(nil, partial, event)
+	a.testHost().emitAssistantUpdate(nil, partial, event)
 	if before.Assistant.Content[0].(ai.TextContent).Text != "one" || after.Assistant.Content[0].(ai.TextContent).Text != "one two" {
 		t.Fatalf("retained nested content did not advance: before=%+v after=%+v", before.Assistant.Content, after.Assistant.Content)
 	}

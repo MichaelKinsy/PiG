@@ -34,7 +34,8 @@ func TestUIContext_AllUpstreamMethodsPresent(t *testing.T) {
 		"SetWorkingVisible",       // v0.71.0 interactive/rpc UI contexts
 		"SetWorkingIndicator",     // types.ts:153
 		"SetHiddenThinkingLabel",  // types.ts:156
-		"SetWidget",               // types.ts:159 (overload merged)
+		"SetWidget",               // types.ts:188 (string[] overload)
+		"SetWidgetFactory",        // types.ts:189 (component-factory overload; Go cannot overload a method)
 		"SetFooter",               // types.ts:172
 		"SetHeader",               // types.ts:181
 		"SetTitle",                // types.ts:184
@@ -111,19 +112,19 @@ func TestNoopUIContext_AllMethodsReturnUpstreamDefaults(t *testing.T) {
 	ctx := context.Background()
 
 	t.Run("Select_returnsEmpty", func(t *testing.T) {
-		got, err := ui.Select(ctx, "t", []string{"a"}, nil)
+		got, err := ui.Select(ctx, "t", []string{"a"}, extension.ExtensionUIDialogOptions{})
 		if got != "" || err != nil {
 			t.Errorf("Select = (%q, %v), want (\"\", nil): upstream: async () => undefined", got, err)
 		}
 	})
 	t.Run("Confirm_returnsFalse", func(t *testing.T) {
-		got, err := ui.Confirm(ctx, "t", "m", nil)
+		got, err := ui.Confirm(ctx, "t", "m", extension.ExtensionUIDialogOptions{})
 		if got || err != nil {
 			t.Errorf("Confirm = (%v, %v), want (false, nil): upstream: async () => false", got, err)
 		}
 	})
 	t.Run("Input_returnsEmpty", func(t *testing.T) {
-		got, err := ui.Input(ctx, "t", "p", nil)
+		got, err := ui.Input(ctx, "t", "p", extension.ExtensionUIDialogOptions{})
 		if got != "" || err != nil {
 			t.Errorf("Input = (%q, %v), want (\"\", nil)", got, err)
 		}
@@ -169,7 +170,7 @@ func TestNoopUIContext_AllMethodsReturnUpstreamDefaults(t *testing.T) {
 		}
 	})
 	t.Run("SetTheme_returnsUpstreamFailure", func(t *testing.T) {
-		got := ui.SetTheme("dark")
+		got := ui.SetTheme(extension.ThemeName("dark"))
 		if got.Success {
 			t.Errorf("SetTheme.Success = true, want false")
 		}
@@ -190,7 +191,7 @@ func TestNoopUIContext_AllMethodsReturnUpstreamDefaults(t *testing.T) {
 	ui.SetStatus("k", "v")
 	ui.SetWorkingMessage("")
 	ui.SetWorkingVisible(false)
-	ui.SetWorkingIndicator(nil)
+	ui.SetWorkingIndicator(extension.WorkingIndicatorOptions{})
 	ui.SetHiddenThinkingLabel("")
 	ui.SetWidget("k", []string{"x"}, nil)
 	ui.SetFooter(nil)
@@ -275,32 +276,36 @@ func (*fakeUIContext) Confirm(context.Context, string, string, extension.Extensi
 func (*fakeUIContext) Input(context.Context, string, string, extension.ExtensionUIDialogOptions) (string, error) {
 	panic("unreached")
 }
-func (*fakeUIContext) Notify(string, string)                                   {}
-func (*fakeUIContext) OnTerminalInput(extension.TerminalInputHandler) func()   { return func() {} }
-func (*fakeUIContext) SetStatus(string, string)                                {}
-func (*fakeUIContext) SetWorkingMessage(string)                                {}
-func (*fakeUIContext) SetWorkingVisible(bool)                                  {}
-func (*fakeUIContext) SetWorkingIndicator(extension.WorkingIndicatorOptions)   {}
-func (*fakeUIContext) SetHiddenThinkingLabel(string)                           {}
-func (*fakeUIContext) SetWidget(string, any, extension.ExtensionWidgetOptions) {}
-func (*fakeUIContext) SetFooter(any)                                           {}
-func (*fakeUIContext) SetHeader(any)                                           {}
-func (*fakeUIContext) SetLogin(extension.LoginDefinition) error                { return nil }
-func (*fakeUIContext) SetTitle(string)                                         {}
-func (*fakeUIContext) Custom(context.Context, any, any) (any, error)           { return nil, nil }
-func (*fakeUIContext) PasteToEditor(string)                                    {}
-func (*fakeUIContext) SetEditorText(string)                                    {}
-func (*fakeUIContext) GetEditorText() string                                   { return "" }
-func (*fakeUIContext) Editor(context.Context, string, string) (string, error)  { return "", nil }
+func (*fakeUIContext) Notify(string, string)                                 {}
+func (*fakeUIContext) OnTerminalInput(extension.TerminalInputHandler) func() { return func() {} }
+func (*fakeUIContext) SetStatus(string, string)                              {}
+func (*fakeUIContext) SetWorkingMessage(string)                              {}
+func (*fakeUIContext) SetWorkingVisible(bool)                                {}
+func (*fakeUIContext) SetWorkingIndicator(extension.WorkingIndicatorOptions) {}
+func (*fakeUIContext) SetHiddenThinkingLabel(string)                         {}
+func (*fakeUIContext) SetWidgetFactory(string, extension.WidgetFactory, *extension.ExtensionWidgetOptions) {
+}
+func (*fakeUIContext) SetWidget(string, []string, *extension.ExtensionWidgetOptions) {}
+func (*fakeUIContext) SetFooter(extension.FooterFactory)                             {}
+func (*fakeUIContext) SetHeader(extension.HeaderFactory)                             {}
+func (*fakeUIContext) SetLogin(extension.LoginDefinition) error                      { return nil }
+func (*fakeUIContext) SetTitle(string)                                               {}
+func (*fakeUIContext) Custom(context.Context, extension.CustomFactory, *extension.CustomOptions) (any, error) {
+	return nil, nil
+}
+func (*fakeUIContext) PasteToEditor(string)                                   {}
+func (*fakeUIContext) SetEditorText(string)                                   {}
+func (*fakeUIContext) GetEditorText() string                                  { return "" }
+func (*fakeUIContext) Editor(context.Context, string, string) (string, error) { return "", nil }
 func (*fakeUIContext) AddAutocompleteProvider(extension.AutocompleteProviderFactory) error {
 	return nil
 }
-func (*fakeUIContext) SetEditorComponent(any)                   {}
-func (*fakeUIContext) GetEditorComponent() any                  { return nil }
-func (*fakeUIContext) Theme() extension.Theme                   { return nil }
-func (*fakeUIContext) GetAllThemes() []extension.ThemeMeta      { return nil }
-func (*fakeUIContext) GetTheme(string) (extension.Theme, error) { return nil, nil }
-func (*fakeUIContext) SetTheme(any) extension.SetThemeResult {
+func (*fakeUIContext) SetEditorComponent(extension.EditorFactory)  {}
+func (*fakeUIContext) GetEditorComponent() extension.EditorFactory { return nil }
+func (*fakeUIContext) Theme() extension.Theme                      { return nil }
+func (*fakeUIContext) GetAllThemes() []extension.ThemeMeta         { return nil }
+func (*fakeUIContext) GetTheme(string) (extension.Theme, error)    { return nil, nil }
+func (*fakeUIContext) SetTheme(extension.ThemeSelection) extension.SetThemeResult {
 	return extension.SetThemeResult{Success: true}
 }
 func (*fakeUIContext) GetToolsExpanded() bool { return false }
@@ -310,4 +315,46 @@ func (*fakeUIContext) RunRemoteOverlay(extension.RemoteOverlayOptions, extension
 }
 func (*fakeUIContext) OnRemoteTerminalInput(string, extension.RemoteTerminalInputHandler) func() {
 	return func() {}
+}
+
+// TestUIContext_SettersTakePiTypedFactories locks the Pi parameter type of each ExtensionUIContext setter that takes a component factory or a
+// theme object: one pattern for all of them, the typed Go form of the Pi union or function type, never `any`. Each case names the Pi
+// declaration (types.ts:188-193 setWidget, :201 setFooter, :208 setHeader, :278/:281 setEditorComponent/getEditorComponent, :293 setTheme).
+func TestUIContext_SettersTakePiTypedFactories(t *testing.T) {
+	ui := reflect.TypeFor[extension.UIContext]()
+	cases := []struct {
+		method string
+		in     []reflect.Type
+		out    []reflect.Type
+	}{
+		{"SetWidget", []reflect.Type{reflect.TypeFor[string](), reflect.TypeFor[[]string](), reflect.TypeFor[*extension.ExtensionWidgetOptions]()}, nil},
+		{"SetWidgetFactory", []reflect.Type{reflect.TypeFor[string](), reflect.TypeFor[extension.WidgetFactory](), reflect.TypeFor[*extension.ExtensionWidgetOptions]()}, nil},
+		{"SetFooter", []reflect.Type{reflect.TypeFor[extension.FooterFactory]()}, nil},
+		{"SetHeader", []reflect.Type{reflect.TypeFor[extension.HeaderFactory]()}, nil},
+		{"SetEditorComponent", []reflect.Type{reflect.TypeFor[extension.EditorFactory]()}, nil},
+		{"GetEditorComponent", nil, []reflect.Type{reflect.TypeFor[extension.EditorFactory]()}},
+		{"SetTheme", []reflect.Type{reflect.TypeFor[extension.ThemeSelection]()}, []reflect.Type{reflect.TypeFor[extension.SetThemeResult]()}},
+	}
+	for _, tc := range cases {
+		method, ok := ui.MethodByName(tc.method)
+		if !ok {
+			t.Errorf("UIContext has no %s", tc.method)
+			continue
+		}
+		sig := method.Type
+		if sig.NumIn() != len(tc.in) || sig.NumOut() != len(tc.out) {
+			t.Errorf("%s = %v, want %d parameters and %d results", tc.method, sig, len(tc.in), len(tc.out))
+			continue
+		}
+		for i, want := range tc.in {
+			if sig.In(i) != want {
+				t.Errorf("%s parameter %d is %v, want %v", tc.method, i, sig.In(i), want)
+			}
+		}
+		for i, want := range tc.out {
+			if sig.Out(i) != want {
+				t.Errorf("%s result %d is %v, want %v", tc.method, i, sig.Out(i), want)
+			}
+		}
+	}
 }

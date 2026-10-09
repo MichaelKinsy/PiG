@@ -8,6 +8,8 @@ import (
 	"sync/atomic"
 	"testing"
 
+	"github.com/MichaelKinsy/PiG/coding/extension"
+
 	"github.com/MichaelKinsy/PiG/tui"
 )
 
@@ -20,7 +22,7 @@ var (
 
 // colorQueryRenderer is the `queryTerminalColors` mock: every query is recorded and answered with the current answer, `{}` by default.
 type colorQueryRenderer struct {
-	tui.Renderer
+	tui.TUI
 	options       []tui.TerminalColorQueryOptions
 	answer        func() <-chan tui.TerminalColorsResult
 	invalidations atomic.Int32
@@ -43,8 +45,8 @@ func (r *colorQueryRenderer) QueryTerminalColors(options tui.TerminalColorQueryO
 	}
 	return r.answer()
 }
-func (r *colorQueryRenderer) Invalidate()    { r.invalidations.Add(1); r.Renderer.Invalidate() }
-func (r *colorQueryRenderer) RequestRender() { r.renders.Add(1); r.Renderer.RequestRender() }
+func (r *colorQueryRenderer) Invalidate()           { r.invalidations.Add(1); r.TUI.Invalidate() }
+func (r *colorQueryRenderer) RequestRender(...bool) { r.renders.Add(1); r.TUI.RequestRender() }
 
 // syncedBuffer is the fixture's stdout: the renderer's render goroutine and the controller's escape writes share it, as they share process.stdout, so it serializes its callers.
 type syncedBuffer struct {
@@ -79,13 +81,13 @@ func themeControllerNew(t *testing.T, configured string, initial *string) *theme
 	restoreStartupTheme(t)
 	t.Cleanup(func() { tui.SetTerminalColors(tui.TerminalColors{}); tui.SetTerminalColorScheme("") })
 	manager := NewInMemorySettingsManager(Settings{Theme: configured})
-	m := NewInteractiveMode(InteractiveOptions{
+	m := NewInteractiveMode(nil, InteractiveModeOptions{
 		CWD: t.TempDir(), AgentDir: t.TempDir(),
 		Settings: manager.Get(), SettingsManager: manager, InitialThemeSetting: initial,
 	})
 	ctx := t.Context()
 	output := new(syncedBuffer)
-	renderer := &colorQueryRenderer{Renderer: tui.NewWithOutput(output, 100, 30)}
+	renderer := &colorQueryRenderer{TUI: tui.NewWithOutput(output, 100, 30)}
 	m.tuiInst = renderer
 	m.editor = tui.NewEditor()
 	m.chatContainer = tui.NewContainer()
@@ -147,14 +149,14 @@ func TestThemeControllerNativeUpstream(t *testing.T) {
 
 		// Grayscale until the terminal answers.
 		assertNativeControllerTheme(t, "system")
-		if got := tui.ActiveTheme().Fg("error"); got != "\x1b[39m" {
+		if got := tui.ActiveTheme().GetFgAnsi("error"); got != "\x1b[39m" {
 			t.Errorf("error before the colors arrive = %q, want the default foreground", got)
 		}
 
 		answer <- tui.TerminalColorsResult{Colors: themeControllerDark}
 		close(answer)
 		f.flush(t)
-		if got := tui.ActiveTheme().Fg("error"); !strings.HasPrefix(got, "\x1b[38;") {
+		if got := tui.ActiveTheme().GetFgAnsi("error"); !strings.HasPrefix(got, "\x1b[38;") {
 			t.Errorf("error after the colors arrive = %q, want a color", got)
 		}
 	})
@@ -164,7 +166,7 @@ func TestThemeControllerNativeUpstream(t *testing.T) {
 		f := themeControllerNew(t, "", nil)
 		f.m.applyThemeFromSettings(f.ctx)
 		f.flush(t)
-		if got := tui.ActiveTheme().Fg("error"); got != "\x1b[38;5;1m" {
+		if got := tui.ActiveTheme().GetFgAnsi("error"); got != "\x1b[38;5;1m" {
 			t.Fatalf("error after a timeout = %q, want palette index 1", got)
 		}
 
@@ -172,8 +174,8 @@ func TestThemeControllerNativeUpstream(t *testing.T) {
 			t.Fatalf("query options = %+v, want one query with a late-reply callback", f.renderer.options)
 		}
 		f.renderer.options[0].OnLateReply(themeControllerDark)
-		if _, ok := tui.ActiveTheme().ColorValues()["error"].(tui.RgbColorValue); !ok {
-			t.Errorf("error after the late reply = %#v, want an rgb color", tui.ActiveTheme().ColorValues()["error"])
+		if _, ok := tui.ActiveTheme().Colors()["error"].(tui.RgbColorValue); !ok {
+			t.Errorf("error after the late reply = %#v, want an rgb color", tui.ActiveTheme().Colors()["error"])
 		}
 	})
 
@@ -256,7 +258,7 @@ func TestThemeControllerNativeUpstream(t *testing.T) {
 		f := themeControllerNew(t, "dark", new("light"))
 		f.m.applyThemeFromSettings(f.ctx)
 
-		if result := (&ExtUIContext{m: f.m}).SetTheme("dark"); !result.Success {
+		if result := (&ExtUIContext{m: f.m}).SetTheme(extension.ThemeName("dark")); !result.Success {
 			t.Fatal(result)
 		}
 		second := NewInMemorySettingsManager(Settings{Theme: "light"})

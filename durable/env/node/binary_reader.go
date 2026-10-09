@@ -23,11 +23,11 @@ const binaryReadChunk = 1024 * 1024
 const scanChunkBytes = 64 * 1024
 
 func closedError(what, path string) *durableenv.FileError {
-	return &durableenv.FileError{Code: durableenv.FileErrorInvalid, Message: what + " is closed", Path: path}
+	return durableenv.NewFileError(durableenv.FileErrorInvalid, what+" is closed", path, nil)
 }
 
 func symlinkRefused(path string, cause error) *durableenv.FileError {
-	return &durableenv.FileError{Code: durableenv.FileErrorInvalid, Message: "Refusing to follow a symbolic link", Path: path, Cause: cause}
+	return durableenv.NewFileError(durableenv.FileErrorInvalid, "Refusing to follow a symbolic link", path, cause)
 }
 
 // nodeBinaryReader is a BinaryReader over one open file. Reads run concurrently; Close waits for those in flight.
@@ -66,7 +66,7 @@ func (reader *nodeBinaryReader) Read(ctx context.Context, offset, length int64) 
 		return nil, closedError("Binary reader", reader.path)
 	}
 	if offset < 0 || offset > maxSafeInteger || length < 0 || length > maxSafeInteger {
-		return nil, &durableenv.FileError{Code: durableenv.FileErrorInvalid, Message: "Offset and length must be non-negative safe integers", Path: reader.path}
+		return nil, durableenv.NewFileError(durableenv.FileErrorInvalid, "Offset and length must be non-negative safe integers", reader.path, nil)
 	}
 	var result []byte
 	for total := int64(0); total < length; {
@@ -108,7 +108,7 @@ func (reader *nodeBinaryReader) ScanLines(ctx context.Context, options durableen
 	}
 	scanner, err := durableenv.NewLineScanner(options.StartLine, options.EndLine)
 	if err != nil {
-		return durableenv.LineScan{}, &durableenv.FileError{Code: durableenv.FileErrorInvalid, Message: "Invalid line range", Path: reader.path}
+		return durableenv.LineScan{}, durableenv.NewFileError(durableenv.FileErrorInvalid, "Invalid line range", reader.path, nil)
 	}
 	chunk := make([]byte, scanChunkBytes)
 	for position := int64(0); ; {
@@ -172,9 +172,9 @@ func (env *NodeExecutionEnv) OpenBinaryReader(ctx context.Context, path string, 
 	if !stats.Mode().IsRegular() {
 		closeQuietly(file)
 		if stats.IsDir() {
-			return nil, &durableenv.FileError{Code: durableenv.FileErrorIsDirectory, Message: "EISDIR: illegal operation on a directory, read", Path: resolved}
+			return nil, durableenv.NewFileError(durableenv.FileErrorIsDirectory, "EISDIR: illegal operation on a directory, read", resolved, nil)
 		}
-		return nil, &durableenv.FileError{Code: durableenv.FileErrorInvalid, Message: "Not a regular file", Path: resolved}
+		return nil, durableenv.NewFileError(durableenv.FileErrorInvalid, "Not a regular file", resolved, nil)
 	}
 	if abortErr := abortedFileError(ctx, resolved); abortErr != nil {
 		closeQuietly(file)
@@ -204,7 +204,7 @@ func (reader *nodeDirReader) Next(ctx context.Context, maxEntries int) (durablee
 		return durableenv.DirPage{}, closedError("Directory reader", reader.path)
 	}
 	if maxEntries <= 0 {
-		return durableenv.DirPage{}, &durableenv.FileError{Code: durableenv.FileErrorInvalid, Message: "maxEntries must be a positive safe integer", Path: reader.path}
+		return durableenv.DirPage{}, durableenv.NewFileError(durableenv.FileErrorInvalid, "maxEntries must be a positive safe integer", reader.path, nil)
 	}
 	entries := []durableenv.FileInfo{}
 	for !reader.done && len(entries) < maxEntries {

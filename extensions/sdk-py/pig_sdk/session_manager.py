@@ -65,3 +65,31 @@ class SessionManager:
 
     def uses_default_session_dir(self) -> bool:
         return self._read("usesDefaultSessionDir")
+
+
+class SetupSessionManager(SessionManager):
+    """The SessionManager of new_session's ``setup`` callback (types.ts:411, agent-session-runtime.ts:254-257): the reads of SessionManager and the appends that seed the replacement Session. Each append acts on the replacement Session and returns the new entry's id."""
+
+    def _write(self, method: str, **args: Any) -> str:
+        return self._context._call("sessionWrite", {"method": method, "args": args}).get("result")
+
+    def append_message(self, message: dict[str, Any]) -> str:
+        return self._write("appendMessage", message=message)
+
+    def append_custom_entry(self, custom_type: str, data: Any = None) -> str:
+        return self._write("appendCustomEntry", customType=custom_type, data=data)
+
+    def append_custom_message_entry(self, custom_type: str, content: Any, display: bool, details: Any = None) -> str:
+        return self._write("appendCustomMessageEntry", customType=custom_type, content=content, display=display, details=details)
+
+    def append_session_info(self, name: str) -> str:
+        return self._write("appendSessionInfo", name=name)
+
+    def append_model_change(self, provider: str, model_id: str) -> str:
+        return self._write("appendModelChange", provider=provider, modelId=model_id)
+
+    def append_thinking_level_change(self, thinking_level: str) -> str:
+        return self._write("appendThinkingLevelChange", thinkingLevel=thinking_level)
+
+    def append_label_change(self, target_id: str, label: str | None) -> str:
+        return self._write("appendLabelChange", targetId=target_id, label=label)

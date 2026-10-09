@@ -4,6 +4,7 @@
 package tools
 
 import (
+	"errors"
 	"io"
 	"os"
 	"slices"
@@ -71,12 +72,15 @@ func newOutputAccumulator(maxLines, maxBytes int, tempFilePrefix string) *Output
 	}
 }
 
-// Append adds a raw output chunk.
-func (a *OutputAccumulator) Append(data []byte) {
+// errAppendAfterFinish is the error output-accumulator.ts:66 throws.
+var errAppendAfterFinish = errors.New("Cannot append to a finished output accumulator")
+
+// Append adds a raw output chunk; once Finish has run it fails like upstream's append(), which throws.
+func (a *OutputAccumulator) Append(data []byte) error {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 	if a.finished {
-		return
+		return errAppendAfterFinish
 	}
 	a.totalRawBytes += len(data)
 	a.appendDecodedText(a.decoder.decode(data, true))
@@ -88,9 +92,10 @@ func (a *OutputAccumulator) Append(data []byte) {
 	} else if len(data) > 0 {
 		a.rawChunks = append(a.rawChunks, append([]byte(nil), data...))
 	}
+	return nil
 }
 
-// Finish flushes the decoder; later appends are ignored.
+// Finish flushes the decoder; later appends fail.
 func (a *OutputAccumulator) Finish() {
 	a.mu.Lock()
 	defer a.mu.Unlock()
@@ -108,7 +113,7 @@ func (a *OutputAccumulator) Finish() {
 func (a *OutputAccumulator) Snapshot(persistIfTruncated bool) OutputSnapshot {
 	a.mu.Lock()
 	defer a.mu.Unlock()
-	tr := TruncateTail(a.getSnapshotText(), a.maxBytes, a.maxLines)
+	tr := TruncateTail(a.getSnapshotText(), truncationLimits(a.maxBytes, a.maxLines))
 	truncated := a.totalLines > a.maxLines || a.totalDecodedBytes > a.maxBytes
 	truncatedBy := ""
 	if truncated {

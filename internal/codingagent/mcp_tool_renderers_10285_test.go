@@ -1,17 +1,18 @@
 package codingagent
 
 import (
-	"encoding/base64"
+	"context"
 	"encoding/json"
-	"os"
-	"path/filepath"
-	"regexp"
 	"runtime"
 	"strconv"
 	"strings"
 	"sync/atomic"
 	"testing"
 
+	"github.com/MichaelKinsy/PiG/coding/extension/factoryload"
+
+	"github.com/MichaelKinsy/PiG/agent"
+	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/coding/extension/host/inproc"
 	"github.com/MichaelKinsy/PiG/coding/mcpext"
@@ -24,7 +25,7 @@ import (
 
 func mcpRendererRunner(t *testing.T, extra ...extension.Extension) *inproc.Runner {
 	t.Helper()
-	mcp, err := mcpext.NewBuiltin(mcpext.Options{LoadConfig: func(mcpext.EventContext) mcpext.LoadedMcpConfig { return mcpext.LoadedMcpConfig{} }})
+	mcp, err := factoryload.LoadExtensionFromFactory(mcpext.CreateMcpExtension(mcpext.Options{LoadConfig: func(context.Context) mcpext.LoadedMcpConfig { return mcpext.LoadedMcpConfig{} }}), ".", extension.CreateEventBus(), extension.CreateExtensionRuntime(), "builtin:mcp")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -54,66 +55,26 @@ func TestRegression10285RendersCallsToMCPToolsThatAreNotRegistered(t *testing.T)
 		t.Fatalf("mcp renderers = %+v", renderers)
 	}
 	call := renderers.RenderCall(json.RawMessage(`{"query":"pi"}`), tui.ActiveTheme(), extension.ToolRenderContext{})
-	if got := stripANSITest(strings.Join(call.(tui.Component).Render(100), "\n")); !strings.Contains(got, `my_docs/search query="pi"`) {
+	if got := stripANSITest(strings.Join(call.Render(100), "\n")); !strings.Contains(got, `my_docs/search query="pi"`) {
 		t.Fatalf("call = %q", got)
 	}
 	if got := resolve("not_mcp"); got != nil {
 		t.Fatalf("not_mcp renderers = %+v", got)
 	}
 	// Registered tools keep their own renderers.
-	if got := resolve("read"); got == nil || got.RenderCall == nil || strings.TrimSpace(stripANSITest(strings.Join(got.RenderCall(nil, tui.ActiveTheme(), extension.ToolRenderContext{}).(tui.Component).Render(100), ""))) != "own" {
+	if got := resolve("read"); got == nil || got.RenderCall == nil || strings.TrimSpace(stripANSITest(strings.Join(got.RenderCall(nil, tui.ActiveTheme(), extension.ToolRenderContext{}).Render(100), ""))) != "own" {
 		t.Fatalf("read renderers = %+v", got)
 	}
 
 	// The interactive card of an unregistered MCP tool draws with them, not the plain card.
 	m := &InteractiveMode{newRunner: runner}
-	card := tui.NewToolExecutionComponent("mcp__my_docs__search", "")
+	card := newToolCardForTest("mcp__my_docs__search", "")
 	m.applyToolPresentation(card, "call-1", "mcp__my_docs__search", json.RawMessage(`{"query":"pi"}`))
 	if !card.HasDefinition() {
 		t.Fatal("card has no renderers")
 	}
 	if got := stripANSITest(strings.Join(card.Render(100), "\n")); !strings.Contains(got, `my_docs/search query="pi"`) {
 		t.Fatalf("card = %q", got)
-	}
-}
-
-func TestRegression10285RendersThemInHTMLExportsToo(t *testing.T) {
-	tui.SetTheme("dark")
-	dir := t.TempDir()
-	sessionPath := filepath.Join(dir, "session.jsonl")
-	jsonl := `{"type":"session","version":3,"id":"s1","timestamp":"2026-10-03T12:00:00Z","cwd":"` + filepath.ToSlash(dir) + `"}
-{"type":"message","id":"u1","parentId":null,"timestamp":"2026-10-03T12:00:01Z","message":{"role":"user","content":"search","timestamp":1}}
-{"type":"message","id":"a1","parentId":"u1","timestamp":"2026-10-03T12:00:02Z","message":{"role":"assistant","content":[{"type":"toolCall","id":"call-1","name":"mcp__my_docs__search","arguments":{"query":"pi"}}],"api":"anthropic-messages","provider":"anthropic","model":"test","usage":{"input":0,"output":0,"cacheRead":0,"cacheWrite":0,"totalTokens":0,"cost":{"input":0,"output":0,"cacheRead":0,"cacheWrite":0,"total":0}},"stopReason":"toolUse","timestamp":2}}
-`
-	if err := os.WriteFile(sessionPath, []byte(jsonl), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	out, err := ExportSessionToHTML(sessionPath, filepath.Join(dir, "export.html"), ExportToolRenderers(mcpRendererRunner(t)), dir, ShareState{})
-	if err != nil {
-		t.Fatal(err)
-	}
-	html, err := os.ReadFile(out)
-	if err != nil {
-		t.Fatal(err)
-	}
-	match := regexp.MustCompile(`<script id="session-data" type="application/json">([^<]*)</script>`).FindSubmatch(html)
-	if match == nil {
-		t.Fatal("session-data script not found")
-	}
-	data, err := base64.StdEncoding.DecodeString(string(match[1]))
-	if err != nil {
-		t.Fatal(err)
-	}
-	var session struct {
-		RenderedTools map[string]struct {
-			CallHTML string `json:"callHtml"`
-		} `json:"renderedTools"`
-	}
-	if err := json.Unmarshal(data, &session); err != nil {
-		t.Fatal(err)
-	}
-	if got := stripANSITest(session.RenderedTools["call-1"].CallHTML); !strings.Contains(got, "my_docs/search") {
-		t.Fatalf("callHtml = %q", got)
 	}
 }
 
@@ -131,7 +92,7 @@ func TestReapplyToolPresentationDrawsCardsWithALaterResolution(t *testing.T) {
 		}}
 	}
 	m := &InteractiveMode{newRunner: inproc.NewRunner([]extension.Extension{{Name: "late", ToolRenderers: []extension.ToolRendererResolver{resolver}}}, t.TempDir())}
-	card := tui.NewToolExecutionComponent("late_tool", "")
+	card := newToolCardForTest("late_tool", "")
 	m.applyToolPresentation(card, "call-1", "late_tool", json.RawMessage(`{}`))
 	if got := stripANSITest(strings.Join(card.Render(80), "\n")); strings.Contains(got, "answered") {
 		t.Fatalf("card before the answer = %q", got)
@@ -163,7 +124,7 @@ func TestReapplyToolPresentationReturnsACardWithoutRenderersToThePlainCard(t *te
 		Tools:         map[string]extension.RegisteredTool{"late_tool": {Definition: registered}},
 		ToolRenderers: []extension.ToolRendererResolver{resolver},
 	}}, t.TempDir())}
-	card := tui.NewToolExecutionComponent("late_tool", "")
+	card := newToolCardForTest("late_tool", "")
 	m.applyToolPresentation(card, "call-1", "late_tool", json.RawMessage(`{}`))
 	if got := stripANSITest(strings.Join(card.Render(80), "\n")); !strings.Contains(got, "registered renderer") || !card.HasDefinition() {
 		t.Fatalf("card before the answer = %q", got)
@@ -180,16 +141,16 @@ func TestReapplyToolPresentationReturnsACardWithoutRenderersToThePlainCard(t *te
 func TestToolCardRecordsAreSweptWhenTheirCardsAreCollected(t *testing.T) {
 	m := &InteractiveMode{}
 	for i := range 4 * toolCardSweepMin {
-		m.recordToolCard(tui.NewToolExecutionComponent("bash", ""), "call-"+strconv.Itoa(i), "bash")
+		m.recordToolCard(newToolCardForTest("bash", ""), "call-"+strconv.Itoa(i), "bash")
 		if i%toolCardSweepMin == 0 {
 			runtime.GC()
 		}
 	}
-	live := tui.NewToolExecutionComponent("bash", "")
+	live := newToolCardForTest("bash", "")
 	m.recordToolCard(live, "live", "bash")
 	runtime.GC()
 	for i := range toolCardSweepMin + 1 {
-		m.recordToolCard(tui.NewToolExecutionComponent("read", ""), "read-"+strconv.Itoa(i), "read")
+		m.recordToolCard(newToolCardForTest("read", ""), "read-"+strconv.Itoa(i), "read")
 	}
 	if got := len(m.toolCards["bash"]); got > 2*toolCardSweepMin {
 		t.Fatalf("bash records = %d after its cards were collected", got)
@@ -198,4 +159,40 @@ func TestToolCardRecordsAreSweptWhenTheirCardsAreCollected(t *testing.T) {
 		t.Fatal("the live card's record was swept")
 	}
 	runtime.KeepAlive(live)
+}
+
+// tool-execution.ts:65-73: the card receives the tool's definition in its constructor and draws it from the first render, without a later
+// binding step; the definition's renderers read the card they belong to, and a tool with no renderers gets the plain card.
+func TestNewToolCardIsBuiltWithTheRegisteredDefinition(t *testing.T) {
+	tui.SetTheme("dark")
+	resolver := func(toolName string, next func() *extension.ToolRenderers) *extension.ToolRenderers {
+		if toolName != "drawn_tool" {
+			return next()
+		}
+		return &extension.ToolRenderers{
+			RenderCall: func(args json.RawMessage, _ extension.Theme, ctx extension.ToolRenderContext) extension.Component {
+				return tui.NewPaddedText("call "+string(args)+" "+ctx.ToolCallID, 0, 0, nil)
+			},
+			RenderResult: func(result agent.AgentToolResult, _ extension.ToolRenderResultOptions, _ extension.Theme, _ extension.ToolRenderContext) extension.Component {
+				return tui.NewPaddedText("result "+result.Content[0].(ai.TextContent).Text, 0, 0, nil)
+			},
+		}
+	}
+	m := &InteractiveMode{newRunner: inproc.NewRunner([]extension.Extension{{Name: "drawn", ToolRenderers: []extension.ToolRendererResolver{resolver}}}, t.TempDir())}
+
+	card := m.newToolCard("drawn_tool", "call-7", json.RawMessage(`{"q":1}`))
+	if !card.HasDefinition() {
+		t.Fatal("the card was built without the registered definition")
+	}
+	card.UpdateResult(ToolExecutionResultOf(agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: "done"}}}, 0), false)
+	got := stripANSITest(strings.Join(card.Render(80), "\n"))
+	if !strings.Contains(got, `call {"q":1} call-7`) || !strings.Contains(got, "result done") {
+		t.Fatalf("definition not drawn from construction: %q", got)
+	}
+	if plain := m.newToolCard("unregistered_tool", "call-8", nil); plain.HasDefinition() {
+		t.Fatal("a tool without renderers got a definition card")
+	}
+	if len(m.toolCards["drawn_tool"]) != 1 || len(m.toolCards["unregistered_tool"]) != 1 {
+		t.Fatalf("cards not recorded for a later resolution: %v", m.toolCards)
+	}
 }

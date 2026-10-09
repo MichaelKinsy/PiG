@@ -21,6 +21,11 @@ def make_provider():
         meta = options.values.get("metadata", {})
         if meta.get("fail"):
             raise RuntimeError("carrier stream failed")
+        # Pi types.ts:1917-1920: streamSimple invokes options.onPayload before the request and options.onResponse after the response.
+        if options.on_payload is not None:
+            options.on_payload({"marker": "carrier-payload"}, model)
+        if options.on_response is not None:
+            options.on_response({"status": 207, "headers": {"x-carrier": "carrier-response"}}, model)
         events = sdk.ModelEventStream()
         message = {"role": "assistant", "api": model["api"], "provider": model["provider"], "model": model["id"], "content": [], "usage": {"input": 0, "output": 0, "cacheRead": 0, "cacheWrite": 0, "totalTokens": 0, "cost": {"input": 0, "output": 0, "cacheRead": 0, "cacheWrite": 0, "total": 0}}, "stopReason": "stop", "timestamp": 1}
         if meta.get("wait"):
@@ -38,6 +43,9 @@ def make_provider():
     def get_models():
         with lock:
             return list(models)
+    def get_all_models():
+        with lock:
+            return [*models, {**model, "id": "carrier-all-only"}]
     def refresh(input):
         if not input.force:
             return
@@ -56,9 +64,11 @@ def make_provider():
             refresh=lambda credential, signal: {**credential, "access": "rotated", "expires": 200},
             to_auth=lambda credential: {"apiKey": credential["access"], "baseUrl": "https://carrier.invalid"},
             is_subscription=True, login_label="Carrier login")),
-        get_models, stream, lambda model, context, options: stream(model, context, sdk.ProviderStreamOptions({"metadata": {"method": "simple"}}, options.signal)),
+        get_models, stream, lambda model, context, options: stream(model, context, sdk.ProviderStreamOptions({"metadata": {"method": "simple"}}, options.signal, options.on_payload, options.on_response)),
         base_url=model["baseUrl"], headers={"X-Carrier": "present"},
         filter_models=lambda models, credential: models[:1] if (credential or {}).get("key") == "selected" else [],
+        get_all_models=get_all_models,
+        filter_all_models=lambda models, credential: models if (credential or {}).get("key") == "all" else [],
         refresh_models=refresh,
         fetch_deferred=lambda model, handle, options: stream(model, {}, sdk.ProviderStreamOptions({"metadata": {"method": handle["id"]}}, options.signal)),
         cancel_deferred=cancel_deferred)

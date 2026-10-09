@@ -1,0 +1,71 @@
+[
+ {
+  "ids": [
+   "pkg:ai/.#AssistantMessageFrameEncoder",
+   "pkg:ai/compat#AssistantMessageFrameEncoder",
+   "pkg:ai/utils/assistant-message-frame#AssistantMessageFrameEncoder"
+  ],
+  "targets": [
+   "ai/assistant_message_frame.go#AssistantMessageFrameEncoder"
+  ],
+  "production": [
+   "public-api:ai/assistant_message_frame.go#AssistantMessageFrameEncoder"
+  ],
+  "evidence": [
+   "test:ai/assistant_message_frame_test.go#TestAssistantMessageFrameOmitsTerminalEvents",
+   "test:ai/assistant_message_frame_test.go#TestAssistantMessageFrameAcceptsPreGenerationErrorButRejectsSuccessOrUpdateBeforeStart"
+  ],
+  "async": "Synchronous: encode is a plain call in upstream and in Go; no Promise or AbortSignal.",
+  "rationale": "AssistantMessageFrameEncoder: the Go type has Encode(event) (frame, error) for the upstream encode member. encode throws on a protocol violation; the Go method returns the error instead and a nil frame for upstream's undefined.",
+  "properties": {
+   "encode": {
+    "targets": [
+     "ai/assistant_message_frame.go#AssistantMessageFrameEncoder.Encode"
+    ],
+    "evidence": [
+     "test:ai/assistant_message_frame_test.go#TestAssistantMessageFrameOmitsTerminalEvents",
+     "test:ai/assistant_message_frame_test.go#TestAssistantMessageFrameRejectsEventsPointingToWrongBlockKind"
+    ],
+    "production": [
+     "public-api:ai/assistant_message_frame.go#AssistantMessageFrameEncoder"
+    ],
+    "rationale": "encode is AssistantMessageFrameEncoder.Encode. encode throws on a protocol violation; the Go method returns the error instead and a nil frame for upstream's undefined."
+   }
+  }
+ },
+ {
+  "ids": [
+   "pkg:ai/.#AssistantMessageFrameEncoder::construct:0",
+   "pkg:ai/compat#AssistantMessageFrameEncoder::construct:0",
+   "pkg:ai/utils/assistant-message-frame#AssistantMessageFrameEncoder::construct:0"
+  ],
+  "targets": [
+   "ai/assistant_message_frame.go#AssistantMessageFrameEncoder"
+  ],
+  "production": [
+   "public-api:ai/assistant_message_frame.go#AssistantMessageFrameEncoder"
+  ],
+  "evidence": [
+   "test:ai/assistant_message_frame_test.go#TestAssistantMessageFrameOmitsTerminalEvents"
+  ],
+  "rationale": "The upstream no-argument constructor is the Go zero value: AssistantMessageFrameEncoder is ready to use without a constructor (doc comment on the type)."
+ },
+ {
+  "ids": [
+   "pkg:ai/.#AssistantMessageFrame",
+   "pkg:ai/compat#AssistantMessageFrame",
+   "pkg:ai/utils/assistant-message-frame#AssistantMessageFrame"
+  ],
+  "targets": [
+   "ai/assistant_message_frame.go#AssistantMessageFrame"
+  ],
+  "production": [
+   "public-api:ai/assistant_message_frame.go#AssistantMessageFrame"
+  ],
+  "evidence": [
+   "test:ai/assistant_message_frame_json_test.go#TestFrameJSONRoundTripsEveryVariant",
+   "test:ai/assistant_message_frame_test.go#TestAssistantMessageFrameOmitsTerminalEvents"
+  ],
+  "rationale": "AssistantMessageFrame is the union of the replay frames; Go declares it as the closed interface with one type per upstream variant, and TestFrameJSONRoundTripsEveryVariant marshals and decodes every variant."
+ }
+]

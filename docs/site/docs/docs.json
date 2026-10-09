@@ -1,5 +1,6 @@
 {
   "provenance": {
+    "benchmarking.md": "pig-authored",
     "cli-integration.md": "adapted-pi",
     "cli.md": "adapted-pi",
     "codemode.md": "adapted-pi",
@@ -275,6 +276,10 @@
         {
           "title": "Harness Benchmarks",
           "path": "evals.md"
+        },
+        {
+          "title": "Benchmarks on Kubernetes",
+          "path": "benchmarking.md"
         },
         {
           "title": "Develop PiG",

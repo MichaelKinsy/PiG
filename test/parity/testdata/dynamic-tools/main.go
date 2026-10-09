@@ -38,7 +38,7 @@ func run() error {
 		return fmt.Errorf("load: %v", failures)
 	}
 	runner := inproc.NewRunner(loaded, cwd)
-	services, err := coding.NewServices(coding.ServicesOptions{CWD: cwd, AgentDir: filepath.Join(cwd, "agent")})
+	services, err := coding.CreateAgentSessionServices(coding.CreateAgentSessionServicesOptions{CWD: cwd, AgentDir: filepath.Join(cwd, "agent")})
 	if err != nil {
 		return err
 	}
@@ -51,7 +51,7 @@ func run() error {
 	if len(session.ActiveToolNames()) != 0 {
 		return fmt.Errorf("tools registered before session_start")
 	}
-	if err := session.BindExtensions(ctx); err != nil {
+	if err := session.BindExtensions(ctx, coding.ExtensionBindings{}); err != nil {
 		return err
 	}
 	for _, name := range []string{"echo_session", "shout"} {

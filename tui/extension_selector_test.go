@@ -1,15 +1,21 @@
 package tui
 
+// pi: packages/coding-agent/src/modes/interactive/components/keybinding-hints.ts
+// pi: packages/coding-agent/src/modes/interactive/components/extension-selector.ts
+
+// pi: packages/coding-agent/src/modes/interactive/components/countdown-timer.ts
+
 import (
 	"slices"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/MichaelKinsy/PiG/tui/widthx"
 )
 
 func TestExtensionSelectorMultilineTitleRendersOneLinePerSegment(t *testing.T) {
-	selector := NewExtensionSelector("first\nsecond", []string{"Continue", "Cancel"})
+	selector := NewExtensionSelectorComponent("first\nsecond", []string{"Continue", "Cancel"}, nil, nil)
 	got := strings.Join(selector.Render(80), "\n")
 	if !strings.Contains(got, "first") || !strings.Contains(got, "second") {
 		t.Fatalf("multiline title missing segments:\n%s", got)
@@ -25,13 +31,13 @@ func TestExtensionSelectorMultilineTitleUsesScopedBoldAndDimKeys(t *testing.T) {
 	// Pi 0.87.1 extension-selector.ts:48 uses theme.bold (chalk), which closes/reopens at newlines; keybinding-hints.ts:42-47 uses dim keys and muted descriptions.
 	theme := ActiveTheme()
 	title := "first\n\nsecond"
-	selector := NewExtensionSelector(title, []string{"Trust"})
-	wantTitle := NewPaddedText(theme.FgText("accent", "\x1b[1mfirst\x1b[22m\n\x1b[1m\x1b[22m\n\x1b[1msecond\x1b[22m"), 1, 0, nil).Render(80)
+	selector := NewExtensionSelectorComponent(title, []string{"Trust"}, nil, nil)
+	wantTitle := NewPaddedText(theme.Fg("accent", "\x1b[1mfirst\x1b[22m\n\x1b[1m\x1b[22m\n\x1b[1msecond\x1b[22m"), 1, 0, nil).Render(80)
 	got := selector.Render(80)
 	if !slices.Equal(got[2:2+len(wantTitle)], wantTitle) {
 		t.Fatalf("title rows = %q, want %q", got[2:2+len(wantTitle)], wantTitle)
 	}
-	wantHint := NewPaddedText(theme.FgText("dim", "↑↓")+theme.FgText("muted", " navigate")+"  "+theme.FgText("dim", "enter")+theme.FgText("muted", " select")+"  "+theme.FgText("dim", "escape/ctrl+c")+theme.FgText("muted", " cancel"), 1, 0, nil).Render(80)
+	wantHint := NewPaddedText(theme.Fg("dim", "↑↓")+theme.Fg("muted", " navigate")+"  "+theme.Fg("dim", "enter")+theme.Fg("muted", " select")+"  "+theme.Fg("dim", "escape/ctrl+c")+theme.Fg("muted", " cancel"), 1, 0, nil).Render(80)
 	if !slices.Equal(got[len(got)-3:len(got)-2], wantHint) {
 		t.Fatalf("hint = %q, want %q", got[len(got)-3:len(got)-2], wantHint)
 	}
@@ -43,7 +49,7 @@ func TestExtensionSelectorHandleInput_TogglesToolsExpandedShortcut(t *testing.T)
 	SetKeybindings(NewTUIKeybindingsManager(map[string][]string{"app.tools.expand": {"ctrl+o"}}))
 	t.Cleanup(func() { SetKeybindings(previous) })
 	called := 0
-	sel := NewExtensionSelector("Pick one", []string{"a", "b"}, func() { called++ })
+	sel := NewExtensionSelectorComponent("Pick one", []string{"a", "b"}, nil, nil, ExtensionSelectorOptions{OnToggleToolsExpanded: func() { called++ }})
 
 	sel.HandleInput("\x0f") // default ctrl+o → app.tools.expand
 
@@ -59,7 +65,7 @@ func TestExtensionSelectorHandleInput_TogglesToolsExpandedShortcut(t *testing.T)
 }
 
 func TestExtensionSelectorHandleInput_CancelStillWins(t *testing.T) {
-	sel := NewExtensionSelector("Pick one", []string{"a", "b"})
+	sel := NewExtensionSelectorComponent("Pick one", []string{"a", "b"}, nil, nil)
 
 	sel.HandleInput("\x1b")
 
@@ -76,11 +82,9 @@ func TestExtensionSelectorHandleInput_CancelStillWins(t *testing.T) {
 // with one cell of padding.
 func TestExtensionDialogsRenderDescriptionUnderTitle(t *testing.T) {
 	description := "This report stays on your machine and is never uploaded anywhere at all."
-	selector := NewExtensionSelector("Bug report", []string{"Export as Zip", "Cancel"})
+	selector := NewExtensionSelectorComponent("Bug report", []string{"Export as Zip", "Cancel"}, nil, nil)
 	selector.SetDescription(description)
-	editor := NewExtensionEditorComponent("Report a bug", "")
-	editor.SetDescription(description)
-	for name, lines := range map[string][]string{"selector": selector.Render(40), "editor": editor.Render(40)} {
+	for name, lines := range map[string][]string{"selector": selector.Render(40)} {
 		plain := make([]string, len(lines))
 		for i, line := range lines {
 			plain[i] = strings.TrimRight(stripANSI(line), " ")
@@ -97,7 +101,7 @@ func TestExtensionDialogsRenderDescriptionUnderTitle(t *testing.T) {
 			}
 		}
 	}
-	plainSelector := NewExtensionSelector("Bug report", []string{"Export as Zip"})
+	plainSelector := NewExtensionSelectorComponent("Bug report", []string{"Export as Zip"}, nil, nil)
 	if got, want := len(selector.Render(40))-len(plainSelector.Render(40)), 1+len(NewPaddedText(description, 1, 0, nil).Render(40))+1; got != want {
 		t.Fatalf("description added %d lines, want %d", got, want)
 	}
@@ -107,7 +111,7 @@ func TestExtensionDialogsRenderDescriptionUnderTitle(t *testing.T) {
 // at 40 cells the hint wraps inside one cell of padding on each side instead of
 // producing a 48-cell row.
 func TestExtensionSelectorHintWrapsAtNarrowWidth(t *testing.T) {
-	selector := NewExtensionSelector("Pick", []string{"a", "b"})
+	selector := NewExtensionSelectorComponent("Pick", []string{"a", "b"}, nil, nil)
 	var hint []string
 	for _, line := range selector.Render(40) {
 		plain := stripANSI(line)
@@ -121,6 +125,32 @@ func TestExtensionSelectorHintWrapsAtNarrowWidth(t *testing.T) {
 	want := []string{" ↑↓ navigate  enter select", " escape/ctrl+c cancel"}
 	if !slices.Equal(hint, want) {
 		t.Fatalf("hint rows = %q, want %q", hint, want)
+	}
+}
+
+// ExtensionSelectorComponent extends Container (extension-selector.ts:20): border, spacer, title, spacer, list container,
+// spacer, hint, spacer, border; a description adds a spacer and a Text after the title, and moving the selection rebuilds
+// the list container's rows (updateList).
+func TestExtensionSelectorComponentChildrenFollowUpstream(t *testing.T) {
+	e := NewExtensionSelectorComponent("Pick", []string{"a", "b", "c"}, nil, nil)
+	if got := len(e.Children()); got != 9 {
+		t.Fatalf("children = %d, want 9", got)
+	}
+	if got := len(e.listContainer.Children()); got != 3 {
+		t.Fatalf("list rows = %d, want 3", got)
+	}
+	e.SetDescription("why")
+	if got := len(e.Children()); got != 11 {
+		t.Fatalf("children with description = %d, want 11", got)
+	}
+	before := strings.Join(e.Render(40), "\n")
+	e.HandleInput("j")
+	if strings.Join(e.Render(40), "\n") == before {
+		t.Fatal("moving the selection did not change the render")
+	}
+	e.SetDescription("")
+	if got := len(e.Children()); got != 9 {
+		t.Fatalf("children after clearing the description = %d, want 9", got)
 	}
 }
 
@@ -147,7 +177,7 @@ func lineIndexOf(t *testing.T, lines []string, text string) int {
 // A preview draws right after the option rows: the rows keep the cells left of it, the preview line facing each row
 // takes the rightmost cells, and the highlighted option chooses which preview the column shows.
 func TestExtensionSelectorPreviewDrawsAfterTheOptionRows(t *testing.T) {
-	selector := NewExtensionSelector("Pick one", []string{"first option", "second option", "third option"})
+	selector := NewExtensionSelectorComponent("Pick one", []string{"first option", "second option", "third option"}, nil, nil)
 	selector.SetPreview(testPreview)
 	const width, cells = 60, 8
 	lines := selector.Render(width)
@@ -194,7 +224,7 @@ func TestExtensionSelectorPreviewDrawsAfterTheOptionRows(t *testing.T) {
 // The preview column never squeezes the option list into a column of words: below the floor width the selector draws
 // alone, as upstream's does.
 func TestExtensionSelectorPreviewDropsWhenTheBodyWouldSqueeze(t *testing.T) {
-	selector := NewExtensionSelector("Pick", []string{"first option", "second option"})
+	selector := NewExtensionSelectorComponent("Pick", []string{"first option", "second option"}, nil, nil)
 	selector.SetPreview(func(int) []string { return []string{"pighead!"} })
 	const cells = 8
 	floor := previewFloorCells + cells + previewGapCells + previewRightCells
@@ -212,8 +242,8 @@ func TestExtensionSelectorPreviewDropsWhenTheBodyWouldSqueeze(t *testing.T) {
 // A selector without a preview keeps upstream's render: every option row wraps within the full width.
 func TestExtensionSelectorWithoutPreviewKeepsFullWidthRows(t *testing.T) {
 	withOption := []string{"an option label that is long enough to wrap at a narrow render width"}
-	plain := NewExtensionSelector("Pick", withOption)
-	nulled := NewExtensionSelector("Pick", withOption)
+	plain := NewExtensionSelectorComponent("Pick", withOption, nil, nil)
+	nulled := NewExtensionSelectorComponent("Pick", withOption, nil, nil)
 	nulled.SetPreview(nil)
 	for _, width := range []int{20, 40, 80} {
 		if !slices.Equal(plain.Render(width), nulled.Render(width)) {
@@ -231,8 +261,8 @@ func TestExtensionSelectorWithoutPreviewKeepsFullWidthRows(t *testing.T) {
 // column is a property of what the row has to show, not of the dialog.
 func TestExtensionSelectorEmptyPreviewKeepsFullWidthRows(t *testing.T) {
 	options := []string{"first option", "an option label that is long enough to wrap at a narrow render width", "Create your own..."}
-	plain := NewExtensionSelector("Pick", options)
-	withPreview := NewExtensionSelector("Pick", options)
+	plain := NewExtensionSelectorComponent("Pick", options, nil, nil)
+	withPreview := NewExtensionSelectorComponent("Pick", options, nil, nil)
 	withPreview.SetPreview(func(selected int) []string {
 		if selected == len(options)-1 {
 			return nil
@@ -267,5 +297,96 @@ func TestExtensionSelectorEmptyPreviewKeepsFullWidthRows(t *testing.T) {
 	}
 	if !slices.Equal(plain.Render(width), got) {
 		t.Fatalf("rows without a preview = %q, want the plain selector's %q", got, plain.Render(width))
+	}
+}
+
+// packages/coding-agent/src/modes/interactive/components/extension-selector.ts:102-117 handleInput: confirm (and a bare "\n") call
+// onSelect with the highlighted option, cancel calls onCancel, navigation calls neither; an empty option list selects nothing.
+func TestExtensionSelectorComponentCallsSelectAndCancelCallbacks(t *testing.T) {
+	var selected []string
+	cancels := 0
+	onSelect := func(option string) { selected = append(selected, option) }
+	e := NewExtensionSelectorComponent("Pick", []string{"a", "b", "c"}, onSelect, func() { cancels++ })
+	e.HandleInput("j")
+	e.HandleInput("\x1b[B")
+	e.HandleInput("\x1b[A")
+	if len(selected) != 0 || cancels != 0 {
+		t.Fatalf("navigation called a callback: %v %d", selected, cancels)
+	}
+	e.HandleInput("\r")
+	if !slices.Equal(selected, []string{"b"}) || cancels != 0 || !e.Done() || e.Cancelled() {
+		t.Fatalf("confirm: selected %v cancels %d done %v cancelled %v", selected, cancels, e.Done(), e.Cancelled())
+	}
+
+	c := NewExtensionSelectorComponent("Pick", []string{"a"}, onSelect, func() { cancels++ })
+	c.HandleInput("\x1b")
+	if cancels != 1 || len(selected) != 1 || !c.Cancelled() {
+		t.Fatalf("cancel: selected %v cancels %d cancelled %v", selected, cancels, c.Cancelled())
+	}
+
+	n := NewExtensionSelectorComponent("Pick", []string{"a"}, onSelect, nil)
+	n.HandleInput("\n")
+	if !slices.Equal(selected, []string{"b", "a"}) {
+		t.Fatalf("a bare newline selects the highlighted option: %v", selected)
+	}
+
+	empty := NewExtensionSelectorComponent("Pick", nil, onSelect, func() { cancels++ })
+	empty.HandleInput("\r")
+	if len(selected) != 2 || empty.Done() {
+		t.Fatalf("an empty selector selected %v done %v", selected, empty.Done())
+	}
+}
+
+// extension-selector.ts:30-57: opts.description is a text row under the title (opts.onToggleToolsExpanded is covered by
+// TestExtensionSelectorHandleInput_TogglesToolsExpandedShortcut), and a positive opts.timeout with opts.tui starts a CountdownTimer whose first tick titles the selector at once and
+// requests no render; expiry calls onCancel; dispose stops the timer. No timeout or no tui means no timer.
+func TestExtensionSelectorComponentOptions(t *testing.T) {
+	d := NewExtensionSelectorComponent("Pick", []string{"a"}, nil, nil, ExtensionSelectorOptions{Description: "why"})
+	if plain := stripANSI(strings.Join(d.Render(60), "\n")); !strings.Contains(plain, "why") {
+		t.Fatalf("description missing:\n%s", plain)
+	}
+
+	r := &renderCounter{renders: make(chan struct{}, 4)}
+	loop := make(chan func(), 4)
+	cancels := 0
+	e := NewExtensionSelectorComponent("Pick", []string{"a"}, nil, func() { cancels++ }, ExtensionSelectorOptions{
+		TUI: r, Timeout: time.Second, Dispatch: func(f func()) { loop <- f },
+	})
+	defer e.Dispose()
+	if !strings.Contains(stripANSI(strings.Join(e.Render(60), "\n")), "Pick (1s)") {
+		t.Fatalf("first tick missing:\n%s", strings.Join(e.Render(60), "\n"))
+	}
+	select {
+	case <-r.renders:
+		t.Fatal("the constructor's first tick requested a render")
+	default:
+	}
+	select {
+	case tick := <-loop:
+		tick()
+	case <-time.After(10 * time.Second):
+		t.Fatal("countdown did not tick")
+	}
+	if cancels != 1 || !e.Done() || !e.Cancelled() {
+		t.Fatalf("expiry: onCancel %d done %v cancelled %v", cancels, e.Done(), e.Cancelled())
+	}
+	if len(r.renders) == 0 {
+		t.Fatal("expiry tick requested no render")
+	}
+
+	for name, opts := range map[string]ExtensionSelectorOptions{
+		"no tui":     {Timeout: time.Second},
+		"no timeout": {TUI: r},
+		"negative":   {TUI: r, Timeout: -time.Second},
+	} {
+		if NewExtensionSelectorComponent("Pick", nil, nil, nil, opts).countdown != nil {
+			t.Fatalf("%s started a countdown", name)
+		}
+	}
+	h := NewExtensionSelectorComponent("Pick", nil, nil, nil, ExtensionSelectorOptions{TUI: r, Timeout: time.Hour})
+	timer := h.countdown
+	h.Dispose()
+	if h.countdown != nil || timer == nil || !timer.stopped {
+		t.Fatal("Dispose left the countdown running")
 	}
 }

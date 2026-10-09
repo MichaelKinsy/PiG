@@ -22,7 +22,7 @@ func dispatchToolCalls(t *testing.T, h *harness, calls []ai.FauxContentBlock) []
 		ai.FauxStaticStep(ai.FauxResponse{Content: calls, StopReason: "toolUse"}),
 		ai.FauxStaticStep(ai.FauxResponse{Content: []ai.FauxContentBlock{ai.FauxText("done")}, StopReason: "stop"}),
 	})
-	a := agent.NewAgent(agent.AgentOptions{Model: &ai.Model{ID: "faux-1", Provider: provider}, Tools: tools})
+	a := mustNewAgent(agent.AgentOptions{Model: &ai.Model{ID: "faux-1", Provider: provider}, Tools: tools})
 	messages, err := a.Send(t.Context(), "go")
 	if err != nil {
 		t.Fatal(err)
@@ -59,7 +59,7 @@ func TestToolPrepareArgumentsRunsBeforeValidationAcrossSDKs(t *testing.T) {
 					h.host.Shutdown("test done")
 				}
 			})
-			results := dispatchToolCalls(t, h, []ai.FauxContentBlock{ai.FauxToolCall("prepared_tool", map[string]any{"legacy": "hello"}, "prepare-1")})
+			results := dispatchToolCalls(t, h, []ai.FauxContentBlock{ai.FauxToolCall("prepared_tool", map[string]any{"legacy": "hello"}, &ai.FauxToolCallOptions{ID: "prepare-1"})})
 			if len(results) != 1 || results[0].IsError || results[0].Text() != "prepared:hello" {
 				t.Fatalf("results = %s, want one prepared:hello: the host validated the raw arguments before the tool's prepareArguments ran", describeToolResults(results))
 			}
@@ -100,7 +100,7 @@ func TestToolBatchStartsInSourceOrderAcrossSDKs(t *testing.T) {
 			for round := range rounds {
 				calls := make([]ai.FauxContentBlock, batch)
 				for i := range batch {
-					calls[i] = ai.FauxToolCall("start_order", map[string]any{"n": i}, fmt.Sprintf("order-%d-%d", round, i))
+					calls[i] = ai.FauxToolCall("start_order", map[string]any{"n": i}, &ai.FauxToolCallOptions{ID: fmt.Sprintf("order-%d-%d", round, i)})
 				}
 				results := dispatchToolCalls(t, h, calls)
 				if len(results) != batch {

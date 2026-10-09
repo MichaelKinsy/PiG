@@ -26,7 +26,7 @@ JSON mode converts Session events with the same code as RPC mode. The model loop
 
 - `agent_start`;
 - `agent_end` with `messages` and `willRetry`;
-- `agent_settled`;
+- `agent_settled` with `aborted`, which is `true` when the run ended because it was aborted;
 - `turn_start`;
 - `turn_end` with the final assistant message and tool results;
 - `message_start`;
@@ -34,7 +34,7 @@ JSON mode converts Session events with the same code as RPC mode. The model loop
 - `message_end`;
 - `tool_execution_start`;
 - `tool_execution_update`;
-- `tool_execution_end`.
+- `tool_execution_end` with `durationMs`, how long the tool's `execute()` took in milliseconds, measured with a monotonic clock and excluding hooks; it is absent when the tool did not run.
 
 The Session can also emit these events during a JSON-mode run:
 
@@ -77,7 +77,7 @@ A tool call emits lifecycle records:
 ```json
 {"type":"tool_execution_start","toolCallId":"call-1","toolName":"bash","args":{"command":"echo out; exit 3"}}
 {"type":"tool_execution_update","toolCallId":"call-1","toolName":"bash","args":{"command":"echo out; exit 3"},"partialResult":{"content":[{"type":"text","text":"out\n"}],"details":{}}}
-{"type":"tool_execution_end","toolCallId":"call-1","toolName":"bash","result":{"content":[{"type":"text","text":"out\n\n\nCommand exited with code 3"}],"structuredContent":{"output":"out\n","truncated":false,"exit_code":3,"wall_time_seconds":0},"isError":true},"isError":true}
+{"type":"tool_execution_end","toolCallId":"call-1","toolName":"bash","result":{"content":[{"type":"text","text":"out\n\n\nCommand exited with code 3"}],"structuredContent":{"output":"out\n","truncated":false,"exit_code":3,"wall_time_seconds":0},"isError":true},"isError":true,"durationMs":12}
 ```
 
 The top-level `isError` reports whether the call failed. `result` is the tool's finalized result object. It carries its own `isError` only when the tool returned a failure, as `bash` does for a non-zero exit. A thrown tool error, an unknown tool, invalid arguments, a blocked call, and a failing `tool_result` handler produce a result of `content` and an empty `details` object without `isError`.
@@ -106,8 +106,8 @@ Read [Session file format](/docs/latest/session-format) for message, content-blo
 
 PiG implementation:
 
-- `cmd/pig/print_mode.go` owns one-shot text and JSON mode.
-- `cmd/pig/rpc_events.go` converts internal events to wire records.
+- `coding/cli/print_mode.go` owns one-shot text and JSON mode.
+- `coding/cli/rpc_events.go` converts internal events to wire records.
 
 Upstream Pi reference:
 

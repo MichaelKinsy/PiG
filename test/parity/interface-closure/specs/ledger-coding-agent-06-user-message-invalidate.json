@@ -1,0 +1,17 @@
+[
+ {
+  "ids": [
+   "pkg:coding-agent/.#UserMessageComponent::property:invalidate"
+  ],
+  "targets": [
+   "tui/user_message_block.go#UserMessageBlock.Invalidate"
+  ],
+  "production": [
+   "call:tui/user_message_block.go#UserMessageBlock.SetAsyncMarkdownTransform"
+  ],
+  "evidence": [
+   "test:tui/user_message_upstream_test.go#TestUpstreamUserMessageInvalidation"
+  ],
+  "rationale": "UserMessageComponent.invalidate is the Go method UserMessageBlock.Invalidate; signature reviewed against the upstream declaration."
+ }
+]

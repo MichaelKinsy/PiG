@@ -34,7 +34,7 @@ func newUserBashInteractive(t *testing.T, handler func() *extension.UserBashEven
 	t.Helper()
 	dir := t.TempDir()
 	model := &ai.Model{ID: "m", DisplayName: "m", Capabilities: ai.ModelCapabilities{ContextWindow: 8000}}
-	m := NewInteractiveMode(InteractiveOptions{CWD: dir, Model: model, AgentDir: t.TempDir()})
+	m := NewInteractiveMode(nil, InteractiveModeOptions{CWD: dir, Model: model, AgentDir: t.TempDir()})
 	m.chatContainer = tui.NewContainer()
 	m.pendingMessagesContainer = tui.NewContainer()
 	m.tuiInst = tui.NewWithOutput(io.Discard, 100, 30)

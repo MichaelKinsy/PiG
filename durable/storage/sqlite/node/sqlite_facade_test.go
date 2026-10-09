@@ -1,5 +1,7 @@
 package node
 
+// pi: packages/durable/src/storage/sqlite/node.ts
+
 // Ports packages/durable/test/sqlite-facade.test.ts
 
 import (
@@ -13,6 +15,7 @@ import (
 	"testing"
 	"testing/synctest"
 
+	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/durable"
 	durablesqlite "github.com/MichaelKinsy/PiG/durable/storage/sqlite"
 )
@@ -180,12 +183,14 @@ func rootWrite() durable.StorageWrite {
 	return durable.ConversationWrite{Value: durable.ConversationRecord{Id: durable.ROOT_CONVERSATION_ID}}
 }
 
+// Pi source: packages/durable/src/storage/sqlite/node.ts, packages/durable/src/storage/sqlite/storage.ts
+// mutation-checked: zeroing the results of NodeSqliteDatabase.Transaction, SqliteStorage.Commit, SqliteStorage.Conversation, SqliteStorage.Document, SqliteStorage.Entry, SqliteStorage.ScanEntries fails it
 func TestPortableSQLiteFacadeSettlement(t *testing.T) {
 	t.Run("prepares each storage statement once per connection and reuses it across transactions", func(t *testing.T) {
 		raw, err := NewDatabaseSync(":memory:", DatabaseSyncOptions{})
 		mustDo(t, err)
 		connection := &prepareCountingDatabaseSync{DatabaseSync: raw, prepareCounts: map[string]int{}}
-		storage, err := durablesqlite.Open(NewNodeSqliteDatabase(connection))
+		storage, err := durablesqlite.Open(newNodeSqliteDatabase(connection))
 		mustDo(t, err)
 		_, err = storage.Commit(background, []durable.StorageWrite{rootWrite()})
 		mustDo(t, err)
@@ -578,7 +583,7 @@ func TestPortableSQLiteFacadeSettlement(t *testing.T) {
 			mustDo(t, err)
 			_, err = storage.Commit(background, []durable.StorageWrite{durable.DocumentCreateWrite{
 				Record:  durable.DocumentCreate{Id: id, Kind: "replaced", Scope: durable.DocumentRecordScope{Kind: durable.ScopeSession}},
-				Content: durable.DocumentContent{Kind: durable.ContentBase, Version: 1, Value: durable.JsonObject{"value": 1}},
+				Content: durable.DocumentContent{Kind: durable.ContentBase, Version: 1, Value: delta.JsonObjectOf("value", 1)},
 			}})
 			mustDo(t, err)
 			read := start(func() (*durable.StoredDocument, error) { return storage.Document(background, id, durable.CurrentPoint) })
@@ -588,14 +593,14 @@ func TestPortableSQLiteFacadeSettlement(t *testing.T) {
 			replace := start(func() (durable.Seq, error) {
 				return storage.Commit(background, []durable.StorageWrite{durable.DocumentChangeWrite{
 					Id:      id,
-					Content: durable.DocumentContent{Kind: durable.ContentBase, Version: 1, Value: durable.JsonObject{"value": 2}},
+					Content: durable.DocumentContent{Kind: durable.ContentBase, Version: 1, Value: delta.JsonObjectOf("value", 2)},
 				}})
 			})
 			stored, err := read.await()
 			mustDo(t, err)
 			_, err = replace.await()
 			mustDo(t, err)
-			value := stored.Value["value"]
+			value := stored.Value.Value("value")
 			if value != float64(1) && value != float64(2) {
 				t.Fatalf("value = %#v, want 1 or 2", value)
 			}
@@ -643,3 +648,31 @@ func entryIds(entries []durable.EntryRecord) []durable.EntryId {
 }
 
 func yieldGoroutine() { runtime.Gosched() }
+
+// Pi source: packages/durable/src/storage/sqlite/node.ts:136 (`new NodeSqliteDatabase(database: DatabaseSync)`)
+// mutation-checked: zeroing the result of NewNodeSqliteDatabase fails it
+func TestNewNodeSqliteDatabaseAdaptsADatabaseSync(t *testing.T) {
+	raw, err := NewDatabaseSync(":memory:", DatabaseSyncOptions{})
+	mustDo(t, err)
+	database := NewNodeSqliteDatabase(raw)
+	storage, err := durablesqlite.Open(database)
+	mustDo(t, err)
+	_, err = storage.Commit(background, []durable.StorageWrite{rootWrite()})
+	mustDo(t, err)
+	conversation, err := storage.Conversation(background, durable.ROOT_CONVERSATION_ID)
+	mustDo(t, err)
+	if conversation == nil || conversation.Id != durable.ROOT_CONVERSATION_ID {
+		t.Fatalf("a commit through the adapter must be readable back, got %+v", conversation)
+	}
+	probe, err := raw.Prepare("SELECT count(*) AS tables FROM sqlite_master WHERE type = 'table'")
+	mustDo(t, err)
+	row, err := probe.Get()
+	mustDo(t, err)
+	if tables, _ := row["tables"].(int64); tables == 0 {
+		t.Fatalf("the adapter must create its tables in the connection it was given, found %v", row)
+	}
+	mustDo(t, database.Close())
+	if err := database.Close(); err != nil {
+		t.Fatalf("closing twice must be a no-op, got %v", err)
+	}
+}

@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"reflect"
 	"slices"
 	"strings"
 	"testing"
@@ -573,7 +574,7 @@ data: [DONE]
 }
 
 func TestThinkingToReasoningEffort_UsesThinkingLevelMap(t *testing.T) {
-	model := &Model{Capabilities: ModelCapabilities{MaxThinking: ThinkingXHigh}, ThinkingLevelMap: ThinkingLevelMap{
+	model := &Model{Capabilities: ModelCapabilities{MaxThinking: ThinkingLevelXHigh}, ThinkingLevelMap: ThinkingLevelMap{
 		ThinkingMinimal: new("low"),
 		ThinkingXHigh:   new("max"),
 		ThinkingOff:     new("none"),
@@ -854,7 +855,7 @@ func TestStreamTogetherReasoningPayload(t *testing.T) {
 	})}
 	stream, err := p.Stream(context.Background(), NormalizeContext(Context{Messages: []Message{UserMessage{Content: UserText("hi")}}}), StreamOptions{
 		IsReasoning: true,
-		Thinking:    ThinkingHigh,
+		Thinking:    ThinkingLevelHigh,
 	})
 	if err != nil {
 		t.Fatalf("Stream() error: %v", err)
@@ -897,7 +898,7 @@ func TestStreamTogetherReasoningDisabledPayload(t *testing.T) {
 	})}
 	stream, err := p.Stream(context.Background(), NormalizeContext(Context{Messages: []Message{UserMessage{Content: UserText("hi")}}}), StreamOptions{
 		IsReasoning: true,
-		Thinking:    ThinkingOff,
+		Thinking:    "",
 	})
 	if err != nil {
 		t.Fatalf("Stream() error: %v", err)
@@ -919,7 +920,7 @@ func TestStreamTogetherReasoningDisabledPayload(t *testing.T) {
 // captureThinkingPayload drives a completions Stream with the given compat +
 // thinking level and returns the decoded request body. Oracle for the
 // thinkingFormat switch (openai-completions.ts:555-615).
-func captureThinkingPayload(t *testing.T, providerID, baseURL string, compat *OpenAICompat, level ThinkingLevel) oaiRequest {
+func captureThinkingPayload(t *testing.T, providerID, baseURL string, compat *OpenAICompat, level ModelThinkingLevel) oaiRequest {
 	t.Helper()
 	var reqBody oaiRequest
 	p := &openAIProvider{cfg: OpenAIConfig{BaseURL: baseURL, Model: "m", ProviderID: providerID, Compat: compat}}
@@ -933,7 +934,7 @@ func captureThinkingPayload(t *testing.T, providerID, baseURL string, compat *Op
 			Body:       io.NopCloser(strings.NewReader("data: {\"choices\":[{\"delta\":{},\"finish_reason\":\"stop\"}],\"usage\":{\"prompt_tokens\":1,\"completion_tokens\":1}}\n\n")),
 		}, nil
 	})}
-	stream, err := p.Stream(context.Background(), NormalizeContext(Context{Messages: []Message{UserMessage{Content: UserText("hi")}}}), StreamOptions{IsReasoning: true, Thinking: level})
+	stream, err := p.Stream(context.Background(), NormalizeContext(Context{Messages: []Message{UserMessage{Content: UserText("hi")}}}), StreamOptions{IsReasoning: true, Thinking: level.ReasoningOption()})
 	if err != nil {
 		t.Fatalf("Stream() error: %v", err)
 	}
@@ -1314,7 +1315,7 @@ func registerTestModel(t *testing.T, m GeneratedModel) {
 
 // captureThinkingPayloadModel is captureThinkingPayload with an explicit model
 // id so the catalog ThinkingLevelMap drives the thinkingFormat dispatch.
-func captureThinkingPayloadModel(t *testing.T, providerID, baseURL, modelID string, compat *OpenAICompat, level ThinkingLevel) oaiRequest {
+func captureThinkingPayloadModel(t *testing.T, providerID, baseURL, modelID string, compat *OpenAICompat, level ModelThinkingLevel) oaiRequest {
 	t.Helper()
 	var reqBody oaiRequest
 	p := &openAIProvider{cfg: OpenAIConfig{BaseURL: baseURL, Model: modelID, ProviderID: providerID, Compat: compat}}
@@ -1328,7 +1329,7 @@ func captureThinkingPayloadModel(t *testing.T, providerID, baseURL, modelID stri
 			Body:       io.NopCloser(strings.NewReader("data: {\"choices\":[{\"delta\":{},\"finish_reason\":\"stop\"}],\"usage\":{\"prompt_tokens\":1,\"completion_tokens\":1}}\n\n")),
 		}, nil
 	})}
-	stream, err := p.Stream(context.Background(), NormalizeContext(Context{Messages: []Message{UserMessage{Content: UserText("hi")}}}), StreamOptions{IsReasoning: true, Thinking: level})
+	stream, err := p.Stream(context.Background(), NormalizeContext(Context{Messages: []Message{UserMessage{Content: UserText("hi")}}}), StreamOptions{IsReasoning: true, Thinking: level.ReasoningOption()})
 	if err != nil {
 		t.Fatalf("Stream() error: %v", err)
 	}
@@ -1424,13 +1425,15 @@ func TestOpenAICompletionsModelSamplingDefaultsMergeBeforeRequestOverrides(t *te
 	}
 }
 
+// packages/ai/src/types.ts:90-98 ChatTemplateKwargValue: a chat-template keyword is a string, number, boolean or null, or a `{ "$var": ... }` placeholder resolved per request
+// (thinking.enabled, thinking.effort, thinking.budget); the compat payload carries the static value and the resolved placeholders.
 func TestOpenAICompletionsCompleteCompatPayload(t *testing.T) {
 	priority := 0.0
-	registerTestModel(t, GeneratedModel{ID: "compat-model", Provider: "custom", Reasoning: true, MaxOutputTokens: 4096, ThinkingLevelMap: map[ThinkingLevel]*string{ThinkingHigh: new("high")}})
+	registerTestModel(t, GeneratedModel{ID: "compat-model", Provider: "custom", Reasoning: true, MaxOutputTokens: 4096, ThinkingLevelMap: map[ModelThinkingLevel]*string{ThinkingHigh: new("high")}})
 	request := captureOpenAIRequestMap(t, "custom", "compat-model", &OpenAICompat{
 		ThinkingFormat: "chat-template", VLLMPriority: &priority,
-		ChatTemplateKwargs: map[string]any{"static": true, "enabled": map[string]any{"$var": "thinking.enabled"}, "effort": map[string]any{"$var": "thinking.effort"}, "budget": map[string]any{"$var": "thinking.budget"}},
-	}, StreamOptions{IsReasoning: true, Thinking: ThinkingHigh, ThinkingBudgets: &ThinkingBudgets{High: 777}})
+		ChatTemplateKwargs: map[string]ChatTemplateKwargValue{"static": true, "enabled": map[string]any{"$var": "thinking.enabled"}, "effort": map[string]any{"$var": "thinking.effort"}, "budget": map[string]any{"$var": "thinking.budget"}},
+	}, StreamOptions{IsReasoning: true, Thinking: ThinkingLevelHigh, ThinkingBudgets: &ThinkingBudgets{High: 777}})
 	if request["priority"] != float64(0) {
 		t.Fatalf("priority = %#v, want 0", request["priority"])
 	}
@@ -1448,7 +1451,7 @@ func TestOpenAICompletionsChatTemplateKwargsOffOmission(t *testing.T) {
 			"effort": map[string]any{"$var": "thinking.effort", "omitWhenOff": true},
 			"budget": map[string]any{"$var": "thinking.budget", "omitWhenOff": true},
 		},
-	}, StreamOptions{IsReasoning: true, Thinking: ThinkingOff})
+	}, StreamOptions{IsReasoning: true, Thinking: ""})
 	kwargs, ok := request["chat_template_kwargs"].(map[string]any)
 	if !ok || kwargs["literal"] != "kept" || kwargs["enabled"] != false {
 		t.Fatalf("chat_template_kwargs = %#v", request["chat_template_kwargs"])
@@ -1480,7 +1483,7 @@ func TestOpenAICompletionsCanInferStopWithoutFinishReason(t *testing.T) {
 func TestOpenAICompletionsBasetenAndVLLMThinkingPayload(t *testing.T) {
 	registerTestModel(t, GeneratedModel{
 		ID: "reasoning-model", Provider: "baseten", Reasoning: true, MaxOutputTokens: 4096,
-		ThinkingLevelMap: map[ThinkingLevel]*string{ThinkingHigh: new("high")},
+		ThinkingLevelMap: map[ModelThinkingLevel]*string{ThinkingHigh: new("high")},
 	})
 	compat := &OpenAICompat{
 		ThinkingFormat:              "baseten",
@@ -1494,7 +1497,7 @@ func TestOpenAICompletionsBasetenAndVLLMThinkingPayload(t *testing.T) {
 	}
 	request := captureOpenAIRequestMap(t, "baseten", "reasoning-model", compat, StreamOptions{
 		IsReasoning: true,
-		Thinking:    ThinkingHigh,
+		Thinking:    ThinkingLevelHigh,
 		MaxTokens:   4096,
 	})
 	args, ok := request["chat_template_args"].(map[string]any)
@@ -1529,7 +1532,7 @@ func TestStreamZaiReasoningEffortMapped(t *testing.T) {
 	compat := &OpenAICompat{ThinkingFormat: "zai", SupportsReasoningEffort: new(true), MaxTokensField: "max_tokens"}
 
 	registerTestModel(t, GeneratedModel{ID: "zai-mapped", Provider: "zai", Reasoning: true,
-		ThinkingLevelMap: map[ThinkingLevel]*string{ThinkingHigh: new("ultra"), ThinkingXHigh: new("x")}})
+		ThinkingLevelMap: map[ModelThinkingLevel]*string{ThinkingHigh: new("ultra"), ThinkingXHigh: new("x")}})
 	req := captureThinkingPayloadModel(t, "zai", "https://api.z.ai/v1", "zai-mapped", compat, ThinkingHigh)
 	if req.ReasoningEffort != "ultra" {
 		t.Fatalf("mapped zai reasoning_effort = %q, want ultra", req.ReasoningEffort)
@@ -1544,14 +1547,14 @@ func TestStreamDeepseekThinkingOffSuppressed(t *testing.T) {
 	compat := &OpenAICompat{ThinkingFormat: "deepseek", SupportsReasoningEffort: new(true), MaxTokensField: "max_tokens"}
 
 	registerTestModel(t, GeneratedModel{ID: "ds-offnull", Provider: "deepseek", Reasoning: true,
-		ThinkingLevelMap: map[ThinkingLevel]*string{ThinkingOff: nil, ThinkingXHigh: new("x")}})
+		ThinkingLevelMap: map[ModelThinkingLevel]*string{ThinkingOff: nil, ThinkingXHigh: new("x")}})
 	reqNull := captureThinkingPayloadModel(t, "deepseek", "https://api.deepseek.com/v1", "ds-offnull", compat, ThinkingOff)
 	if reqNull.Thinking != nil {
 		t.Fatalf("deepseek thinking(off, off=null) = %#v, want suppressed (nil)", reqNull.Thinking)
 	}
 
 	registerTestModel(t, GeneratedModel{ID: "ds-offabsent", Provider: "deepseek", Reasoning: true,
-		ThinkingLevelMap: map[ThinkingLevel]*string{ThinkingXHigh: new("x")}})
+		ThinkingLevelMap: map[ModelThinkingLevel]*string{ThinkingXHigh: new("x")}})
 	reqAbsent := captureThinkingPayloadModel(t, "deepseek", "https://api.deepseek.com/v1", "ds-offabsent", compat, ThinkingOff)
 	if th, _ := reqAbsent.Thinking.(map[string]any); th["type"] != "disabled" {
 		t.Fatalf("deepseek thinking(off, off absent) = %#v, want {type:disabled}", reqAbsent.Thinking)
@@ -1773,5 +1776,114 @@ func TestConvertMessagesNormalizesToolCallIDsConsistently(t *testing.T) {
 	}
 	if strings.Contains(callID, "|") {
 		t.Fatalf("normalized id still contains a pipe: %q", callID)
+	}
+}
+
+// openai-completions.ts:1193 convertMessages(model, context, compat, options) returns the messages buildParams sends: the instruction message first, then the transformed conversation. The public wrapper and the request Stream sends are one conversion for every compat shape.
+func TestConvertCompletionsMessagesEqualsTheStreamedRequestMessages(t *testing.T) {
+	transcript := NormalizeContext(Context{
+		SystemPrompt: "be brief",
+		Messages: []Message{
+			UserMessage{Content: UserText("list files"), Timestamp: 1},
+			AssistantMessage{API: APIOpenAICompletions, Provider: "custom", Model: "model", StopReason: StopReasonToolUse, Timestamp: 2, Content: []AssistantContentBlock{
+				ToolCall{ID: "call|item+1", Name: "ls", Arguments: JsonObject{}},
+			}},
+			ToolResultMessage{ToolCallID: "call|item+1", ToolName: "ls", Content: []ToolResultMessageContent{TextContent{Text: "a.txt"}}, Timestamp: 3},
+			UserMessage{Content: UserText("thanks"), Timestamp: 4},
+		},
+	})
+	yes := new(true)
+	shapes := map[string]struct {
+		compat    *OpenAICompat
+		reasoning bool
+		roles     []string
+	}{
+		"default":                  {nil, false, []string{"system", "user", "assistant", "tool", "user"}},
+		"assistant after tool":     {&OpenAICompat{RequiresAssistantAfterToolResult: yes}, false, []string{"system", "user", "assistant", "tool", "assistant", "user"}},
+		"tool result name":         {&OpenAICompat{RequiresToolResultName: yes}, false, []string{"system", "user", "assistant", "tool", "user"}},
+		"developer role reasoning": {&OpenAICompat{SupportsDeveloperRole: yes}, true, []string{"developer", "user", "assistant", "tool", "user"}},
+	}
+	for name, shape := range shapes {
+		t.Run(name, func(t *testing.T) {
+			model := &Model{ID: "model", ProviderMeta: ProviderMetadata{API: APIOpenAICompletions, ProviderID: "custom", BaseURL: "https://example.test/v1", Reasoning: shape.reasoning}, Input: []string{"text"}}
+			converted, err := ConvertCompletionsMessages(model, transcript, shape.compat, ConvertCompletionsMessagesOptions{})
+			if err != nil {
+				t.Fatal(err)
+			}
+			var roles []string
+			for _, message := range converted {
+				roles = append(roles, message.Role)
+			}
+			if !slices.Equal(roles, shape.roles) {
+				t.Fatalf("roles = %v, want %v", roles, shape.roles)
+			}
+			var sent map[string]any
+			provider := &openAIProvider{cfg: OpenAIConfig{BaseURL: "https://example.test/v1", Model: "model", ProviderID: "custom", Compat: shape.compat, ModelMetadata: model}}
+			provider.client = &http.Client{Transport: openAITestRoundTripperFunc(func(req *http.Request) (*http.Response, error) {
+				if err := json.NewDecoder(req.Body).Decode(&sent); err != nil {
+					return nil, err
+				}
+				return &http.Response{StatusCode: 200, Header: http.Header{"Content-Type": []string{"text/event-stream"}}, Body: io.NopCloser(strings.NewReader("data: {\"choices\":[{\"delta\":{},\"finish_reason\":\"stop\"}]}\n\n"))}, nil
+			})}
+			stream, err := provider.Stream(context.Background(), transcript, StreamOptions{IsReasoning: shape.reasoning})
+			if err != nil {
+				t.Fatal(err)
+			}
+			for range stream.Events(context.Background()) {
+			}
+			var got []any
+			encoded, _ := json.Marshal(converted)
+			if err := json.Unmarshal(encoded, &got); err != nil {
+				t.Fatal(err)
+			}
+			if !reflect.DeepEqual(got, sent["messages"]) {
+				t.Fatalf("wrapper\n%v\nrequest\n%v", got, sent["messages"])
+			}
+			if shape.compat != nil && shape.compat.RequiresAssistantAfterToolResult != nil {
+				// openai-completions.ts:1241-1246: the bridge between tool results and the next user message is this text.
+				if bridge := converted[4]; bridge.Role != "assistant" || bridge.Content != "I have processed the tool results." {
+					t.Fatalf("bridge = %+v", bridge)
+				}
+			}
+		})
+	}
+}
+
+// packages/ai/src/api/openai-completions.ts:162,1362-1371 ConvertCompletionsMessagesOptions.grammarToolInputProperties: a tool call whose name has an entry becomes a `custom` call
+// carrying the string argument named by the entry, other calls stay `function` calls, and a missing or non-string argument fails with Pi's message
+// (constrained-sampling.test.ts:231-240 "requires argument ... to be a string").
+func TestConvertCompletionsMessagesUsesTheGivenGrammarToolInputProperties(t *testing.T) {
+	model := &Model{ID: "model", ProviderMeta: ProviderMetadata{API: APIOpenAICompletions, ProviderID: "custom", BaseURL: "https://example.test/v1"}, Input: []string{"text"}}
+	transcript := func(arguments JsonObject) TranscriptContext {
+		return NormalizeContext(Context{Messages: []Message{
+			UserMessage{Content: UserText("go"), Timestamp: 1},
+			AssistantMessage{Content: []AssistantContentBlock{
+				ToolCall{ID: "call_1", Name: "sample_tool", Arguments: arguments},
+				ToolCall{ID: "call_2", Name: "plain_tool", Arguments: JsonObject{"x": float64(1)}},
+			}, StopReason: StopReasonToolUse, Timestamp: 2},
+			ToolResultMessage{ToolCallID: "call_1", ToolName: "sample_tool", Content: []ToolResultMessageContent{TextContent{Text: "done"}}, Timestamp: 3},
+			ToolResultMessage{ToolCallID: "call_2", ToolName: "plain_tool", Content: []ToolResultMessageContent{TextContent{Text: "done"}}, Timestamp: 4},
+		}})
+	}
+	options := ConvertCompletionsMessagesOptions{GrammarToolInputProperties: map[string]string{"sample_tool": "payload"}}
+	converted, err := ConvertCompletionsMessages(model, transcript(JsonObject{"payload": "abc"}), nil, options)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var calls []oaiRequestToolCall
+	for _, message := range converted {
+		calls = append(calls, message.ToolCalls...)
+	}
+	if len(calls) != 2 || calls[0].Type != "custom" || calls[0].Custom == nil || calls[0].Custom.Name != "sample_tool" || calls[0].Custom.Input != "abc" {
+		t.Fatalf("calls = %+v, want sample_tool as a custom call with input abc", calls)
+	}
+	if calls[1].Type != "function" || calls[1].Function == nil || calls[1].Function.Name != "plain_tool" {
+		t.Fatalf("second call = %+v, want a function call", calls[1])
+	}
+	for _, invalid := range []JsonObject{{}, {"payload": float64(42)}} {
+		_, err := ConvertCompletionsMessages(model, transcript(invalid), nil, options)
+		if err == nil || err.Error() != `Grammar tool call "sample_tool" requires argument "payload" to be a string.` {
+			t.Fatalf("arguments %v: err = %v, want Pi's grammar argument error", invalid, err)
+		}
 	}
 }

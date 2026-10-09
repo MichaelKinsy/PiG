@@ -1,5 +1,7 @@
 package durable
 
+// pi: packages/durable/src/tasks.ts
+
 import (
 	"context"
 	"encoding/json"
@@ -7,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/ai"
+	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/internal/testenv"
 )
 
@@ -84,7 +87,7 @@ func TestTypesUpstream(t *testing.T) {
 		completedInput := SubmissionRecord{Id: submissionId, ConversationId: conversationId, Type: SubmissionTypeInput, Status: SubmissionDone, Entry: &entryId, Answer: &answerId}
 		completedWrite := SubmissionRecord{Id: submissionId, ConversationId: conversationId, Type: SubmissionTypeWrite, Status: SubmissionDone, Entry: &entryId}
 		queuedWriteCreate := SubmissionCreate{ConversationId: conversationId, Type: SubmissionTypeWrite, Status: SubmissionQueued}
-		baseContent := DocumentContent{Kind: ContentBase, Version: 1, Value: JsonObject{"count": 1}}
+		baseContent := DocumentContent{Kind: ContentBase, Version: 1, Value: delta.JsonObjectOf("count", 1)}
 		deltaContent := DocumentContent{Kind: ContentDelta, Version: 1, Ops: []Op{{"s", []any{"count"}, 2}}}
 		conversationDocument := DocumentCreate{
 			Id: documentId, Kind: "test", Scope: DocumentRecordScope{Kind: ScopeConversation, ConversationId: conversationId},
@@ -254,9 +257,9 @@ func TestTypesUpstreamExclusivityLiteralsEncodeAsPiObjects(t *testing.T) {
 			`{"id":6,"kind":"test","scope":{"kind":"conversation","conversationId":1}}`},
 		{"taskCreateWithPolicy", DocumentCreate{Id: documentId, Kind: "test", Scope: DocumentRecordScope{Kind: ScopeTask, TaskId: taskId}, History: HistoryLatest, Fork: ForkInitial},
 			`{"id":6,"kind":"test","scope":{"kind":"task","taskId":4},"history":"latest","fork":"initial"}`},
-		{"baseWithOps", DocumentContent{Kind: ContentBase, Version: 1, Value: JsonObject{}, Ops: []Op{}},
+		{"baseWithOps", DocumentContent{Kind: ContentBase, Version: 1, Value: delta.NewJsonObject(0), Ops: []Op{}},
 			`{"kind":"base","version":1,"value":{},"ops":[]}`},
-		{"deltaWithValue", DocumentContent{Kind: ContentDelta, Version: 1, Ops: []Op{}, Value: JsonObject{}},
+		{"deltaWithValue", DocumentContent{Kind: ContentDelta, Version: 1, Ops: []Op{}, Value: delta.NewJsonObject(0)},
 			`{"kind":"delta","version":1,"ops":[],"value":{}}`},
 		// StorageWrite is a Go interface the storage codecs encode; its write type and two members carry the literal's
 		// fields.
@@ -287,5 +290,43 @@ func TestTypesUpstreamExclusivityLiteralsEncodeAsPiObjects(t *testing.T) {
 				t.Fatalf("%s encodes as %s, Pi's object is %s", tc.name, jsonOf(t, tc.value), tc.want)
 			}
 		})
+	}
+}
+
+// types.ts:671-732: a copy source is { id, at }; a StorageWrite is one of eight discriminated types; TableCommitChange is exactly the
+// conversation, entry, task and submission writes; DocumentCommitChange is the "document" and "document.copy" changes. The assignments
+// below are compile-time membership proofs, the table pins every discriminator string.
+func TestCommitChangeUnionsKeepPiDiscriminatorsAndMembership(t *testing.T) {
+	source := DocumentCopySource{Id: 7, At: DocumentPoint{Seq: 3}}
+	tables := []TableCommitChange{ConversationWrite{}, EntryWrite{}, TaskWrite{}, SubmissionWrite{}}
+	documents := []DocumentCommitChange{DocumentChange{}, DocumentCopyChange{Source: source}}
+	var want = []string{"conversation", "entry", "task", "submission"}
+	for i, change := range tables {
+		if got := CommitChangeType(change); got != want[i] {
+			t.Errorf("table change %d type = %q, want %q", i, got, want[i])
+		}
+		if got := StorageWriteType(change); got != want[i] {
+			t.Errorf("table write %d type = %q, want %q", i, got, want[i])
+		}
+	}
+	for i, change := range documents {
+		if got, want := CommitChangeType(change), []string{"document", "document.copy"}[i]; got != want {
+			t.Errorf("document change %d type = %q, want %q", i, got, want)
+		}
+	}
+	writes := map[string]StorageWrite{
+		"document.create": DocumentCreateWrite{}, "document.copy": DocumentCopyWrite{Source: source},
+		"document.change": DocumentChangeWrite{}, "document.retire": DocumentRetireWrite{},
+	}
+	for kind, write := range writes {
+		if got := StorageWriteType(write); got != kind {
+			t.Errorf("write type = %q, want %q", got, kind)
+		}
+	}
+	if copyWrite := writes["document.copy"].(DocumentCopyWrite); copyWrite.Source != source {
+		t.Fatalf("copy source lost: %+v", copyWrite)
+	}
+	if copyChange := documents[1].(DocumentCopyChange); copyChange.Source != source {
+		t.Fatalf("copy change source lost: %+v", copyChange)
 	}
 }

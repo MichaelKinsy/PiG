@@ -55,7 +55,7 @@ const (
 	// upstream: packages/coding-agent/src/extensions/mcp/tools.ts:MCP_OUTPUT_MAX_BYTES
 	McpOutputMaxBytes = 20 * 1024
 	// ReadMcpResourceTool is the tool that reads the resources named by resource links.
-	ReadMcpResourceTool = "read_mcp_resource"
+	ReadMcpResourceTool = extension.ReadMcpResourceTool
 )
 
 // McpToolDetails are the details of an MCP tool result.
@@ -148,7 +148,7 @@ func CreateMcpResultSchema(structuredContentSchema json.RawMessage) json.RawMess
 func mcpToLLM(content []mcp.LLMContent) []ai.ToolResultMessageContent {
 	out := make([]ai.ToolResultMessageContent, 0, len(content))
 	for _, block := range content {
-		if block.Type == "image" {
+		if block.Type == mcp.LLMContentTypeImage {
 			out = append(out, ai.ImageContent{Data: block.Data, MimeType: block.MimeType})
 		} else {
 			out = append(out, ai.TextContent{Text: block.Text})
@@ -222,7 +222,7 @@ func isTextMimeType(mimeType string) bool {
 		return false
 	}
 	kind, _, _ := strings.Cut(mimeType, ";")
-	kind = strings.ToLower(strings.TrimSpace(kind))
+	kind = strings.ToLower(strings.TrimFunc(kind, isJSWhitespace))
 	return strings.HasPrefix(kind, "text/") || kind == "application/json" || strings.HasSuffix(kind, "+json") || strings.HasSuffix(kind, "+xml")
 }
 
@@ -244,8 +244,9 @@ func blockToContent(server string, block mcp.ContentBlock, options ConvertMcpRes
 		if block.Description != "" {
 			description = ": " + block.Description
 		}
+		// `block.title ?? block.name`: only a missing title falls back to the name.
 		title := block.Title
-		if title == "" {
+		if title == "" && !block.HasTitle {
 			title = block.Name
 		}
 		suffix := ""
@@ -387,11 +388,12 @@ type McpToolOptions struct {
 // CreateMcpToolDefinition adapts one MCP tool to a tool definition.
 func CreateMcpToolDefinition(options McpToolOptions) extension.ToolDefinition {
 	server, tool := options.Server, options.Tool
+	// `tool.title ?? tool.annotations?.title`: only a missing title falls back to the annotation's.
 	title := tool.Title
-	if title == "" && tool.Annotations != nil {
+	if title == "" && !tool.HasTitle && tool.Annotations != nil {
 		title = tool.Annotations.Title
 	}
-	description := strings.TrimSpace(tool.Description)
+	description := strings.TrimFunc(tool.Description, isJSWhitespace)
 	if description == "" {
 		description = title
 	}
@@ -425,15 +427,14 @@ func CreateMcpToolDefinition(options McpToolOptions) extension.ToolDefinition {
 			}
 			caller, err := options.GetClient(ctx)
 			if err != nil {
-				return nil, err
+				return extension.AgentToolResult{}, err
 			}
 			args := params
 			if len(args) == 0 || string(args) == "null" {
 				args = json.RawMessage("{}")
 			}
 			requestOptions.OnProgress = func(progress mcp.ProgressNotification) {
-				update, ok := onUpdate.(agent.ToolUpdateCallback)
-				if !ok || update == nil {
+				if onUpdate == nil {
 					return
 				}
 				text := progress.Message
@@ -444,11 +445,11 @@ func CreateMcpToolDefinition(options McpToolOptions) extension.ToolDefinition {
 					}
 					text = "Progress " + formatJSNumber(progress.Progress) + total
 				}
-				update(agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: text}}, Details: McpToolDetails{Server: server, Tool: tool.Name}})
+				onUpdate(agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: text}}, Details: McpToolDetails{Server: server, Tool: tool.Name}})
 			}
 			result, err := caller.CallTool(ctx, tool.Name, args, requestOptions)
 			if err != nil {
-				return nil, err
+				return extension.AgentToolResult{}, err
 			}
 			readable := false
 			if options.ReadableResources != nil {

@@ -1,4 +1,3 @@
-// SPDX-FileCopyrightText: Copyright Hewlett Packard Enterprise Development LP
 // SPDX-FileCopyrightText: Copyright (c) 2025 Mario Zechner
 // SPDX-License-Identifier: MIT
 
@@ -19,7 +18,6 @@ import (
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/coding/extension"
 	icodingagent "github.com/MichaelKinsy/PiG/internal/codingagent"
-	"github.com/MichaelKinsy/PiG/internal/codingagent/compaction"
 )
 
 func suiteCompactionSeed(t *testing.T, s *Session) {
@@ -33,8 +31,8 @@ func suiteCompactionSeed(t *testing.T, s *Session) {
 func suiteCompactions(t *testing.T, s *Session) []icodingagent.CompactionEntry {
 	t.Helper()
 	var result []icodingagent.CompactionEntry
-	for _, entry := range s.inner.Entries() {
-		if entry.Base.Type == "compaction" {
+	for _, entry := range s.inner.GetEntries() {
+		if entry.Base().Type == "compaction" {
 			var value icodingagent.CompactionEntry
 			if err := json.Unmarshal(entry.Raw(), &value); err != nil {
 				t.Fatal(err)
@@ -57,8 +55,8 @@ func suiteSummaryStream(s *Session, summary string, onRequest func(string, []age
 }
 func suiteSummaryExtension(summary string, usage *ai.Usage) extension.Extension {
 	return extension.Extension{Path: "compaction-suite", Handlers: map[string][]extension.HandlerFn{"session_before_compact": {func(args ...any) (any, error) {
-		prep := args[0].(extension.SessionBeforeCompactEvent).Preparation.(*compaction.CompactionPreparation)
-		return extension.SessionBeforeCompactResult{Compaction: map[string]any{"summary": summary, "firstKeptEntryId": prep.FirstKeptEntryID, "tokensBefore": prep.TokensBefore, "usage": usage, "details": map[string]any{"source": "extension"}}}, nil
+		prep := args[0].(extension.SessionBeforeCompactEvent).Preparation
+		return extension.SessionBeforeCompactResult{Compaction: &extension.CompactionResult{Summary: summary, FirstKeptEntryID: prep.FirstKeptEntryID, TokensBefore: prep.TokensBefore, Usage: usage, Details: map[string]any{"source": "extension"}}}, nil
 	}}}}
 }
 func suiteLastText(s *Session) string {
@@ -86,6 +84,7 @@ func (p *suiteBearerProvider) Stream(_ context.Context, _ ai.TranscriptContext, 
 	return newSessionTestStream(ai.StartEvent{Partial: message}, ai.DoneEvent{Reason: ai.StopReasonStop, Message: message}), nil
 }
 
+// Pi: packages/coding-agent/src/core/agent-session.ts:146 (CompactionEntry.usage); packages/coding-agent/src/core/compaction/compaction.ts:109 (CompactionResult.estimatedTokensAfter).
 func TestAgentSessionCompactionSuiteUpstream(t *testing.T) {
 	// .upstream/v0.87.1/packages/coding-agent/test/suite/agent-session-compaction.test.ts:136
 	t.Run("manually compacts using an extension-provided summary", func(t *testing.T) {
@@ -97,7 +96,7 @@ func TestAgentSessionCompactionSuiteUpstream(t *testing.T) {
 			}
 		}
 		before := h.session.GetSessionStats()
-		result, err := h.session.CompactResult(t.Context(), "")
+		result, err := h.session.Compact(t.Context(), "")
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -132,7 +131,7 @@ func TestAgentSessionCompactionSuiteUpstream(t *testing.T) {
 			}
 		})
 		defer unsubscribe()
-		if _, err := h.session.CompactResult(t.Context(), ""); err != nil {
+		if _, err := h.session.Compact(t.Context(), ""); err != nil {
 			t.Fatal(err)
 		}
 		beforeReturn := false
@@ -163,7 +162,7 @@ func TestAgentSessionCompactionSuiteUpstream(t *testing.T) {
 			t.Fatal(rootErr)
 		}
 		t.Setenv("PIG_HOME", root)
-		_, err := h.session.CompactResult(t.Context(), "")
+		_, err := h.session.Compact(t.Context(), "")
 		if err == nil || !strings.Contains(err.Error(), "No model selected") {
 			t.Fatalf("error=%v", err)
 		}
@@ -186,7 +185,7 @@ func TestAgentSessionCompactionSuiteUpstream(t *testing.T) {
 			t.Fatal(rootErr)
 		}
 		t.Setenv("PIG_HOME", root)
-		_, err = h.session.CompactResult(t.Context(), "")
+		_, err = h.session.Compact(t.Context(), "")
 		if err == nil || !strings.Contains(err.Error(), "No API key found for faux.") {
 			t.Fatalf("error=%v", err)
 		}
@@ -197,7 +196,7 @@ func TestAgentSessionCompactionSuiteUpstream(t *testing.T) {
 		h := newRecoveryHarness(t, harnessOptions{withConfiguredAuth: new(false)})
 		suiteCompactionSeed(t, h.session)
 		calls := suiteSummaryStream(h.session, "summary from custom stream", nil)
-		result, err := h.session.CompactResult(t.Context(), "")
+		result, err := h.session.Compact(t.Context(), "")
 		if err != nil || !strings.Contains(result.Summary, "summary from custom stream") || calls() != 1 {
 			t.Fatalf("result=%+v error=%v calls=%d", result, err, calls())
 		}
@@ -212,7 +211,7 @@ func TestAgentSessionCompactionSuiteUpstream(t *testing.T) {
 		}}}}
 		installCompactionModel(h.session, provider, 200000, 8192)
 		suiteCompactionSeed(t, h.session)
-		result, err := h.session.CompactResult(t.Context(), "")
+		result, err := h.session.Compact(t.Context(), "")
 		if err != nil || !strings.Contains(result.Summary, "summary with bearer auth") || provider.calls != 1 || resolved != 1 {
 			t.Fatalf("result=%+v error=%v calls=%d auth=%d", result, err, provider.calls, resolved)
 		}
@@ -232,7 +231,7 @@ func TestAgentSessionCompactionSuiteUpstream(t *testing.T) {
 		requests := 0
 		suiteSummaryStream(h.session, "standalone summary", func(system string, messages []agent.AgentMessage, options ai.StreamOptions) {
 			requests++
-			if system == h.session.agent.SystemPrompt() || options.CacheRetention != "none" || options.SessionID == "active-routing-session" || options.Transport != "" || len(ai.GetCurrentTools(agent.ConvertToLLM(messages, h.session.Model()))) != 0 {
+			if system == h.session.agent.SystemPrompt() || options.CacheRetention != "none" || options.SessionID == "active-routing-session" || options.Transport != "" || len(ai.GetCurrentTools(agent.ConvertToLLM(agent.NormalizeMessages(messages, h.session.Model())))) != 0 {
 				t.Fatalf("system=%q options=%+v", system, options)
 			}
 			raw, err := json.Marshal(messages)
@@ -243,7 +242,7 @@ func TestAgentSessionCompactionSuiteUpstream(t *testing.T) {
 				t.Fatal(string(raw))
 			}
 		})
-		if _, err := h.session.CompactResult(t.Context(), ""); err != nil {
+		if _, err := h.session.Compact(t.Context(), ""); err != nil {
 			t.Fatal(err)
 		}
 		if transforms != 0 || requests != 1 {
@@ -255,7 +254,7 @@ func TestAgentSessionCompactionSuiteUpstream(t *testing.T) {
 		h := newRecoveryHarness(t, harnessOptions{})
 		suiteCompactionSeed(t, h.session)
 		suiteSummaryStream(h.session, "summary from custom stream", nil)
-		result, err := h.session.CompactResult(t.Context(), "")
+		result, err := h.session.Compact(t.Context(), "")
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -330,7 +329,7 @@ func TestManualCompactionResolvesAuthOnlyWhenPiSummarizesItself(t *testing.T) {
 		model.ProviderMeta.ProviderID = "faux"
 		model.ID = "faux-1"
 		h.session.agent.SetModel(model)
-		if _, err := h.session.CompactResult(t.Context(), ""); err == nil || !strings.Contains(err.Error(), "Nothing to compact (session too small)") {
+		if _, err := h.session.Compact(t.Context(), ""); err == nil || !strings.Contains(err.Error(), "Nothing to compact (session too small)") {
 			t.Fatalf("error=%v", err)
 		}
 	})
@@ -345,7 +344,7 @@ func TestManualCompactionResolvesAuthOnlyWhenPiSummarizesItself(t *testing.T) {
 		model.ID = "faux-1"
 		h.session.agent.SetModel(model)
 		suiteCompactionSeed(t, h.session)
-		result, err := h.session.CompactResult(t.Context(), "")
+		result, err := h.session.Compact(t.Context(), "")
 		if err != nil || result.Summary != "extension summary" {
 			t.Fatalf("result=%+v error=%v", result, err)
 		}

@@ -107,7 +107,7 @@ func TestGoogleRequestPreservesEmptyText(t *testing.T) {
 		t.Run(providerID, func(t *testing.T) {
 			body := captureShapeRequest(t, func(url string) Provider {
 				if providerID == "google-vertex" {
-					return NewGoogleVertexProvider(GoogleVertexConfig{BaseURL: url, APIKey: "test", Model: "test", ProviderID: providerID})
+					return newGoogleVertexTestProvider(GoogleVertexConfig{BaseURL: url, APIKey: "test", Model: "test", ProviderID: providerID}, nil)
 				}
 				return NewGoogleProvider(GoogleConfig{BaseURL: url, APIKey: "test", Model: "test", ProviderID: providerID})
 			}, []Message{

@@ -1,4 +1,3 @@
-// SPDX-FileCopyrightText: Copyright Hewlett Packard Enterprise Development LP
 // SPDX-License-Identifier: MIT
 
 package agent
@@ -19,7 +18,7 @@ func TestPrepareNextTurnRejectionFinalizesFailedAssistant(t *testing.T) {
 	rejecting := false
 	var phases []string
 	var endMessages []AgentMessage
-	a := NewAgent(AgentOptions{Model: scriptedModel(provider), PrepareNextTurn: func(context.Context, PrepareNextTurnContext) (*AgentLoopTurnUpdate, error) {
+	a := mustNewAgent(AgentOptions{Model: scriptedModel(provider), PrepareNextTurnWithContext: func(context.Context, PrepareNextTurnContext) (*AgentLoopTurnUpdate, error) {
 		rejecting = true
 		return nil, failure
 	}, OnEvent: func(event AgentEvent) {

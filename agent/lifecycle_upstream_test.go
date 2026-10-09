@@ -11,7 +11,7 @@ import (
 
 // .upstream/v0.87.1/packages/agent/test/agent.test.ts:683
 func TestAgent_HandlesAbortController(t *testing.T) {
-	a := NewAgent(AgentOptions{})
+	a := mustNewAgent(AgentOptions{})
 	a.Abort()
 }
 
@@ -20,7 +20,7 @@ func TestAgent_WaitForIdleWaitsForAsyncSubscribers(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		barrier := make(chan struct{})
 		idleResolved, promptResolved := false, false
-		a := NewAgent(AgentOptions{Model: scriptedModel(&scriptedProvider{respond: replyText("ok")})})
+		a := mustNewAgent(AgentOptions{Model: scriptedModel(&scriptedProvider{respond: replyText("ok")})})
 		a.Subscribe(func(_ context.Context, ev AgentEvent) error {
 			if end, ok := ev.(MessageEndEvent); ok && end.Message.Assistant != nil {
 				<-barrier
@@ -47,7 +47,7 @@ func TestAgent_PassesActiveAbortSignalToSubscribers(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		started := make(chan struct{}, 1)
 		var received, providerContext context.Context
-		a := NewAgent(AgentOptions{Model: scriptedModel(&scriptedProvider{respond: func(_ int, req scriptedRequest) *ai.AssistantMessageEventStream {
+		a := mustNewAgent(AgentOptions{Model: scriptedModel(&scriptedProvider{respond: func(_ int, req scriptedRequest) *ai.AssistantMessageEventStream {
 			providerContext = req.ctx
 			return abortableStream(req.ctx, started)
 		}})})
@@ -77,7 +77,7 @@ func TestAgent_PassesActiveAbortSignalToSubscribers(t *testing.T) {
 
 func BenchmarkAgentLifecycleTextRun(b *testing.B) {
 	provider := &scriptedProvider{respond: replyText(strings.Repeat("response ", 128))}
-	a := NewAgent(AgentOptions{Model: scriptedModel(provider)})
+	a := mustNewAgent(AgentOptions{Model: scriptedModel(provider)})
 	a.Subscribe(func(context.Context, AgentEvent) error { return nil })
 	b.ReportAllocs()
 	for b.Loop() {
@@ -95,7 +95,7 @@ func BenchmarkAgentLifecycleTextRun(b *testing.B) {
 func TestAgentSuccessfulRunDetachesCancellationWithoutAbortingSignal(t *testing.T) {
 	parent, cancel := context.WithCancel(t.Context())
 	defer cancel()
-	a := NewAgent(AgentOptions{Model: scriptedModel(&scriptedProvider{respond: replyText("ok")})})
+	a := mustNewAgent(AgentOptions{Model: scriptedModel(&scriptedProvider{respond: replyText("ok")})})
 	var signal context.Context
 	a.Subscribe(func(ctx context.Context, _ AgentEvent) error { signal = ctx; return nil })
 	if _, err := a.Send(parent, "hello"); err != nil {

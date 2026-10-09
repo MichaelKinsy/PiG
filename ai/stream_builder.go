@@ -25,6 +25,8 @@ type assistantStreamBuilder struct {
 	activeText     int
 	activeThinking int
 	toolCalls      map[int]*streamToolCall
+	// streamedBlocks appends deltas to open blocks without copying them again.
+	streamedBlocks
 
 	// modelCost is the requested model's price (StreamOptions.ModelCost).
 	modelCost          ModelCost
@@ -33,11 +35,17 @@ type assistantStreamBuilder struct {
 	errorMessage func(string) string
 	// providerEvent is the bound OnProviderStreamEvent observer, or nil.
 	providerEvent func(data any) error
+	// providerEventOption and providerEventModel are the request's OnProviderStreamEvent option and the model it receives, for an adapter that
+	// passes the option on (processResponsesStream's options.onProviderStreamEvent and model).
+	providerEventOption func(ctx context.Context, data any, model *Model) error
+	providerEventModel  *Model
 }
 
 type streamToolCall struct {
 	contentIndex int
 	arguments    strings.Builder
+	// parser parses arguments, which only grow, from the point the last delta reached.
+	parser streamingArgumentsParser
 }
 
 type streamToolCallDelta struct {
@@ -99,7 +107,7 @@ func (builder *assistantStreamBuilder) textBlockStartWithBlock(block TextContent
 
 func (builder *assistantStreamBuilder) textBlockDelta(contentIndex int, delta string) {
 	block := builder.partial.Content[contentIndex].(TextContent)
-	block.Text += delta
+	block.Text = builder.appendContent(contentIndex, block.Text, delta)
 	builder.partial.Content[contentIndex] = block
 	builder.push(TextDeltaEvent{ContentIndex: contentIndex, Delta: delta, Partial: builder.partial})
 }
@@ -110,6 +118,7 @@ func (builder *assistantStreamBuilder) textBlockEnd(contentIndex int, content, s
 	block.TextSignature = signature
 	block.scratch = ""
 	builder.partial.Content[contentIndex] = block
+	builder.release(contentIndex)
 	builder.push(TextEndEvent{ContentIndex: contentIndex, Content: content, Partial: builder.partial})
 }
 
@@ -127,7 +136,7 @@ func (builder *assistantStreamBuilder) thinkingBlockStartWithContent(content Thi
 
 func (builder *assistantStreamBuilder) thinkingBlockDelta(contentIndex int, delta string) {
 	block := builder.partial.Content[contentIndex].(ThinkingContent)
-	block.Thinking += delta
+	block.Thinking = builder.appendContent(contentIndex, block.Thinking, delta)
 	builder.partial.Content[contentIndex] = block
 	builder.push(ThinkingDeltaEvent{ContentIndex: contentIndex, Delta: delta, Partial: builder.partial})
 }
@@ -148,6 +157,7 @@ func (builder *assistantStreamBuilder) thinkingBlockEnd(contentIndex int, conten
 	}
 	block.scratch = ""
 	builder.partial.Content[contentIndex] = block
+	builder.release(contentIndex)
 	builder.push(ThinkingEndEvent{ContentIndex: contentIndex, Content: content, Partial: builder.partial})
 }
 
@@ -165,7 +175,7 @@ func (builder *assistantStreamBuilder) textStart(content string) {
 func (builder *assistantStreamBuilder) textDelta(delta string) {
 	builder.textStart("")
 	block := builder.partial.Content[builder.activeText].(TextContent)
-	block.Text += delta
+	block.Text = builder.appendContent(builder.activeText, block.Text, delta)
 	builder.partial.Content[builder.activeText] = block
 	builder.push(TextDeltaEvent{ContentIndex: builder.activeText, Delta: delta, Partial: builder.partial})
 }
@@ -177,6 +187,22 @@ func (builder *assistantStreamBuilder) textSignature(signature string) {
 	block := builder.partial.Content[builder.activeText].(TextContent)
 	block.TextSignature = signature
 	builder.partial.Content[builder.activeText] = block
+}
+
+// activeTextSignature is the signature of the open text block, empty when there is none.
+func (builder *assistantStreamBuilder) activeTextSignature() string {
+	if builder.activeText < 0 {
+		return ""
+	}
+	return builder.partial.Content[builder.activeText].(TextContent).TextSignature
+}
+
+// activeThinkingSignature is the signature of the open thinking block, empty when there is none.
+func (builder *assistantStreamBuilder) activeThinkingSignature() string {
+	if builder.activeThinking < 0 {
+		return ""
+	}
+	return builder.partial.Content[builder.activeThinking].(ThinkingContent).ThinkingSignature
 }
 
 func (builder *assistantStreamBuilder) thinkingStart(content ThinkingContent) {
@@ -193,7 +219,7 @@ func (builder *assistantStreamBuilder) thinkingStart(content ThinkingContent) {
 func (builder *assistantStreamBuilder) thinkingDelta(delta string, redacted bool) {
 	builder.thinkingStart(ThinkingContent{Redacted: redacted})
 	block := builder.partial.Content[builder.activeThinking].(ThinkingContent)
-	block.Thinking += delta
+	block.Thinking = builder.appendContent(builder.activeThinking, block.Thinking, delta)
 	block.Redacted = block.Redacted || redacted
 	builder.partial.Content[builder.activeThinking] = block
 	builder.push(ThinkingDeltaEvent{ContentIndex: builder.activeThinking, Delta: delta, Partial: builder.partial})
@@ -247,7 +273,7 @@ func (builder *assistantStreamBuilder) toolCallDelta(delta streamToolCallDelta) 
 	}
 	state.arguments.WriteString(delta.argumentsDelta)
 	if !block.scratch.customInput {
-		block.SetStreamingArguments(state.arguments.String())
+		block.Arguments, block.argumentOrder = state.parser.parse(state.arguments.String())
 	}
 	if block.scratch.hasPartialArgs {
 		block.scratch.partialArgs = state.arguments.String()
@@ -368,7 +394,10 @@ func (builder *assistantStreamBuilder) finishBlocksWithThinking(thinkingContentI
 	}
 }
 
-func (builder *assistantStreamBuilder) endToolCall(index int) {
+func (builder *assistantStreamBuilder) endToolCall(index int) { builder.endToolCallWith(index, nil) }
+
+// endToolCallWith ends a tool call; finalize, when non-nil, edits the ToolCall of the end event only, as faux.ts pushes the response block while its partial message keeps the streamed block.
+func (builder *assistantStreamBuilder) endToolCallWith(index int, finalize func(*ToolCall)) {
 	state := builder.toolCalls[index]
 	if state == nil {
 		return
@@ -390,7 +419,11 @@ func (builder *assistantStreamBuilder) endToolCall(index int) {
 	}
 	block.scratch = toolCallScratch{}
 	builder.partial.Content[state.contentIndex] = block
-	builder.push(ToolCallEndEvent{ContentIndex: state.contentIndex, ToolCall: block, Partial: builder.partial})
+	ended := block
+	if finalize != nil {
+		finalize(&ended)
+	}
+	builder.push(ToolCallEndEvent{ContentIndex: state.contentIndex, ToolCall: ended, Partial: builder.partial})
 	delete(builder.toolCalls, index)
 }
 
@@ -400,6 +433,7 @@ func (builder *assistantStreamBuilder) endText() {
 	}
 	block := builder.partial.Content[builder.activeText].(TextContent)
 	builder.push(TextEndEvent{ContentIndex: builder.activeText, Content: block.Text, Partial: builder.partial})
+	builder.release(builder.activeText)
 	builder.activeText = -1
 }
 
@@ -409,6 +443,7 @@ func (builder *assistantStreamBuilder) endThinking() {
 	}
 	block := builder.partial.Content[builder.activeThinking].(ThinkingContent)
 	builder.push(ThinkingEndEvent{ContentIndex: builder.activeThinking, Content: block.Thinking, Partial: builder.partial})
+	builder.release(builder.activeThinking)
 	builder.activeThinking = -1
 }
 
@@ -450,6 +485,11 @@ func (builder *assistantStreamBuilder) push(event AssistantMessageEvent) {
 	})
 	if err := builder.stream.Push(event); err != nil {
 		builder.failInvariant(err)
+	}
+	// The stream timed the final message in place (event-stream.ts:127-128 mutates the same output object every earlier event shares), so the live view the earlier events retain shows durationMs too.
+	switch event.(type) {
+	case DoneEvent, ErrorEvent:
+		builder.publish()
 	}
 	if builder.afterPush != nil {
 		builder.afterPush()

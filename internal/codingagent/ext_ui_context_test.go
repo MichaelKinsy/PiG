@@ -9,7 +9,7 @@ import (
 )
 
 func TestExtUIContextSetToolsExpandedUpdatesVisibleToolCards(t *testing.T) {
-	component := tui.NewToolExecutionComponent("ask_user", `question:"Which option?"`)
+	component := newToolCardForTest("ask_user", `question:"Which option?"`)
 	mode := &InteractiveMode{
 		toolOrder:     []*tui.ToolExecutionComponent{component},
 		chatContainer: tui.NewContainer(component),
@@ -34,7 +34,7 @@ func TestExtUIContextSetToolsExpandedUpdatesVisibleToolCards(t *testing.T) {
 }
 
 func TestExtUIContextSetToolsExpandedMarshalsToOwnerLoop(t *testing.T) {
-	component := tui.NewToolExecutionComponent("ask_user", `question:"Which option?"`)
+	component := newToolCardForTest("ask_user", `question:"Which option?"`)
 	mode := &InteractiveMode{
 		runCtx:        context.Background(),
 		uiTaskCh:      make(chan func(), 1),
@@ -65,11 +65,11 @@ func TestExtUIContextSetToolsExpandedMarshalsToOwnerLoop(t *testing.T) {
 // clearing the footer brings the built-in one back.
 // SetLinesAt can synchronously paint through its invalidation callback. Pi swaps footer ownership before painting the replacement, not after that callback returns.
 func TestFooterOwnershipChangesBeforeFrameInvalidation(t *testing.T) {
-	mode := &InteractiveMode{statusLine: NewStatusLine(nil, "", nil)}
+	mode := &InteractiveMode{statusLine: NewFooterComponent(nil, "", nil)}
 	var visible []bool
 	mode.extFooter = newSpecialLinesComponent(func() { visible = append(visible, len(mode.statusLine.Render(80)) != 0) })
 	ui := &ExtUIContext{m: mode}
-	ui.SetFooter([]string{"custom"})
+	ui.SetFooter(extension.FrameFooter([]string{"custom"}, 0))
 	ui.SetFooter(nil)
 	if len(visible) != 2 || visible[0] || !visible[1] {
 		t.Fatalf("built-in footer visibility at paint = %v, want suppressed then restored", visible)
@@ -79,11 +79,11 @@ func TestFooterOwnershipChangesBeforeFrameInvalidation(t *testing.T) {
 func TestExtUIContextEmptyCustomFooterReplacesTheBuiltInFooter(t *testing.T) {
 	mode := &InteractiveMode{
 		extFooter:  newSpecialLinesComponent(func() {}),
-		statusLine: NewStatusLine(nil, "", nil),
+		statusLine: NewFooterComponent(nil, "", nil),
 	}
 	ui := &ExtUIContext{m: mode}
 
-	ui.SetFooter(extension.WidthLines{Width: 80})
+	ui.SetFooter(extension.FrameFooter(nil, 80))
 	if lines := mode.statusLine.Render(80); len(lines) != 0 {
 		t.Fatalf("built-in footer still renders %q under an empty custom footer", lines)
 	}

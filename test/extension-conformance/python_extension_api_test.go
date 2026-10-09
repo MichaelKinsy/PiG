@@ -135,7 +135,7 @@ func (r *pyAPIRig) execute(ext, tool, id string) (agent.AgentToolResult, error) 
 	if err != nil {
 		return agent.AgentToolResult{}, err
 	}
-	typed, ok := result.(agent.AgentToolResult)
+	typed, ok := result, true
 	if !ok {
 		r.t.Fatalf("%s result type = %T", tool, result)
 	}
@@ -209,7 +209,7 @@ func TestPythonSDKMcpServerRegistration(t *testing.T) {
 		mcpPath, siblingPath := rig.exts["pyapi-mcp"].Path, rig.exts["pyapi-sibling"].Path
 		registered := func() []string {
 			var out []string
-			for _, s := range rig.host.Runtime().McpServers() {
+			for _, s := range rig.host.Runtime().McpServers().List() {
 				out = append(out, s.Name+"@"+s.ExtensionPath)
 			}
 			slices.Sort(out)
@@ -229,7 +229,7 @@ func TestPythonSDKMcpServerRegistration(t *testing.T) {
 			t.Fatalf("after add: %v, want %v", got, want)
 		}
 		var late extension.RegisteredMcpServer
-		for _, s := range rig.host.Runtime().McpServers() {
+		for _, s := range rig.host.Runtime().McpServers().List() {
 			if s.Name == "py-late" {
 				late = s
 			}
@@ -283,7 +283,7 @@ def new_extension():
     return e
 `
 
-// loader.ts:480-497 and virtual-models.ts:87-101: the declaration reaches the runtime queue without its route, the route runs in the extension against the request the Host sends, and the route names the physical model by provider and id for the model runtime to resolve (model-runtime.ts:1000-1009). The value in the state is computed by the router from the state it was sent.
+// pi.registerVirtualModel (packages/coding-agent/src/core/extensions/types.ts:1872, loader.ts:500-509) and unregisterVirtualModel (packages/coding-agent/src/core/extensions/types.ts:1875, loader.ts:511-514), with virtual-models.ts:87-101: the declaration reaches the runtime queue without its route, the route runs in the extension against the request the Host sends, and the route names the physical model by provider and id for the model runtime to resolve (model-runtime.ts:1000-1009). The value in the state is computed by the router from the state it was sent.
 func TestPythonSDKVirtualModelRegistrationAndRouting(t *testing.T) {
 	eachPyAPIIsolation(t, func(t *testing.T, isolation string) {
 		rig := newPyAPIRig(t, isolation, &subprocess.HostCallbacks{}, pyAPIFixture{"pyapi-vm", pyVirtualModelFixture})
@@ -296,7 +296,7 @@ func TestPythonSDKVirtualModelRegistrationAndRouting(t *testing.T) {
 		}
 		got := pending()
 		if len(got) != 1 {
-			t.Fatalf("registered %v, want only pyrouter/auto (dropped was unregistered while the factory ran)", got)
+			t.Fatalf("registerVirtualModel/unregisterVirtualModel: registered %v, want only pyrouter/auto (dropped was unregistered while the factory ran)", got)
 		}
 		p := got["pyrouter/auto"]
 		def := p.Definition
@@ -340,8 +340,9 @@ const pyToolsFixture = pyAPIPrelude + `
 def prepare(loadout):
     grep = loadout.get_namespace("grep") or {}
     return {
-        "descriptions": {"read": "py: %d callable, %d registered, grep is %s in %s, absent is %s" % (
-            len(loadout.callable), len(loadout.registered), loadout.get_exposure("grep"), grep.get("name"), loadout.get_exposure("absent"))},
+        "descriptions": {"read": "py: %d callable, %d registered, grep is %s in %s, absent is %s, grep guidelines %s, absent guidelines %s" % (
+            len(loadout.callable), len(loadout.registered), loadout.get_exposure("grep"), grep.get("name"), loadout.get_exposure("absent"),
+            json.dumps(loadout.get_prompt_guidelines("grep")), json.dumps(loadout.get_prompt_guidelines("absent")))},
         "hiddenDeclarations": [t["name"] for t in loadout.declared if t["name"] != "read"],
     }
 
@@ -408,8 +409,14 @@ func TestPythonSDKToolExposureFieldsAndPrepareLoadout(t *testing.T) {
 				}
 				return nil
 			},
+			GetPromptGuidelines: func(name string) []string {
+				if name == "grep" {
+					return []string{"Use grep for patterns.", "Quote regexes."}
+				}
+				return nil
+			},
 		})
-		wantDescription := "py: 1 callable, 2 registered, grep is deferred in search-ns, absent is direct"
+		wantDescription := `py: 1 callable, 2 registered, grep is deferred in search-ns, absent is direct, grep guidelines ["Use grep for patterns.", "Quote regexes."], absent guidelines []`
 		if changes == nil || changes.Descriptions["read"] != wantDescription || !slices.Equal(changes.HiddenDeclarations, []string{"grep"}) {
 			t.Fatalf("changes = %+v, want description %q hiding grep", changes, wantDescription)
 		}
@@ -517,7 +524,7 @@ func TestPythonSDKExecuteToolAndCallableTools(t *testing.T) {
 				outcome := extension.AgentToolCallOutcome{ToolCall: ai.ToolCall{ID: callerID + "/1", Name: name, Arguments: ai.JsonObject{}}}
 				switch name {
 				case "echo":
-					if update, ok := options.OnUpdate.(func(agent.AgentToolResult) error); ok {
+					if update := options.OnUpdate; update != nil {
 						// The session rejects the call with the first sink error (agent-loop.ts:820-849); these rows' callbacks do not throw.
 						var first error
 						for _, step := range []string{"partial-one", "partial-two"} {
@@ -575,7 +582,7 @@ func TestPythonSDKToolEventsAndNewEvents(t *testing.T) {
 		rig.waitNotification("outside|tools is only available while a tool runs")
 
 		base := extension.ToolCallEventBase{Type: "tool_call", ToolCallID: "outer-1/2", ParentToolCallID: "outer-1"}
-		if _, err := rig.runner.EmitToolCall(t.Context(), extension.BashToolCallEvent{ToolCallEventBase: base, ToolName: "bash", Input: map[string]any{"command": "ls"}}); err != nil {
+		if _, err := rig.runner.EmitToolCall(t.Context(), extension.CustomToolCallEvent{ToolCallEventBase: base, ToolName: "bash", Input: map[string]any{"command": "ls"}}); err != nil {
 			t.Fatal(err)
 		}
 		rig.waitNotification("tool_call|outer-1/2|outer-1")

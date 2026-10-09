@@ -1,20 +1,33 @@
 package tui
 
-// Renderer is the interactive-driver-facing rendering contract implemented by
-// both the main-screen (TUI) and alternate-screen (TuiAltScreen) renderers. It
-// is the Go equivalent of upstream's TUI interface (packages/tui/src/tui.ts),
-// which both TuiMainScreen and TuiAltScreen implement; the driver holds one of
-// these and does not care which renderer backs it.
-//
-// The interface is named Renderer rather than TUI (upstream's name) because pig
-// reuses the identifier TUI for the concrete main-screen renderer struct (the
-// layer-6 tui-main-screen naming reconciliation). This is a forced Go naming
-// divergence, not a behavioral one.
-type Renderer interface {
+import "context"
+
+// TUI is the interactive-driver-facing rendering contract implemented by both the main-screen ([TuiMainScreen]) and
+// alternate-screen ([TuiAltScreen]) renderers (packages/tui/src/tui.ts TUI); the driver holds one of these and does not
+// care which renderer backs it.
+type TUI interface {
+	// The Container and state members tui.ts:454-476 declares on TUI.
+	AddChild(component Component)
+	RemoveChild(component Component)
+	Children() []Component
+	Clear()
+	HideOverlay()
+	GetShowHardwareCursor() bool
+	GetClearOnShrink() bool
+	HandleMouse(event TuiMouseEvent) *TuiMouseDispatchResult
+	Mode() TuiMode
+	// OnDebug is the callback SetOnDebug stored, nil when none is set (tui.ts:457 onDebug).
+	OnDebug() func()
+	// FullRedraws counts full repaints (tui.ts:553 fullRedraws).
+	FullRedraws() int
+	// RenderNow renders at once and cancels a pending render; force makes the frame a full repaint (tui.ts:982 renderNow).
+	RenderNow(force ...bool)
+	Terminal() Terminal
 	// Render performs a differential render pass now.
 	Render()
-	// RequestRender coalesces a render on the shared 16ms frame throttle.
-	RequestRender()
+	// RequestRender coalesces a render on the shared 16ms frame throttle; force (upstream requestRender(force = false)) makes the frame a full
+	// repaint that renders on the next owner-loop turn.
+	RequestRender(force ...bool)
 	// RequestImmediateRender coalesces input updates onto the next owner-loop turn without throttle delay.
 	RequestImmediateRender()
 	// CancelPendingRender invalidates a throttled frame already queued for owner-loop delivery.
@@ -29,14 +42,14 @@ type Renderer interface {
 	Add(component Component)
 	// Invalidate marks the render tree dirty.
 	Invalidate()
-	// OpenOverlay pushes an overlay and returns its handle.
-	OpenOverlay(component Component, opts OverlayOptions) *OverlayHandle
+	// ShowOverlay pushes an overlay and returns its handle.
+	ShowOverlay(component Component, opts OverlayOptions) *OverlayHandle
 	// SetFocus records the non-overlay target restored after overlay teardown.
 	SetFocus(component Component)
 	// ActiveOverlay prepares visibility and eligible focus restoration at the input boundary.
 	ActiveOverlay() Component
 	// FocusedComponent returns the current keyboard focus target.
-	FocusedComponent() Component
+	GetFocusedComponent() Component
 	// SetOverlayCommandDispatcher binds remote overlay commands to the owner loop.
 	SetOverlayCommandDispatcher(dispatch func(func()))
 	// HasOverlay reports whether any overlay is currently open.
@@ -48,6 +61,17 @@ type Renderer interface {
 	QueryTerminalColors(options TerminalColorQueryOptions) <-chan TerminalColorsResult
 	// ConsumeTerminalColorResponse intercepts color and DA1 replies before input listeners, including late replies after timeout.
 	ConsumeTerminalColorResponse(data string) bool
+	// AddInputListener registers a raw-input listener that runs before the focused component and returns its remover; RemoveInputListener removes it by pointer.
+	AddInputListener(listener *TuiInputListener) func()
+	RemoveInputListener(listener *TuiInputListener)
+	// RunInputListeners passes input through the listeners and reports whether they consumed it.
+	RunInputListeners(data string) (string, bool)
+	// OnTerminalColorSchemeChange registers a light/dark report listener and returns its remover.
+	OnTerminalColorSchemeChange(listener func(scheme TerminalColorScheme)) func()
+	// SetTerminalColorSchemeNotifications turns light/dark reports on or off across Start and Stop.
+	SetTerminalColorSchemeNotifications(enabled bool)
+	// ConsumeTerminalColorSchemeReport notifies the listeners of a light/dark report and reports whether data was one.
+	ConsumeTerminalColorSchemeReport(data string) bool
 	// QueryCellSize asks an image-capable terminal for its cell size.
 	QueryCellSize()
 	// ConsumeCellSizeResponse applies and consumes a cell-size response.
@@ -66,6 +90,15 @@ type Renderer interface {
 	SetOnHeightChange(fn func(height int))
 	// SetRenderDispatcher marshals timer-scheduled renders onto the driver loop.
 	SetRenderDispatcher(dispatch func(render func()))
+	// HandleTerminalInput dispatches one chunk of terminal input as tui.ts:1044 handleTerminalInput does; DispatchFocusedInput is its last stage, for a driver that ran the earlier ones.
+	HandleTerminalInput(data string)
+	DispatchFocusedInput(data string)
+	// SetOwnerDispatcher installs the seam PostToOwner uses; PostToOwner queues fn on the loop that owns component-tree mutation and returns once the loop accepted it or ctx ended.
+	SetOwnerDispatcher(dispatch func(ctx context.Context, fn func()) error)
+	PostToOwner(ctx context.Context, fn func()) error
+	// SetOnDebug sets the global debug-key callback; ConsumeDebugKey runs it for Shift+Ctrl+D and reports whether data was consumed.
+	SetOnDebug(onDebug func())
+	ConsumeDebugKey(data string) bool
 	// Start resumes rendering after Stop. The driver owns terminal input and raw mode.
 	Start()
 	// Stop tears down the renderer.
@@ -76,6 +109,6 @@ type Renderer interface {
 }
 
 var (
-	_ Renderer = (*TUI)(nil)
-	_ Renderer = (*TuiAltScreen)(nil)
+	_ TUI = (*TuiMainScreen)(nil)
+	_ TUI = (*TuiAltScreen)(nil)
 )

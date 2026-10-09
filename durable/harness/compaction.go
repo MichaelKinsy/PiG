@@ -15,6 +15,7 @@ import (
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/durable"
+	"github.com/MichaelKinsy/PiG/internal/jsstring"
 )
 
 // CompactionInput is the input of the built-in compaction task.
@@ -226,7 +227,7 @@ func compactionSummarizeHandler(ctx context.Context, task compactionTask, runtim
 	}
 	// The context at tail is immutable, so this is the range select chose.
 	tail := request.Tail
-	view, err := runtime.Context(ctx, runtime.ConversationId(), &tail)
+	view, err := runtime.Context(ctx, runtime.ConversationId(), &durable.ContextOptions{At: &tail})
 	if err != nil {
 		return err
 	}
@@ -264,7 +265,7 @@ func compactionSummarizeHandler(ctx context.Context, task compactionTask, runtim
 	retry := message.StopReason == ai.StopReasonError && ai.IsRetryableAssistantError(message) && policy.Enabled && request.Attempt <= policy.MaxRetries
 	until := 0.0
 	if retry {
-		until = runtime.Now() + float64(ai.RetryDelayMs(policy.BaseDelayMs, policy.MaxAgentDelayMs, request.Attempt))
+		until = runtime.Now() + float64(ai.RetryDelayMs(ai.RetryPolicy{BaseDelayMs: policy.BaseDelayMs, MaxAgentDelayMs: policy.MaxAgentDelayMs}, request.Attempt))
 	}
 	return runtime.Commit(ctx, func(tx durable.Tx, current compactionTask) (*compactionNext, error) {
 		if err := RecordUsage(tx, runtime.ConversationId(), UsageModels, message.Provider+"/"+message.Model, message.Usage); err != nil {
@@ -279,7 +280,7 @@ func compactionSummarizeHandler(ctx context.Context, task compactionTask, runtim
 		}
 		if retry {
 			if status := FindCompactionStatus(live, runtime.TaskId()); status != nil {
-				if err := status.Set("retry", map[string]any{"at": until, "error": message.ErrorMessage}); err != nil {
+				if err := status.Set("retry", delta.JsonObjectOf("at", until, "error", message.ErrorMessage)); err != nil {
 					return nil, err
 				}
 			}
@@ -510,7 +511,7 @@ func summaryText(message ai.AssistantMessage) (string, bool) {
 			texts = append(texts, text.Text)
 		}
 	}
-	text := strings.TrimSpace(strings.Join(texts, "\n"))
+	text := jsstring.Trim(strings.Join(texts, "\n"))
 	return text, text != ""
 }
 

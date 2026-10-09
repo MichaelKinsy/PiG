@@ -524,7 +524,7 @@ func startServerBackend(options startServerBackendOptions, workers *SessionWorke
 			}
 			if err != nil {
 				if conflict, ok := errors.AsType[*SessionPluginSelectionConflictError](err); ok {
-					return services.PreparedSessionPlugins{}, &routing.ServerError{Code: "service_invalid_value", Message: conflict.Message}
+					return services.PreparedSessionPlugins{}, routing.NewServerError("service_invalid_value", conflict.Message)
 				}
 				return services.PreparedSessionPlugins{}, err
 			}
@@ -564,19 +564,24 @@ func startServerBackend(options startServerBackendOptions, workers *SessionWorke
 	if err != nil {
 		return nil, settleServerCleanup("Experimental server startup and cleanup failed", func() error { return err }, closeCatalog)
 	}
-	if err := server.Start(); err != nil {
+	if _, err := server.Start(); err != nil {
 		return nil, settleServerCleanup("Experimental server startup and cleanup failed", func() error { return err }, server.Close, closeCatalog)
 	}
 	backend := &runningServerBackend{server: server, sessionDir: sessionDir, services: serverServices, closed: make(chan struct{})}
 	go func() {
 		<-server.Closed()
-		failure := settleServerCleanup("Server and catalog shutdown failed", server.ClosedError, closeCatalog)
+		failure := settleBackendClosure(server.ClosedError, closeCatalog)
 		backend.mu.Lock()
 		backend.closedErr = failure
 		backend.mu.Unlock()
 		close(backend.closed)
 	}()
 	return backend, nil
+}
+
+// settleBackendClosure reports the listener's closing failure and the catalog disposal failure; both together form server.ts:469's AggregateError("Server and repository shutdown failed"), whose message keeps upstream's name for the catalog.
+func settleBackendClosure(serverError, closeCatalog func() error) error {
+	return settleServerCleanup("Server and repository shutdown failed", serverError, closeCatalog)
 }
 
 func (backend *runningServerBackend) close() error {

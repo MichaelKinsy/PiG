@@ -11,8 +11,8 @@ import (
 
 // The same binding runs at startup and after model changes; it reads no transcript history and starts no background work.
 func BenchmarkInteractiveThinkingStateBinding(b *testing.B) {
-	model := &ai.Model{ID: "sparse", Capabilities: ai.ModelCapabilities{MaxThinking: ai.ThinkingHigh}}
-	m := &InteractiveMode{agent: agent.NewAgent(agent.AgentOptions{Model: model, ThinkingLevel: ai.ThinkingHigh}), editor: tui.NewEditor(), statusLine: NewStatusLine(model, "", nil)}
+	model := &ai.Model{ID: "sparse", Capabilities: ai.ModelCapabilities{MaxThinking: ai.ThinkingLevel(ai.ThinkingHigh)}}
+	m := &InteractiveMode{agent: mustNewAgent(agent.AgentOptions{Model: model, ThinkingLevel: ai.ThinkingHigh}), editor: tui.NewEditor(), statusLine: NewFooterComponent(model, "", nil)}
 	b.ReportAllocs()
 	for b.Loop() {
 		m.initThinkingLevel()
@@ -23,7 +23,7 @@ func BenchmarkInteractiveThinkingStateBinding(b *testing.B) {
 func TestInteractiveStartupPreservesSessionThinking(t *testing.T) {
 	for _, tc := range []struct {
 		spec  string
-		level ai.ThinkingLevel
+		level ai.ModelThinkingLevel
 	}{
 		{"deepseek/deepseek-flash", ai.ThinkingHigh},
 		{"anthropic/claude-sonnet-4-6", ai.ThinkingLow},
@@ -37,8 +37,8 @@ func TestInteractiveStartupPreservesSessionThinking(t *testing.T) {
 			}
 			model := generated.ToModel()
 			model.Capabilities = generated.ToCapabilities()
-			a := agent.NewAgent(agent.AgentOptions{Model: model, ThinkingLevel: tc.level})
-			m := &InteractiveMode{opts: InteractiveOptions{Model: model, Settings: Settings{DefaultThinkingLevel: "medium"}}, agent: a, editor: tui.NewEditor(), statusLine: NewStatusLine(model, "", nil)}
+			a := mustNewAgent(agent.AgentOptions{Model: model, ThinkingLevel: tc.level})
+			m := &InteractiveMode{opts: InteractiveModeOptions{Model: model, Settings: Settings{DefaultThinkingLevel: "medium"}}, agent: a, editor: tui.NewEditor(), statusLine: NewFooterComponent(model, "", nil)}
 			m.initThinkingLevel()
 			if got := a.ThinkingLevel(); got != tc.level {
 				t.Fatalf("startup changed Session level: got %q, want %q", got, tc.level)

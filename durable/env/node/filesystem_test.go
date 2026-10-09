@@ -44,6 +44,13 @@ func expectFileError(t *testing.T, err error, code durableenv.FileErrorCode, pat
 	}
 }
 
+// mutation-checked: zeroing the results of NodeExecutionEnv.JoinPath, NodeExecutionEnv.ReadBinaryFile, NodeExecutionEnv.ReadTextLines fails it
+// mutation-checked: dropping the reads and writes of FileInfo.MtimeMs, FileInfo.Path, FileInfo.Size fails it
+// Pi: packages/durable/src/env/index.ts:82 (mtimeMs)
+// Pi: packages/durable/src/env/node.ts:648 (joinPath)
+// Pi: packages/durable/src/env/node.ts:947 (readBinaryFile)
+// Pi: packages/durable/src/env/node.ts:925 (readTextLines)
+// packages/durable/src/env/index.ts:82: FileInfo carries mtimeMs.
 func TestFilesystemReadsWritesListsAndRemovesFilesAndDirectories(t *testing.T) {
 	env, root := newTestEnv(t)
 	if got := must(env.AbsolutePath(background, "nested/child")); got != filepath.Join(root, "nested/child") {
@@ -82,6 +89,8 @@ func TestFilesystemReadsWritesListsAndRemovesFilesAndDirectories(t *testing.T) {
 	}
 }
 
+// mutation-checked: zeroing the results of NodeExecutionEnv.AbsolutePath fails it
+// Pi: packages/durable/src/env/node.ts:644 (absolutePath)
 func TestFilesystemExpandsHomeRelativePathsAndFileURLs(t *testing.T) {
 	env, root := newTestEnv(t)
 	home, err := os.UserHomeDir()
@@ -130,6 +139,9 @@ func TestFilesystemReturnsFileInfoForFilesDirectoriesAndSymlinksWithoutFollowing
 	}
 }
 
+// mutation-checked: zeroing the results of NodeExecutionEnv.ListDir fails it
+// mutation-checked: dropping the reads and writes of FileInfo.Kind, FileInfo.Name fails it
+// Pi: packages/durable/src/env/node.ts:1103 (listDir)
 func TestFilesystemListsSymlinksAsSymlinks(t *testing.T) {
 	env, root := newTestEnv(t)
 	mustDo(t, env.WriteFile(background, "target.txt", []byte("hello")))
@@ -173,6 +185,8 @@ func TestFilesystemReturnsFileErrorForListingNonDirectories(t *testing.T) {
 	expectFileError(t, err, durableenv.FileErrorNotDirectory, "")
 }
 
+// mutation-checked: zeroing the results of NodeExecutionEnv.ReadTextFile fails it
+// Pi: packages/durable/src/env/node.ts:913 (readTextFile)
 func TestFilesystemAppendsToNewFilesAndCreatesParentDirectories(t *testing.T) {
 	env, _ := newTestEnv(t)
 	mustDo(t, env.AppendFile(background, "new/nested/file.txt", []byte("a")))
@@ -195,6 +209,8 @@ func TestFilesystemAtomicallyRenamesAFileAndReplacesTheDestination(t *testing.T)
 	}
 }
 
+// mutation-checked: zeroing the results of NodeExecutionEnv.RenameFile fails it
+// Pi: packages/durable/src/env/node.ts:1079 (renameFile)
 func TestFilesystemReportsTheSourcePathWhenRenameFailsBecauseTheSourceIsMissing(t *testing.T) {
 	env, root := newTestEnv(t)
 	mustDo(t, env.WriteFile(background, "destination.txt", []byte("unchanged")))
@@ -205,6 +221,9 @@ func TestFilesystemReportsTheSourcePathWhenRenameFailsBecauseTheSourceIsMissing(
 	}
 }
 
+// mutation-checked: zeroing the results of NodeExecutionEnv.CreateTempDir, NodeExecutionEnv.CreateTempFile fails it
+// Pi: packages/durable/src/env/node.ts:1195 (createTempDir)
+// Pi: packages/durable/src/env/node.ts:780 (createTempFile)
 func TestFilesystemCreatesTemporaryDirectoriesAndFiles(t *testing.T) {
 	env, _ := newTestEnv(t)
 	tempDir := must(env.CreateTempDir(background, new("node-env-test-")))
@@ -225,6 +244,7 @@ func TestFilesystemCreatesTemporaryDirectoriesAndFiles(t *testing.T) {
 	}
 }
 
+// mutation-checked: zeroing the results of NodeExecutionEnv.CreateDir, NodeExecutionEnv.Remove fails it
 func TestFilesystemHonorsCreateDirRecursiveFalseAndRemoveRecursiveForceOptions(t *testing.T) {
 	env, _ := newTestEnv(t)
 	expectFileError(t, env.CreateDir(background, "missing/child", &durableenv.CreateDirOptions{Recursive: new(false)}), durableenv.FileErrorNotFound, "")
@@ -244,6 +264,10 @@ func TestFilesystemHonorsCreateDirRecursiveFalseAndRemoveRecursiveForceOptions(t
 	mustDo(t, env.Remove(background, "missing", &durableenv.RemoveOptions{Force: true}))
 }
 
+// mutation-checked: zeroing the results of NodeExecutionEnv.AppendFile, NodeExecutionEnv.CanonicalPath, NodeExecutionEnv.FileInfo, NodeExecutionEnv.OpenTextLineReader fails it
+// Pi: packages/durable/src/env/node.ts:6 (appendFile)
+// Pi: packages/durable/src/env/node.ts:1145 (canonicalPath)
+// Pi: packages/durable/src/env/node.ts:896 (openTextLineReader)
 func TestFilesystemReturnsAbortedResultsWithoutSideEffectsForPreAbortedFileOperations(t *testing.T) {
 	env, _ := newTestEnv(t)
 	mustDo(t, env.WriteFile(background, "file.txt", []byte("hello")))
@@ -318,6 +342,8 @@ func TestFilesystemTruncatesAndExtendsFilesToExactByteSizes(t *testing.T) {
 
 // The upstream sizes 1.5, NaN and Infinity cannot be passed as an int64; the
 // type rejects them.
+// mutation-checked: zeroing the results of NodeExecutionEnv.TruncateFile fails it
+// Pi: packages/durable/src/env/node.ts:1038 (truncateFile)
 func TestFilesystemRejectsInvalidTruncationSizesAndNeverCreatesMissingFiles(t *testing.T) {
 	env, root := newTestEnv(t)
 	mustDo(t, env.WriteFile(background, "file.txt", []byte("hello")))
@@ -333,6 +359,8 @@ func TestFilesystemRejectsInvalidTruncationSizesAndNeverCreatesMissingFiles(t *t
 	}
 }
 
+// mutation-checked: zeroing the results of NodeExecutionEnv.FlushFile fails it
+// Pi: packages/durable/src/env/node.ts:1059 (flushFile)
 func TestFilesystemFlushesExistingFilesWithoutChangingContentAndReportsMissingPaths(t *testing.T) {
 	env, root := newTestEnv(t)
 	mustDo(t, env.WriteFile(background, "file.txt", []byte("durable")))
@@ -349,6 +377,8 @@ func TestFilesystemFlushesExistingFilesWithoutChangingContentAndReportsMissingPa
 	expectFileError(t, env.FlushFile(background, "dir"), durableenv.FileErrorIsDirectory, "")
 }
 
+// mutation-checked: dropping the reads and writes of FileError.Message, FileError.Path fails it
+// Pi: packages/durable/src/env/index.ts:47 (path)
 func TestFilesystemSyncsThroughAnOpenedHandleReturnsSyncFailuresAndAlwaysClosesTheHandle(t *testing.T) {
 	env, root := newTestEnv(t)
 	mustDo(t, env.WriteFile(background, "file.txt", []byte("durable")))
@@ -401,6 +431,8 @@ func readAllLines(t *testing.T, reader durableenv.TextLineReader) []durableenv.T
 	}
 }
 
+// TestTextLineReaderReportsWhetherEachLineWasNewlineTerminatedAndPreservesCarriageReturns: packages/durable/src/env/node.ts:387-444 NodeTextLineReader.readLine reports termination per line and undefined at the end.
+// mutation-checked: dropping Terminated from a complete line, and returning an empty line at the end, fail it.
 func TestTextLineReaderReportsWhetherEachLineWasNewlineTerminatedAndPreservesCarriageReturns(t *testing.T) {
 	env, _ := newTestEnv(t)
 	mustDo(t, env.WriteFile(background, "lines.txt", []byte("one\r\n\ntwo\npartial")))
@@ -436,6 +468,8 @@ func TestTextLineReaderReturnsNoLinesForAnEmptyFileAndOneTerminatedEmptyLineForA
 	mustDo(t, newline.Close(background))
 }
 
+// mutation-checked: dropping the reads and writes of TextLine.Terminated, TextLine.Text fails it
+// Pi: packages/durable/src/env/index.ts:87 (terminated)
 func TestTextLineReaderDecodesMultiByteCharactersSplitAcrossReadChunksAndLinesLongerThanOneChunk(t *testing.T) {
 	env, _ := newTestEnv(t)
 	// The reader uses 64 KiB chunks; place a four-byte character across the first boundary.
@@ -494,6 +528,8 @@ func TestTextLineReaderRejectsAReadCancelledWhilePendingWithoutConsumingItsBytes
 	}
 }
 
+// TestTextLineReaderRejectsReadsAfterCloseAndClosesIdempotently: packages/durable/src/env/node.ts:387-444 NodeTextLineReader.close is idempotent and a later readLine fails with an invalid FileError.
+// mutation-checked: Close not marking the reader closed fails it.
 func TestTextLineReaderRejectsReadsAfterCloseAndClosesIdempotently(t *testing.T) {
 	env, root := newTestEnv(t)
 	mustDo(t, env.WriteFile(background, "lines.txt", []byte("one\n")))
@@ -541,6 +577,9 @@ func TestTextLineReaderKeepsAByteOrderMarkThatFollowsAChunkBoundary(t *testing.T
 	}
 }
 
+// Pi source: packages/durable/src/env/node.ts
+// mutation-checked: zeroing the results of NodeExecutionEnv.Exec fails it
+// mutation-checked: dropping the reads and writes of ExecutionError.Code fails it
 func TestExecRejectsACommandThatIsNeitherAStringNorAnArgv(t *testing.T) {
 	env, _ := newTestEnv(t)
 	_, err := env.Exec(background, 42, nil)

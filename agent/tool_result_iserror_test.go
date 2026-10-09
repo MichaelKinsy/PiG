@@ -108,7 +108,7 @@ func TestAgentLoop_ToolExecutionEndKeepsResultIsErrorApartFromTheEventFlag(t *te
 		t.Run(tc.name, func(t *testing.T) {
 			provider := &scriptedProvider{respond: toolCallsThenText(tc.call)}
 			rec := newEventRecorder(nil)
-			a := NewAgent(AgentOptions{Model: scriptedModel(provider), Tools: []AgentTool{tc.tool}, EventCh: rec.ch, BeforeToolCall: tc.before, AfterToolCall: tc.after})
+			a := mustNewAgent(AgentOptions{Model: scriptedModel(provider), Tools: []AgentTool{tc.tool}, EventCh: rec.ch, BeforeToolCallHooks: tc.before, AfterToolCallHooks: tc.after})
 
 			msgs := mustSend(t, a, "go")
 
@@ -146,9 +146,9 @@ func TestAgentLoop_ToolExecutionEndKeepsResultIsErrorApartFromTheEventFlag(t *te
 func TestAgentLoop_BlockedCallResultCarriesTerminateWithoutIsError(t *testing.T) {
 	provider := &scriptedProvider{respond: toolCallsThenText(toolCall("c1", "t", ai.JsonObject{"value": "x"}))}
 	rec := newEventRecorder(nil)
-	a := NewAgent(AgentOptions{
+	a := mustNewAgent(AgentOptions{
 		Model: scriptedModel(provider), Tools: []AgentTool{iserrorTool("t", nil)}, EventCh: rec.ch,
-		BeforeToolCall: []BeforeToolCallHook{func(context.Context, string, string, json.RawMessage) ToolCallHookResult {
+		BeforeToolCallHooks: []BeforeToolCallHook{func(context.Context, string, string, json.RawMessage) ToolCallHookResult {
 			return ToolCallHookResult{Block: true, Reason: "stop", Terminate: true}
 		}},
 	})
@@ -184,9 +184,9 @@ func TestAgentLoop_ToolExecutionEndRecordsAStructuredContentTheHookAppended(t *t
 		t.Run(tc.name, func(t *testing.T) {
 			provider := &scriptedProvider{respond: toolCallsThenText(toolCall("c1", "echo", ai.JsonObject{"value": "x"}))}
 			rec := newEventRecorder(nil)
-			a := NewAgent(AgentOptions{
+			a := mustNewAgent(AgentOptions{
 				Model: scriptedModel(provider), Tools: []AgentTool{tc.tool}, EventCh: rec.ch,
-				AfterToolCall: []AfterToolCallHook{func(context.Context, string, string, json.RawMessage, AgentToolResult) AfterToolCallResult {
+				AfterToolCallHooks: []AfterToolCallHook{func(context.Context, string, string, json.RawMessage, AgentToolResult) AfterToolCallResult {
 					return tc.hook
 				}},
 			})
@@ -202,7 +202,7 @@ func TestAgentLoop_ToolExecutionEndRecordsAStructuredContentTheHookAppended(t *t
 	t.Run("no hook", func(t *testing.T) {
 		provider := &scriptedProvider{respond: toolCallsThenText(toolCall("c1", "echo", ai.JsonObject{"value": "x"}))}
 		rec := newEventRecorder(nil)
-		a := NewAgent(AgentOptions{Model: scriptedModel(provider), Tools: []AgentTool{newStructuredEchoTool()}, EventCh: rec.ch})
+		a := mustNewAgent(AgentOptions{Model: scriptedModel(provider), Tools: []AgentTool{newStructuredEchoTool()}, EventCh: rec.ch})
 		mustSend(t, a, "go")
 		if ends := toolEndEvents(rec.stop()); len(ends) != 1 || ends[0].Result.StructuredContentAppended {
 			t.Fatalf("tool_execution_end = %+v, want no StructuredContentAppended", ends)
@@ -236,6 +236,53 @@ func TestRunToolCall_OutcomeKeepsResultIsErrorApartFromOutcomeFlag(t *testing.T)
 			}
 			if !outcome.IsError || outcome.Result.IsError != tc.resultErr {
 				t.Fatalf("outcome = %+v, want isError true and result.isError %v", outcome, tc.resultErr)
+			}
+		})
+	}
+}
+
+// afterToolCall receives the call's flag as context.isError beside the result (agent-loop.ts:862 `let isError =
+// executed.isError`, passed at :872), and a thrown error's createErrorToolResult has no isError of its own (:841-847).
+// AfterToolCallHook has no isError parameter, so the hook reads the call's flag from result.IsError; a later hook sees an
+// earlier hook's isError override (:890). Pi's _afterToolCall forwards that flag as tool_result's isError
+// (agent-session.ts:672-688), so a hook that read the tool's own flag would report a thrown call as a success.
+func TestAgentLoop_AfterToolCallHookSeesTheCallsErrorFlag(t *testing.T) {
+	throws := func(context.Context, string, json.RawMessage, ToolUpdateCallback) (AgentToolResult, error) {
+		return AgentToolResult{}, errors.New("thrown")
+	}
+	returnsSuccess := func(context.Context, string, json.RawMessage, ToolUpdateCallback) (AgentToolResult, error) {
+		return AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: "ok"}}, Details: map[string]any{}}, nil
+	}
+	yes := true
+	cases := []struct {
+		name string
+		tool *scriptTool
+		// first, when set, runs before the observing hook and returns this isError override.
+		first *bool
+		want  bool
+	}{
+		{name: "thrown error", tool: iserrorTool("t", throws), want: true},
+		{name: "returned success", tool: iserrorTool("t", returnsSuccess), want: false},
+		{name: "earlier hook marks a success failed", tool: iserrorTool("t", returnsSuccess), first: &yes, want: true},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			var hooks []AfterToolCallHook
+			if tc.first != nil {
+				hooks = append(hooks, func(context.Context, string, string, json.RawMessage, AgentToolResult) AfterToolCallResult {
+					return AfterToolCallResult{IsError: tc.first}
+				})
+			}
+			var seen []bool
+			hooks = append(hooks, func(_ context.Context, _, _ string, _ json.RawMessage, result AgentToolResult) AfterToolCallResult {
+				seen = append(seen, result.IsError)
+				return AfterToolCallResult{}
+			})
+			provider := &scriptedProvider{respond: toolCallsThenText(toolCall("c1", "t", ai.JsonObject{"value": "x"}))}
+			a := mustNewAgent(AgentOptions{Model: scriptedModel(provider), Tools: []AgentTool{tc.tool}, AfterToolCallHooks: hooks})
+			mustSend(t, a, "go")
+			if len(seen) != 1 || seen[0] != tc.want {
+				t.Fatalf("afterToolCall saw result.IsError = %v, want [%v]", seen, tc.want)
 			}
 		})
 	}

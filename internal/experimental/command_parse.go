@@ -354,7 +354,7 @@ func encodeOpaqueCommandHost(host string) string {
 }
 
 func canonicalCommandURLPath(pathname string) bool {
-	if strings.ContainsFunc(pathname, func(r rune) bool { return r <= 0x20 || r >= 0x7f || strings.ContainsRune("\"<>`{}", r) }) {
+	if strings.ContainsFunc(pathname, func(r rune) bool { return r <= 0x20 || r >= 0x7f || strings.ContainsRune("\"<>^`{}", r) }) {
 		return false
 	}
 	for segment := range strings.SplitSeq(pathname, "/") {

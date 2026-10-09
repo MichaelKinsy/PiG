@@ -1,5 +1,9 @@
 package packagecontent
 
+// pi: packages/coding-agent/src/core/pi-manifest.ts
+
+// pi: packages/coding-agent/src/core/package-manager.ts
+
 import (
 	"errors"
 	"io/fs"

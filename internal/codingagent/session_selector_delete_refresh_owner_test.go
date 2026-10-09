@@ -60,7 +60,7 @@ func TestSessionSelectorDeleteRefreshOwnerDoesNotResumeDeletedPath(t *testing.T)
 				m.setModalInputChannel(input)
 				send = func(data string) { input <- []byte(data) }
 				go func() {
-					path, ok := m.runEditorSlotSessionSelector(s)
+					path, ok := m.runEditorSlotSessionSelector(s, hookSessionSelectorOutcome(s))
 					var err error
 					if !ok {
 						err = fmt.Errorf("interactive owner did not select")

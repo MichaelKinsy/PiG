@@ -93,7 +93,13 @@ func LoadThemeFromPath(path string, mode TerminalColorMode) (*Theme, error) {
 		return nil, fmt.Errorf("parse theme %s: %w", path, err)
 	}
 	tj.colorKeys = extractColorKeyOrder(data)
-	return resolveThemeWithMode(&tj, mode)
+	theme, err := resolveThemeWithMode(&tj, mode)
+	if err != nil {
+		return nil, err
+	}
+	// theme.ts loadThemeFromPath: createTheme(themeJson, mode, themePath) records where the theme was loaded from.
+	theme.SourcePath = path
+	return theme, nil
 }
 
 // ThemeColorValue mirrors theme-json.ts ColorValue: a hex color, variable
@@ -123,6 +129,14 @@ func (v *ThemeColorValue) UnmarshalJSON(data []byte) error {
 	}
 	*v = ThemeColorValue{Index: int(number), IsIndex: true, isSet: true}
 	return nil
+}
+
+// MarshalJSON writes the value as the JSON string or number it was read from (theme-json.ts ColorValue is `string | number`); an unset value writes the empty string.
+func (v ThemeColorValue) MarshalJSON() ([]byte, error) {
+	if v.IsIndex {
+		return json.Marshal(v.Index)
+	}
+	return json.Marshal(v.Text)
 }
 
 // exportColor mirrors getThemeExportColors' per-value conversion: an index becomes hex and an empty value stays unset. Export colors end up in CSS, which understands hex and oklch() directly but not okhsl(), so okhsl() becomes hex (theme.ts:928-940).
@@ -296,17 +310,17 @@ func resolveThemeWithMode(tj *ThemeJSON, mode TerminalColorMode) (*Theme, error)
 	}
 	tj.colorKeys = keys
 
-	foregrounds := make([]themeTokenValue, 0, len(keys))
-	backgrounds := make([]themeTokenValue, 0, len(keys))
+	foregrounds := make([]ThemeTokenValue, 0, len(keys))
+	backgrounds := make([]ThemeTokenValue, 0, len(keys))
 	for _, token := range keys {
-		entry := themeTokenValue{token: token, value: resolved[token]}
+		entry := ThemeTokenValue{Token: token, Value: resolved[token]}
 		if themeBackgroundTokens[token] {
 			backgrounds = append(backgrounds, entry)
 		} else {
 			foregrounds = append(foregrounds, entry)
 		}
 	}
-	theme, err := newTheme(foregrounds, backgrounds, mode, themeOptions{name: tj.Name, appearance: tj.Appearance})
+	theme, err := NewTheme(foregrounds, backgrounds, mode, ThemeOptions{Name: tj.Name, Appearance: tj.Appearance})
 	if err != nil {
 		return nil, err
 	}

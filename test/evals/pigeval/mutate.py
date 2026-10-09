@@ -1,4 +1,3 @@
-# SPDX-FileCopyrightText: Copyright Hewlett Packard Enterprise Development LP
 # SPDX-License-Identifier: MIT
 """Generate edit tasks by mutating real Go files, after the harness benchmark in oh-my-pi.
 

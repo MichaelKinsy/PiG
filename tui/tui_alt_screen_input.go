@@ -262,7 +262,7 @@ func (t *TuiAltScreen) toggleSearch() {
 	t.activeSearch = search
 	t.mu.Unlock()
 	margin := 1
-	search.overlay = t.OpenOverlay(search.component, OverlayOptions{
+	search.overlay = t.ShowOverlay(search.component, OverlayOptions{
 		anchor: overlayTopRight, width: overlayPercent(40), minWidth: 32, marginAll: &margin,
 	})
 	search.component.SetFocused(search.overlay != nil && search.overlay.IsFocused())
@@ -456,7 +456,7 @@ func revealSearchMatch(scrollView *ScrollView, match AltScreenSearchMatch) bool 
 	if first.Row < before || last.Row > before+viewportHeight-1 {
 		target = first.Row - viewportHeight/3
 	}
-	scrollView.ScrollToWithOptions(target, ScrollViewScrollToOptions{DisableFollow: true})
+	scrollView.ScrollTo(target, ScrollViewScrollToOptions{DisableFollow: true})
 	return scrollView.ScrollTop() != before
 }
 

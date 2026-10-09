@@ -64,7 +64,7 @@ func writePricedSession(t *testing.T, assistantCost, toolCost float64) *Session 
 func resumedFooterLine(t *testing.T, session *Session, active *ai.Model, agentDir string) string {
 	t.Helper()
 	m := &InteractiveMode{
-		opts:          InteractiveOptions{SessionHandle: &recordingCompactHandle{inner: session}, Model: active, AgentDir: agentDir},
+		opts:          InteractiveModeOptions{SessionHandle: &recordingCompactHandle{inner: session}, Model: active, AgentDir: agentDir},
 		chatContainer: tui.NewContainer(),
 		tuiInst:       tui.NewWithOutput(&bytes.Buffer{}, 160, 30),
 		toolByID:      make(map[string]*tui.ToolExecutionComponent),
@@ -121,7 +121,7 @@ func TestFooterUsingSubscriptionFollowsPiRules(t *testing.T) {
 	if err := auth.Set("openai-codex", ai.Credential{Type: ai.CredentialAPIKey, Key: "key"}); err != nil {
 		t.Fatal(err)
 	}
-	m := &InteractiveMode{opts: InteractiveOptions{AgentDir: agentDir}}
+	m := &InteractiveMode{opts: InteractiveModeOptions{AgentDir: agentDir}}
 	for _, tc := range []struct {
 		provider string
 		want     bool

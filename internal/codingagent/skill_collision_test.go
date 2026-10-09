@@ -22,16 +22,16 @@ func TestDeduplicateSkillsCollisionDiagnostics(t *testing.T) {
 	}
 	testenv.Symlink(t, first, alias)
 	defs := []*SkillDef{
-		{Name: "same", Path: first}, {Name: "same", Path: alias},
-		{Name: "same", Path: filepath.Join(root, "second.md")},
-		{Name: "other", Path: filepath.Join(root, "other.md")},
-		{Name: "same", Path: filepath.Join(root, "third.md")},
+		{Name: "same", FilePath: first}, {Name: "same", FilePath: alias},
+		{Name: "same", FilePath: filepath.Join(root, "second.md")},
+		{Name: "other", FilePath: filepath.Join(root, "other.md")},
+		{Name: "same", FilePath: filepath.Join(root, "third.md")},
 	}
 	got, diagnostics := DeduplicateSkillsWithDiagnostics(defs)
 	if !slices.Equal(got, []*SkillDef{defs[0], defs[3]}) {
 		t.Fatalf("winners = %v", got)
 	}
-	losers := []string{defs[2].Path, defs[4].Path}
+	losers := []string{defs[2].FilePath, defs[4].FilePath}
 	if len(diagnostics) != len(losers) {
 		t.Fatalf("diagnostics = %+v", diagnostics)
 	}
@@ -54,7 +54,7 @@ func TestReloadSkillsReplacesCollisionDiagnostics(t *testing.T) {
 	for _, paths := range [][]string{{first, second}, {second, first}} {
 		m.opts.SkillPaths = paths
 		m.reloadSkillsFromPaths()
-		if len(m.opts.Skills) != 1 || m.opts.Skills[0].Path != paths[0] || len(m.opts.SkillDiagnostics) != 1 || m.opts.SkillDiagnostics[0].Collision.LoserPath != paths[1] {
+		if len(m.opts.Skills) != 1 || m.opts.Skills[0].FilePath != paths[0] || len(m.opts.SkillDiagnostics) != 1 || m.opts.SkillDiagnostics[0].Collision.LoserPath != paths[1] {
 			t.Fatalf("reload did not replace winners and diagnostics: %+v, %+v", m.opts.Skills, m.opts.SkillDiagnostics)
 		}
 	}
@@ -76,9 +76,9 @@ func TestShowLoadedResourcesSkillConflicts(t *testing.T) {
 	root := filepath.Join(t.TempDir(), "npm", "node_modules", "duplicates")
 	winner := filepath.Join(root, "second", "SKILL.md")
 	loser := filepath.Join(root, "first", "SKILL.md")
-	defs, diagnostics := DeduplicateSkillsWithDiagnostics([]*SkillDef{{Name: "same", Path: winner}, {Name: "same", Path: loser}})
+	defs, diagnostics := DeduplicateSkillsWithDiagnostics([]*SkillDef{{Name: "same", FilePath: winner}, {Name: "same", FilePath: loser}})
 	m := &InteractiveMode{
-		opts:                     InteractiveOptions{CWD: t.TempDir(), AgentDir: t.TempDir(), NoThemes: true, Skills: defs, SkillDiagnostics: diagnostics},
+		opts:                     InteractiveModeOptions{CWD: t.TempDir(), AgentDir: t.TempDir(), NoThemes: true, Skills: defs, SkillDiagnostics: diagnostics},
 		loadedResourcesContainer: tui.NewContainer(),
 		resourceSourceInfo: map[string]ResourceSourceInfo{
 			winner: {Path: winner, ResourceType: "skills", Enabled: true, Source: "npm:duplicates", Scope: "user", Origin: "package", BaseDir: root},

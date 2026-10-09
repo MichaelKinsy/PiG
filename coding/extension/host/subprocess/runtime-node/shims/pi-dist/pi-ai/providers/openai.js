@@ -1,8 +1,9 @@
+import { openAIDecisionsApi } from "../api/openai-decisions.lazy.js";
 import { openAIResponsesApi } from "../api/openai-responses.lazy.js";
 import { envApiKeyAuth, lazyOAuth } from "../auth/helpers.js";
 import { loadOpenAIChatGPTOAuth } from "../auth/oauth/load.js";
-import { createProvider } from "../models.js";
-import { OPENAI_MODELS } from "./openai.models.js";
+import { createProvider, isModelType } from "../models.js";
+import { OPENAI_CLASSIFIER_MODELS, OPENAI_MODELS } from "./openai.models.js";
 export function openaiProvider() {
     return createProvider({
         id: "openai",
@@ -17,8 +18,16 @@ export function openaiProvider() {
                 load: loadOpenAIChatGPTOAuth,
             }),
         },
-        models: Object.values(OPENAI_MODELS),
+        models: [
+            ...Object.values(OPENAI_MODELS),
+            ...Object.values(OPENAI_CLASSIFIER_MODELS),
+        ],
+        // Sign in with ChatGPT tokens only reach the Responses API; the Decisions API rejects them.
+        filterAllModels: (models, credential) => credential?.type === "oauth" ? models.filter((model) => !isModelType(model, "classifier")) : models,
         api: openAIResponsesApi(),
+        classifiers: {
+            "openai-decisions": openAIDecisionsApi(),
+        },
     });
 }
 //# sourceMappingURL=openai.js.map

@@ -126,7 +126,7 @@ func TestBindingReadyRejectsWithoutWaitingForEarlierPendingService(t *testing.T)
 		unblock := func() { releaseOnce.Do(func() { close(release) }) }
 		defer unblock()
 		transport := &readinessRaceTransport{firstStarted: make(chan struct{}), release: release, failure: failure}
-		binding, err := CreateRemoteServiceBinding(RemoteServiceBindingOptions{Services: []string{"first", "second"}, Transport: transport, OnError: func(error) {}})
+		binding, err := CreateRemoteServiceBinding(RemoteServiceBindingOptions{Services: ServiceIDs("first", "second"), Transport: transport, OnError: func(error) {}})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -230,5 +230,16 @@ func TestReplicatedStateListenerFailuresAggregateMessageOnly(t *testing.T) {
 	var aggregate *AggregateError
 	if !errors.As(err, &aggregate) || err.Error() != "Replicated state listeners failed" || !errors.Is(err, first) || !errors.Is(err, second) {
 		t.Fatalf("error = %#v, want AggregateError with both listener failures", err)
+	}
+}
+
+// facets/host.ts:646 passes `serviceIds.map((id) => ({ id }))` to RemoteServiceSource.open and consumer.ts:459-461 reads `options.services.map(({ id }) => id)`: each service is an `{ id }` object, in the requested order, and a repeated id is rejected.
+func TestServiceReferencesAreIdObjectsInOrderAndDuplicatesAreRejected(t *testing.T) {
+	got := ServiceIDs("a", "b")
+	if len(got) != 2 || got[0].Id() != "a" || got[1].Id() != "b" {
+		t.Fatalf("ServiceIDs = %+v", got)
+	}
+	if _, err := CreateRemoteServiceBinding(RemoteServiceBindingOptions{Services: ServiceIDs("a", "a")}); err == nil || err.Error() != "Remote service binding has duplicate service IDs" {
+		t.Fatalf("duplicate ids error = %v", err)
 	}
 }

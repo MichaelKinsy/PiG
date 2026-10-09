@@ -1,5 +1,7 @@
 package codingagent
 
+// pi: packages/coding-agent/src/core/session-manager.ts
+
 import (
 	"bufio"
 	"encoding/json"
@@ -133,10 +135,10 @@ func TestSessionRoundTrip(t *testing.T) {
 	if err != nil {
 		t.Fatalf("load: %v", err)
 	}
-	if got := len(loaded.Entries()); got != 5 {
+	if got := len(loaded.GetEntries()); got != 5 {
 		t.Errorf("entries: %d want 5", got)
 	}
-	if loaded.LeafID() == nil {
+	if loaded.GetLeafID() == nil {
 		t.Errorf("leafID nil after load")
 	}
 
@@ -197,10 +199,10 @@ func TestForkCreatesSibling(t *testing.T) {
 	id3, _ := sess.AppendMessage(mkUserMsg("second"))
 
 	// Fork from id1 → next append's parentId must be id1.
-	if err := sess.Fork(id1); err != nil {
+	if err := sess.Branch(id1); err != nil {
 		t.Fatalf("fork: %v", err)
 	}
-	if leaf := sess.LeafID(); leaf == nil || *leaf != id1 {
+	if leaf := sess.GetLeafID(); leaf == nil || *leaf != id1 {
 		t.Errorf("leaf after fork: %v want %s", leaf, id1)
 	}
 
@@ -242,7 +244,7 @@ func TestCloneWritesNewFileWithLinearPath(t *testing.T) {
 	id2, _ := src.AppendMessage(mkAssistantMsg("b"))
 	id3, _ := src.AppendMessage(mkUserMsg("c"))
 	// Branch off id1 to create an orphan tail.
-	_ = src.Fork(id1)
+	_ = src.Branch(id1)
 	_, _ = src.AppendMessage(mkUserMsg("orphan"))
 
 	// Clone the path-to-id3 \u2014 should NOT include the orphan.
@@ -300,10 +302,10 @@ func TestForkToNewSessionFile_BranchesAtParentIntoNewFile(t *testing.T) {
 	}
 	// Branch is up to a1 (parent of u2): the selected message and its
 	// reply are excluded so the user can re-submit an edited version.
-	if leaf := newSess.LeafID(); leaf == nil || *leaf != a1 {
+	if leaf := newSess.GetLeafID(); leaf == nil || *leaf != a1 {
 		t.Errorf("new leaf=%v want a1=%s", leaf, a1)
 	}
-	if _, ok := newSess.EntryByID(u2); ok {
+	if _, ok := newSess.GetEntry(u2); ok {
 		t.Errorf("forked session must exclude the selected message u2")
 	}
 }
@@ -326,7 +328,7 @@ func TestForkToNewSessionFile_RootMessageStartsEmptyChild(t *testing.T) {
 	if selectedText != "only message" {
 		t.Errorf("selectedText=%q want %q", selectedText, "only message")
 	}
-	if leaf := newSess.LeafID(); leaf != nil {
+	if leaf := newSess.GetLeafID(); leaf != nil {
 		t.Errorf("root fork should start empty, got leaf=%v", *leaf)
 	}
 }
@@ -363,7 +365,7 @@ func TestBuildContextLeafOnFork(t *testing.T) {
 	sess, _ := sm.Create("sess-ctx-fork", "")
 	id1, _ := sess.AppendMessage(mkUserMsg("u1"))
 	_, _ = sess.AppendMessage(mkUserMsg("abandoned"))
-	_ = sess.Fork(id1)
+	_ = sess.Branch(id1)
 	_, _ = sess.AppendMessage(mkUserMsg("alt"))
 
 	ctx := sess.BuildContext(nil)
@@ -468,20 +470,20 @@ func TestTreeFromEntries(t *testing.T) {
 	sess, _ := sm.Create("sess-tree", "")
 	root, _ := sess.AppendMessage(mkUserMsg("root"))
 	// Three branches off root.
-	_ = sess.Fork(root)
+	_ = sess.Branch(root)
 	_, _ = sess.AppendMessage(mkUserMsg("branch-1"))
-	_ = sess.Fork(root)
+	_ = sess.Branch(root)
 	_, _ = sess.AppendMessage(mkUserMsg("branch-2"))
-	_ = sess.Fork(root)
+	_ = sess.Branch(root)
 	_, _ = sess.AppendMessage(mkUserMsg("branch-3"))
 
-	tree := sess.Tree()
+	tree := sess.treeRoot()
 	if len(tree.Children) != 1 {
 		t.Fatalf("expected 1 root child; got %d", len(tree.Children))
 	}
 	rootNode := tree.Children[0]
-	if rootNode.Entry.Base.ID != root {
-		t.Errorf("root node id=%v want %v", rootNode.Entry.Base.ID, root)
+	if rootNode.Entry.Base().ID != root {
+		t.Errorf("root node id=%v want %v", rootNode.Entry.Base().ID, root)
 	}
 	if len(rootNode.Children) != 3 {
 		t.Errorf("root should have 3 children (3 branches); got %d", len(rootNode.Children))
@@ -628,7 +630,7 @@ func TestGetSessionNameLatestWins(t *testing.T) {
 
 	mkInfo := func(name string) SessionInfoEntry {
 		id, _ := generateEntryID()
-		parent := sess.LeafID()
+		parent := sess.GetLeafID()
 		return SessionInfoEntry{
 			SessionEntryBase: SessionEntryBase{
 				Type:      "session_info",
@@ -686,11 +688,11 @@ func TestAppendBashExecution_RoundTrip(t *testing.T) {
 	if err != nil {
 		t.Fatalf("load: %v", err)
 	}
-	entries := loaded.Entries()
-	var bashEntry *SessionEntry
+	entries := loaded.GetEntries()
+	var bashEntry SessionEntry
 	for i := range entries {
-		if message, ok := entries[i].AsMessage(); ok && message.Message.Role() == agent.RoleBashExecution {
-			bashEntry = &entries[i]
+		if message, ok := entries[i].(MessageEntry); ok && message.Message.Role() == agent.RoleBashExecution {
+			bashEntry = entries[i]
 		}
 	}
 	if bashEntry == nil {
@@ -729,7 +731,7 @@ func TestAppendBashExecution_UpstreamWireShape(t *testing.T) {
 	if _, err := sess.AppendBashExecution(BashExecutionMessage{Command: "ls", Output: "out\n", ExitCode: &zero, Timestamp: time.Now().UnixMilli()}); err != nil {
 		t.Fatalf("AppendBashExecution: %v", err)
 	}
-	entries := sess.Entries()
+	entries := sess.GetEntries()
 	if len(entries) != 1 {
 		t.Fatalf("entries=%d want 1", len(entries))
 	}
@@ -824,6 +826,7 @@ func TestAppendBashExecution_ProjectsBashExecutionMessages(t *testing.T) {
 
 // TestAppendThinkingLevelChange verifies that AppendThinkingLevelChange writes
 // a thinking_level_change entry that round-trips correctly.
+// Pi: packages/coding-agent/src/core/extensions/types.ts:346 (ThinkingLevelEntry.thinkingLevel).
 func TestAppendThinkingLevelChange(t *testing.T) {
 	sm := tempSessionMgr(t)
 
@@ -832,7 +835,7 @@ func TestAppendThinkingLevelChange(t *testing.T) {
 		t.Fatalf("New: %v", err)
 	}
 
-	if err := sess.AppendThinkingLevelChange("medium"); err != nil {
+	if _, err := sess.AppendThinkingLevelChange("medium"); err != nil {
 		t.Fatalf("AppendThinkingLevelChange: %v", err)
 	}
 	flushSession(t, sess)
@@ -845,10 +848,10 @@ func TestAppendThinkingLevelChange(t *testing.T) {
 
 	var found bool
 	for _, e := range loaded.entries {
-		if e.Base.Type == "thinking_level_change" {
+		if e.Base().Type == "thinking_level_change" {
 			found = true
 			var ent ThinkingLevelEntry
-			if err := json.Unmarshal(e.raw, &ent); err != nil {
+			if err := json.Unmarshal(e.Raw(), &ent); err != nil {
 				t.Fatalf("unmarshal: %v", err)
 			}
 			if ent.ThinkingLevel != "medium" {
@@ -886,12 +889,12 @@ func TestAppendCompaction(t *testing.T) {
 	}
 
 	// Leaf must have advanced to the compaction entry.
-	if leaf := sess.LeafID(); leaf == nil || *leaf != compID {
+	if leaf := sess.GetLeafID(); leaf == nil || *leaf != compID {
 		t.Errorf("leaf after compaction: got %v want %q", leaf, compID)
 	}
 
 	// Verify the stored entry round-trips correctly.
-	e, ok := sess.EntryByID(compID)
+	e, ok := sess.GetEntry(compID)
 	if !ok {
 		t.Fatalf("entry %q not found", compID)
 	}
@@ -930,7 +933,7 @@ func TestAppendCompaction(t *testing.T) {
 	}
 	var found bool
 	for _, ent := range loaded.entries {
-		if ent.Base.ID == compID {
+		if ent.Base().ID == compID {
 			found = true
 			var c2 CompactionEntry
 			if err := json.Unmarshal(ent.Raw(), &c2); err != nil {
@@ -960,17 +963,17 @@ func TestAppendBranchSummary(t *testing.T) {
 
 	// Pass idA explicitly as the parent (upstream branchWithSummary passes
 	// newLeafId explicitly; pig no longer auto-wires nil → current leaf).
-	bsID, err := sess.AppendBranchSummary(&idA, "branch summary text", nil, false, nil)
+	bsID, err := sess.BranchWithSummary(&idA, "branch summary text", nil, false, nil)
 	if err != nil {
 		t.Fatalf("AppendBranchSummary: %v", err)
 	}
 
 	// Leaf must be the new branch_summary entry.
-	if leaf := sess.LeafID(); leaf == nil || *leaf != bsID {
+	if leaf := sess.GetLeafID(); leaf == nil || *leaf != bsID {
 		t.Errorf("leaf after branch_summary: got %v want %q", leaf, bsID)
 	}
 
-	e, ok := sess.EntryByID(bsID)
+	e, ok := sess.GetEntry(bsID)
 	if !ok {
 		t.Fatalf("entry %q not found", bsID)
 	}
@@ -1012,14 +1015,14 @@ func TestAppendBranchSummaryRecordsSourceAndDestination(t *testing.T) {
 	}
 	usage := &ai.Usage{Input: 10, Output: 20, CacheRead: 30, CacheWrite: 40, TotalTokens: 100, Cost: ai.UsageCost{Input: 0.1, Output: 0.2, CacheRead: 0.3, CacheWrite: 0.4, Total: 1}}
 
-	summaryID, err := sess.AppendBranchSummary(&id1, "Summary of abandoned work", nil, false, usage)
+	summaryID, err := sess.BranchWithSummary(&id1, "Summary of abandoned work", nil, false, usage)
 	if err != nil {
 		t.Fatalf("AppendBranchSummary: %v", err)
 	}
-	if leaf := sess.LeafID(); leaf == nil || *leaf != summaryID {
+	if leaf := sess.GetLeafID(); leaf == nil || *leaf != summaryID {
 		t.Fatalf("leaf = %v, want summary %q", leaf, summaryID)
 	}
-	entry, ok := sess.EntryByID(summaryID)
+	entry, ok := sess.GetEntry(summaryID)
 	if !ok {
 		t.Fatal("summary entry missing")
 	}
@@ -1048,13 +1051,13 @@ func TestAppendBranchSummaryRejectsUnknownEntry(t *testing.T) {
 	if _, err := sess.AppendMessage(mkUserMsg("hello")); err != nil {
 		t.Fatal(err)
 	}
-	before := len(sess.Entries())
+	before := len(sess.GetEntries())
 	missing := "nonexistent"
-	_, err := sess.AppendBranchSummary(&missing, "summary", nil, false, nil)
+	_, err := sess.BranchWithSummary(&missing, "summary", nil, false, nil)
 	if err == nil || err.Error() != "Entry nonexistent not found" {
 		t.Fatalf("error = %v, want Entry nonexistent not found", err)
 	}
-	if got := len(sess.Entries()); got != before {
+	if got := len(sess.GetEntries()); got != before {
 		t.Fatalf("entries = %d, want %d", got, before)
 	}
 }
@@ -1075,17 +1078,17 @@ func TestAppendBranchSummary_RootLevel(t *testing.T) {
 	if err != nil {
 		t.Fatalf("AppendMessage: %v", err)
 	}
-	if leaf := sess.LeafID(); leaf == nil || *leaf != firstID {
+	if leaf := sess.GetLeafID(); leaf == nil || *leaf != firstID {
 		t.Fatal("precondition: leaf must be firstID")
 	}
 
 	// Append branch_summary with nil parent: must NOT inherit firstID as parent.
-	bsID, err := sess.AppendBranchSummary(nil, "root summary", nil, false, nil)
+	bsID, err := sess.BranchWithSummary(nil, "root summary", nil, false, nil)
 	if err != nil {
 		t.Fatalf("AppendBranchSummary(nil): %v", err)
 	}
 
-	e, ok := sess.EntryByID(bsID)
+	e, ok := sess.GetEntry(bsID)
 	if !ok {
 		t.Fatalf("entry %q not found", bsID)
 	}
@@ -1100,11 +1103,11 @@ func TestAppendBranchSummary_RootLevel(t *testing.T) {
 	}
 
 	// Branch from the new leaf must contain ONLY the branch_summary entry.
-	branch := sess.Branch(*sess.LeafID())
-	if len(branch) != 1 || branch[0].Base.Type != "branch_summary" {
+	branch := sess.GetBranch(*sess.GetLeafID())
+	if len(branch) != 1 || branch[0].Base().Type != "branch_summary" {
 		types := make([]string, len(branch))
 		for i, e := range branch {
-			types[i] = e.Base.Type
+			types[i] = e.Base().Type
 		}
 		t.Errorf("RootLevel: branch len=%d types=%v; want [branch_summary]", len(branch), types)
 	}
@@ -1253,7 +1256,7 @@ func TestBuildContextBranchSummaryPrefix(t *testing.T) {
 
 	// Build: user → asst → branch_summary → new_user
 	idU, _ := sess.AppendMessage(mkUserMsg("hello"))
-	bsID, err := sess.AppendBranchSummary(&idU, "my branch summary", nil, false, nil)
+	bsID, err := sess.BranchWithSummary(&idU, "my branch summary", nil, false, nil)
 	if err != nil {
 		t.Fatalf("AppendBranchSummary: %v", err)
 	}

@@ -68,7 +68,7 @@ func TestThemeTokenSitesMatchPiOracle(t *testing.T) {
 				}
 			}
 
-			list := NewSettingsList([]SettingItem{{ID: "a", Label: "Alpha", CurrentValue: "on", Values: []string{"on", "off"}}})
+			list := NewSettingsList([]SettingItem{{ID: "a", Label: "Alpha", CurrentValue: "on", Values: []string{"on", "off"}}}, 10, GetSettingsListTheme(), nil, nil, SettingsListOptions{EnableSearch: true})
 			var cursorLine string
 			for _, line := range list.Render(40) {
 				if strings.Contains(line, "→ ") {
@@ -111,20 +111,20 @@ func TestThemeTokenSitesRenderLightTheme(t *testing.T) {
 		exclude bool
 		want    string
 	}{{"!cmd", false, bashMode}, {"!!cmd", true, dim}} {
-		block := NewBashExecutionBlock("echo hi", tc.exclude)
+		block := NewBashExecutionComponent("echo hi", nil, tc.exclude, 1)
 		code := 0
-		block.SetComplete(&code, false, false)
+		block.SetComplete(&code, false, nil, "")
 		lines := block.Render(20)
 		if len(lines) < 2 || !strings.HasPrefix(lines[1], tc.want+"─") {
 			t.Errorf("%s bash border = %q, want prefix %q", tc.name, lines, tc.want+"─")
 		}
 	}
 
-	compaction := strings.Join(NewCompactionSummaryComponent("summary", 1000).Render(40), "\n")
+	compaction := strings.Join(NewCompactionSummaryMessageComponent(CompactionSummaryMessage{Summary: "summary", TokensBefore: 1000}, nil, 1).Render(40), "\n")
 	if !strings.Contains(compaction, customLabel+"\x1b[1m[compaction]") {
 		t.Errorf("compaction label missing %q in %q", customLabel+"\x1b[1m[compaction]", compaction)
 	}
-	branch := strings.Join(NewBranchSummaryComponent("summary").Render(40), "\n")
+	branch := strings.Join(NewBranchSummaryMessageComponent(BranchSummaryMessage{Summary: "summary"}, nil, 1).Render(40), "\n")
 	if !strings.Contains(branch, customLabel+"\x1b[1m[branch]") {
 		t.Errorf("branch label missing %q in %q", customLabel+"\x1b[1m[branch]", branch)
 	}

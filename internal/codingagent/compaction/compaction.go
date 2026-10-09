@@ -21,6 +21,7 @@ import (
 	"github.com/MichaelKinsy/PiG/agent"
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/internal/codingagent"
+	"github.com/MichaelKinsy/PiG/internal/compactiontypes"
 	"github.com/MichaelKinsy/PiG/internal/usagetotals"
 )
 
@@ -34,13 +35,8 @@ type CompactionDetails struct {
 	ModifiedFiles []string `json:"modifiedFiles"`
 }
 
-// CompactionSettings controls when and how compaction runs.
-// Mirrors upstream CompactionSettings (compaction.ts:115).
-type CompactionSettings struct {
-	Enabled          bool `json:"enabled"`
-	ReserveTokens    int  `json:"reserveTokens"`    // tokens reserved for response; default 16384
-	KeepRecentTokens int  `json:"keepRecentTokens"` // tokens to keep from recent history; default 20000
-}
+// CompactionSettings controls when and how compaction runs. upstream: compaction.ts:115
+type CompactionSettings = compactiontypes.CompactionSettings
 
 // DefaultCompactionSettings mirrors upstream DEFAULT_COMPACTION_SETTINGS.
 var DefaultCompactionSettings = CompactionSettings{
@@ -61,21 +57,8 @@ type CutPointResult struct {
 	IsSplitTurn bool
 }
 
-// CompactionPreparation is the output of PrepareCompaction.
-// Mirrors upstream CompactionPreparation (compaction.ts:600).
-//
-// Extensions receive it in session_before_compact, so the JSON keys are
-// upstream's field names.
-type CompactionPreparation struct {
-	FirstKeptEntryID    string               `json:"firstKeptEntryId"`
-	MessagesToSummarize []agent.AgentMessage `json:"messagesToSummarize"`
-	TurnPrefixMessages  []agent.AgentMessage `json:"turnPrefixMessages"`
-	IsSplitTurn         bool                 `json:"isSplitTurn"`
-	TokensBefore        int                  `json:"tokensBefore"`
-	PreviousSummary     string               `json:"previousSummary,omitempty"`
-	FileOps             FileOperations       `json:"fileOps"`
-	Settings            CompactionSettings   `json:"settings"`
-}
+// CompactionPreparation is the output of PrepareCompaction. upstream: compaction.ts:772
+type CompactionPreparation = compactiontypes.CompactionPreparation
 
 // CompactionResult is the output of Compact.
 // Mirrors upstream CompactionResult (compaction.ts:100).
@@ -214,10 +197,10 @@ Only summarize information explicitly present above. Do not infer or recreate la
 // valid usage in entries (compaction.ts getLastAssistantUsage).
 func GetLastAssistantUsage(entries []codingagent.SessionEntry) *ai.Usage {
 	for _, entry := range slices.Backward(entries) {
-		if entry.Base.Type != "message" {
+		if entry.Base().Type != "message" {
 			continue
 		}
-		message, ok := entry.AsMessage()
+		message, ok := entry.(codingagent.MessageEntry)
 		if !ok {
 			continue
 		}
@@ -263,7 +246,7 @@ func isTurnStartMessage(message agent.AgentMessage) bool {
 }
 
 func isTurnStartEntry(entry codingagent.SessionEntry) bool {
-	if entry.Base.Type == "compaction" {
+	if entry.Base().Type == "compaction" {
 		return false
 	}
 	return slices.ContainsFunc(codingagent.SessionEntryToContextMessages(entry), isTurnStartMessage)
@@ -274,7 +257,7 @@ func isTurnStartEntry(entry codingagent.SessionEntry) bool {
 func findValidCutPoints(entries []codingagent.SessionEntry, startIdx, endIdx int) []int {
 	var points []int
 	for i := startIdx; i < endIdx; i++ {
-		if entries[i].Base.Type == "compaction" {
+		if entries[i].Base().Type == "compaction" {
 			continue
 		}
 		if slices.ContainsFunc(codingagent.SessionEntryToContextMessages(entries[i]), isCutPointMessage) {
@@ -328,7 +311,7 @@ func FindCutPoint(entries []codingagent.SessionEntry, startIndex, endIndex, keep
 	// Absorb adjacent metadata entries that do not affect context.
 	for cutIdx > startIndex {
 		previous := entries[cutIdx-1]
-		if previous.Base.Type == "compaction" || len(codingagent.SessionEntryToContextMessages(previous)) > 0 {
+		if previous.Base().Type == "compaction" || len(codingagent.SessionEntryToContextMessages(previous)) > 0 {
 			break
 		}
 		cutIdx--
@@ -397,7 +380,7 @@ func extractFileOperations(
 // conversation; the compaction entry carries their replay. The previous
 // compaction contributes its summary through PreviousSummary instead.
 func getMessagesFromProjectedEntryForCompaction(entry codingagent.ProjectedSessionEntry) []agent.AgentMessage {
-	if entry.SourceEntry.Base.Type == "compaction" {
+	if entry.SourceEntry.Base().Type == "compaction" {
 		return nil
 	}
 	out := make([]agent.AgentMessage, 0, len(entry.Messages))
@@ -428,16 +411,16 @@ func PrepareCompaction(
 	pathEntries []codingagent.SessionEntry,
 	s CompactionSettings,
 ) *CompactionPreparation {
-	if len(pathEntries) > 0 && pathEntries[len(pathEntries)-1].Base.Type == "compaction" {
+	if len(pathEntries) > 0 && pathEntries[len(pathEntries)-1].Base().Type == "compaction" {
 		return nil
 	}
 
-	projection := codingagent.BuildSessionProjection(pathEntries)
+	projection := codingagent.ProjectSessionPath(pathEntries)
 	entries := projection.Entries
 	// The newest compaction is projected first. Older compaction entries can
 	// occur in its retained range, but their projected contribution is empty.
 	prevCompactionIndex := slices.IndexFunc(entries, func(entry codingagent.ProjectedSessionEntry) bool {
-		return entry.SourceEntry.Base.Type == "compaction" && len(entry.Messages) > 0
+		return entry.SourceEntry.Base().Type == "compaction" && len(entry.Messages) > 0
 	})
 
 	var previousSummary string
@@ -454,7 +437,7 @@ func PrepareCompaction(
 	if cutPoint.FirstKeptEntryIndex >= len(entries) {
 		return nil
 	}
-	firstKeptEntryID := entries[cutPoint.FirstKeptEntryIndex].SourceEntry.Base.ID
+	firstKeptEntryID := entries[cutPoint.FirstKeptEntryIndex].SourceEntry.Base().ID
 	if firstKeptEntryID == "" {
 		return nil
 	}
@@ -627,13 +610,11 @@ func capMaxTokens(budget int, model *ai.Model) int {
 // createSummarizationOptions builds the request options for one summary
 // call. The thinking level applies only to reasoning-capable models.
 // Mirrors upstream createSummarizationOptions (compaction.ts).
-func createSummarizationOptions(model *ai.Model, maxTokens int, thinkingLevel ai.ThinkingLevel, sessionID string) ai.StreamOptions {
-	options := ai.StreamOptions{MaxTokens: maxTokens, SessionID: sessionID}
+func createSummarizationOptions(model *ai.Model, maxTokens int, apiKey string, headers, env map[string]string, thinkingLevel ai.ModelThinkingLevel, sessionID string) ai.StreamOptions {
+	options := ai.StreamOptions{MaxTokens: maxTokens, APIKey: apiKey, Headers: ai.ProviderHeadersFromStrings(headers), Env: env, SessionID: sessionID}
 	if model != nil && model.Capabilities.MaxThinking != "" {
 		options.IsReasoning = true
-		if thinkingLevel != "" && thinkingLevel != ai.ThinkingOff {
-			options.Thinking = thinkingLevel
-		}
+		options.Thinking = thinkingLevel.ReasoningOption()
 	}
 	return options
 }
@@ -647,7 +628,8 @@ func completeSummarization(
 	model *ai.Model,
 	completer SimpleCompleter,
 	streamFn StreamFn,
-	retry *RetryOptions,
+	retry *ai.RetryPolicy,
+	callbacks ai.RetryCallbacks,
 	systemPrompt string,
 	messages []agent.AgentMessage,
 	options ai.StreamOptions,
@@ -670,7 +652,7 @@ func completeSummarization(
 		}
 		requestOptions.SessionID = id
 	}
-	return completeSimpleWithRetries(ctx, retry, func() (string, *ai.Usage, error) {
+	return completeSimpleWithRetries(ctx, retry, callbacks, func() (string, *ai.Usage, error) {
 		if streamFn != nil {
 			text, usage, err := streamFn(ctx, model, systemPrompt, messages, requestOptions)
 			if err != nil {
@@ -682,17 +664,88 @@ func completeSummarization(
 	})
 }
 
-func generateSummary(
+// GenerateSummary generates or updates a conversation summary with the model's provider and returns its text (compaction.ts:645 generateSummary, which
+// returns generateSummaryWithUsage's `text`). apiKey, headers and env are the request auth; a nil streamFn uses the provider's own stream, as upstream's
+// completeSimple does. An empty sessionID gives each request a fresh routing session.
+func GenerateSummary(
 	ctx context.Context,
 	messages []agent.AgentMessage,
-	previousSummary string,
-	reserveTokens int,
 	model *ai.Model,
+	reserveTokens int,
+	apiKey string,
+	headers map[string]string,
+	customInstructions string,
+	previousSummary string,
+	thinkingLevel ai.ModelThinkingLevel,
+	streamFn StreamFn,
+	env map[string]string,
+	retry *ai.RetryPolicy,
+	callbacks ai.RetryCallbacks,
+	sessionID string,
+) (string, error) {
+	text, _, err := GenerateSummaryWithUsage(ctx, messages, model, reserveTokens, apiKey, headers, customInstructions, previousSummary, thinkingLevel, streamFn, env, retry, callbacks, sessionID)
+	return text, err
+}
+
+// GenerateSummaryWithUsage generates or updates a conversation summary with the model's provider and returns the provider usage (compaction.ts:696
+// generateSummaryWithUsage). Its parameters are those of [GenerateSummary].
+func GenerateSummaryWithUsage(
+	ctx context.Context,
+	messages []agent.AgentMessage,
+	model *ai.Model,
+	reserveTokens int,
+	apiKey string,
+	headers map[string]string,
+	customInstructions string,
+	previousSummary string,
+	thinkingLevel ai.ModelThinkingLevel,
+	streamFn StreamFn,
+	env map[string]string,
+	retry *ai.RetryPolicy,
+	callbacks ai.RetryCallbacks,
+	sessionID string,
+) (string, *ai.Usage, error) {
+	return GenerateSummaryWithUsageUsing(ctx, messages, model, reserveTokens, apiKey, headers, customInstructions, previousSummary, thinkingLevel, ProviderCompleter{}, streamFn, env, retry, callbacks, sessionID)
+}
+
+// Compact generates the summaries of a compaction with the model's provider using PrepareCompaction output (compaction.ts:965 compact). thinkingLevel
+// applies to reasoning-capable models; an empty sessionID gives each summary request a fresh routing ID; apiKey, headers and env are the request auth;
+// a nil streamFn uses the provider's own stream.
+func Compact(
+	ctx context.Context,
+	prep CompactionPreparation,
+	model *ai.Model,
+	apiKey string,
+	headers map[string]string,
+	customInstructions string,
+	thinkingLevel ai.ModelThinkingLevel,
+	streamFn StreamFn,
+	env map[string]string,
+	retry *ai.RetryPolicy,
+	callbacks ai.RetryCallbacks,
+	sessionID string,
+) (CompactionResult, error) {
+	return CompactUsing(ctx, prep, model, apiKey, headers, customInstructions, thinkingLevel, ProviderCompleter{}, streamFn, env, retry, callbacks, sessionID)
+}
+
+// GenerateSummaryWithUsageUsing is [GenerateSummaryWithUsage] with the completer that stands in for pi-ai's completeSimple when streamFn is nil.
+// (compaction.ts:696 generateSummaryWithUsage)
+// apiKey, headers and env are the request auth (agent-session.ts _getSummarizationRequestAuth). completer stands in for pi-ai's completeSimple when streamFn is nil.
+func GenerateSummaryWithUsageUsing(
+	ctx context.Context,
+	messages []agent.AgentMessage,
+	model *ai.Model,
+	reserveTokens int,
+	apiKey string,
+	headers map[string]string,
+	customInstructions string,
+	previousSummary string,
+	thinkingLevel ai.ModelThinkingLevel,
 	completer SimpleCompleter,
 	streamFn StreamFn,
-	customInstructions string,
-	thinkingLevel ai.ThinkingLevel,
-	retry *RetryOptions,
+	env map[string]string,
+	retry *ai.RetryPolicy,
+	callbacks ai.RetryCallbacks,
 	sessionID string,
 ) (string, *ai.Usage, error) {
 	basePrompt := SUMMARIZATION_PROMPT
@@ -731,8 +784,8 @@ func generateSummary(
 	}
 
 	maxTokens := capMaxTokens((8*reserveTokens)/10, model)
-	options := createSummarizationOptions(model, maxTokens, thinkingLevel, sessionID)
-	result, usage, err := completeSummarization(ctx, model, completer, streamFn, retry, SummarizationSystemPrompt, req, options)
+	options := createSummarizationOptions(model, maxTokens, apiKey, headers, env, thinkingLevel, sessionID)
+	result, usage, err := completeSummarization(ctx, model, completer, streamFn, retry, callbacks, SummarizationSystemPrompt, req, options)
 	if err != nil {
 		return "", nil, summarizationFailure("Summarization", err)
 	}
@@ -744,12 +797,16 @@ func generateSummary(
 func generateTurnPrefixSummary(
 	ctx context.Context,
 	messages []agent.AgentMessage,
-	reserveTokens int,
 	model *ai.Model,
+	reserveTokens int,
+	apiKey string,
+	headers map[string]string,
+	env map[string]string,
+	thinkingLevel ai.ModelThinkingLevel,
 	completer SimpleCompleter,
 	streamFn StreamFn,
-	thinkingLevel ai.ThinkingLevel,
-	retry *RetryOptions,
+	retry *ai.RetryPolicy,
+	callbacks ai.RetryCallbacks,
 	sessionID string,
 ) (string, *ai.Usage, error) {
 	convText := SerializeConversation(convertToLlm(messages))
@@ -767,8 +824,8 @@ func generateTurnPrefixSummary(
 		},
 	}
 	maxTokens := capMaxTokens(reserveTokens/2, model)
-	options := createSummarizationOptions(model, maxTokens, thinkingLevel, sessionID)
-	result, usage, err := completeSummarization(ctx, model, completer, streamFn, retry, SummarizationSystemPrompt, req, options)
+	options := createSummarizationOptions(model, maxTokens, apiKey, headers, env, thinkingLevel, sessionID)
+	result, usage, err := completeSummarization(ctx, model, completer, streamFn, retry, callbacks, SummarizationSystemPrompt, req, options)
 	if err != nil {
 		return "", nil, summarizationFailure("Turn prefix summarization", err)
 	}
@@ -800,19 +857,22 @@ func summarizationFailure(operation string, err error) error {
 
 // ─── Main Compaction Function ─────────────────────────────────────────────────
 
-// Compact generates summaries for compaction using PrepareCompaction output.
-// thinkingLevel applies to reasoning-capable models; an empty sessionID gives
-// each summary request a fresh routing ID.
-// Mirrors upstream compact (compaction.ts:714).
-func Compact(
+// CompactUsing is [Compact] with the completer that stands in for pi-ai's completeSimple when streamFn is nil: a Session passes its injected completer
+// or the provider completer of its stream override. thinkingLevel applies to reasoning-capable models; an empty sessionID gives each summary request a
+// fresh routing ID. apiKey, headers and env are the request auth.
+func CompactUsing(
 	ctx context.Context,
 	prep CompactionPreparation,
 	model *ai.Model,
+	apiKey string,
+	headers map[string]string,
+	customInstructions string,
+	thinkingLevel ai.ModelThinkingLevel,
 	completer SimpleCompleter,
 	streamFn StreamFn,
-	customInstructions string,
-	thinkingLevel ai.ThinkingLevel,
-	retry *RetryOptions,
+	env map[string]string,
+	retry *ai.RetryPolicy,
+	callbacks ai.RetryCallbacks,
 	sessionID string,
 ) (CompactionResult, error) {
 	var summary string
@@ -823,13 +883,13 @@ func Compact(
 		var historyUsage *ai.Usage
 		if len(prep.MessagesToSummarize) > 0 {
 			var err error
-			historySummary, historyUsage, err = generateSummary(ctx, prep.MessagesToSummarize, prep.PreviousSummary, prep.Settings.ReserveTokens, model, completer, streamFn, customInstructions, thinkingLevel, retry, sessionID)
+			historySummary, historyUsage, err = GenerateSummaryWithUsageUsing(ctx, prep.MessagesToSummarize, model, prep.Settings.ReserveTokens, apiKey, headers, customInstructions, prep.PreviousSummary, thinkingLevel, completer, streamFn, env, retry, callbacks, sessionID)
 			if err != nil {
 				return CompactionResult{}, err
 			}
 		}
 
-		prefixSummary, prefixUsage, err := generateTurnPrefixSummary(ctx, prep.TurnPrefixMessages, prep.Settings.ReserveTokens, model, completer, streamFn, thinkingLevel, retry, sessionID)
+		prefixSummary, prefixUsage, err := generateTurnPrefixSummary(ctx, prep.TurnPrefixMessages, model, prep.Settings.ReserveTokens, apiKey, headers, env, thinkingLevel, completer, streamFn, retry, callbacks, sessionID)
 		if err != nil {
 			return CompactionResult{}, err
 		}
@@ -837,7 +897,7 @@ func Compact(
 		usage = combineUsage(historyUsage, prefixUsage)
 	} else {
 		var err error
-		summary, usage, err = generateSummary(ctx, prep.MessagesToSummarize, prep.PreviousSummary, prep.Settings.ReserveTokens, model, completer, streamFn, customInstructions, thinkingLevel, retry, sessionID)
+		summary, usage, err = GenerateSummaryWithUsageUsing(ctx, prep.MessagesToSummarize, model, prep.Settings.ReserveTokens, apiKey, headers, customInstructions, prep.PreviousSummary, thinkingLevel, completer, streamFn, env, retry, callbacks, sessionID)
 		if err != nil {
 			return CompactionResult{}, err
 		}

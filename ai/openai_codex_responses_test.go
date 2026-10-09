@@ -27,7 +27,7 @@ func TestResolveCodexURL(t *testing.T) {
 }
 
 func TestThinkingToReasoningEffort_CodexModelMap(t *testing.T) {
-	model := &Model{Capabilities: ModelCapabilities{MaxThinking: ThinkingXHigh}, ThinkingLevelMap: ThinkingLevelMap{
+	model := &Model{Capabilities: ModelCapabilities{MaxThinking: ThinkingLevelXHigh}, ThinkingLevelMap: ThinkingLevelMap{
 		ThinkingMinimal: new("low"),
 		ThinkingLow:     new("medium"),
 		ThinkingMedium:  new("medium"),

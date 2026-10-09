@@ -1,0 +1,85 @@
+[
+ {
+  "ids": [
+   "pkg:coding-agent/.#truncateTail"
+  ],
+  "targets": [
+   "internal/codingagent/tools/truncate.go#TruncateTail"
+  ],
+  "production": [
+   "call:internal/codingagent/tools/bash_executor.go#ExecuteBashWithOperations"
+  ],
+  "evidence": [
+   "test:internal/codingagent/tools/harness_truncate_upstream_test.go#TestHarnessTruncate",
+   "test:internal/codingagent/tools/sanitize_test.go#TestTruncateTail_ByteCap",
+   "test:internal/codingagent/tools/sanitize_test.go#TestTruncateTail_LastLineLargerThanCap"
+  ],
+  "rationale": "tools/truncate.ts truncateTail(content, {maxBytes?, maxLines?}): Go TruncateTail(content, maxBytes, maxLines int). The two options are positional, covering every upstream option; an absent option is the caller passing DefaultMaxBytesUpstream or DefaultMaxLinesUpstream, and zero is a real zero limit, as `options.maxBytes ?? DEFAULT` treats 0 (TestTruncateZeroLimitsAreLimits)."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#truncateHead"
+  ],
+  "targets": [
+   "internal/codingagent/tools/truncate.go#TruncateHead"
+  ],
+  "production": [
+   "call:internal/codingagent/tools/find.go#formatFindResults"
+  ],
+  "evidence": [
+   "test:internal/codingagent/tools/harness_truncate_upstream_test.go#TestHarnessTruncate",
+   "test:internal/codingagent/tools/truncate_head_test.go#TestTruncateHeadExactSuffixMatchesUpstream",
+   "test:internal/codingagent/tools/truncate_head_test.go#TestTruncateHeadByteCapBeforeLineCap"
+  ],
+  "rationale": "tools/truncate.ts truncateHead(content, {maxBytes?, maxLines?}): Go TruncateHead(content, maxBytes, maxLines int), positional with the same absent-option rule as truncateTail."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#formatSize"
+  ],
+  "targets": [
+   "internal/codingagent/tools/truncate.go#FormatSize"
+  ],
+  "production": [
+   "call:internal/codingagent/tools/find.go#formatFindResults"
+  ],
+  "evidence": [
+   "test:internal/codingagent/tools/sanitize_test.go#TestFormatSize"
+  ],
+  "rationale": "tools/truncate.ts formatSize(bytes) is FormatSize(bytes int) string."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#truncateLine"
+  ],
+  "targets": [
+   "internal/codingagent/tools/truncate.go#TruncateLine"
+  ],
+  "production": [
+   "call:internal/codingagent/tools/grep.go#grepFormatter.truncate"
+  ],
+  "evidence": [
+   "test:internal/codingagent/tools/grep_test.go#TestTruncateLine"
+  ],
+  "rationale": "tools/truncate.ts truncateLine(line, maxChars?) returns {text, wasTruncated}; Go TruncateLine(line, maxChars) returns (string, bool), the caller passing GrepMaxLineLengthUpstream for an absent maxChars."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#TruncationResult"
+  ],
+  "targets": [
+   "internal/codingagent/tools/truncate.go#TruncationResult"
+  ],
+  "struct": {
+   "file": "internal/codingagent/tools/truncate.go",
+   "type": "TruncationResult"
+  },
+  "production": [
+   "call:internal/codingagent/tools/read.go#readTextResult"
+  ],
+  "evidence": [
+   "test:internal/codingagent/tools/harness_truncate_upstream_test.go#TestHarnessTruncate"
+  ],
+  "rationale": "tools/truncate.ts TruncationResult: Go TruncationResult with the same eleven members and json keys; truncatedBy null is the empty string."
+ }
+]

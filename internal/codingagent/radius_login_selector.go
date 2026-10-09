@@ -68,6 +68,7 @@ type radiusLoginMenu struct {
 	*tui.ExtensionSelectorComponent
 	label, text string
 	start       time.Time
+	now         func() time.Time
 	animating   atomic.Bool
 	stop        chan struct{}
 	stopOnce    sync.Once
@@ -76,7 +77,7 @@ type radiusLoginMenu struct {
 // newRadiusLoginMenu starts the animation ticker, which requests a render every frame while the option is selected.
 // Dispose stops it.
 func newRadiusLoginMenu(selector *tui.ExtensionSelectorComponent, label, text string, requestRender func()) *radiusLoginMenu {
-	menu := &radiusLoginMenu{ExtensionSelectorComponent: selector, label: label, text: text, start: time.Now(), stop: make(chan struct{})}
+	menu := &radiusLoginMenu{ExtensionSelectorComponent: selector, label: label, text: text, start: time.Now(), now: time.Now, stop: make(chan struct{})}
 	go func() {
 		ticker := time.NewTicker(radiusAnimationFrame)
 		defer ticker.Stop()
@@ -98,15 +99,15 @@ func newRadiusLoginMenu(selector *tui.ExtensionSelectorComponent, label, text st
 func (r *radiusLoginMenu) Render(width int) []string {
 	lines := r.ExtensionSelectorComponent.Render(width)
 	theme := tui.ActiveTheme()
-	selected := tui.NewPaddedText(theme.FgText("accent", "→ ")+theme.FgText("accent", r.label), 1, 0, nil).Render(width)
+	selected := tui.NewPaddedText(theme.Fg("accent", "→ ")+theme.Fg("accent", r.label), 1, 0, nil).Render(width)
 	index := -1
 	if len(selected) > 0 {
 		index = slices.Index(lines, selected[0])
 	}
 	r.animating.Store(index >= 0)
 	if index >= 0 {
-		shimmer := radiusShimmer(r.text, time.Since(r.start), theme.ColorMode())
-		animated := theme.FgText("accent", "→ ") + shimmer + r.label[len(r.text):]
+		shimmer := radiusShimmer(r.text, r.now().Sub(r.start), theme.GetColorMode())
+		animated := theme.Fg("accent", "→ ") + shimmer + r.label[len(r.text):]
 		rendered := tui.NewPaddedText(animated, 1, 0, nil).Render(width)
 		lines[index] = ""
 		if len(rendered) > 0 {

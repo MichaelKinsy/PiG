@@ -1,0 +1,82 @@
+# Behavior family: extensions-runtime
+# Surface: fullscreen mouse events reach an extension's ui.custom overlay component (Pi's handleMouse).
+#
+# overlay-mouse.mjs opens a 60-column overlay at row 3, column 0 that logs every TuiMouseEvent its handleMouse
+# receives (type, button, local x,y, screenX,screenY, bounds, clickCount, wheelDelta, modifiers) and takes the
+# press and the wheel. Pi 1.1.0 routes a fullscreen SGR report to the topmost overlay under the pointer with
+# coordinates local to it (tui.ts:862-888 dispatchMouseToOverlay), sends the release and then the click of a
+# press it took to the press target (tui-alt-screen.ts:900-960 handleMouseEvent), counts a second click on the
+# same cell within 500 ms as clickCount 2 (tui-alt-screen.ts:874-888 getComponentClickCount), and gives the
+# first wheel step of a gesture wheelDelta 1 (tui-alt-screen.ts:703-709, wheel-scroll.ts:54-66). PiG hands the
+# events to the extension over ui.custom.mouse (coding/extension/host/subprocess/runtime-node/mouse.mjs).
+#
+# Upstream evidence (pi 1.1.0, probed through this scenario in tmux at 60x30, default fullscreen tuiMode): the overlay
+# rows read
+#   press left 5,2 5,5 60x12 c- w- -    / release ... c- / click left 5,2 5,5 60x12 c1 w- -
+#   press, release, click left 5,2 5,5 60x12 c2 w- -
+#   wheel none 7,4 7,7 60x12 c- w1 -
+#   press, release, click left 9,6 9,9 60x12 c1 w- SC
+#
+# Before the mouse-110 slice PiG delivered no mouse to a subprocess ui.custom component, so the overlay kept its
+# eleven "-" rows. The crop is the overlay (rows 3-14); both binaries draw it over the whole 60-column row, so the
+# header behind it does not show. Plain text (output_equal): the rows carry no styling.
+
+name = "76-custom-overlay-mouse"
+description = "Fullscreen clicks, a double click, a wheel step and a modified click reach an extension overlay's handleMouse with Pi's fields"
+covers = [
+  "packages/tui/src/tui-alt-screen.ts",
+  "packages/tui/src/tui.ts",
+]
+tags = ["hermetic", "tui", "fullscreen"]
+driver = "interactive-tmux"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "COLORTERM="]
+pi = ["COLORTERM="]
+pig_args = ["--no-extensions"]
+pig_extensions = ["testdata/ext/overlay-mouse.mjs"]
+pi_extensions = [
+  "../../testdata/test-faux-provider.ts",
+  "testdata/ext/overlay-mouse.mjs",
+]
+
+[tmux]
+width = 60
+height = 30
+ready_pattern_pig = "MOUSE-PROBE-READY"
+ready_pattern_pi = "MOUSE-PROBE-READY"
+ready_timeout_seconds = 30
+capture_start = "MOUSE TOP"
+capture_end = "MOUSE END"
+
+[[tmux.steps]]
+keys = ["/mouse", "Enter"]
+wait_contains = ["MOUSE END"]
+wait_timeout_seconds = 30
+
+# Two press/release pairs on local cell (5,2), screen (5,5), in one write so the second is within Pi's 500 ms
+# double-click interval: press, release, click 1, press, release, click 2.
+[[tmux.steps]]
+keys = ["hex:1b 5b 3c 30 3b 36 3b 36 4d 1b 5b 3c 30 3b 36 3b 36 6d 1b 5b 3c 30 3b 36 3b 36 4d 1b 5b 3c 30 3b 36 3b 36 6d"]
+wait_contains = ["click left 5,2 5,5 60x12 c2"]
+wait_timeout_seconds = 10
+
+# One wheel-down step on local cell (7,4), screen (7,7).
+[[tmux.steps]]
+keys = ["hex:1b 5b 3c 36 35 3b 38 3b 38 4d"]
+wait_contains = ["wheel none 7,4 7,7"]
+wait_timeout_seconds = 10
+
+# A Shift+Ctrl press/release on local cell (9,6), screen (9,9): another cell, so its click counts 1.
+[[tmux.steps]]
+keys = ["hex:1b 5b 3c 32 30 3b 31 30 3b 31 30 4d 1b 5b 3c 32 30 3b 31 30 3b 31 30 6d"]
+wait_contains = ["click left 9,6 9,9"]
+wait_timeout_seconds = 10
+
+[assert]
+both_reach_ready = true
+both_contain = ["click left 9,6 9,9 60x12 c1"]
+both_not_contain = ["panic:", "goroutine ", "unknown command"]
+output_equal = true
+runs = 3

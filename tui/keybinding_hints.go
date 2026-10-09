@@ -3,9 +3,12 @@ package tui
 import (
 	"runtime"
 	"strings"
+	"sync/atomic"
 )
 
-var appKeyTextResolver func(action string) string
+// appKeyTextResolver is atomic because components resolve key text where they are built, which for extension views is off
+// the UI loop, while a keybindings reload installs a new resolver.
+var appKeyTextResolver atomic.Pointer[func(action string) string]
 
 // FormatKeyText formats a raw key string for UI display.
 // It mirrors upstream formatKeyText by splitting alternate combos on "/"
@@ -20,8 +23,8 @@ func FormatKeyText(key string, capitalize bool) string {
 			if runtime.GOOS == "darwin" && strings.EqualFold(part, "alt") {
 				displayPart = "option"
 			}
-			if capitalize && displayPart != "" {
-				displayPart = strings.ToUpper(displayPart[:1]) + displayPart[1:]
+			if capitalize {
+				displayPart = jsUpperFirstUnit(displayPart)
 			}
 			parts[j] = displayPart
 		}
@@ -39,14 +42,18 @@ func KeyDisplayText(key string) string {
 // (for example, `app.tree.foldOrUp`) used by TUI components that can't
 // import the codingagent package directly.
 func SetAppKeyTextResolver(resolver func(action string) string) {
-	appKeyTextResolver = resolver
+	if resolver == nil {
+		appKeyTextResolver.Store(nil)
+		return
+	}
+	appKeyTextResolver.Store(&resolver)
 }
 
 // AppKeyText formats the resolved keys for an app-level keybinding, falling
 // back to the provided default raw key text when no resolver is installed.
 func AppKeyText(action, fallback string) string {
-	if appKeyTextResolver != nil {
-		if text := strings.TrimSpace(appKeyTextResolver(action)); text != "" {
+	if resolver := appKeyTextResolver.Load(); resolver != nil {
+		if text := strings.TrimSpace((*resolver)(action)); text != "" {
 			return text
 		}
 	}
@@ -64,6 +71,16 @@ func ActionKeyDisplayText(action string) string {
 	return FormatKeyText(strings.Join(keys, "/"), true)
 }
 
+// ActionKeyText formats every key the registry binds to action, joined by "/", or "" when none is bound. Mirrors upstream
+// keyText (coding-agent keybinding-hints.ts:34); ActionKeyDisplayText is keyDisplayText, its capitalized form.
+func ActionKeyText(action string) string {
+	keys := GetTUIKeybindings().GetKeys(action)
+	if len(keys) == 0 {
+		return ""
+	}
+	return FormatKeyText(strings.Join(keys, "/"), false)
+}
+
 // ActionKeyDisplayTextOr is ActionKeyDisplayText for an action that may not be
 // registered (app actions outside the interactive mode, such as in component
 // tests), falling back to the upstream default keys.
@@ -77,7 +94,7 @@ func ActionKeyDisplayTextOr(action, fallback string) string {
 // KeyHint formats a display key and description with foreground-only resets, preserving enclosing text styles.
 func KeyHint(key, description string) string {
 	t := ActiveTheme()
-	return t.FgText("dim", key) + t.FgText("muted", " "+description)
+	return t.Fg("dim", key) + t.Fg("muted", " "+description)
 }
 
 // RawKeyHint formats a raw key string without going through a keybinding registry.

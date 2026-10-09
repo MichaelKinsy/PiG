@@ -182,9 +182,11 @@ func snapshotCWD(t *testing.T, src string) (string, error) {
 
 // snapshotExtensionPath copies an extension source into a per-binary writable
 // root. File extensions bring their sibling directory so relative imports keep
-// working; directory extensions copy that directory directly. This prevents a
-// reload/self-edit scenario from mutating checked-in fixtures or changing the
-// source subsequently observed by the other binary.
+// working; a directory extension is copied under its own name, because its
+// name is its identity (a Go SDK extension registers the name of its
+// directory). This prevents a reload/self-edit scenario from mutating
+// checked-in fixtures or changing the source subsequently observed by the
+// other binary.
 func snapshotExtensionPath(t *testing.T, src string) (string, error) {
 	t.Helper()
 	info, err := os.Stat(src)
@@ -197,10 +199,11 @@ func snapshotExtensionPath(t *testing.T, src string) (string, error) {
 			return "", err
 		}
 		t.Cleanup(func() { _ = os.RemoveAll(tmp) })
-		if err := copyDir(src, tmp); err != nil {
+		dst := filepath.Join(tmp, filepath.Base(src))
+		if err := copyDir(src, dst); err != nil {
 			return "", err
 		}
-		return tmp, nil
+		return dst, nil
 	}
 	parent := filepath.Dir(src)
 	tmp, err := os.MkdirTemp("", "parity-snap-extension-*")

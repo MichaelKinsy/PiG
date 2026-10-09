@@ -49,7 +49,7 @@ func TestFilterAndSortSessions(t *testing.T) {
 func TestBuildAndFlattenSessionTree(t *testing.T) {
 	now := time.Now()
 	root := SessionInfo{Path: "/tmp/root.jsonl", Modified: now, Name: "root"}
-	child := SessionInfo{Path: "/tmp/child.jsonl", ParentSession: "/tmp/root.jsonl", Modified: now.Add(-time.Hour), Name: "child"}
+	child := SessionInfo{Path: "/tmp/child.jsonl", ParentSessionPath: "/tmp/root.jsonl", Modified: now.Add(-time.Hour), Name: "child"}
 	other := SessionInfo{Path: "/tmp/other.jsonl", Modified: now.Add(-2 * time.Hour), Name: "other"}
 	flat := flattenSessionTree(buildSessionTree([]SessionInfo{child, other, root}))
 	if len(flat) != 3 {
@@ -199,12 +199,13 @@ func TestSessionSelectorRenderRenameModeUsesBareInputSurface(t *testing.T) {
 		func() ([]SessionInfo, error) {
 			return []SessionInfo{{Path: "/tmp/a.jsonl", Name: "alpha", Modified: now}}, nil
 		},
-		nil,
+		func(string, string) error { return nil },
 		nil,
 		"/tmp/current.jsonl",
 		DefaultKeybindingsManager(),
 	)
-	sel.renameMode = true
+	sel.enterRenameMode()
+	sel.renameInput.Focused = false // keep the hardware-cursor marker out of the byte comparison
 	sel.renameInput.SetText("alpha")
 
 	lines := sel.Render(60)

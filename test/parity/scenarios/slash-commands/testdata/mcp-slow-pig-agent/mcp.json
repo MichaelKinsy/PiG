@@ -1,0 +1,5 @@
+{
+  "mcpServers": {
+    "slow": { "command": "sleep", "args": ["300"], "description": "Never answers initialize" }
+  }
+}

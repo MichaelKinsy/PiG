@@ -1,6 +1,9 @@
+//go:build !pig_strip_syntax_highlight
+
 package tui
 
 import (
+	"slices"
 	"strings"
 	"sync"
 	"testing"
@@ -63,6 +66,40 @@ func TestHighlightCode_MultilineString(t *testing.T) {
 	}
 	if !strings.Contains(stripANSI(out[2]), "}") {
 		t.Errorf("line 2 content lost: %q", out[2])
+	}
+}
+
+// Ports packages/coding-agent/test/syntax-highlight.test.ts "colors each line of Python docstrings independently" (1.0.4,
+// #10143): a token that spans lines is formatted once per non-empty line, so every line keeps its color and an empty line
+// stays empty.
+func TestHighlightCode_ColorsEachLineOfPythonDocstringsIndependently(t *testing.T) {
+	code := "\"\"\"\nline one\n\nline two\n\"\"\"\nafter"
+	ansi := ActiveTheme().SyntaxString
+	want := []string{
+		ansi + "\"\"\"\x1b[39m",
+		ansi + "line one\x1b[39m",
+		"",
+		ansi + "line two\x1b[39m",
+		ansi + "\"\"\"\x1b[39m",
+		"after",
+	}
+	if got := HighlightCode(code, "python"); !slices.Equal(got, want) {
+		t.Errorf("HighlightCode = %q, want %q", got, want)
+	}
+	if got := highlightMarkdownCode(code, "python"); !slices.Equal(got, want) {
+		t.Errorf("markdown theme highlightCode = %q, want %q", got, want)
+	}
+}
+
+// Ports the `subst` entry of theme.ts buildCliHighlightTheme (1.0.4): string interpolations take the text color.
+func TestCliHighlightThemeColorsSubstitutionsWithTheTextColor(t *testing.T) {
+	theme := cliHighlightTheme(ActiveTheme())
+	format, ok := theme["subst"]
+	if !ok {
+		t.Fatal("the highlight theme has no subst entry")
+	}
+	if got, want := format("${x}"), ActiveTheme().Fg("text", "${x}"); got != want {
+		t.Errorf("subst = %q, want %q", got, want)
 	}
 }
 

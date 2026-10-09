@@ -1,0 +1,175 @@
+[
+ {
+  "upstream": "packages/ai/src/models.ts",
+  "package": "./ai",
+  "tests": [
+   "TestBasetenModels",
+   "TestBuiltinProvidersUpstream",
+   "TestClampThinkingLevel",
+   "TestCopilotAnthropicUpstream",
+   "TestFireworksModels",
+   "TestGeneratedCatalogThinkingLevelMap",
+   "TestGetSupportedThinkingLevels",
+   "TestMaxThinkingUpstream",
+   "TestMistralReasoningEffortUsesThinkingLevelMap",
+   "TestSupportsXHighUpstream",
+   "TestThinkingMaxLevel",
+   "TestXAIResponsesRoutesEveryBuiltInModelThroughResponses"
+  ],
+  "upstream_reference": "packages/ai/src/models.ts",
+  "mutation": "ai/model_utils.go:88: replace `if ok && mapped == nil {` with `if ok && mapped != nil {`; compiling `go test -overlay -run` the listed tests fails each of them (exact tests, one site)."
+ },
+ {
+  "upstream": "packages/ai/src/models.ts",
+  "package": "./ai",
+  "tests": [
+   "TestBuiltinProvidersUpstream",
+   "TestClampThinkingLevel",
+   "TestCopilotAnthropicUpstream",
+   "TestGetSupportedThinkingLevels",
+   "TestMaxThinkingUpstream",
+   "TestSupportedAndClampedThinkingLevelsAreModelThinkingLevels",
+   "TestSupportsXHighUpstream"
+  ],
+  "upstream_reference": "packages/ai/src/models.ts",
+  "mutation": "ai/model_utils.go:91: replace `if level == ThinkingXHigh || level == ThinkingMax {` with `if level != ThinkingXHigh || level == ThinkingMax {`; compiling `go test -overlay -run` the listed tests fails each of them (exact tests, one site)."
+ },
+ {
+  "upstream": "packages/ai/src/models.ts",
+  "package": "./ai",
+  "tests": [
+   "TestCalculateCost",
+   "TestCalculateCostAcceptsAnyModelType",
+   "TestCalculateCostTierBoundaryMatchesUpstream",
+   "TestModelsRuntimeBasicUpstream"
+  ],
+  "upstream_reference": "packages/ai/src/models.ts",
+  "mutation": "ai/model_utils.go:44: replace `if inputTokens > tier.InputTokensAbove && tier.InputTokensAbove > matchedThreshold {` with `if inputTokens > tier.InputTokensAbove || tier.InputTokensAbove > matchedThreshold {`; compiling `go test -overlay -run` the listed tests fails each of them (exact tests, one site)."
+ },
+ {
+  "upstream": "packages/ai/src/models.ts",
+  "package": "./ai",
+  "tests": [
+   "TestModelTypesUpstream",
+   "TestModelsAreEqual",
+   "TestModelsAreEqualUsesDeclaredProviderAndID"
+  ],
+  "upstream_reference": "packages/ai/src/models.ts",
+  "mutation": "ai/model_utils.go:135: replace `return GetModelType(a) == GetModelType(b) && a.ModelID() == b.ModelID() && a.ProviderID() == b.ProviderID()` with `return GetModelType(a) != GetModelType(b) && a.ModelID() == b.ModelID() && a.ProviderID() == b.ProviderID()`; compiling `go test -overlay -run` the listed tests fails each of them (exact tests, one site)."
+ },
+ {
+  "upstream": "packages/ai/src/models.ts",
+  "package": "./ai",
+  "tests": [
+   "TestModelTypesUpstream",
+   "TestModelsRuntimeBasicUpstream",
+   "TestStrippedAPIModelsAreNotOffered"
+  ],
+  "upstream_reference": "packages/ai/src/models.ts",
+  "mutation": "ai/models_runtime_auth.go:91: replace `if model.ID == id {` with `if model.ID != id {`; compiling `go test -overlay -run` the listed tests fails each of them (exact tests, one site)."
+ },
+ {
+  "upstream": "packages/ai/src/models.ts",
+  "package": "./ai",
+  "tests": [
+   "TestGenerateImagesMergesTheImageModelHeaders",
+   "TestGetModelAuthMergesStaticHeadersOfEveryModelType",
+   "TestModelsRuntimeBasicUpstream"
+  ],
+  "upstream_reference": "packages/ai/src/models.ts",
+  "mutation": "ai/models_runtime_auth.go:129: replace `if err != nil || result == nil || modelHeaders == nil {` with `if err != nil || result != nil || modelHeaders == nil {`; compiling `go test -overlay -run` the listed tests fails each of them (exact tests, one site)."
+ },
+ {
+  "upstream": "packages/ai/src/models.ts",
+  "package": "./ai",
+  "tests": [
+   "TestGetAllAvailableAppliesTheProviderFilters"
+  ],
+  "upstream_reference": "packages/ai/src/models.ts",
+  "mutation": "ai/models_runtime_auth.go:253: replace `if err != nil {` with `if err == nil {`; compiling `go test -overlay -run` the listed tests fails each of them (exact tests, one site)."
+ },
+ {
+  "upstream": "packages/ai/src/models.ts",
+  "package": "./ai",
+  "tests": [
+   "TestModelsRuntimeAuthUpstream"
+  ],
+  "upstream_reference": "packages/ai/src/models.ts",
+  "mutation": "ai/models_runtime_auth.go:147: replace `if provider == nil {` with `if provider != nil {`; compiling `go test -overlay -run` the listed tests fails each of them (exact tests, one site)."
+ },
+ {
+  "upstream": "packages/ai/src/models.ts",
+  "package": "./ai",
+  "tests": [
+   "TestAnthropicRequestAuthShapes",
+   "TestAnthropicWorkloadIdentityFederation",
+   "TestFauxModelsDeferredFailureAndCancellationUpstream",
+   "TestFauxModelsSubmitPollRedeemDeferredUpstream",
+   "TestFauxProviderHandleAPIAndStateMatchUpstream",
+   "TestFauxProviderStateCountersReachResponseFactories",
+   "TestFauxProviderStateCountsDeferredFetches",
+   "TestFauxProviderStateIsVisibleToFactoryUpstream",
+   "TestFauxProviderStateRecordsCancelledDeferredHandles",
+   "TestFauxResponseFactoryReceivesRequestStateAndModel",
+   "TestFauxResponseFactoryReceivesTranscriptOptionsStateAndModel",
+   "TestLazyModuleLoadUpstream",
+   "TestLightweightModelsEntryUpstream",
+   "TestModelTypesUpstream",
+   "TestModelsMixedAPIDispatchUpstream",
+   "TestModelsResolvedEnvironmentAndRequestKeyUpstream",
+   "TestModelsRuntimeBasicUpstream",
+   "TestModelsStreamDeferredStreamsThePolledStateLikeUpstream",
+   "TestTelemetryOptionsSurviveProviderAndModelsDispatchUpstream"
+  ],
+  "upstream_reference": "packages/ai/src/models.ts",
+  "mutation": "ai/models_runtime_stream.go:123: replace `if transcript.err != nil {` with `if transcript.err == nil {`; compiling `go test -overlay -run` the listed tests fails each of them (exact tests, one site)."
+ },
+ {
+  "upstream": "packages/ai/src/models.ts",
+  "package": "./ai",
+  "tests": [
+   "TestFauxModelsDeferredFailureAndCancellationUpstream",
+   "TestFauxModelsSubmitPollRedeemDeferredUpstream",
+   "TestFauxProviderStateCountersReachResponseFactories",
+   "TestFauxProviderStateCountsDeferredFetches",
+   "TestFauxProviderStateIsVisibleToFactoryUpstream",
+   "TestModelsDeferredResolvedRequestOptionsUpstream",
+   "TestModelsStreamDeferredStreamsThePolledStateLikeUpstream",
+   "TestTelemetryOptionsSurviveProviderAndModelsDispatchUpstream"
+  ],
+  "upstream_reference": "packages/ai/src/models.ts",
+  "mutation": "ai/models_runtime_stream.go:164: replace `if provider.FetchDeferred == nil {` with `if provider.FetchDeferred != nil {`; compiling `go test -overlay -run` the listed tests fails each of them (exact tests, one site)."
+ },
+ {
+  "upstream": "packages/ai/src/utils/transcript.ts",
+  "package": "./ai",
+  "tests": [
+   "TestSystemMessageReplayRendersCompletePromptsAndFramedUpdates",
+   "TestTranscriptToolChangesOpenAICompletionsRequests",
+   "TestTranscriptToolChangesOpenAIResponsesRequests"
+  ],
+  "upstream_reference": "packages/ai/src/utils/transcript.ts",
+  "mutation": "ai/transcript.go:223: replace `index := slices.IndexFunc(sections, func(current PromptSection) bool { return current.Name == section.Name })` with `index := slices.IndexFunc(sections, func(current PromptSection) bool { return current.Name != section.Name })`; compiling `go test -overlay -run` the listed tests fails each of them (exact tests, one site)."
+ },
+ {
+  "upstream": "packages/ai/src/utils/transcript.ts",
+  "package": "./ai",
+  "tests": [
+   "TestSystemMessageReplayComparesToolDeclarationsWithoutNonDeclarationFields",
+   "TestSystemMessageReplayToolStateChangesTreatChangedDefinitionsAsRemovalPlusAddition",
+   "TestToolDeclarationsIgnorePromptOnlyMetadata"
+  ],
+  "upstream_reference": "packages/ai/src/utils/transcript.ts",
+  "mutation": "ai/transcript.go:325: replace `return leftErr == nil && rightErr == nil && string(leftJSON) == string(rightJSON)` with `return leftErr != nil && rightErr == nil && string(leftJSON) == string(rightJSON)`; compiling `go test -overlay -run` the listed tests fails each of them (exact tests, one site)."
+ },
+ {
+  "upstream": "packages/ai/src/providers/all.ts",
+  "package": "./ai",
+  "tests": [
+   "TestBuiltinProvidersAreBuiltByTheirConstructors",
+   "TestProviderConstructorsMatchCatalog"
+  ],
+  "upstream_reference": "packages/ai/src/providers/all.ts",
+  "mutation": "ai/provider_constructors.go: replace `return builtinProvider(\"ant-ling\")` in AntLingProvider with `return builtinProvider(\"anthropic\")`; compiling `go test -overlay -run` the listed tests fails both (the provider id no longer matches its catalog id)."
+ }
+]

@@ -2,6 +2,8 @@
 # Rebuild the TypeBox modules that the Node extension runtime serves for the
 # typebox, typebox/value, typebox/compile, and @sinclair/typebox* specifiers.
 # The version and integrity equal the TypeBox that the pinned Pi release ships.
+# Each entry re-exports the package's default export too: Pi serves the package
+# namespace, so `import Type from "typebox"` links in a Pi extension.
 set -euo pipefail
 
 version="1.3.27"
@@ -19,9 +21,9 @@ actual="sha512-$(openssl dgst -sha512 -binary "$tarball" | base64 -w0)"
 [[ "$actual" == "$integrity" ]] || { echo "typebox $version integrity mismatch: $actual" >&2; exit 1; }
 mkdir -p node_modules/typebox entries out
 tar -xzf "$tarball" -C node_modules/typebox --strip-components=1
-printf 'export * from "typebox";\n' > entries/typebox.mjs
-printf 'export * from "typebox/value";\n' > entries/typebox-value.mjs
-printf 'export * from "typebox/compile";\n' > entries/typebox-compile.mjs
+printf 'export * from "typebox";\nexport { default } from "typebox";\n' > entries/typebox.mjs
+printf 'export * from "typebox/value";\nexport { default } from "typebox/value";\n' > entries/typebox-value.mjs
+printf 'export * from "typebox/compile";\nexport { default } from "typebox/compile";\n' > entries/typebox-compile.mjs
 npx -y "esbuild@$esbuild" entries/typebox.mjs entries/typebox-value.mjs entries/typebox-compile.mjs \
   --bundle --format=esm --platform=node --splitting --outdir=out \
   --out-extension:.js=.mjs --entry-names='[name]' --chunk-names='typebox-shared-[hash]' \

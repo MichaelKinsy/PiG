@@ -27,7 +27,7 @@ func newCompactRig(t *testing.T, isolation string, fixture nodeAPIFixture) *comp
 			started <- struct{}{}
 			go func() {
 				<-release
-				opts.OnComplete(map[string]any{"summary": "short", "firstKeptEntryId": "e9", "tokensBefore": 12})
+				opts.OnComplete(extension.CompactionResult{Summary: "short", FirstKeptEntryID: "e9", TokensBefore: 12})
 			}()
 		},
 	}

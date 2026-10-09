@@ -25,39 +25,38 @@ type definitionState struct {
 
 var (
 	definitionSessionDoc = durable.DefineDoc(durable.DocDefinition[definitionState]{
-		CommonDocDefinition: durable.CommonDocDefinition[definitionState]{Kind: "t.session", Version: 1},
+		CommonDocDefinition: durable.CommonDocDefinition[definitionState]{Kind: "t.session", Version: 1, Initial: func() definitionState { return definitionState{} }},
 		DocumentSemantics:   sessionScope,
-		Initial:             func() definitionState { return definitionState{} },
 	})
 	definitionLatestDoc = durable.DefineDoc(durable.DocDefinition[definitionState]{
-		CommonDocDefinition: durable.CommonDocDefinition[definitionState]{Kind: "t.latest", Version: 1},
+		CommonDocDefinition: durable.CommonDocDefinition[definitionState]{Kind: "t.latest", Version: 1, Initial: func() definitionState { return definitionState{} }},
 		DocumentSemantics:   latestScope(durable.ForkCurrent),
-		Initial:             func() definitionState { return definitionState{} },
 	})
 	definitionRewindableDoc = durable.DefineDoc(durable.DocDefinition[definitionState]{
-		CommonDocDefinition: durable.CommonDocDefinition[definitionState]{Kind: "t.rewindable", Version: 1},
+		CommonDocDefinition: durable.CommonDocDefinition[definitionState]{Kind: "t.rewindable", Version: 1, Initial: func() definitionState { return definitionState{} }},
 		DocumentSemantics:   rewindableScope(durable.ForkAsOf),
-		Initial:             func() definitionState { return definitionState{} },
 	})
 	definitionTaskDoc = durable.DefineDoc(durable.DocDefinition[definitionState]{
-		CommonDocDefinition: durable.CommonDocDefinition[definitionState]{Kind: "t.task", Version: 1},
+		CommonDocDefinition: durable.CommonDocDefinition[definitionState]{Kind: "t.task", Version: 1, Initial: func() definitionState { return definitionState{} }},
 		DocumentSemantics:   taskScope,
-		Initial:             func() definitionState { return definitionState{} },
 	})
 	definitionSessionFamily = durable.DefineDocFamily(durable.DocFamilyDefinition[definitionState, float64]{
-		CommonDocDefinition: durable.CommonDocDefinition[definitionState]{Kind: "t.session-family", Version: 1},
-		DocumentSemantics:   sessionScope,
-		Initial:             func(seed float64) definitionState { return definitionState{Value: seed} },
+		Family: true,
+		Kind:   "t.session-family", Version: 1,
+		DocumentSemantics: sessionScope,
+		Initial:           func(seed float64) definitionState { return definitionState{Value: seed} },
 	})
 	definitionConversationFamily = durable.DefineDocFamily(durable.DocFamilyDefinition[definitionState, float64]{
-		CommonDocDefinition: durable.CommonDocDefinition[definitionState]{Kind: "t.conversation-family", Version: 1},
-		DocumentSemantics:   rewindableScope(durable.ForkInitial),
-		Initial:             func(seed float64) definitionState { return definitionState{Value: seed} },
+		Family: true,
+		Kind:   "t.conversation-family", Version: 1,
+		DocumentSemantics: rewindableScope(durable.ForkInitial),
+		Initial:           func(seed float64) definitionState { return definitionState{Value: seed} },
 	})
 	definitionTaskFamily = durable.DefineDocFamily(durable.DocFamilyDefinition[definitionState, float64]{
-		CommonDocDefinition: durable.CommonDocDefinition[definitionState]{Kind: "t.task-family", Version: 1},
-		DocumentSemantics:   taskScope,
-		Initial:             func(seed float64) definitionState { return definitionState{Value: seed} },
+		Family: true,
+		Kind:   "t.task-family", Version: 1,
+		DocumentSemantics: taskScope,
+		Initial:           func(seed float64) definitionState { return definitionState{Value: seed} },
 	})
 )
 
@@ -112,13 +111,29 @@ func TestDocumentDefinitions(t *testing.T) {
 		}
 	})
 
+	// documents.ts:31-34 FamilyInput requires `family: true`, and resolveAddress (documents.ts) reads the erased flag to take a family key after the owner.
+	t.Run("defines a family only with the family literal and keeps it on every scope's token", func(t *testing.T) {
+		expectPanic(t, "family must be true", func() {
+			durable.DefineDocFamily(durable.DocFamilyDefinition[definitionState, float64]{
+				Kind: "t.nofamily", Version: 1,
+				DocumentSemantics: sessionScope,
+				Initial:           func(float64) definitionState { return definitionState{} },
+			})
+		})
+		for name, token := range map[string]durable.AnyDocToken{"session": definitionSessionFamily, "conversation": definitionConversationFamily, "task": definitionTaskFamily} {
+			if !token.AnyDefinition().Family {
+				t.Errorf("%s family token's erased definition is not a family", name)
+			}
+		}
+	})
+
 	t.Run("types every owner, key, and seed overload", func(t *testing.T) {
 		harness := open()
 		conversationId := createConversation(t, harness)
 		var taskId durable.TaskId
 		commit(t, harness.Session, func(tx durable.Tx) error {
 			var err error
-			taskId, err = durable.CreateTask(tx, workTask, obj{"path": "a"}, conversationOwned(conversationId))
+			taskId, err = durable.CreateTask(tx, workTask, delta.JsonObjectOf("path", "a"), conversationOwned(conversationId))
 			must(t, err)
 			for _, access := range []struct {
 				token durable.AnyDocToken
@@ -244,7 +259,7 @@ _, _ = d.TxAppendEntry(tx, marker, 1, d.TypedEntryDraft[int]{Data: 1})`)
 		taskId := durable.TaskId(0)
 		commit(t, harness.Session, func(tx durable.Tx) error {
 			var err error
-			taskId, err = durable.CreateTask(tx, workTask, obj{"path": "a"}, conversationOwned(conversationId))
+			taskId, err = durable.CreateTask(tx, workTask, delta.JsonObjectOf("path", "a"), conversationOwned(conversationId))
 			return err
 		})
 
@@ -268,13 +283,13 @@ _, _ = d.TxAppendEntry(tx, marker, 1, d.TypedEntryDraft[int]{Data: 1})`)
 		// session.watchDoc(SessionDoc, conversationId, context) and documentState: the owner is not read.
 		watch, err := harness.Session.WatchDocErased(ctx, definitionSessionDoc, conversationId)
 		must(t, err)
-		if watch == nil || watch.Value()["value"] != float64(7) {
+		if watch == nil || watch.Value().Value("value") != float64(7) {
 			t.Fatalf("watch of a Session document with an owner argument = %v", watch)
 		}
 		_, _ = watch.Stop()
 		state, err := harness.Session.DocumentStateErased(ctx, definitionSessionDoc, conversationId)
 		must(t, err)
-		if state == nil || state.Value()["value"] != float64(7) {
+		if state == nil || state.Value().Value("value") != float64(7) {
 			t.Fatalf("state of a Session document with an owner argument = %v", state)
 		}
 		state.Dispose()

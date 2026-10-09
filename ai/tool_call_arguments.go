@@ -21,9 +21,41 @@ func (content ToolCall) ArgumentsJSON() ([]byte, error) {
 	return marshalInRecordedOrder(map[string]any(content.Arguments), content.argumentOrder)
 }
 
+// ArgumentMember is one member of a tool call's arguments: its key and the text JSON.stringify gives its value.
+type ArgumentMember struct {
+	Key  string
+	JSON string
+}
+
+// ArgumentMembers lists the members of Arguments as `Object.entries(arguments).map(([key, value]) => [key, JSON.stringify(value)])` does:
+// integer-like keys ascending first, then the others in the order the model sent them, each value written as JSON.stringify writes it
+// (no HTML escaping, negative zero as 0, finite numbers in JavaScript form, lone surrogates kept).
+func (content ToolCall) ArgumentMembers() ([]ArgumentMember, error) {
+	values := map[string]any(content.Arguments)
+	members := make([]ArgumentMember, 0, len(values))
+	for _, key := range orderedSchemaKeys(values, content.argumentOrder, "") {
+		encoded, err := marshalSchemaWithOrder(values[key], content.argumentOrder, schemaPath("", key))
+		if err != nil {
+			return nil, err
+		}
+		members = append(members, ArgumentMember{Key: key, JSON: string(encoded)})
+	}
+	return members, nil
+}
+
 // SetStreamingArguments parses a streamed tool-argument text as ParseStreamingJson does and keeps its member order.
 func (content *ToolCall) SetStreamingArguments(input string) {
 	content.Arguments, content.argumentOrder = parseStreamingJsonArguments(input)
+}
+
+// SetPartialJson records text as the call's `partialJson` member, the argument text an unfinished streamed call has received so far; JSON shows it until DeletePartialJson. Pi keeps the member on the block it streams into, so a message delivered before the call ends carries it.
+func (content *ToolCall) SetPartialJson(text string) {
+	content.scratch.partialJson, content.scratch.hasPartialJson = text, true
+}
+
+// DeletePartialJson removes the `partialJson` member, as `delete toolCall.partialJson` does when the call ends.
+func (content *ToolCall) DeletePartialJson() {
+	content.scratch.partialJson, content.scratch.hasPartialJson = "", false
 }
 
 // SetArgumentsJSON decodes a complete JSON object into Arguments and keeps its member order. A text that is not a JSON object is an error and leaves the call unchanged.

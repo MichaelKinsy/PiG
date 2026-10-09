@@ -35,6 +35,7 @@ var (
 	notInReg = lazyregexp.New(`E404|404 Not Found|is not in this registry`)
 	otpCode  = lazyregexp.New(`^[0-9A-Za-z]{4,16}$`)
 	// windowsProgram is a file Windows starts without an interpreter: an executable, or a batch file that cmd.exe runs.
+	//portlint:allow regexfold no letter of the pattern has a non-ASCII case fold, so JS toUpperCase and Go simple folding agree
 	windowsProgram = lazyregexp.New(`(?i)\.(exe|com|cmd|bat)$`)
 )
 

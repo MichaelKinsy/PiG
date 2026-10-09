@@ -1,3 +1,5 @@
+// Ports packages/coding-agent/src/experimental/services/server.ts
+
 package services
 
 import (
@@ -6,8 +8,10 @@ import (
 	"errors"
 	"slices"
 	"sync"
+	"sync/atomic"
 
 	"github.com/MichaelKinsy/PiG/internal/chord"
+	"github.com/MichaelKinsy/PiG/internal/lineadmission"
 )
 
 // PreparedSessionPlugins contains the resolved package selection and its presentation artifacts.
@@ -53,17 +57,59 @@ type serviceMutationTail struct {
 	tail chan struct{}
 }
 
-func (tail *serviceMutationTail) run(operation func() error) error {
+// mutationTicket is a reserved position in one mutation tail. A call that has been admitted holds one until its member consumes it or finishes.
+type mutationTicket struct {
+	owner    *serviceMutationTail
+	previous <-chan struct{}
+	done     chan struct{}
+	once     sync.Once
+	taken    atomic.Bool
+}
+
+func (ticket *mutationTicket) release() { ticket.once.Do(func() { close(ticket.done) }) }
+
+type mutationTicketKey struct{}
+
+// reserve takes the next position in the tail without waiting for earlier mutations.
+func (tail *serviceMutationTail) reserve() *mutationTicket {
 	tail.mu.Lock()
-	previous := tail.tail
-	done := make(chan struct{})
-	tail.tail = done
-	tail.mu.Unlock()
-	defer close(done)
-	if previous != nil {
-		<-previous
+	defer tail.mu.Unlock()
+	ticket := &mutationTicket{owner: tail, previous: tail.tail, done: make(chan struct{})}
+	tail.tail = ticket.done
+	return ticket
+}
+
+// run queues operation after earlier mutations. A context carrying an admitted call's ticket uses that reserved position, so the
+// order of admission, not of goroutine scheduling, decides the order of mutations. A ticket reserved in another tail is ignored.
+func (tail *serviceMutationTail) run(ctx context.Context, operation func() error) error {
+	ticket := tail.take(ctx)
+	defer ticket.release()
+	if ticket.previous != nil {
+		<-ticket.previous
 	}
 	return operation()
+}
+
+// runUntilAdmitted is run for an operation whose order matters only until the queue it calls into fixes its position: the
+// operation's context releases the next operation as soon as such a queue reports admission (lineadmission), and at the latest
+// when the operation finishes. A TypeScript member that calls into a Promise-chained queue keeps that order without waiting for
+// the earlier call to settle.
+func (tail *serviceMutationTail) runUntilAdmitted(ctx context.Context, operation func(context.Context) error) error {
+	ticket := tail.take(ctx)
+	defer ticket.release()
+	if ticket.previous != nil {
+		<-ticket.previous
+	}
+	return operation(lineadmission.With(ctx, ticket.release))
+}
+
+// take returns the admitted call's ticket that ctx carries for this tail, or a new position.
+func (tail *serviceMutationTail) take(ctx context.Context) *mutationTicket {
+	ticket, _ := ctx.Value(mutationTicketKey{}).(*mutationTicket)
+	if ticket == nil || ticket.owner != tail || !ticket.taken.CompareAndSwap(false, true) {
+		ticket = tail.reserve()
+	}
+	return ticket
 }
 
 func (tail *serviceMutationTail) wait() {
@@ -103,7 +149,7 @@ func (host *RoutedServerServiceHost) refreshNow(ctx context.Context) error {
 
 // Refresh queues a directory refresh after preceding mutations.
 func (services *ExperimentalServerServices) Refresh(ctx context.Context) error {
-	return services.Host.mutations.run(func() error { return services.Host.refreshNow(ctx) })
+	return services.Host.mutations.run(ctx, func() error { return services.Host.refreshNow(ctx) })
 }
 
 // Dispose releases every current attachment before waiting for queued mutations. In-flight operations retain their application context and are not cancelled.
@@ -142,7 +188,7 @@ type serverPresentationServices struct {
 
 func (service *serverPresentationServices) PrepareSession(ctx context.Context, request PrepareSessionPluginsRequest) (chord.JsonValue, error) {
 	var result chord.JsonValue
-	err := service.host.mutations.run(func() error {
+	err := service.host.mutations.run(ctx, func() error {
 		selected, err := service.host.options.PrepareSessionPlugins(ctx, request.SessionId, request.PackagePaths)
 		if err != nil {
 			return err
@@ -157,7 +203,7 @@ func (service *serverPresentationServices) PrepareSession(ctx context.Context, r
 
 func (service *serverPresentationServices) Reload(ctx context.Context) (chord.JsonValue, error) {
 	var result chord.JsonValue
-	err := service.host.mutations.run(func() error {
+	err := service.host.mutations.run(ctx, func() error {
 		if !service.prepared {
 			return errors.New("No Session plugin selection is prepared")
 		}
@@ -170,7 +216,7 @@ func (service *serverPresentationServices) Reload(ctx context.Context) (chord.Js
 
 func (service *serverPresentationServices) Create(ctx context.Context, options SessionCreateOptions) (SessionSummary, error) {
 	var created SessionSummary
-	err := service.host.mutations.run(func() error {
+	err := service.host.mutations.run(ctx, func() error {
 		var err error
 		created, err = service.host.options.Create(ctx, options)
 		if err != nil {
@@ -182,7 +228,7 @@ func (service *serverPresentationServices) Create(ctx context.Context, options S
 }
 
 func (service *serverPresentationServices) Remove(ctx context.Context, id string) error {
-	return service.host.mutations.run(func() error {
+	return service.host.mutations.run(ctx, func() error {
 		if err := service.presentation.PrepareSessionRemoval(ctx, id); err != nil {
 			return err
 		}
@@ -194,11 +240,11 @@ func (service *serverPresentationServices) Remove(ctx context.Context, id string
 }
 
 func (service *serverPresentationServices) Attach(ctx context.Context, id string) error {
-	return service.host.mutations.run(func() error { return service.presentation.AttachSession(ctx, id) })
+	return service.host.mutations.run(ctx, func() error { return service.presentation.AttachSession(ctx, id) })
 }
 
 func (service *serverPresentationServices) Detach(ctx context.Context) error {
-	return service.host.mutations.run(func() error {
+	return service.host.mutations.run(ctx, func() error {
 		if err := service.presentation.DetachSession(ctx); err != nil {
 			return err
 		}
@@ -206,6 +252,18 @@ func (service *serverPresentationServices) Detach(ctx context.Context) error {
 		service.prepared = false
 		return nil
 	})
+}
+
+// mutatingMembers are the members that join the mutation tail. Their synchronous prefix is taking that position.
+var mutatingMembers = map[string]bool{"prepareSession": true, "reload": true, "create": true, "remove": true, "attach": true, "detach": true}
+
+// AdmitServiceMember reserves a mutation position when the member mutates, as the TypeScript member does synchronously during invoke.
+func (service *serverPresentationServices) AdmitServiceMember(ctx context.Context, member string) (context.Context, func()) {
+	if !mutatingMembers[member] {
+		return ctx, func() {}
+	}
+	ticket := service.host.mutations.reserve()
+	return context.WithValue(ctx, mutationTicketKey{}, ticket), ticket.release
 }
 
 // AttachClient creates the three server-scoped services with independent plugin selection and subscriptions. Only the directory state and mutation queue are shared.
@@ -249,6 +307,22 @@ func (attachment *RoutedServerServiceAttachment) InvokeService(ctx context.Conte
 		return nil, errors.New("Server service attachment is released")
 	}
 	return attachment.endpoint.Invoke(ctx, call, publish)
+}
+
+// BeginInvokeService is the attachment's admission boundary: calls begun in sequence reach the provider's ordering in that sequence.
+// A call to an implementation without an admission boundary reports chord.ErrInvocationAdmissionUnavailable.
+func (attachment *RoutedServerServiceAttachment) BeginInvokeService(ctx context.Context, call chord.ServiceCall, publish chord.ServiceUpdatePublisher) (*chord.ServiceInvocation, error) {
+	attachment.mu.Lock()
+	released := attachment.released
+	attachment.mu.Unlock()
+	if released {
+		return nil, errors.New("Server service attachment is released")
+	}
+	initiating, ok := attachment.endpoint.(chord.InitiatingServiceEndpoint)
+	if !ok {
+		return nil, chord.ErrInvocationAdmissionUnavailable
+	}
+	return initiating.BeginInvoke(ctx, call, publish)
 }
 
 // Release immediately removes subscriptions and the provider. It is idempotent and does not wait for application mutations.

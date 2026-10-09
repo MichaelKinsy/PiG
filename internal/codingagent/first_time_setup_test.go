@@ -1,5 +1,7 @@
 package codingagent
 
+// pi: packages/coding-agent/src/modes/interactive/components/first-time-setup.ts
+
 import (
 	"io"
 	"os"
@@ -62,7 +64,7 @@ func TestFirstTimeSetupLogoIsThePigHeadAndPreviewsTheSprite(t *testing.T) {
 	t.Setenv("PIG_HOME", t.TempDir())
 	piglogin.Refresh()
 	c := NewFirstTimeSetupComponent(FirstTimeSetupOptions{})
-	mode := tui.ActiveTheme().ColorMode()
+	mode := tui.ActiveTheme().GetColorMode()
 	rendered := strings.Join(c.Render(100), "\n")
 	if strings.Contains(rendered, "██████") {
 		t.Fatalf("dialog draws Pi's SETUP_LOGO_LINES:\n%s", rendered)
@@ -167,6 +169,7 @@ func (keysStartupTerminal) Write(string) {}
 
 // Setup runs on its own startup screen before the interactive TUI, as Pi's showFirstTimeSetup does (main.ts:672-676), and
 // saves the theme, the analytics opt-in and the highlighted sprite.
+// Pi: packages/coding-agent/src/core/settings-manager.ts:1151 (SettingsManager.getEnableAnalytics).
 func TestShowFirstTimeSetupSavesTheChoiceBeforeTheTUI(t *testing.T) {
 	pigHome, cwd := t.TempDir(), t.TempDir()
 	t.Setenv("PIG_HOME", pigHome)
@@ -228,7 +231,7 @@ func TestFirstTimeSetupKeepsTheHighlightedSpriteThroughAnalyticsAndSubmit(t *tes
 	piglogin.Refresh()
 	var got *FirstTimeSetupResult
 	c := NewFirstTimeSetupComponent(FirstTimeSetupOptions{OnSubmit: func(r FirstTimeSetupResult) { got = &r }})
-	mode := tui.ActiveTheme().ColorMode()
+	mode := tui.ActiveTheme().GetColorMode()
 	c.HandleInput(setupEnter)
 	sprites := piglogin.All()
 	want := slices.IndexFunc(sprites, func(v piglogin.Variant) bool { return v.ID == "kratos" })
@@ -296,5 +299,79 @@ func TestFirstTimeSetupCreateYourOwnShowsTheHintAndKeepsTheSprite(t *testing.T) 
 	}
 	if got := piglogin.Active().ID; got != piglogin.DefaultID {
 		t.Fatalf("active sprite = %q, want %q", got, piglogin.DefaultID)
+	}
+}
+
+// firstTimeSetupBody is the dialog from its welcome line down, right-trimmed: everything Pi's first-time-setup.ts draws below SETUP_LOGO_LINES, which D88 replaces with the pig head.
+func firstTimeSetupBody(t *testing.T, c *FirstTimeSetupComponent) []string {
+	t.Helper()
+	lines := strings.Split(firstTimeSetupText(c), "\n")
+	for i, line := range lines {
+		if strings.HasPrefix(line, " Welcome to PiG") {
+			body := lines[i:]
+			for j := range body {
+				body[j] = strings.TrimRight(body[j], " ")
+			}
+			return body
+		}
+	}
+	t.Fatalf("no welcome line in\n%s", strings.Join(lines, "\n"))
+	return nil
+}
+
+// first-time-setup.ts:56-130: the theme list, the analytics opt-in text and options, the key hints with "continue"/"finish", the → marker and the clamped j/k/newline navigation.
+func TestFirstTimeSetupRendersPisStepsAndNavigates(t *testing.T) {
+	t.Setenv("PIG_HOME", t.TempDir())
+	piglogin.Refresh()
+	var previews []string
+	var submitted []FirstTimeSetupResult
+	c := NewFirstTimeSetupComponent(FirstTimeSetupOptions{
+		OnThemePreview: func(name string) { previews = append(previews, name) },
+		OnSubmit:       func(result FirstTimeSetupResult) { submitted = append(submitted, result) },
+	})
+	rule := strings.Repeat("─", 100)
+	hint := func(confirm string) string {
+		return " ↑↓ navigate  enter " + confirm + "  escape/ctrl+c skip setup"
+	}
+	theme := func(system, dark, light string) []string {
+		return []string{" Welcome to PiG, the minimal coding agent.", "", " Pick a theme.", "", system, dark, light, "", hint("continue"), "", rule}
+	}
+	equal := func(label string, got, want []string) {
+		t.Helper()
+		if !slices.Equal(got, want) {
+			t.Fatalf("%s:\n got %q\nwant %q", label, got, want)
+		}
+	}
+	equal("theme step", firstTimeSetupBody(t, c), theme(" → System (matches your terminal colors)", "   Dark", "   Light"))
+	c.HandleInput("k")
+	equal("k clamps at the first theme", firstTimeSetupBody(t, c), theme(" → System (matches your terminal colors)", "   Dark", "   Light"))
+	c.HandleInput("j")
+	equal("j moves down", firstTimeSetupBody(t, c), theme("   System (matches your terminal colors)", " → Dark", "   Light"))
+	c.HandleInput("j")
+	c.HandleInput("j")
+	equal("j clamps at the last theme", firstTimeSetupBody(t, c), theme("   System (matches your terminal colors)", "   Dark", " → Light"))
+	if want := []string{"dark", "light"}; !slices.Equal(previews, want) {
+		t.Fatalf("theme previews = %v, want %v (only moves that change the selection preview)", previews, want)
+	}
+	c.HandleInput("\n") // theme -> sprite
+	c.HandleInput("\n") // sprite -> analytics
+	analytics := func(share, dont string) []string {
+		return []string{
+			" Welcome to PiG, the minimal coding agent.", "",
+			" Opt-in to anonymous usage data sharing?",
+			" Opting in stores a tracking identifier in settings.json and enables anonymous",
+			" usage analytics. This helps us to better debug, reproduce, and resolve issues",
+			" and bugs within PiG. You can observe what is shared using /privacy and make",
+			" changes anytime in settings.json.", "",
+			share, dont, "", hint("finish"), "", rule,
+		}
+	}
+	equal("analytics step", firstTimeSetupBody(t, c), analytics(" → Share anonymous usage data", "   Don't share"))
+	c.HandleInput("j")
+	c.HandleInput("j")
+	equal("analytics selection clamps", firstTimeSetupBody(t, c), analytics("   Share anonymous usage data", " → Don't share"))
+	c.HandleInput("\n")
+	if len(submitted) != 1 || submitted[0].Theme != "light" || submitted[0].ShareAnalytics {
+		t.Fatalf("submitted = %+v, want one result with theme light and no analytics", submitted)
 	}
 }

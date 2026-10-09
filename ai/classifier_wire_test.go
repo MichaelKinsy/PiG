@@ -3,6 +3,7 @@ package ai
 import (
 	"encoding/json"
 	"reflect"
+	"strings"
 	"testing"
 )
 
@@ -76,5 +77,35 @@ func TestImagesContextAndResultRoundTrip(t *testing.T) {
 	var wire map[string]json.RawMessage
 	if err := json.Unmarshal(empty, &wire); err != nil || string(wire["output"]) != "[]" {
 		t.Fatalf("an empty result must carry output []: %s", empty)
+	}
+}
+
+// ClassifierContext.images crosses the extension wire between the state and the questions, and is omitted when absent.
+func TestClassifierContextImagesWire(t *testing.T) {
+	question := ClassifierQuestions{{ID: "q", Question: ClassifierBoolQuestion{Instructions: "Q?", Criteria: ClassifierBoolCriteria{True: "y", False: "n"}}}}
+	withImages := ClassifierContext{State: JsonObject{"a": 1.0}, Images: []ImageContent{{Data: "aW1hZ2U=", MimeType: "image/png"}}, Questions: question}
+	encoded, err := json.Marshal(withImages)
+	if err != nil {
+		t.Fatal(err)
+	}
+	const want = `{"state":{"a":1},"images":[{"type":"image","data":"aW1hZ2U=","mimeType":"image/png"}],"questions":{"q":{"type":"bool","instructions":"Q?","criteria":{"true":"y","false":"n"}}}}`
+	if string(encoded) != want {
+		t.Fatalf("wire = %s\nwant %s", encoded, want)
+	}
+	var decoded ClassifierContext
+	if err := json.Unmarshal(encoded, &decoded); err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(decoded, withImages) {
+		t.Fatalf("decoded = %+v", decoded)
+	}
+	// An absent images member is omitted; an empty array is written, as JSON.stringify writes it (types.ts:669-677).
+	absent, _ := json.Marshal(ClassifierContext{State: JsonObject{}, Questions: question})
+	if strings.Contains(string(absent), "images") {
+		t.Fatalf("absent images written: %s", absent)
+	}
+	empty, _ := json.Marshal(ClassifierContext{State: JsonObject{}, Images: []ImageContent{}, Questions: question})
+	if !strings.Contains(string(empty), `"images":[]`) {
+		t.Fatalf("empty images omitted: %s", empty)
 	}
 }

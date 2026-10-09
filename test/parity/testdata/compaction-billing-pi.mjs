@@ -27,9 +27,14 @@ const target = {
   renderSessionEntries(entries) { order.push(...entries.map(entry => entry.id)); },
   addMessageToChat(message) { assert.equal(message.role, "compactionSummary"); assert.equal(message.tokensBefore, 123); order.push("summary"); },
   addCompactionCostNotice(notice) { assert.equal(notice.usage, usage); order.push("cost"); },
+  programStatus: { handleEvent() {} },
   clearStatusIndicator() {}, showError(error) { throw new Error(error); }, showStatus() {},
   async flushCompactionQueue(options) { assert.deepEqual(options, { willRetry: false }); order.push("flush"); },
+  // Pi 1.1.0's InteractiveMode.handleEvent reports program status (OSC 7501) through this reporter.
+  programStatus: { handleEvent() {} },
   settingsManager: { getShowTerminalProgress: () => false },
+  // Pi 1.1.0 forwards every agent event to the OSC 7501 reporter (interactive-mode.ts handleEvent).
+  programStatus: { handleEvent() {} },
   ui: { requestRender() {}, terminal: { setProgress() {} } },
 };
 await InteractiveMode.prototype.handleEvent.call(target, { type: "compaction_end", reason: "manual", result: { tokensBefore: 123, summary: "summary", usage }, aborted: false, willRetry: false });

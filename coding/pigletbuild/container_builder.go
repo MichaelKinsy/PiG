@@ -261,6 +261,9 @@ func (b containerBuilder) Build(ctx context.Context, request BuilderRequest) (Bu
 		Builder: b.Name(), BuilderIdentity: "container:" + engine + ":" + b.config.Image, Toolchains: innerBinary.Toolchains,
 		Artifact:     pigletartifact.Artifact{Digest: artifactDigest, Size: artifactSize, FileName: fileName},
 		Verification: innerBinary.Verification,
+		Strip:        binaryStripEntries(request.Piglet),
+		StripKeep:    binaryStripIDs(request.Piglet.Strip.KeepLists()),
+		StripTable:   binaryStripIDs(piglet.StripTable()),
 	})
 	if err != nil {
 		return BuilderResult{}, fmt.Errorf("build container Piglet Binary record: %w", err)
@@ -411,6 +414,10 @@ type containerPigletMount struct {
 }
 
 func localizeContainerPiglet(p *piglet.Piglet) ([]byte, []containerPigletMount, error) {
+	// pig additive (D91): only the native builder fuses a frontend member.
+	if p.HasFrontend() {
+		return nil, nil, fmt.Errorf("slots.frontend requires the native builder; the container builder cannot fuse a frontend member")
+	}
 	localized := piglet.Clone(p)
 	localized.Build = nil
 	localized.Packages = nil

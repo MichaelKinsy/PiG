@@ -72,9 +72,9 @@ func TestShowLoadedResourcesListsEachSectionUnderItsHeading(t *testing.T) {
 		SourceInfo: PiSourceInfo{Path: entry, Source: "npm:pi-lens", Scope: "user", Origin: "package", BaseDir: base},
 	}}, agentDir)
 	m := &InteractiveMode{
-		opts: InteractiveOptions{
+		opts: InteractiveModeOptions{
 			CWD: t.TempDir(), AgentDir: agentDir, NoThemes: true,
-			Skills: []*SkillDef{{Name: "zeta", Path: filepath.Join(agentDir, "skills", "zeta", "SKILL.md")}, {Name: "alpha", Path: filepath.Join(agentDir, "skills", "alpha", "SKILL.md")}},
+			Skills: []*SkillDef{{Name: "zeta", FilePath: filepath.Join(agentDir, "skills", "zeta", "SKILL.md")}, {Name: "alpha", FilePath: filepath.Join(agentDir, "skills", "alpha", "SKILL.md")}},
 		},
 		newRunner:                runner,
 		loadedResourcesContainer: tui.NewContainer(),
@@ -132,7 +132,7 @@ func upstreamListingMode(t testing.TB, expanded bool, fixtures []upstreamExtensi
 		}
 	}
 	return &InteractiveMode{
-		opts:                     InteractiveOptions{CWD: "/tmp/project", AgentDir: "/tmp/agent", NoThemes: true},
+		opts:                     InteractiveModeOptions{CWD: "/tmp/project", AgentDir: "/tmp/agent", NoThemes: true},
 		newRunner:                inproc.NewRunner(extensions, "/tmp/project"),
 		loadedResourcesContainer: tui.NewContainer(),
 		resourceSourceInfo:       map[string]ResourceSourceInfo{},
@@ -257,14 +257,14 @@ func TestLoadedResourcesContextMatchesUpstream(t *testing.T) {
 	context := []ContextFile{{Path: filepath.Join(home, ".pi", "agent", "AGENTS.md")}, {Path: filepath.Join(cwd, "AGENTS.md")}}
 	// Pi interactive-mode-status.test.ts:1161.
 	t.Run("shows context paths relative to cwd while preserving full external paths", func(t *testing.T) {
-		m := &InteractiveMode{opts: InteractiveOptions{CWD: cwd, NoThemes: true, ContextFiles: context}, loadedResourcesContainer: tui.NewContainer()}
+		m := &InteractiveMode{opts: InteractiveModeOptions{CWD: cwd, NoThemes: true, ContextFiles: context}, loadedResourcesContainer: tui.NewContainer()}
 		if got := renderedListing(m); got != "\n[Context]\n  ~/.pi/agent/AGENTS.md, AGENTS.md" {
 			t.Fatalf("compact context = %q", got)
 		}
 	})
 	// Pi interactive-mode-status.test.ts:1180.
 	t.Run("shows system prompt context paths before project context files", func(t *testing.T) {
-		project := &InteractiveMode{opts: InteractiveOptions{
+		project := &InteractiveMode{opts: InteractiveModeOptions{
 			CWD: "/tmp/project", NoThemes: true,
 			SystemPromptSourcePaths: []string{"/tmp/project/.pi/SYSTEM.md", "/tmp/project/.pi/APPEND_SYSTEM.md"},
 			ContextFiles:            []ContextFile{{Path: "/tmp/project/AGENTS.md"}},
@@ -275,7 +275,7 @@ func TestLoadedResourcesContextMatchesUpstream(t *testing.T) {
 	})
 	// Pi interactive-mode-status.test.ts:1199.
 	t.Run("shows full context paths when expanded", func(t *testing.T) {
-		m := &InteractiveMode{opts: InteractiveOptions{CWD: cwd, NoThemes: true, ContextFiles: context}, loadedResourcesContainer: tui.NewContainer(), toolsExpanded: true}
+		m := &InteractiveMode{opts: InteractiveModeOptions{CWD: cwd, NoThemes: true, ContextFiles: context}, loadedResourcesContainer: tui.NewContainer(), toolsExpanded: true}
 		if got := renderedListing(m); got != "\n[Context]\n  ~/.pi/agent/AGENTS.md\n  ~/Development/pi-mono/AGENTS.md" {
 			t.Fatalf("expanded context = %q", got)
 		}

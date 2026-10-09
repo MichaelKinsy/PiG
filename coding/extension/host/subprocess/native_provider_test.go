@@ -1,3 +1,5 @@
+//go:build !pig_strip_node_extensions
+
 package subprocess_test
 
 import (
@@ -66,14 +68,14 @@ export default pi=>{
 			if err := os.WriteFile(entry, []byte(source), 0600); err != nil {
 				t.Fatal(err)
 			}
-			services, err := coding.NewServices(coding.ServicesOptions{CWD: dir, AgentDir: filepath.Join(dir, "agent")})
+			services, err := coding.CreateAgentSessionServices(coding.CreateAgentSessionServicesOptions{CWD: dir, AgentDir: filepath.Join(dir, "agent")})
 			if err != nil {
 				t.Fatal(err)
 			}
 			t.Cleanup(services.Close)
 			host := subprocess.NewHost(dir)
 			defer host.Shutdown("done")
-			host.SetProviderCallbacks(services.Registry().RegisterProvider, services.Registry().UnregisterProvider)
+			host.SetProviderCallbacks(services.Registry().RegisterExtensionProvider, services.Registry().UnregisterProvider)
 			host.SetNativeProviderCallback(services.Registry().RegisterNativeProvider)
 			ui := &nativeTestUI{UIContext: extension.NoopUIContext, started: make(chan string, 1)}
 			bridge := subprocess.NewUIBridge(nil)
@@ -102,7 +104,7 @@ export default pi=>{
 			if _, err := services.ModelRuntime().GetAvailable(t.Context()); err != nil {
 				t.Fatal(err)
 			}
-			if !services.Registry().HasConfiguredAuth("native-test") {
+			if !services.Registry().ModelRegistry.HasConfiguredAuth("native-test") {
 				t.Fatal("native auth check not used")
 			}
 			for _, tc := range []struct {

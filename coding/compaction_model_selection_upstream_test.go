@@ -13,9 +13,9 @@ import (
 	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/coding/extension/host/inproc"
 	icodingagent "github.com/MichaelKinsy/PiG/internal/codingagent"
-	"github.com/MichaelKinsy/PiG/internal/codingagent/compaction"
 )
 
+// Pi: packages/coding-agent/src/core/settings-manager.ts:19 (CompactionModelOverride.reserveTokens); packages/coding-agent/src/core/settings-manager.ts:19 (CompactionSettingsJSON.reserveTokens); packages/coding-agent/src/core/settings-manager.ts:20 (CompactionModelOverride.keepRecentTokens); packages/coding-agent/src/core/settings-manager.ts:32 (CompactionSettingsJSON.modelOverrides); packages/coding-agent/src/core/settings-manager.ts:955 (SettingsManager.getCompactionReserveTokens).
 func TestCompactionNewModelPolicyUpstream(t *testing.T) {
 	// .upstream/v0.87.1/packages/coding-agent/test/suite/agent-session-compaction-model-overrides.test.ts:136
 	t.Run("uses the newly selected model without changing ordinary settings", func(t *testing.T) {
@@ -39,8 +39,8 @@ func TestCompactionNewModelPolicyUpstream(t *testing.T) {
 			}
 		}()
 		session.ReplaceRunner(inproc.NewRunner([]extension.Extension{{Handlers: map[string][]extension.HandlerFn{"session_before_compact": {func(args ...any) (any, error) {
-			prep := args[0].(extension.SessionBeforeCompactEvent).Preparation.(*compaction.CompactionPreparation)
-			return extension.SessionBeforeCompactResult{Compaction: map[string]any{"summary": "big model summary", "firstKeptEntryId": prep.FirstKeptEntryID, "tokensBefore": prep.TokensBefore}}, nil
+			prep := args[0].(extension.SessionBeforeCompactEvent).Preparation
+			return extension.SessionBeforeCompactResult{Compaction: &extension.CompactionResult{Summary: "big model summary", FirstKeptEntryID: prep.FirstKeptEntryID, TokensBefore: prep.TokensBefore}}, nil
 		}}}}}, t.TempDir()))
 		seedCompactionCatalogHistory(t, session, 2500)
 		smallProvider.SetResponses([]ai.FauxResponseStep{ai.FauxStaticStep(ai.FauxResponse{Content: []ai.FauxContentBlock{ai.FauxText("small response")}, StopReason: "stop"})})
@@ -84,6 +84,7 @@ func TestCompactionNewModelPolicyUpstream(t *testing.T) {
 	})
 }
 
+// Pi: packages/coding-agent/src/core/settings-manager.ts:19 (CompactionModelOverride.reserveTokens); packages/coding-agent/src/core/settings-manager.ts:20 (CompactionModelOverride.keepRecentTokens); packages/coding-agent/src/core/settings-manager.ts:32 (CompactionSettingsJSON.modelOverrides).
 func TestCompactionCapturesModelBeforeAuthUpstream(t *testing.T) {
 	// .upstream/v0.87.1/packages/coding-agent/test/suite/agent-session-compaction-model-overrides.test.ts:177
 	// Go provider auth resolves inside Stream; the callback changes the live model before the request reaches HTTP.
@@ -129,7 +130,7 @@ func TestCompactionCapturesModelBeforeAuthUpstream(t *testing.T) {
 			}
 		}()
 		seedCompactionCatalogHistory(t, session, 650)
-		runCompactionCatalogOperation(t, session, func() error { return session.Compact(t.Context(), "") })
+		runCompactionCatalogOperation(t, session, func() error { _, err := session.Compact(t.Context(), ""); return err })
 		if session.Model().ID != "second" {
 			t.Fatal("auth callback did not change the live model")
 		}

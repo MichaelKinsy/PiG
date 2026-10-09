@@ -1,0 +1,210 @@
+{
+  "pkg:agent/.#AgentTool::property:constrainedSampling": {
+    "go": "ai/types.go#ToolSchema.ConstrainedSampling",
+    "reason": "Pi agent/src/types.ts AgentTool extends ai Tool, so constrainedSampling?: false | ConstrainedSamplingConfig is the ai member (ai/src/types.ts:721) and agent.AgentTool.Schema() returns the ai.ToolSchema that carries it. PiG keeps the three states as ToolSchema.ConstrainedSampling (nil when absent or false) plus ToolSchema.ConstrainedSamplingDisabled (an explicit false); agent tools reach the provider through Schema(), whose ConstrainedSampling providers read (ai/constrained_sampling.go resolveGrammarConstrainedSampling) and transcript tool declarations keep a false (ai/schema_object_order.go:247-279). The same member and tests as the ai Tool row: ai/constrained_sampling_false_test.go and coding/extension_bridge_test.go."
+  },
+  "pkg:ai/.#AzureOpenAIResponsesOptions::property:toolChoice": {
+    "go": "ai/types.go#StreamOptions.ToolChoice",
+    "reason": "Pi types toolChoice per API as a compile-time union (azure-openai-responses.ts:28); T10 cannot compare it with Go. Go carries one StreamOptions.ToolChoice (types.go, `any`) for every API with the same runtime value space, a string name or the provider's object, and each provider reads it: the shared responses builder (openai_responses.go:1062) sends a non-nil value as tool_choice (string or object); locked by azure_upstream_test.go TestAzureUpstreamToolChoice and TestAzureAndOpenAIResponsesObjectToolChoice. The compile-time narrowing per API has no runtime effect, and the U1 rows for the other APIs are not covered by this entry."
+  },
+  "pkg:ai/.#OpenAIResponsesOptions::property:toolChoice": {
+    "go": "ai/types.go#StreamOptions.ToolChoice",
+    "reason": "Pi types toolChoice per API as a compile-time union (openai-responses.ts:121); T10 cannot compare it with Go. Go carries one StreamOptions.ToolChoice (types.go, `any`) for every API with the same runtime value space, a string name or the provider's object, and each provider reads it: openai_responses.go:1062 sends a non-nil value as tool_choice (string or object); locked by openai_responses_compat_upstream_test.go. The compile-time narrowing per API has no runtime effect, and the U1 rows for the other APIs are not covered by this entry."
+  },
+  "pkg:ai/.#ProviderImagesOptions": {
+    "go": "ai/images.go#ProviderImagesOptions",
+    "reason": "Pi ai/src/types.ts:343 is ImagesOptions & Record<string, unknown>: the open record is the per-provider extension slot. LEAD-ANSWERS-ledger #2 maps per-provider options to typed Go fields by json tag, so the Go struct carries the ImagesOptions members and each provider option; A7 never reads an open record operand, so this is reviewed rather than ruled. lg-decide reviewed exception (lead order: close the last rows by rules or reviewed exceptions)."
+  },
+  "pkg:ai/.#ProviderStreamOptions": {
+    "go": "ai/types.go#StreamOptions",
+    "reason": "Pi ai/src/types.ts:241 is StreamOptions & Record<string, unknown>: the open record is the per-provider extension slot. LEAD-ANSWERS-ledger #2 maps per-provider options to typed Go fields by json tag, so the Go struct carries the StreamOptions members and each provider option; A7 never reads an open record operand, so this is reviewed rather than ruled. lg-decide reviewed exception (lead order: close the last rows by rules or reviewed exceptions)."
+  },
+  "pkg:ai/.#Tool::property:constrainedSampling": {
+    "go": "ai/types.go#ToolSchema.ConstrainedSampling",
+    "reason": "Pi ai/src/types.ts:721 constrainedSampling?: false | ConstrainedSamplingConfig; utils/transcript.ts:128 keeps an explicit false in the serialized tool and api/constrained-sampling.ts:230,255 read the config. PiG carries the three states as ToolSchema.ConstrainedSampling (nil when absent or false) plus ToolSchema.ConstrainedSamplingDisabled (an explicit false, ai/types.go:380); ai/schema_object_order.go:247-279 decodes and encodes false on the wire and ai/constrained_sampling_false_test.go and coding/extension_bridge_test.go:87 lock all three states."
+  },
+  "pkg:ai/api/azure-openai-responses#AzureOpenAIResponsesOptions::property:toolChoice": {
+    "go": "ai/types.go#StreamOptions.ToolChoice",
+    "reason": "Pi types toolChoice per API as a compile-time union (azure-openai-responses.ts:28); T10 cannot compare it with Go. Go carries one StreamOptions.ToolChoice (types.go, `any`) for every API with the same runtime value space, a string name or the provider's object, and each provider reads it: the shared responses builder (openai_responses.go:1062) sends a non-nil value as tool_choice (string or object); locked by azure_upstream_test.go TestAzureUpstreamToolChoice and TestAzureAndOpenAIResponsesObjectToolChoice. The compile-time narrowing per API has no runtime effect, and the U1 rows for the other APIs are not covered by this entry."
+  },
+  "pkg:ai/api/openai-responses#OpenAIResponsesOptions::property:toolChoice": {
+    "go": "ai/types.go#StreamOptions.ToolChoice",
+    "reason": "Pi types toolChoice per API as a compile-time union (openai-responses.ts:121); T10 cannot compare it with Go. Go carries one StreamOptions.ToolChoice (types.go, `any`) for every API with the same runtime value space, a string name or the provider's object, and each provider reads it: openai_responses.go:1062 sends a non-nil value as tool_choice (string or object); locked by openai_responses_compat_upstream_test.go. The compile-time narrowing per API has no runtime effect, and the U1 rows for the other APIs are not covered by this entry."
+  },
+  "pkg:ai/api/openai-responses-shared#OpenAIResponsesStreamOptions::property:applyServiceTierPricing": {
+    "go": "ai/openai_responses.go#OpenAIResponsesStreamOptions.ApplyServiceTierPricing",
+    "reason": "Pi api/openai-responses-shared.ts types the tier parameters as ResponseCreateParamsStreaming[\"service_tier\"], the OpenAI SDK's \"auto\" | \"default\" | \"flex\" | \"scale\" | \"priority\" | null. Go carries the tier as a string (ai:ServiceTier is string in representations.json), with \"\" for null/undefined; the callbacks receive and return the same tier values."
+  },
+  "pkg:ai/api/openai-responses-shared#OpenAIResponsesStreamOptions::property:resolveServiceTier": {
+    "go": "ai/openai_responses.go#OpenAIResponsesStreamOptions.ResolveServiceTier",
+    "reason": "Pi api/openai-responses-shared.ts types the tier parameters as ResponseCreateParamsStreaming[\"service_tier\"], the OpenAI SDK's \"auto\" | \"default\" | \"flex\" | \"scale\" | \"priority\" | null. Go carries the tier as a string (ai:ServiceTier is string in representations.json), with \"\" for null/undefined; the callbacks receive and return the same tier values."
+  },
+  "pkg:ai/compat#AzureOpenAIResponsesOptions::property:toolChoice": {
+    "go": "ai/types.go#StreamOptions.ToolChoice",
+    "reason": "Pi types toolChoice per API as a compile-time union (azure-openai-responses.ts:28); T10 cannot compare it with Go. Go carries one StreamOptions.ToolChoice (types.go, `any`) for every API with the same runtime value space, a string name or the provider's object, and each provider reads it: the shared responses builder (openai_responses.go:1062) sends a non-nil value as tool_choice (string or object); locked by azure_upstream_test.go TestAzureUpstreamToolChoice and TestAzureAndOpenAIResponsesObjectToolChoice. The compile-time narrowing per API has no runtime effect, and the U1 rows for the other APIs are not covered by this entry."
+  },
+  "pkg:ai/compat#BuiltinImageProvider": {
+    "go": "ai/images_registry.go#BuiltinImageProvider",
+    "reason": "Pi derives the type at compile time: a mapped conditional over the generated IMAGE_MODELS catalog keys that keeps a provider with at least one image model (image-models.ts:13-15). A union computed from a generated constant has no runtime form, so T10 cannot compare it with Go. Go's BuiltinImageProvider is a named string whose runtime value space is the same set: GetImageProviders returns exactly the catalog providers that have an image model and GetImageModel/GetImageModels take it; locked by images_registry_test.go TestBuiltinImageProviderIsTheCatalogsImageProviders."
+  },
+  "pkg:ai/compat#OpenAIResponsesOptions::property:toolChoice": {
+    "go": "ai/types.go#StreamOptions.ToolChoice",
+    "reason": "Pi types toolChoice per API as a compile-time union (openai-responses.ts:121); T10 cannot compare it with Go. Go carries one StreamOptions.ToolChoice (types.go, `any`) for every API with the same runtime value space, a string name or the provider's object, and each provider reads it: openai_responses.go:1062 sends a non-nil value as tool_choice (string or object); locked by openai_responses_compat_upstream_test.go. The compile-time narrowing per API has no runtime effect, and the U1 rows for the other APIs are not covered by this entry."
+  },
+  "pkg:ai/compat#ProviderImagesOptions": {
+    "go": "ai/images.go#ProviderImagesOptions",
+    "reason": "Pi ai/src/types.ts:343 is ImagesOptions & Record<string, unknown>: the open record is the per-provider extension slot. LEAD-ANSWERS-ledger #2 maps per-provider options to typed Go fields by json tag, so the Go struct carries the ImagesOptions members and each provider option; A7 never reads an open record operand, so this is reviewed rather than ruled. lg-decide reviewed exception (lead order: close the last rows by rules or reviewed exceptions)."
+  },
+  "pkg:ai/compat#ProviderStreamOptions": {
+    "go": "ai/types.go#StreamOptions",
+    "reason": "Pi ai/src/types.ts:241 is StreamOptions & Record<string, unknown>: the open record is the per-provider extension slot. LEAD-ANSWERS-ledger #2 maps per-provider options to typed Go fields by json tag, so the Go struct carries the StreamOptions members and each provider option; A7 never reads an open record operand, so this is reviewed rather than ruled. lg-decide reviewed exception (lead order: close the last rows by rules or reviewed exceptions)."
+  },
+  "pkg:ai/compat#Tool::property:constrainedSampling": {
+    "go": "ai/types.go#ToolSchema.ConstrainedSampling",
+    "reason": "Pi ai/src/types.ts:721 constrainedSampling?: false | ConstrainedSamplingConfig; utils/transcript.ts:128 keeps an explicit false in the serialized tool and api/constrained-sampling.ts:230,255 read the config. PiG carries the three states as ToolSchema.ConstrainedSampling (nil when absent or false) plus ToolSchema.ConstrainedSamplingDisabled (an explicit false, ai/types.go:380); ai/schema_object_order.go:247-279 decodes and encodes false on the wire and ai/constrained_sampling_false_test.go and coding/extension_bridge_test.go:87 lock all three states."
+  },
+  "pkg:chord/.#defineService::call:1": {
+    "go": "internal/chord/service.go#DefineService",
+    "reason": "Pi chord/src/api.ts:74-79: the rest parameter is `[RemoteServiceContract<T>] extends [never] ? readonly [options: never] : readonly [options?: { readonly local?: false }]`. The never branch only makes the overload uncallable at compile time for a T with no remote contract (such a service must use the local: true overload, api.ts:73); the callable branch is the optional options that Go DefineService[T](id, options ...ServiceOptions) takes, and the implementation (api.ts:80) is the same function."
+  },
+  "pkg:chord/delta#Change::property:state": {
+    "go": "chord/delta/tracker.go#Change.State",
+    "reason": "Pi chord delta/tracker.ts:130 `readonly state: Draft<T>` (Draft is delta/draft.ts:2, designed out as a type-level mechanic; the inventory carries its expansion) is a Proxy over the change's root that records writes as a delta. Go cannot intercept field assignment on a typed value, so the same transaction-scoped mutable view is the handle *delta.Object (handles.go:15) with Get/Set over the members T declares; T is carried untyped as for TB2/T13 and Pi Tx.doc (the reviewed Tx.doc rows). Go has no union result, so an array root (T extends unknown[]) is read through Change.Elements() *delta.Array (tracker.go:177) and State() returns nil for it."
+  },
+  "pkg:codemode/.#CodemodeSandboxOptions::property:wasm": {
+    "go": "codemode/types.go#SandboxOptions.Wasm",
+    "reason": "types.ts:113-117 wasm is a compiled WebAssembly.Module or a Promise of one, defaulting to loadQuickJSWasm(); T10 cannot compare an object-or-Promise union with a func. Go's SandboxOptions.Wasm is a loader returning the module bytes, nil meaning the embedded module (types.go:130), called lazily by Sandbox.engine, kept after the first success and retried after a failure like loadQuickJSWasm (sandbox.go:188-215). The failure paths are locked by sandbox_test.go:787 (loader error) and :798 (invalid module bytes) and the load-once path by lifetime_test.go:202."
+  },
+  "pkg:coding-agent/.#Args::property:listModels": {
+    "go": "coding/cli/args.go#Args.ListModels",
+    "reason": "Pi coding-agent/src/cli/args.ts:49 listModels?: string | true; args.ts:212-218 sets the search pattern or true for a bare --list-models. PiG keeps the pattern in Args.ListModels and the bare flag in the sibling Args.ListModelsAll (coding/cli/args.go:331-338), so both Pi values are carried. Lead-approved reviewed exception."
+  },
+  "pkg:coding-agent/.#BashToolCallEvent::property:input": {
+    "go": "coding/extension/events.go#CustomToolCallEvent.Input",
+    "reason": "Pi agent-session.ts:651-662 builds every tool_call event as {type: \"tool_call\", toolCallId, toolName, input} with the call's arguments, the shape of CustomToolCallEvent (types.ts:1207-1210, input: Record<string, unknown>); the per-tool input types of types.ts:1166-1204 narrow it for a handler through isToolCallEventType (types.ts:1349). Go's production emitter builds CustomToolCallEvent (coding/session_extension_hooks.go:65) whose Input is a map[string]any with WireInput keeping the model's member order, and a subprocess handler receives the same JSON object; the typed per-tool structs are the Go form of the TS narrowing."
+  },
+  "pkg:coding-agent/.#BeforeAgentStartEventResult::property:message": {
+    "go": "coding/extension/events.go#BeforeAgentStartEventResult.Message",
+    "reason": "Pi coding-agent core/extensions/types.ts:1469 `message?: Pick<CustomMessage, \"customType\" | \"content\" | \"display\" | \"details\">` is the Go *CustomMessageRef (events.go:310), a struct with exactly the four picked members: CustomType string, Content any (messages.ts:49 `string | (TextContent | ImageContent)[]`, a union of JSON shapes, T10c), Display bool and Details any (details?: T, T unknown). A nil pointer is the omitted message. The T16 Pick selection reaches the T9 structural rule at the nesting depth limit, so the verdict is recorded here."
+  },
+  "pkg:coding-agent/.#ContextEditableContent": {
+    "go": "internal/codingagent/session.go#ContextEditableContent",
+    "reason": "Pi's ContextEditableContent is the union of the user, assistant, tool-result and custom message content types (session-manager.ts:168-172), which A3 cannot compare with one Go type. A context_edit replacement carries only content, and which of the four shapes applies depends on the target entry's role, which the projection knows when it applies the edit. Go keeps the replacement as raw JSON (a string or a block array, representations.json coding-agent:ContextEditableContent) and decodes it for the target's role at projection time, so the session file round-trips the member exactly as written; locked by TestContextEditableContentIsNormalizedForAssistantTargets (internal/codingagent/session_context_upstream_test.go) and the compaction context_edit tests."
+  },
+  "pkg:coding-agent/.#EditToolCallEvent::property:input": {
+    "go": "coding/extension/events.go#CustomToolCallEvent.Input",
+    "reason": "Pi agent-session.ts:651-662 builds every tool_call event as {type: \"tool_call\", toolCallId, toolName, input} with the call's arguments, the shape of CustomToolCallEvent (types.ts:1207-1210, input: Record<string, unknown>); the per-tool input types of types.ts:1166-1204 narrow it for a handler through isToolCallEventType (types.ts:1349). Go's production emitter builds CustomToolCallEvent (coding/session_extension_hooks.go:65) whose Input is a map[string]any with WireInput keeping the model's member order, and a subprocess handler receives the same JSON object; the typed per-tool structs are the Go form of the TS narrowing."
+  },
+  "pkg:coding-agent/.#ExtensionRunner::property:emit::call:0": {
+    "go": "coding/extension/host/inproc/runner.go#Runner.Emit",
+    "reason": "Pi runner.ts emit<TEvent>() returns RunnerEmitResult<TEvent>, a conditional type over the event type (each event kind has its own result). Go has no conditional result type; Emit returns any holding the per-event result, which callers assert to the event kind's result type."
+  },
+  "pkg:coding-agent/.#FindToolCallEvent::property:input": {
+    "go": "coding/extension/events.go#CustomToolCallEvent.Input",
+    "reason": "Pi agent-session.ts:651-662 builds every tool_call event as {type: \"tool_call\", toolCallId, toolName, input} with the call's arguments, the shape of CustomToolCallEvent (types.ts:1207-1210, input: Record<string, unknown>); the per-tool input types of types.ts:1166-1204 narrow it for a handler through isToolCallEventType (types.ts:1349). Go's production emitter builds CustomToolCallEvent (coding/session_extension_hooks.go:65) whose Input is a map[string]any with WireInput keeping the model's member order, and a subprocess handler receives the same JSON object; the typed per-tool structs are the Go form of the TS narrowing."
+  },
+  "pkg:coding-agent/.#GrepToolCallEvent::property:input": {
+    "go": "coding/extension/events.go#CustomToolCallEvent.Input",
+    "reason": "Pi agent-session.ts:651-662 builds every tool_call event as {type: \"tool_call\", toolCallId, toolName, input} with the call's arguments, the shape of CustomToolCallEvent (types.ts:1207-1210, input: Record<string, unknown>); the per-tool input types of types.ts:1166-1204 narrow it for a handler through isToolCallEventType (types.ts:1349). Go's production emitter builds CustomToolCallEvent (coding/session_extension_hooks.go:65) whose Input is a map[string]any with WireInput keeping the model's member order, and a subprocess handler receives the same JSON object; the typed per-tool structs are the Go form of the TS narrowing."
+  },
+  "pkg:coding-agent/.#InteractiveMode::construct:0": {
+    "go": "internal/codingagent/interactive.go#NewInteractiveMode",
+    "reason": "Pi interactive-mode.ts:608 constructor(runtimeHost: AgentSessionRuntime, options) reads from the runtime host the current session (:596), services.agentDir (:5300, :5319), dispose (:4306, :4322), the Session replacement operations newSession, switchSession, fork and importFromJsonl (:1984, :5757, :5516, :6582) and the setBeforeSessionInvalidate and setRebindSession hooks (:614, :617). Go's AgentSessionRuntime is coding.Runtime, and internal/codingagent cannot import coding (coding imports internal/codingagent), so the first parameter is InteractiveRuntime, the consumer-owned interface of the operations the mode calls: the four replacement operations and the two hooks map one to one; dispose's session_shutdown (agent-session-runtime.ts:404-411) is EmitQuitShutdown (coding/runtime_replacement.go:177, emitted once so closing the runtime does not repeat it); the current Session and the agent dir reach the mode through InteractiveModeOptions.SessionHandle and InteractiveModeOptions.AgentDir. ExtensionCommandActions and SetBeforeSessionReplacement are Go-only seams Pi does not have as host members. cmd/pig's interactiveRuntime adapter (coding/cli/interactive_build.go) forwards every member to coding.Runtime, and the production caller coding/cli/main.go passes it. The T9 comparison cannot see through that layering. Evidence: internal/codingagent/interactive_runtime_host_test.go drives the mode through the interface. Reviewed placement under LEAD-RULINGS-1520."
+  },
+  "pkg:coding-agent/.#JsonAgentSessionEvent": {
+    "go": "coding/rpcclient/types.go#JsonAgentSessionEvent",
+    "reason": "Pi's JsonAgentSessionEvent (modes/json-event.ts:18) is a compile-time union over the JSON the agent writes: RpcClient never decodes it, it does `listener(JSON.parse(line) as JsonAgentSessionEvent)` (rpc-client.ts:525-538), and collectEvents/promptAndWait return those same parsed values. The Go client's value is the same JSON record: Type is its \"type\" field and Raw the complete line (message_update lines already in the toJsonEvent shape coding/cli/rpc_events.go writes, with usage and the partial-free assistantMessageEvent), so a listener reads any field Pi's union has and nothing is dropped or re-encoded. A decoded Go union would add a decoder Pi does not have. Locked by TestRpcEventListenerRawIsTheCompleteJSONRecord (every Raw is the complete record whose type is Type; message_update has usage and no partial; Raw mutated to nil fails it), TestRpcEventListenerReceivesPromptEventsInOrderUntilDetached and TestRpcClientPromptAndWaitReturnsEventsThroughSettled."
+  },
+  "pkg:coding-agent/.#LsToolCallEvent::property:input": {
+    "go": "coding/extension/events.go#CustomToolCallEvent.Input",
+    "reason": "Pi agent-session.ts:651-662 builds every tool_call event as {type: \"tool_call\", toolCallId, toolName, input} with the call's arguments, the shape of CustomToolCallEvent (types.ts:1207-1210, input: Record<string, unknown>); the per-tool input types of types.ts:1166-1204 narrow it for a handler through isToolCallEventType (types.ts:1349). Go's production emitter builds CustomToolCallEvent (coding/session_extension_hooks.go:65) whose Input is a map[string]any with WireInput keeping the model's member order, and a subprocess handler receives the same JSON object; the typed per-tool structs are the Go form of the TS narrowing."
+  },
+  "pkg:coding-agent/.#PowerShellToolCallEvent::property:input": {
+    "go": "coding/extension/events.go#CustomToolCallEvent.Input",
+    "reason": "Pi agent-session.ts:651-662 builds every tool_call event as {type: \"tool_call\", toolCallId, toolName, input} with the call's arguments, the shape of CustomToolCallEvent (types.ts:1207-1210, input: Record<string, unknown>); the per-tool input types of types.ts:1166-1204 narrow it for a handler through isToolCallEventType (types.ts:1349). Go's production emitter builds CustomToolCallEvent (coding/session_extension_hooks.go:65) whose Input is a map[string]any with WireInput keeping the model's member order, and a subprocess handler receives the same JSON object; the typed per-tool structs are the Go form of the TS narrowing."
+  },
+  "pkg:coding-agent/.#ProjectTrustContext::property:ui": {
+    "go": "coding/extension/project_trust_context.go#ProjectTrustContext.UI",
+    "reason": "types.ts:695 types ProjectTrustContext.ui as Pick<ExtensionUIContext, \"select\" | \"confirm\" | \"input\" | \"notify\">, which T9 cannot relate to a Go type. Go's ProjectTrustUI interface (project_trust_context.go:9-14) is exactly those four methods (Select, Confirm, Input, Notify), every UIContext satisfies it, and the in-process project_trust handlers receive it through EmitProjectTrust (TestFake_RecordsProjectTrustHandlersWithTheirTrustContext in extensiontest/fake_test.go)."
+  },
+  "pkg:coding-agent/.#ProviderModelConfig": {
+    "go": "coding/extension/provider.go#ProviderModelConfig",
+    "reason": "Pi coding-agent/src/core/provider-composer.ts:88 (and the extension declaration core/extensions/types.ts) ProviderModelConfig = ProviderChatModelConfig | ProviderImageModelConfig | ProviderClassifierModelConfig, three object variants over ProviderModelConfigBase (provider-composer.ts:52-86) discriminated by an optional `type` (\"chat\" when omitted). T9 cannot compare an object union with a Go struct, and the pinned declarations exist twice (src and dist), so A4 cannot read one body. Go carries the variants as one struct with the `type` discriminator (provider.go:55-106) because an entry crosses the extension wire and the registries unchanged: UnmarshalJSON keeps the entry's own fields, MarshalJSON drops the chat-only fields an image or classifier entry does not declare (nonChatOmittedFields, provider.go:163, from the Pi variant field lists), and an omitted type stays omitted on the wire and reads as chat. coding/extension/provider_model_config_types_test.go TestProviderModelConfigRoundTripsEachVariantWithItsOwnFields and TestProviderModelConfigDecodesTypeAndVariantFields assert each variant's round trip (including a chat entry without a type) and the decoded discriminator and variant fields."
+  },
+  "pkg:coding-agent/.#ReadToolCallEvent::property:input": {
+    "go": "coding/extension/events.go#CustomToolCallEvent.Input",
+    "reason": "Pi agent-session.ts:651-662 builds every tool_call event as {type: \"tool_call\", toolCallId, toolName, input} with the call's arguments, the shape of CustomToolCallEvent (types.ts:1207-1210, input: Record<string, unknown>); the per-tool input types of types.ts:1166-1204 narrow it for a handler through isToolCallEventType (types.ts:1349). Go's production emitter builds CustomToolCallEvent (coding/session_extension_hooks.go:65) whose Input is a map[string]any with WireInput keeping the model's member order, and a subprocess handler receives the same JSON object; the typed per-tool structs are the Go form of the TS narrowing."
+  },
+  "pkg:coding-agent/.#ReadonlyFooterDataProvider": {
+    "go": "coding/extension/ui_factories.go#ReadonlyFooterDataProvider",
+    "reason": "Pi coding-agent/src/core/footer-data-provider.ts:385 declares `type ReadonlyFooterDataProvider = Pick<FooterDataProvider, \"getGitBranch\" | \"getExtensionStatuses\" | \"getAvailableProviderCount\" | \"onBranchChange\">`: a view of the FooterDataProvider class that leaves out setExtensionStatus, setAvailableProviderCount and dispose. A4/T9 cannot decide a Pick over a class. Go declares the view as an interface of exactly those four members (GetGitBranch, GetExtensionStatuses, GetAvailableProviderCount, OnBranchChange), implemented by *codingagent.FooterDataProvider (footer_data_provider.go:48-87), which the host passes as the third argument of an extension's footer factory (ext_ui_context.go:446, interactive-mode.ts setExtensionFooter). A Pick of a class is an interface of the picked members in Go (the consumer-owned small interface), not a struct. Evidence: internal/codingagent/ext_ui_factories_test.go (the factory receives the footer's own provider) and coding/extension/host/subprocess/ctx_mode_test.go:201 (the subprocess footer factory reads the same four members)."
+  },
+  "pkg:coding-agent/.#RpcSessionState::property:model": {
+    "go": "coding/cli/rpc_types.go#RPCSessionState.Model",
+    "reason": "Pi rpc-types.ts:97 model?: Model<any> is the Model object get_state serializes. PiG's ai.Model carries a Provider object and nested metadata that are not wire data, so get_state projects it as RPCModel (coding/cli/rpc_types.go, rpcModelValue) with every JSON member of Pi's Model, including the optional type (rpc_model_type_test.go); the member is the pointer so a nil session model reports the unknown placeholder rpc-mode.ts reports."
+  },
+  "pkg:coding-agent/.#ToolResultEventResult::property:content": {
+    "go": "coding/extension/events.go#ToolResultEventResult.Content",
+    "reason": "Pi's runner keeps the blocks a tool_result handler returns as they are (runner.ts emitToolResult chains `content` unchanged; agent-session.ts:672-678 hands it to the loop) and the loop reads a text or image block's fields with JavaScript string coercion, so a block whose `text` or `data` is not a string still reaches the model. Go carries the blocks as []any (a map decoded from a subprocess extension, an ai.TextContent or ai.ImageContent, or a string) so that read is not lost: internal/codingagent/tool_result_content.go ToolResultEventOverride (:34) decodes every form and jsStringValue (:92) applies the coercion; TestToolResultEventOverridePreservesNonStringFields pins it. A sealed TextContent|ImageContent slice would reject the blocks Pi accepts."
+  },
+  "pkg:coding-agent/.#WriteToolCallEvent::property:input": {
+    "go": "coding/extension/events.go#CustomToolCallEvent.Input",
+    "reason": "Pi agent-session.ts:651-662 builds every tool_call event as {type: \"tool_call\", toolCallId, toolName, input} with the call's arguments, the shape of CustomToolCallEvent (types.ts:1207-1210, input: Record<string, unknown>); the per-tool input types of types.ts:1166-1204 narrow it for a handler through isToolCallEventType (types.ts:1349). Go's production emitter builds CustomToolCallEvent (coding/session_extension_hooks.go:65) whose Input is a map[string]any with WireInput keeping the model's member order, and a subprocess handler receives the same JSON object; the typed per-tool structs are the Go form of the TS narrowing."
+  },
+  "pkg:durable/.#AgentChange": {
+    "go": "durable/harness/agent.go#AgentChange",
+    "reason": "Pi durable/src/harness/types.ts:322-333 AgentChange: every field is optional and nullable (a given value replaces the stored one, null clears it, undefined changes nothing), and extensions and tools are `Extension[] | {add?, remove?} | null` and `ToolRegistration[] | {remove} | null`. Go's harness.Change[T] (agent.go:186) holds the three states (unset is the zero value, SetTo replaces, Cleared is null; rule T3c recognises the wrapper by those two functions), and the two array-or-object unions are single structs, ExtensionChange{Exact, List, Add, Remove} and ToolChange{Exact, List, Remove}, since Go has no sum of a list and an object (the same single-struct form as OverlayMarginSpec and SizeValue). Exact selects the list form, otherwise Add/Remove (or Remove) edit. TestHarnessAgent (durable/harness/harness_conversations_test.go:582-612) drives every state through Harness.Configure: set, null clear for model and instructions, tool remove, replacement, exact list, and cleared tools. Proposed reviewed exception: needs lead approval."
+  },
+  "pkg:durable/.#DocumentReader": {
+    "go": "durable/types.go#DocumentReader",
+    "reason": "Pi DocumentReader is Pick<Session, \"snapshot\" | \"snapshotAsOf\"> (types.ts:886): the two committed-read methods of Session, whose overloads are generic over the document token (types.ts:931-942). Go interfaces take no method type parameters, so DocumentReader holds the erased reads (SnapshotErased, SnapshotAsOfErased) and the typed overloads are the generic functions durable.Snapshot[T] and durable.SnapshotAsOf[T] (documents.go:305,315) taking a DocumentReader; Session satisfies it, as Pi's Pick of Session does. Locked by TestSessionHistoricalDocumentSnapshots (durable/session/session_checkpoints_migrations_test.go) and the examples that read through durable.Snapshot (durable/examples/support_test.go snapshotNotes)."
+  },
+  "pkg:durable/.#HarnessOptions": {
+    "go": "durable/harness/types.go#HarnessOptions",
+    "reason": "Pi durable/src/harness/types.ts:449 settings?: HarnessSettings is read again at every resolution (harness.ts:181 `const settings = () => resolveSettings(options.settings)`, harness.ts:221), so a caller may pass an object whose fields are getters and change it live. Go Settings func() *HarnessSettings is that live read: called at every resolution, nil for absent; every other member maps field for field."
+  },
+  "pkg:durable/.#Tx::property:doc::call:0": {
+    "go": "durable/types.go#Tx.Doc",
+    "reason": "Pi durable/src/types.ts:826 doc<T extends JsonObject>(token: SessionDocToken<T>) resolves to Draft<T> (chord/src/delta/draft.ts:2), a Proxy that records writes to a JSON object as a delta. Go cannot intercept field assignment on a typed value, so the same transaction-scoped mutable JSON view is the handle *delta.Object (chord/delta/handles.go:15), with Get/Set over the JSON members T declares; as for the other five overloads (call:1-5) and TB2/T13, the JSON-valued type parameter is carried untyped. The token parameter is checked by the detector; only the Draft<T> result is reviewed."
+  },
+  "pkg:durable/.#Tx::property:doc::call:1": {
+    "go": "durable/types.go#Tx.Doc",
+    "reason": "Pi durable/src/types.ts:804-811 doc<T extends JsonObject>() resolves to Draft<T> (chord/src/delta/draft.ts:2), a Proxy that records writes to a JSON object as a delta. Go cannot intercept field assignment on a typed value, so the same transaction-scoped mutable JSON view is the handle *delta.Object (chord/delta/handles.go:15), with Get/Set over the JSON members T declares; as for TB2 and T13, the JSON-valued type parameter is carried untyped. Every other overload part (owner ID, family key, seed) is checked by the variadic rule."
+  },
+  "pkg:durable/.#Tx::property:doc::call:2": {
+    "go": "durable/types.go#Tx.Doc",
+    "reason": "Pi durable/src/types.ts:804-811 doc<T extends JsonObject>() resolves to Draft<T> (chord/src/delta/draft.ts:2), a Proxy that records writes to a JSON object as a delta. Go cannot intercept field assignment on a typed value, so the same transaction-scoped mutable JSON view is the handle *delta.Object (chord/delta/handles.go:15), with Get/Set over the JSON members T declares; as for TB2 and T13, the JSON-valued type parameter is carried untyped. Every other overload part (owner ID, family key, seed) is checked by the variadic rule."
+  },
+  "pkg:durable/.#Tx::property:doc::call:3": {
+    "go": "durable/types.go#Tx.Doc",
+    "reason": "Pi durable/src/types.ts:804-811 doc<T extends JsonObject>() resolves to Draft<T> (chord/src/delta/draft.ts:2), a Proxy that records writes to a JSON object as a delta. Go cannot intercept field assignment on a typed value, so the same transaction-scoped mutable JSON view is the handle *delta.Object (chord/delta/handles.go:15), with Get/Set over the JSON members T declares; as for TB2 and T13, the JSON-valued type parameter is carried untyped. Every other overload part (owner ID, family key, seed) is checked by the variadic rule."
+  },
+  "pkg:durable/.#Tx::property:doc::call:4": {
+    "go": "durable/types.go#Tx.Doc",
+    "reason": "Pi durable/src/types.ts:804-811 doc<T extends JsonObject>() resolves to Draft<T> (chord/src/delta/draft.ts:2), a Proxy that records writes to a JSON object as a delta. Go cannot intercept field assignment on a typed value, so the same transaction-scoped mutable JSON view is the handle *delta.Object (chord/delta/handles.go:15), with Get/Set over the JSON members T declares; as for TB2 and T13, the JSON-valued type parameter is carried untyped. Every other overload part (owner ID, family key, seed) is checked by the variadic rule."
+  },
+  "pkg:durable/.#Tx::property:doc::call:5": {
+    "go": "durable/types.go#Tx.Doc",
+    "reason": "Pi durable/src/types.ts:804-811 doc<T extends JsonObject>() resolves to Draft<T> (chord/src/delta/draft.ts:2), a Proxy that records writes to a JSON object as a delta. Go cannot intercept field assignment on a typed value, so the same transaction-scoped mutable JSON view is the handle *delta.Object (chord/delta/handles.go:15), with Get/Set over the JSON members T declares; as for TB2 and T13, the JSON-valued type parameter is carried untyped. Every other overload part (owner ID, family key, seed) is checked by the variadic rule."
+  },
+  "pkg:protocol/.#ServerHello": {
+    "go": "internal/experimental/protocol/messages.go#ServerHello",
+    "reason": "Pi protocol/src/protocol.ts:65-69,105 ServerHello is Static<ServerHelloSchema>: type \"hello\", version Literal(PROTOCOL_VERSION = 8, protocol.ts:5), serverId. PiG's struct carries Version and ServerId; the \"hello\" discriminator is the Go type itself (ServerMessage is a closed interface, messages.go:81), and the literal version is enforced where Pi enforces it, in the decode at messages.go:257-266 through IsSupportedProtocolVersion (messages.go:140, codec_test.go:171-180 locks 8 as the only accepted value)."
+  },
+  "pkg:tui/.#KeyId": {
+    "go": "tui/keys_decode.go#KeyID",
+    "reason": "Pi tui/src/keys.ts:152 KeyId = BaseKey | ModifiedKeyId<BaseKey>, a closed set of template-literal strings (keys.ts:141-147) that Go cannot enumerate as constants; PiG's KeyID is string (tui/keys_decode.go:222) with the Key helper building identifiers. Lead-approved reviewed exception."
+  },
+  "pkg:tui/.#SizeValue": {
+    "go": "tui/overlay_spec.go#OverlayValue",
+    "reason": "Pi tui/src/tui.ts:225 SizeValue = number | `${number}%`. Go has no sum of a number and a template literal; OverlayValue carries the cell count in Value and the percentage form in Percent (tui/overlay_spec.go:5-10), so both Pi forms are held. lg-decide reviewed exception (lead order 2026-10-07: close the last rows by rules or reviewed exceptions)."
+  },
+  "pkg:tui/.#StackEntry::property:basis": {
+    "go": "tui/stack.go#StackEntryOptions.Basis",
+    "reason": "Pi tui/src/components/stack.ts:13 StackEntry extends StackEntryOptions, so StackEntry.basis is the inherited stack.ts:5 basis?: number | \"auto\", held by the embedded StackEntryOptions.Basis *int (lead answer #1: inheritance is embedding). The lead-approved StackEntryOptions.basis exception applies: stack.ts:143 sizes an undefined and an \"auto\" basis alike, and Basis nil stands for both."
+  },
+  "pkg:tui/.#StackEntryOptions::property:basis": {
+    "go": "tui/stack.go#StackEntryOptions.Basis",
+    "reason": "Pi tui/src/components/stack.ts:5 basis?: number | \"auto\"; stack.ts:143 sizes an undefined and an \"auto\" basis alike (the intrinsic size). PiG's Basis *int uses nil for both (tui/stack.go:25). Lead-approved reviewed exception."
+  }
+}

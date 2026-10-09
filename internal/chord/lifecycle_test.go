@@ -1,5 +1,7 @@
 package chord
 
+// pi: packages/chord/src/services/loopback.ts
+
 import (
 	"context"
 	"encoding/json"
@@ -13,7 +15,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/MichaelKinsy/PiG/internal/chord/delta"
+	"github.com/MichaelKinsy/PiG/chord/delta"
+	"github.com/MichaelKinsy/PiG/internal/chord/chordjson"
 )
 
 var keyedCounterDefinition = DefineService[Counter]("test.keyed-counter")
@@ -43,10 +46,10 @@ func newCountingFixture(t *testing.T, definitions ...ServiceProviderDefinition) 
 	counting := &countingEndpoint{RemoteServiceEndpoint: fixture.endpoint}
 	ids := make([]string, len(definitions))
 	for index, definition := range definitions {
-		ids[index] = definition.ServiceId
+		ids[index] = definition.serviceId()
 	}
 	binding, err := CreateRemoteServiceBinding(RemoteServiceBindingOptions{
-		Services:  ids,
+		Services:  ServiceIDs(ids...),
 		Transport: NewJSONCopyTransport(counting),
 		OnError:   func(err error) { fixture.errs <- err },
 	})
@@ -147,14 +150,14 @@ func TestReplicaRejectsGapsAndUpdatesBeforeHydration(t *testing.T) {
 	if err := replica.hydrate(ctx, 1, []Op{{"s", []any{"a"}, 1.0}}, nil); err == nil {
 		t.Fatal("non-base hydration accepted")
 	}
-	if err := replica.hydrate(ctx, 1, []Op{{"r", map[string]any{"a": 0.0}}}, nil); err != nil {
+	if err := replica.hydrate(ctx, 1, []Op{{"r", chordjson.ObjectOf("a", 0.0)}}, nil); err != nil {
 		t.Fatal(err)
 	}
 	first, _ := replica.snapshotValue()
 	if err := replica.update(ctx, 2, []Op{{"s", []any{"a"}, 1.0}}, nil); err != nil {
 		t.Fatal(err)
 	}
-	if first.(map[string]any)["a"] != 0.0 {
+	if first.(*chordjson.Object).Value("a") != 0.0 {
 		t.Fatalf("retained value mutated by update: %v", first)
 	}
 	if err := replica.update(ctx, 4, []Op{{"s", []any{"a"}, 2.0}}, nil); err == nil || !strings.Contains(err.Error(), "gap") {
@@ -361,7 +364,7 @@ func TestSingletonReplaceRehydratesAndWithdrawClears(t *testing.T) {
 	if _, hydrated := replica.Value(); hydrated {
 		t.Fatal("replica retained a value after unavailable")
 	}
-	if _, err := service.Call(ctx, "add", 1, "gone"); !IsRemoteServiceErrorCode(err, ErrServiceNotFound) {
+	if _, err := service.Call(ctx, "add", 1, "gone"); !hasRemoteServiceErrorCode(err, ErrServiceNotFound) {
 		t.Fatalf("call after withdraw = %v", err)
 	}
 	// A replacement with a different member shape is rejected.
@@ -432,7 +435,7 @@ func TestKeyedGenerationsObservationAndStaleCalls(t *testing.T) {
 	case <-time.After(5 * time.Second):
 		t.Fatal("observer context was not cancelled on close")
 	}
-	if _, err := one.service.Call(ctx, "add", 1, "stale"); !IsRemoteServiceErrorCode(err, ErrServiceStaleInstance) {
+	if _, err := one.service.Call(ctx, "add", 1, "stale"); !hasRemoteServiceErrorCode(err, ErrServiceStaleInstance) {
 		t.Fatalf("call on closed observation = %v", err)
 	}
 	second := newCounter(t)
@@ -449,7 +452,7 @@ func TestKeyedGenerationsObservationAndStaleCalls(t *testing.T) {
 		t.Fatalf("respawn generation = %d", two.generation)
 	}
 	// The provider rejects the previous generation directly.
-	if _, err := fixture.provider.Invoke(ctx, ServiceCall{ServiceId: keyedCounterDefinition.Id(), Instance: &ServiceInstanceAddress{Key: "lane", Generation: 1}, Member: "add", Args: []json.RawMessage{mustRaw(1), mustRaw("x")}}); !IsRemoteServiceErrorCode(err, ErrServiceStaleInstance) {
+	if _, err := fixture.provider.Invoke(ctx, ServiceCall{ServiceId: keyedCounterDefinition.Id(), Instance: &ServiceInstanceAddress{Key: "lane", Generation: 1}, Member: "add", Args: []json.RawMessage{mustRaw(1), mustRaw("x")}}); !hasRemoteServiceErrorCode(err, ErrServiceStaleInstance) {
 		t.Fatalf("stale generation invoke = %v", err)
 	}
 	stop()
@@ -483,7 +486,7 @@ func TestRebindAndDisposeCloseSubscriptionsExactlyOnce(t *testing.T) {
 	if _, hydrated := replica.Value(); hydrated {
 		t.Fatal("unbound replica retained a value")
 	}
-	if _, err := service.Call(ctx, "add", 1, "unbound"); !IsRemoteServiceErrorCode(err, ErrServiceStaleInstance) {
+	if _, err := service.Call(ctx, "add", 1, "unbound"); !hasRemoteServiceErrorCode(err, ErrServiceStaleInstance) {
 		t.Fatalf("call while unbound = %v", err)
 	}
 	if got := counting.unsubscribes.Load(); got != 1 {
@@ -553,26 +556,26 @@ func TestEndpointDisposeReleasesProviderSubscriptions(t *testing.T) {
 func TestBindingAllowlistAndModeValidation(t *testing.T) {
 	fixture := newRemoteFixture(t, SingletonService(counterDefinition))
 	other := DefineService[Counter]("test.other")
-	if _, err := UseRemote(fixture.binding, other); !IsRemoteServiceErrorCode(err, ErrServiceNotAllowed) {
+	if _, err := UseRemote(fixture.binding, other); !hasRemoteServiceErrorCode(err, ErrServiceNotAllowed) {
 		t.Fatalf("non-allowlisted use = %v", err)
 	}
 	if _, err := UseRemote(fixture.binding, counterDefinition); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := ObserveRemote(fixture.binding, counterDefinition, func(context.Context, *RemoteService) error { return nil }); !IsRemoteServiceErrorCode(err, ErrServiceModeMismatch) {
+	if _, err := ObserveRemote(fixture.binding, counterDefinition, func(context.Context, *RemoteService) error { return nil }); !hasRemoteServiceErrorCode(err, ErrServiceModeMismatch) {
 		t.Fatalf("mode mismatch = %v", err)
 	}
 	if _, err := NewRemoteServiceProvider(SingletonService(counterDefinition), KeyedService(counterDefinition)); err == nil {
 		t.Fatal("duplicate provider IDs accepted")
 	}
-	if _, err := CreateRemoteServiceBinding(RemoteServiceBindingOptions{Services: []string{"a", "a"}}); err == nil {
+	if _, err := CreateRemoteServiceBinding(RemoteServiceBindingOptions{Services: ServiceIDs("a", "a")}); err == nil {
 		t.Fatal("duplicate binding IDs accepted")
 	}
 	// The provider reports a missing singleton subscription as service_not_found.
-	if err := fixture.binding.Ready(context.Background()); !IsRemoteServiceErrorCode(err, ErrServiceNotFound) {
+	if err := fixture.binding.Ready(context.Background()); !hasRemoteServiceErrorCode(err, ErrServiceNotFound) {
 		t.Fatalf("ready without provider = %v", err)
 	}
-	if err := <-fixture.errs; !IsRemoteServiceErrorCode(err, ErrServiceNotFound) {
+	if err := <-fixture.errs; !hasRemoteServiceErrorCode(err, ErrServiceNotFound) {
 		t.Fatalf("reported error = %v", err)
 	}
 	_ = slices.Clone([]int{})

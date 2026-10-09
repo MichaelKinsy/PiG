@@ -60,15 +60,15 @@ func TestRemoteOverlayUnfocusExplicitTargetMatchesPi(t *testing.T) {
 	first := <-handles
 	go open()
 	second := <-handles
-	if mode.tuiInst.FocusedComponent() != tui.Component(second) {
+	if mode.tuiInst.GetFocusedComponent() != tui.Component(second) {
 		t.Fatal("the newest capturing overlay is not focused")
 	}
 	state, err := second.Control(t.Context(), "unfocus", false, &extension.RemoteOverlayFocusTarget{Overlay: first})
 	if err != nil || state.Focused {
 		t.Fatalf("unfocus to first: state=%+v err=%v", state, err)
 	}
-	if mode.tuiInst.FocusedComponent() != tui.Component(first) {
-		t.Fatalf("explicit overlay target not focused: %T", mode.tuiInst.FocusedComponent())
+	if mode.tuiInst.GetFocusedComponent() != tui.Component(first) {
+		t.Fatalf("explicit overlay target not focused: %T", mode.tuiInst.GetFocusedComponent())
 	}
 	if state, err := first.Control(t.Context(), "", false, nil); err != nil || !state.Focused {
 		t.Fatalf("target overlay state=%+v err=%v", state, err)
@@ -76,7 +76,7 @@ func TestRemoteOverlayUnfocusExplicitTargetMatchesPi(t *testing.T) {
 	if state, err := first.Control(t.Context(), "unfocus", false, &extension.RemoteOverlayFocusTarget{}); err != nil || state.Focused {
 		t.Fatalf("unfocus to null: state=%+v err=%v", state, err)
 	}
-	if focused := mode.tuiInst.FocusedComponent(); focused != nil {
+	if focused := mode.tuiInst.GetFocusedComponent(); focused != nil {
 		t.Fatalf("null target left %T focused", focused)
 	}
 	first.Close("first")

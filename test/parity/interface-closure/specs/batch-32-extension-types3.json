@@ -1,0 +1,65 @@
+[
+ {
+  "ids": [
+   "pkg:coding-agent/.#AgentBeforeSettleEvent"
+  ],
+  "targets": [
+   "coding/extension/events.go#AgentBeforeSettleEvent"
+  ],
+  "struct": {
+   "file": "coding/extension/events.go",
+   "type": "AgentBeforeSettleEvent"
+  },
+  "production": [
+   "call:coding/extension/host/inproc/runner.go#boundaryBaseFields"
+  ],
+  "evidence": [
+   "test:coding/extension/host/inproc/upstream_dispatch_test.go#TestUpstreamRunnerBoundary",
+   "test:coding/session_boundaries_drafts_upstream_test.go#TestUpstreamSessionBoundariesDrafts"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "AgentBeforeSettleEvent: Go AgentBeforeSettleEvent has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#TurnEndEvent"
+  ],
+  "targets": [
+   "coding/extension/events.go#TurnEndEvent"
+  ],
+  "struct": {
+   "file": "coding/extension/events.go",
+   "type": "TurnEndEvent"
+  },
+  "production": [
+   "call:coding/extension/host/inproc/runner.go#boundaryBaseFields"
+  ],
+  "evidence": [
+   "test:coding/session_boundaries_accounting_upstream_test.go#TestUpstreamSessionBoundariesAccounting",
+   "test:coding/session_boundaries_drafts_upstream_test.go#TestUpstreamSessionBoundariesDrafts"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "TurnEndEvent: Go TurnEndEvent has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#CustomToolCallEvent"
+  ],
+  "targets": [
+   "coding/extension/events.go#CustomToolCallEvent"
+  ],
+  "struct": {
+   "file": "coding/extension/events.go",
+   "type": "CustomToolCallEvent"
+  },
+  "production": [
+   "call:coding/extension/marshalling.go#MarshalToolCallEvent"
+  ],
+  "evidence": [
+   "test:coding/session_tool_admission_upstream_test.go#TestSessionParallelPreflightAbortPreventsPreparedEffects",
+   "test:coding/extension/host/inproc/null_result_test.go#TestObserveOnlyHandlersReturnNoResult"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "CustomToolCallEvent: Go CustomToolCallEvent has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+ }
+]

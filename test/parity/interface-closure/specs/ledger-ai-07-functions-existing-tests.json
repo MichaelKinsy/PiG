@@ -1,0 +1,186 @@
+[
+ {
+  "ids": [
+   "pkg:ai/api/constrained-sampling#appendGrammarToolInputJsonDelta"
+  ],
+  "targets": [
+   "ai/constrained_sampling.go#appendGrammarToolInputJSONDelta"
+  ],
+  "production": [
+   "call:ai/openai.go#openAIProvider.parseSSE"
+  ],
+  "evidence": [
+   "test:ai/constrained_sampling_key_order_test.go#TestAppendGrammarToolInputJSONDeltaWritesLineTerminatorsRaw",
+   "test:ai/constrained_sampling_test.go#TestAppendGrammarToolInputJSONDelta"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "appendGrammarToolInputJsonDelta: Go appendGrammarToolInputJSONDelta has the upstream parameters and result (signatures reviewed; a throw is an error return and undefined is the zero value or a pointer); callers and tests attributed by go/types."
+ },
+ {
+  "ids": [
+   "pkg:ai/api/constrained-sampling#createGrammarToolInputProperties"
+  ],
+  "targets": [
+   "ai/constrained_sampling.go#createGrammarToolInputProperties"
+  ],
+  "production": [
+   "call:ai/openai.go#openAIProvider.Stream"
+  ],
+  "evidence": [
+   "test:ai/constrained_sampling_test.go#TestCreateGrammarToolInputProperties"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "createGrammarToolInputProperties: Go createGrammarToolInputProperties has the upstream parameters and result (signatures reviewed; a throw is an error return and undefined is the zero value or a pointer); callers and tests attributed by go/types."
+ },
+ {
+  "ids": [
+   "pkg:ai/api/constrained-sampling#getGrammarToolInput"
+  ],
+  "targets": [
+   "ai/constrained_sampling.go#getGrammarToolInput"
+  ],
+  "production": [
+   "call:ai/openai.go#convertCompletionsMessages"
+  ],
+  "evidence": [
+   "test:ai/constrained_sampling_test.go#TestGetGrammarToolInput"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "getGrammarToolInput: Go getGrammarToolInput has the upstream parameters and result (signatures reviewed; a throw is an error return and undefined is the zero value or a pointer); callers and tests attributed by go/types."
+ },
+ {
+  "ids": [
+   "pkg:ai/api/constrained-sampling#getJsonSchemaToolParameters"
+  ],
+  "targets": [
+   "ai/constrained_sampling.go#getJSONSchemaToolParameters"
+  ],
+  "production": [
+   "call:ai/anthropic.go#anthConvertTools"
+  ],
+  "evidence": [
+   "test:ai/schema_object_order_test.go#TestSchemaOrderHandlesEscapedPropertyPathsAndDoesNotAliasStrictOutput",
+   "test:ai/schema_object_order_test.go#TestSchemaOrderKeepsEveryKeyOfAWideObject"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "getJsonSchemaToolParameters: Go getJSONSchemaToolParameters has the upstream parameters and result (signatures reviewed; a throw is an error return and undefined is the zero value or a pointer); callers and tests attributed by go/types."
+ },
+ {
+  "ids": [
+   "pkg:ai/utils/provider-env#getProviderEnvValue"
+  ],
+  "targets": [
+   "ai/provider_env.go#getProviderEnvValue"
+  ],
+  "production": [
+   "call:ai/anthropic.go#resolveAnthropicCacheRetention"
+  ],
+  "evidence": [
+   "test:ai/provider_env_test.go#TestGetProviderEnvValue"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "getProviderEnvValue: Go getProviderEnvValue has the upstream parameters and result (signatures reviewed; a throw is an error return and undefined is the zero value or a pointer); callers and tests attributed by go/types."
+ },
+ {
+  "ids": [
+   "pkg:ai/.#repairJson",
+   "pkg:ai/compat#repairJson",
+   "pkg:ai/utils/json-parse#repairJson"
+  ],
+  "targets": [
+   "ai/json_repair.go#repairJSON"
+  ],
+  "production": [
+   "call:ai/anthropic_stream.go#anthropicParseJSON"
+  ],
+  "evidence": [
+   "test:ai/sse_json_parity_test.go#TestParseJSONWithRepairKeepsInvalidUnicodeEscapesInvalid"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "repairJson: Go repairJSON has the upstream parameters and result (signatures reviewed; a throw is an error return and undefined is the zero value or a pointer); callers and tests attributed by go/types."
+ },
+ {
+  "ids": [
+   "pkg:ai/api/google-shared#requiresToolCallId"
+  ],
+  "targets": [
+   "ai/google.go#requiresToolCallId"
+  ],
+  "production": [
+   "call:ai/google.go#geminiConvertMessages"
+  ],
+  "evidence": [
+   "test:ai/google_history_upstream_test.go#TestGoogleUnsignedToolCallsUpstream",
+   "test:ai/google_tool_call_id_test.go#TestRequiresToolCallId"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "requiresToolCallId: Go requiresToolCallId has the upstream parameters and result (signatures reviewed; a throw is an error return and undefined is the zero value or a pointer); callers and tests attributed by go/types."
+ },
+ {
+  "ids": [
+   "pkg:ai/api/google-shared#resolveGoogleThinkingLevel"
+  ],
+  "targets": [
+   "ai/google.go#resolveGoogleThinkingLevel"
+  ],
+  "production": [
+   "call:ai/google.go#buildGeminiThinkingConfig"
+  ],
+  "evidence": [
+   "test:ai/google_thinking_level_map_upstream_test.go#TestResolveGoogleThinkingLevelUpstream"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "resolveGoogleThinkingLevel: Go resolveGoogleThinkingLevel has the upstream parameters and result (signatures reviewed; a throw is an error return and undefined is the zero value or a pointer); callers and tests attributed by go/types."
+ },
+ {
+  "ids": [
+   "pkg:ai/api/constrained-sampling#resolveGrammarConstrainedSampling"
+  ],
+  "targets": [
+   "ai/constrained_sampling.go#resolveGrammarConstrainedSampling"
+  ],
+  "production": [
+   "call:ai/constrained_sampling.go#createGrammarToolInputProperties"
+  ],
+  "evidence": [
+   "test:ai/constrained_sampling_test.go#TestResolveGrammarConstrainedSampling",
+   "test:ai/trim_boundaries_test.go#TestGrammarDefinitionsUseECMAScriptTrim"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "resolveGrammarConstrainedSampling: Go resolveGrammarConstrainedSampling has the upstream parameters and result (signatures reviewed; a throw is an error return and undefined is the zero value or a pointer); callers and tests attributed by go/types."
+ },
+ {
+  "ids": [
+   "pkg:ai/api/constrained-sampling#resolveJsonSchemaStrictSampling"
+  ],
+  "targets": [
+   "ai/constrained_sampling.go#resolveJSONSchemaStrictSampling"
+  ],
+  "production": [
+   "call:ai/anthropic.go#anthConvertTools"
+  ],
+  "evidence": [
+   "test:ai/constrained_sampling_upstream_test.go#TestConstrainedSamplingUnsupportedSchemasUpstream",
+   "test:ai/anthropic_strict_keywords_test.go#TestStrictSamplingProviderKeywordCheck"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "resolveJsonSchemaStrictSampling: Go resolveJSONSchemaStrictSampling has the upstream parameters and result (signatures reviewed; a throw is an error return and undefined is the zero value or a pointer); callers and tests attributed by go/types."
+ },
+ {
+  "ids": [
+   "pkg:ai/utils/sanitize-unicode#sanitizeSurrogates"
+  ],
+  "targets": [
+   "ai/sanitize_unicode.go#sanitizeSurrogates"
+  ],
+  "production": [
+   "call:ai/anthropic.go#anthConvertMessagesDetailed"
+  ],
+  "evidence": [
+   "test:ai/bedrock_convert_boundaries_test.go#TestProviderSurrogateSanitizationPreservesValidScalars",
+   "test:ai/bedrock_test.go#TestBedrockSanitizeSurrogates"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "sanitizeSurrogates: Go sanitizeSurrogates has the upstream parameters and result (signatures reviewed; a throw is an error return and undefined is the zero value or a pointer); callers and tests attributed by go/types."
+ }
+]

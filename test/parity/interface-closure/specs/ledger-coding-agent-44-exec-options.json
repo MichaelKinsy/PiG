@@ -1,0 +1,48 @@
+[
+ {
+  "ids": [
+   "pkg:coding-agent/.#ExecOptions"
+  ],
+  "targets": [
+   "coding/extension/opaque_types.go#ExecOptions"
+  ],
+  "properties": {
+   "cwd": {
+    "targets": [
+     "coding/extension/opaque_types.go#ExecOptions.CWD"
+    ],
+    "evidence": [
+     "test:coding/extension/exec_test.go#TestExecCommand_CWDOverride"
+    ],
+    "rationale": "cwd is CWD string; empty uses the extension's working directory."
+   },
+   "timeout": {
+    "targets": [
+     "coding/extension/opaque_types.go#ExecOptions.Timeout"
+    ],
+    "evidence": [
+     "test:coding/extension/exec_test.go#TestExecCommand_Timeout",
+     "test:coding/extension/exec_test.go#TestExecCommand_TimeoutIsAJavaScriptNumber"
+    ],
+    "rationale": "timeout is Timeout float64 milliseconds (a JavaScript number: only a positive value starts a timer)."
+   },
+   "signal": {
+    "targets": [
+     "coding/extension/exec.go#ExecCommand"
+    ],
+    "evidence": [
+     "test:coding/extension/exec_test.go#TestExecCommand_ContextCancel"
+    ],
+    "rationale": "signal is the ctx argument of ExecCommand; cancelling it kills the child."
+   }
+  },
+  "production": [
+   "call:coding/extension/exec.go#ExecCommand"
+  ],
+  "evidence": [
+   "test:coding/extension/exec_test.go#TestExecCommand_Timeout"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "ExecOptions is extension.ExecOptions {Timeout, CWD}; ExecCommand takes opts as an optional pointer."
+ }
+]

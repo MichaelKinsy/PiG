@@ -15,6 +15,7 @@ import (
 
 	"github.com/MichaelKinsy/PiG/agent"
 	"github.com/MichaelKinsy/PiG/ai"
+	"github.com/MichaelKinsy/PiG/coding/extension"
 )
 
 // Port of upstream core/cache-warmer.ts.
@@ -76,7 +77,7 @@ func cacheWarmingEnvValue(name string, env ai.ProviderEnv) string {
 // derives budget_tokens from max_tokens, and Anthropic keys the message cache
 // on that budget, so only adaptive thinking replays safely.
 func IsReplayable(model *ai.Model, options ai.StreamOptions) bool {
-	reasoning := options.Thinking != "" && options.Thinking != ai.ThinkingOff
+	reasoning := options.Thinking != ""
 	if !reasoning || model.ProviderMeta.API != ai.APIAnthropicMessages {
 		return true
 	}
@@ -88,7 +89,7 @@ func IsReplayable(model *ai.Model, options ai.StreamOptions) bool {
 // branch, as reported by the provider.
 func lastPromptTokens(entries []SessionEntry) int {
 	for _, entry := range slices.Backward(entries) {
-		if entry.Base.Type != "message" {
+		if entry.Base().Type != "message" {
 			continue
 		}
 		var probe struct {
@@ -97,7 +98,7 @@ func lastPromptTokens(entries []SessionEntry) int {
 				Usage ai.Usage `json:"usage"`
 			} `json:"message"`
 		}
-		if json.Unmarshal(entry.raw, &probe) != nil || probe.Message.Role != "assistant" {
+		if json.Unmarshal(entry.Raw(), &probe) != nil || probe.Message.Role != "assistant" {
 			continue
 		}
 		usage := probe.Message.Usage
@@ -110,12 +111,12 @@ func price(model *ai.Model, usage ai.Usage) float64 {
 	return ai.CalculateCost(model, &usage).Total
 }
 
-// CacheWarmingAction is Pi's warm-or-stop decision.
-type CacheWarmingAction string
+// CacheWarmingAction is Pi's warm-or-stop decision, the one type the extension API carries (types.ts CacheWarmingDecisionEvent.action).
+type CacheWarmingAction = extension.CacheWarmingAction
 
 const (
-	CacheWarmingActionWarm CacheWarmingAction = "warm"
-	CacheWarmingActionStop CacheWarmingAction = "stop"
+	CacheWarmingActionWarm = extension.CacheWarmingActionWarm
+	CacheWarmingActionStop = extension.CacheWarmingActionStop
 )
 
 // CacheWarmingDecision holds the inputs and outcome of one warm-or-stop
@@ -140,16 +141,9 @@ type CacheWarmingDecision struct {
 	Action CacheWarmingAction `json:"action"`
 }
 
-// CacheWarmingDecisionEvent is fired before each refresh with Pi's decision
-// filled in; an extension may override Action. Field order matches the
-// payload upstream emits.
-type CacheWarmingDecisionEvent struct {
-	Type                    string             `json:"type"`
-	WarmCost                float64            `json:"warmCost"`
-	MissCost                float64            `json:"missCost"`
-	ContinuationProbability float64            `json:"continuationProbability"`
-	Action                  CacheWarmingAction `json:"action"`
-}
+// CacheWarmingDecisionEvent is fired before each refresh with Pi's decision filled in; an extension may override Action. It is the event
+// the extension API delivers to cache_warming_decision handlers.
+type CacheWarmingDecisionEvent = extension.CacheWarmingDecisionEvent
 
 // CacheWarmingStatus is the warmer state /session reports.
 type CacheWarmingStatus struct {
@@ -178,7 +172,7 @@ type CacheWarmRequest struct {
 // Pick<SessionManager, "appendUsage" | "getBranch">.
 type CacheWarmerSessionManager interface {
 	AppendUsage(kind, provider, model string, usage ai.Usage, note string) (UsageEntry, error)
-	GetBranch() []SessionEntry
+	GetBranch(fromID ...string) []SessionEntry
 }
 
 // CacheWarmingDecide lets an extension override a decision. An error falls

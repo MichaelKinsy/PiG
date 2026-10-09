@@ -4,13 +4,9 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/tui"
 )
-
-type workingIndicatorOptions struct {
-	Frames     []string `json:"frames"`
-	IntervalMs float64  `json:"intervalMs"`
-}
 
 // Only the active editor can opt into border status.
 // upstream: packages/coding-agent/src/modes/interactive/interactive-mode.ts:setEditorWorkingStatusIndicator
@@ -19,8 +15,14 @@ func (m *InteractiveMode) setEditorWorkingStatusIndicator(indicator *tui.StatusI
 		return false
 	}
 	if m.remoteEditor != nil {
-		m.editor.SetWorkingStatusIndicator(nil)
-		return m.remoteEditor.editor.EmbedWorkingStatus()
+		embeds := m.remoteEditor.editor.EmbedWorkingStatus()
+		// A delegated component draws its border through the host editor's own render (its `super.render`), so the indicator goes to that editor when the component opts in.
+		if embeds && m.editor.IsDelegated() {
+			m.editor.SetWorkingStatusIndicator(indicator)
+		} else {
+			m.editor.SetWorkingStatusIndicator(nil)
+		}
+		return embeds
 	}
 	if !m.editor.EmbedWorkingStatus {
 		indicator = nil
@@ -81,11 +83,11 @@ func (m *InteractiveMode) showCompactionStatusIndicator(reason string) {
 	case "overflow":
 		label = "Context overflow detected, Auto-compacting... "
 	}
-	m.showStatusIndicator(&tui.StatusIndicator{Kind: "compaction", Loader: tui.NewStyledLoader(tui.ActiveTheme().Accent, tui.ActiveTheme().Muted, label+m.statusCancelHint(), nil)})
+	m.showStatusIndicator(&tui.StatusIndicator{Kind: "compaction", Loader: tui.NewLoader(m.tuiInst, tui.ThemeFg("accent"), tui.ThemeFg("muted"), label+m.statusCancelHint(), nil)})
 }
 
 func (m *InteractiveMode) showBranchSummaryStatusIndicator() {
-	m.showStatusIndicator(&tui.StatusIndicator{Kind: "branchSummary", Loader: tui.NewStyledLoader(tui.ActiveTheme().Accent, tui.ActiveTheme().Muted, "Summarizing branch... "+m.statusCancelHint(), nil)})
+	m.showStatusIndicator(&tui.StatusIndicator{Kind: "branchSummary", Loader: tui.NewLoader(m.tuiInst, tui.ThemeFg("accent"), tui.ThemeFg("muted"), "Summarizing branch... "+m.statusCancelHint(), nil)})
 }
 
 // showRetryStatusIndicator owns one countdown until replacement, disposal, or shutdown.
@@ -130,8 +132,8 @@ func (m *InteractiveMode) showRetryStatusIndicator(attempt, maxAttempts, delayMs
 }
 
 func (m *InteractiveMode) statusFrameInterval() time.Duration {
-	if m.activeStatusIndicator != nil && m.activeStatusIndicator.Kind == "working" && m.workingIndicatorOptions != nil && m.workingIndicatorOptions.IntervalMs > 0 {
-		return max(time.Millisecond, time.Duration(m.workingIndicatorOptions.IntervalMs*float64(time.Millisecond)))
+	if m.activeStatusIndicator != nil && m.activeStatusIndicator.Kind == "working" && m.workingIndicatorOptions != nil && m.workingIndicatorOptions.IntervalMs != nil && *m.workingIndicatorOptions.IntervalMs > 0 {
+		return max(time.Millisecond, time.Duration(*m.workingIndicatorOptions.IntervalMs*float64(time.Millisecond)))
 	}
 	return 80 * time.Millisecond // upstream: tui/src/components/loader.ts:DEFAULT_INTERVAL_MS
 }
@@ -151,14 +153,20 @@ func (m *InteractiveMode) resetSpinnerInterval() {
 }
 
 func (m *InteractiveMode) applyWorkingIndicatorOptions(indicator *tui.StatusIndicator) {
-	var frames []string
-	if options := m.workingIndicatorOptions; options != nil {
-		frames = options.Frames
+	var options *tui.LoaderIndicatorOptions
+	if working := m.workingIndicatorOptions; working != nil {
+		options = &tui.LoaderIndicatorOptions{}
+		if working.Frames != nil {
+			options.Frames = *working.Frames
+		}
+		if working.IntervalMs != nil {
+			options.IntervalMs = *working.IntervalMs
+		}
 	}
-	indicator.SetIndicator(frames, m.workingIndicatorOptions != nil)
+	indicator.SetIndicator(options)
 }
 
-func (m *InteractiveMode) setWorkingIndicator(options *workingIndicatorOptions) {
+func (m *InteractiveMode) setWorkingIndicator(options *extension.WorkingIndicatorOptions) {
 	m.workingIndicatorOptions = options
 	if indicator := m.activeStatusIndicator; indicator != nil && indicator.Kind == "working" {
 		m.applyWorkingIndicatorOptions(indicator)

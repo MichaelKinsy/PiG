@@ -12,11 +12,11 @@ import (
 
 // ActivateBuiltinClientServices acquires the actual remote service facades and waits for both namespaces to hydrate. As upstream's context-free activation does, initial readiness uses the background context; subsequent operations retain their caller context.
 func ActivateBuiltinClientServices(_ context.Context, server *ClientRuntimeServer) (*ActivatedClientRuntimeServer, error) {
-	serverServices, err := server.Server.Open(chord.RemoteServiceSourceOpenOptions{Services: []string{services.SessionDirectoryDefinition.Id(), services.SessionManagementDefinition.Id(), services.PresentationPluginsDefinition.Id()}})
+	serverServices, err := server.Server.Open(chord.RemoteServiceSourceOpenOptions{Services: []chord.ServiceReference{services.SessionDirectoryDefinition, services.SessionManagementDefinition, services.PresentationPluginsDefinition}})
 	if err != nil {
 		return nil, err
 	}
-	sessionServices, err := server.Session.Open(chord.RemoteServiceSourceOpenOptions{Services: []string{services.ModelsDefinition.Id(), services.AgentControllerDefinition.Id(), services.TranscriptDefinition.Id()}})
+	sessionServices, err := server.Session.Open(chord.RemoteServiceSourceOpenOptions{Services: []chord.ServiceReference{services.ModelsDefinition, services.AgentControllerDefinition, services.TranscriptDefinition}})
 	if err != nil {
 		return nil, err
 	}

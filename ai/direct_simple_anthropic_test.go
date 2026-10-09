@@ -13,7 +13,7 @@ func TestDirectSimpleAnthropicSelectedModel(t *testing.T) {
 	for _, tc := range []struct {
 		name     string
 		adaptive bool
-		level    ThinkingLevel
+		level    ModelThinkingLevel
 		thinking string
 		output   string
 	}{
@@ -23,10 +23,10 @@ func TestDirectSimpleAnthropicSelectedModel(t *testing.T) {
 		{"budget", false, ThinkingMedium, `{"type":"enabled","display":"summarized","budget_tokens":8192}`, ""},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			model := &Model{ID: "vendor--claude-opus-latest", DisplayName: "Vendor Proxy Opus Latest", Capabilities: ModelCapabilities{MaxThinking: ThinkingHigh, ContextWindow: 200000, MaxOutputTokens: 32000}, Input: []string{"text"}, ProviderMeta: ProviderMetadata{ProviderID: "vendor-proxy", API: APIAnthropicMessages, BaseURL: "http://127.0.0.1:9", Reasoning: true, Compat: &ModelCompat{ForceAdaptiveThinking: new(tc.adaptive)}}}
+			model := &Model{ID: "vendor--claude-opus-latest", DisplayName: "Vendor Proxy Opus Latest", Capabilities: ModelCapabilities{MaxThinking: ThinkingLevelHigh, ContextWindow: 200000, MaxOutputTokens: 32000}, Input: []string{"text"}, ProviderMeta: ProviderMetadata{ProviderID: "vendor-proxy", API: APIAnthropicMessages, BaseURL: "http://127.0.0.1:9", Reasoning: true, Compat: &ModelCompat{ForceAdaptiveThinking: new(tc.adaptive)}}}
 			captured := errors.New("payload captured")
 			var payload map[string]json.RawMessage
-			stream, err := StreamSimple(t.Context(), model, NormalizeContext(Context{Messages: []Message{UserMessage{Content: UserText("Hello")}}}), StreamOptions{APIKey: "fake-key", Thinking: tc.level, OnPayload: func(value any, _ *Model) (any, error) {
+			stream, err := StreamSimple(t.Context(), model, NormalizeContext(Context{Messages: []Message{UserMessage{Content: UserText("Hello")}}}), StreamOptions{APIKey: "fake-key", Thinking: tc.level.ReasoningOption(), OnPayload: func(value any, _ *Model) (any, error) {
 				encoded, err := json.Marshal(value)
 				if err != nil {
 					return nil, err

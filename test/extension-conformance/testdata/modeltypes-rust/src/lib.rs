@@ -4,7 +4,7 @@
 
 use pig_sdk::{
     APIKeyAuth, AuthResult, Color, Extension, ModelRoute, Provider, ProviderAuth, ProviderOperationFn, ProviderOperations,
-    TextAttributes, ThemeAppearance, ThemeSlot, ThemeStyle, ToolResult, VirtualModel, empty_schema,
+    TextAttributes, ThemeAppearance, Theme, ThemeSlot, ThemeStyle, ToolResult, VirtualModel, empty_schema,
 };
 use serde_json::{Value, json};
 use std::sync::Arc;
@@ -35,9 +35,10 @@ fn classify_impl(model: Arc<Value>, request: Value, options: pig_sdk::ProviderOp
         }
         _ => {}
     }
+    let images = request["images"].as_array().map(|images| images.len()).unwrap_or(0);
     let mut answers = serde_json::Map::new();
     for key in request["questions"].as_object().map(|q| q.keys().rev().cloned().collect::<Vec<_>>()).unwrap_or_default() {
-        answers.insert(key, json!({"type": "bool", "probability": state.len() as f64 / 100.0}));
+        answers.insert(key, json!({"type": "bool", "probability": (state.len() + 10 * images) as f64 / 100.0}));
     }
     Ok(json!({"api": model["api"], "provider": model["provider"], "model": model["id"], "answers": answers, "stopReason": "stop", "timestamp": 2}))
 }
@@ -76,6 +77,8 @@ fn pixels() -> Provider {
         },
         get_models: Arc::new(move || Ok(models.clone())),
         filter_models: None,
+        get_all_models: None,
+        filter_all_models: None,
         refresh_models: None,
         stream: unused.clone(),
         stream_simple: unused,
@@ -164,9 +167,12 @@ pub fn new_extension() -> Extension {
         };
         let result = registry.classify(&model, approval_context("Looks good"), Some(json!({"apiKey": "sk-conf"})));
         let failed = registry.classify(&model, approval_context("fail"), None);
+        let mut shown = approval_context("Looks good");
+        shown["images"] = json!([{"type": "image", "data": "aW1hZ2U=", "mimeType": "image/png"}]);
+        let with_images = registry.classify(&model, shown, None);
         ToolResult::text(json!({
             "stop": result["stopReason"], "answers": result["answers"].as_object().map(|a| a.keys().cloned().collect::<Vec<_>>()),
-            "approved": result["answers"]["approved"]["probability"], "model": result["model"],
+            "approved": result["answers"]["approved"]["probability"], "imagesApproved": with_images["answers"]["approved"]["probability"], "model": result["model"],
             "failedStop": failed["stopReason"], "failedMessage": failed["errorMessage"], "failedProvider": failed["provider"],
         }).to_string())
     });
@@ -204,7 +210,7 @@ pub fn new_extension() -> Extension {
         }).collect()).unwrap_or_default();
         let colors = theme.colors();
         let tokens: serde_json::Map<String, Value> = args["tokens"].as_array().map(|tokens| tokens.iter().filter_map(Value::as_str).map(|token| (token.to_string(), colors.get(token).map(color_json).unwrap_or(Value::Null))).collect()).unwrap_or_default();
-        let fgs: serde_json::Map<String, Value> = args["fgTokens"].as_array().map(|tokens| tokens.iter().filter_map(Value::as_str).map(|token| (token.to_string(), Value::String(theme.fg(token, "x")))).collect()).unwrap_or_default();
+        let fgs: serde_json::Map<String, Value> = args["fgTokens"].as_array().map(|tokens| tokens.iter().filter_map(Value::as_str).map(|token| (token.to_string(), Value::String(theme_fg(&theme, token)))).collect()).unwrap_or_default();
         let appearance = theme.appearance().map(|value| match value { ThemeAppearance::Light => "light", ThemeAppearance::Dark => "dark" });
         ToolResult::text(json!({"appearance": appearance, "colors": tokens, "styles": styles, "fgs": fgs}).to_string())
     });
@@ -249,4 +255,12 @@ pub fn new_extension() -> Extension {
         ToolResult::text(json!({"cancelled": CANCELLED.load(Ordering::SeqCst)}).to_string())
     });
     ext
+}
+
+// theme.fg(token, "x"), or "throw:" and the message when the SDK panics, so one unknown token does not hide the others.
+fn theme_fg(theme: &Theme, token: &str) -> String {
+    std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| theme.fg(token, "x"))).unwrap_or_else(|payload| {
+        let message = payload.downcast_ref::<String>().cloned().or_else(|| payload.downcast_ref::<&str>().map(|text| text.to_string())).unwrap_or_default();
+        format!("throw:{message}")
+    })
 }

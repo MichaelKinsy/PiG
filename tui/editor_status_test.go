@@ -1,5 +1,7 @@
 package tui
 
+// pi: packages/coding-agent/src/modes/interactive/components/status-indicator.ts
+
 import (
 	"strings"
 	"testing"
@@ -9,7 +11,7 @@ import (
 
 func TestEditorStatusBorderOptInAndWidth(t *testing.T) {
 	editor := NewEditor()
-	indicator := &StatusIndicator{Kind: "working", Loader: NewStyledLoader(ActiveTheme().Accent, ActiveTheme().Muted, "Working", nil)}
+	indicator := &StatusIndicator{Kind: "working", Loader: NewLoader(nil, ThemeFg("accent"), ThemeFg("muted"), "Working", nil)}
 	editor.SetWorkingStatusIndicator(indicator)
 	if got := widthx.StripAnsi(editor.Render(20)[0]); got != strings.Repeat("─", 20) {
 		t.Fatalf("opt-out border=%q", got)
@@ -37,7 +39,7 @@ func TestEditorStatusBorderOptInAndWidth(t *testing.T) {
 func TestEditorStatusPreservesCenteredOverflow(t *testing.T) {
 	editor := NewEditor()
 	editor.EmbedWorkingStatus = true
-	editor.SetWorkingStatusIndicator(&StatusIndicator{Kind: "working", Loader: NewLoader("Working")})
+	editor.SetWorkingStatusIndicator(&StatusIndicator{Kind: "working", Loader: NewLoader(nil, nil, nil, "Working", nil)})
 	for _, tc := range []struct {
 		width int
 		want  string
@@ -66,7 +68,7 @@ func TestIdleStatusReservesStandaloneRows(t *testing.T) {
 func BenchmarkEditorStatusBorder(b *testing.B) {
 	editor := NewEditor()
 	editor.EmbedWorkingStatus = true
-	editor.SetWorkingStatusIndicator(&StatusIndicator{Kind: "working", Loader: NewLoader("Working")})
+	editor.SetWorkingStatusIndicator(&StatusIndicator{Kind: "working", Loader: NewLoader(nil, nil, nil, "Working", nil)})
 	b.ReportAllocs()
 	for b.Loop() {
 		editor.Render(120)
@@ -92,7 +94,7 @@ func TestStatusBorderUsesJavaScriptTrimEnd(t *testing.T) {
 func TestEditorStatusIndicatorChangeDefeatsChildCache(t *testing.T) {
 	editor := NewEditor()
 	editor.EmbedWorkingStatus = true
-	indicator := &StatusIndicator{Kind: "working", Loader: NewLoader("Working")}
+	indicator := &StatusIndicator{Kind: "working", Loader: NewLoader(nil, nil, nil, "Working", nil)}
 	editor.SetWorkingStatusIndicator(indicator)
 	root := NewContainer(editor)
 	border := func() string { return widthx.StripAnsi(root.Render(40)[0]) }
@@ -126,7 +128,7 @@ func TestEditorStatusIndicatorChangeDefeatsChildCache(t *testing.T) {
 func TestLoaderRelabelDefeatsChildCache(t *testing.T) {
 	editor := NewEditor()
 	editor.EmbedWorkingStatus = true
-	indicator := &StatusIndicator{Kind: "retry", Loader: NewLoader("Retrying (1/3) in 3s...")}
+	indicator := &StatusIndicator{Kind: "retry", Loader: NewLoader(nil, nil, nil, "Retrying (1/3) in 3s...", nil)}
 	editor.SetWorkingStatusIndicator(indicator)
 	root := NewContainer(editor)
 	border := func() string { return widthx.StripAnsi(root.Render(60)[0]) }
@@ -137,11 +139,11 @@ func TestLoaderRelabelDefeatsChildCache(t *testing.T) {
 		t.Fatalf("border after SetMessage=%q", got)
 	}
 	indicator.Tick()
-	indicator.SetIndicator([]string{}, true)
+	indicator.SetIndicator(&LoaderIndicatorOptions{Frames: []string{}})
 	if got := border(); !strings.Contains(got, "── Retrying (1/3) in 2s...") {
 		t.Fatalf("border after hiding the indicator=%q", got)
 	}
-	indicator.SetIndicator(nil, false)
+	indicator.SetIndicator(nil)
 	if indicator.Frame != 0 || len(indicator.Frames) != len(DefaultSpinnerFrames) || indicator.IndicatorVerbatim {
 		t.Fatalf("nil frames did not restore the default indicator: %+v", indicator.Loader)
 	}

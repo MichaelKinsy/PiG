@@ -1,5 +1,4 @@
 #!/usr/bin/env bash
-# SPDX-FileCopyrightText: Copyright Hewlett Packard Enterprise Development LP
 # SPDX-License-Identifier: MIT
 set -euo pipefail
 
@@ -12,7 +11,9 @@ set -euo pipefail
 # against it. Each apt call has its own deadline, and timeout kills a call that ignores
 # SIGTERM. The whole script stays inside one budget (default 480s) that fits the 10-minute workflow step limit:
 # every deadline is capped by the budget that remains, so retries cannot outlive the step.
-# APT_SOURCES_DIR, APT_SOURCES_LIST, APT_BUDGET_SECONDS and SUDO exist so a test can run this script without root.
+# APT_SOURCES_DIR, APT_SOURCES_LIST, APT_BUDGET_SECONDS, APT_CLOCK and SUDO exist so a test can run this script without root
+# and without its deadlines depending on how long the machine takes. APT_CLOCK names a command that prints the elapsed seconds;
+# without it the script reads bash's SECONDS.
 
 if [ "$#" -eq 0 ]; then
   echo "usage: automation/ci/install-apt-packages.sh <package>..." >&2
@@ -30,11 +31,16 @@ kill_after=10
 update_limit=90
 install_limit=150
 attempts=3
-deadline=$((SECONDS + budget))
+
+# now prints the elapsed seconds that the budget counts.
+now() {
+  if [ -n "${APT_CLOCK:-}" ]; then "$APT_CLOCK"; else echo "$SECONDS"; fi
+}
+deadline=$(($(now) + budget))
 
 # run_apt <seconds> <apt-get args...> runs apt-get under the smaller of <seconds> and the remaining budget, plus the kill grace.
 run_apt() {
-  local limit="$1" left=$((deadline - SECONDS - kill_after))
+  local limit="$1" left=$((deadline - $(now) - kill_after))
   shift
   [ "$left" -lt "$limit" ] && limit="$left"
   if [ "$limit" -lt 1 ]; then
@@ -88,7 +94,7 @@ for attempt in $(seq 1 "$attempts"); do
     use_public || true
   fi
   echo "apt attempt $attempt of $attempts failed" >&2
-  if [ "$attempt" -lt "$attempts" ] && [ $((deadline - SECONDS)) -gt $((attempt * 10 + kill_after)) ]; then
+  if [ "$attempt" -lt "$attempts" ] && [ $((deadline - $(now))) -gt $((attempt * 10 + kill_after)) ]; then
     sleep $((attempt * 10))
   fi
 done

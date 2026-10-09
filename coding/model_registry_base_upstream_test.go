@@ -12,14 +12,14 @@ import (
 
 func registryModelsForProvider(registry *ModelRegistry, id string) []icodingagent.ModelEntry {
 	var models []icodingagent.ModelEntry
-	for _, model := range registry.GetAll() {
-		if model.ProviderID == id {
-			models = append(models, model)
+	for _, model := range registry.GetAllModelData() {
+		if entry := icodingagent.NativeModelEntry(model); entry.ProviderID == id {
+			models = append(models, entry)
 		}
 	}
 	return models
 }
-func writeRegistryModels(t *testing.T, services *Services, providers map[string]any) {
+func writeRegistryModels(t *testing.T, services *AgentSessionServices, providers map[string]any) {
 	t.Helper()
 	data, err := json.Marshal(map[string]any{"providers": providers})
 	if err != nil {
@@ -41,10 +41,10 @@ func TestModelRegistryBaseOverridesUpstream(t *testing.T) {
 	for _, tc := range []struct {
 		name   string
 		config map[string]any
-		check  func(*testing.T, *Services)
+		check  func(*testing.T, *AgentSessionServices)
 	}{
 		// .upstream/v0.87.1/packages/coding-agent/test/model-registry.test.ts:95
-		{"overriding baseUrl keeps all built-in models", map[string]any{"anthropic": map[string]any{"baseUrl": "https://my-proxy.example.com/v1"}}, func(t *testing.T, s *Services) {
+		{"overriding baseUrl keeps all built-in models", map[string]any{"anthropic": map[string]any{"baseUrl": "https://my-proxy.example.com/v1"}}, func(t *testing.T, s *AgentSessionServices) {
 			models := registryModelsForProvider(s.Registry(), "anthropic")
 			if len(models) <= 1 {
 				t.Fatal("builtin catalog lost")
@@ -60,7 +60,7 @@ func TestModelRegistryBaseOverridesUpstream(t *testing.T) {
 			}
 		}},
 		// .upstream/v0.87.1/packages/coding-agent/test/model-registry.test.ts:108
-		{"overriding baseUrl changes URL on all built-in models", map[string]any{"anthropic": map[string]any{"baseUrl": "https://my-proxy.example.com/v1"}}, func(t *testing.T, s *Services) {
+		{"overriding baseUrl changes URL on all built-in models", map[string]any{"anthropic": map[string]any{"baseUrl": "https://my-proxy.example.com/v1"}}, func(t *testing.T, s *AgentSessionServices) {
 			for _, m := range registryModelsForProvider(s.Registry(), "anthropic") {
 				if m.BaseURL != "https://my-proxy.example.com/v1" {
 					t.Errorf("baseUrl=%q", m.BaseURL)
@@ -68,7 +68,7 @@ func TestModelRegistryBaseOverridesUpstream(t *testing.T) {
 			}
 		}},
 		// .upstream/v0.87.1/packages/coding-agent/test/model-registry.test.ts:122
-		{"overriding headers resolves at request time", map[string]any{"anthropic": map[string]any{"baseUrl": "https://my-proxy.example.com/v1", "headers": map[string]string{"X-Custom-Header": "custom-value"}}}, func(t *testing.T, s *Services) {
+		{"overriding headers resolves at request time", map[string]any{"anthropic": map[string]any{"baseUrl": "https://my-proxy.example.com/v1", "headers": map[string]string{"X-Custom-Header": "custom-value"}}}, func(t *testing.T, s *AgentSessionServices) {
 			for _, m := range registryModelsForProvider(s.Registry(), "anthropic") {
 				auth := s.Registry().GetAPIKeyAndHeaders(t.Context(), s.Registry().Find(m.ProviderID, m.ModelID))
 				if !auth.OK || auth.Headers["X-Custom-Header"] == nil || *auth.Headers["X-Custom-Header"] != "custom-value" {
@@ -77,7 +77,7 @@ func TestModelRegistryBaseOverridesUpstream(t *testing.T) {
 			}
 		}},
 		// .upstream/v0.87.1/packages/coding-agent/test/model-registry.test.ts:141
-		{"headers-only override resolves at request time", map[string]any{"anthropic": map[string]any{"headers": map[string]string{"X-Custom-Header": "custom-value"}}}, func(t *testing.T, s *Services) {
+		{"headers-only override resolves at request time", map[string]any{"anthropic": map[string]any{"headers": map[string]string{"X-Custom-Header": "custom-value"}}}, func(t *testing.T, s *AgentSessionServices) {
 			if s.Registry().GetError() != "" {
 				t.Fatal(s.Registry().GetError())
 			}
@@ -89,14 +89,14 @@ func TestModelRegistryBaseOverridesUpstream(t *testing.T) {
 			}
 		}},
 		// .upstream/v0.87.1/packages/coding-agent/test/model-registry.test.ts:177
-		{"baseUrl-only override does not affect other providers", map[string]any{"anthropic": map[string]any{"baseUrl": "https://my-proxy.example.com/v1"}}, func(t *testing.T, s *Services) {
+		{"baseUrl-only override does not affect other providers", map[string]any{"anthropic": map[string]any{"baseUrl": "https://my-proxy.example.com/v1"}}, func(t *testing.T, s *AgentSessionServices) {
 			models := registryModelsForProvider(s.Registry(), "google")
 			if len(models) == 0 || models[0].BaseURL == "https://my-proxy.example.com/v1" {
 				t.Fatalf("Google models=%+v", models)
 			}
 		}},
 		// .upstream/v0.87.1/packages/coding-agent/test/model-registry.test.ts:190
-		{"can mix baseUrl override and models merge", map[string]any{"anthropic": map[string]any{"baseUrl": "https://anthropic-proxy.example.com/v1"}, "google": registryProviderConfig("https://google-proxy.example.com/v1", "google-generative-ai", "gemini-custom")}, func(t *testing.T, s *Services) {
+		{"can mix baseUrl override and models merge", map[string]any{"anthropic": map[string]any{"baseUrl": "https://anthropic-proxy.example.com/v1"}, "google": registryProviderConfig("https://google-proxy.example.com/v1", "google-generative-ai", "gemini-custom")}, func(t *testing.T, s *AgentSessionServices) {
 			anthropic := registryModelsForProvider(s.Registry(), "anthropic")
 			google := registryModelsForProvider(s.Registry(), "google")
 			if len(anthropic) <= 1 || anthropic[0].BaseURL != "https://anthropic-proxy.example.com/v1" || len(google) <= 1 || s.Registry().Find("google", "gemini-custom") == nil {
@@ -109,7 +109,7 @@ func TestModelRegistryBaseOverridesUpstream(t *testing.T) {
 	// .upstream/v0.87.1/packages/coding-agent/test/model-registry.test.ts:163
 	t.Run("unconfigured compatibility auth includes static model headers", func(t *testing.T) {
 		registry := registryTestServices(t, "", nil).Registry()
-		base := registry.GetAll()[0]
+		base := icodingagent.NativeModelEntry(registry.GetAll()[0])
 		model := registry.Find(base.ProviderID, base.ModelID)
 		model.ProviderMeta.ProviderID = "missing-provider"
 		model.ProviderMeta.Headers = map[string]string{"X-Static-Model": "static-value"}

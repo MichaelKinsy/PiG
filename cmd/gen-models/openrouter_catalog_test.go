@@ -19,12 +19,7 @@ func openRouterFixtures() (imageOnly, chatWithImages, chatOnly, decisionModel op
 		InputModalities  []string `json:"input_modalities"`
 		OutputModalities []string `json:"output_modalities"`
 	}{InputModalities: []string{"text", "image"}, OutputModalities: []string{"image"}}
-	imageOnly.Pricing = &struct {
-		Prompt          string `json:"prompt"`
-		Completion      string `json:"completion"`
-		InputCacheRead  string `json:"input_cache_read"`
-		InputCacheWrite string `json:"input_cache_write"`
-	}{Prompt: "0.000001", Completion: "0.000002"}
+	imageOnly.Pricing = &openRouterPricing{Prompt: "0.000001", Completion: "0.000002"}
 
 	chatWithImages = openRouterModelListItem{ID: "example/multimodal", Name: "Example Multimodal", SupportedParameters: []string{"tools"}, ContextLength: 32000}
 	chatWithImages.Architecture = &struct {
@@ -46,12 +41,7 @@ func openRouterFixtures() (imageOnly, chatWithImages, chatOnly, decisionModel op
 		InputModalities  []string `json:"input_modalities"`
 		OutputModalities []string `json:"output_modalities"`
 	}{Modality: "text->decisions", InputModalities: []string{"text"}, OutputModalities: []string{"decisions"}}
-	decisionModel.Pricing = &struct {
-		Prompt          string `json:"prompt"`
-		Completion      string `json:"completion"`
-		InputCacheRead  string `json:"input_cache_read"`
-		InputCacheWrite string `json:"input_cache_write"`
-	}{Prompt: "0.000000042", Completion: "0"}
+	decisionModel.Pricing = &openRouterPricing{Prompt: "0.000000042", Completion: "0"}
 	decisionModel.TopProvider = &struct {
 		ContextLength       int `json:"context_length"`
 		MaxCompletionTokens int `json:"max_completion_tokens"`
@@ -229,12 +219,7 @@ func TestOpenRouterModalitiesFilterAndDeduplicate(t *testing.T) {
 // {"input":0,"output":0,"cacheRead":0,"cacheWrite":0}: "-0" rounds to +0 and "-1e-13" to -0 (toFixed keeps the sign).
 func TestOpenRouterCostSerializesNegativeZeroAsZero(t *testing.T) {
 	model := openRouterModelListItem{ID: "vendor/negative", Name: "Negative", SupportedParameters: []string{"tools"}}
-	model.Pricing = &struct {
-		Prompt          string `json:"prompt"`
-		Completion      string `json:"completion"`
-		InputCacheRead  string `json:"input_cache_read"`
-		InputCacheWrite string `json:"input_cache_write"`
-	}{Prompt: "-0", Completion: "-1e-13", InputCacheRead: "-0.0000000000001"}
+	model.Pricing = &openRouterPricing{Prompt: "-0", Completion: "-1e-13", InputCacheRead: "-0.0000000000001"}
 	catalog := buildOpenRouterCatalog([]openRouterModelListItem{model}, nil, nil)
 	encoded, err := json.Marshal(catalog.Chat[0].Cost)
 	if err != nil {
@@ -242,5 +227,47 @@ func TestOpenRouterCostSerializesNegativeZeroAsZero(t *testing.T) {
 	}
 	if want := `{"input":0,"output":0,"cacheRead":0,"cacheWrite":0}`; string(encoded) != want {
 		t.Fatalf("cost = %s, want %s", encoded, want)
+	}
+}
+
+// Cases mirror packages/ai/test/model-cost-tiers.test.ts "OpenRouter pricing overrides" (Pi 1.1.0).
+func openRouterChatCost(t *testing.T, pricing string) jsonCost {
+	t.Helper()
+	var parsed openRouterPricing
+	if err := json.Unmarshal([]byte(pricing), &parsed); err != nil {
+		t.Fatal(err)
+	}
+	catalog := buildOpenRouterCatalog([]openRouterModelListItem{{ID: "anthropic/claude-haiku-5.5", Name: "Claude Haiku 5.5", SupportedParameters: []string{"tools"}, Pricing: &parsed}}, nil, nil)
+	if len(catalog.Chat) != 1 {
+		t.Fatalf("chat models = %d, want 1", len(catalog.Chat))
+	}
+	return catalog.Chat[0].Cost
+}
+
+func TestOpenRouterPricingOverridesTurnPromptLengthOverridesIntoTiers(t *testing.T) {
+	got := openRouterChatCost(t, `{"prompt":"0.0000001","completion":"0.0000005","input_cache_read":"0.00000001","input_cache_write":"0.000000125",
+		"overrides":[{"min_prompt_tokens":100000,"prompt":"0.0000005","completion":"0.0000025","input_cache_read":"0.00000005","input_cache_write":"0.000000625"}]}`)
+	want := jsonCost{Input: 0.1, Output: 0.5, CacheRead: 0.01, CacheWrite: 0.125, Tiers: []jsonCostTier{{InputTokensAbove: 100000, Input: 0.5, Output: 2.5, CacheRead: 0.05, CacheWrite: 0.625}}}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("cost = %+v, want %+v", got, want)
+	}
+}
+
+func TestOpenRouterPricingOverridesKeepBaseRatesMissingFromAnOverride(t *testing.T) {
+	got := openRouterChatCost(t, `{"prompt":"0.000002","completion":"0.000012","input_cache_read":"0.0000002","input_cache_write":"0.000000375",
+		"overrides":[{"min_prompt_tokens":200000,"prompt":"0.000004","completion":"0.000018"}]}`).Tiers
+	want := []jsonCostTier{{InputTokensAbove: 200000, Input: 4, Output: 18, CacheRead: 0.2, CacheWrite: 0.375}}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("tiers = %+v, want %+v", got, want)
+	}
+}
+
+func TestOpenRouterPricingOverridesSkipTimeOfDayOverrides(t *testing.T) {
+	got := openRouterChatCost(t, `{"prompt":"0.000000132","completion":"0.000000528","overrides":[
+		{"utc_start":0,"utc_end":1600,"prompt":"0.000000132","completion":"0.000000528"},
+		{"utc_days":["saturday"],"min_prompt_tokens":1000,"prompt":"0.0000001"}]}`)
+	want := jsonCost{Input: 0.132, Output: 0.528}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("cost = %+v, want %+v", got, want)
 	}
 }

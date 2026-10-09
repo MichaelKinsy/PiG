@@ -24,7 +24,7 @@ func TestBatch2SelectedModelDataSurvivesCustomFetchConstruction(t *testing.T) {
 			} else {
 				provider = NewOpenAIResponsesProvider(OpenAIResponsesConfig{APIKey: "key", Model: selected.ID, ProviderID: "openai", ModelMetadata: selected, ThinkingLevelMap: legacy, IsReasoning: true})
 			}
-			payload := captureSamplingPayload(t, provider, NormalizeContext(Context{Messages: []Message{UserMessage{Content: UserContentBlocks{TextContent{Text: "describe"}, ImageContent{Data: "ZmFrZQ==", MimeType: "image/png"}}}}}), StreamOptions{Thinking: ThinkingHigh, IsReasoning: true})
+			payload := captureSamplingPayload(t, provider, NormalizeContext(Context{Messages: []Message{UserMessage{Content: UserContentBlocks{TextContent{Text: "describe"}, ImageContent{Data: "ZmFrZQ==", MimeType: "image/png"}}}}}), StreamOptions{Thinking: ThinkingLevelHigh, IsReasoning: true})
 			if api == APIOpenAICompletions {
 				if payload["reasoning_effort"] != "selected-high" {
 					t.Fatalf("selected effort lost: %#v", payload)

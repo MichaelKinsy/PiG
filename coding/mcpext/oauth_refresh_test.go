@@ -1,5 +1,7 @@
 package mcpext_test
 
+// pi: packages/coding-agent/src/extensions/mcp/oauth.ts
+
 import (
 	"context"
 	"errors"
@@ -10,6 +12,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/MichaelKinsy/PiG/coding/mcpext"
 	"github.com/MichaelKinsy/PiG/mcp"
@@ -254,5 +257,46 @@ func TestMCPOAuthSignInUsesTheConfiguredAuthorizationServerMetadataURL(t *testin
 	})
 	if err == nil || !strings.Contains(err.Error(), "HTTP 404 loading authorization server metadata") {
 		t.Fatalf("err = %v", err)
+	}
+}
+
+// #10565 (oauth.ts signInMcpServer): ending the context stops the sign-in at any step with McpSignInCancelledError, also while the authorization server hangs, and a context that already ended never starts it.
+func TestMCPOAuthSignInEndsWithACancellationWhenItsContextEnds(t *testing.T) {
+	server := startOAuthMcpServer(t)
+	server.stallPath("/.well-known/oauth-authorization-server")
+	store, err := mcpext.NewMcpOAuthCredentialStoreWithBackend(&mcpext.InMemoryAuthStorageBackend{}, t.TempDir()).ForServer("test", server.URL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	options := mcpext.SignInOptions{ServerURL: server.URL, Store: store, Prompt: followPrompt{}}
+
+	ended, end := context.WithCancel(t.Context())
+	end()
+	if err := mcpext.SignInMcpServer(ended, options); !isSignInCancelled(err) {
+		t.Fatalf("sign-in with an ended context = %v", err)
+	}
+	if server.stalledCount() != 0 {
+		t.Fatal("a sign-in with an ended context made a request")
+	}
+
+	ctx, cancel := context.WithCancel(t.Context())
+	defer cancel()
+	done := make(chan error, 1)
+	go func() { done <- mcpext.SignInMcpServer(ctx, options) }()
+	deadline := time.Now().Add(10 * time.Second)
+	for server.stalledCount() == 0 {
+		if time.Now().After(deadline) {
+			t.Fatal("the sign-in never reached the stalled request")
+		}
+		time.Sleep(time.Millisecond)
+	}
+	cancel()
+	select {
+	case err := <-done:
+		if !isSignInCancelled(err) {
+			t.Fatalf("sign-in error = %v, want McpSignInCancelledError", err)
+		}
+	case <-time.After(10 * time.Second):
+		t.Fatal("the sign-in ignored its cancelled context")
 	}
 }

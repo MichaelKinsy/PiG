@@ -1,0 +1,84 @@
+[
+ {
+  "ids": [
+   "pkg:coding-agent/.#EditToolOptions"
+  ],
+  "targets": [
+   "internal/codingagent/tools/edit.go#EditTool"
+  ],
+  "properties": {
+   "operations": {
+    "targets": [
+     "internal/codingagent/tools/edit.go#EditTool.Operations"
+    ],
+    "evidence": [
+     "test:internal/codingagent/tools/mutation_queue_upstream_test.go#TestFileMutationToolsUpstream",
+     "test:internal/codingagent/tools/mutation_queue_upstream_test.go#TestEditAbortAfterAccessDoesNotRead"
+    ],
+    "rationale": "operations is the EditTool.Operations field (*EditOperations); nil selects the local file system."
+   }
+  },
+  "production": [
+   "call:internal/codingagent/tools/tools.go#CreateCodingTools"
+  ],
+  "evidence": [
+   "test:internal/codingagent/tools/mutation_queue_upstream_test.go#TestFileMutationToolsUpstream",
+   "test:internal/codingagent/tools/mutation_queue_upstream_test.go#TestEditAbortAfterAccessDoesNotRead"
+  ],
+  "rationale": "EditToolOptions is carried by the EditTool struct literal: Operations is its only option here (cwd is CWD)."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#WriteToolOptions"
+  ],
+  "targets": [
+   "internal/codingagent/tools/write.go#WriteTool"
+  ],
+  "properties": {
+   "operations": {
+    "targets": [
+     "internal/codingagent/tools/write.go#WriteTool.Operations"
+    ],
+    "evidence": [
+     "test:internal/codingagent/tools/mutation_queue_upstream_test.go#TestFileMutationToolsUpstream"
+    ],
+    "rationale": "operations is the WriteTool.Operations field (*WriteOperations); nil selects the local file system."
+   }
+  },
+  "production": [
+   "call:internal/codingagent/tools/tools.go#CreateCodingTools"
+  ],
+  "evidence": [
+   "test:internal/codingagent/tools/mutation_queue_upstream_test.go#TestFileMutationToolsUpstream"
+  ],
+  "rationale": "WriteToolOptions is carried by the WriteTool struct literal: Operations is its only option here (cwd is CWD)."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#FindToolOptions"
+  ],
+  "targets": [
+   "internal/codingagent/tools/find.go#FindTool"
+  ],
+  "properties": {
+   "operations": {
+    "targets": [
+     "internal/codingagent/tools/find.go#FindTool.Operations"
+    ],
+    "evidence": [
+     "test:internal/codingagent/tools/find_operations_port_test.go#TestFindOperationsPreserveNumericLimitDetails",
+     "test:internal/codingagent/tools/find_operations_port_test.go#TestFindOperationsCancellationAndErrors"
+    ],
+    "rationale": "operations is the FindTool.Operations field (*FindOperations); nil selects the local file system."
+   }
+  },
+  "production": [
+   "call:internal/codingagent/tools/tools.go#CreateCodingTools"
+  ],
+  "evidence": [
+   "test:internal/codingagent/tools/find_operations_port_test.go#TestFindOperationsPreserveNumericLimitDetails",
+   "test:internal/codingagent/tools/find_operations_port_test.go#TestFindOperationsCancellationAndErrors"
+  ],
+  "rationale": "FindToolOptions is carried by the FindTool struct literal: Operations is its only option here (cwd is CWD)."
+ }
+]

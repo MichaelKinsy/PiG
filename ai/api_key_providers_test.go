@@ -1,5 +1,7 @@
 package ai
 
+// pi: packages/ai/src/auth/oauth/github-copilot.ts
+
 import (
 	"os"
 	"path/filepath"

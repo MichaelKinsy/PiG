@@ -111,3 +111,27 @@ def test_style_rejects_unknown_tokens_and_tokens_in_the_wrong_slot(options: dict
         _theme().style("x", options)
     assert str(error.value) == message
 
+
+
+@pytest.mark.parametrize("call", ["fg", "bg"])
+@pytest.mark.parametrize("token", ["notAToken", "toolSuccessBg", "success"])
+def test_fg_and_bg_raise_for_a_token_the_palette_lacks_in_that_slot(call: str, token: str) -> None:
+    # theme.ts:361-376: fg and bg throw `Unknown theme color: <token>`; a token of the other slot is unknown too.
+    theme = _theme()
+    known = {"fg": "success", "bg": "toolSuccessBg"}[call]
+    assert getattr(theme, call)(known, "x").startswith(ESC)
+    if token == known:
+        return
+    with pytest.raises(ValueError) as error:
+        getattr(theme, call)(token, "x")
+    assert str(error.value) == f"Unknown theme color: {token}"
+
+
+def test_get_bg_ansi_uses_upstreams_unknown_color_message() -> None:
+    with pytest.raises(ValueError) as error:
+        _theme().get_bg_ansi("notAToken")
+    assert str(error.value) == "Unknown theme color: notAToken"
+
+
+def test_fg_is_unstyled_before_the_first_palette() -> None:
+    assert pig_sdk.Theme().fg("accent", "x") == "x"

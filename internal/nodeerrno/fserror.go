@@ -9,11 +9,11 @@ import (
 
 // FSError is the error Node's fs module reports for a failed call. Its message
 // is Node's: "<CODE>: <description>, <syscall> '<path>'", without the path for
-// a call on a file descriptor. Code, when set, is the code Node reports in
+// a call on a file descriptor, and "<CODE>: <description>, copyfile '<path>' -> '<dest>'" for a call with a Dest. Code, when set, is the code Node reports in
 // place of the one Describe finds for Err. Unwrap returns the Go error.
 type FSError struct {
-	Syscall, Path, Code string
-	Err                 error
+	Syscall, Path, Dest, Code string
+	Err                       error
 }
 
 func (e *FSError) Error() string {
@@ -26,6 +26,9 @@ func (e *FSError) Error() string {
 	message := code + ": " + description + ", " + e.Syscall
 	if e.Path != "" {
 		message += " '" + e.Path + "'"
+	}
+	if e.Dest != "" {
+		message += " -> '" + e.Dest + "'"
 	}
 	return message
 }

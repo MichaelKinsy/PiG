@@ -62,7 +62,7 @@ func calculateUsageCost(rates ModelCost, usage *Usage) UsageCost {
 	return usage.Cost
 }
 
-var extendedThinkingLevels = []ThinkingLevel{
+var extendedThinkingLevels = []ModelThinkingLevel{
 	ThinkingOff,
 	ThinkingMinimal,
 	ThinkingLow,
@@ -73,17 +73,17 @@ var extendedThinkingLevels = []ThinkingLevel{
 }
 
 // GetSupportedThinkingLevels returns the model's supported thinking levels. Selected model reasoning metadata or a native MaxThinking capability enables reasoning.
-func GetSupportedThinkingLevels(m *Model) []ThinkingLevel {
+func GetSupportedThinkingLevels(m *Model) []ModelThinkingLevel {
 	if m == nil || !m.ProviderMeta.Reasoning && m.Capabilities.MaxThinking == "" {
-		return []ThinkingLevel{ThinkingOff}
+		return []ModelThinkingLevel{ThinkingOff}
 	}
-	return slices.DeleteFunc(slices.Clone(extendedThinkingLevels), func(level ThinkingLevel) bool {
+	return slices.DeleteFunc(slices.Clone(extendedThinkingLevels), func(level ModelThinkingLevel) bool {
 		return thinkingLevelUnsupported(m.ThinkingLevelMap, level)
 	})
 }
 
 // thinkingLevelUnsupported reports whether levelMap removes level from a reasoning model's supported levels.
-func thinkingLevelUnsupported(levelMap ThinkingLevelMap, level ThinkingLevel) bool {
+func thinkingLevelUnsupported(levelMap ThinkingLevelMap, level ModelThinkingLevel) bool {
 	mapped, ok := levelMap[level]
 	if ok && mapped == nil {
 		return true
@@ -96,7 +96,7 @@ func thinkingLevelUnsupported(levelMap ThinkingLevelMap, level ThinkingLevel) bo
 
 // ClampThinkingLevel clamps level to the nearest supported thinking level.
 // Mirrors upstream models.ts:clampThinkingLevel.
-func ClampThinkingLevel(m *Model, level ThinkingLevel) ThinkingLevel {
+func ClampThinkingLevel(m *Model, level ModelThinkingLevel) ModelThinkingLevel {
 	available := GetSupportedThinkingLevels(m)
 	if slices.Contains(available, level) {
 		return level

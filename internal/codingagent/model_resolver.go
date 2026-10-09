@@ -9,6 +9,9 @@ import (
 
 	"golang.org/x/text/collate"
 	"golang.org/x/text/language"
+
+	"github.com/MichaelKinsy/PiG/ai"
+	"github.com/MichaelKinsy/PiG/internal/jsstring"
 )
 
 // ModelResolverRuntime supplies the catalog and configured-auth observations used by CLI resolution. Selection does not resolve credentials or refresh the catalog.
@@ -20,7 +23,7 @@ type ModelResolverRuntime interface {
 // ResolveCliModelResult carries a model selection, optional thinking suffix, warning, or CLI diagnostic.
 type ResolveCliModelResult struct {
 	Model         *RuntimeModel
-	ThinkingLevel string
+	ThinkingLevel ai.ThinkingLevel
 	Warning       string
 	Error         string
 }
@@ -63,12 +66,15 @@ func ResolveCliModel(cliProvider, cliModel, cliThinking string, runtime ModelRes
 	}
 	providerMap := map[string]string{}
 	for _, model := range availableModels {
-		providerMap[strings.ToLower(model.Provider)] = model.Provider
+		providerMap[jsstring.ToLower(model.Provider)] = model.Provider
 	}
 	provider := ""
 	if cliProvider != "" {
-		provider = providerMap[strings.ToLower(cliProvider)]
+		provider = providerMap[jsstring.ToLower(cliProvider)]
 		if provider == "" {
+			if err := strippedCliModelError(cliProvider, cliModel); err != nil {
+				return ResolveCliModelResult{Error: err.Error()}
+			}
 			return ResolveCliModelResult{Error: fmt.Sprintf(`Unknown provider "%s". Use --list-models to see available providers/models.`, cliProvider)}
 		}
 	}
@@ -77,7 +83,7 @@ func ResolveCliModel(cliProvider, cliModel, cliThinking string, runtime ModelRes
 	inferredProvider := false
 	if provider == "" {
 		if maybeProvider, rest, ok := strings.Cut(cliModel, "/"); ok {
-			if canonical := providerMap[strings.ToLower(maybeProvider)]; canonical != "" {
+			if canonical := providerMap[jsstring.ToLower(maybeProvider)]; canonical != "" {
 				provider = canonical
 				pattern = rest
 				inferredProvider = true
@@ -93,7 +99,7 @@ func ResolveCliModel(cliProvider, cliModel, cliThinking string, runtime ModelRes
 
 	if cliProvider != "" && provider != "" {
 		prefix := provider + "/"
-		if strings.HasPrefix(strings.ToLower(cliModel), strings.ToLower(prefix)) {
+		if strings.HasPrefix(jsstring.ToLower(cliModel), jsstring.ToLower(prefix)) {
 			pattern = cliModel[len(prefix):]
 		}
 	}
@@ -114,18 +120,18 @@ func ResolveCliModel(cliProvider, cliModel, cliThinking string, runtime ModelRes
 				return ResolveCliModelResult{Model: model}
 			}
 		}
-		return ResolveCliModelResult{Model: parsed.Model, ThinkingLevel: parsed.ThinkingLevel, Warning: parsed.Warning}
+		return ResolveCliModelResult{Model: parsed.Model, ThinkingLevel: ai.ThinkingLevel(parsed.ThinkingLevel), Warning: parsed.Warning}
 	}
 
 	if inferredProvider {
-		lower := strings.ToLower(cliModel)
+		lower := jsstring.ToLower(cliModel)
 		for index, model := range availableModels {
-			if strings.ToLower(model.ID) == lower || strings.ToLower(modelRef(model)) == lower {
+			if jsstring.ToLower(model.ID) == lower || jsstring.ToLower(modelRef(model)) == lower {
 				return ResolveCliModelResult{Model: &availableModels[index]}
 			}
 		}
 		if fallback := ParseModelPattern(cliModel, availableModels, false); fallback.Model != nil {
-			return ResolveCliModelResult{Model: fallback.Model, ThinkingLevel: fallback.ThinkingLevel, Warning: fallback.Warning}
+			return ResolveCliModelResult{Model: fallback.Model, ThinkingLevel: ai.ThinkingLevel(fallback.ThinkingLevel), Warning: fallback.Warning}
 		}
 	}
 
@@ -135,6 +141,9 @@ func ResolveCliModel(cliProvider, cliModel, cliThinking string, runtime ModelRes
 		}
 	}
 
+	if err := strippedCliModelError(cliProvider, cliModel); err != nil {
+		return ResolveCliModelResult{Error: err.Error()}
+	}
 	display := cliModel
 	if provider != "" {
 		display = provider + "/" + pattern
@@ -142,12 +151,30 @@ func ResolveCliModel(cliProvider, cliModel, cliThinking string, runtime ModelRes
 	return ResolveCliModelResult{Warning: parsed.Warning, Error: fmt.Sprintf(`Model "%s" not found. Use --list-models to see available models.`, display)}
 }
 
+// strippedCliModelError is the strip that keeps an unresolved --provider/--model selection out of the offered catalog, or nil. Using a model of a stripped API reports the strip, so naming one does too instead of reporting an unknown provider or model.
+// pig additive (D92): Stock PiG strips no API, so this is always nil there.
+func strippedCliModelError(cliProvider, cliModel string) error {
+	if cliProvider != "" {
+		modelID := cliModel
+		if rest, ok := strings.CutPrefix(strings.ToLower(cliModel), strings.ToLower(cliProvider)+"/"); ok {
+			modelID = cliModel[len(cliModel)-len(rest):]
+		}
+		return ai.StrippedModelError(cliProvider, modelID)
+	}
+	if provider, modelID, ok := strings.Cut(cliModel, "/"); ok {
+		if err := ai.StrippedModelError(provider, modelID); err != nil {
+			return err
+		}
+	}
+	return ai.StrippedModelError("", cliModel)
+}
+
 // resolveBareExactModel prefers the sole authenticated match for an ambiguous bare model ID; otherwise the caller must name its provider.
 func resolveBareExactModel(cliModel string, availableModels []RuntimeModel, runtime ModelResolverRuntime) (ResolveCliModelResult, bool) {
-	lower := strings.ToLower(cliModel)
+	lower := jsstring.ToLower(cliModel)
 	var exact []RuntimeModel
 	for _, model := range availableModels {
-		if strings.ToLower(model.ID) == lower || strings.ToLower(modelRef(model)) == lower {
+		if jsstring.ToLower(model.ID) == lower || jsstring.ToLower(modelRef(model)) == lower {
 			exact = append(exact, model)
 		}
 	}
@@ -181,10 +208,10 @@ func resolveBareExactModel(cliModel string, availableModels []RuntimeModel, runt
 
 // authenticatedRawExactMatch prefers one authenticated raw model-ID match when provider inference selected an unauthenticated provider.
 func authenticatedRawExactMatch(cliModel string, inferred RuntimeModel, availableModels []RuntimeModel, runtime ModelResolverRuntime) *RuntimeModel {
-	lower := strings.ToLower(cliModel)
+	lower := jsstring.ToLower(cliModel)
 	var raw []RuntimeModel
 	for _, model := range availableModels {
-		if strings.ToLower(model.ID) == lower && !modelsAreEqual(model, inferred) {
+		if jsstring.ToLower(model.ID) == lower && !modelsAreEqual(model, inferred) {
 			raw = append(raw, model)
 		}
 	}
@@ -233,5 +260,5 @@ func resolveFallbackModel(provider, pattern, cliThinking, warning string, availa
 	if warning != "" {
 		message = warning + " " + message
 	}
-	return ResolveCliModelResult{Model: model, ThinkingLevel: fallbackThinking, Warning: message}, true
+	return ResolveCliModelResult{Model: model, ThinkingLevel: ai.ThinkingLevel(fallbackThinking), Warning: message}, true
 }

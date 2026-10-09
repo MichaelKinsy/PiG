@@ -7,6 +7,8 @@ import (
 	"runtime"
 	"strings"
 
+	"github.com/MichaelKinsy/PiG/internal/codingagent/prompts"
+	"github.com/MichaelKinsy/PiG/internal/configroot"
 	"github.com/MichaelKinsy/PiG/internal/linkerexec"
 	"github.com/MichaelKinsy/PiG/internal/nodepath"
 	"github.com/MichaelKinsy/PiG/internal/resolvepath"
@@ -49,12 +51,21 @@ const ENV_SESSION_DIR = "PIG_CODING_AGENT_SESSION_DIR"
 // pig divergence (D2): title says "PiG", not "pi": separate binary and config root.
 const APP_TITLE = "PiG"
 
-// AgentDir returns the writable agent directory. Shared mode uses Pi's environment override; otherwise it uses PiG's. Both expand a leading tilde.
+// AgentDir returns the writable agent directory. Shared mode uses Pi's environment override; otherwise it uses PiG's. Both expand a leading tilde. It panics
+// with a [configroot.UnresolvedError] when the home directory is needed and unavailable; [ResolveAgentDir] reports that as an error.
 func AgentDir() string {
 	if configured := os.Getenv(agentDirEnvName()); configured != "" {
 		return ExpandTildePath(configured)
 	}
 	return DefaultAgentDir()
+}
+
+// ResolveAgentDir is [AgentDir] with an error, never a relative path, when the home directory is needed and unavailable.
+func ResolveAgentDir() (string, error) {
+	if configured := os.Getenv(agentDirEnvName()); configured != "" {
+		return ExpandTildePath(configured), nil
+	}
+	return ResolveDefaultAgentDir()
 }
 
 // AgentDirConfigured reports whether the agent directory comes from its environment variable rather than the default.
@@ -237,24 +248,35 @@ func selfUpdateUninstallStep(command string, argsPrefix []string, installedPacka
 
 // ─── Config Root ──────────────────────────────────────────────────────────────
 
-// ConfigRoot returns the pig configuration root directory.
+// ConfigRoot returns the pig configuration root directory (internal/configroot, the one resolver the host and every extension SDK share).
 //
 // Resolution order:
 //  1. $PIG_HOME if set and non-empty
-//  2. $XDG_CONFIG_HOME/pig if XDG_CONFIG_HOME is set
+//  2. $XDG_CONFIG_HOME/pig if XDG_CONFIG_HOME is set and non-empty
 //  3. ~/.pig (default)
 //
-// PiG-owned state stays here even when the agent and project directories are shared with Pi.
-func ConfigRoot() string {
-	if v := os.Getenv("PIG_HOME"); v != "" {
-		return ExpandTildePath(v)
+// A leading ~ expands to the home directory. PiG-owned state stays here even when the agent and project directories are shared with Pi. It panics with
+// a [configroot.UnresolvedError] when the home directory is needed and unavailable.
+func ConfigRoot() string { return configroot.Dir() }
+
+// GetDocsPath is the directory of the documentation bundle the system prompt, the login help and the codemode description point at.
+// upstream: config.ts:449 getDocsPath (join(getPackageDir(), "docs")); pig additive (D22): PiG materializes its documentation bundle under the configuration root instead of shipping it in the package directory.
+func GetDocsPath() string {
+	docs := filepath.Join(ConfigRoot(), "docs")
+	resolved, err := nodepath.Resolve(docs)
+	if err != nil {
+		return docs
 	}
-	if v := os.Getenv("XDG_CONFIG_HOME"); v != "" {
-		return filepath.Join(ExpandTildePath(v), "pig")
-	}
-	home, _ := os.UserHomeDir()
-	return filepath.Join(home, ".pig")
+	return resolved
 }
+
+// GetReadmePath is the README of the documentation bundle, the "Main documentation" entry of the system prompt.
+// upstream: config.ts:444 getReadmePath (join(getPackageDir(), "README.md")); pig additive (D22): the README is the bundle's own.
+func GetReadmePath() string { return filepath.Join(GetDocsPath(), "README.md") }
+
+// GetExamplesPath is where the system prompt says PiG's examples are.
+// upstream: config.ts:454 getExamplesPath (join(getPackageDir(), "examples")); pig additive (D22): PiG's examples are published in its repository, so the location is [prompts.PigExamplesLocation], a URL, not a directory.
+func GetExamplesPath() string { return prompts.PigExamplesLocation }
 
 // CanonicalizePath resolves a nonempty path to its absolute canonical filesystem form, following symlinks and drive junctions while preserving Windows volume mount points as directories. It preserves the raw input if resolution fails, including an empty or missing path.
 // Mirrors upstream canonicalizePath.
@@ -293,17 +315,7 @@ func ResolvePath(input, baseDir string) (string, error) {
 
 // ExpandTildePath expands a leading ~ in a filesystem path.
 // Mirrors upstream expandTildePath.
-func ExpandTildePath(path string) string {
-	if path == "~" {
-		home, _ := os.UserHomeDir()
-		return home
-	}
-	if rest, ok := strings.CutPrefix(path, "~/"); ok {
-		home, _ := os.UserHomeDir()
-		return filepath.Join(home, rest)
-	}
-	return path
-}
+func ExpandTildePath(path string) string { return configroot.ExpandTilde(path) }
 
 // resolveAgainstCwd is Pi's resolvePath(filePath, cwd) without input normalization. On Windows Node's isAbsolute accepts a rooted path without a drive (/x or \x), which then resolves on the process's drive, not cwd's.
 func resolveAgainstCwd(filePath, cwd string) (string, error) {
@@ -315,13 +327,16 @@ func resolveAgainstCwd(filePath, cwd string) (string, error) {
 
 // GetCwdRelativePath returns the path relative to cwd, with the platform
 // separator as Pi's path.relative gives it, when filePath resolves inside
-// cwd, or "" when it is outside cwd.
+// cwd, or "" when it is outside cwd or either path fails to resolve (Pi's
+// resolvePath throws for an invalid file URL). Both paths are normalized as
+// resolvePath does: a leading ~ expands to the home directory and a file URL
+// becomes its path.
 func GetCwdRelativePath(filePath, cwd string) string {
-	resolvedCwd, err := nodepath.Resolve(cwd)
+	resolvedCwd, err := ResolvePath(cwd, "")
 	if err != nil {
 		return ""
 	}
-	resolvedPath, err := resolveAgainstCwd(filePath, resolvedCwd)
+	resolvedPath, err := ResolvePath(filePath, resolvedCwd)
 	if err != nil {
 		return ""
 	}
@@ -339,7 +354,7 @@ func GetCwdRelativePath(filePath, cwd string) string {
 // FormatPathRelativeToCwdOrAbsolute returns a slash-normalized path relative to
 // cwd when possible, otherwise the cleaned absolute path.
 func FormatPathRelativeToCwdOrAbsolute(filePath, cwd string) string {
-	absolutePath, err := resolveAgainstCwd(filePath, cwd)
+	absolutePath, err := ResolvePath(filePath, cwd)
 	if err != nil {
 		return filepath.ToSlash(filePath)
 	}

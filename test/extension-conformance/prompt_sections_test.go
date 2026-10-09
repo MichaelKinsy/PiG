@@ -98,7 +98,7 @@ func assertPromptSections(t *testing.T, ext extension.Extension) {
 	runner.AddErrorListener(func(err *extension.ExtensionError) { reported = append(reported, err.Error) })
 	for _, prompt := range []string{"ordinary", "error", "result"} {
 		sections := ai.OrderedSections{{Name: "z_base", Value: new("retained")}}
-		result, err := runner.EmitBeforeAgentStart(t.Context(), prompt, nil, "base", extension.BuildSystemPromptOptions{Sections: &sections})
+		result, err := runner.EmitBeforeAgentStart(t.Context(), prompt, nil, extension.BuildSystemPromptOptions{Sections: &sections})
 		if err != nil {
 			t.Fatal(err)
 		}

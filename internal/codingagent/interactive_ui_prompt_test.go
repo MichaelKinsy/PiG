@@ -34,7 +34,7 @@ func TestReplaceExtensionRunnerRebindsSubprocessPromptScope(t *testing.T) {
 	m := &InteractiveMode{
 		tuiInst: tui.NewWithOutput(io.Discard, 80, 24),
 		layout:  tui.NewContainer(),
-		opts:    InteractiveOptions{CWD: t.TempDir(), SubprocessUIBridge: bridge},
+		opts:    InteractiveModeOptions{CWD: t.TempDir(), SubprocessUIBridge: bridge},
 	}
 	seen := make(chan string, 4)
 	selectCall := func(title string) {

@@ -168,7 +168,7 @@ data: [DONE]
 
 	provider := ai.NewOpenAIProvider(ai.OpenAIConfig{Model: "claude-sonnet-5", BaseURL: server.URL, APIKey: "k", ProviderID: "openai"})
 	tool := &fakeTool{name: "get_result", mode: ToolModeSequential, content: "satisfied"}
-	agent := NewAgent(AgentOptions{Model: fakeTestModel(provider), Tools: []AgentTool{tool}, MaxTurns: 5})
+	agent := mustNewAgent(AgentOptions{Model: fakeTestModel(provider), Tools: []AgentTool{tool}, MaxTurns: 5})
 
 	messages, err := agent.Send(context.Background(), "poll the job")
 	if err != nil {

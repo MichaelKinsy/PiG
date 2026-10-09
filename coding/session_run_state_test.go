@@ -152,7 +152,7 @@ func (p blockingProvider) Stream(ctx context.Context, _ ai.TranscriptContext, _ 
 // and isIdle stayed true while it ran.
 func TestAbortStopsExtensionStartedRun(t *testing.T) {
 	provider := blockingProvider{started: make(chan struct{})}
-	services, err := NewServices(ServicesOptions{CWD: t.TempDir(), AgentDir: t.TempDir()})
+	services, err := CreateAgentSessionServices(CreateAgentSessionServicesOptions{CWD: t.TempDir(), AgentDir: t.TempDir()})
 	if err != nil {
 		t.Fatal(err)
 	}

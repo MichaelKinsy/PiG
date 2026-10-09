@@ -1,0 +1,39 @@
+[
+ {
+  "ids": [
+   "pkg:coding-agent/.#AgentSession::property:sendUserMessage",
+   "pkg:coding-agent/.#AgentSession::property:sendUserMessage::call:0"
+  ],
+  "targets": [
+   "coding/session_prompt.go#Session.SendUserMessage"
+  ],
+  "production": [
+   "call:coding/session_replaced.go#Session.CreateReplacedSessionContext"
+  ],
+  "evidence": [
+   "test:coding/session_send_user_message_content_test.go#TestSendUserMessageNormalizesArrayContentToTextAndImages",
+   "test:coding/session_invocation_test.go#TestSendUserMessageInvocationExpansion",
+   "test:coding/session_prompt_expansion_upstream_test.go#TestUpstreamSessionPromptExpansion"
+  ],
+  "async": "The awaited Promise is the blocking Session.SendUserMessage call: it returns after the prompt (or queue operation) completes or fails; cancellation is the context.Context argument; no detached goroutine.",
+  "rationale": "AgentSession.sendUserMessage(content, {deliverAs, expandPromptTemplates}) is Session.SendUserMessage(ctx, content, *SendUserMessageOptions): array content joins text parts with newline and passes images, expansion defaults to false, source is extension."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#truncateToVisualLines",
+   "pkg:coding-agent/.#truncateToVisualLines::call:0"
+  ],
+  "targets": [
+   "tui/visual_truncate.go#TruncateToVisualLinesKeeping",
+   "tui/visual_truncate.go#TruncateToVisualLines"
+  ],
+  "production": [
+   "call:tui/bash_execution.go#bashPreview.Render"
+  ],
+  "evidence": [
+   "test:tui/visual_truncate_test.go#TestTruncateToVisualLinesKeepsTheEndByDefaultAndTheStartOnRequest",
+   "test:tui/visual_truncate_test.go#TestTruncateToVisualLinesCountsWrappedLinesNotLogicalLines"
+  ],
+  "rationale": "truncateToVisualLines(text, maxVisualLines, width, paddingX = 0, keep = \"end\") is TruncateToVisualLinesKeeping(text, max, width, paddingX, keep) with TruncateToVisualLines as the keep-end form with optional padding; the result is VisualTruncateResult{VisualLines, SkippedCount}."
+ }
+]

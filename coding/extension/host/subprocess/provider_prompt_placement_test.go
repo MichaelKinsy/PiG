@@ -7,7 +7,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/MichaelKinsy/PiG/agent"
 	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/coding/extension/host/inproc"
 	"github.com/MichaelKinsy/PiG/internal/codingagent/prompts"
@@ -39,7 +38,7 @@ func TestPackedProviderResponseAndToolPrompts(t *testing.T) {
 				if err != nil {
 					t.Fatal(err)
 				}
-				value, ok := result.(agent.AgentToolResult)
+				value, ok := result, true
 				if !ok || value.Text() != "after_provider_response:207:received" {
 					t.Fatalf("response payload = %#v", result)
 				}

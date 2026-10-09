@@ -114,9 +114,11 @@ func RunDurableTui(ctx context.Context, source durableagent.DurableViewSource, c
 	defer cancelUI()
 	wheel := settings.GetFullscreenWheelScrollLines()
 	wheelScrollLines := tui.WheelScrollLines{Auto: wheel.Auto, Lines: wheel.Lines}
-	ui := codingagent.CreateInteractiveTui(codingagent.InteractiveTuiOptions{TuiMode: "fullscreen", ShowHardwareCursor: new(settings.GetShowHardwareCursor()), LogDirectory: agentDir, FullscreenWheelScrollLines: &wheelScrollLines})
+	// The renderer drives this terminal (createInteractiveTui(terminal, ...)), not the process-wide one built when the
+	// package loaded, which holds the stdout of that moment.
+	terminal := tui.NewStdioProcessTerminal()
+	ui := codingagent.CreateInteractiveTui(codingagent.InteractiveTuiOptions{TuiMode: "fullscreen", Terminal: terminal, ShowHardwareCursor: new(settings.GetShowHardwareCursor()), LogDirectory: agentDir, FullscreenWheelScrollLines: &wheelScrollLines})
 	alt := ui.(*tui.TuiAltScreen)
-	terminal := tui.NewProcessTerminal(os.Stdin, os.Stdout)
 	finished := make(chan struct{})
 	var finishOnce sync.Once
 	exit := func() { finishOnce.Do(func() { close(finished) }) }
@@ -150,14 +152,14 @@ func RunDurableTui(ctx context.Context, source durableagent.DurableViewSource, c
 			selectModel:   commands.selectModel,
 			cycleThinking: func() { controller.CycleThinking() },
 		},
-		RequestRender: ui.RequestRender, RunOnMain: executor.RunOnMain,
+		RequestRender: func() { ui.RequestRender() }, RunOnMain: executor.RunOnMain,
 	})
 	// pi's theme handling: the theme setting resolved against the terminal's reported colors.
 	theme, err := codingagent.NewInteractiveThemeController(uiCtx, ui, codingagent.InteractiveThemeControllerOptions{
 		GetSettingsManager: func() *codingagent.SettingsManager { return settings }, Output: os.Stdout,
 		RunOnMain: executor.RunOnMain,
 		ShowError: func(message string) { fmt.Fprintln(os.Stderr, message) },
-		OnChanged: ui.RequestRender,
+		OnChanged: func() { ui.RequestRender() },
 	})
 	if err != nil {
 		return err
@@ -199,7 +201,7 @@ func RunDurableTui(ctx context.Context, source durableagent.DurableViewSource, c
 		case input <- slices.Clone(data):
 		case <-uiCtx.Done():
 		}
-	}, func() { dispatch(ui.RequestRender) }, report)
+	}, func() { dispatch(func() { ui.RequestRender() }) }, report)
 	if err != nil {
 		return err
 	}

@@ -3,6 +3,8 @@
 
 package harness
 
+// pi: packages/durable/src/harness/submissions.ts
+
 import (
 	"context"
 	"errors"
@@ -17,7 +19,7 @@ import (
 
 // ownTool builds an executable tool with an object schema.
 func ownTool(name, description string, parameters map[string]any, execute func(ctx context.Context, args any, api durable.ToolExecutionApi) (durable.ToolExecutionResult, error), edit ...func(*durable.ToolRegistration)) *durable.ToolRegistration {
-	tool := new(durable.ToolRegistration{
+	tool := DefineTool(durable.ToolRegistration{
 		ToolSchema: ai.ToolSchema{Name: name, Description: description, Parameters: parameters},
 		Execute:    execute,
 	})
@@ -33,7 +35,7 @@ func ownText(text string) durable.ToolExecutionResult {
 
 // ownCall is a tool-calling faux answer with one call.
 func ownCall(name string, args map[string]any, id string) ai.FauxResponseStep {
-	return ai.FauxStaticStep(ai.FauxResponse{Content: []ai.FauxContentBlock{ai.FauxToolCall(name, args, id)}, StopReason: "toolUse"})
+	return ai.FauxStaticStep(ai.FauxResponse{Content: []ai.FauxContentBlock{ai.FauxToolCall(name, args, &ai.FauxToolCallOptions{ID: id})}, StopReason: "toolUse"})
 }
 
 // ownGatedStep is a faux response held until release or cancellation; reached resolves when the request is sent.
@@ -45,12 +47,12 @@ type ownGatedStep struct {
 
 func ownGated(text string) ownGatedStep {
 	held := ownGatedStep{reached: deferred(), gate: deferred()}
-	held.step = ai.FauxFactoryStep(func(_ ai.TranscriptContext, options ai.StreamOptions, _ *ai.FauxProviderState, _ *ai.Model) (ai.FauxResponse, error) {
+	held.step = ai.FauxFactoryStep(func(_ ai.TranscriptContext, options ai.StreamOptions, _ *ai.FauxProviderState, _ *ai.Model) (ai.AssistantMessage, error) {
 		held.reached.resolve()
 		if err := held.gate.wait(options.Signal); err != nil {
-			return ai.FauxResponse{}, err
+			return ai.FauxResponse{}.AssistantMessage(), err
 		}
-		return ai.FauxResponse{Content: []ai.FauxContentBlock{ai.FauxText(text)}}, nil
+		return ai.FauxResponse{Content: []ai.FauxContentBlock{ai.FauxText(text)}}.AssistantMessage(), nil
 	})
 	return held
 }
@@ -100,6 +102,7 @@ func ownSubmitAndWait(t *testing.T, conversation Conversation, text string) dura
 	return settled
 }
 
+// Pi TaskRuntime.conversation: packages/durable/src/types.ts:217.
 func TestOwnedConversationsFromTools(t *testing.T) {
 	t.Run("gives a tool an invocation-bound handle whose submissions stay durable after the call ends", func(t *testing.T) {
 		setup := chatSetup(t)
@@ -305,7 +308,7 @@ func TestOwnedConversationsFromTools(t *testing.T) {
 			t.Fatal(err)
 		}
 		live, err := harness.SnapshotErased(testContext, LiveDoc, childId)
-		if err != nil || !reflect.DeepEqual(live, durable.JsonObject{}) {
+		if err != nil || live.Len() != 0 {
 			t.Fatalf("child live document %v %v, want {}", live, err)
 		}
 		inspection, err := harness.Inspect(testContext)
@@ -495,7 +498,7 @@ func TestOwnedConversationsFromTools(t *testing.T) {
 		if users := ownCountKind(ownChildEntries(t, harness, seen[0]), "pi.user"); users != 1 {
 			t.Fatalf("%d user entries in the child, want 1", users)
 		}
-		view, err := root.Context(testContext)
+		view, err := root.Context(testContext, nil)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -517,9 +520,8 @@ func TestOwnedConversationsFromTools(t *testing.T) {
 			Child *durable.ConversationId `json:"child,omitempty"`
 		}
 		children := durable.DefineDoc(durable.DocDefinition[childrenState]{
-			CommonDocDefinition: durable.CommonDocDefinition[childrenState]{Kind: "test.children", Version: 1},
+			CommonDocDefinition: durable.CommonDocDefinition[childrenState]{Kind: "test.children", Version: 1, Initial: func() childrenState { return childrenState{} }},
 			DocumentSemantics:   durable.DocumentSemantics{Scope: durable.ScopeConversation, History: durable.HistoryLatest, Fork: durable.ForkInitial},
-			Initial:             func() childrenState { return childrenState{} },
 		})
 		type supervisorInput struct {
 			Parent durable.ConversationId `json:"parent"`

@@ -38,13 +38,13 @@ func TestOpenAICompletionsToolChoiceReplayAndFormatsUpstream(t *testing.T) {
 	// .upstream/v0.87.1/packages/ai/test/openai-completions-tool-choice.test.ts:466
 	t.Run("preserves z.ai thinking when replaying reasoning_content", func(t *testing.T) {
 		model := toolChoiceModel(t, "zai", "glm-5.2", false)
-		payload, _, _ := captureToolChoiceRequest(t, model, replayToolChoiceContext("zai", "glm-5.2", "prior reasoning", "reasoning_content", true), StreamOptions{Thinking: ThinkingHigh}, nil)
+		payload, _, _ := captureToolChoiceRequest(t, model, replayToolChoiceContext("zai", "glm-5.2", "prior reasoning", "reasoning_content", true), StreamOptions{Thinking: ThinkingLevelHigh}, nil)
 		requireToolChoiceField(t, firstToolChoiceAssistant(t, payload), "reasoning_content", `"prior reasoning"`)
 		requireToolChoiceField(t, payload, "thinking", `{"type":"enabled","clear_thinking":false}`)
 	})
 	// .upstream/v0.87.1/packages/ai/test/openai-completions-tool-choice.test.ts:1257
 	t.Run("replays Xiaomi MiMo assistant tool calls with empty reasoning_content when thinking is missing", func(t *testing.T) {
-		payload, _, _ := captureToolChoiceRequest(t, toolChoiceModel(t, "xiaomi", "mimo-v2.5-pro", false), replayToolChoiceContext("xiaomi", "mimo-v2.5-pro", "", "", false), StreamOptions{Thinking: ThinkingHigh}, nil)
+		payload, _, _ := captureToolChoiceRequest(t, toolChoiceModel(t, "xiaomi", "mimo-v2.5-pro", false), replayToolChoiceContext("xiaomi", "mimo-v2.5-pro", "", "", false), StreamOptions{Thinking: ThinkingLevelHigh}, nil)
 		assistant := firstToolChoiceAssistant(t, payload)
 		requireToolChoiceField(t, assistant, "role", `"assistant"`)
 		requireToolChoiceField(t, assistant, "reasoning_content", `""`)
@@ -69,7 +69,7 @@ func TestOpenAICompletionsToolChoiceReplayAndFormatsUpstream(t *testing.T) {
 	})
 	for _, tc := range []struct {
 		name, provider, id, thinking string
-		level                        ThinkingLevel
+		level                        ModelThinkingLevel
 	}{
 		// .upstream/v0.99.1/packages/ai/test/openai-completions-tool-choice.test.ts:1428 (0.99.1 moved the case from opencode-go to opencode)
 		{"sends thinking disabled for OpenCode Kimi K2.6 when thinking is off", "opencode", "kimi-k2.6", `{"type":"disabled"}`, ""},
@@ -82,7 +82,7 @@ func TestOpenAICompletionsToolChoiceReplayAndFormatsUpstream(t *testing.T) {
 		{"keeps disabled thinking for Moonshot Kimi K2.6 when thinking is off", "moonshotai-cn", "kimi-k2.6", `{"type":"disabled"}`, ""},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			payload, _, _ := captureToolChoiceRequest(t, toolChoiceModel(t, tc.provider, tc.id, false), toolChoiceHi(), StreamOptions{Thinking: tc.level}, nil)
+			payload, _, _ := captureToolChoiceRequest(t, toolChoiceModel(t, tc.provider, tc.id, false), toolChoiceHi(), StreamOptions{Thinking: tc.level.ReasoningOption()}, nil)
 			if tc.thinking == "" {
 				forbidToolChoiceFields(t, payload, "thinking")
 			} else {
@@ -93,12 +93,12 @@ func TestOpenAICompletionsToolChoiceReplayAndFormatsUpstream(t *testing.T) {
 	}
 	// .upstream/v0.87.1/packages/ai/test/openai-completions-tool-choice.test.ts:1619
 	t.Run("omits reasoning effort for OpenCode Grok Build", func(t *testing.T) {
-		payload, _, _ := captureToolChoiceRequest(t, toolChoiceModel(t, "opencode", "grok-build-0.1", false), toolChoiceHi(), StreamOptions{Thinking: ThinkingHigh}, nil)
+		payload, _, _ := captureToolChoiceRequest(t, toolChoiceModel(t, "opencode", "grok-build-0.1", false), toolChoiceHi(), StreamOptions{Thinking: ThinkingLevelHigh}, nil)
 		forbidToolChoiceFields(t, payload, "reasoning_effort")
 	})
 	// .upstream/v0.87.1/packages/ai/test/openai-completions-tool-choice.test.ts:1763
 	t.Run("uses OpenRouter reasoning object instead of reasoning_effort", func(t *testing.T) {
-		payload, _, _ := captureToolChoiceRequest(t, toolChoiceModel(t, "openrouter", "deepseek/deepseek-r1", false), toolChoiceHi(), StreamOptions{Thinking: ThinkingHigh}, nil)
+		payload, _, _ := captureToolChoiceRequest(t, toolChoiceModel(t, "openrouter", "deepseek/deepseek-r1", false), toolChoiceHi(), StreamOptions{Thinking: ThinkingLevelHigh}, nil)
 		requireToolChoiceField(t, payload, "reasoning", `{"effort":"high"}`)
 		forbidToolChoiceFields(t, payload, "reasoning_effort")
 	})
@@ -109,7 +109,7 @@ func TestOpenAICompletionsToolChoiceReplayAndFormatsUpstream(t *testing.T) {
 			name = "uses qwen chat template thinking kwargs"
 		}
 		t.Run(name, func(t *testing.T) {
-			for _, level := range []ThinkingLevel{ThinkingHigh, ""} {
+			for _, level := range []ModelThinkingLevel{ThinkingHigh, ""} {
 				model := localToolChoiceModel("deepseek-ai/DeepSeek-V3.1", "DeepSeek V3.1 via vLLM")
 				model.ProviderMeta.Compat = &ModelCompat{ThinkingFormat: "chat-template", SupportsReasoningEffort: new(false), ChatTemplateKwargs: map[string]any{"thinking": map[string]any{"$var": "thinking.enabled"}}}
 				if qwen {
@@ -117,7 +117,7 @@ func TestOpenAICompletionsToolChoiceReplayAndFormatsUpstream(t *testing.T) {
 					model.DisplayName = "Qwen3 Coder via vLLM"
 					model.ProviderMeta.Compat = &ModelCompat{ThinkingFormat: "qwen-chat-template", SupportsReasoningEffort: new(false)}
 				}
-				payload, _, _ := captureToolChoiceRequest(t, model, toolChoiceHi(), StreamOptions{Thinking: level}, nil)
+				payload, _, _ := captureToolChoiceRequest(t, model, toolChoiceHi(), StreamOptions{Thinking: level.ReasoningOption()}, nil)
 				want := fmt.Sprintf(`{"thinking":%t}`, level != "")
 				if qwen {
 					want = fmt.Sprintf(`{"enable_thinking":%t,"preserve_thinking":true}`, level != "")
@@ -134,7 +134,7 @@ func TestOpenAICompletionsToolChoiceReplayAndFormatsUpstream(t *testing.T) {
 		model := localToolChoiceModel("unsloth/gpt-oss-120b-GGUF", "GPT OSS via vLLM")
 		model.ThinkingLevelMap = ThinkingLevelMap{ThinkingXHigh: new("max")}
 		model.ProviderMeta.Compat = &ModelCompat{ThinkingFormat: "chat-template", SupportsReasoningEffort: new(false), ChatTemplateKwargs: map[string]any{"preserve_thinking": true, "reasoning_effort": map[string]any{"$var": "thinking.effort", "omitWhenOff": true}}}
-		payload, _, _ := captureToolChoiceRequest(t, model, toolChoiceHi(), StreamOptions{Thinking: ThinkingXHigh}, nil)
+		payload, _, _ := captureToolChoiceRequest(t, model, toolChoiceHi(), StreamOptions{Thinking: ThinkingLevelXHigh}, nil)
 		requireToolChoiceField(t, payload, "chat_template_kwargs", `{"preserve_thinking":true,"reasoning_effort":"max"}`)
 		forbidToolChoiceFields(t, payload, "reasoning_effort")
 	})
@@ -147,7 +147,7 @@ func TestOpenAICompletionsToolChoiceReplayAndFormatsUpstream(t *testing.T) {
 		}
 		request := toolChoiceHi()
 		request.SystemPrompt = "Follow instructions."
-		payload, _, _ := captureToolChoiceRequest(t, model, request, StreamOptions{MaxTokens: 123, Thinking: ThinkingHigh, CacheRetention: CacheRetentionLong, SessionID: "ant-ling-session"}, nil)
+		payload, _, _ := captureToolChoiceRequest(t, model, request, StreamOptions{MaxTokens: 123, Thinking: ThinkingLevelHigh, CacheRetention: CacheRetentionLong, SessionID: "ant-ling-session"}, nil)
 		requireToolChoiceField(t, payload, "max_tokens", "123")
 		forbidToolChoiceFields(t, payload, "max_completion_tokens", "reasoning_effort", "store", "prompt_cache_key", "prompt_cache_retention")
 		requireToolChoiceField(t, payload, "reasoning", `{"effort":"high"}`)
@@ -161,7 +161,7 @@ func TestOpenAICompletionsToolChoiceReplayAndFormatsUpstream(t *testing.T) {
 	t.Run("omits Ant Ling reasoning for unmapped direct reasoning efforts and non-reasoning models", func(t *testing.T) {
 		payload, _, _ := captureToolChoiceRequest(t, toolChoiceModel(t, "ant-ling", "Ring-2.6-1T", false), toolChoiceHi(), StreamOptions{ReasoningEffort: "medium"}, nil)
 		forbidToolChoiceFields(t, payload, "reasoning")
-		payload, _, _ = captureToolChoiceRequest(t, toolChoiceModel(t, "ant-ling", "Ling-2.6-flash", false), toolChoiceHi(), StreamOptions{Thinking: ThinkingHigh}, nil)
+		payload, _, _ = captureToolChoiceRequest(t, toolChoiceModel(t, "ant-ling", "Ling-2.6-flash", false), toolChoiceHi(), StreamOptions{Thinking: ThinkingLevelHigh}, nil)
 		forbidToolChoiceFields(t, payload, "reasoning")
 	})
 }
@@ -239,7 +239,7 @@ func TestResponsesNativeReasoningEffortIsNotClamped(t *testing.T) {
 
 func TestCompletionsNativeReasoningEffortIsNotClamped(t *testing.T) {
 	for _, tc := range []struct {
-		level ThinkingLevel
+		level ModelThinkingLevel
 		want  string
 	}{{ThinkingMedium, ""}, {ThinkingHigh, `{"effort":"high"}`}} {
 		payload, _, _ := captureToolChoiceRequest(t, toolChoiceModel(t, "ant-ling", "Ring-2.6-1T", false), toolChoiceHi(), StreamOptions{ReasoningEffort: string(tc.level)}, nil)

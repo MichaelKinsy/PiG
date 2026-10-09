@@ -27,7 +27,7 @@ func TestBeforeToolFailureBlocks(t *testing.T) {
 		t.Run(each.name, func(t *testing.T) {
 			setup := chatSetup(t)
 			var executed, later atomic.Int32
-			addTool(t, setup.Registry, new(durable.ToolRegistration{ToolSchema: ai.ToolSchema{Name: "work", Description: "work", Parameters: map[string]any{"type": "object", "properties": map[string]any{}}}, Execute: func(context.Context, any, durable.ToolExecutionApi) (durable.ToolExecutionResult, error) {
+			addTool(t, setup.Registry, DefineTool(durable.ToolRegistration{ToolSchema: ai.ToolSchema{Name: "work", Description: "work", Parameters: map[string]any{"type": "object", "properties": map[string]any{}}}, Execute: func(context.Context, any, durable.ToolExecutionApi) (durable.ToolExecutionResult, error) {
 				executed.Add(1)
 				return durable.ToolExecutionResult{Content: []ai.ToolResultMessageContent{}}, nil
 			}}))
@@ -86,7 +86,7 @@ func TestPrepareArgumentsTypedObject(t *testing.T) {
 		t.Run(each.name, func(t *testing.T) {
 			setup := chatSetup(t)
 			var received atomic.Value
-			addTool(t, setup.Registry, new(durable.ToolRegistration{ToolSchema: ai.ToolSchema{Name: "work", Description: "work", Parameters: map[string]any{"type": "object", "properties": map[string]any{"path": map[string]any{"type": "string"}}, "required": []any{"path"}}}, PrepareArguments: each.prepare, Execute: func(_ context.Context, args any, _ durable.ToolExecutionApi) (durable.ToolExecutionResult, error) {
+			addTool(t, setup.Registry, DefineTool(durable.ToolRegistration{ToolSchema: ai.ToolSchema{Name: "work", Description: "work", Parameters: map[string]any{"type": "object", "properties": map[string]any{"path": map[string]any{"type": "string"}}, "required": []any{"path"}}}, PrepareArguments: each.prepare, Execute: func(_ context.Context, args any, _ durable.ToolExecutionApi) (durable.ToolExecutionResult, error) {
 				object, _ := args.(map[string]any)
 				received.Store(object["path"])
 				return durable.ToolExecutionResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: "ok"}}}, nil

@@ -31,6 +31,8 @@ var (
 	OpenCodeClient string
 	// CodexOriginator replaces the OpenAI Codex `originator: pi`, sent on requests and in the login URL.
 	CodexOriginator string
+	// ChatGPTAgentName replaces the `agent_name_hint=Pi` of the Sign in with ChatGPT authorization URL.
+	ChatGPTAgentName string
 	// XAIReferrer replaces the xAI device-code `referrer: pi`.
 	XAIReferrer string
 	// AgentMarker replaces the `AI_AGENT=pi` marker child processes inherit.
@@ -53,6 +55,7 @@ func init() {
 		CloudflareUserAgent  string `json:"cloudflareUserAgent"`
 		OpenCodeClient       string `json:"openCodeClient"`
 		CodexOriginator      string `json:"codexOriginator"`
+		ChatGPTAgentName     string `json:"chatgptAgentName"`
 		XAIReferrer          string `json:"xaiReferrer"`
 		AgentMarker          string `json:"agentMarker"`
 		UserAgentProduct     string `json:"userAgentProduct"`
@@ -65,7 +68,7 @@ func init() {
 	for name, value := range map[string]string{
 		"openRouterReferer": identity.OpenRouterReferer, "openRouterTitle": identity.OpenRouterTitle, "openRouterCategories": identity.OpenRouterCategories,
 		"nvidiaBillingOrigin": identity.NvidiaBillingOrigin, "cloudflareUserAgent": identity.CloudflareUserAgent, "openCodeClient": identity.OpenCodeClient,
-		"codexOriginator": identity.CodexOriginator, "xaiReferrer": identity.XAIReferrer, "agentMarker": identity.AgentMarker,
+		"codexOriginator": identity.CodexOriginator, "chatgptAgentName": identity.ChatGPTAgentName, "xaiReferrer": identity.XAIReferrer, "agentMarker": identity.AgentMarker,
 		"userAgentProduct": identity.UserAgentProduct, "hostedOrigin": identity.HostedOrigin,
 	} {
 		if value == "" {
@@ -79,6 +82,7 @@ func init() {
 	CloudflareUserAgent = identity.CloudflareUserAgent
 	OpenCodeClient = identity.OpenCodeClient
 	CodexOriginator = identity.CodexOriginator
+	ChatGPTAgentName = identity.ChatGPTAgentName
 	XAIReferrer = identity.XAIReferrer
 	AgentMarker = identity.AgentMarker
 	UserAgentProduct = identity.UserAgentProduct

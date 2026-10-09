@@ -1,5 +1,7 @@
 package experimental
 
+// pi: packages/coding-agent/src/experimental/process.ts
+
 import (
 	"encoding/json"
 	"os"
@@ -63,8 +65,11 @@ func TestEncodeControlLine(t *testing.T) {
 	if line, err := EncodeControlLine(atLimit); err != nil || len(line) != MaxControlLineBytes {
 		t.Fatalf("boundary: bytes=%d err=%v", len(line), err)
 	}
-	if _, err := EncodeControlLine(atLimit + "é"); err == nil || err.Error() != "Internal control message is too large" {
-		t.Fatalf("oversize: %v", err)
+	// process.ts:104 rejects a line one byte over the limit, and counts UTF-8 bytes, not UTF-16 units: "é" is two bytes and one unit.
+	for name, value := range map[string]string{"one byte over": atLimit + "x", "two-byte character": atLimit[1:] + "é"} {
+		if _, err := EncodeControlLine(value); err == nil || err.Error() != "Internal control message is too large" {
+			t.Fatalf("%s: %v", name, err)
+		}
 	}
 }
 

@@ -1,3 +1,5 @@
+//go:build !pig_strip_google_vertex
+
 package ai
 
 import (

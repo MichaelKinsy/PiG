@@ -1,7 +1,7 @@
 package tui
 
 import (
-	"reflect"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -15,127 +15,136 @@ func withImageCapabilities(t *testing.T, images ImageProtocol) {
 }
 
 func imageToolComponent(blocks ...ImageBlock) *ToolExecutionComponent {
-	c := NewToolExecutionComponent("custom_tool", "")
+	c := newToolCardForTest("custom_tool", "")
 	c.ImageBlocks = blocks
 	c.SetResult("", false, time.Second)
 	return c
 }
 
-// Mirrors upstream tool-execution-component.test.ts "keeps the final tool image
-// when a partial image conversion finishes late" (issue #8577).
-func TestToolExecutionKeepsFinalImageWhenPartialConversionFinishesLate(t *testing.T) {
-	withImageCapabilities(t, ImageProtocolKitty)
-	c := NewToolExecutionComponent("custom_tool", "")
-	c.ImageBlocks = []ImageBlock{{Data: "partial-jpeg", MIMEType: "image/jpeg"}}
-	pending := c.PendingKittyImageConversions()
-	if len(pending) != 1 {
-		t.Fatalf("pending = %+v, want the partial jpeg", pending)
-	}
+const toolImagePNG = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg=="
 
-	c.ImageBlocks = []ImageBlock{{Data: "final-png", MIMEType: "image/png"}}
-	c.SetResult("", false, 0)
-	if got := strings.Join(c.Render(120), "\n"); !strings.Contains(got, "final-png") {
-		t.Fatalf("final png not rendered:\n%q", got)
-	}
-
-	if c.ApplyConvertedImage(pending[0], &ConvertedImage{Data: "converted-partial", MimeType: "image/png"}) {
-		t.Fatal("late conversion of a replaced image was applied")
-	}
-	rendered := strings.Join(c.Render(120), "\n")
-	if !strings.Contains(rendered, "final-png") || strings.Contains(rendered, "converted-partial") {
-		t.Fatalf("render after late conversion:\n%q", rendered)
-	}
-}
-
-func TestPendingKittyImageConversionsSelectsOnlyUnconvertedNonPNG(t *testing.T) {
-	withImageCapabilities(t, ImageProtocolKitty)
-	c := imageToolComponent(
-		ImageBlock{Data: "png-data", MIMEType: "image/png"},
-		ImageBlock{Data: "jpeg-data", MIMEType: "image/jpeg"},
-		ImageBlock{Data: "", MIMEType: "image/gif"},
-		ImageBlock{Data: "no-mime", MIMEType: ""},
-		ImageBlock{Data: "webp-data", MIMEType: "image/webp"},
-	)
-	want := []KittyImageConversion{
-		{Index: 1, Data: "jpeg-data", MimeType: "image/jpeg"},
-		{Index: 4, Data: "webp-data", MimeType: "image/webp"},
-	}
-	if got := c.PendingKittyImageConversions(); !reflect.DeepEqual(got, want) {
-		t.Fatalf("pending = %+v, want %+v", got, want)
-	}
-
-	// A cached conversion for the current source is not converted again.
-	if !c.ApplyConvertedImage(want[0], &ConvertedImage{Data: "jpeg-as-png", MimeType: "image/png"}) {
-		t.Fatal("conversion for the current source was not applied")
-	}
-	if got := c.PendingKittyImageConversions(); !reflect.DeepEqual(got, want[1:]) {
-		t.Fatalf("pending after cache = %+v, want %+v", got, want[1:])
-	}
-
-	// A new source at the same index invalidates the cached entry.
-	c.ImageBlocks[1] = ImageBlock{Data: "jpeg-data-2", MIMEType: "image/jpeg"}
-	wantAgain := []KittyImageConversion{
-		{Index: 1, Data: "jpeg-data-2", MimeType: "image/jpeg"},
-		{Index: 4, Data: "webp-data", MimeType: "image/webp"},
-	}
-	if got := c.PendingKittyImageConversions(); !reflect.DeepEqual(got, wantAgain) {
-		t.Fatalf("pending after source change = %+v, want %+v", got, wantAgain)
-	}
-}
-
-func TestPendingKittyImageConversionsRequiresKitty(t *testing.T) {
-	for _, images := range []ImageProtocol{"", ImageProtocolITerm2} {
-		withImageCapabilities(t, images)
-		c := imageToolComponent(ImageBlock{Data: "jpeg-data", MIMEType: "image/jpeg"})
-		if got := c.PendingKittyImageConversions(); got != nil {
-			t.Fatalf("images=%q pending = %+v, want none", images, got)
+// toolImageTranscoder installs a loader like coding-agent's ensurePngTranscoder: on Kitty it registers a transcoder that turns the
+// jpeg "final-jpeg" into toolImagePNG, then runs onRegistered. loads counts the loader calls.
+func toolImageTranscoder(t *testing.T) (loads *int) {
+	t.Helper()
+	loads = new(int)
+	SetImageTranscoder(nil)
+	t.Cleanup(func() {
+		SetImageTranscoder(nil)
+		SetImageTranscoderLoader(nil)
+	})
+	SetImageTranscoderLoader(func(onRegistered func()) {
+		*loads++
+		if GetCapabilities().Images != ImageProtocolKitty || ImageTranscoderRegistered() {
+			return
 		}
+		SetImageTranscoder(func(data, _ string) (string, bool) {
+			if data == "final-jpeg" {
+				return toolImagePNG, true
+			}
+			return "", false
+		})
+		onRegistered()
+	})
+	return loads
+}
+
+// tool-execution-component.test.ts "converts non-PNG tool images once the transcoder loads" (#10292, #8577): the card registers the
+// transcoder itself, a replaced partial image does not resurface, and an invalidation reuses the converted Image, so the Kitty image
+// ID stays the same.
+func TestToolExecutionConvertsNonPNGImagesOnceTheTranscoderLoads(t *testing.T) {
+	withImageCapabilities(t, ImageProtocolKitty)
+	toolImageTranscoder(t)
+	c := newToolCardForTest("tool", "")
+	c.UpdateResult(ToolResultUpdate{Content: []ToolResultContent{{Type: "image", Data: "partial-jpeg", MimeType: "image/jpeg"}}}, true)
+	c.UpdateResult(ToolResultUpdate{Content: []ToolResultContent{{Type: "image", Data: "final-jpeg", MimeType: "image/jpeg"}}})
+
+	rendered := strings.Join(c.Render(120), "\n")
+	if !strings.Contains(rendered, ";"+toolImagePNG) {
+		t.Fatalf("converted PNG not rendered:\n%q", rendered)
+	}
+	if strings.Contains(rendered, "partial-jpeg") {
+		t.Fatalf("the replaced partial image resurfaced:\n%q", rendered)
+	}
+	c.Invalidate()
+	if again := strings.Join(c.Render(120), "\n"); again != rendered {
+		t.Fatalf("invalidation changed the image (kitty id must stay):\n%q\n%q", again, rendered)
 	}
 }
 
-func TestApplyConvertedImageIgnoresFailureAndOutOfRange(t *testing.T) {
+// A card asks the loader only for a non-PNG image, and an Image is reused while its source (data, MIME type, width) is unchanged
+// (tool-execution.ts imageSources).
+func TestToolExecutionImageComponentReuseAndLoaderRequests(t *testing.T) {
 	withImageCapabilities(t, ImageProtocolKitty)
-	c := imageToolComponent(ImageBlock{Data: "jpeg-data", MIMEType: "image/jpeg"})
-	req := KittyImageConversion{Index: 0, Data: "jpeg-data", MimeType: "image/jpeg"}
-	if c.ApplyConvertedImage(req, nil) {
-		t.Fatal("failed (nil) conversion was applied")
+	loads := toolImageTranscoder(t)
+	c := imageToolComponent(ImageBlock{Data: toolImagePNG, MIMEType: "image/png"})
+	c.Render(120)
+	if *loads != 0 {
+		t.Fatalf("a PNG asked for the transcoder %d times", *loads)
 	}
-	if c.ApplyConvertedImage(KittyImageConversion{Index: 3, Data: "jpeg-data", MimeType: "image/jpeg"}, &ConvertedImage{Data: "x", MimeType: "image/png"}) {
-		t.Fatal("out-of-range conversion was applied")
+	c = imageToolComponent(ImageBlock{Data: "final-jpeg", MIMEType: "image/jpeg"})
+	c.Render(120)
+	first := c.imageComponents[0]
+	if *loads != 1 {
+		t.Fatalf("loader calls = %d, want 1", *loads)
 	}
-	if c.ApplyConvertedImage(KittyImageConversion{Index: 0, Data: "jpeg-data", MimeType: "image/gif"}, &ConvertedImage{Data: "x", MimeType: "image/png"}) {
-		t.Fatal("conversion for a different source MIME was applied")
+	c.Render(120)
+	if c.imageComponents[0] != first {
+		t.Fatal("an unchanged source must reuse its Image")
 	}
-	if len(c.PendingKittyImageConversions()) != 1 {
-		t.Fatal("ignored conversions must leave the image pending")
+	c.SetImageWidthCells(30)
+	c.Render(120)
+	if c.imageComponents[0] == first {
+		t.Fatal("a changed width must build a new Image")
+	}
+	c.ImageBlocks = []ImageBlock{{Data: "other-jpeg", MIMEType: "image/jpeg"}}
+	c.Render(120)
+	if c.imageComponents[0] == first || len(c.imageComponents) != 1 {
+		t.Fatalf("a replaced source must build a new Image, got %d", len(c.imageComponents))
 	}
 }
 
-// .upstream/v1.0.1/packages/tui/src/components/image.ts render: on Kitty, a non-PNG image without PNG data shows its text
-// fallback after the spacer (1.0.0 skipped it), then the converted PNG once the conversion lands.
-func TestKittyRendersNonPNGOnlyAfterConversion(t *testing.T) {
+// tool-execution.ts updateDisplay shows an image only with both data and a MIME type.
+func TestToolExecutionSkipsImagesWithoutDataOrMimeType(t *testing.T) {
 	withImageCapabilities(t, ImageProtocolKitty)
-	c := imageToolComponent(ImageBlock{Data: "jpeg-data", MIMEType: "image/jpeg"})
+	toolImageTranscoder(t)
+	c := imageToolComponent(ImageBlock{Data: "", MIMEType: "image/png"}, ImageBlock{Data: toolImagePNG, MIMEType: ""})
+	plain := newToolCardForTest("custom_tool", "")
+	plain.SetResult("", false, time.Second)
+	if got, want := c.Render(120), plain.Render(120); !slices.Equal(got, want) || len(c.imageComponents) != 0 {
+		t.Fatalf("rows = %q, want the card without images %q", got, want)
+	}
+}
+
+// image.ts render (1.0.1) through the card: on Kitty a non-PNG image shows its text fallback after the spacer until the transcoder
+// is registered, then the converted PNG; a failing conversion keeps the fallback.
+func TestKittyRendersNonPNGOnlyOnceTheTranscoderIsRegistered(t *testing.T) {
+	withImageCapabilities(t, ImageProtocolKitty)
+	SetImageTranscoder(nil)
+	t.Cleanup(func() { SetImageTranscoder(nil) })
+	c := imageToolComponent(ImageBlock{Data: "final-jpeg", MIMEType: "image/jpeg"})
 	before := c.Render(120)
-	if got := strings.Join(before, "\n"); strings.Contains(got, "jpeg-data") || strings.Contains(got, "\x1b_G") || !strings.Contains(got, "[Image: [image/jpeg] 800x600]") {
+	if got := strings.Join(before, "\n"); strings.Contains(got, "\x1b_G") || !strings.Contains(got, "[Image: [image/jpeg]") {
 		t.Fatalf("unconverted jpeg on kitty:\n%q", got)
 	}
-	noImage := NewToolExecutionComponent("custom_tool", "")
+	noImage := newToolCardForTest("custom_tool", "")
 	noImage.SetResult("", false, time.Second)
 	if len(before) != len(noImage.Render(120))+2 {
 		t.Fatalf("fallback rows: %d vs %d without the image", len(before), len(noImage.Render(120)))
 	}
-
-	pending := c.PendingKittyImageConversions()
-	if !c.ApplyConvertedImage(pending[0], &ConvertedImage{Data: "converted-png", MimeType: "image/png"}) {
-		t.Fatal("conversion not applied")
-	}
+	SetImageTranscoder(func(string, string) (string, bool) { return toolImagePNG, true })
+	c.Invalidate()
 	if !c.IsDirty() {
-		t.Fatal("applied conversion did not invalidate the component")
+		t.Fatal("invalidating did not mark the component dirty")
 	}
 	after := strings.Join(c.Render(120), "\n")
-	if !strings.Contains(after, "converted-png") || !strings.Contains(after, "\x1b_G") || strings.Contains(after, "jpeg-data") {
+	if !strings.Contains(after, ";"+toolImagePNG) || !strings.Contains(after, "\x1b_G") {
 		t.Fatalf("converted png not rendered:\n%q", after)
+	}
+	// upstream: tool-execution-component.test.ts:61-65: invalidation reuses the converted Image, so the Kitty image ID stays the same.
+	c.Invalidate()
+	if again := strings.Join(c.Render(120), "\n"); again != after {
+		t.Fatalf("render after Invalidate changed the converted image:\n%q\nwant\n%q", again, after)
 	}
 }
 

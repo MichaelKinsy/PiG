@@ -214,6 +214,8 @@ type reducerBlockState struct {
 	kind  string
 	ended bool
 	json  string
+	// text and arguments append the deltas of the block without copying the earlier ones again.
+	text, arguments accumulatedString
 }
 
 // AssistantMessageFrameEncoder encodes one assistant stream. Event partials
@@ -224,6 +226,11 @@ type AssistantMessageFrameEncoder struct {
 	started  bool
 	terminal bool
 	blocks   map[int]*encoderBlockState
+}
+
+// NewAssistantMessageFrameEncoder returns an encoder for one assistant stream (the upstream constructor).
+func NewAssistantMessageFrameEncoder() *AssistantMessageFrameEncoder {
+	return &AssistantMessageFrameEncoder{}
 }
 
 // Encode converts one stream event into an independently owned frame containing only public replay fields. It returns a nil frame when the event adds nothing replayable (terminal events and covered deltas).
@@ -750,20 +757,20 @@ func (reducer *assistantMessageFrameReducer) activeBlock(contentIndex int, kind 
 func (reducer *assistantMessageFrameReducer) applyTextFrame(frame AssistantMessageFrame) error {
 	switch frame := frame.(type) {
 	case TextDeltaFrame:
-		return reducer.updateText(frame.ContentIndex, frame.FrameType(), false, func(block *TextContent) {
-			block.Text += frame.Delta
+		return reducer.updateText(frame.ContentIndex, frame.FrameType(), false, func(block *TextContent, state *reducerBlockState) {
+			block.Text = state.text.append(block.Text, frame.Delta)
 		})
 	case TextEndFrame:
-		return reducer.updateText(frame.ContentIndex, frame.FrameType(), true, func(block *TextContent) {
+		return reducer.updateText(frame.ContentIndex, frame.FrameType(), true, func(block *TextContent, _ *reducerBlockState) {
 			block.Text = frame.Content
 			block.TextSignature = frame.TextSignature
 		})
 	case ThinkingDeltaFrame:
-		return reducer.updateThinking(frame.ContentIndex, frame.FrameType(), false, func(block *ThinkingContent) {
-			block.Thinking += frame.Delta
+		return reducer.updateThinking(frame.ContentIndex, frame.FrameType(), false, func(block *ThinkingContent, state *reducerBlockState) {
+			block.Thinking = state.text.append(block.Thinking, frame.Delta)
 		})
 	case ThinkingEndFrame:
-		return reducer.updateThinking(frame.ContentIndex, frame.FrameType(), true, func(block *ThinkingContent) {
+		return reducer.updateThinking(frame.ContentIndex, frame.FrameType(), true, func(block *ThinkingContent, _ *reducerBlockState) {
 			block.Thinking = frame.Content
 			block.ThinkingSignature = frame.ThinkingSignature
 			block.Redacted = frame.Redacted
@@ -773,25 +780,25 @@ func (reducer *assistantMessageFrameReducer) applyTextFrame(frame AssistantMessa
 	}
 }
 
-func (reducer *assistantMessageFrameReducer) updateText(contentIndex int, frameType AssistantMessageFrameType, end bool, update func(*TextContent)) error {
+func (reducer *assistantMessageFrameReducer) updateText(contentIndex int, frameType AssistantMessageFrameType, end bool, update func(*TextContent, *reducerBlockState)) error {
 	block, state, err := reducer.activeBlock(contentIndex, blockKindText, frameType)
 	if err != nil {
 		return err
 	}
 	text := block.(TextContent)
-	update(&text)
+	update(&text, state)
 	reducer.message.Content[contentIndex] = text
 	state.ended = end
 	return nil
 }
 
-func (reducer *assistantMessageFrameReducer) updateThinking(contentIndex int, frameType AssistantMessageFrameType, end bool, update func(*ThinkingContent)) error {
+func (reducer *assistantMessageFrameReducer) updateThinking(contentIndex int, frameType AssistantMessageFrameType, end bool, update func(*ThinkingContent, *reducerBlockState)) error {
 	block, state, err := reducer.activeBlock(contentIndex, blockKindThinking, frameType)
 	if err != nil {
 		return err
 	}
 	thinking := block.(ThinkingContent)
-	update(&thinking)
+	update(&thinking, state)
 	reducer.message.Content[contentIndex] = thinking
 	state.ended = end
 	return nil
@@ -807,7 +814,7 @@ func (reducer *assistantMessageFrameReducer) applyToolCallFrame(frame AssistantM
 		})
 	case ToolCallDeltaFrame:
 		return reducer.updateToolCall(frame.ContentIndex, frame.FrameType(), func(_ *ToolCall, state *reducerBlockState) error {
-			state.json += frame.Delta
+			state.json = state.arguments.append(state.json, frame.Delta)
 			return nil
 		})
 	case ToolCallEndFrame:

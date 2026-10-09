@@ -7,6 +7,7 @@ package codingagent
 import (
 	"fmt"
 	"os"
+	"strings"
 
 	"golang.org/x/term"
 )
@@ -87,5 +88,28 @@ func (m *InteractiveMode) showStartupDiagnostics() {
 		default:
 			m.showStatus(diagnostic.Message)
 		}
+	}
+}
+
+// showModelsJSONError reports a models.json load error as upstream init and handleReloadCommand do.
+func (m *InteractiveMode) showModelsJSONError() {
+	if m.opts.ModelRegistry == nil {
+		return
+	}
+	if loadError := m.opts.ModelRegistry.LoadError(); loadError != "" {
+		m.showError("models.json error: " + loadError)
+	}
+}
+
+// showInitNotices shows the startup notices in upstream init order: diagnostics, migrated credentials, the models.json error, then the model fallback message, even under quiet startup.
+// upstream: packages/coding-agent/src/modes/interactive/interactive-mode.ts:init
+func (m *InteractiveMode) showInitNotices() {
+	m.showStartupDiagnostics()
+	if len(m.opts.MigratedProviders) > 0 {
+		m.showWarning("Migrated credentials to auth.json: " + strings.Join(m.opts.MigratedProviders, ", "))
+	}
+	m.showModelsJSONError()
+	if m.opts.ModelFallbackMessage != "" {
+		m.showWarning(m.opts.ModelFallbackMessage)
 	}
 }

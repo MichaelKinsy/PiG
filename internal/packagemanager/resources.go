@@ -15,6 +15,23 @@ import (
 )
 
 func CollectPackageResourceItems(root string, pkg ConfiguredPackage, inspect bool, resolvers ...extsource.ResolveFunc) ([]tui.ResourceItem, error) {
+	// package-manager.ts:1368-1372 resolveLocalExtensionSource: a local source that is a file is one enabled extension whose base
+	// directory is the file's directory; package filters and conventional directories do not apply to it.
+	stat, statErr := os.Stat(root)
+	if statErr == nil && stat.Mode().IsRegular() {
+		return ApplyPackageAutoloadStates(pkg, []tui.ResourceItem{{
+			Path: root, Enabled: true, ResourceType: tui.ResourceExtensions, Scope: pkg.Scope, Origin: "package",
+			Source: pkg.Source.Source, BaseDir: filepath.Dir(root),
+		}}), nil
+	}
+	// package-manager.ts:1377-1384: a local directory with no filter that collectPackageResources finds no resources in is
+	// itself one enabled extension whose base directory and package root are the directory.
+	if statErr == nil && stat.IsDir() && !pkg.Source.Filtered() && DetectSourceKind(pkg.Source.Source) == "local" && !packagecontent.DescribesResources(root) {
+		return ApplyPackageAutoloadStates(pkg, []tui.ResourceItem{{
+			Path: root, Enabled: true, ResourceType: tui.ResourceExtensions, Scope: pkg.Scope, Origin: "package",
+			Source: pkg.Source.Source, BaseDir: root, PackageRoot: root,
+		}}), nil
+	}
 	filters := ConfiguredPackageFilters(pkg.Source)
 	if IsProjectPackageDelta(pkg.Source) {
 		filters = map[packagecontent.Kind][]string{packagecontent.Extensions: {}, packagecontent.Skills: {}, packagecontent.Prompts: {}, packagecontent.Themes: {}}
@@ -38,19 +55,19 @@ func PackageResourceItemsFromInventory(root string, pkg ConfiguredPackage, resou
 	out := make([]tui.ResourceItem, 0)
 	for _, path := range resources.ExtensionEntries {
 		rel, _ := filepath.Rel(root, path)
-		out = append(out, tui.ResourceItem{Path: path, Enabled: packagecontent.ResourceEnabled(rel, filters[packagecontent.Extensions]), ResourceType: tui.ResourceExtensions, Scope: pkg.Scope, Origin: "package", Source: pkg.Source.Source, BaseDir: root})
+		out = append(out, tui.ResourceItem{Path: path, Enabled: packagecontent.ResourceEnabled(rel, filters[packagecontent.Extensions]), ResourceType: tui.ResourceExtensions, Scope: pkg.Scope, Origin: "package", Source: pkg.Source.Source, BaseDir: root, PackageRoot: root})
 	}
 	for _, path := range resources.SkillDirs {
 		rel, _ := filepath.Rel(root, packagecontent.SkillFile(path))
-		out = append(out, tui.ResourceItem{Path: path, Enabled: packagecontent.ResourceEnabled(rel, filters[packagecontent.Skills]), ResourceType: tui.ResourceSkills, Scope: pkg.Scope, Origin: "package", Source: pkg.Source.Source, BaseDir: root})
+		out = append(out, tui.ResourceItem{Path: path, Enabled: packagecontent.ResourceEnabled(rel, filters[packagecontent.Skills]), ResourceType: tui.ResourceSkills, Scope: pkg.Scope, Origin: "package", Source: pkg.Source.Source, BaseDir: root, PackageRoot: root})
 	}
 	for _, path := range resources.PromptFiles {
 		rel, _ := filepath.Rel(root, path)
-		out = append(out, tui.ResourceItem{Path: path, Enabled: packagecontent.ResourceEnabled(rel, filters[packagecontent.Prompts]), ResourceType: tui.ResourcePrompts, Scope: pkg.Scope, Origin: "package", Source: pkg.Source.Source, BaseDir: root})
+		out = append(out, tui.ResourceItem{Path: path, Enabled: packagecontent.ResourceEnabled(rel, filters[packagecontent.Prompts]), ResourceType: tui.ResourcePrompts, Scope: pkg.Scope, Origin: "package", Source: pkg.Source.Source, BaseDir: root, PackageRoot: root})
 	}
 	for _, path := range resources.ThemeFiles {
 		rel, _ := filepath.Rel(root, path)
-		out = append(out, tui.ResourceItem{Path: path, Enabled: packagecontent.ResourceEnabled(rel, filters[packagecontent.Themes]), ResourceType: tui.ResourceThemes, Scope: pkg.Scope, Origin: "package", Source: pkg.Source.Source, BaseDir: root})
+		out = append(out, tui.ResourceItem{Path: path, Enabled: packagecontent.ResourceEnabled(rel, filters[packagecontent.Themes]), ResourceType: tui.ResourceThemes, Scope: pkg.Scope, Origin: "package", Source: pkg.Source.Source, BaseDir: root, PackageRoot: root})
 	}
 	for _, member := range missing {
 		resourceType := tui.ResourceType(member.Kind)
@@ -61,7 +78,7 @@ func PackageResourceItemsFromInventory(root string, pkg ConfiguredPackage, resou
 		out = append(out, tui.ResourceItem{
 			Path: memberPath, Pattern: member.Pattern, Enabled: packagecontent.ResourceEnabled(member.Pattern, filters[member.Kind]),
 			ResourceType: resourceType, Scope: pkg.Scope, Origin: "package",
-			Source: pkg.Source.Source, BaseDir: root, Health: "missing",
+			Source: pkg.Source.Source, BaseDir: root, PackageRoot: root, Health: "missing",
 		})
 	}
 	return ApplyPackageAutoloadStates(pkg, out)

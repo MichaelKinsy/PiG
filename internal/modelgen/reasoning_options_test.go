@@ -1,5 +1,9 @@
 package modelgen
 
+// pi: packages/ai/scripts/openrouter-reasoning-options.ts
+
+// pi: packages/ai/scripts/models-dev-reasoning-options.ts
+
 import (
 	"encoding/json"
 	"reflect"

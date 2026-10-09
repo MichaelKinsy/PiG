@@ -27,7 +27,7 @@ const (
 )
 
 func abortedExecution() *durableenv.ExecutionError {
-	return &durableenv.ExecutionError{Code: durableenv.ExecutionErrorAborted, Message: "aborted"}
+	return durableenv.NewExecutionError(durableenv.ExecutionErrorAborted, "aborted", nil)
 }
 
 // Exec runs command in the environment's cwd (or options.Cwd). A string runs through bash; a []string runs its first
@@ -55,11 +55,7 @@ func (env *NodeExecutionEnv) Exec(ctx context.Context, command any, options *dur
 		return durableenv.ShellExecResult{}, err
 	}
 	if _, statErr := os.Stat(cwd); statErr != nil {
-		return durableenv.ShellExecResult{}, &durableenv.ExecutionError{
-			Code:    durableenv.ExecutionErrorSpawnError,
-			Message: "Working directory does not exist: " + cwd + "\nCannot execute bash commands.",
-			Cause:   statErr,
-		}
+		return durableenv.ShellExecResult{}, durableenv.NewExecutionError(durableenv.ExecutionErrorSpawnError, "Working directory does not exist: "+cwd+"\nCannot execute bash commands.", statErr)
 	}
 	return newShellRun(ctx, env, options).execute(spec, cwd, timeout)
 }
@@ -87,11 +83,11 @@ func (env *NodeExecutionEnv) spawnSpec(ctx context.Context, command any) (spawnS
 		return spawnSpec{program: config.shell, args: append(append([]string(nil), config.args...), typed)}, nil
 	case []string:
 		if len(typed) == 0 {
-			return spawnSpec{}, &durableenv.ExecutionError{Code: durableenv.ExecutionErrorSpawnError, Message: "Empty argv: no program to run"}
+			return spawnSpec{}, durableenv.NewExecutionError(durableenv.ExecutionErrorSpawnError, "Empty argv: no program to run", nil)
 		}
 		return spawnSpec{program: typed[0], args: typed[1:]}, nil
 	}
-	return spawnSpec{}, &durableenv.ExecutionError{Code: durableenv.ExecutionErrorSpawnError, Message: fmt.Sprintf("Command must be a string or a []string, not %T", command)}
+	return spawnSpec{}, durableenv.NewExecutionError(durableenv.ExecutionErrorSpawnError, fmt.Sprintf("Command must be a string or a []string, not %T", command), nil)
 }
 
 // shellRun owns one command: its process, output pumps, timers, and optional
@@ -165,7 +161,7 @@ func (run *shellRun) execute(spec spawnSpec, cwd string, timeout time.Duration) 
 // from stdin gets a pipe, whose write end start returns; otherwise stdin is nil.
 func (run *shellRun) start(spec spawnSpec, cwd string) (*exec.Cmd, *os.File, *os.File, *os.File, error) {
 	spawnError := func(err error) error {
-		return &durableenv.ExecutionError{Code: durableenv.ExecutionErrorSpawnError, Message: err.Error(), Cause: err}
+		return durableenv.NewExecutionError(durableenv.ExecutionErrorSpawnError, err.Error(), err)
 	}
 	stdoutRead, stdoutWrite, err := os.Pipe()
 	if err != nil {
@@ -207,7 +203,7 @@ func (run *shellRun) start(spec spawnSpec, cwd string) (*exec.Cmd, *os.File, *os
 		if stdinWrite != nil {
 			closeAll(stdinWrite)
 		}
-		return nil, nil, nil, nil, &durableenv.ExecutionError{Code: durableenv.ExecutionErrorSpawnError, Message: spawnErrorMessage(spec.program, startErr), Cause: startErr}
+		return nil, nil, nil, nil, durableenv.NewExecutionError(durableenv.ExecutionErrorSpawnError, spawnErrorMessage(spec.program, startErr), startErr)
 	}
 	run.errMu.Lock()
 	run.pid = cmd.Process.Pid
@@ -267,7 +263,7 @@ func (run *shellRun) failCallback(err error) {
 	run.errMu.Lock()
 	first := run.callbackError == nil
 	if first {
-		run.callbackError = &durableenv.ExecutionError{Code: durableenv.ExecutionErrorCallbackError, Message: err.Error(), Cause: err}
+		run.callbackError = durableenv.NewExecutionError(durableenv.ExecutionErrorCallbackError, err.Error(), err)
 	}
 	run.errMu.Unlock()
 	if first {
@@ -279,7 +275,7 @@ func (run *shellRun) failSpill(err error) {
 	run.errMu.Lock()
 	first := run.spillError == nil
 	if first {
-		run.spillError = &durableenv.ExecutionError{Code: durableenv.ExecutionErrorUnknown, Message: "Failed to preserve complete shell output: " + err.Error(), Cause: err}
+		run.spillError = durableenv.NewExecutionError(durableenv.ExecutionErrorUnknown, "Failed to preserve complete shell output: "+err.Error(), err)
 	}
 	run.errMu.Unlock()
 	if first {
@@ -473,7 +469,7 @@ func (run *shellRun) result(state *os.ProcessState) (durableenv.ShellExecResult,
 	case callbackError != nil:
 		return durableenv.ShellExecResult{}, callbackError
 	case timedOut:
-		interrupted = &durableenv.ExecutionError{Code: durableenv.ExecutionErrorTimeout, Message: "timeout:" + formatNumber(*run.options.Timeout)}
+		interrupted = durableenv.NewExecutionError(durableenv.ExecutionErrorTimeout, "timeout:"+formatNumber(*run.options.Timeout), nil)
 	case run.ctx.Err() != nil:
 		interrupted = abortedExecution()
 	}

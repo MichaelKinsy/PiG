@@ -30,7 +30,7 @@ func TestSessionPromptUsesDeclaredProviderIdentity(t *testing.T) {
 					t.Fatal(err)
 				}
 			}
-			_, err := h.session.Prompt(t.Context(), "hello")
+			err := h.session.Prompt(t.Context(), "hello")
 			if configured {
 				if err != nil || h.provider.callCount() != 1 {
 					t.Fatalf("configured declared provider: error=%v calls=%d", err, h.provider.callCount())

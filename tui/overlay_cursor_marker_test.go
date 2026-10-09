@@ -14,18 +14,20 @@ import (
 func TestFocusedOverlayLeavesNoCursorMarkerInTerminalOutput(t *testing.T) {
 	for _, tc := range []struct {
 		name string
-		open func(ui *TUI, overlay Component) *OverlayHandle
+		open func(ui *TuiMainScreen, overlay Component) *OverlayHandle
 	}{
-		{"capturing overlay", func(ui *TUI, overlay Component) *OverlayHandle { return ui.OpenOverlay(overlay, OverlayOptions{}) }},
-		{"focused non-capturing overlay", func(ui *TUI, overlay Component) *OverlayHandle {
-			handle := ui.OpenOverlay(overlay, OverlayOptions{nonCapturing: true})
+		{"capturing overlay", func(ui *TuiMainScreen, overlay Component) *OverlayHandle {
+			return ui.ShowOverlay(overlay, OverlayOptions{})
+		}},
+		{"focused non-capturing overlay", func(ui *TuiMainScreen, overlay Component) *OverlayHandle {
+			handle := ui.ShowOverlay(overlay, OverlayOptions{nonCapturing: true})
 			handle.focus()
 			return handle
 		}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			var out bytes.Buffer
-			ui := NewWithOutput(&out, 80, 24)
+			ui := newManualRenderTUI(&out, 80, 24)
 			t.Cleanup(ui.CancelPendingRender)
 			editor := NewEditor()
 			editor.SetText("draft")

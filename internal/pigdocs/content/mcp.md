@@ -83,7 +83,7 @@ Keep personal servers and servers with credentials in the user-level file. Use t
 | `pig mcp add <server> [options] --url <url>` | Add or replace a streamable HTTP server |
 | `pig mcp remove <server> [-l]` | Remove a server; stored OAuth credentials are kept |
 | `pig mcp list [--json]` | Connect to every enabled server and print its state, tools and errors; exits 1 on failure |
-| `pig mcp login <server> [--timeout <seconds>]` | Sign in through the browser (default wait: 300 seconds) |
+| `pig mcp login <server> [--timeout <seconds>]` | Sign in through the browser; `--timeout` limits the whole sign-in, including requests to the authorization server (default: 300 seconds) |
 | `pig mcp logout <server>` | Delete the stored OAuth credentials |
 
 Options for `add` and `remove`: `-l`, `--local` writes `.pig/mcp.json` in the current project instead of the user-level file.
@@ -107,7 +107,7 @@ Options for `add`:
 
 `/mcp` lists configured servers with their state, tool count, exposure, and configuration source. Servers that need attention appear first. Select a server to inspect its tools and connection details, reconnect, sign in or out, change exposure, or enable and disable it.
 
-Exposure and enabled-state changes are saved to the file that defines the server without replacing unrelated content. Disabled servers remain listed. Outside the interactive TUI, `/mcp` prints server status; `/mcp login <server>`, `/mcp logout <server>`, and `/mcp reconnect <server>` perform those actions directly.
+Exposure and enabled-state changes are saved to the file that defines the server without replacing unrelated content. Disabled servers remain listed. `/mcp` opens at once, also while servers are still connecting, and shows them as they connect; reconnecting, enabling, and disabling a server run in the background. Outside the interactive TUI, `/mcp` prints server status; `/mcp login <server>`, `/mcp logout <server>`, and `/mcp reconnect <server>` perform those actions directly.
 
 Shell commands work without a session: `pig mcp add`, `pig mcp remove`, `pig mcp list`, `pig mcp login`, and `pig mcp logout`. Shell commands do not load extensions.
 
@@ -144,7 +144,7 @@ Remote servers that use OAuth, such as Sentry, need no credentials in `mcp.json`
 }
 ```
 
-When the server rejects an unauthenticated connection, `/mcp` shows that it needs sign-in. Select "Sign in", run `/mcp login sentry`, or run `pig mcp login sentry`. PiG opens the authorization page and waits for approval. If the browser runs on another machine, such as over SSH, paste its redirected URL into the sign-in screen. A running session uses the new credentials on its next turn.
+When the server rejects an unauthenticated connection, `/mcp` shows that it needs sign-in. Select "Sign in", run `/mcp login sentry`, or run `pig mcp login sentry`. PiG opens the authorization page and waits for approval. If the browser runs on another machine, such as over SSH, paste its redirected URL into the sign-in screen. The sign-in screens cancel with Esc at every step, a session that ends stops a running sign-in, and each request to the authorization server times out after 15 seconds. A running session uses the new credentials on its next turn.
 
 PiG registers itself with the authorization server, stores tokens in `~/.pig/agent/mcp-auth.json`, and refreshes access tokens when they expire or the server rejects them. If a server later requests additional scope, PiG asks for sign-in again and keeps the scope granted so far. Signing out deletes the stored credentials.
 
@@ -225,6 +225,8 @@ Servers with `codemode` or `deferred` tools are listed in the `mcp_servers` sect
 
 PiG activates `codemode` when a server with `codemode` exposure connects. It activates `tool_search` for a server with `deferred` exposure. To make the model see a tool without searching, give it `direct` exposure with `toolExposure`.
 
+`--tools` does not remove MCP tools unless one of its entries starts with `mcp__`; `pig --tools read,codemode,'mcp__radius__*'` keeps only the tools of `radius`. `--exclude-tools` accepts the same patterns, and `--no-mcp` disables MCP for one run (see [Tools](commands.md#mcp-tools)).
+
 `toolExposure` overrides the server exposure for individual tools. Keys are exact server tool names or patterns where `*` matches any characters. Exact names win over patterns; among patterns, the first match wins. A server with `hidden` exposure can expose only selected tools:
 
 ```json
@@ -283,6 +285,6 @@ Changes to enabled state or exposure apply only to the current session. A file-c
 
 ### Replace the built-in MCP support
 
-An installed extension that registers `/mcp`, such as `pi-mcp-adapter`, replaces the built-in MCP support for sessions. PiG then does not read `mcp.json` or connect its servers in a session, and `/mcp` belongs to the extension. Remove the extension to restore the built-in behavior. To disable built-in MCP support without a replacement, disable `mcp` under Built-in in `pig config`, or set `"extensions": ["-builtin:mcp"]` in [settings](settings.md).
+An installed extension that registers `/mcp`, such as `pi-mcp-adapter`, replaces the built-in MCP support for sessions. PiG then does not read `mcp.json` or connect its servers in a session, and `/mcp` belongs to the extension. Remove the extension to restore the built-in behavior. To disable built-in MCP support without a replacement, disable `mcp` under Built-in in `pig config`, or set `"extensions": ["-builtin:mcp"]` in [settings](settings.md). `--no-mcp` disables it for one run.
 
 An extension that registers `codemode` or `tool_search` similarly replaces the built-in tool with that name. Shell-level `pig mcp` commands always use the built-in implementation.

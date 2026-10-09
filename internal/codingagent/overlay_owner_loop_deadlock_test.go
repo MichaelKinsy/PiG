@@ -67,7 +67,7 @@ func TestRemoteOverlayKeyOnOwnerLoopDoesNotWaitOnOwnerQueue(t *testing.T) {
 	conn, peer := attachOverlayPeer(t, "atlas")
 	bridge := subprocess.NewUIBridge(func() {})
 	bridge.SetUIContext(&ExtUIContext{m: q.InteractiveMode})
-	bridge.RegisterExtConn("atlas", conn)
+	bridge.RegisterExtConn("atlas", conn, false)
 
 	args, err := json.Marshal(subprocess.RemoteOverlayOpenPayload{Key: "atlas-1", Overlay: true})
 	if err != nil {

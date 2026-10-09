@@ -35,7 +35,7 @@ func subprocessAPIModel(info map[string]any) (*ai.Model, error) {
 	}
 	var thinking ai.ThinkingLevel
 	if definition.Reasoning {
-		thinking = ai.ThinkingHigh
+		thinking = ai.ThinkingLevelHigh
 	}
 	return &ai.Model{
 		ID: definition.ID, DisplayName: definition.Name,

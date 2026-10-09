@@ -13,14 +13,13 @@ import (
 func TestRejectNextExperimentalClientConnectPreservesInstancePath(t *testing.T) {
 	rejectNextExperimentalClientConnect(t)
 	var opens atomic.Int32
-	options := client.ClientOptions{ServerId: "00000000-0000-4000-8000-000000000001", TransportFactory: func(_ context.Context, handlers client.ByteTransportHandlers, complete func(client.ByteTransport, error)) {
+	options := client.ClientOptions{ServerId: "00000000-0000-4000-8000-000000000001", TransportFactory: func(_ context.Context, handlers client.ByteTransportHandlers) (client.ByteTransport, error) {
 		opens.Add(1)
 		decoder, err := protocol.NewClientMessageDecoder(protocol.FrameDecoderOptions{})
 		if err != nil {
-			complete(nil, err)
-			return
+			return nil, err
 		}
-		complete(&bindingFixturePeer{decoder: decoder, handlers: handlers}, nil)
+		return &bindingFixturePeer{decoder: decoder, handlers: handlers}, nil
 	}}
 	instance, err := client.NewClient(options)
 	if err != nil {

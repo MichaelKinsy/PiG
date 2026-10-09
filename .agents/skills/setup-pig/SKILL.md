@@ -4,7 +4,6 @@ description: Check and prepare only the tools needed for a selected PiG task.
 ---
 
 <!--
-SPDX-FileCopyrightText: Copyright Hewlett Packard Enterprise Development LP
 SPDX-License-Identifier: MIT
 -->
 

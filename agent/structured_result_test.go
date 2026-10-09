@@ -20,7 +20,7 @@ import (
 func TestAgentLoop_ToolResultMessageOmitsStructuredContentButEventKeepsIt(t *testing.T) {
 	provider := &scriptedProvider{respond: toolCallsThenText(toolCall("c1", "echo", ai.JsonObject{"value": "x"}))}
 	rec := newEventRecorder(nil)
-	a := NewAgent(AgentOptions{Model: scriptedModel(provider), Tools: []AgentTool{newStructuredEchoTool()}, EventCh: rec.ch})
+	a := mustNewAgent(AgentOptions{Model: scriptedModel(provider), Tools: []AgentTool{newStructuredEchoTool()}, EventCh: rec.ch})
 
 	msgs := mustSend(t, a, "go")
 
@@ -53,7 +53,7 @@ func TestAgentLoop_ToolReturningIsErrorYieldsErrorResultWithDetails(t *testing.T
 			return AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: "bad"}}, Details: map[string]any{"partial": true}, IsError: true}, nil
 		}}
 	provider := &scriptedProvider{respond: toolCallsThenText(toolCall("c1", "failing", nil))}
-	a := NewAgent(AgentOptions{Model: scriptedModel(provider), Tools: []AgentTool{failing}})
+	a := mustNewAgent(AgentOptions{Model: scriptedModel(provider), Tools: []AgentTool{failing}})
 
 	msgs := mustSend(t, a, "go")
 
@@ -85,9 +85,9 @@ func TestAgentLoop_AfterToolCallStructuredContentRule(t *testing.T) {
 	for _, tc := range cases {
 		provider := &scriptedProvider{respond: toolCallsThenText(toolCall("c1", "echo", ai.JsonObject{"value": "original"}))}
 		rec := newEventRecorder(nil)
-		a := NewAgent(AgentOptions{
+		a := mustNewAgent(AgentOptions{
 			Model: scriptedModel(provider), Tools: []AgentTool{newStructuredEchoTool()}, EventCh: rec.ch,
-			AfterToolCall: []AfterToolCallHook{func(context.Context, string, string, json.RawMessage, AgentToolResult) AfterToolCallResult {
+			AfterToolCallHooks: []AfterToolCallHook{func(context.Context, string, string, json.RawMessage, AgentToolResult) AfterToolCallResult {
 				return tc.after
 			}},
 		})

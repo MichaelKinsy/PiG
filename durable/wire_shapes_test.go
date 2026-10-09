@@ -1,15 +1,19 @@
 package durable
 
+// pi: packages/durable/src/documents.ts
+
 import (
 	"encoding/json"
 	"testing"
+
+	"github.com/MichaelKinsy/PiG/chord/delta"
 )
 
 // A base always carries its value and a delta its ops, even when empty: the JSONL storage recovers an unconfirmed
 // creation as { kind: "base", version: 1, value: {} } (storage/jsonl/storage.ts:697) and stores content with
 // JSON.stringify, which keeps an empty object or array.
 func TestDocumentContentKeepsAnEmptyValueOrOps(t *testing.T) {
-	base := DocumentContent{Version: 1, Kind: ContentBase, Value: JsonObject{}}
+	base := DocumentContent{Version: 1, Kind: ContentBase, Value: delta.NewJsonObject(0)}
 	if got := jsonOf(t, base); got != `{"version":1,"kind":"base","value":{}}` {
 		t.Fatalf("base = %s", got)
 	}
@@ -21,7 +25,7 @@ func TestDocumentContentKeepsAnEmptyValueOrOps(t *testing.T) {
 	if err := json.Unmarshal([]byte(`{"kind":"base","version":1,"value":{}}`), &decoded); err != nil {
 		t.Fatal(err)
 	}
-	if decoded.Value == nil || len(decoded.Value) != 0 || decoded.Kind != ContentBase || decoded.Version != 1 {
+	if decoded.Value == nil || decoded.Value.Len() != 0 || decoded.Kind != ContentBase || decoded.Version != 1 {
 		t.Fatalf("decoded = %#v", decoded)
 	}
 }
@@ -45,9 +49,10 @@ func TestWaitingTaskStateKeepsAnEmptyOn(t *testing.T) {
 // so addressId encodes null (documents.ts resolveAddress, addressId).
 func TestResolveAddressKeepsAnAbsentFamilyKeyAbsent(t *testing.T) {
 	family := DefineDocFamily(DocFamilyDefinition[JsonObject, JsonValue]{
-		CommonDocDefinition: CommonDocDefinition[JsonObject]{Kind: "notes", Version: 1},
-		DocumentSemantics:   DocumentSemantics{Scope: ScopeSession},
-		Initial:             func(JsonValue) JsonObject { return JsonObject{} },
+		Family: true,
+		Kind:   "notes", Version: 1,
+		DocumentSemantics: DocumentSemantics{Scope: ScopeSession},
+		Initial:           func(JsonValue) JsonObject { return delta.NewJsonObject(0) },
 	})
 	resolved, err := ResolveAddress(family.AnyDefinition(), nil)
 	if err != nil {
@@ -68,9 +73,8 @@ func TestResolveAddressKeepsAnAbsentFamilyKeyAbsent(t *testing.T) {
 // ownerId rejects a number that is not a safe integer (documents.ts ownerId: Number.isSafeInteger).
 func TestResolveAddressRejectsAnUnsafeOwnerId(t *testing.T) {
 	token := DefineDoc(DocDefinition[JsonObject]{
-		CommonDocDefinition: CommonDocDefinition[JsonObject]{Kind: "plan", Version: 1},
+		CommonDocDefinition: CommonDocDefinition[JsonObject]{Kind: "plan", Version: 1, Initial: func() JsonObject { return delta.NewJsonObject(0) }},
 		DocumentSemantics:   DocumentSemantics{Scope: ScopeConversation, History: HistoryLatest, Fork: ForkCurrent},
-		Initial:             func() JsonObject { return JsonObject{} },
 	})
 	for _, owner := range []any{ConversationId(1 << 53), int64(-(1 << 53)), 1 << 60} {
 		if _, err := ResolveAddress(token.AnyDefinition(), []any{owner}); err == nil || err.Error() != "Document plan requires a conversation ID" {
@@ -102,5 +106,24 @@ func TestTruncationResultEncodesAnAbsentLimitAsNull(t *testing.T) {
 	}
 	if err := json.Unmarshal([]byte(truncated), &probe); err != nil || probe.TruncatedBy == nil || *probe.TruncatedBy != "lines" {
 		t.Fatalf("truncated = %s", truncated)
+	}
+}
+
+// packages/durable/src/types.ts:99-100 `DocFamilyToken.definition`: the token exposes the definition it was defined with
+// (kind, version, scope, family marker), and an erased token of a family shares it with the typed one.
+func TestDocFamilyTokenExposesItsDefinition(t *testing.T) {
+	token := DefineDocFamily(DocFamilyDefinition[JsonObject, JsonValue]{
+		Family: true,
+		Kind:   "notes", Version: 3,
+		DocumentSemantics: DocumentSemantics{Scope: ScopeSession},
+		Initial:           func(JsonValue) JsonObject { return delta.NewJsonObject(0) },
+	})
+	definition := token.AnyDefinition()
+	if definition.Kind != "notes" || definition.Version != 3 || definition.Scope != ScopeSession || !definition.Family {
+		t.Fatalf("definition = %+v", definition)
+	}
+	var erased AnyDocToken = token
+	if erased.AnyDefinition() != definition {
+		t.Fatal("the erased family token carries a different definition")
 	}
 }

@@ -15,15 +15,33 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"maps"
 	"os"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
 
-	pig "github.com/MichaelKinsy/PiG"
+	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/coding/extension"
+	jsjson "github.com/MichaelKinsy/PiG/extensions/sdk/json"
+	"github.com/MichaelKinsy/PiG/internal/jsonstringify"
+	"github.com/MichaelKinsy/PiG/internal/pigstrip"
 	"github.com/MichaelKinsy/PiG/tui"
 )
+
+// jsonStringifyString quotes text as JSON.stringify does: control characters escape, and U+2028, U+2029 and HTML characters stay literal.
+func jsonStringifyString(text string) string {
+	//portlint:allow jsonescape Canonicalize rewrites the escaped text in JSON.stringify form
+	encoded, err := jsjson.Marshal(text)
+	if err == nil {
+		encoded, err = jsonstringify.Canonicalize(encoded)
+	}
+	if err != nil {
+		return strconv.Quote(text)
+	}
+	return string(encoded)
+}
 
 func nameHandler(sc *SlashContext) error {
 	if sc.CurrentSession == nil {
@@ -48,17 +66,28 @@ func nameHandler(sc *SlashContext) error {
 	if err := sc.SetSessionName(args); err != nil {
 		return err
 	}
-	appendNameText(sc, "Session name set: "+args)
+	// upstream: packages/coding-agent/src/modes/interactive/interactive-mode.ts:handleNameCommand
+	// The session manager stores the name with line breaks folded to spaces, so the stored name can differ from the argument.
+	name := args
+	if sc.GetSessionName != nil {
+		if stored := sc.GetSessionName(); stored != "" {
+			name = stored
+		}
+	}
+	if name != args {
+		showWarningOrAppend(sc, fmt.Sprintf("Session name was normalized from %s to %s", jsonStringifyString(args), jsonStringifyString(name)))
+	}
+	appendNameText(sc, "Session name set: "+name)
 	// Update terminal title + status-line footer.
 	if sc.OnNameChange != nil {
-		sc.OnNameChange(args)
+		sc.OnNameChange(name)
 	}
 	return nil
 }
 
 // appendNameText preserves literal names with the theme's dim foreground.
 func appendNameText(sc *SlashContext, text string) {
-	text = tui.ActiveTheme().FgText("dim", text)
+	text = tui.ActiveTheme().Fg("dim", text)
 	if sc.AppendText != nil {
 		sc.AppendText(text)
 	} else {
@@ -79,7 +108,7 @@ func debugHandler(sc *SlashContext) error {
 		return err
 	}
 	th := tui.ActiveTheme()
-	confirmation := th.FgText("accent", "✓ Debug log written") + "\n" + th.FgText("muted", path)
+	confirmation := th.Fg("accent", "✓ Debug log written") + "\n" + th.Fg("muted", path)
 	if sc.AppendBlock == nil {
 		sc.Append(confirmation)
 		return nil
@@ -130,7 +159,7 @@ func cloneHandler(sc *SlashContext) error {
 		sc.Append("Clone unavailable in this build.")
 		return nil
 	}
-	if sc.CurrentSession != nil && sc.CurrentSession() != nil && sc.CurrentSession().LeafID() == nil {
+	if sc.CurrentSession != nil && sc.CurrentSession() != nil && sc.CurrentSession().GetLeafID() == nil {
 		showStatusOrAppend(sc, "Nothing to clone yet")
 		return nil
 	}
@@ -194,8 +223,8 @@ func resumeHandler(sc *SlashContext) error {
 			break
 		}
 		name := info.Name
-		if name == "" {
-			name = info.FirstMessage
+		if name == "" && info.FirstMessage != noMessagesText {
+			name = truncate(info.FirstMessage, 200)
 		}
 		if name == "" {
 			name = "(no name)"
@@ -281,7 +310,7 @@ func treeHandlerWithInitial(sc *SlashContext, initialSelectedID string) error {
 	// flashes "No entries in session" instead of opening an empty
 	// overlay.
 	if sc.CurrentSession != nil {
-		if s := sc.CurrentSession(); s != nil && len(s.Entries()) == 0 {
+		if s := sc.CurrentSession(); s != nil && len(s.GetEntries()) == 0 {
 			showStatusOrAppend(sc, "No entries in session")
 			return nil
 		}
@@ -298,7 +327,7 @@ func treeHandlerWithInitial(sc *SlashContext, initialSelectedID string) error {
 	// Current-leaf no-op check.
 	if sc.CurrentSession != nil {
 		if s := sc.CurrentSession(); s != nil {
-			if leaf := s.LeafID(); leaf != nil && *leaf == id {
+			if leaf := s.GetLeafID(); leaf != nil && *leaf == id {
 				showStatusOrAppend(sc, "Already at this point")
 				return nil
 			}
@@ -329,26 +358,8 @@ func treeHandlerWithInitial(sc *SlashContext, initialSelectedID string) error {
 
 // treeNavigateWithSummarize implements the full 3-option "Summarize branch?"
 // selection loop and navigates to the target.
-// Mirrors upstream interactive-mode.ts:4090-4194.
+// Mirrors upstream interactive-mode.ts:5570-5680.
 func treeNavigateWithSummarize(sc *SlashContext, entryID string) error {
-	// Skip the summarize prompt if the setting is enabled.
-	if sc.SettingsManager != nil && sc.SettingsManager.GetBranchSummarySettings().SkipPrompt {
-		// Navigate directly without summary.
-		result, err := sc.NavigateTreeFull(context.Background(), entryID, false, "")
-		if err != nil {
-			showStatusOrAppend(sc, fmt.Sprintf("Navigation error: %v", err))
-			return nil
-		}
-		if result.EditorText != "" && sc.SetEditorText != nil {
-			sc.SetEditorText(result.EditorText)
-		}
-		if !result.Cancelled && !result.Aborted {
-			showStatusOrAppend(sc, "Navigated to selected point")
-			flushCompactionQueue(sc)
-		}
-		return nil
-	}
-
 	const (
 		optNoSummary       = "No summary"
 		optSummarize       = "Summarize"
@@ -358,15 +369,19 @@ func treeNavigateWithSummarize(sc *SlashContext, entryID string) error {
 	wantsSummary := false
 	customInstructions := ""
 
+	// The summarize prompt is skipped when branchSummary.skipPrompt is set (interactive-mode.ts:5590); navigation then continues with
+	// no summary through the same result handling as a chosen "No summary".
+	skipPrompt := sc.SettingsManager != nil && sc.SettingsManager.GetBranchSummarySettings().SkipPrompt
+
 	// Loop until user makes a complete choice or cancels (Esc) to re-open tree.
-	// Mirrors upstream while(true) loop (interactive-mode.ts:4097-4120).
-	for {
+	// Mirrors upstream while(true) loop (interactive-mode.ts:5591-5615).
+	for !skipPrompt {
 		choice, ok := sc.ShowExtensionSelector("Summarize branch?", []string{
 			optNoSummary, optSummarize, optCustomSummarize,
 		}, "")
 		if !ok {
 			// Esc from selector: re-open tree at same row.
-			// Mirrors upstream interactive-mode.ts:4106.
+			// Mirrors upstream interactive-mode.ts:5601.
 			return treeHandlerWithInitial(sc, entryID)
 		}
 		wantsSummary = choice != optNoSummary
@@ -375,7 +390,7 @@ func treeNavigateWithSummarize(sc *SlashContext, entryID string) error {
 			instructions, ok := sc.ShowExtensionEditor("Custom summarization instructions", "", "")
 			if !ok {
 				// Esc from editor: loop back to selector.
-				// Mirrors upstream interactive-mode.ts:4113.
+				// Mirrors upstream interactive-mode.ts:5609.
 				continue
 			}
 			customInstructions = instructions
@@ -440,23 +455,23 @@ func writeTreeNode(b *strings.Builder, n *SessionTreeNode, prefix string, last b
 		connector = "└─ "
 		childPrefix = prefix + "   "
 	}
-	id := n.Entry.Base.ID
+	id := n.Entry.Base().ID
 	if len(id) > 8 {
 		id = id[:8]
 	}
 	role := "?"
 	text := ""
-	if me, ok := n.Entry.AsMessage(); ok {
+	if me, ok := n.Entry.(MessageEntry); ok {
 		role = me.Message.Role()
 		text = extractMessageText(me)
-	} else if n.Entry.Base.Type != "message" {
-		role = n.Entry.Base.Type
+	} else if n.Entry.Base().Type != "message" {
+		role = n.Entry.Base().Type
 	}
 	if len(text) > 60 {
 		text = text[:60] + "…"
 	}
 	text = strings.ReplaceAll(text, "\n", " ")
-	ts := n.Entry.Base.Timestamp
+	ts := n.Entry.Base().Timestamp
 	if len(ts) >= 19 {
 		ts = ts[11:19]
 	}
@@ -496,7 +511,7 @@ func changelogHandler(sc *SlashContext) error {
 		sc.ShowChangelog()
 		return nil
 	}
-	entries := ParseChangelog(pig.Changelog)
+	entries := ParseChangelog(bundledChangelog())
 	sc.Append(FormatChangelogForChat(entries))
 	return nil
 }
@@ -521,21 +536,34 @@ func compactHandler(sc *SlashContext) error {
 
 // ─── /settings handler ───────────────────────────────────────────
 
-// settingItem describes one toggle-able setting for the /settings selector.
-type settingItem struct {
-	id    string
-	label string
-	desc  string
-	// get returns the current display value.
-	get func(s Settings) string
-	// values is the ordered list of valid values to cycle through.
-	values []string
-	// apply writes the chosen value into the settings struct.
-	apply func(s *Settings, val string)
-	// gated, when non-nil, returns false to hide this item from /settings
-	// when the current terminal lacks the relevant capability. Mirrors
-	// upstream settings-selector.ts capability gating via getCapabilities().
-	gated func() bool
+// settingStripped reports whether the /settings row id configures a built-in
+// this process strips: skills, Mermaid, the changelog (whose detected updates
+// also send the install telemetry ping) and /tree; the double-escape row goes
+// when only "none" is left.
+// pig additive (D92): the row of a stripped built-in is not offered.
+func settingStripped(id string) bool {
+	switch id {
+	case "skill-commands":
+		return pigstrip.Has(pigstrip.ListFeatures, pigstrip.Skills)
+	case "mermaid-rendering":
+		return pigstrip.Has(pigstrip.ListFeatures, pigstrip.Mermaid)
+	case "collapse-changelog", "install-telemetry":
+		return pigstrip.Has(pigstrip.ListFeatures, pigstrip.Changelog)
+	case "double-escape-action":
+		return len(doubleEscapeActions()) <= 1
+	case "tree-filter-mode":
+		return pigstrip.Has(pigstrip.ListCommands, "/tree")
+	}
+	return false
+}
+
+// doubleEscapeActions are the double-escape actions whose command the process
+// has, then "none".
+// pig additive (D92): a stripped /tree or /fork is not offered.
+func doubleEscapeActions() []string {
+	return slices.DeleteFunc([]string{"tree", "fork", "none"}, func(action string) bool {
+		return action != "none" && pigstrip.Has(pigstrip.ListCommands, "/"+action)
+	})
 }
 
 type httpIdleTimeoutChoice struct {
@@ -577,682 +605,273 @@ func warningBoolString(b bool) string {
 	return "false"
 }
 
-// settingsItemsVisible returns settingsItems filtered by capability gates.
-// Mirrors upstream settings-selector.ts which only inserts show-images /
-// image-width-cells when getCapabilities().images is truthy.
-func settingsItemsVisible() []settingItem {
-	all := settingsItems()
-	out := make([]settingItem, 0, len(all))
-	for _, item := range all {
-		if item.gated != nil && !item.gated() {
-			continue
-		}
-		out = append(out, item)
+// settingsConfig is upstream's showSettingsSelector config (interactive-mode.ts:4872-4918), read from the settings and the running UI.
+func settingsConfig(sc *SlashContext) (SettingsConfig, error) {
+	sm := sc.SettingsManager
+	settings := sm.Get()
+	httpIdleTimeoutMs, err := sm.GetHttpIdleTimeoutMs()
+	if err != nil {
+		return SettingsConfig{}, err
 	}
-	return out
+	defaultModel := "not set"
+	if provider, model := sm.GetDefaultProvider(), sm.GetDefaultModel(); provider != "" && model != "" {
+		defaultModel = provider + "/" + model
+	}
+	var available []*ai.Model
+	var current *ai.Model
+	if sc.SettingsModels != nil {
+		available, current = sc.SettingsModels()
+	}
+	thinkingLevel := sm.GetDefaultThinkingLevel()
+	if thinkingLevel == "" {
+		thinkingLevel = DefaultThinkingLevel
+	}
+	var thinkingLevels []string
+	if sc.AvailableThinkingLevels != nil {
+		thinkingLevels = sc.AvailableThinkingLevels()
+	}
+	currentTheme := tui.SystemThemeName
+	if sc.ThemeSelection != nil {
+		if selection := sc.ThemeSelection(); selection != "" {
+			currentTheme = selection
+		}
+	} else if setting := sm.GetThemeSetting(); setting != nil && *setting != "" {
+		currentTheme = *setting
+	}
+	tuiMode := sm.GetTuiMode()
+	if sc.CurrentTuiMode != nil {
+		tuiMode = tui.TuiMode(sc.CurrentTuiMode())
+	}
+	return SettingsConfig{
+		AutoCompact:                sm.GetCompactionEnabled(),
+		DefaultModel:               defaultModel,
+		CurrentModel:               current,
+		AvailableDefaultModels:     available,
+		ShowImages:                 sm.GetShowImages(),
+		ImageWidthCells:            sm.GetImageWidthCells(),
+		AutoResizeImages:           sm.GetImageAutoResize(),
+		BlockImages:                sm.GetBlockImages(),
+		EnableSkillCommands:        sm.GetEnableSkillCommands(),
+		SteeringMode:               sm.GetSteeringMode(),
+		FollowUpMode:               sm.GetFollowUpMode(),
+		Transport:                  sm.GetTransport(),
+		HttpIdleTimeoutMs:          httpIdleTimeoutMs,
+		CacheWarmingMode:           sm.GetCacheWarmingMode(),
+		ThinkingLevel:              string(thinkingLevel),
+		AvailableThinkingLevels:    thinkingLevels,
+		ModelThinkingLevels:        maps.Clone(settings.ModelThinkingLevels),
+		CurrentTheme:               currentTheme,
+		TerminalTheme:              tui.GetTerminalTheme(),
+		AvailableThemes:            tui.ActiveThemeRegistry().Names(),
+		HideThinkingBlock:          sm.GetHideThinkingBlock(),
+		MermaidRenderingMode:       sm.GetMermaidRenderingMode(),
+		ShowCacheMissNotices:       sm.GetShowCacheMissNotices(),
+		CollapseChangelog:          sm.GetCollapseChangelog(),
+		EnableInstallTelemetry:     sm.GetEnableInstallTelemetry(),
+		DoubleEscapeAction:         sm.GetDoubleEscapeAction(),
+		TreeFilterMode:             sm.GetTreeFilterMode(),
+		ShowHardwareCursor:         sm.GetShowHardwareCursor(),
+		EditorPaddingX:             sm.GetEditorPaddingX(),
+		OutputPad:                  sm.GetOutputPad(),
+		AutocompleteMaxVisible:     sm.GetAutocompleteMaxVisible(),
+		QuietStartup:               sm.GetQuietStartup(),
+		DefaultProjectTrust:        string(sm.GetDefaultProjectTrust()),
+		ClearOnShrink:              sm.GetClearOnShrink(),
+		ShowTerminalProgress:       sm.GetShowTerminalProgress(),
+		TuiMode:                    string(tuiMode),
+		FullscreenExitOutput:       sm.GetFullscreenExitOutput(),
+		FullscreenScrollbar:        sm.GetFullscreenScrollbar(),
+		FullscreenCopyOnSelect:     sm.GetFullscreenCopyOnSelect(),
+		FullscreenWheelScrollLines: sm.GetFullscreenWheelScrollLines(),
+		Warnings:                   sm.GetWarnings(),
+		MaskSecretInput:            settings.GetMaskSecretInput(),
+	}, nil
 }
 
-// settingsItems returns the list of toggle-able settings.
-// Mirrors upstream SettingsSelectorComponent items (settings-selector.ts:163-253).
-func settingsItems() []settingItem {
-	boolStr := func(b bool) string {
-		if b {
-			return "true"
-		}
-		return "false"
-	}
-	return []settingItem{
-		{
-			id: "autocompact", label: "Auto-compact",
-			desc:   "Automatically compact context when it gets too large",
-			values: []string{"true", "false"},
-			get: func(s Settings) string {
-				if s.Compaction != nil && s.Compaction.Enabled != nil {
-					return boolStr(*s.Compaction.Enabled)
-				}
-				return "true"
-			},
-			apply: func(s *Settings, v string) {
-				if s.Compaction == nil {
-					s.Compaction = &CompactionSettingsJSON{}
-				}
-				b := v == "true"
-				s.Compaction.Enabled = &b
-			},
-		},
-		{
-			id: "show-images", label: "Show images",
-			desc:   "Render images inline in terminal",
-			values: []string{"true", "false"},
-			get:    func(s Settings) string { return boolStr(s.GetShowImages()) },
-			apply: func(s *Settings, v string) {
-				b := v == "true"
-				s.ShowImages = &b
-			},
-			gated: func() bool { return tui.GetCapabilities().Images != "" },
-		},
-		{
-			id: "image-width-cells", label: "Image width",
-			desc:   "Preferred inline image width in terminal cells",
-			values: []string{"60", "80", "120"},
-			get: func(s Settings) string {
-				return fmt.Sprintf("%d", s.GetImageWidthCells())
-			},
-			apply: func(s *Settings, v string) {
-				n, _ := strconv.Atoi(v)
-				if n > 0 {
-					s.ImageWidthCells = n
-				}
-			},
-			gated: func() bool { return tui.GetCapabilities().Images != "" },
-		},
-		{
-			id: "auto-resize-images", label: "Auto-resize images",
-			desc:   "Resize large images to 2000x2000 max for better model compatibility",
-			values: []string{"true", "false"},
-			get:    func(s Settings) string { return boolStr(s.GetImageAutoResize()) },
-			apply:  func(s *Settings, v string) { b := v == "true"; s.ImageAutoResize = &b },
-		},
-		{
-			id: "block-images", label: "Block images",
-			desc:   "Prevent images from being sent to LLM providers",
-			values: []string{"true", "false"},
-			get:    func(s Settings) string { return boolStr(s.BlockImages) },
-			apply: func(s *Settings, v string) {
-				s.BlockImages = v == "true"
-				s.blockImagesSet = true
-			},
-		},
-		{
-			id: "skill-commands", label: "Skill commands",
-			desc:   "Register skills as /skill:name commands",
-			values: []string{"true", "false"},
-			get: func(s Settings) string {
-				if s.EnableSkillCommands != nil && !*s.EnableSkillCommands {
-					return "false"
-				}
-				return "true"
-			},
-			apply: func(s *Settings, v string) {
-				enabled := v == "true"
-				s.EnableSkillCommands = &enabled
-			},
-		},
-		{
-			id: "show-hardware-cursor", label: "Show hardware cursor",
-			desc:   "Show the terminal cursor while still positioning it for IME support",
-			values: []string{"true", "false"},
-			get:    func(s Settings) string { return boolStr(s.GetShowHardwareCursor()) },
-			apply:  func(s *Settings, v string) { b := v == "true"; s.ShowHardwareCursor = &b },
-		},
-		{
-			id: "editor-padding", label: "Editor padding",
-			desc:   "Horizontal padding for input editor (0-3)",
-			values: []string{"0", "1", "2", "3"},
-			get: func(s Settings) string {
-				return fmt.Sprintf("%d", s.GetEditorPaddingX())
-			},
-			apply: func(s *Settings, v string) {
-				n, _ := strconv.Atoi(v)
-				p := max(0, min(3, n))
-				s.EditorPaddingX = &p
-			},
-		},
-		{
-			id: "output-padding", label: "Output padding",
-			desc:   "Horizontal padding for user messages, assistant messages, and thinking",
-			values: []string{"0", "1"},
-			get: func(s Settings) string {
-				return fmt.Sprintf("%d", s.GetOutputPad())
-			},
-			apply: func(s *Settings, v string) {
-				n, _ := strconv.Atoi(v)
-				p := max(0, min(1, n))
-				s.OutputPad = &p
-			},
-		},
-		{
-			id: "autocomplete-max-visible", label: "Autocomplete max items",
-			desc:   "Max visible items in autocomplete dropdown (3-20)",
-			values: []string{"3", "5", "7", "10", "15", "20"},
-			get: func(s Settings) string {
-				return fmt.Sprintf("%d", s.GetAutocompleteMaxVisible())
-			},
-			apply: func(s *Settings, v string) {
-				n, _ := strconv.Atoi(v)
-				m := max(3, min(20, n))
-				s.AutocompleteMaxVisible = &m
-			},
-		},
-		{
-			id: "clear-on-shrink", label: "Clear on shrink",
-			desc:   "Clear empty rows when content shrinks (may cause flicker)",
-			values: []string{"true", "false"},
-			get:    func(s Settings) string { return boolStr(s.GetClearOnShrink()) },
-			apply:  func(s *Settings, v string) { b := v == "true"; s.ClearOnShrink = &b },
-		},
-		{
-			id: "terminal-progress", label: "Terminal progress",
-			desc:   "Show OSC 9;4 progress indicators in the terminal tab bar",
-			values: []string{"true", "false"},
-			get:    func(s Settings) string { return boolStr(s.GetShowTerminalProgress()) },
-			apply:  func(s *Settings, v string) { b := v == "true"; s.ShowTerminalProgress = &b },
-			// Upstream settings-selector.ts:438 inserts this item unconditionally
-			// (no capability gate). The capability check still applies at write
-			// time inside the TUI: the menu just always lets the user toggle
-			// the persisted setting.
-		},
-		{
-			id: "steering-mode", label: "Steering mode",
-			desc:   "Enter while streaming queues steering messages. 'one-at-a-time': deliver one, wait for response. 'all': deliver all at once.",
-			values: []string{"one-at-a-time", "all"},
-			get: func(s Settings) string {
-				if s.SteeringMode == "" {
-					return "one-at-a-time"
-				}
-				return s.SteeringMode
-			},
-			apply: func(s *Settings, v string) { s.SteeringMode = v },
-		},
-		{
-			id: "follow-up-mode", label: "Follow-up mode",
-			desc:   fmt.Sprintf("%s queues follow-up messages until agent stops. 'one-at-a-time': deliver one, wait for response. 'all': deliver all at once.", tui.KeyDisplayText("alt+enter")),
-			values: []string{"one-at-a-time", "all"},
-			get: func(s Settings) string {
-				if s.FollowUpMode == "" {
-					return "one-at-a-time"
-				}
-				return s.FollowUpMode
-			},
-			apply: func(s *Settings, v string) { s.FollowUpMode = v },
-		},
-		{
-			id: "transport", label: "Transport",
-			desc:   "Preferred transport for providers that support multiple transports",
-			values: []string{"sse", "websocket", "websocket-cached", "auto"},
-			get: func(s Settings) string {
-				if s.Transport == "" {
-					return "auto"
-				}
-				return s.Transport
-			},
-			apply: func(s *Settings, v string) { s.Transport = v },
-		},
-		{
-			id: "http-idle-timeout", label: "HTTP idle timeout",
-			desc:   "Maximum idle gap while waiting for HTTP headers or body chunks. Disable for local models that pause longer than five minutes.",
-			values: []string{"30 sec", "1 min", "2 min", "5 min", "disabled"},
-			get: func(s Settings) string {
-				timeoutMs, err := (&SettingsManager{merged: s}).GetHttpIdleTimeoutMs()
-				if err != nil {
-					return err.Error()
-				}
-				return formatHTTPIdleTimeoutMs(timeoutMs)
-			},
-			apply: func(s *Settings, v string) {
-				timeoutMs, ok := parseHTTPIdleTimeoutLabel(v)
-				if !ok {
-					return
-				}
-				s.HTTPIdleTimeoutMs = &timeoutMs
-				s.httpIdleTimeoutInvalid = nil
-			},
-		},
-		{
-			id: "cache-warming-mode", label: "Cache warming",
-			desc:   "off; streaming while the agent runs; idle also between runs while continuation stays profitable",
-			values: []string{"off", "streaming", "idle"},
-			get: func(s Settings) string {
-				return string((&SettingsManager{global: s}).GetCacheWarmingMode())
-			},
-			apply: func(s *Settings, v string) { s.CacheWarming = CacheWarmingMode(v) },
-		},
-		{
-			id: "hide-thinking", label: "Hide thinking",
-			desc:   "Hide thinking blocks in assistant responses",
-			values: []string{"true", "false"},
-			get:    func(s Settings) string { return boolStr(s.HideThinkingBlock) },
-			apply: func(s *Settings, v string) {
-				s.HideThinkingBlock = v == "true"
-				s.hideThinkingBlockSet = true
-			},
-		},
-		{
-			id: "mermaid-rendering", label: "Mermaid diagrams",
-			desc:   "Render Mermaid code blocks as Unicode diagrams",
-			values: []string{"off", "final", "streaming"},
-			get: func(s Settings) string {
-				return (&SettingsManager{merged: s}).GetMermaidRenderingMode()
-			},
-			apply: func(s *Settings, v string) {
-				if s.Markdown == nil {
-					s.Markdown = &MarkdownSettings{}
-				}
-				s.Markdown.Mermaid = v
-			},
-		},
-		{
-			id: "cache-miss-notices", label: "Cache miss notices",
-			desc:   "Show transcript notices for cache costs and provider recovery diagnostics",
-			values: []string{"true", "false"},
-			get:    func(s Settings) string { return boolStr(s.ShowCacheMissNotices) },
-			apply: func(s *Settings, v string) {
-				s.ShowCacheMissNotices = v == "true"
-				s.showCacheMissNoticesSet = true
-			},
-		},
-		{
-			id: "collapse-changelog", label: "Collapse changelog",
-			desc:   "Show condensed changelog after updates",
-			values: []string{"true", "false"},
-			get:    func(s Settings) string { return boolStr(s.CollapseChangelog) },
-			apply: func(s *Settings, v string) {
-				s.CollapseChangelog = v == "true"
-				s.collapseChangelogSet = true
-			},
-		},
-		{
-			id: "quiet-startup", label: "Quiet startup",
-			desc:   "Disable verbose printing at startup (header: keep only the startup header)",
-			values: []string{"true", "header", "false"},
-			apply: func(s *Settings, v string) {
-				// settings-selector.ts:923-925: "header" stays "header"; other values are booleans.
-				switch v {
-				case "header":
-					s.QuietStartup = QuietStartupHeader
-				case "true":
-					s.QuietStartup = QuietStartupTrue
-				default:
-					s.QuietStartup = QuietStartupFalse
-				}
-				s.quietStartupSet = true
-			},
-			get: func(s Settings) string { return s.QuietStartup.String() },
-		},
-		{
-			id: "install-telemetry", label: "Install telemetry",
-			desc:   "Send an anonymous version/update ping after changelog-detected updates",
-			values: []string{"true", "false"},
-			get: func(s Settings) string {
-				if s.EnableInstallTelemetry == nil {
-					return "true"
-				}
-				return boolStr(*s.EnableInstallTelemetry)
-			},
-			apply: func(s *Settings, v string) {
-				enabled := v == "true"
-				s.EnableInstallTelemetry = &enabled
-			},
-		},
-		{
-			id: "default-project-trust", label: "Default project trust",
-			desc:   "Fallback behavior when no extension or saved trust decision decides project trust",
-			values: []string{"Ask", "Always trust", "Never trust"},
-			get: func(s Settings) string {
-				switch s.DefaultProjectTrust {
-				case "always":
-					return "Always trust"
-				case "never":
-					return "Never trust"
-				default:
-					return "Ask"
-				}
-			},
-			apply: func(s *Settings, v string) {
-				switch v {
-				case "Always trust":
-					s.DefaultProjectTrust = "always"
-				case "Never trust":
-					s.DefaultProjectTrust = "never"
-				default:
-					s.DefaultProjectTrust = "ask"
-				}
-			},
-		},
-		{
-			id: "double-escape-action", label: "Double-escape action",
-			desc:   "Action when pressing Escape twice with empty editor",
-			values: []string{"tree", "fork", "none"},
-			get: func(s Settings) string {
-				if s.DoubleEscapeAction == "" {
-					return "tree"
-				}
-				return s.DoubleEscapeAction
-			},
-			apply: func(s *Settings, v string) { s.DoubleEscapeAction = v },
-		},
-		{
-			id: "tree-filter-mode", label: "Tree filter mode",
-			desc:   "Default filter when opening /tree",
-			values: []string{"default", "no-tools", "user-only", "labeled-only", "all"},
-			get: func(s Settings) string {
-				if s.TreeFilterMode == "" {
-					return "default"
-				}
-				return s.TreeFilterMode
-			},
-			apply: func(s *Settings, v string) { s.TreeFilterMode = v },
-		},
-		// pig divergence (D80): configurable input privacy leaves the upstream setting order intact.
-		{
-			id: "mask-secret-input", label: "Mask secret input",
-			desc:   "PiG default: hide secret input with a count and last four characters. Differs from Pi; false restores Pi's plain-text behavior.",
-			values: []string{"true", "false"},
-			get:    func(s Settings) string { return boolStr(s.GetMaskSecretInput()) },
-			apply:  func(s *Settings, v string) { enabled := v == "true"; s.MaskSecretInput = &enabled },
-		},
-		{
-			id: "warnings", label: "Warnings",
-			desc:   "Enable or disable individual warnings",
-			values: []string{"configure"},
-			get:    func(Settings) string { return "configure" },
-			apply: func(s *Settings, _ string) {
-				if s.Warnings == nil {
-					s.Warnings = &WarningSettings{}
-				}
-			},
-		},
-		{
-			// Mirrors upstream settings-selector.ts's "model-thinking" item
-			// (id "model-thinking", label "Default thinking level per
-			// model"). Upstream has no separate global "Thinking level"
-			// settings-list entry: the global default is set via /thinking
-			// (app.thinking.cycle / app.thinking.save), already ported in
-			// thinking_selector.go. This item instead opens a per-model
-			// override submenu, handled specially in settingsHandlerTUI.
-			id: "model-thinking", label: "Default thinking level per model",
-			desc: fmt.Sprintf("Override the default thinking level for specific models. %s cycles in-session.",
-				tui.ActionKeyDisplayText("app.thinking.cycle")),
-			values: nil,
-			get: func(s Settings) string {
-				if len(s.ModelThinkingLevels) == 0 {
-					return "none"
-				}
-				return fmt.Sprintf("%d configured", len(s.ModelThinkingLevels))
-			},
-			apply: func(*Settings, string) {}, // no-op: applied via the submenu directly
-		},
-		{
-			id: "tui-mode", label: "TUI mode",
-			desc:   "Interface layout; regular mode uses the terminal's normal scrollback",
-			values: []string{"regular", "fullscreen"},
-			get: func(s Settings) string {
-				return (&SettingsManager{merged: s}).GetTuiMode()
-			},
-			apply: func(s *Settings, v string) { s.TuiMode = v },
-		},
-		{
-			id: "fullscreen-exit-output", label: "Fullscreen exit output",
-			desc:   "Print the transcript or only a session resume hint when exiting fullscreen mode",
-			values: []string{"transcript", "resume-hint"},
-			get: func(s Settings) string {
-				return (&SettingsManager{merged: s}).GetFullscreenExitOutput()
-			},
-			apply: func(s *Settings, v string) { s.FullscreenExitOutput = v },
-		},
-		{
-			id: "fullscreen-scrollbar", label: "Fullscreen scrollbar",
-			desc:   "Scrollbar behavior in fullscreen mode; has no effect in regular mode",
-			values: []string{"auto", "always", "hidden"},
-			get: func(s Settings) string {
-				return (&SettingsManager{merged: s}).GetFullscreenScrollbar()
-			},
-			apply: func(s *Settings, v string) { s.FullscreenScrollbar = v },
-		},
-		{
-			id: "fullscreen-copy-on-select", label: "Fullscreen copy on select",
-			desc:   "Automatically copy selected text in fullscreen mode; disable to copy selections with Ctrl+X",
-			values: []string{"true", "false"},
-			get: func(s Settings) string {
-				return boolStr((&SettingsManager{merged: s}).GetFullscreenCopyOnSelect())
-			},
-			apply: func(s *Settings, v string) {
-				enabled := v == "true"
-				s.FullscreenCopyOnSelect = &enabled
-			},
-		},
-		{
-			id: "fullscreen-wheel-scroll-lines", label: "Fullscreen wheel scrolling",
-			desc:   "Lines per mouse-wheel event in fullscreen mode; 'auto' speeds up fast wheel spins where the terminal does not",
-			values: wheelScrollLinesValues(WheelScrollLines{Auto: true}),
-			get: func(s Settings) string {
-				return wheelScrollLinesLabel((&SettingsManager{merged: s}).GetFullscreenWheelScrollLines())
-			},
-			apply: func(s *Settings, v string) {
-				s.FullscreenWheelScrollLines = wheelScrollLinesJSON(parseWheelScrollLines(v))
-			},
-		},
-		{
-			id: "theme", label: "Theme",
-			desc:   "Color theme for the interface",
-			values: []string{"auto", "dark", "light"},
-			get: func(s Settings) string {
-				if s.Theme == "" {
-					return tui.ActiveTheme().Name
-				}
-				return s.Theme
-			},
-			apply: func(s *Settings, v string) {
-				if v == "auto" {
-					s.Theme = ""
-				} else {
-					s.Theme = v
-				}
-			},
-		},
-	}
-}
-
-// settingsHandler implements /settings: shows a selector of toggle-able
-// settings, cycling values on each selection. Mirrors upstream
-// SettingsSelectorComponent (settings-selector.ts) in line-renderer form.
+// settingsHandler implements /settings (upstream showSettingsSelector, interactive-mode.ts:4869): it opens the settings selector, whose callbacks save each change through the SettingsManager setter and then apply its live effect.
 func settingsHandler(sc *SlashContext) error {
 	if sc.SettingsManager == nil {
 		sc.Append("Settings manager unavailable.")
 		return nil
 	}
-
-	// Prefer the dedicated SettingsList overlay (upstream parity).
-	if sc.ShowSettingsList != nil {
-		return settingsHandlerTUI(sc)
+	config, err := settingsConfig(sc)
+	if err != nil {
+		return err
 	}
-
-	if sc.ShowExtensionSelector == nil {
+	if sc.ShowSettingsSelector == nil {
 		// Headless / test: just dump current values.
-		s := sc.SettingsManager.Get()
 		var b strings.Builder
 		b.WriteString("**Settings** (read-only in this mode)\n\n")
-		for _, item := range settingsItemsVisible() {
-			fmt.Fprintf(&b, "  %s: %s\n", item.label, item.get(s))
+		for _, item := range NewSettingsSelectorComponent(config, SettingsCallbacks{}).GetSettingsList().Items() {
+			fmt.Fprintf(&b, "  %s: %s\n", item.Label, item.CurrentValue)
 		}
 		sc.Append(b.String())
 		return nil
 	}
-
-	// Fallback: generic ShowExtensionSelector (shouldn't reach here
-	// in interactive mode but kept for safety).
-	items := settingsItemsVisible()
-	for {
-		s := sc.SettingsManager.Get()
-		options := make([]string, len(items))
-		for i, item := range items {
-			options[i] = fmt.Sprintf("%s  [%s]", item.label, item.get(s))
-		}
-		choice, ok := sc.ShowExtensionSelector("Settings (Enter to toggle, Esc to close)", options, "")
-		if !ok {
-			break
-		}
-		var selected *settingItem
-		for i := range items {
-			if options[i] == choice {
-				selected = &items[i]
-				break
-			}
-		}
-		if selected == nil {
-			continue
-		}
-		current := selected.get(s)
-		nextVal := cycleValue(current, selected.values)
-		if err := sc.SettingsManager.UpdateGlobal(func(gs *Settings) {
-			selected.apply(gs, nextVal)
-		}); err != nil {
-			showStatusOrAppend(sc, fmt.Sprintf("Failed to save settings: %v", err))
-			continue
-		}
-		showStatusOrAppend(sc, fmt.Sprintf("%s: %s", selected.label, nextVal))
-		if sc.OnSettingApplied != nil {
-			sc.OnSettingApplied(selected.id, nextVal)
-		}
-	}
-	return nil
+	return settingsHandlerTUI(sc, config)
 }
 
-// settingsHandlerTUI uses the dedicated two-column SettingsList component
-// that matches upstream's SettingsSelectorComponent layout. The list stays
-// open until Esc and applies each change in place without a status line, as
-// upstream's selector callbacks do; only a failed save is reported.
-func settingsHandlerTUI(sc *SlashContext) error {
-	items := settingsItemsVisible()
-	s := sc.SettingsManager.Get()
-	tuiItems := make([]tui.SettingItem, len(items))
-	for i, item := range items {
-		tuiItems[i] = tui.SettingItem{
-			ID:           item.id,
-			Label:        item.label,
-			Description:  item.desc,
-			CurrentValue: item.get(s),
-			Values:       item.values,
-		}
-		if item.id == "tui-mode" && sc.CurrentTuiMode != nil {
-			tuiItems[i].CurrentValue = sc.CurrentTuiMode()
-		}
-		if item.id == "model-thinking" {
-			tuiItems[i].Submenu = sc.ModelThinkingSubmenu
-		}
-		if item.id == "fullscreen-wheel-scroll-lines" {
-			// The cycle keeps the configured count (#9758).
-			tuiItems[i].Values = wheelScrollLinesValues(sc.SettingsManager.GetFullscreenWheelScrollLines())
-		}
-	}
-
-	// The Warnings row opens a nested settings list whose changes save
-	// immediately, as upstream WarningSettingsSubmenu does.
-	configureWarnings := func() {
-		warnings := sc.SettingsManager.GetWarnings()
-		warningItems := []tui.SettingItem{{
-			ID:           "anthropic-extra-usage",
-			Label:        "Anthropic extra usage",
-			Description:  "Warn when Anthropic subscription auth may use paid extra usage",
-			CurrentValue: warningBoolString(warnings.AnthropicExtraUsage),
-			Values:       []string{"true", "false"},
-		}}
-		onWarningChange := func(id, value string) string {
-			if id != "anthropic-extra-usage" {
-				return value
-			}
-			next := warnings
-			next.AnthropicExtraUsage = value == "true"
-			if err := sc.SettingsManager.SetWarnings(next); err != nil {
+// settingsHandlerTUI presents the selector for config; its callbacks save and apply each change.
+func settingsHandlerTUI(sc *SlashContext, config SettingsConfig) error {
+	sc.ShowSettingsSelector(func(done func()) *SettingsSelectorComponent {
+		var selector *SettingsSelectorComponent
+		// applied reports a failed save and shows the row's saved value again; otherwise it applies the change's live effect. value is the row's value as the live effect reads it.
+		applied := func(id, value string, err error) bool {
+			if err != nil {
 				showStatusOrAppend(sc, fmt.Sprintf("Failed to save settings: %v", err))
-			} else {
-				warnings = next
-				if sc.OnSettingApplied != nil {
-					sc.OnSettingApplied("warnings", "configure")
+				if fresh, freshErr := settingsConfig(sc); freshErr == nil {
+					for _, item := range NewSettingsSelectorComponent(fresh, SettingsCallbacks{}).GetSettingsList().Items() {
+						if item.ID == id {
+							selector.GetSettingsList().UpdateValue(id, item.CurrentValue)
+						}
+					}
 				}
+				return false
 			}
-			return warningBoolString(warnings.AnthropicExtraUsage)
-		}
-		if sc.ShowSettingsSubmenu != nil {
-			sc.ShowSettingsSubmenu(warningItems, onWarningChange)
-			return
-		}
-		sc.ShowSettingsList(warningItems, onWarningChange)
-	}
-
-	// onChange saves one change and returns the value its row shows
-	// afterwards: the new value, as upstream's SettingsList keeps it, or the
-	// saved value when the change was cancelled or could not be saved.
-	onChange := func(changedID, changedValue string) string {
-		var selected *settingItem
-		for i := range items {
-			if items[i].id == changedID {
-				selected = &items[i]
-				break
+			if sc.OnSettingApplied != nil {
+				sc.OnSettingApplied(id, value)
 			}
+			return true
 		}
-		if selected == nil {
-			return changedValue
-		}
-		saved := func() string {
-			if changedID == "tui-mode" && sc.CurrentTuiMode != nil {
-				return sc.CurrentTuiMode()
-			}
-			return selected.get(sc.SettingsManager.Get())
-		}
-
-		if changedID == "warnings" {
-			configureWarnings()
-			return saved()
-		}
-		if changedID == "theme" && sc.ShowThemeSelector != nil {
-			chosen, ok := sc.ShowThemeSelector(saved())
-			if !ok || chosen == "" {
-				return saved()
-			}
-			changedValue = chosen
-		}
-
-		appliedValue := changedValue
-		if changedID == "http-idle-timeout" {
-			timeoutMs, ok := parseHTTPIdleTimeoutLabel(changedValue)
-			if !ok {
-				showStatusOrAppend(sc, fmt.Sprintf("Failed to save settings: invalid HTTP idle timeout %q", changedValue))
-				return saved()
-			}
-			appliedValue = strconv.Itoa(timeoutMs)
-		}
-
-		// Pi's onTuiModeChange saves the mode only after the renderer switches; a refused switch keeps the running mode and the saved default.
-		if changedID == "tui-mode" && sc.SwitchTuiMode != nil && !sc.SwitchTuiMode(changedValue) {
-			return saved()
-		}
-
-		if err := sc.SettingsManager.UpdateGlobal(func(gs *Settings) {
-			selected.apply(gs, changedValue)
-		}); err != nil {
-			showStatusOrAppend(sc, fmt.Sprintf("Failed to save settings: %v", err))
-			return saved()
-		}
-		if sc.OnSettingApplied != nil {
-			sc.OnSettingApplied(selected.id, appliedValue)
-		}
-		if changedID == "tui-mode" && sc.CurrentTuiMode != nil {
-			return sc.CurrentTuiMode()
-		}
-		return changedValue
-	}
-	sc.ShowSettingsList(tuiItems, onChange)
+		sm := sc.SettingsManager
+		selector = NewSettingsSelectorComponent(config, SettingsCallbacks{
+			OnAutoCompactChange: func(enabled bool) {
+				applied("autocompact", boolSettingValue(enabled), sm.SetCompactionEnabled(enabled))
+			},
+			OnShowImagesChange: func(enabled bool) {
+				applied("show-images", boolSettingValue(enabled), sm.SetShowImages(enabled))
+			},
+			OnImageWidthCellsChange: func(width int) {
+				applied("image-width-cells", strconv.Itoa(width), sm.SetImageWidthCells(width))
+			},
+			OnAutoResizeImagesChange: func(enabled bool) {
+				applied("auto-resize-images", boolSettingValue(enabled), sm.SetImageAutoResize(enabled))
+			},
+			OnBlockImagesChange: func(blocked bool) {
+				applied("block-images", boolSettingValue(blocked), sm.SetBlockImages(blocked))
+			},
+			OnEnableSkillCommandsChange: func(enabled bool) {
+				applied("skill-commands", boolSettingValue(enabled), sm.SetEnableSkillCommands(enabled))
+			},
+			OnSteeringModeChange: func(mode string) {
+				applied("steering-mode", mode, sm.SetSteeringMode(mode))
+			},
+			OnFollowUpModeChange: func(mode string) {
+				applied("follow-up-mode", mode, sm.SetFollowUpMode(mode))
+			},
+			OnTransportChange: func(transport string) {
+				applied("transport", transport, sm.SetTransport(transport))
+			},
+			OnHttpIdleTimeoutMsChange: func(timeoutMs int) {
+				if applied("http-idle-timeout", strconv.Itoa(timeoutMs), sm.SetHttpIdleTimeoutMs(float64(timeoutMs))) {
+					showStatusOrAppend(sc, "HTTP idle timeout: "+formatHTTPIdleTimeoutMs(timeoutMs))
+				}
+			},
+			OnCacheWarmingModeChange: func(mode CacheWarmingMode) {
+				if applied("cache-warming-mode", string(mode), sm.SetCacheWarmingMode(mode)) {
+					showStatusOrAppend(sc, "Cache warming: "+string(mode))
+				}
+			},
+			OnModelThinkingLevelChange: func(provider, modelID, level string) {
+				if applied("model-thinking", "", sm.SetModelThinkingLevel(provider, modelID, ai.ThinkingLevel(level))) && sc.ApplyModelThinkingLevel != nil {
+					sc.ApplyModelThinkingLevel(provider, modelID, level)
+				}
+			},
+			OnModelThinkingLevelRemove: func(provider, modelID string) {
+				if applied("model-thinking", "", sm.RemoveModelThinkingLevel(provider, modelID)) && sc.ApplyModelThinkingLevel != nil {
+					sc.ApplyModelThinkingLevel(provider, modelID, "")
+				}
+			},
+			OnThemeChange: func(theme string) {
+				applied("theme", theme, sm.SetTheme(theme))
+			},
+			OnThemePreview: func(theme string) {
+				if sc.PreviewTheme != nil {
+					sc.PreviewTheme(theme)
+				}
+			},
+			OnHideThinkingBlockChange: func(hidden bool) {
+				applied("hide-thinking", boolSettingValue(hidden), sm.SetHideThinkingBlock(hidden))
+			},
+			OnMermaidRenderingModeChange: func(mode MermaidRenderingMode) {
+				applied("mermaid-rendering", string(mode), sm.SetMermaidRenderingMode(mode))
+			},
+			OnShowCacheMissNoticesChange: func(shown bool) {
+				applied("cache-miss-notices", boolSettingValue(shown), sm.SetShowCacheMissNotices(shown))
+			},
+			OnCollapseChangelogChange: func(collapsed bool) {
+				applied("collapse-changelog", boolSettingValue(collapsed), sm.SetCollapseChangelog(collapsed))
+			},
+			OnEnableInstallTelemetryChange: func(enabled bool) {
+				applied("install-telemetry", boolSettingValue(enabled), sm.SetEnableInstallTelemetry(enabled))
+			},
+			OnQuietStartupChange: func(quiet QuietStartup) {
+				applied("quiet-startup", quiet.String(), sm.SetQuietStartup(quiet))
+			},
+			OnDefaultProjectTrustChange: func(defaultProjectTrust string) {
+				applied("default-project-trust", defaultProjectTrust, sm.SetDefaultProjectTrust(DefaultProjectTrust(defaultProjectTrust)))
+			},
+			OnDoubleEscapeActionChange: func(action string) {
+				applied("double-escape-action", action, sm.SetDoubleEscapeAction(action))
+			},
+			OnTreeFilterModeChange: func(mode string) {
+				applied("tree-filter-mode", mode, sm.SetTreeFilterMode(mode))
+			},
+			OnMaskSecretInputChange: func(enabled bool) {
+				applied("mask-secret-input", boolSettingValue(enabled), sm.SetMaskSecretInput(enabled))
+			},
+			OnShowHardwareCursorChange: func(enabled bool) {
+				applied("show-hardware-cursor", boolSettingValue(enabled), sm.SetShowHardwareCursor(enabled))
+			},
+			OnEditorPaddingXChange: func(padding int) {
+				applied("editor-padding", strconv.Itoa(padding), sm.SetEditorPaddingX(padding))
+			},
+			OnOutputPadChange: func(padding OutputPad) {
+				applied("output-padding", strconv.Itoa(int(padding)), sm.SetOutputPad(padding))
+			},
+			OnAutocompleteMaxVisibleChange: func(maxVisible int) {
+				applied("autocomplete-max-visible", strconv.Itoa(maxVisible), sm.SetAutocompleteMaxVisible(maxVisible))
+			},
+			OnClearOnShrinkChange: func(enabled bool) {
+				applied("clear-on-shrink", boolSettingValue(enabled), sm.SetClearOnShrink(enabled))
+			},
+			OnShowTerminalProgressChange: func(enabled bool) {
+				applied("terminal-progress", boolSettingValue(enabled), sm.SetShowTerminalProgress(enabled))
+			},
+			OnTuiModeChange: func(mode string) {
+				// Pi's onTuiModeChange saves the mode only after the renderer switches; a refused switch keeps the running mode and the saved default.
+				if sc.SwitchTuiMode != nil && !sc.SwitchTuiMode(mode) {
+					if sc.CurrentTuiMode != nil {
+						selector.GetSettingsList().UpdateValue("tui-mode", sc.CurrentTuiMode())
+					}
+					return
+				}
+				if applied("tui-mode", mode, sm.SetTuiMode(tui.TuiMode(mode))) && sc.CurrentTuiMode != nil {
+					selector.GetSettingsList().UpdateValue("tui-mode", sc.CurrentTuiMode())
+				}
+			},
+			OnFullscreenExitOutputChange: func(output FullscreenExitOutput) {
+				applied("fullscreen-exit-output", string(output), sm.SetFullscreenExitOutput(output))
+			},
+			OnFullscreenScrollbarChange: func(mode string) {
+				applied("fullscreen-scrollbar", mode, sm.SetFullscreenScrollbar(mode))
+			},
+			OnFullscreenCopyOnSelectChange: func(enabled bool) {
+				applied("fullscreen-copy-on-select", boolSettingValue(enabled), sm.SetFullscreenCopyOnSelect(enabled))
+			},
+			OnFullscreenWheelScrollLinesChange: func(lines WheelScrollLines) {
+				applied("fullscreen-wheel-scroll-lines", wheelScrollLinesLabel(lines), sm.SetFullscreenWheelScrollLines(lines))
+			},
+			OnWarningsChange: func(warnings WarningSettings) {
+				applied("warnings", "configure", sm.SetWarnings(warnings))
+			},
+			OnCancel: done,
+		})
+		return selector
+	})
 	return nil
 }
 
-// cycleValue returns the next value in the cycle after current.
-// If current is not in values, returns values[0].
-func cycleValue(current string, values []string) string {
-	for i, v := range values {
-		if v == current {
-			return values[(i+1)%len(values)]
-		}
-	}
-	if len(values) > 0 {
-		return values[0]
-	}
-	return current
-}
-
-// reloadHandler implements /reload. Reloads settings, prompt templates,
-// context files (AGENTS.md/CLAUDE.md), and re-fires session_start for
-// extensions. Mirrors upstream handleReloadCommand (interactive-mode.ts:4453).
 func reloadHandler(sc *SlashContext) error {
 	if sc.Reload == nil {
 		// Headless context: just reload settings if we have a manager.
@@ -1265,6 +884,9 @@ func reloadHandler(sc *SlashContext) error {
 		return nil
 	}
 	if err := sc.Reload(); err != nil {
+		if errors.Is(err, errReloadBlocked) {
+			return nil
+		}
 		// interactive-mode.ts:6250-6254 shows "Reload failed: <error.message>".
 		return fmt.Errorf("Reload failed: %w", err)
 	}
@@ -1274,6 +896,9 @@ func reloadHandler(sc *SlashContext) error {
 	explain := reloadExplainRequested(sc.Args)
 	var summary strings.Builder
 	summary.WriteString("Reloaded keybindings, extensions, skills, prompts, themes, and context files")
+	if sc.ReloadSavedProjectTrust != nil && sc.ReloadSavedProjectTrust() {
+		summary.WriteString("; saved project trust")
+	}
 	if sc.ReloadDiagnostics != nil {
 		// Upstream's status names the reloaded resource kinds without counts;
 		// /reload --explain reports the counts.
@@ -1381,7 +1006,11 @@ func exportHandler(sc *SlashContext) error {
 	var filePath string
 	var err error
 	if strings.HasSuffix(outputPath, ".jsonl") {
-		filePath, err = ExportSessionToJsonl(s, outputPath, nil)
+		if sc.ExportToJsonl != nil {
+			filePath, err = sc.ExportToJsonl(outputPath)
+		} else {
+			filePath, err = ExportSessionToJsonl(s, outputPath, nil)
+		}
 	} else {
 		var tools func(name string) *extension.ToolRenderers
 		if sc.ToolRenderers != nil {
@@ -1391,7 +1020,11 @@ func exportHandler(sc *SlashContext) error {
 		if sc.ShareState != nil {
 			state = sc.ShareState()
 		}
-		filePath, err = ExportSessionToHTML(s.Path(), outputPath, tools, s.CWD(), state)
+		var settingsTheme string
+		if sc.SettingsManager != nil {
+			settingsTheme = sc.SettingsManager.GetTheme()
+		}
+		filePath, err = ExportSessionToHTML(s.Path(), outputPath, tools, s.CWD(), state, ExportThemeName(settingsTheme))
 	}
 	if err != nil {
 		return fmt.Errorf("Failed to export session: %w", err)
@@ -1468,6 +1101,9 @@ func importHandler(sc *SlashContext) error {
 // confirmSlash asks a yes/no question as upstream showExtensionConfirm does:
 // a Yes/No selector headed by the title and message.
 func confirmSlash(sc *SlashContext, title, message string) bool {
+	if sc.ShowExtensionConfirm != nil {
+		return sc.ShowExtensionConfirm(title, message)
+	}
 	choice, ok := sc.ShowExtensionSelector(title+"\n"+message, []string{"Yes", "No"}, "")
 	return ok && choice == "Yes"
 }

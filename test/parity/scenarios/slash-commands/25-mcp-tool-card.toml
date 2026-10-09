@@ -1,0 +1,48 @@
+# Behavior family: slash-commands
+# Surface: the card of an MCP tool call (extensions/mcp/tools.ts renderCall, renderResult)
+#
+# Upstream evidence (pinned pi 1.1.0): an extension registers a stdio MCP server `docs` with one direct tool, `search`
+# (testdata/mcp-docs-server.ts). The faux model calls `mcp__docs__search` with `{ query: "cards" }`; the tool card shows
+# the call line and the result text. The crop is the card. The comparator is output_equal.
+
+# Mutation (compiling): the call line without its arguments (coding/mcpext/tools.go renderCall) fails this scenario.
+name = "25-mcp-tool-card"
+description = "Both binaries render the card of an MCP tool call and its result the same way."
+covers = [
+  "packages/coding-agent/src/extensions/mcp/tools.ts",
+]
+tags = ["fast", "hermetic", "tui"]
+driver = "interactive-tmux"
+model = "test-faux/faux-1"
+
+[tmux]
+width = 100
+height = 35
+ready_pattern_pig = "[Context]"
+ready_pattern_pi = "[Context]"
+ready_timeout_seconds = 25
+capture_start = "Run: mcp search cards"
+capture_end = "mcp-search-done"
+capture_start_last = true
+
+[[tmux.steps]]
+keys = ["Run: mcp search cards", "Enter"]
+wait_contains = ["mcp-search-done"]
+wait_timeout_seconds = 25
+settle_seconds = 2
+
+[env]
+override_base_args = true
+pig = ["PIG_TEST_FAUX=1", "PIG_CODING_AGENT_DIR=testdata/mcp-empty-pig-agent"]
+pi = ["PI_CODING_AGENT_DIR=testdata/mcp-empty-pi-agent", "PI_SKIP_VERSION_CHECK=1"]
+pig_args = ["--session-dir", "{{TEMP}}/sessions"]
+pi_args = ["--session-dir", "{{TEMP}}/sessions"]
+pig_extensions = ["../../testdata/mcp-docs-server.ts"]
+pi_extensions = ["../../testdata/test-faux-provider.ts", "../../testdata/mcp-docs-server.ts"]
+
+[assert]
+both_reach_ready = true
+both_contain = ["mcp-hit: cards guide"]
+both_not_contain = ["unknown command", "panic:", "goroutine "]
+escaped_output_equal = true
+runs = 3

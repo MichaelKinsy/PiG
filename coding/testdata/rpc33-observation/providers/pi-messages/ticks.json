@@ -1,5 +1,5 @@
 {
-  "piVersion": "1.0.3",
+  "piVersion": "1.1.0",
   "node": "v24.19.0",
   "scenarios": [
     {
@@ -114,7 +114,8 @@
           }
         },
         "stopReason": "toolUse",
-        "responseId": "r1"
+        "responseId": "r1",
+        "durationMs": 28
       }
     },
     {
@@ -264,7 +265,8 @@
           }
         },
         "stopReason": "toolUse",
-        "responseId": "r1"
+        "responseId": "r1",
+        "durationMs": 1
       }
     },
     {
@@ -889,7 +891,8 @@
           }
         },
         "stopReason": "toolUse",
-        "responseId": "r1"
+        "responseId": "r1",
+        "durationMs": 1
       }
     },
     {
@@ -1009,7 +1012,8 @@
           }
         },
         "stopReason": "toolUse",
-        "responseId": "r1"
+        "responseId": "r1",
+        "durationMs": 1
       }
     },
     {
@@ -1124,7 +1128,8 @@
           }
         },
         "stopReason": "toolUse",
-        "responseId": "r1"
+        "responseId": "r1",
+        "durationMs": 0
       }
     },
     {
@@ -1203,7 +1208,8 @@
           }
         },
         "stopReason": "error",
-        "errorMessage": "p stream ended without a terminal event"
+        "errorMessage": "p stream ended without a terminal event",
+        "durationMs": 1
       }
     },
     {
@@ -1318,7 +1324,8 @@
           }
         },
         "stopReason": "toolUse",
-        "responseId": "r1"
+        "responseId": "r1",
+        "durationMs": 0
       }
     },
     {
@@ -1443,7 +1450,8 @@
           }
         },
         "stopReason": "toolUse",
-        "responseId": "r1"
+        "responseId": "r1",
+        "durationMs": 0
       }
     },
     {
@@ -1528,7 +1536,8 @@
           }
         },
         "stopReason": "toolUse",
-        "responseId": "r1"
+        "responseId": "r1",
+        "durationMs": 0
       }
     },
     {
@@ -1612,7 +1621,8 @@
           }
         },
         "stopReason": "error",
-        "errorMessage": "p stream ended without a terminal event"
+        "errorMessage": "p stream ended without a terminal event",
+        "durationMs": 1
       }
     },
     {
@@ -1683,7 +1693,8 @@
           }
         },
         "stopReason": "error",
-        "errorMessage": "Unterminated string in JSON at position 32 (line 1 column 33)"
+        "errorMessage": "Unterminated string in JSON at position 32 (line 1 column 33)",
+        "durationMs": 0
       }
     },
     {
@@ -1751,7 +1762,8 @@
         },
         "stopReason": "error",
         "errorMessage": "backend failed",
-        "responseId": "r2"
+        "responseId": "r2",
+        "durationMs": 0
       }
     },
     {
@@ -1825,7 +1837,8 @@
           }
         },
         "stopReason": "error",
-        "errorMessage": "p stream ended without a terminal event"
+        "errorMessage": "p stream ended without a terminal event",
+        "durationMs": 0
       }
     },
     {
@@ -1896,7 +1909,8 @@
           }
         },
         "stopReason": "toolUse",
-        "responseId": "r1"
+        "responseId": "r1",
+        "durationMs": 0
       }
     },
     {
@@ -1958,7 +1972,8 @@
           }
         },
         "stopReason": "error",
-        "errorMessage": "Expected ',' or '}' after property value in JSON at position 20 (line 1 column 21)"
+        "errorMessage": "Expected ',' or '}' after property value in JSON at position 20 (line 1 column 21)",
+        "durationMs": 0
       }
     },
     {
@@ -2020,7 +2035,8 @@
           }
         },
         "stopReason": "error",
-        "errorMessage": "Unexpected token 'o', \"oops\" is not valid JSON"
+        "errorMessage": "Unexpected token 'o', \"oops\" is not valid JSON",
+        "durationMs": 0
       }
     },
     {
@@ -2087,7 +2103,8 @@
           }
         },
         "stopReason": "toolUse",
-        "responseId": "r1"
+        "responseId": "r1",
+        "durationMs": 0
       }
     },
     {
@@ -2141,7 +2158,8 @@
           }
         },
         "stopReason": "toolUse",
-        "responseId": "r1"
+        "responseId": "r1",
+        "durationMs": 0
       }
     },
     {
@@ -2215,7 +2233,8 @@
           }
         },
         "stopReason": "error",
-        "errorMessage": "body failed"
+        "errorMessage": "body failed",
+        "durationMs": 1
       }
     },
     {
@@ -2259,7 +2278,8 @@
           }
         },
         "stopReason": "error",
-        "errorMessage": "body failed"
+        "errorMessage": "body failed",
+        "durationMs": 0
       }
     },
     {
@@ -2303,7 +2323,8 @@
           }
         },
         "stopReason": "error",
-        "errorMessage": "p stream ended without a terminal event"
+        "errorMessage": "p stream ended without a terminal event",
+        "durationMs": 0
       }
     },
     {
@@ -2349,7 +2370,8 @@
           }
         },
         "stopReason": "toolUse",
-        "responseId": "r1"
+        "responseId": "r1",
+        "durationMs": 0
       }
     }
   ]

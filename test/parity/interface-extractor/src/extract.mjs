@@ -34,7 +34,7 @@ try {
   if (args["source-root"] && args["published-root"] && args["source-out"] && args["published-out"]) {
     const dependencyRoot = path.resolve(args["published-root"]);
     const source = extractInventory({ origin: "source", root: path.resolve(args["source-root"]), upstreamVersion, packageKeys, dependencyRoot });
-    const published = extractInventory({ origin: "published", root: dependencyRoot, upstreamVersion, packageKeys, dependencyRoot });
+    const published = extractInventory({ origin: "published", root: dependencyRoot, sourceRoot: path.resolve(args["source-root"]), upstreamVersion, packageKeys, dependencyRoot });
     writeJSON(args["source-out"], source);
     writeJSON(args["published-out"], published);
     const provenance = verifyPublishedSources({

@@ -6,10 +6,11 @@ package packagecontent
 
 import (
 	"os"
-	"path"
 	"path/filepath"
 	"slices"
 	"strings"
+
+	"github.com/MichaelKinsy/PiG/internal/minimatch"
 )
 
 func expandPackageGlob(root, pattern string) []string {
@@ -122,37 +123,12 @@ func expandPackageGlob(root, pattern string) []string {
 	return result
 }
 
+// matchGlobSegment is minimatch(name, pattern) for one path segment: the test node-glob applies to each directory entry.
 func matchGlobSegment(name, pattern string) bool {
-	if strings.HasPrefix(name, ".") && !strings.HasPrefix(pattern, ".") {
-		return false
-	}
-	// Minimatch uses ! as the negation marker inside a character class.
-	pattern = strings.ReplaceAll(pattern, "[!", "[^")
-	matched, err := path.Match(pattern, name)
-	return matched && err == nil || name == pattern
+	return minimatch.Match(name, pattern, minimatch.Options{})
 }
 
-// matchGlob matches minimatch's globstar at a path-segment boundary. A
-// globstar can consume no segments, and does not consume dot segments.
+// matchGlob is minimatch(name, pattern).
 func matchGlob(name, pattern string) bool {
-	names := strings.Split(name, "/")
-	patterns := strings.Split(pattern, "/")
-	type position struct{ name, pattern int }
-	seen := make(map[position]bool)
-	var match func(int, int) bool
-	match = func(n, p int) bool {
-		at := position{n, p}
-		if seen[at] {
-			return false
-		}
-		seen[at] = true
-		if p == len(patterns) {
-			return n == len(names)
-		}
-		if patterns[p] == "**" {
-			return match(n, p+1) || n < len(names) && !strings.HasPrefix(names[n], ".") && match(n+1, p)
-		}
-		return n < len(names) && matchGlobSegment(names[n], patterns[p]) && match(n+1, p+1)
-	}
-	return match(0, 0)
+	return minimatch.Match(name, pattern, minimatch.Options{})
 }

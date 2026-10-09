@@ -1,0 +1,105 @@
+# Public issue #201 end to end: a provider object's own logins, through the real extension host and /login, for each SDK.
+# PiG loads testdata/provider-object-login/wiring-go (Go SDK) and node.mjs (Node runtime); Pi loads go-twin.mjs, the same provider in TypeScript, and node.mjs. Both register the provider of testdata/provider-object-login/provider.mjs: an OAuth method with loginLabel "<name> SSO" whose flow asks a select prompt and then a text prompt, and an API-key method with its own login asking two prompts.
+# Upstream evidence (Pi 1.1.0, probed 2026-10-09 with this fixture): "/login wiring-go" opens "Select authentication method for Wiring Go:" listing "Wiring Go SSO" (the loginLabel) and "Sign in with an API key" (interactive-mode.ts:5885-5923 showLoginAuthTypeSelector). The API-key option runs the provider's own apiKey.login in the login dialog ("Gateway URL", then "Gateway key"; interactive-mode.ts:6192 showApiKeyLoginDialog, :6315 loginProvider). The SSO option runs auth.oauth.login: its select prompt opens a selector ("Choose a region", :6243 showAuthSelect via :6278 showAuthPrompt), its text prompt stays in the dialog, and the credential is saved (:6338 showLoginDialog). auth.json then holds wiring-go's OAuth credential (the later login replaces its API key) and wiring-node's API key with the env its login returned.
+# Every credential in provider.mjs lists its keys sorted, as the Go SDK's map encodes them, so both SDKs save the same auth.json bytes in Pi.
+# The saved auth.json is byte-equal to Pi's: wiring-node's API-key credential keeps the key order its login returned (env, key, type), because Pi stores that object and writes it with JSON.stringify (auth-storage.ts:465-467); PiG keeps a decoded credential's order (ai/credential_json.go credentialKeyOrder).
+name = "30-provider-object-login"
+description = "A provider object's OAuth login (loginLabel, select prompt) and API-key login run from /login and save to auth.json, for the Go SDK and the Node runtime"
+covers = ["packages/coding-agent/src/modes/interactive/interactive-mode.ts", "packages/coding-agent/src/core/model-runtime.ts", "packages/coding-agent/src/core/auth-storage.ts"]
+tags = ["hermetic", "tui"]
+driver = "interactive-tmux"
+
+[tmux]
+width = 120
+height = 60
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "(auto)"
+ready_timeout_seconds = 120
+capture_start = "AUTH-JSON-1BEGIN"
+capture_end = "AUTH-JSON-1END"
+settle_seconds = 1
+cwd = "../selectors/testdata/login-empty-project"
+
+[[tmux.steps]]
+keys = ["/login wiring-go", "Escape", "Enter"]
+wait_contains = ["Select authentication method for Wiring Go:", "Wiring Go SSO", "Sign in with an API key"]
+
+[[tmux.steps]]
+keys = ["Down", "Enter"]
+wait_contains = ["Gateway URL"]
+
+[[tmux.steps]]
+keys = ["https://go.invalid", "Enter"]
+wait_contains = ["Gateway key"]
+
+[[tmux.steps]]
+keys = ["go-key", "Enter"]
+wait_contains = ["Saved API key for Wiring Go"]
+
+[[tmux.steps]]
+keys = ["/login wiring-go", "Escape", "Enter"]
+wait_visible_contains = ["Wiring Go SSO"]
+
+[[tmux.steps]]
+keys = ["Enter"]
+wait_visible_contains = ["Choose a region", "United States"]
+
+[[tmux.steps]]
+keys = ["Down", "Enter"]
+wait_visible_contains = ["Paste the sign-in code"]
+
+[[tmux.steps]]
+keys = ["go-code", "Enter"]
+wait_contains = ["Logged in to Wiring Go"]
+
+[[tmux.steps]]
+keys = ["/login wiring-node", "Escape", "Enter"]
+wait_visible_contains = ["Select authentication method for Wiring Node:", "Wiring Node SSO"]
+
+[[tmux.steps]]
+keys = ["Enter"]
+wait_visible_contains = ["Choose a region", "Europe"]
+
+[[tmux.steps]]
+keys = ["Enter"]
+wait_visible_contains = ["Paste the sign-in code"]
+
+[[tmux.steps]]
+keys = ["node-code", "Enter"]
+wait_contains = ["Logged in to Wiring Node"]
+
+[[tmux.steps]]
+keys = ["/login wiring-node", "Escape", "Enter"]
+wait_visible_contains = ["Wiring Node SSO"]
+
+[[tmux.steps]]
+keys = ["Down", "Enter"]
+wait_visible_contains = ["Gateway URL"]
+
+[[tmux.steps]]
+keys = ["https://node.invalid", "Enter"]
+wait_visible_contains = ["Gateway key"]
+
+[[tmux.steps]]
+keys = ["node-key", "Enter"]
+wait_contains = ["Saved API key for Wiring Node"]
+
+[[tmux.steps]]
+# The printed markers differ from the typed command, so the capture starts at the output. Each binary reads its own agent directory variable.
+keys = ["!echo AUTH-JSON-$((1))BEGIN; cat \"$(printenv $WIRING_AGENT_ENV)/auth.json\"; echo AUTH-JSON-$((1))END", "Enter"]
+wait_visible_contains = ["AUTH-JSON-1END"]
+
+[env]
+pig = ["WIRING_AGENT_ENV=PIG_CODING_AGENT_DIR", "PIG_CODING_AGENT_DIR=testdata/provider-object-login/agent", "PI_CODING_AGENT_DIR=", "PIG_HOME=../selectors/testdata/pig-home-noauth", "HOME={{TEMP}}/home", "PATH={{FAKE_BIN}}:{{PATH}}"]
+pi = ["WIRING_AGENT_ENV=PI_CODING_AGENT_DIR", "PI_CODING_AGENT_DIR=testdata/provider-object-login/agent", "PIG_CODING_AGENT_DIR=", "PIG_HOME=", "HOME={{TEMP}}/home", "PATH={{FAKE_BIN}}:{{PATH}}"]
+pig_args = ["--no-extensions", "--session-dir", "{{TEMP}}/sessions"]
+pi_args = ["--no-extensions", "--session-dir", "{{TEMP}}/sessions"]
+pig_extensions = ["testdata/provider-object-login/wiring-go", "testdata/provider-object-login/node.mjs"]
+pi_extensions = ["testdata/provider-object-login/go-twin.mjs", "testdata/provider-object-login/node.mjs"]
+
+[assert]
+both_reach_ready = true
+# The flow messages are proved by the step waits; the capture is the auth.json each binary saved.
+both_contain = ["\"access\": \"go-code-us\"", "\"refresh\": \"refresh-us\"", "\"wiring-node\": {", "\"key\": \"node-key\"", "\"WIRING_GATEWAY_URL\": \"https://node.invalid\""]
+escaped_output_equal = true
+runs = 3

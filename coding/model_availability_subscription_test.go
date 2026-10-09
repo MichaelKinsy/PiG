@@ -105,3 +105,28 @@ func modelRuntimeSubscriptionUsesSnapshotAndCurrentCapability(t *testing.T) {
 		t.Fatal("API-key refresh retained OAuth usage")
 	}
 }
+
+// model-registry.ts isUsingOAuth(model) is runtime.isUsingOAuth(model.provider): the model's provider decides, not its id.
+// Pi: packages/coding-agent/src/core/model-registry.ts:206 (ModelRegistry.isUsingOAuth).
+func TestModelRegistryIsUsingOAuthReadsTheModelsProvider(t *testing.T) {
+	session, services := newAvailabilitySession(t)
+	if err := services.Auth().Set("anthropic", ai.Credential{Type: ai.CredentialOAuth, Access: "access", Refresh: "refresh", Expires: time.Now().Add(time.Hour).UnixMilli()}); err != nil {
+		t.Fatal(err)
+	}
+	if err := services.Auth().Set("openrouter", ai.Credential{Type: ai.CredentialAPIKey, Key: "key"}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := session.ModelRuntime().GetAvailable(t.Context()); err != nil {
+		t.Fatal(err)
+	}
+	registry := services.Registry()
+	for provider, want := range map[string]bool{"anthropic": true, "openrouter": false, "radius": false} {
+		models := session.ModelRuntime().GetModels(provider)
+		if len(models) == 0 {
+			t.Fatalf("no catalog model for provider %s", provider)
+		}
+		if got := registry.IsUsingOAuth(models[0]); got != want {
+			t.Errorf("IsUsingOAuth(provider %s) = %v, want %v", provider, got, want)
+		}
+	}
+}

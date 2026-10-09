@@ -23,7 +23,7 @@ func TestExecuteBashPropagatesPersistenceFailureWithoutRefreshingAgent(t *testin
 		options.OnData([]byte("output"))
 		return extension.BashOperationsResult{ExitCode: new(0)}, nil
 	})
-	if _, err := h.session.ExecuteBashWithOperations(t.Context(), "command", false, nil, operations, nil); err == nil {
+	if _, err := h.session.ExecuteBash(t.Context(), "command", nil, &ExecuteBashOptions{Operations: operations}); err == nil {
 		t.Error("Bash succeeded after its result failed to persist")
 	}
 	if got := h.session.Messages(); !reflect.DeepEqual(got, before) {
@@ -49,7 +49,7 @@ func TestDeferredBashPersistenceFailureReachesPromptCaller(t *testing.T) {
 			t.Errorf("record returned an error before deferred persistence: %v", err)
 		}
 	})
-	if _, err := h.session.Prompt(t.Context(), "start"); err == nil {
+	if err := h.session.Prompt(t.Context(), "start"); err == nil {
 		t.Fatal("Prompt succeeded after deferred Bash persistence failed")
 	}
 	if !bashHasPending(h.session) {

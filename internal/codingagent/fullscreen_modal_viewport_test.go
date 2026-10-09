@@ -11,9 +11,9 @@ import (
 
 const pageDownKey = "\x1b[6~"
 
-func newTwoModelSelector() *tui.ModelSelector {
+func newTwoModelSelector() *tui.ModelSelectorComponent {
 	items := []tui.ModelSelectorItem{{Provider: "p", ID: "one"}, {Provider: "p", ID: "two"}}
-	sel := tui.NewModelSelector("Select model", items, items, "p/one")
+	sel := tui.NewStaticModelSelectorComponent("Select model", items, items, "p/one")
 	sel.SetFilter("p")
 	sel.HandleInput("\x1b[B")
 	return sel

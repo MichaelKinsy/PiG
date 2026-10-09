@@ -44,7 +44,7 @@ func CreatePiPrompt(settings *codingagent.SettingsManager, fallbackCwd string) *
 		}
 		found := &directoryResources{contextFiles: codingagent.LoadProjectContextFiles(cwd, agentDir)}
 		for _, skill := range loaded.Skills {
-			found.skills = append(found.skills, prompts.Skill{Name: skill.Name, Description: skill.Description, Path: skill.Path, DisableModelInvocation: skill.DisableModelInvocation})
+			found.skills = append(found.skills, prompts.Skill{Name: skill.Name, Description: skill.Description, Path: skill.FilePath, DisableModelInvocation: skill.DisableModelInvocation})
 		}
 		resources[cwd] = found
 		return found, nil

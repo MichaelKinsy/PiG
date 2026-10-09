@@ -32,7 +32,7 @@ func TestAgentMessageToolResultDetailsRoundTripAsPi(t *testing.T) {
 			}
 			// The provider-facing message keeps the same three states.
 			call := AgentMessage{Assistant: &AssistantMessage{Role: RoleAssistant, StopReason: ai.StopReasonToolUse, Content: []ai.AssistantContentBlock{ai.ToolCall{ID: "c1", Name: "probe", Arguments: ai.JsonObject{}}}}}
-			llm := ConvertToLLM([]AgentMessage{call, message}, nil)
+			llm := ConvertToLLM(NormalizeMessages([]AgentMessage{call, message}, nil))
 			if len(llm) != 2 {
 				t.Fatalf("provider messages %d, want 2", len(llm))
 			}

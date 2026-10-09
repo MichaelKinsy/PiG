@@ -1,6 +1,6 @@
 package tui
 
-// TreeSelect: single-pane navigable tree selector.
+// TreeSelectorComponent: single-pane navigable tree selector.
 //
 // Renders a flattened DFS list of tree nodes with
 // parent/child connectors and lets the user pick one (typically used
@@ -20,6 +20,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/MichaelKinsy/PiG/extensions/sdk/frontend"
 	"github.com/MichaelKinsy/PiG/internal/lazyregexp"
 
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
@@ -31,7 +32,7 @@ type treeNodeWithLabelUpdate interface {
 	SetNodeBranchLabel(label, timestamp string)
 }
 
-// TreeNode is the shape TreeSelect operates on. SessionTreeNode in
+// TreeNode is the shape TreeSelectorComponent operates on. SessionTreeNode in
 // codingagent satisfies this via a thin adapter.
 type TreeNode interface {
 	NodeID() string
@@ -91,11 +92,27 @@ type TreeNodeWithCopyText interface {
 	NodeCopyText() *string
 }
 
-// TreeSelect overlay. Done()/Cancelled()/SelectedID() mirror the
-// FilterableList contract.
-type TreeSelect struct {
-	invalidatable
-	Title string
+// TreeSelectorComponent overlay: a Container of spacer, borders, title, key hints, search line, the TreeList and the label input
+// (tree-selector.ts:1336-1436). Done()/Cancelled()/SelectedID() mirror the FilterableList contract.
+type TreeSelectorComponent struct {
+	Container
+	// TreeList is the list the component hosts; GetTreeList returns it (tree-selector.ts:1432).
+	*TreeList
+	treeContainer       *Container // holds the tree list child
+	labelInputContainer *Container // holds the label input child
+	Title               string
+}
+
+// TreeList is upstream's TreeList (tree-selector.ts:106-1335): the flattened session tree with its folding, filter, search,
+// selection, scrolling and label-edit state, and the key handling that drives them.
+type TreeList struct {
+	// host is the Container that caches the rendered list; a change to the list invalidates it.
+	host    *Container
+	focused bool
+	// OnSelect runs with the selected entry's ID on the confirm key (TreeList.onSelect).
+	OnSelect func(entryID string)
+	// OnCancel runs on the cancel key when no search is active (TreeList.onCancel).
+	OnCancel func()
 	// MaxVisibleLines is the number of tree rows shown at once. Upstream
 	// TreeSelectorComponent uses max(5, floor(terminalHeight / 2)); see
 	// TreeVisibleLines. Zero uses treeWindow.
@@ -176,7 +193,7 @@ type TreeSelect struct {
 type treeRow struct {
 	id     string
 	prefix string   // ASCII tree connectors (gutters + connector cells)
-	node   TreeNode // source node; label/tags computed lazily via TreeSelect caches
+	node   TreeNode // source node; label/tags computed lazily via TreeSelectorComponent caches
 	depth  int
 
 	// Per-row state needed for fold rendering and
@@ -255,19 +272,14 @@ func renderTreeHorizontalViewport(rows []horizontalViewportRow, width int) []str
 	for _, row := range rows {
 		line := row.gutter + row.body
 		if horizontalScroll > 0 {
-			clipped := widthx.SliceWithWidth(row.body, horizontalScroll, viewportWidth, true)
-			body := clipped.Text
-			if strings.ContainsRune(body, 0x1B) {
-				body += SGRFgReset + SGRBoldDimReset + SGRItalicReset + SGRUnderlineReset
-			}
-			line = row.gutter + body
+			line = row.gutter + widthx.SliceWithWidth(row.body, horizontalScroll, viewportWidth, true).Text + "\x1b[0m"
 		}
-		lines = append(lines, padOrTrunc(line, width))
+		lines = append(lines, widthx.TruncateToWidth(line, width, "", false))
 	}
 	return lines
 }
 
-// NewTreeSelect builds the flattened view from the given root.
+// NewTreeSelectorComponent builds the flattened view from the given root.
 // Root itself is not rendered; only its children.
 //
 // Indent + connector rules mirror upstream
@@ -281,28 +293,76 @@ func TreeVisibleLines(terminalHeight int) int {
 	return max(5, terminalHeight/2)
 }
 
-func (t *TreeSelect) visibleLines() int {
+func (t *TreeList) visibleLines() int {
 	if t.MaxVisibleLines > 0 {
 		return t.MaxVisibleLines
 	}
 	return treeWindow
 }
 
-// NewTreeSelect builds a selector in the default filter mode.
-func NewTreeSelect(title string, root TreeNode) *TreeSelect {
+// treeRoots is the virtual root the selector flattens when the host passes the session's root nodes, as the constructor's `tree` argument does.
+type treeRoots []TreeNode
+
+func (treeRoots) NodeID() string             { return "" }
+func (treeRoots) NodeLabel() string          { return "" }
+func (r treeRoots) NodeChildren() []TreeNode { return r }
+
+// treeSelectorEmptyCancelDelay is the setTimeout delay after which an empty tree cancels itself (tree-selector.ts constructor).
+const treeSelectorEmptyCancelDelay = 100 * time.Millisecond // upstream: packages/coding-agent/src/modes/interactive/components/tree-selector.ts:TreeSelectorComponent
+
+// NewTreeSelectorComponentFrom builds the selector as tree-selector.ts's constructor does: tree holds the session's root nodes,
+// currentLeafID the active leaf (nil when the session has none), terminalHeight sizes the window to max(5, floor(height/2)), and
+// initialSelectedID (nil for none) and initialFilterMode (an unknown mode is "default") choose the opening state. onSelect and
+// onCancel are the TreeList callbacks, run when the confirm or cancel key is handled; onLabelChange receives the committed label
+// of a node, nil when it was cleared. An empty tree cancels itself after 100ms, so onCancel runs on a timer goroutine then.
+// Any callback may be nil.
+func NewTreeSelectorComponentFrom(tree []TreeNode, currentLeafID *string, terminalHeight int, onSelect func(entryID string), onCancel func(), onLabelChange func(entryID string, label *string), initialSelectedID *string, initialFilterMode string) *TreeSelectorComponent {
+	t := NewTreeSelectWithInitialFilter("Session Tree", treeRoots(tree), initialFilterMode)
+	t.MaxVisibleLines = TreeVisibleLines(terminalHeight)
+	leaf, selected := "", ""
+	if currentLeafID != nil {
+		leaf = *currentLeafID
+	}
+	if initialSelectedID != nil {
+		selected = *initialSelectedID
+	}
+	t.SetInitialCursor(leaf, selected)
+	list := t.GetTreeList()
+	list.OnSelect, list.OnCancel = onSelect, onCancel
+	if onLabelChange != nil {
+		t.OnLabelEdit = func(entryID, label string) {
+			if label == "" {
+				onLabelChange(entryID, nil)
+				return
+			}
+			onLabelChange(entryID, &label)
+		}
+	}
+	if len(tree) == 0 && onCancel != nil {
+		time.AfterFunc(treeSelectorEmptyCancelDelay, onCancel)
+	}
+	return t
+}
+
+// NewTreeSelectorComponent builds a selector in the default filter mode.
+func NewTreeSelectorComponent(title string, root TreeNode) *TreeSelectorComponent {
 	return NewTreeSelectWithInitialFilter(title, root, "default")
 }
 
 // NewTreeSelectWithInitialFilter builds a selector whose first visibility pass uses initialFilterMode, mirroring the TreeSelectorComponent initialFilterMode argument (tree-selector.ts constructor). An unknown mode falls back to "default".
-func NewTreeSelectWithInitialFilter(title string, root TreeNode, initialFilterMode string) *TreeSelect {
-	t := &TreeSelect{
-		Title:       title,
-		root:        root,
-		foldedNodes: make(map[string]bool),
-		// Keep the cycle order aligned with the filter-mode hint.
-		filterMode:  "default",
-		filterModes: []string{"default", "no-tools", "user-only", "labeled-only", "all"},
+func NewTreeSelectWithInitialFilter(title string, root TreeNode, initialFilterMode string) *TreeSelectorComponent {
+	t := &TreeSelectorComponent{
+		Title: title,
+		TreeList: &TreeList{
+			root:        root,
+			foldedNodes: make(map[string]bool),
+			// Keep the cycle order aligned with the filter-mode hint.
+			filterMode:  "default",
+			filterModes: []string{"default", "no-tools", "user-only", "labeled-only", "all"},
+		},
 	}
+	t.host = &t.Container
+	t.addChildren()
 	if slices.Contains(t.filterModes, initialFilterMode) {
 		t.filterMode = initialFilterMode
 	}
@@ -337,7 +397,7 @@ func NewTreeSelectWithInitialFilter(title string, root TreeNode, initialFilterMo
 }
 
 // SetInitialCursor orders and marks the active root-to-leaf path, then selects initialSelectedID or the current leaf. A hidden target resolves to its nearest visible ancestor. Call it after construction and before rendering.
-func (t *TreeSelect) SetInitialCursor(currentLeafID, initialSelectedID string) {
+func (t *TreeList) SetInitialCursor(currentLeafID, initialSelectedID string) {
 	parents := make(map[string]string, len(t.allRows))
 	for _, row := range t.allRows {
 		parents[row.id] = row.parentID
@@ -370,7 +430,7 @@ func (t *TreeSelect) SetInitialCursor(currentLeafID, initialSelectedID string) {
 }
 
 // activeFirst preserves sibling order except for moving the active branch first.
-func (t *TreeSelect) activeFirst(nodes []TreeNode) []TreeNode {
+func (t *TreeList) activeFirst(nodes []TreeNode) []TreeNode {
 	if len(nodes) < 2 {
 		return nodes
 	}
@@ -389,7 +449,7 @@ func (t *TreeSelect) activeFirst(nodes []TreeNode) []TreeNode {
 // its nearest visible ancestor when entryID is itself hidden. Mirrors upstream
 // findNearestVisibleIndex (tree-selector.ts): walk up parent links until a
 // visible row is found. Returns ok=false when nothing on the path is visible.
-func (t *TreeSelect) nearestVisibleIndex(entryID string) (int, bool) {
+func (t *TreeList) nearestVisibleIndex(entryID string) (int, bool) {
 	if entryID == "" || len(t.rows) == 0 {
 		return 0, false
 	}
@@ -433,7 +493,7 @@ func (t *TreeSelect) nearestVisibleIndex(entryID string) (int, bool) {
 //   - Gutter carry:       :247-253 (push only when connector displayed)
 //   - Prefix render:      :631-666 (char grid at displayIndent*3)
 //   - displayIndent:      :629 (multipleRoots ? max(0, indent-1) : indent)
-func (t *TreeSelect) flatten(n TreeNode, parentID string, parentMultipleChildren bool, indent int, showConnector, isLast, justBranched, isVirtualRootChild, multipleRoots bool, gutters []gutterInfo, depth int) {
+func (t *TreeList) flatten(n TreeNode, parentID string, parentMultipleChildren bool, indent int, showConnector, isLast, justBranched, isVirtualRootChild, multipleRoots bool, gutters []gutterInfo, depth int) {
 	displayIndent := indent
 	if multipleRoots {
 		displayIndent = max(indent-1, 0)
@@ -541,7 +601,7 @@ func gutterAt(gutters []gutterInfo, level int) (gutterInfo, bool) {
 
 // usageRows returns the rows every filter mode hides: usage entries such as
 // cache-warming refreshes. Mirrors upstream tree-selector.ts applyFilter.
-func (t *TreeSelect) usageRows() map[string]bool {
+func (t *TreeList) usageRows() map[string]bool {
 	skip := make(map[string]bool)
 	for _, r := range t.allRows {
 		if slices.Contains(t.rowTags(r), "usage") {
@@ -552,7 +612,7 @@ func (t *TreeSelect) usageRows() map[string]bool {
 }
 
 // recomputeVisible rebuilds the visible geometry from the complete tree. It preserves the selected entry through empty results and otherwise walks to its nearest visible ancestor, falling back to the last row.
-func (t *TreeSelect) recomputeVisible() {
+func (t *TreeList) recomputeVisible() {
 	if t.cursor >= 0 && t.cursor < len(t.rows) {
 		t.lastSelectedId = t.rows[t.cursor].id
 	}
@@ -658,7 +718,7 @@ func (t *TreeSelect) recomputeVisible() {
 }
 
 // recalculateVisualStructure attaches filtered descendants to their nearest visible ancestor before deriving connectors. The full DFS order makes ancestor lookup linear even through long hidden chains.
-func (t *TreeSelect) recalculateVisualStructure() {
+func (t *TreeList) recalculateVisualStructure() {
 	indices := make(map[string]int, len(t.rows))
 	for i, row := range t.rows {
 		indices[row.id] = i
@@ -713,7 +773,7 @@ func (t *TreeSelect) recalculateVisualStructure() {
 // rowLabel returns the node's rendered label, computing it lazily and
 // memoizing per node id. Mirrors upstream's render-time label formatting
 // (only visible rows are ever formatted in practice).
-func (t *TreeSelect) rowLabel(r treeRow) string {
+func (t *TreeList) rowLabel(r treeRow) string {
 	if v, ok := t.labelCache[r.id]; ok {
 		return v
 	}
@@ -730,7 +790,7 @@ func (t *TreeSelect) rowLabel(r treeRow) string {
 
 // rowTags returns the node's filter tags, computed lazily and memoized.
 // Only touched when a filter mode is active.
-func (t *TreeSelect) rowTags(r treeRow) []string {
+func (t *TreeList) rowTags(r treeRow) []string {
 	if v, ok := t.tagsCache[r.id]; ok {
 		return v
 	}
@@ -749,7 +809,7 @@ func (t *TreeSelect) rowTags(r treeRow) []string {
 // Mirrors the searchable-text sourcing in upstream getSearchableText
 // (tree-selector.ts:559-600) via the TreeNodeSearchableText adapter.
 // Only touched when a search query is active.
-func (t *TreeSelect) rowSearchText(r treeRow) string {
+func (t *TreeList) rowSearchText(r treeRow) string {
 	if v, ok := t.searchCache[r.id]; ok {
 		return v
 	}
@@ -768,7 +828,7 @@ func (t *TreeSelect) rowSearchText(r treeRow) string {
 // Called once per visibility change (recomputeVisible). Mirrors upstream
 // tree-selector.ts:1010-1018 foldability but precomputed so Render's
 // per-row lookups are O(1) instead of rebuilding O(n) maps each call.
-func (t *TreeSelect) computeFoldable() {
+func (t *TreeList) computeFoldable() {
 	parentByID := make(map[string]string, len(t.allRows))
 	for _, r := range t.allRows {
 		parentByID[r.id] = r.parentID
@@ -809,7 +869,7 @@ func (t *TreeSelect) computeFoldable() {
 // parent (top-level row / virtual-root child) or its visible parent
 // has multiple visible children (segment start under a branch point).
 // Reads the foldableCache built by computeFoldable.
-func (t *TreeSelect) isFoldable(row treeRow) bool {
+func (t *TreeList) isFoldable(row treeRow) bool {
 	return t.foldableCache[row.id]
 }
 
@@ -847,11 +907,38 @@ func formatLabelTimestamp(ts string, now time.Time) string {
 }
 
 // Done / Cancelled / SelectedID implement the modal contract.
-func (t *TreeSelect) Done() bool         { return t.done }
-func (t *TreeSelect) Cancelled() bool    { return t.cancelled }
-func (t *TreeSelect) SelectedID() string { return t.selectedID }
+// GetTreeList returns the list the component hosts (tree-selector.ts:1432-1434).
+func (t *TreeSelectorComponent) GetTreeList() *TreeList { return t.TreeList }
 
-func (t *TreeSelect) getStatusLabels() string {
+// Render draws the component's children. TreeList also has a Render, so the component names its own.
+func (t *TreeSelectorComponent) Render(width int) []string { return t.Container.Render(width) }
+
+// Invalidate drops the Container's cached lines.
+func (t *TreeSelectorComponent) Invalidate() { t.Container.Invalidate() }
+
+// Invalidate tells the hosting Container that the list changed.
+func (t *TreeList) Invalidate() {
+	if t.host != nil {
+		t.host.Invalidate()
+	}
+}
+
+// Render draws the visible tree rows and the position line (tree-selector.ts TreeList.render).
+func (t *TreeList) Render(width int) []string { return t.renderTreeList(width) }
+
+// GetSelectedNode returns the node under the cursor, or nil when no row is visible (TreeList.getSelectedNode).
+func (t *TreeList) GetSelectedNode() TreeNode {
+	if t.cursor < 0 || t.cursor >= len(t.rows) {
+		return nil
+	}
+	return t.rows[t.cursor].node
+}
+
+func (t *TreeList) Done() bool         { return t.done }
+func (t *TreeList) Cancelled() bool    { return t.cancelled }
+func (t *TreeList) SelectedID() string { return t.selectedID }
+
+func (t *TreeList) getStatusLabels() string {
 	labels := ""
 	switch t.filterMode {
 	case "no-tools":
@@ -869,53 +956,74 @@ func (t *TreeSelect) getStatusLabels() string {
 	return labels
 }
 
-// Render draws the header and tree rows or the active label input, followed by the closing border. Label hints show the current configured keys.
-func (t *TreeSelect) Render(width int) []string {
-	// Every row is padded or truncated to width, so narrow renders stay
-	// within the terminal instead of overflowing a floor.
-	width = max(width, 0)
-	// The header and search query remain visible while label input replaces the tree rows.
+// addChildren adds Pi's constructor children (tree-selector.ts:1379-1393). The tree list and the label input are private children that render only while their mode is active, so a label edit swaps what the two containers show.
+func (t *TreeSelectorComponent) addChildren() {
+	t.treeContainer = NewContainer()
+	t.treeContainer.Add(treeSection(t.renderTreeList))
+	t.labelInputContainer = NewContainer()
+	t.labelInputContainer.Add(treeSection(t.renderLabelInput))
+	t.Add(NewSpacer(1))
+	t.Add(NewDynamicBorder())
+	t.Add(NewPaddedText(ActiveTheme().Bold("  Session Tree"), 1, 0, nil))
+	t.Add(treeSection(t.renderHelp))
+	t.Add(treeSection(t.renderSearchLine))
+	t.Add(NewDynamicBorder())
+	t.Add(NewSpacer(1))
+	t.Add(t.treeContainer)
+	t.Add(t.labelInputContainer)
+	t.Add(NewSpacer(1))
+	t.Add(NewDynamicBorder())
+}
+
+// treeSection renders one section from the selector's current state on every frame, so a parent Container never serves a stale one.
+type treeSection func(width int) []string
+
+func (s treeSection) Render(width int) []string { return s(max(width, 0)) }
+func (treeSection) Invalidate()                 {}
+
+// renderHelp draws the key hint rows; the header stays visible while label input replaces the tree rows (TreeHelp).
+func (t *TreeSelectorComponent) renderHelp(width int) []string {
 	headerHint := treeHelpLines(width)
-	sep := strings.Repeat("─", width)
-	// The /tree overlay frame is drawn in the Border color (upstream renders
-	// it via the box component), not faint gray.
-	border := fg(ActiveTheme().Border, sep)
-	// "Type to search:" is muted, mirroring upstream tree-selector.ts:1169-1171;
-	// the active query renders in accent after it.
+	lines := make([]string, 0, len(headerHint))
+	for _, line := range headerHint {
+		lines = append(lines, widthx.TruncateToWidth(line, width, "...", false))
+	}
+	return lines
+}
+
+// renderSearchLine draws "Type to search:" in muted, mirroring tree-selector.ts:1169-1171; the active query renders in accent after it (SearchLine).
+func (t *TreeSelectorComponent) renderSearchLine(width int) []string {
 	searchLine := "  " + fg(ActiveTheme().Muted, "Type to search:")
 	if t.searchQuery != "" {
 		searchLine += " " + fg(ActiveTheme().Accent, t.searchQuery)
 	}
-	lines := []string{
-		"",
-		padOrTrunc(border, width),
+	return []string{widthx.TruncateToWidth(searchLine, width, "...", false)}
+}
+
+// renderLabelInput draws the label prompt, the shared Input and the configured key hints while a label is edited (LabelInput).
+func (t *TreeSelectorComponent) renderLabelInput(width int) []string {
+	if t.labelInput == nil {
+		return nil
 	}
-	lines = append(lines, NewPaddedText("\033[1m  Session Tree\033[0m", 1, 0, nil).Render(width)...)
-	for _, line := range headerHint {
-		lines = append(lines, padOrTrunc(line, width))
+	lines := []string{widthx.TruncateToWidth("  "+fg(ActiveTheme().Muted, "Label (empty to remove):"), width, "...", false)}
+	for _, line := range t.labelInput.Render(max(1, width-2)) {
+		lines = append(lines, widthx.TruncateToWidth("  "+line, width, "...", false))
 	}
-	lines = append(lines, padOrTrunc(searchLine, width), padOrTrunc(border, width))
+	return append(lines, widthx.TruncateToWidth("  "+RawKeyHint(strings.Join(GetTUIKeybindings().GetKeys(KBSelectConfirm), "/"), "save")+"  "+RawKeyHint(strings.Join(GetTUIKeybindings().GetKeys(KBSelectCancel), "/"), "cancel"), width, "...", false))
+}
+
+// renderTreeList draws the visible tree rows and the position line, or the empty-state rows (TreeList). Rows are capped to the scroll window used by fixScroll so the tree cannot overflow the editor slot.
+func (t *TreeList) renderTreeList(width int) []string {
 	if t.labelInput != nil {
-		lines = append(lines, "", widthx.TruncateToWidth("  "+fg(ActiveTheme().Muted, "Label (empty to remove):"), width, "...", false))
-		for _, line := range t.labelInput.Render(max(1, width-2)) {
-			lines = append(lines, widthx.TruncateToWidth("  "+line, width, "...", false))
-		}
-		lines = append(lines, widthx.TruncateToWidth("  "+RawKeyHint(strings.Join(GetTUIKeybindings().GetKeys(KBSelectConfirm), "/"), "save")+"  "+RawKeyHint(strings.Join(GetTUIKeybindings().GetKeys(KBSelectCancel), "/"), "cancel"), width, "...", false))
-		return append(lines, "", padOrTrunc(border, width))
+		return nil
 	}
+	var lines []string
 	if len(t.rows) == 0 {
-		lines = append(lines, "")
-		lines = append(lines, padOrTrunc(fg(ActiveTheme().Muted, "  No entries found"), width))
-		lines = append(lines, padOrTrunc(fg(ActiveTheme().Muted, "  (0/0)"+t.getStatusLabels()), width))
-		lines = append(lines, "", padOrTrunc(border, width))
+		lines = append(lines, widthx.TruncateToWidth(fg(ActiveTheme().Muted, "  No entries found"), width, "...", false))
+		lines = append(lines, widthx.TruncateToWidth(fg(ActiveTheme().Muted, "  (0/0)"+t.getStatusLabels()), width, "...", false))
 		return lines
 	}
-	lines = append(lines, "")
 	now := time.Now()
-	// Cap rendered rows to match the scroll window used by fixScroll.
-	// Without this cap the tree could emit up to 50 rows which overflow
-	// the editor slot when the chat container reserves the rest of the
-	// viewport, leaving the cursor stranded above the visible area.
 	maxRows := min(t.visibleLines(), len(t.rows))
 	viewportRows := make([]horizontalViewportRow, 0, maxRows)
 	for i := range maxRows {
@@ -949,7 +1057,7 @@ func (t *TreeSelect) Render(width int) []string {
 		}
 		foldMarker := ""
 		if folded && !r.showConnector {
-			foldMarker = "⊞ "
+			foldMarker = fg(ActiveTheme().Accent, "⊞ ")
 		}
 
 		// User-set branch label and optional inline timestamp.
@@ -970,7 +1078,7 @@ func (t *TreeSelect) Render(width int) []string {
 		labelTs := ""
 		if t.showLabelTimestamps && labelTimestamp != "" {
 			if s := formatLabelTimestamp(labelTimestamp, now); s != "" {
-				labelTs = dim(s) + " "
+				labelTs = fg(ActiveTheme().Muted, s+" ")
 			}
 		}
 
@@ -986,31 +1094,23 @@ func (t *TreeSelect) Render(width int) []string {
 		prefixPart := fg(ActiveTheme().Dim, prefix) + foldMarker + pathMarker
 		label := t.rowLabel(r)
 		if isSelected {
-			label = "\x1b[1m" + label + SGRBoldDimReset
+			label = ActiveTheme().Bold(label)
 		}
 		body := prefixPart + branchLabel + labelTs + label
+		gutter := cursor
+		if isSelected {
+			gutter, body = ActiveTheme().Bg("selectedBg", gutter), ActiveTheme().Bg("selectedBg", body)
+		}
 		viewportRows = append(viewportRows, horizontalViewportRow{
-			gutter:     cursor,
+			gutter:     gutter,
 			body:       body,
 			anchorCol:  treeVisibleWidth(prefixPart),
 			bodyWidth:  treeVisibleWidth(body),
 			isSelected: isSelected,
 		})
 	}
-	for i, padded := range renderTreeHorizontalViewport(viewportRows, width) {
-		if viewportRows[i].isSelected {
-			// Close the selected-row background with a scoped bg reset
-			// (SGR 49), mirroring upstream theme.bg's `${ansi}${line}\x1b[49m`.
-			// The row's interior fg styling already closes with SGR 39, so
-			// the highlight spans the full width without a full `\x1b[0m`
-			// clearing the background early.
-			padded = ActiveTheme().SelectedBg + padded + SGRBgReset
-		}
-		lines = append(lines, padded)
-	}
-	lines = append(lines, padOrTrunc(fg(ActiveTheme().Muted, fmt.Sprintf("  (%d/%d)%s", t.cursor+1, len(t.rows), t.getStatusLabels())), width))
-	lines = append(lines, "")
-	lines = append(lines, padOrTrunc(border, width))
+	lines = append(lines, renderTreeHorizontalViewport(viewportRows, width)...)
+	lines = append(lines, widthx.TruncateToWidth(fg(ActiveTheme().Muted, fmt.Sprintf("  (%d/%d)%s", t.cursor+1, len(t.rows), t.getStatusLabels())), width, "...", false))
 	return lines
 }
 
@@ -1032,7 +1132,7 @@ func (t *TreeSelect) Render(width int) []string {
 // descendants below) both directions return the cursor unchanged.
 // HandleInput's caller falls back to a one-row move in that case so
 // the keys still feel like simple navigation.
-func (t *TreeSelect) findBranchSegmentStart(direction string) int {
+func (t *TreeList) findBranchSegmentStart(direction string) int {
 	if len(t.rows) == 0 {
 		return 0
 	}
@@ -1116,7 +1216,7 @@ func swapConnectorMiddle(prefix string, folded, foldable bool) string {
 // Ctrl+Left/Alt+Left folds the highlighted branch or moves to the current
 // branch segment start. Ctrl+Right/Alt+Right unfolds it or moves to the next
 // branch segment. Shift+T toggles label timestamps. Colliding bindings use upstream's action priority.
-func (t *TreeSelect) HandleInput(data string) {
+func (t *TreeList) HandleInput(data string) {
 	// When in label-edit mode, intercept all keystrokes
 	// for the inline editor instead of the normal navigation handlers.
 	if t.labelInput != nil {
@@ -1180,6 +1280,9 @@ func (t *TreeSelect) HandleInput(data string) {
 		if len(t.rows) > 0 && t.cursor < len(t.rows) {
 			t.selectedID = t.rows[t.cursor].id
 			t.done = true
+			if t.OnSelect != nil {
+				t.OnSelect(t.selectedID)
+			}
 		}
 	case kb.Matches(data, "app.message.copy"):
 		if t.OnCopy != nil {
@@ -1201,6 +1304,9 @@ func (t *TreeSelect) HandleInput(data string) {
 		}
 		t.cancelled = true
 		t.done = true
+		if t.OnCancel != nil {
+			t.OnCancel()
+		}
 	case kb.Matches(data, "app.tree.filter.default"):
 		t.setFilterMode("default")
 	case kb.Matches(data, "app.tree.filter.noTools"):
@@ -1225,7 +1331,7 @@ func (t *TreeSelect) HandleInput(data string) {
 		if len(t.rows) > 0 && t.cursor >= 0 && t.cursor < len(t.rows) {
 			t.labelNode = t.rows[t.cursor].node
 			t.labelInput = NewInput(InputOptions{})
-			t.labelInput.Focused = true
+			t.labelInput.SetFocused(t.focused)
 			if node, ok := t.labelNode.(TreeNodeWithBranchLabel); ok {
 				t.labelInput.SetValue(node.NodeBranchLabel())
 			}
@@ -1254,7 +1360,7 @@ func (t *TreeSelect) HandleInput(data string) {
 }
 
 // handleLabelInput saves or cancels the label; all editing operations belong to the shared Input.
-func (t *TreeSelect) handleLabelInput(data string) {
+func (t *TreeList) handleLabelInput(data string) {
 	kb := GetTUIKeybindings()
 	switch {
 	case kb.Matches(data, KBSelectConfirm):
@@ -1282,7 +1388,7 @@ func (t *TreeSelect) handleLabelInput(data string) {
 }
 
 // cycleFilterMode cycles the filter, clears folds, and preserves selection through the shared visibility rebuild.
-func (t *TreeSelect) cycleFilterMode(direction int) {
+func (t *TreeList) cycleFilterMode(direction int) {
 	if len(t.filterModes) <= 1 {
 		return
 	}
@@ -1300,7 +1406,7 @@ func (t *TreeSelect) cycleFilterMode(direction int) {
 }
 
 // setFilterMode toggles a non-default filter back to default when selected again. Every direct filter action clears folds, including reselecting default.
-func (t *TreeSelect) setFilterMode(mode string) {
+func (t *TreeList) setFilterMode(mode string) {
 	if t.filterMode == mode {
 		mode = "default"
 	}
@@ -1309,10 +1415,65 @@ func (t *TreeSelect) setFilterMode(mode string) {
 	t.recomputeVisible()
 }
 
+// NativeNode reports the visible rows as a selector whose item ids are the
+// node ids, checked on the active path, with the filter modes as tabs in the
+// order app.tree.filter.cycleForward steps through them. pig additive (D91):
+// a row's label is its plain text after the tree connectors (fold marker,
+// branch label, label time, entry), the status the filter and label time
+// labels, and the label editor is not modelled, so the dock shows it as
+// lines.
+func (t *TreeSelectorComponent) NativeNode() (frontend.Node, bool) {
+	if t.labelInput != nil {
+		return nil, false
+	}
+	node := frontend.Selector{
+		Title:      "Session Tree",
+		Searchable: true,
+		Query:      t.searchQuery,
+		Items:      make([]frontend.SelectorItem, len(t.rows)),
+		Tabs:       make([]frontend.SelectorTab, len(t.filterModes)),
+		Tab:        t.filterMode,
+		Status:     strings.TrimSpace(t.getStatusLabels()),
+	}
+	for i, mode := range t.filterModes {
+		node.Tabs[i] = frontend.SelectorTab{ID: mode, Label: mode}
+	}
+	now := time.Now()
+	for i, r := range t.rows {
+		var label strings.Builder
+		if t.foldedNodes[r.id] {
+			label.WriteString("⊞ ")
+		}
+		if bn, ok := r.node.(TreeNodeWithBranchLabel); ok {
+			if s := bn.NodeBranchLabel(); s != "" {
+				label.WriteString("[" + s + "] ")
+			}
+		}
+		if t.showLabelTimestamps {
+			labelTimestamp := r.labelTimestamp
+			if node, ok := r.node.(TreeNodeWithLabelTimestamp); ok {
+				labelTimestamp = node.NodeLabelTimestamp()
+			}
+			if s := formatLabelTimestamp(labelTimestamp, now); s != "" {
+				label.WriteString(s + " ")
+			}
+		}
+		label.WriteString(t.rowLabel(r))
+		node.Items[i] = frontend.SelectorItem{ID: r.id, Label: plainText(label.String()), Checked: t.activePathIds[r.id], Depth: r.displayIndent}
+	}
+	if t.cursor >= 0 && t.cursor < len(node.Items) {
+		node.Selected = node.Items[t.cursor].ID
+	}
+	return node, true
+}
+
+// nativeTabKey reports the key that steps the filter modes.
+func (t *TreeSelectorComponent) nativeTabKey() TUIKeybinding { return "app.tree.filter.cycleForward" }
+
 // fixScroll keeps the cursor inside the visible window. Mirrors upstream
 // tree-selector.ts:611-619 which centers the selection within
 // maxVisibleLines and clamps to valid range.
-func (t *TreeSelect) fixScroll() {
+func (t *TreeList) fixScroll() {
 	window := t.visibleLines()
 	if len(t.rows) <= window {
 		t.scroll = 0
@@ -1445,4 +1606,21 @@ func treeHelpLines(width int) []string {
 		lines[i] = fg(ActiveTheme().Muted, line)
 	}
 	return lines
+}
+
+// SetFocused records TUI focus and propagates it to an active label input for IME cursor positioning (upstream `set focused`).
+func (t *TreeSelectorComponent) SetFocused(focused bool) {
+	t.mu.Lock() // a render holds the container's read lock while it draws the label input
+	defer t.mu.Unlock()
+	t.focused = focused
+	if t.labelInput != nil {
+		t.labelInput.SetFocused(focused)
+	}
+}
+
+// Focused reports the TUI focus flag (upstream `get focused`).
+func (t *TreeSelectorComponent) Focused() bool {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	return t.focused
 }

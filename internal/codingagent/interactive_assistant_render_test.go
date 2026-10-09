@@ -13,7 +13,7 @@ import (
 
 func prepareAssistantEventTest(t *testing.T, m *InteractiveMode) {
 	t.Helper()
-	m.statusLine = NewStatusLine(nil, "", nil)
+	m.statusLine = NewFooterComponent(nil, "", nil)
 	m.pendingArgs = make(map[int]*pendingToolArg)
 	// Mirror the production owner-loop dispatcher; assertions also render on
 	// this goroutine, never on the throttle timer's goroutine.
@@ -29,7 +29,7 @@ func prepareAssistantEventTest(t *testing.T, m *InteractiveMode) {
 	})
 }
 
-func assistantLines(block *tui.AssistantMessageBlock) []string {
+func assistantLines(block *tui.AssistantMessageComponent) []string {
 	lines := block.Render(80)
 	for i := range lines {
 		lines[i] = strings.TrimRight(stripANSITest(lines[i]), " ")
@@ -74,9 +74,6 @@ func TestInteractiveMode_StreamingAssistantContentOrder(t *testing.T) {
 			m.handleAgentEvent(agent.MessageEndEvent{Message: msg})
 			if got := assistantLines(m.assistantBlocks[0]); !slices.Equal(got, []string{"\x1b]133;A\x07", "\x1b]133;B\x07\x1b]133;C\x07 corrected final"}) {
 				t.Errorf("message_end: %q", got)
-			}
-			if m.lastAssistantText != "corrected final" {
-				t.Errorf("copy text = %q", m.lastAssistantText)
 			}
 		})
 	}

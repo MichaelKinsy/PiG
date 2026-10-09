@@ -187,10 +187,10 @@ func unanswered() unansweredStep {
 	var once sync.Once
 	return unansweredStep{
 		reached: reached,
-		step: ai.FauxFactoryStep(func(_ ai.TranscriptContext, options ai.StreamOptions, _ *ai.FauxProviderState, _ *ai.Model) (ai.FauxResponse, error) {
+		step: ai.FauxFactoryStep(func(_ ai.TranscriptContext, options ai.StreamOptions, _ *ai.FauxProviderState, _ *ai.Model) (ai.AssistantMessage, error) {
 			once.Do(func() { close(reached) })
 			<-options.Signal.Done()
-			return ai.FauxResponse{}, context.Cause(options.Signal)
+			return ai.FauxResponse{}.AssistantMessage(), context.Cause(options.Signal)
 		}),
 	}
 }

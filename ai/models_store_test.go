@@ -33,7 +33,7 @@ func TestFileModelsStoreCreatesFilePreservesOrderAndRoundTrips(t *testing.T) {
 		t.Fatal(err)
 	}
 	checkedAt := 1700000000000.0
-	if err := store.Write(ctx, "llama.cpp", ModelsStoreEntry{Models: []json.RawMessage{json.RawMessage(`{"id":"m"}`)}, CheckedAt: &checkedAt}); err != nil {
+	if err := store.Write(ctx, "llama.cpp", ModelsStoreEntry{Models: mustStoredModels([]json.RawMessage{json.RawMessage(`{"id":"m"}`)}), CheckedAt: &checkedAt}); err != nil {
 		t.Fatal(err)
 	}
 	data, err = os.ReadFile(path)
@@ -123,7 +123,7 @@ func TestFileModelsStoreWriteReplacesDuplicateProviderKey(t *testing.T) {
 	if err != nil || before == nil || before.ETag != "last" {
 		t.Fatalf("initial read: %+v, %v", before, err)
 	}
-	if err := store.Write(context.Background(), "x", ModelsStoreEntry{Models: []json.RawMessage{}, ETag: "new"}); err != nil {
+	if err := store.Write(context.Background(), "x", ModelsStoreEntry{Models: []AnyModel{}, ETag: "new"}); err != nil {
 		t.Fatal(err)
 	}
 	after, err := store.Read(context.Background(), "x")
@@ -198,20 +198,20 @@ func TestInMemoryModelsStoreClonesAndDeletes(t *testing.T) {
 		t.Fatalf("Read(empty) = %+v, %v; want nil, nil", entry, err)
 	}
 	checkedAt := 5.0
-	entry := ModelsStoreEntry{Models: []json.RawMessage{json.RawMessage(`{"id":"a"}`)}, CheckedAt: &checkedAt, ETag: `"e"`}
+	entry := ModelsStoreEntry{Models: mustStoredModels([]json.RawMessage{json.RawMessage(`{"id":"a","provider":"radius"}`)}), CheckedAt: &checkedAt, ETag: `"e"`}
 	if err := store.Write(ctx, "radius", entry); err != nil {
 		t.Fatal(err)
 	}
-	entry.Models[0][7] = 'b'
+	entry.Models[0].(*Model).ID = "b"
 	checkedAt = 6
 	read, err := store.Read(ctx, "radius")
-	if err != nil || read == nil || string(read.Models[0]) != `{"id":"a"}` || *read.CheckedAt != 5 || read.ETag != `"e"` {
+	if err != nil || read == nil || read.Models[0].ModelID() != "a" || *read.CheckedAt != 5 || read.ETag != `"e"` {
 		t.Fatalf("Read after mutating the written entry = %+v, %v", read, err)
 	}
-	read.Models[0][7] = 'c'
+	read.Models[0].(*Model).ID = "c"
 	*read.CheckedAt = 7
 	again, err := store.Read(ctx, "radius")
-	if err != nil || again == nil || string(again.Models[0]) != `{"id":"a"}` || *again.CheckedAt != 5 {
+	if err != nil || again == nil || again.Models[0].ModelID() != "a" || *again.CheckedAt != 5 {
 		t.Fatalf("Read after mutating a read entry = %+v, %v", again, err)
 	}
 	if err := store.Delete(ctx, "radius"); err != nil {

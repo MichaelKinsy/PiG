@@ -1,3 +1,5 @@
+//go:build !pig_strip_mistral_conversations
+
 package ai
 
 import (
@@ -69,10 +71,11 @@ data: {bad json
 }
 
 func TestParseJSONWithRepairEscapesInvalidBackslashes(t *testing.T) {
-	var payload struct {
+	type textPayload struct {
 		Text string `json:"text"`
 	}
-	if err := unmarshalJSONWithRepair(`{"text":"a\qb"}`, &payload); err != nil {
+	payload, err := ParseJSONWithRepair[textPayload](`{"text":"a\qb"}`)
+	if err != nil {
 		t.Fatal(err)
 	}
 	if payload.Text != `a\qb` {
@@ -85,8 +88,7 @@ func TestParseJSONWithRepairKeepsInvalidUnicodeEscapesInvalid(t *testing.T) {
 	if repaired := repairJSON(input); repaired != input {
 		t.Fatalf("repairJSON(%s) = %s", input, repaired)
 	}
-	var payload any
-	if err := unmarshalJSONWithRepair(input, &payload); err == nil {
+	if payload, err := ParseJSONWithRepair[any](input); err == nil {
 		t.Fatalf("invalid unicode escape parsed as %#v", payload)
 	}
 }

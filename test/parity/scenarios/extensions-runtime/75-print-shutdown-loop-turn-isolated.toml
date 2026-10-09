@@ -1,0 +1,69 @@
+# Behavior family: extensions-runtime
+# Scenario: with each extension in its own Node runtime process, the callbacks an earlier extension's session_shutdown queued still run while a later handler awaits a timer, before the runner is invalidated.
+#
+# Pi runs every extension on one event loop: its runner awaits each session_shutdown handler in
+# turn (runner.ts:1089-1116), and print mode invalidates the runner only after the event
+# (agent-session-runtime.ts:404-410, agent-session.ts:1393-1406). When shutdown-loop-turn-b.mjs
+# awaits its 50 ms timer, the loop runs the immediate and the zero-delay timer that
+# shutdown-loop-turn-a.mjs queued, with a live ctx.
+#
+# Pig's CLI packs Node factories into one runtime process (75-print-shutdown-loop-turn). Separate
+# Node processes come from crash recovery, which quarantines a culprit in its own process
+# (node_recovery.go), and no CLI option places a factory alone. So the pig side runs
+# print-loop-turn-helper, which drives the same Host path with each fixture isolated: the Host
+# declares print mode, runs each session_shutdown handler in configured order and awaits it, then
+# invalidates and stops the processes, as Pig's print disposal does. b's runtime reports that its
+# handler yielded to its event loop (loop_turned), and the host forwards that to a's process as its
+# next step, so a's callbacks run before b answers. Before loop_turned (integrate-042 e0d305ad1b),
+# a's process waited for invalidate and was stopped first: the log held only "a session_shutdown",
+# "b session_shutdown", "b session_shutdown done".
+#
+# The helper prints nothing and Pi prints "42", so the comparator is the log, byte for byte, and
+# the exit codes. The base args are overridden only to run the helper; Pi keeps --no-extensions.
+#
+# Upstream evidence (2026-10-09, Pi 1.1.0, 3 runs; the same log when b awaits 0, 1, 20 or 50 ms):
+#   PI_CODING_AGENT_DIR=testdata/pi-agent LOOP_TURN_LOG=/tmp/loop-turn.log pi --no-extensions \
+#     -e ../../testdata/test-faux-provider.ts -e testdata/ext/shutdown-loop-turn-a.mjs \
+#     -e testdata/ext/shutdown-loop-turn-b.mjs --model test-faux/faux-1 --no-session --print "What is 20+22?"
+#   output: "42", exit 0
+#   /tmp/loop-turn.log: "a session_shutdown", "b session_shutdown", "a immediate live",
+#   "a timeout live", "b session_shutdown done"
+
+name = "75-print-shutdown-loop-turn-isolated"
+description = "Isolated Node processes run an earlier extension's session_shutdown callbacks while a later handler awaits a timer"
+covers = [
+  "packages/coding-agent/src/core/extensions/runner.ts",
+  "packages/coding-agent/src/core/agent-session-runtime.ts",
+]
+tags = ["hermetic", "fast"]
+driver = "cli-mode"
+
+[env]
+override_base_args = true
+pig_bin = "/usr/bin/env"
+pig = ["PIG_HOME=testdata/pig-home", "LOOP_TURN_LOG={{TEMP}}/loop-turn.log"]
+pi = ["PI_CODING_AGENT_DIR=testdata/pi-agent", "LOOP_TURN_LOG={{TEMP}}/loop-turn.log"]
+pi_args = ["--no-extensions"]
+pi_extensions = [
+  "../../testdata/test-faux-provider.ts",
+  "testdata/ext/shutdown-loop-turn-a.mjs",
+  "testdata/ext/shutdown-loop-turn-b.mjs",
+]
+
+[cli]
+cwd = "../../../.."
+args = ["--model", "test-faux/faux-1", "--no-session", "--print", "What is 20+22?"]
+pig_args = [
+  "go", "run", "./test/parity/testdata/print-loop-turn-helper",
+  "test/parity/scenarios/extensions-runtime/testdata/ext/shutdown-loop-turn-a.mjs",
+  "test/parity/scenarios/extensions-runtime/testdata/ext/shutdown-loop-turn-b.mjs",
+]
+artifact_path = "{{TEMP}}/loop-turn.log"
+timeout_seconds = 180
+
+[assert]
+exit_code = 0
+artifact_equal = true
+artifact_both_contain = ["a immediate live", "a timeout live"]
+pi_contains = ["42"]
+runs = 3

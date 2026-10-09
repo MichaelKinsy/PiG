@@ -65,6 +65,12 @@ func (b *Box) SetBgFn(bgFn func(string) string) {
 	b.BgFn = bgFn
 }
 
+// SetPaddingX sets the horizontal padding and drops the render cache (box.ts setPaddingX).
+func (b *Box) SetPaddingX(paddingX int) {
+	b.PaddingX = paddingX
+	b.cache = nil
+}
+
 func (b *Box) Invalidate() {
 	b.invalidatable.Invalidate()
 	b.cache = nil

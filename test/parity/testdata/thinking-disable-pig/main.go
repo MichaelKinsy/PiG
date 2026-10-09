@@ -35,7 +35,7 @@ func run() error {
 		return err
 	}
 	defer func() { _ = os.RemoveAll(dir) }()
-	services, err := coding.NewServices(coding.ServicesOptions{CWD: dir, AgentDir: dir})
+	services, err := coding.CreateAgentSessionServices(coding.CreateAgentSessionServicesOptions{CWD: dir, AgentDir: dir})
 	if err != nil {
 		return err
 	}

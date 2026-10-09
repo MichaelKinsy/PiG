@@ -26,13 +26,16 @@ type RecordedTelemetrySpan struct {
 	EndSequence *int
 }
 
-// InMemoryTelemetryContext records spans without an external backend. Its zero value is ready to use, so a composite
-// literal is its constructor (stubgen:omit NewInMemoryTelemetryContext).
+// InMemoryTelemetryContext records spans without an external backend. Create a fresh instance to isolate tests or
+// independent recording scopes (memory.ts:190-197).
 type InMemoryTelemetryContext struct {
 	mu              sync.Mutex
 	spans           []*memorySpan
 	nextEndSequence int
 }
+
+// NewInMemoryTelemetryContext is `new InMemoryTelemetryContext()`: an empty recorder; its zero value is equally ready to use.
+func NewInMemoryTelemetryContext() *InMemoryTelemetryContext { return &InMemoryTelemetryContext{} }
 
 type memorySpan struct {
 	owner          *InMemoryTelemetryContext
@@ -107,7 +110,12 @@ func automaticErrorStatus(failure any) (status SpanStatus) {
 		}
 	}()
 	if err, ok := failure.(error); ok {
-		status.Error = &SpanStatusError{Name: "Error", Message: err.Error()}
+		// The thrown value's own `error.name`: its Name method when it has one, otherwise "Error"; upstream reads no cause chain.
+		name := "Error"
+		if named, ok := err.(interface{ Name() string }); ok {
+			name = named.Name()
+		}
+		status.Error = &SpanStatusError{Name: name, Message: err.Error()}
 	}
 	return status
 }

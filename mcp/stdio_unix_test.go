@@ -21,6 +21,7 @@ func TestStdioTransportKillsAServerThatIgnoresShutdownIncludingItsChildren(t *te
 	if _, err := client.Connect(t.Context(), transport); err != nil {
 		t.Fatal(err)
 	}
+	killGroupOnCleanup(t, transport.PID())
 	pattern := regexp.MustCompile(`grandchild (\d+)`)
 	grandchild := 0
 	for i := 0; i < 100 && grandchild == 0; i++ {
@@ -62,7 +63,17 @@ func connectFixture(t *testing.T, name string, closeTimeoutMs int) (*mcp.Client,
 	if _, err := client.Connect(t.Context(), transport); err != nil {
 		t.Fatal(err)
 	}
+	killGroupOnCleanup(t, transport.PID())
 	return client, transport
+}
+
+// killGroupOnCleanup kills the server's process group when the test ends. The fixtures ignore stdin EOF or SIGTERM, or leave a child that sleeps forever, so a test that fails before the transport's close stages run would otherwise leave them running after go test exits. The assertions still rest on the transport alone: the cleanup runs after them.
+func killGroupOnCleanup(t *testing.T, pid int) {
+	t.Helper()
+	if pid <= 0 {
+		t.Fatalf("server pid = %d", pid)
+	}
+	t.Cleanup(func() { _ = syscall.Kill(-pid, syscall.SIGKILL) })
 }
 
 func processAlive(pid int) bool { return syscall.Kill(pid, 0) == nil }

@@ -322,18 +322,18 @@ func TestTaskGraphView(t *testing.T) {
 
 		// Exact frames: replaying their operations from the acquisition revision gives each delivered value.
 		var mu sync.Mutex
-		replica := jsonOf(t, watch.Value())
+		replica := orderedJSONOf(t, watch.Value())
 		var frames [][]durable.Op
 		var replayErr error
 		watch.Start(func(_ context.Context, value TaskGraph, ops []durable.Op) error {
 			mu.Lock()
 			defer mu.Unlock()
 			converted := make([]durable.Op, len(ops))
-			for i, op := range jsonOf(t, ops).([]any) {
+			for i, op := range orderedJSONOf(t, ops).([]any) {
 				converted[i] = op.([]any)
 			}
 			next, err := delta.ApplyImmutable(replica, converted)
-			if err == nil && !reflect.DeepEqual(next, jsonOf(t, value)) {
+			if err == nil && !reflect.DeepEqual(jsonOf(t, next), jsonOf(t, value)) {
 				err = fmt.Errorf("replica %v, delivered %v", next, jsonOf(t, value))
 			}
 			if err != nil && replayErr == nil {
@@ -374,7 +374,7 @@ func TestTaskGraphView(t *testing.T) {
 		}
 		expectSameJSON(t, recorded[len(recorded)-1], []any{[]any{"d", []any{"tasks", taskKey(ids.background)}}})
 		var keys []string
-		for key := range finalReplica.(map[string]any)["tasks"].(map[string]any) {
+		for key := range finalReplica.(*delta.JsonObject).Value("tasks").(*delta.JsonObject).All() {
 			keys = append(keys, key)
 		}
 		expectStrings(t, keys, []string{taskKey(ids.foreground)})

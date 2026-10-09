@@ -3,6 +3,7 @@ package cellpack
 import (
 	"encoding/json"
 	"os"
+	"path/filepath"
 	"runtime"
 	"strings"
 	"testing"
@@ -79,5 +80,37 @@ func TestLoadManifestRejectsRetiredStaticAuthenticationMetadata(t *testing.T) {
 	_, err := loadManifest(fstest.MapFS{"cells/manifest.json": {Data: data}})
 	if err == nil || !strings.Contains(err.Error(), "unknown field") {
 		t.Fatalf("loadManifest error = %v, want unknown retired field", err)
+	}
+}
+
+// Regression: the extraction directory followed <home>/.pig whatever PIG_HOME said, so a Termux or relocated PiG home held the cells outside its own root.
+func TestExtractDirFollowsPigHome(t *testing.T) {
+	home := filepath.Join(t.TempDir(), "relocated")
+	t.Setenv("PIG_HOME", home)
+	t.Setenv("HOME", filepath.Join(t.TempDir(), "elsewhere"))
+	t.Setenv("USERPROFILE", os.Getenv("HOME"))
+	dir, err := extractDir()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := filepath.Join(home, "piglet-binary-cells"); dir != want {
+		t.Fatalf("extractDir() = %q, want %q", dir, want)
+	}
+	if info, err := os.Stat(dir); err != nil || !info.IsDir() {
+		t.Fatalf("extractDir() did not create %q: %v", dir, err)
+	}
+}
+
+// The host starts a cell with cmd.Dir set to the session directory, so a relative PIG_HOME must not leave a cell path that resolves against it.
+func TestExtractDirIsAbsoluteForARelativePigHome(t *testing.T) {
+	cwd := t.TempDir()
+	t.Chdir(cwd)
+	t.Setenv("PIG_HOME", "relative-home")
+	dir, err := extractDir()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := filepath.Join(cwd, "relative-home", "piglet-binary-cells"); dir != want {
+		t.Fatalf("extractDir() = %q, want %q", dir, want)
 	}
 }

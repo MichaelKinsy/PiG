@@ -21,17 +21,34 @@ anything ported; review the result.
 from __future__ import annotations
 
 import argparse
+import json
 import pathlib
 import re
 import sys
 from dataclasses import dataclass
 
-TRACKED_ROOTS = (
-    "packages/agent/src",
-    "packages/ai/src",
-    "packages/coding-agent/src",
-    "packages/tui/src",
-)
+PACKAGES_JSON = pathlib.Path(__file__).resolve().parents[2] / "test" / "parity" / "upstreampackages" / "packages.json"
+
+
+def load_tracked_roots(packages_json: pathlib.Path = PACKAGES_JSON) -> tuple[str, ...]:
+    """The source root of every package in the one shared list (test/parity/upstreampackages/packages.json)."""
+    packages = json.loads(packages_json.read_text(encoding="utf-8"))["packages"]
+    return tuple(sorted(f"{package['root']}/src" for package in packages))
+
+
+def package_list_problems(upstream_root: pathlib.Path, roots: tuple[str, ...]) -> list[str]:
+    """Report a package directory in the mirror that the shared list lacks, and a listed package the mirror lacks."""
+    mirror = upstream_root / "packages"
+    if not mirror.is_dir():
+        return []
+    present = {entry.name for entry in mirror.iterdir() if entry.is_dir()}
+    listed = {root.split("/")[1] for root in roots}
+    return [f"package {name} is in the upstream mirror but not in test/parity/upstreampackages/packages.json" for name in sorted(present - listed)] + [
+        f"package {name} is in test/parity/upstreampackages/packages.json but not in the upstream mirror" for name in sorted(listed - present)
+    ]
+
+
+TRACKED_ROOTS = load_tracked_roots()
 
 PORTABLE_STATUSES = {"✅", "🟡", "⬜", "🔴"}
 NON_LIVE_STATUSES = {"n/a", "⏸"}
@@ -155,7 +172,10 @@ def main() -> int:
     parser.add_argument("--upstream", default=".upstream/current", help="current upstream tree")
     parser.add_argument("--port-map", default="docs/parity/PORT_MAP.md", help="docs/parity/PORT_MAP.md path")
     parser.add_argument("--reconcile", action="store_true", help="add ⬜ rows for new files and retire rows for removed files, then recheck")
+    parser.add_argument("--packages", default=str(PACKAGES_JSON), help="shared upstream package list")
     args = parser.parse_args()
+    global TRACKED_ROOTS
+    TRACKED_ROOTS = load_tracked_roots(pathlib.Path(args.packages))
 
     upstream_root = pathlib.Path(args.upstream)
     port_map = pathlib.Path(args.port_map)
@@ -166,6 +186,11 @@ def main() -> int:
         print(f"port-map-drift: PORT_MAP not found: {port_map}", file=sys.stderr)
         return 2
 
+    list_problems = package_list_problems(upstream_root, TRACKED_ROOTS)
+    for problem in list_problems:
+        print(f"port-map-drift: {problem}", file=sys.stderr)
+    if list_problems:
+        return 1
     upstream_files = discover_upstream(upstream_root)
     rows = parse_rows(port_map)
     for upstream in rows:

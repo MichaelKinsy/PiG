@@ -67,17 +67,18 @@ func (p *formParams) Encode() string {
 }
 
 // AddClientAuthentication replaces the default client authentication of a
-// token request.
-type AddClientAuthentication func(ctx context.Context, headers http.Header, params *TokenParams, endpoint *url.URL, metadata *AuthorizationServerMetadata) error
+// token request. endpoint is the token endpoint URL: upstream's `string | URL`
+// parameter (flow.ts:37) is the URL's string form, which url.Parse reads back.
+type AddClientAuthentication func(ctx context.Context, headers http.Header, params *URLSearchParams, endpoint string, metadata *AuthorizationServerMetadata) error
 
-// TokenParams is the form body of a token request.
-type TokenParams struct{ p formParams }
+// URLSearchParams is the form body of a token request: upstream's URLSearchParams, insertion ordered and form-urlencoded.
+type URLSearchParams struct{ p formParams }
 
 // Set sets a form parameter.
-func (t *TokenParams) Set(key, value string) { t.p.Set(key, value) }
+func (t *URLSearchParams) Set(key, value string) { t.p.Set(key, value) }
 
 // Get reads a form parameter.
-func (t *TokenParams) Get(key string) (string, bool) { return t.p.Get(key) }
+func (t *URLSearchParams) Get(key string) (string, bool) { return t.p.Get(key) }
 
 // OAuthClientProvider supplies the state of one OAuth client: registration,
 // tokens, and the PKCE verifier. The optional capabilities are separate
@@ -182,13 +183,31 @@ func loopback(hostname string) bool {
 	return hostname == "localhost" || hostname == "127.0.0.1" || hostname == "[::1]" || hostname == "::1"
 }
 
+// applicationType is the OpenID Connect application_type for redirectURIs (MCP SEP-837). Without one, OpenID Connect
+// servers assume web, which rejects http loopback redirect URIs. Loopback hosts and custom schemes are native
+// (RFC 8252).
+//
+// Ports packages/mcp/src/oauth/flow.ts (applicationType).
+func applicationType(redirectURIs []string) string {
+	for _, redirectURI := range redirectURIs {
+		u, err := parseURL(redirectURI)
+		if err != nil {
+			continue
+		}
+		if (u.Scheme != "http" && u.Scheme != "https") || loopback(u.Hostname()) {
+			return "native"
+		}
+	}
+	return "web"
+}
+
 func secureEndpoint(value string) (*url.URL, error) {
 	u, err := parseURL(value)
 	if err != nil {
 		return nil, err
 	}
 	if u.Scheme != "https" && !loopback(u.Hostname()) && !loopback(u.Host) {
-		return nil, &OAuthInsecureEndpointError{Endpoint: u.String()}
+		return nil, NewOAuthInsecureEndpointError(u.String())
 	}
 	return u, nil
 }
@@ -295,7 +314,7 @@ func StartAuthorization(authorizationServerURL string, options StartAuthorizatio
 	if options.Scope != "" {
 		params.Set("scope", options.Scope)
 	}
-	if slices.Contains(strings.Fields(options.Scope), "offline_access") {
+	if slices.Contains(scopeFields(options.Scope), "offline_access") {
 		params.Set("prompt", "consent")
 	}
 	if options.Resource != "" {
@@ -348,8 +367,8 @@ func tokenRequest(ctx context.Context, authorizationServerURL string, options To
 		params.Set("resource", options.Resource)
 	}
 	if options.AddClientAuthentication != nil {
-		wrapper := &TokenParams{p: *params}
-		if err := options.AddClientAuthentication(ctx, headers, wrapper, tokenURL, options.Metadata); err != nil {
+		wrapper := &URLSearchParams{p: *params}
+		if err := options.AddClientAuthentication(ctx, headers, wrapper, tokenURL.String(), options.Metadata); err != nil {
 			return nil, err
 		}
 		*params = wrapper.p
@@ -390,11 +409,11 @@ func tokenRequest(ctx context.Context, authorizationServerURL string, options To
 			if raw, ok := fields["error_uri"]; ok && len(raw) > 0 && raw[0] == '"' {
 				_ = json.Unmarshal(raw, &uri)
 			}
-			return nil, &OAuthError{Code: code, Message: description, ErrorURI: uri}
+			return nil, NewOAuthError(code, description, uri)
 		}
 	}
 	if response.StatusCode < 200 || response.StatusCode >= 300 {
-		return nil, &OAuthError{Code: "server_error", Message: fmt.Sprintf("HTTP %d: %s", response.StatusCode, text)}
+		return nil, NewOAuthError("server_error", fmt.Sprintf("HTTP %d: %s", response.StatusCode, text))
 	}
 	if !json.Valid(data) {
 		data = []byte("null")
@@ -445,7 +464,7 @@ func RegisterClient(ctx context.Context, authorizationServerURL string, options 
 		return nil, err
 	}
 	if response.StatusCode < 200 || response.StatusCode >= 300 {
-		return nil, &OAuthRegistrationError{Status: response.StatusCode, Body: string(data)}
+		return nil, NewOAuthRegistrationError(response.StatusCode, string(data))
 	}
 	if !json.Valid(data) {
 		return nil, errors.New("Unexpected token in JSON")
@@ -453,8 +472,11 @@ func RegisterClient(ctx context.Context, authorizationServerURL string, options 
 	return ParseClientInformation(data)
 }
 
-// registrationBody is `{...clientMetadata, ...(scope ? {scope} : {})}`.
+// registrationBody is `{...clientMetadata, application_type: clientMetadata.application_type ?? applicationType(redirect_uris), ...(scope ? {scope} : {})}`.
 func registrationBody(metadata OAuthClientMetadata, scope string) ([]byte, error) {
+	if metadata.ApplicationType == "" {
+		metadata.ApplicationType = applicationType(metadata.RedirectURIs)
+	}
 	data, err := json.Marshal(metadata)
 	if err != nil {
 		return nil, err
@@ -667,7 +689,7 @@ func runFlow(ctx context.Context, provider OAuthClientProvider, options OAuthFlo
 		iss := options.Iss
 		if metadata != nil && (iss != nil || (metadata.AuthorizationResponseIssParameterSupported != nil && *metadata.AuthorizationResponseIssParameterSupported)) {
 			if iss == nil || *iss != metadata.Issuer {
-				return "", &OAuthIssuerMismatchError{Expected: metadata.Issuer, Received: iss}
+				return "", NewOAuthIssuerMismatchError(metadata.Issuer, iss)
 			}
 		}
 		verifier, err := provider.CodeVerifier(ctx)
@@ -704,7 +726,8 @@ func runFlow(ctx context.Context, provider OAuthClientProvider, options OAuthFlo
 			}
 			return OAuthAuthorized, nil
 		}
-		if _, ok := errors.AsType[*OAuthInsecureEndpointError](err); ok {
+		// An aborted refresh does not fall back to a new authorization (flow.ts, #10565).
+		if _, ok := errors.AsType[*OAuthInsecureEndpointError](err); ok || ctx.Err() != nil {
 			return "", err
 		}
 		var oauthErr *OAuthError
@@ -836,7 +859,7 @@ func (a *oauthAdapter) OnUnauthorized(ctx context.Context, unauthorized mcp.Unau
 				})
 			}
 			if err == nil && result == OAuthRedirect {
-				err = &McpOAuthAuthorizationRequiredError{}
+				err = NewMcpOAuthAuthorizationRequiredError()
 			}
 			a.mu.Lock()
 			a.inFlight = nil

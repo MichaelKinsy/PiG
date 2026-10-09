@@ -1,5 +1,7 @@
 package codingagent
 
+// pi: packages/coding-agent/src/modes/interactive/session-share.ts
+
 import (
 	"context"
 	"encoding/json"
@@ -76,6 +78,10 @@ func TestShareExportAddsPresentationDataWithoutChangingConversationLinks(t *test
 	if share["type"] != "custom" || share["customType"] != "pi.share" || share["parentId"] != resultID || share["timestamp"] == nil {
 		t.Fatalf("share entry = %v", share)
 	}
+	// session-export.ts:13,27 the trailing entries receive the header's timestamp.
+	if share["timestamp"] != records[0]["timestamp"] {
+		t.Fatalf("share timestamp = %v, want the header timestamp %v", share["timestamp"], records[0]["timestamp"])
+	}
 	if id, _ := share["id"].(string); len(id) != 8 {
 		t.Fatalf("share id = %q, want 8 characters like crypto.randomUUID().slice(0, 8)", id)
 	}
@@ -100,11 +106,11 @@ func TestShareExportAddsPresentationDataWithoutChangingConversationLinks(t *test
 	if err != nil {
 		t.Fatal(err)
 	}
-	if leaf := imported.LeafID(); leaf == nil || *leaf != share["id"] {
+	if leaf := imported.GetLeafID(); leaf == nil || *leaf != share["id"] {
 		t.Fatalf("imported leaf = %v, want the share entry %v", leaf, share["id"])
 	}
 	var roles []string
-	for _, message := range imported.BuildContext(imported.LeafID()) {
+	for _, message := range imported.BuildContext(imported.GetLeafID()) {
 		switch {
 		case message.User != nil:
 			roles = append(roles, "user")
@@ -122,7 +128,7 @@ func TestShareExportAddsPresentationDataWithoutChangingConversationLinks(t *test
 // Upstream createShareTrailingEntries records session.state.tools as
 // {name, description, parameters}.
 func TestNewShareStateRecordsActiveToolSchemas(t *testing.T) {
-	active := tools.CreateCodingTools(t.TempDir(), Settings{}, t.TempDir())
+	active := tools.CreateCodingTools(t.TempDir(), tools.ToolsOptionsFromSettings(Settings{}, t.TempDir()))
 	state := NewShareState("prompt", active)
 	if state.SystemPrompt != "prompt" || len(state.Tools) != len(active) {
 		t.Fatalf("state = %+v", state)
@@ -146,7 +152,7 @@ func TestBugTranscriptEndsWithTheShareEntry(t *testing.T) {
 	sc.ShareState = func() ShareState {
 		return ShareState{SystemPrompt: "BUG-SYSTEM", Tools: []ShareTool{{Name: "read", Description: "Read"}}}
 	}
-	lastID := *session.LeafID()
+	lastID := *session.GetLeafID()
 	if err := bugHandler(sc); err != nil {
 		t.Fatal(err)
 	}
@@ -547,8 +553,8 @@ func TestAgentStateSystemPromptReplaysTranscriptSystemMessages(t *testing.T) {
 // prompt and not base-prompt changes the model has not seen yet.
 func TestInteractiveShareStateReadsTheTranscriptSystemPrompt(t *testing.T) {
 	m := sessionChromeMode(t)
-	m.agent = agent.NewAgent(agent.AgentOptions{})
-	m.agent.SetTools(tools.CreateCodingTools(t.TempDir(), Settings{}, t.TempDir())[:2])
+	m.agent = mustNewAgent(agent.AgentOptions{})
+	m.agent.SetTools(tools.CreateCodingTools(t.TempDir(), tools.ToolsOptionsFromSettings(Settings{}, t.TempDir()))[:2])
 	m.agent.SetMessages([]agent.AgentMessage{
 		{System: &ai.SystemMessage{Content: ai.SystemText(""), Sections: ai.OrderedSections{{Name: "preamble", Value: new("TRANSCRIPT")}}}},
 		userMsg("hi"),
@@ -576,7 +582,7 @@ func TestInteractiveShareStateReadsTheTranscriptSystemPrompt(t *testing.T) {
 // export_html writes read as {"type":"object","required":["path"],"properties":{"path":...,"offset":...,"limit":...}}.
 func TestNewShareStateKeepsToolParameterOrder(t *testing.T) {
 	var read agent.AgentTool
-	for _, tool := range tools.CreateCodingTools(t.TempDir(), Settings{}, t.TempDir()) {
+	for _, tool := range tools.CreateCodingTools(t.TempDir(), tools.ToolsOptionsFromSettings(Settings{}, t.TempDir())) {
 		if tool.Name() == "read" {
 			read = tool
 		}

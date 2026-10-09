@@ -260,7 +260,7 @@ func TestNewOpenAIResponsesProvider_CustomProvider(t *testing.T) {
 }
 
 func TestResponsesRequest_ReasoningParams(t *testing.T) {
-	model := &Model{Capabilities: ModelCapabilities{MaxThinking: ThinkingHigh}, ThinkingLevelMap: ThinkingLevelMap{ThinkingHigh: new("max")}}
+	model := &Model{Capabilities: ModelCapabilities{MaxThinking: ThinkingLevelHigh}, ThinkingLevelMap: ThinkingLevelMap{ThinkingHigh: new("max")}}
 	if thinkingToReasoningEffort(model, ThinkingHigh) != "max" || thinkingToReasoningEffort(model, ThinkingOff) != "" {
 		t.Fatal("reasoning effort mapping failed")
 	}
@@ -371,14 +371,18 @@ func TestNormalizeResponsesToolCallIDProviderSets(t *testing.T) {
 		api            API
 		want           string
 	}{
-		{"azure provider on the Azure API", "azure", APIAzureOpenAIResponses, "call_1|fc_" + shortHash32("item_1")},
+		{"azure provider on the Azure API", "azure", APIAzureOpenAIResponses, "call_1|fc_" + ShortHash("item_1")},
 		{"azure provider on the OpenAI API", "azure", APIOpenAIResponses, "call_1_item_1"},
-		{"openai provider on the Azure API", "openai", APIAzureOpenAIResponses, "call_1|fc_" + shortHash32("item_1")},
+		{"openai provider on the Azure API", "openai", APIAzureOpenAIResponses, "call_1|fc_" + ShortHash("item_1")},
 		{"other provider on the Azure API", "github-copilot", APIAzureOpenAIResponses, "call_1_item_1"},
 		{"other provider on the OpenAI API", "github-copilot", APIOpenAIResponses, "call_1_item_1"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			if got := normalizeResponsesToolCallID("call_1|item_1", tc.provider, tc.api, true); got != tc.want {
+			allowed := responsesToolCallProviders
+			if tc.api == APIAzureOpenAIResponses {
+				allowed = azureToolCallProviders
+			}
+			if got := normalizeResponsesToolCallID("call_1|item_1", allowed, tc.provider, true); got != tc.want {
 				t.Errorf("normalizeResponsesToolCallID = %q, want %q", got, tc.want)
 			}
 		})

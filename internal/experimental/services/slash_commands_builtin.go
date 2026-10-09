@@ -12,7 +12,7 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/chord"
 )
 
-var thinkingDescriptions = map[ai.ThinkingLevel]string{
+var thinkingDescriptions = map[ai.ModelThinkingLevel]string{
 	"off": "No reasoning", "minimal": "Very brief reasoning", "low": "Light reasoning",
 	"medium": "Moderate reasoning", "high": "Deep reasoning", "xhigh": "Extra-high reasoning", "max": "Maximum reasoning",
 }
@@ -170,7 +170,7 @@ func thinkingCommand(models Models, ui PresentationUI) SlashCommandContribution 
 			if err != nil {
 				return nil, err
 			}
-			selected := ai.ThinkingLevel(strings.ToLower(args))
+			selected := ai.ModelThinkingLevel(strings.ToLower(args))
 			found := slices.Contains(levels, selected)
 			if args != "" && !found {
 				names := make([]string, len(levels))
@@ -200,7 +200,7 @@ func thinkingCommand(models Models, ui PresentationUI) SlashCommandContribution 
 				if err != nil || value == nil {
 					return nil, err
 				}
-				selected = ai.ThinkingLevel(*value)
+				selected = ai.ModelThinkingLevel(*value)
 				if !slices.Contains(levels, selected) {
 					return nil, fmt.Errorf("Unknown thinking level: %s", *value)
 				}

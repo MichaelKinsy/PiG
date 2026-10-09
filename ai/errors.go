@@ -5,13 +5,12 @@ package ai
 import (
 	"bytes"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"reflect"
 	"strings"
 	"unicode"
 
-	smithyhttp "github.com/aws/smithy-go/transport/http"
+	"github.com/MichaelKinsy/PiG/internal/jsonstringify"
 )
 
 const MaxProviderErrorBodyChars = 4000
@@ -54,8 +53,9 @@ func NormalizeProviderError(value any) NormalizedProviderError {
 		return NormalizedProviderError{Message: SafeJsonStringify(value)}
 	}
 	result := NormalizedProviderError{Message: err.Error(), MessageCarriesBody: true}
-	if response, ok := errors.AsType[*smithyhttp.ResponseError](err); ok {
-		result.Status = new(response.HTTPStatusCode())
+	// pig additive (D92): only the Bedrock provider (the AWS SDK) produces a status-carrying response error; a build without it has none.
+	if status, ok := awsResponseErrorStatus(err); ok {
+		result.Status = new(status)
 	}
 	return result
 }
@@ -120,5 +120,10 @@ func SafeJsonStringify(value any) string {
 	if err := encoder.Encode(value); err != nil {
 		return fmt.Sprint(value)
 	}
-	return strings.TrimSuffix(buffer.String(), "\n")
+	encoded := bytes.TrimSuffix(buffer.Bytes(), []byte("\n"))
+	// JSON.stringify writes U+2028 and U+2029 raw, -0 as 0, numbers in ECMAScript form and integer keys first; encoding/json differs on each.
+	if canonical, err := jsonstringify.Canonicalize(encoded); err == nil {
+		return string(canonical)
+	}
+	return string(encoded)
 }

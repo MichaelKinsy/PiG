@@ -28,6 +28,15 @@ type CredentialSynchronizationError struct {
 	Cause      error
 }
 
+// NewCredentialSynchronizationError is `new CredentialSynchronizationError(providerId, operation, credential, { cause })`.
+func NewCredentialSynchronizationError(providerID string, operation CredentialSynchronizationOperation, credential *ai.Credential, cause error) *CredentialSynchronizationError {
+	e := &CredentialSynchronizationError{ProviderID: providerID, Operation: operation, Credential: credential, Cause: cause}
+	return e
+}
+
+// Name is the `name` property, "CredentialSynchronizationError".
+func (*CredentialSynchronizationError) Name() string { return "CredentialSynchronizationError" }
+
 func (e *CredentialSynchronizationError) Error() string {
 	return fmt.Sprintf("Credential %s committed for %s, but local synchronization failed", e.Operation, e.ProviderID)
 }
@@ -98,7 +107,7 @@ func (r *ModelRegistry) synchronizeCredentialState(ctx context.Context, id strin
 		}
 	}
 	if err != nil {
-		return &CredentialSynchronizationError{ProviderID: id, Operation: operation, Credential: credential, Cause: err}
+		return NewCredentialSynchronizationError(id, operation, credential, err)
 	}
 	return nil
 }

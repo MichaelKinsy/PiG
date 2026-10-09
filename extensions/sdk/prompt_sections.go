@@ -98,6 +98,7 @@ func preparePromptOptions(raw json.RawMessage, data map[string]any) (map[string]
 	options["sections"] = sections
 	for name, empty := range map[string]func() any{
 		"selectedTools":    func() any { return []any{} },
+		"hiddenTools":      func() any { return []any{} },
 		"promptGuidelines": func() any { return []any{} },
 		"contextFiles":     func() any { return []any{} },
 		"skills":           func() any { return []any{} },

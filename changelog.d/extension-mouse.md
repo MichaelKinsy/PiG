@@ -1,0 +1,3 @@
+### Added
+
+- Extension components opened with `ctx.ui.custom` receive mouse events in fullscreen mode, as in Pi: clicks, presses, drags, wheel and hover with coordinates local to the component. Go (`sdk.MouseHandler`), Rust (`handle_mouse`), Python (`handle_mouse`) and Node (Pi's `handleMouse`) extensions all get them, and select and settings lists in component-kit views respond to clicks and the wheel. In Tern, clicking an item in an extension's overlay or dock view reaches the extension exactly as the same click in a terminal would, scrolling a list to the item first, and a double click on it arrives as the terminal's second click (`clickCount` 2), so a double click opens or plays a list row as it does in a terminal.

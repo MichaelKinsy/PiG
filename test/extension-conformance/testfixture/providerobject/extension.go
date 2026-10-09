@@ -30,6 +30,18 @@ func makeProvider() *sdk.Provider {
 		if meta["fail"] == true {
 			return nil, errors.New("carrier stream failed")
 		}
+		// Pi types.ts:1917-1920: a provider's streamSimple invokes options.onPayload before the request and options.onResponse after the response.
+		// The values are distinctive so a caller that never reaches the host's hooks cannot satisfy the conformance row by default.
+		if options.OnPayload != nil {
+			if _, err := options.OnPayload(map[string]any{"marker": "carrier-payload"}, m); err != nil {
+				return nil, err
+			}
+		}
+		if options.OnResponse != nil {
+			if err := options.OnResponse(map[string]any{"status": 207, "headers": map[string]any{"x-carrier": "carrier-response"}}, m); err != nil {
+				return nil, err
+			}
+		}
 		s := sdk.CreateAssistantMessageEventStream()
 		message := map[string]any{"role": "assistant", "api": m["api"], "provider": m["provider"], "model": m["id"], "content": []any{}, "usage": map[string]any{"input": 0, "output": 0, "cacheRead": 0, "cacheWrite": 0, "totalTokens": 0, "cost": map[string]int{"input": 0, "output": 0, "cacheRead": 0, "cacheWrite": 0, "total": 0}}, "stopReason": "stop", "timestamp": 1}
 		if meta["wait"] == true {
@@ -92,6 +104,21 @@ func makeProvider() *sdk.Provider {
 			mu.Lock()
 			defer mu.Unlock()
 			return append([]map[string]any{}, models...), nil
+		},
+		// GetAllModels lists a model of the all-types catalog that getModels (chat) does not, and FilterAllModels shows every model to the "all" credential.
+		GetAllModels: func() ([]map[string]any, error) {
+			mu.Lock()
+			defer mu.Unlock()
+			extra := map[string]any{}
+			maps.Copy(extra, model)
+			extra["id"] = "carrier-all-only"
+			return append(append([]map[string]any{}, models...), extra), nil
+		},
+		FilterAllModels: func(models []map[string]any, credential map[string]any) ([]map[string]any, error) {
+			if credential["key"] == "all" {
+				return models, nil
+			}
+			return []map[string]any{}, nil
 		},
 		FilterModels: func(models []map[string]any, credential map[string]any) ([]map[string]any, error) {
 			if credential["key"] == "selected" {

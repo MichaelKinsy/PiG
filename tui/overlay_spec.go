@@ -9,27 +9,36 @@ type OverlayValue struct {
 	Invalid bool
 }
 
-// OverlayMarginSpec mirrors upstream OverlayMargin.
+// OverlayMarginSpec mirrors upstream OverlayMargin: a margin per edge.
 type OverlayMarginSpec struct {
 	Top, Right, Bottom, Left int
 }
+
+// OverlayMarginOption is upstream's `margin?: number | OverlayMargin` (tui.ts:243): the variants are OverlayMarginAll and OverlayMarginSpec, and nil is an omitted margin.
+type OverlayMarginOption interface {
+	overlayMarginOption()
+}
+
+// OverlayMarginAll is the numeric form of margin: the same margin on all four edges.
+type OverlayMarginAll int
+
+func (OverlayMarginAll) overlayMarginOption()  {}
+func (OverlayMarginSpec) overlayMarginOption() {}
 
 // OverlaySpec is the serialisable subset of upstream pi-tui OverlayOptions
 // (everything except the visible callback). It lets callers outside this
 // package, such as the subprocess extension bridge, open a component-framed
 // overlay whose geometry resolves exactly like upstream showOverlay.
 type OverlaySpec struct {
-	Width     *OverlayValue
-	MinWidth  *int
-	MaxHeight *OverlayValue
-	Anchor    string
-	OffsetX   int
-	OffsetY   int
-	Row       *OverlayValue
-	Col       *OverlayValue
-	// Margin is the per-edge form; MarginAll the upstream numeric form.
-	Margin       *OverlayMarginSpec
-	MarginAll    *int
+	Width        *OverlayValue
+	MinWidth     *int
+	MaxHeight    *OverlayValue
+	Anchor       string
+	OffsetX      int
+	OffsetY      int
+	Row          *OverlayValue
+	Col          *OverlayValue
+	Margin       OverlayMarginOption
 	NonCapturing bool
 }
 
@@ -41,7 +50,7 @@ func (v *OverlayValue) size() overlaySize {
 }
 
 // Options converts the spec into OverlayOptions. The result carries no modal
-// title or fractions, so OpenOverlay mounts the component without a frame.
+// title or fractions, so ShowOverlay mounts the component without a frame.
 func (s OverlaySpec) Options() OverlayOptions {
 	opts := OverlayOptions{
 		width:        s.Width.size(),
@@ -56,12 +65,17 @@ func (s OverlaySpec) Options() OverlayOptions {
 	if s.MinWidth != nil {
 		opts.minWidth = *s.MinWidth
 	}
-	if s.Margin != nil {
-		opts.margin = overlayMargin{Top: s.Margin.Top, Right: s.Margin.Right, Bottom: s.Margin.Bottom, Left: s.Margin.Left}
-	}
-	if s.MarginAll != nil {
-		all := *s.MarginAll
+	switch margin := s.Margin.(type) {
+	case OverlayMarginAll:
+		all := int(margin)
 		opts.marginAll = &all
+	case OverlayMarginSpec:
+		opts.margin = overlayMargin(margin)
+	case *OverlayMarginSpec:
+		// A pointer satisfies the interface through the value receiver; it is the same per-edge margin, and nil is omitted.
+		if margin != nil {
+			opts.margin = overlayMargin{Top: margin.Top, Right: margin.Right, Bottom: margin.Bottom, Left: margin.Left}
+		}
 	}
 	return opts
 }

@@ -22,8 +22,12 @@
       "sha256": "7ed84bd0e2dcd46223cc741b4217051e88c4972c4482e2f12367e5e5e3361dd7"
     },
     {
+      "path": "pi-dist/pi-ai/api/classifier-shared.js",
+      "sha256": "a06829462e5406b0e616705e3f91df415f0eb3364fb0ac289b714a375900723c"
+    },
+    {
       "path": "pi-dist/pi-ai/api/cloudflare-workers-ai-system-one.js",
-      "sha256": "3001ee95e7a02073530319f2827b286d4eb3948c707e218f627226986f0e67c0"
+      "sha256": "1473f75df7e75c45ea4c153f24ec69172a5c582318fcfbd553387c9627e57828"
     },
     {
       "path": "pi-dist/pi-ai/api/cloudflare-workers-ai-system-one.lazy.js",
@@ -70,6 +74,14 @@
       "sha256": "a3d37d272ed600ddae2a9b05884e1c11c65487c1d8aa30d0b19ba571ffc7ea76"
     },
     {
+      "path": "pi-dist/pi-ai/api/openai-decisions.js",
+      "sha256": "d901beabd6898c402ea88be7c03dd5a4397911d9cd3734caee0643ec802901f3"
+    },
+    {
+      "path": "pi-dist/pi-ai/api/openai-decisions.lazy.js",
+      "sha256": "53ecd3713b1c3f1d4966e45618047acb3315aba420bd34c8c01a376b096c25c0"
+    },
+    {
       "path": "pi-dist/pi-ai/api/openai-responses.js",
       "sha256": "a65ff962583f472764a01e512c9023a269de5308b552e45a4bd4e6a45047ec33"
     },
@@ -95,11 +107,11 @@
     },
     {
       "path": "pi-dist/pi-ai/api/system-one-shared.js",
-      "sha256": "2b33d289d2adc1810f1ce7fdb04f8516f24bfe64ace01d54fdc442e5971853d9"
+      "sha256": "4744c71be78d764c6d45f7c9fe0bdfa9dfe8d13c803ad07af5d28ba7d4ae0859"
     },
     {
       "path": "pi-dist/pi-ai/api/typesafe-system-one.js",
-      "sha256": "d0f15d314902eb4af7cb52189e3ab5b22ffe306ab41eabbf3ba0788a0078647a"
+      "sha256": "130ebdcc5e4891d49563dc06db26b00217278ccc02bb1e327c417b5e550c6f47"
     },
     {
       "path": "pi-dist/pi-ai/api/typesafe-system-one.lazy.js",
@@ -167,7 +179,7 @@
     },
     {
       "path": "pi-dist/pi-ai/models.js",
-      "sha256": "633161a0067abbb20a434acc3605f8f25d2fa6d32f903cc7edcdcaa7e0ba7083"
+      "sha256": "0911bab242726dc56517fe62ca422d0602d6eab8aa63841a560f61e1c35a0cd7"
     },
     {
       "path": "pi-dist/pi-ai/providers/all.js",
@@ -247,11 +259,11 @@
     },
     {
       "path": "pi-dist/pi-ai/providers/data/.manifest.json",
-      "sha256": "7cd6012be373e9dbeec6d515af1e77bc3d09af634710e1e493991d174674afdb"
+      "sha256": "fb3b3b6b4fd9dcfac1f77058520bffb5fab4f15e15f97307b8afe2cd3f9dfae1"
     },
     {
       "path": "pi-dist/pi-ai/providers/data/amazon-bedrock.json",
-      "sha256": "a0256dd49b0b7f4fee8a2853aeaecc65e74f643e96348c5be55d2d912b82c6ce"
+      "sha256": "d9381ff9bf5c9d8c03b2909665526d243dfc33600e73beec4d58df18dfd0addd"
     },
     {
       "path": "pi-dist/pi-ai/providers/data/ant-ling.json",
@@ -259,7 +271,7 @@
     },
     {
       "path": "pi-dist/pi-ai/providers/data/anthropic.json",
-      "sha256": "3ff00b68990382e42626ebd1b65dcc28ae3cad9e6faa8920331ba92f067f1b3a"
+      "sha256": "aa4342dfb96feb1619794113619d6630088d6ac544c547a4f9899a0a7f26419b"
     },
     {
       "path": "pi-dist/pi-ai/providers/data/azure.json",
@@ -275,7 +287,7 @@
     },
     {
       "path": "pi-dist/pi-ai/providers/data/cloudflare-ai-gateway.json",
-      "sha256": "9030456decc3f3edacc3388165ab87cb3db0360f6b191f4a12e063f5c9464332"
+      "sha256": "e76699154fe8a933c504c5f64f6cb5e2bca572efd21edd0d429e51c6c234ebbc"
     },
     {
       "path": "pi-dist/pi-ai/providers/data/cloudflare-workers-ai.json",
@@ -291,7 +303,7 @@
     },
     {
       "path": "pi-dist/pi-ai/providers/data/github-copilot.json",
-      "sha256": "573f05c2dfc0c8158e252dd286d6b174cd323f965284d7ae157439d8e3dea92c"
+      "sha256": "8119aa175666d70136471aa7cae08043910a97d9cbede8b367d0b2c20559049e"
     },
     {
       "path": "pi-dist/pi-ai/providers/data/google-vertex.json",
@@ -299,7 +311,7 @@
     },
     {
       "path": "pi-dist/pi-ai/providers/data/google.json",
-      "sha256": "c0f5a633e5e5a5044432db3e537f4bc674d4de18df09325c6349547fcc13cabe"
+      "sha256": "64bdd2563cee0e3598aec4d93a6735c189b6d7d14b9c03f061cc2824f3730528"
     },
     {
       "path": "pi-dist/pi-ai/providers/data/groq.json",
@@ -319,15 +331,15 @@
     },
     {
       "path": "pi-dist/pi-ai/providers/data/minimax-cn.json",
-      "sha256": "f962c20ee6a6a342820f778e9dc363a18a524bf11998f6e2c57f2989915d62e5"
+      "sha256": "1bbfbd11c3edbd141841d3cef027e12157218f1aec92477e15772116c1fabe7a"
     },
     {
       "path": "pi-dist/pi-ai/providers/data/minimax.json",
-      "sha256": "17a432f80d0ea6dd26eade80a4314250d3a855678601728a5f70dd8fa0d21dd2"
+      "sha256": "a4b6864bd97eddf5749b2e117f643e751ec237408e8e24bec9e2f947782fa244"
     },
     {
       "path": "pi-dist/pi-ai/providers/data/mistral.json",
-      "sha256": "10f33bff9adf1248f7e6848e5890c265399f1f94e5b42cfdc28c109d547af98d"
+      "sha256": "fcd37c7b178416f86954efdacbb45726d10f102fd1211062792691e62fcf327c"
     },
     {
       "path": "pi-dist/pi-ai/providers/data/moonshotai-cn.json",
@@ -347,19 +359,19 @@
     },
     {
       "path": "pi-dist/pi-ai/providers/data/openai.json",
-      "sha256": "87faafcdd168c9b6fdaef521137834a207437daf0d71641fd0a2f3dddf4d1ecb"
+      "sha256": "f4c1ac9f8f84cb9f2a952b0ceec51c90a38b31b4cdf33200e018ece9d408e95f"
     },
     {
       "path": "pi-dist/pi-ai/providers/data/opencode-go.json",
-      "sha256": "542a62ae86ec34d55b2927927a3fe007a54aab2729026e578d7ede1bab51e532"
+      "sha256": "4a10d85457c0d25d4fd8b4089cb15c0f54f086b9a6b304d7bd8e92397a3d7d0b"
     },
     {
       "path": "pi-dist/pi-ai/providers/data/opencode.json",
-      "sha256": "7cf6c2e34b4defd50135572da48030402d33101bcb8c43c7612841e5b3afcd43"
+      "sha256": "a6a76926c51c2c410422dec612fdbe903b63191ff7334242e4f6ca3758bc0d2f"
     },
     {
       "path": "pi-dist/pi-ai/providers/data/openrouter.json",
-      "sha256": "df9a23f60927cdadca1fae6875a6c5899ced3664ef36a892fcc454554b81b5e7"
+      "sha256": "c86aa3b95d412465dac54cb902402cbdb40f47a1fe33f12b002913834724d8f0"
     },
     {
       "path": "pi-dist/pi-ai/providers/data/qwen-token-plan-cn.json",
@@ -387,7 +399,7 @@
     },
     {
       "path": "pi-dist/pi-ai/providers/data/vercel-ai-gateway.json",
-      "sha256": "15a596fa5b3a885fb11adad6aceb5c16b0b1bc386df26a0469bfb53f14118e73"
+      "sha256": "0ec37357cc2c3eec0b71cbff98910bfd0988e16b89178d9c930579f1ce747c30"
     },
     {
       "path": "pi-dist/pi-ai/providers/data/xai.json",
@@ -427,7 +439,7 @@
     },
     {
       "path": "pi-dist/pi-ai/providers/faux.js",
-      "sha256": "d8834e63c120a62d562c0740d989eb5fe0eca0fcf570a3543855c30840ab6b1c"
+      "sha256": "f305a512f2d90547e87b402f2b335ba0d8a9f1b7c535b8a44bfc6fce8250d26a"
     },
     {
       "path": "pi-dist/pi-ai/providers/fireworks.js",
@@ -555,7 +567,7 @@
     },
     {
       "path": "pi-dist/pi-ai/providers/openai.js",
-      "sha256": "0b5ce81ec2e4838ac3ac362c2bcd1c68f07f7aa30b198163d9c05e7cd3d6b0f8"
+      "sha256": "9dc3881e858b0280e809ec04b8b17f22580fcb1871da2edf3cfbdfa3c13747b3"
     },
     {
       "path": "pi-dist/pi-ai/providers/openai.models.js",
@@ -615,7 +627,7 @@
     },
     {
       "path": "pi-dist/pi-ai/providers/radius.js",
-      "sha256": "c50694f71a7cac5d15630b3d8c2e7dee830eb756b4296f899899e7729889969e"
+      "sha256": "9f5516e81b00b8aff7f986052eacf822d2c1dc9f78c8cbafbf4e2cf91e2b9d2b"
     },
     {
       "path": "pi-dist/pi-ai/providers/radius.models.js",
@@ -735,7 +747,7 @@
     },
     {
       "path": "pi-dist/pi-ai/utils/model-operations.js",
-      "sha256": "1f05431db8497143a9d692bac4619380a18559d2547fd1e7e09e11e676de1a73"
+      "sha256": "56264f6289f4822db8bed91a2e47aee387bfa70383b724e58f6aa6b96a0f4358"
     },
     {
       "path": "pi-dist/pi-ai/utils/models-error.js",
@@ -747,11 +759,11 @@
     },
     {
       "path": "pi-dist/pi-ai/utils/provider-retry.js",
-      "sha256": "4aa5c34d72f58d3cb67bc8b71c486f11237cda02c86889e7a67c20d6418c35a9"
+      "sha256": "46da2f14c0f5d58164a44c1b2837d8ab7674ded3ae4c732d02ae62c87b39b939"
     },
     {
       "path": "pi-dist/pi-ai/utils/retry.js",
-      "sha256": "8302372246b92d5047bb5715afeee374c672e1652d96a80268dc3b5758a7cae4"
+      "sha256": "310ea86dfa001bb3942d16f5d77ce976f5ba35bfb29515b265b87a17836b45f1"
     },
     {
       "path": "pi-dist/pi-ai/utils/text.js",

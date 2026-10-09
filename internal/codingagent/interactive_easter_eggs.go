@@ -1,19 +1,15 @@
 package codingagent
 
-import (
-	"context"
-	"math/rand/v2"
-)
+import "github.com/MichaelKinsy/PiG/tui"
 
 // Ports packages/coding-agent/src/modes/interactive/interactive-mode.ts (handleArminSaysHi and handleDementedDelves).
-func (m *InteractiveMode) handleArminSaysHi(ctx context.Context) {
+func (m *InteractiveMode) handleArminSaysHi() {
 	if m.playPig3d() {
 		return
 	}
-	component := newArminComponent(rand.Float64)
+	component := NewArminComponent(currentRendererTUI{TUI: m.tuiInst, m: m})
 	m.arminComponents = append(m.arminComponents, component)
 	m.appendChatBlock(component)
-	component.startAnimation(ctx, m.postToMain, m.requestRender)
 	m.tuiInst.RequestRender()
 }
 
@@ -28,3 +24,11 @@ func (m *InteractiveMode) disposeArminComponents() {
 	}
 	m.arminComponents = nil
 }
+
+// currentRendererTUI is the ui handed to long-lived components: a renderer replacement (fullscreen switch) leaves the component requesting frames from the current renderer, as the single ui of Pi's InteractiveMode does.
+type currentRendererTUI struct {
+	tui.TUI
+	m *InteractiveMode
+}
+
+func (c currentRendererTUI) RequestRender(...bool) { c.m.requestRender() }

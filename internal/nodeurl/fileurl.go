@@ -221,8 +221,10 @@ func containsEncoded(pathname, hex string) bool {
 	return strings.Contains(strings.ToLower(pathname), "%"+hex)
 }
 
-// decodeURIComponent is JavaScript's decodeURIComponent: every %XX becomes
+// DecodeURIComponent is JavaScript's decodeURIComponent: every %XX becomes
 // its byte, and a malformed escape or invalid UTF-8 is a URIError.
+func DecodeURIComponent(s string) (string, error) { return decodeURIComponent(s) }
+
 func decodeURIComponent(s string) (string, error) {
 	if !strings.Contains(s, "%") {
 		return s, nil

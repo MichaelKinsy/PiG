@@ -67,11 +67,11 @@ func (r *ExtensionRuntime) UnregisterMcpServer(extensionPath, name string) {
 	r.mcpServers.Unregister(name, extensionPath)
 }
 
-// McpServers returns copies of every registered server, in registration order.
+// McpServers is the registry of the servers registered with `pi.registerMcpServer()`. Its List returns copies in registration order.
 //
-// upstream: loader.ts:475-478 (getMcpServers)
-func (r *ExtensionRuntime) McpServers() []RegisteredMcpServer {
-	return r.mcpServers.List()
+// upstream: types.ts:2138 (ExtensionRuntime.mcpServers), loader.ts:495-497 (getMcpServers)
+func (r *ExtensionRuntime) McpServers() *McpServerRegistry {
+	return r.mcpServers
 }
 
 // SetMcpServersChangeListener sets the function called after every registration change. The runner sets it when it binds, to emit `mcp_servers_change`; nil removes it.

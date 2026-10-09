@@ -4,6 +4,10 @@ package coding
 
 import (
 	"slices"
+	"strings"
+
+	"github.com/MichaelKinsy/PiG/coding/extension"
+	"github.com/MichaelKinsy/PiG/coding/extension/host/inproc"
 
 	icodingagent "github.com/MichaelKinsy/PiG/internal/codingagent"
 )
@@ -20,6 +24,11 @@ func (s *Session) ResourceLoader() ResourceLoader {
 		return ref.loader
 	}
 	return NoResources
+}
+
+// PromptTemplates returns the file-based prompt templates the Session's resource loader resolved (agent-session.ts promptTemplates).
+func (s *Session) PromptTemplates() []PromptTemplate {
+	return s.ResourceLoader().GetPrompts().Prompts
 }
 
 // SetPromptResources replaces the skills and prompt templates this Session reads with the resource owner's current resolved collections, keeping the loader's context files and system prompt text. It does not discover resources or change their configuration, and it does not rebuild the system prompt.
@@ -41,8 +50,28 @@ func (s *Session) expandPromptText(text string) string {
 			runner.EmitError(err)
 		}
 	}
-	if expanded, ok := icodingagent.ExpandPromptTemplate(text, loader.GetPrompts().Prompts); ok {
+	if expanded, ok := icodingagent.ExpandPromptTemplate(text, s.PromptTemplates()); ok {
 		text = expanded
 	}
 	return text
+}
+
+// SlashCommandsFor is the getCommands action agent-session.ts _bindExtensionCore binds to the runner it is given: the runner's extension commands, then the prompt templates, then the skills, each with the source info its resolver recorded.
+func (s *Session) SlashCommandsFor(runner *inproc.Runner) []extension.SlashCommandInfo {
+	commands := []extension.SlashCommandInfo{}
+	if runner != nil {
+		for _, command := range runner.Commands() {
+			commands = append(commands, extension.SlashCommandInfo{
+				Name: strings.TrimPrefix(command.InvocationName, "/"), Description: command.Description,
+				Source: "extension", SourceInfo: icodingagent.PiSourceInfoValue(command.SourceInfo),
+			})
+		}
+	}
+	for _, template := range s.PromptTemplates() {
+		commands = append(commands, extension.SlashCommandInfo{Name: template.Name, Description: template.Description, Source: "prompt", SourceInfo: template.SourceInfo})
+	}
+	for _, skill := range s.ResourceLoader().GetSkills().Skills {
+		commands = append(commands, extension.SlashCommandInfo{Name: "skill:" + skill.Name, Description: skill.Description, Source: "skill", SourceInfo: skill.SourceInfo})
+	}
+	return commands
 }

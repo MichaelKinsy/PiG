@@ -9,6 +9,7 @@ package telemetry
 import (
 	"encoding/json"
 	"errors"
+	"reflect"
 	"testing"
 )
 
@@ -25,6 +26,9 @@ func awaited(err error) error {
 }
 
 // TestTelemetryUpstream ports packages/telemetry/test/telemetry.test.ts. Each subtest names one upstream case.
+// Pi source: packages/telemetry/src/noop.ts
+// mutation-checked: zeroing the results of TelemetryContext.StartSpan, TelemetrySpan.SetAttributes, StartSpan and StartTypedSpan fails it
+// mutation-checked: dropping the reads and writes of RecordedTelemetrySpan.Name, RecordedTelemetrySpan.ParentID fails it
 func TestTelemetryUpstream(t *testing.T) {
 	t.Run("telemetry schemas › preserves serializable definitions and infers exact attributes", func(t *testing.T) {
 		// upstream: packages/telemetry/test/telemetry.test.ts:30
@@ -101,15 +105,13 @@ func TestTelemetryUpstream(t *testing.T) {
 				Status: TelemetrySpanStatusDefinition{Default: SpanStatusCodeOK, ErrorWhen: "The request fails"},
 			}},
 		})
-		telemetryContext := &InMemoryTelemetryContext{}
+		telemetryContext := NewInMemoryTelemetryContext()
 		startSpan := CreateTypedSpanStarter(telemetryContext, operationSchema, requestSchema)
 
-		result := 0
-		err := startSpan("operation", SpanAttributes{"kind": "read"}, func(_ TelemetrySpan, startChildSpan TypedSpanStarter) error {
-			return startChildSpan("request", SpanAttributes{"provider": "example"}, func(requestSpan TelemetrySpan, _ TypedSpanStarter) error {
+		result, err := StartTypedSpan(startSpan, "operation", SpanAttributes{"kind": "read"}, func(_ TelemetrySpan, startChildSpan TypedSpanStarter) (int, error) {
+			return StartTypedSpan(startChildSpan, "request", SpanAttributes{"provider": "example"}, func(requestSpan TelemetrySpan, _ TypedSpanStarter) (int, error) {
 				requestSpan.SetAttributes(SpanAttributes{"response": "cached"})
-				result = 42
-				return nil
+				return 42, nil
 			})
 		})
 		if err != nil || result != 42 {
@@ -145,10 +147,10 @@ func TestTelemetryUpstream(t *testing.T) {
 		}()
 
 		syncError := errors.New("sync")
-		if err := startSpan("operation", SpanAttributes{"kind": "write"}, func(TelemetrySpan, TypedSpanStarter) error {
-			return syncError
-		}); err != syncError {
-			t.Fatalf("sync rejection = %v, want the thrown value", err)
+		if value, err := StartTypedSpan(startSpan, "operation", SpanAttributes{"kind": "write"}, func(TelemetrySpan, TypedSpanStarter) (int, error) {
+			return 7, syncError
+		}); err != syncError || value != 0 {
+			t.Fatalf("sync rejection = %d, %v; want the thrown value and no result", value, err)
 		}
 		asyncError := errors.New("async")
 		if err := startSpan("request", SpanAttributes{"provider": "example"}, func(TelemetrySpan, TypedSpanStarter) error {
@@ -162,22 +164,17 @@ func TestTelemetryUpstream(t *testing.T) {
 		// upstream: packages/telemetry/test/telemetry.test.ts:157
 		admitted := false
 		var firstSpan TelemetrySpan
-		result := 0
-		err := NoopTelemetryContext.StartSpan(SpanOptions{Name: "first"}, func(span TelemetrySpan) error {
+		result, err := StartSpan(NoopTelemetryContext, SpanOptions{Name: "first"}, func(span TelemetrySpan) (int, error) {
 			admitted = true
 			firstSpan = span
-			var child TelemetrySpan
-			if err := span.StartSpan(SpanOptions{Name: "child"}, func(childSpan TelemetrySpan) error {
-				child = childSpan
-				return nil
-			}); err != nil {
-				return err
+			child, err := StartSpan(span, SpanOptions{Name: "child"}, func(childSpan TelemetrySpan) (TelemetrySpan, error) { return childSpan, nil })
+			if err != nil {
+				return 0, err
 			}
 			if child != span {
 				t.Errorf("child span = %#v, want the parent's inert span", child)
 			}
-			result = 42
-			return nil
+			return 42, nil
 		})
 		if !admitted || err != nil || result != 42 {
 			t.Fatalf("admitted = %v, result = %d, err = %v", admitted, result, err)
@@ -190,8 +187,8 @@ func TestTelemetryUpstream(t *testing.T) {
 	t.Run("NOOP_TELEMETRY_CONTEXT › preserves synchronous and asynchronous rejection values", func(t *testing.T) {
 		// upstream: packages/telemetry/test/telemetry.test.ts:173
 		syncError := errors.New("sync")
-		if err := NoopTelemetryContext.StartSpan(SpanOptions{Name: "sync"}, func(TelemetrySpan) error { return syncError }); err != syncError {
-			t.Fatalf("sync rejection = %v", err)
+		if value, err := StartSpan(NoopTelemetryContext, SpanOptions{Name: "sync"}, func(TelemetrySpan) (int, error) { return 7, syncError }); err != syncError || value != 0 {
+			t.Fatalf("sync rejection = %d, %v; want the thrown value and no result", value, err)
 		}
 		asyncError := errors.New("async")
 		if err := NoopTelemetryContext.StartSpan(SpanOptions{Name: "async"}, func(TelemetrySpan) error { return awaited(asyncError) }); err != asyncError {
@@ -258,5 +255,82 @@ func TestTelemetrySchemaKeepsEmptyMembers(t *testing.T) {
 		`"type":"string","values":[]}},"events":{},"status":{"default":"ok","errorWhen":"Never"}}}}`
 	if string(encoded) != want {
 		t.Fatalf("serialized schema:\n got %s\nwant %s", encoded, want)
+	}
+}
+
+// TestTypedSpanStarterRecordsStartAttributesAndNestsByCallbackSpan pins createTypedSpanStarter's pass-through of the
+// start attributes to startSpan and the grandchild binding to the child span (packages/telemetry/src/index.ts
+// createTypedSpanStarter: `telemetry.startSpan({ name, attributes }, span => callback(span, bind(span)))`).
+func TestTypedSpanStarterRecordsStartAttributesAndNestsByCallbackSpan(t *testing.T) {
+	recorder := NewInMemoryTelemetryContext()
+	startSpan := CreateTypedSpanStarter(recorder, &TelemetrySchemaDefinition{})
+	err := startSpan("root", SpanAttributes{"kind": "read", "count": 3}, func(_ TelemetrySpan, child TypedSpanStarter) error {
+		return child("middle", SpanAttributes{"flag": true}, func(_ TelemetrySpan, grandchild TypedSpanStarter) error {
+			return grandchild("leaf", nil, func(TelemetrySpan, TypedSpanStarter) error { return nil })
+		})
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	spans := recorder.GetSpans()
+	if len(spans) != 3 {
+		t.Fatalf("spans = %+v, want root, middle and leaf", spans)
+	}
+	if got := spans[0].Attributes; !reflect.DeepEqual(got, SpanAttributes{"kind": "read", "count": 3}) {
+		t.Fatalf("root attributes = %#v", got)
+	}
+	if got := spans[1].Attributes; !reflect.DeepEqual(got, SpanAttributes{"flag": true}) {
+		t.Fatalf("middle attributes = %#v", got)
+	}
+	if spans[1].ParentID == nil || *spans[1].ParentID != spans[0].ID || spans[2].ParentID == nil || *spans[2].ParentID != spans[1].ID {
+		t.Fatalf("parents = %v, %v; want middle under root and leaf under middle", spans[1].ParentID, spans[2].ParentID)
+	}
+}
+
+// packages/telemetry/src/memory.ts:22,71-76 RecordedTelemetrySpan.status and copyStatus: the recorder keeps a detached copy of the status a span sets (an ok status carries
+// no error, an error status keeps only name and message), and a settled span keeps its status when it is set again.
+func TestInMemoryRecorderKeepsADetachedCopyOfTheSpanStatus(t *testing.T) {
+	recorder := NewInMemoryTelemetryContext()
+	failure := &SpanStatusError{Name: "Boom", Message: "it failed"}
+	status := SpanStatus{Status: SpanStatusCodeError, Error: failure}
+	var settled TelemetrySpan
+	if err := recorder.StartSpan(SpanOptions{Name: "failing"}, func(span TelemetrySpan) error {
+		span.SetStatus(status)
+		settled = span
+		return nil
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if err := recorder.StartSpan(SpanOptions{Name: "ok"}, func(span TelemetrySpan) error {
+		span.SetStatus(SpanStatus{Status: SpanStatusCodeOK, Error: failure})
+		return nil
+	}); err != nil {
+		t.Fatal(err)
+	}
+	failure.Message = "mutated after recording"
+	settled.SetStatus(SpanStatus{Status: SpanStatusCodeOK})
+	spans := recorder.GetSpans()
+	if len(spans) != 2 {
+		t.Fatalf("recorded %d spans, want 2", len(spans))
+	}
+	if got := spans[0].Status; got.Status != SpanStatusCodeError || got.Error == nil || got.Error.Name != "Boom" || got.Error.Message != "it failed" {
+		t.Fatalf("failing span status = %+v, want the status as set, detached from later mutation and from a later set on the settled span", got)
+	}
+	if got := spans[1].Status; got.Status != SpanStatusCodeOK || got.Error != nil {
+		t.Fatalf("ok span status = %+v, want ok without an error", got)
+	}
+}
+
+// packages/telemetry/src/memory.ts:190-197 InMemoryTelemetryContext: every new instance starts empty and records on its own, so spans of one recorder never appear in another.
+func TestNewInMemoryTelemetryContextStartsEmptyAndIsolated(t *testing.T) {
+	first, second := NewInMemoryTelemetryContext(), NewInMemoryTelemetryContext()
+	if first == second || len(first.GetSpans()) != 0 || len(second.GetSpans()) != 0 {
+		t.Fatalf("new recorders: same=%v, spans %d/%d", first == second, len(first.GetSpans()), len(second.GetSpans()))
+	}
+	if err := first.StartSpan(SpanOptions{Name: "only-first"}, func(TelemetrySpan) error { return nil }); err != nil {
+		t.Fatal(err)
+	}
+	if len(first.GetSpans()) != 1 || len(second.GetSpans()) != 0 {
+		t.Fatalf("spans: first %d, second %d, want 1 and 0", len(first.GetSpans()), len(second.GetSpans()))
 	}
 }

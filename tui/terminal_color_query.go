@@ -101,6 +101,11 @@ func (q *pendingTerminalColorQuery) complete() func() {
 
 // QueryTerminalColors queries the terminal's theme colors: the default foreground (OSC 10), the default background (OSC 11), and ANSI colors 0-15 (OSC 4), followed by a DA1 request that marks the end of the replies. The completion arrives when the DA1 reply or all color replies arrive, or when the timeout expires. Colors the terminal did not report are nil; the palette is set only when all 16 arrived. A query that completes after the timeout reports its replies to OnLateReply. Stop does not cancel the deadline, matching the terminal query's independent Promise lifetime. Mirrors tui.ts queryTerminalColors.
 func (t *tuiBase) QueryTerminalColors(options TerminalColorQueryOptions) <-chan TerminalColorsResult {
+	return t.queryTerminalColors(t.out, options)
+}
+
+// queryTerminalColors is QueryTerminalColors with the query written to out.
+func (t *tuiBase) queryTerminalColors(out io.Writer, options TerminalColorQueryOptions) <-chan TerminalColorsResult {
 	result := make(chan TerminalColorsResult, 1)
 	query := &pendingTerminalColorQuery{replied: map[OscColorTarget]struct{}{}}
 	query.deliver = func(colors TerminalColors) {
@@ -114,7 +119,7 @@ func (t *tuiBase) QueryTerminalColors(options TerminalColorQueryOptions) <-chan 
 
 	// Node timers cannot run while terminal.write is on the caller's stack. Start the Go callback after writing, but retain the deadline measured before the write; a synchronous reply may already have completed the query.
 	deadline := time.Now().Add(terminalColorQueryDelay(options.TimeoutMs))
-	_, err := io.WriteString(t.out, terminalColorQuery)
+	_, err := io.WriteString(out, terminalColorQuery)
 	queries.mu.Lock()
 	defer queries.mu.Unlock()
 	// Resolve with the replies so far, and keep collecting late replies for OnLateReply.

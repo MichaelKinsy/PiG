@@ -28,6 +28,16 @@ import (
 // fields must guard on `t.Kind() == reflect.Struct` because alias-to-any
 // has Kind == reflect.Interface with no fields to check.
 var eventTypeRegistry = map[string]reflect.Type{
+	// LEAD-RULINGS-1520 (typed built-in tool events): production emits CustomToolCallEvent for every tool, as Pi's runtime does;
+	// the typed upstream variants are a reviewed placement onto it.
+	"BashToolCallEvent":       reflect.TypeFor[extension.CustomToolCallEvent](),
+	"PowerShellToolCallEvent": reflect.TypeFor[extension.CustomToolCallEvent](),
+	"ReadToolCallEvent":       reflect.TypeFor[extension.CustomToolCallEvent](),
+	"EditToolCallEvent":       reflect.TypeFor[extension.CustomToolCallEvent](),
+	"WriteToolCallEvent":      reflect.TypeFor[extension.CustomToolCallEvent](),
+	"GrepToolCallEvent":       reflect.TypeFor[extension.CustomToolCallEvent](),
+	"FindToolCallEvent":       reflect.TypeFor[extension.CustomToolCallEvent](),
+	"LsToolCallEvent":         reflect.TypeFor[extension.CustomToolCallEvent](),
 	// ─── *Event types (42) ──────────────────────────────────────────────
 	"ProjectTrustEvent":          reflect.TypeFor[extension.ProjectTrustEvent](),
 	"McpServersChangeEvent":      reflect.TypeFor[extension.McpServersChangeEvent](),
@@ -67,14 +77,6 @@ var eventTypeRegistry = map[string]reflect.Type{
 	"ThinkingLevelSelectEvent":   reflect.TypeFor[extension.ThinkingLevelSelectEvent](),
 	"UserBashEvent":              reflect.TypeFor[extension.UserBashEvent](),
 	"InputEvent":                 reflect.TypeFor[extension.InputEvent](),
-	"BashToolCallEvent":          reflect.TypeFor[extension.BashToolCallEvent](),
-	"PowerShellToolCallEvent":    reflect.TypeFor[extension.PowerShellToolCallEvent](),
-	"ReadToolCallEvent":          reflect.TypeFor[extension.ReadToolCallEvent](),
-	"EditToolCallEvent":          reflect.TypeFor[extension.EditToolCallEvent](),
-	"WriteToolCallEvent":         reflect.TypeFor[extension.WriteToolCallEvent](),
-	"GrepToolCallEvent":          reflect.TypeFor[extension.GrepToolCallEvent](),
-	"FindToolCallEvent":          reflect.TypeFor[extension.FindToolCallEvent](),
-	"LsToolCallEvent":            reflect.TypeFor[extension.LsToolCallEvent](),
 	"CustomToolCallEvent":        reflect.TypeFor[extension.CustomToolCallEvent](),
 	"BashToolResultEvent":        reflect.TypeFor[extension.BashToolResultEvent](),
 	"PowerShellToolResultEvent":  reflect.TypeFor[extension.PowerShellToolResultEvent](),

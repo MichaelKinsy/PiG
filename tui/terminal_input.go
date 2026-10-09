@@ -85,6 +85,10 @@ func (p *TerminalInput) route(sequences []string) {
 			p.forward(sequence)
 			continue
 		}
+		// upstream: terminal.ts data handler checks isProgramStatusReply before keyboard negotiation.
+		if p.terminal.handleProgramStatusReply(sequence) {
+			continue
+		}
 		if p.negotiationBuffer != "" {
 			combined := p.negotiationBuffer + sequence
 			if p.terminal.handleKeyboardProtocolNegotiationSequence(combined) {
@@ -170,7 +174,7 @@ func (p *TerminalInput) stopTimer() {
 func (p *TerminalInput) Close() {
 	p.closed = true
 	p.stopTimer()
-	p.buffer.Clear()
+	p.buffer.Destroy()
 	p.sequenceDeadline = time.Time{}
 	p.clearNegotiationBuffer()
 }

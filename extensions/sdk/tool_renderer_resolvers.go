@@ -83,7 +83,7 @@ func (e *Extension) resolveToolRenderers(raw json.RawMessage) (result resolvedTo
 	if got == nil {
 		return resolvedToolRenderers{Use: "none"}, nil
 	}
-	if got == marker && got.Call == nil && got.Result == nil {
+	if got == marker && !got.rendersCall() && !got.rendersResult() {
 		return resolvedToolRenderers{Use: "next"}, nil
 	}
 	e.toolRenderMu.Lock()
@@ -99,7 +99,7 @@ func (e *Extension) resolveToolRenderers(raw json.RawMessage) (result resolvedTo
 	}
 	return resolvedToolRenderers{
 		Use:               "own",
-		toolRenderersDecl: toolRenderersDecl{RenderShell: shell, RendersCall: got.Call != nil, RendersResult: got.Result != nil},
+		toolRenderersDecl: toolRenderersDecl{RenderShell: shell, RendersCall: got.rendersCall(), RendersResult: got.rendersResult()},
 		Renderers:         id,
 	}, nil
 }

@@ -28,7 +28,7 @@ func TestBeforeAgentStartSelectionCanBeRepaired(t *testing.T) {
 			return nil, nil
 		},
 	}}}}, t.TempDir())
-	result, err := runner.EmitBeforeAgentStart(t.Context(), "repair", nil, "base", base)
+	result, err := runner.EmitBeforeAgentStart(t.Context(), "repair", nil, base)
 	if err != nil || result == nil || result.SystemPromptOptions == nil || !slices.Equal(result.SystemPromptOptions.SelectedTools, []string{"write"}) {
 		t.Fatalf("result=%+v err=%v", result, err)
 	}

@@ -28,9 +28,7 @@ func (s *Session) sendCustomMessage(ctx context.Context, message extension.Custo
 		content = []any{}
 	}
 	fields := map[string]any{"role": agent.RoleCustom, "customType": message.CustomType, "content": content, "timestamp": time.Now().UnixMilli()}
-	if message.Display != nil {
-		fields["display"] = message.Display
-	}
+	fields["display"] = message.Display
 	if message.Details != nil {
 		fields["details"] = message.Details
 	}
@@ -128,7 +126,7 @@ func (s *Session) completeCustomMessage(ctx context.Context, finish context.Canc
 func (s *Session) appendCustomMessage(message agent.AgentMessage) error {
 	customType, _ := message.Custom["customType"].(string)
 	display, _ := message.Custom["display"].(bool)
-	if _, err := s.inner.AppendCustomMessage(customType, message.Custom["content"], display, message.Custom["details"]); err != nil {
+	if _, err := s.inner.AppendCustomMessageEntry(customType, message.Custom["content"], display, message.Custom["details"]); err != nil {
 		return err
 	}
 	s.refreshContext()

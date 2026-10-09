@@ -1,8 +1,10 @@
 package piglet
 
 import (
+	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"maps"
 	"os"
 	"path/filepath"
@@ -30,6 +32,46 @@ type ResolvedPackage struct {
 // SourcePath returns the parsed Piglet source path when available.
 func (p *Piglet) SourcePath() string {
 	return p.sourcePath
+}
+
+// HasFrontend reports whether the Piglet fills the frontend slot.
+// pig additive (D91): a Piglet frontend member draws the interactive mode.
+func (p *Piglet) HasFrontend() bool {
+	return p.Slots != nil && p.Slots.Frontend != nil
+}
+
+// FrontendDir returns the absolute directory of the frontend slot's member,
+// or "" when the Piglet has no frontend member. An inherited member resolves
+// against the Piglet file that names it; the directory must exist inside
+// that file's directory.
+// pig additive (D91): a Piglet frontend member draws the interactive mode.
+func (p *Piglet) FrontendDir() (string, error) {
+	if !p.HasFrontend() {
+		return "", nil
+	}
+	member := p.Slots.Frontend.Member
+	dir := p.Slots.Frontend.dir
+	if dir == "" {
+		if p.sourceDir == "" {
+			return "", fmt.Errorf("slots.frontend.member %q needs a Piglet file to resolve against", member)
+		}
+		dir = filepath.Join(p.sourceDir, member)
+		if !isWithin(p.sourceDir, canonicalPath(dir)) {
+			return "", fmt.Errorf("slots.frontend.member %q leaves the Piglet directory", member)
+		}
+	}
+	dir = canonicalPath(dir)
+	info, err := os.Stat(dir)
+	if errors.Is(err, fs.ErrNotExist) {
+		return "", fmt.Errorf("slots.frontend.member %q does not exist", member)
+	}
+	if err != nil {
+		return "", fmt.Errorf("slots.frontend.member %q: %w", member, err)
+	}
+	if !info.IsDir() {
+		return "", fmt.Errorf("slots.frontend.member %q is not a directory", member)
+	}
+	return dir, nil
 }
 
 // ResolvePackages materializes every declared Package without mutating Package

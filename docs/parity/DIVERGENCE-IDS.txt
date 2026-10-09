@@ -13,9 +13,21 @@ D87: PiG's versions of Pi's easter eggs (logo-click animation with the PiG mark'
 D88: PiG's own first-time setup (theme, sprite, analytics) on an interactive start without settings.json; first-run-sprite; approved by owner Michael Kinsy 2026-10-02.
 D89: tool renderer resolvers of subprocess extensions answer once per tool off the UI loop; port-101; approved by owner Michael Kinsy 2026-10-03.
 D90: llama.cpp reasoning models offer every budgeted thinking level and send thinking_budget_tokens (issue #129); port-102; approved by owner task decision 2026-10-04.
+D91: Piglet frontend members draw the interactive mode (renderer seam, additive); tern-d91-frontend-seam; approved by owner Michael Kinsy 2026-10-04.
+D92: Piglet strip lists disable built-ins at runtime and compile them out of a Piglet Binary (issue #92, additive); tern-d92-strip; approved by owner Michael Kinsy 2026-10-04.
 D93: /reload evaluates an edited ES module extension again (re-evaluates only the stale module graph, once per reload pass); termux-041; approved by owner Michael Kinsy 2026-10-04.
 D94: working status embedded in a subprocess editor's border is driven by host snapshots (host-side animation, opt-in read at install); pr137; approved by owner Michael Kinsy 2026-10-05.
 D95: install-change restart warning for a running native executable and its extension cells (additive); port-103-restart; approved by owner Michael Kinsy 2026-10-05.
-D96-D98: reserved by the 0.4.2 integration (D96, D97 pi-env; D98 eval credentials).
-D99: the Windows npm self-update quarantine retries a rename that another process's handle blocks (anti-virus, indexer), within 10 s; rev-test-flakes-041 (PR #161 CI); approved by lead task decision 2026-10-05.
-Next free ID: D100.
+D96: the remote execution daemon (packages/env) is a Go program with Pi's wire protocol, not Pi's Rust binary; port-104-env; applied from the rev-port-104-env recommendation; approved by owner Michael Kinsy 2026-10-06.
+D97: packaged remote execution daemons are found next to the pig executable or in PI_ENV_DAEMON_DIR (additive); port-104-env; approved by owner Michael Kinsy 2026-10-06.
+D98: eval harness hands the pig agent process an OAuth credential file (Pi keeps it in memory; API keys stay in the harness); gap-telemetry-evals, narrowed by rev-gap-telemetry-evals; proposed by the lead under the owner's instruction of 2026-10-05 to port and account for packages/telemetry and packages/evals; approved by owner Michael Kinsy 2026-10-06.
+D99: the Windows npm self-update quarantine retries a rename that another process's handle blocks (anti-virus, indexer), within 10 s; rev-test-flakes-041 (PR #161 CI); approved by owner Michael Kinsy 2026-10-06 (lead task decision 2026-10-05).
+D100: crash attribution reads Go goroutine traces in addition to JavaScript stacks (additive); gap-core; recommendation of the rev-gap-core review, approved by owner Michael Kinsy 2026-10-06.
+D101: the get_extensions RPC command lists the loaded extensions (additive; Pi has the in-process getExtensionPaths); gap-telemetry-evals; requested by the lead under the owner's instruction of 2026-10-05; approved by owner Michael Kinsy 2026-10-06.
+D102: exit log, crash-output markers and uncaught-goroutine handling for interactive sessions (product-neutral diagnostics); idle-exit-165 (#170); owner assigned lane idle-exit-165 on 2026-10-06 to make every exit that no user action asked for leave a record.
+D104: Durable read path (working set, text reader, frozen contexts; additive); durable-perf; assigned by the lead on 2026-10-06 under the owner's durable-perf instruction; owner sign-off pending.
+D107: the extension component kit: Go, Rust and Python extensions describe Pi's tui components as a view the host renders with its tui ports, Node's components are read into the same view, and a D91 frontend receives it as optional structure (additive); tern-d91-extview; approved by owner Michael Kinsy 2026-10-06; number assigned by the 0.4.2 lead (coordination note).
+D109: Extension SDK upgrade: pig extension upgrade rewrites Go extensions written for an older SDK, a build failure names the changed SDK APIs, interactive startup offers the upgrade, and the global extensionsAutoUpgrade setting runs it (additive; Pi loads extension source in process); ext-upgrade; approved by owner Michael Kinsy 2026-10-08.
+D110: Git sources: `#subdirectory=` selects a Piglet subdirectory (additive), `git://` and upper-case-scheme sources keep a cloneable repository where Pi returns an unusable one; coding/source parseGitURL; approved by owner ruling relayed by the lead 2026-10-09.
+D111: abort abandons a non-cooperative extension tool after a grace period (ToolAbortGrace, 3 s; 'Operation aborted'); robust-ext F6; owner-ratified by Michael Kinsy 2026-10-09.
+Next free ID: D112.

@@ -19,7 +19,7 @@ func TestAnthropicCallbacksReceiveSelectedModel(t *testing.T) {
 	} {
 		for _, reject := range []string{"payload", "response"} {
 			t.Run(shape.provider+"/"+shape.key+"/"+reject, func(t *testing.T) {
-				model := &Model{ID: "custom-model", DisplayName: "Custom Model", Input: []string{"text", "image"}, Capabilities: ModelCapabilities{ContextWindow: 123456, MaxOutputTokens: 8192, MaxThinking: ThinkingHigh}, ProviderMeta: ProviderMetadata{ProviderID: shape.provider, API: APIAnthropicMessages, BaseURL: "https://example.invalid", Reasoning: true, Headers: map[string]string{"X-Model": "selected"}, Compat: &ModelCompat{ForceAdaptiveThinking: new(true), SupportsMidConvoEffort: new(true)}}, ThinkingLevelMap: ThinkingLevelMap{ThinkingOff: nil, ThinkingLow: new("low")}}
+				model := &Model{ID: "custom-model", DisplayName: "Custom Model", Input: []string{"text", "image"}, Capabilities: ModelCapabilities{ContextWindow: 123456, MaxOutputTokens: 8192, MaxThinking: ThinkingLevelHigh}, ProviderMeta: ProviderMetadata{ProviderID: shape.provider, API: APIAnthropicMessages, BaseURL: "https://example.invalid", Reasoning: true, Headers: map[string]string{"X-Model": "selected"}, Compat: &ModelCompat{ForceAdaptiveThinking: new(true), SupportsMidConvoEffort: new(true)}}, ThinkingLevelMap: ThinkingLevelMap{ThinkingOff: nil, ThinkingLow: new("low")}}
 				provider := NewAnthropicProvider(AnthropicConfig{Model: model.ID, ProviderID: shape.provider, APIKey: shape.key, BaseURL: model.ProviderMeta.BaseURL, ModelMetadata: model})
 				defer func() { _ = provider.Close() }()
 				var seen []string

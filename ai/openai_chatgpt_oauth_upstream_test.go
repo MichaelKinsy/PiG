@@ -12,6 +12,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/MichaelKinsy/PiG/internal/coding/pigidentity"
 )
 
 const (
@@ -128,7 +130,8 @@ func TestOpenAIChatGPTOAuthUpstream(t *testing.T) {
 		}
 
 		query := authorizeURL.Query()
-		for name, want := range map[string]string{"client_id": "dynamic_agent_client", "agent_name_hint": "Pi", "ext_agent_host_id": "urn:uuid:" + chatgptDeviceID, "scope": chatgptRequiredScope, "redirect_uri": "http://127.0.0.1:1455/auth/callback", "resource": "https://api.openai.com/v1", "code_challenge_method": "S256"} {
+		// D26: Pi sends agent_name_hint "Pi"; PiG sends its own name.
+		for name, want := range map[string]string{"client_id": "dynamic_agent_client", "agent_name_hint": pigidentity.ChatGPTAgentName, "ext_agent_host_id": "urn:uuid:" + chatgptDeviceID, "scope": chatgptRequiredScope, "redirect_uri": "http://127.0.0.1:1455/auth/callback", "resource": "https://api.openai.com/v1", "code_challenge_method": "S256"} {
 			if got := query.Get(name); got != want {
 				t.Errorf("%s=%q want %q", name, got, want)
 			}
@@ -143,6 +146,20 @@ func TestOpenAIChatGPTOAuthUpstream(t *testing.T) {
 		clientID, scopes := chatgptExtra(t, credential)
 		if credential.Type != CredentialOAuth || credential.Access != "access-token" || credential.Refresh != "refresh-token" || clientID != "oaiapp_issued" || !reflect.DeepEqual(scopes, strings.Split(chatgptRequiredScope, " ")) {
 			t.Errorf("credential=%+v", credential)
+		}
+	})
+	// .upstream/v1.1.0/packages/ai/test/openai-chatgpt-oauth.test.ts:111
+	t.Run("uses the app's agent name as the name hint", func(t *testing.T) {
+		oauth := chatgptOAuth(t)
+		var authorizeURL *url.URL
+		stubChatGPTTokenEndpoint(t, chatgptTokenResponse(chatgptRequiredScope))
+		agentName := "my-app"
+
+		if _, err := oauth.Login(t.Context(), chatgptLoginInteraction("oaiapp_issued", func(u *url.URL) { authorizeURL = u }), LoginOptions{GetDeviceID: func() string { return chatgptDeviceID }, AgentName: &agentName}); err != nil {
+			t.Fatal(err)
+		}
+		if got := authorizeURL.Query().Get("agent_name_hint"); got != "my-app" {
+			t.Fatalf("agent_name_hint = %q, want my-app", got)
 		}
 	})
 	// .upstream/v0.99.1/packages/ai/test/openai-chatgpt-oauth.test.ts:111

@@ -79,7 +79,7 @@ func TestLoadThemesKeepsCustomDirectoryThemesSelectable(t *testing.T) {
 		{"resolved theme wins", false, []string{explicit}, explicit},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			m := &InteractiveMode{opts: InteractiveOptions{AgentDir: agentDir, NoThemes: tc.noThemes, ThemePaths: tc.themePaths}}
+			m := &InteractiveMode{opts: InteractiveModeOptions{AgentDir: agentDir, NoThemes: tc.noThemes, ThemePaths: tc.themePaths}}
 			m.loadThemes()
 			registry := tui.ActiveThemeRegistry()
 			if got := registry.PathOf("excluded"); got != tc.wantPath {

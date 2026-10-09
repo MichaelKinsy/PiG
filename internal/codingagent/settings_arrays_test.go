@@ -7,6 +7,7 @@ import (
 )
 
 // Settings arrays replace prior arrays, including when the replacement is empty (settings-manager.ts deepMergeSettings/save).
+// Pi: packages/coding-agent/src/core/settings-manager.ts:1216 (SettingsManager.getSkillPaths); packages/coding-agent/src/core/settings-manager.ts:1232 (SettingsManager.getPromptTemplatePaths); packages/coding-agent/src/core/settings-manager.ts:1248 (SettingsManager.getThemePaths).
 func TestSettingsExplicitEmptyArraysPersist(t *testing.T) {
 	const initial = `{"packages":["npm:example"],"extensions":["ext.ts"],"skills":["skill"],"prompts":["prompt"],"themes":["theme"],"enabledModels":["model"],"defaultTools":["read"],"npmCommand":["npm"]}`
 	const empty = `{"packages":[],"extensions":[],"skills":[],"prompts":[],"themes":[],"enabledModels":[],"defaultTools":[],"npmCommand":[]}`

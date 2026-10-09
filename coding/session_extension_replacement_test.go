@@ -121,6 +121,6 @@ func TestExtensionNewSessionKeepsParentInMemory(t *testing.T) {
 		t.Fatalf("newSession = %+v, %v", result, err)
 	}
 	if sess.Path() != "" || sess.Inner().ParentSession() != "/parent.jsonl" {
-		t.Fatalf("in-memory header lost parent: %+v", sess.Inner().Header())
+		t.Fatalf("in-memory header lost parent: %+v", sess.Inner().GetHeader())
 	}
 }

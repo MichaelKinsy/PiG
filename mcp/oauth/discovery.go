@@ -12,6 +12,7 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/MichaelKinsy/PiG/internal/jsstring"
 	"github.com/MichaelKinsy/PiG/mcp"
 )
 
@@ -33,16 +34,34 @@ func pathSuffix(pathname string) string {
 	return strings.TrimSuffix(pathname, "/")
 }
 
+// jsSpace is the character class of JavaScript's \s.
+const jsSpace = `\t\n\v\f\r \x{a0}\x{1680}\x{2000}-\x{200a}\x{2028}\x{2029}\x{202f}\x{205f}\x{3000}\x{feff}`
+
+// challengeFieldPattern is `(?:^|[,\s])name=(?:"([^"]*)"|([^\s,]+))` with the `i` flag of a non-unicode JavaScript
+// RegExp, which folds ASCII letters only.
+func challengeFieldPattern(name string) *regexp.Regexp {
+	var folded strings.Builder
+	for _, c := range name {
+		if (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') {
+			folded.WriteString("[" + strings.ToLower(string(c)) + strings.ToUpper(string(c)) + "]")
+		} else {
+			folded.WriteString(regexp.QuoteMeta(string(c)))
+		}
+	}
+	return regexp.MustCompile(`(?:^|[,` + jsSpace + `])` + folded.String() + `=(?:"([^"]*)"|([^` + jsSpace + `,]+))`)
+}
+
+// challengeField is upstream's `field`: the first match's quoted or bare value. An empty value (`scope=""`) carries no
+// information, so it counts as absent.
 func challengeField(header, name string) (string, bool) {
-	re := regexp.MustCompile(`(?i)(?:^|[,\s])` + regexp.QuoteMeta(name) + `=(?:"([^"]*)"|([^\s,]+))`)
-	match := re.FindStringSubmatch(header)
+	match := challengeFieldPattern(name).FindStringSubmatch(header)
 	if match == nil {
 		return "", false
 	}
-	if match[1] != "" || strings.Contains(match[0], `"`) {
+	if match[1] != "" {
 		return match[1], true
 	}
-	return match[2], true
+	return match[2], match[2] != ""
 }
 
 // ParseWWWAuthenticate parses a Bearer or DPoP challenge. Any other scheme,
@@ -51,11 +70,8 @@ func ParseWWWAuthenticate(header string) OAuthChallenge {
 	if header == "" {
 		return OAuthChallenge{}
 	}
-	fields := strings.Fields(strings.TrimLeft(header, " \t\r\n"))
-	if len(fields) == 0 {
-		return OAuthChallenge{}
-	}
-	if scheme := strings.ToLower(fields[0]); scheme != "bearer" && scheme != "dpop" {
+	scheme := strings.ToLower(firstWord(header))
+	if scheme != "bearer" && scheme != "dpop" {
 		return OAuthChallenge{}
 	}
 	var challenge OAuthChallenge
@@ -175,9 +191,18 @@ func BuildAuthorizationServerDiscoveryURLs(authorizationServerURL string) ([]Dis
 	if err != nil {
 		return nil, err
 	}
+	// `issuer.origin` of a scheme other than http and https is "null", which `new URL(path, "null")` rejects.
+	if issuer.Scheme != "http" && issuer.Scheme != "https" {
+		return nil, errors.New("Invalid URL")
+	}
 	origin := issuer.Scheme + "://" + issuer.Host
-	path := pathSuffix(issuer.Path)
+	path := pathSuffix(issuer.EscapedPath())
 	build := func(p string) *url.URL {
+		// A path that starts with two slashes is a scheme-relative reference, which names another host.
+		if strings.HasPrefix(p, "//") {
+			u, _ := parseURL(issuer.Scheme + ":" + p)
+			return u
+		}
 		u, _ := parseURL(origin + p)
 		return u
 	}
@@ -226,7 +251,7 @@ func DiscoverAuthorizationServerMetadata(ctx context.Context, authorizationServe
 		if !options.SkipIssuerValidation {
 			// URL parsing adds a trailing slash to bare origins, so compare without one on either side.
 			if strings.TrimSuffix(metadata.Issuer, "/") != strings.TrimSuffix(authorizationServerURL, "/") {
-				return nil, &OAuthIssuerMismatchError{Expected: authorizationServerURL, Received: &metadata.Issuer}
+				return nil, NewOAuthIssuerMismatchError(authorizationServerURL, &metadata.Issuer)
 			}
 		}
 		return metadata, nil
@@ -327,8 +352,17 @@ func SelectResource(serverURL string, metadata *OAuthProtectedResourceMetadata) 
 		}
 		return p + "/"
 	}
-	if !strings.HasPrefix(withSlash(requested.Path), withSlash(configured.Path)) {
+	if !strings.HasPrefix(withSlash(requested.EscapedPath()), withSlash(configured.EscapedPath())) {
 		return "", mismatch
 	}
 	return metadata.Resource, nil
+}
+
+// firstWord is header.trimStart().split(/\s+/, 1)[0].
+func firstWord(header string) string {
+	trimmed := jsstring.TrimStart(header)
+	if end := strings.IndexFunc(trimmed, jsstring.IsSpace); end >= 0 {
+		return trimmed[:end]
+	}
+	return trimmed
 }

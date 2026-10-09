@@ -16,14 +16,14 @@ func TestInteractiveStartupThemeStartsTheSystemThemeInGrayscale(t *testing.T) {
 	tui.SetTerminalColors(tui.TerminalColors{})
 	cwd, agentDir := writeThemeLayers(t, `{}`, "")
 	manager := NewSettingsManager(cwd, agentDir)
-	m := NewInteractiveMode(InteractiveOptions{CWD: cwd, AgentDir: agentDir, Settings: manager.Get(), SettingsManager: manager})
+	m := NewInteractiveMode(nil, InteractiveModeOptions{CWD: cwd, AgentDir: agentDir, Settings: manager.Get(), SettingsManager: manager})
 	m.initStartupTheme()
 	theme := tui.ActiveTheme()
 	if theme.Name != tui.SystemThemeName {
 		t.Fatalf("startup theme = %q, want %q", theme.Name, tui.SystemThemeName)
 	}
 	// system-theme.ts indexedColors: saturation 0 while pending leaves every token on the terminal default.
-	if got := theme.Fg("accent"); got != "\x1b[39m" {
+	if got := theme.GetFgAnsi("accent"); got != "\x1b[39m" {
 		t.Fatalf("pending system accent = %q, want the default foreground", got)
 	}
 	if active := m.themeState.activeThemeName.Load(); active == nil || *active != tui.SystemThemeName {
@@ -31,7 +31,7 @@ func TestInteractiveStartupThemeStartsTheSystemThemeInGrayscale(t *testing.T) {
 	}
 	tui.SetTerminalColors(tui.TerminalColors{})
 	tui.SetThemeByName(tui.SystemThemeName)
-	if got := tui.ActiveTheme().Fg("accent"); got == "\x1b[39m" {
+	if got := tui.ActiveTheme().GetFgAnsi("accent"); got == "\x1b[39m" {
 		t.Fatalf("system accent after the terminal answered = %q, want a palette color", got)
 	}
 }
@@ -55,7 +55,7 @@ func TestInteractiveStartupThemeResolvesACustomThemeAfterLoadingThemes(t *testin
 		t.Fatal(err)
 	}
 	manager := NewSettingsManager(cwd, agentDir)
-	m := NewInteractiveMode(InteractiveOptions{CWD: cwd, AgentDir: agentDir, Settings: manager.Get(), SettingsManager: manager})
+	m := NewInteractiveMode(nil, InteractiveModeOptions{CWD: cwd, AgentDir: agentDir, Settings: manager.Get(), SettingsManager: manager})
 	m.initStartupTheme()
 	if got := tui.ActiveTheme().Name; got != "aurora" {
 		t.Fatalf("startup theme = %q, want aurora", got)

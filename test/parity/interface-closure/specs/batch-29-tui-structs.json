@@ -1,0 +1,250 @@
+[
+ {
+  "ids": [
+   "pkg:tui/.#ImageOptions"
+  ],
+  "targets": [
+   "tui/image.go#ImageOptions"
+  ],
+  "struct": {
+   "file": "tui/image.go",
+   "type": "ImageOptions"
+  },
+  "production": [
+   "call:internal/codingagent/earendil_announcement.go#newEarendilAnnouncementComponent"
+  ],
+  "evidence": [
+   "test:tui/image_transcoder_upstream_test.go#TestUpstreamImageTranscoding",
+   "test:tui/terminal_image_sizing_upstream_test.go#TestUpstreamImageCellSizing"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "ImageOptions: Go ImageOptions has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+ },
+ {
+  "ids": [
+   "pkg:tui/.#ImageTheme"
+  ],
+  "targets": [
+   "tui/image.go#ImageTheme"
+  ],
+  "struct": {
+   "file": "tui/image.go",
+   "type": "ImageTheme"
+  },
+  "production": [
+   "call:tui/image.go#NewImage"
+  ],
+  "evidence": [
+   "test:tui/image_transcoder_upstream_test.go#TestUpstreamImageTranscoding"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "ImageTheme: Go ImageTheme has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+ },
+ {
+  "ids": [
+   "pkg:tui/.#MarkdownOptions"
+  ],
+  "targets": [
+   "tui/markdown_options.go#MarkdownOptions"
+  ],
+  "struct": {
+   "file": "tui/markdown_options.go",
+   "type": "MarkdownOptions"
+  },
+  "production": [
+   "call:tui/user_message_block.go#UserMessageComponent.rebuild"
+  ],
+  "evidence": [
+   "test:tui/markdown_upstream_test.go#TestUpstreamMarkdown",
+   "test:tui/markdown_test.go#TestMarkdownPreservesSourceOrderedListMarkers"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "MarkdownOptions: Go MarkdownOptions has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+ },
+ {
+  "ids": [
+   "pkg:tui/.#OverlayBounds"
+  ],
+  "targets": [
+   "tui/overlay_compositor.go#OverlayBounds"
+  ],
+  "struct": {
+   "file": "tui/overlay_compositor.go",
+   "type": "OverlayBounds"
+  },
+  "production": [
+   "call:tui/overlay_compositor.go#composeOverlaySnapshotWithStats"
+  ],
+  "evidence": [
+   "test:tui/mouse_test.go#TestOverlayBoundsAndMouseHitTesting"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "OverlayBounds: Go OverlayBounds has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+ },
+ {
+  "ids": [
+   "pkg:tui/.#ScrollViewOptions"
+  ],
+  "targets": [
+   "tui/scroll_view.go#ScrollViewOptions"
+  ],
+  "struct": {
+   "file": "tui/scroll_view.go",
+   "type": "ScrollViewOptions"
+  },
+  "production": [
+   "call:internal/codingagent/chat_viewport.go#CreateChatViewport"
+  ],
+  "evidence": [
+   "test:internal/codingagent/interactive_tui_factory_upstream_test.go#TestInteractiveTuiShowsConfiguredJumpShortcut",
+   "test:tui/layout_upstream_test.go#TestUpstreamViewportLayout"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "ScrollViewOptions: Go ScrollViewOptions has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+ },
+ {
+  "ids": [
+   "pkg:tui/.#StackEntryOptions"
+  ],
+  "targets": [
+   "tui/stack.go#StackEntryOptions"
+  ],
+  "struct": {
+   "file": "tui/stack.go",
+   "type": "StackEntryOptions"
+  },
+  "production": [
+   "call:internal/codingagent/chat_viewport.go#CreateChatViewport"
+  ],
+  "evidence": [
+   "test:tui/layout_upstream_test.go#TestUpstreamViewportLayout",
+   "test:tui/stack_test.go#TestAllocateStackSizes"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "StackEntryOptions: Go StackEntryOptions has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+ },
+ {
+  "ids": [
+   "pkg:tui/.#StackOptions"
+  ],
+  "targets": [
+   "tui/stack.go#StackOptions"
+  ],
+  "struct": {
+   "file": "tui/stack.go",
+   "type": "StackOptions"
+  },
+  "production": [
+   "call:internal/codingagent/chat_viewport.go#CreateChatViewport"
+  ],
+  "evidence": [
+   "test:tui/layout_upstream_test.go#TestUpstreamViewportLayout",
+   "test:tui/cell_size_test.go#TestCellSizeResponseInvalidatesAltScreenLayoutRoot"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "StackOptions: Go StackOptions has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+ },
+ {
+  "ids": [
+   "pkg:tui/.#TuiMouseEvent"
+  ],
+  "targets": [
+   "tui/mouse.go#TuiMouseEvent"
+  ],
+  "struct": {
+   "file": "tui/mouse.go",
+   "type": "TuiMouseEvent"
+  },
+  "production": [
+   "call:tui/tui_alt_screen_mouse.go#TuiAltScreen.createMouseEvent"
+  ],
+  "evidence": [
+   "test:internal/codingagent/assistant_message_upstream_test.go#TestAssistantMessageUpstream",
+   "test:internal/codingagent/tool_execution_component_upstream_test.go#TestNativeReadToolClickUsesProductionBody"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "TuiMouseEvent: Go TuiMouseEvent has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+ },
+ {
+  "ids": [
+   "pkg:tui/.#TuiMouseEventResult"
+  ],
+  "targets": [
+   "tui/mouse.go#TuiMouseEventResult"
+  ],
+  "struct": {
+   "file": "tui/mouse.go",
+   "type": "TuiMouseEventResult"
+  },
+  "production": [
+   "call:internal/codingagent/pig_logo_animation.go#pigLogoAnimation.HandleMouse"
+  ],
+  "evidence": [
+   "test:tui/tool_execution_mouse_upstream_test.go#TestToolMouseDelegatesNestedHandlersBeforeExpansion",
+   "test:tui/tui_alt_screen_wheel_upstream_test.go#TestUpstreamAltScreenAppliesRuntimeWheelLineCountUpdates"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "TuiMouseEventResult: Go TuiMouseEventResult has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+ },
+ {
+  "ids": [
+   "pkg:tui/.#SelectItem"
+  ],
+  "targets": [
+   "tui/select_submenu.go#SelectItem"
+  ],
+  "struct": {
+   "file": "tui/select_submenu.go",
+   "type": "SelectItem"
+  },
+  "production": [
+   "call:coding/mcpext/manager.go#Extension.chooseExposure"
+  ],
+  "evidence": [
+   "test:coding/mcpext/manager_test.go#TestMcpManagerViewMenuRebuildsOnChangeKeepingTheSelection",
+   "test:internal/codingagent/settings_submenu_test.go#TestSteppedSubmenuInitialContextCompletionAndBack"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "SelectItem: Go SelectItem has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+ },
+ {
+  "ids": [
+   "pkg:tui/.#SelectListTruncatePrimaryContext"
+  ],
+  "targets": [
+   "tui/select_filterable.go#SelectListTruncatePrimaryContext"
+  ],
+  "struct": {
+   "file": "tui/select_filterable.go",
+   "type": "SelectListTruncatePrimaryContext"
+  },
+  "production": [
+   "call:tui/select_filterable.go#FilterableList.truncatePrimary"
+  ],
+  "evidence": [
+   "test:tui/select_filterable_test.go#TestFilterableListAllowsPrimaryTruncationOverride"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "SelectListTruncatePrimaryContext: Go SelectListTruncatePrimaryContext has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+ },
+ {
+  "ids": [
+   "pkg:tui/.#ScrollViewScrollToOptions"
+  ],
+  "targets": [
+   "tui/scroll_view.go#ScrollViewScrollToOptions"
+  ],
+  "struct": {
+   "file": "tui/scroll_view.go",
+   "type": "ScrollViewScrollToOptions"
+  },
+  "production": [
+   "call:tui/scroll_view.go#ScrollView.ScrollTo"
+  ],
+  "evidence": [
+   "test:tui/layout_scrollbar_test.go#TestScrollViewScrollToDisableFollowAtEnd"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "ScrollViewScrollToOptions: Go ScrollViewScrollToOptions has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+ }
+]

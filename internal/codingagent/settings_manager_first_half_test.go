@@ -145,12 +145,12 @@ func TestSettingsManagerFirstHalfStorage(t *testing.T) {
 	// .upstream/v0.99.1/packages/coding-agent/test/settings-manager.test.ts:293
 	t.Run("should read default project trust from global settings only", func(t *testing.T) {
 		sm := writeSettingsLayers(t, `{"defaultProjectTrust":"always"}`, `{"defaultProjectTrust":"never"}`)
-		settingsFirstHalfEqual(t, sm.GetDefaultProjectTrust(), "always")
+		settingsFirstHalfEqual(t, sm.GetDefaultProjectTrust(), DefaultProjectTrustAlways)
 	})
 	// .upstream/v0.99.1/packages/coding-agent/test/settings-manager.test.ts:302
 	t.Run("should default invalid project trust settings to ask", func(t *testing.T) {
 		sm := writeSettingsLayers(t, `{"defaultProjectTrust":"sometimes"}`, `{}`)
-		settingsFirstHalfEqual(t, sm.GetDefaultProjectTrust(), "ask")
+		settingsFirstHalfEqual(t, sm.GetDefaultProjectTrust(), DefaultProjectTrustAsk)
 	})
 	for _, tc := range []struct {
 		name  string
@@ -198,8 +198,8 @@ func TestSettingsManagerFirstHalfValues(t *testing.T) {
 	})
 	// .upstream/v0.99.1/packages/coding-agent/test/settings-manager.test.ts:375
 	t.Run("defaults and overrides agent retry delay cap", func(t *testing.T) {
-		settingsFirstHalfEqual(t, settingsFirstHalfMemory(t, `{}`).GetRetrySettings(), RetryConfig{Enabled: true, MaxRetries: 3, BaseDelayMs: 2000, MaxDelayMs: 60000})
-		settingsFirstHalfEqual(t, settingsFirstHalfMemory(t, `{"retry":{"enabled":true,"maxRetries":10,"baseDelayMs":500,"maxAgentDelayMs":5000}}`).GetRetrySettings(), RetryConfig{Enabled: true, MaxRetries: 10, BaseDelayMs: 500, MaxDelayMs: 5000})
+		settingsFirstHalfEqual(t, settingsFirstHalfMemory(t, `{}`).GetRetrySettings(), RetryConfig{Enabled: true, MaxRetries: 3, BaseDelayMs: 2000, MaxAgentDelayMs: 60000})
+		settingsFirstHalfEqual(t, settingsFirstHalfMemory(t, `{"retry":{"enabled":true,"maxRetries":10,"baseDelayMs":500,"maxAgentDelayMs":5000}}`).GetRetrySettings(), RetryConfig{Enabled: true, MaxRetries: 10, BaseDelayMs: 500, MaxAgentDelayMs: 5000})
 	})
 	for _, tc := range []struct {
 		name, g, p string

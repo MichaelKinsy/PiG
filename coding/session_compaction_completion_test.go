@@ -1,4 +1,3 @@
-// SPDX-FileCopyrightText: Copyright Hewlett Packard Enterprise Development LP
 // SPDX-License-Identifier: MIT
 
 package coding
@@ -27,7 +26,7 @@ func TestManualCompactionWaitsForCompletionListener(t *testing.T) {
 		})
 		defer unsubscribe()
 		done := make(chan error, 1)
-		go func() { _, err := s.CompactResult(t.Context(), ""); done <- err }()
+		go func() { _, err := s.Compact(t.Context(), ""); done <- err }()
 		<-entered
 		synctest.Wait()
 		if s.IsCompacting() {
@@ -50,7 +49,7 @@ func TestManualCompactionWaitsForCompletionListener(t *testing.T) {
 }
 
 func BenchmarkSummarizationRequestAuth(b *testing.B) {
-	services, err := NewServices(ServicesOptions{CWD: b.TempDir(), AgentDir: b.TempDir()})
+	services, err := CreateAgentSessionServices(CreateAgentSessionServicesOptions{CWD: b.TempDir(), AgentDir: b.TempDir()})
 	if err != nil {
 		b.Fatal(err)
 	}

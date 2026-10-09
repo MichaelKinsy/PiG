@@ -1,0 +1,18 @@
+[
+ {
+  "ids": [
+   "pkg:ai/.#AnyModel",
+   "pkg:ai/compat#AnyModel"
+  ],
+  "targets": [
+   "ai/model_types.go#AnyModel"
+  ],
+  "production": [
+   "call:ai/model_types.go#AnyModels"
+  ],
+  "evidence": [
+   "test:ai/wire_shape_upstream_test.go#TestModelTypeDiscriminatorsMatchUpstreamLiterals"
+  ],
+  "rationale": "AnyModel is the union of the chat, image and classifier models; Go declares it as the closed interface implemented by *Model, *ImageModel and *ClassifierModel, each reporting its type through ModelType."
+ }
+]

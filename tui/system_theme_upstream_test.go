@@ -1,5 +1,7 @@
 package tui
 
+// pi: packages/coding-agent/src/modes/interactive/theme/system-theme.ts
+
 import (
 	"math"
 	"regexp"
@@ -229,10 +231,10 @@ func TestSystemThemeUpstream(t *testing.T) {
 		if theme.Appearance() != "dark" {
 			t.Errorf("appearance = %q, want dark", theme.Appearance())
 		}
-		if got := theme.Fg("text"); got != "\x1b[39m" {
+		if got := theme.GetFgAnsi("text"); got != "\x1b[39m" {
 			t.Errorf("text ansi = %q", got)
 		}
-		if got := theme.Fg("error"); !regexp.MustCompile(`^\x1b\[38;`).MatchString(got) {
+		if got := theme.GetFgAnsi("error"); !regexp.MustCompile(`^\x1b\[38;`).MatchString(got) {
 			t.Errorf("error ansi = %q", got)
 		}
 	})
@@ -245,7 +247,7 @@ func TestSystemThemeUpstream(t *testing.T) {
 		if theme == nil {
 			t.Fatal("the system theme is not registered")
 		}
-		if got := theme.FgText("muted", "x"); got != "\x1b[39m\x1b[2mx\x1b[22;39m" {
+		if got := theme.Fg("muted", "x"); got != "\x1b[39m\x1b[2mx\x1b[22;39m" {
 			t.Errorf("fg = %q", got)
 		}
 		styled, err := theme.Style("x", ThemeStyle{FgToken: "muted"})

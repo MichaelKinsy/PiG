@@ -5,16 +5,20 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"errors"
-	"io"
 	"io/fs"
 	"os"
 	"path/filepath"
 
 	"github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell"
+	"github.com/MichaelKinsy/PiG/internal/fspublish"
 )
 
 // materializeNodeRuntime publishes one immutable tree per runtime content and version. Each launcher keeps a self-contained hard-linked tree, so cache pruning and Piglet artifact copies never depend on a shared path surviving. Filesystems without hard links receive ordinary copies.
 func materializeNodeRuntime(ctx context.Context, cacheDir, destination string) (err error) {
+	// pig additive (D92): a Piglet that strips node-extensions has no runtime to publish.
+	if err := nodeRuntimeUnavailable(); err != nil {
+		return err
+	}
 	digest := sha256.Sum256(append([]byte(nodeRuntimeVersion), nodeRuntimeDigest()...))
 	hash := hex.EncodeToString(digest[:])
 	root := filepath.Join(cacheDir, "node-runtime-"+hash)
@@ -58,24 +62,6 @@ func materializeNodeRuntime(ctx context.Context, cacheDir, destination string) (
 		if entry.IsDir() {
 			return os.MkdirAll(target, 0o755)
 		}
-		if err := os.Link(path, target); err == nil {
-			return nil
-		}
-		return copyNodeRuntimeFile(path, target)
+		return fspublish.LinkOrCopy(path, target)
 	})
-}
-
-func copyNodeRuntimeFile(source, destination string) (err error) {
-	input, err := os.Open(source)
-	if err != nil {
-		return err
-	}
-	defer func() { err = errors.Join(err, input.Close()) }()
-	output, err := os.OpenFile(destination, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o644)
-	if err != nil {
-		return err
-	}
-	defer func() { err = errors.Join(err, output.Close()) }()
-	_, err = io.Copy(output, input)
-	return err
 }

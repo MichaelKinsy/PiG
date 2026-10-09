@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# SPDX-FileCopyrightText: Copyright Hewlett Packard Enterprise Development LP
 # SPDX-License-Identifier: MIT
 """Unit tests for pack_npm.py (run: python3 -m unittest automation/release/npm/test_pack_npm.py)."""
 

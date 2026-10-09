@@ -238,10 +238,7 @@ func TestMCPOAuthDiscoversRegistersAuthorizesWithPKCEAndRefreshesOn401(t *testin
 		t.Fatalf("authorization url = %v", provider.authorizationURL)
 	}
 
-	wait, err := callback.WaitForCallback("expected-state", "")
-	if err != nil {
-		t.Fatal(err)
-	}
+	wait := startWait(t, callback, "expected-state", "")
 	noFollow := &http.Client{CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}
 	authorizationResponse, err := noFollow.Get(provider.authorizationURL.String())
 	if err != nil {
@@ -253,7 +250,7 @@ func TestMCPOAuthDiscoversRegistersAuthorizesWithPKCEAndRefreshesOn401(t *testin
 		t.Fatal(err)
 	}
 	_ = followed.Body.Close()
-	received, err := wait.Wait(ctx)
+	received, err := wait()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -378,7 +375,7 @@ func TestMCPOAuthSharesOneRefreshBetweenConcurrent401sWhenRefreshTokensRotate(t 
 	if state == nil || state.Tokens == nil || state.Tokens.RefreshToken != "r2" {
 		t.Fatalf("state = %#v", state)
 	}
-	if state.TokensExpireAt == nil || *state.TokensExpireAt <= time.Now().UnixMilli()+3_500_000 {
+	if state.TokensExpireAt == nil || *state.TokensExpireAt <= float64(time.Now().UnixMilli()+3_500_000) {
 		t.Fatalf("tokensExpireAt = %v", state.TokensExpireAt)
 	}
 }
@@ -448,6 +445,42 @@ func TestMCPOAuthBindsPersistedCredentialsToTheExactMCPServerURL(t *testing.T) {
 	}
 	if tokens, err := second.Tokens(ctx); err != nil || tokens != nil {
 		t.Fatalf("second tokens = %#v, %v", tokens, err)
+	}
+}
+
+// Ports packages/mcp/test/oauth.test.ts "registers with an application_type derived from the redirect URIs unless one
+// is set" (#10493).
+func TestMCPOAuthRegistersWithAnApplicationTypeDerivedFromTheRedirectURIsUnlessOneIsSet(t *testing.T) {
+	var bodies []map[string]any
+	origin := listen(t, func(w http.ResponseWriter, r *http.Request, _ string) {
+		var metadata map[string]any
+		if err := json.Unmarshal([]byte(readAll(r)), &metadata); err != nil {
+			t.Error(err)
+		}
+		bodies = append(bodies, metadata)
+		metadata["client_id"] = "client"
+		jsonResponse(w, http.StatusCreated, metadata)
+	})
+	register := func(applicationType string, redirectURIs ...string) {
+		t.Helper()
+		_, err := oauth.RegisterClient(t.Context(), origin, oauth.RegisterClientOptions{
+			ClientMetadata: oauth.OAuthClientMetadata{RedirectURIs: redirectURIs, ApplicationType: applicationType},
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+	register("", "http://127.0.0.1:1234/callback")
+	register("", "http://[::1]/callback")
+	register("", "com.example.app:/callback")
+	register("", "https://app.example/callback")
+	register("web", "http://localhost/callback")
+	var got []any
+	for _, body := range bodies {
+		got = append(got, body["application_type"])
+	}
+	if want := []any{"native", "native", "native", "web", "web"}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("application_type = %v, want %v", got, want)
 	}
 }
 
@@ -577,10 +610,7 @@ func TestOAuthCallbackServerPagesRendersPlainTextByDefault(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer func() { _ = callback.Close() }()
-	pending, err := callback.WaitForCallback("s1", "")
-	if err != nil {
-		t.Fatal(err)
-	}
+	pending := startWait(t, callback, "s1", "")
 	//nolint:bodyclose // readAllBody closes the body
 	response, err := http.Get(callback.RedirectURL + "?code=abc&state=s1")
 	if err != nil {
@@ -593,7 +623,7 @@ func TestOAuthCallbackServerPagesRendersPlainTextByDefault(t *testing.T) {
 	if body != "Authorization complete. You may close this window." {
 		t.Fatalf("body = %q", body)
 	}
-	received, err := pending.Wait(t.Context())
+	received, err := pending()
 	if err != nil || received.Code != "abc" {
 		t.Fatalf("callback = %#v, %v", received, err)
 	}
@@ -621,10 +651,7 @@ func TestOAuthCallbackServerPagesRendersPagesThroughRenderPage(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer func() { _ = callback.Close() }()
-	denied, err := callback.WaitForCallback("s1", "")
-	if err != nil {
-		t.Fatal(err)
-	}
+	denied := startWait(t, callback, "s1", "")
 	//nolint:bodyclose // readAllBody closes the body
 	failure, err := http.Get(callback.RedirectURL + "?error=access_denied&error_description=Denied&state=s1")
 	if err != nil {
@@ -634,7 +661,7 @@ func TestOAuthCallbackServerPagesRendersPagesThroughRenderPage(t *testing.T) {
 	if got := failure.Header.Get("Content-Type"); got != "text/html; charset=utf-8" {
 		t.Fatalf("content type = %q", got)
 	}
-	if _, err := denied.Wait(t.Context()); err == nil || err.Error() != "Denied" {
+	if _, err := denied(); err == nil || err.Error() != "Denied" {
 		t.Fatalf("denied err = %v", err)
 	}
 	mu.Lock()
@@ -644,10 +671,7 @@ func TestOAuthCallbackServerPagesRendersPagesThroughRenderPage(t *testing.T) {
 		t.Fatalf("page = %#v", last)
 	}
 
-	pending, err := callback.WaitForCallback("s2", "")
-	if err != nil {
-		t.Fatal(err)
-	}
+	pending := startWait(t, callback, "s2", "")
 	//nolint:bodyclose // readAllBody closes the body
 	success, err := http.Get(callback.RedirectURL + "?code=abc&state=s2")
 	if err != nil {
@@ -656,7 +680,7 @@ func TestOAuthCallbackServerPagesRendersPagesThroughRenderPage(t *testing.T) {
 	if body := readAllBody(success); body != "<p>ok</p>" {
 		t.Fatalf("body = %q", body)
 	}
-	received, err := pending.Wait(t.Context())
+	received, err := pending()
 	if err != nil || received.Code != "abc" {
 		t.Fatalf("callback = %#v, %v", received, err)
 	}
@@ -901,10 +925,7 @@ func TestOAuthCallbackServerRejectsAResponseOnAnotherPathThanTheExpectedOne(t *t
 	}
 	defer func() { _ = callback.Close() }()
 	origin := strings.TrimSuffix(callback.RedirectURL, "/callback")
-	mixedUp, err := callback.WaitForCallback("s1", "/callback/server-id")
-	if err != nil {
-		t.Fatal(err)
-	}
+	mixedUp := startWait(t, callback, "s1", "/callback/server-id")
 	//nolint:bodyclose // readAllBody closes the body
 	wrong, err := http.Get(origin + "/callback?code=abc&state=s1")
 	if err != nil {
@@ -914,14 +935,11 @@ func TestOAuthCallbackServerRejectsAResponseOnAnotherPathThanTheExpectedOne(t *t
 	if wrong.StatusCode != http.StatusBadRequest {
 		t.Fatalf("wrong path status = %d", wrong.StatusCode)
 	}
-	if _, err := mixedUp.Wait(t.Context()); err == nil || !strings.Contains(err.Error(), "arrived on another redirect URI") {
+	if _, err := mixedUp(); err == nil || !strings.Contains(err.Error(), "arrived on another redirect URI") {
 		t.Fatalf("mixed-up wait = %v", err)
 	}
 
-	pending, err := callback.WaitForCallback("s2", "/callback/server-id")
-	if err != nil {
-		t.Fatal(err)
-	}
+	pending := startWait(t, callback, "s2", "/callback/server-id")
 	//nolint:bodyclose // readAllBody closes the body
 	right, err := http.Get(origin + "/callback/server-id?code=abc&state=s2")
 	if err != nil {
@@ -931,7 +949,83 @@ func TestOAuthCallbackServerRejectsAResponseOnAnotherPathThanTheExpectedOne(t *t
 	if right.StatusCode != http.StatusOK {
 		t.Fatalf("right path status = %d", right.StatusCode)
 	}
-	if received, err := pending.Wait(t.Context()); err != nil || received.Code != "abc" {
+	if received, err := pending(); err != nil || received.Code != "abc" {
 		t.Fatalf("callback = %#v, %v", received, err)
 	}
+}
+
+// #10565: the flow stops when its context ends, without falling back to a redirect.
+func TestAuthorizeMcpStopsWhenItsContextEndsWithoutFallingBackToARedirect(t *testing.T) {
+	var stalled []string
+	var mu sync.Mutex
+	release := make(chan struct{})
+	// Accepts every request and never answers.
+	origin := listen(t, func(_ http.ResponseWriter, r *http.Request, _ string) {
+		mu.Lock()
+		stalled = append(stalled, r.URL.Path)
+		mu.Unlock()
+		select {
+		case <-r.Context().Done():
+		case <-release:
+		}
+	})
+	t.Cleanup(func() { close(release) })
+	count := func() int {
+		mu.Lock()
+		defer mu.Unlock()
+		return len(stalled)
+	}
+	run := func(t *testing.T, provider *testOAuthProvider) string {
+		t.Helper()
+		ctx, cancel := context.WithCancel(t.Context())
+		defer cancel()
+		before := count()
+		done := make(chan error, 1)
+		go func() {
+			_, err := oauth.AuthorizeMcp(ctx, provider, oauth.OAuthFlowOptions{ServerURL: origin + "/mcp"})
+			done <- err
+		}()
+		deadline := time.Now().Add(10 * time.Second)
+		for count() != before+1 {
+			if time.Now().After(deadline) {
+				t.Fatal("the flow never reached the stalled request")
+			}
+			time.Sleep(time.Millisecond)
+		}
+		cancel()
+		select {
+		case err := <-done:
+			if !errors.Is(err, context.Canceled) {
+				t.Fatalf("flow error = %v, want context.Canceled", err)
+			}
+		case <-time.After(10 * time.Second):
+			t.Fatal("the flow ignored its cancelled context")
+		}
+		if provider.authorizationURL != nil {
+			t.Fatalf("the flow fell back to an authorization redirect: %v", provider.authorizationURL)
+		}
+		mu.Lock()
+		defer mu.Unlock()
+		return stalled[len(stalled)-1]
+	}
+
+	t.Run("discovery", func(t *testing.T) {
+		if got := run(t, newTestOAuthProvider("http://127.0.0.1/callback")); got != "/.well-known/oauth-protected-resource/mcp" {
+			t.Fatalf("stalled at %q", got)
+		}
+	})
+	t.Run("a failed refresh otherwise falls back to a new authorization", func(t *testing.T) {
+		refreshing := newTestOAuthProvider("http://127.0.0.1/callback")
+		refreshing.client = &oauth.OAuthClientInformationMixed{ClientID: "client"}
+		refreshing.tokenSet = &oauth.OAuthTokens{AccessToken: "a1", RefreshToken: "r1", TokenType: "Bearer"}
+		refreshing.discovery = &oauth.OAuthDiscoveryState{
+			AuthorizationServerURL: origin,
+			AuthorizationServerMetadata: &oauth.AuthorizationServerMetadata{
+				Issuer: origin, AuthorizationEndpoint: origin + "/authorize", TokenEndpoint: origin + "/token", ResponseTypesSupported: []string{"code"},
+			},
+		}
+		if got := run(t, refreshing); got != "/token" {
+			t.Fatalf("stalled at %q", got)
+		}
+	})
 }

@@ -1,0 +1,36 @@
+[
+ {
+  "ids": [
+   "pkg:coding-agent/.#RpcEventListener",
+   "pkg:coding-agent/.#RpcEventListener::call:0"
+  ],
+  "targets": [
+   "coding/rpcclient/types.go#RpcEventListener"
+  ],
+  "production": [
+   "call:coding/rpcclient/rpc_client.go#RpcClient.emitEvent"
+  ],
+  "evidence": [
+   "test:coding/rpcclient/rpc_client_test.go#TestRpcClientListenerSubscribedDuringDispatchWaitsForTheNextEvent",
+   "test:coding/rpcclient/rpc_client_test.go#TestRpcClientListenerUnsubscribeDuringDispatchDoesNotSkipLaterListeners"
+  ],
+  "rationale": "RpcEventListener is the Go func(event JsonAgentSessionEvent); JsonAgentSessionEvent carries the record's type and the raw JSON."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#RpcClient::construct:0"
+  ],
+  "targets": [
+   "coding/rpcclient/rpc_client.go#NewRpcClient"
+  ],
+  "production": [
+   "public-api:coding/rpcclient/rpc_client.go#NewRpcClient"
+  ],
+  "evidence": [
+   "test:coding/rpcclient/rpc_client_test.go#TestRpcClientStartReportsEarlyExit",
+   "test:coding/rpcclient/rpc_client_unix_test.go#TestRpcClientStopDoesNotCloseStdoutBeforeChildExits"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "new RpcClient(options?) is NewRpcClient(RpcClientOptions); the optional options is a zero-value struct."
+ }
+]

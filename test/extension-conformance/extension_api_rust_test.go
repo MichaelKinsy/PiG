@@ -90,7 +90,7 @@ func loadRustAPIExtension(t *testing.T, packed bool) *rustAPIHost {
 			h.executed = append(h.executed, callerID+"|"+name+"|"+string(args))
 			h.mu.Unlock()
 			// Pi's runToolCall rejects with the first update sink error after the tool returned (agent-loop.ts:820-849).
-			if update, ok := options.OnUpdate.(func(agent.AgentToolResult) error); ok {
+			if update := options.OnUpdate; update != nil {
 				var first error
 				for _, step := range []string{"partial-one", "partial-two"} {
 					if err := update(agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: step}}}); err != nil && first == nil {
@@ -105,7 +105,9 @@ func loadRustAPIExtension(t *testing.T, packed bool) *rustAPIHost {
 				}
 			}
 			return extension.AgentToolCallOutcome{
-				ToolCall: ai.ToolCall{ID: callerID + "/1", Name: name, Arguments: ai.JsonObject{"q": "conformance"}},
+				// A value no SDK defaults to (types.ts:454): an SDK that drops durationMs reports none.
+				DurationMs: new(int64(4321)),
+				ToolCall:   ai.ToolCall{ID: callerID + "/1", Name: name, Arguments: ai.JsonObject{"q": "conformance"}},
 				Result: agent.AgentToolResult{
 					Content:           []ai.ToolResultMessageContent{ai.TextContent{Text: "nested-ok"}},
 					Details:           map[string]any{"n": float64(1)},
@@ -178,7 +180,7 @@ func (h *rustAPIHost) execute(t *testing.T, tool, toolCallID string) agent.Agent
 	if err != nil {
 		t.Fatalf("%s: %v", tool, err)
 	}
-	typed, ok := result.(agent.AgentToolResult)
+	typed, ok := result, true
 	if !ok {
 		t.Fatalf("%s result type %T", tool, result)
 	}
@@ -284,7 +286,7 @@ func TestRustSDKMcpServerRegistration(t *testing.T) {
 	forEachRustAPIMode(t, func(t *testing.T, h *rustAPIHost) {
 		names := func() []string {
 			var out []string
-			for _, server := range h.host.Runtime().McpServers() {
+			for _, server := range h.host.Runtime().McpServers().List() {
 				out = append(out, server.Name)
 			}
 			return out
@@ -354,7 +356,7 @@ func TestRustSDKExecuteTool(t *testing.T) {
 			t.Fatalf("onUpdate = %s, want both partial results in order", got)
 		}
 		outcome := toJSON(t, details["outcome"])
-		for _, want := range []string{`"id":"call-9/1"`, `"text":"nested-ok"`, `"structuredContent":{"answer":42}`} {
+		for _, want := range []string{`"id":"call-9/1"`, `"durationMs":4321`, `"text":"nested-ok"`, `"structuredContent":{"answer":42}`} {
 			if !strings.Contains(outcome, want) {
 				t.Fatalf("outcome %s lacks %s", outcome, want)
 			}
@@ -362,12 +364,12 @@ func TestRustSDKExecuteTool(t *testing.T) {
 	})
 }
 
-// virtual-models.ts:87-101 and loader.ts:480-497: the virtual model's route runs in the extension with the host's request.
+// virtual-models.ts:87-101 and pi.registerVirtualModel (packages/coding-agent/src/core/extensions/types.ts:1872, loader.ts:500-509): the virtual model's route runs in the extension with the host's request.
 func TestRustSDKVirtualModelRoute(t *testing.T) {
 	forEachRustAPIMode(t, func(t *testing.T, h *rustAPIHost) {
 		pending := h.host.Runtime().PendingVirtualModelRegistrations()
 		if len(pending) != 2 || pending[0].Definition.Provider != "conformance" || pending[0].Definition.ID != "auto" || pending[0].Definition.Name != "Auto" || pending[0].Definition.ContextWindow != 64000 || pending[1].Definition.ID != "identity" {
-			t.Fatalf("pending virtual models = %+v", pending)
+			t.Fatalf("registerVirtualModel: pending virtual models = %+v", pending)
 		}
 		route, err := pending[0].Definition.Route(t.Context(), extension.ModelRouteRequest{
 			Model:         &ai.Model{ID: "auto"},
@@ -404,11 +406,17 @@ func TestRustSDKPrepareLoadout(t *testing.T) {
 				}
 				return nil
 			},
+			GetPromptGuidelines: func(name string) []string {
+				if name == "grep" {
+					return []string{"Use grep for patterns.", "Quote regexes."}
+				}
+				return nil
+			},
 		})
 		if changes == nil {
 			t.Fatal("prepareLoadout returned no changes")
 		}
-		if got := changes.Descriptions["orchestrate"]; got != `Runs read,grep | deferred | Some("mcp__loadout")` {
+		if got := changes.Descriptions["orchestrate"]; got != `Runs read,grep | deferred | Some("mcp__loadout") | ["Use grep for patterns.", "Quote regexes."] | []` {
 			t.Fatalf("description = %q", got)
 		}
 		if !reflect.DeepEqual(changes.HiddenDeclarations, []string{"read", "grep"}) {

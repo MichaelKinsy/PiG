@@ -99,12 +99,33 @@ func TestParseBuildSpecRejectsInvalidDefaults(t *testing.T) {
 		{"duplicate target", "targets: [linux/amd64, linux/amd64]", "duplicates"},
 		{"output path", "outputName: dist/pig", "binary basename"},
 		{"extension realization", "extensionRealization: subprocess", "must be fused"},
+		{"frontend under build", "frontend: ./tern", "field frontend not found"},
 		{"unknown field", "builder: docker", "field builder not found"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			pigletYAML := "name: release\nbuild:\n  " + tc.build + "\n"
 			if _, err := ParseBytes([]byte(pigletYAML)); err == nil || !strings.Contains(err.Error(), tc.want) {
+				t.Fatalf("error = %v, want %q", err, tc.want)
+			}
+		})
+	}
+}
+
+func TestParseSlotsRejectsInvalidMembers(t *testing.T) {
+	for _, tc := range []struct {
+		name, slots, want string
+	}{
+		{"absolute member", "slots:\n  frontend:\n    member: /opt/tern\n", "relative path inside the Piglet directory"},
+		{"escaping member", "slots:\n  frontend:\n    member: ../tern\n", "relative path inside the Piglet directory"},
+		{"nested escaping member", "slots:\n  frontend:\n    member: member/../../tern\n", "relative path inside the Piglet directory"},
+		{"missing member", "slots:\n  frontend: {}\n", "slots.frontend.member is required"},
+		{"unknown slot", "slots:\n  header:\n    member: ./header\n", "field header not found"},
+		{"unknown member field", "slots:\n  frontend:\n    member: ./tern\n    fallback: ansi\n", "field fallback not found"},
+		{"unknown removed slot", "extends:\n  source: ./base.yaml\n  remove:\n    slots: [header]\n", `unknown slot "header"`},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if _, err := ParseBytes([]byte("name: app\n" + tc.slots)); err == nil || !strings.Contains(err.Error(), tc.want) {
 				t.Fatalf("error = %v, want %q", err, tc.want)
 			}
 		})

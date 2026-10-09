@@ -6,7 +6,7 @@
 // inputLoop is paused), reads keystrokes via tui.ReadInput, and
 // dispatches them to the overlay component until Done() returns true.
 //
-// Two flavours: FilterableList (returns int index) and TreeSelect
+// Two flavours: FilterableList (returns int index) and TreeSelectorComponent
 // (returns string id).
 
 package codingagent
@@ -17,10 +17,12 @@ import (
 	"os"
 	"slices"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/MichaelKinsy/PiG/agent"
 	"github.com/MichaelKinsy/PiG/ai"
+	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/extensions/sdk/json"
 	"github.com/MichaelKinsy/PiG/tui"
 	"github.com/MichaelKinsy/PiG/tui/widthx"
@@ -38,7 +40,7 @@ func forkAndRebuild(sess *Session, agent *agent.Agent, entryID string) error {
 	if sess == nil {
 		return nil
 	}
-	if err := sess.Fork(entryID); err != nil {
+	if err := sess.Branch(entryID); err != nil {
 		return err
 	}
 	if agent != nil {
@@ -69,7 +71,7 @@ func (sm *SessionManager) ForkToNewSession(source *Session, userMsgEntryID strin
 	if source == nil {
 		return nil, "", fmt.Errorf("fork: nil source session")
 	}
-	entry, ok := source.EntryByID(userMsgEntryID)
+	entry, ok := source.GetEntry(userMsgEntryID)
 	if !ok {
 		return nil, "", fmt.Errorf("Invalid entry ID for forking")
 	}
@@ -78,7 +80,7 @@ func (sm *SessionManager) ForkToNewSession(source *Session, userMsgEntryID strin
 		return nil, "", fmt.Errorf("Invalid entry ID for forking")
 	}
 	selectedText := extractMessageText(message)
-	if entry.Base.ParentID == nil {
+	if entry.Base().ParentID == nil {
 		// Selected message is the root: upstream forks into a fresh empty
 		// session that only records parentSession (newSession fallback).
 		id, err := generateSessionID()
@@ -101,49 +103,18 @@ func (sm *SessionManager) ForkToNewSession(source *Session, userMsgEntryID strin
 	if err := source.CheckSavedForFork(); err != nil {
 		return nil, "", err
 	}
-	newSess, err := sm.Clone(source, *entry.Base.ParentID)
+	newSess, err := sm.Clone(source, *entry.Base().ParentID)
 	if err != nil {
 		return nil, "", err
 	}
 	return newSess, selectedText, nil
 }
 
-func (m *InteractiveMode) runModalSelector(list *tui.FilterableList, opts tui.OverlayOptions) (int, bool) {
-	if opts.Title == "Fork from message" {
-		selector := tui.NewUserMessageSelector(list.Labels)
-		return m.runEditorSlotUserMessageSelector(selector)
-	}
-
-	h := m.tuiInst.OpenOverlay(list, opts)
+// runModalModelSelector runs the typed-FQ ModelSelectorComponent.
+func (m *InteractiveMode) runModalModelSelector(ctx context.Context, ms *tui.ModelSelectorComponent, opts tui.OverlayOptions) (string, bool) {
+	h := m.tuiInst.ShowOverlay(ms, opts)
 	defer h.Close()
-	m.tuiInst.Render()
-	inputCh, releaseInput := m.acquireModalInputChannel()
-	defer releaseInput()
-	for !list.Done() {
-		buf, ok := m.readModalInput(inputCh)
-		if !ok {
-			return -1, false
-		}
-		for _, chunk := range dropKeyReleases(list, []string{string(buf)}) {
-			list.HandleInput(chunk)
-			if list.Done() {
-				break
-			}
-		}
-		m.tuiInst.Render()
-	}
-	if list.Cancelled() {
-		return -1, false
-	}
-	return list.SelectedIndex(), true
-}
-
-// runModalModelSelector: counterpart to runModalSelector
-// for the typed-FQ ModelSelector component.
-func (m *InteractiveMode) runModalModelSelector(ctx context.Context, ms *tui.ModelSelector, opts tui.OverlayOptions, refresh <-chan modelSelectorRefresh) (string, bool) {
-	h := m.tuiInst.OpenOverlay(ms, opts)
-	defer h.Close()
-	return m.runModelSelectorInput(ctx, ms, refresh)
+	return m.runModelSelectorInput(ctx, ms)
 }
 
 // runEditorSlotModelSelector replaces the editor with the model
@@ -157,20 +128,20 @@ func (m *InteractiveMode) runModalModelSelector(ctx context.Context, ms *tui.Mod
 //	restore editor.
 //
 // No floating overlay; chat stays fully visible above.
-func (m *InteractiveMode) runEditorSlotModelSelector(ctx context.Context, ms *tui.ModelSelector, refresh <-chan modelSelectorRefresh) (string, bool) {
+func (m *InteractiveMode) runEditorSlotModelSelector(ctx context.Context, ms *tui.ModelSelectorComponent) (string, bool) {
 	if m.layout == nil {
 		// Fallback: modal overlay (only happens in tests / non-TTY).
-		return m.runModalModelSelector(ctx, ms, tui.OverlayOptions{Title: "Select model", WidthFraction: 0.85, HeightFraction: 0.7}, refresh)
+		return m.runModalModelSelector(ctx, ms, tui.OverlayOptions{Title: "Select model", WidthFraction: 0.85, HeightFraction: 0.7})
 	}
 	m.editorContainer.SetChildren(ms)
 	defer func() {
 		m.editorContainer.SetChildren(m.editor)
 		m.tuiInst.RequestRender()
 	}()
-	return m.runModelSelectorInput(ctx, ms, refresh)
+	return m.runModelSelectorInput(ctx, ms)
 }
 
-func (m *InteractiveMode) runModelSelectorInput(ctx context.Context, ms *tui.ModelSelector, refresh <-chan modelSelectorRefresh) (string, bool) {
+func (m *InteractiveMode) runModelSelectorInput(ctx context.Context, ms *tui.ModelSelectorComponent) (string, bool) {
 	m.tuiInst.Render()
 	inputCh, releaseInput := m.acquireModalInputChannel()
 	defer releaseInput()
@@ -186,17 +157,6 @@ func (m *InteractiveMode) runModelSelectorInput(ctx context.Context, ms *tui.Mod
 			return "", false
 		case task := <-m.uiTaskCh:
 			task()
-		case refreshed := <-refresh:
-			if refreshed.updateModels {
-				ms.UpdateModels(refreshed.models)
-			}
-			if refreshed.errorText != "" {
-				ms.SetError(refreshed.errorText)
-			} else {
-				ms.SetRefreshSuccess("Model catalogs refreshed.")
-			}
-			m.updateProviderInfo()
-			refresh = nil
 		case buf := <-inputCh:
 			for _, chunk := range m.modalInputChunks(ms, []string{string(buf)}) {
 				ms.HandleInput(chunk)
@@ -213,8 +173,8 @@ func (m *InteractiveMode) runModelSelectorInput(ctx context.Context, ms *tui.Mod
 	return ms.SelectedFQ(), true
 }
 
-func (m *InteractiveMode) runModalTreeSelector(ts *tui.TreeSelect, opts tui.OverlayOptions) (string, bool) {
-	h := m.tuiInst.OpenOverlay(ts, opts)
+func (m *InteractiveMode) runModalTreeSelector(ts *tui.TreeSelectorComponent, opts tui.OverlayOptions) (string, bool) {
+	h := m.tuiInst.ShowOverlay(ts, opts)
 	defer h.Close()
 	m.tuiInst.Render()
 	inputCh, releaseInput := m.acquireModalInputChannel()
@@ -241,49 +201,7 @@ func (m *InteractiveMode) runModalTreeSelector(ts *tui.TreeSelect, opts tui.Over
 // settingsFrame mirrors upstream SettingsSelectorComponent, which draws a
 // DynamicBorder above and below the settings list and every submenu it opens.
 func settingsFrame(content tui.Component) tui.Component {
-	return tui.NewContainer(tui.NewDynamicBorder(""), content, tui.NewDynamicBorder(""))
-}
-
-// runModalSettingsList opens a SettingsList in the editor slot (no overlay)
-// and blocks until the user cancels. Each change calls onChange while the
-// list stays open with its selection and search, and the row then shows the
-// value onChange returns, as upstream SettingsList's onChange does
-// (settings-list.ts:264-291). Mirrors upstream showSelector pattern
-// (interactive-mode.ts:3655-3666).
-func (m *InteractiveMode) runModalSettingsList(sl *tui.SettingsList, onChange func(id, value string) string) {
-	// Swap editor → framed settings list in the layout's editor slot.
-	frame := settingsFrame(sl)
-	m.editorContainer.SetChildren(frame)
-	m.tuiInst.Render()
-
-	defer func() {
-		m.editorContainer.SetChildren(m.editor)
-		m.tuiInst.RequestRender()
-	}()
-
-	inputCh, releaseInput := m.acquireModalInputChannel()
-	defer releaseInput()
-	for {
-		buf, ok := m.readModalInput(inputCh)
-		if !ok {
-			return
-		}
-		for _, chunk := range dropKeyReleases(sl, []string{string(buf)}) {
-			sl.HandleInput(chunk)
-			if sl.Cancelled() {
-				return
-			}
-			if sl.Done() {
-				// A change that opens its own selector takes the editor slot
-				// meanwhile; the list returns to it afterwards.
-				id, value := sl.ChangedID, sl.ChangedValue
-				sl.Reset()
-				sl.UpdateValue(id, onChange(id, value))
-				m.editorContainer.SetChildren(frame)
-			}
-		}
-		m.tuiInst.Render()
-	}
+	return tui.NewContainer(tui.NewDynamicBorder(), content, tui.NewDynamicBorder())
 }
 
 // runEditorSlotSelectSubmenu replaces the editor with a submenu-style selector
@@ -323,6 +241,53 @@ func (m *InteractiveMode) runEditorSlotComponent(component tui.Component, handle
 		m.tuiInst.Render()
 	}
 	return true
+}
+
+// runEditorSlotCustom shows component in the editor slot, feeding it input,
+// repainting on request, and running queued loop tasks until done closes.
+func (m *InteractiveMode) runEditorSlotCustom(component interface {
+	tui.Component
+	HandleInput(data string)
+}, renderNotify <-chan struct{}, tasks <-chan func(), done <-chan struct{}) {
+	m.editorContainer.SetChildren(component)
+	m.tuiInst.Render()
+	defer func() {
+		m.editorContainer.SetChildren(m.editor)
+		m.tuiInst.RequestRender()
+	}()
+	inputCh, releaseInput := m.acquireModalInputChannel()
+	defer releaseInput()
+	for {
+		if m.modalStopped() {
+			return
+		}
+		select {
+		case <-m.modalContextDone():
+			return
+		case err := <-m.inputErrCh:
+			m.inputLoopErr = err
+			return
+		case task := <-m.uiTaskCh:
+			task()
+		case buf := <-inputCh:
+			for _, chunk := range m.modalInputChunks(component, []string{string(buf)}) {
+				component.HandleInput(chunk)
+			}
+		case <-renderNotify:
+		case task := <-tasks:
+			task()
+		case <-done:
+			for {
+				select {
+				case task := <-tasks:
+					task()
+				default:
+					return
+				}
+			}
+		}
+		m.tuiInst.Render()
+	}
 }
 
 const automaticThemeValue = "/"
@@ -389,255 +354,6 @@ func defaultAutomaticThemeNames(themeSetting string, names []string) (lightTheme
 	return themeName, themeName
 }
 
-type automaticThemeMenu struct {
-	tui.BaseComponent
-	list    *tui.SettingsList
-	submenu *tui.SelectSubmenuComponent
-}
-
-func newAutomaticThemeMenu(lightTheme, darkTheme string) *automaticThemeMenu {
-	items := []tui.SettingItem{
-		{
-			ID:           "light-theme",
-			Label:        "Light theme",
-			Description:  "Theme to use in automatic mode when the terminal is light",
-			CurrentValue: lightTheme,
-			Values:       []string{lightTheme},
-		},
-		{
-			ID:           "dark-theme",
-			Label:        "Dark theme",
-			Description:  "Theme to use in automatic mode when the terminal is dark",
-			CurrentValue: darkTheme,
-			Values:       []string{darkTheme},
-		},
-		{
-			ID:           "apply",
-			Label:        "Apply",
-			Description:  "Save and go back",
-			CurrentValue: "save and go back",
-			Values:       []string{"save and go back"},
-		},
-		{
-			ID:           "single-mode",
-			Label:        "Change mode",
-			Description:  "Switch to one theme for light and dark",
-			CurrentValue: "switch to single theme",
-			Values:       []string{"switch to single theme"},
-		},
-	}
-	// Upstream showAutomaticMenu: SettingsList(items, min(items.length, 10))
-	// without search.
-	return &automaticThemeMenu{list: tui.NewSettingsListWithOptions(items, min(len(items), 10), false)}
-}
-
-func (m *automaticThemeMenu) Render(width int) []string {
-	th := tui.ActiveTheme()
-	accent := th.Accent
-	if accent == "" {
-		accent = "\x1b[38;2;138;190;183m"
-	}
-	muted := th.Muted
-	if muted == "" {
-		muted = "\x1b[38;2;128;128;128m"
-	}
-	// Upstream showAutomaticMenu adds the heading rows as Text(..., 0, 0), so
-	// they wrap to the render width.
-	text := func(content string) []string { return tui.NewPaddedText(content, 0, 0, nil).Render(width) }
-	lines := text(accent + "\x1b[1mAutomatic Theme" + th.Reset)
-	lines = append(lines, "")
-	lines = append(lines, text(muted+"Choose themes for terminal light and dark appearance."+th.Reset)...)
-	lines = append(lines, text(muted+"Light/dark detection requires terminal support."+th.Reset)...)
-	lines = append(lines, "")
-	if m.submenu != nil {
-		lines = append(lines, m.submenu.Render(width)...)
-	} else {
-		lines = append(lines, m.list.Render(width)...)
-	}
-	return lines
-}
-
-func (m *automaticThemeMenu) HandleInput(data string) { m.list.HandleInput(data) }
-func (m *automaticThemeMenu) Done() bool              { return m.list.Done() }
-func (m *automaticThemeMenu) Cancelled() bool         { return m.list.Cancelled() }
-func (m *automaticThemeMenu) Reset()                  { m.list.Reset() }
-func (m *automaticThemeMenu) ChangedID() string       { return m.list.ChangedID }
-func (m *automaticThemeMenu) UpdateValue(id, value string) {
-	m.list.UpdateValue(id, value)
-	m.Invalidate()
-}
-
-// runEditorSlotThemeSubmenu mirrors upstream theme submenu behavior closely:
-// selection changes preview the theme live; Esc restores the original theme;
-// Enter commits the selected theme. The first screen offers Automatic mode,
-// which stores settings as "lightTheme/darkTheme".
-func (m *InteractiveMode) runEditorSlotThemeSubmenu(currentTheme string) (string, bool) {
-	reg := tui.ActiveThemeRegistry()
-	names := reg.Names()
-	if light, _, ok := tui.ParseAutoThemeSetting(currentTheme); ok {
-		return m.runEditorSlotAutomaticThemeSubmenu(currentTheme, names, light)
-	}
-
-	currentValue := preferredThemeName(names, currentTheme, tui.SystemThemeName)
-	items := themeSelectItemsWithAutomatic(names, currentValue)
-	sel := tui.NewSelectSubmenu("Theme", "Select a theme, or choose automatic to follow terminal appearance.", items, currentValue)
-	m.editorContainer.SetChildren(settingsFrame(sel))
-	m.tuiInst.Render()
-	original := currentTheme
-	lastPreview := currentValue
-	restored := false
-	restore := func() {
-		if restored {
-			return
-		}
-		m.editorContainer.SetChildren(m.editor)
-		m.tuiInst.Render()
-		restored = true
-	}
-	defer restore()
-
-	inputCh, releaseInput := m.acquireModalInputChannel()
-	defer releaseInput()
-	for !sel.Done() {
-		buf, ok := m.readModalInput(inputCh)
-		if !ok {
-			return "", false
-		}
-		for _, chunk := range dropKeyReleases(sel, []string{string(buf)}) {
-			sel.HandleInput(chunk)
-			preview := sel.CurrentValue()
-			if preview != "" && preview != lastPreview {
-				if preview == automaticThemeValue {
-					light, dark := defaultAutomaticThemeNames(original, names)
-					preview = light + "/" + dark
-				}
-				m.previewTheme(preview)
-				lastPreview = sel.CurrentValue()
-			}
-			if sel.Done() {
-				break
-			}
-		}
-		m.tuiInst.Render()
-	}
-	if sel.Cancelled() {
-		m.previewTheme(original)
-		return "", false
-	}
-	selected := sel.SelectedValue()
-	if selected == automaticThemeValue {
-		restore()
-		light, _, _ := tui.ParseAutoThemeSetting(original)
-		return m.runEditorSlotAutomaticThemeSubmenu(original, names, light)
-	}
-	return selected, true
-}
-
-func (m *InteractiveMode) runEditorSlotAutomaticThemeSubmenu(currentTheme string, names []string, preferredSingle string) (string, bool) {
-	lightTheme, darkTheme := defaultAutomaticThemeNames(currentTheme, names)
-	menu := newAutomaticThemeMenu(lightTheme, darkTheme)
-	m.editorContainer.SetChildren(settingsFrame(menu))
-	m.tuiInst.Render()
-	original := currentTheme
-	restored := false
-	restore := func() {
-		if restored {
-			return
-		}
-		m.editorContainer.SetChildren(m.editor)
-		m.tuiInst.Render()
-		restored = true
-	}
-	defer restore()
-
-	inputCh, releaseInput := m.acquireModalInputChannel()
-	defer releaseInput()
-	for {
-		for !menu.Done() {
-			buf, ok := m.readModalInput(inputCh)
-			if !ok {
-				return "", false
-			}
-			for _, chunk := range dropKeyReleases(menu, []string{string(buf)}) {
-				menu.HandleInput(chunk)
-				if menu.Done() {
-					break
-				}
-			}
-			m.tuiInst.Render()
-		}
-		if menu.Cancelled() {
-			m.previewTheme(original)
-			return "", false
-		}
-
-		switch menu.ChangedID() {
-		case "light-theme":
-			if chosen, ok := m.runThemeChoiceSubmenu(menu, "Light Theme", "Select the theme to use for light terminal appearance", themeSelectItems(names, lightTheme), lightTheme, lightTheme+"/"+darkTheme); ok {
-				lightTheme = chosen
-				menu.UpdateValue("light-theme", chosen)
-				m.previewTheme(lightTheme + "/" + darkTheme)
-			}
-		case "dark-theme":
-			if chosen, ok := m.runThemeChoiceSubmenu(menu, "Dark Theme", "Select the theme to use for dark terminal appearance", themeSelectItems(names, darkTheme), darkTheme, lightTheme+"/"+darkTheme); ok {
-				darkTheme = chosen
-				menu.UpdateValue("dark-theme", chosen)
-				m.previewTheme(lightTheme + "/" + darkTheme)
-			}
-		case "apply":
-			return lightTheme + "/" + darkTheme, true
-		case "single-mode":
-			restore()
-			if preferredSingle == "" {
-				preferredSingle = darkTheme
-			}
-			return m.runEditorSlotThemeSubmenu(preferredSingle)
-		}
-		menu.Reset()
-	}
-}
-
-// runThemeChoiceSubmenu replaces only the parent's list content and restores its pending automatic selection when the child is canceled.
-// upstream: packages/coding-agent/src/modes/interactive/components/settings-selector.ts:createThemeSelect
-func (m *InteractiveMode) runThemeChoiceSubmenu(parent *automaticThemeMenu, title, description string, items []tui.SelectItem, currentValue, parentTheme string) (string, bool) {
-	sel := tui.NewSelectSubmenu(title, description, items, currentValue)
-	parent.submenu = sel
-	m.editorContainer.SetChildren(settingsFrame(parent))
-	m.tuiInst.Render()
-	lastPreview := currentValue
-	defer func() {
-		parent.submenu = nil
-		m.editorContainer.SetChildren(settingsFrame(parent))
-		m.tuiInst.RequestRender()
-	}()
-
-	inputCh, releaseInput := m.acquireModalInputChannel()
-	defer releaseInput()
-	for !sel.Done() {
-		buf, ok := m.readModalInput(inputCh)
-		if !ok {
-			return "", false
-		}
-		for _, chunk := range dropKeyReleases(sel, []string{string(buf)}) {
-			sel.HandleInput(chunk)
-			preview := sel.CurrentValue()
-			if preview != "" && preview != lastPreview {
-				m.previewTheme(preview)
-				lastPreview = preview
-			}
-			if sel.Done() {
-				break
-			}
-		}
-		m.tuiInst.Render()
-	}
-	if sel.Cancelled() {
-		m.previewTheme(parentTheme)
-		return "", false
-	}
-	return sel.SelectedValue(), true
-}
-
 // runEditorSlotTreeSelector replaces the editor with the tree selector in the
 // layout's editor slot, handles input until done, then restores the editor.
 // Mirrors upstream showSelector (interactive-mode.ts:3655-3666) which does:
@@ -656,7 +372,7 @@ func sessionAge(t time.Time) string {
 	switch {
 	case min < 1:
 		return "now"
-	case min < 60:
+	case min < 60: // upstream: packages/coding-agent/src/modes/interactive/components/session-selector.ts:formatSessionDate
 		return fmt.Sprintf("%dm", min)
 	case hrs < 24:
 		return fmt.Sprintf("%dh", hrs)
@@ -727,9 +443,9 @@ func (m *InteractiveMode) runEditorSlotExtensionSelectorAs(sel *tui.ExtensionSel
 //
 // Uses the modal input channel to avoid racing with the main input
 // goroutine for stdin reads (same pattern as runEditorSlotTreeSelector).
-func (m *InteractiveMode) runEditorSlotExtensionEditor(ed *tui.ExtensionEditorComponent) (string, bool) {
-	ed.SetExternalEditor(func(content string, apply func(string)) {
-		m.openExternalEditorBuffer(m.runCtx, content, apply)
+func (m *InteractiveMode) runEditorSlotExtensionEditor(ed *ExtensionEditorComponent, result func() (value string, done, cancelled bool)) (string, bool) {
+	ed.SetExternalEditor(func(command, content string, apply func(string)) {
+		m.openExternalEditorBuffer(m.runCtx, command, content, apply)
 	})
 	if m.layout == nil {
 		return "", false
@@ -748,7 +464,10 @@ func (m *InteractiveMode) runEditorSlotExtensionEditor(ed *tui.ExtensionEditorCo
 	if ctx == nil {
 		ctx = context.Background()
 	}
-	for !ed.Done() {
+	for {
+		if _, done, _ := result(); done {
+			break
+		}
 		if m.modalStopped() {
 			return "", false
 		}
@@ -766,23 +485,31 @@ func (m *InteractiveMode) runEditorSlotExtensionEditor(ed *tui.ExtensionEditorCo
 			}
 			for _, chunk := range dropKeyReleases(ed, []string{string(buf)}) {
 				ed.HandleInput(chunk)
-				if ed.Done() {
+				if _, done, _ := result(); done {
 					break
 				}
 			}
 			m.tuiInst.Render()
 		}
 	}
-	if ed.Cancelled() {
+	value, _, cancelled := result()
+	if cancelled {
 		return "", false
 	}
-	return ed.Value(), true
+	return value, true
 }
 
-func (m *InteractiveMode) runEditorSlotUserMessageSelector(sel *tui.UserMessageSelector) (int, bool) {
+// runEditorSlotUserMessageSelector shows the fork picker in the editor slot and returns the selected entry ID.
+func (m *InteractiveMode) runEditorSlotUserMessageSelector(items []tui.UserMessageItem) (string, bool) {
+	var selectedID string
+	var done, cancelled atomic.Bool
+	sel := tui.NewUserMessageSelectorComponent(items,
+		func(entryID string) { selectedID = entryID; done.Store(true) },
+		func() { cancelled.Store(true); done.Store(true) },
+		"")
 	var overlay *tui.OverlayHandle
 	if m.layout == nil {
-		overlay = m.tuiInst.OpenOverlay(sel, tui.OverlayOptions{WidthFraction: 0.85, HeightFraction: 0.7})
+		overlay = m.tuiInst.ShowOverlay(sel, tui.OverlayOptions{WidthFraction: 0.85, HeightFraction: 0.7})
 		defer overlay.Close()
 	} else {
 		m.editorContainer.SetChildren(sel)
@@ -796,21 +523,40 @@ func (m *InteractiveMode) runEditorSlotUserMessageSelector(sel *tui.UserMessageS
 	inputCh, releaseInput := m.acquireModalInputChannel()
 	defer releaseInput()
 
-	for !sel.Done() {
+	// upstream: interactive-mode.ts:5534 focuses selector.getMessageList(), so the list takes the input. A parent Container reuses the
+	// selector's lines until it is invalidated, so a list change invalidates the selector.
+	list := sel.GetMessageList()
+	handle := func(data string) {
+		list.HandleInput(data)
+		sel.Invalidate()
+	}
+	for !done.Load() {
 		buf, ok := m.readModalInput(inputCh)
 		if !ok {
-			return -1, false
+			return "", false
 		}
-		dispatchModalInput(sel, []string{string(buf)}, sel.HandleInput, sel.Done)
+		dispatchModalInput(sel, []string{string(buf)}, handle, done.Load)
 		m.tuiInst.Render()
 	}
-	if sel.Cancelled() {
-		return -1, false
+	if cancelled.Load() {
+		return "", false
 	}
-	return sel.SelectedIndex(), true
+	return selectedID, true
 }
 
-func (m *InteractiveMode) runEditorSlotSessionSelector(sel *sessionSelector) (string, bool) {
+// sessionSelectorOutcome records which of the selector's onSelect and onCancel callbacks ran (session-selector.ts:757-763), so a host reads the
+// result from the callbacks rather than from the component's polled state.
+type sessionSelectorOutcome struct {
+	path      string
+	selected  bool
+	cancelled bool
+}
+
+func (o *sessionSelectorOutcome) onSelect(sessionPath string) { o.path, o.selected = sessionPath, true }
+func (o *sessionSelectorOutcome) onCancel()                   { o.cancelled = true }
+func (o *sessionSelectorOutcome) finished() bool              { return o.selected || o.cancelled }
+
+func (m *InteractiveMode) runEditorSlotSessionSelector(sel *SessionSelectorComponent, outcome *sessionSelectorOutcome) (string, bool) {
 	defer sel.close()
 	sel.drainLoadUpdates()
 	if m.layout == nil {
@@ -826,7 +572,8 @@ func (m *InteractiveMode) runEditorSlotSessionSelector(sel *sessionSelector) (st
 
 	inputCh, releaseInput := m.acquireModalInputChannel()
 	defer releaseInput()
-	for !sel.Done() {
+	finished := func() bool { return outcome.finished() || sel.operationError != nil }
+	for !finished() {
 		if m.modalStopped() {
 			return "", false
 		}
@@ -854,7 +601,7 @@ func (m *InteractiveMode) runEditorSlotSessionSelector(sel *sessionSelector) (st
 			if !ok {
 				return "", false
 			}
-			m.dispatchModalInput(sel, []string{string(buf)}, sel.HandleInput, sel.Done)
+			m.dispatchModalInput(sel, []string{string(buf)}, sel.HandleInput, finished)
 		}
 		m.tuiInst.Render()
 	}
@@ -862,13 +609,13 @@ func (m *InteractiveMode) runEditorSlotSessionSelector(sel *sessionSelector) (st
 		// Pi's void confirmRename leaves a rename rejection unhandled, so Node raises it to the uncaughtException handler (interactive-mode.ts:4266) that Run's recover mirrors. The deferred cleanups above run first.
 		panic(uncaughtError{sel.operationError})
 	}
-	if sel.Cancelled() {
+	if outcome.cancelled {
 		return "", false
 	}
-	return sel.SelectedPath(), sel.SelectedPath() != ""
+	return outcome.path, outcome.path != ""
 }
 
-func (m *InteractiveMode) runEditorSlotTreeSelector(ts *tui.TreeSelect) (string, bool) {
+func (m *InteractiveMode) runEditorSlotTreeSelector(ts *tui.TreeSelectorComponent) (string, bool) {
 	if m.layout == nil {
 		// Fallback: overlay (shouldn't happen in normal flow).
 		return m.runModalTreeSelector(ts, tui.OverlayOptions{
@@ -876,12 +623,15 @@ func (m *InteractiveMode) runEditorSlotTreeSelector(ts *tui.TreeSelect) (string,
 		})
 	}
 
-	// Swap editor → tree selector in layout.
+	// Swap editor → tree selector in layout; the selector takes focus so its label input shows the cursor (upstream showSelector setFocus).
+	previousFocus := m.tuiInst.GetFocusedComponent()
 	m.editorContainer.SetChildren(ts)
+	m.tuiInst.SetFocus(ts)
 	m.tuiInst.Render()
 
 	defer func() {
 		m.editorContainer.SetChildren(m.editor)
+		m.tuiInst.SetFocus(previousFocus)
 		m.tuiInst.RequestRender()
 	}()
 
@@ -915,16 +665,15 @@ func (m *InteractiveMode) runEditorSlotTreeSelector(ts *tui.TreeSelect) (string,
 }
 
 // userMessageSelectorItems extracts the user-role messages from the current
-// path-to-leaf and returns parallel slices of entry IDs and message texts in
-// chronological order (oldest to newest), matching upstream's
+// path-to-leaf in chronological order (oldest to newest), matching upstream's
 // session.getUserMessagesForForking() contract.
-func userMessageSelectorItems(s *Session) (ids []string, labels []string) {
-	leaf := s.LeafID()
+func userMessageSelectorItems(s *Session) []tui.UserMessageItem {
+	leaf := s.GetLeafID()
 	if leaf == nil {
-		return nil, nil
+		return nil
 	}
-	path := s.Branch(*leaf)
-	for _, e := range path {
+	var items []tui.UserMessageItem
+	for _, e := range s.GetBranch(*leaf) {
 		me, ok := s.messageFor(e)
 		if !ok || me.Message.User == nil {
 			continue
@@ -933,10 +682,9 @@ func userMessageSelectorItems(s *Session) (ids []string, labels []string) {
 		if txt == "" {
 			continue
 		}
-		ids = append(ids, me.ID)
-		labels = append(labels, txt)
+		items = append(items, tui.UserMessageItem{ID: me.ID, Text: txt})
 	}
-	return ids, labels
+	return items
 }
 
 // treeNodeAdapter bridges *SessionTreeNode (codingagent) →
@@ -952,7 +700,7 @@ type treeNodeAdapter struct {
 	f *treeRowFormatter
 }
 
-func (a *treeNodeAdapter) NodeID() string { return a.n.Entry.Base.ID }
+func (a *treeNodeAdapter) NodeID() string { return a.n.Entry.Base().ID }
 
 func (a *treeNodeAdapter) NodeLabelTimestamp() string { return a.n.LabelTimestamp }
 
@@ -972,7 +720,7 @@ func (a *treeNodeAdapter) SetNodeBranchLabel(label, timestamp string) {
 // `"user"` (user-only mode), and `"labeled"` (labeled-only mode).
 func (a *treeNodeAdapter) NodeFilterTags() []string {
 	var tags []string
-	switch a.n.Entry.Base.Type {
+	switch a.n.Entry.Base().Type {
 	case "label", "context_edit", "custom", "model_change", "thinking_level_change", "session_info":
 		tags = append(tags, "settings")
 	case "usage":
@@ -1002,7 +750,7 @@ func (a *treeNodeAdapter) NodeSearchableText() string {
 	if a.n.Label != "" {
 		parts = append(parts, a.n.Label)
 	}
-	switch e.Base.Type {
+	switch e.Base().Type {
 	case "message":
 		if a.f != nil {
 			if me, ok := a.f.asMessage(e); ok {
@@ -1012,36 +760,36 @@ func (a *treeNodeAdapter) NodeSearchableText() string {
 		}
 	case "custom_message":
 		var ent CustomMessageEntry
-		_ = json.Unmarshal(e.raw, &ent)
+		_ = json.Unmarshal(e.Raw(), &ent)
 		parts = append(parts, ent.CustomType, extractCustomMessageText(ent))
 	case "compaction":
-		parts = append(parts, "compaction", e.Base.Type)
+		parts = append(parts, "compaction", e.Base().Type)
 	case "branch_summary":
 		var ent BranchSummaryEntry
-		_ = json.Unmarshal(e.raw, &ent)
+		_ = json.Unmarshal(e.Raw(), &ent)
 		parts = append(parts, "branch", "summary", ent.Summary)
 	case "session_info":
 		var ent SessionInfoEntry
-		_ = json.Unmarshal(e.raw, &ent)
+		_ = json.Unmarshal(e.Raw(), &ent)
 		parts = append(parts, "title", ent.Name)
 	case "model_change":
 		var ent ModelChangeEntry
-		_ = json.Unmarshal(e.raw, &ent)
+		_ = json.Unmarshal(e.Raw(), &ent)
 		parts = append(parts, "model", ent.ModelID)
 	case "thinking_level_change":
 		var ent ThinkingLevelEntry
-		_ = json.Unmarshal(e.raw, &ent)
+		_ = json.Unmarshal(e.Raw(), &ent)
 		parts = append(parts, "thinking", ent.ThinkingLevel)
 	case "custom":
 		var ent CustomEntry
-		_ = json.Unmarshal(e.raw, &ent)
+		_ = json.Unmarshal(e.Raw(), &ent)
 		parts = append(parts, "custom", ent.CustomType)
 	case "context_edit":
 		mode, targetID := contextEditSummary(e)
 		parts = append(parts, "context edit", mode, targetID)
 	case "label":
 		var ent LabelEntry
-		_ = json.Unmarshal(e.raw, &ent)
+		_ = json.Unmarshal(e.Raw(), &ent)
 		label := ""
 		if ent.Label != nil {
 			label = *ent.Label
@@ -1055,14 +803,14 @@ func (a *treeNodeAdapter) NodeSearchableText() string {
 func (a *treeNodeAdapter) NodeCopyText() *string {
 	e := a.n.Entry
 	text := ""
-	switch e.Base.Type {
+	switch e.Base().Type {
 	case "message":
 		var message MessageEntry
 		var ok bool
 		if a.f != nil {
 			message, ok = a.f.asMessage(e)
 		} else {
-			message, ok = e.AsMessage()
+			message, ok = e.(MessageEntry)
 		}
 		if !ok {
 			return nil
@@ -1083,7 +831,7 @@ func (a *treeNodeAdapter) NodeCopyText() *string {
 		}
 	case "custom_message":
 		var entry CustomMessageEntry
-		if json.Unmarshal(e.raw, &entry) != nil {
+		if json.Unmarshal(e.Raw(), &entry) != nil {
 			return nil
 		}
 		text = extractCustomMessageText(entry)
@@ -1091,7 +839,7 @@ func (a *treeNodeAdapter) NodeCopyText() *string {
 		var entry struct {
 			Summary string `json:"summary"`
 		}
-		if json.Unmarshal(e.raw, &entry) != nil {
+		if json.Unmarshal(e.Raw(), &entry) != nil {
 			return nil
 		}
 		text = entry.Summary
@@ -1210,14 +958,17 @@ func scopedModelIDsEqual(a, b []string) bool {
 // runEditorSlotOAuthSelector replaces the editor with the OAuth provider
 // picker and blocks until the user selects a provider or cancels.
 // Mirrors upstream showOAuthSelector pattern (interactive-mode.ts:2452).
-func (m *InteractiveMode) runEditorSlotOAuthSelector(sel *tui.OAuthSelector) (string, bool) {
+func (m *InteractiveMode) runEditorSlotOAuthSelector(sel *tui.OAuthSelectorComponent) (string, bool) {
 	if m.layout == nil {
 		return "", false
 	}
+	previousFocus := m.tuiInst.GetFocusedComponent()
 	m.editorContainer.SetChildren(sel)
+	m.tuiInst.SetFocus(sel)
 	m.tuiInst.Render()
 	defer func() {
 		m.editorContainer.SetChildren(m.editor)
+		m.tuiInst.SetFocus(previousFocus)
 		m.tuiInst.RequestRender()
 	}()
 
@@ -1254,20 +1005,39 @@ func (m *InteractiveMode) runEditorSlotOAuthSelector(sel *tui.OAuthSelector) (st
 // runEditorSlotLoginDialog replaces the editor with the login dialog.
 // The caller drives device-flow I/O from a goroutine; state updates
 // arrive on renderNotify, causing a re-render. Blocks until dlg.Done().
-func (m *InteractiveMode) runEditorSlotLoginDialog(dlg *tui.LoginDialog, renderNotify <-chan struct{}) bool {
+func (m *InteractiveMode) runEditorSlotLoginDialog(dlg *tui.LoginDialogComponent, renderNotify <-chan struct{}) bool {
+	return m.runEditorSlotLoginDialogPrompts(dlg, renderNotify, nil, nil)
+}
+
+// runEditorSlotLoginDialogPrompts is runEditorSlotLoginDialog for a flow that can also ask select prompts and end the
+// dialog itself. A select prompt received on selects replaces the dialog with a selector until the user picks an option
+// or cancels it; either way the dialog returns (interactive-mode.ts:6243-6276 showAuthSelect). Closing ended returns
+// false without marking the dialog cancelled.
+func (m *InteractiveMode) runEditorSlotLoginDialogPrompts(dlg *tui.LoginDialogComponent, renderNotify <-chan struct{}, selects <-chan authPromptRequest, ended <-chan struct{}) bool {
 	if m.layout == nil {
 		return false
 	}
+	previousFocus := m.tuiInst.GetFocusedComponent()
 	m.editorContainer.SetChildren(dlg)
+	m.tuiInst.SetFocus(dlg)
 	m.tuiInst.Render()
 	defer func() {
 		m.editorContainer.SetChildren(m.editor)
+		m.tuiInst.SetFocus(previousFocus)
 		m.tuiInst.RequestRender()
 	}()
 
 	inputCh, releaseInput := m.acquireModalInputChannel()
 	defer releaseInput()
 
+	var request *authPromptRequest
+	var selector *tui.ExtensionSelectorComponent
+	var promptDone <-chan struct{}
+	restoreDialog := func() {
+		request, selector, promptDone = nil, nil, nil
+		m.editorContainer.SetChildren(dlg)
+		m.tuiInst.SetFocus(dlg)
+	}
 	for !dlg.Done() {
 		if m.modalStopped() {
 			return false
@@ -1280,7 +1050,39 @@ func (m *InteractiveMode) runEditorSlotLoginDialog(dlg *tui.LoginDialog, renderN
 			return false
 		case task := <-m.uiTaskCh:
 			task()
+		case next := <-selects:
+			prompt := next.prompt.(ai.AuthSelectPrompt)
+			labels := make([]string, len(prompt.Options))
+			for i, option := range prompt.Options {
+				labels[i] = option.Label
+			}
+			request, promptDone = &next, next.ctx.Done()
+			selector = tui.NewExtensionSelectorComponent(prompt.Message, labels, nil, nil)
+			m.editorContainer.SetChildren(selector)
+			m.tuiInst.SetFocus(selector)
+			m.tuiInst.Render()
+			extension.CallInitiated(next.ctx)
+		case <-promptDone:
+			restoreDialog()
+		case <-ended:
+			return false
 		case buf := <-inputCh:
+			if selector != nil {
+				for _, chunk := range m.modalInputChunks(selector, []string{string(buf)}) {
+					selector.HandleInput(chunk)
+					if !selector.Done() {
+						continue
+					}
+					reply := authPromptReply{err: errLoginCancelled}
+					if !selector.Cancelled() {
+						reply = authPromptReply{value: request.prompt.(ai.AuthSelectPrompt).Options[selector.SelectedIndex()].ID}
+					}
+					request.reply <- reply
+					restoreDialog()
+					break
+				}
+				break
+			}
 			for _, chunk := range m.modalInputChunks(dlg, []string{string(buf)}) {
 				dlg.HandleInput(chunk)
 				if dlg.Done() {

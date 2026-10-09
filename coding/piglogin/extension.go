@@ -6,11 +6,11 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"reflect"
 	"slices"
 	"strings"
 
 	"github.com/MichaelKinsy/PiG/coding/extension"
+	"github.com/MichaelKinsy/PiG/internal/configroot"
 	"github.com/MichaelKinsy/PiG/tui"
 	"github.com/MichaelKinsy/PiG/tui/widthx"
 )
@@ -22,15 +22,9 @@ const Name = "pig-login"
 // shows. The header itself is the host's built-in header (the one Pi's setHeader(undefined) restores), which draws the
 // active sprite's head, so an extension replaces it with setHeader exactly as in Pi. `/sprite preview` shows a sprite's
 // full art, the wordmark and the pig, in an overlay until a key is pressed.
-func Extension() (extension.Extension, error) {
-	ext := extension.Extension{Commands: map[string]extension.RegisteredCommand{}}
-	ext.Commands["sprite"] = extension.RegisteredCommand{
-		Name:        "sprite",
-		Description: "Select the PiG login sprite.",
-		Handler:     selectSprite,
-	}
-	ext.CommandOrder = []string{"sprite"}
-	return ext, nil
+func Extension(pi extension.API) error {
+	pi.RegisterCommand("sprite", extension.CommandOptions{Description: "Select the PiG login sprite.", Handler: selectSprite})
+	return nil
 }
 
 func selectSprite(ctx context.Context, args string) error {
@@ -121,45 +115,41 @@ func createSprite(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	if isNil(model) || !hasConfiguredProvider(c) {
+	if model == nil || !hasConfiguredProvider(c) {
 		if ui := commandUI(ctx); ui != nil {
 			ui.Notify(CreateNeedsModel, "info")
 		}
 		return nil
 	}
-	return c.SendUserMessage(CreatePrompt(), nil)
+	prompt, err := CreatePrompt()
+	if err != nil {
+		return fmt.Errorf("/sprite create: %w", err)
+	}
+	return c.SendUserMessage(prompt, nil)
 }
 
 // runAgentDir is the run's agent directory, as the PiG CLI resolves it (codingagent.AgentDir): Pi's directory in shared mode
-// (PIG_USE_PI_DIRS=1), else PIG_CODING_AGENT_DIR, else the agent directory under PIG_HOME, XDG_CONFIG_HOME/pig or ~/.pig.
+// (PIG_USE_PI_DIRS=1), else PIG_CODING_AGENT_DIR, else the agent directory under the config root (internal/configroot).
 // The global extensions directory under it is loaded on /reload.
-func runAgentDir() string {
-	home, _ := os.UserHomeDir()
-	expand := func(path string) string {
-		if path == "~" {
-			return home
-		}
-		if rest, ok := strings.CutPrefix(path, "~/"); ok {
-			return filepath.Join(home, rest)
-		}
-		return path
-	}
+func runAgentDir() (string, error) {
 	if os.Getenv("PIG_USE_PI_DIRS") == "1" {
 		if dir := os.Getenv("PI_CODING_AGENT_DIR"); dir != "" {
-			return expand(dir)
+			return configroot.ExpandTilde(dir), nil
 		}
-		return filepath.Join(home, ".pi", "agent")
+		home, err := os.UserHomeDir()
+		if err != nil {
+			return "", fmt.Errorf("locate home directory: %w", err)
+		}
+		return filepath.Join(home, ".pi", "agent"), nil
 	}
 	if dir := os.Getenv("PIG_CODING_AGENT_DIR"); dir != "" {
-		return expand(dir)
+		return configroot.ExpandTilde(dir), nil
 	}
-	if root := os.Getenv("PIG_HOME"); root != "" {
-		return filepath.Join(expand(root), "agent")
+	root, err := configroot.Resolve()
+	if err != nil {
+		return "", err
 	}
-	if root := os.Getenv("XDG_CONFIG_HOME"); root != "" {
-		return filepath.Join(expand(root), "pig", "agent")
-	}
-	return filepath.Join(home, ".pig", "agent")
+	return filepath.Join(root, "agent"), nil
 }
 
 // hasConfiguredProvider reports whether any provider has auth: a selected model without credentials cannot run the turn.
@@ -173,22 +163,14 @@ func hasConfiguredProvider(c *extension.Context) bool {
 	return !ok || counter.AvailableProviderCount() > 0
 }
 
-func isNil(value any) bool {
-	if value == nil {
-		return true
-	}
-	v := reflect.ValueOf(value)
-	switch v.Kind() {
-	case reflect.Pointer, reflect.Interface, reflect.Map, reflect.Slice, reflect.Func, reflect.Chan:
-		return v.IsNil()
-	}
-	return false
-}
-
 // CreatePrompt is the user turn `/sprite create` sends: it asks the model to design a sprite with the user and write a
 // TypeScript extension that registers it in the run's global extensions directory, starting from the default pig's mascot
-// and palette.
-func CreatePrompt() string {
+// and palette. It fails when the run's agent directory cannot be resolved, as it needs no home directory otherwise.
+func CreatePrompt() (string, error) {
+	agentDir, err := runAgentDir()
+	if err != nil {
+		return "", err
+	}
 	palette := paletteFor(Default())
 	symbols := make([]string, 0, len(palette))
 	for symbol := range palette {
@@ -210,11 +192,11 @@ func CreatePrompt() string {
 	return strings.Join([]string{
 		"Help me create my own PiG sprite: the pig my startup header shows.",
 		"Start by asking me one plain-language question: what character, colors or style should my pig have? Handle every technical detail yourself and ask me only for decisions that need my preference. After I answer, describe the design in plain language and ask for my approval before writing any file.",
-		"After I approve, write one TypeScript extension file in the global extensions directory: `" + filepath.Join(runAgentDir(), "extensions", "<id>.ts") + "`. Do not modify PiG itself or its built-in sprites.",
+		"After I approve, write one TypeScript extension file in the global extensions directory: `" + filepath.Join(agentDir, "extensions", "<id>.ts") + "`. Do not modify PiG itself or its built-in sprites.",
 		"The extension registers the sprite in `session_start` with `await ctx.ui.registerSprite({ id, name, tagline, mascot, palette })`. `id` is a lowercase slug of at most 32 characters (letters, digits and single hyphens) that is not a built-in sprite's id (" + strings.Join(builtInIDs(), ", ") + "). `name` and `tagline` are one line each. `mascot` is exactly 14 strings of exactly 16 characters; each character is a palette symbol, and `.` is transparent. `palette` maps each symbol to a `#RRGGBB` color. Keep the pig's silhouette and change its colors and details.",
 		"Start from PiG's standard pig:\n\n```ts\nexport default function (pi) {\n  pi.on(\"session_start\", async (_event, ctx) => {\n    await ctx.ui.registerSprite({\n      id: \"my-pig\",\n      name: \"My PiG\",\n      tagline: \"One line about my pig.\",\n      mascot: [\n" + strings.Join(mascotLines, "\n") + "\n      ],\n      palette: {\n" + strings.Join(paletteLines, "\n") + "\n      },\n    });\n  });\n}\n```",
 		"After writing the file, tell me to run /reload and then /sprite set <id> to use it, and /sprite preview <id> to see its full art.",
-	}, "\n\n")
+	}, "\n\n"), nil
 }
 
 func builtInIDs() []string {
@@ -244,13 +226,13 @@ func preview(ctx context.Context, variant Variant) error {
 	if ui == nil {
 		return nil
 	}
-	_, err := ui.Custom(ctx, extension.CustomFactory(func(_ extension.CustomHost, theme extension.Theme, _ extension.KeybindingsManager, done func(any)) (extension.Component, error) {
+	_, err := ui.Custom(ctx, extension.CustomFactory(func(_ extension.TUI, theme *tui.Theme, _ extension.KeybindingsManager, done func(any)) (extension.DisposableComponent, error) {
 		mode := tui.TerminalColorModeTrueColor
-		if t, ok := theme.(*tui.Theme); ok && t != nil {
-			mode = t.ColorMode()
+		if t := theme; t != nil {
+			mode = t.GetColorMode()
 		}
 		return &previewComponent{lines: PreviewLines(variant, mode), done: done}, nil
-	}), extension.CustomOptions{Overlay: true})
+	}), &extension.CustomOptions{Overlay: true})
 	if errors.Is(err, context.Canceled) {
 		return nil
 	}
@@ -302,3 +284,6 @@ func spriteList() string {
 	}
 	return strings.Join(lines, "\n")
 }
+
+// Dispose releases nothing: the preview holds no resource beyond its lines.
+func (*previewComponent) Dispose() {}

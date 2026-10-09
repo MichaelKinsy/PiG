@@ -1,0 +1,264 @@
+[
+ {
+  "ids": [
+   "pkg:ai/providers/all#builtinModels"
+  ],
+  "targets": [
+   "ai/builtin_providers.go#BuiltinModels"
+  ],
+  "production": [
+   "public-api:ai/builtin_providers.go#BuiltinModels"
+  ],
+  "evidence": [
+   "test:ai/classifier_models_upstream_test.go#TestClassifierModelsUpstream",
+   "test:ai/lazy_module_load_upstream_test.go#TestLazyModuleLoadProbe"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "builtinModels: Go BuiltinModels has the upstream parameters and result (signatures reviewed); callers attributed by go/types. Closed as public-api-tested: Pi exports it and the Go function is exported from a public package, but no PiG binary calls it; test callers (go/types) are the proof."
+ },
+ {
+  "ids": [
+   "pkg:ai/providers/all#getBuiltinClassifierModel"
+  ],
+  "targets": [
+   "ai/builtin_providers.go#GetBuiltinClassifierModel"
+  ],
+  "production": [
+   "public-api:ai/builtin_providers.go#GetBuiltinClassifierModel"
+  ],
+  "evidence": [
+   "test:ai/classifier_models_upstream_test.go#TestClassifierModelsUpstream",
+   "test:ai/cloudflare_workers_ai_system_one_upstream_test.go#TestCloudflareWorkersAISystemOneUpstream"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "getBuiltinClassifierModel: Go GetBuiltinClassifierModel has the upstream parameters and result (signatures reviewed); callers attributed by go/types. Closed as public-api-tested: Pi exports it and the Go function is exported from a public package, but no PiG binary calls it; test callers (go/types) are the proof."
+ },
+ {
+  "ids": [
+   "pkg:ai/compat#generateImages"
+  ],
+  "targets": [
+   "ai/images.go#GenerateImages"
+  ],
+  "production": [
+   "public-api:ai/images.go#GenerateImages"
+  ],
+  "evidence": [
+   "test:ai/images_upstream_test.go#TestImagesUpstream",
+   "test:ai/openrouter_images_upstream_test.go#TestOpenRouterImagesUpstream"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "generateImages: Go GenerateImages has the upstream parameters and result (signatures reviewed); callers attributed by go/types. Closed as public-api-tested: Pi exports it and the Go function is exported from a public package, but no PiG binary calls it; test callers (go/types) are the proof."
+ },
+ {
+  "ids": [
+   "pkg:ai/compat#getImageModel"
+  ],
+  "targets": [
+   "ai/images_registry.go#GetImageModel"
+  ],
+  "production": [
+   "public-api:ai/images_registry.go#GetImageModel"
+  ],
+  "evidence": [
+   "test:ai/images_upstream_test.go#TestImagesUpstream",
+   "test:ai/models_typed_upstream_test.go#TestModelTypesUpstream"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "getImageModel: Go GetImageModel has the upstream parameters and result (signatures reviewed); callers attributed by go/types. Closed as public-api-tested: Pi exports it and the Go function is exported from a public package, but no PiG binary calls it; test callers (go/types) are the proof."
+ },
+ {
+  "ids": [
+   "pkg:ai/.#parseStreamingJson",
+   "pkg:ai/compat#parseStreamingJson",
+   "pkg:ai/utils/json-parse#parseStreamingJson"
+  ],
+  "targets": [
+   "ai/streaming_json.go#ParseStreamingJson"
+  ],
+  "production": [
+   "public-api:ai/streaming_json.go#ParseStreamingJson"
+  ],
+  "evidence": [
+   "test:ai/streaming_json_controls_test.go#TestStreamingJSONRepairControlCharacters",
+   "test:ai/streaming_json_controls_test.go#TestStreamingJSONRepairPreservesInvalidUnicodeEscapes"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "parseStreamingJson: Go ParseStreamingJson has the upstream parameters and result (signatures reviewed); callers attributed by go/types. Closed as public-api-tested: Pi exports it and the Go function is exported from a public package, but no PiG binary calls it; test callers (go/types) are the proof."
+ },
+ {
+  "ids": [
+   "pkg:ai/.#hasApi",
+   "pkg:ai/compat#hasApi",
+   "pkg:ai/models#hasApi"
+  ],
+  "targets": [
+   "ai/models_runtime_auth.go#HasApi"
+  ],
+  "production": [
+   "public-api:ai/models_runtime_auth.go#HasApi"
+  ],
+  "evidence": [
+   "test:ai/models_runtime_basic_upstream_test.go#TestModelsRuntimeBasicUpstream",
+   "test:ai/models_typed_upstream_test.go#TestModelTypesUpstream"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "hasApi: Go HasApi has the upstream parameters and result (signatures reviewed); callers attributed by go/types. Closed as public-api-tested: Pi exports it and the Go function is exported from a public package, but no PiG binary calls it; test callers (go/types) are the proof."
+ },
+ {
+  "ids": [
+   "pkg:ai/.#hasToolRedefinitions",
+   "pkg:ai/compat#hasToolRedefinitions",
+   "pkg:ai/utils/transcript#hasToolRedefinitions"
+  ],
+  "targets": [
+   "ai/transcript.go#HasToolRedefinitions"
+  ],
+  "production": [
+   "public-api:ai/transcript.go#HasToolRedefinitions"
+  ],
+  "evidence": [
+   "test:ai/system_message_replay_test.go#TestSystemMessageReplayDetectsNonAdditiveToolHistoryAndRedefinitions"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "hasToolRedefinitions: Go HasToolRedefinitions has the upstream parameters and result (signatures reviewed); callers attributed by go/types. Closed as public-api-tested: Pi exports it and the Go function is exported from a public package, but no PiG binary calls it; test callers (go/types) are the proof."
+ },
+ {
+  "ids": [
+   "pkg:ai/api/openai-codex-responses#getOpenAICodexWebSocketDebugStats"
+  ],
+  "targets": [
+   "ai/openai_codex_websocket.go#GetOpenAICodexWebSocketDebugStats"
+  ],
+  "production": [
+   "public-api:ai/openai_codex_websocket.go#GetOpenAICodexWebSocketDebugStats"
+  ],
+  "evidence": [
+   "test:ai/openai_codex_ws_upstream_test.go#TestCodexWebSocketTimeoutsUpstream",
+   "test:ai/openai_codex_ws_upstream_test.go#TestCodexWebSocketUpstream"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "getOpenAICodexWebSocketDebugStats: Go GetOpenAICodexWebSocketDebugStats has the upstream parameters and result (signatures reviewed); callers attributed by go/types. Closed as public-api-tested: Pi exports it and the Go function is exported from a public package, but no PiG binary calls it; test callers (go/types) are the proof."
+ },
+ {
+  "ids": [
+   "pkg:ai/api/openai-codex-responses#resetOpenAICodexWebSocketDebugStats"
+  ],
+  "targets": [
+   "ai/openai_codex_websocket.go#ResetOpenAICodexWebSocketDebugStats"
+  ],
+  "production": [
+   "public-api:ai/openai_codex_websocket.go#ResetOpenAICodexWebSocketDebugStats"
+  ],
+  "evidence": [
+   "test:ai/openai_codex_ws_upstream_test.go#TestCodexWebSocketTimeoutsUpstream",
+   "test:coding/codex_stream_upstream_test.go#TestModelRuntimeCodexSimpleThinkingAndAutoTransport"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "resetOpenAICodexWebSocketDebugStats: Go ResetOpenAICodexWebSocketDebugStats has the upstream parameters and result (signatures reviewed); callers attributed by go/types. Closed as public-api-tested: Pi exports it and the Go function is exported from a public package, but no PiG binary calls it; test callers (go/types) are the proof."
+ },
+ {
+  "ids": [
+   "pkg:ai/.#reduceAssistantMessageFrames",
+   "pkg:ai/compat#reduceAssistantMessageFrames",
+   "pkg:ai/utils/assistant-message-frame#reduceAssistantMessageFrames"
+  ],
+  "targets": [
+   "ai/assistant_message_frame.go#ReduceAssistantMessageFrames"
+  ],
+  "production": [
+   "public-api:ai/assistant_message_frame.go#ReduceAssistantMessageFrames"
+  ],
+  "evidence": [
+   "test:ai/assistant_message_frame_test.go#TestReduceAssistantMessageFramesRejectsInvalidSequences",
+   "test:ai/assistant_message_frame_test.go#TestReduceAssistantMessageFramesReturnsNilWithoutStartFrame"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "reduceAssistantMessageFrames: Go ReduceAssistantMessageFrames has the upstream parameters and result (signatures reviewed); callers attributed by go/types. Closed as public-api-tested: Pi exports it and the Go function is exported from a public package, but no PiG binary calls it; test callers (go/types) are the proof."
+ },
+ {
+  "ids": [
+   "pkg:ai/.#retryAssistantCall",
+   "pkg:ai/compat#retryAssistantCall",
+   "pkg:ai/utils/retry#retryAssistantCall"
+  ],
+  "targets": [
+   "ai/assistant_retry.go#RetryAssistantCall"
+  ],
+  "production": [
+   "public-api:ai/assistant_retry.go#RetryAssistantCall"
+  ],
+  "evidence": [
+   "test:ai/assistant_retry_test.go#TestRetryAssistantCallAbortsBackoffSleepViaContext",
+   "test:ai/assistant_retry_test.go#TestRetryAssistantCallDoesNotRetryAbortedMessage"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "retryAssistantCall: Go RetryAssistantCall has the upstream parameters and result (signatures reviewed); callers attributed by go/types. Closed as public-api-tested: Pi exports it and the Go function is exported from a public package, but no PiG binary calls it; test callers (go/types) are the proof."
+ },
+ {
+  "ids": [
+   "pkg:agent/.#setDefaultStreamFn"
+  ],
+  "targets": [
+   "agent/stream_fn.go#SetDefaultStreamFn"
+  ],
+  "production": [
+   "public-api:agent/stream_fn.go#SetDefaultStreamFn"
+  ],
+  "evidence": [
+   "test:agent/stream_fn_descriptor_test.go#TestConfiguredDefaultStreamFn"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "setDefaultStreamFn: Go SetDefaultStreamFn has the upstream parameters and result (signatures reviewed); callers attributed by go/types. Closed as public-api-tested: Pi exports it and the Go function is exported from a public package, but no PiG binary calls it; test callers (go/types) are the proof."
+ },
+ {
+  "ids": [
+   "pkg:tui/.#isAppleTerminalSession"
+  ],
+  "targets": [
+   "tui/terminal_native_shift_enter.go#IsAppleTerminalSession"
+  ],
+  "production": [
+   "public-api:tui/terminal_native_shift_enter.go#IsAppleTerminalSession"
+  ],
+  "evidence": [
+   "test:internal/codingagent/pi_logo_upstream_test.go#TestBuiltInHeaderColorsTheTextMarkInAppleTerminal256"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "isAppleTerminalSession: Go IsAppleTerminalSession has the upstream parameters and result (signatures reviewed); callers attributed by go/types. Closed as public-api-tested: Pi exports it and the Go function is exported from a public package, but no PiG binary calls it; test callers (go/types) are the proof."
+ },
+ {
+  "ids": [
+   "pkg:tui/.#resetCapabilitiesCache"
+  ],
+  "targets": [
+   "tui/terminal_image.go#ResetCapabilitiesCache"
+  ],
+  "production": [
+   "public-api:tui/terminal_image.go#ResetCapabilitiesCache"
+  ],
+  "evidence": [
+   "test:internal/codingagent/resource_loader_theme_upstream_test.go#TestDefaultResourceLoaderThemeColorModeUpstream",
+   "test:internal/codingagent/tui_cell_size_input_upstream_test.go#TestUpstreamTUICellSizeInput"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "resetCapabilitiesCache: Go ResetCapabilitiesCache has the upstream parameters and result (signatures reviewed); callers attributed by go/types. Closed as public-api-tested: Pi exports it and the Go function is exported from a public package, but no PiG binary calls it; test callers (go/types) are the proof."
+ },
+ {
+  "ids": [
+   "pkg:tui/.#styleText"
+  ],
+  "targets": [
+   "tui/colors.go#StyleText"
+  ],
+  "production": [
+   "public-api:tui/colors.go#StyleText"
+  ],
+  "evidence": [
+   "test:tui/colors_upstream_test.go#TestUpstreamColors",
+   "test:tui/theme_style_upstream_test.go#TestThemeStylesUpstream"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "styleText: Go StyleText has the upstream parameters and result (signatures reviewed); callers attributed by go/types. Closed as public-api-tested: Pi exports it and the Go function is exported from a public package, but no PiG binary calls it; test callers (go/types) are the proof."
+ }
+]

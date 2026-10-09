@@ -12,7 +12,7 @@ import (
 
 var (
 	localGenerationDefinition = func() ServiceDefinition[Reader] {
-		definition := DefineServiceWithOptions[Reader]("test.experimental.local-generation-value", ServiceOptions{Local: true})
+		definition := DefineService[Reader]("test.experimental.local-generation-value", ServiceOptions{Local: true})
 		RegisterServiceView(definition, func(resolve func() (Reader, error)) Reader { return readerView{resolve} })
 		return definition
 	}()
@@ -137,7 +137,7 @@ func TestFacetLoader(t *testing.T) {
 		loadedA := load()
 		host := mustFacetHost(t, FacetOptions{Facets: append([]Facet{consumer}, loadedA.Facets...)})
 		localRead := get(t, localRef).Read
-		remote := loopbackBinding(t, host.Services(), RemoteServiceBindingOptions{Services: []string{remoteGenerationDefinition.Id()}})
+		remote := loopbackBinding(t, host.Services(), RemoteServiceBindingOptions{Services: ServiceIDs(remoteGenerationDefinition.Id())})
 		originalRemote := use(t, remote, remoteGenerationDefinition.Id())
 		remoteRead := remoteReader{originalRemote}.Read
 		if err := remote.Ready(ctx); err != nil {

@@ -22,15 +22,15 @@ func TestDynamicProviderRefreshPreservesHostListenerAndTranscript(t *testing.T) 
 	if err != nil {
 		t.Fatal(err)
 	}
-	before := len(session.Inner().Entries())
+	before := len(session.Inner().GetEntries())
 	calls := 0
 	detach := services.Registry().SetChangeListener(func() { calls++ })
 	defer detach()
-	services.Registry().RegisterProvider("anthropic", extension.ProviderConfig{BaseURL: "http://localhost:8080/changed"})
+	services.Registry().RegisterExtensionProvider("anthropic", extension.ProviderConfig{BaseURL: "http://localhost:8080/changed"})
 	if calls != 1 || session.Model().ProviderMeta.BaseURL != "http://localhost:8080/changed" {
 		t.Fatalf("listener=%d model=%+v", calls, session.Model())
 	}
-	if len(session.Inner().Entries()) != before {
+	if len(session.Inner().GetEntries()) != before {
 		t.Fatal("refresh appended a model change")
 	}
 	services.Registry().UnregisterProvider("anthropic")
@@ -42,7 +42,7 @@ func TestDynamicProviderRefreshPreservesHostListenerAndTranscript(t *testing.T) 
 		t.Fatal(mustClose)
 	}
 	retained := session.Model()
-	services.Registry().RegisterProvider("anthropic", extension.ProviderConfig{BaseURL: "http://localhost:8080/after-close"})
+	services.Registry().RegisterExtensionProvider("anthropic", extension.ProviderConfig{BaseURL: "http://localhost:8080/after-close"})
 	if session.Model() != retained {
 		t.Fatal("closed Session retained a registry observer")
 	}
@@ -88,7 +88,7 @@ func TestDynamicProviderOverridesActiveSession(t *testing.T) {
 						t.Fatal(err)
 					}
 				} else {
-					services.Registry().RegisterProvider("anthropic", extension.ProviderConfig{BaseURL: want})
+					services.Registry().RegisterExtensionProvider("anthropic", extension.ProviderConfig{BaseURL: want})
 				}
 			}
 			command, description := "use-proxy", "Use proxy"

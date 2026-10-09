@@ -1,5 +1,7 @@
 package experimental
 
+// pi: packages/coding-agent/src/experimental/session-worker-manager.ts
+
 import (
 	"context"
 	"encoding/json"

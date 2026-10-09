@@ -31,7 +31,7 @@ func TestEmitProjectTrustFirstDecisiveResultWinsAfterErrorsAndUndecided(t *testi
 
 	result, gotErrors, err := inproc.EmitProjectTrust(inproc.NewRunner(exts, "/project"),
 		context.Background(), extension.ProjectTrustEvent{Type: "project_trust", Cwd: "/project"},
-	)
+		extension.ProjectTrustContext{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -58,7 +58,7 @@ func TestEmitProjectTrustAwaitsHandlerCompletion(t *testing.T) {
 	done := make(chan struct{})
 	go func() {
 		defer close(done)
-		result, _, err := inproc.EmitProjectTrust(runner, context.Background(), extension.ProjectTrustEvent{Type: "project_trust", Cwd: "/project"})
+		result, _, err := inproc.EmitProjectTrust(runner, context.Background(), extension.ProjectTrustEvent{Type: "project_trust", Cwd: "/project"}, extension.ProjectTrustContext{})
 		if err != nil || result == nil || result.Trusted != extension.ProjectTrustNo {
 			t.Errorf("result=%+v err=%v", result, err)
 		}
@@ -79,7 +79,7 @@ func TestEmitProjectTrustCancellationReachesHandler(t *testing.T) {
 	runner := inproc.NewRunner([]extension.Extension{projectTrustExtension("/ext", func(_ extension.ProjectTrustEvent, dispatch context.Context) (any, error) {
 		return nil, dispatch.Err()
 	})}, "/project")
-	result, gotErrors, err := inproc.EmitProjectTrust(runner, ctx, extension.ProjectTrustEvent{Type: "project_trust", Cwd: "/project"})
+	result, gotErrors, err := inproc.EmitProjectTrust(runner, ctx, extension.ProjectTrustEvent{Type: "project_trust", Cwd: "/project"}, extension.ProjectTrustContext{})
 	if err != nil || result != nil {
 		t.Fatalf("result=%+v err=%v", result, err)
 	}
@@ -104,7 +104,7 @@ func BenchmarkEmitProjectTrustFirstDecisive(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 	for b.Loop() {
-		result, handlerErrors, err := inproc.EmitProjectTrust(runner, context.Background(), event)
+		result, handlerErrors, err := inproc.EmitProjectTrust(runner, context.Background(), event, extension.ProjectTrustContext{})
 		if err != nil || len(handlerErrors) != 0 || result == nil || result.Trusted != extension.ProjectTrustYes {
 			b.Fatalf("result=%+v errors=%+v err=%v", result, handlerErrors, err)
 		}
@@ -122,4 +122,28 @@ func projectTrustExtension(path string, handlers ...func(extension.ProjectTrustE
 		})
 	}
 	return extension.Extension{Path: path, ResolvedPath: path, Handlers: map[string][]extension.HandlerFn{"project_trust": wrapped}}
+}
+
+// runner.ts emitProjectTrustEvent calls every handler as handler(event, ctx) with the ProjectTrustContext of the decision.
+func TestEmitProjectTrustPassesProjectTrustContextToHandlers(t *testing.T) {
+	var got []extension.ProjectTrustContext
+	ext := extension.Extension{Path: "ext", Handlers: map[string][]extension.HandlerFn{"project_trust": {
+		func(args ...any) (any, error) {
+			got = append(got, args[2].(extension.ProjectTrustContext))
+			return extension.ProjectTrustEventResult{Trusted: extension.ProjectTrustUndecided}, nil
+		},
+		func(args ...any) (any, error) {
+			got = append(got, args[2].(extension.ProjectTrustContext))
+			return extension.ProjectTrustEventResult{Trusted: extension.ProjectTrustYes}, nil
+		},
+	}}}
+	want := extension.ProjectTrustContext{Cwd: "/project", Mode: extension.ModeRPC, HasUI: true, UI: extension.NoopUIContext}
+	result, _, err := inproc.EmitProjectTrust(inproc.NewRunner([]extension.Extension{ext}, "/project"), context.Background(),
+		extension.ProjectTrustEvent{Type: "project_trust", Cwd: "/project"}, want)
+	if err != nil || result == nil || result.Trusted != extension.ProjectTrustYes {
+		t.Fatalf("result = %+v, err = %v", result, err)
+	}
+	if len(got) != 2 || got[0] != want || got[1] != want {
+		t.Fatalf("handlers received %+v, want %+v twice", got, want)
+	}
 }

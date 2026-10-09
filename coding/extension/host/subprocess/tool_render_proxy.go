@@ -10,9 +10,9 @@ import (
 	"time"
 	"weak"
 
-	"github.com/MichaelKinsy/PiG/agent"
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/coding/extension"
+	"github.com/MichaelKinsy/PiG/extensions/sdk/frontend"
 	"github.com/MichaelKinsy/PiG/tui/widthx"
 )
 
@@ -123,6 +123,8 @@ type toolRenderProxy struct {
 	generation uint64
 	requesting bool
 	dirty      bool
+	// view is the view of the renderer's results (D107).
+	view rendererView
 }
 
 // makeToolRenderCall returns the renderCall the host registers for a
@@ -180,6 +182,8 @@ func (h *Host) toolRenderProxyFor(me *managedExt, toolName, phase string, contex
 		Expanded:         context.Expanded,
 		ShowImages:       context.ShowImages,
 		IsError:          context.IsError,
+		OutputPad:        context.OutputPad,
+		DurationMs:       context.DurationMs,
 	}
 	proxy.update(payload)
 	return proxy
@@ -189,17 +193,7 @@ func (h *Host) toolRenderProxyFor(me *managedExt, toolName, phase string, contex
 // {content, details} shape.
 func renderToolResultPayload(result extension.AgentToolResult) *RenderToolResult {
 	out := &RenderToolResult{Content: []RenderToolContent{}}
-	var toolResult agent.AgentToolResult
-	switch value := result.(type) {
-	case agent.AgentToolResult:
-		toolResult = value
-	case *agent.AgentToolResult:
-		if value != nil {
-			toolResult = *value
-		}
-	default:
-		return out
-	}
+	toolResult := result
 	for _, block := range toolResult.Content {
 		switch value := block.(type) {
 		case ai.TextContent:
@@ -265,7 +259,11 @@ func (p *toolRenderProxy) Render(width int) []string {
 		}
 	}
 	failed, fallback := p.failed, p.fallback
-	lines := append([]string(nil), widthx.FrameAt(p.lines, p.linesWidth, width)...)
+	lines := widthx.FrameAt(p.lines, p.linesWidth, width)
+	if live, ok := p.view.live(width); ok && p.linesWidth == width {
+		lines = live
+	}
+	lines = append([]string(nil), lines...)
 	p.mu.Unlock()
 	if start {
 		go p.requestLoop()
@@ -363,5 +361,19 @@ func (p *toolRenderProxy) request(payload RenderToolPayload) (lines []string, fa
 	if err := json.Unmarshal(resp.Response.Result, &result); err != nil {
 		return nil, true, true
 	}
-	return result.Lines, false, true
+	// A rejected view keeps the last frame, as a missing answer does.
+	lines, ok = p.view.apply(p.session.conn, p.repaint, result, payload.Width)
+	return lines, false, ok
+}
+
+// FrontendView reports the structure of the renderer's result to a D91
+// frontend (D107) while the result shown is the one laid out at width.
+func (p *toolRenderProxy) FrontendView(width int) *frontend.View {
+	p.mu.Lock()
+	current := len(p.lines) > 0 && p.linesWidth == width && !p.failed
+	p.mu.Unlock()
+	if !current {
+		return nil
+	}
+	return p.view.frontendView(width)
 }

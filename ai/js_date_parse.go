@@ -473,6 +473,9 @@ func parseES5DateTime(sc *dateScanner, day *dayComposer, tm *timeComposer, tz *z
 // jsDateParse is Date.parse for the process's local time zone: milliseconds since the epoch, or NaN when V8 does not recognise the string.
 func jsDateParse(s string) float64 { return jsDateParseIn(s, time.Local) }
 
+// DateParse is JavaScript's Date.parse: milliseconds since the epoch, or NaN when V8 does not recognise the string. A string that names no zone is local time.
+func DateParse(s string) float64 { return jsDateParse(s) }
+
 // jsDateParseIn is jsDateParse with the zone V8 applies to a string that names none.
 func jsDateParseIn(s string, local *time.Location) float64 {
 	sc := newDateScanner(s)

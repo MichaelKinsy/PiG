@@ -1,6 +1,17 @@
 package extension
 
-import "context"
+import (
+	"context"
+	"encoding/json"
+
+	"github.com/MichaelKinsy/PiG/agent"
+	"github.com/MichaelKinsy/PiG/ai"
+	"github.com/MichaelKinsy/PiG/coding/source"
+	"github.com/MichaelKinsy/PiG/internal/compactiontypes"
+	"github.com/MichaelKinsy/PiG/internal/orderedjson"
+	"github.com/MichaelKinsy/PiG/internal/sessionentry"
+	"github.com/MichaelKinsy/PiG/tui"
+)
 
 // Opaque compatibility aliases preserve upstream extension payloads that cross
 // the current dynamic JSON and renderer boundaries. They intentionally expose
@@ -14,16 +25,16 @@ import "context"
 // ─── pi-agent-core ────────────────────────────────────────────────────────
 
 // AgentMessage mirrors @earendil-works/pi-agent-core AgentMessage.
-type AgentMessage = any
+type AgentMessage = agent.AgentMessage
 
 // AgentToolResult mirrors @earendil-works/pi-agent-core AgentToolResult<TDetails>.
-type AgentToolResult = any
+type AgentToolResult = agent.AgentToolResult
 
 // AgentToolUpdateCallback mirrors AgentToolUpdateCallback<TDetails>.
-type AgentToolUpdateCallback = any
+type AgentToolUpdateCallback = agent.ToolUpdateCallback
 
 // ThinkingLevel mirrors @earendil-works/pi-agent-core ThinkingLevel.
-type ThinkingLevel = any
+type ThinkingLevel = agent.ThinkingLevel
 
 // ToolExecutionMode mirrors ToolExecutionMode ("sequential" | "parallel").
 type ToolExecutionMode = string
@@ -31,10 +42,10 @@ type ToolExecutionMode = string
 // ─── pi-ai ────────────────────────────────────────────────────────────────
 
 // Model mirrors @earendil-works/pi-ai Model<Api>.
-type Model = any
+type Model = *ai.Model
 
 // ImageContent mirrors @earendil-works/pi-ai ImageContent.
-type ImageContent = any
+type ImageContent = ai.ImageContent
 
 // TextContent mirrors @earendil-works/pi-ai TextContent.
 type TextContent = any
@@ -43,32 +54,31 @@ type TextContent = any
 type AssistantMessageEvent = any
 
 // ToolResultMessage mirrors @earendil-works/pi-ai ToolResultMessage.
-type ToolResultMessage = any
+type ToolResultMessage = agent.ToolResultMessage
 
 // OAuthCredentials mirrors @earendil-works/pi-ai OAuthCredentials.
-type OAuthCredentials = any
+type OAuthCredentials = ai.OAuthCredentials
 
 // OAuthLoginCallbacks mirrors @earendil-works/pi-ai OAuthLoginCallbacks.
-type OAuthLoginCallbacks = any
+type OAuthLoginCallbacks = ai.OAuthLoginCallbacks
 
 // SimpleStreamOptions mirrors @earendil-works/pi-ai SimpleStreamOptions.
-type SimpleStreamOptions = any
+type SimpleStreamOptions = ai.StreamOptions
 
 // AssistantMessageEventStream mirrors AssistantMessageEventStream.
-type AssistantMessageEventStream = any
+type AssistantMessageEventStream = *ai.AssistantMessageEventStream
 
 // AIContext mirrors @earendil-works/pi-ai Context (the per-call provider
 // context, distinct from pig's ExtensionContext).
-type AIContext = any
+type AIContext = ai.TranscriptContext
 
 // API is represented by ai.API in concrete provider declarations.
 
 // ─── pi-tui ───────────────────────────────────────────────────────────────
 
-// Component mirrors @earendil-works/pi-tui Component. PiG transports rendered
-// component state across the subprocess boundary, so the in-process value is
-// opaque here.
-type Component = any
+// Component is @earendil-works/pi-tui Component: what a renderer or widget factory returns (a subprocess extension's is a proxy that
+// renders the extension's lines over the wire).
+type Component = tui.Component
 
 // OverlayHandle mirrors @earendil-works/pi-tui OverlayHandle.
 type OverlayHandle = any
@@ -77,19 +87,27 @@ type OverlayHandle = any
 type OverlayOptions = any
 
 // TUI mirrors @earendil-works/pi-tui TUI.
-type TUI = any
+type TUI = tui.TUI
 
 // EditorComponent mirrors @earendil-works/pi-tui EditorComponent.
-type EditorComponent = any
+type EditorComponent = tui.EditorComponent
 
 // EditorTheme mirrors @earendil-works/pi-tui EditorTheme.
-type EditorTheme = any
+type EditorTheme = tui.EditorTheme
 
-// ExtensionUIDialogOptions mirrors upstream ExtensionUIDialogOptions.
-type ExtensionUIDialogOptions = any
+// ExtensionUIDialogOptions mirrors upstream ExtensionUIDialogOptions. Its `signal` is the dialog call's context.Context (D3), so only the timeout is a field.
+type ExtensionUIDialogOptions struct {
+	// Timeout is the dialog's auto-dismiss time in milliseconds, nil for none.
+	Timeout *float64 `json:"timeout,omitempty"`
+}
 
 // WorkingIndicatorOptions mirrors upstream WorkingIndicatorOptions.
-type WorkingIndicatorOptions = any
+type WorkingIndicatorOptions struct {
+	// Frames are the animation frames; a pointer to an empty slice hides the indicator, nil keeps the default frames.
+	Frames *[]string `json:"frames,omitempty"`
+	// IntervalMs is the frame interval in milliseconds, nil for the default.
+	IntervalMs *float64 `json:"intervalMs,omitempty"`
+}
 
 // TerminalInputHandler mirrors upstream `TerminalInputHandler`
 // (types.ts:120): raw terminal byte handler for interactive mode.
@@ -115,8 +133,20 @@ type TerminalInputResult struct {
 // this off its input loop.
 type RemoteTerminalInputHandler = func(ctx context.Context, data string) TerminalInputResult
 
-// ExtensionWidgetOptions mirrors upstream ExtensionWidgetOptions.
-type ExtensionWidgetOptions = any
+// WidgetPlacement is where an extension widget renders.
+// Mirrors upstream WidgetPlacement (core/extensions/types.ts:122).
+type WidgetPlacement string
+
+const (
+	WidgetPlacementAboveEditor WidgetPlacement = "aboveEditor"
+	WidgetPlacementBelowEditor WidgetPlacement = "belowEditor"
+)
+
+// ExtensionWidgetOptions mirrors upstream ExtensionWidgetOptions (core/extensions/types.ts:125); a nil pointer is omitted options.
+type ExtensionWidgetOptions struct {
+	// Placement is where the widget is rendered. Empty means WidgetPlacementAboveEditor.
+	Placement WidgetPlacement `json:"placement,omitempty"`
+}
 
 // AutocompleteProviderFactory mirrors upstream AutocompleteProviderFactory.
 type AutocompleteProviderFactory func(context.Context, *AutocompleteProvider) (*AutocompleteProvider, error)
@@ -160,34 +190,36 @@ type AutocompleteCompletion struct {
 type Theme = any
 
 // CompactionPreparation mirrors core/compaction CompactionPreparation.
-type CompactionPreparation = any
+type CompactionPreparation = compactiontypes.CompactionPreparation
 
-// CompactionResult mirrors core/compaction CompactionResult.
-type CompactionResult = any
+// CompactionResult is the result of a compaction (core/compaction/compaction.ts:105 CompactionResult<T = unknown>).
+// Details is the extension-specific data T.
+type CompactionResult struct {
+	Summary              string    `json:"summary"`
+	FirstKeptEntryID     string    `json:"firstKeptEntryId"`
+	TokensBefore         int       `json:"tokensBefore"`
+	EstimatedTokensAfter *int      `json:"estimatedTokensAfter,omitempty"`
+	Usage                *ai.Usage `json:"usage,omitempty"`
+	Details              any       `json:"details,omitempty"`
+}
 
-// CompactionEntry mirrors core/session-manager CompactionEntry.
-type CompactionEntry = any
+// UnmarshalJSON keeps the member order of the `details` object the extension wrote.
+func (r *CompactionResult) UnmarshalJSON(data []byte) error {
+	type plain CompactionResult
+	return orderedjson.UnmarshalFields(data, (*plain)(r), "details")
+}
+
+// CompactionEntry mirrors core/session-manager CompactionEntry (types.ts:786 SessionCompactEvent.compactionEntry).
+type CompactionEntry = sessionentry.CompactionEntry
 
 // BranchSummaryEntry mirrors core/session-manager BranchSummaryEntry.
-type BranchSummaryEntry = any
+type BranchSummaryEntry = sessionentry.BranchSummaryEntry
 
 // SessionEntry mirrors core/session-manager SessionEntry.
-type SessionEntry = any
-
-// SessionManager mirrors core/session-manager SessionManager.
-type SessionManager = any
-
-// ReadonlySessionManager mirrors core/session-manager ReadonlySessionManager.
-type ReadonlySessionManager = any
-
-// ModelRegistry mirrors core/model-registry.ModelRegistry.
-type ModelRegistry = any
+type SessionEntry = sessionentry.SessionEntry
 
 // KeybindingsManager mirrors core/keybindings.KeybindingsManager.
-type KeybindingsManager = any
-
-// ReadonlyFooterDataProvider mirrors core/footer-data-provider.
-type ReadonlyFooterDataProvider = any
+type KeybindingsManager = *tui.TUIKeybindingsManager
 
 // BashResult mirrors core/bash-executor.BashResult. A native result must contain exitCode; its nil value represents undefined, not JSON null. A nil optional fullOutputPath is also undefined. Pre-encoded JSON retains its own null values.
 type BashResult = any
@@ -212,28 +244,102 @@ type ExecResult struct {
 	Killed bool   `json:"killed"`
 }
 
-// TreePreparation mirrors the upstream TreePreparation interface.
-type TreePreparation = any
+// TreePreparation is types.ts TreePreparation: what a session_before_tree handler receives about the navigation. EntriesToSummarize
+// holds the SessionEntry values the navigation abandons.
+type TreePreparation struct {
+	TargetID           string         `json:"targetId"`
+	OldLeafID          *string        `json:"oldLeafId"`
+	CommonAncestorID   *string        `json:"commonAncestorId"`
+	EntriesToSummarize []SessionEntry `json:"entriesToSummarize"`
+	UserWantsSummary   bool           `json:"userWantsSummary"`
+	// CustomInstructions are the custom summarization instructions.
+	CustomInstructions string `json:"customInstructions,omitempty"`
+	// ReplaceInstructions makes CustomInstructions replace the default prompt instead of being appended.
+	ReplaceInstructions bool `json:"replaceInstructions,omitempty"`
+	// Label is the label to attach to the branch summary entry.
+	Label string `json:"label,omitempty"`
+}
 
 // ─── Per-tool input values ────────────────────────────────────────────────
 
-// These aliases mirror tool-specific input values from upstream core/tools.
+// These types mirror the tool-specific input values of upstream core/tools.
 // Tool result details with concrete wire shapes are defined in events.go.
 
-type BashToolInput = any
+// BashToolInput is upstream's BashToolInput (bash.ts bashSchema).
+type BashToolInput struct {
+	Command string   `json:"command"`
+	Timeout *float64 `json:"timeout,omitempty"`
+	// Extra holds members the schema does not declare; upstream's input is a plain object that keeps them.
+	Extra map[string]json.RawMessage `json:"-"`
+}
 
 // PowerShellToolInput is the bash input shape (upstream powershell.ts).
 type PowerShellToolInput = BashToolInput
-type ReadToolInput = any
-type EditToolInput = any
-type WriteToolInput = any
-type GrepToolInput = any
-type FindToolInput = any
-type LsToolInput = any
+
+// ReadToolInput is upstream's ReadToolInput (read.ts readSchema).
+type ReadToolInput struct {
+	Path   string   `json:"path"`
+	Offset *float64 `json:"offset,omitempty"`
+	Limit  *float64 `json:"limit,omitempty"`
+	// Extra holds members the schema does not declare; upstream's input is a plain object that keeps them.
+	Extra map[string]json.RawMessage `json:"-"`
+}
+
+// EditToolInput is upstream's EditToolInput (edit.ts editSchema).
+type EditToolInput struct {
+	Path  string                `json:"path"`
+	Edits []EditToolInputChange `json:"edits"`
+	// Extra holds members the schema does not declare; upstream's input is a plain object that keeps them.
+	Extra map[string]json.RawMessage `json:"-"`
+}
+
+// EditToolInputChange is one targeted replacement of an EditToolInput (edit.ts replaceEditSchema).
+type EditToolInputChange struct {
+	OldText string `json:"oldText"`
+	NewText string `json:"newText"`
+}
+
+// WriteToolInput is upstream's WriteToolInput (write.ts writeSchema).
+type WriteToolInput struct {
+	Path    string `json:"path"`
+	Content string `json:"content"`
+	// Extra holds members the schema does not declare; upstream's input is a plain object that keeps them.
+	Extra map[string]json.RawMessage `json:"-"`
+}
+
+// GrepToolInput is upstream's GrepToolInput (grep.ts grepSchema).
+type GrepToolInput struct {
+	Pattern    string   `json:"pattern"`
+	Path       *string  `json:"path,omitempty"`
+	Glob       *string  `json:"glob,omitempty"`
+	IgnoreCase *bool    `json:"ignoreCase,omitempty"`
+	Literal    *bool    `json:"literal,omitempty"`
+	Context    *float64 `json:"context,omitempty"`
+	Limit      *float64 `json:"limit,omitempty"`
+	// Extra holds members the schema does not declare; upstream's input is a plain object that keeps them.
+	Extra map[string]json.RawMessage `json:"-"`
+}
+
+// FindToolInput is upstream's FindToolInput (find.ts findSchema).
+type FindToolInput struct {
+	Pattern string   `json:"pattern"`
+	Path    *string  `json:"path,omitempty"`
+	Limit   *float64 `json:"limit,omitempty"`
+	// Extra holds members the schema does not declare; upstream's input is a plain object that keeps them.
+	Extra map[string]json.RawMessage `json:"-"`
+}
+
+// LsToolInput is upstream's LsToolInput (ls.ts lsSchema).
+type LsToolInput struct {
+	Path  *string  `json:"path,omitempty"`
+	Limit *float64 `json:"limit,omitempty"`
+	// Extra holds members the schema does not declare; upstream's input is a plain object that keeps them.
+	Extra map[string]json.RawMessage `json:"-"`
+}
 
 // Per-tool result Details structs (BashToolDetails, ReadToolDetails,
 // GrepToolDetails, FindToolDetails, LsToolDetails) and the shared
-// ToolTruncation wire shape are defined in events.go next to the typed
+// TruncationResult wire shape are defined in events.go next to the typed
 // *ToolResultEvent variants and EditToolDetails.
 
 // ─── Cancellation ─────────────────────────────────────────────────────────
@@ -248,8 +354,9 @@ type AbortSignal = context.Context
 
 // ─── Source / autocomplete plumbing ───────────────────────────────────────
 
-// SourceInfo mirrors core/source-info.SourceInfo.
-type SourceInfo = any
+// SourceInfo mirrors core/source-info.SourceInfo: where a resource, tool or command came from. It is the shared
+// coding/source type, so the TUI's Theme can carry it (theme.ts Theme.sourceInfo) without importing this package.
+type SourceInfo = source.SourceInfo
 
 // AutocompleteItem mirrors @earendil-works/pi-tui AutocompleteItem.
 //
@@ -268,14 +375,17 @@ type AutocompleteSuggestions struct {
 	Prefix string             `json:"prefix"`
 }
 
-// SlashCommandInfo mirrors core/slash-commands.SlashCommandInfo.
-type SlashCommandInfo = any
-
-// CustomMessage mirrors core/messages.CustomMessage<T>.
-type CustomMessage = any
+// SlashCommandInfo mirrors core/slash-commands.SlashCommandInfo, one entry of getCommands: an extension command, prompt template or skill.
+type SlashCommandInfo struct {
+	Name        string `json:"name"`
+	Description string `json:"description,omitempty"`
+	// Source is "extension", "prompt" or "skill".
+	Source     string     `json:"source"`
+	SourceInfo SourceInfo `json:"sourceInfo"`
+}
 
 // CustomEntry mirrors core CustomEntry<T>: a session entry appended via
 // AppendEntry that does not participate in LLM context. Like CustomMessage,
 // the generic payload is carried untyped (the wire boundary is JSON) and
 // renderers type-assert as needed.
-type CustomEntry = any
+type CustomEntry = sessionentry.CustomEntry

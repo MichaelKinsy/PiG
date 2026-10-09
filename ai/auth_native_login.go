@@ -57,7 +57,6 @@ func oauthNativeLogin(provider OAuthProviderInterface) func(context.Context, Aut
 				notify(AuthDeviceCodeEvent{UserCode: info.UserCode, VerificationURI: info.VerificationURI, IntervalSeconds: new(info.IntervalSeconds), ExpiresInSeconds: new(info.ExpiresInSeconds)})
 			},
 			OnProgress: func(message string) { notify(AuthProgressEvent{Message: message}) },
-			OnInfo:     func(message string) { notify(AuthInfoEvent{Message: message}) },
 			OnPrompt:   func(value OAuthPrompt) (string, error) { return prompt(ctx, value) }, OnPromptContext: prompt,
 			OnSelect: func(value OAuthSelectPrompt) (string, error) { return selectPrompt(ctx, value) }, OnSelectContext: selectPrompt,
 			OnManualCodeInput: func() (string, error) { return manual(ctx) }, OnManualCodeInputContext: manual,
@@ -65,6 +64,7 @@ func oauthNativeLogin(provider OAuthProviderInterface) func(context.Context, Aut
 				return interaction.Prompt(promptCtx, prompt)
 			},
 			GetDeviceID: options.GetDeviceID,
+			AgentName:   options.AgentName,
 		}
 		var credential OAuthCredentials
 		var err error

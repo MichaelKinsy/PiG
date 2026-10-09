@@ -16,6 +16,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/MichaelKinsy/PiG/internal/configroot"
 	"github.com/MichaelKinsy/PiG/internal/lazyregexp"
 	"github.com/MichaelKinsy/PiG/internal/linkerexec"
 
@@ -63,7 +64,7 @@ func (b *Builder) SetStagedSDKVerifier(fn func(stagedDir, buildType string) erro
 // NewBuilder creates a builder with the given cache directory.
 // Typically <config-root>/cache/ext/.
 func NewBuilder(cacheDir string) *Builder {
-	return NewBuilderWithConfigRoot(cacheDir, resolveConfigRoot())
+	return NewBuilderWithConfigRoot(cacheDir, configroot.Dir())
 }
 
 // NewBuilderWithConfigRoot creates a builder pinned to the same writable
@@ -74,23 +75,12 @@ func NewBuilderWithConfigRoot(cacheDir, configRoot string) *Builder {
 		cacheDir = abs
 	}
 	if strings.TrimSpace(configRoot) == "" {
-		configRoot = resolveConfigRoot()
+		configRoot = configroot.Dir()
 	}
 	if abs, err := filepath.Abs(configRoot); err == nil {
 		configRoot = abs
 	}
 	return &Builder{cacheDir: cacheDir, configRoot: configRoot}
-}
-
-func resolveConfigRoot() string {
-	if root := strings.TrimSpace(os.Getenv("PIG_HOME")); root != "" {
-		return root
-	}
-	if root := strings.TrimSpace(os.Getenv("XDG_CONFIG_HOME")); root != "" {
-		return filepath.Join(root, "pig")
-	}
-	home, _ := os.UserHomeDir()
-	return filepath.Join(home, ".pig")
 }
 
 // Build compiles the extension source at srcDir if needed. Returns the path
@@ -125,6 +115,12 @@ func (b *Builder) BuildContext(ctx context.Context, name, srcDir string) (*Build
 	buildType, err := detectBuildType(srcDir)
 	if err != nil {
 		return nil, err
+	}
+	if buildType == "node" {
+		// pig additive (D92): a Piglet that strips node-extensions reports it before any cache work.
+		if err := nodeRuntimeUnavailable(); err != nil {
+			return nil, err
+		}
 	}
 	// reuseOnly returns a published entry, or nil without building or waiting.
 	build := func(reuseOnly bool) (*BuildResult, error) {
@@ -516,6 +512,10 @@ func (b *Builder) resolveStagedSDK(srcDir, buildType string) (string, error) {
 	if !needed {
 		return "", nil
 	}
+	// pig additive (D92): this binary staged no SDK for a language the active Piglet strips.
+	if err := runtimecell.StrippedSDKError(buildType); err != nil {
+		return "", err
+	}
 	if info, err := os.Stat(stagedDir); err != nil || !info.IsDir() {
 		return "", fmt.Errorf("staged %s SDK is missing at %s; run `pig reload` with the active config root", label, stagedDir)
 	}
@@ -667,7 +667,7 @@ func buildGo(ctx context.Context, cacheRoot, srcDir, outPath, stagedSDK string) 
 	buildprogress.Phase(ctx, "Compiling Go member", srcDir+" (module resolution, compile, link)")
 	cmd := linkerexec.CommandContext(ctx, goToolchain.Command, buildprogress.ToolArgs(ctx, "go", args)...)
 	cmd.Dir = srcDir
-	cmd.Env = append(goToolchain.Environ(goBuildEnvironment(srcDir, os.Environ())), runtimecell.GoBuildCgoEnv(runtime.GOOS, runtime.GOARCH), "GOWORK=off")
+	cmd.Env = toolchain.WorkDirEnv(srcDir, append(goToolchain.Environ(goBuildEnvironment(srcDir, os.Environ())), runtimecell.GoBuildCgoEnv(runtime.GOOS, runtime.GOARCH), "GOWORK=off"))
 	out, err := buildprogress.CombinedOutput(ctx, cmd)
 	if err != nil {
 		_ = os.Remove(tmpPath) // Clean up partial.

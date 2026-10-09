@@ -1,12 +1,13 @@
 package tui
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/tui/widthx"
 )
 
-// TreeSelect must not render a line wider than the width it is given, down
+// TreeSelectorComponent must not render a line wider than the width it is given, down
 // to a single cell, in every state: rows, no rows, and label editing.
 func TestTreeSelectRowsStayWithinWidth(t *testing.T) {
 	root := &fakeNode{id: "r", kids: []TreeNode{
@@ -15,11 +16,11 @@ func TestTreeSelectRowsStayWithinWidth(t *testing.T) {
 			&fakeNode{id: "a2", label: "child two 漢字 wide"},
 		}},
 	}}
-	states := map[string]func() *TreeSelect{
-		"rows":  func() *TreeSelect { return NewTreeSelect("", root) },
-		"empty": func() *TreeSelect { return NewTreeSelect("", &fakeNode{id: "r"}) },
-		"label": func() *TreeSelect {
-			ts := NewTreeSelect("", root)
+	states := map[string]func() *TreeSelectorComponent{
+		"rows":  func() *TreeSelectorComponent { return NewTreeSelectorComponent("", root) },
+		"empty": func() *TreeSelectorComponent { return NewTreeSelectorComponent("", &fakeNode{id: "r"}) },
+		"label": func() *TreeSelectorComponent {
+			ts := NewTreeSelectorComponent("", root)
 			ts.labelInput = NewInput(InputOptions{})
 			ts.labelInput.SetValue("a long label being typed")
 			return ts
@@ -33,5 +34,23 @@ func TestTreeSelectRowsStayWithinWidth(t *testing.T) {
 				}
 			}
 		}
+	}
+}
+
+// tree-selector.ts:1379-1393: TreeSelectorComponent extends Container with spacer, border, title, help, search line, border, spacer, tree container, label container, spacer, border.
+func TestTreeSelectorIsAContainerOfPisConstructorChildren(t *testing.T) {
+	ts := NewTreeSelectorComponent("", &fakeNode{id: "r", kids: []TreeNode{&fakeNode{id: "a", label: "entry"}}})
+	if got := len(ts.Children()); got != 11 {
+		t.Fatalf("children = %d, want 11", got)
+	}
+	if len(ts.treeContainer.Children()) != 1 || len(ts.labelInputContainer.Children()) != 1 {
+		t.Fatal("tree and label containers each hold one child")
+	}
+	if got := strings.Join(ts.Render(60), "\n"); strings.Contains(got, "Label (empty to remove)") || !strings.Contains(got, "entry") {
+		t.Fatalf("tree mode render wrong: %s", got)
+	}
+	ts.labelInput = NewInput(InputOptions{})
+	if got := strings.Join(ts.Render(60), "\n"); !strings.Contains(got, "Label (empty to remove)") || strings.Contains(got, "(1/1)") {
+		t.Fatalf("label mode render wrong: %s", got)
 	}
 }

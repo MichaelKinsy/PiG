@@ -33,7 +33,7 @@ func TestSessionFileCreationConversationRule(t *testing.T) {
 		}, false},
 		{"custom entry only", func(t *testing.T, s *Session) { upstreamCustom(t, s, "state", map[string]any{"a": 1}) }, false},
 		{"custom message only", func(t *testing.T, s *Session) {
-			if _, err := s.AppendCustomMessage("note", "text", true, nil); err != nil {
+			if _, err := s.AppendCustomMessageEntry("note", "text", true, nil); err != nil {
 				t.Fatal(err)
 			}
 		}, false},
@@ -113,10 +113,10 @@ func TestHeaderOnlySessionFileResumesAsFlushed(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got := s.EntryCount(); got != 0 {
+	if got := s.GetEntryCount(); got != 0 {
 		t.Fatalf("EntryCount = %d, want 0", got)
 	}
-	if err := s.AppendThinkingLevelChange("off"); err != nil {
+	if _, err := s.AppendThinkingLevelChange("off"); err != nil {
 		t.Fatal(err)
 	}
 	if got := readSessionFileRoles(t, path); !slices.Equal(got, []string{"session", "thinking_level_change"}) {
@@ -151,17 +151,17 @@ func TestOpenEmptyFileWritesHeaderAndKeepsAppending(t *testing.T) {
 // getEntryCount reads the index size instead of copying entries (session-manager.ts:1511).
 func TestSessionEntryCountExcludesTheHeader(t *testing.T) {
 	s := NewSession("count", "/project")
-	if got := s.EntryCount(); got != 0 {
+	if got := s.GetEntryCount(); got != 0 {
 		t.Fatalf("empty = %d", got)
 	}
 	upstreamSessionUser(t, s, "a")
 	upstreamSessionAssistant(t, s, "b")
 	upstreamCustom(t, s, "state", nil)
-	if got := s.EntryCount(); got != 3 {
+	if got := s.GetEntryCount(); got != 3 {
 		t.Fatalf("EntryCount = %d, want 3", got)
 	}
-	if got := s.EntryCount(); got != len(s.Entries()) {
-		t.Fatalf("EntryCount %d differs from len(Entries) %d", got, len(s.Entries()))
+	if got := s.GetEntryCount(); got != len(s.GetEntries()) {
+		t.Fatalf("EntryCount %d differs from len(Entries) %d", got, len(s.GetEntries()))
 	}
 }
 
@@ -175,10 +175,10 @@ func TestSessionEntryCountCountsDistinctIDsOfALoadedFile(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got := len(s.Entries()); got != 2 {
+	if got := len(s.GetEntries()); got != 2 {
 		t.Fatalf("Entries = %d, want both records", got)
 	}
-	if got := s.EntryCount(); got != 1 {
+	if got := s.GetEntryCount(); got != 1 {
 		t.Fatalf("EntryCount = %d, want 1 distinct ID", got)
 	}
 }
@@ -211,10 +211,10 @@ func TestConcurrentFirstMessagesCreateOneCompleteFile(t *testing.T) {
 		if len(records) != writers+1 || records[0]["type"] != "session" {
 			t.Fatalf("round %d: %d records, first %v", round, len(records), records[0]["type"])
 		}
-		entries := s.Entries()
+		entries := s.GetEntries()
 		for i, entry := range entries {
-			if records[i+1]["id"] != entry.Base.ID {
-				t.Fatalf("round %d: file entry %d is %v, Session recorded %s", round, i, records[i+1]["id"], entry.Base.ID)
+			if records[i+1]["id"] != entry.Base().ID {
+				t.Fatalf("round %d: file entry %d is %v, Session recorded %s", round, i, records[i+1]["id"], entry.Base().ID)
 			}
 		}
 	}

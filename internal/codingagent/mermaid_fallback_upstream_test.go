@@ -1,3 +1,5 @@
+//go:build !pig_strip_mermaid
+
 package codingagent
 
 import (
@@ -9,6 +11,7 @@ import (
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/coding/extension"
+	"github.com/MichaelKinsy/PiG/coding/extension/markdowntransform"
 	"github.com/MichaelKinsy/PiG/internal/mermaid"
 	"github.com/MichaelKinsy/PiG/tui"
 )
@@ -61,9 +64,9 @@ func TestMermaidFallbackAssistantBlockMatchesDisabledTransform(t *testing.T) {
 	for _, body := range []string{"pie\n  title Pets\n  \"Dogs\" : 4", wideMermaidSource} {
 		source := "Before\n\n```mermaid\n" + body + "\n```\n\nAfter"
 		render := func(mode string) []string {
-			block := tui.NewAssistantMessageBlock(false)
+			block := tui.NewAssistantMessageComponent(nil, false, nil, "", nil, nil)
 			transform := createMermaidMarkdownTransformer(func() string { return mode }, tui.ActiveTheme())
-			block.SetMarkdownTransform(createMarkdownTransform(extension.MarkdownMessageAssistant, false, []extension.MarkdownTransformer{transform}))
+			block.SetMarkdownTransform(markdowntransform.CreateMarkdownTransform(extension.MarkdownMessageAssistant, false, []extension.MarkdownTransformer{transform}))
 			block.SetTextDelta(source)
 			rows := block.Render(80)
 			if block.Text() != source {
@@ -80,9 +83,9 @@ func TestMermaidFallbackAssistantBlockMatchesDisabledTransform(t *testing.T) {
 // Partial-parse warnings are upstream display behavior and must survive removal of unsupported/oversize hints.
 func TestMermaidPartialWarningRemainsDisplayOnly(t *testing.T) {
 	source := "```mermaid\nflowchart LR\n  A[Foo] invalid\n```"
-	block := tui.NewAssistantMessageBlock(false)
+	block := tui.NewAssistantMessageComponent(nil, false, nil, "", nil, nil)
 	transform := createMermaidMarkdownTransformer(func() string { return "streaming" }, nil)
-	block.SetMarkdownTransform(createMarkdownTransform(extension.MarkdownMessageAssistant, false, []extension.MarkdownTransformer{transform}))
+	block.SetMarkdownTransform(markdowntransform.CreateMarkdownTransform(extension.MarkdownMessageAssistant, false, []extension.MarkdownTransformer{transform}))
 	block.SetTextDelta(source)
 	if rows := strings.Join(block.Render(100), "\n"); !strings.Contains(rows, "Mermaid diagram not rendered") {
 		t.Fatalf("upstream partial warning missing: %q", rows)

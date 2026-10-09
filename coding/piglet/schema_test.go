@@ -58,6 +58,16 @@ func TestAC1SchemaParserAgreement(t *testing.T) {
 		{"unknown build field", "name: x\nbuild:\n  tier: fuse\n", false},
 		{"unknown nested field", "name: x\nmodel:\n  bogus: y\n", false},
 		{"removed MCP field", "name: x\nmcpServers:\n  s:\n    bogus: y\n", false},
+		{"frontend slot", "name: x\nslots:\n  frontend:\n    member: ./tern\n", true},
+		{"frontend slot without member", "name: x\nslots:\n  frontend: {}\n", false},
+		{"unknown slot", "name: x\nslots:\n  header:\n    member: ./h\n", false},
+		{"frontend under build", "name: x\nbuild:\n  frontend: ./tern\n", false},
+		{"remove a slot", "name: child\nextends:\n  source: local:./base.yaml\n  remove:\n    slots: [frontend]\n", true},
+		{"remove an unknown slot", "name: child\nextends:\n  source: local:./base.yaml\n  remove:\n    slots: [header]\n", false},
+		{"strip lists", "name: x\nstrip:\n  tools: [grep]\n  commands: [/share]\n  extensions: [mcp]\n  features: [themes]\n", true},
+		{"remove strip", "name: x\nextends:\n  source: local:./base.yaml\n  allowWiden: true\n  remove:\n    strip:\n      tools: [grep]\n", true},
+		{"remove a slot and a strip entry", "name: x\nextends:\n  source: local:./base.yaml\n  allowWiden: true\n  remove:\n    slots: [frontend]\n    strip:\n      extensions: [mcp]\n", true},
+		{"unknown strip field", "name: x\nstrip:\n  renderer: ansi\n", false},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {

@@ -1,5 +1,7 @@
 package codingagent
 
+// pi: packages/coding-agent/src/core/trust-manager.ts
+
 import (
 	"os"
 	"path/filepath"

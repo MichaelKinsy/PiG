@@ -12,7 +12,7 @@ import (
 
 // upstream: packages/ai/test/xiaomi-token-plan-ams-anthropic-empty-signature-smoke.test.ts:8-21.
 func xiaomiEmptySignatureModel() *Model {
-	return &Model{ID: "mimo-v2.5-pro", DisplayName: "MiMo-V2.5-Pro Anthropic smoke", Input: []string{"text"}, ProviderMeta: ProviderMetadata{API: APIAnthropicMessages, ProviderID: "xiaomi-token-plan-ams", BaseURL: "https://token-plan-ams.xiaomimimo.com/anthropic", Reasoning: true, Compat: &ModelCompat{AllowEmptySignature: new(true)}}, Capabilities: ModelCapabilities{MaxThinking: ThinkingHigh, ContextWindow: 1048576, MaxOutputTokens: 1024, InputCostPer1M: 1, OutputCostPer1M: 3, CacheReadCostPer1M: 0.2, CacheWriteCostPer1M: 0}}
+	return &Model{ID: "mimo-v2.5-pro", DisplayName: "MiMo-V2.5-Pro Anthropic smoke", Input: []string{"text"}, ProviderMeta: ProviderMetadata{API: APIAnthropicMessages, ProviderID: "xiaomi-token-plan-ams", BaseURL: "https://token-plan-ams.xiaomimimo.com/anthropic", Reasoning: true, Compat: &ModelCompat{AllowEmptySignature: new(true)}}, Capabilities: ModelCapabilities{MaxThinking: ThinkingLevelHigh, ContextWindow: 1048576, MaxOutputTokens: 1024, InputCostPer1M: 1, OutputCostPer1M: 3, CacheReadCostPer1M: 0.2, CacheWriteCostPer1M: 0}}
 }
 
 // upstream: packages/ai/test/xiaomi-token-plan-ams-anthropic-empty-signature-smoke.test.ts:35-47.
@@ -32,7 +32,7 @@ func TestXiaomiEmptySignatureRequestUpstream(t *testing.T) {
 	})
 	var captured []byte
 	captureErr := errors.New("payload captured")
-	stream, err := provider.Stream(t.Context(), NormalizeContext(xiaomiEmptySignatureContext()), StreamOptions{MaxTokens: 512, Thinking: ThinkingHigh, OnPayload: func(value any, _ *Model) (any, error) {
+	stream, err := provider.Stream(t.Context(), NormalizeContext(xiaomiEmptySignatureContext()), StreamOptions{MaxTokens: 512, Thinking: ThinkingLevelHigh, OnPayload: func(value any, _ *Model) (any, error) {
 		var err error
 		captured, err = json.Marshal(value)
 		if err != nil {
@@ -95,7 +95,7 @@ func TestXiaomiThinkingStreamJSONUpstream(t *testing.T) {
 					t.Error(err)
 				}
 			}()
-			stream, err := provider.Stream(t.Context(), NormalizeContext(xiaomiEmptySignatureContext()), StreamOptions{MaxTokens: 512, Thinking: ThinkingHigh})
+			stream, err := provider.Stream(t.Context(), NormalizeContext(xiaomiEmptySignatureContext()), StreamOptions{MaxTokens: 512, Thinking: ThinkingLevelHigh})
 			if err != nil {
 				t.Fatal(err)
 			}

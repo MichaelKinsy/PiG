@@ -21,6 +21,7 @@ Read these files before adding or changing extension behavior:
 - Do not add a general dynamic linked/in-process extension loader. Piglet builds
   may fuse compatible reviewed Go SDK factories through the governed D31 path;
   the subprocess host remains the semantic reference.
+  The compiled-in extension factory form of [the extension factory trust split](specs/extension-factory-trust.md) is the one exception. It is an `extension.ExtensionFactory` (`func(extension.API) error`) that the source of the binary's own `main` package passes to the loader by value: Stock PiG's built-in rows, or an embedding program's own factories. It is not an authoring form for Packages or Piglets. Their Go extensions use the Go SDK factory (`sdk.Factory`), including when a Piglet Binary fuses them (D31). Settings and `-e builtin:<name>` may select or disable a registered built-in by name. Nothing loaded at run time and nothing a Piglet supplies can add factory code.
 - Do not introduce multi-register (`RegisterPayload.Extensions`,
   `RequestPayload.TargetExtension`) unless a new approved spec explicitly
   chooses it. Packed cells currently use the current subprocess wire with one socket per
@@ -194,6 +195,7 @@ overlay and transports only ordered input, replaceable line snapshots, and the
 terminal result/error. Snapshots carry their render width and a monotone
 per-overlay sequence; the host rejects stale-width and out-of-order frames.
 Core editor keybindings do not receive input while the overlay owns focus.
+A component opened with `overlay: true` renders at the width Pi's `TUI.resolveOverlayLayout` gives the overlay (`min(80, available)` by default, or `overlayOptions.width`, `minWidth` and `margin`). An inline component and a legacy titled modal render at the terminal width. Snapshots stay keyed by the terminal width.
 Identical snapshots are suppressed before transport, and host rendering reads
 only the latest cached frame.
 
@@ -265,6 +267,50 @@ stuck callback.
 Rust uses `RemoteComponent` with
 `Context::custom_component`; Python uses `Context.custom(component, options)`.
 The Node bridge accepts the upstream component factory directly.
+
+### Pi's components: the component kit (D107)
+
+To draw Pi's own components (container, box, text, truncated text, markdown,
+spacer, dynamic border, select list, settings list, image, loader, stacks)
+instead of lines, return a kit view; the host renders it with its `tui` ports,
+so the terminal shows the bytes Pi's components draw. The forms sit next to the
+line forms, and every line-form signature is unchanged
+(`docs/plan/extension-component-kit.md` §9):
+
+| surface | Go (`sdk/kit`) | Rust (`pig_sdk::kit`) | Python (`pig_sdk.kit`) |
+|---|---|---|---|
+| focused overlay | `ctx.Custom` with a `ViewComponent` (`View(width)`, `HandleViewEvent`) | `ctx.custom_view` with a `ViewComponent` (`view`, `handle_view_event`) | `ctx.custom` with a component that has `view(width)` and optionally `handle_view_event(event)` |
+| widget | `ctx.SetWidget(key, kit.View, opts...)` | `ctx.set_widget_view(key, view, options)` | `ctx.set_widget(key, kit.View, options)` |
+| header/footer | `SetHeaderView`/`SetFooterView` | `set_header_view`/`set_footer_view` | `set_header_view`/`set_footer_view` |
+| tool renderers | `ToolRenderers.CallView`/`ResultView` | `render_call_view`/`render_result_view`, `ToolRendererSet { call_view, result_view }` | `call_view=`/`result_view=` |
+| message/entry renderers | `MessageViewRenderer`/`EntryViewRenderer` | `message_view_renderer`/`entry_view_renderer` | `message_view_renderer`/`entry_view_renderer` |
+
+The host owns the state of a view's lists: keys the focused list binds move
+it, and its callbacks arrive as `kit.Event`s (`select`, `cancel`,
+`selectionChange`, `change`) on the overlay's input queue, after the input sent
+before them; every other key reaches the input handler. `View.theme` overrides
+theme tokens for one surface. An image's bytes cross the wire once per
+connection. The `lines` node's `image`, `progress` and `list` annotations are
+frontend-only: the SDKs send them only while a frontend draws.
+
+### Mouse in custom components
+
+As in Pi, a `ctx.ui.custom` component (overlay or editor slot) receives
+mouse events only while the user runs the default fullscreen `tuiMode`;
+regular mode sends none. Each event is Pi's `TuiMouseEvent` (`type` press,
+release, move, drag, click or wheel; `button`; `x`/`y` local to the
+component; screen position, bounds, modifiers, `wheelDelta`, `clickCount`).
+Go implements the optional `sdk.MouseHandler`
+(`HandleMouse(sdk.MouseEvent) (sdk.RemoteComponentResult, error)`), Rust
+returns `true` from `handles_mouse` and implements `handle_mouse(&MouseEvent)`,
+Python implements `handle_mouse(event: pig_sdk.MouseEvent)`, and Node uses
+Pi's own `handleMouse`. The result means what `HandleInput`'s does, and events
+share its serial queue. A kit view's lists take clicks and wheel first and
+report them as `kit.Event`s; only what they leave unhandled reaches the
+handler. A component that takes the mouse is treated as handling every event
+in its bounds, so text selection does not start over it. In a frontend such as
+Tern, a click on an element of the component's view arrives as the same
+terminal gesture at that element's cell.
 
 ### Review evidence
 
@@ -541,7 +587,7 @@ Rust: `ext.register_oauth_provider("example-provider", json!({"name": "Example P
 Python: `ext.register_oauth_provider("example-provider", {"name": "Example Provider"}, OAuthProvider(login=..., ...))`.
 
 Value-returning callbacks (`OnPrompt`/`OnSelect`/`OnManualCodeInput`) return the
-user's input or an `ErrOAuthCancelled`/`OAuthCancelled` error on dismissal.
+user's input or, on dismissal, an error with Pi's message `Login cancelled` (Go `ErrOAuthCancelled`, Rust `OAUTH_CANCELLED`, Python `OAuthCancelled`; Node `onPrompt`, `onSelect` and `onManualCodeInput` reject with it). A login that returns that error ends as cancelled, and `/login` returns to the menu it was started from, as in Pi. Any other host failure is returned as that error. `OnManualCodeInput` asks with Pi's message "Paste the authorization code".
 
 ## Validation
 

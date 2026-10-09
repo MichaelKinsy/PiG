@@ -26,12 +26,12 @@ type typedWireBridge struct{ actions map[string]any }
 func (probe *typedWireBridge) SetHostAction(key string, action any) { probe.actions[key] = action }
 func (*typedWireBridge) PublishModelCatalog()                       {}
 
-func wireTypedModelOperations(t *testing.T, services *Services) *typedWireBridge {
+func wireTypedModelOperations(t *testing.T, services *AgentSessionServices) *typedWireBridge {
 	t.Helper()
 	probe := &typedWireBridge{actions: make(map[string]any)}
 	runtime := services.ModelRuntime()
 	detach := icodingagent.WireModelOperations(probe, icodingagent.ModelOperationBindings{
-		ModelLookup: runtime.GetModel, ModelCatalog: runtime.GetModels, Registry: services.Registry().ModelRegistry, Classify: runtime.Classify, GenerateImages: runtime.GenerateImages,
+		ModelLookup: runtime.GetModel, ModelCatalog: func(...string) []*ai.Model { return runtime.GetModels() }, Registry: services.Registry().ModelRegistry, Classify: runtime.Classify, GenerateImages: runtime.GenerateImages,
 	})
 	t.Cleanup(detach)
 	return probe
@@ -309,7 +309,7 @@ func TestExtensionProviderConfigKeepsTypedModelsAndImplementations(t *testing.T)
 			return classifiersTestOKResult(model), nil
 		}}},
 	}
-	if err := services.Registry().RegisterProvider("wire-operations", config); err != nil {
+	if err := services.Registry().RegisterExtensionProvider("wire-operations", config); err != nil {
 		t.Fatal(err)
 	}
 	if got := runtime.GetModel("wire-operations", "chat-1"); got == nil || got.ProviderMeta.API != ai.APIOpenAICompletions {

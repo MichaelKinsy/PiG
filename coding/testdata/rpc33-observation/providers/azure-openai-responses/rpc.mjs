@@ -1,4 +1,4 @@
-// Azure OpenAI Responses start state through the real Pi CLI RPC path. Pi 1.0.3 / OpenAI 7.19.0.
+// Azure OpenAI Responses start state through the real Pi CLI RPC path. Pi 1.1.0 / OpenAI 7.19.0.
 // Usage: node rpc.mjs <rpc.json> [runs]
 //
 // Runs `pi --mode rpc` (dist/bundle/cli.js) against one loopback server whose provider is api "azure-openai-responses".
@@ -6,7 +6,7 @@
 // ends. The observation is the first assistant message's ordered RPC records: message_start, every message_update, message_end.
 //   buffered  headers and the complete body in a single write (the RPC33 fixture shape).
 //   pending   headers flushed; the body is written when the driver reads the first assistant message_start.
-// Every run must be identical after numeric message-timestamp canonicalization; the probe fails otherwise.
+// Every run must be identical after numeric message-timestamp canonicalization (and without durationMs); the probe fails otherwise.
 import { spawn } from 'node:child_process';
 import { createServer } from 'node:http';
 import { once } from 'node:events';
@@ -18,7 +18,7 @@ import { join } from 'node:path';
 import { createInterface } from 'node:readline';
 
 const root = process.env.PI_PACKAGE_ROOT;
-assert.equal(JSON.parse(readFileSync(root + '/package.json', 'utf8')).version, '1.0.3');
+assert.equal(JSON.parse(readFileSync(root + '/package.json', 'utf8')).version, '1.1.0');
 const runs = Number(process.argv[3] ?? 8);
 const args = '{"path":"parity-read-target.txt"}';
 const sse = evs => evs.map(e => 'event: ' + e.type + '\ndata: ' + JSON.stringify(e) + '\n\n').join('');
@@ -46,7 +46,8 @@ const bodies = {
     {type:'response.completed',response:{id:'resp_2',status:'completed',output:[{type:'message',id:'msg_2',role:'assistant',status:'completed',content:[{type:'output_text',text:'ok',annotations:[]}]}]}},
   ]),
 };
-const canon = value => JSON.parse(JSON.stringify(value, (k, v) => (k === 'timestamp' && typeof v === 'number' && v > 1e9 ? 0 : v)));
+// Pi 1.1.0 adds a measured durationMs to each response (#10549); like the timestamp it depends on the clock, so it is dropped.
+const canon = value => JSON.parse(JSON.stringify(value, (k, v) => (k === 'durationMs' ? undefined : k === 'timestamp' && typeof v === 'number' && v > 1e9 ? 0 : v)));
 
 async function once1(shape, fixture) {
   const release = Promise.withResolvers();
@@ -93,15 +94,17 @@ async function once1(shape, fixture) {
   return canon(records);
 }
 
+// Pi 1.1.0 stamps each assistant message with durationMs, a wall-clock span: runs agree except for that field.
+const clock = (value) => JSON.parse(JSON.stringify(value).replace(/"durationMs":\d+/g, '"durationMs":0'));
 const out = [];
 for (const shape of ['tool', 'text']) for (const fixture of ['buffered', 'pending']) {
   let first;
   for (let i = 0; i < runs; i++) {
     const r = await once1(shape, fixture);
-    if (i === 0) first = r; else assert.deepEqual(r, first, `${shape}/${fixture} run ${i} differs`);
+    if (i === 0) first = r; else assert.deepEqual(clock(r), clock(first), `${shape}/${fixture} run ${i} differs`);
   }
   const start = first[0].message;
   console.log(JSON.stringify({shape, fixture, runs, start: {content: start.content, stopReason: start.stopReason, responseId: start.responseId, total: start.usage.totalTokens}, updates: first.length - 2}));
   out.push({api:'azure-openai-responses', shape, fixture, runs, records: first});
 }
-await writeFile(process.argv[2], JSON.stringify({piVersion:'1.0.3', openaiVersion:'7.19.0', bodies, cases: out}, null, 2) + '\n');
+await writeFile(process.argv[2], JSON.stringify({piVersion:'1.1.0', openaiVersion:'7.19.0', bodies, cases: out}, null, 2) + '\n');

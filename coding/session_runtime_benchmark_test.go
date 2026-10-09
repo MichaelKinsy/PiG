@@ -15,7 +15,7 @@ func BenchmarkRuntimeNewSession(b *testing.B) {
 		if drained != nil {
 			<-drained
 		}
-		services, err := NewServices(ServicesOptions{CWD: options.CWD, AgentDir: options.AgentDir})
+		services, err := CreateAgentSessionServices(CreateAgentSessionServicesOptions{CWD: options.CWD, AgentDir: options.AgentDir})
 		if err != nil {
 			return CreateAgentSessionRuntimeResult{}, err
 		}

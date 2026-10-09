@@ -1,5 +1,9 @@
 package durableagent
 
+// pi: packages/coding-agent/src/experimental/vacation/harness-setup.ts
+
+// pi: packages/coding-agent/src/experimental/durable/harness-setup.ts
+
 import (
 	"context"
 	"os"

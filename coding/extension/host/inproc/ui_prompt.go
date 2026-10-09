@@ -177,7 +177,7 @@ func (c *uiPromptContext) Editor(ctx context.Context, title, prefill string) (st
 	return c.UIContext.Editor(ctx, title, prefill)
 }
 
-func (c *uiPromptContext) Custom(ctx context.Context, factory any, opts any) (any, error) {
+func (c *uiPromptContext) Custom(ctx context.Context, factory extension.CustomFactory, opts *extension.CustomOptions) (any, error) {
 	defer c.runner.BeginUIPrompt(extension.UIPromptKindCustom, "")()
 	return c.UIContext.Custom(ctx, factory, opts)
 }

@@ -136,9 +136,8 @@ func TestExample03OwnedConversations(t *testing.T) {
 		},
 	})
 	registryDoc := durable.DefineDoc(durable.DocDefinition[agentRegistry]{
-		CommonDocDefinition: durable.CommonDocDefinition[agentRegistry]{Kind: "example.agent-registry", Version: 1},
+		CommonDocDefinition: durable.CommonDocDefinition[agentRegistry]{Kind: "example.agent-registry", Version: 1, Initial: func() agentRegistry { return agentRegistry{Agents: map[string]agentRef{}} }},
 		DocumentSemantics:   durable.DocumentSemantics{Scope: durable.ScopeConversation, History: durable.HistoryLatest, Fork: durable.ForkInitial},
-		Initial:             func() agentRegistry { return agentRegistry{Agents: map[string]agentRef{}} },
 	})
 
 	main := commit(t, session, func(tx durable.Tx) (durable.ConversationRecord, error) { return tx.CreateConversation(ownerless) })
@@ -186,6 +185,8 @@ func TestExample03OwnedConversations(t *testing.T) {
 }
 
 // 04-chord-state.ts: documentState() never creates a document; it returns a hydrated read-only Chord state.
+// Pi source: packages/chord/src/api.ts, packages/chord/src/services/state-internals.ts
+// mutation-checked: dropping the reads and writes of ReplicatedStateDelivery.Sequence fails it
 func TestExample04ChordState(t *testing.T) {
 	session := newSession(t)
 	chat := commit(t, session, func(tx durable.Tx) (durable.ConversationRecord, error) {
@@ -209,7 +210,7 @@ func TestExample04ChordState(t *testing.T) {
 	stopNotes, err := notesState.Subscribe(func(value durable.JsonObject, _ context.Context, delivery chord.ReplicatedStateDelivery) {
 		mu.Lock()
 		defer mu.Unlock()
-		text, _ := value["text"].(string)
+		text, _ := value.Value("text").(string)
 		frames = append(frames, frame{delivery.Kind, delivery.Sequence, text})
 	})
 	if err != nil {
@@ -248,12 +249,12 @@ func TestExample05Watches(t *testing.T) {
 	if err != nil || notesWatch == nil {
 		t.Fatalf("notes are absent: %v %v", notesWatch, err)
 	}
-	if baseline, _ := notesWatch.Value()["text"].(string); baseline != "first" {
+	if baseline, _ := notesWatch.Value().Value("text").(string); baseline != "first" {
 		t.Fatalf("watch baseline: %q", baseline)
 	}
 	updates := make(chan string, 1)
 	notesWatch.Start(func(_ context.Context, value durable.JsonObject, _ []durable.Op) error {
-		text, _ := value["text"].(string)
+		text, _ := value.Value("text").(string)
 		select {
 		case updates <- text:
 		default:

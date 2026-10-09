@@ -165,3 +165,7 @@ coding/extension/host/runtimecell/**/*.py[cod]
 
 # node_modules symlinks to a shared checkout are not directories, so node_modules/ does not match them.
 node_modules
+internal/evals/.eval/
+
+# built tool binary of test/parity/interface-closure/autobind
+/test/parity/interface-closure/autobind/autobind

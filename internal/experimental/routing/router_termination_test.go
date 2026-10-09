@@ -122,6 +122,8 @@ func newRouterProbe(t *testing.T, resolve func(context.Context, string) (routing
 }
 
 // upstream: packages/server/src/session-router.ts:#open registers `handle.terminated?.then(invalidate)` and #acquire reads hostedSessions. The invalidation microtask runs before a later attach request, so an attach after a Harness termination opens a fresh Harness instead of attaching to the retired one.
+// Pi source: packages/server/src/session-router.ts:293-300 (handle.terminated.then).
+// mutation-checked: negating the condition `r.opening[sessionID] == pending` at session_router.go:482 fails it.
 func TestRouterAttachAfterSignalledTerminationOpensAFreshHarness(t *testing.T) {
 	retired, fresh := newRetiredHandle(nil), newRetiredHandle(nil)
 	resumeRetired, resumeFresh := sync.OnceFunc(func() { close(retired.resume) }), sync.OnceFunc(func() { close(fresh.resume) })
@@ -151,6 +153,8 @@ func TestRouterAttachAfterSignalledTerminationOpensAFreshHarness(t *testing.T) {
 }
 
 // upstream: packages/server/src/session-router.ts:#open registers `handle.terminated?.then(invalidate)`; invalidate (:302-312) releases every attachment of the retired Harness, and the release's awaits settle in the same microtask drain, before any later I/O event delivers another attach. A client that attaches the Session it was attached to when its Harness terminated therefore sees no current attachment (:162-163) and gets a fresh Harness. The Go watcher and its release run on other goroutines, so the router must retire the signalled attachment itself before it compares the client's current Session.
+// Pi source: packages/server/src/session-router.ts:160-190 (attachClientNow) and :293-300.
+// mutation-checked: negating the condition `current != nil && r.retireTerminatedAttachment(current)` at session_router.go:283 fails it.
 func TestRouterReattachAfterSignalledTerminationReplacesTheRetiredAttachment(t *testing.T) {
 	retired, fresh := newRetiredHandle(nil), newRetiredHandle(nil)
 	resumeRetired, resumeFresh := sync.OnceFunc(func() { close(retired.resume) }), sync.OnceFunc(func() { close(fresh.resume) })
@@ -183,6 +187,8 @@ func TestRouterReattachAfterSignalledTerminationReplacesTheRetiredAttachment(t *
 }
 
 // upstream: packages/server/src/session-router.ts:removeSession returns when hostedSessions no longer holds the Session. The termination microtask has already removed a terminated Harness, so removal neither releases through nor closes the retired handle.
+// Pi source: packages/server/src/session-router.ts:72-90 (removeSession) and :293-300.
+// mutation-checked: negating the condition `hosted != nil` at session_router.go:177 fails it.
 func TestRouterRemoveSessionAfterSignalledTerminationIsANoOp(t *testing.T) {
 	retired := newRetiredHandle(nil)
 	resumeRetired := sync.OnceFunc(func() { close(retired.resume) })
@@ -208,6 +214,8 @@ func TestRouterRemoveSessionAfterSignalledTerminationIsANoOp(t *testing.T) {
 }
 
 // upstream: packages/server/src/session-router.ts:#open's termination microtask reports the Harness terminal error as soon as the termination settles, before closeInternal (:111-120) resumes after Promise.all and reports its opening failures.
+// Pi source: packages/server/src/session-router.ts:108-128 (closeInternal) and :293-300.
+// mutation-checked: negating the condition `len(errors) == 0` at errors.go:104 fails it.
 func TestRouterCloseReportsSignalledTerminationBeforeOpeningFailures(t *testing.T) {
 	errTerminal := errors.New("worker crashed")
 	errOpen := errors.New("resolve session-2 failed")

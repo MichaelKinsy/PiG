@@ -13,8 +13,9 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
-	"runtime"
 	"testing"
+
+	"github.com/MichaelKinsy/PiG/internal/testenv"
 )
 
 // divergenceHeaderRE matches `## D1 -` / `## D42 -` style headers.
@@ -33,13 +34,7 @@ var divergenceRefRE = regexp.MustCompile(`^D\d+$`)
 func loadDivergenceNumbers(t *testing.T) map[string]bool {
 	t.Helper()
 
-	_, thisFile, _, ok := runtime.Caller(0)
-	if !ok {
-		t.Fatal("runtime.Caller failed")
-	}
-	// thisFile = .../tests/upstream-parity/divergence_refs_test.go
-	// repoRoot = .../pig
-	repoRoot := filepath.Join(filepath.Dir(thisFile), "..", "..")
+	repoRoot := testenv.ModuleRoot(t)
 	docPath := filepath.Join(repoRoot, "docs/parity/DIVERGENCES.md")
 
 	f, err := os.Open(docPath)
@@ -72,11 +67,7 @@ func loadDivergenceNumbers(t *testing.T) map[string]bool {
 func loadAllLedgerNumbers(t *testing.T) map[string]bool {
 	t.Helper()
 	out := loadDivergenceNumbers(t)
-	_, thisFile, _, ok := runtime.Caller(0)
-	if !ok {
-		t.Fatal("runtime.Caller failed")
-	}
-	docPath := filepath.Join(filepath.Dir(thisFile), "..", "..", "docs", "additive-features.md")
+	docPath := filepath.Join(testenv.ModuleRoot(t), "docs", "additive-features.md")
 	f, err := os.Open(docPath)
 	if err != nil {
 		t.Fatalf("open ADDITIVE_FEATURES.md: %v", err)
@@ -130,8 +121,7 @@ func TestRunnerParityGate_DivergenceRefsResolve(t *testing.T) {
 func TestDivergenceDoc_HasExpectedActiveCount(t *testing.T) {
 	known := loadDivergenceNumbers(t)
 
-	_, thisFile, _, _ := runtime.Caller(0)
-	repoRoot := filepath.Join(filepath.Dir(thisFile), "..", "..")
+	repoRoot := testenv.ModuleRoot(t)
 	docPath := filepath.Join(repoRoot, "docs/parity/DIVERGENCES.md")
 	data, err := os.ReadFile(docPath)
 	if err != nil {

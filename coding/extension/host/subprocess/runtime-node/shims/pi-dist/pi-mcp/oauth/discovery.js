@@ -43,9 +43,10 @@ export function parseWwwAuthenticate(header) {
         errorDescription: field(header, "error_description"),
     };
 }
-async function fetchMetadata(url, fetch, protocolVersion) {
+async function fetchMetadata(url, fetch, protocolVersion, signal) {
     return fetch(url, {
         headers: { Accept: "application/json", "MCP-Protocol-Version": protocolVersion },
+        signal,
     });
 }
 export async function discoverProtectedResourceMetadata(serverUrl, options = {}) {
@@ -54,10 +55,10 @@ export async function discoverProtectedResourceMetadata(serverUrl, options = {})
     const version = options.protocolVersion ?? LATEST_PROTOCOL_VERSION;
     let response = await fetchMetadata(options.resourceMetadataUrl
         ? new URL(options.resourceMetadataUrl)
-        : new URL(`/.well-known/oauth-protected-resource${pathSuffix(server.pathname)}`, server.origin), fetch, version);
+        : new URL(`/.well-known/oauth-protected-resource${pathSuffix(server.pathname)}`, server.origin), fetch, version, options.signal);
     if (!options.resourceMetadataUrl && server.pathname !== "/" && isDiscoveryMiss(response.status)) {
         discard(response);
-        response = await fetchMetadata(new URL("/.well-known/oauth-protected-resource", server.origin), fetch, version);
+        response = await fetchMetadata(new URL("/.well-known/oauth-protected-resource", server.origin), fetch, version, options.signal);
     }
     if (!response.ok) {
         discard(response);
@@ -79,7 +80,7 @@ export function buildAuthorizationServerDiscoveryUrls(authorizationServerUrl) {
 export async function discoverAuthorizationServerMetadata(authorizationServerUrl, options = {}) {
     const fetch = options.fetch ?? globalThis.fetch;
     for (const { url } of buildAuthorizationServerDiscoveryUrls(authorizationServerUrl)) {
-        const response = await fetchMetadata(url, fetch, options.protocolVersion ?? LATEST_PROTOCOL_VERSION);
+        const response = await fetchMetadata(url, fetch, options.protocolVersion ?? LATEST_PROTOCOL_VERSION, options.signal);
         if (!response.ok) {
             discard(response);
             if (isDiscoveryMiss(response.status))
@@ -104,6 +105,7 @@ export async function discoverOAuthServerInfo(serverUrl, options = {}) {
         resourceMetadata = await discoverProtectedResourceMetadata(serverUrl, {
             resourceMetadataUrl: options.resourceMetadataUrl,
             fetch: options.fetch,
+            signal: options.signal,
         });
     }
     catch (error) {
@@ -112,7 +114,7 @@ export async function discoverOAuthServerInfo(serverUrl, options = {}) {
     }
     if (options.authorizationServerMetadataUrl) {
         const url = options.authorizationServerMetadataUrl;
-        const response = await fetchMetadata(url, options.fetch ?? globalThis.fetch, LATEST_PROTOCOL_VERSION);
+        const response = await fetchMetadata(url, options.fetch ?? globalThis.fetch, LATEST_PROTOCOL_VERSION, options.signal);
         if (!response.ok) {
             discard(response);
             throw new Error(`HTTP ${response.status} loading authorization server metadata from ${url}`);
@@ -126,6 +128,7 @@ export async function discoverOAuthServerInfo(serverUrl, options = {}) {
         authorizationServerMetadata: await discoverAuthorizationServerMetadata(authorizationServerUrl, {
             fetch: options.fetch,
             skipIssuerValidation: options.skipIssuerValidation,
+            signal: options.signal,
         }),
         resourceMetadata,
     };

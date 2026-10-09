@@ -1,7 +1,7 @@
 import { FacetKernel } from "./facets/host.js";
 import { disposeLoadedFacets } from "./facets/loader.js";
 import { RemoteServiceBindingImpl } from "./services/consumer.js";
-import { MutableReplicatedStateImpl } from "./services/state.js";
+import { attachReplicatedStateSource, MutableReplicatedStateImpl } from "./services/state.js";
 /** Create an active host for one complete set of facets. */
 export async function createFacetHost(options) {
     const kernel = new FacetKernel(options);
@@ -66,7 +66,12 @@ export function defineService(id, options) {
 export function createRemoteServiceBinding(options) {
     return new RemoteServiceBindingImpl(options);
 }
-export function replicatedState(initial) {
-    return new MutableReplicatedStateImpl(initial);
+export function replicatedState(initialOrSource, options) {
+    if (isReplicatedStateSource(initialOrSource))
+        return attachReplicatedStateSource(initialOrSource, options);
+    return new MutableReplicatedStateImpl(initialOrSource);
+}
+function isReplicatedStateSource(value) {
+    return typeof value.attach === "function";
 }
 //# sourceMappingURL=api.js.map

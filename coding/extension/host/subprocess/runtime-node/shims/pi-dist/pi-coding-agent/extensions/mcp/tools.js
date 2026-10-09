@@ -12,6 +12,7 @@
 import { createHash } from "node:crypto";
 import { toLlmContent, } from "../../../pi-mcp/index.js";
 import { Container, Spacer, Text } from "../../../../pi-tui.mjs";
+import { READ_MCP_RESOURCE_TOOL } from "../../core/mcp-servers.js";
 import { formatToolCallWithArgs, getTextOutput, replaceTabs } from "../../core/tools/render-utils.js";
 import { formatSize, truncateMiddle } from "../../core/tools/truncate.js";
 import { keyHint } from "../../modes/interactive/components/keybinding-hints.js";
@@ -31,7 +32,7 @@ export const MCP_OUTPUT_MAX_BYTES = 20 * 1024;
 /** Visual (wrapped) result lines shown before the output is expanded. */
 const OUTPUT_PREVIEW_LINES = 5;
 /** Tool that reads the resources named by resource links. */
-export const READ_MCP_RESOURCE_TOOL = "read_mcp_resource";
+export { READ_MCP_RESOURCE_TOOL };
 export function saveToTempFile(data, extension) {
     return writeOutputFile("pi-mcp", extension, data);
 }

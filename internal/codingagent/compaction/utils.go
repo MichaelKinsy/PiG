@@ -9,48 +9,23 @@
 package compaction
 
 import (
-	"encoding/json"
 	"maps"
-	"slices"
 	"strings"
-	"unicode/utf16"
 
 	"github.com/MichaelKinsy/PiG/agent"
 	"github.com/MichaelKinsy/PiG/ai"
+	"github.com/MichaelKinsy/PiG/internal/compactiontypes"
+	"github.com/MichaelKinsy/PiG/internal/jsstring"
 )
 
 // ─── File Operation Tracking ──────────────────────────────────────────────────
 
-// FileOperations tracks files read/written/edited during a session segment.
-// Mirrors upstream FileOperations (utils.ts): three Sets of paths.
-type FileOperations struct {
-	Read    map[string]struct{}
-	Written map[string]struct{}
-	Edited  map[string]struct{}
-}
+// FileOperations tracks files read/written/edited during a session segment. upstream: utils.ts FileOperations
+type FileOperations = compactiontypes.FileOperations
 
 // NewFileOps initializes the shared file-operation accumulator.
 func NewFileOps() FileOperations {
 	return FileOperations{Read: map[string]struct{}{}, Written: map[string]struct{}{}, Edited: map[string]struct{}{}}
-}
-
-// MarshalJSON carries each Set on the subprocess wire as a sorted string array.
-func (ops FileOperations) MarshalJSON() ([]byte, error) {
-	return json.Marshal(struct {
-		Read    []string `json:"read"`
-		Written []string `json:"written"`
-		Edited  []string `json:"edited"`
-	}{sortedPaths(ops.Read), sortedPaths(ops.Written), sortedPaths(ops.Edited)})
-}
-
-// sortedPaths returns the Set's paths in JavaScript sort order (UTF-16 code units).
-func sortedPaths(set map[string]struct{}) []string {
-	paths := slices.Collect(maps.Keys(set))
-	if paths == nil {
-		paths = []string{}
-	}
-	slices.SortFunc(paths, func(a, b string) int { return slices.Compare(utf16.Encode([]rune(a)), utf16.Encode([]rune(b))) })
-	return paths
 }
 
 // ExtractFileOpsFromMessage records read/write/edit tool calls in an assistant message, or the nested calls recorded on a tool result. Calls made from codemode scripts are recorded on the script's result.
@@ -102,7 +77,7 @@ func ComputeFileLists(ops FileOperations) (readFiles, modifiedFiles []string) {
 	for path := range modified {
 		delete(readOnly, path)
 	}
-	return sortedPaths(readOnly), sortedPaths(modified)
+	return compactiontypes.SortedPaths(readOnly), compactiontypes.SortedPaths(modified)
 }
 
 // FormatFileOperations renders the shared summary metadata tags.
@@ -126,14 +101,14 @@ func FormatFileOperations(readFiles, modifiedFiles []string) string {
 // summaries. Mirrors upstream TOOL_RESULT_MAX_CHARS = 2000 (utils.ts).
 const toolResultMaxChars = 2000
 
-// truncateForSummary truncates text to maxChars and appends a count marker.
-// Mirrors upstream truncateForSummary (utils.ts).
+// truncateForSummary truncates text to maxChars UTF-16 code units and appends a count marker, as truncateForSummary does
+// with String.length and String.slice.
 func truncateForSummary(text string, maxChars int) string {
-	if len(text) <= maxChars {
+	length := jsstring.Length(text)
+	if length <= maxChars {
 		return text
 	}
-	truncated := len(text) - maxChars
-	return text[:maxChars] + "\n\n[... " + itoa(truncated) + " more characters truncated]"
+	return jsstring.Slice(text, 0, maxChars) + "\n\n[... " + itoa(length-maxChars) + " more characters truncated]"
 }
 
 // itoa converts a non-negative integer to its decimal string representation
@@ -166,19 +141,7 @@ func itoa(n int) string {
 //
 // Mirrors upstream serializeConversation (utils.ts).
 func SerializeConversation(messages []ai.Message) string {
-	var sb strings.Builder
-	first := true
-	push := func(text string) {
-		if text == "" {
-			return
-		}
-		if !first {
-			sb.WriteString("\n\n")
-		}
-		sb.WriteString(text)
-		first = false
-	}
-
+	var parts []string
 	for _, message := range messages {
 		switch message := message.(type) {
 		case ai.UserMessage:
@@ -187,70 +150,45 @@ func SerializeConversation(messages []ai.Message) string {
 			case ai.UserText:
 				content = string(value)
 			case ai.UserContentBlocks:
-				var text strings.Builder
-				for _, block := range value {
-					if block, ok := block.(ai.TextContent); ok {
-						text.WriteString(block.Text)
-					}
-				}
-				content = text.String()
+				content = ai.ContentText(value, "")
 			}
 			if content != "" {
-				push("[User]: " + content)
+				parts = append(parts, "[User]: "+content)
 			}
 		case ai.AssistantMessage:
-			var textParts, thinkingParts, toolCalls []string
+			var thinkingParts, toolCalls []string
+			hasText := false
 			for _, block := range message.Content {
 				switch block := block.(type) {
 				case ai.TextContent:
-					if block.Text != "" {
-						textParts = append(textParts, block.Text)
-					}
+					hasText = true
 				case ai.ThinkingContent:
-					if block.Thinking != "" {
-						thinkingParts = append(thinkingParts, block.Thinking)
-					}
+					thinkingParts = append(thinkingParts, block.Thinking)
 				case ai.ToolCall:
-					var call strings.Builder
-					call.WriteString(block.Name)
-					call.WriteByte('(')
-					i := 0
-					for key, value := range block.Arguments {
-						if i > 0 {
-							call.WriteString(", ")
-						}
-						encoded, _ := json.Marshal(value)
-						call.WriteString(key)
-						call.WriteByte('=')
-						call.Write(encoded)
-						i++
+					members, _ := block.ArgumentMembers()
+					arguments := make([]string, len(members))
+					for i, member := range members {
+						arguments[i] = member.Key + "=" + member.JSON
 					}
-					call.WriteByte(')')
-					toolCalls = append(toolCalls, call.String())
+					toolCalls = append(toolCalls, block.Name+"("+strings.Join(arguments, ", ")+")")
 				}
 			}
 			if len(thinkingParts) > 0 {
-				push("[Assistant thinking]: " + strings.Join(thinkingParts, "\n"))
+				parts = append(parts, "[Assistant thinking]: "+strings.Join(thinkingParts, "\n"))
 			}
-			if len(textParts) > 0 {
-				push("[Assistant]: " + strings.Join(textParts, "\n"))
+			if hasText {
+				parts = append(parts, "[Assistant]: "+ai.ContentText(message.Content))
 			}
 			if len(toolCalls) > 0 {
-				push("[Assistant tool calls]: " + strings.Join(toolCalls, "; "))
+				parts = append(parts, "[Assistant tool calls]: "+strings.Join(toolCalls, "; "))
 			}
 		case ai.ToolResultMessage:
-			var text strings.Builder
-			for _, block := range message.Content {
-				if block, ok := block.(ai.TextContent); ok {
-					text.WriteString(block.Text)
-				}
-			}
-			if text.Len() > 0 {
-				push("[Tool result]: " + truncateForSummary(text.String(), toolResultMaxChars))
+			if text := ai.ContentText(message.Content, ""); text != "" {
+				parts = append(parts, "[Tool result]: "+truncateForSummary(text, toolResultMaxChars))
 			}
 		}
 	}
-	return sb.String()
+	return strings.Join(parts, "\n\n")
 }
 
 // ─── Summarization System Prompt ──────────────────────────────────────────────

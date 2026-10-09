@@ -8,6 +8,7 @@ package coding
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"maps"
 	"path/filepath"
@@ -84,8 +85,11 @@ func (tool *sessionBoundTool) Execute(ctx context.Context, id string, args json.
 	// Every call gets its own tool context, including a nested call an extension made, as upstream's wrapToolDefinition creates one per call.
 	//
 	// upstream: wrapper.ts:14-19, tool-definition-wrapper.ts:7-30
-	if runner := tool.session.currentRunner(); runner != nil {
-		ctx = runner.CreateToolContext(ctx, id)
+	// A registered extension tool wrapped with its runner (WrapRegisteredTool) creates its own.
+	if wrapped, ok := tool.AgentTool.(*bridgeTool); !ok || wrapped.runner == nil {
+		if runner := tool.session.currentRunner(); runner != nil {
+			ctx = runner.ToolCallContext(ctx, id)
+		}
 	}
 	return tool.AgentTool.Execute(ctx, id, args, update)
 }
@@ -113,10 +117,14 @@ type sessionToolRegistry struct {
 	base, custom      []sessionToolEntry
 	entries           []sessionToolEntry
 	allowed, excluded map[string]struct{}
-	skipExtensions    bool
+	// filter is the compiled `--tools` and `--exclude-tools` entries, names or `*` patterns.
+	filter         extension.ToolFilter
+	skipExtensions bool
 	// usesDefaultTools reports that the initial tools come from the defaultTools setting, so a reload activates tools newly added to it.
 	// upstream: agent-session.ts:263-267 (usesDefaultTools), sdk.ts:448
 	usesDefaultTools bool
+	// defaultToolModifiers are applied to the defaultTools setting wherever the registry reads it (agent-session.ts:3667-3670).
+	defaultToolModifiers []string
 	// addedDefaultTools are the tools a settings reload newly added to defaultTools; the next RefreshTools activates them.
 	addedDefaultTools []string
 }
@@ -128,7 +136,7 @@ func syntheticToolSource(name, source string) icodingagent.PiSourceInfo {
 	if source == "builtin" {
 		path = icodingagent.BuiltinPathPrefix + name
 	}
-	return icodingagent.PiSourceInfo{Path: path, Source: source, Scope: "temporary", Origin: "top-level"}
+	return icodingagent.CreateSyntheticSourceInfo(path, icodingagent.SyntheticSourceInfoOptions{Source: source})
 }
 
 func toolDefinition(tool agent.AgentTool) (extension.ToolDefinition, error) {
@@ -152,8 +160,7 @@ func toolDefinition(tool agent.AgentTool) (extension.ToolDefinition, error) {
 		label = tool.Name()
 	}
 	definition := extension.ToolDefinition{Name: tool.Name(), Label: label, Description: schema.Description, Parameters: parameters, ConstrainedSampling: sampling, PromptSnippet: prompts.DefaultToolSnippets()[tool.Name()], PromptGuidelines: schema.PromptGuidelines, ExecutionMode: extension.ToolExecutionMode(tool.ExecutionMode()), Execute: func(ctx context.Context, id string, args json.RawMessage, onUpdate extension.AgentToolUpdateCallback) (extension.AgentToolResult, error) {
-		update, _ := onUpdate.(agent.ToolUpdateCallback)
-		return tool.Execute(ctx, id, args, update)
+		return tool.Execute(ctx, id, args, onUpdate)
 	}}
 	if preparer, ok := tool.(agent.ArgumentPreparer); ok {
 		definition.PrepareArguments = preparer.PrepareArguments
@@ -166,9 +173,9 @@ func toolDefinition(tool agent.AgentTool) (extension.ToolDefinition, error) {
 	return definition, nil
 }
 
-func createSessionToolRegistry(services *Services, opts SessionOptions) (sessionToolRegistry, []agent.AgentTool, error) {
+func createSessionToolRegistry(services *AgentSessionServices, opts SessionOptions) (sessionToolRegistry, []agent.AgentTool, error) {
 	registry := sessionToolRegistry{allowed: maps.Clone(opts.AllowedTools), excluded: maps.Clone(opts.ExcludedTools), skipExtensions: opts.skipExtensionTools,
-		usesDefaultTools: opts.AllowedTools == nil && opts.NoTools == "" && !opts.SkipBuiltinTools}
+		usesDefaultTools: usesDefaultTools(opts), defaultToolModifiers: slices.Clone(opts.DefaultToolModifiers)}
 	if opts.toolRegistry != nil {
 		registry = *opts.toolRegistry
 		registry.base = slices.Clone(registry.base)
@@ -176,51 +183,76 @@ func createSessionToolRegistry(services *Services, opts SessionOptions) (session
 		registry.entries = slices.Clone(registry.entries)
 		registry.allowed = maps.Clone(registry.allowed)
 		registry.excluded = maps.Clone(registry.excluded)
+		registry.filter = extension.NewToolFilter(registry.allowed, registry.excluded)
 		return registry, registry.tools(), nil
+	}
+	// upstream: sdk.ts:280-281; the tools option that changes the default selection is DefaultToolModifiers here.
+	if problem := icodingagent.GetToolListError(opts.DefaultToolModifiers); problem != "" {
+		return registry, nil, fmt.Errorf("Invalid tools option: %s", problem)
+	}
+	// Pi's one tools list holds names and +name/-name entries together; here the names are AllowedTools, so both at once is the mixed list getToolListError rejects (settings-manager.ts:230).
+	if opts.AllowedTools != nil && opts.NoTools == "" && len(opts.DefaultToolModifiers) > 0 {
+		return registry, nil, errors.New("Invalid tools option: tool names cannot be mixed with +name or -name entries")
 	}
 	if opts.NoTools != "" && opts.NoTools != "all" && opts.NoTools != "builtin" {
 		return registry, nil, fmt.Errorf("invalid noTools selection %q", opts.NoTools)
 	}
+	// A `tools` list of only `+name` and `-name` entries changes the default selection instead of replacing it (none under NoTools); a list that mixes plain names or patterns in is rejected.
+	// upstream: sdk.ts:279-295 (getToolListError, toolModifiers, selectedToolNames, allowedToolNames)
+	if problem := icodingagent.GetToolListError(opts.DefaultToolModifiers); problem != "" {
+		return registry, nil, fmt.Errorf("Invalid tools option: %s", problem)
+	}
+	var modifiedSelection []string
+	if slices.ContainsFunc(opts.DefaultToolModifiers, icodingagent.IsToolModifier) {
+		var defaultToolNames []string
+		if opts.NoTools == "" {
+			defaultToolNames = services.SettingsManager().ResolvedDefaultTools()
+		}
+		modifiedSelection = icodingagent.ApplyToolModifiers(defaultToolNames, opts.DefaultToolModifiers)
+	}
 	if opts.NoTools == "all" && opts.AllowedTools == nil {
 		registry.allowed = map[string]struct{}{}
+		for _, name := range modifiedSelection {
+			registry.allowed[name] = struct{}{}
+		}
 	}
+	registry.filter = extension.NewToolFilter(registry.allowed, registry.excluded)
 	var activeNames []string
 	if !opts.SkipBuiltinTools {
-		for _, tool := range tools.CreateAllTools(services.CWD(), services.Settings(), filepath.Join(services.AgentDir(), "bin")) {
-			definition, err := toolDefinition(tool)
-			if err != nil {
-				return registry, nil, err
+		baseTools := tools.CreateAllTools(services.CWD(), tools.ToolsOptionsFromSettings(services.Settings(), filepath.Join(services.AgentDir(), "bin")))
+		var overrideKeys []string
+		if opts.BaseToolsOverride != nil {
+			baseTools = baseTools[:0:0]
+			for _, entry := range opts.BaseToolsOverride {
+				overrideKeys = append(overrideKeys, entry.Name)
+				baseTools = append(baseTools, entry.Tool)
 			}
-			// Builtin definitions omit executionMode; the agent supplies the parallel default.
-			definition.ExecutionMode = ""
+		}
+		for _, tool := range baseTools {
+			definition := builtinToolDefinition(tool)
 			registry.base = append(registry.base, sessionToolEntry{tool: tool, registration: extension.RegisteredTool{Definition: definition, SourceInfo: syntheticToolSource(tool.Name(), "builtin")}})
 		}
 		switch {
+		case modifiedSelection != nil && opts.AllowedTools == nil && opts.InitialActiveToolNames == nil:
+			activeNames = slices.Clone(modifiedSelection)
 		case opts.AllowedTools != nil:
+			// upstream: agent-session.ts:3552-3562: the initial names keep the caller's order; the registered tools the allowlist names or matches follow in registry order.
+			activeNames = append(activeNames, opts.InitialActiveToolNames...)
 			for _, entry := range registry.base {
-				if _, ok := opts.AllowedTools[entry.tool.Name()]; ok {
+				// Naming or matching a built-in tool activates it (agent-session.ts _refreshToolRegistry).
+				if registry.filter.Names(entry.tool.Name()) {
 					activeNames = append(activeNames, entry.tool.Name())
 				}
 			}
+		case opts.InitialActiveToolNames != nil:
+			// upstream: sdk.ts:274-276, agent-session.ts:3552-3554: the initial names, which may also name extension tools, stay in the caller's order; selectTools keeps the names the registry admits. An explicit list outranks NoTools (initialActiveToolNames = tools ?? (noTools ? [] : defaults)).
+			activeNames = slices.Clone(opts.InitialActiveToolNames)
 		case opts.NoTools != "":
-		case opts.ActiveBuiltinTools != nil:
-			// upstream: sdk.ts:264-269, agent-session.ts:3487-3506, 1508-1511: the initial selection is the defaultTools list in its order, which also names extension tools; selectTools keeps the names the registry admits. The CLI's set is that list, so its names keep the resolved defaultTools order; the rest follow in registry order, then by name.
-			pending := maps.Clone(opts.ActiveBuiltinTools)
-			for _, name := range services.SettingsManager().ResolvedDefaultTools() {
-				if _, ok := pending[name]; ok {
-					activeNames = append(activeNames, name)
-					delete(pending, name)
-				}
-			}
-			for _, entry := range registry.base {
-				if _, ok := pending[entry.tool.Name()]; ok {
-					activeNames = append(activeNames, entry.tool.Name())
-					delete(pending, entry.tool.Name())
-				}
-			}
-			activeNames = append(activeNames, slices.Sorted(maps.Keys(pending))...)
+		case opts.BaseToolsOverride != nil:
+			// upstream: agent-session.ts:3650-3652
+			activeNames = append(activeNames, overrideKeys...)
 		default:
-			activeNames = services.SettingsManager().ResolvedDefaultTools()
+			activeNames = icodingagent.ApplyToolModifiers(services.SettingsManager().ResolvedDefaultTools(), opts.DefaultToolModifiers)
 		}
 	}
 	for _, tool := range opts.Tools {
@@ -263,7 +295,7 @@ func (r *sessionToolRegistry) refresh(runner *inproc.Runner) error {
 		for _, registration := range runner.Tools() {
 			source, _ := runner.ToolSourceInfo(registration.Definition.Name)
 			registration.SourceInfo = source
-			tool, err := newBridgeTool(registration)
+			tool, err := WrapRegisteredTool(registration, runner)
 			if err != nil {
 				return err
 			}
@@ -275,10 +307,7 @@ func (r *sessionToolRegistry) refresh(runner *inproc.Runner) error {
 	var admitted []sessionToolEntry
 	for _, entry := range entries {
 		name := entry.tool.Name()
-		if _, blocked := r.excluded[name]; blocked {
-			continue
-		}
-		if _, allowed := r.allowed[name]; r.allowed != nil && !allowed {
+		if !r.filter.Allows(name) {
 			continue
 		}
 		if index, exists := indexes[name]; exists {
@@ -363,15 +392,13 @@ func (s *Session) GetToolDefinition(name string) (extension.ToolDefinition, bool
 	return extension.ToolDefinition{}, false
 }
 
-// BindExtensions applies optional mode bindings, awaits the configured session_start event and admits tools registered by its handlers before returning. Attach an event consumer before binding when handlers can send messages.
-func (s *Session) BindExtensions(ctx context.Context, bindings ...ExtensionBindings) error {
+// BindExtensions stores the mode bindings the argument defines, always applies the stored bindings to the runner, awaits the configured session_start event and admits tools registered by its handlers before returning (upstream bindExtensions, agent-session.ts:3258-3282). Attach an event consumer before binding when handlers can send messages.
+func (s *Session) BindExtensions(ctx context.Context, bindings ExtensionBindings) error {
 	runner := s.currentRunner()
 	if runner == nil {
 		return nil
 	}
-	if len(bindings) > 0 {
-		s.bindSessionExtensions(runner, bindings[0])
-	}
+	s.bindSessionExtensions(runner, s.mergeExtensionBindings(bindings))
 	event := s.sessionStartEvent
 	if event.Type == "" {
 		event = extension.SessionStartEvent{Type: "session_start", Reason: "startup"}
@@ -381,6 +408,9 @@ func (s *Session) BindExtensions(ctx context.Context, bindings ...ExtensionBindi
 	}
 	// upstream: agent-session.ts:3207 (bindExtensions)
 	runner.ReportUnhandledMcpServers()
+	if err := s.extendResourcesFromExtensions(ctx, event.Reason); err != nil {
+		return err
+	}
 	return s.RefreshTools()
 }
 
@@ -424,16 +454,19 @@ func (s *Session) refreshTools(includeAllExtensionTools bool) error {
 	s.tools = s.toolRegistry.tools()
 	// upstream: agent-session.ts:3507-3510: a reload without an allowlist activates every extension or SDK tool that activates on registration.
 	var reactivated map[string]struct{}
-	if includeAllExtensionTools && s.toolRegistry.allowed == nil {
+	if includeAllExtensionTools && !s.toolRegistry.filter.HasAllowlist() {
 		reactivated = s.toolRegistry.extensionToolNames(s.currentRunner())
 	}
 	for _, tool := range s.tools {
 		_, known := previous[tool.Name()]
-		_, allowed := s.toolRegistry.allowed[tool.Name()]
 		_, reactivate := reactivated[tool.Name()]
 		definition, _ := s.toolDefinitionLocked(tool.Name())
-		// upstream: agent-session.ts:3487-3506: naming a tool activates it when it is declarable; a new tool activates only when it activates on registration.
-		if allowed && toolIsDeclarable(definition) || (!known || reactivate) && toolActivatesOnRegistration(definition) {
+		// upstream: agent-session.ts:3553-3572: with an allowlist, naming or matching a tool activates it when it is declarable (MCP tools the allowlist keeps without matching them stay inactive); without one, a new tool activates only when it activates on registration.
+		if s.toolRegistry.filter.HasAllowlist() {
+			if s.toolRegistry.filter.Names(tool.Name()) && toolIsDeclarable(definition) {
+				active = append(active, tool.Name())
+			}
+		} else if (!known || reactivate) && toolActivatesOnRegistration(definition) {
 			active = append(active, tool.Name())
 		}
 	}
@@ -445,4 +478,85 @@ func (s *Session) refreshTools(includeAllExtensionTools bool) error {
 	}
 	s.setActiveToolsByName(names)
 	return nil
+}
+
+// ReloadOption configures Session.Reload (agent-session.ts reload(options)).
+type ReloadOption func(*reloadOptions)
+
+type reloadOptions struct {
+	beforeSessionStart func(context.Context) error
+}
+
+// WithBeforeSessionStart runs fn after the new runner is bound and before it receives session_start, only when the mode bound its UI or command
+// actions (reload's options.beforeSessionStart, agent-session.ts:3676-3678). An error from fn fails the reload.
+func WithBeforeSessionStart(fn func(context.Context) error) ReloadOption {
+	return func(o *reloadOptions) { o.beforeSessionStart = fn }
+}
+
+// Reload is AgentSession.reload (agent-session.ts:3640-3685): the old extensions receive session_shutdown with reason reload and go stale;
+// the settings and the resource loader are read again; the loader's extensions build a new runner that keeps the previous flag values; the
+// tools a settings reload newly added to defaultTools activate; and, when the mode bound its UI or command actions, the new runner gets them
+// and session_start with reason reload, then the resources its resources_discover handlers contribute. A failure before the new runner exists
+// leaves the old one stale, as Pi does.
+func (s *Session) Reload(ctx context.Context, options ...ReloadOption) error {
+	var reload reloadOptions
+	for _, option := range options {
+		option(&reload)
+	}
+	previous := s.currentRunner()
+	var flagValues map[string]any
+	if previous != nil {
+		flagValues = previous.GetFlagValues()
+		if previous.HasHandlers(icodingagent.EventSessionShutdown) {
+			if _, err := previous.Emit(ctx, extension.SessionShutdownEvent{Type: icodingagent.EventSessionShutdown, Reason: "reload"}); err != nil {
+				return err
+			}
+		}
+		previous.Invalidate("")
+	}
+	s.ReloadSettings()
+	// The tools the settings reload staged activate in the runtime rebuild below; any other exit drops them (agent-session.ts:3598-3609).
+	defer s.DiscardAddedDefaultTools()
+	// The API provider registry returns to the built-in providers before the extensions load again, so a provider a removed extension registered is gone (agent-session.ts:3656 resetApiProviders).
+	ai.ResetAPIProviders()
+	loader := s.ResourceLoader()
+	if err := loader.Reload(); err != nil {
+		return err
+	}
+	loaded := loader.GetExtensions()
+	runner, err := s.ReloadExtensions(loaded.Extensions, loaded.Runtime)
+	if err != nil {
+		return err
+	}
+	for name, value := range flagValues {
+		runner.SetFlagValue(name, value)
+	}
+	bindings := s.extensionBindings.Load()
+	if bindings == nil {
+		return nil
+	}
+	s.bindSessionExtensions(runner, *bindings)
+	// upstream: agent-session.ts:3688-3698: only a session whose mode bound a UI context, command actions, a shutdown handler or an error listener replays session_start on reload.
+	if !bindings.hasBindings() {
+		return nil
+	}
+	if reload.beforeSessionStart != nil {
+		if err := reload.beforeSessionStart(ctx); err != nil {
+			return err
+		}
+	}
+	if _, err := runner.Emit(ctx, extension.SessionStartEvent{Type: "session_start", Reason: "reload"}); err != nil {
+		return err
+	}
+	runner.ReportUnhandledMcpServers()
+	return s.extendResourcesFromExtensions(ctx, "reload")
+}
+
+// usesDefaultTools reports whether the session's initial tools come from the defaultTools setting.
+// upstream: sdk.ts:472 `(options.tools === undefined || toolModifiers !== undefined) && !options.noTools`; agent-session.ts:500 `config.usesDefaultTools ?? false`, so a session built on a base tool override does not use them unless it says so.
+func usesDefaultTools(opts SessionOptions) bool {
+	if opts.UsesDefaultTools != nil {
+		return *opts.UsesDefaultTools
+	}
+	return opts.BaseToolsOverride == nil && opts.AllowedTools == nil && opts.NoTools == "" && !opts.SkipBuiltinTools
 }

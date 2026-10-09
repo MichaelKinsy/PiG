@@ -1,5 +1,7 @@
 package experimental
 
+// pi: packages/chord/src/bundler.ts
+
 import (
 	"context"
 	"encoding/json"
@@ -7,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"slices"
 	"strings"
 	"testing"
 )
@@ -177,5 +180,124 @@ func TestBundleFacetPackageUsesCallerConventionsAndSharedServerCompiler(t *testi
 	}
 	if len(manifest.Entries) != 2 || manifest.Entries["session"].File == "" || manifest.Entries["tui"].File == "" {
 		t.Fatalf("server conventions=%+v", manifest.Entries)
+	}
+}
+
+// upstream: packages/chord/src/node/bundle.ts:27-30,94-115. minify, define, platform and target reach the compiler; each option changes the bytes of the emitted bundle.
+func TestBundleFacetsAppliesMinifyDefinePlatformAndTarget(t *testing.T) {
+	isolateExperimentalTest(t)
+	root := t.TempDir()
+	source := "const longDescriptiveName = (value) => value ?? 1;\nexport default { id: typeof MODE === \"string\" ? MODE : \"unset\", platform: typeof process, fn: longDescriptiveName };\n"
+	if err := os.WriteFile(filepath.Join(root, "entry.ts"), []byte(source), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	build := func(t *testing.T, options BundleFacetsOptions) string {
+		t.Helper()
+		options.Plugin = FacetBundlePlugin{Id: "options"}
+		options.Entries = []FacetEntrySource{{Name: "main", Source: "entry.ts"}}
+		options.Outdir = "bundle"
+		options.WorkingDirectory = &root
+		built, err := BundleFacets(t.Context(), options)
+		if err != nil {
+			t.Fatal(err)
+		}
+		data, err := os.ReadFile(filepath.Join(root, "bundle", built.Manifest.Entries["main"].File))
+		if err != nil {
+			t.Fatal(err)
+		}
+		return string(data)
+	}
+	plain := build(t, BundleFacetsOptions{})
+	if !strings.Contains(plain, "longDescriptiveName") || !strings.Contains(plain, "??") {
+		t.Fatalf("default build is minified or lowered for node22.19:\n%s", plain)
+	}
+	if minified := build(t, BundleFacetsOptions{Minify: true}); strings.Contains(minified, "longDescriptiveName") || len(minified) >= len(plain) {
+		t.Fatalf("Minify did not minify:\n%s", minified)
+	}
+	if defined := build(t, BundleFacetsOptions{Define: map[string]string{"MODE": `"prod"`}}); !strings.Contains(defined, `"prod"`) {
+		t.Fatalf("Define was not applied:\n%s", defined)
+	}
+	if lowered := build(t, BundleFacetsOptions{Target: []string{"es2019"}}); strings.Contains(lowered, "??") {
+		t.Fatalf("Target es2019 kept ??:\n%s", lowered)
+	}
+	if lowered := build(t, BundleFacetsOptions{Target: []string{"es2019", "chrome90"}}); strings.Contains(lowered, "??") {
+		t.Fatalf("a target list was not applied:\n%s", lowered)
+	}
+	// The node platform leaves built-ins external; the browser and neutral platforms cannot resolve them.
+	if err := os.WriteFile(filepath.Join(root, "builtin.ts"), []byte(`import { sep } from "node:path"; export default { sep };`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	builtin := func(platform FacetBundlePlatform) (BundleFacetsResult, error) {
+		return BundleFacets(t.Context(), BundleFacetsOptions{Plugin: FacetBundlePlugin{Id: "options"}, Entries: []FacetEntrySource{{Name: "main", Source: "builtin.ts"}}, Outdir: "builtin", WorkingDirectory: &root, Platform: platform})
+	}
+	for _, platform := range []FacetBundlePlatform{"", FacetBundlePlatformNode} {
+		built, err := builtin(platform)
+		if err != nil || !slices.Equal(built.Manifest.Entries["main"].ExternalImports, []string{"node:path"}) {
+			t.Fatalf("platform %q: %+v, %v", platform, built, err)
+		}
+	}
+	for _, platform := range []FacetBundlePlatform{FacetBundlePlatformBrowser, FacetBundlePlatformNeutral} {
+		if _, err := builtin(platform); err == nil || !strings.Contains(err.Error(), "node:path") {
+			t.Fatalf("platform %q resolved a Node built-in: %v", platform, err)
+		}
+	}
+	// The neutral platform defaults to es2022, which keeps ??.
+	if neutral := build(t, BundleFacetsOptions{Platform: FacetBundlePlatformNeutral}); !strings.Contains(neutral, "??") {
+		t.Fatalf("neutral platform lowered ?? under the es2022 default:\n%s", neutral)
+	}
+	if browser := build(t, BundleFacetsOptions{Platform: FacetBundlePlatformBrowser, Target: []string{"es2019"}}); strings.Contains(browser, "??") {
+		t.Fatalf("browser platform ignored Target:\n%s", browser)
+	}
+	// esbuild 0.28.2's JavaScript API rejects these options before it builds. An unknown platform throws a plain Error, so bundle.ts adds no detail; a separator inside a target or a define key is a build message (lib/main.js validateAndJoinStringArray and the define loop; probed against esbuild 0.28.2, whose message also carries a location in lib/main.js).
+	for _, invalid := range []struct {
+		options BundleFacetsOptions
+		want    string
+	}{
+		{BundleFacetsOptions{Platform: "wasm"}, "Could not bundle facet entry main"},
+		{BundleFacetsOptions{Target: []string{"es2019,chrome90"}}, "Could not bundle facet entry main\nInvalid target: es2019,chrome90"},
+		{BundleFacetsOptions{Define: map[string]string{"MODE=x": `"prod"`}}, "Could not bundle facet entry main\nInvalid define: MODE=x"},
+		{BundleFacetsOptions{Platform: "wasm", Target: []string{"a,b"}}, "Could not bundle facet entry main\nInvalid target: a,b"},
+	} {
+		options := invalid.options
+		options.Plugin = FacetBundlePlugin{Id: "options"}
+		options.Entries = []FacetEntrySource{{Name: "main", Source: "entry.ts"}}
+		options.Outdir = "bad"
+		options.WorkingDirectory = &root
+		if _, err := BundleFacets(t.Context(), options); err == nil || err.Error() != invalid.want {
+			t.Errorf("%+v: error=%v, want %q", invalid.options, err, invalid.want)
+		}
+	}
+	// An empty target list passes no target, as esbuild does for target: [] and target: [""].
+	for _, targets := range [][]string{{}, {""}} {
+		if empty := build(t, BundleFacetsOptions{Target: targets}); !strings.Contains(empty, "??") {
+			t.Fatalf("target %q lowered ??:\n%s", targets, empty)
+		}
+	}
+}
+
+// upstream: packages/chord/src/node/bundle.ts:40 (entries: Record<string, string>) and package.ts defaultFacets. A record is a JSON object whose
+// keys enumerate as in Object.entries: integer names ascending first, the others in insertion order, a repeated name once at its first position.
+func TestFacetEntrySourcesIsTheOrderedRecord(t *testing.T) {
+	entries := FacetEntrySources{{"z", "old"}, {"10", "ten"}, {"2", "two"}, {"a", "a"}, {"z", "new"}, {"01", "not-index"}}
+	encoded, err := json.Marshal(entries)
+	if want := `{"2":"two","10":"ten","z":"new","a":"a","01":"not-index"}`; err != nil || string(encoded) != want {
+		t.Fatalf("Marshal = %s, %v; want %s", encoded, err, want)
+	}
+	var decoded FacetEntrySources
+	if err := json.Unmarshal([]byte(`{"b":"1","2":"x","a":"2","b":"3"}`), &decoded); err != nil {
+		t.Fatal(err)
+	}
+	if want := (FacetEntrySources{{"2", "x"}, {"b", "3"}, {"a", "2"}}); !reflect.DeepEqual(decoded, want) {
+		t.Fatalf("Unmarshal = %v; want %v", decoded, want)
+	}
+	// Options carry the record as one field, in both directions.
+	var options BundleFacetsOptions
+	if err := json.Unmarshal([]byte(`{"Entries":{"b":"b.ts","a":"a.ts"}}`), &options); err != nil || !reflect.DeepEqual(options.Entries, FacetEntrySources{{"b", "b.ts"}, {"a", "a.ts"}}) {
+		t.Fatalf("options Entries = %v, %v", options.Entries, err)
+	}
+	for _, bad := range []string{`["a"]`, `{"a":1}`} {
+		if err := json.Unmarshal([]byte(bad), &decoded); err == nil {
+			t.Errorf("Unmarshal(%s) accepted a non-record", bad)
+		}
 	}
 }

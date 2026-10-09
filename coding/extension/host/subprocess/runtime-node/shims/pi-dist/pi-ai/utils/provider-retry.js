@@ -86,6 +86,8 @@ export async function retryProviderRequest(request, options = {}) {
                 throw createAbortError();
             if (retriesRemaining <= 0 || !isProviderError(error) || !isRetryableProviderError(error))
                 throw error;
+            if (error.status !== undefined && options.noRetryStatuses?.includes(error.status))
+                throw error;
             const retryIndex = maxRetries - retriesRemaining;
             retriesRemaining--;
             await abortableSleep(getRetryDelayMs(error, retryIndex, options.maxRetryDelayMs), options.signal);

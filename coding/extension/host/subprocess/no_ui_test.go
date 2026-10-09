@@ -23,7 +23,7 @@ func TestNoUIBridgeDoesNotRetainUIWork(t *testing.T) {
 			t.Errorf("%s: %v %+v", method, err, result)
 		}
 	}
-	bridge.HandleWidgetPush("probe", &WidgetPushPayload{Key: "probe", Lines: []string{"ignored"}})
+	bridge.HandleWidgetPush("probe", nil, &WidgetPushPayload{Key: "probe", Lines: []string{"ignored"}})
 	bridge.reserveCustomOverlay("probe", nil, json.RawMessage(`{"key":"probe"}`))
 	if len(bridge.AllWidgets()) != 0 || len(bridge.customOverlays) != 0 || len(bridge.terminalInputSubs) != 0 || len(bridge.pendingStatuses) != 0 || bridge.pendingHeaderSet || bridge.pendingFooterSet {
 		t.Fatal("no-op UI retained work")

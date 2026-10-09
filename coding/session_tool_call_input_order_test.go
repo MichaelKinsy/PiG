@@ -112,10 +112,10 @@ func TestSessionRunsAnEditedToolCallInInsertionOrder(t *testing.T) {
 	}
 	session, faux := newOrchestrationSession(t, ext)
 	faux.SetResponses([]ai.FauxResponseStep{
-		ai.FauxStaticStep(ai.FauxResponse{Content: []ai.FauxContentBlock{ai.FauxToolCall("probe", map[string]any{"command": "echo base", "timeout": 5.0}, "call-1")}, StopReason: "toolUse"}),
+		ai.FauxStaticStep(ai.FauxResponse{Content: []ai.FauxContentBlock{ai.FauxToolCall("probe", map[string]any{"command": "echo base", "timeout": 5.0}, &ai.FauxToolCallOptions{ID: "call-1"})}, StopReason: "toolUse"}),
 		fauxText("done"),
 	})
-	if _, err := session.Prompt(t.Context(), "go"); err != nil {
+	if err := session.Prompt(t.Context(), "go"); err != nil {
 		t.Fatal(err)
 	}
 	const edited = `{"command":"echo rewritten","timeout":5,"aaa":1}`

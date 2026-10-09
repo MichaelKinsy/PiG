@@ -21,7 +21,7 @@ type PresentationUI interface {
 }
 
 // PresentationUIDefinition names the local service; Go shares type and value names.
-var PresentationUIDefinition = chord.DefineServiceWithOptions[PresentationUI]("pi.local.presentation-ui", chord.ServiceOptions{Local: true})
+var PresentationUIDefinition = chord.DefineService[PresentationUI]("pi.local.presentation-ui", chord.ServiceOptions{Local: true})
 
 func init() {
 	chord.RegisterServiceView(PresentationUIDefinition, func(resolve func() (PresentationUI, error)) PresentationUI {

@@ -1,14 +1,14 @@
 package ai
 
 import (
-	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"slices"
 	"strconv"
 	"strings"
-	"unicode/utf8"
+
+	"github.com/MichaelKinsy/PiG/internal/jsstring"
 )
 
 // This file ports packages/ai/src/api/constrained-sampling.ts: the provider-side
@@ -38,43 +38,8 @@ type grammarToolInputJSONBuffer struct {
 // reconstructed grammar deltas are byte-faithful to upstream.
 func jsonStringJS(s string) string {
 	// Encoding a string never fails.
-	encoded, _ := marshalJSONUnescaped(s)
+	encoded, _ := jsstring.MarshalJSON(s)
 	return string(encoded)
-}
-
-// marshalJSONUnescaped encodes value as JSON the way JSON.stringify writes strings: Go's encoder escapes <, >, &,
-// U+2028 and U+2029, while JSON.stringify writes all five raw.
-func marshalJSONUnescaped(value any) ([]byte, error) {
-	var buf bytes.Buffer
-	enc := json.NewEncoder(&buf)
-	enc.SetEscapeHTML(false)
-	if err := enc.Encode(value); err != nil {
-		return nil, err
-	}
-	return rawJSONLineTerminators(bytes.TrimSuffix(buf.Bytes(), []byte("\n"))), nil
-}
-
-// rawJSONLineTerminators rewrites the \u2028 and \u2029 escapes encoding/json always emits as the raw characters.
-// It walks escape pairs so an escaped backslash followed by literal "u2028" text is left unchanged.
-func rawJSONLineTerminators(encoded []byte) []byte {
-	if !bytes.Contains(encoded, []byte(`\u202`)) {
-		return encoded
-	}
-	out := make([]byte, 0, len(encoded))
-	for i := 0; i < len(encoded); i++ {
-		if encoded[i] != '\\' || i+1 >= len(encoded) {
-			out = append(out, encoded[i])
-			continue
-		}
-		if escape := encoded[i:min(i+6, len(encoded))]; bytes.Equal(escape, []byte(`\u2028`)) || bytes.Equal(escape, []byte(`\u2029`)) {
-			out = utf8.AppendRune(out, rune(0x2020+int(escape[5]-'0')))
-			i += 5
-			continue
-		}
-		out = append(out, encoded[i], encoded[i+1])
-		i++
-	}
-	return out
 }
 
 // getGrammarToolInput extracts the string input argument for a grammar tool
@@ -324,10 +289,9 @@ func makeJSONSchemaNodeStrict(value any, order schemaObjectOrder, path string, i
 	return nil
 }
 
-// makeStrictJSONSchema converts a tool schema to the strict subset accepted by
-// provider constrained sampling without mutating the authored schema.
-func makeStrictJSONSchema(parameters map[string]any) (map[string]any, error) {
-	return makeStrictJSONSchemaWithOrder(parameters, nil, nil)
+// MakeStrictJSONSchema converts a tool schema to the strict subset accepted by provider constrained sampling without mutating the authored schema. A nil isUnsupportedKeyword rejects no keyword. A Go map has no key order, so objects take their keys in sorted order here; a ToolSchema keeps its authored order through resolveJSONSchemaStrictSampling.
+func MakeStrictJSONSchema(parameters map[string]any, isUnsupportedKeyword UnsupportedStrictSchemaKeywordCheck) (map[string]any, error) {
+	return makeStrictJSONSchemaWithOrder(parameters, nil, isUnsupportedKeyword)
 }
 
 func makeStrictJSONSchemaWithOrder(parameters map[string]any, order schemaObjectOrder, isUnsupportedKeyword UnsupportedStrictSchemaKeywordCheck) (map[string]any, error) {
@@ -361,7 +325,7 @@ func getJSONSchemaToolParameters(tool ToolSchema, strict *bool) (map[string]any,
 // resolveJsonSchemaStrictSampling.
 func resolveJSONSchemaStrictSampling(tool ToolSchema, supportsStrictMode bool, isUnsupportedKeyword UnsupportedStrictSchemaKeywordCheck) (*bool, error) {
 	config := tool.ConstrainedSampling
-	if config == nil || config.Type != "json_schema" {
+	if config == nil || config.Type != ConstrainedSamplingJSONSchema {
 		return nil, nil
 	}
 	if supportsStrictMode {
@@ -370,7 +334,7 @@ func resolveJSONSchemaStrictSampling(tool ToolSchema, supportsStrictMode bool, i
 			if !errors.As(err, &unsupported) {
 				return nil, err
 			}
-			if config.Strict != "require" {
+			if config.Strict != ConstrainedSamplingStrictRequire {
 				return nil, nil
 			}
 			return nil, fmt.Errorf("Tool %q requires JSON-schema constrained sampling, but %s.", tool.Name, unsupported.reason)
@@ -378,7 +342,7 @@ func resolveJSONSchemaStrictSampling(tool ToolSchema, supportsStrictMode bool, i
 		t := true
 		return &t, nil
 	}
-	if config.Strict == "require" {
+	if config.Strict == ConstrainedSamplingStrictRequire {
 		return nil, fmt.Errorf("Tool %q requires JSON-schema constrained sampling, but strict tools are unsupported.", tool.Name)
 	}
 	return nil, nil
@@ -389,7 +353,7 @@ func resolveJSONSchemaStrictSampling(tool ToolSchema, supportsStrictMode bool, i
 // upstream resolveGrammarConstrainedSampling.
 func resolveGrammarConstrainedSampling(tool ToolSchema, supportsOpenAIGrammarTools bool) (*grammarConstrainedSampling, error) {
 	config := tool.ConstrainedSampling
-	if config == nil || config.Type != "grammar" {
+	if config == nil || config.Type != ConstrainedSamplingGrammar {
 		return nil, nil
 	}
 	if !supportsOpenAIGrammarTools {

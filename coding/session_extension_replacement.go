@@ -24,7 +24,7 @@ func (s *Session) SetBeforeSessionReplacement(drain func(context.Context) error)
 	s.beforeSessionReplacement = drain
 }
 
-func (s *Session) beforeExtensionReplacement(ctx context.Context, event any) (bool, error) {
+func (s *Session) beforeExtensionReplacement(ctx context.Context, event extension.ExtensionEvent) (bool, error) {
 	if err := ctx.Err(); err != nil {
 		return false, err
 	}
@@ -81,8 +81,10 @@ func (s *Session) finishExtensionReplacement(ctx context.Context, next *icodinga
 		return extension.CancelledResult{}, rebind(ctx, event)
 	}
 	if runner := s.currentRunner(); runner != nil {
-		_, err := runner.Emit(ctx, event)
-		return extension.CancelledResult{}, err
+		if _, err := runner.Emit(ctx, event); err != nil {
+			return extension.CancelledResult{}, err
+		}
+		return extension.CancelledResult{}, s.extendResourcesFromExtensions(ctx, reason)
 	}
 	return extension.CancelledResult{}, nil
 }
@@ -124,17 +126,17 @@ func (s *Session) extensionFork(ctx context.Context, entryID string, opts *exten
 	if err != nil || cancelled {
 		return extension.CancelledResult{Cancelled: cancelled}, err
 	}
-	entry, ok := s.inner.EntryByID(entryID)
+	entry, ok := s.inner.GetEntry(entryID)
 	if !ok {
 		return extension.CancelledResult{}, errors.New("Invalid entry ID for forking")
 	}
 	leaf := &entryID
 	if position != "at" {
-		message, isMessage := entry.AsMessage()
+		message, isMessage := entry.(icodingagent.MessageEntry)
 		if !isMessage || message.Message.User == nil {
 			return extension.CancelledResult{}, errors.New("Invalid entry ID for forking")
 		}
-		leaf = entry.Base.ParentID
+		leaf = entry.Base().ParentID
 	}
 	var next *icodingagent.Session
 	switch {
@@ -145,7 +147,7 @@ func (s *Session) extensionFork(ctx context.Context, entryID string, opts *exten
 		}
 		next = icodingagent.NewSession(id, s.services.CWD())
 		if leaf != nil {
-			for _, item := range s.inner.Branch(*leaf) {
+			for _, item := range s.inner.GetBranch(*leaf) {
 				if err := next.AppendEntry(item); err != nil {
 					return extension.CancelledResult{}, err
 				}

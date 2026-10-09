@@ -19,7 +19,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"math"
 	"slices"
@@ -295,12 +294,12 @@ type llamaRequestContext struct {
 	options ClassifierOptions
 }
 
-func (r llamaRequestContext) headers() []classifierHeader {
+func (r llamaRequestContext) headers() map[string]string {
 	base := map[string]string{"content-type": "application/json"}
 	if r.options.APIKey != "" {
 		base["authorization"] = "Bearer " + r.options.APIKey
 	}
-	return classifierRequestHeaders(ProviderHeadersFromStrings(base), ProviderHeadersFromStrings(r.model.Headers), r.options.Headers)
+	return providerHeadersToRecord(ProviderHeadersFromStrings(base), ProviderHeadersFromStrings(r.model.Headers), r.options.Headers)
 }
 
 // post sends one JSON request to the server. Only the completion request is observed by the payload and response hooks.
@@ -322,8 +321,8 @@ func (r llamaRequestContext) post(ctx context.Context, path string, body map[str
 	headers := r.headers()
 	response, err := retryClassifierRequest(ctx, r.options, func() (classifierResponse, error) {
 		response, err := classifierPost(ctx, r.options, llamaCppLabel, r.root+path, headers, encoded)
-		if err == nil && !json.Valid(response.body) {
-			return classifierResponse{}, errors.New("Unexpected response body: invalid JSON")
+		if err == nil {
+			response.body, err = classifierJSONBody(response.body)
 		}
 		return response, err
 	})
@@ -595,6 +594,9 @@ func ClassifyLlamaCpp(ctx context.Context, model ClassifierModel, request Classi
 	}
 	if model.API != ClassifierAPILlamaCppClassify {
 		return fail(fmt.Errorf("Unsupported classifier API: %s", model.API))
+	}
+	if len(request.Images) > 0 {
+		return fail(fmt.Errorf("%s classification does not support image input", llamaCppLabel))
 	}
 	temperature := 1.0
 	if options.Temperature != nil {

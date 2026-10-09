@@ -14,6 +14,7 @@ import (
 	"github.com/MichaelKinsy/PiG/coding/extension/host/inproc"
 	"github.com/MichaelKinsy/PiG/coding/extension/host/subprocess"
 	icodingagent "github.com/MichaelKinsy/PiG/internal/codingagent"
+	"github.com/MichaelKinsy/PiG/internal/testbudget"
 )
 
 // examplesDir is the vendored copy of .upstream/v0.99.2/packages/coding-agent/examples/extensions
@@ -31,7 +32,7 @@ func rendererExampleState(t *testing.T, tempDir, extensionPath string, tools []s
 		t.Fatal(err)
 	}
 	t.Setenv("PIG_HOME", tempDir)
-	services, err := coding.NewServices(coding.ServicesOptions{CWD: tempDir, AgentDir: agentDir})
+	services, err := coding.CreateAgentSessionServices(coding.CreateAgentSessionServicesOptions{CWD: tempDir, AgentDir: agentDir})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -49,15 +50,11 @@ func rendererExampleState(t *testing.T, tempDir, extensionPath string, tools []s
 		}
 		runner = inproc.NewRunner([]extension.Extension{*loaded}, tempDir)
 	}
-	active := map[string]struct{}{}
-	for _, name := range tools {
-		active[name] = struct{}{}
-	}
 	session, err := coding.NewSession(services, coding.SessionOptions{
-		Model:              services.ModelRuntime().GetModel("anthropic", "claude-sonnet-4-5"),
-		ResourceLoader:     loader,
-		Runner:             runner,
-		ActiveBuiltinTools: active,
+		Model:                  services.ModelRuntime().GetModel("anthropic", "claude-sonnet-4-5"),
+		ResourceLoader:         loader,
+		Runner:                 runner,
+		InitialActiveToolNames: tools,
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -111,7 +108,9 @@ func renderEditTool(t *testing.T, definition extension.ToolDefinition) []string 
 		t.Fatal(err)
 	}
 	render := icodingagent.ToolCard(t, "edit", "edit-shell-test", raw, definition)
-	deadline := time.Now().Add(40 * time.Second)
+	// The wait returns when the frame arrives; its bound only decides how long a hung extension takes to fail. A fixed 40 s bound failed on a loaded Windows runner, where Node's first answer can outlast it (internal/testbudget).
+	budget := testbudget.Wait(t)
+	deadline := time.Now().Add(budget)
 	// A request the extension does not answer within the renderer inactivity boundary (a cold node start on a loaded runner) is dropped and the proxy asks again only when the width changes. Nudge the width then, as a terminal resize would, so the wait follows the extension instead of one lost request.
 	nudge := time.Now().Add(6 * time.Second)
 	for {
@@ -120,7 +119,7 @@ func renderEditTool(t *testing.T, definition extension.ToolDefinition) []string 
 			return lines
 		}
 		if time.Now().After(deadline) {
-			t.Fatalf("the extension's renderCall frame never reached the edit card: %q", lines)
+			t.Fatalf("the extension's renderCall frame never reached the edit card within %v: %q", budget, lines)
 		}
 		if time.Now().After(nudge) {
 			render(41)

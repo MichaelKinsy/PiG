@@ -52,7 +52,7 @@ func TestReviewReentrantProviderDisposeDeliversUnavailable(t *testing.T) {
 	if err := Provide[Counter](provider, counterDefinition, counter); err != nil {
 		t.Fatal(err)
 	}
-	var first, second []string
+	var first, second []ServiceProviderUpdateType
 	a, err := provider.Subscribe(counterDefinition.Id(), ServiceSingleton, func(_ context.Context, update ServiceProviderUpdate) {
 		first = append(first, update.Type)
 		if update.Type == UpdateState {
@@ -80,7 +80,7 @@ func TestReviewReentrantProviderDisposeDeliversUnavailable(t *testing.T) {
 		t.Fatal(err)
 	}
 	// upstream 1.0.0 provider.ts #publish queues the update for every subscriber before invoking any listener (service-delivery.test.ts "preserves lifecycle ordering across subscribers during reentrant publication"), so both subscribers see the state update and then the terminal update.
-	want := []string{UpdateState, UpdateUnavailable}
+	want := []ServiceProviderUpdateType{UpdateState, UpdateUnavailable}
 	if !reflect.DeepEqual(first, want) || !reflect.DeepEqual(second, want) {
 		t.Fatalf("first=%v second=%v; upstream first=second=%v", first, second, want)
 	}
@@ -162,7 +162,7 @@ func TestReviewUnbindFencesSnapshotAlreadyBeingInstalled(t *testing.T) {
 	var once sync.Once
 	t.Cleanup(func() { once.Do(func() { close(release) }) })
 	binding, err := CreateRemoteServiceBinding(RemoteServiceBindingOptions{
-		Services:  []string{counterDefinition.Id()},
+		Services:  ServiceIDs(counterDefinition.Id()),
 		Transport: reviewPausedTransport{RemoteServiceTransport: NewLoopbackTransport(provider), entered: entered, release: release},
 	})
 	if err != nil {

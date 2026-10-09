@@ -229,13 +229,13 @@ func (h *Host) handleMcpServerCall(_ context.Context, me *managedExt, call *Call
 		h.providerRuntime.UnregisterMcpServer(path, ref.Name)
 		h.untrackMcpServer(me, ref.Name)
 	}
-	result, err := json.Marshal(McpServersResult{Servers: h.providerRuntime.McpServers()})
+	result, err := json.Marshal(McpServersResult{Servers: h.providerRuntime.McpServers().List()})
 	return &CallResultPayload{Result: result}, err
 }
 
 // handleMcpServersRead serves CallGetMcpServers: the live registry, which a Node factory reads before its register frame (loader.ts:475-478).
 func (h *Host) handleMcpServersRead() (*CallResultPayload, error) {
-	result, err := json.Marshal(McpServersResult{Servers: h.providerRuntime.McpServers()})
+	result, err := json.Marshal(McpServersResult{Servers: h.providerRuntime.McpServers().List()})
 	return &CallResultPayload{Result: result}, err
 }
 
@@ -381,7 +381,7 @@ func (h *Host) handleExecuteToolCall(ctx context.Context, conn *Conn, call *Call
 			return nil, executeErr
 		}
 	}
-	result, err := json.Marshal(ExecuteToolOutcome{ToolCall: outcome.ToolCall, Result: agentToolResultWire(outcome.Result), IsError: outcome.IsError})
+	result, err := json.Marshal(ExecuteToolOutcome{ToolCall: outcome.ToolCall, Result: agentToolResultWire(outcome.Result), IsError: outcome.IsError, DurationMs: outcome.DurationMs})
 	return &CallResultPayload{Result: result}, err
 }
 
@@ -540,6 +540,14 @@ func (h *Host) makeToolPrepareLoadout(me *managedExt, toolName string) extension
 				exposure = loadout.GetExposure(tool.Name)
 			}
 			payload.Exposures[tool.Name] = exposure
+			if loadout.GetPromptGuidelines != nil {
+				if guidelines := loadout.GetPromptGuidelines(tool.Name); len(guidelines) > 0 {
+					if payload.PromptGuidelines == nil {
+						payload.PromptGuidelines = make(map[string][]string)
+					}
+					payload.PromptGuidelines[tool.Name] = guidelines
+				}
+			}
 			if loadout.GetNamespace != nil {
 				if namespace := loadout.GetNamespace(tool.Name); namespace != nil {
 					if payload.Namespaces == nil {

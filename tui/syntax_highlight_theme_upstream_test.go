@@ -1,3 +1,5 @@
+//go:build !pig_strip_syntax_highlight
+
 package tui
 
 import (
@@ -12,24 +14,24 @@ func TestSyntaxHighlightThemeUpstream(t *testing.T) {
 	LoadAllHighlightLanguages()
 	t.Run("colors diff additions and deletions in fenced diff blocks", func(t *testing.T) {
 		lines := HighlightCode("-old\n+new\n", "diff")
-		if lines[0] != ActiveTheme().Fg("toolDiffRemoved")+"-old\x1b[39m" || lines[1] != ActiveTheme().Fg("toolDiffAdded")+"+new\x1b[39m" {
+		if lines[0] != ActiveTheme().GetFgAnsi("toolDiffRemoved")+"-old\x1b[39m" || lines[1] != ActiveTheme().GetFgAnsi("toolDiffAdded")+"+new\x1b[39m" {
 			t.Fatalf("diff colors=%q", lines)
 		}
 	})
 	t.Run("preserves line count without a trailing newline", func(t *testing.T) {
 		lines := HighlightCode("-old\n+new", "diff")
-		if len(lines) != 2 || lines[0] != ActiveTheme().Fg("toolDiffRemoved")+"-old\x1b[39m" || lines[1] != ActiveTheme().Fg("toolDiffAdded")+"+new\x1b[39m" {
+		if len(lines) != 2 || lines[0] != ActiveTheme().GetFgAnsi("toolDiffRemoved")+"-old\x1b[39m" || lines[1] != ActiveTheme().GetFgAnsi("toolDiffAdded")+"+new\x1b[39m" {
 			t.Fatalf("diff without trailing newline=%q", lines)
 		}
 	})
 	t.Run("keeps cli-highlight default styled scopes mapped to theme styles", func(t *testing.T) {
-		if got := HighlightCode("const re = /foo+/gi;", "javascript")[0]; !strings.Contains(got, ActiveTheme().Fg("syntaxString")+"/foo+/gi\x1b[39m") {
+		if got := HighlightCode("const re = /foo+/gi;", "javascript")[0]; !strings.Contains(got, ActiveTheme().GetFgAnsi("syntaxString")+"/foo+/gi\x1b[39m") {
 			t.Fatalf("regexp color=%q", got)
 		}
-		if got := HighlightCode("@decorator", "python")[0]; got != ActiveTheme().Fg("muted")+"@decorator\x1b[39m" {
+		if got := HighlightCode("@decorator", "python")[0]; got != ActiveTheme().GetFgAnsi("muted")+"@decorator\x1b[39m" {
 			t.Fatalf("meta color=%q", got)
 		}
-		if got := HighlightCode("<div></div>", "html")[0]; !strings.Contains(got, ActiveTheme().Fg("syntaxKeyword")+"div\x1b[39m") {
+		if got := HighlightCode("<div></div>", "html")[0]; !strings.Contains(got, ActiveTheme().GetFgAnsi("syntaxKeyword")+"div\x1b[39m") {
 			t.Fatalf("tag name color=%q", got)
 		}
 	})
@@ -41,10 +43,10 @@ func TestMarkdownSyntaxThemeScopes(t *testing.T) {
 	LoadAllHighlightLanguages()
 	// Markdown renders fenced code through the shared theme highlighter, as packages/tui/src/components/markdown.ts:renderToken does for code tokens.
 	for _, tc := range []struct{ language, code, want string }{
-		{"diff", "-old\n+new", ActiveTheme().Fg("toolDiffRemoved") + "-old\x1b[39m"},
-		{"diff", "-old\n+new", ActiveTheme().Fg("toolDiffAdded") + "+new\x1b[39m"},
-		{"python", "@decorator", ActiveTheme().Fg("muted") + "@decorator\x1b[39m"},
-		{"html", "<div></div>", ActiveTheme().Fg("syntaxKeyword") + "div\x1b[39m"},
+		{"diff", "-old\n+new", ActiveTheme().GetFgAnsi("toolDiffRemoved") + "-old\x1b[39m"},
+		{"diff", "-old\n+new", ActiveTheme().GetFgAnsi("toolDiffAdded") + "+new\x1b[39m"},
+		{"python", "@decorator", ActiveTheme().GetFgAnsi("muted") + "@decorator\x1b[39m"},
+		{"html", "<div></div>", ActiveTheme().GetFgAnsi("syntaxKeyword") + "div\x1b[39m"},
 	} {
 		t.Run(tc.language, func(t *testing.T) {
 			out := strings.Join(NewMarkdown("```"+tc.language+"\n"+tc.code+"\n```").Render(80), "\n")

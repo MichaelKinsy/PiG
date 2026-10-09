@@ -5,6 +5,8 @@ import (
 	"slices"
 	"testing"
 
+	icodingagent "github.com/MichaelKinsy/PiG/internal/codingagent"
+
 	"github.com/MichaelKinsy/PiG/agent"
 )
 
@@ -37,8 +39,8 @@ func TestNavigateTreeRestoresActiveToolsFromTranscript(t *testing.T) {
 	}
 	var firstAssistant string
 	for _, entry := range sess.Entries() {
-		if message, ok := entry.AsMessage(); ok && message.Message.Assistant != nil {
-			firstAssistant = entry.Base.ID
+		if message, ok := entry.(icodingagent.MessageEntry); ok && message.Message.Assistant != nil {
+			firstAssistant = entry.Base().ID
 			break
 		}
 	}

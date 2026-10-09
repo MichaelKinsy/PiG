@@ -38,7 +38,7 @@ type beforeUIHandle struct {
 }
 
 func (h *beforeUIHandle) ExtensionCommandActions() extension.CommandActions {
-	replace := func(ctx context.Context, event any, prepare func() (*Session, error)) (extension.CancelledResult, error) {
+	replace := func(ctx context.Context, event extension.ExtensionEvent, prepare func() (*Session, error)) (extension.CancelledResult, error) {
 		value, err := h.runner.Emit(ctx, event)
 		if err != nil {
 			return extension.CancelledResult{}, err
@@ -135,7 +135,7 @@ func newBeforeUIHarness(t *testing.T, eventType string, handle func(context.Cont
 	}
 
 	sessionHandle := &beforeUIHandle{recordingCompactHandle: &recordingCompactHandle{inner: loaded}, sm: sm}
-	m := NewInteractiveMode(InteractiveOptions{CWD: dir, SessionDir: dir, SessionHandle: sessionHandle})
+	m := NewInteractiveMode(nil, InteractiveModeOptions{CWD: dir, SessionDir: dir, SessionHandle: sessionHandle})
 	m.editor = tui.NewEditor()
 	m.editorContainer = tui.NewContainer()
 	m.editorContainer.Add(m.editor)
@@ -145,7 +145,7 @@ func newBeforeUIHarness(t *testing.T, eventType string, handle func(context.Cont
 	m.installRenderDispatcher()
 	t.Cleanup(m.tuiInst.Stop)
 	m.tuiInst.Add(m.layout)
-	m.statusLine = NewStatusLine(nil, "", nil)
+	m.statusLine = NewFooterComponent(nil, "", nil)
 
 	h := &beforeUIHarness{m: m, events: make(chan any, 4), dialogReady: make(chan struct{}), userID: userID, other: other.Path()}
 	ui := &ExtUIContext{m: m}
@@ -225,7 +225,7 @@ func TestSlashNewAwaitsSessionBeforeSwitchDialog(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			h := newBeforeUIHarness(t, EventSessionBeforeSwitch, func(ctx context.Context, ui *ExtUIContext, _ any) any {
-				ok, _ := ui.Confirm(ctx, "Clear session?", "This will delete all messages in the current session.", nil)
+				ok, _ := ui.Confirm(ctx, "Clear session?", "This will delete all messages in the current session.", extension.ExtensionUIDialogOptions{})
 				return map[string]any{"cancel": !ok}
 			})
 			before := h.m.currentSession().Path()
@@ -266,11 +266,11 @@ func TestSlashForkAndCloneAwaitSessionBeforeForkDialog(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			h := newBeforeUIHarness(t, EventSessionBeforeFork, func(ctx context.Context, ui *ExtUIContext, event any) any {
 				fork, _ := event.(extension.SessionBeforeForkEvent)
-				choice, _ := ui.Select(ctx, "Fork from entry "+fork.EntryID+"?", []string{"Yes, create fork", "No, stay in current session"}, nil)
+				choice, _ := ui.Select(ctx, "Fork from entry "+fork.EntryID+"?", []string{"Yes, create fork", "No, stay in current session"}, extension.ExtensionUIDialogOptions{})
 				return &extension.SessionBeforeForkResult{Cancel: choice != "Yes, create fork"}
 			})
 			before := h.m.currentSession().Path()
-			leaf := *h.m.currentSession().LeafID()
+			leaf := *h.m.currentSession().GetLeafID()
 			var statuses []string
 			err := h.run(t, tc.key, tc.handler, func(sc *SlashContext) {
 				sc.Args = h.userID
@@ -311,7 +311,7 @@ func TestSlashResumeAwaitsSessionBeforeSwitchDialog(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			h := newBeforeUIHarness(t, EventSessionBeforeSwitch, func(ctx context.Context, ui *ExtUIContext, _ any) any {
-				ok, _ := ui.Confirm(ctx, "Switch session?", "You have messages in the current session. Switch anyway?", nil)
+				ok, _ := ui.Confirm(ctx, "Switch session?", "You have messages in the current session. Switch anyway?", extension.ExtensionUIDialogOptions{})
 				return map[string]any{"cancel": !ok}
 			})
 			before := h.m.currentSession().Path()

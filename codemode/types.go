@@ -24,8 +24,8 @@ type Tool struct {
 	// Spread makes a global receive all call arguments as an array instead of the first one.
 	Spread bool
 	// Signature is a TypeScript parameter list and return type that replaces the rendering from the schemas
-	// (globals only). Empty means none.
-	Signature string
+	// (globals only). Nil means none; a non-nil empty string renders as Pi does, `declare function name;`.
+	Signature *string
 	// AwaitsInitiation makes the script's next tool call wait until Execute has initiated this one: until it calls
 	// CallInitiated with its context, or returns. Pi runs each call's synchronous prefix in call order, so two calls a script
 	// starts together reach a server in script order; a Go goroutine per call does not, and a tool whose prefix must keep the
@@ -35,11 +35,22 @@ type Tool struct {
 	Execute func(ctx context.Context, args json.RawMessage) (json.RawMessage, error)
 }
 
+// OutputItemType is the closed `type` union of an output item (types.ts CodemodeOutputItem).
+type OutputItemType string
+
+// The output item types.
+const (
+	OutputItemText  OutputItemType = "text"
+	OutputItemImage OutputItemType = "image"
+)
+
 // OutputItem is one item of the script's output, in the order the script produced it: text() and console.* produce
-// "text" items, image() "image" items. Data is base64.
+// "text" items, with Console set for console.*, and image() "image" items. Data is base64.
 type OutputItem struct {
-	Type     string `json:"type"`
-	Text     string `json:"text,omitempty"`
+	Type OutputItemType `json:"type"`
+	Text string         `json:"text,omitempty"`
+	// Console marks a text item produced by console.*, so hosts can tell it apart from text() output.
+	Console  bool   `json:"console,omitempty"`
 	Data     string `json:"data,omitempty"`
 	MimeType string `json:"mimeType,omitempty"`
 }

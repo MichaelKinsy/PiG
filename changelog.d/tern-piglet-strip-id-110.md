@@ -1,0 +1,2 @@
+### Added
+- A Piglet can strip the `/piglet` inspection command with `strip.commands: [/piglet]`, so a Piglet that wants only Pi's commands can remove the one PiG-only command an active Piglet adds. The command then leaves autocomplete, RPC `get_commands` and an extension's `getCommands`, and typed `/piglet` goes to the model as an unknown slash command does in Pi. The Piglet's `--piglet` flag, tool scoping and system prompt are unchanged (D92).

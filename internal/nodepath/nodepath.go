@@ -13,10 +13,8 @@ import (
 	"slices"
 	"strings"
 	"unicode/utf16"
-	"unicode/utf8"
 
-	"golang.org/x/text/cases"
-	"golang.org/x/text/language"
+	"github.com/MichaelKinsy/PiG/internal/jsstring"
 )
 
 // Env is the process state Node's path.resolve reads.
@@ -31,7 +29,7 @@ type Env struct {
 
 // Process returns the current process state.
 func Process() Env {
-	cwd, err := os.Getwd()
+	cwd, err := processCwd()
 	return Env{Cwd: cwd, CwdErr: err, DriveCwd: func(device string) string { return os.Getenv("=" + device) }}
 }
 
@@ -180,19 +178,7 @@ func driveCwdElsewhere(path, device string) bool {
 	if len(units) < 3 || units[2] != backslash {
 		return false
 	}
-	return jsToLower(string(utf16.Decode(units[:2]))) != jsToLower(device)
-}
-
-// jsToLower is String.prototype.toLowerCase: full Unicode lowercasing, so
-// U+0130 becomes "i\u0307" and a word-final sigma becomes U+03C2, where
-// strings.ToLower and strings.EqualFold differ.
-func jsToLower(s string) string {
-	for i := range len(s) {
-		if s[i] >= utf8.RuneSelf {
-			return cases.Lower(language.Und).String(s)
-		}
-	}
-	return strings.ToLower(s)
+	return jsstring.ToLower(string(utf16.Decode(units[:2]))) != jsstring.ToLower(device)
 }
 
 // Win32Resolve is path.win32.resolve(...paths). Unlike filepath.Abs it keeps a
@@ -291,7 +277,7 @@ func Win32Resolve(env Env, paths ...string) (string, error) {
 
 		if len(device) > 0 {
 			if len(resolvedDevice) > 0 {
-				if jsToLower(device) != jsToLower(resolvedDevice) {
+				if jsstring.ToLower(device) != jsstring.ToLower(resolvedDevice) {
 					continue
 				}
 			} else {

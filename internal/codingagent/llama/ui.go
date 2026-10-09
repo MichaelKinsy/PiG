@@ -136,7 +136,7 @@ func modelDescription(model LlamaModelInfo) string {
 	return strings.Join(details, " · ")
 }
 
-func fg(token, text string) string { return tui.ActiveTheme().FgText(token, text) }
+func fg(token, text string) string { return tui.ActiveTheme().Fg(token, text) }
 
 // keyHint mirrors keybinding-hints.ts keyHint.
 func keyHint(action, description string) string {
@@ -148,8 +148,8 @@ func paddedText(content string) *tui.Text { return tui.NewPaddedText(content, 1,
 
 func frame(title string, body []tui.Component, footer string) *tui.Container {
 	container := tui.NewContainer()
-	container.Add(tui.NewDynamicBorder(tui.ActiveTheme().Fg("accent")))
-	container.Add(paddedText(fg("accent", "\x1b[1m"+title+tui.SGRBoldDimReset)))
+	container.Add(tui.NewDynamicBorder(func(text string) string { return tui.ActiveTheme().Fg("accent", text) }))
+	container.Add(paddedText(fg("accent", tui.ActiveTheme().Bold(title))))
 	for _, child := range body {
 		container.Add(child)
 	}
@@ -157,7 +157,7 @@ func frame(title string, body []tui.Component, footer string) *tui.Container {
 		container.Add(tui.NewSpacer(1))
 		container.Add(paddedText(fg("dim", footer)))
 	}
-	container.Add(tui.NewDynamicBorder(tui.ActiveTheme().Fg("accent")))
+	container.Add(tui.NewDynamicBorder(func(text string) string { return tui.ActiveTheme().Fg("accent", text) }))
 	return container
 }
 
@@ -188,6 +188,7 @@ func newSelectList(labels, descriptions []string, minPrimary, maxPrimary int) *t
 	list.MinPrimaryColumnWidth = minPrimary
 	list.MaxPrimaryColumnWidth = maxPrimary
 	list.MaxVisible = min(len(labels), 12)
+	list.ScrollInfo = func(text string) string { return fg("dim", text) } // selectTheme scrollInfo
 	return list
 }
 
@@ -218,20 +219,29 @@ type HuggingFaceSearch struct {
 	selectedIndex   int
 	query           string
 	status          string
-	debounce        *time.Timer
-	cancelRequest   context.CancelFunc
-	request         int
-	closed          bool
-	tasks           sync.WaitGroup
+	debounce        debounceTimer
+	// afterFunc starts the debounce timer: time.AfterFunc, or a manual clock in tests that compare against Pi on a virtual clock.
+	afterFunc     func(d time.Duration, f func()) debounceTimer
+	cancelRequest context.CancelFunc
+	request       int
+	closed        bool
+	tasks         sync.WaitGroup
 }
 
-func newHuggingFaceSearch(lock *sync.Mutex, requestRender func(), search HuggingFaceSearchFunc, cache map[string][]HuggingFaceModel, onSelectModel func(string, bool)) *HuggingFaceSearch {
+// debounceTimer is the part of a timer the search uses: Stop reports whether it stopped the callback before it started.
+type debounceTimer interface{ Stop() bool }
+
+func newHuggingFaceSearch(lock *sync.Mutex, requestRender func(), search HuggingFaceSearchFunc, cache map[string][]HuggingFaceModel, onSelectModel func(string, bool), afterFunc func(time.Duration, func()) debounceTimer) *HuggingFaceSearch {
+	if afterFunc == nil {
+		afterFunc = func(d time.Duration, f func()) debounceTimer { return time.AfterFunc(d, f) }
+	}
 	component := &HuggingFaceSearch{
 		lock:          lock,
 		requestRender: requestRender,
 		search:        search,
 		cache:         cache,
 		onSelectModel: onSelectModel,
+		afterFunc:     afterFunc,
 		input:         tui.NewTextInput(""),
 		results:       tui.NewContainer(),
 		status:        "Type at least 2 characters",
@@ -325,9 +335,13 @@ func (s *HuggingFaceSearch) scheduleSearch() {
 	}
 	s.status = searchingStatus
 	s.filterResults()
+	if s.closed {
+		// Keys that reach a closed search still edit the input and the list, as upstream's do, but start no search: SearchModels has stopped waiting for the pending ones, and a timer added now would outlive it.
+		return
+	}
 	query := s.query
 	s.tasks.Add(1)
-	s.debounce = time.AfterFunc(500*time.Millisecond, func() {
+	s.debounce = s.afterFunc(500*time.Millisecond, func() {
 		defer s.tasks.Done()
 		s.runSearch(query)
 	})
@@ -431,6 +445,8 @@ type LlamaView struct {
 	inputHandler    func(data string)
 	progressStop    chan struct{}
 	showingProgress bool
+	// afterFunc replaces time.AfterFunc for the search debounce in tests; nil means the real clock.
+	afterFunc func(time.Duration, func()) debounceTimer
 }
 
 // NewLlamaView creates the manager view; requestRender asks the host to
@@ -546,7 +562,7 @@ func (v *LlamaView) SearchModels(search HuggingFaceSearchFunc) (string, bool) {
 	v.mu.Lock()
 	component := newHuggingFaceSearch(&v.mu, v.requestRender, search, v.searchCache, func(model string, ok bool) {
 		result <- selection{model, ok}
-	})
+	}, v.afterFunc)
 	v.setContentLocked(frame("Download model", []tui.Component{tui.NewSpacer(1), component},
 		keyHint(tui.KBSelectConfirm, "select")+" • "+keyHint(tui.KBSelectCancel, "back")), component.HandleInput)
 	v.mu.Unlock()

@@ -1,4 +1,3 @@
-// SPDX-FileCopyrightText: Copyright Hewlett Packard Enterprise Development LP
 // SPDX-FileCopyrightText: Copyright (c) 2018 Made With MOXY Lda <hello@moxy.studio>
 // SPDX-FileCopyrightText: Copyright (c) Kevin Mårtensson <kevinmartensson@gmail.com>
 // SPDX-FileCopyrightText: Copyright (c) Sindre Sorhus <sindresorhus@gmail.com>
@@ -20,10 +19,10 @@ import (
 var (
 	// executableFile matches files CreateProcess starts directly
 	// (cross-spawn lib/parse.js isExecutableRegExp).
-	executableFile = lazyregexp.New(`(?i)\.(?:com|exe)$`)
+	executableFile = lazyregexp.NewJSIgnoreCase(`\.(?:com|exe)$`)
 	// cmdShim matches npm's .cmd shims, whose arguments cmd.exe parses twice
 	// (cross-spawn lib/parse.js isCmdShimRegExp).
-	cmdShim = lazyregexp.New(`(?i)node_modules[\\/].bin[\\/][^\\/]+\.cmd$`)
+	cmdShim = lazyregexp.NewJSIgnoreCase(`node_modules[\\/].bin[\\/][^\\/]+\.cmd$`)
 	// metaChars are the characters cmd.exe interprets (cross-spawn lib/util/escape.js metaCharsRegExp).
 	metaChars = lazyregexp.New("([()\\][%!^\"`<>&|;, *?])")
 	// The lazy lookahead in cross-spawn 7.0.6 captures at most one backslash, not the whole run. Preserve its command-line bytes at both parse depths.

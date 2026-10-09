@@ -11,6 +11,7 @@ import (
 // The reflection-based parity gates in test/upstream-parity/ provide the
 // authoritative coverage; this test exists so a failed JSON tag fails fast
 // inside the package itself.
+// Pi: packages/coding-agent/src/core/extensions/types.ts:1079 (ToolExecutionEndEvent.type); packages/coding-agent/src/core/extensions/types.ts:1119 (UserBashEvent.excludeFromContext); packages/coding-agent/src/core/extensions/types.ts:834 (SessionTreeEvent.type).
 func TestEvents_JSONTagsAreCamelCase(t *testing.T) {
 	t.Run("ToolExecutionEndEvent", func(t *testing.T) {
 		b, err := marshalNoEscape(ToolExecutionEndEvent{
@@ -53,10 +54,10 @@ func TestEvents_JSONTagsAreCamelCase(t *testing.T) {
 		}
 	})
 
-	t.Run("BashToolCallEvent_PromotedFields", func(t *testing.T) {
+	t.Run("CustomToolCallEvent_PromotedFields", func(t *testing.T) {
 		// Embedded ToolCallEventBase must promote Type and ToolCallID into
 		// the JSON output.
-		b, err := marshalNoEscape(BashToolCallEvent{
+		b, err := marshalNoEscape(CustomToolCallEvent{
 			ToolCallEventBase: ToolCallEventBase{Type: "tool_call", ToolCallID: "x"},
 			ToolName:          "bash",
 		})

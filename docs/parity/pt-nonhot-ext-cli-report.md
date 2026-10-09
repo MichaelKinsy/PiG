@@ -21,7 +21,7 @@ All paths in the first column are under `packages/coding-agent/test/`.
 | `plan-mode-utils.test.ts` | 33 / 33 | ported | `examples/extensions/plan-mode/utils_test.go` |
 | `experimental-client-tui.test.ts` | 3 / 3 | ported | `internal/experimental/client_tui_upstream_test.go`, `TestExperimentalClientTuiUpstream` |
 | `experimental-agent-controller.test.ts` | 8 / 8 | ported | `internal/experimental/services/agent_controller_upstream_cases_test.go`, `TestUpstreamAgentController` |
-| `experimental-cli-entry.test.ts` | 3 / 3 | ported | `cmd/pig/experimental_entry_test.go`, `TestStableEntryDoesNotDispatchExperimentalCommands`; `cmd/pig-experimental/entry_upstream_test.go`, `TestDevelopmentCLIEntryUpstream` |
+| `experimental-cli-entry.test.ts` | 3 / 3 | ported | `coding/cli/experimental_entry_test.go`, `TestStableEntryDoesNotDispatchExperimentalCommands`; `cmd/pig-experimental/entry_upstream_test.go`, `TestDevelopmentCLIEntryUpstream` |
 | `experimental-internal-process.test.ts` | 2 / 2 | ported | `internal/experimental/process_upstream_unix_test.go`, `TestUpstreamInternalProcess` |
 | `experimental-plugin-reload.test.ts` | 1 / 1 | ported | `internal/experimental/port_wave_07_experimental_plugin_reload_test.go`, `TestPortWave07ExperimentalPluginReload` |
 | `experimental-presentation-facets.test.ts` | 0 / 4 | pending | B4 |

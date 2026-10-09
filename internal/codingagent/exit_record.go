@@ -44,6 +44,7 @@ func CrashOutputDir(agentDir string) string { return filepath.Join(agentDir, cra
 // is already exiting, and a failed write must not change how it exits.
 func RecordExit(agentDir, reason string) {
 	debugLog("exit: %s", reason)
+	//portlint:allow clock the exit record stamps the real wall clock of this process; the package's clock seams belong to the logo animation and the Radius login selector, and Pi has no counterpart (D102)
 	appendExitLog(agentDir, time.Now(), os.Getpid(), os.Getppid(), reason)
 }
 
@@ -146,6 +147,7 @@ func BeginSessionMarker(agentDir, version, cwd string) {
 	if err != nil {
 		return
 	}
+	//portlint:allow clock the exit record stamps the real wall clock of this process; the package's clock seams belong to the logo animation and the Radius login selector, and Pi has no counterpart (D102)
 	header, _ := json.Marshal(sessionMarkerHeader{PID: os.Getpid(), PPID: os.Getppid(), Release: version, CWD: cwd, Started: time.Now().Format(time.RFC3339)})
 	if _, err := file.Write(append(header, '\n')); err != nil {
 		_ = file.Close()

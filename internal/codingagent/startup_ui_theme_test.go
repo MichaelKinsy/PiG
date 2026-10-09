@@ -22,7 +22,7 @@ func restoreStartupTheme(t testing.TB) {
 		tui.SetTerminalColors(tui.TerminalColors{})
 		tui.SetTerminalColorScheme("")
 		// Rebuild the previous theme in its own color mode, which can differ from the capabilities' (see pinHeaderTerminal).
-		tui.SetCapabilities(tui.TerminalCapabilities{TrueColor: previousTheme.ColorMode() == tui.TerminalColorModeTrueColor})
+		tui.SetCapabilities(tui.TerminalCapabilities{TrueColor: previousTheme.GetColorMode() == tui.TerminalColorModeTrueColor})
 		tui.SetThemeByName(previousTheme.Name)
 		tui.SetCapabilities(previousCaps)
 	})
@@ -110,7 +110,7 @@ func TestStartupPromptAppliesTerminalColorsAndKeepsRepliesOutOfInput(t *testing.
 	tui.SetThemeRegistry(tui.NewThemeRegistry())
 	configureStartupTheme(Settings{}, nil)
 	terminal := &fakeStartupTerminal{replies: append(whiteTerminalReplies(), []byte("h"), []byte("i"), []byte("\r"))}
-	input := tui.NewExtensionInputComponent("Name", "")
+	input := tui.NewExtensionInputComponent("Name", "", nil, nil)
 	completed, err := runStartupComponentWith(input, StartupUIOptions{Settings: Settings{}}, false, tui.NewWithOutput(startupQueryWriter{terminal}, 80, 24), terminal)
 	if err != nil || !completed {
 		t.Fatalf("completed=%v err=%v", completed, err)
@@ -134,7 +134,7 @@ func TestStartupPromptAppliesColorsThatArriveAfterTheTimeout(t *testing.T) {
 	restoreStartupTheme(t)
 	tui.SetThemeRegistry(tui.NewThemeRegistry())
 	configureStartupTheme(Settings{}, nil)
-	selector := tui.NewExtensionSelector("Pick", []string{"a", "b"})
+	selector := tui.NewExtensionSelectorComponent("Pick", []string{"a", "b"}, nil, nil)
 	terminal := &fakeStartupTerminal{}
 	done := make(chan error, 1)
 	ui := tui.NewWithOutput(startupQueryWriter{terminal}, 80, 24)
@@ -168,7 +168,7 @@ func TestStartupPromptWithFixedThemeQueriesAndKeepsTheTheme(t *testing.T) {
 	settings := Settings{Theme: "dark"}
 	configureStartupTheme(settings, nil)
 	terminal := &fakeStartupTerminal{replies: append(whiteTerminalReplies(), []byte("\r"))}
-	selector := tui.NewExtensionSelector("Pick", []string{"a"})
+	selector := tui.NewExtensionSelectorComponent("Pick", []string{"a"}, nil, nil)
 	if _, err := runStartupComponentWith(selector, StartupUIOptions{Settings: settings}, false, tui.NewWithOutput(startupQueryWriter{terminal}, 80, 24), terminal); err != nil {
 		t.Fatal(err)
 	}
@@ -183,7 +183,7 @@ func TestStartupPromptWithFixedThemeQueriesAndKeepsTheTheme(t *testing.T) {
 func TestStartupPromptFlushesALoneEscape(t *testing.T) {
 	restoreStartupTheme(t)
 	terminal := &fakeStartupTerminal{}
-	selector := tui.NewExtensionSelector("Pick", []string{"a"})
+	selector := tui.NewExtensionSelectorComponent("Pick", []string{"a"}, nil, nil)
 	done := make(chan error, 1)
 	go func() {
 		_, err := runStartupComponentWith(selector, StartupUIOptions{Settings: Settings{Theme: "dark"}}, false, tui.NewWithOutput(io.Discard, 80, 24), terminal)
@@ -201,4 +201,15 @@ func TestStartupPromptFlushesALoneEscape(t *testing.T) {
 	if !selector.Cancelled() {
 		t.Fatal("Escape did not cancel the selector")
 	}
+}
+
+// pinTrueColorCapabilities fixes the terminal capabilities at truecolor for a test that compares theme instances by
+// identity. storeActiveTheme converts a theme into the capabilities' color mode and returns a copy when the mode
+// differs, so on a 256-color host (TERM=screen) an instance built in truecolor is not the active theme itself. Register
+// it before restoreStartupTheme so its cleanup runs after that helper's.
+func pinTrueColorCapabilities(t testing.TB) {
+	t.Helper()
+	previous := tui.GetCapabilities()
+	tui.SetCapabilities(tui.TerminalCapabilities{TrueColor: true})
+	t.Cleanup(func() { tui.SetCapabilities(previous) })
 }

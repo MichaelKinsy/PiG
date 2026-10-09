@@ -6,28 +6,28 @@ import (
 	"fmt"
 	"math"
 	"reflect"
+	"runtime"
 	"slices"
 	"testing"
 )
 
 // Ports cases of packages/chord/test/delta-tracker/tracker.test.ts onto the overlay Tracker, whose Object and Array
 // handles are the Go form of upstream's Proxy draft. Go mapping, shared by every case below: objects are
-// map[string]any, so a base revision's keys are visited in ascending order and only keys added by the change follow in
-// write order; numbers are float64; a comparator or callback receives draft handles; and Go has no valueOf coercion,
+// *JsonObject, which keeps JavaScript's property order; numbers are float64; a comparator or callback receives draft handles; and Go has no valueOf coercion,
 // prototype chain, or receiver rebinding.
 
 func jsonOf(t *testing.T, text string) any {
 	t.Helper()
-	var value any
-	if err := json.Unmarshal([]byte(text), &value); err != nil {
+	value, err := DecodeJson([]byte(text))
+	if err != nil {
 		t.Fatal(err)
 	}
 	return value
 }
 
-func jsonObject(t *testing.T, text string) map[string]any {
+func jsonObject(t *testing.T, text string) *JsonObject {
 	t.Helper()
-	return jsonOf(t, text).(map[string]any)
+	return jsonOf(t, text).(*JsonObject)
 }
 
 func textOf(t *testing.T, value any) string {
@@ -54,7 +54,7 @@ func opsText(t *testing.T, ops []Op) string {
 // replayThroughWire applies ops to a deep copy of base after a JSON round trip, as a remote replica would.
 func replayThroughWire(t *testing.T, base any, ops []Op) any {
 	t.Helper()
-	var wire []Op
+	var wire Ops
 	if err := json.Unmarshal([]byte(textOf(t, opsAsJSON(ops))), &wire); err != nil {
 		t.Fatal(err)
 	}
@@ -70,7 +70,7 @@ func replayThroughWire(t *testing.T, base any, ops []Op) any {
 }
 
 // settle is tracker.test.ts settle: prepare, replay the wire form of ops over the base, adopt, and return the candidate.
-func settle(t *testing.T, tracker *Tracker, mutate func(*Object)) map[string]any {
+func settle(t *testing.T, tracker *Tracker, mutate func(*Object)) *JsonObject {
 	t.Helper()
 	baseRoot := tracker.Value()
 	base := textOf(t, baseRoot)
@@ -100,9 +100,9 @@ func expectAliasFreeValue(t *testing.T, value any) {
 	visit = func(current any, path string) {
 		var id uintptr
 		switch typed := current.(type) {
-		case map[string]any:
+		case *JsonObject:
 			id = reflect.ValueOf(typed).Pointer()
-			for key, item := range typed {
+			for key, item := range typed.All() {
 				defer visit(item, path+"."+key)
 			}
 		case []any:
@@ -161,7 +161,7 @@ func TestTrackerPolicyViewReadsAfterEdits(t *testing.T) {
 		t.Fatalf("element 2 is %v", values.Get(2))
 	}
 	expectKeys(t, object, "a", "b")
-	expectJSONText(t, state.Snapshot(), `{"object":{"a":1,"b":2},"values":[1,4,5,3]}`)
+	expectJSONText(t, state.Snapshot(), `{"values":[1,4,5,3],"object":{"a":1,"b":2}}`)
 	change.Abort()
 }
 
@@ -175,9 +175,9 @@ func TestTrackerDocumentKeysAreDistinctFromHandleFields(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	expectKeys(t, object, "base", "context", "dirty", "parent", "proxy", "target")
+	expectKeys(t, object, "context", "base", "parent", "dirty", "target", "proxy")
 	prepared := mustPrepare(t, change)
-	expectJSONText(t, prepared.Value()["object"], `{"base":2,"context":7,"dirty":4,"parent":3,"proxy":8,"target":5}`)
+	expectJSONText(t, prepared.Value().Value("object"), `{"context":7,"base":2,"parent":3,"dirty":4,"target":5,"proxy":8}`)
 	if err := tracker.Adopt(prepared); err != nil {
 		t.Fatal(err)
 	}
@@ -202,7 +202,7 @@ func TestTrackerStringOperationFormsAndArgumentSideEffects(t *testing.T) {
 		t.Fatal(err)
 	}
 	prepared := mustPrepare(t, change)
-	expectJSONText(t, prepared.Value(), `{"marker":1,"text":"defghxyz","values":[1,4,3]}`)
+	expectJSONText(t, prepared.Value(), `{"text":"defghxyz","values":[1,4,3],"marker":1}`)
 	var sawTrim, sawAppend bool
 	for _, op := range prepared.Ops() {
 		sawTrim = sawTrim || opsText(t, []Op{op}) == `[["t",["text"],3]]`
@@ -218,8 +218,8 @@ func TestTrackerStringOperationFormsAndArgumentSideEffects(t *testing.T) {
 }
 
 func TestTrackerKeyOrderAfterDeleteAndReAdd(t *testing.T) {
-	// tracker.test.ts:424. A deleted key that is added again moves behind the keys that stayed. A Go revision is a map,
-	// so the order of committed keys is not observable; the draft's Keys carries the order.
+	// tracker.test.ts:424. A deleted key that is added again moves behind the keys that stayed, in the draft and in the
+	// adopted revision.
 	tracker := Track(jsonObject(t, `{"first":1,"second":2}`))
 	change := tracker.BeginChange()
 	state := change.State()
@@ -228,11 +228,13 @@ func TestTrackerKeyOrderAfterDeleteAndReAdd(t *testing.T) {
 		t.Fatal(err)
 	}
 	expectKeys(t, state, "second", "first")
+	// JSON.stringify(change.state) reads the draft in the same order.
+	expectJSONText(t, state.Snapshot(), `{"second":2,"first":1}`)
 	prepared := mustPrepare(t, change)
 	if err := tracker.Adopt(prepared); err != nil {
 		t.Fatal(err)
 	}
-	expectJSONText(t, tracker.Value(), `{"first":1,"second":2}`)
+	expectJSONText(t, tracker.Value(), `{"second":2,"first":1}`)
 }
 
 func TestTrackerKeysMoveAReAddedNewKeyToTheEnd(t *testing.T) {
@@ -261,7 +263,7 @@ func TestTrackerKeysMoveAReAddedNewKeyToTheEnd(t *testing.T) {
 		t.Fatalf("length %d", object.Len())
 	}
 	prepared := mustPrepare(t, change)
-	expectJSONText(t, prepared.Value()["object"], `{"b":1,"x":3,"y":5,"z":4}`)
+	expectJSONText(t, prepared.Value().Value("object"), `{"b":1,"y":5,"x":3,"z":4}`)
 	if got := len(prepared.Ops()); got != 3 {
 		t.Fatalf("each written key is emitted once, got %s", opsText(t, prepared.Ops()))
 	}
@@ -289,10 +291,10 @@ func TestTrackerIntegerLikeKeysOrderBeforeStrings(t *testing.T) {
 			t.Fatal(err)
 		}
 		prepared := mustPrepare(t, change)
-		if prepared.Value()["first"] != "1" {
-			t.Fatalf("first is %v", prepared.Value()["first"])
+		if prepared.Value().Value("first") != "1" {
+			t.Fatalf("first is %v", prepared.Value().Value("first"))
 		}
-		expectJSONText(t, prepared.Value()["object"], `{"1":"one","2":"two","label":"x"}`)
+		expectJSONText(t, prepared.Value().Value("object"), `{"1":"one","2":"two","label":"x"}`)
 		expectJSONText(t, replayThroughWire(t, base, prepared.Ops()), textOf(t, prepared.Value()))
 		if err := tracker.Adopt(prepared); err != nil {
 			t.Fatal(err)
@@ -317,18 +319,20 @@ func TestTrackerIntegerLikeKeysOrderBeforeStrings(t *testing.T) {
 		must(object.Set("0", "zero"))
 		expectKeys(t, object, "0", "1", "2", "3", "second", "first")
 		prepared := mustPrepare(t, change)
-		expectJSONText(t, prepared.Value()["object"], `{"0":"zero","1":"one","2":"two","3":"three","first":"a","second":"b"}`)
+		expectJSONText(t, prepared.Value().Value("object"), `{"0":"zero","1":"one","2":"two","3":"three","second":"b","first":"a"}`)
 		if err := tracker.Adopt(prepared); err != nil {
 			t.Fatal(err)
 		}
 	})
 }
 
+// Pi source: packages/chord/src/delta/tracker.ts
+// mutation-checked: zeroing the results of Prepared.Value, Tracker.BeginChange fails it
 func TestTrackerByValuePlacementsOfEveryArrayMutator(t *testing.T) {
 	// tracker.test.ts:685. Each placement is a clone taken when it is made, so editing the source afterwards, or
 	// filling and copying from a draft element, never aliases the slots.
 	tracker := Track(jsonObject(t, `{"property":null,"values":[{"value":0},{"value":1},{"value":2}]}`))
-	external := map[string]any{"value": 5.0}
+	external := JsonObjectOf("value", 5.0)
 	change := tracker.BeginChange()
 	state := change.State()
 	values := state.Array("values")
@@ -346,13 +350,13 @@ func TestTrackerByValuePlacementsOfEveryArrayMutator(t *testing.T) {
 	must(err)
 	_, err = values.Splice(2, 0, external)
 	must(err)
-	external["value"] = 99.0
+	external.Set("value", 99.0)
 	must(values.Fill(values.Get(0), 1, 3))
 	must(values.CopyWithin(3, 0, 2))
 	prepared := mustPrepare(t, change)
 	candidate := prepared.Value()
-	expectJSONText(t, candidate["property"], `{"value":5}`)
-	expectJSONText(t, candidate["values"].([]any)[:5], `[{"value":5},{"value":5},{"value":5},{"value":5},{"value":5}]`)
+	expectJSONText(t, candidate.Value("property"), `{"value":5}`)
+	expectJSONText(t, candidate.Value("values").([]any)[:5], `[{"value":5},{"value":5},{"value":5},{"value":5},{"value":5}]`)
 	expectAliasFreeValue(t, candidate)
 	if err := tracker.Adopt(prepared); err != nil {
 		t.Fatal(err)
@@ -374,7 +378,7 @@ func TestTrackerSupportsSelfOverlappingFillAndCopyWithinByValue(t *testing.T) {
 			t.Fatal(err)
 		}
 	})
-	expectJSONText(t, value["values"], `[{"n":9},{"n":0},{"n":1},{"n":2}]`)
+	expectJSONText(t, value.Value("values"), `[{"n":9},{"n":0},{"n":1},{"n":2}]`)
 	expectAliasFreeValue(t, value)
 }
 
@@ -396,11 +400,11 @@ func TestTrackerFillReplacesTheClampedRange(t *testing.T) {
 			t.Fatalf("a non-empty range rejects NaN, got %v", err)
 		}
 		expectJSONText(t, values.Snapshot(), `[1,2,3,4]`)
-		if err := values.Fill(map[string]any{"n": 7.0}, -3, -1); err != nil {
+		if err := values.Fill(JsonObjectOf("n", 7.0), -3, -1); err != nil {
 			t.Fatal(err)
 		}
 	})
-	expectJSONText(t, value["values"], `[1,{"n":7},{"n":7},4]`)
+	expectJSONText(t, value.Value("values"), `[1,{"n":7},{"n":7},4]`)
 	expectAliasFreeValue(t, value)
 }
 
@@ -423,17 +427,17 @@ func TestTrackerSortComparatorWritesAndReentrantAppends(t *testing.T) {
 		bump(right)
 		if !appended {
 			appended = true
-			if err := values.Set(0, map[string]any{"rank": 9.0, "comparisons": 0.0}); err != nil {
+			if err := values.Set(0, JsonObjectOf("rank", 9.0, "comparisons", 0.0)); err != nil {
 				t.Fatal(err)
 			}
-			if _, err := values.Push(map[string]any{"rank": 3.0, "comparisons": 0.0}); err != nil {
+			if _, err := values.Push(JsonObjectOf("rank", 3.0, "comparisons", 0.0)); err != nil {
 				t.Fatal(err)
 			}
 		}
 		return left.(*Object).Get("rank").(float64) < right.(*Object).Get("rank").(float64)
 	})
 	prepared := mustPrepare(t, change)
-	expectJSONText(t, prepared.Value()["values"], `[{"comparisons":1,"rank":1},{"comparisons":1,"rank":2},{"comparisons":0,"rank":3}]`)
+	expectJSONText(t, prepared.Value().Value("values"), `[{"rank":1,"comparisons":1},{"rank":2,"comparisons":1},{"rank":3,"comparisons":0}]`)
 	expectJSONText(t, replayThroughWire(t, base, prepared.Ops()), textOf(t, prepared.Value()))
 	if err := tracker.Adopt(prepared); err != nil {
 		t.Fatal(err)
@@ -463,14 +467,14 @@ func TestTrackerSortNormalizesDuplicatesFromReentrantStructuralEdits(t *testing.
 		edit(right)
 		if !inserted {
 			inserted = true
-			if _, err := values.Unshift(map[string]any{"rank": 4.0, "edited": 0.0, "nested": map[string]any{"value": 0.0}}); err != nil {
+			if _, err := values.Unshift(JsonObjectOf("rank", 4.0, "edited", 0.0, "nested", JsonObjectOf("value", 0.0))); err != nil {
 				t.Fatal(err)
 			}
 		}
 		return left.(*Object).Get("rank").(float64) < right.(*Object).Get("rank").(float64)
 	})
 	prepared := mustPrepare(t, change)
-	expectJSONText(t, prepared.Value()["values"], `[{"edited":10,"nested":{"value":100},"rank":1},{"edited":20,"nested":{"value":200},"rank":2},{"edited":10,"nested":{"value":100},"rank":1}]`)
+	expectJSONText(t, prepared.Value().Value("values"), `[{"rank":1,"edited":10,"nested":{"value":100}},{"rank":2,"edited":20,"nested":{"value":200}},{"rank":1,"edited":10,"nested":{"value":100}}]`)
 	expectJSONText(t, replayThroughWire(t, base, prepared.Ops()), textOf(t, prepared.Value()))
 	expectAliasFreeValue(t, prepared.Value())
 	if err := tracker.Adopt(prepared); err != nil {
@@ -478,6 +482,7 @@ func TestTrackerSortNormalizesDuplicatesFromReentrantStructuralEdits(t *testing.
 	}
 }
 
+// mutation-checked: zeroing the results of Prepared.Ops, Tracker.Value fails it
 func TestTrackerFoldsDenseArrayRegions(t *testing.T) {
 	rowsOf := func(count int, build func(index int) any) []any {
 		rows := make([]any, count)
@@ -486,7 +491,7 @@ func TestTrackerFoldsDenseArrayRegions(t *testing.T) {
 		}
 		return rows
 	}
-	row := func(index int) any { return map[string]any{"value": float64(index)} }
+	row := func(index int) any { return JsonObjectOf("value", float64(index)) }
 	opHead := func(t *testing.T, op Op) string {
 		t.Helper()
 		return textOf(t, []any{op[0], op[1], op[2], op[3]})
@@ -494,7 +499,7 @@ func TestTrackerFoldsDenseArrayRegions(t *testing.T) {
 
 	t.Run("dense child and direct-index edits fold into one operation", func(t *testing.T) {
 		// tracker.test.ts:1097.
-		tracker := Track(map[string]any{"rows": rowsOf(1_000, row)})
+		tracker := Track(JsonObjectOf("rows", rowsOf(1_000, row)))
 		base := tracker.Value()
 		change := tracker.BeginChange()
 		rows := change.State().Array("rows")
@@ -514,7 +519,7 @@ func TestTrackerFoldsDenseArrayRegions(t *testing.T) {
 		for index := range numbers {
 			numbers[index] = float64(index)
 		}
-		valuesTracker := Track(map[string]any{"values": numbers})
+		valuesTracker := Track(JsonObjectOf("values", numbers))
 		valuesBase := valuesTracker.Value()
 		valuesChange := valuesTracker.BeginChange()
 		values := valuesChange.State().Array("values")
@@ -532,9 +537,11 @@ func TestTrackerFoldsDenseArrayRegions(t *testing.T) {
 
 	t.Run("only a deeply nested dense region folds", func(t *testing.T) {
 		// tracker.test.ts:1119.
-		tracker := Track(map[string]any{"rows": rowsOf(2_000, func(index int) any {
-			return map[string]any{"nested": map[string]any{"value": float64(index)}}
-		})})
+		tracker := Track(JsonObjectOf(
+			"rows", rowsOf(2_000, func(index int) any {
+				return JsonObjectOf("nested", JsonObjectOf("value", float64(index)))
+			}),
+		))
 		base := tracker.Value()
 		change := tracker.BeginChange()
 		rows := change.State().Array("rows")
@@ -559,7 +566,7 @@ func TestTrackerFoldsDenseArrayRegions(t *testing.T) {
 
 	t.Run("disjoint regions keep the operations outside their boundaries", func(t *testing.T) {
 		// tracker.test.ts:1177.
-		tracker := Track(map[string]any{"values": rowsOf(1_400, row)})
+		tracker := Track(JsonObjectOf("values", rowsOf(1_400, row)))
 		base := tracker.Value()
 		change := tracker.BeginChange()
 		values := change.State().Array("values")
@@ -605,9 +612,9 @@ func TestTrackerFoldsDenseArrayRegions(t *testing.T) {
 		for index := range numbers {
 			numbers[index] = float64(index)
 		}
-		rows := rowsOf(400, func(int) any { return map[string]any{"flag": 0.0} })
-		rows[100].(map[string]any)["special"] = map[string]any{"__proto__": map[string]any{"values": numbers}}
-		tracker := Track(map[string]any{"rows": rows})
+		rows := rowsOf(400, func(int) any { return JsonObjectOf("flag", 0.0) })
+		rows[100].(*JsonObject).Set("special", JsonObjectOf("__proto__", JsonObjectOf("values", numbers)))
+		tracker := Track(JsonObjectOf("rows", rows))
 		base := tracker.Value()
 		change := tracker.BeginChange()
 		state := change.State().Array("rows")
@@ -627,7 +634,7 @@ func TestTrackerFoldsDenseArrayRegions(t *testing.T) {
 			t.Fatalf("ops %d, first %s", len(prepared.Ops()), opHead(t, prepared.Ops()[0]))
 		}
 		expectJSONText(t, replayThroughWire(t, base, prepared.Ops()), textOf(t, prepared.Value()))
-		if got := prepared.Value()["rows"].([]any)[100].(map[string]any)["special"].(map[string]any)["__proto__"].(map[string]any)["values"].([]any)[255]; got != -256.0 {
+		if got := prepared.Value().Value("rows").([]any)[100].(*JsonObject).Value("special").(*JsonObject).Value("__proto__").(*JsonObject).Value("values").([]any)[255]; got != -256.0 {
 			t.Fatalf("inner value %v", got)
 		}
 	})
@@ -636,15 +643,17 @@ func TestTrackerFoldsDenseArrayRegions(t *testing.T) {
 		// tracker.test.ts:1157.
 		inner := make([]any, 400)
 		for index := range inner {
-			inner[index] = map[string]any{"value": float64(index)}
+			inner[index] = JsonObjectOf("value", float64(index))
 		}
-		tracker := Track(map[string]any{"rows": rowsOf(400, func(index int) any {
-			values := []any{}
-			if index == 100 {
-				values = inner
-			}
-			return map[string]any{"flag": 0.0, "values": values}
-		})})
+		tracker := Track(JsonObjectOf(
+			"rows", rowsOf(400, func(index int) any {
+				values := []any{}
+				if index == 100 {
+					values = inner
+				}
+				return JsonObjectOf("flag", 0.0, "values", values)
+			}),
+		))
 		base := tracker.Value()
 		change := tracker.BeginChange()
 		rows := change.State().Array("rows")
@@ -659,16 +668,48 @@ func TestTrackerFoldsDenseArrayRegions(t *testing.T) {
 				t.Fatal(err)
 			}
 		}
-		if _, err := values.Push(map[string]any{"value": 999.0}); err != nil {
+		if _, err := values.Push(JsonObjectOf("value", 999.0)); err != nil {
 			t.Fatal(err)
 		}
 		prepared := mustPrepare(t, change)
 		if len(prepared.Ops()) != 1 || opHead(t, prepared.Ops()[0]) != `["p",["rows"],0,256]` {
 			t.Fatalf("ops %d, first %s", len(prepared.Ops()), opHead(t, prepared.Ops()[0]))
 		}
-		if got := len(prepared.Value()["rows"].([]any)[100].(map[string]any)["values"].([]any)); got != 401 {
+		if got := len(prepared.Value().Value("rows").([]any)[100].(*JsonObject).Value("values").([]any)); got != 401 {
 			t.Fatalf("values length %d", got)
 		}
 		expectJSONText(t, replayThroughWire(t, base, prepared.Ops()), textOf(t, prepared.Value()))
 	})
+}
+
+// Ports the queue scenario of packages/chord/test/delta-benchmark/benchmark.worker.ts: a draft used as a queue (shift one row, push one row) edits its entry list in place, as the JavaScript splice does, so the allocation of N queue steps does not grow with the array length. Copying the list per step allocated 64 MB here.
+// mutation-checked: zeroing the results of Change.Prepare fails it
+func TestTrackerQueueStepsDoNotCopyTheEntryList(t *testing.T) {
+	const rows, steps = 20_000, 200
+	document := make([]any, rows)
+	for index := range document {
+		document[index] = JsonObjectOf("id", float64(index))
+	}
+	tracker := Track(JsonObjectOf("rows", document))
+	change := tracker.BeginChange()
+	queue := change.State().Array("rows")
+	var before, after runtime.MemStats
+	runtime.ReadMemStats(&before)
+	for index := range steps {
+		queue.Shift()
+		if _, err := queue.Push(JsonObjectOf("id", float64(rows+index))); err != nil {
+			t.Fatal(err)
+		}
+	}
+	runtime.ReadMemStats(&after)
+	if allocated := after.TotalAlloc - before.TotalAlloc; allocated > 16<<20 {
+		t.Fatalf("%d queue steps over %d rows allocated %d bytes; the entry list must be edited in place", steps, rows, allocated)
+	}
+	prepared, err := change.Prepare()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := len(prepared.Value().Value("rows").([]any)); got != rows {
+		t.Fatalf("rows = %d, want %d", got, rows)
+	}
 }

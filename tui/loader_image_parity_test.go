@@ -11,7 +11,7 @@ import (
 // take effect. Mirrors .upstream/v0.69.0/.../cancellable-loader.ts.
 func TestCancellableLoader_HandleInput_RouteBindings(t *testing.T) {
 	t.Run("escape cancels", func(t *testing.T) {
-		cl := NewCancellableLoader("", "", "loading", nil)
+		cl := NewCancellableLoader(nil, nil, nil, "loading", nil)
 		var called bool
 		cl.OnAbort = func() { called = true }
 		cl.HandleInput("\x1b")
@@ -23,7 +23,7 @@ func TestCancellableLoader_HandleInput_RouteBindings(t *testing.T) {
 		}
 	})
 	t.Run("ctrl+c cancels", func(t *testing.T) {
-		cl := NewCancellableLoader("", "", "loading", nil)
+		cl := NewCancellableLoader(nil, nil, nil, "loading", nil)
 		var called bool
 		cl.OnAbort = func() { called = true }
 		cl.HandleInput("\x03")
@@ -35,7 +35,7 @@ func TestCancellableLoader_HandleInput_RouteBindings(t *testing.T) {
 		}
 	})
 	t.Run("ignores unrelated keys", func(t *testing.T) {
-		cl := NewCancellableLoader("", "", "loading", nil)
+		cl := NewCancellableLoader(nil, nil, nil, "loading", nil)
 		var called bool
 		cl.OnAbort = func() { called = true }
 		cl.HandleInput("x")
@@ -48,14 +48,28 @@ func TestCancellableLoader_HandleInput_RouteBindings(t *testing.T) {
 	})
 }
 
+// Pi cancellable-loader.ts:37-39 dispose() calls this.stop(): it ends the animation timer, leaving the abort state and onAbort alone.
 func TestCancellableLoaderDisposeStopsWithoutAborting(t *testing.T) {
-	loader := NewCancellableLoader("", "", "loading", nil)
+	loader := NewCancellableLoader(nil, nil, nil, "loading", nil)
 	called := false
 	loader.OnAbort = func() { called = true }
+	loader.Start()
+	running := func() bool {
+		loader.mu.Lock()
+		defer loader.mu.Unlock()
+		return loader.stopCh != nil
+	}
+	if !running() {
+		t.Fatal("Start did not begin the animation")
+	}
 	loader.Dispose()
+	if running() {
+		t.Fatal("Dispose left the animation running")
+	}
 	if loader.Aborted() || called {
 		t.Fatalf("Dispose changed cancellation state: aborted=%t onAbort=%t", loader.Aborted(), called)
 	}
+	loader.Dispose()
 }
 
 // TestImage_Render_FallbackWidth verifies the width math mirrors
@@ -67,7 +81,7 @@ func TestImage_Render_FallbackWidth(t *testing.T) {
 	defer ResetCapabilitiesCache()
 	// No image capability => fallback path produces a single line.
 	// The render math is exercised even in the fallback branch.
-	img := NewImage("", "image/png", ImageOptions{}, &ImageDimensions{WidthPx: 100, HeightPx: 50})
+	img := NewImage("", "image/png", DefaultImageTheme(), ImageOptions{}, &ImageDimensions{WidthPx: 100, HeightPx: 50})
 	lines := img.Render(80)
 	if len(lines) != 1 {
 		t.Fatalf("fallback Render should produce exactly 1 line, got %d", len(lines))
@@ -83,7 +97,7 @@ func TestImage_Render_UsesMaxHeightCells(t *testing.T) {
 	SetCellDimensions(CellDimensions{WidthPx: 10, HeightPx: 10})
 	defer SetCellDimensions(CellDimensions{WidthPx: 9, HeightPx: 18})
 
-	img := NewImage("YWJj", "image/png", ImageOptions{MaxWidthCells: 10, MaxHeightCells: 1}, &ImageDimensions{WidthPx: 100, HeightPx: 100})
+	img := NewImage("YWJj", "image/png", DefaultImageTheme(), ImageOptions{MaxWidthCells: 10, MaxHeightCells: 1}, &ImageDimensions{WidthPx: 100, HeightPx: 100})
 	lines := img.Render(20)
 	if len(lines) != 1 {
 		t.Fatalf("Render should honor MaxHeightCells clamp; got %d lines want 1", len(lines))
@@ -98,7 +112,7 @@ func TestImage_Render_UsesMaxHeightCells(t *testing.T) {
 func TestImage_Render_DoesNotThreadFilenameToITerm2(t *testing.T) {
 	SetCapabilities(TerminalCapabilities{Images: ImageProtocolITerm2, TrueColor: true, Hyperlinks: true})
 	defer ResetCapabilitiesCache()
-	img := NewImage("Zm9v", "image/png", ImageOptions{MaxWidthCells: 10, Filename: "x.png"}, &ImageDimensions{WidthPx: 10, HeightPx: 10})
+	img := NewImage("Zm9v", "image/png", DefaultImageTheme(), ImageOptions{MaxWidthCells: 10, Filename: "x.png"}, &ImageDimensions{WidthPx: 10, HeightPx: 10})
 	lines := img.Render(20)
 	if len(lines) == 0 {
 		t.Fatal("Render returned no lines")
@@ -111,7 +125,7 @@ func TestImage_Render_DoesNotThreadFilenameToITerm2(t *testing.T) {
 func TestImage_CacheAndInvalidateMirrorUpstreamComponent(t *testing.T) {
 	ResetCapabilitiesCache()
 	SetCapabilities(TerminalCapabilities{})
-	img := NewImage("Zm9v", "image/png", ImageOptions{}, &ImageDimensions{WidthPx: 10, HeightPx: 10})
+	img := NewImage("Zm9v", "image/png", DefaultImageTheme(), ImageOptions{}, &ImageDimensions{WidthPx: 10, HeightPx: 10})
 	fallback := img.Render(20)
 	if len(fallback) != 1 {
 		t.Fatalf("fallback render lines = %d, want 1", len(fallback))
@@ -131,8 +145,9 @@ func TestImage_CacheAndInvalidateMirrorUpstreamComponent(t *testing.T) {
 	ResetCapabilitiesCache()
 }
 
+// packages/tui/src/components/image.ts:80 keeps options.imageId, and getImageId (image.ts:84) returns it.
 func TestImage_GetImageID_PreservesProvidedID(t *testing.T) {
-	img := NewImage("", "image/png", ImageOptions{ImageID: 77}, &ImageDimensions{WidthPx: 10, HeightPx: 10})
+	img := NewImage("", "image/png", DefaultImageTheme(), ImageOptions{ImageID: 77}, &ImageDimensions{WidthPx: 10, HeightPx: 10})
 	if got := img.GetImageID(); got != 77 {
 		t.Fatalf("GetImageID() = %d, want 77", got)
 	}

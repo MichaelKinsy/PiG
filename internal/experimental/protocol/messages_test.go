@@ -1,5 +1,9 @@
 package protocol
 
+// pi: packages/protocol/src/protocol.ts
+
+// pi: packages/protocol/src/codec.ts
+
 import (
 	"errors"
 	"fmt"
@@ -186,7 +190,7 @@ func TestProtocolValidation(t *testing.T) {
 		})
 	}
 	// upstream: packages/protocol/test/protocol.test.ts:192.
-	for _, code := range []string{"wrong_server", "cancelled", "service_not_found", "application_error"} {
+	for _, code := range []ProtocolErrorCode{"wrong_server", "cancelled", "service_not_found", "application_error"} {
 		t.Run("accepts the opaque "+code+" error code", func(t *testing.T) {
 			t.Parallel()
 			assertServerParse(t, ResponseEnvelope{Id: "request-1", Error: &ProtocolError{Code: code, Message: "safe"}}.serverObject())
@@ -210,6 +214,7 @@ func TestProtocolValidation(t *testing.T) {
 	})
 }
 
+// Pi packages/protocol/src/codec.ts:79 push(chunk): a message decoder buffers a split frame and returns each validated message once its frame is complete, for every split point of a client or server stream.
 func TestValidatedFramedProtocol(t *testing.T) {
 	t.Parallel()
 	clientHello := ClientHello{Version: ProtocolVersion}
@@ -354,3 +359,34 @@ func TestValidatedFramedProtocol(t *testing.T) {
 		assertProtocolError(t, err)
 	})
 }
+
+// protocol.ts isServerId(value: unknown) (protocol.ts:17): only a string matching the lowercase canonical UUIDv4 pattern is a
+// server id; a number, nil, bytes or a differently typed string is not, and neither is an uppercase or non-v4 UUID.
+// mutation-checked: dropping the string type check of IsServerId fails it
+// Pi: packages/protocol/src/protocol.ts:17 (isServerId)
+func TestIsServerIdTakesAnyValueAndRequiresACanonicalUUIDv4String(t *testing.T) {
+	const valid = "123e4567-e89b-42d3-a456-426614174000"
+	for value, want := range map[string]struct {
+		value any
+		want  bool
+	}{
+		"canonical v4":   {valid, true},
+		"uppercase":      {"123E4567-E89B-42D3-A456-426614174000", false},
+		"version 1":      {"123e4567-e89b-12d3-a456-426614174000", false},
+		"empty":          {"", false},
+		"nil":            {nil, false},
+		"number":         {7, false},
+		"bytes":          {[]byte(valid), false},
+		"stringer":       {uuidStringer{}, false},
+		"string pointer": {new(valid), false},
+		"object":         {map[string]any{"serverId": valid}, false},
+	} {
+		if got := IsServerId(want.value); got != want.want {
+			t.Fatalf("IsServerId(%s) = %v, want %v", value, got, want.want)
+		}
+	}
+}
+
+type uuidStringer struct{}
+
+func (uuidStringer) String() string { return "123e4567-e89b-42d3-a456-426614174000" }

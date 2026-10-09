@@ -16,27 +16,91 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/pilock"
 )
 
-// ModelsStoreEntry mirrors pi-ai ModelsStoreEntry. Models stay raw JSON
-// because each provider owns the shape of the catalog it persists.
+// ModelsStoreEntry mirrors pi-ai ModelsStoreEntry (models-store.ts:3-15). Models are typed and lossless: a model decoded from a catalog keeps the
+// fields it has no member for and re-encodes them in their original order. A record of a model type this version does not know is kept aside and
+// written back at its position, so reading and rewriting a catalog never drops it; it is not part of Models.
 type ModelsStoreEntry struct {
-	Models []json.RawMessage `json:"models"`
+	Models []AnyModel
 	// LastModified is the Unix timestamp from the remote catalog's
 	// Last-Modified header.
-	LastModified *float64 `json:"lastModified,omitempty"`
+	LastModified *float64
 	// CheckedAt is the Unix timestamp of the last completed remote check.
-	CheckedAt *float64 `json:"checkedAt,omitempty"`
+	CheckedAt *float64
 	// ETag is the remote catalog's opaque validator, stored verbatim.
-	ETag string `json:"etag,omitempty"`
+	ETag string
+
+	unknown []unknownCatalogModel
+}
+
+// unknownCatalogModel is a stored record of a model type this version does not know, with its position among the stored records.
+type unknownCatalogModel struct {
+	index int
+	raw   json.RawMessage
+}
+
+type modelsStoreEntryWire struct {
+	Models       []json.RawMessage `json:"models"`
+	LastModified *float64          `json:"lastModified,omitempty"`
+	CheckedAt    *float64          `json:"checkedAt,omitempty"`
+	ETag         string            `json:"etag,omitempty"`
+}
+
+// MarshalJSON writes the entry as the persisted object: every model through its catalog record, unknown-type records at their positions.
+func (entry ModelsStoreEntry) MarshalJSON() ([]byte, error) {
+	wire := modelsStoreEntryWire{Models: make([]json.RawMessage, 0, len(entry.Models)+len(entry.unknown)), LastModified: entry.LastModified, CheckedAt: entry.CheckedAt, ETag: entry.ETag}
+	next := 0
+	insertUnknown := func(limit int) {
+		for next < len(entry.unknown) && entry.unknown[next].index <= limit {
+			wire.Models = append(wire.Models, entry.unknown[next].raw)
+			next++
+		}
+	}
+	for _, model := range entry.Models {
+		insertUnknown(len(wire.Models))
+		data, err := marshalCatalogModel(model)
+		if err != nil {
+			return nil, err
+		}
+		wire.Models = append(wire.Models, data)
+	}
+	insertUnknown(int(^uint(0) >> 1))
+	return marshalStoreJSON(wire)
+}
+
+// UnmarshalJSON reads the persisted object; each model keeps its unknown fields, and records of unknown model types are set aside.
+func (entry *ModelsStoreEntry) UnmarshalJSON(data []byte) error {
+	var wire modelsStoreEntryWire
+	if err := json.Unmarshal(data, &wire); err != nil {
+		return err
+	}
+	*entry = ModelsStoreEntry{Models: make([]AnyModel, 0, len(wire.Models)), LastModified: wire.LastModified, CheckedAt: wire.CheckedAt, ETag: wire.ETag}
+	for index, raw := range wire.Models {
+		model, known, err := decodeCatalogModel(raw)
+		if err != nil {
+			return err
+		}
+		if !known {
+			entry.unknown = append(entry.unknown, unknownCatalogModel{index: index, raw: bytes.Clone(raw)})
+			continue
+		}
+		entry.Models = append(entry.Models, model)
+	}
+	return nil
 }
 
 // Clone returns a deep copy, mirroring upstream's structuredClone at the
 // store boundary.
 func (entry ModelsStoreEntry) Clone() ModelsStoreEntry {
-	models := make([]json.RawMessage, len(entry.Models))
-	for index, model := range entry.Models {
-		models[index] = bytes.Clone(model)
+	data, err := entry.MarshalJSON()
+	if err == nil {
+		var copied ModelsStoreEntry
+		if err = json.Unmarshal(data, &copied); err == nil {
+			return copied
+		}
 	}
-	entry.Models = models
+	// A model that cannot be encoded cannot be stored either; share it rather than drop it.
+	entry.Models = slices.Clone(entry.Models)
+	entry.unknown = slices.Clone(entry.unknown)
 	if entry.LastModified != nil {
 		entry.LastModified = new(*entry.LastModified)
 	}

@@ -1,4 +1,3 @@
-// SPDX-FileCopyrightText: Copyright Hewlett Packard Enterprise Development LP
 // SPDX-FileCopyrightText: Copyright (c) 2025 Mario Zechner
 // SPDX-FileCopyrightText: Copyright (c) 2025 opentui
 // SPDX-License-Identifier: MIT

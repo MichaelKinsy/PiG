@@ -30,10 +30,10 @@ func TestToolResultContentOverridePreservesPresence(t *testing.T) {
 		{"clear text", AfterToolCallResult{Content: []ai.ToolResultMessageContent{}}, []ai.ToolResultMessageContent{}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			a := NewAgent(AgentOptions{AfterToolCall: []AfterToolCallHook{func(context.Context, string, string, json.RawMessage, AgentToolResult) AfterToolCallResult {
+			a := mustNewAgent(AgentOptions{AfterToolCallHooks: []AfterToolCallHook{func(context.Context, string, string, json.RawMessage, AgentToolResult) AfterToolCallResult {
 				return tc.override
 			}}})
-			finalized := a.finalizeExecutedToolCall(t.Context(), preparedToolCall{}, finalizedToolCall{result: AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: ""}}}})
+			finalized := a.testHost().finalizeExecutedToolCall(t.Context(), preparedToolCall{}, finalizedToolCall{result: AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: ""}}}})
 			message := createToolResultMessage(finalized, 123)
 			if !reflect.DeepEqual(message.Content, tc.want) {
 				t.Fatalf("content=%#v, want %#v", message.Content, tc.want)

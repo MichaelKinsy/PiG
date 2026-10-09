@@ -1,0 +1,276 @@
+[
+ {
+  "ids": [
+   "pkg:mcp/oauth#OAuthCallbackServer"
+  ],
+  "targets": [
+   "mcp/oauth/callback.go#OAuthCallbackServer"
+  ],
+  "production": [
+   "call:coding/mcpext/oauth.go#SignInMcpServer"
+  ],
+  "evidence": [
+   "test:mcp/oauth/callback_server_options_test.go#TestOAuthCallbackServerDeliversCodeStateAndIssToTheWait"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; a rejection is the returned error; undefined is nil. `void | Promise<void>` is the single Go error.",
+  "rationale": "OAuthCallbackServer is the Go struct OAuthCallbackServer built by ListenOAuthCallbackServer (the static listen); waitForCallback registers synchronously and returns a CallbackWait whose Wait(ctx) is the Promise, so a duplicate state fails at registration like upstream's synchronous throw.",
+  "properties": {
+   "close": {
+    "targets": [
+     "mcp/oauth/callback.go#OAuthCallbackServer.Close"
+    ],
+    "evidence": [
+     "test:mcp/oauth/callback_server_options_test.go#TestOAuthCallbackServerRejectsAWaitWhenItTimesOutOrCloses"
+    ],
+    "production": [
+     "call:coding/mcpext/oauth.go#SignInMcpServer"
+    ],
+    "rationale": "Close() error rejects every pending wait with `OAuth callback server closed` and stops the server."
+   },
+   "redirectUrl": {
+    "targets": [
+     "mcp/oauth/callback.go#OAuthCallbackServer.RedirectURL"
+    ],
+    "evidence": [
+     "test:mcp/oauth/callback_server_options_test.go#TestOAuthCallbackServerOptionsShapeTheRedirectURL"
+    ],
+    "production": [
+     "call:coding/mcpext/oauth.go#SignInMcpServer"
+    ],
+    "rationale": "The readonly property redirectUrl is the exported field RedirectURL."
+   },
+   "waitForCallback": {
+    "targets": [
+     "mcp/oauth/callback.go#OAuthCallbackServer.WaitForCallback"
+    ],
+    "evidence": [
+     "test:mcp/oauth/callback_server_options_test.go#TestOAuthCallbackServerDeliversCodeStateAndIssToTheWait",
+     "test:mcp/oauth/oauth_test.go#TestOAuthCallbackServerRejectsAResponseOnAnotherPathThanTheExpectedOne"
+    ],
+    "production": [
+     "call:coding/mcpext/oauth.go#SignInMcpServer"
+    ],
+    "rationale": "waitForCallback(state, path?) is WaitForCallback(state, path ...string) returning (*CallbackWait, error); the optional path is a variadic tail."
+   }
+  }
+ },
+ {
+  "ids": [
+   "pkg:mcp/oauth#OAuthCallbackServerOptions"
+  ],
+  "targets": [
+   "mcp/oauth/callback.go#OAuthCallbackServerOptions"
+  ],
+  "production": [
+   "call:coding/mcpext/oauth.go#SignInMcpServer"
+  ],
+  "evidence": [
+   "test:mcp/oauth/callback_server_options_test.go#TestOAuthCallbackServerOptionsShapeTheRedirectURL"
+  ],
+  "rationale": "OAuthCallbackServerOptions is the Go struct of the same name; timeoutMs is the time.Duration field Timeout (a unit change, zero is undefined).",
+  "properties": {
+   "host": {
+    "targets": [
+     "mcp/oauth/callback.go#OAuthCallbackServerOptions.Host"
+    ],
+    "evidence": [
+     "test:mcp/oauth/callback_server_options_test.go#TestOAuthCallbackServerOptionsShapeTheRedirectURL"
+    ],
+    "production": [
+     "call:coding/mcpext/oauth.go#SignInMcpServer"
+    ],
+    "rationale": "Host; empty is undefined (127.0.0.1)."
+   },
+   "redirectHost": {
+    "targets": [
+     "mcp/oauth/callback.go#OAuthCallbackServerOptions.RedirectHost"
+    ],
+    "evidence": [
+     "test:mcp/oauth/callback_server_options_test.go#TestOAuthCallbackServerOptionsShapeTheRedirectURL"
+    ],
+    "production": [
+     "call:coding/mcpext/oauth.go#SignInMcpServer"
+    ],
+    "rationale": "RedirectHost; an IPv6 literal is bracketed in the redirect URL."
+   },
+   "port": {
+    "targets": [
+     "mcp/oauth/callback.go#OAuthCallbackServerOptions.Port"
+    ],
+    "evidence": [
+     "test:mcp/oauth/callback_server_options_test.go#TestOAuthCallbackServerOptionsShapeTheRedirectURL"
+    ],
+    "production": [
+     "call:coding/mcpext/oauth.go#SignInMcpServer"
+    ],
+    "rationale": "Port; zero is undefined (any free port)."
+   },
+   "path": {
+    "targets": [
+     "mcp/oauth/callback.go#OAuthCallbackServerOptions.Path"
+    ],
+    "evidence": [
+     "test:mcp/oauth/callback_server_options_test.go#TestOAuthCallbackServerOptionsShapeTheRedirectURL"
+    ],
+    "production": [
+     "call:coding/mcpext/oauth.go#SignInMcpServer"
+    ],
+    "rationale": "Path; empty is undefined (/callback)."
+   },
+   "extraPaths": {
+    "targets": [
+     "mcp/oauth/callback.go#OAuthCallbackServerOptions.ExtraPaths"
+    ],
+    "evidence": [
+     "test:mcp/oauth/oauth_test.go#TestOAuthCallbackServerRejectsAResponseOnAnotherPathThanTheExpectedOne"
+    ],
+    "production": [
+     "call:coding/mcpext/oauth.go#SignInMcpServer"
+    ],
+    "rationale": "ExtraPaths."
+   },
+   "timeoutMs": {
+    "targets": [
+     "mcp/oauth/callback.go#OAuthCallbackServerOptions.Timeout"
+    ],
+    "evidence": [
+     "test:mcp/oauth/callback_server_options_test.go#TestOAuthCallbackServerRejectsAWaitWhenItTimesOutOrCloses"
+    ],
+    "production": [
+     "call:coding/mcpext/oauth.go#SignInMcpServer"
+    ],
+    "rationale": "Timeout is a time.Duration where upstream counts milliseconds; zero is undefined (5 minutes)."
+   },
+   "renderPage": {
+    "targets": [
+     "mcp/oauth/callback.go#OAuthCallbackServerOptions.RenderPage"
+    ],
+    "evidence": [
+     "test:mcp/oauth/oauth_test.go#TestOAuthCallbackServerPagesRendersPagesThroughRenderPage"
+    ],
+    "production": [
+     "call:coding/mcpext/oauth.go#SignInMcpServer"
+    ],
+    "rationale": "RenderPage."
+   }
+  }
+ },
+ {
+  "ids": [
+   "pkg:mcp/oauth#OAuthCallback"
+  ],
+  "targets": [
+   "mcp/oauth/callback.go#OAuthCallback"
+  ],
+  "production": [
+   "call:coding/mcpext/oauth.go#SignInMcpServer"
+  ],
+  "evidence": [
+   "test:mcp/oauth/callback_server_options_test.go#TestOAuthCallbackServerDeliversCodeStateAndIssToTheWait"
+  ],
+  "rationale": "OAuthCallback is the Go struct of the same name; iss undefined is the empty string.",
+  "struct": {
+   "file": "mcp/oauth/callback.go",
+   "type": "OAuthCallback"
+  }
+ },
+ {
+  "ids": [
+   "pkg:mcp/oauth#McpOAuthStateStore"
+  ],
+  "targets": [
+   "mcp/oauth/provider.go#McpOAuthStateStore"
+  ],
+  "production": [
+   "call:mcp/oauth/provider.go#McpOAuthProvider.loadLocked"
+  ],
+  "evidence": [
+   "test:mcp/oauth/oauth_test.go#TestMcpOAuthProviderKeepsFailingAfterAFailedWrite",
+   "test:mcp/oauth/state_store_test.go#TestMemoryOAuthStateStoreLoadsNothingUntilASaveAndCopiesBothWays"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; a rejection is the returned error; undefined is nil. `void | Promise<void>` is the single Go error.",
+  "rationale": "McpOAuthStateStore is the Go interface McpOAuthStateStore.",
+  "properties": {
+   "load": {
+    "targets": [
+     "mcp/oauth/provider.go#McpOAuthStateStore.Load"
+    ],
+    "evidence": [
+     "test:mcp/oauth/oauth_test.go#TestMcpOAuthProviderKeepsFailingAfterAFailedWrite"
+    ],
+    "production": [
+     "call:mcp/oauth/provider.go#McpOAuthProvider.loadLocked"
+    ],
+    "rationale": "Load(ctx) (*McpOAuthState, error); undefined is nil."
+   },
+   "save": {
+    "targets": [
+     "mcp/oauth/provider.go#McpOAuthStateStore.Save"
+    ],
+    "evidence": [
+     "test:mcp/oauth/oauth_test.go#TestMcpOAuthProviderKeepsFailingAfterAFailedWrite"
+    ],
+    "production": [
+     "call:mcp/oauth/provider.go#McpOAuthProvider.update"
+    ],
+    "rationale": "Save(ctx, state) error."
+   }
+  }
+ },
+ {
+  "ids": [
+   "pkg:mcp/oauth#MemoryOAuthStateStore"
+  ],
+  "targets": [
+   "mcp/oauth/provider.go#MemoryOAuthStateStore"
+  ],
+  "production": [
+   "call:mcp/oauth/provider.go#NewMcpOAuthProvider"
+  ],
+  "evidence": [
+   "test:mcp/oauth/state_store_test.go#TestMemoryOAuthStateStoreLoadsNothingUntilASaveAndCopiesBothWays"
+  ],
+  "rationale": "MemoryOAuthStateStore is the Go struct of the same name; its zero value is the constructor's result, and Load and Save copy through McpOAuthState.Clone like structuredClone.",
+  "properties": {
+   "load": {
+    "targets": [
+     "mcp/oauth/provider.go#MemoryOAuthStateStore.Load"
+    ],
+    "evidence": [
+     "test:mcp/oauth/state_store_test.go#TestMemoryOAuthStateStoreLoadsNothingUntilASaveAndCopiesBothWays"
+    ],
+    "production": [
+     "call:mcp/oauth/provider.go#McpOAuthProvider.loadLocked"
+    ],
+    "rationale": "Load returns a copy, nil before the first Save."
+   },
+   "save": {
+    "targets": [
+     "mcp/oauth/provider.go#MemoryOAuthStateStore.Save"
+    ],
+    "evidence": [
+     "test:mcp/oauth/state_store_test.go#TestMemoryOAuthStateStoreLoadsNothingUntilASaveAndCopiesBothWays"
+    ],
+    "production": [
+     "call:mcp/oauth/provider.go#McpOAuthProvider.update"
+    ],
+    "rationale": "Save stores a copy."
+   }
+  }
+ },
+ {
+  "ids": [
+   "pkg:mcp/oauth#MemoryOAuthStateStore::construct:0"
+  ],
+  "targets": [
+   "mcp/oauth/provider.go#MemoryOAuthStateStore"
+  ],
+  "production": [
+   "call:mcp/oauth/provider.go#NewMcpOAuthProvider"
+  ],
+  "evidence": [
+   "test:mcp/oauth/state_store_test.go#TestMemoryOAuthStateStoreLoadsNothingUntilASaveAndCopiesBothWays"
+  ],
+  "rationale": "The constructor `new MemoryOAuthStateStore()` is the zero value `&MemoryOAuthStateStore{}`."
+ }
+]

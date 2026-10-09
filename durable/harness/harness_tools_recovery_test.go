@@ -101,7 +101,7 @@ func TestToolRecovery(t *testing.T) {
 		harness, root = trOpen(t, path, setup)
 		record := tkTaskRecord(t, harness, taskId)
 		wantCheckpoint := map[string]any{"phase": "execute", "arguments": map[string]any{}, "replay": "unsafe"}
-		if record.State.Checkpoint == nil || !reflect.DeepEqual(*record.State.Checkpoint, wantCheckpoint) {
+		if record.State.Checkpoint == nil || !reflect.DeepEqual(plainObject(*record.State.Checkpoint), wantCheckpoint) {
 			t.Fatalf("checkpoint %v, want %v", record.State.Checkpoint, wantCheckpoint)
 		}
 		submission, err := harness.Submission(testContext, id)
@@ -119,7 +119,7 @@ func TestToolRecovery(t *testing.T) {
 			t.Fatalf("result %+v, want an error with details run 1", result)
 		}
 		tlExpectText(t, trText(result), "run 1\n|<harness>\n[error] Tool work was interrupted and may have partially run\n</harness>")
-		if live, err := harness.SnapshotErased(testContext, LiveDoc, root.Id()); err != nil || !reflect.DeepEqual(live, durable.JsonObject{}) {
+		if live, err := harness.SnapshotErased(testContext, LiveDoc, root.Id()); err != nil || live.Len() != 0 {
 			t.Fatalf("live document %v %v, want {}", live, err)
 		}
 		mustClose(t, harness)
@@ -346,7 +346,7 @@ func TestToolRecovery(t *testing.T) {
 		if outcome.Status != durable.OutcomeAborted || outcome.Result == nil {
 			t.Fatalf("outcome %s, want aborted with a result entry", describeOutcome(outcome))
 		}
-		if entry, ok := (*outcome.Result).(map[string]any)["entryId"].(float64); !ok || entry == 0 {
+		if entry, ok := plainObject(*outcome.Result)["entryId"].(float64); !ok || entry == 0 {
 			t.Fatalf("outcome result %v has no entry ID", *outcome.Result)
 		}
 		if settled, err := submission.Wait(testContext); err != nil || settled.Status != durable.SubmissionDone {
@@ -366,7 +366,7 @@ func TestToolRecovery(t *testing.T) {
 		requests := &syncList[string]{}
 		setup.Faux.SetResponses([]ai.FauxResponseStep{
 			trCall("bad", "c1"),
-			ai.FauxFactoryStep(func(request ai.TranscriptContext, _ ai.StreamOptions, _ *ai.FauxProviderState, _ *ai.Model) (ai.FauxResponse, error) {
+			ai.FauxFactoryStep(func(request ai.TranscriptContext, _ ai.StreamOptions, _ *ai.FauxProviderState, _ *ai.Model) (ai.AssistantMessage, error) {
 				seen := "none"
 				for _, message := range request.Messages() {
 					if result, ok := message.(ai.ToolResultMessage); ok {
@@ -375,7 +375,7 @@ func TestToolRecovery(t *testing.T) {
 					}
 				}
 				requests.add(seen)
-				return ai.FauxResponse{Content: []ai.FauxContentBlock{ai.FauxText("done")}}, nil
+				return ai.FauxResponse{Content: []ai.FauxContentBlock{ai.FauxText("done")}}.AssistantMessage(), nil
 			}),
 		})
 		harness, root := trOpen(t, path, setup)

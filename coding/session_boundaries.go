@@ -118,11 +118,9 @@ func (s *Session) dispatchTurnEndBoundary(ctx context.Context, event agent.TurnE
 		runner.EmitError(&extension.ExtensionError{ExtensionPath: "<boundary>", Event: icodingagent.EventTurnEnd, Error: "turn_end could not resolve the persisted assistant entry ID"})
 		return false, nil
 	}
+	// upstream: agent-session.ts _dispatchTurnEndBoundary hands the ToolResultMessage objects on, so JSON writes them as the session does, including details: null.
 	results := make([]extension.ToolResultMessage, len(event.ToolResults))
-	for i := range event.ToolResults {
-		// upstream: agent-session.ts _dispatchTurnEndBoundary hands the ToolResultMessage objects on, so JSON writes them as the session does, including details: null.
-		results[i] = agent.AgentMessage{ToolResult: &event.ToolResults[i]}
-	}
+	copy(results, event.ToolResults)
 	ids := make([]string, 0, len(event.ToolResultEntryIDs))
 	for _, id := range event.ToolResultEntryIDs {
 		if id != "" {
@@ -212,7 +210,7 @@ func (s *Session) commitBoundaryDrafts(drafts []extension.SessionBoundaryDraft) 
 }
 
 func (s *Session) createBoundaryPreviewManager(drafts []extension.SessionBoundaryDraft) (*icodingagent.Session, error) {
-	header := s.inner.Header()
+	header := s.inner.GetHeader()
 	preview := icodingagent.NewSession(header.ID, header.CWD)
 	for _, entry := range s.currentBranch() {
 		if err := preview.AppendEntry(entry); err != nil {
@@ -234,7 +232,7 @@ func applyBoundaryDrafts(manager *icodingagent.Session, drafts []extension.Sessi
 		case "custom":
 			id, err = manager.AppendCustomEntry(draft.CustomType, draft.Data)
 		case "custom_message":
-			id, err = manager.AppendCustomMessage(draft.CustomType, draft.Content, draft.Display, draft.Details)
+			id, err = manager.AppendCustomMessageEntry(draft.CustomType, draft.Content, draft.Display, draft.Details)
 		case "context_edit":
 			var replacement *icodingagent.ContextEditReplacement
 			if raw := bytes.TrimSpace(draft.Replacement); len(raw) > 0 && !bytes.Equal(raw, []byte("null")) {
@@ -257,7 +255,7 @@ func applyBoundaryDrafts(manager *icodingagent.Session, drafts []extension.Sessi
 		if err != nil {
 			return nil, err
 		}
-		entry, found := manager.EntryByID(id)
+		entry, found := manager.GetEntry(id)
 		if !found {
 			return nil, fmt.Errorf("boundary entry %s was not appended", id)
 		}
@@ -275,9 +273,7 @@ func (s *Session) buildBoundaryContext(drafts []extension.SessionBoundaryDraft, 
 	entries := make([]extension.ProjectedSessionEntry, len(projection.Entries))
 	for i, projected := range projection.Entries {
 		messages := make([]extension.AgentMessage, len(projected.Messages))
-		for j := range projected.Messages {
-			messages[j] = projected.Messages[j]
-		}
+		copy(messages, projected.Messages)
 		var source any
 		if err := json.Unmarshal(projected.SourceEntry.Raw(), &source); err != nil {
 			return extension.BoundaryContextPreview{}, err
@@ -285,11 +281,9 @@ func (s *Session) buildBoundaryContext(drafts []extension.SessionBoundaryDraft, 
 		entries[i] = extension.ProjectedSessionEntry{SourceEntry: source, Messages: messages}
 	}
 	contextMessages := make([]extension.AgentMessage, len(projection.Messages))
-	for i := range projection.Messages {
-		contextMessages[i] = projection.Messages[i]
-	}
-	llm := agent.ConvertToLLM(projection.Messages, s.agent.Model())
-	llmMessages := make([]any, len(llm))
+	copy(contextMessages, projection.Messages)
+	llm := agent.ConvertToLLM(agent.NormalizeMessages(projection.Messages, s.agent.Model()))
+	llmMessages := make([]ai.Message, len(llm))
 	hasNonSystem, finalAssistant := false, false
 	for i, message := range llm {
 		llmMessages[i] = message
@@ -302,9 +296,7 @@ func (s *Session) buildBoundaryContext(drafts []extension.SessionBoundaryDraft, 
 	s.runState.mu.Unlock()
 	pending := slices.Concat(s.agent.PeekQueuedMessages(), custom)
 	pendingMessages := make([]extension.AgentMessage, len(pending))
-	for i := range pending {
-		pendingMessages[i] = pending[i]
-	}
+	copy(pendingMessages, pending)
 	canContinue := hasNonSystem && !finalAssistant || len(custom) > 0 || (boundary == icodingagent.EventTurnEnd || finalAssistant) && s.agent.HasQueuedMessages()
 	return extension.BoundaryContextPreview{ContextEntries: entries, ContextMessages: contextMessages, LLMMessages: llmMessages, PendingMessages: pendingMessages, CanContinue: canContinue}, nil
 }

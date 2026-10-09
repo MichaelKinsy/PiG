@@ -74,7 +74,7 @@ type SlashCommands interface {
 }
 
 // SlashCommandsDefinition names the local service token; Go shares type and value names.
-var SlashCommandsDefinition = chord.DefineServiceWithOptions[SlashCommands]("pi.local.slash-commands", chord.ServiceOptions{Local: true})
+var SlashCommandsDefinition = chord.DefineService[SlashCommands]("pi.local.slash-commands", chord.ServiceOptions{Local: true})
 
 func init() {
 	chord.RegisterServiceView(SlashCommandsDefinition, func(resolve func() (SlashCommands, error)) SlashCommands {

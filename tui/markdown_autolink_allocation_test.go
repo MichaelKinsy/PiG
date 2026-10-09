@@ -5,27 +5,7 @@ import (
 	"testing"
 )
 
-// The URL-prefix probe only needs the longest recognized scheme, not the
-// paragraph tail. The exact prefix guard is deterministic under -race, unlike
-// allocation totals that include the regex engine's randomized pool misses.
-func TestAutoLinkPrefixIgnoresUnrelatedTail(t *testing.T) {
-	for _, tc := range []struct {
-		input string
-		start int
-		want  string
-	}{
-		{"", 0, ""},
-		{"http://", 0, "http://"},
-		{"ordinary short tail", 0, "ordinary"},
-		{"ordinary " + strings.Repeat("tail words ", 1024), 0, "ordinary"},
-		{"日本https://example.test", 2, "https://"},
-	} {
-		if got := autoLinkPrefix([]rune(tc.input), tc.start); got != tc.want {
-			t.Fatalf("prefix at %d in %d bytes = %q, want %q", tc.start, len(tc.input), got, tc.want)
-		}
-	}
-}
-
+// marked's url rule anchors at the token start, so a failed probe does not depend on the paragraph tail.
 func BenchmarkAutoLinkProbeTail(b *testing.B) {
 	for _, tail := range []struct{ name, text string }{
 		{"short", "tail words"},
@@ -35,8 +15,7 @@ func BenchmarkAutoLinkProbeTail(b *testing.B) {
 			input := []rune("ordinary " + tail.text)
 			b.ReportAllocs()
 			for b.Loop() {
-				var scanner autoLinkScanner
-				if _, _, _, ok := scanner.parseAutoLink(input, 0); ok {
+				if _, ok := markedURL(input); ok {
 					b.Fatal("ordinary word became an autolink")
 				}
 			}

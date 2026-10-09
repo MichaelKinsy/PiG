@@ -22,7 +22,7 @@
 #   entries (compaction/branch-summary). Fixed by adding
 #   rebuildChatFromSession() after the welcome banner when ResumePath is
 #   set, mirroring upstream renderInitialMessages() (interactive-mode.ts:3097).
-#   Also wired ResumePath from cmd/pig/main.go into InteractiveOptions.
+#   Also wired ResumePath from coding/cli/main.go into InteractiveOptions.
 
 name = "14-compaction-summary-message"
 description = "CompactionSummaryComponent renders collapsed [compaction] block on session resume with pre-staged compaction entry."

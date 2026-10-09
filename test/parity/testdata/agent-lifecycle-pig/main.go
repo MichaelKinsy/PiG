@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 	"sync/atomic"
@@ -36,7 +37,7 @@ func main() {
 	var signal context.Context
 	var transcriptStates []string
 	var subscriberFinished, promptFinished atomic.Bool
-	a := agent.NewAgent(agent.AgentOptions{StreamFn: func(ctx context.Context, _ *ai.Model, _ ai.TranscriptContext, _ ai.StreamOptions) (*ai.AssistantMessageEventStream, error) {
+	a := newAgent(agent.AgentOptions{StreamFn: func(ctx context.Context, _ *ai.Model, _ ai.TranscriptContext, _ ai.StreamOptions) (*ai.AssistantMessageEventStream, error) {
 		stream := ai.NewAssistantMessageEventStream()
 		if err := stream.Push(ai.StartEvent{Partial: &ai.AssistantMessage{Content: []ai.AssistantContentBlock{ai.TextContent{Text: "partial"}}, StopReason: ai.StopReasonPending}}); err != nil {
 			return nil, err
@@ -96,7 +97,7 @@ func main() {
 		panic("run settled before agent_end callback")
 	}
 	_, promptError := a.Send(context.Background(), "busy")
-	_, continueError := a.Continue(context.Background())
+	_, continueError := a.ContinueMessages(context.Background())
 	resetError := a.Reset()
 	if promptError == nil || continueError == nil || resetError == nil {
 		panic("busy operation succeeded")
@@ -112,9 +113,9 @@ func main() {
 	<-idle
 	pending := append([]string{}, a.PendingToolCalls()...)
 	report("settled", subscriberFinished.Load(), promptFinished.Load(), a.IsStreaming(), pending)
-	empty := agent.NewAgent(agent.AgentOptions{})
-	_, emptyError := empty.Continue(context.Background())
-	_, assistantError := a.Continue(context.Background())
+	empty := newAgent(agent.AgentOptions{})
+	emptyError := empty.Continue(context.Background())
+	_, assistantError := a.ContinueMessages(context.Background())
 	if emptyError == nil || assistantError == nil {
 		panic("invalid continuation succeeded")
 	}
@@ -135,7 +136,23 @@ func main() {
 	}
 	fmt.Printf("AGENT_LIFECYCLE retained-error %s\n", data)
 	initialTools := []agent.AgentTool{probeTool{name: "first"}}
-	copied := agent.NewAgent(agent.AgentOptions{Tools: initialTools})
+	copied := newAgent(agent.AgentOptions{Tools: initialTools})
 	initialTools[0] = probeTool{name: "second"}
 	report("initial-tools", copied.Tools()[0].Name(), copied.Messages()[0].System.ToolsAdded[0].Name)
+}
+
+// newAgent builds an agent; one built with neither a stream function nor a configured default gets a stream that is never called, as the Pi counterpart supplies one.
+func newAgent(opts agent.AgentOptions) *agent.Agent {
+	if opts.StreamFn == nil && opts.DefaultStreamFn == nil {
+		if _, err := agent.GetDefaultStreamFn(); err != nil {
+			opts.StreamFn = func(context.Context, *ai.Model, ai.TranscriptContext, ai.StreamOptions) (*ai.AssistantMessageEventStream, error) {
+				return nil, errors.New("stream function not expected")
+			}
+		}
+	}
+	a, err := agent.NewAgent(opts)
+	if err != nil {
+		panic(err)
+	}
+	return a
 }

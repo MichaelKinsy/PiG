@@ -73,7 +73,7 @@ func TestSessionBeforeSettlePublishesCommittedEntriesAndCanonicalSnapshots(t *te
 			t.Error(err)
 			return
 		}
-		stored, found := h.session.Inner().EntryByID(fields.ID)
+		stored, found := h.session.Inner().GetEntry(fields.ID)
 		if !found || !bytes.Equal(appended.Entry, stored.Raw()) {
 			t.Errorf("notification does not contain the complete persisted entry: %s", appended.Entry)
 		}

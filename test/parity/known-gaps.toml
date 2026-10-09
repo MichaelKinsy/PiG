@@ -16,16 +16,5 @@
 # Each entry needs: scope, key (what the gate reports), tracking (issue URL once
 # the repository is public; until then the delivery/unresolved.tsv row), and why.
 
-pi_version = "1.0.3"
+pi_version = "1.1.0"
 
-[[gap]]
-scope = "upstream-parity"
-key = "api:OnCacheWarmingDecision"
-tracking = "unresolved.tsv: Extension boundary events"
-why = "Generic cache_warming_decision handlers are dispatched by coding.Session.decideCacheWarming across the subprocess SDKs and fused Go. The typed ExtensionAPI.OnCacheWarmingDecision registration overload is not declared."
-
-[[gap]]
-scope = "upstream-parity"
-key = "api-count"
-tracking = "unresolved.tsv: Extension boundary events"
-why = "Total extension.API method count trails upstream by the api:* entries above."

@@ -6,6 +6,8 @@ import (
 
 	"github.com/MichaelKinsy/PiG/agent"
 	"github.com/MichaelKinsy/PiG/ai"
+	"github.com/MichaelKinsy/PiG/coding/extension"
+	"github.com/MichaelKinsy/PiG/coding/extension/host/inproc"
 	"github.com/MichaelKinsy/PiG/internal/codingagent/tools"
 	"github.com/MichaelKinsy/PiG/tui"
 )
@@ -73,6 +75,32 @@ func TestInteractiveMode_ResumeShellToolsHaveNoDuration(t *testing.T) {
 	}
 }
 
+// Pi 1.1.0 (#10549): a shell result stored with its recorded duration shows the Took footer after a reload, in both states.
+func TestInteractiveMode_ResumeShellToolsShowRecordedDuration(t *testing.T) {
+	for _, name := range []string{"bash", "powershell"} {
+		t.Run(name, func(t *testing.T) {
+			call := ai.ToolCall{ID: "shell-call", Name: name, Arguments: ai.JsonObject{"command": "echo done"}}
+			m := resumeThinkingMode(t, false, userMsg("question"), assistantMsg("", call), agent.AgentMessage{ToolResult: &agent.ToolResultMessage{
+				Role: agent.RoleToolResult, ToolCallID: call.ID, ToolName: name, Content: []ai.ToolResultMessageContent{ai.TextContent{Text: "done"}},
+				DurationMs: new(int64(4200)),
+			}})
+			// A registered definition draws the card from the render context; without one the body renderer does.
+			def := withBuiltInRenderers(name, baseToolDefinition(name))
+			withRunner := inproc.NewRunner([]extension.Extension{{Name: "fixture", Tools: map[string]extension.RegisteredTool{name: {Definition: def}}}}, t.TempDir())
+			for _, runner := range []*inproc.Runner{nil, withRunner} {
+				m.newRunner = runner
+				for _, expanded := range []bool{false, true} {
+					m.toolsExpanded = expanded
+					m.rebuildChatFromSession()
+					if got := renderedChat(m); !strings.Contains(got, "done") || !strings.Contains(got, "Took 4.2s") {
+						t.Fatalf("resumed shell expanded=%t runner=%t: %q", expanded, runner != nil, got)
+					}
+				}
+			}
+		})
+	}
+}
+
 func TestResumeAbortedToolIgnoresOrphanedResult(t *testing.T) {
 	call := ai.ToolCall{ID: "aborted-read", Name: "read", Arguments: ai.JsonObject{"path": "file.go"}}
 	msg := assistantMsg("", call)
@@ -83,6 +111,9 @@ func TestResumeAbortedToolIgnoresOrphanedResult(t *testing.T) {
 	m.renderSessionEntries()
 	if got := renderedChat(m); !strings.Contains(got, "Operation aborted") || strings.Contains(got, "ORPHAN_RESULT") {
 		t.Fatalf("orphaned result replaced aborted card: %q", got)
+	}
+	if len(m.toolOrder) != 1 || !m.toolOrder[0].Aborted() {
+		t.Fatal("resumed aborted card is not marked aborted for a frontend session")
 	}
 }
 

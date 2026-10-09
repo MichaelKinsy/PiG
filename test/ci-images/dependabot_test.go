@@ -18,7 +18,7 @@ func TestDependabotCoversMaintainedManifests(t *testing.T) {
 		"/",
 		"/automation/images/ci-parity",
 		"/automation/images/npm-runtime",
-		"/cmd/pig/testdata/login-preview",
+		"/coding/cli/testdata/login-preview",
 		"/coding/extension/host/subprocess/testdata/sdk-fixture",
 		"/examples/extensions/go-factory",
 		"/examples/extensions/rust-factory",

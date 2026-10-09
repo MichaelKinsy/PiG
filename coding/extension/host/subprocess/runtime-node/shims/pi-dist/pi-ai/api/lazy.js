@@ -1,5 +1,5 @@
 import { AssistantMessageEventStream } from "../utils/event-stream.js";
-function createSetupErrorMessage(model, error) {
+function createSetupErrorMessage(model, error, timestamp) {
     return {
         role: "assistant",
         content: [],
@@ -16,7 +16,7 @@ function createSetupErrorMessage(model, error) {
         },
         stopReason: "error",
         errorMessage: error instanceof Error ? error.message : String(error),
-        timestamp: Date.now(),
+        timestamp,
     };
 }
 function hasResult(source) {
@@ -34,11 +34,12 @@ async function forwardStream(target, source) {
  * error event.
  */
 export function lazyStream(model, setup) {
+    const startedAt = Date.now();
     const outer = new AssistantMessageEventStream();
     setup()
         .then((inner) => forwardStream(outer, inner))
         .catch((error) => {
-        const message = createSetupErrorMessage(model, error);
+        const message = createSetupErrorMessage(model, error, startedAt);
         outer.push({ type: "error", reason: "error", error: message });
         outer.end(message);
     });

@@ -36,6 +36,18 @@ The provider scenario executes the actual pinned Pi dispatcher and provider. Its
 
 The capture follows the same steps as for undici, with `lib/credentials/types.mjs`, `lib/credentials/oidc-federation.mjs` and `LICENSE` extracted from the 0.129.0 archive (unchanged from 0.124.0) after its `dist.integrity` matched.
 
+## TypeBox error limit
+
+| Property | Proof |
+|---|---|
+| Upstream owner | `.upstream/current/packages/coding-agent/package.json` |
+| Exact dependency | `typebox` 1.3.27 |
+| Source | `test/parity/dependency-sources/typebox/1.3.27/build/system/settings/settings.mjs` |
+| License | `test/parity/dependency-sources/typebox/1.3.27/LICENSE` |
+| Symbol | `maxErrors` |
+| Rule | TypeBox stops collecting validation errors after 8, so Pi's models.json error text lists at most 8 |
+| Literal consumer | `internal/codingagent/model_config_schema.go` (`maxSchemaErrors`) |
+
 ## Capture and review
 
 1. Read the exact dependency version from the current upstream manifest.

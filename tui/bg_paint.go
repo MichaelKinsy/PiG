@@ -21,7 +21,7 @@ func BgClose() string           { return ActiveTheme().BgClose }
 
 // paintBgWith wraps `line` in the given bg-open SGR + bgClose, padded
 // to `width` visible columns. Visible width respects ANSI escapes (via
-// lineDisplayWidth). Used by UserMessageBlock and ToolExecutionComponent.
+// lineDisplayWidth). Used by UserMessageComponent and ToolExecutionComponent.
 //
 // Body renderers (read, write, edit) emit \x1b[0m (full SGR reset) inside
 // their styled lines. A bare open+line+close approach would lose the bg

@@ -119,15 +119,15 @@ func TestBuiltinProvidersUpstream(t *testing.T) {
 				t.Fatal("minimal missing")
 			}
 			for _, id := range []string{"gemini-3.8-flash", "gemini-3.1-pro-preview"} {
-				if got := GetSupportedThinkingLevels(providerModelUpstream(t, provider, id).ToModel()); !reflect.DeepEqual(got, []ThinkingLevel{ThinkingLow, ThinkingMedium, ThinkingHigh}) {
+				if got := GetSupportedThinkingLevels(providerModelUpstream(t, provider, id).ToModel()); !reflect.DeepEqual(got, []ModelThinkingLevel{ThinkingLow, ThinkingMedium, ThinkingHigh}) {
 					t.Fatal(provider, id, got)
 				}
 			}
 		}
-		if got := GetSupportedThinkingLevels(providerModelUpstream(t, "opencode", "gemini-3.8-flash").ToModel()); !reflect.DeepEqual(got, []ThinkingLevel{ThinkingLow, ThinkingMedium, ThinkingHigh}) {
+		if got := GetSupportedThinkingLevels(providerModelUpstream(t, "opencode", "gemini-3.8-flash").ToModel()); !reflect.DeepEqual(got, []ModelThinkingLevel{ThinkingLow, ThinkingMedium, ThinkingHigh}) {
 			t.Fatal(got)
 		}
-		if got := GetSupportedThinkingLevels(providerModelUpstream(t, "google", "gemma-4-31b-it").ToModel()); !reflect.DeepEqual(got, []ThinkingLevel{ThinkingMinimal, ThinkingHigh}) {
+		if got := GetSupportedThinkingLevels(providerModelUpstream(t, "google", "gemma-4-31b-it").ToModel()); !reflect.DeepEqual(got, []ModelThinkingLevel{ThinkingMinimal, ThinkingHigh}) {
 			t.Fatal(got)
 		}
 	})

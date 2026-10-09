@@ -85,7 +85,7 @@ export default {id:"observer",aborted(context){ return context.abortSignal?.abor
 			t.Error(err)
 		}
 	})
-	binding, err := chord.CreateRemoteServiceBinding(chord.RemoteServiceBindingOptions{Services: []string{"test.node-observe-tally"}, Transport: chord.NewLoopbackTransport(host.Services())})
+	binding, err := chord.CreateRemoteServiceBinding(chord.RemoteServiceBindingOptions{Services: chord.ServiceIDs("test.node-observe-tally"), Transport: chord.NewLoopbackTransport(host.Services())})
 	if err != nil {
 		t.Fatal(err)
 	}

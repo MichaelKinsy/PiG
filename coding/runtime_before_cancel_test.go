@@ -24,7 +24,7 @@ func TestRuntimeCancelsThroughJSONBeforeResults(t *testing.T) {
 		t.Fatalf("new with a JSON cancel = %v, %v; want a cancelled replacement that keeps the Session", result, err)
 	}
 	entry := original.SessionManager().GetBranch()[0]
-	if result, err := h.runtime.Fork(t.Context(), entry.Base.ID, nil); err != nil || !result.Cancelled || h.runtime.Session() != original {
+	if result, err := h.runtime.Fork(t.Context(), entry.Base().ID, nil); err != nil || !result.Cancelled || h.runtime.Session() != original {
 		t.Fatalf("fork with a JSON cancel = %v, %v; want a cancelled fork that keeps the Session", result, err)
 	}
 	if beforeResultCancelled(proceeds) || beforeResultCancelled(nil) || beforeResultCancelled(json.RawMessage(`not json`)) {

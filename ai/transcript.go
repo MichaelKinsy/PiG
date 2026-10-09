@@ -16,6 +16,11 @@ type Context struct {
 	SystemPrompt string
 	Messages     []Message
 	Tools        []ToolSchema
+	// Frozen declares that nothing modifies Messages, or anything they reference, while a request or stream made
+	// from this context is live. Normalization then shares the messages instead of deep-copying them, as pi-ai's
+	// normalizeContext does. TranscriptContext.Messages still returns copies.
+	// pig additive (D104): pi-ai copies nothing; PiG copies unless the caller declares the messages immutable.
+	Frozen bool
 }
 
 // TranscriptContext is the normalized provider-facing request. Only
@@ -32,6 +37,25 @@ func newTranscriptContext(messages []Message) TranscriptContext {
 		return TranscriptContext{err: err}
 	}
 	return TranscriptContext{messages: cloneMessages(messages)}
+}
+
+// Len is the number of messages in the normalized transcript.
+// pig additive (D104): reads transcript.messages without the copy Messages makes.
+func (context TranscriptContext) Len() int {
+	if context.err != nil {
+		return 0
+	}
+	return len(context.messages)
+}
+
+// At returns the transcript's i-th message without copying it, as reading pi-ai's transcript.messages[i] does. The
+// message shares its content with the transcript: modifying anything it references corrupts the transcript. Use Messages
+// for a copy. It panics when i is out of range.
+func (context TranscriptContext) At(i int) Message {
+	if context.err != nil {
+		panic("ai: At on a transcript that failed to normalize")
+	}
+	return context.messages[i]
 }
 
 // Messages returns a deep copy of the normalized transcript.
@@ -52,12 +76,22 @@ func NormalizeContext(context Context) TranscriptContext {
 	if err := validateTranscriptContext(candidate); err != nil {
 		return TranscriptContext{err: err}
 	}
+	if context.Frozen {
+		// The initial system message still holds the caller's tools, which Frozen does not cover.
+		if len(candidate.messages) > 0 && (context.SystemPrompt != "" || len(context.Tools) > 0) {
+			candidate.messages[0] = candidate.messages[0].cloneMessage()
+		}
+		return candidate
+	}
 	return TranscriptContext{messages: cloneMessages(candidate.messages)}
 }
 
 // Ports packages/ai/src/api/transform-messages.ts
 // Null and omitted content share the empty-array normalization before provider conversion.
 func normalizeMissingMessageContent(messages []Message) []Message {
+	if !anyMissingMessageContent(messages) {
+		return messages
+	}
 	result := append([]Message(nil), messages...)
 	for index, message := range result {
 		switch message := message.(type) {
@@ -86,6 +120,31 @@ func normalizeMissingMessageContent(messages []Message) []Message {
 	return result
 }
 
+// anyMissingMessageContent reports whether normalizeMissingMessageContent would change a message.
+func anyMissingMessageContent(messages []Message) bool {
+	for _, message := range messages {
+		switch message := message.(type) {
+		case SystemMessage:
+			if message.Content == nil {
+				return true
+			}
+		case UserMessage:
+			if message.Content == nil {
+				return true
+			}
+		case AssistantMessage:
+			if message.Content == nil {
+				return true
+			}
+		case ToolResultMessage:
+			if message.Content == nil {
+				return true
+			}
+		}
+	}
+	return false
+}
+
 func CreateInitialSystemMessage(systemPrompt string, tools []ToolSchema) *SystemMessage {
 	if systemPrompt == "" && len(tools) == 0 {
 		return nil
@@ -93,11 +152,11 @@ func CreateInitialSystemMessage(systemPrompt string, tools []ToolSchema) *System
 	return &SystemMessage{Content: SystemText(systemPrompt), ToolsAdded: cloneTools(tools), Timestamp: 0}
 }
 
-func GetInitialSystemMessage(messages []Message) *SystemMessage {
+func GetInitialSystemMessage[M RoleMessage](messages TranscriptMessages[M]) *SystemMessage {
 	if len(messages) == 0 {
 		return nil
 	}
-	message, ok := messages[0].(SystemMessage)
+	message, ok := systemMessageOf(messages[0])
 	if !ok {
 		return nil
 	}
@@ -115,11 +174,11 @@ func WithoutInitialSystemMessage(messages []Message) []Message {
 	return messages
 }
 
-func GetCurrentTools(messages []Message) []ToolSchema {
+func GetCurrentTools[M RoleMessage](messages TranscriptMessages[M]) []ToolSchema {
 	order := []string{}
 	tools := map[string]ToolSchema{}
 	for _, item := range messages {
-		message, ok := item.(SystemMessage)
+		message, ok := systemMessageOf(item)
 		if !ok {
 			continue
 		}
@@ -143,13 +202,13 @@ func GetCurrentTools(messages []Message) []ToolSchema {
 	return out
 }
 
-func GetCurrentSystemMessage(messages []Message) *SystemMessage {
+func GetCurrentSystemMessage[M RoleMessage](messages TranscriptMessages[M]) *SystemMessage {
 	content := []string{}
 	sections := OrderedSections{}
 	var timestamp int64
 	hasSystem := false
 	for _, item := range messages {
-		message, ok := item.(SystemMessage)
+		message, ok := systemMessageOf(item)
 		if !ok {
 			continue
 		}
@@ -180,6 +239,23 @@ func GetCurrentSystemMessage(messages []Message) *SystemMessage {
 	if !hasSystem && len(tools) == 0 {
 		return nil
 	}
+	// Upstream adds sections only when a section remains (transcript.ts getCurrentSystemMessage); an empty object is a
+	// different record once encoded.
+	if len(sections) == 0 {
+		sections = nil
+	}
+	// Object.fromEntries(sections) lists integer-like names first (types.ts SystemMessage.sections: "JSON objects reorder those").
+	names := make([]string, len(sections))
+	for i, section := range sections {
+		names[i] = section.Name
+	}
+	ordered := make(OrderedSections, len(sections))
+	for i, index := range jsObjectKeyOrder(names) {
+		ordered[i] = sections[index]
+	}
+	if len(sections) > 0 {
+		sections = ordered
+	}
 	return &SystemMessage{
 		Content:    SystemText(strings.Join(content, "\n\n")),
 		Sections:   sections,
@@ -189,7 +265,7 @@ func GetCurrentSystemMessage(messages []Message) *SystemMessage {
 }
 
 // GetCurrentSystemPrompt renders replayed instructions and nonempty sections in order.
-func GetCurrentSystemPrompt(messages []Message) string {
+func GetCurrentSystemPrompt[M RoleMessage](messages TranscriptMessages[M]) string {
 	message := GetCurrentSystemMessage(messages)
 	if message == nil {
 		return ""
@@ -286,11 +362,11 @@ func GetToolStateChanges(previous, current []ToolSchema) ToolStateChanges {
 	return changes
 }
 
-func GetDeclaredTools(messages []Message) []ToolSchema {
+func GetDeclaredTools[M RoleMessage](messages TranscriptMessages[M]) []ToolSchema {
 	order := []string{}
 	definitions := map[string]ToolSchema{}
 	for _, item := range messages {
-		message, ok := item.(SystemMessage)
+		message, ok := systemMessageOf(item)
 		if !ok {
 			continue
 		}
@@ -315,10 +391,10 @@ func GetDeclaredTools(messages []Message) []ToolSchema {
 // Deprecated: No built-in transport needs this anymore: Anthropic expresses
 // redefinitions with inline tool_definition blocks. Pi keeps it for API
 // compatibility.
-func HasToolRedefinitions(messages []Message) bool {
+func HasToolRedefinitions[M RoleMessage](messages TranscriptMessages[M]) bool {
 	declared := map[string]ToolSchema{}
 	for _, item := range messages {
-		message, ok := item.(SystemMessage)
+		message, ok := systemMessageOf(item)
 		if !ok {
 			continue
 		}
@@ -332,10 +408,10 @@ func HasToolRedefinitions(messages []Message) bool {
 	return false
 }
 
-func HasNonAdditiveToolChanges(messages []Message) bool {
+func HasNonAdditiveToolChanges[M RoleMessage](messages TranscriptMessages[M]) bool {
 	declared := map[string]struct{}{}
 	for _, item := range messages {
-		message, ok := item.(SystemMessage)
+		message, ok := systemMessageOf(item)
 		if !ok {
 			continue
 		}
@@ -357,7 +433,7 @@ type TranscriptTools struct {
 	AnchorsAdditions bool
 }
 
-func ResolveTranscriptTools(messages []Message, supportsToolAdditions bool) TranscriptTools {
+func ResolveTranscriptTools[M RoleMessage](messages TranscriptMessages[M], supportsToolAdditions bool) TranscriptTools {
 	anchors := supportsToolAdditions && !HasNonAdditiveToolChanges(messages)
 	if anchors {
 		initial := GetInitialSystemMessage(messages)
@@ -485,6 +561,9 @@ func validateTranscriptContext(context TranscriptContext) error {
 }
 
 func validateJsonValue(value any) error {
+	if isPlainJSON(value, &plainWalk{}) {
+		return nil
+	}
 	_, err := normalizeJSONValue(value)
 	return err
 }
@@ -505,6 +584,9 @@ func normalizeJSONValue(value any) (any, error) {
 
 // cloneJSONValue retains normalization's validation and single marshaler invocation, then restores native scalar types and nil containers without retaining mutable input objects.
 func cloneJSONValue(value any) any {
+	if copied, ok := clonePlainJSON(value, &plainWalk{}); ok {
+		return copied
+	}
 	normalized, err := normalizeJSONValue(value)
 	if err != nil {
 		panic(fmt.Sprintf("clone validated JSON value: %v", err))
@@ -569,4 +651,20 @@ func preserveJSONValueTypes(value, normalized any) any {
 	default:
 		return normalized
 	}
+}
+
+// systemMessageOf reads a transcript entry as a system message. The replay helpers read only entries whose role is "system" (transcript.ts:35-37), so an entry of any other role, including an application-defined one, is skipped.
+func systemMessageOf[M RoleMessage](entry M) (SystemMessage, bool) {
+	switch message := any(entry).(type) {
+	case SystemMessage:
+		return message, true
+	case *SystemMessage:
+		if message != nil {
+			return *message, true
+		}
+	case interface{ AsSystemMessage() (SystemMessage, bool) }:
+		// An app message type that wraps a system message (agent.AgentMessage) says so; Pi reads its role property alone.
+		return message.AsSystemMessage()
+	}
+	return SystemMessage{}, false
 }

@@ -1,4 +1,3 @@
-// SPDX-FileCopyrightText: Copyright Hewlett Packard Enterprise Development LP
 // SPDX-FileCopyrightText: Copyright (c) 2025 Mario Zechner
 // SPDX-License-Identifier: MIT
 
@@ -19,6 +18,8 @@ import (
 
 	"github.com/MichaelKinsy/PiG/extensions/sdk/json"
 	"github.com/MichaelKinsy/PiG/internal/nodepath"
+	"github.com/MichaelKinsy/PiG/internal/resolvepath"
+	"github.com/MichaelKinsy/PiG/internal/sessionentry"
 )
 
 // ─── SessionManager ───────────────────────────────────────────────────────────
@@ -57,7 +58,15 @@ func defaultSessionDir(cwd string) string {
 }
 
 // GetDefaultSessionDirPath derives storage from the selected agent directory, without consulting another configuration root.
+//
+// upstream: session-manager.ts getDefaultSessionDirPath (both paths go through resolvePath first, so a trailing or doubled separator, a `..` segment, `~` and a relative cwd name the same directory as their resolved form)
 func GetDefaultSessionDirPath(cwd, agentDir string) string {
+	if resolved, err := resolvepath.Resolve(cwd, ""); err == nil {
+		cwd = resolved
+	}
+	if resolved, err := resolvepath.Resolve(agentDir, ""); err == nil {
+		agentDir = resolved
+	}
 	return filepath.Join(agentDir, "sessions", encodeCwdForSessionDir(cwd))
 }
 
@@ -187,7 +196,7 @@ func (sm *SessionManager) Clone(source *Session, leafID string) (*Session, error
 	if source == nil {
 		return nil, fmt.Errorf("sessionmanager: Clone: nil source")
 	}
-	chain := source.Branch(leafID)
+	chain := source.GetBranch(leafID)
 	if len(chain) == 0 {
 		return nil, fmt.Errorf("Entry %s not found", leafID)
 	}
@@ -214,7 +223,11 @@ func (sm *SessionManager) Clone(source *Session, leafID string) (*Session, error
 		return nil, err
 	}
 	records = append([]json.RawMessage{headerJSON}, records...)
-	loaded, err := newSessionFromEntries(sm.cwd, newID, records)
+	fileEntries := make([]FileEntry, len(records))
+	for i, raw := range records {
+		fileEntries[i] = sessionentry.DecodeFileEntry(raw)
+	}
+	loaded, err := newSessionFromEntries(sm.cwd, newID, fileEntries)
 	if err != nil {
 		return nil, err
 	}
@@ -276,7 +289,7 @@ func (sm *SessionManager) ForkFromFile(sourcePath string, idOption ...string) (*
 	if err := os.MkdirAll(sm.sessionDir, 0o755); err != nil {
 		return nil, fmt.Errorf("sessionmanager: mkdir: %w", err)
 	}
-	header := created.Header()
+	header := created.GetHeader()
 	newPath := filepath.Join(sm.sessionDir, fileTimestamp(header.Timestamp)+"_"+header.ID+".jsonl")
 
 	f, err := os.Create(newPath)

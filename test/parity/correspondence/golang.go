@@ -77,12 +77,12 @@ func addGoFunctionCallers(ctx context.Context, root, repositoryPrefix, targetCom
 	specs := []goFunctionCallerSpec{
 		// upstream: agent-session.ts:2633-2661 (_runDefaultCompaction is the one caller of the lower-level compact(), for manual and automatic compaction).
 		{function: "compact", path: "coding/session_summarization_auth.go", caller: "runDefaultCompaction", callee: "compaction.Compact"},
-		{function: "generateTurnPrefixSummary", path: "internal/codingagent/compaction/compaction.go", caller: "Compact", callee: "generateTurnPrefixSummary"},
+		{function: "generateTurnPrefixSummary", path: "internal/codingagent/compaction/compaction.go", caller: "CompactUsing", callee: "generateTurnPrefixSummary"},
 		{function: "mergeSettings", path: "internal/codingagent/settings.go", caller: "Load", callee: "mergeSettings"},
-		{function: "setProjectTrusted", path: "cmd/pig/cli_runtime_build.go", caller: "buildResources", callee: "services.SettingsManager().SetProjectTrusted"},
+		{function: "setProjectTrusted", path: "coding/cli/cli_runtime_build.go", caller: "buildResources", callee: "services.SettingsManager().SetProjectTrusted"},
 		{function: "reload", path: "internal/codingagent/interactive_commands.go", caller: "buildSlashContext", callee: "m.opts.SettingsManager.Reload"},
 		{function: "persistScopedSettings", path: "internal/codingagent/settings.go", caller: "UpdateGlobal", callee: "saveSettingsPatch"},
-		{function: "saveGlobal", path: "internal/codingagent/slash_session_handlers.go", caller: "settingsHandlerTUI", callee: "sc.SettingsManager.UpdateGlobal"},
+		{function: "saveGlobal", path: "internal/codingagent/settings.go", caller: "SetBlockImages", callee: "sm.UpdateGlobal"},
 		{function: "saveProject", path: "internal/codingagent/settings.go", caller: "SetProjectPackages", callee: "sm.UpdateProject"},
 		{function: "settingsOrchestration", path: "internal/codingagent/slash_session_handlers.go", caller: "settingsHandler", callee: "settingsHandlerTUI"},
 	}
@@ -154,7 +154,7 @@ func extractGoCompactionFunctions(ctx context.Context, root, repositoryPrefix, t
 	if err != nil {
 		return nil, err
 	}
-	wanted := map[string]string{"Compact": "compact", "generateTurnPrefixSummary": "generateTurnPrefixSummary"}
+	wanted := map[string]string{"CompactUsing": "compact", "generateTurnPrefixSummary": "generateTurnPrefixSummary"}
 	functions := make([]Function, 0, len(wanted))
 	for _, declaration := range file.Decls {
 		function, ok := declaration.(*ast.FuncDecl)
@@ -373,16 +373,89 @@ func extractGoSettingsProductionCallbacks(ctx context.Context, root, repositoryP
 	if handler == nil {
 		return nil, fmt.Errorf("%s: settingsHandlerTUI function not found", handlerPath)
 	}
-	persistenceCalls := findGoCallStatements(handler.Body, "UpdateGlobal")
-	dispatchCalls := findGoCallStatements(handler.Body, "OnSettingApplied")
-	warningsPersistence := findGoCallStatements(handler.Body, "SetWarnings")
-	if len(persistenceCalls) != 1 || len(dispatchCalls) != 2 || len(warningsPersistence) != 1 {
-		return nil, fmt.Errorf("%s: settingsHandlerTUI persistence or callback dispatch not found", handlerPath)
+	// Each SettingsCallbacks field the handler sets is a closure that saves through a SettingsManager setter and then reports the change through applied.
+	callbackFields := make(map[string]*ast.FuncLit)
+	ast.Inspect(handler.Body, func(node ast.Node) bool {
+		literal, ok := node.(*ast.CompositeLit)
+		if !ok || goNodeSource(handlerSource, handlerFiles, literal.Type) != "SettingsCallbacks" {
+			return true
+		}
+		for name, expression := range keyedGoFields(literal) {
+			if function, ok := expression.(*ast.FuncLit); ok {
+				callbackFields[name] = function
+			}
+		}
+		return false
+	})
+	var applied *ast.FuncLit
+	ast.Inspect(handler.Body, func(node ast.Node) bool {
+		assignment, ok := node.(*ast.AssignStmt)
+		if !ok || len(assignment.Lhs) != 1 || len(assignment.Rhs) != 1 || goNodeSource(handlerSource, handlerFiles, assignment.Lhs[0]) != "applied" {
+			return true
+		}
+		applied, _ = assignment.Rhs[0].(*ast.FuncLit)
+		return false
+	})
+	if len(callbackFields) == 0 || applied == nil {
+		return nil, fmt.Errorf("%s: settingsHandlerTUI callbacks or applied helper not found", handlerPath)
 	}
-	persistenceSegment := goEffectSegment("persistence", handlerPath, persistenceCalls[0], handlerSource, handlerFiles)
-	dispatchSegment := goEffectSegment("runtime-dispatch", handlerPath, dispatchCalls[1], handlerSource, handlerFiles)
-	warningsPersistenceSegment := goEffectSegment("persistence", handlerPath, warningsPersistence[0], handlerSource, handlerFiles)
-	warningsDispatchSegment := goEffectSegment("runtime-dispatch", handlerPath, dispatchCalls[0], handlerSource, handlerFiles)
+	dispatchCalls := findGoCallStatements(applied.Body, "OnSettingApplied")
+	if len(dispatchCalls) != 1 {
+		return nil, fmt.Errorf("%s: settingsHandlerTUI callback dispatch not found", handlerPath)
+	}
+	dispatchSegment := goEffectSegment("runtime-dispatch", handlerPath, dispatchCalls[0], handlerSource, handlerFiles)
+
+	const selectorPath = "internal/codingagent/settings_selector.go"
+	selectorFile, selectorSource, selectorFiles, err := parseGoFile(ctx, root, repositoryPrefix, targetCommit, selectorPath)
+	if err != nil {
+		return nil, err
+	}
+	// callbackNames lists the SettingsCallbacks fields a row reaches: through its dispatch case, or through its submenu.
+	callbackNames := func(item DataItem) []string {
+		var scope ast.Node
+		if dispatch := findGoMethod(selectorFile, "dispatch"); dispatch != nil {
+			ast.Inspect(dispatch.Body, func(node ast.Node) bool {
+				clause, ok := node.(*ast.CaseClause)
+				if !ok {
+					return true
+				}
+				for _, expression := range clause.List {
+					if literal, ok := expression.(*ast.BasicLit); ok && literal.Kind == token.STRING {
+						if id, unquoteErr := strconv.Unquote(literal.Value); unquoteErr == nil && id == item.ID {
+							scope = clause
+						}
+					}
+				}
+				return false
+			})
+		}
+		if scope == nil {
+			if constructor := findGoFunction(selectorFile, "NewSettingsSelectorComponent"); constructor != nil {
+				ast.Inspect(constructor.Body, func(node ast.Node) bool {
+					literal, ok := node.(*ast.CompositeLit)
+					if !ok || goNodeSource(selectorSource, selectorFiles, literal.Type) != "tui.SettingItem" {
+						return true
+					}
+					fields := keyedGoFields(literal)
+					if id, idErr := goStringField(fields, "ID"); idErr == nil && id == item.ID {
+						scope = fields["Submenu"]
+					}
+					return false
+				})
+			}
+		}
+		names := map[string]struct{}{}
+		if scope != nil {
+			ast.Inspect(scope, func(node ast.Node) bool {
+				selector, ok := node.(*ast.SelectorExpr)
+				if ok && goNodeSource(selectorSource, selectorFiles, selector.X) == "callbacks" && strings.HasPrefix(selector.Sel.Name, "On") && selector.Sel.Name != "OnThemePreview" {
+					names[selector.Sel.Name] = struct{}{}
+				}
+				return true
+			})
+		}
+		return sortedMapKeys(names)
+	}
 
 	const runtimePath = "internal/codingagent/interactive_commands.go"
 	runtimeFile, runtimeSource, runtimeFiles, err := parseGoFile(ctx, root, repositoryPrefix, targetCommit, runtimePath)
@@ -438,10 +511,18 @@ func extractGoSettingsProductionCallbacks(ctx context.Context, root, repositoryP
 
 	callbacks := make([]ProductionCallback, 0, len(items))
 	for _, item := range items {
-		segments := []EffectSegment{persistenceSegment, dispatchSegment}
-		if item.ID == "warnings" {
-			segments = []EffectSegment{warningsPersistenceSegment, warningsDispatchSegment}
+		var segments []EffectSegment
+		for _, name := range callbackNames(item) {
+			callback := callbackFields[name]
+			if callback == nil {
+				return nil, fmt.Errorf("%s: setting %s callback %s is not set by settingsHandlerTUI", handlerPath, item.ID, name)
+			}
+			segments = append(segments, goEffectSegment("persistence", handlerPath, callback, handlerSource, handlerFiles))
 		}
+		if len(segments) == 0 {
+			return nil, fmt.Errorf("%s: setting %s reaches no callback", selectorPath, item.ID)
+		}
+		segments = append(segments, dispatchSegment)
 		if runtimeCase := runtimeCases[item.ID]; runtimeCase != nil {
 			segments = append(segments, goEffectSegment("runtime-case", runtimePath, runtimeCase, runtimeSource, runtimeFiles))
 		}
@@ -536,95 +617,226 @@ func goEffectSegment(role, path string, node ast.Node, source []byte, files *tok
 	}
 }
 
+// goSettingsElement is one settings-selector row expression with the capability gate that guards it.
+type goSettingsElement struct {
+	expression ast.Expr
+	gate       string
+}
+
 func extractGoSettings(ctx context.Context, root, repositoryPrefix, targetCommit string) (DataTable, error) {
-	const relativePath = "internal/codingagent/slash_session_handlers.go"
+	const relativePath = "internal/codingagent/settings_selector.go"
 	file, source, files, err := parseGoFile(ctx, root, repositoryPrefix, targetCommit, relativePath)
 	if err != nil {
 		return DataTable{}, err
 	}
-	var function *ast.FuncDecl
-	for _, declaration := range file.Decls {
-		candidate, ok := declaration.(*ast.FuncDecl)
-		if ok && candidate.Name.Name == "settingsItems" {
-			function = candidate
-			break
+	function := findGoFunction(file, "NewSettingsSelectorComponent")
+	if function == nil {
+		return DataTable{}, fmt.Errorf("%s: NewSettingsSelectorComponent function not found", relativePath)
+	}
+	// A cycle row may name its values through the closed-union constants the settings manager declares.
+	settingsFile, _, _, err := parseGoFile(ctx, root, repositoryPrefix, targetCommit, "internal/codingagent/settings.go")
+	if err != nil {
+		return DataTable{}, err
+	}
+	stringConstants := goStringConstants(settingsFile)
+	// The image rows sit behind the terminal's image capability, which the constructor reads once into supportsImages.
+	gateExpression := ""
+	var elements []goSettingsElement
+	var visit func(statements []ast.Stmt, gate string)
+	visit = func(statements []ast.Stmt, gate string) {
+		for _, statement := range statements {
+			switch value := statement.(type) {
+			case *ast.AssignStmt:
+				if len(value.Lhs) != 1 || len(value.Rhs) != 1 {
+					continue
+				}
+				name, _ := value.Lhs[0].(*ast.Ident)
+				if name == nil {
+					continue
+				}
+				switch right := value.Rhs[0].(type) {
+				case *ast.CompositeLit:
+					if name.Name == "items" && goNodeSource(source, files, right.Type) == "[]tui.SettingItem" {
+						for _, element := range right.Elts {
+							elements = append(elements, goSettingsElement{expression: element, gate: gate})
+						}
+					}
+				case *ast.CallExpr:
+					if function, ok := right.Fun.(*ast.Ident); ok && function.Name == "append" && name.Name == "items" && len(right.Args) > 1 {
+						for _, element := range right.Args[1:] {
+							elements = append(elements, goSettingsElement{expression: element, gate: gate})
+						}
+					}
+				default:
+					if name.Name == "supportsImages" {
+						gateExpression = goNodeSource(source, files, value.Rhs[0])
+					}
+				}
+			case *ast.ExprStmt:
+			case *ast.IfStmt:
+				if goNodeSource(source, files, value.Cond) == "supportsImages" {
+					visit(value.Body.List, gateExpression)
+				}
+			}
 		}
 	}
-	if function == nil || function.Body == nil {
-		return DataTable{}, fmt.Errorf("%s: settingsItems function not found", relativePath)
-	}
-	var literal *ast.CompositeLit
-	ast.Inspect(function.Body, func(node ast.Node) bool {
-		if literal != nil {
-			return false
-		}
-		statement, ok := node.(*ast.ReturnStmt)
-		if !ok || len(statement.Results) != 1 {
-			return true
-		}
-		literal, _ = statement.Results[0].(*ast.CompositeLit)
-		return literal == nil
-	})
-	if literal == nil {
-		return DataTable{}, fmt.Errorf("%s: settingsItems return literal not found", relativePath)
-	}
-	items := make([]DataItem, 0, len(literal.Elts))
-	callbacks := make([]DispatchCase, 0, len(literal.Elts))
-	for _, element := range literal.Elts {
-		itemLiteral, ok := element.(*ast.CompositeLit)
-		if !ok {
-			return DataTable{}, fmt.Errorf("%s: settingsItems contains non-literal item", relativePath)
-		}
-		fields := keyedGoFields(itemLiteral)
-		id, err := goStringField(fields, "id")
+	visit(function.Body.List, "")
+	items := make([]DataItem, 0, len(elements))
+	submenus := make(map[string]ast.Expr)
+	for _, element := range elements {
+		item, submenu, err := goSettingsItem(element, source, files, relativePath, stringConstants)
 		if err != nil {
 			return DataTable{}, fmt.Errorf("%s: %w", relativePath, err)
 		}
-		label, err := goStringField(fields, "label")
-		if err != nil {
-			return DataTable{}, fmt.Errorf("%s: setting %s: %w", relativePath, id, err)
+		if submenu != nil {
+			submenus[item.ID] = submenu
 		}
-		description, descriptionExpression, err := goStringOrExpression(fields["desc"], source, files)
-		if err != nil {
-			return DataTable{}, fmt.Errorf("%s: setting %s: %w", relativePath, id, err)
+		items = append(items, item)
+	}
+
+	// The selector routes a cycled value to its callback in the dispatch switch; a row with a submenu reaches its callbacks through the submenu instead.
+	dispatch := findGoMethod(file, "dispatch")
+	if dispatch == nil {
+		return DataTable{}, fmt.Errorf("%s: dispatch method not found", relativePath)
+	}
+	dispatchCases := make(map[string]ast.Node)
+	ast.Inspect(dispatch.Body, func(node ast.Node) bool {
+		clause, ok := node.(*ast.CaseClause)
+		if !ok {
+			return true
 		}
-		values, valuesExpression, err := goStringSlice(fields["values"], source, files)
-		if err != nil {
-			return DataTable{}, fmt.Errorf("%s: setting %s values: %w", relativePath, id, err)
+		for _, expression := range clause.List {
+			if literal, ok := expression.(*ast.BasicLit); ok && literal.Kind == token.STRING {
+				if id, unquoteErr := strconv.Unquote(literal.Value); unquoteErr == nil {
+					dispatchCases[id] = clause
+				}
+			}
 		}
-		get := fields["get"]
-		apply := fields["apply"]
-		if get == nil || apply == nil {
-			return DataTable{}, fmt.Errorf("%s: setting %s lacks get or apply", relativePath, id)
+		return false
+	})
+	callbacks := make([]DispatchCase, 0, len(items))
+	for _, item := range items {
+		node := dispatchCases[item.ID]
+		if node == nil {
+			if submenu := submenus[item.ID]; submenu != nil {
+				node = submenu
+			}
 		}
-		gate := ""
-		if fields["gated"] != nil {
-			gate = goNodeSource(source, files, fields["gated"])
+		if node == nil {
+			return DataTable{}, fmt.Errorf("%s: setting %s has neither a dispatch case nor a submenu", relativePath, item.ID)
 		}
-		itemSource := goNodeSource(source, files, itemLiteral)
-		currentEffects := goSemanticEffects(get, source, files)
-		items = append(items, DataItem{
-			ID: id, Label: label, Description: description, DescriptionExpression: descriptionExpression,
-			CurrentValueExpression: goNodeSource(source, files, get),
-			CurrentReads:           currentEffects.Reads,
-			CurrentWrites:          currentEffects.Writes,
-			CurrentCalls:           currentEffects.Calls,
-			Values:                 values, ValuesExpression: valuesExpression,
-			Gate: gate, Path: relativePath,
-			StartLine:  files.Position(itemLiteral.Pos()).Line,
-			EndLine:    files.Position(itemLiteral.End()).Line,
-			SourceHash: hashString(itemSource),
-		})
-		callback := goSemanticEffects(apply, source, files)
-		callback.ID = id
+		callback := goSemanticEffects(node, source, files)
+		callback.ID = item.ID
 		callbacks = append(callbacks, callback)
 	}
 	slices.SortFunc(callbacks, func(left, right DispatchCase) int { return strings.Compare(left.ID, right.ID) })
 	return DataTable{
-		ID: "table:settings-selector", Path: relativePath, Owner: "settingsItems",
+		ID: "table:settings-selector", Path: relativePath, Owner: "NewSettingsSelectorComponent",
 		SourceHash: hashString(goNodeSource(source, files, function)), OrderProfile: "all-capabilities",
 		Items: items, Callbacks: callbacks, ProductionCallbacks: []ProductionCallback{},
 	}, nil
+}
+
+// goSettingsItem reads one row: a toggle(id, label, description, current) or cycle(id, label, description, current, values...) helper call, or a tui.SettingItem literal. It also returns the row's submenu expression.
+func goSettingsItem(element goSettingsElement, source []byte, files *token.FileSet, relativePath string, stringConstants map[string]string) (DataItem, ast.Expr, error) {
+	var idExpression, labelExpression, descriptionExpression, currentExpression ast.Expr
+	var values []string
+	valuesExpression := ""
+	var submenu ast.Expr
+	switch value := element.expression.(type) {
+	case *ast.CallExpr:
+		helper, _ := value.Fun.(*ast.Ident)
+		if helper == nil || (helper.Name != "toggle" && helper.Name != "cycle") || len(value.Args) < 4 {
+			return DataItem{}, nil, fmt.Errorf("settings row %s is not a toggle or cycle call", goNodeSource(source, files, value))
+		}
+		idExpression, labelExpression, descriptionExpression, currentExpression = value.Args[0], value.Args[1], value.Args[2], value.Args[3]
+		if helper.Name == "toggle" {
+			values = []string{"true", "false"}
+			break
+		}
+		values = []string{}
+		literal := value.Ellipsis == token.NoPos
+		for _, argument := range value.Args[4:] {
+			if resolved, ok := goConstantString(argument, stringConstants); ok {
+				values = append(values, resolved)
+				continue
+			}
+			text, ok := argument.(*ast.BasicLit)
+			if !ok || text.Kind != token.STRING {
+				literal = false
+				break
+			}
+			unquoted, err := strconv.Unquote(text.Value)
+			if err != nil {
+				return DataItem{}, nil, err
+			}
+			values = append(values, unquoted)
+		}
+		if !literal {
+			values = []string{}
+			sources := make([]string, 0, len(value.Args)-4)
+			for _, argument := range value.Args[4:] {
+				sources = append(sources, goNodeSource(source, files, argument))
+			}
+			valuesExpression = strings.Join(sources, ", ")
+			if value.Ellipsis != token.NoPos {
+				valuesExpression += "..."
+			}
+		}
+	case *ast.CompositeLit:
+		fields := keyedGoFields(value)
+		idExpression, labelExpression, descriptionExpression, currentExpression = fields["ID"], fields["Label"], fields["Description"], fields["CurrentValue"]
+		submenu = fields["Submenu"]
+		values = []string{}
+		if fields["Values"] != nil {
+			var err error
+			values, valuesExpression, err = goStringSlice(fields["Values"], source, files)
+			if err != nil {
+				return DataItem{}, nil, err
+			}
+		}
+	default:
+		return DataItem{}, nil, fmt.Errorf("settings row %s is not a call or literal", goNodeSource(source, files, element.expression))
+	}
+	id, _, err := goStringOrExpression(idExpression, source, files)
+	if err != nil || id == "" {
+		return DataItem{}, nil, fmt.Errorf("settings row id is not a string literal")
+	}
+	label, _, err := goStringOrExpression(labelExpression, source, files)
+	if err != nil {
+		return DataItem{}, nil, fmt.Errorf("setting %s: %w", id, err)
+	}
+	description, descriptionSource, err := goStringOrExpression(descriptionExpression, source, files)
+	if err != nil {
+		return DataItem{}, nil, fmt.Errorf("setting %s: %w", id, err)
+	}
+	if currentExpression == nil {
+		return DataItem{}, nil, fmt.Errorf("setting %s has no current value", id)
+	}
+	currentEffects := goSemanticEffects(currentExpression, source, files)
+	item := DataItem{
+		ID: id, Label: label, Description: description, DescriptionExpression: descriptionSource,
+		CurrentValueExpression: goNodeSource(source, files, currentExpression),
+		CurrentReads:           currentEffects.Reads, CurrentWrites: currentEffects.Writes, CurrentCalls: currentEffects.Calls,
+		Values: values, ValuesExpression: valuesExpression, Gate: element.gate, Path: relativePath,
+		StartLine:  files.Position(element.expression.Pos()).Line,
+		EndLine:    files.Position(element.expression.End()).Line,
+		SourceHash: hashString(goNodeSource(source, files, element.expression)),
+	}
+	if submenu != nil {
+		item.SubmenuExpression = goNodeSource(source, files, submenu)
+	}
+	return item, submenu, nil
+}
+
+func findGoMethod(file *ast.File, name string) *ast.FuncDecl {
+	for _, declaration := range file.Decls {
+		function, ok := declaration.(*ast.FuncDecl)
+		if ok && function.Recv != nil && function.Name.Name == name && function.Body != nil {
+			return function
+		}
+	}
+	return nil
 }
 
 func extractGoPromptConstants(ctx context.Context, root, repositoryPrefix, targetCommit string) ([]Constant, error) {
@@ -757,6 +969,46 @@ func goStringField(fields map[string]ast.Expr, name string) (string, error) {
 		return "", err
 	}
 	return value, nil
+}
+
+// goStringConstants maps each package-level string constant of file with a literal value to that value.
+func goStringConstants(file *ast.File) map[string]string {
+	constants := make(map[string]string)
+	for _, declaration := range file.Decls {
+		general, ok := declaration.(*ast.GenDecl)
+		if !ok || general.Tok != token.CONST {
+			continue
+		}
+		for _, specification := range general.Specs {
+			value, ok := specification.(*ast.ValueSpec)
+			if !ok || len(value.Names) != len(value.Values) {
+				continue
+			}
+			for index, name := range value.Names {
+				if literal, ok := value.Values[index].(*ast.BasicLit); ok && literal.Kind == token.STRING {
+					if decoded, err := strconv.Unquote(literal.Value); err == nil {
+						constants[name.Name] = decoded
+					}
+				}
+			}
+		}
+	}
+	return constants
+}
+
+// goConstantString resolves a named string constant, or its string(...) conversion, to its literal value.
+func goConstantString(expression ast.Expr, constants map[string]string) (string, bool) {
+	if call, ok := expression.(*ast.CallExpr); ok && len(call.Args) == 1 {
+		if function, ok := call.Fun.(*ast.Ident); ok && function.Name == "string" {
+			expression = call.Args[0]
+		}
+	}
+	name, ok := expression.(*ast.Ident)
+	if !ok {
+		return "", false
+	}
+	value, ok := constants[name.Name]
+	return value, ok
 }
 
 func goStringOrExpression(expression ast.Expr, source []byte, files *token.FileSet) (string, string, error) {

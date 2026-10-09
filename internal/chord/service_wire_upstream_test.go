@@ -6,6 +6,8 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+
+	"github.com/MichaelKinsy/PiG/internal/chord/chordjson"
 )
 
 // Ports packages/chord/test/service-wire.test.ts. The parsers take JSON text, so the upstream "returns the same object" assertions become equality of the parsed value with its source.
@@ -72,7 +74,7 @@ func TestServiceWireProtocol(t *testing.T) {
 	})
 
 	t.Run("validates decoded and wire snapshots and updates", func(t *testing.T) {
-		snapshot := snapshotOf("pi.models", ServiceSingleton, ServiceInstanceSnapshot{Members: []ServiceMemberSnapshot{stateMember("state", 0, Op{"r", map[string]any{"revision": 1.0}})}})
+		snapshot := snapshotOf("pi.models", ServiceSingleton, ServiceInstanceSnapshot{Members: []ServiceMemberSnapshot{stateMember("state", 0, Op{"r", chordjson.ObjectOf("revision", 1.0)})}})
 		parsed, err := ParseServiceSubscriptionSnapshot(mustRaw(snapshot))
 		if err != nil || !reflect.DeepEqual(canon(t, parsed), canon(t, snapshot)) {
 			t.Fatalf("snapshot = %+v, %v", parsed, err)
@@ -103,7 +105,7 @@ func TestServiceWireProtocol(t *testing.T) {
 
 	t.Run("keeps one operation codec pair for one subscription state", func(t *testing.T) {
 		enc, dec := CreateServiceStateEncoder(), CreateServiceStateDecoder()
-		snapshot := snapshotOf("pi.models", ServiceSingleton, ServiceInstanceSnapshot{Members: []ServiceMemberSnapshot{stateMember("state", 0, Op{"r", map[string]any{"revision": 0.0}})}})
+		snapshot := snapshotOf("pi.models", ServiceSingleton, ServiceInstanceSnapshot{Members: []ServiceMemberSnapshot{stateMember("state", 0, Op{"r", chordjson.ObjectOf("revision", 0.0)})}})
 		wire, err := enc.EncodeSnapshot(snapshot)
 		if err != nil {
 			t.Fatal(err)
@@ -122,10 +124,10 @@ func TestServiceWireProtocol(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if got := mustMarshal(t, firstWire.Ops); got != `[["s",["revision"],1]]` {
+		if got := mustMarshal(t, firstWire.(WireStateServiceProviderUpdate).Ops); got != `[["s",["revision"],1]]` {
 			t.Fatalf("first ops = %s", got)
 		}
-		if got := mustMarshal(t, secondWire.Ops); got != `[["#",0,["revision"]],["s",0,2]]` {
+		if got := mustMarshal(t, secondWire.(WireStateServiceProviderUpdate).Ops); got != `[["#",0,["revision"]],["s",0,2]]` {
 			t.Fatalf("second ops = %s", got)
 		}
 		for _, pair := range []struct {
@@ -141,7 +143,7 @@ func TestServiceWireProtocol(t *testing.T) {
 
 	t.Run("validates explicit resets and restarts path dictionaries at the new baseline", func(t *testing.T) {
 		enc, dec := CreateServiceStateEncoder(), CreateServiceStateDecoder()
-		snapshot := snapshotOf("pi.states", ServiceSingleton, ServiceInstanceSnapshot{Members: []ServiceMemberSnapshot{stateMember("state", 0, Op{"r", map[string]any{"before": 0.0}})}})
+		snapshot := snapshotOf("pi.states", ServiceSingleton, ServiceInstanceSnapshot{Members: []ServiceMemberSnapshot{stateMember("state", 0, Op{"r", chordjson.ObjectOf("before", 0.0)})}})
 		wire, err := enc.EncodeSnapshot(snapshot)
 		if err != nil {
 			t.Fatal(err)
@@ -164,7 +166,7 @@ func TestServiceWireProtocol(t *testing.T) {
 		for sequence := 1; sequence <= 2; sequence++ {
 			roundTrip(stateUpdate("state", sequence, Op{"s", []any{"before"}, float64(sequence)}))
 		}
-		resetSnapshot := snapshotOf("pi.states", ServiceSingleton, ServiceInstanceSnapshot{Members: []ServiceMemberSnapshot{stateMember("state", 103, Op{"r", map[string]any{"after": 103.0}})}})
+		resetSnapshot := snapshotOf("pi.states", ServiceSingleton, ServiceInstanceSnapshot{Members: []ServiceMemberSnapshot{stateMember("state", 103, Op{"r", chordjson.ObjectOf("after", 103.0)})}})
 		reset := ServiceProviderUpdate{Type: UpdateReset, Reset: &resetSnapshot}
 		parsed, err := ParseServiceProviderUpdate(mustRaw(reset))
 		if err != nil || !reflect.DeepEqual(canon(t, parsed), canon(t, reset)) {
@@ -207,7 +209,7 @@ func TestServiceWireProtocol(t *testing.T) {
 
 	t.Run("isolates operation dictionaries between states and subscriptions", func(t *testing.T) {
 		snapshot := snapshotOf("pi.states", ServiceSingleton, ServiceInstanceSnapshot{Members: []ServiceMemberSnapshot{
-			stateMember("left", 0, Op{"r", map[string]any{"revision": 0.0}}), stateMember("right", 0, Op{"r", map[string]any{"revision": 0.0}}),
+			stateMember("left", 0, Op{"r", chordjson.ObjectOf("revision", 0.0)}), stateMember("right", 0, Op{"r", chordjson.ObjectOf("revision", 0.0)}),
 		}})
 		type pairOfCodecs struct {
 			enc *ServiceStateEncoder
@@ -238,7 +240,7 @@ func TestServiceWireProtocol(t *testing.T) {
 		}
 		expectOps := func(wire WireServiceProviderUpdate, want string) {
 			t.Helper()
-			if got := mustMarshal(t, wire.Ops); got != want {
+			if got := mustMarshal(t, wire.(WireStateServiceProviderUpdate).Ops); got != want {
 				t.Fatalf("ops = %s, want %s", got, want)
 			}
 		}
@@ -264,7 +266,7 @@ func TestServiceWireProtocol(t *testing.T) {
 		expectOps(independentLeft, `[["s",["revision"],1]]`)
 		expectDecoded(second, independentLeft, update("left", 1, 1))
 
-		leftBase := stateUpdate("left", 3, Op{"r", map[string]any{"revision": 3.0}})
+		leftBase := stateUpdate("left", 3, Op{"r", chordjson.ObjectOf("revision", 3.0)})
 		expectDecoded(first, encode(first, leftBase), leftBase)
 		thirdRight := encode(first, update("right", 3, 3))
 		expectOps(thirdRight, `[["s",0,3]]`)
@@ -293,10 +295,10 @@ func TestServiceWireProtocol(t *testing.T) {
 				t.Fatalf("decoded = %+v, %v", decoded, err)
 			}
 		}
-		roundTrip(ServiceProviderUpdate{Type: UpdateSpawned, Snapshot: &ServiceInstanceSnapshot{Instance: address, Members: []ServiceMemberSnapshot{stateMember("request", 0, Op{"r", map[string]any{"value": 0.0}})}}})
-		update := ServiceProviderUpdate{Type: UpdateState, Address: address, Member: "request", Sequence: 1, Ops: []Op{{"s", []any{"value"}, 1.0}}}
+		roundTrip(ServiceProviderUpdate{Type: UpdateSpawned, Snapshot: &ServiceInstanceSnapshot{Instance: address, Members: []ServiceMemberSnapshot{stateMember("request", 0, Op{"r", chordjson.ObjectOf("value", 0.0)})}}})
+		update := ServiceProviderUpdate{Type: UpdateState, Instance: address, Member: "request", Sequence: 1, Ops: []Op{{"s", []any{"value"}, 1.0}}}
 		roundTrip(update)
-		roundTrip(ServiceProviderUpdate{Type: UpdateClosed, Address: address})
+		roundTrip(ServiceProviderUpdate{Type: UpdateClosed, Instance: address})
 		update.Sequence = 2
 		if _, err := enc.EncodeUpdate(update); err == nil || !strings.Contains(err.Error(), "Unknown service state") {
 			t.Fatalf("error = %v", err)

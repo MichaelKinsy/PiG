@@ -19,6 +19,7 @@ import (
 	"github.com/BurntSushi/toml"
 
 	"github.com/MichaelKinsy/PiG/coding"
+	"github.com/MichaelKinsy/PiG/test/parity/upstreampackages"
 )
 
 type inventory struct {
@@ -33,6 +34,7 @@ type inventoryPackage struct {
 	Key         string                `json:"key"`
 	Name        string                `json:"name"`
 	Version     string                `json:"version"`
+	Origin      string                `json:"origin"`
 	Entrypoints []inventoryEntrypoint `json:"entrypoints"`
 }
 
@@ -107,8 +109,16 @@ var dispositions = map[string]struct{}{
 	"ported": {}, "partial": {}, "deferred": {}, "designed-out": {}, "divergence": {}, "pending": {},
 }
 
+// publicAPITested is the production-layer status of a public library API whose Pi counterpart is a public export and
+// that no PiG binary calls. Test callers prove it, so the ledger never reports it as production-reachable.
+const publicAPITested = "public-api-tested"
+
+// testExercised is the production-layer status of an internal Go symbol that no cmd/pig path reaches but an asserting Go test
+// exercises; the interface gap detector derives it.
+const testExercised = "test-exercised"
+
 var layerStatuses = map[string]struct{}{
-	"complete": {}, "partial": {}, "pending": {}, "n/a": {},
+	"complete": {}, "partial": {}, "pending": {}, "n/a": {}, publicAPITested: {}, testExercised: {},
 }
 
 var mappingLayers = map[string]struct{}{
@@ -126,7 +136,7 @@ func main() {
 	goInventoryPath := flag.String("go-inventory", "test/parity/interfaces/pig-go.json", "generated Pig Go candidate inventory")
 	behaviorContractsPath := flag.String("behavior-contracts", "test/parity/behavior-contracts.toml", "reviewed behavioral contract ledger")
 	generatePending := flag.Bool("generate-pending", false, "write a pending mapping ledger to stdout")
-	previousMappingPath := flag.String("previous-mapping", "", "with -generate-pending, keep each deferred or designed-out row of this earlier ledger whose interface shape is unchanged")
+	previousMappingPath := flag.String("previous-mapping", "", "with -generate-pending, keep every row of this earlier ledger whose interface shape is unchanged")
 	repoRoot := flag.String("repo-root", ".", "repository root for mapping reference validation")
 	strict := flag.Bool("strict", false, "reject pending/partial mappings and incomplete closure")
 	flag.Parse()
@@ -224,23 +234,19 @@ func validateInventory(upstream inventory) []string {
 	if upstream.Origin != "published" {
 		problems = append(problems, fmt.Sprintf("inventory origin = %q, want published", upstream.Origin))
 	}
-	expectedPackages := map[string]string{
-		"agent":        "@earendil-works/pi-agent-core",
-		"ai":           "@earendil-works/pi-ai",
-		"codemode":     "@earendil-works/pi-codemode",
-		"coding-agent": "@earendil-works/pi-coding-agent",
-		"mcp":          "@earendil-works/pi-mcp",
-		"tui":          "@earendil-works/pi-tui",
+	expectedPackages := map[string]string{}
+	for _, listed := range upstreampackages.All() {
+		expectedPackages[listed.Key] = listed.Name
 	}
-	// Upstream added these packages after 0.87.1; an inventory of an earlier release has neither. The extractor
-	// (test/parity/interface-extractor/src/inventory.mjs OPTIONAL_PACKAGES) skips a package the release does not ship.
-	optionalPackages := map[string]bool{"codemode": true, "mcp": true}
 	entrypoints := make(map[string]struct{})
 	seenPackages := make(map[string]struct{}, len(upstream.Packages))
 	for _, pkg := range upstream.Packages {
 		wantName, expected := expectedPackages[pkg.Key]
 		if !expected || pkg.Name != wantName {
 			problems = append(problems, fmt.Sprintf("inventory package %q has unexpected key/name %q", pkg.Key, pkg.Name))
+		}
+		if pkg.Origin != "source" && pkg.Origin != "published" {
+			problems = append(problems, fmt.Sprintf("inventory package %s origin = %q, want source or published", pkg.Key, pkg.Origin))
 		}
 		if pkg.Version != upstream.UpstreamVersion {
 			problems = append(problems, fmt.Sprintf("inventory package %s version = %q, want %q", pkg.Key, pkg.Version, upstream.UpstreamVersion))
@@ -254,7 +260,7 @@ func validateInventory(upstream inventory) []string {
 		}
 	}
 	for key := range expectedPackages {
-		if _, exists := seenPackages[key]; !exists && !optionalPackages[key] {
+		if _, exists := seenPackages[key]; !exists {
 			problems = append(problems, fmt.Sprintf("missing tracked package %s", key))
 		}
 	}
@@ -486,7 +492,8 @@ func validateParentClosure(upstream []inventoryEntry, mappedEntries map[string]m
 		if !parentExists || !childExists || parent.Disposition != "ported" {
 			continue
 		}
-		if child.Disposition != "ported" {
+		// A reviewed designed-out or divergence member is a closed decision (a JavaScript-only stack or cause), so only an open member blocks the parent.
+		if child.Disposition != "ported" && child.Disposition != "designed-out" && child.Disposition != "divergence" {
 			problems = append(problems, fmt.Sprintf("%s is ported while child %s remains %s", parent.ID, child.ID, child.Disposition))
 		}
 	}
@@ -510,12 +517,13 @@ func validateMappingClosure(entry mappingEntry, upstream inventoryEntry, strict 
 			problems = append(problems, fmt.Sprintf("%s is ported without required layer closure", entry.ID))
 		}
 		for layer, status := range entry.Layers {
-			if status != "complete" && status != "n/a" {
+			if status != "complete" && status != "n/a" && (layer != "production" || status != publicAPITested && status != testExercised) {
 				problems = append(problems, fmt.Sprintf("%s ported layer %s remains %s", entry.ID, layer, status))
 			}
 		}
+		problems = append(problems, validatePublicAPITested(entry)...)
 		for _, layer := range requiredMappingLayers(upstream) {
-			if entry.Layers[layer] != "complete" {
+			if entry.Layers[layer] != "complete" && (layer != "production" || entry.Layers[layer] != publicAPITested && entry.Layers[layer] != testExercised) {
 				problems = append(problems, fmt.Sprintf("%s required layer %s is not complete", entry.ID, layer))
 			}
 		}
@@ -541,6 +549,40 @@ func validateMappingClosure(entry mappingEntry, upstream inventoryEntry, strict 
 	return problems
 }
 
+// validatePublicAPITested keeps the public-api-tested status honest: production references of kind public-api prove only
+// that the symbol is exported, so a row that cites nothing else is marked public-api-tested and needs a test, and a row
+// that cites a call, registry, wire or reflection reference is production-reachable and is marked complete.
+func validatePublicAPITested(entry mappingEntry) []string {
+	var problems []string
+	apiOnly, hasAPI := len(entry.Production) > 0, false
+	testOnly, hasTested := len(entry.Production) > 0, false
+	for _, production := range entry.Production {
+		switch {
+		case strings.HasPrefix(production, "public-api:"):
+			hasAPI, testOnly = true, false
+		case strings.HasPrefix(production, "tested:"):
+			hasTested, apiOnly = true, false
+		default:
+			apiOnly, testOnly = false, false
+		}
+	}
+	hasTest := slices.ContainsFunc(entry.Evidence, func(evidence string) bool { return strings.HasPrefix(evidence, "test:") })
+	switch layer := entry.Layers["production"]; {
+	case layer == publicAPITested && !apiOnly:
+		problems = append(problems, fmt.Sprintf("%s public-api-tested production layer needs every production reference to be public-api", entry.ID))
+	case layer != publicAPITested && apiOnly && hasAPI:
+		problems = append(problems, fmt.Sprintf("%s public-api production must be marked public-api-tested, not complete", entry.ID))
+	case layer == testExercised && !testOnly:
+		problems = append(problems, fmt.Sprintf("%s test-exercised production layer needs every production reference to be tested", entry.ID))
+	case layer != testExercised && testOnly && hasTested:
+		problems = append(problems, fmt.Sprintf("%s tested production must be marked test-exercised, not complete", entry.ID))
+	}
+	if (entry.Layers["production"] == publicAPITested || entry.Layers["production"] == testExercised) && !hasTest {
+		problems = append(problems, fmt.Sprintf("%s %s production layer needs a test reference", entry.ID, entry.Layers["production"]))
+	}
+	return problems
+}
+
 func requiredMappingLayers(upstream inventoryEntry) []string {
 	if strings.HasPrefix(upstream.ID, "cli:") {
 		return []string{"parser", "help", "consumer", "behavior"}
@@ -561,11 +603,11 @@ func validateMappingReferences(entry mappingEntry, repoRoot string) []string {
 	}
 	for _, production := range entry.Production {
 		problems = append(problems, validatePathReference(entry.ID, "production", production, repoRoot,
-			map[string]struct{}{"call": {}, "registry": {}, "wire": {}, "reflection": {}})...)
+			map[string]struct{}{"call": {}, "registry": {}, "wire": {}, "reflection": {}, "public-api": {}, "tested": {}})...)
 	}
 	for _, evidence := range entry.Evidence {
 		problems = append(problems, validatePathReference(entry.ID, "evidence", evidence, repoRoot,
-			map[string]struct{}{"test": {}, "scenario": {}, "probe": {}, "conformance": {}})...)
+			map[string]struct{}{"test": {}, "scenario": {}, "probe": {}, "conformance": {}, "reach": {}})...)
 	}
 	if entry.Disposition == "divergence" && entry.Divergence != "" {
 		problems = append(problems, validateDivergenceReference(entry, repoRoot)...)
@@ -657,6 +699,32 @@ func validatePathReference(id, label, reference, repoRoot string, kinds map[stri
 	if err := validateReferenceFragment(fullPath, fragment); err != nil {
 		return []string{fmt.Sprintf("%s %s reference %q: %v", id, label, reference, err)}
 	}
+	if kind == "public-api" {
+		if err := validatePublicAPIFragment(pathRef, fragment); err != nil {
+			return []string{fmt.Sprintf("%s %s reference %q: %v", id, label, reference, err)}
+		}
+	}
+	if label == "production" && filepath.Base(pathRef) == "parity_harness.go" {
+		return []string{fmt.Sprintf("%s production reference %q is a parity-harness probe, which runs only under PIG_PARITY_HARNESS=1 and is not a production caller", id, reference)}
+	}
+	return nil
+}
+
+// validatePublicAPIFragment requires a public-api reference to name an exported declaration of a non-test Go file in an
+// importable package (no internal, testdata or command directory); for Owner.Member both must be exported.
+func validatePublicAPIFragment(path, fragment string) error {
+	if strings.HasSuffix(path, "_test.go") {
+		return fmt.Errorf("a public API cannot be declared in a test file")
+	}
+	dirs := strings.Split(filepath.ToSlash(filepath.Dir(path)), "/")
+	if dirs[0] == "cmd" || slices.Contains(dirs, "internal") || slices.Contains(dirs, "testdata") {
+		return fmt.Errorf("%s is not in an importable public package", path)
+	}
+	for part := range strings.SplitSeq(fragment, ".") {
+		if !ast.IsExported(part) {
+			return fmt.Errorf("%q is not an exported Go name", fragment)
+		}
+	}
 	return nil
 }
 
@@ -667,7 +735,7 @@ func validateProofKindPath(kind, path string) error {
 		if extension != ".toml" {
 			return fmt.Errorf("scenario proof must reference a TOML scenario")
 		}
-	case "test", "conformance", "call", "registry", "reflection":
+	case "test", "conformance", "call", "registry", "reflection", "public-api", "tested", "reach":
 		if extension != ".go" {
 			return fmt.Errorf("%s proof must reference a Go file", kind)
 		}
@@ -788,6 +856,12 @@ func receiverName(receivers *ast.FieldList) string {
 	if star, ok := typeExpression.(*ast.StarExpr); ok {
 		typeExpression = star.X
 	}
+	switch generic := typeExpression.(type) {
+	case *ast.IndexExpr: // a method of a generic type: func (s *T[K]) M()
+		typeExpression = generic.X
+	case *ast.IndexListExpr:
+		typeExpression = generic.X
+	}
 	identifier, _ := typeExpression.(*ast.Ident)
 	if identifier == nil {
 		return ""
@@ -829,13 +903,6 @@ type carriedMapping struct {
 	row         json.RawMessage
 }
 
-// carriedDispositions are the scope decisions a declaration shape can carry across a version leap. A ported,
-// partial or divergence row claims behavior, and the shape hash does not see behavior: a method body can change
-// under an unchanged signature, and an alias hashes only its name (Pi 0.99.1 added data.disposition to the
-// prompt, steer and follow_up members of RpcResponse without changing its hash). Those rows are regenerated as
-// pending, and the reviewer re-promotes each one after checking the upstream implementation.
-var carriedDispositions = map[string]bool{"deferred": true, "designed-out": true}
-
 type pendingLedger struct {
 	UpstreamVersion string            `json:"upstreamVersion"`
 	Mappings        []json.RawMessage `json:"mappings"`
@@ -862,9 +929,10 @@ func readCarriedMappings(path string) (map[string]carriedMapping, error) {
 	return carried, nil
 }
 
-// pendingMappingLedger has one row per current interface. A deferred or designed-out row whose ID and upstream shape
-// hash match a carried row keeps that reviewed row. Every other interface is pending: a new or changed shape, and every
-// behavior claim (see carriedDispositions), is reviewed again.
+// pendingMappingLedger has one row per current interface. A version leap never resets status: a row whose ID and upstream
+// shape hash match a carried row keeps that row, whatever its disposition. Every other interface is pending: a new or
+// changed shape. The interface gap detector (make interface-gaps-update) then re-derives every row that is not a numbered
+// divergence or a designed-out decision against the new upstream shapes.
 func pendingMappingLedger(upstream inventory, carried map[string]carriedMapping) pendingLedger {
 	type pendingEntry struct {
 		ID                string `json:"id"`
@@ -873,7 +941,7 @@ func pendingMappingLedger(upstream inventory, carried map[string]carriedMapping)
 	}
 	ledger := pendingLedger{UpstreamVersion: upstream.UpstreamVersion, Mappings: make([]json.RawMessage, 0, len(upstream.Interfaces))}
 	for _, entry := range upstream.Interfaces {
-		if previous, ok := carried[entry.ID]; ok && previous.shapeHash == entry.ShapeHash && carriedDispositions[previous.disposition] {
+		if previous, ok := carried[entry.ID]; ok && previous.shapeHash == entry.ShapeHash {
 			ledger.Mappings = append(ledger.Mappings, previous.row)
 			continue
 		}

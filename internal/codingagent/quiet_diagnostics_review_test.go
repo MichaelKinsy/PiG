@@ -41,7 +41,7 @@ func TestReloadThemeDiagnosticsReplaceResolvedSet(t *testing.T) {
 	}
 	writeNamedTheme(t, themesDir, "excluded.json", "excluded")
 	selected := writeNamedTheme(t, themesDir, "selected.json", "selected")
-	m := reloadTestMode(InteractiveOptions{AgentDir: dir, NoSkills: true, NoPromptTemplates: true, ThemePaths: []string{selected}})
+	m := reloadTestMode(InteractiveModeOptions{AgentDir: dir, NoSkills: true, NoPromptTemplates: true, ThemePaths: []string{selected}})
 	m.opts.Settings.QuietStartup = QuietStartupTrue
 	slash := m.buildSlashContext(t.Context())
 	if err := slash.Reload(); err != nil {

@@ -58,9 +58,6 @@ func main() {
 			"handlers": []map[string]any{
 				{"event": "session_start", "can_block": false, "handler_id": 1},
 			},
-			"widgets": []map[string]any{
-				{"key": "status"},
-			},
 		},
 	}
 	writeFrame(conn, reg)

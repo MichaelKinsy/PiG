@@ -12,9 +12,12 @@ import (
 )
 
 // TestConformanceUpstream ports packages/telemetry/test/conformance.test.ts. Each subtest names one upstream case.
+// Pi source: packages/telemetry/src/memory.ts, packages/telemetry/src/noop.ts
+// mutation-checked: zeroing the results of InMemoryTelemetryContext.StartSpan, TelemetrySpan.AddEvent fails it
+// mutation-checked: dropping the reads and writes of RecordedTelemetryEvent.Attributes, RecordedTelemetryEvent.Name, RecordedTelemetrySpan.Attributes, RecordedTelemetrySpan.EndSequence, RecordedTelemetrySpan.Events, RecordedTelemetrySpan.Settled, SpanOptions.Attributes, SpanOptions.Name fails it
 func TestConformanceUpstream(t *testing.T) {
 	conformance := telemetrytest.CreateTelemetryAdapterConformance(func(context.Context) (telemetrytest.TelemetryAdapterFixture, error) {
-		recorder := &telemetry.InMemoryTelemetryContext{}
+		recorder := telemetry.NewInMemoryTelemetryContext()
 		return telemetrytest.TelemetryAdapterFixture{
 			Context: recorder,
 			GetSpans: func(context.Context) ([]telemetry.RecordedTelemetrySpan, error) {
@@ -36,7 +39,7 @@ func TestConformanceUpstream(t *testing.T) {
 
 	t.Run("InMemoryTelemetryContext conformance › returns detached snapshots without exposing mutable recording state", func(t *testing.T) {
 		// upstream: packages/telemetry/test/conformance.test.ts:23
-		recorder := &telemetry.InMemoryTelemetryContext{}
+		recorder := telemetry.NewInMemoryTelemetryContext()
 		var openSettled *bool
 		var openEndSequence *int
 		if err := recorder.StartSpan(telemetry.SpanOptions{Name: "snapshot", Attributes: telemetry.SpanAttributes{"tags": []string{"initial"}}}, func(span telemetry.TelemetrySpan) error {

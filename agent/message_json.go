@@ -46,6 +46,11 @@ func (m AssistantMessage) MarshalJSON() ([]byte, error) {
 	return json.Marshal((*plain)(m.Observe()))
 }
 
+// MarshalJSON emits the pi-ai ToolResultMessage object an AgentMessage holding it emits: the "toolResult" role first and an explicit `"details":null` when the tool wrote it.
+func (m ToolResultMessage) MarshalJSON() ([]byte, error) {
+	return AgentMessage{ToolResult: &m}.MarshalJSON()
+}
+
 // MarshalJSON emits the upstream flat role-discriminated AgentMessage union. User strings and text blocks retain their JavaScript UTF-16 units.
 func (m AgentMessage) MarshalJSON() ([]byte, error) {
 	variants := 0
@@ -109,10 +114,13 @@ func (m AgentMessage) MarshalJSON() ([]byte, error) {
 			Usage                 usageWire                       `json:"usage"`
 			StopReason            ai.StopReason                   `json:"stopReason"`
 			Deferred              *ai.DeferredHandle              `json:"deferred,omitempty"`
-			ErrorMessage          string                          `json:"errorMessage,omitempty"`
 			RawStopReason         string                          `json:"rawStopReason,omitempty"`
 			EndTurn               *bool                           `json:"endTurn,omitempty"`
 			Timestamp             int64                           `json:"timestamp"`
+			// A provider's catch block sets errorMessage on the output it built with its timestamp, so it follows the timestamp.
+			ErrorMessage string `json:"errorMessage,omitempty"`
+			// durationMs is set by the response stream on its final message, after the provider's own keys and before the agent loop assigns thinkingLevel (event-stream.ts:127-128, agent-loop.ts:409).
+			DurationMs *int64 `json:"durationMs,omitempty"`
 			// thinkingLevel is assigned to the finished response after the provider built it, so it follows the provider's own keys.
 			ThinkingLevel ai.ModelThinkingLevel `json:"thinkingLevel,omitempty"`
 		}{
@@ -123,7 +131,7 @@ func (m AgentMessage) MarshalJSON() ([]byte, error) {
 			Diagnostics:           message.Diagnostics, Usage: usageToWire(message.Usage),
 			StopReason: message.StopReason, Deferred: message.Deferred,
 			ErrorMessage: message.ErrorMessage, RawStopReason: message.RawStopReason,
-			EndTurn: message.EndTurn, Timestamp: message.Timestamp, ThinkingLevel: message.ThinkingLevel,
+			EndTurn: message.EndTurn, DurationMs: message.DurationMs, Timestamp: message.Timestamp, ThinkingLevel: message.ThinkingLevel,
 		})
 	case m.ToolResult != nil:
 		content, err := marshalAgentContent(m.ToolResult.Content)
@@ -143,13 +151,14 @@ func (m AgentMessage) MarshalJSON() ([]byte, error) {
 			Details    any        `json:"details,omitempty"`
 			Usage      *usageWire `json:"usage,omitempty"`
 			IsError    bool       `json:"isError"`
+			DurationMs *int64     `json:"durationMs,omitempty"`
 			Timestamp  int64      `json:"timestamp"`
 			// nestedCalls follows timestamp, where upstream's agent session sets it on the message after creating it (agent-session.ts:1065-1066).
 			NestedCalls *ai.NestedToolCalls `json:"nestedCalls,omitempty"`
 		}{
 			Role: RoleToolResult, ToolCallID: message.ToolCallID, ToolName: message.ToolName,
 			Content: content, Details: details, Usage: optionalUsageToWire(message.Usage),
-			IsError: message.IsError, Timestamp: message.Timestamp, NestedCalls: message.NestedCalls,
+			IsError: message.IsError, DurationMs: message.DurationMs, Timestamp: message.Timestamp, NestedCalls: message.NestedCalls,
 		})
 	default:
 		role, ok := m.Custom["role"].(string)
@@ -219,7 +228,7 @@ func (m *AgentMessage) UnmarshalJSON(data []byte) error {
 			ProviderThinkingLevel: wire.ProviderThinkingLevel, Diagnostics: wire.Diagnostics,
 			Usage: wire.Usage.toAI(), StopReason: wire.StopReason, Deferred: wire.Deferred,
 			ErrorMessage: wire.ErrorMessage, RawStopReason: wire.RawStopReason,
-			EndTurn: wire.EndTurn, Timestamp: wire.Timestamp, ThinkingLevel: wire.ThinkingLevel,
+			EndTurn: wire.EndTurn, DurationMs: wire.DurationMs, Timestamp: wire.Timestamp, ThinkingLevel: wire.ThinkingLevel,
 		}
 	case RoleToolResult:
 		content, err := unmarshalToolResultContent(wire.Content)
@@ -229,7 +238,7 @@ func (m *AgentMessage) UnmarshalJSON(data []byte) error {
 		m.ToolResult = &ToolResultMessage{
 			Role: wire.Role, ToolCallID: wire.ToolCallID, ToolName: wire.ToolName, Content: content,
 			Details: orderedjson.Value(wire.Details), Usage: wire.Usage.toAI(), NestedCalls: wire.NestedCalls,
-			IsError: wire.IsError, Timestamp: wire.Timestamp,
+			IsError: wire.IsError, DurationMs: wire.DurationMs, Timestamp: wire.Timestamp,
 		}
 		m.ToolResult.DetailsNull = wire.Details != nil && m.ToolResult.Details == nil
 	default:
@@ -269,6 +278,7 @@ type agentMessageWire struct {
 	Details               json.RawMessage                 `json:"details"`
 	NestedCalls           *ai.NestedToolCalls             `json:"nestedCalls"`
 	IsError               bool                            `json:"isError"`
+	DurationMs            *int64                          `json:"durationMs"`
 }
 
 type usageWire struct {

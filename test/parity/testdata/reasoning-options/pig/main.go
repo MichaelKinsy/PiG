@@ -28,7 +28,7 @@ func run() error {
 			}
 			level := ai.ThinkingLevel("")
 			if name == "mandatory-low" {
-				level = ai.ThinkingLow
+				level = ai.ThinkingLevelLow
 			}
 			var provider ai.Provider
 			if api == ai.APIOpenAICompletions {

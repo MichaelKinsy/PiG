@@ -194,6 +194,7 @@ type Encoder struct {
 	w          io.Writer
 	err        error
 	escapeHTML bool
+	jsNumbers  bool
 
 	indentBuf    []byte
 	indentPrefix string
@@ -219,7 +220,7 @@ func (enc *Encoder) Encode(v any) error {
 	e := newEncodeState()
 	defer encodeStatePool.Put(e)
 
-	err := e.marshal(v, encOpts{escapeHTML: enc.escapeHTML})
+	err := e.marshal(v, encOpts{escapeHTML: enc.escapeHTML, jsNumbers: enc.jsNumbers})
 	if err != nil {
 		return err
 	}
@@ -263,6 +264,12 @@ func (enc *Encoder) SetIndent(prefix, indent string) {
 // of the output, SetEscapeHTML(false) disables this behavior.
 func (enc *Encoder) SetEscapeHTML(on bool) {
 	enc.escapeHTML = on
+}
+
+// SetJSNumbers makes the encoder print numbers as JavaScript's JSON.stringify does: NaN and the infinities are null rather than an error,
+// and negative zero is 0. It is off by default, as the standard library encodes them.
+func (enc *Encoder) SetJSNumbers(on bool) {
+	enc.jsNumbers = on
 }
 
 // RawMessage is a raw encoded JSON value.

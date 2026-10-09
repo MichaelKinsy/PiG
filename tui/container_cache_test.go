@@ -1,5 +1,7 @@
 package tui
 
+// pi: packages/coding-agent/src/modes/interactive/components/custom-message.ts
+
 import "testing"
 
 type cacheProbeComponent struct {
@@ -108,5 +110,25 @@ func TestContainerAlwaysRendersNonDirtyComponent(t *testing.T) {
 	container.Render(80)
 	if child.renderCount != 2 {
 		t.Fatalf("non-dirty component must render every frame; count=%d", child.renderCount)
+	}
+}
+
+// A custom message whose renderer component changes on its own after the first frame (an extension renderer proxy whose lines arrive from a goroutine) must reach a parent that caches the message component (custom-message.ts renders its renderer's component on every frame).
+func TestCustomMessageComponentIsRedrawnWhenItsRendererComponentChanges(t *testing.T) {
+	child := &cacheProbeComponent{lines: []string{"fallback"}}
+	message := NewCustomMessageComponent(&CustomMessage{CustomType: "x", Content: "hi"}, func(*CustomMessage, MessageRenderOptions) Component { return child }, nil, 1)
+	parent := NewContainer(message)
+
+	if got := parent.Render(80); got[len(got)-1] != "fallback" {
+		t.Fatalf("first render = %v", got)
+	}
+	renders := child.renderCount
+	if parent.Render(80); child.renderCount != renders {
+		t.Fatalf("an unchanged message must reuse the cache: renderCount=%d, want %d", child.renderCount, renders)
+	}
+	child.lines = []string{"rendered by the extension"}
+	child.Invalidate()
+	if got := parent.Render(80); got[len(got)-1] != "rendered by the extension" {
+		t.Fatalf("a changed renderer component must reach the parent, got %v", got)
 	}
 }

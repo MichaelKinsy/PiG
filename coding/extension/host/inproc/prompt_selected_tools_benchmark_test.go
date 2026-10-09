@@ -23,7 +23,7 @@ func BenchmarkBeforeAgentStartSelectedTools(b *testing.B) {
 			b.Cleanup(func() { runner.Invalidate("benchmark complete") })
 			b.ReportAllocs()
 			for b.Loop() {
-				if _, err := runner.EmitBeforeAgentStart(b.Context(), "prompt", nil, "base", options); err != nil {
+				if _, err := runner.EmitBeforeAgentStart(b.Context(), "prompt", nil, options); err != nil {
 					b.Fatal(err)
 				}
 			}

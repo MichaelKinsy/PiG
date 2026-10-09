@@ -19,7 +19,7 @@ import (
 func nativeCompatModel(id, provider, baseURL string) *ai.Model {
 	return &ai.Model{ID: id, DisplayName: id, Input: []string{"text"}, ProviderMeta: ai.ProviderMetadata{ProviderID: provider, API: ai.APIOpenAICompletions, BaseURL: baseURL}, Capabilities: ai.ModelCapabilities{ContextWindow: 1000, MaxOutputTokens: 100}}
 }
-func nativeCompatServices(t *testing.T, config string, credentials map[string]ai.Credential) (*Services, *ai.InMemoryModelsStore) {
+func nativeCompatServices(t *testing.T, config string, credentials map[string]ai.Credential) (*AgentSessionServices, *ai.InMemoryModelsStore) {
 	t.Helper()
 	dir := t.TempDir()
 	if config != "" {
@@ -36,7 +36,7 @@ func nativeCompatServices(t *testing.T, config string, credentials map[string]ai
 			t.Fatal(err)
 		}
 	}
-	services, err := NewServices(ServicesOptions{CWD: dir, AgentDir: dir})
+	services, err := CreateAgentSessionServices(CreateAgentSessionServicesOptions{CWD: dir, AgentDir: dir})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -116,7 +116,7 @@ func TestModelRuntimeNativeCompatibilityUpstream(t *testing.T) {
 			if err := os.WriteFile(filepath.Join(dir, "auth.json"), []byte(stored), 0o600); err != nil {
 				t.Fatal(err)
 			}
-			services, err := NewServices(ServicesOptions{CWD: dir, AgentDir: dir})
+			services, err := CreateAgentSessionServices(CreateAgentSessionServicesOptions{CWD: dir, AgentDir: dir})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -161,7 +161,7 @@ func TestModelRuntimeNativeCompatibilityUpstream(t *testing.T) {
 			if err := os.WriteFile(filepath.Join(dir, "auth.json"), []byte(`{"stored-key":{"type":"api_key","key":"secret"}}`), 0o600); err != nil {
 				t.Fatal(err)
 			}
-			services, err := NewServices(ServicesOptions{CWD: dir, AgentDir: dir})
+			services, err := CreateAgentSessionServices(CreateAgentSessionServicesOptions{CWD: dir, AgentDir: dir})
 			if err != nil {
 				t.Fatal(err)
 			}

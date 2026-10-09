@@ -49,7 +49,7 @@ func TestPublicPackageLayout(t *testing.T) {
 		}
 	}
 
-	_ = agent.NewAgent(agent.AgentOptions{})
+	_ = mustNewAgent(agent.AgentOptions{})
 	_ = tui.NewText("public")
 
 	packageDirs, err := os.ReadDir(filepath.Join(root, ".upstream", "current", "packages"))

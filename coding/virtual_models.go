@@ -11,6 +11,7 @@ import (
 	"errors"
 	"fmt"
 	"slices"
+	"strconv"
 	"strings"
 	"sync"
 
@@ -18,6 +19,7 @@ import (
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/coding/extension"
 	icodingagent "github.com/MichaelKinsy/PiG/internal/codingagent"
+	"github.com/MichaelKinsy/PiG/internal/jsnumber"
 )
 
 // The routing types and constants live in package extension, which the extension API needs and which coding imports.
@@ -74,10 +76,11 @@ func FindLatestResponse(messages []agent.AgentMessage) *agent.AssistantMessage {
 	return nil
 }
 
-// ModelSelection names a model by provider and id.
+// ModelSelection names a model by provider and id. Provider and ModelID hold what JavaScript's String() gives the entry's members, as a template literal prints them. Unresolvable is set when either member is not a string: the selection names no catalog model and a lookup finds nothing.
 type ModelSelection struct {
-	Provider string
-	ModelID  string
+	Provider     string
+	ModelID      string
+	Unresolvable bool
 }
 
 // GetBranchSelection returns the model selection a session branch records, or nil. A virtual `model_change` holds until the next `model_change`, because responses name the physical models it routed to. Otherwise the latest physical response wins, as in sessions without virtual models. A virtual model that is no longer registered does not hold, so the selection falls back to the physical model that answered last.
@@ -87,20 +90,22 @@ type ModelSelection struct {
 // upstream: virtual-models.ts:126-157 (getBranchSelection, findLastModelChange)
 func GetBranchSelection(branch []icodingagent.SessionEntry, getModel func(provider, modelID string) *ai.Model) *ModelSelection {
 	for i, entry := range slices.Backward(branch) {
-		switch entry.Base.Type {
+		switch entry.Base().Type {
 		case "model_change":
 			if change := modelChangeSelection(entry); change != nil {
 				return change
 			}
 		case "message":
-			message, ok := entry.AsMessage()
+			message, ok := entry.(icodingagent.MessageEntry)
 			if !ok || message.Message.Assistant == nil || IsVirtualAPI(message.Message.Assistant.API) {
 				continue
 			}
 			response := &ModelSelection{Provider: message.Message.Assistant.Provider, ModelID: message.Message.Assistant.ModelID}
 			if change := findLastModelChange(branch, i); change != nil {
-				if model := getModel(change.Provider, change.ModelID); model != nil && IsVirtualModel(model) {
-					return change
+				if !change.Unresolvable {
+					if model := getModel(change.Provider, change.ModelID); model != nil && IsVirtualModel(model) {
+						return change
+					}
 				}
 			}
 			return response
@@ -110,16 +115,59 @@ func GetBranchSelection(branch []icodingagent.SessionEntry, getModel func(provid
 }
 
 func modelChangeSelection(entry icodingagent.SessionEntry) *ModelSelection {
-	var change icodingagent.ModelChangeEntry
+	var change struct {
+		Provider json.RawMessage `json:"provider"`
+		ModelID  json.RawMessage `json:"modelId"`
+	}
 	if err := json.Unmarshal(entry.Raw(), &change); err != nil {
 		return nil
 	}
-	return &ModelSelection{Provider: change.Provider, ModelID: change.ModelID}
+	provider, providerOK := jsMemberString(change.Provider)
+	modelID, modelIDOK := jsMemberString(change.ModelID)
+	return &ModelSelection{Provider: provider, ModelID: modelID, Unresolvable: !providerOK || !modelIDOK}
+}
+
+// jsMemberString is String(value) of a decoded entry member and whether it is a string: an absent member is undefined.
+func jsMemberString(raw json.RawMessage) (string, bool) {
+	if len(raw) == 0 {
+		return "undefined", false
+	}
+	var value any
+	if err := json.Unmarshal(raw, &value); err != nil {
+		return "", false
+	}
+	text, isString := value.(string)
+	if isString {
+		return text, true
+	}
+	return jsValueString(value), false
+}
+
+func jsValueString(value any) string {
+	switch v := value.(type) {
+	case nil:
+		return "null"
+	case bool:
+		return strconv.FormatBool(v)
+	case float64:
+		return jsnumber.String(v)
+	case string:
+		return v
+	case []any:
+		parts := make([]string, len(v))
+		for i, item := range v {
+			if item != nil {
+				parts[i] = jsValueString(item)
+			}
+		}
+		return strings.Join(parts, ",")
+	}
+	return "[object Object]"
 }
 
 func findLastModelChange(branch []icodingagent.SessionEntry, before int) *ModelSelection {
 	for i := before - 1; i >= 0; i-- {
-		if branch[i].Base.Type != "model_change" {
+		if branch[i].Base().Type != "model_change" {
 			continue
 		}
 		if change := modelChangeSelection(branch[i]); change != nil {
@@ -134,7 +182,7 @@ func findLastModelChange(branch []icodingagent.SessionEntry, before int) *ModelS
 // upstream: virtual-models.ts:148-156 (getVirtualModelState)
 func GetVirtualModelState(branch []icodingagent.SessionEntry, provider, modelID string) json.RawMessage {
 	for _, b := range slices.Backward(branch) {
-		if b.Base.Type != "custom" {
+		if b.Base().Type != "custom" {
 			continue
 		}
 		var custom struct {
@@ -157,11 +205,11 @@ func GetVirtualModelState(branch []icodingagent.SessionEntry, provider, modelID 
 func CreateVirtualModel(definition VirtualModelDefinition) *ai.Model {
 	levels := definition.ThinkingLevels
 	if levels == nil {
-		levels = []ai.ThinkingLevel{ai.ThinkingOff}
+		levels = []ai.ModelThinkingLevel{ai.ThinkingOff}
 	}
 	thinkingMap := ai.ThinkingLevelMap{}
 	reasoning := false
-	for _, level := range []ai.ThinkingLevel{ai.ThinkingOff, ai.ThinkingMinimal, ai.ThinkingLow, ai.ThinkingMedium, ai.ThinkingHigh, ai.ThinkingXHigh, ai.ThinkingMax} {
+	for _, level := range []ai.ModelThinkingLevel{ai.ThinkingOff, ai.ThinkingMinimal, ai.ThinkingLow, ai.ThinkingMedium, ai.ThinkingHigh, ai.ThinkingXHigh, ai.ThinkingMax} {
 		if slices.Contains(levels, level) {
 			thinkingMap[level] = new(string(level))
 		} else {
@@ -245,13 +293,13 @@ func (runtime *ModelRuntime) RuntimeModels() []icodingagent.RuntimeModel {
 // upstream: model-runtime.ts:543-545 (hasConfiguredAuth), 953-958 (a provider of only virtual models is configured at registration)
 func (runtime *ModelRuntime) HasConfiguredAuth(providerID string) bool {
 	registry := runtime.services.Registry()
-	return registry.HasConfiguredAuth(providerID) || runtime.virtuals.onlyVirtual(providerID, registry.GetProviderModelData)
+	return registry.ModelRegistry.HasConfiguredAuth(providerID) || runtime.virtuals.onlyVirtual(providerID, registry.GetProviderModelData)
 }
 
 // ResolveModelOptions are the options of [ModelRuntime.ResolveModel].
 type ResolveModelOptions struct {
 	Reason        ModelRouteReason
-	ThinkingLevel ai.ThinkingLevel
+	ThinkingLevel ai.ModelThinkingLevel
 	// Failed is the failed response of a retry; the messages no longer contain it.
 	Failed *ai.AssistantMessage
 	// State is the router state the caller stored; the caller also stores the returned state.
@@ -337,7 +385,7 @@ func (registry *ModelRegistry) UnregisterVirtualModel(provider, id string) {
 // RoutedModel is the physical model and thinking level a virtual selection currently resolves to.
 type RoutedModel struct {
 	Model         *ai.Model
-	ThinkingLevel ai.ThinkingLevel
+	ThinkingLevel ai.ModelThinkingLevel
 }
 
 // RoutedModel returns, under a virtual selection, the physical model and thinking level of the latest successful response, or nil.
@@ -358,6 +406,10 @@ func (s *Session) RoutedModel() *RoutedModel {
 	}
 	return &RoutedModel{Model: physical, ThinkingLevel: latest.ThinkingLevel}
 }
+
+// Session is the AgentSession Pi's FooterComponent reads sessionManager and routedModel from (footer.ts:103-107, :241); the footer's
+// consumer-owned interface lists those two members.
+var _ icodingagent.FooterSession = (*Session)(nil)
 
 // RoutedModelSelection is RoutedModel in the form the interactive footer renders.
 func (s *Session) RoutedModelSelection() *icodingagent.RoutedModelSelection {
@@ -411,13 +463,13 @@ func (s *Session) recordSelection() {
 	if !IsVirtualModel(model) && (recordedModel == nil || !IsVirtualModel(recordedModel)) {
 		return
 	}
-	_ = s.inner.AppendModelSwitch(providerID(model), model.ID, "")
+	_, _ = s.inner.AppendModelChange(providerID(model), model.ID)
 }
 
 // routeRequest routes the request of a virtual selection. The selection stays in agent state; only this request uses the routed model. Only messages the user wrote start a turn; extension messages can follow them, for example from before_agent_start.
 //
 // upstream: agent-session.ts:769-806 (_installAgentRequestProjection)
-func (s *Session) routeRequest(ctx context.Context, model *ai.Model, thinking ai.ThinkingLevel, messages []agent.AgentMessage, failed *agent.AssistantMessage) (ModelRoute, error) {
+func (s *Session) routeRequest(ctx context.Context, model *ai.Model, thinking ai.ModelThinkingLevel, messages []agent.AgentMessage, failed *agent.AssistantMessage) (ModelRoute, error) {
 	lastResponse := -1
 	for i, message := range messages {
 		if message.Assistant != nil {
@@ -437,14 +489,14 @@ func (s *Session) routeRequest(ctx context.Context, model *ai.Model, thinking ai
 		response := failed.LLMMessage()
 		options.Failed = &response
 	}
-	route, err := s.modelRuntime.ResolveModel(ctx, model, agent.ConvertToLLM(messages, model), options)
+	route, err := s.modelRuntime.ResolveModel(ctx, model, agent.ConvertToLLM(agent.NormalizeMessages(messages, model)), options)
 	if err != nil {
 		return ModelRoute{}, err
 	}
 	if route.State != nil && !bytes.Equal(route.State, options.State) {
 		data := VirtualModelStateData{Provider: providerID(model), ModelID: model.ID, State: route.State}
 		if id, err := s.inner.AppendCustomEntry(VirtualModelStateEntry, data); err == nil {
-			if entry, ok := s.inner.EntryByID(id); ok {
+			if entry, ok := s.inner.GetEntry(id); ok {
 				s.emitEvent(agent.EntryAppendedEvent{Entry: entry.Raw()})
 			}
 		}
@@ -652,9 +704,9 @@ func (runtime *ModelRuntime) streamVirtual(ctx context.Context, model *ai.Model,
 	outer := ai.NewAssistantMessageEventStream()
 	ctx = outer.ObservationContext(ctx)
 	go func() {
-		thinking := options.Thinking
-		if thinking == "" {
-			thinking = ai.ThinkingOff
+		thinking := ai.ThinkingOff
+		if options.Thinking != "" {
+			thinking = ai.ModelThinkingLevel(options.Thinking)
 		}
 		route, err := runtime.ResolveModel(ctx, model, transcript.Messages(), ResolveModelOptions{Reason: ModelRouteReasonDirect, ThinkingLevel: thinking})
 		if err != nil {
@@ -664,10 +716,7 @@ func (runtime *ModelRuntime) streamVirtual(ctx context.Context, model *ai.Model,
 		if limit := route.Model.Capabilities.MaxOutputTokens; options.MaxTokens > 0 && limit > 0 {
 			options.MaxTokens = min(options.MaxTokens, limit)
 		}
-		options.Thinking = route.ThinkingLevel
-		if options.Thinking == ai.ThinkingOff {
-			options.Thinking = ""
-		}
+		options.Thinking = route.ThinkingLevel.ReasoningOption()
 		if route.Model.ProviderMeta.ProviderID != model.ProviderMeta.ProviderID {
 			options.APIKey, options.Headers, options.Env = "", nil, nil
 		}

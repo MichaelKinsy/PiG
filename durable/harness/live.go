@@ -3,6 +3,7 @@
 package harness
 
 import (
+	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/durable"
 )
@@ -68,7 +69,7 @@ type DeferredStatus struct {
 type LiveGeneration struct {
 	Attempt int `json:"attempt"`
 	// Message is the committed throttled partial of the in-flight response, as JSON.
-	Message durable.JsonObject `json:"message,omitempty"`
+	Message *ai.AssistantMessage `json:"message,omitempty"`
 	// Retry is the durable backoff before the next attempt.
 	Retry *RetryStatus `json:"retry,omitempty"`
 	// Deferred is set while a provider-side deferred response is polled.
@@ -106,13 +107,14 @@ var LiveDoc = durable.DefineDoc(durable.DocDefinition[LiveState]{
 			}
 			return true
 		},
+
+		Initial: func() LiveState { return LiveState{} },
 	},
 	DocumentSemantics: durable.DocumentSemantics{
 		Scope:   durable.ScopeConversation,
 		History: durable.HistoryLatest,
 		Fork:    durable.ForkInitial,
 	},
-	Initial: func() LiveState { return LiveState{} },
 })
 
 // Built-in task kinds that can own pi.live.run (live.ts:80-82).

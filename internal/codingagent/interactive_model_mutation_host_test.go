@@ -31,13 +31,13 @@ func testExtensionHostModelMutations(t *testing.T, boundSession bool) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	model := &ai.Model{ID: "current", Provider: cycleTestProvider{id: "fixture"}, Capabilities: ai.ModelCapabilities{MaxThinking: ai.ThinkingHigh}}
+	model := &ai.Model{ID: "current", Provider: cycleTestProvider{id: "fixture"}, Capabilities: ai.ModelCapabilities{MaxThinking: ai.ThinkingLevelHigh}}
 	next := *model
 	next.ID = "next"
 	bridge := &captureUIBridge{}
 	m := &InteractiveMode{
-		opts:   InteractiveOptions{Model: model, SettingsManager: sm, SubprocessUIBridge: bridge, ModelBuilder: func(string) (*ai.Model, error) { return &next, nil }},
-		agent:  agent.NewAgent(agent.AgentOptions{Model: model, ThinkingLevel: ai.ThinkingLow}),
+		opts:   InteractiveModeOptions{Model: model, SettingsManager: sm, SubprocessUIBridge: bridge, ModelBuilder: func(string) (*ai.Model, error) { return &next, nil }},
+		agent:  mustNewAgent(agent.AgentOptions{Model: model, ThinkingLevel: ai.ThinkingLow}),
 		editor: tui.NewEditor(), thinkingLevel: "low", uiTaskCh: make(chan func(), 4),
 	}
 	if boundSession {
@@ -47,8 +47,8 @@ func testExtensionHostModelMutations(t *testing.T, boundSession bool) {
 	defer detach()
 	bridge.actions["setThinkingLevel"].(func(string))("max")
 	if boundSession {
-		entries := m.currentSession().Entries()
-		if len(entries) != 1 || entries[0].Base.Type != "thinking_level_change" {
+		entries := m.currentSession().GetEntries()
+		if len(entries) != 1 || entries[0].Base().Type != "thinking_level_change" {
 			t.Fatalf("host bypassed Session reasoning audit: %v", entries)
 		}
 	}

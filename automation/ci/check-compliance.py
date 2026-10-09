@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# SPDX-FileCopyrightText: Copyright Hewlett Packard Enterprise Development LP
 # SPDX-License-Identifier: MIT
 """Check the repository's compliance evidence locally. Behind `make compliance`.
 
@@ -172,7 +171,7 @@ def check_pins() -> list[str]:
         ("Node", node, ".devcontainer/devcontainer.json node feature", devcontainer["ghcr.io/devcontainers/features/node:1"]["version"]),
         ("Node", minor(node), "ci-parity image tag", re.search(r"-node([\d.]+)-", parity_tag).group(1)),
         ("Node extension runtime", node_runtime, "automation/dev/setup.sh extension runtime floor", search(r"Node >= ([\d.]+) is required", "automation/dev/setup.sh", "Node extension runtime floor")),
-        ("Node extension runtime", node_runtime, "cmd/pig/setup_command.go extension runtime floor", search(r"install Node.js ([\d.]+) or newer", "cmd/pig/setup_command.go", "Node extension runtime floor")),
+        ("Node extension runtime", node_runtime, "coding/cli/setup_command.go extension runtime floor", search(r"install Node.js ([\d.]+) or newer", "coding/cli/setup_command.go", "Node extension runtime floor")),
         ("Node extension runtime", node_runtime, "internal troubleshooting extension runtime floor", search(r"Node and TypeScript extensions \| Node.js ([\d.]+) or newer", "internal/pigdocs/content/troubleshooting.md", "Node extension runtime floor")),
         ("Node extension runtime", node_runtime, "site troubleshooting extension runtime floor", search(r"Node and TypeScript extensions \| Node.js ([\d.]+) or newer", "docs/site/docs/install-troubleshooting.md", "Node extension runtime floor")),
         ("Rust", rust, ".devcontainer/devcontainer.json rust feature", devcontainer["ghcr.io/devcontainers/features/rust:1"]["version"]),

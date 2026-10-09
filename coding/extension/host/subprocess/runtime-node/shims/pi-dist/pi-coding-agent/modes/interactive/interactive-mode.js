@@ -84,6 +84,7 @@ import { UserMessageSelectorComponent } from "./components/user-message-selector
 import { editInExternalEditor } from "./external-editor.js";
 import { refreshModelCatalogs } from "./model-catalog-refresh.js";
 import { getModelSearchText } from "./model-search.js";
+import { ProgramStatusReporter } from "./program-status-reporter.js";
 import { shareSession } from "./session-share.js";
 import { getAvailableThemes, getAvailableThemesWithPaths, getEditorTheme, getMarkdownTheme, getThemeByName, onThemeChange, SYSTEM_THEME_NAME, setRegisteredThemes, stopThemeWatcher, Theme, theme, } from "./theme/theme.js";
 import { InteractiveThemeController } from "./theme/theme-controller.js";
@@ -314,6 +315,8 @@ export class InteractiveMode {
     compactionQueuedMessages = [];
     // Shutdown state
     shutdownRequested = false;
+    /** Reports working, blocked, done, and error states to terminals that support OSC 7501. */
+    programStatus = new ProgramStatusReporter(() => this.ui.terminal, () => this.sessionManager.getSessionName());
     /** The `/bug` hint is shown at most once per session so error output stays readable. */
     bugReportHintShown = false;
     installChangeWarningShown = false;
@@ -702,6 +705,7 @@ export class InteractiveMode {
         // Start the UI before initializing extensions so session_start handlers can use interactive dialogs
         this.ui.start();
         this.isInitialized = true;
+        this.programStatus.report();
         this.ensurePngTranscoder();
         this.themeController.applyFromSettings();
         // The header and startup notices bake theme colors into their text, so build them once the terminal
@@ -1585,6 +1589,7 @@ export class InteractiveMode {
         const session = this.session;
         this.unsubscribe?.();
         this.unsubscribe = undefined;
+        this.programStatus.reset();
         this.applyRuntimeSettings();
         if (options.renderBeforeBind) {
             this.renderCurrentSessionState();
@@ -2101,7 +2106,7 @@ export class InteractiveMode {
     /**
      * Show a selector for extensions.
      */
-    showExtensionSelector(title, options, opts) {
+    showExtensionSelector(title, options, opts, blocked = { kind: "question", message: title }) {
         return new Promise((resolve) => {
             if (opts?.signal?.aborted) {
                 resolve(undefined);
@@ -2125,6 +2130,8 @@ export class InteractiveMode {
             this.editorContainer.clear();
             this.editorContainer.addChild(this.extensionSelector);
             this.ui.setFocus(this.extensionSelector);
+            // Extension dialogs share the editor slot: opening one replaces the status of a displaced one.
+            this.programStatus.setBlocked("extension-dialog", blocked);
             this.ui.requestRender();
         });
     }
@@ -2136,6 +2143,7 @@ export class InteractiveMode {
         this.editorContainer.clear();
         this.editorContainer.addChild(this.editor);
         this.extensionSelector = undefined;
+        this.programStatus.setBlocked("extension-dialog", undefined);
         this.ui.setFocus(this.editor);
         this.ui.requestRender();
     }
@@ -2143,7 +2151,10 @@ export class InteractiveMode {
      * Show a confirmation dialog for extensions.
      */
     async showExtensionConfirm(title, message, opts) {
-        const result = await this.showExtensionSelector(`${title}\n${message}`, ["Yes", "No"], opts);
+        const result = await this.showExtensionSelector(`${title}\n${message}`, ["Yes", "No"], opts, {
+            kind: "permission",
+            message: title,
+        });
         return result === "Yes";
     }
     async promptForMissingSessionCwd(error) {
@@ -2177,6 +2188,7 @@ export class InteractiveMode {
             this.editorContainer.clear();
             this.editorContainer.addChild(this.extensionInput);
             this.ui.setFocus(this.extensionInput);
+            this.programStatus.setBlocked("extension-dialog", { kind: "question", message: title });
             this.ui.requestRender();
         });
     }
@@ -2188,6 +2200,7 @@ export class InteractiveMode {
         this.editorContainer.clear();
         this.editorContainer.addChild(this.editor);
         this.extensionInput = undefined;
+        this.programStatus.setBlocked("extension-dialog", undefined);
         this.ui.setFocus(this.editor);
         this.ui.requestRender();
     }
@@ -2207,6 +2220,7 @@ export class InteractiveMode {
             this.editorContainer.clear();
             this.editorContainer.addChild(this.extensionEditor);
             this.ui.setFocus(this.extensionEditor);
+            this.programStatus.setBlocked("extension-dialog", { kind: "question", message: title });
             this.ui.requestRender();
         });
     }
@@ -2217,6 +2231,7 @@ export class InteractiveMode {
         this.editorContainer.clear();
         this.editorContainer.addChild(this.editor);
         this.extensionEditor = undefined;
+        this.programStatus.setBlocked("extension-dialog", undefined);
         this.ui.setFocus(this.editor);
         this.ui.requestRender();
     }
@@ -2729,6 +2744,7 @@ export class InteractiveMode {
             await this.init();
         }
         this.footer.invalidate();
+        this.programStatus.handleEvent(event);
         switch (event.type) {
             case "agent_start":
                 this.pendingTools.clear();
@@ -2834,6 +2850,7 @@ export class InteractiveMode {
                                 const component = new ToolExecutionComponent(content.name, content.id, content.arguments, {
                                     showImages: this.settingsManager.getShowImages(),
                                     imageWidthCells: this.settingsManager.getImageWidthCells(),
+                                    outputPad: this.outputPad,
                                 }, this.getRegisteredToolDefinition(content.name), this.ui, this.sessionManager.getCwd());
                                 component.setExpanded(this.toolOutputExpanded);
                                 this.chatContainer.addChild(component);
@@ -2904,6 +2921,7 @@ export class InteractiveMode {
                     component = new ToolExecutionComponent(event.toolName, event.toolCallId, event.args, {
                         showImages: this.settingsManager.getShowImages(),
                         imageWidthCells: this.settingsManager.getImageWidthCells(),
+                        outputPad: this.outputPad,
                     }, this.getRegisteredToolDefinition(event.toolName), this.ui, this.sessionManager.getCwd());
                     component.setExpanded(this.toolOutputExpanded);
                     this.chatContainer.addChild(component);
@@ -2926,7 +2944,7 @@ export class InteractiveMode {
                     this.maybeShowInstallChangeWarning();
                 const component = this.pendingTools.get(event.toolCallId);
                 if (component) {
-                    component.updateResult({ ...event.result, isError: event.isError });
+                    component.updateResult({ ...event.result, isError: event.isError, durationMs: event.durationMs });
                     this.pendingTools.delete(event.toolCallId);
                     this.ui.requestRender();
                 }
@@ -3110,7 +3128,7 @@ export class InteractiveMode {
         if (!renderer) {
             return;
         }
-        const component = new CustomEntryComponent(entry, renderer);
+        const component = new CustomEntryComponent(entry, renderer, this.outputPad);
         component.setExpanded(this.toolOutputExpanded);
         if (!component.hasContent()) {
             return;
@@ -3127,7 +3145,7 @@ export class InteractiveMode {
     addMessageToChat(message, options) {
         switch (message.role) {
             case "bashExecution": {
-                const component = new BashExecutionComponent(message.command, this.ui, message.excludeFromContext);
+                const component = new BashExecutionComponent(message.command, this.ui, message.excludeFromContext, this.outputPad);
                 if (message.output) {
                     component.appendOutput(message.output);
                 }
@@ -3146,14 +3164,14 @@ export class InteractiveMode {
             }
             case "compactionSummary": {
                 this.chatContainer.addChild(new Spacer(1));
-                const component = new CompactionSummaryMessageComponent(message, this.getMarkdownThemeWithSettings());
+                const component = new CompactionSummaryMessageComponent(message, this.getMarkdownThemeWithSettings(), this.outputPad);
                 component.setExpanded(this.toolOutputExpanded);
                 this.chatContainer.addChild(component);
                 break;
             }
             case "branchSummary": {
                 this.chatContainer.addChild(new Spacer(1));
-                const component = new BranchSummaryMessageComponent(message, this.getMarkdownThemeWithSettings());
+                const component = new BranchSummaryMessageComponent(message, this.getMarkdownThemeWithSettings(), this.outputPad);
                 component.setExpanded(this.toolOutputExpanded);
                 this.chatContainer.addChild(component);
                 break;
@@ -3169,7 +3187,7 @@ export class InteractiveMode {
                     const skillBlock = parseSkillBlock(textContent);
                     if (skillBlock) {
                         // Render skill block (collapsible)
-                        const component = new SkillInvocationMessageComponent(skillBlock, this.getMarkdownThemeWithSettings());
+                        const component = new SkillInvocationMessageComponent(skillBlock, this.getMarkdownThemeWithSettings(), this.outputPad);
                         component.setExpanded(this.toolOutputExpanded);
                         this.chatContainer.addChild(component);
                         // Render user message separately if present
@@ -3238,6 +3256,7 @@ export class InteractiveMode {
                         const component = new ToolExecutionComponent(content.name, content.id, content.arguments, {
                             showImages: this.settingsManager.getShowImages(),
                             imageWidthCells: this.settingsManager.getImageWidthCells(),
+                            outputPad: this.outputPad,
                         }, this.getRegisteredToolDefinition(content.name), this.ui, this.sessionManager.getCwd());
                         component.setExpanded(this.toolOutputExpanded);
                         this.chatContainer.addChild(component);
@@ -3291,6 +3310,9 @@ export class InteractiveMode {
      * @param options.populateHistory Add user messages to editor history
      */
     renderSessionEntries(entries, options = {}) {
+        // Selection coordinates point into the transcript being replaced (#9311).
+        if (this.renderer instanceof TuiAltScreen)
+            this.renderer.resetTextSelection();
         const items = entries.flatMap((entry) => {
             if (entry.type === "custom" || (entry.type === "usage" && entry.kind === "cache_warm")) {
                 return [entry];
@@ -4180,21 +4202,14 @@ export class InteractiveMode {
                 onOutputPadChange: (padding) => {
                     this.settingsManager.setOutputPad(padding);
                     this.outputPad = padding;
-                    if (this.streamingComponent || this.session.isStreaming) {
-                        for (const child of this.chatContainer.children) {
-                            if (child instanceof AssistantMessageComponent ||
-                                child instanceof CustomMessageComponent ||
-                                child instanceof UserMessageComponent) {
+                    for (const container of [this.chatContainer, this.pendingMessagesContainer]) {
+                        for (const child of container.children) {
+                            if ("setOutputPad" in child && typeof child.setOutputPad === "function") {
                                 child.setOutputPad(padding);
                             }
                         }
-                        if (this.streamingComponent) {
-                            this.streamingComponent.setOutputPad(padding);
-                        }
-                        this.ui.requestRender();
-                        return;
                     }
-                    this.rebuildChatFromMessages();
+                    this.ui.requestRender();
                 },
                 onAutocompleteMaxVisibleChange: (maxVisible) => {
                     this.settingsManager.setAutocompleteMaxVisible(maxVisible);
@@ -5157,7 +5172,7 @@ export class InteractiveMode {
             this.ui.requestRender();
         };
         try {
-            await this.loginProvider(dialog, providerId, "api_key");
+            await this.loginProvider(dialog, providerId, providerName, "api_key");
             restoreEditor();
             await this.completeProviderAuthentication(providerId, providerName, "api_key", previousModel);
         }
@@ -5245,12 +5260,18 @@ export class InteractiveMode {
             dialog.showProgress(event.message);
         }
     }
-    async loginProvider(dialog, providerId, method) {
-        await this.session.modelRuntime.login(providerId, method, {
-            signal: dialog.signal,
-            prompt: (prompt) => this.showAuthPrompt(dialog, prompt, providerId),
-            notify: (event) => this.notifyAuthDialog(dialog, event),
-        }, { getDeviceId: () => this.settingsManager.getOrCreateDeviceId() });
+    async loginProvider(dialog, providerId, providerName, method) {
+        this.programStatus.setBlocked("login", { kind: "auth", message: `Log in to ${providerName}` });
+        try {
+            await this.session.modelRuntime.login(providerId, method, {
+                signal: dialog.signal,
+                prompt: (prompt) => this.showAuthPrompt(dialog, prompt, providerId),
+                notify: (event) => this.notifyAuthDialog(dialog, event),
+            }, { getDeviceId: () => this.settingsManager.getOrCreateDeviceId() });
+        }
+        finally {
+            this.programStatus.setBlocked("login", undefined);
+        }
     }
     async showLoginDialog(providerId, providerName, onBack) {
         const previousModel = this.session.model;
@@ -5266,7 +5287,7 @@ export class InteractiveMode {
             this.ui.requestRender();
         };
         try {
-            await this.loginProvider(dialog, providerId, "oauth");
+            await this.loginProvider(dialog, providerId, providerName, "oauth");
             restoreEditor();
             await this.completeProviderAuthentication(providerId, providerName, "oauth", previousModel);
             if (providerId === RADIUS_PROVIDER_ID)
@@ -5853,7 +5874,7 @@ export class InteractiveMode {
         if (eventResult?.result) {
             const result = eventResult.result;
             // Create UI component for display
-            this.bashComponent = new BashExecutionComponent(command, this.ui, excludeFromContext);
+            this.bashComponent = new BashExecutionComponent(command, this.ui, excludeFromContext, this.outputPad);
             if (this.session.isStreaming) {
                 this.pendingMessagesContainer.addChild(this.bashComponent);
                 this.pendingBashComponents.push(this.bashComponent);
@@ -5874,7 +5895,7 @@ export class InteractiveMode {
         }
         // Normal execution path (possibly with custom operations)
         const isDeferred = this.session.isStreaming;
-        this.bashComponent = new BashExecutionComponent(command, this.ui, excludeFromContext);
+        this.bashComponent = new BashExecutionComponent(command, this.ui, excludeFromContext, this.outputPad);
         if (isDeferred) {
             // Show in pending area when agent is streaming
             this.pendingMessagesContainer.addChild(this.bashComponent);

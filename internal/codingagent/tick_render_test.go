@@ -8,9 +8,12 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"testing/synctest"
 	"time"
+
+	"github.com/MichaelKinsy/PiG/coding/extension"
 
 	"github.com/MichaelKinsy/PiG/agent"
 	"github.com/MichaelKinsy/PiG/ai"
@@ -46,7 +49,7 @@ func (r *terminalRecorder) take() string {
 func newTickRenderProbe(t testing.TB, mode string) (*InteractiveMode, *terminalRecorder) {
 	t.Helper()
 	model := &ai.Model{ID: "m", DisplayName: "m", Capabilities: ai.ModelCapabilities{ContextWindow: 8000}}
-	m := NewInteractiveMode(InteractiveOptions{CWD: t.TempDir(), Model: model, Settings: Settings{TuiMode: mode}})
+	m := NewInteractiveMode(nil, InteractiveModeOptions{CWD: t.TempDir(), Model: model, Settings: Settings{TuiMode: mode}})
 	term := &terminalRecorder{}
 	m.rendererOut = term
 	m.runCtx = t.Context()
@@ -59,11 +62,11 @@ func newTickRenderProbe(t testing.TB, mode string) (*InteractiveMode, *terminalR
 	m.editor.EmbedWorkingStatus = true
 	m.editorContainer = tui.NewContainer()
 	m.editorContainer.Add(m.editor)
-	m.statusLine = NewStatusLine(nil, "", nil)
+	m.statusLine = NewFooterComponent(nil, "", nil)
 	m.statusContainer = tui.NewContainer()
 	m.pendingMessagesContainer = tui.NewContainer()
 	m.widgetContainer = tui.NewContainer()
-	m.agent = agent.NewAgent(agent.AgentOptions{})
+	m.agent = mustNewAgent(agent.AgentOptions{})
 	m.keybindings = NewKeybindingsManager(t.TempDir())
 	m.mountInteractiveTui(true)
 	m.installRenderDispatcher()
@@ -240,7 +243,7 @@ func TestStatusIndicatorRelabelsReachTerminalWithoutInput(t *testing.T) {
 				term.take()
 
 				ui := &ExtUIContext{m: m}
-				ui.SetWorkingIndicator(map[string]any{"frames": []string{"*"}})
+				ui.SetWorkingIndicator(extension.WorkingIndicatorOptions{Frames: new([]string{"*"})})
 				if frame := settle(100 * time.Millisecond); !strings.Contains(frame, "* Working") {
 					t.Fatalf("custom indicator not painted: %q", frame)
 				}
@@ -248,7 +251,7 @@ func TestStatusIndicatorRelabelsReachTerminalWithoutInput(t *testing.T) {
 				if frame := settle(100 * time.Millisecond); !strings.Contains(frame, "* Indexing") {
 					t.Fatalf("working message not painted: %q", frame)
 				}
-				ui.SetWorkingIndicator(map[string]any{"frames": []string{}})
+				ui.SetWorkingIndicator(extension.WorkingIndicatorOptions{Frames: new([]string{})})
 				if frame := settle(100 * time.Millisecond); !strings.Contains(frame, "── Indexing") {
 					t.Fatalf("hidden indicator not painted: %q", frame)
 				}
@@ -410,4 +413,51 @@ func TestRetryCountdownWaitingOnFullQueueStopsWithItsStatus(t *testing.T) {
 			t.Fatal("a stopped countdown's second overwrote the replacement status")
 		}
 	})
+}
+
+// FooterComponent.dispose (footer.ts:93) and FooterDataProvider.dispose (footer-data-provider.ts:187), which interactive-mode.ts:7098-7099 calls from stop(): the git watcher stops, the OnBranchChange subscribers are dropped, and a branch change made afterwards reaches neither the footer nor a subscriber.
+func TestFooterDisposeStopsTheGitWatcherAndDropsSubscribers(t *testing.T) {
+	repo := t.TempDir()
+	t.Setenv("HOME", filepath.Dir(repo))
+	t.Setenv("USERPROFILE", filepath.Dir(repo))
+	git := func(args ...string) {
+		t.Helper()
+		cmd := exec.Command("git", args...)
+		cmd.Dir = repo
+		if out, err := cmd.CombinedOutput(); err != nil {
+			t.Fatalf("git %v: %v\n%s", args, err, out)
+		}
+	}
+	git("init", "-q", "-b", "trunk")
+	git("-c", "user.email=t@t", "-c", "user.name=t", "commit", "--allow-empty", "-q", "-m", "one")
+
+	m, _ := newTickRenderProbe(t, "regular")
+	m.opts.CWD = repo
+	m.statusLine.SetCwd(repo)
+	var notified atomic.Int64
+	m.statusLine.OnBranchChange(func() { notified.Add(1) })
+	ctx, cancel := context.WithCancel(t.Context())
+	defer cancel()
+	m.startGitBranchWatcher(ctx)
+
+	m.statusLine.Dispose()
+	stopped := make(chan struct{})
+	go func() { m.backgroundTasks.Wait(); close(stopped) }()
+	select {
+	case <-stopped:
+	case <-time.After(3 * time.Second):
+		t.Fatal("Dispose did not stop the git watcher: its context is still live")
+	}
+	git("checkout", "-q", "-b", "feature")
+	if branch := m.statusLine.GitBranch(); branch != "trunk" || notified.Load() != 0 {
+		t.Fatalf("after Dispose: branch=%q subscriber notifications=%d, want trunk and 0", branch, notified.Load())
+	}
+	// A watcher result that was already in flight is ignored too.
+	w := newGitBranchWatcher(repo, m.statusLine)
+	w.publish("late")
+	if branch := m.statusLine.GitBranch(); branch != "trunk" || notified.Load() != 0 {
+		t.Fatalf("a late result changed a disposed footer: branch=%q notifications=%d", branch, notified.Load())
+	}
+	// A second Dispose is harmless (upstream dispose can run again from stop()).
+	m.statusLine.Dispose()
 }

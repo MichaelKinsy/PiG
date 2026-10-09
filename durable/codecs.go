@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/MichaelKinsy/PiG/ai"
+	"github.com/MichaelKinsy/PiG/chord/delta"
 )
 
 // JSON codecs for records whose members hold the pi-ai Message union, the "self" entry head, or a present JSON-null
@@ -35,16 +36,29 @@ func (entry EntryRecord) MarshalJSON() ([]byte, error) {
 
 // UnmarshalJSON decodes Model by message role.
 func (entry *EntryRecord) UnmarshalJSON(data []byte) error {
-	var wire entryRecordWire
-	if err := json.Unmarshal(data, &wire); err != nil {
+	if record, ok := decodeEntryFast(data); ok {
+		*entry = record
+		return nil
+	}
+	return entry.unmarshalGeneral(data)
+}
+
+// unmarshalGeneral is the reflection-based decoder, which defines what every accepted text means.
+func (entry *EntryRecord) unmarshalGeneral(data []byte) error {
+	var decoded struct {
+		entryRecordWire
+		Data orderedValue `json:"data,omitempty"`
+	}
+	if err := json.Unmarshal(data, &decoded); err != nil {
 		return err
 	}
+	wire := decoded.entryRecordWire
 	model, err := unmarshalModel(wire.Model)
 	if err != nil {
 		return fmt.Errorf("entry %d model: %w", wire.Id, err)
 	}
 	*entry = EntryRecord{
-		Id: wire.Id, ConversationId: wire.ConversationId, Kind: wire.Kind, Model: model, Data: wire.Data,
+		Id: wire.Id, ConversationId: wire.ConversationId, Kind: wire.Kind, Model: model, Data: decoded.Data.value,
 		Head: wire.Head, Edits: wire.Edits, ByTaskId: wire.ByTaskId,
 	}
 	return nil
@@ -79,27 +93,31 @@ func (draft EntryDraft) MarshalJSON() ([]byte, error) {
 
 // UnmarshalJSON decodes head "self" as HeadSelf.
 func (draft *EntryDraft) UnmarshalJSON(data []byte) error {
-	var wire entryDraftWire
-	if err := json.Unmarshal(data, &wire); err != nil {
+	var decoded struct {
+		entryDraftWire
+		Data orderedValue `json:"data,omitempty"`
+	}
+	if err := json.Unmarshal(data, &decoded); err != nil {
 		return err
 	}
+	wire := decoded.entryDraftWire
 	model, err := unmarshalModel(wire.Model)
 	if err != nil {
 		return fmt.Errorf("entry draft model: %w", err)
 	}
-	decoded := EntryDraft{Kind: wire.Kind, Model: model, Data: wire.Data, Edits: wire.Edits}
+	draftValue := EntryDraft{Kind: wire.Kind, Model: model, Data: decoded.Data.value, Edits: wire.Edits}
 	if len(wire.Head) > 0 && string(wire.Head) != "null" {
 		if string(wire.Head) == `"self"` {
-			decoded.HeadSelf = true
+			draftValue.HeadSelf = true
 		} else {
 			var head EntryId
 			if err := json.Unmarshal(wire.Head, &head); err != nil {
 				return fmt.Errorf("entry draft head: %w", err)
 			}
-			decoded.Head = &head
+			draftValue.Head = &head
 		}
 	}
-	*draft = decoded
+	*draft = draftValue
 	return nil
 }
 
@@ -179,13 +197,13 @@ func (outcome TaskOutcome[R]) MarshalJSON() ([]byte, error) {
 // UnmarshalJSON keeps a present JSON-null result as a non-nil Result.
 func (outcome *TaskOutcome[R]) UnmarshalJSON(data []byte) error {
 	var wire taskOutcomeWire
-	if err := json.Unmarshal(data, &wire); err != nil {
+	if err := unmarshalOrdered(data, &wire); err != nil {
 		return err
 	}
 	decoded := TaskOutcome[R]{Status: wire.Status, Error: wire.Error, Reason: wire.Reason}
 	if len(wire.Result) > 0 {
 		result := new(R)
-		if err := json.Unmarshal(wire.Result, result); err != nil {
+		if err := unmarshalOrdered(wire.Result, result); err != nil {
 			return fmt.Errorf("task outcome result: %w", err)
 		}
 		decoded.Result = result
@@ -208,7 +226,7 @@ func (content DocumentContent) MarshalJSON() ([]byte, error) {
 	if content.Value != nil || content.Kind == ContentBase {
 		value := content.Value
 		if value == nil {
-			value = JsonObject{}
+			value = delta.NewJsonObject(0)
 		}
 		wire.Value = &value
 	}
@@ -220,6 +238,21 @@ func (content DocumentContent) MarshalJSON() ([]byte, error) {
 		wire.Ops = &ops
 	}
 	return json.Marshal(wire)
+}
+
+// UnmarshalJSON decodes Ops as a delta.Ops batch, so an object an operation carries keeps its JSON key order, as Pi's storage JSON.parse does (storage/sqlite/storage.ts:63, storage/jsonl/storage.ts:118). Value is a JsonObject, which decodes in order itself.
+func (content *DocumentContent) UnmarshalJSON(data []byte) error {
+	var wire struct {
+		Version int                 `json:"version"`
+		Kind    DocumentContentKind `json:"kind"`
+		Value   JsonObject          `json:"value"`
+		Ops     delta.Ops           `json:"ops"`
+	}
+	if err := json.Unmarshal(data, &wire); err != nil {
+		return err
+	}
+	*content = DocumentContent{Version: wire.Version, Kind: wire.Kind, Value: wire.Value, Ops: wire.Ops}
+	return nil
 }
 
 type taskStateWire[S, R any] struct {
@@ -241,4 +274,13 @@ func (state TaskState[S, R]) MarshalJSON() ([]byte, error) {
 		wire.On = &on
 	}
 	return json.Marshal(wire)
+}
+
+// orderedValue decodes a JsonValue member with insertion-ordered objects, as JSON.parse gives Pi.
+type orderedValue struct{ value JsonValue }
+
+func (member *orderedValue) UnmarshalJSON(data []byte) error {
+	value, err := delta.DecodeJson(data)
+	member.value = value
+	return err
 }

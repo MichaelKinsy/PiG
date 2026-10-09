@@ -271,6 +271,7 @@ func TestReportInstallTelemetry_NeverContactsPiDotDev(t *testing.T) {
 	}
 }
 
+// Pi: packages/coding-agent/src/core/settings-manager.ts:787 (SettingsManager.getLastChangelogVersion).
 func TestRecordChangelogVersionAndMaybeReportInstall_FreshInstallPingsAndRecordsNoBanner(t *testing.T) {
 	server, ch := newCapturingServer(t)
 	t.Setenv("PIG_INSTALL_TELEMETRY_URL", server.URL)

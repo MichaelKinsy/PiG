@@ -1,5 +1,7 @@
 package extension_test
 
+// pi: packages/coding-agent/src/core/exec.ts
+
 import (
 	"context"
 	"fmt"

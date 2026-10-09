@@ -1,4 +1,3 @@
-// SPDX-FileCopyrightText: Copyright Hewlett Packard Enterprise Development LP
 // SPDX-License-Identifier: MIT
 
 package codingagent
@@ -66,7 +65,7 @@ func TestSessionListingCancellationAndProgress(t *testing.T) {
 			}
 			if partial != nil {
 				published = append(published, loaded)
-				if !slices.IsSortedFunc(partial, compareSessionRecencyDesc) {
+				if !slices.IsSortedFunc(partial, compareSessionModifiedDesc) {
 					t.Error("unsorted snapshot")
 				}
 				if first == nil {

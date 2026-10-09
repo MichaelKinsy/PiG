@@ -1,5 +1,7 @@
 package mcpext_test
 
+// pi: packages/coding-agent/src/extensions/mcp/tools.ts
+
 import (
 	"encoding/json"
 	"fmt"
@@ -200,5 +202,78 @@ func TestMCPToolsSavesOutputInAUserOnlyTempFile(t *testing.T) {
 	}
 	if got := info.Mode().Perm(); got&0o077 != 0 {
 		t.Errorf("mode = %o, want no access for group and others", got)
+	}
+}
+
+// upstream mcp/tools.ts createMcpToolDefinition: `description?.trim() || title || fallback`. String.prototype.trim removes
+// U+FEFF and keeps U+0085, the reverse of Go's strings.TrimSpace.
+func TestMCPToolsTrimsToolDescriptionsLikeJavaScript(t *testing.T) {
+	describe := func(description string) string {
+		definition := mcpext.CreateMcpToolDefinition(mcpext.McpToolOptions{
+			Server: "docs", Name: "mcp__docs__search", Exposure: "codemode",
+			Tool: mcp.Tool{Name: "search", Title: "Search docs", Description: description, InputSchema: json.RawMessage(`{}`)},
+		})
+		return definition.Description
+	}
+	for description, want := range map[string]string{
+		"\uFEFF \t":         "Search docs",
+		"\u0085":            "\u0085",
+		"\u00A0 text\u2028": "text",
+		"":                  "Search docs",
+	} {
+		if got := describe(description); got != want {
+			t.Errorf("description %q -> %q, want %q", description, got, want)
+		}
+	}
+}
+
+// upstream mcp/tools.ts isTextMimeType: `mimeType.split(";")[0].trim()`, so a BOM around the type is dropped.
+func TestMCPToolsShowsBlobsOfTextTypesWithBOMPaddedMimeTypesAsText(t *testing.T) {
+	blob := "aGk="
+	content := mcpext.ToModelContent("docs", []mcp.ContentBlock{{Type: "resource", Resource: &mcp.ResourceContents{URI: "file:///a", MimeType: "\uFEFFtext/plain \uFEFF; charset=utf-8", Blob: &blob}}}, mcpext.ConvertMcpResultOptions{})
+	if len(content) != 1 || content[0].(ai.TextContent).Text != "hi" {
+		t.Fatalf("content = %#v", content)
+	}
+}
+
+// upstream mcp/tools.ts: `block.title ?? block.name` and `tool.title ?? tool.annotations?.title` replace only a missing
+// or null title, so an explicit empty title stays empty. `description?.trim() || title || fallback` then falls through
+// the empty title to the fallback.
+func TestMCPToolsKeepAnExplicitEmptyTitle(t *testing.T) {
+	link := func(raw string) string {
+		var block mcp.ContentBlock
+		if err := json.Unmarshal([]byte(raw), &block); err != nil {
+			t.Fatal(err)
+		}
+		return mcpext.ToModelContent("docs", []mcp.ContentBlock{block}, mcpext.ConvertMcpResultOptions{})[0].(ai.TextContent).Text
+	}
+	for raw, want := range map[string]string{
+		`{"type":"resource_link","uri":"a://1","name":"one","title":""}`:    `[Resource a://1 ""]`,
+		`{"type":"resource_link","uri":"a://1","name":"one","title":null}`:  `[Resource a://1 "one"]`,
+		`{"type":"resource_link","uri":"a://1","name":"one"}`:               `[Resource a://1 "one"]`,
+		`{"type":"resource_link","uri":"a://1","name":"one","title":"Uno"}`: `[Resource a://1 "Uno"]`,
+	} {
+		if got := link(raw); got != want {
+			t.Errorf("%s -> %q, want %q", raw, got, want)
+		}
+	}
+	describe := func(raw string) string {
+		var tool mcp.Tool
+		if err := json.Unmarshal([]byte(raw), &tool); err != nil {
+			t.Fatal(err)
+		}
+		tool.InputSchema = json.RawMessage(`{}`)
+		return mcpext.CreateMcpToolDefinition(mcpext.McpToolOptions{Server: "docs", Name: "mcp__docs__x", Exposure: "codemode", Tool: tool}).Description
+	}
+	for raw, want := range map[string]string{
+		`{"name":"x","title":"","annotations":{"title":"Ann"}}`:    "MCP tool x from server docs",
+		`{"name":"x","title":null,"annotations":{"title":"Ann"}}`:  "Ann",
+		`{"name":"x","annotations":{"title":"Ann"}}`:               "Ann",
+		`{"name":"x","title":"Own","annotations":{"title":"Ann"}}`: "Own",
+		`{"name":"x","annotations":{"title":""}}`:                  "MCP tool x from server docs",
+	} {
+		if got := describe(raw); got != want {
+			t.Errorf("%s -> %q, want %q", raw, got, want)
+		}
 	}
 }

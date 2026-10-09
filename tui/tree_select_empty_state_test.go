@@ -6,7 +6,7 @@ import (
 )
 
 func TestTreeSelect_EmptyStateMatchesUpstreamTextShape(t *testing.T) {
-	ts := NewTreeSelect("", &fakeNode{id: "root"})
+	ts := NewTreeSelectorComponent("", &fakeNode{id: "root"})
 	lines := ts.Render(100)
 	joined := strings.Join(lines, "\n")
 

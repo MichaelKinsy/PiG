@@ -15,12 +15,12 @@ import (
 // while OverlayHandle.focus only increments focusOrder. The append tail and
 // visual front are therefore independently observable.
 func TestOverlayCompletionRemovesAppendTailNotFocusedFront(t *testing.T) {
-	tu := NewWithOutput(io.Discard, 80, 24)
+	tu := newManualRenderTUI(io.Discard, 80, 24)
 	first := &recordingComponent{lines: []string{"first"}}
 	second := &recordingComponent{lines: []string{"second"}}
 
-	firstHandle := tu.OpenOverlay(first, OverlayOptions{})
-	tu.OpenOverlay(second, OverlayOptions{})
+	firstHandle := tu.ShowOverlay(first, OverlayOptions{})
+	tu.ShowOverlay(second, OverlayOptions{})
 	firstHandle.focus()
 
 	if got := tu.ActiveOverlay(); got != first {
@@ -38,9 +38,9 @@ func TestOverlayCompletionRemovesAppendTailNotFocusedFront(t *testing.T) {
 }
 
 func TestOverlayHiddenStateIsReversibleAndDistinctFromRemoval(t *testing.T) {
-	tu := NewWithOutput(io.Discard, 80, 24)
+	tu := newManualRenderTUI(io.Discard, 80, 24)
 	component := &recordingComponent{lines: []string{"content"}}
-	handle := tu.OpenOverlay(component, OverlayOptions{})
+	handle := tu.ShowOverlay(component, OverlayOptions{})
 
 	handle.setHidden(true)
 	if !handle.isHidden() {
@@ -67,11 +67,11 @@ func TestOverlayHiddenStateIsReversibleAndDistinctFromRemoval(t *testing.T) {
 }
 
 func TestOverlayNonCapturingFocusAndUnfocusEligibility(t *testing.T) {
-	tu := NewWithOutput(io.Discard, 80, 24)
+	tu := newManualRenderTUI(io.Discard, 80, 24)
 	first := &recordingComponent{lines: []string{"first"}}
 	second := &recordingComponent{lines: []string{"second"}}
-	firstHandle := tu.OpenOverlay(first, OverlayOptions{})
-	secondHandle := tu.OpenOverlay(second, OverlayOptions{nonCapturing: true})
+	firstHandle := tu.ShowOverlay(first, OverlayOptions{})
+	secondHandle := tu.ShowOverlay(second, OverlayOptions{nonCapturing: true})
 
 	if tu.ActiveOverlay() != first {
 		t.Fatal("non-capturing mount stole automatic focus")
@@ -96,8 +96,8 @@ func TestOverlayNonCapturingFocusAndUnfocusEligibility(t *testing.T) {
 }
 
 func TestOverlayNestedSnapshotGenerationAndParentTeardown(t *testing.T) {
-	tu := NewWithOutput(io.Discard, 80, 24)
-	parent := tu.OpenOverlay(&recordingComponent{lines: []string{"parent"}}, OverlayOptions{})
+	tu := newManualRenderTUI(io.Discard, 80, 24)
+	parent := tu.ShowOverlay(&recordingComponent{lines: []string{"parent"}}, OverlayOptions{})
 	childComponent := &recordingComponent{lines: []string{"local child"}}
 	child := tu.openNestedOverlay(parent, childComponent, OverlayOptions{})
 	if child == nil {
@@ -170,9 +170,9 @@ func TestOverlayNestedSnapshotGenerationAndParentTeardown(t *testing.T) {
 }
 
 func TestOverlayGenericComponentOwnsFramingAndBuiltinModalPreservesFrame(t *testing.T) {
-	tu := NewWithOutput(io.Discard, 20, 8)
+	tu := newManualRenderTUI(io.Discard, 20, 8)
 	generic := &recordingComponent{lines: []string{"plain"}}
-	tu.OpenOverlay(generic, OverlayOptions{
+	tu.ShowOverlay(generic, OverlayOptions{
 		width:  overlayCells(10),
 		anchor: overlayTopLeft,
 	})
@@ -219,7 +219,7 @@ func TestOverlayGenericComponentOwnsFramingAndBuiltinModalPreservesFrame(t *test
 }
 
 func TestOverlayGeometryRecalculatesAndVisibilityIsReentrant(t *testing.T) {
-	tu := NewWithOutput(io.Discard, 100, 40)
+	tu := newManualRenderTUI(io.Discard, 100, 40)
 	component := &recordingComponent{lines: make([]string, 15)}
 	factoryCalls := 0
 	var handle *OverlayHandle
@@ -270,13 +270,13 @@ func TestOverlayGeometryRecalculatesAndVisibilityIsReentrant(t *testing.T) {
 }
 
 func TestOverlayCommandsHandleEmptyRepeatedAndStrictIdentity(t *testing.T) {
-	tu := NewWithOutput(io.Discard, 80, 24)
+	tu := newManualRenderTUI(io.Discard, 80, 24)
 	tu.HideOverlay()
 
 	first := &recordingComponent{lines: []string{"same"}}
 	second := &recordingComponent{lines: []string{"same"}}
-	firstHandle := tu.OpenOverlay(first, OverlayOptions{})
-	secondHandle := tu.OpenOverlay(second, OverlayOptions{})
+	firstHandle := tu.ShowOverlay(first, OverlayOptions{})
+	secondHandle := tu.ShowOverlay(second, OverlayOptions{})
 	if firstHandle.isFocused() || !secondHandle.isFocused() {
 		t.Fatal("focus query used value equality instead of strict entry identity")
 	}
@@ -311,9 +311,9 @@ func TestOverlayCommandsHandleEmptyRepeatedAndStrictIdentity(t *testing.T) {
 }
 
 func TestOverlayComponentRenderIsReentrantOutsideStateLock(t *testing.T) {
-	tu := NewWithOutput(io.Discard, 40, 10)
+	tu := newManualRenderTUI(io.Discard, 40, 10)
 	component := &reentrantRenderComponent{}
-	handle := tu.OpenOverlay(component, OverlayOptions{width: overlayCells(20)})
+	handle := tu.ShowOverlay(component, OverlayOptions{width: overlayCells(20)})
 	component.onRender = func() { handle.setHidden(true) }
 
 	done := make(chan struct{})
@@ -332,28 +332,28 @@ func TestOverlayComponentRenderIsReentrantOutsideStateLock(t *testing.T) {
 }
 
 func TestOverlayBlockedReplacementRestoresAfterUnmount(t *testing.T) {
-	tu := NewWithOutput(io.Discard, 80, 24)
+	tu := newManualRenderTUI(io.Discard, 80, 24)
 	editor := &recordingComponent{lines: []string{"editor"}}
 	replacement := &recordingComponent{lines: []string{"replacement"}}
 	tu.Add(editor)
 	tu.Add(replacement)
 	tu.SetFocus(editor)
 	overlay := &recordingComponent{lines: []string{"overlay"}}
-	tu.OpenOverlay(overlay, OverlayOptions{})
+	tu.ShowOverlay(overlay, OverlayOptions{})
 
 	tu.SetFocus(replacement)
-	if tu.ActiveOverlay() != nil || tu.FocusedComponent() != replacement {
+	if tu.ActiveOverlay() != nil || tu.GetFocusedComponent() != replacement {
 		t.Fatal("mounted replacement did not retain focus while overlay restoration was blocked")
 	}
 	tu.Remove(replacement)
 	tu.SetFocus(editor)
-	if tu.ActiveOverlay() != overlay || tu.FocusedComponent() != overlay {
+	if tu.ActiveOverlay() != overlay || tu.GetFocusedComponent() != overlay {
 		t.Fatal("unmounted replacement did not restore the blocked overlay")
 	}
 }
 
 func TestOverlayBlockedUnfocusTargetDefersUntilReplacementCloses(t *testing.T) {
-	tu := NewWithOutput(io.Discard, 80, 24)
+	tu := newManualRenderTUI(io.Discard, 80, 24)
 	editor := &recordingComponent{lines: []string{"editor"}}
 	replacement := &recordingComponent{lines: []string{"replacement"}}
 	target := &recordingComponent{lines: []string{"target"}}
@@ -361,29 +361,29 @@ func TestOverlayBlockedUnfocusTargetDefersUntilReplacementCloses(t *testing.T) {
 	tu.Add(replacement)
 	tu.Add(target)
 	tu.SetFocus(editor)
-	handle := tu.OpenOverlay(&recordingComponent{lines: []string{"overlay"}}, OverlayOptions{})
+	handle := tu.ShowOverlay(&recordingComponent{lines: []string{"overlay"}}, OverlayOptions{})
 
 	tu.SetFocus(replacement)
 	handle.unfocus(target)
-	if tu.FocusedComponent() != replacement {
+	if tu.GetFocusedComponent() != replacement {
 		t.Fatal("blocked unfocus target displaced the active replacement early")
 	}
 	tu.Remove(replacement)
 	tu.SetFocus(editor)
-	if tu.FocusedComponent() != target || tu.ActiveOverlay() != nil {
+	if tu.GetFocusedComponent() != target || tu.ActiveOverlay() != nil {
 		t.Fatal("blocked unfocus target was not applied after replacement teardown")
 	}
 }
 
 func TestOverlayBlockedSetFocusNilResumesOverlay(t *testing.T) {
-	tu := NewWithOutput(io.Discard, 80, 24)
+	tu := newManualRenderTUI(io.Discard, 80, 24)
 	editor := &recordingComponent{lines: []string{"editor"}}
 	replacement := &recordingComponent{lines: []string{"replacement"}}
 	tu.Add(editor)
 	tu.Add(replacement)
 	tu.SetFocus(editor)
 	overlay := &recordingComponent{lines: []string{"overlay"}}
-	tu.OpenOverlay(overlay, OverlayOptions{})
+	tu.ShowOverlay(overlay, OverlayOptions{})
 
 	tu.SetFocus(replacement)
 	tu.Remove(replacement)
@@ -415,10 +415,10 @@ func TestOverlayFocusAncestryCycleDoesNotHang(t *testing.T) {
 }
 
 func TestOverlayVisibilityRefreshesAtMountFocusQueryAndInputBoundaries(t *testing.T) {
-	tu := NewWithOutput(io.Discard, 80, 24)
+	tu := newManualRenderTUI(io.Discard, 80, 24)
 	visible := false
 	component := &recordingComponent{lines: []string{"overlay"}}
-	handle := tu.OpenOverlay(component, OverlayOptions{visible: func(int, int) bool { return visible }})
+	handle := tu.ShowOverlay(component, OverlayOptions{visible: func(int, int) bool { return visible }})
 	if tu.hasOverlay() || tu.ActiveOverlay() != nil || handle.isFocused() {
 		t.Fatal("initially invisible overlay became visible or input eligible before composition")
 	}
@@ -436,8 +436,8 @@ func TestOverlayVisibilityRefreshesAtMountFocusQueryAndInputBoundaries(t *testin
 }
 
 func TestOverlayRemoteCommandsApplyOnlyOnOwnerDispatcher(t *testing.T) {
-	tu := NewWithOutput(io.Discard, 80, 24)
-	handle := tu.OpenOverlay(&recordingComponent{lines: []string{"overlay"}}, OverlayOptions{})
+	tu := newManualRenderTUI(io.Discard, 80, 24)
+	handle := tu.ShowOverlay(&recordingComponent{lines: []string{"overlay"}}, OverlayOptions{})
 	queued := make(chan func(), 1)
 	tu.SetOverlayCommandDispatcher(func(fn func()) { queued <- fn })
 
@@ -454,21 +454,21 @@ func TestOverlayRemoteCommandsApplyOnlyOnOwnerDispatcher(t *testing.T) {
 }
 
 func TestOverlayRestoresPreOverlayFocusTarget(t *testing.T) {
-	tu := NewWithOutput(io.Discard, 80, 24)
+	tu := newManualRenderTUI(io.Discard, 80, 24)
 	editor := &recordingComponent{lines: []string{"editor"}}
 	tu.SetFocus(editor)
-	handle := tu.OpenOverlay(&recordingComponent{lines: []string{"overlay"}}, OverlayOptions{})
-	if tu.FocusedComponent() == editor {
+	handle := tu.ShowOverlay(&recordingComponent{lines: []string{"overlay"}}, OverlayOptions{})
+	if tu.GetFocusedComponent() == editor {
 		t.Fatal("capturing overlay did not take focus")
 	}
 	handle.Close()
-	if tu.FocusedComponent() != editor || tu.ActiveOverlay() != nil {
+	if tu.GetFocusedComponent() != editor || tu.ActiveOverlay() != nil {
 		t.Fatal("final overlay removal did not restore the pre-overlay focus target")
 	}
 }
 
 func TestModalOverlayTwoColumnBoundaryDoesNotPanic(t *testing.T) {
-	tu := NewWithOutput(io.Discard, 2, 4)
+	tu := newManualRenderTUI(io.Discard, 2, 4)
 	tu.openModalOverlay(&recordingComponent{lines: []string{"x"}}, "T", 1, 1)
 	lines := tu.composeOverlayLines(nil, 2, 4)
 	for i, line := range lines {

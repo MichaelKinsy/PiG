@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/coding"
+	"github.com/MichaelKinsy/PiG/test/parity/upstreampackages"
 )
 
 func TestDiscoverAsyncSources(t *testing.T) {
@@ -36,7 +37,8 @@ func TestDiscoverAsyncSources(t *testing.T) {
 }
 
 func TestDiscoverAsyncSourcesRejectsMisleadingMirror(t *testing.T) {
-	for _, pkg := range []string{"agent", "ai", "coding-agent", "tui", "codemode", "mcp"} {
+	for _, listed := range upstreampackages.All() {
+		pkg := listed.Key
 		t.Run(pkg, func(t *testing.T) {
 			for _, test := range []struct {
 				name  string
@@ -44,7 +46,7 @@ func TestDiscoverAsyncSourcesRejectsMisleadingMirror(t *testing.T) {
 				value any
 			}{
 				{name: "wrong-name", field: "name", value: "@example/not-pi"},
-				{name: "other-tracked-name", field: "name", value: "@earendil-works/pi-" + map[string]string{"agent": "ai", "ai": "tui", "coding-agent": "agent-core", "tui": "coding-agent", "codemode": "mcp", "mcp": "codemode"}[pkg]},
+				{name: "other-tracked-name", field: "name", value: "@earendil-works/pi-" + map[string]string{"agent": "ai", "ai": "tui", "coding-agent": "agent-core", "tui": "coding-agent", "codemode": "mcp", "mcp": "codemode"}[pkg] + "-not-listed"},
 				{name: "missing-name", field: "name"},
 				{name: "version-prefix", field: "version", value: "v" + coding.UpstreamVersion},
 				{name: "version-range", field: "version", value: "^" + coding.UpstreamVersion},
@@ -83,14 +85,8 @@ func TestDiscoverAsyncSourcesRejectsMisleadingMirror(t *testing.T) {
 func asyncSourceFixture(t *testing.T) string {
 	t.Helper()
 	root := t.TempDir()
-	for pkg, name := range map[string]string{
-		"agent":        "@earendil-works/pi-agent-core",
-		"ai":           "@earendil-works/pi-ai",
-		"coding-agent": "@earendil-works/pi-coding-agent",
-		"tui":          "@earendil-works/pi-tui",
-		"codemode":     "@earendil-works/pi-codemode",
-		"mcp":          "@earendil-works/pi-mcp",
-	} {
+	for _, p := range upstreampackages.All() {
+		pkg, name := p.Key, p.Name
 		body, err := json.Marshal(map[string]string{"name": name, "version": coding.UpstreamVersion})
 		if err != nil {
 			t.Fatal(err)

@@ -26,7 +26,7 @@ func (client *Client) ServiceCatalogueCallback(ctx context.Context, target proto
 		}
 		entries, err := chord.ParseServiceCatalogue(pending.value.(json.RawMessage))
 		if err != nil {
-			failure := &protocol.ProtocolValidationError{Message: err.Error()}
+			failure := protocol.NewProtocolValidationError(err.Error())
 			client.connection.Fail(failure)
 			complete(nil, failure)
 			return

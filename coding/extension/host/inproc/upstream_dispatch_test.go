@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/MichaelKinsy/PiG/ai"
 	"reflect"
 	"slices"
 	"strings"
@@ -12,7 +13,6 @@ import (
 
 	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/coding/extension/host/inproc"
-	"github.com/MichaelKinsy/PiG/internal/codingagent/prompts"
 )
 
 func upstreamHandlerExtension(path, event string, handler extension.HandlerFn) extension.Extension {
@@ -54,13 +54,16 @@ func TestUpstreamRunnerBeforeAgentStart(t *testing.T) {
 		var reported []string
 		r.AddErrorListener(func(err *extension.ExtensionError) { reported = append(reported, err.Error) })
 		options := extension.BuildSystemPromptOptions{Cwd: cwd, CustomPrompt: "base"}
-		initial := prompts.BuildDefaultPrompt(prompts.Options{Cwd: cwd, CustomPrompt: "base", AppendMode: "replace"})
-		result, err := r.EmitBeforeAgentStart(t.Context(), "hello", nil, initial, options)
+		result, err := r.EmitBeforeAgentStart(t.Context(), "hello", nil, options)
 		if err != nil || len(reported) != 0 || result == nil {
 			t.Fatalf("result=%+v error=%v reported=%v", result, err, reported)
 		}
 		if len(result.Messages) != 0 || result.SystemPrompt == nil || !strings.HasPrefix(*result.SystemPrompt, "base") || !strings.HasSuffix(*result.SystemPrompt, "\nfirst\nsecond") {
 			t.Fatalf("result=%+v", result)
+		}
+		// extensions-runner.test.ts:887 buildSystemPrompt(chained.systemPromptOptions): the options carry the chained prompt as forceSystemPrompt.
+		if forced := result.SystemPromptOptions.ForceSystemPrompt; result.SystemPromptOptions == nil || forced == nil || *forced != *result.SystemPrompt {
+			t.Fatalf("systemPromptOptions = %+v, want forceSystemPrompt equal to the chained prompt", result.SystemPromptOptions)
 		}
 	})
 }
@@ -70,7 +73,7 @@ func upstreamBoundaryPreview(entries []extension.SessionBoundaryDraft) (extensio
 	for i, entry := range entries {
 		projected[i] = extension.ProjectedSessionEntry{SourceEntry: map[string]any{"type": "custom", "id": fmt.Sprintf("draft-%d", i), "parentId": nil, "timestamp": "", "customType": entry.Type}, Messages: []extension.AgentMessage{}}
 	}
-	return extension.BoundaryContextPreview{ContextEntries: projected, ContextMessages: []extension.AgentMessage{}, LLMMessages: []any{}, PendingMessages: []extension.AgentMessage{}, CanContinue: false}, nil
+	return extension.BoundaryContextPreview{ContextEntries: projected, ContextMessages: []extension.AgentMessage{}, LLMMessages: []ai.Message{}, PendingMessages: []extension.AgentMessage{}, CanContinue: false}, nil
 }
 
 func TestUpstreamRunnerBoundary(t *testing.T) {
@@ -161,6 +164,8 @@ func TestUpstreamRunnerBoundary(t *testing.T) {
 func upstreamToolResultEvent(id string) extension.CustomToolResultEvent {
 	return extension.CustomToolResultEvent{ToolName: "my_tool", ToolResultEventBase: extension.ToolResultEventBase{Type: "tool_result", ToolCallID: id, Input: map[string]any{}, Content: []any{map[string]any{"type": "text", "text": "base"}}, IsError: false}, Details: map[string]any{"initial": true}}
 }
+
+// Pi: packages/coding-agent/src/core/extensions/types.ts:1448 (ToolResultEventResult.isError).
 func TestUpstreamRunnerToolResult(t *testing.T) {
 	// .upstream/v0.87.1/packages/coding-agent/test/extensions-runner.test.ts:1034
 	t.Run("chains content modifications across handlers", func(t *testing.T) {
@@ -206,6 +211,7 @@ func TestUpstreamRunnerToolResult(t *testing.T) {
 	})
 }
 
+// Pi: packages/coding-agent/src/core/extensions/runner.ts:546 (Runner.bindCommandContext); packages/coding-agent/src/core/extensions/runner.ts:797 (Runner.getEntryRenderer); packages/coding-agent/src/core/extensions/types.ts:2204 (CommandActions.fork).
 func TestUpstreamRunnerRendererAndFork(t *testing.T) {
 	// .upstream/v0.87.1/packages/coding-agent/test/extensions-runner.test.ts:723
 	t.Run("gets message renderer by type", func(t *testing.T) {

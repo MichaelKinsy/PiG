@@ -1,0 +1,50 @@
+[
+ {
+  "ids": [
+   "pkg:coding-agent/.#SessionManager::property:getEntries"
+  ],
+  "targets": [
+   "internal/codingagent/session.go#Session.GetEntries"
+  ],
+  "production": [
+   "call:coding/cli/session_extension_actions.go#bindSessionReadActions"
+  ],
+  "evidence": [
+   "test:internal/codingagent/session_restore_upstream_test.go#TestSessionPreloadedEntriesUpstream",
+   "test:coding/session_compaction_e2e_upstream_test.go#TestAgentSessionCompactionE2EUpstream"
+  ],
+  "rationale": "SessionManager.getEntries is internal Session.GetEntries() []SessionEntry in append order."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#SessionManager::property:getLeafId"
+  ],
+  "targets": [
+   "internal/codingagent/session.go#Session.GetLeafID"
+  ],
+  "production": [
+   "call:coding/session.go#NewSession"
+  ],
+  "evidence": [
+   "test:internal/codingagent/session_labels_upstream_test.go#TestSessionLabelsUpstream",
+   "test:internal/codingagent/session_restore_upstream_test.go#TestSessionPreloadedEntriesUpstream"
+  ],
+  "rationale": "SessionManager.getLeafId is internal Session.GetLeafID() *string, nil for upstream null."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#SessionManager::property:appendCompaction"
+  ],
+  "targets": [
+   "internal/codingagent/session.go#Session.AppendCompaction"
+  ],
+  "production": [
+   "call:coding/session.go#Session.compact"
+  ],
+  "evidence": [
+   "test:coding/session_stats_upstream_test.go#TestUpstreamAgentSessionStatsContext",
+   "test:coding/session_auto_queue_upstream_test.go#TestAutoCompactionQueueUpstream"
+  ],
+  "rationale": "SessionManager.appendCompaction is internal Session.AppendCompaction(summary, firstKeptEntryID, tokensBefore, details, fromHook, usage) (id string, error): every upstream parameter is positional."
+ }
+]

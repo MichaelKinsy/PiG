@@ -60,7 +60,7 @@ func TestOnSettingAppliedRebuildsSkillAutocomplete(t *testing.T) {
 	sm := NewSettingsManager(dir, dir)
 	editor := tui.NewEditor()
 	mode := &InteractiveMode{
-		opts: InteractiveOptions{
+		opts: InteractiveModeOptions{
 			AgentDir:        dir,
 			CWD:             dir,
 			SettingsManager: sm,
@@ -94,7 +94,7 @@ func TestOnSettingAppliedRebuildsSkillAutocomplete(t *testing.T) {
 func TestOnSettingAppliedUpdatesAgentTransport(t *testing.T) {
 	provider := &settingEffectsProvider{}
 	model := &ai.Model{ID: "test", Provider: provider, Capabilities: ai.ModelCapabilities{ContextWindow: 8_000}}
-	agent := agent.NewAgent(agent.AgentOptions{Model: model})
+	agent := mustNewAgent(agent.AgentOptions{Model: model})
 	mode := &InteractiveMode{agent: agent}
 
 	mode.buildSlashContext(t.Context()).OnSettingApplied("transport", "websocket")
@@ -129,7 +129,7 @@ func TestOnSettingAppliedRebuildsCacheMissNotices(t *testing.T) {
 	}
 	handle := &recordingCompactHandle{inner: session}
 	mode := &InteractiveMode{
-		opts:          InteractiveOptions{SettingsManager: sm, SessionHandle: handle},
+		opts:          InteractiveModeOptions{SettingsManager: sm, SessionHandle: handle},
 		chatContainer: tui.NewContainer(),
 		tuiInst:       tui.NewWithOutput(io.Discard, 100, 30),
 	}
@@ -150,7 +150,7 @@ func TestOnSettingAppliedRebuildsCacheMissNotices(t *testing.T) {
 func TestOnSettingAppliedUpdatesEditorAndOutputLayout(t *testing.T) {
 	editor := tui.NewEditor()
 	mode := &InteractiveMode{
-		agent:         agent.NewAgent(agent.AgentOptions{}),
+		agent:         mustNewAgent(agent.AgentOptions{}),
 		editor:        editor,
 		chatContainer: tui.NewContainer(),
 		tuiInst:       tui.NewWithOutput(io.Discard, 100, 30),
@@ -180,11 +180,11 @@ func TestOnSettingAppliedUpdatesEditorAndOutputLayout(t *testing.T) {
 // (toggleThinkingVisibility), and persists the preference. Mirrors upstream
 // settings-selector.ts's hide-thinking callback (interactive-mode.ts:3340-3355).
 func TestOnSettingAppliedTogglesThinkingVisibility(t *testing.T) {
-	block := tui.NewAssistantMessageBlock(false)
+	block := tui.NewAssistantMessageComponent(nil, false, nil, "", nil, nil)
 	block.SetThinkingDelta("reasoning about the answer")
 	mode := &InteractiveMode{
 		tuiInst:         tui.NewWithOutput(io.Discard, 100, 30),
-		assistantBlocks: []*tui.AssistantMessageBlock{block},
+		assistantBlocks: []*tui.AssistantMessageComponent{block},
 	}
 	visible := strings.Join(block.Render(60), "\n")
 	if !strings.Contains(visible, "reasoning about the answer") {
@@ -222,5 +222,52 @@ func TestOnSettingAppliedClearsIdleStatusAfterDisablingClearOnShrink(t *testing.
 	mode.buildSlashContext(t.Context()).OnSettingApplied("clear-on-shrink", "false")
 	if !status.IsDirty() {
 		t.Fatal("idle status container was not invalidated after disabling clear-on-shrink")
+	}
+}
+
+// interactive-mode.ts:5078-5088 onOutputPadChange: every child of the chat and pending-message containers that has setOutputPad takes
+// the new padding in place, including the bash, summary and queued-message components, while the run is idle and the components keep
+// their state (nothing is rebuilt from the session).
+func TestOnSettingAppliedOutputPaddingReachesEveryChatAndPendingChild(t *testing.T) {
+	bash := tui.NewBashExecutionComponent("make", nil, false, 1)
+	bash.AppendOutput("live output\n")
+	compaction := tui.NewCompactionSummaryMessageComponent(tui.CompactionSummaryMessage{Summary: "s", TokensBefore: 10}, nil, 1)
+	pendingUser := tui.NewUserMessageComponent("queued", nil, 1, nil)
+	chat, pending := tui.NewContainer(), tui.NewContainer()
+	chat.Add(bash)
+	chat.Add(compaction)
+	pending.Add(pendingUser)
+	mode := &InteractiveMode{
+		agent:                    mustNewAgent(agent.AgentOptions{}),
+		editor:                   tui.NewEditor(),
+		chatContainer:            chat,
+		pendingMessagesContainer: pending,
+		tuiInst:                  tui.NewWithOutput(io.Discard, 100, 30),
+		outputPad:                1,
+	}
+	firstRowWith := func(c tui.Component, text string) string {
+		for _, line := range c.Render(40) {
+			if plain := stripANSITest(line); strings.Contains(plain, text) {
+				return plain
+			}
+		}
+		t.Fatalf("no row with %q", text)
+		return ""
+	}
+	if got := firstRowWith(bash, "live output"); !strings.HasPrefix(got, " live output") {
+		t.Fatalf("bash output before = %q", got)
+	}
+	mode.buildSlashContext(t.Context()).OnSettingApplied("output-padding", "0")
+	for _, check := range []struct {
+		name      string
+		component tui.Component
+		text      string
+	}{{"bash", bash, "live output"}, {"compaction", compaction, "Compacted from"}, {"pending user", pendingUser, "queued"}} {
+		if got := firstRowWith(check.component, check.text); !strings.HasPrefix(got, check.text) {
+			t.Errorf("%s row after output-padding 0 = %q, want no inset", check.name, got)
+		}
+	}
+	if chat.Children()[0] != tui.Component(bash) || bash.GetOutput() != "live output\n" {
+		t.Fatal("the chat was rebuilt instead of updated in place")
 	}
 }

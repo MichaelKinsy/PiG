@@ -15,7 +15,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"net/url"
 	"strings"
 	"time"
 
@@ -47,16 +46,12 @@ func parseOpenRouterAuthorizationInput(input string) string {
 	if v == "" {
 		return ""
 	}
-	// A full URL (has a scheme): pull the code query parameter. Go's url.Parse
-	// is lenient, so the scheme check emulates JS `new URL(value)` throwing on a
-	// bare string.
-	if u, err := url.Parse(v); err == nil && u.Scheme != "" {
-		return u.Query().Get("code")
+	// A full URL: pull the code query parameter. authorizationURLQuery reports where JS `new URL(value)` throws.
+	if query, ok := authorizationURLQuery(v); ok {
+		return query.Get("code")
 	}
 	if strings.Contains(v, "code=") {
-		if q, err := url.ParseQuery(v); err == nil {
-			return q.Get("code")
-		}
+		return authorizationQueryParams(v).Get("code")
 	}
 	return v
 }

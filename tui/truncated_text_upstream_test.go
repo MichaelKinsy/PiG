@@ -34,7 +34,7 @@ func TestUpstreamTruncatedText(t *testing.T) {
 	}
 	for _, tt := range cases {
 		t.Run(tt.name, func(t *testing.T) {
-			lines := NewPaddedTruncatedText(tt.text, tt.paddingX, tt.paddingY).Render(tt.width)
+			lines := NewTruncatedText(tt.text, tt.paddingX, tt.paddingY).Render(tt.width)
 			if len(lines) != 2*tt.paddingY+1 {
 				t.Fatalf("lines = %q, want %d rows", lines, 2*tt.paddingY+1)
 			}

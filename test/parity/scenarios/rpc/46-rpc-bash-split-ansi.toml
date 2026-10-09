@@ -1,0 +1,52 @@
+# Behavior family: rpc
+# Surface: RPC bash strips an escape sequence that arrives split across output chunks (Pi 1.1.0 #10504, bash-executor.ts
+# splitIncompleteAnsiSuffix). Each command writes the sequence in two writes separated by a process delay, so the runtime reads
+# two chunks: a colour reset cut inside its parameters ("\033[0" then "m"), a colour code cut right after ESC, and an OSC title
+# cut before its terminator (BEL arrives in the second write). Pi 1.0.4 left the "m", "[32m" and the title text in the output.
+# The final BashResult output is compared exactly; the streamed delta boundaries depend on chunking and are not asserted.
+
+name = "46-rpc-bash-split-ansi"
+description = "RPC bash output has no fragments of escape sequences that were split across chunks."
+covers = [
+  "packages/coding-agent/src/core/bash-executor.ts",
+  "packages/coding-agent/src/utils/ansi.ts",
+]
+tags = ["hermetic", "fast"]
+driver = "rpc-mode"
+
+[rpc]
+timeout_seconds = 20
+
+[[rpc.steps]]
+line = '{"id":"reset","type":"bash","command":"printf \"\\033[31mERROR\\033[0\"; sleep 0.3; printf \"m done\\n\""}'
+wait_contains = ['"id":"reset","type":"response","command":"bash"']
+wait_timeout_seconds = 10
+
+[[rpc.steps]]
+line = '{"id":"esc","type":"bash","command":"printf \"before\\033\"; sleep 0.3; printf \"[32mafter\\n\""}'
+wait_contains = ['"id":"esc","type":"response","command":"bash"']
+wait_timeout_seconds = 10
+
+[[rpc.steps]]
+line = '{"id":"osc","type":"bash","command":"printf \"a\\033]0;window \"; sleep 0.3; printf \"title\\007b\\n\""}'
+wait_contains = ['"id":"osc","type":"response","command":"bash"']
+wait_timeout_seconds = 10
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_HOME=testdata/pig-home"]
+pig_args = ["--model", "test-faux/faux-1", "--session-dir", "{{TEMP}}/sessions"]
+pi_extensions = ["../../testdata/test-faux-provider.ts"]
+pi_args = ["--model", "test-faux/faux-1", "--session-dir", "{{TEMP}}/sessions"]
+
+[assert]
+exit_code = 0
+both_contain = [
+  '"id":"reset","type":"response","command":"bash","success":true',
+  '"output":"ERROR done\n"',
+  '"output":"beforeafter\n"',
+  '"output":"ab\n"',
+]
+both_not_contain = [
+  '"success":false',
+]
+runs = 3

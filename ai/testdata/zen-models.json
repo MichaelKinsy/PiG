@@ -13,6 +13,10 @@
   },
   {
     "provider": "opencode",
+    "id": "claude-haiku-5-5"
+  },
+  {
+    "provider": "opencode",
     "id": "claude-opus-4-5"
   },
   {
@@ -117,6 +121,10 @@
   },
   {
     "provider": "opencode",
+    "id": "exo-free"
+  },
+  {
+    "provider": "opencode",
     "id": "fledge-alpha-free"
   },
   {
@@ -182,6 +190,10 @@
   {
     "provider": "opencode",
     "id": "minimax-m3"
+  },
+  {
+    "provider": "opencode",
+    "id": "mistral-large-4"
   },
   {
     "provider": "opencode",
@@ -321,6 +333,10 @@
   },
   {
     "provider": "opencode-go",
+    "id": "claude-haiku-5-5"
+  },
+  {
+    "provider": "opencode-go",
     "id": "minimax-m3"
   },
   {
@@ -409,7 +425,7 @@
   },
   {
     "provider": "opencode-go",
-    "id": "space-bunny-free"
+    "id": "space-bunny"
   },
   {
     "provider": "opencode-go",

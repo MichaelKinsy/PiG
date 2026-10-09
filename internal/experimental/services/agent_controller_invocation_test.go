@@ -1,5 +1,7 @@
 package services
 
+// pi: packages/coding-agent/src/experimental/services/agent-controller.ts
+
 import (
 	"context"
 	"encoding/json"
@@ -55,7 +57,7 @@ func newControllerAdmission(t *testing.T) (AgentController, *controllerAdmission
 		t.Fatal(err)
 	}
 	transport := &controllerAdmissionTransport{RemoteServiceTransport: chord.NewLoopbackTransport(provider)}
-	binding, err := chord.CreateRemoteServiceBinding(chord.RemoteServiceBindingOptions{Services: []string{AgentControllerID}, Transport: transport})
+	binding, err := chord.CreateRemoteServiceBinding(chord.RemoteServiceBindingOptions{Services: chord.ServiceIDs(AgentControllerID), Transport: transport})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -81,7 +83,7 @@ func waitControllerResult[T any](ctx context.Context, operation *chord.ServiceRe
 	return operation.Wait(ctx)
 }
 
-// upstream: packages/coding-agent/src/experimental/services/agent-controller.ts:34-55. Every Promise-bearing method keeps its wire name/argument list; the native begin/wait split is not a second published service.
+// upstream: packages/coding-agent/src/experimental/services/agent-controller.ts:38-55. Every Promise-bearing method keeps its wire name/argument list; the native begin/wait split is not a second published service.
 func TestAgentControllerInitiationPreservesWireMethodsAndValues(t *testing.T) {
 	t.Parallel()
 	controller, transport := newControllerAdmission(t)
@@ -259,7 +261,7 @@ func TestAgentControllerInitiationUsesSelectedFacetAndRetainedView(t *testing.T)
 		}
 		methods = append(methods, member.Name)
 	}
-	// The exact seven declarations in agent-controller.ts:34-55 are the denominator, not the concrete Go method set.
+	// The exact seven declarations in agent-controller.ts:38-55 are the denominator, not the concrete Go method set.
 	wantMethods := []string{"abort", "cancelQueued", "compact", "followUp", "prompt", "steer", "waitForPrompt"}
 	if !reflect.DeepEqual(methods, wantMethods) {
 		t.Fatalf("wire methods=%v, want %v", methods, wantMethods)
@@ -283,7 +285,7 @@ func TestAgentControllerInitiationUsesSelectedFacetAndRetainedView(t *testing.T)
 	if len(firstTransport.calls) != 1 || len(secondTransport.calls) != 1 {
 		t.Fatalf("admission bypassed replacement: %d/%d", len(firstTransport.calls), len(secondTransport.calls))
 	}
-	if err := host.Reload(t.Context(), []chord.Facet{provider(CreateAgentController(nil, nil))}); err != nil {
+	if err := host.Reload(t.Context(), []chord.Facet{provider(blockingController{})}); err != nil {
 		t.Fatal(err)
 	}
 	if op, err := begin(t.Context(), AgentPromptRequest{}); op != nil || err == nil || err.Error() != "Selected AgentController does not expose invocation admission" {
@@ -295,4 +297,27 @@ func TestAgentControllerInitiationUsesSelectedFacetAndRetainedView(t *testing.T)
 	if op, err := begin(t.Context(), AgentPromptRequest{}); op != nil || err == nil {
 		t.Fatalf("revoked view admitted operation: %v, %v", op, err)
 	}
+}
+
+// blockingController implements the controller contract with blocking methods only: it exposes no invocation admission.
+type blockingController struct{}
+
+func (blockingController) Prompt(context.Context, AgentPromptRequest) (AgentOperationResponse, error) {
+	return AgentOperationResponse{}, nil
+}
+func (blockingController) Steer(context.Context, AgentPromptRequest) (AgentQueueResponse, error) {
+	return AgentQueueResponse{}, nil
+}
+func (blockingController) FollowUp(context.Context, AgentPromptRequest) (AgentQueueResponse, error) {
+	return AgentQueueResponse{}, nil
+}
+func (blockingController) CancelQueued(context.Context, string) (AgentCancelQueuedResponse, error) {
+	return AgentCancelQueuedResponse{}, nil
+}
+func (blockingController) Abort(context.Context) error { return nil }
+func (blockingController) Compact(context.Context, AgentCompactionRequest) (AgentOperationResponse, error) {
+	return AgentOperationResponse{}, nil
+}
+func (blockingController) WaitForPrompt(context.Context, string) (AgentPromptResult, error) {
+	return AgentPromptResult{}, nil
 }

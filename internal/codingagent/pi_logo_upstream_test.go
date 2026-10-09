@@ -3,6 +3,7 @@ package codingagent
 import (
 	"context"
 	"fmt"
+	"github.com/MichaelKinsy/PiG/coding/extension/factoryload"
 	"io"
 	"os"
 	"path/filepath"
@@ -15,6 +16,7 @@ import (
 	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/coding/piglogin"
 	"github.com/MichaelKinsy/PiG/internal/coding/pigversion"
+	"github.com/MichaelKinsy/PiG/internal/configroot"
 	"github.com/MichaelKinsy/PiG/tui"
 	"github.com/MichaelKinsy/PiG/tui/widthx"
 )
@@ -33,7 +35,7 @@ func newHeaderMode(t *testing.T) *InteractiveMode {
 	km := &KeybindingsManager{definitions: appKeybindingDefinitions, ordered: appKeybindingOrder, platform: tui.HostKeybindingPlatform()}
 	km.rebuild()
 	m := &InteractiveMode{
-		opts:        InteractiveOptions{LoginVisible: true},
+		opts:        InteractiveModeOptions{LoginVisible: true},
 		keybindings: km,
 		extHeader:   newSpecialLinesComponent(nil),
 		tuiInst:     tui.NewWithOutput(io.Discard, 100, 40),
@@ -54,13 +56,13 @@ func pinHeaderTerminal(t *testing.T, mode tui.TerminalColorMode) {
 		supportsHalfBlockMark = previousHalfBlocks
 		// Rebuild the previous theme in its own color mode, which can differ from the capabilities' (the lazily created
 		// default theme is truecolor whatever the terminal reports), so later tests see the theme they would have seen.
-		tui.SetCapabilities(tui.TerminalCapabilities{TrueColor: previousTheme.ColorMode() == tui.TerminalColorModeTrueColor})
+		tui.SetCapabilities(tui.TerminalCapabilities{TrueColor: previousTheme.GetColorMode() == tui.TerminalColorModeTrueColor})
 		tui.SetThemeByName(previousTheme.Name)
 		tui.SetCapabilities(previousCaps)
 	})
 	tui.SetCapabilities(tui.TerminalCapabilities{TrueColor: mode == tui.TerminalColorModeTrueColor})
 	tui.SetTheme("dark")
-	if got := tui.ActiveTheme().ColorMode(); got != mode {
+	if got := tui.ActiveTheme().GetColorMode(); got != mode {
 		t.Fatalf("theme color mode = %s, want %s", got, mode)
 	}
 }
@@ -71,7 +73,7 @@ func TestPinHeaderTerminalRestoresTheThemeInItsMode(t *testing.T) {
 	pinHeaderTerminal(t, tui.TerminalColorModeTrueColor)
 	tui.SetCapabilities(tui.TerminalCapabilities{TrueColor: false})
 	t.Run("pinned", func(t *testing.T) { pinHeaderTerminal(t, tui.TerminalColorMode256) })
-	if got := tui.ActiveTheme().ColorMode(); got != tui.TerminalColorModeTrueColor {
+	if got := tui.ActiveTheme().GetColorMode(); got != tui.TerminalColorModeTrueColor {
 		t.Errorf("theme color mode after the pin = %s, want truecolor", got)
 	}
 	if tui.GetCapabilities().TrueColor {
@@ -194,7 +196,7 @@ func TestBuiltInHeaderOnboardingWithHeaderOnlyQuietStartupUpstream(t *testing.T)
 		{quietStartup: "header", want: "Press ctrl+o to show full startup help."},
 	} {
 		m := &InteractiveMode{
-			opts:        InteractiveOptions{LoginVisible: true},
+			opts:        InteractiveModeOptions{LoginVisible: true},
 			keybindings: km,
 			extHeader:   newSpecialLinesComponent(nil),
 			tuiInst:     tui.NewWithOutput(io.Discard, 100, 40),
@@ -425,7 +427,7 @@ func TestBuiltInHeaderShowsTheSelectedSprite(t *testing.T) {
 // /reload restores the built-in header (interactive_commands.go), which reads the saved selection again.
 func TestReloadRendersThePiGHeaderAgain(t *testing.T) {
 	m := newHeaderMode(t)
-	root := piglogin.ConfigHome()
+	root := configroot.Dir()
 	if err := piglogin.SaveVariant(root, "cloud"); err != nil {
 		t.Fatal(err)
 	}
@@ -439,7 +441,7 @@ func TestReloadRendersThePiGHeaderAgain(t *testing.T) {
 func TestAnotherExtensionStillReplacesTheHeader(t *testing.T) {
 	m := newHeaderMode(t)
 	u := &ExtUIContext{m: m}
-	u.SetHeader([]string{"a custom header"})
+	u.SetHeader(extension.FrameHeader([]string{"a custom header"}, 0))
 	raw, plain := headerLines(m, 100)
 	if len(plain) != 1 || plain[0] != "a custom header" {
 		t.Fatalf("header after setHeader = %q", plain)
@@ -569,7 +571,7 @@ func TestBuiltInHeaderUsesTheTextMarkInAppleTerminal(t *testing.T) {
 func TestSpritePickerEscapeIsNoErrorThroughTheInteractiveHost(t *testing.T) {
 	isolatePigHome(t)
 	m, _ := newExtensionDialogProbe(t)
-	ext, err := piglogin.Extension()
+	ext, err := factoryload.LoadExtensionFromFactory(piglogin.Extension, ".", extension.CreateEventBus(), extension.CreateExtensionRuntime(), "builtin:pig-login")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -581,7 +583,7 @@ func TestSpritePickerEscapeIsNoErrorThroughTheInteractiveHost(t *testing.T) {
 
 	picker := waitSpritePickerMounts(t, m, result)
 	const width = 100
-	head := piglogin.HeadLines(piglogin.Active(), tui.ActiveTheme().ColorMode())
+	head := piglogin.HeadLines(piglogin.Active(), tui.ActiveTheme().GetColorMode())
 	lines := picker.Render(width)
 	row := -1
 	for i, line := range lines {
@@ -607,7 +609,7 @@ func TestSpritePickerEscapeIsNoErrorThroughTheInteractiveHost(t *testing.T) {
 	if got := piglogin.Active(); got.ID != piglogin.DefaultID {
 		t.Fatalf("escape changed the sprite to %q", got.ID)
 	}
-	if focused := m.tuiInst.FocusedComponent(); focused != m.editor {
+	if focused := m.tuiInst.GetFocusedComponent(); focused != m.editor {
 		t.Fatalf("focus after the picker closed = %T, want the editor", focused)
 	}
 }
@@ -622,7 +624,7 @@ func waitSpritePickerMounts(t *testing.T, m *InteractiveMode, result <-chan erro
 	timer := time.NewTimer(2 * time.Second)
 	defer timer.Stop()
 	for {
-		if focused := m.tuiInst.FocusedComponent(); focused != nil && focused != m.editor {
+		if focused := m.tuiInst.GetFocusedComponent(); focused != nil && focused != m.editor {
 			// The picker's title is the one /sprite has always shown (coding/piglogin).
 			if strings.Contains(widthx.StripAnsi(strings.Join(focused.Render(100), "\n")), "Choose a PiG sprite") {
 				return focused
@@ -664,7 +666,7 @@ func TestSpriteSetRepaintsTheHeaderThroughTheInteractiveHost(t *testing.T) {
 	m.extHeader = newSpecialLinesComponent(func() { repaints++ })
 	m.restoreBuiltInHeader()
 	repaints = 0
-	ext, err := piglogin.Extension()
+	ext, err := factoryload.LoadExtensionFromFactory(piglogin.Extension, ".", extension.CreateEventBus(), extension.CreateExtensionRuntime(), "builtin:pig-login")
 	if err != nil {
 		t.Fatal(err)
 	}

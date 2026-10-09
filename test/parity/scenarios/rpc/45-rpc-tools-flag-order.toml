@@ -1,0 +1,62 @@
+# Behavior family: rpc
+#
+# Upstream evidence (Pi 1.0.4): main.ts:545-546 copies the --tools list into options.tools as given; sdk.ts:271-276
+# takes initialActiveToolNames from it in that order, and agent-session.ts:3552-3562 activates those names before the
+# registered tools the allowlist names, extension tools included; a Set keeps each name at its first position (3578).
+# The request's initial system message declares them in that order (toolsAdded), so
+# `-e tools-flag-order-tool.mjs --tools grep,ordered_tool,read` declares grep, ordered_tool, read.
+# 44-rpc-tools-caller-order covers built-in tools only. PiG's RPC startup listed the built-ins first and appended the
+# extension tools (rpcPrepare), declaring grep, read, ordered_tool. Probed against Pi 1.0.4 on 2026-10-08.
+#
+# Full JSON records are compared (canonical_json sorts object keys only, never arrays): the initial system message's
+# toolsAdded array, as get_messages reports it, must equal Pi's element for element. An explicit system prompt removes
+# the pig/pi naming difference.
+
+name = "45-rpc-tools-flag-order"
+description = "RPC --tools grep,ordered_tool,read declares the extension tool between the built-ins, in the --tools order"
+covers = [
+  "packages/coding-agent/src/main.ts",
+  "packages/coding-agent/src/core/sdk.ts",
+  "packages/coding-agent/src/core/agent-session.ts",
+]
+tags = ["hermetic", "fast"]
+driver = "rpc-mode"
+
+[rpc]
+canonical_json = true
+timeout_seconds = 20
+
+[[rpc.steps]]
+line = '{"id":"p1","type":"prompt","message":"hi"}'
+wait_contains = ['"type":"agent_settled"']
+wait_timeout_seconds = 10
+[[rpc.steps]]
+line = '{"id":"messages","type":"get_messages"}'
+wait_contains = ['"command":"get_messages","success":true']
+wait_timeout_seconds = 10
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_HOME=testdata/pig-home"]
+pig_extensions = ["../../testdata/tools-flag-order-tool.mjs"]
+pig_args = ["--offline", "--model", "test-faux/faux-1", "--tools", "grep,ordered_tool,read", "--system-prompt", "RPC tool order probe.", "--no-context-files", "--no-skills", "--session-dir", "{{TEMP}}/sessions"]
+pi_extensions = ["../../testdata/tools-flag-order-tool.mjs", "../../testdata/test-faux-provider.ts"]
+pi_args = ["--offline", "--model", "test-faux/faux-1", "--tools", "grep,ordered_tool,read", "--system-prompt", "RPC tool order probe.", "--no-context-files", "--no-skills", "--session-dir", "{{TEMP}}/sessions"]
+
+[assert]
+exit_code = 0
+json_output_equal = true
+stderr_equal = true
+runs = 3
+both_contain = ['{"description":"Extension tool placed by the --tools order.","name":"ordered_tool","parameters":{"properties":{},"type":"object"}},{"constrainedSampling":{"strict":"prefer","type":"json_schema"},"description":"Read the contents']
+[[assert.json_aliases]]
+paths = ["/**/sections/cwd"]
+kind = "path"
+reason = "D2: alias only the exact isolated cwd embedded in the system section; retain its tags, whitespace and suffix."
+[[assert.json_aliases]]
+paths = ["/**/timestamp"]
+kind = "timestamp"
+reason = "Independent message wall clocks vary; retain field presence, timestamp type and valid syntax."
+[[assert.json_aliases]]
+paths = ["/**/durationMs"]
+kind = "duration"
+reason = "Pi 1.1.0 measures each response and tool execution (#10549) with a monotonic clock; the value varies per run. Retain presence, type and position."

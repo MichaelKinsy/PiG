@@ -1,5 +1,6 @@
 package experimental
 
+
 import (
 	"context"
 	"encoding/json"
@@ -11,6 +12,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/MichaelKinsy/PiG/internal/chord"
 	"github.com/MichaelKinsy/PiG/internal/experimental/client"
@@ -219,8 +221,8 @@ func TestExperimentalDurableServerCompositionA(t *testing.T) {
 				if _, err := os.Lstat(filepath.Join(directory, serverId+".sock")); err != nil {
 					t.Fatalf("public socket immediately after both clients leave: %v", err)
 				}
-				waitExperimentalPathRemoved(t, filepath.Join(directory, serverId+".sock"))
-				waitExperimentalPathRemoved(t, filepath.Join(directory, "control-"+serverId+".sock"))
+				waitExperimentalPathRemoved(t, filepath.Join(directory, serverId+".sock"), 5*time.Second)
+				waitExperimentalPathRemoved(t, filepath.Join(directory, "control-"+serverId+".sock"), 5*time.Second)
 			},
 		},
 		// upstream: packages/coding-agent/test/experimental-remote-runtime.test.ts:196.
@@ -282,7 +284,7 @@ func TestExperimentalDurableServerCompositionA(t *testing.T) {
 				if err := first.Dispose(); err != nil {
 					t.Fatal(err)
 				}
-				waitExperimentalPathRemoved(t, filepath.Join(directory, serverId+".sock"))
+				waitExperimentalPathRemoved(t, filepath.Join(directory, serverId+".sock"), 5*time.Second)
 				second, err := OpenClientRuntime(t.Context(), ClientCommand{Command: "client", Provider: new("anthropic"), Model: new("claude-sonnet-4-5")}, OpenClientRuntimeOptions{})
 				if err != nil {
 					t.Fatal(err)
@@ -328,8 +330,8 @@ func TestExperimentalDurableServerCompositionA(t *testing.T) {
 				if !reflect.DeepEqual(result, want) || result.Kind() != "attached" {
 					t.Fatalf("client result = %#v, want %#v", result, want)
 				}
-				waitExperimentalPathRemoved(t, filepath.Join(directory, serverId+".sock"))
-				waitExperimentalPathRemoved(t, filepath.Join(directory, "control-"+serverId+".sock"))
+				waitExperimentalPathRemoved(t, filepath.Join(directory, serverId+".sock"), 5*time.Second)
+				waitExperimentalPathRemoved(t, filepath.Join(directory, "control-"+serverId+".sock"), 5*time.Second)
 			},
 		},
 		// upstream: packages/coding-agent/test/experimental-remote-runtime.test.ts:250.
@@ -380,7 +382,7 @@ func TestExperimentalDurableServerCompositionA(t *testing.T) {
 				if err := runtimes[0].Close(); err != nil {
 					t.Fatal(err)
 				}
-				waitExperimentalPathRemoved(t, runtimes[0].SocketPath)
+				waitExperimentalPathRemoved(t, runtimes[0].SocketPath, experimentalPollTimeout)
 				result, err = RunClient(t.Context(), ClientCommand{Command: "client"}, RunClientOptions{Directory: &directory})
 				if err != nil {
 					t.Fatal(err)

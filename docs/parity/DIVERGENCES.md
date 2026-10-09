@@ -30,7 +30,7 @@ Every active divergence must have:
 
 - D54 — Fenced-code wrapping. Retired after re-probing Pi: `Markdown.render` already wraps every non-image rendered row, including code rows (`markdown.ts` at 0.99.1 still passes each non-image line through `wrapTextWithAnsi`; the only change since 0.87.1 is a token cache). PiG now uses that same final content-width pass and its continuation breakpoints. The ID remains reserved. Evidence: `tui/markdown_upstream_test.go`, `tui/markdown_codeblock_wrap_test.go`, and `test/parity/scenarios/tui-components/16-markdown-user-components.toml`.
 
-## Active divergences (39)
+## Active divergences (42)
 
 D78, D82 and D83 record owner-approved known gaps for 0.3.x (decision 2026-09-28). Approval records a difference; it does not prove parity, waive an unrelated defect, or turn a failing comparison into a pass. Same-process object behavior must remain Pi-exact. See `docs/findings/0.3.0-known-gaps.md` for the integration boundary and retained failures.
 
@@ -51,7 +51,7 @@ Pi state.
 
 Remove when: never.
 
-Call-site markers: `cmd/pig/guard.go`, `cmd/pig/main.go`, `internal/codingagent/paths.go`, `internal/codingagent/startup_header.go`, `internal/codingagent/ext_ui_context.go`, `coding/piglogin/doc.go`, `coding/piglogin/registry.go`, `coding/extension/host/subprocess/ui_bridge.go`, `coding/extension/builtin/builtin.go`, `cmd/pig/project_trust.go`, `cmd/pig/extension_set.go`, and `internal/codingagent/project_trust_warning.go`, `internal/evals/harness.go`.
+Call-site markers: `coding/cli/guard.go`, `coding/cli/main.go`, `internal/codingagent/paths.go`, `internal/codingagent/startup_header.go`, `internal/codingagent/ext_ui_context.go`, `coding/piglogin/doc.go`, `coding/piglogin/registry.go`, `coding/extension/host/subprocess/ui_bridge.go`, `coding/extension/builtin/builtin.go`, `coding/cli/project_trust.go`, `coding/cli/extension_set.go`, and `internal/codingagent/project_trust_warning.go`, `internal/evals/harness.go`.
 
 Every message that tells the user to run a command names `pig`, never `pi`: the replaced built-in extension warning says `pig config` where Pi's resource-loader.ts says `pi config`, and the startup hint says `pig -ne`. `TestProductionStringsNeverInstructAPiCommand` rejects a production string literal that tells the user to run `pi`.
 
@@ -67,7 +67,7 @@ The built-in header is the one `setHeader(undefined)` and `/reload` restore, so 
 
 An extension or Piglet adds sprites with `ctx.ui.registerSprite` (wire call `ui.registerSprite`; Go `RegisterSprite`, Rust `register_sprite`, Python `register_sprite`, Node and TypeScript `registerSprite`). A `SpriteDefinition` has a lowercase slug `id` of at most 32 characters, a one-line `name` and `tagline`, a 16-by-14 `mascot` of palette symbols with `.` transparent, which the header draws as the head and the preview beside the wordmark, and a `palette` of `#RRGGBB` colors; unknown fields fail. The host validates the definition (`invalid_sprite`), rejects a built-in id or another extension's id (`ui_error`), and replaces the sprite when the same extension registers the id again. Registered sprites follow the built-in ones in `/sprite list` and the picker and are saved like them. The host replays them to each new UI and drops them when their extension goes away. While the saved sprite is not registered, the header draws `pig-default` and the saved choice stays. Pi has no sprites, so this is part of the same identity exception, approved with it (owner, 2026-10-01).
 
-Locked by: `test/parity/scenarios/startup/00-startup-banner.toml` (the head's lines with the version, the first hints and the `Press` line), `02-startup-compact-help.toml`, `03-startup-expanded-help.toml`, `04-startup-verbose-collapse.toml` and `14-startup-quiet-header.toml` (every hint byte for byte with Pi, with the head's 16 cells removed), `13-startup-narrow-mark-wrapping.toml` (26 columns, the text mark, byte-equal with Pi from the first hint on), `coding/piglogin` (the head and art goldens, the text mark, the registry, `/sprite list`, `set`, `preview`, the picker's rows, right-side pig, cursor follow, previewless create row and plain-selector fallback), `internal/codingagent/pi_logo_upstream_test.go` (the head against the goldens, the layout, the head threshold, the text mark in narrow, 256-color and Apple terminals, replacement by `setHeader` and by a Piglet's `setLogin`, `/reload`, the picker's pig and its Escape through the interactive host), `coding/extension/host/subprocess/ui_bridge_sprite_test.go`, the `sprite-probe` row of `test/extension-conformance`, `cmd/pig/extension_sprite_pty_test.go` (a Go, Python and Rust extension's sprite through list, set, preview and restarts with and without the extension, and a click on the head in the default fullscreen mode, in the real binary),
+Locked by: `test/parity/scenarios/startup/00-startup-banner.toml` (the head's lines with the version, the first hints and the `Press` line), `02-startup-compact-help.toml`, `03-startup-expanded-help.toml`, `04-startup-verbose-collapse.toml` and `14-startup-quiet-header.toml` (every hint byte for byte with Pi, with the head's 16 cells removed), `13-startup-narrow-mark-wrapping.toml` (26 columns, the text mark, byte-equal with Pi from the first hint on), `coding/piglogin` (the head and art goldens, the text mark, the registry, `/sprite list`, `set`, `preview`, the picker's rows, right-side pig, cursor follow, previewless create row and plain-selector fallback), `internal/codingagent/pi_logo_upstream_test.go` (the head against the goldens, the layout, the head threshold, the text mark in narrow, 256-color and Apple terminals, replacement by `setHeader` and by a Piglet's `setLogin`, `/reload`, the picker's pig and its Escape through the interactive host), `coding/extension/host/subprocess/ui_bridge_sprite_test.go`, the `sprite-probe` row of `test/extension-conformance`, `coding/cli/extension_sprite_pty_test.go` (a Go, Python and Rust extension's sprite through list, set, preview and restarts with and without the extension, and a click on the head in the default fullscreen mode, in the real binary),
 `tui/terminal_test.go` (`TestBuildTerminalTitle_NoName`), and the command
 identity tests in `cmd/pig`.
 SCRUTINIZED:approved
@@ -141,7 +141,7 @@ Call-site markers:
 - `internal/coding/pigidentity/pigidentity.go`: the values and their single source, `identity.json`.
 - `coding/model.go`: the OpenRouter/NVIDIA/Cloudflare branch and the OpenCode session pair in `mergeProviderAttributionHeaders`.
 - `ai/openai_responses.go`, `ai/openai_codex_responses.go`, `ai/openai_codex_websocket.go`, `ai/oauth_openai_codex.go`, `ai/oauth_xai.go`: the Codex originator and the xAI referrer. `ai/user_agent.go`: the product name in D65's user agent.
-- `cmd/pig/setup_cli.go`: `AI_AGENT`.
+- `coding/cli/setup_cli.go`: `AI_AGENT`.
 - `coding/extension/host/subprocess/terminal_capabilities_env.go`: `PIG_PRODUCT_VERSION` for the Node runtime.
 - `automation/gen/pi-identity-patches.mjs` and `coding/extension/host/subprocess/runtime-node/shims/pig-identity.mjs`: the Node runtime patches and the user-agent builder they call.
 - `internal/codingagent/settings.go`: `IsInstallTelemetryEnabled`, `isTruthyTelemetryEnvFlag`.
@@ -197,7 +197,7 @@ Evidence: Pi's invalidation and access guards are `packages/coding-agent/src/cor
 Why deferred, not ported: (Part 1) the `invalidate` notification exists, and the Node runtime applies it through Pi's own extension runtime guards. The Go, Rust and Python getters return plain values without an error, so throwing from them needs an SDK interface change or a panic, and the fire-and-forget methods return nothing to carry the error; that needs an approved spec. (Part 2) a bare `coding.Session` does not own a factory that can build a replacement Session, runner and host, so an in-place replacement has nothing to invalidate without wedging the runner it keeps. The supported way to get Pi's behavior for Part 2 is `coding.CreateAgentSessionRuntime`.
 
 Call site:
-- `cmd/pig/cli_session_factory.go`: the factory's `Dispose` invalidates the replaced Session's extension host (Part 1).
+- `coding/cli/cli_session_factory.go`: the factory's `Dispose` invalidates the replaced Session's extension host (Part 1).
 - `coding/session_extension_replacement.go`: the extension-driven replacement of a bare Session (Part 2).
 
 Parity allowance: no paired scenario drives either part. Part 1 needs an extension that uses a captured `ctx` after a replacement, which no parity fixture does; Part 2 is a library path no Stock PiG mode reaches. The Stock modes are covered by the paired session-replacement scenarios and the tests named above.
@@ -281,7 +281,9 @@ proves exactly one owner: writable standalone, package-manager, immutable
 Piglet Binary, OCI/Piglet Image, or
 read-only/Windows standalone/unknown: and rejects ambiguous ownership. Once a tier
 starts, its failure surfaces from that tier and never falls through to another.
-The package-manager tier invokes the proven owner's exact `install -g` command. An unconfigured npm command retains the prefix from its proven `lib/node_modules` root. A logical pnpm launcher supplies ownership evidence only when it resolves to the running native executable. Both the owning package directory and its parent must be writable. `SelfUpdateProvenance.GetSelfUpdateCommand` carries this evidence into the signed-release caller; it does not reclassify ownership after the operation starts. The original16 `config.test.ts` cases are covered by `internal/codingagent/config_upstream_test.go`, with caller evidence in `cmd/pig/self_update_prefix_upstream_test.go` and byte-equal command-plan comparison in `cli-utils/16-native-self-update-command-ownership`.
+The package-manager tier invokes the proven owner's exact `install -g` command. An unconfigured npm command retains the prefix from its proven `lib/node_modules` root. A logical pnpm launcher supplies ownership evidence only when it resolves to the running native executable. Both the owning package directory and its parent must be writable. `SelfUpdateProvenance.GetSelfUpdateCommand` carries this evidence into the signed-release caller; it does not reclassify ownership after the operation starts. The original16 `config.test.ts` cases are covered by `internal/codingagent/config_upstream_test.go`, with caller evidence in `coding/cli/self_update_prefix_upstream_test.go` and byte-equal command-plan comparison in `cli-utils/16-native-self-update-command-ownership`.
+
+Pi 1.1.0 prunes managed releases after `pi update` and keeps the new release and the one that ran the update (`package-manager-cli.ts` `pruneManagedReleases`, #10392). A standalone pig has no release directory: a replacement leaves only the new executable, with the rollback link and the lock sidecar removed (`TestSelfReplaceAtWithCommitKeepsOnlyTheNewExecutable`).
 
 Immutable-binary and container tiers emit exact pull/rebuild/redeploy
 remediation rather than in-place drift; read-only/Windows standalone/unknown
@@ -366,12 +368,13 @@ Call-site markers:
   remediation, no-fallthrough `ApplySelfUpdateTier`.
 - `internal/codingagent/paths.go`: `GetSelfUpdateUnavailableInstruction`
   delegates to the standalone-binary fallback.
-- `cmd/pig/self_update.go`: `pig update` resolves one tier and applies it.
-- `cmd/pig/package_commands.go`: update dispatch (`runUpdateCommand`): bare
+- `coding/cli/self_update.go`: `pig update` resolves one tier and applies it.
+- `coding/cli/package_commands.go`: update dispatch (`runUpdateCommand`): bare
   self-update, `--all`, per-package.
-- `cmd/pig/main.go`: `PigletBinaryVersion` bake, `PigletBinaryRelease`
+- `coding/cli/main.go`: `PigletBinaryVersion` bake, `PigletBinaryRelease`
   publication, startup `BinaryUpdateChecker`.
 - `internal/codingagent/interactive.go`: startup update-available banner.
+- `internal/codingagent/interactive_chat.go`: `showNewVersionNotification` reads a bare-URL release note as the changelog link.
 Locked by: `internal/codingagent/selfupdate_test.go`
 (`TestCompareVersions`, `TestFetchUpdateManifest`, `TestCheckForBinaryUpdate`,
 `TestSelfReplaceAtVerifiesChecksumAndReplaces`,
@@ -397,10 +400,10 @@ Locked by: `internal/codingagent/selfupdate_test.go`
 `TestResolveSelfUpdateTierOnWindowsFollowsInstallMethod`),
 `internal/codingagent/windows_self_update_test.go`
 (`TestQuarantineNativeDependenciesMovesLoadedImagesAndCopiesThemBack`),
-`cmd/pig/self_update_windows_test.go`
+`coding/cli/self_update_windows_test.go`
 (`TestSelfUpdateOnWindowsRefusesReceiptedStandalone`,
 `TestWindowsNpmSelfUpdateReplacesTheRunningInstallation`),
-`cmd/pig/self_update_test.go`
+`coding/cli/self_update_test.go`
 (`TestAC1UpdateRoutingMatchesPi`, `TestAC3StandaloneUpdateVerificationAndAtomicity`,
 `TestAC3PrivateCATransportUpdatesWithoutTLSOverride`,
 `TestAC11ExactReleasePlanUsesSignedReplacementPackage`,
@@ -408,7 +411,7 @@ Locked by: `internal/codingagent/selfupdate_test.go`
 `TestAC5ImmutableBinaryPathRefusesMutation`, `TestAC5ContainerPathRefusesMutation`,
 `TestAC6CheckAndFallbackBehavior_*`, `TestAC7NoFallbackAfterStandaloneStarts`,
 `TestAC71SelfUpdateSelectsOneProvenTier`),
-`cmd/pig/package_commands_test.go`
+`coding/cli/package_commands_test.go`
 (`TestGetSelfUpdateUnavailableInstruction_PointsAtStandaloneFallback`,
 `TestRunPackageCommand_SelfUpdateTargetWithoutSourceShowsFallback`),
 `coding/pigletbuild/native_build_test.go`
@@ -418,7 +421,7 @@ SCRUTINIZED:approved
 
 ## D44 Positive image capability for Herdr intermediaries
 
-What: when `HERDR_ENV=1`, Pig ignores inherited outer-terminal image hints unless Herdr explicitly sets `HERDR_KITTY_GRAPHICS=1`. Without that positive signal, image components render their compact textual fallback and reserve no graphics rows. Direct Ghostty/Kitty/WezTerm/iTerm sessions retain upstream capability detection. An intervening tmux or screen session still disables automatic image detection, regardless of Herdr's outer graphics hint. Explicit Pi image-protocol and settings overrides keep their upstream precedence.
+What: when `HERDR_ENV=1`, Pig ignores inherited outer-terminal image hints unless Herdr explicitly sets `HERDR_KITTY_GRAPHICS=1`. Without that positive signal, image components render their compact textual fallback and reserve no graphics rows. `TERM_PROGRAM=herdr` follows upstream's Herdr branch (#10573): OSC 8 hyperlinks on, images off, unless `HERDR_ENV=1` and `HERDR_KITTY_GRAPHICS=1` advertise graphics. Direct Ghostty/Kitty/WezTerm/iTerm sessions retain upstream capability detection. An intervening tmux or screen session still disables automatic image detection, regardless of Herdr's outer graphics hint. Explicit Pi image-protocol and settings overrides keep their upstream precedence.
 
 Why: upstream and Pig normally infer image support from variables such as
 `TERM_PROGRAM=ghostty`. Herdr panes inherit those variables, but Herdr is the
@@ -718,43 +721,35 @@ renderer retention, cancellation ordering, writer failure, and packed-member
 versus packed-process failure. `coding/extension/host/subprocess/crash_once_test.go` covers both detector orders, replacement, real crashing commands in packed/isolated mode, and ordinary errors. `isolated_log_test.go` covers normal runs, reload, cancellation and retained failure logs. `internal/codingagent/interactive_command_error_test.go` proves command and shortcut diagnostic ownership through the interactive dispatch path; `22-command-error-once` compares ordinary command rejection and recovery against Pi.
 Ratification: explicitly approved by the user for section SHA-256 `a4109be02ff4f48b03c168073e2288b032971cff63982741e7582b68464bca81`.
 SCRUTINIZED:approved
-## D57 Installing an extension directory as a package is refused
+## D57 Installing an npm or Git extension root as a package is refused
 
-What: `pig install <dir>` fails when the directory satisfies one complete
-conventional factory or standalone extension contract and contributes no
-Package resources. The source is not recorded. Upstream records it and reports
-success, but Package discovery would load nothing. A directory with only a
-language or build marker still installs as an empty Package, matching Pi.
+What: `pig install npm:<name>` or `pig install git:<url>` fails when the installed root satisfies one complete conventional factory or standalone extension contract and contributes no Package resources. The source is not recorded. Upstream records it and reports success, but its `collectPackageResources` loads nothing from an npm or Git root without Package resources (`package-manager.ts:1317-1340`). A local directory is never refused: Pi's `resolveLocalExtensionSource` loads a local directory that declares no filter, `pi` manifest or conventional resource directory as one extension (`package-manager.ts:1377-1384`), and PiG does the same. A root with only a language or build marker still installs as an empty Package, matching Pi.
 
-Why: an extension root and a Package root have different ownership. A Package
-contributes only exact members under its `extensions` inventory. Promoting an
-arbitrary Package root because it contains source would make ordinary npm,
-Cargo, Python, or Go packages executable extensions. The refusal names direct
-`-e`, the canonical agent extension directory, and Package `extensions/` as the
-working choices.
+Why: an npm or Git root and a Package root have different ownership. A Package contributes only exact members under its `extensions` inventory. Promoting an arbitrary npm or Git root because it contains source would make ordinary npm, Cargo, Python, or Go packages executable extensions. The refusal names direct `-e`, the canonical agent extension directory, and Package `extensions/` as the working choices.
 
-Scope: the source resolver proves Go, Rust, and Python factories or exact standalones. Missing standard factories, ambiguous languages or roots, and incomplete source do not trigger this refusal because they do not prove an extension contract. Node factory resolution selects only an entrypoint and defers export validation to the runtime. It does not prove an extension contract. Node Packages, including ordinary npm libraries with `index.js`, therefore install without importing their code or requiring Pi resources, matching Pi's `package-manager.ts:1005-1031`.
+Scope: only npm and Git sources. The source resolver proves Go, Rust, and Python factories or exact standalones. Missing standard factories, ambiguous languages or roots, and incomplete source do not trigger this refusal because they do not prove an extension contract. Node factory resolution selects only an entrypoint and defers export validation to the runtime. It does not prove an extension contract. Node Packages, including ordinary npm libraries with `index.js`, therefore install without importing their code or requiring Pi resources, matching Pi's `package-manager.ts:1005-1031`.
 
-Remove when: upstream reports unloadable extension-root installs itself, or
-Package discovery gains an equivalent explicit distinction.
+Remove when: upstream reports unloadable npm or Git extension-root installs itself, or Package discovery gains an equivalent explicit distinction.
 
 Call-site markers:
-- `cmd/pig/package_commands.go`: rejects a proven extension root before an empty Package install can be recorded.
+- `internal/packagemanager/package_manager.go` (`VerifyContributesResources`): rejects a proven npm or Git extension root before an empty Package install can be recorded.
 
-Locked by: `cmd/pig/package_install_empty_test.go` -
-`TestInstallRejectsAnExtensionDirectoryAsAPackage`,
+Locked by: `coding/cli/package_install_empty_test.go` -
+`TestInstallRejectsAnExtensionDirectoryAsAPackage` (npm and Git),
+`TestInstallRecordsALocalExtensionDirectoryGivenRelativeToTheWorkingDirectory` (a local directory installs and loads as itself),
 `TestInstallDoesNotRefuseDirectoriesThatMerelyLookLikeCode`,
 `TestInstallAcceptsAPackageUsingConventionDirectories`,
 `TestPackageInstallPlainNpmPersistsWithoutLoadingCode`, and
 `TestEveryPackageResourceKindCountsAsAContribution`.
-Ratification: explicitly approved by the user for section SHA-256 `4e06f3d7200cce8f6aa65e6074a3632923f7324ac170bd4e93ae38165c31ca5d`.
+Ratification: narrowed to npm and Git sources by the lead's answer of 2026-10-09 to QUESTION robust-ext (local directories follow `package-manager.ts:1377-1384`); section SHA-256 `0b200c8930f69781d9a0733aa0529e706ee11074999c10096ba606aa026fb073` (the text above this line). Originally approved by the user for section SHA-256 `4e06f3d7200cce8f6aa65e6074a3632923f7324ac170bd4e93ae38165c31ca5d`.
 SCRUTINIZED:approved
+
 ## D61 Session replacement keeps startup-project Services and Resources
 
 What: upstream `AgentSessionRuntime.switchSession()` opens the destination
 Session, then calls `createRuntime()` with the destination Session CWD. That
 constructs the incoming Session's settings, resource loader, system prompt, and
-built-in tools against the destination project. Stock PiG's four modes now create every replacement Session through `coding.CreateAgentSessionRuntime`'s factory, which rebuilds Services, settings, Resources, system prompt, built-in tools and the extension host for the destination cwd (`cmd/pig/cli_session_factory.go`; RPC `switch_session` to another project is proven by `cmd/pig/session_replacement_modes_test.go`). That path matches upstream and this record does not cover it.
+built-in tools against the destination project. Stock PiG's four modes now create every replacement Session through `coding.CreateAgentSessionRuntime`'s factory, which rebuilds Services, settings, Resources, system prompt, built-in tools and the extension host for the destination cwd (`coding/cli/cli_session_factory.go`; RPC `switch_session` to another project is proven by `coding/cli/session_replacement_modes_test.go`). That path matches upstream and this record does not cover it.
 
 The divergence that remains is for library callers that replace a bare `coding.Session` in place (`Session.NewSession`, `SwitchSession`, `CloneInPlace`, `ForkToNewSession`, `ForkToNewSessionWithText`, the headless `Session.DispatchSlash` `/fork` path, `ImportFromJsonl` and the default `Session.ExtensionCommandActions` replacement actions). `coding.Session.ReplaceInner` swaps the Session history, identity, model, thinking level and persisted CWD inside one runtime. It does not reconstruct `coding.Services`, the resolved Resource set, or built-in tool instances.
 
@@ -798,9 +793,9 @@ Why: one string tells a user both which PiG they run and which Pi it ports. The 
 Observable effect: a script that runs `pig --version` and expects Pi's bare version sees `0.3.0+0.99.1`. Semver precedence ignores build metadata, so the composite sorts as `0.3.0`; self-update comparisons, release tags, and the Piglet compatibility check still use `coding.PigVersion` itself.
 
 Call sites:
-- `cmd/pig/main.go`: `cliVersionString`.
+- `coding/cli/main.go`: `cliVersionString`.
 
-Locked by: `cmd/pig/main_test.go` `TestCLIVersionStringIsCompositeVersion`; the parity scenario `test/parity/scenarios/startup/01-version-flag.toml` asserts both outputs in its `[diverge]` block.
+Locked by: `coding/cli/main_test.go` `TestCLIVersionStringIsCompositeVersion`; the parity scenario `test/parity/scenarios/startup/01-version-flag.toml` asserts both outputs in its `[diverge]` block.
 
 Remove when: never, unless the owner returns `--version` to Pi's bare version.
 
@@ -829,11 +824,11 @@ Call sites:
 - `internal/codingagent/install_telemetry.go`: `defaultInstallTelemetryURL`, `installTelemetryURL`, and `sendInstallTelemetry`.
 - `internal/codingagent/remote_catalog_provider.go`: `DefaultCatalogBaseURL` and `builtinModelDataGeneratedAt`.
 - `internal/codingagent/interactive.go`: the startup changelog/install-telemetry block in `Run`.
-- `automation/gen/gen-help.sh`: drops `PI_SHARE_VIEWER_URL` from the rendered `cmd/pig/help_upstream.txt`.
+- `automation/gen/gen-help.sh`: drops `PI_SHARE_VIEWER_URL` from the rendered `coding/cli/help_upstream.txt`.
 - `internal/experimental/server_runtime.go`: Unix-only `StartServer` composition.
 - `internal/experimental/client_runtime.go`: `OpenClientRuntime` Unix-only route selection.
 - `internal/experimental/command_parse.go`: `connectOption` and `parseTransportAddress`.
-- `cmd/pig/main_experimental.go`: `runServerCommand` without relay status.
+- `coding/cli/experimental_entry.go`: `runServerCommand` without relay status.
 
 Locked by: `internal/codingagent` `TestShareSessionUploadsJSONLWithPrivacyNotice`, `TestShareSessionKeepsConcurrentExportsIsolated`, `TestUploadShareArtifactHonorsCancellationAndCanonicalOrigin`, `TestShareLoaderEscapeCancelsUpload`, `TestSharePrivacyNoticeRemainsVisibleAfterResult`, `TestShareGatewayURLDefaultAndOverride`, and `TestShareBuiltinDescribesUnlistedExpiry`; `cmd/pig` `TestHelpOmitsUnusedShareViewerURL`; the private-platform patch's `worker/test/share.test.ts` covers route shape, R2 limits, expiry, escaping, and hashed rate limiting. `TestReportInstallTelemetry_SendsOnlyVersionToConfiguredEndpoint`, `TestReportInstallTelemetry_DefaultURLIsPiInGoDevNotPiDev`, `TestReportInstallTelemetry_SettingDisabledSkipsRequest`, `TestReportInstallTelemetry_EnvOverrideDisablesEvenWhenSettingIsOn`, `TestReportInstallTelemetry_PIOfflineSkipsEvenWhenTelemetryIsOn`, `TestReportInstallTelemetry_NeverContactsPiDotDev`, `TestRecordChangelogVersionAndMaybeReportInstall_FreshInstallPingsAndRecordsNoBanner`, `TestRecordChangelogVersionAndMaybeReportInstall_UpdateWithNewEntriesPingsAndShowsBanner`, `TestRecordChangelogVersionAndMaybeReportInstall_SameVersionNeverPings`, and `TestRecordChangelogVersionAndMaybeReportInstall_VersionBumpWithNoNewEntriesNeverPings` lock the install-telemetry ping. `internal/experimental` `TestExperimentalRadiusSelectionIsClosed`, `TestExperimentalClientRejectsNonUnixBeforeDiscovery` and the D64 row of `TestServerSelectedPresentationFacetsUpstream` lock the experimental Unix-only boundary.
 
@@ -847,11 +842,11 @@ What: upstream `getPiUserAgent()` has two package-local forms. The AI helper (`p
 
 Why: PiG is not Pi; providers, diagnostics, and their logs should distinguish PiG traffic and artifacts from Pi's, and identify both the PiG release and the Pi release it ports. The owner chose this shape on 2026-09-23 (delivery/OWNER-DECISIONS.md Q4).
 
-Observable effect: every default provider `User-Agent` (Anthropic Messages, OpenAI Completions, OpenAI/Azure/Codex Responses, Google Generative AI/Vertex, Mistral Conversations) and the `report.json` environment identity in an exported bug report read `pig/...` instead of one of Pi's `pi...` forms. A user-configured provider `User-Agent` header overrides the default except for OpenAI Codex Responses, whose upstream `buildBaseCodexHeaders` deliberately reapplies the product identity after model/request headers. An Anthropic OAuth (subscription-token) request keeps sending `claude-cli/2.1.280` regardless (D63's sibling decision, Q3): that identity is not `getPiUserAgent()`'s output and is untouched by this divergence.
+Observable effect: every default provider `User-Agent` (Anthropic Messages, OpenAI Completions, OpenAI/Azure/Codex Responses, Google Generative AI/Vertex, Mistral Conversations) and the `report.json` environment identity in an exported bug report read `pig/...` instead of one of Pi's `pi...` forms. A user-configured provider `User-Agent` header overrides the default, including for OpenAI Codex Responses since Pi 1.1.0 (`buildBaseCodexHeaders` sets `originator` and `User-Agent` first, #10429). An Anthropic OAuth (subscription-token) request keeps sending `claude-cli/2.1.280` regardless (D63's sibling decision, Q3): that identity is not `getPiUserAgent()`'s output and is untouched by this divergence.
 
 Call sites:
 - `ai/anthropic_client.go`: `mergeAnthropicClientHeaders` (seeds the `User-Agent` key; the Claude Code OAuth identity still wins on the wire).
-- `ai/openai.go`, `ai/openai_responses.go` (also reached by `ai/azure_openai_responses.go` and `ai/openai_codex_responses.go`, which delegate to the same request builder), `ai/google.go` (also reached by `ai/google_vertex.go`), `ai/mistral.go`: the `User-Agent` header construction. Ordinary model/request headers retain upstream override precedence; Codex uses `forceUserAgent` to mirror its trailing `headers.set("User-Agent", getPiUserAgent())`.
+- `ai/openai.go`, `ai/openai_responses.go` (also reached by `ai/azure_openai_responses.go` and `ai/openai_codex_responses.go`, which delegate to the same request builder), `ai/google.go` (also reached by `ai/google_vertex.go`), `ai/mistral.go`: the `User-Agent` header construction. Model and request headers override the default, as upstream; Codex sets its `originator` and `User-Agent` defaults before them (`buildBaseCodexHeaders`, Pi 1.1.0).
 - `internal/codingagent/bug_report.go`: `codingAgentUserAgent`, used for the local bug-report metadata field retained by D62.
 - `internal/codingagent/selfupdate.go`: `FetchUpdateManifest`, which sends the identity with the update-manifest request as upstream `getLatestPiRelease` sends its `User-Agent` and `accept` headers to the version-check API.
 
@@ -863,7 +858,7 @@ SCRUTINIZED:approved
 
 ## D66 Narrow TUI rows stay within the requested width
 
-What: PiG keeps two narrow-width component paths within their requested terminal-cell width. `TruncatedText.Render` reduces horizontal padding when the full padding plus one content cell would exceed the width. At width 1 with one column of horizontal padding, PiG renders `"A"`; upstream renders `" A "`, which is three cells wide. `UserMessageSelector.Render` also clips each list, metadata, empty-state, and scroll-indicator row after adding the cursor or indentation. Upstream's `UserMessageList` truncates only the message body and then adds its two-cell cursor, while metadata and other rows are unbounded. `Editor.Render` at width 1 without padding highlights the final grapheme of a line when the cursor is at its end, rendering `"g"` as one inverse `g`; upstream appends a highlighted space, two cells wide. At every wider width, and with padding, PiG appends the space as upstream does.
+What: PiG keeps three narrow-width component paths within their requested terminal-cell width. `TruncatedText.Render` reduces horizontal padding when the full padding plus one content cell would exceed the width. At width 1 with one column of horizontal padding, PiG renders `"A"`; upstream renders `" A "`, which is three cells wide. `UserMessageSelectorComponent.Render` also clips each list, metadata, empty-state, and scroll-indicator row after adding the cursor or indentation. Upstream's `UserMessageList` truncates only the message body and then adds its two-cell cursor, while metadata and other rows are unbounded. `Editor.Render` at width 1 without padding highlights the final grapheme of a line when the cursor is at its end, rendering `"g"` as one inverse `g`; upstream appends a highlighted space, two cells wide. At every wider width, and with padding, PiG appends the space as upstream does. `Editor.Render` clips an autocomplete row to the content width; upstream's `SelectList` keeps its two-cell `→ ` prefix, so a content width below three cells yields an over-wide row. `SettingsList.Render` clips any row wider than the requested width (a wrapped description or the empty-state text in a very narrow pane); upstream emits the over-wide row.
 
 Why: both upstream paths can emit a row wider than the terminal. Upstream's main screen treats that as fatal only in its differential-render loop and stops with `Rendered line exceeds terminal width`; initial, full, and resize renders emit the over-wide row unchanged. PiG preserves the complete padding and rows at ordinary widths, but prioritizes keeping an unusually narrow pane usable instead of emitting an over-wide row.
 
@@ -871,10 +866,12 @@ Observable effect: at widths where fixed padding, cursor text, or metadata canno
 
 Call-site markers:
 - `tui/truncated_text.go`: the horizontal-padding clamp in `TruncatedText.Render`.
-- `tui/user_message_selector.go`: the final row-width bound in `UserMessageSelector.Render`.
+- `tui/user_message_selector.go`: the final row-width bound in `UserMessageSelectorComponent.Render`.
+- `tui/settings_list.go`: the final row-width clip in `SettingsList.Render`.
 - `tui/editor.go`: the final-grapheme cursor in `Editor.buildVisualLines`.
+- `tui/editor.go`: the autocomplete row bound in `Editor.Render`.
 
-Locked by: `tui/component_width_table_test.go` `TestSelectorDialogListComponentsNeverExceedRenderWidth`, whose `TruncatedText`, `UserMessageSelector`, `UserMessageSelectorScrolled`, `UserMessageSelectorEmpty`, and `EditorSlashAutocomplete` cases render every width from 1 through 120 and reject any over-wide row, and `tui/editor_overlay_cursor_test.go` `TestEditorCursorAtWidthOneStaysInBounds` pins the editor's width-1 row. Restoring upstream's full padding or removing the selector's final clip fails the matching width-1 case.
+Locked by: `tui/component_width_table_test.go` `TestSelectorDialogListComponentsNeverExceedRenderWidth`, whose `TruncatedText`, `UserMessageSelectorComponent`, `UserMessageSelectorScrolled`, `UserMessageSelectorEmpty`, and `EditorSlashAutocomplete` cases render every width from 1 through 120 and reject any over-wide row, and `tui/editor_overlay_cursor_test.go` `TestEditorCursorAtWidthOneStaysInBounds` pins the editor's width-1 row. Restoring upstream's full padding or removing the selector's final clip fails the matching width-1 case.
 
 Parity allowance: paired interactive scenarios use a viable terminal width. The intentional difference exists only when these rows cannot fit; the width matrix directly locks the allowed behavior and its boundary.
 
@@ -914,10 +911,10 @@ Observable effect: an `.mjs`, `.ts` or natively imported `.js` extension that ke
 Why: Pig hosts extensions outside its own process, so an extension instance is a runtime process. Re-invoking a factory inside a retained process would need an in-process re-registration protocol and would keep a process whose registrations are being replaced, which the atomic start-beside/swap/stop-old reload transaction is built to avoid. A fresh process matches the part of the contract that holds for every Pi loader, which is that each factory runs again on reload and on session replacement. The outgoing process also has to outlive the command that requested the replacement, because that command awaits the replacement's result; the factory retires it when the command's handler returns. Once RPC mode's shutdown has started, retirement stops shutting hosts down, because a quit `session_shutdown` may still be pending on one and Pi leaves that handler pending; process exit terminates the held hosts.
 
 Call-site markers:
-- `cmd/pig/cli_session_factory.go`: `cliSessionFactory.create`, where a replacement Session's build starts its own extension host, and `cliRetirement.retire` and the held-retirement return in `cliSessionFactory.create`, where the replaced Session's host stops after its running command handlers return.
-- `cmd/pig/cli_runtime_build.go`: `buildResources`, the extension load of every build, which a replacement runs again for the destination cwd.
+- `coding/cli/cli_session_factory.go`: `cliSessionFactory.create`, where a replacement Session's build starts its own extension host, and `cliRetirement.retire` and the held-retirement return in `cliSessionFactory.create`, where the replaced Session's host stops after its running command handlers return.
+- `coding/cli/cli_runtime_build.go`: `buildResources`, the extension load of every build, which a replacement runs again for the destination cwd.
 
-Locked by: `cmd/pig/session_replacement_modes_test.go` `TestPrintModeNewSessionBuildsFreshExtensionInstances` and `TestRPCSessionCommandsReplaceThroughTheRuntimeFactory`, and `cmd/pig/session_replacement_interactive_test.go` `TestInteractiveSessionCommandsReplaceThroughTheRuntimeFactory` and `TestInteractiveExtensionNewSessionKeepsTheCallerAliveUntilItReturns`. Each starts pig with `testdata/session-replace.mjs`, whose instance identity is module-scope state, and requires a different instance for every replacement Session; each fails when the replacement keeps the outgoing extension process.
+Locked by: `coding/cli/session_replacement_modes_test.go` `TestPrintModeNewSessionBuildsFreshExtensionInstances` and `TestRPCSessionCommandsReplaceThroughTheRuntimeFactory`, and `coding/cli/session_replacement_interactive_test.go` `TestInteractiveSessionCommandsReplaceThroughTheRuntimeFactory` and `TestInteractiveExtensionNewSessionKeepsTheCallerAliveUntilItReturns`. Each starts pig with `testdata/session-replace.mjs`, whose instance identity is module-scope state, and requires a different instance for every replacement Session; each fails when the replacement keeps the outgoing extension process.
 
 Parity allowance: no paired scenario asserts module-scope state across `/reload`, because Pi's result depends on the extension's file type and Pig's is the same for all of them. Scenario 15 keeps its state in the factory, the per-reload contract both share. Scenarios `39-extension-session-replacement`, `40-json-extension-session-replacement`, `41-rpc-extension-session-replacement` and `42-tui-extension-session-replacement` (extensions-runtime) trace a session replacement through a fixture that assigns `process.env.FIN_REPLACEMENT_LOG` in one Session and reads it in the next; Pig's side of those scenarios receives the same value at startup, and each scenario's comment cites D70. No other comparator changes.
 
@@ -1025,9 +1022,9 @@ Pi source: `.upstream/v0.99.1/packages/coding-agent/src/core/package-manager.ts:
 
 Scope: user-package metadata only. The approved difference applies even when the invoking project is trusted, because scope determines the lookup directory. Trusted project packages retain Pi's cwd and registry behavior. The user's configuration and explicit command arguments can still select a registry or configuration file. Relative command paths and arguments now resolve from managed storage for user lookups; use absolute paths for wrappers or configuration files that must live elsewhere. This rule does not sandbox package-manager code, scrub the environment or alter self-update ownership.
 
-Call-site marker: `cmd/pig/package_npm_metadata.go`: `getLatestNpmVersion`, the shared scope-to-cwd decision.
+Call-site marker: `internal/packagemanager/package_npm_metadata.go`: `GetLatestNpmVersion`, the shared scope-to-cwd decision.
 
-Locked by: `cmd/pig/package_registry_scope_test.go` (`TestNpmMetadataLookupScope`, `TestPackageUpdatePerformsScopedMetadataLookup`, `TestNpmMetadataLookupRefusesUnavailableRootAndUntrustedProject`, and `TestNpmMetadataLookupCreatesManagedRootForLegacyInstall`). The selected-command test covers npm, pnpm and Bun argv with both scopes. The real npm loopback scenarios `project-trust/19-user-package-registry-isolation` and `20-trusted-project-package-registry` require a metadata lookup and no reinstall for a current package. The first records PiG's user registry versus Pi's project registry as the expected divergence; the second compares the complete measured result exactly.
+Locked by: `coding/cli/package_registry_scope_test.go` (`TestNpmMetadataLookupScope`, `TestPackageUpdatePerformsScopedMetadataLookup`, `TestNpmMetadataLookupRefusesUnavailableRootAndUntrustedProject`, and `TestNpmMetadataLookupCreatesManagedRootForLegacyInstall`). The selected-command test covers npm, pnpm and Bun argv with both scopes. The real npm loopback scenarios `project-trust/19-user-package-registry-isolation` and `20-trusted-project-package-registry` require a metadata lookup and no reinstall for a current package. The first records PiG's user registry versus Pi's project registry as the expected divergence; the second compares the complete measured result exactly.
 
 Remove when: upstream isolates user-package metadata from the invoking project's configuration with equivalent command/configuration preservation, or the owner explicitly approves a different security boundary.
 
@@ -1135,7 +1132,7 @@ Owner decision: 2026-09-29, owner Michael Kinsy approves this divergence for dir
 
 Call-site marker: `internal/codingagent/model_refresh_background.go`: `deferRegistrationRefresh` queues the refresh without starting it.
 
-Evidence: `docs/parity/model-availability-task-ownership.md` (registration refresh contract), `TestNativeRegistrationRefreshRunsOnTheCallersYield` and `TestRegisterProviderPublishesProvisionalConfiguredAuth` in `coding/model_registration_refresh_test.go` (no callback before a yield; the awaited call runs the queued refresh), `TestPostStartupNativeProviderRegistrationBecomesAvailableWithoutAnotherCall` in `cmd/pig/startup_native_provider_test.go` (extension-host registrations need no further call), and `test/parity/scenarios/providers-faux-streaming/23-metadata-refresh-and-native-result.toml`. Pi source: `packages/coding-agent/src/core/model-runtime.ts:744-797`.
+Evidence: `docs/parity/model-availability-task-ownership.md` (registration refresh contract), `TestNativeRegistrationRefreshRunsOnTheCallersYield` and `TestRegisterProviderPublishesProvisionalConfiguredAuth` in `coding/model_registration_refresh_test.go` (no callback before a yield; the awaited call runs the queued refresh), `TestPostStartupNativeProviderRegistrationBecomesAvailableWithoutAnotherCall` in `coding/cli/startup_native_provider_test.go` (extension-host registrations need no further call), and `test/parity/scenarios/providers-faux-streaming/23-metadata-refresh-and-native-result.toml`. Pi source: `packages/coding-agent/src/core/model-runtime.ts:744-797`.
 
 Parity allowance: no paired scenario exercises a direct Go registration because Pi has no Go caller; the paired scenarios cover extension-host registrations and remain strict. Unit tests above lock the queued, awaited-call behavior.
 
@@ -1157,9 +1154,9 @@ Scope: only RPC stdin end, and only these two cases. Outside them, which command
 
 Owner decision: 2026-09-29, owner Michael Kinsy approves this divergence ("RPC shutdown residuals from process-per-extension hosting") because extensions run in separate runtime processes and the exact fixes are neither cheap nor safe now. Approval covers only the scope above.
 
-Call-site markers: `coding/extension/host/subprocess/runtime-node/runtime.mjs`: `armRequestWindow`. `coding/extension/host/subprocess/host.go`: `setQuitHandlerSuspended`. `cmd/pig/rpc_shutdown_test.go`: the `afterExit` tolerance in `TestRPCInputEndAfterExtensionCommandComparedWithPi`.
+Call-site markers: `coding/extension/host/subprocess/runtime-node/runtime.mjs`: `armRequestWindow`. `coding/extension/host/subprocess/host.go`: `setQuitHandlerSuspended`. `coding/cli/rpc_shutdown_test.go`: the `afterExit` tolerance in `TestRPCInputEndAfterExtensionCommandComparedWithPi`.
 
-Evidence: `TestRPCInputEndAfterExtensionCommandComparedWithPi` (stdout and the extension's event records against Pi for each command shape, with and without the default shutdown handler, plus a sibling extension), `TestRPCInputEndWindowClosesBeforeNextPollComparedWithPi` (stdout against Pi over repeated runs of the window-edge shapes), `TestRPCInputEndCommandSettlesDuringSlowShutdownHandler` and `TestRPCInputEndJoinsEachExtensionCommand` in `cmd/pig/rpc_shutdown_test.go`, `TestCommandFlightsSuspendPerCommand` in `coding/extension/host/subprocess/command_flight_test.go`, and `TestConformance_SuspendedCommandFlush` in `test/extension-conformance/command_flush_test.go`. The stdin-end contract is in `docs/extension-api-parity.md`.
+Evidence: `TestRPCInputEndAfterExtensionCommandComparedWithPi` (stdout and the extension's event records against Pi for each command shape, with and without the default shutdown handler, plus a sibling extension), `TestRPCInputEndWindowClosesBeforeNextPollComparedWithPi` (stdout against Pi over repeated runs of the window-edge shapes), `TestRPCInputEndCommandSettlesDuringSlowShutdownHandler` and `TestRPCInputEndJoinsEachExtensionCommand` in `coding/cli/rpc_shutdown_test.go`, `TestCommandFlightsSuspendPerCommand` in `coding/extension/host/subprocess/command_flight_test.go`, and `TestConformance_SuspendedCommandFlush` in `test/extension-conformance/command_flush_test.go`. The stdin-end contract is in `docs/extension-api-parity.md`.
 
 Parity allowance: the Pi rows of the comparison tests are strict, except the rows where Pi's own answer varies, where only PiG's side is asserted: the threadpool rows of `TestRPCInputEndWindowClosesBeforeNextPollComparedWithPi`, and a nested `setImmediate` on Windows in both comparison tests. The PiG rows drop the command's own event record for the shapes Pi does not answer (`afterExit`), which is difference 1. No test covers difference 2.
 
@@ -1179,9 +1176,9 @@ Scope: only a settle-tail handler of a runtime that reports no window, and only 
 
 Owner decision: 2026-10-01, owner Michael Kinsy approves this divergence as a temporary one ("Yes go with recommendations", in the lead session). Approval covers only the scope above.
 
-Call-site markers: `cmd/pig/rpc_settle_gate.go`: `rpcSettleGate`.
+Call-site markers: `coding/cli/rpc_settle_gate.go`: `rpcSettleGate`.
 
-Evidence: `TestRPCCommandAfterAgentEndAnswersAfterAgentSettledComparedWithPi`, `TestRPCCommandDuringSuspendedSettleTailAnswersComparedWithPi` and `TestRPCInputEndDuringSuspendedSettleTailShutsDownComparedWithPi` in `cmd/pig/rpc_input_end_order_test.go` (Pi and PiG for Node handlers), `TestRPCInputEndDuringGoSDKSettleTailHandlerShutsDown` in `cmd/pig/rpc_shutdown_drain_go_test.go`, `TestRPCSettleGate*` in `cmd/pig/rpc_settle_gate_test.go` and `TestSettleTailCountsHandlersPiServesStdinDuring` in `coding/extension/host/subprocess/command_window_test.go`.
+Evidence: `TestRPCCommandAfterAgentEndAnswersAfterAgentSettledComparedWithPi`, `TestRPCCommandDuringSuspendedSettleTailAnswersComparedWithPi` and `TestRPCInputEndDuringSuspendedSettleTailShutsDownComparedWithPi` in `coding/cli/rpc_input_end_order_test.go` (Pi and PiG for Node handlers), `TestRPCInputEndDuringGoSDKSettleTailHandlerShutsDown` in `coding/cli/rpc_shutdown_drain_go_test.go`, `TestRPCSettleGate*` in `coding/cli/rpc_settle_gate_test.go` and `TestSettleTailCountsHandlersPiServesStdinDuring` in `coding/extension/host/subprocess/command_window_test.go`.
 
 Parity allowance: the Pi comparison rows cover Node handlers only. No test compares a command sent during a Go, Rust or Python handler's wait with Pi, because those handlers have no Pi counterpart.
 
@@ -1191,13 +1188,13 @@ SCRUTINIZED:approved
 
 ## D87 PiG's versions of Pi's easter eggs
 
-What: Pi has two easter eggs that show Pi's art. PiG plays them with its own art. Pi 1.0.3's `easter-egg-3d.ts` plays both the logo and, in fullscreen mode, a 3D Armin for `/arminsayshi`; PiG ports it with PiG's models. Its logo path draws exactly what Pi 1.0.0's `pi-logo-animation.ts` drew (lift-off cells, start scale, dust center and timeline are unchanged), so the header click keeps its pig behavior.
+What: Pi has two easter eggs that show Pi's art. PiG plays them with its own art. Pi 1.1.0's `easter-egg-3d.ts` plays both the logo and, in fullscreen mode, a 3D Armin for `/arminsayshi`; PiG ports it with PiG's models. Its logo path draws exactly what the `pi-logo-animation.ts` of Pi's 1.0.0 release drew (lift-off cells, start scale, dust center and timeline are unchanged), so the header click keeps its pig behavior.
 1. Clicking the header logo in fullscreen mode (`interactive-mode.ts:1059`, `easter-egg-3d.lazy.ts` `playPiLogo3d`, `easter-egg-3d.ts`; Pi 1.0.0 `pi-logo-animation.lazy.ts` and `pi-logo-animation.ts`). The clickable logo is PiG's pig head (D2): cells 1 to 16 of the header's first seven lines, where Pi's logo takes cells 1 to 4 of two, or the 4 cells of the one-line `PiG.` text mark where it stands in for Pi's logo; Apple Terminal has no clickable logo, as Pi's text wordmark has none. The object that flies, grows and spins is that head, built from the active sprite's head pixels and colors (`/sprite`), not Pi's three-color logo. Where Pi's logo shuffles its blocks as a sliding puzzle (from 4.4 s, one 5.2 s cycle at a time), the spinning head gives way for the 3.6 s of Pi's shuffle to a side-view running pig, 38 pixels by 22, ray cast in braille dots with the head's shading and blocks the size of the head's, so it is more than twice the head's width: rounded body, ears, eye, snout with nostrils, cheek, curly tail and dark outline, four legs in a four-frame run cycle with a one-pixel bob. It runs in place where the head spins. In the first 0.6 s of the run the head's braille dots dissolve one by one into the pig's while the pig turns from the head's spin to face the camera, and in the last 0.6 s the pig dissolves back into the head the same way while it turns back to the head's spin, so no frame is empty or a hard swap; Esc during the run dissolves the pig back into the head over 0.6 s while Pi's exit plays. The head is back, whole and spinning, for Pi's 1 s return and 0.6 s hold. The ray caster holds up to 65535 faces where Pi's holds 255 (`Uint8Array`), because the running pig has more, and renders the head and the pig as two layers during a dissolve. The running pig takes the active sprite's colors: a color the head draws keeps its color, a body the head does not draw as `P` is the head's most common color (Kratos's skin, Spider-Ham's suit), a body too dark for a dark outline is outlined in its highlight (Vader), and characters keep accessories (the Sheriff's hat and star, Vader's red panel, Kratos's tattoo, Piglet's shirt, Spider-Ham's web, PiGrogu's robe). The dissolve, its timing and dust, the 3D ray caster and shading, the light-background halo, the starfield, the `escape to return` hint, the spin locked to the cycle, the reverse exit, the keys (`tui.select.cancel` and `app.clear`, a second press skips the exit) and the mouse handling are Pi's.
 2. `/arminsayshi` (`interactive-mode.ts:handleArminSaysHi`, `armin.ts`) draws a 31 by 34 pig head labeled `pigsayhi` instead of Armin's 31 by 36 image labeled `ARMIN SAYS HI`. The seven effects, their random selection and order of random calls, and their timing are Pi's. `/pigsayhi` is a second name for the same easter egg; Pi sends `/pigsayhi` to the model as an ordinary prompt.
 
 3. In fullscreen mode, `/arminsayshi` and `/pigsayhi` play the 3D pig (`interactive-mode.ts:handleArminSaysHi`, `easter-egg-3d.lazy.ts` `playArmin3d`, `easter-egg-3d.ts` `arminModel`). The only change is the model: Pi's bitmap is Armin's 31 by 36 portrait in the theme's accent color; PiG's is the active sprite's 16 by 14 head in its colors, one block per pixel extruded to Pi's depth. Pi's camera distance (80), width share (0.45), growth from a speck at the center, dust from the center, sliding puzzle (moves per step, candidate order, preference for blocks that did not just move, the flight home and the hold), spin, starfield, hint, halo, exit and keys are Pi's. Outside fullscreen mode both commands draw the inline pig head, as Pi draws the inline Armin, and with another overlay open they do nothing, as Pi does.
 
-`/dementedelves` keeps Pi's announcement, which still says "pi has joined Earendil" (`earendil-announcement.ts`). Pi 1.0.3 has no OpenCode Kimi easter egg (`daxnuts.ts`); PiG never ported it.
+`/dementedelves` keeps Pi's announcement, which still says "pi has joined Earendil" (`earendil-announcement.ts`). Pi 1.1.0 has no OpenCode Kimi easter egg (`daxnuts.ts`); PiG never ported it.
 
 Why: PiG never presents itself as Pi (D2). Pi's logo animation and Armin's portrait are Pi's art; the owner wants PiG's own versions of them.
 
@@ -1205,7 +1202,7 @@ Owner decision: 2026-10-01, owner Michael Kinsy ("PiG versions of Pi's eggs").
 
 Call-site markers: `internal/codingagent/pig_egg3d.go` (`pigLogoModel`, `pig3dModel`), `internal/codingagent/pig_logo_animation.go` (the object, `pigLogoBlocks`), `internal/codingagent/pig_logo_run.go` (the running pig), `internal/codingagent/startup_header.go` (`handleBuiltInHeaderMouse`), `internal/codingagent/armin.go` (the image and label) and `internal/codingagent/startup_input.go` (`/pigsayhi`).
 
-Evidence: `TestPigLogoAnimationMatchesPinnedPi` runs Pi 1.0.0's `pi-logo-animation.ts` (`internal/codingagent/testdata/pi-v1.0.0/`, since the 1.0.1 mirror no longer contains it) with the pig's blocks and geometry and compares every frame of the flight, spin, dissolve, starfield, hint, halo, exit and skip with the Go port, without the running pig's layer. `TestPigLogoRunCycle` (the run's timeline and frames, the dot-by-dot dissolves into and out of the pig and on Esc, never fewer dots than either shape shows alone, the turn to and from the camera, the braille pig in place of the head and its return), `TestPigRunTurnStaysInFrame` (the turning pig stays within the face-on pig's size and the screen, and turns the short way), `TestPigLogoRasterHoldsMoreThan255Faces` (the wider face index), `TestPigRunFramesGolden` (`internal/codingagent/testdata/pig-run/<sprite>.golden`, each built-in sprite's four frames and their colors; `docs/plan/progress/egg-run-pig/run-strip.png` shows the ray-cast frames), `TestPigLogoAnimationDrawsThePigNotPisLogo`, `TestClickingTheHeaderPigPlaysTheAnimation`, `TestClickingTheTextMarkPlaysTheAnimation`, `TestHeaderPigClickNeedsTheBuiltInSprite`, `TestHeaderPigClickIgnoredWhileAnOverlayOrTheAnimationIsOpen`, `TestPigLogoAnimationColors` and `TestPigLogoAnimationTimer` cover the running pig, the art, the click, the overlay and the timer. `TestPig3dAnimationMatchesPinnedPi` runs the pinned Pi 1.0.3 `easter-egg-3d.ts` with the 3D pig's model in place of Armin's and compares every frame of the growth, dust, spin, three puzzle cycles, starfield, hint, light-background halo, exit (blocks gathering home) and skip with the Go port, for four sprites and screens; `TestPig3dFramesGolden` (`internal/codingagent/testdata/pig3d-frames.golden.json`) pins the pig's frames; `TestPig3dPlaysOnlyInFullscreen` covers the fullscreen-only gate, an open overlay and the inline fallback. `TestArminFramesMatchPinnedPi` runs the pinned `armin.ts` with the pig head, `TestArminSaysHiDrawsThePigHead` pins the art and label, and the `TestHiddenEasterEggs*` tests cover `/pigsayhi`.
+Evidence: `TestPigLogoAnimationMatchesPinnedPi` runs the `pi-logo-animation.ts` of Pi's 1.0.0 release (`internal/codingagent/testdata/pi-v1.0.0/`, since the mirrors from 1.0.1 on no longer contain it) with the pig's blocks and geometry and compares every frame of the flight, spin, dissolve, starfield, hint, halo, exit and skip with the Go port, without the running pig's layer. `TestPigLogoRunCycle` (the run's timeline and frames, the dot-by-dot dissolves into and out of the pig and on Esc, never fewer dots than either shape shows alone, the turn to and from the camera, the braille pig in place of the head and its return), `TestPigRunTurnStaysInFrame` (the turning pig stays within the face-on pig's size and the screen, and turns the short way), `TestPigLogoRasterHoldsMoreThan255Faces` (the wider face index), `TestPigRunFramesGolden` (`internal/codingagent/testdata/pig-run/<sprite>.golden`, each built-in sprite's four frames and their colors; `docs/plan/progress/egg-run-pig/run-strip.png` shows the ray-cast frames), `TestPigLogoAnimationDrawsThePigNotPisLogo`, `TestClickingTheHeaderPigPlaysTheAnimation`, `TestClickingTheTextMarkPlaysTheAnimation`, `TestHeaderPigClickNeedsTheBuiltInSprite`, `TestHeaderPigClickIgnoredWhileAnOverlayOrTheAnimationIsOpen`, `TestPigLogoAnimationColors` and `TestPigLogoAnimationTimer` cover the running pig, the art, the click, the overlay and the timer. `TestPig3dAnimationMatchesPinnedPi` runs the pinned Pi 1.1.0 `easter-egg-3d.ts` with the 3D pig's model in place of Armin's and compares every frame of the growth, dust, spin, three puzzle cycles, starfield, hint, light-background halo, exit (blocks gathering home) and skip with the Go port, for four sprites and screens; `TestPig3dFramesGolden` (`internal/codingagent/testdata/pig3d-frames.golden.json`) pins the pig's frames; `TestPig3dPlaysOnlyInFullscreen` covers the fullscreen-only gate, an open overlay and the inline fallback. `TestArminFramesMatchPinnedPi` runs the pinned `armin.ts` with the pig head, `TestArminSaysHiDrawsThePigHead` pins the art and label, and the `TestHiddenEasterEggs*` tests cover `/pigsayhi`.
 
 Parity allowance: `test/parity/scenarios/fullscreen/11-logo-click-animation.toml` compares the hint and starfield rows with Pi; the rows the 3D object covers differ. `test/parity/scenarios/slash-commands/13-armin-bitmap.toml` asserts each binary's own settled image and label.
 
@@ -1215,7 +1212,7 @@ SCRUTINIZED:approved
 
 ## D88 PiG runs its own first-time setup with a sprite step
 
-What: Pi 1.0.3 shows its first-time setup dialog (`first-time-setup.ts`: theme with live preview, then analytics opt-in) only for its official distribution with `PI_EXPERIMENTAL=1`, the default agent directory and no `settings.json` (`startup-ui.ts:122-140`, `main.ts:674`). PiG shows it on an interactive start in the default agent directory that holds no `settings.json` yet, which includes every fresh `PIG_HOME`. As in Pi, a custom agent directory (`PIG_CODING_AGENT_DIR`) skips it (`startup-ui.ts:144-146`). Print, JSON and RPC modes never show it. Esc skips setup and saves nothing.
+What: Pi 1.1.0 shows its first-time setup dialog (`first-time-setup.ts`: theme with live preview, then analytics opt-in) only for its official distribution with `PI_EXPERIMENTAL=1`, the default agent directory and no `settings.json` (`startup-ui.ts:122-140`, `main.ts:674`). PiG shows it on an interactive start in the default agent directory that holds no `settings.json` yet, which includes every fresh `PIG_HOME`. As in Pi, a custom agent directory (`PIG_CODING_AGENT_DIR`) skips it (`startup-ui.ts:144-146`). Print, JSON and RPC modes never show it. Esc skips setup and saves nothing.
 
 The dialog is a port of Pi's component with three steps: theme (System, Dark, Light, with live preview), then sprite, then analytics. The sprite step lists the fifteen built-in sprites in a scrolling window of eight rows with the position below it, then a last item, `Create your own...`. The dialog's logo is the pig head of the highlighted sprite on the sprite step and of the chosen sprite after it, never Pi's `SETUP_LOGO_LINES`. The welcome line says `Welcome to PiG` where Pi's says `Welcome to pi`, and the analytics text names PiG instead of Pi (D2). Finishing saves the theme and analytics choice in `settings.json` as Pi does, and saves the sprite exactly as `/sprite set` does (`$PIG_HOME/state/pig-standard/login.json`). `Create your own...` shows how to create a sprite (`/login`, `/model`, then `/sprite create`), and finishing with it keeps the active sprite. `/sprite create` sends a guided turn that writes a TypeScript extension registering the sprite with `ctx.ui.registerSprite` when a model with credentials exists, and explains `/login` otherwise.
 
@@ -1225,7 +1222,7 @@ Why: PiG never presents itself as Pi (D2), so Pi's official-only setup never run
 
 Owner decision: 2026-10-02, owner Michael Kinsy (first-run-sprite, release 0.4.0).
 
-Call-site markers: `cmd/pig/main.go` (gate observation), `cmd/pig/extensions.go` (`shouldRunFirstTimeSetup`), `internal/codingagent/first_time_setup.go` (`FirstTimeSetupComponent`, the welcome line, `ShowFirstTimeSetup`).
+Call-site markers: `coding/cli/main.go` (gate observation), `coding/cli/extensions.go` (`shouldRunFirstTimeSetup`), `internal/codingagent/first_time_setup.go` (`FirstTimeSetupComponent`, the welcome line, `ShowFirstTimeSetup`).
 
 Evidence: `TestShouldRunFirstTimeSetupGate` (interactive with and without `settings.json`, print, piped stdin, JSON, RPC), `TestFirstTimeSetupOriginalCasesAsFork` and `TestForkedDistributionDoesNotBlockOnOfficialFirstTimeSetup` (Pi's original gate inputs against PiG's real CLI), `TestFirstTimeSetupEscSkipsOnInteractiveStart` and `TestFirstTimeSetupSavesThemeSpriteAndAnalytics` (real CLI in a PTY), `TestFirstTimeSetupSpriteStepListsExtensionSpritesAndSubmits`, `TestFirstTimeSetupKeepsTheHighlightedSpriteThroughAnalyticsAndSubmit`, `TestShowFirstTimeSetupSavesTheChoiceBeforeTheTUI`, `TestShowFirstTimeSetupSkipSavesNothing`, `TestFirstTimeSetupHintUsesLowercaseKeyText`, `TestSpriteCreate`, `TestSpritePickerCreateYourOwnShowsTheHint`, `TestFirstTimeSetupCreateYourOwnShowsTheHintAndKeepsTheSprite`, `TestFirstTimeSetupThemePreviewAndEscSkip` and `TestFirstTimeSetupLogoIsThePigHeadAndPreviewsTheSprite`. Pi's analytics cases in `first-time-setup.test.ts` stay ported unchanged (`TestAnalyticsSettings`).
 
@@ -1237,7 +1234,7 @@ SCRUTINIZED:approved
 
 ## D89 Tool renderer resolvers of subprocess extensions answer once per tool, off the UI loop, and cannot wrap next()
 
-What: Pi 1.0.3's `pi.registerToolRenderer()` resolvers run synchronously whenever a tool card is created (`interactive-mode.ts:getRegisteredToolDefinition`, `runner.ts:resolveToolRenderers`), and `next()` lazily runs the remaining resolvers and returns the registered tool's renderer functions, which a resolver may wrap. A PiG extension in another process (Node, Go, Python and Rust SDKs, isolated or packed) cannot be called on the UI loop. PiG therefore:
+What: Pi 1.1.0's `pi.registerToolRenderer()` resolvers run synchronously whenever a tool card is created (`interactive-mode.ts:getRegisteredToolDefinition`, `runner.ts:resolveToolRenderers`), and `next()` lazily runs the remaining resolvers and returns the registered tool's renderer functions, which a resolver may wrap. A PiG extension in another process (Node, Go, Python and Rust SDKs, isolated or packed) cannot be called on the UI loop. PiG therefore:
 1. Evaluates `next()` before asking the extension and sends what it draws (`renderShell`, whether `renderCall` and `renderResult` exist). The SDK's `next()` returns a marker for those renderers. A resolver that returns the marker keeps them; the marker's render functions are absent, so a resolver cannot call or wrap them. A marker or a copy of it that the resolver gives a call or result renderer is the resolver's own renderers: `next()`'s `renderShell` with only the render functions the resolver set.
 2. Asks each extension once per tool, on a host goroutine. Until it answers, the card draws with `next()`'s renderers; an answer other than `next()`'s renderers then draws the tool's cards again, starting their renderer state over. The answer is kept until the extension reloads, restarts, recovers or registers another resolver.
 In-process Go extensions, including the built-in MCP extension, resolve exactly as Pi does.
@@ -1256,9 +1253,9 @@ SCRUTINIZED:approved
 
 ## D90 llama.cpp reasoning models offer every budgeted thinking level
 
-What: Pi's built-in llama.cpp provider (`extensions/llama/provider.ts` `toPiModel`, Pi 1.0.3) marks a model as reasoning when its chat template reads `enable_thinking`, and maps only the `off` and `medium` thinking levels. Its `qwen-chat-template` request sends `chat_template_kwargs.enable_thinking` and no budget, so every level other than `off` asks for the same unbounded thinking. PiG maps `off`, `minimal`, `low`, `medium` and `high` and sets `compat.thinkingTokenBudgetField` to `thinking_budget_tokens`, so each level sends Pi's budget for that level (1024, 2048, 8192 and 16384 tokens, or `thinkingBudgets`, clamped to leave answer room) with `enable_thinking`. `xhigh` stays unsupported because Pi's budgets give it the `high` budget. `off` sends `enable_thinking: false` and no budget, as Pi does.
+What: Pi's built-in llama.cpp provider (`extensions/llama/provider.ts` `toPiModel`, Pi 1.1.0) marks a model as reasoning when its chat template reads `enable_thinking`, and maps only the `off` and `medium` thinking levels. Its `qwen-chat-template` request sends `chat_template_kwargs.enable_thinking` and no budget, so every level other than `off` asks for the same unbounded thinking. PiG maps `off`, `minimal`, `low`, `medium` and `high` and sets `compat.thinkingTokenBudgetField` to `thinking_budget_tokens`, so each level sends Pi's budget for that level (1024, 2048, 8192 and 16384 tokens, or `thinkingBudgets`, clamped to leave answer room) with `enable_thinking`. `xhigh` stays unsupported because Pi's budgets give it the `high` budget. `off` sends `enable_thinking: false` and no budget, as Pi does.
 
-Why: GitHub issue #129. Pi has the same bug and Pi 1.0.3 does not fix it. llama-server applies a per-request `thinking_budget_tokens` when its command line sets no reasoning budget; an older server ignores the field and thinks as Pi's request asks. Owner task decision: 2026-10-04 (port-102: implement the fix ahead of upstream and record it).
+Why: GitHub issue #129. Pi has the same bug and Pi 1.1.0 does not fix it. llama-server applies a per-request `thinking_budget_tokens` when its command line sets no reasoning budget; an older server ignores the field and thinks as Pi's request asks. Owner task decision: 2026-10-04 (port-102: implement the fix ahead of upstream and record it).
 
 Call-site markers: `internal/codingagent/llama/provider.go` (`toPiModel`).
 
@@ -1335,13 +1332,54 @@ Remove when: the editor protocol can return a live opt-in and snapshots are repl
 
 SCRUTINIZED:approved
 
+## D96 The remote execution daemon is a Go program, not Pi's Rust binary
+
+What: Pi 1.1.0's `@earendil-works/pi-env` runs a Rust daemon (`packages/env/daemon`, one `pi-env` binary per target) on the remote machine. PiG's daemon is a Go program (`env/cmd/pi-env`, `env/daemon`) with the same command line (`pi-env serve --token <hex>`) and the same wire protocol, framing and `hello` fields. It runs `exec` and `watch` through PiG's `durable/env/node`, which is the reference for the remote environment: `docs/semantics.md` of the package defines the remote as `NodeExecutionEnv` on the remote machine. Two effects are observable:
+
+- Pi and PiG deploy to the same `~/.pi/mobile/tools` directory, and each deploy removes the other's daemon (`ssh.ts` upload scripts). A host used by both tools uploads again whenever the tool changes.
+- The Go daemons are 4.1 MB to 4.7 MB, and the Windows upload is base64, about 6 MB. On a link near 128 kbit/s the upload approaches `UPLOAD_TIMEOUT_MS` (300 s).
+
+Frame bodies are semantically equal to Pi's, not byte for byte: Go's JSON encoder sorts keys and escapes U+2028 and U+2029. Both daemons parse either form.
+
+Why: PiG is a Go port with Go release builds. One static binary per target (`make build-env-daemons`) avoids a second toolchain, and the daemon reuses the code that defines the local environment.
+
+Owner decision: reviewer recommendation (rev-port-104-env), approved by owner Michael Kinsy 2026-10-06.
+
+Call-site markers: `env/cmd/pi-env/main.go`, `env/daemon/server.go` (`hello`), `env/daemon/fs.go` (target system names).
+
+Evidence: `env/daemon/server_test.go` and `env/conformance_test.go` run the shared environment conformance suite against the Go daemon; `env/differential_test.go` compares it with `NodeExecutionEnv`.
+
+Parity allowance: the protocol, `hello` fields (`os`, `arch` spelled as Rust's `std::env::consts`), error mapping and path rules match Pi; only the daemon implementation and the tool directory sharing differ.
+
+Remove when: never, unless the owner decides to ship Pi's Rust binaries.
+
+SCRUTINIZED:approved
+
+## D98 The eval harness hands the agent process an OAuth credential file
+
+What: Pi's eval harness keeps the model credential in the model runtime's memory and deletes the runner's `auth.json` before the unprivileged sandbox drop (`packages/evals/src/harness.ts:312-335`), so the agent's file tools cannot read it. PiG's Session is a pig process. For an API key, PiG matches Pi: the key stays in the harness, and the isolated run's `auth.json` holds only a `!` command that fetches it from the harness's Unix socket, which the agent's file tools cannot open. An OAuth credential is written as stored to the isolated run's `auth.json`, owned by the sandbox user, and the agent's `read` tool can open it. The harness still deletes the runner's `auth.json` in the sandbox, removes the run's root afterwards, and strips the `PI_EVAL_*` variables and, in the sandbox, the credential's environment variable from the process environment.
+
+Why: pig reads an OAuth credential only from `auth.json` and writes a refreshed token back to it, so the process that sends the provider request needs the file. A `!` command resolves only an API key value (`ai/auth.go` `AuthStorage.Get`, `internal/configvalue`).
+
+Owner decision: approved by owner Michael Kinsy 2026-10-06. Proposed by the lead under the owner's instruction of 2026-10-05 to port and account for packages/telemetry and packages/evals; narrowed to OAuth credentials by the rev-gap-telemetry-evals review.
+
+Call-site markers: `internal/evals/harness_run.go` (credential hand-off in `RunPiCodingAgent`).
+
+Remove when: pig accepts an OAuth credential from a source the sandboxed agent cannot read, such as an inherited file descriptor or a socket the harness serves.
+
+Evidence: `TestRunPiCodingAgentKeepsTheAPIKeyOutOfTheAgentsFiles` and `TestAPIKeyHandOff` in `internal/evals/harness_run_test.go` prove that an API key reaches the provider and not the agent's files and that an OAuth entry is handed over as stored; `docs/parity/gap-closure/gap-telemetry-evals.md` lists the difference.
+
+Parity allowance: the eval tooling is a developer tool outside Pi's user-visible surface; documentation evals run only in the container sandbox with the six documentation tools.
+
+SCRUTINIZED:approved
+
 ## D99 The Windows npm self-update quarantine waits out a held image
 
 What: Before an npm self-update on Windows, Pi and PiG move each loaded image out of the package directory and copy it back (windows-self-update.ts:75-83). Pi moves it with one `renameSync`, which fails while another process holds the image open without delete sharing. PiG retries that rename while it fails with an access, sharing or lock error, with delays that double from 25 ms to 500 ms and add up to 10 seconds, and it stops early when the update's context ends. Any other error, and the error that remains after 10 seconds, fails the update as in Pi.
 
 Why: Anti-virus scanners and search indexers open a newly written or newly started executable without delete sharing for a short time. In PiG the quarantined image is `pig.exe` itself, which the user just started, so an update could fail in that window. npm's graceful-fs retries its own Windows renames in the same way.
 
-Owner decision: 2026-10-05, lead task decision for PR #161 (rev-test-flakes-041).
+Owner decision: lead task decision of 2026-10-05 for PR #161 (rev-test-flakes-041), approved by owner Michael Kinsy 2026-10-06.
 
 Call-site markers: `internal/codingagent/windows_self_update.go` (`quarantineNativeDependencies`). The retry is `internal/fsretry.Rename`.
 
@@ -1350,5 +1388,65 @@ Evidence: `TestQuarantineWaitsOutAHandleHeldOnTheRunningImage` (internal/codinga
 Parity allowance: when no other process holds the image, PiG does exactly what Pi does. It differs only while another process holds the image.
 
 Remove when: Pi retries the quarantine rename, or Windows stops refusing to rename a file that another process holds open.
+
+SCRUTINIZED:approved
+
+
+## D103 JS Error.stack is not modelled
+
+What: Pi copies `error.stack` into a diagnostic's error info (`packages/ai/src/utils/diagnostics.ts:29`) and into any error snapshot that spreads an `Error`, so a persisted diagnostic or session entry can carry a JavaScript stack trace. PiG's error info (`ai.DiagnosticErrorInfo`) has a `Stack` field that stays empty, and PiG error types have no `stack` member. The inherited `name` is the error type's `Name()` method, which `ExtractDiagnosticError` reads, and `cause` is `Unwrap()`.
+
+Why: A Go program has no JavaScript stack. A Go stack names source files and functions of the build machine, so storing one in a session file would leak paths, and it would not match Pi's text in any case.
+
+Owner decision: lead answer of 2026-10-06 20:05 to question 2 of lg-ai-types-a, approved by owner Michael Kinsy.
+
+Call-site markers: `ai/diagnostics.go` (`ExtractDiagnosticError`).
+
+Remove when: Pi stops persisting `error.stack`, or an owner-approved sanitized Go stack format is defined.
+
+Evidence: `TestExtractDiagnosticErrorOmitsTheStack` in `ai/diagnostics_upstream_test.go` shows that a diagnostic built from an error has no stack. `docs/parity/gap-closure/ledger-autobind.md` lists the inherited `stack` rows this record closes.
+
+Parity allowance: a diagnostic differs from Pi's only in the missing `stack` text, which no PiG or Pi code reads back.
+
+SCRUTINIZED:approved
+
+
+## D110 Git sources: `#subdirectory=` selects a subdirectory; `git://` and upper-case schemes yield usable repositories
+
+What: PiG parses Git package sources with a port of Pi's `parseGitUrl` (`packages/coding-agent/src/utils/git.ts`) and `hosted-git-info` (`coding/source/gitparse.go`, `coding/source/hostedgit.go`), and differs from Pi in four spellings. (1) A fragment that starts with `subdirectory=` (`git:https://host/org/repo@v1#subdirectory=plugins/review`) selects a subdirectory of the repository for a Piglet source (`docs/additive-features.md`); Pi has no such spelling and reads every `#<text>` as a ref. Any other fragment is a ref in PiG too, as in Pi. (2) A source that starts with `git://` is a protocol URL: its repository is `git://host/org/repo`. Pi reads the leading `git:` as the shorthand prefix and returns the repository `https:////host/org/repo`. (3) The scheme of a protocol URL is matched without regard to case when PiG decides whether to prefix `https://`: `HTTPS://host/org/repo` keeps its repository. Pi returns `https://HTTPS://host/org/repo`. (4) A `git:file://host/path` source (a local bare repository, used by Piglet installs) is a Git source whose host is the URL host, such as `localhost`; Pi's `parseGitUrl` returns null for it.
+
+Why: (1) is additive: `@<commit>#subdirectory=<path>` is how PiG installs a Piglet that lives in a repository subdirectory, and no Pi input is rejected for it. (2) and (3) are Pi results that no Git client can clone; PiG returns the repository the user wrote.
+
+Owner decision: lead ruling of 2026-10-09 on the Git source oracle findings (owner priorities: parity, then maintainability): port Pi's accepted spellings, keep `#subdirectory=` as an additive spelling, and record it as a numbered divergence. The number D110 is the next free ID after D109.
+
+Observable effect: `git:github.com/o/r#subdirectory=sub` has the subdirectory `sub` and no ref in PiG; Pi reads the ref `subdirectory=sub`. `git://github.com/o/r` and `HTTPS://github.com/o/r` resolve to a cloneable repository in PiG and to an unusable one in Pi; `git:file://localhost/tmp/r.git` is a source in PiG and null in Pi. Every other of the oracle's 170 spellings, including all hosted-git-info shorthand forms (`git:user/repo`, `github:`, `gitlab:`, `bitbucket:`, `gist:`, `sourcehut:`), `#<ref>`, `%2F` and backslashes, gives Pi's repository, host, path and ref.
+
+Call-site markers: `coding/source/gitparse.go` (`parseGitURL`), `coding/source/ref.go` (`parseGit`, `splitGitSubdirectory`).
+
+Locked by: `TestParseGitMatchesPi` (`coding/source/parse_git_oracle_test.go`) runs Pi 1.1.0's `parseGitUrl` over the spellings and pins the two differences in `knownGitDifferences`; `TestParseGitFragmentIsARefUnlessItIsSubdirectory` and `TestParseGitSubdirectory` (`coding/source/ref_test.go`) pin the subdirectory spelling; `TestParseURLMatchesNode` (`internal/nodeurl`) checks the URL reader against Node.
+
+Parity allowance: none beyond the four spellings above.
+
+Remove when: Pi accepts a `#subdirectory=` spelling or PiG stops installing Piglets from repository subdirectories (1); Pi fixes the `git://` and upper-case scheme repositories (2, 3) or parses `git:file://` sources (4).
+
+SCRUTINIZED:approved
+
+## D111 Abort abandons a non-cooperative extension tool after a grace period
+
+What: Abort abandons a non-cooperative extension tool after a grace period: Pi awaits it indefinitely; a subprocess call must not block the agent loop forever. When a run aborts while an extension tool runs, PiG cancels the `tool_call` request, so the tool's AbortSignal fires (Node `AbortSignal`, Go `ctx.Done()`, Rust and Python `is_cancelled`), and waits `ToolAbortGrace` (3 s) for the tool to settle. A tool that settles within the grace period behaves exactly as in Pi: Pi's `executePreparedToolCall` awaits `tool.execute` and makes its result, or its thrown message, the tool result (`packages/agent/src/agent-loop.ts:831-853`). A tool that has not settled when the grace period ends fails with Pi's abort text `Operation aborted` (`agent-loop.ts:623`), the session is free, and the tool's late answer is discarded. Pi awaits such a tool indefinitely and stays "Working" through every further Escape.
+
+Why: an extension tool runs in another process. A tool that never settles would hold the agent loop, and with it the Session, until the process ends, and the user has no way to recover the Session.
+
+Scope: only an extension tool call (`tool_call`) of the subprocess host, which covers every SDK in its own process, packed, and fused. A tool that settles within the grace period, built-in tools, in-process extensions, provider streams and `user_bash` operations keep Pi's behavior and are not waived.
+
+Owner decision: 2026-10-09, owner Michael Kinsy, ruling on robust-ext F6 (option A, refined: grace period, then `Operation aborted`, the same rule for every SDK).
+
+Call-site markers: `coding/extension/host/subprocess/conn.go` (`ToolAbortGrace`, the `tool_call` branch of `Conn.request`).
+
+Evidence: `TestAbortedToolCallSettlesCooperativelyOrFailsAfterTheGrace` in `coding/extension/host/subprocess/tool_abort_grace_test.go` (a Node tool that rejects on abort keeps its message, one that resolves keeps its result, one that hangs fails with `Operation aborted` no sooner than the grace period, isolated and packed) and `TestConformance_AbortedToolSettlesWithinTheGrace` in `test/extension-conformance/tool_abort_grace_test.go` (Go, Node, Rust and Python in their own processes and packed, and fused Go). Both fail when the host stops waiting at the cancel, with `context canceled` in place of the tool's own answer. `TestRPCAbortedExtensionToolSettlesAndFreesTheSession` in `coding/cli/rpc_tool_abort_grace_test.go` drives the Session path in RPC mode: the hanging tool's `tool_execution_end` carries `Operation aborted` no sooner than the grace period, the abort answers after the run settles, and the next prompt runs a cooperative tool whose own thrown message is its result before the grace period ends.
+
+Parity allowance: no paired scenario runs a tool that ignores its signal, because Pi never finishes that run. The cooperative case is compared through the conformance row above.
+
+Remove when: Pi stops awaiting aborted tool calls.
 
 SCRUTINIZED:approved

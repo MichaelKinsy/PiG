@@ -45,7 +45,7 @@ func (u *promptUI) Input(context.Context, string, string, extension.ExtensionUID
 	return "typed", nil
 }
 func (u *promptUI) Editor(context.Context, string, string) (string, error) { return "edited", nil }
-func (u *promptUI) Custom(context.Context, any, any) (any, error) {
+func (u *promptUI) Custom(context.Context, extension.CustomFactory, *extension.CustomOptions) (any, error) {
 	return nil, errors.New("custom failed")
 }
 
@@ -116,11 +116,11 @@ func TestUIPrompt_EachDialogReportsStartAndEnd(t *testing.T) {
 	ui := runnerUI(t, r)
 	ctx := context.Background()
 
-	if got, _ := ui.Select(ctx, "Pick", []string{"x"}, nil); got != "picked" {
+	if got, _ := ui.Select(ctx, "Pick", []string{"x"}, extension.ExtensionUIDialogOptions{}); got != "picked" {
 		t.Fatalf("select = %q", got)
 	}
-	_, _ = ui.Confirm(ctx, "Sure", "message", nil)
-	_, _ = ui.Input(ctx, "Name", "placeholder", nil)
+	_, _ = ui.Confirm(ctx, "Sure", "message", extension.ExtensionUIDialogOptions{})
+	_, _ = ui.Input(ctx, "Name", "placeholder", extension.ExtensionUIDialogOptions{})
 	_, _ = ui.Editor(ctx, "Edit", "prefill")
 	if _, err := ui.Custom(ctx, nil, nil); err == nil {
 		t.Fatal("custom error was swallowed by the prompt scope")
@@ -146,9 +146,11 @@ func TestUIPrompt_NestedPromptReportsOuterOnly(t *testing.T) {
 	ui := newPromptUI()
 	r.SetUIContext(ui)
 	wrapped := runnerUI(t, r)
-	ui.nested = func(ctx context.Context) { _, _ = wrapped.Input(ctx, "Inner", "", nil) }
+	ui.nested = func(ctx context.Context) {
+		_, _ = wrapped.Input(ctx, "Inner", "", extension.ExtensionUIDialogOptions{})
+	}
 
-	_, _ = wrapped.Select(context.Background(), "Outer", nil, nil)
+	_, _ = wrapped.Select(context.Background(), "Outer", nil, extension.ExtensionUIDialogOptions{})
 	got := rec.wait(t, 2)
 	want := []string{"a:ui_prompt_start:ui_prompt:select:Outer", "a:ui_prompt_end:ui_prompt:select:Outer"}
 	if !slices.Equal(got, want) {
@@ -233,7 +235,7 @@ func TestUIPrompt_DialogDoesNotAwaitHandlers(t *testing.T) {
 
 	answered := make(chan string, 1)
 	go func() {
-		got, _ := ui.Select(context.Background(), "Pick", nil, nil)
+		got, _ := ui.Select(context.Background(), "Pick", nil, extension.ExtensionUIDialogOptions{})
 		answered <- got
 	}()
 	<-started
@@ -276,7 +278,7 @@ func TestUIPrompt_CancellationEndsAndHandlerErrorsAreReported(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	done := make(chan error, 1)
 	go func() {
-		_, err := wrapped.Select(ctx, "Pick", nil, nil)
+		_, err := wrapped.Select(ctx, "Pick", nil, extension.ExtensionUIDialogOptions{})
 		done <- err
 	}()
 	rec.wait(t, 1)
@@ -308,7 +310,7 @@ func TestUIPrompt_NoUIAndStaleRunnerReportNothing(t *testing.T) {
 	if r.HasUI() {
 		t.Fatal("nil UI context reported HasUI")
 	}
-	_, _ = runnerUI(t, r).Select(context.Background(), "Pick", nil, nil)
+	_, _ = runnerUI(t, r).Select(context.Background(), "Pick", nil, extension.ExtensionUIDialogOptions{})
 
 	stale := inproc.NewRunner([]extension.Extension{promptExtension("stale", rec)}, ".")
 	stale.SetUIContext(newPromptUI())

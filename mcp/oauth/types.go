@@ -4,8 +4,13 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math"
 	"net/url"
+	"slices"
 	"strings"
+
+	"github.com/MichaelKinsy/PiG/internal/jsnumber"
+	"github.com/MichaelKinsy/PiG/internal/nodeurl"
 )
 
 // Ports packages/mcp/src/oauth/types.ts.
@@ -18,8 +23,8 @@ import (
 // this package does not model.
 type OAuthProtectedResourceMetadata struct {
 	Resource             string   `json:"resource"`
-	AuthorizationServers []string `json:"authorization_servers,omitempty"`
-	ScopesSupported      []string `json:"scopes_supported,omitempty"`
+	AuthorizationServers []string `json:"authorization_servers,omitzero"`
+	ScopesSupported      []string `json:"scopes_supported,omitzero"`
 
 	Extra map[string]json.RawMessage `json:"-"`
 }
@@ -50,11 +55,11 @@ type AuthorizationServerMetadata struct {
 	AuthorizationEndpoint             string   `json:"authorization_endpoint"`
 	TokenEndpoint                     string   `json:"token_endpoint"`
 	RegistrationEndpoint              string   `json:"registration_endpoint,omitempty"`
-	ScopesSupported                   []string `json:"scopes_supported,omitempty"`
+	ScopesSupported                   []string `json:"scopes_supported,omitzero"`
 	ResponseTypesSupported            []string `json:"response_types_supported"`
-	GrantTypesSupported               []string `json:"grant_types_supported,omitempty"`
-	TokenEndpointAuthMethodsSupported []string `json:"token_endpoint_auth_methods_supported,omitempty"`
-	CodeChallengeMethodsSupported     []string `json:"code_challenge_methods_supported,omitempty"`
+	GrantTypesSupported               []string `json:"grant_types_supported,omitzero"`
+	TokenEndpointAuthMethodsSupported []string `json:"token_endpoint_auth_methods_supported,omitzero"`
+	CodeChallengeMethodsSupported     []string `json:"code_challenge_methods_supported,omitzero"`
 	ClientIDMetadataDocumentSupported *bool    `json:"client_id_metadata_document_supported,omitempty"`
 	// AuthorizationResponseIssParameterSupported reports whether
 	// authorization responses carry an iss parameter (RFC 9207).
@@ -94,22 +99,25 @@ type OAuthTokens struct {
 
 // OAuthClientMetadata is RFC 7591 client metadata.
 type OAuthClientMetadata struct {
-	RedirectURIs            []string        `json:"redirect_uris"`
-	TokenEndpointAuthMethod string          `json:"token_endpoint_auth_method,omitempty"`
-	GrantTypes              []string        `json:"grant_types,omitempty"`
-	ResponseTypes           []string        `json:"response_types,omitempty"`
-	ClientName              string          `json:"client_name,omitempty"`
-	ClientURI               string          `json:"client_uri,omitempty"`
-	LogoURI                 string          `json:"logo_uri,omitempty"`
-	Scope                   string          `json:"scope,omitempty"`
-	Contacts                []string        `json:"contacts,omitempty"`
-	TosURI                  string          `json:"tos_uri,omitempty"`
-	PolicyURI               string          `json:"policy_uri,omitempty"`
-	JwksURI                 string          `json:"jwks_uri,omitempty"`
-	Jwks                    json.RawMessage `json:"jwks,omitempty"`
-	SoftwareID              string          `json:"software_id,omitempty"`
-	SoftwareVersion         string          `json:"software_version,omitempty"`
-	SoftwareStatement       string          `json:"software_statement,omitempty"`
+	RedirectURIs            []string `json:"redirect_uris"`
+	TokenEndpointAuthMethod string   `json:"token_endpoint_auth_method,omitempty"`
+	GrantTypes              []string `json:"grant_types,omitzero"`
+	ResponseTypes           []string `json:"response_types,omitzero"`
+	// ApplicationType is the OpenID Connect client type, native or web. Dynamic client registration derives it from
+	// RedirectURIs when empty (MCP SEP-837).
+	ApplicationType   string          `json:"application_type,omitempty"`
+	ClientName        string          `json:"client_name,omitempty"`
+	ClientURI         string          `json:"client_uri,omitempty"`
+	LogoURI           string          `json:"logo_uri,omitempty"`
+	Scope             string          `json:"scope,omitempty"`
+	Contacts          []string        `json:"contacts,omitzero"`
+	TosURI            string          `json:"tos_uri,omitempty"`
+	PolicyURI         string          `json:"policy_uri,omitempty"`
+	JwksURI           string          `json:"jwks_uri,omitempty"`
+	Jwks              json.RawMessage `json:"jwks,omitempty"`
+	SoftwareID        string          `json:"software_id,omitempty"`
+	SoftwareVersion   string          `json:"software_version,omitempty"`
+	SoftwareStatement string          `json:"software_statement,omitempty"`
 }
 
 // OAuthClientInformation is the client id and secret, plus the registered
@@ -122,6 +130,11 @@ type OAuthClientInformation struct {
 	ClientIDIssuedAt      *float64 `json:"client_id_issued_at,omitempty"`
 	ClientSecretExpiresAt *float64 `json:"client_secret_expires_at,omitempty"`
 	OAuthClientMetadata
+
+	// Extra keeps the members of a registration response that the typed fields above cannot represent: members this
+	// package does not model, and modeled members whose value is empty or has another type. ParseClientInformation
+	// fills it; MarshalJSON writes it after the typed members.
+	Extra map[string]json.RawMessage `json:"-"`
 }
 
 // OAuthClientInformationFull and OAuthClientInformationMixed are upstream
@@ -138,15 +151,36 @@ func (c OAuthClientInformation) MarshalJSON() ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	if c.RedirectURIs != nil {
+	if c.RedirectURIs != nil && len(c.Extra) == 0 {
 		return data, nil
 	}
 	var fields map[string]json.RawMessage
 	if err := json.Unmarshal(data, &fields); err != nil {
 		return nil, err
 	}
-	delete(fields, "redirect_uris")
-	return json.Marshal(fields)
+	if c.RedirectURIs == nil {
+		delete(fields, "redirect_uris")
+	}
+	data, err = json.Marshal(fields)
+	if err != nil || len(c.Extra) == 0 {
+		return data, err
+	}
+	names := make([]string, 0, len(c.Extra))
+	for name := range c.Extra {
+		if _, written := fields[name]; !written {
+			names = append(names, name)
+		}
+	}
+	slices.Sort(names)
+	out := data[:len(data)-1]
+	for _, name := range names {
+		key, _ := json.Marshal(name)
+		if len(out) > 1 {
+			out = append(out, ',')
+		}
+		out = append(append(append(out, key...), ':'), c.Extra[name]...)
+	}
+	return append(out, '}'), nil
 }
 
 // HasRedirectURIs reports whether the information came with metadata.
@@ -257,25 +291,50 @@ func objectFields(value []byte, name string) (map[string]json.RawMessage, error)
 	return fields, nil
 }
 
-// parseURL parses an absolute URL as `new URL(text)` does for the schemes
-// MCP uses: it requires a scheme (and a host for http and https), lowercases
-// the scheme and host, and gives an empty http(s) path the path "/".
+// parseURL parses an absolute URL as `new URL(text)` does. An http or https URL goes through the WHATWG parser, so
+// dot segments, percent-encoding, the default port and the host's punycode spelling match Node; other schemes keep
+// net/url's reading, lowercase the scheme and give a hierarchical URL without a host no authority.
 func parseURL(text string) (*url.URL, error) {
+	if scheme, _, found := strings.Cut(nodeurl.PrepareInput(text), ":"); found {
+		if lower := strings.ToLower(scheme); lower == "http" || lower == "https" {
+			parsed, err := nodeurl.ParseHTTPHref(text)
+			if err != nil {
+				return nil, errors.New("Invalid URL")
+			}
+			return urlFromHTTP(parsed), nil
+		}
+	}
 	u, err := url.Parse(strings.TrimSpace(text))
 	if err != nil || u.Scheme == "" {
 		return nil, errors.New("Invalid URL")
 	}
 	u.Scheme = strings.ToLower(u.Scheme)
-	if u.Scheme == "http" || u.Scheme == "https" {
-		if u.Host == "" {
-			return nil, errors.New("Invalid URL")
-		}
-		u.Host = strings.ToLower(u.Host)
-		if u.Path == "" {
-			u.Path = "/"
+	return u, nil
+}
+
+// urlFromHTTP is the url.URL that spells parsed.Href: Path and RawPath, RawQuery and RawFragment keep the encoded text.
+func urlFromHTTP(parsed nodeurl.HTTPHref) *url.URL {
+	host := parsed.Hostname
+	if parsed.Port != "" {
+		host += ":" + parsed.Port
+	}
+	u := &url.URL{Scheme: strings.TrimSuffix(parsed.Protocol, ":"), Host: host, RawQuery: parsed.Query, ForceQuery: parsed.HasQuery && parsed.Query == ""}
+	if parsed.Username != "" || parsed.Password != "" {
+		name, _ := url.PathUnescape(parsed.Username)
+		password, _ := url.PathUnescape(parsed.Password)
+		if parsed.Password != "" {
+			u.User = url.UserPassword(name, password)
+		} else {
+			u.User = url.User(name)
 		}
 	}
-	return u, nil
+	u.Path, _ = url.PathUnescape(parsed.Pathname)
+	u.RawPath = parsed.Pathname
+	if parsed.HasFragment {
+		u.Fragment, _ = url.PathUnescape(parsed.Fragment)
+		u.RawFragment = parsed.Fragment
+	}
+	return u
 }
 
 // ParseProtectedResourceMetadata validates RFC 9728 metadata.
@@ -424,16 +483,9 @@ func ParseOAuthTokens(value []byte) (*OAuthTokens, error) {
 // numberLike is JavaScript's Number(value) for a JSON value, which accepts
 // numeric strings.
 func numberLike(raw json.RawMessage) (float64, error) {
-	var f float64
-	if err := json.Unmarshal(raw, &f); err == nil {
-		return f, nil
-	}
-	var s string
-	if err := json.Unmarshal(raw, &s); err != nil {
-		return 0, err
-	}
-	if err := json.Unmarshal([]byte(strings.TrimSpace(s)), &f); err != nil {
-		return 0, err
+	f := jsnumber.FromJSON(raw)
+	if math.IsNaN(f) || math.IsInf(f, 0) {
+		return 0, errors.New("not a finite number")
 	}
 	return f, nil
 }
@@ -445,8 +497,23 @@ func ParseClientInformation(value []byte) (*OAuthClientInformationFull, error) {
 		return nil, err
 	}
 	var info OAuthClientInformation
-	if err := json.Unmarshal(value, &info); err != nil {
-		info = OAuthClientInformation{}
+	// JavaScript keeps every member of the response; one member of an unexpected type must not cost the others, so each
+	// member is decoded on its own.
+	for name, raw := range fields {
+		member, err := json.Marshal(map[string]json.RawMessage{name: raw})
+		if err != nil {
+			continue
+		}
+		// encoding/json matches names without regard to case and fills what it can of an ill-typed value; JavaScript
+		// reads the exact name and the whole value, so a member counts only when it decodes cleanly onto its own field.
+		var single OAuthClientInformation
+		if json.Unmarshal(member, &single) != nil {
+			continue
+		}
+		var kept map[string]json.RawMessage
+		if typed, err := json.Marshal(single); err == nil && json.Unmarshal(typed, &kept) == nil && kept[name] != nil {
+			_ = json.Unmarshal(member, &info)
+		}
 	}
 	if info.ClientID, err = requiredString(fields, "client_id", "client_id"); err != nil {
 		return nil, err
@@ -464,12 +531,40 @@ func ParseClientInformation(value []byte) (*OAuthClientInformationFull, error) {
 		uris = []string{}
 	}
 	info.RedirectURIs = uris
+	info.Extra = clientInformationExtra(fields, info)
 	return &info, nil
+}
+
+// clientInformationExtra is upstream's `...input` spread: every member of the response that the typed fields did not
+// keep, except the members parseClientInformation overrides.
+func clientInformationExtra(fields map[string]json.RawMessage, info OAuthClientInformation) map[string]json.RawMessage {
+	typed, err := json.Marshal(info)
+	if err != nil {
+		return nil
+	}
+	var kept map[string]json.RawMessage
+	if json.Unmarshal(typed, &kept) != nil {
+		return nil
+	}
+	var extra map[string]json.RawMessage
+	for name, value := range fields {
+		switch name {
+		case "client_id", "client_secret", "client_id_issued_at", "client_secret_expires_at", "redirect_uris":
+			continue
+		}
+		if _, ok := kept[name]; !ok {
+			if extra == nil {
+				extra = map[string]json.RawMessage{}
+			}
+			extra[name] = value
+		}
+	}
+	return extra
 }
 
 func optionalNumber(fields map[string]json.RawMessage, key string) *float64 {
 	raw, ok := fields[key]
-	if !ok || len(raw) == 0 || raw[0] == '"' {
+	if !ok || len(raw) == 0 || raw[0] == '"' || raw[0] == 'n' {
 		return nil
 	}
 	var f float64

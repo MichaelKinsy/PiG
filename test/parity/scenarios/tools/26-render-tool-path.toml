@@ -1,0 +1,27 @@
+# Behavior family: tools (tool call path rendering)
+# Pi 1.1.0 probe: renderToolPath over 24 path shapes (null, empty, relative, absolute, under and beside the home directory, "~" forms, spaces,
+# unicode and reserved characters, backslashes, control characters), three working directories, no, empty and non-empty empty-fallbacks,
+# hyperlinks on and off, both themes; each result (the accent path, the muted "...", the invalid-arg text, the OSC 8 file link) is compared byte
+# for byte. The Go test TestRenderToolPathMatchesPi runs the same corpus against the installed Pi; this scenario compares the two printed streams.
+name = "26-render-tool-path"
+description = "Tool call headers render their path argument as in Pi."
+covers = ["packages/coding-agent/src/core/tools/render-utils.ts"]
+tags = ["fast", "hermetic", "tui"]
+driver = "cli-mode"
+
+[env]
+override_base_args = true
+pig_bin = "/usr/bin/env"
+pi_bin = "/usr/bin/env"
+pig_args = ["node", "./test/parity/testdata/render-tool-path-pig.mjs"]
+pi_args = ["node", "./test/parity/testdata/render-tool-path-pi.mjs"]
+
+[cli]
+cwd = "../../../.."
+timeout_seconds = 240
+
+[assert]
+exit_code = 0
+output_equal = true
+both_contain = ['a.txt', 'file:///']
+runs = 2

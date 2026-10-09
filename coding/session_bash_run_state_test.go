@@ -1,4 +1,3 @@
-// SPDX-FileCopyrightText: Copyright Hewlett Packard Enterprise Development LP
 // SPDX-License-Identifier: MIT
 
 package coding
@@ -6,6 +5,8 @@ package coding
 import (
 	"fmt"
 	"testing"
+
+	icodingagent "github.com/MichaelKinsy/PiG/internal/codingagent"
 
 	"github.com/MichaelKinsy/PiG/agent"
 )
@@ -29,18 +30,18 @@ func TestBashRecordingDefersDuringActualUnlockedAgentRun(t *testing.T) {
 	if err := s.RecordBashResult("echo buffered", BashResult{Output: "buffered", ExitCode: new(0)}, false); err != nil {
 		t.Fatal(err)
 	}
-	for _, entry := range s.inner.Entries() {
-		if message, ok := entry.AsMessage(); ok && message.Message.Role() == agent.RoleBashExecution {
+	for _, entry := range s.inner.GetEntries() {
+		if message, ok := entry.(icodingagent.MessageEntry); ok && message.Message.Role() == agent.RoleBashExecution {
 			t.Error("shell result persisted while the agent run was active")
 		}
 	}
 	s.RequestAbort()
 	<-done
-	entries := s.inner.Entries()
+	entries := s.inner.GetEntries()
 	if len(entries) == 0 {
 		t.Fatal("shell result was not flushed after the run")
 	}
-	last, ok := entries[len(entries)-1].AsMessage()
+	last, ok := entries[len(entries)-1].(icodingagent.MessageEntry)
 	if !ok || last.Message.Role() != agent.RoleBashExecution {
 		t.Fatal("shell result was not flushed as a bashExecution message after the run")
 	}

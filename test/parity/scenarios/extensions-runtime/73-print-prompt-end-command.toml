@@ -1,0 +1,46 @@
+# Behavior family: extensions-runtime
+# Scenario: JSON mode disposes the runtime before any callback the prompt's command queued can run.
+#
+# Pi's print and JSON modes await the prompt, here an extension command, and dispose the runtime
+# in the same continuation (print-mode.ts:131-166, agent-session-runtime.ts:404-410,
+# agent-session.ts:1393-1406): session_shutdown runs, then the runner is invalidated, with no
+# event-loop turn between. print-prompt-end.mjs queues an immediate in the command handler and
+# records which immediates are still pending when session_shutdown arrives.
+#
+# Upstream evidence (2026-10-07, Pi 1.0.4; re-probed 2026-10-08 with Pi 1.1.0, same log):
+#   PI_CODING_AGENT_DIR=testdata/pi-agent PROMPT_END_LOG=/tmp/prompt-end.log pi --no-extensions \
+#     -e ../../testdata/test-faux-provider.ts -e testdata/ext/print-prompt-end.mjs \
+#     --model test-faux/faux-1 --no-session --mode json /prompt-end
+#   exit 0
+#   /tmp/prompt-end.log: "command", "session_shutdown pending=command"
+
+name = "73-print-prompt-end-command"
+description = "JSON mode runs session_shutdown before a callback the prompt's command queued"
+covers = [
+  "packages/coding-agent/src/modes/print-mode.ts",
+  "packages/coding-agent/src/core/agent-session-runtime.ts",
+]
+tags = ["hermetic", "fast"]
+driver = "cli-mode"
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_HOME=testdata/pig-home", "PROMPT_END_LOG={{TEMP}}/prompt-end.log"]
+pi = ["PI_CODING_AGENT_DIR=testdata/pi-agent", "PROMPT_END_LOG={{TEMP}}/prompt-end.log"]
+pig_extensions = ["testdata/ext/print-prompt-end.mjs"]
+pi_extensions = [
+  "../../testdata/test-faux-provider.ts",
+  "testdata/ext/print-prompt-end.mjs",
+]
+
+[cli]
+args = ["--model", "test-faux/faux-1", "--no-session", "--mode", "json", "/prompt-end"]
+artifact_path = "{{TEMP}}/prompt-end.log"
+timeout_seconds = 30
+
+[assert]
+exit_code = 0
+# The JSON session header carries per-run ids and times; the order record is the contract.
+both_not_contain = ["Extension error"]
+artifact_equal = true
+artifact_both_contain = ["session_shutdown pending=command"]
+runs = 3

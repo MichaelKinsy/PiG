@@ -14,7 +14,7 @@ import (
 // AgentState is the part of the conversation's pi.agent document that the Models service follows. An empty ThinkingLevel is unset and reads as "off".
 type AgentState struct {
 	Model         *ModelRef
-	ThinkingLevel ai.ThinkingLevel
+	ThinkingLevel ai.ModelThinkingLevel
 }
 
 // AgentDocument is the conversation's replicated pi.agent document: its configuration follows every change, also those made by other clients. Value is nil until the document exists. Subscribe returns its unsubscribe function. The facet that acquired the document disposes it.
@@ -27,7 +27,7 @@ type AgentDocument interface {
 // ConversationConfiguration selects the model and thinking level to apply together; a nil member keeps its current value.
 type ConversationConfiguration struct {
 	Model         *ModelRef
-	ThinkingLevel *ai.ThinkingLevel
+	ThinkingLevel *ai.ModelThinkingLevel
 }
 
 // ModelsServiceConversation is the configuration boundary the Models service consumes from the root conversation.
@@ -127,7 +127,7 @@ func configurationOf(value *AgentState) ModelsConfiguration {
 
 func (service *modelsService) State() chord.ReplicatedStateOf[*ModelsState] { return service.state }
 
-func (service *modelsService) currentThinking() ai.ThinkingLevel {
+func (service *modelsService) currentThinking() ai.ModelThinkingLevel {
 	return configurationOf(service.agent.Value()).ThinkingLevel
 }
 
@@ -164,10 +164,10 @@ func modelSummary(model *ai.Model) ModelSummary {
 	return ModelSummary{ModelRef: ModelRef{Provider: model.ProviderMeta.ProviderID, ModelId: model.ID}, Name: model.DisplayName, Reasoning: model.ProviderMeta.Reasoning}
 }
 
-func (service *modelsService) GetThinkingLevels(context.Context) ([]ai.ThinkingLevel, error) {
+func (service *modelsService) GetThinkingLevels(context.Context) ([]ai.ModelThinkingLevel, error) {
 	selected := service.selectedModel()
 	if selected == nil {
-		return []ai.ThinkingLevel{ai.ThinkingOff}, nil
+		return []ai.ModelThinkingLevel{ai.ThinkingOff}, nil
 	}
 	return slices.Clone(ai.GetSupportedThinkingLevels(selected)), nil
 }
@@ -228,7 +228,7 @@ func (service *modelsService) Select(ctx context.Context, model ModelRef) error 
 	return service.settingsManager.Flush()
 }
 
-func (service *modelsService) SelectThinking(ctx context.Context, level ai.ThinkingLevel) error {
+func (service *modelsService) SelectThinking(ctx context.Context, level ai.ModelThinkingLevel) error {
 	levels, _ := service.GetThinkingLevels(ctx)
 	if !slices.Contains(levels, level) {
 		names := make([]string, len(levels))
@@ -256,7 +256,7 @@ func CreateModelsServiceFacet(options ModelsServiceFacetOptions) chord.Facet {
 		}
 		var stateError error
 		runtime := CreateModelsService(options.Conversation, options.Agent, options.ModelRuntime, options.SettingsManager, func(initial *ModelsState) chord.MutableReplicatedStateOf[*ModelsState] {
-			state, err := chord.NewReplicatedState(initial)
+			state, err := chord.ReplicatedState(env, initial)
 			stateError = err
 			return state
 		})

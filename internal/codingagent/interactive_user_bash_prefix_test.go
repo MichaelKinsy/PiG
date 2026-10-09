@@ -18,7 +18,7 @@ import (
 func TestInteractiveBashAppliesShellCommandPrefix(t *testing.T) {
 	dir := t.TempDir()
 	model := &ai.Model{ID: "m", DisplayName: "m", Capabilities: ai.ModelCapabilities{ContextWindow: 8000}}
-	m := NewInteractiveMode(InteractiveOptions{CWD: dir, Model: model, AgentDir: t.TempDir(), Settings: Settings{CommandPrefix: "X=from-prefix"}})
+	m := NewInteractiveMode(nil, InteractiveModeOptions{CWD: dir, Model: model, AgentDir: t.TempDir(), Settings: Settings{CommandPrefix: "X=from-prefix"}})
 	m.chatContainer = tui.NewContainer()
 	m.pendingMessagesContainer = tui.NewContainer()
 	m.tuiInst = tui.NewWithOutput(io.Discard, 100, 30)

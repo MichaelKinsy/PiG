@@ -1,0 +1,85 @@
+[
+ {
+  "ids": [
+   "pkg:coding-agent/.#ModelRegistry::property:complete"
+  ],
+  "targets": [
+   "coding/model.go#ModelRegistry.Complete"
+  ],
+  "production": [
+   "public-api:coding/model.go#ModelRegistry.Complete"
+  ],
+  "evidence": [
+   "test:coding/model_runtime_0861_test.go#TestModelRegistryDelegatesToBoundRuntime",
+   "test:coding/test_faux_ids_test.go#TestModelRuntimeTestFauxToolCallIDs"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value; AbortSignal is the context.Context first argument; a provider failure is reported in the returned message or stream as upstream does; no detached goroutine.",
+  "rationale": "ModelRegistry.complete is Complete(ctx, model, request, options ai.StreamOptions) *ai.AssistantMessage delegating to the bound ModelRuntime; the optional options is a zero-value struct."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#ModelRegistry::property:stream"
+  ],
+  "targets": [
+   "coding/model.go#ModelRegistry.Stream"
+  ],
+  "production": [
+   "public-api:coding/model.go#ModelRegistry.Stream"
+  ],
+  "evidence": [
+   "test:coding/model_runtime_0861_test.go#TestModelRegistryDelegatesToBoundRuntime"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value; AbortSignal is the context.Context first argument; a provider failure is reported in the returned message or stream as upstream does; no detached goroutine.",
+  "rationale": "ModelRegistry.stream is Stream(ctx, model, request, options) delegating to the bound ModelRuntime."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#ModelRegistry::property:streamSimple"
+  ],
+  "targets": [
+   "coding/model.go#ModelRegistry.StreamSimple"
+  ],
+  "production": [
+   "public-api:coding/model.go#ModelRegistry.StreamSimple"
+  ],
+  "evidence": [
+   "test:coding/model_runtime_0861_test.go#TestModelRegistryDelegatesToBoundRuntime"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value; AbortSignal is the context.Context first argument; a provider failure is reported in the returned message or stream as upstream does; no detached goroutine.",
+  "rationale": "ModelRegistry.streamSimple is StreamSimple(ctx, model, request, options) delegating to the bound ModelRuntime."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#ModelRegistry::property:getApiKeyAndHeaders"
+  ],
+  "targets": [
+   "coding/model_registry_facade.go#ModelRegistry.GetAPIKeyAndHeaders"
+  ],
+  "production": [
+   "public-api:coding/model_registry_facade.go#ModelRegistry.GetAPIKeyAndHeaders"
+  ],
+  "evidence": [
+   "test:coding/model_registry_request_auth_upstream_test.go#TestModelRegistryRequestAuthUpstream",
+   "test:coding/model_registry_base_upstream_test.go#TestModelRegistryBaseOverridesUpstream"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value; AbortSignal is the context.Context first argument; a provider failure is reported in the returned message or stream as upstream does; no detached goroutine.",
+  "rationale": "ModelRegistry.getApiKeyAndHeaders is GetAPIKeyAndHeaders(ctx, model) ResolvedRequestAuth (the {ok, apiKey, headers, error} shape)."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#ModelRegistry::property:getApiKeyForProvider"
+  ],
+  "targets": [
+   "coding/model_registry_facade.go#ModelRegistry.GetAPIKeyForProvider"
+  ],
+  "production": [
+   "public-api:coding/model_registry_facade.go#ModelRegistry.GetAPIKeyForProvider"
+  ],
+  "evidence": [
+   "test:coding/model_registry_auth_upstream_test.go#TestModelRegistryAPIKeysUpstream",
+   "test:coding/model_registry_auth_status_upstream_test.go#TestModelRegistryAuthStatusUpstream"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value; AbortSignal is the context.Context first argument; a provider failure is reported in the returned message or stream as upstream does; no detached goroutine.",
+  "rationale": "ModelRegistry.getApiKeyForProvider is GetAPIKeyForProvider(ctx, id) *string, nil for undefined."
+ }
+]

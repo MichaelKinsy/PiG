@@ -1,3 +1,5 @@
+//go:build !pig_strip_node_extensions
+
 package subprocess
 
 import (
@@ -85,8 +87,8 @@ func TestContextIdentityCrossesSDKTransports(t *testing.T) {
 				{name: "replacement", content: "replace", timestamp: 0, wantReplaced: true},
 			} {
 				messages := []extension.AgentMessage{
-					map[string]any{"role": "user", "content": tc.content, "timestamp": tc.timestamp},
-					map[string]any{"role": "user", "content": "two", "timestamp": 0},
+					wireMessage(map[string]any{"role": "user", "content": tc.content, "timestamp": tc.timestamp}),
+					wireMessage(map[string]any{"role": "user", "content": "two", "timestamp": 0}),
 				}
 				got, replaced, err := runner.EmitContextTracked(t.Context(), messages)
 				if err != nil {
@@ -95,10 +97,10 @@ func TestContextIdentityCrossesSDKTransports(t *testing.T) {
 				if replaced != tc.wantReplaced {
 					t.Fatalf("%s: replaced = %t, want %t", tc.name, replaced, tc.wantReplaced)
 				}
-				if len(got) != 2 || got[0].(map[string]any)["content"] != "edited" || got[1].(map[string]any)["content"] != "two" {
+				if len(got) != 2 || wireContent(got[0]) != "edited" || wireContent(got[1]) != "two" {
 					t.Fatalf("%s: context = %#v", tc.name, got)
 				}
-				if messages[0].(map[string]any)["content"] != tc.content {
+				if wireContent(messages[0]) != tc.content {
 					t.Fatalf("%s: context transform mutated its input", tc.name)
 				}
 			}
@@ -288,8 +290,8 @@ func TestContextResultShapesCrossSDKTransports(t *testing.T) {
 				failures = nil
 				mu.Unlock()
 				messages := []extension.AgentMessage{
-					map[string]any{"role": "user", "content": tc.content, "timestamp": 0},
-					map[string]any{"role": "user", "content": tc.second, "timestamp": 0},
+					wireMessage(map[string]any{"role": "user", "content": tc.content, "timestamp": 0}),
+					wireMessage(map[string]any{"role": "user", "content": tc.second, "timestamp": 0}),
 				}
 				got, replaced, err := runner.EmitContextTracked(t.Context(), messages)
 				if err != nil {
@@ -297,7 +299,7 @@ func TestContextResultShapesCrossSDKTransports(t *testing.T) {
 				}
 				contents := make([]string, len(got))
 				for i, message := range got {
-					contents[i], _ = message.(map[string]any)["content"].(string)
+					contents[i] = wireContent(message)
 				}
 				if !slices.Equal(contents, tc.want) {
 					t.Fatalf("%s: context = %q, want %q", tc.content, contents, tc.want)

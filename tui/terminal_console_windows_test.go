@@ -87,8 +87,8 @@ func TestStartedTerminalStopsAfterConsoleNegotiation(t *testing.T) {
 		output := &negotiationWriter{seen: make(chan struct{})}
 		terminal := NewProcessTerminalWithOutput(os.Stdin, os.Stdout, io.MultiWriter(os.Stdout, output))
 		// ConPTY requests focus reporting (CSI ?1004h, first in the console output) and may deliver a focus event as input; that is not a key.
-		if err := terminal.Start(func(data []byte) {
-			if s := string(data); s != "\x1b[I" && s != "\x1b[O" {
+		if err := terminal.Start(func(data string) {
+			if data != "\x1b[I" && data != "\x1b[O" {
 				t.Errorf("unexpected input: %q", data)
 			}
 		}, nil); err != nil {

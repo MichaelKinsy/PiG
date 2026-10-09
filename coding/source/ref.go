@@ -12,7 +12,6 @@ import (
 	pathpkg "path"
 	"path/filepath"
 	"runtime"
-	"slices"
 	"strings"
 
 	"github.com/MichaelKinsy/PiG/internal/lazyregexp"
@@ -241,41 +240,28 @@ func isGitInput(source string) bool {
 
 func parseGit(raw string) (Ref, error) {
 	locator := raw
-	if after, ok := strings.CutPrefix(raw, "git:"); ok {
+	// A "git://" URL is a protocol URL, not the "git:" shorthand prefix followed by "//..." (D110).
+	if after, ok := strings.CutPrefix(raw, "git:"); ok && !strings.HasPrefix(strings.ToLower(raw), "git://") {
 		locator = strings.TrimSpace(after)
 	}
 	if locator == "" {
 		return Ref{}, fmt.Errorf("git source locator is required")
 	}
-	repoLocator, subdir, err := splitGitSubdirectory(locator)
+	// pig divergence (D110): a fragment that starts with "subdirectory=" selects a subdirectory of the repository; any other fragment is a ref, as in Pi.
+	source, subdir, err := splitGitSubdirectory(raw)
 	if err != nil {
 		return Ref{}, fmt.Errorf("invalid Git source %q: %w", raw, err)
 	}
-	repo, ref := splitGitRef(repoLocator)
-	if strings.HasPrefix(repo, "git@") {
-		host, repoPath, ok := splitSCPRepo(repo)
-		if !ok {
-			return Ref{}, fmt.Errorf("invalid Git SSH source %q", raw)
-		}
-		return gitRef(raw, locator, repo, host, repoPath, ref, subdir)
+	parsed := parseGitURL(source)
+	if parsed == nil {
+		return Ref{}, fmt.Errorf("invalid Git source %q: it must be a git: shorthand or a protocol URL with a safe owner/repository path", raw)
 	}
-	if strings.Contains(repo, "://") {
-		parsed, err := url.Parse(repo)
-		if err != nil || parsed.Hostname() == "" {
-			return Ref{}, fmt.Errorf("invalid Git URL source %q", raw)
-		}
-		return gitRef(raw, locator, repo, parsed.Hostname(), strings.TrimPrefix(parsed.Path, "/"), ref, subdir)
-	}
-	host, repoPath, ok := strings.Cut(repo, "/")
-	if !ok || host == "" || (!strings.Contains(host, ".") && host != "localhost") {
-		return Ref{}, fmt.Errorf("invalid Git shorthand source %q", raw)
-	}
-	return gitRef(raw, locator, "https://"+repo, host, repoPath, ref, subdir)
+	return Ref{Raw: raw, Kind: KindGit, Scheme: "git", Locator: locator, GitHost: parsed.host, GitPath: parsed.path, GitRef: parsed.ref, GitRepo: parsed.repo, GitSubdir: subdir}, nil
 }
 
 func splitGitSubdirectory(locator string) (string, string, error) {
 	repo, fragment, hasFragment := strings.Cut(locator, "#")
-	if !hasFragment {
+	if !hasFragment || !strings.HasPrefix(fragment, "subdirectory=") {
 		return locator, "", nil
 	}
 	if strings.Contains(fragment, "#") {
@@ -294,76 +280,4 @@ func splitGitSubdirectory(locator string) (string, string, error) {
 		return "", "", fmt.Errorf("subdirectory %q must stay inside the Git repository", raw)
 	}
 	return repo, clean, nil
-}
-
-func gitRef(raw, locator, repo, host, repoPath, ref, subdir string) (Ref, error) {
-	if strings.HasPrefix(repoPath, "/") {
-		return Ref{}, fmt.Errorf("Git source %q has an unsafe install path", raw)
-	}
-	repoPath = strings.TrimSuffix(repoPath, ".git")
-	if repoPath == "" || len(strings.Split(repoPath, "/")) < 2 ||
-		hasUnsafeGitInstallPart(host, false) || hasUnsafeGitInstallPart(repoPath, true) {
-		return Ref{}, fmt.Errorf("Git source %q must include a safe owner/repository path", raw)
-	}
-	return Ref{
-		Raw: raw, Kind: KindGit, Scheme: "git", Locator: locator,
-		GitHost: host, GitPath: repoPath, GitRef: ref, GitRepo: repo, GitSubdir: subdir,
-	}, nil
-}
-
-func hasUnsafeGitInstallPart(value string, allowSlash bool) bool {
-	decoded, err := url.PathUnescape(value)
-	if err != nil {
-		return true
-	}
-	for _, candidate := range []string{value, decoded} {
-		if strings.ContainsAny(candidate, "\x00\\") || strings.HasPrefix(candidate, "/") ||
-			!allowSlash && strings.Contains(candidate, "/") {
-			return true
-		}
-		if slices.Contains(strings.Split(candidate, "/"), "..") {
-			return true
-		}
-	}
-	return false
-}
-
-func splitSCPRepo(repo string) (host, path string, ok bool) {
-	rest, ok := strings.CutPrefix(repo, "git@")
-	if !ok {
-		return "", "", false
-	}
-	host, path, ok = strings.Cut(rest, ":")
-	return host, path, ok && host != "" && path != ""
-}
-
-func splitGitRef(source string) (repo, ref string) {
-	if strings.HasPrefix(source, "git@") {
-		if host, path, ok := splitSCPRepo(source); ok {
-			if idx := strings.Index(path, "@"); idx >= 0 && idx < len(path)-1 {
-				return "git@" + host + ":" + path[:idx], path[idx+1:]
-			}
-		}
-		return source, ""
-	}
-	if strings.Contains(source, "://") {
-		parsed, err := url.Parse(source)
-		if err != nil {
-			return source, ""
-		}
-		path := strings.TrimPrefix(parsed.Path, "/")
-		if idx := strings.Index(path, "@"); idx >= 0 && idx < len(path)-1 {
-			parsed.Path = "/" + path[:idx]
-			return strings.TrimSuffix(parsed.String(), "/"), path[idx+1:]
-		}
-		return source, ""
-	}
-	host, path, ok := strings.Cut(source, "/")
-	if !ok {
-		return source, ""
-	}
-	if idx := strings.Index(path, "@"); idx >= 0 && idx < len(path)-1 {
-		return host + "/" + path[:idx], path[idx+1:]
-	}
-	return source, ""
 }

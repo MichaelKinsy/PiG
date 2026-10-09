@@ -26,7 +26,7 @@ func TestUndecodableEntriesAreCountedAndOmitted(t *testing.T) {
 		t.Fatalf("count before any walk = %d, want 0 (counted lazily)", n)
 	}
 
-	ctx := sess.BuildContext(sess.LeafID())
+	ctx := sess.BuildContext(sess.GetLeafID())
 	if len(ctx) != 2 {
 		t.Fatalf("BuildContext = %d messages, want 2 (the undecodable one is dropped)", len(ctx))
 	}
@@ -35,8 +35,8 @@ func TestUndecodableEntriesAreCountedAndOmitted(t *testing.T) {
 	}
 
 	// Counting is by distinct entry, so repeated walks do not inflate it.
-	sess.BuildContext(sess.LeafID())
-	sess.BuildContext(sess.LeafID())
+	sess.BuildContext(sess.GetLeafID())
+	sess.BuildContext(sess.GetLeafID())
 	if n := sess.UndecodableCount(); n != 1 {
 		t.Fatalf("UndecodableCount after repeat walks = %d, want 1", n)
 	}
@@ -55,7 +55,7 @@ func TestUndecodableCountZeroOnCleanSession(t *testing.T) {
 			t.Fatalf("append: %v", err)
 		}
 	}
-	if got := len(sess.BuildContext(sess.LeafID())); got != 3 {
+	if got := len(sess.BuildContext(sess.GetLeafID())); got != 3 {
 		t.Fatalf("BuildContext = %d, want 3", got)
 	}
 	if n := sess.UndecodableCount(); n != 0 {

@@ -14,6 +14,7 @@ import (
 )
 
 // upstream: packages/server/src/session-router.ts:110-120 closeInternal snapshots openingSessions, an insertion-ordered Map, awaits Promise.allSettled, and reports the rejections in that snapshot order.
+// mutation-checked: negating the condition `operation.err != nil` at session_router.go:227 fails it.
 func TestRouterCloseReportsOpeningFailuresInOpeningOrder(t *testing.T) {
 	const sessions = 8
 	entered := make([]chan struct{}, sessions)

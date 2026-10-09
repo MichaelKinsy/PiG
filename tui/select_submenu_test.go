@@ -52,3 +52,25 @@ func TestSelectSubmenuDownWrapsLastToFirst(t *testing.T) {
 		t.Fatalf("wrapped Down selected %q", got)
 	}
 }
+
+// settings-submenu.ts SelectSubmenu extends Container: title, [spacer, description], [spacer, search input], spacer, list,
+// spacer, hint; a filter keystroke replaces the list child in place.
+func TestSelectSubmenuIsAContainerWhoseFilterReplacesTheListChild(t *testing.T) {
+	items := []SelectItem{{Value: "a", Label: "Alpha"}, {Value: "b", Label: "Beta"}}
+	plain := NewSelectSubmenu("T", "", items, "")
+	if got := len(plain.Children()); got != 5 {
+		t.Fatalf("plain children = %d, want 5", got)
+	}
+	menu := NewSelectSubmenu("T", "D", items, "", SelectSubmenuOptions{Searchable: true})
+	if got := len(menu.Children()); got != 9 {
+		t.Fatalf("searchable children = %d, want 9", got)
+	}
+	before := menu.Children()[6]
+	menu.HandleInput("b")
+	if menu.Children()[6] == before {
+		t.Fatal("filtering kept the stale list child")
+	}
+	if got := stripANSI(strings.Join(menu.Render(40), "\n")); strings.Contains(got, "Alpha") || !strings.Contains(got, "Beta") {
+		t.Fatalf("render after filter = %q", got)
+	}
+}

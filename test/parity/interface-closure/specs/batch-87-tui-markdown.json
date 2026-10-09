@@ -1,0 +1,73 @@
+[
+ {
+  "ids": [
+   "pkg:tui/.#Markdown::construct:0"
+  ],
+  "targets": [
+   "tui/markdown_options.go#NewMarkdownWithOptions"
+  ],
+  "production": [
+   "call:internal/codingagent/interactive_chat.go#InteractiveMode.showNewVersionNotification"
+  ],
+  "evidence": [
+   "test:tui/markdown_upstream_test.go#TestUpstreamMarkdown"
+  ],
+  "rationale": "`new Markdown(text, paddingX, paddingY, theme, defaultTextStyle?, options?)` is NewMarkdownWithOptions(content, paddingX, paddingY, theme, style, options), with a pointer for each optional argument; NewMarkdown(content) is a convenience with zero padding and no theme."
+ },
+ {
+  "ids": [
+   "pkg:tui/.#Markdown"
+  ],
+  "targets": [
+   "tui/markdown.go#Markdown"
+  ],
+  "production": [
+   "call:tui/assistant_message_block.go#AssistantMessageBlock.SetContent"
+  ],
+  "evidence": [
+   "test:tui/markdown_upstream_test.go#TestUpstreamMarkdown",
+   "test:tui/component_members_test.go#TestMarkdownInvalidateForcesTheTransformAndParserToRunAgain"
+  ],
+  "rationale": "Markdown is the Go struct Markdown; every member is mapped individually.",
+  "properties": {
+   "invalidate": {
+    "targets": [
+     "tui/markdown.go#Markdown.Invalidate"
+    ],
+    "evidence": [
+     "test:tui/component_members_test.go#TestMarkdownInvalidateForcesTheTransformAndParserToRunAgain",
+     "test:tui/markdown_upstream_test.go#TestUpstreamMarkdown"
+    ],
+    "production": [
+     "call:tui/assistant_message_block.go#AssistantMessageBlock.SetContent"
+    ],
+    "rationale": "Markdown.invalidate() is Invalidate(): it bumps the revision so the transform and parser rerun on the next render."
+   },
+   "render": {
+    "targets": [
+     "tui/markdown.go#Markdown.Render"
+    ],
+    "evidence": [
+     "test:internal/codingagent/w3_pi_test.go#TestW3SessionPiComparison",
+     "test:tui/assistant_thinking_markdown_test.go#TestMarkdownDefaultColorAppliesToListTextNotCode"
+    ],
+    "production": [
+     "call:tui/branch_summary.go#BranchSummaryComponent.Render"
+    ],
+    "rationale": "Markdown.render is the Go method Markdown.Render; signature reviewed against the upstream declaration; callers and tests attributed by go/types (methodrefs)."
+   },
+   "setText": {
+    "targets": [
+     "tui/markdown_options.go#Markdown.SetText"
+    ],
+    "evidence": [
+     "test:tui/markdown_upstream_test.go#TestUpstreamMarkdown"
+    ],
+    "production": [
+     "public-api:tui/markdown_options.go#Markdown.SetText"
+    ],
+    "rationale": "Markdown.setText is the Go method tui.Markdown.SetText; signature reviewed against the upstream declaration. Closed as public-api-tested: the method is exported from the public tui package and no PiG binary calls it; test callers (go/types) are the proof."
+   }
+  }
+ }
+]

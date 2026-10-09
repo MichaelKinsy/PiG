@@ -8,7 +8,7 @@ import (
 // Alternating thinking/text snapshots exercise the same SetContent + Render
 // path used by interactive message_update, at a representative response size.
 func BenchmarkAssistantMessageStreaming(b *testing.B) {
-	block := NewAssistantMessageBlock(false)
+	block := NewAssistantMessageComponent(nil, false, nil, "", nil, nil)
 	content := []AssistantSegment{
 		{Text: strings.Repeat("intro ", 128)},
 		{Thinking: true, Text: strings.Repeat("reasoning ", 512)},

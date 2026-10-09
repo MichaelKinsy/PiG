@@ -1,0 +1,316 @@
+[
+ {
+  "ids": [
+   "pkg:ai/.#AssistantMessageDiagnostic"
+  ],
+  "targets": [
+   "ai/types.go#AssistantMessageDiagnostic"
+  ],
+  "struct": {
+   "file": "ai/types.go",
+   "type": "AssistantMessageDiagnostic"
+  },
+  "production": [
+   "call:ai/anthropic.go#anthropicProvider.parseAnthropicSSE"
+  ],
+  "evidence": [
+   "test:ai/assistant_field_observation_test.go#TestAssistantFieldProjectionsDoNotTraverseOtherValues",
+   "test:ai/assistant_message_frame_json_test.go#TestFrameJSONRoundTripsEveryVariant"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "AssistantMessageDiagnostic: Go AssistantMessageDiagnostic has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+ },
+ {
+  "ids": [
+   "pkg:ai/.#DeferredHandle"
+  ],
+  "targets": [
+   "ai/types.go#DeferredHandle"
+  ],
+  "struct": {
+   "file": "ai/types.go",
+   "type": "DeferredHandle"
+  },
+  "production": [
+   "call:ai/faux_deferred.go#fauxProvider.CancelledDeferred"
+  ],
+  "evidence": [
+   "test:ai/faux_deferred_models_upstream_test.go#TestFauxModelsDeferredFailureAndCancellationUpstream",
+   "test:ai/models_collection_upstream_test.go#TestModelsDeferredResolvedRequestOptionsUpstream"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "DeferredHandle: Go DeferredHandle has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+ },
+ {
+  "ids": [
+   "pkg:ai/.#ClassifierResult"
+  ],
+  "targets": [
+   "ai/classifier.go#ClassifierResult"
+  ],
+  "struct": {
+   "file": "ai/classifier.go",
+   "type": "ClassifierResult"
+  },
+  "production": [
+   "call:ai/classifier.go#Models.classify"
+  ],
+  "evidence": [
+   "test:ai/classifier_models_upstream_test.go#TestClassifierModelsUpstream",
+   "test:ai/telemetry_options_upstream_test.go#TestTelemetryOptionsSurviveClassifierDispatch"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "ClassifierResult: Go ClassifierResult has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+ },
+ {
+  "ids": [
+   "pkg:ai/.#CreateModelsOptions"
+  ],
+  "targets": [
+   "ai/models_options.go#CreateModelsOptions"
+  ],
+  "struct": {
+   "file": "ai/models_options.go",
+   "type": "CreateModelsOptions"
+  },
+  "production": [
+   "call:ai/models_runtime.go#createModels"
+  ],
+  "evidence": [
+   "test:ai/anthropic_federation_upstream_test.go#TestAnthropicWorkloadIdentityFederation",
+   "test:ai/auth_storage_lock_error_upstream_test.go#TestAuthStorageLockErrorIsProperLockfileErrorUpstream"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "CreateModelsOptions: Go CreateModelsOptions has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+ },
+ {
+  "ids": [
+   "pkg:ai/.#AuthInfoLink"
+  ],
+  "targets": [
+   "ai/auth_interaction.go#AuthInfoLink"
+  ],
+  "struct": {
+   "file": "ai/auth_interaction.go",
+   "type": "AuthInfoLink"
+  },
+  "production": [
+   "call:ai/provider_login.go#bedrockLogin"
+  ],
+  "evidence": [
+   "test:ai/auth_login_test.go#TestAuthInteractionDiscriminatedJSON"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "AuthInfoLink: Go AuthInfoLink has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+ },
+ {
+  "ids": [
+   "pkg:ai/.#LoginOptions"
+  ],
+  "targets": [
+   "ai/auth_resolve.go#LoginOptions"
+  ],
+  "struct": {
+   "file": "ai/auth_resolve.go",
+   "type": "LoginOptions"
+  },
+  "production": [
+   "call:ai/auth_native_login.go#oauthNativeLogin"
+  ],
+  "evidence": [
+   "test:ai/auth_storage_lock_failure_upstream_test.go#TestModelsGetAuthTranslatesCredentialStoreRefreshFailureUpstream",
+   "test:ai/openai_chatgpt_oauth_upstream_test.go#TestOpenAIChatGPTOAuthUpstream"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "LoginOptions: Go LoginOptions has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+ },
+ {
+  "ids": [
+   "pkg:ai/.#ModelsStoreEntry"
+  ],
+  "targets": [
+   "ai/models_store.go#ModelsStoreEntry"
+  ],
+  "struct": {
+   "file": "ai/models_store.go",
+   "type": "ModelsStoreEntry"
+  },
+  "production": [
+   "call:ai/models_provider.go#CreateProvider"
+  ],
+  "evidence": [
+   "test:ai/auth_storage_lock_error_upstream_test.go#TestFileModelsStoreLockErrorIsProperLockfileErrorUpstream",
+   "test:ai/auth_storage_lock_error_upstream_test.go#TestFileModelsStoreLockWaitAbortedAfterCreatingTheStoreUpstream"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "ModelsStoreEntry: Go ModelsStoreEntry has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+ },
+ {
+  "ids": [
+   "pkg:ai/.#ModelInputLimits"
+  ],
+  "targets": [
+   "ai/types.go#ModelInputLimits"
+  ],
+  "struct": {
+   "file": "ai/types.go",
+   "type": "ModelInputLimits"
+  },
+  "production": [
+   "call:internal/codingagent/model_input_limits.go#mergeModelInputLimits"
+  ],
+  "evidence": [
+   "test:ai/providers_upstream_test.go#TestBuiltinProvidersUpstream",
+   "test:coding/session_prompt_image_mock_upstream_test.go#TestUpstreamSessionPromptUsesBeforeAgentModelForMockedImageNormalization"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "ModelInputLimits: Go ModelInputLimits has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+ },
+ {
+  "ids": [
+   "pkg:ai/.#ModelImageInputLimits"
+  ],
+  "targets": [
+   "ai/types.go#ModelImageInputLimits"
+  ],
+  "struct": {
+   "file": "ai/types.go",
+   "type": "ModelImageInputLimits"
+  },
+  "production": [
+   "call:internal/codingagent/model_input_limits.go#mergeModelInputLimits"
+  ],
+  "evidence": [
+   "test:ai/providers_upstream_test.go#TestBuiltinProvidersUpstream",
+   "test:coding/session_prompt_image_mock_upstream_test.go#TestUpstreamSessionPromptUsesBeforeAgentModelForMockedImageNormalization"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "ModelImageInputLimits: Go ModelImageInputLimits has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+ },
+ {
+  "ids": [
+   "pkg:ai/.#ModelImageResizeOptions"
+  ],
+  "targets": [
+   "ai/types.go#ModelImageResizeOptions"
+  ],
+  "struct": {
+   "file": "ai/types.go",
+   "type": "ModelImageResizeOptions"
+  },
+  "production": [
+   "call:coding/session_images.go#Session.prepareToolResult"
+  ],
+  "evidence": [
+   "test:ai/providers_upstream_test.go#TestBuiltinProvidersUpstream",
+   "test:coding/session_prompt_image_mock_upstream_test.go#TestUpstreamSessionPromptUsesBeforeAgentModelForMockedImageNormalization"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "ModelImageResizeOptions: Go ModelImageResizeOptions has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+ },
+ {
+  "ids": [
+   "pkg:ai/.#OAuthDeviceCodeInfo"
+  ],
+  "targets": [
+   "ai/oauth_types.go#OAuthDeviceCodeInfo"
+  ],
+  "struct": {
+   "file": "ai/oauth_types.go",
+   "type": "OAuthDeviceCodeInfo"
+  },
+  "production": [
+   "call:ai/auth_native_login.go#oauthNativeLogin"
+  ],
+  "evidence": [
+   "test:ai/github_copilot_oauth_upstream_test.go#TestCopilotContinuesPolicyUpdatesAfterTransportFailureUpstream",
+   "test:ai/github_copilot_oauth_upstream_test.go#TestCopilotPollTimingUpstream"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "OAuthDeviceCodeInfo: Go OAuthDeviceCodeInfo has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+ },
+ {
+  "ids": [
+   "pkg:ai/.#AnthropicAllowedFallbackModel"
+  ],
+  "targets": [
+   "ai/types.go#AnthropicAllowedFallbackModel"
+  ],
+  "struct": {
+   "file": "ai/types.go",
+   "type": "AnthropicAllowedFallbackModel"
+  },
+  "production": [
+   "call:ai/anthropic.go#anthropicProvider.buildParams"
+  ],
+  "evidence": [
+   "test:ai/anthropic_fallback_request_upstream_test.go#TestAnthropicAllowedFallbackRequestUpstream",
+   "test:ai/anthropic_mid_effort_upstream_test.go#TestAnthropicUpstreamMidConversationEffort"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "AnthropicAllowedFallbackModel: Go AnthropicAllowedFallbackModel has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+ },
+ {
+  "ids": [
+   "pkg:ai/.#RefreshModelsContext"
+  ],
+  "targets": [
+   "ai/models_runtime.go#RefreshModelsContext"
+  ],
+  "struct": {
+   "file": "ai/models_runtime.go",
+   "type": "RefreshModelsContext"
+  },
+  "production": [
+   "call:ai/models_provider.go#CreateProvider"
+  ],
+  "evidence": [
+   "test:ai/models_refresh_upstream_test.go#TestModelsNewerDynamicRefreshSupersedesBlockedFetchUpstream",
+   "test:ai/models_runtime_refresh_upstream_test.go#TestModelsRuntimeRefreshUpstream"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "RefreshModelsContext: Go RefreshModelsContext has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+ },
+ {
+  "ids": [
+   "pkg:ai/.#OAuthAuth"
+  ],
+  "targets": [
+   "ai/auth_resolve.go#OAuthAuth"
+  ],
+  "struct": {
+   "file": "ai/auth_resolve.go",
+   "type": "OAuthAuth"
+  },
+  "production": [
+   "call:ai/auth_providers.go#RadiusProviderAuth"
+  ],
+  "evidence": [
+   "test:ai/auth_storage_lock_failure_upstream_test.go#TestModelsGetAuthTranslatesCredentialStoreRefreshFailureUpstream",
+   "test:coding/model_runtime_native_upstream_test.go#TestModelRuntimeNativeCompatibilityUpstream"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "OAuthAuth: Go OAuthAuth has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+ },
+ {
+  "ids": [
+   "pkg:ai/.#Usage"
+  ],
+  "targets": [
+   "ai/types.go#Usage"
+  ],
+  "struct": {
+   "file": "ai/types.go",
+   "type": "Usage"
+  },
+  "production": [
+   "call:ai/assistant_observation.go#AssistantMessage.ObserveUsage"
+  ],
+  "evidence": [
+   "test:ai/models_runtime_basic_upstream_test.go#TestModelsRuntimeBasicUpstream",
+   "test:ai/overflow_upstream_test.go#TestOverflowLengthStopsUpstream"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "Usage: Go Usage has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+ }
+]

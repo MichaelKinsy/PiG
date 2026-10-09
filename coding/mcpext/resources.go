@@ -15,6 +15,7 @@ import (
 	"github.com/MichaelKinsy/PiG/agent"
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/coding/extension"
+	"github.com/MichaelKinsy/PiG/internal/jsonstringify"
 	"github.com/MichaelKinsy/PiG/internal/orderedjson"
 	"github.com/MichaelKinsy/PiG/mcp"
 )
@@ -36,8 +37,8 @@ import (
 
 // Names of the resource tools.
 const (
-	ListMcpResourcesTool         = "list_mcp_resources"
-	ListMcpResourceTemplatesTool = "list_mcp_resource_templates"
+	ListMcpResourcesTool         = extension.ListMcpResourcesTool
+	ListMcpResourceTemplatesTool = extension.ListMcpResourceTemplatesTool
 )
 
 // McpResourceServer is a connected server that offers resources.
@@ -95,13 +96,28 @@ func stringArgument(params json.RawMessage, key string) (string, error) {
 	if len(raw) == 0 || raw[0] != '"' || json.Unmarshal(raw, &s) != nil {
 		return "", fmt.Errorf("%s must be a string", key)
 	}
-	return strings.TrimSpace(s), nil
+	return strings.TrimFunc(s, isJSWhitespace), nil
+}
+
+// itemJSON is the entry a server sent, or the marshaled Go value for an entry built without one.
+func itemJSON(item any) ([]byte, error) {
+	switch v := item.(type) {
+	case mcp.Resource:
+		if len(v.Raw) > 0 {
+			return v.Raw, nil
+		}
+	case mcp.ResourceTemplate:
+		if len(v.Raw) > 0 {
+			return v.Raw, nil
+		}
+	}
+	return json.Marshal(item)
 }
 
 // listed is a listed resource or template without `_meta` and icons, tagged
-// with its server.
+// with its server. The members keep the server's order and every member it sent.
 func listed(server string, item any) (json.RawMessage, error) {
-	data, err := json.Marshal(item)
+	data, err := itemJSON(item)
 	if err != nil {
 		return nil, err
 	}
@@ -120,7 +136,29 @@ func listed(server string, item any) (json.RawMessage, error) {
 	return out.MarshalJSON()
 }
 
+// contentsWithoutMeta is a `resources/read` entry without `_meta`: `({ _meta, ...rest }) => rest`.
+func contentsWithoutMeta(contents mcp.ResourceContents) (json.RawMessage, error) {
+	data := []byte(contents.Raw)
+	if len(data) == 0 {
+		contents.Meta = nil
+		return json.Marshal(contents)
+	}
+	obj, err := orderedjson.Parse(data)
+	if err != nil {
+		return nil, err
+	}
+	obj.Delete("_meta")
+	return obj.MarshalJSON()
+}
+
+// jsonResult is the result of a listing: `JSON.stringify(payload)` as text and the payload as structured content. The
+// payload holds the members a server sent as raw JSON, so it is written in JSON.stringify's form: integer-like keys
+// first, numbers and strings as JavaScript writes them, no HTML escapes.
 func jsonResult(tool, server string, payload json.RawMessage) (agent.AgentToolResult, error) {
+	payload, err := jsonstringify.Canonicalize(payload)
+	if err != nil {
+		return agent.AgentToolResult{}, err
+	}
 	content, fullOutputPath := LimitMcpContent([]ai.ToolResultMessageContent{ai.TextContent{Text: string(payload)}}, nil)
 	return agent.AgentToolResult{
 		Content:           content,
@@ -283,7 +321,7 @@ func CreateMcpResourceToolDefinitions(options ResourceToolsOptions) []extension.
 				},
 				func(item any) bool { r := item.(mcp.Resource); return !IsMcpAppResource(r.URI, r.MimeType) })
 			if err != nil {
-				return nil, err
+				return extension.AgentToolResult{}, err
 			}
 			return jsonResult(ListMcpResourcesTool, server, payload)
 		},
@@ -323,7 +361,7 @@ func CreateMcpResourceToolDefinitions(options ResourceToolsOptions) []extension.
 					return !IsMcpAppResource(r.URITemplate, r.MimeType)
 				})
 			if err != nil {
-				return nil, err
+				return extension.AgentToolResult{}, err
 			}
 			return jsonResult(ListMcpResourceTemplatesTool, server, payload)
 		},
@@ -340,34 +378,34 @@ func CreateMcpResourceToolDefinitions(options ResourceToolsOptions) []extension.
 		Execute: func(ctx context.Context, _ string, params json.RawMessage, _ extension.AgentToolUpdateCallback) (extension.AgentToolResult, error) {
 			serverName, err := stringArgument(params, "server")
 			if err != nil {
-				return nil, err
+				return extension.AgentToolResult{}, err
 			}
 			uri, err := stringArgument(params, "uri")
 			if err != nil {
-				return nil, err
+				return extension.AgentToolResult{}, err
 			}
 			if serverName == "" {
-				return nil, errors.New("server must be provided")
+				return extension.AgentToolResult{}, errors.New("server must be provided")
 			}
 			if uri == "" {
-				return nil, errors.New("uri must be provided")
+				return extension.AgentToolResult{}, errors.New("uri must be provided")
 			}
 			server, err := findServer(serverName)
 			if err != nil {
-				return nil, err
+				return extension.AgentToolResult{}, err
 			}
 			result, err := server.ReadResource(ctx, uri, requestOptions(server))
 			if err != nil {
-				return nil, err
+				return extension.AgentToolResult{}, err
 			}
 			// Several contents (for example a directory) are labeled with their URIs.
 			var blocks []mcp.ContentBlock
 			for _, contents := range result.Contents {
 				if len(result.Contents) > 1 {
-					blocks = append(blocks, mcp.ContentBlock{Type: "text", Text: contents.URI + ":"})
+					blocks = append(blocks, mcp.ContentBlock{Type: mcp.ContentText, Text: contents.URI + ":"})
 				}
 				resource := contents
-				blocks = append(blocks, mcp.ContentBlock{Type: "resource", Resource: &resource})
+				blocks = append(blocks, mcp.ContentBlock{Type: mcp.ContentResource, Resource: &resource})
 			}
 			converted := ToModelContent(server.Name(), blocks, ConvertMcpResultOptions{})
 			if len(converted) == 0 {
@@ -376,10 +414,9 @@ func CreateMcpResourceToolDefinitions(options ResourceToolsOptions) []extension.
 			content, fullOutputPath := LimitMcpContent(converted, nil)
 			contents := make([]json.RawMessage, 0, len(result.Contents))
 			for _, c := range result.Contents {
-				c.Meta = nil
-				data, err := json.Marshal(c)
+				data, err := contentsWithoutMeta(c)
 				if err != nil {
-					return nil, err
+					return extension.AgentToolResult{}, err
 				}
 				contents = append(contents, data)
 			}
@@ -388,6 +425,11 @@ func CreateMcpResourceToolDefinitions(options ResourceToolsOptions) []extension.
 			_ = structured.SetValue("uri", uri)
 			_ = structured.SetValue("contents", contents)
 			raw, _ := structured.MarshalJSON()
+			// The contents are the server's raw JSON; structured content holds them as JSON.parse read them.
+			raw, err = jsonstringify.Canonicalize(raw)
+			if err != nil {
+				return extension.AgentToolResult{}, err
+			}
 			return agent.AgentToolResult{
 				Content:           content,
 				Details:           McpToolDetails{Server: server.Name(), Tool: ReadMcpResourceTool, FullOutputPath: fullOutputPath},

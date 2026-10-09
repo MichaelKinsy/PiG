@@ -15,9 +15,16 @@ package tui
 // Upstream reference: packages/tui/src/keys.ts matchesKey() (1400 LOC).
 
 import (
+	"errors"
 	"fmt"
+	"math"
+	"slices"
 	"strconv"
 	"strings"
+	"unicode/utf8"
+
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 )
 
 // Modifier bit constants: matches Kitty keyboard protocol.
@@ -142,6 +149,8 @@ type parsedKey struct {
 	// position on a standard PC-101 layout (keys.ts ParsedKittySequence).
 	baseLayoutKey    int
 	hasBaseLayoutKey bool
+	// inexactModifier marks a modifyOtherKeys modifier too large for its int32 view to equal the number keys.ts compares.
+	inexactModifier bool
 }
 
 // parseCSIu parses a Kitty CSI-u sequence, mirroring the CSI-u branch of
@@ -158,19 +167,45 @@ func parseCSIu(data string) *parsedKey {
 	if match == nil {
 		return nil
 	}
-	cp, err := strconv.Atoi(match[1])
-	if err != nil {
-		return nil
-	}
-	modValue := 1
+	modValue := 1.0
 	if match[4] != "" {
-		if modValue, err = strconv.Atoi(match[4]); err != nil {
-			return nil
-		}
+		modValue = keyNumber(match[4])
 	}
-	pk := &parsedKey{codepoint: cp, modifier: (modValue - 1) &^ lockMask}
-	pk.baseLayoutKey, pk.hasBaseLayoutKey = parseOptionalInt(match[3])
+	pk := &parsedKey{codepoint: keyCodepoint(keyNumber(match[1])), modifier: jsInt32(modValue-1) &^ lockMask}
+	if match[3] != "" {
+		pk.baseLayoutKey, pk.hasBaseLayoutKey = keyCodepoint(keyNumber(match[3])), true
+	}
 	return pk
+}
+
+// keyNumber is parseInt(digits, 10) for a run of ASCII digits that a keys.ts sequence pattern captured. The value is a float64, as in JavaScript, so a run too long for an int still parses.
+func keyNumber(digits string) float64 {
+	value, err := strconv.ParseFloat(digits, 64)
+	if err != nil && !errors.Is(err, strconv.ErrRange) {
+		return math.NaN()
+	}
+	return value
+}
+
+// jsInt32 is JavaScript's ToInt32, the conversion keys.ts's bitwise operators apply to a parsed modifier.
+func jsInt32(value float64) int {
+	if math.IsNaN(value) || math.IsInf(value, 0) {
+		return 0
+	}
+	wrapped := math.Mod(math.Trunc(value), 1<<32)
+	if wrapped < 0 {
+		wrapped += 1 << 32
+	}
+	return int(int32(uint32(wrapped)))
+}
+
+// keyCodepoint holds a parsed codepoint as an int that compares and truncates (String.fromCharCode) as the JavaScript number does. Every number
+// from 2^62 up is a multiple of 1024, so its low 16 bits name no key, and one sentinel above every key codepoint stands for all of them.
+func keyCodepoint(value float64) int {
+	if value < 1<<62 {
+		return int(value)
+	}
+	return 1 << 62
 }
 
 // normalizeShiftedLetterIdentityCodepoint mirrors keys.ts: with Shift held an
@@ -211,92 +246,97 @@ func matchesKittySequence(pk *parsedKey, expectedCodepoint, expectedModifier int
 	return false
 }
 
-// parseModifyOtherKeys parses xterm modifyOtherKeys: \x1b[27;<modifier>;<codepoint>~
+// parseModifyOtherKeys parses xterm modifyOtherKeys, keys.ts's /^\x1b\[27;(\d+);(\d+)~$/. The modifier keeps its lock bits: keys.ts matchesModifyOtherKeys compares it exactly, as a number, so inexactModifier marks a modifier whose int32 view differs from that number.
 func parseModifyOtherKeys(data string) *parsedKey {
-	if len(data) < 9 || data[0] != '\x1b' || data[1] != '[' || data[len(data)-1] != '~' {
+	rest, ok := strings.CutPrefix(data, "\x1b[27;")
+	if !ok {
 		return nil
 	}
-	body := data[2 : len(data)-1]
-	if !strings.HasPrefix(body, "27;") {
+	modText, rest := cutDigits(rest)
+	if modText == "" || !strings.HasPrefix(rest, ";") {
 		return nil
 	}
-	rest := body[3:] // after "27;"
-	parts := strings.SplitN(rest, ";", 2)
-	if len(parts) != 2 {
+	cpText, rest := cutDigits(rest[1:])
+	if cpText == "" || rest != "~" {
 		return nil
 	}
-	modVal, err1 := strconv.Atoi(parts[0])
-	cp, err2 := strconv.Atoi(parts[1])
-	if err1 != nil || err2 != nil {
-		return nil
-	}
-	return &parsedKey{codepoint: cp, modifier: (modVal - 1) & ^lockMask}
+	modifier := keyNumber(modText) - 1
+	pk := &parsedKey{codepoint: keyCodepoint(keyNumber(cpText)), modifier: jsInt32(modifier)}
+	pk.inexactModifier = float64(pk.modifier) != modifier
+	return pk
 }
 
-// parseModifiedArrow parses modified arrow key: \x1b[1;<modifier><A-D>
-// Also handles \x1b[1;<modifier>:<event><A-D> (Kitty flag 2).
+// cutDigits splits s after its leading run of ASCII digits, the run a \d+ in a keys.ts pattern matches.
+func cutDigits(s string) (digits, rest string) {
+	end := 0
+	for end < len(s) && s[end] >= '0' && s[end] <= '9' {
+		end++
+	}
+	return s[:end], s[end:]
+}
+
+// cutEventType removes the optional ":<digits>" event type that keys.ts's patterns accept after a modifier. It reports false for a ':' with no
+// digits after it.
+func cutEventType(s string) (string, bool) {
+	if !strings.HasPrefix(s, ":") {
+		return s, true
+	}
+	event, rest := cutDigits(s[1:])
+	return rest, event != ""
+}
+
+// parseModifiedArrow parses a modified arrow, Home or End key, keys.ts's /^\x1b\[1;(\d+)(?::(\d+))?([ABCD])$/ and its [HF] twin.
 func parseModifiedArrow(data string) *parsedKey {
-	if len(data) < 6 || data[0] != '\x1b' || data[1] != '[' || data[2] != '1' || data[3] != ';' {
+	rest, ok := strings.CutPrefix(data, "\x1b[1;")
+	if !ok {
 		return nil
 	}
-	final := data[len(data)-1]
-	cp, ok := arrowFinals[final]
+	modText, rest := cutDigits(rest)
+	if modText == "" {
+		return nil
+	}
+	if rest, ok = cutEventType(rest); !ok || len(rest) != 1 {
+		return nil
+	}
+	cp, ok := arrowFinals[rest[0]]
 	if !ok {
-		// Also check H/F for home/end
-		cp2, ok2 := homeEndFinals[final]
-		if !ok2 {
+		if cp, ok = homeEndFinals[rest[0]]; !ok {
 			return nil
 		}
-		cp = cp2
 	}
-	modStr := data[4 : len(data)-1]
-	// Strip event type: mod:event → mod
-	if idx := strings.IndexByte(modStr, ':'); idx >= 0 {
-		modStr = modStr[:idx]
-	}
-	modVal, err := strconv.Atoi(modStr)
-	if err != nil {
-		return nil
-	}
-	return &parsedKey{codepoint: cp, modifier: (modVal - 1) & ^lockMask}
+	return &parsedKey{codepoint: cp, modifier: jsInt32(keyNumber(modText)-1) &^ lockMask}
 }
 
-// parseModifiedFunc parses a Kitty functional key sequence with an optional
-// modifier and event type: \x1b[<n>[;<modifier>][:<event>]~.
+// parseModifiedFunc parses a functional key with an optional modifier and event type, keys.ts's /^\x1b\[(\d+)(?:;(\d+))?(?::(\d+))?~$/.
 func parseModifiedFunc(data string) *parsedKey {
-	if len(data) < 4 || data[0] != '\x1b' || data[1] != '[' || data[len(data)-1] != '~' {
-		return nil
-	}
-	body := data[2 : len(data)-1]
-	params, event, hasEvent := strings.Cut(body, ":")
-	if hasEvent {
-		if event == "" {
-			return nil
-		}
-		if _, err := strconv.Atoi(event); err != nil {
-			return nil
-		}
-	}
-
-	numText := params
-	modValue := 1
-	if before, after, hasModifier := strings.Cut(params, ";"); hasModifier {
-		numText = before
-		parsed, err := strconv.Atoi(after)
-		if err != nil {
-			return nil
-		}
-		modValue = parsed
-	}
-	num, err := strconv.Atoi(numText)
-	if err != nil {
-		return nil
-	}
-	cp, ok := funcKeyCodes[num]
+	rest, ok := strings.CutPrefix(data, "\x1b[")
 	if !ok {
 		return nil
 	}
-	return &parsedKey{codepoint: cp, modifier: (modValue - 1) & ^lockMask}
+	numText, rest := cutDigits(rest)
+	if numText == "" {
+		return nil
+	}
+	modValue := 1.0
+	if strings.HasPrefix(rest, ";") {
+		var modText string
+		if modText, rest = cutDigits(rest[1:]); modText == "" {
+			return nil
+		}
+		modValue = keyNumber(modText)
+	}
+	if rest, ok = cutEventType(rest); !ok || rest != "~" {
+		return nil
+	}
+	num := keyNumber(numText)
+	if num > 8 {
+		return nil
+	}
+	cp, ok := funcKeyCodes[int(num)]
+	if !ok {
+		return nil
+	}
+	return &parsedKey{codepoint: cp, modifier: jsInt32(modValue-1) &^ lockMask}
 }
 
 // parseTerminalInput attempts to parse raw terminal data into a (codepoint, modifier) pair
@@ -319,28 +359,43 @@ func parseTerminalInput(data string) *parsedKey {
 }
 
 // parseKeyID parses a key identifier string like "ctrl+shift+left" into
-// (baseKey, modifier bitmask).
+// (baseKey, modifier bitmask) as keys.ts parseKeyId does: the identifier is lowercased as JavaScript's toLowerCase does, the base key is the
+// text after the last "+", and the modifiers are the parts that name one, so an unrecognized part such as "meta" is ignored. An empty base key
+// parses to nothing.
 func parseKeyID(keyID string) (baseKey string, modifier int, ok bool) {
-	parts := strings.Split(strings.ToLower(keyID), "+")
-	if len(parts) == 0 {
+	var lower string
+	if isASCII(keyID) {
+		lower = strings.ToLower(keyID)
+	} else {
+		lower = cases.Lower(language.Und).String(keyID)
+	}
+	parts := strings.Split(lower, "+")
+	baseKey = parts[len(parts)-1]
+	if baseKey == "" {
 		return "", 0, false
 	}
-	baseKey = parts[len(parts)-1]
-	for _, p := range parts[:len(parts)-1] {
-		switch p {
-		case "ctrl":
-			modifier |= modCtrl
-		case "shift":
-			modifier |= modShift
-		case "alt":
-			modifier |= modAlt
-		case "super":
-			modifier |= modSuper
-		default:
-			return "", 0, false
-		}
+	if slices.Contains(parts, "shift") {
+		modifier |= modShift
+	}
+	if slices.Contains(parts, "alt") {
+		modifier |= modAlt
+	}
+	if slices.Contains(parts, "ctrl") {
+		modifier |= modCtrl
+	}
+	if slices.Contains(parts, "super") {
+		modifier |= modSuper
 	}
 	return baseKey, modifier, true
+}
+
+func isASCII(s string) bool {
+	for i := range len(s) {
+		if s[i] >= utf8.RuneSelf {
+			return false
+		}
+	}
+	return true
 }
 
 // resolveKeyCodepoint converts a base key name to its codepoint.
@@ -408,6 +463,10 @@ func matchesKeyDynamic(data, keyID string) bool {
 	if !cpOK {
 		return false
 	}
+	// keys.ts matchesKey: "escape" with a modifier matches nothing, although parseKey names such input.
+	if expectedCP == cpEscape && expectedMod != 0 {
+		return false
+	}
 
 	// Kitty CSI-u, including flag-4 alternate keys. Enter also answers to
 	// the keypad Enter codepoint (keys.ts matchesKey "enter").
@@ -418,10 +477,16 @@ func matchesKeyDynamic(data, keyID string) bool {
 		return expectedCP == cpEnter && matchesKittySequence(pk, cpKPEnter, expectedMod)
 	}
 
+	// keys.ts matchesKey: without a modifier only escape, space and backspace accept modifyOtherKeys; enter, tab and a letter, digit or
+	// symbol match their raw input or a Kitty sequence.
+	if expectedMod == 0 && expectedCP != cpEscape && expectedCP != cpSpace && expectedCP != cpBackspace && parseModifyOtherKeys(data) != nil {
+		return false
+	}
+
 	// Parse the raw terminal input.
 	pk := parseTerminalInput(data)
 	if pk != nil {
-		return pk.codepoint == expectedCP && pk.modifier == expectedMod
+		return pk.codepoint == expectedCP && pk.modifier == expectedMod && !pk.inexactModifier
 	}
 
 	// Fallback: legacy single-byte / short-sequence matching.

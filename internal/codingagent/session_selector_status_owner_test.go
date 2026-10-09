@@ -85,7 +85,7 @@ func TestSessionSelectorStatusExpiryWakesIdleOwners(t *testing.T) {
 					input := make(chan []byte, 1)
 					mode.setModalInputChannel(input)
 					send = func(data string) { input <- []byte(data) }
-					go func() { mode.runEditorSlotSessionSelector(selector); done <- nil }()
+					go func() { mode.runEditorSlotSessionSelector(selector, hookSessionSelectorOutcome(selector)); done <- nil }()
 				}
 				defer func() {
 					send("\x1b")
@@ -161,7 +161,7 @@ func TestSessionSelectorRenameFailureReachesOwners(t *testing.T) {
 							}
 							done <- errors.New("rejection did not reach uncaughtException")
 						}()
-						mode.runEditorSlotSessionSelector(selector)
+						mode.runEditorSlotSessionSelector(selector, hookSessionSelectorOutcome(selector))
 					}()
 				}
 				send("\r")
@@ -212,7 +212,7 @@ func TestSessionSelectorOwnerExitStopsPendingStatus(t *testing.T) {
 					ui.Add(mode.layout)
 					mode.setModalInputChannel(make(chan []byte))
 					fail = func() { mode.inputErrCh <- io.EOF }
-					go func() { mode.runEditorSlotSessionSelector(selector); done <- nil }()
+					go func() { mode.runEditorSlotSessionSelector(selector, hookSessionSelectorOutcome(selector)); done <- nil }()
 				}
 				<-out.errorReady
 				fail()

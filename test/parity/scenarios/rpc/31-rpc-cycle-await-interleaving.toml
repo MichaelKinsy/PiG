@@ -31,8 +31,8 @@ wait_timeout_seconds = 10
 [env]
 pig = ["PIG_HOME=testdata/multi-model"]
 pi = ["PI_CODING_AGENT_DIR=testdata/multi-model/agent"]
-pig_extensions = ["../../../../cmd/pig/testdata/rpc-ui.mjs"]
-pi_extensions = ["../../../../cmd/pig/testdata/rpc-ui.mjs"]
+pig_extensions = ["../../../../coding/cli/testdata/rpc-ui.mjs"]
+pi_extensions = ["../../../../coding/cli/testdata/rpc-ui.mjs"]
 pig_args = ["--offline", "--no-session", "--model", "fixture/model-one"]
 pi_args = ["--offline", "--no-session", "--model", "fixture/model-one"]
 

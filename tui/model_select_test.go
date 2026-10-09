@@ -1,5 +1,7 @@
 package tui
 
+// pi: packages/coding-agent/src/modes/interactive/components/model-selector.ts
+
 import (
 	"fmt"
 	"strings"
@@ -25,7 +27,7 @@ func mkItems(specs ...string) []ModelSelectorItem {
 func TestModelSelector_DefaultsToScoped_WhenAuthExists(t *testing.T) {
 	scoped := mkItems("github-copilot/gpt-4o", "openai/gpt-4o-mini")
 	all := mkItems("github-copilot/gpt-4o", "openai/gpt-4o-mini", "openrouter/llama-3")
-	ms := NewModelSelector("Select model", scoped, all, "github-copilot/gpt-4o")
+	ms := NewStaticModelSelectorComponent("Select model", scoped, all, "github-copilot/gpt-4o")
 	if ms.Scope() != ModelScopeScoped {
 		t.Fatalf("expected default scope=scoped, got %v", ms.Scope())
 	}
@@ -36,7 +38,7 @@ func TestModelSelector_DefaultsToScoped_WhenAuthExists(t *testing.T) {
 
 func TestModelSelector_DefaultsToAll_WhenNoAuth_WithWarning(t *testing.T) {
 	all := mkItems("openai/gpt-4o", "groq/llama-3")
-	ms := NewModelSelector("Select model", nil, all, "")
+	ms := NewStaticModelSelectorComponent("Select model", nil, all, "")
 	if ms.Scope() != ModelScopeAll {
 		t.Fatalf("expected default scope=all when no auth, got %v", ms.Scope())
 	}
@@ -54,7 +56,7 @@ func TestModelSelector_DefaultsToAll_WhenNoAuth_WithWarning(t *testing.T) {
 func TestModelSelector_TabCyclesScope(t *testing.T) {
 	scoped := mkItems("github-copilot/gpt-4o")
 	all := mkItems("github-copilot/gpt-4o", "openai/gpt-4o", "groq/llama-3")
-	ms := NewModelSelector("Select model", scoped, all, "github-copilot/gpt-4o")
+	ms := NewStaticModelSelectorComponent("Select model", scoped, all, "github-copilot/gpt-4o")
 	if ms.Scope() != ModelScopeScoped || ms.VisibleCount() != 1 {
 		t.Fatalf("initial state wrong: scope=%v count=%d", ms.Scope(), ms.VisibleCount())
 	}
@@ -79,7 +81,7 @@ func TestModelSelector_TabCyclesScope(t *testing.T) {
 // interactive/components/model-selector.ts" lines 192-196 produces
 // (after stripping theme.fg ANSI): "Scope: all | scoped".
 func TestModelSelector_ScopeTextMatchesUpstream(t *testing.T) {
-	ms := NewModelSelector("x", mkItems("openai/gpt-4o"), mkItems("openai/gpt-4o", "groq/llama-3"), "")
+	ms := NewStaticModelSelectorComponent("x", mkItems("openai/gpt-4o"), mkItems("openai/gpt-4o", "groq/llama-3"), "")
 	frame := ms.Render(80)
 	// Rows 0-1 are the top DynamicBorder and Spacer(1).
 	plain := stripANSI(frame[2])
@@ -96,7 +98,7 @@ func TestModelSelector_ScopeTextMatchesUpstream(t *testing.T) {
 
 func TestModelSelector_PreservesProviderSourceOrderWithoutCurrentModel(t *testing.T) {
 	items := mkItems("fixture/model-two", "fixture/model-one")
-	ms := NewModelSelector("x", nil, items, "")
+	ms := NewStaticModelSelectorComponent("x", nil, items, "")
 	frame := ms.Render(80)
 	for _, line := range frame {
 		plain := stripANSI(line)
@@ -112,7 +114,7 @@ func TestModelSelector_PreservesProviderSourceOrderWithoutCurrentModel(t *testin
 
 func TestModelSelector_CurrentModelPinnedFirst(t *testing.T) {
 	all := mkItems("openai/gpt-4o-mini", "github-copilot/gpt-4o", "openai/gpt-4o")
-	ms := NewModelSelector("x", nil, all, "github-copilot/gpt-4o")
+	ms := NewStaticModelSelectorComponent("x", nil, all, "github-copilot/gpt-4o")
 	frame := ms.Render(80)
 	// Find the first row that's not header/filter/separator.
 	for _, line := range frame {
@@ -129,7 +131,7 @@ func TestModelSelector_CurrentModelPinnedFirst(t *testing.T) {
 
 func TestModelSelector_FilterNarrows(t *testing.T) {
 	scoped := mkItems("github-copilot/gpt-4o", "openai/gpt-4o-mini", "groq/llama-3.1-70b")
-	ms := NewModelSelector("x", scoped, scoped, "")
+	ms := NewStaticModelSelectorComponent("x", scoped, scoped, "")
 	if ms.VisibleCount() != 3 {
 		t.Fatalf("baseline count wrong: %d", ms.VisibleCount())
 	}
@@ -142,7 +144,7 @@ func TestModelSelector_FilterNarrows(t *testing.T) {
 }
 
 func TestModelSelector_RefreshStatusAndErrorAreExclusive(t *testing.T) {
-	ms := NewModelSelector("x", nil, mkItems("fixture/model-one"), "")
+	ms := NewStaticModelSelectorComponent("x", nil, mkItems("fixture/model-one"), "")
 	ms.SetStatus("Model catalogs refreshed.")
 	if got := strings.Join(ms.Render(80), "\n"); !strings.Contains(got, "Model catalogs refreshed.") {
 		t.Fatalf("status missing: %s", got)
@@ -161,7 +163,7 @@ func TestModelSelector_FilterResetsSelectionToBestMatch(t *testing.T) {
 		{Provider: "fixture", ID: "alpha-3", Name: "Alpha Three"},
 		{Provider: "fixture", ID: "beta-1", Name: "Beta One"},
 	}
-	ms := NewModelSelector("x", nil, items, "fixture/alpha-1")
+	ms := NewStaticModelSelectorComponent("x", nil, items, "fixture/alpha-1")
 	ms.HandleInput("\x1b[B")
 	ms.HandleInput("\x1b[B")
 	for _, r := range "alpha" {
@@ -181,7 +183,7 @@ func TestModelSelector_FilterResetsSelectionToBestMatch(t *testing.T) {
 
 func TestModelSelector_FilterUsesFuzzySubsequence(t *testing.T) {
 	items := mkItems("fixture/model-one", "fixture/model-two")
-	selector := NewModelSelector("Select model", items, items, "")
+	selector := NewStaticModelSelectorComponent("Select model", items, items, "")
 	selector.SetFilter("mtw")
 	joined := stripANSI(strings.Join(selector.Render(80), "\n"))
 	if !strings.Contains(joined, "model-two") || strings.Contains(joined, "model-one") {
@@ -191,7 +193,7 @@ func TestModelSelector_FilterUsesFuzzySubsequence(t *testing.T) {
 
 func TestModelSelector_SearchDelegatesCursorEditingToInput(t *testing.T) {
 	items := mkItems("fixture/model-one", "fixture/model-two")
-	selector := NewModelSelector("Select model", items, items, "")
+	selector := NewStaticModelSelectorComponent("Select model", items, items, "")
 	selector.SetFilter("ab")
 	selector.HandleInput("\x1b[D")
 	selector.HandleInput("\x1b[H")
@@ -204,14 +206,14 @@ func TestModelSelector_SearchDelegatesCursorEditingToInput(t *testing.T) {
 
 func TestModelSelectorArrowNavigationWrapsAtBothEnds(t *testing.T) {
 	items := mkItems("fixture/one", "fixture/two", "fixture/three")
-	up := NewModelSelector("x", items, items, "")
+	up := NewStaticModelSelectorComponent("x", items, items, "")
 	up.HandleInput("\x1b[A")
 	up.HandleInput("\r")
 	if got := up.SelectedFQ(); got != "fixture/three" {
 		t.Fatalf("up from first selected %q, want fixture/three", got)
 	}
 
-	down := NewModelSelector("x", items, items, "")
+	down := NewStaticModelSelectorComponent("x", items, items, "")
 	down.HandleInput("\x1b[B")
 	down.HandleInput("\x1b[B")
 	down.HandleInput("\x1b[B")
@@ -227,7 +229,7 @@ func TestModelSelectorPageKeysDoNotMoveSelection(t *testing.T) {
 	for i := range items {
 		items[i] = ModelSelectorItem{Provider: "fixture", ID: fmt.Sprintf("model-%02d", i)}
 	}
-	selector := NewModelSelector("x", nil, items, "")
+	selector := NewStaticModelSelectorComponent("x", nil, items, "")
 	selector.HandleInput("\x1b[B")
 	for _, key := range []string{"\x1b[5~", "\x1b[6~", "\x1b[6~"} {
 		selector.HandleInput(key)
@@ -241,7 +243,7 @@ func TestModelSelectorPageKeysDoNotMoveSelection(t *testing.T) {
 func TestModelSelectorUnchangedQueryKeyReselectsFirstMatch(t *testing.T) {
 	items := mkItems("fixture/model-two", "fixture/model-one")
 	for _, key := range []string{"\x1b[D", "\x1b[5~", "\x1b[Z"} {
-		selector := NewModelSelector("x", nil, items, "fixture/model-two")
+		selector := NewStaticModelSelectorComponent("x", nil, items, "fixture/model-two")
 		for _, r := range "model" {
 			selector.HandleInput(string(r))
 		}
@@ -261,7 +263,7 @@ func TestModelSelectorScopeToggleSelectsCurrentOrFirst(t *testing.T) {
 	scoped := mkItems("p/model-a", "p/model-c")
 	all := mkItems("p/model-a", "p/model-b", "p/model-c", "p/model-d")
 
-	query := NewModelSelector("x", scoped, all, "p/model-c")
+	query := NewStaticModelSelectorComponent("x", scoped, all, "p/model-c")
 	for _, r := range "model" {
 		query.HandleInput(string(r))
 	}
@@ -271,7 +273,7 @@ func TestModelSelectorScopeToggleSelectsCurrentOrFirst(t *testing.T) {
 		t.Errorf("scope toggle with a query selected %d in %v, want 0 in scoped", query.cursor, query.Scope())
 	}
 
-	absent := NewModelSelector("x", scoped, all, "p/model-d")
+	absent := NewStaticModelSelectorComponent("x", scoped, all, "p/model-d")
 	absent.HandleInput("\t")
 	absent.HandleInput("\x1b[B")
 	absent.HandleInput("\x1b[B")
@@ -280,7 +282,7 @@ func TestModelSelectorScopeToggleSelectsCurrentOrFirst(t *testing.T) {
 		t.Errorf("scope toggle without current selected %d in %v, want 0 in scoped", absent.cursor, absent.Scope())
 	}
 
-	present := NewModelSelector("x", scoped, all, "p/model-c")
+	present := NewStaticModelSelectorComponent("x", scoped, all, "p/model-c")
 	present.HandleInput("\x1b[A")
 	present.HandleInput("\t")
 	present.HandleInput("\t")
@@ -291,7 +293,7 @@ func TestModelSelectorScopeToggleSelectsCurrentOrFirst(t *testing.T) {
 
 func TestModelSelector_EnterSelectsAndSetsFQ(t *testing.T) {
 	scoped := mkItems("openai/gpt-4o", "openai/gpt-4o-mini")
-	ms := NewModelSelector("x", scoped, scoped, "")
+	ms := NewStaticModelSelectorComponent("x", scoped, scoped, "")
 	ms.HandleInput("\r")
 	if !ms.Done() || ms.Cancelled() {
 		t.Fatalf("expected done & not cancelled, got done=%v cancelled=%v", ms.Done(), ms.Cancelled())
@@ -303,7 +305,7 @@ func TestModelSelector_EnterSelectsAndSetsFQ(t *testing.T) {
 
 func TestModelSelector_EscCancels(t *testing.T) {
 	scoped := mkItems("openai/gpt-4o")
-	ms := NewModelSelector("x", scoped, scoped, "")
+	ms := NewStaticModelSelectorComponent("x", scoped, scoped, "")
 	ms.HandleInput("\x1b")
 	if !ms.Cancelled() || !ms.Done() {
 		t.Errorf("expected cancelled & done after Esc")
@@ -314,7 +316,7 @@ func TestModelSelector_EscCancels(t *testing.T) {
 // their configured order (model-selector.ts loadModelsFromSnapshot).
 func TestModelSelector_ScopedModelsKeepConfiguredOrder(t *testing.T) {
 	scoped := mkItems("openai/gpt-4o-mini", "github-copilot/gpt-4o")
-	ms := NewModelSelector("x", scoped, scoped, "github-copilot/gpt-4o")
+	ms := NewStaticModelSelectorComponent("x", scoped, scoped, "github-copilot/gpt-4o")
 	var rows []string
 	for _, line := range ms.Render(80) {
 		plain := strings.TrimRight(stripANSI(line), " ")
@@ -331,7 +333,7 @@ func TestModelSelector_ScopedModelsKeepConfiguredOrder(t *testing.T) {
 // Pi 0.87.1 model-selector.ts renders the current model as a "✓ " prefix
 // column after the cursor column (model-resolver-selector/04 probe).
 func TestModelSelector_CurrentMarkerPrefixColumn(t *testing.T) {
-	ms := NewModelSelector("x", nil, mkItems("fixture/model-two", "fixture/model-one"), "fixture/model-two")
+	ms := NewStaticModelSelectorComponent("x", nil, mkItems("fixture/model-two", "fixture/model-one"), "fixture/model-two")
 	frame := ms.Render(100)
 	plain := make([]string, len(frame))
 	for i, line := range frame {
@@ -371,7 +373,7 @@ func TestModelSelector_CurrentMarkerPrefixColumn(t *testing.T) {
 // model, and lists it first for a "default" prefix search.
 func TestModelSelector_DefaultModelBadgeSortAndSearch(t *testing.T) {
 	all := mkItems("anthropic/claude", "openai/gpt", "zai/glm")
-	ms := NewModelSelector("x", nil, all, "openai/gpt")
+	ms := NewStaticModelSelectorComponent("x", nil, all, "openai/gpt")
 	ms.SetDefaultModel("zai/glm")
 	var rows []string
 	for _, line := range ms.Render(80) {
@@ -393,7 +395,7 @@ func TestModelSelector_DefaultModelBadgeSortAndSearch(t *testing.T) {
 // Upstream renders every row as Text(..., 0, 0), so a long row wraps instead
 // of being truncated.
 func TestModelSelector_LongRowsWrap(t *testing.T) {
-	ms := NewModelSelector("x", nil, mkItems("provider/a-very-long-model-identifier"), "")
+	ms := NewStaticModelSelectorComponent("x", nil, mkItems("provider/a-very-long-model-identifier"), "")
 	joined := stripANSI(strings.Join(ms.Render(20), "\n"))
 	if !strings.Contains(joined, "a-very-long-model-id\nentifier [provider]") {
 		t.Fatalf("long row was truncated:\n%s", joined)
@@ -406,10 +408,62 @@ func TestModelSelector_LongRowsWrap(t *testing.T) {
 }
 
 func TestModelSelector_RefreshSuccessUsesSuccessColor(t *testing.T) {
-	ms := NewModelSelector("x", nil, mkItems("fixture/model-one"), "")
+	ms := NewStaticModelSelectorComponent("x", nil, mkItems("fixture/model-one"), "")
 	ms.SetRefreshSuccess("Model catalogs refreshed.")
 	want := fg(ActiveTheme().Success, "  Model catalogs refreshed.")
 	if joined := strings.Join(ms.Render(80), "\n"); !strings.Contains(joined, want) {
 		t.Fatalf("refresh success row missing success color:\n%q", joined)
+	}
+}
+
+// ModelSelectorComponent extends Container (model-selector.ts:40): border, spacer, scope text, scope hint, spacer, search
+// input, spacer, list container, spacer, hint, border (a single warning Text replaces the scope pair without scoped models);
+// a key rebuilds the list container's rows (updateList).
+func TestModelSelectorComponentChildrenFollowUpstream(t *testing.T) {
+	items := []ModelSelectorItem{{Provider: "p", ID: "a", Name: "A"}, {Provider: "p", ID: "b", Name: "B"}}
+	scoped := NewStaticModelSelectorComponent("T", items, items, "")
+	if got := len(scoped.Children()); got != 11 {
+		t.Fatalf("scoped children = %d, want 11", got)
+	}
+	if got := len(NewStaticModelSelectorComponent("T", nil, items, "").Children()); got != 10 {
+		t.Fatalf("children without scoped models = %d, want 10", got)
+	}
+	before := strings.Join(scoped.Render(60), "\n")
+	scoped.HandleInput("\x1b[B")
+	if strings.Join(scoped.Render(60), "\n") == before {
+		t.Fatal("moving the cursor did not change the render")
+	}
+	scoped.HandleInput("\t")
+	if !strings.Contains(stripANSI(strings.Join(scoped.Render(60), "\n")), "Scope: all | scoped") {
+		t.Fatal("scope header missing")
+	}
+}
+
+// model-selector.ts:getSearchInput returns the live search input: text typed into the selector reaches it, a value set on it filters the list, and focus reaches it.
+// Pi: packages/coding-agent/src/modes/interactive/components/model-selector.ts:418 (ModelSelectorComponent.getSearchInput).
+func TestModelSelectorGetSearchInputIsTheLiveInput(t *testing.T) {
+	all := mkItems("openai/gpt-4o", "anthropic/claude-3", "openrouter/llama-3")
+	ms := NewStaticModelSelectorComponent("Select model", nil, all, "")
+	input := ms.GetSearchInput()
+	if input == nil || input.GetValue() != "" {
+		t.Fatalf("a new selector has an empty search input, got %+v", input)
+	}
+	for _, r := range "llama" {
+		ms.HandleInput(string(r))
+	}
+	if got := input.GetValue(); got != "llama" {
+		t.Errorf("typed text reaches the search input, got %q", got)
+	}
+	if got := ms.VisibleCount(); got != 1 {
+		t.Errorf("typing filters the list to llama-3, got %d visible", got)
+	}
+	input.SetValue("")
+	ms.HandleInput("o")
+	if got := input.GetValue(); got != "o" {
+		t.Errorf("the same input keeps receiving text after SetValue, got %q", got)
+	}
+	ms.SetFocused(true)
+	if !input.Focused {
+		t.Errorf("SetFocused reaches the search input")
 	}
 }

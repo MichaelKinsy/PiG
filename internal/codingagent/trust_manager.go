@@ -9,12 +9,17 @@ package codingagent
 import (
 	"encoding/json"
 	"fmt"
+	"maps"
 	"os"
 	"path/filepath"
+	"slices"
+	"strconv"
 	"sync"
 
 	"github.com/MichaelKinsy/PiG/internal/jsonparse"
+	"github.com/MichaelKinsy/PiG/internal/jsstring"
 	"github.com/MichaelKinsy/PiG/internal/nodeerrno"
+	"github.com/MichaelKinsy/PiG/internal/orderedjson"
 	"github.com/MichaelKinsy/PiG/internal/text"
 )
 
@@ -190,7 +195,18 @@ func (s *ProjectTrustStore) read() (map[string]*bool, error) {
 }
 
 func (s *ProjectTrustStore) write(data map[string]*bool) error {
-	encoded, err := json.MarshalIndent(data, "", "  ")
+	// writeTrustFile (trust-manager.ts:126-135) sorts the keys with Array.prototype.sort, which compares UTF-16 code units, and writes JSON.stringify(sorted, null, 2): no HTML escaping, array-index keys first.
+	sorted := orderedjson.New()
+	for _, key := range slices.SortedFunc(maps.Keys(data), func(a, b string) int {
+		return slices.Compare(jsstring.ToUTF16(a), jsstring.ToUTF16(b))
+	}) {
+		value := json.RawMessage("null")
+		if data[key] != nil {
+			value = json.RawMessage(strconv.FormatBool(*data[key]))
+		}
+		sorted.Set(key, value)
+	}
+	encoded, err := stringifyIndented(rawObject(sorted))
 	if err != nil {
 		return fmt.Errorf("write trust store %s: %w", s.trustPath, err)
 	}
@@ -221,7 +237,7 @@ func (s *ProjectTrustStore) withLock(fn func() error) (err error) {
 }
 
 // Get returns the nearest decision for cwd, or nil when none applies.
-func (s *ProjectTrustStore) Get(cwd string) (*bool, error) {
+func (s *ProjectTrustStore) Get(cwd string) (ProjectTrustDecision, error) {
 	entry, err := s.GetEntry(cwd)
 	if err != nil || entry == nil {
 		return nil, err
@@ -251,7 +267,7 @@ func (s *ProjectTrustStore) GetEntry(cwd string) (entry *ProjectTrustStoreEntry,
 }
 
 // Set sets or clears the canonical decision for cwd.
-func (s *ProjectTrustStore) Set(cwd string, decision *bool) error {
+func (s *ProjectTrustStore) Set(cwd string, decision ProjectTrustDecision) error {
 	return s.SetMany([]ProjectTrustUpdate{{Path: cwd, Decision: decision}})
 }
 
@@ -274,3 +290,6 @@ func (s *ProjectTrustStore) SetMany(updates []ProjectTrustUpdate) error {
 		return s.write(data)
 	})
 }
+
+// ProjectTrustDecision is a saved project trust decision: true trusts, false distrusts, nil is undecided (trust-manager.ts:9, boolean | null).
+type ProjectTrustDecision = *bool

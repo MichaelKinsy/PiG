@@ -26,7 +26,7 @@ func (h *pendingToolsHandle) RefreshTools() error {
 func TestFailedExtensionReloadDropsTheStagedDefaultTools(t *testing.T) {
 	restoreStartupTheme(t)
 	handle := &pendingToolsHandle{}
-	m := reloadTestMode(InteractiveOptions{
+	m := reloadTestMode(InteractiveModeOptions{
 		SubprocessHost:  &orderRecordingHost{err: errors.New("reload failed")},
 		SessionHandle:   handle,
 		SettingsManager: NewSettingsManager(t.TempDir(), t.TempDir()),
@@ -43,7 +43,7 @@ func TestFailedResourceReloadDropsTheStagedDefaultTools(t *testing.T) {
 	restoreStartupTheme(t)
 	handle := &pendingToolsHandle{}
 	resourceErr := errors.New("invalid resource entry")
-	m := reloadTestMode(InteractiveOptions{
+	m := reloadTestMode(InteractiveModeOptions{
 		SessionHandle:          handle,
 		SettingsManager:        NewSettingsManager(t.TempDir(), t.TempDir()),
 		ReloadResourceProvider: func() ReloadResourceSnapshot { return ReloadResourceSnapshot{Err: resourceErr} },
@@ -59,7 +59,7 @@ func TestFailedResourceReloadDropsTheStagedDefaultTools(t *testing.T) {
 func TestSuccessfulReloadStillRefreshesTheStagedDefaultTools(t *testing.T) {
 	restoreStartupTheme(t)
 	handle := &pendingToolsHandle{}
-	m := reloadTestMode(InteractiveOptions{
+	m := reloadTestMode(InteractiveModeOptions{
 		SubprocessHost:  &orderRecordingHost{},
 		SessionHandle:   handle,
 		SettingsManager: NewSettingsManager(t.TempDir(), t.TempDir()),
@@ -86,7 +86,7 @@ func (h *reloadRefreshHandle) RefreshToolsAfterReload() error {
 func TestReloadRebuildsToolsAsUpstreamReloadDoes(t *testing.T) {
 	restoreStartupTheme(t)
 	handle := &reloadRefreshHandle{}
-	m := reloadTestMode(InteractiveOptions{
+	m := reloadTestMode(InteractiveModeOptions{
 		SubprocessHost:  &orderRecordingHost{},
 		SessionHandle:   handle,
 		SettingsManager: NewSettingsManager(t.TempDir(), t.TempDir()),
@@ -120,7 +120,7 @@ func (h *selectionOwningHandle) SetActiveToolsByName(names []string) {
 func TestReloadReappliesTheSessionSelectionWithoutANewLoadout(t *testing.T) {
 	restoreStartupTheme(t)
 	handle := &selectionOwningHandle{active: []string{"read", "mcp__docs__search"}}
-	m := reloadTestMode(InteractiveOptions{
+	m := reloadTestMode(InteractiveModeOptions{
 		SubprocessHost:  &orderRecordingHost{},
 		SessionHandle:   handle,
 		SettingsManager: NewSettingsManager(t.TempDir(), t.TempDir()),

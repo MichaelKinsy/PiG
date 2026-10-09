@@ -1,5 +1,7 @@
 package codingagent
 
+// pi: packages/coding-agent/src/utils/image-convert.ts
+
 import (
 	"bytes"
 	"encoding/base64"
@@ -10,7 +12,6 @@ import (
 	"image/gif"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/MichaelKinsy/PiG/tui"
 )
@@ -152,64 +153,50 @@ func TestConvertToPngAcceptsWrappedBase64(t *testing.T) {
 	}
 }
 
-// The Kitty tool-result path: a non-PNG tool image converts off the loop and
-// lands on the component through the main loop, where it renders as PNG.
-func TestMaybeConvertImagesForKittyAppliesConversionOnMainLoop(t *testing.T) {
+// tool-execution-component.test.ts "converts non-PNG tool images once the transcoder loads" (#10292, #8577): a tool card registers
+// the PNG transcoder itself, through the loader the package installs, so a non-PNG tool image renders as a Kitty image in any host. A
+// replaced partial image does not resurface, and invalidating reuses the converted Image, so the Kitty image id stays the same.
+func TestToolCardRegistersTheTranscoderAndConvertsNonPNGImages(t *testing.T) {
 	prev := tui.GetCapabilities()
-	t.Cleanup(func() { tui.SetCapabilities(prev) })
-	tui.SetCapabilities(tui.TerminalCapabilities{Images: tui.ImageProtocolKitty})
+	t.Cleanup(func() {
+		tui.SetCapabilities(prev)
+		tui.SetImageTranscoder(nil)
+	})
+	tui.SetImageTranscoder(nil)
+	tui.SetCapabilities(tui.TerminalCapabilities{Images: tui.ImageProtocolKitty, TrueColor: true, Hyperlinks: true})
 
-	m := newRunOnMainProbe(t)
-	// Scheduled renders dispatch here instead of running on the timer
-	// goroutine, so the test observes the render request on its own loop.
-	renders := make(chan func(), 4)
-	m.tuiInst.SetRenderDispatcher(func(render func()) { renders <- render })
-	m.runCtx = t.Context()
+	comp := newToolCardForTest("tool", "")
+	comp.UpdateResult(tui.ToolResultUpdate{Content: []tui.ToolResultContent{{Type: "image", Data: "cGFydGlhbA==", MimeType: "image/jpeg"}}}, true)
+	comp.UpdateResult(tui.ToolResultUpdate{Content: []tui.ToolResultContent{{Type: "image", Data: upstreamTinyJPEG, MimeType: "image/jpeg"}}})
 
-	comp := tui.NewToolExecutionComponent("read", "")
-	comp.ImageBlocks = []tui.ImageBlock{{Data: upstreamTinyJPEG, MIMEType: "image/jpeg"}}
-	comp.SetResult("", false, 0)
-	m.maybeConvertImagesForKitty(comp)
-
-	select {
-	case fn := <-m.uiTaskCh:
-		fn()
-	case <-time.After(30 * time.Second):
-		t.Fatal("conversion result never reached the main loop")
+	rendered := strings.Join(comp.Render(120), "\n")
+	if !strings.Contains(rendered, ";iVBORw0KGgo") {
+		t.Fatalf("the jpeg was not converted to a PNG image:\n%q", rendered)
 	}
-	if pending := comp.PendingKittyImageConversions(); len(pending) != 0 {
-		t.Fatalf("image still pending after conversion: %+v", pending)
+	if strings.Contains(rendered, "cGFydGlhbA==") {
+		t.Fatalf("the replaced partial image resurfaced:\n%q", rendered)
 	}
-	select {
-	case render := <-renders:
-		render()
-	case <-time.After(30 * time.Second):
-		t.Fatal("applied conversion did not request a render")
-	}
-	want := ConvertToPng(upstreamTinyJPEG, "image/jpeg")
-	rendered := ""
-	for _, line := range comp.Render(100) {
-		rendered += line
-	}
-	if !bytes.Contains([]byte(rendered), []byte(want.Data[:32])) || bytes.Contains([]byte(rendered), []byte(upstreamTinyJPEG[:32])) {
-		t.Fatal("rendered image is not the converted PNG")
+	comp.Invalidate()
+	if again := strings.Join(comp.Render(120), "\n"); again != rendered {
+		t.Fatalf("invalidation changed the image:\n%q\n%q", again, rendered)
 	}
 }
 
-// Off Kitty no conversion is started.
-func TestMaybeConvertImagesForKittyNoopOffKitty(t *testing.T) {
+// Off Kitty the card registers no transcoder: iTerm2 shows any format unconverted.
+func TestToolCardRegistersNoTranscoderOffKitty(t *testing.T) {
 	prev := tui.GetCapabilities()
-	t.Cleanup(func() { tui.SetCapabilities(prev) })
+	t.Cleanup(func() {
+		tui.SetCapabilities(prev)
+		tui.SetImageTranscoder(nil)
+	})
+	tui.SetImageTranscoder(nil)
 	tui.SetCapabilities(tui.TerminalCapabilities{Images: tui.ImageProtocolITerm2})
-
-	m := newRunOnMainProbe(t)
-	comp := tui.NewToolExecutionComponent("read", "")
+	comp := newToolCardForTest("read", "")
 	comp.ImageBlocks = []tui.ImageBlock{{Data: upstreamTinyJPEG, MIMEType: "image/jpeg"}}
-	m.maybeConvertImagesForKitty(comp)
-	select {
-	case <-m.uiTaskCh:
-		t.Fatal("a conversion was posted off Kitty")
-	case <-time.After(200 * time.Millisecond):
+	comp.SetResult("", false, 0)
+	comp.Render(100)
+	if tui.ImageTranscoderRegistered() {
+		t.Fatal("a transcoder was registered off Kitty")
 	}
 }
 
@@ -239,13 +226,36 @@ func TestEnsurePngTranscoderRegistersOnKittyOnly(t *testing.T) {
 	jpeg := jpegWithXmpBeforeOrientation(t)
 	tui.SetImageTranscoder(nil)
 	tui.SetCapabilities(tui.TerminalCapabilities{Images: tui.ImageProtocolITerm2})
-	ensurePngTranscoder()
+	ensurePngTranscoder(nil)
 	tui.SetCapabilities(tui.TerminalCapabilities{Images: tui.ImageProtocolKitty})
-	if got := tui.NewImage(jpeg, "image/jpeg", tui.ImageOptions{}, nil).Render(80)[0]; strings.Contains(got, "\x1b_G") || !strings.Contains(got, "[Image: [image/jpeg]") {
+	if got := tui.NewImage(jpeg, "image/jpeg", tui.DefaultImageTheme(), tui.ImageOptions{}, nil).Render(80)[0]; strings.Contains(got, "\x1b_G") || !strings.Contains(got, "[Image: [image/jpeg]") {
 		t.Fatalf("transcoder registered off Kitty: %q", got)
 	}
-	ensurePngTranscoder()
-	if got := tui.NewImage(jpeg, "image/jpeg", tui.ImageOptions{}, nil).Render(80)[0]; !strings.Contains(got, "\x1b_G") {
+	ensurePngTranscoder(nil)
+	if got := tui.NewImage(jpeg, "image/jpeg", tui.DefaultImageTheme(), tui.ImageOptions{}, nil).Render(80)[0]; !strings.Contains(got, "\x1b_G") {
 		t.Fatalf("kitty image not transcoded: %q", got)
+	}
+}
+
+// image-convert.ts ensurePngTranscoder: onRegistered runs after a new registration, not when a transcoder was already registered, and
+// not off Kitty.
+func TestEnsurePngTranscoderRunsOnRegisteredOnlyForANewRegistration(t *testing.T) {
+	prev := tui.GetCapabilities()
+	t.Cleanup(func() {
+		tui.SetCapabilities(prev)
+		tui.SetImageTranscoder(nil)
+	})
+	calls := 0
+	tui.SetImageTranscoder(nil)
+	tui.SetCapabilities(tui.TerminalCapabilities{Images: tui.ImageProtocolITerm2})
+	ensurePngTranscoder(func() { calls++ })
+	if calls != 0 {
+		t.Fatalf("onRegistered ran off Kitty (%d)", calls)
+	}
+	tui.SetCapabilities(tui.TerminalCapabilities{Images: tui.ImageProtocolKitty})
+	ensurePngTranscoder(func() { calls++ })
+	ensurePngTranscoder(func() { calls++ })
+	if calls != 1 {
+		t.Fatalf("onRegistered ran %d times, want once for the one registration", calls)
 	}
 }

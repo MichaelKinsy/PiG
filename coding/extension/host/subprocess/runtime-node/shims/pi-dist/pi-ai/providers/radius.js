@@ -11,7 +11,9 @@ export function radiusProvider(options = {}) {
     const baselineModels = gateway === normalizeRadiusGatewayUrl(DEFAULT_RADIUS_GATEWAY)
         ? Object.values(RADIUS_MODELS).map((model) => ({ ...model, provider: id }))
         : [];
-    let dynamicModels = getRadiusModels(id, undefined);
+    // Gateway catalog for this account. Radius org owners can disable models, so once known it replaces
+    // the shipped baseline instead of overlaying it. The baseline only covers the time before any catalog exists.
+    let dynamicModels;
     const streams = piMessagesApi();
     return {
         id,
@@ -20,17 +22,7 @@ export function radiusProvider(options = {}) {
             apiKey: envApiKeyAuth("Radius API key", ["RADIUS_API_KEY"]),
             oauth: lazyOAuth({ name, load: () => loadRadiusOAuth({ name, gateway }) }),
         },
-        getModels: () => {
-            const merged = [...baselineModels];
-            for (const model of dynamicModels) {
-                const index = merged.findIndex((entry) => entry.id === model.id);
-                if (index >= 0)
-                    merged[index] = model;
-                else
-                    merged.push(model);
-            }
-            return merged;
-        },
+        getModels: () => dynamicModels ?? baselineModels,
         refreshModels: async (context) => {
             const stored = context.stored;
             if (stored) {

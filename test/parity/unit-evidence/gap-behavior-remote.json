@@ -1,0 +1,409 @@
+[
+  {
+    "upstream": "packages/protocol/src/cbor/options.ts",
+    "package": "./internal/experimental/protocol",
+    "tests": [
+      "TestCborDefaultLimitsAreThePinnedValues",
+      "TestCborOptionsAreValidatedLikeResolveLimit",
+      "TestCborLimitsAreInclusive"
+    ],
+    "upstream_reference": "packages/protocol/src/cbor/options.ts:1-52 (DEFAULT_MAX_CBOR_* values, MAX_UINT32, MAX_CONFIGURED_DEPTH, resolveLimit range error and ?? defaulting); packages/protocol/test/cbor/cbor.test.ts:154-185",
+    "mutation": "protocol/cbor.go: default depth 64 -> 65 (TestCborDefaultLimitsAreThePinnedValues FAIL); protocol/cbor.go: default container length 1_000_000 -> 1_000_001 (TestCborDefaultLimitsAreThePinnedValues FAIL); protocol/cbor.go: default byte length 16 MiB -> 16 MiB-1 KiB (TestCborDefaultLimitsAreThePinnedValues FAIL); protocol/cbor.go: upper bound exclusive (TestCborOptionsAreValidatedLikeResolveLimit FAIL); protocol/cbor.go: MAX_CONFIGURED_DEPTH 512 -> 511 (TestCborOptionsAreValidatedLikeResolveLimit FAIL); protocol/cbor.go: zero rejected as a limit (TestCborLimitsAreInclusive, TestCborOptionsAreValidatedLikeResolveLimit FAIL); protocol/cbor.go: fractional limit accepted (TestCborOptionsAreValidatedLikeResolveLimit FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/protocol/src/cbor/encoder.ts",
+    "package": "./internal/experimental/protocol",
+    "tests": [
+      "TestCbor",
+      "TestCborArgumentWidthsAtEveryBoundary",
+      "TestCborEncoderErrorMessagesMatchPi",
+      "TestCborLimitsAreInclusive"
+    ],
+    "upstream_reference": "packages/protocol/test/cbor/cbor.test.ts:22-185; packages/protocol/src/cbor/encoder.ts:58-216 (writeArgument widths, depth/cycle/container/byte limits, plain-object key order, error messages)",
+    "mutation": "protocol/cbor.go: encoder depth limit exclusive (TestCborLimitsAreInclusive FAIL); protocol/cbor.go: 1-byte argument boundary 255 (TestCborArgumentWidthsAtEveryBoundary FAIL); protocol/cbor.go: 2-byte argument boundary 65535 (TestCborArgumentWidthsAtEveryBoundary FAIL); protocol/cbor.go: 4-byte argument boundary 4294967295 (TestCborArgumentWidthsAtEveryBoundary FAIL); protocol/cbor.go: safe integer bound (TestCbor FAIL); protocol/cbor.go: array limit exclusive (TestCborLimitsAreInclusive FAIL); protocol/cbor.go: map limit exclusive (TestCborLimitsAreInclusive FAIL); protocol/cbor.go: total byte limit exclusive (TestCborLimitsAreInclusive FAIL); protocol/cbor.go: map ancestors never released (shared child reported as cycle) (TestCborEncoderErrorMessagesMatchPi FAIL); protocol/cbor.go: numeric keys sorted descending (TestCborEncoderErrorMessagesMatchPi FAIL); protocol/cbor.go: non-canonical numeric key sorted as an index (TestCborEncoderErrorMessagesMatchPi FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/protocol/src/cbor/decoder.ts",
+    "package": "./internal/experimental/protocol",
+    "tests": [
+      "TestCbor",
+      "TestCborDecoderErrorMessagesMatchPi",
+      "TestCborLimitsAreInclusive",
+      "TestCborDefaultLimitsAreThePinnedValues",
+      "TestCborArgumentWidthsAtEveryBoundary"
+    ],
+    "upstream_reference": "packages/protocol/test/cbor/cbor.test.ts:22-185; packages/protocol/src/cbor/decoder.ts:12-168 (readItem depth, readLength limits, readArgument widths and safe range, simple values, duplicate keys, messages)",
+    "mutation": "protocol/cbor.go: decoder depth limit exclusive (TestCborLimitsAreInclusive, TestCborDefaultLimitsAreThePinnedValues FAIL); protocol/cbor.go: declared length limit exclusive (TestCborLimitsAreInclusive, TestCborDefaultLimitsAreThePinnedValues FAIL); protocol/cbor.go: input byte limit exclusive (TestCborLimitsAreInclusive FAIL); protocol/cbor.go: immediate argument 23 (TestCborArgumentWidthsAtEveryBoundary, TestCbor FAIL); protocol/cbor.go: argument safe range (TestCborDecoderErrorMessagesMatchPi, TestCbor FAIL); protocol/cbor.go: negative integer below -2^53+1 accepted (TestCborDecoderErrorMessagesMatchPi, TestCbor FAIL); protocol/cbor.go: duplicate map key accepted (TestCborDecoderErrorMessagesMatchPi, TestCbor FAIL); protocol/cbor.go: float64 integer safe range (TestCborDecoderErrorMessagesMatchPi FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/protocol/src/framing.ts",
+    "package": "./internal/experimental/protocol",
+    "tests": [
+      "TestFraming",
+      "TestFrameDecoderLimitDefaultsAndRange",
+      "TestFrameDecoderZeroAndExactLimit",
+      "TestFrameDecoderFailedStateRejectsEveryOperation"
+    ],
+    "upstream_reference": "packages/protocol/test/framing.test.ts:15-110; packages/protocol/src/framing.ts:1-151 (encodeFrame, FrameDecoder push/end/fail, resolveMaxFrameLength)",
+    "mutation": "protocol/framing.go: default frame limit (TestFrameDecoderLimitDefaultsAndRange FAIL); protocol/framing.go: zero limit rejected (TestFrameDecoderLimitDefaultsAndRange, TestFrameDecoderZeroAndExactLimit FAIL); protocol/framing.go: 4294967295 limit rejected (TestFrameDecoderLimitDefaultsAndRange FAIL); protocol/framing.go: fractional limit accepted (TestFrameDecoderLimitDefaultsAndRange, TestFraming FAIL); protocol/framing.go: frame at the limit rejected (TestFrameDecoderLimitDefaultsAndRange, TestFrameDecoderFailedStateRejectsEveryOperation FAIL); protocol/framing.go: empty frame handling (TestFrameDecoderFailedStateRejectsEveryOperation, TestFraming FAIL); protocol/framing.go: multi-block payload not joined (TestFraming FAIL); protocol/framing.go: truncated payload accepted at end (TestFrameDecoderLimitDefaultsAndRange, TestFraming FAIL); protocol/framing.go: truncated header accepted at end (TestFraming FAIL); protocol/framing.go: failure recorded as ended (TestFrameDecoderFailedStateRejectsEveryOperation, TestFraming FAIL); protocol/framing.go: end after failure (TestFrameDecoderFailedStateRejectsEveryOperation FAIL); protocol/framing.go: little-endian length header (TestFraming FAIL); protocol/framing.go: end does not close the decoder (TestFraming FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/protocol/src/protocol.ts",
+    "package": "./internal/experimental/protocol",
+    "tests": [
+      "TestParseClientMessageMatchesPiSchema",
+      "TestParseServerMessageMatchesPiSchema",
+      "TestProtocolValidation",
+      "TestProtocolPredicatesAndNilMessages"
+    ],
+    "upstream_reference": "packages/protocol/src/protocol.ts:1-110 (PROTOCOL_VERSION, ServerIdSchema pattern, strict client and server message schemas); packages/protocol/test/protocol.test.ts:30-215; 102 accept/reject cases recorded from Pi 1.0.4 parseClientMessage/parseServerMessage",
+    "mutation": "protocol/messages.go: protocol version 8 -> 9 (TestProtocolPredicatesAndNilMessages, TestProtocolValidation FAIL); protocol/messages.go: UUID version nibble not required (TestProtocolPredicatesAndNilMessages, TestProtocolValidation FAIL); protocol/messages.go: UUID variant not required (TestProtocolPredicatesAndNilMessages, TestProtocolValidation FAIL); protocol/messages.go: server id start anchor removed (TestProtocolPredicatesAndNilMessages, TestParseClientMessageMatchesPiSchema FAIL); protocol/messages.go: server id end anchor removed (TestProtocolPredicatesAndNilMessages, TestParseClientMessageMatchesPiSchema FAIL); protocol/messages.go: uppercase accepted in first group (TestParseClientMessageMatchesPiSchema FAIL); protocol/messages.go: negative hello version accepted (TestParseClientMessageMatchesPiSchema FAIL); protocol/messages.go: fractional hello version accepted (TestParseClientMessageMatchesPiSchema, TestProtocolValidation FAIL); protocol/messages.go: empty id accepted (TestProtocolValidation, TestParseServerMessageMatchesPiSchema FAIL); protocol/messages.go: server target not recognised (TestParseClientMessageMatchesPiSchema, TestProtocolValidation FAIL); protocol/messages.go: partial session target accepted (TestParseClientMessageMatchesPiSchema FAIL); protocol/messages.go: empty error code accepted (TestProtocolValidation, TestParseServerMessageMatchesPiSchema FAIL); protocol/messages.go: empty error message rejected (TestParseServerMessageMatchesPiSchema FAIL); protocol/messages.go: ok response allowed an error member (TestProtocolValidation, TestParseServerMessageMatchesPiSchema FAIL); protocol/messages.go: omitted result reported present (TestProtocolValidation, TestParseServerMessageMatchesPiSchema FAIL); protocol/messages.go: server target accepted as attachment (TestParseServerMessageMatchesPiSchema FAIL); protocol/messages.go: hello_error type unrecognised (TestParseServerMessageMatchesPiSchema FAIL); protocol/messages.go: versions above 8 supported (TestProtocolPredicatesAndNilMessages, TestProtocolValidation FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/protocol/src/codec.ts",
+    "package": "./internal/experimental/protocol",
+    "tests": [
+      "TestValidatedFramedProtocol",
+      "TestEncodeMessageDeepCallFailsInCborLikePi",
+      "TestEncodeMessageRejectsCyclicCalls",
+      "TestEncodeMessageValidatesBeforeFraming",
+      "TestMessageCodecFrameLimitIsTheCborByteLimit",
+      "TestMessageDecoderErrorsLatchLikePi",
+      "TestBoundedCodecErrorTruncatesAtFiveHundred",
+      "TestProtocolPredicatesAndNilMessages"
+    ],
+    "upstream_reference": "packages/protocol/src/codec.ts:1-141 (parseClientMessage/parseServerMessage, encodeProtocolMessage, ValidatedMessageDecoder, boundedErrorMessage, isSupportedProtocolVersion); packages/protocol/test/protocol.test.ts:217-290; packages/chord/src/json.ts:74-120 isJsonValue",
+    "mutation": "protocol/messages.go: truncation threshold 500 -> 501 (TestBoundedCodecErrorTruncatesAtFiveHundred FAIL); protocol/messages.go: truncation length 497 -> 498 (TestBoundedCodecErrorTruncatesAtFiveHundred FAIL); protocol/messages.go: decode failure does not latch (TestMessageDecoderErrorsLatchLikePi, TestValidatedFramedProtocol FAIL); protocol/messages.go: end failure does not latch (TestMessageDecoderErrorsLatchLikePi FAIL); protocol/messages.go: end after failure (TestMessageDecoderErrorsLatchLikePi FAIL); protocol/messages.go: push after failure (TestMessageDecoderErrorsLatchLikePi, TestValidatedFramedProtocol FAIL); protocol/messages.go: decode ignores the frame limit (TestMessageCodecFrameLimitIsTheCborByteLimit FAIL); protocol/messages.go: encode ignores the frame limit (TestMessageCodecFrameLimitIsTheCborByteLimit, TestValidatedFramedProtocol FAIL); protocol/messages.go: client message not validated before encoding (TestEncodeMessageValidatesBeforeFraming, TestEncodeMessageRejectsCyclicCalls FAIL); protocol/messages.go: server message not validated before encoding (TestEncodeMessageValidatesBeforeFraming FAIL); protocol/messages.go: nil client message (TestProtocolPredicatesAndNilMessages FAIL); protocol/messages.go: cyclic array accepted ((test abort) FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/client/src/connection.ts",
+    "package": "./internal/experimental/client",
+    "tests": [
+      "TestClientConnectionRejectsInvalidMaxFrameLength",
+      "TestClientHandshakeFailuresCarryPiErrorsAndCloseOnlyLocalFailures",
+      "TestClientConnectionLifecycleAndStaleTransport",
+      "TestClientConnectedProtocolViolationsDisconnect",
+      "TestClientIgnoresMessagesAfterAFailureInTheSameChunk",
+      "TestClientRejectsAFactoryThatReturnsNoTransport",
+      "TestClientUpstream"
+    ],
+    "upstream_reference": "packages/client/src/connection.ts:42-245 (maxFrameLength validation, connect/disconnect, #openTransport stale transport, #handleData/#handleMessage handshake rules, #handleClose, #failAndClose); packages/client/test/client.test.ts:255-330",
+    "mutation": "client/connection.go: zero frame limit accepted (TestClientConnectionRejectsInvalidMaxFrameLength FAIL); client/connection.go: 4294967295 frame limit rejected (TestClientConnectionRejectsInvalidMaxFrameLength FAIL); client/connection.go: fractional frame limit accepted (TestClientConnectionRejectsInvalidMaxFrameLength FAIL); client/connection.go: already-connecting message ((test abort) FAIL); client/connection.go: early data message (TestClientUpstream FAIL); client/connection.go: first-message message (TestClientHandshakeFailuresCarryPiErrorsAndCloseOnlyLocalFailures FAIL); client/connection.go: server identity not checked (TestClientHandshakeFailuresCarryPiErrorsAndCloseOnlyLocalFailures, TestClientUpstream FAIL); client/connection.go: identity mismatch message (TestClientHandshakeFailuresCarryPiErrorsAndCloseOnlyLocalFailures FAIL); client/connection.go: second hello message (TestClientConnectedProtocolViolationsDisconnect FAIL); client/connection.go: remote close message (TestClientHandshakeFailuresCarryPiErrorsAndCloseOnlyLocalFailures FAIL); client/connection.go: default disconnect reason ((test abort) FAIL); client/connection.go: truncated stream reported as plain close (TestClientHandshakeFailuresCarryPiErrorsAndCloseOnlyLocalFailures, TestClientUpstream FAIL); client/connection.go: remote close closes the transport again (TestClientHandshakeFailuresCarryPiErrorsAndCloseOnlyLocalFailures FAIL); client/connection.go: local failure leaves the transport open (TestClientConnectionLifecycleAndStaleTransport, TestClientHandshakeFailuresCarryPiErrorsAndCloseOnlyLocalFailures FAIL); client/connection.go: hello error leaves the transport open (TestClientHandshakeFailuresCarryPiErrorsAndCloseOnlyLocalFailures, TestClientUpstream FAIL); client/connection.go: missing-transport message (TestClientRejectsAFactoryThatReturnsNoTransport FAIL); client/connection.go: stale transport kept open (TestClientConnectionLifecycleAndStaleTransport, TestClientUpstream FAIL); client/connection.go: connecting event dropped (TestClientConnectionLifecycleAndStaleTransport, TestClientHandshakeFailuresCarryPiErrorsAndCloseOnlyLocalFailures FAIL); client/connection.go: connected event dropped (TestClientConnectionLifecycleAndStaleTransport, TestClientUpstream FAIL); client/connection.go: disconnected event dropped (TestClientConnectedProtocolViolationsDisconnect FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/client/src/types.ts",
+    "package": "./internal/experimental/client",
+    "tests": [
+      "TestClientConnectionRejectsInvalidMaxFrameLength",
+      "TestClientHandshakeFailuresCarryPiErrorsAndCloseOnlyLocalFailures",
+      "TestClientConnectionLifecycleAndStaleTransport",
+      "TestClientConnectedProtocolViolationsDisconnect",
+      "TestClientIgnoresMessagesAfterAFailureInTheSameChunk",
+      "TestClientRejectsAFactoryThatReturnsNoTransport",
+      "TestClientUpstream"
+    ],
+    "upstream_reference": "packages/client/src/types.ts:1-32 (ConnectionState values, ConnectionStateChange delivery); packages/client/test/client.test.ts:255-330",
+    "mutation": "client/connection.go: state value connected (TestClientConnectionLifecycleAndStaleTransport FAIL); client/connection.go: state value connecting ((test abort) FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/client/src/transport.ts",
+    "package": "./internal/experimental/client",
+    "tests": [
+      "TestClientConnectionRejectsInvalidMaxFrameLength",
+      "TestClientHandshakeFailuresCarryPiErrorsAndCloseOnlyLocalFailures",
+      "TestClientConnectionLifecycleAndStaleTransport",
+      "TestClientConnectedProtocolViolationsDisconnect",
+      "TestClientIgnoresMessagesAfterAFailureInTheSameChunk",
+      "TestClientRejectsAFactoryThatReturnsNoTransport",
+      "TestClientUpstream"
+    ],
+    "upstream_reference": "packages/client/src/transport.ts:1-18 (ByteTransport send order and close, handlers, factory contract); packages/client/test/client.test.ts:255-330",
+    "mutation": "client/connection.go: transport never receives a frame ((test abort) FAIL); client/connection.go: factory never invoked ((test abort) FAIL); client/connection.go: remote close handler dropped ((test abort) FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/client/src/errors.ts",
+    "package": "./internal/experimental/client",
+    "tests": [
+      "TestClientConnectionRejectsInvalidMaxFrameLength",
+      "TestClientHandshakeFailuresCarryPiErrorsAndCloseOnlyLocalFailures",
+      "TestClientConnectionLifecycleAndStaleTransport",
+      "TestClientConnectedProtocolViolationsDisconnect",
+      "TestClientIgnoresMessagesAfterAFailureInTheSameChunk",
+      "TestClientRejectsAFactoryThatReturnsNoTransport",
+      "TestClientUpstream",
+      "TestClientRequestPreconditionsAndDisposal"
+    ],
+    "upstream_reference": "packages/client/src/errors.ts:1-34 (ServerError, DisconnectedError messages and cause, ClientDisposedError, toDisconnectedError)",
+    "mutation": "client/transport.go: default disconnected message (TestClientRequestPreconditionsAndDisposal FAIL); client/transport.go: DisconnectedError re-wrapped (TestClientHandshakeFailuresCarryPiErrorsAndCloseOnlyLocalFailures FAIL); client/transport.go: disposed message (TestClientRequestPreconditionsAndDisposal, TestClientConnectionLifecycleAndStaleTransport FAIL); client/transport.go: server error message (TestClientHandshakeFailuresCarryPiErrorsAndCloseOnlyLocalFailures FAIL); client/transport.go: cause dropped (TestClientHandshakeFailuresCarryPiErrorsAndCloseOnlyLocalFailures, TestClientUpstream FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/client/src/client.ts",
+    "package": "./internal/experimental/client",
+    "tests": [
+      "TestClientUpstream",
+      "TestClientConnectedProtocolViolationsDisconnect",
+      "TestClientRequestPreconditionsAndDisposal",
+      "TestClientListenerIdentityErrorsAndAttachmentChanges",
+      "TestClientSubscriptionDisposalAndServiceTransportTarget",
+      "TestClientSubscriptionHoldsHydratedUpdatesUntilStart",
+      "TestClientConnectionStateListenerIdentity",
+      "TestClientBeginInvokeRejectsBeforeRegisteringWhenUnavailable",
+      "TestBeginInvokeAdmitsBeforeReturnAndSeparatesWaitCancellation"
+    ],
+    "upstream_reference": "packages/client/src/client.ts:58-479 (serverId check, request correlation and cancellation, attachment routing, subscription hydration/start/dispose, listener registration, disposal, createClientServiceTransport); packages/client/test/client.test.ts:44-330",
+    "mutation": "client/client.go: server id message (TestClientUpstream FAIL); client/client.go: attachment of another server accepted (TestClientConnectedProtocolViolationsDisconnect FAIL); client/client.go: attachment violation message (TestClientConnectedProtocolViolationsDisconnect FAIL); client/client.go: unmatched response message (TestClientConnectedProtocolViolationsDisconnect FAIL); client/client.go: stale target unsubscribed ((test abort) FAIL); client/client.go: server target identity ignored ((test abort) FAIL); client/client.go: session target identity ignored ((test abort) FAIL); client/client.go: attachment kept after disconnect (TestClientListenerIdentityErrorsAndAttachmentChanges FAIL); client/client.go: pre-cancelled request sent (TestClientUpstream FAIL); client/client.go: request admitted while disconnected (TestClientBeginInvokeRejectsBeforeRegisteringWhenUnavailable FAIL); client/client.go: updates before the snapshot not queued (TestClientUpstream FAIL); client/client.go: updates delivered before start (TestClientSubscriptionHoldsHydratedUpdatesUntilStart FAIL); client/client.go: subscription ids (TestClientSubscriptionDisposalAndServiceTransportTarget, TestClientUpstream FAIL); client/client.go: request ids (TestBeginInvokeAdmitsBeforeReturnAndSeparatesWaitCancellation, TestClientSubscriptionHoldsHydratedUpdatesUntilStart FAIL); client/client.go: state listener identity ignored (TestClientConnectionStateListenerIdentity FAIL); client/client.go: attachment listener identity ignored (TestClientListenerIdentityErrorsAndAttachmentChanges FAIL); client/client.go: invoke target message (TestClientSubscriptionDisposalAndServiceTransportTarget FAIL); client/client.go: hydrated updates admitted before start (TestClientSubscriptionHoldsHydratedUpdatesUntilStart FAIL); client/client.go: second start redelivers the queue (TestClientSubscriptionHoldsHydratedUpdatesUntilStart FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/client/src/unix.ts",
+    "package": "./internal/experimental/client",
+    "tests": [
+      "TestUnixUpstream",
+      "TestUnixTransportUpstream",
+      "TestUnixTransportSocketsUpstream",
+      "TestUnixTransportRemoteCloseNotifiesBeforeSettlingWrites",
+      "TestUnixTransportSendDuringRemoteCloseSettlesAfterHandlers",
+      "TestUnixTransportOptionsAreValidatedLikePi",
+      "TestDiscoverUnixServersValidatesTheTimeout",
+      "TestDiscoverUnixServersProbesOnlyCanonicalNamesWithTheDefaultTimeout",
+      "TestProbeUnixServerOmitsOnlyTheEndpointsPiOmits",
+      "TestUnixTransportPendingLimitAndClosedSend"
+    ],
+    "upstream_reference": "packages/client/src/unix.ts:17-299 (discoverUnixServers, validateUnixTransportOptions, connectUnixSocket write/close semantics, probeUnixServer omit list); packages/client/test/unix.test.ts",
+    "mutation": "client/unix.go: default discovery timeout 1000 -> 500 (TestDiscoverUnixServersProbesOnlyCanonicalNamesWithTheDefaultTimeout FAIL); client/unix.go: probe concurrency 16 -> 15 (TestUnixUpstream FAIL); client/unix.go: timer delay bound (TestDiscoverUnixServersValidatesTheTimeout FAIL); client/unix.go: safe integer bound (TestUnixTransportOptionsAreValidatedLikePi FAIL); client/unix.go: empty path message (TestUnixTransportOptionsAreValidatedLikePi, TestUnixTransportUpstream FAIL); client/unix.go: zero pending limit accepted (TestUnixTransportOptionsAreValidatedLikePi, TestUnixTransportUpstream FAIL); client/unix.go: 2^53-1 pending limit rejected (TestUnixTransportOptionsAreValidatedLikePi FAIL); client/unix.go: pending limit message (TestUnixTransportOptionsAreValidatedLikePi, TestUnixTransportUpstream FAIL); client/unix.go: pending overflow message (TestUnixTransportPendingLimitAndClosedSend FAIL); client/unix.go: close during write message (TestUnixTransportRemoteCloseNotifiesBeforeSettlingWrites FAIL); client/unix.go: zero discovery timeout accepted (TestDiscoverUnixServersValidatesTheTimeout FAIL); client/unix.go: max discovery timeout rejected (TestDiscoverUnixServersValidatesTheTimeout FAIL); client/unix.go: discovery timeout message (TestDiscoverUnixServersValidatesTheTimeout FAIL); client/unix.go: missing directory is an error (TestDiscoverUnixServersValidatesTheTimeout, TestUnixUpstream FAIL); client/unix.go: socket suffix ((process abort) FAIL); client/unix.go: non-canonical names probed (TestDiscoverUnixServersProbesOnlyCanonicalNamesWithTheDefaultTimeout FAIL); client/unix.go: route order (TestUnixUpstream FAIL); client/unix.go: timeout is an error (TestUnixUpstream, TestDiscoverUnixServersProbesOnlyCanonicalNamesWithTheDefaultTimeout FAIL); client/unix.go: protocol failure is an error (TestProbeUnixServerOmitsOnlyTheEndpointsPiOmits, TestUnixUpstream FAIL); client/unix.go: ENOENT is an error (TestProbeUnixServerOmitsOnlyTheEndpointsPiOmits FAIL); client/unix.go: ECONNREFUSED is an error (TestProbeUnixServerOmitsOnlyTheEndpointsPiOmits, TestUnixUpstream FAIL); client/unix.go: version hello_error propagates (TestProbeUnixServerOmitsOnlyTheEndpointsPiOmits FAIL); client/unix.go: close without a cause propagates (TestProbeUnixServerOmitsOnlyTheEndpointsPiOmits FAIL); client/unix.go: every hello_error omitted (TestProbeUnixServerOmitsOnlyTheEndpointsPiOmits FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/server/src/connection.ts",
+    "package": "./internal/experimental/routing",
+    "tests": [
+      "TestUnixListenerOptionsAreValidatedLikePi",
+      "TestUnixListenerAppliesTheConfiguredModeAndCreatesPrivateParents",
+      "TestUnixListenerStartStatesReportPiMessages",
+      "TestGetUnixSocketPathRequiresACanonicalServerID",
+      "TestUnixByteConnectionPendingLimitAndClosedSend",
+      "TestUnixServerDerivesItsExplicitSocketPathAndRestartsOnIt",
+      "TestUnixListenerFilesystemLifecycle",
+      "TestUnixByteConnectionQueuesAFinalProtocolErrorBehindPendingOutput",
+      "TestServerRejectsPendingByteLimitsSmallerThanOneMaximumFrame",
+      "TestServerProtocolReportsATruncatedFinalFrameWhenThePeerCloses"
+    ],
+    "upstream_reference": "packages/server/src/connection.ts:1-37 (ByteConnection send/close contract: ordered sends, bounded pending bytes, final chunk before close); packages/server/test/unix-connection.test.ts:44",
+    "mutation": "routing/unix.go: closed send message (TestUnixByteConnectionPendingLimitAndClosedSend FAIL); routing/unix.go: pending bound exclusive ((test abort) FAIL); routing/unix.go: pending limit message (TestUnixByteConnectionPendingLimitAndClosedSend FAIL); routing/unix.go: final chunk not written (TestUnixByteConnectionQueuesAFinalProtocolErrorBehindPendingOutput FAIL); routing/unix.go: socket never half-closed (TestUnixByteConnectionQueuesAFinalProtocolErrorBehindPendingOutput FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/server/src/errors.ts",
+    "package": "./internal/experimental/routing",
+    "tests": [
+      "TestServerErrorsCarryPiCodesAndMessages",
+      "TestServerProtocolFailureMessages",
+      "TestSessionProtocol",
+      "TestSessionRouterAdmitsOnlyTheCurrentAttachment",
+      "TestSessionRouterDrainsWhileTheServerIsClosing"
+    ],
+    "upstream_reference": "packages/server/src/errors.ts:1-57 (ServerError codes and default messages, InternalServerErrorMessage, aggregate errors)",
+    "mutation": "routing/errors.go: wrong server message (TestServerErrorsCarryPiCodesAndMessages FAIL); routing/errors.go: wrong server code (TestSessionProtocol, TestServerErrorsCarryPiCodesAndMessages FAIL); routing/errors.go: session not found default message (TestServerErrorsCarryPiCodesAndMessages FAIL); routing/errors.go: session not found code (TestSessionProtocol, TestServerErrorsCarryPiCodesAndMessages FAIL); routing/errors.go: ambiguous message (TestServerErrorsCarryPiCodesAndMessages FAIL); routing/errors.go: not attached message (TestServerErrorsCarryPiCodesAndMessages, TestSessionRouterAdmitsOnlyTheCurrentAttachment FAIL); routing/errors.go: draining message (TestServerErrorsCarryPiCodesAndMessages, TestSessionRouterDrainsWhileTheServerIsClosing FAIL); routing/errors.go: internal error message (TestSessionProtocol, TestServerErrorsCarryPiCodesAndMessages FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/server/src/listener.ts",
+    "package": "./internal/experimental/routing",
+    "tests": [
+      "TestUnixListenerOptionsAreValidatedLikePi",
+      "TestUnixListenerAppliesTheConfiguredModeAndCreatesPrivateParents",
+      "TestUnixListenerStartStatesReportPiMessages",
+      "TestGetUnixSocketPathRequiresACanonicalServerID",
+      "TestUnixByteConnectionPendingLimitAndClosedSend",
+      "TestUnixServerDerivesItsExplicitSocketPathAndRestartsOnIt",
+      "TestUnixListenerFilesystemLifecycle",
+      "TestUnixByteConnectionQueuesAFinalProtocolErrorBehindPendingOutput",
+      "TestServerRejectsPendingByteLimitsSmallerThanOneMaximumFrame",
+      "TestServerStartStatesReportPiMessages",
+      "TestServerListenerComposition",
+      "TestServerRejectsConcurrentStartCallsWithoutLeakingTheUnixListener"
+    ],
+    "upstream_reference": "packages/server/src/listener.ts:1-8 (ServerListener start/close contract) and its use in server.ts:95-110 start()/close(); packages/server/test/server.test.ts:35-160",
+    "mutation": "routing/server.go: server already started message (TestServerStartStatesReportPiMessages FAIL); routing/server.go: server closed message (TestServerStartStatesReportPiMessages FAIL); routing/unix.go: listener already started message (TestUnixListenerStartStatesReportPiMessages FAIL); routing/unix.go: listener closed message (TestUnixListenerStartStatesReportPiMessages FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/server/src/server.ts",
+    "package": "./internal/experimental/routing",
+    "tests": [
+      "TestServerOptionsAreValidatedLikePi",
+      "TestServerStartStatesReportPiMessages",
+      "TestServerDefaultHandshakeTimeoutIsFiveSeconds",
+      "TestServerProtocolFailureMessages",
+      "TestServerRequestAndCancelRules",
+      "TestServerCancelAbortsOnlyTheMatchingRequest",
+      "TestServerDisconnectCancelsActiveRequests",
+      "TestServerSubscriptionControlFailures",
+      "TestSecondHelloDuringHandshakeSendsOnlyTheError",
+      "TestServerProtocolRequiresHelloAsTheFirstMessage",
+      "TestServerProtocolRejectsUnsupportedProtocolVersions",
+      "TestServerProtocolRejectsASecondHelloAfterCompletingTheHandshake",
+      "TestServerRequiresExplicitListenersAndACanonicalServerIdentity",
+      "TestServerHandshakeTimeoutClosesWithAFinalHelloErrorFrame",
+      "TestServerRejectsTimeoutValuesAboveNodesMaximumTimerDelay",
+      "TestSessionProtocol",
+      "TestUnixListenerFilesystemLifecycle",
+      "TestServerHoldsSubscriptionUpdatesUntilTheSnapshotResponse",
+      "TestServerClosesTheConnectionWhenAHeldUpdateFailsAfterTheResponse",
+      "TestServerProtocolProcessesAHelloAndRequestCoalescedInOneByteChunk"
+    ],
+    "upstream_reference": "packages/server/src/server.ts:61-576 (handshake, protocol failures, request/cancel handling, subscription control, disconnect cancellation, error mapping); packages/server/test/{protocol,conformance,server}.test.ts; wire differential against Pi 1.0.4 in internal/experimental/interop; packages/server/src/server.ts:338-344 and :375-401 (held subscription updates, post-response failure closes the connection), :264-285 (finishHandshake releases late services)",
+    "mutation": "routing/server.go: handshake timeout message (TestServerDefaultHandshakeTimeoutIsFiveSeconds FAIL); routing/server.go: first message failure (TestServerProtocolFailureMessages FAIL); routing/server.go: second hello failure (TestServerProtocolRejectsASecondHelloAfterCompletingTheHandshake, TestSecondHelloDuringHandshakeSendsOnlyTheError FAIL); routing/server.go: version failure message (TestServerProtocolFailureMessages FAIL); routing/server.go: duplicate request id ((test abort) FAIL); routing/server.go: invalid call message (TestServerRequestAndCancelRules FAIL); routing/server.go: duplicate subscription message (TestServerSubscriptionControlFailures FAIL); routing/server.go: missing snapshot message (TestServerSubscriptionControlFailures FAIL); routing/server.go: cancelled message (TestServerCancelAbortsOnlyTheMatchingRequest FAIL); routing/server.go: cancel through another target honoured (TestServerCancelAbortsOnlyTheMatchingRequest FAIL); routing/server.go: disconnect does not cancel requests (TestServerCancelAbortsOnlyTheMatchingRequest FAIL); routing/server.go: validation error code (TestServerSubscriptionControlFailures FAIL); routing/server.go: internal error code (TestSessionProtocol FAIL); routing/server.go: subscription updates not held until the response (TestServerHoldsSubscriptionUpdatesUntilTheSnapshotResponse, TestServerClosesTheConnectionWhenAHeldUpdateFailsAfterTheResponse FAIL); routing/server.go: response sent after the held updates (TestServerHoldsSubscriptionUpdatesUntilTheSnapshotResponse FAIL); routing/server.go: post-response failure keeps the connection (TestServerClosesTheConnectionWhenAHeldUpdateFailsAfterTheResponse FAIL); routing/server.go: post-response failure not reported (TestServerClosesTheConnectionWhenAHeldUpdateFailsAfterTheResponse FAIL); routing/server.go: messages during the handshake dropped (TestServerProtocolProcessesAHelloAndRequestCoalescedInOneByteChunk FAIL); routing/server.go: late server services kept on a closing connection (TestSecondHelloDuringHandshakeSendsOnlyTheError FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/server/src/session-router.ts",
+    "package": "./internal/experimental/routing",
+    "tests": [
+      "TestSessionRouterAdmitsOnlyTheCurrentAttachment",
+      "TestSessionRouterDrainsWhileTheServerIsClosing",
+      "TestSessionProtocol",
+      "TestRoutedSessionAcquisitionFailures",
+      "TestRouterCloseReportsOpeningFailuresInOpeningOrder",
+      "TestRouterAttachAfterSignalledTerminationOpensAFreshHarness",
+      "TestRouterReattachAfterSignalledTerminationReplacesTheRetiredAttachment",
+      "TestRouterRemoveSessionAfterSignalledTerminationIsANoOp",
+      "TestSessionRouterAttachmentLifecycle"
+    ],
+    "upstream_reference": "packages/server/src/session-router.ts:1-312 (attach/detach/disconnect/remove/close, admission against the current attachment, draining, termination); packages/server/test/conformance.test.ts; packages/server/src/session-router.ts:72-89 removeSession, :91-101 disconnect, :108-140 closeInternal, :160-195 attachClientNow (same-Session re-attach, switch release without publish)",
+    "mutation": "routing/session_router.go: calls admitted while closing (TestSessionRouterDrainsWhileTheServerIsClosing FAIL); routing/session_router.go: attachment id not checked (TestSessionRouterAdmitsOnlyTheCurrentAttachment FAIL); routing/session_router.go: session id not checked (TestSessionRouterAdmitsOnlyTheCurrentAttachment FAIL); routing/session_router.go: unattached client admitted ((test abort) FAIL); routing/session_router.go: same-Session re-attach replaces the attachment (TestSessionRouterAttachmentLifecycle FAIL); routing/session_router.go: switching Sessions keeps the previous attachment (TestSessionRouterAttachmentLifecycle FAIL); routing/session_router.go: switching Sessions publishes a detach (TestSessionRouterAttachmentLifecycle FAIL); routing/session_router.go: disconnect publishes a detach (TestSessionRouterAttachmentLifecycle FAIL); routing/session_router.go: removeSession does not close the Harness (TestSessionRouterAttachmentLifecycle FAIL); routing/session_router.go: removeSession does not release attachments (TestSessionRouterAttachmentLifecycle FAIL); routing/session_router.go: close skips attachment release (TestSessionRouterAttachmentLifecycle FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/server/src/testing/client.ts",
+    "package": "./internal/experimental/routing/routingtest",
+    "tests": [
+      "TestProtocolTestClientWaitsForMessages",
+      "TestProtocolTestClientFailsWaitersOnUndecodableFrames",
+      "TestProtocolTestClientRequests",
+      "TestProtocolTestClientSends",
+      "TestConnectUnixTestClientFollowsThePeer",
+      "TestConnectUnixTestClientCloseWaitsForTheSocket"
+    ],
+    "upstream_reference": "packages/server/src/testing/client.ts (ProtocolTestClient, connectUnixTestClient)",
+    "mutation": "routing/routingtest/client.go: default hello version (TestProtocolTestClientSends FAIL); routing/routingtest/client.go: request ids (TestProtocolTestClientRequests FAIL); routing/routingtest/client.go: wire closed message (TestProtocolTestClientWaitsForMessages, TestConnectUnixTestClientFollowsThePeer FAIL); routing/routingtest/client.go: client closed message (TestProtocolTestClientWaitsForMessages FAIL); routing/routingtest/client.go: attach member (TestProtocolTestClientRequests FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/server/src/testing/host.ts",
+    "package": "./internal/experimental/routing/routingtest",
+    "tests": [
+      "TestTestHarnessScriptsServiceCalls",
+      "TestTestHarnessGatesTheNextServiceCall",
+      "TestTestHarnessAttachmentRelease",
+      "TestTestHarnessCloseAndTermination",
+      "TestCreateTestServerServicesRoutesOnlyAttachAndDetach",
+      "TestTestServerHostOpensSeededSessions",
+      "TestTestServerHostGatesTheNextOpen",
+      "TestTestServerServicesRejectAttachWithExtraArguments",
+      "TestDeferredKeepsTheFirstResolvedValue"
+    ],
+    "upstream_reference": "packages/server/src/testing/host.ts:1-204 (TestHarness, TestServerHost, createTestServerServices)",
+    "mutation": "routing/routingtest/host.go: unsupported service message (TestCreateTestServerServicesRoutesOnlyAttachAndDetach, TestTestServerServicesRejectAttachWithExtraArguments FAIL); routing/routingtest/host.go: missing harness message (TestTestServerHostOpensSeededSessions FAIL); routing/routingtest/host.go: default seeded id (TestTestServerHostOpensSeededSessions, TestTestServerHostGatesTheNextOpen FAIL); routing/routingtest/host.go: detach with arguments (TestCreateTestServerServicesRoutesOnlyAttachAndDetach FAIL); routing/routingtest/host.go: attach with extra arguments (TestTestServerServicesRejectAttachWithExtraArguments FAIL); routing/routingtest/host.go: instanced attach (TestCreateTestServerServicesRoutesOnlyAttachAndDetach FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/server/src/testing/index.ts",
+    "package": "./internal/experimental/routing/routingtest",
+    "tests": [
+      "TestCreateTestServerHandshakesThroughItsHost",
+      "TestNewTestServerHostProvidesServerServices",
+      "TestCreateTestServer",
+      "TestCreateTestServerForwardsItsOptions",
+      "TestCreateTestServerServicesRoutesOnlyAttachAndDetach",
+      "TestTestServerHostOpensSeededSessions",
+      "TestProtocolTestClientRequests"
+    ],
+    "upstream_reference": "packages/server/src/testing/index.ts:1-4 (re-exports createTestServer, host and client helpers: the routingtest package surface)",
+    "mutation": "routing/routingtest/host.go: host without server services (TestCreateTestServerHandshakesThroughItsHost, TestNewTestServerHostProvidesServerServices FAIL); routing/routingtest/server.go: created server ignores the host (TestCreateTestServerHandshakesThroughItsHost FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/server/src/testing/server.ts",
+    "package": "./internal/experimental/routing/routingtest",
+    "tests": [
+      "TestCreateTestServer",
+      "TestCreateTestServerForwardsItsOptions"
+    ],
+    "upstream_reference": "packages/server/src/testing/server.ts:16-28 (createTestServer defaults and forwarding)",
+    "mutation": "routing/routingtest/server.go: default server id (TestCreateTestServer FAIL); routing/routingtest/server.go: frame limit not forwarded (TestCreateTestServerForwardsItsOptions FAIL); routing/routingtest/server.go: handshake timeout not forwarded (TestCreateTestServerForwardsItsOptions FAIL); routing/routingtest/server.go: error callback not forwarded (TestCreateTestServerForwardsItsOptions FAIL); routing/routingtest/server.go: host option ignored (TestCreateTestServerForwardsItsOptions FAIL); routing/routingtest/server.go: server id option ignored (TestCreateTestServer FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/server/src/transports/unix/address.ts",
+    "package": "./internal/experimental/routing",
+    "tests": [
+      "TestGetUnixSocketPathRequiresACanonicalServerID",
+      "TestUnixServerDerivesItsExplicitSocketPathAndRestartsOnIt"
+    ],
+    "upstream_reference": "packages/server/src/transports/unix/address.ts (getUnixSocketPath); packages/server/test/unix.test.ts:41",
+    "mutation": "routing/unix.go: server id message (TestGetUnixSocketPathRequiresACanonicalServerID FAIL); routing/unix.go: socket suffix (TestUnixServerDerivesItsExplicitSocketPathAndRestartsOnIt, TestGetUnixSocketPathRequiresACanonicalServerID FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/server/src/transports/unix/listener.ts",
+    "package": "./internal/experimental/routing",
+    "tests": [
+      "TestUnixListenerDefaultPendingBytesAreFourFrames",
+      "TestUnixListenerOptionsAreValidatedLikePi",
+      "TestUnixListenerAppliesTheConfiguredModeAndCreatesPrivateParents",
+      "TestUnixListenerStartStatesReportPiMessages",
+      "TestGetUnixSocketPathRequiresACanonicalServerID",
+      "TestUnixByteConnectionPendingLimitAndClosedSend",
+      "TestUnixServerDerivesItsExplicitSocketPathAndRestartsOnIt",
+      "TestUnixListenerFilesystemLifecycle",
+      "TestUnixByteConnectionQueuesAFinalProtocolErrorBehindPendingOutput",
+      "TestServerRejectsPendingByteLimitsSmallerThanOneMaximumFrame"
+    ],
+    "upstream_reference": "packages/server/src/transports/unix/listener.ts (option validation, stale-socket handling, owned inode, graceful close); packages/server/test/{unix,unix-connection}.test.ts",
+    "mutation": "routing/unix.go: empty path message (TestUnixListenerOptionsAreValidatedLikePi FAIL); routing/unix.go: default mode (TestUnixListenerFilesystemLifecycle FAIL); routing/unix.go: mode message (TestUnixListenerOptionsAreValidatedLikePi FAIL); routing/unix.go: mode 0 rejected (TestUnixListenerOptionsAreValidatedLikePi FAIL); routing/unix.go: mode 0o777 rejected (TestUnixListenerOptionsAreValidatedLikePi FAIL); routing/unix.go: default pending bytes (TestUnixListenerDefaultPendingBytesAreFourFrames FAIL); routing/unix.go: pending minimum (TestServerRejectsPendingByteLimitsSmallerThanOneMaximumFrame, TestUnixListenerOptionsAreValidatedLikePi FAIL); routing/unix.go: pending maximum (TestUnixListenerOptionsAreValidatedLikePi FAIL); routing/unix.go: pending message (TestServerRejectsPendingByteLimitsSmallerThanOneMaximumFrame, TestUnixListenerOptionsAreValidatedLikePi FAIL); routing/unix.go: graceful timeout message (TestUnixListenerOptionsAreValidatedLikePi FAIL); routing/unix.go: frame limit message (TestUnixListenerOptionsAreValidatedLikePi FAIL); routing/unix.go: parent directory mode (TestUnixListenerAppliesTheConfiguredModeAndCreatesPrivateParents FAIL); routing/unix.go: non-socket message (TestUnixListenerFilesystemLifecycle FAIL); routing/unix.go: already running message (TestUnixListenerFilesystemLifecycle FAIL); routing/unix.go: already started message (TestUnixListenerStartStatesReportPiMessages FAIL); routing/unix.go: closing message (TestUnixListenerStartStatesReportPiMessages FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/server/src/transports/unix/preset.ts",
+    "package": "./internal/experimental/routing",
+    "tests": [
+      "TestUnixServerDerivesItsExplicitSocketPathAndRestartsOnIt",
+      "TestUnixListenerFilesystemLifecycle",
+      "TestUnixListenerAppliesTheConfiguredModeAndCreatesPrivateParents",
+      "TestServerHandshakeTimeoutClosesWithAFinalHelloErrorFrame"
+    ],
+    "upstream_reference": "packages/server/src/transports/unix/preset.ts (createUnixServer forwards listener and server options); packages/server/test/unix.test.ts:41",
+    "mutation": "routing/unix.go: mode not forwarded (TestUnixListenerAppliesTheConfiguredModeAndCreatesPrivateParents FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/server/src/transports/unix/types.ts",
+    "package": "./internal/experimental/routing",
+    "tests": [
+      "TestUnixListenerDefaultPendingBytesAreFourFrames",
+      "TestUnixListenerOptionsAreValidatedLikePi",
+      "TestUnixListenerAppliesTheConfiguredModeAndCreatesPrivateParents",
+      "TestUnixListenerStartStatesReportPiMessages",
+      "TestGetUnixSocketPathRequiresACanonicalServerID",
+      "TestUnixByteConnectionPendingLimitAndClosedSend",
+      "TestUnixServerDerivesItsExplicitSocketPathAndRestartsOnIt",
+      "TestUnixListenerFilesystemLifecycle",
+      "TestUnixByteConnectionQueuesAFinalProtocolErrorBehindPendingOutput",
+      "TestServerRejectsPendingByteLimitsSmallerThanOneMaximumFrame"
+    ],
+    "upstream_reference": "packages/server/src/transports/unix/types.ts (UnixListenerOptions and UnixServerOptions defaults)",
+    "mutation": "routing/unix.go: default mode (TestUnixListenerFilesystemLifecycle FAIL); routing/unix.go: default pending bytes (TestUnixListenerDefaultPendingBytesAreFourFrames FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/server/src/types.ts",
+    "package": "./internal/experimental/routing",
+    "tests": [
+      "TestServerOptionsAreValidatedLikePi",
+      "TestServerStartStatesReportPiMessages",
+      "TestServerDefaultHandshakeTimeoutIsFiveSeconds",
+      "TestServerProtocolFailureMessages",
+      "TestServerRequestAndCancelRules",
+      "TestServerCancelAbortsOnlyTheMatchingRequest",
+      "TestServerDisconnectCancelsActiveRequests",
+      "TestServerSubscriptionControlFailures",
+      "TestSecondHelloDuringHandshakeSendsOnlyTheError",
+      "TestServerProtocolRequiresHelloAsTheFirstMessage",
+      "TestServerProtocolRejectsUnsupportedProtocolVersions",
+      "TestServerProtocolRejectsASecondHelloAfterCompletingTheHandshake",
+      "TestServerRequiresExplicitListenersAndACanonicalServerIdentity",
+      "TestServerHandshakeTimeoutClosesWithAFinalHelloErrorFrame",
+      "TestServerRejectsTimeoutValuesAboveNodesMaximumTimerDelay",
+      "TestSessionProtocol",
+      "TestServerErrorsCarryPiCodesAndMessages"
+    ],
+    "upstream_reference": "packages/server/src/types.ts:1-68 (ServerOptions defaults and bounds, SessionMetadata, ServerHost contracts); packages/server/test/server.test.ts:29-160",
+    "mutation": "routing/types.go: session metadata id (TestSessionProtocol, TestServerErrorsCarryPiCodesAndMessages FAIL); routing/server.go: zero frame limit accepted (TestServerOptionsAreValidatedLikePi FAIL); routing/server.go: 4294967295 frame limit rejected (TestServerOptionsAreValidatedLikePi FAIL); routing/server.go: zero handshake timeout accepted (TestServerOptionsAreValidatedLikePi FAIL); routing/server.go: max handshake timeout rejected (TestServerOptionsAreValidatedLikePi FAIL); routing/server.go: default handshake timeout (TestServerDefaultHandshakeTimeoutIsFiveSeconds FAIL); routing/server.go: listeners message (TestServerRequiresExplicitListenersAndACanonicalServerIdentity, TestServerOptionsAreValidatedLikePi FAIL); routing/server.go: server id message (TestServerRequiresExplicitListenersAndACanonicalServerIdentity, TestServerOptionsAreValidatedLikePi FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  }
+]

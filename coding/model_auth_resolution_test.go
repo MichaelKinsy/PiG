@@ -32,7 +32,7 @@ func TestExtensionModelAuthUsesSharedCompatibilityResolution(t *testing.T) {
 					t.Fatal(err)
 				}
 			}
-			services, err := NewServices(ServicesOptions{CWD: t.TempDir(), AgentDir: dir})
+			services, err := CreateAgentSessionServices(CreateAgentSessionServicesOptions{CWD: t.TempDir(), AgentDir: dir})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -61,7 +61,7 @@ func TestExtensionModelAuthUsesSharedCompatibilityResolution(t *testing.T) {
 }
 
 func BenchmarkCatalogModelAuth(b *testing.B) {
-	services, err := NewServices(ServicesOptions{CWD: b.TempDir(), AgentDir: b.TempDir()})
+	services, err := CreateAgentSessionServices(CreateAgentSessionServicesOptions{CWD: b.TempDir(), AgentDir: b.TempDir()})
 	if err != nil {
 		b.Fatal(err)
 	}

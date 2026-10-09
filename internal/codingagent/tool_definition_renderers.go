@@ -57,8 +57,8 @@ func (m *InteractiveMode) presentToolCard(comp *tui.ToolExecutionComponent, tool
 	m.recordToolCard(comp, toolCallID, name)
 }
 
-// bindToolCard binds the card to the renderers resolved for name.
-func (m *InteractiveMode) bindToolCard(comp *tui.ToolExecutionComponent, toolCallID, name string, args json.RawMessage) {
+// resolveToolRenderers returns the renderers that draw calls of the named tool, or nil when the tool has none.
+func (m *InteractiveMode) resolveToolRenderers(name string) *extension.ToolRenderers {
 	// upstream: interactive-mode.ts getRegisteredToolDefinition: extension resolvers in load order, then the registered tool.
 	base := func() *extension.ToolRenderers {
 		var definition extension.ToolDefinition
@@ -66,8 +66,12 @@ func (m *InteractiveMode) bindToolCard(comp *tui.ToolExecutionComponent, toolCal
 		if m.newRunner != nil {
 			definition, ok = m.newRunner.GetToolDefinition(name)
 		}
-		if !ok && (name == "read" || name == "write") {
+		if !ok && (name == "read" || name == "write" || name == "edit") {
 			definition, ok = extension.ToolDefinition{Name: name}, true
+			if name == "edit" {
+				// upstream: core/tools/edit.ts renderShell: "self"
+				definition.RenderShell = extension.ToolRenderShellSelf
+			}
 		}
 		if !ok {
 			return nil
@@ -79,18 +83,52 @@ func (m *InteractiveMode) bindToolCard(comp *tui.ToolExecutionComponent, toolCal
 		definition = withBuiltInRenderers(builtIn, definition)
 		return &extension.ToolRenderers{RenderShell: definition.RenderShell, RenderCall: definition.RenderCall, RenderResult: definition.RenderResult}
 	}
-	var renderers *extension.ToolRenderers
 	if m.newRunner != nil {
-		renderers = m.newRunner.ResolveToolRenderers(name, base)
-	} else {
-		renderers = base()
+		return m.newRunner.ResolveToolRenderers(name, base)
 	}
+	return base()
+}
+
+// toolCardDefinition is the registered tool's renderers bound to the card they draw: the ToolDefinition arm of upstream's
+// `ToolRenderers | ToolDefinition` that a card receives at construction (tool-execution.ts:65-73).
+type toolCardDefinition struct {
+	m          *InteractiveMode
+	renderers  extension.ToolRenderers
+	toolCallID string
+	card       *tui.ToolExecutionComponent
+}
+
+// ToolRenderers adapts the registered renderers to the card's render inputs.
+func (d *toolCardDefinition) ToolRenderers() *tui.ToolDefinitionRenderers {
+	return d.m.toolDefinitionRenderers(d.renderers, func() *tui.ToolExecutionComponent { return d.card }, d.toolCallID)
+}
+
+// newToolCard returns the card of one tool call, built with the registered definition that draws it (nil when the tool
+// has none), and records it for a later renderer resolution.
+func (m *InteractiveMode) newToolCard(name, toolCallID string, args json.RawMessage) *tui.ToolExecutionComponent {
+	var source tui.ToolDefinitionSource
+	var definition *toolCardDefinition
+	if renderers := m.resolveToolRenderers(name); renderers != nil {
+		definition = &toolCardDefinition{m: m, renderers: *renderers, toolCallID: toolCallID}
+		source = definition
+	}
+	comp := tui.NewToolExecutionComponent(name, toolCallID, args, m.toolExecutionOptions(), source, m.tuiInst, m.opts.CWD)
+	if definition != nil {
+		definition.card = comp
+	}
+	m.recordToolCard(comp, toolCallID, name)
+	return comp
+}
+
+// bindToolCard binds the card to the renderers resolved for name.
+func (m *InteractiveMode) bindToolCard(comp *tui.ToolExecutionComponent, toolCallID, name string, args json.RawMessage) {
+	renderers := m.resolveToolRenderers(name)
 	// Resolved renderers draw their own card, with fallbacks for the renderers they lack; only a tool with none uses
 	// the plain card (upstream ToolExecutionComponent hasRendererDefinition). A later resolution without renderers
 	// returns a card to the plain card.
 	switch {
 	case renderers != nil:
-		comp.SetDefinition(m.toolDefinitionRenderers(*renderers, comp, toolCallID), args)
+		comp.SetDefinition(m.toolDefinitionRenderers(*renderers, func() *tui.ToolExecutionComponent { return comp }, toolCallID), args)
 	case comp.HasDefinition():
 		comp.SetDefinition(nil, args)
 	}
@@ -134,12 +172,12 @@ const toolCardSweepMin = 256
 // way upstream ToolExecutionComponent calls it: one renderer state per card
 // shared by both renderers, each renderer's last component, and a context
 // invalidate that runs both renderers again.
-func (m *InteractiveMode) toolDefinitionRenderers(definition extension.ToolRenderers, comp *tui.ToolExecutionComponent, toolCallID string) *tui.ToolDefinitionRenderers {
+func (m *InteractiveMode) toolDefinitionRenderers(definition extension.ToolRenderers, card func() *tui.ToolExecutionComponent, toolCallID string) *tui.ToolDefinitionRenderers {
 	state := map[string]any{}
-	card := "card-" + strconv.FormatUint(toolCardSeq.Add(1), 10)
+	cardID := "card-" + strconv.FormatUint(toolCardSeq.Add(1), 10)
 	cwd := m.opts.CWD
 	invalidate := func() {
-		comp.Invalidate()
+		card().Invalidate()
 		if m.tuiInst != nil {
 			m.requestRender()
 		}
@@ -158,7 +196,9 @@ func (m *InteractiveMode) toolDefinitionRenderers(definition extension.ToolRende
 			Expanded:         input.Expanded,
 			ShowImages:       input.ShowImages,
 			IsError:          input.IsError,
-			Card:             card,
+			OutputPad:        input.OutputPad,
+			DurationMs:       input.DurationMs,
+			Card:             cardID,
 		}
 	}
 	renderers := &tui.ToolDefinitionRenderers{Self: definition.RenderShell == extension.ToolRenderShellSelf}
@@ -175,9 +215,9 @@ func (m *InteractiveMode) toolDefinitionRenderers(definition extension.ToolRende
 	if definition.RenderResult != nil {
 		var last extension.Component
 		renderers.Result = func(input tui.ToolRenderInput) (tui.Component, bool) {
-			result := comp.ResultValue()
-			if result == nil {
-				result = agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: comp.Output}}, IsError: input.IsError}
+			result, ok := toolResultOf(card().ResultValue())
+			if !ok {
+				result = agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: card().Output}}, IsError: input.IsError}
 			}
 			options := extension.ToolRenderResultOptions{Expanded: input.Expanded, IsPartial: input.IsPartial}
 			component, ok := runToolRenderer(func() extension.Component {
@@ -199,8 +239,8 @@ func runToolRenderer(render func() extension.Component) (component tui.Component
 			component, ok = nil, false
 		}
 	}()
-	rendered, isComponent := render().(tui.Component)
-	if !isComponent || rendered == nil {
+	rendered := render()
+	if rendered == nil {
 		return nil, false
 	}
 	return rendered, true

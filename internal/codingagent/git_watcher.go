@@ -231,18 +231,17 @@ func isWindowsMountedRepoPath(path string) bool {
 	return len(path) >= 6 && strings.EqualFold(path[:5], "/mnt/") && ((path[5] >= 'a' && path[5] <= 'z') || (path[5] >= 'A' && path[5] <= 'Z')) && (len(path) == 6 || path[6] == '/')
 }
 
-func newGitBranchWatcher(_ string, sl *StatusLine) *gitBranchWatcher {
-	sl.mu.RLock()
-	bound := sl.gitPaths
-	sl.mu.RUnlock()
+func newGitBranchWatcher(_ string, sl *FooterComponent) *gitBranchWatcher {
+	bound := sl.boundGitPaths()
 	if bound == nil {
 		return nil
 	}
 	paths := *bound
-	return &gitBranchWatcher{paths: paths, cached: sl.GitBranch(), open: openGitWatch, resolve: resolveGitBranchAsync, publish: func(branch string) {
-		sl.mu.Lock()
-		sl.gitBranch = branch
-		sl.mu.Unlock()
+	return &gitBranchWatcher{paths: paths, cached: sl.GetGitBranch(), open: openGitWatch, resolve: resolveGitBranchAsync, publish: func(branch string) {
+		if sl.isDisposed() {
+			return
+		}
+		sl.setGitBranch(branch)
 		sl.Invalidate()
 		sl.notifyBranchChange()
 	}}
@@ -326,6 +325,8 @@ func (m *InteractiveMode) startGitBranchWatcher(ctx context.Context) {
 	if w == nil {
 		return
 	}
+	ctx, stop := context.WithCancel(ctx)
+	m.statusLine.setWatcherStop(stop)
 	publish := w.publish
 	w.publish = func(branch string) { _ = m.postToMain(ctx, func() { publish(branch); m.requestRender() }) }
 	w.started = make(chan struct{})

@@ -58,7 +58,7 @@ func attachRemoteInputExtension(t *testing.T, m *InteractiveMode, name string) *
 
 	bridge := subprocess.NewUIBridge(func() {})
 	bridge.SetUIContext(&ExtUIContext{m: m})
-	bridge.RegisterExtConn(name, conn)
+	bridge.RegisterExtConn(name, conn, false)
 	result, err := bridge.HandleCallFrom(name, conn, &subprocess.CallPayload{Method: "ui.onTerminalInput"})
 	if err != nil || result == nil || result.Error != nil {
 		t.Fatalf("ui.onTerminalInput = %+v, %v", result, err)
@@ -156,12 +156,12 @@ type inputQueueMode struct {
 
 func newInputQueueMode(t *testing.T) *inputQueueMode {
 	t.Helper()
-	m := NewInteractiveMode(InteractiveOptions{CWD: t.TempDir(), AgentDir: t.TempDir()})
+	m := NewInteractiveMode(nil, InteractiveModeOptions{CWD: t.TempDir(), AgentDir: t.TempDir()})
 	m.chatContainer = tui.NewContainer()
 	m.statusContainer = tui.NewContainer()
 	m.pendingMessagesContainer = tui.NewContainer()
 	m.tuiInst = tui.NewWithOutput(io.Discard, 100, 30)
-	m.statusLine = NewStatusLine(nil, "", nil)
+	m.statusLine = NewFooterComponent(nil, "", nil)
 	m.editor = tui.NewEditor()
 	m.keybindings = DefaultKeybindingsManager()
 	m.slashRegistry = NewSlashRegistry()

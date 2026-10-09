@@ -15,6 +15,8 @@ type AgentToolCallOutcome struct {
 	ToolCall AgentToolCall
 	Result   AgentToolResult
 	IsError  bool
+	// DurationMs is the milliseconds execute() took, measured with a monotonic clock; nil when the tool did not run.
+	DurationMs *int64
 }
 
 // OutputSchemaProvider is implemented by a tool that declares the JSON Schema of the structured content in its successful results. Mirrors upstream AgentTool.outputSchema.
@@ -24,22 +26,25 @@ type OutputSchemaProvider interface {
 
 // ToolCallHooks are the hooks a tool call runs through. Mirrors upstream ToolCallHooks.
 type ToolCallHooks struct {
-	BeforeToolCall    []BeforeToolCallHook
-	AfterToolCall     []AfterToolCallHook
-	PrepareToolResult func(context.Context, AgentToolResult) AgentToolResult
+	BeforeToolCall      BeforeToolCallFunc
+	AfterToolCall       AfterToolCallFunc
+	BeforeToolCallHooks []BeforeToolCallHook
+	AfterToolCallHooks  []AfterToolCallHook
+	PrepareToolResult   func(context.Context, AgentToolResult) AgentToolResult
 }
 
 // RunToolCallOptions configures RunToolCall. Mirrors upstream RunToolCallOptions
-// (.upstream/v0.99.1/packages/agent/src/agent-loop.ts:789-798). Upstream's
-// assistantMessage and context options only feed the hooks' context argument,
-// which Go hook signatures do not carry, so they are not modeled; the context
-// argument of RunToolCall is upstream's signal.
+// (packages/agent/src/agent-loop.ts runToolCall); the context argument of RunToolCall is upstream's signal.
 type RunToolCallOptions struct {
 	ToolCallHooks
 	// Tools the call resolves against.
 	Tools []AgentTool
 	// OnUpdate receives the tool's progress updates.
 	OnUpdate ToolUpdateSink
+	// AssistantMessage is the message that issued the call. The before and after hooks read it through [ToolCallHookContextFrom].
+	AssistantMessage *AssistantMessage
+	// Context is the agent context the call runs in. The hooks read it through [ToolCallHookContextFrom].
+	Context AgentContext
 }
 
 // RunToolCall runs one tool call through the same steps as a model-issued
@@ -53,11 +58,15 @@ type RunToolCallOptions struct {
 // first error of options.OnUpdate after the tool returned, without running the
 // after hooks, as upstream's promise rejects.
 func RunToolCall(ctx context.Context, call AgentToolCall, options RunToolCallOptions) (AgentToolCallOutcome, error) {
+	// upstream: agent-loop.ts runToolCall passes assistantMessage and context to the hooks' context argument.
+	if _, inherited := ToolCallHookContextFrom(ctx); options.AssistantMessage != nil || options.Context.Messages != nil || options.Context.Tools != nil || !inherited {
+		ctx = WithToolCallHookContext(ctx, ToolCallHookContext{AssistantMessage: options.AssistantMessage, Context: options.Context})
+	}
 	pending := newPendingToolCall(call)
 	preparation := prepareToolCall(ctx, options.Tools, options.ToolCallHooks, pending)
 	if preparation.prepared == nil {
 		finalized := *preparation.finalized
-		return AgentToolCallOutcome{ToolCall: call, Result: finalized.result, IsError: finalized.isError}, nil
+		return AgentToolCallOutcome{ToolCall: call, Result: finalized.result, IsError: finalized.isError, DurationMs: finalized.durationMs()}, nil
 	}
 	onUpdate := options.OnUpdate
 	if onUpdate == nil {
@@ -68,5 +77,5 @@ func RunToolCall(ctx context.Context, call AgentToolCall, options RunToolCallOpt
 		return AgentToolCallOutcome{}, err
 	}
 	finalized := finalizeExecutedToolCall(ctx, options.ToolCallHooks, *preparation.prepared, executed)
-	return AgentToolCallOutcome{ToolCall: call, Result: finalized.result, IsError: finalized.isError}, nil
+	return AgentToolCallOutcome{ToolCall: call, Result: finalized.result, IsError: finalized.isError, DurationMs: finalized.durationMs()}, nil
 }

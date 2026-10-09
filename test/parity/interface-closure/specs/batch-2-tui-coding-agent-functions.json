@@ -1,0 +1,95 @@
+[
+ {
+  "ids": [
+   "pkg:tui/.#parseTerminalColorSchemeReport"
+  ],
+  "targets": [
+   "tui/terminal_colors.go#ParseTerminalColorSchemeReport"
+  ],
+  "production": [
+   "call:internal/codingagent/presentation_theme.go#presentationTheme.consumeInput"
+  ],
+  "evidence": [
+   "test:tui/terminal_colors_upstream_test.go#TestUpstreamTerminalColorSchemeParser"
+  ],
+  "rationale": "terminal-colors.ts parseTerminalColorSchemeReport(data) returns TerminalColorScheme | undefined; Go returns the TerminalColorScheme value with its unknown/zero value for undefined. Test-mapping packages/tui/test/terminal-colors.test.ts records the 'parses color scheme reports' case ported."
+ },
+ {
+  "ids": [
+   "pkg:tui/.#wrapTextWithAnsi"
+  ],
+  "targets": [
+   "tui/widthx/wrap.go#WrapTextWithAnsi"
+  ],
+  "production": [
+   "call:tui/editor.go#wrapText"
+  ],
+  "evidence": [
+   "test:tui/widthx/wrap_upstream_test.go#TestUpstreamWrapAnsi",
+   "test:tui/widthx/wrap_upstream_test.go#TestUpstreamWrapAnsiHyperlinks"
+  ],
+  "rationale": "utils.ts wrapTextWithAnsi(text, width) is tui/widthx.WrapTextWithAnsi(text, width) []string. Test-mapping packages/tui/test/wrap-ansi.test.ts records all 19 upstream cases ported with exact text/width predicates and a compiling hyperlink-terminator mutation."
+ },
+ {
+  "ids": [
+   "pkg:tui/.#detectCapabilities"
+  ],
+  "targets": [
+   "tui/terminal_image.go#DetectCapabilities"
+  ],
+  "production": [
+   "call:tui/terminal_image.go#GetCapabilities"
+  ],
+  "evidence": [
+   "test:tui/terminal_image_upstream_test.go#TestUpstreamTerminalImageCapabilities"
+  ],
+  "rationale": "terminal-image.ts detectCapabilities(tmuxForwardsHyperlink?) takes an optional probe callback; Go takes the callback as a func() bool and nil for absent. GetCapabilities calls it on the cache miss. Ported upstream detection cases in terminal-image.test.ts."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#highlightCode"
+  ],
+  "targets": [
+   "tui/highlight.go#HighlightCode"
+  ],
+  "production": [
+   "call:internal/codingagent/tool_render.go#renderWriteContent"
+  ],
+  "evidence": [
+   "test:tui/syntax_highlight_upstream_test.go#TestSyntaxHighlightInterpolationTakesTheTextColor",
+   "test:tui/syntax_highlight_upstream_test.go#TestSyntaxHighlightInterpolationEndsWithTheString"
+  ],
+  "rationale": "coding-agent highlightCode(code, lang?) returns string[]; Go tui.HighlightCode(code, lang string) []string (an empty lang is the absent argument), over the highlight.js 10.7.3 port in tui/internal/hljs. Test-mapping packages/coding-agent/test/syntax-highlight.test.ts records all 8 cases ported."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#loadSkillsFromDir"
+  ],
+  "targets": [
+   "internal/codingagent/skills_loader.go#LoadSkillsFromDir"
+  ],
+  "production": [
+   "call:internal/codingagent/skills_loader.go#LoadSkills"
+  ],
+  "evidence": [
+   "test:internal/codingagent/upstream_skills_test.go#TestUpstreamCoreSkillsFromDir",
+   "test:internal/codingagent/upstream_skills_test.go#TestUpstreamCoreSkillsDetectNameCollisionsAndKeepFirst"
+  ],
+  "rationale": "skills.ts loadSkillsFromDir(options) returns LoadSkillsResult; Go takes LoadSkillsFromDirOptions and returns LoadSkillsResult. Test-mapping packages/coding-agent/test/skills.test.ts records all 28 cases ported with the same fixtures, including the 17 directory-loading cases."
+ },
+ {
+  "ids": [
+   "pkg:tui/.#setImageTranscoder"
+  ],
+  "targets": [
+   "tui/image.go#SetImageTranscoder"
+  ],
+  "production": [
+   "call:internal/codingagent/image_convert.go#ensurePngTranscoder"
+  ],
+  "evidence": [
+   "test:tui/image_transcoder_upstream_test.go#TestUpstreamImageTranscoding"
+  ],
+  "rationale": "components/image.ts setImageTranscoder(transcoder | undefined); Go SetImageTranscoder(ImageTranscoder) with nil for undefined, clearing the shared conversions. Ported transcoding cases in terminal-image.test.ts."
+ }
+]

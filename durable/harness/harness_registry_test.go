@@ -2,6 +2,10 @@
 
 package harness
 
+// pi: packages/durable/src/harness/registry.ts
+
+// pi: packages/durable/src/harness/define.ts
+
 import (
 	"context"
 	"errors"
@@ -127,6 +131,21 @@ func sameTask(a, b durable.AnyTask) bool {
 	return a != nil && b != nil && a.AnyDefinition() == b.AnyDefinition()
 }
 
+// upstream: packages/durable/test/harness-registry.test.ts "keeps the default of a progress interval given as undefined" (1.0.4).
+// A nil field of the patch is JavaScript's undefined: it leaves the built-in default, whichever the sibling field says.
+func TestSettingsKeepTheDefaultOfAProgressIntervalGivenAsUndefined(t *testing.T) {
+	progress := ResolveSettings(&HarnessSettings{Progress: &ProgressPolicyPatch{PartialIntervalMs: nil, OutputIntervalMs: new(250.0)}}).Progress
+	if progress.PartialIntervalMs != 100 || progress.OutputIntervalMs != 250 {
+		t.Fatalf("progress = %+v, want partialIntervalMs 100 and outputIntervalMs 250", progress)
+	}
+	if got := ResolveSettings(&HarnessSettings{Progress: &ProgressPolicyPatch{}}).Progress; got != DefaultProgressPolicy {
+		t.Fatalf("an empty patch resolved to %+v, want the defaults %+v", got, DefaultProgressPolicy)
+	}
+}
+
+// Pi source: packages/durable/src/harness/registry.ts
+// mutation-checked: zeroing the results of Registry.Install fails it
+// packages/durable/src/harness/types.ts:298-303: Registry.install(extension) installs or replaces by name in place and publishes at once; Registry.uninstall(extension) removes by name whichever object it is, and a later install appends.
 func TestRegistry(t *testing.T) {
 	t.Run("installs, replaces in place, and uninstalls extensions by name", func(t *testing.T) {
 		registry := CreateRegistry()

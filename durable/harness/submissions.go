@@ -52,7 +52,9 @@ type Submissions struct {
 // NewSubmissions subscribes to the Session's commits and close.
 func NewSubmissions(line *session.SessionImpl, storage durable.Storage, now func() float64, queueModes func() QueueModes, resume func()) *Submissions {
 	submissions := &Submissions{line: line, storage: storage, now: now, queueModes: queueModes, resume: resume}
-	line.SubscribeCommits(func(_ context.Context, publication durable.CommitPublication) { submissions.observe(publication) })
+	line.SubscribeCommits(func(ctx context.Context, publication durable.CommitPublication) {
+		submissions.observe(publication)
+	})
 	line.SubscribeClose(func() {
 		submissions.closeMu.Lock()
 		submissions.closed = true
@@ -168,7 +170,7 @@ func (submissions *Submissions) observe(publication durable.CommitPublication) {
 		if !ok || !isSettledSubmission(write.Value) {
 			continue
 		}
-		submissions.waiters.Resolve(write.Value.Id, write.Value)
+		submissions.line.DeferUntilPublished(func() { submissions.waiters.Resolve(write.Value.Id, write.Value) })
 	}
 }
 

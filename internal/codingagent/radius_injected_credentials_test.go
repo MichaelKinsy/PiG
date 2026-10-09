@@ -42,7 +42,7 @@ func TestRadiusRefreshDoesNotRewriteConcurrentCredentialChange(t *testing.T) {
 		store := &postRefreshCredentialStore{CredentialStore: ai.NewInMemoryAuthStorage(nil), current: current}
 		registry := NewModelRegistryWithModelsPath("")
 		registry.SetCredentialStore(store)
-		post, err := registry.refreshRadiusOAuth(t.Context(), ai.NewRadiusProvider(ai.RadiusProviderOptions{}))
+		post, err := registry.refreshRadiusOAuth(t.Context(), ai.NewRadiusGatewayProvider(ai.RadiusProviderOptions{}))
 		registry.CloseModelTasks()
 		if err != nil || store.wrote {
 			t.Fatalf("concurrent credential was rewritten: wrote=%v err=%v", store.wrote, err)

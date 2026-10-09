@@ -3,8 +3,11 @@ package coding
 import (
 	"context"
 	"encoding/json"
+	"reflect"
 	"testing"
 	"time"
+
+	icodingagent "github.com/MichaelKinsy/PiG/internal/codingagent"
 
 	"github.com/MichaelKinsy/PiG/agent"
 	"github.com/MichaelKinsy/PiG/ai"
@@ -23,7 +26,7 @@ func TestUpstreamSessionBoundariesAccounting(t *testing.T) {
 			ext := extension.Extension{Handlers: map[string][]extension.HandlerFn{
 				"message_end": {func(args ...any) (any, error) {
 					event := args[0].(extension.MessageEndEvent)
-					message := event.Message.(agent.AgentMessage)
+					message := event.Message
 					if message.Assistant == nil {
 						return nil, nil
 					}
@@ -148,8 +151,8 @@ func TestUpstreamSessionBoundariesAccounting(t *testing.T) {
 			}
 			entries := []extension.SessionBoundaryDraft{}
 			for _, entry := range h.session.Inner().GetBranch() {
-				if message, ok := entry.AsMessage(); ok && (message.Message.User != nil || message.Message.Assistant != nil || message.Message.ToolResult != nil) {
-					entries = append(entries, extension.SessionBoundaryDraft{Type: "context_edit", TargetID: entry.Base.ID})
+				if message, ok := entry.(icodingagent.MessageEntry); ok && (message.Message.User != nil || message.Message.Assistant != nil || message.Message.ToolResult != nil) {
+					entries = append(entries, extension.SessionBoundaryDraft{Type: "context_edit", TargetID: entry.Base().ID})
 				}
 			}
 			return boundaryDrafts(true, entries...), nil
@@ -174,7 +177,7 @@ func TestUpstreamSessionBoundariesAccounting(t *testing.T) {
 		h := newBoundaryHarness(t, harnessOptions{extension: ext}, boundaryReply("first", ai.StopReasonStop, 0), boundaryReply("must not run", ai.StopReasonStop, 0))
 		boundaryRecord(t, h, 705, "commits pre-settlement drafts but suppresses continuation when aborted during the hook")
 		prompt := make(chan error, 1)
-		go func() { _, err := h.session.Prompt(t.Context(), "start", nil); prompt <- err }()
+		go func() { err := h.session.Prompt(t.Context(), "start", nil); prompt <- err }()
 		<-started
 		// JS abort executes its cancellation prologue before returning a Promise. RequestAbort performs that same synchronous prologue; Abort joins it concurrently with prompt completion.
 		h.session.RequestAbort()
@@ -197,8 +200,9 @@ func TestUpstreamSessionBoundariesAccounting(t *testing.T) {
 			t.Fatal(err)
 		}
 		h.settle(t)
-		if n := len(boundaryEvents[agent.AgentSettledEvent](h)); n != 1 {
-			t.Errorf("agent_settled=%d", n)
+		// agent-session-boundaries.test.ts:735-736 (1.1.0, #10607): settlement reports the abort although the last response succeeded.
+		if got := boundaryEvents[agent.AgentSettledEvent](h); !reflect.DeepEqual(got, []agent.AgentSettledEvent{{Aborted: true}}) {
+			t.Errorf("agent_settled=%+v", got)
 		}
 	})
 }

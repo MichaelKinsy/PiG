@@ -226,3 +226,41 @@ func TestTUIScheduledRender_RunsThroughDispatcher(t *testing.T) {
 		t.Fatalf("dispatched render did not render; count=%d want 1", got)
 	}
 }
+
+// tui.ts requestRender(force = false): without force a request waits for the frame throttle; with force it resets the render state so the next
+// frame is a full repaint and renders at once (delay 0), whatever the throttle says. Both renderers and the TUI interface take the argument.
+func TestRequestRenderForceRendersAtOnceAsFullRepaint(t *testing.T) {
+	for name, build := range map[string]func() (TUI, *tuiBase){
+		"main screen": func() (TUI, *tuiBase) { ui := NewWithOutput(&bytes.Buffer{}, 20, 5); return ui, &ui.tuiBase },
+		"alt screen": func() (TUI, *tuiBase) {
+			ui := newAltScreenForTest(&bytes.Buffer{}, 20, 5, TuiAltScreenOptions{})
+			return ui, &ui.tuiBase
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			ui, base := build()
+			ui.Add(NewText("x"))
+			base.lastRenderAt = time.Now() // inside the frame throttle
+			var delays []time.Duration
+			base.afterFunc = func(d time.Duration, fn func()) stoppableTimer {
+				delays = append(delays, d)
+				return noopTimer{}
+			}
+			ui.RequestRender()
+			if len(delays) != 1 || delays[0] <= 0 {
+				t.Fatalf("plain request delays = %v, want one throttled delay", delays)
+			}
+			base.mu.Lock()
+			base.renderRequested, base.renderTimer, base.forceRedraw = false, nil, false
+			base.mu.Unlock()
+			delays = nil
+			ui.RequestRender(true)
+			base.mu.Lock()
+			forced := base.forceRedraw
+			base.mu.Unlock()
+			if len(delays) != 1 || delays[0] != 0 || (name == "main screen" && !forced) {
+				t.Fatalf("forced request delays = %v forceRedraw = %v, want one immediate full-repaint frame", delays, forced)
+			}
+		})
+	}
+}

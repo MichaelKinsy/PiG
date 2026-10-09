@@ -28,7 +28,7 @@ func TestSessionModelExtensionLifecycleUpstream(t *testing.T) {
 			}}
 		}
 		dir := t.TempDir()
-		mode := reloadTestMode(InteractiveOptions{CWD: dir, AgentDir: dir, NoPromptTemplates: true, NoThemes: true, ReloadBuiltinExtensions: func() []extension.Extension { return []extension.Extension{factory()} }})
+		mode := reloadTestMode(InteractiveModeOptions{CWD: dir, AgentDir: dir, NoPromptTemplates: true, NoThemes: true, ReloadBuiltinExtensions: func() []extension.Extension { return []extension.Extension{factory()} }})
 		mode.newRunner = inproc.NewRunner([]extension.Extension{factory()}, dir)
 		emitSessionStart(mode.newRunner, "startup")
 		if err := mode.buildSlashContext(t.Context()).Reload(); err != nil {

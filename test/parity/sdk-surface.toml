@@ -1081,6 +1081,11 @@ node = "read:payload.context"
 wire = "subprocess.RenderToolContext.isError"
 
 [[row]]
+key = "tool render context.outputPad"
+node = "read:payload.context"
+wire = "subprocess.RenderToolContext.outputPad"
+
+[[row]]
 key = "tool renderResult options.expanded"
 node = "read:payload.options"
 python = "Extension.tool_renderers(render_result)"
@@ -1453,3 +1458,288 @@ key = "entry renderer options.expanded"
 node = "read:payload.options"
 python = "Extension.entry_renderer"
 wire = "literal:expanded"
+
+# ── PiG additive: component kit (D107) ─────────────────────────────────────
+#
+# docs/plan/extension-component-kit.md §9: the kit's author API in each SDK.
+# Node authors use Pi's own components, from which the runtime derives the
+# view (runtime-node/view-walk.mjs), so its cells name what the walk reads.
+
+[[row]]
+key = "kit node Container"
+section = "component kit (D107)"
+decl = "view node kind, Pi's Container (spec §2)"
+node = "read:Container.prototype"
+go = "kit.NewContainer"
+rust = "kit::Container::new"
+python = "kit.Container"
+
+[[row]]
+key = "kit node Box"
+section = "component kit (D107)"
+decl = "view node kind, Pi's Box (spec §2)"
+node = "read:tui.Box"
+go = "kit.NewBox"
+rust = "kit::Box::new"
+python = "kit.Box"
+
+[[row]]
+key = "kit node Text"
+section = "component kit (D107)"
+decl = "view node kind, Pi's Text (spec §2)"
+node = "read:tui.Text"
+go = "kit.NewText"
+rust = "kit::Text::new"
+python = "kit.Text"
+
+[[row]]
+key = "kit node TruncatedText"
+section = "component kit (D107)"
+decl = "view node kind, Pi's TruncatedText (spec §2)"
+node = "read:tui.TruncatedText"
+go = "kit.NewTruncatedText"
+rust = "kit::TruncatedText::new"
+python = "kit.TruncatedText"
+
+[[row]]
+key = "kit node Markdown"
+section = "component kit (D107)"
+decl = "view node kind, Pi's Markdown (spec §2)"
+node = "read:tui.Markdown"
+go = "kit.NewMarkdown"
+rust = "kit::Markdown::new"
+python = "kit.Markdown"
+
+[[row]]
+key = "kit node Spacer"
+section = "component kit (D107)"
+decl = "view node kind, Pi's Spacer (spec §2)"
+node = "read:tui.Spacer"
+go = "kit.NewSpacer"
+rust = "kit::Spacer::new"
+python = "kit.Spacer"
+
+[[row]]
+key = "kit node DynamicBorder"
+section = "component kit (D107)"
+decl = "view node kind, Pi's DynamicBorder (spec §2)"
+node = "read:codingAgent.DynamicBorder"
+go = "kit.NewDynamicBorder"
+rust = "kit::DynamicBorder::new"
+python = "kit.DynamicBorder"
+
+[[row]]
+key = "kit node SelectList"
+section = "component kit (D107)"
+decl = "view node kind, Pi's SelectList (spec §2)"
+node = "read:tui.SelectList"
+go = "kit.NewSelectList"
+rust = "kit::SelectList::new"
+python = "kit.SelectList"
+
+[[row]]
+key = "kit node SettingsList"
+section = "component kit (D107)"
+decl = "view node kind, Pi's SettingsList (spec §2)"
+node = "read:tui.SettingsList"
+go = "kit.NewSettingsList"
+rust = "kit::SettingsList::new"
+python = "kit.SettingsList"
+
+[[row]]
+key = "kit node Image"
+section = "component kit (D107)"
+decl = "view node kind, Pi's Image (spec §2)"
+node = "read:tui.Image"
+go = "kit.NewImage"
+rust = "kit::Image::new"
+python = "kit.Image"
+
+[[row]]
+key = "kit node Loader"
+section = "component kit (D107)"
+decl = "view node kind, Pi's Loader (spec §2)"
+node = "read:tui.Loader"
+go = "kit.NewLoader"
+rust = "kit::Loader::new"
+python = "kit.Loader"
+
+[[row]]
+key = "kit node HStack"
+section = "component kit (D107)"
+decl = "view node kind, Pi's HStack (spec §2)"
+node = "read:tui.HStack"
+go = "kit.NewHStack"
+rust = "kit::HStack::new"
+python = "kit.HStack"
+
+[[row]]
+key = "kit node VStack"
+section = "component kit (D107)"
+decl = "view node kind, Pi's VStack (spec §2)"
+node = "read:tui.VStack"
+go = "kit.NewVStack"
+rust = "kit::VStack::new"
+python = "kit.VStack"
+
+[[row]]
+key = "kit node Lines"
+section = "component kit (D107)"
+decl = "view node kind lines (spec §2)"
+node = "read:component.viewLines"
+go = "kit.NewLines"
+rust = "kit::Lines::new"
+python = "kit.Lines"
+
+[[row]]
+key = "kit node UserMessage"
+section = "component kit (D107)"
+decl = "view node kind user-message, Pi's UserMessageComponent (spec §2.1)"
+node = "read:codingAgent.UserMessageComponent"
+go = "kit.NewUserMessage"
+rust = "kit::UserMessage::new"
+python = "kit.UserMessage"
+
+[[row]]
+key = "kit node AssistantMessage"
+section = "component kit (D107)"
+decl = "view node kind assistant-message, Pi's AssistantMessageComponent (spec §2.1)"
+node = "read:codingAgent.AssistantMessageComponent"
+go = "kit.NewAssistantMessage"
+rust = "kit::AssistantMessage::new"
+python = "kit.AssistantMessage"
+
+[[row]]
+key = "kit node ToolExecution"
+section = "component kit (D107)"
+decl = "view node kind tool-execution, Pi's ToolExecutionComponent (spec §2.1)"
+node = "read:codingAgent.ToolExecutionComponent"
+go = "kit.NewToolExecution"
+rust = "kit::ToolExecution::new"
+python = "kit.ToolExecution"
+
+[[row]]
+key = "kit node BashExecution"
+section = "component kit (D107)"
+decl = "view node kind bash-execution, Pi's BashExecutionComponent (spec §2.1)"
+node = "read:codingAgent.BashExecutionComponent"
+go = "kit.NewBashExecution"
+rust = "kit::BashExecution::new"
+python = "kit.BashExecution"
+
+[[row]]
+key = "kit node Diff"
+section = "component kit (D107)"
+decl = "view node kind diff, Pi's renderDiff in a Text (spec §2.1)"
+node = "read:diff.filePath"
+go = "kit.NewDiff"
+rust = "kit::Diff::new"
+python = "kit.Diff"
+
+[[row]]
+key = "kit view"
+section = "component kit (D107)"
+decl = "a view: root, focus, theme overrides (spec §2, §6)"
+node = "read:component.viewTheme"
+go = "kit.View"
+rust = "kit::View"
+python = "kit.View"
+
+[[row]]
+key = "kit ctx.ui.custom(view)"
+section = "component kit (D107)"
+decl = "ui.custom drawn from a view (spec §4)"
+node = "read:overlay.viewRefs"
+go = "ViewComponent.View"
+rust = "ViewComponent::view"
+python = "kit.ViewComponent.view"
+
+[[row]]
+key = "kit view events"
+section = "component kit (D107)"
+decl = "a focused list's events (spec §4, ui.view.event)"
+node = "-"
+go = "ViewEventHandler.HandleViewEvent"
+rust = "ViewComponent::handle_view_event"
+python = "kit.ViewEventHandler.handle_view_event"
+
+[[row]]
+key = "kit event"
+section = "component kit (D107)"
+decl = "a view event (spec §4)"
+node = "-"
+go = "kit.Event"
+rust = "kit::Event"
+python = "kit.Event"
+
+[[row]]
+key = "kit ctx.ui.setWidget(view)"
+section = "component kit (D107)"
+decl = "a widget drawn from a view (spec §9)"
+node = "read:widget.viewRefs"
+go = "Context.SetWidget"
+rust = "Context::set_widget_view"
+python = "Context.set_widget"
+
+[[row]]
+key = "kit ctx.ui.setHeader(view)"
+section = "component kit (D107)"
+decl = "the header drawn from a view (spec §9)"
+node = "read:surface.viewRefs"
+go = "Context.SetHeaderView"
+rust = "Context::set_header_view"
+python = "Context.set_header_view"
+
+[[row]]
+key = "kit ctx.ui.setFooter(view)"
+section = "component kit (D107)"
+decl = "the footer drawn from a view (spec §9)"
+node = "read:surface.viewRefs"
+go = "Context.SetFooterView"
+rust = "Context::set_footer_view"
+python = "Context.set_footer_view"
+
+[[row]]
+key = "kit tool renderCall(view)"
+section = "component kit (D107)"
+decl = "a tool call card drawn from a view (spec §9)"
+node = "read:this.rendererResult"
+go = "ToolRenderers.CallView|ToolDefinition.RenderCallView"
+rust = "ToolRendererSet.call_view|ToolDefinition.render_call_view"
+python = "ToolRenderers.call_view|ToolDefinition.call_view"
+
+[[row]]
+key = "kit tool renderResult(view)"
+section = "component kit (D107)"
+decl = "a tool result card drawn from a view (spec §9)"
+node = "read:this.rendererResult"
+go = "ToolRenderers.ResultView|ToolDefinition.RenderResultView"
+rust = "ToolRendererSet.result_view|ToolDefinition.render_result_view"
+python = "ToolRenderers.result_view|ToolDefinition.result_view"
+
+[[row]]
+key = "kit message renderer(view)"
+section = "component kit (D107)"
+decl = "a custom message drawn from a view (spec §9)"
+node = "read:this.rendererResult"
+go = "Extension.MessageViewRenderer"
+rust = "Extension::message_view_renderer"
+python = "Extension.message_view_renderer"
+
+[[row]]
+key = "kit entry renderer(view)"
+section = "component kit (D107)"
+decl = "a custom session entry drawn from a view (spec §9)"
+node = "read:this.rendererResult"
+go = "Extension.EntryViewRenderer"
+rust = "Extension::entry_view_renderer"
+python = "Extension.entry_view_renderer"
+
+[[row]]
+key = "kit lines list annotation"
+section = "component kit (D107)"
+decl = "a lines node's frontend-only list (spec §2, §13.2)"
+node = "read:list.selectedIndex"
+go = "kit.Lines.List"
+rust = "kit::List"
+python = "kit.List"

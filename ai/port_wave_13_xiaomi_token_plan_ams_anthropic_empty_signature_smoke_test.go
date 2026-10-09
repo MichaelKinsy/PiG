@@ -17,7 +17,7 @@ func TestPortWave13XiaomiEmptySignatureSmoke(t *testing.T) {
 		ctx, cancel := context.WithTimeout(t.Context(), 60*time.Second)
 		defer cancel()
 		// upstream: packages/ai/test/xiaomi-token-plan-ams-anthropic-empty-signature-smoke.test.ts:8-21 supplies a custom Anthropic model, not the catalog's same-ID API route.
-		model := &Model{ID: "mimo-v2.5-pro", DisplayName: "MiMo-V2.5-Pro Anthropic smoke", Input: []string{"text"}, ProviderMeta: ProviderMetadata{API: APIAnthropicMessages, ProviderID: "xiaomi-token-plan-ams", BaseURL: "https://token-plan-ams.xiaomimimo.com/anthropic", Reasoning: true, Compat: &ModelCompat{AllowEmptySignature: new(true)}}, Capabilities: ModelCapabilities{MaxThinking: ThinkingHigh, ContextWindow: 1048576, MaxOutputTokens: 1024, InputCostPer1M: 1, OutputCostPer1M: 3, CacheReadCostPer1M: 0.2, CacheWriteCostPer1M: 0}}
+		model := &Model{ID: "mimo-v2.5-pro", DisplayName: "MiMo-V2.5-Pro Anthropic smoke", Input: []string{"text"}, ProviderMeta: ProviderMetadata{API: APIAnthropicMessages, ProviderID: "xiaomi-token-plan-ams", BaseURL: "https://token-plan-ams.xiaomimimo.com/anthropic", Reasoning: true, Compat: &ModelCompat{AllowEmptySignature: new(true)}}, Capabilities: ModelCapabilities{MaxThinking: ThinkingLevelHigh, ContextWindow: 1048576, MaxOutputTokens: 1024, InputCostPer1M: 1, OutputCostPer1M: 3, CacheReadCostPer1M: 0.2, CacheWriteCostPer1M: 0}}
 		provider := NewAnthropicProvider(AnthropicConfig{APIKey: key, Model: model.ID, ProviderID: model.ProviderMeta.ProviderID, BaseURL: model.ProviderMeta.BaseURL, Compat: model.ProviderMeta.Compat, ModelMetadata: model})
 		defer func() {
 			if err := provider.Close(); err != nil {
@@ -25,7 +25,7 @@ func TestPortWave13XiaomiEmptySignatureSmoke(t *testing.T) {
 			}
 		}()
 		request := Context{SystemPrompt: "You are concise. Follow the requested output format exactly.", Messages: []Message{UserMessage{Content: UserText("Think internally if you need to, then reply with exactly this text and nothing else: first-ok"), Timestamp: time.Now().UnixMilli()}}}
-		firstStream, err := provider.Stream(ctx, NormalizeContext(request), StreamOptions{MaxTokens: 512, Thinking: ThinkingHigh})
+		firstStream, err := provider.Stream(ctx, NormalizeContext(request), StreamOptions{MaxTokens: 512, Thinking: ThinkingLevelHigh})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -52,7 +52,7 @@ func TestPortWave13XiaomiEmptySignatureSmoke(t *testing.T) {
 			} `json:"messages"`
 		}
 		payloadCaptured := false
-		replay, _ := provider.Stream(ctx, NormalizeContext(request), StreamOptions{MaxTokens: 512, Thinking: ThinkingHigh, OnPayload: func(value any, _ *Model) (any, error) {
+		replay, _ := provider.Stream(ctx, NormalizeContext(request), StreamOptions{MaxTokens: 512, Thinking: ThinkingLevelHigh, OnPayload: func(value any, _ *Model) (any, error) {
 			data, err := json.Marshal(value)
 			if err != nil {
 				return nil, err

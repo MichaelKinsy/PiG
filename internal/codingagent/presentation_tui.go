@@ -10,10 +10,12 @@ import (
 
 // InteractiveTuiOptions supplies the shared paint surface. The driver owns terminal input, dispatch and shutdown. Nil Output selects the process terminal; nil ShowHardwareCursor preserves the renderer's construction default.
 type InteractiveTuiOptions struct {
-	TuiMode                string
-	ShowHardwareCursor     *bool
-	LogDirectory           string
-	Output                 io.Writer
+	TuiMode            string
+	ShowHardwareCursor *bool
+	LogDirectory       string
+	Output             io.Writer
+	// Terminal is the terminal the renderer drives (createInteractiveTui's `terminal`, tui-renderer.ts); nil selects the process terminal. Output, when set, takes precedence: it is the fixed-size paint surface of tests.
+	Terminal               tui.Terminal
 	OnRightClickPaste      func()
 	FullscreenCopyOnSelect *bool
 	// FullscreenWheelScrollLines is the fullscreen renderer's wheel line count; nil is auto (tui-renderer.ts:38).
@@ -23,8 +25,8 @@ type InteractiveTuiOptions struct {
 }
 
 // CreateInteractiveTui creates a regular or fullscreen renderer with the shared theme, clipboard and hyperlink behavior. It does not start terminal input or activate a Session.
-func CreateInteractiveTui(options InteractiveTuiOptions) tui.Renderer {
-	var renderer tui.Renderer
+func CreateInteractiveTui(options InteractiveTuiOptions) tui.TUI {
+	var renderer tui.TUI
 	if options.TuiMode == "fullscreen" {
 		opts := fullscreenTuiOptions()
 		opts.CopyOnSelect = options.FullscreenCopyOnSelect
@@ -43,16 +45,19 @@ func CreateInteractiveTui(options InteractiveTuiOptions) tui.Renderer {
 		opts.OpenURL = func(url string) { _ = openURL(url) }
 		opts.OnRightClickPaste = options.OnRightClickPaste
 		if options.Output == nil {
-			renderer = tui.NewTuiAltScreen(opts)
+			renderer = tui.NewTuiAltScreen(options.Terminal, nil, options.LogDirectory, opts)
 		} else {
 			// upstream: packages/tui/src/terminal.ts:ProcessTerminal
 			renderer = tui.NewTuiAltScreenWithOutput(options.Output, 80, 24, opts)
 		}
 	} else {
-		var main *tui.TUI
-		if options.Output == nil {
+		var main *tui.TuiMainScreen
+		switch {
+		case options.Output == nil && options.Terminal != nil:
+			main = tui.NewTuiMainScreen(options.Terminal, nil, options.LogDirectory)
+		case options.Output == nil:
 			main = tui.New()
-		} else {
+		default:
 			// upstream: packages/tui/src/terminal.ts:ProcessTerminal
 			main = tui.NewWithOutput(options.Output, 80, 24)
 		}
@@ -66,7 +71,7 @@ func CreateInteractiveTui(options InteractiveTuiOptions) tui.Renderer {
 }
 
 func themeBgText(token, text string) string {
-	bg := tui.ActiveTheme().Bg(token)
+	bg := tui.ActiveTheme().GetBgAnsi(token)
 	if bg == "" {
 		return text
 	}
@@ -74,7 +79,7 @@ func themeBgText(token, text string) string {
 }
 
 func styleSearchMatch(text string) string {
-	return themeBgText("searchMatchBg", tui.ActiveTheme().FgText("searchMatchText", text))
+	return themeBgText("searchMatchBg", tui.ActiveTheme().Fg("searchMatchText", text))
 }
 
 func scrollToEndIndicatorLabel() string {
@@ -82,7 +87,7 @@ func scrollToEndIndicatorLabel() string {
 	if keys := tui.GetKeybindings().GetKeys(tui.KBAltScreenBottom); len(keys) > 0 {
 		label += " · " + tui.FormatKeyText(strings.Join(keys, "/"), true)
 	}
-	return themeBgText("selectedBg", tui.ActiveTheme().FgText("text", label+" "))
+	return themeBgText("selectedBg", tui.ActiveTheme().Fg("text", label+" "))
 }
 
 func fullscreenTuiOptions() tui.TuiAltScreenOptions {

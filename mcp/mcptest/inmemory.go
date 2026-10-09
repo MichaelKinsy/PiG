@@ -52,7 +52,7 @@ func (t *InMemoryTransport) Start() error {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 	if t.closed {
-		return mcp.NewConnectionClosedError()
+		return mcp.NewMcpConnectionClosedError("")
 	}
 	if !t.started {
 		t.started = true
@@ -89,16 +89,16 @@ func (t *InMemoryTransport) SendOrdered(message mcp.JSONRPCMessage, placed func(
 	started, closed, peer := t.started, t.closed, t.peer
 	t.mu.Unlock()
 	if !started || closed {
-		return mcp.NewConnectionClosedError()
+		return mcp.NewMcpConnectionClosedError("")
 	}
 	if peer == nil {
-		return &mcp.McpConnectionClosedError{Message: "In-memory MCP peer is not connected"}
+		return mcp.NewMcpConnectionClosedError("In-memory MCP peer is not connected")
 	}
 	peer.mu.Lock()
 	peerOK := peer.started && !peer.closed
 	peer.mu.Unlock()
 	if !peerOK {
-		return &mcp.McpConnectionClosedError{Message: "In-memory MCP peer is not connected"}
+		return mcp.NewMcpConnectionClosedError("In-memory MCP peer is not connected")
 	}
 	data, err := json.Marshal(message)
 	if err != nil {

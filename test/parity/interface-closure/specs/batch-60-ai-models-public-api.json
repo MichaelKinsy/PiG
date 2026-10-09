@@ -1,0 +1,117 @@
+[
+ {
+  "ids": [
+   "pkg:ai/.#Models::property:generateImages"
+  ],
+  "targets": [
+   "ai/models_runtime_typed.go#Models.GenerateImages"
+  ],
+  "production": [
+   "public-api:ai/models_runtime_typed.go#Models.GenerateImages"
+  ],
+  "evidence": [
+   "test:ai/images_models_wire_test.go#TestModelsGenerateImagesAuthThroughOpenRouter",
+   "test:ai/models_typed_regression_test.go#TestGenerateImagesMergesTheImageModelHeaders"
+  ],
+  "rationale": "Models.generateImages is the Go method ai.Models.GenerateImages (upstream Models/MutableModels both map to ai.Models); signature reviewed against the upstream declaration (a Promise or rejection is the returned error; an options object is a variadic argument). Closed as public-api-tested: the method is exported from the public ai package and no PiG binary calls it; test callers (go/types) are the proof.",
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; a rejection is the returned error. AbortSignal is the context.Context argument; no detached goroutine."
+ },
+ {
+  "ids": [
+   "pkg:ai/.#Models::property:getModelOfType"
+  ],
+  "targets": [
+   "ai/models_runtime_typed.go#Models.GetModelOfType"
+  ],
+  "production": [
+   "public-api:ai/models_runtime_typed.go#Models.GetModelOfType"
+  ],
+  "evidence": [
+   "test:ai/classifier_models_upstream_test.go#TestClassifierModelsUpstream",
+   "test:ai/cloudflare_workers_ai_system_one_upstream_test.go#TestCloudflareWorkersAISystemOneUpstream"
+  ],
+  "rationale": "Models.getModelOfType is the Go method ai.Models.GetModelOfType (upstream Models/MutableModels both map to ai.Models); signature reviewed against the upstream declaration (a Promise or rejection is the returned error; an options object is a variadic argument). Closed as public-api-tested: the method is exported from the public ai package and no PiG binary calls it; test callers (go/types) are the proof."
+ },
+ {
+  "ids": [
+   "pkg:ai/.#Models::property:login"
+  ],
+  "targets": [
+   "ai/models_runtime_auth.go#Models.Login"
+  ],
+  "production": [
+   "public-api:ai/models_runtime_auth.go#Models.Login"
+  ],
+  "evidence": [
+   "test:ai/anthropic_copy_code_test.go#TestAnthropicCopyCodeLoginPromptsThroughTheModelRuntime",
+   "test:ai/anthropic_oauth_exchange_test.go#TestAnthropicNativeLoginCleansUpBeforeExchangeSettles"
+  ],
+  "rationale": "Models.login is the Go method ai.Models.Login (upstream Models/MutableModels both map to ai.Models); signature reviewed against the upstream declaration (a Promise or rejection is the returned error; an options object is a variadic argument). Closed as public-api-tested: the method is exported from the public ai package and no PiG binary calls it; test callers (go/types) are the proof.",
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; a rejection is the returned error. AbortSignal is the context.Context argument; no detached goroutine."
+ },
+ {
+  "ids": [
+   "pkg:ai/.#MutableModels::property:clearProviders"
+  ],
+  "targets": [
+   "ai/models_runtime_auth.go#Models.ClearProviders"
+  ],
+  "production": [
+   "public-api:ai/models_runtime_auth.go#Models.ClearProviders"
+  ],
+  "evidence": [
+   "test:ai/models_runtime_basic_upstream_test.go#TestModelsRuntimeBasicUpstream"
+  ],
+  "rationale": "MutableModels.clearProviders is the Go method ai.Models.ClearProviders (upstream Models/MutableModels both map to ai.Models); signature reviewed against the upstream declaration (a Promise or rejection is the returned error; an options object is a variadic argument). Closed as public-api-tested: the method is exported from the public ai package and no PiG binary calls it; test callers (go/types) are the proof."
+ },
+ {
+  "ids": [
+   "pkg:ai/.#MutableModels::property:generateImages"
+  ],
+  "targets": [
+   "ai/models_runtime_typed.go#Models.GenerateImages"
+  ],
+  "production": [
+   "public-api:ai/models_runtime_typed.go#Models.GenerateImages"
+  ],
+  "evidence": [
+   "test:ai/images_models_wire_test.go#TestModelsGenerateImagesAuthThroughOpenRouter",
+   "test:ai/models_typed_regression_test.go#TestGenerateImagesMergesTheImageModelHeaders"
+  ],
+  "rationale": "MutableModels.generateImages is the Go method ai.Models.GenerateImages (upstream Models/MutableModels both map to ai.Models); signature reviewed against the upstream declaration (a Promise or rejection is the returned error; an options object is a variadic argument). Closed as public-api-tested: the method is exported from the public ai package and no PiG binary calls it; test callers (go/types) are the proof.",
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; a rejection is the returned error. AbortSignal is the context.Context argument; no detached goroutine."
+ },
+ {
+  "ids": [
+   "pkg:ai/.#MutableModels::property:getModelOfType"
+  ],
+  "targets": [
+   "ai/models_runtime_typed.go#Models.GetModelOfType"
+  ],
+  "production": [
+   "public-api:ai/models_runtime_typed.go#Models.GetModelOfType"
+  ],
+  "evidence": [
+   "test:ai/classifier_models_upstream_test.go#TestClassifierModelsUpstream",
+   "test:ai/cloudflare_workers_ai_system_one_upstream_test.go#TestCloudflareWorkersAISystemOneUpstream"
+  ],
+  "rationale": "MutableModels.getModelOfType is the Go method ai.Models.GetModelOfType (upstream Models/MutableModels both map to ai.Models); signature reviewed against the upstream declaration (a Promise or rejection is the returned error; an options object is a variadic argument). Closed as public-api-tested: the method is exported from the public ai package and no PiG binary calls it; test callers (go/types) are the proof."
+ },
+ {
+  "ids": [
+   "pkg:ai/.#MutableModels::property:login"
+  ],
+  "targets": [
+   "ai/models_runtime_auth.go#Models.Login"
+  ],
+  "production": [
+   "public-api:ai/models_runtime_auth.go#Models.Login"
+  ],
+  "evidence": [
+   "test:ai/anthropic_copy_code_test.go#TestAnthropicCopyCodeLoginPromptsThroughTheModelRuntime",
+   "test:ai/anthropic_oauth_exchange_test.go#TestAnthropicNativeLoginCleansUpBeforeExchangeSettles"
+  ],
+  "rationale": "MutableModels.login is the Go method ai.Models.Login (upstream Models/MutableModels both map to ai.Models); signature reviewed against the upstream declaration (a Promise or rejection is the returned error; an options object is a variadic argument). Closed as public-api-tested: the method is exported from the public ai package and no PiG binary calls it; test callers (go/types) are the proof.",
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; a rejection is the returned error. AbortSignal is the context.Context argument; no detached goroutine."
+ }
+]

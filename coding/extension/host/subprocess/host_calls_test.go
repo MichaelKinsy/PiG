@@ -285,12 +285,14 @@ func (u *orderedSlotUI) Notify(string, string) {
 	close(u.after)
 }
 
-func (u *orderedSlotUI) SetHeader(factory any) {
+func (u *orderedSlotUI) SetHeader(build extension.HeaderFactory) {
+	factory := frameOf(build, 2)
 	lines, _ := factory.([]string)
 	u.record("header:" + strings.Join(lines, ","))
 }
 
-func (u *orderedSlotUI) SetFooter(factory any) {
+func (u *orderedSlotUI) SetFooter(build extension.FooterFactory) {
+	factory := frameOf(build, 3)
 	lines, _ := factory.([]string)
 	u.record("footer:" + strings.Join(lines, ","))
 }
@@ -327,7 +329,7 @@ func runSlotOrder(t *testing.T, ui *orderedSlotUI, sends ...slotSend) (blocked, 
 	t.Helper()
 	bridge := NewUIBridge(func() {})
 	bridge.SetUIContext(ui)
-	bridge.SetWidgetRequestFunc(func(_ string, _ string, lines []string, _ extension.ExtensionWidgetOptions) {
+	bridge.SetWidgetRequestFunc(func(_ string, _ string, lines []string, _ *extension.ExtensionWidgetOptions) {
 		ui.record("widget:" + strings.Join(lines, ","))
 	})
 	f = newBridgeCallOrderFixture(t, bridge)
@@ -492,12 +494,13 @@ type holdingHeaderUI struct {
 	holding, hold chan struct{}
 }
 
-func (u *holdingHeaderUI) SetHeader(factory any) {
+func (u *holdingHeaderUI) SetHeader(build extension.HeaderFactory) {
+	factory := frameOf(build, 2)
 	if lines, _ := factory.([]string); len(lines) == 1 && lines[0] == "older" {
 		close(u.holding)
 		<-u.hold
 	}
-	u.orderedSlotUI.SetHeader(factory)
+	u.orderedSlotUI.SetHeader(build)
 }
 
 // A later call that runs earlier calls of its slot holds the slot until they are applied. Another lane's call sent after them must not apply between them (rev-sol-ci-rc2-final-r P2 ordering; interactive-mode.ts:2454-2488).

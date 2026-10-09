@@ -1,0 +1,218 @@
+[
+ {
+  "ids": [
+   "pkg:coding-agent/.#CreateAgentSessionFromServicesOptions::property:noTools"
+  ],
+  "targets": [
+   "coding/session.go#SessionOptions.NoTools"
+  ],
+  "production": [
+   "call:coding/session.go#NewSession"
+  ],
+  "evidence": [
+   "test:coding/session_tool_registry_port_test.go#TestNoBuiltinToolsExtensionPort",
+   "test:coding/session_tool_registry_port_test.go#TestDefaultToolsInitialSelectionPort"
+  ],
+  "rationale": "CreateAgentSessionFromServicesOptions.noTools: noTools \"all\"|\"builtin\" is the NoTools string; NewSession(services, SessionOptions) is createAgentSessionFromServices/createAgentSession."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#CreateAgentSessionFromServicesOptions::property:excludeTools"
+  ],
+  "targets": [
+   "coding/session.go#SessionOptions.ExcludedTools"
+  ],
+  "production": [
+   "call:coding/session.go#NewSession"
+  ],
+  "evidence": [
+   "test:coding/session_tool_registry_port_test.go#TestExcludeToolsExtensionPort",
+   "test:coding/session_tool_registry_port_test.go#TestExcludeToolsPatternsExtensionPort"
+  ],
+  "rationale": "CreateAgentSessionFromServicesOptions.excludeTools: excludeTools string[] is the ExcludedTools set (map[string]struct{}) with the same name and pattern matching; NewSession(services, SessionOptions) is createAgentSessionFromServices/createAgentSession."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#CreateAgentSessionFromServicesOptions::property:customTools"
+  ],
+  "targets": [
+   "coding/session.go#SessionOptions.CustomTools"
+  ],
+  "production": [
+   "call:coding/session.go#NewSession"
+  ],
+  "evidence": [
+   "test:coding/session_tool_registry_port_test.go#TestDefaultToolsInitialSelectionPort"
+  ],
+  "rationale": "CreateAgentSessionFromServicesOptions.customTools: customTools is CustomTools []extension.ToolDefinition; NewSession(services, SessionOptions) is createAgentSessionFromServices/createAgentSession."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#CreateAgentSessionFromServicesOptions::property:scopedModels"
+  ],
+  "targets": [
+   "coding/session.go#SessionOptions.ScopedModels"
+  ],
+  "production": [
+   "call:coding/session.go#NewSession"
+  ],
+  "evidence": [
+   "test:coding/session_scoped_models_test.go#TestSessionScopedModelsReachRuntimeAndRunner"
+  ],
+  "rationale": "CreateAgentSessionFromServicesOptions.scopedModels: scopedModels is ScopedModels []extension.ScopedModel{Model, ThinkingLevel}; NewSession(services, SessionOptions) is createAgentSessionFromServices/createAgentSession."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#CreateAgentSessionFromServicesOptions::property:thinkingLevel"
+  ],
+  "targets": [
+   "coding/session.go#SessionOptions.ThinkingLevel"
+  ],
+  "production": [
+   "call:coding/session.go#NewSession"
+  ],
+  "evidence": [
+   "test:coding/sdk_session_manager_boundaries_test.go#TestSDKExplicitThinkingLevelPrecedesConfiguredDefaults"
+  ],
+  "rationale": "CreateAgentSessionFromServicesOptions.thinkingLevel: thinkingLevel is ThinkingLevel; NewSession(services, SessionOptions) is createAgentSessionFromServices/createAgentSession."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#CreateAgentSessionFromServicesOptions::property:sessionManager"
+  ],
+  "targets": [
+   "coding/session.go#SessionOptions.SessionManager"
+  ],
+  "production": [
+   "call:coding/session.go#NewSession"
+  ],
+  "evidence": [
+   "test:coding/sdk_session_manager_boundaries_test.go#TestSDKManagerOverrideUsesOneLiveLog",
+   "test:coding/sdk_session_manager_upstream_test.go#TestUpstreamSDKSessionManagerExplicitOverride"
+  ],
+  "rationale": "CreateAgentSessionFromServicesOptions.sessionManager: sessionManager is SessionManager, the supplied log used as the live log; NewSession(services, SessionOptions) is createAgentSessionFromServices/createAgentSession."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#CreateAgentSessionFromServicesOptions::property:model"
+  ],
+  "targets": [
+   "coding/session.go#SessionOptions.Model"
+  ],
+  "production": [
+   "call:coding/session.go#NewSession"
+  ],
+  "evidence": [
+   "test:coding/sdk_session_manager_boundaries_test.go#TestSDKInjectedHistoryKeepsExplicitModelAndFillsThinkingMetadata"
+  ],
+  "rationale": "CreateAgentSessionFromServicesOptions.model: model is Model; NewSession(services, SessionOptions) is createAgentSessionFromServices/createAgentSession."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#CreateAgentSessionOptions::property:noTools"
+  ],
+  "targets": [
+   "coding/session.go#SessionOptions.NoTools"
+  ],
+  "production": [
+   "call:coding/session.go#NewSession"
+  ],
+  "evidence": [
+   "test:coding/session_tool_registry_port_test.go#TestNoBuiltinToolsExtensionPort",
+   "test:coding/session_tool_registry_port_test.go#TestDefaultToolsInitialSelectionPort"
+  ],
+  "rationale": "CreateAgentSessionOptions.noTools: noTools \"all\"|\"builtin\" is the NoTools string; NewSession(services, SessionOptions) is createAgentSessionFromServices/createAgentSession."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#CreateAgentSessionOptions::property:excludeTools"
+  ],
+  "targets": [
+   "coding/session.go#SessionOptions.ExcludedTools"
+  ],
+  "production": [
+   "call:coding/session.go#NewSession"
+  ],
+  "evidence": [
+   "test:coding/session_tool_registry_port_test.go#TestExcludeToolsExtensionPort",
+   "test:coding/session_tool_registry_port_test.go#TestExcludeToolsPatternsExtensionPort"
+  ],
+  "rationale": "CreateAgentSessionOptions.excludeTools: excludeTools string[] is the ExcludedTools set (map[string]struct{}) with the same name and pattern matching; NewSession(services, SessionOptions) is createAgentSessionFromServices/createAgentSession."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#CreateAgentSessionOptions::property:customTools"
+  ],
+  "targets": [
+   "coding/session.go#SessionOptions.CustomTools"
+  ],
+  "production": [
+   "call:coding/session.go#NewSession"
+  ],
+  "evidence": [
+   "test:coding/session_tool_registry_port_test.go#TestDefaultToolsInitialSelectionPort"
+  ],
+  "rationale": "CreateAgentSessionOptions.customTools: customTools is CustomTools []extension.ToolDefinition; NewSession(services, SessionOptions) is createAgentSessionFromServices/createAgentSession."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#CreateAgentSessionOptions::property:scopedModels"
+  ],
+  "targets": [
+   "coding/session.go#SessionOptions.ScopedModels"
+  ],
+  "production": [
+   "call:coding/session.go#NewSession"
+  ],
+  "evidence": [
+   "test:coding/session_scoped_models_test.go#TestSessionScopedModelsReachRuntimeAndRunner"
+  ],
+  "rationale": "CreateAgentSessionOptions.scopedModels: scopedModels is ScopedModels []extension.ScopedModel{Model, ThinkingLevel}; NewSession(services, SessionOptions) is createAgentSessionFromServices/createAgentSession."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#CreateAgentSessionOptions::property:thinkingLevel"
+  ],
+  "targets": [
+   "coding/session.go#SessionOptions.ThinkingLevel"
+  ],
+  "production": [
+   "call:coding/session.go#NewSession"
+  ],
+  "evidence": [
+   "test:coding/sdk_session_manager_boundaries_test.go#TestSDKExplicitThinkingLevelPrecedesConfiguredDefaults"
+  ],
+  "rationale": "CreateAgentSessionOptions.thinkingLevel: thinkingLevel is ThinkingLevel; NewSession(services, SessionOptions) is createAgentSessionFromServices/createAgentSession."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#CreateAgentSessionOptions::property:sessionManager"
+  ],
+  "targets": [
+   "coding/session.go#SessionOptions.SessionManager"
+  ],
+  "production": [
+   "call:coding/session.go#NewSession"
+  ],
+  "evidence": [
+   "test:coding/sdk_session_manager_boundaries_test.go#TestSDKManagerOverrideUsesOneLiveLog",
+   "test:coding/sdk_session_manager_upstream_test.go#TestUpstreamSDKSessionManagerExplicitOverride"
+  ],
+  "rationale": "CreateAgentSessionOptions.sessionManager: sessionManager is SessionManager, the supplied log used as the live log; NewSession(services, SessionOptions) is createAgentSessionFromServices/createAgentSession."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#CreateAgentSessionOptions::property:model"
+  ],
+  "targets": [
+   "coding/session.go#SessionOptions.Model"
+  ],
+  "production": [
+   "call:coding/session.go#NewSession"
+  ],
+  "evidence": [
+   "test:coding/sdk_session_manager_boundaries_test.go#TestSDKInjectedHistoryKeepsExplicitModelAndFillsThinkingMetadata"
+  ],
+  "rationale": "CreateAgentSessionOptions.model: model is Model; NewSession(services, SessionOptions) is createAgentSessionFromServices/createAgentSession."
+ }
+]

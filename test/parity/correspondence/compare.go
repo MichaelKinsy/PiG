@@ -78,14 +78,14 @@ func CompactionSettingsRules() Rules {
 			"saveGlobal": "saveGlobal", "saveProject": "saveProject", "settingsOrchestration": "settingsOrchestration",
 		},
 		CalleeTargets: map[string]string{
-			"generateSummaryWithUsage": "generateSummary", "generateTurnPrefixSummary": "generateTurnPrefixSummary",
+			"generateSummaryWithUsage": "GenerateSummaryWithUsageUsing", "generateTurnPrefixSummary": "generateTurnPrefixSummary",
 			"combineUsage": "combineUsage", "completeSummarization": "completeSummarization",
 		},
 		CancellableCalls: []string{"completeSummarization", "generateSummaryWithUsage", "generateTurnPrefixSummary"},
 		CallContracts:    []string{"compact", "generateTurnPrefixSummary"},
 		TransitionContracts: []TransitionContract{
 			{ID: "split-summary", Function: "compact", SourceKind: "update", SourceTarget: "summary", SourceContains: "Turn Context (split turn)", TargetKind: "update", TargetTarget: "summary", TargetContains: "Turn Context (split turn)", Condition: "1:then"},
-			{ID: "history-fallback", Function: "compact", SourceKind: "update", SourceTarget: "summary", SourceContains: "result.text", TargetKind: "update", TargetTarget: "summary", TargetContains: "generateSummary", Condition: "1:else"},
+			{ID: "history-fallback", Function: "compact", SourceKind: "update", SourceTarget: "summary", SourceContains: "result.text", TargetKind: "update", TargetTarget: "summary", TargetContains: "GenerateSummaryWithUsage", Condition: "1:else"},
 			{ID: "file-operations", Function: "compact", SourceKind: "update", SourceTarget: "summary", SourceContains: "formatFileOperations", TargetKind: "update", TargetTarget: "summary", TargetContains: "FormatFileOperations", Condition: "0:then"},
 			{ID: "missing-first-kept-id", Function: "compact", SourceKind: "error", SourceContains: "First kept entry has no UUID - session may need migration", TargetKind: "return", TargetContains: "First kept entry has no UUID - session may need migration", Condition: "1:then"},
 			{ID: "result", Function: "compact", SourceKind: "return", SourceContains: "firstKeptEntryId", TargetKind: "return", TargetContains: "FirstKeptEntryID", Condition: "0:then"},

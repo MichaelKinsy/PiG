@@ -2,11 +2,11 @@ package coding
 
 import (
 	"slices"
-	"strings"
 	"sync/atomic"
 
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/coding/extension"
+	"github.com/MichaelKinsy/PiG/internal/jsstring"
 )
 
 // Ports packages/coding-agent/src/core/agent-session.ts.
@@ -51,10 +51,10 @@ func (s *Session) addPersistedDefaultToNonEmptyScope(model *ai.Model) error {
 			break
 		}
 	}
-	settings := s.services.SettingsManager()
+	settings := s.SettingsManager()
 	enabled := settings.GetEnabledModels()
 	reference := providerID(model) + "/" + model.ID
-	if len(enabled) == 0 || slices.ContainsFunc(enabled, func(pattern string) bool { return strings.EqualFold(pattern, reference) }) {
+	if len(enabled) == 0 || slices.ContainsFunc(enabled, func(pattern string) bool { return jsstring.ToLower(pattern) == jsstring.ToLower(reference) }) {
 		return nil
 	}
 	enabled = append(slices.Clone(enabled), reference)

@@ -11,7 +11,7 @@ import (
 
 // The Go SDK twins of node_extension_api_fidelity_test.go (items D-G of the port-99-f6f-node review), through the fused, isolated and packed placements of the one fixture factory. B and C concern the factory-time Pi API, which only the Node runtime has.
 
-// loader.ts:228-232: before the runner binds, unregisterVirtualModel filters the runtime-wide pending list, so a virtual model another extension queued is removed too. The harness queues router/victim as an earlier-loaded extension would, and the fixture's factory unregisters it.
+// pi.unregisterVirtualModel (packages/coding-agent/src/core/extensions/types.ts:1875, loader.ts:511-514) reaches loader.ts:229-233: before the runner binds, unregisterVirtualModel filters the runtime-wide pending list, so a virtual model another extension queued is removed too. The harness queues router/victim as an earlier-loaded extension would, and the fixture's factory unregisters it.
 func TestExtensionAPIUnregisterVirtualModelBeforeBindFiltersTheRuntimeWidePendingListGo(t *testing.T) {
 	for _, placement := range extensionAPIPlacements() {
 		t.Run(placement, func(t *testing.T) {
@@ -19,7 +19,7 @@ func TestExtensionAPIUnregisterVirtualModelBeforeBindFiltersTheRuntimeWidePendin
 			h.mu.Lock()
 			defer h.mu.Unlock()
 			if _, bound := h.virtualModels["router/victim"]; bound {
-				t.Fatal("a virtual model another extension queued survived the unregistration the fixture's factory made")
+				t.Fatal("unregisterVirtualModel: a virtual model another extension queued survived the unregistration the fixture's factory made")
 			}
 			if _, bound := h.virtualModels["router/auto"]; !bound {
 				t.Fatal("the fixture's own virtual model was not applied")
@@ -61,7 +61,7 @@ func TestExtensionAPICtxToolsIsLiveInsideOneHandlerGo(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			want := "echo,helper,soft_fail,nested_updates,nested_cancel,nested_own_signal,probe_state,live_tools,nested_throw,detached_call,register_late,unregister_late|echo"
+			want := "echo,helper,soft_fail,nested_updates,nested_duration,nested_cancel,nested_own_signal,probe_state,live_tools,nested_throw,detached_call,register_late,unregister_late|echo"
 			if result.Text() != want {
 				t.Fatalf("ctx.tools read %q, want %q", result.Text(), want)
 			}

@@ -33,7 +33,7 @@ func TestUpstreamInputEvent(t *testing.T) {
 			emit(t, r, "x", nil, "interactive", "", extension.InputEventResultContinue{})
 		}
 	})
-	original := []extension.ImageContent{map[string]any{"type": "image", "data": "orig", "mimeType": "image/png"}}
+	original := []extension.ImageContent{{Data: "orig", MimeType: "image/png"}}
 	// .upstream/v0.87.1/packages/coding-agent/test/extensions-input-event.test.ts:48
 	t.Run("transforms text and preserves images when omitted", func(t *testing.T) {
 		r := makeRunner(func(args ...any) (any, error) {
@@ -44,7 +44,7 @@ func TestUpstreamInputEvent(t *testing.T) {
 	})
 	// .upstream/v0.87.1/packages/coding-agent/test/extensions-input-event.test.ts:57
 	t.Run("transforms and replaces images when provided", func(t *testing.T) {
-		images := []extension.ImageContent{map[string]any{"type": "image", "data": "new", "mimeType": "image/jpeg"}}
+		images := []extension.ImageContent{{Data: "new", MimeType: "image/jpeg"}}
 		r := makeRunner(func(...any) (any, error) { return extension.InputEventResultTransform{Text: "X", Images: images}, nil })
 		emit(t, r, "hi", original, "interactive", "", extension.InputEventResultTransform{Text: "X", Images: images})
 	})

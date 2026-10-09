@@ -69,7 +69,7 @@ func TestUpstreamAgentSessionRetry(t *testing.T) {
 	// :183 The 40ms delay is the upstream stimulus that yields the assistant message_end handler, not a wait for completion.
 	t.Run("prompt waits for retry completion even when assistant message_end handling is delayed", func(t *testing.T) {
 		ext := extension.Extension{Handlers: map[string][]extension.HandlerFn{"message_end": {func(args ...any) (any, error) {
-			if message, ok := args[0].(extension.MessageEndEvent).Message.(agent.AgentMessage); ok && message.Assistant != nil {
+			if message := args[0].(extension.MessageEndEvent).Message; message.Assistant != nil {
 				time.Sleep(40 * time.Millisecond)
 			}
 			return nil, nil

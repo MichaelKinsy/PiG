@@ -1,0 +1,64 @@
+[
+ {
+  "ids": [
+   "pkg:coding-agent/.#EditOperations"
+  ],
+  "targets": [
+   "internal/codingagent/tools/edit.go#EditOperations"
+  ],
+  "struct": {
+   "file": "internal/codingagent/tools/edit.go",
+   "type": "EditOperations"
+  },
+  "production": [
+   "call:internal/codingagent/tools/edit.go#EditTool.editLocked"
+  ],
+  "evidence": [
+   "test:internal/codingagent/tools/mutation_queue_upstream_test.go#TestFileMutationToolsUpstream",
+   "test:internal/codingagent/tools/tools_edit_port_test.go#TestToolsEditPort"
+  ],
+  "async": "Each upstream Promise-returning operation is a blocking Go function returning its error; cancellation is the tool's context.Context checked between operations (TestEditAbortAfterAccessDoesNotRead, TestFindOperationsCancellationAndErrors); no detached goroutine.",
+  "rationale": "EditOperations: Go EditOperations has a function field for every upstream operation (Buffer is []byte, a rejected Promise is the returned error, Find's boolean-or-Promise exists returns (bool, error)); the tool calls the injected operation instead of the filesystem."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#WriteOperations"
+  ],
+  "targets": [
+   "internal/codingagent/tools/write.go#WriteOperations"
+  ],
+  "struct": {
+   "file": "internal/codingagent/tools/write.go",
+   "type": "WriteOperations"
+  },
+  "production": [
+   "call:internal/codingagent/tools/write.go#WriteTool.Execute"
+  ],
+  "evidence": [
+   "test:internal/codingagent/tools/mutation_queue_upstream_test.go#TestFileMutationToolsUpstream"
+  ],
+  "async": "Each upstream Promise-returning operation is a blocking Go function returning its error; cancellation is the tool's context.Context checked between operations (TestEditAbortAfterAccessDoesNotRead, TestFindOperationsCancellationAndErrors); no detached goroutine.",
+  "rationale": "WriteOperations: Go WriteOperations has a function field for every upstream operation (Buffer is []byte, a rejected Promise is the returned error, Find's boolean-or-Promise exists returns (bool, error)); the tool calls the injected operation instead of the filesystem."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#FindOperations"
+  ],
+  "targets": [
+   "internal/codingagent/tools/find.go#FindOperations"
+  ],
+  "struct": {
+   "file": "internal/codingagent/tools/find.go",
+   "type": "FindOperations"
+  },
+  "production": [
+   "call:internal/codingagent/tools/find.go#FindTool.Execute"
+  ],
+  "evidence": [
+   "test:internal/codingagent/tools/find_operations_port_test.go#TestFindCustomGlobRootPort",
+   "test:internal/codingagent/tools/find_operations_port_test.go#TestFindOperationsCancellationAndErrors"
+  ],
+  "async": "Each upstream Promise-returning operation is a blocking Go function returning its error; cancellation is the tool's context.Context checked between operations (TestEditAbortAfterAccessDoesNotRead, TestFindOperationsCancellationAndErrors); no detached goroutine.",
+  "rationale": "FindOperations: Go FindOperations has a function field for every upstream operation (Buffer is []byte, a rejected Promise is the returned error, Find's boolean-or-Promise exists returns (bool, error)); the tool calls the injected operation instead of the filesystem."
+ }
+]

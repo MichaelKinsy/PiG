@@ -4,6 +4,7 @@ import (
 	"math"
 	"testing"
 
+	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/durable"
 )
 
@@ -26,7 +27,7 @@ func TestSessionCreateTaskInitial(t *testing.T) {
 		})
 		commits := len(harness.Storage.Commits())
 		err := tryCommit(harness.Session, func(tx durable.Tx) error {
-			_, err := durable.CreateTask(tx, failing, obj{"path": "a"}, conversationOwned(conversationId))
+			_, err := durable.CreateTask(tx, failing, delta.JsonObjectOf("path", "a"), conversationOwned(conversationId))
 			return err
 		})
 		expectErrorContains(t, err, "initial failed")
@@ -46,7 +47,7 @@ func TestSessionCreateTaskInitial(t *testing.T) {
 		}}
 		mints := harness.Storage.MintCount()
 		err := tryCommit(harness.Session, func(tx durable.Tx) error {
-			_, err := tx.CreateTaskErased(task, obj{"path": "a"}, conversationOwned(conversationId))
+			_, err := tx.CreateTaskErased(task, delta.JsonObjectOf("path", "a"), conversationOwned(conversationId))
 			return err
 		})
 		expectStrictJSON(t, err)

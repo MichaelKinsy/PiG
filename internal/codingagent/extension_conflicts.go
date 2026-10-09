@@ -15,6 +15,14 @@ type ExtensionConflict struct {
 	Message string
 }
 
+// ToolConflict is a tool that the extension at Path registered after the extension at Owner, at a different path, already registered it.
+// pig additive (D109): PiG's stale-copy diagnostic needs the owner as data; Pi's conflict carries only the message.
+type ToolConflict struct {
+	Path  string
+	Owner string
+	Tool  string
+}
+
 // ExtensionsInLoadOrder appends in-process builtins after configured
 // extensions. Upstream resource-loader.ts loads path extensions first, then
 // inline factories, and the runner preserves that order for dispatch and
@@ -34,6 +42,18 @@ func ExtensionsInLoadOrder(configured, builtins []extension.Extension) []extensi
 // load errors. Flags have no recorded registration order and are walked by
 // name.
 func DetectExtensionConflicts(exts []extension.Extension) []ExtensionConflict {
+	conflicts, _ := detectExtensionConflicts(exts)
+	return conflicts
+}
+
+// DetectToolConflicts reports the tool conflicts DetectExtensionConflicts reports, with the path of the extension that owns each tool.
+func DetectToolConflicts(exts []extension.Extension) []ToolConflict {
+	_, tools := detectExtensionConflicts(exts)
+	return tools
+}
+
+func detectExtensionConflicts(exts []extension.Extension) ([]ExtensionConflict, []ToolConflict) {
+	var toolConflicts []ToolConflict
 	toolOwners := make(map[string]string)
 	flagOwners := make(map[string]string)
 	var conflicts []ExtensionConflict
@@ -45,6 +65,7 @@ func DetectExtensionConflicts(exts []extension.Extension) []ExtensionConflict {
 		for _, name := range toolNamesInRegistrationOrder(ext) {
 			if owner, exists := toolOwners[name]; exists && owner != path {
 				conflicts = append(conflicts, ExtensionConflict{Path: path, Message: fmt.Sprintf("Tool \"%s\" conflicts with %s", name, owner)})
+				toolConflicts = append(toolConflicts, ToolConflict{Path: path, Owner: owner, Tool: name})
 				continue
 			}
 			toolOwners[name] = path
@@ -57,7 +78,7 @@ func DetectExtensionConflicts(exts []extension.Extension) []ExtensionConflict {
 			flagOwners[name] = path
 		}
 	}
-	return conflicts
+	return conflicts, toolConflicts
 }
 
 // toolNamesInRegistrationOrder returns Tools keys in ToolOrder order, the Go form of upstream's insertion-ordered ext.tools Map. Keys absent from ToolOrder follow by name.

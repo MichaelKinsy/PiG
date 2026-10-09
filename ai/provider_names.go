@@ -57,3 +57,43 @@ func ProviderDisplayName(providerID string) string {
 	}
 	return providerID
 }
+
+// builtinProviderBaseURLs mirrors the `baseUrl` of each built-in provider in upstream packages/ai/src/providers/*.ts. It is the provider-level default that bug reports and provider composition read; model catalogs carry their own per-model base URLs. A provider with no entry declares none upstream.
+var builtinProviderBaseURLs = map[string]string{
+	"ant-ling":                   "https://api.ant-ling.com/v1",
+	"anthropic":                  "https://api.anthropic.com",
+	"baseten":                    "https://inference.baseten.co/v1",
+	"cerebras":                   "https://api.cerebras.ai/v1",
+	"deepseek":                   "https://api.deepseek.com",
+	"fireworks":                  "https://api.fireworks.ai/inference",
+	"github-copilot":             "https://api.individual.githubcopilot.com",
+	"google":                     "https://generativelanguage.googleapis.com/v1beta",
+	"groq":                       "https://api.groq.com/openai/v1",
+	"huggingface":                "https://router.huggingface.co/v1",
+	"kimi-coding":                "https://api.kimi.com/coding",
+	"meta":                       "https://api.meta.ai/v1",
+	"minimax":                    "https://api.minimax.io/anthropic",
+	"minimax-cn":                 "https://api.minimaxi.com/anthropic",
+	"mistral":                    "https://api.mistral.ai",
+	"moonshotai":                 "https://api.moonshot.ai/v1",
+	"moonshotai-cn":              "https://api.moonshot.cn/v1",
+	"nvidia":                     "https://integrate.api.nvidia.com/v1",
+	"openai":                     "https://api.openai.com/v1",
+	"openai-codex":               "https://chatgpt.com/backend-api",
+	"openrouter":                 "https://openrouter.ai/api/v1",
+	"qwen-token-plan":            "https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1",
+	"qwen-token-plan-cn":         "https://token-plan.cn-beijing.maas.aliyuncs.com/compatible-mode/v1",
+	"qwen-token-plan-individual": "https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1",
+	"together":                   "https://api.together.ai/v1",
+	"vercel-ai-gateway":          "https://ai-gateway.vercel.sh",
+	"xai":                        "https://api.x.ai/v1",
+	"xiaomi":                     "https://api.xiaomimimo.com/v1",
+	"xiaomi-token-plan-ams":      "https://token-plan-ams.xiaomimimo.com/v1",
+	"xiaomi-token-plan-cn":       "https://token-plan-cn.xiaomimimo.com/v1",
+	"xiaomi-token-plan-sgp":      "https://token-plan-sgp.xiaomimimo.com/v1",
+	"zai":                        "https://api.z.ai/api/coding/paas/v4",
+	"zai-coding-cn":              "https://open.bigmodel.cn/api/coding/paas/v4",
+}
+
+// ProviderBaseURL returns the upstream provider.baseUrl of a built-in provider, or "" when the provider declares none.
+func ProviderBaseURL(providerID string) string { return builtinProviderBaseURLs[providerID] }

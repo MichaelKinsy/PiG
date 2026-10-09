@@ -2,7 +2,7 @@ package tui
 
 import (
 	"encoding/json"
-	"fmt"
+	"math"
 )
 
 // CompactReadClassification is upstream read.ts CompactReadClassification:
@@ -24,35 +24,35 @@ func SetCompactReadClassifier(classify func(rawPath, cwd string) (CompactReadCla
 	compactReadClassifier = classify
 }
 
-type readHeaderArgs struct {
-	Path     *string `json:"path"`
-	FilePath *string `json:"file_path"`
-	Offset   *int    `json:"offset,omitempty"`
-	Limit    *int    `json:"limit,omitempty"`
-}
-
-func (a readHeaderArgs) rawPath() string {
-	switch {
-	case a.FilePath != nil:
-		return *a.FilePath
-	case a.Path != nil:
-		return *a.Path
+// toolPathArg is upstream str(args?.file_path ?? args?.path): file_path
+// unless it is null or absent, a string passing through, null or absent as
+// "", and any other value invalid.
+func toolPathArg(args map[string]any) (string, bool) {
+	value := args["file_path"]
+	if value == nil {
+		value = args["path"]
 	}
-	return ""
+	return renderStr(value)
 }
 
-// readLineRange is upstream read.ts formatReadLineRange.
-func readLineRange(offset, limit *int) string {
+// readLineRange is upstream read.ts formatReadLineRange: `:start` or
+// `:start-end` in the warning color from the JavaScript values of offset and
+// limit, nothing when both are null or absent. A zero or NaN end line prints
+// no end, as the template's falsy check does.
+func readLineRange(args map[string]any) string {
+	offset, limit := args["offset"], args["limit"]
 	if offset == nil && limit == nil {
 		return ""
 	}
-	start := 1
+	start := any(1.0)
 	if offset != nil {
-		start = *offset
+		start = offset
 	}
-	text := fmt.Sprintf(":%d", start)
+	text := ":" + jsTemplateString(start)
 	if limit != nil {
-		text = fmt.Sprintf(":%d-%d", start, start+*limit-1)
+		if end := jsToNumber(jsAdd(start, limit)) - 1; end != 0 && !math.IsNaN(end) {
+			text += "-" + JSNumberString(end)
+		}
 	}
 	return fg(ActiveTheme().Warning, text)
 }
@@ -63,19 +63,18 @@ func FormatCompactReadHeader(raw json.RawMessage, cwd string) string {
 	if compactReadClassifier == nil {
 		return ""
 	}
-	var args readHeaderArgs
-	_ = json.Unmarshal(raw, &args)
-	rawPath := args.rawPath()
-	if rawPath == "" {
+	args := decodeToolArgs(raw)
+	rawPath, ok := toolPathArg(args)
+	if !ok || rawPath == "" {
 		return ""
 	}
-	classification, ok := compactReadClassifier(rawPath, cwd)
-	if !ok {
+	classification, found := compactReadClassifier(rawPath, cwd)
+	if !found {
 		return ""
 	}
 	theme := ActiveTheme()
 	expandHint := fg(theme.Dim, " ("+AppKeyText("app.tools.expand", "ctrl+o")+" to expand)")
-	lineRange := readLineRange(args.Offset, args.Limit)
+	lineRange := readLineRange(args)
 	if classification.Kind == "skill" {
 		return fg(theme.CustomMessageLabel, "\x1b[1m[skill]\x1b[22m ") + fg(theme.CustomMessageText, classification.Label) + lineRange + expandHint
 	}

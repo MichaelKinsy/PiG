@@ -56,7 +56,7 @@ func TestUnixServerDerivesItsExplicitSocketPathAndRestartsOnIt(t *testing.T) {
 		t.Fatalf("socket path = %q, want %q", path, want)
 	}
 	first := makeUnixServer(t, path)
-	if err := first.Start(); err != nil {
+	if err := startError(first); err != nil {
 		t.Fatal(err)
 	}
 	firstClient := connectUnixTestClient(t, path)
@@ -68,7 +68,7 @@ func TestUnixServerDerivesItsExplicitSocketPathAndRestartsOnIt(t *testing.T) {
 		t.Fatal(err)
 	}
 	replacement := makeUnixServer(t, path)
-	if err := replacement.Start(); err != nil {
+	if err := startError(replacement); err != nil {
 		t.Fatal(err)
 	}
 	expectHello(t, connectUnixTestClient(t, path), testServerID)
@@ -84,14 +84,14 @@ func TestUnixListenerFilesystemLifecycle(t *testing.T) {
 	t.Run("rejects a live listener without unlinking it", func(t *testing.T) {
 		path := socketPath(t, false)
 		first := makeUnixServer(t, path)
-		if err := first.Start(); err != nil {
+		if err := startError(first); err != nil {
 			t.Fatal(err)
 		}
 		firstIdentity, err := os.Lstat(path)
 		if err != nil {
 			t.Fatal(err)
 		}
-		expectError(t, makeUnixServer(t, path).Start(), "already running")
+		expectError(t, startError(makeUnixServer(t, path)), "already running")
 		current, err := os.Lstat(path)
 		if err != nil {
 			t.Fatal(err)
@@ -108,7 +108,7 @@ func TestUnixListenerFilesystemLifecycle(t *testing.T) {
 		if err := os.WriteFile(path, []byte("do not remove"), 0o640); err != nil {
 			t.Fatal(err)
 		}
-		expectError(t, makeUnixServer(t, path).Start(), "non-socket")
+		expectError(t, startError(makeUnixServer(t, path)), "non-socket")
 		if content, err := os.ReadFile(path); err != nil || string(content) != "do not remove" {
 			t.Fatalf("regular file = %q, %v", content, err)
 		}
@@ -118,7 +118,7 @@ func TestUnixListenerFilesystemLifecycle(t *testing.T) {
 	t.Run("creates nested temp parents, restricts permissions, and removes its own socket", func(t *testing.T) {
 		path := socketPath(t, true)
 		server := makeUnixServer(t, path)
-		if err := server.Start(); err != nil {
+		if err := startError(server); err != nil {
 			t.Fatal(err)
 		}
 		info, err := os.Lstat(path)
@@ -150,7 +150,7 @@ func TestUnixListenerFilesystemLifecycle(t *testing.T) {
 	t.Run("does not remove a replacement inode during shutdown", func(t *testing.T) {
 		path := socketPath(t, false)
 		server := makeUnixServer(t, path)
-		if err := server.Start(); err != nil {
+		if err := startError(server); err != nil {
 			t.Fatal(err)
 		}
 		if err := os.Remove(path); err != nil {
@@ -193,7 +193,7 @@ func TestUnixListenerFilesystemLifecycle(t *testing.T) {
 		}
 		_ = child.Wait()
 		server := makeUnixServer(t, path)
-		if err := server.Start(); err != nil {
+		if err := startError(server); err != nil {
 			t.Fatal(err)
 		}
 		live, err := os.Lstat(path)

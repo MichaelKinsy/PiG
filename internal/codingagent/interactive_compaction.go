@@ -1,4 +1,3 @@
-// SPDX-FileCopyrightText: Copyright Hewlett Packard Enterprise Development LP
 // SPDX-FileCopyrightText: Copyright (c) 2025 Mario Zechner
 // SPDX-License-Identifier: MIT
 
@@ -31,7 +30,7 @@ func (m *InteractiveMode) addCompactionCostNotice(kind string, usage *ai.Usage) 
 }
 
 func (m *InteractiveMode) addCompactionSummary(summary string, tokensBefore int, usage *ai.Usage) {
-	component := tui.NewCompactionSummaryComponent(summary, tokensBefore)
+	component := tui.NewCompactionSummaryMessageComponent(tui.CompactionSummaryMessage{Summary: summary, TokensBefore: tokensBefore}, m.markdownThemeWithSettings(), m.outputPad)
 	if m.toolsExpanded {
 		component.SetExpanded(true)
 	}

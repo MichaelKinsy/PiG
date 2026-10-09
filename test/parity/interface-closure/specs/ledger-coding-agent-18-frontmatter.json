@@ -1,0 +1,20 @@
+[
+ {
+  "ids": [
+   "pkg:coding-agent/.#parseFrontmatter"
+  ],
+  "targets": [
+   "internal/codingagent/frontmatter/frontmatter.go#Parse"
+  ],
+  "production": [
+   "call:internal/codingagent/skills.go#LoadSkill"
+  ],
+  "evidence": [
+   "test:internal/codingagent/frontmatter/frontmatter_test.go#TestParseUsesYAMLScalars",
+   "test:internal/codingagent/frontmatter/frontmatter_test.go#TestUnclosedFrontmatter",
+   "test:internal/codingagent/frontmatter/whitespace_test.go#TestFrontmatterBodyUsesJavaScriptWhitespace",
+   "test:internal/codingagent/frontmatter/frontmatter_test.go#TestParseEmptyAndScalarYAMLFrontmatter"
+  ],
+  "rationale": "parseFrontmatter: Go Parse(content) returns Doc{Frontmatter, Body, Err}: BOM stripped, newlines normalized, closing fence found from index 3, body JS-trimmed. Upstream throws on malformed YAML; Go reports it in Err and keeps the body. A non-object YAML value yields an empty map (upstream's T extends Record)."
+ }
+]

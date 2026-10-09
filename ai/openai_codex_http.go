@@ -17,8 +17,8 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/lazyregexp"
 )
 
-var codexTerminalRateLimit = lazyregexp.New(`(?i)GoUsageLimitError|FreeUsageLimitError|Monthly usage limit reached|available balance|insufficient_quota|out of budget|quota exceeded|billing`)
-var codexRetryableMessage = lazyregexp.New(`(?i)rate.?limit|overloaded|service.?unavailable|upstream.?connect|connection.?refused`)
+var codexTerminalRateLimit = lazyregexp.NewJSIgnoreCase(`GoUsageLimitError|FreeUsageLimitError|Monthly usage limit reached|available balance|insufficient_quota|out of budget|quota exceeded|billing`)
+var codexRetryableMessage = lazyregexp.NewJSIgnoreCase(`rate.?limit|overloaded|service.?unavailable|upstream.?connect|connection.?refused`)
 
 type codexRetryDelayExceeded struct{ message string }
 
@@ -84,11 +84,12 @@ func codexHTTPError(status int, raw []byte) error {
 				plan = " (" + strings.ToLower(e.Plan) + " plan)"
 			}
 			when := ""
-			if e.ResetsAt != nil {
+			// resets_at is checked for truthiness (openai-codex-responses.ts:1609): zero means no reset time.
+			if e.ResetsAt != nil && *e.ResetsAt != 0 && !math.IsNaN(*e.ResetsAt) {
 				minutes := max(0, math.Floor((*e.ResetsAt*1000-float64(time.Now().UnixMilli()))/60000+0.5))
 				when = fmt.Sprintf(" Try again in ~%.0f min.", minutes)
 			}
-			return errors.New("You have hit your ChatGPT usage limit" + plan + "." + when)
+			return errors.New(strings.TrimSpace("You have hit your ChatGPT usage limit" + plan + "." + when))
 		}
 		if e.Message != "" {
 			message = e.Message

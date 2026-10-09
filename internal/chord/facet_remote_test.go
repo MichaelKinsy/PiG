@@ -7,13 +7,15 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+
+	"github.com/MichaelKinsy/PiG/internal/chord/chordjson"
 )
 
 // upstream: packages/chord/src/facets/host.ts:562-573; packages/chord/src/services/handle.ts:26-35.
 func TestFacetServiceFollowsLocalCutover(t *testing.T) {
 	t.Parallel()
 	type value struct{ generation string }
-	def := DefineServiceWithOptions[*value]("test.facet-dynamic.local", ServiceOptions{Local: true})
+	def := DefineService[*value]("test.facet-dynamic.local", ServiceOptions{Local: true})
 	provider := func(generation string) Facet {
 		return Facet{Id: "provider", Setup: func(env *FacetEnvironment) error {
 			return ProvideService(env, def, &value{generation})
@@ -108,14 +110,14 @@ func TestFacetDynamicConsumerUsesLoopback(t *testing.T) {
 		t.Fatal(err)
 	}
 	initial, hydrated, err := replica.Load()
-	if err != nil || !hydrated || !reflect.DeepEqual(initial, map[string]any{"generation": "A"}) {
+	if err != nil || !hydrated || !sameJSON(initial, map[string]any{"generation": "A"}) {
 		t.Fatalf("state = %#v, hydrated=%v, error=%v", initial, hydrated, err)
 	}
-	if err := state.Apply(t.Context(), 1, []Op{{"r", map[string]any{"generation": "B"}}}); err != nil {
+	if err := state.Apply(t.Context(), 1, []Op{{"r", chordjson.ObjectOf("generation", "B")}}); err != nil {
 		t.Fatal(err)
 	}
 	updated, hydrated, err := replica.Load()
-	if err != nil || !hydrated || !reflect.DeepEqual(updated, map[string]any{"generation": "B"}) {
+	if err != nil || !hydrated || !sameJSON(updated, map[string]any{"generation": "B"}) {
 		t.Fatalf("updated state = %#v, hydrated=%v, error=%v", updated, hydrated, err)
 	}
 }
@@ -176,7 +178,7 @@ func TestFacetRuntimeMembersUseExistingProvider(t *testing.T) {
 	}
 	want := ServiceSubscriptionSnapshot{ServiceId: def.Id(), Mode: ServiceSingleton, Instances: []ServiceInstanceSnapshot{{Members: []ServiceMemberSnapshot{
 		{Name: "echo", Kind: MemberMethod},
-		{Name: "state", Kind: MemberState, Sequence: 3, Ops: []Op{{"r", map[string]any{"count": float64(7)}}}},
+		{Name: "state", Kind: MemberState, Sequence: 3, Ops: []Op{{"r", chordjson.ObjectOf("count", float64(7))}}},
 		{Name: "void", Kind: MemberMethod},
 	}}}}
 	if got := subscription.Snapshot(); !reflect.DeepEqual(got, want) {
@@ -185,7 +187,7 @@ func TestFacetRuntimeMembersUseExistingProvider(t *testing.T) {
 	if err := subscription.Activate(); err != nil {
 		t.Fatal(err)
 	}
-	ops := []Op{{"r", map[string]any{"count": float64(9)}}}
+	ops := []Op{{"r", chordjson.ObjectOf("count", float64(9))}}
 	if err := state.Apply(t.Context(), 4, ops); err != nil {
 		t.Fatal(err)
 	}

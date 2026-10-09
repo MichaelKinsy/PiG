@@ -1,4 +1,10 @@
+//go:build !pig_strip_syntax_highlight
+
 package tui
+
+// pi: packages/coding-agent/src/utils/syntax-highlight.ts
+
+// pi: packages/coding-agent/src/utils/html.ts
 
 import (
 	"regexp"
@@ -88,15 +94,15 @@ func TestSyntaxHighlightRendererUpstream(t *testing.T) {
 	})
 }
 
-// String interpolations take the string color through renderHighlightedHtml's scope inheritance; a styled nested token keeps its own color. Expected bytes are Pi 1.0.0 highlightCode output for the dark theme with truecolor.
-func TestSyntaxHighlightInterpolationInheritsTheString(t *testing.T) {
+// String interpolations take the text color of theme.ts's `subst` entry (Pi 1.0.4; before it they inherited the string color); a styled nested token keeps its own color. Expected bytes are Pi 1.0.4 highlightCode output for the dark theme with truecolor.
+func TestSyntaxHighlightInterpolationTakesTheTextColor(t *testing.T) {
 	withTrueColor(t, true)
 	SetTheme("dark")
-	styled := func(token, text string) string { return ActiveTheme().FgText(token, text) }
+	styled := func(token, text string) string { return ActiveTheme().Fg(token, text) }
 	for _, tc := range []struct{ lang, code, want string }{
-		{"javascript", "`a${x}b`", styled("syntaxString", "`a") + styled("syntaxString", "${x}") + styled("syntaxString", "b`")},
-		{"javascript", "`a${1}b`", styled("syntaxString", "`a") + styled("syntaxString", "${") + styled("syntaxNumber", "1") + styled("syntaxString", "}") + styled("syntaxString", "b`")},
-		{"python", `f"a{x}b"`, styled("syntaxString", `f"a`) + styled("syntaxString", "{x}") + styled("syntaxString", `b"`)},
+		{"javascript", "`a${x}b`", styled("syntaxString", "`a") + styled("text", "${x}") + styled("syntaxString", "b`")},
+		{"javascript", "`a${1}b`", styled("syntaxString", "`a") + styled("text", "${") + styled("syntaxNumber", "1") + styled("text", "}") + styled("syntaxString", "b`")},
+		{"python", `f"a{x}b"`, styled("syntaxString", `f"a`) + styled("text", "{x}") + styled("syntaxString", `b"`)},
 	} {
 		if got := HighlightCode(tc.code, tc.lang)[0]; got != tc.want {
 			t.Errorf("%s %q: got %q, want %q", tc.lang, tc.code, got, tc.want)
@@ -133,16 +139,17 @@ func TestSyntaxHighlightInterpolationEndsWithTheString(t *testing.T) {
 		})
 	}
 	nested := HighlightCode(`let s = "\(f(x) + y)"; let tailz = tailw`, "swift")[0]
-	if !strings.Contains(nested, th.SyntaxString+`\(f(x)`) {
-		t.Errorf("nested parens lost inheritance: %q", nested)
+	text := func(s string) string { return th.Fg("text", s) }
+	if !strings.Contains(nested, text(`\(f(x) `)) {
+		t.Errorf("nested parens lost the substitution color: %q", nested)
 	}
-	// The interpolation continues after the nested call closes, so " y)" keeps the string style.
-	if !strings.Contains(nested, th.SyntaxString+" y)") {
+	// The interpolation continues after the nested call closes, so " y)" keeps the substitution color.
+	if !strings.Contains(nested, text(" y)")) {
 		t.Errorf("interpolation ended at the nested paren: %q", nested)
 	}
-	// hljs keeps the string style across a multi-line substitution.
+	// hljs keeps the substitution scope across a multi-line substitution, and each line is colored on its own.
 	multi := strings.Join(HighlightCode("`${\n  bodyx\n}`", "javascript"), "\n")
-	if !regexp.MustCompile(regexp.QuoteMeta(th.SyntaxString) + `[^\x1b]*bodyx[^\x1b]*\x1b\[39m`).MatchString(multi) {
-		t.Errorf("multi-line substitution body not string-colored: %q", multi)
+	if !strings.Contains(multi, text("  bodyx")) {
+		t.Errorf("multi-line substitution body not text-colored: %q", multi)
 	}
 }

@@ -28,7 +28,7 @@ func TestMarkdownMatchingCodeSpanRuns(t *testing.T) {
 	}
 }
 func TestUserMessageBoxKeepsMarkersAndDoesNotEraseOutsideWidth(t *testing.T) {
-	block := NewUserMessageBlock("hello")
+	block := NewUserMessageComponent("hello", nil, 1, nil)
 	for range 3 {
 		lines := block.Render(20)
 		if len(lines) != 3 {
@@ -42,12 +42,12 @@ func TestUserMessageBoxKeepsMarkersAndDoesNotEraseOutsideWidth(t *testing.T) {
 			t.Fatal("cached render duplicated marker")
 		}
 	}
-	if got := NewUserMessageBlock("").Render(20); len(got) != 0 {
+	if got := NewUserMessageComponent("", nil, 1, nil).Render(20); len(got) != 0 {
 		t.Fatalf("empty user message should have no box rows: %q", got)
 	}
 }
 func TestUserMessagePreservesSourceMarkdownOptions(t *testing.T) {
-	output := widthx.StripAnsi(strings.Join(NewUserMessageBlock("1. first\n1. second\n\n\"\\\"").Render(24), "\n"))
+	output := widthx.StripAnsi(strings.Join(NewUserMessageComponent("1. first\n1. second\n\n\"\\\"", nil, 1, nil).Render(24), "\n"))
 	upstreamContains(t, output, "1. second")
 	upstreamExcludes(t, output, "2. second")
 	upstreamContains(t, output, "\"\\\"")

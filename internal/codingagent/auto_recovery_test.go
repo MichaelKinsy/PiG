@@ -2,7 +2,6 @@ package codingagent
 
 import (
 	"testing"
-	"time"
 
 	"github.com/MichaelKinsy/PiG/agent"
 	"github.com/MichaelKinsy/PiG/ai"
@@ -193,48 +192,37 @@ func TestIsRetryableError(t *testing.T) {
 // TestLatestCompactionTimestampMs verifies the resume guard helper: it returns
 // the timestamp of the most recent compaction on the active branch, which
 // checkAutoRecovery uses to skip stale pre-compaction usage after a resume.
-func TestLatestCompactionTimestampMs(t *testing.T) {
+// session-manager.ts getLatestCompactionEntry returns the last compaction entry of a branch, unaffected by later messages.
+func TestGetLatestCompactionEntryOverASessionBranch(t *testing.T) {
 	sm := tempSessionMgr(t)
 	sess, err := sm.Create("sess-lct", "")
 	if err != nil {
 		t.Fatalf("create: %v", err)
 	}
-
-	// No compaction yet → not found.
-	if _, ok := sess.LatestCompactionTimestampMs(); ok {
-		t.Fatal("expected no compaction on a fresh session")
+	if got := GetLatestCompactionEntry(sess.GetBranch()); got != nil {
+		t.Fatalf("fresh session: %+v", got)
 	}
 	if _, err := sess.AppendMessage(mkUserMsg("hi")); err != nil {
-		t.Fatalf("append user: %v", err)
+		t.Fatal(err)
 	}
 	if _, err := sess.AppendMessage(mkAssistantMsg("hello")); err != nil {
-		t.Fatalf("append assistant: %v", err)
+		t.Fatal(err)
 	}
-	if _, ok := sess.LatestCompactionTimestampMs(); ok {
-		t.Fatal("expected no compaction before one is appended")
+	if got := GetLatestCompactionEntry(sess.GetBranch()); got != nil {
+		t.Fatalf("before a compaction: %+v", got)
 	}
-
-	// Append a compaction; helper returns its timestamp.
-	before := time.Now().UnixMilli()
-	if _, err := sess.AppendCompaction("summary", "", 1000, nil, false, nil); err != nil {
-		t.Fatalf("append compaction: %v", err)
+	if _, err := sess.AppendCompaction("first", "", 1000, nil, false, nil); err != nil {
+		t.Fatal(err)
 	}
-	after := time.Now().UnixMilli()
-	ts, ok := sess.LatestCompactionTimestampMs()
-	if !ok {
-		t.Fatal("expected a compaction timestamp")
+	secondID, err := sess.AppendCompaction("second", "", 2000, nil, false, nil)
+	if err != nil {
+		t.Fatal(err)
 	}
-	if ts < before-2000 || ts > after+2000 {
-		t.Fatalf("compaction ts %d outside [%d,%d]", ts, before, after)
-	}
-
-	// Messages appended after the compaction do not change the latest
-	// compaction timestamp (it is still the most recent compaction on branch).
 	if _, err := sess.AppendMessage(mkUserMsg("more")); err != nil {
-		t.Fatalf("append user2: %v", err)
+		t.Fatal(err)
 	}
-	ts2, ok2 := sess.LatestCompactionTimestampMs()
-	if !ok2 || ts2 != ts {
-		t.Fatalf("latest compaction ts changed after later messages: got (%d,%v) want (%d,true)", ts2, ok2, ts)
+	got := GetLatestCompactionEntry(sess.GetBranch())
+	if got == nil || got.ID != secondID || got.Summary != "second" || got.TokensBefore != 2000 || got.Type != "compaction" {
+		t.Fatalf("latest compaction = %+v, want %s", got, secondID)
 	}
 }

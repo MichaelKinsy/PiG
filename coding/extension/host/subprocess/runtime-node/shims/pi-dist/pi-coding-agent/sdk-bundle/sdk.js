@@ -9,6 +9,7 @@ import {
   SessionImportFileNotFoundError,
   SessionManager,
   SettingsManager,
+  applyToolModifiers,
   convertToLlm,
   createAgentSessionFromServices,
   createAgentSessionRuntime,
@@ -17,9 +18,11 @@ import {
   formatNoModelsAvailableMessage,
   getBranchSelection,
   getDefaultSessionDir,
+  getToolListError,
   isInstallTelemetryEnabled,
+  isToolModifier,
   time
-} from "./chunk-XKIXC7ST.js";
+} from "./chunk-5PYVJCJM.js";
 import {
   createBashTool,
   createCodingTools,
@@ -32,15 +35,17 @@ import {
   createReadTool,
   createWriteTool,
   withFileMutationQueue
-} from "./chunk-TQVQARUB.js";
+} from "./chunk-3WVBPXSG.js";
 import "./chunk-M5LAR3ND.js";
 import "./chunk-RUCWNNX6.js";
-import "./chunk-SDVV3MJA.js";
-import "./chunk-EDGTPAH6.js";
+import {
+  createToolNameMatcher
+} from "./chunk-74O2H2KA.js";
+import "./chunk-ZQYGA4IN.js";
 import {
   getAgentDir,
   resolvePath
-} from "./chunk-H7ICR3WT.js";
+} from "./chunk-UMGFL43X.js";
 import {
   __name
 } from "./chunk-SHUYVCID.js";
@@ -193,11 +198,16 @@ async function createAgentSession(options = {}) {
   } else {
     thinkingLevel = clampThinkingLevel(model, thinkingLevel);
   }
-  const configuredDefaultToolNames = settingsManager.getDefaultTools();
-  const allowedToolNames = options.tools ?? (options.noTools === "all" ? [] : void 0);
+  const toolListError = options.tools ? getToolListError(options.tools) : void 0;
+  if (toolListError)
+    throw new Error(`Invalid tools option: ${toolListError}`);
+  const defaultToolNames = options.noTools ? [] : settingsManager.getDefaultTools() ?? DEFAULT_TOOL_NAMES;
+  const toolModifiers = options.tools?.some(isToolModifier) ? options.tools : void 0;
+  const selectedToolNames = toolModifiers ? applyToolModifiers(defaultToolNames, toolModifiers) : options.tools;
+  const allowedToolNames = toolModifiers ? options.noTools === "all" ? selectedToolNames : void 0 : options.tools ?? (options.noTools === "all" ? [] : void 0);
   const excludedToolNames = options.excludeTools;
-  const excludedToolNameSet = excludedToolNames ? new Set(excludedToolNames) : void 0;
-  const initialActiveToolNames = (options.tools ?? (options.noTools ? [] : configuredDefaultToolNames ?? DEFAULT_TOOL_NAMES)).filter((name) => !excludedToolNameSet?.has(name));
+  const isExcludedTool = excludedToolNames ? createToolNameMatcher(excludedToolNames) : void 0;
+  const initialActiveToolNames = (selectedToolNames ?? defaultToolNames).filter((name) => !isExcludedTool?.(name));
   const convertToLlmWithBlockImages = /* @__PURE__ */ __name((messages) => {
     const converted = convertToLlm(messages);
     if (!settingsManager.getBlockImages()) {
@@ -328,7 +338,8 @@ async function createAgentSession(options = {}) {
     modelRuntime,
     cacheWarmer,
     initialActiveToolNames,
-    usesDefaultTools: options.tools === void 0 && !options.noTools,
+    usesDefaultTools: (options.tools === void 0 || toolModifiers !== void 0) && !options.noTools,
+    defaultToolModifiers: toolModifiers,
     allowedToolNames,
     excludedToolNames,
     extensionRunnerRef,

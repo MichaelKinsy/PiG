@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/MichaelKinsy/PiG/internal/codingagent/tools"
+	"github.com/MichaelKinsy/PiG/ai"
 )
 
 func writeSettingsFixture(t *testing.T, path, body string) {
@@ -24,6 +24,7 @@ func writeSettingsFixture(t *testing.T, path, body string) {
 // TestSettingsExplicitZeroKeepsItsValue mirrors upstream settings-manager.ts
 // getters, which use `?? default`: an explicit 0 is a value, not a missing
 // setting, and a project 0 overrides a global value.
+// Pi: packages/coding-agent/src/core/settings-manager.ts:976 (SettingsManager.getBranchSummarySettings).
 func TestSettingsExplicitZeroKeepsItsValue(t *testing.T) {
 	cwd, agentDir := t.TempDir(), t.TempDir()
 	writeSettingsFixture(t, filepath.Join(agentDir, "settings.json"), `{
@@ -44,7 +45,7 @@ func TestSettingsExplicitZeroKeepsItsValue(t *testing.T) {
 	if got := sm.GetBranchSummarySettings().ReserveTokens; got != 0 {
 		t.Fatalf("branch summary reserve = %d, want 0", got)
 	}
-	if got := sm.GetProviderRetrySettings(); got.MaxRetries != 0 || got.TimeoutMs != 0 {
+	if got := sm.GetProviderRetrySettings(); got.MaxRetries == nil || *got.MaxRetries != 0 || got.TimeoutMs == nil || *got.TimeoutMs != 0 {
 		t.Fatalf("provider retry = %+v", got)
 	}
 	if got := mustTimeout(t)(sm.GetProviderRequestTimeoutMs()); got != 0 {
@@ -64,9 +65,10 @@ func TestSettingsExplicitZeroKeepsItsValue(t *testing.T) {
 }
 
 // TestSettingsAbsentValuesUseDefaults pins the upstream defaults.
+// Pi: packages/coding-agent/src/core/settings-manager.ts:976 (SettingsManager.getBranchSummarySettings).
 func TestSettingsAbsentValuesUseDefaults(t *testing.T) {
 	sm := NewSettingsManagerWithProjectTrust(t.TempDir(), t.TempDir(), false)
-	if got := sm.GetRetrySettings(); got.MaxRetries != 3 || got.BaseDelayMs != 2000 || got.MaxDelayMs != 60000 || !got.Enabled {
+	if got := sm.GetRetrySettings(); got.MaxRetries != 3 || got.BaseDelayMs != 2000 || got.MaxAgentDelayMs != 60000 || !got.Enabled {
 		t.Fatalf("retry defaults = %+v", got)
 	}
 	if got := compactionConfigForTest(t, sm); got != defaultCompactionConfig {
@@ -211,9 +213,6 @@ func TestSettingsPathGettersReturnInvalidFileURLErrors(t *testing.T) {
 			t.Errorf("%s(%q) = %q, want Node's fileURLToPath error", name, raw, got)
 		}
 	}
-	if _, err := tools.GetShellConfig(settings); err == nil {
-		t.Errorf("GetShellConfig with shellPath %q succeeded, want the fileURLToPath error", raw)
-	}
 }
 
 // TestSettingsShellPathNormalizesLikeUpstream covers CFG-07: upstream
@@ -247,6 +246,7 @@ func TestSettingsShellPathNormalizesLikeUpstream(t *testing.T) {
 // TestSettingsReadsUpstreamOnlyKeys covers CFG-08: defaultTools,
 // modelThinkingLevels (deep-merged with the project layer) and
 // retry.maxAgentDelayMs, which caps the agent retry delay.
+// Pi: packages/coding-agent/src/core/settings-manager.ts:877 (SettingsManager.getModelThinkingLevel); packages/coding-agent/src/core/settings-manager.ts:881 (SettingsManager.getAllModelThinkingLevels).
 func TestSettingsReadsUpstreamOnlyKeys(t *testing.T) {
 	cwd, agentDir := t.TempDir(), t.TempDir()
 	writeSettingsFixture(t, filepath.Join(agentDir, "settings.json"), `{
@@ -259,14 +259,23 @@ func TestSettingsReadsUpstreamOnlyKeys(t *testing.T) {
 	if got := sm.GetDefaultTools(); len(got) != 2 || got[0] != "read" || got[1] != "grep" {
 		t.Fatalf("GetDefaultTools = %v", got)
 	}
-	if got := sm.GetModelThinkingLevel("anthropic", "claude-sonnet-4-5"); got != "high" {
-		t.Fatalf("global per-model level = %q", got)
+	typed := sm.GetModelThinkingLevel("anthropic", "claude-sonnet-4-5")
+	if typed != ai.ThinkingLevel(ai.ThinkingHigh) {
+		t.Fatalf("global per-model level = %q", typed)
 	}
 	if got := sm.GetModelThinkingLevel("openai", "gpt-5.5"); got != "xhigh" {
 		t.Fatalf("project per-model level = %q, want the project override", got)
 	}
-	if got := sm.GetRetrySettings().MaxDelayMs; got != 5000 {
-		t.Fatalf("retry MaxDelayMs = %d, want maxAgentDelayMs 5000", got)
+	all := sm.GetAllModelThinkingLevels()
+	if len(all) != 2 || all["anthropic/claude-sonnet-4-5"] != "high" || all["openai/gpt-5.5"] != "xhigh" {
+		t.Fatalf("GetAllModelThinkingLevels = %v, want the global key merged with the project override", all)
+	}
+	all["anthropic/claude-sonnet-4-5"] = "off"
+	if got := sm.GetAllModelThinkingLevels()["anthropic/claude-sonnet-4-5"]; got != "high" {
+		t.Fatalf("GetAllModelThinkingLevels returned shared storage: %q", got)
+	}
+	if got := sm.GetRetrySettings().MaxAgentDelayMs; got != 5000 {
+		t.Fatalf("retry MaxAgentDelayMs = %d, want maxAgentDelayMs 5000", got)
 	}
 	if err := sm.SetTheme("dark"); err != nil {
 		t.Fatal(err)
@@ -297,6 +306,7 @@ func TestSettingsReloadKeepsUndrainedErrors(t *testing.T) {
 
 // TestAnalyticsSettings ports upstream first-time-setup.test.ts "analytics
 // settings".
+// Pi: packages/coding-agent/src/core/settings-manager.ts:1151 (SettingsManager.getEnableAnalytics); packages/coding-agent/src/core/settings-manager.ts:1155 (SettingsManager.getTrackingId).
 func TestAnalyticsSettings(t *testing.T) {
 	for _, tc := range []struct {
 		name       string
@@ -376,5 +386,14 @@ func TestSettingsDropsOnlyTheBadArrayElement(t *testing.T) {
 	packages := sm.GetPackages()
 	if len(packages) != 2 || packages[0].Source != "npm:a" || packages[1].Source != "npm:b" || len(packages[1].Skills) != 1 {
 		t.Fatalf("packages = %+v, want npm:a and npm:b", packages)
+	}
+}
+
+// settings-manager.ts getAllModelThinkingLevels spreads an absent map into a fresh empty record.
+// Pi: packages/coding-agent/src/core/settings-manager.ts:881 (SettingsManager.getAllModelThinkingLevels).
+func TestGetAllModelThinkingLevelsIsEmptyNotNil(t *testing.T) {
+	sm := NewSettingsManagerWithProjectTrust(t.TempDir(), t.TempDir(), true)
+	if got := sm.GetAllModelThinkingLevels(); got == nil || len(got) != 0 {
+		t.Fatalf("GetAllModelThinkingLevels = %#v, want an empty non-nil map", got)
 	}
 }

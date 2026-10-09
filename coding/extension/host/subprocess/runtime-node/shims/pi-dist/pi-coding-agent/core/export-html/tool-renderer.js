@@ -52,6 +52,8 @@ export function createToolHtmlRenderer(deps) {
             expanded,
             showImages: false,
             isError,
+            durationMs: undefined,
+            outputPad: 1,
         };
     };
     return {

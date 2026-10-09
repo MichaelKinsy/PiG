@@ -29,7 +29,7 @@ type ClientTuiServer struct {
 // ExperimentalClientTuiOptions supplies presentation services and one UI owner executor. RunOnMain completes a top-level turn after its FIFO QueueMicrotask checkpoint; owner reentry executes inline without draining. Create and Close run off-loop; Render and HandleInput run on-loop. Keep the executor alive until Close completes.
 type ExperimentalClientTuiOptions struct {
 	Command        ClientCommand
-	UI             tui.Renderer
+	UI             tui.TUI
 	Servers        []ClientTuiServer
 	FacetLoader    chord.FacetLoader
 	RequestRender  func()
@@ -42,8 +42,6 @@ type ExperimentalClientTuiOptions struct {
 type RunClientTuiOptions struct {
 	OpenClientRuntimeOptions
 	FacetLoader chord.FacetLoader
-	// ThemePaths are the resolved theme resources of a DefaultResourceLoader without extensions, skills, prompt templates or context files, in precedence order.
-	ThemePaths []string
 }
 
 type preparedClientSession struct {
@@ -77,8 +75,8 @@ func prepareClientSession(_ context.Context, command ClientCommand, servers []Cl
 		group.Wait()
 	}()
 	for _, server := range servers {
-		scope, err := server.Server.Open(chord.RemoteServiceSourceOpenOptions{Services: []string{
-			services.SessionDirectoryDefinition.Id(), services.SessionManagementDefinition.Id(), services.PresentationPluginsDefinition.Id(),
+		scope, err := server.Server.Open(chord.RemoteServiceSourceOpenOptions{Services: []chord.ServiceReference{
+			services.SessionDirectoryDefinition, services.SessionManagementDefinition, services.PresentationPluginsDefinition,
 		}})
 		if err != nil {
 			return preparedClientSession{}, err

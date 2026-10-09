@@ -29,6 +29,10 @@ export class Text {
         this.cachedWidth = undefined;
         this.cachedLines = undefined;
     }
+    setPaddingX(paddingX) {
+        this.paddingX = paddingX;
+        this.invalidate();
+    }
     invalidate() {
         this.cachedText = undefined;
         this.cachedWidth = undefined;

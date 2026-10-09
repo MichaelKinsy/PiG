@@ -35,7 +35,7 @@ func resumeThinkingMode(t *testing.T, hide bool, messages ...agent.AgentMessage)
 	}
 	var terminal bytes.Buffer
 	m := &InteractiveMode{
-		opts:          InteractiveOptions{SessionHandle: &recordingCompactHandle{inner: loaded}},
+		opts:          InteractiveModeOptions{SessionHandle: &recordingCompactHandle{inner: loaded}},
 		chatContainer: tui.NewContainer(),
 		tuiInst:       tui.NewWithOutput(&terminal, 80, 30),
 		toolByID:      make(map[string]*tui.ToolExecutionComponent),
@@ -62,6 +62,7 @@ func renderedChat(m *InteractiveMode) string {
 }
 
 // Ports packages/coding-agent/test/suite/regressions/8611-thinking-toggle-pending-bash-output.test.ts:26.
+// Pi: packages/coding-agent/src/core/settings-manager.ts:1046 (SettingsManager.getHideThinkingBlock).
 func TestInteractiveModeThinkingTogglePreservesPartialBashOutputUpstream(t *testing.T) {
 	for _, path := range []string{"component", "agent events and Ctrl+T"} {
 		t.Run(path, func(t *testing.T) {
@@ -72,7 +73,7 @@ func TestInteractiveModeThinkingTogglePreservesPartialBashOutputUpstream(t *test
 				args := json.RawMessage(`{"command":"echo first; sleep 10"}`)
 				var component *tui.ToolExecutionComponent
 				if path == "component" {
-					component = tui.NewToolExecutionComponent("bash", tui.HeaderForTool("bash", args, m.opts.CWD))
+					component = newToolCardForTest("bash", tui.HeaderForTool("bash", args, m.opts.CWD))
 					component.ShowImages = false
 					component.Cwd = m.opts.CWD
 					component.SetHeaderArgs(args)
@@ -202,5 +203,34 @@ func TestInteractiveMode_ResumeSpacesUserMessageAfterAssistant(t *testing.T) {
 	want := []string{"\x1b]133;A\x07", "FIRST_USER", "\x1b]133;B\x07\x1b]133;C\x07", "\x1b]133;A\x07", "ANSWER", "\x1b]133;B\x07\x1b]133;C\x07 TRAILING_THOUGHT", "", "\x1b]133;A\x07", "SECOND_USER", "\x1b]133;B\x07\x1b]133;C\x07"}
 	if strings.Join(lines, "\n") != strings.Join(want, "\n") {
 		t.Fatalf("resumed chat lines:\n%q\nwant:\n%q", lines, want)
+	}
+}
+
+// interactive-mode.ts setHiddenThinkingLabel: the extension label replaces "Thinking..." in every assistant block already in the chat and in blocks created afterwards; an empty label restores the default.
+func TestInteractiveModeSetHiddenThinkingLabelReachesExistingAndLaterBlocks(t *testing.T) {
+	m := resumeThinkingMode(t, true,
+		userMsg("question"),
+		assistantMsg("", ai.ThinkingContent{Thinking: "FIRST_THOUGHT"}),
+	)
+	m.renderSessionEntries()
+	if got := renderedChat(m); !strings.Contains(got, "Thinking...") {
+		t.Fatalf("default label missing:\n%s", got)
+	}
+
+	(&ExtUIContext{m: m}).SetHiddenThinkingLabel("Pondering")
+	got := renderedChat(m)
+	if !strings.Contains(got, "Pondering") || strings.Contains(got, "Thinking...") {
+		t.Fatalf("existing block kept the old label:\n%s", got)
+	}
+
+	later := m.newAssistantMessageBlock()
+	later.SetContent([]tui.AssistantSegment{{Thinking: true, Text: "SECOND_THOUGHT"}})
+	if rendered := stripANSITest(strings.Join(later.Render(80), "\n")); !strings.Contains(rendered, "Pondering") || strings.Contains(rendered, "SECOND_THOUGHT") {
+		t.Fatalf("a block created after the label was set rendered:\n%s", rendered)
+	}
+
+	(&ExtUIContext{m: m}).SetHiddenThinkingLabel("")
+	if got := renderedChat(m); !strings.Contains(got, "Thinking...") || strings.Contains(got, "Pondering") {
+		t.Fatalf("an empty label did not restore the default:\n%s", got)
 	}
 }

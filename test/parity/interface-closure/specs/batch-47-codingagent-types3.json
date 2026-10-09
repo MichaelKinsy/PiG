@@ -1,0 +1,106 @@
+[
+ {
+  "ids": [
+   "pkg:coding-agent/.#BranchPreparation"
+  ],
+  "targets": [
+   "internal/codingagent/compaction/branch_summarization.go#BranchPreparation"
+  ],
+  "struct": {
+   "file": "internal/codingagent/compaction/branch_summarization.go",
+   "type": "BranchPreparation"
+  },
+  "production": [
+   "call:internal/codingagent/compaction/branch_summarization.go#GenerateBranchSummary"
+  ],
+  "evidence": [
+   "test:internal/codingagent/compaction/branch_summarization_test.go#TestPrepareBranchEntries_SummaryEntryFitsPriority",
+   "test:internal/codingagent/compaction/branch_summarization_test.go#TestPrepareBranchEntries_TokenBudget"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "BranchPreparation: Go BranchPreparation has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#BranchSummaryResult"
+  ],
+  "targets": [
+   "internal/codingagent/compaction/branch_summarization.go#BranchSummaryResult"
+  ],
+  "struct": {
+   "file": "internal/codingagent/compaction/branch_summarization.go",
+   "type": "BranchSummaryResult"
+  },
+  "production": [
+   "call:coding/session.go#Session.navigateTree"
+  ],
+  "evidence": [
+   "test:coding/session_branch_summary_upstream_test.go#TestBranchSummarizationUpstream",
+   "test:internal/codingagent/compaction/branch_summarization_test.go#TestBranchSummaryFailureMatchesPi"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "BranchSummaryResult: Go BranchSummaryResult has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#CollectEntriesResult"
+  ],
+  "targets": [
+   "internal/codingagent/compaction/branch_summarization.go#CollectEntriesResult"
+  ],
+  "struct": {
+   "file": "internal/codingagent/compaction/branch_summarization.go",
+   "type": "CollectEntriesResult"
+  },
+  "production": [
+   "call:coding/session.go#Session.navigateTree"
+  ],
+  "evidence": [
+   "test:internal/codingagent/compaction/branch_summarization_test.go#TestCollectEntriesForBranchSummary",
+   "test:internal/codingagent/compaction/branch_summarization_test.go#TestCollectEntries_NoOldLeaf"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "CollectEntriesResult: Go CollectEntriesResult has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#ModelCycleResult"
+  ],
+  "targets": [
+   "coding/session_model_cycle.go#ModelCycleResult"
+  ],
+  "struct": {
+   "file": "coding/session_model_cycle.go",
+   "type": "ModelCycleResult"
+  },
+  "production": [
+   "call:coding/session_model_cycle.go#Session.CycleModel"
+  ],
+  "evidence": [
+   "test:coding/model_registration_snapshot_test.go#TestSessionCycleModelSeesExtensionProviderRegistration",
+   "test:coding/session_model_extension_order_test.go#TestSessionModelCycleBoundaries"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "ModelCycleResult: Go ModelCycleResult has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#ModelInfo"
+  ],
+  "targets": [
+   "coding/rpcclient/types.go#ModelInfo"
+  ],
+  "struct": {
+   "file": "coding/rpcclient/types.go",
+   "type": "ModelInfo"
+  },
+  "production": [
+   "call:coding/rpcclient/commands.go#RpcClient.GetAvailableModels"
+  ],
+  "evidence": [
+   "test:coding/rpcclient/rpc_mode_test.go#TestRpcModeShouldGetAvailableModels"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "ModelInfo: Go ModelInfo has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+ }
+]

@@ -4,10 +4,12 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"slices"
 	"strings"
 	"sync/atomic"
 	"testing"
 
+	"github.com/MichaelKinsy/PiG/agent"
 	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/coding/extension/host/inproc"
 )
@@ -72,30 +74,31 @@ func TestEmitContext_StaleRunnerReturnsErrStaleContext(t *testing.T) {
 // (shallow) clone of the input messages, not the input slice itself.
 func TestEmitContext_NoHandlersReturnsCloneOfInput(t *testing.T) {
 	r := inproc.NewRunner(nil, ".")
-	in := []extension.AgentMessage{"a", "b", "c"}
+	in := []extension.AgentMessage{textMsg("a"), textMsg("b"), textMsg("c")}
 	got, err := r.EmitContext(context.Background(), in)
 	if err != nil {
 		t.Fatalf("err = %v", err)
 	}
-	if len(got) != 3 || got[0] != "a" || got[2] != "c" {
+	if len(got) != 3 || msgText(got[0]) != "a" || msgText(got[2]) != "c" {
 		t.Errorf("got = %v, want [a b c]", got)
 	}
 	// Verify the runner returned a clone, not the input slice. Mutate
 	// got[0] and confirm in[0] is unchanged.
-	got[0] = "MUTATED"
-	if in[0] != "a" {
+	got[0] = textMsg("MUTATED")
+	if msgText(in[0]) != "a" {
 		t.Errorf("input was mutated through returned slice; want defensive clone")
 	}
 }
 
+// Pi: packages/coding-agent/src/core/extensions/runner.ts:1298 (Runner.emitContext).
 func TestEmitContextDeepClonesNestedMessageData(t *testing.T) {
 	r := inproc.NewRunner(nil, ".")
-	nested := map[string]any{"content": []any{map[string]any{"text": "original"}}}
-	got, err := r.EmitContext(context.Background(), []extension.AgentMessage{nested})
+	nested := map[string]any{"role": "custom", "content": []any{map[string]any{"text": "original"}}}
+	got, err := r.EmitContext(context.Background(), []extension.AgentMessage{{Custom: nested}})
 	if err != nil {
 		t.Fatal(err)
 	}
-	gotContent := got[0].(map[string]any)["content"].([]any)
+	gotContent := got[0].Custom["content"].([]any)
 	gotContent[0].(map[string]any)["text"] = "mutated"
 	originalContent := nested["content"].([]any)
 	if text := originalContent[0].(map[string]any)["text"]; text != "original" {
@@ -108,15 +111,15 @@ func TestEmitContextDeepClonesNestedMessageData(t *testing.T) {
 func TestEmitContext_HandlerCanRewriteMessages(t *testing.T) {
 	exts := []extension.Extension{
 		extWithContextHandler("/ext/a", func(extension.ContextEvent, context.Context) *extension.ContextEventResult {
-			return &extension.ContextEventResult{Messages: []extension.AgentMessage{"replaced"}}
+			return &extension.ContextEventResult{Messages: []extension.AgentMessage{textMsg("replaced")}}
 		}),
 	}
 	r := inproc.NewRunner(exts, ".")
-	got, err := r.EmitContext(context.Background(), []extension.AgentMessage{"original"})
+	got, err := r.EmitContext(context.Background(), []extension.AgentMessage{textMsg("original")})
 	if err != nil {
 		t.Fatalf("err = %v", err)
 	}
-	if len(got) != 1 || got[0] != "replaced" {
+	if len(got) != 1 || msgText(got[0]) != "replaced" {
 		t.Errorf("got = %v, want [replaced]", got)
 	}
 }
@@ -127,21 +130,21 @@ func TestEmitContext_ChainCompounds(t *testing.T) {
 	exts := []extension.Extension{
 		extWithContextHandler("/ext/a", func(ev extension.ContextEvent, _ context.Context) *extension.ContextEventResult {
 			next := append([]extension.AgentMessage(nil), ev.Messages...)
-			next = append(next, "+a")
+			next = append(next, textMsg("+a"))
 			return &extension.ContextEventResult{Messages: next}
 		}),
 		extWithContextHandler("/ext/b", func(ev extension.ContextEvent, _ context.Context) *extension.ContextEventResult {
 			next := append([]extension.AgentMessage(nil), ev.Messages...)
-			next = append(next, "+b")
+			next = append(next, textMsg("+b"))
 			return &extension.ContextEventResult{Messages: next}
 		}),
 	}
 	r := inproc.NewRunner(exts, ".")
-	got, err := r.EmitContext(context.Background(), []extension.AgentMessage{"start"})
+	got, err := r.EmitContext(context.Background(), []extension.AgentMessage{textMsg("start")})
 	if err != nil {
 		t.Fatalf("err = %v", err)
 	}
-	if len(got) != 3 || got[0] != "start" || got[1] != "+a" || got[2] != "+b" {
+	if len(got) != 3 || msgText(got[0]) != "start" || msgText(got[1]) != "+a" || msgText(got[2]) != "+b" {
 		t.Errorf("got = %v, want [start +a +b] (chain must compound)", got)
 	}
 }
@@ -155,8 +158,8 @@ func TestEmitContext_NilMessagesInResultIsNoOp(t *testing.T) {
 		}),
 	}
 	r := inproc.NewRunner(exts, ".")
-	got, _ := r.EmitContext(context.Background(), []extension.AgentMessage{"keep"})
-	if len(got) != 1 || got[0] != "keep" {
+	got, _ := r.EmitContext(context.Background(), []extension.AgentMessage{textMsg("keep")})
+	if len(got) != 1 || msgText(got[0]) != "keep" {
 		t.Errorf("got = %v, want [keep] (nil Messages is no-op)", got)
 	}
 }
@@ -206,7 +209,7 @@ func TestEmitContext_SubprocessMessagesNotAListIsHandlerError(t *testing.T) {
 	}}
 	replacing := newFakeExtension("/ext/replacing")
 	replacing.Handlers["context"] = []extension.HandlerFn{func(...any) (any, error) {
-		return json.RawMessage(`{"messages":["replaced"],"_pigContextUnchanged":false}`), nil
+		return json.RawMessage(`{"messages":[{"role":"custom","content":"replaced"}],"_pigContextUnchanged":false}`), nil
 	}}
 	r := inproc.NewRunner([]extension.Extension{malformed, replacing}, ".")
 	var failures []string
@@ -215,15 +218,54 @@ func TestEmitContext_SubprocessMessagesNotAListIsHandlerError(t *testing.T) {
 			failures = append(failures, e.ExtensionPath)
 		}
 	})
-	got, err := r.EmitContext(context.Background(), []extension.AgentMessage{"original"})
+	got, err := r.EmitContext(context.Background(), []extension.AgentMessage{textMsg("original")})
 	if err != nil {
 		t.Fatalf("err = %v", err)
 	}
 	if len(failures) != 1 || failures[0] != "/ext/malformed" {
 		t.Fatalf("context handler errors = %v, want [/ext/malformed]", failures)
 	}
-	if len(got) != 1 || got[0] != "replaced" {
+	if len(got) != 1 || msgText(got[0]) != "replaced" {
 		t.Fatalf("got = %v, want [replaced]", got)
+	}
+}
+
+// Pi: packages/coding-agent/src/core/extensions/runner.ts:809-839 (emitContext) hands a handler's
+// messages on as AgentMessage values. A subprocess result whose message has no role is not an
+// AgentMessage, so the host reports it as that handler's error, keeps the context the earlier
+// handlers produced, and still runs the next handler.
+func TestEmitContext_SubprocessMessageWithoutRoleIsHandlerError(t *testing.T) {
+	roleless := newFakeExtension("/ext/roleless")
+	roleless.Handlers["context"] = []extension.HandlerFn{func(...any) (any, error) {
+		return json.RawMessage(`{"messages":[{"content":"no role"}],"_pigContextUnchanged":false}`), nil
+	}}
+	var seen []string
+	observer := newFakeExtension("/ext/observer")
+	observer.Handlers["context"] = []extension.HandlerFn{func(args ...any) (any, error) {
+		for _, message := range args[0].(extension.ContextEvent).Messages {
+			seen = append(seen, msgText(message))
+		}
+		return nil, nil
+	}}
+	r := inproc.NewRunner([]extension.Extension{roleless, observer}, ".")
+	var failures []string
+	r.AddErrorListener(func(e *extension.ExtensionError) {
+		if e.Event == "context" {
+			failures = append(failures, e.ExtensionPath)
+		}
+	})
+	got, replaced, err := r.EmitContextTracked(context.Background(), []extension.AgentMessage{textMsg("original")})
+	if err != nil {
+		t.Fatalf("err = %v", err)
+	}
+	if !slices.Equal(failures, []string{"/ext/roleless"}) {
+		t.Fatalf("context handler errors = %v, want [/ext/roleless]", failures)
+	}
+	if !slices.Equal(seen, []string{"original"}) {
+		t.Fatalf("next handler saw %v, want [original]", seen)
+	}
+	if replaced || len(got) != 1 || msgText(got[0]) != "original" {
+		t.Fatalf("got = %v replaced=%t, want [original] unreplaced", got, replaced)
 	}
 }
 
@@ -253,6 +295,7 @@ func TestEmitBPR_NoHandlersReturnsInputUnchanged(t *testing.T) {
 
 // TestEmitBPR_ChainCompounds: handler A wraps with "{a:...}", handler B
 // wraps with "{b:...}". Final payload reflects both wraps.
+// Pi: packages/coding-agent/src/core/extensions/runner.ts:1361 (Runner.emitBeforeProviderRequest); packages/coding-agent/src/core/extensions/types.ts:882 (BeforeProviderRequestEvent.payload).
 func TestEmitBPR_ChainCompounds(t *testing.T) {
 	exts := []extension.Extension{
 		extWithBPRHandler("/ext/a", func(ev extension.BeforeProviderRequestEvent, _ context.Context) any {
@@ -445,4 +488,39 @@ func TestEmitUserBash_AcceptsTypedGoResult(t *testing.T) {
 	if result, _ := got.Result.(map[string]any); result["output"] != "typed" || result["exitCode"] != 3.0 {
 		t.Fatalf("result = %#v", got.Result)
 	}
+}
+
+// Pi runner.ts emitBeforeProviderRequest: a handler's BeforeProviderRequestEventResult (`unknown`) replaces the payload and
+// the next handler sees it; an untyped nil (`undefined`) leaves it.
+// Pi: packages/coding-agent/src/core/extensions/types.ts:882 (BeforeProviderRequestEvent.payload).
+func TestEmitBPR_ResultTypeReplacesPayload(t *testing.T) {
+	var result extension.BeforeProviderRequestEventResult = map[string]any{"model": "replaced"}
+	exts := []extension.Extension{
+		extWithBPRHandler("/ext/a", func(extension.BeforeProviderRequestEvent, context.Context) any { return result }),
+		extWithBPRHandler("/ext/b", func(ev extension.BeforeProviderRequestEvent, _ context.Context) any {
+			var next extension.BeforeProviderRequestEventResult
+			if payload, ok := ev.Payload.(map[string]any); ok && payload["model"] == "replaced" {
+				next = map[string]any{"seen": true}
+			}
+			return next
+		}),
+	}
+	got, err := inproc.NewRunner(exts, ".").EmitBeforeProviderRequest(context.Background(), map[string]any{"model": "original"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if m, ok := got.(map[string]any); !ok || m["seen"] != true {
+		t.Fatalf("payload = %#v, want the second handler's result after the first replaced the payload", got)
+	}
+}
+
+// textMsg is a custom-role AgentMessage distinguished by its content text.
+func textMsg(text string) extension.AgentMessage {
+	return agent.AgentMessage{Custom: map[string]any{"role": "custom", "content": text}}
+}
+
+// msgText reads the content text textMsg stored.
+func msgText(message extension.AgentMessage) string {
+	text, _ := message.Custom["content"].(string)
+	return text
 }

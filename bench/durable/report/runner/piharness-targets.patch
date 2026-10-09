@@ -1,0 +1,242 @@
+--- a/bench/targets.ts
++++ b/bench/targets.ts
+@@ -1,4 +1,5 @@
+ import { execFileSync } from "node:child_process"
+-import { cpSync, mkdtempSync, readdirSync, readFileSync } from "node:fs"
++import { createHash } from "node:crypto"
++import { cpSync, existsSync, mkdtempSync, readdirSync, readFileSync } from "node:fs"
+ import { builtinModules } from "node:module"
+ import { cpus, tmpdir } from "node:os"
+@@ -17,4 +18,6 @@
+ 
+ const version = (name: string) => JSON.parse(readFileSync(`node_modules/${name}/package.json`, "utf8")).version as string
++// agents is installed only for the PiHarness targets (RUNNER-SPEC 5a); without it every other target still builds and runs.
++const agentsVersion = () => existsSync("node_modules/agents/package.json") ? version("agents") : "not installed"
+ 
+ // A pi checkout to build pi-durable, pi-ai, and chord from source for the "pi-head" target.
+@@ -29,4 +32,9 @@
+   "pig-tinygo": { entry: "src/pig.ts", objects: { PI: "PiDO" }, version: process.env.PIG_VERSION ?? "head", core: "core-tinygo.wasm" },
+   "pig-go": { entry: "src/pig.ts", objects: { PI: "PiDO" }, version: process.env.PIG_VERSION ?? "head", core: "core-go.wasm" },
++  // Pi and the PiG core under the Cloudflare Agents SDK's PiHarness (agents/harness/pi, beta). Both use its Durable Object
++  // SQLite adapter's table names (pi_) and its Lifecycle wake; piharness-pig's synchronous SQL goes through the adapter's
++  // Prefixer but not its operation queue (RUNNER-SPEC 5a).
++  "piharness-pi": { entry: "src/piharness.ts", objects: { PI: "PiDO" }, version: `${process.env.PI_HEAD_VERSION ?? "head"} agents ${agentsVersion()}` },
++  "piharness-pig": { entry: "src/piharness-pig.ts", objects: { PI: "PiDO" }, version: `${process.env.PIG_VERSION ?? "head"} agents ${agentsVersion()}`, core: "core-tinygo.wasm" },
+   // The empty-target floor (src/empty.ts): the same request path with no agent; it has no history to seed.
+   empty: { entry: "src/empty.ts", objects: { PI: "PiDO" }, version: "floor", empty: true },
+@@ -79,4 +87,49 @@
+ }
+ 
++// The bench fork of agents/harness/pi (the owner's ruling: we may fork any dependency): its DurableObjectSqliteDatabase
++// gains syncStorage(), a ctx.storage-shaped handle whose statements pass through the adapter's own Prefixer, for the PiG
++// core's synchronous SQL (src/pig-sqlite.ts). Pi's path through the adapter is unchanged. The fork applies only to agents
++// 0.28.0's dist/harness/pi/index.js, by sha256.
++const AGENTS_PI_SHA256 = "5f2b329b2c5b4da97ad0e61e68267a02a5a5683b12895eabfbdfbbee705e9d73"
++const AGENTS_PI_CLOSE = `	close() {
++		return _classPrivateFieldGet2(_queue, this).run(() => void 0);
++	}
++`
++const agentsFork: Plugin = {
++  name: "agents-pi-fork",
++  setup(b) {
++    b.onLoad({ filter: /[\\/]agents[\\/]dist[\\/]harness[\\/]pi[\\/]index\.js$/ }, args => {
++      const bytes = readFileSync(args.path)
++      const sha256 = createHash("sha256").update(bytes).digest("hex")
++      const source = bytes.toString("utf8")
++      if (sha256 !== AGENTS_PI_SHA256 || source.split(AGENTS_PI_CLOSE).length !== 2) throw new Error(`agents-pi-fork: ${args.path} (sha256 ${sha256}) is not agents 0.28.0's adapter`)
++      return {
++        contents: source.replace(AGENTS_PI_CLOSE, AGENTS_PI_CLOSE + `	syncStorage() {
++		const storage = _classPrivateFieldGet2(_storage, this);
++		const prefixer = _classPrivateFieldGet2(_prefixer, _classPrivateFieldGet2(_statements2, this));
++		return { sql: { exec: (sql, ...params) => storage.sql.exec(prefixer.rewrite(sql), ...params) }, transactionSync: work => storage.transactionSync(work) };
++	}
++`), loader: "js",
++      }
++    })
++  },
++}
++
++// The PiG core under PiHarness: fromPig, with pi-durable/storage/sqlite resolved to the PiG store over PiHarness's adapter.
++const fromPigUnderHarness: Plugin = {
++  name: "pig-piharness",
++  setup(b) {
++    b.onResolve({ filter: /^@earendil-works\/pi-durable\/storage\/sqlite$/ }, () => ({ path: resolve("src/pig-sqlite.ts") }))
++    b.onResolve({ filter: /^pig-facade\// }, args => ({ path: join(pigHost(), "src/facade", args.path.slice("pig-facade/".length)) }))
++    b.onResolve({ filter: /^pig-host\// }, args => ({ path: join(pigHost(), "src", args.path.slice("pig-host/".length)) }))
++    b.onResolve({ filter: /^pi-source\// }, args => ({ path: join(process.cwd(), PI_SOURCE, "packages/durable/src", args.path.slice("pi-source/".length)) }))
++    fromPig.setup(b)
++    agentsFork.setup(b)
++  },
++}
++
++const plugins = (name: Target): Plugin[] =>
++  name === "pi-head" ? [fromSource] : name === "piharness-pi" ? [fromSource, agentsFork] : name === "piharness-pig" ? [fromPigUnderHarness] : TARGETS[name]!.core ? [fromPig] : []
++
+ export type Target = keyof typeof TARGETS
+ 
+@@ -113,5 +166,5 @@
+     conditions: ["workerd", "worker", "browser", "import"], mainFields: ["module", "main"],
+     external: ["cloudflare:*", "node:*", ...builtinModules], logLevel: "error",
+-    plugins: name === "pi-head" ? [fromSource] : TARGETS[name]!.core ? [fromPig] : [],
++    plugins: plugins(name),
+   })
+   if (core) cpSync(join(pigHost(), "dist", core), `${dist}/${name}/pig-core.wasm`)
+--- a/package.json
++++ b/package.json
+@@ -13,5 +13,7 @@
+     "@earendil-works/pi-ai": "1.0.4",
+     "@earendil-works/pi-durable": "1.0.4",
++    "agents": "0.28.0",
+     "effect": "4.0.0-rc.115",
++    "nanoid": "5.1.16",
+     "tardie": "0.44.0"
+   },
+--- /dev/null
++++ b/src/pig-sqlite.ts
+@@ -0,0 +1,24 @@
++// pi-durable/storage/sqlite for the PiG core under PiHarness. PiHarness opens its store with
++// `SqliteStorage.open(new DurableObjectSqliteDatabase(ctx.storage, { prefix }))` and builds its table-name Prefixer from
++// `SQLITE_MIGRATIONS`. The PiG core runs synchronous SQL (ABI section 3), so its store runs on the same adapter's
++// synchronous handle (`syncStorage()`, the bench fork of agents/harness/pi in bench/targets.ts): the same Prefixer, the
++// same `ctx.storage`, so PiG's tables are pi_-prefixed exactly as Pi's are.
++// @ts-expect-error resolved by the bench build to the PiG checkout's facade sources
++import { SqlStorage, type StorageProfile } from "pig-facade/storage.ts"
++// @ts-expect-error resolved by the bench build to the PiG checkout's host sources
++import { doStore } from "pig-host/store-do.ts"
++// @ts-expect-error resolved by the bench build to the Pi checkout's sources
++import { SQLITE_MIGRATIONS as PI_MIGRATIONS } from "pi-source/storage/sqlite/migrations.ts"
++
++// The PiG core writes Pi's schema (row identity) and one table of its own; the Prefixer prefixes every name listed here.
++export const SQLITE_MIGRATIONS = [...PI_MIGRATIONS, { version: -1, statements: ["CREATE TABLE IF NOT EXISTS pig_sidecar"] }]
++
++type SyncHandle = { syncStorage(): DurableObjectStorage }
++
++class PiHarnessStorage extends SqlStorage {
++  readonly profile: StorageProfile = "cloudflare-do"
++  constructor(private readonly db: SyncHandle) { super() }
++  protected async openStore() { return { ...doStore(this.db.syncStorage()), close() {} } }
++}
++
++export const SqliteStorage = { open: async (db: SyncHandle) => new PiHarnessStorage(db) }
+--- /dev/null
++++ b/src/piharness-pig.ts
+@@ -0,0 +1,14 @@
++// PiG Durable under PiHarness: src/piharness.ts, unchanged, on the production PiG core (as src/pig.ts is pi-head on it).
++// The build resolves pi-durable to the core's facade and pi-durable/storage/sqlite, which PiHarness opens its store with,
++// to src/pig-sqlite.ts: the PiG store over PiHarness's own adapter.
++import { useCore } from "@earendil-works/pi-durable"
++// @ts-expect-error the bundle supplies the compiled core module
++import core from "./pig-core.wasm"
++import { probeWasm } from "./probe.ts"
++
++declare const BENCH_PROBE: boolean
++if (BENCH_PROBE) probeWasm()
++useCore(core)
++
++export * from "./piharness.ts"
++export { default } from "./piharness.ts"
+--- /dev/null
++++ b/src/piharness.ts
+@@ -0,0 +1,102 @@
++// Pi under the Cloudflare Agents SDK's PiHarness (agents/harness/pi, beta): pi-head's agent, scripted model, and tool,
++// opened by PiHarness over its own Durable Object SQLite adapter (tables prefixed pi_) and driven through its Lifecycle
++// (one wake job per session, a 30 s heartbeat alarm while tasks run). A turn is PiHarness's submit and wait, then the
++// root conversation's waitForIdle, as pi-head's turn. The piharness-pig target is this file on the PiG core.
++import { DurableObject } from "cloudflare:workers"
++import { PiHarness } from "agents/harness/pi"
++import { Lifecycle } from "agents/lifecycle"
++import { BACKGROUND_CONTEXT as context } from "@earendil-works/chord/context"
++import { Type } from "@earendil-works/pi-ai"
++import { createModels } from "@earendil-works/pi-ai/models"
++import { fauxAssistantMessage, fauxProvider, fauxToolCall, type FauxResponseFactory } from "@earendil-works/pi-ai/providers/faux"
++import { createRegistry, defineExtension, defineTool, Harness, ROOT_CONVERSATION_ID, section, type Conversation } from "@earendil-works/pi-durable"
++import { fingerprint, next, payload, type Message, type Turn } from "./plan.ts"
++import { probeSql, take } from "./probe.ts"
++import { serve, tables, type Bench } from "./serve.ts"
++
++declare const BENCH_PROBE: boolean
++
++const SYSTEM = "You are a benchmark agent. Call lookup as instructed, then answer briefly."
++
++const faux = fauxProvider({ models: [{ id: "scripted-1", contextWindow: 1e9 }], tokenSize: { min: 1e9, max: 1e9 } })
++const models = createModels()
++models.setProvider(faux.provider)
++
++type Block = { type: string; text?: string; arguments?: { n?: number } }
++let seen: Message[] = []
++
++const respond: FauxResponseFactory = transcript => {
++  faux.appendResponses([respond])
++  seen = transcript.messages.filter(m => ["user", "assistant", "toolResult"].includes(m.role)).map(m => {
++    const blocks: Block[] = typeof m.content === "string" ? [{ type: "text", text: m.content }] : m.content as Block[]
++    const text = blocks.filter(b => b.type === "text").map(b => b.text).join("")
++    const calls = blocks.filter(b => b.type === "toolCall").map(b => b.arguments!.n!)
++    return { role: m.role === "toolResult" ? "tool" as const : m.role as "user" | "assistant", text, ...(calls.length ? { calls } : {}) }
++  })
++  const step = next(seen)
++  return "call" in step
++    ? fauxAssistantMessage(fauxToolCall("lookup", { n: step.call }, { id: `call-${step.call}` }), { stopReason: "toolUse" })
++    : fauxAssistantMessage(step.answer)
++}
++faux.setResponses([respond])
++
++const lookup = defineTool({
++  name: "lookup",
++  description: "Look up record number n",
++  parameters: Type.Object({ n: Type.Number() }),
++  execute: async ({ n }) => ({ content: [{ type: "text", text: payload(n) }] }),
++})
++
++const registry = createRegistry()
++registry.install(defineExtension({ name: "bench", tools: [lookup], sections: [section("preamble", () => SYSTEM, { tag: false })] }))
++
++export class PiDO extends DurableObject implements Bench {
++  private root?: Conversation
++  readonly harness = new PiHarness({
++    harness: ({ storage, context }) => Harness.open(storage, { models, registry, settings: { compaction: { enabled: false } } }, context),
++    defaults: { model: faux.getModel() },
++  })
++  // RPC bypasses the Lifecycle's fetch and alarm entry points, so every method starts it (one shared startup).
++  readonly lifecycle = Lifecycle.install(this).use(this.harness)
++
++  constructor(ctx: DurableObjectState, env: unknown) {
++    super(ctx, env)
++    if (BENCH_PROBE) probeSql(ctx.storage.sql)
++  }
++
++  async probe() { return take() }
++
++  private async open() {
++    await this.lifecycle.start()
++    if (this.root) return this.root
++    const root = await (await this.harness.pi()).conversation(ROOT_CONVERSATION_ID, context)
++    if (!root) throw new Error("PiHarness opened no root conversation")
++    return this.root = root
++  }
++
++  async wake() { await this.open() }
++
++  async turn({ id, text }: Turn) {
++    const root = await this.open()
++    await this.harness.submit(text, { operationId: id })
++    const settled = await this.harness.wait(id)
++    if (settled.status !== "done") throw new Error(JSON.stringify(settled))
++    await root.waitForIdle(context)
++  }
++
++  async seed(turns: Turn[]) {
++    for (const turn of turns) await this.turn(turn)
++    return fingerprint(seen)
++  }
++
++  // Refuses a store that ran outside the adapter's prefix: every table but the SDK's own (cf_) must be a pi_ table.
++  async stats() {
++    const sql = this.ctx.storage.sql
++    const found = tables(sql)
++    const bare = Object.keys(found).filter(name => !name.startsWith("pi_") && !name.startsWith("cf_"))
++    if (bare.length) throw new Error(`PiHarness store has tables outside the pi_ prefix: ${bare.join(", ")}`)
++    return { bytes: sql.databaseSize, tables: found }
++  }
++}
++
++export default serve<{ PI: DurableObjectNamespace<PiDO> }>((env, object) => env.PI.getByName(object))

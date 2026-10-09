@@ -27,15 +27,15 @@ func TestMetaCatalogMatchesPinnedProviderDefinition(t *testing.T) {
 			t.Errorf("meta/%s = api %q base %q reasoning %v", id, model.API, model.BaseURL, model.Reasoning)
 		}
 	}
-	assertThinkingLevelMap(t, mustGeneratedModel(t, "meta", "muse-spark-1.3"), map[ThinkingLevel]string{
+	assertThinkingLevelMap(t, mustGeneratedModel(t, "meta", "muse-spark-1.3"), map[ModelThinkingLevel]string{
 		ThinkingOff: "", ThinkingMinimal: "minimal", ThinkingLow: "low", ThinkingMedium: "medium", ThinkingHigh: "high", ThinkingXHigh: "xhigh", ThinkingMax: "max",
 	})
-	assertThinkingLevelMap(t, mustGeneratedModel(t, "meta", "muse-spark-1.2"), map[ThinkingLevel]string{ThinkingMax: ""})
+	assertThinkingLevelMap(t, mustGeneratedModel(t, "meta", "muse-spark-1.2"), map[ModelThinkingLevel]string{ThinkingMax: ""})
 }
 
 // captureMetaResponsesRequest streams one request for a Meta catalog model as
 // the model runtime configures it and returns the request URL, headers, and body.
-func captureMetaResponsesRequest(t *testing.T, modelID string, level ThinkingLevel) (string, http.Header, map[string]any) {
+func captureMetaResponsesRequest(t *testing.T, modelID string, level ModelThinkingLevel) (string, http.Header, map[string]any) {
 	t.Helper()
 	model := mustGeneratedModel(t, "meta", modelID)
 	var requestURL string
@@ -53,7 +53,7 @@ func captureMetaResponsesRequest(t *testing.T, modelID string, level ThinkingLev
 		}
 		return &http.Response{StatusCode: 200, Header: http.Header{"Content-Type": []string{"text/event-stream"}}, Body: io.NopCloser(strings.NewReader("data: {\"type\":\"response.completed\",\"response\":{\"status\":\"completed\"}}\n\n"))}, nil
 	})}
-	stream, err := provider.Stream(context.Background(), NormalizeContext(Context{SystemPrompt: "be brief", Messages: []Message{UserMessage{Content: UserText("hi")}}}), StreamOptions{Thinking: level})
+	stream, err := provider.Stream(context.Background(), NormalizeContext(Context{SystemPrompt: "be brief", Messages: []Message{UserMessage{Content: UserText("hi")}}}), StreamOptions{Thinking: level.ReasoningOption()})
 	if err != nil {
 		t.Fatal(err)
 	}

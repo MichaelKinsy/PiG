@@ -6,11 +6,13 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"reflect"
+	"slices"
 	"sync"
 	"sync/atomic"
 
+	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/internal/chord/chordjson"
-	"github.com/MichaelKinsy/PiG/internal/chord/delta"
 )
 
 // Ports packages/chord/src/services/state.ts.
@@ -201,6 +203,7 @@ type stateCore struct {
 
 	// Authoritative states only: the revision tracker, and the lock that serializes Change and Replace.
 	changeMu sync.Mutex
+	// tracker records the state's operations the way tracker.ts does, for an object or an array root.
 	tracker  *delta.Tracker
 	mutating atomic.Uint64 // goroutine running a Change mutate callback
 }
@@ -352,14 +355,107 @@ func typedAsyncListener[T any](listener func(T, context.Context, ReplicatedState
 	}
 }
 
+// decodeValue decodes a revision into T. Where T holds the revision's objects as dynamic values (any, []any, *[]any), they are *chordjson.Object values with the revision's key order; a Go map or struct has its own field order.
 func decodeValue[T any](value JsonValue) (T, error) {
 	var decoded T
 	encoded, err := json.Marshal(value)
 	if err != nil {
 		return decoded, err
 	}
+	if holdsDynamicJSON(reflect.TypeFor[T]()) {
+		ordered, err := chordjson.Decode(encoded)
+		if err != nil {
+			return decoded, err
+		}
+		target := reflect.ValueOf(&decoded).Elem()
+		for target.Kind() == reflect.Pointer {
+			target.Set(reflect.New(target.Type().Elem()))
+			target = target.Elem()
+		}
+		if ordered == nil {
+			return decoded, nil
+		}
+		source := reflect.ValueOf(ordered)
+		if !source.Type().AssignableTo(target.Type()) {
+			return decoded, &json.UnmarshalTypeError{Value: source.Type().String(), Type: target.Type()}
+		}
+		target.Set(source)
+		return decoded, nil
+	}
 	err = json.Unmarshal(encoded, &decoded)
 	return decoded, err
+}
+
+// draftObjects returns the objects of a draft that holds dynamic JSON (see decodeValue) or is a *chordjson.Object: each is a decoded copy of an object of the revision, so one the change still holds was edited in place.
+func draftObjects[T any](draft T) map[*chordjson.Object]bool {
+	if t := reflect.TypeFor[T](); !holdsDynamicJSON(t) && t != reflect.TypeFor[*chordjson.Object]() {
+		return nil
+	}
+	objects := map[*chordjson.Object]bool{}
+	var walk func(any)
+	walk = func(value any) {
+		switch typed := value.(type) {
+		case *chordjson.Object:
+			objects[typed] = true
+			for _, item := range typed.All() {
+				walk(item)
+			}
+		case []any:
+			for _, item := range typed {
+				walk(item)
+			}
+		}
+	}
+	walk(dynamicValue(draft))
+	return objects
+}
+
+// keyOrders returns, for each object of the draft that the change edited in place, its path and key order. Upstream's change edits the revision's own objects through a Proxy, so a key deleted and set again moves to the end; a Go change edits a decoded copy, and its key order is the only record of that move.
+func keyOrders[T any](draft T, originals map[*chordjson.Object]bool) []keyOrder {
+	if len(originals) == 0 {
+		return nil
+	}
+	var orders []keyOrder
+	var walk func(any, delta.Path)
+	walk = func(value any, path delta.Path) {
+		switch typed := value.(type) {
+		case *chordjson.Object:
+			if originals[typed] {
+				delete(originals, typed)
+				orders = append(orders, keyOrder{path: slices.Clone(path), keys: typed.Keys()})
+			}
+			for key, item := range typed.All() {
+				walk(item, append(path, key))
+			}
+		case []any:
+			for index, item := range typed {
+				walk(item, append(path, float64(index)))
+			}
+		}
+	}
+	walk(dynamicValue(draft), delta.Path{})
+	return orders
+}
+
+func dynamicValue[T any](draft T) any {
+	value := reflect.ValueOf(&draft).Elem()
+	for value.Kind() == reflect.Pointer || value.Kind() == reflect.Interface {
+		if value.IsNil() {
+			return nil
+		}
+		if object, ok := value.Interface().(*chordjson.Object); ok {
+			return object
+		}
+		value = value.Elem()
+	}
+	return value.Interface()
+}
+
+func holdsDynamicJSON(t reflect.Type) bool {
+	for t.Kind() == reflect.Pointer {
+		t = t.Elem()
+	}
+	return t.Kind() == reflect.Interface && t.NumMethod() == 0 || t == reflect.TypeFor[[]any]()
 }
 
 func toStateValue(value any) (JsonValue, error) {
@@ -368,7 +464,7 @@ func toStateValue(value any) (JsonValue, error) {
 		return nil, fmt.Errorf("replicated state value is not strict JSON: %w", err)
 	}
 	switch stored.(type) {
-	case map[string]any, []any:
+	case *chordjson.Object, []any:
 		return stored, nil
 	}
 	return nil, errors.New("replicated state value must be a JSON object or array")
@@ -390,7 +486,7 @@ func NewReplicatedState[T any](initial T) (*MutableReplicatedState[T], error) {
 		return nil, err
 	}
 	core := newStateCore(stored, nil)
-	core.tracker = delta.Track(stored)
+	core.tracker = trackRoot(stored)
 	return &MutableReplicatedState[T]{core: core}, nil
 }
 
@@ -420,11 +516,12 @@ func (state *MutableReplicatedState[T]) Change(ctx context.Context, mutate func(
 		return errors.New("Replicated state cannot be changed reentrantly from a change callback")
 	}
 	core.changeMu.Lock()
-	draft, err := decodeValue[T](core.tracker.Value())
+	draft, err := decodeValue[T](core.currentRevision())
 	if err != nil {
 		core.changeMu.Unlock()
 		return err
 	}
+	originals := draftObjects(draft)
 	core.mutating.Store(self)
 	err = callMutate(mutate, draft)
 	core.mutating.Store(0)
@@ -437,12 +534,73 @@ func (state *MutableReplicatedState[T]) Change(ctx context.Context, mutate func(
 		core.changeMu.Unlock()
 		return err
 	}
-	prepared, err := core.tracker.PrepareCandidate(candidate)
+	revision, err := core.prepareCandidate(candidate, keyOrders(draft, originals)...)
 	if err != nil {
 		core.changeMu.Unlock()
 		return err
 	}
+	return state.adoptAndDeliver(ctx, revision)
+}
+
+// Edit is upstream's change(context, draft => ...) with the draft handle itself: mutate edits the copy-on-write draft of the object root, and the operation batch published is the one tracker.ts records for those edits, in its order. Change is the typed form of the same transaction; Go cannot observe the edits made to a typed value, so it derives its edits from the difference. A mutate error or panic aborts the draft. Edit fails while the root is an array; EditArray is its form for an array root.
+func (state *MutableReplicatedState[T]) Edit(ctx context.Context, mutate func(*delta.Object) error) error {
+	return state.edit(ctx, func(change *delta.Change) error {
+		draft := change.State()
+		if draft == nil {
+			return errNotObjectRoot
+		}
+		return callEdit(mutate, draft)
+	})
+}
+
+// EditArray is Edit for a state whose root is an array: mutate edits the draft of the root array.
+func (state *MutableReplicatedState[T]) EditArray(ctx context.Context, mutate func(*delta.Array) error) error {
+	return state.edit(ctx, func(change *delta.Change) error {
+		draft := change.Elements()
+		if draft == nil {
+			return errNotArrayRoot
+		}
+		return callEdit(mutate, draft)
+	})
+}
+
+var (
+	errNotObjectRoot = errors.New("Replicated state edits need an object root")
+	errNotArrayRoot  = errors.New("Replicated state array edits need an array root")
+)
+
+func (state *MutableReplicatedState[T]) edit(ctx context.Context, run func(*delta.Change) error) error {
+	core := state.core
+	self := currentGoroutine()
+	if core.mutating.Load() == self {
+		return errors.New("Replicated state cannot be changed reentrantly from a change callback")
+	}
+	core.changeMu.Lock()
+	change := core.tracker.BeginChange()
+	core.mutating.Store(self)
+	err := run(change)
+	core.mutating.Store(0)
+	if err != nil {
+		change.Abort()
+		core.changeMu.Unlock()
+		return err
+	}
+	prepared, err := change.Prepare()
+	if err != nil {
+		change.Abort()
+		core.changeMu.Unlock()
+		return err
+	}
 	return state.adoptAndDeliver(ctx, prepared)
+}
+
+func callEdit[D any](mutate func(D) error, draft D) (err error) {
+	defer func() {
+		if recovered := recover(); recovered != nil {
+			err = recoveredError(recovered)
+		}
+	}()
+	return mutate(draft)
 }
 
 func callMutate[T any](mutate func(T) error, draft T) (err error) {
@@ -465,8 +623,23 @@ func (state *MutableReplicatedState[T]) Replace(ctx context.Context, value T) er
 		return err
 	}
 	core.changeMu.Lock()
-	return state.adoptAndDeliver(ctx, core.tracker.PrepareReplace(next))
+	prepared, err := core.tracker.PrepareReplaceRoot(next)
+	if err != nil {
+		core.changeMu.Unlock()
+		return err
+	}
+	return state.adoptAndDeliver(ctx, prepared)
 }
+
+// trackRoot gives the state a tracker for value's root kind.
+func trackRoot(value JsonValue) *delta.Tracker {
+	if root, object := value.(*chordjson.Object); object {
+		return delta.Track(root)
+	}
+	return delta.TrackArray(value.([]any))
+}
+
+func (core *stateCore) currentRevision() JsonValue { return core.tracker.Root() }
 
 // adoptAndDeliver is entered with changeMu held and returns with it released.
 func (state *MutableReplicatedState[T]) adoptAndDeliver(ctx context.Context, prepared *delta.Prepared) error {
@@ -475,11 +648,15 @@ func (state *MutableReplicatedState[T]) adoptAndDeliver(ctx context.Context, pre
 		core.changeMu.Unlock()
 		return err
 	}
-	if len(prepared.Ops) == 0 {
+	if len(prepared.Ops()) == 0 {
 		core.changeMu.Unlock()
 		return nil
 	}
-	core.enqueue(prepared.Value, prepared.Ops, ctx)
+	ops := make([]Op, len(prepared.Ops()))
+	for index, op := range prepared.Ops() {
+		ops[index] = Op(op)
+	}
+	core.enqueue(prepared.ValueRoot(), ops, ctx)
 	core.changeMu.Unlock()
 	return collected(core.deliver(), "Replicated state listeners failed")
 }
@@ -560,18 +737,31 @@ func assertCursor(cursor int, kind string) error {
 	return nil
 }
 
-// AttachReplicatedState is upstream replicatedState(source, options): it attaches one state to the source and activates it before returning. A failed attachment is disposed.
+// AttachReplicatedState is upstream replicatedState(source, options): it attaches one state to the source and activates it before returning. A failed attachment is disposed, including when the attachment's Snapshot or Activate panics, whose panic becomes the returned error.
 func AttachReplicatedState[T any](source ReplicatedStateSource, options ReplicatedStateSourceOptions) (*AttachedReplicatedState[T], error) {
 	attachment := source.Attach()
-	state, err := newAttached[T](attachment, options)
+	state, err := attachActivated[T](attachment, options)
 	if err == nil {
-		state.activate()
 		return state, nil
 	}
 	if disposeErr := disposeAttachment(attachment); disposeErr != nil {
 		return nil, NewAggregateError("Failed to attach replicated state source", []error{err, disposeErr})
 	}
 	return nil, err
+}
+
+// attachActivated constructs and activates the state inside one recovery, as upstream does inside one try (state.ts:328-331).
+func attachActivated[T any](attachment ReplicatedStateSourceAttachment, options ReplicatedStateSourceOptions) (state *AttachedReplicatedState[T], err error) {
+	defer func() {
+		if recovered := recover(); recovered != nil {
+			state, err = nil, recoveredError(recovered)
+		}
+	}()
+	state, err = newAttached[T](attachment, options)
+	if err == nil {
+		state.activate()
+	}
+	return state, err
 }
 
 func disposeAttachment(attachment ReplicatedStateSourceAttachment) (err error) {
@@ -787,7 +977,7 @@ func (replica *replicaCore) subscribe(listener valueListener) func() {
 func validateRevision(ops []Op) error {
 	for _, op := range ops {
 		var payload JsonValue
-		switch op.Verb() {
+		switch delta.Verb(op) {
 		case "r", "s":
 			payload = op[len(op)-1]
 		case "p":

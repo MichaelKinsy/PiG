@@ -11,6 +11,7 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"reflect"
 	"regexp"
 	"slices"
 	"strconv"
@@ -18,10 +19,13 @@ import (
 	"sync"
 	"unicode/utf8"
 
+	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/durable"
 	"github.com/MichaelKinsy/PiG/durable/env"
+	"github.com/MichaelKinsy/PiG/durable/internal/ordered"
 	"github.com/MichaelKinsy/PiG/durable/storage"
 	"github.com/MichaelKinsy/PiG/extensions/sdk/json"
+	"github.com/MichaelKinsy/PiG/internal/chord/chordjson"
 )
 
 const (
@@ -61,9 +65,14 @@ type JsonlCorruptionError struct {
 	Cause   error
 }
 
-func newCorruption(message string, cause error) *JsonlCorruptionError {
-	return &JsonlCorruptionError{Message: message, Cause: cause}
+// NewJsonlCorruptionError is `new JsonlCorruptionError(message, cause)`; cause may be nil.
+func NewJsonlCorruptionError(message string, cause error) *JsonlCorruptionError {
+	e := &JsonlCorruptionError{Message: message, Cause: cause}
+	return e
 }
+
+// Name is the error class name, Pi's `name` property.
+func (*JsonlCorruptionError) Name() string { return "JsonlCorruptionError" }
 
 func (e *JsonlCorruptionError) Error() string { return e.Message }
 
@@ -72,12 +81,21 @@ func (e *JsonlCorruptionError) Unwrap() error { return e.Cause }
 
 // JsonlStoragePoisonedError reports storage whose files may hold a partial publication; it must be reopened.
 type JsonlStoragePoisonedError struct {
-	Cause error
+	// Message is the `message` property the constructor sets.
+	Message string
+	Cause   error
 }
 
-func (e *JsonlStoragePoisonedError) Error() string {
-	return "JSONL storage is poisoned and must be reopened"
+// NewJsonlStoragePoisonedError is `new JsonlStoragePoisonedError(cause)`: it sets the fixed message
+// "JSONL storage is poisoned and must be reopened" (storage.ts:90).
+func NewJsonlStoragePoisonedError(cause error) *JsonlStoragePoisonedError {
+	return &JsonlStoragePoisonedError{Message: "JSONL storage is poisoned and must be reopened", Cause: cause}
 }
+
+// Name is the `name` property, "JsonlStoragePoisonedError".
+func (e *JsonlStoragePoisonedError) Name() string { return "JsonlStoragePoisonedError" }
+
+func (e *JsonlStoragePoisonedError) Error() string { return e.Message }
 
 // Unwrap returns the cause.
 func (e *JsonlStoragePoisonedError) Unwrap() error { return e.Cause }
@@ -155,7 +173,7 @@ func contentToWire(content durable.DocumentContent) contentWire {
 	if content.Kind == durable.ContentBase {
 		value := content.Value
 		if value == nil {
-			value = durable.JsonObject{}
+			value = delta.NewJsonObject(0)
 		}
 		wire.Value = &value
 	} else {
@@ -730,7 +748,7 @@ func (jsonl *JsonlStorage) recover(ctx context.Context) error {
 	var previousSeq int64
 	for _, marker := range main.lines {
 		if marker.value.seq <= previousSeq {
-			return newCorruption("Commit sequence does not strictly increase in "+mainFile, nil)
+			return NewJsonlCorruptionError("Commit sequence does not strictly increase in "+mainFile, nil)
 		}
 		previousSeq = marker.value.seq
 	}
@@ -769,7 +787,7 @@ func (jsonl *JsonlStorage) recover(ctx context.Context) error {
 		for index := range parsed.lines {
 			line := parsed.lines[index].value
 			if previous != nil && (line.seq < previous.seq || (line.seq == previous.seq && line.ordinal <= previous.ordinal)) {
-				return newCorruption("Sidecar records are out of order in "+file, nil)
+				return NewJsonlCorruptionError("Sidecar records are out of order in "+file, nil)
 			}
 			previous = &parsed.lines[index].value
 			recordByKey[sidecarKey{file: file, seq: line.seq, ordinal: line.ordinal}] = line
@@ -858,7 +876,7 @@ func (jsonl *JsonlStorage) recover(ctx context.Context) error {
 				}
 				if record != nil {
 					if record.task == nil || int64(record.task.Id) != operation.id {
-						return newCorruption(fmt.Sprintf("Confirmed task sidecar data does not match commit %d", marker.seq), nil)
+						return NewJsonlCorruptionError(fmt.Sprintf("Confirmed task sidecar data does not match commit %d", marker.seq), nil)
 					}
 					if !optional {
 						writes = append(writes, durable.TaskWrite{Value: *record.task})
@@ -874,15 +892,15 @@ func (jsonl *JsonlStorage) recover(ctx context.Context) error {
 				var content *durable.DocumentContent
 				if record != nil {
 					if record.content == nil || record.docId != operation.id {
-						return newCorruption(fmt.Sprintf("Confirmed document sidecar data does not match commit %d", marker.seq), nil)
+						return NewJsonlCorruptionError(fmt.Sprintf("Confirmed document sidecar data does not match commit %d", marker.seq), nil)
 					}
 					content = record.content
 				}
 				if operation.kind == "document.create" {
 					if content != nil && content.Kind != durable.ContentBase {
-						return newCorruption(fmt.Sprintf("Document creation lacks a confirmed base in commit %d", marker.seq), nil)
+						return NewJsonlCorruptionError(fmt.Sprintf("Document creation lacks a confirmed base in commit %d", marker.seq), nil)
 					}
-					created := durable.DocumentContent{Kind: durable.ContentBase, Version: 1, Value: durable.JsonObject{}}
+					created := durable.DocumentContent{Kind: durable.ContentBase, Version: 1, Value: delta.NewJsonObject(0)}
 					if !reclaimed && content != nil {
 						created = *content
 					}
@@ -894,7 +912,7 @@ func (jsonl *JsonlStorage) recover(ctx context.Context) error {
 		}
 		prepared, err := jsonl.memory.PrepareCommitAt(writes, durable.Seq(marker.seq))
 		if err != nil {
-			return newCorruption(fmt.Sprintf("Invalid committed state at sequence %d", marker.seq), err)
+			return NewJsonlCorruptionError(fmt.Sprintf("Invalid committed state at sequence %d", marker.seq), err)
 		}
 		prepared.Apply()
 	}
@@ -907,7 +925,7 @@ func (jsonl *JsonlStorage) recover(ctx context.Context) error {
 		for _, line := range parsed.lines {
 			if confirmed[sidecarKey{file: file, seq: line.value.seq, ordinal: line.value.ordinal}] {
 				if unconfirmedAt >= 0 {
-					return newCorruption("Confirmed record follows an unconfirmed tail in "+file, nil)
+					return NewJsonlCorruptionError("Confirmed record follows an unconfirmed tail in "+file, nil)
 				}
 				confirmedLines = append(confirmedLines, line)
 			} else if unconfirmedAt < 0 {
@@ -966,14 +984,14 @@ func confirmRecord(
 ) (*sidecarRecord, error) {
 	key := sidecarKey{file: file, seq: marker.seq, ordinal: ordinal}
 	if confirmed[key] {
-		return nil, newCorruption("Sidecar record is confirmed more than once", nil)
+		return nil, NewJsonlCorruptionError("Sidecar record is confirmed more than once", nil)
 	}
 	record, ok := recordByKey[key]
 	if !ok {
 		if optional {
 			return nil, nil
 		}
-		return nil, newCorruption(fmt.Sprintf("Missing confirmed sidecar record %s at sequence %d", file, marker.seq), nil)
+		return nil, NewJsonlCorruptionError(fmt.Sprintf("Missing confirmed sidecar record %s at sequence %d", file, marker.seq), nil)
 	}
 	confirmed[key] = true
 	return &record, nil
@@ -1007,7 +1025,7 @@ func readLines[T any](
 		}
 		text := content[start:end]
 		if !utf8.Valid(text) {
-			return parsedFile[T]{}, newCorruption(fmt.Sprintf("Invalid UTF-8 in complete %s line %d", name, lineNumber), nil)
+			return parsedFile[T]{}, NewJsonlCorruptionError(fmt.Sprintf("Invalid UTF-8 in complete %s line %d", name, lineNumber), nil)
 		}
 		value, err := parse(text, lineNumber)
 		if err != nil {
@@ -1021,9 +1039,10 @@ func readLines[T any](
 }
 
 func parseJSON(text []byte, description string) (any, error) {
-	var value any
-	if err := json.Unmarshal(text, &value); err != nil {
-		return nil, newCorruption("Malformed complete "+description, err)
+	// Objects decode in document order, so stored values keep their key order, and strings keep lone surrogates.
+	value, err := chordjson.DecodeUnquoting(text, unquoteJS)
+	if err != nil {
+		return nil, NewJsonlCorruptionError("Malformed complete "+description, err)
 	}
 	return value, nil
 }
@@ -1037,8 +1056,11 @@ func safeInteger(value any) (int64, bool) {
 	return int64(number), true
 }
 
-func objectOf(value any) (map[string]any, bool) {
-	object, ok := value.(map[string]any)
+// unquoteJS decodes a JSON string with JavaScript string semantics: a lone surrogate escape becomes its WTF-8 form.
+func unquoteJS(raw []byte, text *string) error { return json.Unmarshal(raw, text) }
+
+func objectOf(value any) (*delta.JsonObject, bool) {
+	object, ok := value.(*delta.JsonObject)
 	return object, ok
 }
 
@@ -1049,24 +1071,32 @@ func decodeAs[T any](value any, description string) (T, error) {
 	if err == nil {
 		err = json.Unmarshal(encoded, &typed)
 	}
+	if err == nil && ordered.HasDynamic(reflect.TypeFor[T]()) {
+		// A JsonValue member holds the line's objects in order, as JSON.parse gives Pi; the tree is decoded afresh so the record
+		// shares nothing with value.
+		var tree any
+		if tree, err = chordjson.DecodeUnquoting(encoded, unquoteJS); err == nil {
+			ordered.Restore(&typed, tree)
+		}
+	}
 	if err != nil {
-		return typed, newCorruption("Invalid write in "+description, err)
+		return typed, NewJsonlCorruptionError("Invalid write in "+description, err)
 	}
 	return typed, nil
 }
 
 func validateMainOperation(value any, description string) (mainOperation, error) {
 	object, ok := objectOf(value)
-	operationType, isString := object["type"].(string)
+	operationType, isString := object.Value("type").(string)
 	if !ok || !isString {
-		return mainOperation{}, newCorruption("Invalid write in "+description, nil)
+		return mainOperation{}, NewJsonlCorruptionError("Invalid write in "+description, nil)
 	}
 	switch operationType {
 	case "conversation", "entry", "submission":
-		record, ok := objectOf(object["value"])
-		id, safe := safeInteger(record["id"])
+		record, ok := objectOf(object.Value("value"))
+		id, safe := safeInteger(record.Value("id"))
 		if !ok || !safe {
-			return mainOperation{}, newCorruption(fmt.Sprintf("Invalid %s write in %s", operationType, description), nil)
+			return mainOperation{}, NewJsonlCorruptionError(fmt.Sprintf("Invalid %s write in %s", operationType, description), nil)
 		}
 		operation := mainOperation{kind: operationType, id: id}
 		var err error
@@ -1086,45 +1116,45 @@ func validateMainOperation(value any, description string) (mainOperation, error)
 		}
 		return operation, err
 	case "task":
-		record, ok := objectOf(object["value"])
-		id, safe := safeInteger(record["id"])
-		state, stateOk := objectOf(record["state"])
-		if !ok || !safe || !stateOk || state["status"] != string(durable.TaskTerminal) {
-			return mainOperation{}, newCorruption("Invalid terminal task write in "+description, nil)
+		record, ok := objectOf(object.Value("value"))
+		id, safe := safeInteger(record.Value("id"))
+		state, stateOk := objectOf(record.Value("state"))
+		if !ok || !safe || !stateOk || state.Value("status") != string(durable.TaskTerminal) {
+			return mainOperation{}, NewJsonlCorruptionError("Invalid terminal task write in "+description, nil)
 		}
 		decoded, err := decodeAs[storedTask](record, description)
 		return mainOperation{kind: operationType, id: id, write: durable.TaskWrite{Value: decoded}}, err
 	case "document.retire":
-		id, safe := safeInteger(object["id"])
+		id, safe := safeInteger(object.Value("id"))
 		if !safe {
-			return mainOperation{}, newCorruption("Invalid document retirement in "+description, nil)
+			return mainOperation{}, NewJsonlCorruptionError("Invalid document retirement in "+description, nil)
 		}
 		return mainOperation{kind: operationType, id: id, write: durable.DocumentRetireWrite{Id: durable.DocumentId(id)}}, nil
 	case "task.sidecar":
-		id, safe := safeInteger(object["id"])
-		ordinal, safeOrdinal := safeInteger(object["ordinal"])
+		id, safe := safeInteger(object.Value("id"))
+		ordinal, safeOrdinal := safeInteger(object.Value("ordinal"))
 		if !safe || !safeOrdinal || ordinal < 0 {
-			return mainOperation{}, newCorruption("Invalid task sidecar write in "+description, nil)
+			return mainOperation{}, NewJsonlCorruptionError("Invalid task sidecar write in "+description, nil)
 		}
 		return mainOperation{kind: operationType, id: id, ordinal: ordinal}, nil
 	case "document.create":
-		record, ok := objectOf(object["record"])
-		id, safe := safeInteger(record["id"])
-		ordinal, safeOrdinal := safeInteger(object["ordinal"])
+		record, ok := objectOf(object.Value("record"))
+		id, safe := safeInteger(record.Value("id"))
+		ordinal, safeOrdinal := safeInteger(object.Value("ordinal"))
 		if !ok || !safe || !safeOrdinal || ordinal < 0 {
-			return mainOperation{}, newCorruption("Invalid document creation in "+description, nil)
+			return mainOperation{}, NewJsonlCorruptionError("Invalid document creation in "+description, nil)
 		}
 		decoded, err := decodeAs[durable.DocumentCreate](record, description)
 		return mainOperation{kind: operationType, id: id, ordinal: ordinal, record: decoded}, err
 	case "document.change":
-		id, safe := safeInteger(object["id"])
-		ordinal, safeOrdinal := safeInteger(object["ordinal"])
+		id, safe := safeInteger(object.Value("id"))
+		ordinal, safeOrdinal := safeInteger(object.Value("ordinal"))
 		if !safe || !safeOrdinal || ordinal < 0 {
-			return mainOperation{}, newCorruption("Invalid document change in "+description, nil)
+			return mainOperation{}, NewJsonlCorruptionError("Invalid document change in "+description, nil)
 		}
 		return mainOperation{kind: operationType, id: id, ordinal: ordinal}, nil
 	default:
-		return mainOperation{}, newCorruption("Unknown write type in "+description, nil)
+		return mainOperation{}, NewJsonlCorruptionError("Unknown write type in "+description, nil)
 	}
 }
 
@@ -1135,11 +1165,11 @@ func parseMainMarker(text []byte, line int) (mainMarker, error) {
 		return mainMarker{}, err
 	}
 	object, ok := objectOf(value)
-	format, formatOk := safeInteger(object["format"])
-	seq, seqOk := safeInteger(object["seq"])
-	writes, writesOk := object["writes"].([]any)
-	if !ok || !formatOk || format != formatVersion || object["type"] != "commit" || !seqOk || seq < 1 || !writesOk {
-		return mainMarker{}, newCorruption("Invalid commit marker in "+description, nil)
+	format, formatOk := safeInteger(object.Value("format"))
+	seq, seqOk := safeInteger(object.Value("seq"))
+	writes, writesOk := object.Value("writes").([]any)
+	if !ok || !formatOk || format != formatVersion || object.Value("type") != "commit" || !seqOk || seq < 1 || !writesOk {
+		return mainMarker{}, NewJsonlCorruptionError("Invalid commit marker in "+description, nil)
 	}
 	marker := mainMarker{seq: seq, writes: make([]mainOperation, 0, len(writes))}
 	for _, write := range writes {
@@ -1153,21 +1183,21 @@ func parseMainMarker(text []byte, line int) (mainMarker, error) {
 }
 
 func validateDocumentContent(value any, description string) (durable.DocumentContent, error) {
-	invalid := newCorruption("Invalid document content in "+description, nil)
+	invalid := NewJsonlCorruptionError("Invalid document content in "+description, nil)
 	object, ok := objectOf(value)
-	version, safe := safeInteger(object["version"])
+	version, safe := safeInteger(object.Value("version"))
 	if !ok || !safe || version < 1 {
 		return durable.DocumentContent{}, invalid
 	}
-	switch object["kind"] {
+	switch object.Value("kind") {
 	case string(durable.ContentBase):
-		base, ok := objectOf(object["value"])
+		base, ok := objectOf(object.Value("value"))
 		if !ok {
 			return durable.DocumentContent{}, invalid
 		}
 		return durable.DocumentContent{Kind: durable.ContentBase, Version: int(version), Value: base}, nil
 	case string(durable.ContentDelta):
-		rawOps, ok := object["ops"].([]any)
+		rawOps, ok := object.Value("ops").([]any)
 		if !ok {
 			return durable.DocumentContent{}, invalid
 		}
@@ -1189,23 +1219,23 @@ func parseSidecarRecord(text []byte, file string, line int) (sidecarRecord, erro
 		return sidecarRecord{}, err
 	}
 	object, ok := objectOf(value)
-	format, formatOk := safeInteger(object["format"])
-	seq, seqOk := safeInteger(object["seq"])
-	ordinal, ordinalOk := safeInteger(object["ordinal"])
-	payload, payloadOk := objectOf(object["payload"])
-	payloadType, typeOk := payload["type"].(string)
-	if !ok || !formatOk || format != formatVersion || object["type"] != "record" || !seqOk || seq < 1 ||
+	format, formatOk := safeInteger(object.Value("format"))
+	seq, seqOk := safeInteger(object.Value("seq"))
+	ordinal, ordinalOk := safeInteger(object.Value("ordinal"))
+	payload, payloadOk := objectOf(object.Value("payload"))
+	payloadType, typeOk := payload.Value("type").(string)
+	if !ok || !formatOk || format != formatVersion || object.Value("type") != "record" || !seqOk || seq < 1 ||
 		!ordinalOk || ordinal < 0 || !payloadOk || !typeOk {
-		return sidecarRecord{}, newCorruption("Invalid sidecar record in "+description, nil)
+		return sidecarRecord{}, NewJsonlCorruptionError("Invalid sidecar record in "+description, nil)
 	}
 	record := sidecarRecord{seq: seq, ordinal: ordinal, raw: slices.Clone(text)}
 	switch payloadType {
 	case "task":
-		task, ok := objectOf(payload["value"])
-		_, safe := safeInteger(task["id"])
-		state, stateOk := objectOf(task["state"])
-		if !ok || !safe || !stateOk || state["status"] == string(durable.TaskTerminal) {
-			return sidecarRecord{}, newCorruption("Invalid live task record in "+description, nil)
+		task, ok := objectOf(payload.Value("value"))
+		_, safe := safeInteger(task.Value("id"))
+		state, stateOk := objectOf(task.Value("state"))
+		if !ok || !safe || !stateOk || state.Value("status") == string(durable.TaskTerminal) {
+			return sidecarRecord{}, NewJsonlCorruptionError("Invalid live task record in "+description, nil)
 		}
 		decoded, err := decodeAs[storedTask](task, description)
 		if err != nil {
@@ -1213,18 +1243,18 @@ func parseSidecarRecord(text []byte, file string, line int) (sidecarRecord, erro
 		}
 		record.task = &decoded
 	case "document":
-		id, safe := safeInteger(payload["id"])
+		id, safe := safeInteger(payload.Value("id"))
 		if !safe {
-			return sidecarRecord{}, newCorruption("Invalid document record in "+description, nil)
+			return sidecarRecord{}, NewJsonlCorruptionError("Invalid document record in "+description, nil)
 		}
-		content, err := validateDocumentContent(payload["content"], description)
+		content, err := validateDocumentContent(payload.Value("content"), description)
 		if err != nil {
 			return sidecarRecord{}, err
 		}
 		record.docId = id
 		record.content = &content
 	default:
-		return sidecarRecord{}, newCorruption("Unknown sidecar record type in "+description, nil)
+		return sidecarRecord{}, NewJsonlCorruptionError("Unknown sidecar record type in "+description, nil)
 	}
 	return record, nil
 }
@@ -1248,7 +1278,7 @@ func (jsonl *JsonlStorage) poison(cause error) error {
 	jsonl.stateMu.Lock()
 	defer jsonl.stateMu.Unlock()
 	if jsonl.poisonError == nil {
-		jsonl.poisonError = &JsonlStoragePoisonedError{Cause: cause}
+		jsonl.poisonError = NewJsonlStoragePoisonedError(cause)
 	}
 	return jsonl.poisonError
 }

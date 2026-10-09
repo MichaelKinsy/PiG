@@ -48,7 +48,7 @@ wait_timeout_seconds = 10
 both_reach_ready = true
 both_not_contain = ["INLINE_FILE_PAYLOAD", "<file name=", "unknown command", "panic:", "goroutine "]
 # lint-known-gap: this scenario asserts the stable visible text only; bg-paint
-# ANSI differs between Pig's UserMessageBlock and upstream's Box component.
+# ANSI differs between Pig's UserMessageComponent and upstream's Box component.
 output_normalized_equal = true
 runtime_ratio_max = 2.0
 runs = 1

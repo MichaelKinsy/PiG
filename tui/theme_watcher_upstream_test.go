@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -111,13 +112,13 @@ func waitThemeAccent(t *testing.T, want string) {
 	tick := time.NewTicker(5 * time.Millisecond)
 	defer tick.Stop()
 	for {
-		if ActiveTheme().Colors()["accent"] == want {
+		if ActiveTheme().GetResolvedThemeColors()["accent"] == want {
 			return
 		}
 		select {
 		case <-tick.C:
 		case <-deadline.C:
-			t.Fatalf("accent=%q want=%q", ActiveTheme().Colors()["accent"], want)
+			t.Fatalf("accent=%q want=%q", ActiveTheme().GetResolvedThemeColors()["accent"], want)
 		}
 	}
 }
@@ -152,7 +153,7 @@ func TestThemeWatcherReloadsAfterAtomicReplacement(t *testing.T) {
 		t.Fatal(err)
 	}
 	waitThemeAccent(t, "#654321")
-	if got := ActiveThemeRegistry().Get("custom-test").Colors()["accent"]; got != "#654321" {
+	if got := ActiveThemeRegistry().Get("custom-test").GetResolvedThemeColors()["accent"]; got != "#654321" {
 		t.Fatalf("registry cache=%s", got)
 	}
 	// The JSON name may differ after replacement; the watcher remains attached to the selected filename, as in Pi.
@@ -306,8 +307,13 @@ func TestThemeWatcherErrorClosesNotificationsAndBuiltinsDoNotWatch(t *testing.T)
 func TestThemeWatcherSkipsTheSystemTheme(t *testing.T) {
 	dir := t.TempDir()
 	writeWatchedTheme(t, dir, SystemThemeName, "")
+	// "<in-memory>" is not a legal Windows file name, so no same-named file can exist there to be skipped.
+	if runtime.GOOS != "windows" {
+		writeWatchedTheme(t, dir, InMemoryThemeName, "")
+	}
 	writeWatchedTheme(t, dir, "custom-test", "")
-	for name, watched := range map[string]bool{SystemThemeName: false, "custom-test": true} {
+	// theme.ts:795-798 setThemeInstance names the theme "<in-memory>" and stops the watcher, so a same-named file is not watched either.
+	for name, watched := range map[string]bool{SystemThemeName: false, InMemoryThemeName: false, "custom-test": true} {
 		watcher := StartThemeWatcher(t.Context(), dir, nil)
 		watcher.selectTheme(name)
 		watcher.mu.Lock()

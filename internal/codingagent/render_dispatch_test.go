@@ -36,7 +36,7 @@ func (m *InteractiveMode) drainMainLoopOnce() {
 func TestScheduledRenderSurvivesSaturatedUITaskQueue(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		model := &ai.Model{ID: "m", DisplayName: "m", Capabilities: ai.ModelCapabilities{ContextWindow: 8000}}
-		m := NewInteractiveMode(InteractiveOptions{CWD: t.TempDir(), Model: model})
+		m := NewInteractiveMode(nil, InteractiveModeOptions{CWD: t.TempDir(), Model: model})
 		var out bytes.Buffer
 		m.chatContainer = tui.NewContainer()
 		m.tuiInst = tui.NewWithOutput(&out, 80, 24)

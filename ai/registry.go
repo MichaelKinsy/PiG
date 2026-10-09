@@ -99,8 +99,8 @@ func (m *GeneratedModel) ToCapabilities() ModelCapabilities {
 		return caps
 	}
 	for _, level := range extendedThinkingLevels {
-		if !thinkingLevelUnsupported(m.ThinkingLevelMap, level) && CompareThinkingLevels(level, caps.MaxThinking) > 0 {
-			caps.MaxThinking = level
+		if !thinkingLevelUnsupported(m.ThinkingLevelMap, level) && CompareThinkingLevels(level, ModelThinkingLevel(caps.MaxThinking)) > 0 {
+			caps.MaxThinking = ThinkingLevel(level)
 		}
 	}
 	return caps
@@ -110,13 +110,13 @@ func thinkingMaxLevel(reasoning bool, levelMap ThinkingLevelMap) ThinkingLevel {
 	if !reasoning {
 		return ""
 	}
-	maxLevel := ThinkingHigh
+	maxLevel := ThinkingLevel(ThinkingHigh)
 	for level, mapped := range levelMap {
 		if mapped == nil {
 			continue
 		}
-		if CompareThinkingLevels(level, maxLevel) > 0 {
-			maxLevel = level
+		if CompareThinkingLevels(level, ModelThinkingLevel(maxLevel)) > 0 {
+			maxLevel = ThinkingLevel(level)
 		}
 	}
 	return maxLevel
@@ -148,18 +148,27 @@ func (m *GeneratedModel) ToModel() *Model {
 }
 
 // ListModels returns a copy of the catalog filtered by an optional
-// provider prefix. Empty provider returns everything.
+// provider prefix. Empty provider returns everything. It omits the models
+// of a stripped API (OfferedModels); LookupModel and LookupModelExact
+// still find them.
 func ListModels(provider string) []GeneratedModel {
 	registryOnce.Do(initRegistry)
+	stripped := strippedAPIs()
 	if provider == "" {
-		out := make([]GeneratedModel, len(GeneratedModels))
-		copy(out, GeneratedModels)
+		out := make([]GeneratedModel, 0, len(GeneratedModels))
+		for _, model := range GeneratedModels {
+			if !slices.Contains(stripped, model.API) {
+				out = append(out, model)
+			}
+		}
 		return out
 	}
 	models := registryByProvider[provider]
-	out := make([]GeneratedModel, len(models))
-	for i, model := range models {
-		out[i] = *model
+	out := make([]GeneratedModel, 0, len(models))
+	for _, model := range models {
+		if !slices.Contains(stripped, model.API) {
+			out = append(out, *model)
+		}
 	}
 	return out
 }
@@ -170,6 +179,15 @@ func ListModels(provider string) []GeneratedModel {
 // or classifier models is included.
 func ListProviders() []string {
 	return slices.Clone(GeneratedProviders)
+}
+
+// GetBuiltinModelDataGeneratedAt returns the generation time shared by every built-in provider catalog, in Unix milliseconds, or nil when the data manifest records no valid time.
+// Mirrors upstream providers/all.ts:getBuiltinModelDataGeneratedAt.
+func GetBuiltinModelDataGeneratedAt() *float64 {
+	if GeneratedModelDataGeneratedAt == nil {
+		return nil
+	}
+	return new(*GeneratedModelDataGeneratedAt)
 }
 
 // ListRuntimeProviders returns providers with an implemented runtime API.

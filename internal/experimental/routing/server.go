@@ -33,6 +33,32 @@ type connectionState struct {
 	pending              []protocol.ClientMessage
 	services             RoutedServerServiceAttachment
 	requests             map[string]*activeServerRequest
+	lastEntered          <-chan struct{}
+}
+
+// requestTurn orders the moment a connection's requests reach the host. Upstream's handleRequest runs synchronously up to the
+// service call, so requests from one connection enter the host in arrival order (packages/server/src/server.ts:317-345).
+type requestTurn struct {
+	previous <-chan struct{}
+	entered  chan struct{}
+	once     sync.Once
+}
+
+// enter releases the next request once the previous one has entered; it is safe to call more than once. A request that ends
+// before reaching the host still releases its successor only after its predecessor, so the chain never lets a later request
+// overtake an earlier one.
+func (turn *requestTurn) enter() {
+	turn.once.Do(func() {
+		turn.wait()
+		close(turn.entered)
+	})
+}
+
+// wait blocks until the previous request on the connection has entered the host.
+func (turn *requestTurn) wait() {
+	if turn.previous != nil {
+		<-turn.previous
+	}
 }
 
 func (c *connectionState) stopHandshakeTimer() {
@@ -103,18 +129,19 @@ func (s *Server) isClosing() bool         { s.mu.Lock(); defer s.mu.Unlock(); re
 func (s *Server) Closed() <-chan struct{} { return s.closed }
 func (s *Server) ClosedError() error      { s.mu.Lock(); defer s.mu.Unlock(); return s.closedError }
 
-func (s *Server) Start() error {
+// Start starts every listener and returns the server, as upstream start(): Promise<this> (server.ts:103-111). It fails when the server is already started, starting, closing or closed, and a listener that fails to start closes the ones already started and the server.
+func (s *Server) Start() (*Server, error) {
 	s.mu.Lock()
 	switch {
 	case s.started:
 		s.mu.Unlock()
-		return errors.New("Server is already started")
+		return nil, errors.New("Server is already started")
 	case s.starting:
 		s.mu.Unlock()
-		return errors.New("Server is already starting")
+		return nil, errors.New("Server is already starting")
 	case s.closing:
 		s.mu.Unlock()
-		return errors.New("Server is closing or closed")
+		return nil, errors.New("Server is closing or closed")
 	}
 	s.starting = true
 	s.startDone = make(chan struct{})
@@ -133,17 +160,17 @@ func (s *Server) Start() error {
 			hasCleanupError := slices.ContainsFunc(cleanup, func(err error) bool { return err != nil })
 			if hasCleanupError {
 				s.settleClosed(failure)
-				return failure
+				return nil, failure
 			}
 			s.settleClosed(nil)
-			return err
+			return nil, err
 		}
 		started = append(started, listener)
 	}
 	s.mu.Lock()
 	s.started = true
 	s.mu.Unlock()
-	return nil
+	return s, nil
 }
 func closeListeners(listeners []ServerListener) []error {
 	failures := make([]error, len(listeners))
@@ -400,7 +427,10 @@ func (s *Server) admitRequest(state *connectionState, envelope protocol.RequestE
 	ctx, cancel := context.WithCancelCause(context.Background())
 	active := &activeServerRequest{cancel: cancel, target: envelope.Target}
 	state.requests[envelope.Id] = active
+	turn := &requestTurn{previous: state.lastEntered, entered: make(chan struct{})}
+	state.lastEntered = turn.entered
 	s.work.Go(func() {
+		defer turn.enter()
 		defer cancel(nil)
 		defer func() {
 			state.mu.Lock()
@@ -409,11 +439,11 @@ func (s *Server) admitRequest(state *connectionState, envelope protocol.RequestE
 			}
 			state.mu.Unlock()
 		}()
-		s.handleRequest(ctx, state, envelope, call)
+		s.handleRequest(ctx, state, envelope, call, turn)
 	})
 	state.mu.Unlock()
 }
-func (s *Server) handleRequest(ctx context.Context, state *connectionState, envelope protocol.RequestEnvelope, call chord.ServiceCall) {
+func (s *Server) handleRequest(ctx context.Context, state *connectionState, envelope protocol.RequestEnvelope, call chord.ServiceCall, turn *requestTurn) {
 	control, isControl := chord.DecodeServiceControlCall(call)
 	subscribing := isControl && control.Type == "subscribe"
 	var pendingMu sync.Mutex
@@ -444,9 +474,18 @@ func (s *Server) handleRequest(ctx context.Context, state *connectionState, enve
 		var result json.RawMessage
 		var err error
 		if _, session := envelope.Target.(protocol.SessionTarget); session {
-			result, err = s.sessions.ExecuteServiceCall(ctx, call, envelope.Target, state, publish)
+			turn.wait()
+			queued := s.sessions.QueueServiceCall(ctx, call, envelope.Target, state, publish)
+			turn.enter()
+			result, err = queued.Wait()
 		} else if services != nil {
-			result, err = services.InvokeService(ctx, call, publish)
+			turn.wait()
+			var invocation *chord.ServiceInvocation
+			invocation, err = beginServiceCall(services, ctx, call, publish, s.work.Go)
+			turn.enter()
+			if err == nil {
+				result, err = invocation.Wait(context.Background())
+			}
 		} else {
 			err = &protocol.ProtocolValidationError{Message: "Unknown service member " + call.ServiceId + "." + call.Member}
 		}
@@ -686,7 +725,7 @@ func (s *Server) closeConnection(connection ByteConnection, final []byte) {
 }
 func (s *Server) toProtocolError(err error) protocol.ProtocolError {
 	if failure, ok := errors.AsType[*ServerError](err); ok {
-		return protocol.ProtocolError{Code: failure.Code, Message: failure.Message}
+		return protocol.ProtocolError{Code: string(failure.Code), Message: failure.Message}
 	}
 	if failure, ok := errors.AsType[*chord.RemoteServiceError](err); ok {
 		return protocol.ProtocolError{Code: string(failure.Code), Message: failure.Message}

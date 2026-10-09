@@ -1,0 +1,66 @@
+id	flag	go_tests	parity_scenarios
+cli:pi-config/--approve	--approve	cmd/pig/ancestor_skills_test.go;cmd/pig/args_upstream_test.go;cmd/pig/extension_reload_interactive_test.go	
+cli:pi-config/--help	--help	cmd/pig/args_diagnostics_test.go;cmd/pig/args_name_upstream_test.go;cmd/pig/args_test.go	usage:;git;grep
+cli:pi-config/--local	--local	cmd/pig/config_command_test.go;cmd/pig/git_update_upstream_test.go;cmd/pig/package_commands_test.go	
+cli:pi-config/--no-approve	--no-approve	cmd/pig/ancestor_skills_test.go;cmd/pig/args_upstream_test.go;cmd/pig/config_command_test.go	
+cli:pi-install/--approve	--approve	cmd/pig/ancestor_skills_test.go;cmd/pig/args_upstream_test.go;cmd/pig/extension_reload_interactive_test.go	
+cli:pi-install/--help	--help	cmd/pig/args_diagnostics_test.go;cmd/pig/args_name_upstream_test.go;cmd/pig/args_test.go	usage:;git;grep
+cli:pi-install/--local	--local	cmd/pig/config_command_test.go;cmd/pig/git_update_upstream_test.go;cmd/pig/package_commands_test.go	
+cli:pi-install/--no-approve	--no-approve	cmd/pig/ancestor_skills_test.go;cmd/pig/args_upstream_test.go;cmd/pig/config_command_test.go	
+cli:pi-list/--approve	--approve	cmd/pig/ancestor_skills_test.go;cmd/pig/args_upstream_test.go;cmd/pig/extension_reload_interactive_test.go	
+cli:pi-list/--help	--help	cmd/pig/args_diagnostics_test.go;cmd/pig/args_name_upstream_test.go;cmd/pig/args_test.go	usage:;git;grep
+cli:pi-list/--no-approve	--no-approve	cmd/pig/ancestor_skills_test.go;cmd/pig/args_upstream_test.go;cmd/pig/config_command_test.go	
+cli:pi-remove/--approve	--approve	cmd/pig/ancestor_skills_test.go;cmd/pig/args_upstream_test.go;cmd/pig/extension_reload_interactive_test.go	
+cli:pi-remove/--help	--help	cmd/pig/args_diagnostics_test.go;cmd/pig/args_name_upstream_test.go;cmd/pig/args_test.go	usage:;git;grep
+cli:pi-remove/--local	--local	cmd/pig/config_command_test.go;cmd/pig/git_update_upstream_test.go;cmd/pig/package_commands_test.go	
+cli:pi-remove/--no-approve	--no-approve	cmd/pig/ancestor_skills_test.go;cmd/pig/args_upstream_test.go;cmd/pig/config_command_test.go	
+cli:pi-update/--all	--all	cmd/pig/package_commands_test.go	.gitignore;AGENTS.md;Makefile
+cli:pi-update/--approve	--approve	cmd/pig/ancestor_skills_test.go;cmd/pig/args_upstream_test.go;cmd/pig/extension_reload_interactive_test.go	
+cli:pi-update/--extension	--extension	cmd/pig/args_test.go;cmd/pig/args_upstream_test.go;cmd/pig/extension_cache_gc_binary_test.go	
+cli:pi-update/--extensions	--extensions	cmd/pig/package_cli_parity_test.go;cmd/pig/package_commands_test.go;cmd/pig/package_npm_trust_test.go	
+cli:pi-update/--force	--force	cmd/pig/extension_init_command_test.go;cmd/pig/package_commands_test.go	
+cli:pi-update/--help	--help	cmd/pig/args_diagnostics_test.go;cmd/pig/args_name_upstream_test.go;cmd/pig/args_test.go	usage:;git;grep
+cli:pi-update/--models	--models	cmd/pig/args_test.go;cmd/pig/args_upstream_test.go;cmd/pig/port_wave_10_package_command_paths_test.go	
+cli:pi-update/--no-approve	--no-approve	cmd/pig/ancestor_skills_test.go;cmd/pig/args_upstream_test.go;cmd/pig/config_command_test.go	
+cli:pi-update/--self	--self	cmd/pig/package_command_errors_parity_test.go;cmd/pig/package_commands_test.go;cmd/pig/port_wave_10_package_command_paths_test.go	
+cli:pi/--api-key	--api-key	cmd/pig/args_upstream_test.go;cmd/pig/credential_print_test.go;cmd/pig/startup_diagnostics_order_test.go	
+cli:pi/--append-system-prompt	--append-system-prompt	cmd/pig/args_test.go;cmd/pig/args_upstream_test.go;cmd/pig/run_prompt_options_binary_test.go	
+cli:pi/--approve	--approve	cmd/pig/ancestor_skills_test.go;cmd/pig/args_upstream_test.go;cmd/pig/extension_reload_interactive_test.go	
+cli:pi/--continue	--continue	cmd/pig/args_test.go;cmd/pig/args_upstream_test.go	
+cli:pi/--exclude-tools	--exclude-tools	cmd/pig/args_tool_lists_test.go;cmd/pig/args_upstream_test.go;cmd/pig/rpc_tool_flags_test.go	
+cli:pi/--export	--export	cmd/pig/app_mode_binary_test.go;cmd/pig/args_test.go;cmd/pig/args_upstream_test.go	
+cli:pi/--extension	--extension	cmd/pig/args_test.go;cmd/pig/args_upstream_test.go;cmd/pig/extension_cache_gc_binary_test.go	
+cli:pi/--fork	--fork	cmd/pig/app_mode_binary_test.go;cmd/pig/args_name_upstream_test.go;cmd/pig/args_test.go	
+cli:pi/--help	--help	cmd/pig/args_diagnostics_test.go;cmd/pig/args_name_upstream_test.go;cmd/pig/args_test.go	usage:;git;grep
+cli:pi/--list-models	--list-models	cmd/pig/args_name_upstream_test.go;cmd/pig/args_test.go;cmd/pig/args_upstream_test.go	
+cli:pi/--mode	--mode	cmd/pig/app_mode_binary_test.go;cmd/pig/args_diagnostics_test.go;cmd/pig/args_name_upstream_test.go	
+cli:pi/--model	--model	cmd/pig/app_mode_binary_test.go;cmd/pig/args_name_upstream_test.go;cmd/pig/args_test.go	
+cli:pi/--models	--models	cmd/pig/args_test.go;cmd/pig/args_upstream_test.go;cmd/pig/port_wave_10_package_command_paths_test.go	
+cli:pi/--name	--name	cmd/pig/args_diagnostics_test.go;cmd/pig/args_name_upstream_test.go;cmd/pig/args_test.go	.gitignore;AGENTS.md;Makefile
+cli:pi/--no-approve	--no-approve	cmd/pig/ancestor_skills_test.go;cmd/pig/args_upstream_test.go;cmd/pig/config_command_test.go	
+cli:pi/--no-builtin-tools	--no-builtin-tools	cmd/pig/args_test.go;cmd/pig/args_tool_lists_test.go;cmd/pig/args_upstream_test.go	
+cli:pi/--no-context-files	--no-context-files	cmd/pig/args_upstream_test.go;cmd/pig/audit_992_codemode_only_prompt_test.go;cmd/pig/audit_992_subprocess_tool_dispatch_test.go	
+cli:pi/--no-extensions	--no-extensions	cmd/pig/ancestor_skills_test.go;cmd/pig/app_mode_binary_test.go;cmd/pig/args_name_upstream_test.go	
+cli:pi/--no-mcp	--no-mcp	cmd/pig/args_upstream_test.go	
+cli:pi/--no-prompt-templates	--no-prompt-templates	cmd/pig/args_upstream_test.go;cmd/pig/audit_992_codemode_only_prompt_test.go;cmd/pig/audit_992_subprocess_tool_dispatch_test.go	
+cli:pi/--no-session	--no-session	cmd/pig/ancestor_skills_test.go;cmd/pig/app_mode_binary_test.go;cmd/pig/args_end_options_upstream_test.go	
+cli:pi/--no-skills	--no-skills	cmd/pig/ancestor_skills_test.go;cmd/pig/args_upstream_test.go;cmd/pig/audit_992_codemode_only_prompt_test.go	
+cli:pi/--no-themes	--no-themes	cmd/pig/args_upstream_test.go;cmd/pig/rpc_ingress_utf16_test.go;cmd/pig/rpc_session_entry_surrogate_test.go	
+cli:pi/--no-tools	--no-tools	cmd/pig/args_test.go;cmd/pig/args_upstream_test.go;cmd/pig/rpc_tool_flags_test.go	
+cli:pi/--offline	--offline	cmd/pig/args_name_upstream_test.go;cmd/pig/args_test.go;cmd/pig/args_upstream_test.go	
+cli:pi/--print	--print	cmd/pig/args_diagnostics_test.go;cmd/pig/args_name_upstream_test.go;cmd/pig/args_test.go	
+cli:pi/--prompt-template	--prompt-template	cmd/pig/args_upstream_test.go	
+cli:pi/--provider	--provider	cmd/pig/args_end_options_upstream_test.go;cmd/pig/args_name_upstream_test.go;cmd/pig/args_test.go	
+cli:pi/--resume	--resume	cmd/pig/args_name_upstream_test.go;cmd/pig/args_test.go;cmd/pig/args_upstream_test.go	
+cli:pi/--session	--session	cmd/pig/args_name_upstream_test.go;cmd/pig/args_test.go;cmd/pig/args_upstream_test.go	
+cli:pi/--session-dir	--session-dir	cmd/pig/args_name_upstream_test.go;cmd/pig/audit_992_codemode_only_prompt_test.go;cmd/pig/default_tools_extension_test.go	
+cli:pi/--session-id	--session-id	cmd/pig/args_name_upstream_test.go;cmd/pig/args_upstream_test.go;cmd/pig/name_selection_order_test.go	
+cli:pi/--skill	--skill	cmd/pig/ancestor_skills_test.go;cmd/pig/args_test.go;cmd/pig/args_upstream_test.go	
+cli:pi/--system-prompt	--system-prompt	cmd/pig/args_test.go;cmd/pig/args_upstream_test.go;cmd/pig/rpc_retry_reactions_test.go	
+cli:pi/--theme	--theme	cmd/pig/args_upstream_test.go	
+cli:pi/--thinking	--thinking	cmd/pig/args_diagnostics_test.go;cmd/pig/args_name_upstream_test.go;cmd/pig/args_test.go	
+cli:pi/--tools	--tools	cmd/pig/args_test.go;cmd/pig/args_tool_lists_test.go;cmd/pig/args_upstream_test.go	
+cli:pi/--tui-mode	--tui-mode	cmd/pig/args_diagnostics_test.go;cmd/pig/args_upstream_test.go;cmd/pig/extension_footer_width_pty_test.go	
+cli:pi/--use-theme	--use-theme	cmd/pig/args_diagnostics_test.go;cmd/pig/args_upstream_test.go;cmd/pig/startup_settings_test.go	
+cli:pi/--verbose	--verbose	cmd/pig/args_test.go;cmd/pig/args_upstream_test.go	
+cli:pi/--version	--version	cmd/pig/app_mode_binary_test.go;cmd/pig/args_diagnostics_test.go;cmd/pig/args_name_upstream_test.go	

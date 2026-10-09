@@ -1,14 +1,17 @@
 package tools
 
 import (
-	"cmp"
 	"context"
 	"encoding/json"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"slices"
 	"strings"
+
+	"golang.org/x/text/collate"
+	"golang.org/x/text/language"
 
 	"github.com/MichaelKinsy/PiG/agent"
 	"github.com/MichaelKinsy/PiG/ai"
@@ -27,6 +30,53 @@ const lsDefaultLimit = 500
 // LsTool lists directory contents.
 type LsTool struct {
 	CWD string
+	// Operations delegates the filesystem reads; nil selects the local filesystem (upstream options.operations).
+	Operations *LsOperations
+}
+
+// LsStat is the `{ isDirectory: () => boolean }` that LsOperations.stat resolves (ls.ts:34).
+type LsStat interface {
+	IsDirectory() bool
+}
+
+// fileInfoStat is the LsStat of a local file system entry.
+type fileInfoStat struct{ fs.FileInfo }
+
+func (info fileInfoStat) IsDirectory() bool { return info.IsDir() }
+
+// LsOperations is upstream's LsOperations: pluggable directory reads, for example over SSH. Each callback completes before Execute continues.
+// Ports packages/coding-agent/src/core/tools/ls.ts.
+type LsOperations struct {
+	// Exists reports whether the path exists.
+	Exists func(absolutePath string) (bool, error)
+	// Stat describes a file or directory and fails when it is not found.
+	Stat func(absolutePath string) (LsStat, error)
+	// Readdir lists the entry names of a directory.
+	Readdir func(absolutePath string) ([]string, error)
+}
+
+func (t *LsTool) operations() LsOperations {
+	if t.Operations != nil {
+		return *t.Operations
+	}
+	return LsOperations{
+		Exists: func(path string) (bool, error) { _, err := os.Stat(path); return err == nil, nil },
+		Stat: func(path string) (LsStat, error) {
+			info, err := os.Stat(path)
+			if err != nil {
+				return nil, err
+			}
+			return fileInfoStat{info}, nil
+		},
+		Readdir: func(path string) ([]string, error) {
+			dir, err := os.Open(path)
+			if err != nil {
+				return nil, err
+			}
+			defer func() { _ = dir.Close() }()
+			return dir.Readdirnames(-1)
+		},
+	}
 }
 
 func (t *LsTool) Name() string  { return "ls" }
@@ -69,26 +119,27 @@ func (t *LsTool) Execute(ctx context.Context, _ string, rawParams json.RawMessag
 	if p.Limit != nil {
 		effectiveLimit = *p.Limit
 	}
-	info, err := os.Stat(dirPath)
+	ops := t.operations()
+	if exists, err := ops.Exists(dirPath); err != nil || !exists {
+		return lsError("Path not found: " + dirPath), nil
+	}
+	info, err := ops.Stat(dirPath)
 	if err != nil {
 		return lsError("Path not found: " + dirPath), nil
 	}
-	if !info.IsDir() {
+	if !info.IsDirectory() {
 		return lsError("Not a directory: " + dirPath), nil
 	}
-	dir, err := os.Open(dirPath)
-	var entries []string
-	if err == nil {
-		entries, err = dir.Readdirnames(-1)
-		_ = dir.Close()
-	}
+	entries, err := ops.Readdir(dirPath)
 	if err != nil {
 		return lsError("Cannot read directory: " + NodeFSError(err, "scandir", dirPath)), nil
 	}
 
-	// Sort alphabetically, case-insensitive (upstream ls.ts).
-	slices.SortFunc(entries, func(a, b string) int {
-		return cmp.Compare(strings.ToLower(a), strings.ToLower(b))
+	// Sort alphabetically, case-insensitive (upstream ls.ts:109 `a.toLowerCase().localeCompare(b.toLowerCase())`): localeCompare is ICU root
+	// collation, and Array.prototype.sort is stable. A Collator keeps iterator state, so each call owns one: ls runs in parallel mode.
+	collator := collate.New(language.Und)
+	slices.SortStableFunc(entries, func(a, b string) int {
+		return collator.CompareString(strings.ToLower(a), strings.ToLower(b))
 	})
 	var results []string
 	entryLimitReached := false
@@ -99,11 +150,11 @@ func (t *LsTool) Execute(ctx context.Context, _ string, rawParams json.RawMessag
 		}
 		// stat follows symlinks; entries that cannot be stat'ed (broken
 		// links) are skipped, as upstream does.
-		entryInfo, err := os.Stat(filepath.Join(dirPath, entry))
+		entryInfo, err := ops.Stat(filepath.Join(dirPath, entry))
 		if err != nil {
 			continue
 		}
-		if entryInfo.IsDir() {
+		if entryInfo.IsDirectory() {
 			entry += "/"
 		}
 		results = append(results, entry)
@@ -117,7 +168,7 @@ func (t *LsTool) Execute(ctx context.Context, _ string, rawParams json.RawMessag
 
 	// Byte truncation only; the entry count is already capped.
 	// Number.MAX_SAFE_INTEGER is observable in the truncation details, even though only bytes cap this tool.
-	tr := TruncateHead(strings.Join(results, "\n"), DefaultMaxBytes, 1<<53-1)
+	tr := TruncateHead(strings.Join(results, "\n"), truncationLimits(DefaultMaxBytes, 1<<53-1))
 	output := tr.Content
 	details := &LsDetails{}
 	var notices []string

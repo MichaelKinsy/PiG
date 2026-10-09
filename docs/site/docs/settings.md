@@ -102,12 +102,13 @@ set it in `~/.pig/agent/settings.json`:
 | `fullscreenExitOutput` | string | `transcript` | `transcript` prints the final transcript when fullscreen exits. `resume-hint` restores the previous screen and prints only the resume hint. |
 | `fullscreenCopyOnSelect` | boolean | `true` | Copy selected fullscreen text automatically. When disabled, `ctrl+x` copies the active selection. No effect in regular mode. |
 | `fullscreenWheelScrollLines` | `"auto"` \| number | `"auto"` | Lines per mouse-wheel event in fullscreen mode, from 1 to 100. `"auto"` moves one line per event in local macOS terminals, which already accelerate wheel and trackpad input; elsewhere, and over SSH, it speeds up fast wheel spins to at most 6 lines per event. A fractional value is rounded down, and any other value falls back to `"auto"`. No effect in regular mode. |
+| `extensionsAutoUpgrade` | boolean | `false` | PiG-only (D109). Run `pig extension upgrade` rules at startup and after `pig update` for Go extensions written for an older SDK, with a backup and one line per extension. Global settings only; a project file cannot turn it on. Pi's `extensions` setting is an array and unrelated. |
 | `maskSecretInput` | boolean | `true` | PiG-only login-input privacy (divergence D80). Show dots, a character count and the last four characters; fewer than five characters show no suffix. False restores Pi's plain-text typing and submitted history. Change **Mask secret input** in `/settings`. Pi harmlessly ignores this key in shared settings. |
 | `hideThinkingBlock` | boolean | `false` | Hide thinking blocks in the transcript. |
 | `doubleEscapeAction` | string | `tree` | Action bound to pressing escape twice. |
 | `treeFilterMode` | string | `default` | Filter `/tree` opens with. |
 | `editorPaddingX` | number | `0` | Horizontal padding inside the editor. |
-| `outputPad` | number | `1` | Horizontal padding for messages and thinking blocks: `0` or `1`. |
+| `outputPad` | number | `1` | Horizontal transcript padding for messages, tool output, `!` command output, and summary blocks: `0` or `1`. |
 | `autocompleteMaxVisible` | number | `5` | Rows shown in the autocomplete list. |
 | `showHardwareCursor` | boolean | `false` | Show the terminal's own cursor. |
 | `markdown` | object |  | Markdown rendering: `codeBlockIndent`, `mermaid`. |

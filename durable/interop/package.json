@@ -1,0 +1,11 @@
+{
+	"name": "durable-interop",
+	"private": true,
+	"type": "module",
+	"description": "Runs Pi Durable 1.1.0 (the pinned packages) against the stores PiG's Go Pi Durable reads and writes.",
+	"dependencies": {
+		"@earendil-works/chord": "1.1.0",
+		"@earendil-works/pi-ai": "1.1.0",
+		"@earendil-works/pi-durable": "1.1.0"
+	}
+}

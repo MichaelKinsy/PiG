@@ -29,7 +29,7 @@ func assertEveryLine(t *testing.T, output string, n int) {
 func TestLocalShellOperationsCaptureEveryLineOfAChild(t *testing.T) {
 	const n = 3000
 	var output strings.Builder
-	result, err := NewLocalBashOperations(nil, "").Exec(t.Context(), awkLines(n), t.TempDir(), BashOperationsExecOptions{OnData: func(data []byte) { output.Write(data) }})
+	result, err := CreateLocalBashOperations(nil).Exec(t.Context(), awkLines(n), t.TempDir(), BashOperationsExecOptions{OnData: func(data []byte) { output.Write(data) }})
 	if err != nil || result.ExitCode == nil || *result.ExitCode != 0 {
 		t.Fatalf("exec: %+v, %v", result, err)
 	}

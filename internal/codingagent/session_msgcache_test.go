@@ -10,18 +10,18 @@ import (
 // (cache-hit) call must be equal to the first.
 func TestMessageFor_MatchesAsMessage(t *testing.T) {
 	s, _ := buildLinearSession(t, 200)
-	for _, e := range s.Entries() {
-		if e.Base.Type != "message" {
+	for _, e := range s.GetEntries() {
+		if e.Base().Type != "message" {
 			continue
 		}
-		want, wantOK := e.AsMessage()
+		want, wantOK := e.(MessageEntry)
 		got1, ok1 := s.messageFor(e)
 		got2, ok2 := s.messageFor(e) // hit
 		if ok1 != wantOK || ok2 != wantOK {
-			t.Fatalf("entry %s: ok mismatch memo=(%v,%v) pure=%v", e.Base.ID, ok1, ok2, wantOK)
+			t.Fatalf("entry %s: ok mismatch memo=(%v,%v) pure=%v", e.Base().ID, ok1, ok2, wantOK)
 		}
 		if !reflect.DeepEqual(got1, want) || !reflect.DeepEqual(got2, want) {
-			t.Fatalf("entry %s: memoized parse != AsMessage", e.Base.ID)
+			t.Fatalf("entry %s: memoized parse != AsMessage", e.Base().ID)
 		}
 	}
 }

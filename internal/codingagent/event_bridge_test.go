@@ -6,7 +6,9 @@
 package codingagent
 
 import (
+	"encoding/json"
 	"slices"
+	"strings"
 	"sync/atomic"
 	"testing"
 
@@ -132,7 +134,7 @@ func TestEmitHelpers_HasHandlersShortCircuit(t *testing.T) {
 
 	// These should short-circuit on HasHandlers, not reaching stale Emit.
 	emitSessionStart(fresh, "startup")
-	emitBeforeAgentStart(fresh, "x", "y", extension.BuildSystemPromptOptions{})
+	emitBeforeAgentStart(fresh, "x", extension.BuildSystemPromptOptions{})
 	emitSessionShutdown(fresh, "quit")
 	_, _ = emitUserBash(t.Context(), fresh, "ls", "/", false)
 }
@@ -140,7 +142,7 @@ func TestEmitHelpers_HasHandlersShortCircuit(t *testing.T) {
 func TestEmitAgentSettled_BridgesToRunner(t *testing.T) {
 	var fired atomic.Int32
 	fresh := makeFreshWithHandler(t, EventAgentSettled, func() { fired.Add(1) })
-	emitAgentSettled(fresh)
+	emitAgentSettled(fresh, false)
 	if got := fired.Load(); got != 1 {
 		t.Errorf("agent_settled handler fired %d times, want 1", got)
 	}
@@ -151,8 +153,8 @@ func TestEmitAgentSettled_ShortCircuitsWithoutHandler(t *testing.T) {
 	// agent_settled (negative control: proves the HasHandlers guard gates it).
 	var fired atomic.Int32
 	fresh := makeFreshWithHandler(t, EventUserBash, func() { fired.Add(1) })
-	emitAgentSettled(fresh)
-	emitAgentSettled(nil) // nil runner must be a no-op, not a panic
+	emitAgentSettled(fresh, false)
+	emitAgentSettled(nil, false) // nil runner must be a no-op, not a panic
 	if got := fired.Load(); got != 0 {
 		t.Errorf("agent_settled fired %d times without a registered handler, want 0", got)
 	}
@@ -161,7 +163,7 @@ func TestEmitAgentSettled_ShortCircuitsWithoutHandler(t *testing.T) {
 func TestEmitBeforeAgentStart_BridgesToRunner(t *testing.T) {
 	var fired atomic.Int32
 	fresh := makeFreshWithHandler(t, EventBeforeAgentStart, func() { fired.Add(1) })
-	_ = emitBeforeAgentStart(fresh, "hello", "you are helpful", extension.BuildSystemPromptOptions{})
+	_ = emitBeforeAgentStart(fresh, "hello", extension.BuildSystemPromptOptions{})
 	if got := fired.Load(); got != 1 {
 		t.Errorf("before_agent_start handler fired %d times, want 1", got)
 	}
@@ -204,7 +206,7 @@ func TestEmitBeforeAgentStart_ForwardsSystemPromptOptionsToHandler(t *testing.T)
 			{Name: "commit", Description: "make a commit"},
 		},
 	}
-	_ = emitBeforeAgentStart(fresh, "hello", "original-sp", opts)
+	_ = emitBeforeAgentStart(fresh, "hello", opts)
 
 	raw := captured.Load()
 	if raw == nil {
@@ -247,40 +249,13 @@ func TestEmitBeforeAgentStart_ReturnsMutatedSystemPrompt(t *testing.T) {
 		},
 	}
 	fresh := inproc.NewRunner([]extension.Extension{ext}, ".")
-	got := emitBeforeAgentStart(fresh, "hello", "original-sp", extension.BuildSystemPromptOptions{})
+	got := emitBeforeAgentStart(fresh, "hello", extension.BuildSystemPromptOptions{})
 	if got == nil {
 		t.Fatal("got = nil, want combined result")
 		return
 	}
 	if got.SystemPrompt == nil || *got.SystemPrompt != "rewritten-sp" {
 		t.Errorf("SystemPrompt = %v, want rewritten-sp", got.SystemPrompt)
-	}
-}
-
-func TestEmitThinkingLevelSelect_BridgesToRunner(t *testing.T) {
-	var gotLevel atomic.Value
-	var gotPrevious atomic.Value
-	ext := extension.Extension{
-		Path:         "/fixture/thinking",
-		ResolvedPath: "/fixture/thinking",
-		Handlers: map[string][]extension.HandlerFn{
-			EventThinkingLevelSelect: {
-				func(args ...any) (any, error) {
-					if len(args) >= 1 {
-						if e, ok := args[0].(extension.ThinkingLevelSelectEvent); ok {
-							gotLevel.Store(e.Level)
-							gotPrevious.Store(e.PreviousLevel)
-						}
-					}
-					return nil, nil
-				},
-			},
-		},
-	}
-	fresh := inproc.NewRunner([]extension.Extension{ext}, ".")
-	emitThinkingLevelSelect(fresh, "high", "medium")
-	if gotLevel.Load() != "high" || gotPrevious.Load() != "medium" {
-		t.Fatalf("thinking event = %v/%v, want high/medium", gotLevel.Load(), gotPrevious.Load())
 	}
 }
 
@@ -299,7 +274,7 @@ func TestEmitHelpers_NilRunnerIsNoOp(t *testing.T) {
 	emitSessionStart(nil, "startup")
 	emitSessionInfoChanged(nil, "work")
 	emitSessionShutdown(nil, "quit")
-	_ = emitBeforeAgentStart(nil, "x", "y", extension.BuildSystemPromptOptions{})
+	_ = emitBeforeAgentStart(nil, "x", extension.BuildSystemPromptOptions{})
 	_, _ = emitUserBash(t.Context(), nil, "ls", "/", false)
 	emitAgentStart(nil)
 	emitAgentEnd(nil, nil, false)
@@ -310,8 +285,7 @@ func TestEmitHelpers_NilRunnerIsNoOp(t *testing.T) {
 	emitToolExecutionStart(nil, "id", "bash", nil, "")
 	emitToolExecutionUpdate(nil, "id", "bash", agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: "partial"}}}, nil, "")
 	emitToolExecutionEnd(nil, agent.ToolExecutionEndEvent{ToolCallID: "id", ToolName: "bash", Result: agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: "ok"}}}})
-	emitMessageUpdate(nil, nil, nil)
-	emitThinkingLevelSelect(nil, "high", "medium")
+	emitMessageUpdate(nil, agent.AgentMessage{}, nil)
 }
 
 func TestEmitSessionStart_BridgesPayloadFields(t *testing.T) {
@@ -485,6 +459,7 @@ func TestEmitToolExecutionEnd_BridgesToRunner(t *testing.T) {
 	}
 }
 
+// Pi: packages/coding-agent/src/core/extensions/types.ts:1023 (TurnStartEvent.turnIndex).
 func TestEmitTurnStart_PayloadFields(t *testing.T) {
 	var capturedIdx atomic.Int32
 	capturedIdx.Store(-1)
@@ -552,4 +527,22 @@ func completedTestStream(provider string) *ai.AssistantMessageEventStream {
 		panic(err)
 	}
 	return stream
+}
+
+// Pi 1.1.0 agent-session.ts:1352-1359 forwards durationMs on the extension's tool_execution_end event only when the tool ran.
+func TestEmitToolExecutionEndForwardsDurationMs(t *testing.T) {
+	var seen []extension.ToolExecutionEndEvent
+	runner := inproc.NewRunner([]extension.Extension{{Name: "probe", Handlers: map[string][]extension.HandlerFn{EventToolExecutionEnd: {func(args ...any) (any, error) {
+		seen = append(seen, args[0].(extension.ToolExecutionEndEvent))
+		return nil, nil
+	}}}}}, t.TempDir())
+	emitToolExecutionEnd(runner, agent.ToolExecutionEndEvent{ToolCallID: "ran", ToolName: "bash", DurationMs: new(int64(4200))})
+	emitToolExecutionEnd(runner, agent.ToolExecutionEndEvent{ToolCallID: "blocked", ToolName: "bash"})
+	if len(seen) != 2 || seen[0].DurationMs == nil || *seen[0].DurationMs != 4200 || seen[1].DurationMs != nil {
+		t.Fatalf("events = %+v, want durationMs 4200 then none", seen)
+	}
+	wire, err := json.Marshal(seen[0])
+	if err != nil || !strings.Contains(string(wire), `"durationMs":4200`) {
+		t.Errorf("wire = %s, %v", wire, err)
+	}
 }

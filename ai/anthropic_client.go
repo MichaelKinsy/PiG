@@ -257,6 +257,7 @@ type anthropicBetaInputs struct {
 	supportsEagerToolInputStreaming bool
 	reasoning                       bool
 	thinkingEnabled                 bool
+	interleavedThinking             bool // options.interleavedThinking ?? true
 	forceAdaptiveThinking           bool
 	hasFallbacks                    bool
 	supportsMidConvoEffort          bool
@@ -299,7 +300,7 @@ func getBetaFeatures(modelHeaders, optionsHeaders anthropicHeaders, inputs anthr
 	if inputs.hasTools && !inputs.supportsEagerToolInputStreaming {
 		features = append(features, fineGrainedToolStreamingBeta)
 	}
-	if inputs.reasoning && inputs.thinkingEnabled && !inputs.forceAdaptiveThinking {
+	if inputs.reasoning && inputs.thinkingEnabled && inputs.interleavedThinking && !inputs.forceAdaptiveThinking {
 		features = append(features, interleavedThinkingBeta)
 	}
 	if inputs.hasFallbacks {

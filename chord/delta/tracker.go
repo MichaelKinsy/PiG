@@ -3,7 +3,6 @@ package delta
 import (
 	"errors"
 	"maps"
-	"math"
 	"slices"
 	"sync"
 )
@@ -37,22 +36,33 @@ const (
 	statusStale
 )
 
-// Tracker owns one sequence of immutable object revisions.
+// Tracker owns one sequence of immutable revisions of an object or array root, as tracker.ts's track(initial: T extends object).
 type Tracker struct {
 	mu       sync.Mutex
-	value    map[string]any
+	value    any // *JsonObject or []any
 	revision int
 	contexts map[*overlay]struct{}
 }
 
 // Track takes immutable ownership of an alias-free strict-JSON root in O(1).
 // The caller must never mutate initial again.
-func Track(initial map[string]any) *Tracker {
+func Track(initial *JsonObject) *Tracker {
 	return &Tracker{value: initial, contexts: map[*overlay]struct{}{}}
 }
 
-// Value returns the latest adopted revision.
-func (tracker *Tracker) Value() map[string]any {
+// TrackArray is Track for an array root. Its Change drafts through Elements, and its operations address the root with the empty path.
+func TrackArray(initial []any) *Tracker {
+	return &Tracker{value: initial, contexts: map[*overlay]struct{}{}}
+}
+
+// Value returns the latest adopted revision of an object root, and nil for an array root; Root returns either.
+func (tracker *Tracker) Value() *JsonObject {
+	value, _ := tracker.Root().(*JsonObject)
+	return value
+}
+
+// Root returns the latest adopted revision: a *JsonObject or a []any.
+func (tracker *Tracker) Root() any {
 	tracker.mu.Lock()
 	defer tracker.mu.Unlock()
 	return tracker.value
@@ -78,15 +88,30 @@ func (tracker *Tracker) BeginChange() *Change {
 
 // PrepareReplace prepares a whole-root replacement. A deeply equal value
 // keeps the current root with empty operations.
-func (tracker *Tracker) PrepareReplace(value map[string]any) *Prepared {
+func (tracker *Tracker) PrepareReplace(value *JsonObject) *Prepared {
+	prepared, _ := tracker.PrepareReplaceRoot(value)
+	return prepared
+}
+
+// PrepareReplaceRoot is PrepareReplace for a root of either kind: tracker.ts prepareReplace takes any object root and records one root replacement, also when the kind changes. value must be a *JsonObject or a []any.
+func (tracker *Tracker) PrepareReplaceRoot(value any) (*Prepared, error) {
+	switch typed := value.(type) {
+	case *JsonObject:
+		if typed == nil {
+			return nil, errors.New("A replicated root must be an object or an array")
+		}
+	case []any:
+	default:
+		return nil, errors.New("A replicated root must be an object or an array")
+	}
 	tracker.mu.Lock()
 	defer tracker.mu.Unlock()
 	context := &overlay{tracker: tracker, baseRevision: tracker.revision, base: tracker.value, status: statusPrepared}
 	tracker.contexts[context] = struct{}{}
 	if equalTrustedJSON(tracker.value, value) {
-		return &Prepared{ctx: context, base: tracker.value, value: tracker.value, ops: []Op{}}
+		return &Prepared{ctx: context, base: tracker.value, value: tracker.value, ops: []Op{}}, nil
 	}
-	return &Prepared{ctx: context, base: tracker.value, value: value, ops: []Op{{"r", value}}}
+	return &Prepared{ctx: context, base: tracker.value, value: value, ops: []Op{{"r", value}}}, nil
 }
 
 // Adopt swaps the root pointer to a prepared revision and stales every
@@ -111,7 +136,7 @@ func (tracker *Tracker) Adopt(prepared *Prepared) error {
 	default:
 		return errors.New("Prepared change is not ready")
 	}
-	if context.baseRevision != tracker.revision || !sameContainer(tracker.value, prepared.base) {
+	if context.baseRevision != tracker.revision || !sameRoot(tracker.value, prepared.base) {
 		context.status = statusStale
 		return errors.New("Prepared change is stale")
 	}
@@ -140,9 +165,27 @@ type Change struct {
 	settled  bool
 }
 
-// State returns the mutable root draft. It panics with ErrRevoked once the
+// State returns the mutable draft of an object root, and nil for an array root. It panics with ErrRevoked once the
 // change settled.
 func (change *Change) State() *Object {
+	root := change.root()
+	if root.isArray() {
+		return nil
+	}
+	return &Object{n: root}
+}
+
+// Elements returns the mutable draft of an array root, and nil for an object root. It panics with ErrRevoked once the
+// change settled.
+func (change *Change) Elements() *Array {
+	root := change.root()
+	if !root.isArray() {
+		return nil
+	}
+	return &Array{n: root}
+}
+
+func (change *Change) root() *node {
 	context := change.ctx
 	if context == nil {
 		panic(ErrRevoked)
@@ -152,7 +195,7 @@ func (change *Change) State() *Object {
 	if context.root == nil || context.status != statusOpen {
 		panic(ErrRevoked)
 	}
-	return &Object{n: context.root}
+	return context.root
 }
 
 // Prepare materializes the candidate revision and its operations without
@@ -185,7 +228,7 @@ func (change *Change) Prepare() (*Prepared, error) {
 			context.status = statusAborted
 			return nil, err
 		}
-		value, _ = applied.(map[string]any)
+		value = applied
 	}
 	change.prepared = &Prepared{ctx: context, base: context.base, value: value, ops: ops}
 	return change.prepared, nil
@@ -214,16 +257,28 @@ func (change *Change) Abort() {
 // Prepared is a materialized candidate revision.
 type Prepared struct {
 	ctx   *overlay
-	base  map[string]any
-	value map[string]any
+	base  any
+	value any
 	ops   []Op
 }
 
-// Base returns the revision the change started from.
-func (prepared *Prepared) Base() map[string]any { return prepared.base }
+// Base returns the revision the change started from, for an object root (nil for an array root; see BaseRoot).
+func (prepared *Prepared) Base() *JsonObject {
+	base, _ := prepared.base.(*JsonObject)
+	return base
+}
 
-// Value returns the candidate revision. Empty Ops means Value is Base.
-func (prepared *Prepared) Value() map[string]any { return prepared.value }
+// Value returns the candidate revision of an object root (nil for an array root; see ValueRoot). Empty Ops means Value is Base.
+func (prepared *Prepared) Value() *JsonObject {
+	value, _ := prepared.value.(*JsonObject)
+	return value
+}
+
+// BaseRoot returns the revision the change started from: a *JsonObject or a []any.
+func (prepared *Prepared) BaseRoot() any { return prepared.base }
+
+// ValueRoot returns the candidate revision: a *JsonObject or a []any. Empty Ops means ValueRoot is BaseRoot.
+func (prepared *Prepared) ValueRoot() any { return prepared.value }
 
 // Ops returns the exact operations that transform Base into Value. Payloads
 // may be the same containers as parts of Value.
@@ -248,8 +303,10 @@ type overlay struct {
 	tracker      *Tracker
 	baseRevision int
 	status       status
-	base         map[string]any
+	base         any
 	root         *node
+	dirtySeq     int // nodes that have changed so far
+	writeSeq     int // base elements overwritten so far
 }
 
 func (context *overlay) assertOpen() {
@@ -269,27 +326,30 @@ type node struct {
 	base   any
 
 	// Object overlay.
-	writes  map[string]any
-	order   []string       // written keys in write order; a rewritten key appears again, only its last position is live
-	orderAt map[string]int // the live position in order of each written key
-	deletes map[string]bool
-	readded map[string]bool // base keys deleted and then written again
-	kids    map[string]*node
+	writes      map[string]any
+	order       []string       // written keys in write order; a rewritten key appears again, only its last position is live
+	orderAt     map[string]int // the live position in order of each written key
+	deletes     map[string]bool
+	deleteOrder []string        // deleted base keys in deletion order (tracker.ts deletes Set)
+	readded     map[string]bool // base keys deleted and then written again
+	kids        map[string]*node
 
 	// Array overlay; nil until the array is first accessed.
 	entries    []*entry
 	structural bool
 
 	changed bool
+	seq     int // 1-based order in which the node first changed (tracker.ts context.dirty)
 }
 
 // entry is one element of an array overlay.
 type entry struct {
-	index int // base index, or -1 for an inserted element
-	value any // primitive or *node, when set
-	set   bool
-	kid   *node
-	live  bool
+	index  int // base index, or -1 for an inserted element
+	value  any // primitive or *node, when set
+	set    bool
+	setSeq int // order in which a base element was first overwritten (tracker.ts baseOverrides insertion order)
+	kid    *node
+	live   bool
 }
 
 func (n *node) isArray() bool {
@@ -323,7 +383,13 @@ func (n *node) attached() bool {
 	return !parent.deletes[n.key] && parent.kids[n.key] == n
 }
 
-func (n *node) markChanged() { n.changed = true }
+func (n *node) markChanged() {
+	if !n.changed {
+		n.changed = true
+		n.ctx.dirtySeq++
+		n.seq = n.ctx.dirtySeq
+	}
+}
 
 // modified reports whether n or an attached descendant changed.
 func (n *node) modified() bool {
@@ -372,7 +438,7 @@ func (n *node) objectLookup(key string) (any, bool) {
 	if n.deletes[key] {
 		return nil, false
 	}
-	value, ok := n.base.(map[string]any)[key]
+	value, ok := n.base.(*JsonObject).Get(key)
 	if !ok {
 		return nil, false
 	}
@@ -391,6 +457,10 @@ func (n *node) objectLookup(key string) (any, bool) {
 }
 
 func (n *node) objectSet(key string, stored any) {
+	// Writing the value a key already holds changes nothing and does not dirty the node (tracker.ts setProperty).
+	if current, present := n.objectLookup(key); present && !n.deletes[key] && !isContainer(stored) && !isContainer(current) && current == stored {
+		return
+	}
 	if n.writes == nil {
 		n.writes = map[string]any{}
 	}
@@ -408,6 +478,9 @@ func (n *node) objectSet(key string, stored any) {
 		}
 		n.readded[key] = true
 	}
+	if n.deletes[key] {
+		n.deleteOrder = slices.DeleteFunc(n.deleteOrder, func(other string) bool { return other == key })
+	}
 	delete(n.deletes, key)
 	n.markChanged()
 }
@@ -424,10 +497,17 @@ func (n *node) writtenKeys() []string {
 }
 
 func (n *node) objectDelete(key string) {
+	if _, present := n.objectLookup(key); !present {
+		return
+	}
 	delete(n.writes, key)
-	if _, ok := n.base.(map[string]any)[key]; ok {
+	delete(n.readded, key)
+	if n.base.(*JsonObject).Has(key) {
 		if n.deletes == nil {
 			n.deletes = map[string]bool{}
+		}
+		if !n.deletes[key] {
+			n.deleteOrder = append(n.deleteOrder, key)
 		}
 		n.deletes[key] = true
 	}
@@ -461,24 +541,28 @@ func (n *node) current() any {
 		return n.base
 	}
 	if !n.isArray() {
-		base := n.base.(map[string]any)
-		hint := 0
-		if len(base) < math.MaxInt32 && len(n.writes) < math.MaxInt32 {
-			hint = len(base) + len(n.writes)
-		}
-		result := make(map[string]any, hint)
-		for key, value := range base {
-			if n.deletes[key] {
+		// Base keys keep their places unless deleted; keys added by the change, and base keys deleted and written again, follow in write order, as the upstream draft orders them.
+		base := n.base.(*JsonObject)
+		result := NewJsonObject(base.Len() + len(n.writes))
+		for key, value := range base.All() {
+			if n.deletes[key] || n.readded[key] {
+				continue
+			}
+			if stored, written := n.writes[key]; written {
+				result.Set(key, storedCurrent(stored))
 				continue
 			}
 			if kid := n.kids[key]; kid != nil {
-				result[key] = kid.current()
+				result.Set(key, kid.current())
 				continue
 			}
-			result[key] = value
+			result.Set(key, value)
 		}
-		for key, stored := range n.writes {
-			result[key] = storedCurrent(stored)
+		for _, key := range n.writtenKeys() {
+			if base.Has(key) && !n.readded[key] {
+				continue
+			}
+			result.Set(key, storedCurrent(n.writes[key]))
 		}
 		return result
 	}
@@ -506,7 +590,25 @@ func emitOperations(root *node) ([]Op, error) {
 	if !root.modified() {
 		return ops, nil
 	}
-	emitNode(root, []any{}, &ops)
+	var emissions []emission
+	collectEmissions(root, []any{}, root.ctx.dirtySeq, &emissions)
+	// tracker.ts emitOperations buckets nodes by path length, keeping the order in which they first became dirty within a bucket.
+	slices.SortStableFunc(emissions, func(a, b emission) int {
+		if len(a.path) != len(b.path) {
+			return len(a.path) - len(b.path)
+		}
+		return a.seq - b.seq
+	})
+	for _, e := range emissions {
+		if len(ops) > maxDeltaOperations {
+			break
+		}
+		if e.n.isArray() {
+			emitArray(e.n, e.path, &ops)
+		} else {
+			emitObject(e.n, e.path, &ops)
+		}
+	}
 	if len(ops) > maxDeltaOperations {
 		value, err := clonePlacement(root.current())
 		if err != nil {
@@ -517,6 +619,51 @@ func emitOperations(root *node) ([]Op, error) {
 	return ops, nil
 }
 
+// emission is one node whose own changes become operations at path.
+type emission struct {
+	n    *node
+	path []any
+	seq  int
+}
+
+// collectEmissions lists the nodes that emit operations, without descending below a node whose whole value is folded into one set. A folded node that was not itself dirty takes the next position after the dirty ones, as a forced fold is appended to tracker.ts's emission map.
+func collectEmissions(n *node, path []any, fold int, out *[]emission) {
+	if !n.isArray() && hasReservedMutation(n) {
+		seq := n.seq
+		if !n.changed {
+			seq = fold + len(*out) + 1
+		}
+		*out = append(*out, emission{n, path, seq})
+		return
+	}
+	if n.changed {
+		*out = append(*out, emission{n, path, n.seq})
+	}
+	if n.isArray() {
+		regions := denseRegions(n)
+		if len(regions) > 0 && !n.changed {
+			*out = append(*out, emission{n, path, fold + len(*out) + 1})
+		}
+		for position, e := range n.entries {
+			if e.index < 0 || e.set || inDenseRegion(regions, position) {
+				continue
+			}
+			if e.kid != nil && e.kid.modified() {
+				collectEmissions(e.kid, childPath(path, position), fold, out)
+			}
+		}
+		return
+	}
+	for _, key := range slices.Sorted(maps.Keys(n.kids)) {
+		if _, written := n.writes[key]; written || n.deletes[key] {
+			continue
+		}
+		if kid := n.kids[key]; kid.modified() {
+			collectEmissions(kid, childPath(path, key), fold, out)
+		}
+	}
+}
+
 func childPath(path []any, segment any) []any {
 	next := make([]any, len(path)+1)
 	copy(next, path)
@@ -524,38 +671,28 @@ func childPath(path []any, segment any) []any {
 	return next
 }
 
-func emitNode(n *node, path []any, ops *[]Op) {
-	if len(*ops) > maxDeltaOperations {
-		return
-	}
-	if !n.isArray() {
-		emitObject(n, path, ops)
-		return
-	}
-	emitArray(n, path, ops)
-}
-
 func emitObject(n *node, path []any, ops *[]Op) {
 	if hasReservedMutation(n) {
 		emitFold(n, path, ops)
 		return
 	}
-	base := n.base.(map[string]any)
+	base := n.base.(*JsonObject)
+	// Replay must encode delete-and-re-add explicitly so string-key order matches the draft (tracker.ts emitObjectOperations).
+	for _, key := range n.writtenKeys() {
+		if base.Has(key) && n.readded[key] {
+			*ops = append(*ops, Op{"d", childPath(path, key)})
+		}
+	}
 	for _, key := range n.writtenKeys() {
 		stored := n.writes[key]
-		before, present := base[key]
+		before, present := base.Get(key)
+		if n.readded[key] {
+			present = false
+		}
 		emitChangedValue(ops, childPath(path, key), before, present, storedCurrent(stored))
 	}
-	for _, key := range slices.Sorted(maps.Keys(n.deletes)) {
+	for _, key := range n.deleteOrder {
 		*ops = append(*ops, Op{"d", childPath(path, key)})
-	}
-	for _, key := range slices.Sorted(maps.Keys(n.kids)) {
-		if _, written := n.writes[key]; written || n.deletes[key] {
-			continue
-		}
-		if kid := n.kids[key]; kid.modified() {
-			emitNode(kid, childPath(path, key), ops)
-		}
 	}
 }
 
@@ -564,17 +701,17 @@ func emitObject(n *node, path []any, ops *[]Op) {
 // at path.slice(0, reservedAt) (tracker.ts:1638-1643). Emission walks top-down, so the first reserved segment folds.
 func hasReservedMutation(n *node) bool {
 	for key := range n.writes {
-		if reservedSegments[key] {
+		if ReservedSegments[key] {
 			return true
 		}
 	}
 	for key := range n.deletes {
-		if reservedSegments[key] {
+		if ReservedSegments[key] {
 			return true
 		}
 	}
 	for key, kid := range n.kids {
-		if reservedSegments[key] && kid.modified() {
+		if ReservedSegments[key] && kid.modified() {
 			return true
 		}
 	}
@@ -668,20 +805,19 @@ func emitArray(n *node, path []any, ops *[]Op) {
 			*ops = append(*ops, Op{"p", slices.Clone(path), start, 0, items})
 		}
 	}
+	var overrides []int
 	for position, e := range n.entries {
+		if e.index >= 0 && e.set && !inDenseRegion(regions, position) {
+			overrides = append(overrides, position)
+		}
+	}
+	slices.SortStableFunc(overrides, func(a, b int) int { return n.entries[a].setSeq - n.entries[b].setSeq })
+	for _, position := range overrides {
 		if len(*ops) > maxDeltaOperations {
 			return
 		}
-		if e.index < 0 || inDenseRegion(regions, position) {
-			continue
-		}
-		if e.set {
-			emitChangedValue(ops, childPath(path, position), base[e.index], true, storedCurrent(e.value))
-			continue
-		}
-		if e.kid != nil && e.kid.modified() {
-			emitNode(e.kid, childPath(path, position), ops)
-		}
+		e := n.entries[position]
+		emitChangedValue(ops, childPath(path, position), base[e.index], true, storedCurrent(e.value))
 	}
 }
 
@@ -790,4 +926,15 @@ func emitChangedValue(ops *[]Op, path []any, before any, present bool, after any
 		}
 	}
 	*ops = append(*ops, Op{"s", path, after})
+}
+
+// sameRoot reports whether two roots are the same revision. A zero-capacity slice has no allocation to compare, and the
+// revision counter already fences every other adoption, so two such roots count as the same.
+func sameRoot(left, right any) bool {
+	l, leftEmpty := left.([]any)
+	r, rightEmpty := right.([]any)
+	if leftEmpty && rightEmpty && cap(l) == 0 && cap(r) == 0 {
+		return true
+	}
+	return sameContainer(left, right)
 }

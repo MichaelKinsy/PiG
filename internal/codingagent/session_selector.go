@@ -37,7 +37,8 @@ const (
 	sessionNameNamed sessionNameFilter = "named"
 )
 
-type sessionSelector struct {
+type SessionSelectorComponent struct {
+	*tui.Container
 	currentLoader sessionsLoader
 	allLoader     sessionsLoader
 	work          sessionSelectorWork
@@ -56,6 +57,9 @@ type sessionSelector struct {
 	showPath       bool
 	showRenameHint bool
 
+	// requestRender is session-selector.ts:775 requestRender; nil is a no-op.
+	requestRender func()
+
 	searchInput      *tui.TextInput
 	current          []SessionInfo
 	all              []SessionInfo
@@ -73,6 +77,8 @@ type sessionSelector struct {
 	renameMode  bool
 	renamePath  string
 	renameInput *tui.TextInput
+
+	list *SessionList // session-selector.ts sessionList: the handle GetSessionList returns
 }
 
 type sessionDisplayNode struct {
@@ -94,11 +100,12 @@ type searchToken struct {
 	value string
 }
 
-func newSessionSelectorWithLoaders(currentLoader, allLoader sessionsLoader, renameSession func(path, name string) error, deleteSession func(path string) sessionDeleteResult, currentPath string, kb *KeybindingsManager) *sessionSelector {
+func newSessionSelectorWithLoaders(currentLoader, allLoader sessionsLoader, renameSession func(path, name string) error, deleteSession func(path string) sessionDeleteResult, currentPath string, kb *KeybindingsManager) *SessionSelectorComponent {
 	if kb == nil {
 		kb = DefaultKeybindingsManager()
 	}
-	s := &sessionSelector{
+	s := &SessionSelectorComponent{
+		Container:      tui.NewContainer(),
 		work:           sessionSelectorWork{updates: make(chan func()), ready: make(chan struct{}, 1)},
 		currentLoader:  currentLoader,
 		allLoader:      allLoader,
@@ -114,48 +121,62 @@ func newSessionSelectorWithLoaders(currentLoader, allLoader sessionsLoader, rena
 		showRenameHint: true,
 	}
 	s.searchInput.Focused = true
+	// session-selector.ts: the search Input's own submit (tui.input.submit, or LF when tui.select.confirm is rebound) selects the highlighted session.
+	s.searchInput.OnSubmit = func(string) { s.selectHighlighted() }
 	s.renameInput.OnSubmit = func(value string) {
 		s.operationError = s.confirmRename(value)
 	}
 	s.renameInput.OnEscape = s.exitRenameMode
+	s.buildBaseLayout()
 	s.loadScope(sessionScopeCurrent)
 	return s
 }
 
-func (s *sessionSelector) Done() bool      { return s.done || s.operationError != nil }
-func (s *sessionSelector) Cancelled() bool { return s.cancelled }
-func (s *sessionSelector) SelectedPath() string {
+func (s *SessionSelectorComponent) Done() bool      { return s.done || s.operationError != nil }
+func (s *SessionSelectorComponent) Cancelled() bool { return s.cancelled }
+func (s *SessionSelectorComponent) SelectedPath() string {
 	return s.selectedPath
 }
-
-func (s *sessionSelector) Invalidate() {}
 
 // sessionSelectorMaxVisible is upstream SessionList.maxVisible.
 const sessionSelectorMaxVisible = 10
 
-// Render mirrors upstream SessionSelectorComponent.buildBaseLayout: spacer, accent border, spacer, header and spacer (list mode only), content, spacer, accent border. The list owns a focused Input that positions the terminal cursor within its search row.
-func (s *sessionSelector) Render(width int) []string {
-	border := tui.NewDynamicBorder(tui.ActiveTheme().Accent).Render(width)[0]
-	lines := []string{"", border, ""}
+// IsDirty is always true: loads, status expiry and rename completion change what the selector renders without invalidating it, so a parent Container must render it every frame.
+func (s *SessionSelectorComponent) IsDirty() bool { return true }
+
+// buildBaseLayout mirrors upstream SessionSelectorComponent.buildBaseLayout: spacer, accent border, spacer, header and spacer (list mode only), content, spacer, accent border. Entering or leaving rename mode rebuilds it. The list owns a focused Input that positions the terminal cursor within its search row.
+func (s *SessionSelectorComponent) buildBaseLayout() {
+	s.Clear()
+	s.Add(tui.NewSpacer(1))
+	s.Add(tui.NewDynamicBorderToken("accent"))
+	s.Add(tui.NewSpacer(1))
 	if s.renameMode {
-		// Upstream enterRenameMode adds the title and hint as Text(..., 1, 0)
-		// and hides the header.
-		lines = append(lines, tui.NewPaddedText(sessionBold("Rename Session"), 1, 0, nil).Render(width)...)
-		lines = append(lines, "")
-		lines = append(lines, s.renameInput.Render(width)...)
-		lines = append(lines, "")
+		// Upstream enterRenameMode adds the title and hint as Text(..., 1, 0) and hides the header.
+		panel := tui.NewContainer()
+		panel.Add(tui.NewPaddedText(sessionBold("Rename Session"), 1, 0, nil))
+		panel.Add(tui.NewSpacer(1))
+		panel.Add(s.renameInput)
+		panel.Add(tui.NewSpacer(1))
 		hint := sessionFg(tui.ActiveTheme().Muted, sessionKeyText(s, tui.KBSelectConfirm)+" to save · "+sessionKeyText(s, tui.KBSelectCancel)+" to cancel")
-		lines = append(lines, tui.NewPaddedText(hint, 1, 0, nil).Render(width)...)
-		return append(lines, "", border)
+		panel.Add(tui.NewPaddedText(hint, 1, 0, nil))
+		s.Add(panel)
+	} else {
+		s.Add(sessionSection(func(width int) []string { return sessionSelectorHeader(s, width) }))
+		s.Add(tui.NewSpacer(1))
+		s.Add(sessionSection(s.renderList))
 	}
-	lines = append(lines, sessionSelectorHeader(s, width)...)
-	lines = append(lines, "")
-	lines = append(lines, s.renderList(width)...)
-	return append(lines, "", border)
+	s.Add(tui.NewSpacer(1))
+	s.Add(tui.NewDynamicBorderToken("accent"))
 }
 
+// sessionSection renders the header or the list (upstream SessionSelectorHeader, SessionList) from the selector's current state on every frame, so the parent Container never serves a stale one.
+type sessionSection func(width int) []string
+
+func (f sessionSection) Render(width int) []string { return f(width) }
+func (sessionSection) Invalidate()                 {}
+
 // renderList mirrors upstream SessionList.render.
-func (s *sessionSelector) renderList(width int) []string {
+func (s *SessionSelectorComponent) renderList(width int) []string {
 	lines := append(s.searchInput.Render(width), "")
 	if len(s.filtered) == 0 {
 		var msg string
@@ -186,7 +207,7 @@ func (s *sessionSelector) renderList(width int) []string {
 // sessionSelectorHeader mirrors upstream SessionSelectorHeader.render: a bold
 // title with right-aligned scope, name filter and sort, then two hint rows
 // that a delete confirmation or status message replaces.
-func sessionSelectorHeader(s *sessionSelector, width int) []string {
+func sessionSelectorHeader(s *SessionSelectorComponent, width int) []string {
 	s.expireStatusMessage()
 	th := tui.ActiveTheme()
 	title := "Resume Session (All)"
@@ -245,10 +266,10 @@ func sessionSelectorHeader(s *sessionSelector, width int) []string {
 }
 
 // sessionKeyText mirrors upstream keyText: the bound keys, not capitalized.
-func sessionKeyText(s *sessionSelector, action string) string {
+func sessionKeyText(s *SessionSelectorComponent, action string) string {
 	var keys []string
 	if strings.HasPrefix(action, "app.") && s.keybindings != nil {
-		for _, key := range s.keybindings.Get(action) {
+		for _, key := range s.keybindings.GetKeys(action) {
 			keys = append(keys, string(key))
 		}
 	} else {
@@ -258,7 +279,7 @@ func sessionKeyText(s *sessionSelector, action string) string {
 }
 
 // sessionKeyHint mirrors upstream keyHint: dim keys, muted description.
-func sessionKeyHint(s *sessionSelector, action, description string) string {
+func sessionKeyHint(s *SessionSelectorComponent, action, description string) string {
 	th := tui.ActiveTheme()
 	return sessionFg(th.Dim, sessionKeyText(s, action)) + sessionFg(th.Muted, " "+description)
 }
@@ -272,7 +293,7 @@ func sessionFg(color, text string) string {
 
 func sessionBold(text string) string { return "\x1b[1m" + text + tui.SGRBoldDimReset }
 
-func (s *sessionSelector) HandleInput(data string) {
+func (s *SessionSelectorComponent) HandleInput(data string) {
 	s.drainLoadUpdates()
 	if s.done {
 		return
@@ -286,7 +307,7 @@ func (s *sessionSelector) HandleInput(data string) {
 		switch {
 		case kb.Matches(data, tui.KBSelectConfirm):
 			pathToDelete := s.confirmDelete
-			s.confirmDelete = ""
+			s.setConfirmDelete("")
 			if s.deleteSession != nil {
 				if result := s.deleteSession(pathToDelete); !result.ok {
 					errorMessage := result.error
@@ -310,7 +331,7 @@ func (s *sessionSelector) HandleInput(data string) {
 			}
 			return
 		case kb.Matches(data, tui.KBSelectCancel):
-			s.confirmDelete = ""
+			s.setConfirmDelete("")
 			return
 		default:
 			return
@@ -330,11 +351,11 @@ func (s *sessionSelector) HandleInput(data string) {
 	case s.keybindings.Matches(data, "app.session.togglePath"):
 		s.showPath = !s.showPath
 		return
-	case s.keybindings.Matches(data, "app.session.rename"):
-		s.enterRenameMode()
-		return
 	case s.keybindings.Matches(data, "app.session.delete"):
 		s.startDeleteConfirmation()
+		return
+	case s.keybindings.Matches(data, "app.session.rename"):
+		s.enterRenameMode()
 		return
 	case s.keybindings.Matches(data, "app.session.deleteNoninvasive"):
 		if s.searchInput.Text() != "" {
@@ -344,41 +365,55 @@ func (s *sessionSelector) HandleInput(data string) {
 			s.startDeleteConfirmation()
 		}
 		return
-	case tui.GetTUIKeybindings().Matches(data, tui.KBSelectCancel):
+	}
+	// session-selector.ts handleInput sets selectionTouched before the first list action and checks the list actions in this order.
+	s.selectionTouched = true
+	switch kb := tui.GetTUIKeybindings(); {
+	case kb.Matches(data, tui.KBSelectUp):
+		s.move(-1)
+	case kb.Matches(data, tui.KBSelectDown):
+		s.move(1)
+	case kb.Matches(data, tui.KBSelectPageUp):
+		s.move(-sessionSelectorMaxVisible)
+	case kb.Matches(data, tui.KBSelectPageDown):
+		s.move(sessionSelectorMaxVisible)
+	case kb.Matches(data, tui.KBSelectConfirm):
+		s.selectHighlighted()
+	case kb.Matches(data, tui.KBSelectCancel):
 		s.clearStatusMessage()
 		s.cancelled = true
 		s.done = true
 		s.cancelLoads()
-		return
-	case tui.GetTUIKeybindings().Matches(data, tui.KBSelectConfirm):
-		if len(s.filtered) == 0 {
-			return
+		if s.list != nil && s.list.OnCancel != nil {
+			s.list.OnCancel()
 		}
-		s.clearStatusMessage()
-		s.selectedPath = s.filtered[s.selected].Session.Path
-		s.done = true
-		s.cancelLoads()
-		return
-	case tui.GetTUIKeybindings().Matches(data, tui.KBSelectUp):
-		s.move(-1)
-		return
-	case tui.GetTUIKeybindings().Matches(data, tui.KBSelectDown):
-		s.move(1)
-		return
-	case tui.GetTUIKeybindings().Matches(data, tui.KBSelectPageUp):
-		s.move(-sessionSelectorMaxVisible)
-		return
-	case tui.GetTUIKeybindings().Matches(data, tui.KBSelectPageDown):
-		s.move(sessionSelectorMaxVisible)
-		return
 	default:
-		s.selectionTouched = true
 		s.searchInput.HandleInput(data)
 		s.refilter()
 	}
 }
 
-func (s *sessionSelector) toggleSortMode() {
+func (s *SessionSelectorComponent) selectHighlighted() {
+	if len(s.filtered) == 0 {
+		return
+	}
+	s.clearStatusMessage()
+	s.selectedPath = s.filtered[s.selected].Session.Path
+	s.done = true
+	s.cancelLoads()
+	if s.list != nil && s.list.OnSelect != nil {
+		s.list.OnSelect(s.selectedPath)
+	}
+}
+
+// renderRequested is the `this.requestRender()` call session-selector.ts makes after a status, scope, sort, filter or load change.
+func (s *SessionSelectorComponent) renderRequested() {
+	if s.requestRender != nil {
+		s.requestRender()
+	}
+}
+
+func (s *SessionSelectorComponent) toggleSortMode() {
 	switch s.sortMode {
 	case sessionSortThreaded:
 		s.sortMode = sessionSortRecent
@@ -388,18 +423,20 @@ func (s *sessionSelector) toggleSortMode() {
 		s.sortMode = sessionSortThreaded
 	}
 	s.refilter()
+	s.renderRequested()
 }
 
-func (s *sessionSelector) toggleNameFilter() {
+func (s *SessionSelectorComponent) toggleNameFilter() {
 	if s.nameFilter == sessionNameAll {
 		s.nameFilter = sessionNameNamed
 	} else {
 		s.nameFilter = sessionNameAll
 	}
 	s.refilter()
+	s.renderRequested()
 }
 
-func (s *sessionSelector) startDeleteConfirmation() {
+func (s *SessionSelectorComponent) startDeleteConfirmation() {
 	if len(s.filtered) == 0 {
 		return
 	}
@@ -408,22 +445,23 @@ func (s *sessionSelector) startDeleteConfirmation() {
 		s.setStatusMessage("Cannot delete the currently active session", true, sessionSelectorErrorTimeout)
 		return
 	}
-	s.confirmDelete = selected.Path
+	s.setConfirmDelete(selected.Path)
 }
 
-func (s *sessionSelector) enterRenameMode() {
+func (s *SessionSelectorComponent) enterRenameMode() {
 	if s.scopeLoad(s.scope) != nil || len(s.filtered) == 0 || s.renameSession == nil {
 		return
 	}
 	selected := s.filtered[s.selected].Session
 	s.renameMode = true
+	defer s.buildBaseLayout()
 	s.renamePath = selected.Path
 	s.renameInput.SetText(selected.Name)
 	s.renameInput.Focused = true
 }
 
 // confirmRename preserves header status, exits on rejection, and keeps the panel mounted until a successful refresh settles. The owner surfaces input-callback errors.
-func (s *sessionSelector) confirmRename(value string) error {
+func (s *SessionSelectorComponent) confirmRename(value string) error {
 	next := jsTrim(value)
 	if next == "" {
 		return nil
@@ -449,13 +487,14 @@ func (s *sessionSelector) confirmRename(value string) error {
 // exitRenameMode mirrors upstream SessionSelectorComponent.exitRenameMode
 // (session-selector.ts:908): it returns to the existing list without touching
 // the search Input, so its text, cursor, undo and kill-ring state survive.
-func (s *sessionSelector) exitRenameMode() {
+func (s *SessionSelectorComponent) exitRenameMode() {
 	s.renameMode = false
 	s.renamePath = ""
+	s.buildBaseLayout()
 	s.refilter()
 }
 
-func (s *sessionSelector) move(delta int) {
+func (s *SessionSelectorComponent) move(delta int) {
 	s.selectionTouched = true
 	if len(s.filtered) == 0 {
 		s.selected = 0
@@ -471,7 +510,7 @@ func (s *sessionSelector) move(delta int) {
 }
 
 // refilter applies the scope, name filter, query, and sort without excluding the active session.
-func (s *sessionSelector) refilter() {
+func (s *SessionSelectorComponent) refilter() {
 	var base []SessionInfo
 	if s.scope == sessionScopeAll {
 		base = s.all
@@ -526,7 +565,7 @@ func buildSessionTree(sessions []SessionInfo) []*sessionTreeNode {
 	var roots []*sessionTreeNode
 	for _, sess := range sessions {
 		node := byPath[canonicalSessionPath(sess.Path)]
-		parent := canonicalSessionPath(sess.ParentSession)
+		parent := canonicalSessionPath(sess.ParentSessionPath)
 		if parent != "" {
 			if p, ok := byPath[parent]; ok {
 				p.Children = append(p.Children, node)
@@ -731,7 +770,7 @@ func normalizeWhitespaceLower(text string) string {
 
 // renderNode mirrors one upstream SessionList row: cursor, dim tree prefix,
 // the (styled) name or first message, and right-aligned count and age.
-func (s *sessionSelector) renderNode(node sessionDisplayNode, selected bool, width int) string {
+func (s *SessionSelectorComponent) renderNode(node sessionDisplayNode, selected bool, width int) string {
 	th := tui.ActiveTheme()
 	session := node.Session
 	prefix := s.buildTreePrefix(node)
@@ -777,12 +816,13 @@ func (s *sessionSelector) renderNode(node sessionDisplayNode, selected bool, wid
 	if selected {
 		line = th.SelectedBg + line + th.BgClose
 	}
-	return widthx.TruncateToWidth(line, width, "…", false)
+	// upstream: session-selector.ts SessionList.render truncateToWidth(line, width) with its default "..." ellipsis
+	return widthx.TruncateToWidth(line, width, "...", false)
 }
 
 var sessionControlChars = lazyregexp.New(`[\x00-\x1f\x7f]`)
 
-func (s *sessionSelector) buildTreePrefix(node sessionDisplayNode) string {
+func (s *SessionSelectorComponent) buildTreePrefix(node sessionDisplayNode) string {
 	if node.Depth == 0 {
 		return ""
 	}
@@ -808,4 +848,54 @@ func shortenSessionPath(path string) string {
 		return "~" + strings.TrimPrefix(path, home)
 	}
 	return path
+}
+
+// SetFocused propagates TUI focus to the session list's search input and to the rename input, which emit the hardware-cursor marker only while focused (upstream `set focused`, session-selector.ts:733-740).
+func (s *SessionSelectorComponent) SetFocused(focused bool) {
+	s.searchInput.SetFocused(focused)
+	s.renameInput.SetFocused(focused)
+}
+
+// Focused reports whether the session list holds the TUI focus (upstream `get focused`).
+func (s *SessionSelectorComponent) Focused() bool { return s.searchInput.Focused }
+
+// SessionList is upstream's SessionList (session-selector.ts): the session rows of a SessionSelectorComponent, the component the host focuses.
+// Its callbacks run when the selector handles the confirm or cancel key and when the delete confirmation changes.
+type SessionList struct {
+	s *SessionSelectorComponent
+	// OnSelect runs with the selected session's path on the confirm key.
+	OnSelect func(path string)
+	// OnCancel runs on the cancel key.
+	OnCancel func()
+	// OnExit is the host's exit hook (session-selector.ts:302 onExit); the list never raises it itself.
+	OnExit func()
+	// OnDeleteConfirmationChange runs with the path awaiting delete confirmation, or "" (upstream null) when the confirmation ends.
+	OnDeleteConfirmationChange func(path string)
+}
+
+// GetSessionList returns the session list (session-selector.ts getSessionList).
+func (s *SessionSelectorComponent) GetSessionList() *SessionList {
+	if s.list == nil {
+		s.list = &SessionList{s: s}
+	}
+	return s.list
+}
+
+// HandleInput delegates to the selector's key handling (SessionList.handleInput).
+func (l *SessionList) HandleInput(data string) { l.s.HandleInput(data) }
+
+// GetSelectedSessionPath returns the path of the highlighted session, or "" when no row is visible (SessionList.getSelectedSessionPath).
+func (l *SessionList) GetSelectedSessionPath() string {
+	if l.s.selected < 0 || l.s.selected >= len(l.s.filtered) {
+		return ""
+	}
+	return l.s.filtered[l.s.selected].Session.Path
+}
+
+// setConfirmDelete starts or ends the delete confirmation and reports the change (SessionList.setConfirmingDeletePath).
+func (s *SessionSelectorComponent) setConfirmDelete(path string) {
+	s.confirmDelete = path
+	if s.list != nil && s.list.OnDeleteConfirmationChange != nil {
+		s.list.OnDeleteConfirmationChange(path)
+	}
 }

@@ -19,7 +19,7 @@ func TestWin_LocalShellOperationsReadToEOFAfterTheGrace(t *testing.T) {
 	testHookStdioGraceExpired = func() { close(graceExpired) }
 	t.Cleanup(func() { testHookBeforeStdioRead, testHookStdioGraceExpired = nil, nil })
 	var output strings.Builder
-	result, err := NewLocalBashOperations(nil, "").Exec(t.Context(), awkLines(n), t.TempDir(), BashOperationsExecOptions{OnData: func(data []byte) { output.Write(data) }})
+	result, err := CreateLocalBashOperations(nil).Exec(t.Context(), awkLines(n), t.TempDir(), BashOperationsExecOptions{OnData: func(data []byte) { output.Write(data) }})
 	if err != nil || result.ExitCode == nil || *result.ExitCode != 0 {
 		t.Fatalf("exec: %+v, %v", result, err)
 	}

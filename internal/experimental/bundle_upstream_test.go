@@ -1,5 +1,7 @@
 package experimental
 
+// pi: packages/chord/src/node.ts
+
 import (
 	"context"
 	"encoding/json"
@@ -279,6 +281,31 @@ func TestFacetBundles(t *testing.T) {
 		writeNodeFacetFile(t, filepath.Join(output, manifest.Entries["invalid"].File), "export default {};\n")
 		if _, err := loader.Load(t.Context()); err == nil || !strings.Contains(err.Error(), "integrity check failed") {
 			t.Fatalf("corruption=%v", err)
+		}
+		// packages/chord/src/node/bundle-loader.ts:26 verifyIntegrity is optional, and bundle-loader.ts:147 checks the source
+		// unless it is false. A replaced entry that is a valid facet module still fails the check by default and with true, and
+		// false loads it.
+		writeNodeFacetFile(t, filepath.Join(output, manifest.Entries["invalid"].File), "module.exports = { default: { id: \"replaced\", setup() {} } };\n")
+		if _, err := loader.Load(t.Context()); err == nil || !strings.Contains(err.Error(), "integrity check failed") {
+			t.Fatalf("replaced entry, default verification=%v", err)
+		}
+		for _, verify := range []bool{true, false} {
+			loader, err := CreateFacetBundleLoader(FacetBundleLoaderOptions{ManifestPath: result.ManifestPath, Entry: "invalid", VerifyIntegrity: &verify})
+			if err != nil {
+				t.Fatal(err)
+			}
+			loaded, err := loader.Load(t.Context())
+			if verify {
+				if err == nil || !strings.Contains(err.Error(), "integrity check failed") {
+					t.Fatalf("verifyIntegrity=true: replaced entry=%v", err)
+				}
+				continue
+			}
+			if err != nil {
+				t.Fatalf("verifyIntegrity=false: replaced entry=%v", err)
+			}
+			assertBundleFacetIds(t, loaded, []string{"replaced"})
+			disposeBundleFacets(t, loaded)
 		}
 	})
 }

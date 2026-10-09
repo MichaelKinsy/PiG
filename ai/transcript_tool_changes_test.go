@@ -536,7 +536,7 @@ func TestTranscriptToolChangesOpenAIResponsesToolSearchItems(t *testing.T) {
 	input := jsonItems(request.body["input"])
 	call, output := input[2], input[3]
 	// The seed is the message index after the leading system message.
-	callID := "pi_tool_load_" + shortHash32("system:1:late_tool")
+	callID := "pi_tool_load_" + ShortHash("system:1:late_tool")
 	arguments, _ := call["arguments"].(map[string]any)
 	if call["type"] != "tool_search_call" || call["call_id"] != callID || call["execution"] != "client" || call["status"] != "completed" ||
 		arguments["query"] != "late_tool" || arguments["limit"] != float64(1) {

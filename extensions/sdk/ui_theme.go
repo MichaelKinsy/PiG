@@ -1,4 +1,3 @@
-// SPDX-FileCopyrightText: Copyright Hewlett Packard Enterprise Development LP
 // SPDX-License-Identifier: MIT
 
 package sdk
@@ -134,11 +133,11 @@ const faintOpening = "\x1b[2m"
 
 // Fg colors text with the foreground of token and resets the foreground, and
 // the faint attribute of a faint token (upstream Theme.fg, theme.ts:363). An
-// unknown token leaves text uncolored.
+// unknown token panics with upstream's "Unknown theme color: <token>" error (theme.ts:374), which the dispatcher reports as an extension error as a throw is; a theme without a palette leaves text uncolored.
 func (t UITheme) Fg(token, text string) string {
 	open := t.foregrounds[token]
 	if open == "" {
-		return text
+		return t.unknownOrUncolored(token, text)
 	}
 	if strings.HasSuffix(open, faintOpening) {
 		return open + text + "\x1b[22;39m"
@@ -147,13 +146,20 @@ func (t UITheme) Fg(token, text string) string {
 }
 
 // Bg colors text with the background of token and resets only the
-// background. An unknown token leaves text uncolored.
+// background. An unknown token panics like [UITheme.Fg].
 func (t UITheme) Bg(token, text string) string {
 	open := t.backgrounds[token]
 	if open == "" {
-		return text
+		return t.unknownOrUncolored(token, text)
 	}
 	return open + text + "\x1b[49m"
+}
+
+func (t UITheme) unknownOrUncolored(token, text string) string {
+	if len(t.foregrounds) == 0 && len(t.backgrounds) == 0 {
+		return text
+	}
+	panic(fmt.Errorf("Unknown theme color: %s", token))
 }
 
 func (t UITheme) style(open, closing, text string) string {
@@ -189,11 +195,11 @@ func (t UITheme) GetFgAnsi(token string) (string, error) {
 }
 
 // GetBgAnsi returns the background escape sequence of token, or upstream's
-// "Unknown theme background color" error.
+// "Unknown theme color" error.
 func (t UITheme) GetBgAnsi(token string) (string, error) {
 	ansi := t.backgrounds[token]
 	if ansi == "" {
-		return "", fmt.Errorf("Unknown theme background color: %s", token)
+		return "", fmt.Errorf("Unknown theme color: %s", token)
 	}
 	return ansi, nil
 }

@@ -1,0 +1,226 @@
+[
+ {
+  "ids": [
+   "pkg:ai/.#uuidv7",
+   "pkg:ai/compat#uuidv7",
+   "pkg:ai/utils/uuid#uuidv7"
+  ],
+  "targets": [
+   "ai/uuid.go#UUIDv7"
+  ],
+  "production": [
+   "call:ai/openai_codex_websocket.go#openAIResponsesProvider.startCodexWebSocketAttempt"
+  ],
+  "evidence": [
+   "test:ai/uuid_upstream_test.go#TestUUIDv7GeneratesOrderedIDsWhilePreservingFollowerTimestamps",
+   "test:ai/uuid_upstream_test.go#TestUUIDv7UsesFreshRandomnessForEveryTail",
+   "test:ai/uuid_upstream_test.go#TestUUIDv7AcceptsTimestampBoundaries",
+   "test:ai/uuid_upstream_test.go#TestUUIDv7RejectsInvalidTimestamps",
+   "test:ai/uuid_upstream_test.go#TestUUIDv7UsesTheProcessWideGenerator"
+  ],
+  "rationale": "utils/uuid.ts uuidv7(timestampMs?). Go UUIDv7(*int64) (string, error): the optional argument is a pointer and the thrown RangeError for a timestamp outside 0..2**48-1 is the returned error (language mechanics). Test-mapping packages/ai/test/uuid.test.ts records all four upstream cases ported plus the sequence-exhaustion case; the 1.5/NaN/Infinity rows cannot occur for an int64."
+ },
+ {
+  "ids": [
+   "pkg:ai/utils/error-body#normalizeProviderError"
+  ],
+  "targets": [
+   "ai/errors.go#NormalizeProviderError"
+  ],
+  "production": [
+   "call:ai/bedrock.go#formatBedrockError"
+  ],
+  "evidence": [
+   "test:ai/error_body_upstream_test.go#TestNormalizeProviderErrorUpstream",
+   "test:ai/error_body_upstream_test.go#TestProviderErrorTrimmingMatchesJS"
+  ],
+  "rationale": "utils/error-body.ts normalizeProviderError(unknown). Go takes any and returns NormalizedProviderError; the typed raw-error carrier stands in for the SDK property bag. Test-mapping packages/ai/test/error-body.test.ts records all sixteen upstream cases ported with exact status/body/message values and the 4000-character cap."
+ },
+ {
+  "ids": [
+   "pkg:ai/utils/node-http-proxy#resolveHttpProxyUrlForTarget"
+  ],
+  "targets": [
+   "ai/node_http_proxy.go#ResolveHTTPProxyURLForTarget"
+  ],
+  "production": [
+   "call:ai/bedrock.go#loadBedrockConfig"
+  ],
+  "evidence": [
+   "test:ai/node_http_proxy_upstream_test.go#TestNodeHTTPProxyUpstream"
+  ],
+  "rationale": "utils/node-http-proxy.ts resolveHttpProxyUrlForTarget(targetUrl, env?). Go takes the target as a string and returns (*url.URL, error); the URL|undefined result is a nil pointer and a parse failure is the error. Test-mapping packages/ai/test/node-http-proxy.test.ts records all five upstream cases ported, and Bedrock's HTTP request uses the resolver."
+ },
+ {
+  "ids": [
+   "pkg:ai/.#getModelType",
+   "pkg:ai/compat#getModelType",
+   "pkg:ai/utils/model-operations#getModelType"
+  ],
+  "targets": [
+   "ai/model_types.go#GetModelType"
+  ],
+  "production": [
+   "call:ai/model_utils.go#ModelsAreEqual",
+   "call:ai/models_provider.go#sameProviderModel"
+  ],
+  "evidence": [
+   "test:ai/models_typed_upstream_test.go#TestModelTypesUpstream"
+  ],
+  "rationale": "utils/model-operations.ts getModelType(model: AnyModel). Go GetModelType(AnyModel) returns the model's ModelType; the keyof ModelTypeMap result is the closed ModelType string set."
+ },
+ {
+  "ids": [
+   "pkg:tui/.#fuzzyFilter"
+  ],
+  "targets": [
+   "tui/fuzzy.go#FuzzyFilter"
+  ],
+  "production": [
+   "call:tui/model_select.go#ModelSelectorComponent.applyFilter",
+   "call:tui/autocomplete.go#SlashOnlyProvider.GetSuggestions"
+  ],
+  "evidence": [
+   "test:tui/fuzzy_upstream_test.go#TestUpstreamFuzzyFilter"
+  ],
+  "rationale": "fuzzy.ts fuzzyFilter<T>(items, query, getText). Go FuzzyFilter[T] has the same generic shape. Test-mapping packages/tui/test/fuzzy.test.ts records all 14 upstream cases ported with per-case citations and a compiling mutation."
+ },
+ {
+  "ids": [
+   "pkg:tui/.#visibleWidth"
+  ],
+  "targets": [
+   "tui/widthx/widthx.go#VisibleWidth"
+  ],
+  "production": [
+   "call:tui/widthx/truncate.go#TruncateToWidth"
+  ],
+  "evidence": [
+   "test:tui/widthx/truncate_upstream_test.go#TestUpstreamVisibleWidth"
+  ],
+  "rationale": "utils.ts visibleWidth(str) is tui/widthx.VisibleWidth(string) int, in the width package that both the renderer and truncation use. Test-mapping packages/tui/test/truncate-to-width.test.ts records all 16 upstream cases ported, including the Indic, CJK, Myanmar and Thai/Lao samples."
+ },
+ {
+  "ids": [
+   "pkg:tui/.#deleteAllKittyImages"
+  ],
+  "targets": [
+   "tui/terminal_image.go#DeleteAllKittyImages"
+  ],
+  "production": [
+   "call:tui/tui_alt_screen.go#TuiAltScreen.deleteKittyImages"
+  ],
+  "evidence": [
+   "test:tui/terminal_image_upstream_test.go#TestUpstreamTerminalImageEncoding"
+  ],
+  "rationale": "terminal-image.ts deleteAllKittyImages() returns the Kitty delete-all escape; Go returns the same byte string (asserted at terminal_image_upstream_test.go:174)."
+ },
+ {
+  "ids": [
+   "pkg:tui/.#hyperlink"
+  ],
+  "targets": [
+   "tui/terminal_image.go#Hyperlink"
+  ],
+  "production": [
+   "call:tui/auth_url.go#AuthURL.texts",
+   "call:tui/terminal_image.go#ImageFallback"
+  ],
+  "evidence": [
+   "test:tui/terminal_image_upstream_test.go#TestUpstreamImageHyperlink"
+  ],
+  "rationale": "terminal-image.ts hyperlink(text, url) wraps text in OSC 8; Go Hyperlink(text, url string) string is the same function. Ported upstream case in terminal-image.test.ts."
+ },
+ {
+  "ids": [
+   "pkg:tui/.#imageFallback"
+  ],
+  "targets": [
+   "tui/terminal_image.go#ImageFallback"
+  ],
+  "production": [
+   "call:tui/tool_execution.go#ToolExecutionComponent.renderImages"
+  ],
+  "evidence": [
+   "test:tui/terminal_image_upstream_test.go#TestUpstreamImageFallback"
+  ],
+  "rationale": "terminal-image.ts imageFallback(mimeType, dimensions?, filename?). Go takes *ImageDimensions for the optional argument and the empty string for an absent filename. Ported upstream cases in terminal-image.test.ts."
+ },
+ {
+  "ids": [
+   "pkg:tui/.#renderImage"
+  ],
+  "targets": [
+   "tui/terminal_image.go#RenderImage"
+  ],
+  "production": [
+   "call:tui/image.go#Image.Render",
+   "call:tui/tool_execution.go#ToolExecutionComponent.renderImages"
+  ],
+  "evidence": [
+   "test:tui/terminal_image_upstream_test.go#TestUpstreamTerminalImageEncoding",
+   "test:tui/terminal_image_sizing_upstream_test.go#TestUpstreamImageCellSizing"
+  ],
+  "rationale": "terminal-image.ts renderImage(base64Data, dimensions, options?) returns {sequence, columns, rows, imageId?} | null; Go returns a *renderedImage with the same fields (ImageID 0 for an absent imageId) and nil for null. Ported upstream encoding and cell-sizing cases (test-mapping packages/tui/test/terminal-image.test.ts)."
+ },
+ {
+  "ids": [
+   "pkg:tui/.#decodeKittyPrintable"
+  ],
+  "targets": [
+   "tui/keys_decode.go#DecodeKittyPrintable"
+  ],
+  "production": [
+   "call:tui/keys_decode.go#DecodePrintableKey"
+  ],
+  "evidence": [
+   "test:tui/keys_decode_test.go#TestDecodeKittyPrintable_KeypadFunctionalKeys"
+  ],
+  "rationale": "keys.ts decodeKittyPrintable(data) returns string | undefined; Go returns (string, bool). Test-mapping packages/tui/test/keys.test.ts records the keys.test.ts set ported."
+ },
+ {
+  "ids": [
+   "pkg:tui/.#getCapabilities"
+  ],
+  "targets": [
+   "tui/terminal_image.go#GetCapabilities"
+  ],
+  "production": [
+   "call:tui/theme.go#currentColorMode"
+  ],
+  "evidence": [
+   "test:tui/terminal_image_upstream_test.go#TestUpstreamTerminalImageCapabilities"
+  ],
+  "rationale": "terminal-image.ts getCapabilities(); Go returns the TerminalCapabilities value computed from the same detection and overrides."
+ },
+ {
+  "ids": [
+   "pkg:tui/.#setCapabilities"
+  ],
+  "targets": [
+   "tui/terminal_image.go#SetCapabilities"
+  ],
+  "production": [
+   "call:tui/tui_alt_screen.go#TuiAltScreen.Start"
+  ],
+  "evidence": [
+   "test:tui/terminal_image_upstream_test.go#TestUpstreamTerminalImageCapabilities"
+  ],
+  "rationale": "terminal-image.ts setCapabilities(caps) overrides the cached capabilities; Go SetCapabilities(TerminalCapabilities) does the same under the capability mutex."
+ },
+ {
+  "ids": [
+   "pkg:tui/.#setCellDimensions"
+  ],
+  "targets": [
+   "tui/terminal_image.go#SetCellDimensions"
+  ],
+  "production": [
+   "call:tui/cell_size.go#tuiBase.ConsumeCellSizeResponse"
+  ],
+  "evidence": [
+   "test:tui/terminal_image_sizing_upstream_test.go#TestUpstreamImageCellSizing"
+  ],
+  "rationale": "terminal-image.ts setCellDimensions(dims); Go SetCellDimensions(CellDimensions). Used by the ported cell-size cases."
+ }
+]

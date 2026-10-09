@@ -4,11 +4,13 @@ package ai
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"math"
 	"math/rand/v2"
 	"net/http"
+	"slices"
 	"strconv"
 	"strings"
 	"sync/atomic"
@@ -189,6 +191,75 @@ func abortableSleep(ctx context.Context, d time.Duration) error {
 	}
 }
 
+// ProviderRequestError is the failure shape retryProviderRequest classifies (provider-retry.ts ProviderError): an optional
+// HTTP status and the response headers. A nil status is a failure with no response, which is retried.
+type ProviderRequestError interface {
+	error
+	ProviderStatus() *int
+	ProviderHeaders() http.Header
+}
+
+// ProviderRetryOptions is provider-retry.ts ProviderRetryOptions; the signal is RetryProviderRequest's context.
+type ProviderRetryOptions struct {
+	// MaxRetries is the retry budget after a retryable failure. Nil means 0.
+	MaxRetries *int
+	// MaxRetryDelayMs caps a server-requested retry delay. Nil means 60000; 0 disables the cap.
+	MaxRetryDelayMs *int
+	// NoRetryStatuses are HTTP statuses that fail at once although the default policy would retry them.
+	NoRetryStatuses []int
+}
+
+// errProviderRequestAborted is provider-retry.ts createAbortError: an Error named AbortError.
+var errProviderRequestAborted = errors.New("Request aborted")
+
+// RetryProviderRequest ports provider-retry.ts retryProviderRequest: the request runs again after a retryable
+// ProviderRequestError, the backoff sleep is interruptible by ctx, and a provider-requested delay above MaxRetryDelayMs
+// fails at once. A failure that is not a ProviderRequestError, or whose status is in NoRetryStatuses, is returned as is.
+func RetryProviderRequest[T any](ctx context.Context, request func() (T, error), options ProviderRetryOptions) (T, error) {
+	var zero T
+	maxRetries := 0
+	if options.MaxRetries != nil {
+		maxRetries = *options.MaxRetries
+	}
+	maxRetryDelayMs := defaultProviderMaxRetryDelayMs
+	if options.MaxRetryDelayMs != nil {
+		maxRetryDelayMs = *options.MaxRetryDelayMs
+	}
+	retriesRemaining := maxRetries
+	for {
+		value, err := request()
+		if err == nil {
+			return value, nil
+		}
+		if ctx.Err() != nil {
+			return zero, errProviderRequestAborted
+		}
+		failure, ok := errors.AsType[ProviderRequestError](err)
+		if retriesRemaining <= 0 || !ok {
+			return zero, err
+		}
+		status, headers := 0, failure.ProviderHeaders()
+		if reported := failure.ProviderStatus(); reported != nil {
+			status = *reported
+		}
+		if !isRetryableProviderResponse(status, headers) {
+			return zero, err
+		}
+		if status != 0 && slices.Contains(options.NoRetryStatuses, status) {
+			return zero, err
+		}
+		retryIndex := maxRetries - retriesRemaining
+		retriesRemaining--
+		delay, delayErr := providerRetryDelay(headers, retryIndex, maxRetryDelayMs, failure.Error())
+		if delayErr != nil {
+			return zero, delayErr
+		}
+		if abortableSleep(ctx, delay) != nil {
+			return zero, errProviderRequestAborted
+		}
+	}
+}
+
 // retryTransport wraps a base RoundTripper with the provider retry policy,
 // reproducing upstream's retryProviderRequest. It retries only the initial
 // request and its response headers: the RoundTrip boundary, which for a
@@ -210,8 +281,13 @@ func (t *retryTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 		maxRetryDelayMs = int(configuredProviderMaxRetryDelayMs.Load())
 	}
 	retriesRemaining := maxRetries
+	// A RoundTripper must not modify the caller's request, and the base
+	// transport may still be reading the previous attempt's Body after an early
+	// response (a 503 with Connection: close). Each retry therefore sends its
+	// own clone with a fresh body and never writes req.Body.
+	attemptReq := req
 	for {
-		resp, err := t.base.RoundTrip(req)
+		resp, err := t.base.RoundTrip(attemptReq)
 
 		// Cancellation takes precedence over the retryable check, mirroring
 		// upstream's signal check before classifying the error.
@@ -268,12 +344,13 @@ func (t *retryTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 		}
 
 		drainClose(resp)
+		attemptReq = req.Clone(req.Context())
 		if req.GetBody != nil {
 			newBody, gbErr := req.GetBody()
 			if gbErr != nil {
 				return nil, gbErr
 			}
-			req.Body = newBody
+			attemptReq.Body = newBody
 		}
 		retriesRemaining--
 

@@ -1,5 +1,4 @@
 <!--
-SPDX-FileCopyrightText: Copyright Hewlett Packard Enterprise Development LP
 SPDX-License-Identifier: MIT
 
 DRAFT ONLY. Not release approval. These notes cover changes since PiG 0.3.1, which already shipped the npm self-update fix, `--exclude-tools` in RPC, the identity fix ("PiG never identifies as Pi"), the #103 and #104 fixes, the `/model` selector, export and lock fixes. Drafted on the integration line after it merged public main at the 0.3.1 release, the upstream 0.99.2 pin move, `port-992-mcp`, `port-992-core` and `fix-992-mcp-session`. Every claim was checked in that tree; the evidence is in docs/plan/release-040-dryrun.md. Recheck each claim against the final release commit before publication.

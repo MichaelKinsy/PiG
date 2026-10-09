@@ -1,4 +1,3 @@
-# SPDX-FileCopyrightText: Copyright Hewlett Packard Enterprise Development LP
 # SPDX-License-Identifier: MIT
 #
 # PiG's command interface. Developers, CI, and coding agents run make targets
@@ -26,6 +25,8 @@ PIG_TMP ?= $(patsubst %/,%,$(or $(TMPDIR),/tmp))
 MKTEMP = mktemp "$(PIG_TMP)/pig.XXXXXXXX"
 MKTEMP_DIR = mktemp -d "$(PIG_TMP)/pig.XXXXXXXX"
 PIG_DEV_HOME ?= $(PIG_CACHE_HOME)/pig-dev
+# CI restores the Go build cache, test results included, from earlier commits; the cache key misses inputs child processes read, so CI reruns every test. Elsewhere unchanged packages replay their cached results.
+GO_TEST_CI_COUNT := $(if $(CI),-count=1)
 # Machine-local toolchain and module-proxy settings written by `make setup`.
 # Absent on machines that need neither.
 -include $(PIG_DEV_HOME)/env.mk
@@ -125,7 +126,7 @@ module-publication: ## Verify nested Go dependency tags and checksums against th
 
 pig: node-runtime ## Build bin/pig from this checkout, with symbols for profiling
 	@mkdir -p bin
-	CGO_ENABLED=0 go build -buildvcs=false -trimpath -ldflags "-X main.Build=$$(git rev-parse --short HEAD 2>/dev/null || echo dev)" -o bin/pig ./cmd/pig
+	CGO_ENABLED=0 go build -buildvcs=false -trimpath -ldflags "-X github.com/MichaelKinsy/PiG/coding/cli.Build=$$(git rev-parse --short HEAD 2>/dev/null || echo dev)" -o bin/pig ./cmd/pig
 
 clean: ## Remove bin/ and tmp/ (builds, eval results, profiles, benchmarks)
 	rm -rf bin tmp
@@ -140,9 +141,24 @@ build: node-runtime ## Compile every package (go build ./...)
 # with embedded git sha + macOS ad-hoc codesign.
 install: node-runtime ## Install a stripped pig to PIG_BIN (default ~/.local/bin/pig)
 	@mkdir -p $(dir $(PIG_BIN))
-	CGO_ENABLED=0 go build -buildvcs=false -trimpath -ldflags "-s -w -X main.Build=$$(git rev-parse --short HEAD 2>/dev/null || echo dev)" -o $(PIG_BIN) ./cmd/pig
+	CGO_ENABLED=0 go build -buildvcs=false -trimpath -ldflags "-s -w -X github.com/MichaelKinsy/PiG/coding/cli.Build=$$(git rev-parse --short HEAD 2>/dev/null || echo dev)" -o $(PIG_BIN) ./cmd/pig
 	@[ "$$(uname -s)" = "Darwin" ] && command -v codesign >/dev/null 2>&1 && codesign --force --sign - $(PIG_BIN) >/dev/null 2>&1 || true
 	@echo "installed: $$($(PIG_BIN) --version) → $(PIG_BIN)"
+
+# build-env-daemons: one static pi-env daemon per remote system the SSH bootstrap supports, laid out as the bootstrap
+# looks for them: $(ENV_DAEMON_DIR)/pi-env-<platform>-<arch>/pi-env[.exe]. Go links GOOS=android only with cgo, except on
+# arm64, so Android on x86-64 runs the static linux/amd64 build with the daemon's target system set to android.
+ENV_DAEMON_DIR ?= dist/pi-env
+ENV_DAEMON_TARGETS ?= linux/amd64/linux-x64 linux/arm64/linux-arm64 darwin/amd64/darwin-x64 darwin/arm64/darwin-arm64 linux/amd64/android-x64 android/arm64/android-arm64 windows/amd64/windows-x64 windows/arm64/windows-arm64
+build-env-daemons: ## Cross-build the pi-env daemon for every remote system SshConnection supports into ENV_DAEMON_DIR
+	@set -eu; for target in $(ENV_DAEMON_TARGETS); do \
+		goos=$${target%%/*}; rest=$${target#*/}; goarch=$${rest%%/*}; name=$${rest#*/}; \
+		exe=pi-env; [ "$$goos" = windows ] && exe=pi-env.exe; \
+		target_os=""; case "$$name" in android-*) target_os="-X github.com/MichaelKinsy/PiG/env/daemon.targetOS=android";; esac; \
+		mkdir -p "$(ENV_DAEMON_DIR)/pi-env-$$name"; \
+		echo "pi-env-$$name"; \
+		CGO_ENABLED=0 GOOS=$$goos GOARCH=$$goarch go build -buildvcs=false -trimpath -ldflags "-s -w $$target_os" -o "$(ENV_DAEMON_DIR)/pi-env-$$name/$$exe" ./env/cmd/pi-env; \
+	done
 
 ##@ Generated files
 
@@ -151,6 +167,7 @@ generate: export LC_ALL := C
 generate help-text: export FORCE_COLOR := 0
 
 generate: ## Regenerate committed inventories, coverage, catalogs, help, and docs mirrors
+	@$(MAKE) piglet-strip-ids
 	@$(MAKE) model-catalogs
 	@$(MAKE) node-runtime
 	@$(MAKE) highlight-grammars
@@ -170,7 +187,22 @@ highlight-grammars: parity-deps ## Snapshot Pi's highlight.js grammars into tui/
 	@node automation/gen/generate-highlight-grammars.mjs "$(PI_PACKAGE_ROOT)" tui/internal/hljs
 	@node automation/gen/generate-highlight-oracle.mjs "$(PI_PACKAGE_ROOT)" tui/internal/hljs/testdata/corpus.json tui/internal/hljs/testdata/oracle.json.gz
 
-.PHONY: generate help-text highlight-grammars
+zone-names: ## Regenerate the long time-zone names Node's ICU prints for date mapping keys (needs Node; output depends on Node's ICU, so it is not part of `make generate`)
+	@node automation/gen/generate-zone-names.mjs > internal/yaml12/zonenames_gen.go
+
+windows-zones: ## Regenerate CLDR's Windows-to-IANA zone mapping that Node's ICU uses to name the host zone on Windows (downloads windowsZones.xml for Node's CLDR release)
+	@node automation/gen/generate-windows-zones.mjs > internal/yaml12/windowszones_gen.go
+
+piglet-strip-ids: ## Regenerate the Piglet strip ID table from the tool, command, extension and feature registrations
+	@go run ./coding/piglet/internal/genstripids
+
+piglet-strip-ids-drift: ## Fail when the Piglet strip ID table differs from the registrations
+	@go run ./coding/piglet/internal/genstripids -check
+
+piglet-strip-build: ## Vet every package and build cmd/pig with every Piglet strip build tag (D92)
+	@tags=$$(go run ./coding/piglet/internal/genstripids -print-tags) && go vet -tags "$$tags" ./... && CGO_ENABLED=0 go build -tags "$$tags" -o /dev/null ./cmd/pig
+
+.PHONY: generate help-text highlight-grammars zone-names windows-zones piglet-strip-ids piglet-strip-ids-drift piglet-strip-build
 
 ##@ Test and lint
 
@@ -186,12 +218,14 @@ lint: ## Run golangci-lint over the repository (part of make check)
 	@echo "Running golangci-lint..."
 	go tool golangci-lint run --allow-parallel-runners --build-tags=integration,live,parity ./...
 
-# Like go list ./..., exclude testdata directories, including nested fixture modules.
+# Like go list ./..., exclude testdata directories, including nested fixture modules, and packages whose Go files all carry a
+# build constraint for another platform (for example the wasm-only durable core), which golangci-lint cannot type-check natively.
 lint-changed: ## Lint whole changed Go files in changed packages against LINT_BASE (default main)
 	@base=$$(git merge-base HEAD "$(LINT_BASE)") || { echo "lint-changed: cannot find merge base with $(LINT_BASE)" >&2; exit 2; }; \
 	changed_go=$$({ git diff --name-only "$$base"...HEAD; git diff --name-only; git diff --name-only --cached; git ls-files --others --exclude-standard; } | awk '/\.go$$/ && !/(^|\/)testdata\//' | sort -u); \
 	if [ -z "$$changed_go" ]; then echo "lint-changed: no changed Go files"; exit 0; fi; \
 	packages=$$(printf '%s\n' "$$changed_go" | while IFS= read -r file; do dir=$${file%/*}; [ "$$dir" = "$$file" ] && dir=.; [ -d "$$dir" ] && printf './%s\n' "$$dir"; done | sort -u); \
+	packages=$$(printf '%s\n' "$$packages" | while IFS= read -r pkg; do [ -n "$$(go list -e -f '{{.GoFiles}}{{.TestGoFiles}}{{.XTestGoFiles}}' "$$pkg" 2>/dev/null | tr -d '[] ')" ] && printf '%s\n' "$$pkg"; done); \
 	if [ -z "$$packages" ]; then echo "lint-changed: no changed Go packages"; exit 0; fi; \
 	echo "Running golangci-lint on changed packages: $$(printf '%s' "$$packages" | tr '\n' ' ')"; \
 	go tool golangci-lint run --allow-parallel-runners --build-tags=integration,live,parity --new-from-rev="$$base" --whole-files $$packages
@@ -200,25 +234,31 @@ lint-changed: ## Lint whole changed Go files in changed packages against LINT_BA
 # Use between edits. `make check` is the pre-commit gate.
 dev: build vet qc ## Fast inner loop: build, vet, and the QC smoke (about 90 s)
 
-test: test-prereqs interface-deps parity-deps ## Grouped Go tests with locked interface tooling, fixtures, and safe concurrency
+test: test-prereqs interface-deps parity-deps durable-interop-deps ## Grouped Go tests with locked interface tooling, fixtures, and safe concurrency
 	@./automation/ci/test-grouped.sh
+
+# The lane and pre-push gate. CI and make test still run every package.
+test-changed: test-prereqs interface-deps parity-deps durable-interop-deps ## Test only packages the change affects (TEST_BASE, default @{upstream}); -race on edited packages; JSON timings in tmp/test-changed
+	@./automation/ci/test-grouped.sh changed
+
+.PHONY: test-changed
 
 # Every maintained nested Go module must pass without workspace assistance.
 # Fixture modules are included because they exercise the same clean-clone
 # dependency boundaries as independently distributed modules.
 test-sdk-go: ## Test the Go extension SDK module on its own
-	@cd extensions/sdk && GOWORK=off go test ./... -count=1
+	@cd extensions/sdk && GOWORK=off go test $(GO_TEST_CI_COUNT) ./...
 
 test-go-modules: test-sdk-go ## Test every maintained nested Go module with GOWORK=off
 	@set -eu; \
 	for module in \
-		cmd/pig/testdata/login-preview \
+		coding/cli/testdata/login-preview \
 		coding/extension/host/subprocess/testdata/sdk-fixture \
 		examples/extensions/go-factory \
 		piglets/porter/extensions/pig-porter \
 		piglets/standard; do \
 		echo "testing Go module: $$module"; \
-		(cd "$$module" && GOWORK=off go test ./... -count=1); \
+		(cd "$$module" && GOWORK=off go test $(GO_TEST_CI_COUNT) ./...); \
 	done
 
 # The Rust SDK's own unit tests. `test` builds the Rust conformance fixtures,
@@ -228,8 +268,17 @@ test-go-modules: test-sdk-go ## Test every maintained nested Go module with GOWO
 test-sdk-rs: ## Run the Rust extension SDK's unit tests
 	@cd extensions/sdk-rs && cargo test --quiet
 
+test-mcp-conformance: ## Run the official MCP client conformance suite against PiG's MCP client (needs network the first time; see test/mcp-conformance/README.md)
+	@go run ./test/mcp-conformance/run $(MCP_CONFORMANCE_ARGS)
+
 test-sdk-ts: parity-deps ## Check the pinned TypeScript extension declarations and runtime helpers
 	@cd extensions/sdk-ts && npm test
+
+node-facets-chord: ## Rewrite the vendored Node facet Chord runtime from the locked @earendil-works/chord dist
+	@python3 automation/ci/vendor-node-facets-chord.py
+
+node-facets-chord-check: ## Fail when the vendored Node facet Chord runtime differs from the locked dist
+	@python3 automation/ci/vendor-node-facets-chord.py --check
 
 # Resolve the selected Rust toolchain before validators replace HOME so tool-manager shims do not select a different compiler.
 examples-check: test-prereqs parity-bin ## Build and validate every example extension
@@ -322,11 +371,20 @@ divergence-quality: ## Validate divergence records as enforceable contracts
 divergence-guard: ## Fail on unrecorded invented limits, dropped events and swallowed errors (ratchet)
 	@go run ./automation/ci/divguard
 
+# port-lint runs the porting anti-pattern analyzers (automation/ci/portlint): JS-to-Go
+# semantic mismatches (map key order, nil versus empty JSON, UTF-16 units, regex
+# folding, numbers, clocks), goroutine and request lifetime, error identity, and
+# test isolation. Current findings are ratcheted in automation/ci/portlint/baseline.toml,
+# which may only shrink. `go run ./automation/ci/portlint -report` prints counts and every finding.
+port-lint: ## Fail on porting anti-patterns the baseline does not list (ratchet)
+	@./automation/ci/cached-gate.sh port-lint -- go run ./automation/ci/portlint
+
 # docs-drift gates the shipped docs bundle against the code it describes: every
 # documented command must exist, every listable command must be documented, and
 # every page must be reachable from the index.
 docs-drift: ## Fail when generated documentation no longer matches its source
 	@python3 automation/gen/gen-knowledge-graph.py --check
+	@# -count=1: public_claims_test.go runs check-public-claims.py, whose file reads the go test cache cannot see.
 	@go test ./test/docs-drift/ -count=1
 
 npm-dist-test: ## Unit-test the npm package generator and launcher
@@ -337,7 +395,8 @@ npm-dist-e2e: ## Cross-build, npm pack, install and run pig through the npm laun
 	@automation/release/npm/e2e-local.sh
 
 standard-check: ## Verify PiG Standard requires and resolves only fused extensions
-	@go test ./cmd/pig -run '^TestPiGStandardRequiresAndResolvesOnlyFusedExtensions$$' -count=1
+	@# -count=1: these tests build extensions in child go processes, whose source reads the go test cache cannot see.
+	@go test ./coding/cli -run '^TestPiGStandardRequiresAndResolvesOnlyFusedExtensions$$' -count=1
 	@go test ./coding/pigletbuild -run '^TestRunBuildRejectsRequiredFusedFallback$$' -count=1
 	@go test ./coding/extension/host/subprocess -run '^TestHost_MixedFusedPackedAndIsolatedExtensions$$' -count=1
 	@go build -buildvcs=false -o $(CHECK_PIG_BIN) ./cmd/pig
@@ -348,7 +407,7 @@ standard-check: ## Verify PiG Standard requires and resolves only fused extensio
 
 ##@ Gates
 
-check-core: startup-proxies build vet lint test test-go-modules test-sdk-rs test-sdk-ts typescript-extension-corpus examples-check test-race test-integration lint-scenarios port-map-drift coverage-drift standard-check go-fix-clean divergence-consistency divergence-quality divergence-guard check-contracts-fast source-hygiene docs-drift ## All deterministic build, lint, unit, race, and drift gates
+check-core: startup-proxies build vet lint test test-go-modules test-sdk-rs test-sdk-ts typescript-extension-corpus examples-check test-race test-integration lint-scenarios port-map-drift coverage-drift standard-check go-fix-clean divergence-consistency divergence-quality divergence-guard port-lint check-contracts-fast source-hygiene docs-drift node-facets-chord-check ## All deterministic build, lint, unit, race, and drift gates
 
 check: module-publication check-core parity-fast ## Pre-commit gate: published dependencies, check-core and parity-fast
 	@echo
@@ -448,13 +507,26 @@ model-catalogs: parity-deps ## Regenerate model catalogs from the pinned publish
 interface-deps: ## Install the locked TypeScript compiler used by parity inventories
 	@python3 automation/ci/npm-locked.py test/parity/interface-extractor
 
+durable-interop-deps: ## Install the locked Pi Durable packages the cross-runtime tests run on Node
+	@python3 automation/ci/npm-locked.py durable/interop
+
+durable-contract-setup: ## Check out the Pi reference the Durable core conformance corpus is captured from
+	@durable/contract/tools/setup.sh
+
+durable-contract-test: durable-contract-setup ## Unit, pipeline and matrix tests of the Durable conformance tooling (negative controls included)
+	@go test ./durable/core/contracttest/...
+	@cd durable/contract && node cli/contract.mjs fixtures 50 >/dev/null && node --test --test-timeout=600000 test/*.test.mjs
+
+durable-contract: durable-contract-setup ## Run the Durable core conformance gate (CONTRACT sections 5-7) against the TinyGo, Go and native builds; per-lane pass/fail
+	@cd durable/contract && node cli/contract.mjs all $(DURABLE_CONTRACT_ARGS)
+
 parity-deps: interface-deps ## Install the exact locked Pi comparator and the TypeScript compiler its scenarios import
 	@python3 automation/ci/npm-locked.py extensions/sdk-ts
 	@test -x "$(PIG_PARITY_PI_BIN)" || { echo "exact Pi comparator not found: $(PIG_PARITY_PI_BIN)" >&2; exit 1; }
 	@test -d "$(PI_PACKAGE_ROOT)" || { echo "exact published Pi package not found: $(PI_PACKAGE_ROOT)" >&2; exit 1; }
 	@test "$$(env -u HTTPS_PROXY -u HTTP_PROXY -u ALL_PROXY -u https_proxy -u http_proxy -u all_proxy "$(PIG_PARITY_PI_BIN)" --version)" = "$(UPSTREAM_VERSION)" || { echo "Pi comparator version does not match $(UPSTREAM_VERSION)" >&2; exit 1; }
 
-.PHONY: node-runtime npm-dist-test npm-dist-e2e compliance evals-mutate slop slop-check # Deterministic tmux-driven integration tier # Release gate. Tighter than `check` # The recommended one-shot for end-of-loop verification # docs-drift gates the shipped docs bundle against the code it describes # install # numbered in docs/parity/DIVERGENCES.md must have a matching `// pig divergence (DN) # the single-main-loop ownership invariant bench bench-base bench-compare build check check-core clean dev divergence-guard divergence-quality doctor evals evals-live evals-publish evals-requests evals-test examples-check go-fix-clean help help-parity interface-deps knowledge-graph lint lint-changed model-catalogs parity-deps perf-check pgo pig profile qc setup standard-check test test-fixtures test-go-modules test-prereqs test-sdk-go test-sdk-rs test-sdk-ts test-stress upstream-mirror vet
+.PHONY: durable-interop-deps durable-contract durable-contract-setup durable-contract-test node-runtime node-facets-chord node-facets-chord-check npm-dist-test npm-dist-e2e compliance evals-mutate slop slop-check # Deterministic tmux-driven integration tier # Release gate. Tighter than `check` # The recommended one-shot for end-of-loop verification # docs-drift gates the shipped docs bundle against the code it describes # install # numbered in docs/parity/DIVERGENCES.md must have a matching `// pig divergence (DN) # the single-main-loop ownership invariant bench bench-base bench-compare build build-env-daemons check check-core clean dev divergence-guard divergence-quality doctor port-lint evals evals-live evals-publish evals-requests evals-test examples-check go-fix-clean help help-parity interface-deps knowledge-graph lint lint-changed model-catalogs parity-deps perf-check pgo pig profile qc setup standard-check test test-fixtures test-go-modules test-mcp-conformance test-prereqs test-sdk-go test-sdk-rs test-sdk-ts test-stress upstream-mirror vet
 
 include automation/make/parity.mk
 include automation/make/ci.mk

@@ -210,7 +210,7 @@ func (t *FindTool) findWithOperations(ctx context.Context, pattern, searchPath s
 func formatFindResults(relativized []string, effectiveLimit float64, custom bool) agent.AgentToolResult {
 	resultLimitReached := float64(len(relativized)) >= effectiveLimit
 	// Number.MAX_SAFE_INTEGER is observable in the truncation details, even though only bytes cap this tool.
-	tr := TruncateHead(strings.Join(relativized, "\n"), DefaultMaxBytes, 1<<53-1)
+	tr := TruncateHead(strings.Join(relativized, "\n"), truncationLimits(DefaultMaxBytes, 1<<53-1))
 	resultOutput := tr.Content
 	details := &FindDetails{}
 	var notices []string
@@ -268,24 +268,27 @@ func readlineLines(output string) []string {
 	return lines
 }
 
-// relativizeFindResultPath mirrors upstream relativizeFindResultPath: an
-// absolute result becomes relative to the search root, separators become
-// "/", and a trailing separator (a directory) is kept.
+// relativizeFindResultPath mirrors upstream relativizeFindResultPath on the host's path module: an absolute result
+// becomes relative to the search root, separators become "/", and a trailing separator (a directory) is kept.
 func relativizeFindResultPath(resultPath, searchPath string) string {
-	sep := string(filepath.Separator)
+	return relativizeFindResultPathFor(resultPath, searchPath, runtime.GOOS == "windows", nodepath.Process())
+}
+
+// relativizeFindResultPathFor is relativizeFindResultPath with upstream's injectable pathModule: path.win32 when
+// windows is set, else path.posix, each reading the process state env.
+// A working directory that cannot be read leaves the result unrelativized.
+func relativizeFindResultPathFor(resultPath, searchPath string, windows bool, env nodepath.Env) string {
+	sep := "/"
+	isAbsolute, relative := nodepath.PosixIsAbsolute, nodepath.PosixRelative
+	if windows {
+		sep = `\`
+		isAbsolute, relative = nodepath.Win32IsAbsolute, nodepath.Win32Relative
+	}
 	hadTrailingSeparator := strings.HasSuffix(resultPath, sep) || (sep == `\` && strings.HasSuffix(resultPath, "/"))
 	relativePath := resultPath
-	if isNodeAbsolute(resultPath) {
-		from, fromErr := nodepath.Resolve(searchPath)
-		to, toErr := nodepath.Resolve(resultPath)
-		if fromErr == nil && toErr == nil {
-			relativePath = to
-			if rel, err := filepath.Rel(from, to); err == nil {
-				relativePath = rel
-				if rel == "." {
-					relativePath = ""
-				}
-			}
+	if isAbsolute(resultPath) {
+		if rel, err := relative(env, searchPath, resultPath); err == nil {
+			relativePath = rel
 		}
 	}
 	posixPath := strings.Join(strings.Split(relativePath, sep), "/")

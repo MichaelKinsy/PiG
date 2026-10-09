@@ -1,5 +1,7 @@
 package main
 
+// pi: packages/ai/scripts/model-data.ts
+
 import (
 	"encoding/json"
 	"maps"

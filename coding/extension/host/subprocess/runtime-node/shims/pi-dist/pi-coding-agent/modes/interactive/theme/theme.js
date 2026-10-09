@@ -725,6 +725,7 @@ function buildCliHighlightTheme(t) {
         number: (s) => t.fg("syntaxNumber", s),
         regexp: (s) => t.fg("syntaxString", s),
         string: (s) => t.fg("syntaxString", s),
+        subst: (s) => t.fg("text", s),
         comment: (s) => t.fg("syntaxComment", s),
         doctag: (s) => t.fg("syntaxComment", s),
         meta: (s) => t.fg("muted", s),

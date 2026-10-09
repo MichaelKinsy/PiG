@@ -10,6 +10,7 @@ import (
 
 // .upstream/v1.0.1/packages/coding-agent/test/extensions-runner.test.ts:892 (#10285): the MCP extension renders calls to
 // tools that are not registered.
+// Pi: packages/coding-agent/src/core/extensions/runner.ts:790 (Runner.resolveToolRenderers).
 func TestUpstreamRunnerResolvesToolRenderersInExtensionLoadOrderEachAbleToDeferToTheNext(t *testing.T) {
 	renderCall := func(json.RawMessage, extension.Theme, extension.ToolRenderContext) extension.Component { return nil }
 	isRenderCall := func(r *extension.ToolRenderers) bool {

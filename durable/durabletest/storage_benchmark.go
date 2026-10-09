@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"strings"
 
+	chorddelta "github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/durable"
 )
 
@@ -153,10 +154,8 @@ func SeedStorageBenchmark(ctx context.Context, storage durable.Storage, scale St
 			exactDocumentId = &id
 			key := fmt.Sprintf("key-%d", index)
 			writes = append(writes, durable.DocumentCreateWrite{
-				Record: durable.DocumentCreate{Id: id, Kind: "benchmark.family", Key: &key, Scope: durable.DocumentRecordScope{Kind: durable.ScopeSession}},
-				Content: durable.DocumentContent{Kind: durable.ContentBase, Version: 1, Value: durable.JsonObject{
-					"index": index, "text": strings.Repeat("x", 128),
-				}},
+				Record:  durable.DocumentCreate{Id: id, Kind: "benchmark.family", Key: &key, Scope: durable.DocumentRecordScope{Kind: durable.ScopeSession}},
+				Content: durable.DocumentContent{Kind: durable.ContentBase, Version: 1, Value: chorddelta.JsonObjectOf("index", index, "text", strings.Repeat("x", 128))},
 			})
 		}
 		if _, err := commit(writes...); err != nil {
@@ -178,9 +177,7 @@ func SeedStorageBenchmark(ctx context.Context, storage durable.Storage, scale St
 				Id: id, Kind: "benchmark.replay", Key: &key, Scope: rootScope,
 				History: durable.HistoryRewindable, Fork: durable.ForkAsOf,
 			},
-			Content: durable.DocumentContent{Kind: durable.ContentBase, Version: 1, Value: durable.JsonObject{
-				"count": 0, "text": strings.Repeat("x", 64),
-			}},
+			Content: durable.DocumentContent{Kind: durable.ContentBase, Version: 1, Value: chorddelta.JsonObjectOf("count", 0, "text", strings.Repeat("x", 64))},
 		})
 	}
 	if _, err := commit(replayCreates...); err != nil {
@@ -207,7 +204,7 @@ func SeedStorageBenchmark(ctx context.Context, storage durable.Storage, scale St
 			Id: historicalDocumentId, Kind: "benchmark.history", Scope: rootScope,
 			History: durable.HistoryRewindable, Fork: durable.ForkAsOf,
 		},
-		Content: durable.DocumentContent{Kind: durable.ContentBase, Version: 1, Value: durable.JsonObject{"count": 0}},
+		Content: durable.DocumentContent{Kind: durable.ContentBase, Version: 1, Value: chorddelta.JsonObjectOf("count", 0)},
 	}); err != nil {
 		return dataset, err
 	}
@@ -218,7 +215,7 @@ func SeedStorageBenchmark(ctx context.Context, storage durable.Storage, scale St
 		}
 	}
 	if _, err := commit(durable.DocumentChangeWrite{Id: historicalDocumentId, Content: durable.DocumentContent{
-		Kind: durable.ContentBase, Version: 1, Value: durable.JsonObject{"count": historySegmentLength},
+		Kind: durable.ContentBase, Version: 1, Value: chorddelta.JsonObjectOf("count", historySegmentLength),
 	}}); err != nil {
 		return dataset, err
 	}
@@ -296,7 +293,7 @@ func documentCount(document *durable.StoredDocument, err error) (int64, error) {
 	if err != nil || document == nil {
 		return -1, err
 	}
-	switch count := document.Value["count"].(type) {
+	switch count := document.Value.Value("count").(type) {
 	case int:
 		return int64(count), nil
 	case int64:
@@ -496,10 +493,8 @@ var STORAGE_WRITE_BENCHMARKS = []StorageWriteBenchmark{
 					Type: durable.SubmissionTypeWrite, Status: durable.SubmissionDone, Entry: &entryId,
 				}},
 				durable.DocumentCreateWrite{
-					Record: durable.DocumentCreate{Id: documentId, Kind: "benchmark.mixed", Key: &key, Scope: durable.DocumentRecordScope{Kind: durable.ScopeSession}},
-					Content: durable.DocumentContent{Kind: durable.ContentBase, Version: 1, Value: durable.JsonObject{
-						"entryId": entryId, "taskId": taskId,
-					}},
+					Record:  durable.DocumentCreate{Id: documentId, Kind: "benchmark.mixed", Key: &key, Scope: durable.DocumentRecordScope{Kind: durable.ScopeSession}},
+					Content: durable.DocumentContent{Kind: durable.ContentBase, Version: 1, Value: chorddelta.JsonObjectOf("entryId", entryId, "taskId", taskId)},
 				},
 			}
 			_, err = storage.Commit(ctx, writes)

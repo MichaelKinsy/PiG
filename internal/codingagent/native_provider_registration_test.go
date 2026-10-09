@@ -21,7 +21,7 @@ func TestNativeProviderRegistrationWinsBeforeAuthCompletes(t *testing.T) {
 				return &ai.AuthResult{Auth: ai.ModelAuth{APIKey: "key"}}, nil, nil
 			},
 			ResolveRefreshCredential: func(context.Context, *ai.Credential) (*ai.Credential, *ai.Credential, error) { return nil, nil, nil },
-			Stream: func(context.Context, *ai.Model, ai.TranscriptContext, ai.StreamOptions, bool) (*ai.AssistantMessageEventStream, error) {
+			Stream: func(context.Context, *ai.Model, ai.TranscriptContext, ai.StreamOptions) (*ai.AssistantMessageEventStream, error) {
 				return ai.NewAssistantMessageEventStream(), nil
 			},
 		}

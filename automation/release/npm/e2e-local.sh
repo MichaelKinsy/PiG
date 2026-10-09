@@ -1,5 +1,4 @@
 #!/usr/bin/env bash
-# SPDX-FileCopyrightText: Copyright Hewlett Packard Enterprise Development LP
 # SPDX-License-Identifier: MIT
 #
 # End-to-end local test of the npm distribution, with no registry access:
@@ -31,7 +30,7 @@ for target in android-arm64 linux-amd64 linux-arm64 darwin-amd64 darwin-arm64 wi
   if [ "$goos" = windows ]; then binary=pig.exe; fi
   mkdir -p "$stage/$name"
   (cd "$repo" && CGO_ENABLED=0 GOOS=$goos GOARCH=$goarch go build -trimpath \
-    -ldflags "-s -w -X main.Build=npm-e2e" -o "$stage/$name/$binary" ./cmd/pig) &
+    -ldflags "-s -w -X github.com/MichaelKinsy/PiG/coding/cli.Build=npm-e2e" -o "$stage/$name/$binary" ./cmd/pig) &
 done
 wait
 for target in android-arm64 linux-amd64 linux-arm64 darwin-amd64 darwin-arm64 windows-amd64 windows-arm64; do

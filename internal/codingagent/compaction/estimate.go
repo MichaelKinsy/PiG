@@ -177,7 +177,7 @@ func EstimateProjectedContextTokens(projection codingagent.SessionProjection, br
 		for _, entry := range projection.Entries {
 			next := projectedIndex + len(entry.Messages)
 			if estimate.LastUsageIndex < next {
-				usageEntryID = entry.SourceEntry.Base.ID
+				usageEntryID = entry.SourceEntry.Base().ID
 				break
 			}
 			projectedIndex = next
@@ -185,12 +185,12 @@ func EstimateProjectedContextTokens(projection codingagent.SessionProjection, br
 		usageEntryIndex := -1
 		if usageEntryID != "" {
 			usageEntryIndex = slices.IndexFunc(branchEntries, func(entry codingagent.SessionEntry) bool {
-				return entry.Base.ID == usageEntryID
+				return entry.Base().ID == usageEntryID
 			})
 		}
 		latestInvalidating := -1
 		for i, entry := range slices.Backward(branchEntries) {
-			if entry.Base.Type == "context_edit" || entry.Base.Type == "compaction" {
+			if entry.Base().Type == "context_edit" || entry.Base().Type == "compaction" {
 				latestInvalidating = i
 				break
 			}

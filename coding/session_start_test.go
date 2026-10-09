@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"reflect"
+	"strings"
 	"testing"
 	"time"
 
@@ -183,7 +184,7 @@ func TestSessionFirstPromptWithoutToolsPublishesSystemLifecycleOnce(t *testing.T
 
 func BenchmarkSessionStartupWithoutTranscript(b *testing.B) {
 	b.Setenv("PIG_HOME", b.TempDir())
-	services, err := NewServices(ServicesOptions{CWD: b.TempDir()})
+	services, err := CreateAgentSessionServices(CreateAgentSessionServicesOptions{CWD: b.TempDir()})
 	if err != nil {
 		b.Fatal(err)
 	}
@@ -281,7 +282,8 @@ func TestSessionFirstHookOverridesProviderPromptWithoutDuplicatingBaseline(t *te
 	provider := &transcriptCaptureProvider{}
 	runner := inproc.NewRunner([]extension.Extension{{Handlers: map[string][]extension.HandlerFn{"before_agent_start": {func(args ...any) (any, error) {
 		event := args[0].(extension.BeforeAgentStartEvent)
-		if event.SystemPrompt != "configured instructions" {
+		// runner.ts:1426: the hook sees buildSystemPrompt(options): the configured instructions followed by the rendered sections (cwd).
+		if !strings.HasPrefix(event.SystemPrompt, "configured instructions") {
 			t.Fatalf("hook baseline %q", event.SystemPrompt)
 		}
 		return &extension.BeforeAgentStartEventResult{SystemPrompt: new("forced instructions")}, nil

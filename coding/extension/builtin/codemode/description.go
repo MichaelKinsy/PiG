@@ -15,8 +15,8 @@ package codemode
 
 import (
 	"encoding/json"
+	"fmt"
 	"math"
-	"path/filepath"
 	"slices"
 	"strings"
 
@@ -27,7 +27,6 @@ import (
 	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/internal/codingagent"
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
-	"github.com/MichaelKinsy/PiG/internal/pigdocs"
 )
 
 // ToolName is the name of the tool.
@@ -46,7 +45,20 @@ const charsPerToken = 4
 // Ports packages/coding-agent/src/extensions/codemode/tool.ts (CODEMODE_DOCS_PATH).
 func DocsPath() string {
 	// pig additive (D22): Pi names the docs of its installed package; PiG names its materialized documentation bundle.
-	return filepath.Join(codingagent.ConfigRoot(), pigdocs.SubDir, "codemode.md")
+	// pig additive (D92): the literal "docs" is pigdocs.SubDir, so a Binary that strips docs does not link pigdocs.
+	path, _ := codingagent.PigDocsFile("codemode.md")
+	return path
+}
+
+// docsCitation formats sentence, which holds one %s, with DocsPath, or is empty when the process strips the docs bundle
+// and never writes the page.
+// pig additive (D92): no text points at a docs page a docs strip never writes.
+func docsCitation(sentence string) string {
+	path, ok := codingagent.PigDocsFile("codemode.md")
+	if !ok {
+		return ""
+	}
+	return fmt.Sprintf(sentence, path)
 }
 
 // textOutputSchema is what a script sees of a tool without an output schema: its text output.
@@ -61,18 +73,33 @@ type DescriptionOptions struct {
 	// Deferred names the tools that are callable but never listed. They do not affect the description at all, so it
 	// stays the same while MCP servers connect or change their tools.
 	Deferred map[string]bool
+	// Guidelines holds the prompt guidelines of each tool, by tool name, listed after its description.
+	Guidelines map[string][]string
 	// InlineBudget is the estimated tokens (characters / 4) the tool sections may use; tools that do not fit are
 	// left out like deferred tools. Nil lists every tool that is not deferred.
 	InlineBudget *int
 }
 
-// toDeclaration is what a script sees of a tool. Tools without an output schema resolve to their text output.
-func toDeclaration(tool extension.AgentTool) sandbox.Tool {
+// toDeclaration is what a script sees of a tool: its description followed by its prompt guidelines, which the system
+// prompt only has for declared tools. Tools without an output schema resolve to their text output.
+//
+// Ports packages/coding-agent/src/extensions/codemode/tool.ts (toCodemodeDeclaration).
+func toDeclaration(tool extension.AgentTool, guidelines []string) sandbox.Tool {
 	output := tool.OutputSchema
 	if len(output) == 0 {
 		output = textOutputSchema
 	}
-	return sandbox.Tool{Name: tool.Name, Description: tool.Description, InputSchema: tool.Parameters, OutputSchema: output}
+	var bullets []string
+	for _, guideline := range guidelines {
+		if trimmed := jsstring.Trim(guideline); trimmed != "" {
+			bullets = append(bullets, "- "+trimmed)
+		}
+	}
+	description := tool.Description
+	if len(bullets) > 0 {
+		description = jsstring.Trim(tool.Description) + "\n\n" + strings.Join(bullets, "\n")
+	}
+	return sandbox.Tool{Name: tool.Name, Description: description, InputSchema: tool.Parameters, OutputSchema: output}
 }
 
 // callableTools are the tools a script may call: every given tool except the codemode tool itself.
@@ -81,13 +108,17 @@ func callableTools(tools []extension.AgentTool) []extension.AgentTool {
 }
 
 // renderToolSection is `### \`id\` (\`raw name\`)` followed by the tool's description and declaration.
-func renderToolSection(declaration sandbox.Tool) string {
+func renderToolSection(declaration sandbox.Tool) (string, error) {
 	id := sandbox.ToCodemodeIdentifier(declaration.Name)
 	heading := "### `" + id + "` (`" + declaration.Name + "`)"
 	if id == declaration.Name {
 		heading = "### `" + id + "`"
 	}
-	return heading + "\n" + jsstring.Trim(sandbox.RenderToolSample(declaration, 0))
+	sample, err := sandbox.RenderToolSample(declaration, sandbox.ToolRenderOptions{})
+	if err != nil {
+		return "", err
+	}
+	return heading + "\n" + jsstring.Trim(sample), nil
 }
 
 type catalogEntry struct {
@@ -148,11 +179,11 @@ var localeCollator = collate.New(language.Und)
 // options.Models is set), the shared MCP types when listed tools need them, and one section per listed tool, grouped by
 // namespace. Deferred tools are never listed and do not affect the description at all, so it stays the same while MCP
 // servers connect or change their tools. Tool sections are limited to the inline budget.
-func CreateDescription(tools []extension.AgentTool, options DescriptionOptions) string {
+func CreateDescription(tools []extension.AgentTool, options DescriptionOptions) (string, error) {
 	var declarations []sandbox.Tool
 	for _, tool := range callableTools(tools) {
 		if !options.Deferred[tool.Name] {
-			declarations = append(declarations, toDeclaration(tool))
+			declarations = append(declarations, toDeclaration(tool, options.Guidelines[tool.Name]))
 		}
 	}
 	groups := map[string]*catalogGroup{"": {}}
@@ -172,7 +203,10 @@ func CreateDescription(tools []extension.AgentTool, options DescriptionOptions) 
 			groups[key] = group
 			order = append(order, key)
 		}
-		section := renderToolSection(declaration)
+		section, err := renderToolSection(declaration)
+		if err != nil {
+			return "", err
+		}
 		group.entries = append(group.entries, catalogEntry{
 			name: declaration.Name, section: section,
 			cost: int(math.Ceil(float64(jsstring.Length(section)) / charsPerToken)),
@@ -203,7 +237,7 @@ func CreateDescription(tools []extension.AgentTool, options DescriptionOptions) 
 		}
 	}
 	if len(declarations) == 0 {
-		return strings.Join(sections, "\n\n")
+		return strings.Join(sections, "\n\n"), nil
 	}
 
 	toolSections := []string{"Nested tools:"}
@@ -235,5 +269,5 @@ func CreateDescription(tools []extension.AgentTool, options DescriptionOptions) 
 		}
 	}
 	sections = append(sections, strings.Join(toolSections, "\n\n"))
-	return strings.Join(sections, "\n\n")
+	return strings.Join(sections, "\n\n"), nil
 }

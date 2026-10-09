@@ -11,7 +11,7 @@
 # error(id, ...): the request id is now echoed first when the command
 # carried one, and omitted (omitempty) when it did not. pig matched the
 # old undefined behavior and went red here at the 0.79.10 pin; the fix in
-# cmd/pig/rpc_mode.go threads env.ID into rpcError.
+# coding/cli/rpc_mode.go threads env.ID into rpcError.
 #
 # Tests that the error envelope for unknown commands is byte-identical:
 # optional leading id, then type=response, command=<original type>,

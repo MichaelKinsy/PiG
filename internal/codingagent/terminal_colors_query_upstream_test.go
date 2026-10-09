@@ -24,7 +24,7 @@ func TestUpstreamQueryTerminalColorsInputBoundary(t *testing.T) {
 	black, white := tui.RgbColor{}, tui.RgbColor{R: 255, G: 255, B: 255}
 
 	type harness struct {
-		renderer       tui.Renderer
+		renderer       tui.TUI
 		out            *bytes.Buffer
 		mode           *InteractiveMode
 		component      *focusedInputProbe

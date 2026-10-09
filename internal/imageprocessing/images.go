@@ -22,6 +22,7 @@ import (
 	_ "image/gif" // decoder for the GIF entry of the supported-format allowlist
 	"image/jpeg"  // decoder for JPEG plus the JPEG re-encoder
 	"image/png"   // decoder for PNG plus the PNG re-encoder
+	"io"
 	"math"
 	"os"
 	"slices"
@@ -33,6 +34,7 @@ import (
 
 	"github.com/MichaelKinsy/PiG/agent"
 	"github.com/MichaelKinsy/PiG/ai"
+	"github.com/MichaelKinsy/PiG/internal/jsstring"
 )
 
 const (
@@ -47,9 +49,11 @@ var ErrImageTooLarge = errors.New("image: could not be resized below inline imag
 // is unsupported and convertImageBytesToPng could not re-encode it.
 var errPNGConversionFailed = errors.New("image: could not convert to png")
 
-type preparedImageResult struct {
-	Data           []byte
-	MIME           string
+// ResizedImage is upstream's ResizedImage (image-resize-core.ts:9). Data is the image's base64 text, as upstream's `data`;
+// Bytes returns the decoded image.
+type ResizedImage struct {
+	Data           string
+	MimeType       string
 	OriginalWidth  int
 	OriginalHeight int
 	Width          int
@@ -114,14 +118,23 @@ func convertToolResultImageOnly(decoded []byte, declaredMIME string) ([]byte, st
 	return png, "image/png", imageConversionHint(declaredMIME, "image/png"), nil
 }
 
+// Bytes returns the image Data encodes. Data is always the base64 text this package produced, so it decodes.
+func (r ResizedImage) Bytes() []byte {
+	decoded, err := base64.StdEncoding.DecodeString(r.Data)
+	if err != nil {
+		return nil
+	}
+	return decoded
+}
+
 // ResizeImageForLLM applies the upstream CLI image policy and returns the
 // processed bytes plus the resulting MIME type.
 func ResizeImageForLLM(in []byte) ([]byte, string, error) {
-	result, err := prepareImageForLLM(in, nil)
+	result, err := ResizeImage(in, mimeForFormat(detectFormat(in)), nil)
 	if err != nil {
 		return nil, "", err
 	}
-	return result.Data, result.MIME, nil
+	return result.Bytes(), result.MimeType, nil
 }
 
 // PrepareCLIImageAttachment processes one CLI image file into the attached
@@ -144,14 +157,11 @@ func ProcessImage(in []byte, inputMIME string, autoResize bool, options *ai.Mode
 	if !autoResize {
 		return normalized, mime, conversionHint, nil
 	}
-	result, err := prepareImageForLLM(normalized, options)
+	result, err := ResizeImage(normalized, mime, options)
 	if err != nil {
 		return nil, "", "", errors.New("[Image omitted: could not be resized below the inline image size limit.]")
 	}
-	if !result.WasResized {
-		result.MIME = mime
-	}
-	return result.Data, result.MIME, joinImageHints(imageConversionHint(inputMIME, result.MIME), formatDimensionNote(result)), nil
+	return result.Bytes(), result.MimeType, joinImageHints(imageConversionHint(inputMIME, result.MimeType), formatDimensionNote(result)), nil
 }
 
 // imageConversionHint mirrors upstream image-process.ts conversionHint: it
@@ -291,24 +301,26 @@ func readUint32LE(buffer []byte, offset int) int {
 // looks only at a file's first 4100 bytes.
 const ImageTypeSniffBytes = 4100
 
-// DetectSupportedImageMimeTypeFromFile reads the upstream sniff window from a
-// file and returns the supported still-image MIME type, or "" when unsupported.
-func DetectSupportedImageMimeTypeFromFile(filePath string) string {
+// DetectSupportedImageMimeTypeFromFile is upstream detectSupportedImageMimeTypeFromFile (utils/mime.ts:25): it reads the sniff window from the start of a file and returns the supported still-image MIME type, or "" when unsupported or empty. A file that cannot be opened or read is the error.
+func DetectSupportedImageMimeTypeFromFile(filePath string) (string, error) {
 	f, err := os.Open(filePath)
 	if err != nil {
-		return ""
+		return "", err
 	}
 	defer func() { _ = f.Close() }()
 
 	buf := make([]byte, ImageTypeSniffBytes)
-	n, err := f.Read(buf)
-	if err != nil || n == 0 {
-		return ""
+	n, err := io.ReadFull(f, buf)
+	if err != nil && !errors.Is(err, io.EOF) && !errors.Is(err, io.ErrUnexpectedEOF) {
+		return "", err
 	}
-	return DetectSupportedImageMimeType(buf[:n])
+	return DetectSupportedImageMimeType(buf[:n]), nil
 }
 
-func prepareImageForLLM(in []byte, options *ai.ModelImageResizeOptions) (preparedImageResult, error) {
+// ResizeImage fits an image within the option limits and the encoded size limit, as upstream resizeImage
+// (image-resize.ts:85) does. It reports an error where upstream returns null. An image already within every limit
+// returns the input bytes under the declared mimeType, or image/png when none is declared (image-resize-core.ts:80).
+func ResizeImage(in []byte, mimeType string, options *ai.ModelImageResizeOptions) (ResizedImage, error) {
 	limits := ai.ModelImageResizeOptions{MaxWidth: MaxLongestSide, MaxHeight: MaxLongestSide, MaxBytes: MaxEncodedBytes, JPEGQuality: JPEGQuality}
 	if options != nil {
 		if options.MaxWidth != 0 {
@@ -325,23 +337,25 @@ func prepareImageForLLM(in []byte, options *ai.ModelImageResizeOptions) (prepare
 		}
 	}
 	if len(in) == 0 {
-		return preparedImageResult{}, errors.New("image: empty input")
+		return ResizedImage{}, errors.New("image: empty input")
 	}
 
 	src, err := decodeAutoOriented(in)
 	if err != nil {
-		return preparedImageResult{}, fmt.Errorf("image: decode: %w", err)
+		return ResizedImage{}, fmt.Errorf("image: decode: %w", err)
 	}
 	bounds := src.Bounds()
 	originalWidth, originalHeight := bounds.Dx(), bounds.Dy()
 	srcFormat := detectFormat(in)
-	srcMime := mimeForFormat(srcFormat)
+	if mimeType == "" {
+		mimeType = "image/png"
+	}
 	inputBase64Size := encodedSizeBase64(in)
 
 	if originalWidth <= limits.MaxWidth && originalHeight <= limits.MaxHeight && inputBase64Size < limits.MaxBytes && srcFormat != "bmp" {
-		return preparedImageResult{
-			Data:           in,
-			MIME:           srcMime,
+		return ResizedImage{
+			Data:           base64.StdEncoding.EncodeToString(in),
+			MimeType:       mimeType,
 			OriginalWidth:  originalWidth,
 			OriginalHeight: originalHeight,
 			Width:          originalWidth,
@@ -362,13 +376,13 @@ func prepareImageForLLM(in []byte, options *ai.ModelImageResizeOptions) (prepare
 		resized := resizeImage(src, currentWidth, currentHeight)
 		candidates, err := encodeCandidates(resized, qualitySteps)
 		if err != nil {
-			return preparedImageResult{}, err
+			return ResizedImage{}, err
 		}
 		for _, candidate := range candidates {
 			if candidate.EncodedSize < limits.MaxBytes {
-				return preparedImageResult{
-					Data:           candidate.Data,
-					MIME:           candidate.MIME,
+				return ResizedImage{
+					Data:           base64.StdEncoding.EncodeToString(candidate.Data),
+					MimeType:       candidate.MIME,
 					OriginalWidth:  originalWidth,
 					OriginalHeight: originalHeight,
 					Width:          currentWidth,
@@ -394,7 +408,7 @@ func prepareImageForLLM(in []byte, options *ai.ModelImageResizeOptions) (prepare
 		currentWidth, currentHeight = nextWidth, nextHeight
 	}
 
-	return preparedImageResult{}, ErrImageTooLarge
+	return ResizedImage{}, ErrImageTooLarge
 }
 
 // exifOrientation is the EXIF orientation tag value, 1..8. Upstream
@@ -693,13 +707,13 @@ func fitWithinBounds(width, height, maxWidth, maxHeight int) (int, int) {
 	return max(1, targetWidth), max(1, targetHeight)
 }
 
-func formatDimensionNote(result preparedImageResult) string {
+func formatDimensionNote(result ResizedImage) string {
 	if !result.WasResized {
 		return ""
 	}
 	scale := float64(result.OriginalWidth) / float64(result.Width)
-	return fmt.Sprintf("[Image: original %dx%d, displayed at %dx%d. Multiply coordinates by %.2f to map to original image.]",
-		result.OriginalWidth, result.OriginalHeight, result.Width, result.Height, scale)
+	return fmt.Sprintf("[Image: original %dx%d, displayed at %dx%d. Multiply coordinates by %s to map to original image.]",
+		result.OriginalWidth, result.OriginalHeight, result.Width, result.Height, jsstring.ToFixed(scale, 2))
 }
 
 func encodedSizeBase64(data []byte) int {

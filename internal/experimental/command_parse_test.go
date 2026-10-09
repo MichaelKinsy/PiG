@@ -203,6 +203,8 @@ func TestExperimentalTransportAddressBoundaries(t *testing.T) {
 		"unix:///tmp/sock?", "unix:///tmp/sock#", "unix:///tmp/a b", "unix:///tmp/☃", "unix:///tmp/../sock", "unix:///tmp/%2E/sock", "unix:///tmp/.%2e/sock",
 		"unix:///tmp/%00", "unix:///tmp/%FF", "unix:///tmp/%ED%A0%80", "unix:///tmp/%", "unix://host:65536/tmp/sock", "unix://[bad]/tmp/sock",
 		"https://", "http://host:65536", "file://user@host/path",
+		// Node 24 (.node-version) percent-encodes ^ in a URL path, so new URL("unix:///tmp/a^b").href differs from the input.
+		"unix:///tmp/a^b", "unix:///^",
 	} {
 		t.Run(input, func(t *testing.T) {
 			got, err := Cli.Parse([]string{"client", "--connect", input})

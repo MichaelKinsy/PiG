@@ -79,6 +79,7 @@ func main() {
 	agentsMd := flag.String("agents-md", "", "if set, patch the coverage block in this AGENTS.md in place")
 	badge := flag.String("badge", "", "if set, write the upstream port progress badge to this path")
 	readme := flag.String("readme", "", "if set, patch the porting block beside the badges in this README in place")
+	upstream := flag.String("upstream", ".upstream/current", "upstream mirror whose package manifests define the shipped surface; empty skips the package accounting")
 	strict := flag.Bool("strict", false, "exit 1 unless every intended-portable row is complete and behaviorally covered")
 	flag.Parse()
 	outSet := false
@@ -138,9 +139,22 @@ func main() {
 		fail("load upstream test porting: %v", err)
 	}
 
+	var accounting *packageAccounting
+	if *upstream != "" {
+		accounted, err := accountPackages(entries, coverage, behavioralCoverage, *upstream)
+		if err != nil {
+			fail("package accounting: %v (the mirror comes from make upstream-mirror)", err)
+		}
+		accounted.Closure, err = loadInterfaceClosure(filepath.Join(filepath.Dir(*portMap), "..", ".."), coding.UpstreamVersion)
+		if err != nil {
+			fail("interface closure: %v", err)
+		}
+		accounting = &accounted
+	}
+
 	// 5. Emit the full report.
 	var report bytes.Buffer
-	emitReport(&report, entries, coverage, behavioralCoverage, runOutcomes, scenarios, testStats)
+	emitReport(&report, entries, coverage, behavioralCoverage, runOutcomes, scenarios, testStats, accounting)
 	if *out == "-" {
 		_, err = os.Stdout.Write(report.Bytes())
 	} else {
@@ -152,7 +166,7 @@ func main() {
 
 	// 6. Optionally patch the condensed block into AGENTS.md.
 	if *agentsMd != "" {
-		if err := patchAgentsMd(*agentsMd, entries, coverage, behavioralCoverage, runOutcomes, scenarios); err != nil {
+		if err := patchAgentsMd(*agentsMd, entries, coverage, behavioralCoverage, runOutcomes, scenarios, accounting); err != nil {
 			fail("patch agents-md: %v", err)
 		}
 	}
@@ -312,7 +326,7 @@ func parsePortMap(path string) ([]portMapEntry, error) {
 	return entries, nil
 }
 
-func emitReport(w io.Writer, entries []portMapEntry, coverage, behavioralCoverage map[string][]string, results map[string]jsonOutcome, scenarios []scenarioFile, testStats testPortingStats) {
+func emitReport(w io.Writer, entries []portMapEntry, coverage, behavioralCoverage map[string][]string, results map[string]jsonOutcome, scenarios []scenarioFile, testStats testPortingStats, accounting *packageAccounting) {
 	_, _ = fmt.Fprintln(w, "# PORT_MAP coverage report")
 	_, _ = fmt.Fprintln(w)
 	_, _ = fmt.Fprintf(w, "Generated from `%d` PORT_MAP entries and `%d` parity scenarios.\n",
@@ -328,6 +342,13 @@ func emitReport(w io.Writer, entries []portMapEntry, coverage, behavioralCoverag
 	_, _ = fmt.Fprintln(w)
 	_, _ = fmt.Fprintln(w, stats.breakdownLine())
 	_, _ = fmt.Fprintln(w)
+
+	if accounting != nil {
+		_, _ = fmt.Fprintln(w, "## Packages")
+		_, _ = fmt.Fprintln(w)
+		writePackageAccounting(w, *accounting)
+		_, _ = fmt.Fprintln(w)
+	}
 
 	_, _ = fmt.Fprintln(w, "Behavioral evidence includes paired scenarios and reviewed mutation-proven Go unit tests. Unit tests are listed separately; last run refers only to paired scenarios, not unit execution or exhaustive parity.")
 	_, _ = fmt.Fprintln(w)
@@ -630,12 +651,12 @@ type familyRow struct {
 	NotRun     int
 }
 
-func patchAgentsMd(path string, entries []portMapEntry, coverage, behavioralCoverage map[string][]string, results map[string]jsonOutcome, scenarios []scenarioFile) error {
-	block := buildCoverageBlock(entries, coverage, behavioralCoverage, results, scenarios)
+func patchAgentsMd(path string, entries []portMapEntry, coverage, behavioralCoverage map[string][]string, results map[string]jsonOutcome, scenarios []scenarioFile, accounting *packageAccounting) error {
+	block := buildCoverageBlock(entries, coverage, behavioralCoverage, results, scenarios, accounting)
 	return patchFileBlock(path, covBeginMarker, covEndMarker, block)
 }
 
-func buildCoverageBlock(entries []portMapEntry, coverage, behavioralCoverage map[string][]string, results map[string]jsonOutcome, scenarios []scenarioFile) string {
+func buildCoverageBlock(entries []portMapEntry, coverage, behavioralCoverage map[string][]string, results map[string]jsonOutcome, scenarios []scenarioFile, accounting *packageAccounting) string {
 	// 1. Top-line numbers.
 	stats := computeStatusStats(entries, coverage, behavioralCoverage)
 
@@ -714,6 +735,11 @@ func buildCoverageBlock(entries []portMapEntry, coverage, behavioralCoverage map
 	fmt.Fprintln(&b)
 	fmt.Fprintln(&b, stats.summaryLine())
 	fmt.Fprintln(&b, stats.breakdownLine())
+	if accounting != nil {
+		fmt.Fprintln(&b)
+		writePackageAccounting(&b, *accounting)
+		fmt.Fprintln(&b)
+	}
 	fmt.Fprintln(&b, "Behavioral evidence includes paired scenarios and reviewed mutation-proven unit tests; the family table below counts paired scenarios only.")
 	if bootOnly > 0 || registrationOnly > 0 || smokeOnly > 0 {
 		fmt.Fprintf(&b, "Weak scenarios not counted as behavioral verification: %d boot-only, %d registration-only, %d smoke-only.\n", bootOnly, registrationOnly, smokeOnly)

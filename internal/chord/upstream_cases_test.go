@@ -71,7 +71,7 @@ func TestUpstreamProviderDisposalBufferedWhileStarting(t *testing.T) {
 	if err := Provide[Counter](provider, counterDefinition, newCounter(t)); err != nil {
 		t.Fatal(err)
 	}
-	var types []string
+	var types []ServiceProviderUpdateType
 	subscription, err := provider.Subscribe(counterDefinition.Id(), ServiceSingleton, func(_ context.Context, update ServiceProviderUpdate) {
 		types = append(types, update.Type)
 	})
@@ -90,7 +90,7 @@ func TestUpstreamProviderDisposalBufferedWhileStarting(t *testing.T) {
 	if err := subscription.Activate(); err != nil {
 		t.Fatal(err)
 	}
-	if !reflect.DeepEqual(types, []string{UpdateUnavailable}) {
+	if !reflect.DeepEqual(types, []ServiceProviderUpdateType{UpdateUnavailable}) {
 		t.Fatalf("buffered disposal = %v", types)
 	}
 	if _, err := provider.Subscribe(counterDefinition.Id(), ServiceSingleton, func(context.Context, ServiceProviderUpdate) {}); err == nil {
@@ -384,7 +384,7 @@ func TestUpstreamKeyedSnapshotAndDisposalOrder(t *testing.T) {
 	var closed []string
 	subscription, err := provider.Subscribe(keyedCounterDefinition.Id(), ServiceKeyed, func(_ context.Context, update ServiceProviderUpdate) {
 		if update.Type == UpdateClosed {
-			closed = append(closed, update.Address.Key)
+			closed = append(closed, update.Instance.Key)
 		}
 	})
 	if err != nil {

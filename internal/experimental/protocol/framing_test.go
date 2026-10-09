@@ -1,5 +1,7 @@
 package protocol
 
+// pi: packages/protocol/src/framing.ts
+
 import (
 	"errors"
 	"fmt"

@@ -3,6 +3,8 @@
 package coding
 
 import (
+	"context"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -11,10 +13,11 @@ import (
 	"sync"
 
 	"github.com/MichaelKinsy/PiG/coding/extension"
-	"github.com/MichaelKinsy/PiG/coding/packagecontent"
 	icodingagent "github.com/MichaelKinsy/PiG/internal/codingagent"
+	"github.com/MichaelKinsy/PiG/internal/codingagent/timings"
 	"github.com/MichaelKinsy/PiG/internal/packagemanager"
 	"github.com/MichaelKinsy/PiG/internal/resolvepath"
+	"github.com/MichaelKinsy/PiG/tui"
 )
 
 // SkillsResult is a loader's skills with the diagnostics found while resolving them.
@@ -47,9 +50,26 @@ type ResourceLoader interface {
 	GetSystemPrompt() (string, bool)
 	// GetAppendSystemPrompt returns the texts appended to the system prompt.
 	GetAppendSystemPrompt() []string
+	// GetSystemPromptSource returns the file the system prompt was read from, and whether it came from a file.
+	GetSystemPromptSource() (ResourceSource, bool)
+	// GetAppendSystemPromptSources returns the files the appended texts were read from, in order.
+	GetAppendSystemPromptSources() []ResourceSource
+	// GetExtensions returns the extensions the last Reload found (resource-loader.ts getExtensions).
+	GetExtensions() LoadExtensionsResult
+	// GetThemes returns the themes the last Reload and ExtendResources found (resource-loader.ts getThemes).
+	GetThemes() ThemesResult
+	// ExtendResources adds the skills, prompt templates and themes extensions contributed (resource-loader.ts extendResources).
+	ExtendResources(paths ResourceExtensionPaths) error
+	// Reload rediscovers every resource (resource-loader.ts reload).
+	Reload(options ...ResourceLoaderReloadOptions) error
 }
 
-// DefaultResourceLoaderOptions configures NewDefaultResourceLoader (resource-loader.ts DefaultResourceLoaderOptions). Extension, theme and inline-extension options belong to the Extension Host and are not part of this loader.
+// ResourceSource names the file a loaded resource came from (resource-loader.ts { path: string }).
+type ResourceSource struct {
+	Path string
+}
+
+// DefaultResourceLoaderOptions configures NewDefaultResourceLoader (resource-loader.ts DefaultResourceLoaderOptions). The Extension Host loads extensions: LoadExtensions is the hook it supplies, in place of upstream's additionalExtensionPaths, extensionFactories and noExtensions.
 type DefaultResourceLoaderOptions struct {
 	CWD      string
 	AgentDir string
@@ -59,6 +79,10 @@ type DefaultResourceLoaderOptions struct {
 	AdditionalSkillPaths []string
 	// AdditionalPromptTemplatePaths are prompt template files or directories loaded after the resolved prompt templates.
 	AdditionalPromptTemplatePaths []string
+	// AdditionalThemePaths are theme files or directories loaded after the resolved themes.
+	AdditionalThemePaths []string
+	// NoThemes keeps only AdditionalThemePaths.
+	NoThemes bool
 	// NoSkills keeps only AdditionalSkillPaths.
 	NoSkills bool
 	// NoPromptTemplates keeps only AdditionalPromptTemplatePaths.
@@ -72,24 +96,40 @@ type DefaultResourceLoaderOptions struct {
 	// SkillsOverride, PromptsOverride, AgentsFilesOverride, SystemPromptOverride and AppendSystemPromptOverride transform what the loader found (resource-loader.ts *Override).
 	SkillsOverride             func(SkillsResult) SkillsResult
 	PromptsOverride            func(PromptsResult) PromptsResult
+	ThemesOverride             func(ThemesResult) ThemesResult
+	ExtensionsOverride         func(LoadExtensionsResult) LoadExtensionsResult
 	AgentsFilesOverride        func(AgentsFilesResult) AgentsFilesResult
 	SystemPromptOverride       func(*string) *string
 	AppendSystemPromptOverride func([]string) []string
+	// LoadExtensions loads the extension set of a reload; nil loads none. A reload with ResolveProjectTrust calls it first for the bootstrap pass, then once for the final set.
+	LoadExtensions func(ctx context.Context, request ExtensionLoadRequest) (LoadExtensionsResult, error)
 }
 
-// DefaultResourceLoader resolves skills, prompt templates, context files and system prompt files from the default user and project resource locations, the settings-configured paths, the configured Packages and the additional paths, applying project trust as Pi's does, and installs a missing npm or git Package as Pi's package manager does. It does not load extensions or themes, which the Extension Host and the interactive theme controller own. A new loader is empty until Reload runs, as Pi's DefaultResourceLoader is.
+// DefaultResourceLoader resolves skills, prompt templates, context files and system prompt files from the default user and project resource locations, the settings-configured paths, the configured Packages and the additional paths, applying project trust as Pi's does, and installs a missing npm or git Package as Pi's package manager does. It loads themes, and extensions through the LoadExtensions hook the Extension Host supplies. A new loader is empty until Reload runs, as Pi's DefaultResourceLoader is.
 type DefaultResourceLoader struct {
 	cwd      string
 	agentDir string
 	settings *SettingsManager
 	options  DefaultResourceLoaderOptions
 
+	// opMu serialises Reload and ExtendResources, which rewrite the state below.
+	opMu sync.Mutex
+	// lastSkillPaths, lastPromptPaths and lastThemePaths are the paths of the last reload or extension; resourceMetadata is the metadata of the last reload (resource-loader.ts resourceMetadataByPath); extensionSources are the source infos ExtendResources recorded. They are touched only under opMu.
+	lastSkillPaths, lastPromptPaths, lastThemePaths []string
+	resourceMetadata                                *pathMetadataIndex
+	extensionSources                                extensionSources
+
 	mu           sync.RWMutex
 	skills       SkillsResult
 	prompts      PromptsResult
+	themes       ThemesResult
+	extensions   LoadExtensionsResult
 	agentsFiles  []ContextFile
 	systemPrompt *string
 	appendPrompt []string
+	// systemSource and appendSources are the resolved paths of the files the prompts came from.
+	systemSource  *ResourceSource
+	appendSources []ResourceSource
 }
 
 // NewDefaultResourceLoader returns an empty loader over the options' cwd and agent directory, each resolved with resolvePath as the resource-loader.ts DefaultResourceLoader constructor does ("~" expansion, file URL, absolute path). Call Reload to discover resources.
@@ -101,42 +141,73 @@ func NewDefaultResourceLoader(opts DefaultResourceLoaderOptions) *DefaultResourc
 	}
 	return &DefaultResourceLoader{
 		cwd: opts.CWD, agentDir: opts.AgentDir, settings: settings, options: opts,
-		skills:  SkillsResult{Skills: []*Skill{}, Diagnostics: []extension.ResourceDiagnostic{}},
-		prompts: PromptsResult{Prompts: []PromptTemplate{}, Diagnostics: []extension.ResourceDiagnostic{}},
+		skills:           SkillsResult{Skills: []*Skill{}, Diagnostics: []extension.ResourceDiagnostic{}},
+		prompts:          PromptsResult{Prompts: []PromptTemplate{}, Diagnostics: []extension.ResourceDiagnostic{}},
+		themes:           ThemesResult{Themes: []*tui.Theme{}, Diagnostics: []extension.ResourceDiagnostic{}},
+		extensions:       LoadExtensionsResult{Extensions: []extension.Extension{}, Errors: []ExtensionLoadError{}, Warnings: []ExtensionLoadWarning{}},
+		resourceMetadata: &pathMetadataIndex{},
 	}
 }
 
-// Reload reloads the settings, then rediscovers every resource for their current project trust (resource-loader.ts reload). Reloading the settings discards transient overrides applied with ApplyOverrides. A failure while resolving the Packages, settings entries or skills leaves the previous results in place; a failure while resolving the prompt templates keeps the new skills and the previous other results, as Pi's reload does.
-func (l *DefaultResourceLoader) Reload() error {
+// ResourceLoaderReloadOptions are the options of [DefaultResourceLoader.Reload] (resource-loader.ts ResourceLoaderReloadOptions).
+type ResourceLoaderReloadOptions struct {
+	// ResolveProjectTrust decides whether the project is trusted before any resource loads; the loader applies the answer to its settings.
+	ResolveProjectTrust func(ctx context.Context, input ResolveProjectTrustInput) (bool, error)
+}
+
+// ResolveProjectTrustInput is the argument of [ResourceLoaderReloadOptions.ResolveProjectTrust].
+type ResolveProjectTrustInput struct {
+	// ExtensionsResult is the bootstrap extension set, loaded with the project untrusted (resource-loader.ts loadProjectTrustExtensions).
+	ExtensionsResult LoadExtensionsResult
+}
+
+// Reload reloads the settings, then rediscovers every resource for their current project trust (resource-loader.ts reload). Reloading the settings discards transient overrides applied with ApplyOverrides. A failure while resolving the Packages, settings entries or skills leaves the previous results in place; a failure while resolving the prompt templates keeps the new skills and the previous other results, as Pi's reload does. The optional options decide project trust first, as [DefaultResourceLoader.ReloadWith] does with a context of context.Background().
+func (l *DefaultResourceLoader) Reload(options ...ResourceLoaderReloadOptions) error {
+	return l.ReloadWith(context.Background(), options...)
+}
+
+// ReloadWith is Reload with the context ctx. A ResolveProjectTrust in options first loads the bootstrap extension set with project settings forced untrusted and hands it to the callback, then applies the answer to the settings (resource-loader.ts reload(options)); the final extension set reuses the bootstrap load. A failed decision or bootstrap load fails the reload and leaves the previous results in place, with the project untrusted as the bootstrap pass left it.
+func (l *DefaultResourceLoader) ReloadWith(ctx context.Context, options ...ResourceLoaderReloadOptions) error {
+	l.opMu.Lock()
+	defer l.opMu.Unlock()
+	// resource-loader.ts:510: each reload starts the extensions timeline over.
+	timings.ResetTimings(timings.Extensions)
+	var preTrust *LoadExtensionsResult
+	for _, option := range options {
+		if option.ResolveProjectTrust == nil {
+			continue
+		}
+		bootstrap, err := l.loadProjectTrustExtensions(ctx)
+		if err != nil {
+			return err
+		}
+		trusted, err := option.ResolveProjectTrust(ctx, ResolveProjectTrustInput{ExtensionsResult: bootstrap})
+		if err != nil {
+			return err
+		}
+		l.settings.SetProjectTrusted(trusted)
+		preTrust = &bootstrap
+	}
 	l.settings.Reload()
-	return l.discover()
+	return l.discover(ctx, preTrust)
 }
 
 // discover rediscovers every resource from the settings as they currently are.
-func (l *DefaultResourceLoader) discover() error {
+func (l *DefaultResourceLoader) discover(ctx context.Context, preTrust *LoadExtensionsResult) error {
 	trusted := l.settings.IsProjectTrusted()
-	if err := packagemanager.ValidateConfiguredPackageSources(l.cwd, l.agentDir, l.settings); err != nil {
-		return fmt.Errorf("coding: resolve Packages: %w", err)
+	manager := packagemanager.NewPackageManager(packagemanager.PackageManagerOptions{CWD: l.cwd, SettingsManager: l.settings})
+	manager.AgentDir = l.agentDir
+	resolved, err := manager.Resolve(nil)
+	if err != nil {
+		return fmt.Errorf("coding: %w", err)
 	}
-	if err := packagemanager.InstallMissingPackages(l.cwd, l.agentDir, l.settings); err != nil {
-		return fmt.Errorf("coding: resolve Packages: %w", err)
-	}
-	if err := packagemanager.ValidateConfiguredResourceEntries(l.cwd, l.agentDir, l.settings); err != nil {
-		return fmt.Errorf("coding: resolve settings entries: %w", err)
-	}
-	packageItems, _ := packagemanager.CollectResolvedPackageResourceItems(l.cwd, l.agentDir, l.settings, nil, false)
-	var packageSkills, packagePrompts []icodingagent.ResolvedResource
-	for _, item := range packageItems {
-		resource := icodingagent.ResolvedResource{Path: item.Path, Enabled: item.Enabled, Metadata: icodingagent.PathMetadata{Source: item.Source, Scope: item.Scope, Origin: item.Origin, BaseDir: item.BaseDir}}
-		switch {
-		case packagecontent.Kind(item.ResourceType) == packagecontent.Skills:
-			packageSkills = append(packageSkills, resource)
-		case packagecontent.Kind(item.ResourceType) == packagecontent.Prompts:
-			packagePrompts = append(packagePrompts, resource)
-		}
+	extensions, err := l.loadFinalExtensions(ctx, preTrust)
+	if err != nil {
+		return err
 	}
 	metadata := &pathMetadataIndex{}
-	skills, err := l.loadSkills(trusted, packageSkills, metadata)
+	sources := extensionSources{}
+	skills, skillPaths, err := l.loadSkills(resolved.Skills, metadata, &sources)
 	if err != nil {
 		return err
 	}
@@ -144,7 +215,12 @@ func (l *DefaultResourceLoader) discover() error {
 	l.mu.Lock()
 	l.skills = skills
 	l.mu.Unlock()
-	prompts, err := l.loadPrompts(trusted, packagePrompts, metadata)
+	l.lastSkillPaths, l.resourceMetadata, l.extensionSources = skillPaths, metadata, sources
+	prompts, promptPaths, err := l.loadPrompts(resolved.Prompts, metadata, &sources)
+	if err != nil {
+		return err
+	}
+	themes, themePaths, err := l.loadThemes(resolved.Themes, metadata, &sources)
 	if err != nil {
 		return err
 	}
@@ -155,18 +231,21 @@ func (l *DefaultResourceLoader) discover() error {
 	if l.options.AgentsFilesOverride != nil {
 		agentsFiles = l.options.AgentsFilesOverride(agentsFiles)
 	}
-	systemPrompt := l.loadSystemPrompt(trusted)
-	appendPrompt := l.loadAppendSystemPrompt(trusted)
+	systemPrompt, systemSource := l.loadSystemPrompt(trusted)
+	appendPrompt, appendSources := l.loadAppendSystemPrompt(trusted)
 	l.mu.Lock()
+	l.extensions = extensions
 	l.prompts = prompts
+	l.themes = themes
 	l.agentsFiles = agentsFiles.AgentsFiles
 	l.systemPrompt, l.appendPrompt = systemPrompt, appendPrompt
+	l.systemSource, l.appendSources = systemSource, appendSources
 	l.mu.Unlock()
+	l.lastPromptPaths, l.lastThemePaths = promptPaths, themePaths
 	return nil
 }
 
-func (l *DefaultResourceLoader) loadSkills(trusted bool, packageSkills []icodingagent.ResolvedResource, metadata *pathMetadataIndex) (SkillsResult, error) {
-	resolved := icodingagent.OrderResolvedResources(icodingagent.SkillEntryResources(packageSkills), icodingagent.SkillEntryResources(icodingagent.AmbientSkillResources(l.cwd, l.agentDir, l.settings, trusted, true)))
+func (l *DefaultResourceLoader) loadSkills(resolved []icodingagent.ResolvedResource, metadata *pathMetadataIndex, sources *extensionSources) (SkillsResult, []string, error) {
 	for _, resource := range resolved {
 		metadata.add(resource.Path, resource.Metadata)
 	}
@@ -182,8 +261,26 @@ func (l *DefaultResourceLoader) loadSkills(trusted bool, packageSkills []icoding
 	}
 	paths, err := l.mergePaths(enabled, l.options.AdditionalSkillPaths)
 	if err != nil {
-		return SkillsResult{}, err
+		return SkillsResult{}, nil, err
 	}
+	result, err := l.skillsFromPaths(paths, metadata, sources)
+	if err != nil {
+		return SkillsResult{}, nil, err
+	}
+	for _, path := range l.options.AdditionalSkillPaths {
+		resolved, err := l.resolveResourcePath(path)
+		if err != nil {
+			return SkillsResult{}, nil, err
+		}
+		if icodingagent.IsLocalPath(path) && !exists(resolved) && !hasDiagnosticPath(result.Diagnostics, resolved) {
+			result.Diagnostics = append(result.Diagnostics, extension.ResourceDiagnostic{Type: "error", Message: "Skill path does not exist", Path: resolved})
+		}
+	}
+	return result, paths, nil
+}
+
+// skillsFromPaths is resource-loader.ts updateSkillsFromPaths: it loads the skills at paths without the default locations, applies the override and gives each skill the source info the extension paths, the metadata or the default location yield.
+func (l *DefaultResourceLoader) skillsFromPaths(paths []string, metadata *pathMetadataIndex, sources *extensionSources) (SkillsResult, error) {
 	result := SkillsResult{Skills: []*Skill{}, Diagnostics: []extension.ResourceDiagnostic{}}
 	if !l.options.NoSkills || len(paths) > 0 {
 		loaded, err := icodingagent.LoadSkills(icodingagent.LoadSkillsOptions{CWD: l.cwd, AgentDir: l.agentDir, SkillPaths: paths})
@@ -198,24 +295,14 @@ func (l *DefaultResourceLoader) loadSkills(trusted bool, packageSkills []icoding
 	skills := make([]*Skill, 0, len(result.Skills))
 	for _, skill := range result.Skills {
 		stamped := *skill
-		if info, found := metadata.sourceInfo(skill.Path); found {
+		if info, found := l.findSourceInfo(skill.FilePath, sources.skills, metadata); found {
 			stamped.SourceInfo = info
 		} else if stamped.SourceInfo == (icodingagent.PiSourceInfo{}) {
-			stamped.SourceInfo = icodingagent.DefaultSourceInfoForPath(l.cwd, l.agentDir, skill.Path)
+			stamped.SourceInfo = icodingagent.DefaultSourceInfoForPath(l.cwd, l.agentDir, skill.FilePath)
 		}
 		skills = append(skills, &stamped)
 	}
-	diagnostics := cloneCollection(result.Diagnostics)
-	for _, path := range l.options.AdditionalSkillPaths {
-		resolved, err := l.resolveResourcePath(path)
-		if err != nil {
-			return SkillsResult{}, err
-		}
-		if icodingagent.IsLocalPath(path) && !exists(resolved) && !hasDiagnosticPath(diagnostics, resolved) {
-			diagnostics = append(diagnostics, extension.ResourceDiagnostic{Type: "error", Message: "Skill path does not exist", Path: resolved})
-		}
-	}
-	return SkillsResult{Skills: skills, Diagnostics: diagnostics}, nil
+	return SkillsResult{Skills: skills, Diagnostics: cloneCollection(result.Diagnostics)}, nil
 }
 
 // mapSkillPath is resource-loader.ts mapSkillPath: an enabled auto-discovered or Package skill directory that holds a SKILL.md loads through that file, which takes the directory's metadata unless it already has some.
@@ -234,8 +321,7 @@ func mapSkillPath(resource icodingagent.ResolvedResource, metadata *pathMetadata
 	return file
 }
 
-func (l *DefaultResourceLoader) loadPrompts(trusted bool, packagePrompts []icodingagent.ResolvedResource, metadata *pathMetadataIndex) (PromptsResult, error) {
-	resolved := icodingagent.OrderResolvedResources(packagePrompts, icodingagent.AmbientPromptResources(l.cwd, l.agentDir, l.settings, trusted))
+func (l *DefaultResourceLoader) loadPrompts(resolved []icodingagent.ResolvedResource, metadata *pathMetadataIndex, sources *extensionSources) (PromptsResult, []string, error) {
 	for _, resource := range resolved {
 		metadata.add(resource.Path, resource.Metadata)
 	}
@@ -245,19 +331,35 @@ func (l *DefaultResourceLoader) loadPrompts(trusted bool, packagePrompts []icodi
 	}
 	paths, err := l.mergePaths(enabled, l.options.AdditionalPromptTemplatePaths)
 	if err != nil {
-		return PromptsResult{}, err
+		return PromptsResult{}, nil, err
 	}
+	result := l.promptsFromPaths(paths, metadata, sources)
+	for _, path := range l.options.AdditionalPromptTemplatePaths {
+		resolved, err := l.resolveResourcePath(path)
+		if err != nil {
+			return PromptsResult{}, nil, err
+		}
+		if icodingagent.IsLocalPath(path) && !exists(resolved) && !hasDiagnosticPath(result.Diagnostics, resolved) {
+			result.Diagnostics = append(result.Diagnostics, extension.ResourceDiagnostic{Type: "error", Message: "Prompt template path does not exist", Path: resolved})
+		}
+	}
+	return result, paths, nil
+}
+
+// promptsFromPaths is resource-loader.ts updatePromptsFromPaths: it loads the prompt templates at paths without the default locations, drops the name collisions, applies the override and gives each template its source info.
+func (l *DefaultResourceLoader) promptsFromPaths(paths []string, metadata *pathMetadataIndex, sources *extensionSources) PromptsResult {
 	result := PromptsResult{Prompts: []PromptTemplate{}, Diagnostics: []extension.ResourceDiagnostic{}}
 	if !l.options.NoPromptTemplates || len(paths) > 0 {
-		loaded := icodingagent.LoadPromptTemplates("", "", paths...)
-		result = PromptsResult{Prompts: loaded.Templates, Diagnostics: loaded.Diagnostics}
+		loaded := icodingagent.LoadPromptTemplatesFromOptions(icodingagent.LoadPromptTemplatesOptions{Cwd: l.cwd, AgentDir: l.agentDir, PromptPaths: paths})
+		prompts, collisions := icodingagent.DedupePromptTemplates(loaded.Templates)
+		result = PromptsResult{Prompts: prompts, Diagnostics: append(loaded.Diagnostics, collisions...)}
 	}
 	if l.options.PromptsOverride != nil {
 		result = l.options.PromptsOverride(result)
 	}
 	prompts := make([]PromptTemplate, 0, len(result.Prompts))
 	for _, prompt := range result.Prompts {
-		if info, found := metadata.sourceInfo(prompt.FilePath); found {
+		if info, found := l.findSourceInfo(prompt.FilePath, sources.prompts, metadata); found {
 			prompt.SourceInfo = info
 		} else if prompt.SourceInfo == (icodingagent.PiSourceInfo{}) {
 			prompt.SourceInfo = icodingagent.DefaultSourceInfoForPath(l.cwd, l.agentDir, prompt.FilePath)
@@ -267,21 +369,11 @@ func (l *DefaultResourceLoader) loadPrompts(trusted bool, packagePrompts []icodi
 		}
 		prompts = append(prompts, prompt)
 	}
-	diagnostics := cloneCollection(result.Diagnostics)
-	for _, path := range l.options.AdditionalPromptTemplatePaths {
-		resolved, err := l.resolveResourcePath(path)
-		if err != nil {
-			return PromptsResult{}, err
-		}
-		if icodingagent.IsLocalPath(path) && !exists(resolved) && !hasDiagnosticPath(diagnostics, resolved) {
-			diagnostics = append(diagnostics, extension.ResourceDiagnostic{Type: "error", Message: "Prompt template path does not exist", Path: resolved})
-		}
-	}
-	return PromptsResult{Prompts: prompts, Diagnostics: diagnostics}, nil
+	return PromptsResult{Prompts: prompts, Diagnostics: cloneCollection(result.Diagnostics)}
 }
 
 // loadSystemPrompt resolves the system prompt text as resource-loader.ts reload does: the option, else the discovered SYSTEM.md, read through resolvePromptInput.
-func (l *DefaultResourceLoader) loadSystemPrompt(trusted bool) *string {
+func (l *DefaultResourceLoader) loadSystemPrompt(trusted bool) (*string, *ResourceSource) {
 	source := ""
 	if l.options.SystemPrompt != nil {
 		source = *l.options.SystemPrompt
@@ -295,10 +387,18 @@ func (l *DefaultResourceLoader) loadSystemPrompt(trusted bool) *string {
 	if l.options.SystemPromptOverride != nil {
 		systemPrompt = l.options.SystemPromptOverride(systemPrompt)
 	}
-	return systemPrompt
+	return systemPrompt, promptSourcePath(source)
 }
 
-func (l *DefaultResourceLoader) loadAppendSystemPrompt(trusted bool) []string {
+// promptSourcePath is the resolved path of a prompt input that names an existing file; literal prompt text has none (resource-loader.ts systemPromptSourcePath).
+func promptSourcePath(source string) *ResourceSource {
+	if source == "" || !exists(source) {
+		return nil
+	}
+	return &ResourceSource{Path: resolveLoaderDirectory(source)}
+}
+
+func (l *DefaultResourceLoader) loadAppendSystemPrompt(trusted bool) ([]string, []ResourceSource) {
 	sources := l.options.AppendSystemPrompt
 	if sources == nil {
 		sources = []string{}
@@ -307,7 +407,11 @@ func (l *DefaultResourceLoader) loadAppendSystemPrompt(trusted bool) []string {
 		}
 	}
 	appended := make([]string, 0, len(sources))
+	var appendSources []ResourceSource
 	for _, source := range sources {
+		if found := promptSourcePath(source); found != nil {
+			appendSources = append(appendSources, *found)
+		}
 		if source != "" {
 			appended = append(appended, icodingagent.ResolvePromptInput(source, "append system prompt"))
 		}
@@ -315,7 +419,7 @@ func (l *DefaultResourceLoader) loadAppendSystemPrompt(trusted bool) []string {
 	if l.options.AppendSystemPromptOverride != nil {
 		appended = l.options.AppendSystemPromptOverride(appended)
 	}
-	return appended
+	return appended, appendSources
 }
 
 // resolveLoaderDirectory resolves a cwd or agentDir option. Pi requires both, so an empty Go value stays empty rather than becoming the process directory.
@@ -453,6 +557,23 @@ func (l *DefaultResourceLoader) GetAppendSystemPrompt() []string {
 	return cloneCollection(l.appendPrompt)
 }
 
+// GetSystemPromptSource returns the file the system prompt was read from by the last Reload; false when it came from literal text or there is none.
+func (l *DefaultResourceLoader) GetSystemPromptSource() (ResourceSource, bool) {
+	l.mu.RLock()
+	defer l.mu.RUnlock()
+	if l.systemSource == nil {
+		return ResourceSource{}, false
+	}
+	return *l.systemSource, true
+}
+
+// GetAppendSystemPromptSources returns the files the appended texts were read from by the last Reload.
+func (l *DefaultResourceLoader) GetAppendSystemPromptSources() []ResourceSource {
+	l.mu.RLock()
+	defer l.mu.RUnlock()
+	return cloneCollection(l.appendSources)
+}
+
 // staticResourceLoader serves collections its owner resolved elsewhere.
 type staticResourceLoader struct {
 	templates []PromptTemplate
@@ -474,6 +595,33 @@ func (*staticResourceLoader) GetAgentsFiles() AgentsFilesResult {
 func (*staticResourceLoader) GetSystemPrompt() (string, bool) { return "", false }
 
 func (*staticResourceLoader) GetAppendSystemPrompt() []string { return []string{} }
+
+func (*staticResourceLoader) GetSystemPromptSource() (ResourceSource, bool) {
+	return ResourceSource{}, false
+}
+
+func (*staticResourceLoader) GetAppendSystemPromptSources() []ResourceSource {
+	return []ResourceSource{}
+}
+
+func (*staticResourceLoader) GetExtensions() LoadExtensionsResult {
+	return LoadExtensionsResult{Extensions: []extension.Extension{}, Errors: []ExtensionLoadError{}, Warnings: []ExtensionLoadWarning{}}
+}
+
+func (*staticResourceLoader) GetThemes() ThemesResult {
+	return ThemesResult{Themes: []*tui.Theme{}, Diagnostics: []extension.ResourceDiagnostic{}}
+}
+
+// errStaticResourceLoader reports a mutation of a loader that holds only the collections its owner resolved elsewhere.
+var errStaticResourceLoader = errors.New("a static resource loader holds fixed resources and cannot be extended or reloaded")
+
+func (*staticResourceLoader) ExtendResources(ResourceExtensionPaths) error {
+	return errStaticResourceLoader
+}
+
+func (*staticResourceLoader) Reload(...ResourceLoaderReloadOptions) error {
+	return errStaticResourceLoader
+}
 
 // promptResourcesOverlay replaces a loader's skills and prompt templates with collections its owner resolved elsewhere and keeps the loader's other resources.
 type promptResourcesOverlay struct {
@@ -502,13 +650,18 @@ type resourceLoaderRef struct {
 }
 
 // resolveResourceLoader returns the supplied loader, or a DefaultResourceLoader over the Services' cwd, agent directory and settings that has reloaded when none is supplied (sdk.ts createAgentSession awaits resourceLoader.reload()). The reload rereads the Services' settings and drops the transient overrides applied to them.
-func resolveResourceLoader(svcs *Services, supplied ResourceLoader) (*resourceLoaderRef, error) {
+func resolveResourceLoader(svcs *AgentSessionServices, supplied ResourceLoader) (*resourceLoaderRef, error) {
 	if supplied != nil {
 		return &resourceLoaderRef{loader: supplied, promptFromLoader: supplied != NoResources}, nil
+	}
+	if loader := svcs.ResourceLoader(); loader != nil {
+		// sdk.ts: a loader created with the Services is reloaded already and is not reloaded again.
+		return &resourceLoaderRef{loader: loader, promptFromLoader: true}, nil
 	}
 	loader := NewDefaultResourceLoader(DefaultResourceLoaderOptions{CWD: svcs.CWD(), AgentDir: svcs.AgentDir(), SettingsManager: svcs.SettingsManager()})
 	if err := loader.Reload(); err != nil {
 		return nil, err
 	}
+	timings.Time("resourceLoader.reload")
 	return &resourceLoaderRef{loader: loader, promptFromLoader: true}, nil
 }

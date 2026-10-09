@@ -20,7 +20,7 @@ async function classifyImpl(model, request, options) {
     throw new Error("classifier cancelled");
   }
   const answers = {};
-  for (const key of Object.keys(request.questions).reverse()) answers[key] = { type: "bool", probability: text.length / 100 };
+  for (const key of Object.keys(request.questions).reverse()) answers[key] = { type: "bool", probability: (text.length + 10 * (request.images?.length ?? 0)) / 100 };
   return { api: model.api, provider: model.provider, model: model.id, answers, stopReason: "stop", timestamp: 2 };
 }
 
@@ -74,8 +74,9 @@ export default function (pi) {
     const model = registry.findOfType("classifier", "typesafe", "jev-latest");
     const result = await registry.classify(model, approval("Looks good"), { apiKey: "sk-conf" });
     const failed = await registry.classify(model, approval("fail"));
+    const withImages = await registry.classify(model, { ...approval("Looks good"), images: [{ type: "image", data: "aW1hZ2U=", mimeType: "image/png" }] });
     return reply({
-      stop: result.stopReason, answers: Object.keys(result.answers), approved: result.answers.approved.probability, model: result.model,
+      stop: result.stopReason, answers: Object.keys(result.answers), approved: result.answers.approved.probability, imagesApproved: withImages.answers.approved.probability, model: result.model,
       failedStop: failed.stopReason, failedMessage: failed.errorMessage ?? null, failedProvider: failed.provider,
     });
   });
@@ -136,7 +137,16 @@ export default function (pi) {
       }
     });
     const colors = Object.fromEntries((params.tokens ?? []).map((token) => [token, theme.colors[token] ?? null]));
-    const fgs = Object.fromEntries((params.fgTokens ?? []).map((token) => [token, theme.fg(token, "x")]));
+    const fgs = Object.fromEntries((params.fgTokens ?? []).map((token) => [token, themeFg(theme, token)]));
     return reply({ appearance: theme.appearance ?? null, colors, styles, fgs });
   });
+}
+
+// theme.fg(token, "x"), or "throw:" and the message when the SDK throws, so one unknown token does not hide the others.
+function themeFg(theme, token) {
+  try {
+    return theme.fg(token, "x");
+  } catch (error) {
+    return `throw:${error.message}`;
+  }
 }

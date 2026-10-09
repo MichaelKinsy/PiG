@@ -23,13 +23,14 @@ var ProviderDoc = durable.DefineDoc(durable.DocDefinition[ProviderState]{
 		CheckpointWhen: func(ProviderState, []durable.Op, durable.CheckpointInfo) bool {
 			return true
 		},
+
+		Initial: newProviderState,
 	},
 	DocumentSemantics: durable.DocumentSemantics{
 		Scope:   durable.ScopeConversation,
 		History: durable.HistoryLatest,
 		Fork:    durable.ForkInitial,
 	},
-	Initial: newProviderState,
 })
 
 // newProviderState draws a fresh UUIDv7. ai.UUIDv7 fails only when crypto/rand fails or 2^41 identities share one process, which Go's runtime and the clock rule out, so a failure is a broken invariant.

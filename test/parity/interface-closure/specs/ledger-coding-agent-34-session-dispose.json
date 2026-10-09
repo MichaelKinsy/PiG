@@ -1,0 +1,33 @@
+[
+ {
+  "ids": [
+   "pkg:coding-agent/.#AgentSession::property:dispose"
+  ],
+  "targets": [
+   "coding/session.go#Session.Dispose"
+  ],
+  "production": [
+   "call:coding/cli/rpc_mode.go#runRPCMode"
+  ],
+  "evidence": [
+   "test:coding/session_dispose_upstream_test.go#TestSessionDisposeAbortsWorkAndDropsListeners"
+  ],
+  "rationale": "AgentSession.dispose is Session.Dispose(): aborts retry, compaction, branch summary and bash work, invalidates the extension runner, drops every listener (new test, mutation-checked for each of the three)."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#AgentSession::property:getCallableToolNames"
+  ],
+  "targets": [
+   "coding/session_loadout.go#Session.CallableToolNames"
+  ],
+  "production": [
+   "public-api:coding/session_loadout.go#Session.CallableToolNames"
+  ],
+  "evidence": [
+   "test:coding/session_tool_orchestration_upstream_test.go#TestToolsWithDefaultActiveFalseAreActiveOnlyWhenNamed",
+   "test:coding/session_tool_orchestration_upstream_test.go#TestSessionToolOrchestrationSupportsToolsThatCallOtherToolsUnderAnyNameThroughTheExtensionAPI"
+  ],
+  "rationale": "AgentSession.getCallableToolNames is Session.CallableToolNames() []string; the tests assert the exact name lists."
+ }
+]

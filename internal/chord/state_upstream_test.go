@@ -1,5 +1,7 @@
 package chord
 
+// pi: packages/chord/src/services/state.ts
+
 import (
 	"context"
 	"encoding/json"
@@ -7,6 +9,8 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+
+	"github.com/MichaelKinsy/PiG/internal/chord/chordjson"
 )
 
 // Ports packages/chord/test/state.test.ts. Typed state decodes a detached draft, so the JavaScript cases that observe Proxy revocation, mutation after placement, or object identity of the returned value have no Go form; the PromiseLike case is an equivalence test (a draft settles when its callback returns); the structural-sharing and identity guarantees are asserted on the stored JSON revisions through core.snapshot.
@@ -31,11 +35,11 @@ func container(value any) uintptr { return reflect.ValueOf(value).Pointer() }
 
 func sub(t *testing.T, value any, key string) any {
 	t.Helper()
-	typed, ok := value.(map[string]any)
+	typed, ok := value.(*chordjson.Object)
 	if !ok {
 		t.Fatalf("not an object: %T", value)
 	}
-	return typed[key]
+	return typed.Value(key)
 }
 
 func changeDoc(t *testing.T, state *MutableReplicatedState[docState], mutate func(docState)) {
@@ -71,7 +75,7 @@ func TestTransactionalReplicatedState(t *testing.T) {
 			draft["changed"].(map[string]any)["value"] = 4.0
 		})
 		current := stored(state)
-		if !reflect.DeepEqual(current, map[string]any{"changed": map[string]any{"value": 4.0}, "retained": map[string]any{"value": 2.0}}) {
+		if !sameJSON(current, map[string]any{"changed": map[string]any{"value": 4.0}, "retained": map[string]any{"value": 2.0}}) {
 			t.Fatalf("value = %v", current)
 		}
 		if container(current) == container(previous) || container(sub(t, current, "changed")) == container(sub(t, previous, "changed")) {
@@ -109,7 +113,7 @@ func TestTransactionalReplicatedState(t *testing.T) {
 		if err == nil || !strings.Contains(err.Error(), "reentrantly") {
 			t.Fatalf("nested change error = %v", err)
 		}
-		if !reflect.DeepEqual(stored(state), map[string]any{"left": 0.0, "right": 0.0}) {
+		if !sameJSON(stored(state), map[string]any{"left": 0.0, "right": 0.0}) {
 			t.Fatalf("value = %v", stored(state))
 		}
 		err = state.Change(ctx, func(docState) error {
@@ -118,7 +122,7 @@ func TestTransactionalReplicatedState(t *testing.T) {
 		if err == nil || !strings.Contains(err.Error(), "change callback") {
 			t.Fatalf("nested replace error = %v", err)
 		}
-		if !reflect.DeepEqual(stored(state), map[string]any{"left": 0.0, "right": 0.0}) {
+		if !sameJSON(stored(state), map[string]any{"left": 0.0, "right": 0.0}) {
 			t.Fatalf("value = %v", stored(state))
 		}
 	})
@@ -170,7 +174,7 @@ func TestTransactionalReplicatedState(t *testing.T) {
 		if err == nil || err.Error() != "listener failed" {
 			t.Fatalf("error = %v", err)
 		}
-		if !reflect.DeepEqual(stored(state), map[string]any{"value": 1.0}) || !reflect.DeepEqual(received, []int{1}) {
+		if !sameJSON(stored(state), map[string]any{"value": 1.0}) || !reflect.DeepEqual(received, []int{1}) {
 			t.Fatalf("value = %v received = %v", stored(state), received)
 		}
 	})
@@ -190,7 +194,7 @@ func TestTransactionalReplicatedState(t *testing.T) {
 			t.Fatal(err)
 		}
 		_, value := state.core.snapshot()
-		if external.Value != 1 || !reflect.DeepEqual(value, map[string]any{"left": map[string]any{"Value": 1.0}, "right": map[string]any{"Value": 1.0}}) {
+		if external.Value != 1 || !sameJSON(value, map[string]any{"left": map[string]any{"Value": 1.0}, "right": map[string]any{"Value": 1.0}}) {
 			t.Fatalf("value = %v external = %v", value, external)
 		}
 		if container(sub(t, value, "left")) == container(sub(t, value, "right")) {
@@ -208,7 +212,7 @@ func TestTransactionalReplicatedState(t *testing.T) {
 			t.Fatal("replacement containers alias")
 		}
 		changeDoc(t, state, func(draft docState) { draft["left"].(map[string]any)["value"] = 9.0 })
-		if !reflect.DeepEqual(stored(state), map[string]any{"left": map[string]any{"value": 9.0}, "right": map[string]any{"value": 1.0}}) {
+		if !sameJSON(stored(state), map[string]any{"left": map[string]any{"value": 9.0}, "right": map[string]any{"value": 1.0}}) {
 			t.Fatalf("value = %v", stored(state))
 		}
 	})
@@ -233,7 +237,7 @@ func TestTransactionalReplicatedState(t *testing.T) {
 
 	t.Run("validates replica revisions without freezing shared immutable payloads", func(t *testing.T) {
 		replica := newReplica(func(error) {})
-		initial := map[string]any{"rows": []any{map[string]any{"value": 1.0}}}
+		initial := chordjson.ObjectOf("rows", []any{chordjson.ObjectOf("value", 1.0)})
 		if err := replica.hydrate(ctx, 0, []Op{{"r", initial}}, nil); err != nil {
 			t.Fatal(err)
 		}
@@ -241,7 +245,7 @@ func TestTransactionalReplicatedState(t *testing.T) {
 		if container(value) != container(initial) {
 			t.Fatal("hydrate copied the payload")
 		}
-		inserted := map[string]any{"value": 2.0}
+		inserted := chordjson.ObjectOf("value", 2.0)
 		if err := replica.update(ctx, 1, []Op{{"p", []any{"rows"}, 1, 0, []any{inserted}}}, nil); err != nil {
 			t.Fatal(err)
 		}
@@ -250,10 +254,10 @@ func TestTransactionalReplicatedState(t *testing.T) {
 		if container(next) == container(initial) || len(rows) != 2 {
 			t.Fatalf("value = %v", next)
 		}
-		if container(rows[0]) != container(initial["rows"].([]any)[0]) || container(rows[1]) != container(inserted) {
+		if container(rows[0]) != container(initial.Value("rows").([]any)[0]) || container(rows[1]) != container(inserted) {
 			t.Fatal("update did not share unchanged and inserted containers")
 		}
-		if len(initial["rows"].([]any)) != 1 {
+		if len(initial.Value("rows").([]any)) != 1 {
 			t.Fatal("update mutated the previous revision")
 		}
 	})
@@ -261,7 +265,7 @@ func TestTransactionalReplicatedState(t *testing.T) {
 	t.Run("clears a replica when an adopted update is invalid", func(t *testing.T) {
 		var errs []error
 		replica := newReplica(func(err error) { errs = append(errs, err) })
-		if err := replica.hydrate(ctx, 0, []Op{{"r", map[string]any{"value": 0.0}}}, nil); err != nil {
+		if err := replica.hydrate(ctx, 0, []Op{{"r", chordjson.ObjectOf("value", 0.0)}}, nil); err != nil {
 			t.Fatal(err)
 		}
 		err := replica.update(ctx, 1, []Op{{"s", []any{"value"}, nanValue()}}, nil)
@@ -276,7 +280,7 @@ func TestTransactionalReplicatedState(t *testing.T) {
 		}
 
 		malformed := newReplica(func(err error) { errs = append(errs, err) })
-		if err := malformed.hydrate(ctx, 0, []Op{{"r", map[string]any{"values": []any{1.0, 2.0}}}}, nil); err != nil {
+		if err := malformed.hydrate(ctx, 0, []Op{{"r", chordjson.ObjectOf("values", []any{1.0, 2.0})}}, nil); err != nil {
 			t.Fatal(err)
 		}
 		if err := malformed.update(ctx, 1, []Op{{"m", []any{"values"}, []any{0.0}}}, nil); err == nil {
@@ -301,7 +305,7 @@ func TestTransactionalReplicatedState(t *testing.T) {
 		if err := state.Replace(ctx, docState{"value": map[string]any{"nested": 2.0}, "retained": map[string]any{"nested": 2.0}}); err != nil {
 			t.Fatal(err)
 		}
-		if !reflect.DeepEqual(stored(state), map[string]any{"value": map[string]any{"nested": 2.0}, "retained": map[string]any{"nested": 2.0}}) {
+		if !sameJSON(stored(state), map[string]any{"value": map[string]any{"nested": 2.0}, "retained": map[string]any{"nested": 2.0}}) {
 			t.Fatalf("value = %v", stored(state))
 		}
 		if len(batches) != 1 || !strings.HasPrefix(batches[0], `[["r",`) {
@@ -331,6 +335,43 @@ type testAttachment struct {
 	buffer              []ReplicatedStateSourceFrame
 	listener            func(ReplicatedStateSourceFrame)
 	activated, disposed bool
+}
+
+var (
+	_ ReplicatedStateSource           = (*testSource)(nil)
+	_ ReplicatedStateSourceAttachment = (*testAttachment)(nil)
+)
+
+// upstream: packages/chord/src/types.ts:105 (ReplicatedStateSource.attach) and state.ts replicatedState: the attached state hydrates from the snapshot of every commit before the attachment boundary, applies the commits buffered between attach and activation and then every live commit in cursor order, and Dispose releases the source attachment once.
+func TestReplicatedStateSourceAttachBoundary(t *testing.T) {
+	test := newTestSource(valueDoc(0), 7)
+	test.commit(valueDoc(1), setValueOps(1))
+	test.onAttach = func() {
+		test.onAttach = nil
+		test.commit(valueDoc(2), setValueOps(2))
+		test.commit(valueDoc(3), setValueOps(3))
+	}
+	var source ReplicatedStateSource = test
+	state, err := AttachReplicatedState[docState](source, ReplicatedStateSourceOptions{OnError: func(err error) { t.Errorf("source contract error: %v", err) }})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := state.Value()["value"]; got != float64(3) || state.cursor != 10 {
+		t.Fatalf("value=%v cursor=%d, want the snapshot plus both buffered commits (3 at cursor 10)", got, state.cursor)
+	}
+	test.commit(valueDoc(4), setValueOps(4))
+	if got := state.Value()["value"]; got != float64(4) || state.cursor != 11 {
+		t.Fatalf("value=%v cursor=%d, want the live commit (4 at cursor 11)", got, state.cursor)
+	}
+	state.Dispose()
+	state.Dispose()
+	if len(test.attachments) != 0 {
+		t.Fatalf("%d source attachments left after Dispose", len(test.attachments))
+	}
+	test.commit(valueDoc(5), setValueOps(5))
+	if got := state.Value()["value"]; got != float64(4) {
+		t.Fatalf("a disposed state applied a commit: value=%v", got)
+	}
 }
 
 func (source *testSource) Attach() ReplicatedStateSourceAttachment {
@@ -391,7 +432,7 @@ func (attachment *testAttachment) Dispose() {
 	attachment.onDispose()
 }
 
-func valueDoc(value float64) map[string]any { return map[string]any{"value": value} }
+func valueDoc(value float64) *chordjson.Object { return chordjson.ObjectOf("value", value) }
 
 func setValueOps(value float64) []Op { return []Op{{"s", []any{"value"}, value}} }
 
@@ -614,4 +655,20 @@ func TestChangeWorkAfterTheCallbackReturnsCannotPublish(t *testing.T) {
 			}
 		})
 	}
+}
+
+// sameJSON compares two JSON values as Jest's toEqual does: deeply, ignoring object key order.
+func sameJSON(left, right any) bool {
+	plain := func(value any) any {
+		encoded, err := json.Marshal(value)
+		if err != nil {
+			return err
+		}
+		var decoded any
+		if err := json.Unmarshal(encoded, &decoded); err != nil {
+			return err
+		}
+		return decoded
+	}
+	return reflect.DeepEqual(plain(left), plain(right))
 }

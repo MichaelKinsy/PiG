@@ -29,7 +29,8 @@ func TestTruncateLine(t *testing.T) {
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			got, wasTruncated := TruncateLine(tc.input, tc.maxChars)
+			result := TruncateLine(tc.input, tc.maxChars)
+			got, wasTruncated := result.Text, result.WasTruncated
 			if got != tc.want || wasTruncated != tc.truncated {
 				t.Errorf("TruncateLine(%q, %d) = %q, %v; want %q, %v", tc.input, tc.maxChars, got, wasTruncated, tc.want, tc.truncated)
 			}

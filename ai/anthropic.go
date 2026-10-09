@@ -135,7 +135,7 @@ type anthBlockBinding struct {
 }
 
 type anthOutputConfig struct {
-	Effort string `json:"effort"` // "low" | "medium" | "high" | "xhigh" | "max"
+	Effort AnthropicEffort `json:"effort"`
 }
 
 type anthMessage struct {
@@ -444,7 +444,7 @@ func anthSystemUpdateBlocks(message SystemMessage, isOAuthToken bool, convertToo
 
 type anthConvertedMessages struct {
 	messages        []anthMessage
-	assistantLevels map[int]string
+	assistantLevels map[int]AnthropicEffort
 }
 
 // anthConvertMessages mirrors upstream convertMessages. Later system messages
@@ -468,7 +468,7 @@ func anthConvertMessages(messages []Message, isOAuthToken, allowEmptySignature, 
 // anthConvertMessagesDetailed also records native effort for replayable assistant turns when the managed-effort provider identity matches. Empty text and signature checks use ECMAScript whitespace rules.
 func anthConvertMessagesDetailed(messages []Message, isOAuthToken, allowEmptySignature bool, managedProvider string, convertToolDefinitions anthToolDefinitions) (anthConvertedMessages, error) {
 	out := make([]anthMessage, 0, len(messages))
-	assistantLevels := map[int]string{}
+	assistantLevels := map[int]AnthropicEffort{}
 	var pendingSystem []anthMessage
 	for index := 0; index < len(messages); index++ {
 		switch message := messages[index].(type) {
@@ -546,8 +546,8 @@ func anthConvertMessagesDetailed(messages []Message, isOAuthToken, allowEmptySig
 			if len(blocks) > 0 {
 				messageIndex := len(out)
 				out = append(out, anthMessage{Role: "assistant", Content: blocks})
-				if managedProvider != "" && message.API == APIAnthropicMessages && message.Provider == managedProvider && isAnthropicEffort(message.ProviderThinkingLevel) {
-					assistantLevels[messageIndex] = message.ProviderThinkingLevel
+				if managedProvider != "" && message.API == APIAnthropicMessages && message.Provider == managedProvider && isAnthropicEffort(AnthropicEffort(message.ProviderThinkingLevel)) {
+					assistantLevels[messageIndex] = AnthropicEffort(message.ProviderThinkingLevel)
 				}
 			}
 		case ToolResultMessage:
@@ -572,16 +572,16 @@ func anthConvertMessagesDetailed(messages []Message, isOAuthToken, allowEmptySig
 	return anthConvertedMessages{messages: out, assistantLevels: assistantLevels}, nil
 }
 
-func isAnthropicEffort(value string) bool {
+func isAnthropicEffort(value AnthropicEffort) bool {
 	switch value {
-	case "low", "medium", "high", "xhigh", "max":
+	case AnthropicEffortLow, AnthropicEffortMedium, AnthropicEffortHigh, AnthropicEffortXHigh, AnthropicEffortMax:
 		return true
 	default:
 		return false
 	}
 }
 
-func insertAnthropicThinkingLevelMessages(converted anthConvertedMessages, activeEffort string) []anthMessage {
+func insertAnthropicThinkingLevelMessages(converted anthConvertedMessages, activeEffort AnthropicEffort) []anthMessage {
 	messages := make([]anthMessage, 0, len(converted.messages)+len(converted.assistantLevels)+1)
 	for index, message := range converted.messages {
 		if historicalEffort := converted.assistantLevels[index]; historicalEffort != "" {
@@ -739,39 +739,39 @@ func modelUsesAdaptiveThinking(model *Model) bool {
 		model.ProviderMeta.Compat.ForceAdaptiveThinking != nil && *model.ProviderMeta.Compat.ForceAdaptiveThinking
 }
 
-// mapThinkingLevelToEffort maps a ThinkingLevel to an Anthropic effort string
+// mapThinkingLevelToEffort maps a ModelThinkingLevel to an Anthropic effort string
 // for adaptive thinking models. Uses thinkingLevelMap when present.
 // Mirrors upstream anthropic.ts mapThinkingLevelToEffort.
-func mapThinkingLevelToEffort(model *Model, level ThinkingLevel) string {
+func mapThinkingLevelToEffort(model *Model, level ModelThinkingLevel) AnthropicEffort {
 	if model.ThinkingLevelMap != nil {
 		if mapped, ok := model.ThinkingLevelMap[ModelThinkingLevel(level)]; ok && mapped != nil {
-			return *mapped
+			return AnthropicEffort(*mapped)
 		}
 	}
 	switch level {
 	case ThinkingMinimal, ThinkingLow:
-		return "low"
+		return AnthropicEffortLow
 	case ThinkingMedium:
-		return "medium"
+		return AnthropicEffortMedium
 	case ThinkingHigh:
-		return "high"
+		return AnthropicEffortHigh
 	default:
-		return "high"
+		return AnthropicEffortHigh
 	}
 }
 
-func anthropicActiveEffort(model *Model, level ThinkingLevel) string {
+func anthropicActiveEffort(model *Model, level ModelThinkingLevel) AnthropicEffort {
 	if level == "" || level == ThinkingOff {
-		return "high"
+		return AnthropicEffortHigh
 	}
-	if mapped, ok := model.ThinkingLevelMap[ModelThinkingLevel(level)]; ok && mapped != nil && isAnthropicEffort(*mapped) {
-		return *mapped
+	if mapped, ok := model.ThinkingLevelMap[ModelThinkingLevel(level)]; ok && mapped != nil && isAnthropicEffort(AnthropicEffort(*mapped)) {
+		return AnthropicEffort(*mapped)
 	}
 	if level == ThinkingXHigh {
-		return "xhigh"
+		return AnthropicEffortXHigh
 	}
 	if level == ThinkingMax {
-		return "max"
+		return AnthropicEffortMax
 	}
 	effort := mapThinkingLevelToEffort(model, level)
 	if isAnthropicEffort(effort) {
@@ -794,7 +794,7 @@ type anthThinkingResult struct {
 // For adaptive-thinking models, returns type "adaptive"
 // with effort via output_config. For older models, returns type "enabled" with
 // budget_tokens. Mirrors upstream anthropic.ts buildParams thinking config.
-func thinkingToAnthropicConfig(model *Model, maxTokens int, level ThinkingLevel) *anthThinkingResult {
+func thinkingToAnthropicConfig(model *Model, maxTokens int, level ModelThinkingLevel, custom *ThinkingBudgets) *anthThinkingResult {
 	// Explicit thinking-off (upstream thinkingEnabled === false): never clamp off
 	// up to an enabled level. Reasoning models send {type:"disabled"} unless
 	// thinkingLevelMap.off is explicitly null (Fable 5 rejects the disabled
@@ -826,33 +826,22 @@ func thinkingToAnthropicConfig(model *Model, maxTokens int, level ThinkingLevel)
 	if clamped == ThinkingOff || clamped == "" {
 		return nil
 	}
-	// Budget-based thinking for older models.
-	// Mirrors upstream adjustMaxTokensForThinking (simple-options.ts:26-53).
-	// Default budgets by level match upstream defaultBudgets.
-	var budget int
-	// upstream: ai/src/api/simple-options.ts:DEFAULT_THINKING_BUDGETS
-	switch clamped {
-	case ThinkingMinimal:
-		budget = 1024
-	case ThinkingLow:
-		budget = 2048
-	case ThinkingMedium:
-		budget = 8192
-	case ThinkingHigh, ThinkingXHigh, ThinkingMax:
-		budget = 16384
-	default:
-		budget = 1024
+	// Budget-based thinking for older models: thinkingBudgetForLevel(level, options.thinkingBudgets), where xhigh and max use the high budget.
+	// upstream: packages/ai/src/api/simple-options.ts:thinkingBudgetForLevel
+	budget := ThinkingBudgetForLevel(string(clamped), custom)
+	if budget == 0 {
+		budget = DefaultThinkingBudgets().Minimal
 	}
 
 	// Upstream: maxTokens = min(baseMaxTokens + thinkingBudget, modelMaxTokens)
-	// Then: if maxTokens <= thinkingBudget, thinkingBudget = max(0, maxTokens - 1024)
+	// Then: if maxTokens <= thinkingBudget, thinkingBudget = clampThinkingBudgetToAnswerRoom(thinkingBudget, maxTokens)
 	modelMax := maxTokens // fallback if no model cap
 	if model != nil && model.Capabilities.MaxOutputTokens > 0 {
 		modelMax = model.Capabilities.MaxOutputTokens
 	}
 	adjustedMax := min(maxTokens+budget, modelMax)
 	if adjustedMax <= budget {
-		budget = max(0, adjustedMax-1024)
+		budget = ClampThinkingBudgetToAnswerRoom(budget, adjustedMax)
 	}
 	// upstream: packages/ai/src/api/anthropic-messages.ts:buildParams applies thinkingBudgetTokens || 1024 after simple-option lowering.
 	if budget == 0 {
@@ -892,7 +881,7 @@ type anthropicParams struct {
 	// unless nativeToolChanges.
 	toolDefinitions anthToolDefinitions
 	managedProvider string
-	activeEffort    string
+	activeEffort    AnthropicEffort
 }
 
 func (params anthropicParams) convertMessages(messages []Message, isOAuthToken bool) ([]anthMessage, error) {
@@ -918,7 +907,7 @@ func (p *anthropicProvider) Stream(ctx context.Context, transcript TranscriptCon
 	builder := newObservedProviderBuilder(ctx, APIAnthropicMessages, p.cfg.ProviderID, p.cfg.Model)
 	builder.modelCost = opts.ModelCost
 	builder.setProviderEventObserver(opts, model)
-	builder.setResponseMetadata("", "", "", anthropicProviderEffort(model, opts), nil)
+	builder.setResponseMetadata("", "", "", string(anthropicProviderEffort(model, opts)), nil)
 	request, err := p.prepareStream(ctx, transcript, opts, model)
 	if err != nil {
 		reason := StopReasonError
@@ -1050,14 +1039,22 @@ func (p *anthropicProvider) streamResponse(ctx, requestContext context.Context, 
 	})
 }
 
-func anthropicProviderEffort(model *Model, opts StreamOptions) string {
+// anthropicThinkingDisplay defaults to "summarized" like options?.thinkingDisplay ?? "summarized" (anthropic-messages.ts:1238,1246).
+func anthropicThinkingDisplay(opts StreamOptions) AnthropicThinkingDisplay {
+	if opts.ThinkingDisplay == "" {
+		return AnthropicThinkingDisplaySummarized
+	}
+	return opts.ThinkingDisplay
+}
+
+func anthropicProviderEffort(model *Model, opts StreamOptions) AnthropicEffort {
 	if !anthropicCompatFlag(model, func(c *ModelCompat) *bool { return c.SupportsMidConvoEffort }) {
 		return ""
 	}
 	if opts.Effort != "" {
 		return opts.Effort
 	}
-	return anthropicActiveEffort(model, opts.Thinking)
+	return anthropicActiveEffort(model, ModelThinkingLevel(opts.Thinking))
 }
 
 func (p *anthropicProvider) resolveModel() *Model {
@@ -1282,7 +1279,7 @@ func (p *anthropicProvider) buildParams(model *Model, transcript TranscriptConte
 	if err != nil {
 		return anthropicParams{}, err
 	}
-	thinkingEnabled := opts.Thinking != ThinkingOff && opts.Thinking != ""
+	thinkingEnabled := opts.Thinking != ""
 	if opts.ThinkingEnabled != nil {
 		thinkingEnabled = *opts.ThinkingEnabled
 	}
@@ -1301,6 +1298,7 @@ func (p *anthropicProvider) buildParams(model *Model, transcript TranscriptConte
 			supportsEagerToolInputStreaming: supportsEager,
 			reasoning:                       model.ProviderMeta.Reasoning,
 			thinkingEnabled:                 thinkingEnabled,
+			interleavedThinking:             opts.InterleavedThinking == nil || *opts.InterleavedThinking,
 			forceAdaptiveThinking:           modelUsesAdaptiveThinking(model),
 			hasFallbacks:                    len(allowedFallbackModels) > 0,
 			supportsMidConvoEffort:          params.activeEffort != "",
@@ -1322,20 +1320,23 @@ func (p *anthropicProvider) buildParams(model *Model, transcript TranscriptConte
 	if err != nil {
 		return anthropicParams{}, err
 	}
-	if toolChoice, ok := opts.ToolChoice.(string); ok {
-		req.ToolChoice = map[string]any{"type": toolChoice}
+	if toolChoice, ok := toolChoiceName(opts.ToolChoice); ok {
+		// anthropic-messages.ts:1273 `if (options?.toolChoice)`: an empty string is falsy.
+		if toolChoice != "" {
+			req.ToolChoice = map[string]any{"type": toolChoice}
+		}
 	} else if opts.ToolChoice != nil {
 		req.ToolChoice = opts.ToolChoice
 	}
 	if userID, ok := opts.Metadata["user_id"].(string); ok {
 		req.Metadata = &anthMetadata{UserID: userID}
 	}
-	p.applySampling(&req, model, maxTokens, thinkingEnabled, opts.Thinking, opts.Temperature, opts.TemperatureSet || opts.Temperature != 0, params.activeEffort != "")
+	p.applySampling(&req, model, maxTokens, thinkingEnabled, ModelThinkingLevel(opts.Thinking), opts.ThinkingBudgets, opts.Temperature, opts.TemperatureSet || opts.Temperature != 0, params.activeEffort != "", anthropicThinkingDisplay(opts))
 	if opts.ThinkingEnabled != nil && model.ProviderMeta.Reasoning && params.activeEffort == "" {
 		req.Thinking, req.OutputConfig, req.MaxTokens = nil, nil, maxTokens
 		if *opts.ThinkingEnabled {
 			if modelUsesAdaptiveThinking(model) {
-				req.Thinking = &anthThinking{Type: "adaptive", Display: "summarized"}
+				req.Thinking = &anthThinking{Type: "adaptive", Display: string(anthropicThinkingDisplay(opts))}
 				if opts.Effort != "" {
 					req.OutputConfig = &anthOutputConfig{Effort: opts.Effort}
 				}
@@ -1344,7 +1345,7 @@ func (p *anthropicProvider) buildParams(model *Model, transcript TranscriptConte
 				if opts.ThinkingBudgetTokens != nil && *opts.ThinkingBudgetTokens != 0 {
 					budget = *opts.ThinkingBudgetTokens
 				}
-				req.Thinking = &anthThinking{Type: "enabled", BudgetTokens: budget, Display: "summarized"}
+				req.Thinking = &anthThinking{Type: "enabled", BudgetTokens: budget, Display: string(anthropicThinkingDisplay(opts))}
 			}
 		} else if !anthThinkingOffIsNull(model) {
 			req.Thinking = &anthThinking{Type: "disabled"}
@@ -1356,16 +1357,16 @@ func (p *anthropicProvider) buildParams(model *Model, transcript TranscriptConte
 
 // applySampling sets thinking, output_config, the thinking-adjusted
 // max_tokens, and temperature.
-func (p *anthropicProvider) applySampling(req *anthRequest, model *Model, maxTokens int, thinkingEnabled bool, level ThinkingLevel, temperature float64, temperatureSet, managedEffort bool) {
+func (p *anthropicProvider) applySampling(req *anthRequest, model *Model, maxTokens int, thinkingEnabled bool, level ModelThinkingLevel, budgets *ThinkingBudgets, temperature float64, temperatureSet, managedEffort bool, display AnthropicThinkingDisplay) {
 	if managedEffort {
 		req.Thinking = &anthThinking{
-			Type: "adaptive", Display: "summarized",
+			Type: "adaptive", Display: string(display),
 			BlockBinding: &anthBlockBinding{PrefixMismatchBehavior: "drop_block"},
 		}
 		req.OutputConfig = &anthOutputConfig{Effort: "high"}
 		return
 	}
-	if thinkingResult := thinkingToAnthropicConfig(model, maxTokens, level); thinkingResult != nil {
+	if thinkingResult := thinkingToAnthropicConfig(model, maxTokens, level, budgets); thinkingResult != nil {
 		req.Thinking = thinkingResult.Thinking
 		req.OutputConfig = thinkingResult.OutputConfig
 		// Budget-based thinking may adjust max_tokens upward to
@@ -1630,26 +1631,26 @@ func (p *anthropicProvider) parseAnthropicSSE(ctx context.Context, r io.Reader, 
 			switch ev.Delta.Type {
 			case "text_delta":
 				if block, ok := output.Content[index].(TextContent); ok {
-					block.Text += ev.Delta.Text
+					block.Text = builder.appendContent(index, block.Text, ev.Delta.Text)
 					output.Content[index] = block
 					builder.push(TextDeltaEvent{ContentIndex: index, Delta: ev.Delta.Text, Partial: output})
 				}
 			case "thinking_delta":
 				if block, ok := output.Content[index].(ThinkingContent); ok {
-					block.Thinking += ev.Delta.Thinking
+					block.Thinking = builder.appendContent(index, block.Thinking, ev.Delta.Thinking)
 					output.Content[index] = block
 					builder.push(ThinkingDeltaEvent{ContentIndex: index, Delta: ev.Delta.Thinking, Partial: output})
 				}
 			case "input_json_delta":
 				if block, ok := output.Content[index].(ToolCall); ok {
-					block.scratch.partialJson += ev.Delta.PartialJSON
-					block.SetStreamingArguments(block.scratch.partialJson)
+					block.scratch.partialJson = builder.appendArguments(index, block.scratch.partialJson, ev.Delta.PartialJSON)
+					block.Arguments, block.argumentOrder = builder.streamingArguments(index, block.scratch.partialJson)
 					output.Content[index] = block
 					builder.push(ToolCallDeltaEvent{ContentIndex: index, Delta: ev.Delta.PartialJSON, Partial: output})
 				}
 			case "signature_delta":
 				if block, ok := output.Content[index].(ThinkingContent); ok {
-					block.ThinkingSignature += ev.Delta.Signature
+					block.ThinkingSignature = builder.appendSignature(index, block.ThinkingSignature, ev.Delta.Signature)
 					block.thinkingSignatureEmpty = block.ThinkingSignature == ""
 					output.Content[index] = block
 					builder.touch()
@@ -1670,16 +1671,19 @@ func (p *anthropicProvider) parseAnthropicSSE(ctx context.Context, r io.Reader, 
 			case TextContent:
 				block.scratch = ""
 				output.Content[index] = block
+				builder.release(index)
 				builder.push(TextEndEvent{ContentIndex: index, Content: block.Text, Partial: output})
 			case ThinkingContent:
 				block.scratch = ""
 				output.Content[index] = block
+				builder.release(index)
 				builder.push(ThinkingEndEvent{ContentIndex: index, Content: block.Thinking, Partial: output})
 			case ToolCall:
 				// Finalize in place and strip the scratch buffer so replay only carries parsed arguments.
 				block.SetStreamingArguments(block.scratch.partialJson)
 				block.scratch = toolCallScratch{}
 				output.Content[index] = block
+				builder.release(index)
 				builder.push(ToolCallEndEvent{ContentIndex: index, ToolCall: block, Partial: output})
 			}
 

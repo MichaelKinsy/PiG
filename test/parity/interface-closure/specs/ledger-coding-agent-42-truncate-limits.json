@@ -1,0 +1,34 @@
+[
+ {
+  "ids": [
+   "pkg:coding-agent/.#DEFAULT_MAX_BYTES"
+  ],
+  "targets": [
+   "internal/codingagent/tools/tools.go#DefaultMaxBytes"
+  ],
+  "production": [
+   "call:internal/codingagent/tools/read.go#ReadTool.Execute"
+  ],
+  "evidence": [
+   "test:internal/codingagent/tools/details_wire_test.go#TestBuiltinByteTruncationWireLimit",
+   "test:internal/codingagent/tools/details_wire_test.go#TestShellResultAndUpdateDetailsWire"
+  ],
+  "rationale": "DEFAULT_MAX_BYTES: Go DefaultMaxBytes is the untyped constant 51200 (50 * 1024); the tests assert the maxBytes 51200 limit reported by byte-truncated results."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#DEFAULT_MAX_LINES"
+  ],
+  "targets": [
+   "internal/codingagent/tools/tools.go#DefaultMaxLines"
+  ],
+  "production": [
+   "call:internal/codingagent/tools/read.go#ReadTool.Execute"
+  ],
+  "evidence": [
+   "test:internal/codingagent/tools/read_upstream_test.go#TestReadToolUpstreamCases",
+   "test:internal/codingagent/tools/details_wire_test.go#TestBuiltinToolResultDetailsWire"
+  ],
+  "rationale": "DEFAULT_MAX_LINES: Go DefaultMaxLines is the untyped constant 2000; the tests assert a 2500-line file shows lines 1-2000 and the wire limit maxLines 2000."
+ }
+]

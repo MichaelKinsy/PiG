@@ -72,7 +72,7 @@ func waitExperimentalThemeDim(t *testing.T, name, dim string) {
 	t.Helper()
 	if !reloadedExperimentalThemeDimNamed(name, dim, 30*time.Second) {
 		active := tui.ActiveTheme()
-		t.Fatalf("active theme = %s dim %s, want %s dim %s", active.Name, active.Colors()["dim"], name, dim)
+		t.Fatalf("active theme = %s dim %s, want %s dim %s", active.Name, active.GetResolvedThemeColors()["dim"], name, dim)
 	}
 }
 
@@ -86,7 +86,7 @@ func reloadedExperimentalThemeDimNamed(name, dim string, within time.Duration) b
 	tick := time.NewTicker(10 * time.Millisecond)
 	defer tick.Stop()
 	for {
-		if active := tui.ActiveTheme(); active.Name == name && active.Colors()["dim"] == dim {
+		if active := tui.ActiveTheme(); active.Name == name && active.GetResolvedThemeColors()["dim"] == dim {
 			return true
 		}
 		select {
@@ -97,19 +97,20 @@ func reloadedExperimentalThemeDimNamed(name, dim string, within time.Duration) b
 	}
 }
 
-// upstream: packages/coding-agent/src/experimental/client-tui.ts:731-741,790. RunClientTui registers the resolved theme resources, the theme controller selects the saved custom theme with its file watcher enabled, and one cancellation joins the terminal, executor, controller and watcher.
+// upstream: packages/coding-agent/src/experimental/client-tui.ts:731-741,790. RunClientTui registers the resolved theme resources, the theme controller selects the saved custom theme with its file watcher enabled, and one cancellation joins the terminal, executor, controller and watcher. The renderer draws on the terminal the runner reads from (createInteractiveTui builds one ProcessTerminal over the current stdout), so the pty receives the alternate screen.
 func TestRunClientTuiOwnsTheCustomThemeWatcherOnARealTerminal(t *testing.T) {
 	agentDir := setupExperimentalRemoteTest(t)
-	themePath := writeExperimentalTheme(t, filepath.Join(agentDir, "themes"), "custom-test", "#112233")
+	_ = writeExperimentalTheme(t, filepath.Join(agentDir, "themes"), "custom-test", "#112233")
 	if err := os.WriteFile(filepath.Join(agentDir, "settings.json"), []byte(`{"theme":"custom-test"}`), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	_, running := makeExperimentalServer(t)
 	master, slave := openExperimentalPTY(t)
+	screen := &outputBuffer{}
 	drained := make(chan struct{})
 	go func() {
 		defer close(drained)
-		_, _ = io.Copy(io.Discard, master)
+		_, _ = io.Copy(screen, master)
 	}()
 	stdin, stdout := os.Stdin, os.Stdout
 	os.Stdin, os.Stdout = slave, slave
@@ -141,10 +142,11 @@ func TestRunClientTuiOwnsTheCustomThemeWatcherOnARealTerminal(t *testing.T) {
 		finished <- RunClientTui(ctx, ClientCommand{
 			Command: "client",
 			Connect: &TransportAddress{Transport: "unix", Path: running.SocketPath},
-		}, RunClientTuiOptions{ThemePaths: []string{themePath}})
+		}, RunClientTuiOptions{})
 	}()
 	// Startup ends with the controller's second watcher selection (ApplyFromSettings) and that step has no observable completion signal. An edit written before it lands between two native watchers, so each attempt writes a distinct color and the case passes only when a reload publishes one of them. A watcher that RunClientTui never started reloads none and fails at the deadline.
 	waitExperimentalThemeDim(t, "custom-test", "#112233")
+	waitUntil(t, "the alternate screen on the pty", func() bool { return screen.contains("\x1b[?1049h") })
 	deadline := time.After(30 * time.Second)
 	for attempt := 0; ; attempt++ {
 		dim := fmt.Sprintf("#4455%02x", attempt)
@@ -154,7 +156,7 @@ func TestRunClientTuiOwnsTheCustomThemeWatcherOnARealTerminal(t *testing.T) {
 		}
 		select {
 		case <-deadline:
-			t.Fatalf("custom theme edits were never reloaded; active dim %s", tui.ActiveTheme().Colors()["dim"])
+			t.Fatalf("custom theme edits were never reloaded; active dim %s", tui.ActiveTheme().GetResolvedThemeColors()["dim"])
 		default:
 		}
 	}

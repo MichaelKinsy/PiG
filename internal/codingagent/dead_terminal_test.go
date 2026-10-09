@@ -50,7 +50,7 @@ func TestDeadTerminalChild(t *testing.T) {
 		t.Skip("child process only")
 	}
 	agentDir := os.Getenv("PIG_DEAD_TERMINAL_AGENT_DIR")
-	m := NewInteractiveMode(InteractiveOptions{CWD: "/work", AgentDir: agentDir, AppVersion: "9.9.9"})
+	m := NewInteractiveMode(nil, InteractiveModeOptions{CWD: "/work", AgentDir: agentDir, AppVersion: "9.9.9"})
 	var stderr strings.Builder
 	switch scenario {
 	case "uncaught-eio":

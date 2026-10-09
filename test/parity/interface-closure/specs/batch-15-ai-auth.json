@@ -1,0 +1,119 @@
+[
+ {
+  "ids": [
+   "pkg:ai/.#AuthCheck"
+  ],
+  "targets": [
+   "ai/auth_resolve.go#AuthCheck"
+  ],
+  "struct": {
+   "file": "ai/auth_resolve.go",
+   "type": "AuthCheck"
+  },
+  "production": [
+   "call:ai/auth_resolve.go#DefaultProviderAuthContext"
+  ],
+  "evidence": [
+   "test:ai/models_runtime_auth_upstream_test.go#TestModelsRuntimeAuthUpstream"
+  ],
+  "rationale": "auth/types.ts AuthCheck {type, source?}: Go AuthCheck {Type CredentialType, Source string}."
+ },
+ {
+  "ids": [
+   "pkg:ai/.#AuthResult"
+  ],
+  "targets": [
+   "ai/auth_resolve.go#AuthResult"
+  ],
+  "struct": {
+   "file": "ai/auth_resolve.go",
+   "type": "AuthResult"
+  },
+  "production": [
+   "call:ai/auth_providers.go#EnvAPIKeyAuth"
+  ],
+  "evidence": [
+   "test:ai/models_collection_upstream_test.go#TestModelsDeferredResolvedRequestOptionsUpstream"
+  ],
+  "rationale": "auth/types.ts AuthResult {auth, env?, source?}: Go AuthResult with Env map[string]string; SourcePresent records whether source was set."
+ },
+ {
+  "ids": [
+   "pkg:ai/.#ModelAuth"
+  ],
+  "targets": [
+   "ai/auth_resolve.go#ModelAuth"
+  ],
+  "struct": {
+   "file": "ai/auth_resolve.go",
+   "type": "ModelAuth"
+  },
+  "production": [
+   "call:ai/auth_providers.go#EnvAPIKeyAuth"
+  ],
+  "evidence": [
+   "test:ai/models_collection_upstream_test.go#TestModelsDeferredResolvedRequestOptionsUpstream",
+   "test:ai/auth_storage_lock_failure_upstream_test.go#TestModelsGetAuthTranslatesCredentialStoreRefreshFailureUpstream"
+  ],
+  "rationale": "auth/types.ts ModelAuth {apiKey?, baseUrl?, headers?}: Go ModelAuth {APIKey, Headers, BaseURL}."
+ },
+ {
+  "ids": [
+   "pkg:ai/.#ProviderAuth"
+  ],
+  "targets": [
+   "ai/auth_resolve.go#ProviderAuth"
+  ],
+  "struct": {
+   "file": "ai/auth_resolve.go",
+   "type": "ProviderAuth"
+  },
+  "production": [
+   "call:ai/faux_deferred.go#fauxProvider.makeDefinition"
+  ],
+  "evidence": [
+   "test:ai/classifier_models_upstream_test.go#TestClassifierModelsUpstream",
+   "test:ai/models_collection_upstream_test.go#TestModelsDeferredResolvedRequestOptionsUpstream"
+  ],
+  "rationale": "auth/types.ts ProviderAuth {apiKey?, oauth?}: Go ProviderAuth with *APIKeyAuth and *OAuthAuth, nil for absent."
+ },
+ {
+  "ids": [
+   "pkg:ai/.#OAuthSelectPrompt"
+  ],
+  "targets": [
+   "ai/oauth_types.go#OAuthSelectPrompt"
+  ],
+  "struct": {
+   "file": "ai/oauth_types.go",
+   "type": "OAuthSelectPrompt"
+  },
+  "production": [
+   "call:ai/auth_native_login.go#oauthNativeLogin"
+  ],
+  "evidence": [
+   "test:ai/oauth_openai_codex_upstream_test.go#TestOpenAICodexOAuthUpstream"
+  ],
+  "rationale": "oauth/types.ts OAuthSelectPrompt {message, options}: Go OAuthSelectPrompt."
+ },
+ {
+  "ids": [
+   "pkg:ai/.#ClassifierContext"
+  ],
+  "targets": [
+   "ai/classifier.go#ClassifierContext"
+  ],
+  "struct": {
+   "file": "ai/classifier.go",
+   "type": "ClassifierContext"
+  },
+  "production": [
+   "call:ai/classifier_wire.go#ClassifierContext.UnmarshalJSON"
+  ],
+  "evidence": [
+   "test:ai/classifier_models_upstream_test.go#TestClassifierModelsUpstream",
+   "test:ai/llama_cpp_classify_upstream_test.go#TestLlamaCppClassifyUpstream"
+  ],
+  "rationale": "api/classifier.ts ClassifierContext {questions, state}: Go ClassifierContext {State JsonObject, Questions ClassifierQuestions}."
+ }
+]

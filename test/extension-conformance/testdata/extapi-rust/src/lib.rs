@@ -141,10 +141,12 @@ pub fn new_extension() -> Extension {
                 [(
                     "orchestrate".to_string(),
                     format!(
-                        "Runs {} | {} | {:?}",
+                        "Runs {} | {} | {:?} | {:?} | {:?}",
                         callable.join(","),
                         loadout.get_exposure("conf-deferred").as_str(),
                         loadout.get_namespace("conf-deferred").map(|namespace| namespace.name.clone()),
+                        loadout.get_prompt_guidelines("grep"),
+                        loadout.get_prompt_guidelines("absent"),
                     ),
                 )]
                 .into(),

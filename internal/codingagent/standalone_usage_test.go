@@ -5,13 +5,15 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/MichaelKinsy/PiG/internal/sessionentry"
 )
 
 func TestStandaloneUsageAccounting(t *testing.T) {
 	s := NewSession("usage", t.TempDir())
 	s.SetPath(filepath.Join(t.TempDir(), "session.jsonl"))
 	raw := json.RawMessage(`{"type":"usage","id":"usage1","parentId":null,"timestamp":"2026-09-23T00:00:00Z","kind":"cache_warm","note":"refresh","provider":"anthropic","model":"model","usage":{"input":100,"output":0,"cacheRead":0,"cacheWrite":0,"totalTokens":100,"cost":{"input":0.0003,"output":0,"cacheRead":0,"cacheWrite":0,"total":0.0003}}}`)
-	if err := s.AppendEntry(NewSessionEntry(raw, SessionEntryBase{Type: "usage", ID: "usage1", Timestamp: "2026-09-23T00:00:00Z"})); err != nil {
+	if err := s.AppendEntry(sessionentry.DecodeSessionEntry(raw)); err != nil {
 		t.Fatal(err)
 	}
 	initial := s.FooterUsageTotals()

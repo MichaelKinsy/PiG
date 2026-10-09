@@ -144,7 +144,7 @@ func TestUpstreamAgentSessionStatsUsage(t *testing.T) {
 			var err error
 			switch tc.kind {
 			case "branch":
-				_, err = s.inner.AppendBranchSummary(nil, "summary", nil, false, usage)
+				_, err = s.inner.BranchWithSummary(nil, "summary", nil, false, usage)
 			case "compaction":
 				kept := appendStatsMessage(t, s, statsUser("hello", 1))
 				_, err = s.inner.AppendCompaction("summary", kept, 100, nil, false, usage)
@@ -171,7 +171,7 @@ func TestUpstreamStatsIncludesCacheWarmingUsageExactlyOnceWithoutAddingMessages(
 	if err != nil {
 		t.Fatal(err)
 	}
-	entries := s.inner.Entries()
+	entries := s.inner.GetEntries()
 	if len(entries) == 0 {
 		t.Fatal("usage was not appended")
 	}
@@ -206,7 +206,7 @@ func TestUpstreamStatsGroupsToolAndSummaryUsageSeparatelyFromModelAttributedUsag
 	if _, err := s.inner.AppendCompaction("summary", root, 100, nil, false, usage(2)); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := s.inner.AppendBranchSummary(nil, "branch summary", nil, false, usage(3)); err != nil {
+	if _, err := s.inner.BranchWithSummary(nil, "branch summary", nil, false, usage(3)); err != nil {
 		t.Fatal(err)
 	}
 	want := []icodingagent.SessionUsageBreakdown{{Key: "Tools/summaries", Cost: 6, Tokens: 300}, {Key: "anthropic/claude-sonnet-4-5", Cost: .5, Tokens: 100}}

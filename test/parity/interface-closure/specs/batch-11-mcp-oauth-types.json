@@ -1,0 +1,78 @@
+[
+ {
+  "ids": [
+   "pkg:mcp/oauth#OAuthTokens"
+  ],
+  "targets": [
+   "mcp/oauth/types.go#OAuthTokens"
+  ],
+  "struct": {
+   "file": "mcp/oauth/types.go",
+   "type": "OAuthTokens"
+  },
+  "production": [
+   "call:mcp/oauth/flow.go#tokenRequest"
+  ],
+  "evidence": [
+   "test:mcp/oauth/upstream_oracle_test.go#TestParseOAuthTokensMatchesPi"
+  ],
+  "rationale": "oauth/types.ts OAuthTokens {access_token, token_type, expires_in?, id_token?, refresh_token?, scope?}: Go OAuthTokens with the same json keys; expires_in is *float64, empty string is absent."
+ },
+ {
+  "ids": [
+   "pkg:mcp/oauth#OAuthProtectedResourceMetadata"
+  ],
+  "targets": [
+   "mcp/oauth/types.go#OAuthProtectedResourceMetadata"
+  ],
+  "struct": {
+   "file": "mcp/oauth/types.go",
+   "type": "OAuthProtectedResourceMetadata"
+  },
+  "production": [
+   "call:mcp/oauth/discovery.go#DiscoverProtectedResourceMetadata"
+  ],
+  "evidence": [
+   "test:mcp/oauth/upstream_oracle_test.go#TestParseProtectedResourceMetadataMatchesPi"
+  ],
+  "rationale": "oauth/types.ts OAuthProtectedResourceMetadata {resource, authorization_servers?, scopes_supported?}: Go struct with the same json keys; Extra keeps unknown members as upstream's passthrough object does."
+ },
+ {
+  "ids": [
+   "pkg:mcp/oauth#OAuthDiscoveryState"
+  ],
+  "targets": [
+   "mcp/oauth/types.go#OAuthDiscoveryState"
+  ],
+  "struct": {
+   "file": "mcp/oauth/types.go",
+   "type": "OAuthDiscoveryState"
+  },
+  "production": [
+   "call:mcp/oauth/flow.go#runFlow"
+  ],
+  "evidence": [
+   "test:mcp/oauth/absent_test.go#TestAuthorizeMcpWithAConfiguredMetadataURLBypassesCachedDiscovery"
+  ],
+  "rationale": "oauth/types.ts OAuthDiscoveryState: Go OAuthDiscoveryState with the same json keys, saved and read by the flow."
+ },
+ {
+  "ids": [
+   "pkg:mcp/oauth#OAuthServerInfo"
+  ],
+  "targets": [
+   "mcp/oauth/types.go#OAuthServerInfo"
+  ],
+  "struct": {
+   "file": "mcp/oauth/types.go",
+   "type": "OAuthServerInfo"
+  },
+  "production": [
+   "call:mcp/oauth/discovery.go#DiscoverOAuthServerInfo"
+  ],
+  "evidence": [
+   "test:mcp/oauth/oauth_test.go#TestMCPOAuthDiscoversRegistersAuthorizesWithPKCEAndRefreshesOn401"
+  ],
+  "rationale": "oauth/types.ts OAuthServerInfo: Go OAuthServerInfo with pointer members for the optional metadata."
+ }
+]

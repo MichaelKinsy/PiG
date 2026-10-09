@@ -1,5 +1,4 @@
 #!/bin/sh
-# SPDX-FileCopyrightText: Copyright Hewlett Packard Enterprise Development LP
 # SPDX-License-Identifier: MIT
 #
 # PiG installer for macOS, Linux and Android (Termux).

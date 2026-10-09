@@ -4,11 +4,19 @@ package codingagent
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"path/filepath"
 
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/tui"
+)
+
+var (
+	errLoginCancelled = errors.New("Login cancelled")
+	// errLoginAborted mirrors the AbortError a cancelled login signal gives
+	// the server check that follows the prompts.
+	errLoginAborted = errors.New("This operation was aborted")
 )
 
 type authPromptReply struct {
@@ -27,6 +35,7 @@ func (m *InteractiveMode) runAPIKeyLogin(provider tui.OAuthProvider) error {
 	if method == nil {
 		return fmt.Errorf("%s does not support api_key login", provider.Name)
 	}
+	defer m.reportLoginBlocked(provider.Name)()
 	previousModel := m.opts.Model
 	registry := m.opts.ModelRegistry
 	ctx, cancel := context.WithCancelCause(m.loginContext())
@@ -52,11 +61,12 @@ func (m *InteractiveMode) runAPIKeyLogin(provider tui.OAuthProvider) error {
 	// upstream: packages/coding-agent/src/modes/interactive/interactive-mode.ts:showApiKeyLoginDialog
 	if provider.ID == "amazon-bedrock" {
 		theme := tui.ActiveTheme()
-		dialog.ShowDetails([]string{
-			theme.FgText("text", "You can also use an AWS profile, IAM keys, or role-based credentials."),
-			theme.FgText("muted", "See:"),
-			theme.FgText("accent", "  "+filepath.Join(ConfigRoot(), "docs", "providers.md")),
-		})
+		details := []string{theme.Fg("text", "You can also use an AWS profile, IAM keys, or role-based credentials.")}
+		// pig additive (D92): no docs path when the process strips the docs bundle.
+		if providers, ok := PigDocsFile("providers.md"); ok {
+			details = append(details, theme.Fg("muted", "See:"), theme.Fg("accent", "  "+providers))
+		}
+		dialog.ShowDetails(details)
 	}
 	go func() {
 		interaction := ai.AuthInteraction{
@@ -116,14 +126,24 @@ func (m *InteractiveMode) runAPIKeyLogin(provider tui.OAuthProvider) error {
 		m.showError(dialog.Redact(fmt.Sprintf("Failed to save API key for %s: %v", provider.Name, loginErr)))
 		return nil
 	}
+	if m.synchronizeLoginCredential(ctx, provider.ID, provider.Name, ai.CredentialAPIKey, dialog.Redact) {
+		return nil
+	}
 	m.completeProviderAuthentication(provider.ID, provider.Name, ai.CredentialAPIKey, previousModel, authPath, dialog.Redact)
 	return nil
 }
 
-func (m *InteractiveMode) runAuthDialog(ctx context.Context, cancel context.CancelCauseFunc, dialog *tui.LoginDialog, requests <-chan authPromptRequest, notifications <-chan ai.AuthEvent, done <-chan error) error {
+func (m *InteractiveMode) runAuthDialog(ctx context.Context, cancel context.CancelCauseFunc, dialog *tui.LoginDialogComponent, requests <-chan authPromptRequest, notifications <-chan ai.AuthEvent, done <-chan error) error {
+	// The mounted dialog holds TUI focus, so its prompt input places the hardware cursor (interactive-mode.ts:6181-6190 showApiKeyLoginDialog, restoreEditor).
+	previousFocus := m.tuiInst.GetFocusedComponent()
 	m.editorContainer.SetChildren(dialog)
+	m.tuiInst.SetFocus(dialog)
 	m.tuiInst.Render()
-	defer func() { m.editorContainer.SetChildren(m.editor); m.tuiInst.RequestRender() }()
+	defer func() {
+		m.editorContainer.SetChildren(m.editor)
+		m.tuiInst.SetFocus(previousFocus)
+		m.tuiInst.RequestRender()
+	}()
 	inputCh, release := m.acquireModalInputChannel()
 	defer release()
 	var request *authPromptRequest
@@ -153,12 +173,13 @@ func (m *InteractiveMode) runAuthDialog(ctx context.Context, cancel context.Canc
 				for i, option := range prompt.Options {
 					labels[i] = option.Label
 				}
-				selector = tui.NewExtensionSelector(prompt.Message, labels)
+				selector = tui.NewExtensionSelectorComponent(prompt.Message, labels, nil, nil)
 				m.editorContainer.SetChildren(selector)
+				m.tuiInst.SetFocus(selector)
 			case ai.AuthSecretPrompt:
 				answer = dialog.ShowSecretInput(prompt.Message, prompt.Placeholder)
 			case ai.AuthTextPrompt:
-				answer = dialog.ShowInput(prompt.Message, prompt.Placeholder)
+				answer = dialog.ShowPrompt(prompt.Message, prompt.Placeholder)
 			case ai.AuthManualCodePrompt:
 				answer = dialog.ShowManualInput(prompt.Message)
 			}
@@ -179,7 +200,7 @@ func (m *InteractiveMode) runAuthDialog(ctx context.Context, cancel context.Canc
 					_ = openBrowser(e.URL)
 				}
 			case ai.AuthDeviceCodeEvent:
-				showDeviceCode(dialog, e.VerificationURI, e.UserCode)
+				showDeviceCode(dialog, tui.OAuthDeviceCodeInfo{UserCode: e.UserCode, VerificationURI: e.VerificationURI})
 			}
 		case value, ok := <-answer:
 			reply := authPromptReply{value: value}
@@ -196,6 +217,7 @@ func (m *InteractiveMode) runAuthDialog(ctx context.Context, cancel context.Canc
 			selector = nil
 			promptDone = nil
 			m.editorContainer.SetChildren(dialog)
+			m.tuiInst.SetFocus(dialog)
 		case buf, ok := <-inputCh:
 			if !ok {
 				cancel(errLoginAborted)
@@ -221,7 +243,9 @@ func (m *InteractiveMode) runAuthDialog(ctx context.Context, cancel context.Canc
 						request = nil
 						selector = nil
 						promptDone = nil
+						// showAuthSelect restoreDialog (interactive-mode.ts:6218-6223) returns focus to the dialog.
 						m.editorContainer.SetChildren(dialog)
+						m.tuiInst.SetFocus(dialog)
 					}
 				} else {
 					dialog.HandleInput(chunk)

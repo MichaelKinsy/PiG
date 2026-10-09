@@ -21,13 +21,13 @@ func TestUpstreamSessionPromptExpansion(t *testing.T) {
 			t.Fatal(err)
 		}
 		h := newQueueCharacterizationHarness(t, extension.Extension{}, nil)
-		h.session.SetPromptResources(nil, []*Skill{{Name: "test", Description: "Test skill", Path: path, Dir: dir}})
+		h.session.SetPromptResources(nil, []*Skill{{Name: "test", Description: "Test skill", FilePath: path, BaseDir: dir}})
 		var expanded string
 		h.provider.responses = []scriptedResponse{func(messages []ai.Message) *ai.AssistantMessage {
 			expanded = modelExtensionUserText(messages)
 			return fauxReply("ok", ai.StopReasonStop, 0)(messages)
 		}}
-		if _, err := h.session.Prompt(t.Context(), "/skill:test explain this"); err != nil {
+		if err := h.session.Prompt(t.Context(), "/skill:test explain this"); err != nil {
 			t.Fatal(err)
 		}
 		for _, want := range []string{`<skill name="test" location="`, "Use the skill body.", "explain this"} {
@@ -53,7 +53,7 @@ func TestUpstreamSessionPromptExpansion(t *testing.T) {
 			if userMessage {
 				err = h.session.SendUserMessage(t.Context(), "/review src/index.ts", &extension.SendUserMessageOptions{ExpandPromptTemplates: new(true)})
 			} else {
-				_, err = h.session.Prompt(t.Context(), "/review src/index.ts")
+				err = h.session.Prompt(t.Context(), "/review src/index.ts")
 			}
 			if err != nil {
 				t.Fatal(err)

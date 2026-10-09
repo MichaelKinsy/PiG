@@ -35,7 +35,7 @@ func (d *DiffComponent) Render(width int) []string {
 	if d.diffText == "" {
 		return nil
 	}
-	rendered := RenderDiff(d.diffText)
+	rendered := RenderDiff(d.diffText, RenderDiffOptions{FilePath: d.filePath})
 	// Upstream feeds renderDiff output through Text, which wraps to width.
 	var out []string
 	for line := range strings.SplitSeq(rendered, "\n") {

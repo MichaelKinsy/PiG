@@ -140,7 +140,7 @@ func TestSteering_MessageInjectedAfterToolExecution(t *testing.T) {
 		},
 	}
 
-	agent := NewAgent(AgentOptions{
+	agent := mustNewAgent(AgentOptions{
 		Model: &ai.Model{Provider: fp},
 		Tools: []AgentTool{slowTool},
 	})
@@ -201,7 +201,7 @@ func TestFollowUp_ProcessedAfterAgentStops(t *testing.T) {
 		},
 	}
 
-	agent := NewAgent(AgentOptions{
+	agent := mustNewAgent(AgentOptions{
 		Model: &ai.Model{Provider: fp},
 	})
 
@@ -235,7 +235,7 @@ func TestSteering_PriorityOverFollowUp(t *testing.T) {
 		},
 	}
 
-	agent := NewAgent(AgentOptions{
+	agent := mustNewAgent(AgentOptions{
 		Model: &ai.Model{Provider: fp},
 		Tools: []AgentTool{echoTool{}},
 	})
@@ -272,7 +272,7 @@ func TestSteering_OneAtATimeMode(t *testing.T) {
 		},
 	}
 
-	agent := NewAgent(AgentOptions{
+	agent := mustNewAgent(AgentOptions{
 		Model:        &ai.Model{Provider: fp},
 		Tools:        []AgentTool{echoTool{}},
 		SteeringMode: QueueModeOneAtATime,
@@ -309,7 +309,7 @@ func TestSteering_AllMode(t *testing.T) {
 		},
 	}
 
-	agent := NewAgent(AgentOptions{
+	agent := mustNewAgent(AgentOptions{
 		Model:        &ai.Model{Provider: fp},
 		Tools:        []AgentTool{echoTool{}},
 		SteeringMode: QueueModeAll,
@@ -346,7 +346,7 @@ func TestContinue_DrainsSteeringFirst(t *testing.T) {
 		},
 	}
 
-	agent := NewAgent(AgentOptions{
+	agent := mustNewAgent(AgentOptions{
 		Model: &ai.Model{Provider: fp},
 	})
 
@@ -358,7 +358,7 @@ func TestContinue_DrainsSteeringFirst(t *testing.T) {
 	agent.Steer(userMsg("steering-msg"))
 	agent.FollowUp(userMsg("followup-msg"))
 
-	msgs, err := agent.Continue(context.Background())
+	msgs, err := agent.ContinueMessages(context.Background())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -385,7 +385,7 @@ func TestContinue_DrainsSteeringFirst(t *testing.T) {
 }
 
 func TestReset_ClearsBothQueues(t *testing.T) {
-	agent := NewAgent(AgentOptions{})
+	agent := mustNewAgent(AgentOptions{})
 	agent.SetMessages([]AgentMessage{userMsg("a")})
 	agent.Steer(userMsg("s"))
 	agent.FollowUp(userMsg("f"))
@@ -414,7 +414,7 @@ func TestSteering_ConcurrentEnqueueDuringSend(t *testing.T) {
 	delay.Add(1)
 	slowTool := &slowEchoTool{delay: &delay}
 
-	agent := NewAgent(AgentOptions{
+	agent := mustNewAgent(AgentOptions{
 		Model: &ai.Model{Provider: fp},
 		Tools: []AgentTool{slowTool},
 	})
@@ -455,7 +455,7 @@ func TestSteering_NoToolCallsInitialPoll(t *testing.T) {
 		},
 	}
 
-	agent := NewAgent(AgentOptions{
+	agent := mustNewAgent(AgentOptions{
 		Model: &ai.Model{Provider: fp},
 	})
 
@@ -488,7 +488,7 @@ func TestSteering_EmptyQueuesDoNothing(t *testing.T) {
 		},
 	}
 
-	agent := NewAgent(AgentOptions{
+	agent := mustNewAgent(AgentOptions{
 		Model: &ai.Model{Provider: fp},
 	})
 

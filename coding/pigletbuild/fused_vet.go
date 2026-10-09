@@ -192,6 +192,11 @@ func fusedHazardSymbol(expression ast.Expr, aliases map[string]string, dotImport
 		{path: "os", names: []string{"Exit", "Chdir", "Stdout"}},
 		{path: "log", names: []string{"Fatal", "Fatalf", "Fatalln"}},
 		{path: "fmt", names: []string{"Print", "Printf", "Println"}},
+		// A fused member keeps the wire contract: the compiled-in factory form belongs to the binary's own main package, never to a Piglet
+		// (docs/specs/extension-factory-trust.md, property 4).
+		{path: "github.com/MichaelKinsy/PiG/coding/extension", names: []string{"ExtensionFactory", "InlineExtension"}},
+		{path: "github.com/MichaelKinsy/PiG/coding/extension/factoryload", names: []string{"LoadExtensionFromFactory", "WithSourceInfo"}},
+		{path: "github.com/MichaelKinsy/PiG/coding/extension/builtin", names: []string{"All", "Resolve"}},
 	} {
 		for _, name := range symbol.names {
 			selector, ok := expression.(*ast.SelectorExpr)
@@ -210,4 +215,13 @@ func fusedHazardSymbol(expression ast.Expr, aliases map[string]string, dotImport
 func importedSelector(selector *ast.SelectorExpr, aliases map[string]string, importPath, name string) bool {
 	identifier, ok := selector.X.(*ast.Ident)
 	return ok && identifier.Obj == nil && aliases[identifier.Name] == importPath && selector.Sel.Name == name
+}
+
+// fusedVetScopeNote is the build log note naming the external modules the
+// fused vet did not read, or "" when there are none.
+func fusedVetScopeNote(modules []string) string {
+	if len(modules) == 0 {
+		return ""
+	}
+	return "fused vet checked only the members' own and workspace modules; these external modules the members require were not vetted for process-global hazards:\n  " + strings.Join(modules, "\n  ")
 }

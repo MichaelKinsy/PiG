@@ -424,6 +424,48 @@ impl ProviderObjects {
             } else {
                 None
             },
+            filter_all_models: if has("filterAllModels") {
+                let proxy = proxy.clone();
+                Some(Arc::new(move |models: &[ProviderModel], credential| {
+                    let result=proxy.plain("filterAllModels",json!({"models":models.iter().map(|m|m.as_ref()).collect::<Vec<_>>(),"credential":credential}))?;
+                    let mut filtered = Vec::new();
+                    for (i, model) in result["models"]
+                        .as_array()
+                        .ok_or("filterAllModels result must be an array")?
+                        .iter()
+                        .enumerate()
+                    {
+                        if let Some(index) = result["indices"][i].as_u64() {
+                            filtered.push(
+                                models
+                                    .get(index as usize)
+                                    .ok_or("filterAllModels index out of range")?
+                                    .clone(),
+                            )
+                        } else {
+                            filtered.push(Arc::new(model.clone()))
+                        }
+                    }
+                    Ok(filtered)
+                }))
+            } else {
+                None
+            },
+            get_all_models: if has("getAllModels") {
+                let proxy = proxy.clone();
+                Some(Arc::new(move || {
+                    Ok(proxy
+                        .plain("getAllModels", json!({}))?
+                        .as_array()
+                        .ok_or("getAllModels must return an array")?
+                        .iter()
+                        .cloned()
+                        .map(Arc::new)
+                        .collect())
+                }))
+            } else {
+                None
+            },
             refresh_models: if has("refreshModels") {
                 let proxy = proxy.clone();
                 Some(Arc::new(move |input: RefreshModelsContext| {

@@ -15,6 +15,7 @@ import (
 	"github.com/MichaelKinsy/PiG/agent"
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/coding/extension"
+	"github.com/MichaelKinsy/PiG/internal/jsstring"
 	"github.com/MichaelKinsy/PiG/internal/usagetotals"
 )
 
@@ -56,15 +57,9 @@ func NewNestedCallRecorder() *NestedCallRecorder {
 	return &NestedCallRecorder{startedAt: map[*ai.NestedToolCallRecord]time.Time{}, complete: true}
 }
 
-// jsonBytesLike marshals as JSON.stringify does for the size accounting of upstream's `encoder.encode(JSON.stringify(arguments)).length`: no HTML escaping and no trailing newline.
+// jsonBytesLike is JSON.stringify for the size accounting of upstream's `encoder.encode(JSON.stringify(arguments)).length`: no HTML escaping, the line and paragraph separators written literally, a lone surrogate written as an escape.
 func jsonBytesLike(value any) ([]byte, error) {
-	var buffer bytes.Buffer
-	encoder := json.NewEncoder(&buffer)
-	encoder.SetEscapeHTML(false)
-	if err := encoder.Encode(value); err != nil {
-		return nil, err
-	}
-	return bytes.TrimSuffix(buffer.Bytes(), []byte("\n")), nil
+	return jsstring.MarshalJSON(value)
 }
 
 // Start records a call as it starts. It returns nil when the call is dropped.
@@ -136,7 +131,7 @@ func sliceUTF16(text string, units int) string {
 	if len(encoded) <= units {
 		return text
 	}
-	return string(utf16.Decode(encoded[:units]))
+	return jsstring.FromUTF16(encoded[:units])
 }
 
 // AddUsage adds the usage of a nested result, including for calls dropped from the record.
@@ -272,7 +267,6 @@ func (r *NestedToolCallRunner) Execute(ctx context.Context, callerID, name strin
 			break
 		}
 	}
-	started := time.Now()
 	r.host.Emit(agent.ToolExecutionStartEvent{ToolCallID: id, ToolName: name, ToolLabel: label, Args: rawArguments, ParentToolCallID: callerID})
 
 	// upstream: agent-loop.ts executeToolCallsParallel: a call reserves its place in a tool's order in call order, before its
@@ -354,7 +348,7 @@ func (r *NestedToolCallRunner) Execute(ctx context.Context, callerID, name strin
 	if outcome.Result.Usage != nil {
 		scope.recorder.AddUsage(*outcome.Result.Usage)
 	}
-	r.host.Emit(agent.ToolExecutionEndEvent{ToolCallID: id, ToolName: name, Result: outcome.Result, IsError: outcome.IsError, Duration: time.Since(started), ParentToolCallID: callerID})
+	r.host.Emit(agent.ToolExecutionEndEvent{ToolCallID: id, ToolName: name, Result: outcome.Result, IsError: outcome.IsError, DurationMs: outcome.DurationMs, ParentToolCallID: callerID})
 	return outcome, nil
 }
 

@@ -15,7 +15,7 @@ import (
 // upstream onCacheWarmingModeChange calls session.setCacheWarmingMode.
 func TestOnSettingAppliedReconcilesCacheWarmingMode(t *testing.T) {
 	handle := &recordingCompactHandle{}
-	mode := &InteractiveMode{opts: InteractiveOptions{SessionHandle: handle}}
+	mode := &InteractiveMode{opts: InteractiveModeOptions{SessionHandle: handle}}
 	mode.buildSlashContext(t.Context()).OnSettingApplied("cache-warming-mode", "off")
 	if len(handle.cacheWarmingModes) != 1 || handle.cacheWarmingModes[0] != "off" {
 		t.Fatalf("SetCacheWarmingMode calls = %v, want [off]", handle.cacheWarmingModes)
@@ -30,14 +30,14 @@ func cacheWarmingTestMode(t *testing.T, session *Session, notices bool) *Interac
 		t.Fatal(err)
 	}
 	mode := &InteractiveMode{
-		opts:          InteractiveOptions{SettingsManager: sm, SessionHandle: &recordingCompactHandle{inner: session}},
+		opts:          InteractiveModeOptions{SettingsManager: sm, SessionHandle: &recordingCompactHandle{inner: session}},
 		chatContainer: tui.NewContainer(),
 		tuiInst:       tui.NewWithOutput(io.Discard, 100, 30),
-		statusLine: NewStatusLine(&ai.Model{ID: "active", Capabilities: ai.ModelCapabilities{
+		statusLine: NewFooterComponent(&ai.Model{ID: "active", Capabilities: ai.ModelCapabilities{
 			CacheReadCostPer1M: 999,
 		}}, "", nil),
 	}
-	mode.statusLine.SetUsageTotalsSource(session.FooterUsageTotals)
+	mode.statusLine.SetSession(testFooterSession{totals: session.FooterUsageTotals})
 	return mode
 }
 

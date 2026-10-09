@@ -35,7 +35,7 @@ func BenchmarkPromptSectionMutationFused(b *testing.B) {
 			b.ReportAllocs()
 			for b.Loop() {
 				sections := append(ai.OrderedSections(nil), base...)
-				result, err := runner.EmitBeforeAgentStart(b.Context(), "hello", nil, "base", extension.BuildSystemPromptOptions{Sections: &sections})
+				result, err := runner.EmitBeforeAgentStart(b.Context(), "hello", nil, extension.BuildSystemPromptOptions{Sections: &sections})
 				if err != nil || result == nil || result.SystemPromptOptions == nil || result.SystemPromptOptions.Sections == nil || len(*result.SystemPromptOptions.Sections) != len(base)+1 {
 					b.Fatalf("result=%+v err=%v", result, err)
 				}

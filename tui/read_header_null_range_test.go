@@ -24,7 +24,7 @@ func TestReadHeadersTreatNullRangeAsOmitted(t *testing.T) {
 			t.Errorf("%s: FormatReadHeader = %q, want %q", name, got, tc.want)
 		}
 	}
-	if got := readLineRange(nil, nil); got != "" {
-		t.Fatalf("readLineRange(nil, nil) = %q", got)
+	if got := readLineRange(nil); got != "" {
+		t.Fatalf("readLineRange(nil) = %q", got)
 	}
 }

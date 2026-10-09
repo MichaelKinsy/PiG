@@ -271,7 +271,8 @@ export function createFacetBridge(host) {
             remove();
           };
           subscriptions.add(unsubscribe);
-          return { sequence: state.sequence, value: state.value, unsubscribe: encode(unsubscribe) };
+          const { value, sequence } = state.snapshot();
+          return { sequence, value, unsubscribe: encode(unsubscribe) };
         }
         default: throw new Error(`Unknown synchronous facet operation: ${args.op}`);
       }

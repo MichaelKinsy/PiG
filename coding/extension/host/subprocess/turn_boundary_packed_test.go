@@ -7,12 +7,15 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/MichaelKinsy/PiG/ai"
+
 	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/coding/extension/host/inproc"
 	"github.com/MichaelKinsy/PiG/internal/orderedjson"
 )
 
 // Both realizations execute the same factories and compare their complete returned turn event, including chained drafts, context snapshots and errors.
+// Pi: packages/coding-agent/src/core/extensions/types.ts:1030 (TurnEndEvent.turnIndex).
 func TestTurnBoundaryPackedFactoriesMatchIsolated(t *testing.T) {
 	t.Parallel()
 	for _, language := range []string{"go", "python", "rust"} {
@@ -66,12 +69,12 @@ func TestTurnBoundaryPackedFactoriesMatchIsolated(t *testing.T) {
 					runner := inproc.NewRunner(loaded, t.TempDir())
 					diagnostics := []string{}
 					runner.AddErrorListener(func(err *extension.ExtensionError) { diagnostics = append(diagnostics, err.Error) })
-					result, err := runner.EmitBoundary(t.Context(), extension.TurnEndEvent{Type: "turn_end", TurnIndex: 7, MessageEntryID: "boundary-assistant", ToolResultEntryIds: []string{"boundary-tool"}, Message: map[string]any{"role": "assistant", "content": []any{}, "stopReason": "error"}, ToolResults: []extension.ToolResultMessage{}, BoundaryState: &extension.BoundaryState{Outcome: extension.AgentActivityError}}, func(drafts []extension.SessionBoundaryDraft) (extension.BoundaryContextPreview, error) {
+					result, err := runner.EmitBoundary(t.Context(), extension.TurnEndEvent{Type: "turn_end", TurnIndex: 7, MessageEntryID: "boundary-assistant", ToolResultEntryIds: []string{"boundary-tool"}, Message: wireMessage(map[string]any{"role": "assistant", "content": []any{}, "stopReason": "error"}), ToolResults: []extension.ToolResultMessage{}, BoundaryState: &extension.BoundaryState{Outcome: extension.AgentActivityError}}, func(drafts []extension.SessionBoundaryDraft) (extension.BoundaryContextPreview, error) {
 						entries := make([]extension.ProjectedSessionEntry, len(drafts))
 						for i, draft := range drafts {
 							entries[i] = extension.ProjectedSessionEntry{SourceEntry: map[string]any{"type": draft.Type, "customType": draft.CustomType}, Messages: []extension.AgentMessage{}}
 						}
-						return extension.BoundaryContextPreview{ContextEntries: entries, ContextMessages: []extension.AgentMessage{}, LLMMessages: []any{}, PendingMessages: []extension.AgentMessage{map[string]any{"role": "custom", "content": "pending"}}, CanContinue: len(entries) > 0}, nil
+						return extension.BoundaryContextPreview{ContextEntries: entries, ContextMessages: []extension.AgentMessage{}, LLMMessages: []ai.Message{}, PendingMessages: []extension.AgentMessage{wireMessage(map[string]any{"role": "custom", "content": "pending"})}, CanContinue: len(entries) > 0}, nil
 					})
 					if err != nil {
 						t.Fatal(err)

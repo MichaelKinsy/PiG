@@ -1,4 +1,3 @@
-// SPDX-FileCopyrightText: Copyright Hewlett Packard Enterprise Development LP
 // SPDX-FileCopyrightText: Copyright (c) 2025 Mario Zechner
 // SPDX-License-Identifier: MIT
 
@@ -9,15 +8,35 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"os"
 	"strconv"
+	"strings"
 
 	"github.com/MichaelKinsy/PiG/extensions/sdk/json"
+	"github.com/MichaelKinsy/PiG/internal/nodeerrno"
+	"github.com/MichaelKinsy/PiG/internal/sessionentry"
+	"github.com/MichaelKinsy/PiG/tui/widthx"
 )
+
+// FileEntry is one record of a session file: the header (SessionHeader) or an entry (SessionEntry) (session-manager.ts FileEntry).
+type FileEntry = sessionentry.FileEntry
+
+// ParseSessionEntries splits JSONL content into its records, in order. Ports packages/coding-agent/src/core/session-manager.ts (parseSessionEntries): the content is trimmed and split on "\n", a line that is not valid JSON, including a blank one, is skipped (only JSON whitespace may surround a record, so a line led by U+00A0 is skipped). Unlike [LoadEntriesFromFile] it keeps a record whose JSON value is falsy (null, false, 0, ""), because Pi pushes whatever JSON.parse returns.
+func ParseSessionEntries(content string) []FileEntry {
+	entries := []FileEntry{}
+	//portlint:allow pathseparators Pi splits on "\n" alone (session-manager.ts parseSessionEntries: content.trim().split("\n")); a CRLF record keeps its \r and the JSON parse accepts it
+	for line := range strings.SplitSeq(widthx.JSTrim(content), "\n") {
+		if json.Valid([]byte(line)) {
+			entries = append(entries, sessionentry.DecodeFileEntry(json.RawMessage(strings.Trim(line, " \t\r\n"))))
+		}
+	}
+	return entries
+}
 
 // Ports packages/coding-agent/src/core/session-manager.ts (loadEntriesFromFile).
 // LoadEntriesFromFile skips malformed and JSON-falsy lines and requires a session header before accepting records.
-func LoadEntriesFromFile(path string) ([]json.RawMessage, error) {
+func LoadEntriesFromFile(path string) ([]FileEntry, error) {
 	records, unterminated, err := readSessionFileEntries(path)
 	if err != nil {
 		return nil, err
@@ -67,46 +86,35 @@ func truthySessionLine(line []byte) bool {
 	}
 }
 
-func sessionHeaderFromRecord(raw json.RawMessage) (SessionHeader, bool) {
-	var probe struct {
-		Type string  `json:"type"`
-		ID   *string `json:"id"`
-	}
-	if json.Unmarshal(raw, &probe) != nil || probe.Type != "session" || probe.ID == nil {
-		return SessionHeader{}, false
-	}
-	var header SessionHeader
-	if json.Unmarshal(raw, &header) != nil {
-		return SessionHeader{}, false
-	}
-	return header, true
-}
-
-func readSessionFileEntries(path string) ([]json.RawMessage, bool, error) {
+func readSessionFileEntries(path string) ([]FileEntry, bool, error) {
 	file, err := os.Open(path)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
-			return []json.RawMessage{}, false, nil
+			return []FileEntry{}, false, nil
 		}
-		return nil, false, err
+		return nil, false, nodeerrno.FromPathError(err)
 	}
 	defer func() { _ = file.Close() }()
 	reader := &sessionTailReader{Reader: file}
-	records := []json.RawMessage{}
+	records := []FileEntry{}
 	err = forEachJSONLLine(reader, func(line []byte) error {
 		if truthySessionLine(line) {
-			records = append(records, bytes.Clone(line))
+			records = append(records, sessionentry.DecodeFileEntry(bytes.Clone(line)))
 		}
 		return nil
 	})
 	if err != nil {
+		// readSync's error: "EISDIR: illegal operation on a directory, read".
+		if pathErr, ok := errors.AsType[*fs.PathError](err); ok {
+			err = nodeerrno.FromPathError(pathErr)
+		}
 		return nil, false, err
 	}
 	if len(records) == 0 {
 		return records, false, nil
 	}
-	if _, valid := sessionHeaderFromRecord(records[0]); !valid {
-		return []json.RawMessage{}, false, nil
+	if _, valid := records[0].(SessionHeader); !valid {
+		return []FileEntry{}, false, nil
 	}
 	return records, reader.read && reader.last != '\n', nil
 }
@@ -141,7 +149,7 @@ func (sm *SessionManager) Open(path string, cwdOverride ...string) (*Session, er
 		}
 		session.path = resolved
 		if statErr == nil {
-			header, err := marshalSessionLine(session.Header())
+			header, err := marshalSessionLine(session.GetHeader())
 			if err != nil {
 				return nil, err
 			}
@@ -187,8 +195,13 @@ func resolveSessionCWD(cwd string) string {
 	return absCleanDir(cwd)
 }
 
-func restoreSessionFileEntries(path string, records []json.RawMessage) (*Session, error) {
-	header, valid := sessionHeaderFromRecord(records[0])
+func restoreSessionFileEntries(path string, records []FileEntry) (*Session, error) {
+	return restoreSessionEntries(path, records, true)
+}
+
+// restoreSessionEntries builds the session of a loaded file. persist writes the migrated file back, as upstream _rewriteFile does only for a persisting manager.
+func restoreSessionEntries(path string, records []FileEntry, persist bool) (*Session, error) {
+	header, valid := records[0].(SessionHeader)
 	if !valid {
 		return nil, fmt.Errorf("Session file is not a valid pi session: %s", path)
 	}
@@ -197,15 +210,15 @@ func restoreSessionFileEntries(path string, records []json.RawMessage) (*Session
 		return nil, err
 	}
 	session.path, session.flushed = path, true
-	if header.Version < CurrentSessionVersion {
-		headerRaw, err := replaceJSONField(records[0], "version", CurrentSessionVersion)
+	if persist && header.Version < CurrentSessionVersion {
+		headerRaw, err := replaceJSONField(records[0].Raw(), "version", CurrentSessionVersion)
 		if err != nil {
 			return nil, err
 		}
 		lines := make([][]byte, 0, len(session.entries)+1)
 		lines = append(lines, headerRaw)
 		for _, entry := range session.entries {
-			lines = append(lines, entry.raw)
+			lines = append(lines, entry.Raw())
 		}
 		if err := writeSessionLines(path, lines); err != nil {
 			return nil, err

@@ -1,0 +1,88 @@
+# Behavior family: slash-commands
+# Surface: the loopback callback page of an MCP sign-in (extensions/mcp/oauth.ts renderPage)
+#
+# Upstream evidence (pinned pi 1.1.0): the sign-in of 20-mcp-signin-paste-redirect-url opens the client's loopback callback
+# server. When the fixture's authorization server registers the client, it requests the callback URL with a state the client
+# never issued (testdata/mcp-oauth-paste.ts), which the server answers with its error page: status, content type, the
+# byte count and sha256 of the HTML, and its visible text. After the sign-in is cancelled, `/callback-page` prints that
+# report. The comparator is output_equal on the report, so the page must be byte-identical.
+
+# Mutation (compiling): the error page rendered by another function (coding/mcpext/oauth.go listenForCallback
+# RenderPage using the success page for errors) fails this scenario.
+name = "24-mcp-callback-error-page"
+description = "Both binaries answer a callback with an unknown state with the same error page."
+covers = [
+  "packages/coding-agent/src/extensions/mcp/oauth.ts",
+]
+tags = ["fast", "hermetic", "tui"]
+driver = "interactive-tmux"
+
+[tmux]
+width = 100
+height = 35
+ready_pattern_pig = "[Context]"
+ready_pattern_pi = "[Context]"
+ready_timeout_seconds = 25
+capture_start = "callback-page-begin"
+capture_end = "callback-page-end"
+capture_start_last = true
+
+[[tmux.steps]]
+keys = ["/mcp"]
+settle_seconds = 1
+
+[[tmux.steps]]
+keys = ["Enter"]
+wait_contains = ["MCP servers", "issues", "needs sign-in"]
+wait_timeout_seconds = 10
+settle_seconds = 1
+
+[[tmux.steps]]
+keys = ["Enter"]
+wait_contains = ["MCP server issues", "Sign in"]
+wait_timeout_seconds = 8
+settle_seconds = 1
+
+[[tmux.steps]]
+keys = ["Enter"]
+wait_contains = ["paste the URL it was redirected to"]
+wait_timeout_seconds = 10
+settle_seconds = 1
+
+[[tmux.steps]]
+keys = ["Escape"]
+wait_contains = ["Sign-in cancelled."]
+wait_timeout_seconds = 8
+settle_seconds = 1
+
+[[tmux.steps]]
+keys = ["Escape"]
+wait_contains = ["MCP servers"]
+wait_timeout_seconds = 8
+settle_seconds = 1
+
+[[tmux.steps]]
+keys = ["Escape"]
+settle_seconds = 1
+
+[[tmux.steps]]
+keys = ["/callback-page", "Enter"]
+wait_contains = ["callback-page-end"]
+wait_timeout_seconds = 8
+settle_seconds = 1
+
+[env]
+override_base_args = true
+# The fake xdg-open keeps the opened authorization URL from reaching a real browser.
+pig = ["PIG_CODING_AGENT_DIR=testdata/mcp-empty-pig-agent", "PATH={{FAKE_BIN}}:{{PATH}}"]
+pi = ["PI_CODING_AGENT_DIR=testdata/mcp-empty-pi-agent", "PATH={{FAKE_BIN}}:{{PATH}}"]
+pig_args = ["--session-dir", "{{TEMP}}/sessions"]
+pi_args = ["--session-dir", "{{TEMP}}/sessions"]
+pig_extensions = ["../../testdata/mcp-oauth-paste.ts"]
+pi_extensions = ["../../testdata/mcp-oauth-paste.ts"]
+
+[assert]
+both_reach_ready = true
+both_not_contain = ["unknown command", "panic:", "goroutine "]
+output_equal = true
+runs = 3

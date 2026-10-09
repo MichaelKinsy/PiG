@@ -1,0 +1,45 @@
+# Upstream evidence: Pi 1.1.0 renders the user message and the assistant reply with pi-tui Markdown (packages/tui/src/components/markdown.ts), which lexes with marked 18.0.11.
+# marked's emStrong tokenizer opens "_" and "__" only at left-flanking, non-intraword runs and pairs closers with the rule of 3, so _snake_case_ is one emphasis, snake_case_name stays literal and ***both*** is emphasis around strong.
+# marked's link label admits balanced brackets, so *[a [b] c](u)* is emphasis around a link; the inline-HTML mask hides the "*" in <span title="*">, so *a <span ...>b</span> c* is one emphasis; pi-tui's STRICT_STRIKETHROUGH_REGEX (markdown.ts:7) rejects "~~ x~~", which stays literal.
+# The faux provider echoes the prompt, so the crop holds the user message and the assistant reply: capture_end_regex runs to the reply's "endmark", the last one on the screen. At width 100 only the reply keeps "a [b] c (u)" on one row, so both_contain proves the reply is inside the crop. The escaped comparison includes every SGR sequence.
+# Probed with integrate-042 1f96d23bfc: its renderer differs from Pi on the link, span and strikethrough runs, so this comparison fails there.
+
+name = "44-assistant-underscore-emphasis"
+description = "User and assistant messages render underscore emphasis, strong emphasis, delimiter runs, bracketed link labels, inline HTML and strict strikethrough exactly as Pi's marked lexer does."
+covers = [
+  "packages/tui/src/components/markdown.ts",
+  "packages/coding-agent/src/modes/interactive/components/assistant-message.ts",
+]
+tags = ["fast", "hermetic", "tui"]
+driver = "interactive-tmux"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_CODING_AGENT_DIR=testdata/pig-agent"]
+pi = ["PI_CODING_AGENT_DIR=testdata/pi-agent", "PI_SKIP_VERSION_CHECK=1"]
+pi_extensions = ["../../testdata/test-faux-provider.ts"]
+pig_args = ["--no-extensions", "--session-dir", "{{TEMP}}/sessions"]
+pi_args = ["--session-dir", "{{TEMP}}/sessions"]
+
+[tmux]
+width = 100
+height = 35
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "(auto)"
+ready_timeout_seconds = 30
+capture_start = "reply with exactly: Use"
+capture_end_regex = '(?s)endmark.*endmark'
+
+[[tmux.steps]]
+keys = ["reply with exactly: Use _snake_case_ for __init__ and ***both*** but keep snake_case_name and __init__.py, *[a [b] c](u)*, *a <span title=\"*\">b</span> c*, ~~ x~~ and _endmark_", "Enter"]
+settle_seconds = 4
+wait_contains = ["endmark"]
+wait_timeout_seconds = 10
+
+[assert]
+both_reach_ready = true
+both_not_contain = ["unknown command", "panic:", "goroutine "]
+escaped_output_equal = true
+both_contain = ["snake_case_name", "Use snake_case for", "a [b] c (u)", "~~ x~~"]
+runtime_ratio_max = 2.0
+runs = 3

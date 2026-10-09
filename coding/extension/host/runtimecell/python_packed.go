@@ -146,6 +146,10 @@ func findPythonSDKRoot() (string, error) {
 			return abs, nil
 		}
 	}
+	// pig additive (D92): only PIG_SDK_PY_ROOT serves a Python SDK the active Piglet strips; this binary staged none.
+	if err := StrippedSDKError("python"); err != nil {
+		return "", err
+	}
 	for _, root := range stagedSDKRoots("sdk-py") {
 		if _, err := os.Stat(filepath.Join(root, "pig_sdk", "__init__.py")); err == nil {
 			return root, nil

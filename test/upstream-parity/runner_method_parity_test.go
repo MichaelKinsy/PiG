@@ -40,7 +40,7 @@ import (
 
 // upstreamRunnerMethods is the manually-maintained list of public methods
 // on upstream `ExtensionRunner` as of the version pinned in
-// `cmd/pig/main.go::UpstreamVersion`.
+// `coding/cli/main.go::UpstreamVersion`.
 //
 // Source: `.upstream/current/packages/coding-agent/src/core/extensions/runner.ts`
 //
@@ -125,10 +125,6 @@ var upstreamRunnerMethods = []string{
 // Removing an entry from this map without adding the corresponding Go method
 // on inproc.Runner causes the gate to fail.
 var deferredRunnerMethods = map[string]string{
-	// Added upstream after this list was last reconciled, and unported. The
-	// stale denominator, not a decision, is why they were never reported.
-	"getModelRegistry": "unported: no model-registry accessor on inproc.Runner",
-	"getActiveTools":   "unported: inproc.Runner exposes Tools, not the active-tool subset",
 	// Present as AddErrorListener under pig's earlier name; see
 	// pigOnlyRunnerMethods. The capability is ported, the spelling is not.
 	"onError": "spelling: ported as inproc.Runner.AddErrorListener; rename pending",
@@ -137,20 +133,21 @@ var deferredRunnerMethods = map[string]string{
 // pigOnlyRunnerMethods names public methods on inproc.Runner that have
 // NO public upstream counterpart. Each entry identifies a language-surface accessor or a private host-injection seam. These are not behavioral divergences; each requires a concrete upstream and production-caller rationale.
 var pigOnlyRunnerMethods = map[string]string{
-	"BindScopedModels":        "private host injection: coding.Session.bindExtensionCommandActions supplies Session.ScopedModels, mirroring agent-session.ts:_bindExtensionCore's getScopedModels callback; contexts capture that callback at creation, and mode binding retains it; cross-package Go visibility only",
-	"BindSystemPromptOptions": "Go binding mechanic for agent-session.ts:_bindExtensionCore; Session.bindExtensionCommandActions installs the live options getter without replacing a mode-owned source; TestSessionModelExtensionHooksUpstream guards source identity and command reachability",
-	"BindTools":               "SDK-surface: Session tool and prompt callbacks from upstream _bindExtensionCore, bound without replacing mode-owned actions",
-	"BindAbort":               "private host injection: Session.bindExtensionCommandActions installs its cancellation owner without replacing mode context actions; upstream agent-session.ts:3095-3107 binds this closure through _bindExtensionCore. Cross-package Go visibility, not an author-facing extension API. Production reachability and replacement/clone ownership are guarded by TestSessionParallelPreflightAbortPreventsPreparedEffects and TestBindAbortPreservesOtherContextActions",
-	"BindSessionManager":      "private host injection (D61): upstream's runner takes its sessionManager once, at construction (runner.ts:394-408), and a replaced AgentSession builds a new runner (agent-session-runtime.ts). Go's Session.ReplaceInner keeps the runner and rebinds the log contexts expose; coding.Session.ReplaceInner is the one production caller. Cross-package Go visibility, not an author-facing extension API",
-	"Runtime":                 "SDK-surface: read-only accessor for the ExtensionRuntime the runner was constructed with (upstream's runner keeps it in the private runtime field, runner.ts:358). /reload hands the subprocess host's registrations (MCP servers, providers, virtual models) to the replacement runner (internal/codingagent/reload_resources.go replaceExtensionRunner), because the host process outlives the runner",
-	"IsStale":                 "SDK-surface: read-only staleness accessor (test/lifecycle seam)",
-	"StaleMessage":            "SDK-surface: read-only staleness accessor (test/lifecycle seam)",
-	"ActiveCommands":          "private host lifecycle (D70): read-only count of running command handlers; cmd/pig cliRetirement.retire consults it to stop a replaced Session's extension host at once when no handler runs. Pi keeps every extension in its one Node process across a replacement (agent-session-runtime.ts teardownCurrent), so it has no retirement to gate. Guarded by TestInteractiveExtensionNewSessionKeepsTheCallerAliveUntilItReturns",
-	"WaitForCommands":         "private host lifecycle (D70): context-bounded wait for running command handlers; cmd/pig cliRetirement.retire keeps a replaced Session's extension host alive until the handler that requested the replacement returns. Pi needs no wait because it never stops the outgoing extension process (agent-session-runtime.ts teardownCurrent). Guarded by TestInteractiveExtensionNewSessionKeepsTheCallerAliveUntilItReturns",
-	"ExtensionCount":          "SDK-surface: read-only count accessor (avoids exposing the slice)",
-	"ExtensionNames":          "SDK-surface: read-only names accessor (avoids exposing the slice)",
-	"ExtensionSources":        "SDK-surface: read-only resolved paths and sourceInfo for the loaded-resources listing (upstream reads extension.path and extension.sourceInfo directly)",
-	"ExecuteCommand":          "SDK-surface: active-runner command bridge for AgentSession/RPC invocation parity",
+	"BindScopedModels":         "private host injection: coding.Session.bindExtensionCommandActions supplies Session.ScopedModels, mirroring agent-session.ts:_bindExtensionCore's getScopedModels callback; contexts capture that callback at creation, and mode binding retains it; cross-package Go visibility only",
+	"BindSystemPromptOptions":  "Go binding mechanic for agent-session.ts:_bindExtensionCore; Session.bindExtensionCommandActions installs the live options getter without replacing a mode-owned source; TestSessionModelExtensionHooksUpstream guards source identity and command reachability",
+	"BindTools":                "SDK-surface: Session tool and prompt callbacks from upstream _bindExtensionCore, bound without replacing mode-owned actions",
+	"BindAbort":                "private host injection: Session.bindExtensionCommandActions installs its cancellation owner without replacing mode context actions; upstream agent-session.ts:3095-3107 binds this closure through _bindExtensionCore. Cross-package Go visibility, not an author-facing extension API. Production reachability and replacement/clone ownership are guarded by TestSessionParallelPreflightAbortPreventsPreparedEffects and TestBindAbortPreservesOtherContextActions",
+	"BindSessionManager":       "private host injection (D61): upstream's runner takes its sessionManager once, at construction (runner.ts:394-408), and a replaced AgentSession builds a new runner (agent-session-runtime.ts). Go's Session.ReplaceInner keeps the runner and rebinds the log contexts expose; coding.Session.ReplaceInner is the one production caller. Cross-package Go visibility, not an author-facing extension API",
+	"InvalidateKeepingRuntime": "private host lifecycle: runner.ts invalidate(message) also invalidates the shared ExtensionRuntime, but /reload hands the subprocess host's registrations to the replacement runner (internal/codingagent/reload_resources.go replaceExtensionRunner), which keeps using that runtime; the outgoing runner goes stale without invalidating it. Guarded by TestInvalidateKeepingRuntimeLeavesTheReplacementActive",
+	"Runtime":                  "SDK-surface: read-only accessor for the ExtensionRuntime the runner was constructed with (upstream's runner keeps it in the private runtime field, runner.ts:358). /reload hands the subprocess host's registrations (MCP servers, providers, virtual models) to the replacement runner (internal/codingagent/reload_resources.go replaceExtensionRunner), because the host process outlives the runner",
+	"IsStale":                  "SDK-surface: read-only staleness accessor (test/lifecycle seam)",
+	"StaleMessage":             "SDK-surface: read-only staleness accessor (test/lifecycle seam)",
+	"ActiveCommands":           "private host lifecycle (D70): read-only count of running command handlers; cmd/pig cliRetirement.retire consults it to stop a replaced Session's extension host at once when no handler runs. Pi keeps every extension in its one Node process across a replacement (agent-session-runtime.ts teardownCurrent), so it has no retirement to gate. Guarded by TestInteractiveExtensionNewSessionKeepsTheCallerAliveUntilItReturns",
+	"WaitForCommands":          "private host lifecycle (D70): context-bounded wait for running command handlers; cmd/pig cliRetirement.retire keeps a replaced Session's extension host alive until the handler that requested the replacement returns. Pi needs no wait because it never stops the outgoing extension process (agent-session-runtime.ts teardownCurrent). Guarded by TestInteractiveExtensionNewSessionKeepsTheCallerAliveUntilItReturns",
+	"ExtensionCount":           "SDK-surface: read-only count accessor (avoids exposing the slice)",
+	"ExtensionNames":           "SDK-surface: read-only names accessor (avoids exposing the slice)",
+	"ExtensionSources":         "SDK-surface: read-only resolved paths and sourceInfo for the loaded-resources listing (upstream reads extension.path and extension.sourceInfo directly)",
+	"ExecuteCommand":           "SDK-surface: active-runner command bridge for AgentSession/RPC invocation parity",
 	// Upstream's getAllRegisteredTools returns each tool with its extension's
 	// sourceInfo; Pig's RegisteredTool.SourceInfo carries the D23 per-tool
 	// source instead, so getAllTools reads the extension's through this.

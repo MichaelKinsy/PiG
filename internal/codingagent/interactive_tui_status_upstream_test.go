@@ -13,10 +13,10 @@ import (
 func TestInteractiveTuiStatusEditorOptInUpstream(t *testing.T) {
 	for _, embedded := range []bool{true, false} {
 		t.Run(fmt.Sprint(embedded), func(t *testing.T) {
-			mode := &InteractiveMode{editor: tui.NewEditor(), statusContainer: tui.NewContainer(), opts: InteractiveOptions{TuiMode: "regular", Settings: Settings{ClearOnShrink: new(true)}}}
+			mode := &InteractiveMode{editor: tui.NewEditor(), statusContainer: tui.NewContainer(), opts: InteractiveModeOptions{TuiMode: "regular", Settings: Settings{ClearOnShrink: new(true)}}}
 			mode.editor.EmbedWorkingStatus = embedded
 			for _, item := range []struct{ kind, message string }{{"working", "Working"}, {"compaction", "Compacting context..."}, {"compaction", "Auto-compacting..."}, {"compaction", "Context overflow detected, Auto-compacting..."}, {"branchSummary", "Summarizing branch..."}, {"retry", "Retrying (1/3) in 1s..."}} {
-				indicator := &tui.StatusIndicator{Kind: item.kind, Loader: tui.NewLoader(item.message)}
+				indicator := &tui.StatusIndicator{Kind: item.kind, Loader: tui.NewLoader(nil, nil, nil, item.message, nil)}
 				mode.showStatusIndicator(indicator)
 				if mode.activeStatusIndicator != indicator || mode.activeWorkingIndicatorEmbedded != embedded {
 					t.Fatal("status did not retain indicator/opt-in identity")
@@ -42,7 +42,7 @@ func TestInteractiveTuiEmbeddedStatusClearingUpstream(t *testing.T) {
 	for _, kind := range []string{"working", "compaction", "branchSummary", "retry"} {
 		t.Run(kind, func(t *testing.T) {
 			disposed := 0
-			indicator := &tui.StatusIndicator{Kind: kind, Loader: tui.NewLoader("UNIQUE_STATUS")}
+			indicator := &tui.StatusIndicator{Kind: kind, Loader: tui.NewLoader(nil, nil, nil, "UNIQUE_STATUS", nil)}
 			mode := statusBorderMode(t, true)
 			mode.opts.TuiMode = "regular"
 			mode.tuiInst.SetClearOnShrink(true)

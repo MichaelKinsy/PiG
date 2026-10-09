@@ -43,7 +43,7 @@ type mcpResumeSession struct {
 	*mcpSession
 	connected *mcpConnectedNames
 	// loadExtensions loads the extensions again, as the test's resource loader reload does.
-	loadExtensions func() []extension.Extension
+	loadExtensions func() ([]extension.Extension, *extension.ExtensionRuntime)
 }
 
 // setupMCPResume is setup(sessionManager, extensionFactories, initializeDelayMs) of the test: a deferred `docs` server that
@@ -56,7 +56,7 @@ func setupMCPResume(t *testing.T, sessionManager *icodingagent.Session, extensio
 		Name: "docs", Config: extension.McpServerConfig{URL: "http://unused.invalid", Exposure: extension.McpExposureDeferred}, Source: "test",
 	}}
 	options := builtin.Options{Mcp: mcpext.Options{
-		LoadConfig: func(mcpext.EventContext) mcpext.LoadedMcpConfig { return mcpext.LoadedMcpConfig{Servers: servers} },
+		LoadConfig: func(context.Context) mcpext.LoadedMcpConfig { return mcpext.LoadedMcpConfig{Servers: servers} },
 		CreateTransport: func(entry mcpext.McpServerEntry, _ string, _ mcp.AuthProvider) (mcp.Transport, error) {
 			connected.add(entry.Name)
 			client, server := mcpFakeServer(s.calls, func() []map[string]any { return mcpServerTools }, false, mcpFakeServerOptions{initializeDelay: initializeDelay})
@@ -69,14 +69,17 @@ func setupMCPResume(t *testing.T, sessionManager *icodingagent.Session, extensio
 		Credentials: mcpext.NewMcpOAuthCredentialStoreWithBackend(&mcpext.InMemoryAuthStorageBackend{}, ""),
 		LogPath:     t.TempDir() + "/mcp.log",
 	}}
-	loadExtensions := func() []extension.Extension {
+	// upstream: every reload creates a runtime and runs the factories against it (loader.ts loadExtensions).
+	loadExtensions := func() ([]extension.Extension, *extension.ExtensionRuntime) {
+		runtime := extension.CreateExtensionRuntime()
 		var extensions []extension.Extension
 		for _, factory := range extensionFactories {
 			extensions = append(extensions, factory())
 		}
-		return append(extensions, loadMcpBuiltin(t, "tool-search", options), loadMcpBuiltin(t, "mcp", options))
+		return append(extensions, loadMcpBuiltin(t, runtime, "tool-search", options), loadMcpBuiltin(t, runtime, "mcp", options)), runtime
 	}
-	s.recoveryHarness = newBoundaryHarness(t, harnessOptions{extensions: loadExtensions(), sessionManager: sessionManager})
+	firstExtensions, firstRuntime := loadExtensions()
+	s.recoveryHarness = newBoundaryHarness(t, harnessOptions{extensions: firstExtensions, runtime: firstRuntime, sessionManager: sessionManager})
 	s.ui = &mcpTestUI{UIContext: extension.NoopUIContext, notes: s.notes}
 	// `/reload` emits session_start only to bound extensions.
 	if err := s.session.BindExtensions(t.Context(), ExtensionBindings{UIContext: s.ui}); err != nil {
@@ -99,7 +102,8 @@ func (s *mcpResumeSession) reload(t *testing.T) {
 	}
 	s.session.ReloadSettings()
 	defer s.session.DiscardAddedDefaultTools()
-	runner, err := s.session.ReloadExtensions(s.loadExtensions())
+	reloaded, runtime := s.loadExtensions()
+	runner, err := s.session.ReloadExtensions(reloaded, runtime)
 	if err != nil {
 		t.Fatal(err)
 	}

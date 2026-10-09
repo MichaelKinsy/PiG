@@ -88,6 +88,22 @@ type McpOAuthConfig struct {
 	AuthServerMetadataURL string `json:"authServerMetadataUrl,omitempty"`
 }
 
+// UnmarshalJSON reads `callbackPort` as a JavaScript number, so `8080.0` and `8e3` are the integers validation accepts.
+func (c *McpOAuthConfig) UnmarshalJSON(data []byte) error {
+	type plain McpOAuthConfig
+	aux := struct {
+		*plain
+		CallbackPort *float64 `json:"callbackPort"`
+	}{plain: (*plain)(c)}
+	err := json.Unmarshal(data, &aux)
+	c.CallbackPort = nil
+	if aux.CallbackPort != nil && *aux.CallbackPort == float64(int(*aux.CallbackPort)) {
+		port := int(*aux.CallbackPort)
+		c.CallbackPort = &port
+	}
+	return err
+}
+
 // McpAuthConfig sends the token of a pi provider (`/login <provider>`) as the
 // bearer token instead of using OAuth.
 type McpAuthConfig struct {
@@ -527,13 +543,18 @@ func ValidateMcpServerConfig(name string, value json.RawMessage) (McpServerConfi
 			return McpServerConfig{}, fmt.Sprintf(`server "%s": timeout must be a positive number of seconds`, name)
 		}
 	}
-	typ, _ := stringField(fields, "type")
+	// upstream: mcp-servers.ts validateMcpServerConfig (`type === undefined || type === "http"`): a `type` that is present but not a string names no transport.
+	typ, typeIsString := stringField(fields, "type")
+	_, typePresent := fields["type"]
+	typeIs := func(names ...string) bool {
+		return !typePresent || (typeIsString && slices.Contains(names, typ))
+	}
 	if typ == "sse" {
 		return McpServerConfig{}, fmt.Sprintf(`server "%s": legacy SSE transport is not supported; use the streamable HTTP URL`, name)
 	}
 
 	rawURL, hasURL := stringField(fields, "url")
-	if hasURL && (typ == "" || typ == "http" || typ == "streamable-http") {
+	if hasURL && typeIs("http", "streamable-http") {
 		// upstream: mcp-servers.ts validateMcpServerConfig (`URL.canParse(value.url) && /^https?:$/.test(new URL(value.url).protocol)`).
 		parsedURL, err := nodeurl.ParseHTTPURL(rawURL)
 		if err != nil {
@@ -555,9 +576,9 @@ func ValidateMcpServerConfig(name string, value json.RawMessage) (McpServerConfi
 				return McpServerConfig{}, fmt.Sprintf(`server "%s": auth requires an https URL, or http on localhost, 127.0.0.1, or [::1]`, name)
 			}
 		}
-		return decodeMcpServerConfig(name, value)
+		return decodeMcpServerConfig(value), ""
 	}
-	if _, hasCommand := stringField(fields, "command"); hasCommand && (typ == "" || typ == "stdio") {
+	if _, hasCommand := stringField(fields, "command"); hasCommand && typeIs("stdio") {
 		if raw, ok := fields["args"]; ok {
 			var args []json.RawMessage
 			valid := len(raw) > 0 && raw[0] == '[' && json.Unmarshal(raw, &args) == nil
@@ -574,17 +595,19 @@ func ValidateMcpServerConfig(name string, value json.RawMessage) (McpServerConfi
 		if raw, ok := fields["cwd"]; ok && !isString(raw) {
 			return McpServerConfig{}, fmt.Sprintf(`server "%s": cwd must be a string`, name)
 		}
-		return decodeMcpServerConfig(name, value)
+		return decodeMcpServerConfig(value), ""
 	}
 	return McpServerConfig{}, fmt.Sprintf(`server "%s" needs either "command" (stdio) or "url" (streamable HTTP)`, name)
 }
 
-func decodeMcpServerConfig(name string, value json.RawMessage) (McpServerConfig, string) {
+// decodeMcpServerConfig reads the members the host uses from a validated entry. Validation checks only the members of the entry's transport, so a member of the other transport (or an unused one) with a value of another type is ignored, as it is in Pi's untyped object.
+//
+// upstream: mcp-servers.ts validateMcpServerConfig (returns the entry as is after checking the transport's members)
+func decodeMcpServerConfig(value json.RawMessage) McpServerConfig {
 	var config McpServerConfig
-	if err := json.Unmarshal(value, &config); err != nil {
-		return McpServerConfig{}, fmt.Sprintf(`server "%s": %s`, name, err)
-	}
-	return config, ""
+	// The value is valid JSON; an error names the first member that does not fit its Go type, and the decoder keeps every member that does.
+	_ = json.Unmarshal(value, &config)
+	return config
 }
 
 // RegisteredMcpServer is a server an extension registered with

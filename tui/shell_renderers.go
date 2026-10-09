@@ -16,6 +16,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/MichaelKinsy/PiG/internal/jsnumber"
 )
 
 // FormatShellHeader renders a shell tool call. Mirrors upstream
@@ -104,10 +106,53 @@ func jsTemplateString(v any) string {
 	return "[object Object]"
 }
 
+// jsToNumber mirrors JavaScript ToNumber for a JSON-decoded value; arrays and
+// objects convert through their string form.
+func jsToNumber(v any) float64 {
+	switch x := v.(type) {
+	case nil:
+		return 0
+	case bool:
+		if x {
+			return 1
+		}
+		return 0
+	case float64:
+		return x
+	case string:
+		return jsnumber.Parse(x)
+	case []any:
+		return jsnumber.Parse(jsTemplateString(x))
+	}
+	return math.NaN()
+}
+
+// jsAdd mirrors the JavaScript + operator for JSON-decoded values: string
+// concatenation when either operand is or converts to a string, else addition.
+func jsAdd(a, b any) any {
+	_, aString := a.(string)
+	_, bString := b.(string)
+	_, aArray := a.([]any)
+	_, bArray := b.([]any)
+	_, aObject := a.(map[string]any)
+	_, bObject := b.(map[string]any)
+	if aString || bString || aArray || bArray || aObject || bObject {
+		return jsTemplateString(a) + jsTemplateString(b)
+	}
+	return jsToNumber(a) + jsToNumber(b)
+}
+
 // JSNumberString mirrors JavaScript Number.prototype.toString() for finite
 // values: the shortest round-trip digits, in plain notation for magnitudes in
 // [1e-6, 1e21) and exponent notation (e.g. "1e-7", "1e+21") outside it.
+// The integers 0 to 255, every RGB channel a color sequence prints, come from
+// byteDecimals without formatting or allocating; -0 prints "0" as in JS.
 func JSNumberString(v float64) string {
+	if v >= 0 && v <= 255 {
+		if n := int(v); float64(n) == v {
+			return byteDecimal(n)
+		}
+	}
 	switch {
 	case math.IsNaN(v):
 		return "NaN"
@@ -127,6 +172,28 @@ func JSNumberString(v float64) string {
 	sign := exp[:1]
 	digits := strings.TrimLeft(exp[1:], "0")
 	return mantissa + "e" + sign + digits
+}
+
+// byteDecimals holds 0 to 255 as three zero-padded digits each.
+const byteDecimals = "" +
+	"000001002003004005006007008009010011012013014015016017018019020021022023024025026027028029030031" +
+	"032033034035036037038039040041042043044045046047048049050051052053054055056057058059060061062063" +
+	"064065066067068069070071072073074075076077078079080081082083084085086087088089090091092093094095" +
+	"096097098099100101102103104105106107108109110111112113114115116117118119120121122123124125126127" +
+	"128129130131132133134135136137138139140141142143144145146147148149150151152153154155156157158159" +
+	"160161162163164165166167168169170171172173174175176177178179180181182183184185186187188189190191" +
+	"192193194195196197198199200201202203204205206207208209210211212213214215216217218219220221222223" +
+	"224225226227228229230231232233234235236237238239240241242243244245246247248249250251252253254255"
+
+// byteDecimal is n, 0 to 255, in decimal without leading zeros: a slice of byteDecimals.
+func byteDecimal(n int) string {
+	switch {
+	case n < 10:
+		return byteDecimals[3*n+2 : 3*n+3]
+	case n < 100:
+		return byteDecimals[3*n+1 : 3*n+3]
+	}
+	return byteDecimals[3*n : 3*n+3]
 }
 
 // JSToFixed1 mirrors JavaScript Number.prototype.toFixed(1) for a finite,

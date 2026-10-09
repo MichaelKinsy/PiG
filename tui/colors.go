@@ -12,7 +12,11 @@ import (
 )
 
 // Color is a concrete color: IndexedColor, RgbColorValue, or OklchColorValue. Every Color converts to sRGB, so color math never fails. Upstream's `Color` union is closed; the unexported method seals it.
-type Color interface{ isColor() }
+type Color interface {
+	isColor()
+	// Kind is upstream's `kind` discriminator: "indexed", "rgb" or "oklch" (colors.ts:5,10,17).
+	Kind() string
+}
 
 // IndexedColor is an ANSI palette index, 0-255 (upstream `IndexedColor`, kind "indexed").
 type IndexedColor struct{ Index int }
@@ -26,6 +30,15 @@ type OklchColorValue struct{ L, C, H float64 }
 func (IndexedColor) isColor()    {}
 func (RgbColorValue) isColor()   {}
 func (OklchColorValue) isColor() {}
+
+// Kind returns "indexed".
+func (IndexedColor) Kind() string { return "indexed" }
+
+// Kind returns "rgb".
+func (RgbColorValue) Kind() string { return "rgb" }
+
+// Kind returns "oklch".
+func (OklchColorValue) Kind() string { return "oklch" }
 
 // TerminalColorMode is the color depth a terminal accepts.
 type TerminalColorMode string
@@ -152,8 +165,32 @@ func parseColorNumber(text string) float64 {
 	return value
 }
 
-// ParseColor mirrors `parseColor` for its string form: `#rgb`, `#rrggbb`, `oklch()`, and `okhsl()`. Go has no string|number overload, so the numeric form is NewIndexedColor.
-func ParseColor(value string) (Color, error) {
+// ColorValue is upstream's `string | number` parseColor argument.
+type ColorValue interface {
+	string | int | float64
+}
+
+// ParseColor mirrors `parseColor`. A number is an ANSI palette index and must be an integer from 0 to 255; a string is `#rgb`, `#rrggbb`, `oklch()`, or `okhsl()`.
+func ParseColor[T ColorValue](value T) (Color, error) {
+	switch value := any(value).(type) {
+	case string:
+		return parseColorString(value)
+	case int:
+		return parseColorIndex(float64(value))
+	case float64:
+		return parseColorIndex(value)
+	}
+	panic("unreachable")
+}
+
+func parseColorIndex(index float64) (Color, error) {
+	if math.IsNaN(index) || math.IsInf(index, 0) || index != math.Trunc(index) || index < 0 || index > 255 {
+		return nil, fmt.Errorf("ANSI color index must be an integer from 0 to 255: %s", JSNumberString(index))
+	}
+	return IndexedColor{Index: int(index)}, nil
+}
+
+func parseColorString(value string) (Color, error) {
 	if hex := colorHexPattern.FindStringSubmatch(value); hex != nil {
 		digits := hex[1]
 		if len(digits) == 3 {

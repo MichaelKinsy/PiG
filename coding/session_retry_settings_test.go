@@ -36,7 +36,7 @@ func TestCompactionRetryDelayIsCappedByMaxAgentDelay(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(agentDir, "settings.json"), []byte(settings), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	svcs, err := NewServices(ServicesOptions{CWD: t.TempDir(), AgentDir: agentDir})
+	svcs, err := CreateAgentSessionServices(CreateAgentSessionServicesOptions{CWD: t.TempDir(), AgentDir: agentDir})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -55,7 +55,7 @@ func TestCompactionRetryDelayIsCappedByMaxAgentDelay(t *testing.T) {
 		}
 	}()
 	compacted := make(chan error, 1)
-	go func() { compacted <- sess.Compact(context.Background(), "") }()
+	go func() { _, err := sess.Compact(context.Background(), ""); compacted <- err }()
 	select {
 	case delay := <-delays:
 		if delay != ai.DefaultMaxAgentRetryDelayMs {

@@ -35,13 +35,13 @@ func TestFindInitialAgentModelUsesNativeModelsAndSettings(t *testing.T) {
 				}
 				writeNodeFacetFile(t, filepath.Join(agentDir, "models.json"), string(encoded))
 				writeNodeFacetFile(t, filepath.Join(agentDir, "settings.json"), `{"defaultProvider":"worker-factory","defaultModel":"model","defaultThinkingLevel":"low"}`)
-				collaborators, err := coding.NewServices(coding.ServicesOptions{CWD: t.TempDir()})
+				collaborators, err := coding.CreateAgentSessionServices(coding.CreateAgentSessionServicesOptions{CWD: t.TempDir()})
 				if err != nil {
 					t.Fatal(err)
 				}
 				modelRuntime := collaborators.ModelRuntime()
 				_ = modelRuntime.Refresh(context.Background(), ai.ModelsRefreshOptions{AllowNetwork: new(false)})
-				initial, err := durableagent.FindInitialAgentModel(durableagent.ModelSelection{Runtime: modelRuntime, ConfiguredAuth: collaborators.Registry().HasConfiguredAuth}, collaborators.SettingsManager(), selection.provider, selection.model)
+				initial, err := durableagent.FindInitialAgentModel(durableagent.ModelSelection{Runtime: modelRuntime, ConfiguredAuth: collaborators.Registry().ModelRegistry.HasConfiguredAuth}, collaborators.SettingsManager(), selection.provider, selection.model)
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -60,11 +60,11 @@ func TestFindInitialAgentModelUsesNativeModelsAndSettings(t *testing.T) {
 // harness-setup.ts:98-103: an explicit model that does not resolve fails with Pi's message and no fallback.
 func TestFindInitialAgentModelRejectsAnUnresolvableExplicitModel(t *testing.T) {
 	isolateExperimentalTest(t)
-	collaborators, err := coding.NewServices(coding.ServicesOptions{CWD: t.TempDir()})
+	collaborators, err := coding.CreateAgentSessionServices(coding.CreateAgentSessionServicesOptions{CWD: t.TempDir()})
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, err = durableagent.FindInitialAgentModel(durableagent.ModelSelection{Runtime: collaborators.ModelRuntime(), ConfiguredAuth: collaborators.Registry().HasConfiguredAuth}, collaborators.SettingsManager(), "", "nowhere/missing")
+	_, err = durableagent.FindInitialAgentModel(durableagent.ModelSelection{Runtime: collaborators.ModelRuntime(), ConfiguredAuth: collaborators.Registry().ModelRegistry.HasConfiguredAuth}, collaborators.SettingsManager(), "", "nowhere/missing")
 	if err == nil || len(err.Error()) <= len("Could not resolve model: ") || err.Error()[:len("Could not resolve model: ")] != "Could not resolve model: " {
 		t.Fatalf("error = %v; want Could not resolve model: ...", err)
 	}

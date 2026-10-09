@@ -204,8 +204,10 @@ type outputChunk struct {
 
 // OutputBuffer is the bounded running output of one tool call. Accepting a chunk costs time proportional to the chunk: head retention stops storing once the window is full, and tail retention drops stored text the window no longer needs when it snapshots. Counts of the whole stream are kept so the dropped totals stay exact. It is not safe for concurrent use.
 type OutputBuffer struct {
-	limits         OutputLimits
-	decoder        utf8StreamDecoder
+	limits  OutputLimits
+	decoder utf8StreamDecoder
+	// started is whether anything was accepted: only a byte-order mark at the very start of the output is dropped, never a U+FEFF later in it.
+	started        bool
 	chunks         []outputChunk
 	storedBytes    int
 	storedNewlines int
@@ -225,26 +227,48 @@ func (buffer *OutputBuffer) StoredBytes() int { return buffer.storedBytes }
 
 // PushString accepts a text chunk; bytes of an incomplete character from an earlier byte chunk come first, as a replacement character. It reports whether anything was accepted.
 func (buffer *OutputBuffer) PushString(chunk string) bool {
-	return buffer.accept(buffer.decoder.decode(nil, false) + chunk)
+	pending := buffer.decoder.decode(nil, false)
+	buffer.markStarted(pending, chunk, false)
+	return buffer.accept(pending + chunk)
+}
+
+// markStarted records that text arrived, and reports whether it is the first output: nothing came before it, neither text, an incomplete character, nor omitted output.
+func (buffer *OutputBuffer) markStarted(pending, text string, skipped bool) (first bool) {
+	first = !buffer.started && pending == "" && !skipped
+	if pending != "" || text != "" || skipped {
+		buffer.started = true
+	}
+	return first
+}
+
+// decodeBytes decodes a byte chunk after pending (the flushed incomplete character of earlier bytes, if any). Like the decoder of upstream's OutputBuffer (TextDecoder with ignoreBOM), it keeps a U+FEFF, and drops one only at the very start of the output.
+func (buffer *OutputBuffer) decodeBytes(pending string, chunk []byte, skipped bool) string {
+	text := buffer.decoder.decode(chunk, true)
+	if buffer.markStarted(pending, text, skipped) {
+		text = strings.TrimPrefix(text, "\ufeff")
+	}
+	return text
 }
 
 // PushBytes accepts a byte chunk, decoding UTF-8 across chunk boundaries. It reports whether anything was accepted.
 func (buffer *OutputBuffer) PushBytes(chunk []byte) bool {
-	return buffer.accept(buffer.decoder.decode(chunk, true))
+	return buffer.accept(buffer.decodeBytes("", chunk, false))
 }
 
 // PushStringSkipping accepts a text chunk that follows omitted output: skipped is output omitted right before the chunk,
 // which must be more than the tail window by at least one byte or line (ShellOutputInfo.Skipped). Only tail retention
 // accepts it; head retention returns an error. It reports that the chunk was accepted.
 func (buffer *OutputBuffer) PushStringSkipping(chunk string, skipped env.ShellOutputSkip) (bool, error) {
-	return buffer.pushSkipping(buffer.decoder.decode(nil, false), chunk, skipped)
+	pending := buffer.decoder.decode(nil, false)
+	buffer.markStarted(pending, chunk, true)
+	return buffer.pushSkipping(pending, chunk, skipped)
 }
 
 // PushBytesSkipping is PushStringSkipping for a byte chunk, decoding UTF-8 across the omission as upstream does: bytes of
 // an incomplete character before it end as a replacement character.
 func (buffer *OutputBuffer) PushBytesSkipping(chunk []byte, skipped env.ShellOutputSkip) (bool, error) {
 	pending := buffer.decoder.decode(nil, false)
-	return buffer.pushSkipping(pending, buffer.decoder.decode(chunk, true), skipped)
+	return buffer.pushSkipping(pending, buffer.decodeBytes(pending, chunk, true), skipped)
 }
 
 func (buffer *OutputBuffer) pushSkipping(pending, text string, skipped env.ShellOutputSkip) (bool, error) {

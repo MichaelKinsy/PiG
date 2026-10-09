@@ -32,7 +32,7 @@ func TestBuiltinModelsRuntimeRegistersCatalog(t *testing.T) {
 			}
 		}
 	}
-	services, err := coding.NewServices(coding.ServicesOptions{CWD: t.TempDir(), AgentDir: t.TempDir()})
+	services, err := coding.CreateAgentSessionServices(coding.CreateAgentSessionServicesOptions{CWD: t.TempDir(), AgentDir: t.TempDir()})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -48,7 +48,7 @@ func TestBuiltinModelsRuntimeRegistersCatalog(t *testing.T) {
 
 // .upstream/v0.87.1/packages/ai/test/providers.test.ts:734
 func TestFauxQueuedResponsesThroughModelRuntime(t *testing.T) {
-	services, err := coding.NewServices(coding.ServicesOptions{CWD: t.TempDir(), AgentDir: t.TempDir()})
+	services, err := coding.CreateAgentSessionServices(coding.CreateAgentSessionServicesOptions{CWD: t.TempDir(), AgentDir: t.TempDir()})
 	if err != nil {
 		t.Fatal(err)
 	}

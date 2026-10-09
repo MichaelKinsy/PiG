@@ -1,0 +1,23 @@
+[
+  {
+    "upstream": "packages/tui/src/index.ts",
+    "package": "./tui",
+    "tests": [
+      "TestIsKeyRepeatAndReleaseMatchPi",
+      "TestCompositeTuiLineMatchesPiOracle"
+    ],
+    "upstream_reference": "packages/tui/src/index.ts",
+    "mutation": "tui/keys_decode.go: replace 'strings.Contains(data, \":2H\") ||' with 'strings.Contains(data, \":2Z\") ||'; go test ./tui -count=1 -run TestIsKeyRepeatAndReleaseMatchPi fails. tui/stack.go: replace 'overlayPad := max(0, overlayWidth-overlay.Width)' with 'overlayPad := 0'; go test ./tui -count=1 -run TestCompositeTuiLineMatchesPiOracle fails."
+  },
+  {
+    "upstream": "packages/tui/src/native-platform.ts",
+    "package": "./internal/nativeplatform",
+    "tests": [
+      "TestNativePlatformSelectionMatrix",
+      "TestUpstreamNativePlatformLinuxRechecksDisplay",
+      "TestUpstreamNativePlatformHelperIsClipboardAPI"
+    ],
+    "upstream_reference": "packages/tui/src/native-platform.ts",
+    "mutation": "internal/nativeplatform/clipboard.go: replace 'if arch != \"amd64\" && arch != \"arm64\" {' with 'if false {', or replace 'if platform != \"windows\" && platform != \"darwin\" {' with 'if false {', or replace 'platform == \"linux\" && getenv(\"DISPLAY\") == \"\"' with 'false'; go test ./internal/nativeplatform -count=1 -run 'TestNativePlatformSelectionMatrix|TestUpstreamNativePlatform' fails each."
+  }
+]

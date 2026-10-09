@@ -28,11 +28,13 @@ func TestToolDefinitionCarriesOutputSchemaOfBuiltinTools(t *testing.T) {
 		t.Errorf("ctx.tools view outputSchema = %s", view.OutputSchema)
 	}
 
-	read, err := toolDefinition(&tools.ReadTool{CWD: t.TempDir()})
+	// Pi 1.0.4's read tool declares an output schema: the text, or an image block (read.ts readOutputSchema).
+	readTool := &tools.ReadTool{CWD: t.TempDir()}
+	read, err := toolDefinition(readTool)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(read.OutputSchema) != 0 {
-		t.Errorf("the read definition has outputSchema %s; Pi's read tool declares none", read.OutputSchema)
+	if len(read.OutputSchema) == 0 || !bytes.Equal(read.OutputSchema, readTool.OutputSchema()) {
+		t.Errorf("the read definition has outputSchema %s, want %s", read.OutputSchema, readTool.OutputSchema())
 	}
 }

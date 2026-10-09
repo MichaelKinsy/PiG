@@ -1,0 +1,210 @@
+[
+ {
+  "ids": [
+   "pkg:coding-agent/.#AgentSession::property:agent"
+  ],
+  "targets": [
+   "coding/session.go#Session.Agent"
+  ],
+  "production": [
+   "call:coding/cli/extensions.go#watchSessionRunSignal"
+  ],
+  "evidence": [
+   "test:coding/cli/rpc_initial_tools_test.go#TestRPCInitialActiveToolsPreserveFullRegistry",
+   "test:coding/dynamic_provider_upstream_test.go#TestDynamicProviderOverridesActiveSession"
+  ],
+  "rationale": "AgentSession.agent is the Go method Session.Agent; types reviewed against the upstream declaration; tests attributed by go/types (methodrefs)."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#AgentSession::property:isCompacting"
+  ],
+  "targets": [
+   "coding/session.go#Session.IsCompacting"
+  ],
+  "production": [
+   "call:coding/cli/rpc_admission.go#rpcAdmission.promptInput"
+  ],
+  "evidence": [
+   "test:coding/session_branch_summary_upstream_test.go#TestBranchSummaryAgentStreamCancellation",
+   "test:coding/session_compaction_cancellation_upstream_test.go#TestAutomaticCompactionCancellationUpstream"
+  ],
+  "rationale": "AgentSession.isCompacting is the Go method Session.IsCompacting; types reviewed against the upstream declaration; tests attributed by go/types (methodrefs)."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#AgentSession::property:isIdle"
+  ],
+  "targets": [
+   "coding/session_run_state.go#Session.IsIdle"
+  ],
+  "production": [
+   "call:coding/cli/session_extension_actions.go#sessionExtensionActions"
+  ],
+  "evidence": [
+   "test:coding/session_compaction_suite_active_test.go#TestAgentSessionCompactionSuiteAbortUpstream",
+   "test:coding/session_run_state_test.go#TestAbortStopsExtensionStartedRun"
+  ],
+  "rationale": "AgentSession.isIdle is the Go method Session.IsIdle; types reviewed against the upstream declaration; tests attributed by go/types (methodrefs)."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#AgentSession::property:isStreaming"
+  ],
+  "targets": [
+   "coding/session_run_state.go#Session.IsStreaming"
+  ],
+  "production": [
+   "call:coding/cli/rpc_admission.go#rpcAdmission.input"
+  ],
+  "evidence": [
+   "test:coding/session_concurrent_upstream_test.go#TestUpstreamConcurrentPrompt",
+   "test:coding/session_preflight_test.go#TestPreparedPromptClaimsBeforeExecution"
+  ],
+  "rationale": "AgentSession.isStreaming is the Go method Session.IsStreaming; types reviewed against the upstream declaration; tests attributed by go/types (methodrefs)."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#AgentSession::property:messages"
+  ],
+  "targets": [
+   "coding/session.go#Session.Messages"
+  ],
+  "production": [
+   "call:coding/cli/print_mode.go#runPrintMode"
+  ],
+  "evidence": [
+   "test:coding/cli/rpc_initial_tools_test.go#TestRPCInitialActiveToolsPreserveFullRegistry",
+   "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeTool"
+  ],
+  "rationale": "AgentSession.messages is the Go method Session.Messages; types reviewed against the upstream declaration; tests attributed by go/types (methodrefs)."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#AgentSession::property:model"
+  ],
+  "targets": [
+   "coding/session.go#Session.Model"
+  ],
+  "production": [
+   "call:coding/cli/extensions.go#wireSubprocessModelRegistry"
+  ],
+  "evidence": [
+   "test:coding/compaction_model_selection_upstream_test.go#TestCompactionCapturesModelBeforeAuthUpstream",
+   "test:coding/custom_provider_subprocess_test.go#TestExtensionProviderCommandStreamsAcrossProcesses"
+  ],
+  "rationale": "AgentSession.model is the Go method Session.Model; types reviewed against the upstream declaration; tests attributed by go/types (methodrefs)."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#AgentSession::property:modelRuntime"
+  ],
+  "targets": [
+   "coding/session.go#Session.ModelRuntime"
+  ],
+  "production": [
+   "call:coding/cli/extensions.go#wireSubprocessModelRegistry"
+  ],
+  "evidence": [
+   "test:coding/model_availability_boundaries_test.go#TestAvailabilityCancellationPreservesLastErrorAndJoins",
+   "test:coding/model_availability_boundaries_test.go#TestAvailabilityLatestProviderFailureIsVisible"
+  ],
+  "rationale": "AgentSession.modelRuntime is the Go method Session.ModelRuntime; types reviewed against the upstream declaration; tests attributed by go/types (methodrefs)."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#AgentSession::property:pendingMessageCount"
+  ],
+  "targets": [
+   "coding/session.go#Session.PendingMessageCount"
+  ],
+  "production": [
+   "call:coding/cli/rpc_mode.go#runRPCMode"
+  ],
+  "evidence": [
+   "test:coding/session_auto_queue_upstream_test.go#TestAutoCompactionQueueUpstream",
+   "test:coding/session_boundaries_accounting_upstream_test.go#TestUpstreamSessionBoundariesAccounting"
+  ],
+  "rationale": "AgentSession.pendingMessageCount is the Go method Session.PendingMessageCount; types reviewed against the upstream declaration; tests attributed by go/types (methodrefs)."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#AgentSession::property:resourceLoader"
+  ],
+  "targets": [
+   "coding/session_prompt_resources.go#Session.ResourceLoader"
+  ],
+  "production": [
+   "call:coding/session_ops.go#Session.Clone"
+  ],
+  "evidence": [
+   "test:coding/resource_loader_default_test.go#TestCloneKeepsBuildingTheDefaultPromptFromTheLoader",
+   "test:coding/resource_loader_default_test.go#TestDefaultLoaderResolvesSettingsAndAgentsSkills"
+  ],
+  "rationale": "AgentSession.resourceLoader is the Go method Session.ResourceLoader; types reviewed against the upstream declaration; tests attributed by go/types (methodrefs)."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#AgentSession::property:routedModel"
+  ],
+  "targets": [
+   "coding/virtual_models.go#Session.RoutedModel"
+  ],
+  "production": [
+   "call:coding/virtual_models.go#Session.RoutedModelSelection"
+  ],
+  "evidence": [
+   "test:coding/virtual_models_upstream_test.go#TestVirtualSessionFallsBackToThePhysicalModelWhenTheVirtualModelIsNotRegistered",
+   "test:coding/virtual_models_upstream_test.go#TestVirtualSessionRestoresTheVirtualSelectionInsteadOfThePhysicalModelThatAnswered"
+  ],
+  "rationale": "AgentSession.routedModel is the Go method Session.RoutedModel; types reviewed against the upstream declaration; tests attributed by go/types (methodrefs)."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#AgentSession::property:scopedModels"
+  ],
+  "targets": [
+   "coding/session_scoped_models.go#Session.ScopedModels"
+  ],
+  "production": [
+   "call:coding/cli/session_extension_actions.go#sessionExtensionActions"
+  ],
+  "evidence": [
+   "test:coding/model_resolver_scope_upstream_test.go#TestModelResolverPersistedScopeUpstream",
+   "test:coding/session_scoped_models_test.go#TestCloneRetainsScopeWithoutStealingBinding"
+  ],
+  "rationale": "AgentSession.scopedModels is the Go method Session.ScopedModels; types reviewed against the upstream declaration; tests attributed by go/types (methodrefs)."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#AgentSession::property:sessionManager"
+  ],
+  "targets": [
+   "coding/session_manager.go#Session.SessionManager"
+  ],
+  "production": [
+   "call:coding/runtime_replacement.go#Runtime.NewSession"
+  ],
+  "evidence": [
+   "test:coding/runtime_before_cancel_test.go#TestRuntimeCancelsThroughJSONBeforeResults",
+   "test:coding/runtime_call_initiation_test.go#TestRuntimeReplacementMarksCallInitiationBeforeTheBeforeHook"
+  ],
+  "rationale": "AgentSession.sessionManager is the Go method Session.SessionManager; types reviewed against the upstream declaration; tests attributed by go/types (methodrefs)."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#AgentSession::property:thinkingLevel"
+  ],
+  "targets": [
+   "coding/session.go#Session.ThinkingLevel"
+  ],
+  "production": [
+   "call:coding/cli/rpc_mode.go#runRPCMode"
+  ],
+  "evidence": [
+   "test:coding/cli/session_extension_actions_state_test.go#TestSessionExtensionActionsBindThinkingLevelAndPromptOptions",
+   "test:coding/model_thinking_levels_test.go#TestNewSessionUsesPerModelThinkingLevel"
+  ],
+  "rationale": "AgentSession.thinkingLevel is the Go method Session.ThinkingLevel; types reviewed against the upstream declaration; tests attributed by go/types (methodrefs)."
+ }
+]

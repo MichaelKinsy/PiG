@@ -176,7 +176,7 @@ func TestServerSelectedPresentationFacetsUpstream(t *testing.T) {
 		if err := os.WriteFile(sourcePath, []byte("import { defineFacet } from \"@earendil-works/chord\"; import { SlashCommands } from \"@earendil-works/pi-coding-agent/experimental/plugin\"; export default defineFacet({ id: \"built-c\", setup(env) { env.use(SlashCommands); } });\n"), 0o600); err != nil {
 			t.Fatal(err)
 		}
-		opened, err := runtime.Servers[0].Server.Open(chord.RemoteServiceSourceOpenOptions{Services: []string{services.PresentationPluginsDefinition.Id()}, AssertAccess: func() error { return nil }, OnError: func(err error) { t.Error(err) }})
+		opened, err := runtime.Servers[0].Server.Open(chord.RemoteServiceSourceOpenOptions{Services: chord.ServiceIDs(services.PresentationPluginsDefinition.Id()), AssertAccess: func() error { return nil }, OnError: func(err error) { t.Error(err) }})
 		if err != nil {
 			t.Fatal(err)
 		}

@@ -102,7 +102,7 @@ See [Extensions](/docs/latest/extensions#connection-and-liveness-model).
 
 ## Piglet Binary verification
 
-A Piglet Binary verifies its embedded Piglet and component plan before command dispatch. A Binary built with `--sign-key` also verifies its Ed25519 signature offline and refuses to run when its executable, manifest, or signature changed.
+A Piglet Binary verifies its embedded Piglet and component plan before command dispatch. A Binary built with `--sign-key` also verifies its Ed25519 signature offline and refuses to run when its executable, manifest, or signature changed. When its file is unchanged since its last passing start, it skips the hash of its executable bytes. See [Verification cache](/docs/latest/piglet-binaries#verification-cache) for what that keeps and gives up. The startup check is a self-check: it does not stop an attacker who can rewrite the Binary.
 
 Use `pig verify <binary>` to report the signature status without running the Binary. Use `pig piglet trust add <key.pub>` to trust a reviewed publisher key, `pig piglet trust revoke <key-id>` to reject it, and `pig piglet trust require on` to require signatures by locally trusted keys. An embedded author key proves continuity from that key, not the human identity of its holder.
 

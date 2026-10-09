@@ -13,7 +13,10 @@ import (
 )
 
 // suppliedResourceLoader is the Go form of the object literal the upstream cases pass as resourceLoader.
-type suppliedResourceLoader struct{ skills []*Skill }
+type suppliedResourceLoader struct {
+	resourceLoaderMutations
+	skills []*Skill
+}
 
 func (l suppliedResourceLoader) GetSkills() SkillsResult {
 	return SkillsResult{Skills: l.skills, Diagnostics: []extension.ResourceDiagnostic{}}
@@ -30,6 +33,14 @@ func (suppliedResourceLoader) GetAgentsFiles() AgentsFilesResult {
 func (suppliedResourceLoader) GetSystemPrompt() (string, bool) { return "", false }
 
 func (suppliedResourceLoader) GetAppendSystemPrompt() []string { return []string{} }
+
+func (suppliedResourceLoader) GetSystemPromptSource() (ResourceSource, bool) {
+	return ResourceSource{}, false
+}
+
+func (suppliedResourceLoader) GetAppendSystemPromptSources() []ResourceSource {
+	return []ResourceSource{}
+}
 
 // Ports packages/coding-agent/test/sdk-skills.test.ts ("createAgentSession skills
 // option"). Each case builds a Session through NewSession with cwd and agentDir
@@ -50,7 +61,7 @@ func TestUpstreamSDKSkillsNativeSession(t *testing.T) {
 		if err := os.WriteFile(filepath.Join(skillsDir, "SKILL.md"), []byte("---\nname: test-skill\ndescription: A test skill for SDK tests.\n---\n\n# Test Skill\n\nThis is a test skill.\n"), 0o600); err != nil {
 			t.Fatal(err)
 		}
-		services, err := NewServices(ServicesOptions{CWD: tempDir, AgentDir: tempDir})
+		services, err := CreateAgentSessionServices(CreateAgentSessionServicesOptions{CWD: tempDir, AgentDir: tempDir})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -104,8 +115,8 @@ func TestUpstreamSDKSkillsNativeSession(t *testing.T) {
 		customSkill := &Skill{
 			Name:                   "custom-skill",
 			Description:            "A custom skill",
-			Path:                   "/fake/path/SKILL.md",
-			Dir:                    "/fake/path",
+			FilePath:               "/fake/path/SKILL.md",
+			BaseDir:                "/fake/path",
 			SourceInfo:             icodingagent.PiSourceInfo{Path: "/fake/path/SKILL.md", Source: "sdk", Scope: "temporary", Origin: "top-level"},
 			DisableModelInvocation: false,
 		}
@@ -150,7 +161,7 @@ func TestCloneKeepsTheBoundResourceLoader(t *testing.T) {
 	h := newQueueCharacterizationHarness(t, extension.Extension{}, nil)
 	h.session.SetPromptResources([]PromptTemplate{{Name: "plain", Content: "expanded"}}, nil)
 	h.provider.responses = []scriptedResponse{fauxReply("ok", ai.StopReasonStop, 0)}
-	if _, err := h.session.Prompt(t.Context(), "hello"); err != nil {
+	if err := h.session.Prompt(t.Context(), "hello"); err != nil {
 		t.Fatal(err)
 	}
 	clone, err := h.session.Clone()
@@ -167,7 +178,10 @@ func TestCloneKeepsTheBoundResourceLoader(t *testing.T) {
 	}
 }
 
-type mutableSkillsLoader struct{ templates []PromptTemplate }
+type mutableSkillsLoader struct {
+	resourceLoaderMutations
+	templates []PromptTemplate
+}
 
 func (*mutableSkillsLoader) GetSkills() SkillsResult { return SkillsResult{} }
 func (l *mutableSkillsLoader) GetPrompts() PromptsResult {
@@ -176,6 +190,10 @@ func (l *mutableSkillsLoader) GetPrompts() PromptsResult {
 func (*mutableSkillsLoader) GetAgentsFiles() AgentsFilesResult { return AgentsFilesResult{} }
 func (*mutableSkillsLoader) GetSystemPrompt() (string, bool)   { return "", false }
 func (*mutableSkillsLoader) GetAppendSystemPrompt() []string   { return nil }
+func (*mutableSkillsLoader) GetSystemPromptSource() (ResourceSource, bool) {
+	return ResourceSource{}, false
+}
+func (*mutableSkillsLoader) GetAppendSystemPromptSources() []ResourceSource { return nil }
 
 // Ports packages/coding-agent/test/resource-loader.test.ts:34, :831 and :855
 // natively: a new DefaultResourceLoader is empty until Reload ("should
@@ -198,7 +216,7 @@ func TestUpstreamResourceLoaderNativeOverrides(t *testing.T) {
 		}
 	})
 	t.Run("should apply skillsOverride", func(t *testing.T) {
-		injected := &Skill{Name: "injected", Description: "Injected skill", Path: "/fake/path", Dir: "/fake", SourceInfo: icodingagent.PiSourceInfo{Path: "/fake/path", Source: "custom", Scope: "temporary", Origin: "top-level"}}
+		injected := &Skill{Name: "injected", Description: "Injected skill", FilePath: "/fake/path", BaseDir: "/fake", SourceInfo: icodingagent.PiSourceInfo{Path: "/fake/path", Source: "custom", Scope: "temporary", Origin: "top-level"}}
 		h := newQueueCharacterizationHarness(t, extension.Extension{}, nil)
 		h.session.SetPromptResources(nil, []*Skill{{Name: "discovered", Description: "Discovered skill"}})
 		h.session.SetPromptResources(nil, []*Skill{injected})

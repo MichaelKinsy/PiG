@@ -1,4 +1,3 @@
-// SPDX-FileCopyrightText: Copyright Hewlett Packard Enterprise Development LP
 // SPDX-License-Identifier: MIT
 
 package coding
@@ -7,6 +6,8 @@ import (
 	"fmt"
 	"sync/atomic"
 	"testing"
+
+	icodingagent "github.com/MichaelKinsy/PiG/internal/codingagent"
 
 	"github.com/MichaelKinsy/PiG/agent"
 	"github.com/MichaelKinsy/PiG/ai"
@@ -38,11 +39,11 @@ func TestSessionPublicListenersPrecedePersistenceAndTools(t *testing.T) {
 		}
 		// A listener may inspect protected Session state without deadlocking the producer.
 		s.mu.Lock()
-		entries := s.inner.Entries()
+		entries := s.inner.GetEntries()
 		s.mu.Unlock()
 		observed.Add(1)
 		for _, entry := range entries {
-			if message, ok := entry.AsMessage(); ok && message.Message.Assistant != nil {
+			if message, ok := entry.(icodingagent.MessageEntry); ok && message.Message.Assistant != nil {
 				alreadyPersisted.Store(true)
 			}
 		}
@@ -67,7 +68,7 @@ func TestSessionPublicListenersPrecedePersistenceAndTools(t *testing.T) {
 
 func BenchmarkSessionSendWithSubscriber(b *testing.B) {
 	b.Setenv("PIG_HOME", b.TempDir())
-	services, err := NewServices(ServicesOptions{CWD: b.TempDir()})
+	services, err := CreateAgentSessionServices(CreateAgentSessionServicesOptions{CWD: b.TempDir()})
 	if err != nil {
 		b.Fatal(err)
 	}

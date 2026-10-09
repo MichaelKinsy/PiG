@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
 const root = fileURLToPath(new URL("../../../extensions/sdk-ts/node_modules/@earendil-works/pi-coding-agent/", import.meta.url));
-if (JSON.parse(readFileSync(join(root, "package.json"), "utf8")).version !== "1.0.3") throw new Error("Expected Pi 1.0.3");
+if (JSON.parse(readFileSync(join(root, "package.json"), "utf8")).version !== "1.1.0") throw new Error("Expected Pi 1.1.0");
 const aiRoot = join(root, "node_modules/@earendil-works/pi-ai/dist");
 const { stream } = await import(pathToFileURL(join(aiRoot, "api/azure-openai-responses.js")));
 const { normalizeContext } = await import(pathToFileURL(join(aiRoot, "utils/transcript.js")));

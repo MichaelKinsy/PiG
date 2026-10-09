@@ -1,4 +1,3 @@
-// SPDX-FileCopyrightText: Copyright Hewlett Packard Enterprise Development LP
 // SPDX-FileCopyrightText: Copyright (c) 2025 Mario Zechner
 // SPDX-License-Identifier: MIT
 
@@ -19,24 +18,24 @@ func branchedSessionEntries(source *Session, path []SessionEntry) ([]json.RawMes
 	var pending []string
 	var parent *string
 	for _, entry := range path {
-		if entry.Base.Type == "label" {
-			pending = append(pending, entry.Base.ID)
+		if entry.Base().Type == "label" {
+			pending = append(pending, entry.Base().ID)
 			continue
 		}
 		for _, id := range pending {
-			replacements[id] = entry.Base.ID
+			replacements[id] = entry.Base().ID
 		}
 		pending = pending[:0]
 		raw, err := replaceJSONField(entry.Raw(), "parentId", parent)
 		if err != nil {
 			return nil, err
 		}
-		if entry.Base.Type == "compaction" {
+		if entry.Base().Type == "compaction" {
 			var comp CompactionEntry
 			if err := json.Unmarshal(raw, &comp); err != nil {
 				return nil, err
 			}
-			if replacement, found := replacements[comp.FirstKeptEntryID]; found && comp.FirstKeptEntryID != entry.Base.ID {
+			if replacement, found := replacements[comp.FirstKeptEntryID]; found && comp.FirstKeptEntryID != entry.Base().ID {
 				raw, err = replaceJSONField(raw, "firstKeptEntryId", replacement)
 				if err != nil {
 					return nil, err
@@ -44,14 +43,14 @@ func branchedSessionEntries(source *Session, path []SessionEntry) ([]json.RawMes
 			}
 		}
 		records = append(records, raw)
-		retained[entry.Base.ID] = struct{}{}
-		id := entry.Base.ID
+		retained[entry.Base().ID] = struct{}{}
+		id := entry.Base().ID
 		parent = &id
 	}
 	labels := make(map[string]LabelEntry)
 	var order []string
-	for _, entry := range source.Entries() {
-		if entry.Base.Type != "label" {
+	for _, entry := range source.GetEntries() {
+		if entry.Base().Type != "label" {
 			continue
 		}
 		var label LabelEntry

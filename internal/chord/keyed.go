@@ -355,8 +355,9 @@ func (keyed *keyedBinding) beginRebind(ctx context.Context, bound bool) *task {
 			keyed.mu.Unlock()
 			return nil
 		}
-		keyed.launchLocked(revision)
-		starting := keyed.starting
+		// consumer.ts rebind awaits #start directly: a failed restart rejects the rebind and is not also reported, unlike observe's start.
+		starting := startTask(func() error { return keyed.start(revision) })
+		keyed.starting = starting
 		keyed.mu.Unlock()
 		return starting.wait(context.Background())
 	})
@@ -447,19 +448,19 @@ func (keyed *keyedBinding) update(ctx context.Context, update ServiceProviderUpd
 		err = keyed.spawn(ctx, *update.Snapshot, revision)
 	case UpdateClosed:
 		keyed.mu.Lock()
-		if instance, ok := keyed.instances.entries.Get(update.Address.Key); ok && instance.generation == update.Address.Generation {
+		if instance, ok := keyed.instances.entries.Get(update.Instance.Key); ok && instance.generation == update.Instance.Generation {
 			keyed.instances.remove(instance)
 		}
 		keyed.mu.Unlock()
 	case UpdateState:
-		if update.Address == nil {
+		if update.Instance == nil {
 			err = errors.New("Keyed state update has no instance address")
 			break
 		}
 		keyed.mu.Lock()
-		instance, ok := keyed.instances.entries.Get(update.Address.Key)
+		instance, ok := keyed.instances.entries.Get(update.Instance.Key)
 		keyed.mu.Unlock()
-		if !ok || instance.generation != update.Address.Generation {
+		if !ok || instance.generation != update.Instance.Generation {
 			return
 		}
 		err = instance.facade.update(ctx, update.Member, update.Sequence, update.Ops, 0)

@@ -20,7 +20,7 @@ func (m *Models) requireProvider(model AnyModel) (*ModelsProvider, error) {
 
 // requireChatProvider rejects models whose type is not chat before looking up their provider.
 func (m *Models) requireChatProvider(model *Model) (*ModelsProvider, error) {
-	if err := assertChatModel(model); err != nil {
+	if err := AssertChatModel(model); err != nil {
 		return nil, err
 	}
 	return m.requireProvider(model)

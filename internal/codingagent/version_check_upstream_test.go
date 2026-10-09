@@ -45,9 +45,13 @@ func TestVersionChecks(t *testing.T) {
 		}{
 			{"0.70.6", "0.70.5", 1}, {"0.70.5", "0.70.5", 0}, {"0.70.4", "0.70.5", -1}, {"5.0.0-beta.20", "5.0.0-beta.9", 1},
 		} {
-			if got := CompareVersions(tc.candidate, tc.current); got != tc.want {
-				t.Errorf("CompareVersions(%q, %q) = %d, want %d", tc.candidate, tc.current, got, tc.want)
+			got, ok := ComparePackageVersions(tc.candidate, tc.current)
+			if !ok || got != tc.want {
+				t.Errorf("ComparePackageVersions(%q, %q) = %d, %v, want %d", tc.candidate, tc.current, got, ok, tc.want)
 			}
+		}
+		if IsNewerPackageVersion("0.70.5", "0.70.5") || !IsNewerPackageVersion("0.70.6", "0.70.5") {
+			t.Error("IsNewerPackageVersion: 0.70.5 over 0.70.5 must be false and 0.70.6 over 0.70.5 true")
 		}
 	})
 
@@ -61,8 +65,25 @@ func TestVersionChecks(t *testing.T) {
 		if update := CheckForBinaryUpdate(t.Context(), server.Client(), "1.2.3"); update != nil {
 			t.Fatalf("an equal version produced %#v", update)
 		}
-		if update := CheckForBinaryUpdate(t.Context(), server.Client(), "1.2.2"); update == nil || update.LatestVersion != "1.2.3" {
+		if update := CheckForBinaryUpdate(t.Context(), server.Client(), "1.2.2"); update == nil || update.Version != "1.2.3" {
 			t.Fatalf("an older version produced %#v, want 1.2.3", update)
+		}
+	})
+
+	// checkForNewPiVersion compares with isNewerPackageVersion, so a current version that is not semver is outdated by
+	// any other release; a strict comparison would call it equal and never report the update.
+	t.Run("reports a release over a current version that is not semver", func(t *testing.T) {
+		server := newSignedManifestServer(t, http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			_, _ = w.Write([]byte(versionCheckManifest("1.2.3", "")))
+		}))
+		defer server.Close()
+		t.Setenv("PIG_UPDATE_URL", server.URL)
+		t.Setenv("PI_SKIP_VERSION_CHECK", "")
+		if update := CheckForBinaryUpdate(t.Context(), server.Client(), "dev"); update == nil || update.Version != "1.2.3" {
+			t.Fatalf("a non-semver current version produced %#v, want 1.2.3", update)
+		}
+		if update := CheckForBinaryUpdate(t.Context(), server.Client(), "v1.2.3"); update != nil {
+			t.Fatalf("v1.2.3 is the release, got %#v", update)
 		}
 	})
 
@@ -139,7 +160,7 @@ func TestVersionChecks(t *testing.T) {
 		t.Setenv("PIG_UPDATE_URL", server.URL)
 		t.Setenv("PI_SKIP_VERSION_CHECK", "")
 		update := CheckForBinaryUpdate(t.Context(), server.Client(), "1.2.3")
-		if update == nil || update.Notes != "**Read this**" || update.LatestVersion != "1.2.4" {
+		if update == nil || update.Note == nil || *update.Note != "**Read this**" || update.Version != "1.2.4" {
 			t.Fatalf("update = %#v", update)
 		}
 	})

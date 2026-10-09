@@ -1,6 +1,7 @@
 package agent
 
 import (
+	"encoding/json"
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/ai"
@@ -45,5 +46,33 @@ func TestProxyPartialObservationsAreEmissionSnapshots(t *testing.T) {
 	}
 	if got := snapshot.Content[0].(ai.ToolCall).Arguments["value"]; got != "hel" {
 		t.Fatalf("owned delta observation changed: %v", got)
+	}
+}
+
+// proxy.ts ProxyAssistantMessageEvent `type` is the closed union of twelve literals; the Go field is the named
+// ProxyAssistantMessageEventType whose constants spell exactly those literals, and each one round-trips through the wire codec.
+func TestProxyEventTypeIsTheClosedPiUnion(t *testing.T) {
+	want := map[ProxyAssistantMessageEventType]string{
+		ProxyEventStart: "start", ProxyEventTextStart: "text_start", ProxyEventTextDelta: "text_delta", ProxyEventTextEnd: "text_end",
+		ProxyEventThinkingStart: "thinking_start", ProxyEventThinkingDelta: "thinking_delta", ProxyEventThinkingEnd: "thinking_end",
+		ProxyEventToolcallStart: "toolcall_start", ProxyEventToolcallDelta: "toolcall_delta", ProxyEventToolcallEnd: "toolcall_end",
+		ProxyEventDone: "done", ProxyEventError: "error",
+	}
+	if len(want) != 12 {
+		t.Fatalf("%d constants, want 12", len(want))
+	}
+	for eventType, literal := range want {
+		if string(eventType) != literal {
+			t.Errorf("constant %q, want %q", eventType, literal)
+		}
+		data, err := json.Marshal(ProxyAssistantMessageEvent{Type: eventType})
+		if err != nil {
+			t.Errorf("%s: %v", literal, err)
+			continue
+		}
+		var back ProxyAssistantMessageEvent
+		if err := json.Unmarshal(data, &back); err != nil || back.Type != eventType {
+			t.Errorf("%s round trip = %+v (%v) from %s", literal, back, err, data)
+		}
 	}
 }

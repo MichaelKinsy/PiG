@@ -48,11 +48,8 @@ import (
 
 	"github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell"
 	"github.com/MichaelKinsy/PiG/coding/extension/host/subprocess"
+	"github.com/MichaelKinsy/PiG/internal/configroot"
 	"github.com/MichaelKinsy/PiG/internal/pigsdklock"
-
-	sdk "github.com/MichaelKinsy/PiG/extensions/sdk"
-	pysdk "github.com/MichaelKinsy/PiG/extensions/sdk-py"
-	rssdk "github.com/MichaelKinsy/PiG/extensions/sdk-rs"
 )
 
 // markerFile records a staged SDK's content hash so warm starts skip work and
@@ -80,12 +77,16 @@ var bundleHashes = map[string]*bundleHashCache{
 // Staged SDK directories relative to the config root. Checking that one exists must not enumerate the embedded files, which bundles does.
 var stagedSDKDirs = [...]string{"state/pigsdk/sdk", "state/pigsdk/sdk-py", "state/pigsdk/sdk-rs"}
 
+// bundles lists the embedded SDKs in staging order (go, python, rust).
+// pig additive (D92): each language's SDK lives in its sdk_<lang>_on.go shim, which a Piglet Binary compiles out with pig_strip_extension_sdk_<lang>; a stripped language is left out.
 func bundles() []sdkBundle {
-	return []sdkBundle{
-		{lang: "go", relDir: stagedSDKDirs[0], files: sdk.BundledFiles(), fsys: sdk.Source},
-		{lang: "python", relDir: stagedSDKDirs[1], files: pysdk.BundledFiles(), fsys: pysdk.Source},
-		{lang: "rust", relDir: stagedSDKDirs[2], files: rssdk.BundledFiles(), fsys: rssdk.Source},
+	out := make([]sdkBundle, 0, 3)
+	for _, bundle := range [...]func() (sdkBundle, bool){goBundle, pythonBundle, rustBundle} {
+		if b, ok := bundle(); ok {
+			out = append(out, b)
+		}
 	}
+	return out
 }
 
 func bundleFor(lang string) (sdkBundle, bool) {
@@ -95,6 +96,16 @@ func bundleFor(lang string) (sdkBundle, bool) {
 		}
 	}
 	return sdkBundle{}, false
+}
+
+// unknownLanguage is the error for a language with no embedded SDK; prefix
+// leads the stock unknown-language message.
+// pig additive (D92): a language the active Piglet strips reports the strip, not an unknown language.
+func unknownLanguage(prefix, lang string) error {
+	if err := runtimecell.StrippedSDKError(lang); err != nil {
+		return err
+	}
+	return fmt.Errorf("%sunknown language %q", prefix, lang)
 }
 
 // SDKDir returns the staged Go SDK directory. Kept for callers that scaffold Go
@@ -108,7 +119,7 @@ func SDKDir(configRoot string) string {
 func SDKDirFor(configRoot, lang string) (string, error) {
 	b, ok := bundleFor(lang)
 	if !ok {
-		return "", fmt.Errorf("pig reload: unknown language %q", lang)
+		return "", unknownLanguage("pig reload: ", lang)
 	}
 	return filepath.Join(configRoot, filepath.FromSlash(b.relDir)), nil
 }
@@ -487,7 +498,7 @@ func EnsureSyncedContext(ctx context.Context, configRoot string) error {
 func EnsureSyncedLang(configRoot, lang string) error {
 	b, ok := bundleFor(lang)
 	if !ok {
-		return fmt.Errorf("pig reload: unknown language %q", lang)
+		return unknownLanguage("pig reload: ", lang)
 	}
 	current, err := b.current(configRoot)
 	if err != nil {
@@ -569,7 +580,7 @@ func RunCommand(args []string, stdout, stderr io.Writer) int {
 		return -1
 	}
 	rest := args[1:]
-	root, err := configRoot()
+	root, err := configroot.Resolve()
 	if err != nil {
 		_, _ = fmt.Fprintf(stderr, "pig reload: %v\n", err)
 		return 1
@@ -586,7 +597,7 @@ func RunCommand(args []string, stdout, stderr io.Writer) int {
 		{"--sdk-version", func(lang string) (string, error) {
 			b, ok := bundleFor(lang)
 			if !ok {
-				return "", fmt.Errorf("unknown language %q", lang)
+				return "", unknownLanguage("", lang)
 			}
 			return b.hash()
 		}},
@@ -693,32 +704,4 @@ func printUsage(w io.Writer) {
 	_, _ = fmt.Fprintln(w, "  --sdk-version [lang]  print an embedded SDK content hash")
 	_, _ = fmt.Fprintln(w, "")
 	_, _ = fmt.Fprintln(w, "Staged-versus-embedded status is reported by `pig diagnose`.")
-}
-
-// configRoot mirrors codingagent.ConfigRoot without importing it. The SDK
-// command runs before runtime services are constructed.
-func configRoot() (string, error) {
-	if v := os.Getenv("PIG_HOME"); v != "" {
-		return expandTilde(v), nil
-	}
-	if v := os.Getenv("XDG_CONFIG_HOME"); v != "" {
-		return filepath.Join(expandTilde(v), "pig"), nil
-	}
-	home, err := os.UserHomeDir()
-	if err != nil {
-		return "", err
-	}
-	return filepath.Join(home, ".pig"), nil
-}
-
-func expandTilde(p string) string {
-	if p == "~" || strings.HasPrefix(p, "~/") {
-		if home, err := os.UserHomeDir(); err == nil {
-			if p == "~" {
-				return home
-			}
-			return filepath.Join(home, p[2:])
-		}
-	}
-	return p
 }

@@ -4,7 +4,9 @@ package harness
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"iter"
 	"slices"
 	"sync"
 
@@ -20,7 +22,72 @@ type ConversationView struct {
 	// Entries are the raw active entries, as ContextView.Entries: the head marker, then the non-head entries from its head.
 	Entries []durable.EntryRecord `json:"entries"`
 	// Docs holds the built-in conversation documents keyed by kind; absent documents are absent.
-	Docs map[string]durable.JsonObject `json:"docs"`
+	Docs ViewDocs `json:"docs"`
+}
+
+// ViewDocs is a view's read-only record of documents keyed by kind (Pi Readonly<Record<string, JsonObject>>). Its keys keep Pi's object
+// order (view.ts:161-166): mounted documents in mount order, then documents set later in the order they arrive.
+type ViewDocs struct{ object *delta.JsonObject }
+
+// ViewDocsOf returns docs with document set at kind, last when kind is new; docs itself is unchanged.
+func ViewDocsOf(docs ViewDocs, kind string, document durable.JsonObject) ViewDocs {
+	object := delta.NewJsonObject(docs.Len() + 1)
+	for name, value := range docs.object.All() {
+		object.Set(name, value)
+	}
+	object.Set(kind, document)
+	return ViewDocs{object}
+}
+
+// Get returns the document of kind and whether it is present.
+func (docs ViewDocs) Get(kind string) (durable.JsonObject, bool) {
+	value, present := docs.object.Get(kind)
+	document, _ := value.(durable.JsonObject)
+	return document, present
+}
+
+// Has reports whether a document of kind is present.
+func (docs ViewDocs) Has(kind string) bool { return docs.object.Has(kind) }
+
+// Len returns the number of documents.
+func (docs ViewDocs) Len() int { return docs.object.Len() }
+
+// Keys returns the kinds in order.
+func (docs ViewDocs) Keys() []string { return docs.object.Keys() }
+
+// All iterates the kinds and documents in order.
+func (docs ViewDocs) All() iter.Seq2[string, durable.JsonObject] {
+	return func(yield func(string, durable.JsonObject) bool) {
+		for kind, value := range docs.object.All() {
+			document, _ := value.(durable.JsonObject)
+			if !yield(kind, document) {
+				return
+			}
+		}
+	}
+}
+
+// MarshalJSON writes the documents as one JSON object in order.
+func (docs ViewDocs) MarshalJSON() ([]byte, error) {
+	if docs.object == nil {
+		return []byte("{}"), nil
+	}
+	return json.Marshal(docs.object)
+}
+
+// UnmarshalJSON reads a JSON object of JSON objects, keeping the text's key order.
+func (docs *ViewDocs) UnmarshalJSON(data []byte) error {
+	object := delta.NewJsonObject(0)
+	if err := json.Unmarshal(data, object); err != nil {
+		return err
+	}
+	for kind, value := range object.All() {
+		if _, isObject := value.(durable.JsonObject); !isObject {
+			return fmt.Errorf("view document %q is not a JSON object", kind)
+		}
+	}
+	docs.object = object
+	return nil
 }
 
 // ViewObserver receives each next revision of a mount, and the Session's close. Advance and Publication may be nil.
@@ -218,11 +285,12 @@ func (views *ConversationViews) build(ctx context.Context, id durable.Conversati
 	if err != nil {
 		return nil, err
 	}
+	// ActiveEntries detaches entries a storage shares with its readers: the view's state is the observers' own.
 	entries, err := ActiveEntries(ctx, views.storage, id, bounds)
 	if err != nil {
 		return nil, err
 	}
-	docs := map[string]durable.JsonObject{}
+	docs := ViewDocs{delta.NewJsonObject(0)}
 	incarnations := map[string]docIncarnation{}
 	for _, token := range mountedDocs() {
 		loaded, err := views.session.ConversationDocumentOnLine(ctx, token, id)
@@ -233,7 +301,7 @@ func (views *ConversationViews) build(ctx context.Context, id durable.Conversati
 			continue
 		}
 		kind := token.AnyDefinition().Kind
-		docs[kind] = loaded.Value
+		docs.object.Set(kind, loaded.Value)
 		incarnations[kind] = docIncarnation{id: loaded.Record.Id, version: loaded.Version}
 	}
 	return &viewMount{value: ConversationView{Conversation: *conversation, Entries: entries, Docs: docs}, docs: incarnations}, nil
@@ -294,7 +362,7 @@ func advanceView(ctx context.Context, id durable.ConversationId, mount *viewMoun
 			}
 		default:
 			mount.docs[kind] = docIncarnation{id: document.Record.Id, version: *document.Version}
-			docOps = append(docOps, durable.Op{"s", path, map[string]any(document.Value)})
+			docOps = append(docOps, durable.Op{"s", path, document.Value})
 		}
 	}
 	before := mount.value
@@ -327,22 +395,22 @@ func advanceView(ctx context.Context, id durable.ConversationId, mount *viewMoun
 }
 
 // applyDocOps applies view operations under ["docs", ...] immutably: unchanged documents keep their identity.
-func applyDocOps(docs map[string]durable.JsonObject, ops []durable.Op) (map[string]durable.JsonObject, error) {
-	root := map[string]any{}
-	tree := map[string]any{}
-	for kind, value := range docs {
-		tree[kind] = map[string]any(value)
+func applyDocOps(docs ViewDocs, ops []durable.Op) (ViewDocs, error) {
+	object := docs.object
+	if object == nil {
+		object = delta.NewJsonObject(0)
 	}
-	root["docs"] = tree
-	applied, err := delta.ApplyImmutable(root, ops)
+	applied, err := delta.ApplyImmutable(delta.JsonObjectOf("docs", object), ops)
 	if err != nil {
-		return nil, err
+		return ViewDocs{}, err
 	}
-	next := map[string]durable.JsonObject{}
-	for kind, value := range applied.(map[string]any)["docs"].(map[string]any) {
-		next[kind] = value.(map[string]any)
-	}
-	return next, nil
+	return ViewDocs{applied.(*delta.JsonObject).Value("docs").(*delta.JsonObject)}, nil
+}
+
+// viewDoc returns the mounted document of kind, or nil when it is absent.
+func viewDoc(view ConversationView, kind string) durable.JsonObject {
+	document, _ := view.Docs.Get(kind)
+	return document
 }
 
 // prefixedOp moves op under prefix; a root replacement becomes a set of the prefix.

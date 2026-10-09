@@ -29,7 +29,7 @@ import {
   uuidv7,
   validateToolArguments,
   validateToolCall
-} from "./chunk-5YY4OANL.js";
+} from "./chunk-PU2OIHY3.js";
 import {
   ANTHROPIC_API_KEY_ENV,
   ANTHROPIC_AUTH_TOKEN_ENV,
@@ -55,7 +55,7 @@ import {
   openAICompletionsApi,
   openAIResponsesApi,
   piMessagesApi
-} from "./chunk-6VYI4PEE.js";
+} from "./chunk-VGJF4KWR.js";
 import {
   envApiKeyAuth,
   lazyOAuth
@@ -97,7 +97,7 @@ import {
   resolveTranscriptTools,
   toToolDeclaration,
   withoutInitialSystemMessage
-} from "./chunk-Y5ITVTK2.js";
+} from "./chunk-7YNYAWTY.js";
 import {
   __name
 } from "./chunk-SHUYVCID.js";

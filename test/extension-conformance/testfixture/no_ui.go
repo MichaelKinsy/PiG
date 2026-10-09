@@ -36,7 +36,7 @@ func probeNoUI(ctx sdk.Context) error {
 	}
 	off()
 	off()
-	if err := ctx.SetEditorComponent(func() { panic("headless factory") }); err != nil {
+	if err := ctx.SetEditorComponent(func(*sdk.Editor) sdk.EditorComponent { panic("headless factory") }); err != nil {
 		return err
 	}
 	if err := ctx.AddAutocompleteProvider(nil); err != nil {

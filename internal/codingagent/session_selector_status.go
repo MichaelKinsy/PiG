@@ -4,10 +4,11 @@ package codingagent
 
 import "time"
 
+// The status timeouts Pi passes to setStatusMessage: a load failure, a rename or delete failure, and a deletion notice.
 const (
-	sessionSelectorLoadErrorTimeout = 4000 * time.Millisecond
-	sessionSelectorErrorTimeout     = 3000 * time.Millisecond
-	sessionSelectorInfoTimeout      = 2000 * time.Millisecond
+	sessionSelectorLoadErrorTimeout = 4000 * time.Millisecond // upstream: packages/coding-agent/src/modes/interactive/components/session-selector.ts:setStatusMessage
+	sessionSelectorErrorTimeout     = 3000 * time.Millisecond // upstream: packages/coding-agent/src/modes/interactive/components/session-selector.ts:setStatusMessage
+	sessionSelectorInfoTimeout      = 2000 * time.Millisecond // upstream: packages/coding-agent/src/modes/interactive/components/session-selector.ts:setStatusMessage
 )
 
 type sessionSelectorStatus struct {
@@ -17,7 +18,7 @@ type sessionSelectorStatus struct {
 }
 
 // setStatusMessage replaces both the message and its timeout. Only the selector owner mutates this state; timers expose a wakeup channel rather than invoking UI code off-owner.
-func (s *sessionSelector) setStatusMessage(message string, isError bool, autoHide time.Duration) {
+func (s *SessionSelectorComponent) setStatusMessage(message string, isError bool, autoHide time.Duration) {
 	if s.statusState.timer != nil {
 		s.statusState.timer.Stop()
 	}
@@ -25,15 +26,16 @@ func (s *sessionSelector) setStatusMessage(message string, isError bool, autoHid
 	if message != "" && autoHide > 0 {
 		s.statusState.timer = time.NewTimer(autoHide)
 	}
+	s.renderRequested()
 }
 
-func (s *sessionSelector) clearStatusMessage() {
+func (s *SessionSelectorComponent) clearStatusMessage() {
 	if s != nil {
 		s.setStatusMessage("", false, 0)
 	}
 }
 
-func (s *sessionSelector) statusTimeout() <-chan time.Time {
+func (s *SessionSelectorComponent) statusTimeout() <-chan time.Time {
 	if s == nil || s.statusState.timer == nil {
 		return nil
 	}
@@ -41,7 +43,7 @@ func (s *sessionSelector) statusTimeout() <-chan time.Time {
 }
 
 // expireStatusMessage also supports direct component rendering without an enclosing owner loop.
-func (s *sessionSelector) expireStatusMessage() {
+func (s *SessionSelectorComponent) expireStatusMessage() {
 	select {
 	case <-s.statusTimeout():
 		s.clearStatusMessage()

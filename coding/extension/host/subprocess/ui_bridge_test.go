@@ -76,14 +76,16 @@ func (m *mockUIContext) SetEditorText(text string) {
 	m.setEditorTextCalls = append(m.setEditorTextCalls, text)
 }
 func (m *mockUIContext) GetEditorText() string { return m.editorText }
-func (m *mockUIContext) SetFooter(factory any) {
+func (m *mockUIContext) SetFooter(build extension.FooterFactory) {
+	factory := frameOf(build, 3)
 	m.footerValue = factory
 	m.footerCalls = append(m.footerCalls, factory)
 	if factory == nil {
 		m.footerCleared = true
 	}
 }
-func (m *mockUIContext) SetHeader(factory any) {
+func (m *mockUIContext) SetHeader(build extension.HeaderFactory) {
+	factory := frameOf(build, 2)
 	m.headerCalls = append(m.headerCalls, factory)
 	if lines, ok := factory.([]string); factory == nil || ok && len(lines) == 0 {
 		m.headerCleared = true
@@ -93,14 +95,14 @@ func (m *mockUIContext) SetLogin(definition extension.LoginDefinition) error {
 	m.loginCalls = append(m.loginCalls, definition)
 	return m.loginErr
 }
-func (m *mockUIContext) SetEditorComponent(factory any) {
+func (m *mockUIContext) SetEditorComponent(factory extension.EditorFactory) {
 	if factory == nil {
 		m.editorCompCleared = true
 	}
 }
-func (m *mockUIContext) GetEditorComponent() any        { return nil }
-func (m *mockUIContext) GetToolsExpanded() bool         { return m.toolsExpanded }
-func (m *mockUIContext) SetToolsExpanded(expanded bool) { m.toolsExpanded = expanded }
+func (m *mockUIContext) GetEditorComponent() extension.EditorFactory { return nil }
+func (m *mockUIContext) GetToolsExpanded() bool                      { return m.toolsExpanded }
+func (m *mockUIContext) SetToolsExpanded(expanded bool)              { m.toolsExpanded = expanded }
 func (m *mockUIContext) RunRemoteOverlay(extension.RemoteOverlayOptions, extension.RemoteOverlayHost, func(extension.RemoteOverlayHandle)) (any, bool) {
 	return nil, false
 }
@@ -119,18 +121,24 @@ func (m *mockUIContext) Input(_ context.Context, _, _ string, _ extension.Extens
 func (m *mockUIContext) Editor(_ context.Context, _, _ string) (string, error) {
 	return m.editorResult, m.editorErr
 }
-func (m *mockUIContext) SetTheme(theme any) extension.SetThemeResult { return m.themeResult }
-func (m *mockUIContext) Theme() extension.Theme                      { return m.theme }
-func (m *mockUIContext) GetAllThemes() []extension.ThemeMeta         { return m.allThemes }
+func (m *mockUIContext) SetTheme(theme extension.ThemeSelection) extension.SetThemeResult {
+	return m.themeResult
+}
+func (m *mockUIContext) Theme() extension.Theme              { return m.theme }
+func (m *mockUIContext) GetAllThemes() []extension.ThemeMeta { return m.allThemes }
 func (m *mockUIContext) GetTheme(name string) (extension.Theme, error) {
 	if m.namedTheme == nil {
 		return nil, nil
 	}
 	return m.namedTheme, nil
 }
-func (m *mockUIContext) SetWidget(string, any, extension.ExtensionWidgetOptions) {}
-func (m *mockUIContext) OnTerminalInput(extension.TerminalInputHandler) func()   { return func() {} }
-func (m *mockUIContext) Custom(context.Context, any, any) (any, error)           { return nil, nil }
+func (m *mockUIContext) SetWidget(string, []string, *extension.ExtensionWidgetOptions) {}
+func (m *mockUIContext) SetWidgetFactory(string, extension.WidgetFactory, *extension.ExtensionWidgetOptions) {
+}
+func (m *mockUIContext) OnTerminalInput(extension.TerminalInputHandler) func() { return func() {} }
+func (m *mockUIContext) Custom(context.Context, extension.CustomFactory, *extension.CustomOptions) (any, error) {
+	return nil, nil
+}
 func (m *mockUIContext) AddAutocompleteProvider(extension.AutocompleteProviderFactory) error {
 	return nil
 }
@@ -221,6 +229,48 @@ func TestUIBridge_HandleCall_SetStatus_BroadcastsStateChange(t *testing.T) {
 	}
 	if broadcasts != 1 {
 		t.Fatalf("OnStateChanged called %d times, want 1", broadcasts)
+	}
+}
+
+// pig additive (D107): SetFrontend reaches every snapshot as
+// StatePayload.frontend and pushes one state_update per change, never one for
+// a repeated value.
+func TestUIBridge_SetFrontendPushesTheFlagOncePerChange(t *testing.T) {
+	b := newTestBridge(&mockUIContext{})
+	pushed := make(chan string, 8)
+	b.OnStateChanged = func() {
+		encoded, err := json.Marshal(map[string]any{"state": b.Snapshot(nil, 0, false)})
+		if err != nil {
+			t.Error(err)
+		}
+		pushed <- string(encoded)
+	}
+	next := func() string {
+		t.Helper()
+		select {
+		case got := <-pushed:
+			return got
+		case <-time.After(5 * time.Second):
+			t.Fatal("no state_update was pushed")
+			return ""
+		}
+	}
+	if b.Snapshot(nil, 0, false).Frontend {
+		t.Fatal("a bridge without a frontend reported one")
+	}
+	b.SetFrontend(true)
+	if got := next(); !strings.Contains(got, `"frontend":true`) {
+		t.Fatalf("state_update after SetFrontend(true) = %s", got)
+	}
+	b.SetFrontend(true)
+	b.SetFrontend(false)
+	if got := next(); strings.Contains(got, `"frontend"`) {
+		t.Fatalf("state_update after SetFrontend(false) = %s", got)
+	}
+	select {
+	case got := <-pushed:
+		t.Fatalf("a repeated value pushed state: %s", got)
+	case <-time.After(50 * time.Millisecond):
 	}
 }
 
@@ -412,7 +462,7 @@ func TestUIBridge_HandleWidgetPush_ViaCall(t *testing.T) {
 	b := NewUIBridge(func() { invalidated = true })
 	b.SetUIContext(&mockUIContext{})
 
-	b.HandleWidgetPush("ext1", &WidgetPushPayload{Key: "w1", Lines: []string{"line1", "line2"}})
+	b.HandleWidgetPush("ext1", nil, &WidgetPushPayload{Key: "w1", Lines: []string{"line1", "line2"}})
 
 	proxy := b.GetWidget("ext1", "w1")
 	if proxy == nil {
@@ -432,11 +482,11 @@ func TestUIBridge_HandleWidgetPush_ViaCall(t *testing.T) {
 func TestUIBridge_WidgetPushedBeforeSetInvalidateUsesLiveCallback(t *testing.T) {
 	b := NewUIBridge(func() {})
 	b.SetUIContext(&mockUIContext{})
-	b.HandleWidgetPush("ext1", &WidgetPushPayload{Key: "clock", Lines: []string{"12:00"}})
+	b.HandleWidgetPush("ext1", nil, &WidgetPushPayload{Key: "clock", Lines: []string{"12:00"}})
 
 	var renders atomic.Int32
 	b.SetInvalidate(func() { renders.Add(1) })
-	b.HandleWidgetPush("ext1", &WidgetPushPayload{Key: "clock", Lines: []string{"12:01"}})
+	b.HandleWidgetPush("ext1", nil, &WidgetPushPayload{Key: "clock", Lines: []string{"12:01"}})
 	if got := renders.Load(); got != 1 {
 		t.Fatalf("update of an early widget requested %d renders, want 1", got)
 	}
@@ -449,9 +499,9 @@ func TestUIBridge_WidgetPushedBeforeSetInvalidateUsesLiveCallback(t *testing.T) 
 func TestUIBridge_ClearExtension_AllKeys(t *testing.T) {
 	b := NewUIBridge(func() {})
 	b.SetUIContext(&mockUIContext{})
-	b.HandleWidgetPush("ext1", &WidgetPushPayload{Key: "a", Lines: []string{"x"}})
-	b.HandleWidgetPush("ext1", &WidgetPushPayload{Key: "b", Lines: []string{"y"}})
-	b.HandleWidgetPush("ext2", &WidgetPushPayload{Key: "c", Lines: []string{"z"}})
+	b.HandleWidgetPush("ext1", nil, &WidgetPushPayload{Key: "a", Lines: []string{"x"}})
+	b.HandleWidgetPush("ext1", nil, &WidgetPushPayload{Key: "b", Lines: []string{"y"}})
+	b.HandleWidgetPush("ext2", nil, &WidgetPushPayload{Key: "c", Lines: []string{"z"}})
 
 	b.ClearExtension("ext1")
 
@@ -563,6 +613,7 @@ func TestUIBridge_HandleCall_SetWidget_Clear(t *testing.T) {
 	}
 }
 
+// Pi: packages/coding-agent/src/core/extensions/types.ts:127 (ExtensionWidgetOptions.placement).
 func TestUIBridge_HandleCall_SetWidget_RequestObserverPreservesPlacement(t *testing.T) {
 	b := NewUIBridge(func() {})
 	b.SetUIContext(&mockUIContext{})
@@ -571,15 +622,12 @@ func TestUIBridge_HandleCall_SetWidget_RequestObserverPreservesPlacement(t *test
 	var placement string
 	var cachedUpdates int
 	b.SetWidgetSyncFunc(func(map[string]*PushProxy) { cachedUpdates++ })
-	b.SetWidgetRequestFunc(func(_ string, gotKey string, gotLines []string, opts extension.ExtensionWidgetOptions) {
+	b.SetWidgetRequestFunc(func(_ string, gotKey string, gotLines []string, opts *extension.ExtensionWidgetOptions) {
 		key = gotKey
 		lines = gotLines
-		data, _ := json.Marshal(opts)
-		var value struct {
-			Placement string `json:"placement"`
+		if opts != nil {
+			placement = string(opts.Placement)
 		}
-		_ = json.Unmarshal(data, &value)
-		placement = value.Placement
 	})
 	if _, err := call(b, "ui.setWidget", `{"key":"w","content":["a","b"],"options":{"placement":"belowEditor"}}`); err != nil {
 		t.Fatal(err)
@@ -589,6 +637,28 @@ func TestUIBridge_HandleCall_SetWidget_RequestObserverPreservesPlacement(t *test
 	}
 	if cachedUpdates != 0 || b.GetWidget("test-ext", "w") != nil {
 		t.Fatal("serialized RPC widget request must not also publish a cached TUI widget")
+	}
+}
+
+// upstream: packages/coding-agent/src/core/extensions/types.ts:122-128 placement is "aboveEditor" (default) or "belowEditor".
+func TestUIBridge_HandleCall_SetWidget_PlacementOptions(t *testing.T) {
+	for _, tc := range []struct{ name, options, want string }{
+		{"absent options", ``, "aboveEditor"},
+		{"empty options", `,"options":{}`, "aboveEditor"},
+		{"above", `,"options":{"placement":"aboveEditor"}`, "aboveEditor"},
+		{"below", `,"options":{"placement":"belowEditor"}`, "belowEditor"},
+		{"unknown placement stays above", `,"options":{"placement":"sideways"}`, "aboveEditor"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			b := newTestBridge(&mockUIContext{})
+			if _, err := call(b, "ui.setWidget", `{"key":"w","content":["a"]`+tc.options+`}`); err != nil {
+				t.Fatal(err)
+			}
+			proxy := b.GetWidget("test-ext", "w")
+			if proxy == nil || proxy.placement != tc.want {
+				t.Fatalf("widget = %+v, want placement %q", proxy, tc.want)
+			}
+		})
 	}
 }
 
@@ -767,7 +837,7 @@ func TestRegisterExtConnPublishesBootstrapOnlyToNewConnection(t *testing.T) {
 	defer func() { _ = oldHost.Close() }()
 	defer func() { _ = oldPeer.Close() }()
 	oldConn := NewConn("old", oldHost)
-	bridge.RegisterExtConn("old", oldConn)
+	bridge.RegisterExtConn("old", oldConn, true)
 	select {
 	case <-oldConn.outCh:
 	case <-time.After(time.Second):
@@ -778,7 +848,7 @@ func TestRegisterExtConnPublishesBootstrapOnlyToNewConnection(t *testing.T) {
 	defer func() { _ = newHost.Close() }()
 	defer func() { _ = newPeer.Close() }()
 	newConn := NewConn("new", newHost)
-	bridge.RegisterExtConn("new", newConn)
+	bridge.RegisterExtConn("new", newConn, true)
 	select {
 	case <-newConn.outCh:
 	case <-time.After(time.Second):
@@ -812,7 +882,7 @@ func TestPublishModelCatalogBuildsNothingWithoutConnections(t *testing.T) {
 	defer func() { _ = host.Close() }()
 	defer func() { _ = peer.Close() }()
 	conn := NewConn("ext", host)
-	bridge.RegisterExtConn("ext", conn)
+	bridge.RegisterExtConn("ext", conn, true)
 	<-conn.outCh
 	bridge.PublishModelCatalog()
 	select {
@@ -835,10 +905,10 @@ func TestFocusedReloadCleanupCannotCloseReplacementGeneration(t *testing.T) {
 	defer func() { _ = newPeer.Close() }()
 	oldConn := NewConn("old", oldHost)
 	newConn := NewConn("new", newHost)
-	bridge.RegisterExtConn("ext", oldConn)
+	bridge.RegisterExtConn("ext", oldConn, false)
 	oldTarget := &recordingRemoteOverlayHandle{closed: make(chan struct{})}
 	bridge.customOverlayProxyFor("ext", oldConn, "focused").SetTarget(oldTarget)
-	bridge.RegisterExtConn("ext", newConn)
+	bridge.RegisterExtConn("ext", newConn, false)
 	newTarget := &recordingRemoteOverlayHandle{closed: make(chan struct{})}
 	bridge.customOverlayProxyFor("ext", newConn, "focused").SetTarget(newTarget)
 
@@ -1210,7 +1280,7 @@ func TestUIBridgeClearExtensionRemovesWidgetsFromMountedSet(t *testing.T) {
 	bridge.SetUIContext(&mockUIContext{})
 	counts := make(chan int, 2)
 	bridge.SetWidgetSyncFunc(func(widgets map[string]*PushProxy) { counts <- len(widgets) })
-	bridge.HandleWidgetPush("ext", &WidgetPushPayload{Key: "status", Lines: []string{"ready"}})
+	bridge.HandleWidgetPush("ext", nil, &WidgetPushPayload{Key: "status", Lines: []string{"ready"}})
 	bridge.ClearExtension("ext")
 	for _, want := range []int{1, 0} {
 		select {
@@ -1260,8 +1330,8 @@ func TestUIBridgeReplaysBoundStatusAndFooterOnRebind(t *testing.T) {
 func TestUIBridge_AllWidgets(t *testing.T) {
 	b := NewUIBridge(func() {})
 	b.SetUIContext(&mockUIContext{})
-	b.HandleWidgetPush("e1", &WidgetPushPayload{Key: "a", Lines: []string{"1"}})
-	b.HandleWidgetPush("e2", &WidgetPushPayload{Key: "b", Lines: []string{"2"}})
+	b.HandleWidgetPush("e1", nil, &WidgetPushPayload{Key: "a", Lines: []string{"1"}})
+	b.HandleWidgetPush("e2", nil, &WidgetPushPayload{Key: "b", Lines: []string{"2"}})
 
 	all := b.AllWidgets()
 	if len(all) != 2 {
@@ -1382,16 +1452,24 @@ func TestUIBridge_WaitForIdle(t *testing.T) {
 	}
 }
 
-func TestUIBridge_NewSession_Unsupported(t *testing.T) {
+// runner.ts:383-387,557-562: a command context whose actions are not bound answers { cancelled: false } for newSession, fork, navigateTree and
+// switchSession, and a resolved no-op for reload, so the bridge never fails these calls with "not available".
+func TestUIBridge_UnboundSessionActionsAnswerLikePi(t *testing.T) {
 	b := newTestBridge(&mockUIContext{})
-	// No NewSession callback set → unsupported
-
-	res, err := call(b, "newSession", `{}`)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if res.Error == nil || res.Error.Code != "unsupported" {
-		t.Errorf("expected unsupported, got %+v", res.Error)
+	for _, tc := range []struct{ method, args, want string }{
+		{"newSession", `{}`, `{"cancelled":false}`},
+		{"fork", `{"entryId":"e1"}`, `{"cancelled":false}`},
+		{"navigateTree", `{"targetId":"e1"}`, `{"cancelled":false}`},
+		{"switchSession", `{"sessionPath":"/s.jsonl"}`, `{"cancelled":false}`},
+		{"reload", `{}`, ``},
+	} {
+		res, err := call(b, tc.method, tc.args)
+		if err != nil {
+			t.Fatalf("%s: %v", tc.method, err)
+		}
+		if res.Error != nil || string(res.Result) != tc.want {
+			t.Errorf("%s = %+v, want result %q and no error", tc.method, res, tc.want)
+		}
 	}
 }
 
@@ -1670,6 +1748,7 @@ func TestUIBridgePendingLoginSurvivesUIApplyError(t *testing.T) {
 
 // BindCommandActions exposes the session actions to subprocess extensions;
 // the flat wire arguments reach the bound action.
+// Pi: packages/coding-agent/src/core/extensions/types.ts:2208 (CommandActions.navigateTree).
 func TestUIBridge_BindCommandActionsNavigateTree(t *testing.T) {
 	b := NewUIBridge(func() {})
 	var gotTarget string
@@ -1718,7 +1797,8 @@ type blockingFooterUI struct {
 	applied []string
 }
 
-func (u *blockingFooterUI) SetFooter(factory any) {
+func (u *blockingFooterUI) SetFooter(build extension.FooterFactory) {
+	factory := frameOf(build, 3)
 	lines, _ := factory.([]string)
 	if len(lines) == 1 && lines[0] == "STALE" {
 		close(u.entered)
@@ -1777,8 +1857,14 @@ func (u *blockingReplayUI) apply(slot string, factory any) {
 	u.applied[slot] = append(u.applied[slot], lines...)
 }
 
-func (u *blockingReplayUI) SetFooter(factory any) { u.apply("footer", factory) }
-func (u *blockingReplayUI) SetHeader(factory any) { u.apply("header", factory) }
+func (u *blockingReplayUI) SetFooter(build extension.FooterFactory) {
+	factory := frameOf(build, 3)
+	u.apply("footer", factory)
+}
+func (u *blockingReplayUI) SetHeader(build extension.HeaderFactory) {
+	factory := frameOf(build, 2)
+	u.apply("header", factory)
+}
 
 // SetUIContext replays the header and footer onto a rebound UI. A live call that arrives during the replay must apply after it, or the replayed older value replaces the newer one (Pi applies setHeader/setFooter in program order, interactive-mode.ts:2427-2488).
 func TestUIBridgeSlotReplayAndLiveCallAreAtomic(t *testing.T) {
@@ -1936,5 +2022,46 @@ func TestUIBridgeLoginRetiresHeaderOnlyWhenAccepted(t *testing.T) {
 				t.Fatalf("header calls = %#v, rejected = %v", ui.headerCalls, rejected)
 			}
 		})
+	}
+}
+
+// pig additive (D107): SetFrontend's state_update runs on the bridge's owned
+// worker. StopFrontendPushes, which Host.Shutdown calls, waits for a push in
+// flight, and a change after it updates the flag without pushing.
+func TestUIBridge_StopFrontendPushesJoinsTheWorker(t *testing.T) {
+	b := newTestBridge(&mockUIContext{})
+	entered, release := make(chan struct{}), make(chan struct{})
+	var pushes atomic.Int32
+	b.OnStateChanged = func() {
+		if pushes.Add(1) == 1 {
+			close(entered)
+			<-release
+		}
+	}
+	b.SetFrontend(true)
+	<-entered
+	stopped := make(chan struct{})
+	go func() {
+		b.StopFrontendPushes()
+		close(stopped)
+	}()
+	select {
+	case <-stopped:
+		t.Fatal("StopFrontendPushes returned while a push was in flight")
+	case <-time.After(50 * time.Millisecond):
+	}
+	close(release)
+	select {
+	case <-stopped:
+	case <-time.After(5 * time.Second):
+		t.Fatal("StopFrontendPushes did not return after the push finished")
+	}
+	b.SetFrontend(false)
+	if b.Snapshot(nil, 0, false).Frontend {
+		t.Fatal("SetFrontend(false) after stop left the flag set")
+	}
+	time.Sleep(50 * time.Millisecond)
+	if got := pushes.Load(); got != 1 {
+		t.Fatalf("pushes = %d, want only the one before stop", got)
 	}
 }

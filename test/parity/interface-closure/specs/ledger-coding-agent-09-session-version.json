@@ -1,0 +1,18 @@
+[
+ {
+  "ids": [
+   "pkg:coding-agent/.#CURRENT_SESSION_VERSION"
+  ],
+  "targets": [
+   "internal/codingagent/session.go#CurrentSessionVersion"
+  ],
+  "production": [
+   "call:internal/codingagent/session.go#NewSession"
+  ],
+  "evidence": [
+   "test:internal/codingagent/session_restore_upstream_test.go#TestSessionMigrationUpstream",
+   "test:internal/codingagent/session_restore_upstream_test.go#TestSessionFileMigrationRewritesAndReloads"
+  ],
+  "rationale": "CURRENT_SESSION_VERSION: Go CurrentSessionVersion is the untyped constant 3, the header version NewSession writes and the migration target the tests assert."
+ }
+]

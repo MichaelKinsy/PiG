@@ -20,6 +20,7 @@ import (
 	"github.com/MichaelKinsy/PiG/coding/hookconfig"
 	"github.com/MichaelKinsy/PiG/internal/codingagent/frontmatter"
 	"github.com/MichaelKinsy/PiG/internal/ignorerules"
+	"github.com/MichaelKinsy/PiG/internal/nodefs"
 	"github.com/MichaelKinsy/PiG/internal/resolvepath"
 )
 
@@ -130,6 +131,24 @@ func (s *stringList) UnmarshalJSON(data []byte) error {
 func Discover(root string) (Resources, error) {
 	manifest, plugin := readDiscoveryManifests(root)
 	return discover(root, manifest, plugin), nil
+}
+
+// DescribesResources reports whether root declares Package resources: a "pi"
+// or "pig" package.json block, plugin metadata, or a conventional resource
+// directory, even an empty one. Upstream collectPackageResources answers the
+// same question for Pi's kinds (package-manager.ts:2235-2262); a local source
+// directory that declares none is itself an extension.
+func DescribesResources(root string) bool {
+	manifest, plugin := readDiscoveryManifests(root)
+	if plugin != nil || manifest != nil && (manifest.PI != nil || manifest.Pig != nil) {
+		return true
+	}
+	for _, kind := range []Kind{Extensions, Skills, Prompts, Themes, Agents, MCP, Hooks, AgentEnvironments} {
+		if _, err := os.Stat(filepath.Join(root, string(kind))); err == nil {
+			return true
+		}
+	}
+	return false
 }
 
 func readDiscoveryManifests(root string) (*packageManifest, *pluginManifest) {
@@ -1818,7 +1837,7 @@ func discoverSkillDirs(dir string, agentsMode bool) []string {
 		}
 		seenDirs[canonical] = struct{}{}
 		rules = ignorerules.Append(rules, current, root)
-		entries, err := os.ReadDir(current)
+		entries, err := nodefs.ReadDir(current)
 		if err != nil {
 			return
 		}
@@ -2241,7 +2260,7 @@ func collectFiles(dir, suffix string) []string {
 		}
 		seenDirs[canonical] = struct{}{}
 		rules = ignorerules.Append(rules, current, root)
-		entries, err := os.ReadDir(current)
+		entries, err := nodefs.ReadDir(current)
 		if err != nil {
 			return
 		}
@@ -2269,7 +2288,7 @@ func collectFiles(dir, suffix string) []string {
 }
 
 func discoverFlatFiles(dir, suffix string) []string {
-	entries, err := os.ReadDir(dir)
+	entries, err := nodefs.ReadDir(dir)
 	if err != nil {
 		return nil
 	}
@@ -2300,7 +2319,7 @@ func discoverExtensionEntries(dir string, root extensionRoot) []string {
 	}
 	// Upstream collectAutoExtensionEntries: symlinks are followed and the
 	// directory's own .gitignore, .ignore and .fdignore apply.
-	entries, err := os.ReadDir(dir)
+	entries, err := nodefs.ReadDir(dir)
 	if err != nil {
 		return nil
 	}

@@ -1,0 +1,249 @@
+[
+ {
+  "ids": [
+   "pkg:mcp/.#Implementation"
+  ],
+  "targets": [
+   "mcp/types.go#Implementation"
+  ],
+  "struct": {
+   "file": "mcp/types.go",
+   "type": "Implementation"
+  },
+  "production": [
+   "call:mcp/client.go#Client.initialize"
+  ],
+  "evidence": [
+   "test:mcp/client_test.go#TestClientInitializesTheConnectionBeforeExposingServerInformation"
+  ],
+  "rationale": "protocol/types.ts Implementation {name, version, title?}: Go Implementation with json tags of the same names; an empty Title is absent (omitempty)."
+ },
+ {
+  "ids": [
+   "pkg:mcp/.#Root"
+  ],
+  "targets": [
+   "mcp/types.go#Root"
+  ],
+  "struct": {
+   "file": "mcp/types.go",
+   "type": "Root"
+  },
+  "production": [
+   "call:mcp/client.go#NewClient"
+  ],
+  "evidence": [
+   "test:mcp/client_test.go#TestClientAnswersRootsListAndDispatchesNotifications"
+  ],
+  "rationale": "protocol/types.ts Root {uri, name?}: Go Root {URI, Name} with json tags uri and name."
+ },
+ {
+  "ids": [
+   "pkg:mcp/.#InitializeParams"
+  ],
+  "targets": [
+   "mcp/types.go#InitializeParams"
+  ],
+  "struct": {
+   "file": "mcp/types.go",
+   "type": "InitializeParams"
+  },
+  "production": [
+   "call:mcp/client.go#Client.initialize"
+  ],
+  "evidence": [
+   "test:mcp/client_test.go#TestClientInitializesTheConnectionBeforeExposingServerInformation"
+  ],
+  "rationale": "protocol/types.ts InitializeParams {protocolVersion, capabilities, clientInfo}: Go InitializeParams with the same json keys, sent by Client.initialize."
+ },
+ {
+  "ids": [
+   "pkg:mcp/.#InitializeResult"
+  ],
+  "targets": [
+   "mcp/types.go#InitializeResult"
+  ],
+  "struct": {
+   "file": "mcp/types.go",
+   "type": "InitializeResult"
+  },
+  "production": [
+   "call:mcp/client.go#validateInitializeResult"
+  ],
+  "evidence": [
+   "test:mcp/client_test.go#TestClientInitializesTheConnectionBeforeExposingServerInformation"
+  ],
+  "rationale": "protocol/types.ts InitializeResult {protocolVersion, capabilities, serverInfo, instructions?}: Go InitializeResult; Instructions is *string, nil for absent."
+ },
+ {
+  "ids": [
+   "pkg:mcp/.#ProgressNotification"
+  ],
+  "targets": [
+   "mcp/types.go#ProgressNotification"
+  ],
+  "struct": {
+   "file": "mcp/types.go",
+   "type": "ProgressNotification"
+  },
+  "production": [
+   "call:mcp/client.go#Client.handleProgress"
+  ],
+  "evidence": [
+   "test:mcp/client_test.go#TestClientRenewsTheTimeoutOnProgress"
+  ],
+  "rationale": "protocol/types.ts ProgressNotification {progressToken, progress, total?, message?}: Go ProgressNotification; progressToken is JSONRPCID (string or number), total is *float64."
+ },
+ {
+  "ids": [
+   "pkg:mcp/.#Resource"
+  ],
+  "targets": [
+   "mcp/types.go#Resource"
+  ],
+  "struct": {
+   "file": "mcp/types.go",
+   "type": "Resource"
+  },
+  "production": [
+   "call:mcp/client.go#toResource"
+  ],
+  "evidence": [
+   "test:mcp/client_test.go#TestClientListsAndReadsResources"
+  ],
+  "rationale": "protocol/types.ts Resource: Go Resource with the same json keys; size is *float64, _meta is json.RawMessage."
+ },
+ {
+  "ids": [
+   "pkg:mcp/.#ResourceTemplate"
+  ],
+  "targets": [
+   "mcp/types.go#ResourceTemplate"
+  ],
+  "struct": {
+   "file": "mcp/types.go",
+   "type": "ResourceTemplate"
+  },
+  "production": [
+   "call:mcp/client.go#Client.ListResourceTemplatesPage"
+  ],
+  "evidence": [
+   "test:mcp/client_test.go#TestClientListsAndReadsResources"
+  ],
+  "rationale": "protocol/types.ts ResourceTemplate: Go ResourceTemplate with the same json keys."
+ },
+ {
+  "ids": [
+   "pkg:mcp/.#ListResourcesResult"
+  ],
+  "targets": [
+   "mcp/types.go#ListResourcesResult"
+  ],
+  "struct": {
+   "file": "mcp/types.go",
+   "type": "ListResourcesResult"
+  },
+  "production": [
+   "call:mcp/client.go#Client.ListResourcesPage"
+  ],
+  "evidence": [
+   "test:mcp/client_test.go#TestClientListsAndReadsResources"
+  ],
+  "rationale": "protocol/types.ts ListResourcesResult {resources, nextCursor?, _meta?}: Go ListResourcesResult."
+ },
+ {
+  "ids": [
+   "pkg:mcp/.#ListResourceTemplatesResult"
+  ],
+  "targets": [
+   "mcp/types.go#ListResourceTemplatesResult"
+  ],
+  "struct": {
+   "file": "mcp/types.go",
+   "type": "ListResourceTemplatesResult"
+  },
+  "production": [
+   "call:mcp/client.go#Client.ListResourceTemplatesPage"
+  ],
+  "evidence": [
+   "test:mcp/client_test.go#TestClientListsAndReadsResources"
+  ],
+  "rationale": "protocol/types.ts ListResourceTemplatesResult: Go ListResourceTemplatesResult."
+ },
+ {
+  "ids": [
+   "pkg:mcp/.#ReadResourceResult"
+  ],
+  "targets": [
+   "mcp/types.go#ReadResourceResult"
+  ],
+  "struct": {
+   "file": "mcp/types.go",
+   "type": "ReadResourceResult"
+  },
+  "production": [
+   "call:mcp/client.go#validateReadResourceResult"
+  ],
+  "evidence": [
+   "test:mcp/client_test.go#TestClientListsAndReadsResources"
+  ],
+  "rationale": "protocol/types.ts ReadResourceResult {contents, _meta?}: Go ReadResourceResult; the BlobResourceContents | TextResourceContents union is the single ResourceContents struct."
+ },
+ {
+  "ids": [
+   "pkg:mcp/.#ToolExecution"
+  ],
+  "targets": [
+   "mcp/types.go#ToolExecution"
+  ],
+  "struct": {
+   "file": "mcp/types.go",
+   "type": "ToolExecution"
+  },
+  "production": [
+   "call:mcp/client.go#Client.ListTools"
+  ],
+  "evidence": [
+   "test:mcp/client_test.go#TestClientPaginatesToolsAndPreservesProtocolToolDefinitions"
+  ],
+  "rationale": "protocol/types.ts ToolExecution {taskSupport?}: Go ToolExecution with TaskSupport string; the closed forbidden|optional|required union is carried as the received string."
+ },
+ {
+  "ids": [
+   "pkg:mcp/.#ToolAnnotations"
+  ],
+  "targets": [
+   "mcp/types.go#ToolAnnotations"
+  ],
+  "struct": {
+   "file": "mcp/types.go",
+   "type": "ToolAnnotations"
+  },
+  "production": [
+   "call:mcp/client.go#Client.ListTools"
+  ],
+  "evidence": [
+   "test:mcp/client_test.go#TestClientPaginatesToolsAndPreservesProtocolToolDefinitions"
+  ],
+  "rationale": "protocol/types.ts ToolAnnotations {title?, readOnlyHint?, destructiveHint?, idempotentHint?, openWorldHint?}: Go ToolAnnotations with *bool hints, dropping a non-boolean hint as the Go UnmarshalJSON documents."
+ },
+ {
+  "ids": [
+   "pkg:mcp/.#Tool"
+  ],
+  "targets": [
+   "mcp/types.go#Tool"
+  ],
+  "struct": {
+   "file": "mcp/types.go",
+   "type": "Tool"
+  },
+  "production": [
+   "call:mcp/client.go#Client.ListTools"
+  ],
+  "evidence": [
+   "test:mcp/client_test.go#TestClientPaginatesToolsAndPreservesProtocolToolDefinitions"
+  ],
+  "rationale": "protocol/types.ts Tool: Go Tool with the same json keys; schemas and _meta are json.RawMessage."
+ }
+]

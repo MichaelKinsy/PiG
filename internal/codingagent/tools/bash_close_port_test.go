@@ -98,7 +98,7 @@ func TestChildProcessCloseWithInheritedStdioPort(t *testing.T) {
 			t.Fatal(err)
 		}
 		result := inheritedCloseWithinDeadline(t, cleanup, func(ctx context.Context) (BashResult, error) {
-			return ExecuteBashWithOperations(ctx, inheritedStdioCommand(pidFile), cwd, NewLocalBashOperations(nil, ""), BashExecOptions{})
+			return ExecuteBashWithOperations(ctx, inheritedStdioCommand(pidFile), cwd, CreateLocalBashOperations(nil), BashExecOptions{})
 		})
 		if !strings.Contains(result.Output, "child-exiting") || result.ExitCode == nil || *result.ExitCode != 0 || result.Cancelled {
 			t.Fatalf("result = %+v", result)

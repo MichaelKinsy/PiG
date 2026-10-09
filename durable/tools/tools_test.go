@@ -1,5 +1,9 @@
 package tools
 
+// pi: packages/durable/src/tools/file-mutation-queue.ts
+
+// pi: packages/durable/src/tools/bash.ts
+
 // Ported from packages/durable/test/tools.test.ts at v1.0.0 (itself ported from
 // packages/agent/test/harness/tools.test.ts and adapted to ToolRegistration:
 // tools take the environment from api.Env(), stream through api.Output(), and
@@ -9,6 +13,8 @@ package tools
 import (
 	"context"
 	"encoding/base64"
+	"encoding/json"
+	"errors"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -65,18 +71,12 @@ type fakeAPI struct {
 // OutputWindow is the window the test offers the tool; nil as for a tool that keeps the head of its output.
 func (api *fakeAPI) OutputWindow() *env.ShellOutputWindow { return api.window }
 
-func (api *fakeAPI) OutputSkipping(chunk any, skipped env.ShellOutputSkip) {
-	api.Output(chunk)
-	api.mu.Lock()
-	defer api.mu.Unlock()
-	api.skipped = append(api.skipped, skipped)
-}
-
 func (api *fakeAPI) Env() env.ExecutionEnv { return api.env }
 
-func (api *fakeAPI) Output(chunk any) {
+func (api *fakeAPI) Output(chunk any, skipped ...env.ShellOutputSkip) {
 	api.mu.Lock()
 	defer api.mu.Unlock()
+	api.skipped = append(api.skipped, skipped...)
 	switch typed := chunk.(type) {
 	case string:
 		api.output = append(api.output, typed)
@@ -350,7 +350,7 @@ func TestReadTruncatesLargeTextByLineCount(t *testing.T) {
 	if result.Diagnostics[0].Code != "truncated" {
 		t.Fatalf("code = %q", result.Diagnostics[0].Code)
 	}
-	truncation := result.Details.(map[string]any)["truncation"].(map[string]any)
+	truncation := plainMap(t, result.Details)["truncation"].(map[string]any)
 	want := map[string]any{"truncated": true, "truncatedBy": "lines", "totalLines": 2500.0, "outputLines": 2000.0}
 	for key, value := range want {
 		if truncation[key] != value {
@@ -382,7 +382,7 @@ func TestReadShowsTheStartOfALineLongerThanTheByteLimit(t *testing.T) {
 	if got, want := diagnosticText(result.ToolExecutionResult), "Line 1 is 78.1KB, exceeds the 50.0KB limit; showing its first 50.0KB. Use bash: sed -n '1p' long.txt | tail -c +51201"; got != want {
 		t.Fatalf("diagnostics = %q, want %q", got, want)
 	}
-	truncation := result.Details.(map[string]any)["truncation"].(map[string]any)
+	truncation := plainMap(t, result.Details)["truncation"].(map[string]any)
 	want := map[string]any{"truncated": true, "firstLineExceedsLimit": true, "outputBytes": 51_200.0, "outputLines": 1.0}
 	for key, value := range want {
 		if truncation[key] != value {
@@ -462,7 +462,7 @@ func TestEditAppliesDisjointEditsAndReturnsBothDiffFormats(t *testing.T) {
 		map[string]any{"oldText": "alpha\n", "newText": "ALPHA\n"},
 		map[string]any{"oldText": "gamma\n", "newText": "GAMMA\n"},
 	}}, executionEnv)
-	details := result.Details.(map[string]any)
+	details := plainMap(t, result.Details)
 	if got := textOutput(result.ToolExecutionResult); got != "Successfully replaced 2 block(s) in edit.txt." {
 		t.Fatalf("output = %q", got)
 	}
@@ -793,6 +793,11 @@ func TestBashReportsTheSpillOfACommandThatTimesOut(t *testing.T) {
 	}
 }
 
+// mutation-checked: dropping the reads and writes of BashExecution.Command, BashExecution.Cwd, BashExecution.Env fails it
+// Pi: packages/durable/src/tools/bash.ts:11 (command)
+// Pi: packages/durable/src/tools/bash.ts:26 (cwd)
+// Pi: packages/durable/src/tools/bash.ts:6 (env)
+// packages/durable/src/tools/bash.ts:23-35: BashExecution is the command, cwd, env and inheritEnv that BashToolOptions.prepare may change.
 func TestBashPreparesCommandCwdAndAnExplicitEnvironmentWithTheCallsApi(t *testing.T) {
 	executionEnv := envnode.NewNodeExecutionEnv(envnode.NodeExecutionEnvOptions{Cwd: t.TempDir(), ShellEnv: map[string]string{"PI_BASH_PREPARE_INHERITED": "inherited"}})
 	mustDo(t, executionEnv.CreateDir(background, "workspace", nil))
@@ -801,22 +806,20 @@ func TestBashPreparesCommandCwdAndAnExplicitEnvironmentWithTheCallsApi(t *testin
 	defer cancel()
 	var receivedEnv env.ExecutionEnv
 	var receivedCtx context.Context
-	tool := CreateBashTool(&BashToolOptions{
-		CommandPrefix: "prefix=ready",
-		Prepare: func(callContext context.Context, execution *BashExecution, api durable.ToolExecutionApi) error {
-			receivedEnv = api.Env()
-			receivedCtx = callContext
-			execution.Cwd = workspace
-			execution.Env = map[string]string{"PI_BASH_PREPARE_EXPLICIT": "explicit"}
-			execution.InheritEnv = false
-			execution.Command += "\n: > prepared-cwd\nprintf '%s:%s:%s' \"$prefix\" \"${PI_BASH_PREPARE_INHERITED-}\" \"$PI_BASH_PREPARE_EXPLICIT\""
-			// Git Bash on Windows reports $PWD as an MSYS path, so only POSIX compares it.
-			if runtime.GOOS != "windows" {
-				execution.Command += "\nprintf ':%s' \"$PWD\""
-			}
-			return nil
-		},
-	})
+	var prepare BashPrepare = func(callContext context.Context, execution *BashExecution, api durable.ToolExecutionApi) error {
+		receivedEnv = api.Env()
+		receivedCtx = callContext
+		execution.Cwd = workspace
+		execution.Env = map[string]string{"PI_BASH_PREPARE_EXPLICIT": "explicit"}
+		execution.InheritEnv = false
+		execution.Command += "\n: > prepared-cwd\nprintf '%s:%s:%s' \"$prefix\" \"${PI_BASH_PREPARE_INHERITED-}\" \"$PI_BASH_PREPARE_EXPLICIT\""
+		// Git Bash on Windows reports $PWD as an MSYS path, so only POSIX compares it.
+		if runtime.GOOS != "windows" {
+			execution.Command += "\nprintf ':%s' \"$PWD\""
+		}
+		return nil
+	}
+	tool := CreateBashTool(&BashToolOptions{CommandPrefix: "prefix=ready", Prepare: prepare})
 	result, err := run(tool, map[string]any{"command": ":"}, executionEnv, ctx)
 	mustDo(t, err)
 	if receivedEnv != env.ExecutionEnv(executionEnv) {
@@ -837,6 +840,7 @@ func TestBashPreparesCommandCwdAndAnExplicitEnvironmentWithTheCallsApi(t *testin
 	}
 }
 
+// packages/durable/src/tools/bash.ts:34: BashToolOptions.commandPrefix is prepended to the command.
 func TestBashSupportsCommandPrefixes(t *testing.T) {
 	result := mustRun(t, CreateBashTool(&BashToolOptions{CommandPrefix: "value=hello"}), map[string]any{"command": "printf $value"}, createEnv(t))
 	if got := strings.Join(result.output, ""); got != "hello" {
@@ -910,4 +914,35 @@ func applyPatch(t *testing.T, original, patch string) string {
 	}
 	out = append(out, oldLines[next:]...)
 	return strings.Join(out, "")
+}
+
+// upstream: packages/durable/src/tools/bash.ts prepareExecution awaits prepare; a rejection fails the call before the command runs.
+// mutation-checked: dropping the reads and writes of BashToolOptions.Prepare fails it
+// Pi: packages/durable/src/tools/bash.ts:23 (prepare)
+// packages/durable/src/tools/bash.ts:35: BashToolOptions.prepare runs before the command and its error fails the call.
+func TestBashPrepareErrorFailsTheCall(t *testing.T) {
+	executionEnv := envnode.NewNodeExecutionEnv(envnode.NodeExecutionEnvOptions{Cwd: t.TempDir()})
+	failure := errors.New("prepare refused")
+	var prepare BashPrepare = func(context.Context, *BashExecution, durable.ToolExecutionApi) error { return failure }
+	tool := CreateBashTool(&BashToolOptions{Prepare: prepare})
+	if _, err := run(tool, map[string]any{"command": "touch ran"}, executionEnv, background); !errors.Is(err, failure) {
+		t.Fatalf("error = %v, want the prepare failure", err)
+	}
+	if must(executionEnv.Exists(background, executionEnv.Cwd()+"/ran")) {
+		t.Fatal("the command ran although prepare failed")
+	}
+}
+
+// plainMap is value's JSON object as a map, for key lookups that ignore key order, as toEqual does.
+func plainMap(t *testing.T, value any) map[string]any {
+	t.Helper()
+	encoded, err := json.Marshal(value)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var object map[string]any
+	if err := json.Unmarshal(encoded, &object); err != nil {
+		t.Fatal(err)
+	}
+	return object
 }

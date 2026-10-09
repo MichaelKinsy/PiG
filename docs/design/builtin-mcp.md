@@ -18,8 +18,9 @@ The `mcp` and `mcp/oauth` packages depend on nothing else in PiG. `coding/mcpext
 
 A Piglet must be able to leave MCP out (issue #92). The boundary is one seam:
 
-- Nothing outside `coding/mcpext` imports it, except the registration seam `coding/extension/builtin/mcp_on.go`. It lists the replaceable built-in `mcp` after `codemode` and `tool-search`, as Pi's `extensions/index.ts` does, and builds the extension with `mcpext.NewBuiltin`, the only call to `mcpext.Factory`. `cmd/pig/builtin_extensions.go` configures it (`ConfigureMcp`: agent directory, config directory name, browser opener).
-- The registration file carries `//go:build !pig_strip_mcp`. A stripped build links `mcp_off.go`, which registers nothing, and `mcp`, `mcp/oauth` and `coding/mcpext` leave the binary (no `coding/mcpext` symbol remains).
+- Nothing outside `coding/mcpext` imports it, except the `pig_strip_mcp` seams below, chiefly the registration seam `coding/extension/builtin/mcp_on.go`. It lists the replaceable built-in `mcp` after `codemode` and `tool-search`, as Pi's `extensions/index.ts` does, and builds the extension with `mcpext.NewBuiltin`, the only call to `mcpext.Factory`. `coding/cli/builtin_extensions.go` configures it (`ConfigureMcp`: agent directory, config directory name, browser opener).
+- The registration file carries `//go:build !pig_strip_mcp`, as do the two other importers of `coding/mcpext`: `coding/cli/mcp_command.go` (`pig mcp`) and `internal/codingagent/interactive_radius_mcp.go` (Pi's Radius MCP offer after a Radius sign-in). A stripped build links `mcp_off.go`, which registers nothing and records `mcp` as stripped, `coding/cli/mcp_command_stripped.go`, where `pig mcp ...` prints `pig mcp is stripped from this Piglet (strip.extensions: mcp)` and exits 1, and `interactive_radius_mcp_stripped.go`, which offers nothing. `mcp`, `mcp/oauth` and `coding/mcpext` leave the binary (no `coding/mcpext` symbol remains; `TestStripMcpBuildOmitsMcpClientAndExtension`).
+- A stripped `builtin:mcp`, from the settings or an explicit `-e builtin:mcp`, is dropped from the built-in extension paths silently (`enabledBuiltinExtensionPaths` in `coding/cli/extension_set.go`), as the release after the pinned Pi filters it with `--no-mcp` (`disabledBuiltinExtensions`); a runtime strip list leaves the `pig mcp` command working, as `--no-mcp` does.
 - Runtime disable is not calling `Factory`. `--no-extensions` and `-e builtin:mcp` selection follow upstream's `builtin:` naming, which the resource loader family owns.
 - A Piglet's tool scope keeps working: MCP tools are ordinary tools whose names start with `mcp__<server>__` and whose namespace is `mcp__<server>`.
 
@@ -37,7 +38,7 @@ These follow from Go, not from a decision to differ:
 
 ## Session wiring
 
-`builtin:mcp` loads through the one extension loader every mode shares (`cmd/pig/extension_set.go`), so print, JSON, RPC and interactive modes get it from the same list. The pieces that make it work in a Session, each proven by the real binary tests in `cmd/pig/mcp_builtin_binary_test.go`:
+`builtin:mcp` loads through the one extension loader every mode shares (`coding/cli/extension_set.go`), so print, JSON, RPC and interactive modes get it from the same list. The pieces that make it work in a Session, each proven by the real binary tests in `coding/cli/mcp_builtin_binary_test.go`:
 
 - `Context.RefreshTools` and `Context.GetMcpServers` (`agent-session.ts` `_bindExtensionCore`): a tool registered after load is admitted and declared; the extension reads the servers other extensions registered. Interactive mode answers `getAllTools`, `setActiveTools` and `refreshTools` from the Session's registry and loadout, as the other modes do.
 - `Runner.ReportUnhandledMcpServers` runs after `session_start` in every bind and after a reload (`agent-session.ts` `bindExtensions`, `reload`).

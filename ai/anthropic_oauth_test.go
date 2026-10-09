@@ -350,24 +350,36 @@ func TestAnthropicBetaHeaderMergeRules(t *testing.T) {
 		{
 			name: "thinking on a budget-thinking model adds interleaved thinking",
 			cfg:  AnthropicConfig{APIKey: "anthropic-key", Model: "claude-haiku-4-5"},
-			opts: StreamOptions{Thinking: ThinkingHigh},
+			opts: StreamOptions{Thinking: ThinkingLevelHigh},
 			want: new("interleaved-thinking-2025-05-14"),
 		},
 		{
 			name: "OAuth betas lead the computed list",
 			cfg:  AnthropicConfig{APIKey: "sk-ant-oat-test", Model: "claude-haiku-4-5"},
-			opts: StreamOptions{Thinking: ThinkingHigh},
+			opts: StreamOptions{Thinking: ThinkingLevelHigh},
 			want: new("claude-code-20250219,oauth-2025-04-20,interleaved-thinking-2025-05-14"),
+		},
+		{
+			// anthropic-messages.ts:1108-1115 getBetaFeatures: (options.interleavedThinking ?? true) gates the interleaved-thinking beta.
+			name: "interleavedThinking false omits interleaved thinking",
+			cfg:  AnthropicConfig{APIKey: "anthropic-key", Model: "claude-haiku-4-5"},
+			opts: StreamOptions{Thinking: ThinkingLevelHigh, InterleavedThinking: new(false)},
+		},
+		{
+			name: "interleavedThinking true keeps interleaved thinking",
+			cfg:  AnthropicConfig{APIKey: "anthropic-key", Model: "claude-haiku-4-5"},
+			opts: StreamOptions{Thinking: ThinkingLevelHigh, InterleavedThinking: new(true)},
+			want: new("interleaved-thinking-2025-05-14"),
 		},
 		{
 			name: "thinking off omits interleaved thinking",
 			cfg:  AnthropicConfig{APIKey: "anthropic-key", Model: "claude-haiku-4-5"},
-			opts: StreamOptions{Thinking: ThinkingOff},
+			opts: StreamOptions{Thinking: ""},
 		},
 		{
 			name: "non-reasoning model omits interleaved thinking",
 			cfg:  AnthropicConfig{APIKey: "anthropic-key"},
-			opts: StreamOptions{Thinking: ThinkingHigh},
+			opts: StreamOptions{Thinking: ThinkingLevelHigh},
 		},
 		{
 			name: "tools without eager input streaming add fine-grained tool streaming",

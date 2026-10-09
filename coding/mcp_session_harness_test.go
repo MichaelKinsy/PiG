@@ -3,6 +3,8 @@
 package coding
 
 import (
+	"github.com/MichaelKinsy/PiG/coding/extension/factoryload"
+
 	"context"
 	"encoding/json"
 	"slices"
@@ -194,7 +196,7 @@ type mcpSessionOptions struct {
 	autoEnableCodemode *bool
 	name               string
 	initializeDelay    time.Duration
-	startupWait        time.Duration
+	startupWait        *int
 	// config replaces the single configured server, for the tests of servers registered by extensions.
 	config *[]mcpext.McpServerEntry
 	// transport replaces the fake server's transport factory.
@@ -207,6 +209,12 @@ type mcpSessionOptions struct {
 	realTransport bool
 	credentials   *mcpext.McpOAuthCredentialStore
 	openURL       func(url string)
+	// allowedTools and excludedTools are `--tools` and `--exclude-tools`. A non-nil allowedTools also gives the Session the built-in tools, as the upstream suite harness always has them.
+	allowedTools, excludedTools map[string]struct{}
+	// sessionManager is the session to continue.
+	sessionManager *codingagent.Session
+	// skipToolWait leaves out the wait for `mcp__docs__search` to register (upstream waitForTools: false).
+	skipToolWait bool
 }
 
 type mcpSession struct {
@@ -221,26 +229,18 @@ type mcpSession struct {
 
 // loadMcpBuiltin resolves a built-in extension the way the CLI's resource loader runs it (resource-loader.ts
 // loadExtensionPaths, builtinExtensions), naming it by its `builtin:<name>` path.
-func loadMcpBuiltin(t *testing.T, name string, options builtin.Options) extension.Extension {
+func loadMcpBuiltin(t *testing.T, runtime *extension.ExtensionRuntime, name string, options builtin.Options) extension.Extension {
 	t.Helper()
 	entry, err := builtin.Resolve("builtin:"+name, options)
 	if err != nil {
 		t.Fatal(err)
 	}
-	ext, err := entry.Factory()
+	ext, err := factoryload.LoadExtensionFromFactory(entry.Factory, ".", extension.CreateEventBus(), runtime, entry.Path(), factoryload.WithSourceInfo(codingagent.PiSourceInfo{Path: entry.Path(), Source: codingagent.SyntheticPathSource(entry.Path()), Scope: "temporary", Origin: "top-level"}))
 	if err != nil {
 		t.Fatal(err)
 	}
 	info := codingagent.PiSourceInfo{Path: entry.Path(), Source: codingagent.SyntheticPathSource(entry.Path()), Scope: "temporary", Origin: "top-level"}
 	ext.Name, ext.Path, ext.ResolvedPath, ext.SourceInfo, ext.Replaceable, ext.Hidden = entry.Name, entry.Path(), entry.Path(), info, entry.Replaceable, true
-	for toolName, tool := range ext.Tools {
-		tool.SourceInfo = info
-		ext.Tools[toolName] = tool
-	}
-	for commandName, command := range ext.Commands {
-		command.SourceInfo = info
-		ext.Commands[commandName] = command
-	}
 	return ext
 }
 
@@ -273,11 +273,11 @@ func newMCPSession(t *testing.T, exposure extension.McpExposure, listTools func(
 		}
 	}
 	options := builtin.Options{Mcp: mcpext.Options{
-		LoadConfig: func(mcpext.EventContext) mcpext.LoadedMcpConfig {
+		LoadConfig: func(context.Context) mcpext.LoadedMcpConfig {
 			return mcpext.LoadedMcpConfig{Servers: entries, AutoEnableCodemode: opts.autoEnableCodemode}
 		},
 		CreateTransport: createTransport,
-		StartupWait:     opts.startupWait,
+		StartupWaitMs:   opts.startupWait,
 		Credentials:     opts.credentials,
 		OpenURL:         opts.openURL,
 		LogPath:         t.TempDir() + "/mcp.log",
@@ -286,14 +286,19 @@ func newMCPSession(t *testing.T, exposure extension.McpExposure, listTools func(
 		options.Mcp.Credentials = mcpext.NewMcpOAuthCredentialStoreWithBackend(&mcpext.InMemoryAuthStorageBackend{}, "")
 	}
 	extensions := slices.Clone(opts.extensions)
+	runtime := extension.CreateExtensionRuntime()
 	if !opts.onlyMCP {
-		extensions = append(extensions, loadMcpBuiltin(t, "codemode", options))
+		extensions = append(extensions, loadMcpBuiltin(t, runtime, "codemode", options))
 		if !opts.withoutToolSearch {
-			extensions = append(extensions, loadMcpBuiltin(t, "tool-search", options))
+			extensions = append(extensions, loadMcpBuiltin(t, runtime, "tool-search", options))
 		}
 	}
-	extensions = append(extensions, loadMcpBuiltin(t, "mcp", options))
-	s.recoveryHarness = newBoundaryHarness(t, harnessOptions{tools: []agent.AgentTool{}, extensions: extensions}, responses...)
+	extensions = append(extensions, loadMcpBuiltin(t, runtime, "mcp", options))
+	harness := harnessOptions{tools: []agent.AgentTool{}, extensions: extensions, runtime: runtime, allowedTools: opts.allowedTools, excludedTools: opts.excludedTools, sessionManager: opts.sessionManager}
+	if opts.allowedTools != nil {
+		harness.tools = nil
+	}
+	s.recoveryHarness = newBoundaryHarness(t, harness, responses...)
 	s.ui = &mcpTestUI{UIContext: extension.NoopUIContext, notes: s.notes, input: opts.uiInput}
 	if opts.builtInTools != nil {
 		s.session.SetActiveToolsByName(opts.builtInTools)
@@ -312,7 +317,15 @@ func newMCPSession(t *testing.T, exposure extension.McpExposure, listTools func(
 func setupMCP(t *testing.T, exposure extension.McpExposure, listTools func() []map[string]any, opts mcpSessionOptions) *mcpSession {
 	t.Helper()
 	s := newMCPSession(t, exposure, listTools, opts)
-	mcpWaitFor(t, "mcp__docs__search to be registered", func() bool { return s.hasTool("mcp__docs__search") })
+	if !opts.skipToolWait {
+		mcpWaitFor(t, "mcp__docs__search to be registered", func() bool { return s.hasTool("mcp__docs__search") })
+		if opts.resources && opts.allowedTools == nil && exposure != extension.McpExposureHidden { // a --tools filter decides which resource tools exist at all
+			// Pi registers a server's tools and the resource tools in one synchronous turn, so waiting for the search tool is enough there. Here each registration is its own call, and a prompt that starts between them runs a script that finds only some of the tools.
+			for _, name := range []string{"list_mcp_resources", "list_mcp_resource_templates", "read_mcp_resource"} {
+				mcpWaitFor(t, name+" to be registered", func() bool { return s.hasTool(name) })
+			}
+		}
+	}
 	return s
 }
 

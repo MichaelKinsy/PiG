@@ -191,7 +191,7 @@ func TestInteractiveOverlayCloseDoesNotReplayTranscript(t *testing.T) {
 	t.Setenv("PI_CLEAR_ON_SHRINK", "")
 	w := &countingWriter{}
 	ui, _, _ := buildConversation(w, 400)
-	ui.OpenOverlay(NewExtensionSelector("Choose", []string{"one", "two", "three"}), OverlayOptions{})
+	ui.ShowOverlay(NewExtensionSelectorComponent("Choose", []string{"one", "two", "three"}, nil, nil), OverlayOptions{})
 	ui.Render()
 	beforeBytes := w.bytes
 	beforeClears := w.clears

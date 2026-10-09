@@ -1,0 +1,102 @@
+[
+ {
+  "ids": [
+   "pkg:codemode/.#CodemodeTool"
+  ],
+  "targets": [
+   "codemode/types.go#Tool"
+  ],
+  "struct": {
+   "file": "codemode/types.go",
+   "type": "Tool"
+  },
+  "production": [
+   "call:codemode/declarations.go#RenderDeclarations"
+  ],
+  "evidence": [
+   "test:codemode/sandbox_test.go#TestGroupsNamespacedGlobalsAndSpreadsArgumentsOnRequest",
+   "test:codemode/declarations_test.go#TestRenderDeclarationsRendersNamespacedGlobalsAndExplicitSignatures"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; a rejection is the returned error. AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "CodemodeTool: Go Tool has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+ },
+ {
+  "ids": [
+   "pkg:codemode/.#CodemodeSandbox::property:close"
+  ],
+  "targets": [
+   "codemode/sandbox.go#Sandbox.Close"
+  ],
+  "production": [
+   "call:coding/extension/builtin/codemode/execute.go#Execute"
+  ],
+  "evidence": [
+   "test:codemode/sandbox_test.go#TestRejectsExecuteAfterClose",
+   "test:codemode/lifetime_test.go#TestExecuteReturnsOnlyAfterTheVMIsClosedForEveryTerminalKind"
+  ],
+  "rationale": "CodemodeSandbox.close is the Go method codemode.Sandbox.Close; signature reviewed against the upstream declaration (a Promise or rejection is the returned error; AbortSignal is the ctx argument; options are the ExecuteOptions struct).",
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; a rejection is the returned error. AbortSignal is the context.Context argument; no detached goroutine."
+ },
+ {
+  "ids": [
+   "pkg:codemode/.#CodemodeSandbox::property:execute"
+  ],
+  "targets": [
+   "codemode/sandbox.go#Sandbox.Execute"
+  ],
+  "production": [
+   "call:coding/extension/builtin/codemode/execute.go#Execute"
+  ],
+  "evidence": [
+   "test:codemode/sandbox_test.go#TestTerminatesASynchronousInfiniteLoopOnTimeout",
+   "test:codemode/sandbox_test.go#TestSupportsRegisterAndUnregisterBetweenExecutions"
+  ],
+  "rationale": "CodemodeSandbox.execute is the Go method codemode.Sandbox.Execute; signature reviewed against the upstream declaration (a Promise or rejection is the returned error; AbortSignal is the ctx argument; options are the ExecuteOptions struct).",
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; a rejection is the returned error. AbortSignal is the context.Context argument; no detached goroutine."
+ },
+ {
+  "ids": [
+   "pkg:codemode/.#CodemodeSandbox::property:registerTool"
+  ],
+  "targets": [
+   "codemode/sandbox.go#Sandbox.RegisterTool"
+  ],
+  "production": [
+   "call:codemode/sandbox.go#NewSandbox"
+  ],
+  "evidence": [
+   "test:codemode/sandbox_test.go#TestSupportsRegisterAndUnregisterBetweenExecutions"
+  ],
+  "rationale": "CodemodeSandbox.registerTool is the Go method codemode.Sandbox.RegisterTool; signature reviewed against the upstream declaration (a Promise or rejection is the returned error; AbortSignal is the ctx argument; options are the ExecuteOptions struct)."
+ },
+ {
+  "ids": [
+   "pkg:codemode/.#CodemodeSandbox::property:tools"
+  ],
+  "targets": [
+   "codemode/sandbox.go#Sandbox.Tools"
+  ],
+  "production": [
+   "public-api:codemode/sandbox.go#Sandbox.Tools"
+  ],
+  "evidence": [
+   "test:codemode/sandbox_test.go#TestSupportsRegisterAndUnregisterBetweenExecutions"
+  ],
+  "rationale": "CodemodeSandbox.tools is the Go method codemode.Sandbox.Tools; signature reviewed against the upstream declaration (a Promise or rejection is the returned error; AbortSignal is the ctx argument; options are the ExecuteOptions struct)."
+ },
+ {
+  "ids": [
+   "pkg:codemode/.#CodemodeSandbox::property:unregisterTool"
+  ],
+  "targets": [
+   "codemode/sandbox.go#Sandbox.UnregisterTool"
+  ],
+  "production": [
+   "public-api:codemode/sandbox.go#Sandbox.UnregisterTool"
+  ],
+  "evidence": [
+   "test:codemode/sandbox_test.go#TestSupportsRegisterAndUnregisterBetweenExecutions"
+  ],
+  "rationale": "CodemodeSandbox.unregisterTool is the Go method codemode.Sandbox.UnregisterTool; signature reviewed against the upstream declaration (a Promise or rejection is the returned error; AbortSignal is the ctx argument; options are the ExecuteOptions struct)."
+ }
+]

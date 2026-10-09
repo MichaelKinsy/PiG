@@ -1,5 +1,7 @@
 package llama
 
+// pi: packages/coding-agent/src/extensions/llama/ui.ts
+
 import (
 	"context"
 	"errors"

@@ -181,3 +181,17 @@ func TestCredentialRuntimePostCommitAvailabilityErrors(t *testing.T) {
 		})
 	}
 }
+
+// model-runtime.ts:135-148: CredentialSynchronizationError(providerId, operation, credential, { cause }) keeps all four and words its message
+// "Credential <operation> committed for <providerId>, but local synchronization failed".
+func TestNewCredentialSynchronizationErrorKeepsItsFieldsAndMessage(t *testing.T) {
+	cause := errors.New("snapshot failed")
+	credential := &ai.Credential{Type: ai.CredentialAPIKey, Key: "k"}
+	err := NewCredentialSynchronizationError("anthropic", CredentialSynchronizationRemoveRuntimeAPIKey, credential, cause)
+	if err.ProviderID != "anthropic" || err.Operation != CredentialSynchronizationRemoveRuntimeAPIKey || err.Credential != credential || !errors.Is(err, cause) {
+		t.Fatalf("fields: %+v", err)
+	}
+	if want := "Credential removeRuntimeApiKey committed for anthropic, but local synchronization failed"; err.Error() != want {
+		t.Fatalf("message = %q, want %q", err.Error(), want)
+	}
+}

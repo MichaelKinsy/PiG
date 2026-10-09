@@ -45,3 +45,8 @@ Keep the subscription alive until you want to unsubscribe. Return promptly. The 
 `JsString::from_units` and `as_units` preserve every unit. `From<&str>` and `From<String>` accept ordinary Rust strings. `to_string` returns an error for unmatched units. `to_string_lossy` explicitly replaces unmatched units for display.
 
 Serialize `JsString` directly with `serde_json::to_string` or `serde_json::to_vec`. The result is valid JSON with ordinary `\u` escapes for lone surrogates. Do not first convert it through `serde_json::Value` or `json!`: `Value::String` cannot hold a lone surrogate. The SDK's typed terminal and editor host calls avoid that conversion internally.
+
+## Mouse input
+
+A `RemoteComponent` or `ViewComponent` that returns `true` from `handles_mouse` receives Pi's fullscreen mouse events in `handle_mouse(&MouseEvent)` (snake_case fields such as `screen_x`, `wheel_delta`, `click_count`; `x`/`y` local to the component), on the same serial queue as `handle_input` and with the same result meaning. Regular `tuiMode` delivers none, as in Pi. See "Mouse in custom components" in `docs/extension-authoring.md`.
+

@@ -75,25 +75,28 @@ func filterAllowedAgentTools(ts []agent.AgentTool, allowed map[string]struct{}) 
 	if allowed == nil {
 		return ts
 	}
+	// Entries are tool names or `*` patterns (createToolNameMatcher).
+	named := extension.ToolNameMatcher(allowed)
 	filtered := make([]agent.AgentTool, 0, len(ts))
 	for _, tool := range ts {
-		if _, ok := allowed[tool.Name()]; ok {
+		if named(tool.Name()) {
 			filtered = append(filtered, tool)
 		}
 	}
 	return filtered
 }
 
-// removeExcludedAgentTools drops every tool whose name is in the denylist,
+// removeExcludedAgentTools drops every tool whose name matches the denylist,
 // gating built-in and extension tools alike on reload. Mirrors upstream
-// isAllowedTool's `!excludedToolNames?.has(name)` (agent-session.ts:2288).
+// isAllowedTool's `_excludedTools?.(name)` (agent-session.ts:1524).
 func removeExcludedAgentTools(ts []agent.AgentTool, excluded map[string]struct{}) []agent.AgentTool {
 	if len(excluded) == 0 {
 		return ts
 	}
+	matched := extension.ToolNameMatcher(excluded)
 	filtered := make([]agent.AgentTool, 0, len(ts))
 	for _, tool := range ts {
-		if _, ok := excluded[tool.Name()]; !ok {
+		if !matched(tool.Name()) {
 			filtered = append(filtered, tool)
 		}
 	}
@@ -124,7 +127,7 @@ func (m *InteractiveMode) refreshAgentTools() []error {
 }
 
 func (m *InteractiveMode) buildAgentTools() ([]agent.AgentTool, []error) {
-	builtin := tools.CreateAllTools(m.opts.CWD, m.opts.Settings, filepath.Join(m.opts.AgentDir, "bin"))
+	builtin := tools.CreateAllTools(m.opts.CWD, tools.ToolsOptionsFromSettings(m.opts.Settings, filepath.Join(m.opts.AgentDir, "bin")))
 	// An explicit tool set (--tools, or an extension's setActiveTools) names the
 	// active built-ins itself; the startup default set applies only without one.
 	active := m.opts.ActiveBuiltinTools
@@ -132,6 +135,10 @@ func (m *InteractiveMode) buildAgentTools() ([]agent.AgentTool, []error) {
 		active = nil
 	}
 	allTools := tools.SelectBuiltinTools(builtin, active, m.opts.AllowedTools)
+	if m.opts.AllowedTools != nil {
+		// upstream: agent-session.ts:3552-3554 activates initialActiveToolNames first, in the caller's order.
+		allTools = orderToolsByInitialNames(allTools, m.opts.InitialActiveToolNames)
+	}
 	if m.newRunner != nil && m.opts.BridgeExtensionTools != nil {
 		bridged, errs := m.opts.BridgeExtensionTools(m.newRunner.Tools())
 		allTools = append(allTools, bridged...)
@@ -149,9 +156,10 @@ func (m *InteractiveMode) buildAgentTools() ([]agent.AgentTool, []error) {
 func (m *InteractiveMode) replaceExtensionRunner(exts []extension.Extension) []error {
 	previousRunner := m.newRunner
 	allExts := ExtensionsInLoadOrder(exts, m.opts.BuiltinExtensions)
-	// The runner shares the host's registrations (MCP servers, providers, virtual models) as the Session's first runner does.
+	// The runner shares the registrations of the extension runtime (MCP servers, providers, virtual models) as the Session's first runner does:
+	// the compiled-in factories that ReloadBuiltinExtensions runs register against it.
 	var hostRuntime *extension.ExtensionRuntime
-	if m.opts.SubprocessHost != nil && previousRunner != nil {
+	if previousRunner != nil {
 		hostRuntime = previousRunner.Runtime()
 	}
 	m.newRunner = inproc.NewRunner(allExts, m.opts.CWD, hostRuntime)
@@ -163,7 +171,11 @@ func (m *InteractiveMode) replaceExtensionRunner(exts []extension.Extension) []e
 		m.bindExtensionCommandActions()
 	}
 	if previousRunner != nil {
-		previousRunner.Invalidate("")
+		if hostRuntime != nil {
+			previousRunner.InvalidateKeepingRuntime("")
+		} else {
+			previousRunner.Invalidate("")
+		}
 	}
 	ctx := m.runCtx
 	if ctx == nil {
@@ -206,7 +218,7 @@ func (m *InteractiveMode) reloadSkillsFromPaths() {
 		}
 		for _, skill := range loaded {
 			for _, diagnostic := range SkillDiagnostics(skill) {
-				_, _ = fmt.Fprintf(stderrWriter(), "skill reload %s: %s\n", skill.Path, diagnostic)
+				_, _ = fmt.Fprintf(stderrWriter(), "skill reload %s: %s\n", skill.FilePath, diagnostic)
 			}
 			if strings.TrimSpace(skill.Description) != "" {
 				allSkills = append(allSkills, skill)
@@ -279,14 +291,25 @@ func extensionBaseDir(extensionPath string) string {
 // resources_discover handler returned: source "extension:<name>", scope
 // "temporary", and the extension's directory as baseDir.
 func ExtensionDiscoveredSourceInfo(path, kind, extensionPath string) ResourceSourceInfo {
+	metadata := ExtensionDiscoveredPathMetadata(extensionPath)
 	return ResourceSourceInfo{
 		Path:         path,
 		ResourceType: kind,
 		Enabled:      true,
-		Scope:        "temporary",
-		Origin:       "top-level",
-		Source:       extensionSourceLabel(extensionPath),
-		BaseDir:      extensionBaseDir(extensionPath),
+		Scope:        metadata.Scope,
+		Origin:       metadata.Origin,
+		Source:       metadata.Source,
+		BaseDir:      metadata.BaseDir,
+	}
+}
+
+// ExtensionDiscoveredPathMetadata is the metadata agent-session.ts buildExtensionResourcePaths gives a path an extension's resources_discover handler returned: source "extension:<name>", scope "temporary", origin "top-level", and the extension's directory as baseDir (none for a synthetic path).
+func ExtensionDiscoveredPathMetadata(extensionPath string) PathMetadata {
+	return PathMetadata{
+		Source:  extensionSourceLabel(extensionPath),
+		Scope:   "temporary",
+		Origin:  "top-level",
+		BaseDir: extensionBaseDir(extensionPath),
 	}
 }
 
@@ -366,4 +389,28 @@ func toolNames(ts []agent.AgentTool) []string {
 	}
 	slices.Sort(out)
 	return out
+}
+
+// orderToolsByInitialNames puts the tools the caller's list names first, in the list's order; the others keep their order after them.
+func orderToolsByInitialNames(all []agent.AgentTool, initial []string) []agent.AgentTool {
+	if len(initial) == 0 {
+		return all
+	}
+	ordered := make([]agent.AgentTool, 0, len(all))
+	taken := make(map[int]struct{}, len(all))
+	for _, name := range initial {
+		for i, tool := range all {
+			if _, done := taken[i]; !done && tool.Name() == name {
+				ordered = append(ordered, tool)
+				taken[i] = struct{}{}
+				break
+			}
+		}
+	}
+	for i, tool := range all {
+		if _, done := taken[i]; !done {
+			ordered = append(ordered, tool)
+		}
+	}
+	return ordered
 }

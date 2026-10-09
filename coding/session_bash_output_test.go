@@ -22,7 +22,7 @@ func TestBashOutputPublishesSessionEventsBeforeReturn(t *testing.T) {
 		options.OnData([]byte("world"))
 		return extension.BashOperationsResult{ExitCode: new(0)}, nil
 	})
-	_, err := h.session.ExecuteBashWithOperations(t.Context(), "custom", false, func(delta string) { order = append(order, delta) }, operations, nil)
+	_, err := h.session.ExecuteBash(t.Context(), "custom", func(delta string) { order = append(order, delta) }, &ExecuteBashOptions{Operations: operations})
 	unsubscribe()
 	if err != nil {
 		t.Fatal(err)
@@ -48,7 +48,7 @@ func TestUpstreamBashPersistenceOutputUpdates(t *testing.T) {
 		options.OnData([]byte("world"))
 		return extension.BashOperationsResult{ExitCode: new(0)}, nil
 	})
-	_, err := h.session.ExecuteBashWithOperations(t.Context(), "custom", false, func(delta string) { callbackDeltas = append(callbackDeltas, delta) }, operations, new("bash-1"))
+	_, err := h.session.ExecuteBash(t.Context(), "custom", func(delta string) { callbackDeltas = append(callbackDeltas, delta) }, &ExecuteBashOptions{Operations: operations, ID: new("bash-1")})
 	unsubscribe()
 	if err != nil {
 		t.Fatal(err)
@@ -76,7 +76,7 @@ func TestBashOutputUpdatesWithoutCallback(t *testing.T) {
 			options.OnData([]byte("output"))
 			return extension.BashOperationsResult{ExitCode: new(0)}, nil
 		})
-		_, err := h.session.ExecuteBashWithOperations(t.Context(), "custom", false, nil, operations, id)
+		_, err := h.session.ExecuteBash(t.Context(), "custom", nil, &ExecuteBashOptions{Operations: operations, ID: id})
 		unsubscribe()
 		if err != nil {
 			t.Fatal(err)

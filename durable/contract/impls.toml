@@ -1,0 +1,39 @@
+# Implementations the gate can run (CONTRACT section 7.5). `pi` is the reference and is always available. A candidate is
+# available when its paths exist; a missing path makes its rows `pending`, never `pass`.
+#
+#   candidate_dir  a directory laid out like packages/durable/src whose modules replace the reference's (the JS facade of ADR D12);
+#                  runs the E, U and SC rows. Its storage modules open stores with globalThis[Symbol.for("pig.contract")].openStore.
+#   wasm           the core module the facade runs (passed as DCORE_WASM); rows stay pending until the build produces it
+#   setup          a module of the candidate imported before the scenario program (it calls useCore with DCORE_WASM)
+#   env            environment passed to every run of the candidate (a table)
+#   bench          a Node module exporting `runBench(options)` for the W, X1 and H rows (see lib/impl.mjs for the options).
+#   native_exe     a native bench host (the command line in impls/native.mjs); runs the W, X1 and H rows
+#   build          the command that produces the paths above; `make durable-contract` runs it first when the paths are missing.
+#   lanes          the lanes whose code this build contains; a failed row is reported against the row's owner.
+
+# The JS facade is durable/core/host/cf/src/facade (dcore-host): index.ts replaces packages/durable/src/index.ts, and the
+# modules the examples import by path (env/node.ts, tools/index.ts, storage/sqlite/node.ts, storage/jsonl/node.ts) must exist
+# beside it. `env` is passed to every run of the candidate (the facade picks the core build by DURABLE_CORE_TOOLCHAIN).
+[[impl]]
+name = "wasm-tinygo"
+about = "the core built with TinyGo (-target=wasip1 -scheduler=none), in the JS host"
+candidate_dir = "durable/core/host/cf/src/facade"
+env = { DURABLE_CORE_TOOLCHAIN = "tinygo" }
+wasm = "durable/core/host/cf/dist/core-tinygo.wasm"
+setup = "durable/core/host/cf/src/facade/contract-setup.ts"
+build = "sh durable/core/budget/build-wasm.sh tinygo durable/core/cmd/corewasm durable/core/host/cf/dist/core-tinygo.wasm"
+
+[[impl]]
+name = "wasm-go"
+about = "the same source built with Go (GOOS=wasip1 reactor), in the JS host"
+candidate_dir = "durable/core/host/cf/src/facade"
+env = { DURABLE_CORE_TOOLCHAIN = "go" }
+wasm = "durable/core/host/cf/dist/core-go.wasm"
+setup = "durable/core/host/cf/src/facade/contract-setup.ts"
+build = "sh durable/core/budget/build-wasm.sh go durable/core/cmd/corewasm durable/core/host/cf/dist/core-go.wasm"
+
+[[impl]]
+name = "native"
+about = "the same source built natively (modernc SQLite) and run by a Go bench host; its statement trace is replayed through capsql (impls/native.mjs)"
+native_exe = "durable/core/sqlhost/bin/bench"
+build = "go build -o durable/core/sqlhost/bin/bench ./durable/core/sqlhost/cmd/bench"

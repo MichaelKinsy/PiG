@@ -45,13 +45,14 @@ var InboxDoc = durable.DefineDoc(durable.DocDefinition[InboxState]{
 		CheckpointWhen: func(value InboxState, _ []durable.Op, _ durable.CheckpointInfo) bool {
 			return len(value.Items) == 0
 		},
+
+		Initial: func() InboxState { return InboxState{Items: []InboxItem{}} },
 	},
 	DocumentSemantics: durable.DocumentSemantics{
 		Scope:   durable.ScopeConversation,
 		History: durable.HistoryLatest,
 		Fork:    durable.ForkInitial,
 	},
-	Initial: func() InboxState { return InboxState{Items: []InboxItem{}} },
 })
 
 // QueueModes are the settings a boundary reads, on the Session line.
@@ -124,7 +125,7 @@ func ApplyBoundary(tx durable.Tx, boundary *Boundary, at BoundaryAt, now float64
 	items := state.Items
 	reset := false
 	for _, item := range items {
-		if item.Mode == InboxWrite && item.Entry["head"] == "self" {
+		if item.Mode == InboxWrite && item.Entry.Value("head") == "self" {
 			reset = true
 			break
 		}

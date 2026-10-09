@@ -63,13 +63,13 @@ func TestCompactionReplacesPhysicalTranscript(t *testing.T) {
 	terminal.WriteString(output.String())
 	output.Reset()
 
-	ag := agent.NewAgent(agent.AgentOptions{})
+	ag := mustNewAgent(agent.AgentOptions{})
 	handle := &recordingCompactHandle{agent: ag, inner: sess}
-	mode := NewInteractiveMode(InteractiveOptions{SessionHandle: handle})
+	mode := NewInteractiveMode(nil, InteractiveModeOptions{SessionHandle: handle})
 	mode.tuiInst = renderer
 	mode.chatContainer = chat
 	mode.statusContainer = tui.NewContainer()
-	mode.statusLine = NewStatusLine(nil, "", nil)
+	mode.statusLine = NewFooterComponent(nil, "", nil)
 	mode.agent = ag
 	mode.runCtx = context.Background()
 	mode.toolsExpanded = true

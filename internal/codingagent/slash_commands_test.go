@@ -1,5 +1,7 @@
 package codingagent
 
+// pi: packages/coding-agent/src/core/slash-commands.ts
+
 import (
 	"encoding/json"
 	"errors"
@@ -7,6 +9,8 @@ import (
 	"regexp"
 	"strings"
 	"testing"
+
+	"github.com/MichaelKinsy/PiG/internal/sessionentry"
 
 	"github.com/MichaelKinsy/PiG/agent"
 	"github.com/MichaelKinsy/PiG/ai"
@@ -26,6 +30,7 @@ func newTestSlashContext() (*SlashContext, *strings.Builder, *bool, *bool) {
 	return sc, &out, &cleared, &quit
 }
 
+// agent-session.ts _tryExecuteExtensionCommand: the name is the text before the first space and the arguments are everything after it.
 func TestParseSlashLine(t *testing.T) {
 	cases := []struct {
 		in       string
@@ -35,8 +40,9 @@ func TestParseSlashLine(t *testing.T) {
 		{"/help", "help", ""},
 		{"/help  ", "help", ""},
 		{"/agent worker", "agent", "worker"},
-		{"  /model  github-copilot/gpt-4o  ", "model", "github-copilot/gpt-4o"},
-		{"/save  out.md  more", "save", "out.md  more"},
+		{"  /model  github-copilot/gpt-4o  ", "model", " github-copilot/gpt-4o"},
+		{"/save  out.md  more", "save", " out.md  more"},
+		{"/save\tout.md", "save\tout.md", ""},
 		{"not-slash", "", ""},
 		{"/", "", ""},
 	}
@@ -73,7 +79,7 @@ func TestSlashRegistryBuiltinsSeeded(t *testing.T) {
 	if got := findDesc("login"); got != "Configure provider authentication" {
 		t.Fatalf("/login description = %q", got)
 	}
-	if got := findDesc("logout"); got != "Remove stored provider authentication" {
+	if got := findDesc("logout"); got != "Remove provider authentication" {
 		t.Fatalf("/logout description = %q", got)
 	}
 }
@@ -576,7 +582,7 @@ func TestSessionHandlerMessageCounting(t *testing.T) {
 		if err != nil {
 			t.Fatalf("marshal entry: %v", err)
 		}
-		return NewSessionEntry(raw, e.SessionEntryBase)
+		return sessionentry.DecodeSessionEntry(raw)
 	}
 
 	// 2 plain user messages.
@@ -642,7 +648,7 @@ func TestSessionHandlerUsesAllEntryUsage(t *testing.T) {
 	sess := NewSession("stats-session", "/tmp")
 	appendMessage := func(id string, message agent.AgentMessage) {
 		t.Helper()
-		entry := MessageEntry{SessionEntryBase: SessionEntryBase{Type: "message", ID: id, ParentID: sess.LeafID(), Timestamp: "2025-01-01T00:00:00Z"}, Message: message}
+		entry := MessageEntry{SessionEntryBase: SessionEntryBase{Type: "message", ID: id, ParentID: sess.GetLeafID(), Timestamp: "2025-01-01T00:00:00Z"}, Message: message}
 		if err := sess.AppendEntry(entry); err != nil {
 			t.Fatal(err)
 		}
@@ -660,7 +666,7 @@ func TestSessionHandlerUsesAllEntryUsage(t *testing.T) {
 	if _, err := sess.AppendCompaction("summary", "user", 1, nil, false, &ai.Usage{Input: 4, Output: 2, Cost: ai.UsageCost{Total: 0.2}}); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := sess.AppendBranchSummary(sess.LeafID(), "branch", nil, false, &ai.Usage{Input: 1, Output: 1, Cost: ai.UsageCost{Total: 0.05}}); err != nil {
+	if _, err := sess.BranchWithSummary(sess.GetLeafID(), "branch", nil, false, &ai.Usage{Input: 1, Output: 1, Cost: ai.UsageCost{Total: 0.05}}); err != nil {
 		t.Fatal(err)
 	}
 	if err := sess.SetLeafID(new("user")); err != nil {

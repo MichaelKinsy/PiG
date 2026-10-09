@@ -24,7 +24,7 @@ func TestRenderImageITerm2DefaultAspectRatio(t *testing.T) {
 func BenchmarkImageFallbackRender(b *testing.B) {
 	preserveCapabilityState(b)
 	SetCapabilities(TerminalCapabilities{})
-	image := NewImage("AAAA", "image/png", ImageOptions{Filename: "/images/" + strings.Repeat("long-name", 20) + ".png"}, &ImageDimensions{1280, 720})
+	image := NewImage("AAAA", "image/png", DefaultImageTheme(), ImageOptions{Filename: "/images/" + strings.Repeat("long-name", 20) + ".png"}, &ImageDimensions{1280, 720})
 	b.ReportAllocs()
 	for b.Loop() {
 		image.Invalidate()
@@ -49,6 +49,10 @@ func TestUpstreamTerminalImageCapabilities(t *testing.T) {
 		{"forces hyperlinks: false when TERM starts with 'screen'", map[string]string{"TERM": "screen-256color"}, false, TerminalCapabilities{}},
 		// .upstream/v0.87.1/packages/tui/test/terminal-image.test.ts:319
 		{"enables hyperlinks for Ghostty", map[string]string{"TERM_PROGRAM": "ghostty"}, false, TerminalCapabilities{Images: ImageProtocolKitty, TrueColor: true, Hyperlinks: true}},
+		// .upstream/v1.1.0/packages/tui/test/terminal-image.test.ts:321 (#10573)
+		{"enables hyperlinks without images for Herdr", map[string]string{"TERM_PROGRAM": "herdr", "TERM": "xterm-256color", "COLORTERM": "truecolor", "KITTY_WINDOW_ID": "1"}, false, TerminalCapabilities{TrueColor: true, Hyperlinks: true}},
+		// .upstream/v1.1.0/packages/tui/test/terminal-image.test.ts:327 (#10573): PI_HYPERLINKS=0 still wins
+		{"lets PI_HYPERLINKS=0 disable Herdr hyperlinks", map[string]string{"TERM_PROGRAM": "herdr", "PI_HYPERLINKS": "0"}, false, TerminalCapabilities{}},
 		// .upstream/v0.87.1/packages/tui/test/terminal-image.test.ts:326
 		{"does not disable Ghostty images solely because cmux is present", map[string]string{"TERM_PROGRAM": "ghostty", "CMUX_WORKSPACE_ID": "workspace"}, false, TerminalCapabilities{Images: ImageProtocolKitty, TrueColor: true, Hyperlinks: true}},
 		// .upstream/v0.87.1/packages/tui/test/terminal-image.test.ts:334
@@ -153,10 +157,14 @@ func upstreamImageState(t *testing.T, dimensions CellDimensions) {
 	SetCellDimensions(dimensions)
 }
 
+// Pi source: packages/tui/src/components/image.ts
+// mutation-checked: zeroing the results of Image.GetImageID fails it
+// Pi: packages/tui/src/components/image.ts:84 (getImageId)
+// packages/tui/src/components/image.ts:84 (Image.getImageId): the id an Image allocates for a kitty image.
 func TestUpstreamTerminalImageEncoding(t *testing.T) {
 	// .upstream/v0.87.1/packages/tui/test/terminal-image.test.ts:448
 	t.Run("includes the decoded payload size in OSC 1337 metadata", func(t *testing.T) {
-		if got := EncodeITerm2("AAAA", 2, "auto", "", true); got != "\x1b]1337;File=inline=1;size=3;width=2;height=auto:AAAA\x07" {
+		if got := EncodeITerm2("AAAA", ITerm2Options{Width: 2, Height: "auto"}); got != "\x1b]1337;File=inline=1;size=3;width=2;height=auto:AAAA\x07" {
 			t.Fatalf("OSC 1337=%q", got)
 		}
 	})
@@ -247,17 +255,17 @@ func TestUpstreamTerminalImageEncoding(t *testing.T) {
 	// .upstream/v0.87.1/packages/tui/test/terminal-image.test.ts:550
 	t.Run("caps Image component height to a square pixel box by default", func(t *testing.T) {
 		upstreamImageState(t, CellDimensions{10, 20})
-		image := NewImage("AAAA", "image/png", ImageOptions{MaxWidthCells: 10}, &ImageDimensions{10, 100})
+		image := NewImage("AAAA", "image/png", DefaultImageTheme(), ImageOptions{MaxWidthCells: 10}, &ImageDimensions{10, 100})
 		image.Theme.FallbackColor = func(s string) string { return s }
 		lines := image.Render(12)
 		if len(lines) != 5 || !strings.Contains(lines[0], ",c=1,r=5") {
 			t.Fatalf("lines=%q", lines)
 		}
 	})
-	// .upstream/v0.87.1/packages/tui/test/terminal-image.test.ts:570
+	// .upstream/current/packages/tui/test/terminal-image.test.ts:584
 	t.Run("places image sequence on first line with empty padding rows", func(t *testing.T) {
 		upstreamImageState(t, CellDimensions{10, 10})
-		image := NewImage("AAAA", "image/png", ImageOptions{MaxWidthCells: 2}, &ImageDimensions{20, 20})
+		image := NewImage("AAAA", "image/png", DefaultImageTheme(), ImageOptions{MaxWidthCells: 2}, &ImageDimensions{20, 20})
 		image.Theme.FallbackColor = func(s string) string { return s }
 		lines := image.Render(4)
 		id := image.GetImageID()
@@ -274,7 +282,7 @@ func TestUpstreamTerminalImageEncoding(t *testing.T) {
 			t.Fatal(err)
 		}
 		path := filepath.Join(home, "images", strings.Repeat("generated-image-with-a-very-long-absolute-path", 4)+".png")
-		image := NewImage("AAAA", "image/png", ImageOptions{Filename: path}, &ImageDimensions{1280, 720})
+		image := NewImage("AAAA", "image/png", DefaultImageTheme(), ImageOptions{Filename: path}, &ImageDimensions{1280, 720})
 		image.Theme.FallbackColor = func(s string) string { return "\x1b[33m" + s + "\x1b[0m" }
 		lines := image.Render(40)
 		if len(lines) != 1 || widthx.VisibleWidth(lines[0]) > 40 || !strings.Contains(lines[0], "...") || !strings.Contains(lines[0], "~") {

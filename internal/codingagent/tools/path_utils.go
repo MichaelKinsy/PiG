@@ -9,15 +9,12 @@ package tools
 
 import (
 	"os"
-	"path/filepath"
-	"runtime"
 	"strings"
 
 	"github.com/MichaelKinsy/PiG/internal/lazyregexp"
 
 	"golang.org/x/text/unicode/norm"
 
-	"github.com/MichaelKinsy/PiG/internal/nodepath"
 	"github.com/MichaelKinsy/PiG/internal/resolvepath"
 )
 
@@ -54,17 +51,9 @@ func normalizeAtPrefix(s string) string {
 // upstream: path-utils.ts expandPath, utils/paths.ts normalizePath
 func expandPath(filePath string) string {
 	normalized := normalizeUnicodeSpaces(normalizeAtPrefix(filePath))
-	windows := runtime.GOOS == "windows"
-	if windows {
-		normalized = NormalizeWindowsShellPath(normalized)
-	}
-	if normalized == "~" {
-		home, _ := os.UserHomeDir()
-		return home
-	}
-	if strings.HasPrefix(normalized, "~/") || windows && strings.HasPrefix(normalized, `~\`) {
-		home, _ := os.UserHomeDir()
-		return filepath.Join(home, normalized[2:])
+	// Pi's normalizePath throws for an invalid file URL; this string-only form keeps the path as written then.
+	if expanded, err := resolvepath.Normalize(normalized); err == nil {
+		return expanded
 	}
 	return normalized
 }
@@ -84,17 +73,9 @@ func NormalizeWindowsShellPath(filePath string) string {
 //
 // upstream: path-utils.ts resolveToCwd, utils/paths.ts resolvePath
 func resolveToCwd(filePath, cwd string) (string, error) {
-	expanded := expandPath(filePath)
-	if nodepath.IsAbsolute(expanded) {
-		return nodepath.Resolve(expanded)
-	}
-	return nodepath.Resolve(cwd, expanded)
-}
-
-// isNodeAbsolute reports whether Node's path.isAbsolute accepts p. On
-// Windows that includes a path rooted at '\' or '/' without a drive.
-func isNodeAbsolute(p string) bool {
-	return nodepath.IsAbsolute(p)
+	// resolvePath(filePath, cwd, { normalizeUnicodeSpaces: true, stripAtPrefix: true }): those two options first, then the default
+	// normalization (Windows shell paths, `~`, a file:// URL) and the resolution against cwd.
+	return resolvepath.Resolve(normalizeUnicodeSpaces(normalizeAtPrefix(filePath)), cwd)
 }
 
 // resolveReadPath resolves a path for reading, trying macOS filename
@@ -178,3 +159,6 @@ func tryCurlyQuoteVariant(filePath string) string {
 
 // ResolveToCwd is upstream path-utils.ts resolveToCwd for other packages.
 func ResolveToCwd(filePath, cwd string) (string, error) { return resolveToCwd(filePath, cwd) }
+
+// ResolveReadPath is upstream path-utils.ts resolveReadPath for other packages.
+func ResolveReadPath(filePath, cwd string) (string, error) { return resolveReadPath(filePath, cwd) }

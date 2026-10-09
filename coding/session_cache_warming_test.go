@@ -56,7 +56,7 @@ func warmingModel(provider ai.Provider) *ai.Model {
 	}
 }
 
-func warmingServices(t *testing.T, mode string) *Services {
+func warmingServices(t *testing.T, mode string) *AgentSessionServices {
 	t.Helper()
 	tmp := t.TempDir()
 	t.Setenv("PIG_HOME", tmp)
@@ -67,7 +67,7 @@ func warmingServices(t *testing.T, mode string) *Services {
 	if err := os.WriteFile(filepath.Join(agentDir, "settings.json"), []byte(`{"cacheWarming":"`+mode+`"}`), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	services, err := NewServices(ServicesOptions{CWD: t.TempDir(), AgentDir: agentDir})
+	services, err := CreateAgentSessionServices(CreateAgentSessionServicesOptions{CWD: t.TempDir(), AgentDir: agentDir})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -110,6 +110,7 @@ func sendAndSettle(t *testing.T, sess *Session) {
 // Port of sdk-stream-options.test.ts "schedules cache warming after a
 // completed session request".
 // .upstream/v0.87.1/packages/coding-agent/test/sdk-stream-options.test.ts:166
+// Pi: packages/coding-agent/src/core/cache-warmer.ts:127 (CacheWarmingStatus.nextWarmAt).
 func TestSessionSchedulesCacheWarmingAfterASessionRequest(t *testing.T) {
 	sess, _ := newWarmingSession(t, "idle", SessionOptions{NoSession: true})
 	sendAndSettle(t, sess)
@@ -135,15 +136,16 @@ func TestSessionSchedulesCacheWarmingAfterASessionRequest(t *testing.T) {
 // Port of sdk-stream-options.test.ts "waits for the next request instead of
 // restoring cache warming".
 // .upstream/v0.87.1/packages/coding-agent/test/sdk-stream-options.test.ts:183
+// Pi: packages/coding-agent/src/core/cache-warmer.ts:124 (CacheWarmingStatus.state).
 func TestResumedSessionWaitsForTheNextRequest(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "resume.jsonl")
 	inner := icodingagent.NewSession("resume", dir)
 	inner.SetPath(path)
-	if err := inner.AppendModelSwitch("capture-provider", "capture-model", "Capture Model"); err != nil {
+	if _, err := inner.AppendModelChange("capture-provider", "capture-model"); err != nil {
 		t.Fatal(err)
 	}
-	if err := inner.AppendThinkingLevelChange("off"); err != nil {
+	if _, err := inner.AppendThinkingLevelChange("off"); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := inner.AppendMessage(agent.AgentMessage{User: &agent.UserMessage{Role: "user", Content: ai.UserContentBlocks{ai.TextContent{Text: "test"}}, Timestamp: time.Now().Add(-60 * time.Second).UnixMilli()}}); err != nil {
@@ -177,6 +179,7 @@ func TestStreamingModeStopsWarmingWhenTheRunSettles(t *testing.T) {
 
 // Turning warming off through the Session persists the mode and stops the
 // active run at once.
+// Pi: packages/coding-agent/src/core/agent-session.ts:1422 (Session.setCacheWarmingMode).
 func TestSetCacheWarmingModeReconcilesActiveWarming(t *testing.T) {
 	sess, _ := newWarmingSession(t, "idle", SessionOptions{NoSession: true})
 	sendAndSettle(t, sess)
@@ -193,6 +196,7 @@ func TestSetCacheWarmingModeReconcilesActiveWarming(t *testing.T) {
 
 // Replacing the inner Session (/new, /resume) retires the old warmer: the
 // replacement starts fresh and waits for its first request.
+// Pi: packages/coding-agent/src/core/cache-warmer.ts:124 (CacheWarmingStatus.state).
 func TestReplaceInnerRetiresTheCacheWarmer(t *testing.T) {
 	sess, _ := newWarmingSession(t, "idle", SessionOptions{NoSession: true})
 	sendAndSettle(t, sess)
@@ -256,6 +260,7 @@ func TestEmitEntryAppendedGivesUpWhenContextEndsWithAFullChannel(t *testing.T) {
 
 // Requests that do not carry the Session's id (compaction and summaries use
 // their own paths upstream) never restart warming.
+// Pi: packages/coding-agent/src/core/cache-warmer.ts:126 (CacheWarmingStatus.reason).
 func TestOnlySessionRequestsStartCacheWarming(t *testing.T) {
 	sess, provider := newWarmingSession(t, "idle", SessionOptions{NoSession: true})
 	stream := cacheWarmingStreamFn(func() *Session { return sess })

@@ -8,6 +8,8 @@ import (
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/MichaelKinsy/PiG/internal/chord/chordjson"
 )
 
 // Ports packages/chord/test/state-delivery.test.ts. A Promise-returning listener is a listener that returns a Completion; "await gate" is a goroutine that waits on the gate before it settles the Completion.
@@ -84,7 +86,7 @@ type fixture struct {
 
 func asValueListener(listener func(frame) Completion) valueListener {
 	return func(value JsonValue, ctx context.Context, d ReplicatedStateDelivery) (Completion, error) {
-		return listener(frame{value: value.(map[string]any)["value"].(float64), ctx: ctx, delivery: d, raw: value}), nil
+		return listener(frame{value: value.(*chordjson.Object).Value("value").(float64), ctx: ctx, delivery: d, raw: value}), nil
 	}
 }
 
@@ -177,7 +179,7 @@ func TestPublicDelivery(t *testing.T) {
 				if got := fast.get(); !reflect.DeepEqual(got, []float64{0, 1, 2}) {
 					t.Fatalf("fast = %v", got)
 				}
-				if got := f.current().(map[string]any)["value"]; got != 2.0 {
+				if got := f.current().(*chordjson.Object).Value("value"); got != 2.0 {
 					t.Fatalf("value = %v", got)
 				}
 				if kind != replicaKind && !reflect.DeepEqual(exact.get(), []int{1, 2}) {
@@ -434,7 +436,8 @@ func TestPublicDelivery(t *testing.T) {
 			return nil
 		})
 		f.publish(1, background)
-		waitFor(t, "default reporter", func() bool { return len(reports()) == 1 })
+		// The report and the next delivery are independent once the rejection settles (upstream asserts both only after they settle), so wait for both.
+		waitFor(t, "default reporter and the next delivery", func() bool { return len(reports()) == 1 && len(received.get()) == 2 })
 		if got := received.get(); !reflect.DeepEqual(got, []float64{0, 1}) || !errors.Is(reports()[0], failure) {
 			t.Fatalf("received=%v reports=%v", got, reports())
 		}

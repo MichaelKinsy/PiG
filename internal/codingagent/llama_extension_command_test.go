@@ -1,14 +1,16 @@
+//go:build !pig_strip_llama_cpp
+
 package codingagent
 
 import (
 	"context"
-	"strings"
 	"testing"
 	"time"
 
 	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/coding/extension/host/inproc"
 	"github.com/MichaelKinsy/PiG/internal/codingagent/llama"
+	"github.com/MichaelKinsy/PiG/tui"
 )
 
 // llamaExtension is the built-in llama.cpp extension as the loader hands it to the runner: path `builtin:llama.cpp`, hidden, with
@@ -26,7 +28,7 @@ func llamaExtension() extension.Extension {
 
 func popupNames(t *testing.T, m *InteractiveMode) []string {
 	t.Helper()
-	suggestions := m.buildAutocompleteProvider().GetSuggestions([]string{"/"}, 0, 1)
+	suggestions := m.buildAutocompleteProvider().GetSuggestions(context.Background(), []string{"/"}, 0, 1, tui.AutocompleteSuggestionOptions{})
 	if suggestions == nil {
 		t.Fatal("no suggestions for /")
 	}
@@ -87,25 +89,11 @@ func TestLlamaSlashCommandResolvesOnlyWhileTheExtensionIsLoaded(t *testing.T) {
 	}
 }
 
-// The extension's /llama runs the llama.cpp manager with the interactive command context, as the extension handler does upstream.
-func TestLlamaExtensionCommandRunsTheManager(t *testing.T) {
-	m, _, _, _ := newLlamaTestMode(t)
-	m.slashRegistry = NewSlashRegistry()
-	m.extCtx = &ExtensionContext{}
-	m.runCtx = context.Background()
-	m.newRunner = inproc.NewRunner([]extension.Extension{llamaExtension()}, m.opts.AgentDir)
-	t.Cleanup(func() { m.newRunner.Invalidate("") })
-	m.dispatchSlash(context.Background(), "/llama")
-	waitForRender(t, m.chatContainer, "Configure llama.cpp with /login llama.cpp")
-	if text := plainRender(m.chatContainer); strings.Contains(text, "not available") {
-		t.Fatalf("chat = %q", text)
-	}
-}
-
 // Another extension's /llama keeps its own handler (core/extensions/runner.ts resolveRegisteredCommands): with the built-in
-// llama.cpp extension also loaded it is llama:1 and runs its handler, not the llama.cpp manager.
+// llama.cpp extension also loaded it is llama:1 and runs its handler, not the llama.cpp command.
 func TestAnotherExtensionsLlamaCommandRunsItsOwnHandler(t *testing.T) {
-	m, _, _, _ := newLlamaTestMode(t)
+	m, _ := newCustomEditorDispatchMode(t)
+	m.opts.AgentDir = t.TempDir()
 	m.slashRegistry = NewSlashRegistry()
 	m.extCtx = &ExtensionContext{}
 	m.runCtx = context.Background()
@@ -127,8 +115,5 @@ func TestAnotherExtensionsLlamaCommandRunsItsOwnHandler(t *testing.T) {
 		}
 	case <-time.After(5 * time.Second):
 		t.Fatal("the other extension's /llama handler did not run")
-	}
-	if text := plainRender(m.chatContainer); strings.Contains(text, "Configure llama.cpp") {
-		t.Fatalf("llama:1 ran the llama.cpp manager: %q", text)
 	}
 }

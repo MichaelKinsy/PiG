@@ -13,7 +13,7 @@ if (process.argv[2] === "pig") {
 } else {
   assert.equal(process.argv[2], "pi");
   const root = process.env.PI_PACKAGE_ROOT ?? resolve("extensions/sdk-ts/node_modules/@earendil-works/pi-coding-agent");
-  assert.equal(JSON.parse(readFileSync(join(root, "package.json"), "utf8")).version, "1.0.3");
+  assert.equal(JSON.parse(readFileSync(join(root, "package.json"), "utf8")).version, "1.1.0");
   const { RuntimeCredentials } = await import(pathToFileURL(join(root, "dist/core/runtime-credentials.js")));
   for (const operation of operations) {
     let calls = 0;

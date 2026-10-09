@@ -1,4 +1,3 @@
-// SPDX-FileCopyrightText: Copyright Hewlett Packard Enterprise Development LP
 // SPDX-License-Identifier: MIT
 
 package sdk
@@ -84,6 +83,12 @@ type ToolDefinition struct {
 	RenderCall ToolRenderCallFunc
 	// RenderResult renders the tool result; nil uses the host's default.
 	RenderResult ToolRenderResultFunc
+	// RenderCallView renders the tool call as a kit view (D107); it wins
+	// over RenderCall.
+	RenderCallView ToolRenderCallViewFunc
+	// RenderResultView renders the tool result as a kit view (D107); it wins
+	// over RenderResult.
+	RenderResultView ToolRenderResultViewFunc
 }
 
 // RegisterTool registers a tool from its full definition, as pi.registerTool
@@ -108,7 +113,7 @@ func (e *Extension) RegisterTool(def ToolDefinition) {
 		PreparesLoadout: def.PrepareLoadout != nil,
 		prepareLoadout:  def.PrepareLoadout,
 	}
-	e.registerTool(decl, def.Execute, def.PrepareArguments, ToolRenderers{Shell: def.RenderShell, Call: def.RenderCall, Result: def.RenderResult})
+	e.registerTool(decl, def.Execute, def.PrepareArguments, ToolRenderers{Shell: def.RenderShell, Call: def.RenderCall, Result: def.RenderResult, CallView: def.RenderCallView, ResultView: def.RenderResultView})
 }
 
 func (e *Extension) registerTool(decl toolDef, handler ToolFunc, prepare ToolPrepareArgumentsFunc, renderers ToolRenderers) {
@@ -118,7 +123,7 @@ func (e *Extension) registerTool(decl toolDef, handler ToolFunc, prepare ToolPre
 	if renderers.Shell == ToolRenderShellSelf {
 		decl.RenderShell = string(ToolRenderShellSelf)
 	}
-	decl.RendersCall, decl.RendersResult = renderers.Call != nil, renderers.Result != nil
+	decl.RendersCall, decl.RendersResult = renderers.rendersCall(), renderers.rendersResult()
 	decl.PreparesArguments = prepare != nil
 	replaced := false
 	for i := range e.tools {

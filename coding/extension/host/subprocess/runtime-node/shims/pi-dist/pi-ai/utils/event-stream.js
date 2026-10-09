@@ -79,7 +79,15 @@ export class EventStream {
         return this.finalResultPromise;
     }
 }
+/**
+ * Event stream of one assistant response. It also times the response: the final message (`done` or `error` event, or
+ * the result passed to `end()`) gets `durationMs`, measured with a monotonic clock from the stream's creation, unless
+ * the message already has one or its `timestamp` predates the stream. A stream that forwards a response which started
+ * elsewhere, such as a deferred result fetched later, therefore leaves it untimed.
+ */
 export class AssistantMessageEventStream extends EventStream {
+    #startedAt = Date.now();
+    #startedAtMonotonic = performance.now();
     constructor() {
         super((event) => event.type === "done" || event.type === "error", (event) => {
             if (event.type === "done") {
@@ -90,6 +98,23 @@ export class AssistantMessageEventStream extends EventStream {
             }
             throw new Error("Unexpected event type for final result");
         });
+    }
+    push(event) {
+        if (event.type === "done")
+            this.#time(event.message);
+        else if (event.type === "error")
+            this.#time(event.error);
+        super.push(event);
+    }
+    end(result) {
+        if (result !== undefined)
+            this.#time(result);
+        super.end(result);
+    }
+    #time(message) {
+        if (this.done || message.durationMs !== undefined || message.timestamp < this.#startedAt)
+            return;
+        message.durationMs = Math.max(0, Math.round(performance.now() - this.#startedAtMonotonic));
     }
 }
 /** Factory function for AssistantMessageEventStream (for use in extensions) */

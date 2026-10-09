@@ -9,14 +9,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/MichaelKinsy/PiG/agent"
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/coding/extension"
 )
 
 // The Rust SDK twins of node_extension_api_fidelity_test.go (items D-G of the port-99-f6f-node review), in isolated and packed mode. B and C concern the factory-time Pi API, which only the Node runtime has.
 
-// loader.ts:228-232: before the runner binds, unregisterVirtualModel filters the runtime-wide pending list, so a virtual model another extension queued is removed too.
+// pi.unregisterVirtualModel (packages/coding-agent/src/core/extensions/types.ts:1875, loader.ts:511-514) reaches loader.ts:229-233: before the runner binds, unregisterVirtualModel filters the runtime-wide pending list, so a virtual model another extension queued is removed too.
 func TestRustSDKUnregisterVirtualModelBeforeBindFiltersTheRuntimeWidePendingList(t *testing.T) {
 	t.Parallel()
 	forEachRustAPIMode(t, func(t *testing.T, h *rustAPIHost) {
@@ -25,7 +24,7 @@ func TestRustSDKUnregisterVirtualModelBeforeBindFiltersTheRuntimeWidePendingList
 			pending = append(pending, p.Definition.Provider+"/"+p.Definition.ID)
 		}
 		if want := []string{"conformance/auto", "conformance/identity"}; !slices.Equal(pending, want) {
-			t.Fatalf("pending virtual models %v, want %v", pending, want)
+			t.Fatalf("unregisterVirtualModel: pending virtual models %v, want %v", pending, want)
 		}
 	})
 }
@@ -95,7 +94,7 @@ func TestRustSDKHostCallStartedByAHandlerOutlivesItsResponse(t *testing.T) {
 		go func() {
 			result, err := h.ext.Tools["detached_call"].Definition.Execute(t.Context(), "call-d", args, nil)
 			text := ""
-			if typed, ok := result.(agent.AgentToolResult); ok {
+			if typed, ok := result, true; ok {
 				text = typed.Text()
 			}
 			returned <- done{text, err}

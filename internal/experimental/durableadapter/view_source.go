@@ -7,11 +7,11 @@ import (
 	"os"
 	"sync"
 
+	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/durable"
 	"github.com/MichaelKinsy/PiG/durable/harness"
 	"github.com/MichaelKinsy/PiG/internal/chord"
 	"github.com/MichaelKinsy/PiG/internal/chord/chordjson"
-	"github.com/MichaelKinsy/PiG/internal/chord/delta"
 )
 
 // viewFrames is the authoritative Chord source of one conversation view. It republishes the conversation's own view state (conversation.viewState, view.ts:92-104), whose CommittedStateSource frames carry each durable revision's exact operations and are buffered without bound behind a slow consumer (observation.ts:SessionSourceAttachment.publish). The snapshot is the durable state's publication at subscription; each later publication becomes the next cursor with its own operations, and the view's strict JSON form advances by them, sharing every unchanged subtree, so a revision costs its operations, not the size of the transcript. It has one attachment, the state ViewState returns; disposing that attachment disposes the durable state, releasing the mount.

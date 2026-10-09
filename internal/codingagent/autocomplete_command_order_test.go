@@ -1,11 +1,13 @@
 package codingagent
 
 import (
+	"context"
 	"fmt"
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/coding/extension/host/inproc"
+	"github.com/MichaelKinsy/PiG/tui"
 )
 
 // Pi's createBaseAutocompleteProvider puts extension commands before skills (interactive-mode.ts:747-776). Fuzzy filtering strips skill: and preserves insertion order for equal scores (autocomplete.ts:335-341).
@@ -21,7 +23,7 @@ func TestExtensionCommandPrecedesSameNameSkillAutocomplete(t *testing.T) {
 		},
 	}}, mode.opts.AgentDir)
 	provider := mode.buildAutocompleteProvider()
-	suggestions := provider.GetSuggestions([]string{"/btw"}, 0, len("/btw"))
+	suggestions := provider.GetSuggestions(context.Background(), []string{"/btw"}, 0, len("/btw"), tui.AutocompleteSuggestionOptions{})
 	if suggestions == nil || len(suggestions.Items) != 2 {
 		t.Fatalf("suggestions = %#v, want the explicitly registered command and skill", suggestions)
 	}
@@ -45,7 +47,7 @@ func BenchmarkAutocompleteCommandOrder(b *testing.B) {
 	for _, count := range []int{0, 8, 512} {
 		b.Run(fmt.Sprint(count), func(b *testing.B) {
 			dir := b.TempDir()
-			mode := &InteractiveMode{opts: InteractiveOptions{AgentDir: dir}}
+			mode := &InteractiveMode{opts: InteractiveModeOptions{AgentDir: dir}}
 			ext := extension.Extension{Commands: make(map[string]extension.RegisteredCommand)}
 			for i := range count {
 				name := fmt.Sprintf("side-%d", i)
@@ -56,7 +58,7 @@ func BenchmarkAutocompleteCommandOrder(b *testing.B) {
 			mode.newRunner = inproc.NewRunner([]extension.Extension{ext}, dir)
 			b.ReportAllocs()
 			for b.Loop() {
-				mode.buildAutocompleteProvider().GetSuggestions([]string{"/side-0"}, 0, len("/side-0"))
+				mode.buildAutocompleteProvider().GetSuggestions(context.Background(), []string{"/side-0"}, 0, len("/side-0"), tui.AutocompleteSuggestionOptions{})
 			}
 		})
 	}

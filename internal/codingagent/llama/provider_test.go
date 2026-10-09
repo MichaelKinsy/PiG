@@ -1,5 +1,7 @@
 package llama
 
+// pi: packages/coding-agent/src/extensions/llama/provider.ts
+
 import (
 	"context"
 	"encoding/json"
@@ -177,7 +179,11 @@ func storedIDsAndAPIs(t *testing.T, entry *ai.ModelsStoreEntry) [][2]string {
 	}
 	for _, raw := range entry.Models {
 		var model struct{ ID, API string }
-		if err := json.Unmarshal(raw, &model); err != nil {
+		data, err := ai.EncodeStoredModel(raw)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := json.Unmarshal(data, &model); err != nil {
 			t.Fatal(err)
 		}
 		out = append(out, [2]string{model.ID, model.API})
@@ -206,7 +212,11 @@ func storedContextWindows(t *testing.T, entry *ai.ModelsStoreEntry) []int {
 		var model struct {
 			ContextWindow int `json:"contextWindow"`
 		}
-		if err := json.Unmarshal(raw, &model); err != nil {
+		data, encodeErr := ai.EncodeStoredModel(raw)
+		if encodeErr != nil {
+			t.Fatal(encodeErr)
+		}
+		if err := json.Unmarshal(data, &model); err != nil {
 			t.Fatal(err)
 		}
 		out = append(out, model.ContextWindow)

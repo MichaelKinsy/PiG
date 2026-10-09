@@ -8,37 +8,112 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math"
 	"net/http"
+	"os"
+	"strconv"
 	"strings"
 	"time"
 
 	"github.com/MichaelKinsy/PiG/ai"
 )
 
+// ProxyAssistantMessageEventType is the closed `type` union of a proxy event (proxy.ts ProxyAssistantMessageEvent).
+type ProxyAssistantMessageEventType string
+
+// The proxy event types.
+const (
+	ProxyEventStart         ProxyAssistantMessageEventType = "start"
+	ProxyEventTextStart     ProxyAssistantMessageEventType = "text_start"
+	ProxyEventTextDelta     ProxyAssistantMessageEventType = "text_delta"
+	ProxyEventTextEnd       ProxyAssistantMessageEventType = "text_end"
+	ProxyEventThinkingStart ProxyAssistantMessageEventType = "thinking_start"
+	ProxyEventThinkingDelta ProxyAssistantMessageEventType = "thinking_delta"
+	ProxyEventThinkingEnd   ProxyAssistantMessageEventType = "thinking_end"
+	ProxyEventToolcallStart ProxyAssistantMessageEventType = "toolcall_start"
+	ProxyEventToolcallDelta ProxyAssistantMessageEventType = "toolcall_delta"
+	ProxyEventToolcallEnd   ProxyAssistantMessageEventType = "toolcall_end"
+	ProxyEventDone          ProxyAssistantMessageEventType = "done"
+	ProxyEventError         ProxyAssistantMessageEventType = "error"
+)
+
 // ProxyAssistantMessageEvent is one compact event returned by a proxy server.
 // Partial assistant messages are omitted and reconstructed by StreamProxy.
 type ProxyAssistantMessageEvent struct {
-	Type                  string        `json:"type"`
-	ContentIndex          int           `json:"contentIndex"`
-	Delta                 string        `json:"delta"`
-	ContentSignature      *string       `json:"contentSignature,omitempty"`
-	ID                    string        `json:"id"`
-	ToolName              string        `json:"toolName"`
-	ToolCall              *ai.ToolCall  `json:"toolCall,omitempty"`
-	Reason                ai.StopReason `json:"reason"`
-	Usage                 ai.Usage      `json:"usage"`
-	ErrorMessage          *string       `json:"errorMessage,omitempty"`
-	ProviderThinkingLevel *string       `json:"providerThinkingLevel,omitempty"`
+	Type                  ProxyAssistantMessageEventType `json:"type"`
+	ContentIndex          int                            `json:"contentIndex"`
+	Delta                 string                         `json:"delta"`
+	ContentSignature      *string                        `json:"contentSignature,omitempty"`
+	ID                    string                         `json:"id"`
+	ToolName              string                         `json:"toolName"`
+	ToolCall              *ai.ToolCall                   `json:"toolCall,omitempty"`
+	Reason                ai.StopReason                  `json:"reason"`
+	Usage                 ai.Usage                       `json:"usage"`
+	ErrorMessage          *string                        `json:"errorMessage,omitempty"`
+	ProviderThinkingLevel *string                        `json:"providerThinkingLevel,omitempty"`
+
+	// toolCallFields records which members the wire toolCall carried, so toolcall_end
+	// merges them over the streamed call as Object.assign does.
+	toolCallFields map[string]json.RawMessage
+	// notArrayIndex marks a contentIndex that is not a JavaScript array index (see parseProxyContentIndex).
+	notArrayIndex bool
+}
+
+// UnmarshalJSON decodes the event and records the members of a toolcall_end toolCall.
+func (event *ProxyAssistantMessageEvent) UnmarshalJSON(data []byte) error {
+	type plain ProxyAssistantMessageEvent
+	var decoded struct {
+		plain
+		ContentIndex json.RawMessage `json:"contentIndex"`
+	}
+	if err := json.Unmarshal(data, &decoded); err != nil {
+		return err
+	}
+	var members struct {
+		ToolCall map[string]json.RawMessage `json:"toolCall"`
+	}
+	if err := json.Unmarshal(data, &members); err != nil {
+		return err
+	}
+	*event = ProxyAssistantMessageEvent(decoded.plain)
+	event.toolCallFields = members.ToolCall
+	event.ContentIndex, event.notArrayIndex = parseProxyContentIndex(decoded.ContentIndex)
+	return nil
+}
+
+// maxProxyArrayIndex is the largest JavaScript array index, 2^32-2.
+const maxProxyArrayIndex = math.MaxUint32 - 1
+
+// parseProxyContentIndex reads a wire contentIndex. Pi uses the member as a property key of the content array
+// (`partial.content[proxyEvent.contentIndex]`), so an index is any value whose property key is an array index: an
+// integral number from 0 (-0 included) to 2^32-2, or a string spelling such a number canonically ("0", "17", not "01").
+// Any other value (absent, null, negative, fractional, another string) names a non-index property; it reports true.
+func parseProxyContentIndex(raw json.RawMessage) (int, bool) {
+	var value any
+	if len(raw) == 0 || json.Unmarshal(raw, &value) != nil {
+		return -1, true
+	}
+	switch key := value.(type) {
+	case float64:
+		if key >= 0 && key <= maxProxyArrayIndex && key == math.Trunc(key) {
+			return int(key), false
+		}
+	case string:
+		if index, err := strconv.ParseUint(key, 10, 32); err == nil && index <= maxProxyArrayIndex && strconv.FormatUint(index, 10) == key {
+			return int(index), false
+		}
+	}
+	return -1, true
 }
 
 // MarshalJSON emits only the fields carried by the selected proxy event variant.
 func (event ProxyAssistantMessageEvent) MarshalJSON() ([]byte, error) {
 	type eventType struct {
-		Type string `json:"type"`
+		Type ProxyAssistantMessageEventType `json:"type"`
 	}
 	type indexed struct {
-		Type         string `json:"type"`
-		ContentIndex int    `json:"contentIndex"`
+		Type         ProxyAssistantMessageEventType `json:"type"`
+		ContentIndex int                            `json:"contentIndex"`
 	}
 	switch event.Type {
 	case "start":
@@ -47,43 +122,43 @@ func (event ProxyAssistantMessageEvent) MarshalJSON() ([]byte, error) {
 		return json.Marshal(indexed{Type: event.Type, ContentIndex: event.ContentIndex})
 	case "text_delta", "thinking_delta", "toolcall_delta":
 		return json.Marshal(struct {
-			Type         string `json:"type"`
-			ContentIndex int    `json:"contentIndex"`
-			Delta        string `json:"delta"`
+			Type         ProxyAssistantMessageEventType `json:"type"`
+			ContentIndex int                            `json:"contentIndex"`
+			Delta        string                         `json:"delta"`
 		}{Type: event.Type, ContentIndex: event.ContentIndex, Delta: event.Delta})
 	case "text_end", "thinking_end":
 		return json.Marshal(struct {
-			Type             string  `json:"type"`
-			ContentIndex     int     `json:"contentIndex"`
-			ContentSignature *string `json:"contentSignature,omitempty"`
+			Type             ProxyAssistantMessageEventType `json:"type"`
+			ContentIndex     int                            `json:"contentIndex"`
+			ContentSignature *string                        `json:"contentSignature,omitempty"`
 		}{Type: event.Type, ContentIndex: event.ContentIndex, ContentSignature: event.ContentSignature})
 	case "toolcall_start":
 		return json.Marshal(struct {
-			Type         string `json:"type"`
-			ContentIndex int    `json:"contentIndex"`
-			ID           string `json:"id"`
-			ToolName     string `json:"toolName"`
+			Type         ProxyAssistantMessageEventType `json:"type"`
+			ContentIndex int                            `json:"contentIndex"`
+			ID           string                         `json:"id"`
+			ToolName     string                         `json:"toolName"`
 		}{Type: event.Type, ContentIndex: event.ContentIndex, ID: event.ID, ToolName: event.ToolName})
 	case "toolcall_end":
 		return json.Marshal(struct {
-			Type         string       `json:"type"`
-			ContentIndex int          `json:"contentIndex"`
-			ToolCall     *ai.ToolCall `json:"toolCall"`
+			Type         ProxyAssistantMessageEventType `json:"type"`
+			ContentIndex int                            `json:"contentIndex"`
+			ToolCall     *ai.ToolCall                   `json:"toolCall"`
 		}{Type: event.Type, ContentIndex: event.ContentIndex, ToolCall: event.ToolCall})
 	case "done":
 		return json.Marshal(struct {
-			Type                  string        `json:"type"`
-			Reason                ai.StopReason `json:"reason"`
-			Usage                 ai.Usage      `json:"usage"`
-			ProviderThinkingLevel *string       `json:"providerThinkingLevel,omitempty"`
+			Type                  ProxyAssistantMessageEventType `json:"type"`
+			Reason                ai.StopReason                  `json:"reason"`
+			Usage                 ai.Usage                       `json:"usage"`
+			ProviderThinkingLevel *string                        `json:"providerThinkingLevel,omitempty"`
 		}{Type: event.Type, Reason: event.Reason, Usage: event.Usage, ProviderThinkingLevel: event.ProviderThinkingLevel})
 	case "error":
 		return json.Marshal(struct {
-			Type                  string        `json:"type"`
-			Reason                ai.StopReason `json:"reason"`
-			ErrorMessage          *string       `json:"errorMessage,omitempty"`
-			Usage                 ai.Usage      `json:"usage"`
-			ProviderThinkingLevel *string       `json:"providerThinkingLevel,omitempty"`
+			Type                  ProxyAssistantMessageEventType `json:"type"`
+			Reason                ai.StopReason                  `json:"reason"`
+			ErrorMessage          *string                        `json:"errorMessage,omitempty"`
+			Usage                 ai.Usage                       `json:"usage"`
+			ProviderThinkingLevel *string                        `json:"providerThinkingLevel,omitempty"`
 		}{
 			Type: event.Type, Reason: event.Reason, ErrorMessage: event.ErrorMessage,
 			Usage: event.Usage, ProviderThinkingLevel: event.ProviderThinkingLevel,
@@ -100,7 +175,7 @@ type ProxyStreamOptions struct {
 	Temperature     *float64
 	SamplingParams  map[string]any
 	MaxTokens       *int
-	Reasoning       ai.ThinkingLevel
+	Reasoning       ai.ModelThinkingLevel
 	CacheRetention  ai.CacheRetention
 	SessionID       string
 	Headers         ai.ProviderHeaders
@@ -116,7 +191,7 @@ type proxySerializableStreamOptions struct {
 	Temperature     *float64              `json:"temperature,omitempty"`
 	SamplingParams  map[string]any        `json:"samplingParams,omitzero"`
 	MaxTokens       *int                  `json:"maxTokens,omitempty"`
-	Reasoning       ai.ThinkingLevel      `json:"reasoning,omitempty"`
+	Reasoning       ai.ModelThinkingLevel `json:"reasoning,omitempty"`
 	CacheRetention  ai.CacheRetention     `json:"cacheRetention,omitempty"`
 	SessionID       string                `json:"sessionId,omitempty"`
 	Headers         ai.ProviderHeaders    `json:"headers,omitzero"`
@@ -247,6 +322,10 @@ func runProxyRequest(ctx context.Context, options ProxyStreamOptions, body []byt
 	request.Header.Set("Content-Type", "application/json")
 	response, err := http.DefaultClient.Do(request)
 	if err != nil {
+		if ctx.Err() != nil {
+			// upstream: packages/agent/src/proxy.ts:streamProxy fetch rejects with the signal's reason, a DOMException AbortError by default
+			return proxyAbortReason(ctx)
+		}
 		return err
 	}
 	defer func() { _ = response.Body.Close() }()
@@ -254,6 +333,20 @@ func runProxyRequest(ctx context.Context, options ProxyStreamOptions, body []byt
 		return proxyHTTPError(response)
 	}
 	return readProxyEvents(ctx, response.Body, converter, stream)
+}
+
+// proxyAbortReason is the message fetch rejects with when the signal aborts before the response arrives: a cancel cause, the
+// TimeoutError of AbortSignal.timeout for an expired deadline, or the default AbortError.
+func proxyAbortReason(ctx context.Context) error {
+	cause := context.Cause(ctx)
+	switch {
+	case cause == nil || errors.Is(cause, context.Canceled):
+		return errors.New("This operation was aborted")
+	case errors.Is(cause, context.DeadlineExceeded):
+		return errors.New("The operation was aborted due to timeout")
+	default:
+		return cause
+	}
 }
 
 func proxyHTTPError(response *http.Response) error {
@@ -273,7 +366,6 @@ type proxyEventConverter struct {
 
 func readProxyEvents(ctx context.Context, body io.Reader, converter *proxyEventConverter, stream *ai.AssistantMessageEventStream) error {
 	reader := bufio.NewReader(body)
-	sawTerminalEvent := false
 	for {
 		line, readErr := reader.ReadString('\n')
 		if ctx.Err() != nil {
@@ -284,7 +376,13 @@ func readProxyEvents(ctx context.Context, body io.Reader, converter *proxyEventC
 			if err != nil {
 				return err
 			}
-			sawTerminalEvent = sawTerminalEvent || terminal
+			if terminal {
+				// The terminal event hands partial to the consumer, so nothing may change it afterwards. Pi keeps reading and
+				// applies later events, parse failures and aborts to the delivered message; in Go that would be a data race.
+				// The rest of the body is drained without effect so the connection lives as long as Pi's.
+				_, _ = io.Copy(io.Discard, reader)
+				return nil
+			}
 		}
 		if readErr != nil {
 			if errors.Is(readErr, io.EOF) {
@@ -295,9 +393,6 @@ func readProxyEvents(ctx context.Context, body io.Reader, converter *proxyEventC
 	}
 	if ctx.Err() != nil {
 		return errors.New("Request aborted by user")
-	}
-	if sawTerminalEvent {
-		return nil
 	}
 	converter.partial.StopReason = ai.StopReasonError
 	converter.partial.ErrorMessage = "Connection closed by proxy server before the response completed"
@@ -331,6 +426,10 @@ func processProxyLine(line string, converter *proxyEventConverter, stream *ai.As
 
 func (converter *proxyEventConverter) process(proxyEvent ProxyAssistantMessageEvent) (ai.AssistantMessageEvent, error) {
 	partial := converter.partial
+	if proxyEvent.notArrayIndex && proxyEventStoresContent(proxyEvent.Type) {
+		// Pi stores the block as a non-index property of the content array, which JSON never shows; an ai.AssistantMessage has no such slot, so the event fails.
+		return nil, fmt.Errorf("proxy %s event has no usable contentIndex", proxyEvent.Type)
+	}
 	switch proxyEvent.Type {
 	case "start":
 		return ai.StartEvent{Partial: partial}, nil
@@ -382,6 +481,7 @@ func (converter *proxyEventConverter) process(proxyEvent ProxyAssistantMessageEv
 		return ai.ThinkingEndEvent{ContentIndex: proxyEvent.ContentIndex, Content: thinking.Thinking, Partial: partial}, nil
 	case "toolcall_start":
 		toolCall := ai.ToolCall{ID: proxyEvent.ID, Name: proxyEvent.ToolName, Arguments: ai.JsonObject{}}
+		toolCall.SetPartialJson("")
 		if err := setProxyContent(partial, proxyEvent.ContentIndex, toolCall); err != nil {
 			return nil, err
 		}
@@ -394,6 +494,7 @@ func (converter *proxyEventConverter) process(proxyEvent ProxyAssistantMessageEv
 			return nil, errors.New("Received toolcall_delta for non-toolCall content")
 		}
 		converter.toolJSON[proxyEvent.ContentIndex] += proxyEvent.Delta
+		toolCall.SetPartialJson(converter.toolJSON[proxyEvent.ContentIndex])
 		toolCall.SetStreamingArguments(converter.toolJSON[proxyEvent.ContentIndex])
 		partial.Content[proxyEvent.ContentIndex] = toolCall
 		return ai.ToolCallDeltaEvent{ContentIndex: proxyEvent.ContentIndex, Delta: proxyEvent.Delta, Partial: partial}, nil
@@ -404,8 +505,9 @@ func (converter *proxyEventConverter) process(proxyEvent ProxyAssistantMessageEv
 			return nil, nil
 		}
 		if proxyEvent.ToolCall != nil {
-			toolCall = *proxyEvent.ToolCall
+			toolCall = mergeProxyToolCall(toolCall, *proxyEvent.ToolCall, proxyEvent.toolCallFields)
 		}
+		toolCall.DeletePartialJson()
 		partial.Content[proxyEvent.ContentIndex] = toolCall
 		delete(converter.toolJSON, proxyEvent.ContentIndex)
 		return ai.ToolCallEndEvent{ContentIndex: proxyEvent.ContentIndex, ToolCall: toolCall, Partial: partial}, nil
@@ -417,13 +519,43 @@ func (converter *proxyEventConverter) process(proxyEvent ProxyAssistantMessageEv
 		partial.ErrorMessage = optionalProxyString(proxyEvent.ErrorMessage)
 		return ai.ErrorEvent{Reason: proxyEvent.Reason, Error: partial}, nil
 	default:
+		// upstream: packages/agent/src/proxy.ts:processProxyEvent console.warn
+		fmt.Fprintf(os.Stderr, "Unhandled proxy event type: %s\n", proxyEvent.Type)
 		return nil, nil
 	}
 }
 
+// mergeProxyToolCall mirrors Object.assign(content, proxyEvent.toolCall): members the wire call omits keep the streamed call's value.
+func mergeProxyToolCall(streamed, wire ai.ToolCall, fields map[string]json.RawMessage) ai.ToolCall {
+	if _, ok := fields["id"]; !ok {
+		wire.ID = streamed.ID
+	}
+	if _, ok := fields["name"]; !ok {
+		wire.Name = streamed.Name
+	}
+	if _, ok := fields["arguments"]; !ok {
+		wire.Arguments = streamed.Arguments
+		if raw, err := streamed.ArgumentsJSON(); err == nil && streamed.Arguments != nil {
+			_ = wire.SetArgumentsJSON(raw)
+		}
+	}
+	return wire
+}
+
+// proxyEventStoresContent reports the events that write `partial.content[index]`. The others only read it, and a read at a
+// non-index key finds nothing in Pig, as in Pi: a store at such a key has already ended the stream.
+func proxyEventStoresContent(eventType ProxyAssistantMessageEventType) bool {
+	switch eventType {
+	case ProxyEventTextStart, ProxyEventThinkingStart, ProxyEventToolcallStart:
+		return true
+	}
+	return false
+}
+
+// setProxyContent stores a block at an index as `partial.content[index] = block` does, except that an index past the end is an error: Pi leaves holes in the array, and a nil block cannot live in an ai.AssistantMessage (its copy, marshalling and estimation take only the three block kinds).
 func setProxyContent(partial *ai.AssistantMessage, index int, content ai.AssistantContentBlock) error {
-	if index < 0 || index > len(partial.Content) {
-		return fmt.Errorf("proxy content index %d is out of order", index)
+	if index > len(partial.Content) {
+		return fmt.Errorf("proxy content index %d is past the end of the content array", index)
 	}
 	if index == len(partial.Content) {
 		partial.Content = append(partial.Content, content)
@@ -433,9 +565,11 @@ func setProxyContent(partial *ai.AssistantMessage, index int, content ai.Assista
 	return nil
 }
 
+// proxyContent reads `partial.content[index]`: a missing block (a non-index key is -1) is undefined, which no event
+// handler accepts.
 func proxyContent(partial *ai.AssistantMessage, index int) (ai.AssistantContentBlock, error) {
 	if index < 0 || index >= len(partial.Content) {
-		return nil, fmt.Errorf("proxy content index %d is missing", index)
+		return nil, nil
 	}
 	return partial.Content[index], nil
 }
@@ -459,7 +593,6 @@ func pushProxyFailure(stream *ai.AssistantMessageEventStream, partial *ai.Assist
 	reason := ai.StopReasonError
 	if aborted {
 		reason = ai.StopReasonAborted
-		err = errors.New("Request aborted by user")
 	}
 	partial.StopReason = reason
 	partial.ErrorMessage = err.Error()

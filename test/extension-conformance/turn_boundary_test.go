@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/coding/extension"
 )
 
@@ -28,6 +29,7 @@ func snapshotTurnBoundary(args ...any) (any, error) {
 }
 
 // Pi runner.ts:928-980 retains the proposal after a throwing boundary handler, rebuilds its preview, and sends the complete turn metadata to the next handler.
+// Pi: packages/coding-agent/src/core/extensions/types.ts:1030 (TurnEndEvent.turnIndex); packages/coding-agent/src/core/extensions/types.ts:974 (BoundaryContextPreview.contextMessages); packages/coding-agent/src/core/extensions/types.ts:976 (BoundaryContextPreview.pendingMessages).
 func TestTurnBoundaryMetadataMutationAndPreviewAcrossSDKs(t *testing.T) {
 	for _, test := range allHarnessCases() {
 		t.Run(test.name, func(t *testing.T) {
@@ -40,13 +42,13 @@ func TestTurnBoundaryMetadataMutationAndPreviewAcrossSDKs(t *testing.T) {
 					h.host.Shutdown("turn boundary complete")
 				}
 			})
-			base := extension.TurnEndEvent{Type: "turn_end", TurnIndex: 7, MessageEntryID: "boundary-assistant", ToolResultEntryIds: []string{"boundary-tool"}, Message: map[string]any{"role": "assistant", "content": []any{map[string]any{"type": "text", "text": "failed"}}, "stopReason": "error"}, ToolResults: []extension.ToolResultMessage{map[string]any{"role": "toolResult", "toolCallId": "call", "toolName": "noop", "content": []any{map[string]any{"type": "text", "text": "result"}}, "isError": false, "timestamp": 0}}, BoundaryState: &extension.BoundaryState{Outcome: extension.AgentActivityError}}
+			base := extension.TurnEndEvent{Type: "turn_end", TurnIndex: 7, MessageEntryID: "boundary-assistant", ToolResultEntryIds: []string{"boundary-tool"}, Message: wireAgentMessage(map[string]any{"role": "assistant", "content": []any{map[string]any{"type": "text", "text": "failed"}}, "stopReason": "error"}), ToolResults: []extension.ToolResultMessage{{Role: "toolResult", ToolCallID: "call", ToolName: "noop", Content: []ai.ToolResultMessageContent{ai.TextContent{Text: "result"}}}}, BoundaryState: &extension.BoundaryState{Outcome: extension.AgentActivityError}}
 			build := func(drafts []extension.SessionBoundaryDraft) (extension.BoundaryContextPreview, error) {
 				entries := make([]extension.ProjectedSessionEntry, len(drafts))
 				for i, draft := range drafts {
 					entries[i] = extension.ProjectedSessionEntry{SourceEntry: map[string]any{"id": "preview", "type": draft.Type, "customType": draft.CustomType}, Messages: []extension.AgentMessage{}}
 				}
-				return extension.BoundaryContextPreview{ContextEntries: entries, ContextMessages: []extension.AgentMessage{map[string]any{"role": "custom", "customType": "context", "content": "preview context", "display": false, "timestamp": 0}}, LLMMessages: []any{map[string]any{"role": "user", "content": "preview llm", "timestamp": 0}}, PendingMessages: []extension.AgentMessage{map[string]any{"role": "custom", "customType": "pending", "content": "pending context", "display": false, "timestamp": 0}}, CanContinue: len(drafts) > 0}, nil
+				return extension.BoundaryContextPreview{ContextEntries: entries, ContextMessages: []extension.AgentMessage{wireAgentMessage(map[string]any{"role": "custom", "customType": "context", "content": "preview context", "display": false, "timestamp": 0})}, LLMMessages: []ai.Message{ai.UserMessage{Content: ai.UserText("preview llm")}}, PendingMessages: []extension.AgentMessage{wireAgentMessage(map[string]any{"role": "custom", "customType": "pending", "content": "pending context", "display": false, "timestamp": 0})}, CanContinue: len(drafts) > 0}, nil
 			}
 			diagnostics := []string{}
 			h.runner.AddErrorListener(func(err *extension.ExtensionError) { diagnostics = append(diagnostics, err.Error) })
@@ -82,4 +84,17 @@ func TestTurnBoundaryMetadataMutationAndPreviewAcrossSDKs(t *testing.T) {
 			}
 		})
 	}
+}
+
+// wireAgentMessage decodes a wire-shaped message into the host AgentMessage.
+func wireAgentMessage(fields map[string]any) extension.AgentMessage {
+	raw, err := json.Marshal(fields)
+	if err != nil {
+		panic(err)
+	}
+	var message extension.AgentMessage
+	if err := json.Unmarshal(raw, &message); err != nil {
+		panic(err)
+	}
+	return message
 }

@@ -56,8 +56,9 @@ func parseSpecialHost(server string, file bool) (string, error) {
 		}
 		return "[" + serializeIPv6(addr) + "]", nil
 	}
-	ascii, err := whatwgDomainToASCII.ToASCII(strings.ToValidUTF8(string(percentDecode(server)), string(utf8.RuneError)))
-	if err != nil || ascii == "" || strings.ContainsFunc(ascii, isForbiddenDomainCodePoint) {
+	decoded := strings.ToValidUTF8(string(percentDecode(server)), string(utf8.RuneError))
+	ascii, err := whatwgDomainToASCII.ToASCII(decoded)
+	if err != nil || hasEmptyPunycodeLabel(decoded) || ascii == "" || strings.ContainsFunc(ascii, isForbiddenDomainCodePoint) {
 		return "", fmt.Errorf("invalid %s host %q", kind, server)
 	}
 	if endsInANumber(ascii) {
@@ -71,6 +72,16 @@ func parseSpecialHost(server string, file bool) (string, error) {
 		return "", nil
 	}
 	return ascii, nil
+}
+
+// hasEmptyPunycodeLabel reports a label that is only the "xn--" prefix. Node rejects the host; x/net/idna decodes its empty payload and drops the label.
+func hasEmptyPunycodeLabel(host string) bool {
+	for label := range strings.SplitSeq(host, ".") {
+		if strings.EqualFold(label, "xn--") {
+			return true
+		}
+	}
+	return false
 }
 
 // isForbiddenDomainCodePoint reports the WHATWG forbidden domain code points.

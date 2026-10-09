@@ -39,6 +39,7 @@ import (
 	sourceref "github.com/MichaelKinsy/PiG/coding/source"
 	"github.com/MichaelKinsy/PiG/internal/codingagent"
 	"github.com/MichaelKinsy/PiG/internal/fspublish"
+	"github.com/MichaelKinsy/PiG/internal/pigstrip"
 )
 
 // ── Pre-session CLI ──────────────────────────────────────────────────────────
@@ -91,8 +92,10 @@ func RunCommand(args []string, stdout, stderr io.Writer) int {
 	}
 }
 
+// printHelp prints the `pig piglet` usage. pig additive (D92): without the
+// Piglet builder, the build and publish entries are left out.
 func printHelp(w io.Writer) {
-	_, _ = fmt.Fprint(w, `Usage:
+	const pigletUsage = `Usage:
   pig piglet list [--json]         List source and Piglet Binary facets
   pig piglet show <name>           Show source/effective Piglet details and records
   pig piglet show --record <path>   Validate and show a Piglet record
@@ -124,7 +127,24 @@ Piglets are discovered from (in order):
   .pig/piglets/         workspace
   ~/.pig/piglets/       user
   /etc/pig/piglets/     system
-`)
+`
+	if !pigstrip.Has(pigstrip.ListFeatures, pigstrip.PigletBuilder) {
+		_, _ = io.WriteString(w, pigletUsage)
+		return
+	}
+	var out strings.Builder
+	builder := false
+	for line := range strings.SplitAfterSeq(pigletUsage, "\n") {
+		if entry, ok := strings.CutPrefix(line, "  pig piglet "); ok {
+			builder = strings.HasPrefix(entry, "build ") || strings.HasPrefix(entry, "publish ")
+		} else if !strings.HasPrefix(line, "    ") {
+			builder = false
+		}
+		if !builder {
+			out.WriteString(line)
+		}
+	}
+	_, _ = io.WriteString(w, out.String())
 }
 
 type pigletListOutput struct {
@@ -193,7 +213,8 @@ func cmdList(args []string, stdout, stderr io.Writer) int {
 			for i, record := range p.Records {
 				targets[i] = record.Target
 			}
-			binary = strings.Join(targets, ",")
+			// Records are sorted by target; several releases for one target name it once.
+			binary = strings.Join(slices.Compact(targets), ",")
 		}
 		_, _ = fmt.Fprintf(w, "%s\t%s\t%s\t%s\t-\t%s\n", p.Name, p.Location, source, binary, p.Description)
 	}
@@ -202,11 +223,12 @@ func cmdList(args []string, stdout, stderr io.Writer) int {
 }
 
 type pigletShowOutput struct {
-	Name      string             `json:"name"`
-	Source    string             `json:"source,omitempty"`
-	Piglet    any                `json:"piglet,omitempty"`
-	Effective bool               `json:"effective,omitempty"`
-	Records   []pigletRecordJSON `json:"records"`
+	Name       string             `json:"name"`
+	Source     string             `json:"source,omitempty"`
+	Piglet     any                `json:"piglet,omitempty"`
+	Effective  bool               `json:"effective,omitempty"`
+	Records    []pigletRecordJSON `json:"records"`
+	StripDelta []string           `json:"stripDelta,omitempty"`
 }
 
 type pigletRecordJSON struct {
@@ -223,6 +245,19 @@ type pigletRecordJSON struct {
 	ResolutionDigest    string                `json:"resolutionDigest,omitempty"`
 	BinaryDigest        string                `json:"binaryDigest,omitempty"`
 	Components          []pigletComponentJSON `json:"components,omitempty"`
+	Strip               []pigletStripJSON     `json:"strip,omitempty"`
+	StripKeep           []pigletStripKeepJSON `json:"stripKeep,omitempty"`
+}
+
+type pigletStripJSON struct {
+	Kind        string `json:"kind"`
+	ID          string `json:"id"`
+	Disposition string `json:"disposition"`
+}
+
+type pigletStripKeepJSON struct {
+	Kind string   `json:"kind"`
+	IDs  []string `json:"ids"`
 }
 
 type pigletComponentJSON struct {
@@ -343,13 +378,21 @@ func cmdShow(args []string, stdout, stderr io.Writer) int {
 			return 1
 		}
 	}
+	// pig additive (D92): the strip delta report against the newest Binary.
+	// Without --effective a child's file lacks its lineage's keep mode, so
+	// the record's modes stand in.
+	deltaStrip := p.Strip
+	if !effectiveMode && p.Extends != nil {
+		deltaStrip = nil
+	}
+	stripDelta := StripDeltaReport(p.Name, deltaStrip)
 	if jsonMode {
 		pigletValue, err := pigletJSONValue(p)
 		if err != nil {
 			_, _ = fmt.Fprintf(stderr, "error: encode Piglet JSON: %v\n", err)
 			return 1
 		}
-		return renderPigletShowJSON(pigletShowOutput{Name: p.Name, Source: resolved, Piglet: pigletValue, Effective: effectiveMode, Records: recordJSON(records)}, stdout, stderr)
+		return renderPigletShowJSON(pigletShowOutput{Name: p.Name, Source: resolved, Piglet: pigletValue, Effective: effectiveMode, Records: recordJSON(records), StripDelta: stripDelta}, stdout, stderr)
 	}
 
 	// Human-readable output
@@ -366,6 +409,18 @@ func cmdShow(args []string, stdout, stderr io.Writer) int {
 		_, _ = fmt.Fprintln(stdout, "Built-in tools: none")
 	default:
 		_, _ = fmt.Fprintf(stdout, "Built-in tools: %s\n", strings.Join(*p.BuiltinTools, ", "))
+	}
+	// pig additive (D91, D92): slots and strip read as one model; see renderSlots.
+	frontend := ""
+	if p.HasFrontend() {
+		frontend = p.Slots.Frontend.Member
+		if dir, err := p.FrontendDir(); err == nil {
+			frontend = dir
+		}
+	}
+	renderSlots(stdout, "", frontend, p.Strip.KeepLists(), p.Strip.StrippedIDs())
+	if len(stripDelta) > 0 {
+		_, _ = fmt.Fprintf(stdout, "\n%s\n", strings.Join(stripDelta, "\n"))
 	}
 
 	if len(p.Packages) > 0 {
@@ -514,10 +569,54 @@ func recordJSON(records []RecordInfo) []pigletRecordJSON {
 			Path: record.Path, ResolutionPath: record.ResolutionPath, ArtifactPath: record.ArtifactPath, PigletDigest: record.PigletDigest, ReleaseVersion: record.ReleaseVersion,
 			Target: record.Target, ArtifactDigest: record.ArtifactDigest, Verified: record.VerificationOK, Signature: signatureSummary(record),
 			ComponentPlanDigest: record.ComponentPlanDigest, ResolutionDigest: record.ResolutionDigest, BinaryDigest: record.BinaryDigest,
-			Components: componentJSON(record.Components),
+			Components: componentJSON(record.Components), Strip: stripJSON(record.Strip), StripKeep: stripKeepJSON(record.StripKeep),
 		}
 	}
 	return output
+}
+
+func stripJSON(ids []StrippedID) []pigletStripJSON {
+	if len(ids) == 0 {
+		return nil
+	}
+	output := make([]pigletStripJSON, len(ids))
+	for i, id := range ids {
+		output[i] = pigletStripJSON(id)
+	}
+	return output
+}
+
+func stripKeepJSON(lists []StripIDList) []pigletStripKeepJSON {
+	if len(lists) == 0 {
+		return nil
+	}
+	output := make([]pigletStripKeepJSON, len(lists))
+	for i, list := range lists {
+		output[i] = pigletStripKeepJSON{Kind: list.Kind, IDs: append([]string{}, list.IDs...)}
+	}
+	return output
+}
+
+// renderSlots lists every slot the Piglet changes: the frontend member it
+// replaces, then each keep-mode strip list with the IDs it keeps, then each
+// stripped built-in with its disposition. A slot is named by its manifest
+// path: frontend, the strip list (extensions), or the strip list and the ID
+// (tools.grep, extensions.mcp). Slots left at PiG's default are not listed.
+// pig additive (D91, D92): `pig piglet show` reports keep/replace/strip as one model.
+func renderSlots(stdout io.Writer, indent, frontend string, keeps []StripIDList, ids []StrippedID) {
+	if frontend == "" && len(keeps) == 0 && len(ids) == 0 {
+		return
+	}
+	_, _ = fmt.Fprintf(stdout, "\n%sSlots:\n", indent)
+	if frontend != "" {
+		_, _ = fmt.Fprintf(stdout, "%s  frontend  replaced(%s)\n", indent, frontend)
+	}
+	for _, keep := range keeps {
+		_, _ = fmt.Fprintf(stdout, "%s  %s  keep([%s])\n", indent, keep.Field(), strings.Join(keep.IDs, ", "))
+	}
+	for _, id := range ids {
+		_, _ = fmt.Fprintf(stdout, "%s  %s  stripped(%s)\n", indent, id.SlotID(), id.Disposition)
+	}
 }
 
 func componentJSON(components []RecordComponent) []pigletComponentJSON {
@@ -542,10 +641,14 @@ func renderPigletShowJSON(output pigletShowOutput, stdout, stderr io.Writer) int
 }
 
 func renderBinaryOnlyPiglet(info PigletInfo, jsonMode bool, stdout, stderr io.Writer) int {
+	stripDelta := StripDeltaReport(info.Name, nil)
 	if jsonMode {
-		return renderPigletShowJSON(pigletShowOutput{Name: info.Name, Records: recordJSON(info.Records)}, stdout, stderr)
+		return renderPigletShowJSON(pigletShowOutput{Name: info.Name, Records: recordJSON(info.Records), StripDelta: stripDelta}, stdout, stderr)
 	}
 	_, _ = fmt.Fprintf(stdout, "Piglet: %s\nSource: none (Piglet Binary only)\n", info.Name)
+	if len(stripDelta) > 0 {
+		_, _ = fmt.Fprintf(stdout, "\n%s\n", strings.Join(stripDelta, "\n"))
+	}
 	renderRecordSummary(stdout, info.Records)
 	return 0
 }
@@ -559,6 +662,7 @@ func renderRecordSummary(stdout io.Writer, records []RecordInfo) {
 		_, _ = fmt.Fprintf(stdout, "  %s  version=%s  build-checks-passed=%t\n    record=%s\n    artifact=%s (%s)\n    signature: %s\n",
 			record.Target, record.ReleaseVersion, record.VerificationOK, record.Path, record.ArtifactPath, record.ArtifactDigest, signatureSummary(record))
 		renderComponentSummary(stdout, "    ", record.Components)
+		renderSlots(stdout, "    ", "", record.StripKeep, record.Strip)
 	}
 }
 
@@ -598,6 +702,7 @@ func showRecordFile(path string, jsonMode bool, stdout, stderr io.Writer) int {
 	if record.Binary != nil {
 		_, _ = fmt.Fprintf(stdout, "Resolution: %s\nTarget: %s\nArtifact digest: %s\nVerified: %t\n",
 			record.Binary.ResolutionDigest, record.Binary.Target, record.Binary.Artifact.Digest, record.Binary.Verification.Passed)
+		renderSlots(stdout, "", "", recordStripKeep(record.Binary.StripKeep), recordStrip(record.Binary.Strip))
 	}
 	return 0
 }
@@ -1489,6 +1594,11 @@ func pruneEmptyRecordDirs(root string) {
 
 // ── In-session extension ─────────────────────────────────────────────────────
 
+// InspectCommand is the name of the read-only /piglet command the in-session
+// extension registers. Its strip ID is "/piglet" in the commands list
+// (pig additive, D92).
+const InspectCommand = "piglet"
+
 // BuildExtensionWithPiglet returns an extension.Extension that applies
 // Piglet-based tool scoping at runtime. The caller supplies the Piglet selected
 // before extension loading. The extension applies tool scope on session_start
@@ -1496,9 +1606,10 @@ func pruneEmptyRecordDirs(root string) {
 // extension returns it from before_agent_start so Pig core uses it as the
 // session system prompt.
 //
-// The returned Extension registers read-only /piglet inspection. Piglet
-// selection/editing is deliberately not available in-session: a different
-// composition is selected by a separate Pig invocation.
+// The returned Extension registers read-only /piglet inspection unless the
+// process strips it (strip.commands: /piglet). Piglet selection/editing is
+// deliberately not available in-session: a different composition is selected
+// by a separate Pig invocation.
 func BuildExtensionWithPiglet(initial *Piglet) extension.Extension {
 	return buildExtension(initial)
 }
@@ -1582,16 +1693,8 @@ func buildExtensionWithOwner(initial *Piglet, owner func(extension.ToolInfo) str
 	convertTools := func(tools []extension.ToolInfo) []ToolInfo {
 		out := make([]ToolInfo, len(tools))
 		for i, t := range tools {
-			// SourceInfo is currently `any`: try to extract a string source name
-			source := ""
-			switch s := t.SourceInfo.(type) {
-			case string:
-				source = s
-			case map[string]any:
-				if name, ok := s["name"].(string); ok {
-					source = name
-				}
-			}
+			// ToolInfo.Source is the per-tool source attribution (D23).
+			source := t.Source
 			// The session reports an extension tool's provenance object (path, source, scope, origin), which names no
 			// Piglet entry; the owner resolves the entry that registered the tool.
 			if source == "" && owner != nil {
@@ -1600,7 +1703,7 @@ func buildExtensionWithOwner(initial *Piglet, owner func(extension.ToolInfo) str
 			// Real extension tools carry codingagent.PiSourceInfo (value or pointer). When no owner names the entry, such a
 			// tool is still an extension's: never govern it by root `tools` as a built-in.
 			if source == "" {
-				if info, ok := piSourceInfo(t.SourceInfo); ok && info.Source != "builtin" && (info.Source != "" || info.Path != "") {
+				if info := t.SourceInfo; info.Source != "builtin" && (info.Source != "" || info.Path != "") {
 					source = info.Source
 					if source == "" {
 						source = info.Path
@@ -1629,24 +1732,8 @@ func buildExtensionWithOwner(initial *Piglet, owner func(extension.ToolInfo) str
 		converted := convertTools(allTools)
 		pigletScoped := ScopeTools(activePiglet, converted)
 
-		// The Piglet scope only narrows the session's current selection (the startup default, --tools, or an earlier extension's SetActiveTools, including a selection of no tools) and never activates a tool that selection left inactive. A nil list means no tool-scoping action is wired, so the Piglet scope applies alone.
-		currentActive := ctx.GetActiveTools()
-		active := []string{}
-		if currentActive != nil && len(currentActive) < len(allTools) {
-			// Intersect with the current selection, which may be empty.
-			allowed := make(map[string]struct{}, len(currentActive))
-			for _, name := range currentActive {
-				allowed[name] = struct{}{}
-			}
-			for _, name := range pigletScoped {
-				if _, ok := allowed[name]; ok {
-					active = append(active, name)
-				}
-			}
-		} else {
-			active = append(active, pigletScoped...)
-		}
-
+		// The Piglet scope only narrows the session's current selection (the startup default, --tools, or an earlier extension's SetActiveTools, including a selection of no tools) and never activates a tool that selection left inactive. A nil list means no tool-scoping action is wired, so the Piglet scope applies alone, in registry order.
+		active := narrowSelection(ctx.GetActiveTools(), pigletScoped)
 		removed := len(allTools) - len(active)
 		if removed > 0 {
 			tracef("[piglet] Applied scoping (%s): %d/%d tools active, %d hidden\n",
@@ -1728,9 +1815,17 @@ func buildExtensionWithOwner(initial *Piglet, owner func(extension.ToolInfo) str
 		},
 	}
 
+	// pig additive (D92): a Piglet that strips /piglet runs without the
+	// command, so no surface derived from the extension's commands offers it
+	// and typed /piglet goes to the model as an unknown slash command does in
+	// Pi. Scoping, the --piglet flag and the system prompt stay.
+	if pigstrip.Has(pigstrip.ListCommands, "/"+InspectCommand) {
+		return ext
+	}
+
 	// /piglet is read-only inspection of the composition active in this process.
-	ext.Commands["piglet"] = extension.RegisteredCommand{
-		Name:        "piglet",
+	ext.Commands[InspectCommand] = extension.RegisteredCommand{
+		Name:        InspectCommand,
 		Description: "Inspect the active Piglet composition",
 		Handler: func(ctx context.Context, args string) error {
 			extCtx := extension.FromContext(ctx)
@@ -1770,19 +1865,6 @@ func formatActivePiglet(active *Piglet) string {
 	return out.String()
 }
 
-// piSourceInfo reads the provenance object the session reports as a tool's sourceInfo, as a value or a pointer.
-func piSourceInfo(v any) (codingagent.PiSourceInfo, bool) {
-	switch s := v.(type) {
-	case codingagent.PiSourceInfo:
-		return s, true
-	case *codingagent.PiSourceInfo:
-		if s != nil {
-			return *s, true
-		}
-	}
-	return codingagent.PiSourceInfo{}, false
-}
-
 // tracef prints Piglet load and scoping progress only when PIG_PIGLET_DEBUG is set. Written to stderr during an
 // interactive session, these lines land inside the TUI's editor area; /piglet shows the same composition on demand.
 func tracef(format string, args ...any) {
@@ -1790,4 +1872,23 @@ func tracef(format string, args ...any) {
 		return
 	}
 	_, _ = fmt.Fprintf(os.Stderr, format, args...)
+}
+
+// narrowSelection returns the names of the current selection that the Piglet scope admits, in the selection's order and each once at its first position: setActiveTools declares tools in its argument order (upstream: agent-session.ts:1561-1565, _applyToolLoadout), so narrowing never reorders the session's selection. A nil selection means no tool-scoping action is wired; the Piglet scope then applies alone.
+func narrowSelection(currentActive, pigletScoped []string) []string {
+	if currentActive == nil {
+		return append([]string{}, pigletScoped...)
+	}
+	admitted := make(map[string]bool, len(pigletScoped))
+	for _, name := range pigletScoped {
+		admitted[name] = true
+	}
+	active := []string{}
+	for _, name := range currentActive {
+		if admitted[name] {
+			active = append(active, name)
+			admitted[name] = false
+		}
+	}
+	return active
 }

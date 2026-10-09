@@ -1,0 +1,72 @@
+# Behavior family: slash-commands
+# Surface: a redirect URL pasted into the sign-in screen of the `/mcp` manager is submitted with the confirm key (extensions/mcp/ui.ts redirectUrl)
+#
+# Upstream evidence (pinned pi 1.1.0): an extension registers an OAuth-protected MCP server whose authorization server registers the client (testdata/mcp-oauth-paste.ts). `/mcp` Enter, Enter, Enter opens the sign-in screen with the authorization URL and the paste input. A redirect URL for another address, typed and submitted with Enter, fails the sign-in and the server menu shows the reason. The crop runs from that message to the key hints and holds neither the port nor the state.
+# The comparator is output_equal.
+
+# Mutation (compiling): the confirm key not submitting the pasted value (coding/mcpext/manager.go RedirectURL) fails this scenario: the screen stays.
+name = "20-mcp-signin-paste-redirect-url"
+description = "Both binaries reject a pasted redirect URL that belongs to another sign-in."
+covers = [
+  "packages/coding-agent/src/extensions/mcp/ui.ts",
+]
+tags = ["fast", "hermetic", "tui"]
+driver = "interactive-tmux"
+
+[tmux]
+width = 100
+height = 35
+ready_pattern_pig = "[Context]"
+ready_pattern_pi = "[Context]"
+ready_timeout_seconds = 25
+capture_start = "Sign-in failed:"
+capture_end = "back"
+capture_start_last = true
+
+[[tmux.steps]]
+keys = ["/mcp"]
+settle_seconds = 1
+
+[[tmux.steps]]
+keys = ["Enter"]
+wait_contains = ["MCP servers", "issues", "needs sign-in"]
+wait_timeout_seconds = 10
+settle_seconds = 1
+
+[[tmux.steps]]
+keys = ["Enter"]
+wait_contains = ["MCP server issues", "Sign in"]
+wait_timeout_seconds = 8
+settle_seconds = 1
+
+[[tmux.steps]]
+keys = ["Enter"]
+wait_contains = ["paste the URL it was redirected to"]
+wait_timeout_seconds = 10
+settle_seconds = 1
+
+[[tmux.steps]]
+keys = ["http://127.0.0.1:1/callback?code=x&state=y"]
+settle_seconds = 1
+
+[[tmux.steps]]
+keys = ["Enter"]
+wait_contains = ["Sign-in failed:"]
+wait_timeout_seconds = 8
+settle_seconds = 1
+
+[env]
+override_base_args = true
+# The fake xdg-open keeps the opened authorization URL from reaching a real browser.
+pig = ["PIG_CODING_AGENT_DIR=testdata/mcp-empty-pig-agent", "PATH={{FAKE_BIN}}:{{PATH}}"]
+pi = ["PI_CODING_AGENT_DIR=testdata/mcp-empty-pi-agent", "PATH={{FAKE_BIN}}:{{PATH}}"]
+pig_args = ["--session-dir", "{{TEMP}}/sessions"]
+pi_args = ["--session-dir", "{{TEMP}}/sessions"]
+pig_extensions = ["../../testdata/mcp-oauth-paste.ts"]
+pi_extensions = ["../../testdata/mcp-oauth-paste.ts"]
+
+[assert]
+both_reach_ready = true
+both_not_contain = ["unknown command", "panic:", "goroutine "]
+output_equal = true
+runs = 3

@@ -15,8 +15,7 @@ import (
 // borrowed method applied to a foreign receiver, implicit valueOf coercion, inherited properties, and prototype setters.
 // Each test cites its upstream case and asserts the invariant that case protects, through the Go API that can reach
 // it. Expected values were produced by Pi 1.0.0 packages/chord/src/delta (track, prepare, encoder) under Node 24 on the
-// same inputs; object keys are chosen in sorted order so the JSON text of a Go map, whose keys encode sorted, is
-// byte-identical to Pi's insertion-ordered JSON.
+// same inputs, with object keys inserted in sorted order.
 
 // sortedFloats is Array.prototype.sort with a numeric comparator over float64 elements.
 func sortedFloats(values []any) {
@@ -52,15 +51,17 @@ func mutateReadOuts(t *testing.T, state *Object) {
 	slices.Reverse(inPlace)
 	inPlace[0] = 99.0
 	root := state.Snapshot()
-	root["values"].([]any)[1] = 42.0
-	root["placed"].(map[string]any)["inner"] = "changed"
-	root["extra"] = true
-	delete(root, "placed")
-	if got := textOf(t, root); got != `{"extra":true,"values":[1,42,3]}` {
+	root.Value("values").([]any)[1] = 42.0
+	root.Value("placed").(*JsonObject).Set("inner", "changed")
+	root.Set("extra", true)
+	root.Delete("placed")
+	if got := textOf(t, root); got != `{"values":[1,42,3],"extra":true}` {
 		t.Fatalf("map operations on the root snapshot gave %s", got)
 	}
 }
 
+// Pi source: packages/chord/src/delta/tracker.ts
+// mutation-checked: zeroing the results of Change.Abort fails it
 func TestTrackerDraftMutatorsActOnlyOnTheDraftAndReadOutsAreDetached(t *testing.T) {
 	// Equivalence port of tracker.test.ts:503 "forwards borrowed mutators to ordinary generic array receivers". Go binds
 	// a method value to its receiver, so a draft mutator cannot be borrowed onto another slice; Go's slice operations are
@@ -98,7 +99,7 @@ func TestTrackerDraftMutatorsActOnlyOnTheDraftAndReadOutsAreDetached(t *testing.
 		tracker := Track(jsonObject(t, initial))
 		change := tracker.BeginChange()
 		state := change.State()
-		if err := state.Set("placed", map[string]any{"inner": "draft"}); err != nil {
+		if err := state.Set("placed", JsonObjectOf("inner", "draft")); err != nil {
 			t.Fatal(err)
 		}
 		if _, err := state.Array("values").Push(); err != nil {
@@ -228,7 +229,7 @@ func TestTrackerStructuralMutatorsMatchNativeArgumentHandling(t *testing.T) {
 					t.Fatalf("unknown method %q", row.Method)
 				}
 			})
-			expectJSONText(t, value["values"], textOf(t, row.Draft))
+			expectJSONText(t, value.Value("values"), textOf(t, row.Draft))
 			if row.DraftError != "" {
 				message, _ := strings.CutPrefix(row.DraftError, "TypeError: ")
 				if !errors.Is(callErr, ErrNotStrictJSON) || callErr.Error() != message {
@@ -337,7 +338,7 @@ func TestTrackerStoresReservedAndInheritedNamesAsOwnData(t *testing.T) {
 			expectJSONText(t, prepared.Value(), test.value)
 			expectJSONText(t, replayThroughWire(t, base, prepared.Ops()), test.value)
 			expectJSONText(t, base, test.initial)
-			if other, ok := base["other"]; ok && !sameContainer(other, prepared.Value()["other"]) {
+			if other, ok := base.Get("other"); ok && !sameContainer(other, prepared.Value().Value("other")) {
 				t.Fatal("an untouched sibling must stay the same container")
 			}
 			if err := tracker.Adopt(prepared); err != nil {
@@ -389,7 +390,7 @@ func TestTrackerStoresReservedAndInheritedNamesAsOwnData(t *testing.T) {
 				t.Fatal(err)
 			}
 		})
-		expectJSONText(t, value, `{"a":{"b":{"Keep":1,"toString":2,"trap":1}}}`)
+		expectJSONText(t, value, `{"a":{"b":{"Keep":1,"trap":1,"toString":2}}}`)
 		tracker = Track(jsonObject(t, `{"a":{"b":{"Keep":1}}}`))
 		change := tracker.BeginChange()
 		b := change.State().Object("a").Object("b")
@@ -430,11 +431,11 @@ func TestTrackerRemovedValuesAreDetached(t *testing.T) {
 			tracker := Track(jsonObject(t, initial))
 			base := tracker.Value()
 			change := tracker.BeginChange()
-			removed, ok := test.remove(change.State().Array("values")).(map[string]any)
+			removed, ok := test.remove(change.State().Array("values")).(*JsonObject)
 			if !ok {
 				t.Fatal("the removed element is not a plain object")
 			}
-			removed["x"] = 9.0
+			removed.Set("x", 9.0)
 			expectJSONText(t, base, initial)
 			prepared := mustPrepare(t, change)
 			if got := opsText(t, prepared.Ops()); got != test.ops {

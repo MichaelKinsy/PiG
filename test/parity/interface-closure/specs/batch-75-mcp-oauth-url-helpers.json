@@ -1,0 +1,34 @@
+[
+ {
+  "ids": [
+   "pkg:mcp/oauth#buildAuthorizationServerDiscoveryUrls"
+  ],
+  "targets": [
+   "mcp/oauth/discovery.go#BuildAuthorizationServerDiscoveryURLs"
+  ],
+  "production": [
+   "call:mcp/oauth/discovery.go#DiscoverAuthorizationServerMetadata"
+  ],
+  "evidence": [
+   "test:mcp/oauth/upstream_oracle_test.go#TestBuildAuthorizationServerDiscoveryURLsMatchesPi"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "buildAuthorizationServerDiscoveryUrls: Go BuildAuthorizationServerDiscoveryURLs has the upstream parameters and result (signatures reviewed); callers attributed by go/types."
+ },
+ {
+  "ids": [
+   "pkg:mcp/oauth#resourceUrlFromServerUrl"
+  ],
+  "targets": [
+   "mcp/oauth/discovery.go#ResourceURLFromServerURL"
+  ],
+  "production": [
+   "call:mcp/oauth/discovery.go#SelectResource"
+  ],
+  "evidence": [
+   "test:mcp/oauth/upstream_oracle_test.go#TestSelectResourceMatchesPi"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "resourceUrlFromServerUrl: Go ResourceURLFromServerURL has the upstream parameters and result (signatures reviewed); callers attributed by go/types."
+ }
+]

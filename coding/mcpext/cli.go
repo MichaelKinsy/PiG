@@ -792,14 +792,18 @@ func (c *mcpCLI) login(ctx context.Context, entry McpServerEntry, connection *Co
 	if timeoutMs > maxTimerDelay {
 		delay = time.Millisecond
 	}
-	err = SignInMcpServer(ctx, SignInOptions{
+	// --timeout limits the whole sign-in, including requests to the authorization server (cli.ts, #10565).
+	signInCtx, cancelSignIn := context.WithTimeout(ctx, delay)
+	defer cancelSignIn()
+	err = SignInMcpServer(signInCtx, SignInOptions{
 		ServerURL: serverURL,
 		Store:     store,
 		Settings:  settings,
 		Challenge: connection.Challenge(),
-		Prompt:    &redirectPrompt{cli: c, name: name, timeout: delay},
+		Prompt:    &redirectPrompt{cli: c, name: name},
 		AppName:   "pig",
 	})
+	cancelSignIn()
 	if err != nil {
 		if _, ok := errors.AsType[*McpSignInCancelledError](err); ok {
 			c.error(fmt.Sprintf(`Sign-in to MCP server "%s" was cancelled or not completed within %d seconds.`, name, int64(math.Floor(timeoutMs/1000+0.5))))
@@ -819,9 +823,8 @@ func (c *mcpCLI) login(ctx context.Context, entry McpServerEntry, connection *Co
 
 // redirectPrompt shows the authorization URL and, in a terminal, accepts the pasted redirect URL; otherwise only the browser callback can finish the sign-in.
 type redirectPrompt struct {
-	cli     *mcpCLI
-	name    string
-	timeout time.Duration
+	cli  *mcpCLI
+	name string
 }
 
 func (p *redirectPrompt) ShowAuthorizationURL(authorizationURL *url.URL) {
@@ -831,10 +834,8 @@ func (p *redirectPrompt) ShowAuthorizationURL(authorizationURL *url.URL) {
 	}
 }
 
-// PromptForRedirectURL returns an empty string (cancelling the sign-in) after the timeout, or when the callback arrived and ctx ended.
+// PromptForRedirectURL returns an empty string when ctx ends: the callback arrived, or the sign-in timed out.
 func (p *redirectPrompt) PromptForRedirectURL(ctx context.Context) (string, error) {
-	ctx, cancel := context.WithTimeout(ctx, p.timeout)
-	defer cancel()
 	if !p.cli.options.Interactive {
 		<-ctx.Done()
 		return "", nil

@@ -82,7 +82,7 @@ func (e *Extension) CompleteCommand(prefix string) []extension.AutocompleteItem 
 // upstream: packages/coding-agent/src/extensions/mcp/index.ts:758
 func (e *Extension) usesOAuth(s *server) bool {
 	e.mu.Lock()
-	connection := s.connection
+	connection := s.connection.Load()
 	e.mu.Unlock()
 	return connection != nil && connection.OAuthURL() != ""
 }
@@ -90,12 +90,12 @@ func (e *Extension) usesOAuth(s *server) bool {
 func (e *Extension) hasConnection(s *server) bool {
 	e.mu.Lock()
 	defer e.mu.Unlock()
-	return s.connection != nil
+	return s.connection.Load() != nil
 }
 
 func (e *Extension) connectionState(s *server) ServerState {
 	e.mu.Lock()
-	connection := s.connection
+	connection := s.connection.Load()
 	e.mu.Unlock()
 	if connection == nil {
 		return ""
@@ -170,12 +170,13 @@ func (e *Extension) pickServer(ctx context.Context, name string, c CommandContex
 // shown and a sign-out whose credentials could not be removed. The runner reports it as a command error.
 // upstream: packages/coding-agent/src/extensions/mcp/index.ts:925-977
 func (e *Extension) RunCommand(ctx context.Context, args string, c CommandContext) error {
-	e.Pending()
 	words := strings.FieldsFunc(args, isJSWhitespace)
 	if len(words) == 0 {
+		// The manager opens before the startup connections finish and shows them as they connect.
 		if c.Mode == extension.ModeTUI && c.ShowManager != nil {
 			return c.ShowManager(ctx, func(ui McpUi) error { return e.Manage(ctx, ui, c.EventContext) })
 		}
+		e.Pending()
 		c.notify(e.FormatStatus(), "info")
 		return nil
 	}
@@ -183,6 +184,7 @@ func (e *Extension) RunCommand(ctx context.Context, args string, c CommandContex
 		c.notify(McpUsage, "warning")
 		return nil
 	}
+	e.Pending()
 	action, name := words[0], ""
 	if len(words) == 2 {
 		name = words[1]
@@ -240,6 +242,9 @@ func (e *Extension) loginCommand(ctx context.Context, s *server, c CommandContex
 		c.notify(fmt.Sprintf(`Signing in to MCP server "%s" requires interactive mode.`, name), "error")
 		return nil
 	}
+	e.mu.Lock()
+	session := e.session
+	e.mu.Unlock()
 	var failure string
 	if c.Mode == extension.ModeTUI && c.ShowManager != nil {
 		if err := c.ShowManager(ctx, func(ui McpUi) error {
@@ -251,6 +256,10 @@ func (e *Extension) loginCommand(ctx context.Context, s *server, c CommandContex
 	} else {
 		failure = e.SignIn(ctx, name, &commandSignIn{e: e, ctx: c, name: name})
 	}
+	// The session ended meanwhile, which cancelled the sign-in and made the context stale.
+	if session.Err() != nil {
+		return nil
+	}
 	if failure != "" {
 		level := "error"
 		if failure == "Sign-in cancelled." {
@@ -261,7 +270,7 @@ func (e *Extension) loginCommand(ctx context.Context, s *server, c CommandContex
 	}
 	e.EnsureDiscoveryActive(c.EventContext)
 	e.mu.Lock()
-	connection := s.connection
+	connection := s.connection.Load()
 	e.mu.Unlock()
 	tools := 0
 	if connection != nil {

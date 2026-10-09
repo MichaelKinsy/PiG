@@ -13,6 +13,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/MichaelKinsy/PiG/internal/configroot"
 	"github.com/MichaelKinsy/PiG/internal/lazyregexp"
 	"github.com/MichaelKinsy/PiG/internal/linkerexec"
 )
@@ -43,6 +44,25 @@ func (t GoToolchain) Environ(environ []string) []string {
 		return out
 	}
 	return append(out, "GOROOT="+t.Root)
+}
+
+// WorkDirEnv returns environ with PWD naming dir, the working directory of a
+// command started with an explicit environment. os/exec sets PWD for a
+// command's Dir only when its Env is nil, so the command would otherwise
+// inherit this process's PWD, which names another directory. The go command
+// then takes the physical working directory, and a dir reached through a
+// symbolic link (/tmp or /var on macOS) no longer matches the paths it was
+// given, such as GOWORK and the go.work `use .` it names. Windows and Plan 9
+// do not use PWD.
+func WorkDirEnv(dir string, environ []string) []string {
+	if runtime.GOOS == "windows" || runtime.GOOS == "plan9" {
+		return environ
+	}
+	abs, err := filepath.Abs(dir)
+	if err != nil {
+		return environ
+	}
+	return append(slices.DeleteFunc(slices.Clone(environ), func(kv string) bool { return envKey(kv, "PWD") }), "PWD="+abs)
 }
 
 // envKey reports whether kv assigns key. Windows compares variable names
@@ -76,7 +96,7 @@ func ResolveGo() (GoToolchain, error) {
 		return GoToolchain{}, err
 	}
 	cwd, _ := os.Getwd()
-	home, _ := ConfigRoot()
+	home, _ := configroot.Resolve()
 	key := resolveKey{command, os.Getenv("GOROOT"), os.Getenv("GOTOOLCHAIN"), cwd, home}
 	resolveMu.Lock()
 	defer resolveMu.Unlock()
@@ -99,7 +119,7 @@ func goCommand() (string, GoToolchain, error) {
 	if path, err := exec.LookPath("go"); err == nil {
 		return path, GoToolchain{}, nil
 	}
-	root, err := ConfigRoot()
+	root, err := configroot.Resolve()
 	if err == nil {
 		goRoot := ManagedGoRoot(root)
 		managed := filepath.Join(goRoot, "bin", exeName("go"))

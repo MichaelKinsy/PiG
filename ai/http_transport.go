@@ -80,7 +80,7 @@ func init() {
 // Mirrors upstream's configureHttpDispatcher(settingsManager.getHttpIdleTimeoutMs()).
 func ConfigureHTTPDispatcher(timeoutMs int) error {
 	if timeoutMs < 0 {
-		return fmt.Errorf("invalid HTTP idle timeout: %d", timeoutMs)
+		return fmt.Errorf("Invalid HTTP idle timeout: %d", timeoutMs)
 	}
 	configuredHTTPIdleTimeoutMs.Store(int64(timeoutMs))
 	return nil

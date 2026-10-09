@@ -53,7 +53,7 @@ func (s *Session) PreparePrompt(ctx context.Context, content []ai.UserContentBlo
 	var result *extension.BeforeAgentStartCombinedResult
 	if runner != nil && runner.HasHandlers("before_agent_start") {
 		var err error
-		result, err = runner.EmitBeforeAgentStart(ctx, text, images, s.systemPrompt(), options)
+		result, err = runner.EmitBeforeAgentStart(ctx, text, images, options)
 		if err != nil {
 			return nil, err
 		}
@@ -71,7 +71,7 @@ func (s *Session) PreparePrompt(ctx context.Context, content []ai.UserContentBlo
 
 // NormalizeImages applies the current model's image profile after before_agent_start has completed.
 func (p *PreparedPrompt) NormalizeImages() {
-	p.content = icodingagent.NormalizePromptContent(p.content, p.session.services.SettingsManager().GetImageAutoResize(), p.session.agent.Model(), p.session.processImage)
+	p.content = icodingagent.NormalizePromptContent(p.content, p.session.SettingsManager().GetImageAutoResize(), p.session.agent.Model(), p.session.processImage)
 }
 
 // PreparedPromptRun owns an admitted Session prompt across its first event and the remainder of execution.
@@ -132,6 +132,14 @@ func (s *Session) BeginPreparedPrompt(ctx context.Context, p *PreparedPrompt) (*
 	s.runPrompt.Store(&p.run)
 	s.QueueAgentStartMessages(p.messages)
 	return &PreparedPromptRun{session: s, prompt: p, agentRun: run, ctx: runCtx, finish: finish}, nil
+}
+
+// SetRunPrompt publishes the before_agent_start run of a prompt that interactive mode prepared itself, so the Session's
+// request hooks record the run's prompt sections in the transcript as they do for a prompt the Session prepared
+// (agent-session.ts:1724 builds the run's options for every mode). Nil ends the run. The Session refreshes the options
+// before each later turn.
+func (s *Session) SetRunPrompt(run *icodingagent.BeforeAgentStartRun) {
+	s.runPrompt.Store(run)
 }
 
 // admittedToolNames returns an explicit selectedTools edit, or the live active tools when handlers left the list unchanged (agent-session.ts:1714).

@@ -2,6 +2,12 @@
 
 package harness
 
+// pi: packages/durable/src/harness/view.ts
+
+// pi: packages/durable/src/harness/task-graph.ts
+
+// pi: packages/durable/src/harness/harness.ts
+
 import (
 	"context"
 	"errors"
@@ -137,6 +143,9 @@ func TestHarnessOpen(t *testing.T) {
 	})
 }
 
+// Pi source: packages/durable/src/harness/types.ts
+// mutation-checked: zeroing the results of Conversation.Reset fails it
+// packages/durable/src/types.ts:907: Session.subscribeClose(listener) runs the listener when the session closes and returns its unsubscribe.
 func TestHarnessClose(t *testing.T) {
 	t.Run("joins a task handler that ignores its signal before closing Storage", func(t *testing.T) {
 		store := storage.NewMemoryStorage()
@@ -182,7 +191,7 @@ func TestHarnessClose(t *testing.T) {
 				_ = gate.wait(context.Background())
 				readAfterRelease = new(storageOpen(store))
 			}
-			addTool(t, setup.Registry, new(durable.ToolRegistration{
+			addTool(t, setup.Registry, DefineTool(durable.ToolRegistration{
 				ToolSchema: ai.ToolSchema{Name: "wait", Description: "wait", Parameters: map[string]any{"type": "object", "properties": map[string]any{}}},
 				Execute: func(context.Context, any, durable.ToolExecutionApi) (durable.ToolExecutionResult, error) {
 					if where == "tool" {
@@ -200,7 +209,7 @@ func TestHarnessClose(t *testing.T) {
 				},
 			})
 			setup.Faux.SetResponses([]ai.FauxResponseStep{
-				ai.FauxStaticStep(ai.FauxResponse{Content: []ai.FauxContentBlock{ai.FauxToolCall("wait", map[string]any{}, "c1")}, StopReason: "toolUse"}),
+				ai.FauxStaticStep(ai.FauxResponse{Content: []ai.FauxContentBlock{ai.FauxToolCall("wait", map[string]any{}, &ai.FauxToolCallOptions{ID: "c1"})}, StopReason: "toolUse"}),
 				ai.FauxStaticStep(ai.FauxResponse{Content: []ai.FauxContentBlock{ai.FauxText("done")}, StopReason: "stop"}),
 			})
 			harness, root := openChat(t, store, setup)
@@ -353,9 +362,8 @@ func TestHarnessClose(t *testing.T) {
 
 	t.Run("publishes no frame to states and watches from a commit that settles during close", func(t *testing.T) {
 		notes := durable.DefineDoc(durable.DocDefinition[noteState]{
-			CommonDocDefinition: durable.CommonDocDefinition[noteState]{Kind: "test.close-frames", Version: 1},
+			CommonDocDefinition: durable.CommonDocDefinition[noteState]{Kind: "test.close-frames", Version: 1, Initial: func() noteState { return noteState{} }},
 			DocumentSemantics:   durable.DocumentSemantics{Scope: durable.ScopeSession},
-			Initial:             func() noteState { return noteState{} },
 		})
 		store := newControlledStorage()
 		harness, _, _ := openTasks(t, store, nil)
@@ -466,9 +474,8 @@ func TestHarnessClose(t *testing.T) {
 
 	t.Run("leaves no subscription behind a watch acquisition cancelled on the line", func(t *testing.T) {
 		notes := durable.DefineDoc(durable.DocDefinition[noteState]{
-			CommonDocDefinition: durable.CommonDocDefinition[noteState]{Kind: "test.cancelled-watch", Version: 1},
+			CommonDocDefinition: durable.CommonDocDefinition[noteState]{Kind: "test.cancelled-watch", Version: 1, Initial: func() noteState { return noteState{} }},
 			DocumentSemantics:   durable.DocumentSemantics{Scope: durable.ScopeSession},
-			Initial:             func() noteState { return noteState{} },
 		})
 		store := newControlledStorage()
 		harness, _, _ := openTasks(t, store, nil)
@@ -527,7 +534,7 @@ func TestHarnessClose(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if sameEntries(second.Value().Entries, firstValue.Entries) && sameMap(second.Value().Docs, firstValue.Docs) {
+		if sameEntries(second.Value().Entries, firstValue.Entries) && second.Value().Docs == firstValue.Docs {
 			t.Fatal("a cancelled acquisition kept the mount")
 		}
 		second.Dispose()
@@ -582,7 +589,7 @@ func TestHarnessClose(t *testing.T) {
 				_, err := root.Commit(testContext, func(durable.Tx) (any, error) { return nil, nil })
 				return err
 			}},
-			{"context", func() error { _, err := root.Context(testContext); return err }},
+			{"context", func() error { _, err := root.Context(testContext, nil); return err }},
 			{"entries", func() error { _, err := root.Entries(testContext, durable.EntryQuery{}, 10, nil); return err }},
 			{"fork", func() error {
 				_, err := root.Fork(testContext, entry.Id, ConversationCreateOptions{Ownership: ownerless})
@@ -645,14 +652,12 @@ func TestHarnessClose(t *testing.T) {
 
 	t.Run("completes reads queued at the seal and rejects queued waits and acquisitions that would follow commits", func(t *testing.T) {
 		notes := durable.DefineDoc(durable.DocDefinition[noteState]{
-			CommonDocDefinition: durable.CommonDocDefinition[noteState]{Kind: "test.queued-at-seal", Version: 1},
+			CommonDocDefinition: durable.CommonDocDefinition[noteState]{Kind: "test.queued-at-seal", Version: 1, Initial: func() noteState { return noteState{} }},
 			DocumentSemantics:   durable.DocumentSemantics{Scope: durable.ScopeSession},
-			Initial:             func() noteState { return noteState{} },
 		})
 		absent := durable.DefineDoc(durable.DocDefinition[noteState]{
-			CommonDocDefinition: durable.CommonDocDefinition[noteState]{Kind: "test.queued-absent", Version: 1},
+			CommonDocDefinition: durable.CommonDocDefinition[noteState]{Kind: "test.queued-absent", Version: 1, Initial: func() noteState { return noteState{} }},
 			DocumentSemantics:   durable.DocumentSemantics{Scope: durable.ScopeSession},
-			Initial:             func() noteState { return noteState{} },
 		})
 		pending := oneStep("test.queued-pending")
 		store := newControlledStorage()
@@ -695,7 +700,7 @@ func TestHarnessClose(t *testing.T) {
 		// Queue each read in upstream's order: each one enters the line before the next is issued.
 		names := []string{"context", "snapshot", "settledWait", "absentWatch", "absentState", "waitForTask", "documentState", "watchDoc", "viewState", "watch", "taskGraph"}
 		runs := map[string]func() (bool, error){
-			"context": func() (bool, error) { _, err := root.Context(testContext); return true, err },
+			"context": func() (bool, error) { _, err := root.Context(testContext, nil); return true, err },
 			"snapshot": func() (bool, error) {
 				value, err := harness.SnapshotErased(testContext, notes)
 				return value != nil, err
@@ -809,9 +814,8 @@ func TestSchedulingOnAPausedHarness(t *testing.T) {
 		opened := paused(t)
 		harness, root := opened.harness, opened.root
 		notes := durable.DefineDoc(durable.DocDefinition[noteState]{
-			CommonDocDefinition: durable.CommonDocDefinition[noteState]{Kind: "test.viewer-notes", Version: 1},
+			CommonDocDefinition: durable.CommonDocDefinition[noteState]{Kind: "test.viewer-notes", Version: 1, Initial: func() noteState { return noteState{} }},
 			DocumentSemantics:   durable.DocumentSemantics{Scope: durable.ScopeSession},
-			Initial:             func() noteState { return noteState{} },
 		})
 		check := func(err error) {
 			t.Helper()
@@ -844,7 +848,7 @@ func TestSchedulingOnAPausedHarness(t *testing.T) {
 		check(err)
 		_, err = root.Agent(testContext)
 		check(err)
-		_, err = root.Context(testContext)
+		_, err = root.Context(testContext, nil)
 		check(err)
 		_, err = root.Entries(testContext, durable.EntryQuery{}, 10, nil)
 		check(err)

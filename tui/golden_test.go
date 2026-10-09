@@ -1,3 +1,5 @@
+//go:build !pig_strip_syntax_highlight
+
 package tui
 
 // Goldens snapshot the output of stable renderer functions. If the

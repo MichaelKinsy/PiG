@@ -18,13 +18,15 @@ import (
 // GenerationInput is the input of the built-in generation task; the run's inputs live in pi.live.run.
 type GenerationInput struct{}
 
-// GenerationPhase names a phase of the generation task.
+// GenerationPhase names a phase of the generation task (generation.ts:49-90).
+type GenerationPhase string
+
 const (
-	generationPrepare = "prepare"
-	generationRequest = "request"
-	generationRetry   = "retry"
-	generationPoll    = "poll"
-	generationTools   = "tools"
+	generationPrepare GenerationPhase = "prepare"
+	generationRequest GenerationPhase = "request"
+	generationRetry   GenerationPhase = "retry"
+	generationPoll    GenerationPhase = "poll"
+	generationTools   GenerationPhase = "tools"
 )
 
 // GenerationCheckpoint is the durable checkpoint of the generation task (generation.ts:49-90). Phase selects the
@@ -40,7 +42,7 @@ const (
 //   - tools: Assistant (the tool-calling answer), Tools (tool tasks created so far, in call order) and Pending (calls of
 //     a sequential round not started yet, in call order). The generation owns the tool tasks (spec §8.5).
 type GenerationCheckpoint struct {
-	Phase         string                             `json:"phase"`
+	Phase         GenerationPhase                    `json:"phase"`
 	Attempt       int                                `json:"attempt,omitempty"`
 	Compacted     *durable.TaskId                    `json:"compacted,omitempty"`
 	Overflow      *string                            `json:"overflow,omitempty"`
@@ -63,7 +65,7 @@ func (checkpoint GenerationCheckpoint) MarshalJSON() ([]byte, error) {
 		return marshalPlain(plain(checkpoint))
 	}
 	return marshalPlain(struct {
-		Phase     string           `json:"phase"`
+		Phase     GenerationPhase  `json:"phase"`
 		Assistant *durable.EntryId `json:"assistant,omitempty"`
 		Tools     []durable.TaskId `json:"tools"`
 		Pending   []string         `json:"pending"`
@@ -112,11 +114,11 @@ func init() {
 			return GenerationCheckpoint{Phase: generationPrepare, Attempt: 1}
 		},
 		Phases: map[string]durable.PhaseHandler[GenerationInput, GenerationCheckpoint, GenerationResult, *GenerationHooks]{
-			generationPrepare: generationPrepareHandler,
-			generationRequest: generationRequestHandler,
-			generationRetry:   generationRetryHandler,
-			generationPoll:    generationPollHandler,
-			generationTools:   generationToolsHandler,
+			string(generationPrepare): generationPrepareHandler,
+			string(generationRequest): generationRequestHandler,
+			string(generationRetry):   generationRetryHandler,
+			string(generationPoll):    generationPollHandler,
+			string(generationTools):   generationToolsHandler,
 		},
 		Abort: generationAbortHandler,
 	})
@@ -182,7 +184,7 @@ func generationPrepareHandler(ctx context.Context, task durable.RunningTask[Gene
 			return failGenerationModelError(ctx, runtime, *checkpoint.Overflow)
 		}
 	}
-	view, err := runtime.Context(ctx, conversationId, nil)
+	view, err := runtime.Context(sharedReads(ctx), conversationId, nil)
 	if err != nil {
 		return err
 	}
@@ -289,7 +291,7 @@ func generationRequestHandler(ctx context.Context, task durable.RunningTask[Gene
 		if err := ConvertPartial(tx, live, conversationId); err != nil {
 			return nil, err
 		}
-		return nil, live.Set("generation", map[string]any{"attempt": float64(checkpoint.Attempt)})
+		return nil, live.Set("generation", delta.JsonObjectOf("attempt", float64(checkpoint.Attempt)))
 	}); err != nil {
 		return err
 	}
@@ -298,14 +300,19 @@ func generationRequestHandler(ctx context.Context, task durable.RunningTask[Gene
 	if model == nil {
 		return failGenerationNoModel(ctx, runtime, &ref)
 	}
-	view, err := runtime.Context(ctx, conversationId, checkpoint.Cutoff)
+	view, err := runtime.Context(sharedReads(ctx), conversationId, &durable.ContextOptions{At: checkpoint.Cutoff})
 	if err != nil {
 		return err
 	}
-	messages := view.Messages
+	// view.Messages is shared with the context cache. A hook may modify what it receives, so the first one gets a copy;
+	// until then the request is frozen and the provider path shares the messages.
+	messages, shared := view.Messages, true
 	if err := runtime.Hooks().Each("beforeRequest", func(hooks *GenerationHooks) error {
 		if hooks == nil || hooks.BeforeRequest == nil {
 			return nil
+		}
+		if shared {
+			messages, shared = ai.NormalizeContext(ai.Context{Messages: messages}).Messages(), false
 		}
 		replaced, err := hooks.BeforeRequest(ctx, GenerationRequest{Messages: messages}, runtime)
 		if err != nil {
@@ -326,7 +333,7 @@ func generationRequestHandler(ctx context.Context, task durable.RunningTask[Gene
 	if options.SessionID, err = ensureProviderSessionId(ctx, runtime); err != nil {
 		return err
 	}
-	message, err := streamResponse(ctx, runtime, model, messages, options, checkpoint.Attempt)
+	message, err := streamResponse(ctx, runtime, model, messages, shared, options, checkpoint.Attempt)
 	if err != nil {
 		return err
 	}
@@ -344,7 +351,7 @@ func generationRetryHandler(ctx context.Context, task durable.RunningTask[Genera
 		if err != nil {
 			return nil, err
 		}
-		if err := live.Set("generation", map[string]any{"attempt": float64(checkpoint.Attempt + 1)}); err != nil {
+		if err := live.Set("generation", delta.JsonObjectOf("attempt", float64(checkpoint.Attempt+1))); err != nil {
 			return nil, err
 		}
 		next := GenerationCheckpoint{Phase: generationPrepare, Attempt: checkpoint.Attempt + 1, Compacted: checkpoint.Compacted}
@@ -436,7 +443,7 @@ func generationAbortHandler(ctx context.Context, task durable.RunningTask[Genera
 		}
 		for _, call := range unstarted {
 			result := HarnessError(abortedResultCode, fmt.Sprintf("Tool %s was aborted", call.Name))
-			if _, err := AppendToolResult(tx, conversationId, call, result, runtime.Now()); err != nil {
+			if _, err := AppendToolResult(tx, conversationId, call, result, runtime.Now(), nil); err != nil {
 				return nil, err
 			}
 		}
@@ -449,12 +456,12 @@ func generationAbortHandler(ctx context.Context, task durable.RunningTask[Genera
 
 // readCalls returns the calls callIds of the assistant entry, in the given order.
 func readCalls(ctx context.Context, runtime generationRuntime, assistant durable.EntryId, callIds []string) ([]ai.ToolCall, error) {
-	entry, err := runtime.Entry(ctx, assistant)
+	entry, err := durable.TaskEntry(ctx, runtime, durable.AssistantEntry, assistant)
 	if err != nil {
 		return nil, err
 	}
 	var calls []ai.ToolCall
-	if durable.AssistantEntry.Is(entry) && len(entry.Model) > 0 {
+	if entry != nil && len(entry.Model) > 0 {
 		if message, ok := entry.Model[0].(ai.AssistantMessage); ok {
 			calls = toolCallsOf(message)
 		}
@@ -578,11 +585,14 @@ func ConvertPartial(tx durable.Tx, live *delta.Object, conversationId durable.Co
 // streamResponse streams one request and returns the terminal message (generation.ts:354-405). Partials commit as
 // trailing writes at most every Settings.Progress.PartialIntervalMs (default 100 ms) with one commit in flight; stopping the throttle waits for that commit, so no
 // stale partial lands after the outcome.
-func streamResponse(ctx context.Context, runtime generationRuntime, model *ai.Model, messages []ai.Message, options ai.StreamOptions, attempt int) (ai.AssistantMessage, error) {
+func streamResponse(ctx context.Context, runtime generationRuntime, model *ai.Model, messages []ai.Message, frozen bool, options ai.StreamOptions, attempt int) (ai.AssistantMessage, error) {
 	throttle := &partialThrottle{runtime: runtime, ctx: ctx, attempt: attempt, interval: millisecondsDuration(runtime.Settings().Progress.PartialIntervalMs)}
 	defer throttle.stop()
 	signal := runtime.Signal()
-	stream := runtime.Models().StreamSimple(signal, model, ai.Context{Messages: append([]ai.Message{}, messages...)}, options)
+	if !frozen {
+		messages = append([]ai.Message{}, messages...)
+	}
+	stream := runtime.Models().StreamSimple(signal, model, ai.Context{Messages: messages, Frozen: frozen}, options)
 	for event := range stream.Events(signal) {
 		switch event.(type) {
 		case ai.DoneEvent, *ai.DoneEvent, ai.ErrorEvent, *ai.ErrorEvent:
@@ -690,7 +700,7 @@ func (throttle *partialThrottle) flush() {
 				}
 				generation := live.Object("generation")
 				if generation == nil {
-					if err := live.Set("generation", map[string]any{"attempt": float64(throttle.attempt)}); err != nil {
+					if err := live.Set("generation", delta.JsonObjectOf("attempt", float64(throttle.attempt))); err != nil {
 						return nil, err
 					}
 					generation = live.Object("generation")
@@ -750,7 +760,7 @@ func classify(ctx context.Context, runtime generationRuntime, request generation
 			if err != nil {
 				return nil, err
 			}
-			if err := live.Set("generation", map[string]any{"attempt": float64(attempt), "deferred": map[string]any{"pollAt": pollAt}}); err != nil {
+			if err := live.Set("generation", delta.JsonObjectOf("attempt", float64(attempt), "deferred", delta.JsonObjectOf("pollAt", pollAt))); err != nil {
 				return nil, err
 			}
 			next := GenerationCheckpoint{Phase: generationPoll, Attempt: attempt, Compacted: compacted, Model: &ref, Cutoff: &cutoff, Handle: &handle, PollAt: &pollAt}
@@ -777,7 +787,7 @@ func classify(ctx context.Context, runtime generationRuntime, request generation
 	settings := runtime.Settings()
 	overflow := message.StopReason == ai.StopReasonError && ai.IsContextOverflow(message, 0)
 	if overflow && compacted == nil && settings.Compaction.Enabled {
-		view, err := runtime.Context(ctx, conversationId, &cutoff)
+		view, err := runtime.Context(ctx, conversationId, &durable.ContextOptions{At: &cutoff})
 		if err != nil {
 			return err
 		}
@@ -810,7 +820,7 @@ func classify(ctx context.Context, runtime generationRuntime, request generation
 	retry := message.StopReason == ai.StopReasonError && !overflow && ai.IsRetryableAssistantError(message) && policy.Enabled && attempt <= policy.MaxRetries
 	until := 0.0
 	if retry {
-		until = runtime.Now() + float64(ai.RetryDelayMs(policy.BaseDelayMs, policy.MaxAgentDelayMs, attempt))
+		until = runtime.Now() + float64(ai.RetryDelayMs(ai.RetryPolicy{BaseDelayMs: policy.BaseDelayMs, MaxAgentDelayMs: policy.MaxAgentDelayMs}, attempt))
 	}
 	return runtime.Commit(ctx, func(tx durable.Tx, _ durable.RunningTask[GenerationInput, GenerationCheckpoint, GenerationResult]) (*generationNext, error) {
 		live, err := docDraft(tx, LiveDoc, conversationId)
@@ -821,7 +831,7 @@ func classify(ctx context.Context, runtime generationRuntime, request generation
 			return nil, err
 		}
 		if retry {
-			if err := live.Set("generation", map[string]any{"attempt": float64(attempt), "retry": map[string]any{"at": until, "error": message.ErrorMessage}}); err != nil {
+			if err := live.Set("generation", delta.JsonObjectOf("attempt", float64(attempt), "retry", delta.JsonObjectOf("at", until, "error", message.ErrorMessage))); err != nil {
 				return nil, err
 			}
 			next := GenerationCheckpoint{Phase: generationRetry, Attempt: attempt, Compacted: compacted, Until: &until}
@@ -912,7 +922,7 @@ func startToolRound(ctx context.Context, runtime generationRuntime, request gene
 	conversationId := runtime.ConversationId()
 	messages := request.messages
 	if messages == nil {
-		view, err := runtime.Context(ctx, conversationId, &request.cutoff)
+		view, err := runtime.Context(ctx, conversationId, &durable.ContextOptions{At: &request.cutoff})
 		if err != nil {
 			return err
 		}
@@ -956,7 +966,7 @@ func startToolRound(ctx context.Context, runtime generationRuntime, request gene
 		for _, call := range calls {
 			if !offered[call.Name] {
 				unavailable := HarnessError(toolUnavailable, fmt.Sprintf("Tool %s is not available", call.Name))
-				result, err := AppendToolResult(tx, conversationId, call, unavailable, runtime.Now())
+				result, err := AppendToolResult(tx, conversationId, call, unavailable, runtime.Now(), nil)
 				if err != nil {
 					return nil, err
 				}
@@ -1182,9 +1192,7 @@ func streamOptionsOf(stream durable.ConversationStreamOptions, signal context.Co
 			options.Headers[name] = &value
 		}
 	}
-	if thinking != "" && thinking != ai.ThinkingOff {
-		options.Thinking = thinking
-	}
+	options.Thinking = thinking.ReasoningOption()
 	return options
 }
 

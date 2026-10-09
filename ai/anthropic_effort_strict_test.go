@@ -75,7 +75,7 @@ func TestAnthropicManagedEffortAndStrictTools(t *testing.T) {
 			UserMessage{Content: UserText("two"), Timestamp: 3},
 		},
 	})
-	stream, err := provider.Stream(context.Background(), transcript, StreamOptions{Thinking: ThinkingMedium})
+	stream, err := provider.Stream(context.Background(), transcript, StreamOptions{Thinking: ThinkingLevelMedium})
 	if err != nil {
 		t.Fatalf("Stream: %v", err)
 	}
@@ -140,7 +140,7 @@ func TestAnthropicManagedEffortAndStrictTools(t *testing.T) {
 func TestAnthropicManagedEffortMapping(t *testing.T) {
 	model := &Model{}
 	for _, test := range []struct {
-		level ThinkingLevel
+		level ModelThinkingLevel
 		want  string
 	}{
 		{level: "", want: "high"},
@@ -152,7 +152,7 @@ func TestAnthropicManagedEffortMapping(t *testing.T) {
 		{level: ThinkingXHigh, want: "xhigh"},
 		{level: ThinkingMax, want: "max"},
 	} {
-		if got := anthropicActiveEffort(model, test.level); got != test.want {
+		if got := anthropicActiveEffort(model, test.level); got != AnthropicEffort(test.want) {
 			t.Errorf("anthropicActiveEffort(%q) = %q, want %q", test.level, got, test.want)
 		}
 	}

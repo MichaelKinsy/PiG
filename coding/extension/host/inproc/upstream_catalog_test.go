@@ -3,6 +3,7 @@ package inproc_test
 import (
 	"context"
 	"encoding/json"
+	"github.com/MichaelKinsy/PiG/ai"
 	"maps"
 	"slices"
 	"strings"
@@ -13,8 +14,10 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/codingagent"
 )
 
+// Pi: packages/coding-agent/src/core/keybindings.ts:391 (KeybindingsManager.getResolvedBindings).
+// Pi: packages/coding-agent/src/core/extensions/types.ts:2057 (ExtensionShortcut.description).
 func TestUpstreamRunnerShortcuts(t *testing.T) {
-	defaults := codingagent.DefaultKeybindingsManager().ResolvedBindings()
+	defaults := codingagent.DefaultKeybindingsManager().GetResolvedBindings()
 	paste := defaults["app.clipboard.pasteImage"][0]
 	for _, tc := range []struct {
 		name, key, description, action string
@@ -77,7 +80,7 @@ func upstreamRunnerTool(path, name, description string) extension.Extension {
 	ext.Tools[name] = extension.RegisteredTool{Definition: extension.ToolDefinition{
 		Name: name, Label: name, Description: description, Parameters: json.RawMessage(`{"type":"object","properties":{}}`),
 		Execute: func(context.Context, string, json.RawMessage, extension.AgentToolUpdateCallback) (extension.AgentToolResult, error) {
-			return map[string]any{"content": []map[string]any{{"type": "text", "text": "ok"}}, "details": map[string]any{}}, nil
+			return extension.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: "ok"}}, Details: map[string]any{}}, nil
 		},
 	}}
 	return ext

@@ -8,11 +8,14 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"net/url"
 	"os"
 	"strconv"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/MichaelKinsy/PiG/internal/nodeurl"
 )
 
 // OAuthCallbackServerOptions configures the loopback redirect handler shared by the browser sign-in flows.
@@ -129,10 +132,15 @@ func (s *OAuthCallbackServer[T]) sendPage(w http.ResponseWriter, status int, htm
 
 // writeOAuthPage sends a complete response before returning. Node's response.end() reaches the socket before the
 // server closes its connections; Go buffers until the handler returns, so an immediate Close would drop the page.
-func writeOAuthPage(w http.ResponseWriter, status int, html string) {
+func writeOAuthPage(w http.ResponseWriter, status int, html string) { writePage(w, status, html, true) }
+
+// writePage is writeOAuthPage with the cache-control header optional.
+func writePage(w http.ResponseWriter, status int, html string, noStore bool) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.Header().Set("Content-Length", strconv.Itoa(len(html)))
-	w.Header().Set("Cache-Control", "no-store")
+	if noStore {
+		w.Header().Set("Cache-Control", "no-store")
+	}
 	w.Header().Set("Connection", "close")
 	w.WriteHeader(status)
 	_, _ = w.Write([]byte(html))
@@ -141,9 +149,24 @@ func writeOAuthPage(w http.ResponseWriter, status int, html string) {
 	}
 }
 
+// requestPathAndQuery is the pathname and search parameters of new URL(request.url, base). A target naming a scheme other
+// than http or https, which net/http accepts in absolute form, keeps net/url's resolution of its path.
+func requestPathAndQuery(r *http.Request, base string) (string, url.Values) {
+	if resolved, err := nodeurl.ResolveHTTPURL(r.RequestURI, base); err == nil {
+		return resolved.Pathname, nodeurl.SearchParams(strings.TrimPrefix(resolved.Search, "?"))
+	}
+	reference, err := url.Parse(r.RequestURI)
+	if err != nil || reference.Scheme == "" {
+		return "", url.Values{}
+	}
+	return reference.ResolveReference(&url.URL{Path: reference.Path, RawPath: reference.RawPath}).EscapedPath(), nodeurl.SearchParams(reference.RawQuery)
+}
+
 func (s *OAuthCallbackServer[T]) handle(w http.ResponseWriter, r *http.Request) {
-	query := r.URL.Query()
-	if r.Method != http.MethodGet || r.URL.Path != s.options.Path {
+	// callback-server.ts parses request.url with new URL(url, "http://localhost"): the pathname stays percent-encoded,
+	// dot segments (including "%2e") and backslashes resolve, and a leading "//" names an authority.
+	pathname, query := requestPathAndQuery(r, "http://localhost")
+	if r.Method != http.MethodGet || pathname != s.options.Path {
 		s.sendPage(w, http.StatusNotFound, OAuthErrorHTML("Callback route not found.", ""))
 		return
 	}

@@ -20,7 +20,7 @@ Upstream: v0.99.2..v1.0.0 (tag `v1.0.0`, `a13d35a74`). Based on the 0.99.1 porte
 Differential evidence against Pi 1.0.0 (npm `@earendil-works/pi-coding-agent@1.0.0`):
 
 - `createCodemodeToolDefinition().prepareLoadout` over bash, read, MCP `CallToolResult`, integer-key and union output schemas, in modes `on` and `only`, with budgets unset, 3000 and 60, with and without `models`: every description matches PiG's except the docs path.
-- `executeCodemode` over 38 malformed `models.*` calls and guarded member reads: every error name and message matches. `TestModelsGlobalArgumentErrorsMatchPi` pins the Pi output (`coding/extension/builtin/codemode/testdata/models-argument-errors.pi-1.0.0.json`).
+- `executeCodemode` over 38 malformed `models.*` calls and guarded member reads: every error name and message matches. `TestModelsGlobalArgumentErrorsMatchPi` pins the Pi output (`coding/extension/builtin/codemode/testdata/models-argument-errors.pi-1.1.0.json`).
 
 ## Red to green (sibling tests)
 

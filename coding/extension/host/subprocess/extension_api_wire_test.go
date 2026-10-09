@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"reflect"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -216,6 +217,12 @@ func TestPrepareLoadoutRunsInTheExtension(t *testing.T) {
 			}
 			return nil
 		},
+		GetPromptGuidelines: func(name string) []string {
+			if name == "grep" {
+				return []string{"Use grep for patterns."}
+			}
+			return nil
+		},
 	}
 	if ext.Tools["codemode"].Definition.PrepareLoadout == nil {
 		t.Fatal("a tool that declares prepares_loadout has no PrepareLoadout")
@@ -234,7 +241,8 @@ func TestPrepareLoadoutRunsInTheExtension(t *testing.T) {
 	}
 	if len(payload.Declared) != 2 || len(payload.Callable) != 1 || len(payload.Registered) != 2 ||
 		payload.Exposures["grep"] != extension.ToolExposureDeferred || payload.Exposures["read"] != extension.ToolExposureDirect ||
-		payload.Namespaces["grep"] == nil || payload.Namespaces["grep"].Name != "search" || payload.Namespaces["read"] != nil {
+		payload.Namespaces["grep"] == nil || payload.Namespaces["grep"].Name != "search" || payload.Namespaces["read"] != nil ||
+		!reflect.DeepEqual(payload.PromptGuidelines, map[string][]string{"grep": {"Use grep for patterns."}}) {
 		t.Fatalf("payload = %+v", payload)
 	}
 
@@ -274,7 +282,7 @@ func TestRegisterPayloadRegistersMcpServersWithTheRuntime(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	servers := host.Runtime().McpServers()
+	servers := host.Runtime().McpServers().List()
 	if len(servers) != 2 || servers[0].Name != "docs" || servers[0].Config.URL != "http://docs.invalid" || servers[1].Name != "wiki" ||
 		servers[0].ExtensionPath != ext.Path || servers[1].ExtensionPath != ext.Path {
 		t.Fatalf("servers = %+v (extension path %q)", servers, ext.Path)
@@ -298,7 +306,7 @@ func TestRegisterPayloadRejectsInvalidAndForeignMcpServers(t *testing.T) {
 	if err == nil || !strings.Contains(err.Error(), `Invalid MCP server registered by extension "/ext/third.ts": invalid server name "no good"`) {
 		t.Fatalf("invalid config error = %v", err)
 	}
-	if got := len(host.Runtime().McpServers()); got != 1 {
+	if got := len(host.Runtime().McpServers().List()); got != 1 {
 		t.Fatalf("a rejected load left %d servers registered", got)
 	}
 }
@@ -509,7 +517,7 @@ func TestExecuteToolCallRunsNestedCallsWithUpdatesAndCancellation(t *testing.T) 
 			<-ctx.Done()
 			return extension.AgentToolCallOutcome{ToolCall: ai.ToolCall{ID: callerID + "/2", Name: name}, Result: agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: "aborted"}}}, IsError: true}, nil
 		}
-		update := options.OnUpdate.(func(agent.AgentToolResult) error)
+		update := options.OnUpdate
 		_ = update(agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: "partial 1"}}, Details: map[string]any{"n": 1}})
 		_ = update(agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: "partial 2"}}})
 		return extension.AgentToolCallOutcome{
@@ -702,7 +710,7 @@ func TestSubprocessToolResultCarriesStructuredContent(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if res, ok := got.(agent.AgentToolResult); !ok || string(res.StructuredContent) != `{"n":1}` {
+	if res, ok := got, true; !ok || string(res.StructuredContent) != `{"n":1}` {
 		t.Fatalf("result = %#v", got)
 	}
 }
@@ -720,7 +728,7 @@ func TestRegisterPayloadChecksRegistrationsWithTheRuntimesRules(t *testing.T) {
 	}}); err != nil {
 		t.Fatal(err)
 	}
-	if got := host.Runtime().McpServers(); len(got) != 2 || got[0].Name != "docs" || got[0].Config.URL != "http://two.invalid" || got[1].Name != "wiki" {
+	if got := host.Runtime().McpServers().List(); len(got) != 2 || got[0].Name != "docs" || got[0].Config.URL != "http://two.invalid" || got[1].Name != "wiki" {
 		t.Fatalf("servers = %+v", got)
 	}
 	if _, err := loadWireExt(t, host, newWireExt(t), &RegisterPayload{Name: "late-fix", McpServers: []McpServerDecl{

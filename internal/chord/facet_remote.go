@@ -73,7 +73,7 @@ func AssertFacetRunning(env *FacetEnvironment, operation string) error {
 
 // UseFacetService acquires a singleton for an isolated facet without requiring a compile-time Go service interface. Native consumers retain their registered typed adapters; otherwise remote services use their actual RemoteService facade.
 func UseFacetService(env *FacetEnvironment, serviceId string, local bool) (*FacetService, error) {
-	def := DefineServiceWithOptions[any](serviceId, ServiceOptions{Local: local})
+	def := DefineService[any](serviceId, ServiceOptions{Local: local})
 	ref, err := UseService(env, def)
 	if err != nil {
 		return nil, err

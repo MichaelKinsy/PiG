@@ -1,0 +1,66 @@
+# Behavior family: slash-commands
+# Surface: the sign-in status screen of the `/mcp` manager shows a cancel hint (extensions/mcp/index.ts signInWithUi, ui.ts status)
+#
+# Upstream evidence (pinned pi 1.1.0, #10565): an extension registers an OAuth-protected MCP server whose authorization
+# server never answers (testdata/mcp-stalled-oauth.ts). `/mcp` Enter, Enter on the server, Enter on "Sign in" opens the
+# sign-in screen: the title, "Contacting the authorization server…" and, since 1.1.0, the cancel key hint. Before 1.1.0 the
+# screen had no hint and ignored Esc. The crop runs from the title to the hint, which holds neither the port nor the path of the
+# server. The comparator is output_equal.
+
+# Mutation (compiling): Status passing no onCancel to the sign-in screen (coding/mcpext/manager.go signInWithUI) fails this
+# scenario: the hint is missing.
+name = "17-mcp-signin-status-cancel-hint"
+description = "Both binaries show the sign-in screen of the /mcp manager with its cancel hint."
+covers = [
+  "packages/coding-agent/src/extensions/mcp/ui.ts",
+  "packages/coding-agent/src/extensions/mcp/index.ts",
+]
+tags = ["fast", "hermetic", "tui"]
+driver = "interactive-tmux"
+
+[tmux]
+width = 100
+height = 35
+ready_pattern_pig = "[Context]"
+ready_pattern_pi = "[Context]"
+ready_timeout_seconds = 25
+capture_start = "Sign in to issues"
+capture_end = "cancel"
+capture_start_last = true
+
+[[tmux.steps]]
+keys = ["/mcp"]
+settle_seconds = 1
+
+[[tmux.steps]]
+keys = ["Enter"]
+wait_contains = ["MCP servers", "issues", "needs sign-in"]
+wait_timeout_seconds = 10
+settle_seconds = 1
+
+[[tmux.steps]]
+keys = ["Enter"]
+wait_contains = ["MCP server issues", "Sign in"]
+wait_timeout_seconds = 8
+settle_seconds = 1
+
+[[tmux.steps]]
+keys = ["Enter"]
+wait_contains = ["Contacting the authorization server"]
+wait_timeout_seconds = 8
+settle_seconds = 1
+
+[env]
+override_base_args = true
+pig = ["PIG_CODING_AGENT_DIR=testdata/mcp-empty-pig-agent"]
+pi = ["PI_CODING_AGENT_DIR=testdata/mcp-empty-pi-agent"]
+pig_args = ["--session-dir", "{{TEMP}}/sessions"]
+pi_args = ["--session-dir", "{{TEMP}}/sessions"]
+pig_extensions = ["../../testdata/mcp-stalled-oauth.ts"]
+pi_extensions = ["../../testdata/mcp-stalled-oauth.ts"]
+
+[assert]
+both_reach_ready = true
+both_not_contain = ["unknown command", "panic:", "goroutine "]
+output_equal = true
+runs = 3

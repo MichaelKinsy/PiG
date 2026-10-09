@@ -6,6 +6,7 @@ import (
 	"github.com/MichaelKinsy/PiG/coding/extension"
 )
 
+// Pi: packages/coding-agent/src/core/model-registry.ts:64 (ModelRegistry.getAll).
 func TestModelCatalogBindingReusesFirstEncoding(t *testing.T) {
 	registry := NewModelRegistry(t.TempDir())
 	catalog := registry.GetAllModelData()

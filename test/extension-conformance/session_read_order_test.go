@@ -83,9 +83,9 @@ func TestSessionReadsKeepPiMemberOrderAcrossSDKs(t *testing.T) {
 			h.bridge.SetHostAction("getSessionID", func() string { return view.Session.ID() })
 			h.bridge.SetHostAction("getSessionName", func() string { return "" })
 			h.bridge.SetHostAction("getSessionFile", func() string { return view.Session.Path() })
-			h.bridge.SetHostAction("getLeafID", func() string { return *view.Session.LeafID() })
+			h.bridge.SetHostAction("getLeafID", func() string { return *view.Session.GetLeafID() })
 			h.bridge.SetHostAction("getEntriesPage", func(cursor, _ int) ([]json.RawMessage, int, bool, string) {
-				all := view.Session.Entries()
+				all := view.Session.GetEntries()
 				if cursor < 0 || cursor > len(all) {
 					cursor = 0
 				}
@@ -93,7 +93,7 @@ func TestSessionReadsKeepPiMemberOrderAcrossSDKs(t *testing.T) {
 				for _, entry := range all[cursor:] {
 					page = append(page, entry.Raw())
 				}
-				return page, len(all), false, *view.Session.LeafID()
+				return page, len(all), false, *view.Session.GetLeafID()
 			})
 			h.host.BroadcastStateUpdate()
 

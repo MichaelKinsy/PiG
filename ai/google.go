@@ -191,6 +191,12 @@ type geminiContent struct {
 	Parts []geminiPart `json:"parts"`
 }
 
+// isThinkingPart reports whether a part is model thinking, which Gemini marks with thought: true.
+// upstream: packages/ai/src/api/google-shared.ts:128 (isThinkingPart)
+func isThinkingPart(part geminiPart) bool {
+	return part.Thought != nil && *part.Thought
+}
+
 type geminiPart struct {
 	// Text distinguishes an empty text part from a part with no text field.
 	Text             *string             `json:"text,omitempty"`
@@ -259,14 +265,7 @@ type geminiInlineData struct {
 }
 
 type geminiToolDecl struct {
-	FunctionDeclarations []geminiFuncDecl `json:"functionDeclarations"`
-}
-
-type geminiFuncDecl struct {
-	Name                 string         `json:"name"`
-	Description          string         `json:"description"`
-	Parameters           map[string]any `json:"parameters,omitempty"`
-	ParametersJSONSchema map[string]any `json:"parametersJsonSchema,omitempty"`
+	FunctionDeclarations []map[string]any `json:"functionDeclarations"`
 }
 
 type geminiToolConfig struct {
@@ -300,6 +299,48 @@ const (
 	GoogleThinkingLevelMedium      GoogleThinkingLevel = "MEDIUM"
 	GoogleThinkingLevelHigh        GoogleThinkingLevel = "HIGH"
 )
+
+// ResolvedGoogleThinkingLevel is a ThinkingLevel without "xhigh" and "max" (google-shared.ts ResolvedGoogleThinkingLevel).
+type ResolvedGoogleThinkingLevel string
+
+const (
+	ResolvedGoogleThinkingLevelMinimal ResolvedGoogleThinkingLevel = "minimal"
+	ResolvedGoogleThinkingLevelLow     ResolvedGoogleThinkingLevel = "low"
+	ResolvedGoogleThinkingLevelMedium  ResolvedGoogleThinkingLevel = "medium"
+	ResolvedGoogleThinkingLevelHigh    ResolvedGoogleThinkingLevel = "high"
+)
+
+// ToGoogleThinkingLevel maps a resolved level to Google's enum value (google-shared.ts:85 toGoogleThinkingLevel).
+func ToGoogleThinkingLevel(level ResolvedGoogleThinkingLevel) GoogleThinkingLevel {
+	switch level {
+	case ResolvedGoogleThinkingLevelMinimal:
+		return GoogleThinkingLevelMinimal
+	case ResolvedGoogleThinkingLevelLow:
+		return GoogleThinkingLevelLow
+	case ResolvedGoogleThinkingLevelMedium:
+		return GoogleThinkingLevelMedium
+	case ResolvedGoogleThinkingLevelHigh:
+		return GoogleThinkingLevelHigh
+	}
+	return ""
+}
+
+// GoogleSdkThinkingLevel is the @google/genai ThinkingLevel enum a thinkingConfig carries (google-shared.ts GoogleSdkThinkingLevel).
+type GoogleSdkThinkingLevel string
+
+// googleSdkThinkingLevels is GOOGLE_SDK_THINKING_LEVEL_MAP (google-shared.ts:36-42): each Google API level and the SDK enum value it selects.
+var googleSdkThinkingLevels = map[GoogleThinkingLevel]GoogleSdkThinkingLevel{
+	GoogleThinkingLevelUnspecified: "THINKING_LEVEL_UNSPECIFIED",
+	GoogleThinkingLevelMinimal:     "MINIMAL",
+	GoogleThinkingLevelLow:         "LOW",
+	GoogleThinkingLevelMedium:      "MEDIUM",
+	GoogleThinkingLevelHigh:        "HIGH",
+}
+
+// ToGoogleSdkThinkingLevel selects the SDK enum value for a Google API level (google-shared.ts:98 toGoogleSdkThinkingLevel).
+func ToGoogleSdkThinkingLevel(level GoogleThinkingLevel) GoogleSdkThinkingLevel {
+	return googleSdkThinkingLevels[level]
+}
 
 // ─── SSE response types ──────────────────────────────────────────────────────
 
@@ -337,8 +378,25 @@ func isGemini3Pro(modelID string) bool   { return gemini3ProRe.MatchString(model
 func isGemini3Flash(modelID string) bool { return gemini3FlashRe.MatchString(modelID) }
 func isGemma4(modelID string) bool       { return gemma4Re.MatchString(modelID) }
 
+// UsesGoogleThinkingLevel reports whether the model takes Gemini's discrete thinkingLevel control instead of the token-based thinkingBudget control. The levels a model supports come from its thinking-level map; this only selects the Google wire format.
+// Mirrors upstream usesGoogleThinkingLevel (google-shared.ts), which lowercases the id before every comparison.
+func UsesGoogleThinkingLevel(model *Model) bool {
+	id := strings.ToLower(model.ID)
+	return isGemini3Pro(id) || isGemini3Flash(id) || isGemma4(id) || id == "gemini-flash-latest" || id == "gemini-flash-lite-latest"
+}
+
 // ─── Message conversion ──────────────────────────────────────────────────────
 // Mirrors upstream google-shared.ts convertMessages.
+
+// RetainThoughtSignature keeps the signature already on a streamed block unless the incoming part carries a non-empty one.
+// Ports packages/ai/src/api/google-shared.ts retainThoughtSignature: it never moves signatures across parts, it only prevents an
+// overwrite with an empty value within one block.
+func RetainThoughtSignature(existing, incoming string) string {
+	if incoming != "" {
+		return incoming
+	}
+	return existing
+}
 
 // isValidThoughtSignature reports whether sig is a valid base64 thought
 // signature. Google APIs carry the signature as TYPE_BYTES, so it must be
@@ -415,6 +473,21 @@ func normalizeToolCallId(modelID, id string) string {
 		s = s[:64]
 	}
 	return s
+}
+
+// googleTranscriptMessages is the transcript a Gemini request is built from: system messages collapsed and the tool flow resolved.
+func googleTranscriptMessages(transcript TranscriptContext) []Message {
+	return prepareProviderToolFlow(CollapseSystemMessages(transcript)).Messages()
+}
+
+// GeminiContent is one Google `Content` of a generateContent request.
+type GeminiContent = geminiContent
+
+// ConvertGoogleMessages converts a transcript to the Google `Content[]` of model's request: system messages are
+// collapsed, the leading one is dropped (it is sent as systemInstruction) and the rest is converted for the model's
+// provider, id and image support. Ports google-shared.ts convertMessages(model, context).
+func ConvertGoogleMessages(model *Model, transcript TranscriptContext) []GeminiContent {
+	return geminiConvertMessages(WithoutInitialSystemMessage(googleTranscriptMessages(transcript)), model.ProviderMeta.ProviderID, model.ID, model.Capabilities.SupportsImages)
 }
 
 // geminiConvertMessages converts the conversation after the caller has collapsed system messages and removed the leading one, so any system message is skipped.
@@ -542,30 +615,28 @@ func geminiConvertMessages(messages []Message, providerID, modelID string, suppo
 	return contents
 }
 
-func geminiConvertTools(tools []ToolSchema, useParameters, supportsStrictMode bool) ([]geminiToolDecl, bool, error) {
+func geminiConvertTools(tools []ToolSchema, useParameters, supportsStrictMode bool) ([]geminiToolDecl, error) {
 	if len(tools) == 0 {
-		return nil, false, nil
+		return nil, nil
 	}
-	decls := make([]geminiFuncDecl, len(tools))
-	usesStrictMode := false
+	decls := make([]map[string]any, len(tools))
 	for i, tool := range tools {
 		strict, err := resolveJSONSchemaStrictSampling(tool, supportsStrictMode, nil)
 		if err != nil {
-			return nil, false, err
+			return nil, err
 		}
 		parameters, err := getJSONSchemaToolParameters(tool, strict)
 		if err != nil {
-			return nil, false, err
+			return nil, err
 		}
-		usesStrictMode = usesStrictMode || strict != nil && *strict
-		decls[i] = geminiFuncDecl{Name: tool.Name, Description: tool.Description}
+		decls[i] = map[string]any{"name": tool.Name, "description": tool.Description}
 		if useParameters {
-			decls[i].Parameters = sanitizeForOpenAPI(parameters).(map[string]any)
+			decls[i]["parameters"] = sanitizeForOpenAPI(parameters)
 		} else {
-			decls[i].ParametersJSONSchema = parameters
+			decls[i]["parametersJsonSchema"] = parameters
 		}
 	}
-	return []geminiToolDecl{{FunctionDeclarations: decls}}, usesStrictMode, nil
+	return []geminiToolDecl{{FunctionDeclarations: decls}}, nil
 }
 
 // sanitizeForOpenAPI strips meta declarations from schema objects, preserving arrays and references as Pi's legacy Google helper does.
@@ -585,6 +656,41 @@ func sanitizeForOpenAPI(schema any) any {
 	return result
 }
 
+// mapToolChoice ports google-shared.ts mapToolChoice: an unknown choice is AUTO.
+func mapToolChoice(choice string) string {
+	switch choice {
+	case "none":
+		return "NONE"
+	case "any":
+		return "ANY"
+	default:
+		return "AUTO"
+	}
+}
+
+// resolveGoogleFunctionCallingMode ports google-shared.ts resolveGoogleFunctionCallingMode: an explicit none or any wins over strict mode,
+// any strict tool selects VALIDATED, and with no tool choice the mode stays absent (""; undefined upstream).
+func resolveGoogleFunctionCallingMode(tools []ToolSchema, toolChoice string, supportsStrictMode bool) (string, error) {
+	useStrictMode := false
+	for _, tool := range tools {
+		strict, err := resolveJSONSchemaStrictSampling(tool, supportsStrictMode, nil)
+		if err != nil {
+			return "", err
+		}
+		useStrictMode = useStrictMode || strict != nil && *strict
+	}
+	if toolChoice == "none" || toolChoice == "any" {
+		return mapToolChoice(toolChoice), nil
+	}
+	if useStrictMode {
+		return "VALIDATED", nil
+	}
+	if toolChoice != "" {
+		return mapToolChoice(toolChoice), nil
+	}
+	return "", nil
+}
+
 func supportsGoogleStrictToolSampling(modelID string) bool {
 	match := geminiMajorRe.FindStringSubmatch(strings.ToLower(modelID))
 	if len(match) < 2 {
@@ -596,28 +702,17 @@ func supportsGoogleStrictToolSampling(modelID string) bool {
 
 // Thinking configuration follows the selected model's map before selecting Google's level or token-budget wire format.
 
-func buildGeminiThinkingConfig(model *Model, level ThinkingLevel, isReasoning bool, customBudgets *ThinkingBudgets) (*geminiThinkingConfig, error) {
+func buildGeminiThinkingConfig(model *Model, level ModelThinkingLevel, isReasoning bool, customBudgets *ThinkingBudgets) (*geminiThinkingConfig, error) {
 	if !isReasoning {
 		return nil, nil
 	}
 	if model == nil {
 		model = &Model{}
 	}
-	usesLevel := isGemini3Pro(model.ID) || isGemini3Flash(model.ID) || isGemma4(model.ID) || model.ID == "gemini-flash-latest" || model.ID == "gemini-flash-lite-latest"
+	usesLevel := UsesGoogleThinkingLevel(model)
 	clamped := ClampThinkingLevel(model, level)
 	if level == "" || level == ThinkingOff || clamped == ThinkingOff {
-		if !usesLevel {
-			return &geminiThinkingConfig{ThinkingBudget: new(0)}, nil
-		}
-		fallback := ClampThinkingLevel(model, ThinkingOff)
-		if fallback == ThinkingOff {
-			return &geminiThinkingConfig{ThinkingBudget: new(0)}, nil
-		}
-		resolved, err := resolveGoogleThinkingLevel(model, fallback)
-		if err != nil {
-			return nil, err
-		}
-		return &geminiThinkingConfig{ThinkingLevel: strings.ToUpper(string(resolved))}, nil
+		return getDisabledGoogleThinkingConfig(model)
 	}
 	resolved, err := resolveGoogleThinkingLevel(model, clamped)
 	if err != nil {
@@ -625,19 +720,19 @@ func buildGeminiThinkingConfig(model *Model, level ThinkingLevel, isReasoning bo
 	}
 	config := &geminiThinkingConfig{IncludeThoughts: new(true)}
 	if usesLevel {
-		config.ThinkingLevel = strings.ToUpper(string(resolved))
+		config.ThinkingLevel = string(ToGoogleSdkThinkingLevel(ToGoogleThinkingLevel(resolved)))
 	} else {
-		budget := geminiThinkingBudget(resolved, model.ID)
+		budget := geminiThinkingBudget(ModelThinkingLevel(resolved), model.ID)
 		if customBudgets != nil {
 			var custom int
 			switch resolved {
-			case ThinkingMinimal:
+			case ResolvedGoogleThinkingLevelMinimal:
 				custom = customBudgets.Minimal
-			case ThinkingLow:
+			case ResolvedGoogleThinkingLevelLow:
 				custom = customBudgets.Low
-			case ThinkingMedium:
+			case ResolvedGoogleThinkingLevelMedium:
 				custom = customBudgets.Medium
-			case ThinkingHigh:
+			case ResolvedGoogleThinkingLevelHigh:
 				custom = customBudgets.High
 			}
 			if custom != 0 {
@@ -649,7 +744,24 @@ func buildGeminiThinkingConfig(model *Model, level ThinkingLevel, isReasoning bo
 	return config, nil
 }
 
-func resolveGoogleThinkingLevel(model *Model, level ThinkingLevel) (ThinkingLevel, error) {
+// getDisabledGoogleThinkingConfig is the thinking config that switches thinking off: a zero token budget, or the lowest level
+// the model's map still allows when the model takes the discrete level control (google-shared.ts:102 getDisabledGoogleThinkingConfig).
+func getDisabledGoogleThinkingConfig(model *Model) (*geminiThinkingConfig, error) {
+	if !UsesGoogleThinkingLevel(model) {
+		return &geminiThinkingConfig{ThinkingBudget: new(0)}, nil
+	}
+	fallback := ClampThinkingLevel(model, ThinkingOff)
+	if fallback == ThinkingOff {
+		return &geminiThinkingConfig{ThinkingBudget: new(0)}, nil
+	}
+	resolved, err := resolveGoogleThinkingLevel(model, fallback)
+	if err != nil {
+		return nil, err
+	}
+	return &geminiThinkingConfig{ThinkingLevel: string(ToGoogleSdkThinkingLevel(ToGoogleThinkingLevel(resolved)))}, nil
+}
+
+func resolveGoogleThinkingLevel(model *Model, level ModelThinkingLevel) (ResolvedGoogleThinkingLevel, error) {
 	mapped, present := model.ThinkingLevelMap[level]
 	resolved := level
 	mapping := "undefined"
@@ -658,11 +770,11 @@ func resolveGoogleThinkingLevel(model *Model, level ThinkingLevel) (ThinkingLeve
 	}
 	if mapped != nil {
 		mapping = *mapped
-		resolved = ThinkingLevel(strings.ToLower(*mapped))
+		resolved = ModelThinkingLevel(strings.ToLower(*mapped))
 	}
-	switch resolved {
-	case ThinkingMinimal, ThinkingLow, ThinkingMedium, ThinkingHigh:
-		return resolved, nil
+	switch ResolvedGoogleThinkingLevel(resolved) {
+	case ResolvedGoogleThinkingLevelMinimal, ResolvedGoogleThinkingLevelLow, ResolvedGoogleThinkingLevelMedium, ResolvedGoogleThinkingLevelHigh:
+		return ResolvedGoogleThinkingLevel(resolved), nil
 	default:
 		return "", fmt.Errorf("Unsupported Google thinking level mapping for %s/%s: %s -> %s", model.ProviderMeta.ProviderID, model.ID, level, mapping)
 	}
@@ -677,7 +789,7 @@ func supportsMultimodalFunctionResponse(modelID string) bool {
 	return err != nil || major >= 3
 }
 
-func geminiThinkingBudget(level ThinkingLevel, modelID string) int {
+func geminiThinkingBudget(level ModelThinkingLevel, modelID string) int {
 	type budgets struct {
 		minimal, low, medium, high int
 	}
@@ -721,7 +833,7 @@ func (p *googleProvider) Stream(ctx context.Context, transcript TranscriptContex
 	if err := validateProviderRequest(ctx, transcript); err != nil {
 		return nil, fmt.Errorf("google: invalid transcript: %w", err)
 	}
-	model := &Model{ID: p.cfg.Model, Capabilities: ModelCapabilities{MaxThinking: ThinkingHigh}}
+	model := &Model{ID: p.cfg.Model, Capabilities: ModelCapabilities{MaxThinking: ThinkingLevelHigh}}
 	if generated, ok := LookupModel(p.cfg.ProviderID + "/" + p.cfg.Model); ok {
 		model = generated.ToModel()
 	} else if generated, ok := LookupModel(p.cfg.Model); ok {
@@ -730,9 +842,11 @@ func (p *googleProvider) Stream(ctx context.Context, transcript TranscriptContex
 	if p.cfg.ThinkingLevelMap != nil {
 		model.ThinkingLevelMap = p.cfg.ThinkingLevelMap
 	}
-	resolved := prepareProviderToolFlow(CollapseSystemMessages(transcript))
-	messages := resolved.Messages()
-	contents := geminiConvertMessages(WithoutInitialSystemMessage(messages), p.cfg.ProviderID, p.cfg.Model, model.Capabilities.SupportsImages)
+	messages := googleTranscriptMessages(transcript)
+	conversionModel := *model
+	conversionModel.ID = p.cfg.Model
+	conversionModel.ProviderMeta.ProviderID = p.cfg.ProviderID
+	contents := ConvertGoogleMessages(&conversionModel, transcript)
 
 	req := geminiRequest{
 		Contents: contents,
@@ -748,23 +862,15 @@ func (p *googleProvider) Stream(ctx context.Context, transcript TranscriptContex
 
 	tools := GetCurrentTools(messages)
 	if len(tools) > 0 {
-		convertedTools, usesStrictMode, err := geminiConvertTools(tools, false, supportsGoogleStrictToolSampling(model.ID))
+		convertedTools, err := geminiConvertTools(tools, false, supportsGoogleStrictToolSampling(model.ID))
 		if err != nil {
 			return nil, fmt.Errorf("google: convert tools: %w", err)
 		}
 		req.Tools = convertedTools
-		// Upstream google-shared.ts resolveGoogleFunctionCallingMode leaves the default absent and gives explicit none/any precedence over strict mode.
-		choice, _ := opts.ToolChoice.(string)
-		mode := ""
-		switch {
-		case choice == "none":
-			mode = "NONE"
-		case choice == "any":
-			mode = "ANY"
-		case usesStrictMode:
-			mode = "VALIDATED"
-		case choice != "":
-			mode = "AUTO"
+		choice, _ := toolChoiceName(opts.ToolChoice)
+		mode, err := resolveGoogleFunctionCallingMode(tools, choice, supportsGoogleStrictToolSampling(model.ID))
+		if err != nil {
+			return nil, fmt.Errorf("google: convert tools: %w", err)
 		}
 		if mode != "" {
 			req.ToolConfig = &geminiToolConfig{
@@ -798,7 +904,7 @@ func (p *googleProvider) Stream(ctx context.Context, transcript TranscriptContex
 			}
 		}
 	} else if opts.Thinking != "" {
-		tc, err = buildGeminiThinkingConfig(model, opts.Thinking, opts.IsReasoning, opts.ThinkingBudgets)
+		tc, err = buildGeminiThinkingConfig(model, ModelThinkingLevel(opts.Thinking), opts.IsReasoning, opts.ThinkingBudgets)
 	}
 	if err != nil {
 		return nil, err
@@ -937,7 +1043,9 @@ func runGoogleTurn(ctx context.Context, builder *assistantStreamBuilder, respons
 		if err := builder.observeProviderEvent(chunk.raw); err != nil { // google-generative-ai.ts:107
 			return false, err
 		}
-		state.handle(chunk)
+		if err := state.handle(chunk); err != nil {
+			return false, err
+		}
 		// The loop body's synchronous segment ends here: consumers that resume before the next chunk see the state it left, not the state at each push.
 		builder.publish()
 		return false, nil
@@ -1015,7 +1123,7 @@ type googleStreamState struct {
 	inThinking bool
 }
 
-func (state *googleStreamState) handle(chunk *geminiStreamChunk) {
+func (state *googleStreamState) handle(chunk *geminiStreamChunk) error {
 	builder := state.builder
 	if chunk.ResponseID != "" {
 		// `output.responseId ||= chunk.responseId` (google-generative-ai.ts:109). Pi's Google provider does not read modelVersion into responseModel.
@@ -1032,7 +1140,7 @@ func (state *googleStreamState) handle(chunk *geminiStreamChunk) {
 					text = *part.Text
 				}
 				if text != "" || part.Thought != nil {
-					isThinking := part.Thought != nil && *part.Thought
+					isThinking := isThinkingPart(part)
 
 					// Transition between text and thinking
 					if isThinking && !state.inThinking {
@@ -1044,14 +1152,15 @@ func (state *googleStreamState) handle(chunk *geminiStreamChunk) {
 					// Pi appends the text and retains the signature before it pushes the delta (google-generative-ai.ts:150-176), so the block is opened first and the delta is the last mutation before its push.
 					if isThinking {
 						builder.thinkingStart(ThinkingContent{})
-						if part.ThoughtSignature != "" {
-							builder.thinkingSignature(part.ThoughtSignature)
+						// Only a retained change is written: writing back an unset signature would mark it as an explicit empty one, which Pi never produces here (google-shared.ts:141-144).
+						if existing := builder.activeThinkingSignature(); RetainThoughtSignature(existing, part.ThoughtSignature) != existing {
+							builder.thinkingSignature(RetainThoughtSignature(existing, part.ThoughtSignature))
 						}
 						builder.thinkingDelta(text, false)
 					} else {
 						builder.textStart("")
-						if part.ThoughtSignature != "" {
-							builder.textSignature(part.ThoughtSignature)
+						if existing := builder.activeTextSignature(); RetainThoughtSignature(existing, part.ThoughtSignature) != existing {
+							builder.textSignature(RetainThoughtSignature(existing, part.ThoughtSignature))
 						}
 						builder.textDelta(text)
 					}
@@ -1080,7 +1189,11 @@ func (state *googleStreamState) handle(chunk *geminiStreamChunk) {
 		if candidate.FinishReason != "" {
 			state.finishReason = candidate.FinishReason
 			builder.setResponseMetadata("", "", state.finishReason, "", nil)
-			stopReason, _ := mapGoogleFinishReason(state.finishReason)
+			// mapStopReason throws inside the chunk loop (google-generative-ai.ts:226, google-vertex.ts:234): an unhandled reason fails the stream here, before this chunk's usage metadata and before any later chunk.
+			stopReason, err := mapStopReason(state.finishReason)
+			if err != nil {
+				return err
+			}
 			if stopReason == StopReasonStop && state.sawToolCall {
 				stopReason = StopReasonToolUse
 			}
@@ -1101,6 +1214,7 @@ func (state *googleStreamState) handle(chunk *geminiStreamChunk) {
 		builder.calculateCost(&state.usage)
 		builder.setUsage(&state.usage)
 	}
+	return nil
 }
 
 // finish ends the open blocks, applies the stop-reason checks that follow the loop (google-generative-ai.ts:237-264) and pushes the terminal event.
@@ -1147,7 +1261,10 @@ func (p *googleProvider) parseGeminiSSE(ctx context.Context, r io.Reader, builde
 			builder.fail(StopReasonError, err)
 			return
 		}
-		state.handle(&chunk)
+		if err := state.handle(&chunk); err != nil {
+			builder.fail(StopReasonError, err)
+			return
+		}
 	}
 
 	if err := decoder.Err(); err != nil && ctx.Err() == nil {
@@ -1169,15 +1286,80 @@ func (p *googleProvider) parseGeminiSSE(ctx context.Context, r io.Reader, builde
 	builder.done(stopReason, &state.usage, errorMessage)
 }
 
-func mapGoogleFinishReason(reason string) (StopReason, string) {
+// mapStopReasonString maps a Gemini finish reason to a stop reason; every reason other than STOP and MAX_TOKENS is an error
+// (google-shared.ts:474 mapStopReasonString over a raw string).
+func mapStopReasonString(reason string) StopReason {
 	switch reason {
 	case "STOP":
-		return StopReasonStop, ""
+		return StopReasonStop
 	case "MAX_TOKENS":
-		return StopReasonLength, ""
-	case "":
-		return StopReasonError, "Google stream ended without a finish reason"
+		return StopReasonLength
 	default:
+		return StopReasonError
+	}
+}
+
+// mapStopReason is google-shared.ts:441 mapStopReason: the Gemini FinishReason enum members map to stop, length or error, and any other value reaches the
+// exhaustive switch's default, which throws `Unhandled stop reason: <reason>`.
+func mapStopReason(reason string) (StopReason, error) {
+	switch reason {
+	case "STOP", "MAX_TOKENS", "BLOCKLIST", "PROHIBITED_CONTENT", "SPII", "SAFETY", "IMAGE_SAFETY", "IMAGE_PROHIBITED_CONTENT", "IMAGE_RECITATION", "IMAGE_OTHER", "RECITATION",
+		"FINISH_REASON_UNSPECIFIED", "OTHER", "LANGUAGE", "MALFORMED_FUNCTION_CALL", "UNEXPECTED_TOOL_CALL", "TOO_MANY_TOOL_CALLS", "NO_IMAGE":
+		return mapStopReasonString(reason), nil
+	default:
+		return StopReasonError, fmt.Errorf("Unhandled stop reason: %s", reason)
+	}
+}
+
+// mapGoogleFinishReason applies mapStopReason to the stream's raw finish reason and derives the error message the stream end throws
+// (google-generative-ai.ts:276-283): a stream without a finish reason, an unhandled reason, or an error stop with its raw reason.
+func mapGoogleFinishReason(reason string) (StopReason, string) {
+	if reason == "" {
+		return StopReasonError, "Google stream ended without a finish reason"
+	}
+	stopReason, err := mapStopReason(reason)
+	if err != nil {
+		return StopReasonError, err.Error()
+	}
+	if stopReason == StopReasonError {
 		return StopReasonError, "Provider stopped with: " + reason
 	}
+	return stopReason, ""
+}
+
+// googleStatusError is an error that carries an HTTP status but no response headers, the shape of @google/genai's ApiError.
+type googleStatusError interface {
+	error
+	ProviderStatus() *int
+}
+
+// googleHeaderlessError gives a status-only error the `headers: undefined` that retryProviderRequest requires of a provider error.
+type googleHeaderlessError struct{ googleStatusError }
+
+func (googleHeaderlessError) ProviderHeaders() http.Header { return nil }
+func (e googleHeaderlessError) Unwrap() error              { return e.googleStatusError }
+
+// RetryGoogleRequest is google-shared.ts retryGoogleRequest: retryProviderRequest for the Google SDK, whose ApiError has a status but no
+// headers. A status-only error is given `headers: undefined`, so it is retried by status, and the caller still receives the error it threw.
+// Retries and the delay cap come from the stream options; the context is their AbortSignal.
+func RetryGoogleRequest[T any](ctx context.Context, request func() (T, error), options ...StreamOptions) (T, error) {
+	var opts StreamOptions
+	if len(options) > 0 {
+		opts = options[0]
+	}
+	value, err := RetryProviderRequest(ctx, func() (T, error) {
+		value, err := request()
+		if err != nil {
+			if _, ok := errors.AsType[ProviderRequestError](err); !ok {
+				if statusError, ok := errors.AsType[googleStatusError](err); ok {
+					return value, googleHeaderlessError{statusError}
+				}
+			}
+		}
+		return value, err
+	}, ProviderRetryOptions{MaxRetries: opts.MaxRetries, MaxRetryDelayMs: opts.MaxRetryDelayMs})
+	if wrapped := (googleHeaderlessError{}); errors.As(err, &wrapped) {
+		return value, wrapped.googleStatusError
+	}
+	return value, err
 }

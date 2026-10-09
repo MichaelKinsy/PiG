@@ -1,6 +1,8 @@
 // Package experimental implements the opt-in local process transport used by Pi's experimental server.
 package experimental
 
+// Ports packages/coding-agent/src/experimental/process.ts.
+
 import (
 	"bytes"
 	"encoding/json"

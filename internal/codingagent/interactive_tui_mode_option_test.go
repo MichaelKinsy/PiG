@@ -25,14 +25,14 @@ func TestInteractiveTuiModeOptionOverridesSettingsForThisRun(t *testing.T) {
 			writeSettingsFixture(t, filepath.Join(agentDir, "settings.json"), `{"tuiMode":"`+tc.saved+`"}`)
 			manager := NewSettingsManager(t.TempDir(), agentDir)
 			var output bytes.Buffer
-			mode := NewInteractiveMode(InteractiveOptions{Settings: manager.Get(), SettingsManager: manager, TuiMode: tc.run, AgentDir: agentDir})
+			mode := NewInteractiveMode(nil, InteractiveModeOptions{Settings: manager.Get(), SettingsManager: manager, TuiMode: tc.run, AgentDir: agentDir})
 			mode.rendererOut = &output
 			handle := mode.createInteractiveTui(t.Context())
 			defer handle.cleanup()
 			if _, fullscreen := mode.tuiInst.(*tui.TuiAltScreen); fullscreen != tc.fullscreen {
 				t.Fatalf("renderer = %T, want fullscreen=%v", mode.tuiInst, tc.fullscreen)
 			}
-			if got := manager.GetTuiMode(); got != tc.saved {
+			if got := manager.GetTuiMode(); string(got) != tc.saved {
 				t.Fatalf("saved tui mode = %q, want %q", got, tc.saved)
 			}
 			if mode.opts.Settings.TuiMode != tc.saved {
@@ -56,12 +56,12 @@ func TestInteractiveTuiModeCapturesDefaultOnce(t *testing.T) {
 			cwd, agentDir := t.TempDir(), t.TempDir()
 			writeSettingsFixture(t, filepath.Join(agentDir, "settings.json"), `{"tuiMode":"`+initial+`"}`)
 			manager := NewSettingsManager(cwd, agentDir)
-			mode := NewInteractiveMode(InteractiveOptions{CWD: cwd, AgentDir: agentDir, Settings: manager.Get(), SettingsManager: manager})
+			mode := NewInteractiveMode(nil, InteractiveModeOptions{CWD: cwd, AgentDir: agentDir, Settings: manager.Get(), SettingsManager: manager})
 			changed := "regular"
 			if initial == changed {
 				changed = "fullscreen"
 			}
-			if err := manager.SetTuiMode(changed); err != nil {
+			if err := manager.SetTuiMode(tui.TuiMode(changed)); err != nil {
 				t.Fatal(err)
 			}
 			mode.opts.Settings = manager.Get()
@@ -89,8 +89,12 @@ func TestInteractiveTuiModeSurvivesSettingsRefresh(t *testing.T) {
 				cwd, agentDir := t.TempDir(), t.TempDir()
 				writeSettingsFixture(t, filepath.Join(agentDir, "settings.json"), `{"theme":"dark","clearOnShrink":true,"tuiMode":"`+saved+`"}`)
 				manager := NewSettingsManager(cwd, agentDir)
-				mode := newSwitchTuiProbeWithOptions(t, InteractiveOptions{CWD: cwd, AgentDir: agentDir, Settings: manager.Get(), SettingsManager: manager, TuiMode: run})
-				t.Cleanup(func() { mode.teardownCurrentTui(); mode.stopInteractiveTui(); mode.backgroundTasks.Wait() })
+				mode := newSwitchTuiProbeWithOptions(t, InteractiveModeOptions{CWD: cwd, AgentDir: agentDir, Settings: manager.Get(), SettingsManager: manager, TuiMode: run})
+				t.Cleanup(func() {
+					mode.teardownCurrentTui()
+					mode.stopInteractiveTui()
+					mode.backgroundTasks.Wait()
+				})
 				before := mode.tuiInst
 				if refresh == "settings" {
 					mode.buildSlashContext(t.Context()).OnSettingApplied("clear-on-shrink", "true")
@@ -102,7 +106,7 @@ func TestInteractiveTuiModeSurvivesSettingsRefresh(t *testing.T) {
 				}
 				mode.tuiInst.SetClearOnShrink(true)
 				mode.editor.EmbedWorkingStatus = false
-				mode.showStatusIndicator(&tui.StatusIndicator{Kind: "working", Loader: tui.NewLoader("Working")})
+				mode.showStatusIndicator(&tui.StatusIndicator{Kind: "working", Loader: tui.NewLoader(nil, nil, nil, "Working", nil)})
 				mode.clearStatusIndicator("")
 				wantRows := 0
 				if run == "regular" {
@@ -111,7 +115,7 @@ func TestInteractiveTuiModeSurvivesSettingsRefresh(t *testing.T) {
 				if got := len(mode.statusContainer.Render(80)); got != wantRows {
 					t.Errorf("status rows after %s = %d, want %d for the running %s renderer", refresh, got, wantRows, run)
 				}
-				if got := manager.GetTuiMode(); got != saved {
+				if got := manager.GetTuiMode(); string(got) != saved {
 					t.Errorf("saved mode = %q, want %q", got, saved)
 				}
 				if mode.opts.TuiMode != run {
@@ -127,23 +131,15 @@ func TestInteractiveTuiModeSurvivesSettingsRefresh(t *testing.T) {
 func assertSettingsTuiMode(t *testing.T, mode *InteractiveMode, want string) {
 	t.Helper()
 	sc := mode.buildSlashContext(t.Context())
-	called := false
-	sc.ShowSettingsList = func(items []tui.SettingItem, _ func(string, string) string) {
-		called = true
-		for _, item := range items {
-			if item.ID == "tui-mode" {
-				if item.CurrentValue != want {
-					t.Errorf("settings TUI mode = %q, want running mode %q", item.CurrentValue, want)
-				}
-				return
-			}
+	called := useSettingsSelector(sc, func(selector *SettingsSelectorComponent) {
+		if got := settingsRowValue(t, selector.GetSettingsList(), "tui-mode"); got != want {
+			t.Errorf("settings TUI mode = %q, want running mode %q", got, want)
 		}
-		t.Error("settings omitted TUI mode")
-	}
+	})
 	if err := settingsHandler(sc); err != nil {
 		t.Fatal(err)
 	}
-	if !called {
+	if !*called {
 		t.Fatal("settings selector not shown")
 	}
 }
@@ -154,7 +150,7 @@ func TestInteractiveTuiModeLiveSwitchOwnsRunMode(t *testing.T) {
 	writeSettingsFixture(t, filepath.Join(agentDir, "settings.json"), `{"tuiMode":"regular"}`)
 	writeSettingsFixture(t, filepath.Join(ProjectConfigDir(cwd), "settings.json"), `{"tuiMode":"regular"}`)
 	manager := NewSettingsManager(cwd, agentDir)
-	mode := newSwitchTuiProbeWithOptions(t, InteractiveOptions{CWD: cwd, AgentDir: agentDir, Settings: manager.Get(), SettingsManager: manager, TuiMode: "fullscreen"})
+	mode := newSwitchTuiProbeWithOptions(t, InteractiveModeOptions{CWD: cwd, AgentDir: agentDir, Settings: manager.Get(), SettingsManager: manager, TuiMode: "fullscreen"})
 	t.Cleanup(func() { mode.teardownCurrentTui(); mode.stopInteractiveTui() })
 	assertSettingsTuiMode(t, mode, "fullscreen")
 	for _, target := range []string{"regular", "fullscreen"} {
@@ -164,7 +160,7 @@ func TestInteractiveTuiModeLiveSwitchOwnsRunMode(t *testing.T) {
 		}
 		assertSettingsTuiMode(t, mode, target)
 	}
-	mode.tuiInst.OpenOverlay(tui.NewText("overlay"), tui.OverlayOptions{})
+	mode.tuiInst.ShowOverlay(tui.NewText("overlay"), tui.OverlayOptions{})
 	applySettingsTuiMode(t, mode, "regular", "fullscreen")
 	if mode.opts.TuiMode != "fullscreen" || mode.altScreen == nil {
 		t.Fatal("refused switch changed the running mode")
@@ -175,17 +171,15 @@ func TestInteractiveTuiModeLiveSwitchOwnsRunMode(t *testing.T) {
 func applySettingsTuiMode(t *testing.T, mode *InteractiveMode, target, want string) {
 	t.Helper()
 	sc := mode.buildSlashContext(t.Context())
-	called := false
-	sc.ShowSettingsList = func(_ []tui.SettingItem, onChange func(string, string) string) {
-		called = true
-		if got := onChange("tui-mode", target); got != want {
+	called := useSettingsSelector(sc, func(selector *SettingsSelectorComponent) {
+		if got := cycleSettingsRow(t, selector.GetSettingsList(), "tui-mode", target); got != want {
 			t.Errorf("settings change returned %q, want %q", got, want)
 		}
-	}
+	})
 	if err := settingsHandler(sc); err != nil {
 		t.Fatal(err)
 	}
-	if !called {
+	if !*called {
 		t.Fatal("settings selector not shown")
 	}
 	if got := mode.opts.SettingsManager.GetGlobalSettings().TuiMode; got != want {
@@ -217,19 +211,19 @@ func TestInteractiveTuiModeRefusedSwitchKeepsSavedMode(t *testing.T) {
 			globalPath := filepath.Join(agentDir, "settings.json")
 			writeSettingsFixture(t, globalPath, tc.global)
 			manager := NewSettingsManager(cwd, agentDir)
-			mode := newSwitchTuiProbeWithOptions(t, InteractiveOptions{CWD: cwd, AgentDir: agentDir, Settings: manager.Get(), SettingsManager: manager, TuiMode: tc.run})
+			mode := newSwitchTuiProbeWithOptions(t, InteractiveModeOptions{CWD: cwd, AgentDir: agentDir, Settings: manager.Get(), SettingsManager: manager, TuiMode: tc.run})
 			t.Cleanup(func() { mode.teardownCurrentTui(); mode.stopInteractiveTui() })
 			before, err := os.ReadFile(globalPath)
 			if err != nil {
 				t.Fatal(err)
 			}
-			mode.tuiInst.OpenOverlay(tui.NewText("overlay"), tui.OverlayOptions{})
+			mode.tuiInst.ShowOverlay(tui.NewText("overlay"), tui.OverlayOptions{})
 			sc := mode.buildSlashContext(t.Context())
-			sc.ShowSettingsList = func(_ []tui.SettingItem, onChange func(string, string) string) {
-				if got := onChange("tui-mode", tc.target); got != tc.run {
+			useSettingsSelector(sc, func(selector *SettingsSelectorComponent) {
+				if got := cycleSettingsRow(t, selector.GetSettingsList(), "tui-mode", tc.target); got != tc.run {
 					t.Errorf("refused change returned %q, want the running mode %q", got, tc.run)
 				}
-			}
+			})
 			if err := settingsHandler(sc); err != nil {
 				t.Fatal(err)
 			}
@@ -250,7 +244,7 @@ func TestInteractiveTuiModeSwitchReportsStatus(t *testing.T) {
 	cwd, agentDir := t.TempDir(), t.TempDir()
 	writeSettingsFixture(t, filepath.Join(agentDir, "settings.json"), `{"tuiMode":"regular"}`)
 	manager := NewSettingsManager(cwd, agentDir)
-	mode := newSwitchTuiProbeWithOptions(t, InteractiveOptions{CWD: cwd, AgentDir: agentDir, Settings: manager.Get(), SettingsManager: manager})
+	mode := newSwitchTuiProbeWithOptions(t, InteractiveModeOptions{CWD: cwd, AgentDir: agentDir, Settings: manager.Get(), SettingsManager: manager})
 	t.Cleanup(func() { mode.teardownCurrentTui(); mode.stopInteractiveTui() })
 	mode.statusContainer.Add(&tui.IdleStatus{})
 	applySettingsTuiMode(t, mode, "fullscreen", "fullscreen")

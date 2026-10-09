@@ -1,5 +1,7 @@
 package ai
 
+// pi: packages/ai/src/auth/oauth/kimi-coding.ts
+
 import (
 	"context"
 	"io"

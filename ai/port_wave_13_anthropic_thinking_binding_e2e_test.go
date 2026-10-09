@@ -19,7 +19,7 @@ func TestPortWave13AnthropicThinkingBindingE2E(t *testing.T) {
 		request := func(history Context, effort string) *AssistantMessage {
 			t.Helper()
 			// packages/ai/src/api/anthropic-messages.ts:1151-1155 defaults display to summarized, as requested by the upstream helper.
-			stream, err := provider.Stream(ctx, NormalizeContext(history), StreamOptions{CacheRetention: CacheRetentionNone, MaxTokens: 1536, ThinkingEnabled: new(true), Effort: effort, OnPayload: func(value any, _ *Model) (any, error) {
+			stream, err := provider.Stream(ctx, NormalizeContext(history), StreamOptions{CacheRetention: CacheRetentionNone, MaxTokens: 1536, ThinkingEnabled: new(true), Effort: AnthropicEffort(effort), OnPayload: func(value any, _ *Model) (any, error) {
 				params := value.(anthRequest)
 				if params.Thinking != nil && params.Thinking.BlockBinding != nil {
 					params.Thinking.BlockBinding.PrefixMismatchBehavior = "error"

@@ -263,6 +263,7 @@ func TestMCPConfigValidatesProviderAuthAndAcceptsItOnlyInTheGlobalMcpJSON(t *tes
 }
 
 // .upstream/v1.0.1/packages/coding-agent/test/mcp-extension.test.ts:89 (#10277)
+// Pi: packages/coding-agent/src/extensions/mcp/config.ts:71 (LoadedMcpConfig.projectConfig).
 func TestMCPConfigLetsProjectEntriesOverrideEnabledAndExposureOfGlobalServers(t *testing.T) {
 	paths := setupConfig(t,
 		`{"mcpServers":{"tools":{"command":"x","env":{"TOKEN":"secret"}}}}`,

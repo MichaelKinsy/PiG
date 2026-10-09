@@ -257,6 +257,23 @@ fn get_settings_without_host_settings_and_tools_outside_a_tool_fail() {
     host.finish();
 }
 
+// loop_turned (protocol.go NotifyLoopTurned) is the host step a Node runtime waits for after a print prompt's last call. A Rust
+// extension has no such wait, so the notify, which has no arguments, changes nothing: the next request runs with the state the
+// extension held before it.
+#[test]
+fn loop_turned_notify_changes_nothing() {
+    let mut ext = Extension::new("api");
+    ext.tool("probe", "Probe", empty_schema(), |ctx, _| match ctx.get_settings() {
+        Ok(settings) => ToolResult::json(json!({"content": "probe", "details": settings})),
+        Err(err) => ToolResult::Error(err.to_string()),
+    });
+    let mut host = Host::start(ext, json!({"settings": {"theme": "dark"}}));
+    send(&mut host.stream, &json!({"type":"notify","notify":{"method":"loop_turned"}}));
+    host.tool_call("r1", "probe", "call-1", json!({}));
+    assert_eq!(host.response("r1")["result"]["details"], json!({"theme": "dark"}));
+    host.finish();
+}
+
 // types.ts:1833-1839 (registerMcpServer, unregisterMcpServer, getMcpServers), loader.ts:456-478: registration after load is a host
 // call whose reply lists every registered server, so a getMcpServers that follows sees the change; the host's validation error is
 // upstream's throw and reaches the extension.
@@ -413,11 +430,13 @@ fn prepare_loadout_request_runs_the_tools_hook() {
                 [(
                     "orchestrate".to_string(),
                     format!(
-                        "Runs {} ({}, {}, {:?})",
+                        "Runs {} ({}, {}, {:?}, {:?}, {:?})",
                         names.join(","),
                         loadout.get_exposure("mcp_search").as_str(),
                         loadout.get_exposure("unknown").as_str(),
                         loadout.get_namespace("mcp_search").map(|n| n.name.clone()),
+                        loadout.get_prompt_guidelines("read"),
+                        loadout.get_prompt_guidelines("unknown"),
                     ),
                 )]
                 .into(),
@@ -433,11 +452,12 @@ fn prepare_loadout_request_runs_the_tools_hook() {
         "registered":[tool("orchestrate"), tool("read")],
         "exposures":{"orchestrate":"direct","read":"direct","mcp_search":"deferred"},
         "namespaces":{"mcp_search":{"name":"mcp__docs"}},
+        "promptGuidelines":{"read":["Use read to examine files.","Quote paths."]},
     });
     host.request("l1", json!({"method":"tool_prepare_loadout","tool":"orchestrate","args":payload}));
     assert_eq!(
         host.response("l1")["result"],
-        json!({"descriptions":{"orchestrate":"Runs read (deferred, direct, Some(\"mcp__docs\"))"},"hiddenDeclarations":["read"]})
+        json!({"descriptions":{"orchestrate":"Runs read (deferred, direct, Some(\"mcp__docs\"), [\"Use read to examine files.\", \"Quote paths.\"], [])"},"hiddenDeclarations":["read"]})
     );
 
     let empty = json!({"declared":[],"callable":[],"registered":[],"exposures":{}});

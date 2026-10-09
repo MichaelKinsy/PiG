@@ -18,13 +18,18 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/fs"
+	"math"
 	"os"
 	"path/filepath"
 	"slices"
 	"strings"
 	"time"
 
+	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/extensions/sdk/json"
+	"github.com/MichaelKinsy/PiG/internal/nodeerrno"
+	"github.com/MichaelKinsy/PiG/internal/nodefs"
 	"github.com/MichaelKinsy/PiG/internal/nodepath"
 )
 
@@ -32,16 +37,16 @@ import (
 // Returned by ListSessions; consumed by /resume picker (TUI overlay
 // follow-up) and by --continue startup flag.
 type SessionInfo struct {
-	Path            string
-	ID              string
-	CWD             string
-	Name            string // user-set name (via /name): empty when unset
-	ParentSession   string // path of source jsonl when this session is a clone
-	Created         time.Time
-	Modified        time.Time
-	MessageCount    int
-	FirstMessage    string // first user message text: for picker preview
-	AllMessagesText string // concatenated text: for fuzzy search
+	Path              string
+	ID                string
+	CWD               string
+	Name              string // user-set name (via /name): empty when unset
+	ParentSessionPath string // path of source jsonl when this session is a clone
+	Created           time.Time
+	Modified          time.Time
+	MessageCount      int
+	FirstMessage      string // first user message text: for picker preview
+	AllMessagesText   string // concatenated text: for fuzzy search
 }
 
 const maxConcurrentSessionInfoLoads = 10 // upstream: coding-agent/src/core/session-manager.ts:MAX_CONCURRENT_SESSION_INFO_LOADS
@@ -118,139 +123,79 @@ var listSessionsInDir = func(dir string) ([]SessionInfo, error) {
 	return listSessionsInDirWithOptions(dir, sessionListOptions(nil))
 }
 
-// compareSessionRecencyDesc orders listing metadata by activity and discovery metadata by mtime. Creation time and path break ties deterministically.
-func compareSessionRecencyDesc(a, b SessionInfo) int {
-	if c := cmp.Compare(b.Modified.UnixNano(), a.Modified.UnixNano()); c != 0 {
-		return c
-	}
-	if c := cmp.Compare(b.Created.UnixNano(), a.Created.UnixNano()); c != 0 {
-		return c
-	}
-	return cmp.Compare(a.Path, b.Path)
-}
-
 func summarizeSessionFiles(files []string) []SessionInfo {
 	infos, _ := summarizeSessionFilesWithOptions(files, sessionListOptions(nil), 10, false)
 	return infos
 }
 
-type sessionSummaryEntry struct {
-	Type      string                `json:"type"`
-	Name      string                `json:"name"`
-	Timestamp string                `json:"timestamp"`
-	Message   sessionSummaryMessage `json:"message"`
-}
+// noMessagesText is the first message of a session that holds no text, as buildSessionInfo sets it.
+const noMessagesText = "(no messages)"
 
-type sessionSummaryMessage struct {
-	Role       string
-	Text       string
-	Timestamp  *float64
-	HasContent bool
-}
-
-func (message *sessionSummaryMessage) UnmarshalJSON(data []byte) error {
-	var metadata struct {
-		Role string `json:"role"`
-	}
-	if err := json.Unmarshal(data, &metadata); err != nil {
-		return err
-	}
-	message.Role = metadata.Role
-	if message.Role != "user" && message.Role != "assistant" {
-		return nil
-	}
-	var content struct {
-		Content   json.RawMessage `json:"content"`
-		Timestamp *float64        `json:"timestamp"`
-	}
-	if err := json.Unmarshal(data, &content); err != nil {
-		return err
-	}
-	message.Timestamp = content.Timestamp
-	message.HasContent = len(content.Content) != 0
-	var text sessionSummaryContent
-	if message.HasContent {
-		if err := json.Unmarshal(content.Content, &text); err != nil {
-			return err
-		}
-	}
-	message.Text = string(text)
-	return nil
-}
-
-type sessionSummaryContent string
-
-var (
-	canonicalMessagePrefix     = []byte(`{"type":"message",`)
-	canonicalMessageRolePrefix = []byte(`"message":{"role":"`)
-)
-
-func summarizeSessionEntry(line []byte) (sessionSummaryEntry, bool) {
-	trimmed := bytes.TrimSpace(line)
-	isCanonicalMessage := bytes.HasPrefix(trimmed, canonicalMessagePrefix)
-	if isCanonicalMessage {
-		_, role, ok := bytes.Cut(trimmed, canonicalMessageRolePrefix)
-		if ok {
-			switch {
-			case bytes.HasPrefix(role, []byte(`user"`)), bytes.HasPrefix(role, []byte(`assistant"`)):
-				var entry sessionSummaryEntry
-				if err := json.Unmarshal(trimmed, &entry); err != nil {
-					return sessionSummaryEntry{}, false
-				}
-				return entry, true
-			default:
-				if json.Valid(trimmed) {
-					return sessionSummaryEntry{Type: "message"}, true
-				}
-				return sessionSummaryEntry{}, false
-			}
-		}
-	}
-	var entry sessionSummaryEntry
-	if err := json.Unmarshal(trimmed, &entry); err != nil {
-		return sessionSummaryEntry{}, false
-	}
-	return entry, true
-}
-
-func (content *sessionSummaryContent) UnmarshalJSON(data []byte) error {
-	data = bytes.TrimSpace(data)
-	if len(data) == 0 {
-		return nil
-	}
-	if data[0] == '"' {
-		var text string
-		if err := json.Unmarshal(data, &text); err != nil {
-			return err
-		}
-		*content = sessionSummaryContent(text)
-		return nil
-	}
-	if data[0] != '[' {
-		return nil
-	}
-	var blocks []struct {
-		Type string `json:"type"`
-		Text string `json:"text"`
-	}
-	if err := json.Unmarshal(data, &blocks); err != nil {
-		return err
-	}
-	texts := make([]string, 0, len(blocks))
-	for _, block := range blocks {
-		if block.Type == "text" {
-			texts = append(texts, block.Text)
-		}
-	}
-	*content = sessionSummaryContent(strings.Join(texts, " "))
-	return nil
-}
+var errSessionDropped = errors.New("session: not listed")
 
 // summarizeSessionFile streams picker metadata and searchable text without retaining entry objects.
 func summarizeSessionFile(path string) (SessionInfo, error) {
 	return summarizeSessionFileContext(context.Background(), path)
 }
 
+// jsDateValue is the time value of `new Date(value)` for a parsed JSON value; present tells an absent member (undefined) from null. Objects and arrays read as an invalid date.
+func jsDateValue(value any, present bool) float64 {
+	switch v := value.(type) {
+	case string:
+		return ai.DateParse(v)
+	case float64:
+		if math.IsNaN(v) || math.IsInf(v, 0) || math.Abs(v) > 8.64e15 {
+			return math.NaN()
+		}
+		return math.Trunc(v) + 0
+	case bool:
+		if v {
+			return 1
+		}
+		return 0
+	case nil:
+		if present {
+			return 0
+		}
+	}
+	return math.NaN()
+}
+
+// msTime is the Date for a time value, or the zero time for an invalid date.
+func msTime(ms float64) time.Time {
+	if math.IsNaN(ms) {
+		return time.Time{}
+	}
+	return time.UnixMilli(int64(ms))
+}
+
+// sessionMessageText is extractTextContent of Pi's buildSessionInfo: false where Pi's code throws, which drops the session from the listing.
+func sessionMessageText(content any) (string, bool) {
+	switch c := content.(type) {
+	case string:
+		return c, true
+	case []any:
+		var texts []string
+		for _, block := range c {
+			if block == nil {
+				return "", false
+			}
+			obj, ok := block.(map[string]any)
+			if !ok || obj["type"] != "text" {
+				continue
+			}
+			text := ""
+			if obj["text"] != nil {
+				text = jsStringValue(obj["text"])
+			}
+			texts = append(texts, text)
+		}
+		return strings.Join(texts, " "), true
+	}
+	return "", false
+}
+
+// summarizeSessionFileContext ports buildSessionInfo of packages/coding-agent/src/core/session-manager.ts. Pi's code throws, and so omits the session, when a session_info name is neither absent nor a string, when a message entry has no message object, and when a user or assistant message's content is neither a string nor an array of objects.
 func summarizeSessionFileContext(ctx context.Context, path string) (SessionInfo, error) {
 	if err := ctx.Err(); err != nil {
 		return SessionInfo{}, err
@@ -272,55 +217,106 @@ func summarizeSessionFileContext(ctx context.Context, path string) (SessionInfo,
 		}
 	}()
 
-	info := SessionInfo{Path: path, Modified: st.ModTime()}
-	var firstUserMsg string
+	info := SessionInfo{Path: path}
+	var header map[string]any
+	firstMessage := ""
 	var allMessages []string
-	var lastActivityTime int64
-	haveHeader := false
-	err = forEachJSONLLineContext(ctx, f, func(line []byte) error {
-		if len(line) == 0 {
+	lastActivity := math.NaN()
+	handle := func(line []byte) error {
+		if strings.TrimFunc(string(line), isJSWhitespace) == "" {
 			return nil
 		}
-		if !haveHeader {
-			var header SessionHeader
-			if err := json.Unmarshal(line, &header); err != nil {
-				return fmt.Errorf("session: parse header: %w", err)
-			}
-			if header.Type != "session" {
-				return fmt.Errorf("session: missing header in %s", path)
-			}
-			haveHeader = true
-			info.ID = header.ID
-			info.CWD = header.CWD
-			info.ParentSession = header.ParentSession
-			if t, err := time.Parse(time.RFC3339Nano, header.Timestamp); err == nil {
-				info.Created = t
-				info.Modified = t
-			}
+		var value any
+		if json.Unmarshal(line, &value) != nil {
 			return nil
 		}
-		entry, ok := summarizeSessionEntry(line)
-		if !ok {
+		switch v := value.(type) {
+		case nil:
+			return nil
+		case bool:
+			if !v {
+				return nil
+			}
+		case float64:
+			if v == 0 {
+				return nil
+			}
+		case string:
+			if v == "" {
+				return nil
+			}
+		}
+		entry, isObject := value.(map[string]any)
+		if header == nil {
+			if !isObject || entry["type"] != "session" {
+				return errSessionDropped
+			}
+			header = entry
 			return nil
 		}
-		switch entry.Type {
-		case "message":
-			info.MessageCount++
-			if entry.Message.HasContent && (entry.Message.Role == "user" || entry.Message.Role == "assistant") {
-				if entry.Message.Timestamp != nil {
-					lastActivityTime = max(lastActivityTime, int64(*entry.Message.Timestamp))
-				} else if timestamp, err := time.Parse(time.RFC3339Nano, entry.Timestamp); err == nil {
-					lastActivityTime = max(lastActivityTime, timestamp.UnixMilli())
-				}
-			}
-			if firstUserMsg == "" && entry.Message.Role == "user" {
-				firstUserMsg = entry.Message.Text
-			}
-			if entry.Message.Text != "" {
-				allMessages = append(allMessages, entry.Message.Text)
-			}
+		if !isObject {
+			return nil
+		}
+		switch entry["type"] {
 		case "session_info":
-			info.Name = jsTrim(entry.Name)
+			switch name := entry["name"].(type) {
+			case nil:
+				info.Name = ""
+			case string:
+				info.Name = jsTrim(name)
+			default:
+				return errSessionDropped
+			}
+			return nil
+		case "message":
+		default:
+			return nil
+		}
+		info.MessageCount++
+		if entry["message"] == nil {
+			return errSessionDropped
+		}
+		message, isObject := entry["message"].(map[string]any)
+		if !isObject {
+			return nil
+		}
+		role, hasRole := message["role"].(string)
+		_, hasContent := message["content"]
+		if !hasRole || !hasContent || (role != "user" && role != "assistant") {
+			return nil
+		}
+		var activity float64
+		if ts, ok := message["timestamp"].(float64); ok {
+			activity = ts
+		} else {
+			activity = jsDateValue(entry["timestamp"], hasKey(entry, "timestamp"))
+		}
+		if !math.IsNaN(activity) {
+			previous := 0.0
+			if !math.IsNaN(lastActivity) {
+				previous = lastActivity
+			}
+			lastActivity = math.Max(previous, activity)
+		}
+		text, ok := sessionMessageText(message["content"])
+		if !ok {
+			return errSessionDropped
+		}
+		if text == "" {
+			return nil
+		}
+		allMessages = append(allMessages, text)
+		if firstMessage == "" && role == "user" {
+			firstMessage = text
+		}
+		return nil
+	}
+	err = forEachJSONLLineContext(ctx, f, func(line []byte) error {
+		// Node's readline also ends a line at a lone carriage return.
+		for part := range bytes.SplitSeq(line, []byte{'\r'}) {
+			if err := handle(part); err != nil {
+				return err
+			}
 		}
 		return nil
 	})
@@ -330,15 +326,36 @@ func summarizeSessionFileContext(ctx context.Context, path string) (SessionInfo,
 	if err != nil {
 		return SessionInfo{}, err
 	}
-	if !haveHeader {
-		return SessionInfo{}, fmt.Errorf("session: empty file: %s", path)
+	if header == nil {
+		return SessionInfo{}, errSessionDropped
 	}
-	if lastActivityTime > 0 {
-		info.Modified = time.UnixMilli(lastActivityTime)
+	info.ID, _ = header["id"].(string)
+	info.CWD, _ = header["cwd"].(string)
+	info.ParentSessionPath, _ = header["parentSession"].(string)
+	info.Created = msTime(jsDateValue(header["timestamp"], hasKey(header, "timestamp")))
+	headerTime := math.NaN()
+	if timestamp, ok := header["timestamp"].(string); ok {
+		headerTime = ai.DateParse(timestamp)
 	}
-	info.FirstMessage = truncate(firstUserMsg, 200)
+	switch {
+	case !math.IsNaN(lastActivity) && lastActivity > 0:
+		info.Modified = msTime(jsDateValue(lastActivity, true))
+	case !math.IsNaN(headerTime):
+		info.Modified = msTime(headerTime)
+	default:
+		info.Modified = st.ModTime()
+	}
+	info.FirstMessage = firstMessage
+	if info.FirstMessage == "" {
+		info.FirstMessage = noMessagesText
+	}
 	info.AllMessagesText = strings.Join(allMessages, " ")
 	return info, nil
+}
+
+func hasKey(m map[string]any, key string) bool {
+	_, ok := m[key]
+	return ok
 }
 
 // extractMessageText pulls the visible text out of a MessageEntry -
@@ -387,13 +404,17 @@ func (sm *SessionManager) FindMostRecent() string {
 	return sm.findMostRecent(false)
 }
 
-// findMostRecent uses bounded header discovery and file mtime rather than the activity timestamps shown in the picker.
+// findMostRecent mirrors upstream `findMostRecentSession`: files in directory order, a stable sort by `mtimeMs` descending (so files with equal mtimes keep directory order), then the first whose bounded header read is a session header for the cwd.
 func (sm *SessionManager) findMostRecent(filterCwd bool) string {
-	files, err := os.ReadDir(sm.sessionDir)
+	files, err := nodefs.ReadDir(sm.sessionDir)
 	if err != nil {
 		return ""
 	}
-	candidates := make([]SessionInfo, 0, len(files))
+	type candidate struct {
+		path    string
+		mtimeMs float64
+	}
+	candidates := make([]candidate, 0, len(files))
 	for _, file := range files {
 		if !strings.HasSuffix(file.Name(), ".jsonl") {
 			continue
@@ -403,18 +424,18 @@ func (sm *SessionManager) findMostRecent(filterCwd bool) string {
 		if err != nil {
 			return ""
 		}
-		header := readSessionHeaderForDiscovery(path)
-		if header == nil || filterCwd && !sessionCwdMatches(header.CWD, sm.cwd) {
-			continue
+		mod := stat.ModTime()
+		// libuv: st_mtim.tv_sec * 1000 + st_mtim.tv_nsec / 1e6, in doubles.
+		candidates = append(candidates, candidate{path, float64(mod.Unix())*1000 + float64(mod.Nanosecond())/1e6})
+	}
+	slices.SortStableFunc(candidates, func(a, b candidate) int { return cmp.Compare(b.mtimeMs, a.mtimeMs) })
+	for _, c := range candidates {
+		header := readSessionHeaderForDiscovery(c.path)
+		if header != nil && (!filterCwd || sessionCwdMatches(header.CWD, sm.cwd)) {
+			return c.path
 		}
-		created, _ := time.Parse(time.RFC3339Nano, header.Timestamp)
-		candidates = append(candidates, SessionInfo{Path: path, Modified: stat.ModTime(), Created: created})
 	}
-	slices.SortFunc(candidates, compareSessionRecencyDesc)
-	if len(candidates) == 0 {
-		return ""
-	}
-	return candidates[0].Path
+	return ""
 }
 
 // FindMostRecentForContinue selects the session to resume for the
@@ -485,7 +506,7 @@ func absCleanDir(p string) string {
 
 // FindByID finds an exact header ID without reading transcript bodies. A custom session directory is filtered by cwd; discovery errors are best-effort.
 func (sm *SessionManager) FindByID(id string) string {
-	files, err := os.ReadDir(sm.sessionDir)
+	files, err := nodefs.ReadDir(sm.sessionDir)
 	if err != nil {
 		return ""
 	}
@@ -526,7 +547,7 @@ func (err *SessionHeaderScanLimitError) Error() string {
 func ReadSessionHeader(path string) (*SessionHeader, error) {
 	file, err := os.Open(path)
 	if err != nil {
-		return nil, err
+		return nil, nodeerrno.FromPathError(err)
 	}
 	defer func() { _ = file.Close() }()
 	reader := bufio.NewReader(io.LimitReader(file, maxSessionHeaderScanBytes+1))
@@ -538,6 +559,10 @@ func ReadSessionHeader(path string) (*SessionHeader, error) {
 			return nil, &SessionHeaderScanLimitError{Path: path}
 		}
 		if readErr != nil && !errors.Is(readErr, io.EOF) {
+			// readSync's error: "EISDIR: illegal operation on a directory, read".
+			if pathErr, ok := errors.AsType[*fs.PathError](readErr); ok {
+				return nil, nodeerrno.FromPathError(pathErr)
+			}
 			return nil, readErr
 		}
 		// upstream: coding-agent/src/core/session-manager.ts:parseSessionHeaderCandidate

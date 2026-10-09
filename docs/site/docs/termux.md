@@ -1,6 +1,6 @@
 # Run PiG on Android with Termux
 
-PiG runs on Android through [Termux](https://termux.dev/), a terminal emulator and Linux environment. Text input, file tools, and shell commands are supported. PiG copies text to the Android clipboard with Termux:API. Clipboard image paste is not supported.
+PiG runs on Android through [Termux](https://termux.dev/), a terminal emulator and Linux environment. Text input, file tools, and shell commands are supported. PiG copies text to and pastes text from the Android clipboard with Termux:API. Clipboard image paste is not supported.
 
 Termux runs PiG's `android-arm64` release binary: a position independent executable linked to Android's C library. Do not use the `linux-arm64` binary in Termux; Termux's loader cannot start it (`has unexpected e_type: 2`). Android on other CPUs (32-bit Arm, x86) has no release binary. No hosted CI runner executes PiG on Android, so treat Termux support as experimental until a device run is recorded in the release evidence.
 
@@ -8,7 +8,7 @@ Termux runs PiG's `android-arm64` release binary: a position independent executa
 
 Install Termux from [GitHub, F-Droid or Google Play](https://github.com/termux/termux-app#installation). Android does not let an app run files from its own data directory. Termux works around that with `termux-exec`, which starts each program through `/system/bin/linker64`; PiG does the same for the programs it starts, because its Go runtime bypasses `termux-exec`.
 
-[Termux:API](https://github.com/termux/termux-api#installation) is optional. Install it only when you want PiG to copy Android clipboard text, or when shell commands need Android device APIs.
+[Termux:API](https://github.com/termux/termux-api#installation) is optional. Install it only when you want PiG to copy or paste Android clipboard text, or when shell commands need Android device APIs.
 
 ## Install PiG
 
@@ -76,7 +76,7 @@ Only grant this permission when PiG should be able to access those files. Comman
 
 ## Use clipboard commands
 
-PiG uses `termux-clipboard-set` to copy text. Shell commands can use `termux-clipboard-set` and `termux-clipboard-get` directly. Install the Termux:API app and its command-line package:
+PiG uses `termux-clipboard-set` to copy text and `termux-clipboard-get` to paste it. Shell commands can use `termux-clipboard-set` and `termux-clipboard-get` directly. Install the Termux:API app and its command-line package:
 
 ```bash
 pkg install termux-api
@@ -91,7 +91,7 @@ termux-clipboard-get
 
 The second command should print `PiG clipboard test`.
 
-The Termux clipboard API supports text only. PiG's clipboard-paste shortcut reads no clipboard on Android, as in Pi, whose paste command runs only where Node reports `linux`, and it attaches no clipboard images. Paste text with Termux's own paste gesture.
+The Termux clipboard API supports text only. PiG's clipboard-paste shortcut (Ctrl+V) reads text through `termux-clipboard-get`, and attach no clipboard images. A failed copy reports that the Termux:API app and `termux-api` package are required.
 
 ## Networking, temporary files, and programs PiG starts
 
@@ -133,7 +133,7 @@ pkg install rust
 
 - `--format script` writes a launcher script.
 - `--format binary` builds a native Android Piglet Binary. A release PiG fetches its own source on the first build, so that build needs network access and takes a few minutes. Later builds reuse the cache.
-- A Piglet Binary embeds Go and Rust extensions. A Piglet with no extensions, with only Python extensions, or with any Node extension builds only as a script.
+- A Piglet Binary embeds Go and Rust extensions, and carries TypeScript and JavaScript extensions, which run with the Node on `PATH`. A Piglet with only Python extensions builds only as a script. A Piglet with no extensions builds a Binary of PiG's own parts with the Piglet baked in.
 - The container builder does not run in Termux. Termux has no Podman or Docker, and the container builder builds only Linux targets, not the Android host.
 
 Keep about 2 GB free for the first Binary build. Go's module and build caches and PiG's build cache use about 1.3 GB.

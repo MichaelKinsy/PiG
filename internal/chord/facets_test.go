@@ -1,5 +1,9 @@
 package chord
 
+// pi: packages/chord/src/facets/loader.ts
+
+// pi: packages/chord/src/facets/host.ts
+
 import (
 	"context"
 	"encoding/json"
@@ -160,7 +164,7 @@ func TestFacetHostRemoteConsumerAndReloadCutover(t *testing.T) {
 	endpoint := CreateRemoteServiceEndpoint(host.Services())
 	errs := make(chan error, 8)
 	binding, err := CreateRemoteServiceBinding(RemoteServiceBindingOptions{
-		Services: []string{counterDefinition.Id()}, Transport: NewJSONCopyTransport(endpoint),
+		Services: ServiceIDs(counterDefinition.Id()), Transport: NewJSONCopyTransport(endpoint),
 		OnError: func(err error) { errs <- err },
 	})
 	if err != nil {
@@ -276,7 +280,7 @@ func TestFacetHostKeyedProvisionObservedLocallyAndRemotely(t *testing.T) {
 		t.Fatal("local keyed observer did not run")
 	}
 	binding, err := CreateRemoteServiceBinding(RemoteServiceBindingOptions{
-		Services: []string{keyedCounterDefinition.Id()}, Transport: NewJSONCopyTransport(CreateRemoteServiceEndpoint(host.Services())),
+		Services: ServiceIDs(keyedCounterDefinition.Id()), Transport: NewJSONCopyTransport(CreateRemoteServiceEndpoint(host.Services())),
 	})
 	if err != nil {
 		t.Fatal(err)

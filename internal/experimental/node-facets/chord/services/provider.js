@@ -159,6 +159,7 @@ export class RemoteServiceProvider {
             buffer: [],
             snapshotSequences: new Map(),
             active: false,
+            draining: false,
             terminated: false,
             closed: false,
         };
@@ -171,22 +172,7 @@ export class RemoteServiceProvider {
                 if (subscriber.closed || subscriber.active)
                     return;
                 subscriber.active = true;
-                const errors = [];
-                try {
-                    for (const entry of subscriber.buffer.splice(0)) {
-                        try {
-                            listener(entry.update, entry.context);
-                        }
-                        catch (error) {
-                            errors.push(error);
-                        }
-                    }
-                }
-                finally {
-                    if (subscriber.terminated)
-                        subscriber.closed = true;
-                }
-                throwCollectedErrors(errors, "Failed to activate remote service subscription");
+                throwCollectedErrors(drainSubscriber(subscriber), "Failed to activate remote service subscription");
             },
             close: () => {
                 if (subscriber.closed)
@@ -229,7 +215,7 @@ export class RemoteServiceProvider {
                 }
             }
             for (const subscriber of registration.subscribers) {
-                if (subscriber.active) {
+                if (subscriber.active && !subscriber.draining) {
                     subscriber.closed = true;
                     subscriber.buffer.length = 0;
                 }
@@ -326,11 +312,12 @@ export class RemoteServiceProvider {
                 members.push({ name, kind: "method" });
             }
             else {
+                const snapshot = member.state.snapshot();
                 members.push({
                     name,
                     kind: "state",
-                    sequence: member.state.sequence,
-                    ops: [["r", member.state.value]],
+                    sequence: snapshot.sequence,
+                    ops: [["r", snapshot.value]],
                 });
             }
         }
@@ -344,21 +331,24 @@ export class RemoteServiceProvider {
             return;
         const deliveryContext = context ?? serviceDeliveryContext();
         const errors = [];
-        for (const subscriber of registration.subscribers) {
+        const subscribers = [...registration.subscribers];
+        // Queue for everyone before invoking user code, including reentrant publications.
+        for (const subscriber of subscribers) {
             if (subscriber.closed || updateCoveredBySnapshot(subscriber.snapshotSequences, update))
                 continue;
-            const entry = { update, context: deliveryContext };
-            if (!subscriber.active) {
-                subscriber.buffer.push(entry);
-                continue;
+            if (subscriber.buffer.length === 100) {
+                const snapshot = this.#snapshot(registration);
+                subscriber.buffer.length = 0;
+                subscriber.snapshotSequences.clear();
+                recordSnapshotSequences(subscriber.snapshotSequences, snapshot.instances);
+                subscriber.buffer.push({ update: { type: "reset", snapshot }, context: deliveryContext });
             }
-            try {
-                subscriber.listener(entry.update, entry.context);
-            }
-            catch (error) {
-                errors.push(error);
+            else {
+                subscriber.buffer.push({ update, context: deliveryContext });
             }
         }
+        for (const subscriber of subscribers)
+            errors.push(...drainSubscriber(subscriber));
         throwCollectedErrors(errors, `Failed to publish remote service ${registration.serviceId} update`);
     }
     #assertRemotable(service) {
@@ -374,6 +364,31 @@ export class RemoteServiceProvider {
         if (this.#disposed)
             throw new Error("Remote service provider is disposed");
     }
+}
+function drainSubscriber(subscriber) {
+    if (!subscriber.active || subscriber.closed || subscriber.draining)
+        return [];
+    const errors = [];
+    subscriber.draining = true;
+    try {
+        while (!subscriber.closed) {
+            const entry = subscriber.buffer.shift();
+            if (entry === undefined)
+                break;
+            try {
+                subscriber.listener(entry.update, entry.context);
+            }
+            catch (error) {
+                errors.push(error);
+            }
+        }
+    }
+    finally {
+        subscriber.draining = false;
+        if (subscriber.terminated)
+            subscriber.closed = true;
+    }
+    return errors;
 }
 function recordSnapshotSequences(sequences, instances) {
     for (const instance of instances) {
@@ -395,6 +410,10 @@ function updateCoveredBySnapshot(sequences, update) {
             sequences.delete(key);
             return false;
         }
+        case "reset":
+            sequences.clear();
+            recordSnapshotSequences(sequences, update.snapshot.instances);
+            return false;
         case "replaced":
             sequences.clear();
             recordSnapshotSequences(sequences, [update.snapshot]);

@@ -1,0 +1,81 @@
+[
+ {
+  "ids": [
+   "pkg:coding-agent/.#DefaultResourceLoader::property:getSkills"
+  ],
+  "targets": [
+   "coding/resource_loader.go#DefaultResourceLoader.GetSkills"
+  ],
+  "production": [
+   "public-api:coding/resource_loader.go#DefaultResourceLoader.GetSkills"
+  ],
+  "evidence": [
+   "test:coding/resource_loader_packages_test.go#TestDefaultLoaderPackageResourceWinsItsPathAgainstSettingsEntries",
+   "test:coding/resource_loader_packages_test.go#TestUpstreamDefaultResourceLoaderOptions",
+   "test:coding/sdk_skills_upstream_test.go#TestUpstreamResourceLoaderNativeOverrides"
+  ],
+  "rationale": "DefaultResourceLoader.getSkills is GetSkills() returning SkillsResult {Skills, Diagnostics}."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#DefaultResourceLoader::property:getPrompts"
+  ],
+  "targets": [
+   "coding/resource_loader.go#DefaultResourceLoader.GetPrompts"
+  ],
+  "production": [
+   "public-api:coding/resource_loader.go#DefaultResourceLoader.GetPrompts"
+  ],
+  "evidence": [
+   "test:coding/resource_loader_packages_test.go#TestDefaultLoaderExplicitExclusionDisablesAutoDiscoveredResources",
+   "test:coding/resource_loader_packages_test.go#TestUpstreamDefaultResourceLoaderOptions",
+   "test:coding/sdk_skills_upstream_test.go#TestUpstreamResourceLoaderNativeOverrides"
+  ],
+  "rationale": "DefaultResourceLoader.getPrompts is GetPrompts() returning PromptsResult {Prompts, Diagnostics}."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#DefaultResourceLoader::property:getAgentsFiles"
+  ],
+  "targets": [
+   "coding/resource_loader.go#DefaultResourceLoader.GetAgentsFiles"
+  ],
+  "production": [
+   "public-api:coding/resource_loader.go#DefaultResourceLoader.GetAgentsFiles"
+  ],
+  "evidence": [
+   "test:coding/resource_loader_packages_test.go#TestUpstreamDefaultResourceLoaderOptions"
+  ],
+  "rationale": "DefaultResourceLoader.getAgentsFiles is GetAgentsFiles() returning AgentsFilesResult."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#DefaultResourceLoader::property:getSystemPrompt"
+  ],
+  "targets": [
+   "coding/resource_loader.go#DefaultResourceLoader.GetSystemPrompt"
+  ],
+  "production": [
+   "public-api:coding/resource_loader.go#DefaultResourceLoader.GetSystemPrompt"
+  ],
+  "evidence": [
+   "test:coding/resource_loader_packages_test.go#TestUpstreamDefaultResourceLoaderOptions"
+  ],
+  "rationale": "DefaultResourceLoader.getSystemPrompt is GetSystemPrompt() returning (string, bool): the bool is upstream's undefined check."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#DefaultResourceLoader::property:getAppendSystemPrompt"
+  ],
+  "targets": [
+   "coding/resource_loader.go#DefaultResourceLoader.GetAppendSystemPrompt"
+  ],
+  "production": [
+   "public-api:coding/resource_loader.go#DefaultResourceLoader.GetAppendSystemPrompt"
+  ],
+  "evidence": [
+   "test:coding/resource_loader_packages_test.go#TestUpstreamDefaultResourceLoaderOptions"
+  ],
+  "rationale": "DefaultResourceLoader.getAppendSystemPrompt is GetAppendSystemPrompt() returning []string."
+ }
+]

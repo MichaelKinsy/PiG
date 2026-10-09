@@ -130,6 +130,11 @@ export class TuiAltScreen extends TuiBase {
             return false;
         return this.copyTextToClipboard(text);
     }
+    /** Drop the text selection and multi-click history, e.g. before the host replaces the transcript. */
+    resetTextSelection() {
+        this.clearTextSelection();
+        this.lastClick = undefined;
+    }
     /** The lines of the last rendered frame, one per terminal row, as written to the terminal. */
     getScreenLines() {
         return [...this.previousScreen];

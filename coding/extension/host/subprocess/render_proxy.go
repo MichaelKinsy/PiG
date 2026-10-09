@@ -4,11 +4,13 @@ import (
 	"context"
 	"fmt"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/MichaelKinsy/PiG/extensions/sdk/json"
 
 	"github.com/MichaelKinsy/PiG/coding/extension"
+	"github.com/MichaelKinsy/PiG/extensions/sdk/frontend"
 	"github.com/MichaelKinsy/PiG/tui/widthx"
 )
 
@@ -17,6 +19,8 @@ import (
 // Render never performs IPC or JSON work; it returns the current generation and
 // starts at most one owned background request loop when width/options change.
 type renderProxyComponent struct {
+	// changed is set when a response replaces the painted lines; a parent that caches this component reads it through IsDirty and NeedsRedraw.
+	changed    atomic.Bool
 	extName    string
 	customType string
 	method     string // "render_message" | "render_entry"
@@ -34,6 +38,8 @@ type renderProxyComponent struct {
 	options    extension.MessageRenderOptions
 	generation uint64
 	requesting bool
+	// view is the view of the renderer's results (D107).
+	view rendererView
 }
 
 func newRenderProxyComponent(
@@ -106,6 +112,9 @@ func (c *renderProxyComponent) Render(width int) []string {
 		// A response for an earlier width is never painted (whatever its rows)
 		// while the request at the current width is in flight.
 		lines = widthx.FrameAt(lines, c.linesWidth, c.width)
+		if live, ok := c.view.live(c.width); ok && c.linesWidth == c.width {
+			lines = live
+		}
 	}
 	out := append([]string(nil), lines...)
 	c.mu.Unlock()
@@ -115,6 +124,12 @@ func (c *renderProxyComponent) Render(width int) []string {
 	}
 	return out
 }
+
+// IsDirty reports whether a response replaced the painted lines since the last NeedsRedraw, so a caching parent re-renders the proxy.
+func (c *renderProxyComponent) IsDirty() bool { return c.changed.Load() }
+
+// NeedsRedraw consumes the flag IsDirty reads.
+func (c *renderProxyComponent) NeedsRedraw() bool { return c.changed.Swap(false) }
 
 func (c *renderProxyComponent) Invalidate() {
 	c.mu.Lock()
@@ -188,6 +203,7 @@ func (c *renderProxyComponent) requestLoop() {
 		if current && ok {
 			c.lines = append([]string(nil), lines...)
 			c.linesWidth = width
+			c.changed.Store(true)
 		}
 		if current {
 			c.requesting = false
@@ -230,5 +246,17 @@ func (c *renderProxyComponent) request(width int, options extension.MessageRende
 	if err := json.Unmarshal(resp.Response.Result, &result); err != nil {
 		return nil, false
 	}
-	return result.Lines, true
+	return c.view.apply(c.conn, c.invalidate, result, width)
+}
+
+// FrontendView reports the structure of the renderer's result to a D91
+// frontend (D107) while the result shown is the one laid out at width.
+func (c *renderProxyComponent) FrontendView(width int) *frontend.View {
+	c.mu.Lock()
+	current := len(c.lines) > 0 && c.linesWidth == width
+	c.mu.Unlock()
+	if !current {
+		return nil
+	}
+	return c.view.frontendView(width)
 }

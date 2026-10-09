@@ -60,16 +60,16 @@ func (opened *FauxConversation) Close(ctx context.Context) error {
 func fauxSteps(steps []Step) []ai.FauxResponseStep {
 	result := make([]ai.FauxResponseStep, len(steps))
 	for i, step := range steps {
-		result[i] = ai.FauxFactoryStep(func(transcript ai.TranscriptContext, options ai.StreamOptions, _ *ai.FauxProviderState, _ *ai.Model) (ai.FauxResponse, error) {
+		result[i] = ai.FauxFactoryStep(func(transcript ai.TranscriptContext, options ai.StreamOptions, _ *ai.FauxProviderState, _ *ai.Model) (ai.AssistantMessage, error) {
 			ctx := options.Signal
 			if ctx == nil {
 				ctx = context.Background()
 			}
 			answer, err := step(ctx, lastUserText(transcript.Messages()))
 			if err != nil {
-				return ai.FauxResponse{}, err
+				return ai.FauxResponse{}.AssistantMessage(), err
 			}
-			return ai.FauxResponse{Content: []ai.FauxContentBlock{ai.FauxText(answer)}}, nil
+			return ai.FauxResponse{Content: []ai.FauxContentBlock{ai.FauxText(answer)}}.AssistantMessage(), nil
 		})
 	}
 	return result

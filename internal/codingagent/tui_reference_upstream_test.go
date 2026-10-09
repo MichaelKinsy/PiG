@@ -7,12 +7,12 @@ import (
 )
 
 type countingRenderer struct {
-	tui.Renderer
+	tui.TUI
 	renders, requests int
 }
 
-func (r *countingRenderer) Render()        { r.renders++ }
-func (r *countingRenderer) RequestRender() { r.requests++ }
+func (r *countingRenderer) Render()               { r.renders++ }
+func (r *countingRenderer) RequestRender(...bool) { r.requests++ }
 
 // packages/coding-agent/test/suite/regressions/7731-tui-method-wrapping.test.ts: upstream's createInteractiveTuiReference Proxy is designed out. PiG resolves m.tuiInst at call time, so a method value captured before a renderer replacement is the observable contract.
 func TestTUIMethodWrappingUpstream(t *testing.T) {

@@ -132,7 +132,8 @@ func (r *RequestAuthRuntime) configProvider(providerID string) (providerConfig, 
 
 // configureRadiusProviders mirrors upstream configureRadiusProviders.
 func (r *RequestAuthRuntime) configureRadiusProviders() {
-	r.radius = map[string]*ai.RadiusProvider{RadiusProviderID: ai.NewRadiusProvider(ai.RadiusProviderOptions{ID: RadiusProviderID})}
+	// The default built-in is all.ts:169 radiusProvider(), with no options.
+	r.radius = map[string]*ai.RadiusProvider{RadiusProviderID: ai.NewRadiusGatewayProvider(ai.RadiusProviderOptions{})}
 	if r.config == nil {
 		return
 	}
@@ -144,7 +145,7 @@ func (r *RequestAuthRuntime) configureRadiusProviders() {
 		if name == "" {
 			name = providerID
 		}
-		r.radius[providerID] = ai.NewRadiusProvider(ai.RadiusProviderOptions{ID: providerID, Name: name, Gateway: radiusBaseURLVersionSuffix.ReplaceAllString(config.BaseURL, "")})
+		r.radius[providerID] = ai.NewRadiusGatewayProvider(ai.RadiusProviderOptions{ID: providerID, Name: name, Gateway: radiusBaseURLVersionSuffix.ReplaceAllString(config.BaseURL, "")})
 	}
 }
 
@@ -188,7 +189,7 @@ func (r *RequestAuthRuntime) composeProvider(providerID string) *RuntimeProvider
 	baseName := ai.ProviderDisplayName(providerID)
 	baseModels := builtinRuntimeModels(providerID)
 	if radius := r.radius[providerID]; radius != nil {
-		base, hasBase, baseModels = ai.RadiusProviderAuth(radius), true, radiusRuntimeModels(radius)
+		base, hasBase, baseModels = radius.Auth(), true, radiusRuntimeModels(radius)
 		baseName = radius.Name()
 	}
 	config, hasConfig := r.configProvider(providerID)
@@ -241,7 +242,7 @@ func radiusRuntimeModels(provider *ai.RadiusProvider) []RuntimeModel {
 	catalog := provider.GetModels()
 	models := make([]RuntimeModel, 0, len(catalog))
 	for _, model := range catalog {
-		models = append(models, RuntimeModel{Provider: model.Provider, ID: model.ID, Name: model.Name, Reasoning: model.Reasoning})
+		models = append(models, RuntimeModel{Provider: model.ProviderMeta.ProviderID, ID: model.ID, Name: model.DisplayName, Reasoning: model.ProviderMeta.Reasoning})
 	}
 	return models
 }
@@ -668,6 +669,39 @@ func (r *RequestAuthRuntime) GetError() string {
 		errs = append(errs, "Availability refresh: "+r.availabilityError)
 	}
 	return strings.Join(errs, "\n\n")
+}
+
+// SynchronizeCredentialState checks one provider after its credential changed, as upstream ModelRuntime.synchronizeCredentialState does: its composition, then its availability (credential read and auth check). A failure returns a *CredentialSynchronizationError: the credential change is already committed.
+// A provider's composition depends on models.json and the built-in and Radius providers, which a credential change does not alter, so the composition from construction is what upstream's recomposeProvider rebuilds; reading it leaves the provider maps that off-loop auth checks read unchanged. The availability check covers only providerID, as upstream refreshProviderAvailability does.
+func (r *RequestAuthRuntime) SynchronizeCredentialState(ctx context.Context, providerID string, operation CredentialSynchronizationOperation, credential *ai.Credential) error {
+	err := context.Cause(ctx)
+	if err == nil {
+		if index := slices.IndexFunc(r.compositionErrors, func(e compositionError) bool { return e.providerID == providerID }); index >= 0 {
+			err = errors.New(r.compositionErrors[index].message)
+		} else if r.config != nil && r.config.composeFailures[providerID] != "" {
+			// readConfig drops a provider it cannot compose and records why; Pi's recomposeProvider meets the same error again.
+			err = errors.New(r.config.composeFailures[providerID])
+		}
+	}
+	if err == nil {
+		if _, err = r.credentials.Read(ctx, providerID); err == nil {
+			_, err = r.CheckAuth(ctx, providerID)
+		}
+		if err == nil {
+			err = context.Cause(ctx)
+		}
+		// upstream: packages/coding-agent/src/core/model-runtime.ts:refreshProviderAvailability records a failure that is not an abort as the availability error and clears it on success.
+		switch {
+		case err == nil:
+			r.availabilityError = ""
+		case ctx.Err() == nil:
+			r.availabilityError = err.Error()
+		}
+	}
+	if err != nil {
+		return NewCredentialSynchronizationError(providerID, operation, credential, err)
+	}
+	return nil
 }
 
 // Refresh restores dynamic catalogs from the models store without network

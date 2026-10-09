@@ -32,13 +32,14 @@ func TestRunnerToolContextRunsNestedCallsForTheCallingTool(t *testing.T) {
 
 	parent, cancel := context.WithCancel(t.Context())
 	defer cancel()
-	toolCtx := runner.CreateToolContext(parent, "call-1")
-	tc := extension.ToolContextFromContext(toolCtx)
-	if tc == nil {
-		t.Fatal("CreateToolContext attached no ToolContext")
+	tc := runner.CreateToolContext(parent, "call-1")
+	if tc == nil || tc.Context == nil {
+		t.Fatal("CreateToolContext returned no ToolContext over an extension Context")
 	}
-	if base := extension.FromContext(toolCtx); base == nil {
-		t.Fatal("CreateToolContext attached no extension Context")
+	// ToolCallContext attaches both contexts to the context a tool call runs with (wrapper.ts:14-19).
+	toolCtx := runner.ToolCallContext(parent, "call-1")
+	if extension.ToolContextFromContext(toolCtx) == nil || extension.FromContext(toolCtx) == nil {
+		t.Fatal("ToolCallContext attached no ToolContext or extension Context")
 	}
 	tools, err := tc.Tools()
 	if err != nil || !reflect.DeepEqual(tools, callable) {
@@ -87,7 +88,7 @@ func TestRunnerToolContextRunsNestedCallsForTheCallingTool(t *testing.T) {
 func TestRunnerToolContextWithoutExecuteToolActionReturnsErrorOutcome(t *testing.T) {
 	runner := inproc.NewRunner(nil, t.TempDir())
 	runner.BindCore(extension.ExtensionActions{}, extension.ContextActions{}, nil)
-	tc := extension.ToolContextFromContext(runner.CreateToolContext(t.Context(), "call-7"))
+	tc := runner.CreateToolContext(t.Context(), "call-7")
 	if tc == nil {
 		t.Fatal("CreateToolContext attached no ToolContext")
 	}
@@ -102,7 +103,7 @@ func TestRunnerToolContextWithoutExecuteToolActionReturnsErrorOutcome(t *testing
 	if !got.IsError || got.ToolCall.ID != "call-7/0" || got.ToolCall.Name != "echo" {
 		t.Fatalf("outcome = %+v", got)
 	}
-	result, ok := got.Result.(agent.AgentToolResult)
+	result, ok := got.Result, true
 	if !ok || !strings.Contains(result.Text(), "Nested tool calls are not available in this context") {
 		t.Fatalf("result = %#v", got.Result)
 	}
@@ -117,7 +118,7 @@ func TestRunnerToolContextRejectsCallsOnAStaleRunner(t *testing.T) {
 			return extension.AgentToolCallOutcome{}, nil
 		},
 	}}, nil)
-	tc := extension.ToolContextFromContext(runner.CreateToolContext(t.Context(), "call-1"))
+	tc := runner.CreateToolContext(t.Context(), "call-1")
 	if tc == nil {
 		t.Fatal("CreateToolContext attached no ToolContext")
 	}
@@ -142,7 +143,7 @@ func TestRunnerToolContextAppendsEntriesThroughTheBoundAction(t *testing.T) {
 		calls = append(calls, call{customType, data})
 		return nil
 	}}}, nil)
-	tc := extension.ToolContextFromContext(runner.CreateToolContext(t.Context(), "call-1"))
+	tc := runner.CreateToolContext(t.Context(), "call-1")
 	if tc == nil {
 		t.Fatal("CreateToolContext attached no ToolContext")
 	}
@@ -166,7 +167,7 @@ func TestRunnerToolContextAppendsEntriesThroughTheBoundAction(t *testing.T) {
 func TestRunnerToolContextWithoutAppendEntryActionReportsAnError(t *testing.T) {
 	runner := inproc.NewRunner(nil, t.TempDir())
 	runner.BindCore(extension.ExtensionActions{}, extension.ContextActions{}, nil)
-	tc := extension.ToolContextFromContext(runner.CreateToolContext(t.Context(), "call-1"))
+	tc := runner.CreateToolContext(t.Context(), "call-1")
 	if tc == nil {
 		t.Fatal("CreateToolContext attached no ToolContext")
 	}
@@ -175,25 +176,33 @@ func TestRunnerToolContextWithoutAppendEntryActionReportsAnError(t *testing.T) {
 	}
 }
 
+// namedManager is a comparable ReadonlySessionManager that only knows its id.
+type namedManager struct {
+	extension.ReadonlySessionManager
+	id string
+}
+
+func (m namedManager) GetSessionId() string { return m.id }
+
 // A Session that swaps its log in place rebinds ctx.sessionManager while handlers create contexts on other goroutines (runner.ts:889-891 reads the runner's manager; Go's ReplaceInner has no new runner to bind). Run under -race.
 func TestRunnerBindSessionManagerWhileContextsAreCreated(t *testing.T) {
 	runner := inproc.NewRunner(nil, t.TempDir())
-	runner.BindCore(extension.ExtensionActions{}, extension.ContextActions{SessionManager: "first"}, nil)
+	runner.BindCore(extension.ExtensionActions{}, extension.ContextActions{SessionManager: namedManager{id: "first"}}, nil)
 	var wg sync.WaitGroup
 	for range 4 {
 		wg.Go(func() {
 			for range 200 {
 				manager, err := runner.CreateCommandContext().SessionManager()
-				if err != nil || (manager != "first" && manager != "second") {
+				if err != nil || (manager != namedManager{id: "first"} && manager != namedManager{id: "second"}) {
 					t.Errorf("SessionManager() = %v, %v", manager, err)
 					return
 				}
 			}
 		})
 	}
-	runner.BindSessionManager("second")
+	runner.BindSessionManager(namedManager{id: "second"})
 	wg.Wait()
-	if manager, err := runner.CreateCommandContext().SessionManager(); err != nil || manager != "second" {
+	if manager, err := runner.CreateCommandContext().SessionManager(); err != nil || manager != (namedManager{id: "second"}) {
 		t.Fatalf("after rebind SessionManager() = %v, %v", manager, err)
 	}
 }
@@ -203,7 +212,7 @@ func TestRunnerBindCoreKeepsTheSessionBindingAModeOmits(t *testing.T) {
 	var appended []string
 	runner := inproc.NewRunner(nil, t.TempDir())
 	var executed []string
-	runner.BindCore(extension.ExtensionActions{}, extension.ContextActions{SessionManager: "session-log", ToolActions: extension.ToolActions{
+	runner.BindCore(extension.ExtensionActions{}, extension.ContextActions{SessionManager: namedManager{id: "session-log"}, ToolActions: extension.ToolActions{
 		ExecuteTool: func(_ context.Context, callerID, name string, _ json.RawMessage, _ extension.ExecuteToolOptions) (extension.AgentToolCallOutcome, error) {
 			executed = append(executed, name)
 			return extension.AgentToolCallOutcome{ToolCall: ai.ToolCall{ID: callerID + "/1", Name: name}}, nil
@@ -214,8 +223,8 @@ func TestRunnerBindCoreKeepsTheSessionBindingAModeOmits(t *testing.T) {
 		},
 	}}, nil)
 	runner.BindCore(extension.ExtensionActions{}, extension.ContextActions{}, nil)
-	tc := extension.ToolContextFromContext(runner.CreateToolContext(t.Context(), "call-1"))
-	if manager, err := tc.SessionManager(); err != nil || manager != "session-log" {
+	tc := runner.CreateToolContext(t.Context(), "call-1")
+	if manager, err := tc.SessionManager(); err != nil || manager != (namedManager{id: "session-log"}) {
 		t.Fatalf("ctx.sessionManager after a mode binding = %v, %v; want the Session's log", manager, err)
 	}
 	if err := tc.AppendEntry("kept", nil); err != nil || !reflect.DeepEqual(appended, []string{"kept"}) {
@@ -225,12 +234,12 @@ func TestRunnerBindCoreKeepsTheSessionBindingAModeOmits(t *testing.T) {
 		t.Fatalf("ExecuteTool after a mode binding = %+v, %v; Session action calls %v", outcome, err, executed)
 	}
 
-	runner.BindCore(extension.ExtensionActions{}, extension.ContextActions{SessionManager: "next-log", ToolActions: extension.ToolActions{AppendEntry: func(customType string, _ any) error {
+	runner.BindCore(extension.ExtensionActions{}, extension.ContextActions{SessionManager: namedManager{id: "next-log"}, ToolActions: extension.ToolActions{AppendEntry: func(customType string, _ any) error {
 		appended = append(appended, "next:"+customType)
 		return nil
 	}}}, nil)
-	tc = extension.ToolContextFromContext(runner.CreateToolContext(t.Context(), "call-2"))
-	if manager, _ := tc.SessionManager(); manager != "next-log" {
+	tc = runner.CreateToolContext(t.Context(), "call-2")
+	if manager, _ := tc.SessionManager(); manager != (namedManager{id: "next-log"}) {
 		t.Fatalf("ctx.sessionManager after a Session binding = %v, want next-log", manager)
 	}
 	if err := tc.AppendEntry("replaced", nil); err != nil || !reflect.DeepEqual(appended, []string{"kept", "next:replaced"}) {
@@ -238,9 +247,12 @@ func TestRunnerBindCoreKeepsTheSessionBindingAModeOmits(t *testing.T) {
 	}
 }
 
-type bindCoreRegistry struct{ registered []string }
+type bindCoreRegistry struct {
+	extension.ModelRegistry
+	registered []string
+}
 
-func (r *bindCoreRegistry) RegisterProvider(name string, _ extension.ProviderConfig) error {
+func (r *bindCoreRegistry) RegisterExtensionProvider(name string, _ extension.ProviderConfig) error {
 	r.registered = append(r.registered, name)
 	return nil
 }
@@ -255,7 +267,7 @@ func TestRunnerBindCoreKeepsTheSessionModelRegistryAModeOmits(t *testing.T) {
 	runner.BindCore(extension.ExtensionActions{}, extension.ContextActions{ModelRegistry: registry}, nil)
 	runner.BindCore(extension.ExtensionActions{}, extension.ContextActions{}, nil)
 
-	tc := extension.ToolContextFromContext(runner.CreateToolContext(t.Context(), "call-1"))
+	tc := runner.CreateToolContext(t.Context(), "call-1")
 	if got, err := tc.ModelRegistry(); err != nil || got != registry {
 		t.Fatalf("ctx.modelRegistry after a mode binding = %v, %v; want the Session's registry", got, err)
 	}

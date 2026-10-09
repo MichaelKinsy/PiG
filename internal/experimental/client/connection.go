@@ -37,6 +37,7 @@ type ConnectionStateChange struct {
 
 // ConnectionOptions supplies the transport and client-owned callbacks. Callbacks run on the transport's ordered dispatcher and may synchronously disconnect or start a new connection.
 type ConnectionOptions struct {
+	// TransportFactory is Pi's transportFactory.
 	TransportFactory ByteTransportFactory
 	ServerId         string
 	MaxFrameLength   *float64
@@ -62,7 +63,7 @@ func (handshake *connectionHandshake) reserve(hello protocol.ServerHello, err er
 	return publish
 }
 
-type connectionTransport struct{ transport ByteTransport }
+type connectionTransport struct{ transport callbackByteTransport }
 type connectionLifecycle struct {
 	state     ConnectionState
 	id        uint64
@@ -75,6 +76,7 @@ type connectionLifecycle struct {
 // Connection validates handshakes and routes all subsequent messages. Each attempt has its own decoder and identity; stale transport callbacks cannot replace a newer connection.
 type Connection struct {
 	options        ConnectionOptions
+	start          callbackByteTransportFactory
 	maxFrameLength float64
 	mu             sync.Mutex
 	decoderMu      sync.Mutex
@@ -91,6 +93,7 @@ func NewConnection(options ConnectionOptions) (*Connection, error) {
 	if options.TransportFactory == nil || options.OnHandshake == nil || options.OnMessage == nil || options.OnStateChange == nil {
 		return nil, errors.New("Connection requires a transport factory and callbacks")
 	}
+	start := adaptFactory(options.TransportFactory)
 	limit := float64(protocol.DefaultMaxFrameLength)
 	if options.MaxFrameLength != nil {
 		limit = *options.MaxFrameLength
@@ -98,7 +101,7 @@ func NewConnection(options ConnectionOptions) (*Connection, error) {
 	if math.IsNaN(limit) || math.IsInf(limit, 0) || limit <= 0 || limit > math.MaxUint32 || math.Trunc(limit) != limit {
 		return nil, fmt.Errorf("Client maxFrameLength must be an integer between 1 and 4294967295")
 	}
-	return &Connection{options: options, maxFrameLength: limit, lifecycle: &connectionLifecycle{state: Disconnected}}, nil
+	return &Connection{options: options, start: start, maxFrameLength: limit, lifecycle: &connectionLifecycle{state: Disconnected}}, nil
 }
 func (connection *Connection) State() ConnectionState {
 	connection.mu.Lock()
@@ -113,7 +116,7 @@ func (connection *Connection) Connect(ctx context.Context) (protocol.ServerHello
 	if connection.lifecycle.state != Disconnected {
 		state := connection.lifecycle.state
 		connection.mu.Unlock()
-		return protocol.ServerHello{}, &DisconnectedError{Message: fmt.Sprintf("Client is already %s", state)}
+		return protocol.ServerHello{}, NewDisconnectedError(fmt.Sprintf("Client is already %s", state), nil)
 	}
 	decoder, err := protocol.NewServerMessageDecoder(protocol.FrameDecoderOptions{MaxFrameLength: &connection.maxFrameLength})
 	if err != nil {
@@ -137,7 +140,7 @@ func (connection *Connection) Connect(ctx context.Context) (protocol.ServerHello
 		OnError: func(err error) { connection.failFor(id, toDisconnectedError(err), true) },
 	}
 	var completed atomic.Bool
-	complete := func(transport ByteTransport, err error) {
+	complete := func(transport callbackByteTransport, err error) {
 		if completed.Swap(true) {
 			return
 		}
@@ -160,17 +163,17 @@ func (connection *Connection) Connect(ctx context.Context) (protocol.ServerHello
 	}
 }
 
-func (connection *Connection) callFactory(ctx context.Context, handlers ByteTransportHandlers, complete func(ByteTransport, error)) {
+func (connection *Connection) callFactory(ctx context.Context, handlers ByteTransportHandlers, complete func(callbackByteTransport, error)) {
 	// Upstream catches a thrown factory error as well as a rejected Promise.
 	defer func() {
 		if failure := recover(); failure != nil {
 			complete(nil, panicError(failure))
 		}
 	}()
-	connection.options.TransportFactory(ctx, handlers, complete)
+	connection.start(ctx, handlers, complete)
 }
 
-func (connection *Connection) opened(id uint64, transport ByteTransport, err error) {
+func (connection *Connection) opened(id uint64, transport callbackByteTransport, err error) {
 	if lifetime, ok := transport.(interface{ Done() <-chan struct{} }); ok {
 		connection.ownLifetime(lifetime.Done())
 	}
@@ -228,7 +231,7 @@ func (connection *Connection) Send(frame []byte) error {
 	})
 	return nil
 }
-func (connection *Connection) sendTransport(transport ByteTransport, frame []byte, complete func(error)) {
+func (connection *Connection) sendTransport(transport callbackByteTransport, frame []byte, complete func(error)) {
 	var completed atomic.Bool
 	finish := func(err error) {
 		if !completed.Swap(true) {
@@ -241,13 +244,13 @@ func (connection *Connection) sendTransport(transport ByteTransport, frame []byt
 			finish(panicError(failure))
 		}
 	}()
-	transport.Send(frame, finish)
+	transport.Submit(frame, finish)
 }
 
 // Disconnect ends the current attempt or connection. A nil reason selects the upstream default diagnostic.
 func (connection *Connection) Disconnect(reason error) {
 	if reason == nil {
-		reason = &DisconnectedError{Message: "Client disconnected"}
+		reason = NewDisconnectedError("Client disconnected", nil)
 	}
 	connection.Fail(reason)
 }
@@ -398,7 +401,7 @@ func (connection *Connection) handleClose(id uint64) {
 		return
 	}
 	connection.mu.Unlock()
-	var err error = &DisconnectedError{Message: "Byte transport closed"}
+	var err error = NewDisconnectedError("Byte transport closed", nil)
 	connection.decoderMu.Lock()
 	decoderError := current.decoder.End()
 	connection.decoderMu.Unlock()

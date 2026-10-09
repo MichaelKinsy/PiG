@@ -26,11 +26,11 @@ wait_event = '{"type":"response","id":"follow"}'
 wait_timeout_seconds = 10
 [[rpc.steps]]
 line = '{"id":"second","type":"prompt","message":"What is 20+22?"}'
-wait_event = '{"type":"agent_settled"}'
+wait_event = '{"type":"agent_settled","aborted":false}'
 wait_timeout_seconds = 10
 [[rpc.steps]]
 line = '{"type":"extension_ui_response","id":"{{RPC_REQUEST_ID}}","value":"release"}'
-wait_event = '{"type":"agent_settled"}'
+wait_event = '{"type":"agent_settled","aborted":false}'
 wait_timeout_seconds = 10
 [[rpc.steps]]
 line = '{"id":"input","type":"prompt","message":"hold-input"}'
@@ -42,13 +42,13 @@ wait_event = '{"type":"response","id":"input-idle"}'
 wait_timeout_seconds = 10
 [[rpc.steps]]
 line = '{"type":"extension_ui_response","id":"{{RPC_REQUEST_ID}}","value":"release"}'
-wait_event = '{"type":"agent_settled"}'
+wait_event = '{"type":"agent_settled","aborted":false}'
 wait_timeout_seconds = 10
 
 [env]
 pig = ["PIG_TEST_FAUX=1", "PIG_HOME=testdata/pig-home"]
-pig_extensions = ["../../../../cmd/pig/testdata/rpc-preflight.mjs"]
-pi_extensions = ["../../../../cmd/pig/testdata/rpc-preflight.mjs", "../../testdata/test-faux-provider.ts"]
+pig_extensions = ["../../../../coding/cli/testdata/rpc-preflight.mjs"]
+pi_extensions = ["../../../../coding/cli/testdata/rpc-preflight.mjs", "../../testdata/test-faux-provider.ts"]
 # Same explicit prompt controls D2/D22 inputs without deleting captured sections. In-memory sessions leave no generated session filename to alias.
 pig_args = ["--model", "test-faux/faux-1", "--no-session", "--system-prompt", "RPC admission.", "--no-context-files", "--no-skills"]
 pi_args = ["--model", "test-faux/faux-1", "--no-session", "--system-prompt", "RPC admission.", "--no-context-files", "--no-skills"]
@@ -72,3 +72,8 @@ reason = "Only the exact isolated cwd varies in the explicit prompt; retain ever
 paths = ["/**/timestamp"]
 kind = "timestamp"
 reason = "Independent message clocks vary; retain presence, numeric/string type and valid syntax."
+
+[[assert.json_aliases]]
+paths = ["/**/durationMs"]
+kind = "duration"
+reason = "Pi 1.1.0 measures each response and tool execution (#10549) with a monotonic clock; the value varies per run. Retain presence, type and position."

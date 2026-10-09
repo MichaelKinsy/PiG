@@ -9,6 +9,7 @@ import (
 	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/internal/codingagent/frontmatter"
 	"github.com/MichaelKinsy/PiG/internal/ignorerules"
+	"github.com/MichaelKinsy/PiG/internal/nodefs"
 )
 
 // LoadSkillsFromDirOptions selects one skill directory and its provenance source.
@@ -39,7 +40,7 @@ func LoadSkillsFromDir(options LoadSkillsFromDirOptions) LoadSkillsResult {
 func loadValidatedSkillsDir(dir, source string, rootFiles bool, rules *[]ignorerules.Rule, root string) LoadSkillsResult {
 	result := LoadSkillsResult{Skills: []*SkillDef{}, Diagnostics: []extension.ResourceDiagnostic{}}
 	*rules = ignorerules.Append(*rules, dir, root)
-	entries, err := os.ReadDir(dir)
+	entries, err := nodefs.ReadDir(dir)
 	if err != nil {
 		return result
 	}
@@ -102,7 +103,7 @@ func loadValidatedSkillFile(path, source string) LoadSkillsResult {
 	if name == "" {
 		name = filepath.Base(filepath.Dir(path))
 	}
-	skill := &SkillDef{Name: name, Description: description, Path: path, Dir: filepath.Dir(path), Body: doc.Body, DisableModelInvocation: doc.Frontmatter["disable-model-invocation"] == true}
+	skill := &SkillDef{Name: name, Description: description, FilePath: path, BaseDir: filepath.Dir(path), Body: doc.Body, DisableModelInvocation: doc.Frontmatter["disable-model-invocation"] == true}
 	// Description diagnostics precede name diagnostics in Pi's loader.
 	diagnostics := SkillDiagnostics(skill)
 	for _, diagnostic := range diagnostics {
@@ -118,7 +119,7 @@ func loadValidatedSkillFile(path, source string) LoadSkillsResult {
 	if jsTrim(description) == "" {
 		return result
 	}
-	skill.SourceInfo = PiSourceInfo{Path: path, Source: source, Scope: "temporary", Origin: "top-level", BaseDir: skill.Dir}
+	skill.SourceInfo = CreateSyntheticSourceInfo(path, SyntheticSourceInfoOptions{Source: source, BaseDir: skill.BaseDir})
 	switch source {
 	case "user", "project":
 		skill.SourceInfo.Source = "local"
@@ -147,12 +148,12 @@ func LoadSkills(options LoadSkillsOptions) (LoadSkillsResult, error) {
 	add := func(loaded LoadSkillsResult) {
 		result.Diagnostics = append(result.Diagnostics, loaded.Diagnostics...)
 		for _, skill := range loaded.Skills {
-			canonical := canonicalizePath(skill.Path)
+			canonical := canonicalizePath(skill.FilePath)
 			if realPaths[canonical] {
 				continue
 			}
 			if existing, ok := names[skill.Name]; ok {
-				collisions = append(collisions, extension.ResourceDiagnostic{Type: "collision", Message: `name "` + skill.Name + `" collision`, Path: skill.Path, Collision: &extension.ResourceCollision{ResourceType: "skill", Name: skill.Name, WinnerPath: existing.Path, LoserPath: skill.Path}})
+				collisions = append(collisions, extension.ResourceDiagnostic{Type: "collision", Message: `name "` + skill.Name + `" collision`, Path: skill.FilePath, Collision: &extension.ResourceCollision{ResourceType: "skill", Name: skill.Name, WinnerPath: existing.FilePath, LoserPath: skill.FilePath}})
 			} else {
 				names[skill.Name] = skill
 				realPaths[canonical] = true

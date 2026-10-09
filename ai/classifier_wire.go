@@ -10,7 +10,7 @@ import (
 	"fmt"
 )
 
-// MarshalJSON writes the context as {state, questions}.
+// MarshalJSON writes the context as {state, images?, questions} (types.ts:669-677 declaration order); images is omitted when absent.
 func (c ClassifierContext) MarshalJSON() ([]byte, error) {
 	state := c.State
 	if state == nil {
@@ -24,19 +24,27 @@ func (c ClassifierContext) MarshalJSON() ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	return fmt.Appendf(nil, `{"state":%s,"questions":%s}`, stateJSON, questions), nil
+	if c.Images == nil {
+		return fmt.Appendf(nil, `{"state":%s,"questions":%s}`, stateJSON, questions), nil
+	}
+	images, err := json.Marshal(c.Images)
+	if err != nil {
+		return nil, err
+	}
+	return fmt.Appendf(nil, `{"state":%s,"images":%s,"questions":%s}`, stateJSON, images, questions), nil
 }
 
-// UnmarshalJSON reads {state, questions}, keeping the order of the questions.
+// UnmarshalJSON reads {state, images?, questions}, keeping the order of the questions.
 func (c *ClassifierContext) UnmarshalJSON(data []byte) error {
 	var wire struct {
 		State     JsonObject          `json:"state"`
+		Images    []ImageContent      `json:"images"`
 		Questions ClassifierQuestions `json:"questions"`
 	}
 	if err := json.Unmarshal(data, &wire); err != nil {
 		return err
 	}
-	*c = ClassifierContext{State: wire.State, Questions: wire.Questions}
+	*c = ClassifierContext{State: wire.State, Images: wire.Images, Questions: wire.Questions}
 	return nil
 }
 

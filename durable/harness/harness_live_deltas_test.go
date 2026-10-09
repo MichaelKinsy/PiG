@@ -2,6 +2,8 @@
 
 package harness
 
+// pi: packages/durable/src/harness/live.ts
+
 import (
 	"context"
 	"encoding/json"
@@ -15,6 +17,7 @@ import (
 	"time"
 
 	"github.com/MichaelKinsy/PiG/ai"
+	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/durable"
 	"github.com/MichaelKinsy/PiG/durable/storage"
 )
@@ -56,7 +59,7 @@ func toolCallStep(calls ...ai.FauxContentBlock) ai.FauxResponseStep {
 }
 
 func noopTool(name string) *durable.ToolRegistration {
-	return new(durable.ToolRegistration{
+	return DefineTool(durable.ToolRegistration{
 		ToolSchema: ai.ToolSchema{Name: name, Description: name, Parameters: map[string]any{"type": "object", "properties": map[string]any{}}},
 		Execute: func(context.Context, any, durable.ToolExecutionApi) (durable.ToolExecutionResult, error) {
 			return durable.ToolExecutionResult{Content: []ai.ToolResultMessageContent{}}, nil
@@ -77,7 +80,7 @@ func drive(t *testing.T, limits *durable.ToolOutputLimits) *driver {
 	t.Helper()
 	setup := chatSetup(t)
 	actions := make(chan func(api durable.ToolExecutionApi) bool, 16)
-	addTool(t, setup.Registry, new(durable.ToolRegistration{
+	addTool(t, setup.Registry, DefineTool(durable.ToolRegistration{
 		ToolSchema:   ai.ToolSchema{Name: "drive", Description: "Driven by the test", Parameters: map[string]any{"type": "object", "properties": map[string]any{}}},
 		OutputLimits: limits,
 		Execute: func(ctx context.Context, _ any, api durable.ToolExecutionApi) (durable.ToolExecutionResult, error) {
@@ -93,7 +96,7 @@ func drive(t *testing.T, limits *durable.ToolOutputLimits) *driver {
 			}
 		},
 	}))
-	setup.Faux.SetResponses([]ai.FauxResponseStep{toolCallStep(ai.FauxToolCall("drive", map[string]any{}, "c1")), fauxAnswer("done")})
+	setup.Faux.SetResponses([]ai.FauxResponseStep{toolCallStep(ai.FauxToolCall("drive", map[string]any{}, &ai.FauxToolCallOptions{ID: "c1"})), fauxAnswer("done")})
 	harness, root := openChat(t, storage.NewMemoryStorage(), setup)
 	ops := observeLiveOps(harness)
 	submission := submitInput(t, root, "go")
@@ -136,7 +139,7 @@ func TestLiveDeltas(t *testing.T) {
 	t.Run("hands a generation over to its tool round and starts a tool with one field write each", func(t *testing.T) {
 		setup := chatSetup(t)
 		addTool(t, setup.Registry, noopTool("noop"))
-		setup.Faux.SetResponses([]ai.FauxResponseStep{toolCallStep(ai.FauxToolCall("noop", map[string]any{}, "c1")), fauxAnswer("done")})
+		setup.Faux.SetResponses([]ai.FauxResponseStep{toolCallStep(ai.FauxToolCall("noop", map[string]any{}, &ai.FauxToolCallOptions{ID: "c1"})), fauxAnswer("done")})
 		harness, root := openChat(t, storage.NewMemoryStorage(), setup)
 		ops := observeLiveOps(harness)
 		must(submitInput(t, root, "go").Wait(testContext))
@@ -265,7 +268,7 @@ func TestLiveDeltas(t *testing.T) {
 	})
 
 	t.Run("streams partial text as appends", func(t *testing.T) {
-		setup := chatSetup(t, ai.FauxConfig{TokensPerSecond: 400, MinTokenSize: 4, MaxTokenSize: 4})
+		setup := chatSetup(t, ai.FauxConfig{TokensPerSecond: 400, TokenSize: &ai.FauxTokenSize{Min: new(4), Max: new(4)}})
 		setup.Faux.SetResponses([]ai.FauxResponseStep{fauxAnswer(strings.Repeat("word ", 250))})
 		harness, root := openChat(t, storage.NewMemoryStorage(), setup)
 		ops := observeLiveOps(harness)
@@ -287,7 +290,7 @@ func TestLiveDeltas(t *testing.T) {
 		store := &recordingStorage{MemoryStorage: storage.NewMemoryStorage(), written: map[durable.Seq]string{}}
 		setup := chatSetup(t)
 		for _, name := range []string{"first", "second"} {
-			addTool(t, setup.Registry, new(durable.ToolRegistration{
+			addTool(t, setup.Registry, DefineTool(durable.ToolRegistration{
 				ToolSchema: ai.ToolSchema{Name: name, Description: name, Parameters: map[string]any{"type": "object", "properties": map[string]any{}}},
 				Execute: func(_ context.Context, _ any, api durable.ToolExecutionApi) (durable.ToolExecutionResult, error) {
 					api.Output(name + " output\n")
@@ -297,7 +300,7 @@ func TestLiveDeltas(t *testing.T) {
 				},
 			}))
 		}
-		setup.Faux.SetResponses([]ai.FauxResponseStep{toolCallStep(ai.FauxToolCall("first", map[string]any{}, "a"), ai.FauxToolCall("second", map[string]any{}, "b")), fauxAnswer("done")})
+		setup.Faux.SetResponses([]ai.FauxResponseStep{toolCallStep(ai.FauxToolCall("first", map[string]any{}, &ai.FauxToolCallOptions{ID: "a"}), ai.FauxToolCall("second", map[string]any{}, &ai.FauxToolCallOptions{ID: "b"})), fauxAnswer("done")})
 		setup.SetSettings(func(settings *HarnessSettings) { settings.ToolExecution = durable.ToolExecutionSequential })
 		harness, root := openChat(t, store, setup)
 		var mu sync.Mutex
@@ -346,7 +349,7 @@ func TestLiveDeltas(t *testing.T) {
 
 	t.Run("starts calls the request did not offer as done and marks a faulted tool's slot done without an entry", func(t *testing.T) {
 		setup := chatSetup(t)
-		addTool(t, setup.Registry, new(durable.ToolRegistration{
+		addTool(t, setup.Registry, DefineTool(durable.ToolRegistration{
 			ToolSchema: ai.ToolSchema{Name: "bad", Description: "bad", Parameters: map[string]any{"type": "object", "properties": map[string]any{}}},
 			// Not strict JSON: the result commit fails and the scheduler faults the task. A Go value cannot hold a
 			// function, so a non-finite number stands for upstream's function.
@@ -354,7 +357,7 @@ func TestLiveDeltas(t *testing.T) {
 				return durable.ToolExecutionResult{Content: []ai.ToolResultMessageContent{}, Details: map[string]any{"fn": math.NaN()}, HasDetails: true}, nil
 			},
 		}))
-		setup.Faux.SetResponses([]ai.FauxResponseStep{toolCallStep(ai.FauxToolCall("ghost", map[string]any{}, "g"), ai.FauxToolCall("bad", map[string]any{}, "b")), fauxAnswer("done")})
+		setup.Faux.SetResponses([]ai.FauxResponseStep{toolCallStep(ai.FauxToolCall("ghost", map[string]any{}, &ai.FauxToolCallOptions{ID: "g"}), ai.FauxToolCall("bad", map[string]any{}, &ai.FauxToolCallOptions{ID: "b"})), fauxAnswer("done")})
 		harness, root := openChat(t, storage.NewMemoryStorage(), setup)
 		ops := observeLiveOps(harness)
 		must(submitInput(t, root, "go").Wait(testContext))
@@ -385,13 +388,13 @@ func TestLiveDeltas(t *testing.T) {
 	t.Run("commits the tool-calling answer, its tool tasks, the generation's wait, and the tool round in one commit", func(t *testing.T) {
 		setup := chatSetup(t)
 		addTool(t, setup.Registry, noopTool("noop"))
-		setup.Faux.SetResponses([]ai.FauxResponseStep{toolCallStep(ai.FauxToolCall("noop", map[string]any{}, "a"), ai.FauxToolCall("noop", map[string]any{}, "b")), fauxAnswer("done")})
+		setup.Faux.SetResponses([]ai.FauxResponseStep{toolCallStep(ai.FauxToolCall("noop", map[string]any{}, &ai.FauxToolCallOptions{ID: "a"}), ai.FauxToolCall("noop", map[string]any{}, &ai.FauxToolCallOptions{ID: "b"})), fauxAnswer("done")})
 		harness, root := openChat(t, storage.NewMemoryStorage(), setup)
 		var mu sync.Mutex
 		var handover *durable.CommitPublication
 		harness.SubscribeCommits(func(_ context.Context, publication durable.CommitPublication) {
 			for _, change := range documentChanges(publication) {
-				tools, _ := change.Value["tools"].([]any)
+				tools, _ := change.Value.Value("tools").([]any)
 				mu.Lock()
 				if change.Record.Kind == "pi.live" && len(tools) == 2 && handover == nil {
 					handover = &publication
@@ -450,7 +453,7 @@ func TestLiveDeltas(t *testing.T) {
 
 	t.Run("keeps a complete base exactly while nothing runs", func(t *testing.T) {
 		base := func(value string) bool {
-			object := must(jsonValue(value)).(map[string]any)
+			object := must(delta.DecodeJson([]byte(value))).(*delta.JsonObject)
 			return must(LiveDoc.AnyDefinition().CheckpointWhen(object, nil, durable.CheckpointInfo{DeltasSinceBase: 1000}))
 		}
 		slot := func(status string) string { return `{"callId":"c","name":"n","status":"` + status + `"}` }

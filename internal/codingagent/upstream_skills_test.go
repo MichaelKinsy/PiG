@@ -203,7 +203,7 @@ func TestUpstreamCoreSkillsDetectNameCollisionsAndKeepFirst(t *testing.T) {
 	}
 	for _, skill := range second.Skills {
 		if prior, exists := skills[skill.Name]; exists {
-			warnings = append(warnings, "name collision: \""+skill.Name+"\" already loaded from "+prior.Path)
+			warnings = append(warnings, "name collision: \""+skill.Name+"\" already loaded from "+prior.FilePath)
 		} else {
 			skills[skill.Name] = skill
 		}

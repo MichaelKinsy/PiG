@@ -1,0 +1,87 @@
+[
+ {
+  "ids": [
+   "pkg:coding-agent/.#ResourceLoader::property:getSkills"
+  ],
+  "targets": [
+   "coding/resource_loader.go#ResourceLoader.GetSkills"
+  ],
+  "production": [
+   "call:coding/session_prompt.go#Session.loaderSystemPromptResources"
+  ],
+  "evidence": [
+   "test:coding/sdk_skills_upstream_test.go#TestSessionReadsSuppliedResourceLoaderLive",
+   "test:coding/sdk_skills_upstream_test.go#TestResourceLoadersReportEmptyCollections",
+   "test:coding/resource_loader_default_test.go#TestDefaultSessionLoaderAppliesProjectTrust"
+  ],
+  "rationale": "ResourceLoader.getSkills is the Go interface method GetSkills returning SkillsResult {Skills, Diagnostics}; a Session calls it on every use, so a reloading loader is observed by the next prompt."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#ResourceLoader::property:getPrompts"
+  ],
+  "targets": [
+   "coding/resource_loader.go#ResourceLoader.GetPrompts"
+  ],
+  "production": [
+   "call:coding/session_prompt_resources.go#Session.expandPromptText"
+  ],
+  "evidence": [
+   "test:coding/sdk_skills_upstream_test.go#TestSessionReadsSuppliedResourceLoaderLive",
+   "test:coding/sdk_skills_upstream_test.go#TestResourceLoadersReportEmptyCollections",
+   "test:coding/resource_loader_default_test.go#TestDefaultSessionLoaderAppliesProjectTrust"
+  ],
+  "rationale": "ResourceLoader.getPrompts is the Go interface method GetPrompts returning PromptsResult {Prompts, Diagnostics}; a Session calls it on every use, so a reloading loader is observed by the next prompt."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#ResourceLoader::property:getAgentsFiles"
+  ],
+  "targets": [
+   "coding/resource_loader.go#ResourceLoader.GetAgentsFiles"
+  ],
+  "production": [
+   "call:coding/session_prompt.go#Session.loaderSystemPromptResources"
+  ],
+  "evidence": [
+   "test:coding/sdk_skills_upstream_test.go#TestSessionReadsSuppliedResourceLoaderLive",
+   "test:coding/sdk_skills_upstream_test.go#TestResourceLoadersReportEmptyCollections",
+   "test:coding/resource_loader_default_test.go#TestDefaultSessionLoaderAppliesProjectTrust"
+  ],
+  "rationale": "ResourceLoader.getAgentsFiles is the Go interface method GetAgentsFiles returning AgentsFilesResult {AgentsFiles []ContextFile}; a Session calls it on every use, so a reloading loader is observed by the next prompt."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#ResourceLoader::property:getSystemPrompt"
+  ],
+  "targets": [
+   "coding/resource_loader.go#ResourceLoader.GetSystemPrompt"
+  ],
+  "production": [
+   "call:coding/session_prompt.go#Session.loaderSystemPromptResources"
+  ],
+  "evidence": [
+   "test:coding/sdk_skills_upstream_test.go#TestSessionReadsSuppliedResourceLoaderLive",
+   "test:coding/sdk_skills_upstream_test.go#TestResourceLoadersReportEmptyCollections",
+   "test:coding/resource_loader_default_test.go#TestDefaultSessionLoaderAppliesProjectTrust"
+  ],
+  "rationale": "ResourceLoader.getSystemPrompt is the Go interface method GetSystemPrompt returning (string, bool): the bool is upstream's undefined check; a Session calls it on every use, so a reloading loader is observed by the next prompt."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#ResourceLoader::property:getAppendSystemPrompt"
+  ],
+  "targets": [
+   "coding/resource_loader.go#ResourceLoader.GetAppendSystemPrompt"
+  ],
+  "production": [
+   "call:coding/session_prompt.go#Session.loaderSystemPromptResources"
+  ],
+  "evidence": [
+   "test:coding/sdk_skills_upstream_test.go#TestSessionReadsSuppliedResourceLoaderLive",
+   "test:coding/sdk_skills_upstream_test.go#TestResourceLoadersReportEmptyCollections",
+   "test:coding/resource_loader_default_test.go#TestDefaultSessionLoaderAppliesProjectTrust"
+  ],
+  "rationale": "ResourceLoader.getAppendSystemPrompt is the Go interface method GetAppendSystemPrompt returning []string; a Session calls it on every use, so a reloading loader is observed by the next prompt."
+ }
+]

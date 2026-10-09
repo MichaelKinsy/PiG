@@ -10,11 +10,12 @@ Variables named `PI_*` are read for compatibility with upstream Pi. Directory va
 
 | Variable | Effect |
 |---|---|
-| `PIG_HOME` | Configuration root. Default `~/.pig` |
-| `XDG_CONFIG_HOME` | When `PIG_HOME` is not set, the configuration root is `$XDG_CONFIG_HOME/pig` |
+| `PIG_HOME` | Configuration root. Default `$XDG_CONFIG_HOME/pig` when `XDG_CONFIG_HOME` is set, else `~/.pig`. An empty value is ignored |
+| `XDG_CONFIG_HOME` | When `PIG_HOME` is not set or empty, the configuration root is `$XDG_CONFIG_HOME/pig`. The host and every extension SDK follow this rule |
 | `PIG_CODING_AGENT_DIR` | Agent directory alone in default mode. Default `$PIG_HOME/agent` |
 | `PIG_USE_PI_DIRS` | Exact value `1` selects Pi's agent directory and project `.pi` resources (D2). Off by default |
 | `PI_CODING_AGENT_DIR` | Agent directory in shared mode only. Default `~/.pi/agent` |
+| `PIG_PACKAGE_DIR`, `PI_PACKAGE_DIR` | Package directory of the installation, for content-addressed package managers such as Nix and Guix. Default: the directory of the running executable. `~` expands to the home directory |
 
 In default mode, `PIG_HOME` moves settings, keybindings, sessions, trust decisions and installed packages together. In shared mode it moves only PiG-owned product state. See [Using Pi's directories](/docs/latest/configuration#using-pis-directories).
 
@@ -96,6 +97,7 @@ install.
 | `PI_HARDWARE_CURSOR` | Show the terminal's own cursor |
 | `PI_CLEAR_ON_SHRINK` | Repaint when content shrinks |
 | `PI_HYPERLINKS` | Override OSC 8 hyperlink detection with `1`, `0`, or `auto` |
+| `PI_PROGRAM_STATUS` | Override OSC 7501 program status detection: `1` always reports, `0` never reports; otherwise PiG reports only after the terminal confirms support. See [Terminal setup](/docs/latest/terminal-setup#program-status) |
 | `PI_IMAGE_PROTOCOL` | Override inline image detection with `kitty`, `iterm2`, `none`, or `auto` |
 | `PI_TRUE_COLOR` | Override true-color detection with `1`, `0`, or `auto`. With true color off, themes use the 256-color palette |
 
@@ -114,6 +116,8 @@ Each has a setting that does the same thing. A `terminal.hyperlinks`,
 | `PIG_CELL_BUILD_TIMEOUT` | Time an extension build may take |
 | `PIG_BUILDERS_FILE` | Container builder configuration for `pig piglet build`. Default `$PIG_HOME/state/pigletbuild/builders.json` |
 | `PIG_CONTAINER_ENGINE` | Engine of the built-in `container` builder for `pig piglet build`: `docker` or `podman`. Default: Podman when on `PATH`, else Docker |
+| `PIG_PIGLET_PULL_ALLOW_LOOPBACK_HTTP` | Allow `pig piglet pull`, `pig piglet update` and `pig piglet publish --to npm --binaries` to use an `http://localhost` or loopback release URL. Accepts `1`, `true` or `yes`. For testing a release server |
+| `PIG_PIGLET_GITHUB_URL` | Loopback origin, such as `http://127.0.0.1:8080`, that replaces `github.com` and `api.github.com` for `github:` release refs (`pig piglet pull`, `pig piglet publish --to npm --binaries`) and `pig piglet update` discovery. Requires `PIG_PIGLET_PULL_ALLOW_LOOPBACK_HTTP`; any other host is refused. For testing a release server |
 | `PIG_LOGO_GLYPHFREE` | `1` renders the logo without special glyphs in `pig extension preview-login`, and `0` keeps the glyphs. Unset, PiG drops the glyphs only in Apple Terminal |
 
 The `PIG_SDK_*` variables point a build at an SDK checkout instead of the staged

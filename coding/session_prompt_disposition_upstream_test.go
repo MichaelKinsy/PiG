@@ -15,6 +15,8 @@ import (
 	"testing"
 	"time"
 
+	icodingagent "github.com/MichaelKinsy/PiG/internal/codingagent"
+
 	"github.com/MichaelKinsy/PiG/agent"
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/coding/extension"
@@ -41,7 +43,7 @@ func TestPromptRejectedDuringManualCompactionReportsNoDisposition(t *testing.T) 
 			if err := json.Unmarshal(raw, &preparation); err != nil {
 				return nil, err
 			}
-			return extension.SessionBeforeCompactResult{Compaction: map[string]any{"summary": "manual compacted", "firstKeptEntryId": preparation.FirstKeptEntryID, "tokensBefore": preparation.TokensBefore, "details": map[string]any{}}}, nil
+			return extension.SessionBeforeCompactResult{Compaction: &extension.CompactionResult{Summary: "manual compacted", FirstKeptEntryID: preparation.FirstKeptEntryID, TokensBefore: preparation.TokensBefore, Details: map[string]any{}}}, nil
 		}},
 	}}})
 	inner := h.session.Inner()
@@ -56,11 +58,11 @@ func TestPromptRejectedDuringManualCompactionReportsNoDisposition(t *testing.T) 
 	h.provider.responses = []scriptedResponse{fauxReply("probe response", ai.StopReasonStop, 0)}
 
 	compacted := make(chan error, 1)
-	go func() { compacted <- h.session.Compact(t.Context(), "") }()
+	go func() { _, err := h.session.Compact(t.Context(), ""); compacted <- err }()
 	<-started
 
 	var preflight []PromptDisposition
-	_, promptErr := h.session.Prompt(t.Context(), "PROBE-7150", &PromptOptions{Source: extension.InputSourceRPC, PreflightResult: func(result PromptDisposition) { preflight = append(preflight, result) }})
+	promptErr := h.session.Prompt(t.Context(), "PROBE-7150", &PromptOptions{Source: extension.InputSourceRPC, PreflightResult: func(result PromptDisposition) { preflight = append(preflight, result) }})
 	release()
 	if err := <-compacted; err != nil {
 		t.Fatal(err)
@@ -78,7 +80,7 @@ func TestPromptRejectedDuringManualCompactionReportsNoDisposition(t *testing.T) 
 		}
 	}
 	for _, entry := range h.entries("message") {
-		if message, ok := entry.AsMessage(); ok && message.Message.User != nil && extractUserMessageText(message.Message.User.Content) == "PROBE-7150" {
+		if message, ok := entry.(icodingagent.MessageEntry); ok && message.Message.User != nil && extractUserMessageText(message.Message.User.Content) == "PROBE-7150" {
 			t.Fatal("the rejected prompt was persisted")
 		}
 	}
@@ -97,7 +99,7 @@ func TestPromptRejectedDuringManualCompactionReportsNoDisposition(t *testing.T) 
 func TestPromptReportsStartedForATurn(t *testing.T) {
 	h := newRecoveryHarness(t, harnessOptions{}, fauxReply("hello", ai.StopReasonStop, 0))
 	var got []PromptDisposition
-	if _, err := h.session.Prompt(t.Context(), "hi", &PromptOptions{PreflightResult: func(result PromptDisposition) { got = append(got, result) }}); err != nil {
+	if err := h.session.Prompt(t.Context(), "hi", &PromptOptions{PreflightResult: func(result PromptDisposition) { got = append(got, result) }}); err != nil {
 		t.Fatal(err)
 	}
 	if want := []PromptDisposition{DispositionStarted}; !reflect.DeepEqual(got, want) {
@@ -119,7 +121,7 @@ func TestPromptReportsHandledForCommandsAndInputHandlers(t *testing.T) {
 	}}, fauxReply("unused", ai.StopReasonStop, 0))
 	for _, text := range []string{"/probe now", "swallow this"} {
 		var got []PromptDisposition
-		if _, err := h.session.Prompt(t.Context(), text, &PromptOptions{PreflightResult: func(result PromptDisposition) { got = append(got, result) }}); err != nil {
+		if err := h.session.Prompt(t.Context(), text, &PromptOptions{PreflightResult: func(result PromptDisposition) { got = append(got, result) }}); err != nil {
 			t.Fatal(err)
 		}
 		if want := []PromptDisposition{DispositionHandled}; !reflect.DeepEqual(got, want) {
@@ -147,7 +149,7 @@ func TestQueuedInputDispositions(t *testing.T) {
 	<-waiting.waitForToolStart
 
 	var got []PromptDisposition
-	if _, err := h.session.Prompt(t.Context(), "later", &PromptOptions{StreamingBehavior: extension.DeliverAsFollowUp, PreflightResult: func(result PromptDisposition) { got = append(got, result) }}); err != nil {
+	if err := h.session.Prompt(t.Context(), "later", &PromptOptions{StreamingBehavior: extension.DeliverAsFollowUp, PreflightResult: func(result PromptDisposition) { got = append(got, result) }}); err != nil {
 		t.Fatal(err)
 	}
 	for _, step := range []struct {

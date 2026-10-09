@@ -1,5 +1,7 @@
 package imageprocessing
 
+// pi: packages/coding-agent/src/utils/image-process.ts
+
 import (
 	"bytes"
 	"encoding/base64"

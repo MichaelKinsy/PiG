@@ -20,7 +20,7 @@ func TestPromptExtensionCommandPreservesArgumentWhitespace(t *testing.T) {
 			if extensionOrigin {
 				err = h.session.SendUserMessage(t.Context(), input, &extension.SendUserMessageOptions{ExpandPromptTemplates: new(true)})
 			} else {
-				_, err = h.session.Prompt(t.Context(), input)
+				err = h.session.Prompt(t.Context(), input)
 			}
 			if err != nil {
 				t.Fatal(err)

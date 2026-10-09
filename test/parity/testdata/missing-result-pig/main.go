@@ -44,7 +44,7 @@ func main() {
 			panic(err)
 		}
 	}()
-	services, err := coding.NewServices(coding.ServicesOptions{CWD: dir, AgentDir: dir})
+	services, err := coding.CreateAgentSessionServices(coding.CreateAgentSessionServicesOptions{CWD: dir, AgentDir: dir})
 	if err != nil {
 		panic(err)
 	}

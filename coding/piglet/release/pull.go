@@ -404,14 +404,16 @@ func validateRemoteURL(raw string) (*url.URL, error) {
 		}
 		return parsed, nil
 	}
-	if parsed.Scheme == "http" && loopbackHTTPAllowed() {
-		host := parsed.Hostname()
-		ip := net.ParseIP(host)
-		if strings.EqualFold(host, "localhost") || ip != nil && ip.IsLoopback() {
-			return parsed, nil
-		}
+	if parsed.Scheme == "http" && loopbackHTTPAllowed() && isLoopbackHost(parsed.Hostname()) {
+		return parsed, nil
 	}
 	return nil, urlPolicyError("Piglet release URL must use HTTPS; loopback HTTP requires PIG_PIGLET_PULL_ALLOW_LOOPBACK_HTTP=1")
+}
+
+// isLoopbackHost reports whether host is localhost or a loopback IP literal.
+func isLoopbackHost(host string) bool {
+	ip := net.ParseIP(host)
+	return strings.EqualFold(host, "localhost") || ip != nil && ip.IsLoopback()
 }
 
 func loopbackHTTPAllowed() bool {

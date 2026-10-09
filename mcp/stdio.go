@@ -16,6 +16,7 @@ import (
 
 	"github.com/MichaelKinsy/PiG/internal/crossspawn"
 	"github.com/MichaelKinsy/PiG/internal/jsonparse"
+	"github.com/MichaelKinsy/PiG/internal/jsstring"
 	"github.com/MichaelKinsy/PiG/internal/nodespawn"
 )
 
@@ -124,7 +125,7 @@ func (t *StdioTransport) Start() error {
 	}
 	if t.closed {
 		t.mu.Unlock()
-		return NewConnectionClosedError()
+		return NewMcpConnectionClosedError("")
 	}
 	t.started = true
 	t.mu.Unlock()
@@ -230,7 +231,7 @@ func (t *StdioTransport) SendOrdered(message JSONRPCMessage, placed func()) erro
 	stdin, ok := t.stdin, t.started && !t.closed && !t.stdinClosed && t.stdin != nil && t.cmd != nil
 	t.mu.Unlock()
 	if !ok {
-		return NewConnectionClosedError()
+		return NewMcpConnectionClosedError("")
 	}
 	payload, err := json.Marshal(message)
 	if err != nil {
@@ -352,7 +353,7 @@ func (t *StdioTransport) drainLines(pending []byte, maxBytes int) []byte {
 			continue
 		}
 		text := strings.TrimSuffix(string(line), "\r")
-		if strings.TrimSpace(text) == "" {
+		if jsstring.Trim(text) == "" {
 			continue
 		}
 		message, err := parseWireMessage([]byte(text))
@@ -380,7 +381,7 @@ func (t *StdioTransport) finishStdout() {
 	rest := t.stdoutRemainder
 	t.stdoutRemainder = nil
 	t.mu.Unlock()
-	if strings.TrimSpace(string(rest)) != "" {
+	if jsstring.Trim(string(rest)) != "" {
 		t.EmitError(errors.New("MCP stdio server closed with an incomplete JSON-RPC message"))
 	}
 }

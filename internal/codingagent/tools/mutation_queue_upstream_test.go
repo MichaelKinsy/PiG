@@ -1,5 +1,6 @@
 package tools
 
+
 import (
 	"context"
 	"encoding/json"
@@ -17,21 +18,20 @@ import (
 )
 
 func TestFileMutationQueueUpstream(t *testing.T) {
-	// .upstream/v0.87.1/packages/coding-agent/test/file-mutation-queue.test.ts:38
+	// .upstream/v1.1.0/packages/coding-agent/test/file-mutation-queue.test.ts:38
 	t.Run("serializes operations for the same file", func(t *testing.T) {
 		testMutationOrder(t, false)
 	})
-	// .upstream/v0.87.1/packages/coding-agent/test/file-mutation-queue.test.ts:56
+	// .upstream/v1.1.0/packages/coding-agent/test/file-mutation-queue.test.ts:56
 	t.Run("allows different files to proceed in parallel", func(t *testing.T) {
 		dir := t.TempDir()
 		synctest.Test(t, func(t *testing.T) {
-			q := NewFileMutationQueue()
 			var order []string
 			var mu sync.Mutex
 			var wg sync.WaitGroup
 			for _, name := range []string{"a", "b"} {
 				wg.Go(func() {
-					if err := q.With(filepath.Join(dir, name), func() error {
+					if _, err := WithFileMutationQueue(filepath.Join(dir, name), func() (struct{}, error) {
 						mu.Lock()
 						order = append(order, name+":start")
 						mu.Unlock()
@@ -39,7 +39,7 @@ func TestFileMutationQueueUpstream(t *testing.T) {
 						mu.Lock()
 						order = append(order, name+":end")
 						mu.Unlock()
-						return nil
+						return struct{}{}, nil
 					}); err != nil {
 						t.Error(err)
 					}
@@ -57,7 +57,7 @@ func TestFileMutationQueueUpstream(t *testing.T) {
 			}
 		})
 	})
-	// .upstream/v0.87.1/packages/coding-agent/test/file-mutation-queue.test.ts:77
+	// .upstream/v1.1.0/packages/coding-agent/test/file-mutation-queue.test.ts:77
 	t.Run("uses the same queue for symlink aliases", func(t *testing.T) {
 		testMutationOrder(t, true)
 	})
@@ -78,13 +78,12 @@ func testMutationOrder(t *testing.T, alias bool) {
 		labels = []string{"target", "alias"}
 	}
 	synctest.Test(t, func(t *testing.T) {
-		q := NewFileMutationQueue()
 		var order []string
 		var mu sync.Mutex
 		var wg sync.WaitGroup
 		for i, path := range []string{target, second} {
 			wg.Go(func() {
-				if err := q.With(path, func() error {
+				if _, err := WithFileMutationQueue(path, func() (struct{}, error) {
 					mu.Lock()
 					order = append(order, labels[i]+":start")
 					mu.Unlock()
@@ -94,7 +93,7 @@ func testMutationOrder(t *testing.T, alias bool) {
 					mu.Lock()
 					order = append(order, labels[i]+":end")
 					mu.Unlock()
-					return nil
+					return struct{}{}, nil
 				}); err != nil {
 					t.Error(err)
 				}
@@ -106,14 +105,18 @@ func testMutationOrder(t *testing.T, alias bool) {
 		if !slices.Equal(order, want) {
 			t.Fatalf("order = %q, want %q", order, want)
 		}
-		if len(q.chains) != 0 {
+		processFileMutationQueue.mu.Lock()
+		retained := len(processFileMutationQueue.chains)
+		processFileMutationQueue.mu.Unlock()
+		if retained != 0 {
 			t.Fatal("queue retained drained entries")
 		}
 	})
 }
 
+// Pi: packages/coding-agent/src/core/tools/edit.ts:85 (EditOperations.readFile); packages/coding-agent/src/core/tools/edit.ts:87 (EditOperations.writeFile); packages/coding-agent/src/core/tools/edit.ts:89 (EditOperations.access); packages/coding-agent/src/core/tools/write.ts:29 (WriteOperations.writeFile); packages/coding-agent/src/core/tools/write.ts:31 (WriteOperations.mkdir).
 func TestFileMutationToolsUpstream(t *testing.T) {
-	// .upstream/v0.87.1/packages/coding-agent/test/file-mutation-queue.test.ts:102
+	// .upstream/v1.1.0/packages/coding-agent/test/file-mutation-queue.test.ts:102
 	t.Run("preserves both parallel edits on the same file", func(t *testing.T) {
 		dir := t.TempDir()
 		path := filepath.Join(dir, "parallel-edit.txt")
@@ -147,7 +150,7 @@ func TestFileMutationToolsUpstream(t *testing.T) {
 		})
 		assertMutationFile(t, path, "ALPHA\nBETA\ngamma\n")
 	})
-	// .upstream/v0.87.1/packages/coding-agent/test/file-mutation-queue.test.ts:131
+	// .upstream/v1.1.0/packages/coding-agent/test/file-mutation-queue.test.ts:131
 	t.Run("shares the queue between edit and write", func(t *testing.T) {
 		dir := t.TempDir()
 		path := filepath.Join(dir, "mixed.txt")
@@ -188,9 +191,9 @@ func TestFileMutationToolsUpstream(t *testing.T) {
 		})
 		assertMutationFile(t, path, "replacement\n")
 	})
-	// .upstream/v0.87.1/packages/coding-agent/test/file-mutation-queue.test.ts:176
+	// .upstream/v1.1.0/packages/coding-agent/test/file-mutation-queue.test.ts:176
 	t.Run("keeps write queue locked while an aborted write is still in flight", func(t *testing.T) { testAbortedMutation(t, false) })
-	// .upstream/v0.87.1/packages/coding-agent/test/file-mutation-queue.test.ts:221
+	// .upstream/v1.1.0/packages/coding-agent/test/file-mutation-queue.test.ts:221
 	t.Run("keeps edit queue locked while an aborted edit write is still in flight", func(t *testing.T) { testAbortedMutation(t, true) })
 }
 
@@ -272,6 +275,7 @@ func assertMutationFile(t *testing.T, path, want string) {
 	}
 }
 
+// Pi: packages/coding-agent/src/core/tools/edit.ts:85 (EditOperations.readFile); packages/coding-agent/src/core/tools/edit.ts:87 (EditOperations.writeFile); packages/coding-agent/src/core/tools/edit.ts:89 (EditOperations.access).
 func TestEditAbortAfterAccessDoesNotRead(t *testing.T) {
 	// .upstream/v0.87.1/packages/coding-agent/src/core/tools/edit.ts:188 checks abort after access resolves.
 	ctx, cancel := context.WithCancel(t.Context())

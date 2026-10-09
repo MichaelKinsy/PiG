@@ -14,6 +14,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/MichaelKinsy/PiG/internal/testenv"
 )
 
 func TestMain(m *testing.M) {
@@ -46,7 +48,8 @@ func TestMain(m *testing.M) {
 		_, _ = fmt.Fprintf(stderr, "experimental test binary: lock compromise terminates the process: %v\n", err)
 		terminate(err)
 	}
-	os.Exit(m.Run())
+	// The tests start extension runtimes, which write the jiti transform cache under PIG_HOME/cache; scope the agent and home directories and TMPDIR so they write nothing outside the run.
+	os.Exit(testenv.RunScoped(m, "pig-experimental-"))
 }
 
 type controlTestSocket struct {

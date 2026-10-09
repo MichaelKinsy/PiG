@@ -27,7 +27,7 @@ func RunSessionWorkerProcess(ctx context.Context, args []string) error {
 // createCodingAgentHarness opens the Session's durable Harness over its SQLite storage with pi's coding registry, settings and execution environments, and its root conversation with the initial model on first open (session-worker.ts createCodingAgentHarness).
 func createCodingAgentHarness(ctx context.Context, databasePath string, options SessionWorkerOptions) (SessionWorkerRuntime, error) {
 	cwd := options.Metadata.Cwd
-	collaborators, err := coding.NewServices(coding.ServicesOptions{CWD: cwd, AgentDir: codingagent.AgentDir()})
+	collaborators, err := coding.CreateAgentSessionServices(coding.CreateAgentSessionServicesOptions{CWD: cwd, AgentDir: codingagent.AgentDir()})
 	if err != nil {
 		return SessionWorkerRuntime{}, err
 	}
@@ -59,7 +59,7 @@ func createCodingAgentHarness(ctx context.Context, databasePath string, options 
 		if err != nil {
 			return SessionWorkerRuntime{}, err
 		}
-		conversation, err := openRootConversation(ctx, opened, cwd, options, durableagent.ModelSelection{Runtime: modelRuntime, ConfiguredAuth: collaborators.Registry().HasConfiguredAuth}, settings)
+		conversation, err := openRootConversation(ctx, opened, cwd, options, durableagent.ModelSelection{Runtime: modelRuntime, ConfiguredAuth: collaborators.Registry().ModelRegistry.HasConfiguredAuth}, settings)
 		if err != nil {
 			return SessionWorkerRuntime{}, err
 		}

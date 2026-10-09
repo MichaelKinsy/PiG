@@ -203,6 +203,7 @@ export class DefaultResourceLoader {
     extensionFactories;
     builtinExtensions;
     noExtensions;
+    disabledBuiltinExtensions;
     noSkills;
     noPromptTemplates;
     noThemes;
@@ -255,6 +256,7 @@ export class DefaultResourceLoader {
         this.additionalPromptTemplatePaths = options.additionalPromptTemplatePaths ?? [];
         this.additionalThemePaths = options.additionalThemePaths ?? [];
         this.noExtensions = options.noExtensions ?? false;
+        this.disabledBuiltinExtensions = new Set(options.disabledBuiltinExtensions);
         this.noSkills = options.noSkills ?? false;
         this.noPromptTemplates = options.noPromptTemplates ?? false;
         this.noThemes = options.noThemes ?? false;
@@ -400,9 +402,8 @@ export class DefaultResourceLoader {
         const cliEnabledSkills = getEnabledPaths(cliExtensionPaths.skills);
         const cliEnabledPrompts = getEnabledPaths(cliExtensionPaths.prompts);
         const cliEnabledThemes = getEnabledPaths(cliExtensionPaths.themes);
-        const extensionPaths = this.noExtensions
-            ? cliEnabledExtensions
-            : this.mergePaths(cliEnabledExtensions, enabledExtensions);
+        const extensionPaths = (this.noExtensions ? cliEnabledExtensions : this.mergePaths(cliEnabledExtensions, enabledExtensions)).filter((path) => !path.startsWith(BUILTIN_PATH_PREFIX) ||
+            !this.disabledBuiltinExtensions.has(path.slice(BUILTIN_PATH_PREFIX.length)));
         const packageWarnings = collectExtensionPackageWarnings(extensionPaths, metadataByPath);
         const extensionsResult = await this.loadFinalExtensionSet(extensionPaths, preTrustExtensions);
         mergeExtensionWarnings(extensionsResult, packageWarnings);

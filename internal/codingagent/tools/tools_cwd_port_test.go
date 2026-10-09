@@ -44,7 +44,7 @@ func TestToolsContextCWDPort(t *testing.T) {
 			var tool agent.AgentTool
 			// Use a distinct empty construction cwd to avoid scanning the host root in a
 			// broken implementation; upstream's '/' serves the same fallback distinction.
-			for _, candidate := range CreateAllTools(t.TempDir(), nil, "") {
+			for _, candidate := range CreateAllTools(t.TempDir(), nil) {
 				if candidate.Name() == tc.name {
 					tool = candidate
 					break

@@ -25,7 +25,7 @@ func TestPromptInputTransformDoesNotRedispatchCommand(t *testing.T) {
 		observed = modelExtensionUserText(messages)
 		return fauxReply("done", ai.StopReasonStop, 0)(messages)
 	})
-	if _, err := h.session.Prompt(t.Context(), "ordinary input"); err != nil {
+	if err := h.session.Prompt(t.Context(), "ordinary input"); err != nil {
 		t.Fatal(err)
 	}
 	if commands != 0 || observed != "/literal-command" {

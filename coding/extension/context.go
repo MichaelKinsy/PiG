@@ -88,11 +88,11 @@ func (c *Context) HasUI() (bool, error) {
 // SessionManager returns the per-runtime SessionManager. Returns an
 // error if the runner has been invalidated.
 //
-// SessionManager is opaque at the extension boundary; the host owns its
+// SessionManager is the read-only [ReadonlySessionManager] view (runner.ts:582 types it so); the host owns its
 // concrete implementation.
 //
 // upstream: runner.ts:582 (`get sessionManager()`)
-func (c *Context) SessionManager() (SessionManager, error) {
+func (c *Context) SessionManager() (ReadonlySessionManager, error) {
 	if err := c.assertActive(); err != nil {
 		return nil, err
 	}
@@ -510,8 +510,9 @@ func (c *CommandContext) NewSession(opts *NewSessionOptions) (CancelledResult, e
 	if c.cmdActions.NewSessionContext != nil {
 		return c.cmdActions.NewSessionContext(c.operationContext(), opts)
 	}
+	// runner.ts:383-386: an unbound handler answers { cancelled: false }.
 	if c.cmdActions.NewSession == nil {
-		return CancelledResult{Cancelled: true}, nil
+		return CancelledResult{}, nil
 	}
 	return c.cmdActions.NewSession(opts)
 }
@@ -524,8 +525,9 @@ func (c *CommandContext) Fork(entryID string, opts *ForkOptions) (CancelledResul
 	if c.cmdActions.ForkContext != nil {
 		return c.cmdActions.ForkContext(c.operationContext(), entryID, opts)
 	}
+	// runner.ts:383-386: an unbound handler answers { cancelled: false }.
 	if c.cmdActions.Fork == nil {
-		return CancelledResult{Cancelled: true}, nil
+		return CancelledResult{}, nil
 	}
 	return c.cmdActions.Fork(entryID, opts)
 }
@@ -538,8 +540,9 @@ func (c *CommandContext) NavigateTree(targetID string, opts *NavigateTreeOptions
 	if c.cmdActions.NavigateTreeContext != nil {
 		return c.cmdActions.NavigateTreeContext(c.operationContext(), targetID, opts)
 	}
+	// runner.ts:383-386: an unbound handler answers { cancelled: false }.
 	if c.cmdActions.NavigateTree == nil {
-		return CancelledResult{Cancelled: true}, nil
+		return CancelledResult{}, nil
 	}
 	return c.cmdActions.NavigateTree(targetID, opts)
 }
@@ -552,8 +555,9 @@ func (c *CommandContext) SwitchSession(sessionPath string, opts *SwitchSessionOp
 	if c.cmdActions.SwitchSessionContext != nil {
 		return c.cmdActions.SwitchSessionContext(c.operationContext(), sessionPath, opts)
 	}
+	// runner.ts:383-386: an unbound handler answers { cancelled: false }.
 	if c.cmdActions.SwitchSession == nil {
-		return CancelledResult{Cancelled: true}, nil
+		return CancelledResult{}, nil
 	}
 	return c.cmdActions.SwitchSession(sessionPath, opts)
 }

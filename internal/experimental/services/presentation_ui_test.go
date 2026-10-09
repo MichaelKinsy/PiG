@@ -1,5 +1,7 @@
 package services
 
+// pi: packages/coding-agent/src/experimental/services/presentation-ui.ts
+
 import (
 	"context"
 	"errors"
@@ -28,7 +30,7 @@ func (ui *presentationUIRecorder) ShowStatus(_ context.Context, status string) e
 	return ui.failure
 }
 
-// upstream: packages/coding-agent/src/experimental/services/presentation-ui.ts:9-22
+// upstream: packages/coding-agent/src/experimental/services/presentation-ui.ts:9-18
 func TestPresentationUILocalViewFollowsReloadAndRevocation(t *testing.T) {
 	t.Parallel()
 	first := &presentationUIRecorder{selectValue: new("first")}
@@ -103,7 +105,7 @@ func TestPresentationUILocalViewFollowsReloadAndRevocation(t *testing.T) {
 	}
 }
 
-// upstream: packages/coding-agent/src/experimental/services/slash-commands-provider.ts:220-229
+// upstream: packages/coding-agent/src/experimental/services/slash-commands-provider.ts:246-255
 func TestBuiltinExactModelRejectsAmbiguousBareIDs(t *testing.T) {
 	t.Parallel()
 	models := []ModelSummary{
@@ -128,9 +130,9 @@ func TestBuiltinExactModelRejectsAmbiguousBareIDs(t *testing.T) {
 type presentationModelsRecorder struct {
 	Models
 	state    *chord.MutableReplicatedState[*ModelsState]
-	levels   []ai.ThinkingLevel
+	levels   []ai.ModelThinkingLevel
 	selected *ModelRef
-	thinking *ai.ThinkingLevel
+	thinking *ai.ModelThinkingLevel
 	failure  error
 }
 
@@ -165,7 +167,7 @@ func (plugins sessionReloadRecorder) Reload(context.Context) error {
 	return plugins.failure
 }
 
-// upstream: packages/coding-agent/src/experimental/services/slash-commands-provider.ts:86-118,206-217
+// upstream: packages/coding-agent/src/experimental/services/slash-commands-provider.ts:116-149,234-244
 func TestBuiltinFacetReloadStopsAtFirstFailure(t *testing.T) {
 	t.Parallel()
 	for _, row := range []struct {
@@ -276,19 +278,19 @@ func TestBuiltinFacetReloadStopsAtFirstFailure(t *testing.T) {
 func (models *presentationModelsRecorder) State() chord.ReplicatedStateOf[*ModelsState] {
 	return models.state
 }
-func (models *presentationModelsRecorder) GetThinkingLevels(context.Context) ([]ai.ThinkingLevel, error) {
+func (models *presentationModelsRecorder) GetThinkingLevels(context.Context) ([]ai.ModelThinkingLevel, error) {
 	return models.levels, models.failure
 }
 func (models *presentationModelsRecorder) Select(_ context.Context, model ModelRef) error {
 	models.selected = new(model)
 	return models.failure
 }
-func (models *presentationModelsRecorder) SelectThinking(_ context.Context, level ai.ThinkingLevel) error {
+func (models *presentationModelsRecorder) SelectThinking(_ context.Context, level ai.ModelThinkingLevel) error {
 	models.thinking = new(level)
 	return models.failure
 }
 
-// upstream: packages/coding-agent/src/experimental/services/slash-commands-provider.ts:121-203
+// upstream: packages/coding-agent/src/experimental/services/slash-commands-provider.ts:151-232
 func TestBuiltinCommandsPreserveArgumentsAndCancellation(t *testing.T) {
 	t.Parallel()
 	state, err := chord.NewReplicatedState(&ModelsState{Catalog: ModelsCatalog{AvailableModels: []ModelSummary{
@@ -298,7 +300,7 @@ func TestBuiltinCommandsPreserveArgumentsAndCancellation(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	models := &presentationModelsRecorder{state: state, levels: []ai.ThinkingLevel{"off", "high"}}
+	models := &presentationModelsRecorder{state: state, levels: []ai.ModelThinkingLevel{"off", "high"}}
 	ui := &presentationUIRecorder{}
 	command := modelCommand(models, ui)
 	got, err := command.GetArgumentCompletions("REASON")

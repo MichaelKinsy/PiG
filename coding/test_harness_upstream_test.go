@@ -45,7 +45,7 @@ func fauxToolCalls(name string, arguments ai.JsonObject) scriptedResponse {
 
 func promptHarness(t *testing.T, h *recoveryHarness, text string) {
 	t.Helper()
-	if _, err := h.session.Prompt(t.Context(), text, nil); err != nil {
+	if err := h.session.Prompt(t.Context(), text, nil); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -271,9 +271,7 @@ func TestUpstreamTestHarness(t *testing.T) {
 		type listed struct{ name, invocation, description, path string }
 		var got []listed
 		for _, c := range runner.Commands() {
-			source, _ := c.SourceInfo.(map[string]any)
-			path, _ := source["path"].(string)
-			got = append(got, listed{c.Name, c.InvocationName, c.Description, path})
+			got = append(got, listed{c.Name, c.InvocationName, c.Description, c.SourceInfo.Path})
 		}
 		want := []listed{{"shared-cmd", "shared-cmd:1", "Alpha command", "<alpha>"}, {"shared-cmd", "shared-cmd:2", "Beta command", "<beta>"}}
 		if !slices.Equal(got, want) {

@@ -114,6 +114,7 @@ func makePackedUIHarness(t *testing.T, language string) *harness {
 	bridge.SetActions(conformanceActions(actions))
 	host := subprocess.NewHost(t.TempDir())
 	host.SetUIBridge(bridge)
+	wire := observeWire(host)
 	host.SetConfigLoader(func() ([]subprocess.ExtConfig, error) { return configs, nil })
 	loaded, err := host.Reload(t.Context())
 	if err != nil || len(loaded) != len(configs) {
@@ -127,5 +128,5 @@ func makePackedUIHarness(t *testing.T, language string) *harness {
 	}
 	runner := inproc.NewRunner(loaded, t.TempDir())
 	bridge.SetUIPromptScope(runner)
-	return &harness{runner: runner, host: host, notify: notify, status: status, actions: actions, ui: ui, bridge: bridge}
+	return &harness{runner: runner, host: host, notify: notify, status: status, actions: actions, ui: ui, bridge: bridge, wire: wire}
 }

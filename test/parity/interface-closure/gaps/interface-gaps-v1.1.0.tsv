@@ -1,0 +1,2 @@
+pkg:coding-agent/.#runRpcMode	coding-agent	child-gap	coding/cli/rpc_mode.go#runRPCMode
+pkg:coding-agent/.#runRpcMode::call:0	coding-agent	signature-mismatch	coding/cli/rpc_mode.go#runRPCMode

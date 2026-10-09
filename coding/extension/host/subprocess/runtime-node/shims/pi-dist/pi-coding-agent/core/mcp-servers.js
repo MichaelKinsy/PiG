@@ -4,6 +4,36 @@
  * The core only validates and stores registrations. The MCP extension (built in, or another
  * extension that handles `mcp_servers_change`) connects them next to the servers from `mcp.json`.
  */
+/**
+ * Regular expression for a tool name pattern where `*` matches any characters, as `toolExposure`,
+ * `--tools`, and `--exclude-tools` accept them.
+ */
+function toolPatternRegExp(pattern) {
+    const source = pattern
+        .split("*")
+        .map((part) => part.replace(/[.+?^${}()|[\]\\]/g, "\\$&"))
+        .join(".*");
+    return new RegExp(`^${source}$`);
+}
+/** Whether a tool name matches any of the entries, each an exact name or a pattern. */
+export function createToolNameMatcher(entries) {
+    const names = new Set(entries.filter((entry) => !entry.includes("*")));
+    const patterns = entries.filter((entry) => entry.includes("*")).map(toolPatternRegExp);
+    return (name) => names.has(name) || patterns.some((pattern) => pattern.test(name));
+}
+/** MCP resource tools, which reach every server with resources. */
+export const LIST_MCP_RESOURCES_TOOL = "list_mcp_resources";
+export const LIST_MCP_RESOURCE_TEMPLATES_TOOL = "list_mcp_resource_templates";
+export const READ_MCP_RESOURCE_TOOL = "read_mcp_resource";
+const MCP_RESOURCE_TOOLS = new Set([
+    LIST_MCP_RESOURCES_TOOL,
+    LIST_MCP_RESOURCE_TEMPLATES_TOOL,
+    READ_MCP_RESOURCE_TOOL,
+]);
+/** Whether a tool comes from MCP: a server tool (`mcp__<server>__<tool>`) or a resource tool. */
+export function isMcpToolName(name) {
+    return name.startsWith("mcp__") || MCP_RESOURCE_TOOLS.has(name);
+}
 const MCP_EXPOSURES = ["codemode", "deferred", "direct", "hidden"];
 /** Older exposure names, accepted in configs and replaced by their current name when validated. */
 const MCP_EXPOSURE_ALIASES = { "codemode-deferred": "codemode" };
@@ -91,13 +121,6 @@ function resolveExposureAliases(value) {
         resolved.toolExposure = Object.fromEntries(Object.entries(toolExposure).map(([tool, entry]) => [tool, resolveExposureAlias(entry)]));
     }
     return resolved;
-}
-function toolPatternRegExp(pattern) {
-    const source = pattern
-        .split("*")
-        .map((part) => part.replace(/[.+?^${}()|[\]\\]/g, "\\$&"))
-        .join(".*");
-    return new RegExp(`^${source}$`);
 }
 /** Exposure of one tool of a server: its `toolExposure` entry, else the server's `exposure`. */
 export function getMcpToolExposure(config, toolName) {

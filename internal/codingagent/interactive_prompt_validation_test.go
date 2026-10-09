@@ -1,5 +1,7 @@
 package codingagent_test
 
+// pi: packages/coding-agent/src/core/auth-guidance.ts
+
 import (
 	"context"
 	"encoding/json"
@@ -40,7 +42,7 @@ func TestInteractivePromptValidationPrecedesBeforeAgentStart(t *testing.T) {
 				t.Fatal(err)
 			}
 			cwd := t.TempDir()
-			services, err := coding.NewServices(coding.ServicesOptions{CWD: cwd, AgentDir: agentDir})
+			services, err := coding.CreateAgentSessionServices(coding.CreateAgentSessionServicesOptions{CWD: cwd, AgentDir: agentDir})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -85,7 +87,7 @@ func TestInteractivePromptValidationPrecedesBeforeAgentStart(t *testing.T) {
 			if tc.model == "none" {
 				session.Agent().SetModel(nil)
 			}
-			h := icodingagent.NewTestHarness(t, icodingagent.InteractiveOptions{CWD: cwd, AgentDir: agentDir, Model: model, SessionHandle: session, SettingsManager: services.SettingsManager(), ExtensionRunner: runner}, nil)
+			h := icodingagent.NewTestHarness(t, icodingagent.InteractiveModeOptions{CWD: cwd, AgentDir: agentDir, Model: model, SessionHandle: session, SettingsManager: services.SettingsManager(), ExtensionRunner: runner}, nil)
 			h.Do(func() { h.Enter("hello") })
 			deadline := time.Now().Add(10 * time.Second)
 			for !strings.Contains(h.Chat(), "Error:") && time.Now().Before(deadline) {

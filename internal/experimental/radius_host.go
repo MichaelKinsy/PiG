@@ -101,18 +101,27 @@ func (h *RadiusRelayHost) status(status, message string) {
 }
 
 // upstream: packages/coding-agent/src/experimental/radius-relay.ts: HOST_RETRY_INITIAL_MS
-const relayRetryInitial = time.Second
+const hostRetryInitial = time.Second
 
 // upstream: packages/coding-agent/src/experimental/radius-relay.ts: HOST_RETRY_MAX_MS
-const relayRetryMax = 30 * time.Second
+const hostRetryMax = 30 * time.Second
+
+// upstream: packages/coding-agent/src/experimental/radius-relay.ts: MISSING_AUTH_RETRY_MS
+const missingAuthRetry = 30 * time.Second
+
+// upstream: packages/coding-agent/src/experimental/radius-relay.ts: CLIENT_RETRY_INITIAL_MS
+const clientRetryInitial = time.Second
+
+// upstream: packages/coding-agent/src/experimental/radius-relay.ts: CLIENT_RETRY_MAX_MS
+const clientRetryMax = 30 * time.Second
 
 func (h *RadiusRelayHost) run(ctx context.Context) {
-	retry := relayRetryInitial
+	retry := hostRetryInitial
 	for ctx.Err() == nil {
 		auth, err := h.options.Auth.Resolve(ctx, false)
 		if err == nil && auth == nil {
 			h.status("not_authenticated", "")
-			if relayDelay(ctx, relayRetryMax) != nil {
+			if relayDelay(ctx, missingAuthRetry) != nil {
 				return
 			}
 			continue
@@ -122,7 +131,7 @@ func (h *RadiusRelayHost) run(ctx context.Context) {
 			var socket RadiusRelayWebSocket
 			socket, err = openRadiusRelayWebSocket(ctx, auth, h.options.ServerID, RadiusRelayHostSubprotocol, h.options.WebSocketFactory)
 			if err == nil {
-				retry = relayRetryInitial
+				retry = hostRetryInitial
 				h.status("connected", "")
 				err = h.serve(ctx, socket)
 				if err == nil {
@@ -137,7 +146,7 @@ func (h *RadiusRelayHost) run(ctx context.Context) {
 		if relayDelay(ctx, retry) != nil {
 			return
 		}
-		retry = min(retry*2, relayRetryMax)
+		retry = min(retry*2, hostRetryMax)
 	}
 }
 

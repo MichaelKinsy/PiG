@@ -1,6 +1,9 @@
 package durable
 
-import "fmt"
+import (
+	"context"
+	"fmt"
+)
 
 // Ports packages/durable/src/entries.ts
 
@@ -50,6 +53,16 @@ func (token Entry[D]) Draft(value TypedEntryDraft[D]) (EntryDraft, error) {
 // TxEntry returns the entry when it is present and has the token's kind; nil otherwise.
 func TxEntry[D any](tx Tx, token Entry[D], id EntryId) (*TypedEntry[D], error) {
 	entry, err := tx.Entry(id)
+	if err != nil {
+		return nil, err
+	}
+	return token.As(entry)
+}
+
+// TaskEntry returns the committed entry visible from the task's conversation when it is present and has the token's
+// kind; nil otherwise (types.ts:219, the typed overload of TaskRuntime.entry).
+func TaskEntry[D, I, S, R, H any](ctx context.Context, runtime TaskRuntime[I, S, R, H], token Entry[D], id EntryId) (*TypedEntry[D], error) {
+	entry, err := runtime.Entry(ctx, id)
 	if err != nil {
 		return nil, err
 	}

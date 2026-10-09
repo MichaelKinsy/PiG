@@ -14,7 +14,7 @@ import (
 func modelCommandProbe(t *testing.T) (*InteractiveMode, *ai.InMemoryModelsStore, *interactiveCatalogStore) {
 	t.Helper()
 	registry, _, store := radiusTestRegistry(t, "", map[string]ai.Credential{"radius": {Type: ai.CredentialAPIKey, Key: "key"}})
-	if err := store.Write(t.Context(), "radius", ai.ModelsStoreEntry{Models: []json.RawMessage{storedPickerModel("cached", "Cached")}}); err != nil {
+	if err := store.Write(t.Context(), "radius", ai.ModelsStoreEntry{Models: mustStoredModels([]json.RawMessage{storedPickerModel("cached", "Cached")})}); err != nil {
 		t.Fatal(err)
 	}
 	registry.RefreshCatalogs(t.Context(), CatalogRefreshOptions{})
@@ -24,7 +24,7 @@ func modelCommandProbe(t *testing.T) (*InteractiveMode, *ai.InMemoryModelsStore,
 	m.opts.ModelRegistry = registry
 	m.opts.AgentDir = registry.agentDir
 	m.runCtx = t.Context()
-	m.statusLine = NewStatusLine(nil, "", nil)
+	m.statusLine = NewFooterComponent(nil, "", nil)
 	m.slashRegistry = NewSlashRegistry()
 	m.opts.ModelBuilder = func(spec string) (*ai.Model, error) {
 		_, id, _ := strings.Cut(spec, "/")
@@ -179,7 +179,7 @@ func TestModelCommandRefreshDoesNotBlockOwnerLoop(t *testing.T) {
 		if _, ok := m.resolveAvailableModel("refreshed"); ok {
 			t.Fatal("model existed before refresh")
 		}
-		if err := store.Write(t.Context(), "radius", ai.ModelsStoreEntry{Models: []json.RawMessage{storedPickerModel("cached", "Cached"), storedPickerModel("refreshed", "Refreshed")}}); err != nil {
+		if err := store.Write(t.Context(), "radius", ai.ModelsStoreEntry{Models: mustStoredModels([]json.RawMessage{storedPickerModel("cached", "Cached"), storedPickerModel("refreshed", "Refreshed")})}); err != nil {
 			t.Fatal(err)
 		}
 		close(blocked.release)

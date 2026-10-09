@@ -1,0 +1,74 @@
+{
+  "packages": [
+    {
+      "key": "agent",
+      "name": "@earendil-works/pi-agent-core",
+      "root": "packages/agent"
+    },
+    {
+      "key": "ai",
+      "name": "@earendil-works/pi-ai",
+      "root": "packages/ai"
+    },
+    {
+      "key": "chord",
+      "name": "@earendil-works/chord",
+      "root": "packages/chord"
+    },
+    {
+      "key": "client",
+      "name": "@earendil-works/pi-client",
+      "root": "packages/client"
+    },
+    {
+      "key": "codemode",
+      "name": "@earendil-works/pi-codemode",
+      "root": "packages/codemode"
+    },
+    {
+      "key": "coding-agent",
+      "name": "@earendil-works/pi-coding-agent",
+      "root": "packages/coding-agent"
+    },
+    {
+      "key": "durable",
+      "name": "@earendil-works/pi-durable",
+      "root": "packages/durable"
+    },
+    {
+      "key": "env",
+      "name": "@earendil-works/pi-env",
+      "root": "packages/env"
+    },
+    {
+      "key": "evals",
+      "name": "@earendil-works/pi-evals",
+      "root": "packages/evals"
+    },
+    {
+      "key": "mcp",
+      "name": "@earendil-works/pi-mcp",
+      "root": "packages/mcp"
+    },
+    {
+      "key": "protocol",
+      "name": "@earendil-works/pi-protocol",
+      "root": "packages/protocol"
+    },
+    {
+      "key": "server",
+      "name": "@earendil-works/pi-server",
+      "root": "packages/server"
+    },
+    {
+      "key": "telemetry",
+      "name": "@earendil-works/pi-telemetry",
+      "root": "packages/telemetry"
+    },
+    {
+      "key": "tui",
+      "name": "@earendil-works/pi-tui",
+      "root": "packages/tui"
+    }
+  ]
+}

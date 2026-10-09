@@ -18,7 +18,7 @@ func BenchmarkIndependentAPIRequest(b *testing.B) {
 		_, _ = w.Write([]byte("data: {\"choices\":[{\"delta\":{\"content\":\"done\"},\"finish_reason\":\"stop\"}]}\n\ndata: [DONE]\n\n"))
 	}))
 	defer server.Close()
-	services, err := NewServices(ServicesOptions{CWD: b.TempDir(), AgentDir: b.TempDir()})
+	services, err := CreateAgentSessionServices(CreateAgentSessionServicesOptions{CWD: b.TempDir(), AgentDir: b.TempDir()})
 	if err != nil {
 		b.Fatal(err)
 	}
@@ -43,7 +43,7 @@ func TestIndependentAPIRequestAbortDuringResponse(t *testing.T) {
 				w.WriteHeader(http.StatusOK)
 			}))
 			defer server.Close()
-			services, err := NewServices(ServicesOptions{CWD: t.TempDir(), AgentDir: t.TempDir()})
+			services, err := CreateAgentSessionServices(CreateAgentSessionServicesOptions{CWD: t.TempDir(), AgentDir: t.TempDir()})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -100,11 +100,11 @@ func TestIndependentAPIRequestSkipsRegisteredProviderCallback(t *testing.T) {
 						_, _ = w.Write([]byte(tc.response))
 					}))
 					defer server.Close()
-					services, err := NewServices(ServicesOptions{CWD: t.TempDir(), AgentDir: t.TempDir()})
+					services, err := CreateAgentSessionServices(CreateAgentSessionServicesOptions{CWD: t.TempDir(), AgentDir: t.TempDir()})
 					if err != nil {
 						t.Fatal(err)
 					}
-					if err := services.Registry().RegisterProvider(providerID, extension.ProviderConfig{API: registration.api, BaseURL: "https://extension.invalid", APIKey: "key", Models: []extension.ProviderModelConfig{{ID: "model", Name: "Model", ContextWindow: 128, MaxTokens: 16}}, StreamSimple: func(extension.Model, extension.AIContext, extension.SimpleStreamOptions) extension.AssistantMessageEventStream {
+					if err := services.Registry().RegisterExtensionProvider(providerID, extension.ProviderConfig{API: registration.api, BaseURL: "https://extension.invalid", APIKey: "key", Models: []extension.ProviderModelConfig{{ID: "model", Name: "Model", ContextWindow: 128, MaxTokens: 16}}, StreamSimple: func(extension.Model, extension.AIContext, extension.SimpleStreamOptions) extension.AssistantMessageEventStream {
 						callbacks.Add(1)
 						stream := ai.NewAssistantMessageEventStream()
 						stream.End(&ai.AssistantMessage{Provider: providerID, Model: "model", StopReason: ai.StopReasonError, ErrorMessage: "registered streamSimple re-entered"})

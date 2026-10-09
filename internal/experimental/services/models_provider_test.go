@@ -1,5 +1,7 @@
 package services
 
+// pi: packages/coding-agent/src/experimental/services/models-provider.ts
+
 import (
 	"context"
 	"encoding/json"
@@ -61,7 +63,7 @@ func (s *testModelsState) Replace(ctx context.Context, value *ModelsState) error
 type testModelsLane struct {
 	mu             sync.Mutex
 	model          *ModelRef
-	thinking       ai.ThinkingLevel
+	thinking       ai.ModelThinkingLevel
 	configureError error
 	configured     []ConversationConfiguration
 	subscribers    []func(context.Context)
@@ -138,7 +140,7 @@ func (settings *testModelsSettings) Flush() error { return settings.flush() }
 func testModel(provider, id string, reasoning bool) *ai.Model {
 	model := &ai.Model{ID: id, DisplayName: "name-" + id, ProviderMeta: ai.ProviderMetadata{ProviderID: provider, Reasoning: reasoning}}
 	if reasoning {
-		model.Capabilities.MaxThinking = ai.ThinkingHigh
+		model.Capabilities.MaxThinking = ai.ThinkingLevelHigh
 	}
 	return model
 }
@@ -214,7 +216,7 @@ func TestModelsThinkingValidationCycleAndNoPersistence(t *testing.T) {
 	runtime, state := testService(lane, &testModelsRuntime{all: []*ai.Model{model}}, nil)
 	levels, err := runtime.Service.GetThinkingLevels(t.Context())
 	requireModelsOK(t, err)
-	checkModelsEqual(t, levels, []ai.ThinkingLevel{ai.ThinkingOff, ai.ThinkingLow, ai.ThinkingMedium, ai.ThinkingHigh})
+	checkModelsEqual(t, levels, []ai.ModelThinkingLevel{ai.ThinkingOff, ai.ThinkingLow, ai.ThinkingMedium, ai.ThinkingHigh})
 	levels[0] = ai.ThinkingMax
 	fresh, err := runtime.Service.GetThinkingLevels(t.Context())
 	requireModelsOK(t, err)
@@ -222,7 +224,7 @@ func TestModelsThinkingValidationCycleAndNoPersistence(t *testing.T) {
 	requireModelsOK(t, runtime.Service.CycleThinking(t.Context()))
 	off := ai.ThinkingOff
 	checkModelsEqual(t, lane.configured, []ConversationConfiguration{{ThinkingLevel: &off}})
-	checkModelsEqual(t, state.Value().Configuration.ThinkingLevel, ai.ThinkingHigh)
+	checkModelsEqual(t, state.Value().Configuration.ThinkingLevel, ai.ModelThinkingLevel(ai.ThinkingHigh))
 	requireModelsOK(t, runtime.SyncConfiguration(t.Context()))
 	checkModelsEqual(t, state.Value().Configuration.ThinkingLevel, ai.ThinkingOff)
 	lane.thinking = "invalid"
@@ -234,12 +236,12 @@ func TestModelsThinkingValidationCycleAndNoPersistence(t *testing.T) {
 	}
 	requireModelsOK(t, runtime.Service.SelectThinking(t.Context(), ai.ThinkingMedium))
 	requireModelsOK(t, runtime.SyncConfiguration(t.Context()))
-	checkModelsEqual(t, state.Value().Configuration.ThinkingLevel, ai.ThinkingMedium)
+	checkModelsEqual(t, state.Value().Configuration.ThinkingLevel, ai.ModelThinkingLevel(ai.ThinkingMedium))
 	checkModelsEqual(t, state.Value().Catalog.Revision, 0)
 	lane.model = nil
 	levels, err = runtime.Service.GetThinkingLevels(t.Context())
 	requireModelsOK(t, err)
-	checkModelsEqual(t, levels, []ai.ThinkingLevel{ai.ThinkingOff})
+	checkModelsEqual(t, levels, []ai.ModelThinkingLevel{ai.ThinkingOff})
 	requireModelsOK(t, runtime.Service.CycleThinking(t.Context()))
 	checkModelsEqual(t, lane.thinking, ai.ThinkingOff)
 }

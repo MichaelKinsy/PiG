@@ -294,6 +294,11 @@ pub struct Provider {
     pub auth: ProviderAuth,
     pub get_models: Arc<dyn Fn() -> ProviderResult<Vec<ProviderModel>> + Send + Sync>,
     pub filter_models: Option<ProviderFilterFn>,
+    /// Lists the models of every type; without it `get_models` does. Pi `Provider.getAllModels`.
+    pub get_all_models:
+        Option<Arc<dyn Fn() -> ProviderResult<Vec<ProviderModel>> + Send + Sync>>,
+    /// Filters the models of every type by credential; without it `filter_models` filters the chat models. Pi `Provider.filterAllModels`.
+    pub filter_all_models: Option<ProviderFilterFn>,
     pub refresh_models:
         Option<Arc<dyn Fn(RefreshModelsContext) -> ProviderResult<()> + Send + Sync>>,
     pub stream: ProviderStreamFn,
@@ -347,7 +352,9 @@ impl ProviderObjects {
         let key = self.key();
         let mut methods = vec!["getModels", "stream", "streamSimple"];
         for (method, present) in [
+            ("getAllModels", provider.get_all_models.is_some()),
             ("filterModels", provider.filter_models.is_some()),
+            ("filterAllModels", provider.filter_all_models.is_some()),
             ("refreshModels", provider.refresh_models.is_some()),
             ("fetchDeferred", provider.fetch_deferred.is_some()),
             ("cancelDeferred", provider.cancel_deferred.is_some()),
@@ -385,7 +392,11 @@ impl ProviderObjects {
                 "auth.oauth.toAuth",
             ]);
         }
-        let models = (provider.get_models)().unwrap_or_default();
+        let models = match &provider.get_all_models {
+            Some(all) => all(),
+            None => (provider.get_models)(),
+        }
+        .unwrap_or_default();
         let mut native = json!({"id":provider.id,"key":key,"name":provider.name,"auth":auth,"models":models.iter().map(|m|m.as_ref()).collect::<Vec<_>>(),"methods":methods});
         if let Some(value) = &provider.base_url {
             native["baseUrl"] = json!(value)
@@ -504,7 +515,13 @@ impl ProviderObjects {
                     .map(|m| m.as_ref())
                     .collect::<Vec<_>>()
             )),
-            "filterModels" => {
+            "getAllModels" => Ok(json!(
+                provider.get_all_models.as_ref().ok_or("getAllModels absent")?()?
+                    .iter()
+                    .map(|m| m.as_ref())
+                    .collect::<Vec<_>>()
+            )),
+            "filterModels" | "filterAllModels" => {
                 let models = params["models"]
                     .as_array()
                     .ok_or("models must be an array")?
@@ -512,10 +529,12 @@ impl ProviderObjects {
                     .cloned()
                     .map(Arc::new)
                     .collect::<Vec<_>>();
-                let result = provider
-                    .filter_models
-                    .as_ref()
-                    .ok_or("filterModels absent")?(
+                let filter = if method == "filterAllModels" {
+                    &provider.filter_all_models
+                } else {
+                    &provider.filter_models
+                };
+                let result = filter.as_ref().ok_or("filter absent")?(
                     &models, optional(&params["credential"])
                 )?;
                 let indices = result

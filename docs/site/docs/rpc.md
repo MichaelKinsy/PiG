@@ -71,7 +71,7 @@ languages use the JSONL protocol directly.
 same runtime factory that creates the first Session, as Pi's rpc-mode does with its
 runtime host. The replacement gets a new extension runner, new extension processes
 and services for the destination Session's working directory. The old runner is
-invalidated. As in Pi 1.0.3, the replacement's extensions receive `session_start`
+invalidated. As in Pi 1.1.0, the replacement's extensions receive `session_start`
 twice after these four commands, because rpc-mode rebinds once more after the
 command returns. An extension process does not inherit process-wide state such as
 environment variables from the replaced one; This is D70, which also covers `/reload`.
@@ -84,7 +84,7 @@ PiG currently emits these model-loop events:
 
 - `agent_start`;
 - `agent_end` with `messages` and `willRetry`;
-- `agent_settled`;
+- `agent_settled` with `aborted`, which is `true` when the run ended because it was aborted;
 - `turn_start`;
 - `turn_end` with the assistant message and tool results;
 - `message_start`;
@@ -92,7 +92,7 @@ PiG currently emits these model-loop events:
 - `message_end`;
 - `tool_execution_start`;
 - `tool_execution_update`;
-- `tool_execution_end`;
+- `tool_execution_end` with `durationMs` when the tool ran;
 - `bash_execution_update`;
 - `queue_update`;
 - `thinking_level_changed`;
@@ -166,10 +166,10 @@ Keep reading standard error separately. A full error pipe can block a child proc
 
 PiG implementation:
 
-- `cmd/pig/rpc_mode.go` defines the command loop.
-- `cmd/pig/rpc_types.go` defines command and response types.
-- `cmd/pig/rpc_ui.go` defines the extension UI request and response transport.
-- `cmd/pig/rpc_events.go` defines event conversion.
+- `coding/cli/rpc_mode.go` defines the command loop.
+- `coding/cli/rpc_types.go` defines command and response types.
+- `coding/cli/rpc_ui.go` defines the extension UI request and response transport.
+- `coding/cli/rpc_events.go` defines event conversion.
 - `coding/rpcclient` defines the Go subprocess client.
 
 Upstream Pi reference:

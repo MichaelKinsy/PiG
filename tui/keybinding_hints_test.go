@@ -1,5 +1,7 @@
 package tui
 
+// pi: packages/coding-agent/src/modes/interactive/components/keybinding-hints.ts
+
 import (
 	"runtime"
 	"strings"
@@ -68,5 +70,21 @@ func TestRawKeyHintFormatsRawKeyText(t *testing.T) {
 	}
 	if !strings.Contains(got, wantKey) || !strings.Contains(got, "follow up") {
 		t.Fatalf("RawKeyHint output = %q, want formatted key %q and description", got, wantKey)
+	}
+}
+
+// keybinding-hints.ts:34-42: keyText joins every key bound to the action with "/" in lower case; keyDisplayText is the capitalized form; an unbound action has no text.
+func TestActionKeyTextJoinsBoundKeysWithoutCapitalizing(t *testing.T) {
+	previous := GetTUIKeybindings()
+	defer SetTUIKeybindings(previous)
+	SetTUIKeybindings(NewTUIKeybindingsManager(map[string][]string{"tui.select.confirm": {"enter", "ctrl+j"}}))
+	if got := ActionKeyText("tui.select.confirm"); got != "enter/ctrl+j" {
+		t.Fatalf("ActionKeyText = %q", got)
+	}
+	if got := ActionKeyDisplayText("tui.select.confirm"); got != "Enter/Ctrl+J" {
+		t.Fatalf("ActionKeyDisplayText = %q", got)
+	}
+	if got := ActionKeyText("no.such.action"); got != "" {
+		t.Fatalf("an unbound action has no key text: %q", got)
 	}
 }

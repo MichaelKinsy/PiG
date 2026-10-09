@@ -354,8 +354,8 @@ type countingQueues struct {
 	followUp      func(poll int) []AgentMessage
 }
 
-func (q *countingQueues) install(cfg *agentLoopConfig) {
-	cfg.getSteeringMessages = func() []AgentMessage {
+func (q *countingQueues) install(cfg *AgentLoopConfig) {
+	cfg.GetSteeringMessages = func() []AgentMessage {
 		q.mu.Lock()
 		q.steeringPolls++
 		poll := q.steeringPolls
@@ -365,7 +365,7 @@ func (q *countingQueues) install(cfg *agentLoopConfig) {
 		}
 		return q.steering(poll)
 	}
-	cfg.getFollowUpMessages = func() []AgentMessage {
+	cfg.GetFollowUpMessages = func() []AgentMessage {
 		q.mu.Lock()
 		q.followUpPolls++
 		poll := q.followUpPolls
@@ -385,7 +385,7 @@ func (q *countingQueues) polls() (steering, followUp int) {
 
 // runPrompt is upstream runAgentLoop: it runs a prompt with a loop config
 // the test adjusted.
-func runPrompt(t *testing.T, a *Agent, cfg agentLoopConfig, prompts ...AgentMessage) []AgentMessage {
+func runPrompt(t *testing.T, a *Agent, cfg AgentLoopConfig, prompts ...AgentMessage) []AgentMessage {
 	t.Helper()
 	msgs, err := a.runPromptMessages(context.Background(), prompts, cfg)
 	if err != nil {
@@ -436,4 +436,35 @@ func waitSignal(t *testing.T, ch <-chan struct{}, what string) {
 	case <-time.After(5 * time.Second):
 		t.Fatalf("timed out waiting for %s", what)
 	}
+}
+
+// providerStream streams through the model's own Provider, as the removed agent fallback did; tests that build an agent with only a
+// model use it as the host default.
+func providerStream(ctx context.Context, model *ai.Model, transcript ai.TranscriptContext, options ai.StreamOptions) (*ai.AssistantMessageEventStream, error) {
+	if model == nil || model.Provider == nil {
+		return nil, ErrNoModelSelected
+	}
+	return model.Provider.Stream(ctx, transcript, options)
+}
+
+// mustNewAgent is NewAgent for tests that do not test the constructor's stream-function requirement.
+func mustNewAgent(opts AgentOptions) *Agent {
+	if opts.StreamFn == nil && opts.DefaultStreamFn == nil {
+		if _, err := GetDefaultStreamFn(); err != nil {
+			opts.DefaultStreamFn = providerStream
+		}
+	}
+	a, err := NewAgent(opts)
+	if err != nil {
+		panic(err)
+	}
+	return a
+}
+
+// testHost is the loop host of a run the agent would start now.
+func (a *Agent) testHost() *loopHost {
+	config := a.createLoopConfig(false)
+	a.stateMu.RLock()
+	defer a.stateMu.RUnlock()
+	return a.loopHost(config, a.stateRevision)
 }

@@ -1,8 +1,11 @@
 package mcpext_test
 
+// pi: packages/coding-agent/src/extensions/mcp/runtime.ts
+
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -14,11 +17,13 @@ import (
 	"sync"
 	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/coding/mcpext"
 	"github.com/MichaelKinsy/PiG/internal/testenv"
 	"github.com/MichaelKinsy/PiG/mcp"
+	"github.com/MichaelKinsy/PiG/mcp/mcptest"
 )
 
 // Ports packages/coding-agent/test/mcp-extension.test.ts ("MCP connections").
@@ -252,7 +257,7 @@ func TestMCPConnectionsAsksOAuthServersThatKeepRejectingRequestsForANewSignIn(t 
 	connection, _ := connect(t, mcpext.McpServerEntry{Name: "fake", Config: extension.McpServerConfig{URL: "http://unused.invalid"}, Source: "test"}, []transportSource{
 		func() mcp.Transport {
 			//nolint:bodyclose // the response has no body
-			return failingSend(servers, mcp.NewAuthRequiredError(unauthorizedResponse(), ""))
+			return failingSend(servers, mcp.NewMcpAuthRequiredError(unauthorizedResponse(), ""))
 		},
 	}, nil)
 	_, err := connection.GetClient(t.Context())
@@ -356,5 +361,178 @@ func TestMCPConnectionsResolvesTheOAuthClientSecretLazily(t *testing.T) {
 	jsonEqual(t, result, echoResult())
 	if _, err := connection.OAuthSettings(); err == nil || !strings.Contains(err.Error(), "oauth.clientSecret") {
 		t.Fatalf("oauthSettings err = %v", err)
+	}
+}
+
+// #10249: "closes a connection that is still initializing before close returns". The server receives `initialize` and
+// never answers it; Close returns only after the transport is closed and the pending GetClient has failed.
+func TestMCPConnectionsClosesAConnectionThatIsStillInitializingBeforeCloseReturns(t *testing.T) {
+	clientTransport, serverTransport := mcptest.NewInMemoryTransportPair()
+	initializing := make(chan struct{})
+	var once sync.Once
+	serverTransport.OnMessage(func(mcp.JSONRPCMessage) { once.Do(func() { close(initializing) }) })
+	if err := serverTransport.Start(); err != nil {
+		t.Fatal(err)
+	}
+	var transportClosed atomic.Bool
+	clientTransport.OnClose(func() { transportClosed.Store(true) })
+	connection, _ := connect(t, stdioEntry(), []transportSource{func() mcp.Transport { return clientTransport }}, nil)
+
+	failure := make(chan error, 1)
+	go func() {
+		_, err := connection.GetClient(t.Context())
+		failure <- err
+	}()
+	select {
+	case <-initializing:
+	case <-time.After(10 * time.Second):
+		t.Fatal("the server never received initialize")
+	}
+	connection.Close()
+	if !transportClosed.Load() {
+		t.Error("Close returned while the transport was still open")
+	}
+	select {
+	case err := <-failure:
+		if err == nil || !strings.Contains(err.Error(), "failed to connect") {
+			t.Fatalf("GetClient error = %v, want a failed-to-connect error", err)
+		}
+	case <-time.After(10 * time.Second):
+		t.Fatal("GetClient did not return after Close")
+	}
+}
+
+// #10249: "stops waiting to retry a connection when closed". The first attempt fails with a transient error and the retry
+// is 250ms away; Close ends the wait instead of sleeping through it, and no second transport opens.
+func TestMCPConnectionsStopsWaitingToRetryAConnectionWhenClosed(t *testing.T) {
+	servers := &serverSet{}
+	connection, opened := connect(t, httpEntry("Authorization", "x"), []transportSource{
+		func() mcp.Transport {
+			return failingSend(servers, &mcp.McpHttpError{Status: 503, Message: "MCP HTTP request failed with status 503"})
+		},
+		func() mcp.Transport { return createFakeTransport(servers, fakeTransportOptions{}) },
+	}, nil)
+	failure := make(chan error, 1)
+	go func() {
+		_, err := connection.GetClient(t.Context())
+		failure <- err
+	}()
+	// The first attempt failed; the retry is 250ms away.
+	for opened.Load() == 0 {
+		time.Sleep(time.Millisecond)
+	}
+	time.Sleep(10 * time.Millisecond)
+	started := time.Now()
+	connection.Close()
+	select {
+	case err := <-failure:
+		if err == nil || !strings.Contains(err.Error(), "status 503") {
+			t.Fatalf("GetClient error = %v, want the transient failure", err)
+		}
+	case <-time.After(10 * time.Second):
+		t.Fatal("GetClient did not return after Close")
+	}
+	if elapsed := time.Since(started); elapsed >= 200*time.Millisecond {
+		t.Errorf("Close took %s, want it to end the 250ms retry wait", elapsed)
+	}
+	if opened.Load() != 1 {
+		t.Errorf("transports opened = %d, want 1", opened.Load())
+	}
+}
+
+// upstream mcp/runtime.ts connectOnce: a failed stdio connect appends `stderr.trim().slice(-STDERR_TAIL_CHARS)` to its
+// error. trim removes U+FEFF but not U+0085, and slice counts UTF-16 units, so 2000 units are 1000 astral characters.
+func TestMCPConnectionsAppendsTheLastUTF16UnitsOfAFailedStdioServersStderr(t *testing.T) {
+	connection, err := mcpext.NewConnection(mcpext.ConnectionOptions{
+		Entry: mcpext.McpServerEntry{Name: "flood", Source: "test", Config: extension.McpServerConfig{
+			Command: os.Args[0], Args: []string{"-test.run=^$"}, Env: extension.NewOrderedStrings(fixtureEnv, "stderr-flood", "GORACE", "atexit_sleep_ms=0"),
+		}},
+		Cwd:             os.TempDir(),
+		CreateTransport: mcpext.CreateDefaultTransport,
+		Credentials:     mcpext.NewMcpOAuthCredentialStoreWithBackend(&mcpext.InMemoryAuthStorageBackend{}, ""),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer connection.Close()
+	_, err = connection.GetClient(t.Context())
+	if err == nil {
+		t.Fatal("connected to a server that exits at startup")
+	}
+	_, tail, ok := strings.Cut(err.Error(), "\n")
+	if !ok || tail != strings.Repeat("\U0001F600", 1000) {
+		t.Fatalf("tail has %d runes (%q...), want the last 1000 astral characters", len([]rune(tail)), tail[:min(len(tail), 20)])
+	}
+}
+
+// runtime.ts CONNECT_RETRY_DELAYS_MS: an HTTP connection that keeps failing with a transient error is opened three times in all (the first attempt and two retries, after 250 ms and 1 s) before it fails; a stdio connection is not retried.
+func TestMCPConnectionsRetriesATransientHTTPFailureTwiceAndThenFails(t *testing.T) {
+	servers := &serverSet{}
+	transient := func() mcp.Transport {
+		return failingSend(servers, &mcp.McpHttpError{Status: 503, Message: "MCP HTTP request failed with status 503"})
+	}
+	connection, opened := connect(t, httpEntry("Authorization", "x"), []transportSource{transient, transient, transient, transient}, nil)
+	started := time.Now()
+	if _, err := connection.GetClient(t.Context()); err == nil || !strings.Contains(err.Error(), "status 503") {
+		t.Fatalf("err = %v, want the 503 failure", err)
+	}
+	if elapsed := time.Since(started); elapsed < 1200*time.Millisecond {
+		t.Errorf("the retries took %s, want at least 250ms + 1s of waiting", elapsed)
+	}
+	if connection.State() != mcpext.StateFailed || opened.Load() != 3 {
+		t.Fatalf("state = %s, opened = %d, want failed after 3 attempts", connection.State(), opened.Load())
+	}
+
+	// runtime.ts:362: only a config with a url gets the retry delays.
+	stdio, stdioOpened := connect(t, stdioEntry(), []transportSource{transient, transient, transient}, nil)
+	if _, err := stdio.GetClient(t.Context()); err == nil || !strings.Contains(err.Error(), "status 503") {
+		t.Fatalf("stdio err = %v, want the 503 failure", err)
+	}
+	if stdio.State() != mcpext.StateFailed || stdioOpened.Load() != 1 {
+		t.Fatalf("stdio state = %s, opened = %d, want failed after 1 attempt", stdio.State(), stdioOpened.Load())
+	}
+}
+
+// upstream: extensions/mcp/runtime.ts:59 (McpTransportFactory): a connection asks the factory for a transport with the server entry, the cwd and the connection's auth provider, once per (re)connection.
+func TestMCPConnectionsCallTheTransportFactoryWithEntryCwdAndAuthProvider(t *testing.T) {
+	servers := &serverSet{}
+	type call struct {
+		entry mcpext.McpServerEntry
+		cwd   string
+		auth  mcp.AuthProvider
+	}
+	var calls []call
+	var factory mcpext.TransportFactory = func(entry mcpext.McpServerEntry, cwd string, authProvider mcp.AuthProvider) (mcp.Transport, error) {
+		calls = append(calls, call{entry, cwd, authProvider})
+		return createFakeTransport(servers, fakeTransportOptions{}), nil
+	}
+	entry := httpEntry("X-Test: 1")
+	connection, err := mcpext.NewConnection(mcpext.ConnectionOptions{
+		Entry: entry, Cwd: "/work/dir", CreateTransport: factory,
+		Credentials: mcpext.NewMcpOAuthCredentialStoreWithBackend(&mcpext.InMemoryAuthStorageBackend{}, ""),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(connection.Close)
+	if _, err := connection.CallTool(t.Context(), "echo", map[string]any{}, mcp.RequestOptions{}); err != nil {
+		t.Fatal(err)
+	}
+	if len(calls) != 1 || calls[0].entry.Name != entry.Name || calls[0].entry.Config.URL != entry.Config.URL || calls[0].cwd != "/work/dir" || calls[0].auth == nil {
+		t.Fatalf("factory calls = %+v", calls)
+	}
+	// A failing factory surfaces its error to the caller.
+	failing := errors.New("no transport")
+	broken, err := mcpext.NewConnection(mcpext.ConnectionOptions{
+		Entry: stdioEntry(), Cwd: ".",
+		CreateTransport: func(mcpext.McpServerEntry, string, mcp.AuthProvider) (mcp.Transport, error) { return nil, failing },
+		Credentials:     mcpext.NewMcpOAuthCredentialStoreWithBackend(&mcpext.InMemoryAuthStorageBackend{}, ""),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(broken.Close)
+	if _, err := broken.CallTool(t.Context(), "echo", map[string]any{}, mcp.RequestOptions{}); err == nil || !strings.Contains(err.Error(), failing.Error()) {
+		t.Fatalf("error = %v, want the factory's", err)
 	}
 }

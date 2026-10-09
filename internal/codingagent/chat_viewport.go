@@ -31,20 +31,20 @@ type ChatViewport struct {
 func CreateChatViewport(options ChatViewportOptions) ChatViewport {
 	scrollbar := options.Scrollbar
 	if scrollbar == "" {
-		scrollbar = "auto"
+		scrollbar = string(tui.ScrollbarAuto)
 	}
 	transcript := tui.NewScrollView(options.Document, tui.ScrollViewOptions{
 		Follow:              "end",
 		Primary:             true,
 		Overscroll:          "chain",
-		Scrollbar:           scrollbar,
+		Scrollbar:           tui.ScrollViewScrollbar(scrollbar),
 		ScrollbarTrackStyle: options.ScrollbarTrackStyle,
 		ScrollbarThumbStyle: options.ScrollbarThumbStyle,
 	})
-	shrinking := func(component tui.Component, minSize int) tui.StackChild {
-		return tui.StackChild{Component: component, StackEntryOptions: tui.StackEntryOptions{Shrink: new(1), MinSize: new(minSize)}}
+	shrinking := func(component tui.Component, minSize int) tui.StackEntry {
+		return tui.StackEntry{Component: component, StackEntryOptions: tui.StackEntryOptions{Shrink: new(1), MinSize: new(minSize)}}
 	}
-	dockChildren := []tui.StackChild{
+	dockChildren := []tui.StackEntry{
 		shrinking(options.PendingMessages, 0),
 		shrinking(options.Status, 0),
 	}
@@ -59,7 +59,7 @@ func CreateChatViewport(options ChatViewportOptions) ChatViewport {
 	dock := tui.NewVStack(dockChildren, tui.StackOptions{})
 	return ChatViewport{
 		Transcript: transcript,
-		Root: tui.NewVStack([]tui.StackChild{
+		Root: tui.NewVStack([]tui.StackEntry{
 			{Component: transcript, StackEntryOptions: tui.StackEntryOptions{Basis: new(0), Grow: new(1), Shrink: new(1), MinSize: new(1)}},
 			{Component: dock, StackEntryOptions: tui.StackEntryOptions{Grow: new(0), Shrink: new(1), MinSize: new(1)}},
 		}, tui.StackOptions{}),

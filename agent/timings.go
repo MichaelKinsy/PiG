@@ -7,11 +7,10 @@ import (
 )
 
 // Recorder captures per-turn and per-tool timing data for one agent
-// session. Mirrors the data side of upstream pi's
-// `core/timings.ts` startup profiler, but extended to cover the agent
-// loop's lifecycle (turn start/end + tool execution latencies) so the
-// status line, /cost, and --diagnose can all read from a single
-// source.
+// session: turn start/end and tool execution latencies, so the status line,
+// /cost, and --diagnose can all read from a single source. It is PiG's own
+// recorder; Pi's startup profiler (core/timings.ts) is
+// internal/codingagent/timings.
 //
 // All methods are safe for concurrent use. Tool execution may run in
 // parallel goroutines, so RecordTool can be

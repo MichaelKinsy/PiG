@@ -43,6 +43,8 @@ import (
 	"strings"
 
 	"github.com/gofrs/flock"
+
+	"github.com/MichaelKinsy/PiG/internal/configroot"
 )
 
 //go:embed content/*.md
@@ -326,7 +328,7 @@ func RunCommand(args []string, stdout, stderr io.Writer) int {
 		sub = rest[0]
 		rest = rest[1:]
 	}
-	root, err := configRoot()
+	root, err := configroot.Resolve()
 	if err != nil {
 		_, _ = fmt.Fprintf(stderr, "pig docs: %v\n", err)
 		return 1
@@ -379,33 +381,4 @@ func printUsage(w io.Writer) {
 	_, _ = fmt.Fprintln(w, "  path     print absolute docs directory")
 	_, _ = fmt.Fprintln(w, "  list     list available doc filenames")
 	_, _ = fmt.Fprintln(w, "  show     print one doc to stdout")
-}
-
-// configRoot mirrors codingagent.ConfigRoot to avoid an import cycle. The docs
-// command runs before runtime services are constructed.
-func configRoot() (string, error) {
-	if v := os.Getenv("PIG_HOME"); v != "" {
-		return expandTilde(v), nil
-	}
-	if v := os.Getenv("XDG_CONFIG_HOME"); v != "" {
-		return filepath.Join(expandTilde(v), "pig"), nil
-	}
-	home, err := os.UserHomeDir()
-	if err != nil {
-		return "", err
-	}
-	return filepath.Join(home, ".pig"), nil
-}
-
-func expandTilde(p string) string {
-	if p == "~" || strings.HasPrefix(p, "~/") {
-		home, err := os.UserHomeDir()
-		if err == nil {
-			if p == "~" {
-				return home
-			}
-			return filepath.Join(home, p[2:])
-		}
-	}
-	return p
 }

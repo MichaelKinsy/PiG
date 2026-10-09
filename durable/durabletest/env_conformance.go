@@ -35,8 +35,8 @@ type EnvConformanceOptions struct {
 	WithEnv    EnvConformanceProvider
 	// Shell is the program and flag that run a POSIX shell script from the next argument; default {"sh", "-c"}.
 	Shell []string
-	// NoSymlinks is set when the shell's `ln -s` does not create symbolic links (upstream symlinks: false).
-	NoSymlinks bool
+	// Symlinks is false when the shell's `ln -s` does not create symbolic links; nil means true (env-conformance.ts symlinks, default true).
+	Symlinks *bool
 }
 
 // EnvConformanceCase is one named environment conformance case.
@@ -183,17 +183,30 @@ func execCollect(executionEnv env.ExecutionEnv, command any, cwd string) collect
 	return collected{err: err, exitCode: result.ExitCode, stdout: stdout.String(), stderr: stderr.String()}
 }
 
-// RegisterEnvConformance runs every environment conformance case as a subtest of a test named name. shell is the shell
-// program and flag (default sh -c); noSymlinks drops the symbolic link case.
-func RegisterEnvConformance(t *testing.T, name string, withEnv EnvConformanceProvider, shell []string, noSymlinks bool) {
+// EnvConformanceRegisterOptions is Pick<EnvConformanceOptions, "shell" | "symlinks">, the options of RegisterEnvConformance.
+type EnvConformanceRegisterOptions struct {
+	// Shell is the program and flag that run a POSIX shell script from the next argument; default {"sh", "-c"}.
+	Shell []string
+	// Symlinks is false when the shell's `ln -s` does not create symbolic links; nil means true.
+	Symlinks *bool
+}
+
+// conformanceOptions is `{ ...options, assertions, withEnv }` (testing/runner.ts:34).
+func (options EnvConformanceRegisterOptions) conformanceOptions(assertions EnvConformanceAssertions, withEnv EnvConformanceProvider) EnvConformanceOptions {
+	return EnvConformanceOptions{Assertions: assertions, WithEnv: withEnv, Shell: options.Shell, Symlinks: options.Symlinks}
+}
+
+// RegisterEnvConformance runs every environment conformance case as a subtest of a test named name (runner-independent
+// cases registered with the Go test runner, testing/runner.ts:28).
+func RegisterEnvConformance(t *testing.T, name string, withEnv EnvConformanceProvider, options EnvConformanceRegisterOptions) {
 	t.Helper()
 	t.Run(name, func(t *testing.T) {
-		options := func(t *testing.T) EnvConformanceOptions {
-			return EnvConformanceOptions{Assertions: CreateTestingAssertions(t), WithEnv: withEnv, Shell: shell, NoSymlinks: noSymlinks}
+		conformanceOptions := func(t *testing.T) EnvConformanceOptions {
+			return options.conformanceOptions(CreateTestingAssertions(t), withEnv)
 		}
-		for index, testCase := range CreateEnvConformance(options(t)) {
+		for index, testCase := range CreateEnvConformance(conformanceOptions(t)) {
 			t.Run(testCase.Name, func(t *testing.T) {
-				if err := CreateEnvConformance(options(t))[index].Run(); err != nil {
+				if err := CreateEnvConformance(conformanceOptions(t))[index].Run(); err != nil {
 					t.Fatal(err)
 				}
 			})
@@ -452,6 +465,26 @@ func CreateEnvConformance(options EnvConformanceOptions) []EnvConformanceCase {
 			})
 		}),
 
+		watchCase("watch keeps recursive coverage where a non-recursive target overlaps", func(executionEnv env.ExecutionEnv) {
+			check(executionEnv.WriteFile(ctx, "skills/a/one.md", "one"))
+			targets := []env.WatchTarget{{Path: "skills"}, {Path: "skills", Recursive: true}}
+			watching(executionEnv, targets, func(helpers watchHelpers) {
+				helpers.expectChange("skills/a/two.md", func() { check(executionEnv.WriteFile(ctx, "skills/a/two.md", "two")) })
+			})
+		}),
+
+		watchCase("watch follows a directory replaced at the same path", func(executionEnv env.ExecutionEnv) {
+			check(executionEnv.WriteFile(ctx, "skills/a/x.md", "x"))
+			watching(executionEnv, []env.WatchTarget{{Path: "skills", Recursive: true}}, func(helpers watchHelpers) {
+				helpers.expectChange("skills/a", func() {
+					check(executionEnv.RenameFile(ctx, "skills/a", "skills-old"))
+					check(executionEnv.CreateDir(ctx, "skills/a", nil))
+				})
+				helpers.expectChange("skills/a/y.md", func() { check(executionEnv.WriteFile(ctx, "skills/a/y.md", "y")) })
+				helpers.expectChange("skills/a/y.md", func() { check(executionEnv.WriteFile(ctx, "skills/a/y.md", "yy")) })
+			})
+		}),
+
 		watchCase("watch stops reporting once closed", func(executionEnv env.ExecutionEnv) {
 			log := &watchLog{}
 			watcher := must(executionEnv.Watch(ctx, []env.WatchTarget{{Path: "file.txt"}}, log.add))
@@ -550,8 +583,17 @@ func CreateEnvConformance(options EnvConformanceOptions) []EnvConformanceCase {
 		}),
 	}
 
-	if !options.NoSymlinks {
-		cases = append(cases, plain("binary reader follows symlinks unless noFollow refuses the final one", func(executionEnv env.ExecutionEnv) {
+	if options.Symlinks == nil || *options.Symlinks {
+		cases = append(cases, watchCase("watch reports changes to the file a watched symbolic link points to", func(executionEnv env.ExecutionEnv) {
+			check(executionEnv.WriteFile(ctx, "data/real.md", "one"))
+			check(executionEnv.CreateDir(ctx, "config", nil))
+			linked, err := executionEnv.Exec(ctx, argv("ln -s ../data/real.md config/AGENTS.md"), nil)
+			check(err)
+			assert.StrictEqual(linked.ExitCode, 0)
+			watching(executionEnv, []env.WatchTarget{{Path: "config/AGENTS.md"}}, func(helpers watchHelpers) {
+				helpers.expectChange("config/AGENTS.md", func() { check(executionEnv.WriteFile(ctx, "data/real.md", "two!")) })
+			})
+		}), plain("binary reader follows symlinks unless noFollow refuses the final one", func(executionEnv env.ExecutionEnv) {
 			check(executionEnv.WriteFile(ctx, "target.txt", "target"))
 			check(executionEnv.CreateDir(ctx, "sub", nil))
 			check(executionEnv.WriteFile(ctx, "sub/inner.txt", "inner"))

@@ -1,0 +1,336 @@
+{
+ "packages/coding-agent/src/core/auth-guidance.ts": [
+  {
+   "file": "internal/codingagent/auth_guidance.go",
+   "old": "\tif providerDisplay == \"\" || providerDisplay == unknownProvider {",
+   "new": "\tif providerDisplay != \"\" || providerDisplay == unknownProvider {"
+  }
+ ],
+ "packages/coding-agent/src/core/bug-report.ts": [
+  {
+   "file": "coding/bug_report.go",
+   "old": "\tif model == nil {",
+   "new": "\tif model != nil {"
+  }
+ ],
+ "packages/coding-agent/src/core/cache-warmer.ts": [
+  {
+   "file": "coding/session_cache_warming.go",
+   "old": "\t\tif s := session(); s != nil {",
+   "new": "\t\tif s := session(); s == nil {"
+  }
+ ],
+ "packages/coding-agent/src/core/compaction/branch-summarization.ts": [
+  {
+   "file": "internal/codingagent/compaction/branch_summarization.go",
+   "old": "\tif oldLeafID == \"\" {",
+   "new": "\tif oldLeafID != \"\" {"
+  }
+ ],
+ "packages/coding-agent/src/core/compaction/utils.ts": [
+  {
+   "file": "internal/codingagent/compaction/utils.go",
+   "old": "\tif path == \"\" {",
+   "new": "\tif path != \"\" {"
+  }
+ ],
+ "packages/coding-agent/src/core/crash-log.ts": [
+  {
+   "file": "internal/codingagent/crash_log.go",
+   "old": "records = records[len(records)-maxCrashRecords:]",
+   "new": "records = records[:maxCrashRecords]"
+  }
+ ],
+ "packages/coding-agent/src/core/export-html/ansi-to-html.ts": [
+  {
+   "file": "internal/codingagent/export/ansi_html.go",
+   "old": "\tif index < 0 {",
+   "new": "\tif index >= 0 {"
+  }
+ ],
+ "packages/coding-agent/src/core/output-guard.ts": [
+  {
+   "file": "internal/codingagent/output_guard.go",
+   "old": "func IsStdoutTakenOver() bool {",
+   "new": "func IsStdoutTakenOver() bool { return false\n"
+  }
+ ],
+ "packages/coding-agent/src/core/remote-catalog-provider.ts": [
+  {
+   "file": "internal/codingagent/remote_catalog_provider.go",
+   "old": "\tif raw == nil {",
+   "new": "\tif raw != nil {"
+  }
+ ],
+ "packages/coding-agent/src/core/tools/edit-diff.ts": [
+  {
+   "file": "internal/codingagent/tools/edit_diff.go",
+   "old": "\tif lfIdx == -1 {",
+   "new": "\tif lfIdx != -1 {"
+  }
+ ],
+ "packages/coding-agent/src/core/tools/render-utils.ts": [
+  {
+   "file": "internal/codingagent/tool_render.go",
+   "old": "\tif took != nil {",
+   "new": "\tif took == nil {"
+  }
+ ],
+ "packages/coding-agent/src/modes/interactive/components/assistant-message.ts": [
+  {
+   "file": "tui/assistant_message_block.go",
+   "old": "\tif hiddenThinkingLabel != \"\" {",
+   "new": "\tif hiddenThinkingLabel == \"\" {"
+  }
+ ],
+ "packages/coding-agent/src/modes/interactive/components/auth-url.ts": [
+  {
+   "file": "tui/auth_url.go",
+   "old": "\tif runtime.GOOS == \"darwin\" {",
+   "new": "\tif runtime.GOOS != \"darwin\" {"
+  }
+ ],
+ "packages/coding-agent/src/modes/interactive/components/bash-execution.ts": [
+  {
+   "file": "tui/bash_execution.go",
+   "old": "\tif width < 1 {",
+   "new": "\tif width >= 1 {"
+  }
+ ],
+ "packages/coding-agent/src/modes/interactive/components/bordered-loader.ts": [
+  {
+   "file": "tui/bordered_loader.go",
+   "old": "\tif theme == nil {",
+   "new": "\tif theme != nil {"
+  }
+ ],
+ "packages/coding-agent/src/modes/interactive/components/branch-summary-message.ts": [
+  {
+   "file": "tui/branch_summary.go",
+   "old": "\t\tif event.Type != MouseClick || event.Button != MouseButtonLeft {",
+   "new": "\t\tif event.Type == MouseClick || event.Button != MouseButtonLeft {"
+  }
+ ],
+ "packages/coding-agent/src/modes/interactive/components/compaction-summary-message.ts": [
+  {
+   "file": "tui/compaction_summary.go",
+   "old": "\t\tif event.Type != MouseClick || event.Button != MouseButtonLeft {",
+   "new": "\t\tif event.Type == MouseClick || event.Button != MouseButtonLeft {"
+  }
+ ],
+ "packages/coding-agent/src/modes/interactive/components/config-selector.ts": [
+  {
+   "file": "tui/config_selector.go",
+   "old": "\tif writeScope != \"project\" {",
+   "new": "\tif writeScope == \"project\" {"
+  }
+ ],
+ "packages/coding-agent/src/modes/interactive/components/countdown-timer.ts": [
+  {
+   "file": "tui/countdown_timer.go",
+   "old": "\tif r > 0 {",
+   "new": "\tif r <= 0 {"
+  }
+ ],
+ "packages/coding-agent/src/modes/interactive/components/custom-editor.ts": [
+  {
+   "file": "internal/codingagent/keys.go",
+   "old": "\tif kb != nil {",
+   "new": "\tif kb == nil {"
+  }
+ ],
+ "packages/coding-agent/src/modes/interactive/components/custom-message.ts": [
+  {
+   "file": "tui/custom_message.go",
+   "old": "\tif c.customRenderer != nil {",
+   "new": "\tif c.customRenderer == nil {"
+  }
+ ],
+ "packages/coding-agent/src/modes/interactive/components/dynamic-border.ts": [
+  {
+   "file": "tui/dynamic_border.go",
+   "old": "\tif len(color) > 0 && color[0] != nil {",
+   "new": "\tif len(color) > 0 && color[0] == nil {"
+  }
+ ],
+ "packages/coding-agent/src/modes/interactive/components/earendil-announcement.ts": [
+  {
+   "file": "internal/codingagent/earendil_announcement.go",
+   "old": "\"pi has joined Earendil\"",
+   "new": "\"pi has joined Earendil!\""
+  }
+ ],
+ "packages/coding-agent/src/modes/interactive/components/extension-input.ts": [
+  {
+   "file": "tui/extension_input.go",
+   "old": "\tinput.Focused = true",
+   "new": "\tinput.Focused = false"
+  }
+ ],
+ "packages/coding-agent/src/modes/interactive/components/extension-selector.ts": [
+  {
+   "file": "internal/codingagent/ext_ui_context.go",
+   "old": "\tif opts.Timeout == nil || !(*opts.Timeout > 0) {",
+   "new": "\tif opts.Timeout != nil || !(*opts.Timeout > 0) {"
+  }
+ ],
+ "packages/coding-agent/src/modes/interactive/components/footer.ts": [
+  {
+   "file": "internal/codingagent/status_line.go",
+   "old": "\tif footerData != nil {",
+   "new": "\tif footerData == nil {"
+  }
+ ],
+ "packages/coding-agent/src/modes/interactive/components/login-dialog.ts": [
+  {
+   "file": "internal/codingagent/interactive_api_key_login.go",
+   "old": "\tif method == nil {",
+   "new": "\tif method != nil {"
+  }
+ ],
+ "packages/coding-agent/src/modes/interactive/components/model-selector.ts": [
+  {
+   "file": "tui/model_select.go",
+   "old": "\tif m.scopeText != nil {",
+   "new": "\tif m.scopeText == nil {"
+  }
+ ],
+ "packages/coding-agent/src/modes/interactive/components/oauth-selector.ts": [
+  {
+   "file": "tui/oauth_selector.go",
+   "old": "\tif authType == \"api_key\" {",
+   "new": "\tif authType != \"api_key\" {"
+  }
+ ],
+ "packages/coding-agent/src/modes/interactive/components/scoped-models-selector.ts": [
+  {
+   "file": "tui/scoped_models_list.go",
+   "old": "\tif cfg.EnabledModelIDs != nil {",
+   "new": "\tif cfg.EnabledModelIDs == nil {"
+  }
+ ],
+ "packages/coding-agent/src/modes/interactive/components/session-selector.ts": [
+  {
+   "file": "internal/codingagent/session_selector.go",
+   "old": "\tif s.confirmDelete != \"\" {",
+   "new": "\tif s.confirmDelete == \"\" {"
+  }
+ ],
+ "packages/coding-agent/src/modes/interactive/components/settings-selector.ts": [
+  {
+   "file": "internal/codingagent/slash_session_handlers.go",
+   "old": "\thttpIdleTimeoutMs, err := sm.GetHttpIdleTimeoutMs()\n\tif err != nil {",
+   "new": "\thttpIdleTimeoutMs, err := sm.GetHttpIdleTimeoutMs()\n\tif err == nil {"
+  }
+ ],
+ "packages/coding-agent/src/modes/interactive/components/show-images-selector.ts": [
+  {
+   "file": "tui/show_images_selector.go",
+   "old": "\t\tif onSelect != nil {",
+   "new": "\t\tif onSelect == nil {"
+  }
+ ],
+ "packages/coding-agent/src/modes/interactive/external-editor.ts": [
+  {
+   "file": "internal/codingagent/external_editor.go",
+   "old": "func OpenExternalEditor(ctx context.Context, initial string, configuredEditor string) (string, error) {",
+   "new": "func OpenExternalEditor(ctx context.Context, initial string, configuredEditor string) (string, error) {\n\tconfiguredEditor = \"\""
+  }
+ ],
+ "packages/coding-agent/src/modes/interactive/program-status-reporter.ts": [
+  {
+   "file": "internal/codingagent/program_status_reporter.go",
+   "old": "\t\t\t\tr.runResult = tui.ProgramStatus{State: tui.ProgramStateIdle}",
+   "new": "\t\t\t\tr.runResult = tui.ProgramStatus{State: tui.ProgramStateDone}"
+  },
+  {
+   "file": "internal/codingagent/program_status_reporter.go",
+   "old": "\tr.runActive = false\n\t\tif event.Aborted {",
+   "new": "\tr.runActive = false\n\t\tif !event.Aborted {"
+  }
+ ],
+ "packages/coding-agent/src/modes/json-event.ts": [
+  {
+   "file": "coding/cli/rpc_events.go",
+   "old": "\t\tmessages, err := rpcAgentMessages(event.Messages)\n\t\tif err != nil {",
+   "new": "\t\tmessages, err := rpcAgentMessages(event.Messages)\n\t\tif err == nil {"
+  }
+ ],
+ "packages/coding-agent/src/modes/rpc/jsonl.ts": [
+  {
+   "file": "coding/rpcclient/jsonl.go",
+   "old": "\t\tif len(line) > 0 {",
+   "new": "\t\tif len(line) <= 0 {"
+  }
+ ],
+ "packages/coding-agent/src/utils/changelog.ts": [
+  {
+   "file": "internal/codingagent/changelog_links.go",
+   "old": "https://github\\.com/(?:badlogic|earendil-works)/pi-mono",
+   "new": "https://github\\.com/(?:badlogic)/pi-mono"
+  }
+ ],
+ "packages/coding-agent/src/utils/clipboard-command.ts": [
+  {
+   "file": "internal/codingagent/clipboard_copy.go",
+   "old": "\treturn output, err == nil",
+   "new": "\treturn output, err != nil"
+  }
+ ],
+ "packages/coding-agent/src/utils/clipboard-image.ts": [
+  {
+   "file": "internal/codingagent/clipboard.go",
+   "old": "\t\tif err != nil {",
+   "new": "\t\tif err == nil {"
+  }
+ ],
+ "packages/coding-agent/src/utils/clipboard.ts": [
+  {
+   "file": "internal/codingagent/clipboard_copy.go",
+   "old": "\tif timeout <= 0 {",
+   "new": "\tif timeout > 0 {"
+  }
+ ],
+ "packages/coding-agent/src/utils/fs-watch.ts": [
+  {
+   "file": "internal/codingagent/git_watcher.go",
+   "old": "gitWatchRetry = 5000 * time.Millisecond",
+   "new": "gitWatchRetry = 4000 * time.Millisecond"
+  }
+ ],
+ "packages/coding-agent/src/utils/image-convert.ts": [
+  {
+   "file": "internal/codingagent/image_convert.go",
+   "old": "if mimeType == \"image/png\" {",
+   "new": "if mimeType != \"image/png\" {"
+  }
+ ],
+ "packages/coding-agent/src/utils/open-browser.ts": [
+  {
+   "file": "internal/codingagent/interactive_auth.go",
+   "old": "cmd = \"xdg-open\"",
+   "new": "cmd = \"xdg-open2\""
+  }
+ ],
+ "packages/coding-agent/src/utils/output-files.ts": [
+  {
+   "file": "internal/outputfiles/outputfiles.go",
+   "old": "\tf, err := create(path)\n\tif err != nil {",
+   "new": "\tf, err := create(path)\n\tif err == nil {"
+  }
+ ],
+ "packages/coding-agent/src/utils/pi-user-agent.ts": [
+  {
+   "file": "internal/codingagent/bug_report.go",
+   "old": "return \"x64\"",
+   "new": "return \"amd64\""
+  }
+ ],
+ "packages/coding-agent/src/utils/wsl.ts": [
+  {
+   "file": "internal/codingagent/wsl.go",
+   "old": "getenv(\"WSLENV\") != \"\"",
+   "new": "getenv(\"WSLENV\") == \"\""
+  }
+ ]
+}

@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"context"
 	"testing"
 	"testing/synctest"
 	"time"
@@ -11,7 +12,7 @@ type editorRequestCounter struct {
 	result   *AutocompleteSuggestions
 }
 
-func (p *editorRequestCounter) GetSuggestions([]string, int, int) *AutocompleteSuggestions {
+func (p *editorRequestCounter) GetSuggestions(context.Context, []string, int, int, AutocompleteSuggestionOptions) *AutocompleteSuggestions {
 	p.requests++
 	return p.result
 }

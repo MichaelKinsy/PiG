@@ -1,5 +1,7 @@
 package ai
 
+// pi: packages/ai/src/auth/oauth/xai.ts
+
 import (
 	"context"
 	"fmt"

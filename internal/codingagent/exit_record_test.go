@@ -43,7 +43,7 @@ func TestExitRecordChild(t *testing.T) {
 		select {}
 	case "background-panic":
 		// The production path: a panic in a goroutine the session started reaches the session's handler.
-		m := NewInteractiveMode(InteractiveOptions{CWD: "/work", AgentDir: agentDir, AppVersion: "9.9.9"})
+		m := NewInteractiveMode(nil, InteractiveModeOptions{CWD: "/work", AgentDir: agentDir, AppVersion: "9.9.9"})
 		SetUncaughtGoroutineHandler(m.uncaughtOffLoop)
 		m.backgroundTasks.Go(func() { panic("boom from a background task") })
 		select {}
@@ -70,17 +70,17 @@ func TestExitRecordChild(t *testing.T) {
 	case "clean":
 		EndSessionMarker()
 	case "dead-terminal":
-		m := NewInteractiveMode(InteractiveOptions{CWD: "/work", AgentDir: agentDir, AppVersion: "9.9.9", TerminateExtensionProcesses: terminatedSentinel(agentDir)})
+		m := NewInteractiveMode(nil, InteractiveModeOptions{CWD: "/work", AgentDir: agentDir, AppVersion: "9.9.9", TerminateExtensionProcesses: terminatedSentinel(agentDir)})
 		m.emergencyTerminalExit("terminal gone: read /dev/tty: input/output error")
 	case "dead-terminal-off-loop":
 		// A goroutine fails because the terminal is gone: Pi's uncaughtCrash takes emergencyTerminalExit, which kills the
 		// detached children.
-		m := NewInteractiveMode(InteractiveOptions{CWD: "/work", AgentDir: agentDir, AppVersion: "9.9.9", TerminateExtensionProcesses: terminatedSentinel(agentDir)})
+		m := NewInteractiveMode(nil, InteractiveModeOptions{CWD: "/work", AgentDir: agentDir, AppVersion: "9.9.9", TerminateExtensionProcesses: terminatedSentinel(agentDir)})
 		SetUncaughtGoroutineHandler(m.uncaughtOffLoop)
 		m.backgroundTasks.Go(func() { panic(&os.PathError{Op: "write", Path: "/dev/tty", Err: syscall.EIO}) })
 		select {}
 	case "dead-terminal-running-shell", "crash-running-shell":
-		m := NewInteractiveMode(InteractiveOptions{CWD: "/work", AgentDir: agentDir, AppVersion: "9.9.9"})
+		m := NewInteractiveMode(nil, InteractiveModeOptions{CWD: "/work", AgentDir: agentDir, AppVersion: "9.9.9"})
 		startRunningShellCommand(agentDir)
 		if scenario == "dead-terminal-running-shell" {
 			m.emergencyTerminalExit("terminal gone: read /dev/tty: input/output error")
@@ -112,7 +112,7 @@ func startRunningShellCommand(agentDir string) {
 	}
 	ended := make(chan execResult, 1)
 	go func() {
-		result, err := tools.NewLocalBashOperations(nil, "").Exec(context.Background(), "sleep 60 & echo $! > shell-job-pid.tmp && mv shell-job-pid.tmp shell-job-pid; wait", agentDir, tools.BashOperationsExecOptions{})
+		result, err := tools.CreateLocalBashOperations(nil).Exec(context.Background(), "sleep 60 & echo $! > shell-job-pid.tmp && mv shell-job-pid.tmp shell-job-pid; wait", agentDir, tools.BashOperationsExecOptions{})
 		ended <- execResult{result, err}
 	}()
 	deadline := time.After(10 * time.Second)
@@ -406,7 +406,7 @@ func TestCacheWarmerRefreshRequestPanicIsCaughtAndReschedules(t *testing.T) {
 		reported := make(chan any, 2)
 		t.Cleanup(SetUncaughtGoroutineHandler(func(value any, _ []byte) { reported <- value }))
 		f := newFakeWarmRuntime(t, withResult(func(*ai.Model) *ai.AssistantMessageEventStream { panic("provider conversion failed") }))
-		f.warmer.Start(warmRequest(models.adaptive, ai.StreamOptions{Thinking: ai.ThinkingHigh, SessionID: "s"}), alwaysCurrent)
+		f.warmer.Start(warmRequest(models.adaptive, ai.StreamOptions{Thinking: ai.ThinkingLevel(ai.ThinkingHigh), SessionID: "s"}), alwaysCurrent)
 		advance(270 * time.Second)
 		advance(270 * time.Second)
 		if got := f.callCount(); got != 2 {
@@ -427,7 +427,7 @@ func TestCacheWarmerDecisionPanicKeepsPisDecision(t *testing.T) {
 		reported := make(chan any, 1)
 		t.Cleanup(SetUncaughtGoroutineHandler(func(value any, _ []byte) { reported <- value }))
 		f := newFakeWarmRuntime(t, withDecide(func(CacheWarmingDecisionEvent) CacheWarmingAction { panic("decide failed") }))
-		f.warmer.Start(warmRequest(models.adaptive, ai.StreamOptions{Thinking: ai.ThinkingHigh, SessionID: "s"}), alwaysCurrent)
+		f.warmer.Start(warmRequest(models.adaptive, ai.StreamOptions{Thinking: ai.ThinkingLevel(ai.ThinkingHigh), SessionID: "s"}), alwaysCurrent)
 		advance(270 * time.Second)
 		if got := f.callCount(); got != 1 {
 			t.Fatalf("calls = %d, want 1: Pi's warm decision stands", got)
@@ -449,7 +449,7 @@ func TestCacheWarmerRefreshPanicOutsideTheCaughtRequestReachesTheUncaughtHandler
 		t.Cleanup(SetUncaughtGoroutineHandler(func(value any, _ []byte) { reported <- value }))
 		f := newFakeWarmRuntime(t)
 		var armed atomic.Bool
-		f.warmer.Start(warmRequest(models.adaptive, ai.StreamOptions{Thinking: ai.ThinkingHigh, SessionID: "s"}), func() bool {
+		f.warmer.Start(warmRequest(models.adaptive, ai.StreamOptions{Thinking: ai.ThinkingLevel(ai.ThinkingHigh), SessionID: "s"}), func() bool {
 			if armed.Load() {
 				panic("isCurrent failed")
 			}
@@ -479,7 +479,7 @@ func TestInprocExtensionShutdownLeavesALine(t *testing.T) {
 		newRunner: runner,
 		tuiInst:   tui.NewWithOutput(io.Discard, 80, 24),
 		layout:    tui.NewContainer(),
-		opts:      InteractiveOptions{CWD: t.TempDir(), AgentDir: agentDir},
+		opts:      InteractiveModeOptions{CWD: t.TempDir(), AgentDir: agentDir},
 	}
 	m.wireInprocContextActions()
 	if err := runner.CreateCommandContext().Shutdown(); err != nil {
@@ -544,7 +544,7 @@ func TestTerminalInputEOFDoesNotEndTheSession(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer func() { _ = reader.Close() }()
-	m := NewInteractiveMode(InteractiveOptions{CWD: t.TempDir(), AgentDir: t.TempDir()})
+	m := NewInteractiveMode(nil, InteractiveModeOptions{CWD: t.TempDir(), AgentDir: t.TempDir()})
 	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
 	m.startTerminalInput(ctx, reader)

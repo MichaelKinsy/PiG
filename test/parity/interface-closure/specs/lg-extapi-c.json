@@ -1,0 +1,247 @@
+[
+ {
+  "ids": [
+   "pkg:coding-agent/.#ExtensionAPI::property:on::call:session_start"
+  ],
+  "targets": [
+   "coding/extension/api.go#API.OnSessionStart"
+  ],
+  "production": [
+   "call:coding/session_tool_registry.go#Session.BindExtensions",
+   "call:coding/session.go#Session.EmitSessionStartTransition"
+  ],
+  "evidence": [
+   "test:coding/session_test.go#TestSession_EmitSessionStart_FiresHandler",
+   "test:coding/session_reload_upstream_test.go#TestSessionReloadRebuildsTheRunnerFromTheResourceLoader",
+   "test:coding/session_runtime_replacement_upstream_test.go#TestRuntimeOriginalNewResumeEvents",
+   "test:test/extension-conformance/session_replacement_test.go#TestSessionReplacementLifecycleAcrossSDKs",
+   "test:test/extension-conformance/event_unsubscribe_every_test.go#TestConformance_EventUnsubscribeEveryEvent",
+   "test:test/extension-conformance/event_payload_test.go#TestConformance_EventPayloadsReachEverySDKUnchanged",
+   "test:test/extension-conformance/api_reference_events_test.go#TestConformance_ExtensionAPIEventSubscriptions"
+  ],
+  "rationale": "pi.on(\"session_start\", handler): () => void is the Go API member OnSessionStart, which returns the unsubscribe function. The production host dispatches the event and each SDK (Go, Rust, Python and Node isolated, Go, Rust, Python and Node packed, Go fused) registers, receives Pi's payload and unsubscribes through the production Runner: TestConformance_EventUnsubscribeEveryEvent and TestConformance_EventPayloadsReachEverySDKUnchanged.",
+  "async": "bindExtensions awaits the session_start handlers (agent-session.ts:3279) before the tool registry refresh and resource discovery (:3281); a replacement session or reload starts after the previous session's shutdown handlers settled. Handlers run in extension load order and each is awaited before the next (runner.ts emit); a handler failure is reported to the error listeners and later handlers still run."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#ExtensionAPI::property:on::call:session_tree"
+  ],
+  "targets": [
+   "coding/extension/api.go#API.OnSessionTree"
+  ],
+  "production": [
+   "call:coding/session_tree.go#Session.emitSessionTree"
+  ],
+  "evidence": [
+   "test:coding/session_tree_test.go#TestNavigateTreeEmitsSessionTree",
+   "test:test/extension-conformance/event_unsubscribe_every_test.go#TestConformance_EventUnsubscribeEveryEvent",
+   "test:test/extension-conformance/event_payload_test.go#TestConformance_EventPayloadsReachEverySDKUnchanged",
+   "test:test/extension-conformance/api_reference_events_test.go#TestConformance_ExtensionAPIEventSubscriptions"
+  ],
+  "rationale": "pi.on(\"session_tree\", handler): () => void is the Go API member OnSessionTree, which returns the unsubscribe function. The production host dispatches the event and each SDK (Go, Rust, Python and Node isolated, Go, Rust, Python and Node packed, Go fused) registers, receives Pi's payload and unsubscribes through the production Runner: TestConformance_EventUnsubscribeEveryEvent and TestConformance_EventPayloadsReachEverySDKUnchanged.",
+  "async": "navigateTree awaits the session_tree handlers after the navigation completed (agent-session.ts:4141) and before it returns its result. Handlers run in extension load order and each is awaited before the next (runner.ts emit); a handler failure is reported to the error listeners and later handlers still run."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#ExtensionAPI::property:on::call:thinking_level_select"
+  ],
+  "targets": [
+   "coding/extension/api.go#API.OnThinkingLevelSelect"
+  ],
+  "production": [
+   "call:coding/session.go#Session.setThinkingLevelState"
+  ],
+  "evidence": [
+   "test:coding/session_extension_events_upstream_test.go#TestSessionEmitsThinkingLevelSelectOnlyForAChangeWithTheEffectiveLevel",
+   "test:coding/session_extension_events_upstream_test.go#TestSessionThinkingLevelSelectDoesNotAwaitSuspendedHandlers",
+   "test:coding/session_extension_events_upstream_test.go#TestSessionThinkingLevelSelectDoesNotAwaitLaterHandler",
+   "test:coding/cli/extension_host_wiring_binary_test.go#TestHeadlessExtensionSessionActionsMatchPi",
+   "test:test/extension-conformance/event_unsubscribe_every_test.go#TestConformance_EventUnsubscribeEveryEvent",
+   "test:test/extension-conformance/event_payload_test.go#TestConformance_EventPayloadsReachEverySDKUnchanged",
+   "test:test/extension-conformance/api_reference_events_test.go#TestConformance_ExtensionAPIEventSubscriptions"
+  ],
+  "rationale": "pi.on(\"thinking_level_select\", handler): () => void is the Go API member OnThinkingLevelSelect, which returns the unsubscribe function. The production host dispatches the event and each SDK (Go, Rust, Python and Node isolated, Go, Rust, Python and Node packed, Go fused) registers, receives Pi's payload and unsubscribes through the production Runner: TestConformance_EventUnsubscribeEveryEvent and TestConformance_EventPayloadsReachEverySDKUnchanged.",
+  "async": "Pi emits the event unawaited (`void this._extensionRunner.emit`, agent-session.ts:2629): setThinkingLevel returns once the first handler's synchronous prefix ran, without waiting for suspended or later handlers; the Session owns the emission, cancels it and joins it on Close (Session.dispatchUnawaitedEvent). Handlers run in extension load order and each is awaited before the next (runner.ts emit); a handler failure is reported to the error listeners and later handlers still run."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#ExtensionAPI::property:on::call:tool_call"
+  ],
+  "targets": [
+   "coding/extension/api.go#API.OnToolCall"
+  ],
+  "production": [
+   "call:coding/session_extension_hooks.go#Session.toolCallHook"
+  ],
+  "evidence": [
+   "test:test/extension-conformance/tool_call_input_mutation_test.go#TestToolCallInputMutationAcrossSDKs",
+   "test:test/extension-conformance/tool_event_conformance_test.go#TestToolEventVariantsMatchAcrossSDKs",
+   "test:coding/session_tool_admission_upstream_test.go#TestSessionBlockedToolTerminatesWithoutAnotherResponse",
+   "test:test/extension-conformance/event_unsubscribe_every_test.go#TestConformance_EventUnsubscribeEveryEvent",
+   "test:test/extension-conformance/event_payload_test.go#TestConformance_EventPayloadsReachEverySDKUnchanged",
+   "test:test/extension-conformance/api_reference_events_test.go#TestConformance_ExtensionAPIEventSubscriptions"
+  ],
+  "rationale": "pi.on(\"tool_call\", handler): () => void is the Go API member OnToolCall, which returns the unsubscribe function. The production host dispatches the event and each SDK (Go, Rust, Python and Node isolated, Go, Rust, Python and Node packed, Go fused) registers, receives Pi's payload and unsubscribes through the production Runner: TestConformance_EventUnsubscribeEveryEvent and TestConformance_EventPayloadsReachEverySDKUnchanged.",
+  "async": "Handlers run in load order and each is awaited before the next and before the tool executes; the first result with block ends the chain, a handler error propagates and blocks the call, and an input edit reaches the next handler and the tool (runner.ts emitToolCall, agent-loop.ts prepareToolCall)."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#ExtensionAPI::property:on::call:tool_execution_start"
+  ],
+  "targets": [
+   "coding/extension/api.go#API.OnToolExecutionStart"
+  ],
+  "production": [
+   "call:internal/codingagent/event_bridge.go#DispatchAgentLoopEvent"
+  ],
+  "evidence": [
+   "test:internal/codingagent/event_bridge_test.go#TestEmitToolExecutionStart_BridgesToRunner",
+   "test:coding/nested_tool_calls_upstream_test.go#TestNestedToolCallRunnerAssignsIDsBelowTheCallerEmitsEventsWithTheParentIDAndRecordsTheCalls",
+   "test:test/extension-conformance/event_unsubscribe_every_test.go#TestConformance_EventUnsubscribeEveryEvent",
+   "test:test/extension-conformance/event_payload_test.go#TestConformance_EventPayloadsReachEverySDKUnchanged",
+   "test:test/extension-conformance/api_reference_events_test.go#TestConformance_ExtensionAPIEventSubscriptions"
+  ],
+  "rationale": "pi.on(\"tool_execution_start\", handler): () => void is the Go API member OnToolExecutionStart, which returns the unsubscribe function. The production host dispatches the event and each SDK (Go, Rust, Python and Node isolated, Go, Rust, Python and Node packed, Go fused) registers, receives Pi's payload and unsubscribes through the production Runner: TestConformance_EventUnsubscribeEveryEvent and TestConformance_EventPayloadsReachEverySDKUnchanged.",
+  "async": "The agent loop awaits the handlers in assistant source order before the tool call proceeds (agent-session.ts:1334-1341). Handlers run in extension load order and each is awaited before the next (runner.ts emit); a handler failure is reported to the error listeners and later handlers still run."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#ExtensionAPI::property:on::call:tool_execution_update"
+  ],
+  "targets": [
+   "coding/extension/api.go#API.OnToolExecutionUpdate"
+  ],
+  "production": [
+   "call:internal/codingagent/event_bridge.go#DispatchAgentLoopEvent"
+  ],
+  "evidence": [
+   "test:test/extension-conformance/conformance_test.go#TestModelEventPayloadsMatchAcrossSDKs",
+   "test:coding/nested_tool_calls_update_rejection_test.go#TestNestedToolCallRunnerUpdateCallbackFailureRejectsTheCallBeforeItsEndAndAfterHook",
+   "test:test/extension-conformance/event_unsubscribe_every_test.go#TestConformance_EventUnsubscribeEveryEvent",
+   "test:test/extension-conformance/event_payload_test.go#TestConformance_EventPayloadsReachEverySDKUnchanged",
+   "test:test/extension-conformance/api_reference_events_test.go#TestConformance_ExtensionAPIEventSubscriptions"
+  ],
+  "rationale": "pi.on(\"tool_execution_update\", handler): () => void is the Go API member OnToolExecutionUpdate, which returns the unsubscribe function. The production host dispatches the event and each SDK (Go, Rust, Python and Node isolated, Go, Rust, Python and Node packed, Go fused) registers, receives Pi's payload and unsubscribes through the production Runner: TestConformance_EventUnsubscribeEveryEvent and TestConformance_EventPayloadsReachEverySDKUnchanged.",
+  "async": "The agent loop awaits the handlers for each progress update before the tool's next update is delivered (agent-session.ts:1342-1350). Handlers run in extension load order and each is awaited before the next (runner.ts emit); a handler failure is reported to the error listeners and later handlers still run."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#ExtensionAPI::property:on::call:tool_execution_end"
+  ],
+  "targets": [
+   "coding/extension/api.go#API.OnToolExecutionEnd"
+  ],
+  "production": [
+   "call:internal/codingagent/event_bridge.go#DispatchAgentLoopEvent"
+  ],
+  "evidence": [
+   "test:internal/codingagent/event_bridge_test.go#TestEmitToolExecutionEndForwardsDurationMs",
+   "test:test/extension-conformance/conformance_test.go#TestProductionToolExecutionPayloadsMatchAcrossSDKs",
+   "test:test/extension-conformance/event_unsubscribe_every_test.go#TestConformance_EventUnsubscribeEveryEvent",
+   "test:test/extension-conformance/event_payload_test.go#TestConformance_EventPayloadsReachEverySDKUnchanged",
+   "test:test/extension-conformance/api_reference_events_test.go#TestConformance_ExtensionAPIEventSubscriptions"
+  ],
+  "rationale": "pi.on(\"tool_execution_end\", handler): () => void is the Go API member OnToolExecutionEnd, which returns the unsubscribe function. The production host dispatches the event and each SDK (Go, Rust, Python and Node isolated, Go, Rust, Python and Node packed, Go fused) registers, receives Pi's payload and unsubscribes through the production Runner: TestConformance_EventUnsubscribeEveryEvent and TestConformance_EventPayloadsReachEverySDKUnchanged.",
+  "async": "The agent loop awaits the handlers when the tool finishes, in completion order, before the result is persisted in source order (agent-session.ts:1351-1360). Handlers run in extension load order and each is awaited before the next (runner.ts emit); a handler failure is reported to the error listeners and later handlers still run."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#ExtensionAPI::property:on::call:tool_result"
+  ],
+  "targets": [
+   "coding/extension/api.go#API.OnToolResult"
+  ],
+  "production": [
+   "call:coding/session_extension_hooks.go#Session.toolResultHook"
+  ],
+  "evidence": [
+   "test:test/extension-conformance/tool_event_conformance_test.go#TestToolEventVariantsMatchAcrossSDKs",
+   "test:coding/extension/host/inproc/tool_dispatch_test.go#TestEmitToolResult_ContentOnlyKeepsIsError",
+   "test:test/extension-conformance/event_unsubscribe_every_test.go#TestConformance_EventUnsubscribeEveryEvent",
+   "test:test/extension-conformance/event_payload_test.go#TestConformance_EventPayloadsReachEverySDKUnchanged",
+   "test:test/extension-conformance/api_reference_events_test.go#TestConformance_ExtensionAPIEventSubscriptions"
+  ],
+  "rationale": "pi.on(\"tool_result\", handler): () => void is the Go API member OnToolResult, which returns the unsubscribe function. The production host dispatches the event and each SDK (Go, Rust, Python and Node isolated, Go, Rust, Python and Node packed, Go fused) registers, receives Pi's payload and unsubscribes through the production Runner: TestConformance_EventUnsubscribeEveryEvent and TestConformance_EventPayloadsReachEverySDKUnchanged.",
+  "async": "Handlers run in load order, each awaited before the next and before the result reaches the model; each handler sees the previous handler's patch and a handler failure is reported while the chain continues (runner.ts emitToolResult)."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#ExtensionAPI::property:on::call:turn_end"
+  ],
+  "targets": [
+   "coding/extension/api.go#API.OnTurnEnd"
+  ],
+  "production": [
+   "call:coding/session_boundaries.go#Session.dispatchTurnEndBoundary"
+  ],
+  "evidence": [
+   "test:test/extension-conformance/turn_boundary_test.go#TestTurnBoundaryMetadataMutationAndPreviewAcrossSDKs",
+   "test:coding/session_extension_events_upstream_test.go#TestSessionEmitsTurnStartWithThePerRunTurnIndexAndATimestamp",
+   "test:test/extension-conformance/event_unsubscribe_every_test.go#TestConformance_EventUnsubscribeEveryEvent",
+   "test:test/extension-conformance/api_reference_events_test.go#TestConformance_ExtensionAPIEventSubscriptions"
+  ],
+  "rationale": "pi.on(\"turn_end\", handler): () => void is the Go API member OnTurnEnd, which returns the unsubscribe function. The production host dispatches the event and each SDK (Go, Rust, Python and Node isolated, Go, Rust, Python and Node packed, Go fused) registers, receives Pi's boundary payload and returns its mutation through the production Runner (TestTurnBoundaryMetadataMutationAndPreviewAcrossSDKs) and unsubscribes (TestConformance_EventUnsubscribeEveryEvent).",
+  "async": "turn_end is an awaited actionable boundary: the Agent waits for the handlers before choosing its next turn (agent-session.ts:853-880). Handlers run in extension load order and each is awaited before the next, with the rebuilt context preview after each (runner.ts emitBoundary); a handler failure is reported to the error listeners and later handlers still run."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#ExtensionAPI::property:on::call:turn_start"
+  ],
+  "targets": [
+   "coding/extension/api.go#API.OnTurnStart"
+  ],
+  "production": [
+   "call:internal/codingagent/event_bridge.go#DispatchAgentLoopEvent"
+  ],
+  "evidence": [
+   "test:coding/session_extension_events_upstream_test.go#TestSessionEmitsTurnStartWithThePerRunTurnIndexAndATimestamp",
+   "test:coding/session_extension_signal_test.go#TestSessionBindsExtensionSignalToTheActiveRun",
+   "test:internal/codingagent/event_bridge_test.go#TestEmitTurnStart_PayloadFields",
+   "test:test/extension-conformance/event_unsubscribe_every_test.go#TestConformance_EventUnsubscribeEveryEvent",
+   "test:test/extension-conformance/event_payload_test.go#TestConformance_EventPayloadsReachEverySDKUnchanged",
+   "test:test/extension-conformance/api_reference_events_test.go#TestConformance_ExtensionAPIEventSubscriptions"
+  ],
+  "rationale": "pi.on(\"turn_start\", handler): () => void is the Go API member OnTurnStart, which returns the unsubscribe function. The production host dispatches the event and each SDK (Go, Rust, Python and Node isolated, Go, Rust, Python and Node packed, Go fused) registers, receives Pi's payload and unsubscribes through the production Runner: TestConformance_EventUnsubscribeEveryEvent and TestConformance_EventPayloadsReachEverySDKUnchanged.",
+  "async": "The agent loop awaits the handlers before the turn's provider request (agent-session.ts:1290-1296). Handlers run in extension load order and each is awaited before the next (runner.ts emit); a handler failure is reported to the error listeners and later handlers still run."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#ExtensionAPI::property:on::call:ui_prompt_end"
+  ],
+  "targets": [
+   "coding/extension/api.go#API.OnUiPromptEnd"
+  ],
+  "production": [
+   "call:coding/extension/host/inproc/ui_prompt.go#Runner.BeginUIPrompt"
+  ],
+  "evidence": [
+   "test:coding/extension/host/inproc/ui_prompt_test.go#TestUIPrompt_DialogDoesNotAwaitHandlers",
+   "test:test/extension-conformance/prompt_fifo_test.go#TestPromptHandlerBodyFIFOAcrossSDKs",
+   "test:test/extension-conformance/event_unsubscribe_every_test.go#TestConformance_EventUnsubscribeEveryEvent",
+   "test:test/extension-conformance/event_payload_test.go#TestConformance_EventPayloadsReachEverySDKUnchanged",
+   "test:test/extension-conformance/api_reference_events_test.go#TestConformance_ExtensionAPIEventSubscriptions"
+  ],
+  "rationale": "pi.on(\"ui_prompt_end\", handler): () => void is the Go API member OnUiPromptEnd, which returns the unsubscribe function. The production host dispatches the event and each SDK (Go, Rust, Python and Node isolated, Go, Rust, Python and Node packed, Go fused) registers, receives Pi's payload and unsubscribes through the production Runner: TestConformance_EventUnsubscribeEveryEvent and TestConformance_EventPayloadsReachEverySDKUnchanged.",
+  "async": "Unawaited: the runner enqueues the event for a later microtask (`queueMicrotask`, runner.ts:611-615) when the outermost blocking prompt settles, and the prompt's own result does not wait for the handlers. Events keep their FIFO order."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#ExtensionAPI::property:on::call:ui_prompt_start"
+  ],
+  "targets": [
+   "coding/extension/api.go#API.OnUiPromptStart"
+  ],
+  "production": [
+   "call:coding/extension/host/inproc/ui_prompt.go#Runner.BeginUIPrompt"
+  ],
+  "evidence": [
+   "test:coding/extension/host/inproc/ui_prompt_test.go#TestUIPrompt_DialogDoesNotAwaitHandlers",
+   "test:test/extension-conformance/prompt_fifo_test.go#TestPromptHandlerBodyFIFOAcrossSDKs",
+   "test:test/extension-conformance/event_unsubscribe_every_test.go#TestConformance_EventUnsubscribeEveryEvent",
+   "test:test/extension-conformance/event_payload_test.go#TestConformance_EventPayloadsReachEverySDKUnchanged",
+   "test:test/extension-conformance/api_reference_events_test.go#TestConformance_ExtensionAPIEventSubscriptions"
+  ],
+  "rationale": "pi.on(\"ui_prompt_start\", handler): () => void is the Go API member OnUiPromptStart, which returns the unsubscribe function. The production host dispatches the event and each SDK (Go, Rust, Python and Node isolated, Go, Rust, Python and Node packed, Go fused) registers, receives Pi's payload and unsubscribes through the production Runner: TestConformance_EventUnsubscribeEveryEvent and TestConformance_EventPayloadsReachEverySDKUnchanged.",
+  "async": "Unawaited: the runner enqueues the event for a later microtask (`queueMicrotask`, runner.ts:611-615) when the outermost blocking prompt opens, and the prompt does not wait for the handlers. Events keep their FIFO order."
+ }
+]

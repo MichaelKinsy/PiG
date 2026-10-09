@@ -71,7 +71,7 @@ func TestTrustSelectorModalCancellationRestoresEditor(t *testing.T) {
 			if ok || selected.Updates != nil {
 				t.Fatal("cancel returned a selection")
 			}
-			if !strings.Contains(stripANSITest(strings.Join(m.editorContainer.Render(120), "\n")), "retained draft") || m.tuiInst.FocusedComponent() != m.editor {
+			if !strings.Contains(stripANSITest(strings.Join(m.editorContainer.Render(120), "\n")), "retained draft") || m.tuiInst.GetFocusedComponent() != m.editor {
 				t.Fatal("modal exit lost the editor draft or focus")
 			}
 		})
@@ -88,11 +88,11 @@ func TestTrustSelectorSettlesSelectionBeforeRestoringFocus(t *testing.T) {
 	called := false
 	_, ok := m.runTrustSelector(TrustSelectorOptions{Cwd: t.TempDir(), OnSelect: func(TrustSelection) {
 		called = true
-		if _, focused := m.tuiInst.FocusedComponent().(*TrustSelectorComponent); !focused {
+		if _, focused := m.tuiInst.GetFocusedComponent().(*TrustSelectorComponent); !focused {
 			t.Error("editor focus restored before selection settled")
 		}
 	}})
-	if !ok || !called || m.tuiInst.FocusedComponent() != m.editor {
+	if !ok || !called || m.tuiInst.GetFocusedComponent() != m.editor {
 		t.Fatal("selection or focus restoration did not complete")
 	}
 }

@@ -40,7 +40,7 @@ func bindReplacementCommands(t *testing.T, runtime *Runtime) {
 			return extension.CancelledResult{Cancelled: result.Cancelled}, err
 		}
 		bound.SwitchSessionContext = func(ctx context.Context, path string, options *extension.SwitchSessionOptions) (extension.CancelledResult, error) {
-			return runtime.SwitchSession(ctx, path, options)
+			return runtime.SwitchSession(ctx, path, switchOptionsFromExtension(options))
 		}
 		return bound
 	}
@@ -132,7 +132,7 @@ func TestReplacedSession2860Fork(t *testing.T) {
 			if err != nil {
 				return err
 			}
-			leaf := manager.(*SessionManager).LeafID()
+			leaf := manager.(*SessionManager).GetLeafID()
 			if leaf == nil {
 				return errors.New("Missing leaf id")
 			}

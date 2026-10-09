@@ -1,4 +1,3 @@
-// SPDX-FileCopyrightText: Copyright Hewlett Packard Enterprise Development LP
 // SPDX-License-Identifier: MIT
 
 package coding
@@ -20,7 +19,7 @@ func TestCompactionInvalidSettingsReachCaller(t *testing.T) {
 		var events []agent.AgentEvent
 		unsubscribe := h.session.Subscribe(func(event agent.AgentEvent) { events = append(events, event) })
 		defer unsubscribe()
-		_, err := h.session.CompactResult(t.Context(), "")
+		_, err := h.session.Compact(t.Context(), "")
 		if err == nil || err.Error() != failure {
 			t.Fatalf("error=%v", err)
 		}
@@ -67,7 +66,7 @@ func TestCompactionInvalidSettingsReachCaller(t *testing.T) {
 		if len(branch) == 0 {
 			t.Fatal("failure not persisted")
 		}
-		last, ok := branch[len(branch)-1].AsMessage()
+		last, ok := branch[len(branch)-1].(icodingagent.MessageEntry)
 		if !ok || last.Message.Assistant == nil || last.Message.Assistant.ErrorMessage != failure {
 			t.Fatal("failed assistant missing from persisted branch")
 		}

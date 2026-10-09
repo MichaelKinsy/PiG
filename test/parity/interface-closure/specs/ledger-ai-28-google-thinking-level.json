@@ -1,0 +1,19 @@
+[
+ {
+  "ids": [
+   "pkg:ai/.#GoogleApiThinkingLevel",
+   "pkg:ai/api/google-shared#GoogleApiThinkingLevel",
+   "pkg:ai/compat#GoogleApiThinkingLevel"
+  ],
+  "targets": [
+   "ai/google.go#GoogleThinkingLevel"
+  ],
+  "production": [
+   "public-api:ai/google.go#GoogleThinkingLevel"
+  ],
+  "evidence": [
+   "test:ai/union_constants_upstream_test.go#TestUpstreamStringUnionsMatchTheGoConstants"
+  ],
+  "rationale": "GoogleApiThinkingLevel is the Go GoogleThinkingLevel string type; TestUpstreamStringUnionsMatchTheGoConstants compares its five constants with the pinned api/google-shared.ts union."
+ }
+]

@@ -15,7 +15,7 @@ const ProviderImagesOpenRouter = "openrouter"
 
 // ImagesContext is the input to an image-generation request.
 type ImagesContext struct {
-	Input []ContentBlock
+	Input []ImagesInputContent
 }
 
 // ImagesStopReason mirrors upstream ImagesStopReason.
@@ -32,7 +32,7 @@ type AssistantImages struct {
 	API          ImageAPI
 	Provider     string
 	Model        string
-	Output       []ContentBlock
+	Output       []ImagesOutputContent
 	ResponseID   string
 	Usage        *Usage
 	StopReason   ImagesStopReason
@@ -48,14 +48,17 @@ type ImagesOptions struct {
 	Fetch  *http.Client
 	APIKey string
 	// APIKeySet distinguishes an explicit empty key from an omitted override.
-	APIKeySet  bool
-	Headers    ProviderHeaders
-	Env        map[string]string
-	Metadata   map[string]any
-	TimeoutMs  int
-	MaxRetries int
-	OnPayload  func(payload any, model ImageModel) (any, bool, error)
-	OnResponse func(response ProviderResponse, model ImageModel) error
+	APIKeySet bool
+	Headers   ProviderHeaders
+	Env       map[string]string
+	Metadata  map[string]any
+	TimeoutMs int
+	// MaxRetries is the retry budget after a retryable failure. Nil uses retry.provider.maxRetries; an explicit zero disables retries.
+	MaxRetries *int
+	// MaxRetryDelayMs caps a server-requested retry delay. Nil means 60000; 0 disables the cap.
+	MaxRetryDelayMs *int
+	OnPayload       func(payload any, model ImageModel) (any, bool, error)
+	OnResponse      func(response ProviderResponse, model ImageModel) error
 }
 
 // ProviderImagesOptions is the image API options shape.
@@ -70,24 +73,36 @@ type ImagesAPIProvider struct {
 	GenerateImages ImagesFunction
 }
 
+// registeredImagesAPIProvider is one registry entry: the provider and the optional source that registered it
+// (images-api-registry.ts RegisteredImagesApiProvider).
+type registeredImagesAPIProvider struct {
+	provider ImagesAPIProvider
+	sourceID string
+}
+
 var (
 	imagesAPIProviderMu       sync.RWMutex
-	imagesAPIProviderRegistry = map[ImageAPI]ImagesAPIProvider{}
+	imagesAPIProviderRegistry = map[ImageAPI]registeredImagesAPIProvider{}
 )
 
-// RegisterImagesAPIProvider registers or replaces an image API provider.
-func RegisterImagesAPIProvider(provider ImagesAPIProvider) {
+// RegisterImagesAPIProvider registers or replaces an image API provider. The optional sourceID names the registering
+// source and is stored on the entry (registerImagesApiProvider(provider, sourceId?)); Pi keeps it without reading it.
+func RegisterImagesAPIProvider(provider ImagesAPIProvider, sourceID ...string) {
 	imagesAPIProviderMu.Lock()
 	defer imagesAPIProviderMu.Unlock()
-	imagesAPIProviderRegistry[provider.API] = provider
+	entry := registeredImagesAPIProvider{provider: provider}
+	if len(sourceID) > 0 {
+		entry.sourceID = sourceID[0]
+	}
+	imagesAPIProviderRegistry[provider.API] = entry
 }
 
 // GetImagesAPIProvider returns the registered provider for api.
 func GetImagesAPIProvider(api ImageAPI) (ImagesAPIProvider, bool) {
 	imagesAPIProviderMu.RLock()
 	defer imagesAPIProviderMu.RUnlock()
-	provider, ok := imagesAPIProviderRegistry[api]
-	return provider, ok
+	entry, ok := imagesAPIProviderRegistry[api]
+	return entry.provider, ok
 }
 
 // GenerateImages dispatches an image-generation request to the model's API

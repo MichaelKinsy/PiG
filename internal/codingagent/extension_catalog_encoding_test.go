@@ -12,6 +12,7 @@ import (
 	"github.com/MichaelKinsy/PiG/coding/extension"
 )
 
+// Pi: packages/coding-agent/src/core/model-registry.ts:64 (ModelRegistry.getAll).
 func TestExtensionCatalogEncodingCurrentContentAndOrder(t *testing.T) {
 	registry := NewModelRegistry(t.TempDir())
 	storage, err := ai.NewAuthStorage(filepath.Join(t.TempDir(), "auth.json"))
@@ -43,7 +44,7 @@ func TestExtensionCatalogEncodingCurrentContentAndOrder(t *testing.T) {
 	check(false)
 	check(true)
 	for _, provider := range []string{"parity-oauth", "parity-key", "parity-custom-url", "parity-no-default"} {
-		if err := registry.RegisterProvider(provider, extension.ProviderConfig{API: ai.APIOpenAICompletions, BaseURL: "http://localhost:1234/v1", Models: []extension.ProviderModelConfig{{ID: provider + "-model", Name: provider}}}); err != nil {
+		if err := registry.RegisterExtensionProvider(provider, extension.ProviderConfig{API: ai.APIOpenAICompletions, BaseURL: "http://localhost:1234/v1", Models: []extension.ProviderModelConfig{{ID: provider + "-model", Name: provider}}}); err != nil {
 			t.Fatal(err)
 		}
 		check(false)
@@ -60,7 +61,7 @@ func TestExtensionCatalogEncodingCurrentContentAndOrder(t *testing.T) {
 	check(true)
 	registry.UnregisterProvider("parity-key")
 	check(false)
-	if err := registry.RegisterProvider("parity-key", extension.ProviderConfig{API: ai.APIOpenAIResponses, BaseURL: "http://localhost:1234/v2", Models: []extension.ProviderModelConfig{{ID: "replacement"}}}); err != nil {
+	if err := registry.RegisterExtensionProvider("parity-key", extension.ProviderConfig{API: ai.APIOpenAIResponses, BaseURL: "http://localhost:1234/v2", Models: []extension.ProviderModelConfig{{ID: "replacement"}}}); err != nil {
 		t.Fatal(err)
 	}
 	check(false)
@@ -100,7 +101,7 @@ func TestExtensionCatalogEncodingNestedMutationAndEmpty(t *testing.T) {
 }
 
 func TestExtensionCatalogEncodingDoesNotEvaluateUserMarshalers(t *testing.T) {
-	for _, field := range []string{"sampling", "routing", "template", "gateway", "args"} {
+	for _, field := range []string{"sampling", "routing", "template", "args"} {
 		t.Run(field, func(t *testing.T) {
 			calls := 0
 			data := map[string]any{"nested": []any{map[string]any{"value": catalogCountingValue{calls: &calls}}}}
@@ -112,8 +113,6 @@ func TestExtensionCatalogEncodingDoesNotEvaluateUserMarshalers(t *testing.T) {
 				model.ProviderMeta.Compat.OpenRouterRouting = data
 			case "template":
 				model.ProviderMeta.Compat.ChatTemplateKwargs = data
-			case "gateway":
-				model.ProviderMeta.Compat.VercelGatewayRouting = data
 			case "args":
 				model.ProviderMeta.Compat.ChatTemplateArgs = data
 			}

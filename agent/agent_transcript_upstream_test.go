@@ -15,7 +15,7 @@ import (
 // .upstream/v0.87.1/packages/agent/test/agent.test.ts:158
 func TestAgent_ConvertsInitialPromptAndToolsIntoTranscriptState(t *testing.T) {
 	tool := &scriptTool{name: "echo", label: "Echo", description: "Echo input", params: map[string]any{"type": "object", "properties": map[string]any{}}}
-	a := NewAgent(AgentOptions{SystemPrompt: "You are helpful.", Tools: []AgentTool{tool}})
+	a := mustNewAgent(AgentOptions{SystemPrompt: "You are helpful.", Tools: []AgentTool{tool}})
 	initial := a.Messages()[0].System
 	if initial == nil || initial.Content != ai.SystemText("You are helpful.") || len(initial.ToolsAdded) != 1 || initial.ToolsAdded[0].Name != "echo" {
 		t.Fatalf("initial = %+v", initial)
@@ -43,7 +43,7 @@ func TestAgent_DeclaresToolLoadoutChangesBeforeNextRequest(t *testing.T) {
 		requests = append(requests, changes)
 		return doneStream(textMessage("done"))
 	}}
-	a := NewAgent(AgentOptions{SystemPrompt: "You are helpful.", Tools: []AgentTool{first}, Model: scriptedModel(p)})
+	a := mustNewAgent(AgentOptions{SystemPrompt: "You are helpful.", Tools: []AgentTool{first}, Model: scriptedModel(p)})
 	mustSend(t, a, "one")
 	a.SetTools([]AgentTool{second})
 	mustSend(t, a, "two")
@@ -90,7 +90,7 @@ func TestAgent_MergesToolChangesIntoPendingSystemMessage(t *testing.T) {
 		}
 		return doneStream(textMessage("done"))
 	}}
-	a := NewAgent(AgentOptions{SystemPrompt: "You are helpful.", Model: scriptedModel(p)})
+	a := mustNewAgent(AgentOptions{SystemPrompt: "You are helpful.", Model: scriptedModel(p)})
 	a.SetTools([]AgentTool{tool})
 	pending := &ai.SystemMessage{Content: ai.SystemText(""), Sections: ai.OrderedSections{{Name: "skills", Value: new("<skills>x</skills>")}}, Timestamp: 1}
 	if _, err := a.SendMessages(t.Context(), []AgentMessage{{System: pending}, userMessage("hi")}); err != nil {
@@ -105,7 +105,7 @@ func TestAgent_MergesToolChangesIntoPendingSystemMessage(t *testing.T) {
 // .upstream/v0.87.1/packages/agent/test/agent.test.ts:261
 func TestAgent_RewritesPendingToolDeclarationsToExecutableSet(t *testing.T) {
 	first, second := &scriptTool{name: "first", params: map[string]any{"type": "object", "properties": map[string]any{}}}, &scriptTool{name: "second", params: map[string]any{"type": "object", "properties": map[string]any{}}}
-	a := NewAgent(AgentOptions{SystemPrompt: "You are helpful.", Tools: []AgentTool{first}, Model: scriptedModel(&scriptedProvider{respond: replyText("done")})})
+	a := mustNewAgent(AgentOptions{SystemPrompt: "You are helpful.", Tools: []AgentTool{first}, Model: scriptedModel(&scriptedProvider{respond: replyText("done")})})
 	pending := &ai.SystemMessage{Content: ai.SystemText(""), Sections: ai.OrderedSections{{Name: "note", Value: new("<note>x</note>")}}, ToolsAdded: []ai.ToolSchema{second.Schema()}, ToolsRemoved: []ai.ToolReference{{Name: "first"}}, Timestamp: 1}
 	if _, err := a.SendMessages(t.Context(), []AgentMessage{{System: pending}, userMessage("hi")}); err != nil {
 		t.Fatal(err)
@@ -123,7 +123,7 @@ func TestAgent_RewritesPendingToolDeclarationsToExecutableSet(t *testing.T) {
 // .upstream/v0.87.1/packages/agent/test/agent.test.ts:296
 func TestAgent_RestoresTranscriptBaselineWhenReset(t *testing.T) {
 	tool := &scriptTool{name: "echo", label: "Echo", description: "Echo input", params: map[string]any{"type": "object", "properties": map[string]any{}}}
-	a := NewAgent(AgentOptions{SystemPrompt: "You are helpful.", Tools: []AgentTool{tool}})
+	a := mustNewAgent(AgentOptions{SystemPrompt: "You are helpful.", Tools: []AgentTool{tool}})
 	a.SetMessages(append(slices.Clone(a.Messages()), userMessage("old")))
 	if err := a.Reset(); err != nil {
 		t.Fatal(err)
@@ -144,7 +144,7 @@ func TestAgent_AwaitsAgentEndSubscriberBeforePromptResolves(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		barrier := make(chan struct{})
 		finished, resolved := false, false
-		a := NewAgent(AgentOptions{Model: scriptedModel(&scriptedProvider{respond: replyText("ok")})})
+		a := mustNewAgent(AgentOptions{Model: scriptedModel(&scriptedProvider{respond: replyText("ok")})})
 		a.Subscribe(func(_ context.Context, ev AgentEvent) error {
 			if _, ok := ev.(AgentEndEvent); ok {
 				<-barrier
@@ -169,7 +169,7 @@ func TestAgent_AwaitsAgentEndSubscriberBeforePromptResolves(t *testing.T) {
 func TestAgentLoop_BuildsProviderContextExclusivelyFromTranscriptMessages(t *testing.T) {
 	initial := &ai.SystemMessage{Content: ai.SystemText("Transcript prompt"), ToolsAdded: []ai.ToolSchema{}, Timestamp: 1}
 	called := false
-	a := NewAgent(AgentOptions{Model: scriptedModel(&scriptedProvider{respond: replyText("unused")}), StreamFn: func(_ context.Context, _ *ai.Model, transcript ai.TranscriptContext, _ ai.StreamOptions) (*ai.AssistantMessageEventStream, error) {
+	a := mustNewAgent(AgentOptions{Model: scriptedModel(&scriptedProvider{respond: replyText("unused")}), StreamFn: func(_ context.Context, _ *ai.Model, transcript ai.TranscriptContext, _ ai.StreamOptions) (*ai.AssistantMessageEventStream, error) {
 		called = true
 		// TranscriptContext exposes Messages through an accessor in Go. Inspect
 		// its data fields, as Object.keys does in Pi; it is not a JSON wire DTO.

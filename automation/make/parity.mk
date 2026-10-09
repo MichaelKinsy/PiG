@@ -1,4 +1,3 @@
-# SPDX-FileCopyrightText: Copyright Hewlett Packard Enterprise Development LP
 # SPDX-License-Identifier: MIT
 #
 # Parity machinery: the gates, inventories, and scenario runners that keep PiG
@@ -174,11 +173,14 @@ sdk-surface-drift: ## Regenerate the extension SDK surface matrix; fail on drift
 	@go run ./test/parity/cmd/sdksurface -check
 	@echo "sdk-surface-drift: clean"
 
+sdk-apidiff: ## Fail on an incompatible extension SDK change since the pinned release that lacks an upgrade rule or a release note
+	@go run ./automation/ci/sdkapidiff
+
 custom-factory-ledger-drift: ## Validate the checked-in internal draft
-	@go test ./test/parity/cmd/customfactoryledger -count=1
+	@go test $(GO_TEST_CI_COUNT) ./test/parity/cmd/customfactoryledger
 	@go run ./test/parity/cmd/customfactoryledger -check
 
-check-contracts-fast: closure-check correspondence-check porter-check interface-inventory interface-inventory-test interface-go-drift interface-recommendations-drift interface-mapping-quality interface-delta behavior-contracts test-inventory-drift test-inventory test-porting-release known-gaps-drift format-version-inventory custom-factory-ledger-drift sdk-surface-drift ## Local generated contract validation and drift gates
+check-contracts-fast: closure-check correspondence-check porter-check interface-inventory interface-inventory-test interface-go-drift interface-recommendations-drift interface-mapping-quality interface-delta interface-gaps portmap-check behavior-contracts test-inventory-drift test-inventory test-porting-release known-gaps-drift format-version-inventory custom-factory-ledger-drift sdk-surface-drift sdk-apidiff piglet-strip-ids-drift piglet-strip-build ## Local generated contract validation and drift gates
 
 check-contracts: check-contracts-fast interface-inventory-drift ## Fast contracts + exact published-package inventory regeneration
 
@@ -193,7 +195,7 @@ parity-bin: parity-deps node-runtime
 	@mkdir -p $(dir $(PARITY_PIG_BIN))
 	@# Scenario scripts run `go test` for packages whose test-only modules `go build` never fetches. Fetch them now so a cold module cache cannot print "go: downloading" into a compared stream.
 	@go list -deps -test ./... >/dev/null
-	CGO_ENABLED=0 go build -buildvcs=false -trimpath -ldflags "-s -w -X main.Build=$$(git rev-parse --short HEAD 2>/dev/null || echo dev)" -o $(PARITY_PIG_BIN) ./cmd/pig
+	CGO_ENABLED=0 go build -buildvcs=false -trimpath -ldflags "-s -w -X github.com/MichaelKinsy/PiG/coding/cli.Build=$$(git rev-parse --short HEAD 2>/dev/null || echo dev)" -o $(PARITY_PIG_BIN) ./cmd/pig
 	@[ "$$(uname -s)" = "Darwin" ] && command -v codesign >/dev/null 2>&1 && codesign --force --sign - $(PARITY_PIG_BIN) >/dev/null 2>&1 || true
 	@echo "parity pig: $$($(PARITY_PIG_BIN) --version) → $(PARITY_PIG_BIN)"
 
@@ -448,6 +450,38 @@ interface-mapping-quality: ## Validate mapping shapes, hierarchy, layers, refere
 		-recommendations test/parity/interfaces/recommendations-v$(UPSTREAM_VERSION).json \
 		-go-inventory test/parity/interfaces/pig-go.json
 
+interface-gaps: ## Decide NOT-A-GAP or GAP(reason) for every interface ID with fixed rules; write the sorted gap list and fail when it grows past the baseline
+	@./automation/ci/cached-gate.sh interface-gaps --out build/interface-gaps -- go run ./test/parity/interface-closure/autobind -check -out build/interface-gaps
+
+portmap-check: ## Derive the PORT_MAP ticks from the interface ledger; fail on a tick the ledger does not prove that the committed baseline does not list
+	@go run ./test/parity/cmd/portmapcheck
+
+portmap-check-update: ## Rewrite the unproven-tick baseline after a reviewed shrink
+	@go run ./test/parity/cmd/portmapcheck -update-baseline
+
+portmap-report: ## List every PORT_MAP tick the interface ledger does not prove
+	@go run ./test/parity/cmd/portmapcheck -report
+
+interface-gaps-update: ## Rewrite the committed interface gap baseline after a reviewed change
+	@go run ./test/parity/interface-closure/autobind -update -out build/interface-gaps
+
+# The lane loop. ledger-check and ledger-update derive exactly what interface-gaps and interface-gaps-update derive, but read the reach graph and the decisions from the shared content-addressed cache (PIG_LEDGER_CACHE, else build/ledger-cache) when a tree with the same inputs was derived before, and publish what they compute. They also write build/interface-gaps/ledger-frontier.tsv, the root gaps of this tree ranked by the rows they unblock. CI keeps the uncached interface-gaps gate.
+ledger-check: ## Cached, exact interface gap check for lanes (same verdict as interface-gaps); writes build/interface-gaps/ledger-frontier.tsv
+	@go run ./test/parity/interface-closure/autobind -check -cache auto -out build/interface-gaps -frontier build/interface-gaps/ledger-frontier.tsv
+	@python3 test/parity/interface-closure/breakdown/proofclass.py build/ledger-proof-classes
+
+ledger-update: ## Cached rewrite of the committed interface gap baseline and mapping (same result as interface-gaps-update)
+	@go run ./test/parity/interface-closure/autobind -update -cache auto -out build/interface-gaps -frontier build/interface-gaps/ledger-frontier.tsv
+
+# The integrator runs ledger-frontier after appending each TOTALS line; lanes read the shared file instead of deriving their own ranking.
+LEDGER_LOGS ?= build/interface-gaps
+ledger-frontier: ## Write the ranking of root gaps by the rows they unblock to $(LEDGER_LOGS)/ledger-frontier.tsv (the shared lane log directory when LEDGER_LOGS is set)
+	@go run ./test/parity/interface-closure/autobind -cache auto -out build/interface-gaps -frontier "$(LEDGER_LOGS)/ledger-frontier.tsv"
+
+ledger-equivalence: ## Prove on lane branches that the cached derivation equals one from scratch (BRANCHES="ref ref ref"; slow: two full derivations per branch)
+	@test -n "$(BRANCHES)" || { echo "ledger-equivalence: set BRANCHES to lane branch refs" >&2; exit 2; }
+	@LEDGER_EQUIV_BRANCHES="$(BRANCHES)" go test ./test/parity/interface-closure/autobind -run TestCacheEquivalenceOnLaneBranches -v -timeout 120m
+
 interface-mapping-strict: ## Require every semantic interface mapping to be fully closed
 	@go run ./test/parity/cmd/interfaceinventory \
 		-inventory test/parity/interfaces/upstream-v$(UPSTREAM_VERSION).json \
@@ -478,6 +512,10 @@ go-stubs: interface-deps ## Generate Go API stubs and upstream test skeletons fo
 	@node test/parity/interface-extractor/src/gen-go-stubs.mjs --source-root .upstream/current --package "$(PACKAGE)" --out "$(OUT)" \
 		$(if $(IMPORTS),--import "$(IMPORTS)") $(if $(SCOPE),--scope "$(SCOPE)") $(if $(SUBPATH),--subpath "$(SUBPATH)") \
 		$(if $(TEST_MAPPING),--test-mapping test/parity/interfaces/test-mapping-v$(UPSTREAM_VERSION).json)
+
+# go-stub-fields adds the missing plain-data fields of Go structs from build/interface-gaps/gaps.tsv (run `make interface-gaps` first; it exits 1 while gaps exceed the baseline, which does not stop it writing the list). LABELS=glob,glob restricts it to rows a labelling lane marked MISSING-DATA (the ledger sprint always sets it). WIRING=file lists, per ID, the production Go file that sets or reads the new field; APPLY=1 writes a field only for a row whose file selects it, so the target scaffolds and never closes a row on its own, and it only touches wire structs (JSON-tagged or self-marshalling) and cites the pinned upstream source. Without APPLY=1 it only reports which fields it would add and which properties it leaves for a person. Fields are generated, never written by hand; behaviour (methods, functions, classes) is not touched.
+go-stub-fields: ## Generate the missing plain-data struct fields for member-missing interface gaps (APPLY=1 writes them)
+	@go run ./test/parity/interface-closure/stubfields $(if $(APPLY),-apply) $(if $(REPORT),-report "$(REPORT)") $(if $(LABELS),-labels "$(LABELS)") $(if $(WIRING),-wiring "$(WIRING)")
 
 # Run under a private temporary directory and fail on anything a test leaves in it, as test-grouped.sh does for Go packages.
 interface-inventory-test:
@@ -567,6 +605,7 @@ lint-scenarios: normalization-inventory-check ## Scenario quality lint. Enforces
 # every current upstream source file in tracked packages must therefore be
 # explicitly mapped, deferred, or designed out. Silent omission is a coverage bug.
 port-map-drift: ## PORT_MAP completeness gate. Coverage uses docs/parity/PORT_MAP.md as its denominator;
+	@python3 -B -m unittest discover -s automation/ci -p test_port_map_drift.py
 	@./automation/ci/check-port-map-drift.py --upstream .upstream/current --port-map docs/parity/PORT_MAP.md
 
 # Generated-report freshness gate. A scenario added without regenerating
@@ -610,5 +649,5 @@ parity-new: ## Scaffold a new parity scenario (optionally under FAMILY=...)
 	    $(if $(MODEL),-model '$(MODEL)',)
 	@echo "wrote test/parity/scenarios/$(if $(FAMILY),$(FAMILY)/,)$(NAME).toml"
 
-.PHONY: go-stubs behavior-input-inventory interface-go interface-recommendations-generate test-inventory-generate
-.PHONY: async-contracts behavior-contracts sdk-surface-drift behavior-contracts-strict behavior-input-inventory-drift behavior-input-mapping-proposal check-contracts check-contracts-fast check-scratch-paths closure-check correspondence-check coverage coverage-drift coverage-strict custom-factory-ledger custom-factory-ledger-drift family-gaps format-version-inventory format-version-policy foundation-check interface-delta interface-delta-strict interface-go-drift interface-inventory interface-inventory-drift interface-inventory-test interface-mapping-quality interface-mapping-strict interface-proposal-check interface-proposals interface-recommendations interface-recommendations-drift lint-scenarios parity parity-bin parity-driver parity-durable parity-family parity-fast parity-flow-coverage parity-live parity-new parity-perf parity-stress port-groups port-map port-map-drift port-reconcile porter porter-campaign porter-check porter-smoke porter-task require-parity-ran schedule-report source-hygiene source-hygiene-full test-inventory test-inventory-drift test-inventory-strict typescript-extension-corpus upstream-delta
+.PHONY: go-stubs go-stub-fields behavior-input-inventory interface-go interface-recommendations-generate test-inventory-generate
+.PHONY: sdk-apidiff interface-gaps interface-gaps-update ledger-check ledger-update ledger-frontier ledger-equivalence async-contracts behavior-contracts sdk-surface-drift behavior-contracts-strict behavior-input-inventory-drift behavior-input-mapping-proposal check-contracts check-contracts-fast check-scratch-paths closure-check correspondence-check coverage coverage-drift coverage-strict custom-factory-ledger custom-factory-ledger-drift family-gaps format-version-inventory format-version-policy foundation-check interface-delta interface-delta-strict interface-go-drift interface-inventory interface-inventory-drift interface-inventory-test interface-mapping-quality interface-mapping-strict interface-proposal-check interface-proposals interface-recommendations interface-recommendations-drift lint-scenarios parity parity-bin parity-driver parity-durable parity-family parity-fast parity-flow-coverage parity-live parity-new parity-perf parity-stress port-groups port-map port-map-drift port-reconcile porter porter-campaign porter-check porter-smoke porter-task require-parity-ran schedule-report source-hygiene source-hygiene-full test-inventory test-inventory-drift test-inventory-strict typescript-extension-corpus upstream-delta

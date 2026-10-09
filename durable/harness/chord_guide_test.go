@@ -53,7 +53,7 @@ func jsonOfObject(object durable.JsonObject) chordsvc.JsonValue {
 	if object == nil {
 		return nil
 	}
-	return map[string]any(object)
+	return object
 }
 
 // Attach captures the state's publication and buffers every later one. Subscribing before the snapshot leaves no
@@ -201,9 +201,10 @@ var canvasDoc = durable.DefineDoc(durable.DocDefinition[canvasState]{
 		CheckpointWhen: func(_ canvasState, _ []durable.Op, info durable.CheckpointInfo) bool {
 			return info.DeltasSinceBase >= 99
 		},
+
+		Initial: func() canvasState { return canvasState{Strokes: []guideStroke{}} },
 	},
 	DocumentSemantics: durable.DocumentSemantics{Scope: durable.ScopeSession},
-	Initial:           func() canvasState { return canvasState{Strokes: []guideStroke{}} },
 })
 
 type canvasService interface {
@@ -285,6 +286,7 @@ func createCanvasFacet(t *testing.T, ctx context.Context, session durable.Sessio
 	}); err != nil {
 		t.Fatal(err)
 	}
+	var state durable.DocumentState[canvasState]
 	state, err := session.DocumentStateErased(ctx, canvasDoc)
 	if err != nil {
 		t.Fatal(err)
@@ -372,7 +374,7 @@ func (transport inProcess) Subscribe(_ context.Context, serviceId string, mode c
 }
 
 func connectCanvas(ctx context.Context, transport chordsvc.RemoteServiceTransport, log *deliveryLog) (func(context.Context) error, error) {
-	services, err := chordsvc.CreateRemoteServiceBinding(chordsvc.RemoteServiceBindingOptions{Services: []string{canvasServiceDefinition.Id()}, Transport: transport})
+	services, err := chordsvc.CreateRemoteServiceBinding(chordsvc.RemoteServiceBindingOptions{Services: chordsvc.ServiceIDs(canvasServiceDefinition.Id()), Transport: transport})
 	if err != nil {
 		return nil, err
 	}
@@ -459,12 +461,11 @@ type reviewState struct {
 }
 
 var reviewDoc = durable.DefineDocFamily(durable.DocFamilyDefinition[reviewState, reviewInput]{
-	CommonDocDefinition: durable.CommonDocDefinition[reviewState]{
-		Kind:    "app.diff-review",
-		Version: 1,
-		CheckpointWhen: func(_ reviewState, _ []durable.Op, info durable.CheckpointInfo) bool {
-			return info.DeltasSinceBase >= 49
-		},
+	Family:  true,
+	Kind:    "app.diff-review",
+	Version: 1,
+	CheckpointWhen: func(_ reviewState, _ []durable.Op, info durable.CheckpointInfo) bool {
+		return info.DeltasSinceBase >= 49
 	},
 	DocumentSemantics: durable.DocumentSemantics{Scope: durable.ScopeConversation, History: durable.HistoryLatest, Fork: durable.ForkCurrent},
 	Initial: func(seed reviewInput) reviewState {
@@ -747,9 +748,10 @@ func TestChordUsageGuide(t *testing.T) {
 				Kind:           "app.job-output",
 				Version:        1,
 				CheckpointWhen: func(_ jobOutput, _ []durable.Op, info durable.CheckpointInfo) bool { return info.DeltasSinceBase >= 99 },
+
+				Initial: func() jobOutput { return jobOutput{} },
 			},
 			DocumentSemantics: durable.DocumentSemantics{Scope: durable.ScopeTask},
-			Initial:           func() jobOutput { return jobOutput{} },
 		})
 		type runtime = durable.TaskRuntime[jobInput, jobState, durable.JsonValue, any]
 		// appendJobOutput: read process output outside this callback; the runtime gates the live task.
@@ -830,7 +832,7 @@ func TestChordUsageGuide(t *testing.T) {
 			if value == nil {
 				return "retired"
 			}
-			stdout, _ := value["stdout"].(string)
+			stdout, _ := value.Value("stdout").(string)
 			return stdout
 		}
 		logged = append(logged, stdoutOf(watch.Value()))

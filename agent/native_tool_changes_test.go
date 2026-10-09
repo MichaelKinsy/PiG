@@ -170,7 +170,7 @@ func TestAgentToolLoadoutChangesUseNativeProviderToolChanges(t *testing.T) {
 			server, bodies := nativeToolChangeServer(t, tc.reply)
 			provider, api := tc.provider(server.URL)
 			model := &ai.Model{ID: "native-tools", Provider: provider, ProviderMeta: ai.ProviderMetadata{API: api}, Capabilities: ai.ModelCapabilities{ContextWindow: 100000}}
-			a := NewAgent(AgentOptions{Model: model, SystemPrompt: "base", Tools: []AgentTool{echoScriptTool("first")}})
+			a := mustNewAgent(AgentOptions{Model: model, SystemPrompt: "base", Tools: []AgentTool{echoScriptTool("first")}})
 			mustSend(t, a, "one")
 			var tools []AgentTool
 			for _, name := range tc.newTools {

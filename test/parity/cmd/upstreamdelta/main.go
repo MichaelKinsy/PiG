@@ -15,16 +15,10 @@ import (
 	"github.com/BurntSushi/toml"
 
 	"github.com/MichaelKinsy/PiG/coding"
+	"github.com/MichaelKinsy/PiG/test/parity/upstreampackages"
 )
 
-var trackedRoots = []string{
-	"packages/agent/src",
-	"packages/ai/src",
-	"packages/codemode/src",
-	"packages/coding-agent/src",
-	"packages/mcp/src",
-	"packages/tui/src",
-}
+var trackedRoots = upstreampackages.SourceRoots()
 
 type syncManifest struct {
 	From  string      `toml:"from"`
@@ -91,11 +85,11 @@ func main() {
 }
 
 func computeDelta(fromRoot, toRoot string) ([]sourceDelta, error) {
-	fromFiles, err := discoverSources(fromRoot)
+	fromFiles, err := discoverSources(fromRoot, true)
 	if err != nil {
 		return nil, err
 	}
-	toFiles, err := discoverSources(toRoot)
+	toFiles, err := discoverSources(toRoot, false)
 	if err != nil {
 		return nil, err
 	}
@@ -127,11 +121,15 @@ func computeDelta(fromRoot, toRoot string) ([]sourceDelta, error) {
 	return deltas, nil
 }
 
-func discoverSources(root string) (map[string][]byte, error) {
+// discoverSources reads every tracked source file under root. A package the earlier release did not ship has no files there, so a missing root is allowed only when allowMissing is set.
+func discoverSources(root string, allowMissing bool) (map[string][]byte, error) {
 	files := make(map[string][]byte)
 	for _, trackedRoot := range trackedRoots {
 		base := filepath.Join(root, filepath.FromSlash(trackedRoot))
 		if _, err := os.Stat(base); err != nil {
+			if allowMissing && os.IsNotExist(err) {
+				continue
+			}
 			return nil, fmt.Errorf("tracked root %s: %w", base, err)
 		}
 		err := filepath.WalkDir(base, func(path string, entry os.DirEntry, walkErr error) error {

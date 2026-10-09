@@ -1,0 +1,1108 @@
+[
+  {
+    "upstream": "packages/durable/src/documents.ts",
+    "package": "./durable",
+    "tests": [
+      "TestDocumentConversionsKeepRevisionsAndStayStrict",
+      "TestResolveAddressRejectsAnUnsafeOwnerId"
+    ],
+    "upstream_reference": "packages/durable/src/documents.ts:60 (DefineDocFamily); packages/durable/src/documents.ts:95 (validateDefinition); packages/durable/src/documents.ts:1-209",
+    "mutation": "durable/documents.go:69 `if err != nil {` -> `if err == nil {` (TestDocumentConversionsKeepRevisionsAndStayStrict FAIL); durable/documents.go:117 `const maxSafeInteger = 1<<53 - 1` -> `const maxSafeInteger = 2<<53 - 1` (TestResolveAddressRejectsAnUnsafeOwnerId FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/durable/src/documents.ts",
+    "package": "./durable/session",
+    "tests": [
+      "TestSessionHistoricalDocumentSnapshots"
+    ],
+    "upstream_reference": "packages/durable/src/documents.ts:60 (DefineDocFamily); packages/durable/src/documents.ts:95 (validateDefinition); packages/durable/src/documents.ts:1-209",
+    "mutation": "durable/documents.go:227 `if address.Scope.Kind == ScopeConversation {` -> `if address.Scope.Kind != ScopeConversation {` (TestSessionHistoricalDocumentSnapshots FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/durable/src/harness/agent.ts",
+    "package": "./durable/examples",
+    "tests": [
+      "TestExample15SystemPrompt",
+      "TestExample27PlanMode"
+    ],
+    "upstream_reference": "packages/durable/src/harness/agent.ts:95 (applyChange); packages/durable/src/harness/agent.ts:158 (ResolveAgent); packages/durable/src/harness/agent.ts:1-263; packages/durable/test/examples/14-chat.ts; packages/durable/test/examples/24-child-tasks.ts; packages/durable/test/examples/26-coding-agent.ts",
+    "mutation": "durable/harness/agent.go:381 `if change.Extensions.state == changeSet {` -> `if change.Extensions.state != changeSet {` (TestExample27PlanMode FAIL); durable/harness/agent.go:517 `} else if wrap.WrapSection != nil {` -> `} else if wrap.WrapSection == nil {` (TestExample15SystemPrompt FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/durable/src/harness/agent.ts",
+    "package": "./durable/harness",
+    "tests": [
+      "TestGeneration",
+      "TestResolveAgentDropsTargetOfWrapperReturningNil",
+      "TestToolRecovery"
+    ],
+    "upstream_reference": "packages/durable/src/harness/agent.ts:95 (applyChange); packages/durable/src/harness/agent.ts:158 (ResolveAgent); packages/durable/src/harness/agent.ts:1-263; packages/durable/test/harness-generation.test.ts; packages/durable/test/harness-tools-recovery.test.ts",
+    "mutation": "durable/harness/agent.go:381 `if change.Extensions.state == changeSet {` -> `if change.Extensions.state != changeSet {` (TestToolRecovery FAIL); durable/harness/agent.go:517 `} else if wrap.WrapSection != nil {` -> `} else if wrap.WrapSection == nil {` (TestResolveAgentDropsTargetOfWrapperReturningNil FAIL); durable/harness/agent.go:27 `Enabled:          true,` -> `Enabled:          false,` (TestGeneration FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/durable/src/harness/json.ts",
+    "package": "./durable/examples",
+    "tests": [
+      "TestExample21LateJoin"
+    ],
+    "upstream_reference": "packages/durable/src/harness/json.ts:1-32; packages/durable/test/examples/21-late-join.ts",
+    "mutation": "durable/harness/json.go:58 `if items, isArray := value.([]any); isArray && array.Len() <= len(item` -> `if items, isArray := value.([]any); isArray && array.Len() < len(items` (TestExample21LateJoin FAIL); durable/harness/json.go:71 `if isLeaf(current) && isLeaf(value) && current == value {` -> `if isLeaf(current) && isLeaf(value) && current != value {` (TestExample21LateJoin FAIL); durable/harness/json.go:50 `if err := assignSlot(objectSlot{object, name}, record[name]); err != n` -> `if err := assignSlot(objectSlot{object, name}, record[name]); err == n` (TestExample21LateJoin FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/durable/src/harness/json.ts",
+    "package": "./durable/harness",
+    "tests": [
+      "TestAgentEvents"
+    ],
+    "upstream_reference": "packages/durable/src/harness/json.ts:1-32; packages/durable/test/harness-events.test.ts",
+    "mutation": "durable/harness/json.go:58 `if items, isArray := value.([]any); isArray && array.Len() <= len(item` -> `if items, isArray := value.([]any); isArray && array.Len() < len(items` (TestAgentEvents FAIL); durable/harness/json.go:71 `if isLeaf(current) && isLeaf(value) && current == value {` -> `if isLeaf(current) && isLeaf(value) && current != value {` (TestAgentEvents FAIL); durable/harness/json.go:50 `if err := assignSlot(objectSlot{object, name}, record[name]); err != n` -> `if err := assignSlot(objectSlot{object, name}, record[name]); err == n` (TestAgentEvents FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/durable/src/harness/task-graph.ts",
+    "package": "./durable/harness",
+    "tests": [
+      "TestHarnessClose",
+      "TestTaskGraphView"
+    ],
+    "upstream_reference": "packages/durable/src/harness/task-graph.ts:1-223; packages/durable/src/harness/task-graph.ts:18 (MarshalJSON); packages/durable/src/harness/task-graph.ts:96 (Watch); packages/durable/test/harness-lifecycle.test.ts; packages/durable/test/harness-task-graph.test.ts",
+    "mutation": "durable/harness/task_graph.go:258 `if record.State.Status == durable.TaskTerminal {` -> `if record.State.Status != durable.TaskTerminal {` (TestTaskGraphView FAIL); durable/harness/task_graph.go:38 `return json.Marshal(map[string]any{\"status\": state.Status, \"phase\": st` -> `return json.Marshal(map[string]any{\"status\": state.Status, \"phaseX\": s` (TestTaskGraphView FAIL); durable/harness/task_graph.go:146 `}); err != nil {` -> `}); err == nil {` (TestHarnessClose FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/durable/src/harness/task-graph.ts",
+    "package": "./durable/examples",
+    "tests": [
+      "TestExample24ChildTasks"
+    ],
+    "upstream_reference": "packages/durable/src/harness/task-graph.ts:1-223; packages/durable/src/harness/task-graph.ts:18 (MarshalJSON); packages/durable/src/harness/task-graph.ts:96 (Watch); packages/durable/test/examples/24-child-tasks.ts",
+    "mutation": "durable/harness/task_graph.go:258 `if record.State.Status == durable.TaskTerminal {` -> `if record.State.Status != durable.TaskTerminal {` (TestExample24ChildTasks FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/durable/src/session/observation.ts",
+    "package": "./durable/session",
+    "tests": [
+      "TestCommittedObservationHarnessSurface",
+      "TestSessionSourceAttachmentIsolatesListenerFailure"
+    ],
+    "upstream_reference": "packages/durable/src/session/observation.ts:119 (Dispose); packages/durable/src/session/observation.ts:1-302",
+    "mutation": "durable/session/observation.go:316 `attachment.disposed = true` -> `attachment.disposed = false` (TestSessionSourceAttachmentIsolatesListenerFailure FAIL); durable/session/observation.go:542 `if err != nil {` -> `if err == nil {` (TestCommittedObservationHarnessSurface FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/durable/src/session/observation.ts",
+    "package": "./durable/harness",
+    "tests": [
+      "TestCompactionAndTheInbox"
+    ],
+    "upstream_reference": "packages/durable/src/session/observation.ts:119 (Dispose); packages/durable/src/session/observation.ts:1-302; packages/durable/test/harness-compaction.test.ts",
+    "mutation": "durable/session/observation.go:35 `return false` -> `return true` (TestCompactionAndTheInbox FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/durable/src/session/observation.ts",
+    "package": "./durable/examples",
+    "tests": [
+      "TestExample21LateJoin"
+    ],
+    "upstream_reference": "packages/durable/src/session/observation.ts:119 (Dispose); packages/durable/src/session/observation.ts:1-302; packages/durable/test/examples/21-late-join.ts",
+    "mutation": "durable/session/observation.go:35 `return false` -> `return true` (TestExample21LateJoin FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/durable/src/storage/sqlite/node.ts",
+    "package": "./durable/storage/sqlite",
+    "tests": [
+      "TestDurableSQLiteMigrations"
+    ],
+    "upstream_reference": "packages/durable/src/storage/sqlite/node.ts:1-211; packages/durable/src/storage/sqlite/node.ts:140 (Transaction); packages/durable/src/storage/sqlite/node.ts:85 (Exec); packages/durable/test/sqlite-migrations.test.ts",
+    "mutation": "durable/storage/sqlite/node/node.go:47 `if err != nil {` -> `if err == nil {` (TestDurableSQLiteMigrations FAIL); durable/storage/sqlite/node/node.go:91 `if err != nil {` -> `if err == nil {` (TestDurableSQLiteMigrations FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/durable/src/storage/sqlite/node.ts",
+    "package": "./durable/storage/sqlite/node",
+    "tests": [
+      "TestPortableSQLiteFacadeSettlement"
+    ],
+    "upstream_reference": "packages/durable/src/storage/sqlite/node.ts:1-211; packages/durable/src/storage/sqlite/node.ts:140 (Transaction); packages/durable/src/storage/sqlite/node.ts:85 (Exec); packages/durable/test/sqlite-facade.test.ts",
+    "mutation": "durable/storage/sqlite/node/node.go:47 `if err != nil {` -> `if err == nil {` (TestPortableSQLiteFacadeSettlement FAIL); durable/storage/sqlite/node/node.go:379 `if rollbackErr := adapter.database.Exec(\"ROLLBACK\"); rollbackErr != ni` -> `if rollbackErr := adapter.database.Exec(\"ROLLBACKX\"); rollbackErr != n` (TestPortableSQLiteFacadeSettlement FAIL); durable/storage/sqlite/node/node.go:91 `if err != nil {` -> `if err == nil {` (TestPortableSQLiteFacadeSettlement FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/durable/src/testing/types.ts",
+    "package": "./durable/storage",
+    "tests": [
+      "TestMemoryStorageConformance"
+    ],
+    "upstream_reference": "packages/durable/src/testing/types.ts:10 (Rejects); packages/durable/src/testing/types.ts:1-45; packages/durable/test/memory-storage.test.ts",
+    "mutation": "durable/durabletest/durabletest.go:94 `if err == nil {` -> `if err != nil {` (TestMemoryStorageConformance FAIL); durable/durabletest/durabletest.go:140 `return true` -> `return false` (TestMemoryStorageConformance FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/durable/src/testing/types.ts",
+    "package": "./durable/storage/jsonl",
+    "tests": [
+      "TestJsonlStorageConformance"
+    ],
+    "upstream_reference": "packages/durable/src/testing/types.ts:10 (Rejects); packages/durable/src/testing/types.ts:1-45; packages/durable/test/jsonl-storage.test.ts",
+    "mutation": "durable/durabletest/durabletest.go:94 `if err == nil {` -> `if err != nil {` (TestJsonlStorageConformance FAIL); durable/durabletest/durabletest.go:140 `return true` -> `return false` (TestJsonlStorageConformance FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/durable/src/testing/types.ts",
+    "package": "./durable/storage/sqlite",
+    "tests": [
+      "TestSqliteStorageConformance"
+    ],
+    "upstream_reference": "packages/durable/src/testing/types.ts:10 (Rejects); packages/durable/src/testing/types.ts:1-45; packages/durable/test/sqlite-storage.test.ts",
+    "mutation": "durable/durabletest/durabletest.go:94 `if err == nil {` -> `if err != nil {` (TestSqliteStorageConformance FAIL); durable/durabletest/durabletest.go:140 `return true` -> `return false` (TestSqliteStorageConformance FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/durable/src/testing/types.ts",
+    "package": "./durable/env/node",
+    "tests": [
+      "TestNodeExecutionEnvConformance"
+    ],
+    "upstream_reference": "packages/durable/src/testing/types.ts:10 (Rejects); packages/durable/src/testing/types.ts:1-45; packages/durable/test/env-node-conformance.test.ts",
+    "mutation": "durable/durabletest/durabletest.go:140 `return true` -> `return false` (TestNodeExecutionEnvConformance FAIL); durable/durabletest/env_conformance.go:526 `skipNotFollowedByAWindow := false` -> `skipNotFollowedByAWindow := true` (TestNodeExecutionEnvConformance FAIL); durable/durabletest/env_conformance.go:81 `return pages, true` -> `return pages, false` (TestNodeExecutionEnvConformance FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/durable/src/tools/path-utils.ts",
+    "package": "./durable/tools",
+    "tests": [
+      "TestReadFindsTheMacOSVariantOfAMissingName",
+      "TestToolPathsDropALeadingAtSignAndNormalizeUnicodeSpaces"
+    ],
+    "upstream_reference": "packages/durable/src/tools/path-utils.ts:16 (resolveReadToolPath)",
+    "mutation": "durable/tools/path_utils.go:54 `if err != nil {` -> `if err == nil {` (TestReadFindsTheMacOSVariantOfAMissingName FAIL); durable/tools/path_utils.go:36 `if err != nil {` -> `if err == nil {` (TestReadFindsTheMacOSVariantOfAMissingName FAIL); durable/tools/path_utils.go:23 `return strings.TrimPrefix(normalized, \"@\")` -> `return normalized` (TestToolPathsDropALeadingAtSignAndNormalizeUnicodeSpaces FAIL); durable/tools/path_utils.go:22 `unicodeSpaces.ReplaceAllString(path, \" \")` -> `path` (TestToolPathsDropALeadingAtSignAndNormalizeUnicodeSpaces FAIL); durable/tools/path_utils.go:17 `(?i) (AM|PM)\\.` -> ` (AM|PM)\\.` (TestReadFindsTheMacOSVariantOfAMissingName FAIL, lowercase am case); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/env/src/ssh.ts",
+    "package": "./env",
+    "tests": [
+      "TestDeployDaemonRunsItsPosixScriptsAndRefusesACorruptUpload",
+      "TestDetectPlatformOnScriptedHosts"
+    ],
+    "upstream_reference": "packages/env/src/ssh.ts:380 (checkDaemon); packages/env/src/ssh.ts:396 (DeployDaemon); packages/env/src/ssh.ts:1-531",
+    "mutation": "env/ssh.go:617 `last := lines[len(lines)-1]` -> `last := lines[len(lines)-2]` (TestDeployDaemonRunsItsPosixScriptsAndRefusesACorruptUpload FAIL); env/ssh.go:653 `if remote.Platform == \"windows\" {` -> `if remote.Platform != \"windows\" {` (TestDeployDaemonRunsItsPosixScriptsAndRefusesACorruptUpload FAIL); env/ssh.go:552 `if err != nil {` -> `if err == nil {` (TestDetectPlatformOnScriptedHosts FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/durable/src/entries.ts",
+    "package": "./durable/harness",
+    "tests": [
+      "TestGenerationRecovery",
+      "TestManualCompaction"
+    ],
+    "upstream_reference": "packages/durable/src/entries.ts:34 (TxAppendEntry); packages/durable/src/entries.ts:1-35; packages/durable/test/harness-generation-recovery.test.ts; packages/durable/test/harness-compaction.test.ts",
+    "mutation": "durable/entries.go:98 `CompactionEntry = DefineEntry[CompactionEntryData](\"pi.compaction\")` -> `CompactionEntry = DefineEntry[CompactionEntryData](\"pi.compactionX\")` (TestManualCompaction FAIL); durable/entries.go:53 `if err != nil {` -> `if err == nil {` (TestGenerationRecovery FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/durable/src/entries.ts",
+    "package": "./durable/session",
+    "tests": [
+      "TestDocumentDefinitions"
+    ],
+    "upstream_reference": "packages/durable/src/entries.ts:34 (TxAppendEntry); packages/durable/src/entries.ts:1-35",
+    "mutation": "durable/entries.go:42 `if err != nil {` -> `if err == nil {` (TestDocumentDefinitions FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/durable/src/harness/compaction.ts",
+    "package": "./durable/harness",
+    "tests": [
+      "TestCompactionOutcomes",
+      "TestSerialization"
+    ],
+    "upstream_reference": "packages/durable/src/harness/compaction.ts:1-454; packages/durable/src/harness/compaction.ts:335 (summaryFailure); packages/durable/src/harness/compaction.ts:325 (summaryText); packages/durable/test/harness-compaction.test.ts",
+    "mutation": "durable/harness/compaction.go:618 `if err != nil {` -> `if err == nil {` (TestSerialization FAIL); durable/harness/compaction.go:525 `if message.StopReason == ai.StopReasonLength {` -> `if message.StopReason != ai.StopReasonLength {` (TestCompactionOutcomes FAIL); durable/harness/compaction.go:505 `return \"\", false` -> `return \"\", true` (TestCompactionOutcomes FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/durable/src/harness/live.ts",
+    "package": "./durable/harness",
+    "tests": [
+      "TestAgentEvents",
+      "TestGeneration"
+    ],
+    "upstream_reference": "packages/durable/src/harness/live.ts:1-176; packages/durable/src/harness/live.ts:149 (SettleSchedulerOutcome); packages/durable/test/harness-events.test.ts; packages/durable/test/harness-generation.test.ts",
+    "mutation": "durable/harness/live.go:209 `slots := live.Array(\"tools\")` -> `slots := live.Array(\"toolsX\")` (TestAgentEvents FAIL); durable/harness/live.go:282 `if outcome.Status == durable.OutcomeFaulted {` -> `if outcome.Status != durable.OutcomeFaulted {` (TestGeneration FAIL); durable/harness/live.go:100 `return false` -> `return true` (TestGeneration FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/durable/src/harness/live.ts",
+    "package": "./durable/examples",
+    "tests": [
+      "TestExample21LateJoin"
+    ],
+    "upstream_reference": "packages/durable/src/harness/live.ts:1-176; packages/durable/src/harness/live.ts:149 (SettleSchedulerOutcome); packages/durable/test/examples/21-late-join.ts",
+    "mutation": "durable/harness/live.go:209 `slots := live.Array(\"tools\")` -> `slots := live.Array(\"toolsX\")` (TestExample21LateJoin FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/durable/src/harness/tool.ts",
+    "package": "./durable/examples",
+    "tests": [
+      "TestExample26CodingAgent"
+    ],
+    "upstream_reference": "packages/durable/src/harness/tool.ts:1-499; packages/durable/src/harness/tool.ts:285 (publishProgress); packages/durable/src/harness/tool.ts:480 (boundContent); packages/durable/test/examples/26-coding-agent.ts",
+    "mutation": "durable/harness/tool.go:456 `if err != nil {` -> `if err == nil {` (TestExample26CodingAgent FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/durable/src/harness/tool.ts",
+    "package": "./durable/harness",
+    "tests": [
+      "TestLiveDeltas",
+      "TestToolResults"
+    ],
+    "upstream_reference": "packages/durable/src/harness/tool.ts:1-499; packages/durable/src/harness/tool.ts:285 (publishProgress); packages/durable/src/harness/tool.ts:480 (boundContent); packages/durable/test/harness-live-deltas.test.ts; packages/durable/test/harness-tools.test.ts",
+    "mutation": "durable/harness/tool.go:725 `if slot.Array(\"diagnostics\") == nil {` -> `if slot.Array(\"diagnosticsX\") == nil {` (TestLiveDeltas FAIL); durable/harness/tool.go:913 `if !ok {` -> `if ok {` (TestToolResults FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/durable/src/session/session.ts",
+    "package": "./durable/session",
+    "tests": [
+      "TestCommittedObservationHarnessSurface",
+      "TestSessionHistoricalDocumentSnapshots",
+      "TestSessionTrackerCacheAcrossDefinitionVersions"
+    ],
+    "upstream_reference": "packages/durable/src/session/session.ts:1-569; packages/durable/src/session/session.ts:384 (subscribeCommits)",
+    "mutation": "durable/session/session.go:380 `if err != nil {` -> `if err == nil {` (TestSessionTrackerCacheAcrossDefinitionVersions FAIL); durable/session/session.go:559 `if err := session.assertUsable(); err != nil {` -> `if err := session.assertUsable(); err == nil {` (TestCommittedObservationHarnessSurface FAIL); durable/session/session.go:455 `if err != nil {` -> `if err == nil {` (TestSessionHistoricalDocumentSnapshots FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/durable/src/storage/sqlite/storage.ts",
+    "package": "./durable/storage/sqlite/node",
+    "tests": [
+      "TestPortableSQLiteFacadeSettlement"
+    ],
+    "upstream_reference": "packages/durable/src/storage/sqlite/storage.ts:258 (readEntry); packages/durable/src/storage/sqlite/storage.ts:359 (ScanTasks); packages/durable/src/storage/sqlite/storage.ts:1-871; packages/durable/test/sqlite-facade.test.ts",
+    "mutation": "durable/storage/sqlite/storage.go:489 `row, err := storage.db.Get(\"SELECT record, commit_seq FROM entries WHE` -> `row, err := storage.db.Get(\"SELECT record, commit_seq FROM entries WHE` (TestPortableSQLiteFacadeSettlement FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/durable/src/storage/sqlite/storage.ts",
+    "package": "./durable/storage/sqlite",
+    "tests": [
+      "TestSqliteStorageConformance"
+    ],
+    "upstream_reference": "packages/durable/src/storage/sqlite/storage.ts:258 (readEntry); packages/durable/src/storage/sqlite/storage.ts:359 (ScanTasks); packages/durable/src/storage/sqlite/storage.ts:1-871; packages/durable/test/sqlite-storage.test.ts",
+    "mutation": "durable/storage/sqlite/storage.go:489 `row, err := storage.db.Get(\"SELECT record, commit_seq FROM entries WHE` -> `row, err := storage.db.Get(\"SELECT record, commit_seq FROM entries WHE` (TestSqliteStorageConformance FAIL); durable/storage/sqlite/storage.go:686 `if query.Background != nil {` -> `if query.Background == nil {` (TestSqliteStorageConformance FAIL); durable/storage/sqlite/storage.go:33 `const maxSafeInteger = 1<<53 - 1` -> `const maxSafeInteger = 2<<53 - 1` (TestSqliteStorageConformance FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/durable/src/storage/sqlite/storage.ts",
+    "package": "./durable/storage",
+    "tests": [
+      "TestStorageBenchmarkExpectations"
+    ],
+    "upstream_reference": "packages/durable/src/storage/sqlite/storage.ts:258 (readEntry); packages/durable/src/storage/sqlite/storage.ts:359 (ScanTasks); packages/durable/src/storage/sqlite/storage.ts:1-871; packages/durable/test/storage.bench.ts",
+    "mutation": "durable/storage/sqlite/storage.go:489 `row, err := storage.db.Get(\"SELECT record, commit_seq FROM entries WHE` -> `row, err := storage.db.Get(\"SELECT record, commit_seq FROM entries WHE` (TestStorageBenchmarkExpectations FAIL); durable/storage/sqlite/storage.go:686 `if query.Background != nil {` -> `if query.Background == nil {` (TestStorageBenchmarkExpectations FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/durable/src/tools/bash.ts",
+    "package": "./durable/tools",
+    "tests": [
+      "TestBashPassesTheRetainedWindowToTheEnvironmentAndForwardsWhatItSkipped",
+      "TestPowerShellRunsTheCommandWithPwshAsOneArgumentForcingUTF8Output"
+    ],
+    "upstream_reference": "packages/durable/src/tools/bash.ts:148 (CreatePowerShellTool); packages/durable/src/tools/bash.ts:125 (CreateBashTool); packages/durable/src/tools/bash.ts:77 (runCommand); packages/durable/test/tools.test.ts",
+    "mutation": "durable/tools/bash.go:233 `if err := validateTimeout(input.Timeout); err != nil {` -> `if err := validateTimeout(input.Timeout); err == nil {` (TestPowerShellRunsTheCommandWithPwshAsOneArgumentForcingUTF8Output FAIL); durable/tools/bash.go:99 `if err != nil {` -> `if err == nil {` (TestBashPassesTheRetainedWindowToTheEnvironmentAndForwardsWhatItSkipped FAIL); durable/tools/bash.go:139 `if info.Skipped != nil {` -> `if info.Skipped == nil {` (TestPowerShellRunsTheCommandWithPwshAsOneArgumentForcingUTF8Output FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/durable/src/tools/bash.ts",
+    "package": "./durable/harness",
+    "tests": [
+      "TestCodingTools"
+    ],
+    "upstream_reference": "packages/durable/src/tools/bash.ts:148 (CreatePowerShellTool); packages/durable/src/tools/bash.ts:125 (CreateBashTool); packages/durable/src/tools/bash.ts:77 (runCommand); packages/durable/test/harness-tools.test.ts",
+    "mutation": "durable/tools/bash.go:99 `if err != nil {` -> `if err == nil {` (TestCodingTools FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/durable/src/tools/read.ts",
+    "package": "./durable/tools",
+    "tests": [
+      "TestReadToolReturnsExactlyWhatReadingTheWholeFileReturned"
+    ],
+    "upstream_reference": "packages/durable/src/tools/read.ts:106 (readText); packages/durable/src/tools/read.ts:50 (readHead); packages/durable/src/tools/read.ts:42 (sliceIndex); packages/durable/test/tools-read-differential.test.ts",
+    "mutation": "durable/tools/read.go:183 `startLine = math.Max(0, *input.Offset-1)` -> `startLine = math.Max(0, *input.Offset-2)` (TestReadToolReturnsExactlyWhatReadingTheWholeFileReturned FAIL); durable/tools/read.go:96 `if len(bytes) == 0 {` -> `if len(bytes) == 1 {` (TestReadToolReturnsExactlyWhatReadingTheWholeFileReturned FAIL); durable/tools/read.go:65 `return 0` -> `return 1` (TestReadToolReturnsExactlyWhatReadingTheWholeFileReturned FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/env/src/watch.ts",
+    "package": "./env",
+    "tests": [
+      "TestRemoteExecutionEnvOverAPipeConformance"
+    ],
+    "upstream_reference": "packages/env/src/watch.ts:1-159; packages/env/src/watch.ts:8 (start); packages/env/test/conformance.test.ts",
+    "mutation": "env/watch.go:56 `if err := watcher.start(ctx); err != nil {` -> `if err := watcher.start(ctx); err == nil {` (TestRemoteExecutionEnvOverAPipeConformance FAIL); env/watch.go:155 `call := w.connection.Start(requestContext, \"watch\", request, RequestOp` -> `call := w.connection.Start(requestContext, \"watchX\", request, RequestO` (TestRemoteExecutionEnvOverAPipeConformance FAIL); env/watch.go:168 `case \"change\":` -> `case \"changeX\":` (TestRemoteExecutionEnvOverAPipeConformance FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/durable/src/env/decode.ts",
+    "package": "./durable/env",
+    "tests": [
+      "TestStartsWithBom",
+      "TestStreamDecoder"
+    ],
+    "upstream_reference": "packages/durable/src/env/decode.ts:1-31; packages/durable/src/env/decode.ts:13 (StartsWithBom); packages/durable/test/env-line-scan.test.ts",
+    "mutation": "durable/env/decode.go:49 `if suffix := data[len(data)-tail:]; utf8.RuneStart(suffix[0]) && !utf8` -> `if suffix := data[len(data)-tail:]; utf8.RuneStart(suffix[0]) || !utf8` (TestStreamDecoder FAIL); durable/env/decode.go:58 `return len(firstBytes) >= 3 && firstBytes[0] == 0xef && firstBytes[1] ` -> `return len(firstBytes) >= 3 && firstBytes[0] == 0xef && firstBytes[1] ` (TestStartsWithBom FAIL); durable/env/decode.go:85 `decoder.started = true` -> `decoder.started = false` (TestStreamDecoder FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/durable/src/harness/context.ts",
+    "package": "./durable/harness",
+    "tests": [
+      "TestConversationContext",
+      "TestManualCompaction"
+    ],
+    "upstream_reference": "packages/durable/src/harness/context.ts:129 (OrderToolResults); packages/durable/src/harness/context.ts:59 (DeriveContext); packages/durable/src/harness/context.ts:42 (ReadContext); packages/durable/test/harness-context.test.ts; packages/durable/test/harness-compaction.test.ts",
+    "mutation": "durable/harness/context.go:183 `if len(calls) == 0 {` -> `if len(calls) != 0 {` (TestConversationContext FAIL); durable/harness/context.go:107 `if assistant, ok := message.(ai.AssistantMessage); ok && excludedStopR` -> `if assistant, ok := message.(ai.AssistantMessage); ok || excludedStopR` (TestManualCompaction FAIL); durable/harness/context.go:68 `if err != nil {` -> `if err == nil {` (TestManualCompaction FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/durable/src/harness/context.ts",
+    "package": "./durable/examples",
+    "tests": [
+      "TestExample26CodingAgent"
+    ],
+    "upstream_reference": "packages/durable/src/harness/context.ts:129 (OrderToolResults); packages/durable/src/harness/context.ts:59 (DeriveContext); packages/durable/src/harness/context.ts:42 (ReadContext); packages/durable/test/examples/26-coding-agent.ts",
+    "mutation": "durable/harness/context.go:68 `if err != nil {` -> `if err == nil {` (TestExample26CodingAgent FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/durable/src/harness/output.ts",
+    "package": "./durable/harness",
+    "tests": [
+      "TestOutputBufferSkippedOutput",
+      "TestProgress",
+      "TestToolOutputBounds"
+    ],
+    "upstream_reference": "packages/durable/src/harness/output.ts:1-342; packages/durable/src/harness/output.ts:63 (tailRange); packages/durable/src/harness/output.ts:100 (lineCount); packages/durable/test/harness-output-skip.test.ts; packages/durable/test/harness-output.test.ts",
+    "mutation": "durable/harness/output.go:669 `if err != nil {` -> `if err == nil {` (TestProgress FAIL); durable/harness/output.go:145 `index = -1` -> `index = -2` (TestOutputBufferSkippedOutput FAIL); durable/harness/output.go:193 `if data[len(data)-1] == outputNewline {` -> `if data[len(data)-1] != outputNewline {` (TestToolOutputBounds FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/durable/src/harness/types.ts",
+    "package": "./durable/harness",
+    "tests": [
+      "TestTaskInspectionLiteralsMatchPi"
+    ],
+    "upstream_reference": "packages/durable/src/harness/types.ts:177 (package); packages/durable/src/harness/types.ts:476 (package); packages/durable/src/harness/types.ts:293 (package)",
+    "mutation": "durable/harness/types.go:133 `TaskInspectionRunning    TaskInspectionKind = \"running\"` -> `TaskInspectionRunning    TaskInspectionKind = \"run\"` (TestTaskInspectionLiteralsMatchPi FAIL); durable/harness/types.go:136 `TaskInspectionCompleting TaskInspectionKind = \"completing\"` -> `TaskInspectionCompleting TaskInspectionKind = \"complete\"` (TestTaskInspectionLiteralsMatchPi FAIL); durable/harness/types.go:137 `TaskInspectionBlocked    TaskInspectionKind = \"blocked\"` -> `TaskInspectionBlocked    TaskInspectionKind = \"block\"` (TestTaskInspectionLiteralsMatchPi FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/durable/src/session/transaction.ts",
+    "package": "./durable/session",
+    "tests": [
+      "TestCreateTaskRequiresOwnership",
+      "TestDocumentDefinitions",
+      "TestSessionDocumentCheckpoints"
+    ],
+    "upstream_reference": "packages/durable/src/session/transaction.ts:1-1024",
+    "mutation": "durable/session/transaction.go:1250 `if err := tx.rejectForkSourceWrites(); err != nil {` -> `if err := tx.rejectForkSourceWrites(); err == nil {` (TestSessionDocumentCheckpoints FAIL); durable/session/transaction.go:1428 `if task.writeKind == taskCreate && task.write.Owner != nil {` -> `if task.writeKind == taskCreate || task.write.Owner != nil {` (TestDocumentDefinitions FAIL); durable/session/transaction.go:485 `if parent != nil {` -> `if parent == nil {` (TestCreateTaskRequiresOwnership FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/durable/src/tasks.ts",
+    "package": "./durable",
+    "tests": [
+      "TestErasedPhasesRunTheTypedTask"
+    ],
+    "upstream_reference": "packages/durable/src/tasks.ts:1-9",
+    "mutation": "durable/tasks.go:157 `if !ok {` -> `if ok {` (TestErasedPhasesRunTheTypedTask FAIL); durable/tasks.go:131 `if err != nil {` -> `if err == nil {` (TestErasedPhasesRunTheTypedTask FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/durable/src/tasks.ts",
+    "package": "./durable/harness",
+    "tests": [
+      "TestHarnessInspect"
+    ],
+    "upstream_reference": "packages/durable/src/tasks.ts:1-9; packages/durable/test/harness-inspect.test.ts",
+    "mutation": "durable/tasks.go:47 `if task.erased == nil {` -> `if task.erased != nil {` (TestHarnessInspect FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/durable/src/tools/edit-diff.ts",
+    "package": "./durable/tools",
+    "tests": [
+      "TestEditAppliesDisjointEditsAndReturnsBothDiffFormats",
+      "TestEditRejectsMissingAndDuplicateTargetText"
+    ],
+    "upstream_reference": "packages/durable/src/tools/edit-diff.ts:377 (generateDiffString); packages/durable/src/tools/edit-diff.ts:1-501; packages/durable/src/tools/edit-diff.ts:301 (applyEditsToNormalizedContent); packages/durable/test/tools.test.ts",
+    "mutation": "durable/tools/diff_string.go:42 `raw = raw[:len(raw)-1]` -> `raw = raw[:len(raw)-2]` (TestEditAppliesDisjointEditsAndReturnsBothDiffFormats FAIL); durable/tools/diff_string.go:45 `if part.added || part.removed {` -> `if part.added && part.removed {` (TestEditAppliesDisjointEditsAndReturnsBothDiffFormats FAIL); durable/tools/edit_diff.go:358 `if total == 1 {` -> `if total != 1 {` (TestEditRejectsMissingAndDuplicateTargetText FAIL); durable/tools/edit_diff.go:214 `for i := 1; i < len(matched); i++ {` -> `for i := 1; i <= len(matched); i++ {` (TestEditAppliesDisjointEditsAndReturnsBothDiffFormats FAIL); durable/tools/unified_patch.go:170 `if commonCount > 0 {` -> `if commonCount >= 0 {` (TestEditAppliesDisjointEditsAndReturnsBothDiffFormats FAIL); durable/tools/unified_patch.go:96 `newPos := extractCommon(bestPath[0], newTokens, oldTokens, 0)` -> `newPos := extractCommon(bestPath[0], newTokens, oldTokens, 1)` (TestEditAppliesDisjointEditsAndReturnsBothDiffFormats FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/durable/src/tools/edit-diff.ts",
+    "package": "./durable/harness",
+    "tests": [
+      "TestCodingTools"
+    ],
+    "upstream_reference": "packages/durable/src/tools/edit-diff.ts:377 (generateDiffString); packages/durable/src/tools/edit-diff.ts:1-501; packages/durable/src/tools/edit-diff.ts:301 (applyEditsToNormalizedContent); packages/durable/test/harness-tools.test.ts",
+    "mutation": "durable/tools/edit_diff.go:214 `for i := 1; i < len(matched); i++ {` -> `for i := 1; i <= len(matched); i++ {` (TestCodingTools FAIL); durable/tools/unified_patch.go:96 `newPos := extractCommon(bestPath[0], newTokens, oldTokens, 0)` -> `newPos := extractCommon(bestPath[0], newTokens, oldTokens, 1)` (TestCodingTools FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/durable/src/tools/write.ts",
+    "package": "./durable/tools",
+    "tests": [
+      "TestMutationQueueSurfacesCanonicalPathFailuresOtherThanNotFound",
+      "TestWriteWritesFilesAndCreatesParentDirectories"
+    ],
+    "upstream_reference": "packages/durable/src/tools/write.ts:1-40; packages/durable/test/tools.test.ts",
+    "mutation": "durable/tools/write.go:47 `if err := executionEnv.WriteFile(ctx, absolutePath, input.Content); er` -> `if err := executionEnv.WriteFile(ctx, absolutePath, input.Content); er` (TestWriteWritesFilesAndCreatesParentDirectories FAIL); durable/tools/write.go:50 `if ctx.Err() != nil {` -> `if ctx.Err() == nil {` (TestMutationQueueSurfacesCanonicalPathFailuresOtherThanNotFound FAIL); durable/tools/write.go:44 `if ctx.Err() != nil {` -> `if ctx.Err() == nil {` (TestMutationQueueSurfacesCanonicalPathFailuresOtherThanNotFound FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/durable/src/env/index.ts",
+    "package": "./durable/env/node",
+    "tests": [
+      "TestNodeExecutionEnvConformance"
+    ],
+    "upstream_reference": "packages/durable/src/env/index.ts:23 (ToError); packages/durable/src/env/index.ts:61 (Unwrap); packages/durable/test/env-node-conformance.test.ts",
+    "mutation": "durable/env/env.go:91 `FileErrorInvalid          FileErrorCode = \"invalid\"` -> `FileErrorInvalid          FileErrorCode = \"invalidX\"` (TestNodeExecutionEnvConformance FAIL); durable/env/env.go:122 `ExecutionErrorSpawnError       ExecutionErrorCode = \"spawn_error\"` -> `ExecutionErrorSpawnError       ExecutionErrorCode = \"spawn_errorX\"` (TestNodeExecutionEnvConformance FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/durable/src/harness/define.ts",
+    "package": "./durable/examples",
+    "tests": [
+      "TestExample26CodingAgent",
+      "TestExample28Reviewer"
+    ],
+    "upstream_reference": "packages/durable/src/harness/define.ts:20 (Section); packages/durable/src/harness/define.ts:29 (Hook); packages/durable/src/harness/define.ts:34 (WrapTool); packages/durable/src/harness/define.ts:39 (WrapSection); packages/durable/test/examples/26-coding-agent.ts",
+    "mutation": "durable/harness/define.go:34 `if len(options) > 0 && options[0].Tag != nil {` -> `if len(options) >= 0 && options[0].Tag != nil {` (TestExample26CodingAgent FAIL); durable/harness/define.go:42 `return durable.HookRegistration{Task: task.AnyDefinition().Name, Handl` -> `return durable.HookRegistration{Task: task.AnyDefinition().Name, Handl` (TestExample28Reviewer FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/durable/src/harness/define.ts",
+    "package": "./durable/harness",
+    "tests": [
+      "TestAgentResolution",
+      "TestResolveAgentDropsTargetOfWrapperReturningNil",
+      "TestSectionOptionsWithoutTagStayTagged"
+    ],
+    "upstream_reference": "packages/durable/src/harness/define.ts:20 (Section); packages/durable/src/harness/define.ts:29 (Hook); packages/durable/src/harness/define.ts:34 (WrapTool); packages/durable/src/harness/define.ts:39 (WrapSection); packages/durable/test/harness-registry.test.ts",
+    "mutation": "durable/harness/define.go:34 `if len(options) > 0 && options[0].Tag != nil {` -> `if len(options) >= 0 && options[0].Tag != nil {` (TestResolveAgentDropsTargetOfWrapperReturningNil FAIL); durable/harness/define.go:35 `section.Tag = new(*options[0].Tag)` -> `section.Tag = nil` (TestSectionOptionsWithoutTagStayTagged FAIL); durable/harness/define.go:42 `return durable.HookRegistration{Task: task.AnyDefinition().Name, Handl` -> `return durable.HookRegistration{Task: task.AnyDefinition().Name, Handl` (TestAgentResolution FAIL); durable/harness/define.go:47 `return durable.Wrap{Tool: tool.Name, WrapTool: wrapper}` -> `return durable.Wrap{Tool: \"\", WrapTool: wrapper}` (TestResolveAgentDropsTargetOfWrapperReturningNil FAIL); durable/harness/define.go:52 `return durable.Wrap{Section: key, WrapSection: wrapper}` -> `return durable.Wrap{Section: \"\", WrapSection: wrapper}` (TestResolveAgentDropsTargetOfWrapperReturningNil FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/durable/src/harness/prompt.ts",
+    "package": "./durable/harness",
+    "tests": [
+      "TestManualCompaction",
+      "TestToolLoadoutPreparation"
+    ],
+    "upstream_reference": "packages/durable/src/harness/prompt.ts:122 (planSections); packages/durable/src/harness/prompt.ts:144 (systemEntry); packages/durable/src/harness/prompt.ts:66 (PlanSystemEntries); packages/durable/test/harness-compaction.test.ts; packages/durable/test/harness-prompt.test.ts",
+    "mutation": "durable/harness/prompt.go:211 `} else if next != value {` -> `} else if next == value {` (TestManualCompaction FAIL); durable/harness/prompt.go:229 `if tools != nil && len(tools.toolsRemoved) > 0 {` -> `if tools == nil && len(tools.toolsRemoved) > 0 {` (TestManualCompaction FAIL); durable/harness/prompt.go:102 `drafts := make([]SystemDraft, 0, len(sections))` -> `drafts := make([]SystemDraft, 1, len(sections))` (TestToolLoadoutPreparation FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/durable/src/harness/prompt.ts",
+    "package": "./durable/examples",
+    "tests": [
+      "TestExample19JsonStorages",
+      "TestExample26CodingAgent",
+      "TestExample27PlanMode"
+    ],
+    "upstream_reference": "packages/durable/src/harness/prompt.ts:122 (planSections); packages/durable/src/harness/prompt.ts:144 (systemEntry); packages/durable/src/harness/prompt.ts:66 (PlanSystemEntries); packages/durable/test/examples/18-print.ts; packages/durable/test/examples/26-coding-agent.ts",
+    "mutation": "durable/harness/prompt.go:211 `} else if next != value {` -> `} else if next == value {` (TestExample27PlanMode FAIL); durable/harness/prompt.go:229 `if tools != nil && len(tools.toolsRemoved) > 0 {` -> `if tools == nil && len(tools.toolsRemoved) > 0 {` (TestExample26CodingAgent FAIL); durable/harness/prompt.go:102 `drafts := make([]SystemDraft, 0, len(sections))` -> `drafts := make([]SystemDraft, 1, len(sections))` (TestExample19JsonStorages FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/durable/src/harness/usage.ts",
+    "package": "./durable/harness",
+    "tests": [
+      "TestManualCompaction",
+      "TestUsage"
+    ],
+    "upstream_reference": "packages/durable/src/harness/usage.ts:58 (AddUsageState); packages/durable/src/harness/usage.ts:1-73; packages/durable/test/harness-compaction.test.ts; packages/durable/test/harness-inbox.test.ts",
+    "mutation": "durable/harness/usage.go:187 `if !found {` -> `if found {` (TestUsage FAIL); durable/harness/usage.go:128 `if usage.Reasoning != nil {` -> `if usage.Reasoning == nil {` (TestManualCompaction FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/durable/src/harness/usage.ts",
+    "package": "./durable/examples",
+    "tests": [
+      "TestExample26CodingAgent"
+    ],
+    "upstream_reference": "packages/durable/src/harness/usage.ts:58 (AddUsageState); packages/durable/src/harness/usage.ts:1-73; packages/durable/test/examples/26-coding-agent.ts",
+    "mutation": "durable/harness/usage.go:128 `if usage.Reasoning != nil {` -> `if usage.Reasoning == nil {` (TestExample26CodingAgent FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/durable/src/storage/jsonl/node.ts",
+    "package": "./durable/storage/jsonl",
+    "tests": [
+      "TestJsonlStorageConformance",
+      "TestPicoJsonlStoragePublicationAndRecovery"
+    ],
+    "upstream_reference": "packages/durable/src/storage/jsonl/node.ts:1-15; packages/durable/test/jsonl-storage.test.ts",
+    "mutation": "durable/storage/jsonl/node/node.go:201 `if err != nil {` -> `if err == nil {` (TestPicoJsonlStoragePublicationAndRecovery FAIL); durable/storage/jsonl/node/node.go:133 `if err != nil {` -> `if err == nil {` (TestJsonlStorageConformance FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/durable/src/storage/jsonl/node.ts",
+    "package": "./durable/storage/jsonl/node",
+    "tests": [
+      "TestNodeFileSystemResolvesPathsAsResolvePathDoes"
+    ],
+    "upstream_reference": "packages/durable/src/storage/jsonl/node.ts:1-15",
+    "mutation": "durable/storage/jsonl/node/node.go:49 `case normalized == \"~\":` -> `case normalized != \"~\":` (TestNodeFileSystemResolvesPathsAsResolvePathDoes FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/durable/src/testing/assertions.ts",
+    "package": "./durable/storage",
+    "tests": [
+      "TestMemoryStorageConformance"
+    ],
+    "upstream_reference": "packages/durable/src/testing/assertions.ts:35 (Rejects); packages/durable/src/testing/assertions.ts:1-40; packages/durable/src/testing/assertions.ts:20 (Ok); packages/durable/test/memory-storage.test.ts",
+    "mutation": "durable/durabletest/durabletest.go:94 `if err == nil {` -> `if err != nil {` (TestMemoryStorageConformance FAIL); durable/durabletest/durabletest.go:140 `return true` -> `return false` (TestMemoryStorageConformance FAIL); durable/durabletest/durabletest.go:59 `if !value {` -> `if value {` (TestMemoryStorageConformance FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/durable/src/testing/assertions.ts",
+    "package": "./durable/storage/jsonl",
+    "tests": [
+      "TestJsonlStorageConformance"
+    ],
+    "upstream_reference": "packages/durable/src/testing/assertions.ts:35 (Rejects); packages/durable/src/testing/assertions.ts:1-40; packages/durable/src/testing/assertions.ts:20 (Ok); packages/durable/test/jsonl-storage.test.ts",
+    "mutation": "durable/durabletest/durabletest.go:140 `return true` -> `return false` (TestJsonlStorageConformance FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/durable/src/testing/assertions.ts",
+    "package": "./durable/storage/sqlite",
+    "tests": [
+      "TestSqliteStorageConformance"
+    ],
+    "upstream_reference": "packages/durable/src/testing/assertions.ts:35 (Rejects); packages/durable/src/testing/assertions.ts:1-40; packages/durable/src/testing/assertions.ts:20 (Ok); packages/durable/test/sqlite-storage.test.ts",
+    "mutation": "durable/durabletest/durabletest.go:140 `return true` -> `return false` (TestSqliteStorageConformance FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/durable/src/tools/edit.ts",
+    "package": "./durable/tools",
+    "tests": [
+      "TestEditAppliesDisjointEditsAndReturnsBothDiffFormats",
+      "TestEditRejectsAPathThatIsNotAFile",
+      "TestEditRepairsEditsSentAsAJSONStringASingleObjectOrTopLevelOldTextNewTextWithoutMutatingThem"
+    ],
+    "upstream_reference": "packages/durable/src/tools/edit.ts:1-145; packages/durable/src/tools/edit.ts:20 (singleEditInput); packages/durable/test/tools.test.ts",
+    "mutation": "durable/tools/edit.go:194 `if err != nil {` -> `if err == nil {` (TestEditAppliesDisjointEditsAndReturnsBothDiffFormats FAIL); durable/tools/edit.go:134 `if err != nil {` -> `if err == nil {` (TestEditRejectsAPathThatIsNotAFile FAIL); durable/tools/edit.go:40 `_, oldIsString := edit[\"oldText\"].(string)` -> `_, oldIsString := edit[\"oldTextX\"].(string)` (TestEditRepairsEditsSentAsAJSONStringASingleObjectOrTopLevelOldTextNewTextWithoutMutatingThem FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/durable/src/tools/edit.ts",
+    "package": "./durable/harness",
+    "tests": [
+      "TestCodingTools"
+    ],
+    "upstream_reference": "packages/durable/src/tools/edit.ts:1-145; packages/durable/src/tools/edit.ts:20 (singleEditInput); packages/durable/test/harness-tools.test.ts",
+    "mutation": "durable/tools/edit.go:194 `if err != nil {` -> `if err == nil {` (TestCodingTools FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/durable/src/truncate.ts",
+    "package": "./durable",
+    "tests": [
+      "TestTruncateUtilitiesUpstream",
+      "TestTruncationResultEncodesAnAbsentLimitAsNull"
+    ],
+    "upstream_reference": "packages/durable/src/truncate.ts:121 (TruncateHeadOf); packages/durable/src/truncate.ts:91 (FormatSize); packages/durable/src/truncate.ts:1-206; packages/durable/test/env-truncate.test.ts",
+    "mutation": "durable/truncate.go:191 `if truncatedBy != TruncatedByBytes {` -> `if truncatedBy == TruncatedByBytes {` (TestTruncateUtilitiesUpstream FAIL); durable/truncate.go:111 `return jsstring.ToFixed(float64(bytes)/(1024*1024), 1) + \"MB\"` -> `return jsstring.ToFixed(float64(bytes)/(1024*1024), 2) + \"MB\"` (TestTruncateUtilitiesUpstream FAIL); durable/truncate.go:26 `TruncatedByLines TruncatedBy = \"lines\"` -> `TruncatedByLines TruncatedBy = \"linesX\"` (TestTruncationResultEncodesAnAbsentLimitAsNull FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/durable/src/env/line-scan.ts",
+    "package": "./durable/env",
+    "tests": [
+      "TestLineScanner"
+    ],
+    "upstream_reference": "packages/durable/src/env/line-scan.ts:1-146; packages/durable/test/env-line-scan.test.ts",
+    "mutation": "durable/env/line_scan.go:115 `from = index + 1` -> `from = index + 2` (TestLineScanner FAIL); durable/env/line_scan.go:92 `return scanner.hasEnd && line == scanner.endLine-1` -> `return scanner.hasEnd || line == scanner.endLine-1` (TestLineScanner FAIL); durable/env/line_scan.go:172 `if scanner.firstLine != nil {` -> `if scanner.firstLine == nil {` (TestLineScanner FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/durable/src/harness/events.ts",
+    "package": "./durable/harness",
+    "tests": [
+      "TestAgentEvents",
+      "TestCompactionEdgeCasesLater"
+    ],
+    "upstream_reference": "packages/durable/src/harness/events.ts:66 (MarshalJSON); packages/durable/src/harness/events.ts:1-426; packages/durable/test/harness-events.test.ts; packages/durable/test/harness-compaction.test.ts",
+    "mutation": "durable/harness/events.go:313 `value := map[string]any{\"toolCallId\": event.ToolCallId, \"toolName\": ev` -> `value := map[string]any{\"toolCallIdX\": event.ToolCallId, \"toolName\": e` (TestAgentEvents FAIL); durable/harness/events.go:496 `if a == nil || b == nil {` -> `if a == nil || b != nil {` (TestCompactionEdgeCasesLater FAIL); durable/harness/events.go:829 `runChanged := nowHas != wasHas || nowFirst != wasFirst` -> `runChanged := nowHas != wasHas && nowFirst != wasFirst` (TestAgentEvents FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/durable/src/harness/provider.ts",
+    "package": "./durable/harness",
+    "tests": [
+      "TestAddToolsEditsTheStoredToolFilter",
+      "TestManualCompaction"
+    ],
+    "upstream_reference": "packages/durable/src/harness/provider.ts:26 (ensureProviderSessionId); packages/durable/src/harness/provider.ts:1-40; packages/durable/test/harness-compaction.test.ts",
+    "mutation": "durable/harness/provider.go:56 `if err != nil {` -> `if err == nil {` (TestManualCompaction FAIL); durable/harness/provider.go:38 `if err != nil {` -> `if err == nil {` (TestAddToolsEditsTheStoredToolFilter FAIL); durable/harness/provider.go:59 `created, _ = draft.Get(\"sessionId\").(string)` -> `created, _ = draft.Get(\"sessionIdX\").(string)` (TestManualCompaction FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/durable/src/harness/provider.ts",
+    "package": "./durable/examples",
+    "tests": [
+      "TestExample26CodingAgent"
+    ],
+    "upstream_reference": "packages/durable/src/harness/provider.ts:26 (ensureProviderSessionId); packages/durable/src/harness/provider.ts:1-40; packages/durable/test/examples/26-coding-agent.ts",
+    "mutation": "durable/harness/provider.go:38 `if err != nil {` -> `if err == nil {` (TestExample26CodingAgent FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/durable/src/harness/util.ts",
+    "package": "./durable/examples",
+    "tests": [
+      "TestExample26CodingAgent"
+    ],
+    "upstream_reference": "packages/durable/src/harness/util.ts:8 (Add); packages/durable/src/harness/util.ts:45 (ScanAll); packages/durable/src/harness/util.ts:31 (Resolve); packages/durable/test/examples/26-coding-agent.ts",
+    "mutation": "durable/harness/util.go:41 `if ctx.Err() != nil {` -> `if ctx.Err() == nil {` (TestExample26CodingAgent FAIL); durable/harness/util.go:143 `if page.Next == nil {` -> `if page.Next != nil {` (TestExample26CodingAgent FAIL); durable/harness/util.go:107 `if set != nil {` -> `if set == nil {` (TestExample26CodingAgent FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/durable/src/harness/util.ts",
+    "package": "./durable/harness",
+    "tests": [
+      "TestAddToolsEditsTheStoredToolFilter",
+      "TestManualCompaction"
+    ],
+    "upstream_reference": "packages/durable/src/harness/util.ts:8 (Add); packages/durable/src/harness/util.ts:45 (ScanAll); packages/durable/src/harness/util.ts:31 (Resolve); packages/durable/test/harness-compaction.test.ts",
+    "mutation": "durable/harness/util.go:41 `if ctx.Err() != nil {` -> `if ctx.Err() == nil {` (TestManualCompaction FAIL); durable/harness/util.go:143 `if page.Next == nil {` -> `if page.Next != nil {` (TestAddToolsEditsTheStoredToolFilter FAIL); durable/harness/util.go:107 `if set != nil {` -> `if set == nil {` (TestManualCompaction FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/durable/src/storage/jsonl/storage.ts",
+    "package": "./durable/storage/jsonl",
+    "tests": [
+      "TestJsonlStorageConformance",
+      "TestPicoJsonlStoragePublicationAndRecovery"
+    ],
+    "upstream_reference": "packages/durable/src/storage/jsonl/storage.ts:174 (parseMainMarker); packages/durable/src/storage/jsonl/storage.ts:450 (planReclamations); packages/durable/src/storage/jsonl/storage.ts:349 (ScanTasks); packages/durable/test/jsonl-storage.test.ts",
+    "mutation": "durable/storage/jsonl/storage.go:1138 `format, formatOk := safeInteger(object[\"format\"])` -> `format, formatOk := safeInteger(object[\"formatX\"])` (TestJsonlStorageConformance FAIL); durable/storage/jsonl/storage.go:639 `return jsonl.currentOnlyDocuments[id] || createdCurrentOnly[id]` -> `return jsonl.currentOnlyDocuments[id] && createdCurrentOnly[id]` (TestPicoJsonlStoragePublicationAndRecovery FAIL); durable/storage/jsonl/storage.go:455 `if err != nil {` -> `if err == nil {` (TestJsonlStorageConformance FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/durable/src/storage/jsonl/storage.ts",
+    "package": "./durable/storage",
+    "tests": [
+      "TestStorageBenchmarkExpectations"
+    ],
+    "upstream_reference": "packages/durable/src/storage/jsonl/storage.ts:174 (parseMainMarker); packages/durable/src/storage/jsonl/storage.ts:450 (planReclamations); packages/durable/src/storage/jsonl/storage.ts:349 (ScanTasks); packages/durable/test/storage.bench.ts",
+    "mutation": "durable/storage/jsonl/storage.go:455 `if err != nil {` -> `if err == nil {` (TestStorageBenchmarkExpectations FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/durable/src/testing/env-conformance.ts",
+    "package": "./durable/env/node",
+    "tests": [
+      "TestNodeExecutionEnvConformance"
+    ],
+    "upstream_reference": "packages/durable/src/testing/env-conformance.ts:98 (CreateEnvConformance); packages/durable/src/testing/env-conformance.ts:1-512; packages/durable/test/env-node-conformance.test.ts",
+    "mutation": "durable/durabletest/env_conformance.go:526 `skipNotFollowedByAWindow := false` -> `skipNotFollowedByAWindow := true` (TestNodeExecutionEnvConformance FAIL); durable/durabletest/env_conformance.go:81 `return pages, true` -> `return pages, false` (TestNodeExecutionEnvConformance FAIL); durable/durabletest/env_conformance.go:153 `if from == 0 {` -> `if from != 0 {` (TestNodeExecutionEnvConformance FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/durable/src/tools/env.ts",
+    "package": "./durable/tools",
+    "tests": [
+      "TestDurableToolsFailWithAnOrdinaryErrorWhenNoEnvironmentIsConfigured",
+      "TestReadFindsTheMacOSVariantOfAMissingName"
+    ],
+    "upstream_reference": "packages/durable/src/tools/env.ts:5 (requireEnv); packages/durable/test/tools.test.ts",
+    "mutation": "durable/tools/env.go:16 `if executionEnv == nil {` -> `if executionEnv != nil {` (TestReadFindsTheMacOSVariantOfAMissingName FAIL); durable/tools/env.go:17 `return nil, errors.New(\"No execution environment is configured\")` -> `return nil, errors.New(\"no execution environment is configured\")` (TestDurableToolsFailWithAnOrdinaryErrorWhenNoEnvironmentIsConfigured FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/durable/src/types.ts",
+    "package": "./durable",
+    "tests": [
+      "TestErasedPhasesRunTheTypedTask",
+      "TestTypesUpstream"
+    ],
+    "upstream_reference": "packages/durable/src/types.ts:142 (Record); packages/durable/src/types.ts:27 (package); packages/durable/src/types.ts:1-1086",
+    "mutation": "durable/types.go:521 `TaskTerminal TaskStatus = \"terminal\"` -> `TaskTerminal TaskStatus = \"terminalX\"` (TestErasedPhasesRunTheTypedTask FAIL); durable/types.go:62 `ScopeConversation DocumentScope = \"conversation\"` -> `ScopeConversation DocumentScope = \"conversationX\"` (TestTypesUpstream FAIL); durable/types.go:665 `ContentBase  DocumentContentKind = \"base\"` -> `ContentBase  DocumentContentKind = \"baseX\"` (TestTypesUpstream FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/durable/src/env/node-watch.ts",
+    "package": "./durable/env/node",
+    "tests": [
+      "TestNodeExecutionEnvConformance"
+    ],
+    "upstream_reference": "packages/durable/src/env/node-watch.ts:287 (scan); packages/durable/src/env/node-watch.ts:1-523; packages/durable/src/env/node-watch.ts:125 (isWithin); packages/durable/test/env-node-conformance.test.ts",
+    "mutation": "durable/env/node/watch.go:630 `if link, err := os.Lstat(target.path); err == nil && link.Mode()&fs.Mo` -> `if link, err := os.Lstat(target.path); err == nil && link.Mode()&fs.Mo` (TestNodeExecutionEnvConformance FAIL); durable/env/node/watch.go:374 `if watcher.closed || watcher.timer != nil {` -> `if watcher.closed || watcher.timer == nil {` (TestNodeExecutionEnvConformance FAIL); durable/env/node/watch.go:156 `return true` -> `return false` (TestNodeExecutionEnvConformance FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/durable/src/harness/generation.ts",
+    "package": "./durable/harness",
+    "tests": [
+      "TestAgentEvents",
+      "TestBackgroundThresholdCompaction",
+      "TestOverflowCompaction"
+    ],
+    "upstream_reference": "packages/durable/src/harness/generation.ts:419 (classify); packages/durable/src/harness/generation.ts:545 (startToolRound); packages/durable/src/harness/generation.ts:1-681; packages/durable/test/harness-events.test.ts; packages/durable/test/harness-compaction.test.ts",
+    "mutation": "durable/harness/generation.go:781 `if err != nil {` -> `if err == nil {` (TestOverflowCompaction FAIL); durable/harness/generation.go:960 `if err != nil {` -> `if err == nil {` (TestAgentEvents FAIL); durable/harness/generation.go:261 `if _, err := CreateCompaction(tx, conversationId, CompactionInput{Reas` -> `if _, err := CreateCompaction(tx, conversationId, CompactionInput{Reas` (TestBackgroundThresholdCompaction FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/durable/src/harness/registry.ts",
+    "package": "./durable/examples",
+    "tests": [
+      "TestExample07Configuration",
+      "TestExample26CodingAgent"
+    ],
+    "upstream_reference": "packages/durable/src/harness/registry.ts:82 (Uninstall); packages/durable/src/harness/registry.ts:96 (validateExtension); packages/durable/src/harness/registry.ts:1-115; packages/durable/test/examples/06-harness.ts; packages/durable/test/examples/26-coding-agent.ts",
+    "mutation": "durable/harness/registry.go:163 `next := slices.DeleteFunc(slices.Clone(current), func(installed *durab` -> `next := slices.DeleteFunc(slices.Clone(current), func(installed *durab` (TestExample07Configuration FAIL); durable/harness/registry.go:196 `if !sectionKeyPattern.MatchString(key) {` -> `if sectionKeyPattern.MatchString(key) {` (TestExample26CodingAgent FAIL); durable/harness/registry.go:171 `if err != nil {` -> `if err == nil {` (TestExample26CodingAgent FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/durable/src/harness/registry.ts",
+    "package": "./durable/harness",
+    "tests": [
+      "TestRegistry",
+      "TestResolveAgentDropsTargetOfWrapperReturningNil"
+    ],
+    "upstream_reference": "packages/durable/src/harness/registry.ts:82 (Uninstall); packages/durable/src/harness/registry.ts:96 (validateExtension); packages/durable/src/harness/registry.ts:1-115; packages/durable/test/harness-registry.test.ts",
+    "mutation": "durable/harness/registry.go:163 `next := slices.DeleteFunc(slices.Clone(current), func(installed *durab` -> `next := slices.DeleteFunc(slices.Clone(current), func(installed *durab` (TestRegistry FAIL); durable/harness/registry.go:196 `if !sectionKeyPattern.MatchString(key) {` -> `if sectionKeyPattern.MatchString(key) {` (TestResolveAgentDropsTargetOfWrapperReturningNil FAIL); durable/harness/registry.go:171 `if err != nil {` -> `if err == nil {` (TestResolveAgentDropsTargetOfWrapperReturningNil FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/durable/src/harness/view.ts",
+    "package": "./durable/harness",
+    "tests": [
+      "TestBlockingThresholdCompaction"
+    ],
+    "upstream_reference": "packages/durable/src/harness/view.ts:1-245; packages/durable/src/harness/view.ts:135 (Attach); packages/durable/test/harness-compaction.test.ts",
+    "mutation": "durable/harness/view.go:323 `if observer.Publication != nil {` -> `if observer.Publication == nil {` (TestBlockingThresholdCompaction FAIL); durable/harness/view.go:182 `if err != nil {` -> `if err == nil {` (TestBlockingThresholdCompaction FAIL); durable/harness/view.go:336 `root[\"docs\"] = tree` -> `root[\"docsX\"] = tree` (TestBlockingThresholdCompaction FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/durable/src/harness/view.ts",
+    "package": "./durable/examples",
+    "tests": [
+      "TestExample21LateJoin"
+    ],
+    "upstream_reference": "packages/durable/src/harness/view.ts:1-245; packages/durable/src/harness/view.ts:135 (Attach); packages/durable/test/examples/21-late-join.ts",
+    "mutation": "durable/harness/view.go:182 `if err != nil {` -> `if err == nil {` (TestExample21LateJoin FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/durable/src/storage/memory.ts",
+    "package": "./durable/storage",
+    "tests": [
+      "TestMemoryStorageConformance"
+    ],
+    "upstream_reference": "packages/durable/src/storage/memory.ts:635 (materializeDocument); packages/durable/src/storage/memory.ts:154 (removeSorted); packages/durable/src/storage/memory.ts:499 (ScanEntries); packages/durable/test/memory-storage.test.ts",
+    "mutation": "durable/storage/memory.go:945 `batches := make([][]durable.Op, 0, len(revisions)-baseIndex-1)` -> `batches := make([][]durable.Op, 1, len(revisions)-baseIndex-1)` (TestMemoryStorageConformance FAIL); durable/storage/memory.go:173 `if index < len(ids) && ids[index] == id {` -> `if index < len(ids) && ids[index] != id {` (TestMemoryStorageConformance FAIL); durable/storage/memory.go:701 `maxEntryId = min(maxEntryId, after-1)` -> `maxEntryId = min(maxEntryId, after-2)` (TestMemoryStorageConformance FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/durable/src/storage/memory.ts",
+    "package": "./durable/session",
+    "tests": [
+      "TestSessionDocumentCheckpoints"
+    ],
+    "upstream_reference": "packages/durable/src/storage/memory.ts:635 (materializeDocument); packages/durable/src/storage/memory.ts:154 (removeSorted); packages/durable/src/storage/memory.ts:499 (ScanEntries)",
+    "mutation": "durable/storage/memory.go:945 `batches := make([][]durable.Op, 0, len(revisions)-baseIndex-1)` -> `batches := make([][]durable.Op, 1, len(revisions)-baseIndex-1)` (TestSessionDocumentCheckpoints FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/durable/src/testing/runner.ts",
+    "package": "./durable/storage/jsonl",
+    "tests": [
+      "TestJsonlStorageConformance"
+    ],
+    "upstream_reference": "packages/durable/src/testing/runner.ts:1-39; packages/durable/test/jsonl-storage.test.ts",
+    "mutation": "durable/durabletest/durabletest.go:94 `if err == nil {` -> `if err != nil {` (TestJsonlStorageConformance FAIL); durable/durabletest/durabletest.go:140 `return true` -> `return false` (TestJsonlStorageConformance FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/durable/src/testing/runner.ts",
+    "package": "./durable/storage",
+    "tests": [
+      "TestMemoryStorageConformance"
+    ],
+    "upstream_reference": "packages/durable/src/testing/runner.ts:1-39; packages/durable/test/memory-storage.test.ts",
+    "mutation": "durable/durabletest/durabletest.go:94 `if err == nil {` -> `if err != nil {` (TestMemoryStorageConformance FAIL); durable/durabletest/durabletest.go:140 `return true` -> `return false` (TestMemoryStorageConformance FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/durable/src/testing/runner.ts",
+    "package": "./durable/storage/sqlite",
+    "tests": [
+      "TestSqliteStorageConformance"
+    ],
+    "upstream_reference": "packages/durable/src/testing/runner.ts:1-39; packages/durable/test/sqlite-storage.test.ts",
+    "mutation": "durable/durabletest/durabletest.go:94 `if err == nil {` -> `if err != nil {` (TestSqliteStorageConformance FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/durable/src/testing/runner.ts",
+    "package": "./durable/env/node",
+    "tests": [
+      "TestNodeExecutionEnvConformance"
+    ],
+    "upstream_reference": "packages/durable/src/testing/runner.ts:1-39; packages/durable/test/env-node-conformance.test.ts",
+    "mutation": "durable/durabletest/env_conformance.go:526 `skipNotFollowedByAWindow := false` -> `skipNotFollowedByAWindow := true` (TestNodeExecutionEnvConformance FAIL); durable/durabletest/env_conformance.go:81 `return pages, true` -> `return pages, false` (TestNodeExecutionEnvConformance FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/durable/src/tools/file-mutation-queue.ts",
+    "package": "./durable/tools",
+    "tests": [
+      "TestEditKeysAMissingFileWhoseNameContainsABackslashLikeTheCreatedFile",
+      "TestEditRejectsAPathThatIsNotAFile",
+      "TestMutationQueueSurfacesCanonicalPathFailuresOtherThanNotFound"
+    ],
+    "upstream_reference": "packages/durable/src/tools/file-mutation-queue.ts:7 (mutationKey); packages/durable/src/tools/file-mutation-queue.ts:16 (canonical); packages/durable/src/tools/file-mutation-queue.ts:33 (withFileMutationQueue); packages/durable/test/tools.test.ts",
+    "mutation": "durable/tools/file_mutation_queue.go:24 `if err != nil {` -> `if err == nil {` (TestMutationQueueSurfacesCanonicalPathFailuresOtherThanNotFound FAIL); durable/tools/file_mutation_queue.go:52 `if err != nil {` -> `if err == nil {` (TestEditKeysAMissingFileWhoseNameContainsABackslashLikeTheCreatedFile FAIL); durable/tools/file_mutation_queue.go:78 `if err != nil {` -> `if err == nil {` (TestEditRejectsAPathThatIsNotAFile FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/env/src/connection.ts",
+    "package": "./env",
+    "tests": [
+      "TestRemoteExecutionEnvOverAPipeConformance",
+      "TestSshArgumentsMatchPi"
+    ],
+    "upstream_reference": "packages/env/src/connection.ts:1-385; packages/env/test/conformance.test.ts",
+    "mutation": "env/connection.go:382 `if ready.err != nil {` -> `if ready.err == nil {` (TestRemoteExecutionEnvOverAPipeConformance FAIL); env/connection.go:638 `if _, err := io.ReadFull(reader, body); err != nil {` -> `if _, err := io.ReadFull(reader, body); err == nil {` (TestRemoteExecutionEnvOverAPipeConformance FAIL); env/frame_json.go:30 `if r < 0x20 {` -> `if r <= 0x20 {` (TestSshArgumentsMatchPi FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/durable/src/env/node.ts",
+    "package": "./durable/env/node",
+    "tests": [
+      "TestFilesystemFlushesExistingFilesWithoutChangingContentAndReportsMissingPaths",
+      "TestFilesystemReturnsFileInfoForFilesDirectoriesAndSymlinksWithoutFollowingSymlinks",
+      "TestNodeExecutionEnvConformance",
+      "TestShellCountsAPartialFinalLineAgainstTheSpillLineThreshold"
+    ],
+    "upstream_reference": "packages/durable/src/env/node.ts:508 (ScanLines); packages/durable/src/env/node.ts:959 (OpenBinaryReader); packages/durable/src/env/node.ts:174 (timeout); packages/durable/src/env/node.ts:834 (feed); packages/durable/src/env/node.ts:1059 (FlushFile); packages/durable/src/env/node.ts:1145 (CanonicalPath); packages/durable/test/env-node.test.ts; packages/durable/test/env-node-conformance.test.ts",
+    "mutation": "durable/env/node/binary_reader.go:119 `if abortErr := abortedFileError(ctx, reader.path); abortErr != nil {` -> `if abortErr := abortedFileError(ctx, reader.path); abortErr == nil {` (TestNodeExecutionEnvConformance FAIL); durable/env/node/binary_reader.go:172 `if !stats.Mode().IsRegular() {` -> `if stats.Mode().IsRegular() {` (TestNodeExecutionEnvConformance FAIL); durable/env/node/exec.go:261 `run.timedOut = true` -> `run.timedOut = false` (TestNodeExecutionEnvConformance FAIL); durable/env/node/exec.go:357 `if chunk[len(chunk)-1] != '\\n' {` -> `if chunk[len(chunk)-2] != '\\n' {` (TestShellCountsAPartialFinalLineAgainstTheSpillLineThreshold FAIL); durable/env/node/node.go:276 `if err := abortedFileError(ctx, resolved); err != nil {` -> `if err := abortedFileError(ctx, resolved); err == nil {` (TestFilesystemFlushesExistingFilesWithoutChangingContentAndReportsMissingPaths FAIL); durable/env/node/node.go:405 `if err := abortedFileError(ctx, resolved); err != nil {` -> `if err := abortedFileError(ctx, resolved); err == nil {` (TestFilesystemReturnsFileInfoForFilesDirectoriesAndSymlinksWithoutFollowingSymlinks FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/durable/src/env/node.ts",
+    "package": "./durable/tools",
+    "tests": [
+      "TestBashPreparesCommandCwdAndAnExplicitEnvironmentWithTheCallsApi",
+      "TestBashThrowsOnNonzeroExitsAndTimeoutsAfterStreamingTheOutput",
+      "TestReadFindsTheMacOSVariantOfAMissingName"
+    ],
+    "upstream_reference": "packages/durable/src/env/node.ts:508 (ScanLines); packages/durable/src/env/node.ts:959 (OpenBinaryReader); packages/durable/src/env/node.ts:174 (timeout); packages/durable/src/env/node.ts:834 (feed); packages/durable/src/env/node.ts:1059 (FlushFile); packages/durable/src/env/node.ts:1145 (CanonicalPath); packages/durable/test/tools.test.ts",
+    "mutation": "durable/env/node/binary_reader.go:172 `if !stats.Mode().IsRegular() {` -> `if stats.Mode().IsRegular() {` (TestReadFindsTheMacOSVariantOfAMissingName FAIL); durable/env/node/exec.go:261 `run.timedOut = true` -> `run.timedOut = false` (TestBashThrowsOnNonzeroExitsAndTimeoutsAfterStreamingTheOutput FAIL); durable/env/node/node.go:405 `if err := abortedFileError(ctx, resolved); err != nil {` -> `if err := abortedFileError(ctx, resolved); err == nil {` (TestBashPreparesCommandCwdAndAnExplicitEnvironmentWithTheCallsApi FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/durable/src/harness/harness.ts",
+    "package": "./durable/examples",
+    "tests": [
+      "TestExample08HarnessConversations",
+      "TestExample23SubagentBackground",
+      "TestExample26CodingAgent"
+    ],
+    "upstream_reference": "packages/durable/src/harness/harness.ts:312 (Conversation); packages/durable/src/harness/harness.ts:1-437; packages/durable/src/harness/harness.ts:305 (Root); packages/durable/test/examples/06-harness.ts; packages/durable/test/examples/23-subagent-background.ts; packages/durable/test/examples/26-coding-agent.ts",
+    "mutation": "durable/harness/harness.go:301 `if found == nil {` -> `if found != nil {` (TestExample08HarnessConversations FAIL); durable/harness/harness.go:537 `if record.(*durable.ConversationRecord) == nil {` -> `if record.(*durable.ConversationRecord) != nil {` (TestExample23SubagentBackground FAIL); durable/harness/harness.go:286 `if options != nil {` -> `if options == nil {` (TestExample26CodingAgent FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/durable/src/harness/harness.ts",
+    "package": "./durable/harness",
+    "tests": [
+      "TestChordUsageGuide",
+      "TestHarnessRootAndConversations"
+    ],
+    "upstream_reference": "packages/durable/src/harness/harness.ts:312 (Conversation); packages/durable/src/harness/harness.ts:1-437; packages/durable/src/harness/harness.ts:305 (Root); packages/durable/test/chord-guide.test.ts; packages/durable/test/harness-conversations.test.ts",
+    "mutation": "durable/harness/harness.go:301 `if found == nil {` -> `if found != nil {` (TestHarnessRootAndConversations FAIL); durable/harness/harness.go:286 `if options != nil {` -> `if options == nil {` (TestChordUsageGuide FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/durable/src/harness/scheduler.ts",
+    "package": "./durable/harness",
+    "tests": [
+      "TestBlockedCompaction",
+      "TestGeneration",
+      "TestHarnessInspect",
+      "TestTaskScheduling"
+    ],
+    "upstream_reference": "packages/durable/src/harness/scheduler.ts:788 (Inspect); packages/durable/src/harness/scheduler.ts:1-1338; packages/durable/src/harness/scheduler.ts:274 (Abort); packages/durable/src/harness/scheduler.ts:57 (package); packages/durable/test/harness-compaction.test.ts; packages/durable/test/harness-generation.test.ts; packages/durable/test/harness-inspect.test.ts; packages/durable/test/harness-tasks.test.ts",
+    "mutation": "durable/harness/scheduler.go:1325 `scheduling = \"running\"` -> `scheduling = \"runningX\"` (TestHarnessInspect FAIL); durable/harness/scheduler.go:1556 `return anyTaskRecord{}, false` -> `return anyTaskRecord{}, true` (TestTaskScheduling FAIL); durable/harness/scheduler.go:384 `if err := setTask(tx, record); err != nil {` -> `if err := setTask(tx, record); err == nil {` (TestGeneration FAIL); durable/harness/scheduler.go:37 `blockedTaskTooOld      = \"task_too_old\"` -> `blockedTaskTooOld      = \"too_old\"` (TestBlockedCompaction FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/durable/src/ids.ts",
+    "package": "./durable",
+    "tests": [
+      "TestTypesUpstream",
+      "TestTypesUpstreamExclusivityLiteralsEncodeAsPiObjects"
+    ],
+    "upstream_reference": "packages/durable/src/ids.ts:4 (IdFromNumber); packages/durable/src/ids.ts:9 (SeqFromNumber)",
+    "mutation": "durable/ids.go:7 `return I(value)` -> `return I(value + 1)` (TestTypesUpstream FAIL); durable/ids.go:12 `return Seq(value)` -> `return Seq(value + 1)` (TestTypesUpstreamExclusivityLiteralsEncodeAsPiObjects FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/durable/src/testing/storage-benchmark.ts",
+    "package": "./durable/storage",
+    "tests": [
+      "TestStorageBenchmarkExpectations"
+    ],
+    "upstream_reference": "packages/durable/src/testing/storage-benchmark.ts:88 (SeedStorageBenchmark); packages/durable/src/testing/storage-benchmark.ts:1-490; packages/durable/src/testing/storage-benchmark.ts:391 (SeedStorageWriteBenchmark); packages/durable/test/storage.bench.ts",
+    "mutation": "durable/durabletest/storage_benchmark.go:189 `for count := 1; count <= replayTails[len(replayTails)-1]; count++ {` -> `for count := 1; count <= replayTails[len(replayTails)-2]; count++ {` (TestStorageBenchmarkExpectations FAIL); durable/durabletest/storage_benchmark.go:64 `if index%4 == 0 {` -> `if index%5 == 0 {` (TestStorageBenchmarkExpectations FAIL); durable/durabletest/storage_benchmark.go:440 `if err != nil {` -> `if err == nil {` (TestStorageBenchmarkExpectations FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/durable/src/tools/image.ts",
+    "package": "./durable/tools",
+    "tests": [
+      "TestReadReportsImagesByContentAsUnsupported",
+      "TestReadToolDetectsAnimatedPNGsWhoseAcTLChunkLiesFarBeyondTheHeader"
+    ],
+    "upstream_reference": "packages/durable/src/tools/image.ts:23 (isAnimatedPngOf); packages/durable/src/tools/image.ts:16 (detectSupportedImageMimeTypeOf); packages/durable/src/tools/image.ts:103 (readUint32BE); packages/durable/test/tools.test.ts; packages/durable/test/tools-read-differential.test.ts",
+    "mutation": "durable/tools/image.go:70 `nextOffset := offset + 8 + chunkLength + 4` -> `nextOffset := offset + 9 + chunkLength + 4` (TestReadToolDetectsAnimatedPNGsWhoseAcTLChunkLiesFarBeyondTheHeader FAIL); durable/tools/image.go:25 `header, err := source.read(0, headerBytes)` -> `header, err := source.read(1, headerBytes)` (TestReadReportsImagesByContentAsUnsupported FAIL); durable/tools/image.go:175 `return int64(byteAt(data, offset))*0x1000000 + int64(byteAt(data, offs` -> `return int64(byteAt(data, offset))*0x1000000 + int64(byteAt(data, offs` (TestReadReportsImagesByContentAsUnsupported FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/env/src/errors.ts",
+    "package": "./env",
+    "tests": [
+      "TestRemoteExecutionEnvOverAPipeConformance"
+    ],
+    "upstream_reference": "packages/env/src/errors.ts:9 (toFileError); packages/env/src/errors.ts:1-35; packages/env/test/conformance.test.ts",
+    "mutation": "env/errors.go:43 `case \"EISDIR\":` -> `case \"EISDIRX\":` (TestRemoteExecutionEnvOverAPipeConformance FAIL); env/errors.go:14 `if ctx.Err() != nil {` -> `if ctx.Err() == nil {` (TestRemoteExecutionEnvOverAPipeConformance FAIL); env/errors.go:45 `case \"EINVAL\", \"SYMLINK\", \"NOT_REGULAR\":` -> `case \"EINVAL\", \"SYMLINKX\", \"NOT_REGULAR\":` (TestRemoteExecutionEnvOverAPipeConformance FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/durable/src/errors.ts",
+    "package": "./durable/harness",
+    "tests": [
+      "TestGeneration"
+    ],
+    "upstream_reference": "packages/durable/src/errors.ts:1-29; packages/durable/test/harness-generation.test.ts",
+    "mutation": "durable/errors.go:48 `return fmt.Sprintf(\"Conversation %d is busy\", e.ConversationId)` -> `return fmt.Sprintf(\"Conversation %d is not busy\", e.ConversationId)` (TestGeneration FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/durable/src/errors.ts",
+    "package": "./durable/session",
+    "tests": [
+      "TestSessionConversationDocumentForks",
+      "TestSessionTransactionTables"
+    ],
+    "upstream_reference": "packages/durable/src/errors.ts:1-29",
+    "mutation": "durable/errors.go:32 `func (e *StorageRejected) Error() string { return e.Message }` -> `func (e *StorageRejected) Error() string { return \"\" }` (TestSessionConversationDocumentForks FAIL); durable/errors.go:17 `return fmt.Sprintf(\"Tx.%s() cannot read tables after the first table w` -> `return fmt.Sprintf(\"Tx.%s() can read tables after the first table writ` (TestSessionTransactionTables FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/durable/src/errors.ts",
+    "package": "./durable",
+    "tests": [
+      "TestStorageRejectedKeepsItsMessageAndCause"
+    ],
+    "upstream_reference": "packages/durable/src/errors.ts:1-29",
+    "mutation": "durable/errors.go:35 `func (e *StorageRejected) Unwrap() error { return e.Cause }` -> `func (e *StorageRejected) Unwrap() error { return nil }` (TestStorageRejectedKeepsItsMessageAndCause FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/durable/src/harness/inbox.ts",
+    "package": "./durable/harness",
+    "tests": [
+      "TestInbox",
+      "TestManualCompaction"
+    ],
+    "upstream_reference": "packages/durable/src/harness/inbox.ts:114 (RemoveInboxItem); packages/durable/src/harness/inbox.ts:1-133; packages/durable/src/harness/inbox.ts:65 (ApplyBoundary); packages/durable/test/harness-inbox.test.ts; packages/durable/test/harness-compaction.test.ts",
+    "mutation": "durable/harness/inbox.go:227 `_, err := items.Splice(index, 1)` -> `_, err := items.Splice(index, 2)` (TestInbox FAIL); durable/harness/inbox.go:21 `InboxWrite    InboxMode = \"write\"` -> `InboxWrite    InboxMode = \"writeX\"` (TestInbox FAIL); durable/harness/inbox.go:125 `reset := false` -> `reset := true` (TestManualCompaction FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/durable/src/harness/inbox.ts",
+    "package": "./durable/examples",
+    "tests": [
+      "TestExample26CodingAgent"
+    ],
+    "upstream_reference": "packages/durable/src/harness/inbox.ts:114 (RemoveInboxItem); packages/durable/src/harness/inbox.ts:1-133; packages/durable/src/harness/inbox.ts:65 (ApplyBoundary); packages/durable/test/examples/26-coding-agent.ts",
+    "mutation": "durable/harness/inbox.go:125 `reset := false` -> `reset := true` (TestExample26CodingAgent FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/durable/src/harness/submissions.ts",
+    "package": "./durable/harness",
+    "tests": [
+      "TestManualCompaction",
+      "TestSubmissions"
+    ],
+    "upstream_reference": "packages/durable/src/harness/submissions.ts:148 (AdmitSubmission); packages/durable/src/harness/submissions.ts:64 (Get); packages/durable/src/harness/submissions.ts:90 (Abort); packages/durable/test/harness-compaction.test.ts; packages/durable/test/harness-submissions.test.ts",
+    "mutation": "durable/harness/submissions.go:242 `if boundary != nil {` -> `if boundary == nil {` (TestManualCompaction FAIL); durable/harness/submissions.go:84 `if err != nil || record == nil {` -> `if err == nil || record == nil {` (TestManualCompaction FAIL); durable/harness/submissions.go:160 `if record.Status == durable.SubmissionPlaced {` -> `if record.Status != durable.SubmissionPlaced {` (TestSubmissions FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/durable/src/harness/submissions.ts",
+    "package": "./durable/examples",
+    "tests": [
+      "TestExample20Inbox"
+    ],
+    "upstream_reference": "packages/durable/src/harness/submissions.ts:148 (AdmitSubmission); packages/durable/src/harness/submissions.ts:64 (Get); packages/durable/src/harness/submissions.ts:90 (Abort); packages/durable/test/examples/20-inbox.ts; packages/durable/test/examples/24-child-tasks.ts",
+    "mutation": "durable/harness/submissions.go:242 `if boundary != nil {` -> `if boundary == nil {` (TestExample20Inbox FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/durable/src/session/forks.ts",
+    "package": "./durable/session",
+    "tests": [
+      "TestSessionConversationDocumentForks"
+    ],
+    "upstream_reference": "packages/durable/src/session/forks.ts:61 (collectCopies); packages/durable/src/session/forks.ts:26 (prepareForkDocumentCopies)",
+    "mutation": "durable/session/forks.go:53 `if source.Scope.Kind != durable.ScopeConversation || source.Fork != po` -> `if source.Scope.Kind == durable.ScopeConversation || source.Fork != po` (TestSessionConversationDocumentForks FAIL); durable/session/forks.go:35 `if err := collectCopies(ctx, storage, asOfScope, durable.AtSeq(entry.C` -> `if err := collectCopies(ctx, storage, asOfScope, durable.AtSeq(entry.C` (TestSessionConversationDocumentForks FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/durable/src/storage/sqlite/migrations.ts",
+    "package": "./durable/storage/sqlite",
+    "tests": [
+      "TestDurableSQLiteMigrations"
+    ],
+    "upstream_reference": "packages/durable/src/storage/sqlite/migrations.ts:95 (ApplySqliteMigrations); packages/durable/src/storage/sqlite/migrations.ts:1-126; packages/durable/test/sqlite-migrations.test.ts",
+    "mutation": "durable/storage/sqlite/migrations.go:143 `if version > int64(currentVersion) {` -> `if version >= int64(currentVersion) {` (TestDurableSQLiteMigrations FAIL); durable/storage/sqlite/migrations.go:103 `if len(migrations) == 0 {` -> `if len(migrations) == 1 {` (TestDurableSQLiteMigrations FAIL); durable/storage/sqlite/migrations.go:20 `singleton INTEGER PRIMARY KEY CHECK (singleton = 1),` -> `singleton INTEGER PRIMARY KEY CHECK (singleton = 2),` (TestDurableSQLiteMigrations FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/durable/src/storage/sqlite/migrations.ts",
+    "package": "./durable/storage/sqlite/node",
+    "tests": [
+      "TestPortableSQLiteFacadeSettlement"
+    ],
+    "upstream_reference": "packages/durable/src/storage/sqlite/migrations.ts:95 (ApplySqliteMigrations); packages/durable/src/storage/sqlite/migrations.ts:1-126; packages/durable/test/sqlite-facade.test.ts",
+    "mutation": "durable/storage/sqlite/migrations.go:20 `singleton INTEGER PRIMARY KEY CHECK (singleton = 1),` -> `singleton INTEGER PRIMARY KEY CHECK (singleton = 2),` (TestPortableSQLiteFacadeSettlement FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/durable/src/testing/storage-conformance.ts",
+    "package": "./durable/storage",
+    "tests": [
+      "TestMemoryStorageConformance"
+    ],
+    "upstream_reference": "packages/durable/src/testing/storage-conformance.ts:91 (CreateStorageConformance); packages/durable/src/testing/storage-conformance.ts:86 (createCase); packages/durable/src/testing/storage-conformance.ts:58 (toBeDefined); packages/durable/test/memory-storage.test.ts",
+    "mutation": "durable/durabletest/storage_conformance.go:273 `entryData := map[string]any{\"nested\": []any{1, 2}}` -> `entryData := map[string]any{\"nested\": []any{2, 2}}` (TestMemoryStorageConformance FAIL); durable/durabletest/storage_conformance.go:194 `if recovered := recover(); recovered != nil {` -> `if recovered := recover(); recovered == nil {` (TestMemoryStorageConformance FAIL); durable/durabletest/storage_conformance.go:175 `e.assertions.Ok(Normalize(e.actual) != nil, \"Expected value to be defi` -> `e.assertions.Ok(Normalize(e.actual) == nil, \"Expected value to be defi` (TestMemoryStorageConformance FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/durable/src/testing/storage-conformance.ts",
+    "package": "./durable/storage/jsonl",
+    "tests": [
+      "TestJsonlStorageConformance"
+    ],
+    "upstream_reference": "packages/durable/src/testing/storage-conformance.ts:91 (CreateStorageConformance); packages/durable/src/testing/storage-conformance.ts:86 (createCase); packages/durable/src/testing/storage-conformance.ts:58 (toBeDefined); packages/durable/test/jsonl-storage.test.ts",
+    "mutation": "durable/durabletest/storage_conformance.go:175 `e.assertions.Ok(Normalize(e.actual) != nil, \"Expected value to be defi` -> `e.assertions.Ok(Normalize(e.actual) == nil, \"Expected value to be defi` (TestJsonlStorageConformance FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/durable/src/testing/storage-conformance.ts",
+    "package": "./durable/storage/sqlite",
+    "tests": [
+      "TestSqliteStorageConformance"
+    ],
+    "upstream_reference": "packages/durable/src/testing/storage-conformance.ts:91 (CreateStorageConformance); packages/durable/src/testing/storage-conformance.ts:86 (createCase); packages/durable/src/testing/storage-conformance.ts:58 (toBeDefined); packages/durable/test/sqlite-storage.test.ts",
+    "mutation": "durable/durabletest/storage_conformance.go:175 `e.assertions.Ok(Normalize(e.actual) != nil, \"Expected value to be defi` -> `e.assertions.Ok(Normalize(e.actual) == nil, \"Expected value to be defi` (TestSqliteStorageConformance FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/durable/src/tools/index.ts",
+    "package": "./durable/tools",
+    "tests": [
+      "TestCodingToolsAreReadWriteEditAndBashInOrder"
+    ],
+    "upstream_reference": "packages/durable/src/tools/index.ts:1-26; packages/durable/src/tools/index.ts:23 (package)",
+    "mutation": "durable/tools/index.go:12 `Tools: []*durable.ToolRegistration{CreateReadTool(), CreateWriteTool()` -> `Tools: []*durable.ToolRegistration{CreateReadTool(), CreateWriteTool()` (TestCodingToolsAreReadWriteEditAndBashInOrder FAIL); durable/tools/index.go:11 `Name:  \"coding-tools\",` -> `Name:  \"coding-tool\",` (TestCodingToolsAreReadWriteEditAndBashInOrder FAIL); durable/tools/index.go:12 `Tools: []*durable.ToolRegistration{CreateReadTool(), CreateWriteTool()` -> `Tools: []*durable.ToolRegistration{CreateWriteTool(), CreateReadTool()` (TestCodingToolsAreReadWriteEditAndBashInOrder FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/env/src/remote-env.ts",
+    "package": "./env",
+    "tests": [
+      "TestRemoteExecutionEnvAgainstNodeExecutionEnv",
+      "TestRemoteExecutionEnvOverAPipeConformance"
+    ],
+    "upstream_reference": "packages/env/src/remote-env.ts:750 (CreateDir); packages/env/src/remote-env.ts:834 (Exec); packages/env/src/remote-env.ts:561 (ReadTextLines); packages/env/test/differential.test.ts; packages/env/test/conformance.test.ts",
+    "mutation": "env/remote_env.go:954 `recursive := options == nil || options.Recursive == nil || *options.Re` -> `recursive := options == nil || options.Recursive != nil || *options.Re` (TestRemoteExecutionEnvAgainstNodeExecutionEnv FAIL); env/remote_env.go:1099 `request[\"command\"] = typed` -> `request[\"commandX\"] = typed` (TestRemoteExecutionEnvOverAPipeConformance FAIL); env/remote_env.go:680 `if maxLines != nil && *maxLines <= 0 {` -> `if maxLines == nil && *maxLines <= 0 {` (TestRemoteExecutionEnvAgainstNodeExecutionEnv FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/durable/src/storage/sqlite/database.ts",
+    "package": "./durable/storage/sqlite/node",
+    "tests": [
+      "TestPortableSQLiteFacadeSettlement"
+    ],
+    "upstream_reference": "packages/durable/src/storage/sqlite/database.ts:1-38 (SqliteExecutor and SqliteDatabase: the facade a storage adapter must implement, including transaction settlement and close); packages/durable/test/sqlite-facade.test.ts",
+    "mutation": "durable/storage/sqlite/database.go: SqliteDatabase gains a required method (Close() error -> Close() error + Backup(path string) error): the facade is a compile-time contract, so every adapter and test double that implements it, and storage Open(db SqliteDatabase), fail to compile (TestPortableSQLiteFacadeSettlement and TestSqliteStorageConformance build FAIL, [build failed] in both packages); compilation is the contract under test because database.ts declares only types; baseline PASS"
+  },
+  {
+    "upstream": "packages/durable/src/storage/sqlite/database.ts",
+    "package": "./durable/storage/sqlite",
+    "tests": [
+      "TestSqliteStorageConformance",
+      "TestDurableSQLiteMigrations"
+    ],
+    "upstream_reference": "packages/durable/src/storage/sqlite/database.ts:1-38 (SqliteExecutor and SqliteDatabase: the facade a storage adapter must implement, including transaction settlement and close); packages/durable/test/sqlite-facade.test.ts",
+    "mutation": "durable/storage/sqlite/database.go: SqliteDatabase gains a required method (Close() error -> Close() error + Backup(path string) error): the facade is a compile-time contract, so every adapter and test double that implements it, and storage Open(db SqliteDatabase), fail to compile (TestPortableSQLiteFacadeSettlement and TestSqliteStorageConformance build FAIL, [build failed] in both packages); compilation is the contract under test because database.ts declares only types; baseline PASS"
+  },
+  {
+    "upstream": "packages/durable/src/tools/file-mutation-queue.ts",
+    "package": "./durable/tools",
+    "tests": [
+      "TestEditSerializesConcurrentEditsThroughCanonicalAndSymlinkPaths",
+      "TestEditSerializesEditsOfOneFileAcrossEnvironmentObjectsOfOneFileSystem",
+      "TestEditSerializesANewFileCreatedThroughASymlinkedDirectoryWithItsCanonicalPath"
+    ],
+    "upstream_reference": "packages/durable/src/tools/file-mutation-queue.ts:16-26 (canonical); packages/durable/src/tools/file-mutation-queue.ts:33-55 (withFileMutationQueue); packages/durable/test/tools.test.ts",
+    "mutation": "durable/tools/file_mutation_queue.go:88 `<-previous` deleted (TestEditSerializesConcurrentEditsThroughCanonicalAndSymlinkPaths, TestEditSerializesEditsOfOneFileAcrossEnvironmentObjectsOfOneFileSystem, TestEditSerializesANewFileCreatedThroughASymlinkedDirectoryWithItsCanonicalPath FAIL); durable/tools/file_mutation_queue.go:67 `return executionEnv.JoinPath(ctx, []string{canonicalParent, name})` -> `return absolutePath, nil` (TestEditSerializesANewFileCreatedThroughASymlinkedDirectoryWithItsCanonicalPath FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/env/src/connection.ts",
+    "package": "./env",
+    "tests": [
+      "TestConnectionReportsShellNoiseBeforeTheSyncLineThroughOnLog",
+      "TestConnectionRejectsAFrameLengthOutsideItsBounds",
+      "TestConnectionFindsASyncLineSplitAcrossTheNoiseCut"
+    ],
+    "upstream_reference": "packages/env/src/connection.ts:322-346 (#onData: sync line, 1 MiB noise cut, trimmed noise to onLog, MAX_FRAME bounds); packages/env/src/connection.ts:255-305 (#start: hello sent before child events, Promise.race with the exit listener)",
+    "mutation": "env/connection.go:633 `if length < 9 || length > maxFrame {` -> `if length < 9 {` (TestConnectionRejectsAFrameLengthOutsideItsBounds FAIL); env/connection.go:666 `jsstring.Trim(string(buffered[:index]))` -> `string(buffered[:index])` (TestConnectionReportsShellNoiseBeforeTheSyncLineThroughOnLog FAIL), -> `strings.TrimSpace(...)` (FAIL, JavaScript whitespace case); env/connection.go:666 `noise != \"\" && c.options.OnLog != nil` -> `c.options.OnLog != nil` (TestConnectionReportsShellNoiseBeforeTheSyncLineThroughOnLog FAIL); env/connection.go:672 `buffered = append([]byte(nil), buffered[len(buffered)-len(marker):]...)` -> `buffered = nil` (TestConnectionFindsASyncLineSplitAcrossTheNoiseCut FAIL); the pre-fix start (hello sent after the read loop and exit reaper started, exitedEarly preferred) fails TestConnectionRejectsAFrameLengthOutsideItsBounds under CPU load (-race -count=30: 45 failures, `pi-env exited with code null before it was ready` and `pi-env connection lost`); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/env/src/watch.ts",
+    "package": "./env",
+    "tests": [
+      "TestRemoteWatcherTakesItsModeFromTheDaemonsEvents",
+      "TestRemoteWatcherReportsTheDaemonsWatchErrors"
+    ],
+    "upstream_reference": "packages/env/src/watch.ts:97-111 (onEvent: ready mode, change mode, error code and String(event.message))",
+    "mutation": "env/watch.go:163 ready `if event[\"mode\"] == \"polling\" {` branch deleted (TestRemoteWatcherTakesItsModeFromTheDaemonsEvents FAIL); env/watch.go:169 change `event[\"mode\"] == \"polling\"` -> `== \"pollingX\"` (TestRemoteWatcherTakesItsModeFromTheDaemonsEvents FAIL); env/watch.go:188 `\"permission_denied\"` -> `\"permission_deniedX\"` (TestRemoteWatcherReportsTheDaemonsWatchErrors FAIL); env/watch.go:191 `templateString(event, \"message\")` -> `jsString(event[\"message\"])` (TestRemoteWatcherReportsTheDaemonsWatchErrors FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/durable/src/storage/memory.ts",
+    "package": "./durable/storage",
+    "tests": [
+      "TestMemoryStorageClonesRetainedWritesAndReads",
+      "TestMemoryStorageConversationReadsAreCopies"
+    ],
+    "upstream_reference": "packages/durable/src/storage/memory.ts:229-233 (reads and retained writes are cloned); packages/durable/test/memory-storage.test.ts",
+    "mutation": "durable/storage/memory.go:658 `cloneEntry(entry)` -> `entry` (TestMemoryStorageClonesRetainedWritesAndReads FAIL); durable/storage/memory.go:591 `cloneConversation(value)` -> `value` (TestMemoryStorageConversationReadsAreCopies FAIL); compiled test FAIL, baseline PASS"
+  }
+]

@@ -20,7 +20,7 @@ func TestModelRuntimeForwardsConfiguredThinkingMap(t *testing.T) {
 			if err := os.WriteFile(filepath.Join(dir, "models.json"), []byte(config), 0o600); err != nil {
 				t.Fatal(err)
 			}
-			services, err := coding.NewServices(coding.ServicesOptions{CWD: t.TempDir(), AgentDir: dir})
+			services, err := coding.CreateAgentSessionServices(coding.CreateAgentSessionServicesOptions{CWD: t.TempDir(), AgentDir: dir})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -29,7 +29,7 @@ func TestModelRuntimeForwardsConfiguredThinkingMap(t *testing.T) {
 				t.Fatal("missing configured model")
 			}
 			var captured map[string]any
-			services.ModelRuntime().Complete(t.Context(), model, ai.Context{Messages: []ai.Message{ai.UserMessage{Content: ai.UserText("Hello")}}}, ai.StreamOptions{Thinking: ai.ThinkingLow, IsReasoning: true, OnPayload: func(payload any, _ *ai.Model) (any, error) {
+			services.ModelRuntime().Complete(t.Context(), model, ai.Context{Messages: []ai.Message{ai.UserMessage{Content: ai.UserText("Hello")}}}, ai.StreamOptions{Thinking: ai.ThinkingLevelLow, IsReasoning: true, OnPayload: func(payload any, _ *ai.Model) (any, error) {
 				raw, err := json.Marshal(payload)
 				if err != nil {
 					return nil, err

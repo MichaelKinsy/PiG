@@ -49,7 +49,7 @@ func newRegistryPortSession(t *testing.T, defaults []string, opts SessionOptions
 	if err := os.WriteFile(filepath.Join(agentDir, "settings.json"), raw, 0o600); err != nil {
 		t.Fatal(err)
 	}
-	services, err := NewServices(ServicesOptions{CWD: dir, AgentDir: agentDir})
+	services, err := CreateAgentSessionServices(CreateAgentSessionServicesOptions{CWD: dir, AgentDir: agentDir})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -83,7 +83,7 @@ func newRegistryPortSession(t *testing.T, defaults []string, opts SessionOptions
 }
 func bindRegistryPort(t *testing.T, session *Session) {
 	t.Helper()
-	if err := session.BindExtensions(t.Context()); err != nil {
+	if err := session.BindExtensions(t.Context(), ExtensionBindings{}); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -262,6 +262,22 @@ func TestDefaultToolsReloadPort(t *testing.T) {
 			t.Fatalf("active after removing = %q, want %q", got, want)
 		}
 	})
+	// Pi 1.1.0 default-tools-setting.test.ts:258-267: a tool a `--tools -name` entry removed stays removed when a reload brings it back through the setting.
+	t.Run("keeps tools removed by -name tool options removed on reload", func(t *testing.T) {
+		session := newRegistryPortSession(t, []string{"read"}, SessionOptions{
+			DefaultToolModifiers:   []string{"-bash", "+grep"},
+			InitialActiveToolNames: []string{"read", "grep"},
+		}, []extension.ToolDefinition{inactiveRegistryTool()}, nil)
+		bindRegistryPort(t, session)
+		if got := session.ActiveToolNames(); !slices.Equal(got, []string{"read", "grep"}) {
+			t.Fatalf("initial active = %q", got)
+		}
+		writeRegistryPortSettings(t, session, map[string]any{"defaultTools": []string{"read", "bash", "inactive_tool"}})
+		reloadRegistryPort(t, session)
+		if got, want := sortedActiveNames(session), []string{"grep", "inactive_tool", "read"}; !slices.Equal(got, want) {
+			t.Fatalf("active after reload = %q, want %q", got, want)
+		}
+	})
 	// default-tools-setting.test.ts:209-233
 	t.Run("keeps explicit tool options on reload", func(t *testing.T) {
 		static := []extension.ToolDefinition{inactiveRegistryTool()}
@@ -289,10 +305,10 @@ func TestDefaultToolsReloadPort(t *testing.T) {
 			t.Fatalf("excluded active = %q, want %q", got, want)
 		}
 	})
-	// agent-session.ts:3591-3603: the CLI selects the initial built-ins itself (ActiveBuiltinTools, --no-builtin-tools as SkipBuiltinTools), which sdk.ts:448 treats as the default selection or a noTools override.
+	// agent-session.ts:3591-3603: the CLI selects the initial built-ins itself (InitialActiveToolNames, --no-builtin-tools as SkipBuiltinTools), which sdk.ts:448 treats as the default selection or a noTools override.
 	t.Run("treats the CLI's resolved defaults as default tools and --no-builtin-tools as an override", func(t *testing.T) {
 		static := []extension.ToolDefinition{inactiveRegistryTool()}
-		defaults := newRegistryPortSession(t, nil, SessionOptions{ActiveBuiltinTools: map[string]struct{}{"read": {}, "bash": {}, "edit": {}, "write": {}}}, static, nil)
+		defaults := newRegistryPortSession(t, nil, SessionOptions{InitialActiveToolNames: []string{"read", "bash", "edit", "write"}}, static, nil)
 		bindRegistryPort(t, defaults)
 		writeRegistryPortSettings(t, defaults, map[string]any{"defaultTools": []string{"+grep"}})
 		reloadRegistryPort(t, defaults)
@@ -330,6 +346,42 @@ func TestToolAllowlistExtensionPort(t *testing.T) {
 			assertRegistryPrompt(t, session, tc.present, tc.absent)
 			printRegistryPort(t, "allow", session)
 		})
+	}
+}
+
+// Pi's tools option starts the named tools active in the given order, built-in and extension tools alike, each once at
+// its first position: sdk.ts:271-276 passes options.tools as both the allowlist and initialActiveToolNames, and
+// agent-session.ts:3552-3562 activates them before the allowlisted registry tools and dedupes with a Set. A name no tool
+// has is skipped.
+func TestAllowedToolsStartActiveInTheirOrder(t *testing.T) {
+	tools := []string{"grep", "dynamic_tool", "missing", "read", "grep"}
+	allowed := map[string]struct{}{}
+	for _, name := range tools {
+		allowed[name] = struct{}{}
+	}
+	session := newRegistryPortSession(t, nil, SessionOptions{AllowedTools: allowed, InitialActiveToolNames: tools}, []extension.ToolDefinition{dynamicRegistryTool()}, nil)
+	if got, want := session.ActiveToolNames(), []string{"grep", "dynamic_tool", "read"}; !slices.Equal(got, want) {
+		t.Fatalf("--tools [grep dynamic_tool missing read grep] activated %v, want %v", got, want)
+	}
+}
+
+// Pi's reload rebuilds the tool registry with the active tools first, in their order: agent-session.ts:3666-3669 passes
+// [...getActiveToolNames(), ...addedDefaultTools] as activeToolNames, and _refreshToolRegistry (3552-3562, 3578) puts
+// them before the registered tools the allowlist names and keeps each once at its first position. The provider request
+// cannot show this order after a reload, because the transcript's initial tool declaration fixes it, so the Session's
+// active names are the observable that pins it.
+func TestReloadKeepsTheActiveToolOrder(t *testing.T) {
+	tools := []string{"grep", "dynamic_tool", "read"}
+	allowed := map[string]struct{}{}
+	for _, name := range tools {
+		allowed[name] = struct{}{}
+	}
+	session := newRegistryPortSession(t, nil, SessionOptions{AllowedTools: allowed, InitialActiveToolNames: tools}, []extension.ToolDefinition{dynamicRegistryTool()}, nil)
+	if err := session.RefreshToolsAfterReload(); err != nil {
+		t.Fatal(err)
+	}
+	if got := session.ActiveToolNames(); !slices.Equal(got, tools) {
+		t.Fatalf("after the reload rebuild the active tools are %v, want %v", got, tools)
 	}
 }
 
@@ -402,6 +454,25 @@ func TestExcludeToolsExtensionPort(t *testing.T) {
 	}
 }
 
+// .upstream/v1.0.4/packages/coding-agent/test/suite/regressions/5109-exclude-tools.test.ts:81 ("matches allowlist and
+// denylist patterns"): patterns that match a tool activate it like its name, and the denylist patterns win.
+func TestExcludeToolsPatternsExtensionPort(t *testing.T) {
+	allowed := map[string]struct{}{"*_tool": {}, "ask_*": {}, "re*": {}}
+	session := newRegistryPortSession(t, nil, SessionOptions{AllowedTools: allowed, ExcludedTools: map[string]struct{}{"ask*": {}}}, nil, func(_ *Session, registered map[string]extension.RegisteredTool) {
+		registerPortTool(registered, registryTool("ask_question", "Ask Question", "Ask a question", "Ask a question"))
+		registerPortTool(registered, dynamicRegistryTool())
+	})
+	bindRegistryPort(t, session)
+	if all := allRegistryNames(session); !slices.Equal(all, []string{"dynamic_tool", "read"}) {
+		t.Fatalf("all = %q", all)
+	}
+	active := session.ActiveToolNames()
+	slices.Sort(active)
+	if !slices.Equal(active, []string{"dynamic_tool", "read"}) {
+		t.Fatalf("active = %q", active)
+	}
+}
+
 type registryPortOperations func(context.Context, string, string, extension.BashOperationsExecOptions) (extension.BashOperationsResult, error)
 
 func (f registryPortOperations) Exec(ctx context.Context, command, cwd string, opts extension.BashOperationsExecOptions) (extension.BashOperationsResult, error) {
@@ -423,7 +494,7 @@ func TestAgentSessionDynamicToolsPort(t *testing.T) {
 				} else {
 					exposed = slices.Clone(opts.Env)
 				}
-				return tools.NewLocalBashOperations(nil, "").Exec(ctx, command, cwd, opts)
+				return tools.CreateLocalBashOperations(nil).Exec(ctx, command, cwd, opts)
 			})}
 			definition, err := toolDefinition(bash)
 			if err != nil {
@@ -435,7 +506,7 @@ func TestAgentSessionDynamicToolsPort(t *testing.T) {
 			}
 			return definition
 		}
-		model := &ai.Model{ID: "claude-sonnet-4-5", Provider: registryPortProvider{}, Capabilities: ai.ModelCapabilities{MaxThinking: ai.ThinkingHigh}}
+		model := &ai.Model{ID: "claude-sonnet-4-5", Provider: registryPortProvider{}, Capabilities: ai.ModelCapabilities{MaxThinking: ai.ThinkingLevelHigh}}
 		session := newRegistryPortSession(t, nil, SessionOptions{SessionID: "bash-env-test", Model: model}, []extension.ToolDefinition{makeBash(false), makeBash(true)}, nil)
 		if err := session.SetThinkingLevel(ai.ThinkingHigh); err != nil {
 			t.Fatal(err)

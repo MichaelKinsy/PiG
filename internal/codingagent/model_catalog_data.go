@@ -9,7 +9,7 @@ import (
 	"github.com/MichaelKinsy/PiG/ai"
 )
 
-// GetProviderModelData composes metadata without resolving keys, headers, or backend clients.
+// GetProviderModelData composes metadata without resolving keys, headers, or backend clients. Like the catalog and the native collection it composes from, it omits the models of a stripped API, including models.json and extension definitions on one (ai.OfferedModels).
 func (r *ModelRegistry) GetProviderModelData(id string) []*ai.Model {
 	if r.GetProvider(id) != nil {
 		return r.GetNativeModels(id)
@@ -54,7 +54,7 @@ func (r *ModelRegistry) GetProviderModelData(id string) []*ai.Model {
 	if err != nil {
 		return nil
 	}
-	return models
+	return ai.OfferedModels(models)
 }
 
 // GetAllModelData returns the composed catalog in provider order without running credential configuration expressions.
@@ -75,6 +75,22 @@ func ReadNativeProviderModelData(r *ModelRegistry) {
 	}
 }
 
+// nativeCollectionProviderIDs lists the providers of the native Models collection in its order.
+func (r *ModelRegistry) nativeCollectionProviderIDs() []string {
+	r.nativeMu.Lock()
+	models := r.nativeModels
+	r.nativeMu.Unlock()
+	if models == nil {
+		return nil
+	}
+	providers := models.GetProviders()
+	ids := make([]string, 0, len(providers))
+	for _, provider := range providers {
+		ids = append(ids, provider.ID)
+	}
+	return ids
+}
+
 func (r *ModelRegistry) modelProviderIDs() []string {
 	r.mu.RLock()
 	var configured []string
@@ -87,7 +103,7 @@ func (r *ModelRegistry) modelProviderIDs() []string {
 	order = append(order, modelsJSONProviderOrder(r.modelConfigPath())...)
 	order = append(order, configured...)
 	order = append(order, dynamic...)
-	order = append(order, r.GetRegisteredProviderIDs()...)
+	order = append(order, r.nativeCollectionProviderIDs()...)
 	seen := make(map[string]bool, len(order))
 	ids := make([]string, 0, len(order))
 	for _, id := range order {

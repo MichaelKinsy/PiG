@@ -15,7 +15,7 @@ import (
 	"github.com/MichaelKinsy/PiG/coding"
 )
 
-func newTestFauxRuntime(t testing.TB) (*coding.Services, *ai.Model) {
+func newTestFauxRuntime(t testing.TB) (*coding.AgentSessionServices, *ai.Model) {
 	t.Helper()
 	t.Setenv("PIG_TEST_FAUX", "1")
 	t.Setenv("PIG_TEST_FAUX_SCENARIO", "parity-basic")
@@ -24,7 +24,7 @@ func newTestFauxRuntime(t testing.TB) (*coding.Services, *ai.Model) {
 	if err := os.WriteFile(filepath.Join(agentDir, "models.json"), []byte(config), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	services, err := coding.NewServices(coding.ServicesOptions{CWD: t.TempDir(), AgentDir: agentDir})
+	services, err := coding.CreateAgentSessionServices(coding.CreateAgentSessionServicesOptions{CWD: t.TempDir(), AgentDir: agentDir})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -54,6 +54,7 @@ func testFauxResultIDs(t testing.TB, result *ai.AssistantMessage) []string {
 }
 
 // Pi's ModelRuntime.prepareRequest retrieves the registered provider, preserving its state across requests even when no prior messages are supplied.
+// Pi: packages/coding-agent/src/core/model-registry.ts:142 (ModelRegistry.complete).
 func TestModelRuntimeTestFauxToolCallIDs(t *testing.T) {
 	services, model := newTestFauxRuntime(t)
 	runtime := services.ModelRuntime()

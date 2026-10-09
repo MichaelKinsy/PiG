@@ -1,5 +1,7 @@
 package sqlite_test
 
+// pi: packages/durable/src/storage/sqlite/migrations.ts
+
 // Ports packages/durable/test/sqlite-migrations.test.ts
 
 import (

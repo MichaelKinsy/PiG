@@ -41,6 +41,7 @@ Product distributions may contribute additional top-level or nested command path
 | `pig install <path> --validate-only [--json]` | Validate without installing; emits structured diagnostics. |
 | `pig install --validate-only --set "<p1>,<p2>"` | Validate a piglet-style extension set. |
 | `pig extension init <path> [--name <matching-name>] [--lang go\|python\|rust] [--login] [--isolated] [--force] [--json]` | Scaffold an extension that resolves the staged SDK offline (Go default). `--login` scaffolds a Go login factory with standard PiG art. |
+| `pig extension upgrade [<name\|path>...] [--all] [--dry-run] [--summary]` | Rewrite Go extensions written for an older SDK with the SDK's tested rules: back up, show a diff, rebuild, report per extension (D109). See [Upgrade a Go extension](extensions.md). |
 | `pig extension preview-login <path>` | Start exactly one extension and render the login set during `session_start`; no model session starts. |
 | `pig extensions cache stats [--json]` | Inspect extension and runtime-cell cache classifications without changing use metadata. |
 | `pig extensions cache prune [--retention <duration>] [--max-size <bytes>] [--dry-run] [--json]` | Remove eligible inactive cache entries. Hard roots always remain. |
@@ -82,6 +83,7 @@ These options apply to `pig [options] [prompt]`. Run `pig --help` for the full l
 | `--session-dir <dir>` | Directory for session storage and lookup. |
 | `--no-session` | Do not save the session. |
 | `--name`, `-n <name>` | Set the session display name. |
+| `--no-mcp` | Turn off the built-in MCP support for this run: no servers connect, and there are no MCP tools or `/mcp`. It does not affect an extension that replaces the built-in MCP support. |
 | `--no-skills`, `-ns` | Turn off skill discovery and loading. |
 | `--prompt-template <path>` | Load a prompt template file or directory. Repeat it for more. |
 | `--no-prompt-templates`, `-np` | Turn off prompt template discovery and loading. |
@@ -110,10 +112,10 @@ The tool options select the tools the model can call for one run. See [Settings]
 
 | Option | Effect |
 |---|---|
-| `--tools`, `-t <list>` | Replace the default selection with a comma-separated allowlist. It applies to built-in, extension, and custom tools. |
-| `--exclude-tools`, `-xt <list>` | Turn off the named tools after all other selection options. It applies to built-in, extension, and custom tools. An excluded tool cannot be called. |
+| `--tools`, `-t <list>` | Replace the default selection with a comma-separated allowlist. It applies to built-in, extension, and custom tools. Entries are tool names or patterns where `*` matches any characters. MCP tools are kept unless an entry starts with `mcp__` (see [MCP tools](#mcp-tools)). |
+| `--exclude-tools`, `-xt <list>` | Turn off the named tools or patterns after all other selection options, MCP tools included. It applies to built-in, extension, and custom tools. An excluded tool cannot be called. |
 | `--no-builtin-tools`, `-nbt` | Turn off the default built-in tools and keep extension and custom tools. |
-| `--no-tools`, `-nt` | Start with every built-in, extension, and custom tool turned off. |
+| `--no-tools`, `-nt` | Start with every built-in, extension, custom, and MCP tool turned off. |
 
 Without these options, PiG enables `read`, `bash`, `edit`, and `write`, unless the `defaultTools` setting changes the set. Extension tools stay enabled.
 
@@ -127,6 +129,16 @@ Without these options, PiG enables `read`, `bash`, `edit`, and `write`, unless t
 | `grep` | Search file contents | no |
 | `find` | Find paths by glob pattern | no |
 | `ls` | List directory contents | no |
+
+<a id="mcp-tools"></a>
+
+`--tools` selects the tools declared to the model. It does not remove MCP tools, whose reach is set by their [exposure](mcp.md#control-tool-exposure): `pig --tools read,codemode` keeps every MCP tool callable from codemode scripts. An MCP tool that no entry names or matches is never declared directly, whatever its exposure; only `tool_search`, if listed, can load it. Once an entry starts with `mcp__`, `--tools` filters MCP tools too, so this keeps only the tools of the `radius` server:
+
+```sh
+pig --tools read,bash,codemode,'mcp__radius__*'
+```
+
+The MCP resource tools (`list_mcp_resources`, `list_mcp_resource_templates`, `read_mcp_resource`) count as MCP tools. To remove MCP tools, use `--exclude-tools 'mcp__*'` or `--no-mcp`.
 
 For a read-only session, allow only the tools that cannot change files:
 
@@ -170,7 +182,7 @@ The dispatcher is exhaustive - every command here is a parity-mirrored upstream 
 | `/thinking [level]` | Set the thinking level, or open the selector without a level. |
 | `/scoped-models` | Enable/disable models for Ctrl+P cycling. |
 | `/login` | Configure provider authentication. |
-| `/logout` | Remove stored provider authentication. |
+| `/logout` | Remove provider authentication. |
 | `/new` | Start a new session in the same cwd. |
 | `/resume` | Resume a different session. |
 | `/fork` | Fork from a previous user message. |

@@ -14,7 +14,7 @@ func TestReportSortsOrphanCoversByScenarioAndPath(t *testing.T) {
 	}
 	entries := []portMapEntry{{UpstreamPath: "packages/known.ts", Status: "🟡"}}
 	var report bytes.Buffer
-	emitReport(&report, entries, nil, nil, nil, scenarios, testPortingStats{})
+	emitReport(&report, entries, nil, nil, nil, scenarios, testPortingStats{}, nil)
 	_, got, ok := strings.Cut(report.String(), "## Orphan covers (scenario references no PORT_MAP entry)\n\n")
 	if !ok {
 		t.Fatal("missing orphan-cover section")

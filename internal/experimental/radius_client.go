@@ -210,7 +210,7 @@ func (r *RadiusClientReconnect) start(ctx context.Context) {
 	})
 }
 func (r *RadiusClientReconnect) run(ctx context.Context) {
-	retry := relayRetryInitial
+	retry := clientRetryInitial
 	for ctx.Err() == nil && !r.client.Connected() {
 		if relayDelay(ctx, retry) != nil {
 			return
@@ -233,6 +233,6 @@ func (r *RadiusClientReconnect) run(ctx context.Context) {
 		if r.client.Connected() {
 			r.client.Disconnect(err.Error())
 		}
-		retry = min(retry*2, relayRetryMax)
+		retry = min(retry*2, clientRetryMax)
 	}
 }

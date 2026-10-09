@@ -23,6 +23,11 @@ type registeredNativeProvider struct {
 
 // RegisterNativeProvider installs the object and model snapshot and queues the local refresh, as Pi's registerNativeProvider does. It performs no authentication and calls no provider callback; both happen in the queued refresh. The bound availability projection runs before listeners are notified.
 func (r *ModelRegistry) RegisterNativeProvider(ctx context.Context, p *extension.NativeProvider) error {
+	// A compiled-in extension's carrier (extension.NativeProviderOf) holds the Provider object's own members and none of a subprocess
+	// registration's host callbacks: it registers as the object.
+	if p != nil && p.ID != "" && p.CheckAuth == nil && p.ResolveAuth == nil && p.ResolveRefreshCredential == nil && p.Models == nil && p.GetModels != nil {
+		return r.RegisterNativeModelsProvider(p.ProviderObject())
+	}
 	if p == nil || p.ID == "" || p.Stream == nil || p.CheckAuth == nil || p.ResolveAuth == nil || p.ResolveRefreshCredential == nil {
 		return errors.New("incomplete native provider")
 	}
@@ -53,11 +58,17 @@ func (r *ModelRegistry) RegisterNativeProvider(ctx context.Context, p *extension
 	r.native[p.ID] = current
 	r.dynamic[p.ID] = parsed
 	r.noteDynamicLocked(p.ID)
+	r.noteRegistrationLocked(p.ID, true)
 	listener := r.onChange
 	r.mu.Unlock()
 	extension.CallInitiated(ctx)
 	// Pi's registerNativeProvider stores, recomposes and republishes the snapshot, then starts its unawaited refresh (model-runtime.ts:744-750). Authentication and catalog refresh run in that refresh.
-	r.syncRegistration(p.ID, nil)
+	// upstream: model-runtime.ts:885-897 (registerNativeProvider marks the provider provisionally configured; an OAuth-only provider's type is oauth)
+	provisional := &ai.AuthCheck{Type: ai.CredentialAPIKey, Source: "configured provider"}
+	if p.Auth.OAuth != nil && p.Auth.APIKey == nil {
+		provisional.Type = ai.CredentialOAuth
+	}
+	r.syncRegistration(p.ID, provisional)
 	listener.publish()
 	return nil
 }
@@ -144,38 +155,40 @@ func (r *ModelRegistry) refreshNativeProvider(parent context.Context, p *extensi
 		return err
 	}
 	models := p.Models
-	publish := func(publication extension.NativeProviderPublication) error {
+	// upstream: models.ts Provider.getModels / getAllModels are the provider's current list, read at each use; a throwing implementation is an empty catalog.
+	if current := nativeProviderCurrentModels(ctx, p); current != nil {
+		models = *current
+	}
+	publish := func(publication ai.ModelsPublication) (bool, error) {
 		state := r.catalogState(p.ID)
 		state.publish.Lock()
 		defer state.publish.Unlock()
 		if !r.isCurrentCatalogRefresh(state, generation) {
-			return context.Canceled
+			return false, context.Canceled
 		}
 		if ctx.Err() != nil {
-			return ctx.Err()
+			return false, ctx.Err()
 		}
 		if r.NativeProvider(p.ID) != p {
-			return errors.New("native provider registration was replaced")
+			return false, errors.New("native provider registration was replaced")
 		}
-		if len(publication.Persist) > 0 {
-			if string(publication.Persist) == "null" {
-				if err := store.Delete(ctx, p.ID); err != nil {
-					return err
-				}
-			} else {
-				var entry ai.ModelsStoreEntry
-				if err := json.Unmarshal(publication.Persist, &entry); err != nil {
-					return err
-				}
-				if err := store.Write(ctx, p.ID, entry); err != nil {
-					return err
-				}
+		if publication.Persist != nil {
+			if err := store.Write(ctx, p.ID, *publication.Persist); err != nil {
+				return false, err
+			}
+		} else if publication.PersistSet {
+			if err := store.Delete(ctx, p.ID); err != nil {
+				return false, err
 			}
 		}
-		if publication.Models != nil {
-			parsed, ok := providerConfigFromRegistration(extension.ProviderConfig{Name: p.Name, BaseURL: p.BaseURL, Models: *publication.Models})
+		if publication.Update != nil {
+			publication.Update()
+		}
+		// upstream: the provider's list after its update runs is the catalog the registry publishes
+		if current := nativeProviderCurrentModels(ctx, p); current != nil {
+			parsed, ok := providerConfigFromRegistration(extension.ProviderConfig{Name: p.Name, BaseURL: p.BaseURL, Models: *current})
 			if !ok {
-				return errors.New("invalid native model publication")
+				return false, errors.New("invalid native model publication")
 			}
 			r.mu.Lock()
 			if r.native[p.ID].provider == p {
@@ -187,12 +200,17 @@ func (r *ModelRegistry) refreshNativeProvider(parent context.Context, p *extensi
 				listener.publish()
 			}
 		}
-		return nil
+		return true, nil
+	}
+	refresh := func(credential *ai.Credential, stored *ai.ModelsStoreEntry, network bool, force *bool) error {
+		return p.RefreshModels(ai.RefreshModelsContext{Credential: credential, Stored: stored, Publish: publish, AllowNetwork: network, Force: force, Signal: ctx})
 	}
 	if p.RefreshModels != nil {
-		models, err = p.RefreshModels(ctx, credential, stored, false, nil, publish)
-		if err != nil {
+		if err = refresh(credential, stored, false, nil); err != nil {
 			return err
+		}
+		if current := nativeProviderCurrentModels(ctx, p); current != nil {
+			models = *current
 		}
 		if network {
 			var refreshCredential *ai.Credential
@@ -214,9 +232,11 @@ func (r *ModelRegistry) refreshNativeProvider(parent context.Context, p *extensi
 				if err != nil {
 					return err
 				}
-				models, err = p.RefreshModels(ctx, credential, stored, true, force, publish)
-				if err != nil {
+				if err = refresh(credential, stored, true, force); err != nil {
 					return err
+				}
+				if current := nativeProviderCurrentModels(ctx, p); current != nil {
+					models = *current
 				}
 			}
 		}
@@ -231,15 +251,16 @@ func (r *ModelRegistry) refreshNativeProvider(parent context.Context, p *extensi
 	}
 	available := []string{}
 	if check != nil {
-		visible := models
-		if p.FilterModels != nil {
-			visible, err = p.FilterModels(ctx, models, credential)
-			if err != nil {
-				return err
-			}
+		typed, err := nativeTypedModels(p.ID, models)
+		if err != nil {
+			return err
+		}
+		visible, err := nativeVisibleModels(ctx, p, typed, credential)
+		if err != nil {
+			return err
 		}
 		for _, model := range visible {
-			available = append(available, model.ID)
+			available = append(available, model.ModelID())
 		}
 	}
 	if ctx.Err() != nil {
@@ -256,4 +277,110 @@ func (r *ModelRegistry) refreshNativeProvider(parent context.Context, p *extensi
 	}
 	r.mu.Unlock()
 	return nil
+}
+
+// nativeVisibleModels is the models of the list a credential can use. A provider's filterAllModels filters every model type; without it filterModels filters the chat models and every other model is kept.
+// upstream: packages/ai/src/models.ts:730 (getAllAvailable), :720-735
+func nativeVisibleModels(ctx context.Context, p *extension.NativeProvider, models []ai.AnyModel, credential *ai.Credential) ([]ai.AnyModel, error) {
+	if p.FilterAllModels != nil {
+		return p.FilterAllModels(ctx, models, credential)
+	}
+	if p.FilterModels == nil {
+		return models, nil
+	}
+	// models.ts:732-735: filterModels sees the provider's chat models, and the result keeps the listed models in order, dropping only the chat
+	// models whose ids it did not return.
+	var chat []*ai.Model
+	if p.GetModels != nil {
+		listed, err := p.GetModels(ctx)
+		if err != nil {
+			return nil, err
+		}
+		chat = listed
+	} else {
+		for _, model := range models {
+			if typed, ok := model.(*ai.Model); ok {
+				chat = append(chat, typed)
+			}
+		}
+	}
+	kept, err := p.FilterModels(ctx, chat, credential)
+	if err != nil {
+		return nil, err
+	}
+	availableChatIDs := make(map[string]bool, len(kept))
+	for _, model := range kept {
+		availableChatIDs[model.ID] = true
+	}
+	visible := make([]ai.AnyModel, 0, len(models))
+	for _, model := range models {
+		if typed, ok := model.(*ai.Model); !ok || availableChatIDs[typed.ID] {
+			visible = append(visible, model)
+		}
+	}
+	return visible, nil
+}
+
+// nativeTypedModels reads registered model configs as Pi's models of the provider: the config JSON is the model record without its provider id.
+func nativeTypedModels(providerID string, configs []extension.ProviderModelConfig) ([]ai.AnyModel, error) {
+	records := make([]json.RawMessage, len(configs))
+	for i, config := range configs {
+		data, err := json.Marshal(config)
+		if err != nil {
+			return nil, err
+		}
+		var fields map[string]json.RawMessage
+		if err := json.Unmarshal(data, &fields); err != nil {
+			return nil, err
+		}
+		id, err := json.Marshal(providerID)
+		if err != nil {
+			return nil, err
+		}
+		fields["provider"] = id
+		if records[i], err = json.Marshal(fields); err != nil {
+			return nil, err
+		}
+	}
+	models, err := ai.DecodeStoredModels(records)
+	if err != nil {
+		return nil, err
+	}
+	return ai.DecodeModelsCatalog(models, providerID)
+}
+
+// nativeModelConfigs is the inverse of nativeTypedModels: the registry keeps a provider's catalog as model configs.
+func nativeModelConfigs(models []ai.AnyModel) ([]extension.ProviderModelConfig, error) {
+	records, err := ai.EncodeModelsCatalog(models)
+	if err != nil {
+		return nil, err
+	}
+	configs := make([]extension.ProviderModelConfig, len(records))
+	for i, record := range records {
+		if err := json.Unmarshal(record, &configs[i]); err != nil {
+			return nil, err
+		}
+	}
+	return configs, nil
+}
+
+// nativeProviderCurrentModels asks the provider object for its current models (every type when it lists them, otherwise its chat models). It returns nil when the object has neither member.
+func nativeProviderCurrentModels(ctx context.Context, p *extension.NativeProvider) *[]extension.ProviderModelConfig {
+	var models []ai.AnyModel
+	switch {
+	case p.GetAllModels != nil:
+		models, _ = p.GetAllModels(ctx)
+	case p.GetModels != nil:
+		chat, _ := p.GetModels(ctx)
+		for _, model := range chat {
+			models = append(models, model)
+		}
+	default:
+		return nil
+	}
+	configs, err := nativeModelConfigs(models)
+	if err != nil || configs == nil {
+		configs = []extension.ProviderModelConfig{}
+	}
+	return &configs
 }

@@ -13,7 +13,7 @@ The generator checks Pi 0.99.1 and TypeBox 1.3.27 before it runs. It calls Pi's 
 
 The matrix covers `read`, `bash`, `edit`, `write`, `grep`, `find`, and `ls`, plus the opt-in `powershell` tool's schema. It also compares native TypeBox and serialized plain JSON schemas for numbers, integers, booleans, strings, nulls, arrays, tuples, unions, literals, enums, intersections, additional properties, records, defaults, constraints, and nested objects. Boundary probes cover numeric whitespace, radix strings, bigint-like strings, root unions, references, and the legacy `TypeBox.Kind` symbol gate. `TestBuiltinArgumentSchemasMatchPi` binds the built-in portion of the oracle to the production tool schemas.
 
-`agent/validate_upstream_test.go` contains explicit counterparts for all nine cases in `packages/ai/test/validation.test.ts`. The Function-constructor test uses the Go validator directly because Go validation does not generate JavaScript functions.
+`ai/validate_upstream_test.go` contains explicit counterparts for all nine cases in `packages/ai/test/validation.test.ts`. The Function-constructor test uses the Go validator directly because Go validation does not generate JavaScript functions.
 
 ## Upstream contract
 
@@ -32,7 +32,7 @@ TypeBox's native conversion is not the plain-schema fallback. For example, nativ
 
 ## Reproduction and mutation evidence
 
-The stock Session path is `coding/session.go` → `agent/tool_execution.go` → `agent/validate.go`. The old implementation passed the model's raw JSON to jsonschema and returned only an error, so it could not deliver converted values to execution.
+The stock Session path is `coding/session.go` → `agent/tool_execution.go` → `ai/validate.go`. The old implementation passed the model's raw JSON to jsonschema and returned only an error, so it could not deliver converted values to execution.
 
 The pre-fix `tools/13-print-read-argument-coercion` pair sent `{path:"parity-read-target.txt", offset:"2", limit:null, extra:true}`. Pi printed `line two` and `line three`. PiG exited 1 with `jsonschema validation failed`, reporting that `/limit` was null and `/offset` was a string. The initial unit oracle also rejected these inputs on the old implementation.
 

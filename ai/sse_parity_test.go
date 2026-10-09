@@ -2,7 +2,6 @@ package ai
 
 import (
 	"context"
-	"io"
 	"strings"
 	"testing"
 )
@@ -68,18 +67,6 @@ func TestProviderSSEFramingAndEOFRules(t *testing.T) {
 			`data:{"candidates":[{"content":{"parts":[{"text":`,
 			`data:"hi"}]},"finishReason":"STOP"}]}`,
 		}, "\n")), builder)
-		assertSSETextResult(t, builder.stream.Result(), "hi")
-	})
-
-	t.Run("mistral", func(t *testing.T) {
-		builder := newAssistantStreamBuilder(context.Background(), APIMistralConversations, "mistral", "model")
-		provider := &mistralProvider{}
-		provider.consumeStream(context.Background(), io.NopCloser(strings.NewReader(strings.Join([]string{
-			`data:{"choices":[{"delta":{"content":`,
-			`data:"hi"},"finish_reason":"stop"}]}`,
-			"",
-			"data:[DONE]",
-		}, "\n"))), builder)
 		assertSSETextResult(t, builder.stream.Result(), "hi")
 	})
 }

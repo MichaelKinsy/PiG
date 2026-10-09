@@ -5,6 +5,9 @@ package durabletest
 import (
 	"context"
 	"fmt"
+	"slices"
+
+	chorddelta "github.com/MichaelKinsy/PiG/chord/delta"
 
 	"github.com/MichaelKinsy/PiG/durable"
 	"github.com/MichaelKinsy/PiG/extensions/sdk/json"
@@ -22,6 +25,21 @@ func must[T any](value T, err error) T {
 		panic(caseFailure{err: err})
 	}
 	return value
+}
+
+func must3[A, B any](first A, second B, err error) (A, B) {
+	if err != nil {
+		panic(caseFailure{err: err})
+	}
+	return first, second
+}
+
+// roundTripCursor returns the cursor as a caller holding it across a process boundary sees it.
+func roundTripCursor(cursor durable.Cursor) durable.Cursor {
+	encoded := must(json.Marshal(cursor))
+	var roundTripped durable.Cursor
+	check(json.Unmarshal(encoded, &roundTripped))
+	return roundTripped
 }
 
 func check(err error) {
@@ -294,18 +312,15 @@ func CreateStorageConformance(options StorageConformanceOptions) []StorageConfor
 			expect(must(storage.Submission(ctx, submissionId)).Detail).toEqual(map[string]any{"codes": []any{"initial"}})
 
 			readEntry := must(storage.Entry(ctx, entryId)).Entry
-			readData := readEntry.Data.(map[string]any)
-			readItems := readData["nested"].([]any)
+			readItems := member(readEntry.Data, "nested").([]any)
 			readItems[0] = 9
-			readData["nested"] = append(readItems, 9)
+			setMember(readEntry.Data, "nested", append(readItems, 9))
 			readTask := must(storage.Task(ctx, taskId))
 			if readTask.State.Status != durable.TaskTerminal {
-				readNested := (*readTask.State.Checkpoint).(map[string]any)["nested"].(map[string]any)
-				readNested["count"] = 9
+				setMember(member(*readTask.State.Checkpoint, "nested"), "count", 9)
 			}
 			readInput := must(storage.Submission(ctx, submissionId))
-			readDetail := readInput.Detail.(map[string]any)
-			readDetail["codes"] = append(readDetail["codes"].([]any), "read mutation")
+			setMember(readInput.Detail, "codes", append(member(readInput.Detail, "codes").([]any), "read mutation"))
 
 			expect(must(storage.Entry(ctx, entryId)).Entry.Data).toEqual(map[string]any{"nested": []any{1, 2}})
 			expect(must(storage.Task(ctx, taskId)).State).toEqual(expectedState)
@@ -323,18 +338,17 @@ func CreateStorageConformance(options StorageConformanceOptions) []StorageConfor
 
 			data["__proto__"].(map[string]any)["polluted"] = true
 			data["constructor"].(map[string]any)["label"] = "mutated"
-			firstRead := must(storage.Entry(ctx, entryId)).Entry.Data.(map[string]any)
-			_, ownProto := firstRead["__proto__"]
-			expect(ownProto).toBe(true)
-			expect(firstRead["__proto__"]).toEqual(map[string]any{"polluted": false})
-			expect(firstRead["constructor"]).toEqual(map[string]any{"label": "stored"})
-			expect(firstRead["toString"]).toBe("value")
+			firstRead := must(storage.Entry(ctx, entryId)).Entry.Data
+			expect(hasMember(firstRead, "__proto__")).toBe(true)
+			expect(member(firstRead, "__proto__")).toEqual(map[string]any{"polluted": false})
+			expect(member(firstRead, "constructor")).toEqual(map[string]any{"label": "stored"})
+			expect(member(firstRead, "toString")).toBe("value")
 
-			firstRead["__proto__"].(map[string]any)["polluted"] = true
-			secondRead := must(storage.Entry(ctx, entryId)).Entry.Data.(map[string]any)
-			expect(secondRead["__proto__"]).toEqual(map[string]any{"polluted": false})
-			expect(secondRead["constructor"]).toEqual(map[string]any{"label": "stored"})
-			expect(secondRead["toString"]).toBe("value")
+			setMember(member(firstRead, "__proto__"), "polluted", true)
+			secondRead := must(storage.Entry(ctx, entryId)).Entry.Data
+			expect(member(secondRead, "__proto__")).toEqual(map[string]any{"polluted": false})
+			expect(member(secondRead, "constructor")).toEqual(map[string]any{"label": "stored"})
+			expect(member(secondRead, "toString")).toBe("value")
 		}),
 
 		createCase(options, "indexes entries committed out of ID order", func(storage durable.Storage, expect func(any) expectation, _ func(error, string)) {
@@ -450,6 +464,22 @@ func CreateStorageConformance(options StorageConformanceOptions) []StorageConfor
 			expect(entryIds(third.Items)).toEqual(int64s(rootFirst))
 			expect(cursorView(third.Next)).toBeUndefined()
 
+			// Oldest first: the root's segment, then each fork's, each capped at the next fork point.
+			ascending := durable.EntryQuery{ConversationId: grandchildId, Order: new(durable.ScanAscending)}
+			firstUp := must(storage.ScanEntries(ctx, ascending, 2, nil))
+			expect(entryIds(firstUp.Items)).toEqual(int64s(rootFirst, rootForkPoint))
+			secondUp := must(storage.ScanEntries(ctx, ascending, 2, *firstUp.Next))
+			expect(entryIds(secondUp.Items)).toEqual(int64s(childForkPoint, grandchildHead))
+			thirdUp := must(storage.ScanEntries(ctx, grandchild, 2, *secondUp.Next))
+			expect(entryIds(thirdUp.Items)).toEqual(int64s(grandchildTail))
+			expect(cursorView(thirdUp.Next)).toBeUndefined()
+			expect(entryIds(must(storage.ScanEntries(ctx, durable.EntryQuery{
+				ConversationId: grandchildId, Order: new(durable.ScanAscending),
+				MinEntryId: new(rootForkPoint), MaxEntryId: new(childForkPoint),
+			}, 10, nil)).Items)).toEqual(int64s(rootForkPoint, childForkPoint))
+			_, err := storage.ScanEntries(ctx, durable.EntryQuery{ConversationId: grandchildId, Order: new(durable.ScanDescending)}, 2, *firstUp.Next)
+			rejects(err, "cursor")
+
 			currentMarker := must(storage.FindLatestHeadMarker(ctx, grandchildId, nil))
 			expect(currentMarker.Id).toBe(grandchildHead)
 			expect(currentMarker.Head).toBe(grandchildHead)
@@ -485,10 +515,70 @@ func CreateStorageConformance(options StorageConformanceOptions) []StorageConfor
 			expect(must(storage.VisibleEntry(ctx, grandchildId, childExcludedLater))).toBeUndefined()
 			expect(must(storage.VisibleEntry(ctx, rootId, grandchildHead))).toBeUndefined()
 			expect(must(storage.VisibleEntry(ctx, grandchildId, 999_999))).toBeUndefined()
-			_, err := storage.VisibleEntry(ctx, 999_999, rootFirst)
+			_, err = storage.VisibleEntry(ctx, 999_999, rootFirst)
 			rejects(err, "Unknown conversation")
 			_, err = storage.ScanEntries(ctx, durable.EntryQuery{ConversationId: 999_999}, 10, nil)
 			rejects(err, "Unknown conversation")
+		}),
+
+		createCase(options, "scans tables in either ID order and continues a cursor in its order", func(storage durable.Storage, expect func(any) expectation, rejects func(error, string)) {
+			rootId := createRoot(storage)
+			conversationIdList := []int64{int64(rootId)}
+			taskIdList := []int64{}
+			submissionIdList := []int64{}
+			for range 3 {
+				conversationId := mint[durable.ConversationId](storage)
+				taskId := mint[durable.TaskId](storage)
+				submissionId := mint[durable.SubmissionId](storage)
+				commit(storage,
+					durable.ConversationWrite{Value: durable.ConversationRecord{Id: conversationId}},
+					taskWrite(pendingTask(taskId, rootId, "ready")),
+					submissionWrite(durable.SubmissionRecord{Id: submissionId, ConversationId: rootId, Type: durable.SubmissionTypeInput, Status: durable.SubmissionQueued}),
+				)
+				conversationIdList = append(conversationIdList, int64(conversationId))
+				taskIdList = append(taskIdList, int64(taskId))
+				submissionIdList = append(submissionIdList, int64(submissionId))
+			}
+			type scanFn func(order *durable.ScanOrder, cursor durable.Cursor) ([]int64, *durable.Cursor, error)
+			scans := []struct {
+				scan scanFn
+				ids  []int64
+			}{
+				{func(order *durable.ScanOrder, cursor durable.Cursor) ([]int64, *durable.Cursor, error) {
+					found, err := storage.ScanConversations(ctx, durable.ConversationQuery{Order: order}, 2, cursor)
+					return conversationIds(found.Items), found.Next, err
+				}, conversationIdList},
+				{func(order *durable.ScanOrder, cursor durable.Cursor) ([]int64, *durable.Cursor, error) {
+					found, err := storage.ScanTasks(ctx, durable.TaskQuery{Order: order}, 2, cursor)
+					return taskIds(found.Items), found.Next, err
+				}, taskIdList},
+				{func(order *durable.ScanOrder, cursor durable.Cursor) ([]int64, *durable.Cursor, error) {
+					found, err := storage.ScanSubmissions(ctx, durable.SubmissionQuery{Order: order}, 2, cursor)
+					return ids(found.Items, func(record durable.SubmissionRecord) int64 { return int64(record.Id) }), found.Next, err
+				}, submissionIdList},
+			}
+			all := func(scan scanFn, order *durable.ScanOrder) []int64 {
+				found, next := must3(scan(order, nil))
+				for next != nil {
+					// A cursor carries its order; the query may omit it.
+					var page []int64
+					page, next = must3(scan(nil, roundTripCursor(*next)))
+					found = append(found, page...)
+				}
+				return found
+			}
+			for _, current := range scans {
+				reversed := slices.Clone(current.ids)
+				slices.Reverse(reversed)
+				expect(all(current.scan, nil)).toEqual(current.ids)
+				expect(all(current.scan, new(durable.ScanAscending))).toEqual(current.ids)
+				expect(all(current.scan, new(durable.ScanDescending))).toEqual(reversed)
+				_, descendingNext := must3(current.scan(new(durable.ScanDescending), nil))
+				secondPage, _ := must3(current.scan(new(durable.ScanDescending), *descendingNext))
+				expect(secondPage).toEqual(reversed[2:min(4, len(reversed))])
+				_, _, err := current.scan(new(durable.ScanAscending), *descendingNext)
+				rejects(err, "cursor")
+			}
 		}),
 
 		createCase(options, "replaces complete task records and pages filtered task scans", func(storage durable.Storage, expect func(any) expectation, _ func(error, string)) {
@@ -643,7 +733,7 @@ func CreateStorageConformance(options StorageConformanceOptions) []StorageConfor
 				History: durable.HistoryRewindable, Fork: durable.ForkAsOf,
 			}
 			items := []any{"a"}
-			initial := durable.JsonObject{"items": items, "nested": map[string]any{"count": 1}}
+			initial := chorddelta.JsonObjectOf("items", items, "nested", map[string]any{"count": 1})
 			createdAt := commit(storage, durable.DocumentCreateWrite{Record: firstRecord, Content: base(1, initial)})
 			appended := []any{"b"}
 			changedAt := commit(storage, durable.DocumentChangeWrite{Id: firstId, Content: delta(1,
@@ -652,7 +742,7 @@ func CreateStorageConformance(options StorageConformanceOptions) []StorageConfor
 			)})
 
 			items[0] = "caller mutation"
-			initial["items"] = append(items, "caller mutation")
+			initial.Set("items", append(items, "caller mutation"))
 			appended[0] = "caller mutation"
 			expect(storedView(must(storage.Document(ctx, firstId, durable.AtSeq(createdAt))))).toMatchObject(map[string]any{
 				"version": 1, "value": map[string]any{"items": []any{"a"}, "nested": map[string]any{"count": 1}}, "deltasSinceBase": 0,
@@ -660,16 +750,14 @@ func CreateStorageConformance(options StorageConformanceOptions) []StorageConfor
 			changed := must(storage.Document(ctx, firstId, durable.AtSeq(changedAt)))
 			expect(changed.Value).toEqual(map[string]any{"items": []any{"a", "b"}, "nested": map[string]any{"count": 2}})
 			expect(changed.DeltasSinceBase).toBe(1)
-			changedItems := changed.Value["items"].([]any)
+			changedItems := changed.Value.Value("items").([]any)
 			changedItems[0] = "read mutation"
-			changed.Value["items"] = append(changedItems, "read mutation")
+			changed.Value.Set("items", append(changedItems, "read mutation"))
 			expect(must(storage.Document(ctx, firstId, durable.CurrentPoint)).Value).toEqual(map[string]any{
 				"items": []any{"a", "b"}, "nested": map[string]any{"count": 2},
 			})
 
-			checkpointAt := commit(storage, durable.DocumentChangeWrite{Id: firstId, Content: base(2, durable.JsonObject{
-				"items": []any{"checkpoint"}, "nested": map[string]any{"count": 3},
-			})})
+			checkpointAt := commit(storage, durable.DocumentChangeWrite{Id: firstId, Content: base(2, chorddelta.JsonObjectOf("items", []any{"checkpoint"}, "nested", map[string]any{"count": 3}))})
 			replacedAt := commit(storage, durable.DocumentChangeWrite{Id: firstId, Content: delta(2,
 				op("r", map[string]any{"items": []any{"replacement"}, "nested": map[string]any{"count": 4}}),
 			)})
@@ -688,7 +776,7 @@ func CreateStorageConformance(options StorageConformanceOptions) []StorageConfor
 			secondRecord := firstRecord
 			secondRecord.Id = secondId
 			retiredAt := commit(storage,
-				durable.DocumentCreateWrite{Record: secondRecord, Content: base(1, durable.JsonObject{"items": []any{"new"}})},
+				durable.DocumentCreateWrite{Record: secondRecord, Content: base(1, chorddelta.JsonObjectOf("items", []any{"new"}))},
 				durable.DocumentRetireWrite{Id: firstId},
 				durable.DocumentChangeWrite{Id: firstId, Content: delta(2, op("s", path("retiring"), true))},
 			)
@@ -711,42 +799,36 @@ func CreateStorageConformance(options StorageConformanceOptions) []StorageConfor
 			rows := func(count int, value func(int) int, stable func(int) string) []any {
 				out := make([]any, count)
 				for index := range count {
-					out[index] = map[string]any{"value": value(index), "stable": stable(index)}
+					out[index] = chorddelta.JsonObjectOf("value", value(index), "stable", stable(index))
 				}
 				return out
 			}
-			initial := durable.JsonObject{
-				"revision": 0,
-				"rows":     rows(512, func(value int) int { return value }, func(value int) string { return fmt.Sprintf("row-%d", value) }),
-			}
+			initial := chorddelta.JsonObjectOf("revision", 0, "rows", rows(512, func(value int) int { return value }, func(value int) string { return fmt.Sprintf("row-%d", value) }))
 			createdAt := commit(storage, durable.DocumentCreateWrite{Record: record, Content: base(1, initial)})
 			beforeReplacement := structuredClone(initial)
 			beforeReplacementAt := createdAt
 			for revision := 1; revision <= 24; revision++ {
-				beforeRows := beforeReplacement["rows"].([]any)
+				beforeRows := beforeReplacement.Value("rows").([]any)
 				index := (revision * 17) % len(beforeRows)
-				beforeRows[index].(map[string]any)["value"] = -revision
-				beforeReplacement["revision"] = revision
+				beforeRows[index].(*chorddelta.JsonObject).Set("value", -revision)
+				beforeReplacement.Set("revision", revision)
 				beforeReplacementAt = commit(storage, durable.DocumentChangeWrite{Id: id, Content: delta(1,
 					op("s", path("rows", index, "value"), -revision),
 					op("s", path("revision"), revision),
 				)})
 			}
 
-			replacement := durable.JsonObject{
-				"revision": 100,
-				"rows":     rows(512, func(value int) int { return 10_000 + value }, func(value int) string { return fmt.Sprintf("new-%d", value) }),
-			}
+			replacement := chorddelta.JsonObjectOf("revision", 100, "rows", rows(512, func(value int) int { return 10_000 + value }, func(value int) string { return fmt.Sprintf("new-%d", value) }))
 			replacementSnapshot := structuredClone(replacement)
 			replacementAt := commit(storage, durable.DocumentChangeWrite{Id: id, Content: delta(1, op("r", replacement))})
-			replacement["rows"].([]any)[0].(map[string]any)["value"] = -999
+			replacement.Value("rows").([]any)[0].(*chorddelta.JsonObject).Set("value", -999)
 
 			current := structuredClone(replacementSnapshot)
 			for revision := 101; revision <= 124; revision++ {
-				currentRows := current["rows"].([]any)
+				currentRows := current.Value("rows").([]any)
 				index := (revision * 19) % len(currentRows)
-				currentRows[index].(map[string]any)["value"] = -revision
-				current["revision"] = revision
+				currentRows[index].(*chorddelta.JsonObject).Set("value", -revision)
+				current.Set("revision", revision)
 				commit(storage, durable.DocumentChangeWrite{Id: id, Content: delta(1,
 					op("s", path("rows", index, "value"), -revision),
 					op("s", path("revision"), revision),
@@ -758,7 +840,7 @@ func CreateStorageConformance(options StorageConformanceOptions) []StorageConfor
 			expect(must(storage.Document(ctx, id, durable.AtSeq(replacementAt))).Value).toEqual(replacementSnapshot)
 			read := must(storage.Document(ctx, id, durable.CurrentPoint))
 			expect(read.Value).toEqual(current)
-			read.Value["rows"].([]any)[0].(map[string]any)["value"] = -1_000
+			read.Value.Value("rows").([]any)[0].(*chorddelta.JsonObject).Set("value", -1_000)
 			expect(must(storage.Document(ctx, id, durable.CurrentPoint)).Value).toEqual(current)
 		}),
 
@@ -775,9 +857,7 @@ func CreateStorageConformance(options StorageConformanceOptions) []StorageConfor
 				Id: sourceId, Kind: "copy.source", Scope: conversationScope(rootId),
 				History: durable.HistoryRewindable, Fork: durable.ForkAsOf,
 			}
-			createdAt := commit(storage, durable.DocumentCreateWrite{Record: sourceRecord, Content: base(2, durable.JsonObject{
-				"count": 1, "rows": []any{map[string]any{"value": "base"}},
-			})})
+			createdAt := commit(storage, durable.DocumentCreateWrite{Record: sourceRecord, Content: base(2, chorddelta.JsonObjectOf("count", 1, "rows", []any{chorddelta.JsonObjectOf("value", "base")}))})
 			commit(storage, durable.DocumentChangeWrite{Id: sourceId, Content: delta(2,
 				op("s", path("count"), 2),
 				op("p", path("rows"), 1, 0, []any{map[string]any{"value": "current"}}),
@@ -807,7 +887,7 @@ func CreateStorageConformance(options StorageConformanceOptions) []StorageConfor
 			expect(must(storage.Document(ctx, retiredCopyId, durable.CurrentPoint))).toBeUndefined()
 
 			commit(storage,
-				durable.DocumentChangeWrite{Id: sourceId, Content: base(2, durable.JsonObject{"count": 99, "rows": []any{}})},
+				durable.DocumentChangeWrite{Id: sourceId, Content: base(2, chorddelta.JsonObjectOf("count", 99, "rows", []any{}))},
 				durable.DocumentRetireWrite{Id: sourceId},
 			)
 			expect(must(storage.Document(ctx, currentCopyId, durable.CurrentPoint)).Value).toEqual(currentValue)
@@ -818,13 +898,13 @@ func CreateStorageConformance(options StorageConformanceOptions) []StorageConfor
 				Id: latestSourceId, Kind: "copy.latest", Scope: conversationScope(rootId),
 				History: durable.HistoryLatest, Fork: durable.ForkCurrent,
 			}
-			commit(storage, durable.DocumentCreateWrite{Record: latestSource, Content: base(4, durable.JsonObject{"retained": "copy"})})
+			commit(storage, durable.DocumentCreateWrite{Record: latestSource, Content: base(4, chorddelta.JsonObjectOf("retained", "copy"))})
 			latestCopy := latestSource
 			latestCopy.Id = latestCopyId
 			latestCopy.Scope = conversationScope(childId)
 			commit(storage, durable.DocumentCopyWrite{Record: latestCopy, Source: durable.DocumentCopySource{Id: latestSourceId, At: durable.CurrentPoint}})
 			commit(storage,
-				durable.DocumentChangeWrite{Id: latestSourceId, Content: base(4, durable.JsonObject{"retained": "source-only"})},
+				durable.DocumentChangeWrite{Id: latestSourceId, Content: base(4, chorddelta.JsonObjectOf("retained", "source-only"))},
 				durable.DocumentRetireWrite{Id: latestSourceId},
 			)
 			expect(storedView(must(storage.Document(ctx, latestCopyId, durable.CurrentPoint)))).toMatchObject(map[string]any{
@@ -852,9 +932,9 @@ func CreateStorageConformance(options StorageConformanceOptions) []StorageConfor
 			createRoot(storage)
 			id := mint[durable.DocumentId](storage)
 			record := durable.DocumentCreate{Id: id, Kind: "session.settings", Scope: sessionScope}
-			commit(storage, durable.DocumentCreateWrite{Record: record, Content: base(1, durable.JsonObject{"count": 1})})
+			commit(storage, durable.DocumentCreateWrite{Record: record, Content: base(1, chorddelta.JsonObjectOf("count", 1))})
 			commit(storage, durable.DocumentChangeWrite{Id: id, Content: delta(1, op("s", path("count"), 2))})
-			migratedAt := commit(storage, durable.DocumentChangeWrite{Id: id, Content: base(2, durable.JsonObject{"count": 3})})
+			migratedAt := commit(storage, durable.DocumentChangeWrite{Id: id, Content: base(2, chorddelta.JsonObjectOf("count", 3))})
 			expect(storedView(must(storage.Document(ctx, id, durable.CurrentPoint)))).toMatchObject(map[string]any{"version": 2, "value": map[string]any{"count": 3}})
 			_, err := storage.Document(ctx, id, durable.AtSeq(migratedAt))
 			rejects(err, "does not retain historical content")
@@ -876,7 +956,7 @@ func CreateStorageConformance(options StorageConformanceOptions) []StorageConfor
 			taskOtherKindId := mint[durable.DocumentId](storage)
 			taskScope := durable.DocumentRecordScope{Kind: durable.ScopeTask, TaskId: taskId}
 			create := func(record durable.DocumentCreate, owner string) durable.StorageWrite {
-				return durable.DocumentCreateWrite{Record: record, Content: base(1, durable.JsonObject{"owner": owner})}
+				return durable.DocumentCreateWrite{Record: record, Content: base(1, chorddelta.JsonObjectOf("owner", owner))}
 			}
 			createdAt := commit(storage,
 				taskWrite(pendingTask(taskId, rootId, "ready")),
@@ -910,11 +990,11 @@ func CreateStorageConformance(options StorageConformanceOptions) []StorageConfor
 			firstId := mint[durable.DocumentId](storage)
 			secondId := mint[durable.DocumentId](storage)
 			record := durable.DocumentCreate{Id: firstId, Kind: "singleton", Scope: sessionScope}
-			commit(storage, durable.DocumentCreateWrite{Record: record, Content: base(1, durable.JsonObject{"value": 1})})
+			commit(storage, durable.DocumentCreateWrite{Record: record, Content: base(1, chorddelta.JsonObjectOf("value", 1))})
 			secondRecord := record
 			secondRecord.Id = secondId
 			rejects(commitErr(storage,
-				durable.DocumentCreateWrite{Record: secondRecord, Content: base(1, durable.JsonObject{"value": 2})},
+				durable.DocumentCreateWrite{Record: secondRecord, Content: base(1, chorddelta.JsonObjectOf("value", 2))},
 				durable.DocumentChangeWrite{Id: firstId, Content: delta(1)},
 			), "already has a current incarnation")
 			expect(must(storage.Document(ctx, firstId, durable.CurrentPoint)).Value).toEqual(map[string]any{"value": 1})
@@ -925,7 +1005,7 @@ func CreateStorageConformance(options StorageConformanceOptions) []StorageConfor
 				durable.DocumentCreateWrite{Record: durable.DocumentCreate{
 					Id: emptyId, Kind: record.Kind, Key: new("empty"), Scope: conversationScope(rootId),
 					History: durable.HistoryRewindable, Fork: durable.ForkInitial,
-				}, Content: base(1, durable.JsonObject{})},
+				}, Content: base(1, chorddelta.NewJsonObject(0))},
 				durable.DocumentRetireWrite{Id: emptyId},
 			)
 			expect(must(storage.Document(ctx, emptyId, durable.CurrentPoint))).toBeUndefined()
@@ -944,7 +1024,7 @@ func CreateStorageConformance(options StorageConformanceOptions) []StorageConfor
 			baselineSeq := commit(storage,
 				taskWrite(task),
 				submissionWrite(submission),
-				durable.DocumentCreateWrite{Record: record, Content: base(1, durable.JsonObject{"count": 1})},
+				durable.DocumentCreateWrite{Record: record, Content: base(1, chorddelta.JsonObjectOf("count", 1))},
 			)
 
 			entryId := mint[durable.EntryId](storage)
@@ -960,7 +1040,7 @@ func CreateStorageConformance(options StorageConformanceOptions) []StorageConfor
 				taskWrite(runningTask),
 				submissionWrite(failedSubmission),
 				entryWrite(entry(entryId, rootId, "transient")),
-				durable.DocumentCreateWrite{Record: conflicting, Content: base(1, durable.JsonObject{"count": 2})},
+				durable.DocumentCreateWrite{Record: conflicting, Content: base(1, chorddelta.JsonObjectOf("count", 2))},
 			), "already has a current incarnation")
 
 			expect(must(storage.Task(ctx, taskId))).toEqual(task)
@@ -990,7 +1070,7 @@ func CreateStorageConformance(options StorageConformanceOptions) []StorageConfor
 			firstTask.Kind = first
 			secondTask := pendingTask(secondTaskId, rootId, "ready")
 			secondTask.Kind = second
-			identity := func(value string) durable.DocumentContent { return base(1, durable.JsonObject{"identity": value}) }
+			identity := func(value string) durable.DocumentContent { return base(1, chorddelta.JsonObjectOf("identity", value)) }
 			commit(storage,
 				taskWrite(firstTask),
 				taskWrite(secondTask),
@@ -1060,11 +1140,17 @@ func errorName(err error) string {
 	return "Error"
 }
 
-// structuredClone deep-copies a JSON object built from maps and slices.
+// structuredClone deep-copies a JSON object built from ordered objects, maps and slices.
 func structuredClone(value durable.JsonObject) durable.JsonObject {
 	var clone func(any) any
 	clone = func(value any) any {
 		switch typed := value.(type) {
+		case *chorddelta.JsonObject:
+			out := chorddelta.NewJsonObject(typed.Len())
+			for key, item := range typed.All() {
+				out.Set(key, clone(item))
+			}
+			return out
 		case map[string]any:
 			out := make(map[string]any, len(typed))
 			for key, item := range typed {
@@ -1081,5 +1167,32 @@ func structuredClone(value durable.JsonObject) durable.JsonObject {
 			return value
 		}
 	}
-	return clone(value).(map[string]any)
+	return clone(value).(*chorddelta.JsonObject)
+}
+
+// member reads key of a stored JSON object, which a storage returns as the Go map it was given or, decoded from text, as an ordered
+// object.
+func member(object any, key string) any {
+	if ordered, ok := object.(*chorddelta.JsonObject); ok {
+		return ordered.Value(key)
+	}
+	return object.(map[string]any)[key]
+}
+
+// setMember writes key of a stored JSON object of either form.
+func setMember(object any, key string, value any) {
+	if ordered, ok := object.(*chorddelta.JsonObject); ok {
+		ordered.Set(key, value)
+		return
+	}
+	object.(map[string]any)[key] = value
+}
+
+// hasMember reports whether a stored JSON object of either form has key.
+func hasMember(object any, key string) bool {
+	if ordered, ok := object.(*chorddelta.JsonObject); ok {
+		return ordered.Has(key)
+	}
+	_, ok := object.(map[string]any)[key]
+	return ok
 }

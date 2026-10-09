@@ -1,5 +1,13 @@
 package durableagent
 
+// pi: packages/coding-agent/src/experimental/vacation/sessions.ts
+
+// pi: packages/coding-agent/src/experimental/vacation/runtime.ts
+
+// pi: packages/coding-agent/src/experimental/durable/sessions.ts
+
+// pi: packages/coding-agent/src/experimental/durable/runtime.ts
+
 import (
 	"context"
 	"net/http"

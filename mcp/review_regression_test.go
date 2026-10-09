@@ -73,3 +73,22 @@ func TestStreamableHTTPTransportKeepsMaxErrorBodyUTF16UnitsOfAnErrorBody(t *test
 		t.Fatalf("body is not the decoded prefix")
 	}
 }
+
+// Response.text() decodes with the UTF-8 decoder, which drops one leading byte order mark, so the error body Pi
+// reports (streamable-http.ts checkResponse) does not start with U+FEFF.
+func TestStreamableHTTPTransportDropsALeadingBOMFromAnErrorBody(t *testing.T) {
+	url, _ := startServer(t, func(w http.ResponseWriter, r *http.Request, _ *requestLog) {
+		_, _ = io.ReadAll(r.Body)
+		w.WriteHeader(http.StatusBadRequest)
+		_, _ = io.WriteString(w, "\uFEFF\uFEFFbad request")
+	})
+	client := newHTTPClient()
+	_, err := client.Connect(t.Context(), newHTTPTransport(t, mcp.StreamableHTTPTransportOptions{URL: url}))
+	httpErr, ok := errors.AsType[*mcp.McpHttpError](err)
+	if !ok {
+		t.Fatalf("err = %v", err)
+	}
+	if httpErr.Body != "\uFEFFbad request" {
+		t.Fatalf("body = %q, want exactly one leading BOM removed", httpErr.Body)
+	}
+}

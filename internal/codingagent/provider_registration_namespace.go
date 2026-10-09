@@ -4,7 +4,6 @@ package codingagent
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 
 	"github.com/MichaelKinsy/PiG/ai"
@@ -13,11 +12,28 @@ import (
 
 // providerModelInput is the model-bearing part of a registered provider: its name, endpoint, api, models of every type and the implementations of its image and classifier models. Callback and credential fields are added by legacyProviderInput.
 func providerModelInput(id string, config providerConfig) ProviderConfigInput {
-	input := ProviderConfigInput{Name: config.Name, BaseURL: config.BaseURL, API: ai.API(config.API), Images: config.Images, Classifiers: config.Classifiers}
+	input := ProviderConfigInput{Name: config.Name, BaseURL: config.BaseURL, API: ai.API(config.API), Images: config.Images, Classifiers: config.Classifiers, Insecure: config.Insecure}
 	if config.Models != nil {
 		input.Models = make([]ai.AnyModel, 0, len(config.Models))
 		for _, model := range config.Models {
 			input.Models = append(input.Models, anyModelFromDefinition(id, config, model))
+		}
+	}
+	if callback := config.RefreshModels; callback != nil {
+		input.RefreshModels = func(ctx ai.RefreshModelsContext) ([]ai.AnyModel, error) {
+			refreshed, err := callback(ctx)
+			if err != nil || refreshed == nil {
+				return nil, err
+			}
+			decoded, ok := providerConfigFromRegistration(extension.ProviderConfig{Models: refreshed})
+			if !ok {
+				return nil, fmt.Errorf("provider %s: refreshed models are invalid", id)
+			}
+			models := make([]ai.AnyModel, 0, len(decoded.Models))
+			for _, model := range decoded.Models {
+				models = append(models, anyModelFromDefinition(id, config, model))
+			}
+			return models, nil
 		}
 	}
 	return input
@@ -48,50 +64,28 @@ func legacyProviderInput(id string, config providerConfig) ProviderConfigInput {
 				if err != nil {
 					return ai.Credential{}, err
 				}
-				return legacyOAuthCredential(value)
+				return ai.CredentialFromOAuth(value)
 			}
 		}
 		if callbacks.RefreshToken != nil {
-			input.OAuth.RefreshToken = func(_ context.Context, credential ai.Credential) (ai.Credential, error) {
-				value, err := callbacks.RefreshToken(credential)
+			input.OAuth.RefreshToken = func(ctx context.Context, credential ai.Credential) (ai.Credential, error) {
+				value, err := callbacks.RefreshToken(ctx, credential.OAuthCredentials())
 				if err != nil {
 					return ai.Credential{}, err
 				}
-				return legacyOAuthCredential(value)
+				return ai.CredentialFromOAuth(value)
 			}
 		}
 		if callbacks.GetAPIKey != nil {
-			input.OAuth.GetAPIKey = func(credential ai.Credential) string { return callbacks.GetAPIKey(credential) }
+			input.OAuth.GetAPIKey = func(credential ai.Credential) string { return callbacks.GetAPIKey(credential.OAuthCredentials()) }
 		}
 		if callbacks.ModifyModels != nil {
 			input.OAuth.ModifyModels = func(models []*ai.Model, credential ai.Credential) []*ai.Model {
-				opaque := make([]extension.Model, len(models))
-				for i, model := range models {
-					opaque[i] = model
-				}
-				modified := callbacks.ModifyModels(opaque, credential)
-				result := make([]*ai.Model, len(modified))
-				for i, model := range modified {
-					result[i] = model.(*ai.Model)
-				}
-				return result
+				return callbacks.ModifyModels(models, credential.OAuthCredentials())
 			}
 		}
 	}
 	return input
-}
-
-func legacyOAuthCredential(value any) (ai.Credential, error) {
-	encoded, err := json.Marshal(value)
-	if err != nil {
-		return ai.Credential{}, err
-	}
-	var credential ai.Credential
-	if err := json.Unmarshal(encoded, &credential); err != nil {
-		return ai.Credential{}, err
-	}
-	credential.Type = ai.CredentialOAuth
-	return credential, nil
 }
 
 // InvokeProviderStreamSimple is the shared dynamic-to-native callback boundary. The caller resolves request credentials before invoking it.
@@ -104,9 +98,8 @@ func InvokeProviderStreamSimple(ctx context.Context, id string, callback extensi
 	}()
 	options.Signal = ctx
 	value := callback(model, transcript, options)
-	stream, ok := value.(*ai.AssistantMessageEventStream)
-	if !ok || stream == nil {
+	if value == nil {
 		return nil, fmt.Errorf("provider %q streamSimple returned %T, expected an assistant message event stream", id, value)
 	}
-	return stream, nil
+	return value, nil
 }

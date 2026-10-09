@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 const root = new URL("../../../extensions/sdk-ts/node_modules/@earendil-works/pi-coding-agent/node_modules/@earendil-works/pi-ai/", import.meta.url);
-if (JSON.parse(readFileSync(new URL("package.json", root), "utf8")).version !== "1.0.3") throw new Error("Expected Pi 1.0.3");
+if (JSON.parse(readFileSync(new URL("package.json", root), "utf8")).version !== "1.1.0") throw new Error("Expected Pi 1.1.0");
 const { openaiCodexOAuth } = await import(new URL("dist/auth/oauth/openai-codex.js", root));
 const access = `header.${Buffer.from('{"https://api.openai.com/auth":{"chatgpt_account_id":"account-parity"}}').toString("base64")}.signature`;
 let polls = 0;

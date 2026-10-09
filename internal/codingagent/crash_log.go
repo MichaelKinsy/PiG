@@ -7,13 +7,20 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"math"
 	"net/url"
 	"os"
 	"path/filepath"
 	"slices"
 	"strings"
 	"time"
-	"unicode"
+	"unicode/utf8"
+
+	"github.com/MichaelKinsy/PiG/ai"
+	"github.com/MichaelKinsy/PiG/internal/jsonstringify"
+	"github.com/MichaelKinsy/PiG/internal/lazyregexp"
+	"github.com/MichaelKinsy/PiG/internal/orderedjson"
+	"github.com/MichaelKinsy/PiG/tui/widthx"
 )
 
 // upstream: coding-agent/src/core/crash-log.ts:MAX_AGE
@@ -23,7 +30,9 @@ const (
 )
 
 // CrashRecord is one crashes.json entry. Mirrors upstream CrashRecord; Kind is
-// "uncaught_exception" or "fatal_error".
+// "uncaught_exception" or "fatal_error". A record read from the log keeps the
+// JSON object it came from, so a rewrite and a bug report carry its other
+// members and the types it was written with, as Pi's untyped objects do.
 type CrashRecord struct {
 	Timestamp   string  `json:"timestamp"`
 	Version     string  `json:"version"`
@@ -33,11 +42,69 @@ type CrashRecord struct {
 	SessionFile *string `json:"sessionFile"`
 	CWD         string  `json:"cwd"`
 	Notified    bool    `json:"notified,omitempty"`
+
+	// members is the record as read: JSON.stringify(JSON.parse(text)) of the log entry, in member order. Nil for a record this process created.
+	members *orderedjson.Object
+}
+
+// MarshalJSON writes the record as the log holds it: the members it was read with, or the fields of a new record.
+func (r CrashRecord) MarshalJSON() ([]byte, error) {
+	if r.members != nil {
+		return r.members.MarshalJSON()
+	}
+	type plain CrashRecord
+	return json.Marshal(plain(r))
+}
+
+// withoutNotified is `({ notified: _notified, ...record }) => record` (bug-report.ts:221).
+func (r CrashRecord) withoutNotified() CrashRecord {
+	r.Notified = false
+	if r.members != nil {
+		r.members = r.members.Clone()
+		r.members.Delete("notified")
+	}
+	return r
+}
+
+// markNotified is `{ ...record, notified: true }`: the member keeps its place when the record has it and is appended otherwise.
+func (r CrashRecord) markNotified() CrashRecord {
+	r.Notified = true
+	if r.members != nil {
+		r.members = r.members.Clone()
+		r.members.Set("notified", json.RawMessage("true"))
+	}
+	return r
+}
+
+// crashNotifiedTruthy is JavaScript's ToBoolean of a parsed JSON value, numbers included whatever their spelling (`0.0`, `-0`, `0e5`).
+func crashNotifiedTruthy(raw json.RawMessage) bool {
+	var value any
+	if json.Unmarshal(raw, &value) != nil {
+		return false
+	}
+	switch v := value.(type) {
+	case nil:
+		return false
+	case bool:
+		return v
+	case float64:
+		return v != 0 && !math.IsNaN(v)
+	case string:
+		return v != ""
+	}
+	return true
 }
 
 // CrashLogPath returns the crash log location for an agent directory.
 func CrashLogPath(agentDir string) string {
 	return filepath.Join(agentDir, "crashes.json")
+}
+
+// readCrashMember decodes one member of a record into target when it has the target's type. A member of another type leaves the field empty: Pi's record keeps it untouched, so only the typed view loses it.
+func readCrashMember(members *orderedjson.Object, name string, target any) {
+	if raw, ok := members.Get(name); ok {
+		_ = json.Unmarshal(raw, target)
+	}
 }
 
 // ReadCrashLog returns the valid records, or none when the file is missing
@@ -55,36 +122,67 @@ func ReadCrashLog(path string) []CrashRecord {
 	records := make([]CrashRecord, 0, len(raw))
 	// upstream: coding-agent/src/core/crash-log.ts:readCrashLog
 	for _, item := range raw {
-		var fields map[string]any
-		if json.Unmarshal(item, &fields) != nil {
+		canonical, err := jsonstringify.Canonicalize(item)
+		if err != nil || len(canonical) == 0 || canonical[0] != '{' {
 			continue
 		}
-		if _, ok := fields["timestamp"].(string); !ok {
-			continue
-		}
-		if _, ok := fields["message"].(string); !ok {
+		members, err := orderedjson.Parse(canonical)
+		if err != nil {
 			continue
 		}
 		var record CrashRecord
-		if json.Unmarshal(item, &record) != nil {
+		var timestampOK, messageOK bool
+		if v, ok := members.Get("timestamp"); ok && json.Unmarshal(v, &record.Timestamp) == nil && len(v) > 0 && v[0] == '"' {
+			timestampOK = true
+		}
+		if v, ok := members.Get("message"); ok && json.Unmarshal(v, &record.Message) == nil && len(v) > 0 && v[0] == '"' {
+			messageOK = true
+		}
+		if !timestampOK || !messageOK {
 			continue
 		}
+		readCrashMember(members, "version", &record.Version)
+		readCrashMember(members, "kind", &record.Kind)
+		readCrashMember(members, "stack", &record.Stack)
+		readCrashMember(members, "sessionFile", &record.SessionFile)
+		readCrashMember(members, "cwd", &record.CWD)
+		if v, ok := members.Get("notified"); ok {
+			record.Notified = crashNotifiedTruthy(v)
+		}
+		record.members = members
 		records = append(records, record)
 	}
 	return records
 }
 
+// writeCrashLog is `writeFileSync(path, JSON.stringify(records, null, 2) + "\n")`.
 func writeCrashLog(records []CrashRecord, path string) error {
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		return err
 	}
+	compact := []byte{'['}
+	for i, record := range records {
+		encoded, err := record.MarshalJSON()
+		if err != nil {
+			return err
+		}
+		if record.members == nil {
+			// A new record's strings are written as JSON.stringify writes them.
+			if encoded, err = jsonstringify.Canonicalize(encoded); err != nil {
+				return err
+			}
+		}
+		if i > 0 {
+			compact = append(compact, ',')
+		}
+		compact = append(compact, encoded...)
+	}
+	compact = append(compact, ']')
 	var buffer bytes.Buffer
-	encoder := json.NewEncoder(&buffer)
-	encoder.SetEscapeHTML(false)
-	encoder.SetIndent("", "  ")
-	if err := encoder.Encode(records); err != nil {
+	if err := json.Indent(&buffer, compact, "", "  "); err != nil {
 		return err
 	}
+	buffer.WriteByte('\n')
 	return os.WriteFile(path, buffer.Bytes(), 0o644)
 }
 
@@ -117,8 +215,9 @@ func FindExtensionStackMatches(stack string, extensions []ExtensionStackMetadata
 		lines = lines[1:]
 	}
 	frames := make([]string, 0, len(lines))
+	goStack := goroutineHeader.MatchString(stack)
 	for _, line := range lines {
-		if !isStackFrame(line) {
+		if !isStackFrame(line, goStack) {
 			continue
 		}
 		frames = append(frames, decodeStackFrameURI(line))
@@ -128,12 +227,7 @@ func FindExtensionStackMatches(stack string, extensions []ExtensionStackMetadata
 	seen := make(map[string]struct{})
 	for _, extension := range extensions {
 		resolvedPath := normalizeStackPath(extension.ResolvedPath)
-		singleFilePackage := extension.SourceInfo.Origin == "package" &&
-			!hasRemotePackageScheme(extension.SourceInfo.Source) && isJSSourceFile(extension.SourceInfo.Source)
-		packageRoot := ""
-		if extension.SourceInfo.Origin == "package" && !singleFilePackage {
-			packageRoot = extension.SourceInfo.BaseDir
-		}
+		packageRoot := ExtensionPackageRoot(extension.SourceInfo.Origin, extension.SourceInfo.Source, extension.SourceInfo.BaseDir)
 		slashIndex := strings.LastIndexByte(resolvedPath, '/')
 		directoryEntry := isDirectoryEntry(resolvedPath)
 		var matched bool
@@ -187,34 +281,33 @@ func stackContainsPath(stack, targetPath string, includeDescendants bool) bool {
 		if next == len(haystack) || haystack[next] == ':' || haystack[next] == ')' {
 			return true
 		}
-		if unicode.IsSpace(rune(haystack[next])) {
+		if r, _ := utf8.DecodeRuneInString(haystack[next:]); widthx.IsJSSpace(r) {
 			return true
 		}
 		offset = index + len(needle)
 	}
 }
 
-func isStackFrame(line string) bool {
-	trimmed := strings.TrimLeftFunc(line, unicode.IsSpace)
+// pig additive (D100): a Go goroutine trace is read for crashes of the PiG process itself.
+// isStackFrame is `/^\s+at\s/u.test(line)` (JavaScript's \s) and, in a Go goroutine trace (goStack), which puts the source location on a tab-indented line below the function name, also a line of the form `\t<file>:<line>[ +0x<offset>]`.
+// A Go trace has no `at` frames, so without the second form a stack recorded for a Go crash would never attribute an extension. A JavaScript stack is matched exactly as Pi matches it.
+func isStackFrame(line string, goStack bool) bool {
+	trimmed := strings.TrimLeftFunc(line, widthx.IsJSSpace)
 	if trimmed == line {
 		return false
 	}
 	if after, ok := strings.CutPrefix(trimmed, "at"); ok {
-		return after != "" && unicode.IsSpace(rune(after[0]))
+		r, _ := utf8.DecodeRuneInString(after)
+		return after != "" && widthx.IsJSSpace(r)
 	}
-	// Go panic stacks put source locations on indented lines immediately below
-	// function names rather than prefixing them with "at".
-	colon := strings.LastIndexByte(trimmed, ':')
-	if colon == -1 || colon == len(trimmed)-1 {
-		return false
-	}
-	rest := trimmed[colon+1:]
-	digits := 0
-	for digits < len(rest) && rest[digits] >= '0' && rest[digits] <= '9' {
-		digits++
-	}
-	return digits > 0 && (digits == len(rest) || unicode.IsSpace(rune(rest[digits])))
+	return goStack && goPanicFrame.MatchString(line)
 }
+
+var (
+	goPanicFrame = lazyregexp.New(`^\t[^\t]+:[0-9]+(?: \+0x[0-9a-f]+)?$`)
+	// goroutineHeader is the header line of each goroutine in a Go panic or runtime/debug.Stack trace.
+	goroutineHeader = lazyregexp.New(`(?m)^goroutine [0-9]+ \[[^\]\n]*\]:$`)
+)
 
 func decodeStackFrameURI(line string) string {
 	// decodeURI preserves escapes for URI delimiters while decoding path spaces
@@ -263,6 +356,14 @@ func hexByte(high, low byte) (byte, bool) {
 
 func isWindowsDrivePath(path string) bool {
 	return len(path) >= 3 && ((path[0] >= 'a' && path[0] <= 'z') || (path[0] >= 'A' && path[0] <= 'Z')) && path[1] == ':' && path[2] == '/'
+}
+
+// ExtensionPackageRoot is the directory of the Package that supplied an extension, or "" for a top-level extension and for a local source that is a single script file (crash-log.ts singleFilePackage, which mirrors package-manager.ts leaving packageRoot unset for a file).
+func ExtensionPackageRoot(origin, source, baseDir string) string {
+	if origin != "package" || (!hasRemotePackageScheme(source) && isJSSourceFile(source)) {
+		return ""
+	}
+	return baseDir
 }
 
 func hasRemotePackageScheme(source string) bool {
@@ -349,12 +450,14 @@ func TakeUnnotifiedCrash(path string, now time.Time) (CrashRecord, bool) {
 		if record.Notified {
 			continue
 		}
-		at, err := time.Parse(time.RFC3339Nano, record.Timestamp)
-		if err != nil || now.Sub(at) > maxCrashAge {
+		// now - Date.parse(record.timestamp) <= MAX_AGE: a time Date.parse does not read is NaN and never recent.
+		if age := float64(now.UnixMilli()) - ai.DateParse(record.Timestamp); !(age <= float64(maxCrashAge.Milliseconds())) {
 			continue
 		}
 		for j := range records {
-			records[j].Notified = true
+			if !records[j].Notified {
+				records[j] = records[j].markNotified()
+			}
 		}
 		// Showing the notice again is harmless, so a write failure is ignored.
 		_ = writeCrashLog(records, path)
@@ -374,9 +477,10 @@ func ClearCrashLog(path string) {
 // crashNotice is the startup warning for an unannounced crash. Upstream
 // formats the time with toLocaleString(); this uses its en-US form.
 func crashNotice(crash CrashRecord) string {
-	when := crash.Timestamp
-	if at, err := time.Parse(time.RFC3339Nano, crash.Timestamp); err == nil {
-		when = at.Local().Format("1/2/2006, 3:04:05 PM")
+	// new Date(crash.timestamp).toLocaleString()
+	when := "Invalid Date"
+	if ms := ai.DateParse(crash.Timestamp); !math.IsNaN(ms) && math.Abs(ms) <= 8.64e15 {
+		when = time.UnixMilli(int64(ms)).Local().Format("1/2/2006, 3:04:05 PM")
 	}
 	return fmt.Sprintf("%s crashed on %s (%s). Run /bug to report it; the crash details are attached automatically.", AppName, when, crash.Message)
 }

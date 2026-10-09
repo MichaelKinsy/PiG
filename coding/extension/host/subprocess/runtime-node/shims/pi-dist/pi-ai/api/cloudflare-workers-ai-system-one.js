@@ -1,4 +1,5 @@
-import { classifySystemOne, isRecord } from "./system-one-shared.js";
+import { isRecord } from "./classifier-shared.js";
+import { classifySystemOne } from "./system-one-shared.js";
 const LABEL = "Cloudflare Workers AI";
 function cloudflareErrorMessage(errors) {
     if (Array.isArray(errors)) {

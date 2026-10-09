@@ -1,5 +1,7 @@
 package tui
 
+// pi: packages/tui/src/alt-screen-search.ts
+
 import (
 	"maps"
 	"reflect"
@@ -30,12 +32,12 @@ var upstreamAltScreenBindings = map[string][]string{
 // the global TUI keybindings for one test.
 func useAltScreenBindings(t *testing.T, overrides map[string][]string) {
 	t.Helper()
-	previous := globalTUIKeybindings
+	previous := globalTUIKeybindings.Load()
 	bindings := map[string][]string{}
 	maps.Copy(bindings, upstreamAltScreenBindings)
 	maps.Copy(bindings, overrides)
 	SetKeybindings(NewTUIKeybindingsManager(bindings))
-	t.Cleanup(func() { globalTUIKeybindings = previous })
+	t.Cleanup(func() { globalTUIKeybindings.Store(previous) })
 }
 
 // TestAltScreenSearchNormalizesAcrossRows ports upstream "searches normalized

@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/MichaelKinsy/PiG/ai"
+	"github.com/MichaelKinsy/PiG/tui"
 )
 
 // thinkingCompletionMode is an editor dispatch mode whose model supports
@@ -29,7 +30,7 @@ func thinkingCompletionMode(t *testing.T) *InteractiveMode {
 // thinking levels (interactive-mode.ts:713-726).
 func TestThinkingCommandCompletesAvailableLevels(t *testing.T) {
 	m := thinkingCompletionMode(t)
-	suggestions := m.buildAutocompleteProvider().GetSuggestions([]string{"/thinking h"}, 0, len("/thinking h"))
+	suggestions := m.buildAutocompleteProvider().GetSuggestions(context.Background(), []string{"/thinking h"}, 0, len("/thinking h"), tui.AutocompleteSuggestionOptions{})
 	if suggestions == nil {
 		t.Fatal("no completions after /thinking h")
 	}

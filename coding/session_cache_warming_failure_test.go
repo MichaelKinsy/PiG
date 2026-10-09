@@ -30,6 +30,7 @@ func (p *failingPersistWarmProvider) Stream(ctx context.Context, transcript ai.T
 
 // Session.CacheWarmingStatus reads the agent transcript through the warmer's
 // current-context check. A run failure's append must not race it. Run under -race.
+// Pi: packages/coding-agent/src/core/agent-session.ts:1417 (Session.cacheWarmingStatus).
 func TestCacheWarmingStatusSafeDuringPersistenceFailure(t *testing.T) {
 	t.Setenv("PI_CACHE_RETENTION", "short")
 	provider := &failingPersistWarmProvider{started: make(chan struct{}), readerStarted: make(chan struct{})}

@@ -1,5 +1,7 @@
 package coding
 
+// pi: packages/coding-agent/src/core/cache-warmer.ts
+
 import (
 	"context"
 	"runtime"
@@ -95,7 +97,7 @@ func TestSessionCloseCancelsAndDrainsWarmerBeforeProviderCleanup(t *testing.T) {
 			t.Error("late refresh completion left a provider resource alive after Close")
 		}
 		for _, entry := range sess.Inner().GetBranch() {
-			if entry.Base.Type == "usage" {
+			if entry.Base().Type == "usage" {
 				t.Error("cancelled refresh persisted late usage")
 			}
 		}
@@ -138,6 +140,7 @@ func TestIdleReplacementReleasesOldCacheWarmingSessions(t *testing.T) {
 }
 
 // Replacement cancels immediately without waiting for a slow provider. Only actually pending refreshes retain old Sessions, and Session.Close joins those refreshes too.
+// Pi: packages/coding-agent/src/core/agent-session.ts:1417 (Session.cacheWarmingStatus); packages/coding-agent/src/core/cache-warmer.ts:126 (CacheWarmingStatus.reason).
 func TestReplacementDrainsAndReleasesInFlightCacheWarmer(t *testing.T) {
 	for _, closeSession := range []bool{false, true} {
 		name := "while_open"
@@ -184,7 +187,7 @@ func TestReplacementDrainsAndReleasesInFlightCacheWarmer(t *testing.T) {
 					t.Error("drained refresh still retains the replaced Session")
 				}
 				for _, entry := range sess.Inner().GetBranch() {
-					if entry.Base.Type == "usage" {
+					if entry.Base().Type == "usage" {
 						t.Error("retired refresh appended usage to the replacement Session")
 					}
 				}
@@ -203,7 +206,7 @@ func BenchmarkSessionReplaceInnerCacheWarming(b *testing.B) {
 		}
 		b.Run(name, func(b *testing.B) {
 			b.Setenv("PIG_HOME", b.TempDir())
-			services, err := NewServices(ServicesOptions{CWD: b.TempDir()})
+			services, err := CreateAgentSessionServices(CreateAgentSessionServicesOptions{CWD: b.TempDir()})
 			if err != nil {
 				b.Fatal(err)
 			}

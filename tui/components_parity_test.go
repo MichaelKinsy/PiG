@@ -13,7 +13,7 @@ import (
 // delegating to utils.truncateToWidth (utils.ts:812).
 func TestTruncatedText_PreservesANSI(t *testing.T) {
 	t.Run("plain truncation uses three-dot ellipsis", func(t *testing.T) {
-		c := NewTruncatedText("hello world", 1)
+		c := NewTruncatedText("hello world", 0, 0)
 		got := strings.Join(c.Render(8), "\n")
 		if !strings.Contains(got, "...") {
 			t.Fatalf("expected three-dot ellipsis, got %q", got)
@@ -23,14 +23,14 @@ func TestTruncatedText_PreservesANSI(t *testing.T) {
 		}
 	})
 	t.Run("ansi codes survive truncation", func(t *testing.T) {
-		c := NewTruncatedText("\x1b[31mhello world\x1b[0m", 1)
+		c := NewTruncatedText("\x1b[31mhello world\x1b[0m", 0, 0)
 		got := strings.Join(c.Render(8), "\n")
 		if !strings.Contains(got, "\x1b[31m") {
 			t.Fatalf("expected color prefix preserved, got %q", got)
 		}
 	})
 	t.Run("stops at newline", func(t *testing.T) {
-		c := NewTruncatedText("first\nsecond", 1)
+		c := NewTruncatedText("first\nsecond", 0, 0)
 		got := c.Render(20)
 		if len(got) != 1 {
 			t.Fatalf("expected 1 line, got %d (%q)", len(got), got)

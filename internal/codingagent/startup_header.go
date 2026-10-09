@@ -2,10 +2,13 @@
 package codingagent
 
 import (
+	"slices"
 	"strings"
 
 	"github.com/MichaelKinsy/PiG/coding/piglogin"
+	"github.com/MichaelKinsy/PiG/extensions/sdk/frontend"
 	"github.com/MichaelKinsy/PiG/internal/coding/pigversion"
+	"github.com/MichaelKinsy/PiG/internal/pigstrip"
 	"github.com/MichaelKinsy/PiG/tui"
 	"github.com/MichaelKinsy/PiG/tui/widthx"
 )
@@ -22,15 +25,59 @@ func (m *InteractiveMode) headerContainer() *tui.Container {
 // misaligns them, so the pixel art would break apart there; it gets the text mark. A variable so tests can select either.
 var supportsHalfBlockMark = func() bool { return !tui.IsAppleTerminalSession() }
 
+// builtInHeaderKey holds every input that changes the built-in header's lines. A theme carries its color mode, and the theme and the merged keybindings are replaced, never changed in place (tui.SetTheme and RefreshActiveThemeColorMode store a new theme, KeybindingsManager.rebuild a new manager), so their pointers stand for their content. Nil bindings draw the host platform's defaults, which do not change while PiG runs; the version is a constant. The sprite's ID with piglogin.Revision identifies what the sprite draws.
+type builtInHeaderKey struct {
+	width                 int
+	theme                 *tui.Theme
+	bindings              *tui.TUIKeybindingsManager
+	sprite                string
+	spriteRevision        uint64
+	halfBlock             bool
+	expanded, showDetails bool
+}
+
+// builtInHeaderRender is the last built-in header drawn: its lines and logo area for its key.
+type builtInHeaderRender struct {
+	key   builtInHeaderKey
+	lines []string
+	logo  *builtInHeaderLogoArea
+}
+
 // renderBuiltInHeader renders the current startup help expansion. Verbose seeds this state only at initialization; tool toggles and header restoration subsequently select it.
+// The lines are kept until an input in builtInHeaderKey changes, as Pi's BuiltInHeader keeps its text until it is invalidated (themed-text.ts) and its Text keeps its lines per width (text.ts render); the frame loop calls this on every frame, and drawing the pig head and wrapping the hints beside it is most of a frame's allocations.
 func (m *InteractiveMode) renderBuiltInHeader(width int) []string {
 	theme := tui.ActiveTheme()
 	var bindings *tui.TUIKeybindingsManager
 	if m.keybindings != nil {
 		bindings = m.keybindings.merged
-	} else {
+	}
+	m.toolMu.Lock()
+	expanded, showDetails := m.builtInHeaderExpanded, m.builtInHeaderShowDetails
+	m.toolMu.Unlock()
+	// The revision is read before the sprite, so a sprite registered in between is drawn again on the next frame.
+	spriteRevision := piglogin.Revision()
+	variant := piglogin.Active()
+	key := builtInHeaderKey{
+		width: width, theme: theme, bindings: bindings, sprite: variant.ID, spriteRevision: spriteRevision,
+		halfBlock: supportsHalfBlockMark(), expanded: expanded, showDetails: showDetails,
+	}
+	if last := m.builtInHeaderLast.Load(); last != nil && last.key == key {
+		m.builtInHeaderLogo.Store(last.logo)
+		return last.lines
+	}
+	if bindings == nil {
 		bindings = tui.NewKeybindingsManager(keybindingDefinitionsFor(tui.HostKeybindingPlatform()), nil)
 	}
+	lines, logo := drawBuiltInHeader(key, bindings, variant)
+	m.builtInHeaderLogo.Store(logo)
+	m.builtInHeaderLast.Store(&builtInHeaderRender{key: key, lines: lines, logo: logo})
+	return lines
+}
+
+// drawBuiltInHeader draws the built-in header for in with bindings and the sprite variant, and returns its lines and the logo's clickable area.
+func drawBuiltInHeader(in builtInHeaderKey, bindings *tui.TUIKeybindingsManager, variant piglogin.Variant) ([]string, *builtInHeaderLogoArea) {
+	width, theme, expanded, showDetails := in.width, in.theme, in.expanded, in.showDetails
+	mode := theme.GetColorMode()
 	key := func(action string) string {
 		return tui.FormatKeyText(strings.Join(bindings.GetKeys(action), "/"), false)
 	}
@@ -47,51 +94,59 @@ func (m *InteractiveMode) renderBuiltInHeader(width int) []string {
 	// place.
 	// pig divergence (D63): the startup version is the composite PiG+Pi release identity.
 	version := themeFg(theme.Dim, "v"+pigversion.Version)
-	variant, mode := piglogin.Active(), theme.ColorMode()
-	drawHead := supportsHalfBlockMark() && mode == tui.TerminalColorModeTrueColor &&
+	drawHead := in.halfBlock && mode == tui.TerminalColorModeTrueColor &&
 		width-2 >= piglogin.HeadCells+1+widthx.VisibleWidth(version)
 	withLogo := func(hints string) string {
 		switch {
 		case drawHead:
 			return version + "\n" + hints
-		case !supportsHalfBlockMark():
+		case !in.halfBlock:
 			// interactive-mode.ts:1003: a terminal that cannot render the logo gets the wordmark and the version, with the hints below.
 			return piWordmark(mode) + " " + version + "\n" + hints
 		}
 		return piglogin.TextMark(variant, mode) + " " + version + "\n" + strings.Repeat(" ", piglogin.TextMarkWidth) + " " + hints
 	}
-	m.toolMu.Lock()
-	expanded, showDetails := m.builtInHeaderExpanded, m.builtInHeaderShowDetails
-	m.toolMu.Unlock()
+	// pig additive (D92): a hint of a stripped built-in (an action of a stripped command, or `!` of a stripped bash tool) is
+	// left out. Stock PiG strips nothing and joins Pi's hints unchanged.
+	bashStripped := pigstrip.Has(pigstrip.ListTools, "bash")
+	unless := func(stripped bool, hint string) string {
+		if stripped {
+			return ""
+		}
+		return hint
+	}
+	join := func(hints []string, separator string) string {
+		return strings.Join(slices.DeleteFunc(hints, func(hint string) bool { return hint == "" }), separator)
+	}
 	var instructions string
 	if expanded {
-		instructions = withLogo(strings.Join([]string{
+		instructions = withLogo(join([]string{
 			hint("app.interrupt", "to interrupt"),
 			hint("app.clear", "to clear"),
 			rawHint(key("app.clear")+" twice", "to exit"),
 			hint("app.exit", "to exit (empty)"),
 			hint("app.suspend", "to suspend"),
 			hint("tui.editor.deleteToLineEnd", "to delete to end"),
-			hint("app.thinking.cycle", "to cycle thinking level"),
-			rawHint(key("app.model.cycleForward")+"/"+key("app.model.cycleBackward"), "to cycle models"),
-			hint("app.model.select", "to select model"),
+			unless(appActionStripped("app.thinking.cycle"), hint("app.thinking.cycle", "to cycle thinking level")),
+			unless(appActionStripped("app.model.cycleForward"), rawHint(key("app.model.cycleForward")+"/"+key("app.model.cycleBackward"), "to cycle models")),
+			unless(appActionStripped("app.model.select"), hint("app.model.select", "to select model")),
 			hint("app.tools.expand", "to expand tools"),
 			hint("app.thinking.toggle", "to expand thinking"),
 			hint("app.editor.external", "for external editor"),
 			rawHint("/", "for commands"),
-			rawHint("!", "to run bash"),
-			rawHint("!!", "to run bash (no context)"),
+			unless(bashStripped, rawHint("!", "to run bash")),
+			unless(bashStripped, rawHint("!!", "to run bash (no context)")),
 			hint("app.message.followUp", "to queue follow-up"),
 			hint("app.message.dequeue", "to edit all queued messages"),
 			hint("app.clipboard.pasteImage", "to paste files on macOS, images, or text"),
 			rawHint("drop files", "to attach"),
 		}, "\n"))
 	} else {
-		instructions = strings.Join([]string{
+		instructions = join([]string{
 			hint("app.interrupt", "interrupt"),
 			rawHint(key("app.clear")+"/"+key("app.exit"), "clear/exit"),
 			rawHint("/", "commands"),
-			rawHint("!", "bash"),
+			unless(bashStripped, rawHint("!", "bash")),
 			hint("app.tools.expand", "more"),
 		}, themeFg(theme.Muted, " · "))
 		// interactive-mode.ts:997, 1044-1048: the loaded resources are mentioned only when the startup details showed as the header was built.
@@ -102,20 +157,23 @@ func (m *InteractiveMode) renderBuiltInHeader(width int) []string {
 		instructions = withLogo(instructions) + "\n" + themeFg(theme.Dim, "Press "+key("app.tools.expand")+" to show full startup help"+resources+".")
 	}
 	// pig divergence (D2): self-help names PiG rather than the separate Pi executable.
+	// pig additive (D92): without the docs bundle there are no docs to look up.
 	onboarding := themeFg(theme.Dim, "PiG can explain its own features and look up its docs. Ask it how to use or extend PiG.")
+	if pigstrip.Has(pigstrip.ListFeatures, pigstrip.Docs) {
+		onboarding = themeFg(theme.Dim, "PiG can explain its own features. Ask it how to use or extend PiG.")
+	}
 	text := instructions + "\n\n" + onboarding
 	if !drawHead {
 		// Pi's logo is clickable wherever Pi draws it, which is everywhere but Apple Terminal (supportsPiLogo); the text mark
 		// stands in for it there.
 		area := builtInHeaderLogoArea{}
-		if supportsHalfBlockMark() {
+		if in.halfBlock {
 			area = builtInHeaderLogoArea{visible: true, column: 1, columns: piglogin.TextMarkWidth, rows: 1}
 		}
-		m.builtInHeaderLogo.Store(&area)
-		return tui.NewPaddedText(text, 1, 0, nil).Render(width)
+		return tui.NewPaddedText(text, 1, 0, nil).Render(width), &area
 	}
-	m.builtInHeaderLogo.Store(&builtInHeaderLogoArea{visible: true, column: 1, columns: piglogin.HeadCells, rows: piglogin.HeadRows})
-	return headBesideText(piglogin.HeadLines(variant, mode), text, width)
+	area := builtInHeaderLogoArea{visible: true, column: 1, columns: piglogin.HeadCells, rows: piglogin.HeadRows}
+	return headBesideText(piglogin.HeadLines(variant, mode), text, width), &area
 }
 
 // piWordmark is the text fallback for the logo in a terminal color mode (pi-logo.ts piWordmark).
@@ -174,4 +232,13 @@ func (m *InteractiveMode) handleBuiltInHeaderMouse(event tui.TuiMouseEvent) *tui
 	left, top := event.ScreenX-event.X+area.column, event.ScreenY-event.Y+area.row
 	m.playPigLogoAnimation(left, top, area.columns, area.rows)
 	return &tui.TuiMouseDispatchResult{TuiMouseEventResult: tui.TuiMouseEventResult{Handled: true}}
+}
+
+// pig additive (D91): builtInHeaderClickArea is the header's logo as a frontend session reports a click on it.
+func (m *InteractiveMode) builtInHeaderClickArea() (frontend.Area, bool) {
+	area := m.builtInHeaderLogo.Load()
+	if area == nil || !area.visible {
+		return frontend.Area{}, false
+	}
+	return frontend.Area{Row: area.row, Column: area.column, Rows: area.rows, Columns: area.columns}, true
 }

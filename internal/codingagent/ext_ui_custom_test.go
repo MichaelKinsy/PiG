@@ -67,7 +67,7 @@ func newCustomRig(t *testing.T) *customRig {
 }
 
 // start runs Custom in a goroutine and pumps the owner loop until the call ends or ready reports true.
-func (r *customRig) start(ctx context.Context, factory any, opts any) <-chan customOutcome {
+func (r *customRig) start(ctx context.Context, factory extension.CustomFactory, opts *extension.CustomOptions) <-chan customOutcome {
 	out := make(chan customOutcome, 1)
 	r.workers.Go(func() {
 		value, err := r.u.Custom(ctx, factory, opts)
@@ -109,16 +109,21 @@ func TestExtUIContextCustomMountsTheComponentInTheEditorSlotAndRestoresItOnDone(
 	r.m.editor.SetText("draft text")
 	component := &customProbe{label: "CUSTOM"}
 	var done func(any)
-	var gotHost extension.CustomHost
-	var gotTheme, gotKeybindings any
-	out := r.start(t.Context(), extension.CustomFactory(func(host extension.CustomHost, theme extension.Theme, keybindings extension.KeybindingsManager, d func(any)) (extension.Component, error) {
+	var gotHost extension.TUI
+	var gotTheme any
+	var gotKeybindings extension.KeybindingsManager
+	out := r.start(t.Context(), extension.CustomFactory(func(host extension.TUI, theme *tui.Theme, keybindings extension.KeybindingsManager, d func(any)) (extension.DisposableComponent, error) {
 		gotHost, gotTheme, gotKeybindings, done = host, theme, keybindings, d
 		return component, nil
 	}), nil)
-	if _, ended := r.pump(t, out, func() bool { return any(r.m.tuiInst.FocusedComponent()) == component }); ended {
+	if _, ended := r.pump(t, out, func() bool { return any(r.m.tuiInst.GetFocusedComponent()) == component }); ended {
 		t.Fatal("Custom returned before done")
 	}
-	if gotHost == nil || gotTheme != any(tui.ActiveTheme()) || gotKeybindings == nil {
+	if gotHost != r.m.tuiInst {
+		t.Fatalf("the factory got %v, want the mounted TUI (interactive-mode.ts:3008 passes this.ui)", gotHost)
+	}
+	// interactive-mode.ts:3008 factory(this.ui, theme, this.keybindings, close): the keybindings are the session's manager, never nil.
+	if gotHost == nil || gotTheme != any(tui.ActiveTheme()) || gotKeybindings == nil || gotKeybindings != tui.GetTUIKeybindings() {
 		t.Fatalf("factory arguments: host %v theme %v keybindings %v", gotHost, gotTheme, gotKeybindings)
 	}
 	gotHost.RequestRender() // safe from any goroutine
@@ -144,7 +149,7 @@ func TestExtUIContextCustomMountsTheComponentInTheEditorSlotAndRestoresItOnDone(
 	if component.disposed.Load() != 1 {
 		t.Fatalf("disposed %d times", component.disposed.Load())
 	}
-	if any(r.m.tuiInst.FocusedComponent()) != any(r.m.editor) {
+	if any(r.m.tuiInst.GetFocusedComponent()) != any(r.m.editor) {
 		t.Fatal("focus did not return to the editor")
 	}
 	if r.m.editor.Text() != "draft text" {
@@ -157,7 +162,7 @@ func TestExtUIContextCustomRestoresTheEditorTextItHeldAtOpen(t *testing.T) {
 	r := newCustomRig(t)
 	r.m.editor.SetText("before")
 	var done func(any)
-	out := r.start(t.Context(), extension.CustomFactory(func(_ extension.CustomHost, _ extension.Theme, _ extension.KeybindingsManager, d func(any)) (extension.Component, error) {
+	out := r.start(t.Context(), extension.CustomFactory(func(_ extension.TUI, _ *tui.Theme, _ extension.KeybindingsManager, d func(any)) (extension.DisposableComponent, error) {
 		done = d
 		return &customProbe{label: "C"}, nil
 	}), nil)
@@ -174,7 +179,7 @@ func TestExtUIContextCustomRestoresTheEditorTextItHeldAtOpen(t *testing.T) {
 func TestExtUIContextCustomDoneBeforeTheFactoryReturnsMountsNothing(t *testing.T) {
 	r := newCustomRig(t)
 	component := &customProbe{label: "NEVER"}
-	out := r.start(t.Context(), extension.CustomFactory(func(_ extension.CustomHost, _ extension.Theme, _ extension.KeybindingsManager, d func(any)) (extension.Component, error) {
+	out := r.start(t.Context(), extension.CustomFactory(func(_ extension.TUI, _ *tui.Theme, _ extension.KeybindingsManager, d func(any)) (extension.DisposableComponent, error) {
 		d("early")
 		return component, nil
 	}), nil)
@@ -182,7 +187,7 @@ func TestExtUIContextCustomDoneBeforeTheFactoryReturnsMountsNothing(t *testing.T
 	if got.err != nil || got.value != "early" {
 		t.Fatalf("Custom = %v, %v", got.value, got.err)
 	}
-	if any(r.m.tuiInst.FocusedComponent()) == component || r.m.editorContainer.Children()[0] != tui.Component(r.m.editor) {
+	if any(r.m.tuiInst.GetFocusedComponent()) == component || r.m.editorContainer.Children()[0] != tui.Component(r.m.editor) {
 		t.Fatal("a closed component was mounted")
 	}
 }
@@ -192,7 +197,7 @@ func TestExtUIContextCustomDoneBeforeTheFactoryReturnsMountsNothing(t *testing.T
 func TestExtUIContextCustomDoneBeforeTheFactoryReturnsRestoresTheEditor(t *testing.T) {
 	r := newCustomRig(t)
 	r.m.editor.SetText("before")
-	out := r.start(t.Context(), extension.CustomFactory(func(_ extension.CustomHost, _ extension.Theme, _ extension.KeybindingsManager, d func(any)) (extension.Component, error) {
+	out := r.start(t.Context(), extension.CustomFactory(func(_ extension.TUI, _ *tui.Theme, _ extension.KeybindingsManager, d func(any)) (extension.DisposableComponent, error) {
 		r.m.editor.SetText("changed by the factory")
 		d("early")
 		return &customProbe{label: "NEVER"}, nil
@@ -209,14 +214,14 @@ func TestExtUIContextCustomDoneBeforeTheFactoryReturnsRestoresTheEditor(t *testi
 func TestExtUIContextCustomFactoryErrorRejects(t *testing.T) {
 	r := newCustomRig(t)
 	boom := errors.New("boom")
-	out := r.start(t.Context(), extension.CustomFactory(func(extension.CustomHost, extension.Theme, extension.KeybindingsManager, func(any)) (extension.Component, error) {
+	out := r.start(t.Context(), extension.CustomFactory(func(extension.TUI, *tui.Theme, extension.KeybindingsManager, func(any)) (extension.DisposableComponent, error) {
 		return nil, boom
 	}), nil)
 	got := r.finish(t, out)
 	if !errors.Is(got.err, boom) {
 		t.Fatalf("err = %v", got.err)
 	}
-	if any(r.m.tuiInst.FocusedComponent()) != any(r.m.editor) {
+	if any(r.m.tuiInst.GetFocusedComponent()) != any(r.m.editor) {
 		t.Fatal("focus is not on the editor")
 	}
 }
@@ -226,10 +231,10 @@ func TestExtUIContextCustomOverlay(t *testing.T) {
 	r := newCustomRig(t)
 	component := &customProbe{label: "OVERLAY"}
 	var done func(any)
-	out := r.start(t.Context(), extension.CustomFactory(func(_ extension.CustomHost, _ extension.Theme, _ extension.KeybindingsManager, d func(any)) (extension.Component, error) {
+	out := r.start(t.Context(), extension.CustomFactory(func(_ extension.TUI, _ *tui.Theme, _ extension.KeybindingsManager, d func(any)) (extension.DisposableComponent, error) {
 		done = d
 		return component, nil
-	}), extension.CustomOptions{Overlay: true})
+	}), &extension.CustomOptions{Overlay: true})
 	r.pump(t, out, func() bool { return r.m.tuiInst.ActiveOverlay() != nil })
 	if r.m.editorContainer.Children()[0] != tui.Component(r.m.editor) {
 		t.Fatal("an overlay replaced the editor slot")
@@ -252,17 +257,17 @@ func TestExtUIContextCustomEndsWithItsContext(t *testing.T) {
 	r := newCustomRig(t)
 	component := &customProbe{label: "C"}
 	ctx, cancel := context.WithCancel(t.Context())
-	out := r.start(ctx, extension.CustomFactory(func(extension.CustomHost, extension.Theme, extension.KeybindingsManager, func(any)) (extension.Component, error) {
+	out := r.start(ctx, extension.CustomFactory(func(extension.TUI, *tui.Theme, extension.KeybindingsManager, func(any)) (extension.DisposableComponent, error) {
 		return component, nil
 	}), nil)
-	r.pump(t, out, func() bool { return any(r.m.tuiInst.FocusedComponent()) == component })
+	r.pump(t, out, func() bool { return any(r.m.tuiInst.GetFocusedComponent()) == component })
 	cancel()
 	got := r.finish(t, out)
 	if !errors.Is(got.err, context.Canceled) {
 		t.Fatalf("err = %v", got.err)
 	}
 	deadline := time.Now().Add(5 * time.Second)
-	for component.disposed.Load() == 0 || any(r.m.tuiInst.FocusedComponent()) != any(r.m.editor) {
+	for component.disposed.Load() == 0 || any(r.m.tuiInst.GetFocusedComponent()) != any(r.m.editor) {
 		select {
 		case fn := <-r.m.uiTaskCh:
 			fn()
@@ -274,13 +279,44 @@ func TestExtUIContextCustomEndsWithItsContext(t *testing.T) {
 	}
 }
 
-// The value must be a factory; a subprocess extension goes through RunRemoteOverlay instead.
-func TestExtUIContextCustomRejectsAValueThatIsNotAFactory(t *testing.T) {
+// Pi types the factory, so a missing one is the only invalid value; a subprocess extension goes through RunRemoteOverlay instead.
+func TestExtUIContextCustomRejectsAMissingFactory(t *testing.T) {
 	r := newCustomRig(t)
-	if _, err := r.u.Custom(t.Context(), "not a factory", nil); err == nil {
-		t.Fatal("Custom accepted a string")
-	}
 	if _, err := r.u.Custom(t.Context(), nil, nil); err == nil {
 		t.Fatal("Custom accepted nil")
 	}
+}
+
+// interactive-mode.ts:2902-2905: overlayOptions given as a function is called when the overlay is shown, and onHandle receives the overlay's handle
+// at once, so the extension can hide, focus or unfocus the overlay.
+func TestExtUIContextCustomOverlayOptionsFunctionAndOnHandle(t *testing.T) {
+	r := newCustomRig(t)
+	component := &customProbe{label: "OVERLAY"}
+	var optionCalls int
+	var handle *tui.OverlayHandle
+	var done func(any)
+	out := r.start(t.Context(), extension.CustomFactory(func(_ extension.TUI, _ *tui.Theme, _ extension.KeybindingsManager, d func(any)) (extension.DisposableComponent, error) {
+		done = d
+		return component, nil
+	}), &extension.CustomOptions{
+		Overlay: true,
+		OverlayOptions: extension.OverlayOptionsFunc(func() tui.OverlayOptions {
+			optionCalls++
+			return tui.OverlaySpec{}.Options()
+		}),
+		OnHandle: func(h *tui.OverlayHandle) { handle = h },
+	})
+	r.pump(t, out, func() bool { return r.m.tuiInst.ActiveOverlay() != nil })
+	if optionCalls != 1 {
+		t.Fatalf("overlayOptions function called %d times, want once at show", optionCalls)
+	}
+	if handle == nil {
+		t.Fatal("onHandle was not called with the overlay handle")
+	}
+	handle.Hide()
+	if r.m.tuiInst.ActiveOverlay() != nil {
+		t.Fatal("hiding through the onHandle handle left the overlay shown")
+	}
+	done("closed")
+	r.finish(t, out)
 }

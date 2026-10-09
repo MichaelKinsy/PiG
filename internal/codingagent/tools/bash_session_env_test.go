@@ -1,4 +1,3 @@
-// SPDX-FileCopyrightText: Copyright Hewlett Packard Enterprise Development LP
 // SPDX-License-Identifier: MIT
 
 package tools
@@ -84,7 +83,7 @@ func TestGetShellEnvPrependsBinDir(t *testing.T) {
 func TestBashPathStartsWithAgentBinDir(t *testing.T) {
 	binDir := filepath.Join(t.TempDir(), "bin")
 	var bash agent.AgentTool
-	for _, tool := range CreateCodingTools(t.TempDir(), nil, binDir) {
+	for _, tool := range CreateCodingTools(t.TempDir(), &ToolsOptions{BinDir: binDir}) {
 		if tool.Name() == "bash" {
 			bash = tool
 		}

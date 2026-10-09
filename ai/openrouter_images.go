@@ -16,6 +16,9 @@ import (
 	"time"
 )
 
+// Ports packages/ai/src/providers/images/register-builtins.ts (registerBuiltInImagesApiProviders and generateImagesOpenRouter; the lazy
+// import and its load-error AssistantImages are JavaScript module loading, which Go links at build time).
+
 // RegisterBuiltInImagesAPIProviders registers upstream's built-in image API
 // providers. Currently upstream ships OpenRouter image generation only.
 func RegisterBuiltInImagesAPIProviders() {
@@ -23,6 +26,13 @@ func RegisterBuiltInImagesAPIProviders() {
 		API:            APIImagesOpenRouter,
 		GenerateImages: GenerateImagesOpenRouter,
 	})
+}
+
+// OpenRouterImagesAPI is the OpenRouter image implementation a provider lists under APIImagesOpenRouter (api/openrouter-images.lazy.ts openrouterImagesApi).
+func OpenRouterImagesAPI() *ProviderImages {
+	return &ProviderImages{GenerateImages: func(ctx context.Context, model *ImageModel, request ImagesContext, options ImagesOptions) (AssistantImages, error) {
+		return GenerateImagesOpenRouter(ctx, *model, request, options), nil
+	}}
 }
 
 // GenerateImagesOpenRouter implements upstream providers/images/openrouter.ts.
@@ -66,9 +76,16 @@ func GenerateImagesOpenRouter(ctx context.Context, model ImageModel, imagesCtx I
 	}
 
 	requestCtx := ctx
+	// openrouter-images.ts:72-81 passes options.maxRetries and options.maxRetryDelayMs to retryProviderRequest for this request; the retry transport reads them from the context.
+	if options.MaxRetries != nil {
+		requestCtx = WithProviderMaxRetries(requestCtx, *options.MaxRetries)
+	}
+	if options.MaxRetryDelayMs != nil {
+		requestCtx = WithProviderRequestRetry(requestCtx, ProviderMaxRetries(requestCtx), options.MaxRetryDelayMs)
+	}
 	if options.TimeoutMs > 0 {
 		var cancel context.CancelFunc
-		requestCtx, cancel = context.WithTimeout(ctx, time.Duration(options.TimeoutMs)*time.Millisecond)
+		requestCtx, cancel = context.WithTimeout(requestCtx, time.Duration(options.TimeoutMs)*time.Millisecond)
 		defer cancel()
 	}
 	req, err := http.NewRequestWithContext(requestCtx, http.MethodPost, strings.TrimRight(model.BaseURL, "/")+"/chat/completions", bytes.NewReader(body))

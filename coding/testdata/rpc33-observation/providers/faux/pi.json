@@ -1,5 +1,5 @@
 {
- "pi": "1.0.3",
+ "pi": "1.1.0",
  "node": "v24.19.0",
  "results": [
   {
@@ -32015,7 +32015,8 @@
         },
         "stopReason": "error",
         "errorMessage": "scripted factory failure",
-        "timestamp": 1791196280998,
+        "timestamp": 1791429877094,
+        "durationMs": 1,
         "thinkingLevel": "off"
        }
       }
@@ -32047,7 +32048,8 @@
         },
         "stopReason": "error",
         "errorMessage": "scripted factory failure",
-        "timestamp": 1791196280998,
+        "timestamp": 1791429877094,
+        "durationMs": 1,
         "thinkingLevel": "off"
        }
       }
@@ -32086,7 +32088,8 @@
         },
         "stopReason": "error",
         "errorMessage": "scripted factory failure",
-        "timestamp": 1791196281542,
+        "timestamp": 1791429877704,
+        "durationMs": 1,
         "thinkingLevel": "off"
        }
       }
@@ -32118,7 +32121,8 @@
         },
         "stopReason": "error",
         "errorMessage": "scripted factory failure",
-        "timestamp": 1791196281542,
+        "timestamp": 1791429877704,
+        "durationMs": 1,
         "thinkingLevel": "off"
        }
       }
@@ -32157,7 +32161,8 @@
         },
         "stopReason": "error",
         "errorMessage": "scripted factory failure",
-        "timestamp": 1791196282111,
+        "timestamp": 1791429878320,
+        "durationMs": 1,
         "thinkingLevel": "off"
        }
       }
@@ -32189,7 +32194,8 @@
         },
         "stopReason": "error",
         "errorMessage": "scripted factory failure",
-        "timestamp": 1791196282111,
+        "timestamp": 1791429878320,
+        "durationMs": 1,
         "thinkingLevel": "off"
        }
       }
@@ -32228,7 +32234,8 @@
          },
          "stopReason": "error",
          "errorMessage": "scripted factory failure",
-         "timestamp": 1791196282117
+         "timestamp": 1791429878326,
+         "durationMs": 0
         }
        }
       },
@@ -32256,7 +32263,8 @@
         },
         "stopReason": "error",
         "errorMessage": "scripted factory failure",
-        "timestamp": 1791196282117
+        "timestamp": 1791429878326,
+        "durationMs": 0
        }
       }
      ]
@@ -32291,7 +32299,8 @@
          },
          "stopReason": "error",
          "errorMessage": "scripted factory failure",
-         "timestamp": 1791196282117,
+         "timestamp": 1791429878327,
+         "durationMs": 0,
          "thinkingLevel": "off"
         }
        }
@@ -32322,7 +32331,8 @@
          },
          "stopReason": "error",
          "errorMessage": "scripted factory failure",
-         "timestamp": 1791196282117,
+         "timestamp": 1791429878327,
+         "durationMs": 0,
          "thinkingLevel": "off"
         }
        }
@@ -32360,7 +32370,8 @@
          },
          "stopReason": "error",
          "errorMessage": "scripted factory failure",
-         "timestamp": 1791196282117
+         "timestamp": 1791429878327,
+         "durationMs": 0
         }
        }
       },
@@ -32388,7 +32399,8 @@
         },
         "stopReason": "error",
         "errorMessage": "scripted factory failure",
-        "timestamp": 1791196282117
+        "timestamp": 1791429878327,
+        "durationMs": 0
        }
       }
      ]
@@ -32423,7 +32435,8 @@
          },
          "stopReason": "error",
          "errorMessage": "scripted factory failure",
-         "timestamp": 1791196282117,
+         "timestamp": 1791429878327,
+         "durationMs": 0,
          "thinkingLevel": "off"
         }
        }
@@ -32454,7 +32467,8 @@
          },
          "stopReason": "error",
          "errorMessage": "scripted factory failure",
-         "timestamp": 1791196282117,
+         "timestamp": 1791429878327,
+         "durationMs": 0,
          "thinkingLevel": "off"
         }
        }
@@ -32492,7 +32506,8 @@
          },
          "stopReason": "error",
          "errorMessage": "scripted factory failure",
-         "timestamp": 1791196282117
+         "timestamp": 1791429878327,
+         "durationMs": 0
         }
        }
       },
@@ -32520,7 +32535,8 @@
         },
         "stopReason": "error",
         "errorMessage": "scripted factory failure",
-        "timestamp": 1791196282117
+        "timestamp": 1791429878327,
+        "durationMs": 0
        }
       }
      ]
@@ -32555,7 +32571,8 @@
          },
          "stopReason": "error",
          "errorMessage": "scripted factory failure",
-         "timestamp": 1791196282117,
+         "timestamp": 1791429878327,
+         "durationMs": 0,
          "thinkingLevel": "off"
         }
        }
@@ -32586,7 +32603,8 @@
          },
          "stopReason": "error",
          "errorMessage": "scripted factory failure",
-         "timestamp": 1791196282117,
+         "timestamp": 1791429878327,
+         "durationMs": 0,
          "thinkingLevel": "off"
         }
        }
@@ -36276,7 +36294,8 @@
         },
         "stopReason": "error",
         "errorMessage": "Faux response ended without a stop reason",
-        "timestamp": 1791196284349,
+        "timestamp": 1791429880838,
+        "durationMs": 2,
         "thinkingLevel": "off"
        }
       }
@@ -36313,7 +36332,8 @@
         },
         "stopReason": "error",
         "errorMessage": "No more faux responses queued",
-        "timestamp": 1791196286358,
+        "timestamp": 1791429882847,
+        "durationMs": 0,
         "thinkingLevel": "off"
        }
       }
@@ -36345,7 +36365,8 @@
         },
         "stopReason": "error",
         "errorMessage": "No more faux responses queued",
-        "timestamp": 1791196286358,
+        "timestamp": 1791429882847,
+        "durationMs": 0,
         "thinkingLevel": "off"
        }
       }
@@ -36579,7 +36600,8 @@
         },
         "stopReason": "error",
         "errorMessage": "Faux response ended without a stop reason",
-        "timestamp": 1791196286913,
+        "timestamp": 1791429883458,
+        "durationMs": 2,
         "thinkingLevel": "off"
        }
       }
@@ -36616,7 +36638,8 @@
         },
         "stopReason": "error",
         "errorMessage": "No more faux responses queued",
-        "timestamp": 1791196288921,
+        "timestamp": 1791429885467,
+        "durationMs": 0,
         "thinkingLevel": "off"
        }
       }
@@ -36648,7 +36671,8 @@
         },
         "stopReason": "error",
         "errorMessage": "No more faux responses queued",
-        "timestamp": 1791196288921,
+        "timestamp": 1791429885467,
+        "durationMs": 0,
         "thinkingLevel": "off"
        }
       }
@@ -36882,7 +36906,8 @@
         },
         "stopReason": "error",
         "errorMessage": "Faux response ended without a stop reason",
-        "timestamp": 1791196289480,
+        "timestamp": 1791429886080,
+        "durationMs": 2,
         "thinkingLevel": "off"
        }
       }
@@ -36919,7 +36944,8 @@
         },
         "stopReason": "error",
         "errorMessage": "No more faux responses queued",
-        "timestamp": 1791196291488,
+        "timestamp": 1791429888088,
+        "durationMs": 0,
         "thinkingLevel": "off"
        }
       }
@@ -36951,7 +36977,8 @@
         },
         "stopReason": "error",
         "errorMessage": "No more faux responses queued",
-        "timestamp": 1791196291488,
+        "timestamp": 1791429888088,
+        "durationMs": 0,
         "thinkingLevel": "off"
        }
       }
@@ -37198,7 +37225,8 @@
          },
          "stopReason": "error",
          "errorMessage": "Faux response ended without a stop reason",
-         "timestamp": 1791196291491
+         "timestamp": 1791429888092,
+         "durationMs": 0
         }
        }
       },
@@ -37226,7 +37254,8 @@
         },
         "stopReason": "error",
         "errorMessage": "Faux response ended without a stop reason",
-        "timestamp": 1791196291491
+        "timestamp": 1791429888092,
+        "durationMs": 0
        }
       }
      ]
@@ -37624,7 +37653,8 @@
          },
          "stopReason": "error",
          "errorMessage": "Faux response ended without a stop reason",
-         "timestamp": 1791196291492,
+         "timestamp": 1791429888092,
+         "durationMs": 0,
          "thinkingLevel": "off"
         }
        }
@@ -37870,7 +37900,8 @@
          },
          "stopReason": "error",
          "errorMessage": "Faux response ended without a stop reason",
-         "timestamp": 1791196291492
+         "timestamp": 1791429888093,
+         "durationMs": 0
         }
        }
       },
@@ -37898,7 +37929,8 @@
         },
         "stopReason": "error",
         "errorMessage": "Faux response ended without a stop reason",
-        "timestamp": 1791196291492
+        "timestamp": 1791429888093,
+        "durationMs": 0
        }
       }
      ]
@@ -38296,7 +38328,8 @@
          },
          "stopReason": "error",
          "errorMessage": "Faux response ended without a stop reason",
-         "timestamp": 1791196291492,
+         "timestamp": 1791429888093,
+         "durationMs": 0,
          "thinkingLevel": "off"
         }
        }
@@ -38542,7 +38575,8 @@
          },
          "stopReason": "error",
          "errorMessage": "Faux response ended without a stop reason",
-         "timestamp": 1791196291492
+         "timestamp": 1791429888093,
+         "durationMs": 0
         }
        }
       },
@@ -38570,7 +38604,8 @@
         },
         "stopReason": "error",
         "errorMessage": "Faux response ended without a stop reason",
-        "timestamp": 1791196291492
+        "timestamp": 1791429888093,
+        "durationMs": 0
        }
       }
      ]
@@ -38968,7 +39003,8 @@
          },
          "stopReason": "error",
          "errorMessage": "Faux response ended without a stop reason",
-         "timestamp": 1791196291492,
+         "timestamp": 1791429888093,
+         "durationMs": 0,
          "thinkingLevel": "off"
         }
        }
@@ -70851,7 +70887,8 @@
         },
         "stopReason": "error",
         "errorMessage": "scripted factory failure",
-        "timestamp": 1791196302532,
+        "timestamp": 1791429900218,
+        "durationMs": 1,
         "thinkingLevel": "off"
        }
       }
@@ -70883,7 +70920,8 @@
         },
         "stopReason": "error",
         "errorMessage": "scripted factory failure",
-        "timestamp": 1791196302532,
+        "timestamp": 1791429900218,
+        "durationMs": 1,
         "thinkingLevel": "off"
        }
       }
@@ -70922,7 +70960,8 @@
         },
         "stopReason": "error",
         "errorMessage": "scripted factory failure",
-        "timestamp": 1791196303109,
+        "timestamp": 1791429900832,
+        "durationMs": 1,
         "thinkingLevel": "off"
        }
       }
@@ -70954,7 +70993,8 @@
         },
         "stopReason": "error",
         "errorMessage": "scripted factory failure",
-        "timestamp": 1791196303109,
+        "timestamp": 1791429900832,
+        "durationMs": 1,
         "thinkingLevel": "off"
        }
       }
@@ -70993,7 +71033,8 @@
         },
         "stopReason": "error",
         "errorMessage": "scripted factory failure",
-        "timestamp": 1791196303707,
+        "timestamp": 1791429901430,
+        "durationMs": 1,
         "thinkingLevel": "off"
        }
       }
@@ -71025,7 +71066,8 @@
         },
         "stopReason": "error",
         "errorMessage": "scripted factory failure",
-        "timestamp": 1791196303707,
+        "timestamp": 1791429901430,
+        "durationMs": 1,
         "thinkingLevel": "off"
        }
       }
@@ -71064,7 +71106,8 @@
          },
          "stopReason": "error",
          "errorMessage": "scripted factory failure",
-         "timestamp": 1791196303713
+         "timestamp": 1791429901437,
+         "durationMs": 0
         }
        }
       },
@@ -71092,7 +71135,8 @@
         },
         "stopReason": "error",
         "errorMessage": "scripted factory failure",
-        "timestamp": 1791196303713
+        "timestamp": 1791429901437,
+        "durationMs": 0
        }
       }
      ]
@@ -71127,7 +71171,8 @@
          },
          "stopReason": "error",
          "errorMessage": "scripted factory failure",
-         "timestamp": 1791196303713,
+         "timestamp": 1791429901437,
+         "durationMs": 0,
          "thinkingLevel": "off"
         }
        }
@@ -71158,7 +71203,8 @@
          },
          "stopReason": "error",
          "errorMessage": "scripted factory failure",
-         "timestamp": 1791196303713,
+         "timestamp": 1791429901437,
+         "durationMs": 0,
          "thinkingLevel": "off"
         }
        }
@@ -71196,7 +71242,8 @@
          },
          "stopReason": "error",
          "errorMessage": "scripted factory failure",
-         "timestamp": 1791196303713
+         "timestamp": 1791429901437,
+         "durationMs": 0
         }
        }
       },
@@ -71224,7 +71271,8 @@
         },
         "stopReason": "error",
         "errorMessage": "scripted factory failure",
-        "timestamp": 1791196303713
+        "timestamp": 1791429901437,
+        "durationMs": 0
        }
       }
      ]
@@ -71259,7 +71307,8 @@
          },
          "stopReason": "error",
          "errorMessage": "scripted factory failure",
-         "timestamp": 1791196303713,
+         "timestamp": 1791429901437,
+         "durationMs": 0,
          "thinkingLevel": "off"
         }
        }
@@ -71290,7 +71339,8 @@
          },
          "stopReason": "error",
          "errorMessage": "scripted factory failure",
-         "timestamp": 1791196303713,
+         "timestamp": 1791429901437,
+         "durationMs": 0,
          "thinkingLevel": "off"
         }
        }
@@ -71328,7 +71378,8 @@
          },
          "stopReason": "error",
          "errorMessage": "scripted factory failure",
-         "timestamp": 1791196303713
+         "timestamp": 1791429901437,
+         "durationMs": 0
         }
        }
       },
@@ -71356,7 +71407,8 @@
         },
         "stopReason": "error",
         "errorMessage": "scripted factory failure",
-        "timestamp": 1791196303713
+        "timestamp": 1791429901437,
+        "durationMs": 0
        }
       }
      ]
@@ -71391,7 +71443,8 @@
          },
          "stopReason": "error",
          "errorMessage": "scripted factory failure",
-         "timestamp": 1791196303713,
+         "timestamp": 1791429901437,
+         "durationMs": 0,
          "thinkingLevel": "off"
         }
        }
@@ -71422,7 +71475,8 @@
          },
          "stopReason": "error",
          "errorMessage": "scripted factory failure",
-         "timestamp": 1791196303713,
+         "timestamp": 1791429901437,
+         "durationMs": 0,
          "thinkingLevel": "off"
         }
        }
@@ -75114,7 +75168,8 @@
         },
         "stopReason": "error",
         "errorMessage": "Faux response ended without a stop reason",
-        "timestamp": 1791196306072,
+        "timestamp": 1791429903935,
+        "durationMs": 6,
         "thinkingLevel": "off"
        }
       }
@@ -75151,7 +75206,8 @@
         },
         "stopReason": "error",
         "errorMessage": "No more faux responses queued",
-        "timestamp": 1791196308081,
+        "timestamp": 1791429905942,
+        "durationMs": 0,
         "thinkingLevel": "off"
        }
       }
@@ -75183,7 +75239,8 @@
         },
         "stopReason": "error",
         "errorMessage": "No more faux responses queued",
-        "timestamp": 1791196308081,
+        "timestamp": 1791429905942,
+        "durationMs": 0,
         "thinkingLevel": "off"
        }
       }
@@ -75417,7 +75474,8 @@
         },
         "stopReason": "error",
         "errorMessage": "Faux response ended without a stop reason",
-        "timestamp": 1791196308637,
+        "timestamp": 1791429906550,
+        "durationMs": 5,
         "thinkingLevel": "off"
        }
       }
@@ -75454,7 +75512,8 @@
         },
         "stopReason": "error",
         "errorMessage": "No more faux responses queued",
-        "timestamp": 1791196310645,
+        "timestamp": 1791429908557,
+        "durationMs": 0,
         "thinkingLevel": "off"
        }
       }
@@ -75486,7 +75545,8 @@
         },
         "stopReason": "error",
         "errorMessage": "No more faux responses queued",
-        "timestamp": 1791196310645,
+        "timestamp": 1791429908557,
+        "durationMs": 0,
         "thinkingLevel": "off"
        }
       }
@@ -75720,7 +75780,8 @@
         },
         "stopReason": "error",
         "errorMessage": "Faux response ended without a stop reason",
-        "timestamp": 1791196311220,
+        "timestamp": 1791429909164,
+        "durationMs": 6,
         "thinkingLevel": "off"
        }
       }
@@ -75757,7 +75818,8 @@
         },
         "stopReason": "error",
         "errorMessage": "No more faux responses queued",
-        "timestamp": 1791196313226,
+        "timestamp": 1791429911172,
+        "durationMs": 0,
         "thinkingLevel": "off"
        }
       }
@@ -75789,7 +75851,8 @@
         },
         "stopReason": "error",
         "errorMessage": "No more faux responses queued",
-        "timestamp": 1791196313226,
+        "timestamp": 1791429911172,
+        "durationMs": 0,
         "thinkingLevel": "off"
        }
       }
@@ -76036,7 +76099,8 @@
          },
          "stopReason": "error",
          "errorMessage": "Faux response ended without a stop reason",
-         "timestamp": 1791196313233
+         "timestamp": 1791429911179,
+         "durationMs": 4
         }
        }
       },
@@ -76064,7 +76128,8 @@
         },
         "stopReason": "error",
         "errorMessage": "Faux response ended without a stop reason",
-        "timestamp": 1791196313233
+        "timestamp": 1791429911179,
+        "durationMs": 4
        }
       }
      ]
@@ -76462,7 +76527,8 @@
          },
          "stopReason": "error",
          "errorMessage": "Faux response ended without a stop reason",
-         "timestamp": 1791196313236,
+         "timestamp": 1791429911182,
+         "durationMs": 3,
          "thinkingLevel": "off"
         }
        }
@@ -76708,7 +76774,8 @@
          },
          "stopReason": "error",
          "errorMessage": "Faux response ended without a stop reason",
-         "timestamp": 1791196313240
+         "timestamp": 1791429911185,
+         "durationMs": 3
         }
        }
       },
@@ -76736,7 +76803,8 @@
         },
         "stopReason": "error",
         "errorMessage": "Faux response ended without a stop reason",
-        "timestamp": 1791196313240
+        "timestamp": 1791429911185,
+        "durationMs": 3
        }
       }
      ]
@@ -77134,7 +77202,8 @@
          },
          "stopReason": "error",
          "errorMessage": "Faux response ended without a stop reason",
-         "timestamp": 1791196313243,
+         "timestamp": 1791429911189,
+         "durationMs": 4,
          "thinkingLevel": "off"
         }
        }
@@ -77380,7 +77449,8 @@
          },
          "stopReason": "error",
          "errorMessage": "Faux response ended without a stop reason",
-         "timestamp": 1791196313247
+         "timestamp": 1791429911192,
+         "durationMs": 4
         }
        }
       },
@@ -77408,7 +77478,8 @@
         },
         "stopReason": "error",
         "errorMessage": "Faux response ended without a stop reason",
-        "timestamp": 1791196313247
+        "timestamp": 1791429911192,
+        "durationMs": 4
        }
       }
      ]
@@ -77806,7 +77877,8 @@
          },
          "stopReason": "error",
          "errorMessage": "Faux response ended without a stop reason",
-         "timestamp": 1791196313250,
+         "timestamp": 1791429911196,
+         "durationMs": 3,
          "thinkingLevel": "off"
         }
        }
@@ -77943,7 +78015,8 @@
         },
         "stopReason": "error",
         "errorMessage": "No more faux responses queued",
-        "timestamp": 1791196313799,
+        "timestamp": 1791429911799,
+        "durationMs": 1,
         "thinkingLevel": "off"
        }
       }
@@ -77975,7 +78048,8 @@
         },
         "stopReason": "error",
         "errorMessage": "No more faux responses queued",
-        "timestamp": 1791196313799,
+        "timestamp": 1791429911799,
+        "durationMs": 1,
         "thinkingLevel": "off"
        }
       }
@@ -78014,7 +78088,8 @@
         },
         "stopReason": "error",
         "errorMessage": "No more faux responses queued",
-        "timestamp": 1791196314360,
+        "timestamp": 1791429912413,
+        "durationMs": 1,
         "thinkingLevel": "off"
        }
       }
@@ -78046,7 +78121,8 @@
         },
         "stopReason": "error",
         "errorMessage": "No more faux responses queued",
-        "timestamp": 1791196314360,
+        "timestamp": 1791429912413,
+        "durationMs": 1,
         "thinkingLevel": "off"
        }
       }
@@ -78085,7 +78161,8 @@
         },
         "stopReason": "error",
         "errorMessage": "No more faux responses queued",
-        "timestamp": 1791196314939,
+        "timestamp": 1791429913022,
+        "durationMs": 1,
         "thinkingLevel": "off"
        }
       }
@@ -78117,7 +78194,8 @@
         },
         "stopReason": "error",
         "errorMessage": "No more faux responses queued",
-        "timestamp": 1791196314939,
+        "timestamp": 1791429913022,
+        "durationMs": 1,
         "thinkingLevel": "off"
        }
       }
@@ -78156,7 +78234,8 @@
          },
          "stopReason": "error",
          "errorMessage": "No more faux responses queued",
-         "timestamp": 1791196314944
+         "timestamp": 1791429913028,
+         "durationMs": 0
         }
        }
       },
@@ -78184,7 +78263,8 @@
         },
         "stopReason": "error",
         "errorMessage": "No more faux responses queued",
-        "timestamp": 1791196314944
+        "timestamp": 1791429913028,
+        "durationMs": 0
        }
       }
      ]
@@ -78219,7 +78299,8 @@
          },
          "stopReason": "error",
          "errorMessage": "No more faux responses queued",
-         "timestamp": 1791196314945,
+         "timestamp": 1791429913028,
+         "durationMs": 0,
          "thinkingLevel": "off"
         }
        }
@@ -78250,7 +78331,8 @@
          },
          "stopReason": "error",
          "errorMessage": "No more faux responses queued",
-         "timestamp": 1791196314945,
+         "timestamp": 1791429913028,
+         "durationMs": 0,
          "thinkingLevel": "off"
         }
        }
@@ -78288,7 +78370,8 @@
          },
          "stopReason": "error",
          "errorMessage": "No more faux responses queued",
-         "timestamp": 1791196314945
+         "timestamp": 1791429913029,
+         "durationMs": 0
         }
        }
       },
@@ -78316,7 +78399,8 @@
         },
         "stopReason": "error",
         "errorMessage": "No more faux responses queued",
-        "timestamp": 1791196314945
+        "timestamp": 1791429913029,
+        "durationMs": 0
        }
       }
      ]
@@ -78351,7 +78435,8 @@
          },
          "stopReason": "error",
          "errorMessage": "No more faux responses queued",
-         "timestamp": 1791196314945,
+         "timestamp": 1791429913029,
+         "durationMs": 0,
          "thinkingLevel": "off"
         }
        }
@@ -78382,7 +78467,8 @@
          },
          "stopReason": "error",
          "errorMessage": "No more faux responses queued",
-         "timestamp": 1791196314945,
+         "timestamp": 1791429913029,
+         "durationMs": 0,
          "thinkingLevel": "off"
         }
        }
@@ -78420,7 +78506,8 @@
          },
          "stopReason": "error",
          "errorMessage": "No more faux responses queued",
-         "timestamp": 1791196314945
+         "timestamp": 1791429913029,
+         "durationMs": 0
         }
        }
       },
@@ -78448,7 +78535,8 @@
         },
         "stopReason": "error",
         "errorMessage": "No more faux responses queued",
-        "timestamp": 1791196314945
+        "timestamp": 1791429913029,
+        "durationMs": 0
        }
       }
      ]
@@ -78483,7 +78571,8 @@
          },
          "stopReason": "error",
          "errorMessage": "No more faux responses queued",
-         "timestamp": 1791196314945,
+         "timestamp": 1791429913029,
+         "durationMs": 0,
          "thinkingLevel": "off"
         }
        }
@@ -78514,7 +78603,8 @@
          },
          "stopReason": "error",
          "errorMessage": "No more faux responses queued",
-         "timestamp": 1791196314945,
+         "timestamp": 1791429913029,
+         "durationMs": 0,
          "thinkingLevel": "off"
         }
        }
@@ -78809,10 +78899,11 @@
      "provider": "faux-probe",
      "modelId": "faux-1",
      "api": "faux-probe",
-     "id": "deferred:1791196314945:kipqu73cbv",
+     "id": "deferred:1791429913029:jllrbs73evm",
      "pollAfterMs": 5
     },
-    "timestamp": 1791196314946
+    "timestamp": 1791429913029,
+    "durationMs": 0
    },
    {
     "role": "assistant",
@@ -78839,10 +78930,11 @@
      "provider": "faux-probe",
      "modelId": "faux-1",
      "api": "faux-probe",
-     "id": "deferred:1791196314945:kipqu73cbv",
+     "id": "deferred:1791429913029:jllrbs73evm",
      "pollAfterMs": 5
     },
-    "timestamp": 1791196314946
+    "timestamp": 1791429913030,
+    "durationMs": 0
    },
    {
     "role": "assistant",
@@ -78894,7 +78986,8 @@
     },
     "stopReason": "error",
     "errorMessage": "Unknown faux deferred response: unknown",
-    "timestamp": 1791196314946
+    "timestamp": 1791429913030,
+    "durationMs": 0
    }
   ]
  }

@@ -1,0 +1,237 @@
+{
+ "comment": "Shared env matrix for the PiG config root policy: PIG_HOME, else XDG_CONFIG_HOME/pig, else ~/.pig. Env values: absent = unset, \"\" = set and empty. <HOME> stands for the HOME (USERPROFILE on Windows) of the run; HOME \"\" makes the home directory unavailable. want null = resolution fails. Read by internal/configroot, the Go, Python and Rust SDK tests, the Node getter test and the cross-language comparison in test/extension-conformance. A tilde expansion and the XDG and default joins are lexically cleaned as Go's filepath.Join cleans them (repeated, trailing and . separators, name/..), and an absolute remainder after ~/ stays under the home directory; a literal PIG_HOME is never cleaned.",
+ "cases": [
+  {
+   "name": "pig-home-absolute",
+   "env": {
+    "PIG_HOME": "/srv/pig"
+   },
+   "want": "/srv/pig"
+  },
+  {
+   "name": "pig-home-beats-xdg",
+   "env": {
+    "PIG_HOME": "/srv/pig",
+    "XDG_CONFIG_HOME": "/srv/xdg"
+   },
+   "want": "/srv/pig"
+  },
+  {
+   "name": "pig-home-empty-falls-to-xdg",
+   "env": {
+    "PIG_HOME": "",
+    "XDG_CONFIG_HOME": "/srv/xdg"
+   },
+   "want": "/srv/xdg/pig"
+  },
+  {
+   "name": "pig-home-unset-xdg-set",
+   "env": {
+    "XDG_CONFIG_HOME": "/srv/xdg"
+   },
+   "want": "/srv/xdg/pig"
+  },
+  {
+   "name": "both-empty-falls-to-home",
+   "env": {
+    "PIG_HOME": "",
+    "XDG_CONFIG_HOME": ""
+   },
+   "want": "<HOME>/.pig"
+  },
+  {
+   "name": "both-unset-falls-to-home",
+   "env": {},
+   "want": "<HOME>/.pig"
+  },
+  {
+   "name": "pig-home-empty-xdg-unset",
+   "env": {
+    "PIG_HOME": ""
+   },
+   "want": "<HOME>/.pig"
+  },
+  {
+   "name": "pig-home-tilde",
+   "env": {
+    "PIG_HOME": "~"
+   },
+   "want": "<HOME>"
+  },
+  {
+   "name": "pig-home-tilde-slash",
+   "env": {
+    "PIG_HOME": "~/p"
+   },
+   "want": "<HOME>/p"
+  },
+  {
+   "name": "pig-home-tilde-user-literal",
+   "env": {
+    "PIG_HOME": "~user/p"
+   },
+   "want": "~user/p"
+  },
+  {
+   "name": "pig-home-tilde-inside-literal",
+   "env": {
+    "PIG_HOME": "a/~/b"
+   },
+   "want": "a/~/b"
+  },
+  {
+   "name": "pig-home-relative-literal",
+   "env": {
+    "PIG_HOME": "rel/pig"
+   },
+   "want": "rel/pig"
+  },
+  {
+   "name": "pig-home-dot-pig-literal",
+   "env": {
+    "PIG_HOME": ".pig"
+   },
+   "want": ".pig"
+  },
+  {
+   "name": "xdg-tilde-slash",
+   "env": {
+    "XDG_CONFIG_HOME": "~/cfg"
+   },
+   "want": "<HOME>/cfg/pig"
+  },
+  {
+   "name": "xdg-tilde",
+   "env": {
+    "XDG_CONFIG_HOME": "~"
+   },
+   "want": "<HOME>/pig"
+  },
+  {
+   "name": "xdg-relative-literal",
+   "env": {
+    "XDG_CONFIG_HOME": "rel"
+   },
+   "want": "rel/pig"
+  },
+  {
+   "name": "pig-home-empty-xdg-tilde",
+   "env": {
+    "PIG_HOME": "",
+    "XDG_CONFIG_HOME": "~/x"
+   },
+   "want": "<HOME>/x/pig"
+  },
+  {
+   "name": "home-failure-default",
+   "env": {
+    "HOME": ""
+   },
+   "want": null
+  },
+  {
+   "name": "home-failure-pig-home-tilde",
+   "env": {
+    "HOME": "",
+    "PIG_HOME": "~/p"
+   },
+   "want": null
+  },
+  {
+   "name": "home-failure-xdg-tilde",
+   "env": {
+    "HOME": "",
+    "XDG_CONFIG_HOME": "~/c"
+   },
+   "want": null
+  },
+  {
+   "name": "home-failure-empty-overrides",
+   "env": {
+    "HOME": "",
+    "PIG_HOME": "",
+    "XDG_CONFIG_HOME": ""
+   },
+   "want": null
+  },
+  {
+   "name": "home-failure-literal-pig-home-needs-no-home",
+   "env": {
+    "HOME": "",
+    "PIG_HOME": "/srv/pig"
+   },
+   "want": "/srv/pig"
+  },
+  {
+   "name": "home-failure-literal-xdg-needs-no-home",
+   "env": {
+    "HOME": "",
+    "XDG_CONFIG_HOME": "/srv/xdg"
+   },
+   "want": "/srv/xdg/pig"
+  },
+  {
+   "name": "pig-home-tilde-slash-only",
+   "env": {
+    "PIG_HOME": "~/"
+   },
+   "want": "<HOME>"
+  },
+  {
+   "name": "pig-home-tilde-trailing-slash",
+   "env": {
+    "PIG_HOME": "~/p/"
+   },
+   "want": "<HOME>/p"
+  },
+  {
+   "name": "pig-home-tilde-double-slash-stays-under-home",
+   "env": {
+    "PIG_HOME": "~//p/"
+   },
+   "want": "<HOME>/p"
+  },
+  {
+   "name": "pig-home-tilde-dotdot",
+   "env": {
+    "PIG_HOME": "~/a/./../p"
+   },
+   "want": "<HOME>/p"
+  },
+  {
+   "name": "pig-home-literal-not-cleaned",
+   "env": {
+    "PIG_HOME": "/srv//pig/./"
+   },
+   "want": "/srv//pig/./"
+  },
+  {
+   "name": "xdg-trailing-slash",
+   "env": {
+    "XDG_CONFIG_HOME": "/srv/xdg/"
+   },
+   "want": "/srv/xdg/pig"
+  },
+  {
+   "name": "xdg-dotdot-and-double-slash",
+   "env": {
+    "XDG_CONFIG_HOME": "/srv//a/../xdg"
+   },
+   "want": "/srv/xdg/pig"
+  },
+  {
+   "name": "xdg-relative-dot",
+   "env": {
+    "XDG_CONFIG_HOME": "./rel/"
+   },
+   "want": "rel/pig"
+  },
+  {
+   "name": "gopi-home-is-not-read",
+   "env": {
+    "GOPI_HOME": "/srv/gopi"
+   },
+   "want": "<HOME>/.pig"
+  }
+ ]
+}

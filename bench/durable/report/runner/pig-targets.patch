@@ -1,0 +1,83 @@
+--- a/bench/targets.ts
++++ b/bench/targets.ts
+@@ -3,5 +3,5 @@
+ import { builtinModules } from "node:module"
+ import { cpus, tmpdir } from "node:os"
+-import { join } from "node:path"
++import { join, resolve } from "node:path"
+ import { createInterface } from "node:readline"
+ import type { Readable } from "node:stream"
+@@ -25,5 +25,9 @@
+   "pi-head": { entry: "src/pi-head.ts", objects: { PI: "PiDO" }, version: process.env.PI_HEAD_VERSION ?? "head" },
+   tardie: { entry: "src/tardie.ts", objects: { ACTORS: "ActorDO", THREADS: "ThreadDO" }, version: version("tardie") },
+-}
++  // PiG Durable on the production core (PIG_SOURCE: a PiG checkout at the gated core commit PIG_VERSION, its core built by
++  // `make -C durable/core build-tinygo build-go` and durable/core/host/cf's dependencies installed).
++  "pig-tinygo": { entry: "src/pig.ts", objects: { PI: "PiDO" }, version: process.env.PIG_VERSION ?? "head", core: "core-tinygo.wasm" },
++  "pig-go": { entry: "src/pig.ts", objects: { PI: "PiDO" }, version: process.env.PIG_VERSION ?? "head", core: "core-go.wasm" },
++} as Record<string, { entry: string; objects: Record<string, string>; version: string; core?: string }>
+ 
+ // Resolves @earendil-works packages to the TypeScript sources of the pi checkout through their export maps.
+@@ -53,4 +57,24 @@
+ }
+ 
++const PIG_SOURCE = process.env.PIG_SOURCE ?? "../pig"
++const pigHost = () => resolve(PIG_SOURCE, "durable/core/host/cf")
++
++// Resolves pi-durable to the PiG core's facade, and pi-ai and chord, for the bench and the facade alike, to the same Pi
++// sources pi-head is built from (fromSource): one chord context, one faux provider module, and the same scripted model as
++// pi-head, so a PiG row differs from pi-head's only in pi-durable.
++const fromPig: Plugin = {
++  name: "pig-facade",
++  setup(b) {
++    b.onResolve({ filter: /^@earendil-works\/pi-durable(\/.*)?$/ }, () => ({ path: join(pigHost(), "src/facade/index.ts") }))
++    b.onResolve({ filter: /^\.\/pig-core\.wasm$/ }, () => ({ path: "./pig-core.wasm", external: true }))
++    // An npm copy of a Pi package (the facade's node_modules) would bring a second chord context and npm pi-ai 1.0.4's faux
++    // provider, which charges a PiG row for model work pi-head does not do: the build refuses it.
++    b.onLoad({ filter: /[\\/]node_modules[\\/]@earendil-works[\\/]/ }, args => {
++      throw new Error(`pig-facade: ${args.path} is an npm copy of a Pi package; the PiG targets build pi-ai and chord from PI_SOURCE`)
++    })
++    fromSource.setup(b)
++  },
++}
++
+ export type Target = keyof typeof TARGETS
+ 
+@@ -72,11 +96,14 @@
+ 
+ const bundle = (name: Target) => bundles.get(name) ?? bundles.set(name, (async () => {
+-  const outfile = `dist/${name}.mjs`
++  const core = TARGETS[name]!.core
++  // A PiG target's bundle sits beside its own copy of the core, which it imports as ./pig-core.wasm.
++  const outfile = core ? `dist/${name}/bench.mjs` : `dist/${name}.mjs`
+   await build({
+     entryPoints: [TARGETS[name].entry], outfile, bundle: true, format: "esm", platform: "neutral", target: "es2024",
+     conditions: ["workerd", "worker", "browser", "import"], mainFields: ["module", "main"],
+     external: ["cloudflare:*", "node:*", ...builtinModules], logLevel: "error",
+-    plugins: name === "pi-head" ? [fromSource] : [],
++    plugins: name === "pi-head" ? [fromSource] : TARGETS[name]!.core ? [fromPig] : [],
+   })
++  if (core) cpSync(join(pigHost(), "dist", core), `dist/${name}/pig-core.wasm`)
+   return outfile
+ })()).get(name)!
+@@ -88,5 +115,5 @@
+ export async function start(name: Target, persist: string) {
+   const mf = new Miniflare({
+-    modules: [{ type: "ESModule", path: await bundle(name) }],
++    modules: [{ type: "ESModule", path: await bundle(name) }, ...(TARGETS[name]!.core ? [{ type: "CompiledWasm" as const, path: `dist/${name}/pig-core.wasm` }] : [])],
+     compatibilityDate: "2026-07-30",
+     compatibilityFlags: ["nodejs_compat"],
+--- /dev/null
++++ b/src/pig.ts
+@@ -0,0 +1,11 @@
++// PiG Durable targets: durable-bench's pi-head target, unchanged, on the production PiG Durable core. The build aliases
++// @earendil-works/pi-durable to the core's pi-durable-compatible facade (durable/core/host/cf/src/facade) and supplies the
++// compiled core as ./pig-core.wasm (TinyGo or Go build); everything else, the scripted model included, is pi-head.ts.
++import { useCore } from "@earendil-works/pi-durable"
++// @ts-expect-error the bundle supplies the compiled core module
++import core from "./pig-core.wasm"
++
++useCore(core)
++
++export * from "./pi-head.ts"
++export { default } from "./pi-head.ts"

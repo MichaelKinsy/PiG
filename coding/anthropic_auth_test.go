@@ -147,11 +147,11 @@ func TestBuildModelAnthropicEnvAuthRequestShapes(t *testing.T) {
 					t.Fatal(err)
 				}
 			}
-			services, err := NewServices(ServicesOptions{CWD: t.TempDir(), AgentDir: agentDir})
+			services, err := CreateAgentSessionServices(CreateAgentSessionServicesOptions{CWD: t.TempDir(), AgentDir: agentDir})
 			if err != nil {
 				t.Fatal(err)
 			}
-			if !services.Registry().HasConfiguredAuth("anthropic") {
+			if !services.Registry().ModelRegistry.HasConfiguredAuth("anthropic") {
 				t.Fatal("anthropic has no configured auth")
 			}
 			model, err := BuildModel("anthropic/claude-haiku-4-5", services)

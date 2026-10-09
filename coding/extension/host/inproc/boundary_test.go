@@ -4,9 +4,11 @@ import (
 	"context"
 	"errors"
 	"reflect"
+	"slices"
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/coding/extension"
+	"github.com/MichaelKinsy/PiG/coding/extension/extensiontest"
 )
 
 func TestEmitBoundaryChainsDraftsContinuationAndPreview(t *testing.T) {
@@ -87,5 +89,35 @@ func TestEmitBoundaryReportsInvalidDraftAndLetsLaterHandlerRepair(t *testing.T) 
 	}
 	if !reflect.DeepEqual(reported, []string{"Invalid boundary entries: Entry missing not found"}) {
 		t.Fatalf("reported = %v", reported)
+	}
+}
+
+// A typed API.OnTurnEnd handler returns the TurnEndEventResult (types.ts: ExtensionHandler<TurnEndEvent, TurnEndEventResult>),
+// and the runner chains it exactly as it chains agent_before_settle results.
+// Pi: packages/coding-agent/src/core/extensions/types.ts:1558 (API.on).
+func TestTypedOnTurnEndHandlerResultChainsThroughEmitBoundary(t *testing.T) {
+	var api extension.API = &extensiontest.Fake{}
+	fake := api.(*extensiontest.Fake)
+	api.OnTurnEnd(func(_ context.Context, evt extension.TurnEndEvent) (extension.TurnEndEventResult, error) {
+		draft := append(slices.Clone(evt.Entries), extension.SessionBoundaryDraft{Type: "custom", CustomType: "typed"})
+		proceed := true
+		return extension.TurnEndEventResult{Entries: &draft, Continue: &proceed}, nil
+	})
+	handler := fake.OnTurnEndHandlers[0]
+	ext := extension.Extension{Path: "typed", Handlers: map[string][]extension.HandlerFn{
+		"turn_end": {func(args ...any) (any, error) {
+			return handler(context.Background(), args[0].(extension.TurnEndEvent))
+		}},
+	}}
+	runner := NewRunner([]extension.Extension{ext}, t.TempDir())
+	result, err := runner.EmitBoundary(context.Background(), extension.TurnEndEvent{Type: "turn_end", BoundaryState: &extension.BoundaryState{Outcome: extension.AgentActivityCompleted}},
+		func(entries []extension.SessionBoundaryDraft) (extension.BoundaryContextPreview, error) {
+			return extension.BoundaryContextPreview{ContextEntries: make([]extension.ProjectedSessionEntry, len(entries))}, nil
+		})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !result.Valid || !result.Continue || len(result.Entries) != 1 || result.Entries[0].CustomType != "typed" {
+		t.Fatalf("result = %+v, want the typed handler's entry and continuation", result)
 	}
 }

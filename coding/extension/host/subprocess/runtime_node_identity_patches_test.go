@@ -36,6 +36,9 @@ var vendoredIdentityPatches = map[string][][2]string{
 	"pi-ai/auth/oauth/openai-codex.js": {
 		{`async function createAuthorizationFlow(originator = "pi") {`, `async function createAuthorizationFlow(originator = "` + pigidentity.CodexOriginator + `") {`},
 	},
+	"pi-ai/auth/oauth/openai-chatgpt.js": {
+		{`const AGENT_NAME_HINT = "Pi";`, `const AGENT_NAME_HINT = "` + pigidentity.ChatGPTAgentName + `";`},
+	},
 	"pi-ai/auth/oauth/xai.js": {
 		{`referrer: "pi",`, `referrer: "` + pigidentity.XAIReferrer + `",`},
 	},

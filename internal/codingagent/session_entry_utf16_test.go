@@ -21,13 +21,13 @@ func TestSessionEntryWritersPreserveSurrogateEscapes(t *testing.T) {
 	label := "l" + low
 	steps := []func() error{
 		func() error { _, err := session.AppendSessionInfo("n" + high); return err },
-		func() error { return session.AppendLabelChange(user, &label) },
+		func() error { _, err := session.AppendLabelChange(user, &label); return err },
 		func() error {
 			_, err := session.AppendCustomEntry("c"+high, map[string]any{"k" + high: "v" + low})
 			return err
 		},
 		func() error {
-			_, err := session.AppendCustomMessage("cm"+high, "x"+high, true, map[string]any{"d": low})
+			_, err := session.AppendCustomMessageEntry("cm"+high, "x"+high, true, map[string]any{"d": low})
 			return err
 		},
 		func() error {
@@ -35,10 +35,10 @@ func TestSessionEntryWritersPreserveSurrogateEscapes(t *testing.T) {
 			return err
 		},
 		func() error {
-			_, err := session.AppendBranchSummary(&user, "b"+low, map[string]any{"d": low}, true, nil)
+			_, err := session.BranchWithSummary(&user, "b"+low, map[string]any{"d": low}, true, nil)
 			return err
 		},
-		func() error { return session.AppendModelSwitch("p"+high, "m"+low, "") },
+		func() error { _, err := session.AppendModelChange("p"+high, "m"+low); return err },
 	}
 	for _, step := range steps {
 		if err := step(); err != nil {

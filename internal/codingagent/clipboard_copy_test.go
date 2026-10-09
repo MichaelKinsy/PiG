@@ -1,5 +1,7 @@
 package codingagent
 
+// pi: packages/coding-agent/src/utils/clipboard.ts
+
 import (
 	"bytes"
 	"context"
@@ -129,6 +131,40 @@ func TestCopyToClipboardLocalLinuxFailureReportsX11(t *testing.T) {
 	}
 }
 
+// Ports packages/coding-agent/test/clipboard.test.ts "Termux on Android writes
+// through termux-clipboard-set" (#10391).
+func TestCopyToClipboardTermuxOnAndroidWritesThroughTermuxClipboardSet(t *testing.T) {
+	f := newClipboardFixture(t, "android", map[string]string{"TERMUX_VERSION": "0.119"})
+	if err := f.copier.copy("hello"); err != nil {
+		t.Fatal(err)
+	}
+	if !slices.Equal(f.run.calls, []string{"termux-clipboard-set"}) || len(f.run.args[0]) != 0 ||
+		f.run.input[0] == nil || *f.run.input[0] != "hello" || f.run.timeouts[0] != 5*time.Second {
+		t.Fatalf("calls=%v args=%q input=%v timeouts=%v", f.run.calls, f.run.args, f.run.input, f.run.timeouts)
+	}
+	if f.osc52Writes() != 0 {
+		t.Fatal("local success emitted OSC 52")
+	}
+}
+
+// Ports packages/coding-agent/test/clipboard.test.ts "reports the Termux:API
+// requirement on Android" (#10391): the hint is not Linux-only.
+func TestCopyToClipboardReportsTheTermuxAPIRequirementOnAndroid(t *testing.T) {
+	for _, platform := range []string{"android", "linux"} {
+		t.Run(platform, func(t *testing.T) {
+			f := newClipboardFixture(t, platform, map[string]string{"TERMUX_VERSION": "0.119"})
+			f.run.reply = func(string, []string) ([]byte, bool) { return nil, false }
+			err := f.copier.copy("hello")
+			if err == nil || err.Error() != "Clipboard unavailable: install the Termux:API app and `termux-api` package" {
+				t.Fatalf("err = %v", err)
+			}
+			if f.osc52Writes() != 0 {
+				t.Fatal("Termux failure emitted OSC 52")
+			}
+		})
+	}
+}
+
 // Ports packages/coding-agent/test/clipboard.test.ts:179.
 func TestCopyToClipboardDisplayLessLinuxFallsBackToOSC52(t *testing.T) {
 	f := newClipboardFixture(t, "linux", nil)
@@ -175,6 +211,24 @@ func TestCopyToClipboardWSLWritesWindowsClipboardThroughPowerShell(t *testing.T)
 	}
 	if f.out.Len() != 0 {
 		t.Fatalf("PowerShell success also emitted output: %q", f.out)
+	}
+}
+
+// utils/clipboard.ts:38 a single quote in the Windows path is doubled so it cannot end the PowerShell string literal.
+func TestCopyToClipboardWSLEscapesSingleQuotesInThePowerShellPath(t *testing.T) {
+	f := newClipboardFixture(t, "linux", map[string]string{"WSL_DISTRO_NAME": "Ubuntu"})
+	f.run.reply = func(name string, _ []string) ([]byte, bool) {
+		if name == "wslpath" {
+			return []byte("C:\\Users\\o'brien\\clip.txt\r\n"), true
+		}
+		return nil, true
+	}
+	if err := f.copier.copy("text"); err != nil {
+		t.Fatal(err)
+	}
+	want := "Set-Clipboard -Value ([System.IO.File]::ReadAllText('C:\\Users\\o''brien\\clip.txt', [System.Text.Encoding]::UTF8))"
+	if len(f.run.args) != 2 || f.run.args[1][2] != want {
+		t.Fatalf("script = %q, want %q", f.run.args, want)
 	}
 }
 
@@ -446,6 +500,9 @@ func TestClipboardHelperProcess(t *testing.T) {
 		}
 	case "sleep":
 		time.Sleep(time.Minute)
+	case "sleepms":
+		ms, _ := strconv.Atoi(args[1])
+		time.Sleep(time.Duration(ms) * time.Millisecond)
 	}
 	os.Exit(0)
 }
@@ -480,6 +537,21 @@ func TestRunClipboardCommand(t *testing.T) {
 	}
 	if _, ok := runClipboardCommand(self, helper("sleep"), clipboardCommandOptions{timeout: 100 * time.Millisecond}); ok {
 		t.Fatal("a command past its timeout reported success")
+	}
+}
+
+// utils/clipboard-command.ts:25 options?.timeoutMs ?? 3000: with no timeout a clipboard command is killed after three seconds. The helper
+// would finish after 3.5s, so success proves the default is longer than upstream's.
+func TestRunClipboardCommandDefaultTimeoutIsThreeSeconds(t *testing.T) {
+	t.Setenv(clipboardHelperEnv, "1")
+	self, err := os.Executable()
+	if err != nil {
+		t.Fatal(err)
+	}
+	start := time.Now()
+	_, ok := runClipboardCommand(self, []string{"-test.run=^TestClipboardHelperProcess$", "--", "sleepms", "3500"}, clipboardCommandOptions{})
+	if elapsed := time.Since(start); ok || elapsed < 2900*time.Millisecond {
+		t.Fatalf("ok=%v after %v; want the default timeout to kill the command at 3s", ok, elapsed)
 	}
 }
 

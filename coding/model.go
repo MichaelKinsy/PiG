@@ -14,6 +14,7 @@ import (
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/internal/coding/pigidentity"
 	icodingagent "github.com/MichaelKinsy/PiG/internal/codingagent"
+	"github.com/MichaelKinsy/PiG/internal/nodeurl"
 )
 
 // BuildModel constructs an *ai.Model from a "provider/model" spec
@@ -40,18 +41,18 @@ import (
 // Library consumers can use this to construct models without
 // hand-rolling provider switching:
 //
-//	svcs, _ := coding.NewServices(...)
+//	svcs, _ := coding.CreateAgentSessionServices(...)
 //	defer svcs.Close()
 //	model, _ := coding.BuildModel("github-copilot/gpt-4o-mini", svcs)
 //	rt, _ := coding.NewRuntime(coding.RuntimeOptions{Services: svcs})
 //	sess, _ := rt.New(coding.SessionStartOptions{Model: model})
-func BuildModel(spec string, svcs *Services) (*ai.Model, error) {
+func BuildModel(spec string, svcs *AgentSessionServices) (*ai.Model, error) {
 	return buildModel(spec, svcs, "")
 }
 
 // buildModel builds spec's model; a non-empty apiKey replaces the resolved
 // credential, as upstream providers use options.apiKey when one is given.
-func buildModel(spec string, svcs *Services, apiKey string) (*ai.Model, error) {
+func buildModel(spec string, svcs *AgentSessionServices, apiKey string) (*ai.Model, error) {
 	if svcs == nil {
 		return nil, fmt.Errorf("coding: BuildModel: Services is required")
 	}
@@ -86,11 +87,11 @@ func buildModel(spec string, svcs *Services, apiKey string) (*ai.Model, error) {
 // the provider's default-model fallback) and shares this construction with
 // BuildModel, so both paths branch on the API kind and carry the catalog base
 // URL and credentials the same way.
-func BuildModelFromEntry(providerID, modelID string, entry icodingagent.ModelEntry, svcs *Services) (*ai.Model, error) {
+func BuildModelFromEntry(providerID, modelID string, entry icodingagent.ModelEntry, svcs *AgentSessionServices) (*ai.Model, error) {
 	return buildModelFromEntry(providerID, modelID, entry, svcs, "")
 }
 
-func buildModelFromEntry(providerID, modelID string, entry icodingagent.ModelEntry, svcs *Services, apiKey string) (*ai.Model, error) {
+func buildModelFromEntry(providerID, modelID string, entry icodingagent.ModelEntry, svcs *AgentSessionServices, apiKey string) (*ai.Model, error) {
 	if svcs == nil {
 		return nil, fmt.Errorf("coding: BuildModelFromEntry: Services is required")
 	}
@@ -166,11 +167,11 @@ func thinkingMaxLevelForEntry(entry icodingagent.ModelEntry) ai.ThinkingLevel {
 		return ""
 	}
 	model := &ai.Model{
-		Capabilities:     ai.ModelCapabilities{MaxThinking: ai.ThinkingHigh},
+		Capabilities:     ai.ModelCapabilities{MaxThinking: ai.ThinkingLevelHigh},
 		ThinkingLevelMap: entry.ThinkingLevelMap,
 	}
 	levels := ai.GetSupportedThinkingLevels(model)
-	return levels[len(levels)-1]
+	return ai.ThinkingLevel(levels[len(levels)-1])
 }
 
 func lookupGeneratedModel(providerID, modelID string) (*ai.GeneratedModel, bool) {
@@ -184,7 +185,7 @@ func lookupGeneratedModel(providerID, modelID string) (*ai.GeneratedModel, bool)
 // is upstream's options.apiKey: it owns the request ahead of runtime, stored,
 // configured, and environment credentials. The Anthropic leaf retains the selected model's reasoning metadata and limits instead of resolving it again from the built-in catalog.
 // apiLeaf selects the pi-ai API implementation for apiKind itself. Pi's compat stream() and streamSimple() dispatch on model.api through the api registry and never consult the provider an extension registered under the model's provider id (packages/ai/src/compat.ts:278-293, stream at 252), so an API leaf must not re-enter that provider's streamSimple callback.
-func buildProviderForEntry(providerID, modelID string, apiKind ai.API, entry icodingagent.ModelEntry, svcs *Services, explicitKey string, resolvedAuth, apiLeaf bool) (ai.Provider, error) {
+func buildProviderForEntry(providerID, modelID string, apiKind ai.API, entry icodingagent.ModelEntry, svcs *AgentSessionServices, explicitKey string, resolvedAuth, apiLeaf bool) (ai.Provider, error) {
 	apiKey := entry.APIKey
 	if explicitKey != "" {
 		apiKey = explicitKey
@@ -290,6 +291,7 @@ func buildProviderForEntry(providerID, modelID string, apiKind ai.API, entry ico
 			APIKey:        apiKey,
 			Model:         modelID,
 			ProviderID:    providerID,
+			ExtraHeaders:  extraHeaders,
 		}), nil
 	case ai.APIAzureOpenAIResponses:
 		return ai.NewAzureOpenAIResponsesProvider(ai.AzureOpenAIResponsesConfig{
@@ -329,7 +331,8 @@ func buildProviderForEntry(providerID, modelID string, apiKind ai.API, entry ico
 			ThinkingLevelMap: cloneThinkingLevelMap(entry.ThinkingLevelMap),
 		}), nil
 	case ai.APIGoogleVertex:
-		return ai.NewGoogleVertexProvider(ai.GoogleVertexConfig{
+		// pig additive (D92): the google-vertex, bedrock-converse-stream and mistral-conversations constructors report a stripped API (strip.apis).
+		return ai.NewGoogleVertexAPIProvider(ai.GoogleVertexConfig{
 			ModelMetadata:    modelFromEntry(entry, nil),
 			BaseURL:          baseURL,
 			APIKey:           apiKey,
@@ -337,7 +340,7 @@ func buildProviderForEntry(providerID, modelID string, apiKind ai.API, entry ico
 			ProviderID:       providerID,
 			Headers:          extraHeaders,
 			ThinkingLevelMap: cloneThinkingLevelMap(entry.ThinkingLevelMap),
-		}), nil
+		})
 	case ai.APIBedrockConverseStream:
 		// Amazon Bedrock uses AWS native auth (SigV4 via the default
 		// credentials chain, or AWS_BEARER_TOKEN_BEDROCK). No API key
@@ -345,9 +348,9 @@ func buildProviderForEntry(providerID, modelID string, apiKind ai.API, entry ico
 		// AWS SDK resolves credentials at request time. The selected model
 		// carries the configured provider identity (bedrock-converse-stream.ts:130
 		// reports model.provider), the base URL and the limits.
-		return ai.NewBedrockProviderWithModel(*modelFromEntry(entry, nil)), nil
+		return ai.NewBedrockAPIProvider(*modelFromEntry(entry, nil))
 	case ai.APIMistralConversations:
-		return ai.NewMistralProvider(ai.MistralConfig{
+		return ai.NewMistralAPIProvider(ai.MistralConfig{
 			ModelMetadata: modelFromEntry(entry, nil),
 			BaseURL:       baseURL,
 			APIKey:        apiKey,
@@ -355,7 +358,7 @@ func buildProviderForEntry(providerID, modelID string, apiKind ai.API, entry ico
 			ProviderID:    providerID,
 			ExtraHeaders:  extraHeaders,
 			Reasoning:     entry.Reasoning,
-		}), nil
+		})
 	case ai.APIPiMessages:
 		config := ai.PiMessagesConfig{
 			ModelMetadata: modelFromEntry(entry, nil),
@@ -405,7 +408,7 @@ func acceptsRequestAPIKey(apiKind ai.API) bool {
 // key (--api-key) first, then a stored auth.json credential, then fallback,
 // the configured or environment key. Mirrors upstream resolveProviderAuth
 // over RuntimeCredentials.
-func requestAPIKey(svcs *Services, providerID, fallback string) func(context.Context) (string, error) {
+func requestAPIKey(svcs *AgentSessionServices, providerID, fallback string) func(context.Context) (string, error) {
 	stored := storedAPIKey(filepath.Join(svcs.AgentDir(), "auth.json"), providerID, fallback)
 	registry := svcs.Registry().ModelRegistry
 	return func(ctx context.Context) (string, error) {
@@ -576,10 +579,25 @@ func mergeProviderAttributionHeaders(providerID, baseURL string, telemetryEnable
 	return headers
 }
 
+// matchesProviderHost is `new URL(baseUrl).hostname === expectedHost` (provider-attribution.ts matchesHost); a URL the WHATWG parser rejects never matches.
 func matchesProviderHost(baseURL, expectedHost string) bool {
-	parsed, err := url.Parse(baseURL)
-	// WHATWG URL.hostname normalizes DNS host case before comparison.
-	return err == nil && strings.ToLower(parsed.Hostname()) == expectedHost
+	input := nodeurl.PrepareInput(baseURL)
+	scheme, rest, ok := strings.Cut(input, ":")
+	if !ok {
+		return false
+	}
+	switch strings.ToLower(scheme) {
+	case "http", "https":
+	case "ws", "wss", "ftp":
+		// The other special schemes with a network host parse their host as http does.
+		input = "https:" + rest
+	default:
+		// A non-special scheme keeps its opaque host as written, letter case included.
+		parsed, err := url.Parse(input)
+		return err == nil && parsed.Hostname() == expectedHost
+	}
+	parsed, err := nodeurl.ParseHTTPURL(input)
+	return err == nil && parsed.Hostname == expectedHost
 }
 
 type providerAttributionProvider struct {

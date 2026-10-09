@@ -1,0 +1,201 @@
+--- /dev/null
++++ b/bench/cloud.ts
+@@ -0,0 +1,173 @@
++// Cloudflare runs of the latency and where-it-runs measurements, on the owner's account. Nothing here runs without
++// CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID.
++//   bun bench/cloud.ts deploy <target>                 uploads the bundle Miniflare runs (same bytes; BENCH_PROBE picks the
++//                                                      probe bundle) as Worker durable-bench-<target>[-probe-<mode>]
++//   bun bench/cloud.ts run <target> <url> [sizes...]   one Durable Object per size and sample; seeds through /seed, waits
++//                                                      out the eviction window, then times /wake and the turns at the client
++// Latency lines go to results/cloudflare.jsonl (durable-bench format plus `floor`, the median Worker-only round trip of
++// the same run). With BENCH_PROBE=count|time the run reads /probe after every request, takes each request's CPU time from
++// `wrangler tail` (the Worker invocation plus the Durable Object invocations it caused), and writes probe lines with
++// host "cloudflare" to results/cloudflare-probe.jsonl. The isolate heap is not observable on Cloudflare, so those lines
++// carry the core's Wasm memory only (heap fields null). The raw tail goes to results/cloudflare-tail-<worker>-<run>.jsonl.
++import { spawn, spawnSync } from "node:child_process"
++import { createHash } from "node:crypto"
++import { appendFileSync, cpSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs"
++import { basename, dirname, join } from "node:path"
++import { setTimeout as sleep } from "node:timers/promises"
++import { history, MEASURED_TOOLS, turn } from "../src/plan.ts"
++import { bundleFor, fixture, MEASURED_TURNS, PROBE, SAMPLES, SIZES, target, TARGETS } from "./targets.ts"
++
++// The wrangler release that ships the workerd of the pinned miniflare (4.20260730.0).
++const WRANGLER = "wrangler@4.116.0"
++const COMPATIBILITY = { compatibility_date: "2026-07-30", compatibility_flags: ["nodejs_compat"] }
++const BATCH = 50
++// Cold: an object idle longer than this has been evicted (V2: at least 150 s).
++const IDLE_MS = Number(process.env.IDLE_MS ?? 150_000)
++const FLOOR_SAMPLES = 5
++
++if (!process.env.CLOUDFLARE_API_TOKEN || !process.env.CLOUDFLARE_ACCOUNT_ID) throw new Error("cloud: set CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID (the owner's account)")
++const [command, arg, ...rest] = process.argv.slice(2)
++const name = target(arg)
++if (PROBE && name !== "pi-head" && !TARGETS[name].core) throw new Error("probe: pi-head or a PiG target")
++const worker = `durable-bench-${name}${PROBE ? `-probe-${PROBE}` : ""}`
++mkdirSync("results", { recursive: true })
++
++const sha256 = (file: string) => createHash("sha256").update(readFileSync(file)).digest("hex")
++const NPX = ["--yes", WRANGLER]
++
++if (command === "deploy") {
++  const bundle = await bundleFor(name)
++  const dir = join("dist", "cf", worker)
++  rmSync(dir, { recursive: true, force: true })
++  mkdirSync(dir, { recursive: true })
++  // Only the bundle and the core go up: no_bundle uploads them byte for byte.
++  const files = [bundle, ...(TARGETS[name].core ? [join(dirname(bundle), "pig-core.wasm")] : [])]
++  for (const file of files) cpSync(file, join(dir, basename(file)))
++  const classes = Object.values(TARGETS[name].objects)
++  writeFileSync(join(dir, "wrangler.json"), JSON.stringify({
++    name: worker, main: basename(bundle), ...COMPATIBILITY, no_bundle: true, find_additional_modules: true,
++    rules: [{ type: "CompiledWasm", globs: ["**/*.wasm"], fallthrough: false }],
++    durable_objects: { bindings: Object.entries(TARGETS[name].objects).map(([binding, class_name]) => ({ name: binding, class_name })) },
++    migrations: [{ tag: "v1", new_sqlite_classes: classes }],
++    observability: { enabled: true }, workers_dev: true,
++  }, null, 2))
++  const out = spawnSync("npx", [...NPX, "deploy", "--config", join(dir, "wrangler.json")], { encoding: "utf8", stdio: ["ignore", "pipe", "inherit"] })
++  process.stdout.write(out.stdout)
++  if (out.status !== 0) throw new Error(`deploy ${worker} failed`)
++  const url = /https:\/\/\S+\.workers\.dev/.exec(out.stdout)?.[0]
++  if (!url) throw new Error(`deploy ${worker}: no workers.dev URL in the output`)
++  const sha = Object.fromEntries(files.map(file => [basename(file), sha256(file)]))
++  for (const file of files) if (sha256(join(dir, basename(file))) !== sha[basename(file)]) throw new Error(`deploy: ${file} changed while copying`)
++  appendFileSync("results/cloudflare-deploy.jsonl", JSON.stringify({ worker, target: name, version: TARGETS[name].version, probe: PROBE || undefined, url, sha256: sha, wrangler: WRANGLER, at: new Date().toISOString() }) + "\n")
++  process.stderr.write(`deployed ${worker} at ${url}\n`)
++} else if (command === "run") {
++  const base = rest[0]
++  if (!/^https?:\/\//.test(base ?? "")) throw new Error("run <target> <url> [sizes...]")
++  const sizes = rest.length > 1 ? rest.slice(1).map(Number) : SIZES
++  const samples = Number(process.env.SAMPLES ?? SAMPLES)
++  const run = Date.now().toString(36)
++  let seq = 0
++  const call = async <T = unknown>(path: string, object: string, body?: unknown) => {
++    const url = `${base}${path}?o=${encodeURIComponent(object)}&r=${seq++}`
++    const t0 = performance.now()
++    const response = await fetch(url, body === undefined ? {} : { method: "POST", body: JSON.stringify(body) })
++    if (!response.ok) throw new Error(`${path} ${response.status}: ${await response.text()}`)
++    const value = await response.json() as T
++    return { value, ms: performance.now() - t0, r: seq - 1 }
++  }
++
++  // Seed every object first (the network is in the seed time, so it is not reported), then measure each after the
++  // eviction window; the verified fingerprint is the local fixture's.
++  const objects = sizes.flatMap(size => Array.from({ length: samples }, (_, sample) => ({ size, sample, object: `r${run}-${size}-${sample}` })))
++  for (const { size, object } of objects) {
++    let digest = ""
++    for (let done = 0; done < size; done += BATCH) digest = (await call<string>("/seed", object, history(done, Math.min(done + BATCH, size)))).value
++    const meta = `${fixture(name, size)}.json`
++    if (existsSync(meta) && JSON.parse(readFileSync(meta, "utf8")).fingerprint !== digest) throw new Error(`${object}: fingerprint ${digest} differs from ${meta}`)
++    process.stderr.write(`seeded ${object} ${digest}\n`)
++  }
++  await sleep(IDLE_MS)
++
++  const tailFile = `results/cloudflare-tail-${worker}-${run}.jsonl`
++  const tail = PROBE ? spawn("npx", [...NPX, "tail", worker, "--format", "json"], { stdio: ["ignore", "pipe", "inherit"] }) : undefined
++  let raw = ""
++  tail?.stdout!.on("data", chunk => (raw += chunk))
++  if (tail) await sleep(10_000)
++
++  const lines: Record<string, unknown>[] = []
++  for (const { size, sample, object } of objects) {
++    const floor: number[] = []
++    for (let i = 0; i < FLOOR_SAMPLES; i++) floor.push((await call("/setup", object)).ms)
++    const request = async (path: string, body?: unknown) => {
++      const { ms, r } = await call(path, object, body)
++      if (!PROBE) return { ms, r }
++      const probe = (await call<Record<string, number>>("/probe", object)).value
++      return { ms, r, ...probe, heapUsed: null, heapTotal: null, backing: null }
++    }
++    const open = await request("/wake")
++    const turns = []
++    for (let i = 0; i < MEASURED_TURNS; i++) turns.push(await request("/turn", turn(`m${i}`, MEASURED_TOOLS)))
++    const stats = (await call<Record<string, unknown>>("/stats", object)).value
++    lines.push({ size, sample, object, floor: floor.sort((a, b) => a - b)[FLOOR_SAMPLES >> 1], open, turns, stats })
++    process.stderr.write(`${worker} ${size} #${sample} open ${open.ms.toFixed(0)}ms turn ${turns.map(t => t.ms.toFixed(0)).join(",")}ms\n`)
++  }
++
++  const cpu = new Map<number, number>()
++  if (tail) {
++    // Requests run one at a time, so the Durable Object invocations between a Worker invocation and the next belong to it.
++    const wanted = lines.flatMap(l => [(l.open as { r: number }).r, ...(l.turns as { r: number }[]).map(t => t.r)])
++    for (let waited = 0; ; waited += 5_000) {
++      const events = parseAll(raw)
++      const byRequest = attribute(events)
++      if (wanted.every(r => byRequest.has(r)) || waited >= 120_000) {
++        for (const [r, ms] of byRequest) cpu.set(r, ms)
++        break
++      }
++      await sleep(5_000)
++    }
++    tail.kill()
++    writeFileSync(tailFile, parseAll(raw).map(e => JSON.stringify(e)).join("\n") + "\n")
++    const missing = wanted.filter(r => !cpu.has(r))
++    if (missing.length) throw new Error(`tail: no CPU time for ${missing.length} requests (raw tail in ${tailFile})`)
++  }
++
++  for (const { size, sample, object, floor, open, turns, stats } of lines as any[]) {
++    const strip = ({ r, ...rest }: { r: number }) => ({ ...rest, cpuMs: cpu.get(r) })
++    const at = new Date().toISOString()
++    if (PROBE) appendFileSync("results/cloudflare-probe.jsonl", JSON.stringify({ kind: "probe", host: "cloudflare", mode: PROBE, target: name, version: TARGETS[name].version, turns: size, sample, object, open: strip(open), turn: turns.map(strip), at }) + "\n")
++    else appendFileSync("results/cloudflare.jsonl", JSON.stringify({ target: name, version: TARGETS[name].version, turns: size, sample, object, floor, open: open.ms, turn: turns.map((t: { ms: number }) => t.ms), ...stats, at }) + "\n")
++  }
++} else throw new Error("cloud: deploy <target> | run <target> <url> [sizes...]")
++
++type TailEvent = { eventTimestamp?: number; cpuTime?: number; event?: { request?: { url?: string } }; executionModel?: string; entrypoint?: string }
++
++/** `wrangler tail --format json` prints one JSON value per event, possibly over several lines. */
++function parseAll(text: string): TailEvent[] {
++  const out: TailEvent[] = []
++  let depth = 0, start = -1, inString = false, escaped = false
++  for (let i = 0; i < text.length; i++) {
++    const c = text[i]
++    if (inString) { if (escaped) escaped = false; else if (c === "\\") escaped = true; else if (c === "\"") inString = false; continue }
++    if (c === "\"") inString = true
++    else if (c === "{") { if (depth++ === 0) start = i }
++    else if (c === "}" && --depth === 0) out.push(JSON.parse(text.slice(start, i + 1)))
++  }
++  return out
++}
++
++/** CPU ms per request id `r`: the Worker invocation for /wake or /turn plus the Durable Object invocations up to the next Worker invocation. */
++function attribute(events: TailEvent[]): Map<number, number> {
++  const sorted = events.filter(e => typeof e.eventTimestamp === "number").sort((a, b) => a.eventTimestamp! - b.eventTimestamp!)
++  const result = new Map<number, number>()
++  let current: number | undefined
++  for (const e of sorted) {
++    const url = e.event?.request?.url
++    if (url !== undefined && e.executionModel !== "durableObject") {
++      const u = new URL(url)
++      current = u.pathname === "/wake" || u.pathname === "/turn" ? Number(u.searchParams.get("r")) : undefined
++      if (current !== undefined) result.set(current, e.cpuTime ?? NaN)
++    } else if (current !== undefined && e.executionModel === "durableObject") result.set(current, result.get(current)! + (e.cpuTime ?? NaN))
++  }
++  for (const [r, ms] of result) if (!Number.isFinite(ms)) result.delete(r)
++  return result
++}
+--- a/src/pi-head.ts
++++ b/src/pi-head.ts
+@@ -86,3 +86,3 @@
+ }
+ 
+-export default serve<{ PI: DurableObjectNamespace<PiDO> }>(env => env.PI.getByName("main"))
++export default serve<{ PI: DurableObjectNamespace<PiDO> }>((env, object) => env.PI.getByName(object))
+--- a/src/serve.ts
++++ b/src/serve.ts
+@@ -14,9 +14,12 @@
+ }
+ 
+-export const serve = <Env>(bench: (env: Env) => Bench, setup?: (env: Env) => Promise<void>) => ({
++// `?o=<name>` selects the object (default "main"): a Cloudflare run keeps one deployment and gives every sample its own
++// Durable Object (bench/cloud.ts); local runs use one object per persisted directory.
++export const serve = <Env>(bench: (env: Env, object: string) => Bench, setup?: (env: Env) => Promise<void>) => ({
+   async fetch(request: Request, env: Env) {
+-    const target = bench(env)
++    const url = new URL(request.url)
++    const target = bench(env, url.searchParams.get("o") ?? "main")
+     const body = request.method === "POST" ? await request.json() : undefined
+-    switch (new URL(request.url).pathname) {
++    switch (url.pathname) {
+       case "/setup": return Response.json(await setup?.(env) ?? null)
+       case "/wake": return Response.json(await target.wake() ?? null)

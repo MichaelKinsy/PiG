@@ -19,7 +19,7 @@ func TestDeferredFlush_FileCreatedAtFirstUserMessage(t *testing.T) {
 	}
 
 	// Setup entries stay buffered.
-	if err := sess.AppendThinkingLevelChange("off"); err != nil {
+	if _, err := sess.AppendThinkingLevelChange("off"); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := os.Stat(sess.Path()); !os.IsNotExist(err) {
@@ -42,7 +42,7 @@ func TestDeferredFlush_FileCreatedAtFirstUserMessage(t *testing.T) {
 	if err != nil {
 		t.Fatalf("reload: %v", err)
 	}
-	if got := len(loaded.Entries()); got != 3 {
+	if got := len(loaded.GetEntries()); got != 3 {
 		t.Fatalf("expected 3 persisted entries, got %d", got)
 	}
 }

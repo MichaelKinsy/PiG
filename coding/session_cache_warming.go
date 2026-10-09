@@ -9,7 +9,6 @@ import (
 
 	"github.com/MichaelKinsy/PiG/agent"
 	"github.com/MichaelKinsy/PiG/ai"
-	"github.com/MichaelKinsy/PiG/coding/extension"
 	icodingagent "github.com/MichaelKinsy/PiG/internal/codingagent"
 )
 
@@ -50,7 +49,7 @@ func cacheWarmingStreamFn(session func() *Session) agent.StreamFn {
 
 // buildRequestOptions mirrors sdk.ts:310-338. Request presence wins over settings, including explicit zero, and the Session header hook runs after provider/header assembly.
 func (s *Session) buildRequestOptions(model *ai.Model, options ai.StreamOptions) (ai.StreamOptions, error) {
-	settings := s.services.SettingsManager()
+	settings := s.SettingsManager()
 	retry := settings.GetProviderRetrySettings()
 	if options.TimeoutMs == nil {
 		timeout, err := settings.GetProviderRequestTimeoutMs()
@@ -73,7 +72,8 @@ func (s *Session) buildRequestOptions(model *ai.Model, options ai.StreamOptions)
 		options.WebSocketConnectTimeoutMs = timeout
 	}
 	if options.MaxRetries == nil {
-		options.MaxRetries = new(retry.MaxRetries)
+		// upstream: sdk.ts:329 `options.maxRetries ?? providerRetrySettings.maxRetries`; an unset setting stays unset.
+		options.MaxRetries = retry.MaxRetries
 	}
 	if options.MaxRetryDelayMs == nil {
 		options.MaxRetryDelayMs = new(retry.MaxRetryDelayMs)
@@ -105,7 +105,7 @@ func (s *Session) installCacheWarmer(inner *icodingagent.Session) {
 			s.cleanupRetiredSessionResources(previousID)
 		})
 	}
-	warmer := icodingagent.NewCacheWarmer(s.streamWarmRequest, inner, s.services.SettingsManager().GetCacheWarmingMode, s.decideCacheWarming)
+	warmer := icodingagent.NewCacheWarmer(s.streamWarmRequest, inner, s.SettingsManager().GetCacheWarmingMode, s.decideCacheWarming)
 	warmer.SetOnWarmed(s.emitEntryAppended)
 	s.warming.warmer, s.warming.sessionID = warmer, inner.ID()
 }
@@ -172,11 +172,8 @@ func (s *Session) decideCacheWarming(ctx context.Context, event icodingagent.Cac
 	if runner == nil {
 		return event.Action, nil
 	}
-	action, err := runner.EmitCacheWarmingDecision(ctx, extension.CacheWarmingDecisionEvent{
-		Type: event.Type, WarmCost: event.WarmCost, MissCost: event.MissCost,
-		ContinuationProbability: event.ContinuationProbability, Action: extension.CacheWarmingAction(event.Action),
-	})
-	return icodingagent.CacheWarmingAction(action), err
+	action, err := runner.EmitCacheWarmingDecision(ctx, event)
+	return action, err
 }
 
 // emitEntryAppended reports a persisted cache-warming usage entry on the
@@ -219,7 +216,7 @@ func (s *Session) CacheWarmingStatus() *icodingagent.CacheWarmingStatus {
 // SetCacheWarmingMode persists the cache-warming mode and immediately
 // reconciles active warming. Mirrors upstream AgentSession.setCacheWarmingMode.
 func (s *Session) SetCacheWarmingMode(mode icodingagent.CacheWarmingMode) error {
-	if err := s.services.SettingsManager().SetCacheWarmingMode(mode); err != nil {
+	if err := s.SettingsManager().SetCacheWarmingMode(mode); err != nil {
 		return err
 	}
 	if warmer, _ := s.cacheWarmer(); warmer != nil {

@@ -1,6 +1,6 @@
 # anthropic-messages start-state and tick-order oracle (gap-d82, W5)
 
-`probe.mjs` drives Pi 1.0.3's real anthropic-messages pipeline (`packages/ai/src/api/anthropic-messages.ts`, `utils/event-stream.ts`, `api/lazy.ts`, and `coding-agent/src/core/model-runtime.ts`) against a loopback server. It pins Pi, `@earendil-works/pi-ai` and `@earendil-works/pi-agent-core` to 1.0.1. `pi.json` is the raw output of one execution on Node 24.19.0. The Go differential test is `TestAnthropicMicrotaskTrace` in `ai/anthropic_microtask_trace_test.go`; the shared RPC row is `../check.mjs ... anthropic-messages`.
+`probe.mjs` drives Pi 1.1.0's real anthropic-messages pipeline (`packages/ai/src/api/anthropic-messages.ts`, `utils/event-stream.ts`, `api/lazy.ts`, and `coding-agent/src/core/model-runtime.ts`) against a loopback server. It pins Pi, `@earendil-works/pi-ai` and `@earendil-works/pi-agent-core` to 1.0.1. `pi.json` is the raw output of one execution on Node 24.19.0. The Go differential test is `TestAnthropicMicrotaskTrace` in `ai/anthropic_microtask_trace_test.go`; the shared RPC row is `../check.mjs ... anthropic-messages`.
 
 ## What is measured
 

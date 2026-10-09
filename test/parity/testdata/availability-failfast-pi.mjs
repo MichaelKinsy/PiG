@@ -2,7 +2,7 @@ import {pathToFileURL} from "node:url";
 import {join} from "node:path";
 import {readFileSync} from "node:fs";
 const root = join(process.cwd(), "extensions/sdk-ts/node_modules/@earendil-works/pi-coding-agent");
-if (JSON.parse(readFileSync(join(root, "package.json"), "utf8")).version !== "1.0.3") throw new Error("wrong Pi pin");
+if (JSON.parse(readFileSync(join(root, "package.json"), "utf8")).version !== "1.1.0") throw new Error("wrong Pi pin");
 const {ModelRuntime} = await import(pathToFileURL(join(root, "dist/core/model-runtime.js")));
 let release;
 let listPending = false;

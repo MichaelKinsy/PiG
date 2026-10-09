@@ -1,0 +1,18 @@
+[
+ {
+  "ids": [
+   "pkg:coding-agent/.#shouldCompact"
+  ],
+  "targets": [
+   "internal/codingagent/compaction/compaction.go#ShouldCompact"
+  ],
+  "production": [
+   "call:coding/session.go#Session.checkCompactionDecision"
+  ],
+  "evidence": [
+   "test:internal/codingagent/compaction/coding_compaction_upstream_test.go#TestCodingCompactionUpstream",
+   "test:internal/codingagent/compaction/compaction_test.go#TestShouldCompact"
+  ],
+  "rationale": "compaction.ts shouldCompact(contextTokens, contextWindow, settings) is ShouldCompact(contextTokens, contextWindow int, CompactionSettings) bool; Session.checkCompactionDecision calls it for the auto-compaction decision."
+ }
+]

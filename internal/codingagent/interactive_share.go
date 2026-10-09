@@ -25,7 +25,7 @@ func (m *InteractiveMode) shareSessionWithLoader(parent context.Context, session
 
 	// pig divergence (D64): keep PiG's gateway privacy notice in transcript history.
 	m.appendChatBlock(tui.NewText(tui.ActiveTheme().Muted + sharePrivacyNotice + "\x1b[0m"))
-	loader := tui.NewBorderedLoader("Uploading session...", true)
+	loader := tui.NewBorderedLoader(m.tuiInst, tui.ActiveTheme(), "Uploading session...")
 	uploadCtx, cancel := context.WithCancel(parent)
 	stopLoaderCancel := context.AfterFunc(loader.CancellableContext().Context(), cancel)
 	defer func() {

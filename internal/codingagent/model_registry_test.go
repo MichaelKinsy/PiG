@@ -1,5 +1,9 @@
 package codingagent
 
+// pi: packages/coding-agent/src/core/model-registry.ts
+
+// pi: packages/coding-agent/src/core/model-config.ts
+
 import (
 	"context"
 	"encoding/json"
@@ -36,7 +40,7 @@ func TestMergeHeadersSupportsCaseInsensitiveDeletionMarkers(t *testing.T) {
 
 func TestModelRegistrySamplingParamsMergePerKey(t *testing.T) {
 	dir := t.TempDir()
-	config := `{"providers":{"custom":{"baseUrl":"https://example.test","models":[{"id":"model","samplingParams":{"top_p":0.9,"min_p":0.1}}],"modelOverrides":{"model":{"samplingParams":{"top_p":0.8,"repetition_penalty":1.1}}}}}}`
+	config := `{"providers":{"custom":{"baseUrl":"https://example.test","api":"openai-completions","models":[{"id":"model","samplingParams":{"top_p":0.9,"min_p":0.1}}],"modelOverrides":{"model":{"samplingParams":{"top_p":0.8,"repetition_penalty":1.1}}}}}}`
 	if err := os.WriteFile(filepath.Join(dir, "models.json"), []byte(config), 0o644); err != nil {
 		t.Fatal(err)
 	}
@@ -49,26 +53,28 @@ func TestModelRegistrySamplingParamsMergePerKey(t *testing.T) {
 	}
 }
 
-func TestModelRegistryNullableHeadersDeleteProviderDefaults(t *testing.T) {
+// model-config.ts HeadersSchema is Record<string, string>: a null header value in models.json is a schema error in Pi 1.1.0, so the
+// null deletion marker only exists for extension-registered providers.
+func TestModelRegistryRejectsNullHeaderValuesInModelsJSON(t *testing.T) {
 	dir := t.TempDir()
-	config := `{"providers":{"custom":{"baseUrl":"https://example.test","headers":{"Authorization":"Bearer old","X-Trace":"base"},"models":[{"id":"model","headers":{"authorization":null,"x-trace":"override"}}]}}}`
+	config := `{"providers":{"custom":{"baseUrl":"https://example.test","api":"openai-completions","headers":{"Authorization":"Bearer old","X-Trace":"base"},"models":[{"id":"model","headers":{"authorization":null,"x-trace":"override"}}]}}}`
 	if err := os.WriteFile(filepath.Join(dir, "models.json"), []byte(config), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	registry := NewModelRegistry(dir)
-	entry, ok := registry.Resolve("custom", "model")
-	if !ok {
-		t.Fatal("custom/model was not resolved")
+	want := "Invalid models.json schema:\n  - providers.custom.models.0.headers.authorization: must be string\n\nFile: " + filepath.Join(dir, "models.json")
+	if got := registry.LoadError(); got != want {
+		t.Fatalf("LoadError() = %q, want %q", got, want)
 	}
-	if len(entry.Headers) != 1 || entry.Headers["x-trace"] != "override" {
-		t.Fatalf("resolved headers = %v, want only x-trace=override", entry.Headers)
+	if _, ok := registry.Resolve("custom", "model"); ok {
+		t.Fatal("a model of a models.json that fails the schema was resolved")
 	}
 }
 
 func TestModelRegistry_RefreshReloadsModelsJSON(t *testing.T) {
 	dir := t.TempDir()
 	modelsPath := filepath.Join(dir, "models.json")
-	_ = os.WriteFile(modelsPath, []byte(`{"providers":{"custom":{"baseUrl":"https://a.test","models":[{"id":"m1","name":"M1"}]}}}`), 0o644)
+	_ = os.WriteFile(modelsPath, []byte(`{"providers":{"custom":{"baseUrl":"https://a.test","api":"openai-completions","models":[{"id":"m1","name":"M1"}]}}}`), 0o644)
 
 	r := NewModelRegistry(dir)
 	entry, ok := r.Resolve("custom", "m1")
@@ -77,7 +83,7 @@ func TestModelRegistry_RefreshReloadsModelsJSON(t *testing.T) {
 	}
 
 	// Change models.json and refresh.
-	_ = os.WriteFile(modelsPath, []byte(`{"providers":{"custom":{"baseUrl":"https://b.test","models":[{"id":"m1","name":"M1v2"}]}}}`), 0o644)
+	_ = os.WriteFile(modelsPath, []byte(`{"providers":{"custom":{"baseUrl":"https://b.test","api":"openai-completions","models":[{"id":"m1","name":"M1v2"}]}}}`), 0o644)
 	r.Refresh()
 
 	entry, ok = r.Resolve("custom", "m1")
@@ -90,11 +96,11 @@ func TestModelRegistry_RefreshReloadsModelsJSON(t *testing.T) {
 func TestModelRegistry_AbortedRefreshStillPublishesConfig(t *testing.T) {
 	dir := t.TempDir()
 	modelsPath := filepath.Join(dir, "models.json")
-	if err := os.WriteFile(modelsPath, []byte(`{"providers":{"custom":{"baseUrl":"https://a.test","models":[{"id":"m1"}]}}}`), 0o644); err != nil {
+	if err := os.WriteFile(modelsPath, []byte(`{"providers":{"custom":{"baseUrl":"https://a.test","api":"openai-completions","models":[{"id":"m1"}]}}}`), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	r := NewModelRegistry(dir)
-	if err := os.WriteFile(modelsPath, []byte(`{"providers":{"custom":{"baseUrl":"https://b.test","models":[{"id":"m1"},{"id":"m2"}]}}}`), 0o644); err != nil {
+	if err := os.WriteFile(modelsPath, []byte(`{"providers":{"custom":{"baseUrl":"https://b.test","api":"openai-completions","models":[{"id":"m1"},{"id":"m2"}]}}}`), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	ctx, cancel := context.WithCancel(context.Background())
@@ -119,7 +125,7 @@ func TestModelRegistry_AbortedRefreshStillPublishesConfig(t *testing.T) {
 func TestModelRegistry_RefreshPreservesDynamicProviders(t *testing.T) {
 	dir := t.TempDir()
 	r := NewModelRegistry(dir)
-	if err := r.RegisterProvider("ext-prov", extension.ProviderConfig{
+	if err := r.RegisterExtensionProvider("ext-prov", extension.ProviderConfig{
 		API:     ai.APIOpenAICompletions,
 		BaseURL: "https://ext.test",
 		Models: []extension.ProviderModelConfig{
@@ -211,9 +217,38 @@ func TestModelRegistry_HasConfiguredAuth_OAuth(t *testing.T) {
 	}
 }
 
+// D36: a registration with refreshModels is composed in the native collection (Pi provider-composer.ts:613), which must keep the provider's TLS
+// opt-in; the models a refresh publishes resolve to entries that carry it, and a later registration without the flag clears it.
+func TestModelRegistry_RegisterProvider_InsecureSurvivesNativeComposition(t *testing.T) {
+	r := NewModelRegistry(t.TempDir())
+	register := func(insecure bool) {
+		t.Helper()
+		if err := r.RegisterExtensionProvider("corp-refresh", extension.ProviderConfig{
+			BaseURL:  "https://corp.test/v1",
+			APIKey:   "corp-key",
+			API:      "openai-completions",
+			Insecure: insecure,
+			Models:   []extension.ProviderModelConfig{{ID: "corp-m1", Name: "Corp M1"}},
+			RefreshModels: func(extension.RefreshModelsContext) ([]extension.ProviderModelConfig, error) {
+				return nil, nil
+			},
+		}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	register(true)
+	if !r.ProviderInsecure("corp-refresh") {
+		t.Fatal("ProviderInsecure = false for a refreshModels registration that opted in")
+	}
+	register(false)
+	if r.ProviderInsecure("corp-refresh") {
+		t.Fatal("ProviderInsecure = true after a registration without the opt-in")
+	}
+}
+
 func TestModelRegistry_RegisterProvider_InsecureThreadsToEntry(t *testing.T) {
 	r := NewModelRegistry(t.TempDir())
-	if err := r.RegisterProvider("corp-ai", extension.ProviderConfig{
+	if err := r.RegisterExtensionProvider("corp-ai", extension.ProviderConfig{
 		BaseURL:  "https://corp.test/v1",
 		APIKey:   "corp-key",
 		API:      "openai-completions",
@@ -241,7 +276,7 @@ func TestModelRegistry_RegisterProvider_InsecureThreadsToEntry(t *testing.T) {
 	}
 
 	// A provider registered without the flag must stay secure.
-	if err := r.RegisterProvider("safe-ai", extension.ProviderConfig{
+	if err := r.RegisterExtensionProvider("safe-ai", extension.ProviderConfig{
 		API:     ai.APIOpenAICompletions,
 		BaseURL: "https://safe.test/v1",
 		APIKey:  "safe-key",
@@ -261,7 +296,7 @@ func TestModelRegistry_RegisterProvider_InsecureThreadsToEntry(t *testing.T) {
 func TestModelRegistry_RegisterProvider_OAuthDetection(t *testing.T) {
 	dir := t.TempDir()
 	r := NewModelRegistry(dir)
-	if err := r.RegisterProvider("corp-ai", extension.ProviderConfig{
+	if err := r.RegisterExtensionProvider("corp-ai", extension.ProviderConfig{
 		API:     ai.APIOpenAICompletions,
 		BaseURL: "https://corp.test",
 		OAuth:   &extension.ProviderOAuth{Name: "Corp AI SSO"},
@@ -298,7 +333,7 @@ func TestModelRegistry_GetAvailable(t *testing.T) {
 	r.SetAuthStorage(auth)
 
 	// Register two providers: one with auth, one without.
-	if err := r.RegisterProvider("authed-prov", extension.ProviderConfig{
+	if err := r.RegisterExtensionProvider("authed-prov", extension.ProviderConfig{
 		API:     ai.APIOpenAICompletions,
 		BaseURL: "https://authed.test",
 		OAuth:   &extension.ProviderOAuth{Name: "Authed"},
@@ -308,7 +343,7 @@ func TestModelRegistry_GetAvailable(t *testing.T) {
 	}); err != nil {
 		t.Error(err)
 	}
-	if err := r.RegisterProvider("no-auth-prov", extension.ProviderConfig{
+	if err := r.RegisterExtensionProvider("no-auth-prov", extension.ProviderConfig{
 		API:     ai.APIOpenAICompletions,
 		BaseURL: "https://noauth.test",
 		OAuth:   &extension.ProviderOAuth{Name: "NoAuth"},
@@ -345,7 +380,7 @@ func TestModelRegistry_GetProviderDisplayName(t *testing.T) {
 	if got := r.GetProviderDisplayName("deepseek"); got != "DeepSeek" {
 		t.Fatalf("display name = %q, want DeepSeek", got)
 	}
-	if err := r.RegisterProvider("corp-ai", extension.ProviderConfig{Name: "Corp AI"}); err != nil {
+	if err := r.RegisterExtensionProvider("corp-ai", extension.ProviderConfig{Name: "Corp AI"}); err != nil {
 		t.Error(err)
 	}
 	if got := r.GetProviderDisplayName("corp-ai"); got != "Corp AI" {
@@ -382,7 +417,7 @@ func TestModelRegistry_GetProviderDisplayName_CatalogProviderNames(t *testing.T)
 func TestModelRegistry_GetProviderAuthStatus_DynamicEnvLabel(t *testing.T) {
 	r := NewModelRegistry(t.TempDir())
 	t.Setenv("CORP_AI_KEY", "secret")
-	if err := r.RegisterProvider("corp-ai", extension.ProviderConfig{APIKey: "$CORP_AI_KEY"}); err != nil {
+	if err := r.RegisterExtensionProvider("corp-ai", extension.ProviderConfig{APIKey: "$CORP_AI_KEY"}); err != nil {
 		t.Error(err)
 	}
 	status := r.GetProviderAuthStatus("corp-ai")
@@ -396,7 +431,7 @@ func TestModelRegistry_ModelOverridesMergeThinkingLevelMap(t *testing.T) {
 	high := "HIGH"
 	off := "disabled"
 	low := "LOW"
-	if err := r.RegisterProvider("corp-ai", extension.ProviderConfig{
+	if err := r.RegisterExtensionProvider("corp-ai", extension.ProviderConfig{
 		API:     ai.APIOpenAICompletions,
 		BaseURL: "https://corp.example/v1",
 		Models: []extension.ProviderModelConfig{{
@@ -408,7 +443,7 @@ func TestModelRegistry_ModelOverridesMergeThinkingLevelMap(t *testing.T) {
 	}); err != nil {
 		t.Error(err)
 	}
-	if err := r.RegisterProvider("corp-ai", extension.ProviderConfig{
+	if err := r.RegisterExtensionProvider("corp-ai", extension.ProviderConfig{
 		BaseURL: "https://corp.example/v1",
 	}); err != nil {
 		t.Error(err)
@@ -441,7 +476,7 @@ func TestModelRegistry_ModelOverridesMergeThinkingLevelMap(t *testing.T) {
 func TestModelRegistry_CustomModelBaseURLOverride(t *testing.T) {
 	dir := t.TempDir()
 	modelsPath := filepath.Join(dir, "models.json")
-	data := `{"providers":{"custom":{"baseUrl":"https://provider.example/v1","models":[{"id":"m1","name":"M1","baseUrl":"https://model.example/v1","reasoning":true,"thinkingLevelMap":{"off":null,"high":"HIGH"}}]}}}`
+	data := `{"providers":{"custom":{"baseUrl":"https://provider.example/v1","api":"openai-completions","models":[{"id":"m1","name":"M1","baseUrl":"https://model.example/v1","reasoning":true,"thinkingLevelMap":{"off":null,"high":"HIGH"}}]}}}`
 	if err := os.WriteFile(modelsPath, []byte(data), 0o644); err != nil {
 		t.Fatalf("WriteFile: %v", err)
 	}
@@ -464,10 +499,10 @@ func TestModelRegistry_CustomModelBaseURLOverride(t *testing.T) {
 
 func TestModelRegistry_GetAvailable_SortedStableForSameNameFamily(t *testing.T) {
 	r := NewModelRegistry(t.TempDir())
-	if err := r.RegisterProvider("z-prov", extension.ProviderConfig{API: ai.APIOpenAICompletions, BaseURL: "https://z.example", APIKey: "Z_API_KEY", Models: []extension.ProviderModelConfig{{ID: "z-1", Name: "z-1"}}}); err != nil {
+	if err := r.RegisterExtensionProvider("z-prov", extension.ProviderConfig{API: ai.APIOpenAICompletions, BaseURL: "https://z.example", APIKey: "Z_API_KEY", Models: []extension.ProviderModelConfig{{ID: "z-1", Name: "z-1"}}}); err != nil {
 		t.Error(err)
 	}
-	if err := r.RegisterProvider("a-prov", extension.ProviderConfig{API: ai.APIOpenAICompletions, BaseURL: "https://a.example", APIKey: "A_API_KEY", Models: []extension.ProviderModelConfig{{ID: "a-1", Name: "a-1"}}}); err != nil {
+	if err := r.RegisterExtensionProvider("a-prov", extension.ProviderConfig{API: ai.APIOpenAICompletions, BaseURL: "https://a.example", APIKey: "A_API_KEY", Models: []extension.ProviderModelConfig{{ID: "a-1", Name: "a-1"}}}); err != nil {
 		t.Error(err)
 	}
 	t.Setenv("Z_API_KEY", "z")
@@ -539,7 +574,7 @@ func TestModelRegistry_GetAvailable_DynamicProviderTakesPrecedenceOverModelsJSON
 	}
 
 	r := NewModelRegistry(dir)
-	if err := r.RegisterProvider("shared", extension.ProviderConfig{
+	if err := r.RegisterExtensionProvider("shared", extension.ProviderConfig{
 		API:     ai.APIOpenAICompletions,
 		BaseURL: "https://fresh.example/v1",
 		APIKey:  "fresh-key",
@@ -572,7 +607,7 @@ func TestModelRegistry_ResolveAPIKeyUsesProviderEnv(t *testing.T) {
 	t.Setenv("MYPROV_KEY", "from-process")
 	dir := t.TempDir()
 	modelsPath := filepath.Join(dir, "models.json")
-	_ = os.WriteFile(modelsPath, []byte(`{"providers":{"myprov":{"baseUrl":"https://a.test","apiKey":"$MYPROV_KEY","models":[{"id":"m1","name":"M1"}]}}}`), 0o644)
+	_ = os.WriteFile(modelsPath, []byte(`{"providers":{"myprov":{"baseUrl":"https://a.test","api":"openai-completions","apiKey":"$MYPROV_KEY","models":[{"id":"m1","name":"M1"}]}}}`), 0o644)
 
 	authPath := filepath.Join(dir, "auth.json")
 	_ = os.WriteFile(authPath, []byte(`{"myprov":{"type":"api_key","key":"unused","env":{"MYPROV_KEY":"from-scope"}}}`), 0o644)
@@ -630,7 +665,7 @@ func TestModelRegistryExtensionModelCarriesSamplingParamsByThinkingLevel(t *test
 		t.Fatal(err)
 	}
 	r := NewModelRegistry(t.TempDir())
-	if err := r.RegisterProvider("ext-sampling", config); err != nil {
+	if err := r.RegisterExtensionProvider("ext-sampling", config); err != nil {
 		t.Fatal(err)
 	}
 	entry, ok := r.Resolve("ext-sampling", "ext-model")
@@ -674,7 +709,7 @@ func TestModelRegistry_ExtensionRegistrationKeepsModelsJSONAuth(t *testing.T) {
 	if !r.HasConfiguredAuth("vllm") {
 		t.Fatalf("models.json provider is not configured before the registration")
 	}
-	if err := r.RegisterProvider("vllm", extension.ProviderConfig{API: ai.APIOpenAICompletions}); err != nil {
+	if err := r.RegisterExtensionProvider("vllm", extension.ProviderConfig{API: ai.APIOpenAICompletions}); err != nil {
 		t.Fatal(err)
 	}
 	if !r.HasConfiguredAuth("vllm") {
@@ -737,5 +772,81 @@ func TestModelsJSONCustomModelUnderABuiltInProviderNeedsABaseURL(t *testing.T) {
 	}
 	if !has(registry, "openai", "x") {
 		t.Fatal("the custom openai model inherits the built-in base URL")
+	}
+}
+
+// provider-composer.ts:224-229 modelFromJson: a models.json model whose contextWindow or maxTokens is zero or negative throws
+// "Provider <id>, model <id>: invalid contextWindow|maxTokens", the runtime records the composition error and keeps the base models
+// (here none: the provider is dropped), and the checks run per model in definition order after the base URL check.
+func TestModelsJSONModelWithANonPositiveContextWindowOrMaxTokensIsRejected(t *testing.T) {
+	has := func(registry *ModelRegistry, modelID string) bool {
+		return slices.ContainsFunc(registry.GetProviderModelData("custom"), func(model *ai.Model) bool { return model.ID == modelID })
+	}
+	load := func(t *testing.T, models string) *ModelRegistry {
+		t.Helper()
+		path := filepath.Join(t.TempDir(), "models.json")
+		content := `{"providers":{"custom":{"baseUrl":"https://custom.test/v1","api":"openai-completions","models":` + models + `}}}`
+		if err := os.WriteFile(path, []byte(content), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		return NewModelRegistryWithModelsPath(path)
+	}
+	for _, c := range []struct{ name, models, want string }{
+		{"context window zero", `[{"id":"ok"},{"id":"bad","contextWindow":0}]`, `Provider "custom": Provider custom, model bad: invalid contextWindow`},
+		{"context window negative", `[{"id":"bad","contextWindow":-5}]`, `Provider custom, model bad: invalid contextWindow`},
+		{"max tokens zero", `[{"id":"bad","maxTokens":0}]`, `Provider custom, model bad: invalid maxTokens`},
+		{"context window first", `[{"id":"bad","contextWindow":-1,"maxTokens":-1}]`, `Provider custom, model bad: invalid contextWindow`},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			registry := load(t, c.models)
+			if !strings.Contains(registry.LoadError(), c.want) {
+				t.Fatalf("load error = %q, want %q", registry.LoadError(), c.want)
+			}
+			if has(registry, "bad") || has(registry, "ok") {
+				t.Fatal("a provider with an invalid model definition was composed")
+			}
+		})
+	}
+	registry := load(t, `[{"id":"fine","contextWindow":1,"maxTokens":1}]`)
+	if registry.LoadError() != "" || !has(registry, "fine") {
+		t.Fatalf("positive limits: error %q, has fine %v", registry.LoadError(), has(registry, "fine"))
+	}
+}
+
+// provider-composer.ts:216-221 modelFromJson: a models.json model with no api (its own, the provider's, or the one of the built-in model
+// findModelDefaults picks) throws `Provider <id>, model <id>: no "api" specified. Set at provider or model level.`, which is checked before
+// the base URL. An "oauth" provider's base models are not known when the file is read, so it is not judged here.
+func TestModelsJSONModelWithoutAnAPIIsRejected(t *testing.T) {
+	load := func(t *testing.T, providers string) *ModelRegistry {
+		t.Helper()
+		path := filepath.Join(t.TempDir(), "models.json")
+		if err := os.WriteFile(path, []byte(`{"providers":`+providers+`}`), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		return NewModelRegistryWithModelsPath(path)
+	}
+	has := func(registry *ModelRegistry, providerID, modelID string) bool {
+		return slices.ContainsFunc(registry.GetProviderModelData(providerID), func(model *ai.Model) bool { return model.ID == modelID })
+	}
+	registry := load(t, `{"custom":{"apiKey":"k","models":[{"id":"m"}]}}`)
+	if want := `Provider "custom": Provider custom, model m: no "api" specified. Set at provider or model level.`; !strings.Contains(registry.LoadError(), want) {
+		t.Fatalf("load error = %q, want %q (the api check comes before the base URL check)", registry.LoadError(), want)
+	}
+	if has(registry, "custom", "m") {
+		t.Fatal("a model without an api was composed")
+	}
+	for name, providers := range map[string]string{
+		"provider api":   `{"custom":{"baseUrl":"https://c.test/v1","api":"openai-completions","apiKey":"k","models":[{"id":"m"}]}}`,
+		"model api":      `{"custom":{"baseUrl":"https://c.test/v1","apiKey":"k","models":[{"id":"m","api":"openai-completions"}]}}`,
+		"built-in model": `{"openai":{"models":[{"id":"my-gpt"}]}}`,
+	} {
+		registry := load(t, providers)
+		providerID := "custom"
+		if name == "built-in model" {
+			providerID = "openai"
+		}
+		if registry.LoadError() != "" || !has(registry, providerID, map[bool]string{true: "my-gpt", false: "m"}[name == "built-in model"]) {
+			t.Errorf("%s: load error %q", name, registry.LoadError())
+		}
 	}
 }

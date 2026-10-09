@@ -43,7 +43,7 @@ func settingsFromJSON(t *testing.T, body string) Settings {
 // setCapabilityOverrides(settingsManager.getTerminalCapabilityOverrides()).
 func TestNewInteractiveModeAppliesTerminalCapabilitySettings(t *testing.T) {
 	isolateTerminalCapabilities(t)
-	NewInteractiveMode(InteractiveOptions{
+	NewInteractiveMode(nil, InteractiveModeOptions{
 		CWD:      t.TempDir(),
 		AgentDir: t.TempDir(),
 		Settings: settingsFromJSON(t, `{"terminal": {"hyperlinks": false, "images": false, "trueColor": false}}`),
@@ -61,7 +61,7 @@ func TestReloadAppliesTerminalCapabilitySettings(t *testing.T) {
 	agentDir := t.TempDir()
 	cwd := t.TempDir()
 	sm := NewSettingsManager(cwd, agentDir)
-	m := reloadTestMode(InteractiveOptions{CWD: cwd, AgentDir: agentDir, SettingsManager: sm, Settings: sm.Get(), NoPromptTemplates: true, NoThemes: true})
+	m := reloadTestMode(InteractiveModeOptions{CWD: cwd, AgentDir: agentDir, SettingsManager: sm, Settings: sm.Get(), NoPromptTemplates: true, NoThemes: true})
 	if got := tui.GetCapabilities(); !got.Hyperlinks {
 		t.Fatalf("kitty without settings = %+v, want hyperlinks", got)
 	}
@@ -82,7 +82,7 @@ func TestStartupPromptAppliesTerminalCapabilitySettings(t *testing.T) {
 	isolateTerminalCapabilities(t)
 	restoreStartupTheme(t)
 	terminal := &fakeStartupTerminal{}
-	selector := tui.NewExtensionSelector("Pick", []string{"a"})
+	selector := tui.NewExtensionSelectorComponent("Pick", []string{"a"}, nil, nil)
 	opts := StartupUIOptions{Settings: settingsFromJSON(t, `{"theme": "dark", "terminal": {"trueColor": false}}`)}
 	done := make(chan error, 1)
 	go func() {
@@ -153,7 +153,7 @@ func TestStartupPromptUsesAlreadyNormalizedTerminalInput(t *testing.T) {
 	restoreStartupTheme(t)
 	seen := recordInputNormalization(t)
 	terminal := &fakeStartupTerminal{}
-	input := tui.NewExtensionInputComponent("Name", "")
+	input := tui.NewExtensionInputComponent("Name", "", nil, nil)
 	opts := StartupUIOptions{Settings: settingsFromJSON(t, `{"theme": "dark"}`)}
 	done := make(chan error, 1)
 	go func() {

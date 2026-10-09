@@ -3,10 +3,10 @@
 //
 // `coding/extension/tool.go` defines `RegisteredTool` and
 // `ToolDefinition` to match upstream pi's wire shape (TypeBox
-// `json.RawMessage` parameters, generic-erased Execute returning
-// `any` per D1). `agent.AgentTool` is pig's interface used by
-// every callsite in the agent loop. This bridge owns the type
-// assertions and schema marshalling required to span the two.
+// `json.RawMessage` parameters; Execute returns the agent's
+// AgentToolResult). `agent.AgentTool` is pig's interface used by
+// every callsite in the agent loop. This bridge owns the schema
+// marshalling required to span the two.
 //
 // The adapter holds a value copy of `extension.RegisteredTool`. It
 // does NOT hold a reference to the runner: staleness is the
@@ -26,6 +26,7 @@ import (
 	"github.com/MichaelKinsy/PiG/agent"
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/coding/extension"
+	"github.com/MichaelKinsy/PiG/coding/extension/host/inproc"
 )
 
 // bridgeTool adapts a single `extension.RegisteredTool` onto the
@@ -39,6 +40,8 @@ type bridgeTool struct {
 	constrainedSampling *ai.ConstrainedSamplingConfig
 	// constrainedSamplingDisabled is an explicit `constrainedSampling: false`, kept for transcript declarations.
 	constrainedSamplingDisabled bool
+	// runner is the extension runner whose tool context each call gets (wrapper.ts wrapRegisteredTool); nil leaves the context to the caller.
+	runner *inproc.Runner
 }
 
 // newBridgeTool constructs a bridgeTool, returning an error if the
@@ -123,16 +126,8 @@ func (b *bridgeTool) PrepareArguments(params json.RawMessage) (json.RawMessage, 
 	return b.def.PrepareArguments(params)
 }
 
-// Execute invokes the underlying `extension.ToolDefinition.Execute`
-// and type-asserts the result back to `agent.AgentToolResult`.
-//
-// **Type-assertion contract.** D1 erases the result type to `any`
-// at the interface boundary. Registered tools must return
-// `agent.AgentToolResult`. A different shape returns an error.
-//
-// `onUpdate` is forwarded as `any` because
-// `extension.AgentToolUpdateCallback` is an `any` alias. Tools that stream
-// progress type-assert it to `agent.ToolUpdateCallback`.
+// Execute invokes the underlying `extension.ToolDefinition.Execute` (types.ts ToolDefinition.execute): the result is an
+// [agent.AgentToolResult] and onUpdate the [agent.ToolUpdateCallback] the agent loop passes.
 func (b *bridgeTool) Execute(
 	ctx context.Context,
 	toolCallID string,
@@ -148,23 +143,15 @@ func (b *bridgeTool) Execute(
 		ctx = extension.WithCallOrder(ctx, order)
 		defer order.Release()
 	}
+	if b.runner != nil {
+		ctx = b.runner.ToolCallContext(ctx, toolCallID)
+	}
 	raw, err := b.def.Execute(ctx, toolCallID, params, onUpdate)
 	if err != nil {
 		return agent.AgentToolResult{}, err
 	}
 
-	// D1: extension.AgentToolResult is `= any`. Tools written for
-	// pig return agent.AgentToolResult. A nil return is allowed
-	// (legacy builtins occasionally use this idiom alongside an
-	// in-band success Content); fall through to the zero value.
-	if raw == nil {
-		return agent.AgentToolResult{}, nil
-	}
-	res, ok := raw.(agent.AgentToolResult)
-	if !ok {
-		return agent.AgentToolResult{}, fmt.Errorf("bridge tool %q: Execute returned %T, want agent.AgentToolResult", b.def.Name, raw)
-	}
-	return res, nil
+	return raw, nil
 }
 
 // ReserveMutationOrder reserves the call's place in the order the definition keeps (ToolDefinition.ReserveCallOrder).
@@ -185,6 +172,30 @@ func (b *bridgeTool) ExecutionMode() agent.ToolExecutionMode {
 		return agent.ToolModeSequential
 	}
 	return agent.ToolModeParallel
+}
+
+// WrapRegisteredTool wraps a registered tool into an AgentTool whose every call gets runner's tool context for its call id, as wrapper.ts wrapRegisteredTool
+// does through wrapToolDefinition. A schema that fails to parse is an error.
+func WrapRegisteredTool(registeredTool extension.RegisteredTool, runner *inproc.Runner) (agent.AgentTool, error) {
+	tool, err := newBridgeTool(registeredTool)
+	if err != nil {
+		return nil, err
+	}
+	tool.runner = runner
+	return tool, nil
+}
+
+// WrapRegisteredTools wraps every registered tool in order (wrapper.ts wrapRegisteredTools); the first tool that cannot be wrapped fails the call.
+func WrapRegisteredTools(registeredTools []extension.RegisteredTool, runner *inproc.Runner) ([]agent.AgentTool, error) {
+	tools := make([]agent.AgentTool, 0, len(registeredTools))
+	for _, registeredTool := range registeredTools {
+		tool, err := WrapRegisteredTool(registeredTool, runner)
+		if err != nil {
+			return nil, err
+		}
+		tools = append(tools, tool)
+	}
+	return tools, nil
 }
 
 // BridgeNewRunnerTools converts extension-registered tools into AgentTools

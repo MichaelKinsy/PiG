@@ -1,0 +1,114 @@
+[
+ {
+  "ids": [
+   "pkg:coding-agent/.#AgentSession::property:getActiveToolNames"
+  ],
+  "targets": [
+   "coding/session_tools.go#Session.ActiveToolNames"
+  ],
+  "production": [
+   "call:coding/cli/session_extension_actions.go#bindSessionExtensionActions"
+  ],
+  "evidence": [
+   "test:coding/cli/session_extension_actions_tools_test.go#TestSessionExtensionActionsBindActiveTools",
+   "test:coding/mcp_session_resume_upstream_test.go#TestAgentSessionMCPToolsAfterResumeAndReloadDeclaresToolsToolSearchLoadedAgainAfterReload"
+  ],
+  "rationale": "AgentSession.getActiveToolNames is Session.ActiveToolNames returning []string of the active tool names."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#AgentSession::property:getAvailableThinkingLevels"
+  ],
+  "targets": [
+   "coding/session.go#Session.AvailableThinkingLevels"
+  ],
+  "production": [
+   "call:coding/cli/rpc_mode.go#runRPCMode"
+  ],
+  "evidence": [
+   "test:coding/session_rpc_test.go#TestSessionThinkingLevelUsesModelCapabilities",
+   "test:coding/session_model_extension_upstream_test.go#TestSessionModelExtensionCyclesUpstream"
+  ],
+  "rationale": "AgentSession.getAvailableThinkingLevels is Session.AvailableThinkingLevels returning []ai.ThinkingLevel."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#AgentSession::property:getContextUsage"
+  ],
+  "targets": [
+   "coding/session.go#Session.ContextUsage"
+  ],
+  "production": [
+   "call:coding/cli/main.go#Main"
+  ],
+  "evidence": [
+   "test:coding/session_stats_upstream_test.go#TestUpstreamAgentSessionStatsContext",
+   "test:coding/session_context_usage_test.go#TestSessionContextUsageCompactionUnknownUntilValidProjectedUsage"
+  ],
+  "rationale": "AgentSession.getContextUsage is Session.ContextUsage returning *SessionContextUsage {Tokens, ContextWindow, Percent}, nil for undefined, nil Tokens and Percent for null."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#AgentSession::property:getLastAssistantText"
+  ],
+  "targets": [
+   "coding/session.go#Session.LastAssistantText"
+  ],
+  "production": [
+   "call:coding/cli/rpc_mode.go#runRPCMode"
+  ],
+  "evidence": [
+   "test:coding/session_test.go#TestLastAssistantTextNilWhenNoMessages",
+   "test:coding/session_retry_classify_test.go#TestSessionRetriesProviderReturnedError400"
+  ],
+  "rationale": "AgentSession.getLastAssistantText is Session.LastAssistantText returning *string, nil for undefined."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#AgentSession::property:getUserMessagesForForking"
+  ],
+  "targets": [
+   "coding/session.go#Session.UserMessagesForForking"
+  ],
+  "production": [
+   "call:coding/cli/rpc_mode.go#runRPCMode"
+  ],
+  "evidence": [
+   "test:coding/session_test.go#TestUserMessagesForForkingEmpty",
+   "test:coding/session_runtime_branching_upstream_test.go#TestRuntimeOriginalBranching"
+  ],
+  "rationale": "AgentSession.getUserMessagesForForking is Session.UserMessagesForForking returning []ForkMessage {EntryID, Text}."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#AgentSession::property:sessionId"
+  ],
+  "targets": [
+   "coding/session.go#Session.ID"
+  ],
+  "production": [
+   "call:coding/cli/rpc_mode.go#runRPCMode"
+  ],
+  "evidence": [
+   "test:coding/cli/session_id_readonly_upstream_test.go#TestUpstreamSessionIDReadonly",
+   "test:coding/runtime_test.go#TestRuntimeResumeRoundTrip"
+  ],
+  "rationale": "AgentSession.sessionId is Session.ID(), read-only."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#AgentSession::property:sessionFile"
+  ],
+  "targets": [
+   "coding/session.go#Session.Path"
+  ],
+  "production": [
+   "call:coding/cli/rpc_mode.go#runRPCMode"
+  ],
+  "evidence": [
+   "test:coding/cli/session_id_readonly_upstream_test.go#TestUpstreamSessionIDReadonly",
+   "test:coding/runtime_test.go#TestRuntimeNewNoSessionUsesSessionIDWithoutPath"
+  ],
+  "rationale": "AgentSession.sessionFile is Session.Path(): the session file path, empty string for upstream undefined when the session is not persisted."
+ }
+]

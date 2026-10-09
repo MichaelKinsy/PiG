@@ -126,7 +126,7 @@ func TestAzureUpstreamBaseURL(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Setenv("AZURE_OPENAI_BASE_URL", tc.input)
-			got, err := ResolveAzureBaseURL("", AzureEndpointOptions{})
+			got, err := ResolveAzureBaseURL("", StreamOptions{})
 			if err != nil || got != tc.want {
 				t.Fatalf("baseURL = %q, %v; want %q", got, err, tc.want)
 			}
@@ -145,7 +145,7 @@ func TestAzureUpstreamBaseURL(t *testing.T) {
 	t.Run("builds correct default URL from AZURE_OPENAI_RESOURCE_NAME", func(t *testing.T) {
 		t.Setenv("AZURE_OPENAI_BASE_URL", "")
 		t.Setenv("AZURE_OPENAI_RESOURCE_NAME", "my-resource")
-		got, err := ResolveAzureBaseURL("", AzureEndpointOptions{})
+		got, err := ResolveAzureBaseURL("", StreamOptions{})
 		if err != nil || got != "https://my-resource.openai.azure.com/openai/v1" {
 			t.Fatalf("baseURL = %q, %v", got, err)
 		}

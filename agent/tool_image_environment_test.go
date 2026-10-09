@@ -8,8 +8,8 @@ import (
 
 func TestToolEnvironmentCarriesCurrentImageProfile(t *testing.T) {
 	model := &ai.Model{ID: "image-model", Input: []string{"text", "image"}, InputLimits: &ai.ModelInputLimits{Images: &ai.ModelImageInputLimits{Resize: &ai.ModelImageResizeOptions{MaxWidth: 640}}}}
-	a := NewAgent(AgentOptions{Model: model})
-	env := a.toolEnvironment(model, ai.ThinkingLevel(""))
+	a := mustNewAgent(AgentOptions{Model: model})
+	env := a.testHost().toolEnvironment(model, ai.ModelThinkingLevel(""))
 	if env.InputLimits.Images.Resize.MaxWidth != 640 || env.SupportsImages == nil || !*env.SupportsImages {
 		t.Fatalf("image environment=%#v", env)
 	}
@@ -18,7 +18,7 @@ func TestToolEnvironmentCarriesCurrentImageProfile(t *testing.T) {
 		t.Fatal("tool environment aliases selected model")
 	}
 	model.Input = []string{"text"}
-	next := a.toolEnvironment(model, ai.ThinkingLevel(""))
+	next := a.testHost().toolEnvironment(model, ai.ModelThinkingLevel(""))
 	if next.SupportsImages == nil || *next.SupportsImages {
 		t.Fatal("non-vision model not propagated")
 	}

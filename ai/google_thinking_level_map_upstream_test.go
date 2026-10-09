@@ -1,3 +1,5 @@
+//go:build !pig_strip_google_vertex
+
 package ai
 
 import (
@@ -10,14 +12,14 @@ import (
 func TestResolveGoogleThinkingLevelUpstream(t *testing.T) {
 	// .upstream/v0.87.1/packages/ai/test/google-thinking-level-map.test.ts:101
 	model := &Model{ID: "gemini-3.7-flash", ProviderMeta: ProviderMetadata{ProviderID: "test-google"}}
-	for _, level := range []ThinkingLevel{ThinkingMinimal, ThinkingLow, ThinkingMedium, ThinkingHigh} {
+	for _, level := range []ModelThinkingLevel{ThinkingMinimal, ThinkingLow, ThinkingMedium, ThinkingHigh} {
 		got, err := resolveGoogleThinkingLevel(model, level)
-		if err != nil || got != level {
+		if err != nil || string(got) != string(level) {
 			t.Fatalf("default %s = %s, %v", level, got, err)
 		}
 	}
 	for _, mapped := range []string{"minimal", "low", "medium", "high", "MINIMAL", "LOW", "MEDIUM", "HIGH"} {
-		for _, level := range []ThinkingLevel{ThinkingHigh, ThinkingXHigh, ThinkingMax} {
+		for _, level := range []ModelThinkingLevel{ThinkingHigh, ThinkingXHigh, ThinkingMax} {
 			model.ThinkingLevelMap = ThinkingLevelMap{ThinkingHigh: new(mapped), ThinkingXHigh: new(mapped), ThinkingMax: new(mapped)}
 			got, err := resolveGoogleThinkingLevel(model, level)
 			if err != nil || string(got) != strings.ToLower(mapped) {
@@ -45,7 +47,7 @@ func TestGoogleThinkingLevelMapPayloadUpstream(t *testing.T) {
 		for _, tc := range []struct {
 			name, id string
 			mapping  ThinkingLevelMap
-			level    ThinkingLevel
+			level    ModelThinkingLevel
 			want     string
 		}{
 			// .upstream/v0.87.1/packages/ai/test/google-thinking-level-map.test.ts:139
@@ -61,7 +63,7 @@ func TestGoogleThinkingLevelMapPayloadUpstream(t *testing.T) {
 		}
 	}
 	// .upstream/v0.87.1/packages/ai/test/google-thinking-level-map.test.ts:169
-	for _, level := range []ThinkingLevel{ThinkingXHigh, ThinkingMax} {
+	for _, level := range []ModelThinkingLevel{ThinkingXHigh, ThinkingMax} {
 		t.Run("maps Google Generative AI "+string(level)+" to a supported level", func(t *testing.T) {
 			assertShapeJSON(t, captureGoogleThinkingMap(t, false, "gemini-3.7-flash", ThinkingLevelMap{ThinkingXHigh: new("high"), ThinkingMax: new("high")}, level, nil), `{"includeThoughts":true,"thinkingLevel":"HIGH"}`)
 		})
@@ -84,7 +86,7 @@ func TestGoogleThinkingLevelMapPayloadUpstream(t *testing.T) {
 	})
 }
 
-func captureGoogleThinkingMap(t *testing.T, vertex bool, id string, mapping ThinkingLevelMap, level ThinkingLevel, budgets *ThinkingBudgets) json.RawMessage {
+func captureGoogleThinkingMap(t *testing.T, vertex bool, id string, mapping ThinkingLevelMap, level ModelThinkingLevel, budgets *ThinkingBudgets) json.RawMessage {
 	t.Helper()
 	var provider Provider
 	if vertex {
@@ -98,7 +100,11 @@ func captureGoogleThinkingMap(t *testing.T, vertex bool, id string, mapping Thin
 	if level == "" {
 		level = ThinkingOff
 	}
-	_, err := provider.Stream(t.Context(), NormalizeContext(Context{Messages: []Message{UserMessage{Content: UserText("Hello")}}}), StreamOptions{IsReasoning: true, Thinking: level, ThinkingBudgets: budgets, OnPayload: func(value any, _ *Model) (any, error) {
+	options := StreamOptions{IsReasoning: true, Thinking: level.ReasoningOption(), ThinkingBudgets: budgets}
+	if level == ThinkingOff {
+		options.GoogleThinking = &GoogleThinkingOptions{}
+	}
+	options.OnPayload = func(value any, _ *Model) (any, error) {
 		request := value.(map[string]any)
 		config := request["config"].(map[string]any)
 		var err error
@@ -107,7 +113,8 @@ func captureGoogleThinkingMap(t *testing.T, vertex bool, id string, mapping Thin
 			return nil, err
 		}
 		return nil, captured
-	}})
+	}
+	_, err := provider.Stream(t.Context(), NormalizeContext(Context{Messages: []Message{UserMessage{Content: UserText("Hello")}}}), options)
 	if !errors.Is(err, captured) {
 		t.Fatalf("capture error=%v", err)
 	}
@@ -118,7 +125,7 @@ func BenchmarkGoogleMappedThinkingRequest(b *testing.B) {
 	provider := NewGoogleProvider(GoogleConfig{APIKey: "test", Model: "gemini-3.8-flash", ProviderID: "test-google", ThinkingLevelMap: ThinkingLevelMap{ThinkingOff: nil, ThinkingMinimal: nil, ThinkingLow: new("low"), ThinkingMedium: new("medium"), ThinkingHigh: new("high")}})
 	transcript := NormalizeContext(Context{SystemPrompt: "You are a helpful assistant.", Messages: []Message{UserMessage{Content: UserText("Explain the next step.")}}})
 	captured := errors.New("payload captured")
-	options := StreamOptions{IsReasoning: true, Thinking: ThinkingMedium, OnPayload: func(_ any, _ *Model) (any, error) { return nil, captured }}
+	options := StreamOptions{IsReasoning: true, Thinking: ThinkingLevelMedium, OnPayload: func(_ any, _ *Model) (any, error) { return nil, captured }}
 	b.ReportAllocs()
 	for b.Loop() {
 		if _, err := provider.Stream(b.Context(), transcript, options); !errors.Is(err, captured) {
@@ -131,7 +138,7 @@ func TestGoogleThinkingLevelMapRegression(t *testing.T) {
 	for _, tc := range []struct {
 		name, id string
 		mapping  ThinkingLevelMap
-		level    ThinkingLevel
+		level    ModelThinkingLevel
 		want     string
 		include  bool
 	}{
@@ -143,7 +150,7 @@ func TestGoogleThinkingLevelMapRegression(t *testing.T) {
 		{"honors uppercase provider values for standard Google levels", "gemini-3.7-flash", ThinkingLevelMap{ThinkingHigh: new("LOW")}, ThinkingHigh, "LOW", true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			model := &Model{ID: tc.id, ProviderMeta: ProviderMetadata{ProviderID: "test-google"}, Capabilities: ModelCapabilities{MaxThinking: ThinkingHigh}, ThinkingLevelMap: tc.mapping}
+			model := &Model{ID: tc.id, ProviderMeta: ProviderMetadata{ProviderID: "test-google"}, Capabilities: ModelCapabilities{MaxThinking: ThinkingLevelHigh}, ThinkingLevelMap: tc.mapping}
 			config, err := buildGeminiThinkingConfig(model, tc.level, true, nil)
 			if err != nil {
 				t.Fatal(err)
@@ -158,5 +165,52 @@ func TestGoogleThinkingLevelMapRegression(t *testing.T) {
 				t.Fatalf("includeThoughts=%v, want omitted", config.IncludeThoughts)
 			}
 		})
+	}
+}
+
+// google-shared.ts:85 toGoogleThinkingLevel maps each resolved level to Google's enum value; the disabled-thinking config of a
+// level-based model sends that value (getDisabledGoogleThinkingConfig).
+func TestToGoogleThinkingLevelUpstream(t *testing.T) {
+	for level, want := range map[ResolvedGoogleThinkingLevel]GoogleThinkingLevel{
+		ResolvedGoogleThinkingLevelMinimal: "MINIMAL",
+		ResolvedGoogleThinkingLevelLow:     "LOW",
+		ResolvedGoogleThinkingLevelMedium:  "MEDIUM",
+		ResolvedGoogleThinkingLevelHigh:    "HIGH",
+	} {
+		if got := ToGoogleThinkingLevel(level); got != want {
+			t.Errorf("ToGoogleThinkingLevel(%q) = %q, want %q", level, got, want)
+		}
+	}
+	model := &Model{ID: "gemini-3.7-flash", ProviderMeta: ProviderMetadata{ProviderID: "test-google", Reasoning: true}, ThinkingLevelMap: ThinkingLevelMap{ThinkingOff: nil}}
+	config, err := buildGeminiThinkingConfig(model, ThinkingOff, true, nil)
+	if err != nil || config == nil || config.ThinkingLevel != "MINIMAL" {
+		t.Fatalf("disabled config = %+v, %v", config, err)
+	}
+}
+
+// google-shared.ts:98 toGoogleSdkThinkingLevel selects the @google/genai ThinkingLevel enum value of each Google API level through
+// GOOGLE_SDK_THINKING_LEVEL_MAP (google-shared.ts:36-42); the request payload carries that enum value, which the level-based
+// thinkingConfig of a Gemini 3 model and the disabled-thinking config both send (google-generative-ai.ts:406, google-shared.ts:110).
+func TestToGoogleSdkThinkingLevelUpstream(t *testing.T) {
+	for level, want := range map[GoogleThinkingLevel]GoogleSdkThinkingLevel{
+		GoogleThinkingLevelUnspecified: "THINKING_LEVEL_UNSPECIFIED",
+		GoogleThinkingLevelMinimal:     "MINIMAL",
+		GoogleThinkingLevelLow:         "LOW",
+		GoogleThinkingLevelMedium:      "MEDIUM",
+		GoogleThinkingLevelHigh:        "HIGH",
+	} {
+		if got := ToGoogleSdkThinkingLevel(level); got != want {
+			t.Errorf("ToGoogleSdkThinkingLevel(%q) = %q, want %q", level, got, want)
+		}
+	}
+	for _, level := range []ResolvedGoogleThinkingLevel{ResolvedGoogleThinkingLevelMinimal, ResolvedGoogleThinkingLevelLow, ResolvedGoogleThinkingLevelMedium, ResolvedGoogleThinkingLevelHigh} {
+		model := &Model{ID: "gemini-3.7-flash", ProviderMeta: ProviderMetadata{ProviderID: "test-google", Reasoning: true}}
+		config, err := buildGeminiThinkingConfig(model, ModelThinkingLevel(level), true, nil)
+		if err != nil || config == nil {
+			t.Fatalf("level %q: config = %+v, %v", level, config, err)
+		}
+		if want := string(ToGoogleSdkThinkingLevel(ToGoogleThinkingLevel(level))); config.ThinkingLevel != want {
+			t.Errorf("level %q: thinkingConfig.thinkingLevel = %q, want the SDK value %q", level, config.ThinkingLevel, want)
+		}
 	}
 }

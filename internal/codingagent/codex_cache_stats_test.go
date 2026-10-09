@@ -1,5 +1,7 @@
 package codingagent
 
+// pi: packages/coding-agent/src/core/cache-stats.ts
+
 import (
 	"testing"
 

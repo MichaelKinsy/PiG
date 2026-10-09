@@ -18,6 +18,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/MichaelKinsy/PiG/internal/configroot"
 	"github.com/MichaelKinsy/PiG/internal/lazyregexp"
 	"github.com/MichaelKinsy/PiG/internal/linkerexec"
 
@@ -184,21 +185,8 @@ func buildGoPackedCell(ctx context.Context, cacheRoot, key string, extensions []
 					return "", fmt.Errorf("create generated Go build directory: %w", err)
 				}
 				defer func() { _ = os.RemoveAll(buildDir) }()
-				if requiresLegacyGoSDK(normalized) {
-					if err := StageLegacyGoSDK(sdkRoot, filepath.Join(buildDir, legacyGoSDKDir)); err != nil {
-						return "", err
-					}
-				}
-				if err := os.WriteFile(filepath.Join(buildDir, "go.mod"), []byte(renderGoMod(normalized, sdkRoot)), 0o644); err != nil {
-					return "", fmt.Errorf("write generated go.mod: %w", err)
-				}
-				if goSum := mergeGoSum(normalized); goSum != "" {
-					if err := os.WriteFile(filepath.Join(buildDir, "go.sum"), []byte(goSum), 0o644); err != nil {
-						return "", fmt.Errorf("write merged go.sum: %w", err)
-					}
-				}
-				if err := os.WriteFile(filepath.Join(buildDir, "main.go"), []byte(renderGoRunner(normalized)), 0o644); err != nil {
-					return "", fmt.Errorf("write generated runner: %w", err)
+				if err := writeGoBuildDir(buildDir, normalized, sdkRoot); err != nil {
+					return "", err
 				}
 				out := filepath.Join(scratch, artifactName)
 				goToolchain, err := toolchain.ResolveGo()
@@ -213,7 +201,7 @@ func buildGoPackedCell(ctx context.Context, cacheRoot, key string, extensions []
 				args := append(append([]string{"build"}, goPackedBuildFlags...), "-o", out, ".")
 				cmd := linkerexec.CommandContext(ctx, goToolchain.Command, buildprogress.ToolArgs(ctx, "go", args)...)
 				cmd.Dir = buildDir
-				cmd.Env = append(goToolchain.Environ(cacheBuildEnvironment(buildDir)), GoBuildCgoEnv(runtime.GOOS, runtime.GOARCH), "GOWORK=off")
+				cmd.Env = toolchain.WorkDirEnv(buildDir, append(goToolchain.Environ(cacheBuildEnvironment(buildDir)), GoBuildCgoEnv(runtime.GOOS, runtime.GOARCH), "GOWORK=off"))
 				if combined, err := buildprogress.CombinedOutput(ctx, cmd); err != nil {
 					invalidateCommandVersion(cacheRoot, goToolchain.Command, "version")
 					if explained, ok := explainMissingToolchain("go", err); ok {
@@ -378,6 +366,10 @@ func findSDKRootWithPreferred(extensions []GoExtension, preferred string) (strin
 			}
 		}
 	}
+	// pig additive (D92): only an author override serves a Go SDK the active Piglet strips; this binary staged none.
+	if err := StrippedSDKError("go"); err != nil {
+		return "", err
+	}
 	for _, sdk := range stagedGoSDKRoots() {
 		if _, err := os.Stat(filepath.Join(sdk, "go.mod")); err == nil {
 			return sdk, nil
@@ -447,29 +439,24 @@ func statHasFile(dir, name string) bool {
 }
 
 func stagedSDKRoots(name string) []string {
-	if root := strings.TrimSpace(os.Getenv("PIG_HOME")); root != "" {
-		return []string{filepath.Join(root, "state", "pigsdk", name)}
+	root, err := configroot.Resolve()
+	if err != nil {
+		return nil
 	}
-	if root := strings.TrimSpace(os.Getenv("XDG_CONFIG_HOME")); root != "" {
-		return []string{filepath.Join(root, "pig", "state", "pigsdk", name)}
-	}
-	if home, err := os.UserHomeDir(); err == nil && home != "" {
-		return []string{filepath.Join(home, ".pig", "state", "pigsdk", name)}
-	}
-	return nil
+	return []string{filepath.Join(root, "state", "pigsdk", name)}
 }
 
 // installedPigSourceRoots returns candidate pig source roots staged outside the
-// build cwd: PIG_SOURCE_ROOT and the data-dir copy at ~/.pig/source that pig
-// writes at install time. These let an installed pig resolve its SDK with no
+// build cwd: PIG_SOURCE_ROOT and the copy under the config root (source/) that
+// pig writes at install time. These let an installed pig resolve its SDK with no
 // per-extension configuration.
 func installedPigSourceRoots() []string {
 	var roots []string
 	if r := strings.TrimSpace(os.Getenv("PIG_SOURCE_ROOT")); r != "" {
 		roots = append(roots, r)
 	}
-	if home, err := os.UserHomeDir(); err == nil && home != "" {
-		roots = append(roots, filepath.Join(home, ".pig", "source"))
+	if root, err := configroot.Resolve(); err == nil {
+		roots = append(roots, filepath.Join(root, "source"))
 	}
 	return roots
 }
@@ -920,4 +907,25 @@ func CurrentGoPackedCellEntry(cacheRoot, key string, extensions []GoExtension) (
 			return entry, valid, nil
 		})
 	})
+}
+
+// writeGoBuildDir writes the generated module a build of extensions compiles: its go.mod, merged go.sum, runner and, for a legacy SDK import, the staged SDK copy.
+func writeGoBuildDir(buildDir string, extensions []GoExtension, sdkRoot string) error {
+	if requiresLegacyGoSDK(extensions) {
+		if err := StageLegacyGoSDK(sdkRoot, filepath.Join(buildDir, legacyGoSDKDir)); err != nil {
+			return err
+		}
+	}
+	if err := os.WriteFile(filepath.Join(buildDir, "go.mod"), []byte(renderGoMod(extensions, sdkRoot)), 0o644); err != nil {
+		return fmt.Errorf("write generated go.mod: %w", err)
+	}
+	if goSum := mergeGoSum(extensions); goSum != "" {
+		if err := os.WriteFile(filepath.Join(buildDir, "go.sum"), []byte(goSum), 0o644); err != nil {
+			return fmt.Errorf("write merged go.sum: %w", err)
+		}
+	}
+	if err := os.WriteFile(filepath.Join(buildDir, "main.go"), []byte(renderGoRunner(extensions)), 0o644); err != nil {
+		return fmt.Errorf("write generated runner: %w", err)
+	}
+	return nil
 }

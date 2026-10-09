@@ -65,7 +65,7 @@ func TestGetRadiusModelsBindsLegacyCredentialCatalog(t *testing.T) {
 		t.Fatalf("models = %+v", models)
 	}
 	model := models[0]
-	if model.ID != "auto" || model.API != APIPiMessages || model.Provider != "radius" || model.BaseURL != "https://radius.example.com/v1" || model.Cost.CacheWrite != 0.2 {
+	if model.ID != "auto" || model.ProviderMeta.API != APIPiMessages || model.ProviderMeta.ProviderID != "radius" || model.ProviderMeta.BaseURL != "https://radius.example.com/v1" || model.Capabilities.CacheWriteCostPer1M != 0.2 {
 		t.Fatalf("model = %+v", model)
 	}
 	if got := GetRadiusModels("radius", &Credential{Type: CredentialOAuth}); len(got) != 0 {

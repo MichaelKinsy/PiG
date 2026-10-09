@@ -456,6 +456,23 @@ func classifyTestFauxRequest(msgs []Message) (kind, text string, toolCalls []tes
 		}
 	}
 
+	// MCP tool card parity.
+	if strings.Contains(lastText, "Run: mcp search cards") {
+		return "tool", "", []testFauxToolCall{{
+			Name: "mcp__docs__search",
+			Args: map[string]any{"query": "cards"},
+		}}
+	}
+	// Generic extension tool call: "Run: ext tool <name> [<json arguments>]" on one line calls that tool with those arguments, so a scenario can drive any extension tool without a dedicated script.
+	if _, rest, ok := strings.Cut(lastText, "Run: ext tool "); ok {
+		rest, _, _ = strings.Cut(rest, "\n")
+		name, args, _ := strings.Cut(strings.TrimSpace(rest), " ")
+		args = strings.TrimSpace(args)
+		if args == "" {
+			args = "{}"
+		}
+		return "tool", "", []testFauxToolCall{{Name: name, ArgsJSON: args}}
+	}
 	// Extension tool bridge parity.
 	if strings.Contains(lastText, "Run: extension echo hello") {
 		return "tool", "", []testFauxToolCall{{
@@ -638,6 +655,18 @@ func classifyTestFauxRequest(msgs []Message) (kind, text string, toolCalls []tes
 				return "text", "batched-done", nil
 			}
 			return "error", "test-faux: batched mutation missing success markers", nil
+		}
+		if strings.Contains(currentUserText, "Run: mcp search cards") {
+			if strings.Contains(historyText, "mcp-hit: cards guide") {
+				return "text", "mcp-search-done", nil
+			}
+			return "error", "test-faux: mcp tool result missing the search hit", nil
+		}
+		if strings.Contains(currentUserText, "Run: ext tool ") {
+			if last.(ToolResultMessage).IsError {
+				return "text", "ext-tool-error: " + lastText, nil
+			}
+			return "text", "ext-tool-done: " + lastText, nil
 		}
 		if strings.Contains(currentUserText, "Run: extension echo hello") {
 			if strings.Contains(historyText, "echo-bridge: hello") {

@@ -1,5 +1,7 @@
 package codingagent
 
+// pi: packages/coding-agent/src/utils/open-browser.ts
+
 import (
 	"context"
 	"errors"

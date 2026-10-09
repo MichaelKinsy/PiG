@@ -9,10 +9,12 @@ export class CustomEntryComponent extends Container {
     renderer;
     customComponent;
     _expanded = false;
-    constructor(entry, renderer) {
+    outputPad;
+    constructor(entry, renderer, outputPad = 1) {
         super();
         this.entry = entry;
         this.renderer = renderer;
+        this.outputPad = outputPad;
         this.rebuild();
     }
     hasContent() {
@@ -23,6 +25,10 @@ export class CustomEntryComponent extends Container {
             this._expanded = expanded;
             this.rebuild();
         }
+    }
+    setOutputPad(outputPad) {
+        this.outputPad = outputPad;
+        this.rebuild();
     }
     invalidate() {
         super.invalidate();
@@ -37,7 +43,7 @@ export class CustomEntryComponent extends Container {
         }
         catch (error) {
             const message = error instanceof Error ? error.message : String(error);
-            const box = new Box(1, 1, (text) => theme.bg("customMessageBg", text));
+            const box = new Box(this.outputPad, 1, (text) => theme.bg("customMessageBg", text));
             box.addChild(new Text(theme.fg("error", `[${this.entry.customType}] renderer failed: ${message}`), 0, 0));
             component = box;
         }

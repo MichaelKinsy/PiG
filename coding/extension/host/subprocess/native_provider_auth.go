@@ -52,6 +52,9 @@ func authContextCallback(auth ai.AuthContext) nativeProviderCallback {
 
 func (p *nativeProviderProxy) auth(ctx context.Context) ai.ProviderAuth {
 	var result ai.ProviderAuth
+	if p.declaration.Auth == nil {
+		return result
+	}
 	if p.declaration.Auth.APIKey != nil {
 		result.APIKey = &ai.APIKeyAuth{Name: p.declaration.Auth.APIKey.Name,
 			Resolve: func(ctx context.Context, input ai.APIKeyAuthInput) (*ai.AuthResult, error) {
@@ -63,15 +66,23 @@ func (p *nativeProviderProxy) auth(ctx context.Context) ai.ProviderAuth {
 				return nativeObjectValue[*ai.AuthCheck](p, ctx, "auth.apiKey.check", map[string]any{"credential": input.Credential}, authContextCallback(input.Ctx))
 			}
 		}
+		// An API-key method without a login is ambient-only (auth/types.ts ApiKeyAuth.login).
+		if slices.Contains(p.declaration.Methods, "auth.apiKey.login") {
+			result.APIKey.Login = p.apiKeyLogin
+		}
 	}
 	if p.declaration.Auth.OAuth != nil {
 		result.OAuth = &ai.OAuthAuth{Name: p.declaration.Auth.OAuth.Name, IsSubscription: p.declaration.Auth.OAuth.IsSubscription != nil && *p.declaration.Auth.OAuth.IsSubscription,
+			Login: p.oauthLogin,
 			Refresh: func(ctx context.Context, c ai.Credential) (ai.Credential, error) {
 				return nativeObjectValue[ai.Credential](p, ctx, "auth.oauth.refresh", map[string]any{"credential": c}, nil)
 			},
 			ToAuth: func(c ai.Credential) (ai.ModelAuth, error) {
 				return nativeObjectValue[ai.ModelAuth](p, ctx, "auth.oauth.toAuth", map[string]any{"credential": c}, nil)
 			},
+		}
+		if label := p.declaration.Auth.OAuth.LoginLabel; label != nil {
+			result.OAuth.LoginLabel = *label
 		}
 	}
 	return result

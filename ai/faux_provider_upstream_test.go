@@ -44,6 +44,11 @@ func fauxUpstreamEventTypes(events []AssistantMessageEvent) []AssistantEventType
 	return out
 }
 
+// Pi source: packages/ai/src/providers/faux.ts
+// mutation-checked: dropping the reads and writes of FauxModelDefinition.Reasoning fails it
+// mutation-checked: zeroing the results of FauxProviderHandle.AppendResponses fails it
+// Pi: packages/ai/src/providers/faux.ts:141 (appendResponses)
+// packages/ai/src/providers/faux.ts:141-154,668 (FauxProviderHandle.appendResponses, unregister).
 func TestFauxProviderUpstream(t *testing.T) {
 	// .upstream/v0.87.1/packages/ai/test/faux-provider.test.ts:31
 	t.Run("registers a custom provider and estimates usage", func(t *testing.T) {
@@ -57,7 +62,7 @@ func TestFauxProviderUpstream(t *testing.T) {
 	// .upstream/v0.87.1/packages/ai/test/faux-provider.test.ts:49
 	t.Run("supports helper blocks for text thinking and tool calls", func(t *testing.T) {
 		p := NewFauxProvider(FauxConfig{})
-		call := FauxToolCall("echo", map[string]any{"text": "hi"}, "")
+		call := FauxToolCall("echo", map[string]any{"text": "hi"}, &FauxToolCallOptions{ID: ""})
 		p.SetResponses([]FauxResponseStep{FauxStaticStep(FauxResponse{Content: []FauxContentBlock{FauxThinking("think"), call, FauxText("done")}, StopReason: "toolUse"})})
 		result := fauxUpstreamComplete(t, p, fauxUpstreamRequest(), StreamOptions{})
 		want := []AssistantContentBlock{ThinkingContent{Thinking: "think"}, ToolCall{ID: call.ID, Name: "echo", Arguments: JsonObject{"text": "hi"}}, TextContent{Text: "done"}}
@@ -68,8 +73,8 @@ func TestFauxProviderUpstream(t *testing.T) {
 	// .upstream/v0.87.1/packages/ai/test/faux-provider.test.ts:70
 	t.Run("supports multiple models with per-model reasoning and model-aware factories", func(t *testing.T) {
 		p := NewFauxProvider(FauxConfig{Models: []FauxModelDefinition{{ID: "faux-fast", Name: "Faux Fast"}, {ID: "faux-thinker", Name: "Faux Thinker", Reasoning: true}}})
-		factory := FauxFactoryStep(func(_ TranscriptContext, _ StreamOptions, _ *FauxProviderState, model *Model) (FauxResponse, error) {
-			return FauxResponse{Content: []FauxContentBlock{FauxText(fmt.Sprintf("%s:%t", model.ID, model.ProviderMeta.Reasoning))}, StopReason: "stop"}, nil
+		factory := FauxFactoryStep(func(_ TranscriptContext, _ StreamOptions, _ *FauxProviderState, model *Model) (AssistantMessage, error) {
+			return FauxResponse{Content: []FauxContentBlock{FauxText(fmt.Sprintf("%s:%t", model.ID, model.ProviderMeta.Reasoning))}, StopReason: "stop"}.AssistantMessage(), nil
 		})
 		p.SetResponses([]FauxResponseStep{factory, factory})
 		models := p.Models()
@@ -111,7 +116,7 @@ func TestFauxProviderUpstream(t *testing.T) {
 			t.Fatalf("result=%#v", result)
 		}
 	})
-	// .upstream/v0.87.1/packages/ai/test/faux-provider.test.ts:138
+	// packages/ai/test/faux-provider.test.ts:138 (appendResponses at :154); packages/ai/src/providers/faux.ts:668
 	t.Run("can replace and append queued responses", func(t *testing.T) {
 		p := NewFauxProvider(FauxConfig{})
 		for _, text := range []string{"first", "second"} {
@@ -141,10 +146,10 @@ func TestFauxProviderUpstream(t *testing.T) {
 	t.Run("supports async response factories", func(t *testing.T) {
 		p := NewFauxProvider(FauxConfig{})
 		started, release := make(chan struct{}), make(chan struct{})
-		p.SetResponses([]FauxResponseStep{FauxFactoryStep(func(context TranscriptContext, _ StreamOptions, state *FauxProviderState, _ *Model) (FauxResponse, error) {
+		p.SetResponses([]FauxResponseStep{FauxFactoryStep(func(context TranscriptContext, _ StreamOptions, state *FauxProviderState, _ *Model) (AssistantMessage, error) {
 			close(started)
 			<-release
-			return FauxResponse{Content: []FauxContentBlock{FauxText(fmt.Sprintf("%d:%d", len(context.Messages()), state.CallCount.Load()))}, StopReason: "stop"}, nil
+			return FauxResponse{Content: []FauxContentBlock{FauxText(fmt.Sprintf("%d:%d", len(context.Messages()), state.CallCount()))}, StopReason: "stop"}.AssistantMessage(), nil
 		})})
 		stream, err := p.Stream(t.Context(), fauxUpstreamRequest(), StreamOptions{})
 		if err != nil {
@@ -159,8 +164,8 @@ func TestFauxProviderUpstream(t *testing.T) {
 	// .upstream/v0.87.1/packages/ai/test/faux-provider.test.ts:175
 	t.Run("emits an error when a response factory throws", func(t *testing.T) {
 		p := NewFauxProvider(FauxConfig{})
-		p.SetResponses([]FauxResponseStep{FauxFactoryStep(func(TranscriptContext, StreamOptions, *FauxProviderState, *Model) (FauxResponse, error) {
-			return FauxResponse{}, errors.New("boom")
+		p.SetResponses([]FauxResponseStep{FauxFactoryStep(func(TranscriptContext, StreamOptions, *FauxProviderState, *Model) (AssistantMessage, error) {
+			return FauxResponse{}.AssistantMessage(), errors.New("boom")
 		})})
 		result, events := fauxUpstreamEvents(t, p, t.Context())
 		if len(events) != 1 || events[0].EventType() != EventError || result.StopReason != StopReasonError || result.ErrorMessage != "boom" {
@@ -232,10 +237,28 @@ func TestFauxProviderUpstream(t *testing.T) {
 			}
 		})
 	}
+	// .upstream/v1.1.0/packages/ai/test/faux-provider.test.ts:327
+	t.Run("counts cached characters up to the first difference in the joined prompt", func(t *testing.T) {
+		p := NewFauxProvider(FauxConfig{})
+		p.SetResponses([]FauxResponseStep{fauxUpstreamText("a"), fauxUpstreamText("b"), fauxUpstreamText("c")})
+		options := StreamOptions{SessionID: "session-1", CacheRetention: CacheRetentionShort}
+		user := func(content string) Message { return UserMessage{Content: UserText(content), Timestamp: 1} }
+		fauxUpstreamComplete(t, p, NormalizeContext(Context{Messages: []Message{user("hello world")}}), options)
+		// Prompt texts: "user:hello world" (16 characters), then 16 + 2 + "user:next" (9) = 27.
+		extended := fauxUpstreamComplete(t, p, NormalizeContext(Context{Messages: []Message{user("hello world"), user("next")}}), options)
+		if u := extended.Usage; u.Input != 3 || u.CacheRead != 4 || u.CacheWrite != 3 {
+			t.Fatalf("extended usage = %+v, want input 3, cacheRead 4, cacheWrite 3", u)
+		}
+		// The first message now differs after "user:hello w" (12 characters): "user:hello wide" + 2 + 9 = 26.
+		edited := fauxUpstreamComplete(t, p, NormalizeContext(Context{Messages: []Message{user("hello wide"), user("next")}}), options)
+		if u := edited.Usage; u.Input != 4 || u.CacheRead != 3 || u.CacheWrite != 4 {
+			t.Fatalf("edited usage = %+v, want input 4, cacheRead 3, cacheWrite 4", u)
+		}
+	})
 	// .upstream/v0.87.1/packages/ai/test/faux-provider.test.ts:347
 	t.Run("streams thinking text and partial tool call deltas", func(t *testing.T) {
 		p := NewFauxProvider(FauxConfig{})
-		p.SetResponses([]FauxResponseStep{FauxStaticStep(FauxResponse{Content: []FauxContentBlock{FauxThinking("thinking text"), FauxText("answer text"), FauxToolCall("echo", map[string]any{"text": "hi", "count": 12}, "tool-1")}, StopReason: "toolUse"})})
+		p.SetResponses([]FauxResponseStep{FauxStaticStep(FauxResponse{Content: []FauxContentBlock{FauxThinking("thinking text"), FauxText("answer text"), FauxToolCall("echo", map[string]any{"text": "hi", "count": 12}, &FauxToolCallOptions{ID: "tool-1"})}, StopReason: "toolUse"})})
 		_, events := fauxUpstreamEvents(t, p, t.Context())
 		types := fauxUpstreamEventTypes(events)
 		for _, typ := range []AssistantEventType{EventThinkingStart, EventThinkingDelta, EventTextStart, EventTextDelta, EventToolCallStart, EventToolCallDelta, EventToolCallEnd} {
@@ -257,8 +280,8 @@ func TestFauxProviderUpstream(t *testing.T) {
 	})
 	// .upstream/v0.87.1/packages/ai/test/faux-provider.test.ts:382
 	t.Run("streams an exact event order for fixed-size chunks", func(t *testing.T) {
-		p := NewFauxProvider(FauxConfig{MinTokenSize: 1, MaxTokenSize: 1})
-		p.SetResponses([]FauxResponseStep{FauxStaticStep(FauxResponse{Content: []FauxContentBlock{FauxThinking("go"), FauxText("ok"), FauxToolCall("echo", map[string]any{}, "tool-1")}, StopReason: "toolUse"})})
+		p := NewFauxProvider(FauxConfig{TokenSize: &FauxTokenSize{Min: new(1), Max: new(1)}})
+		p.SetResponses([]FauxResponseStep{FauxStaticStep(FauxResponse{Content: []FauxContentBlock{FauxThinking("go"), FauxText("ok"), FauxToolCall("echo", map[string]any{}, &FauxToolCallOptions{ID: "tool-1"})}, StopReason: "toolUse"})})
 		_, events := fauxUpstreamEvents(t, p, t.Context())
 		want := []AssistantEventType{EventStart, EventThinkingStart, EventThinkingDelta, EventThinkingEnd, EventTextStart, EventTextDelta, EventTextEnd, EventToolCallStart, EventToolCallDelta, EventToolCallEnd, EventDone}
 		if !reflect.DeepEqual(fauxUpstreamEventTypes(events), want) || events[0].(StartEvent).Partial.Observe().StopReason != StopReasonPending {
@@ -268,7 +291,7 @@ func TestFauxProviderUpstream(t *testing.T) {
 	// .upstream/v0.87.1/packages/ai/test/faux-provider.test.ts:411
 	t.Run("streams multiple tool calls in one message", func(t *testing.T) {
 		p := NewFauxProvider(FauxConfig{})
-		p.SetResponses([]FauxResponseStep{FauxStaticStep(FauxResponse{Content: []FauxContentBlock{FauxToolCall("echo", map[string]any{"text": "one"}, "tool-1"), FauxToolCall("echo", map[string]any{"text": "two"}, "tool-2")}, StopReason: "toolUse"})})
+		p.SetResponses([]FauxResponseStep{FauxStaticStep(FauxResponse{Content: []FauxContentBlock{FauxToolCall("echo", map[string]any{"text": "one"}, &FauxToolCallOptions{ID: "tool-1"}), FauxToolCall("echo", map[string]any{"text": "two"}, &FauxToolCallOptions{ID: "tool-2"})}, StopReason: "toolUse"})})
 		_, events := fauxUpstreamEvents(t, p, t.Context())
 		starts, ends := 0, 0
 		for _, event := range events {
@@ -290,7 +313,7 @@ func TestFauxProviderUpstream(t *testing.T) {
 			if reason == StopReasonAborted {
 				message = "Request was aborted"
 			}
-			p := NewFauxProvider(FauxConfig{MinTokenSize: 2, MaxTokenSize: 2})
+			p := NewFauxProvider(FauxConfig{TokenSize: &FauxTokenSize{Min: new(2), Max: new(2)}})
 			p.SetResponses([]FauxResponseStep{FauxStaticStep(FauxResponse{Content: []FauxContentBlock{FauxText("partial")}, StopReason: string(reason), ErrorMessage: message})})
 			result, events := fauxUpstreamEvents(t, p, t.Context())
 			if !reflect.DeepEqual(fauxUpstreamEventTypes(events), []AssistantEventType{EventStart, EventTextStart, EventTextDelta, EventTextEnd, EventError}) || result.StopReason != reason || result.ErrorMessage != message || events[len(events)-1].(ErrorEvent).Reason != reason {
@@ -300,7 +323,7 @@ func TestFauxProviderUpstream(t *testing.T) {
 	}
 	// .upstream/v0.87.1/packages/ai/test/faux-provider.test.ts:482
 	t.Run("supports aborting before the first chunk", func(t *testing.T) {
-		p := NewFauxProvider(FauxConfig{TokensPerSecond: 50, MinTokenSize: 3, MaxTokenSize: 3})
+		p := NewFauxProvider(FauxConfig{TokensPerSecond: 50, TokenSize: &FauxTokenSize{Min: new(3), Max: new(3)}})
 		p.SetResponses([]FauxResponseStep{fauxUpstreamText("abcdefghijklmnopqrstuvwxyz")})
 		ctx, cancel := context.WithCancel(t.Context())
 		cancel()
@@ -312,7 +335,7 @@ func TestFauxProviderUpstream(t *testing.T) {
 	// .upstream/v0.87.1/packages/ai/test/faux-provider.test.ts:505,533,566
 	for _, kind := range []string{"text", "thinking", "toolcall"} {
 		t.Run("supports aborting mid-"+kind+" stream when paced", func(t *testing.T) {
-			p := NewFauxProvider(FauxConfig{TokensPerSecond: 100, MinTokenSize: 3, MaxTokenSize: 3})
+			p := NewFauxProvider(FauxConfig{TokensPerSecond: 100, TokenSize: &FauxTokenSize{Min: new(3), Max: new(3)}})
 			block := FauxText("abcdefghijklmnopqrstuvwxyz")
 			start, delta, end := EventTextStart, EventTextDelta, EventTextEnd
 			reason := "stop"
@@ -321,7 +344,7 @@ func TestFauxProviderUpstream(t *testing.T) {
 				start, delta, end = EventThinkingStart, EventThinkingDelta, EventThinkingEnd
 			}
 			if kind == "toolcall" {
-				block = FauxToolCall("echo", map[string]any{"text": "abcdefghijklmnopqrstuvwxyz", "count": 123456789}, "tool-1")
+				block = FauxToolCall("echo", map[string]any{"text": "abcdefghijklmnopqrstuvwxyz", "count": 123456789}, &FauxToolCallOptions{ID: "tool-1"})
 				start, delta, end = EventToolCallStart, EventToolCallDelta, EventToolCallEnd
 				reason = "toolUse"
 			}
@@ -346,7 +369,7 @@ func TestFauxProviderUpstream(t *testing.T) {
 			}
 		})
 	}
-	// .upstream/v0.87.1/packages/ai/test/faux-provider.test.ts:607
+	// packages/ai/test/faux-provider.test.ts:607; packages/ai/src/providers/faux.ts:143 unregister
 	t.Run("unregisters the provider", func(t *testing.T) {
 		p := NewFauxProvider(FauxConfig{})
 		p.SetResponses([]FauxResponseStep{fauxUpstreamText("hello")})
@@ -356,4 +379,46 @@ func TestFauxProviderUpstream(t *testing.T) {
 			t.Fatal(err)
 		}
 	})
+}
+
+// .upstream/v1.1.0/packages/ai/test/faux-provider.test.ts:327 "counts cached characters up to the first difference in the joined prompt":
+// the cached prefix is measured in characters of the joined prompt texts, so a first message edited after "user:hello w" keeps
+// only those 12 characters cached (4 and 3 tokens at the faux provider's 4-characters-per-token estimate).
+func TestFauxProviderCountsCachedCharactersUpToTheFirstDifference(t *testing.T) {
+	p := NewFauxProvider(FauxConfig{})
+	p.SetResponses([]FauxResponseStep{fauxUpstreamText("a"), fauxUpstreamText("b"), fauxUpstreamText("c")})
+	options := StreamOptions{SessionID: "session-1", CacheRetention: CacheRetentionShort}
+	user := func(content string) Message { return UserMessage{Content: UserText(content), Timestamp: 1} }
+	complete := func(messages ...Message) *AssistantMessage {
+		return fauxUpstreamComplete(t, p, NormalizeContext(Context{Messages: messages}), options)
+	}
+
+	// Prompt texts: "user:hello world" (16 characters), then 16 + 2 + "user:next" (9) = 27.
+	complete(user("hello world"))
+	extended := complete(user("hello world"), user("next"))
+	if extended.Usage.Input != 3 || extended.Usage.CacheRead != 4 || extended.Usage.CacheWrite != 3 {
+		t.Fatalf("extended usage = %+v, want input 3, cacheRead 4, cacheWrite 3", extended.Usage)
+	}
+	// The first message now differs after "user:hello w" (12 characters): "user:hello wide" + 2 + 9 = 26.
+	edited := complete(user("hello wide"), user("next"))
+	if edited.Usage.Input != 4 || edited.Usage.CacheRead != 3 || edited.Usage.CacheWrite != 4 {
+		t.Fatalf("edited usage = %+v, want input 4, cacheRead 3, cacheWrite 4", edited.Usage)
+	}
+}
+
+// faux.ts commonPromptPrefixLength counts characters, and the cache read and write round up like Math.ceil(chars / 4): a
+// 13-character shared prefix of "user:hello world" and "user:hello wolf" (15 characters) reads 4 tokens and writes 1.
+func TestFauxProviderRoundsCachedCharactersUp(t *testing.T) {
+	p := NewFauxProvider(FauxConfig{})
+	p.SetResponses([]FauxResponseStep{fauxUpstreamText("a"), fauxUpstreamText("b")})
+	options := StreamOptions{SessionID: "session-1", CacheRetention: CacheRetentionShort}
+	user := func(content string) Message { return UserMessage{Content: UserText(content), Timestamp: 1} }
+	complete := func(message Message) *AssistantMessage {
+		return fauxUpstreamComplete(t, p, NormalizeContext(Context{Messages: []Message{message}}), options)
+	}
+	complete(user("hello world"))
+	next := complete(user("hello wolf"))
+	if next.Usage.CacheRead != 4 || next.Usage.CacheWrite != 1 || next.Usage.Input != 0 {
+		t.Fatalf("usage = %+v, want cacheRead 4, cacheWrite 1, input 0", next.Usage)
+	}
 }

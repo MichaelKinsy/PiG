@@ -1,10 +1,13 @@
 package codingagent
 
+// pi: packages/coding-agent/src/migrations.ts
+
 import (
 	"encoding/json"
 	"fmt"
 	"os"
 	"reflect"
+	"slices"
 	"strings"
 	"testing"
 
@@ -63,7 +66,7 @@ func TestUpstreamKeybindingsMigration(t *testing.T) {
 			t.Fatalf("user bindings = %#v, want %#v", kb.userBindings, want)
 		}
 		effective := kb.merged.GetResolvedBindings()
-		if effective["tui.select.confirm"] != "enter" || effective["app.interrupt"] != "ctrl+x" {
+		if !slices.Equal(effective["tui.select.confirm"], []string{"enter"}) || !slices.Equal(effective["app.interrupt"], []string{"ctrl+x"}) {
 			t.Fatalf("effective bindings = %#v", effective)
 		}
 		data, err := os.ReadFile(file)

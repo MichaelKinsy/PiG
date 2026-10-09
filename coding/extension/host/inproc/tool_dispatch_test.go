@@ -9,6 +9,7 @@ import (
 	"sync/atomic"
 	"testing"
 
+	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/coding/extension/host/inproc"
 	"github.com/MichaelKinsy/PiG/internal/orderedjson"
@@ -64,7 +65,7 @@ func extWithToolResultHandler(path string, fn func(extension.ToolResultEvent, co
 
 func TestEmitToolCall_NoHandlersReturnsNil(t *testing.T) {
 	r := inproc.NewRunner(nil, ".")
-	got, err := r.EmitToolCall(context.Background(), extension.BashToolCallEvent{})
+	got, err := r.EmitToolCall(context.Background(), extension.CustomToolCallEvent{})
 	if err != nil {
 		t.Fatalf("err = %v, want nil", err)
 	}
@@ -76,7 +77,7 @@ func TestEmitToolCall_NoHandlersReturnsNil(t *testing.T) {
 func TestEmitToolCall_StaleRunnerReturnsErrStaleContext(t *testing.T) {
 	r := inproc.NewRunner(nil, ".")
 	r.Invalidate("test invalidation")
-	_, err := r.EmitToolCall(context.Background(), extension.BashToolCallEvent{})
+	_, err := r.EmitToolCall(context.Background(), extension.CustomToolCallEvent{})
 	if !errors.Is(err, extension.ErrStaleContext) {
 		t.Errorf("err = %v, want ErrStaleContext", err)
 	}
@@ -89,7 +90,7 @@ func TestEmitToolCall_HandlerReceivesTypedEvent(t *testing.T) {
 	var gotBash atomic.Bool
 	exts := []extension.Extension{
 		extWithToolCallHandler("/ext/a", func(e extension.ToolCallEvent, _ context.Context) *extension.ToolCallEventResult {
-			if _, ok := e.(extension.BashToolCallEvent); ok {
+			if _, ok := e.(extension.CustomToolCallEvent); ok {
 				gotBash.Store(true)
 			}
 			return nil
@@ -97,11 +98,11 @@ func TestEmitToolCall_HandlerReceivesTypedEvent(t *testing.T) {
 	}
 	r := inproc.NewRunner(exts, ".")
 
-	if _, err := r.EmitToolCall(context.Background(), extension.BashToolCallEvent{}); err != nil {
+	if _, err := r.EmitToolCall(context.Background(), extension.CustomToolCallEvent{}); err != nil {
 		t.Fatalf("err = %v", err)
 	}
 	if !gotBash.Load() {
-		t.Errorf("handler did not receive a BashToolCallEvent (typed dispatch failure)")
+		t.Errorf("handler did not receive a CustomToolCallEvent (typed dispatch failure)")
 	}
 }
 
@@ -127,7 +128,7 @@ func TestEmitToolCall_BlockShortCircuitsRemainingHandlers(t *testing.T) {
 	}
 	r := inproc.NewRunner(exts, ".")
 
-	got, err := r.EmitToolCall(context.Background(), extension.BashToolCallEvent{})
+	got, err := r.EmitToolCall(context.Background(), extension.CustomToolCallEvent{})
 	if err != nil {
 		t.Fatalf("err = %v", err)
 	}
@@ -163,7 +164,7 @@ func TestEmitToolCall_NonBlockResultIsReturnedAfterAllHandlersRun(t *testing.T) 
 	}
 	r := inproc.NewRunner(exts, ".")
 
-	got, err := r.EmitToolCall(context.Background(), extension.BashToolCallEvent{})
+	got, err := r.EmitToolCall(context.Background(), extension.CustomToolCallEvent{})
 	if err != nil {
 		t.Fatalf("err = %v", err)
 	}
@@ -193,7 +194,7 @@ func TestEmitToolCall_HandlerErrorStopsDispatch(t *testing.T) {
 		captured.Add(1)
 	})
 
-	result, err := r.EmitToolCall(context.Background(), extension.BashToolCallEvent{})
+	result, err := r.EmitToolCall(context.Background(), extension.CustomToolCallEvent{})
 	if !errors.Is(err, wantErr) {
 		t.Fatalf("err = %v, want %v", err, wantErr)
 	}
@@ -383,7 +384,7 @@ func TestEmitToolCall_DispatchOrderMatchesLoadOrder(t *testing.T) {
 	}
 	r := inproc.NewRunner([]extension.Extension{mk("a"), mk("b"), mk("c")}, ".")
 
-	if _, err := r.EmitToolCall(context.Background(), extension.BashToolCallEvent{}); err != nil {
+	if _, err := r.EmitToolCall(context.Background(), extension.CustomToolCallEvent{}); err != nil {
 		t.Fatalf("err = %v", err)
 	}
 	mu.Lock()
@@ -407,7 +408,7 @@ func TestEmitToolCall_HandlerCanReadExtensionContextFromGoContext(t *testing.T) 
 		}),
 	}
 	r := inproc.NewRunner(exts, ".")
-	_, _ = r.EmitToolCall(context.Background(), extension.BashToolCallEvent{})
+	_, _ = r.EmitToolCall(context.Background(), extension.CustomToolCallEvent{})
 	if !gotExtCtx.Load() {
 		t.Errorf("handler did not see extension.Context attached to context.Context")
 	}
@@ -436,7 +437,7 @@ func TestEmitToolCall_HandlerReturningWrongTypeRoutesViaEmitError(t *testing.T) 
 	var captured atomic.Int32
 	r.AddErrorListener(func(*extension.ExtensionError) { captured.Add(1) })
 
-	got, err := r.EmitToolCall(context.Background(), extension.BashToolCallEvent{})
+	got, err := r.EmitToolCall(context.Background(), extension.CustomToolCallEvent{})
 	if err != nil {
 		t.Fatalf("err = %v, want nil", err)
 	}
@@ -451,6 +452,7 @@ func TestEmitToolCall_HandlerReturningWrongTypeRoutesViaEmitError(t *testing.T) 
 // TestEmitToolResult_ContentOnlyKeepsIsError: upstream applies isError only
 // when a handler returns it (`handlerResult.isError !== undefined`), so a
 // redaction handler that rewrites only content keeps a failed call failed.
+// Pi: packages/coding-agent/src/core/extensions/types.ts:1448 (ToolResultEventResult.isError).
 func TestEmitToolResult_ContentOnlyKeepsIsError(t *testing.T) {
 	ext := newFakeExtension("/redact")
 	ext.Handlers["tool_result"] = []extension.HandlerFn{func(...any) (any, error) {
@@ -471,6 +473,7 @@ func TestEmitToolResult_ContentOnlyKeepsIsError(t *testing.T) {
 
 // TestEmitToolResult_UsageChains: upstream chains `usage` like the other
 // fields (runner.ts emitToolResult `handlerResult.usage !== undefined`).
+// Pi: packages/coding-agent/src/core/extensions/types.ts:1449 (ToolResultEventResult.usage).
 func TestEmitToolResult_UsageChains(t *testing.T) {
 	first := newFakeExtension("/first")
 	first.Handlers["tool_result"] = []extension.HandlerFn{func(...any) (any, error) {
@@ -485,8 +488,7 @@ func TestEmitToolResult_UsageChains(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	usage, _ := got.Usage.(map[string]any)
-	if got == nil || usage["output"] != float64(2) {
+	if got == nil || got.Usage == nil || got.Usage.Output != 2 {
 		t.Fatalf("got = %+v, want the first handler's usage carried through the chain", got)
 	}
 }
@@ -514,9 +516,9 @@ func TestEmitToolResult_NextHandlerSeesPredecessorValues(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	usage, _ := seen.Usage.(map[string]any)
+	usage, _ := seen.Usage.(*ai.Usage)
 	details, _ := orderedjson.Map(seen.Details)
-	if !seen.IsError || usage["output"] != float64(7) || details["n"] != float64(1) {
+	if !seen.IsError || usage == nil || usage.Output != 7 || details["n"] != float64(1) {
 		t.Fatalf("second handler saw isError=%v usage=%v details=%v; want the first handler's values", seen.IsError, seen.Usage, seen.Details)
 	}
 	if text := got.Content[0].(map[string]any)["text"]; text != "step1+step2" {

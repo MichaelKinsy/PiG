@@ -46,3 +46,16 @@ make evals
 ```
 
 Results depend on the machine. Compare numbers from one run only. The harness registry, including every command line, is `test/evals/harnesses.toml`; the method is in `test/evals/README.md`.
+
+## Documentation evals
+
+`go run ./cmd/pig-evals docs` measures whether the PiG documentation helps an agent finish a task. It is the Go port of Pi's `packages/evals` documentation comparison. For each case it builds two images from the repository (`internal/evals/docker/Dockerfile`), `without_docs` and `with_docs`, runs the case in a fresh container for each, and writes a paired comparison under `internal/evals/.eval/<timestamp>_<id>/` (`protocol.json`, `expected-runs.json`, `observations.jsonl`, `report.json`, `report.txt`).
+
+```bash
+PI_PROVIDER=openai-codex PI_MODEL=gpt-5.6-sol go run ./cmd/pig-evals docs
+go run ./cmd/pig-evals docs --provider openai-codex --model gpt-5.6-sol --runs-per-variant 5 -t "adds the model"
+```
+
+Both values of provider and model are required, from the flags or from `PI_PROVIDER` and `PI_MODEL`. The credential comes from `auth.json` in the agent directory. An API key stays in the harness; an OAuth credential is written to the run's isolated `auth.json`, where the agent's file tools can read it (D98). The `without_docs` run removes the documentation section from the system prompt and the documentation PiG writes into the run's home. The agent runs as an unprivileged user and receives only the `read`, `write`, `edit`, `grep`, `find` and `ls` tools. Artifacts can contain prompts, responses, generated code and tool output.
+
+Host evals (a smoke test and a per-page audit of the documentation PiG ships, `internal/pigdocs/content`) run on this machine with `go run ./cmd/pig-evals host`. Documentation eval files end in `.docs.eval.go`.

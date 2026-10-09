@@ -1,5 +1,7 @@
 package codingagent
 
+// pi: packages/coding-agent/src/modes/interactive/interactive-mode.ts
+
 import (
 	"bytes"
 	"context"
@@ -7,6 +9,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"regexp"
 	"slices"
 	"strings"
 	"sync/atomic"
@@ -35,8 +38,8 @@ func TestHasAssistantUsageAfterCompaction(t *testing.T) {
 		"type": "compaction", "id": "c1", "parentId": "a-before", "timestamp": "2026-01-01T00:00:01Z",
 		"summary": "summary", "firstKeptEntryId": "a-before", "tokensBefore": 1000,
 	})
-	if latest := latestCompactionIndex([]SessionEntry{before, compact}); latest != 1 {
-		t.Fatalf("latestCompactionIndex = %d, want 1", latest)
+	if latest := GetLatestCompactionEntry([]SessionEntry{before, compact}); latest == nil || latest.ID != "c1" {
+		t.Fatalf("GetLatestCompactionEntry = %+v, want c1", latest)
 	}
 	if hasAssistantUsageAfter([]SessionEntry{before, compact}, 1) {
 		t.Fatal("pre-compaction assistant usage was treated as post-compaction usage")
@@ -124,11 +127,11 @@ func TestInteractiveMode_CSIShiftEnterTildeReachesEditorNewline(t *testing.T) {
 
 func TestPersistScopedModelIDsUpdatesSettings(t *testing.T) {
 	agentDir := t.TempDir()
-	m := NewInteractiveMode(InteractiveOptions{
+	m := NewInteractiveMode(nil, InteractiveModeOptions{
 		SettingsManager: NewSettingsManager(t.TempDir(), agentDir),
 		Model:           &ai.Model{ID: "m", DisplayName: "m"},
 	})
-	m.statusLine = NewStatusLine(m.opts.Model, "", nil)
+	m.statusLine = NewFooterComponent(m.opts.Model, "", nil)
 
 	m.persistScopedModelIDs([]string{"openai/gpt-4o", "anthropic/claude-sonnet"})
 
@@ -245,7 +248,7 @@ func TestShowStatus_Coalesces(t *testing.T) {
 	if m.lastStatusText == nil {
 		t.Fatal("lastStatusText is nil")
 	}
-	if got, want := lastStatusContent(m), tui.ActiveTheme().FgText("dim", "second"); got != want {
+	if got, want := lastStatusContent(m), tui.ActiveTheme().Fg("dim", "second"); got != want {
 		t.Fatalf("status content = %q, want %q", got, want)
 	}
 }
@@ -255,7 +258,7 @@ func TestInteractiveMode_UsesChatContainerChildCountForUserSpacer(t *testing.T) 
 	if !m.chatContainer.IsEmpty() {
 		t.Fatal("new chat container should be empty")
 	}
-	m.appendToChat(tui.NewUserMessageBlock("first"))
+	m.appendToChat(tui.NewUserMessageComponent("first", nil, 1, nil))
 	if m.chatContainer.IsEmpty() {
 		t.Fatal("chat container should not be empty after first message")
 	}
@@ -277,14 +280,14 @@ func TestInteractiveMode_SubmitAtFileRendersAndSendsLiteralToken(t *testing.T) {
 			ContextWindow: 8000,
 		},
 	}
-	m := NewInteractiveMode(InteractiveOptions{CWD: dir, Model: model})
+	m := NewInteractiveMode(nil, InteractiveModeOptions{CWD: dir, Model: model})
 	m.chatContainer = tui.NewContainer()
 	m.statusContainer = tui.NewContainer()
 	m.pendingMessagesContainer = tui.NewContainer()
 	m.tuiInst = tui.NewWithOutput(io.Discard, 100, 30)
-	m.statusLine = NewStatusLine(model, "", nil)
+	m.statusLine = NewFooterComponent(model, "", nil)
 	events := make(chan agent.AgentEvent, 256)
-	m.agent = agent.NewAgent(agent.AgentOptions{Model: model, EventCh: events})
+	m.agent = mustNewAgent(agent.AgentOptions{Model: model, EventCh: events})
 	m.abortCtx = context.Background()
 	m.abortFn = func() {}
 
@@ -315,7 +318,7 @@ func TestInteractiveMode_SubmitAtFileRendersAndSendsLiteralToken(t *testing.T) {
 }
 
 func TestInteractiveMode_WorkingMessagePersistsOnExtUIContext(t *testing.T) {
-	m := &InteractiveMode{statusLine: NewStatusLine(nil, "", nil)}
+	m := &InteractiveMode{statusLine: NewFooterComponent(nil, "", nil)}
 	ui := &ExtUIContext{m: m}
 	ui.SetWorkingMessage("loading assets")
 	if got := m.workingMessage; got != "loading assets" {
@@ -327,7 +330,7 @@ func TestInteractiveMode_WorkingMessagePersistsOnExtUIContext(t *testing.T) {
 }
 
 func TestInteractiveMode_WorkingVisiblePersistsOnExtUIContext(t *testing.T) {
-	m := &InteractiveMode{statusLine: NewStatusLine(nil, "", nil)}
+	m := &InteractiveMode{statusLine: NewFooterComponent(nil, "", nil)}
 	ui := &ExtUIContext{m: m}
 	if m.workingMessage != "" {
 		t.Fatalf("initial workingMessage = %q, want empty", m.workingMessage)
@@ -447,7 +450,7 @@ func TestLevelsForModel(t *testing.T) {
 		// A reasoning model with no ThinkingLevelMap entries → all standard
 		// levels are available (off, minimal, low, medium, high).
 		m := &ai.Model{
-			Capabilities:     ai.ModelCapabilities{MaxThinking: ai.ThinkingHigh},
+			Capabilities:     ai.ModelCapabilities{MaxThinking: ai.ThinkingLevelHigh},
 			ThinkingLevelMap: ai.ThinkingLevelMap{},
 		}
 		levels := levelsForModel(m)
@@ -459,7 +462,7 @@ func TestLevelsForModel(t *testing.T) {
 	t.Run("model with xhigh", func(t *testing.T) {
 		xh := "xhigh"
 		m := &ai.Model{
-			Capabilities:     ai.ModelCapabilities{MaxThinking: ai.ThinkingXHigh},
+			Capabilities:     ai.ModelCapabilities{MaxThinking: ai.ThinkingLevelXHigh},
 			ThinkingLevelMap: ai.ThinkingLevelMap{ai.ThinkingXHigh: &xh},
 		}
 		levels := levelsForModel(m)
@@ -475,7 +478,7 @@ func TestLevelsForModel(t *testing.T) {
 		// Mirrors gpt-5-mini: reasoning=true, thinkingLevelMap={"off": null}.
 		// "off" is excluded because mapped=nil, so levels start at minimal.
 		m := &ai.Model{
-			Capabilities:     ai.ModelCapabilities{MaxThinking: ai.ThinkingHigh},
+			Capabilities:     ai.ModelCapabilities{MaxThinking: ai.ThinkingLevelHigh},
 			ThinkingLevelMap: ai.ThinkingLevelMap{ai.ThinkingOff: nil},
 		}
 		levels := levelsForModel(m)
@@ -497,7 +500,7 @@ func TestMaxThinkingIndex(t *testing.T) {
 
 	t.Run("model with high", func(t *testing.T) {
 		m := &ai.Model{
-			Capabilities:     ai.ModelCapabilities{MaxThinking: ai.ThinkingHigh},
+			Capabilities:     ai.ModelCapabilities{MaxThinking: ai.ThinkingLevelHigh},
 			ThinkingLevelMap: ai.ThinkingLevelMap{},
 		}
 		if got := maxThinkingIndex(m); got != 4 {
@@ -508,7 +511,7 @@ func TestMaxThinkingIndex(t *testing.T) {
 	t.Run("model with xhigh", func(t *testing.T) {
 		xh := "xhigh"
 		m := &ai.Model{
-			Capabilities:     ai.ModelCapabilities{MaxThinking: ai.ThinkingXHigh},
+			Capabilities:     ai.ModelCapabilities{MaxThinking: ai.ThinkingLevelXHigh},
 			ThinkingLevelMap: ai.ThinkingLevelMap{ai.ThinkingXHigh: &xh},
 		}
 		if got := maxThinkingIndex(m); got != 5 {
@@ -525,7 +528,7 @@ func TestMaxThinkingIndex(t *testing.T) {
 
 	t.Run("model with low", func(t *testing.T) {
 		m := &ai.Model{
-			Capabilities:     ai.ModelCapabilities{MaxThinking: ai.ThinkingLow},
+			Capabilities:     ai.ModelCapabilities{MaxThinking: ai.ThinkingLevelLow},
 			ThinkingLevelMap: ai.ThinkingLevelMap{},
 		}
 		if got := maxThinkingIndex(m); got != 2 {
@@ -535,29 +538,6 @@ func TestMaxThinkingIndex(t *testing.T) {
 }
 
 // ─── thinkingLevelToAI ───────────────────────────────────────────────────────
-
-func TestThinkingLevelToAI(t *testing.T) {
-	tests := []struct {
-		in   string
-		want ai.ThinkingLevel
-	}{
-		{"minimal", ai.ThinkingMinimal},
-		{"low", ai.ThinkingLow},
-		{"medium", ai.ThinkingMedium},
-		{"high", ai.ThinkingHigh},
-		{"xhigh", ai.ThinkingXHigh},
-		{"off", ai.ThinkingNone},
-		{"", ai.ThinkingNone},
-		{"unknown", ai.ThinkingNone},
-	}
-	for _, tc := range tests {
-		t.Run(tc.in, func(t *testing.T) {
-			if got := thinkingLevelToAI(tc.in); got != tc.want {
-				t.Errorf("thinkingLevelToAI(%q) = %q, want %q", tc.in, got, tc.want)
-			}
-		})
-	}
-}
 
 // ─── shortenPath ──────────────────────────────────────────────────────────────
 
@@ -616,8 +596,8 @@ func TestInteractiveMode_WriteDebugLog(t *testing.T) {
 	m := &InteractiveMode{
 		chatContainer: tui.NewContainer(),
 		tuiInst:       tui.NewWithOutput(io.Discard, 120, 40),
-		agent:         agent.NewAgent(agent.AgentOptions{}),
-		opts:          InteractiveOptions{AgentDir: dir},
+		agent:         mustNewAgent(agent.AgentOptions{}),
+		opts:          InteractiveModeOptions{AgentDir: dir},
 	}
 	m.agent.SetMessages([]agent.AgentMessage{{User: &agent.UserMessage{
 		Role:    agent.RoleUser,
@@ -665,7 +645,7 @@ func TestInteractiveMode_WriteDebugLog(t *testing.T) {
 // isStreaming == _isAgentRunActive, set synchronously in prompt()
 // (agent-session.ts:874).
 func TestInteractiveMode_HasActiveAgentTurn_PreStreamWindow(t *testing.T) {
-	m := &InteractiveMode{agent: agent.NewAgent(agent.AgentOptions{})}
+	m := &InteractiveMode{agent: mustNewAgent(agent.AgentOptions{})}
 
 	// Idle: no committed turn, not streaming.
 	if m.hasActiveAgentTurn() {
@@ -705,7 +685,7 @@ func TestInteractiveMode_RendersSteeredUserMessageFromAgentEvent(t *testing.T) {
 		chatContainer:            chat,
 		tuiInst:                  tui.NewWithOutput(io.Discard, 120, 40),
 		pendingMessagesContainer: tui.NewContainer(),
-		agent:                    agent.NewAgent(agent.AgentOptions{}),
+		agent:                    mustNewAgent(agent.AgentOptions{}),
 	}
 	msg := agent.AgentMessage{User: &agent.UserMessage{
 		Role:    agent.RoleUser,
@@ -725,8 +705,8 @@ func TestInteractiveMode_RendersProviderErrorInAssistantBlock(t *testing.T) {
 	m := &InteractiveMode{
 		chatContainer: chat,
 		tuiInst:       tui.NewWithOutput(io.Discard, 120, 40),
-		statusLine:    NewStatusLine(nil, "", nil),
-		agent:         agent.NewAgent(agent.AgentOptions{}),
+		statusLine:    NewFooterComponent(nil, "", nil),
+		agent:         mustNewAgent(agent.AgentOptions{}),
 	}
 	errMsg := `400 {"error":{"message":"output_config.effort \"high\" is not supported by model claude-opus-4.7; supported values: [medium]","code":"invalid_reasoning_effort"}}`
 	msg := agent.AgentMessage{Assistant: &agent.AssistantMessage{
@@ -790,7 +770,7 @@ func TestInteractiveMode_ResumedRegisteredToolFallbackToggle(t *testing.T) {
 		},
 	}}, "")
 	m := &InteractiveMode{
-		opts:          InteractiveOptions{SessionHandle: &recordingCompactHandle{inner: sess}},
+		opts:          InteractiveModeOptions{SessionHandle: &recordingCompactHandle{inner: sess}},
 		newRunner:     runner,
 		chatContainer: tui.NewContainer(),
 		tuiInst:       tui.NewWithOutput(io.Discard, 54, 30),
@@ -831,7 +811,7 @@ func TestInteractiveMode_AbortPushesErrorIntoPendingTools(t *testing.T) {
 	m := &InteractiveMode{
 		chatContainer: chat,
 		tuiInst:       tui.NewWithOutput(io.Discard, 120, 40),
-		statusLine:    NewStatusLine(nil, "", nil),
+		statusLine:    NewFooterComponent(nil, "", nil),
 		toolByID:      make(map[string]*tui.ToolExecutionComponent),
 		toolStarts:    make(map[string]time.Time),
 		pendingArgs:   make(map[int]*pendingToolArg),
@@ -880,6 +860,62 @@ func TestInteractiveMode_AbortPushesErrorIntoPendingTools(t *testing.T) {
 	if !strings.Contains(rendered, "Operation aborted") {
 		t.Fatalf("tool component should show 'Operation aborted', got:\n%s", rendered)
 	}
+	if !comp.Aborted() {
+		t.Fatal("aborted pending tool is not marked aborted for a frontend session")
+	}
+}
+
+// upstream: interactive-mode.ts:3544 (message_end) replaces an aborted message's errorMessage with "Operation aborted",
+// or "Aborted after N retry attempt(s)" while automatic retries ran, before the assistant block and every pending tool
+// component show it. A provider's own errorMessage ("Request was aborted") never reaches either.
+func TestInteractiveMode_AbortedMessageNamesRetryAttempts(t *testing.T) {
+	for _, tc := range []struct {
+		name     string
+		attempts int
+		provider string
+		want     string
+	}{
+		{"no retries", 0, "", "Operation aborted"},
+		{"provider text is replaced", 0, "Request was aborted", "Operation aborted"},
+		{"one retry", 1, "Request was aborted", "Aborted after 1 retry attempt"},
+		{"several retries", 3, "", "Aborted after 3 retry attempts"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			m := &InteractiveMode{
+				chatContainer: tui.NewContainer(),
+				tuiInst:       tui.NewWithOutput(io.Discard, 120, 40),
+				statusLine:    NewFooterComponent(nil, "", nil),
+				toolByID:      make(map[string]*tui.ToolExecutionComponent),
+				toolStarts:    make(map[string]time.Time),
+				pendingArgs:   make(map[int]*pendingToolArg),
+			}
+			m.opts.SessionHandle = &recordingCompactHandle{retryAttempt: tc.attempts}
+			msg := agent.AgentMessage{Assistant: &agent.AssistantMessage{Role: agent.RoleAssistant, StopReason: ai.StopReasonAborted, ErrorMessage: tc.provider}}
+			toolPartial := &ai.AssistantMessage{Content: []ai.AssistantContentBlock{
+				ai.ToolCall{ID: "tc_1", Name: "read", Arguments: ai.JsonObject{"path": "foo.go"}},
+			}, StopReason: ai.StopReasonPending}
+			var comp *tui.ToolExecutionComponent
+			for _, ev := range []agent.AgentEvent{
+				agent.MessageStartEvent{Message: msg},
+				agent.MessageUpdateEvent{Message: msg, AssistantMessageEvent: ai.ToolCallDeltaEvent{ContentIndex: 0, Delta: `{"path":"foo.go"}`, Partial: toolPartial}},
+				agent.MessageEndEvent{Message: msg},
+			} {
+				m.handleAgentEvent(ev)
+				if pending := m.toolByID["tc_1"]; pending != nil {
+					comp = pending
+				}
+			}
+			if comp == nil {
+				t.Fatal("expected tool component tc_1 to be created during streaming")
+			}
+			if got := stripANSITest(strings.Join(comp.Render(80), "\n")); !strings.Contains(got, tc.want) {
+				t.Errorf("tool component = %q, want %q", got, tc.want)
+			}
+			if got := stripANSITest(strings.Join(m.chatContainer.Render(100), "\n")); strings.Count(got, tc.want) < 2 {
+				t.Errorf("assistant block and tool component should both show %q:\n%s", tc.want, got)
+			}
+		})
+	}
 }
 
 // A tool still running when the user aborts (Esc) must be frozen immediately,
@@ -891,7 +927,7 @@ func TestInteractiveMode_AbortPushesErrorIntoPendingTools(t *testing.T) {
 // time. Pre-fix (no finalize in the abort dispatch) this test's Render still
 // shows "Elapsed" and State stays ToolStateRunning.
 func TestInteractiveMode_FinalizeRunningTools_FreezesElapsed(t *testing.T) {
-	running := tui.NewToolExecutionComponent("bash", "$ ssh host 'sleep 999'")
+	running := newToolCardForTest("bash", "$ ssh host 'sleep 999'")
 	running.MarkExecutionStarted()
 	running.StartedAt = time.Now().Add(-437 * time.Second) // long-running, scrolled off
 	running.SetStreaming("partial output line")
@@ -901,7 +937,7 @@ func TestInteractiveMode_FinalizeRunningTools_FreezesElapsed(t *testing.T) {
 	}
 
 	// A read tool that already completed must be left untouched (no-op).
-	done := tui.NewToolExecutionComponent("read", "read x.go")
+	done := newToolCardForTest("read", "read x.go")
 	done.SetResult("contents", false, 2*time.Second)
 
 	m := &InteractiveMode{
@@ -923,6 +959,9 @@ func TestInteractiveMode_FinalizeRunningTools_FreezesElapsed(t *testing.T) {
 	if done.State != tui.ToolStateDone {
 		t.Errorf("already-terminal tool must be left untouched; state=%d", done.State)
 	}
+	if !running.Aborted() || done.Aborted() {
+		t.Errorf("aborted marks: running=%t done=%t", running.Aborted(), done.Aborted())
+	}
 	if len(m.toolStarts) != 0 {
 		t.Errorf("toolStarts must be drained after finalize; have %d", len(m.toolStarts))
 	}
@@ -933,7 +972,7 @@ func TestInteractiveMode_FinalizeRunningTools_FreezesElapsed(t *testing.T) {
 // wiring, not just the helper.
 func TestInteractiveMode_EscAbortFreezesRunningTool(t *testing.T) {
 	ctx := context.Background()
-	running := tui.NewToolExecutionComponent("bash", "$ ssh host 'sleep 999'")
+	running := newToolCardForTest("bash", "$ ssh host 'sleep 999'")
 	running.MarkExecutionStarted()
 	running.StartedAt = time.Now().Add(-120 * time.Second)
 
@@ -974,7 +1013,7 @@ func TestInteractiveMode_EscCancelsCompactionWhileAgentIsIdle(t *testing.T) {
 		keybindings:  DefaultKeybindingsManager(),
 		isIdle:       true,
 		isCompacting: true,
-		opts:         InteractiveOptions{SessionHandle: handle},
+		opts:         InteractiveModeOptions{SessionHandle: handle},
 	}
 	if err := m.dispatchKey(context.Background(), "\x1b"); err != nil {
 		t.Fatal(err)
@@ -984,13 +1023,50 @@ func TestInteractiveMode_EscCancelsCompactionWhileAgentIsIdle(t *testing.T) {
 	}
 }
 
+// compaction_start replaces the editor's Escape with abortCompaction and compaction_end restores the previous handler
+// (interactive-mode.ts:3672-3693): Escape aborts only between the two events.
+func TestInteractiveMode_EscapeAbortsCompactionOnlyBetweenStartAndEnd(t *testing.T) {
+	handle := &recordingCompactHandle{}
+	m := &InteractiveMode{
+		chatContainer:   tui.NewContainer(),
+		statusContainer: tui.NewContainer(),
+		tuiInst:         tui.NewWithOutput(io.Discard, 120, 40),
+		statusLine:      NewFooterComponent(nil, "", nil),
+		editor:          tui.NewEditor(),
+		keybindings:     DefaultKeybindingsManager(),
+		isIdle:          true,
+		opts:            InteractiveModeOptions{SessionHandle: handle},
+	}
+	m.editor.SetText("draft") // an empty idle editor's double Escape would open the tree selector
+	escape := func() {
+		t.Helper()
+		if err := m.dispatchKey(context.Background(), "\x1b"); err != nil {
+			t.Fatal(err)
+		}
+	}
+	escape()
+	if handle.abortCompactionCount != 0 {
+		t.Fatalf("Escape before compaction aborted it %d times", handle.abortCompactionCount)
+	}
+	m.handleAgentEvent(agent.CompactionStartEvent{Reason: "manual"})
+	escape()
+	if handle.abortCompactionCount != 1 {
+		t.Fatalf("Escape during compaction: AbortCompaction calls = %d, want 1", handle.abortCompactionCount)
+	}
+	m.handleAgentEvent(agent.CompactionEndEvent{Reason: "manual", Aborted: true})
+	escape()
+	if handle.abortCompactionCount != 1 {
+		t.Fatalf("Escape after compaction_end aborted again: %d calls", handle.abortCompactionCount)
+	}
+}
+
 func TestInteractiveMode_ManualCompactionCancellationPersistsInConversation(t *testing.T) {
 	chat := tui.NewContainer()
 	m := &InteractiveMode{
 		chatContainer:   chat,
 		statusContainer: tui.NewContainer(),
 		tuiInst:         tui.NewWithOutput(io.Discard, 120, 40),
-		statusLine:      NewStatusLine(nil, "", nil),
+		statusLine:      NewFooterComponent(nil, "", nil),
 		isCompacting:    true,
 	}
 	m.handleAgentEvent(agent.CompactionEndEvent{Reason: "manual", Aborted: true})
@@ -1026,15 +1102,15 @@ func TestInteractiveMode_RendersPromptAfterBeforeAgentStartHook(t *testing.T) {
 		}
 		<-unblock
 	})
-	m := NewInteractiveMode(InteractiveOptions{CWD: dir, Model: model})
+	m := NewInteractiveMode(nil, InteractiveModeOptions{CWD: dir, Model: model})
 	m.chatContainer = tui.NewContainer()
 	m.statusContainer = tui.NewContainer()
 	m.pendingMessagesContainer = tui.NewContainer()
 	m.tuiInst = tui.NewWithOutput(io.Discard, 100, 30)
 	m.editor = tui.NewEditor()
-	m.statusLine = NewStatusLine(model, "", nil)
+	m.statusLine = NewFooterComponent(model, "", nil)
 	events := make(chan agent.AgentEvent, 256)
-	m.agent = agent.NewAgent(agent.AgentOptions{Model: model, EventCh: events})
+	m.agent = mustNewAgent(agent.AgentOptions{Model: model, EventCh: events})
 	m.newRunner = fresh
 	m.runCtx = context.Background()
 	m.abortCtx = context.Background()
@@ -1108,14 +1184,14 @@ func TestInteractiveMode_PrePromptCompactionRunsBeforeBeforeAgentStart(t *testin
 		compactsSeenByHook <- handle.compactCount
 		<-unblock
 	})
-	m := NewInteractiveMode(InteractiveOptions{CWD: dir, Model: model, SessionHandle: handle})
+	m := NewInteractiveMode(nil, InteractiveModeOptions{CWD: dir, Model: model, SessionHandle: handle})
 	m.chatContainer = tui.NewContainer()
 	m.statusContainer = tui.NewContainer()
 	m.pendingMessagesContainer = tui.NewContainer()
 	m.tuiInst = tui.NewWithOutput(io.Discard, 100, 30)
 	m.editor = tui.NewEditor()
-	m.statusLine = NewStatusLine(model, "", nil)
-	m.agent = agent.NewAgent(agent.AgentOptions{Model: model})
+	m.statusLine = NewFooterComponent(model, "", nil)
+	m.agent = mustNewAgent(agent.AgentOptions{Model: model})
 	m.agent.SetMessages([]agent.AgentMessage{
 		mkUserMsg("previous"),
 		{Assistant: &agent.AssistantMessage{
@@ -1173,8 +1249,8 @@ func TestInteractiveMode_CompactionLetsLocalSlashCommandsThrough(t *testing.T) {
 		pendingMessagesContainer: tui.NewContainer(),
 		tuiInst:                  tui.NewWithOutput(io.Discard, 120, 40),
 		editor:                   tui.NewEditor(),
-		statusLine:               NewStatusLine(nil, "", nil),
-		agent:                    agent.NewAgent(agent.AgentOptions{}),
+		statusLine:               NewFooterComponent(nil, "", nil),
+		agent:                    mustNewAgent(agent.AgentOptions{}),
 		keybindings:              DefaultKeybindingsManager(),
 	}
 
@@ -1251,14 +1327,14 @@ func lastUserMessageText(t *testing.T, messages []ai.Message) string {
 }
 
 func TestInteractiveMode_EnterDuringCompactionUsesCompactionQueue(t *testing.T) {
-	m := NewInteractiveMode(InteractiveOptions{CWD: t.TempDir()})
+	m := NewInteractiveMode(nil, InteractiveModeOptions{CWD: t.TempDir()})
 	m.chatContainer = tui.NewContainer()
 	m.statusContainer = tui.NewContainer()
 	m.pendingMessagesContainer = tui.NewContainer()
 	m.tuiInst = tui.NewWithOutput(io.Discard, 100, 30)
-	m.statusLine = NewStatusLine(nil, "", nil)
+	m.statusLine = NewFooterComponent(nil, "", nil)
 	m.editor = tui.NewEditor()
-	m.agent = agent.NewAgent(agent.AgentOptions{})
+	m.agent = mustNewAgent(agent.AgentOptions{})
 	m.keybindings = DefaultKeybindingsManager()
 	m.isCompacting = true
 	m.isIdle = true
@@ -1285,14 +1361,14 @@ func TestInteractiveMode_QueuedEnterSendsAfterCompactionEnd(t *testing.T) {
 		Provider:     captureStreamOptionsProvider{seen: seen},
 		Capabilities: ai.ModelCapabilities{ContextWindow: 8000},
 	}
-	m := NewInteractiveMode(InteractiveOptions{CWD: t.TempDir(), Model: model})
+	m := NewInteractiveMode(nil, InteractiveModeOptions{CWD: t.TempDir(), Model: model})
 	m.chatContainer = tui.NewContainer()
 	m.statusContainer = tui.NewContainer()
 	m.pendingMessagesContainer = tui.NewContainer()
 	m.tuiInst = tui.NewWithOutput(io.Discard, 100, 30)
-	m.statusLine = NewStatusLine(model, "", nil)
+	m.statusLine = NewFooterComponent(model, "", nil)
 	m.editor = tui.NewEditor()
-	m.agent = agent.NewAgent(agent.AgentOptions{Model: model})
+	m.agent = mustNewAgent(agent.AgentOptions{Model: model})
 	m.keybindings = DefaultKeybindingsManager()
 	m.runCtx = context.Background()
 	m.abortCtx, m.abortFn = context.WithCancel(m.runCtx)
@@ -1330,13 +1406,13 @@ func TestInteractiveMode_CompactionQueueFlushStartsTurn(t *testing.T) {
 		Provider:     provider,
 		Capabilities: ai.ModelCapabilities{ContextWindow: 8000},
 	}
-	m := NewInteractiveMode(InteractiveOptions{CWD: dir, Model: model})
+	m := NewInteractiveMode(nil, InteractiveModeOptions{CWD: dir, Model: model})
 	m.chatContainer = tui.NewContainer()
 	m.statusContainer = tui.NewContainer()
 	m.pendingMessagesContainer = tui.NewContainer()
 	m.tuiInst = tui.NewWithOutput(io.Discard, 100, 30)
-	m.statusLine = NewStatusLine(model, "", nil)
-	m.agent = agent.NewAgent(agent.AgentOptions{Model: model})
+	m.statusLine = NewFooterComponent(model, "", nil)
+	m.agent = mustNewAgent(agent.AgentOptions{Model: model})
 	m.runCtx = context.Background()
 	m.abortCtx = context.Background()
 	m.abortFn = func() {}
@@ -1358,13 +1434,13 @@ func TestInteractiveMode_CompactionQueueFlushStartsTurn(t *testing.T) {
 }
 
 func TestAC49CompactionEndWillRetryQueuesMessageForRetryTurn(t *testing.T) {
-	m := NewInteractiveMode(InteractiveOptions{CWD: t.TempDir()})
+	m := NewInteractiveMode(nil, InteractiveModeOptions{CWD: t.TempDir()})
 	m.chatContainer = tui.NewContainer()
 	m.statusContainer = tui.NewContainer()
 	m.pendingMessagesContainer = tui.NewContainer()
 	m.tuiInst = tui.NewWithOutput(io.Discard, 100, 30)
-	m.statusLine = NewStatusLine(nil, "", nil)
-	m.agent = agent.NewAgent(agent.AgentOptions{})
+	m.statusLine = NewFooterComponent(nil, "", nil)
+	m.agent = mustNewAgent(agent.AgentOptions{})
 	m.keybindings = DefaultKeybindingsManager()
 	m.runCtx = context.Background()
 	m.isCompacting = true
@@ -1395,12 +1471,12 @@ func TestAC49CompactionEndWillRetryQueuesMessageForRetryTurn(t *testing.T) {
 // mid-turn), flushing must NOT start a second concurrent turn: it steers the
 // queued messages instead. Starting a second turn would race the agent loop.
 func TestInteractiveMode_CompactionQueueFirstFollowUpPreservesModeWhenTurnSettles(t *testing.T) {
-	m := NewInteractiveMode(InteractiveOptions{CWD: t.TempDir()})
+	m := NewInteractiveMode(nil, InteractiveModeOptions{CWD: t.TempDir()})
 	m.chatContainer = tui.NewContainer()
 	m.pendingMessagesContainer = tui.NewContainer()
 	m.tuiInst = tui.NewWithOutput(io.Discard, 100, 30)
-	m.statusLine = NewStatusLine(nil, "", nil)
-	m.agent = agent.NewAgent(agent.AgentOptions{})
+	m.statusLine = NewFooterComponent(nil, "", nil)
+	m.agent = mustNewAgent(agent.AgentOptions{})
 	m.keybindings = DefaultKeybindingsManager()
 	m.runCtx = context.Background()
 	m.turnActive.Store(true)
@@ -1423,13 +1499,13 @@ func TestInteractiveMode_CompactionQueueFlushSkipsTurnWhenBusy(t *testing.T) {
 		Provider:     provider,
 		Capabilities: ai.ModelCapabilities{ContextWindow: 8000},
 	}
-	m := NewInteractiveMode(InteractiveOptions{CWD: dir, Model: model})
+	m := NewInteractiveMode(nil, InteractiveModeOptions{CWD: dir, Model: model})
 	m.chatContainer = tui.NewContainer()
 	m.statusContainer = tui.NewContainer()
 	m.pendingMessagesContainer = tui.NewContainer()
 	m.tuiInst = tui.NewWithOutput(io.Discard, 100, 30)
-	m.statusLine = NewStatusLine(model, "", nil)
-	m.agent = agent.NewAgent(agent.AgentOptions{Model: model})
+	m.statusLine = NewFooterComponent(model, "", nil)
+	m.agent = mustNewAgent(agent.AgentOptions{Model: model})
 	m.keybindings = DefaultKeybindingsManager()
 	m.runCtx = context.Background()
 	m.abortCtx = context.Background()
@@ -1461,12 +1537,16 @@ func TestInteractiveMode_CompactionQueueFlushSkipsTurnWhenBusy(t *testing.T) {
 // without a live model. Its run loop only continues from queued input: retry
 // and compaction decisions belong to coding.Session and are tested there.
 type recordingCompactHandle struct {
+	lastAssistant        *string
 	agent                *agent.Agent
+	thinkingSettings     *SettingsManager
 	inner                *Session
 	compactCount         int
 	abortCompactionCount int
 	abortRetryCount      int
+	retryAttempt         int
 	cacheWarming         *CacheWarmingStatus
+	bashRecordErr        error
 	cacheWarmingModes    []CacheWarmingMode
 	agentSettledCount    int
 	cycleResults         []*ModelCycleResult
@@ -1488,6 +1568,7 @@ func (h *recordingCompactHandle) CycleModel(direction string, options ...ModelMu
 	h.cycled = append(h.cycled, result.Model)
 	return result, nil
 }
+func (h *recordingCompactHandle) LastAssistantText() *string { return h.lastAssistant }
 func (h *recordingCompactHandle) ScopedModels() []extension.ScopedModel {
 	return h.scopedModels
 }
@@ -1548,12 +1629,22 @@ func (h *recordingCompactHandle) SetSessionName(name string) error {
 	return err
 }
 
-func (h *recordingCompactHandle) SetThinkingLevel(level ai.ThinkingLevel, _ ...ModelMutationOptions) error {
+func (h *recordingCompactHandle) SetThinkingLevelOnMain(level ai.ModelThinkingLevel, options ModelMutationOptions, dispatch func(func() error) error) error {
+	return dispatch(func() error { return h.SetThinkingLevel(level, options) })
+}
+
+func (h *recordingCompactHandle) SetThinkingLevel(level ai.ModelThinkingLevel, options ...ModelMutationOptions) error {
 	previous := h.agent.ThinkingLevel()
 	effective := ai.ClampThinkingLevel(h.agent.Model(), level)
 	h.agent.SetThinkingLevel(effective)
+	if len(options) > 0 && options[0].Persist && h.thinkingSettings != nil {
+		if err := h.thinkingSettings.SetDefaultThinkingLevel(ai.ThinkingLevel(level)); err != nil {
+			return err
+		}
+	}
 	if h.inner != nil && effective != previous {
-		return h.inner.AppendThinkingLevelChange(string(effective))
+		_, err := h.inner.AppendThinkingLevelChange(string(effective))
+		return err
 	}
 	return nil
 }
@@ -1568,22 +1659,42 @@ func (h *recordingCompactHandle) CheckPromptCompaction(context.Context) error {
 func (h *recordingCompactHandle) RunAgentPrompt(ctx context.Context, start func(context.Context) ([]agent.AgentMessage, error)) ([]agent.AgentMessage, error) {
 	messages, err := start(ctx)
 	for err == nil && ctx.Err() == nil && h.agent.HasQueuedMessages() {
-		messages, err = h.agent.Continue(ctx)
+		messages, err = h.agent.ContinueMessages(ctx)
 	}
 	return messages, err
 }
 func (h *recordingCompactHandle) RunInputHandlers(ctx context.Context, text string, images []ai.ImageContent, source extension.InputSource, behavior string) (string, []ai.ImageContent, bool, error) {
 	return text, images, false, nil
 }
-func (h *recordingCompactHandle) AbortRetry()             { h.abortRetryCount++ }
-func (h *recordingCompactHandle) AbortBranchSummary()     {}
+func (h *recordingCompactHandle) AbortRetry()         { h.abortRetryCount++ }
+func (h *recordingCompactHandle) AbortBranchSummary() {}
+func (h *recordingCompactHandle) RetryAttempt() int   { return h.retryAttempt }
+func (h *recordingCompactHandle) ExportToJsonl(outputPath string) (string, error) {
+	return ExportSessionToJsonl(h.inner, outputPath, nil)
+}
 func (h *recordingCompactHandle) ReplaceInner(s *Session) { h.inner = s }
+
+// RecordUserBashResult appends to the inner Session, or returns bashRecordErr, as coding.Session.recordBashResult does when idle.
+func (h *recordingCompactHandle) RecordUserBashResult(command string, result BashResult, excludeFromContext bool) error {
+	if h.bashRecordErr != nil {
+		return h.bashRecordErr
+	}
+	if h.inner == nil {
+		return nil
+	}
+	_, err := h.inner.AppendBashExecution(BashExecutionMessage{
+		Role: "bashExecution", Command: command, Output: result.Output, ExitCode: result.ExitCode,
+		Cancelled: result.Cancelled, Truncated: result.Truncated, FullOutputPath: result.FullOutputPath,
+		ExcludeFromContext: excludeFromContext, Timestamp: time.Now().UnixMilli(),
+	})
+	return err
+}
 func (h *recordingCompactHandle) NavigateTreeHandle(_ context.Context, _ string, _ bool, _ string) (NavigateTreeResult, error) {
 	return NavigateTreeResult{}, nil
 }
-func (h *recordingCompactHandle) Compact(_ context.Context, _ string) error {
+func (h *recordingCompactHandle) Compact(_ context.Context, _ string) (*CompactionResult, error) {
 	h.compactCount++
-	return nil
+	return &CompactionResult{}, nil
 }
 
 // TestDynamicProviderInModelSurfaces: models from a registered dynamic provider
@@ -1593,7 +1704,7 @@ func (h *recordingCompactHandle) Compact(_ context.Context, _ string) error {
 func TestDynamicProviderInModelSurfaces(t *testing.T) {
 	dir := t.TempDir()
 	reg := NewModelRegistry(dir)
-	if err := reg.RegisterProvider("example-provider", extension.ProviderConfig{
+	if err := reg.RegisterExtensionProvider("example-provider", extension.ProviderConfig{
 		BaseURL: "https://models.example/v1",
 		APIKey:  "tok", // makes the provider count as authed in GetAvailable
 		API:     "openai-completions",
@@ -1601,7 +1712,7 @@ func TestDynamicProviderInModelSurfaces(t *testing.T) {
 	}); err != nil {
 		t.Error(err)
 	}
-	m := &InteractiveMode{opts: InteractiveOptions{ModelRegistry: reg, AgentDir: dir}}
+	m := &InteractiveMode{opts: InteractiveModeOptions{ModelRegistry: reg, AgentDir: dir}}
 
 	if spec, ok := m.resolveAvailableModel("example-provider/test-model"); !ok || spec != "example-provider/test-model" {
 		t.Fatalf("resolve(example-provider/test-model) = %q,%v want example-provider/test-model,true", spec, ok)
@@ -1621,7 +1732,7 @@ func TestDynamicProviderInModelSurfaces(t *testing.T) {
 	}
 
 	// Negative control: a provider with no configured auth is excluded.
-	if err := reg.RegisterProvider("secret-ai", extension.ProviderConfig{
+	if err := reg.RegisterExtensionProvider("secret-ai", extension.ProviderConfig{
 		API:     ai.APIOpenAICompletions,
 		BaseURL: "https://secret.example/v1",
 		Models:  []extension.ProviderModelConfig{{ID: "hidden", Name: "Hidden"}},
@@ -1648,7 +1759,7 @@ func TestBuildChatViewportWiresLiveThemedScrollbar(t *testing.T) {
 		widgetContainer:          tui.NewContainer(),
 		editorContainer:          tui.NewContainer(),
 		extFooter:                newSpecialLinesComponent(func() {}),
-		statusLine:               NewStatusLine(nil, "", nil),
+		statusLine:               NewFooterComponent(nil, "", nil),
 	}
 
 	tui.SetTheme("dark")
@@ -1656,17 +1767,17 @@ func TestBuildChatViewportWiresLiveThemedScrollbar(t *testing.T) {
 	if got := sv.Scrollbar(); got != "auto" {
 		t.Fatalf("transcript scrollbar = %q, want the auto default", got)
 	}
-	darkTrack := sv.ScrollbarTrackStyle()("X")
-	if want := tui.ActiveTheme().FgText("scrollbarTrack", "X"); darkTrack != want || darkTrack == "X" {
+	darkTrack := sv.ScrollbarTrackStyle("X")
+	if want := tui.ActiveTheme().Fg("scrollbarTrack", "X"); darkTrack != want || darkTrack == "X" {
 		t.Fatalf("dark track = %q, want live-themed %q", darkTrack, want)
 	}
-	if got, want := sv.ScrollbarThumbStyle()("X"), tui.ActiveTheme().FgText("scrollbarThumb", "X"); got != want {
+	if got, want := sv.ScrollbarThumbStyle("X"), tui.ActiveTheme().Fg("scrollbarThumb", "X"); got != want {
 		t.Fatalf("dark thumb = %q, want live-themed %q", got, want)
 	}
 
 	tui.SetTheme("light")
-	lightTrack := sv.ScrollbarTrackStyle()("X")
-	if lightTrack != tui.ActiveTheme().FgText("scrollbarTrack", "X") {
+	lightTrack := sv.ScrollbarTrackStyle("X")
+	if lightTrack != tui.ActiveTheme().Fg("scrollbarTrack", "X") {
 		t.Fatalf("light track = %q did not follow the live theme", lightTrack)
 	}
 	if darkTrack == lightTrack {
@@ -1715,10 +1826,10 @@ func TestCreateInteractiveTuiRoutesOsc8ClickToInjectedOpener(t *testing.T) {
 func newSwitchTuiProbe(t *testing.T) *InteractiveMode {
 	t.Helper()
 	model := &ai.Model{ID: "m", DisplayName: "m", Capabilities: ai.ModelCapabilities{ContextWindow: 8000}}
-	return newSwitchTuiProbeWithOptions(t, InteractiveOptions{CWD: t.TempDir(), Model: model, AgentDir: t.TempDir(), Settings: Settings{TuiMode: "regular"}})
+	return newSwitchTuiProbeWithOptions(t, InteractiveModeOptions{CWD: t.TempDir(), Model: model, AgentDir: t.TempDir(), Settings: Settings{TuiMode: "regular"}})
 }
 
-func newSwitchTuiProbeWithOptions(t *testing.T, opts InteractiveOptions) *InteractiveMode {
+func newSwitchTuiProbeWithOptions(t *testing.T, opts InteractiveModeOptions) *InteractiveMode {
 	t.Helper()
 	m := newUnmountedSwitchTuiProbe(t, opts, &bytes.Buffer{})
 	m.mountInteractiveTui(true)
@@ -1727,9 +1838,9 @@ func newSwitchTuiProbeWithOptions(t *testing.T, opts InteractiveOptions) *Intera
 
 // newUnmountedSwitchTuiProbe builds the probe's renderer writing to out without
 // mounting it, so a caller can order raw mode before the first mount as Run does.
-func newUnmountedSwitchTuiProbe(t *testing.T, opts InteractiveOptions, out io.Writer) *InteractiveMode {
+func newUnmountedSwitchTuiProbe(t *testing.T, opts InteractiveModeOptions, out io.Writer) *InteractiveMode {
 	t.Helper()
-	m := NewInteractiveMode(opts)
+	m := NewInteractiveMode(nil, opts)
 	m.runCtx = context.Background()
 	m.rendererOut = out
 	m.editor = tui.NewEditor()
@@ -1741,7 +1852,7 @@ func newUnmountedSwitchTuiProbe(t *testing.T, opts InteractiveOptions, out io.Wr
 	m.editorContainer.Add(m.editor)
 	m.extHeader = newSpecialLinesComponent(func() { m.tuiInst.Render() })
 	m.extFooter = newSpecialLinesComponent(func() { m.tuiInst.Render() })
-	m.statusLine = NewStatusLine(opts.Model, "", nil)
+	m.statusLine = NewFooterComponent(opts.Model, "", nil)
 	m.createInteractiveTui(m.runCtx)
 	m.installRenderDispatcher()
 	return m
@@ -1759,7 +1870,7 @@ func TestSwitchTuiModeRoundTrip(t *testing.T) {
 	if !m.switchTuiMode("fullscreen", false, true) {
 		t.Fatal("switch to fullscreen returned false")
 	}
-	if m.altScreen == nil || m.tuiInst != tui.Renderer(m.altScreen) {
+	if m.altScreen == nil || m.tuiInst != tui.TUI(m.altScreen) {
 		t.Fatal("fullscreen switch did not install the alt-screen renderer")
 	}
 	if m.transcriptScrollView == nil {
@@ -1775,8 +1886,27 @@ func TestSwitchTuiModeRoundTrip(t *testing.T) {
 	if m.transcriptScrollView != nil {
 		t.Fatal("regular switch did not dispose/clear the transcript scroll view")
 	}
-	if _, ok := m.tuiInst.(*tui.TUI); !ok {
+	if _, ok := m.tuiInst.(*tui.TuiMainScreen); !ok {
 		t.Fatalf("regular switch did not install the main-screen renderer: %T", m.tuiInst)
+	}
+}
+
+// Pi interactive-mode.ts:908 `if (isViewportTUI(previousUi)) previousUi.setLayoutRoot(undefined)`: leaving fullscreen releases the
+// outgoing viewport renderer's layout root, so that renderer no longer renders (or keeps alive) the transcript and dock.
+func TestSwitchTuiModeReleasesTheOutgoingViewportLayoutRoot(t *testing.T) {
+	m := newSwitchTuiProbe(t)
+	if !m.switchTuiMode("fullscreen", false, true) {
+		t.Fatal("switch to fullscreen returned false")
+	}
+	outgoing := m.altScreen
+	if len(outgoing.RenderSnapshot(40)) == 0 {
+		t.Fatal("the fullscreen layout root renders no lines before the switch")
+	}
+	if !m.switchTuiMode("regular", false, true) {
+		t.Fatal("switch back to regular returned false")
+	}
+	if got := outgoing.RenderSnapshot(40); len(got) != 0 {
+		t.Fatalf("the outgoing viewport renderer still renders its layout root: %q", got)
 	}
 }
 
@@ -1798,7 +1928,7 @@ func TestSwitchTuiModeNoOpSameMode(t *testing.T) {
 func TestSwitchTuiModeRefusedWhileOverlayActive(t *testing.T) {
 	m := newSwitchTuiProbe(t)
 	before := m.tuiInst
-	m.tuiInst.OpenOverlay(tui.NewText("overlay"), tui.OverlayOptions{})
+	m.tuiInst.ShowOverlay(tui.NewText("overlay"), tui.OverlayOptions{})
 	if m.switchTuiMode("fullscreen", false, true) {
 		t.Fatal("switch proceeded while an overlay was active")
 	}
@@ -1818,14 +1948,14 @@ func TestSwitchTuiModeDynamicUIContextFollowsSwap(t *testing.T) {
 	uiCtx.interactiveMode = m
 	regularRenderer := m.tuiInst
 
-	var target tui.Renderer
-	uiCtx.withRenderer(func(r tui.Renderer) { target = r })
+	var target tui.TUI
+	uiCtx.withRenderer(func(r tui.TUI) { target = r })
 	if target != regularRenderer {
 		t.Fatal("UI context did not resolve the initial renderer")
 	}
 
 	m.switchTuiMode("fullscreen", false, true)
-	uiCtx.withRenderer(func(r tui.Renderer) { target = r })
+	uiCtx.withRenderer(func(r tui.TUI) { target = r })
 	if target != m.tuiInst {
 		t.Fatal("UI context still points at the stopped renderer after the swap")
 	}
@@ -1924,7 +2054,7 @@ func TestSwitchTuiModeRefusalRevertsPersistedSetting(t *testing.T) {
 		t.Fatal(err)
 	}
 	// An overlay is active, so the live switch must be refused.
-	m.tuiInst.OpenOverlay(tui.NewText("overlay"), tui.OverlayOptions{})
+	m.tuiInst.ShowOverlay(tui.NewText("overlay"), tui.OverlayOptions{})
 
 	m.buildSlashContext(t.Context()).OnSettingApplied("tui-mode", "fullscreen")
 
@@ -1954,7 +2084,7 @@ func TestOnSettingAppliedTuiModeEntersFullscreen(t *testing.T) {
 
 	m.buildSlashContext(t.Context()).OnSettingApplied("tui-mode", "fullscreen")
 
-	if m.altScreen == nil || m.tuiInst != tui.Renderer(m.altScreen) {
+	if m.altScreen == nil || m.tuiInst != tui.TUI(m.altScreen) {
 		t.Fatal("settings-driven tui-mode change did not install the alt-screen renderer")
 	}
 	if got := sm.GetTuiMode(); got != "fullscreen" {
@@ -1969,7 +2099,7 @@ func TestOnSettingAppliedTuiModeEntersFullscreen(t *testing.T) {
 	if m.altScreen != nil {
 		t.Fatal("settings-driven change back to regular left a stale alt-screen renderer")
 	}
-	if _, ok := m.tuiInst.(*tui.TUI); !ok {
+	if _, ok := m.tuiInst.(*tui.TuiMainScreen); !ok {
 		t.Fatalf("regular swap did not install the main-screen renderer: %T", m.tuiInst)
 	}
 }
@@ -2114,13 +2244,13 @@ func TestCompactionFlushStartsTurnWhenIsIdleIsStaleFalse(t *testing.T) {
 		Provider:     captureStreamOptionsProvider{seen: seen},
 		Capabilities: ai.ModelCapabilities{ContextWindow: 8000},
 	}
-	m := NewInteractiveMode(InteractiveOptions{CWD: dir, Model: model})
+	m := NewInteractiveMode(nil, InteractiveModeOptions{CWD: dir, Model: model})
 	m.chatContainer = tui.NewContainer()
 	m.statusContainer = tui.NewContainer()
 	m.pendingMessagesContainer = tui.NewContainer()
 	m.tuiInst = tui.NewWithOutput(io.Discard, 100, 30)
-	m.statusLine = NewStatusLine(model, "", nil)
-	m.agent = agent.NewAgent(agent.AgentOptions{Model: model})
+	m.statusLine = NewFooterComponent(model, "", nil)
+	m.agent = mustNewAgent(agent.AgentOptions{Model: model})
 	m.runCtx = context.Background()
 	m.abortCtx = context.Background()
 	m.abortFn = func() {}
@@ -2163,14 +2293,14 @@ func TestDeliverUserMessageStartsTurnWhenIsIdleIsStaleFalse(t *testing.T) {
 		Provider:     captureStreamOptionsProvider{seen: seen},
 		Capabilities: ai.ModelCapabilities{ContextWindow: 8000},
 	}
-	m := NewInteractiveMode(InteractiveOptions{CWD: t.TempDir(), Model: model})
+	m := NewInteractiveMode(nil, InteractiveModeOptions{CWD: t.TempDir(), Model: model})
 	m.chatContainer = tui.NewContainer()
 	m.statusContainer = tui.NewContainer()
 	m.pendingMessagesContainer = tui.NewContainer()
 	m.tuiInst = tui.NewWithOutput(io.Discard, 100, 30)
-	m.statusLine = NewStatusLine(model, "", nil)
+	m.statusLine = NewFooterComponent(model, "", nil)
 	m.keybindings = DefaultKeybindingsManager()
-	m.agent = agent.NewAgent(agent.AgentOptions{Model: model})
+	m.agent = mustNewAgent(agent.AgentOptions{Model: model})
 	m.runCtx = context.Background()
 	m.abortCtx = context.Background()
 	m.abortFn = func() {}
@@ -2211,14 +2341,14 @@ func TestDeliverUserMessageQueuesWhileATurnIsRunning(t *testing.T) {
 		Provider:     captureStreamOptionsProvider{seen: seen},
 		Capabilities: ai.ModelCapabilities{ContextWindow: 8000},
 	}
-	m := NewInteractiveMode(InteractiveOptions{CWD: t.TempDir(), Model: model})
+	m := NewInteractiveMode(nil, InteractiveModeOptions{CWD: t.TempDir(), Model: model})
 	m.chatContainer = tui.NewContainer()
 	m.statusContainer = tui.NewContainer()
 	m.pendingMessagesContainer = tui.NewContainer()
 	m.tuiInst = tui.NewWithOutput(io.Discard, 100, 30)
-	m.statusLine = NewStatusLine(model, "", nil)
+	m.statusLine = NewFooterComponent(model, "", nil)
 	m.keybindings = DefaultKeybindingsManager()
-	m.agent = agent.NewAgent(agent.AgentOptions{Model: model})
+	m.agent = mustNewAgent(agent.AgentOptions{Model: model})
 	m.runCtx = context.Background()
 	m.abortCtx = context.Background()
 	m.abortFn = func() {}
@@ -2241,5 +2371,34 @@ func TestDeliverUserMessageQueuesWhileATurnIsRunning(t *testing.T) {
 		t.Fatalf("started a concurrent turn while one was running: %q",
 			lastUserMessageText(t, opts.Messages))
 	case <-time.After(200 * time.Millisecond):
+	}
+}
+
+// handleDebugCommand (interactive-mode.ts:6941-6965) joins header, lines and messages with "\n" and ends with the empty string, so the file ends with one
+// newline after the last message; the time is toISOString (milliseconds) and JSON.stringify writes <, > and & raw.
+func TestInteractiveMode_WriteDebugLogFormat(t *testing.T) {
+	dir := t.TempDir()
+	m := &InteractiveMode{
+		chatContainer: tui.NewContainer(),
+		tuiInst:       tui.NewWithOutput(io.Discard, 20, 5),
+		agent:         mustNewAgent(agent.AgentOptions{}),
+		opts:          InteractiveModeOptions{AgentDir: dir},
+	}
+	path, err := m.writeDebugLog()
+	if err != nil {
+		t.Fatal(err)
+	}
+	data, _ := os.ReadFile(path)
+	if !regexp.MustCompile(`^Debug output at \d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z\nTerminal: 20x5\nTotal lines: \d+\n\n=== All rendered lines with visible widths ===\n`).Match(data) {
+		t.Fatalf("header:\n%s", data)
+	}
+	if !strings.HasSuffix(string(data), "\n\n=== Agent messages (JSONL) ===\n") {
+		t.Fatalf("no messages must end after the section title:\n%q", data)
+	}
+	m.agent.SetMessages([]agent.AgentMessage{{User: &agent.UserMessage{Role: agent.RoleUser, Content: ai.UserContentBlocks{ai.TextContent{Text: "<b>&"}}}}})
+	path, _ = m.writeDebugLog()
+	data, _ = os.ReadFile(path)
+	if !strings.HasSuffix(string(data), "=== Agent messages (JSONL) ===\n"+`{"role":"user","content":[{"type":"text","text":"<b>&"}],"timestamp":0}`+"\n") {
+		t.Fatalf("message section:\n%q", data)
 	}
 }

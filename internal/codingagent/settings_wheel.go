@@ -2,7 +2,6 @@
 package codingagent
 
 import (
-	"encoding/json"
 	"math"
 	"slices"
 	"strconv"
@@ -51,18 +50,6 @@ func parseWheelScrollLines(value string) WheelScrollLines {
 		lines = math.NaN()
 	}
 	return WheelScrollLines{Lines: lines}
-}
-
-// wheelScrollLinesJSON is the stored value setFullscreenWheelScrollLines writes (settings-manager.ts:1394-1399).
-func wheelScrollLinesJSON(lines WheelScrollLines) json.RawMessage {
-	if lines.Auto {
-		return json.RawMessage(`"auto"`)
-	}
-	clamped := clampWheelScrollLines(lines.Lines)
-	if math.IsNaN(clamped) {
-		return json.RawMessage("null")
-	}
-	return json.RawMessage(strconv.FormatFloat(clamped, 'f', -1, 64))
 }
 
 // tuiWheelScrollLines converts a stored setting to the renderer's option.

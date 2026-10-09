@@ -1,5 +1,7 @@
 package mcpext_test
 
+// pi: packages/coding-agent/src/extensions/mcp/ui.ts
+
 import (
 	"context"
 	"errors"
@@ -26,7 +28,7 @@ import (
 
 type renderCounter struct{ n atomic.Int64 }
 
-func (r *renderCounter) RequestRender() { r.n.Add(1) }
+func (r *renderCounter) RequestRender(...bool) { r.n.Add(1) }
 
 type managerHarness struct {
 	view    *mcpext.McpManagerView
@@ -240,7 +242,7 @@ func TestMcpManagerViewMenuRebuildsOnChangeKeepingTheSelection(t *testing.T) {
 // ui.ts:149-151: status replaces the content with the title and a muted message; input does nothing there.
 func TestMcpManagerViewStatus(t *testing.T) {
 	h := newManagerHarness(t)
-	h.view.Status("MCP server docs", "Reconnecting…")
+	h.view.Status("MCP server docs", "Reconnecting…", nil)
 	want := []string{strings.Repeat("─", 40), " MCP server docs", "", " Reconnecting…", strings.Repeat("─", 40)}
 	if rows := h.rows(40); !slices.Equal(rows, want) {
 		t.Fatalf("rows = %q, want %q", rows, want)
@@ -250,6 +252,30 @@ func TestMcpManagerViewStatus(t *testing.T) {
 	if rows := h.rows(40); !slices.Equal(rows, want) {
 		t.Fatalf("rows after input = %q", rows)
 	}
+}
+
+// Ports "cancels the running operation with the cancel key" and "ignores the cancel key for operations that cannot be
+// cancelled" (1.1.0, #10565; packages/coding-agent/test/mcp-manager-view.test.ts).
+func TestMcpManagerStatusScreenCancelsTheRunningOperationWithTheCancelKey(t *testing.T) {
+	h := newManagerHarness(t)
+	cancelled := 0
+	h.view.Status("Sign in to issues", "Contacting the authorization server…", func() { cancelled++ })
+	if !strings.Contains(h.text(t), "cancel") {
+		t.Fatalf("the screen shows no cancel hint: %q", h.text(t))
+	}
+	h.view.HandleInput("\x1b")
+	if cancelled != 1 {
+		t.Fatalf("onCancel called %d times, want once", cancelled)
+	}
+}
+
+func TestMcpManagerStatusScreenIgnoresTheCancelKeyForOperationsThatCannotBeCancelled(t *testing.T) {
+	h := newManagerHarness(t)
+	h.view.Status("Sign in to issues", "Connecting…", nil)
+	if strings.Contains(h.text(t), "cancel") {
+		t.Fatalf("the screen shows a cancel hint: %q", h.text(t))
+	}
+	h.view.HandleInput("\x1b")
 }
 
 // ui.ts:153-208: the sign-in screen shows the URL and takes a pasted redirect URL.
@@ -280,6 +306,30 @@ func TestMcpManagerViewRedirectURL(t *testing.T) {
 	h.view.HandleInput("\r")
 	if got := receive(t, answer, "the redirect URL"); got != (menuAnswer{"http://127.0.0.1:1/cb?code=9", true}) {
 		t.Fatalf("answered %v", got)
+	}
+}
+
+// ui.ts:201: `input.getValue().trim()` is String.prototype.trim, which removes U+FEFF: a value of only JavaScript
+// whitespace is not submitted, and a submitted value loses a BOM at its ends.
+func TestMcpManagerViewRedirectURLTrimsLikeJavaScript(t *testing.T) {
+	h := newManagerHarness(t)
+	answer := make(chan menuAnswer, 1)
+	go func() {
+		value, ok := h.view.RedirectURL(t.Context(), "Sign in to docs", "https://auth.example/authorize?x=1")
+		answer <- menuAnswer{value, ok}
+	}()
+	h.waitForText(t, "https://auth.example/authorize?x=1")
+	h.type_("\uFEFF\u3000")
+	h.view.HandleInput("\r")
+	select {
+	case got := <-answer:
+		t.Fatalf("a BOM answered %v", got)
+	case <-time.After(50 * time.Millisecond):
+	}
+	h.type_("http://127.0.0.1:1/cb?code=9\uFEFF")
+	h.view.HandleInput("\r")
+	if got := receive(t, answer, "the redirect URL"); got != (menuAnswer{"http://127.0.0.1:1/cb?code=9", true}) {
+		t.Fatalf("answered %q", got.value)
 	}
 }
 
@@ -360,7 +410,7 @@ func TestMcpManagerViewFocusReachesTheInput(t *testing.T) {
 // ui.ts:215-219: rows wider than the width are cut to it.
 func TestMcpManagerViewCutsRowsToTheWidth(t *testing.T) {
 	h := newManagerHarness(t)
-	h.view.Status("A very long title that does not fit", "and a message that is longer than the width allows")
+	h.view.Status("A very long title that does not fit", "and a message that is longer than the width allows", nil)
 	for _, row := range h.view.Render(20) {
 		if w := widthx.VisibleWidth(row); w > 20 {
 			t.Fatalf("row %q is %d wide", row, w)
@@ -376,6 +426,8 @@ type scriptedUI struct {
 	// subscribed records, per menu, whether the manager passed a subscription that rebuilds it.
 	subscribed []bool
 	statuses   [][2]string
+	// cancels is the onCancel of each status, in order; nil for a status that cannot be cancelled.
+	cancels []func()
 }
 
 func (u *scriptedUI) Menu(_ context.Context, build func() mcpext.McpMenu, subscribe func(func()) func()) (string, bool) {
@@ -390,9 +442,10 @@ func (u *scriptedUI) Menu(_ context.Context, build func() mcpext.McpMenu, subscr
 	u.answers = u.answers[1:]
 	return answer, answer != ""
 }
-func (u *scriptedUI) Status(title, message string) {
+func (u *scriptedUI) Status(title, message string, onCancel func()) {
 	u.mu.Lock()
 	u.statuses = append(u.statuses, [2]string{title, message})
+	u.cancels = append(u.cancels, onCancel)
 	u.mu.Unlock()
 }
 func (u *scriptedUI) RedirectURL(context.Context, string, string) (string, bool) { return "", false }
@@ -459,7 +512,8 @@ func TestMcpEmptyStatusResolvesTheGlobalConfigPath(t *testing.T) {
 	}
 }
 
-// index.ts:546-597,687-701: choosing a server opens its menu; disabling it shows the disconnecting status and the menu then offers Enable.
+// index.ts:546-597,687-701: choosing a server opens its menu; disabling it runs in the background (no status screen
+// blocks the menu, 1.1.0 #10562) and the menu then offers Enable.
 func TestMcpManagerServerMenuAndDisable(t *testing.T) {
 	h := newCommandHarness(t, "docs")
 	ui := &scriptedUI{answers: []string{"docs", "disable", "", ""}}
@@ -481,8 +535,8 @@ func TestMcpManagerServerMenuAndDisable(t *testing.T) {
 	if got := itemsOf(server); !slices.Equal(got, want) || server.Selected != "tools" {
 		t.Fatalf("items = %q selected %q", got, server.Selected)
 	}
-	if !slices.Equal(ui.statuses, [][2]string{{"MCP server docs", "Disconnecting…"}}) {
-		t.Fatalf("statuses = %q", ui.statuses)
+	if len(ui.statuses) != 0 {
+		t.Fatalf("statuses = %q, want none: the menu stays usable while the connection closes", ui.statuses)
 	}
 	disabled := false
 	if len(h.updates) != 1 || h.updates[0].Enabled == nil || *h.updates[0].Enabled != disabled {
@@ -541,19 +595,18 @@ func TestMcpManagerExposureMenu(t *testing.T) {
 	}
 }
 
-// index.ts:663-670: reconnecting shows its status; the state after it is the menu's.
-func TestMcpManagerReconnectShowsItsStatus(t *testing.T) {
+// index.ts runAction (1.1.0, #10562): reconnecting runs in the background and shows no status screen that would block
+// the menu; the connection state reports its progress and failures.
+func TestMcpManagerReconnectRunsInTheBackgroundWithoutAStatusScreen(t *testing.T) {
 	h := newCommandHarness(t, "docs")
 	ui := &scriptedUI{answers: []string{"docs", "reconnect", "", ""}}
 	if err := h.ext.Manage(t.Context(), ui, h.ctx.EventContext); err != nil {
 		t.Fatal(err)
 	}
-	if !slices.Equal(ui.statuses, [][2]string{{"MCP server docs", "Reconnecting…"}}) {
-		t.Fatalf("statuses = %q", ui.statuses)
+	if len(ui.statuses) != 0 {
+		t.Fatalf("statuses = %q, want none", ui.statuses)
 	}
-	if got := ui.menus[2].Details; !strings.HasSuffix(got, "State: connected · 3 tools") {
-		t.Fatalf("details after = %q", got)
-	}
+	waitFor(t, "the reconnect to finish", func() bool { return h.ext.DescribeState("docs", false) == "connected · 3 tools" })
 }
 
 // index.ts:695-699: a server that is no longer configured ends its menu loop.

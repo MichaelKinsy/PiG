@@ -6,6 +6,7 @@ import (
 
 	"github.com/MichaelKinsy/PiG/agent"
 	"github.com/MichaelKinsy/PiG/ai"
+	"github.com/MichaelKinsy/PiG/tui"
 )
 
 // Ports packages/coding-agent/src/core/cache-stats.ts
@@ -141,7 +142,7 @@ func formatCacheMissNotice(miss *cacheMiss) string {
 	}
 	cost := ""
 	if miss.missedCost >= 0.01 {
-		cost = fmt.Sprintf(" (~$%.2f)", miss.missedCost)
+		cost = " (~$" + tui.JSToFixed(miss.missedCost, 2) + ")"
 	}
 	label := "Cache miss"
 	if miss.modelChanged {

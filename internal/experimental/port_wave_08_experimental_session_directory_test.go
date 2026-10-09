@@ -1,6 +1,7 @@
 package experimental
 
 import (
+	"os"
 	"path/filepath"
 	"runtime"
 	"testing"
@@ -40,10 +41,21 @@ func TestPortWave08SessionDirectory(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		want, err := filepath.Abs("relative/sessions")
+		// resolve() in the upstream test reads process.cwd(), the physical path; filepath.Abs would keep a symlinked $PWD
+		// (the macOS temporary directory /var/... is a symlink to /private/var/...).
+		wd, err := os.Getwd()
 		if err != nil {
 			t.Fatal(err)
 		}
+		// Windows has no $PWD indirection, and EvalSymlinks there expands the temporary directory's 8.3 short name
+		// (RUNNER~1) that process.cwd() keeps.
+		physical := wd
+		if runtime.GOOS != "windows" {
+			if physical, err = filepath.EvalSymlinks(wd); err != nil {
+				t.Fatal(err)
+			}
+		}
+		want := filepath.Join(physical, "relative", "sessions")
 		if got != want {
 			t.Fatalf("directory = %q, want %q", got, want)
 		}

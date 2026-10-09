@@ -17,12 +17,26 @@ const ProtocolVersion = 8
 type ProtocolErrorCode = string
 
 // ProtocolError is the bounded routing error exposed on the wire.
-type ProtocolError struct{ Code, Message string }
+type ProtocolError struct {
+	Code    ProtocolErrorCode
+	Message string
+}
 
 // ProtocolValidationError reports an invalid envelope or framed message.
-type ProtocolValidationError struct{ Message string }
+type ProtocolValidationError struct {
+	Message string
+}
 
 func (err *ProtocolValidationError) Error() string { return err.Message }
+
+// NewProtocolValidationError ports packages/protocol/src/codec.ts ProtocolValidationError constructor(message).
+func NewProtocolValidationError(message string) *ProtocolValidationError {
+	err := &ProtocolValidationError{Message: message}
+	return err
+}
+
+// Name is the `name` property, "ProtocolValidationError".
+func (*ProtocolValidationError) Name() string { return "ProtocolValidationError" }
 
 // RpcTarget fences a call to a logical server or a live Session attachment.
 type RpcTarget interface{ targetObject() Object }
@@ -120,8 +134,11 @@ type ServerId = string
 
 var canonicalServerId = regexp.MustCompile(`^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$`)
 
-// IsServerId requires a lowercase canonical UUIDv4.
-func IsServerId(value string) bool { return canonicalServerId.MatchString(value) }
+// IsServerId reports whether value is a string that is a lowercase canonical UUIDv4; any other value is not a ServerId (protocol.ts:17 takes unknown).
+func IsServerId(value any) bool {
+	id, ok := value.(string)
+	return ok && canonicalServerId.MatchString(id)
+}
 
 // IsSupportedProtocolVersion accepts only pinned integer version 8.
 func IsSupportedProtocolVersion(value float64) bool { return value == ProtocolVersion }
@@ -186,9 +203,9 @@ func parseError(value any) (ProtocolError, bool) {
 
 // ParseClientMessage validates an ordered Object without parsing JSON strings or interpreting the call payload.
 func ParseClientMessage(value any) (ClientMessage, error) {
-	invalid := &ProtocolValidationError{Message: "Invalid client protocol message"}
+	invalid := NewProtocolValidationError("Invalid client protocol message")
 	object, ok := value.(Object)
-	if !ok || !isProtocolJSON(object, map[uintptr]bool{}, 0) {
+	if !ok || !isProtocolJSON(object, map[uintptr]bool{}) {
 		return nil, invalid
 	}
 	kind, _ := ownString(object, "type", true)
@@ -232,9 +249,9 @@ func ParseClientMessage(value any) (ClientMessage, error) {
 
 // ParseServerMessage validates a server envelope while preserving absent/null result and attachment states.
 func ParseServerMessage(value any) (ServerMessage, error) {
-	invalid := &ProtocolValidationError{Message: "Invalid server protocol message"}
+	invalid := NewProtocolValidationError("Invalid server protocol message")
 	object, ok := value.(Object)
-	if !ok || !isProtocolJSON(object, map[uintptr]bool{}, 0) {
+	if !ok || !isProtocolJSON(object, map[uintptr]bool{}) {
 		return nil, invalid
 	}
 	kind, _ := ownString(object, "type", true)
@@ -315,11 +332,8 @@ func ParseServerMessage(value any) (ServerMessage, error) {
 	}
 }
 
-// isProtocolJSON follows packages/chord/src/json.ts:4-62. CBOR byte strings, undefined members, symbols, cycles, and non-finite numbers are not opaque JSON payloads.
-func isProtocolJSON(value any, ancestors map[uintptr]bool, depth int) bool {
-	if depth > 512 {
-		return false
-	}
+// isProtocolJSON follows packages/chord/src/json.ts:74-120 isJsonValue, which has no depth limit. CBOR byte strings, undefined members, symbols, cycles, and non-finite numbers are not opaque JSON payloads.
+func isProtocolJSON(value any, ancestors map[uintptr]bool) bool {
 	if number, ok := cborNumber(value); ok {
 		return !math.IsNaN(number) && !math.IsInf(number, 0)
 	}
@@ -334,7 +348,7 @@ func isProtocolJSON(value any, ancestors map[uintptr]bool, depth int) bool {
 		ancestors[identity] = true
 		defer delete(ancestors, identity)
 		for _, item := range value {
-			if !isProtocolJSON(item, ancestors, depth+1) {
+			if !isProtocolJSON(item, ancestors) {
 				return false
 			}
 		}
@@ -350,7 +364,7 @@ func isProtocolJSON(value any, ancestors map[uintptr]bool, depth int) bool {
 			if _, ok := property.Key.(string); !ok {
 				return false
 			}
-			if !isProtocolJSON(property.Value, ancestors, depth+1) {
+			if !isProtocolJSON(property.Value, ancestors) {
 				return false
 			}
 		}
@@ -363,7 +377,7 @@ func isProtocolJSON(value any, ancestors map[uintptr]bool, depth int) bool {
 // EncodeClientMessage validates and encodes one complete CBOR frame.
 func EncodeClientMessage(message ClientMessage, options FrameDecoderOptions) ([]byte, error) {
 	if nilProtocolValue(message) {
-		return nil, &ProtocolValidationError{Message: "Invalid client protocol message"}
+		return nil, NewProtocolValidationError("Invalid client protocol message")
 	}
 	object := message.clientObject()
 	if _, err := ParseClientMessage(object); err != nil {
@@ -375,7 +389,7 @@ func EncodeClientMessage(message ClientMessage, options FrameDecoderOptions) ([]
 // EncodeServerMessage validates and encodes one complete CBOR frame.
 func EncodeServerMessage(message ServerMessage, options FrameDecoderOptions) ([]byte, error) {
 	if nilProtocolValue(message) {
-		return nil, &ProtocolValidationError{Message: "Invalid server protocol message"}
+		return nil, NewProtocolValidationError("Invalid server protocol message")
 	}
 	object := message.serverObject()
 	if _, err := ParseServerMessage(object); err != nil {
@@ -397,7 +411,7 @@ func encodeProtocolObject(object Object, kind string, options FrameDecoderOption
 		payload, err = EncodeFrame(payload)
 	}
 	if err != nil {
-		return nil, &ProtocolValidationError{Message: "Unable to encode " + kind + " protocol message: " + boundedCodecError(err)}
+		return nil, NewProtocolValidationError("Unable to encode " + kind + " protocol message: " + boundedCodecError(err))
 	}
 	return payload, nil
 }
@@ -430,7 +444,7 @@ func newValidatedDecoder[T any](kind string, parse func(any) (T, error), options
 }
 func (decoder *validatedMessageDecoder[T]) push(chunk []byte) ([]T, error) {
 	if decoder.failed {
-		return nil, &ProtocolValidationError{Message: decoder.kind + " message decoder has failed"}
+		return nil, NewProtocolValidationError(decoder.kind + " message decoder has failed")
 	}
 	messages := []T{}
 	frames, err := decoder.frames.Push(chunk)
@@ -454,17 +468,17 @@ func (decoder *validatedMessageDecoder[T]) push(chunk []byte) ([]T, error) {
 		if failure, ok := errors.AsType[*ProtocolValidationError](err); ok {
 			return nil, failure
 		}
-		return nil, &ProtocolValidationError{Message: "Invalid " + decoder.kind + " protocol frame: " + boundedCodecError(err)}
+		return nil, NewProtocolValidationError("Invalid " + decoder.kind + " protocol frame: " + boundedCodecError(err))
 	}
 	return messages, nil
 }
 func (decoder *validatedMessageDecoder[T]) end() error {
 	if decoder.failed {
-		return &ProtocolValidationError{Message: decoder.kind + " message decoder has failed"}
+		return NewProtocolValidationError(decoder.kind + " message decoder has failed")
 	}
 	if err := decoder.frames.End(); err != nil {
 		decoder.failed = true
-		return &ProtocolValidationError{Message: "Invalid " + decoder.kind + " protocol framing: " + boundedCodecError(err)}
+		return NewProtocolValidationError("Invalid " + decoder.kind + " protocol framing: " + boundedCodecError(err))
 	}
 	return nil
 }

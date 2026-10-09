@@ -10,7 +10,7 @@ The reference is Pi 0.87.1 (`f07218c4d4bbc12bef056a7058c3dd49dfe41abe`). Paths b
 | Unknown-model condition | `packages/coding-agent/src/modes/interactive/interactive-mode.ts:298-300` | `isUnknownModel`; nil represents PiG's initial unknown sentinel |
 | Selection, discovery, guidance and messages | `packages/coding-agent/src/modes/interactive/interactive-mode.ts:5879-5975` | `completeProviderAuthentication`, `finishProviderAuthentication`, `postLoginModel` |
 | Model/default/thinking mutation before awaited notifications | `packages/coding-agent/src/core/agent-session.ts:2110-2137` | `Session.SetModelOnMain` separates owner-loop state mutation from worker-side notifications |
-| Submitted text and prompt layout | `packages/coding-agent/src/modes/interactive/components/login-dialog.ts:56-64,77-81,156-182` | `tui.LoginDialog`, with the selectable privacy feature disabled |
+| Submitted text and prompt layout | `packages/coding-agent/src/modes/interactive/components/login-dialog.ts:56-64,77-81,156-182` | `tui.LoginDialogComponent`, with the selectable privacy feature disabled |
 | Secret-prompt classification | `packages/ai/src/auth/helpers.ts:12-16`; `interactive-mode.ts:6085-6093` | Standard API-key prompts use the provider's auth-method name and secret classification |
 
 Radius's catalog-order fallback and llama.cpp guidance remain Pi's own special cases. No login path hard-codes a Copilot or Anthropic model. `TestDefaultModelPerProviderMatchesPinnedUpstream` independently parses the pinned table.

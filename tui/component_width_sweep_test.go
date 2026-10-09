@@ -42,7 +42,7 @@ func sweepCases() []sweepCase {
 	var cs []sweepCase
 	cs = append(cs, sweepCase{"Markdown", func(w int) []string { return NewMarkdown(all).Render(w) }})
 	cs = append(cs, sweepCase{"Text", func(w int) []string { return NewText(all).Render(w) }})
-	cs = append(cs, sweepCase{"TruncatedText", func(w int) []string { return NewTruncatedText(all, 50).Render(w) }})
+	cs = append(cs, sweepCase{"TruncatedText", func(w int) []string { return NewTruncatedText(all, 0, 0).Render(w) }})
 	cs = append(cs, sweepCase{"Box(Text)", func(w int) []string {
 		b := NewBox()
 		b.AddChild(NewText(all))
@@ -61,19 +61,19 @@ func sweepCases() []sweepCase {
 		for i, s := range sweepContent {
 			items = append(items, SettingItem{ID: string(rune('a' + i)), Label: s, Description: s, CurrentValue: s, Values: []string{s}})
 		}
-		return NewSettingsList(items).Render(w)
+		return NewSettingsList(items, 10, GetSettingsListTheme(), nil, nil, SettingsListOptions{EnableSearch: true}).Render(w)
 	}})
-	cs = append(cs, sweepCase{"UserMessageBlock", func(w int) []string { return NewUserMessageBlock(all).Render(w) }})
-	cs = append(cs, sweepCase{"UserMessageSelector", func(w int) []string { return NewUserMessageSelector(sweepContent).Render(w) }})
+	cs = append(cs, sweepCase{"UserMessageComponent", func(w int) []string { return NewUserMessageComponent(all, nil, 1, nil).Render(w) }})
+	cs = append(cs, sweepCase{"UserMessageSelectorComponent", func(w int) []string { return newUserMessageSelectorForTest(sweepContent).Render(w) }})
 	cs = append(cs, sweepCase{"ToolExecution", func(w int) []string {
-		c := NewToolExecutionComponent("bash 👨‍👩‍👧‍👦", all)
+		c := newToolCardForTest("bash 👨‍👩‍👧‍👦", all)
 		c.SetResult(all, true, 0)
 		c.SetExpanded(true)
 		return c.Render(w)
 	}})
-	cs = append(cs, sweepCase{"Loader", func(w int) []string { return NewLoader(sweepContent[0] + sweepContent[1]).Render(w) }})
+	cs = append(cs, sweepCase{"Loader", func(w int) []string { return NewLoader(nil, nil, nil, sweepContent[0]+sweepContent[1], nil).Render(w) }})
 	cs = append(cs, sweepCase{"BorderedLoader", func(w int) []string {
-		return NewBorderedLoader(sweepContent[0]+sweepContent[1], true).Render(w)
+		return NewBorderedLoader(nil, ActiveTheme(), sweepContent[0]+sweepContent[1]).Render(w)
 	}})
 	return cs
 }
@@ -175,8 +175,8 @@ func TestComponentRowsMatchUpstream(t *testing.T) {
 		k := strconv.Itoa(w)
 		check("Text(0,0)", w, (&Text{Content: all}).Render(w), pi.Text00[k])
 		check("Text(1,1)", w, (&Text{Content: all, PaddingX: 1, PaddingY: 1}).Render(w), pi.Text11[k])
-		check("TruncatedText(0,0)", w, NewPaddedTruncatedText(all, 0, 0).Render(w), pi.Truncated00[k])
-		check("TruncatedText(1,1)", w, NewPaddedTruncatedText(all, 1, 1).Render(w), pi.Truncated11[k])
+		check("TruncatedText(0,0)", w, NewTruncatedText(all, 0, 0).Render(w), pi.Truncated00[k])
+		check("TruncatedText(1,1)", w, NewTruncatedText(all, 1, 1).Render(w), pi.Truncated11[k])
 		if n := pi.MarkdownOverflow[k]; n != 0 {
 			t.Logf("upstream Markdown emits %d over-wide rows at width %d", n, w)
 		}
@@ -198,8 +198,8 @@ func TestOverlayCompositeWidthSweep(t *testing.T) {
 		}
 		for col := 0; col < tw; col += 2 {
 			for _, ow := range []int{3, 7, 12} {
-				ui := NewWithOutput(io.Discard, tw, len(bg))
-				ui.OpenOverlay(&recordingComponent{lines: strings.Split(strings.Join(sweepContent, "\n"), "\n")},
+				ui := newManualRenderTUI(io.Discard, tw, len(bg))
+				ui.ShowOverlay(&recordingComponent{lines: strings.Split(strings.Join(sweepContent, "\n"), "\n")},
 					OverlayOptions{width: overlayCells(ow), anchor: overlayTopLeft, row: overlayCells(1), col: overlayCells(col)})
 				for i, line := range ui.composeOverlayLines(bg, tw, len(bg)) {
 					rows++

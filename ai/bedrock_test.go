@@ -1,3 +1,5 @@
+//go:build !pig_strip_bedrock_converse_stream
+
 package ai
 
 import (
@@ -389,12 +391,12 @@ func TestBedrockConvertTools_Empty(t *testing.T) {
 
 func TestBedrockBuildAdditionalFields(t *testing.T) {
 	// Non-Claude → no thinking config.
-	if got := buildBedrockAdditionalFields(&Model{ID: "amazon.nova-lite-v1:0"}, "", StreamOptions{Thinking: ThinkingMedium, IsReasoning: true}); got != nil {
+	if got := buildBedrockAdditionalFields(&Model{ID: "amazon.nova-lite-v1:0"}, "", StreamOptions{Thinking: ThinkingLevelMedium, IsReasoning: true}); got != nil {
 		t.Errorf("Nova must not get thinking config, got %+v", got)
 	}
 
 	// Claude 3.7 Sonnet, medium thinking → enabled with budget_tokens.
-	got := buildBedrockAdditionalFields(&Model{ID: "anthropic.claude-3-7-sonnet-20250219-v1:0"}, "", StreamOptions{Thinking: ThinkingMedium, IsReasoning: true})
+	got := buildBedrockAdditionalFields(&Model{ID: "anthropic.claude-3-7-sonnet-20250219-v1:0"}, "", StreamOptions{Thinking: ThinkingLevelMedium, IsReasoning: true})
 	if got == nil {
 		t.Fatalf("Claude 3.7 + medium must return thinking config")
 	}
@@ -407,7 +409,7 @@ func TestBedrockBuildAdditionalFields(t *testing.T) {
 	}
 
 	// Adaptive thinking model (Claude Opus 4.7) → adaptive type + output_config.
-	got = buildBedrockAdditionalFields(&Model{ID: "anthropic.claude-opus-4-7-v1:0", ThinkingLevelMap: ThinkingLevelMap{ThinkingXHigh: new("xhigh")}}, "", StreamOptions{Thinking: ThinkingHigh, IsReasoning: true})
+	got = buildBedrockAdditionalFields(&Model{ID: "anthropic.claude-opus-4-7-v1:0", ThinkingLevelMap: ThinkingLevelMap{ThinkingXHigh: new("xhigh")}}, "", StreamOptions{Thinking: ThinkingLevelHigh, IsReasoning: true})
 	if got == nil {
 		t.Fatalf("adaptive model must return thinking config")
 	}
@@ -420,7 +422,7 @@ func TestBedrockBuildAdditionalFields(t *testing.T) {
 	}
 
 	// Inference profile should use model name for adaptive detection.
-	got = buildBedrockAdditionalFields(&Model{ID: "arn:aws:bedrock:::application-profile/foo", ThinkingLevelMap: ThinkingLevelMap{ThinkingXHigh: new("xhigh")}}, "Claude Opus 4.7", StreamOptions{Thinking: ThinkingXHigh, IsReasoning: true})
+	got = buildBedrockAdditionalFields(&Model{ID: "arn:aws:bedrock:::application-profile/foo", ThinkingLevelMap: ThinkingLevelMap{ThinkingXHigh: new("xhigh")}}, "Claude Opus 4.7", StreamOptions{Thinking: ThinkingLevelXHigh, IsReasoning: true})
 	if got == nil {
 		t.Fatalf("adaptive inference profile must return thinking config")
 	}
@@ -434,14 +436,14 @@ func TestBedrockBuildAdditionalFields(t *testing.T) {
 	}
 
 	// Custom map should override built-in effort mapping.
-	got = buildBedrockAdditionalFields(&Model{ID: "anthropic.claude-opus-4-6-v1", ThinkingLevelMap: ThinkingLevelMap{ThinkingXHigh: new("max")}}, "", StreamOptions{Thinking: ThinkingXHigh, IsReasoning: true})
+	got = buildBedrockAdditionalFields(&Model{ID: "anthropic.claude-opus-4-6-v1", ThinkingLevelMap: ThinkingLevelMap{ThinkingXHigh: new("max")}}, "", StreamOptions{Thinking: ThinkingLevelXHigh, IsReasoning: true})
 	oc, _ = got["output_config"].(map[string]any)
 	if oc["effort"] != "max" {
 		t.Errorf("adaptive mapped effort = %v, want max", oc["effort"])
 	}
 
 	// IsReasoning=false → no thinking config even on Claude.
-	if got := buildBedrockAdditionalFields(&Model{ID: "anthropic.claude-3-7-sonnet-20250219-v1:0"}, "", StreamOptions{Thinking: ThinkingMedium}); got != nil {
+	if got := buildBedrockAdditionalFields(&Model{ID: "anthropic.claude-3-7-sonnet-20250219-v1:0"}, "", StreamOptions{Thinking: ThinkingLevelMedium}); got != nil {
 		t.Errorf("IsReasoning=false must skip thinking config, got %+v", got)
 	}
 }
@@ -450,7 +452,7 @@ func TestBedrockBuildAdditionalFields_UsesModelCapWhenMaxTokensUnset(t *testing.
 	got := buildBedrockAdditionalFields(&Model{
 		ID:           "anthropic.claude-3-7-sonnet-20250219-v1:0",
 		Capabilities: ModelCapabilities{MaxOutputTokens: 128000},
-	}, "", StreamOptions{Thinking: ThinkingHigh, IsReasoning: true})
+	}, "", StreamOptions{Thinking: ThinkingLevelHigh, IsReasoning: true})
 	if got == nil {
 		t.Fatal("expected thinking config")
 	}

@@ -29,7 +29,7 @@ import {
   uuidv7,
   validateToolArguments,
   validateToolCall
-} from "./chunk-5YY4OANL.js";
+} from "./chunk-PU2OIHY3.js";
 import {
   envApiKeyAuth,
   lazyOAuth
@@ -71,7 +71,7 @@ import {
   resolveTranscriptTools,
   toToolDeclaration,
   withoutInitialSystemMessage
-} from "./chunk-Y5ITVTK2.js";
+} from "./chunk-7YNYAWTY.js";
 import "./chunk-SHUYVCID.js";
 export {
   AssistantMessageEventStream,

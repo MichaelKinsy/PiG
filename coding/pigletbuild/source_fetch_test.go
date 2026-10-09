@@ -49,7 +49,7 @@ func fakeModuleTree(t *testing.T) string {
 	files := map[string]string{
 		"go.mod":             "module github.com/MichaelKinsy/PiG\n\ngo 1.26.0\n",
 		"go.work":            "go 1.26.0\n\nuse ./extensions/sdk\n",
-		"cmd/pig/main.go":    "package main\n\nfunc main() {}\n",
+		"coding/cli/main.go": "package main\n\nfunc main() {}\n",
 		"coding/upstream.go": "package coding\n",
 	}
 	for name, content := range files {

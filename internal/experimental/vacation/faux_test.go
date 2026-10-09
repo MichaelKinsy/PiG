@@ -53,7 +53,7 @@ func answerStep(text string) ai.FauxResponseStep {
 }
 
 func callStep(name string, args map[string]any, id string) ai.FauxResponseStep {
-	return ai.FauxStaticStep(ai.FauxResponse{Content: []ai.FauxContentBlock{ai.FauxToolCall(name, args, id)}, StopReason: "toolUse"})
+	return ai.FauxStaticStep(ai.FauxResponse{Content: []ai.FauxContentBlock{ai.FauxToolCall(name, args, &ai.FauxToolCallOptions{ID: id})}, StopReason: "toolUse"})
 }
 
 // prompt submits text to conversation and waits for its settlement.

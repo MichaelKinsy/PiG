@@ -1,5 +1,7 @@
 package codingagent
 
+// pi: packages/coding-agent/src/core/cache-warmer.ts
+
 import (
 	"context"
 	"errors"
@@ -73,7 +75,7 @@ func branchWithPrompt(t *testing.T, promptTokens int) []SessionEntry {
 	}}); err != nil {
 		t.Fatal(err)
 	}
-	return session.Entries()
+	return session.GetEntries()
 }
 
 type warmCall struct {
@@ -110,7 +112,7 @@ func (f *fakeWarmRuntime) AppendUsage(kind, provider, model string, usage ai.Usa
 	return entry, err
 }
 
-func (f *fakeWarmRuntime) GetBranch() []SessionEntry {
+func (f *fakeWarmRuntime) GetBranch(fromID ...string) []SessionEntry {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	return f.branch
@@ -277,10 +279,10 @@ func TestCacheWarmingDerivesEligibilityAndTiming(t *testing.T) {
 		t.Error("delay(10000) is defined, want undefined")
 	}
 	replayable := []bool{
-		IsReplayable(models.budget, ai.StreamOptions{Thinking: ai.ThinkingMedium}),
+		IsReplayable(models.budget, ai.StreamOptions{Thinking: ai.ThinkingLevelMedium}),
 		IsReplayable(models.budget, ai.StreamOptions{}),
-		IsReplayable(models.adaptive, ai.StreamOptions{Thinking: ai.ThinkingMedium}),
-		IsReplayable(models.openai, ai.StreamOptions{Thinking: ai.ThinkingMedium}),
+		IsReplayable(models.adaptive, ai.StreamOptions{Thinking: ai.ThinkingLevelMedium}),
+		IsReplayable(models.openai, ai.StreamOptions{Thinking: ai.ThinkingLevelMedium}),
 	}
 	if want := []bool{false, true, true, true}; !equalBools(replayable, want) {
 		t.Errorf("replayable = %v, want %v", replayable, want)
@@ -313,7 +315,7 @@ func TestCacheWarmingReplaysProfitableRequestsAndPreservesOptions(t *testing.T) 
 		}
 		requestCtx, cancelRequest := context.WithCancel(context.Background())
 		defer cancelRequest()
-		f.warmer.Start(warmRequest(models.adaptive, ai.StreamOptions{Thinking: ai.ThinkingHigh, SessionID: "s", TransformHeaders: transformHeaders}), alwaysCurrent)
+		f.warmer.Start(warmRequest(models.adaptive, ai.StreamOptions{Thinking: ai.ThinkingLevelHigh, SessionID: "s", TransformHeaders: transformHeaders}), alwaysCurrent)
 		advance(270 * time.Second)
 
 		if f.callCount() != 1 {
@@ -321,7 +323,7 @@ func TestCacheWarmingReplaysProfitableRequestsAndPreservesOptions(t *testing.T) 
 		}
 		record := f.snapshot()
 		call := record.calls[0]
-		if call.model != models.adaptive || call.options.Thinking != ai.ThinkingHigh || call.options.SessionID != "s" || call.options.TransformHeaders == nil || call.options.MaxTokens != 1 {
+		if call.model != models.adaptive || call.options.Thinking != ai.ThinkingLevelHigh || call.options.SessionID != "s" || call.options.TransformHeaders == nil || call.options.MaxTokens != 1 {
 			t.Fatalf("warm request = %+v", call.options)
 		}
 		headers, err := call.options.TransformHeaders(call.ctx, nil)
@@ -396,6 +398,7 @@ func TestCacheWarmingRechecksTheDeadlineAfterAnExtensionDecision(t *testing.T) {
 }
 
 // .upstream/v0.87.1/packages/coding-agent/test/cache-warmer.test.ts:220
+// Pi: packages/coding-agent/src/core/cache-warmer.ts:103 (CacheWarmingDecision.economicsAvailable); packages/coding-agent/src/core/cache-warmer.ts:105 (CacheWarmingDecision.action); packages/coding-agent/src/core/cache-warmer.ts:128 (CacheWarmingStatus.decision); packages/coding-agent/src/core/cache-warmer.ts:131 (CacheWarmingStatus.extensionOverride).
 func TestCacheWarmingAppliesEconomicDecisionsAndExtensionOverrides(t *testing.T) {
 	models := newCacheWarmingModels(t)
 	synctest.Test(t, func(t *testing.T) {
@@ -450,7 +453,7 @@ func TestCacheWarmingStopsForUnsupportedRequestsContextChangesAndModeChanges(t *
 		if got := reason(); got != "cache lifetime unavailable" {
 			t.Fatalf("unknown model: reason = %q", got)
 		}
-		unsupported.warmer.Start(warmRequest(models.budget, ai.StreamOptions{Thinking: ai.ThinkingHigh}), alwaysCurrent)
+		unsupported.warmer.Start(warmRequest(models.budget, ai.StreamOptions{Thinking: ai.ThinkingLevelHigh}), alwaysCurrent)
 		if got := reason(); got != "request cannot be replayed safely" {
 			t.Fatalf("budget thinking: reason = %q", got)
 		}
@@ -525,6 +528,7 @@ func TestCacheWarmingAbortsReplacedRequestsAndSkipsFailedRefreshes(t *testing.T)
 }
 
 // .upstream/v0.87.1/packages/coding-agent/test/cache-warmer.test.ts:310
+// Pi: packages/coding-agent/src/core/cache-warmer.ts:101 (CacheWarmingDecision.expectedSavings); packages/coding-agent/src/core/cache-warmer.ts:103 (CacheWarmingDecision.economicsAvailable); packages/coding-agent/src/core/cache-warmer.ts:105 (CacheWarmingDecision.action); packages/coding-agent/src/core/cache-warmer.ts:127 (CacheWarmingStatus.nextWarmAt); packages/coding-agent/src/core/cache-warmer.ts:128 (CacheWarmingStatus.decision); packages/coding-agent/src/core/cache-warmer.ts:93 (CacheWarmingDecision.phase); packages/coding-agent/src/core/cache-warmer.ts:95 (CacheWarmingDecision.warmCost); packages/coding-agent/src/core/cache-warmer.ts:97 (CacheWarmingDecision.missCost); packages/coding-agent/src/core/cache-warmer.ts:99 (CacheWarmingDecision.continuationProbability).
 func TestCacheWarmingFormatsStatusAndUsageEntries(t *testing.T) {
 	decision := &CacheWarmingDecision{
 		Phase: "idle", WarmCost: 0.013, MissCost: 0.621, ContinuationProbability: 0.6,

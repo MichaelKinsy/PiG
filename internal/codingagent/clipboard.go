@@ -5,15 +5,14 @@ package codingagent
 import (
 	"bytes"
 	"context"
-	"crypto/rand"
-	"encoding/hex"
-	"fmt"
 	"image/png"
 	"os"
 	"path/filepath"
 	"slices"
 	"strings"
 	"time"
+
+	"github.com/google/uuid"
 
 	"github.com/MichaelKinsy/PiG/internal/imageprocessing"
 	"github.com/MichaelKinsy/PiG/tui"
@@ -228,9 +227,7 @@ func tryXclipContext(parent context.Context) ([]byte, string, clipboardImageResu
 // the Linux clipboard does not receive Windows screenshots. Mirrors upstream
 // readClipboardImageViaPowerShell.
 func readClipboardImageViaPowerShellContext(parent context.Context) ([]byte, bool) {
-	suffix := make([]byte, 16)
-	_, _ = rand.Read(suffix)
-	tmpFile := filepath.Join(os.TempDir(), "pi-wsl-clip-"+hex.EncodeToString(suffix)+".png")
+	tmpFile := filepath.Join(os.TempDir(), "pi-wsl-clip-"+uuid.NewString()+".png")
 	defer func() { _ = os.Remove(tmpFile) }()
 
 	out, err := runClipboardImageCommandContext(parent, clipboardListTimeout, "wslpath", "-w", tmpFile)
@@ -315,7 +312,7 @@ func ExtensionForImageMIME(mime string) string {
 }
 
 // SaveClipboardImageToTempFile writes the bytes to
-// $TMPDIR/pig-clipboard-<nanos>.<ext> and returns the absolute path.
+// $TMPDIR/pi-clipboard-<uuid>.<ext> and returns the absolute path.
 // The caller is responsible for cleanup; for a paste-into-editor flow
 // we leave the file around so the model can read it back.
 func SaveClipboardImageToTempFile(bytes []byte, mime string) (string, error) {
@@ -323,9 +320,10 @@ func SaveClipboardImageToTempFile(bytes []byte, mime string) (string, error) {
 	if ext == "" {
 		ext = "png"
 	}
-	name := fmt.Sprintf("pig-clipboard-%d.%s", time.Now().UnixNano(), ext)
+	name := "pi-clipboard-" + uuid.NewString() + "." + ext
 	path := filepath.Join(os.TempDir(), name)
-	if err := os.WriteFile(path, bytes, 0o600); err != nil {
+	// Node's writeFileSync creates the file with mode 0o666 less the umask.
+	if err := os.WriteFile(path, bytes, 0o666); err != nil {
 		return "", err
 	}
 	return path, nil

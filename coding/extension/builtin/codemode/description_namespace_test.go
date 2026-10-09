@@ -8,7 +8,7 @@ import (
 	"github.com/MichaelKinsy/PiG/coding/extension/builtin/codemode"
 )
 
-// tool.ts DESCRIPTION_INTRO and describeGlobals of 1.0.0, which the catalog cases of tool-search.test.ts only match in
+// tool.ts DESCRIPTION_INTRO and describeGlobals of 1.1.0, which the catalog cases of tool-search.test.ts only match in
 // part. Without nested tools the description is the intro and the globals, one line per global; the line that names
 // describeNamespace() and the search guidance for tools that are not listed are always there.
 const descriptionIntro = "Run JavaScript that calls other tools. The input is raw JavaScript (not JSON, no code fence), run as an async function body in a QuickJS sandbox: top-level `await` and `return` work. No Node, file system, network, or timers.\n" +
@@ -16,12 +16,12 @@ const descriptionIntro = "Run JavaScript that calls other tools. The input is ra
 	"- Optional first line: `// @options: {\"max_output_tokens\": 10000, \"timeout_ms\": 60000}`"
 
 const describeGlobals = "Globals:\n" +
-	"- `text(value)`, `image(dataUrlOrImageBlock)`, `console.log(...)`, and top-level `return` add output; `exit()` ends the script. `image()` also saves the image to a temp file and the result names its path.\n" +
+	"- `text(value)`, `image(dataUrlOrImageBlock)`, `console.log(...)`, and top-level `return` add output; `exit()` ends the script. With several text items, each starts with a `==> text N/M <==` line, and `console` lines follow the other output in one `<console_output>` block. `image()` also saves the image to a temp file and the result names its path.\n" +
 	"- `store(key, value)` and `load(key)` keep JSON values across codemode calls.\n" +
-	"- `ALL_TOOLS`, `searchTools(query, { limit?, namespace? })`, `describeTool(name)`, `describeNamespace(name)`: find unlisted tools, such as MCP tools."
+	"- `ALL_TOOLS`, `await searchTools(query, { limit?, namespace? })`, `await describeTool(name)`, `await describeNamespace(name)`: find unlisted tools, such as MCP tools."
 
 func TestCodemodeDescriptionDocumentsDescribeNamespaceAndAlwaysCarriesTheSearchGuidance(t *testing.T) {
-	if got, want := codemode.CreateDescription(nil, codemode.DescriptionOptions{}), descriptionIntro+"\n\n"+describeGlobals; got != want {
+	if got, want := mustDescription(t, nil, codemode.DescriptionOptions{}), descriptionIntro+"\n\n"+describeGlobals; got != want {
 		t.Errorf("description:\n%q\nwant\n%q", got, want)
 	}
 }
@@ -33,7 +33,7 @@ func TestCodemodeDescriptionNamesTheModelsGlobalInOneLine(t *testing.T) {
 		t.Error("DocsPath() is empty; upstream CODEMODE_DOCS_PATH is join(getDocsPath(), \"codemode.md\")")
 	}
 	want := descriptionIntro + "\n\n" + describeGlobals + "\n- `models`: classifiers and image generation. Read " + docs + " first."
-	if got := codemode.CreateDescription(nil, codemode.DescriptionOptions{Models: true}); got != want {
+	if got := mustDescription(t, nil, codemode.DescriptionOptions{Models: true}); got != want {
 		t.Errorf("description:\n%q\nwant\n%q", got, want)
 	}
 }

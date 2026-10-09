@@ -62,7 +62,7 @@ func TestFauxAgentObservationOracle(t *testing.T) {
 			t.Run(fmt.Sprintf("%s/layers%d", result.Fixture.Name, direct.Layers), func(t *testing.T) {
 				t.Parallel()
 				fixture := result.Fixture
-				provider := ai.NewFauxProvider(ai.FauxConfig{API: "faux-probe", ProviderID: "faux-probe", MinTokenSize: fixture.TokenSize, MaxTokenSize: fixture.TokenSize, TokensPerSecond: int(fixture.TokensPerSecond)})
+				provider := ai.NewFauxProvider(ai.FauxConfig{API: "faux-probe", ProviderID: "faux-probe", TokenSize: &ai.FauxTokenSize{Min: new(fixture.TokenSize), Max: new(fixture.TokenSize)}, TokensPerSecond: int(fixture.TokensPerSecond)})
 				if !fixture.NoResponse {
 					response := ai.FauxResponse{StopReason: fixture.Message.StopReason, ErrorMessage: fixture.Message.ErrorMessage, ResponseID: fixture.Message.ResponseID, Timestamp: new(int64(1))}
 					for _, block := range fixture.Content {
@@ -72,17 +72,17 @@ func TestFauxAgentObservationOracle(t *testing.T) {
 						case "thinking":
 							response.Content = append(response.Content, ai.FauxThinking(block.Thinking))
 						default:
-							response.Content = append(response.Content, ai.FauxToolCall(block.Name, block.Arguments, block.ID))
+							response.Content = append(response.Content, ai.FauxToolCall(block.Name, block.Arguments, &ai.FauxToolCallOptions{ID: block.ID}))
 						}
 					}
 					switch fixture.Factory {
 					case "value":
-						provider.SetResponses([]ai.FauxResponseStep{ai.FauxFactoryStep(func(ai.TranscriptContext, ai.StreamOptions, *ai.FauxProviderState, *ai.Model) (ai.FauxResponse, error) {
-							return response, nil
+						provider.SetResponses([]ai.FauxResponseStep{ai.FauxFactoryStep(func(ai.TranscriptContext, ai.StreamOptions, *ai.FauxProviderState, *ai.Model) (ai.AssistantMessage, error) {
+							return response.AssistantMessage(), nil
 						})})
 					case "reject":
-						provider.SetResponses([]ai.FauxResponseStep{ai.FauxFactoryStep(func(ai.TranscriptContext, ai.StreamOptions, *ai.FauxProviderState, *ai.Model) (ai.FauxResponse, error) {
-							return ai.FauxResponse{}, errors.New("scripted factory failure")
+						provider.SetResponses([]ai.FauxResponseStep{ai.FauxFactoryStep(func(ai.TranscriptContext, ai.StreamOptions, *ai.FauxProviderState, *ai.Model) (ai.AssistantMessage, error) {
+							return ai.FauxResponse{}.AssistantMessage(), errors.New("scripted factory failure")
 						})})
 					default:
 						provider.SetResponses([]ai.FauxResponseStep{ai.FauxStaticStep(response)})
@@ -102,7 +102,7 @@ func TestFauxAgentObservationOracle(t *testing.T) {
 					return makeStream(ctx)
 				}
 				var got []json.RawMessage
-				a := agent.NewAgent(agent.AgentOptions{Model: model, Tools: []agent.AgentTool{}, StreamFn: streamFn,
+				a := mustNewAgent(agent.AgentOptions{Model: model, Tools: []agent.AgentTool{}, StreamFn: streamFn,
 					FinishTurn: func(context.Context, agent.AgentTurnContext) (*agent.AgentTurnDecision, error) {
 						return &agent.AgentTurnDecision{Action: agent.AgentTurnEnd}, nil
 					},
@@ -185,7 +185,7 @@ func TestTestFauxAgentObservationOracle(t *testing.T) {
 					return makeStream(ctx)
 				}
 				var got []json.RawMessage
-				a := agent.NewAgent(agent.AgentOptions{Model: model, Tools: []agent.AgentTool{}, StreamFn: streamFn,
+				a := mustNewAgent(agent.AgentOptions{Model: model, Tools: []agent.AgentTool{}, StreamFn: streamFn,
 					FinishTurn: func(context.Context, agent.AgentTurnContext) (*agent.AgentTurnDecision, error) {
 						return &agent.AgentTurnDecision{Action: agent.AgentTurnEnd}, nil
 					},

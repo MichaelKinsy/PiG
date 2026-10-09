@@ -1,0 +1,42 @@
+[
+ {
+  "ids": [
+   "pkg:coding-agent/.#CodemodeToolDetails"
+  ],
+  "targets": [
+   "coding/extension/builtin/codemode/execute.go#ToolDetails"
+  ],
+  "struct": {
+   "file": "coding/extension/builtin/codemode/execute.go",
+   "type": "ToolDetails"
+  },
+  "production": [
+   "call:coding/extension/builtin/codemode/execute.go#Execute"
+  ],
+  "evidence": [
+   "test:coding/extension/builtin/codemode/details_store_test.go#TestStoreEntryDataAndFullOutputPathDetails",
+   "test:coding/extension/builtin/codemode/models_global_test.go#TestModelsGlobalServesTheRegistryToScripts"
+  ],
+  "rationale": "CodemodeToolDetails: Go codemode.ToolDetails {Calls []NestedCall, FullOutputPath string} (empty for upstream undefined); the new test asserts the full-output temp file holds the whole truncated result."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#CodemodeStoreEntryData"
+  ],
+  "targets": [
+   "coding/extension/builtin/codemode/execute.go#StoreEntryData"
+  ],
+  "struct": {
+   "file": "coding/extension/builtin/codemode/execute.go",
+   "type": "StoreEntryData"
+  },
+  "production": [
+   "call:coding/extension/builtin/codemode/execute.go#Execute"
+  ],
+  "evidence": [
+   "test:coding/extension/builtin/codemode/details_store_test.go#TestStoreEntryDataAndFullOutputPathDetails",
+   "test:coding/extension/builtin/codemode/session_free_upstream_test.go#TestFoldsStoreEntriesFromTheRootIgnoringMalformedData"
+  ],
+  "rationale": "CodemodeStoreEntryData: Go codemode.StoreEntryData {Set map[string]json.RawMessage (Record<string, unknown>), Delete []string}; empty Set/Delete encode as {} and [] like upstream."
+ }
+]

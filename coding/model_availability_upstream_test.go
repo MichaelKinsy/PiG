@@ -44,9 +44,9 @@ func (s *stalledCredentialList) List(ctx context.Context) ([]ai.CredentialInfo, 
 }
 func (s *stalledCredentialList) release(err error) { s.once.Do(func() { s.finish <- err }) }
 
-func newAvailabilitySession(t *testing.T, configured ...bool) (*Session, *Services) {
+func newAvailabilitySession(t *testing.T, configured ...bool) (*Session, *AgentSessionServices) {
 	t.Helper()
-	services, err := NewServices(ServicesOptions{CWD: t.TempDir(), AgentDir: t.TempDir()})
+	services, err := CreateAgentSessionServices(CreateAgentSessionServicesOptions{CWD: t.TempDir(), AgentDir: t.TempDir()})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -57,7 +57,7 @@ func newAvailabilitySession(t *testing.T, configured ...bool) (*Session, *Servic
 		if err := services.Auth().Set(providerID, ai.Credential{Type: ai.CredentialAPIKey, Key: "faux-key"}); err != nil {
 			t.Fatal(err)
 		}
-		services.Registry().RegisterProvider(providerID, extension.ProviderConfig{API: "openai-completions", BaseURL: "https://faux.invalid/v1", APIKey: "faux-key", Models: []extension.ProviderModelConfig{{ID: "faux", Name: "Faux", Input: []string{"text"}, ContextWindow: 128000, MaxTokens: 4096}}})
+		services.Registry().RegisterExtensionProvider(providerID, extension.ProviderConfig{API: "openai-completions", BaseURL: "https://faux.invalid/v1", APIKey: "faux-key", Models: []extension.ProviderModelConfig{{ID: "faux", Name: "Faux", Input: []string{"text"}, ContextWindow: 128000, MaxTokens: 4096}}})
 	}
 	session, err := NewSession(services, SessionOptions{NoSession: true, Model: model})
 	if err != nil {

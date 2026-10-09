@@ -73,7 +73,9 @@ async function main(data) {
                     type: "output",
                     item: a.toString() === "image"
                         ? { type: "image", data: b.toString(), mimeType: c.toString() }
-                        : { type: "text", text: b.toString() },
+                        : a.toString() === "console"
+                            ? { type: "text", text: b.toString(), console: true }
+                            : { type: "text", text: b.toString() },
                 });
                 break;
             case "done":

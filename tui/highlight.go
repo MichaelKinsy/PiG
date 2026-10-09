@@ -10,8 +10,9 @@ import (
 	"unicode/utf8"
 
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
-	"github.com/MichaelKinsy/PiG/tui/internal/hljs"
 )
+
+// pig additive (D92): highlightEngine, highlightRegistry and highlightStripped live in highlight_hljs_on.go, or in highlight_hljs_off.go for a Piglet Binary built without syntax-highlight.
 
 // HighlightFormatter styles the text of one highlight.js scope.
 type HighlightFormatter func(text string) string
@@ -27,13 +28,14 @@ type HighlightOptions struct {
 	Theme          HighlightTheme
 }
 
-// highlightRegistry is the highlight.js instance with the languages syntax-highlight.ts registers when it loads.
-var highlightRegistry = sync.OnceValue(hljs.NewRegistry)
-
 var loadAllHighlightLanguagesOnce sync.Once
 
 // LoadAllHighlightLanguages registers every highlight.js language, as loadAllHighlightLanguages does, and returns when they are available. It runs once; later calls wait for that load. Highlighted code cached before the load is discarded, because more languages now highlight.
 func LoadAllHighlightLanguages() {
+	// pig additive (D92): a Piglet that strips syntax-highlight loads no grammar.
+	if highlightStripped() {
+		return
+	}
 	loadAllHighlightLanguagesOnce.Do(func() {
 		highlightRegistry().LoadAllLanguages()
 		hlMu.Lock()
@@ -45,16 +47,25 @@ func LoadAllHighlightLanguages() {
 
 // SupportsLanguage reports whether highlight.js has a language or alias of that name.
 func SupportsLanguage(name string) bool {
+	// pig additive (D92): a Piglet that strips syntax-highlight supports no language.
+	if highlightStripped() {
+		return false
+	}
 	return highlightRegistry().SupportsLanguage(name)
 }
 
 // Highlight highlights code with highlight.js and renders its scopes with the theme. An error is an exception highlight.js throws, such as an unknown language.
 func Highlight(code string, options HighlightOptions) (string, error) {
+	// pig additive (D92): a Piglet that strips syntax-highlight highlights as highlight.js does with no language registered.
+	if highlightStripped() {
+		out, err := highlightPlain(code, options)
+		return terminalText(out), err
+	}
 	out, err := highlightWith(highlightRegistry(), code, options)
 	return terminalText(out), err
 }
 
-func highlightWith(registry *hljs.Registry, code string, options HighlightOptions) (string, error) {
+func highlightWith(registry highlightEngine, code string, options HighlightOptions) (string, error) {
 	var html string
 	var err error
 	if options.Language != "" {
@@ -248,7 +259,15 @@ func renderHighlightedHTML(html string, theme HighlightTheme) (output string, er
 			return
 		}
 		if f, ok := getActiveFormatter(scopes, theme); ok {
-			out.WriteString(f(textBuffer.String()))
+			// Each non-empty line takes the formatter on its own, so a token that spans lines (a multiline string or comment) keeps its color on every line after a terminal wraps or splits the output (#10143).
+			for i, line := range strings.Split(textBuffer.String(), "\n") {
+				if i > 0 {
+					out.WriteByte('\n')
+				}
+				if line != "" {
+					out.WriteString(f(line))
+				}
+			}
 		} else {
 			out.WriteString(textBuffer.String())
 		}
@@ -383,7 +402,7 @@ func jsParseInt(text string, radix int) float64 {
 // cliHighlightTheme is theme.ts buildCliHighlightTheme for a theme.
 func cliHighlightTheme(t *Theme) HighlightTheme {
 	fg := func(token string) HighlightFormatter {
-		return func(s string) string { return t.FgText(token, s) }
+		return func(s string) string { return t.Fg(token, s) }
 	}
 	return HighlightTheme{
 		"keyword":     fg("syntaxKeyword"),
@@ -392,6 +411,7 @@ func cliHighlightTheme(t *Theme) HighlightTheme {
 		"number":      fg("syntaxNumber"),
 		"regexp":      fg("syntaxString"),
 		"string":      fg("syntaxString"),
+		"subst":       fg("text"),
 		"comment":     fg("syntaxComment"),
 		"doctag":      fg("syntaxComment"),
 		"meta":        fg("muted"),
@@ -426,6 +446,10 @@ func highlightMarkdownCode(code, lang string) []string {
 
 func highlightCodeLines(code, lang string, codeBlockOnError bool) []string {
 	t := ActiveTheme()
+	// pig additive (D92): a Piglet that strips syntax-highlight renders every code block as Pi renders a language highlight.js does not support.
+	if highlightStripped() {
+		return codeBlockLines(code, t)
+	}
 	key := hlKey{lang: lang, code: code, codeBlockOnError: codeBlockOnError}
 
 	hlMu.Lock()
@@ -471,7 +495,7 @@ var (
 )
 
 // highlightCodeUncached is the pure highlighter behind the memo: streaming re-parses a message every frame, so closed code blocks would otherwise re-highlight with unchanged input. Callers treat the returned slice as read-only.
-func highlightCodeUncached(registry *hljs.Registry, code, lang string, codeBlockOnError bool, t *Theme) []string {
+func highlightCodeUncached(registry highlightEngine, code, lang string, codeBlockOnError bool, t *Theme) []string {
 	if lang == "" || !registry.SupportsLanguage(lang) {
 		return codeBlockLines(code, t)
 	}
@@ -488,7 +512,7 @@ func highlightCodeUncached(registry *hljs.Registry, code, lang string, codeBlock
 func codeBlockLines(code string, t *Theme) []string {
 	lines := strings.Split(code, "\n")
 	for i, line := range lines {
-		lines[i] = t.FgText("mdCodeBlock", line)
+		lines[i] = t.Fg("mdCodeBlock", line)
 	}
 	return lines
 }

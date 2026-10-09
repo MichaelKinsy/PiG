@@ -1,0 +1,193 @@
+[
+ {
+  "ids": [
+   "pkg:ai/.#NestedToolCallRecord"
+  ],
+  "targets": [
+   "ai/messages.go#NestedToolCallRecord"
+  ],
+  "struct": {
+   "file": "ai/messages.go",
+   "type": "NestedToolCallRecord"
+  },
+  "production": [
+   "call:ai/messages.go#NestedToolCallRecord.UnmarshalJSON"
+  ],
+  "evidence": [
+   "test:ai/nested_tool_call_argument_order_test.go#TestNestedToolCallRecordKeepsArgumentMemberOrderThroughJSONAndClone"
+  ],
+  "rationale": "types.ts NestedToolCallRecord {id, name, status, arguments?, argumentsBytes?, durationMs?, error?}: Go NestedToolCallRecord with the same json keys, pointers and empty values for absent. The unexported argumentOrder keeps upstream's argument member order."
+ },
+ {
+  "ids": [
+   "pkg:ai/.#NestedToolCalls"
+  ],
+  "targets": [
+   "ai/messages.go#NestedToolCalls"
+  ],
+  "struct": {
+   "file": "ai/messages.go",
+   "type": "NestedToolCalls"
+  },
+  "production": [
+   "call:ai/messages.go#NestedToolCallRecord.UnmarshalJSON"
+  ],
+  "evidence": [
+   "test:ai/nested_tool_call_argument_order_test.go#TestNestedToolCallRecordKeepsArgumentMemberOrderThroughJSONAndClone"
+  ],
+  "rationale": "types.ts NestedToolCalls {calls, complete}: Go NestedToolCalls {Calls []NestedToolCallRecord, Complete bool}."
+ },
+ {
+  "ids": [
+   "pkg:ai/.#OAuthPrompt"
+  ],
+  "targets": [
+   "ai/oauth_types.go#OAuthPrompt"
+  ],
+  "struct": {
+   "file": "ai/oauth_types.go",
+   "type": "OAuthPrompt"
+  },
+  "production": [
+   "call:ai/auth_native_login.go#oauthNativeLogin"
+  ],
+  "evidence": [
+   "test:ai/oauth_openai_codex_upstream_test.go#TestOpenAICodexOAuthUpstream"
+  ],
+  "rationale": "oauth/types.ts OAuthPrompt {message, placeholder?, allowEmpty?}: Go OAuthPrompt with an empty Placeholder and false AllowEmpty for absent."
+ },
+ {
+  "ids": [
+   "pkg:ai/.#OAuthCredentials"
+  ],
+  "targets": [
+   "ai/oauth_types.go#OAuthCredentials"
+  ],
+  "struct": {
+   "file": "ai/oauth_types.go",
+   "type": "OAuthCredentials"
+  },
+  "production": [
+   "call:ai/auth_native_login.go#oauthNativeLogin"
+  ],
+  "evidence": [
+   "test:ai/anthropic_oauth_upstream_test.go#TestAnthropicUpstreamOAuth",
+   "test:ai/oauth_openai_codex_upstream_test.go#TestOpenAICodexOAuthUpstream"
+  ],
+  "rationale": "oauth/types.ts OAuthCredentials {access, refresh, expires} plus provider-specific members: Go OAuthCredentials has the three fields and keeps provider members in Extra, ProjectID, AccountID and Scope."
+ },
+ {
+  "ids": [
+   "pkg:ai/.#OAuthAuthInfo"
+  ],
+  "targets": [
+   "ai/oauth_types.go#OAuthAuthInfo"
+  ],
+  "struct": {
+   "file": "ai/oauth_types.go",
+   "type": "OAuthAuthInfo"
+  },
+  "production": [
+   "call:ai/auth_native_login.go#oauthNativeLogin"
+  ],
+  "evidence": [
+   "test:ai/anthropic_oauth_upstream_test.go#TestAnthropicUpstreamOAuth"
+  ],
+  "rationale": "oauth/types.ts OAuthAuthInfo {url, instructions?}: Go OAuthAuthInfo with an empty Instructions for absent."
+ },
+ {
+  "ids": [
+   "pkg:ai/.#CredentialInfo"
+  ],
+  "targets": [
+   "ai/auth_store.go#CredentialInfo"
+  ],
+  "struct": {
+   "file": "ai/auth_store.go",
+   "type": "CredentialInfo"
+  },
+  "production": [
+   "call:ai/auth_store.go#authStorageData.infos"
+  ],
+  "evidence": [
+   "test:ai/auth_storage_first_half_upstream_test.go#TestAuthStorageFirstHalfUpstream"
+  ],
+  "rationale": "auth/credential-store.ts CredentialInfo {providerId, type}: Go CredentialInfo {ProviderID, Type CredentialType} with the api_key and oauth values."
+ },
+ {
+  "ids": [
+   "pkg:ai/.#ModelsRefreshResult"
+  ],
+  "targets": [
+   "ai/models_runtime.go#ModelsRefreshResult"
+  ],
+  "struct": {
+   "file": "ai/models_runtime.go",
+   "type": "ModelsRefreshResult"
+  },
+  "production": [
+   "call:ai/models_runtime_refresh.go#Models.Refresh"
+  ],
+  "evidence": [
+   "test:ai/models_runtime_refresh_upstream_test.go#TestModelsRuntimeRefreshUpstream"
+  ],
+  "rationale": "models.ts ModelsRefreshResult {aborted, errors}: Go ModelsRefreshResult {Aborted, Errors map[string]error}; ErrorOrder records the ReadonlyMap's insertion order."
+ },
+ {
+  "ids": [
+   "pkg:ai/.#ModelsPublication"
+  ],
+  "targets": [
+   "ai/models_runtime.go#ModelsPublication"
+  ],
+  "struct": {
+   "file": "ai/models_runtime.go",
+   "type": "ModelsPublication"
+  },
+  "production": [
+   "call:ai/models_provider.go#CreateProvider"
+  ],
+  "evidence": [
+   "test:ai/models_runtime_refresh_upstream_test.go#TestModelsRuntimeRefreshUpstream"
+  ],
+  "rationale": "models.ts ModelsPublication {persist?, update?}: Go ModelsPublication; PersistSet distinguishes an absent persist from the explicit null."
+ },
+ {
+  "ids": [
+   "pkg:ai/.#ModelCost"
+  ],
+  "targets": [
+   "ai/types.go#ModelCost"
+  ],
+  "struct": {
+   "file": "ai/types.go",
+   "type": "ModelCost"
+  },
+  "production": [
+   "call:ai/anthropic.go#anthropicProvider.Stream"
+  ],
+  "evidence": [
+   "test:ai/anthropic_sse_upstream_test.go#TestAnthropicUpstreamSSEParsing"
+  ],
+  "rationale": "types.ts ModelCost {input, output, cacheRead, cacheWrite, tiers?}: Go ModelCost with the same json keys; tiers is []CostTier."
+ },
+ {
+  "ids": [
+   "pkg:ai/.#ProviderResponse"
+  ],
+  "targets": [
+   "ai/types.go#ProviderResponse"
+  ],
+  "struct": {
+   "file": "ai/types.go",
+   "type": "ProviderResponse"
+  },
+  "production": [
+   "call:ai/faux.go#FauxProviderHandle.streamStep"
+  ],
+  "evidence": [
+   "test:ai/mistral_http_transport_upstream_test.go#TestMistralHTTPTransportUpstream"
+  ],
+  "rationale": "types.ts ProviderResponse {status, headers}: Go ProviderResponse {Status int, Headers map[string]string}."
+ }
+]

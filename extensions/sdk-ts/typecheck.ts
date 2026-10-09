@@ -18,6 +18,7 @@ import type {
   ToolLoadoutChanges,
   ToolNamespace,
 } from "@earendil-works/pi-coding-agent";
+import type { Component, Container } from "@earendil-works/pi-tui";
 import type {
   ExtensionToolContext as AdapterExtensionToolContext,
   McpServerConfig as AdapterMcpServerConfig,
@@ -25,6 +26,8 @@ import type {
   ProviderConfig as AdapterProviderConfig,
   PiGLoginDefinition,
   PiGSpriteDefinition,
+  PiGViewLines,
+  PiGViewTheme,
 } from "@michaelkinsy/pig-extension-types";
 
 const login: PiGLoginDefinition = {
@@ -266,3 +269,24 @@ export const adapterReexportsPinnedTypes: [
   Same<AdapterModelRegistry, ModelRegistry>,
   Same<AdapterProviderConfig, ProviderConfig>,
 ] = [true, true, true, true];
+
+// PiG's component kit (D107): a surface root's token overrides and the
+// frontend-only annotations of a component's rows, on any pi-tui component.
+export function kitAnnotations(root: Container, table: Component): void {
+  const surface: Component = root;
+  surface.viewTheme = { accent: "#d75f00", selectedBg: "#102030" };
+  table.viewLines = {
+    list: { items: [{ label: "Blue in Green", detail: "Miles Davis", columns: ["5:37"] }], selectedIndex: 0 },
+    progress: { value: 30, max: 200 },
+    image: { data: "", mimeType: "image/png" },
+  };
+  const theme: PiGViewTheme | undefined = surface.viewTheme;
+  const lines: PiGViewLines | undefined = table.viewLines;
+  void [theme, lines];
+  // @ts-expect-error only the closed token set can be overridden
+  surface.viewTheme = { accent2: "#ffffff" };
+  // @ts-expect-error an override is a #rrggbb color
+  surface.viewTheme = { accent: "orange" };
+  // @ts-expect-error a list names its selected item
+  table.viewLines = { list: { items: [] } };
+}

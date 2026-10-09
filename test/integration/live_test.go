@@ -312,7 +312,7 @@ func linesContainAny(lines []string, needle string) bool {
 //
 // These exercise the public coding/ package directly, the same way
 // any external library consumer would. No subprocess, no TUI: just
-// coding.NewServices → coding.NewRuntime → rt.New → sess.Send.
+// coding.CreateAgentSessionServices → coding.NewRuntime → rt.New → sess.Send.
 //
 // PR F5: proves the SDK is usable end-to-end against a
 // real LLM with the same auth path the pig binary uses.
@@ -326,12 +326,12 @@ func TestLive_SDKEmbeddedSessionSendReceives(t *testing.T) {
 	t.Setenv("PIG_HOME", pigHome)
 	cwd := t.TempDir()
 
-	svcs, err := coding.NewServices(coding.ServicesOptions{
+	svcs, err := coding.CreateAgentSessionServices(coding.CreateAgentSessionServicesOptions{
 		CWD:      cwd,
 		AgentDir: filepath.Join(pigHome, "agent"),
 	})
 	if err != nil {
-		t.Fatalf("NewServices: %v", err)
+		t.Fatalf("CreateAgentSessionServices: %v", err)
 	}
 	rt, err := coding.NewRuntime(coding.RuntimeOptions{Services: svcs})
 	if err != nil {
@@ -394,7 +394,7 @@ func TestLive_SDKMultiSessionSharingRuntime(t *testing.T) {
 	t.Setenv("PIG_HOME", pigHome)
 	cwd := t.TempDir()
 
-	svcs, err := coding.NewServices(coding.ServicesOptions{
+	svcs, err := coding.CreateAgentSessionServices(coding.CreateAgentSessionServicesOptions{
 		CWD:      cwd,
 		AgentDir: filepath.Join(pigHome, "agent"),
 	})

@@ -1,0 +1,136 @@
+[
+ {
+  "ids": [
+   "pkg:mcp/testing#InMemoryTransport"
+  ],
+  "targets": [
+   "mcp/mcptest/inmemory.go#InMemoryTransport"
+  ],
+  "production": [
+   "public-api:mcp/mcptest/inmemory.go#InMemoryTransport"
+  ],
+  "evidence": [
+   "test:mcp/mcptest/inmemory_test.go#TestInMemoryTransportPairDeliversInOrderAndCloseNotifiesBothEnds"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the error; `void | Promise<void>` is the single Go error.",
+  "rationale": "InMemoryTransport is mcptest.InMemoryTransport (upstream mcp/testing is Go mcp/mcptest). Closed as public-api-tested: a public test-double package that no PiG binary calls; the new tests drive its contract directly.",
+  "properties": {
+   "connectPeer": {
+    "targets": [
+     "mcp/mcptest/inmemory.go#InMemoryTransport.ConnectPeer"
+    ],
+    "evidence": [
+     "test:mcp/mcptest/inmemory_test.go#TestInMemoryTransportRefusesASecondPeerAndAnUnconnectedSend"
+    ],
+    "production": [
+     "public-api:mcp/mcptest/inmemory.go#InMemoryTransport.ConnectPeer"
+    ],
+    "rationale": "ConnectPeer(peer) error returns the `already has a peer` error where upstream throws."
+   },
+   "onClose": {
+    "targets": [
+     "mcp/transport.go#TransportEvents.OnClose"
+    ],
+    "evidence": [
+     "test:mcp/mcptest/inmemory_test.go#TestInMemoryTransportPairDeliversInOrderAndCloseNotifiesBothEnds"
+    ],
+    "production": [
+     "public-api:mcp/transport.go#TransportEvents.OnClose"
+    ],
+    "rationale": "OnClose is promoted from the embedded TransportEvents; the returned func disposes the listener."
+   },
+   "onError": {
+    "targets": [
+     "mcp/transport.go#TransportEvents.OnError"
+    ],
+    "evidence": [
+     "test:mcp/mcptest/inmemory_test.go#TestInMemoryTransportPairDeliversInOrderAndCloseNotifiesBothEnds",
+     "test:mcp/mcptest/inmemory_test.go#TestInMemoryTransportListenersCanBeDisposedAndErrorsAreEmitted"
+    ],
+    "production": [
+     "public-api:mcp/transport.go#TransportEvents.OnError"
+    ],
+    "rationale": "OnError is promoted from the embedded TransportEvents."
+   },
+   "onMessage": {
+    "targets": [
+     "mcp/transport.go#TransportEvents.OnMessage"
+    ],
+    "evidence": [
+     "test:mcp/mcptest/inmemory_test.go#TestInMemoryTransportPairDeliversInOrderAndCloseNotifiesBothEnds"
+    ],
+    "production": [
+     "public-api:mcp/transport.go#TransportEvents.OnMessage"
+    ],
+    "rationale": "OnMessage is promoted from the embedded TransportEvents."
+   },
+   "close": {
+    "targets": [
+     "mcp/mcptest/inmemory.go#InMemoryTransport.Close"
+    ],
+    "evidence": [
+     "test:coding/mcpext/connection_test.go#TestMCPConnectionsMarksADroppedConnectionAndReconnectsOnTheNextCall",
+     "test:mcp/client_test.go#TestClientNotifiesCloseListenersOnceWhenTheTransportDrops"
+    ],
+    "production": [
+     "public-api:mcp/mcptest/inmemory.go#InMemoryTransport.Close"
+    ],
+    "rationale": "InMemoryTransport.close is the Go method mcptest.InMemoryTransport.Close; signature reviewed against the upstream declaration (a Promise or rejection is the returned error; unknown error is Go error). Closed as public-api-tested: mcp/mcptest is a public test-double package and no PiG binary calls it; test callers (go/types) are the proof."
+   },
+   "emitError": {
+    "targets": [
+     "mcp/mcptest/inmemory.go#InMemoryTransport.EmitError"
+    ],
+    "evidence": [
+     "test:mcp/client_test.go#TestClientReportsTransportErrorsWithoutFailingPendingRequests"
+    ],
+    "production": [
+     "public-api:mcp/mcptest/inmemory.go#InMemoryTransport.EmitError"
+    ],
+    "rationale": "InMemoryTransport.emitError is the Go method mcptest.InMemoryTransport.EmitError; signature reviewed against the upstream declaration (a Promise or rejection is the returned error; unknown error is Go error). Closed as public-api-tested: mcp/mcptest is a public test-double package and no PiG binary calls it; test callers (go/types) are the proof."
+   },
+   "send": {
+    "targets": [
+     "mcp/mcptest/inmemory.go#InMemoryTransport.Send"
+    ],
+    "evidence": [
+     "test:coding/mcp_session_upstream_test.go#TestAgentSessionMCPWithdrawsAndRestoresMCPToolsTheServerChanges",
+     "test:coding/mcpext/connection_test.go#TestMCPConnectionsAppendsServerLogMessagesToTheLogFile"
+    ],
+    "production": [
+     "public-api:mcp/mcptest/inmemory.go#InMemoryTransport.Send"
+    ],
+    "rationale": "InMemoryTransport.send is the Go method mcptest.InMemoryTransport.Send; signature reviewed against the upstream declaration (a Promise or rejection is the returned error; unknown error is Go error). Closed as public-api-tested: mcp/mcptest is a public test-double package and no PiG binary calls it; test callers (go/types) are the proof."
+   },
+   "start": {
+    "targets": [
+     "mcp/mcptest/inmemory.go#InMemoryTransport.Start"
+    ],
+    "evidence": [
+     "test:coding/mcpext/connection_test.go#TestMCPConnectionsClosesAConnectionThatIsStillInitializingBeforeCloseReturns",
+     "test:coding/mcpext/extension_test.go#TestAgentSessionMCPDoesNotActivateAnotherExtensionsToolNamedCodemode"
+    ],
+    "production": [
+     "public-api:mcp/mcptest/inmemory.go#InMemoryTransport.Start"
+    ],
+    "rationale": "InMemoryTransport.start is the Go method mcptest.InMemoryTransport.Start; signature reviewed against the upstream declaration (a Promise or rejection is the returned error; unknown error is Go error). Closed as public-api-tested: mcp/mcptest is a public test-double package and no PiG binary calls it; test callers (go/types) are the proof."
+   }
+  }
+ },
+ {
+  "ids": [
+   "pkg:mcp/testing#InMemoryTransport::construct:0"
+  ],
+  "targets": [
+   "mcp/mcptest/inmemory.go#InMemoryTransport",
+   "mcp/mcptest/inmemory.go#NewInMemoryTransportPair"
+  ],
+  "production": [
+   "public-api:mcp/mcptest/inmemory.go#NewInMemoryTransportPair"
+  ],
+  "evidence": [
+   "test:mcp/mcptest/inmemory_test.go#TestInMemoryTransportPairDeliversInOrderAndCloseNotifiesBothEnds"
+  ],
+  "rationale": "`new InMemoryTransport()` is only reachable in Go through NewInMemoryTransportPair, which returns two connected transports; the struct's fields are unexported."
+ }
+]

@@ -8,6 +8,8 @@ import (
 	"slices"
 	"strings"
 	"time"
+
+	"github.com/MichaelKinsy/PiG/ai"
 )
 
 // Ports packages/coding-agent/src/extensions/llama/index.ts: the /llama
@@ -59,8 +61,15 @@ func parseHuggingFaceModel(value string) (repository, quantization string) {
 	return value[:start+colon], value[start+colon+1:]
 }
 
-func (h *Host) configuredClient(ctx CommandContext) (*LlamaClient, error) {
-	result, err := h.GetProviderAuth(ctx.Ctx)
+// ModelRegistry is the part of ctx.modelRegistry the /llama command uses: Pi's getProviderAuth and refresh.
+// upstream: packages/coding-agent/src/extensions/llama/index.ts:configuredClient,syncCatalog
+type ModelRegistry interface {
+	GetProviderAuth(ctx context.Context, id string) (*ai.AuthResult, error)
+	Refresh(ctx context.Context, options ai.ModelsRefreshOptions) ai.ModelsRefreshResult
+}
+
+func configuredClient(ctx CommandContext, registry ModelRegistry) (*LlamaClient, error) {
+	result, err := registry.GetProviderAuth(ctx.Ctx, LlamaProviderID)
 	if err != nil {
 		return nil, err
 	}
@@ -81,10 +90,13 @@ func (h *Host) configuredClient(ctx CommandContext) (*LlamaClient, error) {
 
 // commandSession carries one /llama invocation's collaborators.
 type commandSession struct {
-	host   *Host
-	ctx    CommandContext
-	ui     LlamaUi
-	client *LlamaClient
+	registry   ModelRegistry
+	controller *LlamaProviderController
+	// huggingFaceURL overrides https://huggingface.co in tests.
+	huggingFaceURL string
+	ctx            CommandContext
+	ui             LlamaUi
+	client         *LlamaClient
 }
 
 func (s *commandSession) notify(message string) { s.ctx.Notify(message, "info") }
@@ -101,15 +113,15 @@ func (s *commandSession) syncCatalog(catalog []LlamaModelInfo, provided bool) ([
 			return nil, err
 		}
 	}
-	s.host.controller.SetCatalog(current, s.client.ServerURL, false)
-	s.host.SyncRegistration(ctx)
+	s.controller.SetCatalog(current, s.client.ServerURL, false)
 	// /llama already contacted the configured llama.cpp server, so keep this refresh live even in PI_OFFLINE.
-	result := s.host.Refresh(ctx, true)
+	allowNetwork := true
+	result := s.registry.Refresh(ctx, ai.ModelsRefreshOptions{Providers: []string{LlamaProviderID}, AllowNetwork: &allowNetwork})
 	if result.Aborted {
 		return nil, errors.New("Model catalog refresh timed out.")
 	}
-	if result.Err != nil {
-		return nil, result.Err
+	if err := result.Errors[LlamaProviderID]; err != nil {
+		return nil, err
 	}
 	return current, nil
 }
@@ -226,7 +238,7 @@ func quantizationOptions(quantizations []HuggingFaceQuantization) []string {
 }
 
 func (s *commandSession) downloadModel() error {
-	huggingFace := NewHuggingFaceClient(FindHuggingFaceToken(os.Getenv), s.host.huggingFaceURL)
+	huggingFace := NewHuggingFaceClient(FindHuggingFaceToken(os.Getenv), s.huggingFaceURL)
 	selected, ok := s.ui.SearchModels(huggingFace.Search)
 	if !ok {
 		return nil
@@ -329,17 +341,17 @@ func (s *commandSession) manage(ui LlamaUi) error {
 	}
 }
 
-// HandleCommand mirrors the /llama command handler.
-func (h *Host) HandleCommand(ctx CommandContext) error {
+// RunCommand mirrors the /llama command handler registered by index.ts.
+func RunCommand(ctx CommandContext, registry ModelRegistry, controller *LlamaProviderController) error {
 	if ctx.Mode != "tui" {
 		ctx.Notify("/llama is available in interactive mode", "warning")
 		return nil
 	}
-	client, err := h.configuredClient(ctx)
+	client, err := configuredClient(ctx, registry)
 	if err != nil || client == nil {
 		return err
 	}
-	session := &commandSession{host: h, ctx: ctx, client: client}
+	session := &commandSession{registry: registry, controller: controller, ctx: ctx, client: client}
 	ShowLlamaUi(ctx, session.manage)
 	return nil
 }

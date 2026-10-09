@@ -1,5 +1,7 @@
 package ai
 
+// pi: packages/ai/src/auth/oauth/meta.ts
+
 // Ports .upstream/current/packages/ai/test/meta-oauth.test.ts.
 
 import (

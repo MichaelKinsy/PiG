@@ -30,7 +30,7 @@ func requireAbsentJSON(t *testing.T, payload map[string]json.RawMessage, key str
 }
 
 func customAdaptiveModel(compat *ModelCompat) *Model {
-	return &Model{ID: "vendor--claude-opus-latest", DisplayName: "Vendor Proxy Opus Latest", Capabilities: ModelCapabilities{MaxThinking: ThinkingHigh, ContextWindow: 200000, MaxOutputTokens: 32000}, Input: []string{"text"}, ProviderMeta: ProviderMetadata{ProviderID: "vendor-proxy", API: APIAnthropicMessages, BaseURL: "http://127.0.0.1:9", Reasoning: true, Compat: compat}}
+	return &Model{ID: "vendor--claude-opus-latest", DisplayName: "Vendor Proxy Opus Latest", Capabilities: ModelCapabilities{MaxThinking: ThinkingLevelHigh, ContextWindow: 200000, MaxOutputTokens: 32000}, Input: []string{"text"}, ProviderMeta: ProviderMetadata{ProviderID: "vendor-proxy", API: APIAnthropicMessages, BaseURL: "http://127.0.0.1:9", Reasoning: true, Compat: compat}}
 }
 
 // Ports packages/ai/test/anthropic-force-adaptive-thinking.test.ts:71-122 through the same streamSimple caller and onPayload boundary.
@@ -41,7 +41,7 @@ func TestAnthropicUpstreamForceAdaptiveThinking(t *testing.T) {
 	for _, tc := range []struct {
 		name             string
 		model            *Model
-		level            ThinkingLevel
+		level            ModelThinkingLevel
 		thinking, output string
 	}{
 		// .upstream/v0.87.1/packages/ai/test/anthropic-force-adaptive-thinking.test.ts:71
@@ -64,7 +64,7 @@ func TestAnthropicUpstreamForceAdaptiveThinking(t *testing.T) {
 			model.ProviderMeta.BaseURL = "http://127.0.0.1:9"
 			payload := captureUpstreamPayloadCall(t, func(options StreamOptions) (*AssistantMessageEventStream, error) {
 				return StreamSimple(t.Context(), &model, NormalizeContext(ctx), options)
-			}, StreamOptions{APIKey: "fake-key", Thinking: tc.level})
+			}, StreamOptions{APIKey: "fake-key", Thinking: tc.level.ReasoningOption()})
 			if tc.thinking == "enabled" {
 				var thinking struct {
 					Type string `json:"type"`
@@ -94,7 +94,7 @@ func TestAnthropicSimpleCallerPreservesCustomModel(t *testing.T) {
 	model := customAdaptiveModel(&ModelCompat{ForceAdaptiveThinking: new(true)})
 	captured := errors.New("payload captured")
 	var payload map[string]json.RawMessage
-	stream, err := StreamSimple(t.Context(), model, NormalizeContext(Context{Messages: []Message{UserMessage{Content: UserText("Hello")}}}), StreamOptions{APIKey: "fake-key", Thinking: ThinkingOff, OnPayload: func(value any, _ *Model) (any, error) {
+	stream, err := StreamSimple(t.Context(), model, NormalizeContext(Context{Messages: []Message{UserMessage{Content: UserText("Hello")}}}), StreamOptions{APIKey: "fake-key", Thinking: "", OnPayload: func(value any, _ *Model) (any, error) {
 		encoded, err := json.Marshal(value)
 		if err != nil {
 			return nil, err
@@ -137,7 +137,7 @@ func TestAnthropicUpstreamTemperatureCompat(t *testing.T) {
 				config.ProviderID = "vendor-proxy"
 				config.Compat = &AnthropicMessagesCompat{SupportsTemperature: new(false)}
 			}
-			payload := captureAnthropicUpstreamPayload(t, NewAnthropicProvider(config), Context{Messages: []Message{UserMessage{Content: UserText("Hello")}}}, StreamOptions{Temperature: tc.temp, TemperatureSet: true, Thinking: ThinkingOff})
+			payload := captureAnthropicUpstreamPayload(t, NewAnthropicProvider(config), Context{Messages: []Message{UserMessage{Content: UserText("Hello")}}}, StreamOptions{Temperature: tc.temp, TemperatureSet: true, Thinking: ""})
 			if tc.present {
 				assertShapeJSON(t, payload["temperature"], "0")
 			} else {

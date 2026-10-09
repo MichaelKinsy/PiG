@@ -27,6 +27,13 @@ fn make_provider() -> Arc<Provider> {
         if meta["fail"] == true {
             return Err("carrier stream failed".into());
         }
+        // Pi types.ts:1917-1920: streamSimple invokes options.onPayload before the request and options.onResponse after the response.
+        if let Some(on_payload) = &options.on_payload {
+            on_payload(json!({"marker":"carrier-payload"}), model.clone())?;
+        }
+        if let Some(on_response) = &options.on_response {
+            on_response(json!({"status":207,"headers":{"x-carrier":"carrier-response"}}), model.clone())?;
+        }
         let stream = Arc::new(ModelEventStream::new());
         let mut message = json!({"role":"assistant","api":model["api"],"provider":model["provider"],"model":model["id"],"content":[],"usage":{"input":0,"output":0,"cacheRead":0,"cacheWrite":0,"totalTokens":0,"cost":{"input":0,"output":0,"cacheRead":0,"cacheWrite":0,"total":0}},"stopReason":"stop","timestamp":1});
         if meta["wait"] == true {
@@ -107,6 +114,25 @@ fn make_provider() -> Arc<Provider> {
             Ok(
                 if credential.as_ref().is_some_and(|c| c["key"] == "selected") {
                     models[..1].to_vec()
+                } else {
+                    vec![]
+                },
+            )
+        })),
+        get_all_models: Some({
+            let models = models.clone();
+            Arc::new(move || {
+                let mut all = models.lock().unwrap().clone();
+                let mut extra = all[0].as_ref().clone();
+                extra["id"] = json!("carrier-all-only");
+                all.push(Arc::new(extra));
+                Ok(all)
+            })
+        }),
+        filter_all_models: Some(Arc::new(|models, credential| {
+            Ok(
+                if credential.as_ref().is_some_and(|c| c["key"] == "all") {
+                    models.to_vec()
                 } else {
                     vec![]
                 },

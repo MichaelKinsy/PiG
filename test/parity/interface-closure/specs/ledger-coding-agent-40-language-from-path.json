@@ -1,0 +1,17 @@
+[
+ {
+  "ids": [
+   "pkg:coding-agent/.#getLanguageFromPath"
+  ],
+  "targets": [
+   "tui/highlight.go#LanguageFromPath"
+  ],
+  "production": [
+   "call:internal/codingagent/tool_builtin_renderers.go#readRenderResult"
+  ],
+  "evidence": [
+   "test:tui/highlight_test.go#TestLanguageFromPath"
+  ],
+  "rationale": "getLanguageFromPath: Go tui.LanguageFromPath(path) string, \"\" for undefined; the test pins the whole-path last-dot rule and JavaScript toLowerCase special cases."
+ }
+]

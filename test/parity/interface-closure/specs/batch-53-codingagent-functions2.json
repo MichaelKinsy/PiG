@@ -1,0 +1,86 @@
+[
+ {
+  "ids": [
+   "pkg:coding-agent/.#estimateTokens"
+  ],
+  "targets": [
+   "internal/codingagent/compaction/estimate.go#EstimateTokens"
+  ],
+  "production": [
+   "call:coding/session_recovery.go#estimateMessagesTokens"
+  ],
+  "evidence": [
+   "test:coding/session_test.go#TestAutoCompaction_SuccessEmitsEstimatedTokensAfter",
+   "test:coding/session_test.go#TestCompact_Smoke"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "estimateTokens: Go EstimateTokens has the upstream parameters and result (signatures reviewed); callers attributed by go/types."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#serializeConversation"
+  ],
+  "targets": [
+   "internal/codingagent/compaction/utils.go#SerializeConversation"
+  ],
+  "production": [
+   "call:internal/codingagent/compaction/branch_summarization.go#GenerateBranchSummary"
+  ],
+  "evidence": [
+   "test:internal/codingagent/compaction/coding_compaction_upstream_test.go#TestCodingCompactionUpstream",
+   "test:internal/codingagent/compaction/serialization_upstream_test.go#TestSerializeConversationUpstream"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "serializeConversation: Go SerializeConversation has the upstream parameters and result (signatures reviewed); callers attributed by go/types."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#getPowerShellConfig"
+  ],
+  "targets": [
+   "internal/codingagent/tools/powershell.go#GetPowerShellConfig"
+  ],
+  "production": [
+   "call:internal/codingagent/tools/powershell.go#PowerShellTool.Execute"
+  ],
+  "evidence": [
+   "test:internal/codingagent/tools/powershell_test.go#TestGetPowerShellConfigPlatformGate"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "getPowerShellConfig: Go GetPowerShellConfig has the upstream parameters and result (signatures reviewed); callers attributed by go/types."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#resolveCliModel"
+  ],
+  "targets": [
+   "internal/codingagent/model_resolver.go#ResolveCliModel"
+  ],
+  "production": [
+   "call:coding/cli/auth_check.go#CheckProviderAuth"
+  ],
+  "evidence": [
+   "test:coding/cli/model_resolver_cli_upstream_test.go#TestModelResolverCLIUpstream",
+   "test:coding/cli/startup_model_test.go#TestResolveCliModelMatchesUpstream"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "resolveCliModel: Go ResolveCliModel has the upstream parameters and result (signatures reviewed); callers attributed by go/types."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#createExtensionRuntime"
+  ],
+  "targets": [
+   "coding/extension/provider_runtime.go#CreateExtensionRuntime"
+  ],
+  "production": [
+   "call:coding/extension/host/inproc/runner.go#NewRunner"
+  ],
+  "evidence": [
+   "test:coding/extension/host/inproc/upstream_provider_queue_test.go#TestRunnerProviderActionsOverrideRegistry",
+   "test:coding/extension/host/inproc/upstream_provider_queue_test.go#TestRunnerProviderQueueRetainsStreamCallback"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "createExtensionRuntime: Go CreateExtensionRuntime has the upstream parameters and result (signatures reviewed); callers attributed by go/types."
+ }
+]

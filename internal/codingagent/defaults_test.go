@@ -1,5 +1,7 @@
 package codingagent
 
+// pi: packages/coding-agent/src/core/defaults.ts
+
 import "testing"
 
 // TestDefaultThinkingLevelMatchesUpstream is a tripwire: if upstream's

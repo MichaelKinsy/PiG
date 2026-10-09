@@ -6,7 +6,7 @@ package tools
 
 import "github.com/MichaelKinsy/PiG/durable"
 
-// CodingTools is the extension of read, write, edit, and bash.
+// CodingTools is the extension of read, write, edit, and bash. CreatePowerShellTool adds powershell.
 var CodingTools = &durable.Extension{
 	Name:  "coding-tools",
 	Tools: []*durable.ToolRegistration{CreateReadTool(), CreateWriteTool(), CreateEditTool(), CreateBashTool(nil)},

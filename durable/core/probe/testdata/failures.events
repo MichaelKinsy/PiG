@@ -1,0 +1,11 @@
+# Rejected, fatal, a stale guard, parallel effects, abort and a bad event before open.
+submit now=1 {"type":"input","content":"early","requestId":"r0"}
+open now=2 {"settings":{},"agent":{"provider":"probe","modelId":"probe-1"},"models":[],"registry":[],"sidecar":"off","delta":true}
+rows now=3 [{"id":1,"cols":1,"rows":[["durable_metadata"],["probe_log"]]}]
+rows now=4 [{"id":2,"cols":2,"rows":[["41",{"i":41}]]}]
+submit now=5 {"type":"input","content":"reject","requestId":"r1"}
+submit now=6 {"type":"input","content":"stale","requestId":"r2"}
+submit now=7 {"type":"input","content":"multi","requestId":"r3"}
+model_event now=8 id=5 [{"type":"error","error":{"message":"boom"}}]
+abort now=9 {"conversationId":1}
+submit now=10 {"type":"input","content":"fatal","requestId":"r4"}

@@ -1,5 +1,7 @@
 package durableagent
 
+// pi: packages/coding-agent/src/experimental/durable/subagent.ts
+
 import (
 	"context"
 	"path/filepath"
@@ -178,10 +180,10 @@ func TestSubagentCallInterruptedByAClosedHarnessResumesAfterReopen(t *testing.T)
 		return openFauxAgent(t, store, subagentRegistry(t), t.TempDir(), steps...)
 	}
 	reached := make(chan struct{})
-	blocked := ai.FauxFactoryStep(func(_ ai.TranscriptContext, options ai.StreamOptions, _ *ai.FauxProviderState, _ *ai.Model) (ai.FauxResponse, error) {
+	blocked := ai.FauxFactoryStep(func(_ ai.TranscriptContext, options ai.StreamOptions, _ *ai.FauxProviderState, _ *ai.Model) (ai.AssistantMessage, error) {
 		close(reached)
 		<-options.Signal.Done()
-		return ai.FauxResponse{}, context.Cause(options.Signal)
+		return ai.FauxResponse{}.AssistantMessage(), context.Cause(options.Signal)
 	})
 	first := open(callStep("subagent", map[string]any{"task": "find the answer"}, "call-1"), blocked)
 	submission, err := first.root.Submit(context.Background(), durable.SubmissionDraft{Type: durable.SubmissionTypeInput, Content: ai.UserText("delegate")})

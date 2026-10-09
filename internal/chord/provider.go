@@ -14,25 +14,42 @@ import (
 	"unicode/utf8"
 )
 
-// ServiceProviderDefinition registers one service in a provider catalogue.
+// ProviderService is upstream's `{ id: string; local?: boolean }`, the service of a provider definition (provider.ts:53): a ServiceDefinition is one.
+type ProviderService interface {
+	Id() string
+	Local() bool
+}
+
+// ServiceProviderDefinition registers one service in a provider catalogue: upstream's `{ service, mode }`, or a bare `{ id }` entry
+// (a singleton). Service is the upstream member; when it is set its identity replaces Id and Local, which spell the same
+// entry without a ServiceDefinition (the bare `{ id }` form).
 type ServiceProviderDefinition struct {
-	ServiceId string
-	Local     bool
-	Mode      ServiceMode
+	Service ProviderService
+	Id      string
+	Local   bool
+	Mode    ServiceMode
 }
 
-// SingletonService registers def as a singleton catalogue entry.
+// serviceId is the catalogue id of the entry: Service's id when Service is set, else Id.
+func (definition ServiceProviderDefinition) serviceId() string {
+	if definition.Service != nil {
+		return definition.Service.Id()
+	}
+	return definition.Id
+}
+
+// SingletonService registers def as a singleton catalogue entry: upstream's `{ service: def, mode: "singleton" }` (coding-agent experimental/services/server.ts:65).
 func SingletonService[T any](def ServiceDefinition[T]) ServiceProviderDefinition {
-	return ServiceProviderDefinition{ServiceId: def.Id(), Local: def.Local(), Mode: ServiceSingleton}
+	return ServiceProviderDefinition{Service: def, Mode: ServiceSingleton}
 }
 
-// KeyedService registers def as a keyed (multi-instance) catalogue entry.
+// KeyedService registers def as a keyed (multi-instance) catalogue entry: upstream's `{ service: def, mode: "keyed" }`.
 func KeyedService[T any](def ServiceDefinition[T]) ServiceProviderDefinition {
-	return ServiceProviderDefinition{ServiceId: def.Id(), Local: def.Local(), Mode: ServiceKeyed}
+	return ServiceProviderDefinition{Service: def, Mode: ServiceKeyed}
 }
 
 type instanceMember struct {
-	kind   string
+	kind   ServiceMemberKind
 	method reflect.Value
 	invoke func(context.Context, []json.RawMessage) (json.RawMessage, error)
 	state  *stateCore
@@ -72,7 +89,7 @@ type serviceRegistration struct {
 	serviceId      string
 	mode           ServiceMode
 	singleton      *providerInstance
-	singletonShape map[string]string
+	singletonShape map[string]ServiceMemberKind
 	instances      *orderedMap[string, *providerInstance]
 	generations    map[string]int
 	subscribers    []*providerSubscriber
@@ -92,22 +109,36 @@ type RemoteServiceProvider struct {
 const maxPendingUpdates = 100
 
 // NewRemoteServiceProvider creates a provider for exactly the given services.
+// A definition without a Mode is a singleton, as a bare { id } entry is in provider.ts's constructor.
 // Local services and duplicate IDs are rejected.
 func NewRemoteServiceProvider(definitions ...ServiceProviderDefinition) (*RemoteServiceProvider, error) {
 	provider := &RemoteServiceProvider{registrations: map[string]*serviceRegistration{}}
+	definitions = slices.Clone(definitions)
+	for i, definition := range definitions {
+		if definition.Service != nil {
+			definitions[i].Id, definitions[i].Local = definition.Service.Id(), definition.Service.Local()
+		}
+	}
+	// Every entry is checked for a local service before any is checked for a duplicate ID, so a local entry is the
+	// error even when a duplicate precedes it.
 	for _, definition := range definitions {
 		if definition.Local {
-			return nil, fmt.Errorf("Local service %s cannot be published remotely", definition.ServiceId)
+			return nil, fmt.Errorf("Local service %s cannot be published remotely", definition.Id)
+		}
+	}
+	for _, definition := range definitions {
+		if definition.Mode == "" {
+			definition.Mode = ServiceSingleton
 		}
 		if definition.Mode != ServiceSingleton && definition.Mode != ServiceKeyed {
 			return nil, fmt.Errorf("invalid service mode %q", definition.Mode)
 		}
-		if _, exists := provider.registrations[definition.ServiceId]; exists {
+		if _, exists := provider.registrations[definition.Id]; exists {
 			return nil, errors.New("Remote service catalogue contains duplicate IDs")
 		}
-		provider.catalogue = append(provider.catalogue, ServiceCatalogueEntry{ServiceId: definition.ServiceId, Mode: definition.Mode})
-		provider.registrations[definition.ServiceId] = &serviceRegistration{
-			serviceId:   definition.ServiceId,
+		provider.catalogue = append(provider.catalogue, ServiceCatalogueEntry{ServiceId: definition.Id, Mode: definition.Mode})
+		provider.registrations[definition.Id] = &serviceRegistration{
+			serviceId:   definition.Id,
 			mode:        definition.Mode,
 			instances:   newOrderedMap[string, *providerInstance](),
 			generations: map[string]int{},
@@ -123,6 +154,9 @@ func (provider *RemoteServiceProvider) Catalogue() []ServiceCatalogueEntry {
 
 // Provide installs the singleton implementation of def.
 func Provide[T any](provider *RemoteServiceProvider, def ServiceDefinition[T], implementation T) error {
+	if err := provider.checkSingleton(def.Id(), def.Local(), true); err != nil {
+		return err
+	}
 	classified, err := classifyImplementation[T](def.Id(), implementation)
 	if err != nil {
 		return err
@@ -170,6 +204,9 @@ func Withdraw[T any](provider *RemoteServiceProvider, def ServiceDefinition[T]) 
 // ValidateReplacement checks a singleton replacement without changing the
 // active provider.
 func ValidateReplacement[T any](provider *RemoteServiceProvider, def ServiceDefinition[T], implementation T) error {
+	if err := provider.checkSingleton(def.Id(), def.Local(), false); err != nil {
+		return err
+	}
 	classified, err := classifyImplementation[T](def.Id(), implementation)
 	if err != nil {
 		return err
@@ -186,6 +223,9 @@ func ValidateReplacement[T any](provider *RemoteServiceProvider, def ServiceDefi
 // Replace swaps a singleton implementation without making the stable remote
 // facade unavailable; subscribers receive "replaced" with a new snapshot.
 func Replace[T any](provider *RemoteServiceProvider, def ServiceDefinition[T], implementation T) error {
+	if err := provider.checkSingleton(def.Id(), def.Local(), false); err != nil {
+		return err
+	}
 	classified, err := classifyImplementation[T](def.Id(), implementation)
 	if err != nil {
 		return err
@@ -284,7 +324,7 @@ func (provider *RemoteServiceProvider) closeInstanceFunc(registration *serviceRe
 		deactivate(instance)
 		registration.instances.Delete(key)
 		address := *instance.address
-		return provider.emitUnlocking(registration, ServiceProviderUpdate{Type: UpdateClosed, Address: &address}, nil)
+		return provider.emitUnlocking(registration, ServiceProviderUpdate{Type: UpdateClosed, Instance: &address}, nil)
 	}
 }
 
@@ -345,11 +385,30 @@ func (provider *RemoteServiceProvider) BeginInvoke(ctx context.Context, call Ser
 	if member.kind != MemberMethod {
 		return nil, remoteError(ErrServiceMemberMismatch, "Remote service member %s.%s is not a method", call.ServiceId, call.Member)
 	}
-	initiator, ok := implementation.(ServiceMemberInitiator)
+	if initiator, ok := implementation.(ServiceMemberInitiator); ok {
+		return initiator.BeginServiceMember(ctx, call.Member, call.Args)
+	}
+	admitter, ok := implementation.(ServiceMemberAdmitter)
 	if !ok {
 		return nil, ErrInvocationAdmissionUnavailable
 	}
-	return initiator.BeginServiceMember(ctx, call.Member, call.Args)
+	memberCtx, release := admitter.AdmitServiceMember(ctx, call.Member)
+	var result json.RawMessage
+	var failure error
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		defer release()
+		result, failure = provider.Invoke(memberCtx, call)
+	}()
+	return NewServiceInvocation(func(waitCtx context.Context) (json.RawMessage, error) {
+		select {
+		case <-done:
+			return result, failure
+		case <-waitCtx.Done():
+			return nil, context.Cause(waitCtx)
+		}
+	}), nil
 }
 
 func invokeMethod(ctx context.Context, call ServiceCall, method reflect.Value) (result json.RawMessage, err error) {
@@ -483,7 +542,7 @@ func (provider *RemoteServiceProvider) Dispose() error {
 			deactivate(instance)
 			registration.instances.Delete(key)
 			address := *instance.address
-			if err := provider.emitUnlocking(registration, ServiceProviderUpdate{Type: UpdateClosed, Address: &address}, nil); err != nil {
+			if err := provider.emitUnlocking(registration, ServiceProviderUpdate{Type: UpdateClosed, Instance: &address}, nil); err != nil {
 				errs = append(errs, err)
 			}
 			provider.mu.Lock()
@@ -517,6 +576,22 @@ func (provider *RemoteServiceProvider) assertAccessLocked(serviceId string, loca
 	}
 	if _, ok := provider.registrations[serviceId]; !ok {
 		return remoteError(ErrServiceNotAllowed, "Remote service %s is not allowlisted", serviceId)
+	}
+	return nil
+}
+
+// checkSingleton makes the checks that precede classifying a singleton implementation: active, remotable,
+// allowlisted, singleton mode and, with unprovided, no current provider. Classifying runs the implementation's state
+// accessors, so it happens outside the lock and the caller repeats these checks once it holds the lock again.
+func (provider *RemoteServiceProvider) checkSingleton(serviceId string, local bool, unprovided bool) error {
+	provider.mu.Lock()
+	defer provider.mu.Unlock()
+	registration, err := provider.singletonRegistrationLocked(serviceId, local)
+	if err != nil {
+		return err
+	}
+	if unprovided && registration.singleton != nil {
+		return remoteError(ErrServiceModeMismatch, "Remote service %s already has a provider", serviceId)
 	}
 	return nil
 }
@@ -556,7 +631,7 @@ func (provider *RemoteServiceProvider) createInstanceLocked(registration *servic
 			update := ServiceProviderUpdate{Type: UpdateState, Member: name, Sequence: sequence, Ops: ops}
 			if address != nil {
 				copied := *address
-				update.Address = &copied
+				update.Instance = &copied
 			}
 			if err := provider.emitUnlocking(registration, update, ctx); err != nil {
 				panic(err)
@@ -720,7 +795,7 @@ func recordSnapshotSequences(sequences map[string]int, instances []ServiceInstan
 func updateCoveredBySnapshot(sequences map[string]int, update ServiceProviderUpdate) bool {
 	switch update.Type {
 	case UpdateState:
-		key := stateMemberKey(update.Address, update.Member)
+		key := stateMemberKey(update.Instance, update.Member)
 		sequence, ok := sequences[key]
 		if !ok {
 			return false
@@ -740,7 +815,7 @@ func updateCoveredBySnapshot(sequences map[string]int, update ServiceProviderUpd
 	case UpdateUnavailable:
 		clear(sequences)
 	case UpdateClosed:
-		encoded := string(mustRaw([]any{update.Address.Key, update.Address.Generation}))
+		encoded := string(mustRaw([]any{update.Instance.Key, update.Instance.Generation}))
 		prefix := encoded[:len(encoded)-1] + ","
 		for key := range sequences {
 			if strings.HasPrefix(key, prefix) {
@@ -751,15 +826,15 @@ func updateCoveredBySnapshot(sequences map[string]int, update ServiceProviderUpd
 	return false
 }
 
-func memberShape(classified classifiedImplementation) map[string]string {
-	shape := make(map[string]string, len(classified.members))
+func memberShape(classified classifiedImplementation) map[string]ServiceMemberKind {
+	shape := make(map[string]ServiceMemberKind, len(classified.members))
 	for name, member := range classified.members {
 		shape[name] = member.kind
 	}
 	return shape
 }
 
-func assertSingletonShape(registration *serviceRegistration, replacement map[string]string) error {
+func assertSingletonShape(registration *serviceRegistration, replacement map[string]ServiceMemberKind) error {
 	if registration.singletonShape == nil || maps.Equal(registration.singletonShape, replacement) {
 		return nil
 	}
@@ -771,6 +846,30 @@ var (
 	errorType   = reflect.TypeFor[error]()
 )
 
+// isObjectImplementation is Pi's implementation object check (typeof implementation === "object", not null, not an array):
+// nil is Pi's null; a value whose type has methods, a struct, a non-nil pointer or a non-nil map is an object; a slice,
+// array, string, number, boolean, function or channel without methods is not.
+func isObjectImplementation(implementation any) bool {
+	value := reflect.ValueOf(implementation)
+	switch value.Kind() {
+	case reflect.Invalid:
+		return false
+	case reflect.Pointer, reflect.Map, reflect.Slice, reflect.Func, reflect.Chan, reflect.Interface:
+		if value.IsNil() {
+			return false
+		}
+	}
+	if value.Type().NumMethod() > 0 {
+		return true // a value with methods is an object whatever its underlying kind (a named string or func type that implements the service)
+	}
+	switch value.Kind() {
+	case reflect.Struct, reflect.Pointer, reflect.Map:
+		return true
+	default:
+		return false
+	}
+}
+
 // classifyImplementation is upstream classifyRemoteServiceImplementation over
 // Go method sets. When T is an interface, exactly its methods are members;
 // otherwise the implementation's exported method set is used.
@@ -778,10 +877,10 @@ func classifyImplementation[T any](serviceId string, implementation T) (classifi
 	if dynamic, ok := any(implementation).(*FacetServiceImplementation); ok {
 		return classifyFacetImplementation(serviceId, dynamic)
 	}
-	value := reflect.ValueOf(implementation)
-	if !value.IsValid() || ((value.Kind() == reflect.Pointer || value.Kind() == reflect.Interface) && value.IsNil()) {
+	if !isObjectImplementation(implementation) {
 		return classifiedImplementation{}, fmt.Errorf("Remote service %s implementation must be an object", serviceId)
 	}
+	value := reflect.ValueOf(implementation)
 	methodSet := value.Type()
 	if contract := reflect.TypeFor[T](); contract.Kind() == reflect.Interface {
 		methodSet = contract

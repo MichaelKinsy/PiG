@@ -59,7 +59,7 @@ func TestIntakeGoogleNativeThinkingOverridesLogicalMap(t *testing.T) {
 			}
 		}
 	}
-	_, err := provider.Stream(t.Context(), NormalizeContext(Context{Messages: []Message{UserMessage{Content: UserText("hi")}}}), StreamOptions{Thinking: ThinkingHigh, IsReasoning: true, GoogleThinking: &GoogleThinkingOptions{Enabled: true, Level: GoogleThinkingLevelMedium}, OnPayload: func(value any, _ *Model) (any, error) {
+	_, err := provider.Stream(t.Context(), NormalizeContext(Context{Messages: []Message{UserMessage{Content: UserText("hi")}}}), StreamOptions{Thinking: ThinkingLevelHigh, IsReasoning: true, GoogleThinking: &GoogleThinkingOptions{Enabled: true, Level: GoogleThinkingLevelMedium}, OnPayload: func(value any, _ *Model) (any, error) {
 		data, e := json.Marshal(value)
 		if e != nil {
 			return nil, e

@@ -15,9 +15,13 @@ var imageModelRegistry = func() map[string]map[string]ImageModel {
 	return out
 }()
 
+// BuiltinImageProvider is a built-in provider with at least one image model in the generated catalog.
+// upstream: image-models.ts:13 BuiltinImageProvider
+type BuiltinImageProvider string
+
 // GetImageModel returns a generated image model by provider and id.
-func GetImageModel(provider string, modelID string) (ImageModel, bool) {
-	providerModels := imageModelRegistry[provider]
+func GetImageModel(provider BuiltinImageProvider, modelID string) (ImageModel, bool) {
+	providerModels := imageModelRegistry[string(provider)]
 	if providerModels == nil {
 		return ImageModel{}, false
 	}
@@ -26,18 +30,18 @@ func GetImageModel(provider string, modelID string) (ImageModel, bool) {
 }
 
 // GetImageProviders returns the generated image providers in stable order.
-func GetImageProviders() []string {
-	providers := make([]string, 0, len(imageModelRegistry))
+func GetImageProviders() []BuiltinImageProvider {
+	providers := make([]BuiltinImageProvider, 0, len(imageModelRegistry))
 	for provider := range imageModelRegistry {
-		providers = append(providers, provider)
+		providers = append(providers, BuiltinImageProvider(provider))
 	}
 	slices.Sort(providers)
 	return providers
 }
 
 // GetImageModels returns generated image models for provider in stable ID order.
-func GetImageModels(provider string) []ImageModel {
-	providerModels := imageModelRegistry[provider]
+func GetImageModels(provider BuiltinImageProvider) []ImageModel {
+	providerModels := imageModelRegistry[string(provider)]
 	if providerModels == nil {
 		return nil
 	}

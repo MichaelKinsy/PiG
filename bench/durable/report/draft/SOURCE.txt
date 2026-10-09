@@ -1,0 +1,5 @@
+results ../data/placeholder.jsonl
+sha256 bc5bc35484f12afefd1435084d301896e673343d0f35e12fd6baf685ff945ca5
+status placeholder
+session placeholder
+slides cover latency storage growth workload-compact-big workload-big builds where-it-runs where-it-runs-cloudflare cloudflare method

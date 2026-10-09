@@ -5,26 +5,30 @@ package codingagent
 
 import (
 	"fmt"
-	"path/filepath"
 	"strings"
 
 	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/tui"
 )
 
-func formatPathWithSource(path string, infos map[string]*PiSourceInfo) string {
-	var info *PiSourceInfo
-	for current := path; ; {
-		if found := infos[current]; found != nil {
-			info = found
-			break
-		}
-		parent := filepath.Dir(current)
-		if parent == current {
-			break
-		}
-		current = parent
+// findSourceInfoForPath is upstream findSourceInfoForPath: the path's own entry, else the entry of the nearest
+// ancestor reached by cutting at the last "/" of the text, without normalizing it.
+func findSourceInfoForPath(path string, infos map[string]*PiSourceInfo) *PiSourceInfo {
+	if exact := infos[path]; exact != nil {
+		return exact
 	}
+	current := path
+	for strings.Contains(current, "/") {
+		current = current[:strings.LastIndex(current, "/")]
+		if parent := infos[current]; parent != nil {
+			return parent
+		}
+	}
+	return nil
+}
+
+func formatPathWithSource(path string, infos map[string]*PiSourceInfo) string {
+	info := findSourceInfoForPath(path, infos)
 	if info == nil {
 		return formatDisplayPath(path)
 	}
@@ -82,10 +86,10 @@ func formatResourceDiagnostics(diagnostics []extension.ResourceDiagnostic, infos
 	var lines []string
 	for _, name := range names {
 		group := groups[name]
-		lines = append(lines, theme.FgText("warning", fmt.Sprintf(`  "%s" collision:`, name)))
-		lines = append(lines, theme.FgText("dim", "    "+theme.FgText("success", "✓")+" "+formatPathWithSource(group[0].WinnerPath, infos)))
+		lines = append(lines, theme.Fg("warning", fmt.Sprintf(`  "%s" collision:`, name)))
+		lines = append(lines, theme.Fg("dim", "    "+theme.Fg("success", "✓")+" "+formatPathWithSource(group[0].WinnerPath, infos)))
 		for _, collision := range group {
-			lines = append(lines, theme.FgText("dim", "    "+theme.FgText("warning", "✗")+" "+formatPathWithSource(collision.LoserPath, infos)+" (skipped)"))
+			lines = append(lines, theme.Fg("dim", "    "+theme.Fg("warning", "✗")+" "+formatPathWithSource(collision.LoserPath, infos)+" (skipped)"))
 		}
 	}
 	for _, d := range others {
@@ -95,10 +99,10 @@ func formatResourceDiagnostics(diagnostics []extension.ResourceDiagnostic, infos
 		}
 		indent := "  "
 		if d.Path != "" {
-			lines = append(lines, theme.FgText(color, indent+formatPathWithSource(d.Path, infos)))
+			lines = append(lines, theme.Fg(color, indent+formatPathWithSource(d.Path, infos)))
 			indent += "  "
 		}
-		lines = append(lines, theme.FgText(color, indent+d.Message))
+		lines = append(lines, theme.Fg(color, indent+d.Message))
 	}
 	return strings.Join(lines, "\n")
 }

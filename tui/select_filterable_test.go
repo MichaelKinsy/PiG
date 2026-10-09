@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/MichaelKinsy/PiG/tui/widthx"
 )
@@ -274,7 +275,7 @@ func TestFilterableListAllowsPrimaryTruncationOverride(t *testing.T) {
 	}
 }
 
-// ─── TreeSelect ──────────────────────────────────────────────────────────────
+// ─── TreeSelectorComponent ──────────────────────────────────────────────────────────────
 
 type fakeNode struct {
 	id    string
@@ -294,7 +295,7 @@ func TestTreeSelectFlattensDFS(t *testing.T) {
 		}},
 		&fakeNode{id: "b", label: "B"},
 	}}
-	ts := NewTreeSelect("Pick", root)
+	ts := NewTreeSelectorComponent("Pick", root)
 	if len(ts.rows) != 4 {
 		t.Fatalf("rows=%d want 4", len(ts.rows))
 	}
@@ -311,7 +312,7 @@ func TestTreeSelectEnterCommitsCurrentID(t *testing.T) {
 		&fakeNode{id: "a", label: "A"},
 		&fakeNode{id: "b", label: "B"},
 	}}
-	ts := NewTreeSelect("", root)
+	ts := NewTreeSelectorComponent("", root)
 	ts.SetInitialCursor("a", "")
 	ts.HandleInput("\x1b[B")
 	ts.HandleInput("\r")
@@ -324,7 +325,7 @@ func TestTreeSelectEnterCommitsCurrentID(t *testing.T) {
 }
 
 func TestTreeSelectEscCancels(t *testing.T) {
-	ts := NewTreeSelect("", &fakeNode{id: "r", kids: []TreeNode{&fakeNode{id: "x"}}})
+	ts := NewTreeSelectorComponent("", &fakeNode{id: "r", kids: []TreeNode{&fakeNode{id: "x"}}})
 	ts.HandleInput("\x1b")
 	if !ts.Done() || !ts.Cancelled() {
 		t.Fatalf("done=%v cancelled=%v", ts.Done(), ts.Cancelled())
@@ -346,7 +347,7 @@ func TestTreeSelectRenderShowsConnectors(t *testing.T) {
 			&fakeNode{id: "b", label: "B"},
 		}},
 	}}
-	ts := NewTreeSelect("", root)
+	ts := NewTreeSelectorComponent("", root)
 	rows := ts.Render(40)
 	joined := strings.Join(rows, "\n")
 	if !strings.Contains(joined, "├─") {
@@ -358,7 +359,7 @@ func TestTreeSelectRenderShowsConnectors(t *testing.T) {
 }
 
 func TestTreeSelectEmptyTree(t *testing.T) {
-	ts := NewTreeSelect("", &fakeNode{id: "r"})
+	ts := NewTreeSelectorComponent("", &fakeNode{id: "r"})
 	if len(ts.rows) != 0 {
 		t.Errorf("expected 0 rows, got %d", len(ts.rows))
 	}
@@ -372,15 +373,16 @@ func TestTreeSelectEmptyTree(t *testing.T) {
 	}
 }
 
-// ─── OpenOverlay ─────────────────────────────────────────────────────────────
+// ─── ShowOverlay ─────────────────────────────────────────────────────────────
 
-func TestOpenOverlayPushesAndActiveOverlayReturns(t *testing.T) {
+func TestShowOverlayPushesAndActiveOverlayReturns(t *testing.T) {
 	tu := New()
+	tu.afterFunc = func(time.Duration, func()) stoppableTimer { return stoppedOracleTimer{} } // opening an overlay requests a frame; keep it off the real terminal
 	if tu.ActiveOverlay() != nil {
 		t.Fatal("expected no active overlay on fresh TUI")
 	}
 	f := NewFilterableList("test", []string{"x"})
-	h := tu.OpenOverlay(f, OverlayOptions{Title: "Test"})
+	h := tu.ShowOverlay(f, OverlayOptions{Title: "Test"})
 	if tu.ActiveOverlay() != f {
 		t.Errorf("ActiveOverlay didn't return the pushed component")
 	}
@@ -391,7 +393,7 @@ func TestOpenOverlayPushesAndActiveOverlayReturns(t *testing.T) {
 }
 
 // TestFilterableList_UserOverrideRemapsNavigation proves the FilterableList,
-// ModelSelector, TreeSelect, and ConfigSelector all route through the global
+// ModelSelectorComponent, TreeSelectorComponent, and ConfigSelector all route through the global
 // TUI keybinding registry: if any of them reintroduces hardcoded byte
 // switches for tui.select.*, this test breaks for FilterableList; the
 // equivalent regression markers for the others live in the codingagent
@@ -417,5 +419,33 @@ func TestFilterableList_UserOverrideRemapsNavigation(t *testing.T) {
 	f.HandleInput("\x12") // ctrl+r: newly-bound to tui.select.down
 	if f.cursor != 1 {
 		t.Errorf("ctrl+r after rebind should move down; cursor=%d, want 1", f.cursor)
+	}
+}
+
+// tree-selector.ts:1432-1434 getTreeList returns the TreeList the component hosts, and the host drives that list directly: keys sent to
+// the list move the selection, and the list renders the tree rows.
+func TestTreeSelectorGetTreeListIsTheHostedList(t *testing.T) {
+	root := &fakeNode{id: "root", kids: []TreeNode{
+		&fakeNode{id: "a", label: "A"},
+		&fakeNode{id: "b", label: "B"},
+	}}
+	ts := NewTreeSelectorComponent("", root)
+	list := ts.GetTreeList()
+	if list == nil || list != ts.TreeList {
+		t.Fatalf("GetTreeList is not the hosted list: %v", list)
+	}
+	ts.SetInitialCursor("a", "")
+	before := strings.Join(ts.Render(60), "\n")
+	list.HandleInput("\x1b[B")
+	if after := strings.Join(ts.Render(60), "\n"); after == before {
+		t.Fatal("moving the cursor through the list did not reach the component's render")
+	}
+	list.HandleInput("\r")
+	if !ts.Done() || ts.SelectedID() != "b" {
+		t.Fatalf("enter on the list: done=%t selected=%q, want done b", ts.Done(), ts.SelectedID())
+	}
+	rows := strings.Join(stripANSILines(list.Render(60)), "\n")
+	if !strings.Contains(rows, "A") || !strings.Contains(rows, "B") {
+		t.Fatalf("the list does not render its tree rows:\n%s", rows)
 	}
 }

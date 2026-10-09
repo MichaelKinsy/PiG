@@ -68,3 +68,8 @@ reason = "D2: substitute only exact isolated cwd roots in the system section and
 paths = ["/**/timestamp"]
 kind = "timestamp"
 reason = "Independent message wall clocks vary; no event, tool result or rendered HTML field is removed."
+
+[[assert.json_aliases]]
+paths = ["/**/durationMs"]
+kind = "duration"
+reason = "Pi 1.1.0 measures each response and tool execution (#10549) with a monotonic clock; the value varies per run. Retain presence, type and position."

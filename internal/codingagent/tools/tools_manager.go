@@ -61,7 +61,7 @@ type toolConfig struct {
 }
 
 // toolsTable selects fd and rg release archives for each platform.
-// Linux fd and arm64 rg currently select GNU archives; Linux x64 rg selects musl.
+// Linux selects the musl archive for both tools on every architecture.
 var toolsTable = map[string]toolConfig{
 	"fd": {
 		Name:              "fd",
@@ -74,7 +74,7 @@ var toolsTable = map[string]toolConfig{
 			case "darwin":
 				return fmt.Sprintf("fd-v%s-%s-apple-darwin.tar.gz", version, archStr(architecture))
 			case "linux":
-				return fmt.Sprintf("fd-v%s-%s-unknown-linux-gnu.tar.gz", version, archStr(architecture))
+				return fmt.Sprintf("fd-v%s-%s-unknown-linux-musl.tar.gz", version, archStr(architecture))
 			case "windows", "win32":
 				return fmt.Sprintf("fd-v%s-%s-pc-windows-msvc.zip", version, archStr(architecture))
 			}
@@ -91,10 +91,7 @@ var toolsTable = map[string]toolConfig{
 			case "darwin":
 				return fmt.Sprintf("ripgrep-%s-%s-apple-darwin.tar.gz", version, archStr(architecture))
 			case "linux":
-				if architecture == "arm64" {
-					return fmt.Sprintf("ripgrep-%s-aarch64-unknown-linux-gnu.tar.gz", version)
-				}
-				return fmt.Sprintf("ripgrep-%s-x86_64-unknown-linux-musl.tar.gz", version)
+				return fmt.Sprintf("ripgrep-%s-%s-unknown-linux-musl.tar.gz", version, archStr(architecture))
 			case "windows", "win32":
 				return fmt.Sprintf("ripgrep-%s-%s-pc-windows-msvc.zip", version, archStr(architecture))
 			}
@@ -103,17 +100,13 @@ var toolsTable = map[string]toolConfig{
 	},
 }
 
-// archStr maps Go GOARCH (or Node's arch) values to upstream's tuple form.
-// upstream Node arch: "arm64" → "aarch64", "x64" → "x86_64".
-// Go GOARCH: "arm64" → "aarch64", "amd64" → "x86_64".
+// archStr is upstream getAssetName's `architecture === "arm64" ? "aarch64" : "x86_64"`: every architecture other
+// than arm64 selects the x86_64 archive.
 func archStr(architecture string) string {
-	switch architecture {
-	case "arm64", "aarch64":
+	if architecture == "arm64" || architecture == "aarch64" {
 		return "aarch64"
-	case "amd64", "x64", "x86_64":
-		return "x86_64"
 	}
-	return architecture
+	return "x86_64"
 }
 
 // termuxPackages mirrors upstream TERMUX_PACKAGES (tools-manager.ts:339).
@@ -531,13 +524,14 @@ func (m *ToolsManager) downloadTool(ctx context.Context, tool string) (string, e
 	plat := m.platform()
 	architecture := m.arch()
 
-	version, err := m.getLatestVersion(ctx, config.Repo)
-	if err != nil {
-		return "", err
-	}
-	// fd uses upstream's pinned darwin/x64 release.
-	if tool == "fd" && plat == "darwin" && architecture == "x64" {
-		version = "10.3.0"
+	// fd is pinned on darwin/x64, so skip the version lookup there.
+	version := "10.3.0"
+	if tool != "fd" || plat != "darwin" || architecture != "x64" {
+		var err error
+		version, err = m.getLatestVersion(ctx, config.Repo)
+		if err != nil {
+			return "", err
+		}
 	}
 
 	assetName := config.GetAssetName(version, plat, architecture)

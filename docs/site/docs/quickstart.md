@@ -100,7 +100,7 @@ cd /path/to/project
 
 PiG stores user state below `~/.pig`. Use `PIG_HOME` only when you need an isolated configuration root.
 
-PiG starts without a first-time setup screen, even on a fresh `PIG_HOME`. Pi 1.0 shows one (theme and usage-analytics choices) only when all of these hold (`startup-ui.ts` `shouldRunFirstTimeSetup`): the binary is Pi's own distribution (package `@earendil-works/pi-coding-agent`, app `pi`, config directory `.pi`), `PI_EXPERIMENTAL=1` is set, `PI_CODING_AGENT_DIR` is not set, and `~/.pi/agent/settings.json` does not exist yet. Like any other distribution of Pi's code, PiG never meets the first condition, so neither `PIG_EXPERIMENTAL=1` nor an empty home shows the screen. Choose a theme with `/settings` and a pig with `/sprite`.
+PiG starts without a first-time setup screen, even on a fresh `PIG_HOME`. Pi 1.1 shows one (theme and usage-analytics choices) only when all of these hold (`startup-ui.ts` `shouldRunFirstTimeSetup`): the binary is Pi's own distribution (package `@earendil-works/pi-coding-agent`, app `pi`, config directory `.pi`), `PI_EXPERIMENTAL=1` is set, `PI_CODING_AGENT_DIR` is not set, and `~/.pi/agent/settings.json` does not exist yet. Like any other distribution of Pi's code, PiG never meets the first condition, so neither `PIG_EXPERIMENTAL=1` nor an empty home shows the screen. Choose a theme with `/settings` and a pig with `/sprite`.
 
 ## Authenticate a provider
 

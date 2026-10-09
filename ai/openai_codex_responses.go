@@ -27,6 +27,9 @@ type OpenAICodexResponsesConfig struct {
 	ProviderID       string
 	BaseURL          string
 	Compat           *OpenAIResponsesCompat
+	// ExtraHeaders are the model's headers (models.json). They override the default originator and User-Agent; Authorization,
+	// chatgpt-account-id and the transport headers stay the provider's.
+	ExtraHeaders map[string]string
 }
 
 // NewOpenAICodexResponsesProvider creates an OpenAI Codex Responses provider.
@@ -42,6 +45,20 @@ func NewOpenAICodexResponsesProvider(cfg OpenAICodexResponsesConfig) Provider {
 	}
 	compat.SendSessionIdHeader = new(false)
 	compat.SupportsLongCacheRetention = new(true)
+	// Defaults first so model and caller headers can override them (openai-codex-responses.ts buildBaseCodexHeaders, #10429).
+	extraHeaders := map[string]string{
+		"OpenAI-Beta": "responses=experimental",
+		// pig divergence (D26): PiG names itself as the Codex originator.
+		"originator": pigidentity.CodexOriginator,
+	}
+	for name, value := range cfg.ExtraHeaders {
+		for existing := range extraHeaders {
+			if strings.EqualFold(existing, name) {
+				delete(extraHeaders, existing)
+			}
+		}
+		extraHeaders[name] = value
+	}
 	baseCfg := OpenAIResponsesConfig{
 		StrictModeDefault:     true, // upstream openai-codex-responses.ts: supportsStrictMode ?? true
 		StrictToolNull:        true, // codex passes strict: null
@@ -54,12 +71,8 @@ func NewOpenAICodexResponsesProvider(cfg OpenAICodexResponsesConfig) Provider {
 		ProviderID:            providerID,
 		APIKeyHeader:          "Authorization",
 		APIKeyPrefix:          "Bearer ",
-		ExtraHeaders: map[string]string{
-			"OpenAI-Beta": "responses=experimental",
-			// pig divergence (D26): PiG names itself as the Codex originator.
-			"originator": pigidentity.CodexOriginator,
-		},
-		Compat: &compat,
+		ExtraHeaders:          extraHeaders,
+		Compat:                &compat,
 		GetAPIKey: func(context.Context) (string, error) {
 			apiKey := firstNonEmptyString(cfg.APIKey, os.Getenv("OPENAI_API_KEY"))
 			if apiKey == "" {
@@ -68,7 +81,6 @@ func NewOpenAICodexResponsesProvider(cfg OpenAICodexResponsesConfig) Provider {
 			return apiKey, nil
 		},
 		BaseURLIsEndpoint: true,
-		forceUserAgent:    true,
 		GetBaseURL: func(context.Context) (string, error) {
 			return resolveCodexURL(cfg.BaseURL), nil
 		},

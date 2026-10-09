@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"strings"
 	"sync"
 	"testing"
@@ -18,6 +19,8 @@ import (
 	"github.com/MichaelKinsy/PiG/coding/extension/host/inproc"
 	"github.com/MichaelKinsy/PiG/coding/extension/host/subprocess"
 	"github.com/MichaelKinsy/PiG/extensions/sdk"
+	"github.com/MichaelKinsy/PiG/internal/pigstrip"
+	"github.com/MichaelKinsy/PiG/internal/testbudget"
 )
 
 // greetExt is a minimal real SDK extension whose "greet" tool returns a known
@@ -88,9 +91,38 @@ func TestHost_LoadInProcess(t *testing.T) {
 	}
 	assertGreet(t, *loaded)
 	runner := inproc.NewRunner([]extension.Extension{*loaded}, t.TempDir())
-	trust, handlerErrors, err := inproc.EmitProjectTrust(runner, ctx, extension.ProjectTrustEvent{Type: "project_trust", Cwd: t.TempDir()})
+	trust, handlerErrors, err := inproc.EmitProjectTrust(runner, ctx, extension.ProjectTrustEvent{Type: "project_trust", Cwd: t.TempDir()}, extension.ProjectTrustContext{})
 	if err != nil || len(handlerErrors) != 0 || trust == nil || trust.Trusted != extension.ProjectTrustYes {
 		t.Fatalf("fused project_trust result=%+v errors=%+v err=%v", trust, handlerErrors, err)
+	}
+}
+
+// TestHost_InboundObserverSeesEveryExtensionFrameInWireOrder pins the
+// diagnostic observer: it sees the register handshake first, then the
+// response to a tool call, each named for its extension.
+func TestHost_InboundObserverSeesEveryExtensionFrameInWireOrder(t *testing.T) {
+	var mu sync.Mutex
+	var frames []string
+	h := subprocess.NewHost(t.TempDir())
+	h.SetUIBridge(subprocess.NewUIBridge(func() {}))
+	h.SetInboundObserver(func(extName string, env *subprocess.Envelope) {
+		mu.Lock()
+		frames = append(frames, extName+":"+env.Type)
+		mu.Unlock()
+	})
+	defer h.Shutdown("test done")
+	loaded, err := h.LoadInProcess(t.Context(), subprocess.ExtConfig{Name: "observed", Enabled: true}, greetExt("observed").RunWithConn)
+	if err != nil {
+		t.Fatalf("LoadInProcess: %v", err)
+	}
+	assertGreet(t, *loaded)
+	mu.Lock()
+	defer mu.Unlock()
+	if len(frames) == 0 || frames[0] != "observed:"+subprocess.MsgRegister {
+		t.Fatalf("first observed frame = %q, want the register handshake", frames)
+	}
+	if !slices.Contains(frames[1:], "observed:"+subprocess.MsgResponse) {
+		t.Fatalf("observed frames %q lack the tool call's response", frames)
 	}
 }
 
@@ -141,6 +173,9 @@ func (h *fusedOverlayHandle) Close(result any) {
 }
 
 func TestHost_LoadInProcessAndIsolatedNode(t *testing.T) {
+	if pigstrip.Has(pigstrip.ListFeatures, pigstrip.NodeExtensions) {
+		t.Skip("node-extensions is stripped (D92)")
+	}
 	if _, err := exec.LookPath("node"); err != nil {
 		t.Skipf("node not found: %v", err)
 	}
@@ -162,8 +197,8 @@ func TestHost_LoadInProcessAndIsolatedNode(t *testing.T) {
 	host.SetUIBridge(bridge)
 	t.Cleanup(func() { host.Shutdown("test done") })
 
-	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
-	defer cancel()
+	// The isolated Load can be the package's first Node build, which materializes the Node runtime (about 1,800 files); a fixed bound failed that cold build on a slow file system.
+	ctx := testbudget.Context(t)
 	fused, err := host.LoadInProcess(ctx, subprocess.ExtConfig{Name: "fused", Enabled: true}, greetExt("fused").RunWithConn)
 	if err != nil {
 		t.Fatal(err)
@@ -415,7 +450,7 @@ func TestHost_LoadInProcessProjectTrustCancellation(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	done := make(chan []extension.ExtensionError, 1)
 	go func() {
-		_, handlerErrors, _ := inproc.EmitProjectTrust(runner, ctx, extension.ProjectTrustEvent{Type: "project_trust", Cwd: t.TempDir()})
+		_, handlerErrors, _ := inproc.EmitProjectTrust(runner, ctx, extension.ProjectTrustEvent{Type: "project_trust", Cwd: t.TempDir()}, extension.ProjectTrustContext{})
 		done <- handlerErrors
 	}()
 	<-started

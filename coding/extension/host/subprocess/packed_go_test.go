@@ -475,7 +475,11 @@ func TestHost_KillingPackedProcessNeverClaimsItRemainedAlive(t *testing.T) {
 		if !strings.HasSuffix(reason, logSuffix) {
 			t.Fatalf("%s crash reason %q does not surface the stderr log path %q", name, reason, stderrLogPath)
 		}
-		plain := "packed member connection closed " + logSuffix
+		// Native packed members are not restarted automatically, so every notice names the recovery: the user sees only whichever detector won.
+		if !strings.Contains(reason, "/reload restarts") {
+			t.Fatalf("%s crash reason %q does not say that /reload restarts the stopped extension", name, reason)
+		}
+		plain := "packed member connection closed; /reload restarts it " + logSuffix
 		quarantined := strings.Contains(reason, "/reload restarts them") &&
 			(strings.Contains(reason, "kill-a, kill-b stopped") || strings.Contains(reason, name+" stopped"))
 		if reason != plain && !quarantined {
@@ -524,6 +528,7 @@ func inputLimitsTestModel() map[string]any {
 }
 
 func TestHost_MixedFusedPackedAndIsolatedExtensions(t *testing.T) {
+	skipWithoutNodeExtensions(t)
 	if _, err := exec.LookPath("node"); err != nil {
 		t.Skipf("node not found: %v", err)
 	}
@@ -715,7 +720,7 @@ func TestHost_MixedFusedPackedAndIsolatedExtensions(t *testing.T) {
 	promptMu.Lock()
 	prompts = nil
 	promptMu.Unlock()
-	if _, err := mixedRunner.Emit(ctx, extension.TurnEndEvent{Type: "turn_end", MessageEntryID: "assistant-entry", ToolResultEntryIds: []string{"tool-entry"}}); err != nil {
+	if _, err := mixedRunner.Emit(ctx, extension.TurnEndEvent{Type: "turn_end", Message: wireMessage(map[string]any{"role": "assistant", "content": []any{}}), MessageEntryID: "assistant-entry", ToolResultEntryIds: []string{"tool-entry"}}); err != nil {
 		t.Fatal(err)
 	}
 	turnDeadline := time.Now().Add(10 * time.Second)
@@ -1092,14 +1097,14 @@ func TestPackedSDKFocusedComponentAndSessionActionsMatch(t *testing.T) {
 			runner := inproc.NewRunner(loaded, t.TempDir())
 			bridge.SetUIPromptScope(runner)
 			for _, event := range []struct {
-				value any
+				value extension.ExtensionEvent
 				want  string
 			}{
 				{extension.SessionInfoChangedEvent{Type: "session_info_changed", Name: "packed-session"}, "session-event=packed-session"},
 				{extension.SessionBeforeCompactEvent{Type: "session_before_compact", Reason: "threshold", WillRetry: true}, "session-before-compact=threshold:true"},
 				{extension.SessionCompactEvent{Type: "session_compact", Reason: "threshold", WillRetry: true, FromExtension: true}, "session-compact=threshold:true:true"},
 				{extension.SessionCompactFailedEvent{Type: "session_compact_failed", Reason: "overflow", ErrorMessage: "recovery failed", FromExtension: true}, "session-compact-failed=overflow:recovery failed:false:false:true"},
-				{extension.TurnEndEvent{Type: "turn_end", MessageEntryID: "assistant-entry", ToolResultEntryIds: []string{"tool-entry"}}, "turn-end=assistant-entry:tool-entry"},
+				{extension.TurnEndEvent{Type: "turn_end", Message: wireMessage(map[string]any{"role": "assistant", "content": []any{}}), MessageEntryID: "assistant-entry", ToolResultEntryIds: []string{"tool-entry"}}, "turn-end=assistant-entry:tool-entry"},
 			} {
 				if _, err := runner.Emit(ctx, event.value); err != nil {
 					t.Fatalf("packed event %T: %v", event.value, err)
@@ -1239,7 +1244,7 @@ func assertPackedProjectTrust(t *testing.T, host *Host) {
 	result, handlerErrors, err := inproc.EmitProjectTrust(runner, context.Background(), extension.ProjectTrustEvent{
 		Type: "project_trust",
 		Cwd:  t.TempDir(),
-	})
+	}, extension.ProjectTrustContext{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1638,9 +1643,9 @@ func assertRealizedContextTransform(t *testing.T, ext extension.Extension) {
 	t.Helper()
 	runner := inproc.NewRunner([]extension.Extension{ext}, t.TempDir())
 	messages := []extension.AgentMessage{
-		map[string]any{"role": "system", "content": "original", "timestamp": 0, "toolsAdded": []any{map[string]any{"name": "drop", "parameters": map[string]any{"type": "object"}}, map[string]any{"name": "keep", "parameters": map[string]any{"type": "object"}}}},
-		map[string]any{"role": "user", "content": "old", "timestamp": 0},
-		map[string]any{"role": "user", "content": "keep", "timestamp": 0},
+		wireMessage(map[string]any{"role": "system", "content": "original", "timestamp": 0, "toolsAdded": []any{map[string]any{"name": "drop", "parameters": map[string]any{"type": "object"}}, map[string]any{"name": "keep", "parameters": map[string]any{"type": "object"}}}}),
+		wireMessage(map[string]any{"role": "user", "content": "old", "timestamp": 0}),
+		wireMessage(map[string]any{"role": "user", "content": "keep", "timestamp": 0}),
 	}
 	conversation, err := runner.EmitContext(t.Context(), messages[1:])
 	if err != nil {
@@ -1668,7 +1673,34 @@ func assertRealizedContextTransform(t *testing.T, ext extension.Extension) {
 	if len(tools) != 1 || tools[0].(map[string]any)["name"] != "keep" {
 		t.Fatalf("%s tools = %s", ext.Path, encoded)
 	}
-	if messages[0].(map[string]any)["content"] != "original" {
+	if wireContent(messages[0]) != "original" {
 		t.Fatal("context changed persisted transcript")
+	}
+}
+
+// A packed member whose factory registers another identity fails with the same actionable detail as an isolated one
+// (TestHostLoadRejectsRegisteredIdentityMismatch): both identities, the source, and how to fix the selection.
+func TestHost_LoadGoPackedCellRejectsRegisteredIdentityMismatchActionably(t *testing.T) {
+	root := writePackedFactoryModule(t, "example.com/packedhost/mismatch", "pack-real", "tool_real")
+	ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
+	defer cancel()
+	cell, err := runtimecell.BuildGoPackedCell(ctx, t.TempDir(), "cell:mismatch-test", []runtimecell.GoExtension{
+		{Name: "selected-name", Root: root, ModulePath: "example.com/packedhost/mismatch", Package: "example.com/packedhost/mismatch", Factory: "Extension", Hash: "hm"},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	h := NewHost(t.TempDir())
+	t.Cleanup(func() { h.Shutdown("test done") })
+	_, err = h.LoadGoPackedCell(ctx, cell)
+	loadErr, ok := errors.AsType[*LoadError](err)
+	if !ok {
+		t.Fatalf("LoadGoPackedCell error = %v, want the member's *LoadError", err)
+	}
+	message := loadErr.Error()
+	for _, want := range []string{"name_mismatch", `selected identity "selected-name"`, `registered identity "pack-real"`, "renamed/reselected", "Package/Piglet declaration"} {
+		if !strings.Contains(message, want) {
+			t.Fatalf("member load error = %s, want actionable identity detail %q", message, want)
+		}
 	}
 }

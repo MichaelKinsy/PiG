@@ -2,9 +2,9 @@ package tui
 
 import (
 	"math"
+	"slices"
 	"strings"
 	"sync/atomic"
-	"unicode"
 	"unicode/utf8"
 
 	"github.com/MichaelKinsy/PiG/internal/lazyregexp"
@@ -14,23 +14,25 @@ import (
 
 var listItemPattern = lazyregexp.New(`^( *)([-+*]|\d{1,9}[.)])(?:[ \t]+(.*)|$)`)
 
-var emailPattern = lazyregexp.New(`^[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}$`)
-
 // Markdown renders themed text with terminal-cell wrapping, padding and cached display transforms.
 // Ports packages/tui/src/components/markdown.ts.
 type Markdown struct {
 	invalidatable
-	Content               string
-	paddingX, paddingY    int
-	theme                 *MarkdownTheme
-	defaultTextStyle      *DefaultTextStyle
-	options               MarkdownOptions
-	styleContext          *inlineStyleContext
-	styleOwner            *Markdown
-	suppressBlockSpacing  bool
+	Content              string
+	paddingX, paddingY   int
+	theme                *MarkdownTheme
+	defaultTextStyle     *DefaultTextStyle
+	options              MarkdownOptions
+	styleContext         *inlineStyleContext
+	styleOwner           *Markdown
+	suppressBlockSpacing bool
+	// lazyUnderlines are the indexes of a quote's lazy continuation lines that look like setext underlines.
+	lazyUnderlines        []int
 	defaultColorSet       bool
 	defaultStylePrefix    string
 	hasDefaultStylePrefix bool
+	// inlineState is marked's lexer state for the document being rendered; child components for quotes and list items share it.
+	inlineState *markedInlineState
 	// Transform is an optional display-only rewrite of Content applied at the
 	// render width before parsing, mirroring upstream MarkdownOptions.transform
 	// (markdown.ts). Used to replace Mermaid code blocks with rendered diagrams.
@@ -66,6 +68,15 @@ func (m *Markdown) Invalidate() {
 	m.revision.Add(1)
 	m.invalidatable.Invalidate()
 }
+
+// IsDirty reports true while TransformState reads external state or an async transform can publish between frames, so a parent Container re-renders the child and the Markdown cache key decides whether the lines changed.
+func (m *Markdown) IsDirty() bool {
+	return m.TransformState != nil || m.AsyncTransform != nil || m.invalidatable.IsDirty()
+}
+
+// pig additive (D91): SurfaceLive reports the transforms that change the lines without
+// invalidating the Markdown, as IsDirty does.
+func (m *Markdown) SurfaceLive() bool { return m.TransformState != nil || m.AsyncTransform != nil }
 
 // Dispose revokes this component's pending publication and removes its queued transform.
 func (m *Markdown) Dispose() { m.asyncState.dispose() }
@@ -143,7 +154,18 @@ func (m *Markdown) Render(width int) []string {
 	out := []string{}
 	if widthx.JSTrim(content) != "" {
 		content = strings.ReplaceAll(strings.ReplaceAll(content, "\r\n", "\n"), "\r", "\n")
-		lines := wrapRenderedLines(m.renderContent(strings.ReplaceAll(content, "\t", "   "), contentWidth), contentWidth)
+		source := strings.ReplaceAll(content, "\t", "   ")
+		state := markedInlineStates.Get().(*markedInlineState)
+		state.startDocument()
+		m.inlineState = state
+		rendered := m.renderContent(source, contentWidth)
+		if state.relex {
+			state.restartWithLinks()
+			rendered = m.renderContent(source, contentWidth)
+		}
+		m.inlineState = nil
+		markedInlineStates.Put(state)
+		lines := wrapRenderedLines(rendered, contentWidth)
 		margin := strings.Repeat(" ", m.paddingX)
 		background := func(line string) string { return line }
 		if m.defaultTextStyle != nil && m.defaultTextStyle.BgColor != nil {
@@ -167,6 +189,10 @@ func (m *Markdown) Render(width int) []string {
 		padded = append(padded, out...)
 		padded = append(padded, emptyLines...)
 		out = padded
+		// markdown.ts render returns [""] when text that is not blank renders no lines (only link definitions).
+		if len(out) == 0 {
+			out = []string{""}
+		}
 	}
 	m.cachedContent, m.cachedWidth, m.cachedLines = m.Content, width, out
 	m.cachedTransformState, m.cachedTheme = transformState, ActiveTheme()
@@ -176,15 +202,32 @@ func (m *Markdown) Render(width int) []string {
 
 func (m *Markdown) renderContent(content string, width int) []string {
 	lines := strings.Split(content, "\n")
+	source := &markdownBlockSource{lines: lines}
 	out := make([]string, 0, len(lines))
 
-	emitBlank := func() {
+	// silentEnd is len(out) after the last block that rendered no lines: a link definition, or a quote holding only definitions. Pi still renders such a block as a token, so the blank line after it is not merged with a blank before it, and blanks before it do not trail the output.
+	silentEnd := -1
+	// emptyBlockRow is set after a block whose own row is empty (an empty heading), so the blank row that follows it is not taken for a duplicate.
+	emptyBlockRow, sawEmptyHeading := false, false
+	blank := func() {
+		if emptyBlockRow {
+			emptyBlockRow = false
+			out = append(out, "")
+			return
+		}
 		if len(out) == 0 || out[len(out)-1] == "" {
 			return
 		}
 		out = append(out, "")
 	}
-	emitSpace := emitBlank
+	emitBlank := blank
+	emitSpace := func() {
+		if len(out) == silentEnd {
+			out = append(out, "")
+			return
+		}
+		blank()
+	}
 	if m.suppressBlockSpacing {
 		emitBlank = func() {}
 	}
@@ -197,6 +240,8 @@ func (m *Markdown) renderContent(content string, width int) []string {
 	codeFence := byte(0)
 	codeFenceLen := 0
 	var codeLines []string
+	theme := m.markdownTheme()
+	listEnd := -1
 
 	for i := 0; i < len(lines); i++ {
 		line := lines[i]
@@ -220,31 +265,25 @@ func (m *Markdown) renderContent(content string, width int) []string {
 			codeLines = append(codeLines, line)
 			continue
 		}
+		// marked's indented code rule precedes fences; a paragraph has already absorbed an indented line it cannot be interrupted by.
+		if code, next, ok := source.indentedCode(i); ok {
+			out = append(out, m.renderCodeBlock("", code)...)
+			if next < len(lines) && strings.TrimSpace(lines[next]) != "" {
+				emitBlank()
+			}
+			i = next - 1
+			continue
+		}
 		if fence, fenceLen, lang, ok := parseMarkdownFenceOpen(line); ok {
-			emitBlank()
+			// A list token adds no trailing blank row of its own (markdown.ts case "list"), so a fence that directly follows a list gets none.
+			if i != listEnd {
+				emitBlank()
+			}
 			inCode = true
 			codeFence = fence
 			codeFenceLen = fenceLen
 			codeLang = lang
 			codeLines = nil
-			continue
-		}
-
-		if isTableHeaderLine(line) && isTableSeparatorLine(nextLine) {
-			header := splitTableRow(line)
-			align := parseTableAlignment(nextLine)
-			var rows [][]string
-			j := i + 2
-			for j < len(lines) && isTableHeaderLine(lines[j]) {
-				rows = append(rows, splitTableRow(lines[j]))
-				j++
-			}
-			raw := strings.Join(lines[i:j], "\n")
-			out = append(out, m.renderMarkdownTable(header, rows, align, raw, width)...)
-			if j < len(lines) && strings.TrimSpace(lines[j]) != "" {
-				emitBlank()
-			}
-			i = j - 1
 			continue
 		}
 
@@ -272,16 +311,17 @@ func (m *Markdown) renderContent(content string, width int) []string {
 			}
 		}
 
-		theme := m.markdownTheme()
 		if depth, text, ok := parseATXHeading(line); ok {
 			emit(m.headingInline(text, depth))
+			emptyBlockRow = text == "" && depth < 3
+			sawEmptyHeading = sawEmptyHeading || emptyBlockRow
 			if strings.TrimSpace(nextLine) != "" {
 				emitBlank()
 			}
 			continue
 		}
 
-		if line == "---" || line == "***" || line == "___" {
+		if isMarkedHr(line) {
 			out = append(out, theme.Hr(strings.Repeat("─", min(width, 80))))
 			if strings.TrimSpace(nextLine) != "" {
 				emitBlank()
@@ -293,12 +333,17 @@ func (m *Markdown) renderContent(content string, width int) []string {
 		if isBlockquoteLine(line) {
 			j := i
 			quoted := make([]string, 0, 4)
+			var lazyUnderlines []int
 			for j < len(lines) {
 				current := lines[j]
 				switch {
 				case isBlockquoteLine(current):
 					quoted = append(quoted, stripBlockquotePrefix(current))
 				case j > i && isLazyBlockquoteContinuation(current):
+					// marked lexes lazy lines apart from the quoted lines before them and joins a paragraph there to the quoted one, so a lazy setext underline continues the quoted paragraph instead of closing a heading.
+					if setextUnderlinePattern.MatchString(current) {
+						lazyUnderlines = append(lazyUnderlines, len(quoted))
+					}
 					quoted = append(quoted, current)
 				default:
 					goto renderQuote
@@ -306,7 +351,11 @@ func (m *Markdown) renderContent(content string, width int) []string {
 				j++
 			}
 		renderQuote:
-			out = append(out, m.renderQuote(strings.Join(quoted, "\n"), width)...)
+			quote := m.renderQuote(strings.Join(quoted, "\n"), lazyUnderlines, width)
+			if len(quote) == 0 {
+				silentEnd = len(out)
+			}
+			out = append(out, quote...)
 			if j < len(lines) && widthx.JSTrim(lines[j]) != "" {
 				emitBlank()
 			}
@@ -319,6 +368,29 @@ func (m *Markdown) renderContent(content string, width int) []string {
 			list, next := parseMarkdownList(lines, i)
 			out = append(out, m.renderList(list, 0, width)...)
 			i = next - 1
+			listEnd = next
+			continue
+		}
+
+		// marked tries an HTML block, then a GFM table, after lists.
+		if raw, next, ok := source.htmlBlock(i); ok {
+			emit(m.applyDefaultStyle(widthx.JSTrim(raw)))
+			i = next - 1
+			continue
+		}
+		// marked tries a link reference definition after an HTML block (Lexer.ts:209-225); it registers the definition and renders nothing.
+		if tag, href, next, ok := source.def(i); ok {
+			m.lexerState().defineLink(tag, href)
+			silentEnd = len(out)
+			i = next - 1
+			continue
+		}
+		if table, next, ok := source.table(i); ok {
+			out = append(out, m.renderMarkdownTable(table, width)...)
+			if next < len(lines) && strings.TrimSpace(lines[next]) != "" {
+				emitBlank()
+			}
+			i = next - 1
 			continue
 		}
 
@@ -328,16 +400,58 @@ func (m *Markdown) renderContent(content string, width int) []string {
 			continue
 		}
 
-		// Keep soft line breaks inside the paragraph until styling and wrapping. A table starts a new block without requiring a source blank line.
-		j := i + 1
-		for j < len(lines) && isMarkdownParagraphContinuation(lines, j) {
-			if isTableHeaderLine(lines[j]) && j+1 < len(lines) && isTableSeparatorLine(lines[j+1]) {
+		// marked tries a setext heading before a paragraph: the lines up to an underline, unless a blank line or one of its interrupting blocks comes first. A rule line does not interrupt it.
+		if end, depth, ok := setextHeadingEnd(lines, i, m.lazyUnderlines); ok {
+			emit(m.headingInline(widthx.JSTrim(strings.Join(lines[i:end], "\n")), depth))
+			if end+1 < len(lines) && strings.TrimSpace(lines[end+1]) != "" {
+				emitBlank()
+			}
+			i = end
+			continue
+		}
+
+		// Lexer.ts:241-270 clips a top-level paragraph where a block extension's start() matches src.slice(1). pi-tui's latexBlock start(), /(?:^|\n) {0,3}(?:\$\$|\\\[)/ (packages/tui/src/components/markdown.ts:127-130), also matches at the start of that slice: "$$" or "\[" right after the first character, behind at most three spaces, leaves that character as the paragraph and the rest of the line is lexed next. A rest that is a latex block ends the paragraph; otherwise the paragraph that follows joins the clipped one (lastParagraphClipped). List items lex text rather than top-level paragraphs and are never clipped.
+		var clipped []string
+		latexRest := false
+		for !m.suppressBlockSpacing && !latexRest {
+			first, size := utf8.DecodeRuneInString(line)
+			// slice(1) splits an astral character, and the lone surrogate it leaves cannot start the match.
+			if first > 0xFFFF || !blockLatexStart(line[size:]) {
 				break
 			}
+			clipped = append(clipped, line[:size])
+			line = line[size:]
+			lines[i] = line
+			source.runes, source.offsets = nil, nil
+			latexRest = markdownLatexBlockAt(lines, i)
+		}
+		if latexRest {
+			emit(m.inlineMarkdown(strings.Join(clipped, "\n")))
+			emitBlank()
+			i--
+			continue
+		}
+
+		// marked's GFM paragraph runs until a line its rule says interrupts it; the latex block extension also clips it. Soft line breaks stay inside the paragraph until styling and wrapping.
+		j := i + 1
+		for j < len(lines) && !source.paragraphInterrupted(j) && !markdownLatexBlockAt(lines, j) {
 			j++
 		}
-		emit(m.inlineMarkdown(strings.Join(lines[i:j], "\n")))
-		if j+1 < len(lines) && isTableHeaderLine(lines[j]) && isTableSeparatorLine(lines[j+1]) {
+		// A definition right after a paragraph (one the GFM table rule interrupted) joins the paragraph's text and is not registered (Lexer.ts:212-216). A definition covers whole lines, so the text is still the source lines.
+		for j < len(lines) {
+			_, _, next, ok := source.def(j)
+			if !ok {
+				break
+			}
+			j = next
+		}
+		text := strings.Join(lines[i:j], "\n")
+		if len(clipped) > 0 {
+			text = strings.Join(clipped, "\n") + "\n" + text
+		}
+		emit(m.inlineMarkdown(text))
+		// Upstream's paragraph adds spacing unless the next token is a space or a list.
+		if j < len(lines) && markdownParagraphFollowedByBlock(lines[j]) {
 			emitBlank()
 		}
 		i = j - 1
@@ -353,10 +467,62 @@ func (m *Markdown) renderContent(content string, width int) []string {
 		}
 		out = append(out, m.renderCodeBlock(codeLang, codeLines)...)
 	}
-	for len(out) > 0 && out[len(out)-1] == "" {
+	for len(out) > max(silentEnd, 0) && out[len(out)-1] == "" {
 		out = out[:len(out)-1]
 	}
+	// A text that holds only empty headings still shows the heading's empty row.
+	if len(out) == 0 && sawEmptyHeading {
+		out = append(out, "")
+	}
+	// marked ends the token stream with a space token when the text ends in a blank line, and Pi renders it as one empty row (markdown.ts case "space").
+	if len(out) > 0 && len(lines) >= 2 && lines[len(lines)-1] == "" && strings.TrimSpace(lines[len(lines)-2]) == "" {
+		out = append(out, "")
+	}
 	return out
+}
+
+// markdownParagraphFollowedByBlock reports whether the line that ended a paragraph starts a token other than space or list, after which upstream adds a blank line.
+func markdownParagraphFollowedByBlock(line string) bool {
+	if strings.TrimLeft(line, " \t") == "" {
+		return false
+	}
+	if indent, _, _, ok := parseMarkdownListItem(line); ok && len(indent) <= 3 {
+		return isMarkedHr(line)
+	}
+	return true
+}
+
+var (
+	setextUnderlinePattern = lazyregexp.New(`^ {0,3}(=+|-+) *$`)
+	// The blocks that end a setext heading's text in marked's gfm lheading rule; the tag and table-delimiter forms need a following line.
+	setextInterruptPattern = lazyregexp.New("^(?: {0,3}(?:[*+-]|\\d{1,9}[.)]) | {4}| {0,3}\\t| {0,3}(?:`{3,}|~{3,})| {0,3}>| {0,3}#{1,6}(?:\\s|$))")
+	setextTagLinePattern   = lazyregexp.New(`^ {0,3}<[^>]+>$`)
+	setextTablePattern     = lazyregexp.New(`^ {0,3}\|?(?:[:\- ]*\|)+[:\- ]*$`)
+)
+
+// setextHeadingEnd applies marked's gfm lheading rule at lines[start]: it returns the index of the first "=" or "-" underline and the heading depth when no blank or interrupting line comes before it.
+// Lines whose index is in lazy are lazy blockquote continuations, which marked never reads as an underline.
+func setextHeadingEnd(lines []string, start int, lazy []int) (end, depth int, ok bool) {
+	interrupts := func(index int) bool {
+		line := lines[index]
+		hasNext := index+1 < len(lines)
+		return setextInterruptPattern.MatchString(line) || hasNext && (setextTagLinePattern.MatchString(line) || setextTablePattern.MatchString(line))
+	}
+	if interrupts(start) {
+		return 0, 0, false
+	}
+	for index := start + 1; index < len(lines); index++ {
+		if match := setextUnderlinePattern.FindStringSubmatch(lines[index]); match != nil && !slices.Contains(lazy, index) {
+			if match[1][0] == '=' {
+				return index, 1, true
+			}
+			return index, 2, true
+		}
+		if strings.TrimSpace(lines[index]) == "" || interrupts(index) {
+			return 0, 0, false
+		}
+	}
+	return 0, 0, false
 }
 
 // wrapRenderedLines is upstream Markdown.render's final pass: every rendered
@@ -394,11 +560,12 @@ func parseMarkdownFenceOpen(line string) (fence byte, fenceLen int, lang string,
 	if fenceLen < 3 {
 		return 0, 0, "", false
 	}
-	lang = strings.TrimSpace(trimmed[fenceLen:])
-	if fence == '`' && strings.ContainsRune(lang, '`') {
+	info := widthx.JSTrim(trimmed[fenceLen:])
+	if fence == '`' && strings.ContainsRune(info, '`') {
 		return 0, 0, "", false
 	}
-	return fence, fenceLen, lang, true
+	// Tokenizer.fences unescapes backslash-escaped punctuation in the info string.
+	return fence, fenceLen, markedUnescapePunctuation(info), true
 }
 
 func isMarkdownFenceClose(line string, fence byte, minLen int) bool {
@@ -423,19 +590,18 @@ func parseATXHeading(line string) (depth int, text string, ok bool) {
 	for depth < len(trimmed) && depth <= maxATXHeadingDepth && trimmed[depth] == '#' {
 		depth++
 	}
-	if depth == 0 || depth > maxATXHeadingDepth || depth >= len(trimmed) || trimmed[depth] != ' ' {
+	if depth == 0 || depth > maxATXHeadingDepth {
+		return 0, "", false
+	}
+	// marked's heading rule is `#{1,6}(?=\s|$)`: the hashes may end the line, which is an empty heading.
+	if depth == len(trimmed) {
+		return depth, "", true
+	}
+	if trimmed[depth] != ' ' {
 		return 0, "", false
 	}
 	return depth, strings.TrimSpace(trimmed[depth+1:]), true
 }
-
-type tableAlignment int
-
-const (
-	tableAlignLeft tableAlignment = iota
-	tableAlignCenter
-	tableAlignRight
-)
 
 func isTableHeaderLine(line string) bool {
 	trimmed := strings.TrimSpace(line)
@@ -471,23 +637,6 @@ func splitTableRow(line string) []string {
 	return parts
 }
 
-func parseTableAlignment(line string) []tableAlignment {
-	parts := splitTableRow(line)
-	out := make([]tableAlignment, len(parts))
-	for i, cell := range parts {
-		trimmed := strings.TrimSpace(cell)
-		switch {
-		case strings.HasPrefix(trimmed, ":") && strings.HasSuffix(trimmed, ":"):
-			out[i] = tableAlignCenter
-		case strings.HasSuffix(trimmed, ":"):
-			out[i] = tableAlignRight
-		default:
-			out[i] = tableAlignLeft
-		}
-	}
-	return out
-}
-
 func longestWordWidth(text string) int {
 	words := strings.Fields(text)
 	if len(words) == 0 {
@@ -505,21 +654,24 @@ func longestWordWidth(text string) int {
 	return longest
 }
 
-func alignTableCell(text string, width int, align tableAlignment) string {
-	pad := max(0, width-widthx.VisibleWidth(text))
-	switch align {
-	case tableAlignRight:
-		return strings.Repeat(" ", pad) + text
-	case tableAlignCenter:
-		left := pad / 2
-		right := pad - left
-		return strings.Repeat(" ", left) + text + strings.Repeat(" ", right)
-	default:
-		return text + strings.Repeat(" ", pad)
-	}
+// padTableCell left-aligns a cell; pi-tui renders every column left-aligned.
+func padTableCell(text string, width int) string {
+	return text + strings.Repeat(" ", max(0, width-widthx.VisibleWidth(text)))
 }
 
-func (m *Markdown) renderMarkdownTable(header []string, rows [][]string, align []tableAlignment, raw string, availableWidth int) []string {
+// renderMarkdownTable ports markdown.ts renderTable. Cells are lexed once, header first, in marked's tokenization order, so the document's inline lexer state advances as in Pi.
+func (m *Markdown) renderMarkdownTable(table markdownTable, availableWidth int) []string {
+	header := make([]string, len(table.header))
+	for i, cell := range table.header {
+		header[i] = m.inlineMarkdown(cell)
+	}
+	rows := make([][]string, len(table.rows))
+	for r, row := range table.rows {
+		rows[r] = make([]string, len(row))
+		for i, cell := range row {
+			rows[r][i] = m.inlineMarkdown(cell)
+		}
+	}
 	numCols := len(header)
 	if numCols == 0 {
 		return nil
@@ -527,13 +679,12 @@ func (m *Markdown) renderMarkdownTable(header []string, rows [][]string, align [
 	borderOverhead := 3*numCols + 1
 	availableForCells := availableWidth - borderOverhead
 	if availableForCells < numCols {
-		return widthx.WrapTextWithAnsi(raw, availableWidth)
+		return widthx.WrapTextWithAnsi(table.raw, availableWidth)
 	}
 
 	natural := make([]int, numCols)
 	minWordWidths := make([]int, numCols)
-	for i, cell := range header {
-		text := m.inlineMarkdown(cell)
+	for i, text := range header {
 		natural[i] = widthx.VisibleWidth(text)
 		minWordWidths[i] = longestWordWidth(text)
 	}
@@ -541,7 +692,7 @@ func (m *Markdown) renderMarkdownTable(header []string, rows [][]string, align [
 		for i := range numCols {
 			cell := ""
 			if i < len(row) {
-				cell = m.inlineMarkdown(row[i])
+				cell = row[i]
 			}
 			if w := widthx.VisibleWidth(cell); w > natural[i] {
 				natural[i] = w
@@ -646,8 +797,8 @@ func (m *Markdown) renderMarkdownTable(header []string, rows [][]string, align [
 
 	headerWrapped := make([][]string, numCols)
 	maxHeaderLines := 1
-	for i, cell := range header {
-		headerWrapped[i] = m.wrapCellText(m.inlineMarkdown(cell), columnWidths[i])
+	for i, text := range header {
+		headerWrapped[i] = m.wrapCellText(text, columnWidths[i])
 		if len(headerWrapped[i]) > maxHeaderLines {
 			maxHeaderLines = len(headerWrapped[i])
 		}
@@ -660,7 +811,7 @@ func (m *Markdown) renderMarkdownTable(header []string, rows [][]string, align [
 			if lineIdx < len(headerWrapped[col]) {
 				text = headerWrapped[col][lineIdx]
 			}
-			parts[col] = theme.Bold(alignTableCell(text, columnWidths[col], tableAlignLeft))
+			parts[col] = theme.Bold(padTableCell(text, columnWidths[col]))
 		}
 		lines = append(lines, "│ "+strings.Join(parts, " │ ")+" │")
 	}
@@ -672,7 +823,7 @@ func (m *Markdown) renderMarkdownTable(header []string, rows [][]string, align [
 		for col := range numCols {
 			text := ""
 			if col < len(row) {
-				text = m.inlineMarkdown(row[col])
+				text = row[col]
 			}
 			wrapped[col] = m.wrapCellText(text, columnWidths[col])
 			if len(wrapped[col]) > maxRowLines {
@@ -686,7 +837,7 @@ func (m *Markdown) renderMarkdownTable(header []string, rows [][]string, align [
 				if lineIdx < len(wrapped[col]) {
 					text = wrapped[col][lineIdx]
 				}
-				parts[col] = alignTableCell(text, columnWidths[col], tableAlignLeft)
+				parts[col] = padTableCell(text, columnWidths[col])
 			}
 			lines = append(lines, "│ "+strings.Join(parts, " │ ")+" │")
 		}
@@ -842,284 +993,17 @@ func ansiSpan(open, close, text string) string {
 	return out.String()
 }
 
+// renderInlineMarkdown lexes one inline source with marked's rules and the document's lexer state, then renders the tokens.
 func (m *Markdown) renderInlineMarkdown(s string, style inlineStyleContext) string {
-	theme := m.markdownTheme()
-	var out, plain strings.Builder
-	applyText := func(text string) string {
-		parts := strings.Split(text, "\n")
-		for i := range parts {
-			parts[i] = style.applyText(parts[i])
-		}
-		return strings.Join(parts, "\n")
-	}
-	flushText := func() {
-		if plain.Len() > 0 {
-			out.WriteString(applyText(plain.String()))
-			plain.Reset()
-		}
-	}
-	emitToken := func(token string) {
-		flushText()
-		out.WriteString(token)
-		out.WriteString(style.stylePrefix)
-	}
-	i := 0
-	runes := []rune(s)
-	var autoLinks autoLinkScanner
-	for i < len(runes) {
-		if runes[i] == '\\' && i+1 < len(runes) && runes[i+1] == '\n' {
-			flushText()
-			out.WriteByte('\n')
-			i += 2
-			continue
-		}
-		if runes[i] == ' ' {
-			end := i + 1
-			for end < len(runes) && runes[end] == ' ' {
-				end++
-			}
-			if end-i >= 2 && end < len(runes) && runes[end] == '\n' {
-				flushText()
-				out.WriteByte('\n')
-				i = end + 1
-				continue
-			}
-		}
-		if runes[i] == '\\' && i+1 < len(runes) {
-			if runes[i+1] == '(' || runes[i+1] == '[' {
-				if tok, ok := tokenizeInlineLatex(string(runes[i:])); ok {
-					flushText()
-					text := tok.raw
-					if m.latexEnabled() {
-						text = renderInlineLatex(tok)
-					}
-					out.WriteString(applyText(text))
-					i += utf8.RuneCountInString(tok.raw)
-					continue
-				}
-			}
-			if strings.ContainsRune("!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~", runes[i+1]) {
-				flushText()
-				text := string(runes[i+1])
-				if m.options.PreserveBackslashEscapes {
-					text = string(runes[i : i+2])
-				}
-				out.WriteString(style.applyText(text))
-				i += 2
-				continue
-			}
-		}
-		// Markdown link: [text](url)
-		if runes[i] == '[' {
-			if text, url, next, ok := parseMarkdownLink(runes, i); ok {
-				emitToken(m.styleMarkdownLink(m.renderInlineMarkdown(text, style), text, url))
-				i = next
-				continue
-			}
-		}
-		// Code spans use an equal-length closing backtick run.
-		if runes[i] == '`' {
-			count := 1
-			for i+count < len(runes) && runes[i+count] == '`' {
-				count++
-			}
-			closing := -1
-			for j := i + count; j < len(runes); {
-				if runes[j] != '`' {
-					j++
-					continue
-				}
-				end := j + 1
-				for end < len(runes) && runes[end] == '`' {
-					end++
-				}
-				if end-j == count {
-					closing = j
-					break
-				}
-				j = end
-			}
-			if closing < 0 {
-				plain.WriteString(string(runes[i : i+count]))
-				i += count
-				continue
-			}
-			code := strings.ReplaceAll(string(runes[i+count:closing]), "\n", " ")
-			if strings.HasPrefix(code, " ") && strings.HasSuffix(code, " ") && strings.Trim(code, " ") != "" {
-				code = code[1 : len(code)-1]
-			}
-			emitToken(theme.Code(code))
-			i = closing + count
-			continue
-		}
-		// Bold: **...**
-		if i+1 < len(runes) && runes[i] == '*' && runes[i+1] == '*' {
-			j := i + 2
-			for j+1 < len(runes) && (runes[j] != '*' || runes[j+1] != '*') {
-				j++
-			}
-			if j+1 < len(runes) {
-				emitToken(theme.Bold(m.renderInlineMarkdown(string(runes[i+2:j]), style)))
-				i = j + 2
-				continue
-			}
-		}
-		// Italic: *...*
-		if runes[i] == '*' {
-			j := i + 1
-			for j < len(runes) && runes[j] != '*' {
-				j++
-			}
-			if j < len(runes) {
-				emitToken(theme.Italic(m.renderInlineMarkdown(string(runes[i+1:j]), style)))
-				i = j + 1
-				continue
-			}
-		}
-		// Strikethrough: ~~...~~
-		if i+1 < len(runes) && runes[i] == '~' && runes[i+1] == '~' {
-			j := i + 2
-			for j+1 < len(runes) && (runes[j] != '~' || runes[j+1] != '~') {
-				j++
-			}
-			if j+1 < len(runes) {
-				emitToken(theme.Strikethrough(m.renderInlineMarkdown(string(runes[i+2:j]), style)))
-				i = j + 2
-				continue
-			}
-		}
-		// Bare URLs and emails.
-		if text, url, next, ok := autoLinks.parseAutoLink(runes, i); ok {
-			emitToken(m.styleMarkdownLink(style.applyText(text), text, url))
-			i = next
-			continue
-		}
-		// Code spans take precedence over inline LaTeX.
-		if runes[i] == '$' || (runes[i] == '\\' && i+1 < len(runes) && (runes[i+1] == '(' || runes[i+1] == '[')) {
-			if tok, ok := tokenizeInlineLatex(string(runes[i:])); ok {
-				flushText()
-				text := tok.raw
-				if m.latexEnabled() {
-					text = renderInlineLatex(tok)
-				}
-				out.WriteString(applyText(text))
-				i += utf8.RuneCountInString(tok.raw)
-				continue
-			}
-		}
-		plain.WriteRune(runes[i])
-		i++
-	}
-	flushText()
-	result := out.String()
-	for style.stylePrefix != "" && strings.HasSuffix(result, style.stylePrefix) {
-		result = strings.TrimSuffix(result, style.stylePrefix)
-	}
-	return result
+	return m.renderInlineTokens(lexMarkedInline(s, m.lexerState()), style)
 }
 
-func parseMarkdownLink(runes []rune, start int) (text, url string, next int, ok bool) {
-	closeBracket := -1
-	for i := start + 1; i < len(runes); i++ {
-		if runes[i] == ']' {
-			closeBracket = i
-			break
-		}
+// lexerState is the document's marked lexer state, created for a component used outside Render.
+func (m *Markdown) lexerState() *markedInlineState {
+	if m.inlineState == nil {
+		m.inlineState = &markedInlineState{}
 	}
-	if closeBracket == -1 || closeBracket+1 >= len(runes) || runes[closeBracket+1] != '(' {
-		return "", "", start, false
-	}
-	closeParen := -1
-	for i := closeBracket + 2; i < len(runes); i++ {
-		if runes[i] == ')' {
-			closeParen = i
-			break
-		}
-	}
-	if closeParen == -1 {
-		return "", "", start, false
-	}
-	text = string(runes[start+1 : closeBracket])
-	url = string(runes[closeBracket+2 : closeParen])
-	return text, url, closeParen + 1, true
-}
-
-func autoLinkPrefix(runes []rune, start int) string {
-	return string(runes[start:min(start+len("https://"), len(runes))])
-}
-
-// autoLinkScanner owns lookahead for one inline source. Word boundaries and the possible email suffix are scanned once, including when inline tokens skip over part of a word. No state survives the render or retains source text.
-type autoLinkScanner struct {
-	end        int
-	emailStart int
-	emailAt    int
-	emailEnd   int
-}
-
-func (s *autoLinkScanner) scanWord(runes []rune, start int) {
-	s.end = start
-	s.emailAt = -1
-	for s.end < len(runes) && !unicode.IsSpace(runes[s.end]) {
-		if runes[s.end] == '@' {
-			s.emailAt = s.end
-		}
-		s.end++
-	}
-	if s.emailAt < 0 {
-		return
-	}
-	s.emailStart = s.emailAt
-	for s.emailStart > start && isEmailLocalRune(runes[s.emailStart-1]) {
-		s.emailStart--
-	}
-	// Parentheses cannot belong to an email. At an email's start every trailing ')' is unmatched, irrespective of earlier text in this word.
-	s.emailEnd = s.end
-	for s.emailEnd > s.emailAt && strings.ContainsRune(".,;:!?)", runes[s.emailEnd-1]) {
-		s.emailEnd--
-	}
-	if s.emailStart == s.emailAt || !emailPattern.MatchString(string(runes[s.emailStart:s.emailEnd])) {
-		s.emailAt = -1
-	}
-}
-
-func isEmailLocalRune(r rune) bool {
-	return r >= 'a' && r <= 'z' || r >= 'A' && r <= 'Z' || r >= '0' && r <= '9' || strings.ContainsRune("._%+-", r)
-}
-
-func (s *autoLinkScanner) parseAutoLink(runes []rune, start int) (text, url string, next int, ok bool) {
-	if start >= s.end {
-		s.scanWord(runes, start)
-	}
-	remaining := autoLinkPrefix(runes, start)
-	if strings.HasPrefix(remaining, "https://") || strings.HasPrefix(remaining, "http://") {
-		candidate := trimTrailingLinkPunctuation(string(runes[start:s.end]))
-		return candidate, candidate, start + runeLen(candidate), true
-	}
-	if start >= s.emailStart && start < s.emailAt {
-		candidate := string(runes[start:s.emailEnd])
-		return candidate, "mailto:" + candidate, s.emailEnd, true
-	}
-	return "", "", start, false
-}
-
-func trimTrailingLinkPunctuation(s string) string {
-	unmatchedClosing := strings.Count(s, ")") - strings.Count(s, "(")
-	for s != "" {
-		switch s[len(s)-1] {
-		case '.', ',', ';', ':', '!', '?':
-			s = s[:len(s)-1]
-		case ')':
-			if unmatchedClosing > 0 {
-				s = s[:len(s)-1]
-				unmatchedClosing--
-				continue
-			}
-			return s
-		default:
-			return s
-		}
-	}
-	return s
+	return m.inlineState
 }
 
 func (m *Markdown) styleMarkdownLink(display, rawText, url string) string {
@@ -1157,12 +1041,4 @@ func (m *Markdown) renderCodeBlock(lang string, lines []string) []string {
 		}
 	}
 	return append(out, theme.CodeBlockBorder("```"))
-}
-
-func runeLen(s string) int {
-	n := 0
-	for range s {
-		n++
-	}
-	return n
 }

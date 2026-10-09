@@ -1,5 +1,9 @@
 package tui
 
+// pi: packages/coding-agent/src/modes/interactive/components/login-dialog.ts
+
+// pi: packages/coding-agent/src/modes/interactive/components/auth-url.ts
+
 import (
 	"runtime"
 	"slices"
@@ -11,14 +15,14 @@ import (
 
 func TestLoginDialogSecretValueNeverRendered(t *testing.T) {
 	for _, value := range []string{"sk-secret-never-render", "", "key-密碼-🔑"} {
-		dlg := NewLoginDialog("Test", nil)
+		dlg := NewLoginDialogComponent(nil, "Test", nil, "")
 		answer := dlg.ShowSecretInput("API key", "")
 		dlg.HandleInput("\x1b[200~" + value + "\x1b[201~")
 		check := func(phase string) {
 			if got := strings.Join(dlg.Render(120), "\n"); value != "" && strings.Contains(got, value) {
 				t.Errorf("secret appears during %s", phase)
 			}
-			if value != "" && strings.Contains(strings.Join(dlg.lines, "\n"), value) {
+			if value != "" && strings.Contains(strings.Join(loginDialogLineTexts(dlg), "\n"), value) {
 				t.Errorf("secret retained in dialog lines during %s", phase)
 			}
 		}
@@ -30,7 +34,7 @@ func TestLoginDialogSecretValueNeverRendered(t *testing.T) {
 		check("submission")
 		dlg.ShowProgress("Checking credentials...")
 		check("progress")
-		dlg.ShowInput("Next non-secret prompt", "")
+		dlg.ShowPrompt("Next non-secret prompt", "")
 		check("next prompt")
 	}
 }
@@ -44,7 +48,7 @@ func TestLoginDialogMaskedPreview(t *testing.T) {
 		{"x😀界e\u0301Z", "•😀界e\u0301Z", "5 characters"},
 	} {
 		t.Run(tc.count, func(t *testing.T) {
-			d := NewLoginDialog("Test", nil)
+			d := NewLoginDialogComponent(nil, "Test", nil, "")
 			answer := d.ShowSecretInput("API key", "")
 			d.HandleInput(tc.value)
 			got := strings.Join(d.Render(150), "\n")
@@ -70,7 +74,7 @@ func TestLoginDialogMaskedPreview(t *testing.T) {
 }
 
 func TestLoginDialog_Render(t *testing.T) {
-	dlg := NewLoginDialog("GitHub Copilot", nil)
+	dlg := NewLoginDialogComponent(nil, "GitHub Copilot", nil, "")
 	lines := dlg.Render(80)
 	joined := strings.Join(lines, "\n")
 
@@ -80,7 +84,7 @@ func TestLoginDialog_Render(t *testing.T) {
 }
 
 func TestLoginDialog_ShowAuth(t *testing.T) {
-	dlg := NewLoginDialog("GitHub Copilot", nil)
+	dlg := NewLoginDialogComponent(nil, "GitHub Copilot", nil, "")
 	dlg.ShowAuth("https://github.com/login/device", "")
 	lines := dlg.Render(80)
 	joined := strings.Join(lines, "\n")
@@ -98,9 +102,10 @@ func TestLoginDialog_ShowAuth(t *testing.T) {
 }
 
 // Pi's showDeviceCode (login-dialog.ts:118-131): a spacer, the linked verification URL, the click hint, a spacer, then "Enter code: <code>". Pi's notifyAuthDialog follows it with showWaiting.
+// Pi packages/coding-agent/src/modes/interactive/components/login-dialog.ts:117 showDeviceCode(info): one OAuthDeviceCodeInfo argument; the dialog shows its verificationUri and userCode.
 func TestLoginDialog_ShowDeviceCode(t *testing.T) {
-	dlg := NewLoginDialog("GitHub Copilot", nil)
-	dlg.ShowDeviceCode("https://github.com/login/device", "WDJB-MJHT")
+	dlg := NewLoginDialogComponent(nil, "GitHub Copilot", nil, "")
+	dlg.ShowDeviceCode(OAuthDeviceCodeInfo{VerificationURI: "https://github.com/login/device", UserCode: "WDJB-MJHT"})
 	dlg.ShowWaiting("Waiting for authentication...")
 	lines := dlg.Render(80)
 	hint := "Ctrl+click to open"
@@ -120,7 +125,7 @@ func TestLoginDialog_ShowDeviceCode(t *testing.T) {
 }
 
 func TestLoginDialog_ShowWaiting(t *testing.T) {
-	dlg := NewLoginDialog("Anthropic", nil)
+	dlg := NewLoginDialogComponent(nil, "Anthropic", nil, "")
 	dlg.ShowAuth("https://example.com", "")
 	dlg.ShowWaiting("Waiting for authorization...")
 	lines := dlg.Render(80)
@@ -136,7 +141,7 @@ func TestLoginDialog_ShowWaiting(t *testing.T) {
 
 func TestLoginDialog_Cancel(t *testing.T) {
 	var cancelCalled bool
-	dlg := NewLoginDialog("Test", func() { cancelCalled = true })
+	dlg := NewLoginDialogComponent(nil, "Test", func(bool, string) { (func() { cancelCalled = true })() }, "")
 	dlg.HandleInput("\x1b")
 
 	if !dlg.Done() {
@@ -151,8 +156,8 @@ func TestLoginDialog_Cancel(t *testing.T) {
 }
 
 func TestLoginDialog_InputSubmit(t *testing.T) {
-	dlg := NewLoginDialog("Test", nil)
-	ch := dlg.ShowInput("Paste URL:", "")
+	dlg := NewLoginDialogComponent(nil, "Test", nil, "")
+	ch := dlg.ShowPrompt("Paste URL:", "")
 
 	dlg.HandleInput("h")
 	dlg.HandleInput("i")
@@ -166,8 +171,8 @@ func TestLoginDialog_InputSubmit(t *testing.T) {
 
 func TestLoginDialog_SubmittedInputRemainsVisible(t *testing.T) {
 	// Pi login-dialog.ts:59-61,77-81 replaces only the input with Text("> <value>").
-	dlg := NewLoginDialog("Test", nil)
-	ch := dlg.ShowInput("Paste URL:", "redirect URL")
+	dlg := NewLoginDialogComponent(nil, "Test", nil, "")
+	ch := dlg.ShowPrompt("Paste URL:", "redirect URL")
 	dlg.HandleInput("https://example.test/callback?code=hello")
 	dlg.HandleInput("\r")
 	<-ch
@@ -184,8 +189,8 @@ func TestLoginDialog_SubmittedInputRemainsVisible(t *testing.T) {
 }
 
 func TestLoginDialog_BracketedPasteReachesInput(t *testing.T) {
-	dlg := NewLoginDialog("Test", nil)
-	ch := dlg.ShowInput("Paste URL:", "")
+	dlg := NewLoginDialogComponent(nil, "Test", nil, "")
+	ch := dlg.ShowPrompt("Paste URL:", "")
 	const value = "https://example.test/callback?code=pasted&state=ok"
 	dlg.HandleInput("\x1b[200~" + value + "\x1b[201~")
 	select {
@@ -200,8 +205,8 @@ func TestLoginDialog_BracketedPasteReachesInput(t *testing.T) {
 }
 
 func TestLoginDialog_CancelClosesPendingInputChannel(t *testing.T) {
-	dlg := NewLoginDialog("Test", nil)
-	ch := dlg.ShowInput("Paste URL:", "")
+	dlg := NewLoginDialogComponent(nil, "Test", nil, "")
+	ch := dlg.ShowPrompt("Paste URL:", "")
 	dlg.HandleInput("\x1b")
 	if _, ok := <-ch; ok {
 		t.Fatal("expected input channel to be closed on cancel")
@@ -214,8 +219,10 @@ func TestLoginDialogOAuthPromptsUpstream(t *testing.T) {
 	SetTheme("dark")
 	SetTUIKeybindings(NewTUIKeybindingsManager(nil))
 	t.Cleanup(func() { storeActiveTheme(previousTheme); SetTUIKeybindings(previousKeys) })
-	newDialog := func() *LoginDialog { return NewLoginDialog("Prompt Repro", func() {}) }
-	render := func(dialog *LoginDialog) []string {
+	newDialog := func() *LoginDialogComponent {
+		return NewLoginDialogComponent(nil, "Prompt Repro", func(bool, string) { (func() {})() }, "")
+	}
+	render := func(dialog *LoginDialogComponent) []string {
 		lines := strings.Split(widthx.StripAnsi(strings.Join(dialog.Render(120), "\n")), "\n")
 		for i := range lines {
 			lines[i] = strings.TrimRight(lines[i], " ")
@@ -254,12 +261,12 @@ func TestLoginDialogOAuthPromptsUpstream(t *testing.T) {
 			if tc.manual {
 				first = dialog.ShowManualInput(tc.prompt)
 			} else {
-				first = dialog.ShowInput(tc.prompt, tc.placeholder)
+				first = dialog.ShowPrompt(tc.prompt, tc.placeholder)
 			}
 			dialog.HandleInput(tc.value)
 			dialog.HandleInput("\n")
 			assertValue(t, first, tc.value)
-			second := dialog.ShowInput("Second prompt:", "")
+			second := dialog.ShowPrompt("Second prompt:", "")
 			dialog.HandleInput("second-secret-demo")
 			lines := render(dialog)
 			contains(t, lines, tc.prompt, "Second prompt:")
@@ -281,19 +288,19 @@ func TestLoginDialogOAuthPromptsUpstream(t *testing.T) {
 	t.Run("preserves auth instructions when showing a prompt", func(t *testing.T) {
 		dialog := newDialog()
 		dialog.ShowAuth("https://example.invalid/login", "Authorize the extension")
-		dialog.ShowInput("First prompt:", "")
+		dialog.ShowPrompt("First prompt:", "")
 		contains(t, render(dialog), "https://example.invalid/login", "Authorize the extension", "First prompt:")
 	})
 	t.Run("preserves neutral information and links when showing a prompt", func(t *testing.T) {
 		dialog := newDialog()
 		dialog.ShowInfo("Configure credentials outside pi.", []AuthInfoLink{{Label: "Provider documentation", URL: "https://example.invalid/docs"}}, false)
-		dialog.ShowInput("Press Enter to continue:", "")
+		dialog.ShowPrompt("Press Enter to continue:", "")
 		contains(t, render(dialog), "Configure credentials outside pi.", "Provider documentation: https://example.invalid/docs", "Press Enter to continue:")
 	})
 	t.Run("preserves setup details when showing a prompt", func(t *testing.T) {
 		dialog := newDialog()
 		dialog.ShowDetails([]string{"AWS credential setup:", "providers.md"})
-		dialog.ShowInput("Enter API key:", "")
+		dialog.ShowPrompt("Enter API key:", "")
 		contains(t, render(dialog), "AWS credential setup:", "providers.md", "Enter API key:")
 	})
 }
@@ -303,7 +310,7 @@ func TestLoginDialogManualInputLayout(t *testing.T) {
 	previous := GetTUIKeybindings()
 	SetTUIKeybindings(NewTUIKeybindingsManager(nil))
 	t.Cleanup(func() { SetTUIKeybindings(previous) })
-	dialog := NewLoginDialog("Prompt Repro", nil)
+	dialog := NewLoginDialogComponent(nil, "Prompt Repro", nil, "")
 	answer := dialog.ShowManualInput("Paste callback URL:")
 	dialog.HandleInput("callback-value")
 	dialog.HandleInput("\n")
@@ -319,8 +326,98 @@ func TestLoginDialogManualInputLayout(t *testing.T) {
 	if !slices.Equal(got, want) {
 		t.Fatalf("manual input body=%q want=%q", got, want)
 	}
-	wantLabel := NewPaddedText(ActiveTheme().FgText("dim", "Paste callback URL:"), 1, 0, nil).Render(120)
+	wantLabel := NewPaddedText(ActiveTheme().Fg("dim", "Paste callback URL:"), 1, 0, nil).Render(120)
 	if !slices.Equal(lines[3:4], wantLabel) {
 		t.Fatalf("manual input label=%q want=%q", lines[3:4], wantLabel)
+	}
+}
+
+// loginDialogLineTexts returns the text the dialog retains in its content children.
+func loginDialogLineTexts(dlg *LoginDialogComponent) []string {
+	var out []string
+	for _, child := range dlg.content.Children() {
+		if line, ok := child.(*loginDialogLine); ok {
+			out = append(out, line.line)
+		}
+	}
+	return out
+}
+
+// LoginDialogComponent extends Container (login-dialog.ts:12): border, title, content container, border; the content
+// container's children follow each step and a submitted prompt replaces its input child with a Text.
+func TestLoginDialogComponentChildrenFollowUpstream(t *testing.T) {
+	dlg := NewLoginDialogComponent(nil, "Test", nil, "")
+	if got := len(dlg.Children()); got != 4 {
+		t.Fatalf("children = %d, want 4", got)
+	}
+	if got := len(dlg.content.Children()); got != 0 {
+		t.Fatalf("content children = %d, want 0", got)
+	}
+	answer := dlg.ShowPrompt("Name", "")
+	// spacer, prompt, input, hint
+	if got := len(dlg.content.Children()); got != 4 {
+		t.Fatalf("content children with a prompt = %d, want 4", got)
+	}
+	dlg.HandleInput("\x1b[200~bob\x1b[201~")
+	dlg.HandleInput("\r")
+	<-answer
+	if _, replaced := dlg.content.Children()[2].(*loginDialogLine); !replaced {
+		t.Fatal("submitted input was not replaced by a text child")
+	}
+	if !strings.Contains(strings.Join(dlg.Render(40), "\n"), "> bob") {
+		t.Fatal("submitted value missing from the render")
+	}
+	dlg.ShowDetails([]string{"a"})
+	if got := len(dlg.content.Children()); got != 2 {
+		t.Fatalf("content children after ShowDetails = %d, want 2", got)
+	}
+}
+
+type loginRenderCounter struct {
+	TUI
+	renders int
+}
+
+func (r *loginRenderCounter) RequestRender(...bool) { r.renders++ }
+
+// packages/coding-agent/src/modes/interactive/components/login-dialog.ts:32-48,86-93: the title is "Login to <providerNameOverride
+// || providerId>" unless titleOverride is given, cancelling runs onComplete(false, "Login cancelled"), and the dialog's render
+// requests go to the tui it was constructed with.
+func TestLoginDialogConstructorFollowsPi(t *testing.T) {
+	title := func(d *LoginDialogComponent) string { return stripANSI(strings.TrimSpace(d.Render(60)[1])) }
+	for _, tc := range []struct {
+		name     string
+		dialog   *LoginDialogComponent
+		wantText string
+	}{
+		{"provider id", NewLoginDialogComponent(nil, "anthropic", nil, ""), "Login to anthropic"},
+		{"provider name override", NewLoginDialogComponent(nil, "anthropic", nil, "Anthropic"), "Login to Anthropic"},
+		{"title override", NewLoginDialogComponent(nil, "anthropic", nil, "Anthropic", "Custom title"), "Custom title"},
+	} {
+		if got := title(tc.dialog); got != tc.wantText {
+			t.Errorf("%s: title = %q, want %q", tc.name, got, tc.wantText)
+		}
+	}
+
+	var successes []bool
+	var messages []string
+	ui := &loginRenderCounter{}
+	d := NewLoginDialogComponent(ui, "anthropic", func(success bool, message string) {
+		successes = append(successes, success)
+		messages = append(messages, message)
+	}, "")
+	d.HandleInput("x")
+	if len(successes) != 0 {
+		t.Fatalf("a typed key completed the login: %v", successes)
+	}
+	d.HandleInput("\x1b")
+	if len(successes) != 1 || successes[0] || messages[0] != "Login cancelled" {
+		t.Fatalf("cancel: onComplete calls %v %q, want one (false, \"Login cancelled\")", successes, messages)
+	}
+	d.SetCopyToClipboard(func(string) error { return nil }, nil)
+	d.ShowAuth("https://example.invalid/auth", "")
+	<-d.authURL.Copy()
+	if ui.renders == 0 {
+		t.Fatal("the dialog did not request a render from the tui it was built with")
 	}
 }

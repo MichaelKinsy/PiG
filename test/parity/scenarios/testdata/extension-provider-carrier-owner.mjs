@@ -49,7 +49,9 @@ export default function (pi) {
       },
     },
     getModels: () => models,
+    getAllModels: () => [...models, { ...models[0], id: "carrier-all-only" }],
     filterModels: (input, credential) => credential?.key === "selected" ? input.slice(0, 1) : [],
+    filterAllModels: (input, credential) => credential?.key === "all" ? input : [],
     refreshModels: async context => {
       if (!context.force) return;
       await context.publish({ persist: null, update: () => { models = [...models, { ...models[0], id: "refreshed" }]; } });

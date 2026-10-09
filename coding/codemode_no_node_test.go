@@ -1,3 +1,5 @@
+//go:build !pig_strip_codemode
+
 package coding
 
 import (
@@ -82,7 +84,7 @@ func TestCodemodeTimeoutCancelsARunningNestedCall(t *testing.T) {
 		Execute: func(ctx context.Context, _ string, _ json.RawMessage, _ extension.AgentToolUpdateCallback) (extension.AgentToolResult, error) {
 			<-ctx.Done()
 			close(sawCancel)
-			return nil, ctx.Err()
+			return extension.AgentToolResult{}, ctx.Err()
 		},
 	}
 	ext := extension.Extension{Name: "slow", Path: "<inline:slow>", ResolvedPath: "<inline:slow>",

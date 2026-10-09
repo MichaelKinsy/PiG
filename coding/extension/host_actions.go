@@ -1,48 +1,50 @@
 package extension
 
+import (
+	"context"
+
+	"github.com/MichaelKinsy/PiG/ai"
+)
+
 // ExtensionActions is the host-side injection of agent-loop callbacks
 // available to extensions via `ctx.actions.*` (the runtime side; this
 // struct is consumed by [host.Runner.BindCore]). Mirrors upstream
-// `ExtensionActions` (types.ts:1588-1603).
+// `ExtensionActions` (types.ts:2147-2163). Each field has the shape of the
+// upstream handler type named beside it; Go handlers return the error
+// upstream's handler would throw.
 //
-// Most fields are opaque-typed (`any`) at this boundary because their
-// concrete handler types live in upstream files not yet ported
-// (session-manager, agent-runtime, tool-registry). Field names and upstream
-// line cites are fixed here so a concrete handler type can replace `any`
-// without renaming.
-//
-// upstream: types.ts:1589-1603
+// upstream: types.ts:2147-2163
 type ExtensionActions struct {
-	// upstream: types.ts:1590: SendMessageHandler
-	SendMessage any
-	// upstream: types.ts:1591: SendUserMessageHandler
+	// upstream: types.ts:2064: SendMessageHandler
+	SendMessage func(message CustomMessageRef, options *SendMessageOptions) error
+	// upstream: types.ts:2069: SendUserMessageHandler
 	SendUserMessage SendUserMessageHandler
-	// upstream: types.ts:1591: AppendEntryHandler
-	AppendEntry any
-	// upstream: types.ts:1592: SetSessionNameHandler
-	SetSessionName any
-	// upstream: types.ts:1593: GetSessionNameHandler
-	GetSessionName any
-	// upstream: types.ts:1594: SetLabelHandler
-	SetLabel any
-	// upstream: types.ts:1595: GetActiveToolsHandler
-	GetActiveTools any
-	// upstream: types.ts:1596: GetAllToolsHandler
-	GetAllTools any
-	// upstream: types.ts:2135: GetSettingsHandler
+	// upstream: types.ts:2074: AppendEntryHandler
+	AppendEntry func(customType string, data any) error
+	// upstream: types.ts:2076: SetSessionNameHandler
+	SetSessionName func(name string) error
+	// upstream: types.ts:2078: GetSessionNameHandler
+	GetSessionName func() string
+	// upstream: types.ts:2106: SetLabelHandler
+	SetLabel func(entryID string, label *string) error
+	// upstream: types.ts:2080: GetActiveToolsHandler
+	GetActiveTools func() []string
+	// upstream: types.ts:2090: GetAllToolsHandler
+	GetAllTools func() []ToolInfo
+	// upstream: types.ts:2092: GetSettingsHandler
 	GetSettings func() Settings
-	// upstream: types.ts:1597: SetActiveToolsHandler
-	SetActiveTools any
-	// upstream: types.ts:1598: RefreshToolsHandler
-	RefreshTools any
-	// upstream: types.ts:1599: GetCommandsHandler
-	GetCommands any
-	// upstream: types.ts:1600: SetModelHandler
-	SetModel any
-	// upstream: types.ts:1601: GetThinkingLevelHandler
-	GetThinkingLevel any
-	// upstream: types.ts:1602: SetThinkingLevelHandler
-	SetThinkingLevel any
+	// upstream: types.ts:2096: SetActiveToolsHandler
+	SetActiveTools func(toolNames []string)
+	// upstream: types.ts:2098: RefreshToolsHandler
+	RefreshTools func() error
+	// upstream: types.ts:2094: GetCommandsHandler
+	GetCommands func() []SlashCommandInfo
+	// upstream: types.ts:2100: SetModelHandler. ctx carries the calling extension's call lifetime (D3).
+	SetModel func(ctx context.Context, model Model) (bool, error)
+	// upstream: types.ts:2102: GetThinkingLevelHandler
+	GetThinkingLevel func() ThinkingLevel
+	// upstream: types.ts:2104: SetThinkingLevelHandler
+	SetThinkingLevel func(level ThinkingLevel)
 }
 
 // SendUserMessageHandler injects a user message into the agent loop.
@@ -60,8 +62,29 @@ type SendUserMessageHandler func(content any, options *SendUserMessageOptions) e
 type ProviderActions struct {
 	RegisterProvider   func(name string, config ProviderConfig) error
 	UnregisterProvider func(name string)
+	// RegisterNativeProvider applies a native provider registration of Pi's Provider object; the call's context carries the registering
+	// call's initiation. A carrier registered by a subprocess extension reaches it as the object assembled from the carrier.
+	// upstream: runner.ts:410-418, 481-490 (providerActions.registerNativeProvider(provider: Provider))
+	RegisterNativeProvider func(ctx context.Context, provider *ai.ModelsProvider) error
+	// RegisterNativeProviderCarrier is RegisterNativeProvider for the registration carrier, which keeps each member's context.Context and
+	// error; a registry that serves subprocess extensions binds it. When both are set, the carrier form applies.
+	RegisterNativeProviderCarrier func(ctx context.Context, provider *NativeProvider) error
 	// RegisterVirtualModel and UnregisterVirtualModel apply virtual-model registrations; the model registry's own ones apply when unset.
 	// upstream: runner.ts:413-417 (providerActions.registerVirtualModel, unregisterVirtualModel)
 	RegisterVirtualModel   func(definition VirtualModelDefinition) error
 	UnregisterVirtualModel func(provider, id string)
+}
+
+// bindsNativeProvider reports whether either native provider registration form is bound.
+func (a ProviderActions) bindsNativeProvider() bool {
+	return a.RegisterNativeProvider != nil || a.RegisterNativeProviderCarrier != nil
+}
+
+// registerNative applies one native provider registration: the carrier form when set, else the Provider-object form with the registered
+// object itself.
+func (a ProviderActions) registerNative(ctx context.Context, provider *ai.ModelsProvider, carrier *NativeProvider) error {
+	if a.RegisterNativeProviderCarrier != nil {
+		return a.RegisterNativeProviderCarrier(ctx, carrier)
+	}
+	return a.RegisterNativeProvider(ctx, provider)
 }

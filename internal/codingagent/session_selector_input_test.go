@@ -131,7 +131,7 @@ func TestStartupSessionCancelParksFromSearchCursor(t *testing.T) {
 	if searchRow < 0 || state.HardwareCursorRow != searchRow {
 		t.Fatalf("hardware cursor row = %d, want search row %d (not the full-width bottom border)", state.HardwareCursorRow, searchRow)
 	}
-	want := fmt.Sprintf(" \x1b[%dB\r\n\x1b[?25h", len(state.PrevLines)-searchRow)
+	want := fmt.Sprintf(" \x1b[%dB\r\n\x1b[?25h", len(state.PreviousLines)-searchRow)
 	if !strings.HasSuffix(output.String(), want) {
 		t.Fatalf("stop bytes do not park below previousLines from the input: want suffix %q, got %q", want, output.String())
 	}

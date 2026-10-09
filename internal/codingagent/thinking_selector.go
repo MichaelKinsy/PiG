@@ -1,6 +1,9 @@
 package codingagent
 
 import (
+	"slices"
+
+	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/tui"
 )
 
@@ -11,46 +14,47 @@ import (
 type ThinkingSelectorComponent struct {
 	*tui.Container
 	searchInput       *tui.TextInput
-	selectList        *tui.FilterableList
+	selectList        *tui.SelectList
 	allItems          []tui.SelectItem
-	items             []tui.SelectItem
-	onSelect          func(level string)
+	onSelect          func(level ai.ThinkingLevel)
 	onCancel          func()
-	onSelectAsDefault func(level string)
+	onSelectAsDefault func(level ai.ThinkingLevel)
 }
 
 // NewThinkingSelectorComponent builds the selector. onSelectAsDefault may be
 // nil, which disables the save binding; defaultThinkingLevel annotates that
 // level's description.
 func NewThinkingSelectorComponent(
-	currentLevel string,
-	availableLevels []string,
-	onSelect func(level string),
+	currentLevel ai.ThinkingLevel,
+	availableLevels []ai.ThinkingLevel,
+	onSelect func(level ai.ThinkingLevel),
 	onCancel func(),
-	onSelectAsDefault func(level string),
-	defaultThinkingLevel string,
+	onSelectAsDefault func(level ai.ThinkingLevel),
+	defaultThinkingLevel ai.ThinkingLevel,
 ) *ThinkingSelectorComponent {
 	s := &ThinkingSelectorComponent{
 		Container:         tui.NewContainer(),
-		searchInput:       tui.NewTextInput(""),
+		searchInput:       tui.NewInput(tui.InputOptions{}),
 		onSelect:          onSelect,
 		onCancel:          onCancel,
 		onSelectAsDefault: onSelectAsDefault,
 	}
+	s.searchInput.Focused = true
+	s.searchInput.OnSubmit = func(string) { s.selectList.HandleInput("\r") }
 	for _, level := range availableLevels {
-		label := "  " + level
+		label := "  " + string(level)
 		if level == currentLevel {
-			label = "✓ " + level
+			label = "✓ " + string(level)
 		}
-		description := thinkingDescriptions[level]
+		description := thinkingDescriptions[string(level)]
 		if level == defaultThinkingLevel {
 			description += " · default"
 		}
-		s.allItems = append(s.allItems, tui.SelectItem{Value: level, Label: label, Description: description})
+		s.allItems = append(s.allItems, tui.SelectItem{Value: string(level), Label: label, Description: description})
 	}
 
 	th := tui.ActiveTheme()
-	s.Add(tui.NewDynamicBorder(""))
+	s.Add(tui.NewDynamicBorder())
 	s.Add(tui.NewSpacer(1))
 	s.Add(tui.NewText("Thinking Level"))
 	s.Add(tui.NewSpacer(1))
@@ -58,53 +62,35 @@ func NewThinkingSelectorComponent(
 	s.Add(tui.NewSpacer(1))
 	s.Add(s.searchInput)
 	s.Add(tui.NewSpacer(1))
-	s.selectList = s.buildSelectList(s.allItems, currentLevel)
+	s.selectList = s.buildSelectList(s.allItems, string(currentLevel))
 	s.Add(s.selectList)
 	s.Add(tui.NewSpacer(1))
-	s.Add(tui.NewText(th.Dim + "  " + tui.ActionKeyDisplayText(tui.KBSelectConfirm) + " to select · " +
-		tui.ActionKeyDisplayText("app.thinking.save") + " to set as default · " +
-		tui.ActionKeyDisplayText(tui.KBSelectCancel) + " to cancel" + th.Reset))
-	s.Add(tui.NewDynamicBorder(""))
+	s.Add(tui.NewText(th.Fg("dim", "  "+tui.ActionKeyDisplayText(tui.KBSelectConfirm)+" to select · "+
+		tui.ActionKeyDisplayText("app.thinking.save")+" to set as default · "+
+		tui.ActionKeyDisplayText(tui.KBSelectCancel)+" to cancel")))
+	s.Add(tui.NewDynamicBorder())
 	return s
 }
 
-// thinkingSelectListLayout mirrors THINKING_SELECT_LIST_LAYOUT.
-const (
-	thinkingSelectMinPrimaryColumnWidth = 12
-	thinkingSelectMaxPrimaryColumnWidth = 32
-)
+// thinkingSelectListLayout is THINKING_SELECT_LIST_LAYOUT (thinking-selector.ts:17-20).
+var thinkingSelectListLayout = tui.SelectListLayoutOptions{MinPrimaryColumnWidth: 12, MaxPrimaryColumnWidth: 32}
 
-func (s *ThinkingSelectorComponent) buildSelectList(items []tui.SelectItem, preselect string) *tui.FilterableList {
-	labels := make([]string, len(items))
-	descriptions := make([]string, len(items))
-	currentIndex := -1
-	for i, item := range items {
-		labels[i] = item.Label
-		descriptions[i] = item.Description
-		if item.Value == preselect {
-			currentIndex = i
+func (s *ThinkingSelectorComponent) buildSelectList(items []tui.SelectItem, preselect string) *tui.SelectList {
+	list := tui.NewSelectList(items, max(1, len(items)), tui.GetSelectListTheme(), thinkingSelectListLayout)
+	if index := slices.IndexFunc(items, func(item tui.SelectItem) bool { return item.Value == preselect }); index != -1 {
+		list.SetSelectedIndex(index)
+	}
+	list.OnSelect = func(item tui.SelectItem) {
+		if s.onSelect != nil {
+			s.onSelect(ai.ThinkingLevel(item.Value))
 		}
 	}
-	list := tui.NewFilterableList("", labels)
-	list.EnableSearch = false
-	list.Descriptions = descriptions
-	list.MinPrimaryColumnWidth = thinkingSelectMinPrimaryColumnWidth
-	list.MaxPrimaryColumnWidth = thinkingSelectMaxPrimaryColumnWidth
-	list.MaxVisible = max(1, len(items))
-	if currentIndex != -1 {
-		list.SetCursor(currentIndex)
+	list.OnCancel = func() {
+		if s.onCancel != nil {
+			s.onCancel()
+		}
 	}
-	s.items = items
 	return list
-}
-
-// selectedItem returns the highlighted item, as SelectList.getSelectedItem.
-func (s *ThinkingSelectorComponent) selectedItem() (tui.SelectItem, bool) {
-	index := s.selectList.CursorIndex()
-	if index < 0 || index >= len(s.items) {
-		return tui.SelectItem{}, false
-	}
-	return s.items[index], true
 }
 
 func (s *ThinkingSelectorComponent) applyFilter(query string) {
@@ -115,7 +101,7 @@ func (s *ThinkingSelectorComponent) applyFilter(query string) {
 		})
 	}
 	selectedValue := ""
-	if item, ok := s.selectedItem(); ok {
+	if item, ok := s.selectList.SelectedItem(); ok {
 		selectedValue = item.Value
 	}
 	previous := s.selectList
@@ -129,8 +115,8 @@ func (s *ThinkingSelectorComponent) applyFilter(query string) {
 func (s *ThinkingSelectorComponent) HandleInput(data string) {
 	kb := tui.GetTUIKeybindings()
 	if kb.Matches(data, "app.thinking.save") && s.onSelectAsDefault != nil {
-		if item, ok := s.selectedItem(); ok {
-			s.onSelectAsDefault(item.Value)
+		if item, ok := s.selectList.SelectedItem(); ok {
+			s.onSelectAsDefault(ai.ThinkingLevel(item.Value))
 		}
 		return
 	}
@@ -138,7 +124,6 @@ func (s *ThinkingSelectorComponent) HandleInput(data string) {
 	if kb.Matches(data, tui.KBSelectUp) || kb.Matches(data, tui.KBSelectDown) ||
 		kb.Matches(data, tui.KBSelectConfirm) || kb.Matches(data, tui.KBSelectCancel) {
 		s.selectList.HandleInput(data)
-		s.dispatchListResult()
 		s.Invalidate()
 		return
 	}
@@ -148,25 +133,13 @@ func (s *ThinkingSelectorComponent) HandleInput(data string) {
 	s.Invalidate()
 }
 
-// dispatchListResult turns the list's confirm or cancel into the upstream
-// onSelect/onCancel callbacks.
-func (s *ThinkingSelectorComponent) dispatchListResult() {
-	if !s.selectList.Done() {
-		return
-	}
-	if s.selectList.Cancelled() {
-		if s.onCancel != nil {
-			s.onCancel()
-		}
-		return
-	}
-	index := s.selectList.SelectedIndex()
-	if index >= 0 && index < len(s.items) && s.onSelect != nil {
-		s.onSelect(s.items[index].Value)
-	}
-}
-
 // GetSelectList returns the level list, as upstream getSelectList.
-func (s *ThinkingSelectorComponent) GetSelectList() *tui.FilterableList {
+func (s *ThinkingSelectorComponent) GetSelectList() *tui.SelectList {
 	return s.selectList
 }
+
+// SetFocused propagates TUI focus to the search input (upstream `set focused`, thinking-selector.ts:50-53).
+func (s *ThinkingSelectorComponent) SetFocused(focused bool) { s.searchInput.SetFocused(focused) }
+
+// Focused reports whether the search input holds the TUI focus (upstream `get focused`).
+func (s *ThinkingSelectorComponent) Focused() bool { return s.searchInput.Focused }

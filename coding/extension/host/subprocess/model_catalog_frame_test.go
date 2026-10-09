@@ -21,6 +21,7 @@ func TestModelCatalogFramesPreserveBytesAndOrder(t *testing.T) {
 	state := map[string]any{"models": []map[string]any{{"id": "<model>\u2028", "input": []string{}, "compat": nil}}, "error": "error <detail>"}
 	bridge.SetHostAction("getModelRegistryState", func() map[string]any { return state })
 	first, second := NewConn("first", nil), NewConn("second", nil)
+	first.modelRegistry, second.modelRegistry = true, true
 	bridge.extConns = map[string]*Conn{"first": first, "second": second}
 	for _, status := range []string{"initial", "changed", "changed"} {
 		state["providers"] = map[string]any{"provider": map[string]any{"status": status, "configured": false}}
@@ -94,6 +95,7 @@ func TestEncodedCatalogFrameKeepsSizeAndClosedChecks(t *testing.T) {
 func TestModelCatalogEncoderRetainsGetterAndReplacement(t *testing.T) {
 	bridge := NewUIBridge(nil)
 	conn := NewConn("test", nil)
+	conn.modelRegistry = true
 	bridge.extConns = map[string]*Conn{"test": conn}
 	reads, encodes := 0, 0
 	bridge.SetModelCatalog(func() []map[string]any {
@@ -142,6 +144,7 @@ func BenchmarkModelCatalogFrame(b *testing.B) {
 	}
 	bridge.SetHostAction("getModelRegistryState", func() map[string]any { return map[string]any{"models": models} })
 	conn := NewConn("test", nil)
+	conn.modelRegistry = true
 	bridge.extConns = map[string]*Conn{"test": conn}
 	b.ReportAllocs()
 	for b.Loop() {

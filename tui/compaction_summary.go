@@ -1,7 +1,6 @@
 package tui
 
 import (
-	"fmt"
 	"strconv"
 	"strings"
 )
@@ -11,100 +10,80 @@ import (
 // Fg colors do not need the delta-from-cardBg adjustment (only bg tints do).
 func customMsgLabelFg() string { return ActiveTheme().CustomMessageLabel }
 
-// CompactionSummaryComponent renders a collapsible compaction marker.
-// It preserves Pi's horizontal and vertical Box padding.
-type CompactionSummaryComponent struct {
-	invalidatable
-	summary      string
-	tokensBefore int
-	expanded     bool
+// CompactionSummaryMessageComponent renders a collapsible compaction marker. Like upstream's `extends Box`, it embeds the
+// Box (padding 1, 1 and the customMessageBg background), so the Box members are inherited; each display update clears the
+// Box and adds one mouse region.
+//
+// upstream: packages/coding-agent/src/modes/interactive/components/compaction-summary-message.ts
+type CompactionSummaryMessageComponent struct {
+	*Box
+	summary       string
+	tokensBefore  int
+	expanded      bool
+	markdownTheme *MarkdownTheme
 }
 
-// NewCompactionSummaryComponent creates a compaction summary component.
-// summary is the markdown text of the compaction context; tokensBefore is the
-// LLM token count before compaction (shown in the header).
-func NewCompactionSummaryComponent(summary string, tokensBefore int) *CompactionSummaryComponent {
-	return &CompactionSummaryComponent{
-		summary:      summary,
-		tokensBefore: tokensBefore,
+// CompactionSummaryMessage is the part of Pi's CompactionSummaryMessage (coding-agent core/messages.ts:62) that
+// [CompactionSummaryMessageComponent] renders: the summary markdown and the context token count before compaction.
+type CompactionSummaryMessage struct {
+	Summary      string
+	TokensBefore int
+}
+
+// NewCompactionSummaryMessageComponent is Pi's constructor(message, markdownTheme = getMarkdownTheme(), outputPad = 1)
+// (compaction-summary-message.ts:15). The expanded body renders the summary with markdownTheme; nil selects the active
+// theme's markdown theme. outputPad is the horizontal padding; absent it is 1.
+func NewCompactionSummaryMessageComponent(message CompactionSummaryMessage, markdownTheme *MarkdownTheme, outputPad ...int) *CompactionSummaryMessageComponent {
+	padX := 1
+	if len(outputPad) > 0 {
+		padX = outputPad[0]
 	}
+	component := &CompactionSummaryMessageComponent{
+		Box:           NewPaddedBox(padX, 1, func(text string) string { return ActiveTheme().Bg("customMessageBg", text) }),
+		summary:       message.Summary,
+		tokensBefore:  message.TokensBefore,
+		markdownTheme: markdownTheme,
+	}
+	component.updateDisplay()
+	return component
 }
 
-// SetExpanded opens or collapses the component body. InteractiveMode calls it
-// from the global Ctrl+O toggle.
-func (c *CompactionSummaryComponent) SetExpanded(expanded bool) {
+// SetExpanded opens or collapses the component body. InteractiveMode calls it from the global Ctrl+O toggle.
+func (c *CompactionSummaryMessageComponent) SetExpanded(expanded bool) {
 	c.expanded = expanded
-	c.Invalidate()
+	c.updateDisplay()
 }
 
-// HandleMouse toggles the summary on a left click inside the box content, excluding its one-cell padding.
-// Ports packages/coding-agent/src/modes/interactive/components/compaction-summary-message.ts:60.
-func (c *CompactionSummaryComponent) HandleMouse(event TuiMouseEvent) *TuiMouseDispatchResult {
-	if event.Type != MouseClick || event.Button != MouseButtonLeft || event.X < 1 || event.X-1 >= max(1, event.Width-2) || event.Y < 1 || event.Y >= event.Height-1 {
-		return nil
-	}
-	c.SetExpanded(!c.expanded)
-	return &TuiMouseDispatchResult{TuiMouseEventResult: TuiMouseEventResult{Handled: true}}
+// Invalidate invalidates the Box and rebuilds the display, which bakes theme colors into its text.
+func (c *CompactionSummaryMessageComponent) Invalidate() {
+	c.Box.Invalidate()
+	c.updateDisplay()
 }
 
-// Render returns the lines for this component at the given terminal width.
-// All column measurements are delegated to paintBgWith (which uses
-// lineDisplayWidth / runewidth.StringWidth internally).
-func (c *CompactionSummaryComponent) Render(width int) []string {
-	if width < 4 {
-		width = 4
-	}
+func (c *CompactionSummaryMessageComponent) updateDisplay() {
+	c.Clear()
+	theme := ActiveTheme()
+	content := NewContainer()
 	tokenStr := formatThousands(c.tokensBefore)
-
-	const (
-		bold    = "\x1b[1m"
-		boldEnd = "\x1b[22m"
-		dim     = "\x1b[2m"
-		reset   = "\x1b[0m"
-	)
-
-	customMsgBgOpen := ActiveTheme().CustomMessageBg
-	var out []string
-
-	// Top padding row: mirrors upstream Box(paddingX=1, paddingY=1).
-	out = append(out, paintBgWith(customMsgBgOpen, "", width))
-
-	// Label row: " [compaction]" with bold + label fg color.
-	// Mirrors upstream: theme.fg("customMessageLabel", `\x1b[1m[compaction]\x1b[22m`)
-	labelStyled := customMsgLabelFg() + bold + "[compaction]" + boldEnd + reset
-	out = append(out, paintBgWith(customMsgBgOpen, " "+labelStyled, width))
-
-	// Structural blank row: mirrors upstream Spacer(1) child between label
-	// and body.
-	out = append(out, paintBgWith(customMsgBgOpen, "", width))
-
+	content.Add(NewText(theme.Fg("customMessageLabel", "\x1b[1m[compaction]\x1b[22m")))
+	content.Add(NewSpacer(1))
 	if c.expanded {
-		// Expanded: render markdown header + summary body.
-		// Upstream: new Markdown(header + summary, 0, 0, markdownTheme, ...)
-		header := fmt.Sprintf("**Compacted from %s tokens**\n\n", tokenStr)
-		md := NewMarkdown(header + c.summary)
-		contentWidth := max(width-2, 1)
-		for _, line := range md.Render(contentWidth) {
-			out = append(out, paintBgWith(customMsgBgOpen, " "+line, width))
-		}
+		header := "**Compacted from " + tokenStr + " tokens**\n\n"
+		content.Add(NewMarkdownWithOptions(header+c.summary, 0, 0, c.markdownTheme, &DefaultTextStyle{
+			Color: func(text string) string { return ActiveTheme().Fg("customMessageText", text) },
+		}, nil))
 	} else {
-		// Collapsed: single summary line with Ctrl+O hint.
-		// Upstream: theme.fg("customMessageText", "Compacted from N tokens (") +
-		//           theme.fg("dim", keyText("app.tools.expand")) +
-		//           theme.fg("customMessageText", " to expand)")
-		// customMessageText is "" in dark.json: no extra fg color.
-		// keyText("app.tools.expand") resolves to lowercase "ctrl+o" (default key,
-		// core/keybindings.ts:85: "app.tools.expand": { defaultKeys: "ctrl+o" };
-		// keyText does not capitalize: only keyDisplayText does).
-		body := fmt.Sprintf("Compacted from %s tokens (", tokenStr)
-		body += dim + "ctrl+o" + reset + " to expand)"
-		out = append(out, paintBgWith(customMsgBgOpen, " "+body, width))
+		content.Add(NewText(theme.Fg("customMessageText", "Compacted from "+tokenStr+" tokens (") +
+			theme.Fg("dim", AppKeyText("app.tools.expand", "ctrl+o")) +
+			theme.Fg("customMessageText", " to expand)")))
 	}
-
-	// Bottom padding row: mirrors upstream Box paddingY=1.
-	out = append(out, paintBgWith(customMsgBgOpen, "", width))
-
-	return out
+	c.AddChild(NewMouseRegion(content, func(event TuiMouseEvent) *TuiMouseEventResult {
+		if event.Type != MouseClick || event.Button != MouseButtonLeft {
+			return nil
+		}
+		c.SetExpanded(!c.expanded)
+		return &TuiMouseEventResult{Handled: true}
+	}))
 }
 
 // formatThousands formats n with comma thousands separators, e.g. 87432 → "87,432".
@@ -123,4 +102,9 @@ func formatThousands(n int) string {
 		b.WriteRune(ch)
 	}
 	return b.String()
+}
+
+// SetOutputPad is Pi's setOutputPad(outputPad): the horizontal padding of the Box is the outputPad setting.
+func (c *CompactionSummaryMessageComponent) SetOutputPad(outputPad int) {
+	c.SetPaddingX(outputPad)
 }

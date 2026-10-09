@@ -5,6 +5,7 @@
  */
 import { homedir } from "node:os";
 import { basename, join, resolve } from "node:path";
+import { setTimeout as sleep } from "node:timers/promises";
 import { pathToFileURL } from "node:url";
 import { JSON_RPC_ERROR_CODES, McpAuthRequiredError, McpClient, McpError, McpHttpError, McpSessionExpiredError, StdioTransport, StreamableHttpTransport, } from "../../../pi-mcp/index.js";
 import { McpOAuthAuthorizationRequiredError } from "../../../pi-mcp/oauth/index.js";
@@ -116,7 +117,8 @@ export class McpServerConnection {
     challenge;
     client;
     opening;
-    closed = false;
+    /** Aborted by `close()`; cancels a connect in progress, including the wait between retries. */
+    shutdown = new AbortController();
     /** Stderr of the last stdio server that failed to connect. */
     stderrTail;
     cwd;
@@ -150,6 +152,9 @@ export class McpServerConnection {
     }
     get name() {
         return this.entry.name;
+    }
+    get closed() {
+        return this.shutdown.signal.aborted;
     }
     get timeoutMs() {
         return (this.entry.config.timeout ?? DEFAULT_TIMEOUT_SECONDS) * 1000;
@@ -281,7 +286,7 @@ export class McpServerConnection {
                 if (this.closed || delay === undefined || !isTransientError(error)) {
                     throw this.connectFailed(error);
                 }
-                await new Promise((resolve) => setTimeout(resolve, delay));
+                await sleep(delay, undefined, { signal: this.shutdown.signal }).catch(() => undefined);
                 if (this.closed)
                     throw this.connectFailed(error);
             }
@@ -297,6 +302,14 @@ export class McpServerConnection {
         const log = this.log;
         if (log)
             client.onNotification("notifications/message", (params) => log.write(this.entry.name, params));
+        // Closing the client fails its pending initialize or discovery requests and closes the transport.
+        // Memoized: a second `client.close()` returns before the first finished closing the transport.
+        let closing;
+        const closeClient = () => {
+            closing ??= client.close().catch(() => undefined);
+            return closing;
+        };
+        this.shutdown.signal.addEventListener("abort", closeClient, { once: true });
         let transport;
         try {
             transport = this.createTransport(this.entry, this.cwd, this.authProvider);
@@ -332,11 +345,14 @@ export class McpServerConnection {
             return client;
         }
         catch (error) {
-            await client.close().catch(() => undefined);
+            await closeClient();
             if (transport instanceof StdioTransport) {
                 this.stderrTail = transport.stderr.trim().slice(-STDERR_TAIL_CHARS) || undefined;
             }
             throw error;
+        }
+        finally {
+            this.shutdown.signal.removeEventListener("abort", closeClient);
         }
     }
     connectFailed(error) {
@@ -381,13 +397,14 @@ export class McpServerConnection {
         this.onTools(this);
         this.changed();
     }
+    /** Resolves once no transport of this server is open, including one that was still connecting. */
     async close() {
-        this.closed = true;
+        this.shutdown.abort();
         this.state = "closed";
         this.changed();
         const client = this.client;
         this.client = undefined;
-        await client?.close().catch(() => undefined);
+        await Promise.all([client?.close().catch(() => undefined), this.opening?.catch(() => undefined)]);
         // A refresh the server already answered may have rotated the refresh token; exiting before the
         // new tokens are saved would lose the grant.
         await this.authProvider?.settled();

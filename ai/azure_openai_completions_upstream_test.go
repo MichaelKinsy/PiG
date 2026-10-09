@@ -104,7 +104,7 @@ func TestAzureOpenaiCompletionsUpstream(t *testing.T) {
 	t.Run("azure deepseek-v4-pro over Chat Completions › turns thinking on with reasoning_effort instead of DeepSeek's thinking field", func(t *testing.T) {
 		// upstream: packages/ai/test/azure-openai-completions.test.ts:112
 		rig := setup(t)
-		streamSimple(t, rig, azureDeepSeekModel(t), azureCompletionsContext(), StreamOptions{Thinking: ThinkingHigh})
+		streamSimple(t, rig, azureDeepSeekModel(t), azureCompletionsContext(), StreamOptions{Thinking: ThinkingLevelHigh})
 		if rig.body["reasoning_effort"] != "high" {
 			t.Errorf("reasoning_effort = %v, want high", rig.body["reasoning_effort"])
 		}
@@ -115,7 +115,7 @@ func TestAzureOpenaiCompletionsUpstream(t *testing.T) {
 	t.Run("azure deepseek-v4-pro over Chat Completions › clamps thinking levels the deployment does not accept", func(t *testing.T) {
 		// upstream: packages/ai/test/azure-openai-completions.test.ts:119
 		rig := setup(t)
-		streamSimple(t, rig, azureDeepSeekModel(t), azureCompletionsContext(), StreamOptions{Thinking: ThinkingMax})
+		streamSimple(t, rig, azureDeepSeekModel(t), azureCompletionsContext(), StreamOptions{Thinking: ThinkingLevelMax})
 		if rig.body["reasoning_effort"] != "high" {
 			t.Errorf("reasoning_effort = %v, want high", rig.body["reasoning_effort"])
 		}

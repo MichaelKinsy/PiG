@@ -1,7 +1,7 @@
 import { dirname, join } from "node:path";
 import { clampThinkingLevel, createModels, lazyStream, ModelsError, normalizeContext, } from "../../pi-ai/sdk-bundle/index.js";
 import * as builtinProviderCatalog from "../../pi-ai/sdk-bundle/providers.js";
-import { assertChatModel, assertClassifierModel, assertImageModel, classifierErrorResult, imageErrorResult, } from "../../pi-ai/utils/model-operations.js";
+import { assertChatModel, assertClassifierInputSupported, assertClassifierModel, assertImageModel, classifierErrorResult, imageErrorResult, } from "../../pi-ai/utils/model-operations.js";
 import { getAgentDir } from "../config.js";
 import { operationSignal, raceWithAbortSignal } from "../utils/abort.js";
 import { AuthStorage as DefaultAuthStorage } from "./auth-storage.js";
@@ -553,6 +553,7 @@ export class ModelRuntime {
     async classify(model, context, options) {
         try {
             assertClassifierModel(model);
+            assertClassifierInputSupported(model, context);
             const prepared = await this.prepareRequest(model, options);
             if (!prepared.provider.classify) {
                 throw new ModelsError("provider", `Provider ${model.provider} does not support classification`);

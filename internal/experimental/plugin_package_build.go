@@ -12,6 +12,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"maps"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -21,6 +22,7 @@ import (
 	"unicode/utf16"
 
 	"github.com/evanw/esbuild/pkg/api"
+	"github.com/evanw/esbuild/pkg/cli"
 	"github.com/google/uuid"
 	"golang.org/x/text/collate"
 	"golang.org/x/text/language"
@@ -57,6 +59,14 @@ var pluginDirectoryLabel = regexp.MustCompile(`[^a-zA-Z0-9._-]`)
 
 func nodeFacetUTF8(value string) string { return string(utf16.Decode(textutil.UTF16Units(value))) }
 
+// nodeBasename is Node's path.basename of an absolute, cleaned path: its last element, or "" for a filesystem root, where filepath.Base returns the separator.
+func nodeBasename(path string) string {
+	if filepath.Dir(path) == path {
+		return ""
+	}
+	return filepath.Base(path)
+}
+
 // CreateServerPluginPackage derives the server-owned cache path without building or loading the package.
 func CreateServerPluginPackage(directory, serverId, packagePath string) (*ConfiguredServerPluginPackage, error) {
 	normalized, err := filepath.Abs(packagePath)
@@ -67,7 +77,7 @@ func CreateServerPluginPackage(directory, serverId, packagePath string) (*Config
 	if filepath.Base(normalized) == "package.json" {
 		packageDirectory = filepath.Dir(normalized)
 	}
-	label := pluginDirectoryLabel.ReplaceAllString(nodeFacetUTF8(filepath.Base(packageDirectory)), "-")
+	label := pluginDirectoryLabel.ReplaceAllString(nodeFacetUTF8(nodeBasename(packageDirectory)), "-")
 	if label == "" {
 		label = "plugin"
 	}
@@ -166,7 +176,7 @@ func BundleFacets(_ context.Context, options BundleFacetsOptions) (result Bundle
 		if !filepath.IsAbs(source) {
 			source = filepath.Join(workingDirectory, source)
 		}
-		entry, err := bundleFacetEntry(workingDirectory, options.SourceMap, input.Name, source, temporary, external)
+		entry, err := bundleFacetEntry(workingDirectory, options, input.Name, source, temporary, external)
 		if err != nil {
 			return result, err
 		}
@@ -215,14 +225,22 @@ func facetManifestJSON(manifest FacetBundleManifest, names []string) (json.RawMe
 	return protocol.ToJSON(protocol.Object{{Key: "format", Value: manifest.Format}, {Key: "formatVersion", Value: manifest.FormatVersion}, {Key: "plugin", Value: plugin}, {Key: "entries", Value: entries}})
 }
 
-func bundleFacetEntry(workingDirectory string, withSourceMap bool, name, source, temporary string, external []string) (FacetBundleEntry, error) {
+func bundleFacetEntry(workingDirectory string, options BundleFacetsOptions, name, source, temporary string, external []string) (FacetBundleEntry, error) {
+	withSourceMap := options.SourceMap
 	digest := sha256.Sum256([]byte(nodeFacetUTF8(name)))
 	sourceMap := api.SourceMapNone
 	if withSourceMap {
 		sourceMap = api.SourceMapExternal
 	}
+	platform, target, engines, err := facetBuildTarget(options)
+	if err != nil {
+		if errors.Is(err, errFacetBuildPlatform) {
+			return FacetBundleEntry{}, fmt.Errorf("Could not bundle facet entry %s", name)
+		}
+		return FacetBundleEntry{}, fmt.Errorf("Could not bundle facet entry %s\n%w", name, err)
+	}
 	// Pi pins esbuild 0.28.2. Its JavaScript API uses this same Go compiler; no plugin JavaScript is evaluated here.
-	result := api.Build(api.BuildOptions{AbsWorkingDir: workingDirectory, Banner: map[string]string{"js": "\"use strict\";"}, Bundle: true, EntryNames: "facet-" + hex.EncodeToString(digest[:])[:12] + "-[hash]", EntryPoints: []string{source}, External: external, Format: api.FormatCommonJS, LegalComments: api.LegalCommentsNone, LogLevel: api.LogLevelSilent, Metafile: true, Outdir: temporary, OutExtension: map[string]string{".js": ".cjs"}, Platform: api.PlatformNode, Sourcemap: sourceMap, Supported: map[string]bool{"dynamic-import": false}, Engines: []api.Engine{{Name: api.EngineNode, Version: "22.19"}}, Write: true})
+	result := api.Build(api.BuildOptions{AbsWorkingDir: workingDirectory, Banner: map[string]string{"js": "\"use strict\";"}, Bundle: true, Define: options.Define, EntryNames: "facet-" + hex.EncodeToString(digest[:])[:12] + "-[hash]", EntryPoints: []string{source}, External: external, Format: api.FormatCommonJS, LegalComments: api.LegalCommentsNone, LogLevel: api.LogLevelSilent, Metafile: true, MinifyIdentifiers: options.Minify, MinifySyntax: options.Minify, MinifyWhitespace: options.Minify, Outdir: temporary, OutExtension: map[string]string{".js": ".cjs"}, Platform: platform, Sourcemap: sourceMap, Supported: map[string]bool{"dynamic-import": false}, Target: target, Engines: engines, Write: true})
 	if len(result.Errors) > 0 {
 		messages := make([]string, len(result.Errors))
 		for i, message := range result.Errors {
@@ -303,6 +321,46 @@ func bundleFacetEntry(workingDirectory string, withSourceMap bool, name, source,
 	sum := sha256.Sum256(contents)
 	sortJSStrings(externalImports)
 	return FacetBundleEntry{File: file, Integrity: "sha256-" + base64.StdEncoding.EncodeToString(sum[:]), ExternalImports: externalImports, SourceMap: mapName}, nil
+}
+
+// errFacetBuildPlatform marks an unknown platform. esbuild's JavaScript API rejects it with a plain Error that carries no build messages, so bundle.ts reports the entry name alone.
+var errFacetBuildPlatform = errors.New("invalid facet bundle platform")
+
+// facetBuildTarget resolves bundle.ts's platform and target defaults and applies the option checks of esbuild's JavaScript API (lib/main.js validateAndJoinStringArray and the define loop): a target or define key containing its separator is a build message. The target list takes esbuild's own target grammar (es2022, node22.19, ...), parsed by the esbuild command-line parser the JavaScript API shares.
+func facetBuildTarget(options BundleFacetsOptions) (api.Platform, api.Target, []api.Engine, error) {
+	for _, target := range options.Target {
+		if strings.Contains(target, ",") {
+			return 0, 0, nil, fmt.Errorf("Invalid target: %s", target)
+		}
+	}
+	for _, key := range slices.Sorted(maps.Keys(options.Define)) {
+		if strings.Contains(key, "=") {
+			return 0, 0, nil, fmt.Errorf("Invalid define: %s", key)
+		}
+	}
+	platform := api.PlatformNode
+	switch options.Platform {
+	case "", FacetBundlePlatformNode:
+	case FacetBundlePlatformBrowser:
+		platform = api.PlatformBrowser
+	case FacetBundlePlatformNeutral:
+		platform = api.PlatformNeutral
+	default:
+		return 0, 0, nil, errFacetBuildPlatform
+	}
+	targets := options.Target
+	if targets == nil {
+		if platform == api.PlatformNode {
+			targets = []string{"node22.19"}
+		} else {
+			targets = []string{"es2022"}
+		}
+	}
+	parsed, err := cli.ParseBuildOptions([]string{"--target=" + strings.Join(targets, ",")})
+	if err != nil {
+		return 0, 0, nil, err
+	}
+	return platform, parsed.Target, parsed.Engines, nil
 }
 
 func replaceFacetBuildDirectory(temporary, output string) error {

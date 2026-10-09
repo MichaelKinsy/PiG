@@ -1,0 +1,162 @@
+[
+ {
+  "ids": [
+   "pkg:coding-agent/.#AgentSession::property:abortBash"
+  ],
+  "targets": [
+   "coding/session.go#Session.AbortBash"
+  ],
+  "production": [
+   "call:coding/session.go#Session.Dispose"
+  ],
+  "evidence": [
+   "test:coding/session_bash_persistence_upstream_test.go#TestUpstreamBashPersistence",
+   "test:coding/session_bash_wire_test.go#TestCancelledBashWireAndPersistence"
+  ],
+  "rationale": "AgentSession.abortBash is the Go method Session.AbortBash; signature reviewed against the upstream declaration."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#AgentSession::property:abortBranchSummary"
+  ],
+  "targets": [
+   "coding/session.go#Session.AbortBranchSummary"
+  ],
+  "production": [
+   "call:coding/session.go#Session.ReplaceInner"
+  ],
+  "evidence": [
+   "test:coding/session_branch_summary_upstream_test.go#TestBranchSummaryAgentStreamCancellation",
+   "test:coding/session_test.go#TestCompactAbortsTreeNavigationThenCompactsOriginalLeaf"
+  ],
+  "rationale": "AgentSession.abortBranchSummary is the Go method Session.AbortBranchSummary; signature reviewed against the upstream declaration."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#AgentSession::property:abortCompaction"
+  ],
+  "targets": [
+   "coding/session.go#Session.AbortCompaction"
+  ],
+  "production": [
+   "call:coding/session.go#Session.ReplaceInner"
+  ],
+  "evidence": [
+   "test:coding/session_compaction_cancellation_upstream_test.go#TestAutomaticCompactionCancellationUpstream",
+   "test:coding/session_compaction_event_order_test.go#TestCompactionFailureWaitsForEndListeners"
+  ],
+  "rationale": "AgentSession.abortCompaction is the Go method Session.AbortCompaction; signature reviewed against the upstream declaration."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#AgentSession::property:abortRetry"
+  ],
+  "targets": [
+   "coding/session.go#Session.AbortRetry"
+  ],
+  "production": [
+   "call:coding/session.go#Session.Dispose"
+  ],
+  "evidence": [
+   "test:coding/session_retry_events_upstream_test.go#TestUpstreamSessionRetryEvents",
+   "test:coding/session_rpc_test.go#TestSessionAbortRetryCancelsDelay"
+  ],
+  "rationale": "AgentSession.abortRetry is the Go method Session.AbortRetry; signature reviewed against the upstream declaration."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#AgentSession::property:refreshContext"
+  ],
+  "targets": [
+   "coding/session_recovery.go#Session.RefreshContext"
+  ],
+  "production": [
+   "call:coding/runtime_replacement.go#Runtime.NewSession"
+  ],
+  "evidence": [
+   "test:coding/sdk_session_manager_boundaries_test.go#TestSDKManagerOverrideUsesOneLiveLog",
+   "test:coding/session_auto_queue_upstream_test.go#TestAutoCompactionQueueUpstream"
+  ],
+  "rationale": "AgentSession.refreshContext is the Go method Session.RefreshContext; signature reviewed against the upstream declaration."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#AgentSession::property:setActiveToolsByName"
+  ],
+  "targets": [
+   "coding/session_tools.go#Session.SetActiveToolsByName"
+  ],
+  "production": [
+   "call:coding/session.go#NewSession"
+  ],
+  "evidence": [
+   "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeTool",
+   "test:coding/mcp_session_upstream_test.go#TestAgentSessionMCPDoesNotLetCodemodeCallItselfOrInactiveDirectTools"
+  ],
+  "rationale": "AgentSession.setActiveToolsByName is the Go method Session.SetActiveToolsByName; signature reviewed against the upstream declaration."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#AgentSession::property:setFollowUpMode"
+  ],
+  "targets": [
+   "coding/session.go#Session.SetFollowUpMode"
+  ],
+  "production": [
+   "call:coding/session_ops.go#Session.Clone"
+  ],
+  "evidence": [
+   "test:coding/session_queue_upstream_test.go#TestUpstreamSessionQueue",
+   "test:coding/session_rpc_test.go#TestSessionQueueOperationsPreserveModesAndEmitUpdates"
+  ],
+  "rationale": "AgentSession.setFollowUpMode is the Go method Session.SetFollowUpMode; signature reviewed against the upstream declaration."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#AgentSession::property:setScopedModels"
+  ],
+  "targets": [
+   "coding/session_scoped_models.go#Session.SetScopedModels"
+  ],
+  "production": [
+   "call:coding/session.go#NewSession"
+  ],
+  "evidence": [
+   "test:coding/session_model_extension_order_test.go#TestSessionModelCycleBoundaries",
+   "test:coding/session_model_extension_upstream_test.go#TestSessionModelExtensionCyclesUpstream"
+  ],
+  "rationale": "AgentSession.setScopedModels is the Go method Session.SetScopedModels; signature reviewed against the upstream declaration."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#AgentSession::property:setSessionName"
+  ],
+  "targets": [
+   "coding/session.go#Session.SetSessionName"
+  ],
+  "production": [
+   "call:coding/session_ops.go#Session.SetName"
+  ],
+  "evidence": [
+   "test:coding/sdk_session_manager_boundaries_test.go#TestSDKManagerOverrideUsesOneLiveLog",
+   "test:coding/session_name_bash_test.go#TestSessionNameHandlerBashDoesNotBlockPublication"
+  ],
+  "rationale": "AgentSession.setSessionName is the Go method Session.SetSessionName; signature reviewed against the upstream declaration."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#AgentSession::property:setSteeringMode"
+  ],
+  "targets": [
+   "coding/session.go#Session.SetSteeringMode"
+  ],
+  "production": [
+   "call:coding/session_ops.go#Session.Clone"
+  ],
+  "evidence": [
+   "test:coding/session_queue_upstream_test.go#TestUpstreamSessionQueue",
+   "test:coding/session_rpc_test.go#TestSessionQueueOperationsPreserveModesAndEmitUpdates"
+  ],
+  "rationale": "AgentSession.setSteeringMode is the Go method Session.SetSteeringMode; signature reviewed against the upstream declaration."
+ }
+]

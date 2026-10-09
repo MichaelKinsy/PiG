@@ -20,7 +20,7 @@ import (
 func TestInteractiveBuiltinSessionLifecycle(t *testing.T) {
 	for _, operation := range []string{"new", "resume", "fork", "clone"} {
 		t.Run(operation, func(t *testing.T) {
-			services, err := coding.NewServices(coding.ServicesOptions{CWD: t.TempDir(), AgentDir: t.TempDir()})
+			services, err := coding.CreateAgentSessionServices(coding.CreateAgentSessionServicesOptions{CWD: t.TempDir(), AgentDir: t.TempDir()})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -66,7 +66,7 @@ func TestInteractiveBuiltinSessionLifecycle(t *testing.T) {
 				t.Fatal(err)
 			}
 			previous := session.Path()
-			h := icodingagent.NewTestHarness(t, icodingagent.InteractiveOptions{CWD: services.CWD(), AgentDir: services.AgentDir(), SessionHandle: session, Model: model, ExtensionRunner: runner, SettingsManager: services.SettingsManager(), ModelRegistry: services.Registry().ModelRegistry}, nil)
+			h := icodingagent.NewTestHarness(t, icodingagent.InteractiveModeOptions{CWD: services.CWD(), AgentDir: services.AgentDir(), SessionHandle: session, Model: model, ExtensionRunner: runner, SettingsManager: services.SettingsManager(), ModelRegistry: services.Registry().ModelRegistry}, nil)
 			h.SeedReplacementTranscript()
 			target := userID
 			if operation == "resume" {

@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"context"
 	"slices"
 	"strings"
 	"testing"
@@ -19,7 +20,7 @@ func TestUpstreamAutocompleteSkillSlash(t *testing.T) {
 		t.Helper()
 		provider := NewCombinedProvider(commands, t.TempDir(), "")
 		line := "/" + prefix
-		result := provider.GetSuggestions([]string{line}, 0, len(line))
+		result := provider.GetSuggestions(context.Background(), []string{line}, 0, len(line), AutocompleteSuggestionOptions{})
 		if result == nil {
 			t.Fatalf("expected suggestions for %q", "/"+prefix)
 		}
@@ -49,7 +50,7 @@ func TestUpstreamAutocompleteSkillSlash(t *testing.T) {
 			{"  /mod", "  /model "},
 			{"\t/mod", "\t/model "},
 		} {
-			result := provider.GetSuggestions([]string{tc.line}, 0, len(tc.line))
+			result := provider.GetSuggestions(context.Background(), []string{tc.line}, 0, len(tc.line), AutocompleteSuggestionOptions{})
 			if result == nil {
 				t.Fatalf("%q: expected suggestions", tc.line)
 			}
@@ -80,7 +81,7 @@ func TestUpstreamAutocompleteSkillSlash(t *testing.T) {
 			},
 		}}, t.TempDir(), "")
 		line := "  /model son"
-		result := provider.GetSuggestions([]string{line}, 0, len(line))
+		result := provider.GetSuggestions(context.Background(), []string{line}, 0, len(line), AutocompleteSuggestionOptions{})
 		if result == nil {
 			t.Fatalf("%q: expected suggestions", line)
 		}

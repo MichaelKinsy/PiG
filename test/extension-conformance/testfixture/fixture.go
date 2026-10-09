@@ -8,11 +8,20 @@
 package testfixture
 
 import (
+	"bytes"
 	"context"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"image"
+	"image/color"
+	"image/png"
+	"io"
+	"maps"
+	"net/http"
 	"reflect"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -23,7 +32,114 @@ import (
 	jsjson "github.com/MichaelKinsy/PiG/extensions/sdk/json"
 
 	"github.com/MichaelKinsy/PiG/extensions/sdk"
+	"github.com/MichaelKinsy/PiG/extensions/sdk/kit"
 )
+
+// kitProbe is the component kit's conformance view (D107,
+// docs/plan/extension-component-kit.md §10). It logs every HandleInput and
+// HandleViewEvent call and closes on select with the log joined by ",".
+type kitProbe struct {
+	mu  sync.Mutex
+	log []string
+}
+
+func (p *kitProbe) View(int) kit.View {
+	text := kit.NewText("Kit probe", 2, 0)
+	text.Bg = "customMessageBg"
+	stack := kit.NewHStack(
+		kit.Entry(kit.NewTruncatedText("left side", 0, 0), kit.StackEntryOptions{Grow: new(1)}),
+		kit.Entry(kit.NewTruncatedText("right", 0, 0), kit.StackEntryOptions{Grow: new(1)}),
+	)
+	stack.Gap = 1
+	items := make([]kit.SelectItem, 5)
+	for i := range items {
+		items[i] = kit.SelectItem{Value: fmt.Sprintf("k%d", i), Label: fmt.Sprintf("Track %d", i), Description: fmt.Sprintf("Artist %d", i)}
+	}
+	tracks := kit.NewSelectList("kit-tracks", items, 3)
+	tracks.SetSelectedIndex(2)
+	return kit.View{
+		Root: kit.NewContainer(
+			kit.NewDynamicBorder("accent"),
+			text,
+			kit.NewMarkdown("- one\n- **two**", 1, 0),
+			stack,
+			kit.NewSpacer(1),
+			tracks,
+		),
+		Focus: "kit-tracks",
+		Theme: map[string]string{"accent": "#d75f00"},
+	}
+}
+
+func (p *kitProbe) HandleInput(data string) (sdk.RemoteComponentResult, error) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	p.log = append(p.log, "input:"+data)
+	return sdk.RemoteComponentResult{}, nil
+}
+
+func (p *kitProbe) HandleViewEvent(event kit.Event) (sdk.RemoteComponentResult, error) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	value := ""
+	if event.Item != nil {
+		value = event.Item.Value
+	}
+	p.log = append(p.log, fmt.Sprintf("%s:%d:%s", event.Type, event.Index, value))
+	if event.Type == kit.EventSelect {
+		return sdk.RemoteComponentResult{Done: true, Value: strings.Join(p.log, ",")}, nil
+	}
+	return sdk.RemoteComponentResult{}, nil
+}
+
+// mouseProbe is the extension mouse row's component: it logs every
+// mouse event it receives, all of its fields, and closes on a click with the
+// log joined by ",".
+type mouseProbe struct {
+	log []string
+}
+
+func (*mouseProbe) Render(int) []string {
+	return []string{"mouse probe", "row 1", "row 2", "row 3"}
+}
+
+func (*mouseProbe) HandleInput(string) (sdk.RemoteComponentResult, error) {
+	return sdk.RemoteComponentResult{}, nil
+}
+
+func (p *mouseProbe) HandleMouse(event sdk.MouseEvent) (sdk.RemoteComponentResult, error) {
+	var mods strings.Builder
+	for _, mod := range []struct {
+		on   bool
+		name string
+	}{{event.Shift, "S"}, {event.Alt, "A"}, {event.Ctrl, "C"}} {
+		if mod.on {
+			mods.WriteString(mod.name)
+		}
+	}
+	p.log = append(p.log, fmt.Sprintf("%s/%s/%d,%d/%d,%d/%dx%d/w%d/c%d/%s", event.Type, event.Button, event.X, event.Y,
+		event.ScreenX, event.ScreenY, event.Width, event.Height, event.WheelDelta, event.ClickCount, mods.String()))
+	if event.Type == sdk.MouseClick {
+		return sdk.RemoteComponentResult{Done: true, Value: strings.Join(p.log, ",")}, nil
+	}
+	return sdk.RemoteComponentResult{}, nil
+}
+
+// kitImagePNG is image n of kit-images: a 1×1 PNG whose pixel encodes n, so
+// each n has its own bytes and ref.
+func kitImagePNG(n int) []byte {
+	img := image.NewNRGBA(image.Rect(0, 0, 1, 1))
+	img.Set(0, 0, color.NRGBA{R: uint8(n), G: uint8(n >> 8), B: 0x5f, A: 0xff})
+	var buf bytes.Buffer
+	if err := png.Encode(&buf, img); err != nil {
+		panic(err)
+	}
+	return buf.Bytes()
+}
+
+// kitKindsPNG is kit-kinds' image, a 1×1 PNG every SDK fixture embeds byte
+// for byte.
+const kitKindsPNG = "89504e470d0a1a0a0000000d49484452000000010000000108060000001f15c48900000010494441547801010500faff002a005fff026a01892888e8cd0000000049454e44ae426082"
 
 type focusedList struct {
 	items    []string
@@ -66,6 +182,21 @@ func (l *focusedList) HandleInput(data string) (sdk.RemoteComponentResult, error
 }
 
 func (l *focusedList) Dispose() { l.disposed = true }
+
+// overlayWidthProbe renders the width the SDK draws it at and returns that width on Enter.
+type overlayWidthProbe struct{ width int }
+
+func (p *overlayWidthProbe) Render(width int) []string {
+	p.width = width
+	return []string{fmt.Sprintf("overlay width=%d", width)}
+}
+
+func (p *overlayWidthProbe) HandleInput(data string) (sdk.RemoteComponentResult, error) {
+	if data == "\r" {
+		return sdk.RemoteComponentResult{Done: true, Value: p.width}, nil
+	}
+	return sdk.RemoteComponentResult{}, nil
+}
 
 type timerFocused struct {
 	mu         sync.Mutex
@@ -229,6 +360,92 @@ func Extension() *sdk.Extension {
 		}
 		return nil
 	})
+	ext.Command("thinking-model", "Read the thinking level and switch the model", func(ctx sdk.Context, _ string) error {
+		level, err := ctx.GetThinkingLevel()
+		if err != nil {
+			return err
+		}
+		ctx.SetThinkingLevel("high")
+		ok, err := ctx.SetModel("probe/model")
+		if err != nil {
+			return err
+		}
+		data, err := json.Marshal([]any{level, ok})
+		if err != nil {
+			return err
+		}
+		ctx.Notify(string(data), "info")
+		return nil
+	})
+	ext.Command("active_tools_set", "Set the active tools to the comma-separated names", func(ctx sdk.Context, args string) error {
+		ctx.SetActiveTools(strings.Split(strings.TrimSpace(args), ","))
+		return nil
+	})
+	// session_actions_unbound drives the session actions of a command context the host never bound; Pi answers { cancelled: false } and a no-op reload (runner.ts:383-387).
+	ext.Command("session_actions_unbound", "Report what unbound session actions answer", func(ctx sdk.Context, _ string) error {
+		var parts []string
+		report := func(name string, result sdk.CancelledResult, err error) {
+			if err != nil {
+				parts = append(parts, name+"=error:"+err.Error())
+				return
+			}
+			parts = append(parts, fmt.Sprintf("%s=%t", name, result.Cancelled))
+		}
+		result, err := ctx.NewSession(nil)
+		report("new", result, err)
+		result, err = ctx.Fork("entry", nil)
+		report("fork", result, err)
+		result, err = ctx.NavigateTree("entry", nil)
+		report("navigate", result, err)
+		result, err = ctx.SwitchSession("/s.jsonl", nil)
+		report("switch", result, err)
+		if err := ctx.Reload(); err != nil {
+			parts = append(parts, "reload=error:"+err.Error())
+		} else {
+			parts = append(parts, "reload=ok")
+		}
+		ctx.Notify("unbound:"+strings.Join(parts, ","), "info")
+		return nil
+	})
+	ext.Command("active_tools_get", "Report the active tools", func(ctx sdk.Context, _ string) error {
+		names, err := ctx.GetActiveTools()
+		if err != nil {
+			return err
+		}
+		ctx.Notify("active_tools:"+strings.Join(names, ","), "info")
+		return nil
+	})
+	// provider_probe_register and provider_probe_unregister register and unregister a plain provider after the extension connected.
+	ext.Command("provider_probe_register", "Register a provider with one model", func(ctx sdk.Context, _ string) error {
+		var config sdk.ProviderConfig
+		if err := json.Unmarshal([]byte(`{"baseUrl":"https://probe.invalid/v1","api":"openai-completions","apiKey":"probe-key","models":[{"id":"probe-model","name":"Probe Model","reasoning":false,"input":["text"],"cost":{"input":0,"output":0,"cacheRead":0,"cacheWrite":0},"contextWindow":1000,"maxTokens":100}]}`), &config); err != nil {
+			return err
+		}
+		ext.RegisterProvider("conformance-probe", config)
+		return nil
+	})
+	ext.Command("provider_probe_unregister", "Unregister the provider", func(ctx sdk.Context, _ string) error {
+		ext.UnregisterProvider("conformance-probe")
+		return nil
+	})
+	ext.Command("commands-probe", "Read the host's slash commands", func(ctx sdk.Context, _ string) error {
+		commands, err := ctx.GetCommands()
+		if err != nil {
+			return err
+		}
+		listed := [][]string{}
+		for _, c := range commands {
+			if c.Name == "conformance-listed" {
+				listed = append(listed, []string{c.Name, c.Source, c.Description})
+			}
+		}
+		data, err := json.Marshal(listed)
+		if err != nil {
+			return err
+		}
+		ctx.Notify(string(data), "info")
+		return nil
+	})
 	ext.Command("session-identity", "Read context identity accessors", func(ctx sdk.Context, _ string) error {
 		id, err := ctx.GetSessionID()
 		if err != nil {
@@ -260,6 +477,9 @@ func Extension() *sdk.Extension {
 			return []string{string(wire)}, err
 		}
 		return []string{fmt.Sprintf("renderer:%v:expanded=%t:width=%d", message["content"], options.Expanded, width)}, nil
+	})
+	ext.MessageViewRenderer("kit-message", func(sdk.Context, map[string]any, sdk.MessageRenderOptions, int) (kit.View, error) {
+		return (&kitProbe{}).View(0), nil
 	})
 	ext.EntryRenderer("conformance-entry", func(_ sdk.Context, entry map[string]any, options sdk.EntryRenderOptions, width int) ([]string, error) {
 		return []string{fmt.Sprintf("entryrenderer:%v:expanded=%t:width=%d", entry["data"], options.Expanded, width)}, nil
@@ -311,7 +531,11 @@ func Extension() *sdk.Extension {
 		},
 		Result: func(_ sdk.Context, result sdk.ToolRenderResult, options sdk.ToolRenderResultOptions, render sdk.ToolRenderContext, width int) ([]string, error) {
 			details, _ := result.Details.(map[string]any)
-			return []string{fmt.Sprintf("toolrender:result:%v:%v:expanded=%t:calls=%v:width=%d", result.Content[0]["text"], details["k"], options.Expanded, render.State["calls"], width)}, nil
+			duration := "none"
+			if render.DurationMs != nil {
+				duration = fmt.Sprint(*render.DurationMs)
+			}
+			return []string{fmt.Sprintf("toolrender:result:%v:%v:expanded=%t:calls=%v:width=%d:duration=%s", result.Content[0]["text"], details["k"], options.Expanded, render.State["calls"], width, duration)}, nil
 		},
 	})
 
@@ -364,6 +588,14 @@ func Extension() *sdk.Extension {
 		<-ctx.Done()
 		abortObserved.Store(true)
 		return "aborted", nil
+	})
+	// hang_tool ignores its abort signal for longer than the host's abort grace period (D111).
+	ext.Tool("hang_tool", "Ignore the abort signal", sdk.Schema{"type": "object", "properties": map[string]any{}}, func(ctx sdk.Context, _ map[string]any) (any, error) {
+		if err := ctx.OnUpdate("waiting"); err != nil {
+			return nil, err
+		}
+		time.Sleep(8 * time.Second)
+		return "late", nil
 	})
 	ext.Command("abort_probe", "Report whether abort_tool saw its abort signal", func(ctx sdk.Context, args string) error {
 		ctx.Notify(fmt.Sprintf("abort:%t", abortObserved.Load()), "info")
@@ -504,6 +736,23 @@ func Extension() *sdk.Extension {
 		}
 		return nil
 	})
+	// pi.on called after the extension connected returns an unsubscribe (conformance TestConformance_EventUnsubscribe): the handler
+	// reports the event's own message entry id, which no SDK fallback produces.
+	var eventProbeOff func()
+	ext.Command("event_probe_subscribe", "Subscribe to turn_end after connecting", func(ctx sdk.Context, args string) error {
+		eventProbeOff = ext.OnEvent("turn_end", func(ctx sdk.Context, data map[string]any) (any, error) {
+			ctx.Notify(fmt.Sprintf("event_probe:%v", data["messageEntryId"]), "info")
+			return nil, nil
+		})
+		return nil
+	})
+	ext.Command("event_probe_unsubscribe", "Remove the turn_end handler registered after connecting", func(ctx sdk.Context, args string) error {
+		if eventProbeOff != nil {
+			eventProbeOff()
+			eventProbeOff = nil
+		}
+		return nil
+	})
 	ext.Command("report_geometry", "Report observed terminal geometry", func(ctx sdk.Context, args string) error {
 		ctx.Notify(fmt.Sprintf("geometry:%dx%d", ctx.Width(), ctx.Height()), "info")
 		return nil
@@ -570,6 +819,187 @@ func Extension() *sdk.Extension {
 	ext.Command("set_session_name", "Set the session name", func(ctx sdk.Context, args string) error {
 		return ctx.SetSessionName("conformance-session")
 	})
+
+	ext.Command("event_field_probe", "Report a field of the events named by the argument `<event> <field>`", func(ctx sdk.Context, args string) error {
+		name, field, _ := strings.Cut(strings.TrimSpace(args), " ")
+		ext.OnEvent(name, func(hctx sdk.Context, data map[string]any) (any, error) {
+			reported := "absent"
+			if value, ok := data[field]; ok {
+				encoded, err := json.Marshal(value)
+				if err != nil {
+					return nil, err
+				}
+				reported = string(encoded)
+			}
+			hctx.Notify("event_field:"+name+"."+field+"="+reported, "info")
+			return nil, nil
+		})
+		return nil
+	})
+	ext.Command("host_state_probe", "Report the thinking level and the session commands", func(ctx sdk.Context, _ string) error {
+		level, err := ctx.GetThinkingLevel()
+		if err != nil {
+			return err
+		}
+		commands, err := ctx.GetCommands()
+		if err != nil {
+			return err
+		}
+		parts := make([]string, 0, len(commands))
+		for _, c := range commands {
+			parts = append(parts, strings.Join([]string{c.Name, c.Description, c.Source, c.SourceInfo.Path, c.SourceInfo.Scope}, "|"))
+		}
+		ctx.Notify("getThinkingLevel="+level+";getCommands="+strings.Join(parts, ","), "info")
+		return nil
+	})
+
+	ext.Command("set_model", "Switch to the model in the arguments", func(ctx sdk.Context, args string) error {
+		ok, err := ctx.SetModel(args)
+		if err != nil {
+			return err
+		}
+		ctx.Notify(fmt.Sprintf("setModel=%t", ok), "info")
+		return nil
+	})
+	ext.Command("event_field_probe", "Report a field of the events named by the argument `<event> <field>`", func(ctx sdk.Context, args string) error {
+		name, field, _ := strings.Cut(strings.TrimSpace(args), " ")
+		ext.OnEvent(name, func(hctx sdk.Context, data map[string]any) (any, error) {
+			reported := "absent"
+			if value, ok := data[field]; ok {
+				encoded, err := json.Marshal(value)
+				if err != nil {
+					return nil, err
+				}
+				reported = string(encoded)
+			}
+			hctx.Notify("event_field:"+name+"."+field+"="+reported, "info")
+			return nil, nil
+		})
+		return nil
+	})
+	// event_probe_off runs every unsubscribe event_probe_on returned for the event named by the argument (TestConformance_EventUnsubscribeEveryEvent).
+	eventProbeOn := map[string][]func(){}
+	// event_probe_result queues the JSON value ("<event> <json>") the next event_probe_on handler call of that event returns, so a test observes what the host does with a handler's result and which handlers it still calls.
+	var eventProbeResultsMu sync.Mutex
+	eventProbeResults := map[string][]any{}
+	ext.Command("event_probe_result", "Queue the JSON result the next event_probe_on handler call of an event returns", func(ctx sdk.Context, args string) error {
+		name, raw, _ := strings.Cut(strings.TrimSpace(args), " ")
+		var value any
+		if err := json.Unmarshal([]byte(raw), &value); err != nil {
+			return err
+		}
+		eventProbeResultsMu.Lock()
+		eventProbeResults[name] = append(eventProbeResults[name], value)
+		eventProbeResultsMu.Unlock()
+		return nil
+	})
+	ext.Command("event_probe_on", "Subscribe to the event named by the argument", func(ctx sdk.Context, args string) error {
+		name := strings.TrimSpace(args)
+		off := ext.OnEvent(name, func(hctx sdk.Context, data map[string]any) (any, error) {
+			hctx.Notify("event_probe_on:"+name, "info")
+			// The event as the host sent it, for the tests that compare a payload field with the Go reference's.
+			if encoded, err := json.Marshal(data); err == nil {
+				hctx.Notify("event_probe_data:"+name+":"+string(encoded), "info")
+			}
+			// mcp_servers_change carries every registered server (types.ts:699-709): report their names, which only the host's registry knows.
+			if servers, ok := data["servers"].([]any); ok {
+				names := make([]string, 0, len(servers))
+				for _, server := range servers {
+					entry, _ := server.(map[string]any)
+					names = append(names, fmt.Sprint(entry["name"]))
+				}
+				hctx.Notify("event_probe_servers:"+strings.Join(names, ","), "info")
+			}
+			payload, err := json.Marshal(data)
+			if err != nil {
+				return nil, err
+			}
+			hctx.Notify("event_payload:"+name+":"+string(payload), "info")
+			eventProbeResultsMu.Lock()
+			defer eventProbeResultsMu.Unlock()
+			queued := eventProbeResults[name]
+			if len(queued) == 0 {
+				return nil, nil
+			}
+			eventProbeResults[name] = queued[1:]
+			return queued[0], nil
+		})
+		eventProbeOn[name] = append(eventProbeOn[name], off)
+		return nil
+	})
+	ext.Command("event_probe_off", "Unsubscribe the event_probe_on handlers of the event named by the argument", func(ctx sdk.Context, args string) error {
+		name := strings.TrimSpace(args)
+		for _, off := range eventProbeOn[name] {
+			off()
+		}
+		delete(eventProbeOn, name)
+		return nil
+	})
+	// event_result_probe subscribes to the event named first with a handler that returns the JSON that follows: the result an SDK extension gives the host.
+	ext.Command("event_result_probe", "Subscribe to an event with a handler that returns the given JSON", func(ctx sdk.Context, args string) error {
+		name, raw, _ := strings.Cut(strings.TrimSpace(args), " ")
+		var result any
+		if err := json.Unmarshal([]byte(raw), &result); err != nil {
+			return err
+		}
+		ext.OnEvent(name, func(sdk.Context, map[string]any) (any, error) { return result, nil })
+		return nil
+	})
+	// event_payload_probe reports the JSON of the event the named handler received, so a conformance test compares what every SDK was sent
+	// (TestConformance_EventPayloadsReachEverySDKUnchanged).
+	ext.Command("event_payload_probe", "Subscribe and report the payload of the event named by the argument", func(ctx sdk.Context, args string) error {
+		name := strings.TrimSpace(args)
+		ext.OnEvent(name, func(hctx sdk.Context, data map[string]any) (any, error) {
+			wire, err := json.Marshal(data)
+			if err != nil {
+				return nil, err
+			}
+			hctx.Notify("event_payload:"+name+":"+string(wire), "info")
+			return nil, nil
+		})
+		return nil
+	})
+	ext.Command("settings_probe", "Report the effective settings", func(ctx sdk.Context, args string) error {
+		settings, err := ctx.GetSettings()
+		if err != nil {
+			return err
+		}
+		wire, err := json.Marshal(settings)
+		if err != nil {
+			return err
+		}
+		ctx.Notify("settings_probe:"+string(wire), "info")
+		return nil
+	})
+	ext.Command("model_set", "Switch the model", func(ctx sdk.Context, args string) error {
+		ok, err := ctx.SetModel(strings.TrimSpace(args))
+		if err != nil {
+			return err
+		}
+		ctx.Notify("model_set:"+strconv.FormatBool(ok), "info")
+		return nil
+	})
+	ext.Command("thinking_set", "Set the thinking level", func(ctx sdk.Context, args string) error {
+		ctx.SetThinkingLevel(args)
+		return nil
+	})
+	ext.Command("thinking_get", "Report the thinking level", func(ctx sdk.Context, args string) error {
+		level, err := ctx.GetThinkingLevel()
+		if err != nil {
+			return err
+		}
+		ctx.Notify("thinking_get:"+level, "info")
+		return nil
+	})
+	ext.Command("set_label", "Set an entry label", func(ctx sdk.Context, args string) error {
+		return ctx.SetLabel("label-entry", "conformance-label")
+	})
+	// label_probe labels the entry named first with the rest of the arguments: an entry the host's Session holds.
+	ext.Command("label_probe", "Label the entry named first", func(ctx sdk.Context, args string) error {
+		id, label, _ := strings.Cut(strings.TrimSpace(args), " ")
+		return ctx.SetLabel(id, label)
+	})
+	ext.Shortcut("ctrl+alt+y", "Conformance shortcut", func(ctx sdk.Context) error { return nil })
 
 	ext.Command("append_entry", "Append a custom entry", func(ctx sdk.Context, args string) error {
 		return ctx.AppendEntry("conformance-entry", "hello-entry")
@@ -662,6 +1092,11 @@ func Extension() *sdk.Extension {
 			}
 		}
 		ctx.Notify("signal:"+state, "info")
+		return nil
+	})
+	// Upstream ctx.cwd, ctx.mode, ctx.hasUI and ctx.model throw the stale message after invalidation (runner.ts:571-600).
+	ext.Command("stale-probe", "Report cwd, mode, hasUI and model", func(ctx sdk.Context, _ string) error {
+		ctx.Notify(fmt.Sprintf("stale:%s|%s|%t|%s", ctx.Cwd(), ctx.Mode(), ctx.HasUI(), ctx.Model()), "info")
 		return nil
 	})
 	ext.Command("signal-wait", "Wait for ctx.signal to abort", func(ctx sdk.Context, _ string) error {
@@ -786,6 +1221,167 @@ func Extension() *sdk.Extension {
 		return nil
 	})
 
+	// An overlay component renders at the overlay's resolved width (tui.ts:1212-1233), not the terminal width (conformance TestConformance_OverlayRenderWidth).
+	ext.Command("overlay-width-probe", "Report the width overlay components render at", func(ctx sdk.Context, _ string) error {
+		defaultWidth, err := ctx.Custom(&overlayWidthProbe{}, sdk.RemoteOverlayOptions{Overlay: true})
+		if err != nil {
+			return err
+		}
+		percentWidth, err := ctx.Custom(&overlayWidthProbe{}, sdk.RemoteOverlayOptions{Overlay: true, OverlayOptions: &sdk.OverlayOptions{Width: sdk.OverlayPercent(50)}})
+		if err != nil {
+			return err
+		}
+		ctx.Notify(fmt.Sprintf("overlay-width default=%v percent=%v", defaultWidth, percentWidth), "info")
+		return nil
+	})
+
+	ext.Command("kit-probe", "Exercise the component kit (D107)", func(ctx sdk.Context, args string) error {
+		result, err := ctx.Custom(&kitProbe{}, sdk.RemoteOverlayOptions{Title: "Kit"})
+		if err != nil {
+			return err
+		}
+		resultText := ""
+		if result != nil {
+			resultText = fmt.Sprint(result)
+		}
+		ctx.Notify("kit="+resultText, "info")
+		return nil
+	})
+
+	// mouse-probe opens the mouse row's component: the host hands it
+	// fullscreen mouse events, and it closes on a click with what it got.
+	ext.Command("mouse-probe", "Exercise extension mouse input", func(ctx sdk.Context, args string) error {
+		result, err := ctx.Custom(&mouseProbe{}, sdk.RemoteOverlayOptions{Overlay: true})
+		if err != nil {
+			return err
+		}
+		ctx.Notify(fmt.Sprintf("mouse=%v", result), "info")
+		return nil
+	})
+
+	// kit-surfaces shows the kit probe's tree on every other view surface
+	// (D107, spec §10): a pushed widget, the header, the footer and a tool
+	// result. The message renderer "kit-message" draws it too.
+	ext.Command("kit-surfaces", "Show the kit probe on every view surface (D107)", func(ctx sdk.Context, _ string) error {
+		view := (&kitProbe{}).View(0)
+		if err := ctx.SetWidget("kit-probe", view); err != nil {
+			return err
+		}
+		if err := ctx.SetHeaderView(view); err != nil {
+			return err
+		}
+		if err := ctx.SetFooterView(view); err != nil {
+			return err
+		}
+		ctx.RegisterTool(sdk.ToolDefinition{Name: "kit_view_tool", Label: "kit_view_tool", Description: "Render its result as the kit probe", Parameters: sdk.Schema{"type": "object"}, Execute: func(sdk.Context, map[string]any) (any, error) { return "kit", nil }})
+		ext.SetToolRenderers("kit_view_tool", sdk.ToolRenderers{ResultView: func(sdk.Context, sdk.ToolRenderResult, sdk.ToolRenderResultOptions, sdk.ToolRenderContext, int) (kit.View, error) {
+			return (&kitProbe{}).View(0), nil
+		}})
+		return nil
+	})
+
+	// kit-images drives the image transport (D107, spec §7): step "a<k>"
+	// shows image 0 and step "b<n>" image n (1 ≤ n ≤ 64), each with its step
+	// as the text, as one ui.setWidget call on the "kit-img" widget.
+	ext.Command("kit-images", "Exercise the component kit's image transport (D107)", func(ctx sdk.Context, args string) error {
+		show := func(n int) error {
+			view := kit.View{Root: kit.NewContainer(kit.NewImage(kitImagePNG(n), "image/png"), kit.NewText(args, 0, 0))}
+			return ctx.SetWidget("kit-img", view, sdk.WidgetOptions{})
+		}
+		n, err := strconv.Atoi(args[min(len(args), 1):])
+		switch {
+		case err != nil || n < 1:
+		case args[0] == 'a':
+			return show(0)
+		case args[0] == 'b' && n <= 64:
+			return show(n)
+		}
+		return fmt.Errorf("kit-images: unknown step %q", args)
+	})
+
+	// kit-kinds sets the "kit-kinds" widget to the kinds kit-probe does not
+	// draw (D107, spec §10): a box, a settings list, a loader, an image and
+	// a lines node whose list annotation goes out only while a frontend
+	// draws.
+	ext.Command("kit-kinds", "Show every other component kit kind (D107)", func(ctx sdk.Context, _ string) error {
+		data, err := hex.DecodeString(kitKindsPNG)
+		if err != nil {
+			return err
+		}
+		box := kit.NewBox(1, 0, kit.NewText("boxed", 0, 0))
+		box.Bg = "customMessageBg"
+		settings := kit.NewSettingsList("kit-settings", []kit.SettingItem{
+			{ID: "theme", Label: "Theme", Description: "Color theme", CurrentValue: "dark", Values: []string{"dark", "light"}},
+			{ID: "wrap", Label: "Wrap", Description: "Wrap lines", CurrentValue: "on", Values: []string{"on", "off"}},
+		}, 3)
+		loader := kit.NewLoader("Working")
+		loader.SpinnerColor, loader.MessageColor = "accent", "muted"
+		loader.Indicator = &kit.LoaderIndicator{Frames: []string{"*"}}
+		lines := kit.NewLines([]string{"track one", "track two"})
+		lines.List = &kit.List{Items: []kit.ListItem{{Label: "track one", Detail: "A"}, {Label: "track two", Detail: "B"}}, Selected: 1}
+		stack := kit.NewVStack(box, settings, loader, kit.NewImage(data, "image/png"), lines)
+		stack.Gap = 1
+		view := kit.View{Root: stack, Theme: map[string]string{"accent": "#d75f00"}}
+		return ctx.SetWidget("kit-kinds", view, sdk.WidgetOptions{})
+	})
+
+	// kit-conversation sets the "kit-conversation" widget to every
+	// conversation kind (D107, spec §2.1, §10); "next" updates the nodes
+	// with an id as a Pi author updates kept components.
+	ext.Command("kit-conversation", "Show Pi's conversation components (D107)", func(ctx sdk.Context, args string) error {
+		next := args == "next"
+		user := kit.NewUserMessage("Fix **the** kit build\n\n- one\n- two")
+		streaming := kit.NewAssistantMessage(nil)
+		streaming.ID = "kit-a1"
+		reply := "Done. **Bold** reply\n\n1. a\n2. b"
+		if next {
+			reply += "\n\nThen more kit."
+		}
+		streaming.UpdateContent(kit.Message{Content: []kit.ContentBlock{kit.ThinkingBlock("Reading the *kit* file"), kit.TextBlock(reply)}}, !next)
+		failed := kit.NewAssistantMessage(&kit.Message{Content: []kit.ContentBlock{kit.ThinkingBlock("secret"), kit.TextBlock("Visible kit")}, StopReason: "error", ErrorMessage: "kit-boom-7"})
+		failed.SetHideThinkingBlock(true)
+		failed.SetHiddenThinkingLabel("Pondering kit...")
+		failed.SetOutputPad(0)
+		card := func(id, name, callID string, args map[string]any) *kit.ToolExecution {
+			tool := kit.NewToolExecution(name, callID, args, "/work/kit")
+			tool.ID = id
+			tool.SetArgsComplete()
+			tool.MarkExecutionStarted()
+			return tool
+		}
+		ls := card("kit-t1", "ls", "call-1", map[string]any{"path": "src"})
+		ls.UpdateResult(kit.ToolResult{Content: []kit.ToolResultContent{kit.TextContent("a.go\nb.go")}}, false)
+		grep := card("kit-t2", "grep", "call-2", map[string]any{"pattern": "TODO"})
+		if next {
+			grep.UpdateResult(kit.ToolResult{Content: []kit.ToolResultContent{kit.TextContent("x.go:1: TODO kit\ny.go:2: TODO kit")}}, false)
+		} else {
+			grep.UpdateResult(kit.ToolResult{Content: []kit.ToolResultContent{kit.TextContent("x.go:1: TODO kit")}}, true)
+		}
+		read := card("", "read", "call-3", map[string]any{"path": "missing.txt"})
+		read.UpdateResult(kit.ToolResult{Content: []kit.ToolResultContent{kit.TextContent("ENOENT: kit")}, IsError: true}, false)
+		read.SetExpanded(true)
+		custom := card("", "kit_tool", "call-4", map[string]any{"q": "x"})
+		custom.ToolDefinition = kit.ToolDefinitionEmpty
+		custom.UpdateResult(kit.ToolResult{Content: []kit.ToolResultContent{kit.TextContent("answer 42")}}, false)
+		exited := kit.NewBashExecution("ls -la", false)
+		exited.ID = "kit-b1"
+		exited.AppendOutput("a.txt\n")
+		exited.AppendOutput("b.txt")
+		exited.SetComplete(new(2), false, false, "")
+		exited.SetExpanded(next)
+		numbers := make([]string, 25)
+		for i := range numbers {
+			numbers[i] = strconv.Itoa(i + 1)
+		}
+		seq := kit.NewBashExecution("seq 25", true)
+		seq.AppendOutput(strings.Join(numbers, "\n"))
+		seq.SetComplete(new(0), false, false, "")
+		diff := kit.NewDiff(" 1 keep\n-2 old kit line\n+2 new kit line\n 3 tail")
+		diff.FilePath = "kit.go"
+		root := kit.NewContainer(user, streaming, failed, ls, grep, read, custom, exited, seq, diff)
+		return ctx.SetWidget("kit-conversation", kit.View{Root: root}, sdk.WidgetOptions{})
+	})
+
 	ext.Command("timer-focused-probe", "Exercise timer-driven focused UI", func(ctx sdk.Context, args string) error {
 		component := newTimerFocused()
 		frame, err := ctx.Custom(component, sdk.RemoteOverlayOptions{Title: "Timer"})
@@ -906,6 +1502,130 @@ func Extension() *sdk.Extension {
 		return nil
 	})
 
+	ext.Command("overlay-handle-probe", "Exercise the overlay handle Custom hands to OnHandle", func(ctx sdk.Context, _ string) error {
+		var failures []string
+		expect := func(label string, actual, expected any) {
+			if fmt.Sprint(actual) != fmt.Sprint(expected) {
+				failures = append(failures, fmt.Sprintf("%s: %v != %v", label, actual, expected))
+			}
+		}
+		onHandle := func(handle *sdk.OverlayHandle) {
+			expect("initial focused", handle.IsFocused(), true)
+			expect("initial hidden", handle.IsHidden(), false)
+			expect("initial bounds", *handle.GetBounds(), sdk.OverlayBounds{Row: 3, Col: 4, Width: 20, Height: 5})
+			_ = handle.Focus()
+			expect("focus", handle.IsFocused(), true)
+			_ = handle.SetHidden(true)
+			expect("hidden", fmt.Sprint(handle.IsHidden(), handle.IsFocused(), handle.GetBounds() == nil), "true false true")
+			_ = handle.SetHidden(false)
+			expect("shown", fmt.Sprint(handle.IsHidden(), handle.IsFocused()), "false false")
+			_ = handle.Focus()
+			expect("refocus", handle.IsFocused(), true)
+			_ = handle.Unfocus()
+			expect("unfocus", handle.IsFocused(), false)
+			_ = handle.Unfocus(sdk.UnfocusOptions{})
+		}
+		if _, err := ctx.Custom(&handleProbeComponent{}, sdk.RemoteOverlayOptions{Overlay: true, OnHandle: onHandle}); err != nil {
+			return err
+		}
+		if len(failures) > 0 {
+			return fmt.Errorf("%s", strings.Join(failures, "; "))
+		}
+		ctx.Notify("overlay-handle=ok", "info")
+		return nil
+	})
+
+	ext.Command("model-stream-fetch-probe", "Exercise the fetch option of ModelRegistry.Stream", func(ctx sdk.Context, _ string) error {
+		registry := ctx.ModelRegistry()
+		model := map[string]any{"provider": "conformance", "id": "declared", "modelId": "declared", "api": "openai-responses"}
+		request := map[string]any{"systemPrompt": "fetch", "messages": []any{map[string]any{"role": "user", "content": "hello", "timestamp": 1}}}
+		var seen struct{ url, method, host, body string }
+		fetch := func(call *http.Request) (*http.Response, error) {
+			data, _ := io.ReadAll(call.Body)
+			seen.url, seen.method, seen.host, seen.body = call.URL.String(), call.Method, call.Header.Get("X-Host"), string(data)
+			body := make([]byte, 70000)
+			for i := range body {
+				body[i] = byte(i % 251)
+			}
+			return &http.Response{StatusCode: 207, Status: "207 Answered", Header: http.Header{"X-Sdk-Fetch": {"answered"}}, Body: io.NopCloser(bytes.NewReader(body))}, nil
+		}
+		if result := registry.Stream(model, request, map[string]any{"fetch": fetch}).Result(); result["stopReason"] != "stop" {
+			return fmt.Errorf("fetch stream = %#v", result)
+		}
+		if seen.url != "https://fetch.invalid/v1/chat?x=1" || seen.method != "POST" || seen.host != "1" || seen.body != "ping-body" {
+			return fmt.Errorf("fetch saw %+v", seen)
+		}
+		if result := registry.Stream(model, request, map[string]any{}).Result(); result["stopReason"] != "stop" {
+			return fmt.Errorf("plain stream = %#v", result)
+		}
+		ctx.Notify("model-fetch=ok", "info")
+		return nil
+	})
+
+	ext.Command("model-stream-callback-probe", "Exercise the provider request callbacks of ModelRegistry.Stream", func(ctx sdk.Context, _ string) error {
+		registry := ctx.ModelRegistry()
+		model := map[string]any{"provider": "conformance", "id": "declared", "modelId": "declared", "api": "openai-responses"}
+		request := map[string]any{"systemPrompt": "callbacks", "messages": []any{map[string]any{"role": "user", "content": "hello", "timestamp": 1}}}
+		var seenPayload, seenResponse map[string]any
+		var seenModel string
+		options := map[string]any{
+			"onPayload": func(payload any, callbackModel map[string]any) (any, error) {
+				seenPayload, _ = payload.(map[string]any)
+				seenModel, _ = callbackModel["id"].(string)
+				marked := map[string]any{"mark": "on-payload"}
+				for key, value := range seenPayload {
+					marked[key] = value
+				}
+				return marked, nil
+			},
+			"onResponse": func(response map[string]any, _ map[string]any) error {
+				seenResponse = response
+				return nil
+			},
+			"transformHeaders": func(headers map[string]any, _ map[string]any) (map[string]any, error) {
+				headers["x-transformed"] = "yes"
+				return headers, nil
+			},
+		}
+		stream := registry.Stream(model, request, options)
+		if result := stream.Result(); result["stopReason"] != "stop" {
+			return fmt.Errorf("callback stream = %#v", result)
+		}
+		if seenPayload["original"] != true || seenModel != "declared" {
+			return fmt.Errorf("onPayload saw %#v for %q", seenPayload, seenModel)
+		}
+		headers, _ := seenResponse["headers"].(map[string]any)
+		if seenResponse["status"] != float64(201) || headers["x-upstream"] != "seen" {
+			return fmt.Errorf("onResponse saw %#v", seenResponse)
+		}
+		if result := registry.Stream(model, request, map[string]any{}).Result(); result["stopReason"] != "stop" {
+			return fmt.Errorf("plain stream = %#v", result)
+		}
+		ctx.Notify("model-callbacks=ok", "info")
+		return nil
+	})
+
+	ext.Command("editor-install", "Install a custom editor component", func(ctx sdk.Context, args string) error {
+		return ctx.SetEditorComponent(func(base *sdk.Editor) sdk.EditorComponent { return &conformanceEditor{Editor: base} })
+	})
+
+	// The factory already calls super: the host answers once its editor is ready.
+	ext.Command("editor-install-eager", "Install a custom editor that calls super in its factory", func(ctx sdk.Context, args string) error {
+		return ctx.SetEditorComponent(func(base *sdk.Editor) sdk.EditorComponent {
+			if err := base.SetText("eager"); err != nil {
+				ctx.Notify("eager-error:"+err.Error(), "info")
+			} else if text, err := base.GetText(); err != nil {
+				ctx.Notify("eager-error:"+err.Error(), "info")
+			} else {
+				ctx.Notify("eager:"+text, "info")
+			}
+			return &conformanceEditor{Editor: base}
+		})
+	})
+	ext.Command("editor-install-embed", "Install a custom editor that embeds the working status", func(ctx sdk.Context, args string) error {
+		return ctx.SetEditorComponent(func(base *sdk.Editor) sdk.EditorComponent { return &embeddingEditor{conformanceEditor{Editor: base}} })
+	})
+
 	ext.Command("ui-probe", "Exercise SDK UI wrappers", func(ctx sdk.Context, args string) error {
 		_ = ctx.SetWorkingIndicator(sdk.WorkingIndicatorOptions{"frames": []string{"*"}})
 		_ = ctx.SetHiddenThinkingLabel("hidden-thoughts")
@@ -977,7 +1697,11 @@ func Extension() *sdk.Extension {
 	ext.OnProjectTrust(func(sdk.Context, map[string]any) (sdk.ProjectTrustResult, error) {
 		return sdk.ProjectTrustResult{Trusted: sdk.ProjectTrustUndecided}, nil
 	})
-	ext.OnProjectTrust(func(sdk.Context, map[string]any) (sdk.ProjectTrustResult, error) {
+	// The decisive handler leaves the "/probe" cwd undecided, so TestConformance_EventUnsubscribeEveryEvent reaches the handlers registered after connecting.
+	ext.OnProjectTrust(func(_ sdk.Context, data map[string]any) (sdk.ProjectTrustResult, error) {
+		if data["cwd"] == "/probe" {
+			return sdk.ProjectTrustResult{Trusted: sdk.ProjectTrustUndecided}, nil
+		}
 		return sdk.ProjectTrustResult{Trusted: sdk.ProjectTrustYes, Remember: true}, nil
 	})
 	ext.OnEvent("cache_warming_decision", func(_ sdk.Context, data map[string]any) (any, error) {
@@ -1099,6 +1823,8 @@ func Extension() *sdk.Extension {
 			result["exitCode"] = "invalid"
 		case "null-operations":
 			value["operations"] = nil
+		case "operations":
+			return map[string]any{"operations": conformanceBashOperations()}, nil
 		default:
 			return nil, nil
 		}
@@ -1354,4 +2080,85 @@ func firstPartialText(partial map[string]any) any {
 	}
 	block, _ := blocks[0].(map[string]any)
 	return block["text"]
+}
+
+// conformanceEditor swallows "q", rewrites "a" to "A", upper-cases the host's setText, and frames super.render.
+type conformanceEditor struct{ *sdk.Editor }
+
+func (e *conformanceEditor) HandleInput(data string) error {
+	switch data {
+	case "q":
+		return nil
+	case "a":
+		data = "A"
+	case "L":
+		lines, err := e.GetLines()
+		if err != nil {
+			return err
+		}
+		return e.Editor.SetText("raw:lines=" + strings.Join(lines, "|"))
+	}
+	return e.Editor.HandleInput(data)
+}
+
+func (e *conformanceEditor) SetText(text string) error {
+	if strings.HasPrefix(text, "raw:") {
+		return e.Editor.SetText(text)
+	}
+	return e.Editor.SetText(strings.ToUpper(text))
+}
+
+// embeddingEditor opts into the working status in its border.
+type embeddingEditor struct{ conformanceEditor }
+
+func (*embeddingEditor) EmbedWorkingStatus() bool { return true }
+
+func (e *conformanceEditor) Render(width int) ([]string, error) {
+	rows, err := e.Editor.Render(width)
+	return append([]string{"[custom editor]"}, rows...), err
+}
+
+// conformanceBashOperations is the BashOperations every SDK fixture returns for the user_bash command "operations"
+// (TestConformance_UserBashOperationsRunInTheExtension). Its exec is driven by the command it receives.
+func conformanceBashOperations() sdk.BashOperations {
+	return sdk.BashOperations{Exec: func(command, cwd string, options sdk.BashExecOptions) (sdk.BashExecResult, error) {
+		code := func(n int) (sdk.BashExecResult, error) { return sdk.BashExecResult{ExitCode: &n}, nil }
+		switch command {
+		case "echo":
+			options.OnData([]byte("cmd:" + command + "\n"))
+			options.OnData([]byte("cwd:" + cwd + "\n"))
+			if options.Env != nil && len(options.Env) == 0 {
+				options.OnData([]byte("env-empty\n"))
+			}
+			for _, name := range slices.Sorted(maps.Keys(options.Env)) {
+				options.OnData([]byte("env:" + name + "=" + options.Env[name] + "\n"))
+			}
+			if options.Timeout != nil {
+				options.OnData([]byte("timeout:" + strconv.FormatFloat(*options.Timeout, 'f', -1, 64) + "\n"))
+			}
+			return code(3)
+		case "chunks":
+			for _, chunk := range []string{"a", "b", "c"} {
+				options.OnData([]byte(chunk))
+			}
+			return sdk.BashExecResult{}, nil
+		case "binary":
+			options.OnData([]byte{0xff, 0x00, 0x80})
+			return code(0)
+		case "wait":
+			options.OnData([]byte("waiting"))
+			<-options.Signal.Done()
+			options.OnData([]byte("stopped"))
+			return sdk.BashExecResult{}, errors.New("aborted")
+		default:
+			return sdk.BashExecResult{}, errors.New("exec failed: " + command)
+		}
+	}}
+}
+
+type handleProbeComponent struct{}
+
+func (*handleProbeComponent) Render(int) []string { return []string{"overlay"} }
+func (*handleProbeComponent) HandleInput(data string) (sdk.RemoteComponentResult, error) {
+	return sdk.RemoteComponentResult{Done: data == "q", Value: "closed"}, nil
 }

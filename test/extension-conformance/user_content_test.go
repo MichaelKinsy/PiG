@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"testing"
+
+	"github.com/MichaelKinsy/PiG/coding/extension"
 )
 
 func recordUserContent(actions *[]string, content any, deliverAs string) error {
@@ -20,9 +22,11 @@ func recordUserContent(actions *[]string, content any, deliverAs string) error {
 	return nil
 }
 
-// Source: AgentSession.sendUserMessage and ExtensionAPI.sendUserMessage accept
+// Source: AgentSession.sendUserMessage and ExtensionAPI.sendUserMessage
+// (packages/coding-agent/src/core/extensions/types.ts:1702) accept
 // string | (TextContent | ImageContent)[] without discarding any image payload.
 func TestUserMessageContentAcrossSDKs(t *testing.T) {
+	requireAPIMember(t, "SendUserMessage", extension.API.SendUserMessage)
 	payload := `[{"type":"text","text":"first"},{"type":"image","data":"aW1hZ2U=","mimeType":"image/png"},{"type":"text","text":"second"}]`
 	var decoded any
 	if err := json.Unmarshal([]byte(payload), &decoded); err != nil {

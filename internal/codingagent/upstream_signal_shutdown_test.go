@@ -1,5 +1,6 @@
 package codingagent
 
+
 import (
 	"fmt"
 	"io"
@@ -14,18 +15,21 @@ import (
 )
 
 type upstreamShutdownRenderer struct {
-	*tui.TUI
+	*tui.TuiMainScreen
 	order *[]string
 }
 
-func (r *upstreamShutdownRenderer) Stop() { *r.order = append(*r.order, "stop"); r.TUI.Stop() }
+func (r *upstreamShutdownRenderer) Stop() {
+	*r.order = append(*r.order, "stop")
+	r.TuiMainScreen.Stop()
+}
 
 func upstreamShutdownMode(t *testing.T, order *[]string, persisted bool) *InteractiveMode {
 	t.Helper()
 	runner := inproc.NewRunner([]extension.Extension{{Path: "cleanup", Handlers: map[string][]extension.HandlerFn{
 		"session_shutdown": {func(...any) (any, error) { *order = append(*order, "dispose"); return nil, nil }},
 	}}}, t.TempDir())
-	m := &InteractiveMode{newRunner: runner, tuiInst: &upstreamShutdownRenderer{TUI: tui.NewWithOutput(io.Discard, 80, 24), order: order}}
+	m := &InteractiveMode{newRunner: runner, tuiInst: &upstreamShutdownRenderer{TuiMainScreen: tui.NewWithOutput(io.Discard, 80, 24), order: order}}
 	m.rawDrain = func() { *order = append(*order, "drainInput") }
 	m.rawRestore = func() {}
 	if persisted {

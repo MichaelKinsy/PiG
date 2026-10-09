@@ -252,7 +252,7 @@ func (t *TuiAltScreen) applyMouseDispatchResult(event TuiMouseEvent, result *Tui
 		focusTarget = result.Target.Component
 	}
 	focusTarget = t.resolveMouseFocusTarget(focusTarget)
-	focusChanged := result.Focus && t.FocusedComponent() != focusTarget
+	focusChanged := result.Focus && t.GetFocusedComponent() != focusTarget
 	if result.Focus {
 		t.SetFocus(focusTarget)
 	}
@@ -659,7 +659,7 @@ func (t *TuiAltScreen) compositeScrollToEndIndicator(screen []string, layout *La
 		return screen
 	}
 	result := slices.Clone(screen)
-	result[row] = compositeTuiLine(result[row], text, column, textWidth, width)
+	result[row] = CompositeTuiLine(result[row], text, column, textWidth, width)
 	t.scrollToEndIndicatorRect = &scrollToEndIndicatorRect{row: row, column: column, width: textWidth}
 	return result
 }

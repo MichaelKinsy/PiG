@@ -1,3 +1,5 @@
+//go:build !pig_strip_extension_sdk_python
+
 package pigsdk
 
 import (

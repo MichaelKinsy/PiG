@@ -21,10 +21,14 @@ import (
 // is about to replace.
 const quarantineDirName = ".pig-native-quarantine"
 
-// GetPackageDir is the installation directory of a compiled pig: the
-// directory holding the running executable, as upstream getPackageDir returns
-// for a compiled binary. It returns "" when the executable cannot be located.
+// GetPackageDir is upstream getPackageDir (config.ts:393): PIG_PACKAGE_DIR or PI_PACKAGE_DIR when set, with a leading ~ expanded; otherwise the installation directory of a compiled pig, the
+// directory holding the running executable. It returns "" when the executable cannot be located.
 func GetPackageDir() string {
+	for _, name := range []string{"PIG_PACKAGE_DIR", "PI_PACKAGE_DIR"} {
+		if override := os.Getenv(name); override != "" {
+			return ExpandTildePath(override)
+		}
+	}
 	exe, err := os.Executable()
 	if err != nil {
 		return ""

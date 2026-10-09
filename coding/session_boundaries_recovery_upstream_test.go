@@ -20,13 +20,14 @@ func boundaryError(message string) scriptedResponse {
 	}
 }
 
+// Pi: packages/coding-agent/src/core/extensions/types.ts:1473 (SessionBeforeCompactResult.cancel).
 func TestUpstreamSessionBoundariesRecovery(t *testing.T) {
 	t.Run("keeps truncated tool attempts in context for the natural next turn", func(t *testing.T) {
 		executed := false
 		requests := []string{}
 		tool := boundaryTool{name: "unsafe_truncated_tool", label: "Unsafe truncated tool", description: "Must not execute from a length response", argument: "value", text: "executed", run: func() { executed = true }}
 		h := newBoundaryHarness(t, harnessOptions{tools: []agent.AgentTool{tool}}, boundaryToolReply("unsafe_truncated_tool", ai.JsonObject{"value": "partial"}, ai.StopReasonLength), boundaryCapture(t, &requests, "completed natural continuation"))
-		boundaryRecord(t, h, 746, "keeps truncated tool attempts in context for the natural next turn")
+		boundaryRecord(t, h, 747, "keeps truncated tool attempts in context for the natural next turn")
 		boundaryPrompt(t, h, "start")
 		if executed {
 			t.Error("truncated tool executed")
@@ -45,7 +46,7 @@ func TestUpstreamSessionBoundariesRecovery(t *testing.T) {
 	t.Run("resets length recovery after a successful intermediate assistant turn", func(t *testing.T) {
 		tool := boundaryTool{name: "noop", label: "Noop", description: "Noop", text: "done"}
 		h := newBoundaryHarness(t, harnessOptions{contextWindow: 1000, maxTokens: 100, settings: `{"compaction":{"keepRecentTokens":1,"reserveTokens":0}}`, tools: []agent.AgentTool{tool}, extension: summaryFromPreparation("recovered input")}, boundaryReply("first partial", ai.StopReasonLength, 0), boundaryToolReply("noop", ai.JsonObject{}, ai.StopReasonToolUse), boundaryReply("second partial", ai.StopReasonLength, time.Second), boundaryReply("completed second recovery", ai.StopReasonStop, 2*time.Second))
-		boundaryRecord(t, h, 779, "resets length recovery after a successful intermediate assistant turn")
+		boundaryRecord(t, h, 780, "resets length recovery after a successful intermediate assistant turn")
 		boundaryPrompt(t, h, strings.Repeat("x", 5000))
 		boundaryAssertLengthOmissions(t, h)
 		if n := h.provider.callCount(); n != 3 {
@@ -60,7 +61,7 @@ func TestUpstreamSessionBoundariesRecovery(t *testing.T) {
 			event := args[0].(extension.AgentEndEvent)
 			found := false
 			for _, message := range event.Messages {
-				if message, ok := message.(agent.AgentMessage); ok && message.Assistant != nil && assistantText(message.Assistant) == "first recovered" {
+				if message.Assistant != nil && assistantText(message.Assistant) == "first recovered" {
 					found = true
 				}
 			}
@@ -71,7 +72,7 @@ func TestUpstreamSessionBoundariesRecovery(t *testing.T) {
 			return nil, h.session.SendExtensionUserMessage("distinct follow-up", &extension.SendUserMessageOptions{DeliverAs: extension.DeliverAsFollowUp})
 		}}
 		h = newBoundaryHarness(t, harnessOptions{contextWindow: 1000, maxTokens: 100, settings: `{"compaction":{"keepRecentTokens":1,"reserveTokens":0}}`, extension: ext}, boundaryReply("first partial", ai.StopReasonLength, 0), boundaryReply("first recovered", ai.StopReasonStop, 0), boundaryReply("follow-up partial", ai.StopReasonLength, time.Second), boundaryReply("follow-up recovered", ai.StopReasonStop, 2*time.Second))
-		boundaryRecord(t, h, 828, "gives a distinct queued follow-up its own length-recovery budget")
+		boundaryRecord(t, h, 829, "gives a distinct queued follow-up its own length-recovery budget")
 		boundaryPrompt(t, h, strings.Repeat("x", 5000))
 		boundaryAssertLengthOmissions(t, h)
 		if n := h.provider.callCount(); n != 4 {
@@ -80,7 +81,7 @@ func TestUpstreamSessionBoundariesRecovery(t *testing.T) {
 	})
 	t.Run("finishes retry bookkeeping when a retry receives a nonretryable error", func(t *testing.T) {
 		h := newBoundaryHarness(t, harnessOptions{settings: `{"retry":{"enabled":true,"maxRetries":2,"baseDelayMs":1}}`}, boundaryError("overloaded_error"), boundaryError("invalid_api_key"))
-		boundaryRecord(t, h, 876, "finishes retry bookkeeping when a retry receives a nonretryable error")
+		boundaryRecord(t, h, 877, "finishes retry bookkeeping when a retry receives a nonretryable error")
 		boundaryPrompt(t, h, "start")
 		h.settle(t)
 		if n := h.provider.callCount(); n != 2 {
@@ -99,7 +100,7 @@ func TestUpstreamSessionBoundariesRecovery(t *testing.T) {
 	t.Run("omits a recoverable projected replacement by its source entry ID", func(t *testing.T) {
 		ext := extension.Extension{Handlers: map[string][]extension.HandlerFn{"session_before_compact": {func(...any) (any, error) { return extension.SessionBeforeCompactResult{Cancel: true}, nil }}}}
 		h := newBoundaryHarness(t, harnessOptions{contextWindow: 1000, maxTokens: 100, settings: `{"compaction":{"enabled":true,"keepRecentTokens":1,"reserveTokens":0}}`, extension: ext}, boundaryReply("new answer", ai.StopReasonStop, 0))
-		boundaryRecord(t, h, 894, "omits a recoverable projected replacement by its source entry ID")
+		boundaryRecord(t, h, 895, "omits a recoverable projected replacement by its source entry ID")
 		if _, err := h.session.Inner().AppendMessage(agent.AgentMessage{User: &agent.UserMessage{Role: agent.RoleUser, Content: BuildUserContent(strings.Repeat("x", 5000), nil), Timestamp: time.Now().UnixMilli() - 2}}); err != nil {
 			t.Fatal(err)
 		}
@@ -136,7 +137,7 @@ func TestUpstreamSessionBoundariesRecovery(t *testing.T) {
 			reply.ErrorMessage = "prompt is too long"
 			return reply
 		}, boundaryReply("recovered", ai.StopReasonStop, 0))
-		boundaryRecord(t, h, 928, "recovers an explicit overflow error after a retained boundary replacement")
+		boundaryRecord(t, h, 929, "recovers an explicit overflow error after a retained boundary replacement")
 		boundaryPrompt(t, h, strings.Repeat("x", 5000))
 		if n := h.provider.callCount(); n != 2 {
 			t.Errorf("callCount=%d", n)
@@ -164,7 +165,7 @@ func TestUpstreamSessionBoundariesRecovery(t *testing.T) {
 			return nil, h.session.SendExtensionUserMessage("queued follow-up", &extension.SendUserMessageOptions{DeliverAs: extension.DeliverAsFollowUp})
 		}}}}
 		h = newBoundaryHarness(t, harnessOptions{settings: `{"retry":{"enabled":true,"maxRetries":2,"baseDelayMs":1}}`, extension: ext}, boundaryError("overloaded_error"), boundaryCapture(t, &requests, "retry recovered"), boundaryCapture(t, &requests, "follow-up completed"))
-		boundaryRecord(t, h, 974, "keeps follow-up work behind an automatic error retry")
+		boundaryRecord(t, h, 975, "keeps follow-up work behind an automatic error retry")
 		h.session.Subscribe(func(event agent.AgentEvent) {
 			switch event.(type) {
 			case agent.AgentEndEvent:
@@ -189,7 +190,7 @@ func TestUpstreamSessionBoundariesRecovery(t *testing.T) {
 	})
 	t.Run("marks the exhausted retry run as final", func(t *testing.T) {
 		h := newBoundaryHarness(t, harnessOptions{settings: `{"retry":{"enabled":true,"maxRetries":1,"baseDelayMs":1}}`}, boundaryError("overloaded_error"), boundaryError("overloaded_error"))
-		boundaryRecord(t, h, 1014, "marks the exhausted retry run as final")
+		boundaryRecord(t, h, 1015, "marks the exhausted retry run as final")
 		boundaryPrompt(t, h, "start")
 		h.settle(t)
 		willRetry := []bool{}
@@ -215,7 +216,7 @@ func TestUpstreamSessionBoundariesRecovery(t *testing.T) {
 			reply.ErrorMessage = "summary failed"
 			return reply
 		}, boundaryReply("must not retry", ai.StopReasonStop, 0))
-		boundaryRecord(t, h, 1032, "keeps omissions and does not retry when recovery compaction fails")
+		boundaryRecord(t, h, 1033, "keeps omissions and does not retry when recovery compaction fails")
 		boundaryPrompt(t, h, strings.Repeat("x", 5000))
 		if n := len(h.entries("context_edit")); n == 0 {
 			t.Error("missing context_edit")

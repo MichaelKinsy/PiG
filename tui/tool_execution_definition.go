@@ -15,6 +15,8 @@ import (
 // ToolRenderInput is the card state upstream ToolExecutionComponent passes to
 // a registered tool definition's renderers.
 type ToolRenderInput struct {
+	// ToolCallID is the card's tool call id (tool-execution.ts toolCallId).
+	ToolCallID       string
 	Args             json.RawMessage
 	ExecutionStarted bool
 	ArgsComplete     bool
@@ -22,6 +24,10 @@ type ToolRenderInput struct {
 	Expanded         bool
 	ShowImages       bool
 	IsError          bool
+	OutputPad        int
+	// DurationMs is the recorded execution time of a final result in milliseconds; nil while the result is partial.
+	// upstream: tool-execution.ts:137 durationMs: this.isPartial ? undefined : this.result?.durationMs
+	DurationMs *int64
 }
 
 // ToolDefinitionRenderers is a registered tool definition as the card draws
@@ -96,7 +102,13 @@ func (c *ToolExecutionComponent) definitionHasResult() bool {
 }
 
 func (c *ToolExecutionComponent) definitionInput() ToolRenderInput {
+	var durationMs *int64
+	if !c.IsPartial {
+		durationMs = c.DurationMs
+	}
 	return ToolRenderInput{
+		ToolCallID:       c.ToolCallID,
+		DurationMs:       durationMs,
 		Args:             c.definitionArgs,
 		ExecutionStarted: c.executionStarted,
 		ArgsComplete:     c.argsComplete,
@@ -104,6 +116,7 @@ func (c *ToolExecutionComponent) definitionInput() ToolRenderInput {
 		Expanded:         !c.Collapsed,
 		ShowImages:       c.ShowImages,
 		IsError:          c.State == ToolStateError,
+		OutputPad:        c.outputPad,
 	}
 }
 
@@ -112,6 +125,7 @@ func (c *ToolExecutionComponent) definitionInput() ToolRenderInput {
 // the fallbacks in place of a missing or failed renderer.
 func (c *ToolExecutionComponent) updateDefinition() {
 	c.definitionDirty.Store(false)
+	defer c.fillDefinitionShell()
 	input := c.definitionInput()
 	c.definitionCall = nil
 	if c.definition.Call != nil {
@@ -148,6 +162,19 @@ func (c *ToolExecutionComponent) updateDefinition() {
 	}
 }
 
+// fillDefinitionShell replaces the shell container's children with the current call and result regions (tool-execution.ts updateDisplay: clear, then addChild).
+func (c *ToolExecutionComponent) fillDefinitionShell() {
+	components := c.definitionComponents()
+	if c.definition.Self {
+		c.selfRenderContainer.SetChildren(components...)
+		return
+	}
+	c.contentBox.Clear()
+	for _, component := range components {
+		c.contentBox.AddChild(component)
+	}
+}
+
 // callFallback is upstream createCallFallback: the tool name in toolTitle followed by its arguments, on the title line
 // while collapsed and one per line when expanded (tool-execution.ts:155-157).
 func (c *ToolExecutionComponent) callFallback() Component {
@@ -169,17 +196,18 @@ func (c *ToolExecutionComponent) resultFallback() Component {
 	}
 	styled := make([]string, len(display))
 	for i, line := range display {
-		styled[i] = theme.FgText("toolOutput", line)
+		styled[i] = theme.Fg("toolOutput", line)
 	}
 	text := strings.Join(styled, "\n")
 	if remaining := len(lines) - len(display); remaining > 0 {
-		text += theme.FgText("muted", "\n... ("+strconv.Itoa(remaining)+" more lines,") + " " +
-			theme.FgText("dim", AppKeyText("app.tools.expand", "ctrl+o")) + theme.FgText("muted", " to expand") +
-			theme.FgText("muted", ")")
+		text += theme.Fg("muted", "\n... ("+strconv.Itoa(remaining)+" more lines,") + " " +
+			theme.Fg("dim", AppKeyText("app.tools.expand", "ctrl+o")) + theme.Fg("muted", " to expand") +
+			theme.Fg("muted", ")")
 	}
 	return NewPaddedText(text, 0, 0, nil)
 }
 
+// definitionComponents wraps the call and result components in the regions that toggle the card on click (createResultRegion).
 func (c *ToolExecutionComponent) definitionComponents() []Component {
 	components := []Component{NewMouseRegion(c.definitionCall, c.handleResultMouse)}
 	if c.definitionResultComponent != nil {
@@ -210,38 +238,21 @@ func (c *ToolExecutionComponent) definitionBg() func(string) string {
 	case c.State == ToolStateError:
 		token = "toolErrorBg"
 	}
-	open := theme.Bg(token)
+	open := theme.GetBgAnsi(token)
 	return func(text string) string { return open + text + SGRBgReset }
 }
 
-// renderDefinition is upstream render for a card with a definition: the
-// default shell is a spacer over a padded Box in the lifecycle background;
-// renderShell "self" draws the components after one blank line, and nothing
-// when they draw nothing. Images follow either shell.
-func (c *ToolExecutionComponent) renderDefinition(width int) []string {
-	if c.definitionDirty.Load() || c.definitionCall == nil {
-		c.updateDefinition()
-	}
+// renderSelfShell is upstream render for renderShell "self": the components after one blank row, or nothing when they draw nothing. Images follow.
+func (c *ToolExecutionComponent) renderSelfShell(width int) []string {
 	images := c.renderImages(width)
-	if c.definition.Self {
-		container := NewContainer(c.definitionComponents()...)
-		content := container.Render(width)
-		c.mouseChild, c.mouseWidth, c.mouseHeight = container, width, len(content)
-		if len(content) == 0 && len(images) == 0 {
-			return []string{}
-		}
-		var out []string
-		if len(content) > 0 {
-			out = append([]string{""}, content...)
-		}
-		return append(out, images...)
+	content := c.selfRenderContainer.Render(width)
+	c.mouseChild, c.mouseWidth, c.mouseHeight = c.selfRenderContainer, width, len(content)
+	if len(content) == 0 && len(images) == 0 {
+		return []string{}
 	}
-	box := NewPaddedBox(1, 1, c.definitionBg())
-	for _, component := range c.definitionComponents() {
-		box.AddChild(component)
+	var out []string
+	if len(content) > 0 {
+		out = append([]string{""}, content...)
 	}
-	content := box.Render(width)
-	c.mouseChild, c.mouseWidth, c.mouseHeight = box, width, len(content)
-	out := append([]string{""}, content...)
 	return append(out, images...)
 }

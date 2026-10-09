@@ -9,7 +9,7 @@ import (
 	"github.com/MichaelKinsy/PiG/tui"
 )
 
-func renderRecovered(ui *tui.TUI) (value any) {
+func renderRecovered(ui *tui.TuiMainScreen) (value any) {
 	defer func() { value = recover() }()
 	ui.Render()
 	return nil

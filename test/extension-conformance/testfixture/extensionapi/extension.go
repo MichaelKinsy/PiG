@@ -118,7 +118,7 @@ func Extension() *sdk.Extension {
 				names[i] = tool.Name
 			}
 			return &sdk.ToolLoadoutChanges{
-				Descriptions:       map[string]string{"run_tools": "Runs tools: " + strings.Join(names, ", "), "echo": "Echo text (also callable from run_tools)."},
+				Descriptions:       map[string]string{"run_tools": "Runs tools: " + strings.Join(names, ", ") + " [" + strings.Join(loadout.GetPromptGuidelines("echo"), " | ") + "]", "echo": "Echo text (also callable from run_tools)."},
 				HiddenDeclarations: []string{"echo"},
 			}
 		},
@@ -151,6 +151,26 @@ func Extension() *sdk.Extension {
 				return nil, err
 			}
 			return strings.Join(append(partials, outcome.Result.Text()), ","), nil
+		},
+	})
+	e.RegisterTool(sdk.ToolDefinition{
+		Name: "nested_duration", Label: "nested_duration", Description: "Reports the durationMs of nested outcomes.", Parameters: object,
+		Execute: func(ctx sdk.Context, _ map[string]any) (any, error) {
+			timed, err := ctx.ExecuteTool("timed", nil, nil)
+			if err != nil {
+				return nil, err
+			}
+			untimed, err := ctx.ExecuteTool("helper", map[string]any{}, nil)
+			if err != nil {
+				return nil, err
+			}
+			report := func(outcome sdk.AgentToolCallOutcome) string {
+				if outcome.DurationMs == nil {
+					return "none"
+				}
+				return fmt.Sprint(*outcome.DurationMs)
+			}
+			return report(timed) + "|" + report(untimed), nil
 		},
 	})
 	e.RegisterTool(sdk.ToolDefinition{

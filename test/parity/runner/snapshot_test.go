@@ -442,3 +442,25 @@ func TestCLIFixtureProjectsRunOutsideCheckout(t *testing.T) {
 		t.Fatal("no cli-mode fixture project found; the guard no longer sees the project-trust scenarios")
 	}
 }
+
+// A directory extension's identity is its directory name (a Go, Rust or Python factory must register under it), so the
+// snapshot keeps that name instead of loading the copy from a randomly named directory.
+func TestSnapshotExtensionPathKeepsADirectoryExtensionsName(t *testing.T) {
+	source := filepath.Join(t.TempDir(), "robust")
+	if err := os.MkdirAll(source, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(source, "extension.go"), []byte("package robust\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	snapshot, err := snapshotExtensionPath(t, source)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if filepath.Base(snapshot) != "robust" || snapshot == source {
+		t.Fatalf("snapshot = %s, want a copy named robust", snapshot)
+	}
+	if _, err := os.Stat(filepath.Join(snapshot, "extension.go")); err != nil {
+		t.Fatalf("directory contents were not snapshotted: %v", err)
+	}
+}

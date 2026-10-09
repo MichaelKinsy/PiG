@@ -19,7 +19,7 @@ type failedStartupTransport struct {
 	closeOnce sync.Once
 }
 
-func (transport *failedStartupTransport) Send(_ []byte, complete func(error)) {
+func (transport *failedStartupTransport) Submit(_ []byte, complete func(error)) {
 	complete(transport.failure)
 }
 func (transport *failedStartupTransport) Close() {
@@ -39,9 +39,9 @@ func TestConnectFailureJoinsTransportLifetime(t *testing.T) {
 		var connectError error
 		go func() {
 			defer close(finished)
-			result, connectError = Connect(t.Context(), ClientOptions{ServerId: "00000000-0000-4000-8000-000000000001", TransportFactory: func(_ context.Context, _ ByteTransportHandlers, complete func(ByteTransport, error)) {
+			result, connectError = Connect(t.Context(), ClientOptions{ServerId: "00000000-0000-4000-8000-000000000001", TransportFactory: callbackFactory(func(_ context.Context, _ ByteTransportHandlers, complete func(callbackByteTransport, error)) {
 				complete(transport, nil)
-			}})
+			})})
 		}()
 		t.Cleanup(func() { release(); <-finished })
 		<-transport.closed
@@ -65,7 +65,7 @@ type invocationTestTransport struct {
 	closed   bool
 }
 
-func (transport *invocationTestTransport) Send(frame []byte, complete func(error)) {
+func (transport *invocationTestTransport) Submit(frame []byte, complete func(error)) {
 	decoder, err := protocol.NewClientMessageDecoder(protocol.FrameDecoderOptions{})
 	if err != nil {
 		complete(err)
@@ -97,10 +97,10 @@ func (transport *invocationTestTransport) Close() { transport.closed = true }
 func TestBeginInvokeAdmitsBeforeReturnAndSeparatesWaitCancellation(t *testing.T) {
 	t.Parallel()
 	transport := &invocationTestTransport{}
-	client, err := Connect(t.Context(), ClientOptions{ServerId: "00000000-0000-4000-8000-000000000001", TransportFactory: func(_ context.Context, handlers ByteTransportHandlers, complete func(ByteTransport, error)) {
+	client, err := Connect(t.Context(), ClientOptions{ServerId: "00000000-0000-4000-8000-000000000001", TransportFactory: callbackFactory(func(_ context.Context, handlers ByteTransportHandlers, complete func(callbackByteTransport, error)) {
 		transport.handlers = handlers
 		complete(transport, nil)
-	}})
+	})})
 	if err != nil {
 		t.Fatal(err)
 	}

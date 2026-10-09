@@ -1,0 +1,3 @@
+### Fixed
+
+- Pasting an OAuth authorization into the Anthropic, OpenAI Codex or OpenRouter login now reads it the way Pi does. A `code#state` paste keeps only the text up to the next `#` as the state. A bare query string with a leading `?`, a `;`, or a malformed `%` escape keeps the code instead of dropping it. A URL of any scheme that `new URL` refuses, such as one whose port is above 65535, is read as a plain code, not as a callback URL. An empty pasted state (`code#` or `state=`) reaches Anthropic's token request as an empty state, as in Pi, instead of being replaced by the login's own state.

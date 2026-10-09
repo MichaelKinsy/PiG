@@ -4,7 +4,6 @@ description: Run one bounded upstream-first Pi-to-PiG porting or verification ta
 ---
 
 <!--
-SPDX-FileCopyrightText: Copyright Hewlett Packard Enterprise Development LP
 SPDX-License-Identifier: MIT
 -->
 

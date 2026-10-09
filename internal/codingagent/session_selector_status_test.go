@@ -9,7 +9,7 @@ import (
 	"time"
 )
 
-func newStatusTestSelector(loader func() ([]SessionInfo, error), allLoaders ...func() ([]SessionInfo, error)) *sessionSelector {
+func newStatusTestSelector(loader func() ([]SessionInfo, error), allLoaders ...func() ([]SessionInfo, error)) *SessionSelectorComponent {
 	allLoader := loader
 	if len(allLoaders) > 0 {
 		allLoader = allLoaders[0]

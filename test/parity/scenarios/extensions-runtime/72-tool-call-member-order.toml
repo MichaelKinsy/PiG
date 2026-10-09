@@ -1,0 +1,46 @@
+# Behavior family: extensions-runtime
+# Scenario: a Node extension's tool_call event and its edited input keep Pi's member order.
+#
+# parity-tool-call-member-order.mjs records Object.keys of the tool_call event, rewrites the bash command
+# and adds a member to event.input. Pi builds the event as {type, toolName, toolCallId, input}
+# (agent-session.ts _beforeToolCall) and runs the tool with the edited object (agent-loop.ts
+# prepareToolCall), so tool_result sees {"command":"echo rewritten","aaa":1}. The tool_result handler
+# answers "[parity-modified]" only then. A host that sends the event in Go struct order and keeps the input
+# as a sorted map answers "not-modified": the event read "type,toolCallId,toolName,input" and the input
+# {"aaa":1,"command":"echo rewritten"} (PR #168, before this scenario).
+#
+# Upstream evidence (2026-10-06, Pi 1.0.3):
+#   PI_CODING_AGENT_DIR=testdata/pi-agent pi --no-extensions \
+#     -e ../../testdata/test-faux-provider.ts -e testdata/ext/parity-tool-call-member-order.mjs \
+#     --model test-faux/faux-1 --print "Run: bash modified"
+#   output: "modified:parity-modified"
+#   exit: 0
+
+name = "72-tool-call-member-order"
+description = "Extension tool_call event and its edited input keep Pi's member order through the call and tool_result"
+covers = [
+  "packages/coding-agent/src/core/extensions/runner.ts",
+]
+tags = ["hermetic", "fast"]
+driver = "print-mode"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_HOME=testdata/pig-home"]
+pi = ["PI_CODING_AGENT_DIR=testdata/pi-agent"]
+pig_args = ["--no-extensions"]
+pig_extensions = ["testdata/ext/parity-tool-call-member-order.mjs"]
+pi_extensions = [
+  "../../testdata/test-faux-provider.ts",
+  "testdata/ext/parity-tool-call-member-order.mjs",
+]
+
+[print]
+prompt = "Run: bash modified"
+timeout_seconds = 30
+
+[assert]
+exit_code = 0
+both_contain = ["modified:parity-modified"]
+output_equal = true
+runs = 3

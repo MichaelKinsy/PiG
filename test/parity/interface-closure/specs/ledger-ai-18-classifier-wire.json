@@ -1,0 +1,332 @@
+[
+ {
+  "ids": [
+   "pkg:ai/.#ClassifierBoolAnswer",
+   "pkg:ai/compat#ClassifierBoolAnswer"
+  ],
+  "targets": [
+   "ai/classifier.go#ClassifierBoolAnswer"
+  ],
+  "production": [
+   "call:ai/classifier_wire.go#unmarshalClassifierAnswer"
+  ],
+  "evidence": [
+   "test:ai/wire_shape_upstream_test.go#TestClassifierQuestionAndAnswerWireShapesMatchUpstream"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "ClassifierBoolAnswer: every upstream property maps to a Go field (types reviewed against the upstream declaration); production and tests attributed by go/types. Record-typed members are ordered slices in Go and marshal as JSON objects in insertion order.",
+  "properties": {
+   "probability": {
+    "targets": [
+     "ai/classifier.go#ClassifierBoolAnswer.Probability"
+    ],
+    "evidence": [
+     "test:ai/wire_shape_upstream_test.go#TestClassifierQuestionAndAnswerWireShapesMatchUpstream"
+    ],
+    "production": [
+     "call:ai/classifier_wire.go#unmarshalClassifierAnswer"
+    ],
+    "rationale": "The upstream property probability is the Go field ClassifierBoolAnswer.Probability."
+   },
+   "type": {
+    "targets": [
+     "ai/classifier.go#ClassifierBoolAnswer.MarshalJSON"
+    ],
+    "evidence": [
+     "test:ai/wire_shape_upstream_test.go#TestClassifierQuestionAndAnswerWireShapesMatchUpstream"
+    ],
+    "production": [
+     "call:ai/classifier_wire.go#unmarshalClassifierAnswer"
+    ],
+    "rationale": "The discriminator type is not a Go field: it is the literal the type emits as JSON through its MarshalJSON method (TestWireDiscriminatorsMatchUpstreamLiterals compares every emitted literal with the upstream one)."
+   }
+  }
+ },
+ {
+  "ids": [
+   "pkg:ai/.#ClassifierBoolQuestion",
+   "pkg:ai/compat#ClassifierBoolQuestion"
+  ],
+  "targets": [
+   "ai/classifier.go#ClassifierBoolQuestion"
+  ],
+  "production": [
+   "call:ai/classifier.go#unmarshalClassifierQuestion"
+  ],
+  "evidence": [
+   "test:ai/wire_shape_upstream_test.go#TestClassifierQuestionAndAnswerWireShapesMatchUpstream"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "ClassifierBoolQuestion: every upstream property maps to a Go field (types reviewed against the upstream declaration); production and tests attributed by go/types. Record-typed members are ordered slices in Go and marshal as JSON objects in insertion order.",
+  "properties": {
+   "criteria": {
+    "targets": [
+     "ai/classifier.go#ClassifierBoolQuestion.Criteria"
+    ],
+    "evidence": [
+     "test:ai/wire_shape_upstream_test.go#TestClassifierQuestionAndAnswerWireShapesMatchUpstream"
+    ],
+    "production": [
+     "call:ai/classifier.go#unmarshalClassifierQuestion"
+    ],
+    "rationale": "The upstream property criteria is the Go field ClassifierBoolQuestion.Criteria."
+   },
+   "instructions": {
+    "targets": [
+     "ai/classifier.go#ClassifierBoolQuestion.Instructions"
+    ],
+    "evidence": [
+     "test:ai/wire_shape_upstream_test.go#TestClassifierQuestionAndAnswerWireShapesMatchUpstream"
+    ],
+    "production": [
+     "call:ai/classifier.go#unmarshalClassifierQuestion"
+    ],
+    "rationale": "The upstream property instructions is the Go field ClassifierBoolQuestion.Instructions."
+   },
+   "type": {
+    "targets": [
+     "ai/classifier.go#ClassifierBoolQuestion.MarshalJSON"
+    ],
+    "evidence": [
+     "test:ai/wire_shape_upstream_test.go#TestClassifierQuestionAndAnswerWireShapesMatchUpstream"
+    ],
+    "production": [
+     "call:ai/classifier.go#unmarshalClassifierQuestion"
+    ],
+    "rationale": "The discriminator type is not a Go field: it is the literal the type emits as JSON through its MarshalJSON method (TestWireDiscriminatorsMatchUpstreamLiterals compares every emitted literal with the upstream one)."
+   }
+  }
+ },
+ {
+  "ids": [
+   "pkg:ai/.#ClassifierChoiceAnswer",
+   "pkg:ai/compat#ClassifierChoiceAnswer"
+  ],
+  "targets": [
+   "ai/classifier.go#ClassifierChoiceAnswer"
+  ],
+  "production": [
+   "call:ai/classifier_wire.go#unmarshalClassifierAnswer"
+  ],
+  "evidence": [
+   "test:ai/wire_shape_upstream_test.go#TestClassifierQuestionAndAnswerWireShapesMatchUpstream"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "ClassifierChoiceAnswer: every upstream property maps to a Go field (types reviewed against the upstream declaration); production and tests attributed by go/types. Record-typed members are ordered slices in Go and marshal as JSON objects in insertion order.",
+  "properties": {
+   "choice": {
+    "targets": [
+     "ai/classifier.go#ClassifierChoiceAnswer.Choice"
+    ],
+    "evidence": [
+     "test:ai/wire_shape_upstream_test.go#TestClassifierQuestionAndAnswerWireShapesMatchUpstream"
+    ],
+    "production": [
+     "call:ai/classifier_wire.go#unmarshalClassifierAnswer"
+    ],
+    "rationale": "The upstream property choice is the Go field ClassifierChoiceAnswer.Choice."
+   },
+   "confidence": {
+    "targets": [
+     "ai/classifier.go#ClassifierChoiceAnswer.Confidence"
+    ],
+    "evidence": [
+     "test:ai/wire_shape_upstream_test.go#TestClassifierQuestionAndAnswerWireShapesMatchUpstream"
+    ],
+    "production": [
+     "call:ai/classifier_wire.go#unmarshalClassifierAnswer"
+    ],
+    "rationale": "The upstream property confidence is the Go field ClassifierChoiceAnswer.Confidence."
+   },
+   "probabilities": {
+    "targets": [
+     "ai/classifier.go#ClassifierChoiceAnswer.Probabilities"
+    ],
+    "evidence": [
+     "test:ai/wire_shape_upstream_test.go#TestClassifierQuestionAndAnswerWireShapesMatchUpstream"
+    ],
+    "production": [
+     "call:ai/classifier_wire.go#unmarshalClassifierAnswer"
+    ],
+    "rationale": "The upstream property probabilities is the Go field ClassifierChoiceAnswer.Probabilities."
+   },
+   "type": {
+    "targets": [
+     "ai/classifier.go#ClassifierChoiceAnswer.MarshalJSON"
+    ],
+    "evidence": [
+     "test:ai/wire_shape_upstream_test.go#TestClassifierQuestionAndAnswerWireShapesMatchUpstream"
+    ],
+    "production": [
+     "call:ai/classifier_wire.go#unmarshalClassifierAnswer"
+    ],
+    "rationale": "The discriminator type is not a Go field: it is the literal the type emits as JSON through its MarshalJSON method (TestWireDiscriminatorsMatchUpstreamLiterals compares every emitted literal with the upstream one)."
+   }
+  }
+ },
+ {
+  "ids": [
+   "pkg:ai/.#ClassifierChoiceQuestion",
+   "pkg:ai/compat#ClassifierChoiceQuestion"
+  ],
+  "targets": [
+   "ai/classifier.go#ClassifierChoiceQuestion"
+  ],
+  "production": [
+   "call:ai/classifier.go#unmarshalClassifierQuestion"
+  ],
+  "evidence": [
+   "test:ai/wire_shape_upstream_test.go#TestClassifierQuestionAndAnswerWireShapesMatchUpstream"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "ClassifierChoiceQuestion: every upstream property maps to a Go field (types reviewed against the upstream declaration); production and tests attributed by go/types. Record-typed members are ordered slices in Go and marshal as JSON objects in insertion order.",
+  "properties": {
+   "criteria": {
+    "targets": [
+     "ai/classifier.go#ClassifierChoiceQuestion.Criteria"
+    ],
+    "evidence": [
+     "test:ai/wire_shape_upstream_test.go#TestClassifierQuestionAndAnswerWireShapesMatchUpstream"
+    ],
+    "production": [
+     "call:ai/classifier.go#unmarshalClassifierQuestion"
+    ],
+    "rationale": "The upstream property criteria is the Go field ClassifierChoiceQuestion.Criteria."
+   },
+   "instructions": {
+    "targets": [
+     "ai/classifier.go#ClassifierChoiceQuestion.Instructions"
+    ],
+    "evidence": [
+     "test:ai/wire_shape_upstream_test.go#TestClassifierQuestionAndAnswerWireShapesMatchUpstream"
+    ],
+    "production": [
+     "call:ai/classifier.go#unmarshalClassifierQuestion"
+    ],
+    "rationale": "The upstream property instructions is the Go field ClassifierChoiceQuestion.Instructions."
+   },
+   "type": {
+    "targets": [
+     "ai/classifier.go#ClassifierChoiceQuestion.MarshalJSON"
+    ],
+    "evidence": [
+     "test:ai/wire_shape_upstream_test.go#TestClassifierQuestionAndAnswerWireShapesMatchUpstream"
+    ],
+    "production": [
+     "call:ai/classifier.go#unmarshalClassifierQuestion"
+    ],
+    "rationale": "The discriminator type is not a Go field: it is the literal the type emits as JSON through its MarshalJSON method (TestWireDiscriminatorsMatchUpstreamLiterals compares every emitted literal with the upstream one)."
+   }
+  }
+ },
+ {
+  "ids": [
+   "pkg:ai/.#ClassifierScoreAnswer",
+   "pkg:ai/compat#ClassifierScoreAnswer"
+  ],
+  "targets": [
+   "ai/classifier.go#ClassifierScoreAnswer"
+  ],
+  "production": [
+   "call:ai/classifier_wire.go#unmarshalClassifierAnswer"
+  ],
+  "evidence": [
+   "test:ai/wire_shape_upstream_test.go#TestClassifierQuestionAndAnswerWireShapesMatchUpstream"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "ClassifierScoreAnswer: every upstream property maps to a Go field (types reviewed against the upstream declaration); production and tests attributed by go/types. Record-typed members are ordered slices in Go and marshal as JSON objects in insertion order.",
+  "properties": {
+   "confidence": {
+    "targets": [
+     "ai/classifier.go#ClassifierScoreAnswer.Confidence"
+    ],
+    "evidence": [
+     "test:ai/wire_shape_upstream_test.go#TestClassifierQuestionAndAnswerWireShapesMatchUpstream"
+    ],
+    "production": [
+     "call:ai/classifier_wire.go#unmarshalClassifierAnswer"
+    ],
+    "rationale": "The upstream property confidence is the Go field ClassifierScoreAnswer.Confidence."
+   },
+   "score": {
+    "targets": [
+     "ai/classifier.go#ClassifierScoreAnswer.Score"
+    ],
+    "evidence": [
+     "test:ai/wire_shape_upstream_test.go#TestClassifierQuestionAndAnswerWireShapesMatchUpstream"
+    ],
+    "production": [
+     "call:ai/classifier_wire.go#unmarshalClassifierAnswer"
+    ],
+    "rationale": "The upstream property score is the Go field ClassifierScoreAnswer.Score."
+   },
+   "type": {
+    "targets": [
+     "ai/classifier.go#ClassifierScoreAnswer.MarshalJSON"
+    ],
+    "evidence": [
+     "test:ai/wire_shape_upstream_test.go#TestClassifierQuestionAndAnswerWireShapesMatchUpstream"
+    ],
+    "production": [
+     "call:ai/classifier_wire.go#unmarshalClassifierAnswer"
+    ],
+    "rationale": "The discriminator type is not a Go field: it is the literal the type emits as JSON through its MarshalJSON method (TestWireDiscriminatorsMatchUpstreamLiterals compares every emitted literal with the upstream one)."
+   }
+  }
+ },
+ {
+  "ids": [
+   "pkg:ai/.#ClassifierScoreQuestion",
+   "pkg:ai/compat#ClassifierScoreQuestion"
+  ],
+  "targets": [
+   "ai/classifier.go#ClassifierScoreQuestion"
+  ],
+  "production": [
+   "call:ai/classifier.go#unmarshalClassifierQuestion"
+  ],
+  "evidence": [
+   "test:ai/wire_shape_upstream_test.go#TestClassifierQuestionAndAnswerWireShapesMatchUpstream"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "ClassifierScoreQuestion: every upstream property maps to a Go field (types reviewed against the upstream declaration); production and tests attributed by go/types. Record-typed members are ordered slices in Go and marshal as JSON objects in insertion order.",
+  "properties": {
+   "criteria": {
+    "targets": [
+     "ai/classifier.go#ClassifierScoreQuestion.Criteria"
+    ],
+    "evidence": [
+     "test:ai/wire_shape_upstream_test.go#TestClassifierQuestionAndAnswerWireShapesMatchUpstream"
+    ],
+    "production": [
+     "call:ai/classifier.go#unmarshalClassifierQuestion"
+    ],
+    "rationale": "The upstream property criteria is the Go field ClassifierScoreQuestion.Criteria."
+   },
+   "instructions": {
+    "targets": [
+     "ai/classifier.go#ClassifierScoreQuestion.Instructions"
+    ],
+    "evidence": [
+     "test:ai/wire_shape_upstream_test.go#TestClassifierQuestionAndAnswerWireShapesMatchUpstream"
+    ],
+    "production": [
+     "call:ai/classifier.go#unmarshalClassifierQuestion"
+    ],
+    "rationale": "The upstream property instructions is the Go field ClassifierScoreQuestion.Instructions."
+   },
+   "type": {
+    "targets": [
+     "ai/classifier.go#ClassifierScoreQuestion.MarshalJSON"
+    ],
+    "evidence": [
+     "test:ai/wire_shape_upstream_test.go#TestClassifierQuestionAndAnswerWireShapesMatchUpstream"
+    ],
+    "production": [
+     "call:ai/classifier.go#unmarshalClassifierQuestion"
+    ],
+    "rationale": "The discriminator type is not a Go field: it is the literal the type emits as JSON through its MarshalJSON method (TestWireDiscriminatorsMatchUpstreamLiterals compares every emitted literal with the upstream one)."
+   }
+  }
+ }
+]

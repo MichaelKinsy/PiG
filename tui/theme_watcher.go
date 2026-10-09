@@ -88,7 +88,8 @@ func (w *ThemeWatcher) selectTheme(name string) {
 		w.watcher = nil
 	}
 	// upstream: packages/coding-agent/src/modes/interactive/theme/theme.ts:startThemeWatcher
-	if name != "" && name != "dark" && name != "light" && name != SystemThemeName && filepath.Base(name) == name {
+	// A theme instance is not watched (theme.ts:798 setThemeInstance calls stopThemeWatcher), even when a same-named file exists.
+	if name != "" && name != "dark" && name != "light" && name != SystemThemeName && name != InMemoryThemeName && filepath.Base(name) == name {
 		if _, err := os.Stat(filepath.Join(w.directory, name+".json")); err == nil {
 			if watcher, err := fsnotify.NewWatcher(); err == nil {
 				if err := watcher.Add(w.directory); err == nil {

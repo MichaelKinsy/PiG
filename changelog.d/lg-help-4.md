@@ -1,0 +1,19 @@
+### Fixed
+- The `/settings` search edits like Pi's search input: the cursor moves with the arrow keys, Ctrl+W, Ctrl+K, Ctrl+Y, paste and the other input keys work, and any key the list does not own returns the selection to the first match. Confirm and cancel keys that a user binds to the same key as up or down now run up or down first, as Pi does.
+- The login provider list selects with Enter when `tui.select.confirm` is rebound, as Pi's search input submits it, and starts its search cursor at the beginning of a prefilled query.
+- The `/thinking` selector edits its search like Pi's input, selects with the input's submit key, and no longer repeats a selection or cancel on the next navigation key.
+- The cancel hint of extension loaders (`/share`, `/bug`) shows the key bound to `tui.select.cancel` instead of always `escape/ctrl+c`.
+- Pressing the login dialog's cancel key again cancels again, and Enter after a cancelled prompt leaves the field unchanged, as in Pi.
+- The session picker checks its keys in Pi's order when bindings overlap (delete before rename, list actions up, down, page up, page down, confirm, cancel), and Enter typed into the search box selects the highlighted session even when `tui.select.confirm` is rebound.
+- An unmatched tool result row in the /tree selector shows the tool's name, as in Pi (`[bash]`), instead of `[tool]`.
+- Pressing Enter in the model picker's search box selects the highlighted model even when `tui.select.confirm` is rebound.
+- Single-line inputs (login prompts, search boxes) ignore xterm modifyOtherKeys text sequences, as Pi's Input does; the multi-line editor still accepts them.
+- The /fork message picker checks its keys in Pi's order (up, down, confirm, cancel) when bindings overlap.
+- Settings submenus: the type-to-filter box no longer shows a hardware cursor marker (Pi never focuses it), and the highlight callback (theme preview) now fires on every up/down like Pi's SelectList, including when the highlight stays on the same item.
+- Filterable selector lists (theme, images, tree-filter-like pickers) check up/down before confirm/cancel like Pi's SelectList when a key is bound to several of them.
+- Durable error values (FileError, ExecutionError, JsonlCorruptionError, ReadAfterWrite, StorageRejected, ConversationBusy) report Pi's `name` and a V8-style `stack` when built by their constructors; the JSONL corruption constructor is now exported as NewJsonlCorruptionError.
+- Durable: resolving harness settings no longer shares the default retry policy's max agent delay between harnesses.
+- Extensions' `ctx.ui.setHiddenThinkingLabel()` now changes the collapsed thinking label of every assistant block (it was stored but never read) and is reset when the session is replaced.
+- /settings warnings submenu: a warning the settings never set shows as on and a toggle always reports the warning as set (Pi's `?? true`).
+- /scoped-models: an empty search no longer makes enable-all/clear-all act on every model, clearing every model from an all-enabled list now leaves none enabled (not all), and the save key is checked after the navigation keys like Pi.
+- Config selector (`pig config`): every key that reaches the search input re-filters and resets the selection to the first item even when the query is unchanged, Tab no longer edits the search when project mode is unavailable, and the search is a callback-mode Input so Enter no longer freezes it, all as in Pi's `ResourceList.handleInput` (`tui/config_selector_oracle_test.go`, 648 probes against pinned Pi).

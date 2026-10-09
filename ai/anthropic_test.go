@@ -986,7 +986,7 @@ func TestAnthropicStreamCloudflareAffinityAutoDetect(t *testing.T) {
 
 func TestAnthropicThinkingConfigClampsThroughThinkingLevelMap(t *testing.T) {
 	model := &Model{
-		Capabilities: ModelCapabilities{MaxThinking: ThinkingXHigh, MaxOutputTokens: 32768},
+		Capabilities: ModelCapabilities{MaxThinking: ThinkingLevelXHigh, MaxOutputTokens: 32768},
 		ThinkingLevelMap: ThinkingLevelMap{
 			ThinkingOff:    nil,
 			ThinkingMedium: nil,
@@ -995,7 +995,7 @@ func TestAnthropicThinkingConfigClampsThroughThinkingLevelMap(t *testing.T) {
 	}
 	// off===null (ThinkingOff: nil, Fable-5 style) → upstream omits the thinking
 	// field entirely; must NOT clamp off up to an enabled level (#5567).
-	got := thinkingToAnthropicConfig(model, 8192, ThinkingOff)
+	got := thinkingToAnthropicConfig(model, 8192, ThinkingOff, nil)
 	if got != nil {
 		t.Fatalf("off with thinkingLevelMap.off===null should omit thinking, got %+v", got)
 	}
@@ -1003,14 +1003,14 @@ func TestAnthropicThinkingConfigClampsThroughThinkingLevelMap(t *testing.T) {
 	// Upstream default budget for High = 16384.
 	// adjustedMax = min(8192 + 16384, 32768) = 24576
 	// budget (16384) < adjustedMax (24576) → budget stays 16384
-	got = thinkingToAnthropicConfig(model, 8192, ThinkingMedium)
+	got = thinkingToAnthropicConfig(model, 8192, ThinkingMedium, nil)
 	if got == nil || got.Thinking.Type != "enabled" || got.Thinking.BudgetTokens != 16384 {
 		t.Fatalf("medium should clamp to high budget=16384, got %+v", got)
 	}
 	if got.MaxTokens != 24576 {
 		t.Fatalf("medium→high: maxTokens should be 24576 (8192+16384), got %d", got.MaxTokens)
 	}
-	got = thinkingToAnthropicConfig(model, 8192, ThinkingXHigh)
+	got = thinkingToAnthropicConfig(model, 8192, ThinkingXHigh, nil)
 	if got == nil || got.Thinking.BudgetTokens != 16384 {
 		t.Fatalf("xhigh should use high budget=16384, got %+v", got)
 	}
@@ -1023,7 +1023,7 @@ func TestAnthropicThinkingConfigClampsThroughThinkingLevelMap(t *testing.T) {
 // enabled level.
 func TestAnthropicThinkingOffVariants(t *testing.T) {
 	reasoning := func(m ThinkingLevelMap) *Model {
-		return &Model{Capabilities: ModelCapabilities{MaxThinking: ThinkingXHigh, MaxOutputTokens: 32768}, ThinkingLevelMap: m}
+		return &Model{Capabilities: ModelCapabilities{MaxThinking: ThinkingLevelXHigh, MaxOutputTokens: 32768}, ThinkingLevelMap: m}
 	}
 	cases := []struct {
 		name     string
@@ -1038,7 +1038,7 @@ func TestAnthropicThinkingOffVariants(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			got := thinkingToAnthropicConfig(tc.model, 8192, ThinkingOff)
+			got := thinkingToAnthropicConfig(tc.model, 8192, ThinkingOff, nil)
 			if tc.wantType == "" {
 				if got != nil {
 					t.Fatalf("want omit (nil), got %+v", got)
@@ -1121,7 +1121,7 @@ func TestAnthropicTemperatureCompatibility(t *testing.T) {
 			provider := &anthropicProvider{cfg: AnthropicConfig{Model: test.model, ProviderID: "anthropic", Compat: test.compat}}
 			model := provider.resolveModel()
 			params, err := provider.buildParams(model, NormalizeContext(Context{Messages: []Message{UserMessage{Content: UserText("Hello")}}}), false, anthropicHeaders{}, anthropicHeaders{}, StreamOptions{
-				Thinking: ThinkingOff, Temperature: test.temperature, TemperatureSet: test.set,
+				Thinking: "", Temperature: test.temperature, TemperatureSet: test.set,
 			}, ProviderEnv{"PI_CACHE_RETENTION": "none"})
 			if err != nil {
 				t.Fatalf("buildParams: %v", err)
@@ -1142,17 +1142,17 @@ func TestAnthropicTemperatureCompatibility(t *testing.T) {
 func TestAnthropicAdaptiveThinkingForOpus47(t *testing.T) {
 	model := &Model{
 		ID:           "claude-opus-4.7",
-		Capabilities: ModelCapabilities{MaxThinking: ThinkingXHigh},
+		Capabilities: ModelCapabilities{MaxThinking: ThinkingLevelXHigh},
 		ProviderMeta: ProviderMetadata{
 			Compat: &OpenAICompat{ForceAdaptiveThinking: new(true)},
 		},
 		ThinkingLevelMap: ThinkingLevelMap{
-			ThinkingLevel("xhigh"): new("xhigh"),
+			ModelThinkingLevel("xhigh"): new("xhigh"),
 		},
 	}
 
 	// Adaptive thinking should be used, not budget-based.
-	got := thinkingToAnthropicConfig(model, 8192, ThinkingHigh)
+	got := thinkingToAnthropicConfig(model, 8192, ThinkingHigh, nil)
 	if got == nil {
 		t.Fatal("expected non-nil thinking config")
 	}
@@ -1170,14 +1170,14 @@ func TestAnthropicAdaptiveThinkingForOpus47(t *testing.T) {
 	}
 
 	// xhigh should map via thinkingLevelMap.
-	got = thinkingToAnthropicConfig(model, 8192, ThinkingXHigh)
+	got = thinkingToAnthropicConfig(model, 8192, ThinkingXHigh, nil)
 	if got == nil || got.OutputConfig == nil || got.OutputConfig.Effort != "xhigh" {
 		t.Errorf("xhigh effort = %v, want 'xhigh'", got)
 	}
 
 	// off undefined (no off key) on a reasoning model → upstream sends
 	// thinking:{type:"disabled"} (off !== null), even for adaptive models (#5567).
-	got = thinkingToAnthropicConfig(model, 8192, ThinkingOff)
+	got = thinkingToAnthropicConfig(model, 8192, ThinkingOff, nil)
 	if got == nil || got.Thinking == nil || got.Thinking.Type != "disabled" {
 		t.Errorf("off (off undefined) should be thinking:{type:disabled}, got %+v", got)
 	}
@@ -1186,11 +1186,11 @@ func TestAnthropicAdaptiveThinkingForOpus47(t *testing.T) {
 func TestAnthropicBudgetThinkingForOlderModels(t *testing.T) {
 	model := &Model{
 		ID:           "claude-sonnet-4.5",
-		Capabilities: ModelCapabilities{MaxThinking: ThinkingHigh},
+		Capabilities: ModelCapabilities{MaxThinking: ThinkingLevelHigh},
 	}
 
 	// Older model should use budget-based thinking.
-	got := thinkingToAnthropicConfig(model, 8192, ThinkingMedium)
+	got := thinkingToAnthropicConfig(model, 8192, ThinkingMedium, nil)
 	if got == nil {
 		t.Fatal("expected non-nil thinking config")
 	}
@@ -1225,7 +1225,7 @@ func TestAnthropicStreamUsesClampedThinkingLevel(t *testing.T) {
 		BaseURL: srv.URL,
 	})
 	stream, err := p.Stream(context.Background(), NormalizeContext(Context{Messages: []Message{UserMessage{Content: UserText("Hello")}}}), StreamOptions{
-		MaxTokens: 4096, IsReasoning: true, Thinking: ThinkingOff,
+		MaxTokens: 4096, IsReasoning: true, ThinkingEnabled: new(false),
 	})
 	if err != nil {
 		t.Fatal(err)

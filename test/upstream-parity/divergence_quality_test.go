@@ -4,17 +4,14 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"runtime"
 	"strings"
 	"testing"
+
+	"github.com/MichaelKinsy/PiG/internal/testenv"
 )
 
 func TestDivergenceQualityRejectsOutOfOrderRecords(t *testing.T) {
-	_, thisFile, _, ok := runtime.Caller(0)
-	if !ok {
-		t.Fatal("runtime.Caller failed")
-	}
-	repoRoot := filepath.Join(filepath.Dir(thisFile), "..", "..")
+	repoRoot := testenv.ModuleRoot(t)
 	script := filepath.Join(repoRoot, "automation", "ci", "check-divergence-quality.py")
 	root := t.TempDir()
 	if err := os.MkdirAll(filepath.Join(root, "docs", "parity"), 0o755); err != nil {
@@ -48,11 +45,7 @@ func TestDivergenceQualityRejectsOutOfOrderRecords(t *testing.T) {
 }
 
 func TestDivergenceQualityRejectsPendingAndStaleEvidence(t *testing.T) {
-	_, thisFile, _, ok := runtime.Caller(0)
-	if !ok {
-		t.Fatal("runtime.Caller failed")
-	}
-	repoRoot := filepath.Join(filepath.Dir(thisFile), "..", "..")
+	repoRoot := testenv.ModuleRoot(t)
 	script := filepath.Join(repoRoot, "automation", "ci", "check-divergence-quality.py")
 	root := t.TempDir()
 	if err := os.MkdirAll(filepath.Join(root, "docs", "parity"), 0o755); err != nil {

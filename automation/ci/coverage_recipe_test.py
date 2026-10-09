@@ -16,7 +16,7 @@ class CoverageRecipeTest(unittest.TestCase):
         lines = report.splitlines()
         header = next(line for line in lines if line.startswith("| upstream |"))
         columns = [cell.strip() for cell in header.split("|")]
-        row = next(line for line in lines if line.startswith("| `"))
+        row = next(line for line in lines[lines.index(header) + 1 :] if line.startswith("| `"))
         cells = row.split("|")
 
         def changed(column, value):

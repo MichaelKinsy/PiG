@@ -5,7 +5,21 @@ import (
 	"fmt"
 	"math"
 	"reflect"
+
+	"github.com/MichaelKinsy/PiG/internal/chord/chordjson"
 )
+
+// JsonObject is a JSON object that keeps JavaScript's property order: array-index keys first in ascending numeric order, then the other keys in insertion order. It is the object representation of every value this package stores and returns.
+type JsonObject = chordjson.Object
+
+// NewJsonObject returns an empty JsonObject with room for capacity keys.
+func NewJsonObject(capacity int) *JsonObject { return chordjson.NewObject(capacity) }
+
+// JsonObjectOf returns a JsonObject holding pairs in order; pairs alternates keys and values.
+func JsonObjectOf(pairs ...any) *JsonObject { return chordjson.ObjectOf(pairs...) }
+
+// DecodeJson parses JSON text into a strict JSON value whose objects are *JsonObject with their keys in document order, as JSON.parse does.
+func DecodeJson(data []byte) (any, error) { return chordjson.Decode(data) }
 
 // ErrNotStrictJSON matches every StrictJSONError.
 var ErrNotStrictJSON = errors.New("not strict JSON")
@@ -24,8 +38,9 @@ func strictJSONError(format string, args ...any) error {
 }
 
 // clonePlacement validates value as strict JSON and returns a detached copy
-// in the canonical representation (float64 numbers, map[string]any objects,
-// []any arrays). Draft handles are cloned from their current content. It
+// in the canonical representation (float64 numbers, *JsonObject objects,
+// []any arrays). A Go map has no key order; its keys are copied in
+// chordjson.SortOwnKeys order. Draft handles are cloned from their current content. It
 // mirrors tracker.ts clonePlacement: rejected values leave the draft unchanged.
 func clonePlacement(value any) (any, error) {
 	return cloneStrict(value, map[uintptr]bool{}, nil)
@@ -62,20 +77,42 @@ func cloneStrict(value any, active map[uintptr]bool, held *overlay) (any, error)
 		return cloneStrict(handleContent(typed.n, held), active, held)
 	case *Array:
 		return cloneStrict(handleContent(typed.n, held), active, held)
-	case map[string]any:
+	case *JsonObject:
+		if typed == nil {
+			return nil, strictJSONError("Value contains a nil map and is not strict JSON")
+		}
 		id := uintptr(reflect.ValueOf(typed).UnsafePointer())
 		if active[id] {
 			return nil, strictJSONError("Value contains cycles and is not strict JSON")
 		}
 		active[id] = true
 		defer delete(active, id)
-		result := make(map[string]any, len(typed))
-		for key, item := range typed {
+		result := chordjson.NewObject(typed.Len())
+		for key, item := range typed.All() {
 			cloned, err := cloneStrict(item, active, held)
 			if err != nil {
 				return nil, err
 			}
-			result[key] = cloned
+			result.Set(key, cloned)
+		}
+		return result, nil
+	case map[string]any:
+		if typed == nil {
+			return nil, strictJSONError("Value contains a nil map and is not strict JSON")
+		}
+		id := uintptr(reflect.ValueOf(typed).UnsafePointer())
+		if active[id] {
+			return nil, strictJSONError("Value contains cycles and is not strict JSON")
+		}
+		active[id] = true
+		defer delete(active, id)
+		result := chordjson.NewObject(len(typed))
+		for _, key := range chordjson.MapOwnKeys(typed) {
+			cloned, err := cloneStrict(typed[key], active, held)
+			if err != nil {
+				return nil, err
+			}
+			result.Set(key, cloned)
 		}
 		return result, nil
 	case []any:
@@ -118,14 +155,18 @@ func cloneReflected(value reflect.Value, active map[uintptr]bool, held *overlay)
 		if value.IsNil() {
 			return nil, strictJSONError("Value contains a nil map and is not strict JSON")
 		}
-		result := make(map[string]any, value.Len())
-		iterator := value.MapRange()
-		for iterator.Next() {
-			cloned, err := cloneStrict(iterator.Value().Interface(), active, held)
+		keys := make([]string, 0, value.Len())
+		for _, key := range value.MapKeys() {
+			keys = append(keys, key.String())
+		}
+		chordjson.SortOwnKeys(keys)
+		result := chordjson.NewObject(len(keys))
+		for _, key := range keys {
+			cloned, err := cloneStrict(value.MapIndex(reflect.ValueOf(key).Convert(value.Type().Key())).Interface(), active, held)
 			if err != nil {
 				return nil, err
 			}
-			result[iterator.Key().String()] = cloned
+			result.Set(key, cloned)
 		}
 		return result, nil
 	case reflect.Slice, reflect.Array:
@@ -146,10 +187,10 @@ func cloneReflected(value reflect.Value, active map[uintptr]bool, held *overlay)
 // the value.
 func copyTrusted(value any) any {
 	switch typed := value.(type) {
-	case map[string]any:
-		result := make(map[string]any, len(typed))
-		for key, item := range typed {
-			result[key] = copyTrusted(item)
+	case *JsonObject:
+		result := chordjson.NewObject(typed.Len())
+		for key, item := range typed.All() {
+			result.Set(key, copyTrusted(item))
 		}
 		return result
 	case []any:
@@ -166,16 +207,16 @@ func copyTrusted(value any) any {
 // key order.
 func equalTrustedJSON(left, right any) bool {
 	switch a := left.(type) {
-	case map[string]any:
-		b, ok := right.(map[string]any)
-		if !ok || len(a) != len(b) {
+	case *JsonObject:
+		b, ok := right.(*JsonObject)
+		if !ok || a.Len() != b.Len() {
 			return false
 		}
 		if sameContainer(a, b) {
 			return true
 		}
-		for key, item := range a {
-			other, present := b[key]
+		for key, item := range a.All() {
+			other, present := b.Get(key)
 			if !present || !equalTrustedJSON(item, other) {
 				return false
 			}
@@ -207,14 +248,6 @@ func equalTrustedJSON(left, right any) bool {
 	return false
 }
 
-func isContainer(value any) bool {
-	switch value.(type) {
-	case map[string]any, []any:
-		return true
-	}
-	return false
-}
-
 // sameContainer reports whether two containers are the same allocation.
 func sameContainer(left, right any) bool {
 	leftID, leftOK := containerID(left)
@@ -233,3 +266,17 @@ func sameContainer(left, right any) bool {
 // canonical representation. It is the walk behind chord.CopyJSON and draft
 // placements.
 func CloneJSON(value any) (any, error) { return clonePlacement(value) }
+
+// containerID is the address of a container allocation; an empty slice without capacity has none.
+func containerID(value any) (uintptr, bool) {
+	switch container := value.(type) {
+	case *JsonObject:
+		return uintptr(reflect.ValueOf(container).UnsafePointer()), container != nil
+	case []any:
+		if cap(container) == 0 {
+			return 0, false
+		}
+		return uintptr(reflect.ValueOf(container).UnsafePointer()), true
+	}
+	return 0, false
+}

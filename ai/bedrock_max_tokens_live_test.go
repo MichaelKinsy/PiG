@@ -22,7 +22,7 @@ func TestPortWave13BedrockClaudeMaxTokensE2E(t *testing.T) {
 		}()
 		ctx, cancel := context.WithTimeout(t.Context(), 180*time.Second)
 		defer cancel()
-		stream, err := provider.Stream(ctx, NormalizeContext(Context{SystemPrompt: "You are a deterministic text generator. Follow the requested output format exactly.", Messages: []Message{UserMessage{Content: UserText("Output exactly 5200 repetitions of the token alpha, separated by single spaces. Do not number them. Do not use markdown. Do not add any other text."), Timestamp: time.Now().UnixMilli()}}}), StreamOptions{Thinking: ThinkingLow, IsReasoning: model.ProviderMeta.Reasoning})
+		stream, err := provider.Stream(ctx, NormalizeContext(Context{SystemPrompt: "You are a deterministic text generator. Follow the requested output format exactly.", Messages: []Message{UserMessage{Content: UserText("Output exactly 5200 repetitions of the token alpha, separated by single spaces. Do not number them. Do not use markdown. Do not add any other text."), Timestamp: time.Now().UnixMilli()}}}), StreamOptions{Thinking: ThinkingLevelLow, IsReasoning: model.ProviderMeta.Reasoning})
 		if err != nil {
 			t.Fatal(err)
 		}

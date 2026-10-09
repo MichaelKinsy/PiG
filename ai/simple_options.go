@@ -3,7 +3,10 @@ package ai
 //
 // upstream: ai/src/providers/simple-options.ts
 
-import "maps"
+import (
+	"cmp"
+	"maps"
+)
 
 // ThinkingBudgets maps thinking level names to token budgets.
 type ThinkingBudgets struct {
@@ -24,11 +27,20 @@ func DefaultThinkingBudgets() ThinkingBudgets {
 	}
 }
 
-// AdjustMaxTokensForThinking computes maxTokens and thinkingBudget given an
-// optional caller max, model limit, thinking level, and optional custom budgets.
-// A nil base max means "unset": use the model cap and fit the thinking budget
-// inside it. Mirrors upstream adjustMaxTokensForThinking (simple-options.ts:24-47).
-func AdjustMaxTokensForThinking(baseMaxTokens *int, modelMaxTokens int, reasoningLevel string, custom *ThinkingBudgets) (maxTokens, thinkingBudget int) {
+// MinAnswerTokens is the number of tokens always left for the answer when a thinking budget shares the response ceiling.
+// Mirrors upstream MIN_ANSWER_TOKENS (simple-options.ts:68).
+const MinAnswerTokens = 1024
+
+// ClampThinkingBudgetToAnswerRoom caps a thinking budget so at least [MinAnswerTokens] remain under a shared response
+// ceiling. Mirrors upstream clampThinkingBudgetToAnswerRoom (simple-options.ts:88).
+func ClampThinkingBudgetToAnswerRoom(thinkingBudget, ceiling int) int {
+	return min(thinkingBudget, max(0, ceiling-MinAnswerTokens))
+}
+
+// ThinkingBudgetForLevel is the token budget for a reasoning level: a custom budget above zero replaces the default, and
+// xhigh and max use the high budget. A level without a budget (for example "off") yields zero.
+// Mirrors upstream thinkingBudgetForLevel (api/simple-options.ts:81).
+func ThinkingBudgetForLevel(reasoningLevel string, custom *ThinkingBudgets) int {
 	budgets := DefaultThinkingBudgets()
 	if custom != nil {
 		if custom.Minimal > 0 {
@@ -44,25 +56,34 @@ func AdjustMaxTokensForThinking(baseMaxTokens *int, modelMaxTokens int, reasonin
 			budgets.High = custom.High
 		}
 	}
-
-	const minOutputTokens = 1024
-	level := reasoningLevel
-	if level == string(ThinkingXHigh) || level == string(ThinkingMax) {
-		level = string(ThinkingHigh)
+	switch string(ClampReasoning(ModelThinkingLevel(reasoningLevel))) {
+	case string(ThinkingMinimal):
+		return budgets.Minimal
+	case string(ThinkingLow):
+		return budgets.Low
+	case string(ThinkingMedium):
+		return budgets.Medium
+	case string(ThinkingHigh):
+		return budgets.High
 	}
+	return 0
+}
 
-	switch level {
-	case "minimal":
-		thinkingBudget = budgets.Minimal
-	case "low":
-		thinkingBudget = budgets.Low
-	case "medium":
-		thinkingBudget = budgets.Medium
-	case "high":
-		thinkingBudget = budgets.High
-	default:
-		thinkingBudget = 0
+// ClampReasoning maps the levels above high, xhigh and max, to high and returns every other level, including the empty "undefined" level, unchanged.
+// Mirrors upstream clampReasoning (simple-options.ts:77).
+func ClampReasoning(effort ModelThinkingLevel) ModelThinkingLevel {
+	if effort == ThinkingXHigh || effort == ThinkingMax {
+		return ThinkingHigh
 	}
+	return effort
+}
+
+// AdjustMaxTokensForThinking computes maxTokens and thinkingBudget given an
+// optional caller max, model limit, thinking level, and optional custom budgets.
+// A nil base max means "unset": use the model cap and fit the thinking budget
+// inside it. Mirrors upstream adjustMaxTokensForThinking (simple-options.ts:24-47).
+func AdjustMaxTokensForThinking(baseMaxTokens *int, modelMaxTokens int, reasoningLevel string, custom *ThinkingBudgets) (maxTokens, thinkingBudget int) {
+	thinkingBudget = ThinkingBudgetForLevel(reasoningLevel, custom)
 
 	if baseMaxTokens == nil {
 		maxTokens = modelMaxTokens
@@ -70,7 +91,7 @@ func AdjustMaxTokensForThinking(baseMaxTokens *int, modelMaxTokens int, reasonin
 		maxTokens = min(*baseMaxTokens+thinkingBudget, modelMaxTokens)
 	}
 	if maxTokens <= thinkingBudget {
-		thinkingBudget = max(0, maxTokens-minOutputTokens)
+		thinkingBudget = ClampThinkingBudgetToAnswerRoom(thinkingBudget, maxTokens)
 	}
 	return maxTokens, thinkingBudget
 }
@@ -96,7 +117,7 @@ func ClampMaxTokensToContext(model *Model, context TranscriptContext, maxTokens 
 
 // ResolveSamplingParams merges the model's sampling defaults, the overrides for the effective thinking level, and the request's sampling keys, later keys winning. The level is first clamped to one the model supports. It returns nil when none of the three is set.
 // Mirrors upstream resolveSamplingParams (simple-options.ts:24-34).
-func ResolveSamplingParams(model *Model, thinkingLevel ThinkingLevel, requestParams SamplingParams) SamplingParams {
+func ResolveSamplingParams(model *Model, thinkingLevel ModelThinkingLevel, requestParams SamplingParams) SamplingParams {
 	var defaults SamplingParams
 	var levelParams SamplingParams
 	if model != nil {
@@ -111,4 +132,19 @@ func ResolveSamplingParams(model *Model, thinkingLevel ThinkingLevel, requestPar
 	maps.Copy(merged, levelParams)
 	maps.Copy(merged, requestParams)
 	return merged
+}
+
+// BuildBaseOptions returns the request options every simple stream sends: the output budget is the requested one, or the model's maximum when none was requested, clamped to the context window; the sampling parameters are resolved for the simple reasoning level, "off" when it is unset; and apiKey, when not empty, replaces options.APIKey. Go has one StreamOptions type for the simple and the provider-specific options, so every other field passes through unchanged.
+//
+// upstream: packages/ai/src/api/simple-options.ts:buildBaseOptions
+func BuildBaseOptions(model *Model, context TranscriptContext, options StreamOptions, apiKey string) StreamOptions {
+	if options.MaxTokens == 0 {
+		options.MaxTokens = model.Capabilities.MaxOutputTokens
+	}
+	options.MaxTokens = ClampMaxTokensToContext(model, context, options.MaxTokens)
+	options.SamplingParams = ResolveSamplingParams(model, cmp.Or(ModelThinkingLevel(options.Thinking), ThinkingOff), options.SamplingParams)
+	if apiKey != "" {
+		options.APIKey = apiKey
+	}
+	return options
 }

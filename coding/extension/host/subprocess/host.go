@@ -18,6 +18,9 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/MichaelKinsy/PiG/internal/codingagent/timings"
+	"github.com/MichaelKinsy/PiG/internal/configroot"
+
 	"github.com/MichaelKinsy/PiG/extensions/sdk/json"
 	"github.com/MichaelKinsy/PiG/internal/installchange"
 	"github.com/MichaelKinsy/PiG/internal/linkerexec"
@@ -51,6 +54,11 @@ type ExtConfig struct {
 	// SourceInfo is the Pi-compatible provenance stamped onto this loaded
 	// extension and every command it registers.
 	SourceInfo extension.SourceInfo
+
+	// PackageRoot is the root of the package the extension was resolved from (package-manager.ts PathMetadata.packageRoot):
+	// a local directory or an installed npm or git package. It is empty for a project or user extension and for a local file
+	// source, which belongs to no package root.
+	PackageRoot string
 
 	// Enabled controls whether the extension is loaded. Default: true.
 	Enabled bool
@@ -230,6 +238,14 @@ func extensionSourcePaths(config ExtConfig) (path, resolvedPath string) {
 	return path, resolvedPath
 }
 
+// registeredIdentityMismatch is the load error for an extension whose register frame names an identity other than the one its selection gave it, isolated or packed.
+func registeredIdentityMismatch(config ExtConfig, registered string) *LoadError {
+	return newLoadError(config.Name, "register", "name_mismatch", fmt.Errorf(
+		"selected identity %q does not match registered identity %q for source %s; a direct directory must be renamed/reselected under %q, or selected through a Package/Piglet declaration with that exact member identity",
+		config.Name, registered, extConfigOrigin(config), registered,
+	))
+}
+
 func extConfigOrigin(config ExtConfig) string {
 	if config.selectedPath != "" {
 		return config.selectedPath
@@ -334,6 +350,10 @@ type Host struct {
 	// (e.g. ui.notify). Set by the host wiring layer.
 	onCall func(extName string, call *CallPayload) (*CallResultPayload, error)
 
+	// inboundObserver, when set, sees every frame an extension sends (see
+	// SetInboundObserver).
+	inboundObserver func(extName string, env *Envelope)
+
 	// onCrash is called when an extension process exits unexpectedly.
 	// The callback receives the extension name and the supervisor's decision
 	// (delay before restart, or error if circuit breaker tripped).
@@ -343,10 +363,9 @@ type Host struct {
 	// Reload. Startup and reload must use the same extension inputs.
 	configLoader func() ([]ExtConfig, error)
 
-	providerRuntime          *extension.ExtensionRuntime
-	onRegisterNativeProvider func(context.Context, *extension.NativeProvider) error
-	nativeProviders          map[*Conn]map[string]*nativeProviderProxy
-	nativeProviderHandles    map[string]*nativeProviderProxy
+	providerRuntime       *extension.ExtensionRuntime
+	nativeProviders       map[*Conn]map[string]*nativeProviderProxy
+	nativeProviderHandles map[string]*nativeProviderProxy
 
 	// oauthLoginSessions holds the in-flight OAuth login callbacks per extension
 	// name so the oauth.cb.* calls an extension issues during login route back
@@ -584,7 +603,9 @@ type managedExt struct {
 	flagNames       []string
 	flagDefaults    map[string]any
 	wantsSessionLog bool
-	nodeRuntime     bool // isolated extension hosted by the Node runtime; a packed one reports through packedProcess.node
+	// wantsModelRegistry records RegisterPayload.WantsModelRegistry: only such a runtime is sent model-registry snapshots.
+	wantsModelRegistry bool
+	nodeRuntime        bool // isolated extension hosted by the Node runtime; a packed one reports through packedProcess.node
 	// commands counts the command requests running on this generation, so a reload that replaces it waits for them (retireGeneration).
 	commands commandGate
 	// replaced is set when a commit replaces or removes this generation; its later host calls fail as stale (runCall).
@@ -662,7 +683,7 @@ type stagedManagedExt struct {
 // NewHost creates an extension host using the process environment's Pig config
 // root. Product assembly should prefer [NewHostWithConfigRoot].
 func NewHost(cwd string) *Host {
-	return NewHostWithConfigRoot(cwd, resolveConfigRoot())
+	return NewHostWithConfigRoot(cwd, configroot.Dir())
 }
 
 // NewHostWithConfigRoot creates an extension host pinned to configRoot. The
@@ -670,7 +691,7 @@ func NewHost(cwd string) *Host {
 // $XDG_RUNTIME_DIR/pig/ or $TMPDIR/pig-<uid>/).
 func NewHostWithConfigRoot(cwd, configRoot string) *Host {
 	if strings.TrimSpace(configRoot) == "" {
-		configRoot = resolveConfigRoot()
+		configRoot = configroot.Dir()
 	}
 	cacheDir := filepath.Join(configRoot, "cache", "ext")
 	recoveryContext, recoveryCancel := context.WithCancel(context.Background())
@@ -698,6 +719,13 @@ func (h *Host) SetStartupTrace(mark func(string)) {
 }
 
 func (h *Host) markExtension(name, phase string) {
+	// loader.ts:630, :645: a started extension process is the module import, its register handshake the factory (PI_TIMING=1, "extensions").
+	switch phase {
+	case "spawn-done":
+		timings.Time(name+" module import", timings.Extensions)
+	case "handshake-done":
+		timings.Time(name+" factory", timings.Extensions)
+	}
 	if h.startupMark == nil {
 		return
 	}
@@ -713,6 +741,19 @@ func (h *Host) markExtension(name, phase string) {
 		name = name[:64]
 	}
 	h.startupMark("extension." + name + "." + phase)
+}
+
+// SetInboundObserver registers a diagnostic observer of every frame an
+// extension sends, in wire order, for every load mode (isolated, packed,
+// fused). It runs on the connection's read loop before the frame is routed,
+// so it must not block and must neither modify nor retain env. Nil (the
+// default) observes nothing at no cost. Must be called before [Host.Load],
+// [Host.LoadInProcess] or [Host.Reload].
+//
+// pig additive (D107): conformance uses it to read the component kit's image
+// transport (docs/plan/extension-component-kit.md §7, §10).
+func (h *Host) SetInboundObserver(fn func(extName string, env *Envelope)) {
+	h.inboundObserver = fn
 }
 
 // SetCallHandler registers the callback for extension→host calls (ui.notify,
@@ -748,6 +789,51 @@ func (h *Host) Invalidate(message string) {
 	}
 }
 
+// notifyReloadStarted sends NotifyReloadStarted to every connected generation. Reload calls it before it admits a replacement generation to a running process's control channel, which a Node runtime waiting in place for the host's next step would not read.
+func (h *Host) notifyReloadStarted() {
+	h.mu.Lock()
+	conns := make([]*Conn, 0, len(h.exts))
+	for _, me := range h.exts {
+		if conn := me.connection(); conn != nil {
+			conns = append(conns, conn)
+		}
+	}
+	h.mu.Unlock()
+	for _, conn := range conns {
+		_ = conn.Send(&Envelope{Type: MsgNotify, Notify: &NotifyPayload{Method: NotifyReloadStarted}})
+	}
+}
+
+// loopTurnedFrame is the NotifyLoopTurned frame the host forwards. It has no arguments, so every recipient shares its bytes.
+var loopTurnedFrame = encodedEnvelope(`{"type":"notify","notify":{"method":"loop_turned"}}`)
+
+// forwardLoopTurned queues NotifyLoopTurned on every connection of every Node runtime process other than from's. from's read loop calls it before it reads the next frame, such as the response of the handler that turned the loop, so each recipient reads the turn before any frame the host sends it after that response. The process that hosts from gets nothing on any of its connections: the turn is its own loop's, which already ran its callbacks, and a copy on a packed sibling's connection could arrive after the handler answered and end the wait that answer began. The Go, Rust and Python SDKs have nothing that waits for a turn.
+func (h *Host) forwardLoopTurned(from *Conn) {
+	h.mu.Lock()
+	var sender any
+	for _, me := range h.exts {
+		if me.connection() == from {
+			sender = processIdentity(me)
+			break
+		}
+	}
+	targets := make([]*Conn, 0, len(h.exts))
+	for _, me := range h.exts {
+		conn := me.connection()
+		if conn == nil || conn == from || !me.hostsNodeRuntime() {
+			continue
+		}
+		if sender != nil && processIdentity(me) == sender {
+			continue
+		}
+		targets = append(targets, conn)
+	}
+	h.mu.Unlock()
+	for _, conn := range targets {
+		_ = conn.sendEncoded(loopTurnedFrame)
+	}
+}
+
 // SetUIBridge attaches a UI bridge for handling widget pushes and UI method
 // calls. Must be called before [Host.Load].
 func (h *Host) SetUIBridge(bridge *UIBridge) {
@@ -758,8 +844,9 @@ func (h *Host) SetUIBridge(bridge *UIBridge) {
 		bridge.OnRunSignalChanged = h.runSignalChanged
 		bridge.resolveFlag = h.resolveFlagValue
 		bridge.withSession = h.withSessionCallback
+		bridge.setup = h.setupCallback
 		bridge.mu.Lock()
-		bridge.mcpServers = h.providerRuntime.McpServers
+		bridge.mcpServers = h.providerRuntime.McpServers().List
 		bridge.mu.Unlock()
 	}
 }
@@ -1032,9 +1119,13 @@ func (h *Host) notifyGeometry(env *Envelope, changed func(*managedExt) bool) {
 	}
 }
 
-// SetNativeProviderCallback binds connection-owned native provider registrations.
-func (h *Host) SetNativeProviderCallback(register func(context.Context, *extension.NativeProvider) error) {
-	h.onRegisterNativeProvider = register
+// SetNativeProviderCallback binds connection-owned native provider registrations to the registry, drains the ones queued while extensions loaded and returns their owning-path diagnostics. A registration made before this call is queued, as upstream queues it until bindCore.
+func (h *Host) SetNativeProviderCallback(register func(context.Context, *extension.NativeProvider) error) []*extension.ExtensionError {
+	var failures []*extension.ExtensionError
+	h.providerRuntime.BindProviderActions(extension.ProviderActions{RegisterNativeProviderCarrier: register}, func(err *extension.ExtensionError) {
+		failures = append(failures, err)
+	})
+	return failures
 }
 
 // Runtime returns the shared provider registration state for a Runner created from this Host's loaded extensions.
@@ -1209,6 +1300,25 @@ func (h *Host) LoadAll(ctx context.Context, configs []ExtConfig) ([]extension.Ex
 			loaded = append(loaded, *ext)
 		}
 	}
+	h.recordLoadOrder(configs, false)
+	started, startErrs := h.startPlannedCells(ctx, cellConfigs)
+	loaded = append(loaded, started...)
+	errs = append(errs, startErrs...)
+	h.mu.Lock()
+	h.loadErrors = h.loadErrors[:0]
+	for _, e := range errs {
+		h.loadErrors = append(h.loadErrors, e.Error())
+	}
+	h.mu.Unlock()
+	h.sortExtensionsByLoadOrder(loaded)
+	return loaded, errs
+}
+
+// startPlannedCells plans configs into cells and starts them as an initial
+// load, isolating a failed packed cell's members as a reload does. It reports
+// each config's discovery and fills its source content hash first.
+func (h *Host) startPlannedCells(ctx context.Context, cellConfigs []ExtConfig) ([]extension.Extension, []error) {
+	var loaded []extension.Extension
 	// Populate ContentHash for source-based extensions so the cell planner
 	// can correctly invalidate packed-cell caches when source files change.
 	// Without this, cell keys depend only on static metadata (name, path,
@@ -1228,7 +1338,7 @@ func (h *Host) LoadAll(ctx context.Context, configs []ExtConfig) ([]extension.Ex
 		}
 		h.markExtension(cellConfigs[i].Name, "discover-done")
 	}
-	h.recordLoadOrder(configs, false)
+	var errs []error
 	cells := h.planCells(cellConfigs)
 	h.planEventBus(ctx, cells)
 	h.stageCellsInOrder(ctx, cells, func(cell CellSpec, outcome stageOutcome, err error) {
@@ -1248,13 +1358,6 @@ func (h *Host) LoadAll(ctx context.Context, configs []ExtConfig) ([]extension.Ex
 			}
 		}
 	})
-	h.mu.Lock()
-	h.loadErrors = h.loadErrors[:0]
-	for _, e := range errs {
-		h.loadErrors = append(h.loadErrors, e.Error())
-	}
-	h.mu.Unlock()
-	h.sortExtensionsByLoadOrder(loaded)
 	return loaded, errs
 }
 
@@ -1323,7 +1426,7 @@ func (h *Host) recordLoadOrder(configs []ExtConfig, replace bool) {
 		if _, ranked := h.loadOrder[config.Name]; !ranked {
 			h.loadOrder[config.Name] = len(h.loadOrder)
 		}
-		if config.SourceInfo != nil {
+		if config.SourceInfo != (extension.SourceInfo{}) {
 			h.configSourceInfo[config.Name] = config.SourceInfo
 		}
 		if config.selectedPath != "" {
@@ -1341,7 +1444,7 @@ func (h *Host) configuredSelectedPath(name string) string {
 
 // extensionSourceInfo returns the SourceInfo configured for me's extension.
 func (h *Host) extensionSourceInfo(me *managedExt) extension.SourceInfo {
-	if me.config.SourceInfo != nil {
+	if me.config.SourceInfo != (extension.SourceInfo{}) {
 		return me.config.SourceInfo
 	}
 	h.mu.Lock()
@@ -2096,6 +2199,9 @@ func (h *Host) Shutdown(reason string) {
 	h.drainTasksClosed = true
 	h.drainTasksMu.Unlock()
 	h.drainTasks.Wait()
+	if h.uiBridge != nil {
+		h.uiBridge.StopFrontendPushes()
+	}
 	for _, process := range watched {
 		// A process parked for the replacement Host keeps running past this Host; its watcher ends with it.
 		if process.watcherDone != nil && process.processReleased() {
@@ -2315,6 +2421,7 @@ func (h *Host) Reload(ctx context.Context) ([]extension.Extension, error) {
 	ctx = context.WithValue(ctx, reloadingKey{}, reloadPasses.Add(1))
 	h.transitionMu.Lock()
 	defer h.transitionMu.Unlock()
+	h.notifyReloadStarted()
 	reloadStart := time.Now()
 	rep := &ReloadReport{StartedAt: reloadStart}
 	defer func() {
@@ -2334,6 +2441,14 @@ func (h *Host) Reload(ctx context.Context) ([]extension.Extension, error) {
 		rep.Error = err.Error()
 		return nil, fmt.Errorf("reload config: %w", err)
 	}
+	// pig additive (D18): a Piglet Binary's Node cells reload from their
+	// extracted sources the way Stock PiG reloads the same extensions.
+	h.mu.Lock()
+	allEmbedded := cloneEmbeddedCells(h.embeddedCells)
+	h.mu.Unlock()
+	nodeConfigs, embeddedCells := embeddedNodeConfigs(allEmbedded)
+	loaderConfigs := len(cfgs)
+	cfgs = append(cfgs, nodeConfigs...)
 	// Only once config loading has actually succeeded (CNC-003): invalidate
 	// every currently-known packed process's generation (CNC-002; see
 	// armPackedProcessGenerations), then give a crashed packed cell (from an
@@ -2365,7 +2480,6 @@ func (h *Host) Reload(ctx context.Context) ([]extension.Extension, error) {
 	h.mu.Lock()
 	oldByName := make(map[string]*managedExt, len(h.exts))
 	maps.Copy(oldByName, h.exts)
-	embeddedCells := cloneEmbeddedCells(h.embeddedCells)
 	h.mu.Unlock()
 	for _, cfg := range embeddedCellConfigs(embeddedCells) {
 		newByName[cfg.Name] = cfg
@@ -2406,7 +2520,7 @@ func (h *Host) Reload(ctx context.Context) ([]extension.Extension, error) {
 		}
 	}
 
-	loadOrder := append(slices.Clone(cfgs), embeddedCellConfigs(embeddedCells)...)
+	loadOrder := append(slices.Clone(cfgs[:loaderConfigs]), embeddedLoadOrder(allEmbedded, cfgs[loaderConfigs:])...)
 	h.recordLoadOrder(loadOrder, true)
 	cellConfigs := make([]ExtConfig, 0, len(cfgs))
 	for _, cfg := range cfgs {
@@ -2921,16 +3035,14 @@ func (h *Host) adoptConn(ctx context.Context, me *managedExt, rawConn net.Conn, 
 	if !me.config.acceptsRegisteredName(reg.Name) {
 		_ = conn.Close("name mismatch")
 		cancel()
-		loadErr := newLoadError(me.config.Name, "register", "name_mismatch", fmt.Errorf(
-			"selected identity %q does not match registered identity %q for source %s; a direct directory must be renamed/reselected under %q, or selected through a Package/Piglet declaration with that exact member identity",
-			me.config.Name, reg.Name, extConfigOrigin(me.config), reg.Name,
-		))
+		loadErr := registeredIdentityMismatch(me.config, reg.Name)
 		loadErr.StderrLog = me.stderrLogPath
 		return nil, loadErr
 	}
 
 	me.flagNames = make([]string, 0, len(reg.Flags))
 	me.wantsSessionLog = reg.WantsSessionLog
+	me.wantsModelRegistry = reg.WantsModelRegistry
 	for _, f := range reg.Flags {
 		me.flagNames = append(me.flagNames, f.Name)
 	}
@@ -2963,7 +3075,9 @@ func (h *Host) adoptConn(ctx context.Context, me *managedExt, rawConn net.Conn, 
 		me.entryCursorMu.Lock()
 		me.entryCursor = 0
 		readyPayload.State = h.uiBridge.Snapshot(flagNames, 0, false)
-		readyPayload.Models = h.uiBridge.ModelCatalog()
+		if reg.WantsModelRegistry {
+			readyPayload.Models = h.uiBridge.ModelCatalog()
+		}
 		if reg.WantsSessionLog && readyPayload.State.Session != nil && !readableSessionFile(readyPayload.State.Session.SessionFile) {
 			h.mu.Lock()
 			if h.sessionLogSubs == nil {
@@ -3062,19 +3176,13 @@ func (h *Host) adoptConn(ctx context.Context, me *managedExt, rawConn net.Conn, 
 		me.releaseLiveness = conn.holdLiveness()
 	}
 	if h.uiBridge != nil {
-		h.uiBridge.RegisterExtConn(me.config.Name, conn)
+		h.uiBridge.RegisterExtConn(me.config.Name, conn, reg.WantsModelRegistry)
 	}
 
-	// Build extension.Extension from the register payload. A restarted
-	// extension keeps the Extension its runner already holds: its handlers
-	// become exactly the new registration, so subscriptions the new process
-	// makes reach dispatch and ones the old process made do not.
 	ext := h.buildExtension(me, reg)
 	me.resetToolRenderers(reg.ToolRenderers)
 	if isRestart && me.ext != nil {
-		me.ext.ReplaceEventHandlers(ext)
-		me.ext.ReplaceRegisteredTools(ext)
-		ext = me.ext
+		ext = adoptRestartedExtension(me.ext, ext)
 	}
 	me.ext = ext
 	me.supervisor.RecordSuccess()
@@ -3257,6 +3365,13 @@ func lastRegistrationWins[T any](kind string, values []T, nameOf func(T) string)
 	return out, nil
 }
 
+// adoptRestartedExtension keeps the Extension a runner already holds for a restarted extension. Its handlers and tools become exactly the new registration, so subscriptions the new process makes reach dispatch and ones the old process made do not.
+func adoptRestartedExtension(previous, built *extension.Extension) *extension.Extension {
+	previous.ReplaceEventHandlers(built)
+	previous.ReplaceRegisteredTools(built)
+	return previous
+}
+
 // buildExtension translates a RegisterPayload into an extension.Extension struct
 // suitable for inproc.Runner consumption.
 func (h *Host) buildExtension(me *managedExt, reg *RegisterPayload) *extension.Extension {
@@ -3315,7 +3430,7 @@ func (h *Host) buildExtension(me *managedExt, reg *RegisterPayload) *extension.E
 		if tool.RendersResult {
 			definition.RenderResult = h.makeToolRenderResult(me, tool.Name)
 		}
-		ext.Tools[td.Name] = extension.RegisteredTool{Definition: definition, SourceInfo: source}
+		ext.Tools[td.Name] = extension.RegisteredTool{Definition: definition, SourceInfo: h.extensionSourceInfo(me), Source: source}
 		ext.ToolOrder = append(ext.ToolOrder, td.Name)
 	}
 
@@ -3459,7 +3574,7 @@ func (h *Host) makeToolExecuteFunc(me *managedExt, toolName string) extension.To
 		me := me.current()
 		conn := me.connection()
 		if conn == nil {
-			return nil, errors.New("extension not connected")
+			return extension.AgentToolResult{}, errors.New("extension not connected")
 		}
 
 		// upstream: agent-loop.ts:619-647, 820-837 (executeToolCallsParallel, executePreparedToolCall): a batch's calls reach
@@ -3473,7 +3588,7 @@ func (h *Host) makeToolExecuteFunc(me *managedExt, toolName string) extension.To
 		reqCtx, cancel := context.WithCancel(ctx)
 		defer cancel()
 		if err := h.pushStateTo(reqCtx, me, conn); err != nil {
-			return nil, fmt.Errorf("sync extension state for tool %s: %w", toolName, err)
+			return extension.AgentToolResult{}, fmt.Errorf("sync extension state for tool %s: %w", toolName, err)
 		}
 		// A nested call made by an extension on this same connection carries its executeTool id: executeIds are per connection, so no other caller's id may reach this runtime.
 		executeID := ""
@@ -3484,7 +3599,7 @@ func (h *Host) makeToolExecuteFunc(me *managedExt, toolName string) extension.To
 		resp, err := conn.requestWithUpdates(reqCtx, &Envelope{
 			Type: MsgRequest,
 			Request: &RequestPayload{
-				Method:     "tool_call",
+				Method:     MethodToolCall,
 				Tool:       toolName,
 				ToolCallID: toolCallID,
 				Args:       params,
@@ -3492,12 +3607,15 @@ func (h *Host) makeToolExecuteFunc(me *managedExt, toolName string) extension.To
 				ExecuteID:  executeID,
 			},
 		}, toolUpdateSink(onUpdate))
+		if errors.Is(err, ErrToolAborted) {
+			return extension.AgentToolResult{}, err
+		}
 		if err != nil {
-			return nil, fmt.Errorf("tool %s: %w", toolName, err)
+			return extension.AgentToolResult{}, fmt.Errorf("tool %s: %w", toolName, err)
 		}
 
 		if resp.Response != nil && resp.Response.Error != nil {
-			return nil, resp.Response.Error.ToError()
+			return extension.AgentToolResult{}, resp.Response.Error.ToError()
 		}
 
 		// Convert subprocess ToolResult → agent.AgentToolResult so
@@ -3507,7 +3625,7 @@ func (h *Host) makeToolExecuteFunc(me *managedExt, toolName string) extension.To
 			var result ToolResult
 			if err := json.Unmarshal(raw, &result); err != nil {
 				if trimmed := bytes.TrimSpace(raw); len(trimmed) > 0 && trimmed[0] == '{' {
-					return nil, fmt.Errorf("tool %s: %w", toolName, err)
+					return extension.AgentToolResult{}, fmt.Errorf("tool %s: %w", toolName, err)
 				}
 				// Extension returned a plain value (string, number, etc.)
 				// instead of a {content, details, is_error} object.
@@ -3530,7 +3648,7 @@ func (h *Host) makeToolExecuteFunc(me *managedExt, toolName string) extension.To
 			}, nil
 		}
 
-		return nil, nil
+		return extension.AgentToolResult{}, nil
 	}
 }
 
@@ -3579,22 +3697,15 @@ func (h *Host) makeToolPrepareArguments(me *managedExt, toolName string) extensi
 // Upstream passes every tool an onUpdate; a nil or foreign callback drops
 // updates, as the agent has nowhere to show them.
 func toolUpdateSink(onUpdate extension.AgentToolUpdateCallback) func(json.RawMessage) {
-	var update func(agent.AgentToolResult)
-	switch cb := onUpdate.(type) {
-	case agent.ToolUpdateCallback:
-		update = cb
-	case func(agent.AgentToolResult):
-		update = cb
-	}
 	return func(raw json.RawMessage) {
-		if update == nil {
+		if onUpdate == nil {
 			return
 		}
 		var partial ToolResult
 		if err := json.Unmarshal(raw, &partial); err != nil {
 			return
 		}
-		update(agent.AgentToolResult{
+		onUpdate(agent.AgentToolResult{
 			MemberOrder:       partial.MemberOrder,
 			Content:           partial.Content,
 			Details:           orderedjson.Value(partial.Details),
@@ -3915,6 +4026,12 @@ func (me *managedExt) makeEventHandler(event string, handlerID int) extension.Ha
 			if resp.Response.Error != nil {
 				return nil, resp.Response.Error.ToError()
 			}
+			// A user_bash reply that names a BashOperations object the extension holds becomes the object Pi's runner holds.
+			if event == "user_bash" && len(resp.Response.Result) > 0 {
+				if typed, ok := userBashOperationsResult(conn, resp.Response.Result); ok {
+					return typed, nil
+				}
+			}
 			// A handler that returns undefined (Node), None (Python) or no
 			// value sends JSON null. Upstream treats undefined as "no result",
 			// so null never reaches the Runner as a result value.
@@ -4014,7 +4131,7 @@ func (h *Host) handleIncoming(me *managedExt, conn *Conn) {
 						fmt.Fprintf(os.Stderr, "panic in HandleWidgetPush for %s: %v\n", me.config.Name, r)
 					}
 				}()
-				h.uiBridge.HandleWidgetPush(me.config.Name, env.WidgetPush)
+				h.uiBridge.HandleWidgetPush(me.config.Name, conn, env.WidgetPush)
 			})
 			// A separate lane lets width-handler pushes run while a host call waits.
 			lanes.push(MsgWidgetPush, func() { h.runSlotCall("widgets", pending) })
@@ -4127,7 +4244,8 @@ func (h *Host) handleIncoming(me *managedExt, conn *Conn) {
 			// against this handler. Don't assert a liveness state we have
 			// not verified either way; the process is only withdrawn from
 			// retention claims above.
-			h.disablePackedMember(me, "packed member connection closed")
+			// A native packed member is not restarted automatically, and the quarantine notice that names /reload is lost when this handler detaches the member first, so this notice names the recovery too.
+			h.disablePackedMember(me, "packed member connection closed; /reload restarts it")
 			return
 		}
 		h.quarantinePackedCell(me.packedCellKey, fmt.Sprintf("extension %s connection closed", me.config.Name))

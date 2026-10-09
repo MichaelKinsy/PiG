@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math"
 	"net/http"
 	"net/url"
 	"slices"
@@ -37,11 +38,9 @@ const RemoteCatalogRefreshInterval = 4 * time.Hour
 // upstream: remote-catalog-provider.ts:14-19 (REMOTE_CATALOG_MODEL_TYPES)
 var RemoteCatalogModelTypes = []ai.ModelType{ai.ModelTypeChat, ai.ModelTypeImage, ai.ModelTypeClassifier}
 
-// builtinModelDataGeneratedAt is the generation time, in Unix milliseconds, of the bundled catalogs, or nil when the generator records none.
-// upstream: packages/ai/src/providers/all.ts:getBuiltinModelDataGeneratedAt. PiG's generated catalogs carry no timestamp, so a stored remote
-// catalog always applies.
-// pig divergence (D64): see the catalog endpoint entry.
-func builtinModelDataGeneratedAt() *float64 { return nil }
+// builtinModelDataGeneratedAt is the generation time, in Unix milliseconds, of the bundled catalogs, or nil when the data manifest records none: a stored remote catalog applies only when its `Last-Modified` is later.
+// upstream: packages/coding-agent/src/core/model-runtime.ts:225 (builtinProviderCatalog.getBuiltinModelDataGeneratedAt)
+func builtinModelDataGeneratedAt() *float64 { return ai.GetBuiltinModelDataGeneratedAt() }
 
 // remoteCatalogOverlay holds the models the remote catalog adds to one provider. The registry reads it for providers it composes itself.
 type remoteCatalogOverlay struct {
@@ -319,7 +318,7 @@ func refreshRemoteCatalog(providerID, catalogBaseURL string, localGeneratedAt *f
 	checkedAt := now()
 	withStored := func() ai.ModelsStoreEntry {
 		if stored == nil {
-			return ai.ModelsStoreEntry{Models: []json.RawMessage{}}
+			return ai.ModelsStoreEntry{Models: []ai.AnyModel{}}
 		}
 		return stored.Clone()
 	}
@@ -350,13 +349,18 @@ func refreshRemoteCatalog(providerID, catalogBaseURL string, localGeneratedAt *f
 	if err != nil {
 		return err
 	}
-	models, err := parseRemoteCatalog(providerID, body)
+	records, err := parseRemoteCatalog(providerID, body)
 	if err != nil {
 		return err
 	}
-	lastModified := 0.0
-	if parsed, err := http.ParseTime(response.Header.Get("last-modified")); err == nil {
-		lastModified = float64(parsed.UnixMilli())
+	models, err := ai.DecodeStoredModels(records)
+	if err != nil {
+		return err
+	}
+	// Date.parse(response.headers.get("last-modified") ?? ""), NaN stored as 0: any date text V8 reads counts, not only HTTP-date forms.
+	lastModified := ai.DateParse(response.Header.Get("last-modified"))
+	if math.IsNaN(lastModified) {
+		lastModified = 0
 	}
 	if signal.Err() != nil {
 		return nil

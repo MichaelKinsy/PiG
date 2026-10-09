@@ -1,5 +1,7 @@
 package ai
 
+// pi: packages/coding-agent/src/core/auth-storage.ts
+
 import (
 	"bytes"
 	"encoding/json"
@@ -9,6 +11,7 @@ import (
 	"testing"
 	"unicode/utf8"
 
+	"github.com/MichaelKinsy/PiG/internal/jsonstringify"
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
 )
 
@@ -96,10 +99,16 @@ func TestCredentialCustomJSONRetainsUTF16Payload(t *testing.T) {
 			if err != nil || !ok {
 				t.Fatalf("persisted=%#v, %v, %v", got, ok, err)
 			}
-			// Persistence indents RawMessage fields; compare complete serialized values rather than the retained source whitespace.
+			// Persistence writes JSON.stringify text (auth-storage.ts:358), which indents RawMessage fields and writes an escaped
+			// U+FFFD literally; compare the JSON.stringify forms, which keep every lone surrogate distinct from U+FFFD.
 			persisted, err := json.Marshal(got)
-			if err != nil || !bytes.Equal(persisted, encoded) {
-				t.Fatalf("persisted=%s, %v; want=%s", persisted, err, encoded)
+			if err != nil {
+				t.Fatal(err)
+			}
+			persistedText, persistedErr := jsonstringify.Canonicalize(persisted)
+			wantText, wantErr := jsonstringify.Canonicalize(encoded)
+			if persistedErr != nil || wantErr != nil || !bytes.Equal(persistedText, wantText) {
+				t.Fatalf("persisted=%s, %v; want=%s, %v", persistedText, persistedErr, wantText, wantErr)
 			}
 		})
 	}
@@ -121,7 +130,13 @@ func TestOAuthCredentialCustomJSONRetainsUTF16Payload(t *testing.T) {
 	}
 	// Adjacent surrogate halves are the same UTF-16 string as their scalar encoding.
 	want.Scope = jsstring.Canonical(want.Scope)
-	if !reflect.DeepEqual(decoded, want) {
+	// The decoded property order is compared separately: the store writes the discriminator after the flow's properties, as Pi's { ...credential, type: "oauth" } does.
+	if wantOrder := []string{"access", "accountId", "expires", "projectId", "refresh", "scope", high, "\ufffd"}; !reflect.DeepEqual(decoded.order.keys, wantOrder) {
+		t.Fatalf("decoded order=%q want %q", decoded.order.keys, wantOrder)
+	}
+	content := decoded
+	content.order = credentialKeyOrder{}
+	if !reflect.DeepEqual(content, want) {
 		t.Fatalf("OAuth round trip=%#v want=%#v", decoded, want)
 	}
 	converted, err := credentialFromOAuth(decoded)

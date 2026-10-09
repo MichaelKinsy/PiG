@@ -92,10 +92,51 @@ func TestRuntimeSwitchSessionHonorsCWDOverride(t *testing.T) {
 		t.Fatalf("switch without override = %v, session kept %v", err, h.runtime.Session() == original)
 	}
 	fallback := t.TempDir()
-	if result, err := h.runtime.SwitchSessionWithCWD(t.Context(), sessionFile, fallback); err != nil || result.Cancelled {
+	if result, err := h.runtime.SwitchSession(t.Context(), sessionFile, &SwitchSessionOptions{CwdOverride: fallback}); err != nil || result.Cancelled {
 		t.Fatalf("switch with override = %v, %v", result, err)
 	}
 	if got := h.runtime.CWD(); got != fallback {
 		t.Fatalf("Runtime cwd after override = %q, want %q", got, fallback)
+	}
+}
+
+// switchSession's options object carries projectTrustContextFactory and withSession as well (agent-session-runtime.ts:196-222): the factory receives the
+// destination cwd before the replacement, and withSession runs against the replaced Session once it has settled.
+func TestRuntimeSwitchSessionOptionsCarryTrustFactoryAndWithSession(t *testing.T) {
+	var factoryOptions []CreateAgentSessionRuntimeOptions
+	h := newRuntimeTestHarness(t, runtimeTestOptions{recordFactoryOptions: func(o CreateAgentSessionRuntimeOptions) { factoryOptions = append(factoryOptions, o) }})
+	runtimePrompt(t, h.runtime, "hello")
+	destination := t.TempDir()
+	sessionFile := filepath.Join(t.TempDir(), "destination.jsonl")
+	log := `{"type":"session","version":3,"id":"destination","timestamp":"2026-01-01T00:00:00.000Z","cwd":` + strconv.Quote(destination) + `}` + "\n" +
+		`{"type":"message","id":"u1","parentId":null,"timestamp":"2026-01-01T00:00:00.000Z","message":{"role":"user","content":"hi","timestamp":1}}` + "\n"
+	if err := os.WriteFile(sessionFile, []byte(log), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	var factoryCWD []string
+	var replaced []string
+	result, err := h.runtime.SwitchSession(t.Context(), sessionFile, &SwitchSessionOptions{
+		ProjectTrustContextFactory: func(cwd string) extension.ProjectTrustContext {
+			factoryCWD = append(factoryCWD, cwd)
+			return extension.ProjectTrustContext{Cwd: cwd, Mode: extension.ModeTUI, HasUI: true}
+		},
+		WithSession: func(ctx *extension.ReplacedSessionContext) error {
+			replaced = append(replaced, h.runtime.Session().ID())
+			return nil
+		},
+	})
+	if err != nil || result.Cancelled {
+		t.Fatalf("switch = %v, %v", result, err)
+	}
+	if !reflect.DeepEqual(factoryCWD, []string{destination}) {
+		t.Fatalf("trust factory calls = %v, want one call with %q", factoryCWD, destination)
+	}
+	// The replacement's runtime factory receives the context the options factory made (agent-session-runtime.ts:219, projectTrustContext).
+	last := factoryOptions[len(factoryOptions)-1]
+	if last.ProjectTrustContext == nil || last.ProjectTrustContext.Cwd != destination || last.ProjectTrustContext.Mode != extension.ModeTUI || !last.ProjectTrustContext.HasUI {
+		t.Fatalf("replacement factory options carry trust context %+v, want the factory's context for %q", last.ProjectTrustContext, destination)
+	}
+	if !reflect.DeepEqual(replaced, []string{"destination"}) {
+		t.Fatalf("withSession saw sessions %v, want the replaced one", replaced)
 	}
 }

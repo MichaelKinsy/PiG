@@ -1,5 +1,9 @@
 package experimental
 
+// pi: packages/coding-agent/src/experimental/client.ts
+
+// pi: packages/coding-agent/src/experimental/client-runtime.ts
+
 import (
 	"context"
 	"encoding/json"

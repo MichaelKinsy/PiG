@@ -44,7 +44,7 @@ func layoutSV(t *testing.T, c Component, options ScrollViewOptions) *ScrollView 
 func TestUpstreamViewportLayout(t *testing.T) {
 	// .upstream/v0.87.1/packages/tui/test/layout.test.ts:16
 	t.Run("allocates vertical grow space deterministically", func(t *testing.T) {
-		root := NewVStack([]StackChild{{Component: NewText("top"), StackEntryOptions: StackEntryOptions{Basis: new(1), Shrink: new(0)}}, {Component: NewText("body"), StackEntryOptions: StackEntryOptions{Basis: new(0), Grow: new(1)}}}, StackOptions{})
+		root := NewVStack([]StackEntry{{Component: NewText("top"), StackEntryOptions: StackEntryOptions{Basis: new(1), Shrink: new(0)}}, {Component: NewText("body"), StackEntryOptions: StackEntryOptions{Basis: new(0), Grow: new(1)}}}, StackOptions{})
 		frame := layoutFrame(root, 10, 4)
 		if frame.Root.Children[0].Rect.Height != 1 || frame.Root.Children[1].Rect.Height != 3 {
 			t.Fatal("wrong grow heights")
@@ -55,7 +55,7 @@ func TestUpstreamViewportLayout(t *testing.T) {
 	t.Run("does not render fixed-basis scroll content during stack measurement", func(t *testing.T) {
 		c := &layoutUpstreamLines{lines: []string{"one", "two", "three"}}
 		sv := layoutSV(t, c, ScrollViewOptions{})
-		root := NewVStack([]StackChild{{Component: sv, StackEntryOptions: StackEntryOptions{Basis: new(0), Grow: new(1)}}, {Component: NewText("dock")}}, StackOptions{})
+		root := NewVStack([]StackEntry{{Component: sv, StackEntryOptions: StackEntryOptions{Basis: new(0), Grow: new(1)}}, {Component: NewText("dock")}}, StackOptions{})
 		layoutFrame(root, 10, 3)
 		if c.renders != 1 {
 			t.Fatalf("render count=%d, want 1", c.renders)
@@ -85,7 +85,7 @@ func TestUpstreamViewportLayout(t *testing.T) {
 	})
 	// .upstream/v0.87.1/packages/tui/test/layout.test.ts:71
 	t.Run("shrinks entries to their minimum sizes", func(t *testing.T) {
-		root := NewVStack([]StackChild{{Component: NewText("a1\na2\na3"), StackEntryOptions: StackEntryOptions{Shrink: new(1), MinSize: new(1)}}, {Component: NewText("b1\nb2\nb3"), StackEntryOptions: StackEntryOptions{Shrink: new(0)}}}, StackOptions{})
+		root := NewVStack([]StackEntry{{Component: NewText("a1\na2\na3"), StackEntryOptions: StackEntryOptions{Shrink: new(1), MinSize: new(1)}}, {Component: NewText("b1\nb2\nb3"), StackEntryOptions: StackEntryOptions{Shrink: new(0)}}}, StackOptions{})
 		frame := layoutFrame(root, 10, 4)
 		if frame.Root.Children[0].Rect.Height != 1 || frame.Root.Children[1].Rect.Height != 3 {
 			t.Fatal("wrong shrink heights")
@@ -94,13 +94,13 @@ func TestUpstreamViewportLayout(t *testing.T) {
 	})
 	// .upstream/v0.87.1/packages/tui/test/layout.test.ts:89
 	t.Run("includes nested minimum sizes in intrinsic stack measurement", func(t *testing.T) {
-		dock := NewVStack([]StackChild{{Component: NewText("top1\ntop2\ntop3")}, {Component: NewText("selector"), StackEntryOptions: StackEntryOptions{MinSize: new(3)}}, {Component: NewText("below")}, {Component: NewText("footer"), StackEntryOptions: StackEntryOptions{MinSize: new(1)}}}, StackOptions{})
-		root := NewVStack([]StackChild{{Component: NewText("body"), StackEntryOptions: StackEntryOptions{Basis: new(0), Grow: new(1), MinSize: new(1)}}, {Component: dock, StackEntryOptions: StackEntryOptions{MinSize: new(1)}}}, StackOptions{})
+		dock := NewVStack([]StackEntry{{Component: NewText("top1\ntop2\ntop3")}, {Component: NewText("selector"), StackEntryOptions: StackEntryOptions{MinSize: new(3)}}, {Component: NewText("below")}, {Component: NewText("footer"), StackEntryOptions: StackEntryOptions{MinSize: new(1)}}}, StackOptions{})
+		root := NewVStack([]StackEntry{{Component: NewText("body"), StackEntryOptions: StackEntryOptions{Basis: new(0), Grow: new(1), MinSize: new(1)}}, {Component: dock, StackEntryOptions: StackEntryOptions{MinSize: new(1)}}}, StackOptions{})
 		layoutWant(t, layoutPlain(layoutFrame(root, 10, 9).Lines), []string{"body", "top1", "top2", "top3", "selector", "", "", "below", "footer"})
 	})
 	// .upstream/v0.87.1/packages/tui/test/layout.test.ts:119
 	t.Run("omits gaps around invisible entries", func(t *testing.T) {
-		stack := NewVStack([]StackChild{{Component: NewText("one")}, {Component: NewText("hidden"), StackEntryOptions: StackEntryOptions{Visible: func(LayoutViewport) bool { return false }}}, {Component: NewText("two")}}, StackOptions{Gap: new(1)})
+		stack := NewVStack([]StackEntry{{Component: NewText("one")}, {Component: NewText("hidden"), StackEntryOptions: StackEntryOptions{Visible: func(LayoutViewport) bool { return false }}}, {Component: NewText("two")}}, StackOptions{Gap: new(1)})
 		layoutWant(t, layoutPlain(stack.Render(10)), []string{"one", "", "two"})
 	})
 	// .upstream/v0.87.1/packages/tui/test/layout.test.ts:130
@@ -108,7 +108,7 @@ func TestUpstreamViewportLayout(t *testing.T) {
 		image := EncodeKitty("AAAA", 2, 3, 124, false)
 		RegisterKittyImageMetadata(KittyImageMetadata{ImageID: 124, Columns: 2, Rows: 3, WidthPx: 100, HeightPx: 100})
 		sv := layoutSV(t, &layoutUpstreamLines{lines: []string{"one", "two", image, "", ""}}, ScrollViewOptions{})
-		root := NewVStack([]StackChild{{Component: sv, StackEntryOptions: StackEntryOptions{Basis: new(0), Grow: new(1)}}, {Component: NewText("dock")}}, StackOptions{})
+		root := NewVStack([]StackEntry{{Component: sv, StackEntryOptions: StackEntryOptions{Basis: new(0), Grow: new(1)}}, {Component: NewText("dock")}}, StackOptions{})
 		frame := layoutFrame(root, 20, 4)
 		if !strings.Contains(frame.Lines[2], "y=0,h=34,r=1") {
 			t.Fatalf("image not cropped: %q", frame.Lines[2])
@@ -116,12 +116,12 @@ func TestUpstreamViewportLayout(t *testing.T) {
 	})
 	// .upstream/v0.87.1/packages/tui/test/layout.test.ts:148
 	t.Run("composes horizontal children at allocated widths", func(t *testing.T) {
-		root := NewHStack([]StackChild{{Component: NewText("left"), StackEntryOptions: StackEntryOptions{Basis: new(6), Shrink: new(0)}}, {Component: NewText("right"), StackEntryOptions: StackEntryOptions{Basis: new(6), Shrink: new(0)}}}, StackOptions{})
+		root := NewHStack([]StackEntry{{Component: NewText("left"), StackEntryOptions: StackEntryOptions{Basis: new(6), Shrink: new(0)}}, {Component: NewText("right"), StackEntryOptions: StackEntryOptions{Basis: new(6), Shrink: new(0)}}}, StackOptions{})
 		layoutWant(t, layoutPlain(layoutFrame(root, 12, 1).Lines), []string{"left  right"})
 	})
 	// .upstream/v0.87.1/packages/tui/test/layout.test.ts:161
 	t.Run("does not paint zero-width horizontal children", func(t *testing.T) {
-		root := NewHStack([]StackChild{{Component: NewText("hidden"), StackEntryOptions: StackEntryOptions{Basis: new(0), Shrink: new(0)}}, {Component: NewText("shown"), StackEntryOptions: StackEntryOptions{Basis: new(0), Grow: new(1)}}}, StackOptions{})
+		root := NewHStack([]StackEntry{{Component: NewText("hidden"), StackEntryOptions: StackEntryOptions{Basis: new(0), Shrink: new(0)}}, {Component: NewText("shown"), StackEntryOptions: StackEntryOptions{Basis: new(0), Grow: new(1)}}}, StackOptions{})
 		layoutWant(t, layoutPlain(layoutFrame(root, 5, 1).Lines), []string{"shown"})
 	})
 	// .upstream/v0.87.1/packages/tui/test/layout.test.ts:174
@@ -170,7 +170,7 @@ func TestUpstreamViewportLayout(t *testing.T) {
 	t.Run("updates reserved scrollbar layout at runtime", func(t *testing.T) {
 		sv := layoutSV(t, NewText("123456"), ScrollViewOptions{Scrollbar: "always"})
 		render := func() LayoutFrame {
-			return layoutFrame(NewHStack([]StackChild{{Component: sv}}, StackOptions{Align: "start"}), 6, 2)
+			return layoutFrame(NewHStack([]StackEntry{{Component: sv}}, StackOptions{Align: "start"}), 6, 2)
 		}
 		frame := render()
 		layoutWant(t, layoutPlain(frame.Lines), []string{"12345┃", "6    ┃"})
@@ -185,7 +185,7 @@ func TestUpstreamViewportLayout(t *testing.T) {
 	// .upstream/v0.87.1/packages/tui/test/layout.test.ts:347
 	t.Run("measures nested scroll content from constrained child geometry", func(t *testing.T) {
 		inner := layoutSV(t, NewText("1\n2\n3\n4\n5\n6"), ScrollViewOptions{})
-		outer := layoutSV(t, NewVStack([]StackChild{{Component: inner, StackEntryOptions: StackEntryOptions{Basis: new(2)}}, {Component: NewText("tail")}}, StackOptions{}), ScrollViewOptions{})
+		outer := layoutSV(t, NewVStack([]StackEntry{{Component: inner, StackEntryOptions: StackEntryOptions{Basis: new(2)}}, {Component: NewText("tail")}}, StackOptions{}), ScrollViewOptions{})
 		layoutFrame(outer, 10, 2)
 		if inner.ViewportHeight() != 2 || outer.ScrollBy(10) != 9 || outer.ScrollTop() != 1 {
 			t.Fatal("nested scroll geometry mismatch")
@@ -194,7 +194,7 @@ func TestUpstreamViewportLayout(t *testing.T) {
 	// .upstream/v0.87.1/packages/tui/test/layout.test.ts:357
 	t.Run("rebuilds geometry after content changes", func(t *testing.T) {
 		text := NewText("one")
-		root := NewVStack([]StackChild{{Component: text}}, StackOptions{})
+		root := NewVStack([]StackEntry{{Component: text}}, StackOptions{})
 		first := layoutFrame(root, 10, 4)
 		text.SetText("one\ntwo\nthree")
 		second := layoutFrame(root, 10, 4)

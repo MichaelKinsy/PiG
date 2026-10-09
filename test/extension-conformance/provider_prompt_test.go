@@ -62,7 +62,7 @@ func TestProviderResponseAndToolPromptsAcrossSDKs(t *testing.T) {
 			defer server.Close()
 			provider := ai.NewOpenAIProvider(ai.OpenAIConfig{ProviderID: "test", Model: "probe", APIKey: "key", BaseURL: server.URL})
 			t.Cleanup(func() { _ = provider.Close() })
-			services, err := coding.NewServices(coding.ServicesOptions{CWD: t.TempDir(), AgentDir: t.TempDir()})
+			services, err := coding.CreateAgentSessionServices(coding.CreateAgentSessionServicesOptions{CWD: t.TempDir(), AgentDir: t.TempDir()})
 			if err != nil {
 				t.Fatal(err)
 			}

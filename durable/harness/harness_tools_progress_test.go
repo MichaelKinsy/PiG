@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"github.com/MichaelKinsy/PiG/ai"
+	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/durable"
 	"github.com/MichaelKinsy/PiG/durable/storage"
 	"github.com/MichaelKinsy/PiG/durable/storage/jsonl"
@@ -30,11 +31,11 @@ func tlLiveTool(t *testing.T, harness Harness, conversationId durable.Conversati
 	if err != nil {
 		t.Fatal(err)
 	}
-	slots, _ := live["tools"].([]any)
+	slots, _ := live.Value("tools").([]any)
 	if len(slots) == 0 {
 		return nil
 	}
-	return slots[0].(map[string]any)
+	return plainObject(slots[0])
 }
 
 func TestToolProgressAndLifetime(t *testing.T) {
@@ -85,11 +86,11 @@ func TestToolProgressAndLifetime(t *testing.T) {
 					if err != nil {
 						return durable.ToolExecutionResult{}, err
 					}
-					tools, _ := live["tools"].([]any)
+					tools, _ := live.Value("tools").([]any)
 					if len(tools) == 0 {
 						return durable.ToolExecutionResult{}, errors.New("no running tool slot")
 					}
-					outputs = append(outputs, tools[0].(map[string]any)["output"])
+					outputs = append(outputs, tools[0].(*delta.JsonObject).Value("output"))
 				}
 				slots.put(outputs)
 				return durable.ToolExecutionResult{}, nil
@@ -119,8 +120,8 @@ func TestToolProgressAndLifetime(t *testing.T) {
 			if err != nil {
 				return durable.ToolExecutionResult{}, err
 			}
-			if slots, _ := live["tools"].([]any); len(slots) > 0 {
-				slotOutput.put(slots[0].(map[string]any)["output"])
+			if slots, _ := live.Value("tools").([]any); len(slots) > 0 {
+				slotOutput.put(slots[0].(*delta.JsonObject).Value("output"))
 			}
 			return durable.ToolExecutionResult{}, nil
 		}))
@@ -161,7 +162,8 @@ func TestToolProgressAndLifetime(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if want := fmt.Sprintf(`{"control":{"addTools":["extra"]},"entryId":%v}`, result.(map[string]any)["entryId"]); string(stored) != want {
+		// upstream: packages/durable/src/harness/tool.ts:405 builds the result { entryId, ...control }, so entryId comes first.
+		if want := fmt.Sprintf(`{"entryId":%v,"control":{"addTools":["extra"]}}`, plainObject(result)["entryId"]); string(stored) != want {
 			t.Fatalf("stored tool result %s, want %s", stored, want)
 		}
 		// addTools deletes the name from a stored { remove } filter.
@@ -212,8 +214,8 @@ func TestToolProgressAndLifetime(t *testing.T) {
 					entries = allEntries(t, root)
 				}
 				want := []string{
-					`{"role":"toolResult","toolCallId":"c1","toolName":"null","content":[],"details":null,"isError":false,"timestamp":%d}`,
-					`{"role":"toolResult","toolCallId":"c2","toolName":"none","content":[],"isError":false,"timestamp":%d}`,
+					`{"role":"toolResult","toolCallId":"c1","toolName":"null","content":[],"details":null,"isError":false,"durationMs":%d,"timestamp":%d}`,
+					`{"role":"toolResult","toolCallId":"c2","toolName":"none","content":[],"isError":false,"durationMs":%d,"timestamp":%d}`,
 				}
 				results := tlResults(entries)
 				if len(results) != len(want) {
@@ -228,7 +230,11 @@ func TestToolProgressAndLifetime(t *testing.T) {
 					if err != nil {
 						t.Fatal(err)
 					}
-					if expected := fmt.Sprintf(want[index], result.Timestamp); string(encoded) != expected {
+					// Pi 1.1.0 tool.ts:473 stores the execute() duration between isError and timestamp.
+					if result.DurationMs == nil {
+						t.Fatalf("result %d has no durationMs", index)
+					}
+					if expected := fmt.Sprintf(want[index], *result.DurationMs, result.Timestamp); string(encoded) != expected {
 						t.Fatalf("stored message\n got %s\nwant %s", encoded, expected)
 					}
 				}
@@ -382,7 +388,7 @@ func TestToolProgressAndLifetime(t *testing.T) {
 		watched := &syncValue[durable.WatchHandle[durable.JsonObject]]{}
 		addTool(t, setup.Registry, tlTool("detach", func(ctx context.Context, _ any, api durable.ToolExecutionApi) (durable.ToolExecutionResult, error) {
 			// The child's definition is not registered, so it stays pending.
-			child, err := api.CreateTaskErased(ctx, never, durable.JsonObject{}, durable.TaskOptions{Ownership: conversationOwned})
+			child, err := api.CreateTaskErased(ctx, never, delta.NewJsonObject(0), durable.TaskOptions{Ownership: conversationOwned})
 			if err != nil {
 				return durable.ToolExecutionResult{}, err
 			}
@@ -529,4 +535,17 @@ func awaitDetailsRecorded(ctx context.Context, api durable.ToolExecutionApi, cou
 		case <-time.After(time.Millisecond):
 		}
 	}
+}
+
+// plainObject is value's JSON object as a map, for reads that ignore key order, as toEqual does.
+func plainObject(value any) map[string]any {
+	encoded, err := json.Marshal(value)
+	if err != nil {
+		panic(err)
+	}
+	var object map[string]any
+	if err := json.Unmarshal(encoded, &object); err != nil {
+		panic(err)
+	}
+	return object
 }

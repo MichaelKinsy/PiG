@@ -13,10 +13,20 @@ type ModelMutationOptions struct {
 	Persist bool
 }
 
+// CompactionResult is the result of manual compaction (agent-session.ts compact()). The public coding package names it coding.CompactionResult.
+type CompactionResult struct {
+	Summary              string
+	FirstKeptEntryID     string
+	TokensBefore         int
+	EstimatedTokensAfter int
+	Usage                *ai.Usage
+	Details              any
+}
+
 // ModelCycleResult reports a model-cycle selection and its clamped thinking level.
 type ModelCycleResult struct {
 	Model         *ai.Model
-	ThinkingLevel ai.ThinkingLevel
+	ThinkingLevel ai.ModelThinkingLevel
 	IsScoped      bool
 }
 
@@ -33,7 +43,7 @@ type ModelCycleResult struct {
 // main.go (which imports both packages) does the bridging:
 //
 //	sess, _ := coding.NewSession(svcs, opts)
-//	m := codingagent.NewInteractiveMode(codingagent.InteractiveOptions{
+//	m := codingagent.NewInteractiveMode(runtimeHost, codingagent.InteractiveModeOptions{
 //	    SessionHandle: sess,  // *coding.Session implements this interface
 //	    ...
 //	})
@@ -44,6 +54,10 @@ type InteractiveSessionHandle interface {
 	// reference (*Session) is the same as *icodingagent.Session
 	// from coding/'s point of view.
 	Inner() *Session
+	// RecordUserBashResult records a user `!` command result as upstream recordBashResult: appended to the
+	// Session and live context when idle, queued until the run ends while one streams. It returns the immediate
+	// persistence failure.
+	RecordUserBashResult(command string, result BashResult, excludeFromContext bool) error
 	// Events returns the agent's streaming event channel. Used by
 	// processAgentEvents to drive live UI updates.
 	Events() <-chan agent.AgentEvent
@@ -57,6 +71,8 @@ type InteractiveSessionHandle interface {
 	SetModelOnMain(*ai.Model, ModelMutationOptions, func(func() error) error) error
 	// CycleModel selects the next model from the current scope or available models.
 	CycleModel(string, ...ModelMutationOptions) (*ModelCycleResult, error)
+	// LastAssistantText is the trimmed text of the last assistant message, nil when it has none (agent-session.ts getLastAssistantText).
+	LastAssistantText() *string
 	// ScopedModels returns the cycling scope. An empty list means all available models.
 	ScopedModels() []extension.ScopedModel
 	// SetScopedModels replaces the cycling scope.
@@ -66,12 +82,16 @@ type InteractiveSessionHandle interface {
 	// ExtensionSetModel answers an extension's pi.setModel: false without configured credentials, otherwise it switches as SetModel does and answers true.
 	ExtensionSetModel(context.Context, *ai.Model) (bool, error)
 	// SetThinkingLevel applies and records reasoning without changing defaults unless Persist is set.
-	SetThinkingLevel(ai.ThinkingLevel, ...ModelMutationOptions) error
+	SetThinkingLevel(ai.ModelThinkingLevel, ...ModelMutationOptions) error
+	// SetThinkingLevelOnMain dispatches the synchronous state mutation to the owner loop, then runs the thinking_level_select notification on the caller. The dispatcher may reject a superseded mutation.
+	SetThinkingLevelOnMain(ai.ModelThinkingLevel, ModelMutationOptions, func(func() error) error) error
 	// SetSessionName persists and publishes a sanitized Session name.
 	SetSessionName(string) error
 	// StreamModel starts a mode-independent model operation through the
 	// Session-owned runtime.
 	StreamModel(context.Context, *ai.Model, ai.Context, ai.StreamOptions) *ai.AssistantMessageEventStream
+	// Compact runs manual compaction like upstream AgentSession.compact(): it aborts the active run, rejects a session with nothing to compact, and reports both outcomes through the compaction events.
+	Compact(ctx context.Context, customInstructions string) (*CompactionResult, error)
 	// AbortCompaction cancels an in-flight Compact() call. Safe to
 	// call when no compaction is running (no-op).
 	// Mirrors upstream AgentSession.abortCompaction().
@@ -92,6 +112,11 @@ type InteractiveSessionHandle interface {
 	// AbortRetry cancels a pending automatic-retry delay without aborting
 	// the run. Mirrors upstream AgentSession.abortRetry().
 	AbortRetry()
+	// RetryAttempt is the current automatic retry attempt, 0 when not
+	// retrying. Mirrors upstream AgentSession.retryAttempt.
+	RetryAttempt() int
+	// ExportToJsonl writes the current branch as JSONL and returns the path. Mirrors upstream AgentSession.exportToJsonl.
+	ExportToJsonl(outputPath string) (string, error)
 	// AbortBranchSummary cancels an in-flight branch summarization. Safe
 	// to call when no summarization is running (no-op).
 	// Mirrors upstream AgentSession.abortBranchSummary().

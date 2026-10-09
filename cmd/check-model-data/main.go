@@ -6,23 +6,33 @@ package main
 import (
 	"flag"
 	"fmt"
+	"io"
 	"os"
 )
 
-func main() {
-	root := flag.String("root", ".upstream/current/packages/ai", "upstream AI package root")
-	hydrate := flag.String("hydrate", "", "published typed model catalog (models.all.json) to hydrate the provider data from")
-	flag.Parse()
+func main() { os.Exit(run(os.Args[1:], os.Stdout, os.Stderr)) }
+
+// run is check-model-data.ts: it prints the success line, or the validation failure with the hydration hint, and
+// returns the exit code.
+func run(args []string, stdout, stderr io.Writer) int {
+	flags := flag.NewFlagSet("check-model-data", flag.ContinueOnError)
+	flags.SetOutput(stderr)
+	root := flags.String("root", ".upstream/current/packages/ai", "upstream AI package root")
+	hydrate := flags.String("hydrate", "", "published typed model catalog (models.all.json) to hydrate the provider data from")
+	if err := flags.Parse(args); err != nil {
+		return 2
+	}
 	if *hydrate != "" {
 		if err := HydrateModelCatalog(*root, *hydrate, false); err != nil {
-			fmt.Fprintln(os.Stderr, err)
-			os.Exit(1)
+			_, _ = fmt.Fprintln(stderr, err)
+			return 1
 		}
 	}
 	if err := ValidateGeneratedModelData(*root); err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		fmt.Fprintln(os.Stderr, "\nModel data is missing or stale. Run `npm run hydrate:model-data` from the repository root.")
-		os.Exit(1)
+		_, _ = fmt.Fprintln(stderr, err)
+		_, _ = fmt.Fprintln(stderr, "\nModel data is missing or stale. Run `npm run hydrate:model-data` from the repository root.")
+		return 1
 	}
-	fmt.Println("Generated model data is valid.")
+	_, _ = fmt.Fprintln(stdout, "Generated model data is valid.")
+	return 0
 }

@@ -1,5 +1,7 @@
 package tui
 
+// pi: packages/coding-agent/src/modes/interactive/model-search.ts
+
 import (
 	"slices"
 	"strings"
@@ -103,14 +105,14 @@ func TestModelSelectorSearchRanksProviderPrefixedQueryAheadOfProxyIDs(t *testing
 
 			// The /model selector itself must use the selector ranking and
 			// select its best match.
-			ms := NewModelSelector("Select model", nil, items, "")
+			ms := NewStaticModelSelectorComponent("Select model", nil, items, "")
 			ms.SetFilter(tc.query)
 			got := make([]string, len(ms.filtered))
 			for i, idx := range ms.filtered {
 				got[i] = ms.active[idx].FQ()
 			}
 			if !slices.Equal(got, tc.selector) {
-				t.Fatalf("ModelSelector filtered = %v, want %v", got, tc.selector)
+				t.Fatalf("ModelSelectorComponent filtered = %v, want %v", got, tc.selector)
 			}
 			for _, line := range ms.Render(100) {
 				plain := stripANSI(line)
@@ -134,7 +136,7 @@ func TestModelSelectorSearchMatchesRawNameAndFooterFallsBackToID(t *testing.T) {
 		{Provider: "fixture", ID: "alpha", Name: "Needle Model"},
 		{Provider: "fixture", ID: "beta"},
 	}
-	ms := NewModelSelector("Select model", nil, items, "")
+	ms := NewStaticModelSelectorComponent("Select model", nil, items, "")
 	ms.SetFilter("needle")
 	if ms.VisibleCount() != 1 || ms.active[ms.filtered[0]].ID != "alpha" {
 		t.Fatalf("name search visible=%d", ms.VisibleCount())

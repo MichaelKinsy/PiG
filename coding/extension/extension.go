@@ -5,6 +5,40 @@ import (
 	"sync"
 )
 
+// ExtensionFactory is an extension written as Go code the binary was built with: it receives the extension API and registers tools, commands,
+// flags, shortcuts, providers and event handlers on it, and returns the error upstream's factory throws.
+//
+// Only the source of a binary's own main package supplies one, by value, to the loader in package factoryload
+// (docs/specs/extension-factory-trust.md). No run-time input, Package, Piglet or wire peer can produce one. The subprocess SDKs keep upstream's
+// `pi` argument on their own side of the wire.
+//
+// upstream: core/extensions/types.ts:2017 (ExtensionFactory)
+type ExtensionFactory func(api API) error
+
+// InlineExtension is types.ts:2008 `InlineExtension`: an [ExtensionFactory], or a [NamedInlineExtension] that also names the extension and says how it loads.
+// The set is closed: only those two forms implement it.
+type InlineExtension interface{ isInlineExtension() }
+
+func (ExtensionFactory) isInlineExtension() {}
+
+// NamedInlineExtension is the object member of types.ts:2008 `InlineExtension`.
+type NamedInlineExtension struct {
+	// Name is shown as `<inline:name>` in the startup Extensions list and errors. With Builtin, the extension is named `builtin:name` in errors and diagnostics.
+	Name    string
+	Factory ExtensionFactory
+	// Hidden omits the extension from the startup Extensions list.
+	Hidden bool
+	// Replaceable leaves the extension out when another extension registers a tool, command or flag with a name it registers during loading, instead
+	// of reporting a conflict. The factory still runs, so it should only register tools, commands, flags and event handlers.
+	Replaceable bool
+	// Builtin supplies the code of the `builtin:<name>` extension resource instead of loading as an inline extension: it loads by default, `pig config`
+	// lists it, `-builtin:<name>` in the `extensions` setting and --no-extensions disable it, and `-e builtin:<name>` loads it explicitly. It is hidden
+	// from the startup Extensions list and loads after project trust is resolved, so it cannot handle `project_trust`.
+	Builtin bool
+}
+
+func (NamedInlineExtension) isInlineExtension() {}
+
 // Extension is the state container populated by an extension's factory
 // during loading. It is the cross-tier contract between the host and the
 // extension implementation: factories write registrations into the API,

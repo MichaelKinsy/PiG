@@ -46,7 +46,7 @@ func resourceLoaderThemeBg(t *testing.T, m *InteractiveMode) string {
 	t.Helper()
 	for _, loaded := range m.loadedThemes {
 		if loaded.theme.Name == "capability-test" {
-			return loaded.theme.BgText("userMessageBg", "x")
+			return loaded.theme.Bg("userMessageBg", "x")
 		}
 	}
 	t.Fatalf("theme capability-test not loaded: %+v %+v", m.loadedThemes, m.themeDiagnostics)
@@ -70,7 +70,7 @@ func TestDefaultResourceLoaderThemeColorModeUpstream(t *testing.T) {
 				t.Fatal(err)
 			}
 			manager := NewSettingsManager(cwd, agentDir)
-			m := &InteractiveMode{opts: InteractiveOptions{CWD: cwd, AgentDir: agentDir, SettingsManager: manager, Settings: manager.Get(), ThemePaths: []string{themePath}}}
+			m := &InteractiveMode{opts: InteractiveModeOptions{CWD: cwd, AgentDir: agentDir, SettingsManager: manager, Settings: manager.Get(), ThemePaths: []string{themePath}}}
 			m.loadThemes()
 			if got := resourceLoaderThemeBg(t, m); got != tc.expected {
 				t.Errorf("userMessageBg = %q, want %q", got, tc.expected)
@@ -90,7 +90,7 @@ func TestDefaultResourceLoaderThemeColorModeUpstream(t *testing.T) {
 			t.Fatal(err)
 		}
 		manager := NewSettingsManager(cwd, agentDir)
-		m := &InteractiveMode{opts: InteractiveOptions{CWD: cwd, AgentDir: agentDir, SettingsManager: manager, Settings: manager.Get(), ThemePaths: []string{themePath}}}
+		m := &InteractiveMode{opts: InteractiveModeOptions{CWD: cwd, AgentDir: agentDir, SettingsManager: manager, Settings: manager.Get(), ThemePaths: []string{themePath}}}
 		m.loadThemes()
 		tui.SetCapabilityOverrides(manager.Get().GetTerminalCapabilityOverrides())
 

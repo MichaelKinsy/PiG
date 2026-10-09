@@ -69,6 +69,41 @@ func TestModelRuntimeClassifiersUpstream(t *testing.T) {
 		}
 	})
 
+	// model-runtime.ts:808 (v1.1.0): assertClassifierInputSupported runs before auth, so a model without image input never
+	// reaches the provider, and GPT-6 Luna takes images through the runtime-resolved API key.
+	t.Run("rejects classifier images for models without image input and sends them to GPT-6 Luna", func(t *testing.T) {
+		services, _ := nativeCompatServices(t, "", nil)
+		runtime := services.ModelRuntime()
+		withImages := classifiersTestContext
+		withImages.Images = []ai.ImageContent{{Data: "aW1hZ2U=", MimeType: "image/png"}}
+		jev, _ := runtime.GetModelOfType(ai.ModelTypeClassifier, "typesafe", "jev-latest").(*ai.ClassifierModel)
+		luna, _ := runtime.GetModelOfType(ai.ModelTypeClassifier, "openai", "gpt-6-luna").(*ai.ClassifierModel)
+		if jev == nil || luna == nil {
+			t.Fatalf("jev=%v luna=%v", jev, luna)
+		}
+
+		rejected := runtime.Classify(t.Context(), jev, withImages)
+		if rejected.StopReason != ai.ClassifierStopReasonError || rejected.ErrorMessage != "Model typesafe/jev-latest does not accept image input" {
+			t.Fatalf("rejected = %+v", rejected)
+		}
+
+		services.Registry().SetRuntimeAPIKey("openai", "sk-openai")
+		var url, authorization, input string
+		fetch := classifiersTestFetch(func(request *http.Request) (*http.Response, error) {
+			url, authorization = request.URL.String(), request.Header.Get("Authorization")
+			body, _ := io.ReadAll(request.Body)
+			input = string(body)
+			return &http.Response{StatusCode: 200, Status: "OK", Header: http.Header{"Content-Type": {"application/json"}}, Body: io.NopCloser(strings.NewReader(`{"answers":[{"type":"predicate","name":"approved","probability":0.7}]}`))}, nil
+		})
+		result := runtime.Classify(t.Context(), luna, withImages, ai.ModelsClassifierOptions{ClassifierOptions: ai.ClassifierOptions{Fetch: &http.Client{Transport: fetch}}})
+		if result.StopReason != ai.ClassifierStopReasonStop || len(result.Answers) != 1 || result.Answers[0].Answer != (ai.ClassifierBoolAnswer{Probability: 0.7}) {
+			t.Fatalf("result = %+v", result)
+		}
+		if url != "https://api.openai.com/v1/decisions" || authorization != "Bearer sk-openai" || !strings.Contains(input, `"image_url":"data:image/png;base64,aW1hZ2U="`) {
+			t.Fatalf("url=%s authorization=%s body=%s", url, authorization, input)
+		}
+	})
+
 	// model-runtime-images.test.ts:143
 	t.Run("registers extension image and classifier models with their implementations", func(t *testing.T) {
 		services, _ := nativeCompatServices(t, "", nil)

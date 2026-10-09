@@ -6,11 +6,6 @@
 # Exact entries fail when implemented; prefixes fail when no missing cell remains.
 
 [[exception]]
-key = 'pi.on("cache_warming_decision")'
-sdks = ["node", "go", "rust", "python"]
-reason = "Generic handlers receive the emitted cache_warming_decision payload and result. Typed registration remains a separate API declaration gap in test/parity/known-gaps.toml api:OnCacheWarmingDecision."
-
-[[exception]]
 key = "pi.sendUserMessage(options.expandPromptTemplates)"
 sdks = ["node", "go", "rust", "python"]
 reason = "The host SendUserMessageOptions carries deliverAs only; expandPromptTemplates would be dropped. Requires host prompt-expansion control."
@@ -92,3 +87,22 @@ reason = "Members of the type-only root re-export have no runtime receiver. Both
 key = "pi-tui: StdinBuffer.[Symbol.captureRejectionSymbol]"
 sdks = ["node"]
 reason = "Inherited optional Node EventEmitter rejection hook. Pi's StdinBuffer does not install it; this declaration is not an implemented method in the Pi oracle either."
+
+[[exception]]
+key = "tool render context.durationMs"
+sdks = ["node"]
+reason = "New in Pi 1.1.0: the tool render context carries this member. Go, Rust and Python publish it; the Node runtime does not yet. Closed by porting the member through the Node runtime with a conformance row."
+
+
+# The component kit (D107): Node has no kit event object: Pi's callbacks are
+# its events.
+
+[[exception]]
+key = "kit view events"
+sdks = ["node"]
+reason = "Node frames carry the lines Pi's components rendered, so every key reaches the runtime as ui.custom.input and Pi's SelectList and SettingsList handle it there: their onSelectionChange, onSelect and onChange callbacks are a Node author's events, as in Pi. The host never sends ui.view.event to Node."
+
+[[exception]]
+key = "kit event"
+sdks = ["node"]
+reason = "Node authors receive Pi's own SelectList and SettingsList callbacks (see kit view events); there is no event object to declare."

@@ -7,14 +7,20 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"reflect"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
 
+	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/durable"
+	"github.com/MichaelKinsy/PiG/durable/internal/ordered"
 	"github.com/MichaelKinsy/PiG/durable/storage/internal/ops"
+	"github.com/MichaelKinsy/PiG/durable/storage/internal/scan"
 	"github.com/MichaelKinsy/PiG/durable/storage/internal/writes"
 	"github.com/MichaelKinsy/PiG/extensions/sdk/json"
+	"github.com/MichaelKinsy/PiG/internal/chord/chordjson"
 )
 
 type storedTask = durable.TaskRecord[durable.JsonValue, durable.JsonValue, durable.JsonValue]
@@ -80,8 +86,42 @@ func encodeJSON(value any) (string, error) {
 
 func parseJSON[T any](text string) (T, error) {
 	var value T
-	err := json.Unmarshal([]byte(text), &value)
-	return value, err
+	if err := json.Unmarshal([]byte(text), &value); err != nil {
+		return value, err
+	}
+	if ordered.HasDynamic(reflect.TypeFor[T]()) {
+		// A JsonValue member holds the stored text's objects in order, as JSON.parse gives Pi.
+		tree, err := chordjson.DecodeUnquoting([]byte(text), unquoteJS)
+		if err != nil {
+			return value, err
+		}
+		ordered.Restore(&value, tree)
+	}
+	return value, nil
+}
+
+// unquoteJS decodes a JSON string with JavaScript string semantics: a lone surrogate escape becomes its WTF-8 form.
+func unquoteJS(raw []byte, text *string) error { return json.Unmarshal(raw, text) }
+
+// parseOps decodes a stored operation batch with its objects in document order.
+func parseOps(text string) ([]durable.Op, error) {
+	value, err := chordjson.DecodeUnquoting([]byte(text), unquoteJS)
+	if err != nil {
+		return nil, err
+	}
+	items, ok := value.([]any)
+	if !ok {
+		return nil, fmt.Errorf("stored operations are %T, not an array", value)
+	}
+	ops := make([]durable.Op, len(items))
+	for index, item := range items {
+		op, isOp := item.([]any)
+		if !isOp {
+			return nil, fmt.Errorf("stored operation %d is %T, not an array", index, item)
+		}
+		ops[index] = op
+	}
+	return ops, nil
 }
 
 // encodeIndexedString keeps indexed identities lossless: some SQLite bindings replace lone UTF-16 surrogates, while
@@ -132,7 +172,7 @@ func cursorStart(cursor durable.Cursor) (int64, error) {
 	return after, nil
 }
 
-func page[T any](values []T, limit int, id func(T) int64) durable.Page[T, durable.Cursor] {
+func page[T any](values []T, limit int, order durable.ScanOrder, id func(T) int64) durable.Page[T, durable.Cursor] {
 	count := min(max(limit, 0), len(values))
 	items := values[:count:count]
 	if len(values) <= limit {
@@ -142,8 +182,24 @@ func page[T any](values []T, limit int, id func(T) int64) durable.Page[T, durabl
 	if count > 0 {
 		after = id(items[count-1])
 	}
-	next := durable.Cursor{"after": after}
+	next := scan.NextCursor(after, order)
 	return durable.Page[T, durable.Cursor]{Items: items, Next: &next}
+}
+
+// scanSql is the ID condition, its parameter, and the ORDER BY direction of a table scan.
+func scanSql(start scan.Start) (clause string, param int64, direction string) {
+	if start.Order == durable.ScanAscending {
+		param = -1
+		if start.HasAfter {
+			param = start.After
+		}
+		return "id > ?", param, "ASC"
+	}
+	param = maxSafeInteger
+	if start.HasAfter {
+		param = start.After
+	}
+	return "id < ?", param, "DESC"
 }
 
 func scopeColumnsOf(scope durable.DocumentRecordScope) scopeColumns {
@@ -209,6 +265,8 @@ func writeId(write durable.StorageWrite) (int64, bool) {
 type SqliteStorage struct {
 	db SqliteDatabase
 
+	retained *workingSet
+
 	mu            sync.Mutex
 	nextId        int64
 	closed        bool
@@ -220,14 +278,26 @@ type SqliteStorage struct {
 
 var _ durable.Storage = (*SqliteStorage)(nil)
 
+// Options configures a SqliteStorage.
+type Options struct {
+	// WorkingSetBytes bounds the decoded entries the storage retains for context reads: zero selects
+	// DefaultWorkingSetBytes and a negative value retains nothing.
+	WorkingSetBytes int64
+}
+
 // Open initializes storage over an owned SQLite database facade. A failure closes the database.
-func Open(db SqliteDatabase) (*SqliteStorage, error) {
+func Open(db SqliteDatabase, options ...Options) (*SqliteStorage, error) {
 	storage, err := open(db)
 	if err != nil {
 		// Preserve the initialization failure.
 		_ = db.Close()
 		return nil, err
 	}
+	budget := int64(DefaultWorkingSetBytes)
+	if len(options) > 0 && options[0].WorkingSetBytes != 0 {
+		budget = max(options[0].WorkingSetBytes, 0)
+	}
+	storage.retained = newWorkingSet(budget)
 	return storage, nil
 }
 
@@ -276,6 +346,11 @@ func (storage *SqliteStorage) Commit(_ context.Context, batch []durable.StorageW
 	}
 	candidateNextId := storage.candidateNextId(batch)
 	var committedSeq durable.Seq
+	var committedEntries []committedEntry
+	if hasEntryWrite(batch) {
+		storage.retained.mu.Lock()
+		defer storage.retained.mu.Unlock()
+	}
 	err = storage.db.Transaction(func(transaction SqliteExecutor) error {
 		metadata, err := transaction.Get("SELECT next_id, next_seq FROM durable_metadata WHERE singleton = 1")
 		if err != nil {
@@ -299,9 +374,16 @@ func (storage *SqliteStorage) Commit(_ context.Context, batch []durable.StorageW
 		if err := checkDocumentActions(transaction, actions); err != nil {
 			return err
 		}
+		committedEntries = committedEntries[:0]
 		for _, write := range batch {
-			if err := applyTableWrite(transaction, write, seq); err != nil {
+			entryText, err := applyTableWrite(transaction, write, seq)
+			if err != nil {
 				return err
+			}
+			if entryText != "" {
+				committedEntries = append(committedEntries, committedEntry{
+					conversationId: write.(durable.EntryWrite).Value.ConversationId, text: entryText,
+				})
 			}
 		}
 		if err := applyDocumentActions(transaction, actions, seq); err != nil {
@@ -323,6 +405,9 @@ func (storage *SqliteStorage) Commit(_ context.Context, batch []durable.StorageW
 	storage.mu.Lock()
 	storage.nextId = max(storage.nextId, candidateNextId)
 	storage.mu.Unlock()
+	if len(committedEntries) > 0 {
+		storage.retained.retainCommitted(committedEntries)
+	}
 	return committedSeq, nil
 }
 
@@ -393,19 +478,20 @@ func taskIdOf(record storedTask) int64                         { return int64(re
 func submissionIdOf(record durable.SubmissionRecord) int64     { return int64(record.Id) }
 func documentIdOf(record durable.DocumentRecord) int64         { return int64(record.Id) }
 
-// ScanConversations scans conversations in ascending ID order.
+// ScanConversations scans conversations by ID in query.Order, ascending by default.
 func (storage *SqliteStorage) ScanConversations(
 	_ context.Context, query durable.ConversationQuery, limit int, cursor durable.Cursor,
 ) (durable.Page[durable.ConversationRecord, durable.Cursor], error) {
 	if err := storage.assertOpen(); err != nil {
 		return durable.Page[durable.ConversationRecord, durable.Cursor]{}, err
 	}
-	after, err := cursorStart(cursor)
+	start, err := scan.StartOf(query.Order, cursor, durable.ScanAscending)
 	if err != nil {
 		return durable.Page[durable.ConversationRecord, durable.Cursor]{}, err
 	}
-	clauses := []string{"id > ?"}
-	params := []SqliteValue{after}
+	clause, param, direction := scanSql(start)
+	clauses := []string{clause}
+	params := []SqliteValue{param}
 	if query.OwnerConversationId != nil {
 		clauses = append(clauses, "owner_conversation_id = ?")
 		params = append(params, int64(*query.OwnerConversationId))
@@ -417,13 +503,13 @@ func (storage *SqliteStorage) ScanConversations(
 	params = append(params, int64(limit)+1)
 	records, err := allRecords[durable.ConversationRecord](
 		storage.db,
-		"SELECT record FROM conversations WHERE "+strings.Join(clauses, " AND ")+" ORDER BY id LIMIT ?",
+		"SELECT record FROM conversations WHERE "+strings.Join(clauses, " AND ")+" ORDER BY id "+direction+" LIMIT ?",
 		params...,
 	)
 	if err != nil {
 		return durable.Page[durable.ConversationRecord, durable.Cursor]{}, err
 	}
-	return page(records, limit, conversationIdOf), nil
+	return page(records, limit, start.Order, conversationIdOf), nil
 }
 
 // Entry looks up one global entry and the sequence of the commit that persisted it.
@@ -460,7 +546,8 @@ func (storage *SqliteStorage) FindLatestHeadMarker(
 	return found, err
 }
 
-// ScanEntries scans the inclusive visible range newest-first, returning at most limit entries.
+// ScanEntries scans the inclusive visible range in query.Order (descending by default), returning at most limit
+// entries.
 func (storage *SqliteStorage) ScanEntries(
 	_ context.Context, query durable.EntryQuery, limit int, cursor durable.Cursor,
 ) (durable.Page[durable.EntryRecord, durable.Cursor], error) {
@@ -579,6 +666,13 @@ func (storage *SqliteStorage) readEntries(
 	query durable.EntryQuery, limit int, cursor durable.Cursor,
 ) (durable.Page[durable.EntryRecord, durable.Cursor], error) {
 	empty := durable.Page[durable.EntryRecord, durable.Cursor]{}
+	start, err := scan.StartOf(query.Order, cursor, durable.ScanDescending)
+	if err != nil {
+		return empty, err
+	}
+	if start.Order == durable.ScanAscending {
+		return storage.readEntriesAscending(query, limit, start)
+	}
 	conversation, err := storage.readConversation(query.ConversationId)
 	if err != nil {
 		return empty, err
@@ -586,10 +680,7 @@ func (storage *SqliteStorage) readEntries(
 	if conversation == nil {
 		return empty, fmt.Errorf("Unknown conversation: %d", query.ConversationId)
 	}
-	after, hasAfter, err := cursorId(cursor)
-	if err != nil {
-		return empty, err
-	}
+	after, hasAfter := start.After, start.HasAfter
 	var upper *int64
 	if query.MaxEntryId != nil {
 		value := int64(*query.MaxEntryId)
@@ -643,7 +734,91 @@ func (storage *SqliteStorage) readEntries(
 			return empty, errors.New("Fork parent conversation is missing")
 		}
 	}
-	return page(values, limit, entryIdOf), nil
+	return page(values, limit, durable.ScanDescending, entryIdOf), nil
+}
+
+// readEntriesAscending reads oldest first: the fork chain's segments from the root conversation forward, each up to its
+// fork point.
+func (storage *SqliteStorage) readEntriesAscending(
+	query durable.EntryQuery, limit int, start scan.Start,
+) (durable.Page[durable.EntryRecord, durable.Cursor], error) {
+	empty := durable.Page[durable.EntryRecord, durable.Cursor]{}
+	type segment struct {
+		conversationId durable.ConversationId
+		upper          *int64
+	}
+	segments := []segment{}
+	conversation, err := storage.readConversation(query.ConversationId)
+	if err != nil {
+		return empty, err
+	}
+	if conversation == nil {
+		return empty, fmt.Errorf("Unknown conversation: %d", query.ConversationId)
+	}
+	var upper *int64
+	if query.MaxEntryId != nil {
+		value := int64(*query.MaxEntryId)
+		upper = &value
+	}
+	for {
+		segments = append(segments, segment{conversationId: conversation.Id, upper: upper})
+		if conversation.Parent == nil {
+			break
+		}
+		at := int64(conversation.Parent.At)
+		if upper == nil || at < *upper {
+			upper = &at
+		}
+		if query.MinEntryId != nil && *upper < int64(*query.MinEntryId) {
+			break
+		}
+		conversation, err = storage.readConversation(conversation.Parent.ConversationId)
+		if err != nil {
+			return empty, err
+		}
+		if conversation == nil {
+			return empty, errors.New("Fork parent conversation is missing")
+		}
+	}
+	var lower *int64
+	if query.MinEntryId != nil {
+		value := int64(*query.MinEntryId)
+		lower = &value
+	}
+	if start.HasAfter {
+		value := start.After + 1
+		if lower != nil {
+			value = max(*lower, value)
+		}
+		lower = &value
+	}
+	values := []durable.EntryRecord{}
+	for _, current := range slices.Backward(segments) {
+		clauses := []string{"conversation_id = ?"}
+		params := []SqliteValue{int64(current.conversationId)}
+		if lower != nil {
+			clauses = append(clauses, "id >= ?")
+			params = append(params, *lower)
+		}
+		if current.upper != nil {
+			clauses = append(clauses, "id <= ?")
+			params = append(params, *current.upper)
+		}
+		params = append(params, int64(limit+1-len(values)))
+		records, err := allRecords[durable.EntryRecord](
+			storage.db,
+			"SELECT record FROM entries WHERE "+strings.Join(clauses, " AND ")+" ORDER BY id ASC LIMIT ?",
+			params...,
+		)
+		if err != nil {
+			return empty, err
+		}
+		values = append(values, records...)
+		if len(values) > limit {
+			break
+		}
+	}
+	return page(values, limit, durable.ScanAscending, entryIdOf), nil
 }
 
 // Task looks up the latest complete record for one task.
@@ -654,19 +829,20 @@ func (storage *SqliteStorage) Task(_ context.Context, id durable.TaskId) (*store
 	return getRecord[storedTask](storage.db, "SELECT record FROM tasks WHERE id = ?", int64(id))
 }
 
-// ScanTasks scans task records matching every supplied filter.
+// ScanTasks scans task records matching every supplied filter by ID in query.Order, ascending by default.
 func (storage *SqliteStorage) ScanTasks(
 	_ context.Context, query durable.TaskQuery, limit int, cursor durable.Cursor,
 ) (durable.Page[storedTask, durable.Cursor], error) {
 	if err := storage.assertOpen(); err != nil {
 		return durable.Page[storedTask, durable.Cursor]{}, err
 	}
-	after, err := cursorStart(cursor)
+	start, err := scan.StartOf(query.Order, cursor, durable.ScanAscending)
 	if err != nil {
 		return durable.Page[storedTask, durable.Cursor]{}, err
 	}
-	clauses := []string{"id > ?"}
-	params := []SqliteValue{after}
+	clause, param, direction := scanSql(start)
+	clauses := []string{clause}
+	params := []SqliteValue{param}
 	if query.ConversationId != nil {
 		clauses = append(clauses, "conversation_id = ?")
 		params = append(params, int64(*query.ConversationId))
@@ -690,13 +866,13 @@ func (storage *SqliteStorage) ScanTasks(
 	params = append(params, int64(limit)+1)
 	records, err := allRecords[storedTask](
 		storage.db,
-		"SELECT record FROM tasks WHERE "+strings.Join(clauses, " AND ")+" ORDER BY id LIMIT ?",
+		"SELECT record FROM tasks WHERE "+strings.Join(clauses, " AND ")+" ORDER BY id "+direction+" LIMIT ?",
 		params...,
 	)
 	if err != nil {
 		return durable.Page[storedTask, durable.Cursor]{}, err
 	}
-	return page(records, limit, taskIdOf), nil
+	return page(records, limit, start.Order, taskIdOf), nil
 }
 
 func boolInt(value bool) int64 {
@@ -716,19 +892,20 @@ func (storage *SqliteStorage) Submission(
 	return getRecord[durable.SubmissionRecord](storage.db, "SELECT record FROM submissions WHERE id = ?", int64(id))
 }
 
-// ScanSubmissions scans submissions matching every supplied filter in ascending ID order.
+// ScanSubmissions scans submissions matching every supplied filter by ID in query.Order, ascending by default.
 func (storage *SqliteStorage) ScanSubmissions(
 	_ context.Context, query durable.SubmissionQuery, limit int, cursor durable.Cursor,
 ) (durable.Page[durable.SubmissionRecord, durable.Cursor], error) {
 	if err := storage.assertOpen(); err != nil {
 		return durable.Page[durable.SubmissionRecord, durable.Cursor]{}, err
 	}
-	after, err := cursorStart(cursor)
+	start, err := scan.StartOf(query.Order, cursor, durable.ScanAscending)
 	if err != nil {
 		return durable.Page[durable.SubmissionRecord, durable.Cursor]{}, err
 	}
-	clauses := []string{"id > ?"}
-	params := []SqliteValue{after}
+	clause, param, direction := scanSql(start)
+	clauses := []string{clause}
+	params := []SqliteValue{param}
 	if query.ConversationId != nil {
 		clauses = append(clauses, "conversation_id = ?")
 		params = append(params, int64(*query.ConversationId))
@@ -740,13 +917,13 @@ func (storage *SqliteStorage) ScanSubmissions(
 	params = append(params, int64(limit)+1)
 	records, err := allRecords[durable.SubmissionRecord](
 		storage.db,
-		"SELECT record FROM submissions WHERE "+strings.Join(clauses, " AND ")+" ORDER BY id LIMIT ?",
+		"SELECT record FROM submissions WHERE "+strings.Join(clauses, " AND ")+" ORDER BY id "+direction+" LIMIT ?",
 		params...,
 	)
 	if err != nil {
 		return durable.Page[durable.SubmissionRecord, durable.Cursor]{}, err
 	}
-	return page(records, limit, submissionIdOf), nil
+	return page(records, limit, start.Order, submissionIdOf), nil
 }
 
 // SubmissionByRequest finds a submission by its conversation-scoped host deduplication key.
@@ -835,7 +1012,7 @@ func (storage *SqliteStorage) ScanDocuments(
 	if err != nil {
 		return durable.Page[durable.DocumentRecord, durable.Cursor]{}, err
 	}
-	return page(records, limit, documentIdOf), nil
+	return page(records, limit, durable.ScanAscending, documentIdOf), nil
 }
 
 // Close waits for admitted multi-query reads, then closes the database. Every call returns the same result once the
@@ -861,6 +1038,7 @@ func (storage *SqliteStorage) Close(_ context.Context) error {
 		<-drained
 	}
 	storage.closeErr = storage.db.Close()
+	storage.retained.release()
 	close(done)
 	return storage.closeErr
 }
@@ -928,7 +1106,7 @@ func materializeDocument(
 	if err != nil {
 		return nil, err
 	}
-	value, err := parseJSON[durable.JsonValue](baseContent)
+	value, err := chordjson.DecodeUnquoting([]byte(baseContent), unquoteJS)
 	if err != nil {
 		return nil, err
 	}
@@ -954,7 +1132,7 @@ func materializeDocument(
 		if err != nil {
 			return nil, err
 		}
-		batch, err := parseJSON[[]durable.Op](content)
+		batch, err := parseOps(content)
 		if err != nil {
 			return nil, err
 		}
@@ -963,13 +1141,22 @@ func materializeDocument(
 	if value, err = ops.ApplyBatches(value, batches); err != nil {
 		return nil, err
 	}
-	object, ok := value.(map[string]any)
+	object, ok := value.(*delta.JsonObject)
 	if !ok {
 		return nil, fmt.Errorf("Document %d does not materialize to an object", id)
 	}
 	return &durable.StoredDocument{
 		Record: *record, Version: int(baseVersion), Value: object, DeltasSinceBase: len(tail),
 	}, nil
+}
+
+func hasEntryWrite(batch []durable.StorageWrite) bool {
+	for _, write := range batch {
+		if _, ok := write.(durable.EntryWrite); ok {
+			return true
+		}
+	}
+	return false
 }
 
 func (storage *SqliteStorage) candidateNextId(batch []durable.StorageWrite) int64 {
@@ -1164,30 +1351,31 @@ func currentDocumentId(executor SqliteExecutor, parts addressParts) (bool, error
 	return row != nil, err
 }
 
-func applyTableWrite(executor SqliteExecutor, write durable.StorageWrite, seq durable.Seq) error {
+// applyTableWrite stores one write. For an entry it also returns the stored JSON text.
+func applyTableWrite(executor SqliteExecutor, write durable.StorageWrite, seq durable.Seq) (entryText string, err error) {
 	switch typed := write.(type) {
 	case durable.ConversationWrite:
 		value := typed.Value
 		record, err := encodeJSON(value)
 		if err != nil {
-			return err
+			return "", err
 		}
 		if err := claimId(executor, int64(value.Id), tableConversation); err != nil {
-			return err
+			return "", err
 		}
 		var ownerConversation, ownerTask SqliteValue
 		if value.Owner != nil {
 			ownerConversation = int64(value.Owner.ConversationId)
 			ownerTask = int64(value.Owner.TaskId)
 		}
-		return executor.Run(
+		return "", executor.Run(
 			"INSERT INTO conversations (id, owner_conversation_id, owner_task_id, record) VALUES (?, ?, ?, ?)",
 			int64(value.Id), ownerConversation, ownerTask, record,
 		)
 	case durable.EntryWrite:
 		value := typed.Value
 		if err := claimId(executor, int64(value.Id), tableEntry); err != nil {
-			return err
+			return "", err
 		}
 		var head SqliteValue
 		if value.Head != nil {
@@ -1195,22 +1383,22 @@ func applyTableWrite(executor SqliteExecutor, write durable.StorageWrite, seq du
 		}
 		record, err := encodeJSON(value)
 		if err != nil {
-			return err
+			return "", err
 		}
-		return executor.Run(
+		return record, executor.Run(
 			"INSERT INTO entries (id, conversation_id, head, commit_seq, record) VALUES (?, ?, ?, ?, ?)",
 			int64(value.Id), int64(value.ConversationId), head, int64(seq), record,
 		)
 	case durable.TaskWrite:
 		value := typed.Value
 		if err := claimId(executor, int64(value.Id), tableTask); err != nil {
-			return err
+			return "", err
 		}
 		record, err := encodeJSON(value)
 		if err != nil {
-			return err
+			return "", err
 		}
-		return executor.Run(
+		return "", executor.Run(
 			`INSERT INTO tasks (id, conversation_id, kind, status, abort_requested, background, record)
 						VALUES (?, ?, ?, ?, ?, ?, ?)
 						ON CONFLICT(id) DO UPDATE SET conversation_id = excluded.conversation_id, kind = excluded.kind,
@@ -1227,7 +1415,7 @@ func applyTableWrite(executor SqliteExecutor, write durable.StorageWrite, seq du
 	case durable.SubmissionWrite:
 		value := typed.Value
 		if err := claimId(executor, int64(value.Id), tableSubmission); err != nil {
-			return err
+			return "", err
 		}
 		var requestId SqliteValue
 		if value.RequestId != nil {
@@ -1235,16 +1423,16 @@ func applyTableWrite(executor SqliteExecutor, write durable.StorageWrite, seq du
 		}
 		record, err := encodeJSON(value)
 		if err != nil {
-			return err
+			return "", err
 		}
-		return executor.Run(
+		return "", executor.Run(
 			`INSERT INTO submissions (id, conversation_id, request_id, status, record) VALUES (?, ?, ?, ?, ?)
 						ON CONFLICT(id) DO UPDATE SET conversation_id = excluded.conversation_id,
 						request_id = excluded.request_id, status = excluded.status, record = excluded.record`,
 			int64(value.Id), int64(value.ConversationId), requestId, string(value.Status), record,
 		)
 	default:
-		return nil
+		return "", nil
 	}
 }
 

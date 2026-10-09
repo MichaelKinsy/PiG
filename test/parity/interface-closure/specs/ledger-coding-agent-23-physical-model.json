@@ -1,0 +1,32 @@
+[
+ {
+  "ids": [
+   "pkg:coding-agent/.#ModelRuntime::property:getPhysicalModel"
+  ],
+  "targets": [
+   "coding/virtual_models.go#ModelRuntime.GetPhysicalModel"
+  ],
+  "production": [
+   "call:coding/virtual_models.go#ModelRuntime.ResolveModel"
+  ],
+  "evidence": [
+   "test:coding/virtual_models_physical_registry_test.go#TestPhysicalModelLookupAndRegistryUnregisterVirtualModel"
+  ],
+  "rationale": "ModelRuntime.getPhysicalModel is GetPhysicalModel(provider, id) returning the catalog model unless it is virtual; undefined is a nil *ai.Model."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#ModelRegistry::property:unregisterVirtualModel"
+  ],
+  "targets": [
+   "coding/virtual_models.go#ModelRegistry.UnregisterVirtualModel"
+  ],
+  "production": [
+   "call:coding/cli/extensions.go#flushExtensionHostVirtualModels"
+  ],
+  "evidence": [
+   "test:coding/virtual_models_physical_registry_test.go#TestPhysicalModelLookupAndRegistryUnregisterVirtualModel"
+  ],
+  "rationale": "ModelRegistry.unregisterVirtualModel is UnregisterVirtualModel(provider, id), delegating to the runtime; an unknown id is ignored."
+ }
+]

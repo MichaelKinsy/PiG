@@ -15,8 +15,7 @@ import (
 	"sync"
 	"sync/atomic"
 	"testing"
-
-	"github.com/fsnotify/fsnotify"
+	"time"
 
 	"github.com/MichaelKinsy/PiG/internal/chord"
 	"github.com/MichaelKinsy/PiG/internal/experimental/client"
@@ -340,7 +339,7 @@ func connectAndAttachExperimentalClient(ctx context.Context, server *RunningServ
 			err = cleanup
 		}
 	}()
-	scope, err := source.Open(chord.RemoteServiceSourceOpenOptions{Services: []string{services.SessionManagementDefinition.Id()}})
+	scope, err := source.Open(chord.RemoteServiceSourceOpenOptions{Services: chord.ServiceIDs(services.SessionManagementDefinition.Id())})
 	if err != nil {
 		return nil, err
 	}
@@ -461,72 +460,44 @@ func (changes *experimentalChanges) Wait(t *testing.T, predicate func() bool) {
 	}
 }
 
-// waitExperimentalPathRemoved checks the same lstat predicate as upstream while filesystem notifications own the wait. A rename/replacement is rechecked rather than assumed to remove the path.
-func waitExperimentalPathRemoved(t *testing.T, path string) {
+// Vitest's expect.poll rechecks every 50 ms and fails after 1000 ms unless the call names its own timeout; Pi's remote-runtime tests poll pathExists with these defaults or with { timeout: 5_000 }.
+const (
+	experimentalPollTimeout  = time.Second
+	experimentalPollInterval = 50 * time.Millisecond
+)
+
+// waitExperimentalPathRemoved is Pi's expect.poll(() => pathExists(path), { timeout }).toBe(false): it rechecks the same lstat predicate until the path is gone or timeout passes. It polls instead of waiting for filesystem notifications, as Pi does, because fsnotify v1.5.4 reports no removal of a Unix socket file on macOS.
+func waitExperimentalPathRemoved(t *testing.T, path string, timeout time.Duration) {
 	t.Helper()
-	if err := awaitExperimentalPathRemoved(t.Context(), path); err != nil {
+	ctx, cancel := context.WithTimeout(t.Context(), timeout)
+	defer cancel()
+	if err := awaitExperimentalPathRemoved(ctx, path, experimentalPollInterval); err != nil {
 		t.Fatal(err)
 	}
 }
 
-func awaitExperimentalPathRemoved(ctx context.Context, path string) (err error) {
-	missing := func() (bool, error) {
+func awaitExperimentalPathRemoved(ctx context.Context, path string, interval time.Duration) error {
+	ticker := time.NewTicker(interval)
+	defer ticker.Stop()
+	for {
 		_, err := os.Lstat(path)
 		if errors.Is(err, os.ErrNotExist) {
-			return true, nil
+			return nil
 		}
-		return false, err
-	}
-	if gone, err := missing(); gone || err != nil {
-		return err
-	}
-	watcher, err := fsnotify.NewWatcher()
-	if err != nil {
-		return err
-	}
-	defer func() {
-		if failure := watcher.Close(); failure != nil {
-			err = errors.Join(err, failure)
-			return
-		}
-		for range watcher.Events {
-		}
-		for range watcher.Errors {
-		}
-	}()
-	if err := watcher.Add(filepath.Dir(path)); err != nil {
-		if gone, check := missing(); gone || check != nil {
-			return check
-		}
-		return err
-	}
-	for {
-		if gone, err := missing(); gone || err != nil {
+		if err != nil {
 			return err
 		}
 		select {
-		case _, open := <-watcher.Events:
-			if !open {
-				return fmt.Errorf("filesystem watcher closed before %s was removed", path)
-			}
-		case failure, open := <-watcher.Errors:
-			if !open {
-				return fmt.Errorf("filesystem watcher errors closed before %s was removed", path)
-			}
-			return failure
+		case <-ticker.C:
 		case <-ctx.Done():
-			return context.Cause(ctx)
+			return fmt.Errorf("wait for %s to be removed: %w", path, context.Cause(ctx))
 		}
 	}
 }
 
 func experimentalExamplePluginPath(t *testing.T) string {
 	t.Helper()
-	_, source, _, ok := runtime.Caller(0)
-	if !ok {
-		t.Fatal("cannot locate experimental fixture source")
-	}
-	path := filepath.Join(filepath.Dir(source), "..", "..", ".upstream", "current", "packages", "coding-agent", "examples", "plugins", "pi-example-plugin")
+	path := filepath.Join(testenv.ModuleRoot(t), ".upstream", "current", "packages", "coding-agent", "examples", "plugins", "pi-example-plugin")
 	path, err := filepath.EvalSymlinks(path)
 	if err != nil {
 		t.Fatal(err)

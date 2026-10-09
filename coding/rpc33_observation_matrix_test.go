@@ -229,6 +229,10 @@ func canonicalizeObservationClocks(value any) {
 			if _, ok := value["timestamp"].(json.Number); ok {
 				value["timestamp"] = json.Number("0")
 			}
+			// Pi 1.1.0 times each response and tool call (event-stream.ts:127-128, agent-loop.ts); the value is wall time, so only its presence is compared.
+			if _, ok := value["durationMs"].(json.Number); ok {
+				value["durationMs"] = json.Number("0")
+			}
 			return
 		}
 		for key, item := range value {
@@ -243,7 +247,7 @@ func runObservationCase(t *testing.T, c observationCase, body string) observatio
 	t.Helper()
 	// ctx is armed below, after server/runtime/provider setup. Its deadline detects a
 	// missing start/body handshake; it never releases the body or changes successful
-	// scheduling. Arming it earlier let slow parallel setup (NewServices disk I/O on
+	// scheduling. Arming it earlier let slow parallel setup (CreateAgentSessionServices disk I/O on
 	// Windows) consume the budget before any request existed. A timed-out row remains a failure.
 	ctx := t.Context()
 	cancel := func() {}
@@ -339,7 +343,7 @@ func runObservationCase(t *testing.T, c observationCase, body string) observatio
 	}
 	user := agent.AgentMessage{User: &agent.UserMessage{Role: agent.RoleUser, Content: ai.UserContentBlocks{ai.TextContent{Text: "probe"}}, Timestamp: 1}}
 	if strings.HasSuffix(c.Mode, "agent") {
-		a := agent.NewAgent(agent.AgentOptions{Model: model, Tools: []agent.AgentTool{}, StreamFn: streamFn,
+		a := mustNewAgent(agent.AgentOptions{Model: model, Tools: []agent.AgentTool{}, StreamFn: streamFn,
 			FinishTurn: func(context.Context, agent.AgentTurnContext) (*agent.AgentTurnDecision, error) {
 				return &agent.AgentTurnDecision{Action: agent.AgentTurnEnd}, nil
 			},

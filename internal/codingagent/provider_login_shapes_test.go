@@ -87,7 +87,7 @@ func TestLoginRegisteredProviderUsesDeclaredMethodWithoutDefaultModel(t *testing
 }
 
 func TestLoginArgumentCompletionWithoutCredentials(t *testing.T) {
-	m := NewInteractiveMode(InteractiveOptions{AgentDir: t.TempDir()})
+	m := NewInteractiveMode(nil, InteractiveModeOptions{AgentDir: t.TempDir()})
 	// Missing credential storage must not remove provider metadata from completion.
 	m.opts.AgentDir = filepath.Join(m.opts.AgentDir, "missing")
 	if items := m.loginArgCompletions("openrouter"); len(items) != 1 {
@@ -96,7 +96,7 @@ func TestLoginArgumentCompletionWithoutCredentials(t *testing.T) {
 }
 
 func BenchmarkLoginArgumentCompletions(b *testing.B) {
-	m := NewInteractiveMode(InteractiveOptions{AgentDir: b.TempDir()})
+	m := NewInteractiveMode(nil, InteractiveModeOptions{AgentDir: b.TempDir()})
 	b.ReportAllocs()
 	for b.Loop() {
 		_ = m.loginArgCompletions("open")

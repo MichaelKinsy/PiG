@@ -171,20 +171,6 @@ type connectionError interface {
 	ConnectionError() bool
 }
 
-// mapBedrockTransportError applies the same categories at the AWS SDK boundary. Modeled HTTP/service errors remain untouched so status and Bedrock exception classification continue to control overflow and retry behavior.
-func mapBedrockTransportError(ctx context.Context, err error, message string) error {
-	if err == nil {
-		return nil
-	}
-	if contextErr := contextTransportError(ctx); contextErr != nil {
-		return contextErr
-	}
-	if !isGoTransportError(err) {
-		return err
-	}
-	return &nodeTransportError{message: message, cause: err}
-}
-
 func isGoTransportError(err error) bool {
 	var connection connectionError
 	if errors.As(err, &connection) && connection.ConnectionError() {

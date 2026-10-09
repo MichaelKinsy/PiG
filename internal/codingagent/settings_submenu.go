@@ -27,6 +27,7 @@ type SteppedSubmenuOptions struct {
 
 // SteppedSubmenu selects dependent values, goes back one step on Escape, and optionally loops after completion.
 type SteppedSubmenu struct {
+	*tui.Container  // settings-submenu.ts: SteppedSubmenu extends Container but renders only its active step
 	steps           []SteppedSubmenuStep
 	onComplete      func(map[string]string)
 	onCancel        func()
@@ -37,7 +38,7 @@ type SteppedSubmenu struct {
 }
 
 func NewSteppedSubmenu(steps []SteppedSubmenuStep, onComplete func(map[string]string), onCancel func(), opts SteppedSubmenuOptions) *SteppedSubmenu {
-	s := &SteppedSubmenu{steps: steps, onComplete: onComplete, onCancel: onCancel, opts: opts, context: maps.Clone(opts.InitialContext)}
+	s := &SteppedSubmenu{Container: tui.NewContainer(), steps: steps, onComplete: onComplete, onCancel: onCancel, opts: opts, context: maps.Clone(opts.InitialContext)}
 	if s.context == nil {
 		s.context = map[string]string{}
 	}

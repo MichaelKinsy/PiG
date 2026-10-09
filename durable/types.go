@@ -11,11 +11,13 @@ import (
 
 // Ports packages/durable/src/types.ts
 
-// JsonValue is a strict JSON value: nil, bool, float64 or another JSON number, string, []any, or map[string]any.
+// JsonValue is a strict JSON value: nil, bool, float64 or another JSON number, string, []any, or an object. Objects that
+// durable decodes or copies are *delta.JsonObject, which keeps JavaScript's property order; a Go map a caller supplies has
+// no order and is copied in own-key order.
 type JsonValue = any
 
 // JsonObject is the JSON object used as the root of every durable document.
-type JsonObject = map[string]any
+type JsonObject = *delta.JsonObject
 
 // Op is one Chord delta operation (packages/chord/src/delta).
 type Op = delta.Op
@@ -99,12 +101,15 @@ type CheckpointInfo struct {
 	DeltasSinceBase int
 }
 
-// CommonDocDefinition holds the definition fields shared by singleton documents and document families.
+// CommonDocDefinition holds the definition fields shared by singleton documents and document families (types.ts:69-79).
+// The singleton definition embeds it; a family definition has its fields except Initial, as upstream's `Omit<CommonDocDefinition<T>, "initial">`.
 type CommonDocDefinition[T any] struct {
 	// Kind is the stable persisted kind; part of the public protocol.
 	Kind string
 	// Version is the positive integer version of the stored value shape.
 	Version int
+	// Initial returns the document's first value.
+	Initial func() T
 	// Migrate converts a value stored by an older version; nil when absent.
 	Migrate func(value JsonObject, fromVersion int) (T, error)
 	// CheckpointWhen returns true to store this ordinary change as a complete base instead of a delta; nil when
@@ -116,13 +121,23 @@ type CommonDocDefinition[T any] struct {
 type DocDefinition[T any] struct {
 	CommonDocDefinition[T]
 	DocumentSemantics
-	Initial func() T
 }
 
-// DocFamilyDefinition is a keyed document family definition; Initial(seed) runs only when a member is absent.
+// DocFamilyDefinition is a keyed document family definition; Initial(seed) runs only when a member is absent. It has the fields of
+// CommonDocDefinition except Initial, which takes the seed (types.ts:84-89 `Omit<CommonDocDefinition<T>, "initial"> & ...`).
 type DocFamilyDefinition[T, I any] struct {
-	CommonDocDefinition[T]
+	// Kind is the stable persisted kind; part of the public protocol.
+	Kind string
+	// Version is the positive integer version of the stored value shape.
+	Version int
+	// Migrate converts a value stored by an older version; nil when absent.
+	Migrate func(value JsonObject, fromVersion int) (T, error)
+	// CheckpointWhen returns true to store this ordinary change as a complete base instead of a delta; nil when
+	// absent.
+	CheckpointWhen func(value T, ops []Op, info CheckpointInfo) bool
 	DocumentSemantics
+	// Family is upstream's required literal `family: true` (documents.ts FamilyInput); DefineDocFamily panics when it is false.
+	Family  bool
 	Initial func(seed I) T
 }
 
@@ -228,9 +243,9 @@ type TaskRuntime[I, S, R any, H any] interface {
 	Conversation(ctx context.Context, id ConversationId) (ConversationHandle, error)
 	// Entry returns a committed entry visible from the task's conversation; nil when absent.
 	Entry(ctx context.Context, id EntryId) (*EntryRecord, error)
-	// Context returns the committed raw active transcript and model context, cut off at the visible entry at when at
-	// is not nil.
-	Context(ctx context.Context, conversationId ConversationId, at *EntryId) (ContextView, error)
+	// Context returns the committed raw active transcript and model context, cut off at the visible entry
+	// options.At when it is set.
+	Context(ctx context.Context, conversationId ConversationId, options *ContextOptions) (ContextView, error)
 	// Now returns the Harness clock.
 	Now() float64
 	// Report forwards a non-fatal failure to HarnessOptions.onReport.
@@ -374,8 +389,9 @@ type EntryDraft struct {
 	Model []ai.Message  `json:"model,omitempty"`
 	Data  JsonValue     `json:"data,omitempty"`
 	Edits []ContextEdit `json:"edits,omitempty"`
-	// Head starts active context at an entry; HeadSelf starts it at the newly assigned entry ID.
-	Head     *EntryId `json:"-"`
+	// Head starts active context at an entry; HeadSelf starts it at the newly assigned entry ID. MarshalJSON writes either as the
+	// wire member head: an entry ID, or "self".
+	Head     *EntryId `json:"head,omitempty"`
 	HeadSelf bool     `json:"-"`
 }
 
@@ -551,6 +567,12 @@ type TaskRecord[I, S, R any] struct {
 	State          TaskState[S, R] `json:"state"`
 	// Memos are small first-writer-wins values retained while the task can run; nil once completing or terminal.
 	Memos map[string]JsonValue `json:"memos,omitempty"`
+	// StartedAt is the wall-clock time in milliseconds of the first change to running, stamped by the Session. It is
+	// kept through waits and recovery, so the span to EndedAt includes them. Nil before the task first runs, and on
+	// records written by earlier versions.
+	StartedAt *float64 `json:"startedAt,omitempty"`
+	// EndedAt is the wall-clock time in milliseconds of the change to terminal, stamped by the Session; nil while live.
+	EndedAt *float64 `json:"endedAt,omitempty"`
 }
 
 // DocumentRecordScope is the owner of a document incarnation.
@@ -597,22 +619,43 @@ type Page[T, C any] struct {
 	Next *C
 }
 
-// Cursor is backend-owned JSON continuation state that callers only round-trip to the same scan.
+// Cursor is backend-owned JSON continuation state that callers only round-trip to the same scan. It carries the scan's
+// order: a scan given a cursor continues in that order, and rejects a different Order in its query.
 type Cursor = map[string]JsonValue
+
+// ScanOrder is the ID order of a scan.
+type ScanOrder string
+
+const (
+	// ScanAscending is oldest first.
+	ScanAscending ScanOrder = "ascending"
+	// ScanDescending is newest first.
+	ScanDescending ScanOrder = "descending"
+)
+
+// ContextOptions is the optional argument of a context read.
+type ContextOptions struct {
+	// At cuts the context off at this visible entry: the view Fork(At) would start with.
+	At *EntryId
+}
 
 // ConversationQuery holds optional filters for an ordered conversation scan.
 type ConversationQuery struct {
 	OwnerConversationId *ConversationId
 	OwnerTaskId         *TaskId
+	// Order defaults to ScanAscending; with a cursor, the cursor's order.
+	Order *ScanOrder
 }
 
-// EntryQuery holds inclusive ID bounds for a newest-first scan of one conversation's fork-aware history.
+// EntryQuery holds inclusive ID bounds for a scan of one conversation's fork-aware history.
 type EntryQuery struct {
 	ConversationId ConversationId
 	// MinEntryId is the oldest entry ID that may be returned.
 	MinEntryId *EntryId
 	// MaxEntryId is the newest entry ID that may be returned.
 	MaxEntryId *EntryId
+	// Order defaults to ScanDescending; with a cursor, the cursor's order.
+	Order *ScanOrder
 }
 
 // TaskQuery holds optional filters for an ordered scan of durable task records.
@@ -622,12 +665,16 @@ type TaskQuery struct {
 	Status         *TaskStatus
 	AbortRequested *bool
 	Background     *bool
+	// Order defaults to ScanAscending; with a cursor, the cursor's order.
+	Order *ScanOrder
 }
 
 // SubmissionQuery holds optional filters for an ordered scan of submission records.
 type SubmissionQuery struct {
 	ConversationId *ConversationId
 	Status         *SubmissionStatus
+	// Order defaults to ScanAscending; with a cursor, the cursor's order.
+	Order *ScanOrder
 }
 
 // DocumentPoint is the current state (Current) or one historical commit sequence used for document membership and
@@ -928,9 +975,9 @@ type Session interface {
 	// SubscribeClose observes close synchronously when it begins. The listener must not panic, block, or call
 	// Session APIs.
 	SubscribeClose(listener func()) func()
-	// DocumentStateErased returns a disposable state of the document's JSON value, or nil when absent. Typed states
-	// use the DocumentStateOf helper.
-	DocumentStateErased(ctx context.Context, token AnyDocToken, args ...any) (AttachedReplicatedState[JsonObject], error)
+	// DocumentStateErased returns a disposable state of the document's JSON value, or nil when absent. Typed
+	// states use the DocumentStateOf helper.
+	DocumentStateErased(ctx context.Context, token AnyDocToken, args ...any) (DocumentState[JsonObject], error)
 }
 
 // Committer runs one atomic Session commit: a Session, a Conversation, or a tool's ToolExecutionApi.

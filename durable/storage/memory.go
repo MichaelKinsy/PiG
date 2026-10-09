@@ -11,8 +11,10 @@ import (
 	"slices"
 	"sync"
 
+	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/durable"
 	"github.com/MichaelKinsy/PiG/durable/storage/internal/ops"
+	"github.com/MichaelKinsy/PiG/durable/storage/internal/scan"
 )
 
 type storedTask = durable.TaskRecord[durable.JsonValue, durable.JsonValue, durable.JsonValue]
@@ -210,8 +212,10 @@ func cursorAfter(cursor durable.Cursor) (after int64, ok bool, err error) {
 
 var errInvalidCursor = errors.New("Invalid storage cursor")
 
-// page returns at most limit values and, when more remain, a cursor after the last returned one.
-func page[T any](values []T, limit int, id func(T) int64, clone func(T) T) durable.Page[T, durable.Cursor] {
+// page returns at most limit values and, when more remain, a cursor after the last returned one in the scan's order.
+func page[T any](
+	values []T, limit int, order durable.ScanOrder, id func(T) int64, clone func(T) T,
+) durable.Page[T, durable.Cursor] {
 	count := min(max(limit, 0), len(values))
 	items := make([]T, count)
 	for index := range count {
@@ -224,8 +228,34 @@ func page[T any](values []T, limit int, id func(T) int64, clone func(T) T) durab
 	if count > 0 {
 		after = id(items[count-1])
 	}
-	next := durable.Cursor{"after": after}
+	next := scan.NextCursor(after, order)
 	return durable.Page[T, durable.Cursor]{Items: items, Next: &next}
+}
+
+// scanIndexes visits the indexes of sorted ids in scan order, after the cursor's ID when there is one, until visit
+// returns false.
+func scanIndexes(ids []int64, start scan.Start, visit func(index int) bool) {
+	if start.Order == durable.ScanAscending {
+		first := 0
+		if start.HasAfter {
+			first = upperBound(ids, start.After)
+		}
+		for index := first; index < len(ids); index++ {
+			if !visit(index) {
+				return
+			}
+		}
+		return
+	}
+	end := len(ids)
+	if start.HasAfter {
+		end = lowerBound(ids, start.After)
+	}
+	for index := end - 1; index >= 0; index-- {
+		if !visit(index) {
+			return
+		}
+	}
 }
 
 // PreparedMemoryCommit is a fully validated, detached state mutation whose application performs no fallible
@@ -562,7 +592,7 @@ func (storage *MemoryStorage) Conversation(
 	return &copied, nil
 }
 
-// ScanConversations scans conversations in ascending ID order.
+// ScanConversations scans conversations by ID in query.Order, ascending by default.
 func (storage *MemoryStorage) ScanConversations(
 	_ context.Context, query durable.ConversationQuery, limit int, cursor durable.Cursor,
 ) (durable.Page[durable.ConversationRecord, durable.Cursor], error) {
@@ -580,20 +610,24 @@ func (storage *MemoryStorage) ScanConversations(
 	default:
 		ids = storage.state.conversationIds
 	}
-	start, err := startAfter(ids, cursor)
+	start, err := scan.StartOf(query.Order, cursor, durable.ScanAscending)
 	if err != nil {
 		return durable.Page[durable.ConversationRecord, durable.Cursor]{}, err
 	}
 	values := []durable.ConversationRecord{}
-	for index := start; index < len(ids) && len(values) <= limit; index++ {
+	scanIndexes(ids, start, func(index int) bool {
+		if len(values) > limit {
+			return false
+		}
 		value := storage.state.conversations[durable.ConversationId(ids[index])]
 		if query.OwnerConversationId != nil &&
 			(value.Owner == nil || value.Owner.ConversationId != *query.OwnerConversationId) {
-			continue
+			return true
 		}
 		values = append(values, value)
-	}
-	return page(values, limit, conversationIdOf, cloneConversation), nil
+		return true
+	})
+	return page(values, limit, start.Order, conversationIdOf, cloneConversation), nil
 }
 
 func startAfter(ids []int64, cursor durable.Cursor) (int, error) {
@@ -676,7 +710,8 @@ func (storage *MemoryStorage) FindLatestHeadMarker(
 	}
 }
 
-// ScanEntries scans the inclusive visible range newest-first, returning at most limit entries.
+// ScanEntries scans the inclusive visible range in query.Order (descending by default), returning at most limit
+// entries.
 func (storage *MemoryStorage) ScanEntries(
 	_ context.Context, query durable.EntryQuery, limit int, cursor durable.Cursor,
 ) (durable.Page[durable.EntryRecord, durable.Cursor], error) {
@@ -685,7 +720,7 @@ func (storage *MemoryStorage) ScanEntries(
 	if err := storage.assertOpen(); err != nil {
 		return durable.Page[durable.EntryRecord, durable.Cursor]{}, err
 	}
-	after, hasAfter, err := cursorAfter(cursor)
+	start, err := scan.StartOf(query.Order, cursor, durable.ScanDescending)
 	if err != nil {
 		return durable.Page[durable.EntryRecord, durable.Cursor]{}, err
 	}
@@ -697,18 +732,27 @@ func (storage *MemoryStorage) ScanEntries(
 	if query.MaxEntryId != nil {
 		maxEntryId = int64(*query.MaxEntryId)
 	}
-	if hasAfter {
-		maxEntryId = min(maxEntryId, after-1)
+	// The cursor narrows the bound on the side the scan moves away from.
+	if start.HasAfter && start.Order == durable.ScanDescending {
+		maxEntryId = min(maxEntryId, start.After-1)
+	}
+	if start.HasAfter && start.Order == durable.ScanAscending {
+		minEntryId = max(minEntryId, start.After+1)
 	}
 	visible := []durable.EntryRecord{}
-	err = storage.visibleEntries(query.ConversationId, minEntryId, maxEntryId, func(entry durable.EntryRecord) bool {
+	visit := func(entry durable.EntryRecord) bool {
 		visible = append(visible, entry)
 		return len(visible) <= limit
-	})
+	}
+	if start.Order == durable.ScanDescending {
+		err = storage.visibleEntries(query.ConversationId, minEntryId, maxEntryId, visit)
+	} else {
+		err = storage.visibleEntriesAscending(query.ConversationId, minEntryId, maxEntryId, visit)
+	}
 	if err != nil {
 		return durable.Page[durable.EntryRecord, durable.Cursor]{}, err
 	}
-	return page(visible, limit, entryIdOf, cloneEntry), nil
+	return page(visible, limit, start.Order, entryIdOf, cloneEntry), nil
 }
 
 // Task looks up the latest complete record for one task.
@@ -726,7 +770,7 @@ func (storage *MemoryStorage) Task(_ context.Context, id durable.TaskId) (*store
 	return &copied, nil
 }
 
-// ScanTasks scans task records matching every supplied filter.
+// ScanTasks scans task records matching every supplied filter by ID in query.Order, ascending by default.
 func (storage *MemoryStorage) ScanTasks(
 	_ context.Context, query durable.TaskQuery, limit int, cursor durable.Cursor,
 ) (durable.Page[storedTask, durable.Cursor], error) {
@@ -739,28 +783,32 @@ func (storage *MemoryStorage) ScanTasks(
 	if query.Status != nil {
 		ids = storage.state.taskIdsByStatus[*query.Status]
 	}
-	start, err := startAfter(ids, cursor)
+	start, err := scan.StartOf(query.Order, cursor, durable.ScanAscending)
 	if err != nil {
 		return durable.Page[storedTask, durable.Cursor]{}, err
 	}
 	values := []storedTask{}
-	for index := start; index < len(ids) && len(values) <= limit; index++ {
+	scanIndexes(ids, start, func(index int) bool {
+		if len(values) > limit {
+			return false
+		}
 		value := storage.state.tasks[durable.TaskId(ids[index])]
 		if query.ConversationId != nil && value.ConversationId != *query.ConversationId {
-			continue
+			return true
 		}
 		if query.Kind != nil && value.Kind != *query.Kind {
-			continue
+			return true
 		}
 		if query.AbortRequested != nil && value.AbortRequested != *query.AbortRequested {
-			continue
+			return true
 		}
 		if query.Background != nil && value.Background != *query.Background {
-			continue
+			return true
 		}
 		values = append(values, value)
-	}
-	return page(values, limit, taskIdOf, cloneTask), nil
+		return true
+	})
+	return page(values, limit, start.Order, taskIdOf, cloneTask), nil
 }
 
 // Submission looks up the latest complete record for one admitted submission.
@@ -780,7 +828,7 @@ func (storage *MemoryStorage) Submission(
 	return &copied, nil
 }
 
-// ScanSubmissions scans submissions matching every supplied filter in ascending ID order.
+// ScanSubmissions scans submissions matching every supplied filter by ID in query.Order, ascending by default.
 func (storage *MemoryStorage) ScanSubmissions(
 	_ context.Context, query durable.SubmissionQuery, limit int, cursor durable.Cursor,
 ) (durable.Page[durable.SubmissionRecord, durable.Cursor], error) {
@@ -793,19 +841,23 @@ func (storage *MemoryStorage) ScanSubmissions(
 	if query.Status != nil {
 		ids = storage.state.submissionIdsByStatus[*query.Status]
 	}
-	start, err := startAfter(ids, cursor)
+	start, err := scan.StartOf(query.Order, cursor, durable.ScanAscending)
 	if err != nil {
 		return durable.Page[durable.SubmissionRecord, durable.Cursor]{}, err
 	}
 	values := []durable.SubmissionRecord{}
-	for index := start; index < len(ids) && len(values) <= limit; index++ {
+	scanIndexes(ids, start, func(index int) bool {
+		if len(values) > limit {
+			return false
+		}
 		value := storage.state.submissions[durable.SubmissionId(ids[index])]
 		if query.ConversationId != nil && value.ConversationId != *query.ConversationId {
-			continue
+			return true
 		}
 		values = append(values, value)
-	}
-	return page(values, limit, submissionIdOf, cloneSubmission), nil
+		return true
+	})
+	return page(values, limit, start.Order, submissionIdOf, cloneSubmission), nil
 }
 
 // SubmissionByRequest finds a submission by its conversation-scoped host deduplication key.
@@ -901,7 +953,7 @@ func (storage *MemoryStorage) ScanDocuments(
 			values = append(values, record)
 		}
 	}
-	return page(values, limit, documentIdOf, cloneDocumentRecord), nil
+	return page(values, limit, durable.ScanAscending, documentIdOf, cloneDocumentRecord), nil
 }
 
 // Close releases the storage; all later operations fail.
@@ -953,7 +1005,7 @@ func (storage *MemoryStorage) materializeDocument(
 	if err != nil {
 		return nil, err
 	}
-	object, ok := value.(map[string]any)
+	object, ok := value.(*delta.JsonObject)
 	if !ok {
 		return nil, fmt.Errorf("Document %d does not materialize to an object", id)
 	}
@@ -995,6 +1047,48 @@ func (storage *MemoryStorage) visibleEntries(
 		}
 		currentId = conversation.Parent.ConversationId
 	}
+}
+
+// visibleEntriesAscending visits the conversation's fork-aware history oldest first within the inclusive ID bounds
+// until visit returns false: the fork chain's segments from the root conversation forward, each capped at its fork
+// point.
+func (storage *MemoryStorage) visibleEntriesAscending(
+	conversationId durable.ConversationId, minEntryId, maxEntryId int64, visit func(durable.EntryRecord) bool,
+) error {
+	if _, ok := storage.state.conversations[conversationId]; !ok {
+		return fmt.Errorf("Unknown conversation: %d", conversationId)
+	}
+	type segment struct {
+		conversationId durable.ConversationId
+		upper          int64
+	}
+	segments := []segment{}
+	currentId := conversationId
+	upperEntryId := maxEntryId
+	for {
+		segments = append(segments, segment{conversationId: currentId, upper: upperEntryId})
+		conversation := storage.state.conversations[currentId]
+		if conversation.Parent == nil {
+			break
+		}
+		upperEntryId = min(upperEntryId, int64(conversation.Parent.At))
+		if upperEntryId < minEntryId {
+			break
+		}
+		currentId = conversation.Parent.ConversationId
+	}
+	for _, current := range slices.Backward(segments) {
+		ids := storage.state.entryIds[current.conversationId]
+		for index := lowerBound(ids, minEntryId); index < len(ids); index++ {
+			if ids[index] > current.upper {
+				break
+			}
+			if !visit(storage.state.entries[durable.EntryId(ids[index])]) {
+				return nil
+			}
+		}
+	}
+	return nil
 }
 
 // writeTable returns the table a creating write claims its ID in; ok is false for document change and retirement.

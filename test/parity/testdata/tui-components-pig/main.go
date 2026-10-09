@@ -29,7 +29,7 @@ func main() {
 }
 
 func probeLoader() map[string]any {
-	loader := tui.NewLoader("Loading...")
+	loader := tui.NewLoader(nil, nil, nil, "Loading...", nil)
 	lines := loader.Render(40)
 	before := strings.Join(lines, "\n")
 	loader.Tick()
@@ -54,9 +54,9 @@ func emptyFramePrefix() string {
 }
 
 func probeBorderedLoader() map[string]any {
-	cancellable := tui.NewBorderedLoader("Loading data...", true)
+	cancellable := tui.NewBorderedLoader(nil, tui.ActiveTheme(), "Loading data...")
 	cancellableLines := cancellable.Render(60)
-	non := tui.NewBorderedLoader("Processing...", false)
+	non := tui.NewBorderedLoader(nil, tui.ActiveTheme(), "Processing...", tui.BorderedLoaderOptions{Cancellable: new(false)})
 	nonLines := non.Render(60)
 	before := strings.Join(cancellableLines, "\n")
 	cancellable.NextFrame()

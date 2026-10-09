@@ -10,13 +10,16 @@ returned extension over a host-provided subprocess socket.
 
 from __future__ import annotations
 
+import base64
 import copy
 import dataclasses
 import decimal
+import io
 import json
 import math
 import os
 import queue
+import re
 import socket
 import struct
 import sys
@@ -28,10 +31,15 @@ from collections import deque
 from contextvars import ContextVar
 from dataclasses import dataclass, field
 from typing import Any, Callable, Literal, NotRequired, Protocol, TypeAlias, TypedDict
+from . import editor_component as _editor_component
+from .editor_component import EditorBase as EditorBase, EditorComponent as EditorComponent, EditorFactory as EditorFactory
 from .autocomplete import AutocompleteProvider as AutocompleteProvider, AutocompleteProviderFactory, _AutocompleteRegistry
-from .session_manager import SessionManager
+from .session_manager import SessionManager, SetupSessionManager
 from ._color import color_ansi, parse_color, style_text_with_ansi
+from . import kit as kit
+from .kit import ViewComponent as ViewComponent
 from .event_bus import EventBus as EventBus, EventBusHandler as EventBusHandler, _EventBusHub
+from .user_bash import BashExecOptions as BashExecOptions, _BashOperationsTable, _data_update, _run_user_bash_exec, _user_bash_operations_reply
 from .provider import (
     Provider, ProviderSignal,
     ProviderAuth as ProviderAuth, APIKeyAuth as APIKeyAuth, OAuthAuth as OAuthAuth,
@@ -212,6 +220,7 @@ class ToolLoadout:
     registered: list[dict[str, Any]]
     exposures: dict[str, str] = field(default_factory=dict)
     namespaces: dict[str, ToolNamespace] = field(default_factory=dict)
+    prompt_guidelines: dict[str, list[str]] = field(default_factory=dict)
 
     def get_exposure(self, name: str) -> ToolExposure:
         """The tool's exposure; a tool without a definition is ``"direct"`` (agent-session.ts:1480-1482)."""
@@ -220,6 +229,11 @@ class ToolLoadout:
     def get_namespace(self, name: str) -> ToolNamespace | None:
         """The tool's namespace, or None (agent-session.ts:1520)."""
         return self.namespaces.get(name)
+
+    def get_prompt_guidelines(self, name: str) -> list[str]:
+        """The tool's ``promptGuidelines`` as the system prompt has them (trimmed, without duplicates); empty for a tool
+        without any. Hidden declarations leave them out of the system prompt (agent-session.ts getPromptGuidelines)."""
+        return list(self.prompt_guidelines.get(name, []))
 
 
 ToolPrepareLoadoutHandler: TypeAlias = Callable[[ToolLoadout], "ToolLoadoutChanges | None"]
@@ -244,7 +258,11 @@ class ToolRenderContext:
     expanded: bool
     show_images: bool
     is_error: bool
+    #: Horizontal padding configured by the ``outputPad`` setting. Renderers with ``renderShell: "self"`` apply it themselves.
+    output_pad: int
     state: dict[str, Any]
+    # Recorded execution time of a final result in milliseconds. Absent while the result is partial and for results stored without one. upstream: ToolRenderContext.durationMs
+    duration_ms: int | None = None
     _invalidate: Callable[[], None] = field(repr=False, default=lambda: None)
 
     def invalidate(self) -> None:
@@ -255,16 +273,25 @@ class ToolRenderContext:
 ToolRenderCallHandler: TypeAlias = Callable[["Context", dict[str, Any], ToolRenderContext, int], list[str]]
 # A result renderer: (ctx, {content, details}, {expanded, isPartial}, render context, width) -> lines.
 ToolRenderResultHandler: TypeAlias = Callable[["Context", dict[str, Any], dict[str, Any], ToolRenderContext, int], list[str]]
+# The view forms (D107): the same arguments, returning a kit.View the host renders at the card's width.
+ToolRenderCallViewHandler: TypeAlias = Callable[["Context", dict[str, Any], ToolRenderContext, int], kit.View]
+ToolRenderResultViewHandler: TypeAlias = Callable[["Context", dict[str, Any], dict[str, Any], ToolRenderContext, int], kit.View]
 Factory: TypeAlias = Callable[[], "Extension"]
 
 
 @dataclass(kw_only=True)
 class ToolRenderers:
-    """How calls to a tool are drawn (upstream ToolRenderers): render_shell, render_call and render_result."""
+    """How calls to a tool are drawn (upstream ToolRenderers): render_shell, render_call and render_result.
+
+    ``call_view`` and ``result_view`` are the view forms (D107): each declares its phase rendered and wins over the
+    line form set for the same phase.
+    """
 
     render_call: ToolRenderCallHandler | None = None
     render_result: ToolRenderResultHandler | None = None
     render_shell: str = "default"
+    call_view: ToolRenderCallViewHandler | None = None
+    result_view: ToolRenderResultViewHandler | None = None
 
 
 # A tool renderer resolver (upstream ToolRendererResolver): (tool name, next) -> renderers or None. next() returns the
@@ -284,7 +311,8 @@ class ToolDefinition:
     ``execute(toolCallId, params, signal, onUpdate, ctx)`` are
     ``ctx.tool_call_id``, ``ctx.is_cancelled()`` and ``ctx.on_update()``.
     ``render_call`` and ``render_result`` are the line renderers
-    :meth:`Extension.tool_renderers` takes.
+    :meth:`Extension.tool_renderers` takes; ``call_view`` and
+    ``result_view`` its view forms (D107), which win over them.
     """
 
     name: str
@@ -300,6 +328,8 @@ class ToolDefinition:
     execute: ToolHandler
     render_call: ToolRenderCallHandler | None = None
     render_result: ToolRenderResultHandler | None = None
+    call_view: ToolRenderCallViewHandler | None = None
+    result_view: ToolRenderResultViewHandler | None = None
     output_schema: Schema | None = None
     exposure: ToolExposure | None = None
     namespace: ToolNamespace | None = None
@@ -449,6 +479,78 @@ def message_text(data: dict[str, Any]) -> str:
     return "".join(parts)
 
 
+def is_bash_tool_result(data: dict[str, Any]) -> bool:
+    """Whether a ``tool_result`` event is the result of the bash tool.
+
+    Pi core/extensions/types.ts:1315 ``isBashToolResult``: ``e.toolName === "bash"``.
+    A payload without a string ``toolName`` is the result of no built-in tool.
+    """
+    return isinstance(data, dict) and data.get("toolName") == "bash"
+
+
+def is_powershell_tool_result(data: dict[str, Any]) -> bool:
+    """Whether a ``tool_result`` event is the result of the powershell tool.
+
+    Pi core/extensions/types.ts:1318 ``isPowerShellToolResult``: ``e.toolName === "powershell"``.
+    A payload without a string ``toolName`` is the result of no built-in tool.
+    """
+    return isinstance(data, dict) and data.get("toolName") == "powershell"
+
+
+def is_read_tool_result(data: dict[str, Any]) -> bool:
+    """Whether a ``tool_result`` event is the result of the read tool.
+
+    Pi core/extensions/types.ts:1321 ``isReadToolResult``: ``e.toolName === "read"``.
+    A payload without a string ``toolName`` is the result of no built-in tool.
+    """
+    return isinstance(data, dict) and data.get("toolName") == "read"
+
+
+def is_edit_tool_result(data: dict[str, Any]) -> bool:
+    """Whether a ``tool_result`` event is the result of the edit tool.
+
+    Pi core/extensions/types.ts:1324 ``isEditToolResult``: ``e.toolName === "edit"``.
+    A payload without a string ``toolName`` is the result of no built-in tool.
+    """
+    return isinstance(data, dict) and data.get("toolName") == "edit"
+
+
+def is_write_tool_result(data: dict[str, Any]) -> bool:
+    """Whether a ``tool_result`` event is the result of the write tool.
+
+    Pi core/extensions/types.ts:1327 ``isWriteToolResult``: ``e.toolName === "write"``.
+    A payload without a string ``toolName`` is the result of no built-in tool.
+    """
+    return isinstance(data, dict) and data.get("toolName") == "write"
+
+
+def is_grep_tool_result(data: dict[str, Any]) -> bool:
+    """Whether a ``tool_result`` event is the result of the grep tool.
+
+    Pi core/extensions/types.ts:1330 ``isGrepToolResult``: ``e.toolName === "grep"``.
+    A payload without a string ``toolName`` is the result of no built-in tool.
+    """
+    return isinstance(data, dict) and data.get("toolName") == "grep"
+
+
+def is_find_tool_result(data: dict[str, Any]) -> bool:
+    """Whether a ``tool_result`` event is the result of the find tool.
+
+    Pi core/extensions/types.ts:1333 ``isFindToolResult``: ``e.toolName === "find"``.
+    A payload without a string ``toolName`` is the result of no built-in tool.
+    """
+    return isinstance(data, dict) and data.get("toolName") == "find"
+
+
+def is_ls_tool_result(data: dict[str, Any]) -> bool:
+    """Whether a ``tool_result`` event is the result of the ls tool.
+
+    Pi core/extensions/types.ts:1336 ``isLsToolResult``: ``e.toolName === "ls"``.
+    A payload without a string ``toolName`` is the result of no built-in tool.
+    """
+    return isinstance(data, dict) and data.get("toolName") == "ls"
+
+
 class SessionMirror:
     """Local session log kept in sync by incremental appends from state_update.
 
@@ -590,20 +692,174 @@ class RemoteComponentInvalidator(Protocol):
     def set_invalidate(self, callback: Callable[[], None] | None) -> None: ...
 
 
+_OVERLAY_PERCENT = re.compile(r"^(\d+(?:\.\d+)?)%$")
+
+
+def _is_number(value: Any) -> bool:
+    return isinstance(value, (int, float)) and not isinstance(value, bool)
+
+
+def _parse_overlay_size(value: Any, reference: float) -> float | None:
+    """Upstream parseSizeValue (tui.ts:228-237): a number is cells, "N%" is a floored share of reference, anything else is unset."""
+    if _is_number(value):
+        return float(value)
+    if isinstance(value, str):
+        match = _OVERLAY_PERCENT.match(value)
+        if match:
+            return float(math.floor(reference * float(match.group(1)) / 100))
+    return None
+
+
+def _resolve_overlay_width(layout: dict[str, Any], term_width: int) -> int:
+    """The width rule of upstream TUI.resolveOverlayLayout (tui.ts:1212-1233)."""
+    margin = layout.get("margin")
+    if _is_number(margin):
+        left = right = float(margin)
+    elif isinstance(margin, dict):
+        left = float(margin["left"]) if _is_number(margin.get("left")) else 0.0
+        right = float(margin["right"]) if _is_number(margin.get("right")) else 0.0
+    else:
+        left = right = 0.0
+    avail = max(1.0, term_width - max(0.0, left) - max(0.0, right))
+    width = _parse_overlay_size(layout.get("width"), float(term_width))
+    if width is None:
+        width = min(80.0, avail)
+    if _is_number(layout.get("minWidth")):
+        width = max(width, float(layout["minWidth"]))
+    return math.trunc(max(1.0, min(width, avail)))
+
+
+def _overlay_render_width(options: dict[str, Any]) -> Callable[[int], int]:
+    """Pi renders an overlay component at the width TUI.resolveOverlayLayout resolves, and an inline component at the terminal width.
+
+    The host composites an overlay with the same layout unless it opens the legacy titled modal (no overlayOptions, with title, widthFraction or heightFraction), which renders at the terminal width.
+    """
+    if options.get("overlay") is not True:
+        return lambda width: width
+    layout = options.get("overlayOptions")
+    legacy = bool(options.get("title")) or (options.get("widthFraction") or 0) > 0 or (options.get("heightFraction") or 0) > 0
+    if not isinstance(layout, dict):
+        if legacy:
+            return lambda width: width
+        layout = {}
+    return lambda width: _resolve_overlay_width(layout, width)
+
+
+# Mouse event types after which Pi's renderer does not draw again by default (tui-alt-screen.ts applyMouseDispatchResult).
+_MOUSE_NO_RENDER = frozenset(("move", "release"))
+
+
+@dataclass
+class MouseEvent:
+    """pi-tui's ``TuiMouseEvent``: one cell-based pointer event, zero-based, with ``x``/``y`` relative to the component's
+    first rendered cell. ``type`` is ``"press"``, ``"release"``, ``"move"``, ``"drag"``, ``"click"`` or ``"wheel"``, and
+    ``button`` is ``"left"``, ``"middle"``, ``"right"`` or ``"none"``."""
+
+    type: str = ""
+    button: str = ""
+    x: int = 0
+    y: int = 0
+    screen_x: int = 0
+    screen_y: int = 0
+    width: int = 0
+    height: int = 0
+    shift: bool = False
+    alt: bool = False
+    ctrl: bool = False
+    # Lines a wheel event scrolls; negative scrolls up.
+    wheel_delta: int = 0
+    # 1, 2 or 3 for consecutive clicks on one cell.
+    click_count: int = 0
+
+    @classmethod
+    def _from_wire(cls, raw: Any) -> MouseEvent | None:
+        if not isinstance(raw, dict):
+            return None
+        return cls(
+            type=str(raw.get("type") or ""),
+            button=str(raw.get("button") or ""),
+            x=int(raw.get("x") or 0),
+            y=int(raw.get("y") or 0),
+            screen_x=int(raw.get("screenX") or 0),
+            screen_y=int(raw.get("screenY") or 0),
+            width=int(raw.get("width") or 0),
+            height=int(raw.get("height") or 0),
+            shift=bool(raw.get("shift")),
+            alt=bool(raw.get("alt")),
+            ctrl=bool(raw.get("ctrl")),
+            wheel_delta=int(raw.get("wheelDelta") or 0),
+            click_count=int(raw.get("clickCount") or 0),
+        )
+
+
+class MouseHandler(Protocol):
+    """The optional part of a :class:`RemoteComponent` or ``kit.ViewComponent`` that takes the mouse, as an upstream
+    component with ``handleMouse`` does. Pi routes the mouse to components only in fullscreen mode, and so does PiG.
+
+    While the overlay shows, every event inside the component's bounds arrives in order: press, release, move, drag,
+    click and wheel; a left click arrives as press, release, then click. The host answers the terminal at once, so the
+    component handles every event in its bounds and text selection does not start over it. A view component's own
+    components take an event first, as Pi's do (a select-list row selects on press and fires select on click), and
+    ``handle_mouse`` receives only the events they leave. It runs on the worker ``handle_input`` runs on, and its result
+    means the same."""
+
+    def handle_mouse(self, event: MouseEvent) -> RemoteComponentResult: ...
+
+
 @dataclass
 class _RemoteOverlayState:
-    component: RemoteComponent
+    component: RemoteComponent | ViewComponent
     last_lines: list[str] = field(default_factory=list)
+    # The last view frame's wire body, without image data, and the width it went out for (D107).
+    last_view: tuple[dict[str, Any], int] | None = None
     seq: int = 0
-    events: queue.Queue[tuple[str, str | None]] = field(default_factory=lambda: queue.Queue(maxsize=64))
+    events: queue.Queue[tuple[str, Any]] = field(default_factory=lambda: queue.Queue(maxsize=64))
     active: threading.Event = field(default_factory=threading.Event)
     render_pending: bool = False
     event_lock: threading.Lock = field(default_factory=threading.Lock)
     worker: threading.Thread | None = None
     last_render: float = float("-inf")
+    # Maps the terminal width to the component's render width; None renders at the terminal width.
+    render_width: Callable[[int], int] | None = None
+    # The image refs the last view frame names; force_view sends the next view frame even when it equals the last one,
+    # after the host evicted one of its images. Both are guarded by event_lock.
+    view_refs: list[str] = field(default_factory=list)
+    force_view: bool = False
+    # ui.custom()'s onHandle option (Pi OverlayOptions.onHandle): called once with the mounted overlay's handle, on the component's worker.
+    on_handle: Callable[["OverlayHandle"], Any] | None = None
+    handle_state: dict[str, Any] = field(default_factory=lambda: {"hidden": False, "focused": False, "visible": False})
+    state_lock: threading.Lock = field(default_factory=threading.Lock)
 
     def __post_init__(self) -> None:
         self.active.set()
+
+    def apply_handle_state(self, state: dict[str, Any]) -> None:
+        """Replace the mirrored handle state with the host's (ui.custom.opened and ui.custom.input carry it)."""
+        with self.state_lock:
+            self.handle_state = {"hidden": bool(state.get("hidden")), "focused": bool(state.get("focused")), "visible": bool(state.get("visible")), "bounds": state.get("bounds")}
+        component = self.component
+        if hasattr(component, "focused"):
+            try:
+                component.focused = bool(state.get("focused"))  # type: ignore[union-attr]
+            except Exception:  # noqa: BLE001 - a read-only attribute is the component's own choice  # nosec B110
+                pass
+
+    def enqueue_opened(self, state: dict[str, Any]) -> bool:
+        """Queue the host's ui.custom.opened behind the input already queued."""
+        return self._enqueue("opened", state)
+
+    @property
+    def is_view(self) -> bool:
+        """Whether the component describes its frames as kit views."""
+        return callable(getattr(self.component, "view", None))
+
+    def resend_if_references(self, evicted: set[str]) -> None:
+        """Render a view component again, bypassing dedup, when its last frame names an evicted image."""
+        with self.event_lock:
+            if not any(ref in evicted for ref in self.view_refs):
+                return
+            self.force_view = True
+        self.request_render()
 
     def request_render(self) -> None:
         with self.event_lock:
@@ -617,10 +873,26 @@ class _RemoteOverlayState:
                 self.render_pending = False
 
     def enqueue_input(self, data: str) -> bool:
+        return self._enqueue("input", data)
+
+    def enqueue_view_event(self, event: kit.Event) -> bool:
+        """Queue a ``ui.view.event`` behind the input already queued."""
+        return self._enqueue("view_event", event)
+
+    def enqueue_mouse(self, event: MouseEvent) -> bool:
+        """Queue a ``ui.custom.mouse`` event behind the input already queued."""
+        return self._enqueue("mouse", event)
+
+    @property
+    def takes_mouse(self) -> bool:
+        """Whether the component takes the mouse (has ``handle_mouse``)."""
+        return callable(getattr(self.component, "handle_mouse", None))
+
+    def _enqueue(self, kind: str, data: Any) -> bool:
         if not self.active.is_set():
             return True
         try:
-            self.events.put_nowait(("input", data))
+            self.events.put_nowait((kind, data))
             return True
         except queue.Full:
             self.active.clear()
@@ -633,12 +905,90 @@ class _RemoteOverlayState:
         except queue.Full:
             pass
 
-    def next_event(self) -> tuple[str, str | None]:
+    def next_event(self) -> tuple[str, Any]:
         event = self.events.get()
         if event[0] == "render":
             with self.event_lock:
                 self.render_pending = False
         return event
+
+
+_NO_TARGET: Any = object()
+
+
+class OverlayHandle:
+    """Pi's OverlayHandle (tui.ts) of a mounted ``ctx.ui.custom(component, {"overlay": True, "onHandle": fn})`` overlay.
+
+    ``hide`` removes the overlay permanently (Pi: hide() disposes it); ``set_hidden`` toggles it. ``focus`` and ``unfocus`` move keyboard
+    focus; ``unfocus`` takes Pi's ``{target}`` as the ``target`` argument: ``None`` focuses nothing, the editor component (as
+    ``ctx.ui.set_editor_component`` built it) the editor, a mounted overlay component of this extension that overlay. Each control is a host
+    call and returns after the host applied it, so ``is_hidden``, ``is_focused`` and ``get_bounds`` read the state it returned. After the
+    overlay closed they read the last state and the controls do nothing, except ``set_hidden``, which records its value."""
+
+    def __init__(self, extension: "Extension", key: str, overlay: _RemoteOverlayState) -> None:
+        self._extension = extension
+        self._key = key
+        self._overlay = overlay
+
+    def _control(self, action: str, hidden: bool | None = None, target: dict[str, Any] | None = None) -> None:
+        overlay = self._overlay
+        if not overlay.active.is_set():
+            if action == "setHidden":
+                with overlay.state_lock:
+                    overlay.handle_state = {**overlay.handle_state, "hidden": bool(hidden)}
+            return
+        args: dict[str, Any] = {"key": self._key, "action": action}
+        if hidden is not None:
+            args["hidden"] = hidden
+        if target is not None:
+            args["target"] = target
+        state = Context(self._extension)._call("ui.custom.control", args).get("result")
+        if isinstance(state, dict):
+            overlay.apply_handle_state(state)
+
+    def hide(self) -> None:
+        self._control("hide")
+
+    def set_hidden(self, hidden: bool) -> None:
+        self._control("setHidden", bool(hidden))
+
+    def is_hidden(self) -> bool:
+        with self._overlay.state_lock:
+            return bool(self._overlay.handle_state["hidden"])
+
+    def focus(self) -> None:
+        self._control("focus")
+
+    def unfocus(self, target: Any = _NO_TARGET) -> None:
+        if target is _NO_TARGET:
+            self._control("unfocus")
+            return
+        self._control("unfocus", target=self._focus_target(target))
+
+    def is_focused(self) -> bool:
+        with self._overlay.state_lock:
+            return bool(self._overlay.handle_state["focused"])
+
+    def get_bounds(self) -> dict[str, int] | None:
+        with self._overlay.state_lock:
+            state = self._overlay.handle_state
+            bounds = state.get("bounds")
+            return dict(bounds) if state["visible"] and isinstance(bounds, dict) else None
+
+    def _focus_target(self, target: Any) -> dict[str, Any]:
+        if target is None:
+            return {"kind": "null"}
+        extension = self._extension
+        with extension._overlay_lock:
+            for key, mounted in extension._overlays.items():
+                if mounted.active.is_set() and mounted.component is target:
+                    return {"kind": "overlay", "key": key}
+        with extension._editor_lock:
+            session = extension._editor
+        if session is not None and session.component is target:
+            return {"kind": "editor"}
+        # pig divergence (D73): a component that is not mounted by this extension has no main-process identity to focus.
+        raise ValueError("Overlay unfocus(target) requires None, the editor component, or a mounted overlay of this extension (D73)")
 
 
 def _dispose_remote_component(component: RemoteComponent) -> None:
@@ -693,6 +1043,160 @@ def _terminal_input_verdict(verdict: Any) -> tuple[bool, str | None]:
         data = verdict.get("data")
         return bool(verdict.get("consume")), None if data is None else str(data)
     return False, None
+
+
+# Pi's ProviderRequestOptions callbacks that ctx.model_registry.stream forwards (the host asks for them by name through model_stream_callback).
+_MODEL_STREAM_CALLBACKS = ("onPayload", "onResponse", "transformHeaders", "fetch")
+
+
+class _IterableBody:
+    """File-like reads over an iterable of byte chunks."""
+
+    def __init__(self, chunks: Any) -> None:
+        self._chunks = iter(chunks)
+        self._pending = b""
+
+    def read(self, size: int) -> bytes:
+        while not self._pending:
+            try:
+                self._pending = bytes(next(self._chunks))
+            except StopIteration:
+                return b""
+        chunk, self._pending = self._pending[:size], self._pending[size:]
+        return chunk
+
+    def close(self) -> None:
+        close = getattr(self._chunks, "close", None)
+        if callable(close):
+            close()
+
+
+def _fetch_body_reader(body: Any) -> Any:
+    if isinstance(body, (bytes, bytearray, memoryview)):
+        return io.BytesIO(bytes(body))
+    if isinstance(body, str):
+        return io.BytesIO(body.encode("utf-8"))
+    if callable(getattr(body, "read", None)):
+        return body
+    return _IterableBody(body)
+
+
+def _fetch_header_pairs(headers: Any) -> list[list[str]]:
+    pairs: list[list[str]] = []
+    items = headers.items() if isinstance(headers, dict) else (headers or [])
+    for name, value in items:
+        for entry in (value if isinstance(value, (list, tuple)) else [value]):
+            pairs.append([str(name), str(entry)])
+    return pairs
+
+
+def _close_fetch_reader(reader: Any) -> None:
+    close = getattr(reader, "close", None)
+    if callable(close):
+        close()
+
+
+class _ModelFetchTransport:
+    """The extension's ``fetch`` option of one stream (Pi's ProviderRequestOptions.fetch), served as runtime-node/model-fetch.mjs serves it.
+
+    ``fetch(request)`` gets a dict with ``url``, ``method``, ``headers``, ``body`` and ``signal``, a ProviderSignal that is Pi's
+    ``init.signal``: it is set when the host cancels the fetch or a body read, when the host closes the response, and when the stream
+    ends. A response that arrives after the stream ended or after its signal was set is closed, and the fetch fails.
+    """
+
+    def __init__(self, fetch: Callable[..., Any]) -> None:
+        self._fetch = fetch
+        self._lock = threading.Lock()
+        self._closed = False
+        # fetch id -> [signal, body reader or None while the fetch is in flight]
+        self._entries: dict[str, list[Any]] = {}
+
+    def serve(self, name: str, value: Any, cancelled: ProviderSignal | None) -> Any:
+        value = value or {}
+        fetch_id = str(value.get("id"))
+        if name == "fetch":
+            return self._serve_fetch(fetch_id, value, cancelled)
+        if name == "fetchRead":
+            with self._lock:
+                entry = self._entries.get(fetch_id)
+            if entry is None or entry[1] is None:
+                raise RuntimeError(f"unknown model fetch response {value.get('id')}")
+            size = value.get("size")
+            if isinstance(size, bool) or not isinstance(size, int) or size < 1 or size > 64 * 1024:
+                raise RuntimeError("invalid model fetch read size")
+            unsubscribe = cancelled.subscribe(entry[0].set) if cancelled is not None else None
+            try:
+                chunk = entry[1].read(size)
+            finally:
+                if unsubscribe is not None:
+                    unsubscribe()
+            chunk = b"" if chunk is None else bytes(chunk)
+            return {"data": base64.b64encode(chunk).decode("ascii"), "done": chunk == b""}
+        # fetchClose is idempotent: a deferred Body.Close may follow the terminal stream event.
+        with self._lock:
+            entry = self._entries.get(fetch_id)
+            if entry is None or entry[1] is None:
+                return None
+            del self._entries[fetch_id]
+        entry[0].set()
+        _close_fetch_reader(entry[1])
+        return None
+
+    def _serve_fetch(self, fetch_id: str, value: dict[str, Any], cancelled: ProviderSignal | None) -> Any:
+        signal = ProviderSignal()
+        entry: list[Any] = [signal, None]
+        with self._lock:
+            if self._closed:
+                raise RuntimeError("model fetch transport is closed")
+            self._entries[fetch_id] = entry
+        encoded = value.get("body")
+        request = {
+            "url": value["url"],
+            "method": value["method"],
+            "headers": value.get("headers") or {},
+            "body": base64.b64decode(encoded) if encoded else None,
+            "signal": signal,
+        }
+        unsubscribe = cancelled.subscribe(signal.set) if cancelled is not None else None
+        try:
+            response = self._fetch(request)
+        except BaseException:
+            with self._lock:
+                if self._entries.get(fetch_id) is entry:
+                    del self._entries[fetch_id]
+            raise
+        finally:
+            if unsubscribe is not None:
+                unsubscribe()
+        body = response.get("body") if isinstance(response, dict) else getattr(response, "body", None)
+        status = response["status"] if isinstance(response, dict) else response.status
+        status_text = (response.get("statusText") if isinstance(response, dict) else getattr(response, "status_text", "")) or ""
+        headers = response.get("headers") if isinstance(response, dict) else getattr(response, "headers", None)
+        reader = None if body is None else _fetch_body_reader(body)
+        with self._lock:
+            closed = self._closed
+            aborted = closed or signal.is_set()
+            if aborted or reader is None:
+                if self._entries.get(fetch_id) is entry:
+                    del self._entries[fetch_id]
+            else:
+                entry[1] = reader
+        if aborted:
+            if reader is not None:
+                _close_fetch_reader(reader)
+            raise RuntimeError("model fetch transport is closed" if closed else "model fetch was cancelled")
+        return {"status": int(status), "statusText": str(status_text), "headers": _fetch_header_pairs(headers), "body": reader is not None}
+
+    def dispose(self) -> None:
+        """End the transport with its stream: set every fetch's signal and close the bodies the host did not close."""
+        with self._lock:
+            self._closed = True
+            entries = list(self._entries.values())
+            self._entries.clear()
+        for signal, reader in entries:
+            signal.set()
+            if reader is not None:
+                _close_fetch_reader(reader)
 
 
 _model_stream_transport = ContextVar("model_stream_transport", default=None)
@@ -979,16 +1483,30 @@ class ModelRegistry:
             stream_id = f"model-stream-{extension._model_stream_seq}"
             extension._model_streams[stream_id] = stream
         payload = dict(request)
-        payload.update(options or {})
+        # Pi's ProviderRequestOptions callbacks (types.ts) are functions: they stay in this process, and the host is told which exist.
+        request_options = dict(options or {})
+        callbacks = {name: request_options.pop(name) for name in _MODEL_STREAM_CALLBACKS if callable(request_options.get(name))}
+        payload.update(request_options)
+        transport = _ModelFetchTransport(callbacks["fetch"]) if "fetch" in callbacks else None
+        if transport is not None:
+            callbacks["fetch"] = transport
+        if callbacks:
+            with extension._model_stream_lock:
+                extension._model_stream_callbacks[stream_id] = (model, callbacks)
 
         def run() -> None:
             try:
-                self._context._call("modelStream", {"streamId": stream_id, "model": model, "request": payload, "simple": simple})
+                call = {"streamId": stream_id, "model": model, "request": payload, "simple": simple}
+                call.update({name: True for name in callbacks})
+                self._context._call("modelStream", call)
             except Exception as exc:  # noqa: BLE001 - transport failure becomes terminal model error
                 stream.push(_model_stream_error_event(exc, model))
             finally:
                 with extension._model_stream_lock:
                     extension._model_streams.pop(stream_id, None)
+                    extension._model_stream_callbacks.pop(stream_id, None)
+                if transport is not None:
+                    transport.dispose()
 
         threading.Thread(target=run, daemon=True).start()
         return stream
@@ -1024,8 +1542,9 @@ class Theme:
     The host replicates its active theme with the state snapshot and pushes
     ``theme_change`` when it changes; one instance per extension follows
     those updates, so a held reference stays current. Its semantics are the
-    Node runtime's ThemeShim: a token the palette lacks leaves ``fg``/``bg``
-    text unstyled, and ``bold`` and the other modifiers draw only when the
+    Node runtime's ThemeShim: a token the palette lacks raises
+    ``ValueError("Unknown theme color: <token>")`` from ``fg``/``bg`` once a palette has
+    arrived, and ``bold`` and the other modifiers draw only when the
     host's styles do (upstream's chalk drops them without color support).
     """
 
@@ -1068,7 +1587,7 @@ class Theme:
         value = _theme_text(text)
         open_seq = self._foregrounds.get(token) or ""
         if not open_seq:
-            return value
+            return self._unknown_or_unstyled(token, value)
         # The host opens a faint token with SGR 2 (theme.ts:399-402); Pi's fg closes it with SGR 22;39 (theme.ts:363).
         close_seq = "\x1b[22;39m" if open_seq.endswith("\x1b[2m") else "\x1b[39m"
         return f"{open_seq}{value}{close_seq}"
@@ -1076,7 +1595,13 @@ class Theme:
     def bg(self, token: str, text: Any) -> str:
         value = _theme_text(text)
         open_seq = self._backgrounds.get(token) or ""
-        return f"{open_seq}{value}\x1b[49m" if open_seq else value
+        return f"{open_seq}{value}\x1b[49m" if open_seq else self._unknown_or_unstyled(token, value)
+
+    def _unknown_or_unstyled(self, token: str, value: str) -> str:
+        # A token the palette lacks is upstream's `Unknown theme color` throw (theme.ts:374); a theme the host has not sent a palette to has no tokens to lack.
+        if not self._foregrounds and not self._backgrounds:
+            return value
+        raise ValueError(f"Unknown theme color: {token}")
 
     def bold(self, text: Any) -> str:
         return self._modifier("\x1b[1m", "\x1b[22m", text)
@@ -1102,7 +1627,7 @@ class Theme:
     def get_bg_ansi(self, token: str) -> str:
         ansi = self._backgrounds.get(token)
         if not ansi:
-            raise ValueError(f"Unknown theme background color: {token}")
+            raise ValueError(f"Unknown theme color: {token}")
         return ansi
 
     @property
@@ -1386,6 +1911,19 @@ class _WithSessionRegistry:
         with self._lock:
             self._entries.pop(handle, None)
 
+    def dispatch_setup(self, ctx: "Context", args: dict[str, Any]) -> None:
+        """Run the callback a setup request names with the replacement Session's manager (agent-session-runtime.ts:254-257). The request's context carries its host calls."""
+        handle = str(args.get("handle") or "")
+        with self._lock:
+            entry = self._entries.get(handle)
+        if entry is None:
+            raise RuntimeError(f"unknown setup callback {handle}")
+        try:
+            entry.callback(SetupSessionManager(ctx))
+        except BaseException as error:
+            entry.error = error
+            raise
+
     def dispatch(self, ctx: "Context", args: dict[str, Any]) -> None:
         """Run the callback a with_session request names with a context of the replacement Session (agent-session-runtime.ts:187-194)."""
         handle = str(args.get("handle") or "")
@@ -1409,6 +1947,45 @@ class _WithSessionRegistry:
         except BaseException as error:
             entry.error = error
             raise
+
+
+def _home_directory() -> str:
+    """The home directory as Go's os.UserHomeDir finds it: $HOME (%USERPROFILE% on Windows), never the passwd database."""
+    home = os.environ.get("USERPROFILE" if sys.platform == "win32" else "HOME", "")
+    if not home:
+        raise RuntimeError("locate home directory: home environment variable is not defined")
+    return home
+
+
+def _join(base: str, rest: str) -> str:
+    """Go's filepath.Join for two non-empty-base elements: the elements joined by the separator, then lexically cleaned.
+
+    os.path.join would discard ``base`` when ``rest`` is absolute (``~//p`` must stay under the home directory) and keeps ``..``, repeated and trailing
+    separators, which the host's internal/configroot removes. posixpath.normpath keeps exactly two leading slashes; Go's Clean reduces them to one.
+    """
+    joined = os.path.normpath(base + os.sep + rest)
+    if os.sep == "/" and joined.startswith("//"):
+        joined = "/" + joined.lstrip("/")
+    return joined
+
+
+def _expand_home(path: str) -> str:
+    """A leading ``~`` or ``~/`` is the home directory; every other path, including ``~user``, stays literal."""
+    if path == "~":
+        return _home_directory()
+    if path.startswith("~/"):
+        return _join(_home_directory(), path[2:])
+    return path
+
+
+def _config_home() -> str:
+    pig_home = os.environ.get("PIG_HOME", "")
+    if pig_home:
+        return _expand_home(pig_home)
+    xdg = os.environ.get("XDG_CONFIG_HOME", "")
+    if xdg:
+        return _join(_expand_home(xdg), "pig")
+    return _join(_home_directory(), ".pig")
 
 
 @dataclass
@@ -1552,7 +2129,7 @@ class Context:
         The call gets the id ``<calling id>/<n>``; its ``tool_call``,
         ``tool_result`` and ``tool_execution_*`` events carry
         ``parentToolCallId``. Returns upstream's AgentToolCallOutcome as a dict
-        (``toolCall``, ``result``, ``isError``). Tool failures come back with
+        (``toolCall``, ``result``, ``isError`` and ``durationMs`` when the tool ran). Tool failures come back with
         ``isError`` true rather than raising; a transport failure or the
         cancellation of the calling request raises. ``options.signal`` defaults
         to the calling tool's cancellation, and a given signal replaces it, as
@@ -1673,8 +2250,18 @@ class Context:
         with self.extension._state_lock:
             return self.extension._height
 
+    def _assert_active(self) -> None:
+        """Raise the Host's stale message once the session was replaced or reloaded, as Pi's ExtensionContext getters throw it (runner.ts:571-600). A replacement context belongs to the new session and is not stale."""
+        if self._replacement is not None:
+            return
+        with self.extension._state_lock:
+            message = self.extension._stale_message
+        if message is not None:
+            raise RuntimeError(message)
+
     @property
     def model(self) -> str:
+        self._assert_active()
         if self._replacement is not None:
             # This process replicates only the requesting Session's model.
             try:
@@ -1687,6 +2274,7 @@ class Context:
 
     @property
     def cwd(self) -> str:
+        self._assert_active()
         if self._replacement is not None:
             return self._replacement.cwd
         with self.extension._state_lock:
@@ -1696,6 +2284,7 @@ class Context:
     def mode(self) -> str:
         """Run mode: "tui", "rpc", "json", or "print". Guard terminal-only
         UI on "tui". Defaults to "print" when unspecified."""
+        self._assert_active()
         if self._replacement is not None and self._replacement.mode:
             return self._replacement.mode
         with self.extension._state_lock:
@@ -1708,7 +2297,13 @@ class Context:
 
     @property
     def config_home(self) -> str:
-        return os.environ.get("PIG_HOME") or os.path.join(os.path.expanduser("~"), ".pig")
+        """The pig config root: PIG_HOME, else XDG_CONFIG_HOME/pig, else ~/.pig.
+
+        An empty variable falls through to the next choice, a leading ``~`` or ``~/`` expands to the home directory, and any other value stays
+        literal. Raises ``RuntimeError``, never returns a relative path, when the home directory is needed and cannot be found. The host's
+        ``internal/configroot`` and the Go, Rust and Node SDKs follow the same policy.
+        """
+        return _config_home()
 
     def _reply_field(self, method: str, field: str, args: Any = None) -> Any:
         """One field every reply of ``method`` carries; a host failure raises and a missing field is a protocol error, never an empty value."""
@@ -1796,7 +2391,7 @@ class Context:
 
     def get_system_prompt_options(self) -> dict[str, Any]:
         """Base inputs pi currently uses to build the system prompt
-        (customPrompt, selectedTools, toolSnippets, promptGuidelines,
+        (customPrompt, selectedTools, hiddenTools, toolSnippets, promptGuidelines,
         appendSystemPrompt, cwd, contextFiles, skills). Reports current
         base inputs only, not per-turn before_agent_start changes. May
         include full context-file contents; treat as sensitive."""
@@ -1837,6 +2432,7 @@ class Context:
 
     def has_ui(self) -> bool:
         """Whether the host binds a UI context: interactive and RPC, not print/JSON."""
+        self._assert_active()
         if self._replacement is not None:
             return self._replacement.has_ui
         with self.extension._state_lock:
@@ -1865,7 +2461,18 @@ class Context:
         without a width, which the host applies in arrival order and never
         answers: Pi's setWidget returns nothing, so it may be called from an
         :meth:`on_width_change` handler. Every other shape waits for the host.
+
+        A :class:`kit.View` (D107) is rendered by the host at the widget's
+        width, the subprocess form of Pi's ``setWidget(key, factory)`` for a
+        tree of Pi's components. Without options it goes out as a
+        ``widget_push`` frame, as a string list does; with options (upstream
+        ``ExtensionWidgetOptions``) it waits for the host.
         """
+        if isinstance(content, kit.View):
+            self.extension._set_widget_view(self, key, content, options)
+            return
+        with self.extension._views.widgets_lock:
+            self.extension._views.widgets.pop(key, None)
         if isinstance(content, list) and all(isinstance(x, str) for x in content) and options is None:
             self.extension._push_widget(key, content)
             return
@@ -1936,12 +2543,34 @@ class Context:
         """
         self._set_surface_renderer("ui.setHeader", render)
 
+    def set_footer_view(self, view: kit.View) -> None:
+        """Replace the footer with a :class:`kit.View` (D107), which the host
+        renders at its width every frame, as Pi renders a footer component.
+        It replaces any footer rows or renderer; :meth:`clear_footer` restores
+        the default."""
+        self._set_surface_view("ui.setFooter", view)
+
+    def set_header_view(self, view: kit.View) -> None:
+        """Replace the header with a :class:`kit.View` (D107), as
+        :meth:`set_footer_view` does for the footer."""
+        self._set_surface_view("ui.setHeader", view)
+
     def _set_surface(self, method: str, lines: "list[str] | None") -> None:
         self.extension._replace_surface(method, None)
         if lines is None:
             self._call(method, {"clear": True})
             return
         self._call(method, _surface_args([str(line) for line in lines], self.width))
+
+    def _set_surface_view(self, method: str, view: kit.View) -> None:
+        # An authoritative view: no rows and no width, since the host renders it at its own width.
+        views = self.extension._views
+        encoded = views.encode(view)
+        self.extension._replace_surface(method, None)
+        # Held across the send, so an eviction's resend and this frame keep their order.
+        with views.surfaces_lock:
+            views.surfaces[method] = encoded
+            self._call(method, {"view": views.wire(encoded)})
 
     def _set_surface_renderer(self, method: str, render: "Callable[[int], list[str]] | None") -> None:
         if render is None:
@@ -1955,15 +2584,32 @@ class Context:
         # width-change pushes have no parent and use a fresh Context.
         surface.push(self)
 
+    def set_editor_component(self, factory: EditorFactory | None) -> None:
+        """Install an editor in place of the host's, as Pi's ``ctx.ui.setEditorComponent`` does. The factory receives the host's default editor (the component's ``super``); ``None`` restores the host's editor. With no UI, or in RPC mode, it is ignored, as in Pi."""
+        # upstream: modes/rpc/rpc-mode.ts setEditorComponent is a no-op, so the factory never runs there.
+        if not self.has_ui() or self.mode == "rpc":
+            return
+        if factory is None:
+            self.clear_editor_component()
+            return
+        self.extension._editor_seq += 1
+        _editor_component.install_editor(self.extension, self.extension._editor_seq, factory)
+
     def clear_editor_component(self) -> None:
+        _editor_component.clear_editor(self.extension)
         self._call("ui.setEditorComponent", {"clear": True})
 
     def custom(
         self,
-        component: RemoteComponent | dict[str, Any] | None = None,
+        component: RemoteComponent | ViewComponent | dict[str, Any] | None = None,
         options: dict[str, Any] | None = None,
     ) -> Any:
         """Open a focused subprocess component, or return None without callbacks when no UI is bound.
+
+        A component with ``view(width)`` is a :class:`ViewComponent` (D107):
+        its frames are kit views the host renders, the host owns the state of
+        their lists, and the lists' callbacks reach ``handle_view_event`` in
+        order with the input.
 
         Passing the legacy options-only shape retains the host's explicit
         unsupported response because it has no serializable component.
@@ -2135,8 +2781,23 @@ class Context:
         self._call("waitForIdle")
 
     def new_session(self, opts: dict[str, Any] | None = None) -> Any:
-        """Start a new session. ``opts`` may hold ``parentSession`` and a ``withSession`` callable taking a ReplacedSessionContext."""
-        return self._call_replacement("newSession", dict(opts or {}))
+        """Start a new session. ``opts`` may hold ``parentSession``, a ``setup`` callable taking a SetupSessionManager that seeds the new session before it starts (types.ts:411), and a ``withSession`` callable taking a ReplacedSessionContext."""
+        args = dict(opts or {})
+        setup = args.pop("setup", None)
+        if setup is None:
+            return self._call_replacement("newSession", args)
+        if not callable(setup):
+            raise TypeError("setup must be callable")
+        handle, entry = self.extension._setups.add(self.extension.name + ":setup", setup)
+        args["setup"] = handle
+        try:
+            return self._call_replacement("newSession", args)
+        except HostCallError:
+            if entry.error is not None:
+                raise entry.error from None
+            raise
+        finally:
+            self.extension._setups.remove(handle)
 
     def fork(self, entry_id: str, opts: dict[str, Any] | None = None) -> Any:
         """Fork at an entry. ``opts`` may hold ``position`` and a ``withSession`` callable taking a ReplacedSessionContext."""
@@ -2353,10 +3014,13 @@ class OAuthCredentialStore(Protocol):
 
 
 class OAuthCancelled(Exception):
-    """Raised by a value-returning login callback when the user dismissed the host prompt."""
+    """Raised by a value-returning login callback when the user dismissed the host prompt.
+
+    Its message is Pi's "Login cancelled", so a flow that lets it propagate ends the login as cancelled.
+    """
 
     def __init__(self) -> None:
-        super().__init__("oauth prompt cancelled")
+        super().__init__("Login cancelled")
 
 
 @dataclass
@@ -2466,13 +3130,20 @@ class Extension:
         self._tool_starts = _ToolStartOrder()
         self._command_handlers: dict[str, CommandHandler] = {}
         self._with_sessions = _WithSessionRegistry()
+        self._setups = _WithSessionRegistry()
         self._command_completions: dict[str, ArgumentCompletionsHandler] = {}
         self._event_handlers: dict[int, EventHandler] = {}
+        self._event_lock = threading.Lock()
+        self._event_next_id = 0
         self._shortcut_handlers: dict[str, ShortcutHandler] = {}
         self._renderer_handlers: dict[str, RendererHandler] = {}
         self._entry_renderer_handlers: dict[str, RendererHandler] = {}
+        self._message_view_renderers: dict[str, Callable[..., kit.View]] = {}
+        self._entry_view_renderers: dict[str, Callable[..., kit.View]] = {}
         self._tool_call_renderers: dict[str, ToolRenderCallHandler] = {}
         self._tool_result_renderers: dict[str, ToolRenderResultHandler] = {}
+        self._tool_call_view_renderers: dict[str, ToolRenderCallViewHandler] = {}
+        self._tool_result_view_renderers: dict[str, ToolRenderResultViewHandler] = {}
         # One renderer state per tool card; renders of one card run one at a time.
         self._tool_render_cards: dict[str, tuple[threading.Lock, dict[str, Any]]] = {}
         self._tool_render_lock = threading.Lock()
@@ -2492,6 +3163,8 @@ class Extension:
         # one already holding _write_lock, so it only enqueues here (SimpleQueue.put is safe there) and never sends.
         self._finalizer_frames: queue.SimpleQueue[dict[str, Any]] = queue.SimpleQueue()
         self._state_lock = threading.Lock()
+        # The Host's invalidate message; the first one wins (runner.ts:725-727).
+        self._stale_message: str | None = None
         self._session_mirror = SessionMirror()
         # Serializes the one-time session-log subscribe so concurrent first
         # readers make a single host call.
@@ -2509,9 +3182,15 @@ class Extension:
         self._overlay_seq = 0
         self._model_stream_seq = 0
         self._model_streams: dict[str, ModelEventStream] = {}
+        self._model_stream_callbacks: dict[str, tuple[dict[str, Any], dict[str, Callable[..., Any]]]] = {}
         self._model_stream_lock = threading.Lock()
         self._overlays: dict[str, _RemoteOverlayState] = {}
+        self._editor_lock = threading.Lock()
+        self._editor: Any = None
+        self._editor_seq = 0
         self._overlay_lock = threading.Lock()
+        # The frontend flag, the image refs sent, and the live widget, header and footer views (D107).
+        self._views = kit._ViewLedger()
         self._shutdown = ProviderSignal()
         # The replicated signal of the run in progress: (host run number, signal), None while no run is active (Context.signal).
         self._run_signal: tuple[int, ProviderSignal] | None = None
@@ -2530,6 +3209,7 @@ class Extension:
         self._mcp_servers: list[dict[str, Any]] = []
         self._execute_seq = 0
         self._nested_calls: dict[str, _NestedCall] = {}
+        self._bash_operations = _BashOperationsTable()
         # Ids of the MCP registration calls in flight, guarded by _state_lock. The read loop applies each reply's server list in frame order, so a later state push is never replaced by an older reply.
         self._mcp_calls: set[str] = set()
         self._bus = _EventBusHub(self)
@@ -2555,7 +3235,7 @@ class Extension:
             td["source"] = source
         self._register_tool(td, handler, prepare_arguments)
 
-    def _register_tool(self, declaration, handler, prepare=None, render_call=None, render_result=None, prepare_loadout=None):
+    def _register_tool(self, declaration, handler, prepare=None, render_call=None, render_result=None, prepare_loadout=None, call_view=None, result_view=None):
         name = declaration["name"]
         # agent-loop.ts:707-716: the host validates, so it asks the extension for the prepared arguments (tool_prepare_arguments).
         declaration = {key: value for key, value in declaration.items() if key != "prepares_arguments"}
@@ -2568,7 +3248,7 @@ class Extension:
             else:
                 self._tools[index] = declaration
             self._tool_handlers[name] = handler
-            for handlers, callback in ((self._tool_prepare_handlers, prepare), (self._tool_call_renderers, render_call), (self._tool_result_renderers, render_result), (self._tool_loadout_handlers, prepare_loadout)):
+            for handlers, callback in ((self._tool_prepare_handlers, prepare), (self._tool_call_renderers, render_call), (self._tool_result_renderers, render_result), (self._tool_loadout_handlers, prepare_loadout), (self._tool_call_view_renderers, call_view), (self._tool_result_view_renderers, result_view)):
                 if callback is None:
                     handlers.pop(name, None)
                 else:
@@ -2596,14 +3276,15 @@ class Extension:
             "parameters": definition.parameters, "prompt_snippet": definition.prompt_snippet,
             "prompt_guidelines": definition.prompt_guidelines, "execution_mode": definition.execution_mode,
             "constrained_sampling": definition.constrained_sampling, "render_shell": definition.render_shell,
-            "renders_call": definition.render_call is not None, "renders_result": definition.render_result is not None,
+            "renders_call": definition.render_call is not None or definition.call_view is not None,
+            "renders_result": definition.render_result is not None or definition.result_view is not None,
             "output_schema": definition.output_schema, "exposure": definition.exposure, "namespace": definition.namespace,
             "annotations": definition.annotations, "default_active": definition.default_active,
             "prepares_loadout": True if definition.prepare_loadout is not None else None,
         }
         declaration = {key: value for key, value in declaration.items() if value is not None}
         _ensure_jsonable(declaration, f"tool definition for {name}")
-        self._register_tool(declaration, definition.execute, definition.prepare_arguments, definition.render_call, definition.render_result, definition.prepare_loadout)
+        self._register_tool(declaration, definition.execute, definition.prepare_arguments, definition.render_call, definition.render_result, definition.prepare_loadout, definition.call_view, definition.result_view)
 
     def register_mcp_server(self, name: str, config: dict[str, Any]) -> None:
         """Register an MCP server, as ``pi.registerMcpServer`` does (loader.ts:456-465).
@@ -2951,8 +3632,21 @@ class Extension:
                     self._oauth_providers[name] = previous
             raise
 
-    def tool_renderers(self, name: str, *, render_call: ToolRenderCallHandler | None = None, render_result: ToolRenderResultHandler | None = None, render_shell: str = "default") -> None:
-        """Set tool renderers and publish the updated definition in a running Session."""
+    def tool_renderers(
+        self,
+        name: str,
+        *,
+        render_call: ToolRenderCallHandler | None = None,
+        render_result: ToolRenderResultHandler | None = None,
+        render_shell: str = "default",
+        call_view: ToolRenderCallViewHandler | None = None,
+        result_view: ToolRenderResultViewHandler | None = None,
+    ) -> None:
+        """Set tool renderers and publish the updated definition in a running Session.
+
+        ``call_view`` and ``result_view`` are the view forms (D107): they return a :class:`kit.View` the host renders
+        at the card's width, declare their phase rendered, and win over the line form set for the same phase.
+        """
         if render_shell not in {"default", "self"}:
             raise ValueError("render_shell must be 'default' or 'self'")
         with self._tool_registration_lock:
@@ -2961,12 +3655,14 @@ class Extension:
                     continue
                 declaration = dict(tool)
                 declaration["render_shell"] = render_shell
-                declaration["renders_call"] = render_call is not None
-                declaration["renders_result"] = render_result is not None
-                self._register_tool(declaration, self._tool_handlers[name], self._tool_prepare_handlers.get(name), render_call, render_result)
+                declaration["renders_call"] = render_call is not None or call_view is not None
+                declaration["renders_result"] = render_result is not None or result_view is not None
+                self._register_tool(declaration, self._tool_handlers[name], self._tool_prepare_handlers.get(name), render_call, render_result, call_view=call_view, result_view=result_view)
                 break
 
-    def _render_tool(self, ctx: "Context", name: str, args: dict[str, Any]) -> list[str]:
+    def _render_tool(self, ctx: "Context", name: str, args: dict[str, Any]) -> tuple[Any, bool]:
+        """Run the tool's renderer for the request's phase: its lines, or its view when the renderer is a view form
+        (which wins over the line form), with whether it is a view."""
         card_id = str(args.get("card") or "")
         with self._tool_render_lock:
             card = self._tool_render_cards.setdefault(card_id, (threading.Lock(), {}))
@@ -2982,29 +3678,26 @@ class Extension:
                 expanded=bool(wire.get("expanded")),
                 show_images=bool(wire.get("showImages")),
                 is_error=bool(wire.get("isError")),
+                output_pad=int(wire.get("outputPad") or 0),
+                duration_ms=None if wire.get("durationMs") is None else int(wire["durationMs"]),
                 state=card[1],
                 _invalidate=lambda: self._notify("tool_render_invalidate", {"card": card_id}),
             )
             width = int(args.get("width") or 0)
             resolved = self._resolved_tool_renderers.get(str(args.get("renderers") or "")) if args.get("renderers") else None
+            result_phase = args.get("phase") == "result"
             if resolved is not None:
-                if args.get("phase") == "result":
-                    if resolved.render_result is None:
-                        raise RuntimeError(f"tool {name} has no result renderer")
-                    return resolved.render_result(ctx, args.get("result") or {"content": []}, args.get("options") or {}, render, width)
-                if resolved.render_call is None:
-                    raise RuntimeError(f"tool {name} has no call renderer")
-                return resolved.render_call(ctx, args.get("args") or {}, render, width)
-            if args.get("phase") == "result":
-                handler = self._tool_result_renderers.get(name)
-                if handler is None:
-                    raise RuntimeError(f"tool {name} has no result renderer")
-                result = args.get("result") or {"content": []}
-                return handler(ctx, result, args.get("options") or {}, render, width)
-            call = self._tool_call_renderers.get(name)
-            if call is None:
-                raise RuntimeError(f"tool {name} has no call renderer")
-            return call(ctx, args.get("args") or {}, render, width)
+                view, lines = (resolved.result_view, resolved.render_result) if result_phase else (resolved.call_view, resolved.render_call)
+            elif result_phase:
+                view, lines = self._tool_result_view_renderers.get(name), self._tool_result_renderers.get(name)
+            else:
+                view, lines = self._tool_call_view_renderers.get(name), self._tool_call_renderers.get(name)
+            handler = view if view is not None else lines
+            if handler is None:
+                raise RuntimeError(f"tool {name} has no {'result' if result_phase else 'call'} renderer")
+            if result_phase:
+                return handler(ctx, args.get("result") or {"content": []}, args.get("options") or {}, render, width), view is not None
+            return handler(ctx, args.get("args") or {}, render, width), view is not None
 
     def tool_renderer(self, resolver: ToolRendererResolver) -> None:
         """Register a tool renderer resolver (Pi's pi.registerToolRenderer). Resolvers run in extension load order, and
@@ -3031,7 +3724,9 @@ class Extension:
         if got is None:
             return {"use": "none"}
         # A marker given render functions is the resolver's own renderers.
-        if got is marker and got.render_call is None and got.render_result is None:
+        renders_call = got.render_call is not None or got.call_view is not None
+        renders_result = got.render_result is not None or got.result_view is not None
+        if got is marker and not renders_call and not renders_result:
             return {"use": "next"}
         with self._tool_render_lock:
             renderer_id = f"r{len(self._resolved_tool_renderers) + 1}"
@@ -3039,19 +3734,35 @@ class Extension:
         out: dict[str, Any] = {"use": "own", "renderers": renderer_id}
         if got.render_shell == "self":
             out["render_shell"] = "self"
-        if got.render_call is not None:
+        if renders_call:
             out["renders_call"] = True
-        if got.render_result is not None:
+        if renders_result:
             out["renders_result"] = True
         return out
 
     def message_renderer(self, custom_type: str, handler: RendererHandler) -> None:
         self._renderers.append({"custom_type": custom_type})
+        self._message_view_renderers.pop(custom_type, None)
         self._renderer_handlers[custom_type] = handler
+
+    def message_view_renderer(self, custom_type: str, handler: "Callable[[Context, dict[str, Any], dict[str, Any], int], kit.View]") -> None:
+        """Register a custom message renderer that returns a :class:`kit.View` (D107), which the host renders at the
+        transcript's width. It replaces a :meth:`message_renderer` for ``custom_type``."""
+        self._renderers.append({"custom_type": custom_type})
+        self._renderer_handlers.pop(custom_type, None)
+        self._message_view_renderers[custom_type] = handler
 
     def entry_renderer(self, custom_type: str, handler: RendererHandler) -> None:
         self._entry_renderers.append({"custom_type": custom_type})
+        self._entry_view_renderers.pop(custom_type, None)
         self._entry_renderer_handlers[custom_type] = handler
+
+    def entry_view_renderer(self, custom_type: str, handler: "Callable[[Context, dict[str, Any], dict[str, Any], int], kit.View]") -> None:
+        """Register a custom session-entry renderer that returns a :class:`kit.View` (D107). It replaces an
+        :meth:`entry_renderer` for ``custom_type``."""
+        self._entry_renderers.append({"custom_type": custom_type})
+        self._entry_renderer_handlers.pop(custom_type, None)
+        self._entry_view_renderers[custom_type] = handler
 
     def markdown_transformer(self, transformer: Callable[[str, dict[str, Any]], Any]) -> None:
         """Register the extension's display-only Markdown transform (Pi's
@@ -3063,19 +3774,50 @@ class Extension:
         keeps the input."""
         self._markdown_transformer = transformer
 
-    def on_project_trust(self, handler: ProjectTrustHandler) -> None:
-        """Register an awaited pre-runtime project_trust handler."""
-        self.on_event("project_trust", handler)
+    def on_project_trust(self, handler: ProjectTrustHandler) -> Callable[[], None]:
+        """Register an awaited pre-runtime project_trust handler and return its unsubscribe function."""
+        return self.on_event("project_trust", handler)
 
     @property
     def events(self) -> EventBus:
         """Upstream's ``pi.events``, shared with every other realm of the session."""
         return EventBus(self)
 
-    def on_event(self, event: str, handler: EventHandler, can_block: bool = False) -> None:
-        handler_id = len(self._handlers) + 1
-        self._handlers.append({"event": event, "can_block": can_block, "handler_id": handler_id})
-        self._event_handlers[handler_id] = handler
+    def on_event(self, event: str, handler: EventHandler, can_block: bool = False) -> Callable[[], None]:
+        """Register an event handler and return an idempotent unsubscribe function (Pi's ``pi.on`` returns ``() => void``).
+
+        Before the extension connects the handler is a declaration of the register frame, and unsubscribing removes it. After
+        it connects the host is told with ``event.subscribe`` / ``event.unsubscribe``, as the Go SDK does.
+        """
+        with self._event_lock:
+            self._event_next_id += 1
+            handler_id = self._event_next_id
+            self._handlers.append({"event": event, "can_block": can_block, "handler_id": handler_id})
+            self._event_handlers[handler_id] = handler
+            live = self._bus._live
+        if live:
+            # Upstream's pi.on throws when the runtime refuses it; the unsubscribe-only API reports the refusal instead.
+            try:
+                self._call("event.subscribe", {"event": event, "handlerId": handler_id})
+            except Exception as exc:  # noqa: BLE001 - report where the host shows extension output
+                print(f"extension: event.subscribe {event!r}: {exc}", file=sys.stderr)
+        removed = threading.Lock()
+
+        def unsubscribe() -> None:
+            if not removed.acquire(blocking=False):
+                return
+            with self._event_lock:
+                connected = self._bus._live
+                if not connected:
+                    self._handlers[:] = [d for d in self._handlers if d["handler_id"] != handler_id]
+                    self._event_handlers.pop(handler_id, None)
+            if connected:
+                try:
+                    self._call("event.unsubscribe", {"event": event, "handlerId": handler_id})
+                except Exception as exc:  # noqa: BLE001 - upstream's unsubscribe cannot fail; report it
+                    print(f"extension: event.unsubscribe {event!r}: {exc}", file=sys.stderr)
+
+        return unsubscribe
 
     def run(self) -> None:
         sock = os.environ.get("PIG_EXT_SOCKET")
@@ -3259,6 +4001,12 @@ class Extension:
             with self._tool_render_lock:
                 self._tool_render_cards.pop(str(args.get("card") or ""), None)
             return
+        if method == "bash_operations_release":
+            self._bash_operations.release(str(args.get("handle") or ""))
+            return
+        if method == "provider_superseded":
+            # Another extension registered this provider after this one. Pi keeps one effective registration per provider and merges a later registration's defined values over it (model-runtime.ts:921-940), and this SDK's registration is a snapshot no other process merges, so the host's merged registration keeps calling this extension for every stream_simple, image, classifier and OAuth callback the later registration did not redefine. The extension therefore keeps them; unregister_provider and teardown release them.
+            return
         if method == "provider_release":
             with self._provider_lock:
                 self._native_providers.pop(args.get("key"), None)
@@ -3266,8 +4014,30 @@ class Extension:
         if method == "events.release":
             self._bus.release(str(args.get("handlerId") or ""))
             return
+        if method == "ui.view.event":
+            # Events of a closed surface are dropped, as the host drops them.
+            decoded = kit.Event._from_wire(args)
+            if decoded is None:
+                return
+            key, event = decoded
+            with self._overlay_lock:
+                overlay = self._overlays.get(key)
+            if overlay is not None and not overlay.enqueue_view_event(event):
+                self._notify("ui.custom.close", {"key": key, "error": "focused input queue is full"})
+            return
+        if method == "ui.view.evicted":
+            refs = {str(ref) for ref in args.get("refs") or []}
+            if refs:
+                self._resend_evicted_views(refs)
+            return
         if method == "run_signal":
             self._apply_run_signal(args)
+            return
+        if method == "invalidate":
+            message = args.get("message")
+            with self._state_lock:
+                if self._stale_message is None and isinstance(message, str) and message:
+                    self._stale_message = message
             return
         if method == "model_stream_event":
             stream_id = str(args.get("streamId") or "")
@@ -3279,12 +4049,33 @@ class Extension:
                 else:
                     stream.push(args.get("event") or {})
             return
+        if _editor_component.editor_notify(self, method, args):
+            return
+        if method == "ui.custom.mouse":
+            key = str(args.get("key") or "")
+            mouse = MouseEvent._from_wire(args.get("event"))
+            with self._overlay_lock:
+                overlay = self._overlays.get(key)
+            if overlay is None or mouse is None:
+                return
+            if not overlay.enqueue_mouse(mouse):
+                self._notify("ui.custom.close", {"key": key, "error": "focused input queue is full"})
+            return
+        if method == "ui.custom.opened":
+            key = str(args.get("key") or "")
+            with self._overlay_lock:
+                overlay = self._overlays.get(key)
+            if overlay is not None and not overlay.enqueue_opened(args):
+                self._notify("ui.custom.close", {"key": key, "error": "focused input queue is full"})
+            return
         if method == "ui.custom.input":
             key = str(args.get("key") or "")
             with self._overlay_lock:
                 overlay = self._overlays.get(key)
             if overlay is None:
                 return
+            if isinstance(args.get("state"), dict):
+                overlay.apply_handle_state(args["state"])
             if not overlay.enqueue_input(str(args.get("data") or "")):
                 self._notify(
                     "ui.custom.close",
@@ -3329,6 +4120,10 @@ class Extension:
                 new_width = self._width
             self._dispatch_width_change(new_width)
             self._refresh_surfaces()
+            with self._editor_lock:
+                editor = self._editor
+            if editor is not None:
+                editor.post(("render", None))
             with self._overlay_lock:
                 overlays = list(self._overlays.values())
             for overlay in overlays:
@@ -3390,6 +4185,7 @@ class Extension:
 
     def _apply_ui_state(self, state: dict[str, Any]) -> None:
         """Record the snapshot's hasUI and theme. Caller holds _state_lock."""
+        self._views.apply_state(state)
         has_ui = state.get("hasUI")
         if isinstance(has_ui, bool):
             self._has_ui = has_ui
@@ -3431,6 +4227,10 @@ class Extension:
                 self._respond(req_id, _dispatch_provider_callback(self, req), None)
             elif method == "provider_operation":
                 self._respond(req_id, _dispatch_provider_operation(self, ctx, req), None)
+            elif method == "user_bash_exec":
+                # The host waits for the output chunks, in order, before this answer; the request's cancellation is the exec's signal.
+                result = _run_user_bash_exec(self._bash_operations, req, cancel, lambda data: self._notify("tool_update", {"request_id": req_id, "result": _data_update(data)}))
+                self._respond(req_id, result, None)
             elif method == "provider_stream_simple":
                 cancel = ctx._cancelled
                 args = req.get("args") or {}
@@ -3482,6 +4282,7 @@ class Extension:
                     declared=list(payload.get("declared") or []), callable=list(payload.get("callable") or []),
                     registered=list(payload.get("registered") or []), exposures=dict(payload.get("exposures") or {}),
                     namespaces=dict(payload.get("namespaces") or {}),
+                    prompt_guidelines={tool: list(items) for tool, items in (payload.get("promptGuidelines") or {}).items()},
                 ))
                 if changes is not None and not isinstance(changes, dict):
                     raise TypeError("prepare_loadout must return a mapping or None")
@@ -3512,8 +4313,28 @@ class Extension:
             elif method == "events.dispatch":
                 self._bus.dispatch(ctx, req.get("args") or {})
                 self._respond(req_id, None, None)
+            elif method == "model_stream_callback":
+                args = req.get("args") or {}
+                with self._model_stream_lock:
+                    owned = self._model_stream_callbacks.get(str(args.get("streamId") or ""))
+                name = str(args.get("callback") or "")
+                transport = owned[1].get("fetch") if owned is not None else None
+                if name in ("fetch", "fetchRead", "fetchClose") and isinstance(transport, _ModelFetchTransport):
+                    self._respond(req_id, transport.serve(name, args.get("value"), cancel), None)
+                    return
+                if name == "fetchClose" and owned is None:
+                    self._respond(req_id, None, None)  # a deferred Body.Close may follow the terminal stream event
+                    return
+                callback = owned[1].get(name) if owned else None
+                if callback is None or name == "fetch":
+                    raise RuntimeError(f"unknown model stream callback {args.get('streamId')}/{name}")
+                result = callback(args.get("value"), owned[0])
+                self._respond(req_id, {"defined": result is not None, "value": result} if name == "onPayload" else result, None)
             elif method == "with_session":
                 self._with_sessions.dispatch(ctx, req.get("args") or {})
+                self._respond(req_id, None, None)
+            elif method == "setup":
+                self._setups.dispatch_setup(ctx, req.get("args") or {})
                 self._respond(req_id, None, None)
             elif method == "command":
                 name = req.get("tool", "")
@@ -3582,6 +4403,7 @@ class Extension:
                     options = data["systemPromptOptions"]
                     # Pi's normalized options always carry every collection; the host omits an empty one.
                     options.setdefault("selectedTools", [])
+                    options.setdefault("hiddenTools", [])
                     options.setdefault("toolSnippets", {})
                     options.setdefault("toolGuidelines", {})
                     options.setdefault("promptGuidelines", [])
@@ -3603,7 +4425,7 @@ class Extension:
                 snapshot = list(messages) if isinstance(messages, list) else None
                 result = handler(ctx, data)
                 if req.get("event") == "user_bash":
-                    result = _user_bash_event_result(result)
+                    result = _user_bash_operations_reply(self._bash_operations, result) or _user_bash_event_result(result)
                 if req.get("event") in {"context", "context_with_system"} and snapshot is not None:
                     returned = result.get("messages") if isinstance(result, dict) else None
                     if returned is None:
@@ -3617,11 +4439,13 @@ class Extension:
             elif method == "render_message":
                 custom_type = req.get("tool", "")
                 args = req.get("args") or {}
-                lines = self._renderer_handlers[custom_type](ctx, args.get("message") or {}, args.get("options") or {}, int(args.get("width") or 0))
-                self._respond(req_id, {"lines": lines}, None)
+                view_handler = self._message_view_renderers.get(custom_type)
+                handler = view_handler or self._renderer_handlers[custom_type]
+                value = handler(ctx, args.get("message") or {}, args.get("options") or {}, int(args.get("width") or 0))
+                self._respond(req_id, self._views.result(value, view_handler is not None), None)
             elif method == "render_tool":
-                lines = self._render_tool(ctx, req.get("tool", ""), req.get("args") or {})
-                self._respond(req_id, {"lines": lines}, None)
+                value, is_view = self._render_tool(ctx, req.get("tool", ""), req.get("args") or {})
+                self._respond(req_id, self._views.result(value, is_view), None)
             elif method == "resolve_tool_renderers":
                 self._respond(req_id, self._resolve_tool_renderers(req.get("args") or {}), None)
             elif method == "markdown_transform":
@@ -3637,8 +4461,10 @@ class Extension:
             elif method == "render_entry":
                 custom_type = req.get("tool", "")
                 args = req.get("args") or {}
-                lines = self._entry_renderer_handlers[custom_type](ctx, args.get("entry") or {}, args.get("options") or {}, int(args.get("width") or 0))
-                self._respond(req_id, {"lines": lines}, None)
+                view_handler = self._entry_view_renderers.get(custom_type)
+                handler = view_handler or self._entry_renderer_handlers[custom_type]
+                value = handler(ctx, args.get("entry") or {}, args.get("options") or {}, int(args.get("width") or 0))
+                self._respond(req_id, self._views.result(value, view_handler is not None), None)
             elif method in _OAUTH_METHODS:
                 self._dispatch_oauth(req_id, req)
             else:
@@ -3841,13 +4667,41 @@ class Extension:
     def _render_remote_component(self, key: str, overlay: _RemoteOverlayState) -> None:
         with self._state_lock:
             width = self._width
-        lines = [str(line) for line in overlay.component.render(width)]
+        if overlay.is_view:
+            self._render_remote_view(key, overlay, width)
+            return
+        render_width = overlay.render_width(width) if overlay.render_width is not None else width
+        lines = [str(line) for line in overlay.component.render(render_width)]
         overlay.last_render = time.monotonic()
         if lines == overlay.last_lines:
             return
         overlay.last_lines = list(lines)
         overlay.seq += 1
-        self._notify("ui.custom.render", {"key": key, "lines": lines, "width": width, "seq": overlay.seq})
+        self._notify("ui.custom.render", self._frame_args(overlay, {"key": key, "lines": lines, "width": width, "seq": overlay.seq}))
+
+    def _render_remote_view(self, key: str, overlay: _RemoteOverlayState, width: int) -> None:
+        """Send a view frame (D107): the view with no lines key. A frame equal to the last one at the same width is not
+        sent, unless it names images the connection has not sent or the host evicted one of its images."""
+        view = overlay.component.view(width)  # type: ignore[union-attr]
+        overlay.last_render = time.monotonic()
+        encoded = self._views.encode(view)
+        with overlay.event_lock:
+            force = overlay.force_view
+            overlay.force_view = False
+        if not force and overlay.last_view == (encoded.body, width) and not self._views.has_unsent(encoded):
+            return
+        overlay.last_view = (encoded.body, width)
+        with overlay.event_lock:
+            overlay.view_refs = encoded.refs()
+        overlay.seq += 1
+        self._notify("ui.custom.render", self._frame_args(overlay, {"key": key, "view": self._views.wire(encoded), "width": width, "seq": overlay.seq}))
+
+    @staticmethod
+    def _frame_args(overlay: _RemoteOverlayState, args: dict[str, Any]) -> dict[str, Any]:
+        """Mark a frame of a component that takes the mouse; the host then hands it mouse events."""
+        if overlay.takes_mouse:
+            args["mouse"] = True
+        return args
 
     def _remote_component_worker(self, key: str, overlay: _RemoteOverlayState) -> None:
         while overlay.active.is_set():
@@ -3855,12 +4709,31 @@ class Extension:
             if kind == "stop" or not overlay.active.is_set():
                 return
             try:
-                if kind == "input":
-                    result = overlay.component.handle_input(data or "")
+                if kind == "opened":
+                    if overlay.on_handle is None:
+                        continue
+                    overlay.apply_handle_state(data)
+                    handle = OverlayHandle(self, key, overlay)
+                    overlay.on_handle(handle)
+                    continue
+                if kind in ("input", "view_event", "mouse"):
+                    if kind == "input":
+                        result = overlay.component.handle_input(data or "")
+                    elif kind == "mouse":
+                        result = overlay.component.handle_mouse(data)  # type: ignore[union-attr]
+                    else:
+                        # A component without handle_view_event, and a line component, ignore events.
+                        handler = getattr(overlay.component, "handle_view_event", None) if overlay.is_view else None
+                        if not callable(handler):
+                            continue
+                        result = handler(data)
                     if result.done:
                         overlay.active.clear()
                         self._notify("ui.custom.close", {"key": key, "result": result.value})
                         return
+                    if kind == "mouse" and data.type in _MOUSE_NO_RENDER:
+                        # Pi's renderer draws again after press, click, drag and wheel only.
+                        continue
                 else:
                     delay = 0.016 - (time.monotonic() - overlay.last_render)
                     if delay > 0:
@@ -3878,10 +4751,15 @@ class Extension:
 
     def _run_remote_component(self, component: RemoteComponent, options: dict[str, Any], parent_request_id: str = "", parent: _RequestParent | None = None) -> Any:
         args = dict(options)
+        on_handle = args.pop("onHandle", None)
         with self._overlay_lock:
             self._overlay_seq += 1
             key = f"custom-{self._overlay_seq}"
             overlay = _RemoteOverlayState(component)
+            overlay.render_width = _overlay_render_width(args)
+            if callable(on_handle) and args.get("overlay"):
+                overlay.on_handle = on_handle
+                args["hasHandle"] = True
             self._overlays[key] = overlay
         args["key"] = key
         try:
@@ -3961,6 +4839,54 @@ class Extension:
     def _push_widget(self, key: str, lines: list[str]) -> None:
         self._send({"type": "widget_push", "widget_push": {"key": key, "lines": lines}})
 
+    def _set_widget_view(self, ctx: Context, key: str, view: kit.View, options: dict[str, Any] | None) -> None:
+        views = self._views
+        encoded = views.encode(view)
+        # Held across the send, so an eviction's resend and this frame keep their order.
+        with views.widgets_lock:
+            views.widgets[key] = (encoded, options)
+            self._send_widget_view(ctx, key, views.wire(encoded), options)
+
+    def _send_widget_view(self, ctx: Context, key: str, view: dict[str, Any], options: dict[str, Any] | None) -> None:
+        # lines absent: the view is authoritative (D107).
+        if options is None:
+            self._send({"type": "widget_push", "widget_push": {"key": key, "view": view}})
+            return
+        ctx._call("ui.setWidget", {"key": key, "view": view, "options": options})
+
+    def _resend_evicted_views(self, refs: set[str]) -> None:
+        """Handle ``ui.view.evicted``: forget the refs, and send again, with the
+        image data, the latest frame of every live surface that names one.
+
+        Runs on the thread that reads host frames, so the widget, header and
+        footer sends, which may wait for the host, run on a thread of their
+        own, each holding its registry so a newer frame the author sends goes
+        out after it.
+        """
+        views = self._views
+        views.forget(refs)
+        with self._overlay_lock:
+            overlays = list(self._overlays.values())
+        for overlay in overlays:
+            overlay.resend_if_references(refs)
+
+        def resend() -> None:
+            ctx = Context(self)
+            try:
+                with views.widgets_lock:
+                    for key, (encoded, options) in list(views.widgets.items()):
+                        if encoded.references(refs):
+                            self._send_widget_view(ctx, key, views.wire(encoded), options)
+                with views.surfaces_lock:
+                    for method, encoded in list(views.surfaces.items()):
+                        if encoded.references(refs):
+                            ctx._call(method, {"view": views.wire(encoded)})
+            except Exception as exc:  # noqa: BLE001 - a failed resend leaves the host's previous frame, as a failed send would
+                if not self._shutdown.is_set():
+                    print(f"pig: resend evicted view images: {exc}", file=sys.stderr)
+
+        threading.Thread(target=resend, name="pig-view-evicted", daemon=True).start()
+
     def _terminal_input_handlers(self) -> list[Any]:
         with self._state_lock:
             return [h for _, h in self._term_input]
@@ -3989,7 +4915,9 @@ class Extension:
         return unsubscribe
 
     def _replace_surface(self, method: str, surface: "_SurfaceRenderer | None") -> None:
-        """Retire the renderer installed for method and install surface (None for none)."""
+        """Retire the renderer or view installed for method and install surface (None for none)."""
+        with self._views.surfaces_lock:
+            self._views.surfaces.pop(method, None)
         with self._surface_lock:
             previous = self._surfaces.pop(method, None)
             if surface is not None:

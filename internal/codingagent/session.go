@@ -1,7 +1,6 @@
 package codingagent
 
 import (
-	"cmp"
 	"crypto/rand"
 	"encoding/hex"
 	"fmt"
@@ -14,14 +13,15 @@ import (
 
 	"github.com/MichaelKinsy/PiG/agent"
 	"github.com/MichaelKinsy/PiG/ai"
+	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/extensions/sdk/json"
 	"github.com/MichaelKinsy/PiG/internal/codingagent/tools"
-	"github.com/MichaelKinsy/PiG/internal/orderedjson"
+	"github.com/MichaelKinsy/PiG/internal/sessionentry"
 )
 
 // CurrentSessionVersion mirrors upstream `CURRENT_SESSION_VERSION = 3`.
 // Pi schema migrations are applied by session_restore.go.
-const CurrentSessionVersion = 3
+const CurrentSessionVersion = sessionentry.CurrentSessionVersion
 
 // ─── Session entry types ──────────────────────────────────────────────────────
 //
@@ -33,310 +33,71 @@ const CurrentSessionVersion = 3
 // jumps back to an earlier id and new entries become its children
 // (siblings in the entry stream, but logically a separate branch).
 
-type SessionHeader struct {
-	Type      string `json:"type"` // always "session"
-	Version   int    `json:"version,omitempty"`
-	ID        string `json:"id"`
-	Timestamp string `json:"timestamp"`
-	CWD       string `json:"cwd"`
-	// ParentSession holds the absolute path of the SOURCE jsonl on a
-	// clone (separate JSONL with linear path-to-leaf snapshot). Empty
-	// on plain Create.
-	ParentSession string `json:"parentSession,omitempty"`
-}
+// The entry values live in internal/sessionentry so coding/extension can name them without an import cycle.
+type (
+	SessionHeader          = sessionentry.SessionHeader
+	SessionTreeNode        = sessionentry.SessionTreeNode
+	SessionContextModel    = sessionentry.SessionContextModel
+	SessionContext         = sessionentry.SessionContext
+	ContextEditReplacement = sessionentry.ContextEditReplacement
+	ContextEditableContent = sessionentry.ContextEditableContent
+	NewSessionOptions      = sessionentry.NewSessionOptions
+	ProjectedSessionEntry  = sessionentry.ProjectedSessionEntry
+	SessionProjection      = sessionentry.SessionProjection
+	SessionEntryBase       = sessionentry.SessionEntryBase
+	MessageEntry           = sessionentry.MessageEntry
+	ModelChangeEntry       = sessionentry.ModelChangeEntry
+	UsageEntry             = sessionentry.UsageEntry
+	CompactionEntry        = sessionentry.CompactionEntry
+	BranchSummaryEntry     = sessionentry.BranchSummaryEntry
+	CustomEntry            = sessionentry.CustomEntry
+	CustomMessageEntry     = sessionentry.CustomMessageEntry
+	LabelEntry             = sessionentry.LabelEntry
+	SessionInfoEntry       = sessionentry.SessionInfoEntry
+	BashExecutionEntry     = sessionentry.BashExecutionEntry
+	BashExecutionMessage   = sessionentry.BashExecutionMessage
+	ThinkingLevelEntry     = sessionentry.ThinkingLevelEntry
+	SessionEntry           = sessionentry.SessionEntry
+	RawEntry               = sessionentry.RawEntry
+	ContextEditEntry       = sessionentry.ContextEditEntry
+)
 
-// SessionEntryBase is the common prefix on every non-header entry.
-// `ParentID` is `*string` (not "") so we can distinguish "root entry"
-// (parentId: null) from "missing field". The wire format requires
-// `"parentId": null` literally for roots.
-type SessionEntryBase struct {
-	Type      string  `json:"type"`
-	ID        string  `json:"id"`
-	ParentID  *string `json:"parentId"`
-	Timestamp string  `json:"timestamp"`
-}
-
-type MessageEntry struct {
-	SessionEntryBase
-	Message agent.AgentMessage `json:"message"`
-}
-
-type ModelChangeEntry struct {
-	SessionEntryBase
-	Provider string `json:"provider"`
-	ModelID  string `json:"modelId"`
-}
-
-// UsageEntry is model-attributed usage that does not enter LLM context, such
-// as a cache-warming refresh. Mirrors upstream session-manager.ts UsageEntry.
-type UsageEntry struct {
-	SessionEntryBase
-	// Kind is an arbitrary usage category, such as "cache_warm".
-	Kind     string   `json:"kind"`
-	Provider string   `json:"provider"`
-	Model    string   `json:"model"`
-	Usage    ai.Usage `json:"usage"`
-	// Note is an optional human-readable qualifier for usage notices.
-	Note string `json:"note,omitempty"`
-}
-
-// CompactionEntry field order matches Pi's appendCompaction object literal so
-// Pig-written entries serialize with the same key order.
-type CompactionEntry struct {
-	SessionEntryBase
-	Summary          string    `json:"summary"`
-	FirstKeptEntryID string    `json:"firstKeptEntryId"`
-	TokensBefore     int       `json:"tokensBefore"`
-	Details          any       `json:"details,omitempty"`
-	Usage            *ai.Usage `json:"usage,omitempty"`
-	FromHook         bool      `json:"fromHook"`
-	// SystemMessage is the complete prompt and tool state at this compaction
-	// boundary. It is absent when the projected context has no system state.
-	SystemMessage json.RawMessage `json:"systemMessage,omitempty"`
-}
-
-type BranchSummaryEntry struct {
-	SessionEntryBase
-	FromID   string    `json:"fromId"`
-	Summary  string    `json:"summary"`
-	Details  any       `json:"details,omitempty"`
-	FromHook bool      `json:"fromHook,omitempty"`
-	Usage    *ai.Usage `json:"usage,omitempty"`
-}
-
-type CustomEntry struct {
-	SessionEntryBase
-	CustomType string `json:"customType"`
-	Data       any    `json:"data,omitempty"`
-}
-
-type CustomMessageEntry struct {
-	SessionEntryBase
-	CustomType string `json:"customType"`
-	Content    any    `json:"content"` // string | []ContentBlock
-	Display    bool   `json:"display"`
-	Details    any    `json:"details,omitempty"`
-}
-
-// UnmarshalJSON keeps the member order of `data`, the object an extension wrote (session-manager.ts appendCustomEntry).
-func (e *CustomEntry) UnmarshalJSON(data []byte) error {
-	type plain CustomEntry
-	return orderedjson.UnmarshalFields(data, (*plain)(e), "data")
-}
-
-// UnmarshalJSON keeps the member order of `details`, the object an extension wrote (session-manager.ts appendCustomMessageEntry).
-func (e *CustomMessageEntry) UnmarshalJSON(data []byte) error {
-	type plain CustomMessageEntry
-	return orderedjson.UnmarshalFields(data, (*plain)(e), "details")
-}
-
-// LabelEntry is upstream's "user-renamed this branch" marker. Carries
-// nil Label to delete a previously-set label.
-type LabelEntry struct {
-	SessionEntryBase
-	TargetID string  `json:"targetId"`
-	Label    *string `json:"label"`
-}
-
-// SessionInfoEntry stores a session-level name (set via `/name`).
-// Persisted as type=session_info so it survives across resumes.
-type SessionInfoEntry struct {
-	SessionEntryBase
-	Name string `json:"name,omitempty"`
-}
-
-// BashExecutionEntry persists a user shell invocation as a message with role bashExecution, matching packages/coding-agent/src/core/session-manager.ts:appendMessage.
-// ExcludeFromContext retains the entry in the transcript but excludes it from LLM conversion.
-type BashExecutionEntry struct {
-	SessionEntryBase
-	Role               string `json:"-"` // always "bashExecution"; set on read
-	Command            string `json:"-"`
-	Output             string `json:"-"`
-	ExitCode           *int   `json:"-"`
-	Cancelled          bool   `json:"-"`
-	Truncated          bool   `json:"-"`
-	FullOutputPath     string `json:"-"`
-	ExcludeFromContext bool   `json:"-"`
-	MessageTimestamp   int64  `json:"-"`
-}
-
-// BashExecutionMessage is the inner `message` payload upstream uses for
-// bash entries. Mirrors messages.ts:29-43 byte-for-byte.
-type BashExecutionMessage struct {
-	Role               string `json:"role"` // "bashExecution"
-	Command            string `json:"command"`
-	Output             string `json:"output"`
-	ExitCode           *int   `json:"exitCode,omitempty"`
-	Cancelled          bool   `json:"cancelled"`
-	Truncated          bool   `json:"truncated"`
-	FullOutputPath     string `json:"fullOutputPath,omitempty"`
-	Timestamp          int64  `json:"timestamp"`
-	ExcludeFromContext bool   `json:"excludeFromContext,omitempty"`
-}
-
-// bashExecutionWireEntry is the on-disk wrapper (= upstream's SessionMessageEntry
-// for bashExecution variants). Used solely for Marshal/Unmarshal.
-type bashExecutionWireEntry struct {
-	SessionEntryBase
-	Message BashExecutionMessage `json:"message"`
-}
-
-// MarshalJSON serializes to upstream's wire shape (type:"message" + nested).
-func (b BashExecutionEntry) MarshalJSON() ([]byte, error) {
-	wire := bashExecutionWireEntry{
-		SessionEntryBase: SessionEntryBase{
-			Type:      "message",
-			ID:        b.ID,
-			ParentID:  b.ParentID,
-			Timestamp: b.Timestamp,
-		},
-		Message: BashExecutionMessage{
-			Role:               "bashExecution",
-			Command:            b.Command,
-			Output:             b.Output,
-			ExitCode:           b.ExitCode,
-			Cancelled:          b.Cancelled,
-			Truncated:          b.Truncated,
-			FullOutputPath:     b.FullOutputPath,
-			ExcludeFromContext: b.ExcludeFromContext,
-			Timestamp:          b.MessageTimestamp,
-		},
-	}
-	return json.Marshal(wire)
-}
-
-// UnmarshalJSON accepts BOTH the new wire shape (type:"message" with
-// inner role:"bashExecution") AND the legacy pig shape (type:"bash_execution"
-// with flat top-level fields), so older session files still load.
-func (b *BashExecutionEntry) UnmarshalJSON(data []byte) error {
-	// Peek base to decide which path.
-	var probe struct {
-		Type    string          `json:"type"`
-		ID      string          `json:"id"`
-		Message json.RawMessage `json:"message"`
-	}
-	if err := json.Unmarshal(data, &probe); err != nil {
-		return err
-	}
-	if probe.Type == "message" && len(probe.Message) > 0 {
-		// New shape (upstream parity).
-		var wire bashExecutionWireEntry
-		if err := json.Unmarshal(data, &wire); err != nil {
-			return err
+// GetLatestCompactionEntry returns the newest compaction entry, or nil when there is none. As upstream casts the newest entry of that type without validating it, a compaction entry whose JSON does not decode is still the newest: only its base members are set.
+// Mirrors upstream packages/coding-agent/src/core/session-manager.ts getLatestCompactionEntry.
+func GetLatestCompactionEntry(entries []SessionEntry) *CompactionEntry {
+	for _, entry := range slices.Backward(entries) {
+		if entry.Base().Type != "compaction" {
+			continue
 		}
-		b.SessionEntryBase = wire.SessionEntryBase
-		b.Role = wire.Message.Role
-		b.Command = wire.Message.Command
-		b.Output = wire.Message.Output
-		b.ExitCode = wire.Message.ExitCode
-		b.Cancelled = wire.Message.Cancelled
-		b.Truncated = wire.Message.Truncated
-		b.FullOutputPath = wire.Message.FullOutputPath
-		b.ExcludeFromContext = wire.Message.ExcludeFromContext
-		b.MessageTimestamp = wire.Message.Timestamp
-		return nil
+		compaction, ok := entry.(CompactionEntry)
+		if !ok {
+			compaction = CompactionEntry{SessionEntryBase: entry.Base()}
+		}
+		return &compaction
 	}
-	// Legacy PiG shape with top-level fields.
-	var legacy struct {
-		SessionEntryBase
-		Role               string `json:"role"`
-		Command            string `json:"command"`
-		Output             string `json:"output"`
-		ExitCode           *int   `json:"exitCode"`
-		Cancelled          bool   `json:"cancelled"`
-		Truncated          bool   `json:"truncated"`
-		FullOutputPath     string `json:"fullOutputPath,omitempty"`
-		ExcludeFromContext bool   `json:"excludeFromContext,omitempty"`
-	}
-	if err := json.Unmarshal(data, &legacy); err != nil {
-		return err
-	}
-	b.SessionEntryBase = legacy.SessionEntryBase
-	b.Type = "bash_execution"
-	b.Role = legacy.Role
-	b.Command = legacy.Command
-	b.Output = legacy.Output
-	b.ExitCode = legacy.ExitCode
-	b.Cancelled = legacy.Cancelled
-	b.Truncated = legacy.Truncated
-	b.FullOutputPath = legacy.FullOutputPath
-	b.ExcludeFromContext = legacy.ExcludeFromContext
 	return nil
 }
 
-// ThinkingLevelEntry records a user-initiated thinking level change (Shift+Tab).
-// Mirrors upstream appendThinkingLevelChange in agent-session.ts. Persisted as
-// type="thinking_level_change" so the session tree can display [thinking: level].
-type ThinkingLevelEntry struct {
-	SessionEntryBase
-	ThinkingLevel string `json:"thinkingLevel"`
+// asMessage is the entry as a MessageEntry, false for any other entry and for a message entry whose record does not decode.
+func asMessage(e SessionEntry) (MessageEntry, bool) {
+	message, ok := e.(MessageEntry)
+	return message, ok
 }
 
-// SessionEntry is the union of all entry types. We keep the raw JSON
-// alongside parsed-base fields so unknown fields survive round-trips
-// (forward-compat: future versions of upstream may add fields we don't
-// know about; we must not silently drop them).
-type SessionEntry struct {
-	raw  json.RawMessage
-	Base SessionEntryBase
-}
-
-func (e SessionEntry) MarshalJSON() ([]byte, error) { return e.raw, nil }
-
-// NewSessionEntry constructs a SessionEntry from raw JSON and a pre-decoded base.
-// Used primarily by tests and external packages that need to fabricate entries.
-func NewSessionEntry(raw json.RawMessage, base SessionEntryBase) SessionEntry {
-	return SessionEntry{raw: raw, Base: base}
-}
-
-// Raw returns the entry's on-disk JSON as immutable bytes.
-func (e SessionEntry) Raw() json.RawMessage { return e.raw }
-
-// AsMessage decodes the entry as a MessageEntry. Returns (zero, false)
-// if the entry isn't type=message.
-func (e SessionEntry) AsMessage() (MessageEntry, bool) {
-	if e.Base.Type != "message" {
-		return MessageEntry{}, false
-	}
-	var me MessageEntry
-	if err := json.Unmarshal(e.raw, &me); err != nil {
-		return MessageEntry{}, false
-	}
-	return me, true
-}
-
-// messageFor is AsMessage memoized on the session. Callers must clone the
+// messageFor is asMessage that records a message entry which did not decode, so UndecodableCount can report it. Callers must clone the
 // contained AgentMessage before handing it to a mutable pipeline.
 func (s *Session) messageFor(e SessionEntry) (MessageEntry, bool) {
-	if e.Base.Type != "message" {
-		return MessageEntry{}, false
-	}
-	id := e.Base.ID
-	if id == "" {
-		return e.AsMessage()
+	message, ok := asMessage(e)
+	if ok || e.Base().Type != "message" {
+		return message, ok
 	}
 	s.msgMu.Lock()
-	if cached, hit := s.msgCache[id]; hit {
-		s.msgMu.Unlock()
-		return cached.entry, cached.ok
+	if s.undecodable == nil {
+		s.undecodable = make(map[string]struct{})
 	}
+	s.undecodable[e.Base().ID] = struct{}{}
 	s.msgMu.Unlock()
-
-	me, ok := e.AsMessage()
-
-	s.msgMu.Lock()
-	if s.msgCache == nil {
-		s.msgCache = make(map[string]parsedMessage)
-	}
-	s.msgCache[id] = parsedMessage{entry: me, ok: ok}
-	if !ok {
-		if s.undecodable == nil {
-			s.undecodable = make(map[string]struct{})
-		}
-		s.undecodable[id] = struct{}{}
-	}
-	s.msgMu.Unlock()
-	return me, ok
+	return MessageEntry{}, false
 }
 
 // UndecodableCount returns how many distinct message entries failed to
@@ -383,22 +144,7 @@ type Session struct {
 	// (upstream SessionManager._hasConversation).
 	hasConversation bool
 
-	// msgCache memoizes AsMessage by entry id. Entries are immutable and
-	// append-only, so a parse never goes stale and needs no invalidation.
-	// It removes the repeated json.Unmarshal that /tree navigation,
-	// resume, and per-turn context building otherwise pay on every walk
-	// of a long session's branch. Bounded by the session's own entry
-	// count and freed when the session is dropped.
-	//
-	// Unparseable entries are cached too. An entry a build cannot decode
-	// is decoded again by every later walk unless the failure is recorded,
-	// and a failure costs a full json scan of the entry before it reports
-	// the bad discriminator. Sessions written by a pig that emitted a
-	// content-block type this build no longer accepts are entirely made of
-	// such entries, which turned each /tree traversal into a re-scan of the
-	// whole transcript.
-	msgMu    sync.Mutex
-	msgCache map[string]parsedMessage
+	msgMu sync.Mutex
 
 	// undecodable holds the ids of message entries this build could not
 	// decode. They are dropped from BuildContext, so the model would
@@ -409,12 +155,6 @@ type Session struct {
 
 	// stats is updated with the entry list while loading or appending so /session reads a bounded snapshot instead of reparsing durable history on the input loop.
 	stats sessionAccountingAccumulator
-}
-
-// parsedMessage is a memoized AsMessage outcome, including a failed parse.
-type parsedMessage struct {
-	entry MessageEntry
-	ok    bool
 }
 
 // NewSession creates an in-memory session with an ISO millisecond header timestamp and an optional parent session path.
@@ -444,7 +184,7 @@ func (s *Session) CWD() string {
 	return s.header.CWD
 }
 func (s *Session) Path() string { return s.path }
-func (s *Session) Header() SessionHeader {
+func (s *Session) GetHeader() SessionHeader {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	return s.header
@@ -453,8 +193,8 @@ func (s *Session) Header() SessionHeader {
 func (s *Session) ParentSession() string { return s.header.ParentSession }
 func (s *Session) SetPath(p string)      { s.path = p }
 
-// Entries returns a copy of all session entries (in append order).
-func (s *Session) Entries() []SessionEntry {
+// GetEntries returns a copy of all session entries (in append order).
+func (s *Session) GetEntries() []SessionEntry {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	out := make([]SessionEntry, len(s.entries))
@@ -462,46 +202,17 @@ func (s *Session) Entries() []SessionEntry {
 	return out
 }
 
-// EntryCount returns the number of distinct session entry IDs, excluding the header, without copying entries like Entries.
+// GetEntryCount returns the number of distinct session entry IDs, excluding the header, without copying entries like GetEntries.
 // A loaded file that repeats an ID counts it once. Mirrors upstream getEntryCount, which returns byId.size (session-manager.ts:1511-1513).
-func (s *Session) EntryCount() int {
+func (s *Session) GetEntryCount() int {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	return len(s.byID)
 }
 
-// LatestCompactionTimestampMs returns the epoch-millisecond timestamp of the
-// most recent compaction entry on the active branch (the path from the current
-// leaf root-ward), and true when such an entry exists. Mirrors upstream
-// getLatestCompactionEntry(getBranch()) (session-manager.ts:311), used by
-// _checkCompaction to skip a stale pre-compaction usage reading that would
-// otherwise re-trigger compaction on the first prompt after a resume.
-func (s *Session) LatestCompactionTimestampMs() (int64, bool) {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-	if s.leafID == nil {
-		return 0, false
-	}
-	cur, ok := s.byID[*s.leafID]
-	for ok {
-		if cur.Base.Type == "compaction" {
-			t, err := time.Parse(time.RFC3339Nano, cur.Base.Timestamp)
-			if err != nil {
-				return 0, false
-			}
-			return t.UnixMilli(), true
-		}
-		if cur.Base.ParentID == nil {
-			return 0, false
-		}
-		cur, ok = s.byID[*cur.Base.ParentID]
-	}
-	return 0, false
-}
-
-// LeafID returns the ID of the current leaf entry (the parent of the
+// GetLeafID returns the ID of the current leaf entry (the parent of the
 // next AppendEntry). nil = "no entries yet, next append is a root".
-func (s *Session) LeafID() *string {
+func (s *Session) GetLeafID() *string {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	if s.leafID == nil {
@@ -536,13 +247,15 @@ func (s *Session) AppendEntry(entry any) error {
 	if err != nil {
 		return fmt.Errorf("session: marshal entry: %w", err)
 	}
-	var base SessionEntryBase
-	if err := json.Unmarshal(raw, &base); err != nil {
-		return fmt.Errorf("session: parse entry base: %w", err)
+	se := sessionentry.DecodeSessionEntry(raw)
+	base := se.Base()
+	if _, undescribed := se.(RawEntry); undescribed {
+		if err := json.Unmarshal(raw, &base); err != nil {
+			return fmt.Errorf("session: parse entry base: %w", err)
+		}
 	}
 	s.mu.Lock()
 	s.stats.add(raw, base.Type)
-	se := SessionEntry{raw: raw, Base: base}
 	s.entries = append(s.entries, se)
 	if s.byID == nil {
 		s.byID = make(map[string]SessionEntry)
@@ -562,6 +275,16 @@ func (s *Session) AppendEntry(entry any) error {
 			s.hasConversation = true
 		}
 	}
+	s.mu.Unlock()
+	return s.Persist(se)
+}
+
+// Persist writes one entry the manager already holds to the session file, as upstream SessionManager._persist does (session-manager.ts:1172).
+// An unflushed session is not written until it holds a user or assistant message, so setup entries alone leave no file. The first write creates the file with the header and every buffered entry; later calls append the entry.
+// A session without a file persists nothing.
+func (s *Session) Persist(entry SessionEntry) error {
+	raw := entry.Raw()
+	s.mu.Lock()
 	path := s.path
 	hasConversation := s.hasConversation
 	flushed := s.flushed
@@ -573,7 +296,7 @@ func (s *Session) AppendEntry(entry any) error {
 		fullFlush = make([][]byte, 0, len(s.entries)+1)
 		fullFlush = append(fullFlush, hdr)
 		for _, e := range s.entries {
-			fullFlush = append(fullFlush, e.raw)
+			fullFlush = append(fullFlush, e.Raw())
 		}
 	}
 	s.mu.Unlock()
@@ -582,10 +305,6 @@ func (s *Session) AppendEntry(entry any) error {
 		return nil
 	}
 
-	// Mirror upstream SessionManager._persist (session-manager.ts:1172): an
-	// unflushed session is not written until it holds a user or assistant
-	// message, so setup entries alone leave no file. Then flush header +
-	// buffered entries; thereafter append each entry.
 	if !flushed && !hasConversation {
 		return nil
 	}
@@ -656,9 +375,37 @@ func writeSessionFile(path string, lines [][]byte, mode int) error {
 	return nil
 }
 
-// AppendMessage persists one upstream AgentMessage, generating a fresh entry id
-// and timestamp and linking it to the current leaf.
-func (s *Session) AppendMessage(msg agent.AgentMessage) (string, error) {
+// SessionMessage is the union appendMessage takes (session-manager.ts: Message | CustomMessage | BashExecutionMessage): an
+// agent.AgentMessage, which carries the LLM messages and the custom messages in AgentMessage.Custom, or a BashExecutionMessage.
+type SessionMessage = extension.SessionMessage
+
+// AppendMessage persists one message (an agent.AgentMessage or a BashExecutionMessage), generating a fresh entry id and timestamp
+// and linking it to the current leaf (session-manager.ts appendMessage). Any other SessionMessage is an error.
+func (s *Session) AppendMessage(message SessionMessage) (string, error) {
+	switch typed := message.(type) {
+	case agent.AgentMessage:
+		return s.appendAgentMessage(typed)
+	case *agent.AgentMessage:
+		if typed == nil {
+			return "", fmt.Errorf("session: AppendMessage: nil message")
+		}
+		return s.appendAgentMessage(*typed)
+	case BashExecutionMessage:
+		return s.AppendBashExecution(typed)
+	case extension.CustomMessage:
+		// upstream: appendMessage stores a CustomMessage as a "message" entry (session-manager.ts:1204); only the agent loop's
+		// map form routes to a custom_message entry.
+		custom := map[string]any{"role": agent.RoleCustom, "customType": typed.CustomType, "content": typed.Content, "display": typed.Display, "timestamp": typed.Timestamp}
+		if typed.Details != nil {
+			custom["details"] = typed.Details
+		}
+		return s.appendMessageEntry(agent.AgentMessage{Custom: custom})
+	default:
+		return "", fmt.Errorf("session: AppendMessage: unsupported message %T", message)
+	}
+}
+
+func (s *Session) appendAgentMessage(msg agent.AgentMessage) (string, error) {
 	// Custom messages round-trip as "custom_message" entries, not generic
 	// "message" entries: messagesFromSession only reconstructs them from that
 	// type. Routing them here keeps OnMessagePersist the single persistence
@@ -666,10 +413,27 @@ func (s *Session) AppendMessage(msg agent.AgentMessage) (string, error) {
 	// recorded at the point it reached the model rather than the point the
 	// extension created it.
 	if msg.Custom != nil {
+		if msg.Custom["role"] == agent.RoleBashExecution {
+			// The map form of a bashExecution message is stored as AppendBashExecution stores it.
+			wire, err := json.Marshal(msg.Custom)
+			if err != nil {
+				return "", fmt.Errorf("session: AppendMessage: %w", err)
+			}
+			var bash BashExecutionMessage
+			if err := json.Unmarshal(wire, &bash); err != nil {
+				return "", fmt.Errorf("session: AppendMessage: %w", err)
+			}
+			return s.AppendBashExecution(bash)
+		}
 		customType, _ := msg.Custom["customType"].(string)
 		display, _ := msg.Custom["display"].(bool)
-		return s.AppendCustomMessage(customType, msg.Custom["content"], display, msg.Custom["details"])
+		return s.AppendCustomMessageEntry(customType, msg.Custom["content"], display, msg.Custom["details"])
 	}
+	return s.appendMessageEntry(msg)
+}
+
+// appendMessageEntry stores msg as a "message" entry linked to the current leaf.
+func (s *Session) appendMessageEntry(msg agent.AgentMessage) (string, error) {
 	if _, err := json.Marshal(msg); err != nil {
 		return "", fmt.Errorf("session: AppendMessage: %w", err)
 	}
@@ -679,7 +443,7 @@ func (s *Session) AppendMessage(msg agent.AgentMessage) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	parent := s.LeafID()
+	parent := s.GetLeafID()
 	entry := MessageEntry{
 		SessionEntryBase: SessionEntryBase{
 			Type:      "message",
@@ -695,9 +459,9 @@ func (s *Session) AppendMessage(msg agent.AgentMessage) (string, error) {
 	return id, nil
 }
 
-// AppendCustomMessage persists an extension-injected custom message as a
+// AppendCustomMessageEntry persists an extension-injected custom message as a
 // "custom_message" entry and returns the new entry id.
-func (s *Session) AppendCustomMessage(customType string, content any, display bool, details any) (string, error) {
+func (s *Session) AppendCustomMessageEntry(customType string, content any, display bool, details any) (string, error) {
 	entry, err := s.customMessageEntry(customType, content, display, details, true)
 	return entry.ID, err
 }
@@ -713,7 +477,7 @@ func (s *Session) customMessageEntry(customType string, content any, display boo
 		SessionEntryBase: SessionEntryBase{
 			Type:      "custom_message",
 			ID:        id,
-			ParentID:  s.LeafID(),
+			ParentID:  s.GetLeafID(),
 			Timestamp: RFC3339NowNano(),
 		},
 		CustomType: customType,
@@ -745,14 +509,14 @@ func (s *Session) AppendSessionInfoName(name string) (id, current string, err er
 	if err != nil {
 		return "", "", err
 	}
-	entry := SessionInfoEntry{SessionEntryBase: SessionEntryBase{Type: "session_info", ID: id, ParentID: s.LeafID(), Timestamp: RFC3339NowNano()}, Name: name}
+	entry := SessionInfoEntry{SessionEntryBase: SessionEntryBase{Type: "session_info", ID: id, ParentID: s.GetLeafID(), Timestamp: RFC3339NowNano()}, Name: name}
 	if err := s.AppendEntry(entry); err != nil {
 		return "", "", err
 	}
 	s.mu.RLock()
 	appended := s.byID[id]
 	s.mu.RUnlock()
-	current, _ = sessionInfoName(appended.raw)
+	current, _ = sessionInfoName(appended.Raw())
 	return id, current, nil
 }
 
@@ -774,7 +538,7 @@ func (s *Session) AppendCustomEntry(customType string, data any) (string, error)
 	if err != nil {
 		return "", err
 	}
-	entry := CustomEntry{SessionEntryBase: SessionEntryBase{Type: "custom", ID: id, ParentID: s.LeafID(), Timestamp: RFC3339NowNano()}, CustomType: customType, Data: data}
+	entry := CustomEntry{SessionEntryBase: SessionEntryBase{Type: "custom", ID: id, ParentID: s.GetLeafID(), Timestamp: RFC3339NowNano()}, CustomType: customType, Data: data}
 	if err := s.AppendEntry(entry); err != nil {
 		return "", err
 	}
@@ -790,7 +554,7 @@ func (s *Session) AppendBashExecution(message BashExecutionMessage) (string, err
 	if err != nil {
 		return "", err
 	}
-	parent := s.LeafID()
+	parent := s.GetLeafID()
 	entry := BashExecutionEntry{
 		SessionEntryBase: SessionEntryBase{
 			Type:      "message",
@@ -814,10 +578,10 @@ func (s *Session) AppendBashExecution(message BashExecutionMessage) (string, err
 	return id, nil
 }
 
-// EntryByID looks up a session entry by its hex ID. Returns false if
+// GetEntry looks up a session entry by its hex ID. Returns false if
 // the ID isn't present. Used by the chat layer to render markers (e.g.
 // branch-summary chip on fork) without exporting the byID map.
-func (s *Session) EntryByID(id string) (SessionEntry, bool) {
+func (s *Session) GetEntry(id string) (SessionEntry, bool) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	e, ok := s.byID[id]
@@ -835,64 +599,61 @@ func (s *Session) GetSessionName() string {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	for _, v := range slices.Backward(s.entries) {
-		if v.Base.Type != "session_info" {
+		if v.Base().Type != "session_info" {
 			continue
 		}
-		if name, ok := sessionInfoName(v.raw); ok {
+		if name, ok := sessionInfoName(v.Raw()); ok {
 			return name
 		}
 	}
 	return ""
 }
 
-// AppendModelSwitch persists a `model_change` audit entry recording
-// that the user switched models mid-session. Mirrors upstream
-// session-manager.ts:appendModelChange(provider, modelId).
-func (s *Session) AppendModelSwitch(provider, modelID, displayName string) error {
+// AppendModelChange appends a model_change entry as a child of the current leaf, advances the leaf, and returns the entry id
+// (session-manager.ts appendModelChange(provider, modelId)).
+func (s *Session) AppendModelChange(provider, modelID string) (string, error) {
 	s.leafAppendMu.Lock()
 	defer s.leafAppendMu.Unlock()
 	id, err := s.generateEntryID()
 	if err != nil {
-		return err
+		return "", err
 	}
-	parent := s.LeafID()
 	entry := ModelChangeEntry{
 		SessionEntryBase: SessionEntryBase{
 			Type:      "model_change",
 			ID:        id,
-			ParentID:  parent,
+			ParentID:  s.GetLeafID(),
 			Timestamp: RFC3339NowNano(),
 		},
 		Provider: provider,
 		ModelID:  modelID,
 	}
-	// displayName is not part of the upstream schema for model_change
-	// entries; we omit it from the persisted JSON to keep round-trip
-	// parity. Status line resolves it from the registry on resume.
-	_ = displayName
-	return s.AppendEntry(entry)
+	if err := s.AppendEntry(entry); err != nil {
+		return "", err
+	}
+	return id, nil
 }
 
 // AppendThinkingLevelChange persists a thinking_level_change audit entry.
 // Mirrors upstream agentSession.appendThinkingLevelChange (agent-session.ts).
-// Called when the user cycles the thinking level via Shift+Tab.
-func (s *Session) AppendThinkingLevelChange(level string) error {
+// Called when the user cycles the thinking level via Shift+Tab. It returns the new entry's id.
+func (s *Session) AppendThinkingLevelChange(level string) (string, error) {
 	s.leafAppendMu.Lock()
 	defer s.leafAppendMu.Unlock()
 	id, err := s.generateEntryID()
 	if err != nil {
-		return err
+		return "", err
 	}
 	entry := ThinkingLevelEntry{
 		SessionEntryBase: SessionEntryBase{
 			Type:      "thinking_level_change",
 			ID:        id,
-			ParentID:  s.LeafID(),
+			ParentID:  s.GetLeafID(),
 			Timestamp: RFC3339NowNano(),
 		},
 		ThinkingLevel: level,
 	}
-	return s.AppendEntry(entry)
+	return id, s.AppendEntry(entry)
 }
 
 // AppendUsage appends model-attributed usage that does not participate in LLM
@@ -909,7 +670,7 @@ func (s *Session) AppendUsage(kind, provider, model string, usage ai.Usage, note
 		SessionEntryBase: SessionEntryBase{
 			Type:      "usage",
 			ID:        id,
-			ParentID:  s.LeafID(),
+			ParentID:  s.GetLeafID(),
 			Timestamp: RFC3339NowNano(),
 		},
 		Kind:     kind,
@@ -948,7 +709,7 @@ func (s *Session) AppendCompaction(summary, firstKeptEntryID string, tokensBefor
 		SessionEntryBase: SessionEntryBase{
 			Type:      "compaction",
 			ID:        id,
-			ParentID:  s.LeafID(),
+			ParentID:  s.GetLeafID(),
 			Timestamp: now.Format("2006-01-02T15:04:05.000Z"),
 		},
 		Summary:          summary,
@@ -965,14 +726,14 @@ func (s *Session) AppendCompaction(summary, firstKeptEntryID string, tokensBefor
 	return id, nil
 }
 
-// AppendBranchSummary starts a new branch at parentID with a summary of the
+// BranchWithSummary starts a new branch at parentID with a summary of the
 // abandoned path. parentID is the explicit parent: nil means the entry is a
 // root-level node (no parent). fromId records the leaf being abandoned ("root"
 // when there is none). The new entry becomes the leaf.
 //
 // Mirrors upstream branchWithSummary(branchFromId: string | null, ...) in
 // session-manager.ts.
-func (s *Session) AppendBranchSummary(parentID *string, summary string, details any, fromHook bool, usage *ai.Usage) (string, error) {
+func (s *Session) BranchWithSummary(parentID *string, summary string, details any, fromHook bool, usage *ai.Usage) (string, error) {
 	s.leafAppendMu.Lock()
 	defer s.leafAppendMu.Unlock()
 	s.mu.RLock()
@@ -1011,42 +772,41 @@ func (s *Session) AppendBranchSummary(parentID *string, summary string, details 
 	return id, nil
 }
 
-// AppendLabelChange writes a label entry for targetID. label=nil clears
-// any existing label. Mirrors upstream appendLabelChange in session-manager.ts
-// (line 1006).
-func (s *Session) AppendLabelChange(targetID string, label *string) error {
+// AppendLabelChange writes a label entry for targetID and returns its id. label=nil clears
+// any existing label. Mirrors upstream appendLabelChange in session-manager.ts.
+func (s *Session) AppendLabelChange(targetID string, label *string) (string, error) {
 	s.mu.RLock()
 	_, ok := s.byID[targetID]
 	s.mu.RUnlock()
 	if !ok {
-		return fmt.Errorf("Entry %s not found", targetID)
+		return "", fmt.Errorf("Entry %s not found", targetID)
 	}
 	s.leafAppendMu.Lock()
 	defer s.leafAppendMu.Unlock()
 	id, err := s.generateEntryID()
 	if err != nil {
-		return err
+		return "", err
 	}
 	entry := LabelEntry{
 		SessionEntryBase: SessionEntryBase{
 			Type:      "label",
 			ID:        id,
-			ParentID:  s.LeafID(),
+			ParentID:  s.GetLeafID(),
 			Timestamp: RFC3339NowNano(),
 		},
 		TargetID: targetID,
 		Label:    label,
 	}
-	return s.AppendEntry(entry)
+	return id, s.AppendEntry(entry)
 }
 
-// Fork moves the leaf pointer to forkFromID so the next AppendEntry
+// Branch moves the leaf pointer to forkFromID so the next AppendEntry
 // becomes a sibling branch off that point. Existing entries are not
 // touched: abandoned tail simply becomes an orphan subtree.
 //
-// Mirrors upstream `branch(id)`. Use SetLeafID(nil) for the "fork
+// Mirrors upstream `branch(id)`. Use SetLeafID(nil) for the "branch
 // before first entry" case (root-reset).
-func (s *Session) Fork(forkFromID string) error {
+func (s *Session) Branch(forkFromID string) error {
 	s.mu.RLock()
 	_, ok := s.byID[forkFromID]
 	s.mu.RUnlock()
@@ -1057,22 +817,18 @@ func (s *Session) Fork(forkFromID string) error {
 	return s.SetLeafID(&id)
 }
 
-// Branch returns the path-to-root chain (in append order: root first,
-// leaf last) ending at leafID. Returns nil if leafID isn't an entry.
-func (s *Session) Branch(leafID string) []SessionEntry {
+// GetBranch returns the root-to-leaf path (root first) of the current leaf, or of fromID when it is given;
+// nil when the entry does not exist. Mirrors upstream SessionManager.getBranch(fromId?).
+func (s *Session) GetBranch(fromID ...string) []SessionEntry {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
-	return s.pathToLocked(leafID)
-}
-
-// GetBranch returns the root-to-leaf path of the current leaf. Mirrors
-// upstream SessionManager.getBranch() without an argument.
-func (s *Session) GetBranch() []SessionEntry {
-	leaf := s.LeafID()
-	if leaf == nil {
+	if len(fromID) > 0 {
+		return s.pathToLocked(fromID[0])
+	}
+	if s.leafID == nil {
 		return nil
 	}
-	return s.Branch(*leaf)
+	return s.pathToLocked(*s.leafID)
 }
 
 // BuildContext returns the model-visible message list for the path ending at
@@ -1101,9 +857,29 @@ func (s *Session) BuildSessionProjection() SessionProjection {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	if s.leafID == nil {
-		return SessionProjection{}
+		return SessionProjection{ThinkingLevel: "off"}
 	}
 	return buildSessionProjection(s.pathToLocked(*s.leafID), s.messageFor)
+}
+
+// BuildSessionContext returns the messages, thinking level and model of the branch ending at the current leaf (session-manager.ts buildSessionContext). An unset leaf yields no messages.
+func (s *Session) BuildSessionContext() SessionContext {
+	projection := s.BuildSessionProjection()
+	messages := projection.Messages
+	if messages == nil {
+		messages = []agent.AgentMessage{}
+	}
+	return SessionContext{Messages: messages, ThinkingLevel: projection.ThinkingLevel, Model: projection.Model}
+}
+
+// BuildContextEntries returns the compaction-aware entry list of the branch ending at the current leaf (session-manager.ts buildContextEntries). An unset leaf yields no entries.
+func (s *Session) BuildContextEntries() []SessionEntry {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	if s.leafID == nil {
+		return []SessionEntry{}
+	}
+	return buildContextEntries(s.pathToLocked(*s.leafID), s.messageFor)
 }
 
 // pathToLocked returns the root-to-leaf entry path ending at leafID. The
@@ -1115,61 +891,45 @@ func (s *Session) pathToLocked(leafID string) []SessionEntry {
 	}
 	// Walk leaf to root, then reverse; prepending would be O(N^2) in depth.
 	var path []SessionEntry
-	cur := &leaf
-	for cur != nil {
-		path = append(path, *cur)
-		if cur.Base.ParentID == nil {
+	cur := leaf
+	for {
+		path = append(path, cur)
+		parentID := cur.Base().ParentID
+		if parentID == nil {
 			break
 		}
-		next, ok := s.byID[*cur.Base.ParentID]
+		next, ok := s.byID[*parentID]
 		if !ok {
 			break
 		}
-		cur = &next
+		cur = next
 	}
 	slices.Reverse(path)
 	return path
 }
 
-// SessionTreeNode is a defensive copy of the session's branch
-// structure for the /tree overlay (follow-up).
-type SessionTreeNode struct {
-	Entry    SessionEntry
-	Children []*SessionTreeNode
-	Label    string
-	// LabelTimestamp is the on-disk timestamp of the LabelEntry that
-	// set Label, in upstream's ISO-8601-ish wire format. Empty when
-	// no label is set. Used by the /tree picker to render `hh:mm`
-	// next to the label when the user toggles label timestamps on
-	// (mirrors upstream tree-selector.ts:678-682).
-	LabelTimestamp string
-}
-
-// Tree builds a SessionTreeNode rooted at the (synthetic) root.
-// Children sorted by timestamp (oldest first). When multiple entries
-// have parentId=nil we group them under a synthetic root with empty
-// Entry.
-func (s *Session) Tree() *SessionTreeNode {
+// GetTree builds the session's tree and returns its roots (session-manager.ts getTree): an entry without a parent, one that
+// is its own parent and an orphan whose parent is missing are roots, in entry order. Children are sorted oldest first by
+// timestamp (a stable sort, so an unparsable timestamp keeps its place); the roots are not sorted. A label resolves from the
+// latest label entry for its target.
+func (s *Session) GetTree() []*SessionTreeNode {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
-	root := &SessionTreeNode{}
 	nodes := make(map[string]*SessionTreeNode, len(s.entries))
 	for _, e := range s.entries {
-		nodes[e.Base.ID] = &SessionTreeNode{Entry: e}
+		nodes[e.Base().ID] = &SessionTreeNode{Entry: e}
 	}
-	// Wire children. Resolve labels from LabelEntry rows. Last
-	// LabelEntry for a given target wins (upstream behavior -
-	// later entries overwrite earlier ones, including a nil Label
-	// which clears the label).
+	// Last LabelEntry for a given target wins (later entries overwrite
+	// earlier ones, including a nil Label which clears the label).
 	for _, e := range s.entries {
-		if e.Base.Type == "label" {
+		if e.Base().Type == "label" {
 			var le LabelEntry
-			if err := json.Unmarshal(e.raw, &le); err == nil {
+			if err := json.Unmarshal(e.Raw(), &le); err == nil {
 				if n, ok := nodes[le.TargetID]; ok {
 					if le.Label != nil && *le.Label != "" {
 						n.Label = *le.Label
-						n.LabelTimestamp = e.Base.Timestamp
+						n.LabelTimestamp = e.Base().Timestamp
 					} else {
 						n.Label = ""
 						n.LabelTimestamp = ""
@@ -1178,32 +938,42 @@ func (s *Session) Tree() *SessionTreeNode {
 			}
 		}
 	}
+	var roots []*SessionTreeNode
 	for _, e := range s.entries {
-		n := nodes[e.Base.ID]
-		if e.Base.ParentID == nil {
-			root.Children = append(root.Children, n)
+		n := nodes[e.Base().ID]
+		if e.Base().ParentID == nil || *e.Base().ParentID == e.Base().ID {
+			roots = append(roots, n)
 			continue
 		}
-		parent, ok := nodes[*e.Base.ParentID]
+		parent, ok := nodes[*e.Base().ParentID]
 		if !ok {
-			root.Children = append(root.Children, n)
+			roots = append(roots, n)
 			continue
 		}
 		parent.Children = append(parent.Children, n)
 	}
-	// Sort children by timestamp (chronological).
-	var visit func(*SessionTreeNode)
-	visit = func(n *SessionTreeNode) {
-		slices.SortFunc(n.Children, func(a, b *SessionTreeNode) int {
-			return cmp.Compare(a.Entry.Base.Timestamp, b.Entry.Base.Timestamp)
+	stack := slices.Clone(roots)
+	for len(stack) > 0 {
+		n := stack[len(stack)-1]
+		stack = stack[:len(stack)-1]
+		slices.SortStableFunc(n.Children, func(a, b *SessionTreeNode) int {
+			delta := ai.DateParse(a.Entry.Base().Timestamp) - ai.DateParse(b.Entry.Base().Timestamp)
+			switch {
+			case delta < 0:
+				return -1
+			case delta > 0:
+				return 1
+			}
+			return 0
 		})
-		for _, c := range n.Children {
-			visit(c)
-		}
+		stack = append(stack, n.Children...)
 	}
-	visit(root)
-	return root
+	return roots
 }
+
+// treeRoot is the session's roots under one synthetic root node with an empty entry, the shape the tree selector and the
+// ASCII renderer take.
+func (s *Session) treeRoot() *SessionTreeNode { return &SessionTreeNode{Children: s.GetTree()} }
 
 // ─── ID generators ────────────────────────────────────────────────────────────
 

@@ -2,15 +2,15 @@
 
 # Extension SDK surface matrix
 
-Every extension-facing surface of Pi 1.0.3's extension API, and how each PiG extension runtime realizes it. The rows come from Pi's `packages/coding-agent/src/core/extensions/types.ts` and the declarations it re-exports or exposes through its members (`EventBus`, `ExecOptions`/`ExecResult`, `CacheWarmingDecisionEvent`, `ReadonlySessionManager`, `ModelRegistry`, `Theme`, `AgentToolResult`), read from `.upstream/v1.0.3`.
+Every extension-facing surface of Pi 1.1.0's extension API, and how each PiG extension runtime realizes it. The rows come from Pi's `packages/coding-agent/src/core/extensions/types.ts` and the declarations it re-exports or exposes through its members (`EventBus`, `ExecOptions`/`ExecResult`, `CacheWarmingDecisionEvent`, `ReadonlySessionManager`, `ModelRegistry`, `Theme`, `AgentToolResult`), read from `.upstream/v1.1.0`.
 
-A cell's status comes from the runtime itself: the Go SDK's exported identifiers, the Rust SDK's `pub` items and the Python SDK's classes, members and parameters, read from their source, and the Node runtime's objects, read by instantiating the runtime in Node (`test/parity/cmd/sdksurface/probe.mjs`), plus the properties it reads from an extension's definitions. [`test/parity/sdk-surface.toml`](../test/parity/sdk-surface.toml) names the symbol where a language's naming differs from the default rule and says why a realization is a stand-in; a named symbol that does not exist is `missing`. Payload, result and option fields that cross the subprocess wire are also checked against the host's Go decoding type, so a field an SDK sends but the host drops is `missing`.
+A cell's status comes from the runtime itself: the Go SDK's exported identifiers, the Rust SDK's `pub` items and the Python SDK's classes, members and parameters, read from their source, and the Node runtime's objects, read by instantiating the runtime in Node (`test/parity/cmd/sdksurface/probe.mjs`), plus the properties it reads from an extension's definitions. [`test/parity/sdk-surface.toml`](../test/parity/sdk-surface.toml) names the symbol where a language's naming differs from the default rule and says why a realization is a stand-in; a named symbol that does not exist is `missing`. Payload, result and option fields that cross the subprocess wire are also checked against the host's Go decoding type, so a field an SDK sends but the host drops is `missing`. The PiG additive sections list surfaces PiG adds where Pi has none, such as the component kit (D107); the map names each one's symbols, and its cells are classified the same way.
 
 - `implemented`: the symbol and any checked wire fields exist; this is not behavioral proof. See `docs/extension-api-parity.md` and the conformance tests.
 - `stand-in/partial`: the symbol exists; the note says what differs and why.
 - `missing`: no symbol. Each missing cell is listed in [`test/parity/sdk-surface-exceptions.toml`](../test/parity/sdk-surface-exceptions.toml) with its reviewed reason, and `go test ./test/parity/cmd/sdksurface` fails on any other.
 
-The package sections list every runtime export of the modules Pi serves to extensions (`pi-coding-agent`, `pi-tui`, `pi-ai`, `pi-ai/compat`, `pi-ai/providers/all`, `pi-agent-core`), from the compiler-derived inventory of Pi's `.d.ts` files (`test/parity/interfaces/upstream-v1.0.3.json`), and every public instance member of each exported class represented by that inventory. Static factories and overload-specific reachability are outside this probe. Only the Node runtime imports these modules. The probe loads each module the runtime serves and classifies every value by where its code lives, using the V8 inspector's function locations:
+The package sections list every runtime export of the modules Pi serves to extensions (`pi-coding-agent`, `pi-tui`, `pi-ai`, `pi-ai/compat`, `pi-ai/providers/all`, `pi-agent-core`), from the compiler-derived inventory of Pi's `.d.ts` files (`test/parity/interfaces/upstream-v1.1.0.json`), and every public instance member of each exported class represented by that inventory. Static factories and overload-specific reachability are outside this probe. Only the Node runtime imports these modules. The probe loads each module the runtime serves and classifies every value by where its code lives, using the V8 inspector's function locations:
 
 - `Pi's own code`: the function originates in the vendored pinned modules or their dependencies; host import rewrites can still affect behavior (D73).
 - `bridged`: PiG's implementation in the extension runtime, a line-for-line port or a host bridge, locked by the D73 tests (`TestNodeRuntimeShimsExportEveryPinnedPiValue`, `TestPiTuiComponentsMatchThePinnedPackage`, `TestPiAiUtilitiesMatchThePinnedPackage`, `TestPiThemeHelpersMatchThePinnedPackage`).
@@ -21,21 +21,30 @@ Regenerate with `go run ./test/parity/cmd/sdksurface`; `make sdk-surface-drift` 
 
 ## Summary
 
-506 extension API surfaces:
+510 extension API surfaces:
 
 | Runtime | implemented | stand-in/partial | missing (all with a reviewed exception) |
 |---|---|---|---|
-| Node runtime | 463 | 32 | 11 |
-| Go | 465 | 29 | 12 |
-| Rust | 465 | 28 | 13 |
-| Python | 465 | 28 | 13 |
+| Node runtime | 467 | 32 | 11 |
+| Go | 470 | 29 | 11 |
+| Rust | 470 | 28 | 12 |
+| Python | 470 | 28 | 12 |
 
-1554 package exports and class members, Node runtime:
+31 PiG additive surfaces:
+
+| Runtime | implemented | stand-in/partial | missing (all with a reviewed exception) |
+|---|---|---|---|
+| Node runtime | 29 | 0 | 2 |
+| Go | 31 | 0 | 0 |
+| Rust | 31 | 0 | 0 |
+| Python | 31 | 0 | 0 |
+
+1569 package exports and class members, Node runtime:
 
 | Module | Pi's own code | bridged | stand-in | missing (all with a reviewed exception) |
 |---|---|---|---|---|
-| `pi-coding-agent` | 891 | 8 | 0 | 10 |
-| `pi-tui` | 353 | 1 | 0 | 1 |
+| `pi-coding-agent` | 898 | 9 | 0 | 10 |
+| `pi-tui` | 360 | 1 | 0 | 1 |
 | `pi-ai` | 87 | 1 | 0 | 0 |
 | `pi-ai/compat` | 138 | 9 | 0 | 0 |
 | `pi-ai/providers/all` | 12 | 0 | 0 | 0 |
@@ -448,7 +457,7 @@ Regenerate with `go run ./test/parity/cmd/sdksurface`; `make sdk-surface-drift` 
 
 | Surface | Pi declaration | Node runtime | Go | Rust | Python |
 |---|---|---|---|---|---|
-| `pi.on("cache_warming_decision")` | `ExtensionAPI.on` | missing (`api.on`: the host never emits this event) [exception](#exceptions) | missing (`EventCacheWarmingDecision`: the host never emits this event) [exception](#exceptions) | missing (`EVENT_CACHE_WARMING_DECISION`: the host never emits this event) [exception](#exceptions) | missing (`EVENT_CACHE_WARMING_DECISION`: the host never emits this event) [exception](#exceptions) |
+| `pi.on("cache_warming_decision")` | `ExtensionAPI.on` | implemented `api.on` | implemented `EventCacheWarmingDecision` | implemented `EVENT_CACHE_WARMING_DECISION` | implemented `EVENT_CACHE_WARMING_DECISION` |
 
 ## Event payloads
 
@@ -585,6 +594,17 @@ Regenerate with `go run ./test/parity/cmd/sdksurface`; `make sdk-surface-drift` 
 | Surface | Pi declaration | Node runtime | Go | Rust | Python |
 |---|---|---|---|---|---|
 | `pi.on("agent_settled")` | `ExtensionAPI.on` | implemented `api.on` | implemented `EventAgentSettled` | implemented `EVENT_AGENT_SETTLED` | implemented `EVENT_AGENT_SETTLED` |
+
+## Event payloads
+
+| Surface | Pi declaration | Node runtime | Go | Rust | Python |
+|---|---|---|---|---|---|
+| `agent_settled event.aborted` | `AgentSettledEvent.aborted` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` |
+
+## Events
+
+| Surface | Pi declaration | Node runtime | Go | Rust | Python |
+|---|---|---|---|---|---|
 | `pi.on("ui_prompt_start")` | `ExtensionAPI.on` | implemented `api.on` | implemented `EventUIPromptStart` | implemented `EVENT_UI_PROMPT_START` | implemented `EVENT_UI_PROMPT_START` |
 
 ## Event payloads
@@ -737,6 +757,7 @@ Regenerate with `go run ./test/parity/cmd/sdksurface`; `make sdk-surface-drift` 
 | `tool_execution_end event.toolName` | `ToolExecutionEndEvent.toolName` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` |
 | `tool_execution_end event.result` | `ToolExecutionEndEvent.result` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` |
 | `tool_execution_end event.isError` | `ToolExecutionEndEvent.isError` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` |
+| `tool_execution_end event.durationMs` | `ToolExecutionEndEvent.durationMs` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` |
 | `tool_execution_end event.parentToolCallId` | `ToolExecutionEndEvent.parentToolCallId` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` |
 
 ## Events
@@ -1269,6 +1290,8 @@ Regenerate with `go run ./test/parity/cmd/sdksurface`; `make sdk-surface-drift` 
 | `tool render context.expanded` | `ToolRenderContext.expanded` | implemented `read:payload.context` | implemented `ToolRenderContext.Expanded` | implemented `ToolRenderContext.expanded` | implemented `ToolRenderContext.expanded` |
 | `tool render context.showImages` | `ToolRenderContext.showImages` | implemented `read:payload.context` | implemented `ToolRenderContext.ShowImages` | implemented `ToolRenderContext.show_images` | implemented `ToolRenderContext.show_images` |
 | `tool render context.isError` | `ToolRenderContext.isError` | implemented `read:payload.context` | implemented `ToolRenderContext.IsError` | implemented `ToolRenderContext.is_error` | implemented `ToolRenderContext.is_error` |
+| `tool render context.durationMs` | `ToolRenderContext.durationMs` | missing [exception](#exceptions) | implemented `ToolRenderContext.DurationMs` | implemented `ToolRenderContext.duration_ms` | implemented `ToolRenderContext.duration_ms` |
+| `tool render context.outputPad` | `ToolRenderContext.outputPad` | implemented `read:payload.context` | implemented `ToolRenderContext.OutputPad` | implemented `ToolRenderContext.output_pad` | implemented `ToolRenderContext.output_pad` |
 | `tool renderResult options.expanded` | `ToolRenderResultOptions.expanded` | implemented `read:payload.options` | implemented `ToolRenderResultOptions.Expanded` | implemented `ToolRenderResultOptions.expanded` | implemented `Extension.tool_renderers(render_result)` |
 | `tool renderResult options.isPartial` | `ToolRenderResultOptions.isPartial` | implemented `read:payload.options` | implemented `ToolRenderResultOptions.IsPartial` | implemented `ToolRenderResultOptions.is_partial` | implemented `Extension.tool_renderers(render_result)` |
 
@@ -1331,6 +1354,42 @@ Regenerate with `go run ./test/parity/cmd/sdksurface`; `make sdk-surface-drift` 
 | `markdown transform context.messageType` | `MarkdownTransformContext.messageType` | implemented `api.registerMarkdownTransformer` | implemented `MarkdownTransformContext.MessageType` | implemented `MarkdownTransformContext.message_type` | implemented `Extension.markdown_transformer` |
 | `markdown transform context.isStreaming` | `MarkdownTransformContext.isStreaming` | implemented `api.registerMarkdownTransformer` | implemented `MarkdownTransformContext.IsStreaming` | implemented `MarkdownTransformContext.is_streaming` | implemented `Extension.markdown_transformer` |
 | `markdown transform context.availableWidth` | `MarkdownTransformContext.availableWidth` | implemented `api.registerMarkdownTransformer` | implemented `MarkdownTransformContext.AvailableWidth` | implemented `MarkdownTransformContext.available_width` | implemented `Extension.markdown_transformer` |
+
+## PiG additive: component kit (D107)
+
+| Surface | PiG declaration | Node runtime | Go | Rust | Python |
+|---|---|---|---|---|---|
+| `kit node Container` | `view node kind, Pi's Container (spec §2)` | implemented `read:Container.prototype` | implemented `kit.NewContainer` | implemented `kit::Container::new` | implemented `kit.Container` |
+| `kit node Box` | `view node kind, Pi's Box (spec §2)` | implemented `read:tui.Box` | implemented `kit.NewBox` | implemented `kit::Box::new` | implemented `kit.Box` |
+| `kit node Text` | `view node kind, Pi's Text (spec §2)` | implemented `read:tui.Text` | implemented `kit.NewText` | implemented `kit::Text::new` | implemented `kit.Text` |
+| `kit node TruncatedText` | `view node kind, Pi's TruncatedText (spec §2)` | implemented `read:tui.TruncatedText` | implemented `kit.NewTruncatedText` | implemented `kit::TruncatedText::new` | implemented `kit.TruncatedText` |
+| `kit node Markdown` | `view node kind, Pi's Markdown (spec §2)` | implemented `read:tui.Markdown` | implemented `kit.NewMarkdown` | implemented `kit::Markdown::new` | implemented `kit.Markdown` |
+| `kit node Spacer` | `view node kind, Pi's Spacer (spec §2)` | implemented `read:tui.Spacer` | implemented `kit.NewSpacer` | implemented `kit::Spacer::new` | implemented `kit.Spacer` |
+| `kit node DynamicBorder` | `view node kind, Pi's DynamicBorder (spec §2)` | implemented `read:codingAgent.DynamicBorder` | implemented `kit.NewDynamicBorder` | implemented `kit::DynamicBorder::new` | implemented `kit.DynamicBorder` |
+| `kit node SelectList` | `view node kind, Pi's SelectList (spec §2)` | implemented `read:tui.SelectList` | implemented `kit.NewSelectList` | implemented `kit::SelectList::new` | implemented `kit.SelectList` |
+| `kit node SettingsList` | `view node kind, Pi's SettingsList (spec §2)` | implemented `read:tui.SettingsList` | implemented `kit.NewSettingsList` | implemented `kit::SettingsList::new` | implemented `kit.SettingsList` |
+| `kit node Image` | `view node kind, Pi's Image (spec §2)` | implemented `read:tui.Image` | implemented `kit.NewImage` | implemented `kit::Image::new` | implemented `kit.Image` |
+| `kit node Loader` | `view node kind, Pi's Loader (spec §2)` | implemented `read:tui.Loader` | implemented `kit.NewLoader` | implemented `kit::Loader::new` | implemented `kit.Loader` |
+| `kit node HStack` | `view node kind, Pi's HStack (spec §2)` | implemented `read:tui.HStack` | implemented `kit.NewHStack` | implemented `kit::HStack::new` | implemented `kit.HStack` |
+| `kit node VStack` | `view node kind, Pi's VStack (spec §2)` | implemented `read:tui.VStack` | implemented `kit.NewVStack` | implemented `kit::VStack::new` | implemented `kit.VStack` |
+| `kit node Lines` | `view node kind lines (spec §2)` | implemented `read:component.viewLines` | implemented `kit.NewLines` | implemented `kit::Lines::new` | implemented `kit.Lines` |
+| `kit node UserMessage` | `view node kind user-message, Pi's UserMessageComponent (spec §2.1)` | implemented `read:codingAgent.UserMessageComponent` | implemented `kit.NewUserMessage` | implemented `kit::UserMessage::new` | implemented `kit.UserMessage` |
+| `kit node AssistantMessage` | `view node kind assistant-message, Pi's AssistantMessageComponent (spec §2.1)` | implemented `read:codingAgent.AssistantMessageComponent` | implemented `kit.NewAssistantMessage` | implemented `kit::AssistantMessage::new` | implemented `kit.AssistantMessage` |
+| `kit node ToolExecution` | `view node kind tool-execution, Pi's ToolExecutionComponent (spec §2.1)` | implemented `read:codingAgent.ToolExecutionComponent` | implemented `kit.NewToolExecution` | implemented `kit::ToolExecution::new` | implemented `kit.ToolExecution` |
+| `kit node BashExecution` | `view node kind bash-execution, Pi's BashExecutionComponent (spec §2.1)` | implemented `read:codingAgent.BashExecutionComponent` | implemented `kit.NewBashExecution` | implemented `kit::BashExecution::new` | implemented `kit.BashExecution` |
+| `kit node Diff` | `view node kind diff, Pi's renderDiff in a Text (spec §2.1)` | implemented `read:diff.filePath` | implemented `kit.NewDiff` | implemented `kit::Diff::new` | implemented `kit.Diff` |
+| `kit view` | `a view: root, focus, theme overrides (spec §2, §6)` | implemented `read:component.viewTheme` | implemented `kit.View` | implemented `kit::View` | implemented `kit.View` |
+| `kit ctx.ui.custom(view)` | `ui.custom drawn from a view (spec §4)` | implemented `read:overlay.viewRefs` | implemented `ViewComponent.View` | implemented `ViewComponent::view` | implemented `kit.ViewComponent.view` |
+| `kit view events` | `a focused list's events (spec §4, ui.view.event)` | missing [exception](#exceptions) | implemented `ViewEventHandler.HandleViewEvent` | implemented `ViewComponent::handle_view_event` | implemented `kit.ViewEventHandler.handle_view_event` |
+| `kit event` | `a view event (spec §4)` | missing [exception](#exceptions) | implemented `kit.Event` | implemented `kit::Event` | implemented `kit.Event` |
+| `kit ctx.ui.setWidget(view)` | `a widget drawn from a view (spec §9)` | implemented `read:widget.viewRefs` | implemented `Context.SetWidget` | implemented `Context::set_widget_view` | implemented `Context.set_widget` |
+| `kit ctx.ui.setHeader(view)` | `the header drawn from a view (spec §9)` | implemented `read:surface.viewRefs` | implemented `Context.SetHeaderView` | implemented `Context::set_header_view` | implemented `Context.set_header_view` |
+| `kit ctx.ui.setFooter(view)` | `the footer drawn from a view (spec §9)` | implemented `read:surface.viewRefs` | implemented `Context.SetFooterView` | implemented `Context::set_footer_view` | implemented `Context.set_footer_view` |
+| `kit tool renderCall(view)` | `a tool call card drawn from a view (spec §9)` | implemented `read:this.rendererResult` | implemented `ToolRenderers.CallView` | implemented `ToolRendererSet.call_view` | implemented `ToolRenderers.call_view` |
+| `kit tool renderResult(view)` | `a tool result card drawn from a view (spec §9)` | implemented `read:this.rendererResult` | implemented `ToolRenderers.ResultView` | implemented `ToolRendererSet.result_view` | implemented `ToolRenderers.result_view` |
+| `kit message renderer(view)` | `a custom message drawn from a view (spec §9)` | implemented `read:this.rendererResult` | implemented `Extension.MessageViewRenderer` | implemented `Extension::message_view_renderer` | implemented `Extension.message_view_renderer` |
+| `kit entry renderer(view)` | `a custom session entry drawn from a view (spec §9)` | implemented `read:this.rendererResult` | implemented `Extension.EntryViewRenderer` | implemented `Extension::entry_view_renderer` | implemented `Extension.entry_view_renderer` |
+| `kit lines list annotation` | `a lines node's frontend-only list (spec §2, §13.2)` | implemented `read:list.selectedIndex` | implemented `kit.Lines.List` | implemented `kit::List` | implemented `kit.List` |
 
 ## Package exports: pi-coding-agent
 
@@ -1459,6 +1518,7 @@ Regenerate with `go run ./test/parity/cmd/sdksurface`; `make sdk-surface-drift` 
 | `pi-coding-agent: BashExecutionComponent.render` | `BashExecutionComponent.render` | Pi's own code |
 | `pi-coding-agent: BashExecutionComponent.setComplete` | `BashExecutionComponent.setComplete` | Pi's own code |
 | `pi-coding-agent: BashExecutionComponent.setExpanded` | `BashExecutionComponent.setExpanded` | Pi's own code |
+| `pi-coding-agent: BashExecutionComponent.setOutputPad` | `BashExecutionComponent.setOutputPad` | Pi's own code |
 | `pi-coding-agent: BorderedLoader` | `class BorderedLoader` | Pi's own code |
 | `pi-coding-agent: BorderedLoader.addChild` | `BorderedLoader.addChild` | Pi's own code |
 | `pi-coding-agent: BorderedLoader.children` | `BorderedLoader.children` | Pi's own code |
@@ -1481,6 +1541,8 @@ Regenerate with `go run ./test/parity/cmd/sdksurface`; `make sdk-surface-drift` 
 | `pi-coding-agent: BranchSummaryMessageComponent.render` | `BranchSummaryMessageComponent.render` | Pi's own code |
 | `pi-coding-agent: BranchSummaryMessageComponent.setBgFn` | `BranchSummaryMessageComponent.setBgFn` | Pi's own code |
 | `pi-coding-agent: BranchSummaryMessageComponent.setExpanded` | `BranchSummaryMessageComponent.setExpanded` | Pi's own code |
+| `pi-coding-agent: BranchSummaryMessageComponent.setOutputPad` | `BranchSummaryMessageComponent.setOutputPad` | Pi's own code |
+| `pi-coding-agent: BranchSummaryMessageComponent.setPaddingX` | `BranchSummaryMessageComponent.setPaddingX` | Pi's own code |
 | `pi-coding-agent: CONFIG_DIR_NAME` | `variable CONFIG_DIR_NAME` | bridged |
 | `pi-coding-agent: CURRENT_SESSION_VERSION` | `variable CURRENT_SESSION_VERSION` | bridged |
 | `pi-coding-agent: CompactionSummaryMessageComponent` | `class CompactionSummaryMessageComponent` | Pi's own code |
@@ -1493,6 +1555,8 @@ Regenerate with `go run ./test/parity/cmd/sdksurface`; `make sdk-surface-drift` 
 | `pi-coding-agent: CompactionSummaryMessageComponent.render` | `CompactionSummaryMessageComponent.render` | Pi's own code |
 | `pi-coding-agent: CompactionSummaryMessageComponent.setBgFn` | `CompactionSummaryMessageComponent.setBgFn` | Pi's own code |
 | `pi-coding-agent: CompactionSummaryMessageComponent.setExpanded` | `CompactionSummaryMessageComponent.setExpanded` | Pi's own code |
+| `pi-coding-agent: CompactionSummaryMessageComponent.setOutputPad` | `CompactionSummaryMessageComponent.setOutputPad` | Pi's own code |
+| `pi-coding-agent: CompactionSummaryMessageComponent.setPaddingX` | `CompactionSummaryMessageComponent.setPaddingX` | Pi's own code |
 | `pi-coding-agent: CredentialSynchronizationError` | `class CredentialSynchronizationError` | Pi's own code |
 | `pi-coding-agent: CredentialSynchronizationError.cause` | `CredentialSynchronizationError.cause` | Pi's own code |
 | `pi-coding-agent: CredentialSynchronizationError.credential` | `CredentialSynchronizationError.credential` | Pi's own code |
@@ -2050,6 +2114,8 @@ Regenerate with `go run ./test/parity/cmd/sdksurface`; `make sdk-surface-drift` 
 | `pi-coding-agent: SkillInvocationMessageComponent.render` | `SkillInvocationMessageComponent.render` | Pi's own code |
 | `pi-coding-agent: SkillInvocationMessageComponent.setBgFn` | `SkillInvocationMessageComponent.setBgFn` | Pi's own code |
 | `pi-coding-agent: SkillInvocationMessageComponent.setExpanded` | `SkillInvocationMessageComponent.setExpanded` | Pi's own code |
+| `pi-coding-agent: SkillInvocationMessageComponent.setOutputPad` | `SkillInvocationMessageComponent.setOutputPad` | Pi's own code |
+| `pi-coding-agent: SkillInvocationMessageComponent.setPaddingX` | `SkillInvocationMessageComponent.setPaddingX` | Pi's own code |
 | `pi-coding-agent: Theme` | `class Theme` | Pi's own code |
 | `pi-coding-agent: Theme.appearance` | `Theme.appearance` | Pi's own code |
 | `pi-coding-agent: Theme.bg` | `Theme.bg` | Pi's own code |
@@ -2101,6 +2167,7 @@ Regenerate with `go run ./test/parity/cmd/sdksurface`; `make sdk-surface-drift` 
 | `pi-coding-agent: ToolExecutionComponent.setArgsComplete` | `ToolExecutionComponent.setArgsComplete` | Pi's own code |
 | `pi-coding-agent: ToolExecutionComponent.setExpanded` | `ToolExecutionComponent.setExpanded` | Pi's own code |
 | `pi-coding-agent: ToolExecutionComponent.setImageWidthCells` | `ToolExecutionComponent.setImageWidthCells` | Pi's own code |
+| `pi-coding-agent: ToolExecutionComponent.setOutputPad` | `ToolExecutionComponent.setOutputPad` | Pi's own code |
 | `pi-coding-agent: ToolExecutionComponent.setShowImages` | `ToolExecutionComponent.setShowImages` | Pi's own code |
 | `pi-coding-agent: ToolExecutionComponent.updateArgs` | `ToolExecutionComponent.updateArgs` | Pi's own code |
 | `pi-coding-agent: ToolExecutionComponent.updateResult` | `ToolExecutionComponent.updateResult` | Pi's own code |
@@ -2228,7 +2295,7 @@ Regenerate with `go run ./test/parity/cmd/sdksurface`; `make sdk-surface-drift` 
 | `pi-coding-agent: prepareBranchEntries` | `function prepareBranchEntries` | Pi's own code |
 | `pi-coding-agent: rawKeyHint` | `function rawKeyHint` | Pi's own code |
 | `pi-coding-agent: readStoredCredential` | `function readStoredCredential` | Pi's own code |
-| `pi-coding-agent: renderDiff` | `function renderDiff` | Pi's own code |
+| `pi-coding-agent: renderDiff` | `function renderDiff` | bridged |
 | `pi-coding-agent: resizeImage` | `function resizeImage` | Pi's own code |
 | `pi-coding-agent: resolveCliModel` | `function resolveCliModel` | Pi's own code |
 | `pi-coding-agent: resolveModelScopeWithDiagnostics` | `function resolveModelScopeWithDiagnostics` | Pi's own code |
@@ -2259,6 +2326,7 @@ Regenerate with `go run ./test/parity/cmd/sdksurface`; `make sdk-surface-drift` 
 | `pi-tui: Box.removeChild` | `Box.removeChild` | Pi's own code |
 | `pi-tui: Box.render` | `Box.render` | Pi's own code |
 | `pi-tui: Box.setBgFn` | `Box.setBgFn` | Pi's own code |
+| `pi-tui: Box.setPaddingX` | `Box.setPaddingX` | Pi's own code |
 | `pi-tui: CURSOR_MARKER` | `variable CURSOR_MARKER` | bridged |
 | `pi-tui: CancellableLoader` | `class CancellableLoader` | Pi's own code |
 | `pi-tui: CancellableLoader.aborted` | `CancellableLoader.aborted` | Pi's own code |
@@ -2270,6 +2338,7 @@ Regenerate with `go run ./test/parity/cmd/sdksurface`; `make sdk-surface-drift` 
 | `pi-tui: CancellableLoader.setCustomBgFn` | `CancellableLoader.setCustomBgFn` | Pi's own code |
 | `pi-tui: CancellableLoader.setIndicator` | `CancellableLoader.setIndicator` | Pi's own code |
 | `pi-tui: CancellableLoader.setMessage` | `CancellableLoader.setMessage` | Pi's own code |
+| `pi-tui: CancellableLoader.setPaddingX` | `CancellableLoader.setPaddingX` | Pi's own code |
 | `pi-tui: CancellableLoader.setText` | `CancellableLoader.setText` | Pi's own code |
 | `pi-tui: CancellableLoader.signal` | `CancellableLoader.signal` | Pi's own code |
 | `pi-tui: CancellableLoader.start` | `CancellableLoader.start` | Pi's own code |
@@ -2347,6 +2416,7 @@ Regenerate with `go run ./test/parity/cmd/sdksurface`; `make sdk-surface-drift` 
 | `pi-tui: Loader.setCustomBgFn` | `Loader.setCustomBgFn` | Pi's own code |
 | `pi-tui: Loader.setIndicator` | `Loader.setIndicator` | Pi's own code |
 | `pi-tui: Loader.setMessage` | `Loader.setMessage` | Pi's own code |
+| `pi-tui: Loader.setPaddingX` | `Loader.setPaddingX` | Pi's own code |
 | `pi-tui: Loader.setText` | `Loader.setText` | Pi's own code |
 | `pi-tui: Loader.start` | `Loader.start` | Pi's own code |
 | `pi-tui: Loader.stop` | `Loader.stop` | Pi's own code |
@@ -2369,6 +2439,7 @@ Regenerate with `go run ./test/parity/cmd/sdksurface`; `make sdk-surface-drift` 
 | `pi-tui: ProcessTerminal.modifyOtherKeysActive` | `ProcessTerminal.modifyOtherKeysActive` | Pi's own code |
 | `pi-tui: ProcessTerminal.moveBy` | `ProcessTerminal.moveBy` | Pi's own code |
 | `pi-tui: ProcessTerminal.rows` | `ProcessTerminal.rows` | Pi's own code |
+| `pi-tui: ProcessTerminal.setProgramStatus` | `ProcessTerminal.setProgramStatus` | Pi's own code |
 | `pi-tui: ProcessTerminal.setProgress` | `ProcessTerminal.setProgress` | Pi's own code |
 | `pi-tui: ProcessTerminal.setTitle` | `ProcessTerminal.setTitle` | Pi's own code |
 | `pi-tui: ProcessTerminal.showCursor` | `ProcessTerminal.showCursor` | Pi's own code |
@@ -2452,6 +2523,7 @@ Regenerate with `go run ./test/parity/cmd/sdksurface`; `make sdk-surface-drift` 
 | `pi-tui: Text.invalidate` | `Text.invalidate` | Pi's own code |
 | `pi-tui: Text.render` | `Text.render` | Pi's own code |
 | `pi-tui: Text.setCustomBgFn` | `Text.setCustomBgFn` | Pi's own code |
+| `pi-tui: Text.setPaddingX` | `Text.setPaddingX` | Pi's own code |
 | `pi-tui: Text.setText` | `Text.setText` | Pi's own code |
 | `pi-tui: TruncatedText` | `class TruncatedText` | Pi's own code |
 | `pi-tui: TruncatedText.invalidate` | `TruncatedText.invalidate` | Pi's own code |
@@ -2486,6 +2558,7 @@ Regenerate with `go run ./test/parity/cmd/sdksurface`; `make sdk-surface-drift` 
 | `pi-tui: TuiAltScreen.render` | `TuiAltScreen.render` | Pi's own code |
 | `pi-tui: TuiAltScreen.renderNow` | `TuiAltScreen.renderNow` | Pi's own code |
 | `pi-tui: TuiAltScreen.requestRender` | `TuiAltScreen.requestRender` | Pi's own code |
+| `pi-tui: TuiAltScreen.resetTextSelection` | `TuiAltScreen.resetTextSelection` | Pi's own code |
 | `pi-tui: TuiAltScreen.scrollBy` | `TuiAltScreen.scrollBy` | Pi's own code |
 | `pi-tui: TuiAltScreen.scrollToBottom` | `TuiAltScreen.scrollToBottom` | Pi's own code |
 | `pi-tui: TuiAltScreen.scrollToTop` | `TuiAltScreen.scrollToTop` | Pi's own code |
@@ -2558,6 +2631,7 @@ Regenerate with `go run ./test/parity/cmd/sdksurface`; `make sdk-surface-drift` 
 | `pi-tui: encodeITerm2` | `function encodeITerm2` | Pi's own code |
 | `pi-tui: encodeKitty` | `function encodeKitty` | Pi's own code |
 | `pi-tui: foregroundAnsi` | `function foregroundAnsi` | Pi's own code |
+| `pi-tui: formatProgramStatus` | `function formatProgramStatus` | Pi's own code |
 | `pi-tui: fuzzyFilter` | `function fuzzyFilter` | Pi's own code |
 | `pi-tui: fuzzyMatch` | `function fuzzyMatch` | Pi's own code |
 | `pi-tui: getCapabilities` | `function getCapabilities` | Pi's own code |
@@ -2920,7 +2994,6 @@ Regenerate with `go run ./test/parity/cmd/sdksurface`; `make sdk-surface-drift` 
 
 | Surface | Runtimes | Reason |
 |---|---|---|
-| `pi.on("cache_warming_decision")` | Node runtime, Go, Rust, Python | Generic handlers receive the emitted cache_warming_decision payload and result. Typed registration remains a separate API declaration gap in test/parity/known-gaps.toml api:OnCacheWarmingDecision. |
 | `pi.sendUserMessage(options.expandPromptTemplates)` | Node runtime, Go, Rust, Python | The host SendUserMessageOptions carries deliverAs only; expandPromptTemplates would be dropped. Requires host prompt-expansion control. |
 | `ctx.newSession(options.setup)` | Node runtime, Go, Rust, Python | The wire has no writable replacement SessionManager callback handle. Requires replacement callback ownership in the Pi runner bridge (0.3.0), not JSON serialization of a function. |
 | `withSession ctx.sendUserMessage(options.expandPromptTemplates)` | Node runtime, Go, Rust, Python | The host SendUserMessageOptions carries deliverAs only; expandPromptTemplates would be dropped. Requires host prompt-expansion control. |
@@ -2937,3 +3010,6 @@ Regenerate with `go run ./test/parity/cmd/sdksurface`; `make sdk-surface-drift` 
 | `pi-coding-agent: KeybindingsManager` | Node runtime | Pi's published root index.d.ts re-exports KeybindingsManager as a type only. Both actual runtime namespaces omit it (TestNodeCodingAgentTypeOnlyExportsMatchPi). |
 | `pi-coding-agent: KeybindingsManager.*` | Node runtime | Members of the type-only root re-export have no runtime receiver. Both Pi and PiG omit the value; the actual class remains in the private core/keybindings module. |
 | `pi-tui: StdinBuffer.[Symbol.captureRejectionSymbol]` | Node runtime | Inherited optional Node EventEmitter rejection hook. Pi's StdinBuffer does not install it; this declaration is not an implemented method in the Pi oracle either. |
+| `tool render context.durationMs` | Node runtime | New in Pi 1.1.0: the tool render context carries this member. Go, Rust and Python publish it; the Node runtime does not yet. Closed by porting the member through the Node runtime with a conformance row. |
+| `kit view events` | Node runtime | Node frames carry the lines Pi's components rendered, so every key reaches the runtime as ui.custom.input and Pi's SelectList and SettingsList handle it there: their onSelectionChange, onSelect and onChange callbacks are a Node author's events, as in Pi. The host never sends ui.view.event to Node. |
+| `kit event` | Node runtime | Node authors receive Pi's own SelectList and SettingsList callbacks (see kit view events); there is no event object to declare. |

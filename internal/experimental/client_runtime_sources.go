@@ -16,10 +16,12 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/experimental/services"
 )
 
-// ClientServiceSourceOptions selects an error sink and an optional request/subscription decorator. Lifecycle state always belongs to the original client.
+// ClientServiceSourceOptions selects the error sink of a client service source.
 type ClientServiceSourceOptions struct {
-	OnError         func(error)
-	TransportClient client.ServiceTransportClient
+	OnError func(error)
+	// wrapTransport interposes on one binding's routed transport, as Pi's tests spy on the client's methods. It receives
+	// the binding's target resolver.
+	wrapTransport func(transport chord.RemoteServiceTransport, getTarget func() protocol.RpcTarget) chord.RemoteServiceTransport
 }
 
 type serviceClientAdapter struct{ client *client.Client }
@@ -134,23 +136,24 @@ func (binding *clientBindingAdapter) Dispose(ctx context.Context) error {
 }
 
 func clientSourceOptions(peer *client.Client, options ClientServiceSourceOptions) services.ServiceSourceOptions {
-	transportClient := options.TransportClient
-	if transportClient == nil {
-		transportClient = peer
-	}
+	wrapTransport := options.wrapTransport
 	return services.ServiceSourceOptions{OnError: options.OnError, NewBinding: func(options services.RemoteServiceBindingOptions) services.RemoteServiceBinding {
-		ids := make([]string, len(options.Services))
+		ids := make([]chord.ServiceReference, len(options.Services))
 		for i, service := range options.Services {
-			ids[i] = service.ID
+			ids[i] = chord.ServiceID(service.ID)
 		}
-		transport := client.CreateClientServiceTransport(transportClient, func() protocol.RpcTarget {
+		getTarget := func() protocol.RpcTarget {
 			target := options.GetTarget()
 			if target == nil {
 				return nil
 			}
 			return sourceTarget(*target)
-		})
-		binding, err := chord.CreateRemoteServiceBinding(chord.RemoteServiceBindingOptions{Services: ids, Transport: initiatedClientTransport{transport}, Unbound: !options.Bound, OnError: options.OnError, AssertAccess: options.AssertAccess})
+		}
+		transport := client.CreateClientServiceTransport(peer, getTarget)
+		if wrapTransport != nil {
+			transport = wrapTransport(transport, getTarget)
+		}
+		binding, err := chord.CreateRemoteServiceBinding(chord.RemoteServiceBindingOptions{Services: ids, Transport: initiatedClientTransport{transport}, Bound: new(options.Bound), OnError: options.OnError, AssertAccess: options.AssertAccess})
 		if err != nil {
 			panic(err)
 		}
@@ -225,7 +228,7 @@ func (binding runtimeServiceBinding) Dispose(ctx context.Context) error {
 func runtimeBindingOptions(options chord.RemoteServiceSourceOpenOptions) services.ServiceBindingOptions {
 	list := make([]services.Service, len(options.Services))
 	for i, id := range options.Services {
-		list[i] = services.Service{ID: id}
+		list[i] = services.Service{ID: id.Id()}
 	}
 	return services.ServiceBindingOptions{Services: list, AssertAccess: options.AssertAccess, OnError: options.OnError}
 }

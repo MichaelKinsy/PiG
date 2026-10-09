@@ -27,14 +27,14 @@ func FromJSON(data json.RawMessage) (any, error) {
 
 // ToJSON serializes a protocol JSON value for Go service APIs. It rejects undefined, binary, cyclic, and non-finite values instead of omitting or replacing them. Omitted wire results must be handled by the caller before this conversion.
 func ToJSON(value any) (json.RawMessage, error) {
-	if !isProtocolJSON(value, map[uintptr]bool{}, 0) {
+	if !isProtocolJSON(value, map[uintptr]bool{}) {
 		return nil, invalidProtocolJSON()
 	}
 	return appendProtocolJSON(nil, value)
 }
 
 func invalidProtocolJSON() error {
-	return &ProtocolValidationError{Message: "Invalid JSON protocol value"}
+	return NewProtocolValidationError("Invalid JSON protocol value")
 }
 
 type protocolJSONReader struct {

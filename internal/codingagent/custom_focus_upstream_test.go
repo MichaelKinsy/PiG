@@ -78,12 +78,12 @@ func TestRemoteOverlayReclaimsInputAfterEditorReplacementUpstream(t *testing.T) 
 		}
 	}
 	overlay, overlayDone, overlayInputs := mount(true, "OVERLAY")
-	overlayFocused := any(m.tuiInst.FocusedComponent()) == overlay
+	overlayFocused := any(m.tuiInst.GetFocusedComponent()) == overlay
 	if !overlayFocused {
 		t.Fatal("overlay did not receive focus")
 	}
 	replacement, replacementDone, replacementInputs := mount(false, "REPLACEMENT")
-	replacementFocused := any(m.tuiInst.FocusedComponent()) == replacement
+	replacementFocused := any(m.tuiInst.GetFocusedComponent()) == replacement
 	if !replacementFocused {
 		t.Error("non-overlay custom UI did not receive focus")
 	}
@@ -124,16 +124,16 @@ func TestRemoteOverlayReclaimsInputAfterEditorReplacementUpstream(t *testing.T) 
 		t.Errorf("closed replacement received input %q", got)
 	default:
 	}
-	restoredFocus := any(m.tuiInst.FocusedComponent()) == overlay
+	restoredFocus := any(m.tuiInst.GetFocusedComponent()) == overlay
 	if m.editor.Text() != "" || !restoredFocus {
-		t.Fatalf("editor/focus after replacement close: editor=%q focus=%T", m.editor.Text(), m.tuiInst.FocusedComponent())
+		t.Fatalf("editor/focus after replacement close: editor=%q focus=%T", m.editor.Text(), m.tuiInst.GetFocusedComponent())
 	}
 	overlay.Close("closed")
 	wait(overlayDone, "closed")
 	standalone, standaloneDone, _ := mount(false, "STANDALONE")
 	standalone.Close("standalone done")
 	wait(standaloneDone, "standalone done")
-	editorRestored := m.tuiInst.FocusedComponent() == m.editor
+	editorRestored := m.tuiInst.GetFocusedComponent() == m.editor
 	if !editorRestored {
 		t.Error("standalone custom UI did not restore editor focus before returning")
 	}
@@ -165,7 +165,7 @@ func BenchmarkRemoteCustomFocusLifecycle(b *testing.B) {
 			b.ReportAllocs()
 			for b.Loop() {
 				value, ok := u.RunRemoteOverlay(extension.RemoteOverlayOptions{}, nil, func(handle extension.RemoteOverlayHandle) { handle.Close("done") })
-				if !ok || value != "done" || m.tuiInst.FocusedComponent() != m.editor {
+				if !ok || value != "done" || m.tuiInst.GetFocusedComponent() != m.editor {
 					b.Fatal("custom UI did not complete with editor focus")
 				}
 				m.drainMainLoopOnce()

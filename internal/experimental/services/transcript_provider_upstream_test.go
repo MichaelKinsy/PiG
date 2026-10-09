@@ -1,5 +1,9 @@
 package services_test
 
+// pi: packages/coding-agent/src/experimental/services/transcript.ts
+
+// pi: packages/coding-agent/src/experimental/services/transcript-provider.ts
+
 import (
 	"context"
 	"encoding/json"
@@ -15,6 +19,8 @@ import (
 )
 
 // packages/coding-agent/test/experimental-transcript-provider.test.ts:11
+// Pi source: packages/durable/src/harness/types.ts
+// mutation-checked: zeroing the results of Conversation.Watch fails it
 func TestPortWave08ExperimentalTranscriptProvider(t *testing.T) {
 	t.Run("replicates the conversation view as it changes", func(t *testing.T) {
 		durable := durabletest.OpenFauxConversation(durabletest.Text("answer"))

@@ -55,13 +55,14 @@ var UsageDoc = durable.DefineDoc(durable.DocDefinition[UsageState]{
 		CheckpointWhen: func(UsageState, []durable.Op, durable.CheckpointInfo) bool {
 			return true
 		},
+
+		Initial: NewUsageState,
 	},
 	DocumentSemantics: durable.DocumentSemantics{
 		Scope:   durable.ScopeConversation,
 		History: durable.HistoryLatest,
 		Fork:    durable.ForkInitial,
 	},
-	Initial: NewUsageState,
 })
 
 // RecordUsage adds usage to one bucket of the conversation's pi.usage, in the commit that records the response
@@ -82,28 +83,31 @@ func RecordUsage(tx durable.Tx, conversationId durable.ConversationId, bucket Us
 	return addUsageDraft(total, usage)
 }
 
-// usageJSON is the strict JSON of usage with undefined optional counters omitted, totals kept as reported.
-func usageJSON(usage ai.Usage) map[string]any {
-	value := map[string]any{
-		"input":       float64(usage.Input),
-		"output":      float64(usage.Output),
-		"cacheRead":   float64(usage.CacheRead),
-		"cacheWrite":  float64(usage.CacheWrite),
-		"totalTokens": float64(usage.TotalTokens),
-		"cost": map[string]any{
-			"input":      usage.Cost.Input,
-			"output":     usage.Cost.Output,
-			"cacheRead":  usage.Cost.CacheRead,
-			"cacheWrite": usage.Cost.CacheWrite,
-			"total":      usage.Cost.Total,
-		},
-	}
+// usageJSON is the strict JSON of usage with undefined optional counters omitted, totals kept as reported. Its members follow
+// the usage's own JSON order, as copyJson(usage) keeps the object's key order (usage.ts:36): input, output, cacheRead,
+// cacheWrite, cacheWrite1h, reasoning, totalTokens, cost.
+func usageJSON(usage ai.Usage) *delta.JsonObject {
+	cost := delta.JsonObjectOf(
+		"input", usage.Cost.Input,
+		"output", usage.Cost.Output,
+		"cacheRead", usage.Cost.CacheRead,
+		"cacheWrite", usage.Cost.CacheWrite,
+		"total", usage.Cost.Total,
+	)
+	value := delta.JsonObjectOf(
+		"input", float64(usage.Input),
+		"output", float64(usage.Output),
+		"cacheRead", float64(usage.CacheRead),
+		"cacheWrite", float64(usage.CacheWrite),
+	)
 	if usage.CacheWrite1h != nil {
-		value["cacheWrite1h"] = float64(*usage.CacheWrite1h)
+		value.Set("cacheWrite1h", float64(*usage.CacheWrite1h))
 	}
 	if usage.Reasoning != nil {
-		value["reasoning"] = float64(*usage.Reasoning)
+		value.Set("reasoning", float64(*usage.Reasoning))
 	}
+	value.Set("totalTokens", float64(usage.TotalTokens))
+	value.Set("cost", cost)
 	return value
 }
 

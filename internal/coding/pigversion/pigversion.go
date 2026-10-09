@@ -4,13 +4,13 @@ package pigversion
 
 // PigVersion is PiG's release line. It advances independently of the upstream
 // Pi target.
-const PigVersion = "0.4.1"
+const PigVersion = "0.5.0"
 
 // UpstreamVersion is the Pi release whose behavior PiG targets.
-const UpstreamVersion = "1.0.3"
+const UpstreamVersion = "1.1.0"
 
 // UpstreamCommit is the exact Pi release commit for UpstreamVersion.
-const UpstreamCommit = "d78dc83d633229d12f8b79631384c4c2717c399f"
+const UpstreamCommit = "abe508e1b89912adde45528136c3221eb69acdd7"
 
 // Version combines the PiG release line with the upstream Pi release as semver
 // build metadata.

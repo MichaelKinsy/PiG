@@ -1,0 +1,105 @@
+[
+ {
+  "ids": [
+   "pkg:ai/.#RetryPolicy"
+  ],
+  "targets": [
+   "ai/assistant_retry.go#RetryPolicy"
+  ],
+  "struct": {
+   "file": "ai/assistant_retry.go",
+   "type": "RetryPolicy"
+  },
+  "production": [
+   "call:ai/assistant_retry.go#RetryAssistantCall"
+  ],
+  "evidence": [
+   "test:ai/assistant_retry_test.go#TestRetryAssistantCallAbortsBackoffSleepViaContext",
+   "test:ai/assistant_retry_test.go#TestRetryAssistantCallMatchesNodeTimerOverflow"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "RetryPolicy: Go RetryPolicy has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+ },
+ {
+  "ids": [
+   "pkg:ai/.#RetryCallbacks"
+  ],
+  "targets": [
+   "ai/assistant_retry.go#RetryCallbacks"
+  ],
+  "struct": {
+   "file": "ai/assistant_retry.go",
+   "type": "RetryCallbacks"
+  },
+  "production": [
+   "call:ai/assistant_retry.go#RetryAssistantCall"
+  ],
+  "evidence": [
+   "test:ai/assistant_retry_test.go#TestRetryAssistantCallAbortsBackoffSleepViaContext",
+   "test:ai/assistant_retry_test.go#TestRetryAssistantCallMatchesNodeTimerOverflow"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "RetryCallbacks: Go RetryCallbacks has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+ },
+ {
+  "ids": [
+   "pkg:ai/.#DiagnosticErrorInfo"
+  ],
+  "targets": [
+   "ai/types.go#DiagnosticErrorInfo"
+  ],
+  "struct": {
+   "file": "ai/types.go",
+   "type": "DiagnosticErrorInfo"
+  },
+  "production": [
+   "call:ai/messages.go#cloneDiagnostics"
+  ],
+  "evidence": [
+   "test:ai/pi_messages_test.go#TestPiMessagesSurfacesBackendErrorResponses"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "DiagnosticErrorInfo: Go DiagnosticErrorInfo has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#RpcClientOptions"
+  ],
+  "targets": [
+   "coding/rpcclient/types.go#RpcClientOptions"
+  ],
+  "struct": {
+   "file": "coding/rpcclient/types.go",
+   "type": "RpcClientOptions"
+  },
+  "production": [
+   "call:coding/rpcclient/rpc_client.go#RpcClient.spawn"
+  ],
+  "evidence": [
+   "test:coding/rpcclient/jsonl_test.go#TestRpcClientReadStdoutDrainsAfterCallbacksStop",
+   "test:coding/rpcclient/jsonl_test.go#TestRpcClientReadStdoutParsesSplitInvalidBlankAndUnterminatedRecords"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "RpcClientOptions: Go RpcClientOptions has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#SessionTreeNode"
+  ],
+  "targets": [
+   "coding/rpcclient/types.go#SessionTreeNode"
+  ],
+  "struct": {
+   "file": "coding/rpcclient/types.go",
+   "type": "SessionTreeNode"
+  },
+  "production": [
+   "public-api:coding/rpcclient/types.go#SessionTreeNode"
+  ],
+  "evidence": [
+   "test:coding/rpcclient/rpc_mode_test.go#TestRpcModeShouldGetSessionTree"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "SessionTreeNode: Go SessionTreeNode has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types. Closed as public-api-tested: the Go type is exported from a public package and no PiG binary uses it; test uses (go/types) are the proof."
+ }
+]

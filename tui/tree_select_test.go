@@ -1,7 +1,9 @@
 package tui
 
+// pi: packages/coding-agent/src/modes/interactive/components/tree-selector.ts
+
 // i unit tests for the upstream-mirrored flatten rules
-// in TreeSelect. Each test asserts the precomputed `prefix` field
+// in TreeSelectorComponent. Each test asserts the precomputed `prefix` field
 // of `treeRow` (no rendering) so that connector / gutter logic can
 // be verified independently of width-aware Render output.
 //
@@ -21,7 +23,7 @@ import (
 // rowPrefixes returns the non-empty prefix slice for assertion. We
 // also collect labels so failures show which row had the wrong
 // prefix.
-func rowPrefixes(t *TreeSelect) []string {
+func rowPrefixes(t *TreeSelectorComponent) []string {
 	out := make([]string, len(t.rows))
 	for i, r := range t.rows {
 		out[i] = t.rowLabel(r) + "|" + r.prefix
@@ -43,7 +45,7 @@ func chain() TreeNode {
 }
 
 func TestFlattenLinearChainStaysFlat(t *testing.T) {
-	ts := NewTreeSelect("", chain())
+	ts := NewTreeSelectorComponent("", chain())
 	if got := len(ts.rows); got != 4 {
 		t.Fatalf("rows=%d want 4: %v", got, rowPrefixes(ts))
 	}
@@ -65,7 +67,7 @@ func TestFlattenSingleForkAtDepth1(t *testing.T) {
 			&fakeNode{id: "b", label: "B"},
 		}},
 	}}
-	ts := NewTreeSelect("", root)
+	ts := NewTreeSelectorComponent("", root)
 	if got := len(ts.rows); got != 3 {
 		t.Fatalf("rows=%d want 3: %v", got, rowPrefixes(ts))
 	}
@@ -95,7 +97,7 @@ func TestFlattenChainBranchChain(t *testing.T) {
 			}},
 		}},
 	}}
-	ts := NewTreeSelect("", root)
+	ts := NewTreeSelectorComponent("", root)
 	if got := len(ts.rows); got != 5 {
 		t.Fatalf("rows=%d want 5: %v", got, rowPrefixes(ts))
 	}
@@ -126,7 +128,7 @@ func TestFlattenMultipleRootsRenderFlat(t *testing.T) {
 		&fakeNode{id: "r1", label: "R1"},
 		&fakeNode{id: "r2", label: "R2"},
 	}}
-	ts := NewTreeSelect("", root)
+	ts := NewTreeSelectorComponent("", root)
 	if got := len(ts.rows); got != 2 {
 		t.Fatalf("rows=%d want 2: %v", got, rowPrefixes(ts))
 	}
@@ -148,7 +150,7 @@ func TestFlattenForkUnderForkGuttersStack(t *testing.T) {
 			&fakeNode{id: "b", label: "B"},
 		}},
 	}}
-	ts := NewTreeSelect("", root)
+	ts := NewTreeSelectorComponent("", root)
 	// TOP, A, A1, A2, B = 5 rows.
 	if got := len(ts.rows); got != 5 {
 		t.Fatalf("rows=%d want 5: %v", got, rowPrefixes(ts))
@@ -177,7 +179,7 @@ func TestTreePlainSideArrowsPageByVisibleWindow(t *testing.T) {
 	for i := range kids {
 		kids[i] = &fakeNode{id: fmt.Sprintf("n%d", i), label: fmt.Sprintf("node-%d", i)}
 	}
-	ts := NewTreeSelect("", &fakeNode{id: "root", kids: kids})
+	ts := NewTreeSelectorComponent("", &fakeNode{id: "root", kids: kids})
 	ts.cursor = 25
 	ts.fixScroll()
 
@@ -211,7 +213,7 @@ func TestTreeHorizontalViewportKeepsDeepSelectedLabelVisible(t *testing.T) {
 		}}
 	}
 	root := &fakeNode{id: "root", kids: []TreeNode{leaf}}
-	ts := NewTreeSelect("", root)
+	ts := NewTreeSelectorComponent("", root)
 	selected := -1
 	for i, r := range ts.rows {
 		if r.id == "n15" {
@@ -269,7 +271,7 @@ func TestFoldHidesDescendants(t *testing.T) {
 			&fakeNode{id: "b", label: "B"},
 		}},
 	}}
-	ts := NewTreeSelect("", root)
+	ts := NewTreeSelectorComponent("", root)
 	if got := len(ts.rows); got != 5 {
 		t.Fatalf("pre-fold rows=%d want 5", got)
 	}
@@ -306,8 +308,8 @@ func TestFoldHidesDescendants(t *testing.T) {
 // real findBranchSegmentStart in.
 func TestFoldOnNonFoldableJumpsToSegmentStart(t *testing.T) {
 	useTreeKeybindings(t, nil)
-	ts := NewTreeSelect("", chain()) // 4-deep linear chain a→b→c→d
-	ts.cursor = 2                    // C: interior, non-foldable, no branch above
+	ts := NewTreeSelectorComponent("", chain()) // 4-deep linear chain a→b→c→d
+	ts.cursor = 2                               // C: interior, non-foldable, no branch above
 	ts.HandleInput("\x1b[1;5D")
 	if ts.cursor != 0 {
 		t.Errorf("Ctrl+← on linear-chain interior: cursor=%d want 0 (chain root)", ts.cursor)
@@ -331,7 +333,7 @@ func TestFoldRendersFoldedConnectorMarker(t *testing.T) {
 			&fakeNode{id: "b", label: "B"},
 		}},
 	}}
-	ts := NewTreeSelect("", root)
+	ts := NewTreeSelectorComponent("", root)
 	ts.SetInitialCursor("a1", "")
 	// A is at idx 1 with prefix "├─ " (branch under TOP, !isLast).
 	// A is foldable: nChildren=1 AND parent TOP has multipleChildren.
@@ -358,7 +360,7 @@ func TestFoldRendersFoldedConnectorMarker(t *testing.T) {
 // tree-selector.ts:1010-1018.
 func TestLinearChainOnlyRootIsFoldable(t *testing.T) {
 	useTreeKeybindings(t, nil)
-	ts := NewTreeSelect("", chain())
+	ts := NewTreeSelectorComponent("", chain())
 	if got := len(ts.rows); got != 4 {
 		t.Fatalf("chain rows=%d want 4", got)
 	}
@@ -393,7 +395,7 @@ func TestLabelTimestampToggleRendersTime(t *testing.T) {
 	root := &fakeNode{id: "r", kids: []TreeNode{
 		&fakeNodeTS{fakeNode: fakeNode{id: "x", label: "[important] some-content"}, ts: tsStr},
 	}}
-	ts := NewTreeSelect("", root)
+	ts := NewTreeSelectorComponent("", root)
 
 	// Initially OFF: no timestamp in render.
 	rendered := strings.Join(ts.Render(80), "\n")
@@ -486,7 +488,7 @@ func TestFindBranchSegmentStartUpJumpsToSegmentStart(t *testing.T) {
 			&fakeNode{id: "b", label: "B"},
 		}},
 	}}
-	ts := NewTreeSelect("", root)
+	ts := NewTreeSelectorComponent("", root)
 	if got := len(ts.rows); got != 5 {
 		t.Fatalf("rows=%d want 5: %v", got, rowPrefixes(ts))
 	}
@@ -512,7 +514,7 @@ func TestFindBranchSegmentStartUpFromSegmentStartClimbs(t *testing.T) {
 			&fakeNode{id: "b", label: "B"},
 		}},
 	}}
-	ts := NewTreeSelect("", root)
+	ts := NewTreeSelectorComponent("", root)
 	// Rows: TOP(0), A(1), B(2). Cursor on A: A IS a segment start
 	// (first child of TOP's branch). Up should climb past A to TOP
 	// (the visible-tree root, since there's no multi-child ancestor
@@ -542,7 +544,7 @@ func TestFindBranchSegmentStartDownJumpsToFirstChildOfBranch(t *testing.T) {
 			}},
 		}},
 	}}
-	ts := NewTreeSelect("", root)
+	ts := NewTreeSelectorComponent("", root)
 	ts.cursor = 0 // TOP
 	ts.HandleInput("\x1b[1;5C")
 	if ts.cursor != 2 {
@@ -559,8 +561,8 @@ func TestFindBranchSegmentStartDownJumpsToFirstChildOfBranch(t *testing.T) {
 // in 3.1d-h.1: the upstream behaviour IS the navigation aid.
 func TestFindBranchSegmentStartLinearChainWalksToRootAndLeaf(t *testing.T) {
 	useTreeKeybindings(t, nil)
-	ts := NewTreeSelect("", chain()) // 4-deep linear chain a→b→c→d, rows[0..3]
-	ts.cursor = 2                    // C: interior, non-foldable
+	ts := NewTreeSelectorComponent("", chain()) // 4-deep linear chain a→b→c→d, rows[0..3]
+	ts.cursor = 2                               // C: interior, non-foldable
 	ts.HandleInput("\x1b[1;5D")
 	if ts.cursor != 0 {
 		t.Errorf("linear-chain Ctrl+← from interior: cursor=%d want 0 (root)", ts.cursor)
@@ -599,7 +601,7 @@ func TestFilterDefaultHidesSettingsTaggedRows(t *testing.T) {
 		&fakeNodeTagged{id: "m", label: "model_change", tags: []string{"settings"}},
 		&fakeNodeTagged{id: "a", label: "assistant"},
 	}}
-	ts := NewTreeSelect("", root)
+	ts := NewTreeSelectorComponent("", root)
 	if ts.filterMode != "default" {
 		t.Fatalf("filterMode=%q want default", ts.filterMode)
 	}
@@ -623,7 +625,7 @@ func TestFilterAllShowsEverything(t *testing.T) {
 		&fakeNodeTagged{id: "m", label: "model_change", tags: []string{"settings"}},
 		&fakeNodeTagged{id: "a", label: "assistant"},
 	}}
-	ts := NewTreeSelect("", root)
+	ts := NewTreeSelectorComponent("", root)
 	// Cycle forward until we hit "all" (4 Tabs: default→no-tools→user-only→labeled-only→all).
 	for range 4 {
 		ts.HandleInput("\t")
@@ -642,7 +644,7 @@ func TestFilterTabCyclesAndShiftTabReverses(t *testing.T) {
 	root := &fakeNodeTagged{id: "r", kids: []TreeNode{
 		&fakeNodeTagged{id: "u", label: "user"},
 	}}
-	ts := NewTreeSelect("", root)
+	ts := NewTreeSelectorComponent("", root)
 	if ts.filterMode != "default" {
 		t.Fatalf("initial filterMode=%q want default", ts.filterMode)
 	}
@@ -671,7 +673,7 @@ func TestFilterCyclePreservesCursorWhenRowStillVisible(t *testing.T) {
 		&fakeNodeTagged{id: "m", label: "settings", tags: []string{"settings"}},
 		&fakeNodeTagged{id: "a", label: "assistant"},
 	}}
-	ts := NewTreeSelect("", root)
+	ts := NewTreeSelectorComponent("", root)
 	// Move cursor onto `a` (the assistant row, idx=1 in default
 	// mode because `m` is hidden).
 	ts.cursor = 1
@@ -710,6 +712,7 @@ func treeHelpTestKeybindings(t *testing.T, user map[string][]string) {
 	} {
 		defs[id] = TUIKeybindingDef{DefaultKeys: keys}
 	}
+	restoreKeybindingsAfterTest(t)
 	SetKeybindings(NewKeybindingsManager(defs, user))
 }
 
@@ -720,7 +723,7 @@ func TestFilterRenderHeaderMatchesUpstreamShape(t *testing.T) {
 	root := &fakeNodeTagged{id: "r", kids: []TreeNode{
 		&fakeNodeTagged{id: "u", label: "user"},
 	}}
-	ts := NewTreeSelect("", root)
+	ts := NewTreeSelectorComponent("", root)
 	header := func() []string {
 		var out []string
 		for _, line := range ts.Render(100)[:6] {
@@ -756,7 +759,7 @@ func TestTreeSelectRenderUsesConfiguredAppBranchKeys(t *testing.T) {
 	root := &fakeNodeTagged{id: "r", kids: []TreeNode{
 		&fakeNodeTagged{id: "u", label: "user"},
 	}}
-	ts := NewTreeSelect("", root)
+	ts := NewTreeSelectorComponent("", root)
 	header := stripANSI(strings.Join(ts.Render(200)[:4], "\n"))
 	if !strings.Contains(header, " · h/l branch · ") {
 		t.Fatalf("header missing configured branch keys:\n%q", header)
@@ -790,7 +793,7 @@ func TestFilterNoToolsHidesToolResultAndSettings(t *testing.T) {
 		&fakeNodeTagged{id: "s", label: "settings", tags: []string{"settings"}},
 		&fakeNodeTagged{id: "a", label: "assistant"},
 	}}
-	ts := NewTreeSelect("", root)
+	ts := NewTreeSelectorComponent("", root)
 	ts.HandleInput("\x14") // ctrl+t → no-tools
 	if ts.filterMode != "no-tools" {
 		t.Fatalf("filterMode=%q want no-tools", ts.filterMode)
@@ -816,7 +819,7 @@ func TestFilterUserOnlyShowsOnlyUserRows(t *testing.T) {
 		&fakeNodeTagged{id: "tr", label: "tool result", tags: []string{"tool_result"}},
 		&fakeNodeTagged{id: "a", label: "assistant"},
 	}}
-	ts := NewTreeSelect("", root)
+	ts := NewTreeSelectorComponent("", root)
 	ts.HandleInput("\x15") // ctrl+u → user-only
 	if ts.filterMode != "user-only" {
 		t.Fatalf("filterMode=%q want user-only", ts.filterMode)
@@ -836,7 +839,7 @@ func TestFilterLabeledOnlyShowsLabeledRows(t *testing.T) {
 		&fakeNodeTagged{id: "lbl", label: "labeled msg", tags: []string{"labeled"}},
 		&fakeNodeTagged{id: "a", label: "assistant"},
 	}}
-	ts := NewTreeSelect("", root)
+	ts := NewTreeSelectorComponent("", root)
 	ts.HandleInput("\x0c") // ctrl+l → labeled-only
 	if ts.filterMode != "labeled-only" {
 		t.Fatalf("filterMode=%q want labeled-only", ts.filterMode)
@@ -853,7 +856,7 @@ func TestFilterDirectControlKeys(t *testing.T) {
 	root := &fakeNodeTagged{id: "r", kids: []TreeNode{
 		&fakeNodeTagged{id: "u", label: "user", tags: []string{"user"}},
 	}}
-	ts := NewTreeSelect("", root)
+	ts := NewTreeSelectorComponent("", root)
 	cases := []struct {
 		key  string
 		want string
@@ -873,14 +876,14 @@ func TestFilterDirectControlKeys(t *testing.T) {
 }
 
 // TestFilterControlKeysMatchRuntimeBindings: the live /tree editor-slot path
-// sends raw control bytes (Ctrl+D/T/U/L/A) straight to TreeSelect. Accepting
+// sends raw control bytes (Ctrl+D/T/U/L/A) straight to TreeSelectorComponent. Accepting
 // only the legacy digit shortcuts makes runtime behavior drift from upstream pi.
 func TestFilterControlKeysMatchRuntimeBindings(t *testing.T) {
 	useTreeKeybindings(t, nil)
 	root := &fakeNodeTagged{id: "r", kids: []TreeNode{
 		&fakeNodeTagged{id: "u", label: "user", tags: []string{"user"}},
 	}}
-	ts := NewTreeSelect("", root)
+	ts := NewTreeSelectorComponent("", root)
 	cases := []struct {
 		key  string
 		want string
@@ -900,7 +903,7 @@ func TestFilterControlKeysMatchRuntimeBindings(t *testing.T) {
 }
 
 // rowIDs returns the ids of visible rows for test assertions.
-func rowIDs(ts *TreeSelect) []string {
+func rowIDs(ts *TreeSelectorComponent) []string {
 	ids := make([]string, len(ts.rows))
 	for i, r := range ts.rows {
 		ids[i] = r.id
@@ -924,7 +927,7 @@ func TestSetInitialCursorPositionsOnCurrentLeaf(t *testing.T) {
 			&fakeNode{id: "b", label: "B"},
 		}},
 	}}
-	ts := NewTreeSelect("", root)
+	ts := NewTreeSelectorComponent("", root)
 	if ts.cursor != len(ts.rows)-1 {
 		t.Fatalf("default cursor=%d want bottom %d", ts.cursor, len(ts.rows)-1)
 	}
@@ -979,7 +982,7 @@ func linearChainOfLength(n int) TreeNode {
 // bottom edge; moving up off the top left the cursor invisible (the
 // "/tree scrolls past view" bug).
 func TestFixScrollKeepsCursorVisibleMovingUp(t *testing.T) {
-	ts := NewTreeSelect("scroll-up", linearChainOfLength(45))
+	ts := NewTreeSelectorComponent("scroll-up", linearChainOfLength(45))
 	if len(ts.rows) < 45 {
 		t.Fatalf("expected 45 rows, got %d", len(ts.rows))
 	}
@@ -998,7 +1001,7 @@ func TestFixScrollKeepsCursorVisibleMovingUp(t *testing.T) {
 // TestFixScrollKeepsCursorVisibleMovingDown asserts the same for downward
 // motion.
 func TestFixScrollKeepsCursorVisibleMovingDown(t *testing.T) {
-	ts := NewTreeSelect("scroll-down", linearChainOfLength(45))
+	ts := NewTreeSelectorComponent("scroll-down", linearChainOfLength(45))
 	ts.cursor = 0
 	ts.scroll = 0
 	ts.fixScroll()
@@ -1018,7 +1021,7 @@ func TestTreeSelectRowBudgetFollowsTheTerminalHeight(t *testing.T) {
 			t.Fatalf("TreeVisibleLines(%d) = %d, want %d", tc.height, got, tc.want)
 		}
 	}
-	ts := NewTreeSelect("budget", linearChainOfLength(60))
+	ts := NewTreeSelectorComponent("budget", linearChainOfLength(60))
 	ts.MaxVisibleLines = 7
 	rendered := 0
 	for _, line := range ts.Render(80) {
@@ -1041,7 +1044,7 @@ func TestFilterHidesUsageTaggedRowsInEveryMode(t *testing.T) {
 		&fakeNodeTagged{id: "w", label: "usage", tags: []string{"usage"}},
 		&fakeNodeTagged{id: "a", label: "assistant"},
 	}}
-	ts := NewTreeSelect("", root)
+	ts := NewTreeSelectorComponent("", root)
 	for range 5 {
 		for _, r := range ts.rows {
 			if r.id == "w" {
@@ -1050,4 +1053,65 @@ func TestFilterHidesUsageTaggedRowsInEveryMode(t *testing.T) {
 		}
 		ts.HandleInput("\t")
 	}
+}
+
+// tree-selector.test.ts:154 and interactive-mode-tree-navigation.test.ts: getTreeList() is the handle the host focuses. Its getSelectedNode
+// follows the cursor (and is undefined when no row is visible), its render draws the tree rows, and onSelect / onCancel run on the confirm and
+// cancel keys.
+func TestTreeSelectorGetTreeList(t *testing.T) {
+	useTreeKeybindings(t, nil)
+	build := func() *TreeSelectorComponent {
+		root := &fakeNodeTagged{id: "root", kids: []TreeNode{
+			&fakeNodeTagged{id: "user-1", label: "hello", tags: []string{"user"}, kids: []TreeNode{
+				&fakeNodeTagged{id: "asst-1", label: "hi", kids: []TreeNode{
+					&fakeNodeTagged{id: "user-2", label: "active branch", tags: []string{"user"}},
+					&fakeNodeTagged{id: "user-3", label: "sibling branch", tags: []string{"user"}},
+				}},
+			}},
+		}}
+		ts := NewTreeSelectorComponent("", root)
+		ts.SetInitialCursor("user-2", "")
+		return ts
+	}
+	t.Run("the selected node follows the cursor", func(t *testing.T) {
+		ts := build()
+		list := ts.GetTreeList()
+		if node := list.GetSelectedNode(); node == nil || node.NodeID() != "user-2" {
+			t.Fatalf("selected node = %v, want user-2", node)
+		}
+		list.HandleInput("\x1b[B") // down
+		if node := list.GetSelectedNode(); node == nil || node.NodeID() != "user-3" {
+			t.Fatalf("after down = %v, want user-3", node)
+		}
+		if ts.GetTreeList() != list {
+			t.Fatal("GetTreeList must return the same list every time")
+		}
+	})
+	t.Run("an empty tree has no selected node", func(t *testing.T) {
+		if node := NewTreeSelectorComponent("", &fakeNodeTagged{id: "root"}).GetTreeList().GetSelectedNode(); node != nil {
+			t.Fatalf("selected node = %v, want none", node)
+		}
+	})
+	t.Run("render draws the tree rows", func(t *testing.T) {
+		rows := strings.Join(stripANSILines(build().GetTreeList().Render(120)), "\n")
+		if !strings.Contains(rows, "active branch") || !strings.Contains(rows, "sibling branch") {
+			t.Fatalf("rows = %q", rows)
+		}
+	})
+	t.Run("onSelect and onCancel run on the confirm and cancel keys", func(t *testing.T) {
+		ts := build()
+		var selected []string
+		cancelled := 0
+		list := ts.GetTreeList()
+		list.OnSelect = func(id string) { selected = append(selected, id) }
+		list.OnCancel = func() { cancelled++ }
+		list.HandleInput("\r")
+		if !slices.Equal(selected, []string{"user-2"}) || cancelled != 0 {
+			t.Fatalf("after confirm selected=%q cancelled=%d", selected, cancelled)
+		}
+		list.HandleInput("\x1b")
+		if cancelled != 1 {
+			t.Fatalf("after cancel cancelled=%d", cancelled)
+		}
+	})
 }

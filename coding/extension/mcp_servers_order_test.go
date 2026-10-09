@@ -22,7 +22,7 @@ func TestRegisteredMcpServersKeepTheConfigAsRegistered(t *testing.T) {
 	const want = `[{"name":"ordered","config":{"timeout":5,"url":"https://mcp.example/x","toolExposure":{"2":"direct","b*":"direct","a":"hidden"},"headers":{"X-Z":"1","A":"2"},"enabled":true,"exposure":"direct","foo":{"zz":1,"aa":[{"y":1,"b":2}]},"oauth":{"scope":"s","clientId":"c"}},"extensionPath":"/ext/a.mjs"},{"name":"stdio_one","config":{"args":["--x"],"env":{"Z":"1","A":"2"},"cwd":".","command":"mcp-bin","type":"stdio"},"extensionPath":"/ext/a.mjs"}]`
 	for range 2 {
 		// A second read proves the list is a copy that keeps the same bytes.
-		got, err := json.Marshal(runtime.McpServers())
+		got, err := json.Marshal(runtime.McpServers().List())
 		if err != nil {
 			t.Fatal(err)
 		}

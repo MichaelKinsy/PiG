@@ -87,12 +87,12 @@ func TestInteractiveExtensionSetModelEmitsNoModelSelectOfItsOwn(t *testing.T) {
 // failingCompactHandle fails every compaction the mode starts itself.
 type failingCompactHandle struct{ *recordingCompactHandle }
 
-func (*failingCompactHandle) Compact(context.Context, string) error {
-	return errors.New("Nothing to compact (session too small)")
+func (*failingCompactHandle) Compact(context.Context, string) (*CompactionResult, error) {
+	return nil, errors.New("Nothing to compact (session too small)")
 }
 
-func (*failingCompactHandle) CompactForExtension(context.Context, string) (any, error) {
-	return nil, errors.New("Nothing to compact (session too small)")
+func (*failingCompactHandle) CompactForExtension(context.Context, string) (extension.CompactionResult, error) {
+	return extension.CompactionResult{}, errors.New("Nothing to compact (session too small)")
 }
 
 // Pi's ctx.compact() calls the Session's compact and drops the outcome when the extension passes no callbacks (agent-session.ts:3369-3379). Interactive mode started its own goroutine that wrote a failed compaction to stderr, which corrupts the screen in the TUI, and used a different context from every other mode. It now hands the options to the Session, which owns the task, its cancellation and its join.
@@ -124,6 +124,7 @@ func TestInteractiveExtensionCompactWithoutCallbacksIsTheSessionsAndSilent(t *te
 }
 
 // The callbacks reach the Session unchanged, so the result and the failure come back exactly as in every other mode.
+// Pi: packages/coding-agent/src/core/extensions/types.ts:317 (CompactOptions.onError).
 func TestInteractiveExtensionCompactPassesCallbacksToTheSession(t *testing.T) {
 	m := modelPickerTestMode(t)
 	handle := &recordingCompactHandle{agent: m.agent}
@@ -142,7 +143,7 @@ func TestInteractiveExtensionCompactPassesCallbacksToTheSession(t *testing.T) {
 	if len(handle.compacted) != 1 || handle.compacted[0] != options {
 		t.Fatalf("Session got %+v, want the extension's own options", handle.compacted)
 	}
-	handle.compacted[0].OnComplete(nil)
+	handle.compacted[0].OnComplete(extension.CompactionResult{})
 	handle.compacted[0].OnError(nil)
 	if completed != 1 || failed != 1 {
 		t.Fatalf("callbacks ran %d and %d times", completed, failed)

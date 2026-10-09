@@ -1,4 +1,3 @@
-# SPDX-FileCopyrightText: Copyright Hewlett Packard Enterprise Development LP
 # SPDX-License-Identifier: MIT
 """Check overhead results against test/evals/budgets.toml, and compare Go benchmark runs."""
 import json

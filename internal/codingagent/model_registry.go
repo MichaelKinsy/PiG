@@ -16,6 +16,7 @@ import (
 	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/internal/configvalue"
 	"github.com/MichaelKinsy/PiG/internal/jsonparse"
+	"github.com/MichaelKinsy/PiG/internal/pigstrip"
 	"github.com/MichaelKinsy/PiG/internal/text"
 )
 
@@ -59,6 +60,8 @@ type ModelEntry struct {
 // Matches upstream ModelsConfig: { providers: Record<string, ProviderConfig> }
 type modelsConfig struct {
 	Providers map[string]providerConfig `json:"providers"`
+	// composeFailures maps each provider dropped as uncomposable to upstream's composition error message.
+	composeFailures map[string]string
 }
 
 // providerConfig is a provider entry in models.json.
@@ -68,6 +71,8 @@ type providerConfig struct {
 	BaseURL      string                         `json:"baseUrl,omitempty"`
 	APIKey       string                         `json:"apiKey,omitempty"`
 	StreamSimple extension.ProviderStreamSimple `json:"-"`
+	// RefreshModels is the extension callback that refreshes the provider's models (types.ts:1930).
+	RefreshModels func(extension.RefreshModelsContext) ([]extension.ProviderModelConfig, error) `json:"-"`
 	// Images and Classifiers are the implementations of the image and classifier models Models declares (types.ts:1896-1898).
 	Images         ai.ProviderImageAPIMap   `json:"-"`
 	Classifiers    ai.ProviderClassifierMap `json:"-"`
@@ -294,6 +299,9 @@ type ModelRegistry struct {
 	// dynamicOrder is the registration order of dynamic, as upstream's
 	// extensionProviders map iterates.
 	dynamicOrder []string
+	// configRegistrations and nativeRegistrations are the insertion orders of upstream ModelRuntime's extensionProviders and nativeExtensionProviders maps (model-runtime.ts:518-520). A registration of the other kind moves the ID; a re-registration of the same kind keeps its position.
+	configRegistrations []string
+	nativeRegistrations []string
 
 	// credentialStore, when non-nil, provides stored credential lookup for HasConfiguredAuth and GetAvailable filtering.
 	credentialStore ai.CredentialStore
@@ -426,12 +434,17 @@ func (r *ModelRegistry) readConfig() (*modelsConfig, string) {
 	if err := jsonparse.Validate(content); err != nil {
 		return nil, "Failed to parse models.json: " + err.Error() + "\n\nFile: " + path
 	}
+	// upstream: model-config.ts ModelConfig.load lists every typebox error of the parsed document before reading any field.
+	node, err := parseJSONNode(content)
+	if err != nil {
+		return nil, "Failed to parse models.json: " + err.Error() + "\n\nFile: " + path
+	}
+	if errs := modelConfigSchemaErrors(node); len(errs) > 0 {
+		return nil, "Invalid models.json schema:\n" + strings.Join(errs, "\n") + "\n\nFile: " + path
+	}
 	var cfg modelsConfig
 	if err := json.Unmarshal(content, &cfg); err != nil {
 		return nil, "Failed to parse models.json: " + err.Error() + "\n\nFile: " + path
-	}
-	if err := r.validate(&cfg); err != nil {
-		return nil, "Invalid models.json schema:\n" + err.Error() + "\n\nFile: " + path
 	}
 	return &cfg, strings.Join(dropUncomposableProviders(&cfg), "\n\n")
 }
@@ -441,22 +454,6 @@ func (r *ModelRegistry) load() {
 	r.configureRadiusProvidersLocked()
 }
 
-// validate checks models.json for common errors.
-// Mirrors upstream validateConfig (model-registry.ts:380-430).
-func (r *ModelRegistry) validate(cfg *modelsConfig) error {
-	for name, prov := range cfg.Providers {
-		if len(prov.Models) == 0 && prov.BaseURL == "" && prov.APIKey == "" && len(prov.Headers) == 0 && prov.Compat == nil && len(prov.ModelOverrides) == 0 && prov.OAuth == nil && prov.AuthHeader == nil {
-			return fmt.Errorf("provider %q: must specify \"baseUrl\", \"headers\", \"compat\", \"modelOverrides\", \"models\", \"apiKey\", \"oauth\", or \"authHeader\"", name)
-		}
-		for i, md := range prov.Models {
-			if md.ID == "" {
-				return fmt.Errorf("provider %q: model at index %d: \"id\" is required", name, i)
-			}
-		}
-	}
-	return nil
-}
-
 // LoadError returns model configuration read, parse, and schema errors with the source path. Provider refresh failures surface through the Model Runtime's availability error, as in Pi.
 func (r *ModelRegistry) LoadError() string {
 	r.mu.RLock()
@@ -464,6 +461,14 @@ func (r *ModelRegistry) LoadError() string {
 	messages := []string{}
 	if r.loadError != "" {
 		messages = append(messages, r.loadError)
+	}
+	// An "oauth" radius provider's definitions are composed with its catalog's models as defaults, which are known only now (model-runtime.ts getError).
+	for _, providerID := range slices.Sorted(maps.Keys(r.radius)) {
+		if provider := r.radiusProviderLocked(providerID); provider != nil {
+			if failure := r.radiusCompositionFailureLocked(provider); failure != "" {
+				messages = append(messages, fmt.Sprintf("Provider %q: %s", providerID, failure))
+			}
+		}
 	}
 	return strings.Join(messages, "\n\n")
 }
@@ -776,8 +781,8 @@ func providerDefinesModel(prov providerConfig, modelID string) bool {
 	return false
 }
 
-// RegisterProvider validates the incoming configuration before changing the registry. Legacy entry points merge without dropping omitted callbacks; a native registration is displaced only after validation succeeds. A stored or configured provider is provisionally available in the Services snapshot before observers run; its availability refresh is scheduled after them.
-func (r *ModelRegistry) RegisterProvider(name string, configMap extension.ProviderConfig) error {
+// RegisterExtensionProvider validates the incoming configuration before changing the registry. Legacy entry points merge without dropping omitted callbacks; a native registration is displaced only after validation succeeds. A stored or configured provider is provisionally available in the Services snapshot before observers run; its availability refresh is scheduled after them.
+func (r *ModelRegistry) RegisterExtensionProvider(name string, configMap extension.ProviderConfig) error {
 	provider, ok := providerConfigFromRegistration(configMap)
 	if !ok {
 		return fmt.Errorf("provider %s: invalid registration configuration", name)
@@ -791,6 +796,10 @@ func (r *ModelRegistry) RegisterProvider(name string, configMap extension.Provid
 	if previous != nil {
 		return r.RegisterProviderInput(name, legacyProviderInput(name, provider), base.Stream)
 	}
+	if provider.RefreshModels != nil {
+		// Only a composed provider in the native collection refreshes (provider-composer.ts:613), so a registration with a refresh callback is composed there.
+		return r.RegisterProviderInput(name, legacyProviderInput(name, provider), nil)
+	}
 	var provisional *ai.AuthCheck
 	r.commitRegisteredProvider(func() {
 		r.unregisterNativeProvider(name)
@@ -799,10 +808,30 @@ func (r *ModelRegistry) RegisterProvider(name string, configMap extension.Provid
 		}
 		delete(r.native, name)
 		r.upsertRegisteredProviderLocked(name, provider)
+		r.noteRegistrationLocked(name, false)
 		effective := r.dynamic[name]
 		provisional = registrationAuth(effective.OAuth != nil, effective.APIKey)
 	}, func() { r.syncRegistration(name, provisional) })
 	return nil
+}
+
+// noteRegistrationLocked records id as the latest registration of its kind, as upstream's registerProvider and registerNativeProvider delete the ID from the other map and set it in their own (model-runtime.ts:882-931). The caller holds r.mu.
+func (r *ModelRegistry) noteRegistrationLocked(id string, native bool) {
+	own, other := &r.configRegistrations, &r.nativeRegistrations
+	if native {
+		own, other = other, own
+	}
+	*other = slices.DeleteFunc(*other, func(existing string) bool { return existing == id })
+	if !slices.Contains(*own, id) {
+		*own = append(*own, id)
+	}
+}
+
+// forgetRegistrationLocked drops id from both registration orders (model-runtime.ts:942-944). The caller holds r.mu.
+func (r *ModelRegistry) forgetRegistrationLocked(id string) {
+	match := func(existing string) bool { return existing == id }
+	r.configRegistrations = slices.DeleteFunc(r.configRegistrations, match)
+	r.nativeRegistrations = slices.DeleteFunc(r.nativeRegistrations, match)
 }
 
 // noteDynamicLocked records name's registration order. The caller holds r.mu.
@@ -825,6 +854,7 @@ func (r *ModelRegistry) SetProvider(name string, configMap extension.ProviderCon
 	r.commitRegisteredProvider(func() {
 		r.dynamic[name] = provider
 		r.noteDynamicLocked(name)
+		r.noteRegistrationLocked(name, true)
 	}, func() { r.syncRegistration(name, nil) })
 }
 
@@ -850,6 +880,7 @@ func providerConfigFromRegistration(configMap extension.ProviderConfig) (provide
 		provider.OAuth.HasLogin = true
 	}
 	provider.StreamSimple = configMap.StreamSimple
+	provider.RefreshModels = configMap.RefreshModels
 	provider.Images = configMap.Images
 	provider.Classifiers = configMap.Classifiers
 	provider.oauthCallbacks = configMap.OAuth
@@ -979,6 +1010,7 @@ func (r *ModelRegistry) UnregisterProvider(name string) {
 	delete(r.dynamic, name)
 	delete(r.native, name)
 	r.dynamicOrder = slices.DeleteFunc(r.dynamicOrder, func(existing string) bool { return existing == name })
+	r.forgetRegistrationLocked(name)
 	r.mu.Unlock()
 	r.syncRegistration(name, nil)
 	r.publishNativeChange()
@@ -1138,10 +1170,12 @@ func (r *ModelRegistry) refreshContext(ctx context.Context, providers []string) 
 	return modelRefreshResult{Aborted: aborted}
 }
 
-// GetAll returns explicit models and configured overlays for exact generated identities; dynamic providers take precedence over models.json.
+// GetAll returns explicit models and configured overlays for exact generated identities; dynamic providers take precedence over models.json. It omits the models of a stripped API, as the composed catalog does (ai.OfferedModels).
 func (r *ModelRegistry) GetAll() []ModelEntry {
 	out := append(r.getAllConfigured(), r.radiusEntries(false)...)
-	out = slices.DeleteFunc(out, func(entry ModelEntry) bool { return r.GetProvider(entry.ProviderID) != nil })
+	out = slices.DeleteFunc(out, func(entry ModelEntry) bool {
+		return r.GetProvider(entry.ProviderID) != nil || pigstrip.Has(pigstrip.ListAPIs, entry.API)
+	})
 	for _, model := range r.GetNativeModels() {
 		out = append(out, NativeModelEntry(model))
 	}
@@ -1179,7 +1213,7 @@ func (r *ModelRegistry) getAllConfigured() []ModelEntry {
 			if _, explicit := seen[modelID]; explicit {
 				continue
 			}
-			if _, generated := ai.LookupModelExact(providerID + "/" + modelID); !generated {
+			if generated, ok := ai.LookupModelExact(providerID + "/" + modelID); !ok || pigstrip.Has(pigstrip.ListAPIs, string(generated.API)) {
 				continue
 			}
 			entry := r.resolveProviderDefaults(providerID, provider)
@@ -1533,7 +1567,7 @@ func mergeSamplingParamsByThinkingLevel(base, override ai.SamplingParamsByThinki
 	if merged == nil {
 		merged = ai.SamplingParamsByThinkingLevel{}
 	}
-	for _, level := range []ai.ThinkingLevel{ai.ThinkingOff, ai.ThinkingMinimal, ai.ThinkingLow, ai.ThinkingMedium, ai.ThinkingHigh, ai.ThinkingXHigh, ai.ThinkingMax} {
+	for _, level := range []ai.ModelThinkingLevel{ai.ThinkingOff, ai.ThinkingMinimal, ai.ThinkingLow, ai.ThinkingMedium, ai.ThinkingHigh, ai.ThinkingXHigh, ai.ThinkingMax} {
 		params := override[level]
 		if params == nil {
 			continue
@@ -1678,7 +1712,7 @@ func mergeCompat(a, b *providerCompat) *ai.OpenAICompat {
 	if ovr.VLLMPriority != nil {
 		merged.VLLMPriority = ovr.VLLMPriority
 	}
-	merged.VercelGatewayRouting = mergeCompatMap(base.VercelGatewayRouting, ovr.VercelGatewayRouting)
+	merged.VercelGatewayRouting = mergeVercelGatewayRouting(base.VercelGatewayRouting, ovr.VercelGatewayRouting)
 	if ovr.SupportsLongCacheRetention != nil {
 		merged.SupportsLongCacheRetention = ovr.SupportsLongCacheRetention
 	}
@@ -1741,6 +1775,26 @@ func mergeCompat(a, b *providerCompat) *ai.OpenAICompat {
 		merged.AllowedFallbackModels = slices.Clone(ovr.AllowedFallbackModels)
 		for i := range merged.AllowedFallbackModels {
 			merged.AllowedFallbackModels[i].Cost.Tiers = append([]ai.CostTier(nil), merged.AllowedFallbackModels[i].Cost.Tiers...)
+		}
+	}
+	return &merged
+}
+
+// mergeVercelGatewayRouting merges key by key, as mergeCompatMap does: a list the override sets replaces the base list, and an absent list keeps it.
+func mergeVercelGatewayRouting(base, override *ai.VercelGatewayRouting) *ai.VercelGatewayRouting {
+	if base == nil && override == nil {
+		return nil
+	}
+	merged := ai.VercelGatewayRouting{}
+	if base != nil {
+		merged = ai.VercelGatewayRouting{Only: slices.Clone(base.Only), Order: slices.Clone(base.Order)}
+	}
+	if override != nil {
+		if override.Only != nil {
+			merged.Only = slices.Clone(override.Only)
+		}
+		if override.Order != nil {
+			merged.Order = slices.Clone(override.Order)
 		}
 	}
 	return &merged

@@ -18,8 +18,12 @@ func (r *ModelRegistry) registryAuthConfig(id string) (ai.ProviderAuth, provider
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 	if radius := r.radiusProviderLocked(id); radius != nil {
-		base = ai.RadiusProviderAuth(radius)
+		base = radius.Auth()
 		baseErr = nil
+	}
+	// upstream: model-runtime.ts composeProvider (`nativeExtensionProviders.get(providerId) ?? builtins.get(providerId)`): a provider object's own auth is the base, so its declared OAuth and API-key methods, logins and loginLabel are the provider's.
+	if native := r.native[id].provider; native != nil {
+		base, baseErr = native.Auth, nil
 	}
 	config, configured := r.effectiveProviderConfigLocked(id)
 	if !configured {
@@ -200,6 +204,12 @@ func (r *ModelRegistry) ProviderInsecure(providerID string) bool {
 	defer r.mu.RUnlock()
 	if dynamic, ok := r.dynamic[providerID]; ok {
 		return dynamic.Insecure
+	}
+	r.nativeMu.Lock()
+	composed := r.nativeInputs[providerID]
+	r.nativeMu.Unlock()
+	if composed != nil {
+		return composed.Insecure
 	}
 	if r.config != nil {
 		return r.config.Providers[providerID].Insecure

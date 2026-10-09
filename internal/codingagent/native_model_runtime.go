@@ -5,7 +5,6 @@ package codingagent
 import (
 	"context"
 	"fmt"
-	"maps"
 	"slices"
 
 	"github.com/MichaelKinsy/PiG/ai"
@@ -85,25 +84,11 @@ func (r *ModelRegistry) GetRegisteredProviderConfig(id string) *ProviderConfigIn
 	return r.nativeInputs[id]
 }
 
-// GetRegisteredProviderIDs preserves native registration order.
+// GetRegisteredProviderIDs lists the IDs registered through RegisterProvider in registration order, then those registered as native providers in registration order (model-runtime.ts:518-520).
 func (r *ModelRegistry) GetRegisteredProviderIDs() []string {
-	r.nativeMu.Lock()
-	models := r.nativeModels
-	r.nativeMu.Unlock()
-	var ids []string
-	if models != nil {
-		for _, provider := range models.GetProviders() {
-			ids = append(ids, provider.ID)
-		}
-	}
 	r.mu.RLock()
 	defer r.mu.RUnlock()
-	for _, id := range slices.Sorted(maps.Keys(r.dynamic)) {
-		if !slices.Contains(ids, id) {
-			ids = append(ids, id)
-		}
-	}
-	return ids
+	return slices.Concat(r.configRegistrations, r.nativeRegistrations)
 }
 
 func (r *ModelRegistry) publishNativeChange() {
@@ -132,6 +117,7 @@ func (r *ModelRegistry) RegisterNativeModelsProvider(provider *ai.ModelsProvider
 	delete(r.dynamic, provider.ID)
 	delete(r.native, provider.ID)
 	r.dynamicOrder = slices.DeleteFunc(r.dynamicOrder, func(id string) bool { return id == provider.ID })
+	r.noteRegistrationLocked(provider.ID, true)
 	r.nativeOriginal[provider.ID] = provider
 	delete(r.nativeInputs, provider.ID)
 	r.nativeBase[provider.ID] = provider
@@ -189,6 +175,8 @@ func mergeProviderConfigInput(previous *ProviderConfigInput, input ProviderConfi
 	if input.RefreshModels != nil {
 		merged.RefreshModels = input.RefreshModels
 	}
+	// pig additive (D36): Insecure is an additive opt-in a registration states each time, so the latest registration's value stands.
+	merged.Insecure = input.Insecure
 	return merged
 }
 
@@ -227,6 +215,7 @@ func (r *ModelRegistry) RegisterProviderInput(id string, input ProviderConfigInp
 	delete(r.dynamic, id)
 	delete(r.native, id)
 	r.dynamicOrder = slices.DeleteFunc(r.dynamicOrder, func(existing string) bool { return existing == id })
+	r.noteRegistrationLocked(id, false)
 	r.nativeInputs[id] = &input
 	delete(r.nativeOriginal, id)
 	r.nativeBase[id] = base

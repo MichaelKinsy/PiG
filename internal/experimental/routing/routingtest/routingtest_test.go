@@ -1,5 +1,13 @@
 package routingtest_test
 
+// pi: packages/server/src/testing/server.ts
+
+// pi: packages/server/src/testing/index.ts
+
+// pi: packages/server/src/testing/host.ts
+
+// pi: packages/server/src/testing/client.ts
+
 import (
 	"context"
 	"encoding/json"
@@ -49,20 +57,23 @@ func expectErrorText(t *testing.T, err error, want string) {
 }
 
 // packages/server/src/testing/host.ts:5-18: a Deferred settles once, with the first resolved value.
+// mutation-checked: the mutant "Deferred.Resolve overwrites an already resolved value" fails it.
 func TestDeferredKeepsTheFirstResolvedValue(t *testing.T) {
+	valueOf := func(d *routingtest.Deferred[string]) (string, bool) { return d.Value() }
 	deferred := routingtest.NewDeferred[string]()
-	if _, ok := deferred.Value(); ok {
+	if _, ok := valueOf(deferred); ok {
 		t.Fatal("an unresolved Deferred reported a value")
 	}
 	deferred.Resolve("first")
 	deferred.Resolve("second")
 	await(t, boundedContext(t), deferred.Promise(), "resolution")
-	if value, ok := deferred.Value(); !ok || value != "first" {
+	if value, ok := valueOf(deferred); !ok || value != "first" {
 		t.Fatalf("Value = %q, %v; want first, true", value, ok)
 	}
 }
 
 // packages/server/src/testing/host.ts:63-79: a service call is recorded before its scripted failure, a scripted result is used once, and the default result is {"ok":true}.
+// mutation-checked: negating the condition `failure := h.nextServiceError; failure != nil` at host.go:230 fails it.
 func TestTestHarnessScriptsServiceCalls(t *testing.T) {
 	harness := routingtest.NewTestHarness(routing.BasicSessionMetadata{ID: "session-1"})
 	first := chord.ServiceCall{ServiceId: "test.session", Member: "first", Args: []json.RawMessage{}}
@@ -93,6 +104,7 @@ func TestTestHarnessScriptsServiceCalls(t *testing.T) {
 }
 
 // packages/server/src/testing/host.ts:63-79: a gated call is recorded and waits at the gate until it is released.
+// mutation-checked: the mutant "InvokeService ignores the service gate" fails it.
 func TestTestHarnessGatesTheNextServiceCall(t *testing.T) {
 	ctx := boundedContext(t)
 	harness := routingtest.NewTestHarness(routing.BasicSessionMetadata{ID: "session-1"})
@@ -116,6 +128,7 @@ func TestTestHarnessGatesTheNextServiceCall(t *testing.T) {
 }
 
 // packages/server/src/testing/host.ts:45-61: a failed release counts the attempt and keeps the attachment; a successful release is idempotent.
+// mutation-checked: negating the condition `a.released` at host.go:214 fails it.
 func TestTestHarnessAttachmentRelease(t *testing.T) {
 	ctx := boundedContext(t)
 	harness := routingtest.NewTestHarness(routing.BasicSessionMetadata{ID: "session-1"})
@@ -138,6 +151,7 @@ func TestTestHarnessAttachmentRelease(t *testing.T) {
 }
 
 // packages/server/src/testing/host.ts:81-100: a scripted close failure is returned once and leaves the harness running; the next close resolves Closed and terminates without an error, and a later Terminate does not replace that result.
+// mutation-checked: the mutant "Deferred.Resolve overwrites an already resolved value" fails it.
 func TestTestHarnessCloseAndTermination(t *testing.T) {
 	ctx := boundedContext(t)
 	harness := routingtest.NewTestHarness(routing.BasicSessionMetadata{ID: "session-1"})
@@ -196,6 +210,7 @@ func (presentation *recordingPresentation) DetachSession(context.Context) error 
 func (*recordingPresentation) PrepareSessionRemoval(context.Context, string) error { return nil }
 
 // packages/server/src/testing/host.ts:115-145: the server services accept only attach with one string argument and detach with none, on the uninstanced pi.session-management service.
+// mutation-checked: negating the condition `sessionID, ok := jsonString(call.Args[0]); ok` at host.go:310 fails it.
 func TestCreateTestServerServicesRoutesOnlyAttachAndDetach(t *testing.T) {
 	ctx := boundedContext(t)
 	presentation := &recordingPresentation{}
@@ -235,6 +250,7 @@ func TestCreateTestServerServicesRoutesOnlyAttachAndDetach(t *testing.T) {
 }
 
 // packages/server/src/testing/host.ts:147-204: seeded Sessions resolve and open; an unseeded Session, a scripted open failure, and a missing harness fail with upstream's messages.
+// mutation-checked: negating the condition `gate != nil` at host.go:435 fails it.
 func TestTestServerHostOpensSeededSessions(t *testing.T) {
 	ctx := boundedContext(t)
 	host := routingtest.NewTestServerHost()
@@ -279,6 +295,7 @@ func TestTestServerHostOpensSeededSessions(t *testing.T) {
 }
 
 // packages/server/src/testing/host.ts:162-169 and 193-197: a gated open is counted when it reaches the gate and returns after its release.
+// mutation-checked: negating the condition `failure := h.nextOpenSessionError; failure != nil` at host.go:443 fails it.
 func TestTestServerHostGatesTheNextOpen(t *testing.T) {
 	ctx := boundedContext(t)
 	host := routingtest.NewTestServerHost()
@@ -363,16 +380,18 @@ func responseTo(id string) func(protocol.ServerMessage) bool {
 }
 
 // packages/server/src/testing/client.ts:96-109 and 139-149: waits match logged and later messages, a failure rejects only the pending waiters, and a closed client rejects a wait with no logged match.
+// mutation-checked: negating the condition `predicate(message)` at client.go:259 fails it.
 func TestProtocolTestClientWaitsForMessages(t *testing.T) {
 	ctx := boundedContext(t)
 	client := routingtest.NewProtocolTestClient(&fakeChannel{})
+	hasWaiter := routingtest.HasPendingWaiter
 	client.Receive(append(serverFrame(t, protocol.ServerHello{Version: protocol.ProtocolVersion, ServerId: serverID}), serverFrame(t, protocol.ResponseEnvelope{Id: "a", Ok: true, HasResult: true, Result: true})...))
 	canceled, cancel := context.WithCancel(ctx)
 	cancel()
 	if _, err := client.NextFrom(canceled, 1, func(message protocol.ServerMessage) bool { _, ok := message.(protocol.ServerHello); return ok }); !errors.Is(err, context.Canceled) {
 		t.Fatalf("NextFrom past the only hello = %v, want a pending wait ended by its context", err)
 	}
-	if routingtest.HasPendingWaiter(client) {
+	if hasWaiter(client) {
 		t.Fatal("an ended wait stayed registered")
 	}
 	if message, err := client.NextFrom(ctx, -1, responseTo("a")); err != nil || message.(protocol.ResponseEnvelope).Id != "a" {
@@ -440,6 +459,7 @@ func waiterRegistered(ctx context.Context, client *routingtest.ProtocolTestClien
 }
 
 // packages/server/src/testing/client.ts:115-137: a decode failure fails the pending waiters without closing the client.
+// mutation-checked: the mutant "Receive ignores a decode failure" fails it.
 func TestProtocolTestClientFailsWaitersOnUndecodableFrames(t *testing.T) {
 	ctx := boundedContext(t)
 	client := routingtest.NewProtocolTestClient(&fakeChannel{})
@@ -462,6 +482,7 @@ func TestProtocolTestClientFailsWaitersOnUndecodableFrames(t *testing.T) {
 }
 
 // packages/server/src/testing/client.ts:51-82: request IDs advance only when omitted, attach sends one string argument, and Session requests target the current attachment or "missing-attachment".
+// mutation-checked: negating the condition `id != nil` at client.go:97 fails it.
 func TestProtocolTestClientRequests(t *testing.T) {
 	ctx := boundedContext(t)
 	channel := &fakeChannel{}
@@ -523,6 +544,7 @@ func TestProtocolTestClientRequests(t *testing.T) {
 }
 
 // packages/server/src/testing/client.ts:45-49 and 84-94: hello defaults to the current protocol version, a send failure fails the request, and fragmented sends split the encoded frame.
+// mutation-checked: negating the condition `version != nil` at client.go:76 fails it.
 func TestProtocolTestClientSends(t *testing.T) {
 	ctx := boundedContext(t)
 	channel := &fakeChannel{}
@@ -560,6 +582,7 @@ func TestProtocolTestClientSends(t *testing.T) {
 }
 
 // packages/server/src/testing/server.ts:16-28: the test server defaults its identity and host, and an explicit identity reaches server validation.
+// mutation-checked: negating the condition `options.Host != nil` at server.go:30 fails it.
 func TestCreateTestServer(t *testing.T) {
 	created, err := routingtest.CreateTestServer(routingtest.TestServerOptions{Listeners: []routing.ServerListener{}})
 	mustNoError(t, err)
@@ -581,4 +604,159 @@ func TestCreateTestServer(t *testing.T) {
 	expectErrorText(t, err, "serverId must be a canonical lowercase UUIDv4")
 	_, err = routingtest.CreateTestServer(routingtest.TestServerOptions{})
 	expectErrorText(t, err, "Server listeners must be an array")
+}
+
+// packages/server/src/testing/server.ts:16-28 forwards the host, frame limit, handshake timeout and error callback to the server.
+type failingCloseConnection struct{ closed chan struct{} }
+
+func (failingCloseConnection) Closed() bool      { return false }
+func (failingCloseConnection) Send([]byte) error { return nil }
+func (c failingCloseConnection) Close([]byte) error {
+	close(c.closed)
+	return errors.New("close failed")
+}
+
+// Pi: packages/server/src/testing/server.ts:22 (handshakeTimeoutMs)
+// Pi: packages/server/src/testing/server.ts:21 (maxFrameLength)
+// Pi: packages/server/src/testing/server.ts:24 (onError)
+// Pi source: packages/server/src/testing/server.ts:16 (createTestServer).
+// mutation-checked: negating the condition `failure, ok := errors.AsType[*ServerError](err); ok` at server.go:726 fails it.
+func TestCreateTestServerForwardsItsOptions(t *testing.T) {
+	ctx := boundedContext(t)
+	listeners := []routing.ServerListener{}
+	host := routingtest.NewTestServerHost()
+	host.Seed(nil)
+	serverHost := host.ServerHost()
+	created, err := routingtest.CreateTestServer(routingtest.TestServerOptions{Listeners: listeners, Host: &serverHost})
+	mustNoError(t, err)
+	t.Cleanup(func() { _ = created.Server.Close() })
+	if _, err := created.Host.ResolveSession(ctx, "session-1"); err != nil {
+		t.Fatalf("the supplied host was not used: %v", err)
+	}
+	zero := 0.0
+	_, err = routingtest.CreateTestServer(routingtest.TestServerOptions{Listeners: listeners, MaxFrameLength: &zero})
+	expectErrorText(t, err, "Server maxFrameLength must be an integer between 1 and 4294967295")
+	_, err = routingtest.CreateTestServer(routingtest.TestServerOptions{Listeners: listeners, HandshakeTimeoutMs: &zero})
+	expectErrorText(t, err, "Server handshakeTimeoutMs must be an integer between 1 and 2147483647")
+	reported := make(chan error, 4)
+	created, err = routingtest.CreateTestServer(routingtest.TestServerOptions{Listeners: listeners, OnError: func(err error) { reported <- err }})
+	mustNoError(t, err)
+	t.Cleanup(func() { _ = created.Server.Close() })
+	connection := failingCloseConnection{closed: make(chan struct{})}
+	handler := created.Server.Accept(connection)
+	handler.OnData([]byte{1, 2, 3, 4, 5, 6})
+	select {
+	case err := <-reported:
+		expectErrorText(t, err, "close failed")
+	case <-ctx.Done():
+		t.Fatal("OnError was not called")
+	}
+}
+
+type recordingConnection struct{ frames chan []byte }
+
+func (recordingConnection) Closed() bool { return false }
+func (c recordingConnection) Send(chunk []byte) error {
+	c.frames <- append([]byte(nil), chunk...)
+	return nil
+}
+func (recordingConnection) Close([]byte) error { return nil }
+
+// A created server routes its connections through the supplied host's server services.
+// Pi source: packages/server/src/testing/server.ts:16 (createTestServer) and packages/server/src/testing/host.ts:147.
+// mutation-checked: negating the condition `!serverInteger(frame, 1, math.MaxUint32)` at server.go:108 fails it.
+func TestCreateTestServerHandshakesThroughItsHost(t *testing.T) {
+	ctx := boundedContext(t)
+	created, err := routingtest.CreateTestServer(routingtest.TestServerOptions{Listeners: []routing.ServerListener{}})
+	mustNoError(t, err)
+	t.Cleanup(func() { _ = created.Server.Close() })
+	connection := recordingConnection{frames: make(chan []byte, 4)}
+	handler := created.Server.Accept(connection)
+	hello, err := protocol.EncodeClientMessage(protocol.ClientHello{Version: protocol.ProtocolVersion}, protocol.FrameDecoderOptions{})
+	mustNoError(t, err)
+	handler.OnData(hello)
+	select {
+	case frame := <-connection.frames:
+		decoder, err := protocol.NewServerMessageDecoder(protocol.FrameDecoderOptions{})
+		mustNoError(t, err)
+		messages, err := decoder.Push(frame)
+		mustNoError(t, err)
+		if reply, ok := messages[0].(protocol.ServerHello); !ok || reply.ServerId != serverID {
+			t.Fatalf("handshake reply=%#v", messages[0])
+		}
+	case <-ctx.Done():
+		t.Fatal("no handshake reply")
+	}
+}
+
+// mutation-checked: negating the condition `call.Instance == nil && call.ServiceId == "pi.session-management" && call.Member == "attach" && len(call.Args) == 1` at host.go:309 fails it.
+func TestTestServerServicesRejectAttachWithExtraArguments(t *testing.T) {
+	ctx := boundedContext(t)
+	attachment, err := routingtest.CreateTestServerServices().AttachClient(ctx, &recordingPresentation{})
+	mustNoError(t, err)
+	_, err = attachment.InvokeService(ctx, chord.ServiceCall{ServiceId: "pi.session-management", Member: "attach", Args: []json.RawMessage{json.RawMessage(`"session-1"`), json.RawMessage(`"x"`)}}, nil)
+	expectErrorText(t, err, "Unsupported test server service pi.session-management.attach")
+	_, err = attachment.InvokeService(ctx, chord.ServiceCall{ServiceId: "pi.session-management", Member: "attach", Args: []json.RawMessage{}}, nil)
+	expectErrorText(t, err, "Unsupported test server service pi.session-management.attach")
+}
+
+// packages/server/src/testing/host.ts: a new TestServerHost serves the session-management server services.
+// Pi: packages/server/src/testing/host.ts:148 (serverServices)
+// mutation-checked: the mutant "NewTestServerHost has no server services" fails it.
+func TestNewTestServerHostProvidesServerServices(t *testing.T) {
+	ctx := boundedContext(t)
+	host := routingtest.NewTestServerHost()
+	if host.ServerServices() == nil || host.ServerHost().ServerServices == nil {
+		t.Fatal("the test host has no server services")
+	}
+	attachment, err := host.ServerServices().AttachClient(ctx, &recordingPresentation{})
+	mustNoError(t, err)
+	mustNoError(t, attachment.Release(ctx))
+}
+
+// packages/server/src/testing/server.ts:16-28: onConnectionCountChanged is accepted but not forwarded to the server, so
+// accepting a connection never calls it; a plain Server with the same option is called synchronously with the count.
+// Pi: packages/server/src/types.ts:10 (onConnectionCountChanged)
+// mutation-checked: negating the condition `!serverInteger(frame, 1, math.MaxUint32)` at server.go:108 fails it.
+func TestCreateTestServerDoesNotForwardConnectionCountCallback(t *testing.T) {
+	var testServerCounts, plainCounts []int
+	created, err := routingtest.CreateTestServer(routingtest.TestServerOptions{Listeners: []routing.ServerListener{}, OnConnectionCountChanged: func(count int) { testServerCounts = append(testServerCounts, count) }})
+	mustNoError(t, err)
+	t.Cleanup(func() { _ = created.Server.Close() })
+	created.Server.Accept(failingCloseConnection{closed: make(chan struct{})})
+	if len(testServerCounts) != 0 {
+		t.Fatalf("the test server forwarded the callback: %v", testServerCounts)
+	}
+
+	plain, err := routing.NewServer(routingtest.NewTestServerHost().ServerHost(), routing.ServerOptions{Listeners: []routing.ServerListener{}, ServerId: "00000000-0000-4000-8000-000000000001", OnConnectionCountChanged: func(count int) { plainCounts = append(plainCounts, count) }})
+	mustNoError(t, err)
+	t.Cleanup(func() { _ = plain.Close() })
+	plain.Accept(failingCloseConnection{closed: make(chan struct{})})
+	if len(plainCounts) != 1 || plainCounts[0] != 1 {
+		t.Fatalf("control server counts = %v, want [1]", plainCounts)
+	}
+}
+
+// packages/server/src/testing/host.ts nextOpenSessionError: the scripted failure is readable until the next open of a known session consumes it.
+// Pi: packages/server/src/testing/host.ts:152 (nextOpenSessionError)
+// Pi source: packages/server/src/testing/host.ts:152 and :171-173 (nextOpenSessionError).
+// mutation-checked: negating the condition `failure := h.nextOpenSessionError; failure != nil` at host.go:443 fails it.
+func TestTestServerHostNextOpenSessionErrorIsConsumedByTheOpen(t *testing.T) {
+	ctx := boundedContext(t)
+	host := routingtest.NewTestServerHost()
+	metadata := host.Seed(nil)
+	if host.NextOpenSessionError() != nil {
+		t.Fatal("fresh host has a scripted open error")
+	}
+	failure := errors.New("open failed")
+	host.SetNextOpenSessionError(failure)
+	if !errors.Is(host.NextOpenSessionError(), failure) {
+		t.Fatalf("NextOpenSessionError = %v", host.NextOpenSessionError())
+	}
+	if _, err := host.OpenSession(ctx, metadata); !errors.Is(err, failure) {
+		t.Fatalf("scripted open = %v", err)
+	}
+	if host.NextOpenSessionError() != nil {
+		t.Fatalf("the open did not consume the scripted error: %v", host.NextOpenSessionError())
+	}
 }

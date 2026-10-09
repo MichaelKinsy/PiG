@@ -21,7 +21,7 @@ var (
 )
 
 func liveInitial() obj {
-	return obj{"items": []any{}, "nested": obj{"count": 0}, "other": obj{"label": "x"}}
+	return delta.JsonObjectOf("items", []any{}, "nested", delta.JsonObjectOf("count", 0), "other", delta.JsonObjectOf("label", "x"))
 }
 
 var liveDoc = defineDoc("test.live", 1, latestScope(durable.ForkInitial), func() obj {
@@ -35,7 +35,7 @@ var rewindableLiveDoc = defineDoc("test.live", 1, rewindableScope(durable.ForkAs
 
 var liveDocV2 = defineDoc("test.live", 2, latestScope(durable.ForkInitial), liveInitial)
 
-var counterDoc = defineDoc("test.counter", 1, sessionScope, func() obj { return obj{"count": 0} })
+var counterDoc = defineDoc("test.counter", 1, sessionScope, func() obj { return delta.JsonObjectOf("count", 0) })
 
 var (
 	seedsMu sync.Mutex
@@ -46,7 +46,7 @@ var memberDoc = defineFamily("test.member", 1, sessionScope, func(seed string) o
 	seedsMu.Lock()
 	seeds = append(seeds, seed)
 	seedsMu.Unlock()
-	return obj{"seed": seed, "hits": 0}
+	return delta.JsonObjectOf("seed", seed, "hits", 0)
 })
 
 type liveHarness struct {
@@ -127,9 +127,9 @@ func TestSessionDocumentTransactions(t *testing.T) {
 		if create.Content.Kind != durable.ContentBase || create.Content.Version != 1 {
 			t.Fatalf("content %+v", create.Content)
 		}
-		expectEqual(t, create.Content.Value["message"], "hello")
+		expectEqual(t, create.Content.Value.Value("message"), "hello")
 		value := snapshot(t, harness.Session, liveDoc, conversationId)
-		expectEqual(t, value, obj{"message": "hello", "items": []any{}, "nested": obj{"count": 0}, "other": obj{"label": "x"}})
+		expectEqual(t, value, delta.JsonObjectOf("message", "hello", "items", []any{}, "nested", delta.JsonObjectOf("count", 0), "other", delta.JsonObjectOf("label", "x")))
 		flush(harness)
 		publication := harness.Publications.Last()
 		published := sessiontest.DocumentChanges(publication)[0]
@@ -167,10 +167,10 @@ func TestSessionDocumentTransactions(t *testing.T) {
 		if same(second, first) {
 			t.Fatal("a change produces a new revision")
 		}
-		expectEqual(t, first["nested"], obj{"count": 0})
-		expectEqual(t, second["nested"], obj{"count": 1})
+		expectEqual(t, first.Value("nested"), delta.JsonObjectOf("count", 0))
+		expectEqual(t, second.Value("nested"), delta.JsonObjectOf("count", 1))
 		// Unchanged subtrees are structurally shared between immutable revisions.
-		if !same(second["items"], first["items"]) || !same(second["other"], first["other"]) {
+		if !same(second.Value("items"), first.Value("items")) || !same(second.Value("other"), first.Value("other")) {
 			t.Fatal("unchanged subtrees are shared")
 		}
 	})
@@ -179,7 +179,7 @@ func TestSessionDocumentTransactions(t *testing.T) {
 		harness := setupLive(t)
 		commit(t, harness.Session, func(tx durable.Tx) error {
 			live := mustDoc(t, tx, liveDoc, harness.conversationId)
-			must(t, live.Set("other", obj{"label": "y"}))
+			must(t, live.Set("other", delta.JsonObjectOf("label", "y")))
 			_, err := live.Array("items").Push("c")
 			return err
 		})
@@ -199,27 +199,27 @@ func TestSessionDocumentTransactions(t *testing.T) {
 				set = op
 			}
 		}
-		expectEqual(t, set, durable.Op{"s", []any{"other"}, obj{"label": "y"}})
+		expectEqual(t, set, durable.Op{"s", []any{"other"}, delta.JsonObjectOf("label", "y")})
 		// Trusted immutability: the Session makes no second copy of operation payloads.
-		if !same(set[2], value["other"]) {
+		if !same(set[2], value.Value("other")) {
 			t.Fatal("the set payload is the revision's container")
 		}
 	})
 
 	t.Run("copies assigned values per placement", func(t *testing.T) {
 		harness := setupLive(t)
-		value := obj{"label": "shared"}
+		value := delta.JsonObjectOf("label", "shared")
 		commit(t, harness.Session, func(tx durable.Tx) error {
 			live := mustDoc(t, tx, liveDoc, harness.conversationId)
 			must(t, live.Set("other", value))
 			must(t, live.Set("copy", value))
-			value["label"] = "mutated"
+			value.Set("label", "mutated")
 			return nil
 		})
 		got := snapshot(t, harness.Session, liveDoc, harness.conversationId)
-		expectEqual(t, got["other"], obj{"label": "shared"})
-		expectEqual(t, got["copy"], obj{"label": "shared"})
-		if same(got["copy"], got["other"]) || same(got["other"], value) {
+		expectEqual(t, got.Value("other"), delta.JsonObjectOf("label", "shared"))
+		expectEqual(t, got.Value("copy"), delta.JsonObjectOf("label", "shared"))
+		if same(got.Value("copy"), got.Value("other")) || same(got.Value("other"), value) {
 			t.Fatal("each placement is an independent copy")
 		}
 	})
@@ -277,7 +277,7 @@ func TestSessionDocumentTransactions(t *testing.T) {
 		expectPanic(t, "settled overlay", func() { _ = escaped.Set("message", "outside") })
 		expectPanic(t, "settled overlay", func() { items.Len() })
 		expectPanic(t, "settled overlay", func() { _, _ = items.Push("outside") })
-		expectEqual(t, snapshot(t, harness.Session, liveDoc, harness.conversationId)["message"], "inside")
+		expectEqual(t, snapshot(t, harness.Session, liveDoc, harness.conversationId).Value("message"), "inside")
 		returned, err := harness.Session.Commit(ctx, func(tx durable.Tx) (any, error) { return tx.Doc(liveDoc, harness.conversationId) })
 		must(t, err)
 		expectPanic(t, "settled overlay", func() { returned.(*delta.Object).Get("message") })
@@ -299,7 +299,7 @@ func TestSessionDocumentTransactions(t *testing.T) {
 			t.Fatal("a failed callback changes nothing")
 		}
 		setLive(t, harness, "message", "kept")
-		expectEqual(t, snapshot(t, harness.Session, liveDoc, harness.conversationId)["message"], "kept")
+		expectEqual(t, snapshot(t, harness.Session, liveDoc, harness.conversationId).Value("message"), "kept")
 	})
 
 	t.Run("memoizes concurrent duplicate acquisition and initializes once", func(t *testing.T) {
@@ -348,8 +348,8 @@ func TestSessionDocumentTransactions(t *testing.T) {
 		seen := append([]string(nil), seeds...)
 		seedsMu.Unlock()
 		expectEqual(t, seen, []string{"first", "fourth"})
-		expectEqual(t, snapshot(t, harness.Session, memberDoc, "k"), obj{"seed": "first", "hits": 2})
-		expectEqual(t, snapshot(t, harness.Session, memberDoc, "other"), obj{"seed": "fourth", "hits": 1})
+		expectEqual(t, snapshot(t, harness.Session, memberDoc, "k"), delta.JsonObjectOf("seed", "first", "hits", 2))
+		expectEqual(t, snapshot(t, harness.Session, memberDoc, "other"), delta.JsonObjectOf("seed", "fourth", "hits", 1))
 	})
 
 	t.Run("rejects a callback that succeeds with a pending acquisition and drains it", func(t *testing.T) {
@@ -385,7 +385,7 @@ func TestSessionDocumentTransactions(t *testing.T) {
 			t.Fatal("nothing is written")
 		}
 		setLive(t, harness, "message", "after")
-		expectEqual(t, snapshot(t, harness.Session, liveDoc, harness.conversationId)["message"], "after")
+		expectEqual(t, snapshot(t, harness.Session, liveDoc, harness.conversationId).Value("message"), "after")
 	})
 
 	t.Run("does not initialize or mint for an absent acquisition that finishes after settlement", func(t *testing.T) {
@@ -396,7 +396,7 @@ func TestSessionDocumentTransactions(t *testing.T) {
 			mu.Lock()
 			initialized++
 			mu.Unlock()
-			return obj{"count": 0}
+			return delta.JsonObjectOf("count", 0)
 		})
 		gate := harness.Storage.HoldFindDocument()
 		mints := harness.Storage.MintCount()
@@ -486,7 +486,7 @@ func TestSessionDocumentTransactions(t *testing.T) {
 		conversationId := createConversation(t, harness)
 		// Upstream's non-JSON value is a Date instance. A Go value with a JSON encoding (time.Time) is typed JSON, so
 		// the Go counterpart is a kind with no JSON form.
-		dateDoc := defineDoc("test.date", 1, sessionScope, func() obj { return obj{"at": make(chan int)} })
+		dateDoc := defineDoc("test.date", 1, sessionScope, func() obj { return delta.JsonObjectOf("at", make(chan int)) })
 		err := tryCommit(harness.Session, func(tx durable.Tx) error {
 			_, err := tx.Doc(dateDoc)
 			return err
@@ -513,7 +513,7 @@ func TestSessionDocumentTransactions(t *testing.T) {
 			must(t, mustDoc(t, tx, liveDoc, harness.conversationId).Set("message", "lost"))
 			must(t, mustDoc(t, tx, counterDoc).Set("count", 2))
 			// Replacing a missing task fails during assembly, after every change was prepared.
-			var checkpoint any = obj{"phase": "start"}
+			var checkpoint any = delta.JsonObjectOf("phase", "start")
 			return tx.SetTask(session.AnyTaskRecord{
 				Id: 999, ConversationId: harness.conversationId, Kind: "missing", Version: 1,
 				State: durable.TaskState[durable.JsonValue, durable.JsonValue]{Status: durable.TaskPending, Checkpoint: &checkpoint},
@@ -527,7 +527,7 @@ func TestSessionDocumentTransactions(t *testing.T) {
 			must(t, mustDoc(t, tx, liveDoc, harness.conversationId).Set("message", "next"))
 			return mustDoc(t, tx, counterDoc).Set("count", 3)
 		})
-		expectEqual(t, snapshot(t, harness.Session, counterDoc)["count"], 3)
+		expectEqual(t, snapshot(t, harness.Session, counterDoc).Value("count"), 3)
 	})
 
 	t.Run("poisons the Session after an uncertain Storage failure and publishes nothing", func(t *testing.T) {
@@ -544,7 +544,7 @@ func TestSessionDocumentTransactions(t *testing.T) {
 		if harness.Publications.Len() != published {
 			t.Fatal("nothing is published")
 		}
-		if _, ok := before["message"]; ok {
+		if _, ok := before.Get("message"); ok {
 			t.Fatal("the prior revision is unchanged")
 		}
 		_, err = harness.Session.SnapshotErased(ctx, liveDoc, harness.conversationId)
@@ -574,7 +574,7 @@ func TestSessionDocumentTransactions(t *testing.T) {
 		expectEqual(t, before, copied)
 		gate.Release()
 		must(t, <-done)
-		expectEqual(t, snapshot(t, harness.Session, liveDoc, harness.conversationId)["items"], []any{"a", "b", "c"})
+		expectEqual(t, snapshot(t, harness.Session, liveDoc, harness.conversationId).Value("items"), []any{"a", "b", "c"})
 		expectEqual(t, before, copied)
 	})
 
@@ -616,8 +616,8 @@ func TestSessionDocumentTransactions(t *testing.T) {
 		if created.Record.Id == oldId || created.Record.CreatedAt != publication.Seq || len(created.Ops) != 0 {
 			t.Fatal("creation publication")
 		}
-		expectEqual(t, created.Value["message"], "new")
-		expectEqual(t, created.Value["items"], []any{})
+		expectEqual(t, created.Value.Value("message"), "new")
+		expectEqual(t, created.Value.Value("items"), []any{})
 		if !same(snapshot(t, harness.Session, liveDoc, harness.conversationId), created.Value) {
 			t.Fatal("the replacement is current")
 		}
@@ -663,7 +663,7 @@ func TestSessionDocumentTransactions(t *testing.T) {
 		if len(writesOfType(absent, "document.retire")) != 0 || len(writesOfType(absent, "document.create")) != 1 {
 			t.Fatal("an absent address only creates")
 		}
-		expectEqual(t, snapshot(t, harness.Session, memberDoc, "absent"), obj{"seed": "seed", "hits": 1})
+		expectEqual(t, snapshot(t, harness.Session, memberDoc, "absent"), delta.JsonObjectOf("seed", "seed", "hits", 1))
 	})
 
 	t.Run("retires the existing incarnation when retirement races a pending acquisition", func(t *testing.T) {
@@ -708,7 +708,7 @@ func TestSessionDocumentTransactions(t *testing.T) {
 		if retire := writesOfType(writes, "document.retire"); len(retire) != 1 || retire[0].(durable.DocumentRetireWrite).Id != secondId {
 			t.Fatal("the second incarnation retires")
 		}
-		expectEqual(t, snapshot(t, harness.Session, liveDoc, harness.conversationId)["message"], "third")
+		expectEqual(t, snapshot(t, harness.Session, liveDoc, harness.conversationId).Value("message"), "third")
 	})
 
 	t.Run("reloads an unloaded document from Storage", func(t *testing.T) {
@@ -724,7 +724,7 @@ func TestSessionDocumentTransactions(t *testing.T) {
 			return err
 		})
 		must(t, harness.Session.UnloadDocuments())
-		expectEqual(t, snapshot(t, harness.Session, liveDoc, harness.conversationId)["items"], []any{"a", "b", "c"})
+		expectEqual(t, snapshot(t, harness.Session, liveDoc, harness.conversationId).Value("items"), []any{"a", "b", "c"})
 	})
 
 	t.Run("delivers complete publications synchronously after adoption", func(t *testing.T) {
@@ -743,6 +743,7 @@ func TestSessionDocumentTransactions(t *testing.T) {
 	})
 
 	t.Run("publishes close synchronously and supports unsubscription", func(t *testing.T) {
+		// packages/durable/test/session-documents.test.ts:623 (Session.subscribeClose, types.ts:907)
 		harness := open()
 		var calls []string
 		harness.Session.SubscribeClose(func() { calls = append(calls, "active") })

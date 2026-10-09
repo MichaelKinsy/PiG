@@ -1,0 +1,290 @@
+[
+ {
+  "ids": [
+   "pkg:tui/.#backgroundAnsi"
+  ],
+  "targets": [
+   "tui/colors.go#BackgroundAnsi"
+  ],
+  "production": [
+   "call:coding/piglogin/head.go#halfBlockLines"
+  ],
+  "evidence": [
+   "test:tui/colors_oracle_test.go#TestColorsMatchUpstreamOracle"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "backgroundAnsi: Go BackgroundAnsi has the upstream parameters and result (signatures reviewed); callers attributed by go/types."
+ },
+ {
+  "ids": [
+   "pkg:tui/.#colorToHex"
+  ],
+  "targets": [
+   "tui/colors.go#ColorToHex"
+  ],
+  "production": [
+   "call:tui/theme.go#Theme.Colors"
+  ],
+  "evidence": [
+   "test:tui/colors_upstream_test.go#TestUpstreamColors",
+   "test:tui/theme_export_okhsl_upstream_test.go#TestThemeExportOkhslColorsUpstream"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "colorToHex: Go ColorToHex has the upstream parameters and result (signatures reviewed); callers attributed by go/types."
+ },
+ {
+  "ids": [
+   "pkg:tui/.#colorToOkhsl"
+  ],
+  "targets": [
+   "tui/colors.go#ColorToOkhsl"
+  ],
+  "production": [
+   "call:tui/system_theme.go#okhslOf"
+  ],
+  "evidence": [
+   "test:tui/colors_upstream_test.go#TestUpstreamColors",
+   "test:tui/colors_oracle_test.go#TestColorsMatchUpstreamOracle"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "colorToOkhsl: Go ColorToOkhsl has the upstream parameters and result (signatures reviewed); callers attributed by go/types."
+ },
+ {
+  "ids": [
+   "pkg:tui/.#colorToOklch"
+  ],
+  "targets": [
+   "tui/colors.go#ColorToOklch"
+  ],
+  "production": [
+   "call:tui/colors.go#MixColors"
+  ],
+  "evidence": [
+   "test:tui/system_theme_upstream_test.go#TestGenerateSystemThemeColorsUpstream",
+   "test:tui/colors_oracle_test.go#TestColorsMatchUpstreamOracle"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "colorToOklch: Go ColorToOklch has the upstream parameters and result (signatures reviewed); callers attributed by go/types."
+ },
+ {
+  "ids": [
+   "pkg:tui/.#colorToRgb"
+  ],
+  "targets": [
+   "tui/colors.go#ColorToRgb"
+  ],
+  "production": [
+   "call:internal/codingagent/pig_logo_animation.go#logoToRgb"
+  ],
+  "evidence": [
+   "test:tui/colors_upstream_test.go#TestUpstreamColors",
+   "test:tui/colors_oracle_test.go#TestColorsMatchUpstreamOracle"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "colorToRgb: Go ColorToRgb has the upstream parameters and result (signatures reviewed); callers attributed by go/types."
+ },
+ {
+  "ids": [
+   "pkg:tui/.#deleteKittyImage"
+  ],
+  "targets": [
+   "tui/terminal_image.go#DeleteKittyImage"
+  ],
+  "production": [
+   "call:tui/tui.go#TUI.deleteKittyImagesSet"
+  ],
+  "evidence": [
+   "test:tui/terminal_image_upstream_test.go#TestUpstreamTerminalImageEncoding",
+   "test:tui/tui_render_kitty_upstream_test.go#TestKittyDeletionPreservesEncounterOrder"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "deleteKittyImage: Go DeleteKittyImage has the upstream parameters and result (signatures reviewed); callers attributed by go/types."
+ },
+ {
+  "ids": [
+   "pkg:tui/.#foregroundAnsi"
+  ],
+  "targets": [
+   "tui/colors.go#ForegroundAnsi"
+  ],
+  "production": [
+   "call:coding/piglogin/head.go#halfBlockLines"
+  ],
+  "evidence": [
+   "test:coding/piglogin/mark_test.go#TestTextMarkIsALegibleOneLinePiG",
+   "test:tui/colors_oracle_test.go#TestColorsMatchUpstreamOracle"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "foregroundAnsi: Go ForegroundAnsi has the upstream parameters and result (signatures reviewed); callers attributed by go/types."
+ },
+ {
+  "ids": [
+   "pkg:tui/.#getImageDimensions"
+  ],
+  "targets": [
+   "tui/terminal_image.go#GetImageDimensions"
+  ],
+  "production": [
+   "call:internal/codingagent/tool_codemode_renderer.go#codemodeTextOutput"
+  ],
+  "evidence": [
+   "test:tui/terminal_image_test.go#TestImageComponent_RenderPlacementByProtocol",
+   "test:tui/terminal_image_test.go#TestImageDimensionsParsers"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "getImageDimensions: Go GetImageDimensions has the upstream parameters and result (signatures reviewed); callers attributed by go/types."
+ },
+ {
+  "ids": [
+   "pkg:tui/.#getKeybindings"
+  ],
+  "targets": [
+   "tui/keybindings.go#GetKeybindings"
+  ],
+  "production": [
+   "call:internal/codingagent/first_time_setup.go#FirstTimeSetupComponent.HandleInput"
+  ],
+  "evidence": [
+   "test:internal/codingagent/interactive_tui_factory_upstream_test.go#TestInteractiveTuiShowsConfiguredJumpShortcut",
+   "test:internal/codingagent/keybindings_migration_upstream_test.go#TestUpstreamKeybindingsMigration"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "getKeybindings: Go GetKeybindings has the upstream parameters and result (signatures reviewed); callers attributed by go/types."
+ },
+ {
+  "ids": [
+   "pkg:tui/.#getTerminalColorMode"
+  ],
+  "targets": [
+   "tui/terminal_image.go#GetTerminalColorMode"
+  ],
+  "production": [
+   "call:internal/codingagent/ext_ui_context.go#ExtUIContext.GetTheme"
+  ],
+  "evidence": [
+   "test:internal/codingagent/resource_extend_upstream_test.go#TestThemePathsFirstPathWinsCollisions",
+   "test:internal/codingagent/theme_picker_upstream_test.go#TestThemeContentNamePathReachesExtension"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "getTerminalColorMode: Go GetTerminalColorMode has the upstream parameters and result (signatures reviewed); callers attributed by go/types."
+ },
+ {
+  "ids": [
+   "pkg:tui/.#isKeyRelease"
+  ],
+  "targets": [
+   "tui/keys_decode.go#IsKeyRelease"
+  ],
+  "production": [
+   "call:internal/codingagent/interactive_helpers.go#InteractiveMode.addKeyPressListener"
+  ],
+  "evidence": [
+   "test:internal/codingagent/termprofile_matrix_test.go#TestTermProfileMatrix_ReleasesDropped",
+   "test:internal/codingagent/windows_terminal_input_test.go#TestWindowsTerminalMeasuredEncodings"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "isKeyRelease: Go IsKeyRelease has the upstream parameters and result (signatures reviewed); callers attributed by go/types."
+ },
+ {
+  "ids": [
+   "pkg:tui/.#isKittyProtocolActive"
+  ],
+  "targets": [
+   "tui/terminal.go#IsKittyProtocolActive"
+  ],
+  "production": [
+   "call:tui/key_match.go#matchesLegacy"
+  ],
+  "evidence": [
+   "test:internal/codingagent/terminal_negotiation_upstream_test.go#TestInteractiveInputPumpSettlesListenersBeforeLaterNegotiation",
+   "test:tui/stdin_buffer_first_half_upstream_test.go#TestStdinBufferFirstHalfTimers"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "isKittyProtocolActive: Go IsKittyProtocolActive has the upstream parameters and result (signatures reviewed); callers attributed by go/types."
+ },
+ {
+  "ids": [
+   "pkg:tui/.#mixColors"
+  ],
+  "targets": [
+   "tui/colors.go#MixColors"
+  ],
+  "production": [
+   "call:internal/codingagent/radius_login_selector.go#radiusShimmer"
+  ],
+  "evidence": [
+   "test:tui/colors_oracle_test.go#TestColorsMatchUpstreamOracle",
+   "test:tui/colors_test.go#TestColorErrorsAndEdges"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "mixColors: Go MixColors has the upstream parameters and result (signatures reviewed); callers attributed by go/types."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#rawKeyHint"
+  ],
+  "targets": [
+   "tui/keybinding_hints.go#RawKeyHint"
+  ],
+  "production": [
+   "call:internal/codingagent/first_time_setup.go#FirstTimeSetupComponent.update"
+  ],
+  "evidence": [
+   "test:tui/keybinding_hints_test.go#TestRawKeyHintFormatsRawKeyText",
+   "test:tui/trust_style_regression_test.go#TestBorderAndKeyHintPreserveEnclosingStyles"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "rawKeyHint: Go RawKeyHint has the upstream parameters and result (signatures reviewed); callers attributed by go/types."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#renderDiff"
+  ],
+  "targets": [
+   "tui/diff_render.go#RenderDiff"
+  ],
+  "production": [
+   "call:tui/diff_component.go#DiffComponent.Render"
+  ],
+  "evidence": [
+   "test:tui/diff_render_test.go#TestRenderDiffDrawsALineSeparatorRowAsContext",
+   "test:tui/diff_render_test.go#TestRenderDiff_BasicColoring"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "renderDiff: Go RenderDiff has the upstream parameters and result (signatures reviewed); callers attributed by go/types."
+ },
+ {
+  "ids": [
+   "pkg:tui/.#setKeybindings"
+  ],
+  "targets": [
+   "tui/keybindings.go#SetKeybindings"
+  ],
+  "production": [
+   "call:internal/codingagent/keybindings.go#KeybindingsManager.syncToTUI"
+  ],
+  "evidence": [
+   "test:internal/codingagent/interactive_tui_factory_upstream_test.go#TestInteractiveTuiShowsConfiguredJumpShortcut",
+   "test:internal/codingagent/keybindings_migration_upstream_test.go#TestUpstreamKeybindingsMigration"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "setKeybindings: Go SetKeybindings has the upstream parameters and result (signatures reviewed); callers attributed by go/types."
+ },
+ {
+  "ids": [
+   "pkg:tui/.#setKittyProtocolActive"
+  ],
+  "targets": [
+   "tui/terminal.go#SetKittyProtocolActive"
+  ],
+  "production": [
+   "call:tui/terminal.go#ProcessTerminal.handleKeyboardProtocolNegotiationSequence"
+  ],
+  "evidence": [
+   "test:internal/codingagent/terminal_negotiation_upstream_test.go#TestInteractiveInputPumpSettlesListenersBeforeLaterNegotiation",
+   "test:tui/stdin_buffer_first_half_upstream_test.go#TestStdinBufferFirstHalfTimers"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "setKittyProtocolActive: Go SetKittyProtocolActive has the upstream parameters and result (signatures reviewed); callers attributed by go/types."
+ }
+]

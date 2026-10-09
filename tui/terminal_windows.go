@@ -112,6 +112,9 @@ func terminalInputBuffered(file *os.File) bool {
 	return ok && c.buffered()
 }
 
+// terminalHungUp reports whether the terminal behind file has been hung up; a console handle has no hang-up state.
+func terminalHungUp(*os.File) bool { return false }
+
 // terminalInputPending reports, after file's handle has signalled, whether a
 // read returns without blocking. See consoleInput.pending.
 func terminalInputPending(file *os.File) (bool, error) {

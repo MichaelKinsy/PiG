@@ -127,6 +127,31 @@ func TestTypesafeSystemOneUpstream(t *testing.T) {
 			t.Errorf("result=%+v", result)
 		}
 	})
+	// .upstream/v1.1.0/packages/ai/test/typesafe-system-one.test.ts:123
+	t.Run("rejects image input before sending", func(t *testing.T) {
+		calls := 0
+		fetch := clsClient(func(*http.Request) (*http.Response, error) {
+			calls++
+			return clsJSON(200, `{"answers":`+typesafeWireAnswers+`}`), nil
+		})
+		model := typesafeTestModel()
+		model.Input = []string{"text", "image"}
+		request := typesafeTestContext()
+		request.Images = []ImageContent{{Data: "aW1hZ2U=", MimeType: "image/png"}}
+
+		result := ClassifyTypesafeSystemOne(t.Context(), model, request, ClassifierOptions{APIKey: "secret", Fetch: fetch})
+		cloudflareModel := model
+		cloudflareModel.API = ClassifierAPICloudflareWorkersAISystemOne
+		cloudflare := ClassifyCloudflareWorkersAISystemOne(t.Context(), cloudflareModel, request, ClassifierOptions{APIKey: "secret", Fetch: fetch})
+
+		if calls != 0 || result.StopReason != "error" || result.ErrorMessage != "System One API does not support image input" {
+			t.Errorf("calls=%d result=%+v", calls, result)
+		}
+		// The shared System One path rejects images for every System One service.
+		if cloudflare.ErrorMessage != "Cloudflare Workers AI does not support image input" {
+			t.Errorf("cloudflare=%+v", cloudflare)
+		}
+	})
 	// .upstream/v0.99.1/packages/ai/test/typesafe-system-one.test.ts:123
 	t.Run("merges headers case-insensitively and supports null suppression", func(t *testing.T) {
 		var requests []http.Header

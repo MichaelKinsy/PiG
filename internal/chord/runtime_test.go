@@ -9,6 +9,8 @@ import (
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/MichaelKinsy/PiG/internal/chord/chordjson"
 )
 
 type counterState struct {
@@ -113,10 +115,10 @@ func newRemoteFixture(t *testing.T, definitions ...ServiceProviderDefinition) *r
 	errs := make(chan error, 64)
 	ids := make([]string, len(definitions))
 	for index, definition := range definitions {
-		ids[index] = definition.ServiceId
+		ids[index] = definition.serviceId()
 	}
 	binding, err := CreateRemoteServiceBinding(RemoteServiceBindingOptions{
-		Services:  ids,
+		Services:  ServiceIDs(ids...),
 		Transport: NewJSONCopyTransport(endpoint),
 		OnError:   func(err error) { errs <- err },
 	})
@@ -280,10 +282,10 @@ func testSingletonReplicaHydratesThenReceivesOperationStream(t *testing.T, snaps
 		t.Fatalf("fail error = %v", err)
 	}
 	// Kind mismatches are typed errors.
-	if _, err := service.Call(ctx, "state"); !IsRemoteServiceErrorCode(err, ErrServiceMemberMismatch) {
+	if _, err := service.Call(ctx, "state"); !hasRemoteServiceErrorCode(err, ErrServiceMemberMismatch) {
 		t.Fatalf("calling a state member: %v", err)
 	}
-	if _, err := service.Call(ctx, "missing"); !IsRemoteServiceErrorCode(err, ErrServiceMemberNotFound) {
+	if _, err := service.Call(ctx, "missing"); !hasRemoteServiceErrorCode(err, ErrServiceMemberNotFound) {
 		t.Fatalf("calling a missing member: %v", err)
 	}
 	if err := fixture.binding.Dispose(ctx); err != nil {
@@ -325,12 +327,12 @@ func (badImpl) Nope(int) string { return "" }
 
 func TestWireUpdateRoundTrip(t *testing.T) {
 	updates := []ServiceProviderUpdate{
-		{Type: UpdateState, Member: "state", Sequence: 0, Ops: []Op{{"r", map[string]any{"a": 1.0}}}},
-		{Type: UpdateState, Address: &ServiceInstanceAddress{Key: "k", Generation: 2}, Member: "state", Sequence: 3, Ops: []Op{{"s", []any{"a"}, 2.0}}},
+		{Type: UpdateState, Member: "state", Sequence: 0, Ops: []Op{{"r", chordjson.ObjectOf("a", 1.0)}}},
+		{Type: UpdateState, Instance: &ServiceInstanceAddress{Key: "k", Generation: 2}, Member: "state", Sequence: 3, Ops: []Op{{"s", []any{"a"}, 2.0}}},
 		{Type: UpdateUnavailable},
 		{Type: UpdateReplaced, Snapshot: &ServiceInstanceSnapshot{Members: []ServiceMemberSnapshot{{Name: "m", Kind: MemberMethod}}}},
 		{Type: UpdateSpawned, Snapshot: &ServiceInstanceSnapshot{Instance: &ServiceInstanceAddress{Key: "k", Generation: 1}, Members: []ServiceMemberSnapshot{{Name: "s", Kind: MemberState, Sequence: 0, Ops: []Op{{"r", []any{}}}}}}},
-		{Type: UpdateClosed, Address: &ServiceInstanceAddress{Key: "k", Generation: 1}},
+		{Type: UpdateClosed, Instance: &ServiceInstanceAddress{Key: "k", Generation: 1}},
 	}
 	wantJSON := []string{
 		`{"type":"state","member":"state","sequence":0,"ops":[["r",{"a":1}]]}`,

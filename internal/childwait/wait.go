@@ -62,7 +62,7 @@ func (p *Pipes) read(index int, file *os.File) {
 		p.hooks.BeforeRead()
 	}
 	for {
-		buf := make([]byte, 32*1024)
+		buf := make([]byte, 64*1024)
 		n, err := file.Read(buf)
 		if n > 0 {
 			p.mu.Lock()

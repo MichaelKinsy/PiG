@@ -205,7 +205,7 @@ func TestLayoutScrollbarPreservesOnlyUnderlyingBackground(t *testing.T) {
 // scrollbar paints a thumb glyph in its reserved column.
 func TestLayoutAlwaysScrollbarPaintsThumbGlyphs(t *testing.T) {
 	scrollView := NewScrollView(NewText("123456"), ScrollViewOptions{Scrollbar: "always"})
-	frame := RenderLayoutFrame(NewHStack([]StackChild{{Component: scrollView}}, StackOptions{Align: "start"}), 6, 2, noRender)
+	frame := RenderLayoutFrame(NewHStack([]StackEntry{{Component: scrollView}}, StackOptions{Align: "start"}), 6, 2, noRender)
 	got := visibleFrameLines(frame.Lines)
 	for i := range got {
 		got[i] = strings.TrimRight(got[i], " ")
@@ -240,7 +240,7 @@ func TestGetScrollbarGeometryIncludesHiddenAutoTrack(t *testing.T) {
 func TestGetLayoutBoxesAtOrdersDeepestFirst(t *testing.T) {
 	top := NewText("top")
 	bottom := NewText("bottom")
-	root := NewVStack([]StackChild{{Component: top}, {Component: bottom}}, StackOptions{})
+	root := NewVStack([]StackEntry{{Component: top}, {Component: bottom}}, StackOptions{})
 	frame := RenderLayoutFrame(root, 10, 2, noRender)
 	boxes := GetLayoutBoxesAt(frame, 1, 1)
 	if len(boxes) != 2 || boxes[0].Component != bottom || boxes[1].Component != root {
@@ -261,7 +261,7 @@ func TestScrollViewScrollToDisableFollowAtEnd(t *testing.T) {
 	if !scrollView.IsFollowingEnd() || !scrollView.FollowEnd() {
 		t.Fatal("precondition: a follow-end view starts pinned")
 	}
-	scrollView.ScrollToWithOptions(7, ScrollViewScrollToOptions{DisableFollow: true})
+	scrollView.ScrollTo(7, ScrollViewScrollToOptions{DisableFollow: true})
 	if scrollView.IsFollowingEnd() || scrollView.ScrollTop() != 7 || renders != 1 {
 		t.Fatalf("disableFollow at end: following=%v top=%d renders=%d", scrollView.IsFollowingEnd(), scrollView.ScrollTop(), renders)
 	}

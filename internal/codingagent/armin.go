@@ -2,7 +2,9 @@ package codingagent
 
 import (
 	"context"
+	"math/rand/v2"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/MichaelKinsy/PiG/tui"
@@ -60,8 +62,10 @@ var arminEffects = [...]string{"typewriter", "scanline", "rain", "fade", "crt", 
 
 type arminGrid [arminDisplayHeight][arminWidth]rune
 
-type arminComponent struct {
+type ArminComponent struct {
 	tui.BaseComponent
+	// mu guards the grids, effect state and render cache: a frame runs on the owner loop when the ui has one, and inline on the timer goroutine when it has none (tui.TUI.PostToOwner), while Render runs on the render goroutine.
+	mu                                      sync.Mutex
 	effect                                  string
 	random                                  func() float64
 	finalGrid, currentGrid                  arminGrid
@@ -90,8 +94,15 @@ func emptyArminGrid() (grid arminGrid) {
 	return grid
 }
 
-func newArminComponent(random func() float64) *arminComponent {
-	a := &arminComponent{random: random, currentGrid: emptyArminGrid(), cachedVersion: -1}
+// NewArminComponent is armin.ts's constructor(ui): it picks a random effect, builds the final grid, initializes the effect and starts the animation. Every frame advances the effect on the ui's owner loop (ui.PostToOwner) and calls ui.RequestRender; the animation ends when the effect finishes or the component is disposed.
+func NewArminComponent(ui tui.TUI) *ArminComponent {
+	a := newArminComponent(rand.Float64)
+	a.startAnimation(ui.PostToOwner, func() { ui.RequestRender() })
+	return a
+}
+
+func newArminComponent(random func() float64) *ArminComponent {
+	a := &ArminComponent{random: random, currentGrid: emptyArminGrid(), cachedVersion: -1}
 	a.effect = arminEffects[int(random()*float64(len(arminEffects)))]
 	for row := range a.finalGrid {
 		for x := range a.finalGrid[row] {
@@ -112,7 +123,7 @@ func newArminComponent(random func() float64) *arminComponent {
 	return a
 }
 
-func (a *arminComponent) initEffect() {
+func (a *ArminComponent) initEffect() {
 	switch a.effect {
 	case "rain":
 		for x := range a.drops {
@@ -139,12 +150,16 @@ func (a *arminComponent) initEffect() {
 	}
 }
 
-func (a *arminComponent) Invalidate() {
+func (a *ArminComponent) Invalidate() {
 	a.BaseComponent.Invalidate()
+	a.mu.Lock()
 	a.cachedWidth = 0
+	a.mu.Unlock()
 }
 
-func (a *arminComponent) Render(width int) []string {
+func (a *ArminComponent) Render(width int) []string {
+	a.mu.Lock()
+	defer a.mu.Unlock()
 	if width == a.cachedWidth && a.cachedVersion == a.gridVersion {
 		return a.cachedLines
 	}
@@ -157,14 +172,14 @@ func (a *arminComponent) Render(width int) []string {
 	lines := make([]string, 0, arminDisplayHeight+1)
 	theme := tui.ActiveTheme()
 	for _, row := range a.currentGrid {
-		lines = append(lines, " "+theme.FgText("accent", string(row[:end]))+strings.Repeat(" ", max(0, width-1-end)))
+		lines = append(lines, " "+theme.Fg("accent", string(row[:end]))+strings.Repeat(" ", max(0, width-1-end)))
 	}
-	lines = append(lines, " "+theme.FgText("accent", arminLabel)+strings.Repeat(" ", max(0, width-1-len(arminLabel))))
+	lines = append(lines, " "+theme.Fg("accent", arminLabel)+strings.Repeat(" ", max(0, width-1-len(arminLabel))))
 	a.cachedLines, a.cachedWidth, a.cachedVersion = lines, width, a.gridVersion
 	return lines
 }
 
-func (a *arminComponent) frameInterval() time.Duration {
+func (a *ArminComponent) frameInterval() time.Duration {
 	fps := 30
 	if a.effect == "glitch" {
 		fps = 60
@@ -174,8 +189,8 @@ func (a *arminComponent) frameInterval() time.Duration {
 }
 
 // startAnimation owns one timer worker and at most one queued frame. Only the UI owner mutates grids. Dispose cancels and joins even when the owner no longer drains its queue.
-func (a *arminComponent) startAnimation(parent context.Context, post func(context.Context, func()) error, requestRender func()) {
-	ctx, cancel := context.WithCancel(parent)
+func (a *ArminComponent) startAnimation(post func(context.Context, func()) error, requestRender func()) {
+	ctx, cancel := context.WithCancel(context.Background())
 	a.cancel = cancel
 	a.animationDone = make(chan struct{})
 	go func() {
@@ -193,8 +208,10 @@ func (a *arminComponent) startAnimation(parent context.Context, post func(contex
 				if ctx.Err() != nil {
 					return
 				}
+				a.mu.Lock()
 				done := a.tickEffect()
 				a.gridVersion++
+				a.mu.Unlock()
 				a.BaseComponent.Invalidate()
 				requestRender()
 				frameDone <- done
@@ -213,7 +230,7 @@ func (a *arminComponent) startAnimation(parent context.Context, post func(contex
 	}()
 }
 
-func (a *arminComponent) Dispose() {
+func (a *ArminComponent) Dispose() {
 	if a.cancel != nil {
 		a.cancel()
 		<-a.animationDone
@@ -221,7 +238,7 @@ func (a *arminComponent) Dispose() {
 	}
 }
 
-func (a *arminComponent) tickEffect() bool {
+func (a *ArminComponent) tickEffect() bool {
 	switch a.effect {
 	case "typewriter":
 		return a.tickTypewriter()
@@ -242,7 +259,7 @@ func (a *arminComponent) tickEffect() bool {
 	}
 }
 
-func (a *arminComponent) tickTypewriter() bool {
+func (a *ArminComponent) tickTypewriter() bool {
 	for range 3 {
 		row, x := a.pos/arminWidth, a.pos%arminWidth
 		if row >= arminDisplayHeight {
@@ -254,7 +271,7 @@ func (a *arminComponent) tickTypewriter() bool {
 	return false
 }
 
-func (a *arminComponent) tickScanline() bool {
+func (a *ArminComponent) tickScanline() bool {
 	if a.row >= arminDisplayHeight {
 		return true
 	}
@@ -263,7 +280,7 @@ func (a *arminComponent) tickScanline() bool {
 	return false
 }
 
-func (a *arminComponent) tickRain() bool {
+func (a *ArminComponent) tickRain() bool {
 	allSettled := true
 	a.currentGrid = emptyArminGrid()
 	for x := range arminWidth {
@@ -297,7 +314,7 @@ func (a *arminComponent) tickRain() bool {
 	return allSettled
 }
 
-func (a *arminComponent) tickResolve(pixelsPerFrame int) bool {
+func (a *ArminComponent) tickResolve(pixelsPerFrame int) bool {
 	for range pixelsPerFrame {
 		if a.idx >= len(a.positions) {
 			return true
@@ -309,7 +326,7 @@ func (a *arminComponent) tickResolve(pixelsPerFrame int) bool {
 	return false
 }
 
-func (a *arminComponent) tickCrt() bool {
+func (a *ArminComponent) tickCrt() bool {
 	midRow := arminDisplayHeight / 2
 	a.currentGrid = emptyArminGrid()
 	for row := max(0, midRow-a.expansion); row <= min(arminDisplayHeight-1, midRow+a.expansion); row++ {
@@ -319,7 +336,7 @@ func (a *arminComponent) tickCrt() bool {
 	return a.expansion > arminDisplayHeight
 }
 
-func (a *arminComponent) tickGlitch() bool {
+func (a *ArminComponent) tickGlitch() bool {
 	if a.phase >= 8 {
 		a.currentGrid = a.finalGrid
 		return true

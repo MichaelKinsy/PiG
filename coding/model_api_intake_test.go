@@ -32,14 +32,14 @@ func TestIntakeIndependentAPIRequestRetainsThinkingMapAndImageInput(t *testing.T
 				}
 			}))
 			defer server.Close()
-			services, err := NewServices(ServicesOptions{CWD: t.TempDir(), AgentDir: t.TempDir()})
+			services, err := CreateAgentSessionServices(CreateAgentSessionServicesOptions{CWD: t.TempDir(), AgentDir: t.TempDir()})
 			if err != nil {
 				t.Fatal(err)
 			}
 			t.Cleanup(services.Close)
-			model := &ai.Model{ID: "gpt-5.5", ProviderMeta: ai.ProviderMetadata{API: api, ProviderID: "child-only", BaseURL: server.URL, Reasoning: true}, Input: []string{"text", "image"}, Capabilities: ai.ModelCapabilities{MaxThinking: ai.ThinkingHigh, SupportsImages: true}, ThinkingLevelMap: ai.ThinkingLevelMap{ai.ThinkingHigh: new("low")}}
+			model := &ai.Model{ID: "gpt-5.5", ProviderMeta: ai.ProviderMetadata{API: api, ProviderID: "child-only", BaseURL: server.URL, Reasoning: true}, Input: []string{"text", "image"}, Capabilities: ai.ModelCapabilities{MaxThinking: ai.ThinkingLevelHigh, SupportsImages: true}, ThinkingLevelMap: ai.ThinkingLevelMap{ai.ThinkingHigh: new("low")}}
 			ctx := extension.WithModelStreamRequest(t.Context(), extension.ModelStreamRequest{API: true})
-			result := services.ModelRuntime().Stream(ctx, model, ai.Context{Messages: []ai.Message{ai.UserMessage{Content: ai.UserContentBlocks{ai.TextContent{Text: "describe"}, ai.ImageContent{MimeType: "image/png", Data: "aGk="}}}}}, ai.StreamOptions{APIKey: "child-key", IsReasoning: true, Thinking: ai.ThinkingHigh}).Result()
+			result := services.ModelRuntime().Stream(ctx, model, ai.Context{Messages: []ai.Message{ai.UserMessage{Content: ai.UserContentBlocks{ai.TextContent{Text: "describe"}, ai.ImageContent{MimeType: "image/png", Data: "aGk="}}}}}, ai.StreamOptions{APIKey: "child-key", IsReasoning: true, Thinking: ai.ThinkingLevelHigh}).Result()
 			if result.StopReason != ai.StopReasonStop {
 				t.Fatal(result)
 			}
@@ -80,8 +80,8 @@ func TestIntakeProviderCallbacksRetainSourceSimpleOptions(t *testing.T) {
 					t.Fatal(err)
 				}
 			} else {
-				if err := services.Registry().RegisterProvider(id, extension.ProviderConfig{API: ai.APIOpenAICompletions, BaseURL: "https://callback.invalid", APIKey: "test", Models: []extension.ProviderModelConfig{{ID: "model", Name: "model", ContextWindow: 128, MaxTokens: 16}}, StreamSimple: func(_ extension.Model, _ extension.AIContext, options extension.SimpleStreamOptions) extension.AssistantMessageEventStream {
-					return respond(options.(ai.StreamOptions))
+				if err := services.Registry().RegisterExtensionProvider(id, extension.ProviderConfig{API: ai.APIOpenAICompletions, BaseURL: "https://callback.invalid", APIKey: "test", Models: []extension.ProviderModelConfig{{ID: "model", Name: "model", ContextWindow: 128, MaxTokens: 16}}, StreamSimple: func(_ extension.Model, _ extension.AIContext, options extension.SimpleStreamOptions) extension.AssistantMessageEventStream {
+					return respond(options)
 				}}); err != nil {
 					t.Error(err)
 				}

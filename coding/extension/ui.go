@@ -89,24 +89,25 @@ type UIContext interface {
 	// upstream: types.ts:156
 	SetHiddenThinkingLabel(label string)
 
-	// SetWidget sets a widget to display above or below the editor.
-	// content may be []string or a function-typed factory; opts
-	// describes placement/lifecycle.
+	// SetWidget sets a widget of text lines to display above or below the editor; nil lines remove it. opts describes placement.
 	//
-	// upstream: types.ts:159 + types.ts:163 (overloaded). Go merges
-	// to one signature using `any` for content because Go has no
-	// method overloading.
-	SetWidget(key string, content any, opts ExtensionWidgetOptions)
+	// upstream: types.ts:188 (the string[] overload of setWidget; the component-factory overload, types.ts:189, is SetWidgetFactory).
+	SetWidget(key string, content []string, opts *ExtensionWidgetOptions)
+
+	// SetWidgetFactory sets a widget built by factory to display above or below the editor; a nil factory removes it. It is setWidget's
+	// component-factory overload (types.ts:189), which Go names apart because a Go method cannot be overloaded.
+	// upstream: types.ts:189
+	SetWidgetFactory(key string, factory WidgetFactory, opts *ExtensionWidgetOptions)
 
 	// SetFooter installs a custom footer factory. Nil restores the
 	// built-in footer.
 	// upstream: types.ts:172
-	SetFooter(factory any)
+	SetFooter(factory FooterFactory)
 
 	// SetHeader installs a custom header factory. Nil restores the
 	// built-in header.
 	// upstream: types.ts:181
-	SetHeader(factory any)
+	SetHeader(factory HeaderFactory)
 
 	// pig additive (D60): SetLogin validates and installs Pig's native login
 	// definition in the shared header slot. Upstream Pi exposes only
@@ -127,7 +128,7 @@ type UIContext interface {
 	// An extension in the host process passes a [CustomFactory] and, optionally,
 	// [CustomOptions]; the call blocks until the factory's done callback returns
 	// the result.
-	Custom(ctx context.Context, factory any, opts any) (any, error)
+	Custom(ctx context.Context, factory CustomFactory, opts *CustomOptions) (any, error)
 
 	// PasteToEditor pastes text into the editor, triggering paste
 	// handling (collapse for large content).
@@ -153,14 +154,14 @@ type UIContext interface {
 	// upstream: types.ts:216
 	AddAutocompleteProvider(factory AutocompleteProviderFactory) error
 
-	// SetEditorComponent installs a custom editor component
-	// factory. Nil restores the default editor.
-	// upstream: types.ts:249
-	SetEditorComponent(factory any)
+	// SetEditorComponent installs the editor factory's component in place of the default editor, as Pi's setCustomEditorComponent does
+	// (it calls the factory with the TUI, the editor theme and the keybindings). Nil restores the default editor.
+	// upstream: types.ts:278
+	SetEditorComponent(factory EditorFactory)
 
-	// GetEditorComponent returns the currently installed custom editor component.
-	// Nil when the default editor is active.
-	GetEditorComponent() any
+	// GetEditorComponent returns the factory the last SetEditorComponent installed, nil when the default editor is active.
+	// upstream: types.ts:281 (interactive-mode.ts:2664 `getEditorComponent: () => this.editorComponentFactory`)
+	GetEditorComponent() EditorFactory
 
 	// Theme returns the current theme for styling.
 	//
@@ -182,7 +183,7 @@ type UIContext interface {
 	// (string) or a Theme value; the result reports success +
 	// optional error message.
 	// upstream: types.ts:262
-	SetTheme(theme any) SetThemeResult
+	SetTheme(theme ThemeSelection) SetThemeResult
 
 	// GetToolsExpanded returns the current tool-output expansion
 	// state.
@@ -218,6 +219,9 @@ type UIContext interface {
 	OnRemoteTerminalInput(extensionName string, handler RemoteTerminalInputHandler) (unsubscribe func())
 }
 
+// ExtensionUIContext is upstream's name for [UIContext] (types.ts:120).
+type ExtensionUIContext = UIContext
+
 // noopUIContext is the per-package no-op UI context returned when
 // nothing has been bound. Mirrors upstream's `noOpUIContext` constant
 // at runner.ts:188-217.
@@ -248,30 +252,33 @@ func (*noopUIContext) Confirm(context.Context, string, string, ExtensionUIDialog
 func (*noopUIContext) Input(context.Context, string, string, ExtensionUIDialogOptions) (string, error) {
 	return "", nil
 }
-func (*noopUIContext) Notify(string, string)                                     {}
-func (*noopUIContext) OnTerminalInput(TerminalInputHandler) func()               { return func() {} }
-func (*noopUIContext) SetStatus(string, string)                                  {}
-func (*noopUIContext) SetWorkingMessage(string)                                  {}
-func (*noopUIContext) SetWorkingVisible(bool)                                    {}
-func (*noopUIContext) SetWorkingIndicator(WorkingIndicatorOptions)               {}
-func (*noopUIContext) SetHiddenThinkingLabel(string)                             {}
-func (*noopUIContext) SetWidget(string, any, ExtensionWidgetOptions)             {}
-func (*noopUIContext) SetFooter(any)                                             {}
-func (*noopUIContext) SetHeader(any)                                             {}
-func (*noopUIContext) SetLogin(LoginDefinition) error                            { return ErrUIUnavailable }
-func (*noopUIContext) SetTitle(string)                                           {}
-func (*noopUIContext) Custom(context.Context, any, any) (any, error)             { return nil, nil }
+func (*noopUIContext) Notify(string, string)                                           {}
+func (*noopUIContext) OnTerminalInput(TerminalInputHandler) func()                     { return func() {} }
+func (*noopUIContext) SetStatus(string, string)                                        {}
+func (*noopUIContext) SetWorkingMessage(string)                                        {}
+func (*noopUIContext) SetWorkingVisible(bool)                                          {}
+func (*noopUIContext) SetWorkingIndicator(WorkingIndicatorOptions)                     {}
+func (*noopUIContext) SetHiddenThinkingLabel(string)                                   {}
+func (*noopUIContext) SetWidget(string, []string, *ExtensionWidgetOptions)             {}
+func (*noopUIContext) SetWidgetFactory(string, WidgetFactory, *ExtensionWidgetOptions) {}
+func (*noopUIContext) SetFooter(FooterFactory)                                         {}
+func (*noopUIContext) SetHeader(HeaderFactory)                                         {}
+func (*noopUIContext) SetLogin(LoginDefinition) error                                  { return ErrUIUnavailable }
+func (*noopUIContext) SetTitle(string)                                                 {}
+func (*noopUIContext) Custom(context.Context, CustomFactory, *CustomOptions) (any, error) {
+	return nil, nil
+}
 func (*noopUIContext) PasteToEditor(string)                                      {}
 func (*noopUIContext) SetEditorText(string)                                      {}
 func (*noopUIContext) GetEditorText() string                                     { return "" }
 func (*noopUIContext) Editor(context.Context, string, string) (string, error)    { return "", nil }
 func (*noopUIContext) AddAutocompleteProvider(AutocompleteProviderFactory) error { return nil }
-func (*noopUIContext) SetEditorComponent(any)                                    {}
-func (*noopUIContext) GetEditorComponent() any                                   { return nil }
+func (*noopUIContext) SetEditorComponent(EditorFactory)                          {}
+func (*noopUIContext) GetEditorComponent() EditorFactory                         { return nil }
 func (*noopUIContext) Theme() Theme                                              { return nil }
 func (*noopUIContext) GetAllThemes() []ThemeMeta                                 { return nil }
 func (*noopUIContext) GetTheme(string) (Theme, error)                            { return nil, nil }
-func (*noopUIContext) SetTheme(any) SetThemeResult {
+func (*noopUIContext) SetTheme(ThemeSelection) SetThemeResult {
 	// Mirrors the unavailable-UI result at runner.ts:214: `{ success: false,
 	// error: "UI not available" }`. The string is upstream-verbatim
 	// so an extension that pattern-matches on the error message

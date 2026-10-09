@@ -8,7 +8,7 @@ PiG selects the development entry at build time:
 go build -tags=pig_experimental -o bin/pig-experimental ./cmd/pig
 ```
 
-The source lives in `cmd/pig/main_experimental.go`. This directory documents that entry; it is not a second Go main package to build. The build tag selects an entrypoint permanently. It does not replace runtime dependencies with stubs or omit dependencies from the selected entry.
+The source lives in `coding/cli/main_experimental.go`. This directory documents that entry; it is not a second Go main package to build. The build tag selects an entrypoint permanently. It does not replace runtime dependencies with stubs or omit dependencies from the selected entry.
 
 The normal build remains:
 

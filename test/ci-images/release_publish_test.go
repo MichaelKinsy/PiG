@@ -1,4 +1,3 @@
-// SPDX-FileCopyrightText: Copyright Hewlett Packard Enterprise Development LP
 // SPDX-License-Identifier: MIT
 package ciimages
 
@@ -54,9 +53,11 @@ func TestReleaseCandidatePublishesADraftGitHubRelease(t *testing.T) {
 	if got := strings.Count(workflow, "contents: write"); got != 1 {
 		t.Fatalf(`"contents: write" appears %d times, want exactly 1 (the publish job only)`, got)
 	}
-	if !strings.HasPrefix(workflow, "# SPDX-FileCopyrightText") {
+	// REUSE-IgnoreStart
+	if !strings.HasPrefix(workflow, "# SPDX-License-Identifier: MIT\n") {
 		t.Fatal("release-candidate.yml lost its SPDX header")
 	}
+	// REUSE-IgnoreEnd
 	if !regexp.MustCompile(`(?m)^permissions:\n  contents: read\n`).MatchString(workflow) {
 		t.Fatal("release-candidate.yml top-level permissions must stay contents: read")
 	}

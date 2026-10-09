@@ -1,3 +1,5 @@
+//go:build !pig_strip_syntax_highlight
+
 package tui
 
 import (

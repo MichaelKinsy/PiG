@@ -31,7 +31,7 @@ func TestNativeOverlayRetainsLoginAndRuntimeAvailability(t *testing.T) {
 	if err != nil || !called {
 		t.Fatalf("login called=%v err=%v", called, err)
 	}
-	if !services.Registry().HasConfiguredAuth(provider.ID) {
+	if !services.Registry().ModelRegistry.HasConfiguredAuth(provider.ID) {
 		t.Fatal("native auth missing from cached availability")
 	}
 	found := false
@@ -49,7 +49,7 @@ func TestNativeOverlayRetainsLoginAndRuntimeAvailability(t *testing.T) {
 	}
 	found = false
 	for _, entry := range services.Registry().GetAll() {
-		if entry.ProviderID == provider.ID && entry.ModelID == model.ID {
+		if entry.ProviderID() == provider.ID && entry.ID == model.ID {
 			found = true
 		}
 	}
@@ -95,7 +95,7 @@ func TestNativeRefreshCancellationRejectsLatePublication(t *testing.T) {
 }
 
 func BenchmarkNativeModelLookup(b *testing.B) {
-	services, err := NewServices(ServicesOptions{CWD: b.TempDir(), AgentDir: b.TempDir()})
+	services, err := CreateAgentSessionServices(CreateAgentSessionServicesOptions{CWD: b.TempDir(), AgentDir: b.TempDir()})
 	if err != nil {
 		b.Fatal(err)
 	}

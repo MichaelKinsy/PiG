@@ -60,6 +60,9 @@
     "model": {
       "$ref": "#/$defs/modelConfig"
     },
+    "slots": {
+      "$ref": "#/$defs/slots"
+    },
     "systemPrompt": {
       "$ref": "#/$defs/promptRef"
     },
@@ -80,6 +83,9 @@
     },
     "build": {
       "$ref": "#/$defs/buildSpec"
+    },
+    "strip": {
+      "$ref": "#/$defs/stripSpec"
     }
   },
   "$defs": {
@@ -183,6 +189,76 @@
           "items": {
             "type": "string"
           }
+        },
+        "slots": {
+          "type": "array",
+          "items": {
+            "enum": [
+              "frontend"
+            ]
+          }
+        },
+        "strip": {
+          "$ref": "#/$defs/stripLists"
+        }
+      }
+    },
+    "stripSpec": {
+      "description": "Built-ins a Piglet strips. Each list is in deny mode (it names what is stripped) or, under keep, in keep mode (it names what stays; every other ID of that list, including IDs a later core adds, is stripped). One list is never in both modes in one Piglet file.",
+      "$ref": "#/$defs/stripListProperties",
+      "properties": {
+        "keep": {
+          "$ref": "#/$defs/stripLists"
+        }
+      },
+      "unevaluatedProperties": false
+    },
+    "stripLists": {
+      "$ref": "#/$defs/stripListProperties",
+      "unevaluatedProperties": false
+    },
+    "stripListProperties": {
+      "type": "object",
+      "properties": {
+        "tools": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "uniqueItems": true
+        },
+        "commands": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^/\\S+$"
+          },
+          "uniqueItems": true
+        },
+        "extensions": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "uniqueItems": true
+        },
+        "apis": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "uniqueItems": true
+        },
+        "features": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "uniqueItems": true
         }
       }
     },
@@ -433,6 +509,33 @@
         },
         "outputName": {
           "type": "string"
+        },
+        "extensionRealization": {
+          "enum": [
+            "fused"
+          ]
+        }
+      }
+    },
+    "slots": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "frontend": {
+          "$ref": "#/$defs/slotMember"
+        }
+      }
+    },
+    "slotMember": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "member"
+      ],
+      "properties": {
+        "member": {
+          "type": "string",
+          "minLength": 1
         }
       }
     },

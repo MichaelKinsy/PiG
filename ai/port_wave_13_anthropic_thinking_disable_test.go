@@ -11,7 +11,7 @@ func TestPortWave13AnthropicThinkingDisablePayload(t *testing.T) {
 	t.Parallel()
 	for _, tc := range []struct {
 		name, model, thinking, effort string
-		level                         ThinkingLevel
+		level                         ModelThinkingLevel
 	}{
 		// upstream: packages/ai/test/anthropic-thinking-disable.test.ts:113
 		{"sends thinking.type=disabled for budget-based reasoning models when thinking is off", "claude-sonnet-4-5", `{"type":"disabled"}`, "", ""},
@@ -33,7 +33,7 @@ func TestPortWave13AnthropicThinkingDisablePayload(t *testing.T) {
 			model := cloneGeneratedModel(t, "anthropic/"+tc.model).ToModel()
 			model.ProviderMeta.BaseURL = "http://127.0.0.1:9"
 			var captured map[string]json.RawMessage
-			stream, _ := StreamSimple(t.Context(), model, NormalizeContext(Context{Messages: []Message{UserMessage{Content: UserText("Hello"), Timestamp: time.Now().UnixMilli()}}}), StreamOptions{APIKey: "fake-key", Thinking: tc.level, OnPayload: func(value any, _ *Model) (any, error) {
+			stream, _ := StreamSimple(t.Context(), model, NormalizeContext(Context{Messages: []Message{UserMessage{Content: UserText("Hello"), Timestamp: time.Now().UnixMilli()}}}), StreamOptions{APIKey: "fake-key", Thinking: tc.level.ReasoningOption(), OnPayload: func(value any, _ *Model) (any, error) {
 				data, err := json.Marshal(value)
 				if err != nil {
 					return nil, err

@@ -1,4 +1,4 @@
-// Records Pi 1.0.3 OAuth expiry behavior for canonical credential values.
+// Records the pinned Pi OAuth expiry behavior for canonical credential values.
 //
 // Usage: node test/parity/probes/credential-expiry.mjs <pi-coding-agent package root> > ai/testdata/credential-expiry.json
 //
@@ -15,7 +15,7 @@ import { pathToFileURL } from "node:url";
 
 const root = process.argv[2];
 if (!root) throw new Error("usage: credential-expiry.mjs <pi-coding-agent package root>");
-const PI_VERSION = "1.0.3";
+const PI_VERSION = "1.1.0";
 const installed = JSON.parse(readFileSync(join(root, "package.json"), "utf8")).version;
 if (installed !== PI_VERSION) throw new Error(`expected Pi ${PI_VERSION}, got ${installed}`);
 const ai = await import(pathToFileURL(join(root, "node_modules/@earendil-works/pi-ai/dist/index.js")).href);

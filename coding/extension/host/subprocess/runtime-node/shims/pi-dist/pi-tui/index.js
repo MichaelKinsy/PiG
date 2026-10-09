@@ -32,6 +32,8 @@ export { renderLatex } from "./latex.js";
 // Native platform integration
 export { getNativeClipboard } from "./native-platform.js";
 export { oklabToOkhslLightness } from "./oklab.js";
+// Program status reporting (OSC 7501)
+export { formatProgramStatus } from "./program-status.js";
 // Input buffering for batch splitting
 export { StdinBuffer } from "./stdin-buffer.js";
 // Terminal interface and implementations

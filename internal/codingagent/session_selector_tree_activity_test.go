@@ -20,9 +20,9 @@ func TestSessionTreeLatestActivityBoundaries(t *testing.T) {
 		{"latest grandchild orders siblings and roots", []SessionInfo{
 			{Path: "other", ID: "other", Modified: time.UnixMilli(3)},
 			{Path: "parent", ID: "parent", Modified: time.UnixMilli(0)},
-			{Path: "child-one", ID: "child-one", ParentSession: "parent", Modified: time.UnixMilli(2)},
-			{Path: "child-two", ID: "child-two", ParentSession: "parent", Modified: time.UnixMilli(1)},
-			{Path: "grandchild", ID: "grandchild", ParentSession: "child-two", Modified: time.UnixMilli(4)},
+			{Path: "child-one", ID: "child-one", ParentSessionPath: "parent", Modified: time.UnixMilli(2)},
+			{Path: "child-two", ID: "child-two", ParentSessionPath: "parent", Modified: time.UnixMilli(1)},
+			{Path: "grandchild", ID: "grandchild", ParentSessionPath: "child-two", Modified: time.UnixMilli(4)},
 		}, []string{"parent", "child-two", "grandchild", "child-one", "other"}},
 		{"stable equal activity", []SessionInfo{{Path: "b", ID: "b", Modified: time.UnixMilli(1)}, {Path: "a", ID: "a", Modified: time.UnixMilli(1)}}, []string{"b", "a"}},
 		{"Date millisecond precision", []SessionInfo{{Path: "b", ID: "b", Modified: time.Unix(0, 1)}, {Path: "a", ID: "a", Modified: time.Unix(0, 2)}}, []string{"b", "a"}},
@@ -48,7 +48,7 @@ func BenchmarkSessionTreeLatestActivity(b *testing.B) {
 			for i := range sessions {
 				sessions[i] = SessionInfo{Path: filepath.Join(dir, fmt.Sprintf("%d.jsonl", i)), Modified: time.UnixMilli(int64(i))}
 				if i%10 != 0 {
-					sessions[i].ParentSession = sessions[i-i%10].Path
+					sessions[i].ParentSessionPath = sessions[i-i%10].Path
 				}
 			}
 			b.ReportAllocs()

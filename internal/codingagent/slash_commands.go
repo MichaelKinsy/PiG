@@ -11,9 +11,12 @@ import (
 	"sync"
 	"time"
 
+	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/coding/extension/host/inproc"
+	"github.com/MichaelKinsy/PiG/internal/pigstrip"
 	"github.com/MichaelKinsy/PiG/tui"
+	"github.com/MichaelKinsy/PiG/tui/widthx"
 )
 
 // ─── Slash Command Registry ───────────────────────────────────────────────────
@@ -35,6 +38,7 @@ const (
 	SlashSourceBuiltin   SlashCommandSource = "builtin"
 	SlashSourceExtension SlashCommandSource = "extension"
 	SlashSourcePrompt    SlashCommandSource = "prompt" // <agentDir>/prompts/*.md
+	SlashSourceSkill     SlashCommandSource = "skill"  // /skill:name for each loaded skill
 )
 
 // SlashHandler runs a builtin slash command. Handlers receive the
@@ -53,7 +57,13 @@ type BuiltinSlashCommand struct {
 	// ArgumentHint is shown after the command in autocomplete (e.g.
 	// "<provider/model>"). Optional. Mirrors upstream argumentHint.
 	ArgumentHint string
-	Handler      SlashHandler
+	// TakesArguments is true for the commands whose line interactive-mode.ts matches with `text === "/name" || text.startsWith("/name ")`.
+	// The others match only the exact text, so "/session x" is not /session but a prompt.
+	TakesArguments bool
+	// AdditiveArguments accepts argument text Pi's built-in does not take: it reports whether "/name rest" runs the built-in, and headless is true
+	// for Session.DispatchSlash, which has no picker to open. /reload takes --explain (D21); a headless /fork takes the entry id to fork at.
+	AdditiveArguments func(rest string, headless bool) bool
+	Handler           SlashHandler
 	// Hidden commands dispatch normally but are omitted from /help and
 	// autocomplete. Mirrors upstream commands handled inline in the submit
 	// handler that are absent from the canonical slash-commands.js list
@@ -158,10 +168,13 @@ type SlashContext struct {
 
 	// All registered commands: set by Dispatch before calling Handler
 	// so /help can enumerate the live set.
-	AllCommands []SlashCommandInfo
+	AllCommands []HelpCommandInfo
 
 	// Session accessors. May be nil; handlers must guard.
 	CurrentSession func() *Session
+	// ExportToJsonl writes the current branch to outputPath (upstream session.exportToJsonl). May be nil: /export then
+	// writes the branch of CurrentSession itself.
+	ExportToJsonl func(outputPath string) (string, error)
 	// CacheWarmingStatus reports the Session's cache warmer, or nil when the
 	// Session has none.
 	CacheWarmingStatus func() *CacheWarmingStatus
@@ -224,6 +237,9 @@ type SlashContext struct {
 	// ("", false) on cancel (Esc). Mirrors upstream showExtensionSelector()
 	// and ExtensionSelectorOptions.description.
 	ShowExtensionSelector func(title string, options []string, description string) (string, bool)
+	// ShowExtensionConfirm shows a Yes/No confirmation and reports whether Yes was chosen. Mirrors upstream
+	// showExtensionConfirm(title, message). Nil falls back to ShowExtensionSelector.
+	ShowExtensionConfirm func(title, message string) bool
 	// ShowTrustSelector invokes OnSelect before restoring the editor so persistence precedes closing the selector.
 	ShowTrustSelector func(TrustSelectorOptions) (TrustSelection, bool)
 	// ShowExtensionEditor presents a text prompt with an optional description
@@ -248,22 +264,20 @@ type SlashContext struct {
 	CurrentTuiMode func() string
 	// SwitchTuiMode switches the running renderer before the settings list saves a TUI mode, and returns false when the switch is refused. Nil outside the interactive UI.
 	SwitchTuiMode func(mode string) bool
-	// ShowSettingsList presents the dedicated two-column settings selector and
-	// blocks until the user cancels. Each change calls onChange while the list
-	// stays open with its selection and search, as upstream SettingsList's
-	// onChange does; the row then shows the value onChange returns.
-	ShowSettingsList func(items []tui.SettingItem, onChange func(id, value string) string)
-	// ShowSettingsSubmenu is ShowSettingsList for a nested settings menu:
-	// upstream builds those lists with Math.min(items.length, 10) rows and no
-	// search.
-	ShowSettingsSubmenu func(items []tui.SettingItem, onChange func(id, value string) string)
+	// ShowSettingsSelector builds the settings selector with done and presents it, blocking until done runs. Upstream's showSelector((done) => ...) does the same.
+	ShowSettingsSelector func(build func(done func()) *SettingsSelectorComponent)
+	// PreviewTheme applies a theme setting without saving it. Used by the selector's theme submenu.
+	PreviewTheme func(setting string)
+	// ThemeSelection returns the theme setting in effect, or "" when there is none.
+	ThemeSelection func() string
+	// SettingsModels returns the models the per-model thinking submenu offers and the session's current model.
+	SettingsModels func() (available []*ai.Model, current *ai.Model)
+	// ApplyModelThinkingLevel applies a changed per-model thinking level to the session when it is for the current model. An empty level means the override was cleared.
+	ApplyModelThinkingLevel func(provider, modelID, level string)
 	// ShowSelectList presents a non-search submenu selector with optional
 	// description column. Used by /settings for upstream-style submenus like
 	// thinking level. Returns the chosen value or ("", false) on cancel.
 	ShowSelectList func(title, description string, items []tui.SelectItem, currentValue string) (value string, ok bool)
-	// ShowThemeSelector presents the theme submenu with live preview.
-	// Used by /settings theme to mirror upstream theme preview semantics.
-	ShowThemeSelector func(currentTheme string) (themeName string, ok bool)
 	// AvailableThinkingLevels returns the currently supported levels for the
 	// active model. Used by /settings to build the thinking submenu.
 	AvailableThinkingLevels func() []string
@@ -274,8 +288,6 @@ type SlashContext struct {
 	// showThinkingSelector). May be nil; /thinking then falls back to
 	// ShowSelectList.
 	ShowThinkingSelector func()
-	// ModelThinkingSubmenu builds the per-model default override submenu.
-	ModelThinkingSubmenu func(string, func(*string)) tui.Component
 	// NavigateTreeFull forks to targetID and optionally generates a branch
 	// summary. Mirrors upstream AgentSession.navigateTree() with summarize flag.
 	NavigateTreeFull func(ctx context.Context, targetID string, summarize bool, customInstructions string) (NavigateTreeResult, error)
@@ -306,6 +318,8 @@ type SlashContext struct {
 	// Mirrors upstream showLoadedResources with showDiagnosticsWhenQuiet.
 	// May be nil; handler falls back to a static message.
 	ReloadDiagnostics func() ReloadDiag
+	// ReloadSavedProjectTrust reports, once per reload, whether the reload saved the implicit project trust decision.
+	ReloadSavedProjectTrust func() bool
 
 	// OnSettingApplied is called after /settings persists a change.
 	// id is the setting identifier (e.g. "hide-thinking"), value is the new value.
@@ -375,8 +389,8 @@ type NavigateTreeResult struct {
 	Aborted    bool
 }
 
-// SlashCommandInfo is the user-facing summary used by `/help`.
-type SlashCommandInfo struct {
+// HelpCommandInfo is the user-facing summary used by `/help`. It is not upstream's SlashCommandInfo, which is [SlashCommandInfo].
+type HelpCommandInfo struct {
 	Name        string
 	Aliases     []string
 	Description string
@@ -399,7 +413,7 @@ func NewSlashRegistry() *SlashRegistry {
 		aliases:  make(map[string]string),
 		dynamic:  make(map[string]SlashCommand),
 	}
-	for _, c := range defaultBuiltins() {
+	for _, c := range BuiltinSlashCommands() {
 		r.Register(c)
 	}
 	return r
@@ -463,15 +477,15 @@ func (r *SlashRegistry) IsBuiltin(name string) bool {
 
 // All returns a sorted list of every command (builtin + extension) for
 // /help rendering.
-func (r *SlashRegistry) All() []SlashCommandInfo {
+func (r *SlashRegistry) All() []HelpCommandInfo {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
-	out := make([]SlashCommandInfo, 0, len(r.builtins)+len(r.dynamic))
+	out := make([]HelpCommandInfo, 0, len(r.builtins)+len(r.dynamic))
 	for _, b := range r.builtins {
 		if b.Hidden {
 			continue
 		}
-		out = append(out, SlashCommandInfo{
+		out = append(out, HelpCommandInfo{
 			Name:        b.Name,
 			Aliases:     append([]string(nil), b.Aliases...),
 			Description: b.Description,
@@ -479,13 +493,13 @@ func (r *SlashRegistry) All() []SlashCommandInfo {
 		})
 	}
 	for _, d := range r.dynamic {
-		out = append(out, SlashCommandInfo{
+		out = append(out, HelpCommandInfo{
 			Name:        d.Name,
 			Description: d.Description,
 			Source:      SlashSourceExtension,
 		})
 	}
-	slices.SortFunc(out, func(a, b SlashCommandInfo) int { return cmp.Compare(a.Name, b.Name) })
+	slices.SortFunc(out, func(a, b HelpCommandInfo) int { return cmp.Compare(a.Name, b.Name) })
 	return out
 }
 
@@ -503,52 +517,92 @@ var ErrUnknownSlashCommand = errors.New("unknown slash command")
 // extCtx is the bridge to extension-registered commands (which take a
 // different handler signature). May be nil if no extensions are loaded.
 func (r *SlashRegistry) Dispatch(sc *SlashContext, line string, extCtx *ExtensionContext) error {
-	name, args := parseSlashLine(line)
-	if name == "" {
-		return fmt.Errorf("empty slash command")
-	}
-	canon, ok := r.Resolve(name)
+	return r.dispatch(sc, line, extCtx, false)
+}
+
+// DispatchHeadless is [SlashRegistry.Dispatch] for Session.DispatchSlash, where a built-in without a picker reads its argument instead.
+func (r *SlashRegistry) DispatchHeadless(sc *SlashContext, line string, extCtx *ExtensionContext) error {
+	return r.dispatch(sc, line, extCtx, true)
+}
+
+func (r *SlashRegistry) dispatch(sc *SlashContext, line string, extCtx *ExtensionContext, headless bool) error {
+	match, ok := r.match(line, headless)
 	if !ok {
+		if name, _ := parseSlashLine(line); name == "" {
+			return fmt.Errorf("empty slash command")
+		}
 		return ErrUnknownSlashCommand
 	}
-
-	r.mu.RLock()
-	if b, ok := r.builtins[canon]; ok {
-		handler := b.Handler
-		r.mu.RUnlock()
-		sc.Args = args
+	if match.Builtin != nil {
+		handler := match.Builtin.Handler
+		sc.Args = match.Args
 		sc.AllCommands = r.All()
 		if handler == nil {
-			return fmt.Errorf("/%s: no handler bound", canon)
+			return fmt.Errorf("/%s: no handler bound", match.Builtin.Name)
 		}
 		return handler(sc)
 	}
-	d, ok := r.dynamic[canon]
-	r.mu.RUnlock()
-	if ok {
-		if d.Handler == nil {
-			return fmt.Errorf("/%s: extension registered with nil handler", canon)
-		}
-		if extCtx == nil {
-			return fmt.Errorf("/%s: no extension context", canon)
-		}
-		return d.Handler(extCtx, args)
+	d := match.Dynamic
+	if d.Handler == nil {
+		return fmt.Errorf("/%s: extension registered with nil handler", match.Name)
 	}
-	return fmt.Errorf("unknown command: /%s", name)
+	if extCtx == nil {
+		return fmt.Errorf("/%s: no extension context", match.Name)
+	}
+	return d.Handler(extCtx, match.Args)
 }
 
-// parseSlashLine splits "/cmd rest of line" into ("cmd", "rest of line").
-// Leading slash is required; whitespace around the name is consumed.
+// SlashMatch is a submitted line resolved to the command it runs.
+type SlashMatch struct {
+	// Name is the command name as written, without the slash.
+	Name string
+	// Args is the argument text: for a built-in, the trimmed remainder of a command that takes arguments; for an extension command,
+	// everything after the first space (agent-session.ts _tryExecuteExtensionCommand).
+	Args string
+	// Builtin or Dynamic is the resolved command.
+	Builtin *BuiltinSlashCommand
+	Dynamic *SlashCommand
+}
+
+// Match resolves a submitted line as interactive-mode.ts does. The line is trimmed with ECMAScript whitespace. A built-in matches the exact text
+// "/name" and, when it takes arguments, "/name " followed by anything (one ASCII space: a tab or a no-break space does not separate); any other
+// line is not that built-in. A line that is not a built-in is an extension command when the name before its first space is registered.
+func (r *SlashRegistry) Match(line string) (SlashMatch, bool) { return r.match(line, false) }
+
+func (r *SlashRegistry) match(line string, headless bool) (SlashMatch, bool) {
+	text := widthx.JSTrim(line)
+	if !strings.HasPrefix(text, "/") {
+		return SlashMatch{}, false
+	}
+	name, rest, hasArgs := strings.Cut(text[1:], " ")
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	canonical := name
+	if alias, ok := r.aliases[name]; ok {
+		canonical = alias
+	}
+	if b, ok := r.builtins[canonical]; ok {
+		switch {
+		case !hasArgs:
+			return SlashMatch{Name: name, Builtin: b}, true
+		case b.TakesArguments, b.AdditiveArguments != nil && b.AdditiveArguments(rest, headless):
+			return SlashMatch{Name: name, Args: widthx.JSTrim(rest), Builtin: b}, true
+		}
+	}
+	if d, ok := r.dynamic[name]; ok {
+		return SlashMatch{Name: name, Args: rest, Dynamic: &d}, true
+	}
+	return SlashMatch{}, false
+}
+
+// parseSlashLine splits "/cmd rest of line" at the first space into ("cmd", "rest of line"). The leading slash is required.
 func parseSlashLine(line string) (name, args string) {
-	s := strings.TrimSpace(line)
-	if !strings.HasPrefix(s, "/") {
+	text := widthx.JSTrim(line)
+	if !strings.HasPrefix(text, "/") {
 		return "", ""
 	}
-	s = strings.TrimPrefix(s, "/")
-	if i := strings.IndexAny(s, " \t"); i >= 0 {
-		return strings.TrimSpace(s[:i]), strings.TrimSpace(s[i+1:])
-	}
-	return strings.TrimSpace(s), ""
+	name, args, _ = strings.Cut(text[1:], " ")
+	return name, args
 }
 
 // ─── Builtin handlers ────────────────────────────────────────────────────────
@@ -558,35 +612,59 @@ func parseSlashLine(line string) (name, args string) {
 // `/help`, the dispatcher, and the autocomplete popup -
 // mirrors upstream's `BUILTIN_SLASH_COMMANDS` re-export from
 // `core/slash-commands.ts`.
-func BuiltinSlashCommands() []BuiltinSlashCommand { return defaultBuiltins() }
+// pig additive (D92): a command the process strips (pigstrip commands), or whose feature it strips (featureCommands), is
+// not in the list, so no registry, dispatcher or completion derived from it offers the command, and typing it sends it to
+// the model like any unknown slash command.
+func BuiltinSlashCommands() []BuiltinSlashCommand {
+	return slices.DeleteFunc(defaultBuiltins(), func(command BuiltinSlashCommand) bool {
+		feature, owned := featureCommands[command.Name]
+		return pigstrip.Has(pigstrip.ListCommands, "/"+command.Name) || owned && pigstrip.Has(pigstrip.ListFeatures, feature)
+	})
+}
+
+// featureCommands are the built-in commands that only show a strippable feature, by command name.
+var featureCommands = map[string]string{"changelog": pigstrip.Changelog}
+
+// upstreamBuiltinCommandNames is the set of names in Pi's BUILTIN_SLASH_COMMANDS (core/slash-commands.ts): the commands /help and
+// autocomplete list. The hidden /debug and the parity harness probes dispatch but are not in Pi's list, so an extension command may
+// use those names without a conflict.
+func upstreamBuiltinCommandNames() map[string]struct{} {
+	names := make(map[string]struct{})
+	for _, command := range BuiltinSlashCommands() {
+		if !command.Hidden && !strings.HasPrefix(command.Name, "probe-") {
+			names[command.Name] = struct{}{}
+		}
+	}
+	return names
+}
 
 func defaultBuiltins() []BuiltinSlashCommand {
 	cmds := []BuiltinSlashCommand{
 		{Name: "settings", Description: "Open settings menu", Handler: settingsHandler},
-		{Name: "model", Description: "Select model (opens selector UI)", ArgumentHint: "<provider/model>", Handler: modelHandler},
+		{Name: "model", Description: "Select model (opens selector UI)", ArgumentHint: "<provider/model>", TakesArguments: true, Handler: modelHandler},
 		{Name: "tree", Description: "Navigate session tree (switch branches)", Handler: treeHandler},
-		{Name: "thinking", Description: "Set thinking level", ArgumentHint: "<level>", Handler: thinkingHandler},
+		{Name: "thinking", Description: "Set thinking level", ArgumentHint: "<level>", TakesArguments: true, Handler: thinkingHandler},
 		{Name: "scoped-models", Description: "Enable/disable models for Ctrl+P cycling", Handler: scopedModelsHandler},
-		{Name: "export", Description: "Export session (HTML default, or specify path: .html/.jsonl)", Handler: exportHandler},
-		{Name: "import", Description: "Import and resume a session from a JSONL file", Handler: importHandler},
+		{Name: "export", Description: "Export session (HTML default, or specify path: .html/.jsonl)", TakesArguments: true, Handler: exportHandler},
+		{Name: "import", Description: "Import and resume a session from a JSONL file", TakesArguments: true, Handler: importHandler},
 		// pig divergence (D64): PiG shares through its own expiring gateway, not a GitHub gist.
 		{Name: "share", Description: "Share session with an unlisted 30-day link", Handler: shareHandler},
 		// pig divergence (D62): /bug exports a local archive for a PiG issue; it never uploads.
-		{Name: "bug", Description: "Export a bug report to attach to a PiG issue", ArgumentHint: "<description>", Handler: bugHandler},
+		{Name: "bug", Description: "Export a bug report to attach to a PiG issue", ArgumentHint: "<description>", TakesArguments: true, Handler: bugHandler},
 		{Name: "copy", Description: "Copy last agent message to clipboard", Handler: copyHandler},
-		{Name: "name", Description: "Set session display name", Handler: nameHandler},
+		{Name: "name", Description: "Set session display name", TakesArguments: true, Handler: nameHandler},
 		{Name: "session", Description: "Show session info and stats", Handler: sessionHandler},
 		{Name: "changelog", Description: "Show changelog entries", Handler: changelogHandler},
 		{Name: "hotkeys", Description: "Show all keyboard shortcuts", Handler: hotkeysHandler},
-		{Name: "fork", Description: "Create a new fork from a previous user message", Handler: forkHandler},
+		{Name: "fork", Description: "Create a new fork from a previous user message", AdditiveArguments: func(rest string, headless bool) bool { return headless && widthx.JSTrim(rest) != "" }, Handler: forkHandler},
 		{Name: "clone", Description: "Duplicate the current session at the current position", Handler: cloneHandler},
 		{Name: "trust", Description: "Save project trust decision for future sessions", Handler: trustHandler},
-		{Name: "login", Description: "Configure provider authentication", ArgumentHint: "<provider>", Handler: loginHandler},
-		{Name: "logout", Description: "Remove stored provider authentication", Handler: logoutHandler},
+		{Name: "login", Description: "Configure provider authentication", ArgumentHint: "<provider>", TakesArguments: true, Handler: loginHandler},
+		{Name: "logout", Description: "Remove provider authentication", Handler: logoutHandler},
 		{Name: "new", Description: "Start a new session", Handler: newHandler},
-		{Name: "compact", Description: "Manually compact the session context", Handler: compactHandler},
+		{Name: "compact", Description: "Manually compact the session context", TakesArguments: true, Handler: compactHandler},
 		{Name: "resume", Description: "Resume a different session", Handler: resumeHandler},
-		{Name: "reload", Description: "Reload keybindings, extensions, skills, prompts, themes, and context files", Handler: reloadHandler},
+		{Name: "reload", Description: "Reload keybindings, extensions, skills, prompts, themes, and context files", AdditiveArguments: func(rest string, _ bool) bool { return reloadExplainRequested(rest) }, Handler: reloadHandler},
 		{Name: "quit", Description: "Quit " + AppName, Handler: quitHandler},
 		// Hidden: dispatchable but absent from /help and autocomplete, matching
 		// upstream (handled inline in the submit handler, not in the canonical
@@ -895,9 +973,9 @@ func copyHandler(sc *SlashContext) error {
 
 func sessionHandler(sc *SlashContext) error {
 	// Mirrors upstream handleSessionCommand (interactive-mode.ts:5169-5207).
-	// Uses ANSI styling (bold + dim) via Text component, not Markdown.
+	// Uses theme.bold and theme.fg("dim") through a Text component, not Markdown.
 	bold := func(s string) string { return "\033[1m" + s + "\033[22m" }
-	dim := func(s string) string { return "\033[2m" + s + "\033[22m" }
+	dim := func(s string) string { return tui.ActiveTheme().Fg("dim", s) }
 
 	var b strings.Builder
 	b.WriteString(bold("Session Info") + "\n\n")
@@ -1045,7 +1123,7 @@ func hotkeysHandler(sc *SlashContext) error {
 	if sc.ShowHotkeys != nil {
 		sc.ShowHotkeys()
 	} else {
-		sc.Append(hotkeysMarkdown())
+		sc.Append(hotkeysMarkdown(nil))
 	}
 	return nil
 }
@@ -1084,14 +1162,15 @@ func thinkingHandler(sc *SlashContext) error {
 		return nil
 	}
 	levels := sc.AvailableThinkingLevels()
-	if search := strings.TrimSpace(sc.Args); search != "" {
+	if search := jsTrim(sc.Args); search != "" {
 		for _, level := range levels {
 			if strings.EqualFold(level, search) {
 				sc.SelectThinkingLevel(level)
 				return nil
 			}
 		}
-		return fmt.Errorf("Unknown thinking level %q. Available levels: %s.", search, strings.Join(levels, ", "))
+		// upstream: interactive-mode.ts handleThinkingCommand interpolates the term as written inside double quotes, not as a quoted literal.
+		return fmt.Errorf("Unknown thinking level \"%s\". Available levels: %s.", search, strings.Join(levels, ", "))
 	}
 	if sc.ShowThinkingSelector != nil {
 		sc.ShowThinkingSelector()

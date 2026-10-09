@@ -60,6 +60,7 @@ func TestSessionScopedModelsReachRuntimeAndRunner(t *testing.T) {
 	}
 }
 
+// Pi: packages/coding-agent/src/core/agent-session.ts:478 (Session.scopedModels); packages/coding-agent/src/core/extensions/types.ts:344 (SessionOptions.scopedModels).
 func TestCloneRetainsScopeWithoutStealingBinding(t *testing.T) {
 	runner := inproc.NewRunner(nil, t.TempDir())
 	models := []extension.ScopedModel{{Model: &ai.Model{ID: "source"}}}

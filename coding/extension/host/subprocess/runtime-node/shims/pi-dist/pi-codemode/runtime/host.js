@@ -27,15 +27,51 @@ function serializeStore(store) {
     }
     return serialized;
 }
+/**
+ * The prelude that serializes values for the host runs in the same VM as the script, so a script
+ * that patches built-ins (for example `Array.prototype.toJSON`) can make it send malformed data.
+ * Payloads that do not decode throw this error, and the execution fails as a sandbox error.
+ */
+class BridgeError extends Error {
+}
+function parseBridgeJson(json, what) {
+    try {
+        return JSON.parse(json);
+    }
+    catch {
+        throw new BridgeError(`${what} is not valid JSON`);
+    }
+}
 function parseStoreWrites(json) {
+    const entries = parseBridgeJson(json, "store writes");
+    if (!Array.isArray(entries))
+        throw new BridgeError("store writes are not an array");
     const writes = { set: {}, delete: [] };
-    for (const [key, value] of JSON.parse(json)) {
+    for (const entry of entries) {
+        if (!Array.isArray(entry) ||
+            typeof entry[0] !== "string" ||
+            (entry.length === 2 ? typeof entry[1] !== "string" : entry.length !== 1)) {
+            throw new BridgeError("store writes contain a malformed entry");
+        }
+        const [key, value] = entry;
         if (value === undefined)
             writes.delete.push(key);
         else
-            writes.set[key] = JSON.parse(value);
+            writes.set[key] = parseBridgeJson(value, `store value for ${JSON.stringify(key)}`);
     }
     return writes;
+}
+function parseScriptError(json) {
+    const parsed = parseBridgeJson(json, "script error");
+    if (typeof parsed !== "object" || parsed === null)
+        throw new BridgeError("script error is not an object");
+    const { name, message, stack } = parsed;
+    if (typeof message !== "string" ||
+        (name !== undefined && typeof name !== "string") ||
+        (stack !== undefined && typeof stack !== "string")) {
+        throw new BridgeError("script error is malformed");
+    }
+    return { kind: "script", name, message, stack };
 }
 function defaultWorkerUrl() {
     // `.ts` when running from source (tests, tsx), `.js` from the published dist.
@@ -115,7 +151,20 @@ class Execution {
             return;
         }
         this.worker = worker;
-        worker.on("message", (message) => this.handleMessage(message));
+        worker.on("message", (message) => {
+            // An exception here would be uncaught in the host process and leave the execution unsettled.
+            try {
+                this.handleMessage(message);
+            }
+            catch (error) {
+                this.finish({
+                    kind: "sandbox",
+                    message: error instanceof BridgeError
+                        ? `Sandbox bridge broken: ${error.message}. The script may have modified built-ins such as a prototype's toJSON.`
+                        : `Sandbox host failed: ${errorMessage(error)}`,
+                });
+            }
+        });
         worker.on("error", (error) => {
             this.finish({
                 kind: "sandbox",
@@ -135,13 +184,17 @@ class Execution {
         this.worker?.postMessage(message);
     }
     handleMessage(message) {
-        if (this.finished || !isWorkerToHostMessage(message))
+        if (this.finished)
             return;
+        if (!isWorkerToHostMessage(message))
+            throw new BridgeError("unknown message from the worker");
         switch (message.type) {
             case "output":
                 this.output.push(message.item);
                 break;
             case "call":
+                if (this.pending.has(message.id))
+                    throw new BridgeError(`duplicate call id ${message.id}`);
                 void this.handleCall(message);
                 break;
             case "done":
@@ -153,12 +206,13 @@ class Execution {
         }
     }
     handleDone(message) {
+        // Decode everything before finish(), which must not throw once it starts.
         if (!message.ok) {
-            const parsed = JSON.parse(message.error);
-            this.finish({ kind: "script", ...parsed });
+            this.finish(parseScriptError(message.error));
             return;
         }
-        this.finish(undefined, message.value === undefined ? undefined : JSON.parse(message.value), message.writes);
+        const value = message.value === undefined ? undefined : parseBridgeJson(message.value, "return value");
+        this.finish(undefined, value, parseStoreWrites(message.writes));
     }
     async handleCall(message) {
         const { id, name } = message;
@@ -213,7 +267,7 @@ class Execution {
                 value,
                 output: this.output,
                 calls: this.calls,
-                storeWrites: writes === undefined ? { set: {}, delete: [] } : parseStoreWrites(writes),
+                storeWrites: writes ?? { set: {}, delete: [] },
             };
         if (!this.worker) {
             this.resolveResult(result);

@@ -50,7 +50,7 @@ func TestModelRuntimeCodexSimpleThinkingAndAutoTransport(t *testing.T) {
 			if err := os.WriteFile(filepath.Join(agentDir, "models.json"), []byte(config), 0600); err != nil {
 				t.Fatal(err)
 			}
-			services, err := NewServices(ServicesOptions{CWD: t.TempDir(), AgentDir: agentDir})
+			services, err := CreateAgentSessionServices(CreateAgentSessionServicesOptions{CWD: t.TempDir(), AgentDir: agentDir})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -61,7 +61,7 @@ func TestModelRuntimeCodexSimpleThinkingAndAutoTransport(t *testing.T) {
 			var request struct {
 				Reasoning struct{ Effort, Summary string }
 			}
-			result := services.ModelRuntime().StreamSimple(t.Context(), model, ai.Context{SystemPrompt: "You are a helpful assistant.", Messages: []ai.Message{ai.UserMessage{Content: ai.UserText("Say hello"), Timestamp: 1}}}, ai.StreamOptions{APIKey: token, Transport: transport, SessionID: session, Thinking: ai.ThinkingXHigh, OnPayload: func(value any, _ *ai.Model) (any, error) {
+			result := services.ModelRuntime().StreamSimple(t.Context(), model, ai.Context{SystemPrompt: "You are a helpful assistant.", Messages: []ai.Message{ai.UserMessage{Content: ai.UserText("Say hello"), Timestamp: 1}}}, ai.StreamOptions{APIKey: token, Transport: transport, SessionID: session, Thinking: ai.ThinkingLevelXHigh, OnPayload: func(value any, _ *ai.Model) (any, error) {
 				encoded, err := json.Marshal(value)
 				if err == nil {
 					err = json.Unmarshal(encoded, &request)

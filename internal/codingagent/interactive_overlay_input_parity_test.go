@@ -27,7 +27,7 @@ func (r *overlayInputRecorder) HandleInput(data string) {
 func TestInteractiveOverlayInputParity(t *testing.T) {
 	for _, mode := range []string{"regular", "fullscreen"} {
 		t.Run(mode, func(t *testing.T) {
-			var renderer tui.Renderer
+			var renderer tui.TUI
 			if mode == "regular" {
 				renderer = tui.NewWithOutput(io.Discard, 80, 24)
 			} else {
@@ -41,7 +41,7 @@ func TestInteractiveOverlayInputParity(t *testing.T) {
 			replacement := &overlayInputRecorder{inputs: []string{}}
 			m := &InteractiveMode{tuiInst: renderer}
 			renderer.SetFocus(editor)
-			renderer.OpenOverlay(overlay, tui.OverlayOptions{})
+			renderer.ShowOverlay(overlay, tui.OverlayOptions{})
 			renderer.SetFocus(editor)
 			send := func(data string) {
 				t.Helper()
@@ -70,7 +70,7 @@ func TestInteractiveOverlayInputParity(t *testing.T) {
 			if !slices.Equal(overlay.inputs, []string{"x", "b", "y"}) || !slices.Equal(replacement.inputs, []string{"1", "\r"}) || len(editor.inputs) != 0 {
 				t.Fatalf("replacement: overlay=%q replacement=%q editor=%q", overlay.inputs, replacement.inputs, editor.inputs)
 			}
-			if renderer.FocusedComponent() != overlay {
+			if renderer.GetFocusedComponent() != overlay {
 				t.Fatal("overlay did not regain focus")
 			}
 			observation := struct{ Editor, Overlay, Replacement []string }{editor.inputs, overlay.inputs, replacement.inputs}
@@ -98,7 +98,7 @@ func BenchmarkInteractiveOverlayInput(b *testing.B) {
 			editor := &overlayInputRecorder{}
 			overlay := &overlayInputRecorder{}
 			renderer.SetFocus(editor)
-			renderer.OpenOverlay(overlay, tui.OverlayOptions{})
+			renderer.ShowOverlay(overlay, tui.OverlayOptions{})
 			renderer.SetFocus(editor)
 			m := &InteractiveMode{tuiInst: renderer}
 			b.ReportAllocs()

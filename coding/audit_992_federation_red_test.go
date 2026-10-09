@@ -29,11 +29,11 @@ func TestAudit992FederationEnvConfiguresAnthropic(t *testing.T) {
 	t.Setenv(ai.AnthropicOrganizationIDEnv, "org-test")
 	t.Setenv(ai.AnthropicIdentityTokenFileEnv, identity)
 
-	services, err := NewServices(ServicesOptions{CWD: t.TempDir(), AgentDir: t.TempDir()})
+	services, err := CreateAgentSessionServices(CreateAgentSessionServicesOptions{CWD: t.TempDir(), AgentDir: t.TempDir()})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !services.Registry().HasConfiguredAuth("anthropic") {
+	if !services.Registry().ModelRegistry.HasConfiguredAuth("anthropic") {
 		t.Error("HasConfiguredAuth(anthropic) = false with workload identity federation configured, want true")
 	}
 	available, err := services.ModelRuntime().GetAvailable(t.Context())

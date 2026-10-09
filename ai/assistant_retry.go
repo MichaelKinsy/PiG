@@ -4,13 +4,15 @@ import (
 	"context"
 	"errors"
 	"math"
-	"regexp"
 	"strings"
 	"time"
+
+	"github.com/MichaelKinsy/PiG/internal/lazyregexp"
 )
 
-func buildProviderErrorPattern(patterns []string) *regexp.Regexp {
-	return regexp.MustCompile("(?i)" + strings.Join(patterns, "|"))
+// buildProviderErrorPattern is retry.ts buildProviderErrorPattern: new RegExp(patterns.join("|"), "i").
+func buildProviderErrorPattern(patterns []string) *lazyregexp.Regexp {
+	return lazyregexp.NewJSIgnoreCase(strings.Join(patterns, "|"))
 }
 
 var nonRetryableProviderLimitErrorPattern = buildProviderErrorPattern([]string{
@@ -32,6 +34,9 @@ var nonRetryableProviderLimitErrorPattern = buildProviderErrorPattern([]string{
 var retryableProviderErrorPattern = buildProviderErrorPattern([]string{
 	// Generic provider load, HTTP status, and server-side transient failures.
 	"overloaded",
+	// #10543: a provider that answers server_busy or "servers are currently busy" is transient (utils/retry.ts).
+	"server_busy",
+	"servers are currently busy",
 	"currently experiencing high demand",
 	"model is at capacity",
 	"rate.?limit",
@@ -74,6 +79,8 @@ var retryableProviderErrorPattern = buildProviderErrorPattern([]string{
 	"stream ended before message_stop",
 	"stream ended before a terminal response event",
 	"http2 request did not get a response",
+	// Node ERR_HTTP2_STREAM_CANCEL: the HTTP/2 session died before the request was sent, for example after the Bedrock SDK's 5-minute session timeout (utils/retry.ts, #10379).
+	"pending stream has been canceled",
 	// Provider-requested retry delay cap failures flow through the outer policy.
 	"retry delay",
 	// Explicit retry guidance emitted mid-stream.
@@ -104,17 +111,17 @@ const DefaultMaxAgentRetryDelayMs = 60_000
 // maxSafeInteger is JavaScript's Number.MAX_SAFE_INTEGER.
 const maxSafeInteger = 1<<53 - 1
 
-// RetryDelayMs returns the capped exponential delay for a 1-based attempt.
+// RetryDelayMs returns the capped exponential delay for a 1-based attempt from the policy base delay and agent cap (only BaseDelayMs and MaxAgentDelayMs are read).
 // Overflowing products saturate at Number.MAX_SAFE_INTEGER before the cap.
-func RetryDelayMs(baseDelayMs int, maxAgentDelayMs *int, attempt int) int {
-	delay := float64(baseDelayMs) * math.Pow(2, max(0, float64(attempt)-1))
+func RetryDelayMs(policy RetryPolicy, attempt int) int {
+	delay := float64(policy.BaseDelayMs) * math.Pow(2, max(0, float64(attempt)-1))
 	safeDelay := maxSafeInteger
 	if math.Abs(delay) <= maxSafeInteger && delay == math.Trunc(delay) {
 		safeDelay = int(delay)
 	}
 	limit := DefaultMaxAgentRetryDelayMs
-	if maxAgentDelayMs != nil {
-		limit = *maxAgentDelayMs
+	if policy.MaxAgentDelayMs != nil {
+		limit = *policy.MaxAgentDelayMs
 	}
 	return min(safeDelay, limit)
 }
@@ -181,7 +188,7 @@ func RetryAssistantCall(ctx context.Context, produce func() (AssistantMessage, e
 		if lastRetryMessage == "" {
 			lastRetryMessage = "Unknown error"
 		}
-		delayMs := RetryDelayMs(policy.BaseDelayMs, policy.MaxAgentDelayMs, attempt)
+		delayMs := RetryDelayMs(*policy, attempt)
 		if callbacks.OnRetryScheduled != nil {
 			if err := callbacks.OnRetryScheduled(attempt, maxAttempts, delayMs, lastRetryMessage); err != nil {
 				return AssistantMessage{}, err

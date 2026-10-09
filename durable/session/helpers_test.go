@@ -53,7 +53,8 @@ func defineDoc(kind string, version int, semantics durable.DocumentSemantics, in
 	for _, option := range options {
 		option(&common)
 	}
-	return durable.DefineDoc(durable.DocDefinition[obj]{CommonDocDefinition: common, DocumentSemantics: semantics, Initial: initial})
+	common.Initial = initial
+	return durable.DefineDoc(durable.DocDefinition[obj]{CommonDocDefinition: common, DocumentSemantics: semantics})
 }
 
 func defineFamily[I any](kind string, version int, semantics durable.DocumentSemantics, initial func(seed I) obj, options ...docOption) durable.DocFamilyToken[obj, I] {
@@ -61,7 +62,7 @@ func defineFamily[I any](kind string, version int, semantics durable.DocumentSem
 	for _, option := range options {
 		option(&common)
 	}
-	return durable.DefineDocFamily(durable.DocFamilyDefinition[obj, I]{CommonDocDefinition: common, DocumentSemantics: semantics, Initial: initial})
+	return durable.DefineDocFamily(durable.DocFamilyDefinition[obj, I]{Family: true, Kind: common.Kind, Version: common.Version, Migrate: common.Migrate, CheckpointWhen: common.CheckpointWhen, DocumentSemantics: semantics, Initial: initial})
 }
 
 func open() sessiontest.Harness { return sessiontest.OpenTestSession() }
@@ -139,11 +140,21 @@ func same(left, right any) bool {
 
 func equal(left, right any) bool { return reflect.DeepEqual(normalize(left), normalize(right)) }
 
-// normalize maps Go numeric kinds to float64 so literal expectations compare with JSON values.
+// normalize maps Go numeric kinds to float64 so literal expectations compare with JSON values. Objects compare
+// without key order, as the upstream tests' toEqual does.
 func normalize(value any) any {
 	switch typed := value.(type) {
 	case int:
 		return float64(typed)
+	case *delta.JsonObject:
+		if typed == nil {
+			return map[string]any(nil)
+		}
+		out := make(map[string]any, typed.Len())
+		for key, item := range typed.All() {
+			out[key] = normalize(item)
+		}
+		return out
 	case map[string]any:
 		out := make(map[string]any, len(typed))
 		for key, item := range typed {

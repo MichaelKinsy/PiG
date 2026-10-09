@@ -7,6 +7,7 @@ package harness_test
 
 import (
 	"context"
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -16,6 +17,7 @@ import (
 	"time"
 
 	"github.com/MichaelKinsy/PiG/ai"
+	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/durable"
 	"github.com/MichaelKinsy/PiG/durable/env"
 	envnode "github.com/MichaelKinsy/PiG/durable/env/node"
@@ -58,7 +60,7 @@ func (setup *codingSetup) open(t *testing.T, store durable.Storage, environment 
 }
 
 func toolCalls(name string, args map[string]any, id string) ai.FauxResponseStep {
-	return ai.FauxStaticStep(ai.FauxResponse{Content: []ai.FauxContentBlock{ai.FauxToolCall(name, args, id)}, StopReason: "toolUse"})
+	return ai.FauxStaticStep(ai.FauxResponse{Content: []ai.FauxContentBlock{ai.FauxToolCall(name, args, &ai.FauxToolCallOptions{ID: id})}, StopReason: "toolUse"})
 }
 
 func answer(text string) ai.FauxResponseStep {
@@ -151,7 +153,7 @@ func TestCodingTools(t *testing.T) {
 			t.Fatalf("text starts %q, want the retained tail from line-1001", text[:min(len(text), 20)])
 		}
 		codes := []string{}
-		for _, diagnostic := range entry.Data.(map[string]any)["diagnostics"].([]any) {
+		for _, diagnostic := range plainEntryObject(entry.Data)["diagnostics"].([]any) {
 			code, _ := diagnostic.(map[string]any)["code"].(string)
 			codes = append(codes, code)
 		}
@@ -237,7 +239,7 @@ func TestToolRecoveryWithBash(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if slots, _ := live["tools"].([]any); len(slots) > 0 && slots[0].(map[string]any)["output"] == "started\n" {
+			if slots, _ := live.Value("tools").([]any); len(slots) > 0 && slots[0].(*delta.JsonObject).Value("output") == "started\n" {
 				break
 			}
 			if time.Now().After(deadline) {
@@ -261,4 +263,17 @@ func TestToolRecoveryWithBash(t *testing.T) {
 		}
 		closeHarness(t, opened)
 	})
+}
+
+// plainEntryObject is value's JSON object as a map, for reads that ignore key order, as toEqual does.
+func plainEntryObject(value any) map[string]any {
+	encoded, err := json.Marshal(value)
+	if err != nil {
+		panic(err)
+	}
+	var object map[string]any
+	if err := json.Unmarshal(encoded, &object); err != nil {
+		panic(err)
+	}
+	return object
 }

@@ -117,6 +117,10 @@ func TestScrollViewRenderPadsWhenScrollbarReserved(t *testing.T) {
 	}
 }
 
+// Pi source: packages/tui/src/components/scroll-view.ts
+// mutation-checked: zeroing the results of ScrollView.Clear fails it
+// Pi: packages/tui/src/components/scroll-view.ts:211 (clear)
+// packages/tui/src/components/scroll-view.ts:207-213 (ScrollView.removeChild/clear throw): add, remove and clear are refused.
 func TestScrollViewMutatorsPanic(t *testing.T) {
 	for _, tc := range []struct {
 		name string
@@ -187,4 +191,21 @@ func TestScrollViewDisposeStopsTimer(t *testing.T) {
 			t.Errorf("render fired after Dispose: %d != %d", got, before)
 		}
 	})
+}
+
+// upstream: components/scroll-view.ts ScrollViewScrollbar = "hidden" | "auto" | "always"; setScrollbar switches between the three modes.
+func TestScrollViewScrollbarModes(t *testing.T) {
+	sv := newTestScrollView(t, ScrollViewOptions{Scrollbar: ScrollbarAuto})
+	if sv.Scrollbar() != ScrollbarAuto {
+		t.Fatalf("Scrollbar = %q, want auto", sv.Scrollbar())
+	}
+	for _, mode := range []ScrollViewScrollbar{ScrollbarAlways, ScrollbarHidden, ScrollbarAuto} {
+		sv.SetScrollbar(mode)
+		if sv.Scrollbar() != mode {
+			t.Fatalf("after SetScrollbar(%q), Scrollbar = %q", mode, sv.Scrollbar())
+		}
+	}
+	if ScrollbarHidden != "hidden" || ScrollbarAuto != "auto" || ScrollbarAlways != "always" {
+		t.Fatal("scrollbar mode values must be upstream's literals")
+	}
 }

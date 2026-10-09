@@ -1,4 +1,3 @@
-// SPDX-FileCopyrightText: Copyright Hewlett Packard Enterprise Development LP
 // SPDX-FileCopyrightText: Copyright (c) 2025 Mario Zechner
 // SPDX-License-Identifier: MIT
 
@@ -15,11 +14,12 @@ import (
 	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/coding/extension/host/inproc"
 	icodingagent "github.com/MichaelKinsy/PiG/internal/codingagent"
-	"github.com/MichaelKinsy/PiG/internal/codingagent/compaction"
 )
 
 // Like the live upstream file, these cases assert extension and Session state,
 // not model answer quality. Complete faux responses keep the assertions hermetic.
+// Pi: packages/coding-agent/src/core/session-manager.ts:95 (CompactionEntry.tokensBefore).
+// Pi: packages/coding-agent/src/core/extensions/types.ts:767 (SessionBeforeCompactEvent.branchEntries); packages/coding-agent/src/core/extensions/types.ts:779 (SessionCompactEvent.compactionEntry).
 func TestCompactionExtensionsUpstream(t *testing.T) {
 	for _, tc := range []struct {
 		name, mode string
@@ -76,22 +76,22 @@ func TestCompactionExtensionsUpstream(t *testing.T) {
 						case "throw":
 							return nil, errors.New("Extension intentionally throws")
 						case "custom", "values":
-							prep := event.Preparation.(*compaction.CompactionPreparation)
+							prep := event.Preparation
 							summary := "Custom summary from extension"
 							tokens := prep.TokensBefore
 							if tc.mode == "values" {
 								summary = "Custom summary with modified values"
 								tokens = 999
 							}
-							return extension.SessionBeforeCompactResult{Compaction: map[string]any{"summary": summary, "firstKeptEntryId": prep.FirstKeptEntryID, "tokensBefore": tokens}}, nil
+							return extension.SessionBeforeCompactResult{Compaction: &extension.CompactionResult{Summary: summary, FirstKeptEntryID: prep.FirstKeptEntryID, TokensBefore: tokens}}, nil
 						}
 						return nil, nil
 					}},
 					"session_compact": {func(args ...any) (any, error) {
 						after = append(after, args[0].(extension.SessionCompactEvent))
 						order = append(order, name+"-after")
-						for _, entry := range s.inner.Entries() {
-							if entry.Base.Type == "compaction" {
+						for _, entry := range s.inner.GetEntries() {
+							if entry.Base().Type == "compaction" {
 								savedAtAfter = true
 							}
 						}
@@ -110,7 +110,7 @@ func TestCompactionExtensionsUpstream(t *testing.T) {
 				}
 				drainEvents(t, s)
 			}
-			result, err := s.CompactResult(t.Context(), "")
+			result, err := s.Compact(t.Context(), "")
 			if tc.mode == "cancel" {
 				if err == nil || !strings.Contains(err.Error(), "Compaction cancelled") || len(after) != 0 {
 					t.Fatalf("error=%v after=%v", err, after)
@@ -133,7 +133,7 @@ func TestCompactionExtensionsUpstream(t *testing.T) {
 			if len(before) != 1 || len(after) != 1 {
 				t.Fatalf("before=%d after=%d", len(before), len(after))
 			}
-			prep, ok := before[0].Preparation.(*compaction.CompactionPreparation)
+			prep, ok := before[0].Preparation, true
 			if !ok || prep.MessagesToSummarize == nil || prep.TurnPrefixMessages == nil || prep.FirstKeptEntryID == "" || prep.TokensBefore < 0 || before[0].BranchEntries == nil {
 				t.Fatalf("preparation=%+v", before[0])
 			}
@@ -149,6 +149,21 @@ func TestCompactionExtensionsUpstream(t *testing.T) {
 				t.Fatalf("entry=%+v saved=%v", entry, savedAtAfter)
 			}
 			fromExtension := tc.mode == "custom" || tc.mode == "values"
+			// session_compact.compactionEntry is the persisted entry itself (types.ts SessionCompactEvent), read here through its typed members.
+			typed := after[0].CompactionEntry
+			var persisted icodingagent.CompactionEntry
+			for _, stored := range s.inner.GetEntries() {
+				if stored.Base().Type == "compaction" {
+					if err := json.Unmarshal(mustMarshal(t, stored), &persisted); err != nil {
+						t.Fatal(err)
+					}
+				}
+			}
+			if typed.Type != "compaction" || typed.ID == "" || typed.ID != persisted.ID || typed.Timestamp != persisted.Timestamp ||
+				typed.Summary != persisted.Summary || typed.FirstKeptEntryID != persisted.FirstKeptEntryID || typed.FirstKeptEntryID == "" ||
+				typed.TokensBefore != persisted.TokensBefore || typed.FromHook != fromExtension || persisted.FromHook != fromExtension {
+				t.Fatalf("session_compact entry = %+v, persisted = %+v", typed, persisted)
+			}
 			if after[0].FromExtension != fromExtension {
 				t.Fatalf("fromExtension=%v", after[0].FromExtension)
 			}
@@ -167,7 +182,7 @@ func TestCompactionExtensionsUpstream(t *testing.T) {
 			if tc.mode == "data" {
 				// Go combines request authentication with preparation on the Session's runtime.
 				runtime := s.services.ModelRuntime()
-				if runtime == nil || len(s.inner.Entries()) == 0 {
+				if runtime == nil || len(s.inner.GetEntries()) == 0 {
 					t.Fatal("session runtime unavailable")
 				}
 				if _, _, _, err := runtime.prepareRequest(t.Context(), s.Model(), ai.StreamOptions{}); err != nil {
@@ -176,4 +191,13 @@ func TestCompactionExtensionsUpstream(t *testing.T) {
 			}
 		})
 	}
+}
+
+func mustMarshal(t *testing.T, value any) []byte {
+	t.Helper()
+	raw, err := json.Marshal(value)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return raw
 }

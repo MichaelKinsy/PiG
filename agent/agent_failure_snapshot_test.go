@@ -14,7 +14,7 @@ import (
 func TestMessagesSnapshotSafeDuringRunFailureAppend(t *testing.T) {
 	writeErr := errors.New("persist failure")
 	provider := &scriptedProvider{respond: replyText("ok")}
-	a := NewAgent(AgentOptions{
+	a := mustNewAgent(AgentOptions{
 		Model: scriptedModel(provider),
 		OnMessagePersist: func(message AgentMessage) error {
 			if message.Assistant != nil {

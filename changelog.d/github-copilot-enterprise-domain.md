@@ -1,0 +1,3 @@
+### Fixed
+
+- GitHub Copilot login reads an enterprise domain the way Pi does: an IPv6 host keeps its brackets, an internationalized name becomes its `xn--` form, a numeric host is normalized (`1.2.3` is `1.2.0.3`) or refused when out of range, a backslash ends the host, and a port above 65535 refuses the domain. A domain given as a URL of a scheme other than `http`, `https`, `ws`, `wss` or `ftp` keeps its host as `new URL` reports it: the case as written, non-ASCII characters percent-encoded, and an empty host for `file://localhost`. The Copilot token's `proxy-ep=` claim is found anywhere in the token and used as written, as Pi does, instead of only at the start of a `;`-separated part and trimmed.

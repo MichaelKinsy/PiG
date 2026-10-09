@@ -1,6 +1,7 @@
 package codingagent
 
 import (
+	"errors"
 	"os"
 	"strings"
 	"testing"
@@ -8,6 +9,7 @@ import (
 	"time"
 
 	"github.com/MichaelKinsy/PiG/agent"
+	"github.com/MichaelKinsy/PiG/tui"
 	"github.com/MichaelKinsy/PiG/tui/widthx"
 )
 
@@ -152,5 +154,63 @@ func TestNewSessionClearsStatusBeforeCreation(t *testing.T) {
 				t.Fatalf("failed new session retained %s status", kind)
 			}
 		})
+	}
+}
+
+// Upstream handleCompactCommand (interactive-mode.ts:7043-7045) clears any
+// active status indicator before it asks the Session to compact, whether or
+// not the compaction can start.
+func TestCompactCommandClearsStatusBeforeCompacting(t *testing.T) {
+	for _, kind := range []string{"working", "retry", "branchSummary"} {
+		t.Run(kind, func(t *testing.T) {
+			m := statusBorderMode(t, true)
+			t.Cleanup(func() { m.clearStatusIndicator("") })
+			m.startWorkingLoader()
+			m.activeStatusIndicator.Kind = kind
+			if err := m.buildSlashContext(t.Context()).CompactSession(""); err == nil {
+				t.Fatal("expected no active session failure")
+			}
+			if m.activeStatusIndicator != nil {
+				t.Fatalf("compact retained %s status", kind)
+			}
+		})
+	}
+}
+
+// Upstream handleReloadCommand (interactive-mode.ts:6393-6400) refuses to
+// reload while a response streams or a compaction runs: it warns and returns
+// before the reload box appears or any resource is touched. The same handler
+// serves /reload and an extension's ctx.reload() (which maps errReloadBlocked to nil in reloadFromExtension).
+func TestReloadWaitsForStreamingAndCompaction(t *testing.T) {
+	for _, tc := range []struct {
+		name  string
+		setup func(*InteractiveMode)
+		want  string
+	}{
+		{"streaming", func(m *InteractiveMode) { m.turnActive.Store(true) }, "Wait for the current response to finish before reloading."},
+		{"compacting", func(m *InteractiveMode) { m.isCompacting = true }, "Wait for compaction to finish before reloading."},
+	} {
+		for _, via := range []string{"slash", "extension"} {
+			t.Run(tc.name+"/"+via, func(t *testing.T) {
+				m := statusBorderMode(t, true)
+				m.editorContainer = tui.NewContainer(m.editor)
+				m.slashRegistry = NewSlashRegistry()
+				reloads := 0
+				m.opts.ReloadResourceProvider = func() ReloadResourceSnapshot { reloads++; return ReloadResourceSnapshot{} }
+				tc.setup(m)
+				if via == "slash" {
+					m.dispatchSlash(t.Context(), "/reload")
+				} else if err := m.buildSlashContext(t.Context()).Reload(); !errors.Is(err, errReloadBlocked) {
+					t.Fatalf("extension reload = %v, want errReloadBlocked", err)
+				}
+				text := widthx.StripAnsi(strings.Join(m.chatContainer.Render(120), "\n"))
+				if !strings.Contains(text, "Warning: "+tc.want) {
+					t.Fatalf("transcript lacks the warning %q:\n%s", tc.want, text)
+				}
+				if strings.Contains(text, "Reloaded") || strings.Contains(text, "Reload failed") || reloads != 0 {
+					t.Fatalf("a blocked reload went on (reloads %d):\n%s", reloads, text)
+				}
+			})
+		}
 	}
 }

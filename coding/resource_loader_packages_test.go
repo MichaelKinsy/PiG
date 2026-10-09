@@ -100,7 +100,7 @@ func TestUpstreamDefaultResourceLoaderKeepsPackageMetadata(t *testing.T) {
 	loader := loaderFor(t, f, icodingagent.Settings{Packages: []icodingagent.PackageSource{{Source: "npm:metadata-pkg"}}}, true, nil)
 	want := icodingagent.PiSourceInfo{Source: "npm:metadata-pkg", Scope: "user", Origin: "package", BaseDir: root}
 	skill := skillNamed(t, loader, "package-skill")
-	if want.Path = skill.Path; skill.SourceInfo != want {
+	if want.Path = skill.FilePath; skill.SourceInfo != want {
 		t.Errorf("skill sourceInfo = %+v, want %+v", skill.SourceInfo, want)
 	}
 	prompt := promptNamed(t, loader, "package-prompt")
@@ -190,7 +190,7 @@ func TestDefaultLoaderInstallsMissingNPMPackages(t *testing.T) {
 	})
 	t.Run("failed installation rejects the reload", func(t *testing.T) {
 		f, _ := newFixture(t, true)
-		services, err := NewServices(ServicesOptions{CWD: f.cwd, AgentDir: f.agentDir})
+		services, err := CreateAgentSessionServices(CreateAgentSessionServicesOptions{CWD: f.cwd, AgentDir: f.agentDir})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -346,7 +346,7 @@ func TestUpstreamDefaultResourceLoaderOptions(t *testing.T) {
 		f := newResourceLoaderFixture(t)
 		writeSkill(t, filepath.Join(f.agentDir, "skills"), "discovered")
 		writeResource(t, filepath.Join(f.agentDir, "SYSTEM.md"), "file system prompt")
-		injected := &Skill{Name: "injected", Description: "Injected skill", Path: "/fake/path", Dir: "/fake", SourceInfo: icodingagent.PiSourceInfo{Path: "/fake/path", Source: "custom", Scope: "temporary", Origin: "top-level"}}
+		injected := &Skill{Name: "injected", Description: "Injected skill", FilePath: "/fake/path", BaseDir: "/fake", SourceInfo: icodingagent.PiSourceInfo{Path: "/fake/path", Source: "custom", Scope: "temporary", Origin: "top-level"}}
 		loader := loaderFor(t, f, icodingagent.Settings{}, true, func(o *DefaultResourceLoaderOptions) {
 			o.SkillsOverride = func(SkillsResult) SkillsResult { return SkillsResult{Skills: []*Skill{injected}} }
 			o.SystemPromptOverride = func(*string) *string { return new("Custom system prompt") }
@@ -413,9 +413,9 @@ func TestDefaultResourceLoaderResolvesItsDirectories(t *testing.T) {
 		"project-skill": {Source: "auto", Scope: "project", Origin: "top-level", BaseDir: icodingagent.ProjectConfigDir(f.cwd)},
 	} {
 		skill := skillNamed(t, loader, name)
-		want.Path = skill.Path
-		if !filepath.IsAbs(skill.Path) || skill.SourceInfo != want {
-			t.Errorf("%s path %q sourceInfo = %+v, want an absolute path and %+v", name, skill.Path, skill.SourceInfo, want)
+		want.Path = skill.FilePath
+		if !filepath.IsAbs(skill.FilePath) || skill.SourceInfo != want {
+			t.Errorf("%s path %q sourceInfo = %+v, want an absolute path and %+v", name, skill.FilePath, skill.SourceInfo, want)
 		}
 	}
 }

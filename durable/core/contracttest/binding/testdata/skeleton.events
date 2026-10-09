@@ -1,0 +1,6 @@
+# Skeleton script: every build answers an open it cannot serve yet with the same rejected step, and a close.
+open now=1000 {"settings":{"compaction":{"enabled":false}},"agent":{"provider":"faux","modelId":"scripted-1"},"models":[],"registry":[],"sidecar":"index","delta":false}
+submit now=1001 {"type":"input","content":"hello","requestId":"r1"}
+rows now=1002 [{"id":1,"cols":1,"rows":[]}]
+close now=1003
+submit now=1004 {"type":"input","content":"late","requestId":"r2"}

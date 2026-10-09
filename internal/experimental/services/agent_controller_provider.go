@@ -43,6 +43,27 @@ type AgentHarness interface {
 type AgentControllerProvider struct {
 	harness      AgentHarness
 	conversation AgentConversation
+	entries      serviceMutationTail
+}
+
+// controllerOrderedMembers reach the durable conversation in the order the presentation sent them.
+var controllerOrderedMembers = map[string]bool{"prompt": true, "steer": true, "followUp": true, "cancelQueued": true, "abort": true, "compact": true}
+
+// AdmitServiceMember reserves the operation's position among the controller's conversation operations while the call is admitted,
+// as the synchronous prefix of the TypeScript member does (chord provider.ts:234). WaitForPrompt does not touch the conversation queue.
+func (controller *AgentControllerProvider) AdmitServiceMember(ctx context.Context, member string) (context.Context, func()) {
+	if !controllerOrderedMembers[member] {
+		return ctx, func() {}
+	}
+	ticket := controller.entries.reserve()
+	return context.WithValue(ctx, mutationTicketKey{}, ticket), ticket.release
+}
+
+// ordered runs one conversation operation after the operations admitted before it have reached the conversation's line. The
+// operation passes the context it receives to the conversation; the next operation starts once the durable line admits this
+// one, as the next TypeScript member's synchronous prefix runs once this one's has extended the line (Session commitWith).
+func (controller *AgentControllerProvider) ordered(ctx context.Context, operation func(context.Context)) {
+	_ = controller.entries.runUntilAdmitted(ctx, func(admitted context.Context) error { operation(admitted); return nil })
 }
 
 var _ AgentController = (*AgentControllerProvider)(nil)
@@ -52,12 +73,16 @@ func CreateAgentController(harness AgentHarness, conversation AgentConversation)
 	return &AgentControllerProvider{harness: harness, conversation: conversation}
 }
 
-func (controller *AgentControllerProvider) Prompt(ctx context.Context, request AgentPromptRequest) (AgentOperationResponse, error) {
-	id, err := controller.conversation.Submit(ctx, toInput(request), durable.WhenBusyReject)
-	if err != nil {
-		return AgentOperationResponse{Error: toAgentError(err)}, nil
-	}
-	return AgentOperationResponse{Accepted: true, OperationID: new(formatSubmissionID(id))}, nil
+func (controller *AgentControllerProvider) Prompt(ctx context.Context, request AgentPromptRequest) (response AgentOperationResponse, _ error) {
+	controller.ordered(ctx, func(ctx context.Context) {
+		id, err := controller.conversation.Submit(ctx, toInput(request), durable.WhenBusyReject)
+		if err != nil {
+			response = AgentOperationResponse{Error: toAgentError(err)}
+			return
+		}
+		response = AgentOperationResponse{Accepted: true, OperationID: new(formatSubmissionID(id))}
+	})
+	return response, nil
 }
 
 func (controller *AgentControllerProvider) Steer(ctx context.Context, request AgentPromptRequest) (AgentQueueResponse, error) {
@@ -68,15 +93,24 @@ func (controller *AgentControllerProvider) FollowUp(ctx context.Context, request
 	return controller.queue(ctx, durable.WhenBusyFollowUp, request)
 }
 
-func (controller *AgentControllerProvider) queue(ctx context.Context, whenBusy durable.WhenBusy, request AgentPromptRequest) (AgentQueueResponse, error) {
-	id, err := controller.conversation.Submit(ctx, toInput(request), whenBusy)
-	if err != nil {
-		return AgentQueueResponse{Error: toAgentError(err)}, nil
-	}
-	return AgentQueueResponse{Accepted: true, EntryID: new(formatSubmissionID(id))}, nil
+func (controller *AgentControllerProvider) queue(ctx context.Context, whenBusy durable.WhenBusy, request AgentPromptRequest) (response AgentQueueResponse, _ error) {
+	controller.ordered(ctx, func(ctx context.Context) {
+		id, err := controller.conversation.Submit(ctx, toInput(request), whenBusy)
+		if err != nil {
+			response = AgentQueueResponse{Error: toAgentError(err)}
+			return
+		}
+		response = AgentQueueResponse{Accepted: true, EntryID: new(formatSubmissionID(id))}
+	})
+	return response, nil
 }
 
-func (controller *AgentControllerProvider) CancelQueued(ctx context.Context, entryID string) (AgentCancelQueuedResponse, error) {
+func (controller *AgentControllerProvider) CancelQueued(ctx context.Context, entryID string) (response AgentCancelQueuedResponse, err error) {
+	controller.ordered(ctx, func(ctx context.Context) { response, err = controller.cancelQueued(ctx, entryID) })
+	return response, err
+}
+
+func (controller *AgentControllerProvider) cancelQueued(ctx context.Context, entryID string) (AgentCancelQueuedResponse, error) {
 	id, ok := parseSubmissionID(entryID)
 	if !ok {
 		return AgentCancelQueuedResponse{Outcome: "not_found"}, nil
@@ -94,16 +128,21 @@ func (controller *AgentControllerProvider) CancelQueued(ctx context.Context, ent
 	return AgentCancelQueuedResponse{Outcome: "already_consumed"}, nil
 }
 
-func (controller *AgentControllerProvider) Abort(ctx context.Context) error {
-	return controller.conversation.Abort(ctx)
+func (controller *AgentControllerProvider) Abort(ctx context.Context) (err error) {
+	controller.ordered(ctx, func(ctx context.Context) { err = controller.conversation.Abort(ctx) })
+	return err
 }
 
-func (controller *AgentControllerProvider) Compact(ctx context.Context, request AgentCompactionRequest) (AgentOperationResponse, error) {
-	id, err := controller.conversation.Compact(ctx, request.CustomInstructions)
-	if err != nil {
-		return AgentOperationResponse{Error: toAgentError(err)}, nil
-	}
-	return AgentOperationResponse{Accepted: true, OperationID: new(strconv.FormatInt(id, 10))}, nil
+func (controller *AgentControllerProvider) Compact(ctx context.Context, request AgentCompactionRequest) (response AgentOperationResponse, _ error) {
+	controller.ordered(ctx, func(ctx context.Context) {
+		id, err := controller.conversation.Compact(ctx, request.CustomInstructions)
+		if err != nil {
+			response = AgentOperationResponse{Error: toAgentError(err)}
+			return
+		}
+		response = AgentOperationResponse{Accepted: true, OperationID: new(strconv.FormatInt(id, 10))}
+	})
+	return response, nil
 }
 
 func (controller *AgentControllerProvider) WaitForPrompt(ctx context.Context, operationID string) (AgentPromptResult, error) {

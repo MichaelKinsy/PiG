@@ -55,7 +55,7 @@ func gateAvailability(t *testing.T, runtime *ModelRuntime) *availabilityGate {
 
 func (gate *availabilityGate) release() { gate.once.Do(func() { close(gate.open) }) }
 
-func registrationServices(t *testing.T, credentials map[string]ai.Credential) *Services {
+func registrationServices(t *testing.T, credentials map[string]ai.Credential) *AgentSessionServices {
 	t.Helper()
 	dir := t.TempDir()
 	t.Setenv("HOME", dir)
@@ -69,7 +69,7 @@ func registrationServices(t *testing.T, credentials map[string]ai.Credential) *S
 			t.Fatal(err)
 		}
 	}
-	services, err := NewServices(ServicesOptions{CWD: dir, AgentDir: dir})
+	services, err := CreateAgentSessionServices(CreateAgentSessionServicesOptions{CWD: dir, AgentDir: dir})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -113,7 +113,7 @@ func TestProviderRegistrationUpdatesAvailabilityBeforeReturn(t *testing.T) {
 				var err error
 				switch entry {
 				case "extension-config":
-					err = services.Registry().RegisterProvider(id, snapshotRegistration("literal-key"))
+					err = services.Registry().RegisterExtensionProvider(id, snapshotRegistration("literal-key"))
 				case "extension-runtime":
 					shared := extension.CreateExtensionRuntime()
 					inproc.NewRunner(nil, t.TempDir(), shared).BindCore(extension.ExtensionActions{}, extension.ContextActions{ModelRegistry: services.Registry()}, nil)
@@ -191,12 +191,12 @@ func TestProviderRegistrationProvisionalAvailabilityUpstream(t *testing.T) {
 						config := snapshotRegistration(tc.apiKey)
 						if tc.oauth {
 							config.OAuth = &extension.ProviderOAuth{Name: "Registered OAuth", Login: func(extension.OAuthLoginCallbacks) (extension.OAuthCredentials, error) {
-								return map[string]any{"access": "unused"}, nil
-							}, RefreshToken: func(credentials extension.OAuthCredentials) (extension.OAuthCredentials, error) {
+								return extension.OAuthCredentials{Access: "unused"}, nil
+							}, RefreshToken: func(_ context.Context, credentials extension.OAuthCredentials) (extension.OAuthCredentials, error) {
 								return credentials, nil
 							}, GetAPIKey: func(extension.OAuthCredentials) string { return "" }}
 						}
-						err = services.Registry().RegisterProvider(id, config)
+						err = services.Registry().RegisterExtensionProvider(id, config)
 					} else {
 						input := coreRegistration(id, tc.apiKey)
 						if tc.oauth {
@@ -246,7 +246,7 @@ func TestProviderReRegistrationKeepsRealAuthCheck(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		services := registrationServices(t, nil)
 		runtime := services.ModelRuntime()
-		if err := services.Registry().RegisterProvider(id, snapshotRegistration("literal-key")); err != nil {
+		if err := services.Registry().RegisterExtensionProvider(id, snapshotRegistration("literal-key")); err != nil {
 			t.Fatal(err)
 		}
 		if result := runtime.Refresh(t.Context(), ai.ModelsRefreshOptions{AllowNetwork: new(false)}); result.Aborted || len(result.Errors) != 0 {
@@ -260,7 +260,7 @@ func TestProviderReRegistrationKeepsRealAuthCheck(t *testing.T) {
 			t.Fatalf("refresh did not publish a real check: %+v", real)
 		}
 		gateAvailability(t, runtime)
-		if err := services.Registry().RegisterProvider(id, extension.ProviderConfig{Name: "Renamed"}); err != nil {
+		if err := services.Registry().RegisterExtensionProvider(id, extension.ProviderConfig{Name: "Renamed"}); err != nil {
 			t.Fatal(err)
 		}
 		runtime.availability.mu.RLock()
@@ -315,7 +315,7 @@ func TestSessionCycleModelSeesExtensionProviderRegistration(t *testing.T) {
 		services := registrationServices(t, nil)
 		runtime := services.ModelRuntime()
 		const baseID, extensionID = "cycle-base", "cycle-extension"
-		if err := services.Registry().RegisterProvider(baseID, snapshotRegistration("base-key")); err != nil {
+		if err := services.Registry().RegisterExtensionProvider(baseID, snapshotRegistration("base-key")); err != nil {
 			t.Fatal(err)
 		}
 		if result := runtime.Refresh(t.Context(), ai.ModelsRefreshOptions{AllowNetwork: new(false)}); result.Aborted || len(result.Errors) != 0 {
@@ -372,7 +372,7 @@ func TestProviderRegistrationWidensOtherProvidersUntilTheQueuedRefresh(t *testin
 		if got := providerModelIDs(runtime.GetAvailableSnapshot(), filteredID); !slices.Equal(got, []string{"allowed"}) {
 			t.Fatalf("filtered availability before registration=%v", got)
 		}
-		if err := services.Registry().RegisterProvider(registeredID, snapshotRegistration("literal-key")); err != nil {
+		if err := services.Registry().RegisterExtensionProvider(registeredID, snapshotRegistration("literal-key")); err != nil {
 			t.Fatal(err)
 		}
 		if got := providerModelIDs(runtime.GetAvailableSnapshot(), filteredID); !slices.Equal(got, []string{"allowed", "hidden"}) {
@@ -410,7 +410,7 @@ func TestConcurrentProviderRegistrationsAllReachSnapshot(t *testing.T) {
 		var registrations sync.WaitGroup
 		for i := range providers {
 			registrations.Go(func() {
-				if err := services.Registry().RegisterProvider(fmt.Sprintf("concurrent-%02d", i), snapshotRegistration("literal-key")); err != nil {
+				if err := services.Registry().RegisterExtensionProvider(fmt.Sprintf("concurrent-%02d", i), snapshotRegistration("literal-key")); err != nil {
 					t.Error(err)
 				}
 			})
@@ -428,7 +428,7 @@ func TestConcurrentProviderRegistrationsAllReachSnapshot(t *testing.T) {
 // BenchmarkProviderRegistration measures the synchronous registration path, including Pi's catalog projection into the available snapshot.
 func BenchmarkProviderRegistration(b *testing.B) {
 	dir := b.TempDir()
-	services, err := NewServices(ServicesOptions{CWD: dir, AgentDir: dir})
+	services, err := CreateAgentSessionServices(CreateAgentSessionServicesOptions{CWD: dir, AgentDir: dir})
 	if err != nil {
 		b.Fatal(err)
 	}
@@ -436,7 +436,7 @@ func BenchmarkProviderRegistration(b *testing.B) {
 	config := snapshotRegistration("literal-key")
 	b.ReportAllocs()
 	for b.Loop() {
-		if err := services.Registry().RegisterProvider("benchmark-provider", config); err != nil {
+		if err := services.Registry().RegisterExtensionProvider("benchmark-provider", config); err != nil {
 			b.Fatal(err)
 		}
 	}
@@ -481,7 +481,7 @@ func TestProviderRefreshWithoutAuthLeavesConfiguredProviders(t *testing.T) {
 		}
 		services.Registry().StartRegistrationRefresh(t.Context())
 		synctest.Wait()
-		if !services.Registry().HasConfiguredAuth(id) {
+		if !services.Registry().ModelRegistry.HasConfiguredAuth(id) {
 			t.Fatal("provider with an auth check is not configured")
 		}
 		requireConfiguredMatchesAuthChecks(t, runtime, "after registration")
@@ -490,7 +490,7 @@ func TestProviderRefreshWithoutAuthLeavesConfiguredProviders(t *testing.T) {
 			t.Fatalf("refresh=%+v", result)
 		}
 		synctest.Wait()
-		if services.Registry().HasConfiguredAuth(id) {
+		if services.Registry().ModelRegistry.HasConfiguredAuth(id) {
 			t.Fatal("provider stayed configured after its check stopped returning auth")
 		}
 		requireConfiguredMatchesAuthChecks(t, runtime, "after deauthorization")

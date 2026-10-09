@@ -15,7 +15,9 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/MichaelKinsy/PiG/extensions/sdk/internal/kitwire"
 	"github.com/MichaelKinsy/PiG/extensions/sdk/json"
+	"github.com/MichaelKinsy/PiG/extensions/sdk/kit"
 )
 
 // Schema is a JSON Schema object for tool parameter definitions.
@@ -118,6 +120,9 @@ type Factory func() *Extension
 // Extension is the builder for a subprocess extension. Create with [New],
 // register tools/commands/events, then call [Extension.Run].
 type Extension struct {
+	// stale holds the Host's invalidate message; the first one wins (runner.ts:725-727).
+	stale atomic.Pointer[string]
+
 	name     string
 	tools    []toolDef
 	commands []cmdDef
@@ -129,25 +134,33 @@ type Extension struct {
 	// run is the replicated signal of the run in progress (Context.Signal).
 	run runSignal
 
-	providerStreams         map[string]ProviderStreamSimpleFunc
-	providerOperations      map[string]providerOperations
-	toolMu                  sync.RWMutex
-	toolConn                *conn
-	toolFuncs               map[string]ToolFunc
-	toolPrepareFuncs        map[string]ToolPrepareArgumentsFunc
-	toolStarts              toolStartOrder
-	commandFuncs            map[string]CommandFunc
-	eventFuncs              map[int]EventFunc
-	shortcutFuncs           map[string]ShortcutFunc
-	rendererFuncs           map[string]RendererFunc
-	entryRendererFuncs      map[string]EntryRendererFunc
-	flagDefaults            map[string]any
-	shortcuts               []shortcutDef
-	flags                   []flagDef
-	providers               []providerDef
-	providerMu              sync.RWMutex
-	autocomplete            autocompleteRegistry
-	nativeProviders         map[string]*Provider
+	providerStreams    map[string]ProviderStreamSimpleFunc
+	providerOperations map[string]providerOperations
+	toolMu             sync.RWMutex
+	toolConn           *conn
+	toolFuncs          map[string]ToolFunc
+	toolPrepareFuncs   map[string]ToolPrepareArgumentsFunc
+	toolStarts         toolStartOrder
+	commandFuncs       map[string]CommandFunc
+	eventFuncs         map[int]EventFunc
+	shortcutFuncs      map[string]ShortcutFunc
+	rendererFuncs      map[string]RendererFunc
+	entryRendererFuncs map[string]EntryRendererFunc
+	// The kit forms of the message and entry renderers (D107); a customType
+	// has a line form or a view form.
+	messageViewRendererFuncs map[string]MessageViewRendererFunc
+	entryViewRendererFuncs   map[string]EntryViewRendererFunc
+	flagDefaults             map[string]any
+	shortcuts                []shortcutDef
+	flags                    []flagDef
+	providers                []providerDef
+	providerMu               sync.RWMutex
+	autocomplete             autocompleteRegistry
+	nativeProviders          map[string]*Provider
+	// bashOperations holds the BashOperations objects a user_bash reply named by handle until the host releases them.
+	bashOperationsMu        sync.Mutex
+	bashOperations          map[string]BashOperations
+	bashOperationsSeq       int
 	providerObjectCallbacks map[string]func(string, json.RawMessage) (any, error)
 	providerUpdates         map[string]func() error
 	providerObjectCache     map[string]*Provider
@@ -184,9 +197,11 @@ type Extension struct {
 	widthStopped    bool
 
 	// surfaceMu guards surfaces, the footer and header renderers keyed by the
-	// host method that installs them.
-	surfaceMu sync.Mutex
-	surfaces  map[string]*surfaceRenderer
+	// host method that installs them, and viewSurfaces, the latest widget,
+	// header and footer views (D107).
+	surfaceMu    sync.Mutex
+	surfaces     map[string]*surfaceRenderer
+	viewSurfaces map[string]*viewSurface
 
 	// oauthProviders holds the OAuth closures for providers registered with an
 	// "oauth" capability, keyed by provider name for oauth_* dispatch.
@@ -201,11 +216,14 @@ type Extension struct {
 	session sessionMirror
 
 	// session info from host (set after ready message).
-	mu            sync.RWMutex
-	sessionName   string
-	cwd           string
-	mode          string
-	hasUI         bool
+	mu          sync.RWMutex
+	sessionName string
+	cwd         string
+	mode        string
+	hasUI       bool
+	// frontend is set while a D91 frontend session draws (D107): views
+	// carry frontend-only annotations only then.
+	frontend      bool
 	width         int
 	height        int
 	model         string
@@ -223,14 +241,22 @@ type Extension struct {
 
 	// withSessions holds the withSession callbacks of replacement calls in flight.
 	withSessions withSessionRegistry
+	// setups holds the setup callbacks of NewSession calls in flight.
+	setups setupRegistry
 
 	modelStreamSeq atomic.Uint64
 	modelStreamsMu sync.RWMutex
 	modelStreams   map[string]*ModelEventStream
+	// modelStreamCallbacks holds the provider request callbacks of model streams in flight, by stream id (modelStreamsMu).
+	modelStreamCallbacks map[string]*modelStreamCallbacks
 
 	overlaySeq atomic.Uint64
 	overlaysMu sync.RWMutex
 	overlays   map[string]*remoteOverlay
+
+	editorSeq atomic.Uint64
+	editorMu  sync.Mutex
+	editor    *editorSession
 
 	// notifyMu guards notifyHandled and notifyChanged, which let a host-call
 	// goroutine wait for notifications that preceded the call result.
@@ -271,27 +297,65 @@ const (
 )
 
 type remoteOverlay struct {
-	mu         sync.Mutex
-	component  RemoteComponent
-	lastLines  []string
-	seq        uint64
-	closed     bool
-	lastRender time.Time
-	active     atomic.Bool
-	invalidate chan struct{}
-	input      chan string
-	stopCh     chan struct{}
-	stopped    chan struct{}
-	stopOnce   sync.Once
+	mu        sync.Mutex
+	component overlayComponent
+	// renderWidth maps a terminal width to a lines component's render width; nil renders at the terminal width.
+	renderWidth func(int) int
+	lastLines   []string
+	seq         uint64
+	closed      bool
+	lastRender  time.Time
+	active      atomic.Bool
+	invalidate  chan struct{}
+	input       chan overlayMessage
+	stopCh      chan struct{}
+	stopped     chan struct{}
+	stopOnce    sync.Once
+
+	// frontend reports whether a frontend draws; nil reports none.
+	frontend func() bool
+	// lastView and lastWidth are a view component's last frame, without its
+	// image bytes, and the width it went out for.
+	lastView  []byte
+	lastWidth int
+	// viewRefs are the images the last view frame references. refsMu guards
+	// it apart from mu, which a running handler holds.
+	refsMu   sync.Mutex
+	viewRefs []string
+	// forceView makes the next view frame go out even when it equals the
+	// last one, after the host evicted one of its images.
+	forceView atomic.Bool
+	// onHandle is ui.custom()'s onHandle option, called once when the host mounted the overlay; handleState is the host's last state of it
+	// (guarded by stateMu, apart from mu, which a running handler holds).
+	onHandle    OverlayHandleFunc
+	ext         *Extension
+	stateMu     sync.Mutex
+	handleState overlayHandleState
 }
 
-func newRemoteOverlay(component RemoteComponent) *remoteOverlay {
+// overlayComponent is a [RemoteComponent] or a [ViewComponent].
+type overlayComponent interface {
+	HandleInput(data string) (RemoteComponentResult, error)
+}
+
+// overlayMessage is one entry of an overlay's serial queue: terminal input,
+// a ui.view.event when event is set, or a ui.custom.mouse event when mouse
+// is set.
+type overlayMessage struct {
+	data  string
+	event *kit.Event
+	mouse *MouseEvent
+	// opened is the host's ui.custom.opened: the overlay is mounted and this is its state.
+	opened *overlayHandleState
+}
+
+func newRemoteOverlay(component overlayComponent) *remoteOverlay {
 	return &remoteOverlay{component: component}
 }
 
 func (o *remoteOverlay) start(conn *conn, key string, width func() int) (err error) {
 	o.invalidate = make(chan struct{}, 1)
-	o.input = make(chan string, 64)
+	o.input = make(chan overlayMessage, 64)
 	o.stopCh = make(chan struct{})
 	o.active.Store(true)
 	if invalidator, ok := o.component.(RemoteComponentInvalidator); ok {
@@ -313,11 +377,11 @@ func (o *remoteOverlay) start(conn *conn, key string, width func() int) (err err
 		defer close(o.stopped)
 		for o.active.Load() {
 			select {
-			case data := <-o.input:
+			case message := <-o.input:
 				if !o.active.Load() {
 					return
 				}
-				o.handleInput(conn, key, data, width())
+				o.handleMessage(conn, key, message, width())
 			case <-o.invalidate:
 				if !o.active.Load() {
 					return
@@ -363,12 +427,31 @@ func (o *remoteOverlay) requestRender() {
 	}
 }
 
-func (o *remoteOverlay) enqueueInput(conn *conn, key, data string) {
+// resendIfReferences renders a view component again, bypassing dedup, when
+// its last frame references an evicted image.
+func (o *remoteOverlay) resendIfReferences(evicted map[string]struct{}) {
+	o.refsMu.Lock()
+	hit := false
+	for _, ref := range o.viewRefs {
+		if _, ok := evicted[ref]; ok {
+			hit = true
+			break
+		}
+	}
+	o.refsMu.Unlock()
+	if hit {
+		o.forceView.Store(true)
+		o.requestRender()
+	}
+}
+
+// enqueue queues input or a view event behind every message before it.
+func (o *remoteOverlay) enqueue(conn *conn, key string, message overlayMessage) {
 	if !o.active.Load() {
 		return
 	}
 	select {
-	case o.input <- data:
+	case o.input <- message:
 	default:
 		o.closeWithError(conn, key, errors.New("focused input queue is full"))
 	}
@@ -406,19 +489,53 @@ func (o *remoteOverlay) closeWithError(conn *conn, key string, err error) {
 	_ = conn.notify("ui.custom.close", map[string]any{"key": key, "error": err.Error()})
 }
 
-func (o *remoteOverlay) handleInput(conn *conn, key, data string, width int) {
+// handleMessage runs HandleInput for input, HandleViewEvent for a view
+// event or HandleMouse for a mouse event, and closes or renders as the
+// result says. A component without the handler ignores the message.
+func (o *remoteOverlay) handleMessage(conn *conn, key string, message overlayMessage, width int) {
 	o.mu.Lock()
 	defer o.mu.Unlock()
+	what := "input"
+	switch {
+	case message.event != nil:
+		what = "view event"
+	case message.mouse != nil:
+		what = "mouse"
+	}
 	defer func() {
 		if recovered := recover(); recovered != nil && !o.closed {
 			o.closed = true
-			_ = conn.notify("ui.custom.close", map[string]any{"key": key, "error": fmt.Sprintf("focused input panicked: %v", recovered)})
+			_ = conn.notify("ui.custom.close", map[string]any{"key": key, "error": fmt.Sprintf("focused %s panicked: %v", what, recovered)})
 		}
 	}()
 	if o.closed {
 		return
 	}
-	result, err := o.component.HandleInput(data)
+	if message.opened != nil {
+		o.applyHandleState(*message.opened)
+		if o.onHandle != nil {
+			o.onHandle(&OverlayHandle{ext: o.ext, key: key, overlay: o})
+		}
+		return
+	}
+	var result RemoteComponentResult
+	var err error
+	switch {
+	case message.event != nil:
+		handler, ok := o.component.(ViewEventHandler)
+		if !ok {
+			return
+		}
+		result, err = handler.HandleViewEvent(*message.event)
+	case message.mouse != nil:
+		handler, ok := o.component.(MouseHandler)
+		if !ok {
+			return
+		}
+		result, err = handler.HandleMouse(*message.mouse)
+	default:
+		result, err = o.component.HandleInput(message.data)
+	}
 	if err != nil {
 		o.closed = true
 		_ = conn.notify("ui.custom.close", map[string]any{"key": key, "error": err.Error()})
@@ -430,6 +547,11 @@ func (o *remoteOverlay) handleInput(conn *conn, key, data string, width int) {
 		if err := conn.notify("ui.custom.close", map[string]any{"key": key, "result": result.Value}); err != nil {
 			_ = conn.notify("ui.custom.close", map[string]any{"key": key, "error": "encode focused result: " + err.Error()})
 		}
+		return
+	}
+	if message.mouse != nil && (message.mouse.Type == MouseMove || message.mouse.Type == MouseRelease) {
+		// Pi's renderer draws again after press, click, drag and wheel only
+		// (tui-alt-screen.ts applyMouseDispatchResult).
 		return
 	}
 	_ = o.renderLocked(conn, key, width)
@@ -450,36 +572,88 @@ func (o *remoteOverlay) renderLocked(conn *conn, key string, width int) error {
 	if o.closed {
 		return nil
 	}
-	lines := o.component.Render(width)
+	switch component := o.component.(type) {
+	case ViewComponent:
+		return o.renderViewLocked(conn, key, width, component)
+	case RemoteComponent:
+		renderWidth := width
+		if o.renderWidth != nil {
+			renderWidth = o.renderWidth(width)
+		}
+		lines := component.Render(renderWidth)
+		o.lastRender = time.Now()
+		if slices.Equal(lines, o.lastLines) {
+			return nil
+		}
+		o.lastLines = append(o.lastLines[:0], lines...)
+		o.seq++
+		return conn.notify("ui.custom.render", o.frameArgs(map[string]any{"key": key, "lines": lines, "width": width, "seq": o.seq}))
+	}
+	return nil
+}
+
+// renderViewLocked sends a view frame: the view with no lines key, under the
+// lines frames' throttle and seq. A frame equal to the last one, without
+// image bytes, at the same width is not sent unless it has images the
+// connection has not sent or the host evicted one of its images.
+func (o *remoteOverlay) renderViewLocked(conn *conn, key string, width int, component ViewComponent) error {
+	view := component.View(width)
 	o.lastRender = time.Now()
-	if slices.Equal(lines, o.lastLines) {
+	encoded, err := kitwire.Encode(view, o.frontend != nil && o.frontend())
+	if err != nil {
+		return err
+	}
+	force := o.forceView.Swap(false)
+	if !force && o.lastView != nil && width == o.lastWidth && bytes.Equal(encoded.View, o.lastView) && len(conn.images.unsent(encoded.Images)) == 0 {
 		return nil
 	}
-	o.lastLines = append(o.lastLines[:0], lines...)
+	o.lastView = encoded.View
+	o.lastWidth = width
+	refs := make([]string, len(encoded.Images))
+	for i, image := range encoded.Images {
+		refs[i] = image.Ref
+	}
+	o.refsMu.Lock()
+	o.viewRefs = refs
+	o.refsMu.Unlock()
 	o.seq++
-	return conn.notify("ui.custom.render", map[string]any{"key": key, "lines": lines, "width": width, "seq": o.seq})
+	return sendView(conn, encoded, func(view json.RawMessage) error {
+		return conn.notify("ui.custom.render", o.frameArgs(map[string]any{"key": key, "width": width, "seq": o.seq, "view": view}))
+	})
+}
+
+// frameArgs marks a frame of a component that takes the mouse, which the
+// host then hands mouse events inside its bounds.
+func (o *remoteOverlay) frameArgs(args map[string]any) map[string]any {
+	if _, ok := o.component.(MouseHandler); ok {
+		args["mouse"] = true
+	}
+	return args
 }
 
 // New creates a new extension with the given name.
 // The name must match the identity of the selected Package, Piglet, or exact path.
 func New(name string) *Extension {
 	return &Extension{
-		name:               name,
-		toolFuncs:          make(map[string]ToolFunc),
-		toolPrepareFuncs:   make(map[string]ToolPrepareArgumentsFunc),
-		commandFuncs:       make(map[string]CommandFunc),
-		commandCompletions: make(map[string]ArgumentCompletionsFunc),
-		eventFuncs:         make(map[int]EventFunc),
-		shortcutFuncs:      make(map[string]ShortcutFunc),
-		rendererFuncs:      make(map[string]RendererFunc),
-		entryRendererFuncs: make(map[string]EntryRendererFunc),
-		flagDefaults:       make(map[string]any),
-		requests:           make(map[string]context.CancelFunc),
-		modelStreams:       make(map[string]*ModelEventStream),
-		overlays:           make(map[string]*remoteOverlay),
-		virtualModelRoutes: make(map[virtualModelKey]ModelRouteFunc),
-		toolLoadoutFuncs:   make(map[string]ToolPrepareLoadoutFunc),
-		executeUpdates:     make(map[string]func(AgentToolResult)),
+		name:                     name,
+		toolFuncs:                make(map[string]ToolFunc),
+		toolPrepareFuncs:         make(map[string]ToolPrepareArgumentsFunc),
+		commandFuncs:             make(map[string]CommandFunc),
+		commandCompletions:       make(map[string]ArgumentCompletionsFunc),
+		eventFuncs:               make(map[int]EventFunc),
+		shortcutFuncs:            make(map[string]ShortcutFunc),
+		rendererFuncs:            make(map[string]RendererFunc),
+		entryRendererFuncs:       make(map[string]EntryRendererFunc),
+		messageViewRendererFuncs: make(map[string]MessageViewRendererFunc),
+		entryViewRendererFuncs:   make(map[string]EntryViewRendererFunc),
+		flagDefaults:             make(map[string]any),
+		requests:                 make(map[string]context.CancelFunc),
+		modelStreams:             make(map[string]*ModelEventStream),
+		modelStreamCallbacks:     make(map[string]*modelStreamCallbacks),
+		overlays:                 make(map[string]*remoteOverlay),
+		virtualModelRoutes:       make(map[virtualModelKey]ModelRouteFunc),
+		toolLoadoutFuncs:         make(map[string]ToolPrepareLoadoutFunc),
+		executeUpdates:           make(map[string]func(AgentToolResult)),
 	}
 }
 
@@ -724,15 +898,19 @@ func (e *Extension) dropQueuedProvider(name string) {
 	e.providers = filtered
 }
 
-// MessageRenderer registers a custom message renderer.
+// MessageRenderer registers a custom message renderer. It replaces a
+// [Extension.MessageViewRenderer] for customType.
 func (e *Extension) MessageRenderer(customType string, handler RendererFunc) {
 	e.renderers = append(e.renderers, rendererDef{CustomType: customType})
+	delete(e.messageViewRendererFuncs, customType)
 	e.rendererFuncs[customType] = handler
 }
 
-// EntryRenderer registers a custom session-entry renderer.
+// EntryRenderer registers a custom session-entry renderer. It replaces an
+// [Extension.EntryViewRenderer] for customType.
 func (e *Extension) EntryRenderer(customType string, handler EntryRendererFunc) {
 	e.entryRenderers = append(e.entryRenderers, rendererDef{CustomType: customType})
+	delete(e.entryViewRendererFuncs, customType)
 	e.entryRendererFuncs[customType] = handler
 }
 
@@ -1070,6 +1248,9 @@ func (e *Extension) handleArmedRequest(id string, req *requestMsg, ctx Context) 
 	case "provider_operation":
 		result, err := e.dispatchProviderOperation(ctx, req)
 		_ = e.conn.respond(id, result, err)
+	case requestUserBashExec:
+		result, err := e.dispatchUserBashExec(ctx, id, req)
+		_ = e.conn.respond(id, result, err)
 	case "provider_call", "provider_stream", "provider_sync":
 		result, err := e.dispatchProviderObject(ctx, req)
 		_ = e.conn.respond(id, result, err)
@@ -1140,6 +1321,9 @@ func (e *Extension) handleArmedRequest(id string, req *requestMsg, ctx Context) 
 	case requestWithSession:
 		_ = e.conn.respond(id, nil, e.dispatchWithSession(ctx, req.Args))
 
+	case requestSetup:
+		_ = e.conn.respond(id, nil, e.dispatchSetup(ctx, req.Args))
+
 	case "command":
 		handler, ok := e.commandFuncs[req.Tool]
 		if !ok {
@@ -1186,7 +1370,7 @@ func (e *Extension) handleArmedRequest(id string, req *requestMsg, ctx Context) 
 		snapshot := snapshotContextMessages(req.Event, data)
 		result, err := handler(ctx, data)
 		if req.Event == "user_bash" && err == nil {
-			result, err = userBashEventResult(result)
+			result, err = e.userBashEventResult(result)
 		}
 		if snapshot != nil && err == nil {
 			result = contextEventResult(data, snapshot, result)
@@ -1222,7 +1406,8 @@ func (e *Extension) handleArmedRequest(id string, req *requestMsg, ctx Context) 
 
 	case "render_message":
 		handler, ok := e.rendererFuncs[req.Tool]
-		if !ok {
+		viewHandler, viewOK := e.messageViewRendererFuncs[req.Tool]
+		if !ok && !viewOK {
 			_ = e.conn.respond(id, nil, fmt.Errorf("unknown renderer: %s", req.Tool))
 			return
 		}
@@ -1234,12 +1419,18 @@ func (e *Extension) handleArmedRequest(id string, req *requestMsg, ctx Context) 
 		if len(req.Args) > 0 {
 			_ = json.Unmarshal(req.Args, &payload)
 		}
+		if viewOK {
+			view, err := viewHandler(ctx, payload.Message, payload.Options, payload.Width)
+			e.respondView(id, view, err)
+			return
+		}
 		lines, err := handler(ctx, payload.Message, payload.Options, payload.Width)
 		_ = e.conn.respond(id, map[string]any{"lines": lines}, err)
 
 	case "render_entry":
 		handler, ok := e.entryRendererFuncs[req.Tool]
-		if !ok {
+		viewHandler, viewOK := e.entryViewRendererFuncs[req.Tool]
+		if !ok && !viewOK {
 			_ = e.conn.respond(id, nil, fmt.Errorf("unknown entry renderer: %s", req.Tool))
 			return
 		}
@@ -1251,19 +1442,32 @@ func (e *Extension) handleArmedRequest(id string, req *requestMsg, ctx Context) 
 		if len(req.Args) > 0 {
 			_ = json.Unmarshal(req.Args, &payload)
 		}
+		if viewOK {
+			view, err := viewHandler(ctx, payload.Entry, payload.Options, payload.Width)
+			e.respondView(id, view, err)
+			return
+		}
 		lines, err := handler(ctx, payload.Entry, payload.Options, payload.Width)
 		_ = e.conn.respond(id, map[string]any{"lines": lines}, err)
 
 	case "markdown_transform":
 		_ = e.conn.respond(id, e.transformMarkdown(req.Args), nil)
 
+	case "model_stream_callback":
+		result, err := e.modelStreamCallback(ctx.ctx, req.Args)
+		_ = e.conn.respond(id, result, err)
+
 	case "command_argument_completions":
 		items, err := e.commandArgumentCompletions(req.Tool, req.Args)
 		_ = e.conn.respond(id, items, err)
 
 	case "render_tool":
-		lines, err := e.renderTool(ctx, req.Tool, req.Args)
-		_ = e.conn.respond(id, map[string]any{"lines": lines}, err)
+		rendered, err := e.renderTool(ctx, req.Tool, req.Args)
+		if rendered.view != nil {
+			e.respondView(id, *rendered.view, err)
+			return
+		}
+		_ = e.conn.respond(id, map[string]any{"lines": rendered.lines}, err)
 
 	case "resolve_tool_renderers":
 		resolved, err := e.resolveToolRenderers(req.Args)
@@ -1353,10 +1557,28 @@ func (e *Extension) handleNotifyAt(env envelope, seq uint64) {
 	switch env.Notify.Method {
 	case notifyRunSignal:
 		e.run.apply(env.Notify.Args)
+	case notifyInvalidate:
+		var payload struct {
+			Message string `json:"message"`
+		}
+		if json.Unmarshal(env.Notify.Args, &payload) == nil && payload.Message != "" {
+			e.stale.CompareAndSwap(nil, &payload.Message)
+		}
 	case notifyEventsRelease:
 		e.releaseEventListener(env.Notify.Args)
 	case "tool_render_release":
 		e.releaseToolRenderCard(env.Notify.Args)
+	case notifyBashOperationsRelease:
+		var release struct {
+			Handle string `json:"handle"`
+		}
+		if json.Unmarshal(env.Notify.Args, &release) == nil {
+			e.bashOperationsMu.Lock()
+			delete(e.bashOperations, release.Handle)
+			e.bashOperationsMu.Unlock()
+		}
+	case "provider_superseded":
+		// Another extension registered this provider after this one. Pi keeps one effective registration per provider and merges a later registration's defined values over it (model-runtime.ts:921-940), and this SDK's registration is a snapshot no other process merges, so the host's merged registration keeps calling this extension for every streamSimple, image, classifier and OAuth callback the later registration did not redefine. The extension therefore keeps them; unregisterProvider and teardown release them.
 	case "provider_release":
 		var release struct {
 			Key string `json:"key"`
@@ -1397,7 +1619,10 @@ func (e *Extension) handleNotifyAt(env envelope, seq uint64) {
 	case "state_update":
 		var payload struct {
 			State struct {
-				HasUI      *bool           `json:"hasUI"`
+				HasUI *bool `json:"hasUI"`
+				// Frontend is omitted by the host while false, and every
+				// state is a full snapshot, so an absent value clears it.
+				Frontend   bool            `json:"frontend"`
 				Model      map[string]any  `json:"model"`
 				Session    json.RawMessage `json:"session"`
 				Theme      json.RawMessage `json:"theme"`
@@ -1422,6 +1647,7 @@ func (e *Extension) handleNotifyAt(env envelope, seq uint64) {
 		if payload.State.HasUI != nil {
 			e.hasUI = *payload.State.HasUI
 		}
+		e.frontend = payload.State.Frontend
 		if sessionState.SessionFile != "" {
 			e.sessionFile = sessionState.SessionFile
 		}
@@ -1477,6 +1703,7 @@ func (e *Extension) handleNotifyAt(env envelope, seq uint64) {
 			e.mu.Unlock()
 			e.notifyWidthChange(payload.Width)
 			e.refreshSurfaces()
+			e.refreshEditor()
 			e.overlaysMu.RLock()
 			overlays := make(map[string]*remoteOverlay, len(e.overlays))
 			maps.Copy(overlays, e.overlays)
@@ -1497,10 +1724,12 @@ func (e *Extension) handleNotifyAt(env envelope, seq uint64) {
 			e.height = payload.Height
 			e.mu.Unlock()
 		}
-	case "ui.custom.input":
+	case "ui.editor.input", "ui.editor.mouse", "ui.editor.setText", "ui.editor.insertText", "ui.editor.addToHistory", "ui.editor.configure", "ui.editor.closed":
+		e.handleEditorNotify(env.Notify.Method, env.Notify.Args)
+	case "ui.custom.opened":
 		var payload struct {
-			Key  string `json:"key"`
-			Data string `json:"data"`
+			Key string `json:"key"`
+			overlayHandleState
 		}
 		if err := json.Unmarshal(env.Notify.Args, &payload); err != nil || payload.Key == "" {
 			return
@@ -1509,8 +1738,44 @@ func (e *Extension) handleNotifyAt(env envelope, seq uint64) {
 		overlay := e.overlays[payload.Key]
 		e.overlaysMu.RUnlock()
 		if overlay != nil {
-			overlay.enqueueInput(e.conn, payload.Key, payload.Data)
+			overlay.enqueue(e.conn, payload.Key, overlayMessage{opened: &payload.overlayHandleState})
 		}
+	case "ui.custom.input":
+		var payload struct {
+			Key   string              `json:"key"`
+			Data  string              `json:"data"`
+			State *overlayHandleState `json:"state"`
+		}
+		if err := json.Unmarshal(env.Notify.Args, &payload); err != nil || payload.Key == "" {
+			return
+		}
+		e.overlaysMu.RLock()
+		overlay := e.overlays[payload.Key]
+		e.overlaysMu.RUnlock()
+		if overlay != nil {
+			if payload.State != nil {
+				overlay.applyHandleState(*payload.State)
+			}
+			overlay.enqueue(e.conn, payload.Key, overlayMessage{data: payload.Data})
+		}
+	case notifyUICustomMouse:
+		var payload struct {
+			Key   string     `json:"key"`
+			Event MouseEvent `json:"event"`
+		}
+		if err := json.Unmarshal(env.Notify.Args, &payload); err != nil || payload.Key == "" {
+			return
+		}
+		e.overlaysMu.RLock()
+		overlay := e.overlays[payload.Key]
+		e.overlaysMu.RUnlock()
+		if overlay != nil {
+			overlay.enqueue(e.conn, payload.Key, overlayMessage{mouse: &payload.Event})
+		}
+	case notifyUIViewEvent:
+		e.viewEvent(env.Notify.Args)
+	case notifyUIViewEvicted:
+		e.viewImagesEvicted(env.Notify.Args)
 	}
 }
 
@@ -1615,6 +1880,15 @@ type ToolResult struct {
 type ImageContent struct {
 	Data     string `json:"data"`
 	MimeType string `json:"mimeType"`
+}
+
+// MarshalJSON writes the image block with its type, as upstream's ImageContent carries it.
+func (c ImageContent) MarshalJSON() ([]byte, error) {
+	return json.Marshal(struct {
+		Type     string `json:"type"`
+		Data     string `json:"data"`
+		MimeType string `json:"mimeType"`
+	}{"image", c.Data, c.MimeType})
 }
 
 // MarshalJSON writes the wire tool result. Content stays a string unless the

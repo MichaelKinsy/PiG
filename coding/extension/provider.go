@@ -2,6 +2,7 @@ package extension
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 
 	"github.com/MichaelKinsy/PiG/ai"
@@ -21,6 +22,10 @@ type ProviderConfig struct {
 	APIKey       string               `json:"apiKey,omitempty"`
 	API          ai.API               `json:"api,omitempty"`
 	StreamSimple ProviderStreamSimple `json:"-"`
+	// RefreshModels refreshes this provider's model list; the returned models replace the extension-provided models. A
+	// callback publishes a persisted catalog through context.Publish. Ports ProviderConfig.refreshModels
+	// (core/extensions/types.ts:1930).
+	RefreshModels func(context RefreshModelsContext) ([]ProviderModelConfig, error) `json:"-"`
 	// Images are the image-generation implementations keyed by image API.
 	// upstream: types.ts:1896 (ProviderConfig.images)
 	Images map[ai.ImageAPI]*ai.ProviderImages `json:"-"`
@@ -37,6 +42,10 @@ type ProviderConfig struct {
 	// pig additive (D36): additive optional field; no upstream per-provider TLS-skip.
 	Insecure bool `json:"insecure,omitempty"`
 }
+
+// RefreshModelsContext is the context a RefreshModels callback receives: the credential and stored catalog, whether the
+// network may be used, the cancellation signal and Publish for persisting a refreshed catalog.
+type RefreshModelsContext = ai.RefreshModelsContext
 
 // ProviderStreamSimple mirrors upstream's optional streamSimple callback. The
 // callback's model, request context, options, and event stream remain opaque at
@@ -251,9 +260,12 @@ type ProviderModelCost struct {
 type ProviderOAuth struct {
 	Name string `json:"name"`
 	// IsSubscription marks access through this OAuth method as subscription-backed.
-	IsSubscription bool                                                          `json:"isSubscription,omitempty"`
-	Login          func(callbacks OAuthLoginCallbacks) (OAuthCredentials, error) `json:"-"`
-	RefreshToken   func(creds OAuthCredentials) (OAuthCredentials, error)        `json:"-"`
-	GetAPIKey      func(creds OAuthCredentials) string                           `json:"-"`
-	ModifyModels   func(models []Model, creds OAuthCredentials) []Model          `json:"-"`
+	IsSubscription bool `json:"isSubscription,omitempty"`
+	// UsesCallbackServer is retained for source compatibility; canonical auth flows ignore it (types.ts:1937-1938).
+	UsesCallbackServer bool                                                          `json:"usesCallbackServer,omitempty"`
+	Login              func(callbacks OAuthLoginCallbacks) (OAuthCredentials, error) `json:"-"`
+	// RefreshToken refreshes expired credentials; ctx is the refresh's AbortSignal (types.ts:1944 refreshToken(credentials, signal)).
+	RefreshToken func(ctx context.Context, creds OAuthCredentials) (OAuthCredentials, error) `json:"-"`
+	GetAPIKey    func(creds OAuthCredentials) string                                         `json:"-"`
+	ModifyModels func(models []Model, creds OAuthCredentials) []Model                        `json:"-"`
 }

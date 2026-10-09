@@ -1,0 +1,112 @@
+[
+ {
+  "ids": [
+   "pkg:tui/.#OverlayHandle"
+  ],
+  "targets": [
+   "tui/tui.go#OverlayHandle"
+  ],
+  "production": [
+   "call:internal/codingagent/custom_overlay_control.go#ExtUIContext.bindOverlayControls"
+  ],
+  "evidence": [
+   "test:tui/overlay_handle_exported_test.go#TestOverlayHandleExportedMethodsToggleFocusAndVisibility",
+   "test:tui/overlay_non_capturing_upstream_test.go#TestUpstreamOverlayNonCapturing"
+  ],
+  "rationale": "OverlayHandle is the Go struct OverlayHandle; every member is mapped individually.",
+  "properties": {
+   "focus": {
+    "targets": [
+     "tui/tui.go#OverlayHandle.Focus"
+    ],
+    "evidence": [
+     "test:tui/overlay_handle_exported_test.go#TestOverlayHandleExportedMethodsToggleFocusAndVisibility",
+     "test:tui/overlay_non_capturing_upstream_test.go#TestUpstreamOverlayNonCapturing"
+    ],
+    "production": [
+     "call:internal/codingagent/custom_overlay_control.go#ExtUIContext.bindOverlayControls"
+    ],
+    "rationale": "OverlayHandle.focus() is the exported method Focus()."
+   },
+   "isFocused": {
+    "targets": [
+     "tui/tui.go#OverlayHandle.IsFocused"
+    ],
+    "evidence": [
+     "test:tui/overlay_handle_exported_test.go#TestOverlayHandleExportedMethodsToggleFocusAndVisibility",
+     "test:tui/overlay_non_capturing_upstream_test.go#TestUpstreamOverlayNonCapturing"
+    ],
+    "production": [
+     "call:internal/codingagent/custom_overlay_control.go#ExtUIContext.bindOverlayControls"
+    ],
+    "rationale": "isFocused() is IsFocused()."
+   },
+   "isHidden": {
+    "targets": [
+     "tui/tui.go#OverlayHandle.IsHidden"
+    ],
+    "evidence": [
+     "test:tui/overlay_handle_exported_test.go#TestOverlayHandleExportedMethodsToggleFocusAndVisibility",
+     "test:tui/overlay_state_test.go#TestOverlayHiddenStateIsReversibleAndDistinctFromRemoval"
+    ],
+    "production": [
+     "call:internal/codingagent/custom_overlay_control.go#ExtUIContext.bindOverlayControls"
+    ],
+    "rationale": "isHidden() is IsHidden()."
+   },
+   "setHidden": {
+    "targets": [
+     "tui/tui.go#OverlayHandle.SetHidden"
+    ],
+    "evidence": [
+     "test:tui/overlay_handle_exported_test.go#TestOverlayHandleExportedMethodsToggleFocusAndVisibility",
+     "test:tui/overlay_non_capturing_upstream_test.go#TestUpstreamOverlayNonCapturing"
+    ],
+    "production": [
+     "call:internal/codingagent/custom_overlay_control.go#ExtUIContext.bindOverlayControls"
+    ],
+    "rationale": "setHidden(hidden) is SetHidden(hidden)."
+   },
+   "unfocus": {
+    "targets": [
+     "tui/tui.go#OverlayHandle.Unfocus",
+     "tui/tui.go#OverlayHandle.UnfocusWith"
+    ],
+    "evidence": [
+     "test:tui/overlay_handle_exported_test.go#TestOverlayHandleExportedMethodsToggleFocusAndVisibility",
+     "test:tui/overlay_non_capturing_upstream_test.go#TestUpstreamOverlayNonCapturing",
+     "test:internal/codingagent/custom_overlay_control_test.go#TestRemoteOverlayUnfocusExplicitTargetMatchesPi"
+    ],
+    "production": [
+     "call:internal/codingagent/custom_overlay_control.go#ExtUIContext.bindOverlayControls"
+    ],
+    "rationale": "unfocus(options?) is the pair Unfocus() and UnfocusWith(OverlayUnfocusOptions): Go has no optional argument, so the optional options object gets its own method."
+   },
+   "getBounds": {
+    "targets": [
+     "tui/tui.go#OverlayHandle.GetBounds"
+    ],
+    "evidence": [
+     "test:tui/mouse_test.go#TestOverlayBoundsAndMouseHitTesting"
+    ],
+    "production": [
+     "call:internal/codingagent/custom_overlay_control.go#ExtUIContext.bindOverlayControls"
+    ],
+    "rationale": "OverlayHandle.getBounds is the Go method OverlayHandle.GetBounds; signature reviewed against the upstream declaration; callers and tests attributed by go/types (methodrefs)."
+   },
+   "hide": {
+    "targets": [
+     "tui/tui.go#OverlayHandle.Hide"
+    ],
+    "evidence": [
+     "test:internal/codingagent/pig_egg3d_test.go#TestPig3dPlaysOnlyInFullscreen",
+     "test:internal/codingagent/pig_logo_animation_test.go#TestHeaderPigClickIgnoredWhileAnOverlayOrTheAnimationIsOpen"
+    ],
+    "production": [
+     "call:internal/codingagent/custom_overlay_control.go#ExtUIContext.bindOverlayControls"
+    ],
+    "rationale": "OverlayHandle.hide is the Go method OverlayHandle.Hide; signature reviewed against the upstream declaration; callers and tests attributed by go/types (methodrefs)."
+   }
+  }
+ }
+]

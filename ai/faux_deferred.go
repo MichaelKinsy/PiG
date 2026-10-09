@@ -6,8 +6,6 @@ import (
 	"context"
 	"fmt"
 	"math"
-	"math/rand/v2"
-	"time"
 )
 
 type FauxDeferredConfig struct {
@@ -26,26 +24,18 @@ type fauxDeferredResponse struct {
 }
 
 // Provider exposes the model-aware provider definition for an explicit Models collection.
-func (p *fauxProvider) Provider() *ModelsProvider { return p.definition }
-func (p *fauxProvider) DeferredFetchCount() int   { return int(p.state.DeferredFetchCount.Load()) }
-func (p *fauxProvider) CancelledDeferred() []DeferredHandle {
-	p.mu.Lock()
-	defer p.mu.Unlock()
-	result := make([]DeferredHandle, len(p.cancelledDeferred))
-	for i, handle := range p.cancelledDeferred {
-		result[i] = *cloneDeferredHandle(&handle)
-	}
-	return result
-}
-func (p *fauxProvider) makeDefinition() *ModelsProvider {
+func (p *FauxProviderHandle) Provider() *ModelsProvider           { return p.definition }
+func (p *FauxProviderHandle) DeferredFetchCount() int             { return p.state.DeferredFetchCount() }
+func (p *FauxProviderHandle) CancelledDeferred() []DeferredHandle { return p.state.CancelledDeferred() }
+func (p *FauxProviderHandle) makeDefinition() *ModelsProvider {
 	stream := func(ctx context.Context, model *Model, transcript TranscriptContext, options StreamOptions) (*AssistantMessageEventStream, error) {
 		return p.streamModel(ctx, model, transcript, options)
 	}
 	return CreateProvider(CreateProviderOptions{ID: p.ID(), Auth: ProviderAuth{APIKey: &APIKeyAuth{Name: "Faux", Resolve: func(context.Context, APIKeyAuthInput) (*AuthResult, error) { return &AuthResult{}, nil }}}, Models: AnyModels(p.models), API: &ProviderStreams{Stream: stream, StreamSimple: stream, FetchDeferred: p.fetchDeferred, CancelDeferred: p.cancelDeferred}})
 }
 
-func (p *fauxProvider) submitDeferred(model *Model, request TranscriptContext, options StreamOptions, step FauxResponseStep) DeferredHandle {
-	handle := DeferredHandle{Provider: modelProviderID(model), ModelID: model.ID, API: model.ProviderMeta.API, ID: fmt.Sprintf("deferred:%d:%d", time.Now().UnixNano(), rand.Uint64())}
+func (p *FauxProviderHandle) submitDeferred(model *Model, request TranscriptContext, options StreamOptions, step FauxResponseStep) DeferredHandle {
+	handle := DeferredHandle{Provider: modelProviderID(model), ModelID: model.ID, API: model.ProviderMeta.API, ID: fauxRandomID("deferred")}
 	pending := 0.0
 	if p.cfg.Deferred != nil {
 		pending = math.Max(0, math.Floor(p.cfg.Deferred.PendingFetches))
@@ -60,8 +50,8 @@ func (p *fauxProvider) submitDeferred(model *Model, request TranscriptContext, o
 }
 
 // fetchDeferred ports faux.ts:fetchDeferred. As in stream, the response body is one microtask-started async function; its awaits are turn suspensions in source order.
-func (p *fauxProvider) fetchDeferred(ctx context.Context, model *Model, handle DeferredHandle, options DeferredFetchOptions) (*AssistantMessageEventStream, error) {
-	p.state.DeferredFetchCount.Add(1)
+func (p *FauxProviderHandle) fetchDeferred(ctx context.Context, model *Model, handle DeferredHandle, options DeferredFetchOptions) (*AssistantMessageEventStream, error) {
+	p.state.deferredFetchCount.Add(1)
 	options.Deferred = nil
 	builder := newObservedProviderBuilder(ctx, p.cfg.API, p.cfg.ProviderID, model.ID)
 	builder.partialCopy = (*AssistantMessage).ShallowCopy
@@ -121,9 +111,9 @@ func (p *fauxProvider) fetchDeferred(ctx context.Context, model *Model, handle D
 	return builder.stream, nil
 }
 
-func (p *fauxProvider) cancelDeferred(ctx context.Context, model *Model, handle DeferredHandle, options DeferredCancelOptions) error {
+func (p *FauxProviderHandle) cancelDeferred(ctx context.Context, model *Model, handle DeferredHandle, options DeferredCancelOptions) error {
+	p.state.recordCancelledDeferred(handle)
 	p.mu.Lock()
-	p.cancelledDeferred = append(p.cancelledDeferred, *cloneDeferredHandle(&handle))
 	if entry := p.deferredResponses[handle.ID]; entry != nil {
 		entry.cancelled = true
 	}

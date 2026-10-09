@@ -1,0 +1,82 @@
+[
+ {
+  "ids": [
+   "pkg:coding-agent/.#MarkdownTransformer"
+  ],
+  "targets": [
+   "coding/extension/renderer.go#MarkdownTransformer"
+  ],
+  "production": [
+   "call:coding/extension/markdowntransform/markdowntransform.go#ApplyMarkdownTransformers"
+  ],
+  "evidence": [
+   "test:coding/extension/host/inproc/upstream_markdown_collection_test.go#TestRunnerMarkdownTransformerCollectionOrder",
+   "test:internal/codingagent/markdown_transform_async_test.go#TestMarkdownTransformFirstPaintWaitsForWholeChain"
+  ],
+  "rationale": "MarkdownTransformer: Go func(markdown string, MarkdownTransformContext) string; applyMarkdownTransformers runs the chain in order."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#MessageRenderer"
+  ],
+  "targets": [
+   "coding/extension/renderer.go#MessageRenderer"
+  ],
+  "production": [
+   "call:internal/codingagent/interactive_transcript.go#InteractiveMode.appendCustomMessage"
+  ],
+  "evidence": [
+   "test:internal/codingagent/custom_message_renderer_test.go#TestCustomMessageUsesRegisteredProductionRenderer",
+   "test:internal/codingagent/custom_message_renderer_test.go#TestCustomMessageFallsBackWhenRendererReturnsNonComponent",
+   "test:coding/extension/host/inproc/renderer_test.go#TestMessageRenderer_FirstMatchWins"
+  ],
+  "rationale": "MessageRenderer: Go func(CustomMessage, MessageRenderOptions, Theme) Component with the same three parameters; undefined is a nil Component, which the chat treats as no renderer."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#EntryRenderer"
+  ],
+  "targets": [
+   "coding/extension/renderer.go#EntryRenderer"
+  ],
+  "production": [
+   "call:internal/codingagent/interactive_transcript.go#InteractiveMode.addCustomEntryToChat"
+  ],
+  "evidence": [
+   "test:internal/codingagent/custom_entry_renderer_test.go#TestCustomEntryUsesRegisteredEntryRenderer",
+   "test:internal/codingagent/custom_entry_renderer_test.go#TestCustomEntryNotRenderedWithoutRenderer"
+  ],
+  "rationale": "EntryRenderer: Go func(CustomEntry, EntryRenderOptions, Theme) Component; undefined is a nil Component and the entry is then not rendered."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#ToolRendererResolver"
+  ],
+  "targets": [
+   "coding/extension/tool.go#ToolRendererResolver"
+  ],
+  "production": [
+   "call:coding/extension/host/inproc/runner.go#Runner.ResolveToolRenderers"
+  ],
+  "evidence": [
+   "test:coding/extension/host/inproc/upstream_tool_renderers_test.go#TestUpstreamRunnerResolvesToolRenderersInExtensionLoadOrderEachAbleToDeferToTheNext"
+  ],
+  "rationale": "ToolRendererResolver: Go func(toolName, next func() *ToolRenderers) *ToolRenderers; undefined is nil; resolvers chain in extension load order, each able to defer to next."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#TerminalInputHandler"
+  ],
+  "targets": [
+   "coding/extension/opaque_types.go#TerminalInputHandler"
+  ],
+  "production": [
+   "call:internal/codingagent/interactive_helpers.go#InteractiveMode.addTerminalInputHandler"
+  ],
+  "evidence": [
+   "test:coding/extension/host/subprocess/terminal_input_test.go#TestTerminalInputConsumeRoundTrip",
+   "test:coding/extension/host/subprocess/terminal_input_test.go#TestTerminalInputCarriesDataRewrite"
+  ],
+  "rationale": "TerminalInputHandler: Go func(data string) TerminalInputResult; the result carries consume and an optional data rewrite (nil Data leaves the input unchanged, as an absent field does)."
+ }
+]

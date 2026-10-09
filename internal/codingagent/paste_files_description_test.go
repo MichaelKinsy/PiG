@@ -23,7 +23,7 @@ func TestPasteActionDescriptionNamesFilesOnMacOS(t *testing.T) {
 }
 
 func TestHotkeysTableNamesFilesOnMacOS(t *testing.T) {
-	if got := hotkeysMarkdown(); !strings.Contains(got, "| "+pasteActionDescription+" |") {
+	if got := hotkeysMarkdown(nil); !strings.Contains(got, "| "+pasteActionDescription+" |") {
 		t.Fatalf("the /hotkeys table has no %q row:\n%s", pasteActionDescription, got)
 	}
 }

@@ -397,9 +397,6 @@ func TestProtocol_RegisterRoundTrip(t *testing.T) {
 			Handlers: []HandlerDecl{
 				{Event: "session_start", CanBlock: false, HandlerID: 7},
 			},
-			Widgets: []WidgetDecl{
-				{Key: "subagent-status"},
-			},
 		},
 	}
 
@@ -505,6 +502,7 @@ func TestResolveSocketDir_WindowsUsesSystemTemp(t *testing.T) {
 
 // ── Host buildExtension tests ────────────────────────────────────────────────
 
+// Pi: packages/coding-agent/src/core/extensions/types.ts:626 (ToolDefinition.executionMode).
 func TestHost_BuildExtension_Tools(t *testing.T) {
 	h := NewHost("/tmp/test")
 	me := &managedExt{

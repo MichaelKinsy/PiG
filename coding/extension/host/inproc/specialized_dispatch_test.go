@@ -4,9 +4,11 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"strings"
 	"sync/atomic"
 	"testing"
 
+	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/coding/extension/host/inproc"
 )
@@ -48,7 +50,7 @@ func extWithResourcesDiscoverHandler(path string, fn func(extension.ResourcesDis
 func TestEmitBeforeAgentStart_StaleRunnerReturnsErrStaleContext(t *testing.T) {
 	r := inproc.NewRunner(nil, ".")
 	r.Invalidate("")
-	_, err := r.EmitBeforeAgentStart(context.Background(), "p", nil, "sp", extension.BuildSystemPromptOptions{})
+	_, err := r.EmitBeforeAgentStart(context.Background(), "p", nil, extension.BuildSystemPromptOptions{})
 	if !errors.Is(err, extension.ErrStaleContext) {
 		t.Errorf("err = %v, want ErrStaleContext", err)
 	}
@@ -56,7 +58,7 @@ func TestEmitBeforeAgentStart_StaleRunnerReturnsErrStaleContext(t *testing.T) {
 
 func TestEmitBeforeAgentStart_NoHandlersReturnsNil(t *testing.T) {
 	r := inproc.NewRunner(nil, ".")
-	got, err := r.EmitBeforeAgentStart(context.Background(), "p", nil, "sp", extension.BuildSystemPromptOptions{})
+	got, err := r.EmitBeforeAgentStart(context.Background(), "p", nil, extension.BuildSystemPromptOptions{})
 	if err != nil || got != nil {
 		t.Errorf("got=(%v, %v), want (nil, nil)", got, err)
 	}
@@ -68,7 +70,7 @@ func TestEmitBeforeAgentStart_TypedNilHandlerResultReturnsNil(t *testing.T) {
 		return (*extension.BeforeAgentStartEventResult)(nil), nil
 	}}
 	r := inproc.NewRunner([]extension.Extension{ext}, ".")
-	got, err := r.EmitBeforeAgentStart(context.Background(), "p", nil, "sp", extension.BuildSystemPromptOptions{})
+	got, err := r.EmitBeforeAgentStart(context.Background(), "p", nil, extension.BuildSystemPromptOptions{})
 	if err != nil || got != nil {
 		t.Fatalf("got=(%v, %v), want (nil, nil)", got, err)
 	}
@@ -84,7 +86,7 @@ func TestEmitBeforeAgentStart_NoOpHandlersReturnsNil(t *testing.T) {
 		}),
 	}
 	r := inproc.NewRunner(exts, ".")
-	got, err := r.EmitBeforeAgentStart(context.Background(), "p", nil, "sp", extension.BuildSystemPromptOptions{})
+	got, err := r.EmitBeforeAgentStart(context.Background(), "p", nil, extension.BuildSystemPromptOptions{})
 	if err != nil {
 		t.Fatalf("err = %v", err)
 	}
@@ -105,7 +107,7 @@ func TestEmitBeforeAgentStart_MessagesAccumulate(t *testing.T) {
 		}),
 	}
 	r := inproc.NewRunner(exts, ".")
-	got, err := r.EmitBeforeAgentStart(context.Background(), "p", nil, "sp", extension.BuildSystemPromptOptions{})
+	got, err := r.EmitBeforeAgentStart(context.Background(), "p", nil, extension.BuildSystemPromptOptions{})
 	if err != nil {
 		t.Fatalf("err = %v", err)
 	}
@@ -141,7 +143,7 @@ func TestEmitBeforeAgentStart_SystemPromptChainCompounds(t *testing.T) {
 		}),
 	}
 	r := inproc.NewRunner(exts, ".")
-	got, err := r.EmitBeforeAgentStart(context.Background(), "p", nil, "original-sp", extension.BuildSystemPromptOptions{})
+	got, err := r.EmitBeforeAgentStart(context.Background(), "p", nil, extension.BuildSystemPromptOptions{})
 	if err != nil {
 		t.Fatalf("err = %v", err)
 	}
@@ -191,11 +193,12 @@ func TestEmitBeforeAgentStart_GetSystemPromptTracksChainedValue(t *testing.T) {
 		}),
 	}
 	r := inproc.NewRunner(exts, ".")
-	if _, err := r.EmitBeforeAgentStart(context.Background(), "p", nil, "original-sp", extension.BuildSystemPromptOptions{}); err != nil {
+	// runner.ts:1426: the first prompt is rendered from the options (a custom prompt replaces the default preamble).
+	if _, err := r.EmitBeforeAgentStart(context.Background(), "p", nil, extension.BuildSystemPromptOptions{CustomPrompt: "original-sp"}); err != nil {
 		t.Fatalf("err = %v", err)
 	}
-	if aSaw != "original-sp" {
-		t.Errorf("handler A GetSystemPrompt() = %q, want original-sp", aSaw)
+	if !strings.HasPrefix(aSaw, "original-sp") {
+		t.Errorf("handler A GetSystemPrompt() = %q, want the prompt rendered from the options (original-sp...)", aSaw)
 	}
 	if bSaw != "rewritten-by-a" {
 		t.Errorf("handler B GetSystemPrompt() = %q, want rewritten-by-a", bSaw)
@@ -225,7 +228,7 @@ func TestEmitBeforeAgentStart_HandlerErrorRoutesViaEmitErrorAndContinues(t *test
 			captured.Add(1)
 		}
 	})
-	if _, err := r.EmitBeforeAgentStart(context.Background(), "p", nil, "sp", extension.BuildSystemPromptOptions{}); err != nil {
+	if _, err := r.EmitBeforeAgentStart(context.Background(), "p", nil, extension.BuildSystemPromptOptions{}); err != nil {
 		t.Fatalf("err = %v", err)
 	}
 	if captured.Load() != 1 {
@@ -321,6 +324,7 @@ func TestEmitResourcesDiscover_AggregatesPathsWithExtensionAttribution(t *testin
 
 // TestEmitResourcesDiscover_EventCwdAndReasonPropagate: handler sees
 // the cwd and reason passed to the runner.
+// Pi: packages/coding-agent/src/core/extensions/types.ts:706 (ResourcesDiscoverEvent.cwd); packages/coding-agent/src/core/extensions/types.ts:707 (ResourcesDiscoverEvent.reason).
 func TestEmitResourcesDiscover_EventCwdAndReasonPropagate(t *testing.T) {
 	var seenCwd, seenReason string
 	exts := []extension.Extension{
@@ -382,11 +386,74 @@ func TestEmitBeforeAgentStart_EmptySystemPromptReplaces(t *testing.T) {
 		return json.RawMessage(`{"systemPrompt":""}`), nil
 	}}
 	r := inproc.NewRunner([]extension.Extension{ext}, ".")
-	got, err := r.EmitBeforeAgentStart(context.Background(), "hi", nil, "original", extension.BuildSystemPromptOptions{})
+	got, err := r.EmitBeforeAgentStart(context.Background(), "hi", nil, extension.BuildSystemPromptOptions{})
 	if err != nil {
 		t.Fatal(err)
 	}
 	if got == nil || got.SystemPrompt == nil || *got.SystemPrompt != "" {
 		t.Fatalf("got = %+v, want an empty replacement system prompt", got)
+	}
+}
+
+// upstream: runner.ts:1426-1445 renderCurrentSystemPrompt = buildSystemPrompt(currentOptions). The prompt a handler's event carries and the one
+// ctx.getSystemPrompt() returns are rendered from the shared per-run options, so an edit to those options (here a changed customPrompt) reaches
+// the next read, and there is no separate system-prompt parameter.
+func TestEmitBeforeAgentStart_SystemPromptIsRenderedFromTheSharedOptions(t *testing.T) {
+	var eventSaw, beforeEdit, afterEdit, nextHandlerSaw string
+	exts := []extension.Extension{
+		extWithBeforeAgentStartHandler("/ext/a", func(ev extension.BeforeAgentStartEvent, ctx context.Context) *extension.BeforeAgentStartEventResult {
+			eventSaw = ev.SystemPrompt
+			beforeEdit, _ = extension.FromContext(ctx).GetSystemPrompt()
+			extension.BeforeAgentStartOptions(ctx).CustomPrompt = "edited-base"
+			afterEdit, _ = extension.FromContext(ctx).GetSystemPrompt()
+			return nil
+		}),
+		extWithBeforeAgentStartHandler("/ext/b", func(ev extension.BeforeAgentStartEvent, _ context.Context) *extension.BeforeAgentStartEventResult {
+			nextHandlerSaw = ev.SystemPrompt
+			return nil
+		}),
+	}
+	r := inproc.NewRunner(exts, ".")
+	if _, err := r.EmitBeforeAgentStart(context.Background(), "p", nil, extension.BuildSystemPromptOptions{CustomPrompt: "original-base"}); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.HasPrefix(eventSaw, "original-base") || eventSaw != beforeEdit {
+		t.Errorf("event prompt %q and ctx prompt %q render the options (original-base...)", eventSaw, beforeEdit)
+	}
+	if !strings.HasPrefix(afterEdit, "edited-base") {
+		t.Errorf("ctx.getSystemPrompt() after an options edit = %q, want it re-rendered (edited-base...)", afterEdit)
+	}
+	if !strings.HasPrefix(nextHandlerSaw, "edited-base") {
+		t.Errorf("the next handler's event prompt = %q, want the edited options rendered", nextHandlerSaw)
+	}
+}
+
+// upstream: system-prompt.ts:203 buildSystemPromptState: a forced prompt is returned exactly, whatever the other options say; and an invalid custom
+// section makes the builder throw, which fails the handler (emitError) instead of reaching it with a stale prompt.
+func TestEmitBeforeAgentStart_ForcedPromptWinsAndInvalidSectionFailsTheHandler(t *testing.T) {
+	var saw string
+	ran := false
+	exts := []extension.Extension{extWithBeforeAgentStartHandler("/ext/a", func(ev extension.BeforeAgentStartEvent, _ context.Context) *extension.BeforeAgentStartEventResult {
+		saw, ran = ev.SystemPrompt, true
+		return nil
+	})}
+	r := inproc.NewRunner(exts, ".")
+	forced := "exactly this"
+	if _, err := r.EmitBeforeAgentStart(context.Background(), "p", nil, extension.BuildSystemPromptOptions{CustomPrompt: "ignored", ForceSystemPrompt: &forced}); err != nil {
+		t.Fatal(err)
+	}
+	if saw != forced {
+		t.Errorf("forced prompt = %q, want %q", saw, forced)
+	}
+
+	var reported []string
+	r.AddErrorListener(func(err *extension.ExtensionError) { reported = append(reported, err.Error) })
+	ran = false
+	sections := ai.OrderedSections{{Name: "preamble", Value: new("not allowed")}}
+	if _, err := r.EmitBeforeAgentStart(context.Background(), "p", nil, extension.BuildSystemPromptOptions{Sections: &sections}); err != nil {
+		t.Fatal(err)
+	}
+	if ran || len(reported) != 1 {
+		t.Errorf("an invalid section fails the handler: ran=%v reported=%v", ran, reported)
 	}
 }

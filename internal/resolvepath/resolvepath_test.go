@@ -1,5 +1,7 @@
 package resolvepath
 
+// pi: packages/coding-agent/src/utils/paths.ts
+
 import (
 	"os"
 	"path/filepath"

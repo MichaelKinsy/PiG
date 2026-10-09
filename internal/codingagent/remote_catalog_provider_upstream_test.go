@@ -205,7 +205,11 @@ func storedCatalogIDs(t *testing.T, store *ai.InMemoryModelsStore) []string {
 	}
 	for _, raw := range entry.Models {
 		var model struct{ ID string }
-		if err := json.Unmarshal(raw, &model); err != nil {
+		data, err := ai.EncodeStoredModel(raw)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := json.Unmarshal(data, &model); err != nil {
 			t.Fatal(err)
 		}
 		ids = append(ids, model.ID)

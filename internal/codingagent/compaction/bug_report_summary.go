@@ -41,14 +41,19 @@ const (
 
 // GenerateBugReportSummaryOptions configures GenerateBugReportSummary.
 type GenerateBugReportSummaryOptions struct {
-	Messages  []agent.AgentMessage
-	Hint      string
-	Model     *ai.Model
+	Messages []agent.AgentMessage
+	Hint     string
+	Model    *ai.Model
+	// APIKey, Headers and Env are the request auth for the model (bug-report.ts:319-321).
+	APIKey    string
+	Headers   map[string]string
+	Env       map[string]string
 	Completer SimpleCompleter
 	StreamFn  StreamFn
-	Retry     *RetryOptions
+	// Retry retries transient failures. Pi's bug report takes no retry callbacks, so its retries emit no summarization retry events (bug-report.ts:325, 364).
+	Retry *ai.RetryPolicy
 	// ThinkingLevel applies to reasoning-capable models.
-	ThinkingLevel ai.ThinkingLevel
+	ThinkingLevel ai.ModelThinkingLevel
 	// SessionID is the routing session ID forwarded without prompt caching.
 	SessionID string
 }
@@ -101,8 +106,8 @@ func GenerateBugReportSummary(ctx context.Context, opts GenerateBugReportSummary
 	if model.Capabilities.MaxOutputTokens > 0 {
 		maxTokens = min(maxTokens, model.Capabilities.MaxOutputTokens)
 	}
-	options := createSummarizationOptions(model, maxTokens, opts.ThinkingLevel, opts.SessionID)
-	text, _, err := completeSummarization(ctx, model, opts.Completer, opts.StreamFn, opts.Retry, bugSummarySystemPrompt, request, options)
+	options := createSummarizationOptions(model, maxTokens, opts.APIKey, opts.Headers, opts.Env, opts.ThinkingLevel, opts.SessionID)
+	text, _, err := completeSummarization(ctx, model, opts.Completer, opts.StreamFn, opts.Retry, ai.RetryCallbacks{}, bugSummarySystemPrompt, request, options)
 	if ctx.Err() != nil {
 		return "", errors.New("Bug report summary was cancelled")
 	}

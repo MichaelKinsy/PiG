@@ -5,6 +5,8 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/MichaelKinsy/PiG/ai"
+
 	"github.com/MichaelKinsy/PiG/coding/extension"
 )
 
@@ -57,6 +59,7 @@ func TestContext_NonUISurfaceSignatures(t *testing.T) {
 
 // TestContext_DefaultsMatchUpstream verifies the values returned before host
 // actions are bound.
+// Pi: packages/coding-agent/src/core/extensions/types.ts:338 (Context.model); packages/coding-agent/src/core/extensions/types.ts:356 (Context.hasPendingMessages); packages/coding-agent/src/core/extensions/types.ts:357 (Context.shutdown); packages/coding-agent/src/core/extensions/types.ts:362 (Context.compact).
 func TestContext_DefaultsMatchUpstream(t *testing.T) {
 	c := extension.NewContext(".", nil, func() error { return nil }, extension.ContextActions{})
 
@@ -124,6 +127,7 @@ func TestContext_DefaultsMatchUpstream(t *testing.T) {
 
 // TestContext_InjectedActionsForward verifies that Context delegates to every
 // configured host action.
+// Pi: packages/coding-agent/src/core/extensions/types.ts:2170 (ContextActions.getModel); packages/coding-agent/src/core/extensions/types.ts:2179 (ContextActions.compact).
 func TestContext_InjectedActionsForward(t *testing.T) {
 	var (
 		modelCalls   int
@@ -135,7 +139,7 @@ func TestContext_InjectedActionsForward(t *testing.T) {
 		compactArg   *extension.CompactOptions
 	)
 
-	customModel := struct{ name string }{name: "fake"}
+	customModel := &ai.Model{ID: "fake"}
 	customUsage := &extension.ContextUsage{ContextWindow: 200000}
 
 	actions := extension.ContextActions{

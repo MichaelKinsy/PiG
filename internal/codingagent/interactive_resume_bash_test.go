@@ -35,12 +35,12 @@ func resumedBashCases() []resumedBashCase {
 }
 
 // piResumedBashBlock is the block Pi's addMessageToChat builds for a persisted message.
-func piResumedBashBlock(message BashExecutionMessage) *tui.BashExecutionBlock {
-	block := tui.NewBashExecutionBlock(message.Command, message.ExcludeFromContext)
+func piResumedBashBlock(message BashExecutionMessage) *tui.BashExecutionComponent {
+	block := tui.NewBashExecutionComponent(message.Command, nil, message.ExcludeFromContext, 1)
 	if message.Output != "" {
 		block.AppendOutput(message.Output)
 	}
-	block.SetCompleteFullOutput(message.ExitCode, message.Cancelled, message.Truncated, message.FullOutputPath)
+	block.SetCompleteWithOutput(message.ExitCode, message.Cancelled, message.Truncated, block.GetOutput(), message.FullOutputPath)
 	return block
 }
 
@@ -73,7 +73,7 @@ func resumeBashModeFromFile(t *testing.T, dir, path string) *InteractiveMode {
 	}
 	var terminal bytes.Buffer
 	m := &InteractiveMode{
-		opts:          InteractiveOptions{SessionHandle: &recordingCompactHandle{inner: loaded}},
+		opts:          InteractiveModeOptions{SessionHandle: &recordingCompactHandle{inner: loaded}},
 		chatContainer: tui.NewContainer(),
 		tuiInst:       tui.NewWithOutput(&terminal, 80, 30),
 		toolByID:      make(map[string]*tui.ToolExecutionComponent),
@@ -84,10 +84,10 @@ func resumeBashModeFromFile(t *testing.T, dir, path string) *InteractiveMode {
 	return m
 }
 
-func chatBashBlocks(m *InteractiveMode) []*tui.BashExecutionBlock {
-	var blocks []*tui.BashExecutionBlock
+func chatBashBlocks(m *InteractiveMode) []*tui.BashExecutionComponent {
+	var blocks []*tui.BashExecutionComponent
 	for _, child := range m.chatContainer.Children() {
-		if block, ok := child.(*tui.BashExecutionBlock); ok {
+		if block, ok := child.(*tui.BashExecutionComponent); ok {
 			blocks = append(blocks, block)
 		}
 	}
@@ -175,7 +175,8 @@ func TestAgentMessageFallbackRendersBashExecutionBlock(t *testing.T) {
 		tuiInst:       tui.NewWithOutput(&bytes.Buffer{}, 80, 30),
 		toolByID:      make(map[string]*tui.ToolExecutionComponent),
 		toolStarts:    make(map[string]time.Time),
-		agent:         agent.NewAgent(agent.AgentOptions{}),
+		agent:         mustNewAgent(agent.AgentOptions{}),
+		outputPad:     int(OutputPadOne), // the Settings default a production InteractiveMode takes from GetOutputPad
 	}
 	m.tuiInst.Add(m.chatContainer)
 	m.agent.SetMessages([]agent.AgentMessage{{Custom: map[string]any{

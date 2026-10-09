@@ -30,17 +30,17 @@ func TestModelsFacetOnConcreteChordHost(t *testing.T) {
 	service, err := chord.Use(host.Services(), ModelsDefinition)
 	requireModelsOK(t, err)
 	checkModelsEqual(t, service.State().Value().Catalog.Revision, 1)
-	checkModelsEqual(t, service.State().Value().Configuration.ThinkingLevel, ai.ThinkingHigh)
+	checkModelsEqual(t, service.State().Value().Configuration.ThinkingLevel, ai.ModelThinkingLevel(ai.ThinkingHigh))
 	_, err = transport.Invoke(t.Context(), chord.ServiceCall{ServiceId: ModelsDefinition.Id(), Member: "selectThinking", Args: []json.RawMessage{json.RawMessage(`"low"`)}})
 	requireModelsOK(t, err)
-	checkModelsEqual(t, service.State().Value().Configuration.ThinkingLevel, ai.ThinkingLow)
+	checkModelsEqual(t, service.State().Value().Configuration.ThinkingLevel, ai.ModelThinkingLevel(ai.ThinkingLow))
 	if len(updates) != 1 || updates[0].Type != chord.UpdateState || updates[0].Member != "state" {
 		t.Fatalf("missing remote state update: %+v", updates)
 	}
 	// A change made by another client reaches the state through the document subscription.
-	other := ai.ThinkingMedium
+	other := ai.ModelThinkingLevel(ai.ThinkingMedium)
 	requireModelsOK(t, lane.Configure(t.Context(), ConversationConfiguration{ThinkingLevel: &other}))
-	checkModelsEqual(t, service.State().Value().Configuration.ThinkingLevel, ai.ThinkingMedium)
+	checkModelsEqual(t, service.State().Value().Configuration.ThinkingLevel, ai.ModelThinkingLevel(ai.ThinkingMedium))
 	requireModelsOK(t, subscription.Close(t.Context()))
 }
 
@@ -52,7 +52,7 @@ func TestModelsFacetConsumerRetainsGuardedServiceAcrossReload(t *testing.T) {
 	options := ModelsServiceFacetOptions{Conversation: lane, Agent: lane, ModelRuntime: runtime}
 	var ref *chord.ServiceRef[Models]
 	var service Models
-	wantThinkingAtActivation := ai.ThinkingHigh
+	wantThinkingAtActivation := ai.ModelThinkingLevel(ai.ThinkingHigh)
 	consumer := chord.Facet{Id: "models-consumer", Setup: func(env *chord.FacetEnvironment) error {
 		var err error
 		ref, err = chord.UseService(env, ModelsDefinition)
@@ -100,11 +100,11 @@ func TestModelsFacetConsumerRetainsGuardedServiceAcrossReload(t *testing.T) {
 	lane = &testModelsLane{model: refOf(local), thinking: ai.ThinkingLow}
 	options.Conversation, options.Agent = lane, lane
 	requireModelsOK(t, host.Reload(t.Context(), []chord.Facet{CreateModelsServiceFacet(options)}))
-	checkModelsEqual(t, state.Value().Configuration.ThinkingLevel, ai.ThinkingLow)
-	checkModelsEqual(t, snapshots[len(snapshots)-1].Configuration.ThinkingLevel, ai.ThinkingLow)
+	checkModelsEqual(t, state.Value().Configuration.ThinkingLevel, ai.ModelThinkingLevel(ai.ThinkingLow))
+	checkModelsEqual(t, snapshots[len(snapshots)-1].Configuration.ThinkingLevel, ai.ModelThinkingLevel(ai.ThinkingLow))
 	requireModelsOK(t, cycle(t.Context()))
-	checkModelsEqual(t, state.Value().Configuration.ThinkingLevel, ai.ThinkingMedium)
-	checkModelsEqual(t, snapshots[len(snapshots)-1].Configuration.ThinkingLevel, ai.ThinkingMedium)
+	checkModelsEqual(t, state.Value().Configuration.ThinkingLevel, ai.ModelThinkingLevel(ai.ThinkingMedium))
+	checkModelsEqual(t, snapshots[len(snapshots)-1].Configuration.ThinkingLevel, ai.ModelThinkingLevel(ai.ThinkingMedium))
 	wantThinkingAtActivation = ai.ThinkingMedium
 	requireModelsOK(t, host.Reload(t.Context(), []chord.Facet{consumer}))
 	for _, call := range []func() error{
@@ -122,7 +122,7 @@ func TestModelsFacetConsumerRetainsGuardedServiceAcrossReload(t *testing.T) {
 		t.Fatal("retained state remained subscribable after consumer retirement")
 	}
 	requireModelsOK(t, service.CycleThinking(t.Context()))
-	checkModelsEqual(t, service.State().Value().Configuration.ThinkingLevel, ai.ThinkingHigh)
+	checkModelsEqual(t, service.State().Value().Configuration.ThinkingLevel, ai.ModelThinkingLevel(ai.ThinkingHigh))
 	requireModelsOK(t, host.Dispose(t.Context()))
 	if err := service.Refresh(t.Context()); err == nil {
 		t.Fatal("service remained usable after host disposal")

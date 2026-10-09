@@ -6,6 +6,7 @@ import (
 	"sync"
 
 	"github.com/MichaelKinsy/PiG/coding/extension"
+	"github.com/MichaelKinsy/PiG/internal/pigstrip"
 )
 
 // eventMcpServersChange is the event type fired when an extension registers or unregisters an MCP server after the runner bound.
@@ -23,7 +24,7 @@ type mcpServersState struct {
 //
 // upstream: runner.ts:457-462
 func (r *Runner) onMcpServersChange() {
-	event := extension.McpServersChangeEvent{Type: eventMcpServersChange, Servers: r.runtime.McpServers()}
+	event := extension.McpServersChangeEvent{Type: eventMcpServersChange, Servers: r.runtime.McpServers().List()}
 	r.mcp.mu.Lock()
 	r.mcp.queue = append(r.mcp.queue, event)
 	start := !r.mcp.draining
@@ -59,7 +60,7 @@ func (r *Runner) ReportUnhandledMcpServers() {
 	if r.HasHandlers(eventMcpServersChange) {
 		return
 	}
-	for _, server := range r.runtime.McpServers() {
+	for _, server := range r.runtime.McpServers().List() {
 		r.mcp.mu.Lock()
 		if r.mcp.reported == nil {
 			r.mcp.reported = make(map[string]struct{})
@@ -73,7 +74,17 @@ func (r *Runner) ReportUnhandledMcpServers() {
 		r.emitError(&extension.ExtensionError{
 			ExtensionPath: server.ExtensionPath,
 			Event:         "register_mcp_server",
-			Error:         `MCP server "` + server.Name + `" is registered, but no loaded extension connects MCP servers; another extension may have replaced the built-in MCP support`,
+			Error:         `MCP server "` + server.Name + `" is registered, but no loaded extension connects MCP servers; ` + unhandledMcpServersReason(),
 		})
 	}
+}
+
+// unhandledMcpServersReason says why no extension connects the registered MCP servers. Pi's reason is that another extension
+// replaced the built-in MCP support (runner.ts:760).
+// pig additive (D92): with mcp stripped nothing replaced it, so the reason names the strip.
+func unhandledMcpServersReason() string {
+	if pigstrip.Has(pigstrip.ListExtensions, "mcp") {
+		return pigstrip.Error("built-in MCP support", pigstrip.ListExtensions, "mcp").Error()
+	}
+	return "another extension may have replaced the built-in MCP support"
 }

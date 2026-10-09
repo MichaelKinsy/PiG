@@ -1,3 +1,10 @@
+import zlib from "node:zlib";
+import { Box, Container, HStack, Image, Loader, Markdown, SelectList, SettingsList, Spacer, Text, TruncatedText, VStack } from "@earendil-works/pi-tui";
+import {
+  AssistantMessageComponent, BashExecutionComponent, createGrepToolDefinition, createLsToolDefinition, createReadToolDefinition, DynamicBorder,
+  getMarkdownTheme, getSelectListTheme, getSettingsListTheme, renderDiff, ToolExecutionComponent, UserMessageComponent,
+} from "@earendil-works/pi-coding-agent";
+
 export default function (pi) {
   let schemaRejected = false;
   try { pi.registerTool({ name: "schema-invalid", description: "Must not register", parameters: null, execute: async () => ({ content: [] }) }); }
@@ -24,6 +31,26 @@ export default function (pi) {
         ctx.ui.notify(`rejected:${error.message}`, "info");
       }
     }
+  }});
+  pi.registerCommand("thinking-model", { description: "Read the thinking level and switch the model", handler: async (_args, ctx) => {
+    pi.setThinkingLevel("high");
+    const ok = await pi.setModel({ provider: "probe", id: "model" });
+    ctx.ui.notify(JSON.stringify([pi.getThinkingLevel(), ok]), "info");
+  }});
+  pi.registerCommand("active_tools_set", { description: "Set the active tools to the comma-separated names", handler: async (args) => pi.setActiveTools(String(args).trim().split(",")) });
+  pi.registerCommand("session_actions_unbound", { description: "Report what unbound session actions answer", handler: async (_args, ctx) => {
+    const parts = [];
+    for (const [name, call] of [["new", () => ctx.newSession()], ["fork", () => ctx.fork("entry")], ["navigate", () => ctx.navigateTree("entry")], ["switch", () => ctx.switchSession("/s.jsonl")]]) {
+      try { parts.push(`${name}=${(await call()).cancelled}`); } catch (error) { parts.push(`${name}=error:${error.message}`); }
+    }
+    try { await ctx.reload(); parts.push("reload=ok"); } catch (error) { parts.push(`reload=error:${error.message}`); }
+    ctx.ui.notify(`unbound:${parts.join(",")}`, "info");
+  }});
+  pi.registerCommand("active_tools_get", { description: "Report the active tools", handler: async (_args, ctx) => ctx.ui.notify(`active_tools:${pi.getActiveTools().join(",")}`, "info") });
+  pi.registerCommand("provider_probe_register", { description: "Register a provider with one model", handler: async () => pi.registerProvider("conformance-probe", JSON.parse(`{"baseUrl":"https://probe.invalid/v1","api":"openai-completions","apiKey":"probe-key","models":[{"id":"probe-model","name":"Probe Model","reasoning":false,"input":["text"],"cost":{"input":0,"output":0,"cacheRead":0,"cacheWrite":0},"contextWindow":1000,"maxTokens":100}]}`)) });
+  pi.registerCommand("provider_probe_unregister", { description: "Unregister the provider", handler: async () => pi.unregisterProvider("conformance-probe") });
+  pi.registerCommand("commands-probe", { description: "Read the host's slash commands", handler: async (_args, ctx) => {
+    ctx.ui.notify(JSON.stringify(pi.getCommands().filter((c) => c.name === "conformance-listed").map((c) => [c.name, c.source, c.description ?? ""])), "info");
   }});
   pi.registerCommand("session-identity", { description: "Read context identity accessors", handler: async (_args, ctx) => {
     const s = ctx.sessionManager;
@@ -108,7 +135,7 @@ export default function (pi) {
     },
     renderResult(result, options, _theme, context) {
       const calls = context.state.calls;
-      return { render: (width) => [`toolrender:result:${result.content[0].text}:${result.details.k}:expanded=${Boolean(options.expanded)}:calls=${calls}:width=${width}`], invalidate() {} };
+      return { render: (width) => [`toolrender:result:${result.content[0].text}:${result.details.k}:expanded=${Boolean(options.expanded)}:calls=${calls}:width=${width}:duration=${context.durationMs ?? "none"}`], invalidate() {} };
     },
   });
   pi.registerTool({
@@ -157,6 +184,17 @@ export default function (pi) {
       });
       abortObserved = true;
       return { content: [{ type: "text", text: "aborted" }] };
+    },
+  });
+  // hang_tool ignores its abort signal for longer than the host's abort grace period (D111).
+  pi.registerTool({
+    name: "hang_tool",
+    description: "Ignore the abort signal",
+    parameters: { type: "object", properties: {} },
+    async execute(_id, _params, _signal, onUpdate) {
+      onUpdate({ content: [{ type: "text", text: "waiting" }] });
+      await new Promise((resolve) => setTimeout(resolve, 8000));
+      return { content: [{ type: "text", text: "late" }] };
     },
   });
   pi.registerCommand("abort_probe", {
@@ -303,6 +341,74 @@ export default function (pi) {
       ctx.ui.notify("model-stream=ok", "info");
     },
   });
+  pi.registerCommand("model-stream-callback-probe", {
+    description: "Exercise the provider request callbacks of modelRegistry.stream",
+    handler: async (_args, ctx) => {
+      const model = { provider: "conformance", id: "declared", modelId: "declared", api: "openai-responses" };
+      const request = { systemPrompt: "callbacks", messages: [{ role: "user", content: "hello", timestamp: 1 }] };
+      const seen = {};
+      const options = {
+        onPayload: (payload, callbackModel) => { seen.payload = payload; seen.model = callbackModel?.id; return { ...payload, mark: "on-payload" }; },
+        onResponse: (response, callbackModel) => { seen.response = response; },
+        transformHeaders: (headers) => ({ ...headers, "x-transformed": "yes" }),
+      };
+      const stream = ctx.modelRegistry.stream(model, request, options);
+      for await (const event of stream) void event;
+      if ((await stream.result()).stopReason !== "stop") throw new Error("callback stream did not stop");
+      if (seen.payload?.original !== true || seen.model !== "declared") throw new Error(`onPayload saw ${JSON.stringify(seen)}`);
+      if (seen.response?.status !== 201 || seen.response?.headers?.["x-upstream"] !== "seen") throw new Error(`onResponse saw ${JSON.stringify(seen.response)}`);
+      if ((await ctx.modelRegistry.stream(model, request, {}).result()).stopReason !== "stop") throw new Error("plain stream did not stop");
+      ctx.ui.notify("model-callbacks=ok", "info");
+    },
+  });
+  pi.registerCommand("overlay-handle-probe", {
+    description: "Exercise the overlay handle ui.custom hands to onHandle",
+    handler: async (_args, ctx) => {
+      const failures = [];
+      const expect = (label, actual, expected) => { if (JSON.stringify(actual) !== JSON.stringify(expected)) failures.push(`${label}: ${JSON.stringify(actual)} != ${JSON.stringify(expected)}`); };
+      const onHandle = (handle) => {
+        expect("initial focused", handle.isFocused(), true);
+        expect("initial hidden", handle.isHidden(), false);
+        expect("initial bounds", handle.getBounds(), { row: 3, col: 4, width: 20, height: 5 });
+        handle.focus();
+        expect("focus", handle.isFocused(), true);
+        handle.setHidden(true);
+        expect("hidden", [handle.isHidden(), handle.isFocused(), handle.getBounds()], [true, false, undefined]);
+        handle.setHidden(false);
+        expect("shown", [handle.isHidden(), handle.isFocused()], [false, false]);
+        handle.focus();
+        expect("refocus", handle.isFocused(), true);
+        handle.unfocus();
+        expect("unfocus", handle.isFocused(), false);
+        handle.unfocus({ target: null });
+      };
+      const result = await ctx.ui.custom((_tui, _theme, _keys, done) => ({ render: () => ["overlay"], handleInput: (data) => { if (data === "q") done("closed"); }, invalidate() {} }), { overlay: true, onHandle });
+      void result;
+      if (failures.length) throw new Error(failures.join("; "));
+      ctx.ui.notify("overlay-handle=ok", "info");
+    },
+  });
+  pi.registerCommand("model-stream-fetch-probe", {
+    description: "Exercise the fetch option of modelRegistry.stream",
+    handler: async (_args, ctx) => {
+      const model = { provider: "conformance", id: "declared", modelId: "declared", api: "openai-responses" };
+      const request = { systemPrompt: "fetch", messages: [{ role: "user", content: "hello", timestamp: 1 }] };
+      const seen = {};
+      const fetch = async (url, init) => {
+        seen.url = String(url);
+        seen.method = init.method;
+        seen.host = new Headers(init.headers).get("x-host");
+        seen.body = Buffer.from(init.body).toString();
+        return new Response(Uint8Array.from({ length: 70000 }, (_, index) => index % 251), { status: 207, statusText: "Answered", headers: { "x-sdk-fetch": "answered" } });
+      };
+      const stream = ctx.modelRegistry.stream(model, request, { fetch });
+      for await (const event of stream) void event;
+      if ((await stream.result()).stopReason !== "stop") throw new Error("fetch stream did not stop");
+      if (seen.url !== "https://fetch.invalid/v1/chat?x=1" || seen.method !== "POST" || seen.host !== "1" || seen.body !== "ping-body") throw new Error(`fetch saw ${JSON.stringify(seen)}`);
+      if ((await ctx.modelRegistry.stream(model, request, {}).result()).stopReason !== "stop") throw new Error("plain stream did not stop");
+      ctx.ui.notify("model-fetch=ok", "info");
+    },
+  });
   pi.registerCommand("liveness_host_call", { description: "Exercise an awaited host call", handler: async (_args, ctx) => ctx.waitForIdle() });
   pi.registerCommand("liveness_user_call", { description: "Exercise an interactive host call", handler: async (_args, ctx) => ctx.ui.input("Question", "Answer") });
   pi.registerCommand("liveness_fire_call", { description: "Exercise a no-result UI host call", handler: async (_args, ctx) => ctx.ui.setTitle("Conformance title") });
@@ -322,6 +428,9 @@ export default function (pi) {
   // A width handler makes a host call the way any other handler does; the host's reply must reach it (conformance TestConformance_WidthHandlerHostCall).
   let widthProbe;
   pi.registerCommand("arm_width_probe", { description: "Notify from a width handler", handler: async (_args, ctx) => { widthProbe ??= ctx.ui.onWidthChange(async (width) => { await ctx.ui.notify(`width-probe:${width}`, "info"); await ctx.ui.notify(`width-probe-returned:${width}`, "info"); }); } });
+  let eventProbeOff;
+  pi.registerCommand("event_probe_subscribe", { description: "Subscribe to turn_end after connecting", handler: async () => { eventProbeOff = pi.on("turn_end", async (event, ctx) => { ctx.ui.notify(`event_probe:${event.messageEntryId}`, "info"); }); } });
+  pi.registerCommand("event_probe_unsubscribe", { description: "Remove the turn_end handler registered after connecting", handler: async () => { eventProbeOff?.(); eventProbeOff = undefined; } });
   pi.registerCommand("report_geometry", { description: "Report observed terminal geometry", handler: async (_args, ctx) => ctx.ui.notify(`geometry:${ctx.width}x${ctx.height}`, "info") });
 
   pi.registerCommand("surface_footer", { description: "Install a footer renderer", handler: async (_args, ctx) => ctx.ui.setFooter(() => ({ render: (width) => [`footer@${width}`], invalidate() {} })) });
@@ -355,6 +464,38 @@ export default function (pi) {
   pi.registerCommand("send_message_no_turn", { description: "Send a custom message that never starts a turn", handler: async () => pi.sendMessage({ customType: "notice", content: "no-turn", display: true }, { triggerTurn: false }) });
   pi.registerCommand("send_user_message", { description: "Send a user message", handler: async (args) => pi.sendUserMessage(args ? JSON.parse(args) : "hello-user", { deliverAs: "followUp" }) });
   pi.registerCommand("set_session_name", { description: "Set the session name", handler: async () => pi.setSessionName("conformance-session") });
+  pi.registerCommand("event_result_probe", { description: "Subscribe to an event with a handler that returns the given JSON", handler: async (args) => { const [name, ...rest] = String(args).trim().split(" "); const result = JSON.parse(rest.join(" ")); pi.on(name, async () => result); } });
+  pi.registerCommand("event_field_probe", { description: "Report a field of the events named by the argument `<event> <field>`", handler: async (args) => { const [name, field] = String(args).trim().split(/\s+/); pi.on(name, async (event, ctx) => { ctx.ui.notify(`event_field:${name}.${field}=${JSON.stringify(event[field]) ?? "absent"}`, "info"); }); } });
+  pi.registerCommand("event_probe_on", { description: "Subscribe to the event named by the argument", handler: async (args) => { const name = String(args).trim(); pi.on(name, async (_event, ctx) => { ctx.ui.notify(`event_probe_on:${name}`, "info"); }); } });
+  pi.registerCommand("host_state_probe", {
+    description: "Report the thinking level and the session commands",
+    handler: async (_args, ctx) => {
+      const commands = pi.getCommands().map((c) => [c.name, c.description ?? "", c.source, c.sourceInfo?.path ?? "", c.sourceInfo?.scope ?? ""].join("|"));
+      ctx.ui.notify(`getThinkingLevel=${pi.getThinkingLevel()};getCommands=${commands.join(",")}`, "info");
+    },
+  });
+  pi.registerCommand("set_model", {
+    description: "Switch to the model in the arguments",
+    handler: async (args, ctx) => {
+      const slash = args.indexOf("/");
+      const ok = await pi.setModel({ provider: args.slice(0, slash), id: args.slice(slash + 1) });
+      ctx.ui.notify(`setModel=${ok}`, "info");
+    },
+  });
+  const eventProbeOn = new Map();
+  const eventProbeResults = new Map();
+  pi.registerCommand("event_probe_result", { description: "Queue the JSON result the next event_probe_on handler call of an event returns", handler: async (args) => { const text = String(args).trim(); const split = text.indexOf(" "); const name = text.slice(0, split); eventProbeResults.set(name, [...(eventProbeResults.get(name) ?? []), JSON.parse(text.slice(split + 1))]); } });
+  pi.registerCommand("event_probe_on", { description: "Subscribe to the event named by the argument", handler: async (args) => { const name = String(args).trim(); const off = pi.on(name, async (event, ctx) => { ctx.ui.notify(`event_probe_on:${name}`, "info"); ctx.ui.notify(`event_probe_data:${name}:${JSON.stringify(event)}`, "info"); if (Array.isArray(event?.servers)) ctx.ui.notify(`event_probe_servers:${event.servers.map((server) => server.name).join(",")}`, "info"); ctx.ui.notify(`event_payload:${name}:${JSON.stringify(event, (_key, value) => (value instanceof Set ? [...value].sort() : value))}`, "info"); const queued = (eventProbeResults.get(name) ?? []).shift(); if (name === "before_provider_headers" && queued) { for (const key of Object.keys(event.headers)) delete event.headers[key]; Object.assign(event.headers, queued); return undefined; } return queued; }); eventProbeOn.set(name, [...(eventProbeOn.get(name) ?? []), off]); } });
+  pi.registerCommand("event_field_probe", { description: "Report a field of the events named by the argument `<event> <field>`", handler: async (args) => { const [name, field] = String(args).trim().split(/\s+/); pi.on(name, async (event, ctx) => { ctx.ui.notify(`event_field:${name}.${field}=${JSON.stringify(event[field]) ?? "absent"}`, "info"); }); } });
+  pi.registerCommand("event_probe_off", { description: "Unsubscribe the event_probe_on handlers of the event named by the argument", handler: async (args) => { const name = String(args).trim(); for (const off of eventProbeOn.get(name) ?? []) off(); eventProbeOn.delete(name); } });
+  pi.registerCommand("event_payload_probe", { description: "Subscribe and report the payload of the event named by the argument", handler: async (args) => { const name = String(args).trim(); pi.on(name, async (event, ctx) => { ctx.ui.notify(`event_payload:${name}:${JSON.stringify(event)}`, "info"); }); } });
+  pi.registerCommand("settings_probe", { description: "Report the effective settings", handler: async (_args, ctx) => ctx.ui.notify(`settings_probe:${JSON.stringify(pi.getSettings())}`, "info") });
+  pi.registerCommand("model_set", { description: "Switch the model", handler: async (args, ctx) => { const [provider, ...rest] = String(args).trim().split("/"); const ok = await pi.setModel({ provider, id: rest.join("/") }); ctx.ui.notify(`model_set:${ok}`, "info"); } });
+  pi.registerCommand("thinking_set", { description: "Set the thinking level", handler: async (args) => pi.setThinkingLevel(String(args).trim()) });
+  pi.registerCommand("thinking_get", { description: "Report the thinking level", handler: async (_args, ctx) => ctx.ui.notify(`thinking_get:${pi.getThinkingLevel()}`, "info") });
+  pi.registerCommand("label_probe", { description: "Label the entry named first", handler: async (args) => { const [id, ...rest] = String(args).trim().split(" "); pi.setLabel(id, rest.join(" ")); } });
+  pi.registerCommand("set_label", { description: "Set an entry label", handler: async () => pi.setLabel("label-entry", "conformance-label") });
+  pi.registerShortcut("ctrl+alt+y", { description: "Conformance shortcut", handler: async () => {} });
   pi.registerCommand("append_entry", { description: "Append a custom entry", handler: async () => pi.appendEntry("conformance-entry", "hello-entry") });
   pi.registerCommand("scoped-models-probe", { description: "Report the model scope", handler: async (_args, ctx) => ctx.ui.notify(JSON.stringify(ctx.scopedModels), "info") });
   pi.registerCommand("ui-availability", {
@@ -414,6 +555,11 @@ export default function (pi) {
       ctx.ui.notify("registered:"+tag,"info");
     }
   }});
+  // Upstream ctx.cwd, ctx.mode, ctx.hasUI and ctx.model throw the stale message after invalidation (runner.ts:571-600).
+  pi.registerCommand("stale-probe", {
+    description: "Report cwd, mode, hasUI and model",
+    handler: (_args, ctx) => ctx.ui.notify(`stale:${ctx.cwd}|${ctx.mode}|${ctx.hasUI}|${ctx.model?.id ?? ""}`, "info"),
+  });
   pi.registerCommand("signal-probe", {
     description: "Report ctx.signal",
     handler: (_args, ctx) => ctx.ui.notify(`signal:${ctx.signal === undefined ? "none" : ctx.signal.aborted ? "aborted" : "live"}`, "info"),
@@ -531,6 +677,206 @@ export default function (pi) {
     },
   });
 
+  // The component kit's conformance probe (D107,
+  // docs/plan/extension-component-kit.md §10), built from Pi's components: the
+  // runtime derives its view while a frontend draws. As ui.custom's component
+  // every key reaches it; it passes the list's keys to the list and logs the
+  // rest, and the list's callbacks log its events. It closes on select with
+  // the log joined by ",". kit-surfaces and kit-message draw the same tree.
+  class KitProbe extends Container {
+    constructor(theme, keys, done) {
+      super();
+      this.keys = keys;
+      this.log = [];
+      const items = Array.from({ length: 5 }, (_, i) => ({ value: `k${i}`, label: `Track ${i}`, description: `Artist ${i}` }));
+      this.list = new SelectList(items, 3, getSelectListTheme());
+      this.list.setSelectedIndex(2);
+      this.list.onSelectionChange = (item) => this.log.push(`selectionChange:${this.list.selectedIndex}:${item.value}`);
+      this.list.onSelect = (item) => {
+        this.log.push(`select:${this.list.selectedIndex}:${item.value}`);
+        done?.(this.log.join(","));
+      };
+      this.addChild(new DynamicBorder((s) => theme.fg("accent", s)));
+      this.addChild(new Text("Kit probe", 2, 0, (s) => theme.bg("customMessageBg", s)));
+      this.addChild(new Markdown("- one\n- **two**", 1, 0, getMarkdownTheme()));
+      this.addChild(new HStack([{ component: new TruncatedText("left side"), grow: 1 }, { component: new TruncatedText("right"), grow: 1 }], { gap: 1 }));
+      this.addChild(new Spacer(1));
+      this.addChild(this.list);
+      this.viewTheme = { accent: "#d75f00" };
+    }
+    handleInput(data) {
+      if (["tui.select.up", "tui.select.down", "tui.select.confirm", "tui.select.cancel"].some((id) => this.keys.matches(data, id))) this.list.handleInput(data);
+      else this.log.push(`input:${data}`);
+    }
+  }
+  pi.registerCommand("kit-probe", {
+    description: "Exercise the component kit (D107)",
+    handler: async (_args, ctx) => {
+      const result = await ctx.ui.custom((_tui, theme, keys, done) => new KitProbe(theme, keys, done), { overlayOptions: { title: "Kit" } });
+      ctx.ui.notify(`kit=${result ?? ""}`, "info");
+    },
+  });
+  // mouse-probe's component: Pi's handleMouse, which logs every event
+  // it receives, all of its fields, and closes on a click with the log
+  // joined by ",".
+  class MouseProbe {
+    constructor(done) {
+      this.done = done;
+      this.log = [];
+    }
+    render() { return ["mouse probe", "row 1", "row 2", "row 3"]; }
+    handleInput() {}
+    handleMouse(e) {
+      const mods = [[e.shift, "S"], [e.alt, "A"], [e.ctrl, "C"]].filter(([on]) => on).map(([, name]) => name).join("");
+      this.log.push(`${e.type}/${e.button}/${e.x},${e.y}/${e.screenX},${e.screenY}/${e.width}x${e.height}/w${e.wheelDelta ?? 0}/c${e.clickCount ?? 0}/${mods}`);
+      if (e.type === "click") this.done(this.log.join(","));
+      return { handled: true };
+    }
+  }
+  pi.registerCommand("mouse-probe", {
+    description: "Exercise extension mouse input",
+    handler: async (_args, ctx) => {
+      const result = await ctx.ui.custom((_tui, _theme, _keys, done) => new MouseProbe(done), { overlay: true });
+      ctx.ui.notify(`mouse=${result ?? ""}`, "info");
+    },
+  });
+  pi.registerMessageRenderer("kit-message", (_message, _options, theme) => new KitProbe(theme));
+  pi.registerCommand("kit-surfaces", {
+    description: "Show the kit probe on every view surface (D107)",
+    handler: async (_args, ctx) => {
+      ctx.ui.setWidget("kit-probe", (_tui, theme) => new KitProbe(theme));
+      ctx.ui.setHeader((_tui, theme) => new KitProbe(theme));
+      ctx.ui.setFooter((_tui, theme) => new KitProbe(theme));
+      pi.registerTool({
+        name: "kit_view_tool",
+        label: "kit_view_tool",
+        description: "Render its result as the kit probe",
+        parameters: { type: "object", properties: {} },
+        async execute() { return { content: [{ type: "text", text: "kit" }] }; },
+        renderResult(_result, _options, theme) { return new KitProbe(theme); },
+      });
+    },
+  });
+  // kitImagePNG is image n of kit-images: a 1×1 PNG whose pixel encodes n, so
+  // each n has its own bytes and ref.
+  const kitImagePNG = (n) => {
+    const chunk = (type, data) => {
+      const body = Buffer.concat([Buffer.from(type, "latin1"), data]);
+      const out = Buffer.alloc(body.length + 8);
+      out.writeUInt32BE(data.length, 0);
+      body.copy(out, 4);
+      out.writeUInt32BE(zlib.crc32(body), body.length + 4);
+      return out;
+    };
+    const header = Buffer.from([0, 0, 0, 1, 0, 0, 0, 1, 8, 6, 0, 0, 0]);
+    const pixel = zlib.deflateSync(Buffer.from([0, n & 0xff, (n >> 8) & 0xff, 0x5f, 0xff]));
+    return Buffer.concat([Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]), chunk("IHDR", header), chunk("IDAT", pixel), chunk("IEND", Buffer.alloc(0))]).toString("base64");
+  };
+  // kit-images drives the image transport (D107, spec §7): step "a<k>"
+  // shows image 0 and step "b<n>" image n (1 ≤ n ≤ 64), each with its step
+  // as the text, as one ui.setWidget call on the "kit-img" widget.
+  pi.registerCommand("kit-images", {
+    description: "Exercise the component kit's image transport (D107)",
+    handler: async (args, ctx) => {
+      const step = /^([ab])(\d+)$/.exec(args);
+      const n = Number(step?.[2]);
+      if (!step || n < 1 || (step[1] === "b" && n > 64)) throw new Error(`kit-images: unknown step ${JSON.stringify(args)}`);
+      const image = step[1] === "a" ? 0 : n;
+      ctx.ui.setWidget("kit-img", () => {
+        const c = new Container();
+        c.addChild(new Image(kitImagePNG(image), "image/png", { fallbackColor: (s) => s }));
+        c.addChild(new Text(args, 0, 0));
+        return c;
+      });
+    },
+  });
+  // kit-kinds sets the "kit-kinds" widget to the kinds kit-probe does not
+  // draw (D107, spec §10), from Pi's components: a box, a settings list, a
+  // loader, an image and a component with its own render whose viewLines
+  // list goes out only while a frontend draws.
+  const kitKindsPNG = Buffer.from("89504e470d0a1a0a0000000d49484452000000010000000108060000001f15c48900000010494441547801010500faff002a005fff026a01892888e8cd0000000049454e44ae426082", "hex").toString("base64");
+  pi.registerCommand("kit-kinds", {
+    description: "Show every other component kit kind (D107)",
+    handler: async (_args, ctx) => {
+      ctx.ui.setWidget("kit-kinds", (tui, theme) => {
+        const box = new Box(1, 0, (s) => theme.bg("customMessageBg", s));
+        box.addChild(new Text("boxed", 0, 0));
+        // getSettingsListTheme() draws the cursor once, when it is called;
+        // a getter draws it at render time, under the surface's viewTheme.
+        const settingsTheme = Object.defineProperty({ ...getSettingsListTheme() }, "cursor", { get: () => getSettingsListTheme().cursor, enumerable: true });
+        const settings = new SettingsList([
+          { id: "theme", label: "Theme", description: "Color theme", currentValue: "dark", values: ["dark", "light"] },
+          { id: "wrap", label: "Wrap", description: "Wrap lines", currentValue: "on", values: ["on", "off"] },
+        ], 3, settingsTheme, () => {}, () => {});
+        const loader = new Loader(tui, (s) => theme.fg("accent", s), (s) => theme.fg("muted", s), "Working", { frames: ["*"] });
+        const tracks = {
+          render: () => ["track one", "track two"],
+          invalidate() {},
+          viewLines: { list: { items: [{ label: "track one", detail: "A" }, { label: "track two", detail: "B" }], selectedIndex: 1 } },
+        };
+        const stack = new VStack([box, settings, loader, new Image(kitKindsPNG, "image/png", { fallbackColor: (s) => s }), tracks], { gap: 1 });
+        stack.viewTheme = { accent: "#d75f00" };
+        return stack;
+      });
+    },
+  });
+  // kit-conversation sets the "kit-conversation" widget to Pi's
+  // conversation components (D107, spec §2.1, §10); "next" updates the
+  // components the last frame kept (the streaming reply, the ls and grep
+  // cards and the ls -la command), as a Pi author updates kept components.
+  let kitKept;
+  pi.registerCommand("kit-conversation", {
+    description: "Show Pi's conversation components (D107)",
+    handler: async (args, ctx) => {
+      const next = args === "next";
+      ctx.ui.setWidget("kit-conversation", (tui) => {
+        const reply = (more) => ({ content: [{ type: "thinking", thinking: "Reading the *kit* file" }, { type: "text", text: `Done. **Bold** reply\n\n1. a\n2. b${more ? "\n\nThen more kit." : ""}` }] });
+        const card = (name, callId, toolArgs, definition) => {
+          const tool = new ToolExecutionComponent(name, callId, toolArgs, {}, definition, tui, "/work/kit");
+          tool.setArgsComplete();
+          tool.markExecutionStarted();
+          return tool;
+        };
+        if (!next || !kitKept) {
+          const streaming = new AssistantMessageComponent();
+          streaming.updateContent(reply(false), true);
+          const ls = card("ls", "call-1", { path: "src" }, createLsToolDefinition("/work/kit"));
+          ls.updateResult({ content: [{ type: "text", text: "a.go\nb.go" }] }, false);
+          const grep = card("grep", "call-2", { pattern: "TODO" }, createGrepToolDefinition("/work/kit"));
+          grep.updateResult({ content: [{ type: "text", text: "x.go:1: TODO kit" }] }, true);
+          const exited = new BashExecutionComponent("ls -la", tui, false);
+          exited.appendOutput("a.txt\n");
+          exited.appendOutput("b.txt");
+          exited.setComplete(2, false);
+          kitKept = { streaming, ls, grep, exited };
+        }
+        const { streaming, ls, grep, exited } = kitKept;
+        if (next) {
+          streaming.updateContent(reply(true), false);
+          grep.updateResult({ content: [{ type: "text", text: "x.go:1: TODO kit\ny.go:2: TODO kit" }] }, false);
+          exited.setExpanded(true);
+        }
+        const user = new UserMessageComponent("Fix **the** kit build\n\n- one\n- two");
+        const failed = new AssistantMessageComponent({ content: [{ type: "thinking", thinking: "secret" }, { type: "text", text: "Visible kit" }], stopReason: "error", errorMessage: "kit-boom-7" });
+        failed.setHideThinkingBlock(true);
+        failed.setHiddenThinkingLabel("Pondering kit...");
+        failed.setOutputPad(0);
+        const read = card("read", "call-3", { path: "missing.txt" }, createReadToolDefinition("/work/kit"));
+        read.updateResult({ content: [{ type: "text", text: "ENOENT: kit" }], isError: true }, false);
+        read.setExpanded(true);
+        const custom = card("kit_tool", "call-4", { q: "x" }, {});
+        custom.updateResult({ content: [{ type: "text", text: "answer 42" }] }, false);
+        const seq = new BashExecutionComponent("seq 25", tui, true);
+        seq.appendOutput(Array.from({ length: 25 }, (_, i) => String(i + 1)).join("\n"));
+        seq.setComplete(0, false);
+        const diff = new Text(renderDiff(" 1 keep\n-2 old kit line\n+2 new kit line\n 3 tail", { filePath: "kit.go" }), 0, 0);
+        const root = new Container();
+        for (const child of [user, streaming, failed, ls, grep, read, custom, exited, seq, diff]) root.addChild(child);
+        return root;
+      });
+    },
+  });
+
   class TimerFocused {
     constructor(tui, done) {
       this.done = done;
@@ -543,6 +889,18 @@ export default function (pi) {
     handleInput(data) { if (data === "\r") this.done(this.frame); }
     dispose() { clearInterval(this.timer); this.disposed = true; this.detached = true; }
   }
+  pi.registerCommand("overlay-width-probe", {
+    description: "Report the width overlay components render at",
+    handler: async (_args, ctx) => {
+      const probe = (_tui, _theme, _keys, done) => {
+        let width = 0;
+        return { render(w) { width = w; return [`overlay width=${w}`]; }, invalidate() {}, handleInput(data) { if (data === "\r") done(width); } };
+      };
+      const defaultWidth = await ctx.ui.custom(probe, { overlay: true });
+      const percentWidth = await ctx.ui.custom(probe, { overlay: true, overlayOptions: { width: "50%" } });
+      ctx.ui.notify(`overlay-width default=${defaultWidth} percent=${percentWidth}`, "info");
+    },
+  });
   pi.registerCommand("timer-focused-probe", {
     description: "Exercise timer-driven focused UI",
     handler: async (_args, ctx) => {
@@ -565,6 +923,7 @@ export default function (pi) {
       case "missing": delete result.exitCode; break;
       case "invalid": result.exitCode = "invalid"; break;
       case "null-operations": value.operations = null; break;
+      case "operations": return { operations: conformanceBashOperations() };
       default: return undefined;
     }
     return value;
@@ -634,7 +993,7 @@ export default function (pi) {
   });
   pi.on("project_trust", async () => { throw new Error("trust-boom"); });
   pi.on("project_trust", async () => ({ trusted: "undecided" }));
-  pi.on("project_trust", async () => ({ trusted: "yes", remember: true }));
+  pi.on("project_trust", async (event) => (event.cwd === "/probe" ? { trusted: "undecided" } : { trusted: "yes", remember: true }));
   pi.on("cache_warming_decision", async (event) => {
     if (event.warmCost !== 0.05 || event.missCost !== 0.5 || event.continuationProbability !== 0.15 || event.action !== "warm") throw new Error("unexpected cache decision");
     return { action: "stop" };
@@ -686,4 +1045,34 @@ export default function (pi) {
       ctx.ui.notify(`ui_prompt:${event.type}:${event.reason}:${event.kind}:${"title" in event ? event.title : "(none)"}`, "info");
     });
   }
+}
+
+// The BashOperations every SDK fixture returns for the user_bash command "operations" (TestConformance_UserBashOperationsRunInTheExtension).
+function conformanceBashOperations() {
+  return {
+    exec: async (command, cwd, { onData, signal, timeout, env }) => {
+      switch (command) {
+        case "echo":
+          onData(Buffer.from(`cmd:${command}\n`));
+          onData(Buffer.from(`cwd:${cwd}\n`));
+          if (env !== undefined && Object.keys(env).length === 0) onData(Buffer.from("env-empty\n"));
+          for (const name of Object.keys(env ?? {}).sort()) onData(Buffer.from(`env:${name}=${env[name]}\n`));
+          if (timeout !== undefined) onData(Buffer.from(`timeout:${timeout}\n`));
+          return { exitCode: 3 };
+        case "chunks":
+          for (const chunk of ["a", "b", "c"]) onData(Buffer.from(chunk));
+          return { exitCode: null };
+        case "binary":
+          onData(Buffer.from([0xff, 0x00, 0x80]));
+          return { exitCode: 0 };
+        case "wait":
+          onData(Buffer.from("waiting"));
+          await new Promise((resolve) => (signal.aborted ? resolve() : signal.addEventListener("abort", resolve, { once: true })));
+          onData(Buffer.from("stopped"));
+          throw new Error("aborted");
+        default:
+          throw new Error(`exec failed: ${command}`);
+      }
+    },
+  };
 }

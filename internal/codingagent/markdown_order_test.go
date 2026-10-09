@@ -9,6 +9,7 @@ import (
 	"sync"
 	"testing"
 	"testing/synctest"
+	"time"
 
 	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/coding/extension/host/inproc"
@@ -137,4 +138,139 @@ func logMarkdownOrder(t *testing.T, name string, trace []string) {
 		t.Fatal(err)
 	}
 	t.Logf("MARKDOWN_ORDER %s:%s", name, data)
+}
+
+// Pi's chain never abandons a callback: a body returns before the next chain enters it (markdown-transform.ts:18-29). The host's
+// five-second renderer inactivity boundary (D56) abandons the request when the body reports no progress, which must not let the next
+// generation enter the same extension while the abandoned body still runs.
+func TestMarkdownAbandonedBodyKeepsCallbackOrder(t *testing.T) {
+	t.Setenv("PIG_HOME", t.TempDir())
+	synctest.Test(t, func(t *testing.T) {
+		var mu sync.Mutex
+		var trace []string
+		record := func(value string) { mu.Lock(); trace = append(trace, value); mu.Unlock() }
+		started, release := make(chan struct{}), make(chan struct{})
+		fixture := sdk.New("abandoned-order")
+		fixture.MarkdownTransformer(func(text string, _ sdk.MarkdownTransformContext) string {
+			record("A " + text + " entered")
+			if text == "first" {
+				close(started)
+				<-release
+				record("A first returned")
+			}
+			return text
+		})
+		host := subprocess.NewHost(t.TempDir())
+		defer host.Shutdown("test done")
+		remote, err := host.LoadInProcess(t.Context(), subprocess.ExtConfig{Name: "abandoned-order", Enabled: true}, fixture.RunWithConn)
+		if err != nil {
+			t.Fatal(err)
+		}
+		ctx, cancel := context.WithCancel(t.Context())
+		defer cancel()
+		m := &InteractiveMode{backgroundCtx: ctx, tuiInst: tui.NewWithOutput(io.Discard, 80, 24), uiTaskCh: make(chan func(), 8)}
+		m.newRunner = inproc.NewRunner([]extension.Extension{*remote}, "")
+		block := m.newAssistantMessageBlock()
+		block.SetContent([]tui.AssistantSegment{{Text: "first"}})
+		block.Render(80)
+		<-started
+		block.SetContent([]tui.AssistantSegment{{Text: "second"}})
+		block.Render(80)
+		// The first body reports no progress for longer than the renderer inactivity boundary.
+		time.Sleep(30 * time.Second)
+		synctest.Wait()
+		mu.Lock()
+		beforeRelease := slices.Clone(trace)
+		mu.Unlock()
+		if !slices.Equal(beforeRelease, []string{"A first entered"}) {
+			t.Errorf("a later chain entered the extension while the abandoned body still ran: %q", beforeRelease)
+		}
+		close(release)
+		synctest.Wait()
+		m.backgroundTasks.Wait()
+		// Once the abandoned body returned, the transformer takes part in later chains again.
+		block.SetContent([]tui.AssistantSegment{{Text: "third"}})
+		block.Render(80)
+		synctest.Wait()
+		m.backgroundTasks.Wait()
+		mu.Lock()
+		got := slices.Clone(trace)
+		mu.Unlock()
+		logMarkdownOrder(t, "abandoned", got)
+		if want := []string{"A first entered", "A first returned", "A third entered"}; !slices.Equal(got, want) {
+			t.Fatalf("callback body order = %q; want %q", got, want)
+		}
+	})
+}
+
+// A host that disconnects the extension or shuts the Mode down while a body runs leaves that body running in the extension, as an
+// uncooperative SDK would. The abandoned generation publishes nothing, no later generation enters the extension, and after a Mode
+// shutdown no later transformer of the chain runs.
+func TestMarkdownBodyOutlivingDisconnectOrShutdownPublishesNothing(t *testing.T) {
+	for _, exit := range []string{"disconnect", "shutdown"} {
+		t.Run(exit, func(t *testing.T) {
+			t.Setenv("PIG_HOME", t.TempDir())
+			synctest.Test(t, func(t *testing.T) {
+				var mu sync.Mutex
+				var trace []string
+				record := func(value string) { mu.Lock(); trace = append(trace, value); mu.Unlock() }
+				started, release := make(chan struct{}), make(chan struct{})
+				fixture := sdk.New("outliving-" + exit)
+				fixture.MarkdownTransformer(func(text string, _ sdk.MarkdownTransformContext) string {
+					record("A " + text + " entered")
+					if text == "first" {
+						close(started)
+						<-release
+						record("A first returned")
+					}
+					return text + " (transformed)"
+				})
+				host := subprocess.NewHost(t.TempDir())
+				defer host.Shutdown("test done")
+				remote, err := host.LoadInProcess(t.Context(), subprocess.ExtConfig{Name: "outliving-" + exit, Enabled: true}, fixture.RunWithConn)
+				if err != nil {
+					t.Fatal(err)
+				}
+				ctx, cancel := context.WithCancel(t.Context())
+				defer cancel()
+				m := &InteractiveMode{backgroundCtx: ctx, tuiInst: tui.NewWithOutput(io.Discard, 80, 24), uiTaskCh: make(chan func(), 8)}
+				m.newRunner = inproc.NewRunner([]extension.Extension{
+					*remote,
+					{MarkdownTransformer: func(text string, _ extension.MarkdownTransformContext) string { record("C " + text); return text }},
+				}, "")
+				block := m.newAssistantMessageBlock()
+				block.SetContent([]tui.AssistantSegment{{Text: "first"}})
+				block.Render(80)
+				<-started
+				switch exit {
+				case "disconnect":
+					host.Shutdown("extension disconnected")
+				case "shutdown":
+					cancel()
+				}
+				synctest.Wait()
+				m.backgroundTasks.Wait()
+				close(release)
+				synctest.Wait()
+				block.SetContent([]tui.AssistantSegment{{Text: "second"}})
+				shown := strings.Join(block.Render(80), "\n")
+				synctest.Wait()
+				m.backgroundTasks.Wait()
+				shown += strings.Join(block.Render(80), "\n")
+				mu.Lock()
+				got := slices.Clone(trace)
+				mu.Unlock()
+				logMarkdownOrder(t, exit, got)
+				if strings.Contains(shown, "transformed") {
+					t.Errorf("an abandoned or later generation published a transformed result: %q", shown)
+				}
+				for _, entry := range got {
+					// After a disconnect, Pi's chain continues past the failed transformer, so the next extension's transformer still runs.
+					if (exit == "shutdown" && strings.HasPrefix(entry, "C ")) || entry == "A second entered" {
+						t.Errorf("%q entered after the %s: %q", entry, exit, got)
+					}
+				}
+			})
+		})
+	}
 }

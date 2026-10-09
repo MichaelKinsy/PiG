@@ -6,6 +6,8 @@ import (
 	"os"
 	"testing"
 
+	icodingagent "github.com/MichaelKinsy/PiG/internal/codingagent"
+
 	"github.com/MichaelKinsy/PiG/agent"
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/coding/extension"
@@ -19,7 +21,7 @@ func TestAgentSessionRuntimeOriginalAssistantReplacement(t *testing.T) {
 		return extension.Extension{
 			Path: "/runtime-cost", Handlers: map[string][]extension.HandlerFn{
 				"message_end": {func(args ...any) (any, error) {
-					message := args[0].(extension.MessageEndEvent).Message.(agent.AgentMessage)
+					message := args[0].(extension.MessageEndEvent).Message
 					if message.Assistant == nil {
 						return nil, nil
 					}
@@ -37,7 +39,7 @@ func TestAgentSessionRuntimeOriginalAssistantReplacement(t *testing.T) {
 		}
 	}})
 	session := h.runtime.Session()
-	if _, err := session.Prompt(t.Context(), "hello"); err != nil {
+	if err := session.Prompt(t.Context(), "hello"); err != nil {
 		t.Fatal(err)
 	}
 	var live, persisted *agent.AssistantMessage
@@ -48,7 +50,7 @@ func TestAgentSessionRuntimeOriginalAssistantReplacement(t *testing.T) {
 		}
 	}
 	for _, entry := range session.Entries() {
-		if message, ok := entry.AsMessage(); ok && message.Message.Assistant != nil {
+		if message, ok := entry.(icodingagent.MessageEntry); ok && message.Message.Assistant != nil {
 			persisted = message.Message.Assistant
 			break
 		}

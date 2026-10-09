@@ -58,25 +58,69 @@ func TestCustomToolCallEventIsWrittenInPiMemberOrder(t *testing.T) {
 			if string(encoded) != tc.want {
 				t.Errorf("event =\n%s\nwant\n%s", encoded, tc.want)
 			}
-			viaHelper, err := MarshalToolCallEvent(tc.event)
-			if err != nil {
-				t.Fatal(err)
-			}
-			if string(viaHelper) != tc.want {
-				t.Errorf("MarshalToolCallEvent =\n%s\nwant\n%s", viaHelper, tc.want)
-			}
 		})
 	}
 }
 
 // The wire form is a way to write the event, not part of its data: a decoded event carries no wire bytes.
 func TestCustomToolCallEventRoundTripKeepsNoWireInput(t *testing.T) {
-	decoded, err := UnmarshalToolCallEvent([]byte(`{"type":"tool_call","toolName":"t","toolCallId":"c","input":{"b":1,"a":2}}`))
-	if err != nil {
+	var custom CustomToolCallEvent
+	if err := json.Unmarshal([]byte(`{"type":"tool_call","toolName":"t","toolCallId":"c","input":{"b":1,"a":2}}`), &custom); err != nil {
 		t.Fatal(err)
 	}
-	custom, ok := decoded.(CustomToolCallEvent)
-	if !ok || custom.WireInput != nil || custom.ToolCallID != "c" || len(custom.Input) != 2 {
-		t.Fatalf("decoded = %#v", decoded)
+	if custom.WireInput != nil || custom.ToolCallID != "c" || len(custom.Input) != 2 {
+		t.Fatalf("decoded = %#v", custom)
+	}
+}
+
+// InputJSON, the arguments the tool runs with, is the `input` the event is written with: the members in WireInput's order, a member it does not hold (one an in-process handler added) after them in sorted order, and a member the map lost left out.
+func TestCustomToolCallEventInputJSONIsTheInputItWrites(t *testing.T) {
+	wire := func(text string) *json.RawMessage {
+		raw := json.RawMessage(text)
+		return &raw
+	}
+	for name, tc := range map[string]struct {
+		event CustomToolCallEvent
+		want  string
+	}{
+		"wire order": {
+			CustomToolCallEvent{ToolCallEventBase: ToolCallEventBase{Type: "tool_call", ToolCallID: "call", WireInput: wire(`{"command":"ls","aaa":1,"nested":{"y":2,"b":3}}`)}, ToolName: "bash", Input: map[string]any{"command": "ls", "aaa": 1.0, "nested": map[string]any{"y": 2.0, "b": 3.0}}},
+			`{"type":"tool_call","toolName":"bash","toolCallId":"call","input":{"command":"ls","aaa":1,"nested":{"y":2,"b":3}}}`,
+		},
+		"parent": {
+			CustomToolCallEvent{ToolCallEventBase: ToolCallEventBase{Type: "tool_call", ToolCallID: "parent/1", ParentToolCallID: "parent", WireInput: wire(`{"z":true,"a":false}`)}, ToolName: "bash", Input: map[string]any{"z": true, "a": false}},
+			`{"type":"tool_call","toolName":"bash","toolCallId":"parent/1","parentToolCallId":"parent","input":{"z":true,"a":false}}`,
+		},
+		"in-process edit": {
+			CustomToolCallEvent{ToolCallEventBase: ToolCallEventBase{Type: "tool_call", ToolCallID: "call", WireInput: wire(`{"command":"ls","zz":1,"dropped":2}`)}, ToolName: "bash", Input: map[string]any{"command": "rewritten", "zz": true, "bb": false}},
+			`{"type":"tool_call","toolName":"bash","toolCallId":"call","input":{"command":"rewritten","zz":true,"bb":false}}`,
+		},
+		"no wire": {
+			CustomToolCallEvent{ToolCallEventBase: ToolCallEventBase{Type: "tool_call", ToolCallID: "call"}, ToolName: "probe", Input: map[string]any{"b": 1.0, "a": "x"}},
+			`{"type":"tool_call","toolName":"probe","toolCallId":"call","input":{"a":"x","b":1}}`,
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			encoded, err := json.Marshal(tc.event)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if string(encoded) != tc.want {
+				t.Errorf("event =\n%s\nwant\n%s", encoded, tc.want)
+			}
+			if input, err := tc.event.InputJSON(); err != nil {
+				t.Fatal(err)
+			} else {
+				var event struct {
+					Input json.RawMessage `json:"input"`
+				}
+				if err := json.Unmarshal([]byte(tc.want), &event); err != nil {
+					t.Fatal(err)
+				}
+				if string(input) != string(event.Input) {
+					t.Errorf("InputJSON = %s, want %s", input, event.Input)
+				}
+			}
+		})
 	}
 }

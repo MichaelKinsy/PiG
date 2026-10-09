@@ -104,8 +104,12 @@ type FileError struct {
 
 // NewFileError returns a FileError; path and cause may be empty.
 func NewFileError(code FileErrorCode, message, path string, cause error) *FileError {
-	return &FileError{Code: code, Message: message, Path: path, Cause: cause}
+	e := &FileError{Code: code, Message: message, Path: path, Cause: cause}
+	return e
 }
+
+// Name is the `name` property, "FileError".
+func (*FileError) Name() string { return "FileError" }
 
 func (e *FileError) Error() string { return e.Message }
 
@@ -136,8 +140,12 @@ type ExecutionError struct {
 
 // NewExecutionError returns an ExecutionError; cause may be nil.
 func NewExecutionError(code ExecutionErrorCode, message string, cause error) *ExecutionError {
-	return &ExecutionError{Code: code, Message: message, Cause: cause}
+	e := &ExecutionError{Code: code, Message: message, Cause: cause}
+	return e
 }
+
+// Name is the error class name, Pi's `name` property.
+func (*ExecutionError) Name() string { return "ExecutionError" }
 
 func (e *ExecutionError) Error() string { return e.Message }
 

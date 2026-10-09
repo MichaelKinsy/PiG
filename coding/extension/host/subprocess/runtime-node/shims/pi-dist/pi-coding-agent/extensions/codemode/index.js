@@ -20,6 +20,7 @@ export function createCodemodeExtension(options = {}) {
                 appendEntry: (customType, data) => pi.appendEntry(customType, data),
                 models: options.models ?? true,
                 getToolNamespace: (name) => pi.getAllTools().find((tool) => tool.name === name)?.namespace,
+                getToolGuidelines: () => new Map(pi.getAllTools().map((tool) => [tool.name, tool.promptGuidelines ?? []])),
                 getMode: () => options.mode ?? readMode(pi),
                 getInlineBudget: () => options.inlineBudget ?? readInlineBudget(pi),
             }),

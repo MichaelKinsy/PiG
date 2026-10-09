@@ -1,4 +1,3 @@
-// SPDX-FileCopyrightText: Copyright Hewlett Packard Enterprise Development LP
 // SPDX-FileCopyrightText: Copyright (c) 2025 Mario Zechner
 // SPDX-License-Identifier: MIT
 
@@ -17,6 +16,8 @@ import (
 // The upstream file uses a live model, but every assertion concerns Session state,
 // persistence or events, not answer quality. The lane lead approves a faux provider
 // for these deterministic assertions. No case needs a live-only disposition.
+// Pi: packages/coding-agent/src/core/session-manager.ts:94 (CompactionEntry.firstKeptEntryId); packages/coding-agent/src/core/session-manager.ts:95 (CompactionEntry.tokensBefore).
+// Pi: packages/coding-agent/src/core/session-manager.ts:93 (CompactionEntry.summary).
 func TestAgentSessionCompactionE2EUpstream(t *testing.T) {
 	cases := []struct {
 		name       string
@@ -73,7 +74,7 @@ func TestAgentSessionCompactionE2EUpstream(t *testing.T) {
 			for _, prompt := range tc.prompts {
 				send(prompt)
 			}
-			result, err := s.CompactResult(t.Context(), "")
+			result, err := s.Compact(t.Context(), "")
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -103,10 +104,10 @@ func TestAgentSessionCompactionE2EUpstream(t *testing.T) {
 				}
 				fmt.Printf("COMPACTION_E2E %s\n", trace)
 			}
-			entries := s.inner.Entries()
+			entries := s.inner.GetEntries()
 			count := 0
 			for _, entry := range entries {
-				if entry.Base.Type != "compaction" {
+				if entry.Base().Type != "compaction" {
 					continue
 				}
 				count++
@@ -134,8 +135,8 @@ func TestAgentSessionCompactionE2EUpstream(t *testing.T) {
 					t.Fatal(err)
 				}
 				found := false
-				for _, entry := range loaded.Entries() {
-					found = found || entry.Base.Type == "compaction"
+				for _, entry := range loaded.GetEntries() {
+					found = found || entry.Base().Type == "compaction"
 				}
 				if !found {
 					t.Fatal("compaction not persisted")

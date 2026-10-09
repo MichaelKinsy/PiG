@@ -4,7 +4,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"runtime"
 	"strings"
 	"testing"
 
@@ -13,11 +12,7 @@ import (
 
 func divergenceScript(t *testing.T) string {
 	t.Helper()
-	_, thisFile, _, ok := runtime.Caller(0)
-	if !ok {
-		t.Fatal("runtime.Caller failed")
-	}
-	return filepath.Join(filepath.Dir(thisFile), "..", "..", "automation", "ci", "check-divergence-consistency.sh")
+	return filepath.Join(testenv.ModuleRoot(t), "automation", "ci", "check-divergence-consistency.sh")
 }
 
 func writeDivergenceFixture(t *testing.T, core, additive, markers string) string {

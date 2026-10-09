@@ -74,7 +74,7 @@ func (c *extensionCatalogEncoding) state(registry *ModelRegistry, catalog []*ai.
 		}
 		if compat := model.ProviderMeta.Compat; compat != nil &&
 			(!catalogMapCacheable(compat.OpenRouterRouting) || !catalogMapCacheable(compat.ChatTemplateKwargs) ||
-				!catalogMapCacheable(compat.VercelGatewayRouting) || !catalogMapCacheable(compat.ChatTemplateArgs)) {
+				!catalogMapCacheable(compat.ChatTemplateArgs)) {
 			return c.uncached(registry, catalog)
 		}
 	}

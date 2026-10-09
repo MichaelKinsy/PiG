@@ -1,0 +1,68 @@
+{
+  "status": "final",
+  "session": { "id": "TODO smc1-YYYY-MM-DD", "date": "TODO", "interleaved": true, "rounds": 12, "started": "TODO ISO time", "ended": "TODO ISO time" },
+  "machine": {
+    "host": "smc1",
+    "cpu": "Intel Xeon Platinum 8462Y+",
+    "pinning": "one pinned logical core (CPU 23) of a shared 128-thread host",
+    "relative": "Absolute times run about 2× Mario's i9-13900 numbers; compare only within this session."
+  },
+  "runner": {
+    "repo": "badlogic/durable-bench",
+    "commit": "e9abffa",
+    "changes": "CPU gate reads the pinned core and its SMT sibling only (gate-cpus.patch); PiG targets added (TODO patch path and sha256)."
+  },
+  "protocol": { "samples": 12, "turns": 10, "seed": "TODO scratch (every size from an empty store) or chain (fingerprinted segments 0 -> ... -> n)", "cpu_gate": "<= 8% over 1 s on CPU 23 and 87" },
+  "model": {
+    "label": "durable-bench's own scripted model in JS (walks the whole transcript on every call), pi-ai's faux provider and the same lookup tool, for every target."
+  },
+  "contract": {
+    "status": "TODO pass",
+    "corpus": "full",
+    "crash_matrix": "TODO pass",
+    "reference": "da866ada",
+    "core": "TODO dcore-integrate commit",
+    "builds": ["TinyGo", "Go", "native"],
+    "artifacts": { "TinyGo": "TODO sha256", "Go": "TODO sha256", "native": "TODO sha256" },
+    "rows": { "ready": "TODO", "skipped": "TODO", "crash_matrix": "TODO" },
+    "identity": { "standard": { "50": "W1-50", "250": "W1-250", "1000": "W1-1000", "3500": "W1-3500" } },
+    "report_url": "TODO https link to the committed CONTRACT report",
+    "note": "Replace this whole object with the output of contract-record.mjs (README)."
+  },
+  "cloudflare": { "status": "none" },
+  "targets": {
+    "pig-tinygo": { "label": "PiG Durable", "build": "TinyGo", "kind": "pig", "role": "headline", "version": "TODO core commit", "artifact": { "sha256": "TODO", "bytes": 0, "gzip": 0 } },
+    "pi-head": { "label": "pi-durable main", "kind": "pi", "role": "reference", "version": "da866ada" },
+    "tardie": { "label": "Tardigrade", "kind": "tardigrade", "role": "contender", "version": "0.44.0" },
+    "pig-go": { "label": "PiG Durable", "build": "Go", "kind": "pig", "role": "detail", "version": "TODO core commit", "artifact": { "sha256": "TODO", "bytes": 0, "gzip": 0 } },
+    "pig-native": { "label": "PiG Durable", "build": "native", "kind": "pig", "role": "detail", "version": "TODO core commit", "model": "TODO the model the native host ran (RUNNER-SPEC Native build)", "artifact": { "sha256": "TODO", "bytes": 0, "gzip": 0 } },
+    "ts-control": { "label": "Durable core", "build": "TS", "kind": "control", "role": "control", "version": "TODO impls/ts-core version" },
+    "empty": { "label": "Empty target", "kind": "floor", "role": "floor", "version": "floor" }
+  },
+  "bench_targets": {
+    "pi-head-compact-big": { "target": "pi-head", "workload": "compact-big" },
+    "pig-tinygo-compact-big": { "target": "pig-tinygo", "workload": "compact-big" },
+    "pi-head-big": { "target": "pi-head", "workload": "big" },
+    "pig-tinygo-big": { "target": "pig-tinygo", "workload": "big" },
+    "pi-head-compact": { "target": "pi-head", "workload": "compact" },
+    "pig-tinygo-compact": { "target": "pig-tinygo", "workload": "compact" }
+  },
+  "workloads": {
+    "standard": { "title": "durable-bench as published", "description": "Compaction off, 256 B tool results (8 KiB every 97th)." },
+    "compact-big": {
+      "title": "Realistic: compaction on, multi-KB tool results",
+      "description": "Histories built with compaction on (131,072-token window) and 4-64 KiB tool results, so the model sees a bounded window of about 233 entries while the database keeps growing (21 MB at 3,500 turns). Tardigrade has no equivalent stores, so it is not in this chart.",
+      "note": "Under each size: entries, transcript bytes and compactions of the history pi-durable main wrote (assemble.mjs fills workloads.<w>.fixtures from its run-session lines)."
+    },
+    "big": {
+      "title": "Realistic: multi-KB tool results, no compaction",
+      "description": "Tool results of 4 KiB, every 13th 16 KiB and every 97th 64 KiB; the whole history stays in the model context (16.7 MB of entries at 3,500 turns)."
+    },
+    "compact": {
+      "title": "Realistic: compaction on",
+      "description": "durable-bench's tool results with compaction on (131,072-token window); 10 compactions by 3,500 turns."
+    }
+  },
+  "text": {},
+  "publish": { "results_path": "bench/durable/report/data/results.jsonl" }
+}

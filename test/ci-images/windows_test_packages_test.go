@@ -1,4 +1,3 @@
-// SPDX-FileCopyrightText: Copyright Hewlett Packard Enterprise Development LP
 // SPDX-License-Identifier: MIT
 
 package ciimages
@@ -22,8 +21,8 @@ import (
 const modulePath = "github.com/MichaelKinsy/PiG"
 
 // windowsOnlyTestPackages walks the root module for test files that only a
-// Windows build selects: a _windows_test.go name or a "//go:build windows"
-// line. A file whose constraint also needs a custom tag (integration, parity)
+// Windows build selects: a _windows_test.go name or a "//go:build windows" or
+// "//go:build !unix" line. A file whose constraint also needs a custom tag (integration, parity)
 // is not selected by a default go test and is left out.
 func windowsOnlyTestPackages(t *testing.T, root string) []string {
 	t.Helper()
@@ -49,7 +48,8 @@ func windowsOnlyTestPackages(t *testing.T, root string) []string {
 			return nil
 		}
 		constraint := buildConstraint(t, file)
-		windowsOnly := constraint == "windows" || strings.HasSuffix(name, "_windows_test.go") && (constraint == "" || constraint == "windows")
+		// "!unix" selects the file on Windows and on no Linux or macOS build.
+		windowsOnly := constraint == "windows" || constraint == "!unix" || strings.HasSuffix(name, "_windows_test.go") && (constraint == "" || constraint == "windows")
 		if windowsOnly {
 			rel, err := filepath.Rel(root, filepath.Dir(file))
 			if err != nil {
@@ -248,7 +248,7 @@ func TestWindowsNativeShardsPartitionTheSelectedPackages(t *testing.T) {
 	want := map[string]bool{}
 	for pkg := range strings.FieldsSeq(output) {
 		switch strings.TrimPrefix(pkg, modulePath+"/") {
-		case "coding/extension/host/runtimecell", "coding/extension/host/subprocess", "cmd/pig":
+		case "coding/extension/host/runtimecell", "coding/extension/host/subprocess", "coding/cli":
 		default:
 			want[pkg] = true
 		}

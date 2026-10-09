@@ -53,12 +53,16 @@ func (m *InteractiveMode) suspendOperations() suspendOperations {
 		ignoreInterrupt: m.ignoreSuspendInterrupt,
 		continued:       m.onSuspendContinue,
 		stop: func() {
+			// pig additive (D91): a frontend session learns of the stop
+			// while PiG still reads its input, and keeps its frames.
+			if m.surface != nil {
+				m.surface.Suspend()
+			}
 			if m.inputReader != nil {
 				m.inputReader.pause()
 			}
-			m.tuiInst.Stop()
-			if m.themeState.autoSyncEnabled.Load() {
-				m.writeThemeNotifications(false)
+			if m.surface == nil {
+				m.tuiInst.Stop()
 			}
 			if m.rawRestore != nil {
 				m.rawRestore()
@@ -77,14 +81,21 @@ func (m *InteractiveMode) suspendOperations() suspendOperations {
 			if m.inputReader != nil {
 				m.inputReader.resume()
 			}
-			if m.themeState.autoSyncEnabled.Load() {
-				m.writeThemeNotifications(true)
+			if m.surface != nil {
+				m.surface.Resume()
+			} else {
+				m.tuiInst.Start()
 			}
-			m.tuiInst.Start()
 			return nil
 		},
-		requestRender: func() { m.tuiInst.ForceFullRender(); m.tuiInst.Render() },
-		kill:          func(pid int) error { return syscall.Kill(pid, syscall.SIGTSTP) },
+		requestRender: func() {
+			// pig additive (D91): Resume already drew what changed.
+			if m.surface == nil {
+				m.tuiInst.ForceFullRender()
+				m.tuiInst.Render()
+			}
+		},
+		kill: func(pid int) error { return syscall.Kill(pid, syscall.SIGTSTP) },
 	}
 }
 

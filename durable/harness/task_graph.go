@@ -11,6 +11,7 @@ import (
 	"sync"
 
 	"github.com/MichaelKinsy/PiG/chord"
+	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/durable"
 	"github.com/MichaelKinsy/PiG/durable/session"
 )
@@ -29,15 +30,15 @@ type TaskGraphState struct {
 func (state TaskGraphState) MarshalJSON() ([]byte, error) {
 	switch state.Status {
 	case durable.TaskPending, durable.TaskRunning:
-		return json.Marshal(map[string]any{"status": state.Status, "phase": state.Phase})
+		return json.Marshal(delta.JsonObjectOf("status", state.Status, "phase", state.Phase))
 	case durable.TaskWaiting:
 		on := state.On
 		if on == nil {
 			on = []durable.TaskId{}
 		}
-		return json.Marshal(map[string]any{"status": state.Status, "phase": state.Phase, "on": on, "policy": state.Policy})
+		return json.Marshal(delta.JsonObjectOf("status", state.Status, "phase", state.Phase, "on", on, "policy", state.Policy))
 	}
-	return json.Marshal(map[string]any{"status": state.Status, "outcome": state.Outcome})
+	return json.Marshal(delta.JsonObjectOf("status", state.Status, "outcome", state.Outcome))
 }
 
 // TaskGraphNode is one live task of the graph.
@@ -369,7 +370,6 @@ func phaseOf(checkpoint *durable.JsonValue) string {
 	if checkpoint == nil {
 		return ""
 	}
-	object, _ := (*checkpoint).(map[string]any)
-	phase, _ := object["phase"].(string)
+	phase, _ := jsonMember(*checkpoint, "phase").(string)
 	return phase
 }

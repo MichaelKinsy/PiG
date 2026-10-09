@@ -42,7 +42,7 @@ func TestStartupMigrationsKeepUppercaseHeaderStringsAsLiterals(t *testing.T) {
 	if provider.APIKey != "CUSTOM_API_KEY" || provider.Headers["Authorization"] != "BEARER" {
 		t.Fatalf("migrated provider = %+v", provider)
 	}
-	services, err := NewServices(ServicesOptions{CWD: cwd, AgentDir: agentDir})
+	services, err := CreateAgentSessionServices(CreateAgentSessionServicesOptions{CWD: cwd, AgentDir: agentDir})
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -7,43 +7,25 @@ package tui
 // DynamicBorder renders a full-width horizontal rule using "─".
 type DynamicBorder struct {
 	invalidatable
-	color   string              // ANSI fg escape; empty = use theme border color
-	token   string              // theme token resolved at render time; takes precedence over color
-	colorFn func(string) string // upstream color callback; takes precedence over token and color
+	color func(string) string
 }
 
-// NewDynamicBorder creates a border. If color is empty, the active
-// theme's border color is used at render time.
-func NewDynamicBorder(color string) *DynamicBorder {
-	return &DynamicBorder{color: color}
+// NewDynamicBorder creates a border drawn through color, which styles the whole rule. Without a color function the rule uses the active theme's border color, read at render time.
+func NewDynamicBorder(color ...func(string) string) *DynamicBorder {
+	if len(color) > 0 && color[0] != nil {
+		return &DynamicBorder{color: color[0]}
+	}
+	return &DynamicBorder{color: func(text string) string { return ActiveTheme().Fg("border", text) }}
 }
 
 // NewDynamicBorderToken creates a border colored with a theme token at render time (dynamic-border.ts takes a `(str) => theme.fg(token, str)` callback), so it follows theme changes.
 func NewDynamicBorderToken(token string) *DynamicBorder {
-	return &DynamicBorder{token: token}
+	return NewDynamicBorder(func(text string) string { return ActiveTheme().Fg(token, text) })
 }
 
-// NewDynamicBorderFunc mirrors upstream's DynamicBorder constructor: color
-// styles the whole rule.
-func NewDynamicBorderFunc(color func(string) string) *DynamicBorder {
-	return &DynamicBorder{colorFn: color}
-}
-
-// Render produces a full-width rule and resets only its foreground color.
+// Render produces a full-width rule styled by the border's color function.
 func (d *DynamicBorder) Render(width int) []string {
-	if d.colorFn != nil {
-		return []string{d.colorFn(repeatRune('─', max(1, width)))}
-	}
-	if d.token != "" {
-		return []string{ActiveTheme().FgText(d.token, repeatRune('─', max(1, width)))}
-	}
-	color := d.color
-	if color == "" {
-		return []string{ActiveTheme().FgText("border", repeatRune('─', max(1, width)))}
-	}
-	w := max(1, width)
-	line := color + repeatRune('─', w) + "\x1b[39m"
-	return []string{line}
+	return []string{d.color(repeatRune('─', max(1, width)))}
 }
 
 // repeatRune repeats a rune n times.

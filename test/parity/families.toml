@@ -125,6 +125,7 @@ includes = [
 [families.tools]
 description = "Built-in tool handlers (bash, read, write, edit, grep, find, ls) and their formatting plumbing."
 includes = [
+  "packages/env/src/",
   "packages/coding-agent/src/core/tools/",
 ]
 
@@ -186,6 +187,7 @@ includes = [
   "packages/coding-agent/src/modes/interactive/components/assistant-message.ts",
   "packages/coding-agent/src/modes/interactive/components/armin.ts",
   "packages/coding-agent/src/modes/interactive/components/tool-execution.ts",
+  "packages/coding-agent/src/modes/interactive/program-status-reporter.ts",
   "packages/coding-agent/src/modes/interactive/components/bash-execution.ts",
   "packages/coding-agent/src/modes/interactive/components/visual-truncate.ts",
   "packages/coding-agent/src/modes/interactive/components/user-message.ts",
@@ -231,6 +233,7 @@ includes = [
 [families.extensions-runtime]
 description = "Pi extension SDK runtime: SDK lifecycle, extension types, in-proc runner, loader, and tool-bridge wrapper."
 includes = [
+  "packages/mcp/src/",
   "packages/coding-agent/src/core/sdk.ts",
   "packages/coding-agent/src/core/extensions/types.ts",
   "packages/coding-agent/src/core/extensions/runner.ts",
@@ -318,6 +321,8 @@ includes = [
 [families.cli-utils]
 description = "Remaining CLI parsing, startup picker, package-command, and utility surfaces outside the main interactive/platform families."
 includes = [
+  "packages/evals/src/",
+  "packages/telemetry/src/",
   "packages/ai/src/cli.ts",
   "packages/coding-agent/src/cli/args.ts",
   "packages/coding-agent/src/cli/file-processor.ts",
@@ -375,4 +380,14 @@ includes = [
   "packages/coding-agent/src/modes/interactive/components/trust-selector.ts",
   "packages/coding-agent/src/modes/interactive/interactive-mode.ts",
   "packages/coding-agent/src/package-manager-cli.ts",
+]
+
+[families.remote-stack]
+description = "Application-composition runtime, durable Sessions and the experimental remote Session stack: chord, client, protocol, server and durable."
+includes = [
+  "packages/chord/src/",
+  "packages/client/src/",
+  "packages/protocol/src/",
+  "packages/server/src/",
+  "packages/durable/src/",
 ]

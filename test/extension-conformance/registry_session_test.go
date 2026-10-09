@@ -99,13 +99,13 @@ func TestRegistrySessionFacadesAcrossSDKs(t *testing.T) {
 			if h.bridge != nil {
 				view := registryProbeView()
 				path := filepath.Join(t.TempDir(), "session.jsonl")
-				header, err := json.Marshal(view.Session.Header())
+				header, err := json.Marshal(view.Session.GetHeader())
 				if err != nil {
 					t.Fatal(err)
 				}
 				data := header
 				data = append(data, '\n')
-				for _, entry := range view.Session.Entries() {
+				for _, entry := range view.Session.GetEntries() {
 					data = append(data, entry.Raw()...)
 					data = append(data, '\n')
 				}
@@ -122,7 +122,7 @@ func TestRegistrySessionFacadesAcrossSDKs(t *testing.T) {
 				b.SetHostAction("getSessionFile", func() string { return path })
 				b.SetHostAction("getLeafID", func() string { return "two" })
 				b.SetHostAction("getEntriesPage", func(cursor, _ int) ([]json.RawMessage, int, bool, string) {
-					entries := view.Session.Entries()
+					entries := view.Session.GetEntries()
 					if cursor < 0 || cursor > len(entries) {
 						cursor = 0
 					}

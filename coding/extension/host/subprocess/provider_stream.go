@@ -11,7 +11,7 @@ import (
 
 func providerOptionsWire(o ai.StreamOptions) map[string]any {
 	values := map[string]any{"apiKey": o.APIKey}
-	optional := map[string]any{"reasoning": o.Thinking, "reasoningEffort": o.ReasoningEffort, "effort": o.Effort, "cacheRetention": o.CacheRetention, "sessionId": o.SessionID, "transport": o.Transport}
+	optional := map[string]any{"reasoning": o.Thinking, "reasoningEffort": o.ReasoningEffort, "effort": o.Effort, "thinkingDisplay": o.ThinkingDisplay, "cacheRetention": o.CacheRetention, "sessionId": o.SessionID, "transport": o.Transport}
 	for key, value := range optional {
 		if fmt.Sprint(value) != "" {
 			values[key] = value
@@ -74,10 +74,9 @@ func providerOptionsWire(o ai.StreamOptions) map[string]any {
 // providerStreamCallback executes the provider in its owning extension. The connection owns and joins the worker; request cancellation removes correlation and cancels the remote callback.
 // pig additive (D19): connection-owned callbacks carry legacy streamSimple execution across the SDK boundary without changing registry scope.
 func (h *Host) providerStreamCallback(me *managedExt, name string) extension.ProviderStreamSimple {
-	return func(rawModel extension.Model, rawContext extension.AIContext, rawOptions extension.SimpleStreamOptions) extension.AssistantMessageEventStream {
-		model := rawModel.(*ai.Model)
-		transcript := rawContext.(ai.TranscriptContext)
-		options := rawOptions.(ai.StreamOptions)
+	return func(model extension.Model, rawContext extension.AIContext, rawOptions extension.SimpleStreamOptions) extension.AssistantMessageEventStream {
+		transcript := rawContext
+		options := rawOptions
 		parent := options.Signal
 		if parent == nil {
 			parent = context.Background()

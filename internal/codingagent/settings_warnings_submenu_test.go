@@ -10,6 +10,7 @@ import (
 // Math.min(items.length, 10) rows and no search (settings-selector.ts), so
 // its hint is "Enter/Space to change · Esc to cancel" and it has no search
 // line. Changing its row saves at once; Esc returns to the main list.
+// Pi: packages/coding-agent/src/core/settings-manager.ts:1524 (SettingsManager.getWarnings).
 func TestSettingsWarningsSubmenuHasNoSearch(t *testing.T) {
 	m, _ := newExtensionDialogProbe(t)
 	m.opts.SettingsManager = NewSettingsManager(t.TempDir(), t.TempDir())

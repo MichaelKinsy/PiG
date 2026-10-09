@@ -12,6 +12,8 @@ import (
 	"strings"
 
 	"github.com/MichaelKinsy/PiG/ai"
+	"github.com/MichaelKinsy/PiG/chord"
+	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/durable"
 	"github.com/MichaelKinsy/PiG/durable/session"
 )
@@ -36,13 +38,13 @@ type MessageChange struct {
 func (change MessageChange) MarshalJSON() ([]byte, error) {
 	switch change.Type {
 	case "message":
-		return json.Marshal(map[string]any{"type": change.Type, "message": change.Message})
+		return json.Marshal(delta.JsonObjectOf("type", change.Type, "message", change.Message))
 	case "text_delta", "thinking_delta":
-		return json.Marshal(map[string]any{"type": change.Type, "contentIndex": change.ContentIndex, "delta": change.Delta})
+		return json.Marshal(delta.JsonObjectOf("type", change.Type, "contentIndex", change.ContentIndex, "delta", change.Delta))
 	case "toolcall_delta":
-		return json.Marshal(map[string]any{"type": change.Type, "contentIndex": change.ContentIndex, "path": change.Path, "delta": change.Delta})
+		return json.Marshal(delta.JsonObjectOf("type", change.Type, "contentIndex", change.ContentIndex, "path", change.Path, "delta", change.Delta))
 	}
-	return json.Marshal(map[string]any{"type": change.Type, "contentIndex": change.ContentIndex, "block": change.Block})
+	return json.Marshal(delta.JsonObjectOf("type", change.Type, "contentIndex", change.ContentIndex, "block", change.Block))
 }
 
 // AgentEvent is an experimental agent event, shaped like the coding agent's session events (spec §9.4).
@@ -346,18 +348,18 @@ func (stream *AgentEventStream) End() durable.WatchEnd { return stream.watch.End
 
 // viewParts are the raw parts of a view the events read; identity of a raw value tells whether it changed.
 type viewParts struct {
-	live  map[string]any
-	inbox map[string]any
-	agent map[string]any
-	usage map[string]any
+	live  *delta.JsonObject
+	inbox *delta.JsonObject
+	agent *delta.JsonObject
+	usage *delta.JsonObject
 }
 
 func partsOf(view ConversationView) viewParts {
-	live := view.Docs["pi.live"]
+	live := viewDoc(view, "pi.live")
 	if live == nil {
-		live = map[string]any{}
+		live = delta.NewJsonObject(0)
 	}
-	return viewParts{live: live, inbox: view.Docs["pi.inbox"], agent: view.Docs["pi.agent"], usage: view.Docs["pi.usage"]}
+	return viewParts{live: live, inbox: viewDoc(view, "pi.inbox"), agent: viewDoc(view, "pi.agent"), usage: viewDoc(view, "pi.usage")}
 }
 
 func decodeEventJSON[T any](value any) T {
@@ -378,20 +380,20 @@ func snapshotOf(view ConversationView) SnapshotEvent {
 		Agent:       AgentState{},
 		Usage:       NewUsageState(),
 	}
-	if run, ok := parts.live["run"].(map[string]any); ok {
-		snapshot.Run = &RunEvent{Inputs: decodeEventJSON[[]durable.SubmissionId](run["inputs"])}
+	if run, ok := parts.live.Value("run").(*delta.JsonObject); ok {
+		snapshot.Run = &RunEvent{Inputs: decodeEventJSON[[]durable.SubmissionId](run.Value("inputs"))}
 	}
-	if generation, ok := parts.live["generation"].(map[string]any); ok {
+	if generation, ok := parts.live.Value("generation").(*delta.JsonObject); ok {
 		live := decodeEventJSON[LiveGeneration](generation)
 		snapshot.Generation = &SnapshotGeneration{Attempt: live.Attempt, Retry: live.Retry, Deferred: live.Deferred}
-		if message, present := generation["message"]; present {
+		if message, present := generation.Get("message"); present {
 			snapshot.Generation.Message = decodeAssistant(message)
 		}
 	}
-	if tools, ok := parts.live["tools"]; ok {
+	if tools, ok := parts.live.Get("tools"); ok {
 		snapshot.Tools = decodeEventJSON[[]ToolSlot](tools)
 	}
-	if compactions, ok := parts.live["compactions"]; ok {
+	if compactions, ok := parts.live.Get("compactions"); ok {
 		snapshot.Compactions = decodeEventJSON[[]CompactionStatus](compactions)
 	}
 	if parts.agent != nil {
@@ -403,12 +405,12 @@ func snapshotOf(view ConversationView) SnapshotEvent {
 	return snapshot
 }
 
-func queuedItems(inbox map[string]any) []QueuedItem {
+func queuedItems(inbox *delta.JsonObject) []QueuedItem {
 	items := []QueuedItem{}
 	if inbox == nil {
 		return items
 	}
-	for _, item := range decodeEventJSON[[]InboxItem](inbox["items"]) {
+	for _, item := range decodeEventJSON[[]InboxItem](inbox.Value("items")) {
 		items = append(items, QueuedItem{Id: item.Id, Mode: item.Mode})
 	}
 	return items
@@ -509,27 +511,27 @@ func sameJSON(a, b any) bool {
 	return a == b
 }
 
-func rawSlots(live map[string]any) []map[string]any {
-	items, _ := live["tools"].([]any)
-	slots := make([]map[string]any, 0, len(items))
+func rawSlots(live *delta.JsonObject) []*delta.JsonObject {
+	items, _ := live.Value("tools").([]any)
+	slots := make([]*delta.JsonObject, 0, len(items))
 	for _, item := range items {
-		slots = append(slots, item.(map[string]any))
+		slots = append(slots, item.(*delta.JsonObject))
 	}
 	return slots
 }
 
-func slotString(slot map[string]any, key string) string {
-	value, _ := slot[key].(string)
+func slotString(slot *delta.JsonObject, key string) string {
+	value, _ := slot.Value(key).(string)
 	return value
 }
 
-func slotTaskId(slot map[string]any) (durable.TaskId, bool) {
-	value, ok := slot["taskId"].(float64)
+func slotTaskId(slot *delta.JsonObject) (durable.TaskId, bool) {
+	value, ok := slot.Value("taskId").(float64)
 	return durable.TaskId(value), ok
 }
 
-func slotEntry(slot map[string]any) (durable.EntryId, bool) {
-	value, ok := slot["entry"].(float64)
+func slotEntry(slot *delta.JsonObject) (durable.EntryId, bool) {
+	value, ok := slot.Value("entry").(float64)
 	return durable.EntryId(value), ok
 }
 
@@ -546,17 +548,17 @@ func resultOf(entries []durable.EntryRecord, callId string) *durable.EntryRecord
 	return nil
 }
 
-func rawCompactions(live map[string]any) []map[string]any {
-	items, _ := live["compactions"].([]any)
-	out := make([]map[string]any, 0, len(items))
+func rawCompactions(live *delta.JsonObject) []*delta.JsonObject {
+	items, _ := live.Value("compactions").([]any)
+	out := make([]*delta.JsonObject, 0, len(items))
 	for _, item := range items {
-		out = append(out, item.(map[string]any))
+		out = append(out, item.(*delta.JsonObject))
 	}
 	return out
 }
 
-func compactionTaskOf(status map[string]any) durable.TaskId {
-	value, _ := status["taskId"].(float64)
+func compactionTaskOf(status *delta.JsonObject) durable.TaskId {
+	value, _ := status.Value("taskId").(float64)
 	return durable.TaskId(value)
 }
 
@@ -594,7 +596,7 @@ func translateEvents(conversationId durable.ConversationId, before, after Conver
 	events := []AgentEvent{}
 
 	// Progress: tool starts, the in-flight message, tool updates, retry and deferred state.
-	slotsBefore := map[string]map[string]any{}
+	slotsBefore := map[string]*delta.JsonObject{}
 	var slotsBeforeOrder []string
 	for _, slot := range rawSlots(was.live) {
 		callId := slotString(slot, "callId")
@@ -609,32 +611,35 @@ func translateEvents(conversationId durable.ConversationId, before, after Conver
 		if slotString(slot, "status") != "running" || (previous != nil && slotString(previous, "status") == "running") {
 			continue
 		}
-		args := durable.JsonObject{}
+		args := delta.NewJsonObject(0)
 		if taskId, ok := slotTaskId(slot); ok {
 			if task, found := tasks[taskId]; found && task.State.Checkpoint != nil {
-				if checkpoint, isObject := (*task.State.Checkpoint).(map[string]any); isObject {
-					if arguments, has := checkpoint["arguments"].(map[string]any); has {
-						args = arguments
+				switch arguments := jsonMember(*task.State.Checkpoint, "arguments").(type) {
+				case *delta.JsonObject:
+					args = arguments
+				case map[string]any:
+					if copied, err := chord.CopyJSONObject(arguments); err == nil {
+						args = copied
 					}
 				}
 			}
 		}
 		events = append(events, ToolExecutionStartEvent{ToolCallId: slotString(slot, "callId"), ToolName: slotString(slot, "name"), Args: args})
 	}
-	generationBefore, _ := was.live["generation"].(map[string]any)
-	generation, _ := now.live["generation"].(map[string]any)
+	generationBefore, _ := was.live.Value("generation").(*delta.JsonObject)
+	generation, _ := now.live.Value("generation").(*delta.JsonObject)
 	var partialBefore, partial any
 	if generationBefore != nil {
-		partialBefore = generationBefore["message"]
+		partialBefore = generationBefore.Value("message")
 	}
 	if generation != nil {
-		partial = generation["message"]
+		partial = generation.Value("message")
 	}
 	if partial != nil && partialBefore == nil {
 		events = append(events, MessageStartEvent{Message: *decodeAssistant(partial)})
 	} else if partial != nil && !sameJSON(partial, partialBefore) {
 		message := decodeAssistant(partial)
-		events = append(events, MessageUpdateEvent{Usage: message.Usage, Changes: messageChanges(viewOps, partial.(map[string]any), message)})
+		events = append(events, MessageUpdateEvent{Usage: message.Usage, Changes: messageChanges(viewOps, partial.(*delta.JsonObject), message)})
 	}
 	for index, slot := range slots {
 		previous := slotsBefore[slotString(slot, "callId")]
@@ -648,32 +653,32 @@ func translateEvents(conversationId durable.ConversationId, before, after Conver
 		update.ToolCallId, update.ToolName = slotString(slot, "callId"), slotString(slot, "name")
 		events = append(events, update)
 	}
-	retryOf := func(generation map[string]any) map[string]any {
+	retryOf := func(generation *delta.JsonObject) *delta.JsonObject {
 		if generation == nil {
 			return nil
 		}
-		retry, _ := generation["retry"].(map[string]any)
+		retry, _ := generation.Value("retry").(*delta.JsonObject)
 		return retry
 	}
-	attemptOf := func(generation map[string]any) int {
-		attempt, _ := generation["attempt"].(float64)
+	attemptOf := func(generation *delta.JsonObject) int {
+		attempt, _ := generation.Value("attempt").(float64)
 		return int(attempt)
 	}
 	if retry := retryOf(generation); retry != nil && retryOf(generationBefore) == nil {
-		at, _ := retry["at"].(float64)
-		message, _ := retry["error"].(string)
+		at, _ := retry.Value("at").(float64)
+		message, _ := retry.Value("error").(string)
 		events = append(events, AutoRetryStartEvent{Attempt: attemptOf(generation), At: at, ErrorMessage: message})
 	}
 	if retryOf(generationBefore) != nil && retryOf(generation) == nil {
 		events = append(events, AutoRetryEndEvent{Attempt: attemptOf(generationBefore)})
 	}
 	if generation != nil {
-		if deferredStatus, ok := generation["deferred"].(map[string]any); ok {
-			pollAt, _ := deferredStatus["pollAt"].(float64)
+		if deferredStatus, ok := generation.Value("deferred").(*delta.JsonObject); ok {
+			pollAt, _ := deferredStatus.Value("pollAt").(float64)
 			var before any
 			if generationBefore != nil {
-				if previous, has := generationBefore["deferred"].(map[string]any); has {
-					before = previous["pollAt"]
+				if previous, has := generationBefore.Value("deferred").(*delta.JsonObject); has {
+					before = previous.Value("pollAt")
 				}
 			}
 			if before != any(pollAt) {
@@ -696,7 +701,7 @@ func translateEvents(conversationId durable.ConversationId, before, after Conver
 		}
 		toolEnds = append(toolEnds, end)
 	}
-	findSlot := func(callId string) map[string]any {
+	findSlot := func(callId string) *delta.JsonObject {
 		for _, slot := range slots {
 			if slotString(slot, "callId") == callId {
 				return slot
@@ -769,12 +774,12 @@ func translateEvents(conversationId durable.ConversationId, before, after Conver
 
 	// Compaction ends, task failures, then turn and run ends.
 	compactionsBefore, compactions := rawCompactions(was.live), rawCompactions(now.live)
-	hasCompaction := func(list []map[string]any, taskId durable.TaskId) bool {
-		return slices.ContainsFunc(list, func(status map[string]any) bool { return compactionTaskOf(status) == taskId })
+	hasCompaction := func(list []*delta.JsonObject, taskId durable.TaskId) bool {
+		return slices.ContainsFunc(list, func(status *delta.JsonObject) bool { return compactionTaskOf(status) == taskId })
 	}
 	for _, status := range compactionsBefore {
 		if !hasCompaction(compactions, compactionTaskOf(status)) {
-			reason, _ := status["reason"].(string)
+			reason, _ := status.Value("reason").(string)
 			events = append(events, CompactionEndEvent{TaskId: compactionTaskOf(status), Reason: durable.CompactionReason(reason)})
 		}
 	}
@@ -810,8 +815,8 @@ func translateEvents(conversationId durable.ConversationId, before, after Conver
 	if turnEnded {
 		events = append(events, TurnEndEvent{})
 	}
-	runOf := func(live map[string]any) *LiveRun {
-		if run, ok := live["run"].(map[string]any); ok {
+	runOf := func(live *delta.JsonObject) *LiveRun {
+		if run, ok := live.Value("run").(*delta.JsonObject); ok {
 			decoded := decodeEventJSON[LiveRun](run)
 			return &decoded
 		}
@@ -855,8 +860,8 @@ func translateEvents(conversationId durable.ConversationId, before, after Conver
 	}
 	for _, status := range compactions {
 		if !hasCompaction(compactionsBefore, compactionTaskOf(status)) {
-			reason, _ := status["reason"].(string)
-			blocking, _ := status["blocking"].(bool)
+			reason, _ := status.Value("reason").(string)
+			blocking, _ := status.Value("blocking").(bool)
 			events = append(events, CompactionStartEvent{TaskId: compactionTaskOf(status), Reason: durable.CompactionReason(reason), Blocking: blocking})
 		}
 	}
@@ -874,7 +879,7 @@ func translateEvents(conversationId durable.ConversationId, before, after Conver
 var partialPath = []any{"docs", "pi.live", "generation", "message"}
 
 // messageChanges translates the view operations on the in-flight message into message changes (spec §9.4).
-func messageChanges(viewOps []durable.Op, raw map[string]any, message *ai.AssistantMessage) []MessageChange {
+func messageChanges(viewOps []durable.Op, raw *delta.JsonObject, message *ai.AssistantMessage) []MessageChange {
 	whole := func() []MessageChange { return []MessageChange{{Type: "message", Message: message}} }
 	changes := []MessageChange{}
 	// A block sent whole already holds every later change to it in this batch.
@@ -958,7 +963,7 @@ func toInt(value any) int {
 }
 
 // toolUpdate returns the output, details, and diagnostics changes of a running slot, from the view operations on it.
-func toolUpdate(viewOps []durable.Op, index int, slot, previous map[string]any) (ToolExecutionUpdateEvent, bool) {
+func toolUpdate(viewOps []durable.Op, index int, slot, previous *delta.JsonObject) (ToolExecutionUpdateEvent, bool) {
 	outputPath := []any{"docs", "pi.live", "tools", index, "output"}
 	trimStart := 0
 	var appended strings.Builder
@@ -979,8 +984,8 @@ func toolUpdate(viewOps []durable.Op, index int, slot, previous map[string]any) 
 	}
 	var update ToolExecutionUpdateEvent
 	changed := false
-	output, _ := slot["output"].(string)
-	if set || (!sameJSON(slot["output"], previous["output"]) && trimStart == 0 && appended.String() == "") {
+	output, _ := slot.Value("output").(string)
+	if set || (!sameJSON(slot.Value("output"), previous.Value("output")) && trimStart == 0 && appended.String() == "") {
 		update.Output = &ToolOutputChange{Set: new(output)}
 		changed = true
 	} else if trimStart > 0 || appended.String() != "" {
@@ -994,14 +999,14 @@ func toolUpdate(viewOps []durable.Op, index int, slot, previous map[string]any) 
 		changed = true
 	}
 	// A safe replay clears a running slot's progress: removed details send null, removed diagnostics [].
-	if !sameJSON(slot["details"], previous["details"]) {
+	if !sameJSON(slot.Value("details"), previous.Value("details")) {
 		update.HasDetails = true
-		update.Details = slot["details"]
+		update.Details = slot.Value("details")
 		changed = true
 	}
-	if !sameJSON(slot["diagnostics"], previous["diagnostics"]) {
+	if !sameJSON(slot.Value("diagnostics"), previous.Value("diagnostics")) {
 		update.Diagnostics = []durable.ToolDiagnostic{}
-		if diagnostics, ok := slot["diagnostics"]; ok {
+		if diagnostics, ok := slot.Get("diagnostics"); ok {
 			update.Diagnostics = decodeEventJSON[[]durable.ToolDiagnostic](diagnostics)
 		}
 		changed = true

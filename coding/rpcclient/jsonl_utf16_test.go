@@ -1,5 +1,7 @@
 package rpcclient
 
+// pi: packages/coding-agent/src/modes/rpc/jsonl.ts
+
 import (
 	"strings"
 	"testing"

@@ -13,6 +13,8 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/MichaelKinsy/PiG/internal/jsstring"
+
 	"github.com/MichaelKinsy/PiG/telemetry"
 )
 
@@ -73,7 +75,9 @@ type ClassifierQuestions []ClassifierQuestionEntry
 
 // ClassifierContext is the input to a classification: the state to judge and the questions to answer about it.
 type ClassifierContext struct {
-	State     JsonObject
+	State JsonObject
+	// Images are judged together with State. Only models whose Input includes "image" accept them; other models return an error result (types.ts:669-677).
+	Images    []ImageContent
 	Questions ClassifierQuestions
 }
 
@@ -215,6 +219,9 @@ func (m *Models) Classify(ctx context.Context, model *ClassifierModel, request C
 }
 
 func (m *Models) classify(ctx context.Context, model *ClassifierModel, request ClassifierContext, options ModelsClassifierOptions) (ClassifierResult, error) {
+	if err := AssertClassifierInputSupported(model, request); err != nil {
+		return ClassifierResult{}, err
+	}
 	provider, err := m.requireProvider(model)
 	if err != nil {
 		return ClassifierResult{}, err
@@ -267,22 +274,15 @@ func arrayIndexKey(key string) (uint64, bool) {
 	return value, true
 }
 
+// marshalJSONString is JSON.stringify(value) for a string.
 func marshalJSONString(value string) []byte {
-	var buffer bytes.Buffer
-	encoder := json.NewEncoder(&buffer)
-	encoder.SetEscapeHTML(false)
-	_ = encoder.Encode(value)
-	return bytes.TrimSuffix(buffer.Bytes(), []byte{'\n'})
+	encoded, _ := jsstring.MarshalJSON(value)
+	return encoded
 }
 
+// marshalJSONValue is JSON.stringify(value): negative zero is 0 and the line and paragraph separators are written literally.
 func marshalJSONValue(value any) ([]byte, error) {
-	var buffer bytes.Buffer
-	encoder := json.NewEncoder(&buffer)
-	encoder.SetEscapeHTML(false)
-	if err := encoder.Encode(value); err != nil {
-		return nil, err
-	}
-	return bytes.TrimSuffix(buffer.Bytes(), []byte{'\n'}), nil
+	return jsstring.MarshalJSON(value)
 }
 
 // writeJSONObject writes ordered entries as one JSON object.

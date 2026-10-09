@@ -59,9 +59,9 @@ const DESCRIPTION_INTRO = `Run JavaScript that calls other tools. The input is r
 function describeGlobals(models) {
     const lines = [
         "Globals:",
-        "- `text(value)`, `image(dataUrlOrImageBlock)`, `console.log(...)`, and top-level `return` add output; `exit()` ends the script. `image()` also saves the image to a temp file and the result names its path.",
+        "- `text(value)`, `image(dataUrlOrImageBlock)`, `console.log(...)`, and top-level `return` add output; `exit()` ends the script. With several text items, each starts with a `==> text N/M <==` line, and `console` lines follow the other output in one `<console_output>` block. `image()` also saves the image to a temp file and the result names its path.",
         "- `store(key, value)` and `load(key)` keep JSON values across codemode calls.",
-        "- `ALL_TOOLS`, `searchTools(query, { limit?, namespace? })`, `describeTool(name)`, `describeNamespace(name)`: find unlisted tools, such as MCP tools.",
+        "- `ALL_TOOLS`, `await searchTools(query, { limit?, namespace? })`, `await describeTool(name)`, `await describeNamespace(name)`: find unlisted tools, such as MCP tools.",
     ];
     if (models) {
         lines.push(`- \`models\`: classifiers and image generation. Read ${CODEMODE_DOCS_PATH} first.`);
@@ -72,11 +72,15 @@ function describeGlobals(models) {
 export const DEFAULT_CODEMODE_INLINE_BUDGET = 3000;
 /** Characters per token when estimating the cost of a tool section. */
 const CHARS_PER_TOKEN = 4;
-/** What a script sees of a tool. Tools without an output schema resolve to their text output. */
-export function toCodemodeDeclaration(tool) {
+/**
+ * What a script sees of a tool: its description followed by its prompt guidelines, which the system
+ * prompt only has for declared tools. Tools without an output schema resolve to their text output.
+ */
+export function toCodemodeDeclaration(tool, guidelines = []) {
+    const bullets = guidelines.flatMap((guideline) => (guideline.trim() ? [`- ${guideline.trim()}`] : []));
     return {
         name: tool.name,
-        description: tool.description,
+        description: bullets.length > 0 ? `${tool.description.trim()}\n\n${bullets.join("\n")}` : tool.description,
         inputSchema: tool.parameters,
         outputSchema: tool.outputSchema ?? TEXT_OUTPUT_SCHEMA,
     };
@@ -127,7 +131,7 @@ function selectCatalog(groups, budget) {
 export function createCodemodeDescription(tools, options = {}) {
     const declarations = getCodemodeCallableTools(tools)
         .filter((tool) => !options.deferred?.has(tool.name))
-        .map(toCodemodeDeclaration);
+        .map((tool) => toCodemodeDeclaration(tool, options.guidelines?.get(tool.name)));
     const groups = new Map([["", { namespace: undefined, entries: [] }]]);
     for (const declaration of declarations) {
         const namespace = options.namespaces?.get(declaration.name);
@@ -198,6 +202,8 @@ function describeScriptCall(tool) {
  * - `only`: the codemode description lists every callable tool, and requests leave out the
  *   declarations of active `direct` tools.
  *
+ * Listed tools carry their prompt guidelines, which the system prompt only has for declared tools.
+ *
  * Listing by exposure, not by the active set, keeps the codemode description unchanged when
  * `tool_search` loads a tool, so loads do not redeclare codemode.
  */
@@ -218,9 +224,11 @@ function prepareCodemodeLoadout(loadout, options) {
         const namespace = loadout.getNamespace(tool.name);
         return namespace ? [[tool.name, namespace]] : [];
     }));
+    const guidelines = new Map(listed.map((tool) => [tool.name, loadout.getPromptGuidelines(tool.name)]));
     descriptions[CODEMODE_TOOL_NAME] = createCodemodeDescription(listed, {
         models: options.models === true,
         namespaces,
+        guidelines,
         deferred: new Set(listed.filter((tool) => loadout.getExposure(tool.name) === "deferred").map((tool) => tool.name)),
         inlineBudget: options.getInlineBudget?.() ?? DEFAULT_CODEMODE_INLINE_BUDGET,
     });

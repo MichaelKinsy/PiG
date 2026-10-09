@@ -68,6 +68,7 @@ def test_register_and_tool_call_roundtrip() -> None:
     t.start()
 
     conn, _ = listener.accept()
+    conn.settimeout(10)
     try:
         reg = _read_frame(conn)
         assert reg["type"] == "register"
@@ -123,6 +124,7 @@ def test_cancel_sets_context_cancelled() -> None:
     t.start()
 
     conn, _ = listener.accept()
+    conn.settimeout(10)
     try:
         assert _read_frame(conn)["type"] == "register"
         _write_frame(conn, {"type": "ready", "ready": {"cwd": tmp, "width": 80}})
@@ -157,6 +159,7 @@ def test_shortcut_renderer_widget_and_declarations() -> None:
     t.start()
 
     conn, _ = listener.accept()
+    conn.settimeout(10)
     try:
         reg = _read_frame(conn)["register"]
         assert reg["shortcuts"] == [{"key": "ctrl+x", "description": "shortcut"}]
@@ -201,6 +204,7 @@ def test_host_call_roundtrip() -> None:
     t.start()
 
     conn, _ = listener.accept()
+    conn.settimeout(10)
     try:
         assert _read_frame(conn)["type"] == "register"
         _write_frame(conn, {"type": "ready", "ready": {"cwd": tmp, "width": 80}})
@@ -271,6 +275,7 @@ def test_oauth_provider_bridge() -> None:
     t = threading.Thread(target=ext.run_with_socket, args=(sock_path,), daemon=True)
     t.start()
     conn, _ = listener.accept()
+    conn.settimeout(10)
     try:
         reg = _read_frame(conn)
         oauth = reg["register"]["providers"][0]["config"]["oauth"]
@@ -429,6 +434,7 @@ def test_heartbeat_and_request_state_bypass_handlers() -> None:
     thread.start()
 
     conn, _ = listener.accept()
+    conn.settimeout(10)
     try:
         assert _read_frame(conn)["type"] == "register"
         _write_frame(conn, {"type": "ready", "ready": {"cwd": tmp, "width": 80}})
@@ -461,6 +467,7 @@ def test_user_wait_reports_blocked_and_parents_host_call() -> None:
     thread = threading.Thread(target=ext.run_with_socket, args=(sock_path,), daemon=True)
     thread.start()
     conn, _ = listener.accept()
+    conn.settimeout(10)
     try:
         assert _read_frame(conn)["type"] == "register"
         _write_frame(conn, {"type": "ready", "ready": {"cwd": tmp, "width": 80}})
@@ -582,6 +589,7 @@ def test_set_label_raises_host_error() -> None:
     t.start()
 
     conn, _ = listener.accept()
+    conn.settimeout(10)
     try:
         assert _read_frame(conn)["type"] == "register"
         _write_frame(conn, {"type": "ready", "ready": {"cwd": tmp, "width": 80}})

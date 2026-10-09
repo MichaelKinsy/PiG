@@ -1,0 +1,11 @@
+{
+	"name": "k8sbench-pi-durable",
+	"private": true,
+	"type": "module",
+	"description": "pi-durable at PiG's pinned Pi version, the reference the benchmark image runs durable/interop/bench.mjs against.",
+	"dependencies": {
+		"@earendil-works/chord": "1.1.0",
+		"@earendil-works/pi-ai": "1.1.0",
+		"@earendil-works/pi-durable": "1.1.0"
+	}
+}

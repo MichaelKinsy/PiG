@@ -25,6 +25,7 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/MichaelKinsy/PiG/internal/jsnumber"
 )
@@ -57,6 +58,11 @@ type modelRow struct {
 	Providers        []jsonCatalogProvider
 }
 
+type vercelGatewayRouting struct {
+	Only  []string `json:"only"`
+	Order []string `json:"order"`
+}
+
 type ModelCompat struct {
 	SupportsDeveloperRole                       *bool                      `json:"supportsDeveloperRole,omitempty"`
 	SupportsReasoningEffort                     *bool                      `json:"supportsReasoningEffort,omitempty"`
@@ -76,7 +82,7 @@ type ModelCompat struct {
 	SupportsExplicitPromptCacheMode             *bool                      `json:"supportsExplicitPromptCacheMode,omitempty"`
 	ReasoningEffortMap                          map[string]string          `json:"reasoningEffortMap,omitempty"`
 	OpenRouterRouting                           map[string]any             `json:"openRouterRouting,omitempty"`
-	VercelGatewayRouting                        map[string]any             `json:"vercelGatewayRouting,omitempty"`
+	VercelGatewayRouting                        *vercelGatewayRouting      `json:"vercelGatewayRouting,omitempty"`
 	ZaiToolStream                               *bool                      `json:"zaiToolStream,omitempty"`
 	SupportsLongCacheRetention                  *bool                      `json:"supportsLongCacheRetention,omitempty"`
 	SendSessionIdHeader                         *bool                      `json:"sendSessionIdHeader,omitempty"`
@@ -177,7 +183,7 @@ func main() {
 		fmt.Fprintln(os.Stderr, "emit classifiers:", err)
 		os.Exit(1)
 	}
-	if err := emitProviders(*providerOut, *src, catalog.Providers); err != nil {
+	if err := emitProviders(*providerOut, *src, catalog.Providers, catalog.GeneratedAt); err != nil {
 		fmt.Fprintln(os.Stderr, "emit providers:", err)
 		os.Exit(1)
 	}
@@ -189,6 +195,28 @@ func main() {
 type modelCatalog struct {
 	Chat, Image, Classifier []modelRow
 	Providers               []string
+	// GeneratedAt is the `generatedAt` of the data manifest (providers/data/.manifest.json) in Unix milliseconds; nil when the manifest has no valid time, as providers/all.ts getBuiltinModelDataGeneratedAt returns undefined for NaN.
+	GeneratedAt *float64
+}
+
+// readModelDataGeneratedAt reads `generatedAt` of the data manifest beside the provider data files. The value is the
+// Date.parse of an ISO-8601 time: whole milliseconds since the Unix epoch.
+func readModelDataGeneratedAt(manifestPath string) (*float64, error) {
+	data, err := os.ReadFile(manifestPath)
+	if err != nil {
+		return nil, err
+	}
+	var manifest struct {
+		GeneratedAt string `json:"generatedAt"`
+	}
+	if err := json.Unmarshal(data, &manifest); err != nil {
+		return nil, fmt.Errorf("%s: %w", manifestPath, err)
+	}
+	parsed, err := time.Parse(time.RFC3339Nano, manifest.GeneratedAt)
+	if err != nil {
+		return nil, nil //nolint:nilnil // an unparseable time is "no generation time", as upstream's NaN check returns undefined
+	}
+	return new(float64(parsed.UnixMilli())), nil
 }
 
 // collectCatalog reads the catalog barrel at src (models.generated.ts or .js) and, for every provider shard it imports,
@@ -219,7 +247,15 @@ func collectCatalog(src string) (modelCatalog, error) {
 		if dm == nil {
 			return modelCatalog{}, fmt.Errorf("provider %s: no data/<provider>.json import", shardPath)
 		}
-		rows, err := parseDataJSON(filepath.Join(filepath.Dir(shardPath), filepath.FromSlash(string(dm[1]))))
+		dataPath := filepath.Join(filepath.Dir(shardPath), filepath.FromSlash(string(dm[1])))
+		if catalog.GeneratedAt == nil {
+			generatedAt, err := readModelDataGeneratedAt(filepath.Join(filepath.Dir(dataPath), ".manifest.json"))
+			if err != nil {
+				return modelCatalog{}, err
+			}
+			catalog.GeneratedAt = generatedAt
+		}
+		rows, err := parseDataJSON(dataPath)
 		if err != nil {
 			return modelCatalog{}, fmt.Errorf("provider %s: %w", shardPath, err)
 		}
@@ -648,7 +684,7 @@ func emit(path, src string, rows []modelRow) error {
 	// Always record source as the basename so re-runs from different
 	// working directories produce byte-identical output (required by
 	// TestCodegenByteIdentical).
-	fmt.Fprintf(&b, "// Source: %s\n", basename(src))
+	writeSourceHeader(&b, src)
 	fmt.Fprintf(&b, "// Models: %d\n\n", len(rows))
 	b.WriteString("package ai\n\n")
 	b.WriteString("// GeneratedModel is a static catalog entry for one model. Lives in\n")
@@ -663,7 +699,7 @@ func emit(path, src string, rows []modelRow) error {
 	b.WriteString("\tBaseURL              string\n")
 	b.WriteString("\tHeaders              map[string]string\n")
 	b.WriteString("\tCompat               *ModelCompat\n")
-	b.WriteString("\tThinkingLevelMap     map[ThinkingLevel]*string\n")
+	b.WriteString("\tThinkingLevelMap     map[ModelThinkingLevel]*string\n")
 	b.WriteString("\tSamplingParams       map[string]any\n")
 	b.WriteString("\tPromptCache          ModelPromptCache\n")
 	b.WriteString("\tInputLimits         *ModelInputLimits\n")
@@ -797,10 +833,10 @@ func emitImages(path, src string, rows []modelRow) error {
 
 // emitProviders writes the catalog barrel's provider ids in barrel order. Object.keys(MODELS) is getBuiltinProviders
 // (providers/all.ts:94-96), and a provider whose shard holds only image or classifier models is still one of its keys.
-func emitProviders(path, src string, providers []string) error {
+func emitProviders(path, src string, providers []string, generatedAt *float64) error {
 	var b strings.Builder
 	b.WriteString("// Code generated by cmd/gen-models. DO NOT EDIT.\n")
-	fmt.Fprintf(&b, "// Source: %s\n", basename(src))
+	writeSourceHeader(&b, src)
 	fmt.Fprintf(&b, "// Providers: %d\n\n", len(providers))
 	b.WriteString("package ai\n\n")
 	b.WriteString("// GeneratedProviders lists the catalog barrel's providers in barrel order (providers/all.ts getBuiltinProviders).\n")
@@ -808,7 +844,13 @@ func emitProviders(path, src string, providers []string) error {
 	for _, provider := range providers {
 		fmt.Fprintf(&b, "\t%q,\n", provider)
 	}
-	b.WriteString("}\n")
+	b.WriteString("}\n\n")
+	b.WriteString("// GeneratedModelDataGeneratedAt is the generation time shared by every built-in provider catalog, in Unix milliseconds (providers/all.ts getBuiltinModelDataGeneratedAt); nil when the data manifest carries no valid time.\n")
+	if generatedAt == nil {
+		b.WriteString("var GeneratedModelDataGeneratedAt *float64\n")
+	} else {
+		fmt.Fprintf(&b, "var GeneratedModelDataGeneratedAt = new(float64(%s))\n", strconv.FormatFloat(*generatedAt, 'f', -1, 64))
+	}
 	return writeGoSource(path, b.String())
 }
 
@@ -826,11 +868,36 @@ func emitClassifiers(path, src string, rows []modelRow) error {
 	return writeGoSource(path, b.String())
 }
 
+// writeSourceHeader writes the Source line and, when src belongs to a pi-ai package, the Upstream line that names the
+// package version the catalog was generated from. ai.TestGeneratedCatalogsRecordPinnedUpstream compares that line
+// with pigversion.UpstreamVersion, so a pin bump without regeneration fails.
+func writeSourceHeader(b *strings.Builder, src string) {
+	fmt.Fprintf(b, "// Source: %s\n", basename(src))
+	if version := publishedPackageVersion(src); version != "" {
+		fmt.Fprintf(b, "// Upstream: @earendil-works/pi-ai %s\n", version)
+	}
+}
+
+// publishedPackageVersion returns the version in the pi-ai manifest one directory above src: the published package's
+// dist/../package.json or the upstream mirror's packages/ai/src/../package.json. It returns "" when that manifest is
+// missing or names another package (the models.dev and test sources).
+func publishedPackageVersion(src string) string {
+	data, err := os.ReadFile(filepath.Join(filepath.Dir(src), "..", "package.json"))
+	if err != nil {
+		return ""
+	}
+	var manifest struct{ Name, Version string }
+	if json.Unmarshal(data, &manifest) != nil || manifest.Name != "@earendil-works/pi-ai" {
+		return ""
+	}
+	return manifest.Version
+}
+
 // writeCatalogHeader writes the header shared by every generated catalog file. The source is recorded as its basename so
 // re-runs from different working directories are byte-identical.
 func writeCatalogHeader(b *strings.Builder, src string, models int) {
 	b.WriteString("// Code generated by cmd/gen-models. DO NOT EDIT.\n")
-	fmt.Fprintf(b, "// Source: %s\n", basename(src))
+	writeSourceHeader(b, src)
 	fmt.Fprintf(b, "// Models: %d\n\n", models)
 	b.WriteString("package ai\n\n")
 }
@@ -1028,8 +1095,16 @@ func compatLiteral(jsonText string) string {
 	if len(compat.OpenRouterRouting) > 0 {
 		fields = append(fields, fmt.Sprintf("OpenRouterRouting:%#v", compat.OpenRouterRouting))
 	}
-	if len(compat.VercelGatewayRouting) > 0 {
-		fields = append(fields, fmt.Sprintf("VercelGatewayRouting:%#v", compat.VercelGatewayRouting))
+	if compat.VercelGatewayRouting != nil && (compat.VercelGatewayRouting.Only != nil || compat.VercelGatewayRouting.Order != nil) {
+		routing := compat.VercelGatewayRouting
+		var parts []string
+		if routing.Only != nil {
+			parts = append(parts, fmt.Sprintf("Only:%#v", routing.Only))
+		}
+		if routing.Order != nil {
+			parts = append(parts, fmt.Sprintf("Order:%#v", routing.Order))
+		}
+		fields = append(fields, "VercelGatewayRouting:&VercelGatewayRouting{"+strings.Join(parts, ",")+"}")
 	}
 	if compat.ZaiToolStream != nil {
 		fields = append(fields, fmt.Sprintf("ZaiToolStream:%s", boolPtrLit(*compat.ZaiToolStream)))
@@ -1113,12 +1188,12 @@ func thinkingLevelMapLiteral(m map[string]*string) string {
 	for _, key := range keys {
 		value := m[key]
 		if value == nil {
-			parts = append(parts, fmt.Sprintf("ThinkingLevel(%q): nil", key))
+			parts = append(parts, fmt.Sprintf("ModelThinkingLevel(%q): nil", key))
 			continue
 		}
-		parts = append(parts, fmt.Sprintf("ThinkingLevel(%q): ptrString(%q)", key, *value))
+		parts = append(parts, fmt.Sprintf("ModelThinkingLevel(%q): ptrString(%q)", key, *value))
 	}
-	return "map[ThinkingLevel]*string{" + strings.Join(parts, ", ") + "}"
+	return "map[ModelThinkingLevel]*string{" + strings.Join(parts, ", ") + "}"
 }
 
 func basename(p string) string {

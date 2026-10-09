@@ -1,3 +1,5 @@
+// Ports packages/coding-agent/src/experimental/services/plugins.ts
+
 package services
 
 import (

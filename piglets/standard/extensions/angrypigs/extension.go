@@ -19,14 +19,18 @@ func Extension() *sdk.Extension {
 }
 
 func run(ctx sdk.Context, _ string) error {
-	highScore := loadHighScore(ctx.ConfigHome())
-	game := newComponent(highScore, standardlogin.ActiveVariant(ctx.ConfigHome()), ctx.Height)
+	configHome, err := ctx.ConfigHome()
+	if err != nil {
+		return err
+	}
+	highScore := loadHighScore(configHome)
+	game := newComponent(highScore, standardlogin.ActiveVariant(configHome), ctx.Height)
 	result, err := ctx.Custom(game, termgame.Overlay("Angry Pigs"))
 	if err != nil {
 		return err
 	}
 	score, highScore := scores(result, game.State())
-	if err := saveHighScore(ctx.ConfigHome(), highScore); err != nil {
+	if err := saveHighScore(configHome, highScore); err != nil {
 		return err
 	}
 	ctx.Notify(fmt.Sprintf("Angry Pigs score %d · high %d", score, highScore), "info")

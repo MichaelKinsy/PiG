@@ -27,6 +27,7 @@ import (
 	"time"
 
 	"github.com/MichaelKinsy/PiG/internal/fspublish"
+	"github.com/MichaelKinsy/PiG/internal/jsstring"
 	"github.com/MichaelKinsy/PiG/internal/lazyregexp"
 	"github.com/MichaelKinsy/PiG/internal/linkerexec"
 
@@ -84,14 +85,21 @@ type UpdateBinary struct {
 	SHA256 string `json:"sha256"`
 }
 
-// BinaryUpdate describes an available newer release for the current platform.
+// LatestPiRelease is the newest release a version check reports. PackageName and Note are nil when the source omits them or
+// they are blank; each value is trimmed.
+//
+// upstream: packages/coding-agent/src/utils/version-check.ts:8 (LatestPiRelease), filled as getLatestPiRelease (:51-87) fills it.
+type LatestPiRelease struct {
+	Version     string
+	PackageName *string
+	Note        *string
+}
+
+// BinaryUpdate is checkForNewPiVersion's newer release plus the current platform's binary that applies it.
 type BinaryUpdate struct {
+	LatestPiRelease
 	CurrentVersion string
-	LatestVersion  string
-	Notes          string // release note text; a bare URL is ChangelogURL instead
-	ChangelogURL   string
 	Binary         UpdateBinary
-	Command        string // the command that applies it, e.g. "pig update self"
 }
 
 // UpdateSourceURL resolves the update-manifest URL. Resolution order:
@@ -424,22 +432,26 @@ func CheckForBinaryUpdate(ctx context.Context, client *http.Client, currentVersi
 	if err != nil || manifest == nil {
 		return nil
 	}
-	if CompareVersions(currentVersion, manifest.Version) >= 0 {
+	if !IsNewerPackageVersion(manifest.Version, currentVersion) {
 		return nil
 	}
 	binary, ok := manifest.PlatformBinary()
 	if !ok {
 		return nil
 	}
-	changelogURL, note := splitBinaryUpdateNotes(manifest.Notes)
-	return &BinaryUpdate{
-		CurrentVersion: currentVersion,
-		LatestVersion:  manifest.Version,
-		Notes:          note,
-		ChangelogURL:   changelogURL,
-		Binary:         binary,
-		Command:        AppName + " update",
+	return &BinaryUpdate{LatestPiRelease: manifestRelease(manifest), CurrentVersion: currentVersion, Binary: binary}
+}
+
+// manifestRelease reads a manifest's release the way getLatestPiRelease reads the version API's (version-check.ts:79-86).
+func manifestRelease(manifest *UpdateManifest) LatestPiRelease {
+	release := LatestPiRelease{Version: strings.TrimSpace(manifest.Version)}
+	if name := strings.TrimSpace(manifest.PackageName); name != "" {
+		release.PackageName = &name
 	}
+	if note := strings.TrimSpace(manifest.Notes); note != "" {
+		release.Note = &note
+	}
+	return release
 }
 
 // FetchUpdateManifestOptions selects explicit-update transport retries. Startup checks leave Retry false.
@@ -857,18 +869,48 @@ func extractPigFromTarGz(archivePath, dir string, limit int64) (string, error) {
 	return out, nil
 }
 
-// CompareVersions compares strict semantic versions. Returns -1 if a<b, 1 if
-// a>b, and 0 when equal or when either side is malformed. Callers parsing
-// release metadata must reject malformed remote versions before comparison;
-// the zero fallback here keeps development/CI local versions non-disruptive.
-func CompareVersions(a, b string) int {
-	pa, err := semver.StrictNewVersion(strings.TrimSpace(a))
-	if err != nil {
-		return 0
+// ComparePackageVersions compares two release versions the way node-semver's valid()+compare() do: both sides are
+// trimmed and parsed as semantic versions, a single leading "v" is accepted, and build metadata is ignored. It returns
+// -1, 0 or 1 and true, or false when either side is not a semantic version.
+//
+// Ports packages/coding-agent/src/utils/version-check.ts (comparePackageVersions).
+func ComparePackageVersions(left, right string) (int, bool) {
+	l, ok := parsePackageVersion(left)
+	if !ok {
+		return 0, false
 	}
-	pb, err := semver.StrictNewVersion(strings.TrimSpace(b))
-	if err != nil {
-		return 0
+	r, ok := parsePackageVersion(right)
+	if !ok {
+		return 0, false
 	}
-	return pa.Compare(pb)
+	return l.Compare(r), true
+}
+
+// parsePackageVersion is node-semver's valid() of a JavaScript-trimmed version: a version longer than 256 characters,
+// or with a major, minor or patch number above Number.MAX_SAFE_INTEGER, is not a semantic version.
+func parsePackageVersion(raw string) (*semver.Version, bool) {
+	trimmed := jsstring.Trim(raw)
+	// Masterminds checks the same 256-byte MAX_LENGTH, but after the "v" this function strips.
+	if len(trimmed) > semver.MaxVersionLen {
+		return nil, false
+	}
+	version, err := semver.StrictNewVersion(strings.TrimPrefix(trimmed, "v"))
+	if err != nil || version.Major() > semverMaxSafeInteger || version.Minor() > semverMaxSafeInteger || version.Patch() > semverMaxSafeInteger {
+		return nil, false
+	}
+	return version, true
+}
+
+// semverMaxSafeInteger is node-semver's MAX_SAFE_INTEGER (Number.MAX_SAFE_INTEGER).
+const semverMaxSafeInteger = 1<<53 - 1
+
+// IsNewerPackageVersion reports whether candidate is newer than current. When either side is not a semantic version,
+// any difference between the trimmed strings counts as newer.
+//
+// Ports packages/coding-agent/src/utils/version-check.ts (isNewerPackageVersion).
+func IsNewerPackageVersion(candidate, current string) bool {
+	if comparison, ok := ComparePackageVersions(candidate, current); ok {
+		return comparison > 0
+	}
+	return jsstring.Trim(candidate) != jsstring.Trim(current)
 }

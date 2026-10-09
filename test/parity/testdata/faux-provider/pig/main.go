@@ -17,9 +17,9 @@ func main() {
 	}
 }
 func run() error {
-	provider := ai.NewFauxProvider(ai.FauxConfig{MinTokenSize: 1, MaxTokenSize: 1})
+	provider := ai.NewFauxProvider(ai.FauxConfig{TokenSize: &ai.FauxTokenSize{Min: new(1), Max: new(1)}})
 	canonicalModel := provider.GetModel()
-	provider.SetResponses([]ai.FauxResponseStep{ai.FauxStaticStep(ai.FauxResponse{Content: []ai.FauxContentBlock{ai.FauxThinking("go"), ai.FauxText("ok"), ai.FauxToolCall("echo", map[string]any{}, "tool-1")}, StopReason: "toolUse"}), ai.FauxStaticStep(ai.FauxResponse{Content: []ai.FauxContentBlock{ai.FauxText("ready")}, StopReason: "stop"})})
+	provider.SetResponses([]ai.FauxResponseStep{ai.FauxStaticStep(ai.FauxResponse{Content: []ai.FauxContentBlock{ai.FauxThinking("go"), ai.FauxText("ok"), ai.FauxToolCall("echo", map[string]any{}, &ai.FauxToolCallOptions{ID: "tool-1"})}, StopReason: "toolUse"}), ai.FauxStaticStep(ai.FauxResponse{Content: []ai.FauxContentBlock{ai.FauxText("ready")}, StopReason: "stop"})})
 	request := ai.Context{Messages: []ai.Message{ai.UserMessage{Content: ai.UserText("hi")}}}
 	firstStream, err := provider.Stream(context.Background(), ai.NormalizeContext(request), ai.StreamOptions{SessionID: "session-1", CacheRetention: ai.CacheRetentionShort})
 	if err != nil {
@@ -36,8 +36,8 @@ func run() error {
 		return err
 	}
 	second := secondStream.Result()
-	provider.SetResponses([]ai.FauxResponseStep{ai.FauxFactoryStep(func(ai.TranscriptContext, ai.StreamOptions, *ai.FauxProviderState, *ai.Model) (ai.FauxResponse, error) {
-		return ai.FauxResponse{}, errors.New("boom")
+	provider.SetResponses([]ai.FauxResponseStep{ai.FauxFactoryStep(func(ai.TranscriptContext, ai.StreamOptions, *ai.FauxProviderState, *ai.Model) (ai.AssistantMessage, error) {
+		return ai.FauxResponse{}.AssistantMessage(), errors.New("boom")
 	})})
 	failedStream, err := provider.Stream(context.Background(), ai.NormalizeContext(request), ai.StreamOptions{})
 	if err != nil {
@@ -48,7 +48,7 @@ func run() error {
 	for event := range failedStream.Events(context.Background()) {
 		failedTypes = append(failedTypes, event.EventType())
 	}
-	paced := ai.NewFauxProvider(ai.FauxConfig{TokensPerSecond: 100, MinTokenSize: 3, MaxTokenSize: 3})
+	paced := ai.NewFauxProvider(ai.FauxConfig{TokensPerSecond: 100, TokenSize: &ai.FauxTokenSize{Min: new(3), Max: new(3)}})
 	paced.SetResponses([]ai.FauxResponseStep{ai.FauxStaticStep(ai.FauxResponse{Content: []ai.FauxContentBlock{ai.FauxText("abcdefghijklmnopqrstuvwxyz")}, StopReason: "stop"})})
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()

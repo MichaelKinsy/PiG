@@ -1,0 +1,172 @@
+[
+ {
+  "ids": [
+   "pkg:ai/utils/estimate#calculateContextTokens",
+   "pkg:coding-agent/.#calculateContextTokens"
+  ],
+  "targets": [
+   "agent/context_tokens.go#CalculateContextTokens"
+  ],
+  "production": [
+   "call:agent/context_tokens.go#EstimateContextTokens"
+  ],
+  "evidence": [
+   "test:internal/codingagent/compaction/coding_compaction_upstream_test.go#TestCodingCompactionUpstream",
+   "test:agent/context_tokens_test.go#TestCalculateContextTokens"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "calculateContextTokens: Go CalculateContextTokens has the upstream parameters and result (signatures reviewed); callers attributed by go/types."
+ },
+ {
+  "ids": [
+   "pkg:ai/.#isContextOverflow",
+   "pkg:ai/compat#isContextOverflow",
+   "pkg:ai/utils/overflow#isContextOverflow"
+  ],
+  "targets": [
+   "internal/codingagent/auto_recovery.go#IsContextOverflow"
+  ],
+  "production": [
+   "call:coding/session.go#Session.checkCompactionDecision"
+  ],
+  "evidence": [
+   "test:internal/codingagent/auto_recovery_test.go#TestIsContextOverflow",
+   "test:internal/codingagent/classifier_parity_test.go#TestClassifiersMatchPiAI"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "isContextOverflow: Go IsContextOverflow has the upstream parameters and result (signatures reviewed); callers attributed by go/types."
+ },
+ {
+  "ids": [
+   "pkg:ai/.#isRecoverableLength",
+   "pkg:ai/compat#isRecoverableLength",
+   "pkg:ai/utils/overflow#isRecoverableLength"
+  ],
+  "targets": [
+   "internal/codingagent/auto_recovery.go#IsRecoverableLength"
+  ],
+  "production": [
+   "call:coding/session.go#Session.checkCompactionDecision"
+  ],
+  "evidence": [
+   "test:internal/codingagent/auto_recovery_test.go#TestIsRecoverableLength"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "isRecoverableLength: Go IsRecoverableLength has the upstream parameters and result (signatures reviewed); callers attributed by go/types."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#loadProjectContextFiles"
+  ],
+  "targets": [
+   "internal/codingagent/context_files.go#LoadProjectContextFiles"
+  ],
+  "production": [
+   "call:coding/cli/resource_prompts.go#loadContextFiles"
+  ],
+  "evidence": [
+   "test:internal/codingagent/upstream_resource_context_test.go#TestUpstreamResourceLoaderContextFiles",
+   "test:internal/codingagent/bom_readers_test.go#TestContextFileContentStripsBOM"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "loadProjectContextFiles: Go LoadProjectContextFiles has the upstream parameters and result (signatures reviewed); callers attributed by go/types."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#loadSkills"
+  ],
+  "targets": [
+   "internal/codingagent/skills_loader.go#LoadSkills"
+  ],
+  "production": [
+   "call:coding/cli/main.go#loadSkills"
+  ],
+  "evidence": [
+   "test:coding/cli/resource_discovery_upstream_test.go#TestUpstreamResourceLoaderDiscovery",
+   "test:coding/cli/resource_loader_gaps_upstream_test.go#TestUpstreamResourceLoaderProjectOverUserCollisions"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "loadSkills: Go LoadSkills has the upstream parameters and result (signatures reviewed); callers attributed by go/types."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#hasTrustRequiringProjectResources"
+  ],
+  "targets": [
+   "internal/codingagent/trust_manager.go#HasTrustRequiringProjectResources"
+  ],
+  "production": [
+   "call:coding/cli/cli_runtime_build.go#cliRuntimeBuilder.buildResources"
+  ],
+  "evidence": [
+   "test:internal/codingagent/trust_manager_test.go#TestHasTrustRequiringProjectResources_AncestorAgentsSkillsExcludesUserHome",
+   "test:internal/codingagent/trust_manager_test.go#TestHasTrustRequiringProjectResources_ExactProjectResources"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "hasTrustRequiringProjectResources: Go HasTrustRequiringProjectResources has the upstream parameters and result (signatures reviewed); callers attributed by go/types."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#sessionEntryToContextMessages"
+  ],
+  "targets": [
+   "internal/codingagent/session_manager_projection.go#SessionEntryToContextMessages"
+  ],
+  "production": [
+   "call:internal/codingagent/compaction/branch_summarization.go#getMessageFromEntryForBranch"
+  ],
+  "evidence": [
+   "test:coding/session_lax_content_upstream_test.go#TestUpstreamLaxSessionEntryContent"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "sessionEntryToContextMessages: Go SessionEntryToContextMessages has the upstream parameters and result (signatures reviewed); callers attributed by go/types."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#convertToPng"
+  ],
+  "targets": [
+   "internal/codingagent/image_convert.go#ConvertToPng"
+  ],
+  "evidence": [
+   "test:internal/codingagent/image_convert_test.go#TestConvertToPngAcceptsWrappedBase64",
+   "test:internal/codingagent/image_convert_test.go#TestConvertToPngAppliesExifOrientationAfterXMPSegment"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "convertToPng: Go ConvertToPng has the upstream parameters and result (signatures reviewed); callers attributed by go/types."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#collectEntriesForBranchSummary"
+  ],
+  "targets": [
+   "internal/codingagent/compaction/branch_summarization.go#CollectEntriesForBranchSummary"
+  ],
+  "production": [
+   "call:coding/session.go#Session.navigateTree"
+  ],
+  "evidence": [
+   "test:internal/codingagent/compaction/branch_summarization_test.go#TestCollectEntriesForBranchSummary",
+   "test:internal/codingagent/compaction/branch_summarization_test.go#TestCollectEntries_NoOldLeaf"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "collectEntriesForBranchSummary: Go CollectEntriesForBranchSummary has the upstream parameters and result (signatures reviewed); callers attributed by go/types."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#prepareBranchEntries"
+  ],
+  "targets": [
+   "internal/codingagent/compaction/branch_summarization.go#PrepareBranchEntries"
+  ],
+  "production": [
+   "call:internal/codingagent/compaction/branch_summarization.go#GenerateBranchSummary"
+  ],
+  "evidence": [
+   "test:internal/codingagent/compaction/branch_summarization_test.go#TestPrepareBranchEntries_SummaryEntryFitsPriority",
+   "test:internal/codingagent/compaction/branch_summarization_test.go#TestPrepareBranchEntries_TokenBudget"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "prepareBranchEntries: Go PrepareBranchEntries has the upstream parameters and result (signatures reviewed); callers attributed by go/types."
+ }
+]

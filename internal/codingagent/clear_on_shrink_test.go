@@ -32,7 +32,7 @@ func TestInteractiveRendererClearOnShrinkComesFromSettings(t *testing.T) {
 			if !m.switchTuiMode("fullscreen", false, true) || !m.switchTuiMode("regular", false, true) {
 				t.Fatal("renderer swap refused")
 			}
-			regular, ok := m.tuiInst.(*tui.TUI)
+			regular, ok := m.tuiInst.(*tui.TuiMainScreen)
 			if !ok {
 				t.Fatalf("regular renderer = %T", m.tuiInst)
 			}

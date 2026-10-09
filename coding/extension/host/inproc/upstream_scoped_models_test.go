@@ -50,3 +50,29 @@ func TestScopedModelsCaptureCallbackButReadLiveList(t *testing.T) {
 		}
 	}
 }
+
+// runner.ts:914 `get thinkingLevel()` asserts the runner is active and returns runtime.getThinkingLevel(): absent until a
+// session runtime binds one, then the live level on every read, from the context actions or from the bound ExtensionActions.
+func TestContextThinkingLevelReadsTheBoundRuntimeLive(t *testing.T) {
+	r := inproc.NewRunner(nil, t.TempDir())
+	ctx := extension.FromContext(r.DispatchContext(t.Context()))
+	if got, err := ctx.ThinkingLevel(); err != nil || got != "" {
+		t.Fatalf("unbound = %v, %v; want absent", got, err)
+	}
+	level := extension.ThinkingLevel("high")
+	r.BindCore(extension.ExtensionActions{}, extension.ContextActions{GetThinkingLevel: func() extension.ThinkingLevel { return level }}, nil)
+	ctx = extension.FromContext(r.DispatchContext(t.Context()))
+	level = extension.ThinkingLevel("low")
+	if got, err := ctx.ThinkingLevel(); err != nil || got != level {
+		t.Fatalf("context action = %v, %v; want the live level %v", got, err, level)
+	}
+	r.BindCore(extension.ExtensionActions{GetThinkingLevel: func() extension.ThinkingLevel { return "minimal" }}, extension.ContextActions{}, nil)
+	ctx = extension.FromContext(r.DispatchContext(t.Context()))
+	if got, err := ctx.ThinkingLevel(); err != nil || got != extension.ThinkingLevel("minimal") {
+		t.Fatalf("runtime action = %v, %v; want minimal", got, err)
+	}
+	r.Invalidate("replaced")
+	if _, err := ctx.ThinkingLevel(); err == nil {
+		t.Error("stale getter did not fail")
+	}
+}

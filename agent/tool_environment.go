@@ -1,4 +1,3 @@
-// SPDX-FileCopyrightText: Copyright Hewlett Packard Enterprise Development LP
 // SPDX-License-Identifier: MIT
 
 package agent
@@ -38,10 +37,10 @@ func ToolEnvironmentFrom(ctx context.Context) (ToolEnvironment, bool) {
 }
 
 // toolEnvironment reports the session state for tools, as upstream's tool context does.
-func (a *Agent) toolEnvironment(model *ai.Model, thinking ai.ThinkingLevel) ToolEnvironment {
-	env := ToolEnvironment{SessionID: a.opts.SessionID, ThinkingLevel: string(thinking)}
-	if a.opts.SessionFile != nil {
-		env.SessionFile = a.opts.SessionFile()
+func (h *loopHost) toolEnvironment(model *ai.Model, thinking ai.ModelThinkingLevel) ToolEnvironment {
+	env := ToolEnvironment{SessionID: h.cfg.SessionID, ThinkingLevel: string(thinking)}
+	if h.cfg.SessionFile != nil {
+		env.SessionFile = h.cfg.SessionFile()
 	}
 	if model != nil {
 		env.Model = model.ID

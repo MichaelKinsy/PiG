@@ -1,4 +1,3 @@
-// SPDX-FileCopyrightText: Copyright Hewlett Packard Enterprise Development LP
 // SPDX-FileCopyrightText: Copyright (c) 2025 Mario Zechner
 // SPDX-License-Identifier: MIT
 
@@ -6,40 +5,31 @@ package codingagent
 
 import (
 	"errors"
-	"slices"
 
 	"github.com/MichaelKinsy/PiG/internal/lazyregexp"
 
 	"github.com/google/uuid"
 
 	"github.com/MichaelKinsy/PiG/extensions/sdk/json"
+	"github.com/MichaelKinsy/PiG/internal/sessionentry"
 )
 
 // Ports packages/coding-agent/src/core/session-manager.ts (_loadEntries and _buildIndex).
 // A header owns restored identity. Headerless entries are current-version data.
-func newSessionFromEntries(cwd, id string, entries []json.RawMessage) (*Session, error) {
-	var header *SessionHeader
-	for _, raw := range entries {
-		var base SessionEntryBase
-		if err := json.Unmarshal(raw, &base); err != nil {
-			return nil, err
-		}
-		if base.Type == "session" {
-			var h SessionHeader
-			if err := json.Unmarshal(raw, &h); err != nil {
-				return nil, err
-			}
-			header = &h
-			break
-		}
+func newSessionFromEntries(cwd, id string, entries []FileEntry) (*Session, error) {
+	header, err := findSessionHeader(entries)
+	if err != nil {
+		return nil, err
 	}
 	if header != nil && header.Version < CurrentSessionVersion {
-		var err error
-		entries, err = migrateSessionEntries(entries, header.Version)
-		if err != nil {
+		if err := MigrateSessionEntries(entries); err != nil {
 			return nil, err
 		}
-		header.Version = CurrentSessionVersion
+		// The migrated header is the record MigrateSessionEntries wrote, found as before by its type: its version is the current one in its
+		// fields and in the record it writes (a header carrying the version-2 record would report version 2 to an extension's getHeader).
+		if header, err = findSessionHeader(entries); err != nil {
+			return nil, err
+		}
 	}
 	var s *Session
 	if header != nil {
@@ -50,22 +40,27 @@ func newSessionFromEntries(cwd, id string, entries []json.RawMessage) (*Session,
 		if id != "" {
 			option = &id
 		}
-		var err error
 		s, err = newSessionWithOptions(cwd, option, "")
 		if err != nil {
 			return nil, err
 		}
 	}
-	for _, raw := range entries {
-		var base SessionEntryBase
-		if err := json.Unmarshal(raw, &base); err != nil {
-			return nil, err
+	for _, record := range entries {
+		entry, isEntry := record.(SessionEntry)
+		if !isEntry {
+			continue
 		}
+		if _, undescribed := entry.(RawEntry); undescribed {
+			var base SessionEntryBase
+			if err := json.Unmarshal(entry.Raw(), &base); err != nil {
+				return nil, err
+			}
+		}
+		base := entry.Base()
 		if base.Type == "session" {
 			continue
 		}
-		s.stats.add(raw, base.Type)
-		entry := NewSessionEntry(raw, base)
+		s.stats.add(entry.Raw(), base.Type)
 		s.entries = append(s.entries, entry)
 		s.byID[base.ID] = entry
 		entryID := base.ID
@@ -73,6 +68,30 @@ func newSessionFromEntries(cwd, id string, entries []json.RawMessage) (*Session,
 	}
 	s.hasConversation = s.stats.stats.UserMessages > 0 || s.stats.stats.AssistantMessages > 0
 	return s, nil
+}
+
+// findSessionHeader is the first record of type "session", nil when there is none. _loadEntries finds the header by its type alone, so a
+// record of that type whose id is missing or ill-typed, which is no SessionHeader member, still owns the identity.
+func findSessionHeader(entries []FileEntry) (*SessionHeader, error) {
+	for _, entry := range entries {
+		if entry.Raw() == nil {
+			continue
+		}
+		switch record := entry.(type) {
+		case SessionHeader:
+			return &record, nil
+		case SessionEntry:
+			if record.Base().Type != "session" {
+				continue
+			}
+			header, err := sessionentry.DecodeSessionHeader(record.Raw())
+			if err != nil {
+				return nil, err
+			}
+			return &header, nil
+		}
+	}
+	return nil, nil
 }
 
 var sessionIDPattern = lazyregexp.New(`^[A-Za-z0-9](?:[A-Za-z0-9._-]*[A-Za-z0-9])?$`)
@@ -97,60 +116,83 @@ func newSessionWithOptions(cwd string, id *string, parentSession string) (*Sessi
 	return s, nil
 }
 
-// migrateSessionEntries applies Pi's v1 tree and v2 custom-message migrations, preserving JSON member order.
-func migrateSessionEntries(entries []json.RawMessage, version int) ([]json.RawMessage, error) {
-	entries = slices.Clone(entries)
+// MigrateSessionEntries applies Pi's v1 tree and v2 custom-message migrations, preserving JSON member order. The version is the first session header's `version`, 1 when the entries have no header or the header omits it (session-manager.ts migrateToCurrentVersion); the entries migrate in place and entries already at the current version stay unchanged.
+func MigrateSessionEntries(entries []FileEntry) error {
+	version := 1
+	for _, entry := range entries {
+		raw := entry.Raw()
+		var header struct {
+			Type    string `json:"type"`
+			Version *int   `json:"version"`
+		}
+		if err := json.Unmarshal(raw, &header); err != nil {
+			return err
+		}
+		if header.Type == "session" {
+			if header.Version != nil {
+				version = *header.Version
+			}
+			break
+		}
+	}
+	if version >= CurrentSessionVersion {
+		return nil
+	}
 	var previous *string
 	ids := make(map[string]struct{})
-	for i, raw := range entries {
+	for i, entry := range entries {
+		raw := entry.Raw()
 		var probe struct {
 			SessionEntryBase
-			FirstKeptEntryIndex *int            `json:"firstKeptEntryIndex"`
+			FirstKeptEntryIndex json.RawMessage `json:"firstKeptEntryIndex"`
 			Message             json.RawMessage `json:"message"`
 		}
 		if err := json.Unmarshal(raw, &probe); err != nil {
-			return nil, err
+			return err
 		}
 		var err error
 		if probe.Type == "session" {
-			entries[i], err = replaceJSONField(raw, "version", CurrentSessionVersion)
+			raw, err = replaceJSONField(raw, "version", CurrentSessionVersion)
 			if err != nil {
-				return nil, err
+				return err
 			}
+			entries[i] = sessionentry.DecodeFileEntry(raw)
 			continue
 		}
 		if version < 2 {
 			id, idErr := generateID(ids)
 			if idErr != nil {
-				return nil, idErr
+				return idErr
 			}
 			ids[id] = struct{}{}
 			raw, err = replaceJSONField(raw, "id", id)
 			if err != nil {
-				return nil, err
+				return err
 			}
 			raw, err = replaceJSONField(raw, "parentId", previous)
 			if err != nil {
-				return nil, err
+				return err
 			}
 			previous = &id
-			entries[i] = raw
-			if index := probe.FirstKeptEntryIndex; probe.Type == "compaction" && index != nil {
-				if *index >= 0 && *index < len(entries) {
+			entries[i] = sessionentry.DecodeFileEntry(raw)
+			// upstream: session-manager.ts migrateV1ToV2 (`typeof comp.firstKeptEntryIndex === "number"`, then `entries[index]`): another type is left alone, and a number that is no entry index (fractional, negative, past the end) only drops the member.
+			var indexNumber float64
+			if probe.Type == "compaction" && len(probe.FirstKeptEntryIndex) > 0 && probe.FirstKeptEntryIndex[0] != '"' && string(probe.FirstKeptEntryIndex) != "null" && json.Unmarshal(probe.FirstKeptEntryIndex, &indexNumber) == nil {
+				if index := int(indexNumber); float64(index) == indexNumber && index >= 0 && index < len(entries) {
 					var target SessionEntryBase
-					if err := json.Unmarshal(entries[*index], &target); err != nil {
-						return nil, err
+					if err := json.Unmarshal(entries[index].Raw(), &target); err != nil {
+						return err
 					}
 					if target.Type != "session" && target.ID != "" {
 						raw, err = replaceJSONField(raw, "firstKeptEntryId", target.ID)
 						if err != nil {
-							return nil, err
+							return err
 						}
 					}
 				}
 				raw, err = rewriteJSONField(raw, "firstKeptEntryIndex", nil, true)
 				if err != nil {
-					return nil, err
+					return err
 				}
 			}
 		}
@@ -159,22 +201,22 @@ func migrateSessionEntries(entries []json.RawMessage, version int) ([]json.RawMe
 				Role string `json:"role"`
 			}
 			if err := json.Unmarshal(probe.Message, &message); err != nil {
-				return nil, err
+				return err
 			}
 			if message.Role == "hookMessage" {
 				messageRaw, err := replaceJSONField(probe.Message, "role", "custom")
 				if err != nil {
-					return nil, err
+					return err
 				}
 				raw, err = replaceJSONField(raw, "message", json.RawMessage(messageRaw))
 				if err != nil {
-					return nil, err
+					return err
 				}
 			}
 		}
-		entries[i] = raw
+		entries[i] = sessionentry.DecodeFileEntry(raw)
 	}
-	return entries, nil
+	return nil
 }
 
 func generateID(ids map[string]struct{}) (string, error) {

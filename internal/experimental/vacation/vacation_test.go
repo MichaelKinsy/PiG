@@ -1,5 +1,7 @@
 package vacation
 
+// pi: packages/coding-agent/src/experimental/vacation/vacation.ts
+
 import (
 	"context"
 	"path/filepath"
@@ -119,7 +121,7 @@ func TestSearchRejectsAnUnknownTopic(t *testing.T) {
 
 // requestSteps answers every request of the planner and its research subagent from the transcript, so the order of their requests does not matter: the planner starts the research, acknowledges it, and plans from the report; the subagent searches, then summarizes.
 func requestSteps(count int, onSubagentRequest func(), plannerAck func(context.Context)) []ai.FauxResponseStep {
-	step := ai.FauxFactoryStep(func(transcript ai.TranscriptContext, options ai.StreamOptions, _ *ai.FauxProviderState, _ *ai.Model) (ai.FauxResponse, error) {
+	step := ai.FauxFactoryStep(func(transcript ai.TranscriptContext, options ai.StreamOptions, _ *ai.FauxProviderState, _ *ai.Model) (ai.AssistantMessage, error) {
 		messages := transcript.Messages()
 		system := ai.GetCurrentSystemPrompt(messages)
 		last := messages[len(messages)-1]
@@ -135,22 +137,22 @@ func requestSteps(count int, onSubagentRequest func(), plannerAck func(context.C
 				onSubagentRequest()
 			}
 			if result, ok := last.(ai.ToolResultMessage); ok {
-				return ai.FauxResponse{Content: []ai.FauxContentBlock{ai.FauxText(toolResultText(result))}}, nil
+				return ai.FauxResponse{Content: []ai.FauxContentBlock{ai.FauxText(toolResultText(result))}}.AssistantMessage(), nil
 			}
-			return ai.FauxResponse{Content: []ai.FauxContentBlock{ai.FauxToolCall("search", map[string]any{"topic": "weather", "city": "Vienna"}, "search-1")}, StopReason: "toolUse"}, nil
+			return ai.FauxResponse{Content: []ai.FauxContentBlock{ai.FauxToolCall("search", map[string]any{"topic": "weather", "city": "Vienna"}, &ai.FauxToolCallOptions{ID: "search-1"})}, StopReason: "toolUse"}.AssistantMessage(), nil
 		case strings.Contains(system, "vacation planning assistant"):
 			if user, ok := last.(ai.UserMessage); ok && strings.HasPrefix(text(user.Content), "[research report]") {
-				return ai.FauxResponse{Content: []ai.FauxContentBlock{ai.FauxText("Your plan: enjoy the sun.")}}, nil
+				return ai.FauxResponse{Content: []ai.FauxContentBlock{ai.FauxText("Your plan: enjoy the sun.")}}.AssistantMessage(), nil
 			}
 			if _, ok := last.(ai.ToolResultMessage); ok {
 				if plannerAck != nil {
 					plannerAck(options.Signal)
 				}
-				return ai.FauxResponse{Content: []ai.FauxContentBlock{ai.FauxText("I started the research.")}}, nil
+				return ai.FauxResponse{Content: []ai.FauxContentBlock{ai.FauxText("I started the research.")}}.AssistantMessage(), nil
 			}
-			return ai.FauxResponse{Content: []ai.FauxContentBlock{ai.FauxToolCall("research", map[string]any{"task": "Vienna weekend weather"}, "research-1")}, StopReason: "toolUse"}, nil
+			return ai.FauxResponse{Content: []ai.FauxContentBlock{ai.FauxToolCall("research", map[string]any{"task": "Vienna weekend weather"}, &ai.FauxToolCallOptions{ID: "research-1"})}, StopReason: "toolUse"}.AssistantMessage(), nil
 		}
-		return ai.FauxResponse{}, context.Canceled
+		return ai.FauxResponse{}.AssistantMessage(), context.Canceled
 	})
 	steps := make([]ai.FauxResponseStep, count)
 	for i := range steps {

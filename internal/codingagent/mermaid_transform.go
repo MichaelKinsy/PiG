@@ -1,3 +1,5 @@
+//go:build !pig_strip_mermaid
+
 package codingagent
 
 import (
@@ -14,6 +16,7 @@ import (
 	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
 	"github.com/MichaelKinsy/PiG/internal/mermaid"
+	"github.com/MichaelKinsy/PiG/internal/pigstrip"
 	"github.com/MichaelKinsy/PiG/tui"
 	"github.com/MichaelKinsy/PiG/tui/widthx"
 )
@@ -62,6 +65,10 @@ func topLevelMermaidFences(markdown string) []*markedCodeBlock {
 // createMermaidMarkdownTransformer returns a transformer that replaces top-level
 // Mermaid code blocks with terminal diagrams. theme may be nil (plain art).
 func createMermaidMarkdownTransformer(getMode func() string, theme *tui.Theme) extension.MarkdownTransformer {
+	// pig additive (D92): a Piglet that strips mermaid leaves every block raw, as mermaid_off.go does.
+	if pigstrip.Has(pigstrip.ListFeatures, pigstrip.Mermaid) {
+		return rawMermaidMarkdown
+	}
 	return func(markdown string, context extension.MarkdownTransformContext) string {
 		mode := getMode()
 		if mode == "off" ||
@@ -157,7 +164,7 @@ func mermaidHint(reason string, context extension.MarkdownTransformContext, them
 	}
 	line := "Mermaid diagram not rendered: " + reason
 	if theme != nil {
-		line = theme.FgText("warning", line)
+		line = theme.Fg("warning", line)
 	}
 	return "\n" + codeSpan(line) + "  \n"
 }
@@ -207,15 +214,15 @@ func backtickRuns(s string) []int {
 func styleSpan(span mermaid.Span, theme *tui.Theme) string {
 	switch span.Cls {
 	case mermaid.ClsBorder:
-		return theme.FgText("borderMuted", span.Text)
+		return theme.Fg("borderMuted", span.Text)
 	case mermaid.ClsText:
-		return theme.FgText("text", span.Text)
+		return theme.Fg("text", span.Text)
 	case mermaid.ClsEdge:
-		return theme.FgText("accent", span.Text)
+		return theme.Fg("accent", span.Text)
 	case mermaid.ClsEdgeLabel:
-		return theme.FgText("muted", span.Text)
+		return theme.Fg("muted", span.Text)
 	case mermaid.ClsTitle:
-		return theme.FgText("accent", "\x1b[1m"+span.Text+tui.SGRBoldDimReset)
+		return theme.Fg("accent", "\x1b[1m"+span.Text+tui.SGRBoldDimReset)
 	}
 	return span.Text
 }

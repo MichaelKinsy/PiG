@@ -7,6 +7,8 @@ import (
 	"reflect"
 	"sync"
 	"testing"
+
+	"github.com/MichaelKinsy/PiG/internal/chord/chordjson"
 )
 
 // Ports packages/chord/test/service-delivery.test.ts: per-subscription provider delivery queues with an explicit root "reset" after 100 pending updates, and the consumer's handling of it through the wire codecs.
@@ -93,10 +95,10 @@ func (log *updateLog) listen(ctx context.Context, update ServiceProviderUpdate) 
 	log.ctxs = append(log.ctxs, ctx)
 }
 
-func (log *updateLog) types() []string {
+func (log *updateLog) types() []ServiceProviderUpdateType {
 	log.mu.Lock()
 	defer log.mu.Unlock()
-	types := make([]string, len(log.updates))
+	types := make([]ServiceProviderUpdateType, len(log.updates))
 	for at, update := range log.updates {
 		types[at] = update.Type
 	}
@@ -119,7 +121,7 @@ func activate(t *testing.T, subscription ServiceSubscription) {
 	}
 }
 
-func rootReplacement(value int) []Op { return []Op{{"r", map[string]any{"value": float64(value)}}} }
+func rootReplacement(value int) []Op { return []Op{{"r", chordjson.ObjectOf("value", float64(value))}} }
 
 func TestProviderDeliveryQueues(t *testing.T) {
 	background := context.Background()
@@ -209,7 +211,7 @@ func TestProviderDeliveryQueues(t *testing.T) {
 		counter.replace(t, background, 1)
 		counter.replace(t, background, 2)
 		activate(t, subscription)
-		if got := log.types(); !reflect.DeepEqual(got, []string{UpdateState, UpdateReset, UpdateState}) {
+		if got := log.types(); !reflect.DeepEqual(got, []ServiceProviderUpdateType{UpdateState, UpdateReset, UpdateState}) {
 			t.Fatalf("updates = %v", got)
 		}
 		if log.updates[0].Sequence != 1 || log.updates[2].Sequence != 103 {
@@ -238,14 +240,14 @@ func TestProviderDeliveryQueues(t *testing.T) {
 			counter.replace(t, background, value)
 		}
 		activate(t, subscription)
-		if got := log.types(); !reflect.DeepEqual(got, []string{UpdateReset}) {
+		if got := log.types(); !reflect.DeepEqual(got, []ServiceProviderUpdateType{UpdateReset}) {
 			t.Fatalf("updates = %v", got)
 		}
 		if member := log.updates[0].Reset.Instances[0].Members[0]; member.Sequence != 103 {
 			t.Fatalf("reset member = %+v", member)
 		}
 		counter.replace(t, background, 104)
-		if got := log.types(); !reflect.DeepEqual(got, []string{UpdateReset, UpdateState}) || log.updates[1].Sequence != 104 {
+		if got := log.types(); !reflect.DeepEqual(got, []ServiceProviderUpdateType{UpdateReset, UpdateState}) || log.updates[1].Sequence != 104 {
 			t.Fatalf("updates = %v", got)
 		}
 		_ = provider.Dispose()
@@ -316,7 +318,7 @@ func TestProviderDeliveryQueues(t *testing.T) {
 		})
 		counter.replace(t, background, 1)
 		activate(t, subscription)
-		if got := log.types(); !reflect.DeepEqual(got, []string{UpdateState, UpdateUnavailable}) {
+		if got := log.types(); !reflect.DeepEqual(got, []ServiceProviderUpdateType{UpdateState, UpdateUnavailable}) {
 			t.Fatalf("updates = %v", got)
 		}
 	})
@@ -421,7 +423,7 @@ func replicaValue(t *testing.T, service *RemoteService, member string) (valueDoc
 func newWireBinding(t *testing.T, provider *RemoteServiceProvider, serviceIds []string, beforeActivate func(), log *updateLog, errs *locked[error]) *RemoteServiceBinding {
 	t.Helper()
 	binding, err := CreateRemoteServiceBinding(RemoteServiceBindingOptions{
-		Services:  serviceIds,
+		Services:  ServiceIDs(serviceIds...),
 		Transport: wireTransport{provider: provider, beforeActivate: beforeActivate, log: log},
 		OnError:   func(err error) { errs.add(err) },
 	})
@@ -464,7 +466,7 @@ func TestRebaselinesEveryMemberThroughWireCodecsThenResumesContiguousDeltas(t *t
 	if err := binding.Ready(ctx); err != nil {
 		t.Fatal(err)
 	}
-	if got := log.types(); !reflect.DeepEqual(got, []string{UpdateReset, UpdateState}) {
+	if got := log.types(); !reflect.DeepEqual(got, []ServiceProviderUpdateType{UpdateReset, UpdateState}) {
 		t.Fatalf("updates = %v", got)
 	}
 	for _, member := range []string{"left", "right"} {

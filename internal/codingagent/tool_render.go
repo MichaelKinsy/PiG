@@ -15,7 +15,7 @@ import (
 )
 
 // toolBodyRendererForCall derives display-only file metadata from the retained call and result. Upstream write previews and read highlighting use call arguments, not private runtime result details.
-func toolBodyRendererForCall(call ai.ToolCall, result agent.AgentToolResult) func(int, bool) []string {
+func toolBodyRendererForCall(call ai.ToolCall, result agent.AgentToolResult, took *time.Duration) func(int, bool) []string {
 	path, _ := call.Arguments["file_path"].(string)
 	if call.Arguments["file_path"] == nil {
 		path, _ = call.Arguments["path"].(string)
@@ -44,7 +44,7 @@ func toolBodyRendererForCall(call ai.ToolCall, result agent.AgentToolResult) fun
 		details.Path = path
 		result.Details = &details
 	}
-	return toolBodyRenderer(call.Name, result, nil)
+	return toolBodyRenderer(call.Name, result, took)
 }
 
 // toolBodyRenderer returns a per-tool body renderer based on the
@@ -371,4 +371,14 @@ func makePreviewBodyRenderer(content, preview string, elapsed time.Duration) fun
 
 		return out
 	}
+}
+
+// recordedTook is the duration a shell tool's final result footer shows (only the bash renderers read it): the recorded execution time when the result carries one, since it is
+// monotonic and survives a reload, else the card's own clock (nil when the card did not see the call start).
+// upstream: renderers/bash.ts:101-111
+func recordedTook(toolName string, durationMs *int64, own *time.Duration) *time.Duration {
+	if durationMs == nil || !tui.IsShellTool(toolName) {
+		return own
+	}
+	return new(time.Duration(*durationMs) * time.Millisecond)
 }

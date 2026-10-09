@@ -835,12 +835,13 @@ func (h *Host) acceptPackedExt(ctx context.Context, me *managedExt, ln net.Liste
 	}
 	if !me.config.acceptsRegisteredName(reg.Name) {
 		_ = conn.Close("name mismatch")
-		loadErr := newLoadError(me.config.Name, "register", "name_mismatch", fmt.Errorf("packed extension registered as %q", reg.Name))
+		loadErr := registeredIdentityMismatch(me.config, reg.Name)
 		loadErr.StderrLog = me.stderrLogPath
 		return nil, loadErr
 	}
 	me.flagNames = make([]string, 0, len(reg.Flags))
 	me.wantsSessionLog = reg.WantsSessionLog
+	me.wantsModelRegistry = reg.WantsModelRegistry
 	for _, f := range reg.Flags {
 		me.flagNames = append(me.flagNames, f.Name)
 	}
@@ -915,14 +916,13 @@ func (h *Host) acceptPackedExt(ctx context.Context, me *managedExt, ln net.Liste
 		me.releaseLiveness = conn.holdLiveness()
 	}
 	if h.uiBridge != nil {
-		h.uiBridge.RegisterExtConn(me.config.Name, conn)
+		h.uiBridge.RegisterExtConn(me.config.Name, conn, reg.WantsModelRegistry)
 	}
 	ext := h.buildExtension(me, reg)
 	me.resetToolRenderers(reg.ToolRenderers)
 	if previous, _ := ctx.Value(recoveryMembersKey{}).(map[string]*managedExt); previous != nil {
 		if old := previous[me.config.Name]; old != nil && old.ext != nil {
-			old.ext.ReplaceEventHandlers(ext)
-			ext = old.ext
+			ext = adoptRestartedExtension(old.ext, ext)
 		}
 	}
 	me.ext = ext

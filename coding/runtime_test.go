@@ -14,7 +14,7 @@ import (
 
 func TestRuntimeExtensionContextUsesServiceProjectTrust(t *testing.T) {
 	trusted := false
-	svcs, err := NewServices(ServicesOptions{
+	svcs, err := CreateAgentSessionServices(CreateAgentSessionServicesOptions{
 		CWD:            t.TempDir(),
 		AgentDir:       t.TempDir(),
 		ProjectTrusted: new(false),
@@ -40,7 +40,7 @@ func TestRuntimeExtensionContextUsesServiceProjectTrust(t *testing.T) {
 	}
 	defer func() { _ = rt.Close() }()
 	if _, err := rt.NewExtensionRunner().EmitBeforeAgentStart(
-		context.Background(), "work", nil, "base", extension.BuildSystemPromptOptions{},
+		context.Background(), "work", nil, extension.BuildSystemPromptOptions{},
 	); err != nil {
 		t.Fatal(err)
 	}

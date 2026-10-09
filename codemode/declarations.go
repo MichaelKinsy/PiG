@@ -1,11 +1,13 @@
 package codemode
 
 import (
+	"cmp"
 	"encoding/json"
 	"maps"
 	"net/url"
 	"slices"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
 )
@@ -113,12 +115,16 @@ type RenderDeclarationsOptions struct {
 // `declare const tools`, globals `declare function` statements, and `ns.member` globals members of `declare const ns`.
 //
 // Ports packages/codemode/src/declarations.ts (renderDeclarations).
-func RenderDeclarations(options RenderDeclarationsOptions) string {
+func RenderDeclarations(options RenderDeclarationsOptions) (string, error) {
 	var sections []string
 	if len(options.Tools) > 0 {
 		members := make([]string, len(options.Tools))
 		for i, tool := range options.Tools {
-			members[i] = docComment(tool.Description, indent) + indent + RenderToolSignature(tool, 0)
+			signature, err := RenderToolSignature(tool, ToolRenderOptions{})
+			if err != nil {
+				return "", err
+			}
+			members[i] = docComment(tool.Description, indent) + indent + signature
 		}
 		sections = append(sections, "declare const tools: {\n"+strings.Join(members, "\n")+"\n};")
 	}
@@ -127,18 +133,26 @@ func RenderDeclarations(options RenderDeclarationsOptions) string {
 	for _, global := range options.Globals {
 		namespace, member, found := strings.Cut(global.Name, ".")
 		if !found {
-			sections = append(sections, renderGlobal("declare function "+global.Name, global, ""))
+			rendered, err := renderGlobal("declare function "+global.Name, global, "")
+			if err != nil {
+				return "", err
+			}
+			sections = append(sections, rendered)
 			continue
 		}
 		if _, seen := members[namespace]; !seen {
 			namespaces = append(namespaces, namespace)
 		}
-		members[namespace] = append(members[namespace], renderGlobal(member, global, indent))
+		rendered, err := renderGlobal(member, global, indent)
+		if err != nil {
+			return "", err
+		}
+		members[namespace] = append(members[namespace], rendered)
 	}
 	for _, namespace := range namespaces {
 		sections = append(sections, "declare const "+namespace+": {\n"+strings.Join(members[namespace], "\n")+"\n};")
 	}
-	return strings.Join(sections, "\n\n")
+	return strings.Join(sections, "\n\n"), nil
 }
 
 // schemaOf decodes a schema; an absent or undecodable schema is undefined.
@@ -153,30 +167,55 @@ func schemaOf(raw json.RawMessage) (any, bool) {
 	return v, true
 }
 
+// ToolRenderOptions is the options object of renderToolSignature and renderToolSample.
+type ToolRenderOptions struct {
+	// InputMaxChars is the largest rendered input type, in characters, before it becomes `unknown`. Nil means
+	// DefaultInputSchemaMaxChars.
+	InputMaxChars *int
+}
+
+// SchemaToTypeOptions is the options object of schemaToType.
+type SchemaToTypeOptions struct {
+	// MaxChars is the largest rendered type, in characters, before it becomes `unknown`. Nil means no limit.
+	MaxChars *int
+}
+
 // RenderToolSignature renders one tool as a member of the `tools` object: `name(args: T): Promise<R>;` with the
-// name as the identifier scripts use. Input types longer than inputMaxChars (zero means DefaultInputSchemaMaxChars)
-// render as `unknown`. Tools whose output schema is an MCP `CallToolResult` render as `Promise<CallToolResult<T>>`,
+// name as the identifier scripts use. Input types longer than options.InputMaxChars (nil means
+// DefaultInputSchemaMaxChars) render as `unknown`. Tools whose output schema is an MCP `CallToolResult` render as `Promise<CallToolResult<T>>`,
 // which needs McpTypescriptPreamble.
 //
 // Ports packages/codemode/src/declarations.ts (renderToolSignature).
-func RenderToolSignature(tool Tool, inputMaxChars int) string {
-	if inputMaxChars == 0 {
-		inputMaxChars = DefaultInputSchemaMaxChars
+func RenderToolSignature(tool Tool, options ToolRenderOptions) (string, error) {
+	inputMaxChars := DefaultInputSchemaMaxChars
+	if options.InputMaxChars != nil {
+		inputMaxChars = *options.InputMaxChars
 	}
 	input := "unknown"
 	if schema, ok := schemaOf(tool.InputSchema); ok {
-		input = schemaToType(schema, inputMaxChars)
+		var err error
+		if input, err = schemaToType(schema, &inputMaxChars); err != nil {
+			return "", err
+		}
 	}
-	return ToCodemodeIdentifier(tool.Name) + "(args: " + input + "): Promise<" + RenderToolOutputType(tool.OutputSchema) + ">;"
+	output, err := RenderToolOutputType(tool.OutputSchema)
+	if err != nil {
+		return "", err
+	}
+	return ToCodemodeIdentifier(tool.Name) + "(args: " + input + "): Promise<" + output + ">;", nil
 }
 
 // RenderToolSample renders the description followed by the tool's declaration, for tool listings and `ALL_TOOLS`
 // entries.
 //
 // Ports packages/codemode/src/declarations.ts (renderToolSample).
-func RenderToolSample(tool Tool, inputMaxChars int) string {
-	declaration := "declare const tools: { " + RenderToolSignature(tool, inputMaxChars) + " };"
-	return jsstring.Trim(tool.Description) + "\n\ncodemode tool declaration:\n```ts\n" + declaration + "\n```"
+func RenderToolSample(tool Tool, options ToolRenderOptions) (string, error) {
+	signature, err := RenderToolSignature(tool, options)
+	if err != nil {
+		return "", err
+	}
+	declaration := "declare const tools: { " + signature + " };"
+	return jsstring.Trim(tool.Description) + "\n\ncodemode tool declaration:\n```ts\n" + declaration + "\n```", nil
 }
 
 // mcpStructured is McpStructuredContentSchema over decoded values: the structuredContent schema, `true` when it
@@ -229,32 +268,41 @@ func McpStructuredContentSchema(schema json.RawMessage) json.RawMessage {
 // McpTypescriptPreamble), the schema's type otherwise, and `unknown` without a schema.
 //
 // Ports packages/codemode/src/declarations.ts (renderToolOutputType).
-func RenderToolOutputType(raw json.RawMessage) string {
+func RenderToolOutputType(raw json.RawMessage) (string, error) {
 	schema, defined := schemaOf(raw)
 	if structured, ok := mcpStructured(schema, defined); ok {
-		if typ := SchemaToType(json.RawMessage(jsStringify(structured)), 0); typ != "unknown" {
-			return "CallToolResult<" + typ + ">"
+		typ, err := SchemaToType(json.RawMessage(jsStringify(structured)), SchemaToTypeOptions{})
+		if err != nil {
+			return "", err
 		}
-		return "CallToolResult"
+		if typ != "unknown" {
+			return "CallToolResult<" + typ + ">", nil
+		}
+		return "CallToolResult", nil
 	}
 	if !defined {
-		return "unknown"
+		return "unknown", nil
 	}
-	return schemaToType(schema, 0)
+	return schemaToType(schema, nil)
 }
 
-func renderGlobal(head string, global Tool, indentation string) string {
-	if global.Signature != "" {
-		return docComment(global.Description, indentation) + indentation + head + global.Signature + ";"
+func renderGlobal(head string, global Tool, indentation string) (string, error) {
+	if global.Signature != nil {
+		return docComment(global.Description, indentation) + indentation + head + *global.Signature + ";", nil
 	}
 	input, output := "unknown", "unknown"
+	var err error
 	if schema, ok := schemaOf(global.InputSchema); ok {
-		input = schemaToType(schema, 0)
+		if input, err = schemaToType(schema, nil); err != nil {
+			return "", err
+		}
 	}
 	if schema, ok := schemaOf(global.OutputSchema); ok {
-		output = schemaToType(schema, 0)
+		if output, err = schemaToType(schema, nil); err != nil {
+			return "", err
+		}
 	}
-	return docComment(global.Description, indentation) + indentation + head + "(args: " + input + "): Promise<" + output + ">;"
+	return docComment(global.Description, indentation) + indentation + head + "(args: " + input + "): Promise<" + output + ">;", nil
 }
 
 // splitLines is text.split(/\r?\n/).
@@ -324,15 +372,15 @@ func union(types []string) string {
 // (`{ a: string; b?: number; }`) with properties sorted by name, or one property per line with `//` comments when a
 // property has a description; `Array<T>` for arrays. Local references (`#/$defs/...`, `#/definitions/...`) resolve
 // against the schema; recursive and remote references render as `unknown`. A result longer than maxChars
-// characters (zero means no limit) renders as `unknown`. A schema that is not valid JSON renders as `unknown`.
+// characters (options.MaxChars, nil means no limit) renders as `unknown`. A schema that is not valid JSON renders as `unknown`.
 //
 // Ports packages/codemode/src/declarations.ts (schemaToType).
-func SchemaToType(schema json.RawMessage, maxChars int) string {
+func SchemaToType(schema json.RawMessage, options SchemaToTypeOptions) (string, error) {
 	decoded, ok := schemaOf(schema)
 	if !ok {
-		return "unknown"
+		return "unknown", nil
 	}
-	return schemaToType(decoded, maxChars)
+	return schemaToType(decoded, options.MaxChars)
 }
 
 type schemaContext struct {
@@ -340,20 +388,39 @@ type schemaContext struct {
 	// resolving holds the references being expanded on the current path, to stop at recursive types.
 	resolving  map[string]bool
 	expansions int
+	// err is the first failure to decode a reference; the rendering carries on with `unknown` and schemaToType returns it.
+	err error
 }
 
-func schemaToType(schema any, maxChars int) string {
-	typ := toType(schema, &schemaContext{root: schema, resolving: map[string]bool{}})
-	if maxChars > 0 && jsstring.Length(typ) > maxChars {
-		return "unknown"
+func schemaToType(schema any, maxChars *int) (string, error) {
+	ctx := &schemaContext{root: schema, resolving: map[string]bool{}}
+	typ := toType(schema, ctx)
+	if ctx.err != nil {
+		return "", ctx.err
 	}
-	return typ
+	if maxChars != nil && jsstring.Length(typ) > *maxChars {
+		return "unknown", nil
+	}
+	return typ, nil
 }
 
-// resolveRef follows a local JSON pointer. A pointer segment that is not valid percent-encoding does not resolve.
-func resolveRef(ref string, root any) (any, bool) {
+// errURIMalformed is the failure to decode a percent-encoded $ref segment. Its message is that of the URIError
+// upstream's decodeURIComponent throws, which callers surface as the error text.
+var errURIMalformed = &URIError{Message: "URI malformed"}
+
+// URIError is the error JavaScript's decodeURIComponent throws for a malformed percent-encoding (a `$ref` segment with one).
+type URIError struct{ Message string }
+
+func (e *URIError) Error() string { return e.Message }
+
+// Name is the JavaScript error's `name`.
+func (*URIError) Name() string { return "URIError" }
+
+// resolveRef follows a local JSON pointer. A pointer segment that is not valid percent-encoding is an error, as
+// upstream's decodeURIComponent throws a URIError.
+func resolveRef(ref string, root any) (any, bool, error) {
 	if ref != "#" && !strings.HasPrefix(ref, "#/") {
-		return nil, false
+		return nil, false, nil
 	}
 	current := root
 	if ref != "#" {
@@ -362,24 +429,24 @@ func resolveRef(ref string, root any) (any, bool) {
 				continue
 			}
 			decoded, err := url.PathUnescape(segment)
-			if err != nil {
-				return nil, false
+			if err != nil || !utf8.ValidString(decoded) {
+				return nil, false, errURIMalformed
 			}
 			key := strings.ReplaceAll(strings.ReplaceAll(decoded, "~1", "/"), "~0", "~")
 			obj, ok := current.(*object)
 			if !ok {
-				return nil, false
+				return nil, false, nil
 			}
 			if current, ok = obj.get(key); !ok {
-				return nil, false
+				return nil, false, nil
 			}
 		}
 	}
 	switch current.(type) {
 	case bool, *object:
-		return current, true
+		return current, true, nil
 	}
-	return nil, false
+	return nil, false, nil
 }
 
 func toType(schema any, ctx *schemaContext) string {
@@ -400,7 +467,11 @@ func objectSchemaType(schema *object, ctx *schemaContext) string {
 		if ctx.resolving[ref] || ctx.expansions >= maxRefExpansions {
 			return "unknown"
 		}
-		target, ok := resolveRef(ref, ctx.root)
+		target, ok, err := resolveRef(ref, ctx.root)
+		if err != nil {
+			ctx.err = cmp.Or(ctx.err, err)
+			return "unknown"
+		}
 		if !ok {
 			return "unknown"
 		}

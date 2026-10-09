@@ -11,7 +11,7 @@ func TestTreeActiveBranchOrderAndMarkers(t *testing.T) {
 	old := &fakeNode{id: "old", label: "old", kids: []TreeNode{&fakeNode{id: "old-leaf", label: "old leaf"}}}
 	active := &fakeNode{id: "active", label: "active", kids: []TreeNode{&fakeNode{id: "active-leaf", label: "active leaf"}}}
 	root := &fakeNode{id: "root", kids: []TreeNode{&fakeNode{id: "common", label: "common", kids: []TreeNode{old, active}}}}
-	ts := NewTreeSelect("", root)
+	ts := NewTreeSelectorComponent("", root)
 	ts.SetInitialCursor("active-leaf", "old")
 	var ids []string
 	for _, row := range ts.rows {
@@ -41,7 +41,7 @@ func TestTreeActiveBranchOrderAndMarkers(t *testing.T) {
 
 // Pi tree-selector.ts:1047-1107: digits are printable search input, not filter shortcuts.
 func TestTreeDigitsAreSearchText(t *testing.T) {
-	ts := NewTreeSelect("", &fakeNode{id: "root", kids: []TreeNode{&fakeNode{id: "match", label: "12345"}}})
+	ts := NewTreeSelectorComponent("", &fakeNode{id: "root", kids: []TreeNode{&fakeNode{id: "match", label: "12345"}}})
 	for _, key := range []string{"1", "2", "3", "4", "5"} {
 		ts.HandleInput(key)
 	}
@@ -68,7 +68,7 @@ func BenchmarkTreeActiveBranch(b *testing.B) {
 	leaf := root.kids[len(root.kids)-1].NodeID()
 	b.ReportAllocs()
 	for b.Loop() {
-		ts := NewTreeSelect("", root)
+		ts := NewTreeSelectorComponent("", root)
 		ts.SetInitialCursor(leaf, "")
 		ts.Render(120)
 	}

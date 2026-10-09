@@ -90,7 +90,7 @@ func newSessionPair(t *testing.T, settings string, contextWindow int, onEvent fu
 		t.Fatal(err)
 	}
 	cwd := t.TempDir()
-	services, err := coding.NewServices(coding.ServicesOptions{CWD: cwd, AgentDir: agentDir})
+	services, err := coding.CreateAgentSessionServices(coding.CreateAgentSessionServicesOptions{CWD: cwd, AgentDir: agentDir})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -104,7 +104,7 @@ func newSessionPair(t *testing.T, settings string, contextWindow int, onEvent fu
 	if err != nil {
 		t.Fatal(err)
 	}
-	harness := icodingagent.NewTestHarness(t, icodingagent.InteractiveOptions{
+	harness := icodingagent.NewTestHarness(t, icodingagent.InteractiveModeOptions{
 		CWD: cwd, AgentDir: agentDir, Model: model,
 		SessionHandle: session, SettingsManager: services.SettingsManager(),
 	}, onEvent)
@@ -176,10 +176,10 @@ func TestInteractiveRetryThenOverflowCompactsAndRetries(t *testing.T) {
 	if got := len(pair.provider.requestLog()); got != 4 {
 		t.Fatalf("model requests = %d, want 4 (retry, overflow compaction, recovered retry)", got)
 	}
-	entries := pair.session.Inner().Entries()
+	entries := pair.session.Inner().GetEntries()
 	var compactions, omissions int
 	for _, entry := range entries {
-		switch entry.Base.Type {
+		switch entry.Base().Type {
 		case "compaction":
 			compactions++
 		case "context_edit":

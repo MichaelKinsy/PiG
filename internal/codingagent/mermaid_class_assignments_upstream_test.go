@@ -1,4 +1,8 @@
+//go:build !pig_strip_mermaid
+
 package codingagent
+
+// pi: packages/coding-agent/src/modes/interactive/components/mermaid.ts
 
 import (
 	"strings"

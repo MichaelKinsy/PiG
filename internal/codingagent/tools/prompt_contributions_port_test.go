@@ -32,7 +32,7 @@ func TestToolSystemPromptContributionsPort(t *testing.T) {
 		{"ls", "List directory contents", nil},
 	}
 	all := make(map[string]ai.ToolSchema)
-	for _, tool := range CreateAllTools("/workspace", nil, "") {
+	for _, tool := range CreateAllTools("/workspace", nil) {
 		all[tool.Name()] = tool.Schema()
 	}
 	for _, tc := range cases {
@@ -51,14 +51,6 @@ func TestToolSystemPromptContributionsPort(t *testing.T) {
 				if !strings.Contains(prompt, part) {
 					t.Fatalf("prompt lacks %q: %s", part, prompt)
 				}
-			}
-		})
-	}
-	// .upstream/v0.87.1/packages/coding-agent/test/tool-system-prompt-contributions.test.ts:36 (bash and powershell rows).
-	for name, definition := range map[string]ai.ToolSchema{"bash": (&BashTool{CWD: "/workspace", HideSessionEnvironment: true}).Schema(), "powershell": (&PowerShellTool{CWD: "/workspace", HideSessionEnvironment: true}).Schema()} {
-		t.Run("keeps "+name+" session-environment guidance conditional", func(t *testing.T) {
-			if definition.PromptGuidelines != nil {
-				t.Fatalf("guidelines = %q, want undefined", definition.PromptGuidelines)
 			}
 		})
 	}

@@ -166,6 +166,15 @@ func checkWorkflowsReadGoMod(t *testing.T, root string) {
 			if versionCheck.MatchString(line) {
 				t.Errorf("%s:%d compares GOVERSION with a literal %q; read .go-version", name, i+1, strings.TrimSpace(line))
 			}
+			if strings.Contains(line, "GOVERSION") && strings.Contains(line, "go.mod") {
+				t.Errorf("%s:%d compares GOVERSION with go.mod, whose toolchain line is the build floor, not the CI pin %q; read .go-version", name, i+1, strings.TrimSpace(line))
+			}
+			if versionCheck.MatchString(line) {
+				t.Errorf("%s:%d compares GOVERSION with a literal %q; read the go.mod toolchain directive", name, i+1, strings.TrimSpace(line))
+			}
+			if strings.Contains(line, "GOVERSION") && strings.Contains(line, "go.mod") {
+				t.Errorf("%s:%d compares GOVERSION with go.mod, whose toolchain line is the build floor, not the CI pin %q; read .go-version", name, i+1, strings.TrimSpace(line))
+			}
 			if !setupGo.MatchString(line) {
 				continue
 			}

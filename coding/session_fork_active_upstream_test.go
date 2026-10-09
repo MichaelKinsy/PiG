@@ -3,11 +3,15 @@ package coding
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"reflect"
 	"testing"
 
+	icodingagent "github.com/MichaelKinsy/PiG/internal/codingagent"
+
 	"github.com/MichaelKinsy/PiG/agent"
 	"github.com/MichaelKinsy/PiG/ai"
+	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/internal/testbudget"
 )
 
@@ -25,13 +29,24 @@ func (tool *upstreamAbortTool) Execute(ctx context.Context, _ string, _ json.Raw
 	return agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: "tool aborted"}}, Details: map[string]any{}}, nil
 }
 
-// Ports packages/coding-agent/test/suite/regressions/8724-in-memory-fork-active-tool.test.ts:22.
+// Ports packages/coding-agent/test/suite/regressions/8724-in-memory-fork-active-tool.test.ts:22: createAgentSessionRuntime runs the factory for the first Session.
 func TestInMemoryForkDoesNotAppendAbortedTurnToReplacementUpstream(t *testing.T) {
+	testInMemoryForkDoesNotAppendAbortedTurn(t, false)
+}
+
+// The same regression with the test's own construction (8724-in-memory-fork-active-tool.test.ts:62): `new AgentSessionRuntime(harness.session, services, createRuntime)`
+// wraps a Session that already exists, and only the replacement comes from the factory.
+func TestInMemoryForkDoesNotAppendAbortedTurnWhenTheRuntimeWrapsAnExistingSessionUpstream(t *testing.T) {
+	testInMemoryForkDoesNotAppendAbortedTurn(t, true)
+}
+
+func testInMemoryForkDoesNotAppendAbortedTurn(t *testing.T, wrapExisting bool) {
+	t.Helper()
 	services := newTestServices(t)
 	provider := ai.NewFauxProvider(ai.FauxConfig{})
 	provider.SetResponses([]ai.FauxResponseStep{
 		ai.FauxStaticStep(ai.FauxResponse{Content: []ai.FauxContentBlock{ai.FauxText("first response")}, StopReason: "stop"}),
-		ai.FauxStaticStep(ai.FauxResponse{Content: []ai.FauxContentBlock{ai.FauxToolCall("block", map[string]any{}, "block-call")}, StopReason: "toolUse"}),
+		ai.FauxStaticStep(ai.FauxResponse{Content: []ai.FauxContentBlock{ai.FauxToolCall("block", map[string]any{}, &ai.FauxToolCallOptions{ID: "block-call"})}, StopReason: "toolUse"}),
 		ai.FauxStaticStep(ai.FauxResponse{Content: []ai.FauxContentBlock{ai.FauxText("unused after abort")}, StopReason: "stop"}),
 	})
 	tool := &upstreamAbortTool{started: make(chan struct{})}
@@ -53,9 +68,27 @@ func TestInMemoryForkDoesNotAppendAbortedTurnToReplacementUpstream(t *testing.T)
 		}
 		return CreateAgentSessionRuntimeResult{Session: session, Services: services}, err
 	}
-	runtime, err := CreateAgentSessionRuntime(t.Context(), factory, CreateAgentSessionRuntimeOptions{CWD: services.CWD(), AgentDir: services.AgentDir(), SessionManager: manager})
-	if err != nil {
-		t.Fatal(err)
+	var runtime *Runtime
+	if wrapExisting {
+		harnessSession, err := NewSession(services, SessionOptions{SessionManager: manager, Model: model, SkipBuiltinTools: true, Tools: []agent.AgentTool{tool}})
+		if err != nil {
+			t.Fatal(err)
+		}
+		drainSessionEvents(t, harnessSession)
+		first = false
+		runtime, err = NewAgentSessionRuntime(t.Context(), harnessSession, services, factory, nil, "")
+		if err != nil {
+			t.Fatal(err)
+		}
+		if runtime.Session() != harnessSession || runtime.Services() != services || runtime.CWD() != services.CWD() {
+			t.Fatal("the runtime does not own the Session and Services it was constructed with")
+		}
+	} else {
+		var err error
+		runtime, err = CreateAgentSessionRuntime(t.Context(), factory, CreateAgentSessionRuntimeOptions{CWD: services.CWD(), AgentDir: services.AgentDir(), SessionManager: manager})
+		if err != nil {
+			t.Fatal(err)
+		}
 	}
 	t.Cleanup(func() {
 		if err := runtime.Close(); err != nil {
@@ -89,15 +122,15 @@ func TestInMemoryForkDoesNotAppendAbortedTurnToReplacementUpstream(t *testing.T)
 	if err := <-outgoing; err != nil {
 		t.Fatalf("outgoing prompt rejected: %v", err)
 	}
-	if err := runtime.Session().BindExtensions(t.Context()); err != nil {
+	if err := runtime.Session().BindExtensions(t.Context(), ExtensionBindings{}); err != nil {
 		t.Fatal(err)
 	}
 	var roles, entryRoles []string
 	for _, message := range runtime.Session().Messages() {
 		roles = append(roles, message.Role())
 	}
-	for _, entry := range runtime.Session().Inner().Entries() {
-		if message, ok := entry.AsMessage(); ok {
+	for _, entry := range runtime.Session().Inner().GetEntries() {
+		if message, ok := entry.(icodingagent.MessageEntry); ok {
 			entryRoles = append(entryRoles, message.Message.Role())
 		}
 	}
@@ -105,7 +138,7 @@ func TestInMemoryForkDoesNotAppendAbortedTurnToReplacementUpstream(t *testing.T)
 		t.Fatalf("replacement roles=%q entry roles=%q", roles, entryRoles)
 	}
 	var capturedRoles []string
-	provider.SetResponses([]ai.FauxResponseStep{ai.FauxFactoryStep(func(request ai.TranscriptContext, _ ai.StreamOptions, _ *ai.FauxProviderState, _ *ai.Model) (ai.FauxResponse, error) {
+	provider.SetResponses([]ai.FauxResponseStep{ai.FauxFactoryStep(func(request ai.TranscriptContext, _ ai.StreamOptions, _ *ai.FauxProviderState, _ *ai.Model) (ai.AssistantMessage, error) {
 		for _, message := range request.Messages() {
 			switch message.(type) {
 			case ai.SystemMessage:
@@ -120,7 +153,7 @@ func TestInMemoryForkDoesNotAppendAbortedTurnToReplacementUpstream(t *testing.T)
 				capturedRoles = append(capturedRoles, "unknown")
 			}
 		}
-		return ai.FauxResponse{Content: []ai.FauxContentBlock{ai.FauxText("next response")}, StopReason: "stop"}, nil
+		return ai.FauxResponse{Content: []ai.FauxContentBlock{ai.FauxText("next response")}, StopReason: "stop"}.AssistantMessage(), nil
 	})})
 	if _, err := runtime.Session().Send(t.Context(), "next prompt"); err != nil {
 		t.Fatal(err)
@@ -128,4 +161,89 @@ func TestInMemoryForkDoesNotAppendAbortedTurnToReplacementUpstream(t *testing.T)
 	if !reflect.DeepEqual(capturedRoles, []string{"system", "system", "user"}) {
 		t.Fatalf("next request roles=%q", capturedRoles)
 	}
+}
+
+// agent-session-runtime.ts:81-93 and the diagnostics / modelFallbackMessage getters: the constructor's fifth and sixth inputs are what the runtime reports until a
+// replacement applies its own; the Session and Services are the ones given.
+func TestNewAgentSessionRuntimeReportsItsConstructionInputs(t *testing.T) {
+	services := newTestServices(t)
+	manager, err := NewInMemorySessionManager(services.CWD())
+	if err != nil {
+		t.Fatal(err)
+	}
+	model := &ai.Model{ID: "faux-1", Provider: ai.NewFauxProvider(ai.FauxConfig{}), Capabilities: ai.ModelCapabilities{ContextWindow: 128000}}
+	session, err := NewSession(services, SessionOptions{SessionManager: manager, Model: model, SkipBuiltinTools: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	drainSessionEvents(t, session)
+	diagnostics := []AgentSessionRuntimeDiagnostic{{Type: "warning", Message: "startup diagnostic"}}
+	factory := func(context.Context, CreateAgentSessionRuntimeOptions) (CreateAgentSessionRuntimeResult, error) {
+		return CreateAgentSessionRuntimeResult{}, errors.New("unused")
+	}
+	runtime, err := NewAgentSessionRuntime(t.Context(), session, services, factory, diagnostics, "no model")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = runtime.Close() })
+	if !reflect.DeepEqual(runtime.Diagnostics(), diagnostics) || runtime.ModelFallbackMessage() != "no model" {
+		t.Fatalf("diagnostics %+v, model fallback %q", runtime.Diagnostics(), runtime.ModelFallbackMessage())
+	}
+	if _, err := NewAgentSessionRuntime(t.Context(), nil, services, factory, nil, ""); err == nil {
+		t.Fatal("a runtime without a Session was constructed")
+	}
+}
+
+// agent-session.ts:509 keeps config.sessionStartEvent on the AgentSession, and neither `new AgentSessionRuntime(...)` (agent-session-runtime.ts:81-93) nor
+// createAgentSessionRuntime (:426-438, which hands options.sessionStartEvent to the factory) replaces it: the session_start the Session's extensions
+// receive is the one it was created with, not a fresh "startup".
+// mutation-checked: NewAgentSessionRuntime passing a pointer to the Session's own start event, which applyRuntime resets to "startup" before reading it, fails both cases.
+func TestAgentSessionRuntimeKeepsTheSessionStartEventUpstream(t *testing.T) {
+	resume := extension.SessionStartEvent{Type: "session_start", Reason: "resume", PreviousSessionFile: "/sessions/previous.jsonl"}
+	t.Run("new AgentSessionRuntime", func(t *testing.T) {
+		services := newTestServices(t)
+		manager, err := NewInMemorySessionManager(services.CWD())
+		if err != nil {
+			t.Fatal(err)
+		}
+		session, err := NewSession(services, SessionOptions{SessionManager: manager, SkipBuiltinTools: true})
+		if err != nil {
+			t.Fatal(err)
+		}
+		drainSessionEvents(t, session)
+		session.sessionStartEvent = resume
+		factory := func(context.Context, CreateAgentSessionRuntimeOptions) (CreateAgentSessionRuntimeResult, error) {
+			return CreateAgentSessionRuntimeResult{}, errors.New("unused")
+		}
+		runtime, err := NewAgentSessionRuntime(t.Context(), session, services, factory, nil, "")
+		if err != nil {
+			t.Fatal(err)
+		}
+		t.Cleanup(func() { _ = runtime.Close() })
+		if got := runtime.Session().StartEvent(); got != resume {
+			t.Fatalf("session_start = %+v, want the Session's own %+v", got, resume)
+		}
+	})
+	t.Run("createAgentSessionRuntime", func(t *testing.T) {
+		services := newTestServices(t)
+		manager, err := NewInMemorySessionManager(services.CWD())
+		if err != nil {
+			t.Fatal(err)
+		}
+		factory := func(_ context.Context, options CreateAgentSessionRuntimeOptions) (CreateAgentSessionRuntimeResult, error) {
+			session, err := NewSession(services, SessionOptions{SessionManager: options.SessionManager, SkipBuiltinTools: true})
+			if err == nil {
+				drainSessionEvents(t, session)
+			}
+			return CreateAgentSessionRuntimeResult{Session: session, Services: services}, err
+		}
+		runtime, err := CreateAgentSessionRuntime(t.Context(), factory, CreateAgentSessionRuntimeOptions{CWD: services.CWD(), AgentDir: services.AgentDir(), SessionManager: manager, SessionStartEvent: &resume})
+		if err != nil {
+			t.Fatal(err)
+		}
+		t.Cleanup(func() { _ = runtime.Close() })
+		if got := runtime.Session().StartEvent(); got != resume {
+			t.Fatalf("session_start = %+v, want options.sessionStartEvent %+v", got, resume)
+		}
+	})
 }

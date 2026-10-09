@@ -53,7 +53,7 @@ func TestE2E_ConversationFlowAndResumeFromDisk(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	ag := agent.NewAgent(agent.AgentOptions{})
+	ag := mustNewAgent(agent.AgentOptions{})
 
 	simulateTurn(t, sess, ag, "what is 2+2", "4")
 	simulateTurn(t, sess, ag, "and 3+3", "6")
@@ -69,7 +69,7 @@ func TestE2E_ConversationFlowAndResumeFromDisk(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	rebuilt := agent.NewAgent(agent.AgentOptions{})
+	rebuilt := mustNewAgent(agent.AgentOptions{})
 	rebuilt.SetMessages(loaded.BuildContext(nil))
 
 	got := rebuilt.Messages()
@@ -90,7 +90,7 @@ func TestE2E_ConversationFlowAndResumeFromDisk(t *testing.T) {
 func TestE2E_ForkRewindsAgentHistoryAndExcludesAbandonedTail(t *testing.T) {
 	sm := tempSessionMgr(t)
 	sess, _ := sm.Create("sess-fork-e2e", "")
-	agent := agent.NewAgent(agent.AgentOptions{})
+	agent := mustNewAgent(agent.AgentOptions{})
 
 	uid1, _ := simulateTurn(t, sess, agent, "first question", "first answer")
 	simulateTurn(t, sess, agent, "DEAD-END question", "DEAD-END answer")
@@ -152,7 +152,7 @@ func TestE2E_ForkRewindsAgentHistoryAndExcludesAbandonedTail(t *testing.T) {
 	allEntries := loadAllEntries(t, sess.Path())
 	foundDeadEnd := false
 	for _, e := range allEntries {
-		if me, ok := e.AsMessage(); ok {
+		if me, ok := e.(MessageEntry); ok {
 			if strings.Contains(extractMessageText(me), "DEAD-END") {
 				foundDeadEnd = true
 			}
@@ -170,7 +170,7 @@ func TestE2E_ForkRewindsAgentHistoryAndExcludesAbandonedTail(t *testing.T) {
 func TestE2E_TwoBranchesCoexistOnDisk(t *testing.T) {
 	sm := tempSessionMgr(t)
 	sess, _ := sm.Create("sess-multi-branch", "")
-	agent := agent.NewAgent(agent.AgentOptions{})
+	agent := mustNewAgent(agent.AgentOptions{})
 
 	uid1, aid1 := simulateTurn(t, sess, agent, "root question", "root answer")
 	_ = uid1
@@ -206,7 +206,7 @@ func TestE2E_TwoBranchesCoexistOnDisk(t *testing.T) {
 	allEntries := loadAllEntries(t, sess.Path())
 	foundA, foundB := false, false
 	for _, e := range allEntries {
-		if me, ok := e.AsMessage(); ok {
+		if me, ok := e.(MessageEntry); ok {
 			txt := extractMessageText(me)
 			if strings.Contains(txt, "branch A") {
 				foundA = true
@@ -221,7 +221,7 @@ func TestE2E_TwoBranchesCoexistOnDisk(t *testing.T) {
 	}
 
 	// Tree builder should reflect both branches as siblings off aid1.
-	tree := sess.Tree()
+	tree := sess.treeRoot()
 	leafCount := countLeafs(tree)
 	if leafCount < 2 {
 		t.Errorf("expected at least 2 leaf nodes (one per branch), got %d", leafCount)
@@ -234,11 +234,11 @@ func TestE2E_TwoBranchesCoexistOnDisk(t *testing.T) {
 func TestE2E_CloneCreatesIndependentFile(t *testing.T) {
 	sm := tempSessionMgr(t)
 	sess, _ := sm.Create("sess-source", "")
-	agent := agent.NewAgent(agent.AgentOptions{})
+	agent := mustNewAgent(agent.AgentOptions{})
 	simulateTurn(t, sess, agent, "shared turn 1", "shared reply 1")
 	simulateTurn(t, sess, agent, "shared turn 2", "shared reply 2")
 
-	leaf := sess.LeafID()
+	leaf := sess.GetLeafID()
 	if leaf == nil {
 		t.Fatal("nil leaf")
 		return
@@ -257,7 +257,7 @@ func TestE2E_CloneCreatesIndependentFile(t *testing.T) {
 
 	srcEntries := loadAllEntries(t, sess.Path())
 	for _, e := range srcEntries {
-		if me, ok := e.AsMessage(); ok {
+		if me, ok := e.(MessageEntry); ok {
 			if strings.Contains(extractMessageText(me), "clone-only") {
 				t.Error("clone-only message leaked into source file")
 			}
@@ -267,7 +267,7 @@ func TestE2E_CloneCreatesIndependentFile(t *testing.T) {
 	hasClone := false
 	hasShared := false
 	for _, e := range cloneEntries {
-		if me, ok := e.AsMessage(); ok {
+		if me, ok := e.(MessageEntry); ok {
 			txt := extractMessageText(me)
 			if strings.Contains(txt, "clone-only") {
 				hasClone = true
@@ -311,23 +311,23 @@ func extractAnyText(m agent.AgentMessage) string {
 
 func findFirstAssistantAfter(t *testing.T, sess *Session, userID string) string {
 	t.Helper()
-	leaf := sess.LeafID()
+	leaf := sess.GetLeafID()
 	if leaf == nil {
 		t.Fatal("no leaf")
 		return ""
 	}
-	path := sess.Branch(*leaf)
+	path := sess.GetBranch(*leaf)
 	seenUser := false
 	for _, e := range path {
-		if e.Base.ID == userID {
+		if e.Base().ID == userID {
 			seenUser = true
 			continue
 		}
 		if !seenUser {
 			continue
 		}
-		if me, ok := e.AsMessage(); ok && me.Message.Assistant != nil {
-			return e.Base.ID
+		if me, ok := e.(MessageEntry); ok && me.Message.Assistant != nil {
+			return e.Base().ID
 		}
 	}
 	t.Fatalf("no assistant entry found after %s", userID)
@@ -350,7 +350,7 @@ func countLeafs(n *SessionTreeNode) int {
 	}
 	if len(n.Children) == 0 {
 		// Root with no children = empty tree.
-		if n.Entry.Base.ID == "" {
+		if n.Entry.Base().ID == "" {
 			return 0
 		}
 		return 1

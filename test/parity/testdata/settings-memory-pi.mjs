@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 const root = resolve('extensions/sdk-ts/node_modules/@earendil-works/pi-coding-agent');
-assert.equal(JSON.parse(readFileSync(join(root, 'package.json'), 'utf8')).version, '1.0.3');
+assert.equal(JSON.parse(readFileSync(join(root, 'package.json'), 'utf8')).version, '1.1.0');
 const { SettingsManager } = await import(pathToFileURL(join(root, 'dist/core/settings-manager.js')));
 const { DefaultResourceLoader } = await import(pathToFileURL(join(root, 'dist/core/resource-loader.js')));
 const dir = mkdtempSync(join(tmpdir(), 'pi-settings-memory-'));

@@ -5,9 +5,11 @@ import (
 	"encoding/json"
 	"io"
 	"net/http"
+	"reflect"
 	"slices"
 	"strings"
 	"testing"
+	"testing/synctest"
 
 	"github.com/MichaelKinsy/PiG/tui"
 	"github.com/MichaelKinsy/PiG/tui/widthx"
@@ -67,12 +69,7 @@ func noticeLayout(t *testing.T, show func(*InteractiveMode), width int) []string
 func TestNewVersionNotificationMatchesPiLayout(t *testing.T) {
 	const rule = "──────────────────────────────────────────────────"
 	got := noticeLayout(t, func(m *InteractiveMode) {
-		m.showNewVersionNotification(&BinaryUpdate{
-			LatestVersion: "1.2.3",
-			Command:       "pig update",
-			Notes:         "First **bold** note line\n\n- item one",
-			ChangelogURL:  "https://example.test/changelog",
-		})
+		m.showNewVersionNotification(LatestPiRelease{Version: "1.2.3", Note: new(" First **bold** note line\n\n- item one ")})
 	}, 50)
 	want := []string{
 		"",
@@ -84,7 +81,6 @@ func TestNewVersionNotificationMatchesPiLayout(t *testing.T) {
 		"",
 		" - item one",
 		"",
-		" Changelog: https://example.test/changelog",
 		rule,
 	}
 	if !slices.Equal(got, want) {
@@ -97,7 +93,7 @@ func TestNewVersionNotificationMatchesPiLayout(t *testing.T) {
 func TestNewVersionNotificationWithoutNote(t *testing.T) {
 	const rule = "────────────────────────────────────────────────"
 	got := noticeLayout(t, func(m *InteractiveMode) {
-		m.showNewVersionNotification(&BinaryUpdate{LatestVersion: "1.2.3", Command: "pig update", ChangelogURL: "https://example.test/c"})
+		m.showNewVersionNotification(LatestPiRelease{Version: "1.2.3", Note: new("https://example.test/c")})
 	}, 48)
 	want := []string{
 		"",
@@ -152,14 +148,27 @@ func TestPackageUpdateNotificationPadsLikePi(t *testing.T) {
 	}
 }
 
-// The startup check hands the notice its changelog link from the signed
-// manifest's own note, not from a literal in the client.
-func TestCheckForBinaryUpdateCarriesTheManifestChangelogURL(t *testing.T) {
+// ShowPackageUpdateNotification is the public member the startup check calls: the same bordered notice, with no windows title restore.
+// Pi: packages/coding-agent/src/modes/interactive/interactive-mode.ts:1161 (InteractiveMode.showPackageUpdateNotification).
+func TestShowPackageUpdateNotificationAddsTheNotice(t *testing.T) {
+	const rule = "────────────────────────────────────────────────────────────"
+	got := noticeLayout(t, func(m *InteractiveMode) { m.ShowPackageUpdateNotification([]string{"gamma"}) }, 60)
+	want := []string{"", rule, " Package Updates Available", " Package updates are available. Run pig update --extensions", " Packages:", " - gamma", rule}
+	if !slices.Equal(got, want) {
+		t.Fatalf("notice rows:\n got: %q\nwant: %q", got, want)
+	}
+}
+
+// The startup check hands the notice the signed manifest's trimmed note as getLatestPiRelease does (version-check.ts:81-85);
+// the notice, not the check, reads a bare URL note as the changelog link (D39).
+func TestCheckForBinaryUpdateCarriesTheManifestNote(t *testing.T) {
 	for _, tc := range []struct {
-		notes, wantURL, wantNotes string
+		notes string
+		want  *string
 	}{
-		{"https://github.com/MichaelKinsy/PiG/releases/tag/v9.9.9", "https://github.com/MichaelKinsy/PiG/releases/tag/v9.9.9", ""},
-		{"Plain release note.", "", "Plain release note."},
+		{" https://github.com/MichaelKinsy/PiG/releases/tag/v9.9.9 ", new("https://github.com/MichaelKinsy/PiG/releases/tag/v9.9.9")},
+		{"Plain release note.", new("Plain release note.")},
+		{"  ", nil},
 	} {
 		srv := newSignedManifestServer(t, http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 			body, _ := json.Marshal(map[string]any{
@@ -172,8 +181,8 @@ func TestCheckForBinaryUpdateCarriesTheManifestChangelogURL(t *testing.T) {
 		t.Setenv("PI_SKIP_VERSION_CHECK", "")
 		u := CheckForBinaryUpdate(context.Background(), srv.Client(), "0.1.1")
 		srv.Close()
-		if u == nil || u.ChangelogURL != tc.wantURL || u.Notes != tc.wantNotes {
-			t.Errorf("notes %q: update = %#v, want ChangelogURL %q and Notes %q", tc.notes, u, tc.wantURL, tc.wantNotes)
+		if u == nil || !reflect.DeepEqual(u.Note, tc.want) || u.PackageName == nil || *u.PackageName != PackageName || u.Version != "9.9.9" {
+			t.Errorf("notes %q: update = %#v, want Note %v and PackageName %q", tc.notes, u, tc.want, PackageName)
 		}
 	}
 }
@@ -188,7 +197,7 @@ func TestNewVersionNotificationLinksTheChangelogOnlyWhereSupported(t *testing.T)
 		tui.SetCapabilities(caps)
 		t.Cleanup(tui.ResetCapabilitiesCache)
 		m := &InteractiveMode{chatContainer: tui.NewContainer(), tuiInst: tui.NewWithOutput(io.Discard, 80, 24)}
-		m.showNewVersionNotification(&BinaryUpdate{LatestVersion: "1.2.3", Command: "pig update", ChangelogURL: url})
+		m.showNewVersionNotification(LatestPiRelease{Version: "1.2.3", Note: new(url)})
 		return strings.Join(m.chatContainer.Render(80), "\n")
 	}
 	if got := render(true); !strings.Contains(got, "\x1b]8;;"+url+"\x1b\\") {
@@ -225,7 +234,7 @@ func renderNoticeBytes(t *testing.T, show func(*InteractiveMode), width int) []s
 // changelog URL https://example.test/c.
 func TestNewVersionNotificationBytesMatchPi(t *testing.T) {
 	got := renderNoticeBytes(t, func(m *InteractiveMode) {
-		m.showNewVersionNotification(&BinaryUpdate{LatestVersion: "1.2.3", Command: "pig update", ChangelogURL: "https://example.test/c"})
+		m.showNewVersionNotification(LatestPiRelease{Version: "1.2.3", Note: new("https://example.test/c")})
 	}, 48)
 	want := []string{
 		"",
@@ -260,4 +269,36 @@ func TestPackageUpdateNotificationBytesMatchPi(t *testing.T) {
 	if !slices.Equal(got, want) {
 		t.Fatalf("notice rows:\n got: %q\nwant: %q", got, want)
 	}
+}
+
+// upstream: packages/coding-agent/src/modes/interactive/interactive-mode.ts:1158-1163. run() starts the version check
+// without awaiting it; a newer release reaches showNewVersionNotification through the UI loop, and no release shows nothing.
+func TestStartupVersionCheckShowsTheReleaseItReports(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		m := newRunOnMainProbe(t)
+		m.opts.BinaryUpdateChecker = func() *BinaryUpdate {
+			return &BinaryUpdate{LatestPiRelease: LatestPiRelease{Version: "7.8.9", Note: new("https://example.test/notes")}, CurrentVersion: "7.8.8"}
+		}
+		m.startVersionCheck()
+		synctest.Wait()
+		select {
+		case fn := <-m.uiTaskCh:
+			fn()
+		default:
+			t.Fatal("the version check posted no notice for a newer release")
+		}
+		got := widthx.StripAnsi(strings.Join(m.chatContainer.Render(100), "\n"))
+		for _, want := range []string{"New version 7.8.9 is available. Run " + AppName + " update", "Changelog: https://example.test/notes"} {
+			if !strings.Contains(got, want) {
+				t.Errorf("notice %q lacks %q", got, want)
+			}
+		}
+
+		m.opts.BinaryUpdateChecker = func() *BinaryUpdate { return nil }
+		m.startVersionCheck()
+		synctest.Wait()
+		if len(m.uiTaskCh) != 0 {
+			t.Fatal("the version check posted a notice although no newer release exists")
+		}
+	})
 }

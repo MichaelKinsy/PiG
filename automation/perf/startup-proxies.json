@@ -6,7 +6,7 @@
     "TestToModelCatalogAllocationBudget",
     "TestToCapabilitiesMatchesSupportedThinkingLevelSelection"
   ],
-  "./cmd/pig": [
+  "./coding/cli": [
     "TestLinkedPackagesCompileNoRegexpAtInit",
     "TestLazyRegexpPatternsAllCompile",
     "TestPackageInitWorkBudget"

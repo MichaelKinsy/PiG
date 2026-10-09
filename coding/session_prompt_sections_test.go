@@ -34,7 +34,7 @@ func TestSessionBeforeAgentStartSectionsArePerRun(t *testing.T) {
 			drainSessionEvents(t, session)
 			t.Cleanup(func() { _ = session.Close() })
 			for _, prompt := range []string{"first", "second", "third"} {
-				if _, err := session.Prompt(t.Context(), prompt); err != nil {
+				if err := session.Prompt(t.Context(), prompt); err != nil {
 					t.Fatal(err)
 				}
 			}
@@ -59,7 +59,7 @@ func TestPreparedPromptSectionValidationAndBaseOptions(t *testing.T) {
 	h := newRecoveryHarness(t, harnessOptions{})
 	base := ai.OrderedSections{{Name: "preamble", Value: new("invalid")}}
 	h.session.GetSystemPromptOptions().Sections = &base
-	if _, err := h.session.Prompt(t.Context(), "rejected"); err == nil || err.Error() != "Invalid system prompt section name: preamble" {
+	if err := h.session.Prompt(t.Context(), "rejected"); err == nil || err.Error() != "Invalid system prompt section name: preamble" {
 		t.Fatalf("validation=%v", err)
 	}
 	if len(h.session.Messages()) != 0 {

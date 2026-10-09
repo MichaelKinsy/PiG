@@ -1,0 +1,48 @@
+# Behavior family: extensions-runtime
+# Scenario: print mode disposes the runtime before any callback agent_settled queued can run.
+#
+# Pi's print mode awaits the prompt and disposes the runtime in the same continuation
+# (print-mode.ts:131-166, agent-session-runtime.ts:404-410, agent-session.ts:1393-1406):
+# session_shutdown runs, then the runner is invalidated, with no event-loop turn between.
+# print-prompt-end.mjs queues a follow-up turn from an immediate in agent_settled, as pi-goal-x
+# schedules its next goal turn, and cancels it in session_shutdown. pi-goal-x failed 2 of 11
+# PiG print runs with "Extension error (<runtime>): This extension ctx is stale ..." because
+# the PiG Node runtime ran the callback before session_shutdown reached it.
+#
+# Upstream evidence (2026-10-07, Pi 1.0.4; re-probed 2026-10-08 with Pi 1.1.0, same log):
+#   PI_CODING_AGENT_DIR=testdata/pi-agent PROMPT_END_LOG=/tmp/prompt-end.log pi --no-extensions \
+#     -e ../../testdata/test-faux-provider.ts -e testdata/ext/print-prompt-end.mjs \
+#     --model test-faux/faux-1 --no-session --print "What is 20+22?"
+#   output: "42", exit 0
+#   /tmp/prompt-end.log: "agent_settled", "session_shutdown pending=agent_settled"
+
+name = "73-print-prompt-end-settled"
+description = "Print mode runs session_shutdown before a callback agent_settled queued"
+covers = [
+  "packages/coding-agent/src/modes/print-mode.ts",
+  "packages/coding-agent/src/core/agent-session-runtime.ts",
+]
+tags = ["hermetic", "fast"]
+driver = "cli-mode"
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_HOME=testdata/pig-home", "PROMPT_END_LOG={{TEMP}}/prompt-end.log"]
+pi = ["PI_CODING_AGENT_DIR=testdata/pi-agent", "PROMPT_END_LOG={{TEMP}}/prompt-end.log"]
+pig_extensions = ["testdata/ext/print-prompt-end.mjs"]
+pi_extensions = [
+  "../../testdata/test-faux-provider.ts",
+  "testdata/ext/print-prompt-end.mjs",
+]
+
+[cli]
+args = ["--model", "test-faux/faux-1", "--no-session", "--print", "What is 20+22?"]
+artifact_path = "{{TEMP}}/prompt-end.log"
+timeout_seconds = 30
+
+[assert]
+exit_code = 0
+output_equal = true
+both_contain = ["42"]
+artifact_equal = true
+artifact_both_contain = ["session_shutdown pending=agent_settled"]
+runs = 3

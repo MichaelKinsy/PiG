@@ -41,6 +41,8 @@ type BashTool struct {
 	// commands then see no PI_* session variables, and the prompt omits the
 	// guideline that mentions them.
 	HideSessionEnvironment bool
+	// SpawnHook adjusts the command, working directory or environment before execution (upstream spawnHook). nil runs the command as built.
+	SpawnHook BashSpawnHook
 }
 
 func (t *BashTool) Name() string  { return "bash" }
@@ -64,7 +66,7 @@ func (t *BashTool) ExecutionMode() agent.ToolExecutionMode { return agent.ToolMo
 func (t *BashTool) Execute(ctx context.Context, _ string, rawParams json.RawMessage, onUpdate agent.ToolUpdateCallback) (agent.AgentToolResult, error) {
 	operations := t.Operations
 	if operations == nil {
-		operations = &LocalShellOperations{ShellName: "bash", ResolveShell: func() (ShellConfig, error) { return GetShellConfig(t.Settings) }}
+		operations = &LocalShellOperations{ShellName: "bash", ResolveShell: func() (ShellConfig, error) { return resolveShellConfig(t.Settings) }}
 	}
 	return executeShellTool(ctx, t.CWD, shellToolConfig{
 		name:                     "bash",
@@ -74,5 +76,6 @@ func (t *BashTool) Execute(ctx context.Context, _ string, rawParams json.RawMess
 		commandPrefix:            t.CommandPrefix,
 		exposeSessionEnvironment: !t.HideSessionEnvironment,
 		binDir:                   t.BinDir,
+		spawnHook:                t.SpawnHook,
 	}, rawParams, onUpdate)
 }

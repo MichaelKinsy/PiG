@@ -8,8 +8,7 @@ import (
 	"github.com/MichaelKinsy/PiG/ai"
 )
 
-func (a *Agent) toolDeclarations() []ai.ToolSchema {
-	current := a.toolList()
+func toolDeclarations(current []AgentTool) []ai.ToolSchema {
 	tools := make([]ai.ToolSchema, len(current))
 	for i, t := range current {
 		tools[i] = ai.ToToolDeclaration(t.Schema())
@@ -28,7 +27,11 @@ func systemMessages(messages []AgentMessage) []ai.Message {
 }
 
 // declareToolChanges replaces pending tool intent with the delta from the committed transcript to the executable loadout.
-func (a *Agent) declareToolChanges(context, pending []AgentMessage) []AgentMessage {
+func (h *loopHost) declareToolChanges(context, pending []AgentMessage) []AgentMessage {
+	return declareToolChanges(h.tools(), context, pending)
+}
+
+func declareToolChanges(tools []AgentTool, context, pending []AgentMessage) []AgentMessage {
 	index := -1
 	for i, pendingMessage := range slices.Backward(pending) {
 		if pendingMessage.System != nil {
@@ -40,7 +43,7 @@ func (a *Agent) declareToolChanges(context, pending []AgentMessage) []AgentMessa
 	if index >= 0 {
 		baseline[index] = withToolChanges(pending[index], ai.ToolStateChanges{})
 	}
-	changes := ai.GetToolStateChanges(ai.GetCurrentTools(systemMessages(slices.Concat(context, baseline))), a.toolDeclarations())
+	changes := ai.GetToolStateChanges(ai.GetCurrentTools(slices.Concat(context, baseline)), toolDeclarations(tools))
 	unchanged := len(changes.ToolsAdded) == 0 && len(changes.ToolsRemoved) == 0
 	if index >= 0 {
 		old := pending[index].System

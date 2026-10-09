@@ -179,7 +179,11 @@ For each Pig family:
 7. Reduce parity differences. Never accept or normalize a difference merely
    because the Go implementation is internally cleaner.
 8. Close reviewed mappings only when production reachability and behavioral
-   evidence exist. Generated recommendations remain non-authoritative.
+   evidence exist. Generated recommendations remain non-authoritative. A
+   public library API that Pi exports and no PiG binary calls closes as
+   `public-api-tested` (production reference `public-api:<file>#<Symbol>`),
+   never as production; `docs/parity/gap-closure/gap-interface-ledger.md`
+   describes the two statuses and the reachability audit.
 9. Run family durability and performance gates proportionately, then the full
    suite at shared-boundary or campaign milestones.
 

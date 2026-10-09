@@ -14,6 +14,8 @@ import (
 	"time"
 	"unicode"
 
+	"github.com/MichaelKinsy/PiG/agent"
+	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/internal/codingagent/tools"
 	"github.com/MichaelKinsy/PiG/tui"
 )
@@ -150,6 +152,30 @@ func shellResultLines(content string, d shellResultDetails, isPartial, expanded 
 func shellTextOutput(content string) string {
 	text := tools.SanitizeBinaryOutput(string(tools.StripANSI([]byte(content))))
 	return strings.ReplaceAll(text, "\r", "")
+}
+
+// toolResultTextOutput is upstream render-utils getTextOutput: each text block
+// stripped of ANSI, sanitized and without carriage returns, joined by newlines,
+// then one fallback line per image block when the terminal or the card cannot
+// show images.
+func toolResultTextOutput(result agent.AgentToolResult, showImages bool) string {
+	var texts, indicators []string
+	for _, block := range result.Content {
+		switch block := block.(type) {
+		case ai.TextContent:
+			texts = append(texts, shellTextOutput(block.Text))
+		case ai.ImageContent:
+			indicators = append(indicators, tui.ImageFallback(block.MimeType, tui.GetImageDimensions(block.Data, block.MimeType), ""))
+		}
+	}
+	output := strings.Join(texts, "\n")
+	if len(indicators) > 0 && (tui.GetCapabilities().Images == "" || !showImages) {
+		if output != "" {
+			output += "\n"
+		}
+		output += strings.Join(indicators, "\n")
+	}
+	return output
 }
 
 // expandKeyHint mirrors upstream keyHint("app.tools.expand", "to expand").

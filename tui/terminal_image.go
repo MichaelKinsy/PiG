@@ -152,10 +152,16 @@ func detectCapabilitiesFromEnvironment(tmuxForwardsHyperlink func() bool, goos s
 		return TerminalCapabilities{Images: "", TrueColor: hasTrueColorHint, Hyperlinks: false}
 	}
 	// pig divergence (D44): require Herdr's explicit image-forwarding signal at the immediate terminal boundary.
+	if os.Getenv("HERDR_ENV") == "1" && os.Getenv("HERDR_KITTY_GRAPHICS") == "1" {
+		return TerminalCapabilities{Images: ImageProtocolKitty, TrueColor: true, Hyperlinks: true}
+	}
+	// Herdr forwards OSC 8 hyperlinks. It runs inside another terminal whose variables, such as
+	// KITTY_WINDOW_ID, may leak into its panes, so check it first and leave image protocols off.
+	if termProgram == "herdr" {
+		return TerminalCapabilities{Images: "", TrueColor: hasTrueColorHint, Hyperlinks: true}
+	}
+	// pig divergence (D44): without Herdr's positive graphics signal, ignore inherited outer-terminal image hints.
 	if os.Getenv("HERDR_ENV") == "1" {
-		if os.Getenv("HERDR_KITTY_GRAPHICS") == "1" {
-			return TerminalCapabilities{Images: ImageProtocolKitty, TrueColor: true, Hyperlinks: true}
-		}
 		return TerminalCapabilities{Images: "", TrueColor: hasTrueColorHint, Hyperlinks: false}
 	}
 	if os.Getenv("KITTY_WINDOW_ID") != "" || termProgram == "kitty" {
@@ -318,13 +324,13 @@ func EncodeKitty(base64Data string, columns, rows, imageID int, moveCursor ...bo
 	if len(moveCursor) > 0 && !moveCursor[0] {
 		params = append(params, "C=1")
 	}
-	if columns > 0 {
+	if columns != 0 {
 		params = append(params, fmt.Sprintf("c=%d", columns))
 	}
-	if rows > 0 {
+	if rows != 0 {
 		params = append(params, fmt.Sprintf("r=%d", rows))
 	}
-	if imageID > 0 {
+	if imageID != 0 {
 		params = append(params, fmt.Sprintf("i=%d", imageID))
 	}
 	if len(base64Data) <= chunkSize {
@@ -357,8 +363,19 @@ func DeleteAllKittyImages() string { return "\x1b_Ga=d,d=A,q=2\x1b\\" }
 // deleteAllKittyPlacements.
 func DeleteAllKittyPlacements() string { return "\x1b_Ga=d,d=a,q=2\x1b\\" }
 
+// ITerm2Options mirrors the options object of upstream encodeITerm2. A nil Width or Height, an empty Name and a nil pointer are the absent fields.
+// Width and Height are a number or a string, as in upstream.
+type ITerm2Options struct {
+	Width               any
+	Height              any
+	Name                string
+	PreserveAspectRatio *bool
+	Inline              *bool
+}
+
 // EncodeITerm2 includes the decoded payload byte length in OSC 1337 metadata.
-func EncodeITerm2(base64Data string, width any, height any, name string, preserveAspect bool) string {
+func EncodeITerm2(base64Data string, options ITerm2Options) string {
+	width, height, name := options.Width, options.Height, options.Name
 	// Node Buffer.byteLength(value, "base64") counts UTF-16 units and trailing padding without decoding the payload.
 	size := utf16Length(base64Data)
 	if strings.HasSuffix(base64Data, "=") {
@@ -367,7 +384,11 @@ func EncodeITerm2(base64Data string, width any, height any, name string, preserv
 	if strings.HasSuffix(base64Data, "==") {
 		size--
 	}
-	params := []string{"inline=1", fmt.Sprintf("size=%d", size/4*3+size%4*3/4)}
+	inline := 1
+	if options.Inline != nil && !*options.Inline {
+		inline = 0
+	}
+	params := []string{fmt.Sprintf("inline=%d", inline), fmt.Sprintf("size=%d", size/4*3+size%4*3/4)}
 	if width != nil {
 		params = append(params, fmt.Sprintf("width=%v", width))
 	}
@@ -377,7 +398,7 @@ func EncodeITerm2(base64Data string, width any, height any, name string, preserv
 	if name != "" {
 		params = append(params, "name="+base64.StdEncoding.EncodeToString([]byte(name)))
 	}
-	if !preserveAspect {
+	if options.PreserveAspectRatio != nil && !*options.PreserveAspectRatio {
 		params = append(params, "preserveAspectRatio=0")
 	}
 	return "\x1b]1337;File=" + strings.Join(params, ";") + ":" + base64Data + "\x07"
@@ -565,8 +586,7 @@ func RenderImage(base64Data string, imageDimensions ImageDimensions, options Ima
 		seq := EncodeKitty(base64Data, size.Columns, size.Rows, options.ImageID, options.MoveCursor == nil || *options.MoveCursor)
 		return &renderedImage{Sequence: seq, Columns: size.Columns, Rows: size.Rows, ImageID: options.ImageID}
 	case ImageProtocolITerm2:
-		preserve := options.PreserveAspectRatio == nil || *options.PreserveAspectRatio
-		seq := EncodeITerm2(base64Data, size.Columns, "auto", "", preserve)
+		seq := EncodeITerm2(base64Data, ITerm2Options{Width: size.Columns, Height: "auto", PreserveAspectRatio: options.PreserveAspectRatio})
 		return &renderedImage{Sequence: seq, Columns: size.Columns, Rows: size.Rows}
 	default:
 		return nil

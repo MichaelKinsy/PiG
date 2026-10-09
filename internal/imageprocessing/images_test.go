@@ -1,5 +1,15 @@
 package imageprocessing
 
+// pi: packages/coding-agent/src/utils/tool-result-images.ts
+
+// pi: packages/coding-agent/src/utils/mime.ts
+
+// pi: packages/coding-agent/src/utils/image-resize.ts
+
+// pi: packages/coding-agent/src/utils/image-resize-core.ts
+
+// pi: packages/coding-agent/src/utils/exif-orientation.ts
+
 import (
 	"bytes"
 	"encoding/base64"
@@ -594,17 +604,32 @@ func TestDetectSupportedImageMimeType(t *testing.T) {
 	}
 }
 
+// utils/mime.ts:25 detectSupportedImageMimeTypeFromFile opens the file and sniffs its first 4100 bytes: an unopenable file rejects with the open error, an empty file is no image, and a signature past the window is not seen.
 func TestDetectSupportedImageMimeTypeFromFile(t *testing.T) {
 	dir := t.TempDir()
 	path := dir + "/sample.gif"
 	if err := os.WriteFile(path, []byte("GIF89a\x00"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if got := DetectSupportedImageMimeTypeFromFile(path); got != "image/gif" {
-		t.Fatalf("DetectSupportedImageMimeTypeFromFile() = %q, want %q", got, "image/gif")
+	if got, err := DetectSupportedImageMimeTypeFromFile(path); err != nil || got != "image/gif" {
+		t.Fatalf("DetectSupportedImageMimeTypeFromFile() = %q, %v, want %q", got, err, "image/gif")
 	}
-	if got := DetectSupportedImageMimeTypeFromFile(dir + "/missing"); got != "" {
-		t.Fatalf("DetectSupportedImageMimeTypeFromFile(missing) = %q, want empty", got)
+	if got, err := DetectSupportedImageMimeTypeFromFile(dir + "/missing"); err == nil || got != "" || !os.IsNotExist(err) {
+		t.Fatalf("DetectSupportedImageMimeTypeFromFile(missing) = %q, %v, want the open error", got, err)
+	}
+	empty := dir + "/empty"
+	if err := os.WriteFile(empty, nil, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if got, err := DetectSupportedImageMimeTypeFromFile(empty); err != nil || got != "" {
+		t.Fatalf("empty file = %q, %v, want no image and no error", got, err)
+	}
+	late := dir + "/late.gif"
+	if err := os.WriteFile(late, append(make([]byte, ImageTypeSniffBytes), []byte("GIF89a\x00")...), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if got, err := DetectSupportedImageMimeTypeFromFile(late); err != nil || got != "" {
+		t.Fatalf("a signature after the sniff window = %q, %v, want none", got, err)
 	}
 }
 

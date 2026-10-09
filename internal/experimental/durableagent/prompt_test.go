@@ -1,5 +1,7 @@
 package durableagent
 
+// pi: packages/coding-agent/src/experimental/durable/prompt.ts
+
 import (
 	"context"
 	"os"
@@ -168,9 +170,9 @@ func TestCodingRegistrySystemPromptReachesTheProvider(t *testing.T) {
 	}
 	faux := ai.NewFauxProvider(ai.FauxConfig{})
 	var systemPrompt string
-	faux.SetResponses([]ai.FauxResponseStep{ai.FauxFactoryStep(func(transcript ai.TranscriptContext, _ ai.StreamOptions, _ *ai.FauxProviderState, _ *ai.Model) (ai.FauxResponse, error) {
+	faux.SetResponses([]ai.FauxResponseStep{ai.FauxFactoryStep(func(transcript ai.TranscriptContext, _ ai.StreamOptions, _ *ai.FauxProviderState, _ *ai.Model) (ai.AssistantMessage, error) {
 		systemPrompt = ai.GetCurrentSystemPrompt(transcript.Messages())
-		return ai.FauxResponse{Content: []ai.FauxContentBlock{ai.FauxText("ok")}}, nil
+		return ai.FauxResponse{Content: []ai.FauxContentBlock{ai.FauxText("ok")}}.AssistantMessage(), nil
 	})})
 	models := ai.CreateModels()
 	models.SetProvider(faux.Provider())

@@ -25,41 +25,65 @@ func builtinRows(items []tui.ResourceItem) []builtinRow {
 	return rows
 }
 
-// Ports .upstream/v0.99.1/packages/coding-agent/test/package-manager.test.ts:127-154 ("should resolve built-in extensions with
-// user exclusions and project overrides"). Pi mutates one SettingsManager between three resolves; so does this test.
-func TestResolveBuiltinExtensionsWithUserExclusionsAndProjectOverrides(t *testing.T) {
+// package-manager.test.ts:127-154 (Pi 1.1.0, "should resolve built-in extensions with user exclusions and project overrides"): the
+// builtinExtensions option of new DefaultPackageManager makes resolve() report each name as a builtin:<name> extension resource.
+// Pi mutates one SettingsManager between three resolves; so does this test.
+func TestResolveReportsTheBuiltinExtensionsOption(t *testing.T) {
 	cwd, agentDir := t.TempDir(), t.TempDir()
 	sm := codingagent.NewSettingsManagerWithProjectTrust(cwd, agentDir, true)
-	names := []string{"mcp", "llama.cpp"}
+	pm := NewPackageManager(PackageManagerOptions{CWD: cwd, AgentDir: agentDir, SettingsManager: sm, BuiltinExtensions: []string{"mcp", "llama.cpp"}})
+	builtins := func() []builtinRow {
+		t.Helper()
+		resolved, err := pm.Resolve(nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		rows := make([]builtinRow, 0, len(resolved.Extensions))
+		for _, r := range resolved.Extensions {
+			rows = append(rows, builtinRow{r.Path, r.Enabled, r.Metadata.Source, r.Metadata.Scope})
+		}
+		return rows
+	}
 
-	if got, want := builtinRows(ResolveBuiltinExtensions(sm, names)), []builtinRow{
+	if got, want := builtins(), []builtinRow{
 		{"builtin:mcp", true, "builtin", "user"},
 		{"builtin:llama.cpp", true, "builtin", "user"},
 	}; !slices.Equal(got, want) {
 		t.Fatalf("defaults = %+v, want %+v", got, want)
 	}
-
 	if err := sm.SetExtensionPaths([]string{"-builtin:mcp"}); err != nil {
 		t.Fatal(err)
 	}
 	if err := sm.SetProjectExtensionPaths([]string{"+builtin:mcp", "-builtin:llama.cpp"}); err != nil {
 		t.Fatal(err)
 	}
-	if got, want := builtinRows(ResolveBuiltinExtensions(sm, names)), []builtinRow{
+	if got, want := builtins(), []builtinRow{
 		{"builtin:mcp", true, "builtin", "project"},
 		{"builtin:llama.cpp", false, "builtin", "project"},
 	}; !slices.Equal(got, want) {
 		t.Fatalf("project overrides = %+v, want %+v", got, want)
 	}
-
 	if err := sm.SetProjectExtensionPaths([]string{}); err != nil {
 		t.Fatal(err)
 	}
-	if got, want := builtinRows(ResolveBuiltinExtensions(sm, names)), []builtinRow{
+	if got, want := builtins(), []builtinRow{
 		{"builtin:mcp", false, "builtin", "user"},
 		{"builtin:llama.cpp", true, "builtin", "user"},
 	}; !slices.Equal(got, want) {
 		t.Fatalf("project overrides removed = %+v, want %+v", got, want)
+	}
+	if without, err := NewPackageManager(PackageManagerOptions{CWD: cwd, AgentDir: agentDir, SettingsManager: sm}).Resolve(nil); err != nil || len(without.Extensions) != 0 {
+		t.Fatalf("no builtinExtensions option: extensions = %+v, err %v; want none", without.Extensions, err)
+	}
+}
+
+// TestNewPackageManagerTakesItsOptionsObject: new DefaultPackageManager({ cwd, agentDir, settingsManager }) (package-manager.ts:821); agentDir is the option, not the settings manager's.
+func TestNewPackageManagerTakesItsOptionsObject(t *testing.T) {
+	cwd, settingsDir, agentDir := t.TempDir(), t.TempDir(), t.TempDir()
+	sm := codingagent.NewSettingsManagerWithProjectTrust(cwd, settingsDir, true)
+	pm := NewPackageManager(PackageManagerOptions{CWD: cwd, AgentDir: agentDir, SettingsManager: sm})
+	if pm.CWD != cwd || pm.agentDir() != agentDir || pm.SettingsManager != sm {
+		t.Fatalf("manager = cwd %q agentDir %q, want %q and %q", pm.CWD, pm.agentDir(), cwd, agentDir)
 	}
 }
 

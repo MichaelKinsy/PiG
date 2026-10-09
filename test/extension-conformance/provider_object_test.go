@@ -1,11 +1,14 @@
 package extensionconformance
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/ai"
@@ -26,6 +29,11 @@ func TestNodeRemoteProviderObjectCarrier(t *testing.T) {
 	testNodeProviderObjectCarrier(t, true)
 }
 
+// Pi packages/coding-agent/src/core/extensions/types.ts:1830-1831 declares registerProvider(provider: Provider) beside registerProvider(name, config): the
+// Provider-object overload. Every SDK registers a callback-bearing Provider (Go RegisterNativeProvider, Python register_native_provider, Rust
+// register_native_provider) from an extension subprocess through the host wire; the production host registry then holds its model and streams a
+// host turn through the owner's callbacks, and a second extension reads the same Provider back (model-registry.ts:101-103,165-167).
+// mutation-checked: Extension.RegisterNativeProvider in extensions/sdk/provider.go not queueing the declaration fails the go subtests (model missing from the host runtime).
 func TestProviderObjectsAcrossSDKs(t *testing.T) {
 	root, err := filepath.Abs("../..")
 	if err != nil {
@@ -40,24 +48,24 @@ func TestProviderObjectsAcrossSDKs(t *testing.T) {
 			for _, role := range []string{"owner", "reader"} {
 				t.Run(language+"-"+role+"-"+placement, func(t *testing.T) {
 					t.Setenv("CARRIER_ROLE", role)
-					testProviderObjectPair(t, root, role, language, placement)
+					testProviderObjectPair(t, root, role, language, placement, "pi.registerProvider(provider)")
 				})
 			}
 		}
 	}
 }
 
-func testProviderObjectPair(t *testing.T, root, role, language, placement string) {
+func testProviderObjectPair(t *testing.T, root, role, language, placement, call string) {
 	t.Helper()
 	dir := t.TempDir()
-	services, err := coding.NewServices(coding.ServicesOptions{CWD: dir, AgentDir: filepath.Join(dir, "agent")})
+	services, err := coding.CreateAgentSessionServices(coding.CreateAgentSessionServicesOptions{CWD: dir, AgentDir: filepath.Join(dir, "agent")})
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(services.Close)
 	host := subprocess.NewHost(dir)
 	t.Cleanup(func() { host.Shutdown("done") })
-	host.SetProviderCallbacks(services.Registry().RegisterProvider, services.Registry().UnregisterProvider)
+	host.SetProviderCallbacks(services.Registry().RegisterExtensionProvider, services.Registry().UnregisterProvider)
 	host.SetNativeProviderCallback(services.Registry().RegisterNativeProvider)
 	host.SetUIBridge(subprocess.NewUIBridge(nil))
 	owner := subprocess.ExtConfig{Name: "extension-provider-carrier-owner", Source: filepath.Join(root, "test/parity/scenarios/testdata/extension-provider-carrier-owner.mjs"), Enabled: true, Isolation: "strict"}
@@ -132,15 +140,80 @@ func testProviderObjectPair(t *testing.T, root, role, language, placement string
 	}
 	model := services.ModelRuntime().GetModel("carrier-provider", "carrier-model")
 	if model == nil {
-		t.Fatal("native provider model missing from host runtime")
+		t.Fatalf("%s: native provider model missing from host runtime", call)
 	}
-	stream := services.ModelRuntime().StreamSimple(t.Context(), model, ai.Context{Messages: []ai.Message{ai.UserMessage{Content: ai.UserText("host turn")}}}, ai.StreamOptions{})
+	// upstream: coding-agent extensions/types.ts:1917-1920 (a provider's streamSimple invokes options.onPayload and options.onResponse) and sdk.ts:387-433
+	// (the caller's onResponse is handleProviderResponse). The values below come only from the extension's own calls, so a host or SDK that
+	// never delivers the hooks cannot satisfy this row.
+	var hookMu sync.Mutex
+	var payloads []any
+	var responses []ai.ProviderResponse
+	stream := services.ModelRuntime().StreamSimple(t.Context(), model, ai.Context{Messages: []ai.Message{ai.UserMessage{Content: ai.UserText("host turn")}}}, ai.StreamOptions{
+		OnPayload: func(payload any, _ *ai.Model) (any, error) {
+			hookMu.Lock()
+			defer hookMu.Unlock()
+			payloads = append(payloads, payload)
+			return nil, nil
+		},
+		OnResponse: func(_ context.Context, response ai.ProviderResponse, _ *ai.Model) error {
+			hookMu.Lock()
+			defer hookMu.Unlock()
+			responses = append(responses, response)
+			return nil
+		},
+	})
 	message := stream.Result()
+	// Only the owner role streams through the SDK under test; the reader role's provider is the Node carrier.
+	if role == "owner" {
+		hookMu.Lock()
+		if len(payloads) != 1 || fmt.Sprint(payloads[0]) != "map[marker:carrier-payload]" {
+			t.Errorf("the caller's payload hook saw %v, want one carrier payload", payloads)
+		}
+		if len(responses) != 1 || responses[0].Status != 207 || responses[0].Headers["x-carrier"] != "carrier-response" {
+			t.Errorf("the caller's response hook saw %+v, want one 207 response with x-carrier: carrier-response", responses)
+		}
+		hookMu.Unlock()
+	}
 	if message.StopReason != ai.StopReasonStop {
 		t.Fatalf("host native stream: %+v", message)
 	}
 	if len(message.Content) != 1 || message.Content[0].(ai.TextContent).Text != "simple" {
 		t.Fatalf("host native result: %+v", message)
+	}
+	// upstream: models.ts Provider.fetchDeferred / cancelDeferred through Models.fetchDeferred / cancelDeferred: the host's own runtime reaches the extension process's deferred operations, with the handle the caller passed.
+	handle := ai.DeferredHandle{Provider: "carrier-provider", ModelID: "carrier-model", API: model.ProviderMeta.API, ID: "deferred"}
+	fetched := services.ModelRuntime().FetchDeferred(t.Context(), model, handle)
+	if fetched.StopReason != ai.StopReasonStop || len(fetched.Content) != 1 || fetched.Content[0].(ai.TextContent).Text != "deferred" {
+		t.Fatalf("host deferred fetch: %+v", fetched)
+	}
+	if err := services.ModelRuntime().CancelDeferred(t.Context(), model, handle); err != nil {
+		t.Fatalf("host deferred cancel: %v", err)
+	}
+	wrong := handle
+	wrong.ID = "other"
+	if err := services.ModelRuntime().CancelDeferred(t.Context(), model, wrong); err == nil {
+		t.Fatal("host deferred cancel of another handle succeeded, want the extension's rejection")
+	}
+	// upstream: models.ts Provider.getAllModels / filterAllModels: the all-types catalog is the provider's getAllModels (it lists a model getModels does not), and the credential-specific availability across every model type is its filterAllModels, not filterModels (which, for this credential, shows none).
+	if services.ModelRuntime().GetModel("carrier-provider", "carrier-all-only") == nil {
+		t.Fatal("the model only getAllModels lists is missing from the host runtime")
+	}
+	if err := services.Auth().Set("carrier-provider", ai.Credential{Type: ai.CredentialAPIKey, Key: "all"}); err != nil {
+		t.Fatal(err)
+	}
+	services.ModelRuntime().Refresh(t.Context(), ai.ModelsRefreshOptions{AllowNetwork: new(false), Providers: []string{"carrier-provider"}})
+	available, err := services.ModelRuntime().GetAvailable(t.Context())
+	if err != nil {
+		t.Fatal(err)
+	}
+	var availableIDs []string
+	for _, candidate := range available {
+		if candidate.ProviderMeta.ProviderID == "carrier-provider" {
+			availableIDs = append(availableIDs, candidate.ID)
+		}
+	}
+	if !slices.Contains(availableIDs, "carrier-all-only") || !slices.Contains(availableIDs, "carrier-model") {
+		t.Fatalf("available carrier models = %v, want filterAllModels' result (every model for the all credential)", availableIDs)
 	}
 	path := filepath.Join(dir, "result.json")
 	for _, item := range loaded {
@@ -197,14 +270,14 @@ func providerPeer(t *testing.T, root string, native subprocess.ExtConfig) subpro
 func testNodeProviderObjectCarrier(t *testing.T, remote bool) {
 	t.Helper()
 	dir := t.TempDir()
-	services, err := coding.NewServices(coding.ServicesOptions{CWD: dir, AgentDir: filepath.Join(dir, "agent")})
+	services, err := coding.CreateAgentSessionServices(coding.CreateAgentSessionServicesOptions{CWD: dir, AgentDir: filepath.Join(dir, "agent")})
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(services.Close)
 	host := subprocess.NewHost(dir)
 	t.Cleanup(func() { host.Shutdown("done") })
-	host.SetProviderCallbacks(services.Registry().RegisterProvider, services.Registry().UnregisterProvider)
+	host.SetProviderCallbacks(services.Registry().RegisterExtensionProvider, services.Registry().UnregisterProvider)
 	host.SetNativeProviderCallback(services.Registry().RegisterNativeProvider)
 	host.SetUIBridge(subprocess.NewUIBridge(nil))
 	var configs []subprocess.ExtConfig

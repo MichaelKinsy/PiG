@@ -1,5 +1,7 @@
 package tools
 
+// pi: packages/coding-agent/src/core/tools/bash.ts
+
 import (
 	"context"
 	"encoding/json"
@@ -68,6 +70,7 @@ func assertFullBashOutput(t *testing.T, path string) {
 	}
 }
 
+// Pi: packages/coding-agent/src/core/tools/powershell.ts:35 (BashOperations.exec).
 func TestToolsBashPort(t *testing.T) {
 	// .upstream/v0.87.1/packages/coding-agent/test/tools.test.ts:486
 	t.Run("should execute simple commands", func(t *testing.T) {
@@ -220,7 +223,7 @@ func TestToolsBashPort(t *testing.T) {
 			t.Fatal(result.Text())
 		}
 		fmt.Printf("BASH_DELEGATE %s\n", result.Text())
-		_, err := NewLocalBashOperations(settings, "").Exec(t.Context(), "echo test", t.TempDir(), BashOperationsExecOptions{})
+		_, err := CreateLocalBashOperations(&LocalBashOptions{ShellPath: settings.path}).Exec(t.Context(), "echo test", t.TempDir(), BashOperationsExecOptions{})
 		if err == nil || err.Error() != "Custom shell path not found: /custom/bash" {
 			t.Fatalf("local resolution = %v", err)
 		}
@@ -321,14 +324,14 @@ func TestToolsBashPort(t *testing.T) {
 	t.Run("should expose local bash operations for extension reuse", func(t *testing.T) {
 		t.Setenv("TEST_LOCAL_BASH_OPS", "from-local-ops")
 		var output strings.Builder
-		result, err := NewLocalBashOperations(nil, "").Exec(t.Context(), "echo $TEST_LOCAL_BASH_OPS", t.TempDir(), BashOperationsExecOptions{OnData: func(data []byte) { output.Write(data) }, Env: os.Environ()})
+		result, err := CreateLocalBashOperations(nil).Exec(t.Context(), "echo $TEST_LOCAL_BASH_OPS", t.TempDir(), BashOperationsExecOptions{OnData: func(data []byte) { output.Write(data) }, Env: os.Environ()})
 		if err != nil || result.ExitCode == nil || *result.ExitCode != 0 || strings.TrimSpace(output.String()) != "from-local-ops" {
 			t.Fatalf("result %+v, %v, output %q", result, err, output.String())
 		}
 	})
 	// .upstream/v0.87.1/packages/coding-agent/test/tools.test.ts:775
 	t.Run("should preserve executeBash sanitization when using local bash operations", func(t *testing.T) {
-		result, err := ExecuteBashWithOperations(t.Context(), `printf '\033[31mred\033[0m\r\n'`, t.TempDir(), NewLocalBashOperations(nil, ""), BashExecOptions{})
+		result, err := ExecuteBashWithOperations(t.Context(), `printf '\033[31mred\033[0m\r\n'`, t.TempDir(), CreateLocalBashOperations(nil), BashExecOptions{})
 		if err != nil || result.ExitCode == nil || *result.ExitCode != 0 || result.Output != "red\n" {
 			t.Fatalf("result %+v, %v", result, err)
 		}
@@ -347,7 +350,7 @@ func TestToolsBashPort(t *testing.T) {
 	})
 	// .upstream/v0.87.1/packages/coding-agent/test/tools.test.ts:809
 	t.Run("executeBash should persist full output when truncation happens by line count only", func(t *testing.T) {
-		result, err := ExecuteBashWithOperations(t.Context(), "seq 3000", t.TempDir(), NewLocalBashOperations(nil, ""), BashExecOptions{})
+		result, err := ExecuteBashWithOperations(t.Context(), "seq 3000", t.TempDir(), CreateLocalBashOperations(nil), BashExecOptions{})
 		if err != nil || !result.Truncated {
 			t.Fatalf("result %+v, %v", result, err)
 		}

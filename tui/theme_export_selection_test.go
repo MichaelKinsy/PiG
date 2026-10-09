@@ -22,7 +22,7 @@ func TestExportThemeIsSystemUntilAThemeIsSelected(t *testing.T) {
 	}
 	// The system theme without terminal colors maps its tokens to the terminal's 16-color palette, which Pi exports as
 	// the xterm palette hex values: #800080 is palette color 5 (observed in `pi --export` 0.99.2).
-	if accent := got.Colors()["accent"]; accent != "#800080" {
+	if accent := got.GetResolvedThemeColors()["accent"]; accent != "#800080" {
 		t.Fatalf("system theme --accent = %q, want #800080", accent)
 	}
 	if activeTheme.Load() != nil || selectedThemeName.Load() != nil {

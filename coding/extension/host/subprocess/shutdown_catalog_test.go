@@ -97,7 +97,7 @@ func shutdownCatalogHost(ctx context.Context, count int) (*Host, *UIBridge, *syn
 			defer func() { _ = peer.Close() }()
 			_, _ = io.Copy(io.Discard, peer)
 		})
-		bridge.RegisterExtConn(name, conn)
+		bridge.RegisterExtConn(name, conn, true)
 		bridge.RecordProviderRegistration(name, []byte(`{"baseUrl":"http://fixture.invalid"}`))
 		h.exts[name] = withConn(&managedExt{config: ExtConfig{Name: name}, providerNames: []string{name}}, conn)
 	}

@@ -1,5 +1,9 @@
 package chord
 
+// pi: packages/chord/src/index.ts
+
+// pi: packages/chord/src/services/consumer.ts
+
 import (
 	"context"
 	"encoding/json"
@@ -8,6 +12,8 @@ import (
 	"strings"
 	"sync"
 	"testing"
+
+	"github.com/MichaelKinsy/PiG/internal/chord/chordjson"
 )
 
 // Ports packages/chord/test/services.test.ts. TypeScript compile-time contract checks (case 1) and object-identity assertions on values have no Go form: remote contracts are checked by classification at provide time, and typed state hands out detached copies, so identity is asserted on the stored JSON revisions through core.snapshot.
@@ -201,13 +207,13 @@ func TestRemoteServices(t *testing.T) {
 		if DefineService[Echo]("test.json-passthrough").Local() {
 			t.Fatal("a remote service token is local")
 		}
-		if !DefineServiceWithOptions[Echo]("test.local-non-json", ServiceOptions{Local: true}).Local() {
+		if !DefineService[Echo]("test.local-non-json", ServiceOptions{Local: true}).Local() {
 			t.Fatal("a local service token is remote")
 		}
 	})
 
 	t.Run("marks services remotable by default and reserves Chord service IDs", func(t *testing.T) {
-		local := DefineServiceWithOptions[Echo]("test.local", ServiceOptions{Local: true})
+		local := DefineService[Echo]("test.local", ServiceOptions{Local: true})
 		if modelsDefinition.Local() || !local.Local() {
 			t.Fatal("service locality")
 		}
@@ -217,7 +223,7 @@ func TestRemoteServices(t *testing.T) {
 					t.Fatalf("recovered = %v", recovered)
 				}
 			}()
-			DefineServiceWithOptions[Echo]("$chord.internal", ServiceOptions{Local: true})
+			DefineService[Echo]("$chord.internal", ServiceOptions{Local: true})
 		}()
 		if _, err := NewRemoteServiceProvider(SingletonService(local)); err == nil || !strings.Contains(err.Error(), "cannot be published remotely") {
 			t.Fatalf("error = %v", err)
@@ -313,7 +319,7 @@ func TestRemoteServices(t *testing.T) {
 		})); err != nil {
 			t.Fatal(err)
 		}
-		binding := loopbackBinding(t, provider, RemoteServiceBindingOptions{Services: []string{echoDefinition.Id()}})
+		binding := loopbackBinding(t, provider, RemoteServiceBindingOptions{Services: ServiceIDs(echoDefinition.Id())})
 		echo := use(t, binding, echoDefinition.Id())
 		if err := binding.Ready(ctx); err != nil {
 			t.Fatal(err)
@@ -347,7 +353,7 @@ func TestRemoteServices(t *testing.T) {
 		// subscription on a goroutine, so hold it until after the assertion.
 		release := make(chan struct{})
 		transport := subscribeGateTransport{RemoteServiceTransport: NewLoopbackTransport(provider), release: release}
-		binding := loopbackBinding(t, provider, RemoteServiceBindingOptions{Services: []string{modelsDefinition.Id()}, Transport: transport, OnError: func(err error) { errs.add(err) }})
+		binding := loopbackBinding(t, provider, RemoteServiceBindingOptions{Services: ServiceIDs(modelsDefinition.Id()), Transport: transport, OnError: func(err error) { errs.add(err) }})
 		first, second := use(t, binding, modelsDefinition.Id()), use(t, binding, modelsDefinition.Id())
 		if first.facade != second.facade {
 			t.Fatal("a service has two facades")
@@ -379,7 +385,7 @@ func TestRemoteServices(t *testing.T) {
 		if !reflect.DeepEqual(updates, []modelsState{{Revision: 0}, want}) || len(errs.get()) != 0 {
 			t.Fatalf("updates = %+v errors = %v", updates, errs.get())
 		}
-		late := loopbackBinding(t, provider, RemoteServiceBindingOptions{Services: []string{modelsDefinition.Id()}})
+		late := loopbackBinding(t, provider, RemoteServiceBindingOptions{Services: ServiceIDs(modelsDefinition.Id())})
 		lateModels := use(t, late, modelsDefinition.Id())
 		if err := late.Ready(ctx); err != nil {
 			t.Fatal(err)
@@ -415,7 +421,7 @@ func TestRemoteServices(t *testing.T) {
 			t.Fatalf("snapshot members = %s", got)
 		}
 		activate(t, raw)
-		binding := loopbackBinding(t, provider, RemoteServiceBindingOptions{Services: []string{timelineDefinition.Id()}})
+		binding := loopbackBinding(t, provider, RemoteServiceBindingOptions{Services: ServiceIDs(timelineDefinition.Id())})
 		service := use(t, binding, timelineDefinition.Id())
 		if err := binding.Ready(ctx); err != nil {
 			t.Fatal(err)
@@ -500,7 +506,7 @@ func TestRemoteServices(t *testing.T) {
 	t.Run("keeps singleton facades stable when their provider is replaced", func(t *testing.T) {
 		provider := newDeliveryProvider(t, SingletonService(modelsDefinition))
 		provideModels(t, provider, newModels(t, 1))
-		binding := loopbackBinding(t, provider, RemoteServiceBindingOptions{Services: []string{modelsDefinition.Id()}})
+		binding := loopbackBinding(t, provider, RemoteServiceBindingOptions{Services: ServiceIDs(modelsDefinition.Id())})
 		models := use(t, binding, modelsDefinition.Id())
 		replica := modelsReplica(t, models)
 		if err := binding.Ready(ctx); err != nil {
@@ -515,7 +521,7 @@ func TestRemoteServices(t *testing.T) {
 		if _, hydrated := revisionOf(t, replica); hydrated {
 			t.Fatal("state survived withdrawal")
 		}
-		if err := selectModel(ctx, models, modelRef{"test", "unavailable"}); !IsRemoteServiceErrorCode(err, ErrServiceNotFound) {
+		if err := selectModel(ctx, models, modelRef{"test", "unavailable"}); !hasRemoteServiceErrorCode(err, ErrServiceNotFound) {
 			t.Fatalf("select error = %v", err)
 		}
 		replacement := newModels(t, 2)
@@ -624,7 +630,7 @@ func TestRemoteServices(t *testing.T) {
 	t.Run("clears retained facades when providers and bindings are disposed", func(t *testing.T) {
 		provider := newDeliveryProvider(t, SingletonService(modelsDefinition))
 		provideModels(t, provider, newModels(t, 1))
-		binding := loopbackBinding(t, provider, RemoteServiceBindingOptions{Services: []string{modelsDefinition.Id()}})
+		binding := loopbackBinding(t, provider, RemoteServiceBindingOptions{Services: ServiceIDs(modelsDefinition.Id())})
 		models := use(t, binding, modelsDefinition.Id())
 		replica := modelsReplica(t, models)
 		if err := binding.Ready(ctx); err != nil {
@@ -654,7 +660,7 @@ func TestRemoteServices(t *testing.T) {
 		}
 		// Upstream's loopback subscribe runs its provider subscription synchronously, so the disposal lands while the consumer is still starting. The gate holds each start between the provider subscription and the consumer's snapshot install to make that ordering explicit.
 		gated := &gatedTransport{RemoteServiceTransport: NewLoopbackTransport(provider), subscribed: make(chan struct{}, 2), release: make(chan struct{})}
-		binding := loopbackBinding(t, provider, RemoteServiceBindingOptions{Services: []string{modelsDefinition.Id(), questionDialogsDefinition.Id()}, Transport: gated})
+		binding := loopbackBinding(t, provider, RemoteServiceBindingOptions{Services: ServiceIDs(modelsDefinition.Id(), questionDialogsDefinition.Id()), Transport: gated})
 		models := use(t, binding, modelsDefinition.Id())
 		observed := &locked[*RemoteService]{}
 		if _, err := binding.Observe(questionDialogsDefinition.Id(), func(_ context.Context, service *RemoteService) error { observed.add(service); return nil }); err != nil {
@@ -679,7 +685,7 @@ func TestRemoteServices(t *testing.T) {
 		var mu sync.Mutex
 		active := false
 		binding := loopbackBinding(t, provider, RemoteServiceBindingOptions{
-			Services: []string{modelsDefinition.Id()}, Unbound: true,
+			Services: ServiceIDs(modelsDefinition.Id()), Bound: new(false),
 			AssertAccess: func() error {
 				mu.Lock()
 				defer mu.Unlock()
@@ -716,7 +722,7 @@ func TestRemoteServices(t *testing.T) {
 		failure := errors.New("initial hydration failed")
 		errs := &locked[error]{}
 		binding := loopbackBinding(t, nil, RemoteServiceBindingOptions{
-			Services:  []string{modelsDefinition.Id()},
+			Services:  ServiceIDs(modelsDefinition.Id()),
 			Transport: failingTransport{failure},
 			OnError:   func(err error) { errs.add(err) },
 		})
@@ -738,7 +744,7 @@ func TestRemoteServices(t *testing.T) {
 		models := newModels(t, 0)
 		provideModels(t, provider, models)
 		transport := racingTransport{provider: provider, race: func() { models.setRevision(t, 1) }}
-		binding := loopbackBinding(t, provider, RemoteServiceBindingOptions{Services: []string{modelsDefinition.Id()}, Transport: transport})
+		binding := loopbackBinding(t, provider, RemoteServiceBindingOptions{Services: ServiceIDs(modelsDefinition.Id()), Transport: transport})
 		service := use(t, binding, modelsDefinition.Id())
 		var revisions locked[int]
 		if _, err := modelsReplica(t, service).Subscribe(func(value *modelsState, _ context.Context, _ ReplicatedStateDelivery) { revisions.add(value.Revision) }); err != nil {
@@ -763,10 +769,10 @@ func TestRemoteServices(t *testing.T) {
 				ServiceId: modelsDefinition.Id(), Mode: ServiceSingleton,
 				Instances: []ServiceInstanceSnapshot{{Members: []ServiceMemberSnapshot{
 					{Name: "select", Kind: MemberMethod},
-					{Name: "state", Kind: MemberState, Sequence: 0, Ops: []Op{{"r", map[string]any{"selected": nil, "revision": 0.0}}}},
+					{Name: "state", Kind: MemberState, Sequence: 0, Ops: []Op{{"r", chordjson.ObjectOf("selected", nil, "revision", 0.0)}}},
 				}}},
 			}}
-			binding := loopbackBinding(t, nil, RemoteServiceBindingOptions{Services: []string{modelsDefinition.Id()}, Transport: transport, OnError: func(err error) { errs.add(err) }})
+			binding := loopbackBinding(t, nil, RemoteServiceBindingOptions{Services: ServiceIDs(modelsDefinition.Id()), Transport: transport, OnError: func(err error) { errs.add(err) }})
 			models := use(t, binding, modelsDefinition.Id())
 			if err := binding.Ready(ctx); err != nil {
 				t.Fatal(err)
@@ -774,7 +780,7 @@ func TestRemoteServices(t *testing.T) {
 			if revision, _ := revisionOf(t, modelsReplica(t, models)); revision != 0 {
 				t.Fatalf("revision = %d", revision)
 			}
-			send(ctx, ServiceProviderUpdate{Type: UpdateState, Member: "state", Sequence: tc.sequence, Ops: []Op{{"r", map[string]any{"selected": nil, "revision": float64(tc.sequence)}}}})
+			send(ctx, ServiceProviderUpdate{Type: UpdateState, Member: "state", Sequence: tc.sequence, Ops: []Op{{"r", chordjson.ObjectOf("selected", nil, "revision", float64(tc.sequence))}}})
 			if _, hydrated := revisionOf(t, modelsReplica(t, models)); hydrated {
 				t.Fatal("replica kept its value")
 			}
@@ -789,7 +795,7 @@ func TestRemoteServices(t *testing.T) {
 		provider := newDeliveryProvider(t, SingletonService(modelsDefinition))
 		models := newModels(t, 0)
 		provideModels(t, provider, models)
-		binding := loopbackBinding(t, provider, RemoteServiceBindingOptions{Services: []string{modelsDefinition.Id()}, Unbound: true})
+		binding := loopbackBinding(t, provider, RemoteServiceBindingOptions{Services: ServiceIDs(modelsDefinition.Id()), Bound: new(false)})
 		service := use(t, binding, modelsDefinition.Id())
 		replica := modelsReplica(t, service)
 		var revisions locked[int]
@@ -836,7 +842,7 @@ func TestRemoteServices(t *testing.T) {
 			t.Fatalf("catalogue = %v", got)
 		}
 		errs := &locked[error]{}
-		binding := loopbackBinding(t, provider, RemoteServiceBindingOptions{Services: []string{questionDialogsDefinition.Id()}, OnError: func(err error) { errs.add(err) }})
+		binding := loopbackBinding(t, provider, RemoteServiceBindingOptions{Services: ServiceIDs(questionDialogsDefinition.Id()), OnError: func(err error) { errs.add(err) }})
 		type observation struct {
 			question *Question
 			service  *RemoteService

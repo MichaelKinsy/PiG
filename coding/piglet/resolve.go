@@ -103,6 +103,10 @@ type RecordInfo struct {
 	BinaryDigest        string
 	CurrentPath         string
 	Components          []RecordComponent
+	// Strip lists the built-ins the Binary record says its Piglet strips.
+	Strip []StrippedID
+	// StripKeep lists the Binary's keep-mode strip lists and their kept IDs.
+	StripKeep []StripIDList
 }
 
 // RecordComponent is one executable component's realization and materialization
@@ -176,9 +180,16 @@ func List() ([]PigletInfo, error) {
 			piglets[i].Records = append(piglets[i].Records, record.RecordInfo)
 			matched = true
 		}
-		if !matched {
-			piglets = append(piglets, PigletInfo{Name: record.Piglet, Location: "binary", Records: []RecordInfo{record.RecordInfo}})
+		if matched {
+			continue
 		}
+		// Every release and target of a Piglet without a matching source is one binary-only Piglet.
+		binaryOnly := slices.IndexFunc(piglets, func(info PigletInfo) bool { return info.Path == "" && info.Name == record.Piglet })
+		if binaryOnly < 0 {
+			piglets = append(piglets, PigletInfo{Name: record.Piglet, Location: "binary"})
+			binaryOnly = len(piglets) - 1
+		}
+		piglets[binaryOnly].Records = append(piglets[binaryOnly].Records, record.RecordInfo)
 	}
 	if len(errs) > 0 {
 		return nil, errors.Join(errs...)
@@ -333,6 +344,7 @@ func listManagedRecords() ([]managedRecord, []error) {
 			ComponentPlanDigest: resolution.Resolution.ComponentPlan.Digest,
 			ResolutionDigest:    resolution.Digest, BinaryDigest: binary.Digest,
 			Components: recordComponents(&resolution.Resolution.ComponentPlan),
+			Strip:      recordStrip(binary.Binary.Strip), StripKeep: recordStripKeep(binary.Binary.StripKeep),
 		}})
 	}
 	pulled, pullErrs := pigletrelease.ListInstalled()

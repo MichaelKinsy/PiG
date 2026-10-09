@@ -1,0 +1,19 @@
+[
+ {
+  "ids": [
+   "pkg:coding-agent/.#AutocompleteProviderFactory"
+  ],
+  "targets": [
+   "coding/extension/opaque_types.go#AutocompleteProviderFactory"
+  ],
+  "production": [
+   "call:internal/codingagent/autocomplete_wrappers.go#InteractiveMode.rebuildAutocompleteWrappers"
+  ],
+  "evidence": [
+   "test:internal/codingagent/autocomplete_wrappers_test.go#TestAutocompleteFactoriesRebuildOnOwnerLoop",
+   "test:internal/codingagent/autocomplete_wrappers_test.go#TestAutocompleteFailureReachesUncaughtCrash"
+  ],
+  "async": "The factory is a blocking Go call returning the wrapped provider or an error, run on the owner loop with the lifetime context; a failure reaches the uncaught-error path as upstream's throw does; no detached goroutine.",
+  "rationale": "AutocompleteProviderFactory: Go func(ctx, *AutocompleteProvider) (*AutocompleteProvider, error); the added context and error are the cancellation and throw conventions."
+ }
+]

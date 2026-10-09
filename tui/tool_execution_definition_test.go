@@ -24,7 +24,7 @@ func plainLines(lines []string) []string {
 // background while partial and the success background after.
 func TestDefinitionCardDefaultShell(t *testing.T) {
 	var inputs []ToolRenderInput
-	card := NewToolExecutionComponent("probe", "")
+	card := newToolCardForTest("probe", "")
 	card.SetDefinition(&ToolDefinitionRenderers{
 		Call: func(input ToolRenderInput) (Component, bool) {
 			inputs = append(inputs, input)
@@ -39,7 +39,7 @@ func TestDefinitionCardDefaultShell(t *testing.T) {
 	if got, want := plainLines(lines), []string{"", "", ` CALL {"a":1}`, ""}; !slices.Equal(got, want) {
 		t.Fatalf("pending card = %q, want %q", got, want)
 	}
-	if !strings.HasPrefix(lines[1], ActiveTheme().Bg("toolPendingBg")) {
+	if !strings.HasPrefix(lines[1], ActiveTheme().GetBgAnsi("toolPendingBg")) {
 		t.Fatalf("pending card background = %q", lines[1])
 	}
 
@@ -52,7 +52,7 @@ func TestDefinitionCardDefaultShell(t *testing.T) {
 	if got, want := plainLines(lines), []string{"", "", ` CALL {"a":1}`, " RESULT partial=false", ""}; !slices.Equal(got, want) {
 		t.Fatalf("final card = %q, want %q", got, want)
 	}
-	if !strings.HasPrefix(lines[1], ActiveTheme().Bg("toolSuccessBg")) {
+	if !strings.HasPrefix(lines[1], ActiveTheme().GetBgAnsi("toolSuccessBg")) {
 		t.Fatalf("final card background = %q", lines[1])
 	}
 	if last := inputs[len(inputs)-1]; last.IsPartial || last.Expanded {
@@ -64,7 +64,7 @@ func TestDefinitionCardDefaultShell(t *testing.T) {
 // name in toolTitle, and the first ten output lines with an expand hint.
 // A result never changes the expansion, not even an error.
 func TestDefinitionCardFallbacksAndExpansion(t *testing.T) {
-	card := NewToolExecutionComponent("broken", "")
+	card := newToolCardForTest("broken", "")
 	card.SetDefinition(&ToolDefinitionRenderers{
 		Call:   func(ToolRenderInput) (Component, bool) { return nil, false },
 		Result: func(ToolRenderInput) (Component, bool) { return nil, false },
@@ -93,7 +93,7 @@ func TestDefinitionCardFallbacksAndExpansion(t *testing.T) {
 
 // packages/coding-agent/test/tool-execution-component.test.ts:478-506 supplies a definition with neither renderer. The definition fallback must show ten leading lines, not the separate generic-tool preview. Its call fallback shows the arguments (tool-execution.ts:155-157, formatToolCallWithArgs).
 func TestDefinitionCardFallbackResultsUpstream(t *testing.T) {
-	card := NewToolExecutionComponent("custom_tool", "")
+	card := newToolCardForTest("custom_tool", "")
 	card.SetDefinition(&ToolDefinitionRenderers{}, json.RawMessage(`{"foo":"bar"}`))
 	output := make([]string, 15)
 	for i := range output {
@@ -144,7 +144,7 @@ func prefixed(lines []string) []string {
 // renderShell "self" draws the components after one blank line and nothing at
 // all when they draw nothing.
 func TestDefinitionCardSelfShell(t *testing.T) {
-	card := NewToolExecutionComponent("self", "")
+	card := newToolCardForTest("self", "")
 	card.SetDefinition(&ToolDefinitionRenderers{
 		Self:   true,
 		Call:   func(ToolRenderInput) (Component, bool) { return NewPaddedText("", 0, 0, nil), true },
@@ -174,7 +174,7 @@ func (a *asyncComponent) IsDirty() bool                                   { retu
 func TestDefinitionCardRerunsRenderersOnInvalidate(t *testing.T) {
 	calls := 0
 	component := &asyncComponent{Text: *NewPaddedText("async", 0, 0, nil)}
-	card := NewToolExecutionComponent("async", "")
+	card := newToolCardForTest("async", "")
 	card.SetDefinition(&ToolDefinitionRenderers{
 		Call: func(ToolRenderInput) (Component, bool) {
 			calls++

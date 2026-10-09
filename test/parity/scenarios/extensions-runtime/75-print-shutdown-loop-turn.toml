@@ -1,0 +1,51 @@
+# Behavior family: extensions-runtime
+# Scenario: print mode's disposal runs the callbacks an earlier extension's session_shutdown queued while a later extension's handler awaits a timer.
+#
+# Pi's runner awaits each extension's session_shutdown handler in turn, on one event loop
+# (runner.ts:1089-1116), and print mode invalidates the runner only after the event
+# (print-mode.ts:131-166, agent-session-runtime.ts:404-410, agent-session.ts:1393-1406).
+# shutdown-loop-turn-a.mjs queues an immediate and a zero-delay timer in its handler, and each
+# records whether its ctx is live. shutdown-loop-turn-b.mjs then awaits a 50 ms timer, which turns
+# the loop, so a's callbacks run first, with a live ctx. Pig packs both factories into one Node
+# runtime process, which shares that loop. 75-print-shutdown-loop-turn-isolated compares the same
+# fixtures with each extension in its own runtime process.
+#
+# Upstream evidence (2026-10-09, Pi 1.1.0, 3 runs; the same log when b awaits 0, 1, 20 or 50 ms):
+#   PI_CODING_AGENT_DIR=testdata/pi-agent LOOP_TURN_LOG=/tmp/loop-turn.log pi --no-extensions \
+#     -e ../../testdata/test-faux-provider.ts -e testdata/ext/shutdown-loop-turn-a.mjs \
+#     -e testdata/ext/shutdown-loop-turn-b.mjs --model test-faux/faux-1 --no-session --print "What is 20+22?"
+#   output: "42", exit 0
+#   /tmp/loop-turn.log: "a session_shutdown", "b session_shutdown", "a immediate live",
+#   "a timeout live", "b session_shutdown done"
+
+name = "75-print-shutdown-loop-turn"
+description = "Print mode runs an earlier extension's session_shutdown callbacks while a later handler awaits a timer"
+covers = [
+  "packages/coding-agent/src/core/extensions/runner.ts",
+  "packages/coding-agent/src/core/agent-session-runtime.ts",
+]
+tags = ["hermetic", "fast"]
+driver = "cli-mode"
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_HOME=testdata/pig-home", "LOOP_TURN_LOG={{TEMP}}/loop-turn.log"]
+pi = ["PI_CODING_AGENT_DIR=testdata/pi-agent", "LOOP_TURN_LOG={{TEMP}}/loop-turn.log"]
+pig_extensions = ["testdata/ext/shutdown-loop-turn-a.mjs", "testdata/ext/shutdown-loop-turn-b.mjs"]
+pi_extensions = [
+  "../../testdata/test-faux-provider.ts",
+  "testdata/ext/shutdown-loop-turn-a.mjs",
+  "testdata/ext/shutdown-loop-turn-b.mjs",
+]
+
+[cli]
+args = ["--model", "test-faux/faux-1", "--no-session", "--print", "What is 20+22?"]
+artifact_path = "{{TEMP}}/loop-turn.log"
+timeout_seconds = 30
+
+[assert]
+exit_code = 0
+output_equal = true
+both_contain = ["42"]
+artifact_equal = true
+artifact_both_contain = ["a immediate live", "a timeout live"]
+runs = 3

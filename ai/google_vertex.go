@@ -1,8 +1,11 @@
+//go:build !pig_strip_google_vertex
+
 package ai
 
 // Ports packages/ai/src/api/google-vertex.ts.
 
 import (
+	"cmp"
 	"context"
 	"encoding/json"
 	"errors"
@@ -14,23 +17,10 @@ import (
 	"strings"
 
 	"github.com/MichaelKinsy/PiG/internal/lazyregexp"
+	"github.com/MichaelKinsy/PiG/internal/pigstrip"
 
 	"golang.org/x/oauth2/google"
 )
-
-// GoogleVertexConfig configures Vertex API-key or Application Default Credentials requests.
-type GoogleVertexConfig struct {
-	APIKey           string
-	Model            string
-	ProviderID       string
-	BaseURL          string
-	Project          string
-	Location         string
-	Headers          map[string]string
-	ThinkingLevelMap ThinkingLevelMap
-	// ModelMetadata is the selected model, which an OnProviderStreamEvent observer receives. Nil hands the observer the configured identity only.
-	ModelMetadata *Model
-}
 
 type googleVertexProvider struct {
 	cfg         GoogleVertexConfig
@@ -45,6 +35,26 @@ func NewGoogleVertexProvider(cfg GoogleVertexConfig) Provider {
 	}
 	return &googleVertexProvider{cfg: cfg, client: streamingHTTPClient(), accessToken: vertexAccessToken}
 }
+
+// NewGoogleVertexAPIProvider builds the google-vertex provider for cfg, the provider every model-to-provider factory uses.
+func NewGoogleVertexAPIProvider(cfg GoogleVertexConfig) (Provider, error) {
+	// pig additive (D92): a Piglet's strip.apis disables Vertex at runtime the way a pig_strip_google_vertex build compiles it out.
+	if pigstrip.Has(pigstrip.ListAPIs, string(APIGoogleVertex)) {
+		return nil, strippedGoogleVertexError(&cfg)
+	}
+	return NewGoogleVertexProvider(cfg), nil
+}
+
+func init() {
+	builtInProviders[APIGoogleVertex] = func(apiKey, model, baseURL string) Provider {
+		return NewGoogleVertexProvider(GoogleVertexConfig{
+			APIKey:  apiKey,
+			Model:   model,
+			BaseURL: baseURL,
+		})
+	}
+}
+
 func (p *googleVertexProvider) ID() string   { return p.cfg.ProviderID }
 func (p *googleVertexProvider) Close() error { p.client.CloseIdleConnections(); return nil }
 
@@ -56,11 +66,11 @@ func (p *googleVertexProvider) Stream(ctx context.Context, transcript Transcript
 	key := resolveVertexAPIKey(p.cfg.APIKey)
 	project, location := "", ""
 	if key == "" {
-		project = resolveVertexProject(p.cfg.Project, options.Env)
+		project = resolveVertexProject(cmp.Or(options.Project, p.cfg.Project), options.Env)
 		if project == "" {
 			return nil, errors.New("Vertex AI requires a project ID. Set GOOGLE_CLOUD_PROJECT/GCLOUD_PROJECT or pass project in options.")
 		}
-		location = resolveVertexLocation(p.cfg.Location, options.Env)
+		location = resolveVertexLocation(cmp.Or(options.Location, p.cfg.Location), options.Env)
 		if location == "" {
 			return nil, errors.New("Vertex AI requires a location. Set GOOGLE_CLOUD_LOCATION or pass location in options.")
 		}

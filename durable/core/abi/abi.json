@@ -1,0 +1,435 @@
+{
+	"id": "f82162f61f856df71b0d2d25a1016666bd3deda899713aa5b1e1c028827d1fa1",
+	"exports": [
+		{
+			"name": "_initialize",
+			"signature": "()"
+		},
+		{
+			"name": "abi_id",
+			"signature": "() -> ptr"
+		},
+		{
+			"name": "sql_table",
+			"signature": "() -> ptr"
+		},
+		{
+			"name": "session_new",
+			"signature": "() -> u32"
+		},
+		{
+			"name": "session_free",
+			"signature": "(h u32)"
+		},
+		{
+			"name": "in_reserve",
+			"signature": "(n u32) -> ptr"
+		},
+		{
+			"name": "step",
+			"signature": "(h u32, kind u32, len u32, now f64) -> u32"
+		},
+		{
+			"name": "out_ptr",
+			"signature": "() -> ptr"
+		},
+		{
+			"name": "mem_stats",
+			"signature": "(h u32) -> ptr"
+		}
+	],
+	"imports": [
+		{
+			"name": "wasi_snapshot_preview1.args_get",
+			"signature": "(argv, buf) -> errno"
+		},
+		{
+			"name": "wasi_snapshot_preview1.args_sizes_get",
+			"signature": "(argc, size) -> errno"
+		},
+		{
+			"name": "wasi_snapshot_preview1.clock_time_get",
+			"signature": "(id, precision, out) -> errno"
+		},
+		{
+			"name": "wasi_snapshot_preview1.environ_get",
+			"signature": "(env, buf) -> errno"
+		},
+		{
+			"name": "wasi_snapshot_preview1.environ_sizes_get",
+			"signature": "(count, size) -> errno"
+		},
+		{
+			"name": "wasi_snapshot_preview1.fd_close",
+			"signature": "(fd) -> errno"
+		},
+		{
+			"name": "wasi_snapshot_preview1.fd_fdstat_get",
+			"signature": "(fd, buf) -> errno"
+		},
+		{
+			"name": "wasi_snapshot_preview1.fd_fdstat_set_flags",
+			"signature": "(fd, flags) -> errno"
+		},
+		{
+			"name": "wasi_snapshot_preview1.fd_prestat_dir_name",
+			"signature": "(fd, path, len) -> errno"
+		},
+		{
+			"name": "wasi_snapshot_preview1.fd_prestat_get",
+			"signature": "(fd, buf) -> errno"
+		},
+		{
+			"name": "wasi_snapshot_preview1.fd_read",
+			"signature": "(fd, iovs, n, nread) -> errno"
+		},
+		{
+			"name": "wasi_snapshot_preview1.fd_write",
+			"signature": "(fd, iovs, n, written) -> errno"
+		},
+		{
+			"name": "wasi_snapshot_preview1.poll_oneoff",
+			"signature": "(in, out, n, nevents) -> errno"
+		},
+		{
+			"name": "wasi_snapshot_preview1.proc_exit",
+			"signature": "(code)"
+		},
+		{
+			"name": "wasi_snapshot_preview1.random_get",
+			"signature": "(ptr, len) -> errno"
+		},
+		{
+			"name": "wasi_snapshot_preview1.sched_yield",
+			"signature": "() -> errno"
+		},
+		{
+			"name": "pig.uuidv7",
+			"signature": "(dst ptr)"
+		}
+	],
+	"values": [
+		{
+			"name": "null",
+			"number": 0,
+			"layout": "no payload"
+		},
+		{
+			"name": "i64",
+			"number": 1,
+			"layout": "8 bytes little endian"
+		},
+		{
+			"name": "f64",
+			"number": 2,
+			"layout": "8 bytes little endian"
+		},
+		{
+			"name": "text",
+			"number": 3,
+			"layout": "u32 len, UTF-8"
+		},
+		{
+			"name": "blob",
+			"number": 4,
+			"layout": "u32 len, bytes"
+		}
+	],
+	"status": [
+		{
+			"name": "ok",
+			"number": 0,
+			"layout": "step applies"
+		},
+		{
+			"name": "rejected",
+			"number": 1,
+			"layout": "no state changed; error is Pi's error name and message"
+		},
+		{
+			"name": "fatal",
+			"number": 2,
+			"layout": "discard the handle"
+		}
+	],
+	"events": [
+		{
+			"name": "open",
+			"number": 1,
+			"layout": "JSON OpenOptions"
+		},
+		{
+			"name": "rows",
+			"number": 2,
+			"layout": "u16 nReads, (u32 readId, u32 nRows, u8 nCols, value{nRows*nCols})*"
+		},
+		{
+			"name": "submit",
+			"number": 3,
+			"layout": "JSON SubmitEvent"
+		},
+		{
+			"name": "model_event",
+			"number": 4,
+			"layout": "u32 effectId, JSON array of AssistantMessageEvent"
+		},
+		{
+			"name": "model_bytes",
+			"number": 5,
+			"layout": "u32 effectId, u8 phase, bytes"
+		},
+		{
+			"name": "tool_progress",
+			"number": 6,
+			"layout": "u32 effectId, u8 kind, u32 skipped, u32 waitId, bytes"
+		},
+		{
+			"name": "tool_done",
+			"number": 7,
+			"layout": "u32 effectId, u8 outcome, JSON"
+		},
+		{
+			"name": "hook_done",
+			"number": 8,
+			"layout": "u32 effectId, u8 outcome, JSON (completes hook, env, section, deferred and callback effects)"
+		},
+		{
+			"name": "phase_done",
+			"number": 9,
+			"layout": "u32 effectId, u8 outcome, JSON"
+		},
+		{
+			"name": "tx",
+			"number": 10,
+			"layout": "u32 txId, JSON op"
+		},
+		{
+			"name": "timer",
+			"number": 11,
+			"layout": "u32 timerId"
+		},
+		{
+			"name": "abort",
+			"number": 12,
+			"layout": "JSON {taskId} or {conversationId}"
+		},
+		{
+			"name": "registry",
+			"number": 13,
+			"layout": "JSON registry snapshot"
+		},
+		{
+			"name": "api",
+			"number": 14,
+			"layout": "u32 requestId, JSON"
+		},
+		{
+			"name": "close",
+			"number": 15,
+			"layout": "none"
+		},
+		{
+			"name": "inspect",
+			"number": 16,
+			"layout": "JSON query"
+		}
+	],
+	"effects": [
+		{
+			"name": "timer",
+			"number": 1,
+			"layout": "u32 timerId, f64 at, u8 durable"
+		},
+		{
+			"name": "timer_clear",
+			"number": 2,
+			"layout": "u32 timerId"
+		},
+		{
+			"name": "model_context",
+			"number": 3,
+			"layout": "JSON ModelContextEffect: {model, context:{messages}, options} or {model, extends, append, options}"
+		},
+		{
+			"name": "model_http",
+			"number": 4,
+			"layout": "JSON head, body recipe"
+		},
+		{
+			"name": "cancel",
+			"number": 5,
+			"layout": "u32 effectId"
+		},
+		{
+			"name": "tool",
+			"number": 6,
+			"layout": "JSON ToolEffect"
+		},
+		{
+			"name": "hook",
+			"number": 7,
+			"layout": "JSON {name, handler, conversationId, taskId, payload}"
+		},
+		{
+			"name": "phase",
+			"number": 8,
+			"layout": "JSON {taskId, kind, phase, record, invocation}"
+		},
+		{
+			"name": "env",
+			"number": 9,
+			"layout": "JSON {conversationId}"
+		},
+		{
+			"name": "liveness",
+			"number": 10,
+			"layout": "f64 at or -1"
+		},
+		{
+			"name": "section",
+			"number": 11,
+			"layout": "JSON {conversationId, taskId, section, input}"
+		},
+		{
+			"name": "deferred",
+			"number": 12,
+			"layout": "JSON {op, model, handle}"
+		},
+		{
+			"name": "callback",
+			"number": 13,
+			"layout": "JSON {name, txId, payload}"
+		}
+	],
+	"notices": [
+		{
+			"name": "published",
+			"number": 1,
+			"layout": "JSON"
+		},
+		{
+			"name": "api_result",
+			"number": 2,
+			"layout": "u32 requestId, JSON"
+		},
+		{
+			"name": "tx_result",
+			"number": 3,
+			"layout": "u32 txId, JSON"
+		},
+		{
+			"name": "report",
+			"number": 4,
+			"layout": "JSON"
+		},
+		{
+			"name": "sidecar",
+			"number": 5,
+			"layout": "JSON {conversationId, rows}"
+		},
+		{
+			"name": "progress_ack",
+			"number": 6,
+			"layout": "u32 waitId, u8 outcome, JSON error when rejected"
+		}
+	],
+	"api": [
+		{
+			"op": "memo.get",
+			"args": "taskId, name",
+			"result": "the memo value or null",
+			"answered": "at once"
+		},
+		{
+			"op": "memo.put",
+			"args": "taskId, name, candidate",
+			"result": "the durable winner",
+			"answered": "after the memo's commit is applied"
+		},
+		{
+			"op": "snapshot",
+			"args": "doc",
+			"result": "the document state or null",
+			"answered": "at once"
+		},
+		{
+			"op": "snapshotAsOf",
+			"args": "doc, seq",
+			"result": "the document state at seq or null",
+			"answered": "at once"
+		},
+		{
+			"op": "watch.open",
+			"args": "doc or graph, watchId",
+			"result": "the first frame",
+			"answered": "at once; later frames arrive as published notices carrying watchId"
+		},
+		{
+			"op": "watch.close",
+			"args": "watchId",
+			"result": "null",
+			"answered": "at once"
+		},
+		{
+			"op": "getTask",
+			"args": "taskId",
+			"result": "the task record or null",
+			"answered": "at once"
+		},
+		{
+			"op": "waitForTask",
+			"args": "taskId",
+			"result": "the settled receipt",
+			"answered": "when the task is terminal and published"
+		},
+		{
+			"op": "outcomes",
+			"args": "taskIds",
+			"result": "the outcomes in order, or an error naming the missing one",
+			"answered": "at once"
+		},
+		{
+			"op": "entry",
+			"args": "conversationId, entryId",
+			"result": "the entry record or null",
+			"answered": "at once"
+		},
+		{
+			"op": "context",
+			"args": "conversationId, at",
+			"result": "the ContextView",
+			"answered": "at once"
+		},
+		{
+			"op": "conversation",
+			"args": "conversationId",
+			"result": "the conversation handle data or null",
+			"answered": "at once"
+		},
+		{
+			"op": "agent",
+			"args": "conversationId",
+			"result": "the resolved agent",
+			"answered": "at once"
+		},
+		{
+			"op": "sleep",
+			"args": "taskId, until",
+			"result": "null",
+			"answered": "at the wake of the durable timer the core arms"
+		},
+		{
+			"op": "usage",
+			"args": "",
+			"result": "the UsageState of the Session",
+			"answered": "at once"
+		},
+		{
+			"op": "taskGraph",
+			"args": "",
+			"result": "the TaskGraph",
+			"answered": "at once"
+		}
+	],
+	"canonical": "[exports]\n_initialize ()\nabi_id () -> ptr\nsql_table () -> ptr\nsession_new () -> u32\nsession_free (h u32)\nin_reserve (n u32) -> ptr\nstep (h u32, kind u32, len u32, now f64) -> u32\nout_ptr () -> ptr\nmem_stats (h u32) -> ptr\n[imports]\nwasi_snapshot_preview1.args_get (argv, buf) -> errno\nwasi_snapshot_preview1.args_sizes_get (argc, size) -> errno\nwasi_snapshot_preview1.clock_time_get (id, precision, out) -> errno\nwasi_snapshot_preview1.environ_get (env, buf) -> errno\nwasi_snapshot_preview1.environ_sizes_get (count, size) -> errno\nwasi_snapshot_preview1.fd_close (fd) -> errno\nwasi_snapshot_preview1.fd_fdstat_get (fd, buf) -> errno\nwasi_snapshot_preview1.fd_fdstat_set_flags (fd, flags) -> errno\nwasi_snapshot_preview1.fd_prestat_dir_name (fd, path, len) -> errno\nwasi_snapshot_preview1.fd_prestat_get (fd, buf) -> errno\nwasi_snapshot_preview1.fd_read (fd, iovs, n, nread) -> errno\nwasi_snapshot_preview1.fd_write (fd, iovs, n, written) -> errno\nwasi_snapshot_preview1.poll_oneoff (in, out, n, nevents) -> errno\nwasi_snapshot_preview1.proc_exit (code)\nwasi_snapshot_preview1.random_get (ptr, len) -> errno\nwasi_snapshot_preview1.sched_yield () -> errno\npig.uuidv7 (dst ptr)\n[values]\n0 null: no payload\n1 i64: 8 bytes little endian\n2 f64: 8 bytes little endian\n3 text: u32 len, UTF-8\n4 blob: u32 len, bytes\n[status]\n0 ok: step applies\n1 rejected: no state changed; error is Pi's error name and message\n2 fatal: discard the handle\n[events]\n1 open: JSON OpenOptions\n2 rows: u16 nReads, (u32 readId, u32 nRows, u8 nCols, value{nRows*nCols})*\n3 submit: JSON SubmitEvent\n4 model_event: u32 effectId, JSON array of AssistantMessageEvent\n5 model_bytes: u32 effectId, u8 phase, bytes\n6 tool_progress: u32 effectId, u8 kind, u32 skipped, u32 waitId, bytes\n7 tool_done: u32 effectId, u8 outcome, JSON\n8 hook_done: u32 effectId, u8 outcome, JSON (completes hook, env, section, deferred and callback effects)\n9 phase_done: u32 effectId, u8 outcome, JSON\n10 tx: u32 txId, JSON op\n11 timer: u32 timerId\n12 abort: JSON {taskId} or {conversationId}\n13 registry: JSON registry snapshot\n14 api: u32 requestId, JSON\n15 close: none\n16 inspect: JSON query\n[effects]\n1 timer: u32 timerId, f64 at, u8 durable\n2 timer_clear: u32 timerId\n3 model_context: JSON ModelContextEffect: {model, context:{messages}, options} or {model, extends, append, options}\n4 model_http: JSON head, body recipe\n5 cancel: u32 effectId\n6 tool: JSON ToolEffect\n7 hook: JSON {name, handler, conversationId, taskId, payload}\n8 phase: JSON {taskId, kind, phase, record, invocation}\n9 env: JSON {conversationId}\n10 liveness: f64 at or -1\n11 section: JSON {conversationId, taskId, section, input}\n12 deferred: JSON {op, model, handle}\n13 callback: JSON {name, txId, payload}\n[notices]\n1 published: JSON\n2 api_result: u32 requestId, JSON\n3 tx_result: u32 txId, JSON\n4 report: JSON\n5 sidecar: JSON {conversationId, rows}\n6 progress_ack: u32 waitId, u8 outcome, JSON error when rejected\n[api]\nmemo.get(taskId, name) -> the memo value or null; answered at once\nmemo.put(taskId, name, candidate) -> the durable winner; answered after the memo's commit is applied\nsnapshot(doc) -> the document state or null; answered at once\nsnapshotAsOf(doc, seq) -> the document state at seq or null; answered at once\nwatch.open(doc or graph, watchId) -> the first frame; answered at once; later frames arrive as published notices carrying watchId\nwatch.close(watchId) -> null; answered at once\ngetTask(taskId) -> the task record or null; answered at once\nwaitForTask(taskId) -> the settled receipt; answered when the task is terminal and published\noutcomes(taskIds) -> the outcomes in order, or an error naming the missing one; answered at once\nentry(conversationId, entryId) -> the entry record or null; answered at once\ncontext(conversationId, at) -> the ContextView; answered at once\nconversation(conversationId) -> the conversation handle data or null; answered at once\nagent(conversationId) -> the resolved agent; answered at once\nsleep(taskId, until) -> null; answered at the wake of the durable timer the core arms\nusage() -> the UsageState of the Session; answered at once\ntaskGraph() -> the TaskGraph; answered at once\n[layout]\nstep := u32 size, u8 status, u16 nCommits, u16 nReads, u16 nNotices, u16 nEffects, commit*, read*, notice*, effect*, [status != 0: u32 len, error JSON]\nsize and len count the bytes after their own field; the step export returns size + 4\ncommit := u32 len, i64 seq, u16 nStmts, stmt*\nstmt := u16 sqlId, u8 nParams, value*\nread := u32 readId, u16 sqlId, u8 nParams, value*\nnotice := u8 kind, u32 len, payload\neffect := u32 effectId, u8 kind, u32 len, payload\nrows-event := u16 nReads, (u32 readId, u32 nRows, u8 nCols, value{nRows*nCols})*\nmodel_bytes phase: 0 head, 1 chunk, 2 end, 3 error\ntool_progress waitId is always present: nonzero only for kind 1, whose details update is answered by a progress_ack notice\ntool_progress kind: 0 output, 1 details, 2 diagnostic\noutcome: 0 result, 1 thrown\nmemStats: 8 x u64: arena, index, derived, documents, scratch, total live, heap in use, linear memory size\n"
+}

@@ -92,7 +92,7 @@ func (m *InteractiveMode) submitPrompt(submission inputPreflight) {
 // events reach the extensions in an order the user did not type them in, and
 // would let a second submission's delivery be decided against a turn the first
 // submission has not started yet. The RPC path serialises the same boundary on
-// its FIFO executor (cmd/pig/rpc_admission.go).
+// its FIFO executor (coding/cli/rpc_admission.go).
 func (m *InteractiveMode) dispatchNextPreflight() {
 	m.preflightMu.Lock()
 	if m.preflight != nil || len(m.preflightQueue) == 0 {

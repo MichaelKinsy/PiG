@@ -1,13 +1,17 @@
 package codingagent
 
+// pi: packages/coding-agent/src/modes/interactive/components/armin.ts
+
 import (
 	"context"
 	"crypto/sha256"
 	"encoding/json"
 	"fmt"
+	"io"
 	"os/exec"
 	"slices"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -54,6 +58,7 @@ func arminXBM() []int {
 	return bits
 }
 
+// Pi: packages/coding-agent/src/modes/interactive/components/armin.ts:84 (ArminComponent.invalidate).
 func TestArminFramesMatchPinnedPi(t *testing.T) {
 	image, err := json.Marshal(map[string]any{
 		"upstream": pigversion.UpstreamVersion, "width": arminWidth, "height": arminHeight, "bits": arminXBM(), "label": arminLabel,
@@ -128,7 +133,7 @@ func TestArminFramesMatchPinnedPi(t *testing.T) {
 						end = min(end, arminWidth)
 						text = string(a.currentGrid[row][:end])
 					}
-					expected := " " + tui.ActiveTheme().FgText("accent", text) + strings.Repeat(" ", max(0, styledWidth-1-len([]rune(text))))
+					expected := " " + tui.ActiveTheme().Fg("accent", text) + strings.Repeat(" ", max(0, styledWidth-1-len([]rune(text))))
 					if line != expected {
 						t.Fatalf("color/padding width %d row %d: %q want %q", width, row, line, expected)
 					}
@@ -138,11 +143,12 @@ func TestArminFramesMatchPinnedPi(t *testing.T) {
 	}
 }
 
+// Pi: packages/coding-agent/src/modes/interactive/components/armin.ts:381 (ArminComponent.dispose).
 func TestArminAnimationDisposalRejectsQueuedFrame(t *testing.T) {
 	a := newArminComponent(arminTestRandom(2)) // Pi's non-terminating rain timer
 	posted := make(chan func(), 1)
 	rendered := false
-	a.startAnimation(t.Context(), func(_ context.Context, fn func()) error { posted <- fn; return nil }, func() { rendered = true })
+	a.startAnimation(func(_ context.Context, fn func()) error { posted <- fn; return nil }, func() { rendered = true })
 	fn := <-posted
 	a.Dispose()
 	a.Dispose()
@@ -161,7 +167,7 @@ func TestArminAnimationPublishesFramesAndStops(t *testing.T) {
 	a := newArminComponent(arminTestRandom(5))
 	posted := make(chan func())
 	renders := 0
-	a.startAnimation(t.Context(), func(ctx context.Context, fn func()) error {
+	a.startAnimation(func(ctx context.Context, fn func()) error {
 		select {
 		case posted <- fn:
 			return nil
@@ -242,5 +248,85 @@ func TestArminSaysHiDrawsThePigHead(t *testing.T) {
 		if strings.Contains(strings.Join(got, "\n"), "ARMIN") {
 			t.Fatalf("%s shows Armin's label", a.effect)
 		}
+	}
+}
+
+// Pi: packages/coding-agent/src/modes/interactive/components/armin.ts:74-82 constructor(ui) picks an effect, builds the grids, initializes the effect and starts the animation, which calls ui.requestRender() on every frame. Go runs each frame on the ui's owner loop (tui.TUI.PostToOwner).
+func TestNewArminComponentStartsItsAnimationOnTheUI(t *testing.T) {
+	ui := tui.NewWithOutput(io.Discard, 40, 10)
+	posted := make(chan func())
+	ui.SetOwnerDispatcher(func(ctx context.Context, fn func()) error {
+		select {
+		case posted <- fn:
+			return nil
+		case <-ctx.Done():
+			return ctx.Err()
+		}
+	})
+	renders := &renderCountingTUI{TUI: ui}
+	a := NewArminComponent(renders)
+	defer a.Dispose()
+	if a.effect == "" || a.finalGrid == a.currentGrid {
+		t.Fatalf("constructor left the component uninitialized: effect=%q", a.effect)
+	}
+	select {
+	case fn := <-posted:
+		if renders.renders.Load() != 0 || a.gridVersion != 0 {
+			t.Fatal("the frame ran before the owner loop took it")
+		}
+		fn()
+	case <-time.After(5 * time.Second):
+		t.Fatal("constructor did not start the animation through the ui's owner dispatcher")
+	}
+	if renders.renders.Load() != 1 {
+		t.Fatalf("a frame requested %d renders from the ui, want 1", renders.renders.Load())
+	}
+	if a.gridVersion != 1 {
+		t.Fatalf("gridVersion = %d, want one tick", a.gridVersion)
+	}
+}
+
+type renderCountingTUI struct {
+	tui.TUI
+	renders atomic.Int32
+}
+
+func (r *renderCountingTUI) RequestRender(...bool) { r.renders.Add(1) }
+
+// The interactive mode installs its main-loop poster as the renderer's owner dispatcher, so an Armin frame built from the
+// renderer runs on the main loop.
+func TestInstallRenderDispatcherRoutesOwnerWorkToTheMainLoop(t *testing.T) {
+	m := newPendingDisplayHarness(t)
+	m.installRenderDispatcher()
+	ran := false
+	done := make(chan error, 1)
+	go func() { done <- m.tuiInst.PostToOwner(t.Context(), func() { ran = true }) }()
+	select {
+	case fn := <-m.uiTaskCh:
+		if ran {
+			t.Fatal("work ran off the main loop")
+		}
+		fn()
+	case <-time.After(5 * time.Second):
+		t.Fatal("work did not reach the main loop queue")
+	}
+	if err := <-done; err != nil || !ran {
+		t.Fatalf("err=%v ran=%v", err, ran)
+	}
+}
+
+// A ui without an owner loop runs each frame inline on the timer goroutine (tui.TUI.PostToOwner), while the renderer draws the
+// component on its own goroutine: the animation state must not be read and written unguarded (merge-train race gate).
+func TestArminRenderWhileTheAnimationRunsInlineIsRaceFree(t *testing.T) {
+	ui := tui.NewWithOutput(io.Discard, 80, 24)
+	for effect := range arminEffects {
+		a := newArminComponent(arminTestRandom(effect))
+		a.startAnimation(ui.PostToOwner, func() {})
+		deadline := time.Now().Add(150 * time.Millisecond)
+		for time.Now().Before(deadline) {
+			a.Render(80)
+			a.Invalidate()
+		}
+		a.Dispose()
 	}
 }

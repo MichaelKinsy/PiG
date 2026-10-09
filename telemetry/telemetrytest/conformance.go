@@ -7,15 +7,22 @@ package telemetrytest
 // awaits before rejecting returns the error it receives from another goroutine; a synchronous throw also has the
 // Go form of a panic, which the adapter records and re-raises with the same value. A Promise that the callback does
 // not await is a goroutine the callback joins. Upstream's unreadable error (a Proxy whose traps throw) is an error
-// whose Error method panics. The cases that read a Proxy-trapped SpanOptions, SpanAttributes or SpanStatus are not
-// ported: reading those Go values cannot fail, so there is no failure for an adapter to suppress. A rejection with
-// undefined has no Go form, because a nil error is success.
+// whose Error method panics, and an unreadable payload value is one whose String, MarshalJSON and MarshalText methods
+// panic: an adapter that inspects it fails, while one that only stores it does not. The three passivity cases that
+// read a Proxy-trapped SpanOptions, SpanAttributes or SpanStatus keep their upstream names. Reading a Go SpanOptions
+// or SpanAttributes struct or map cannot fail, so the two that build one assert what survives in Go: the callback
+// runs once, no panic escapes, the span is recorded and succeeds, and each call with the unreadable payload is atomic
+// (an adapter that inspects the payload records none of it, one that only stores it records all of it). Upstream's
+// stricter "nothing was recorded" state is one of those two outcomes. "ignores failed status calls atomically" is not ported: a Go SpanStatus holds two
+// strings and has no failing read. A rejection with undefined has no Go form, because a nil error is success.
 
 import (
 	"context"
 	"errors"
 	"fmt"
+	"maps"
 	"reflect"
+	"slices"
 
 	"github.com/MichaelKinsy/PiG/telemetry"
 )
@@ -85,6 +92,14 @@ func strictEqual[T comparable](actual, expected T, what string) error {
 	}
 	return nil
 }
+
+// unreadableValue is the Go form of upstream's unreadable payload: every way an adapter might inspect it panics.
+type unreadableValue struct{}
+
+func (unreadableValue) String() string               { panic("read") }
+func (unreadableValue) GoString() string             { panic("read") }
+func (unreadableValue) MarshalJSON() ([]byte, error) { panic("read") }
+func (unreadableValue) MarshalText() ([]byte, error) { panic("read") }
 
 // unreadableError is the Go form of upstream's unreadable thrown value: inspecting it panics.
 type unreadableError struct{ kind string }
@@ -308,6 +323,27 @@ func CreateTelemetryAdapterConformance(factory TelemetryAdapterFixtureFactory) [
 			)
 		}),
 
+		createCase(factory, "recording", "ignores failed attribute calls atomically", func(ctx context.Context, fixture TelemetryAdapterFixture) error {
+			if err := fixture.Context.StartSpan(telemetry.SpanOptions{Name: "atomic-attributes", Attributes: telemetry.SpanAttributes{"retained": "value"}}, func(span telemetry.TelemetrySpan) error {
+				span.SetAttributes(telemetry.SpanAttributes{"partial": "must not survive alone", "unreadable": []any{unreadableValue{}}})
+				return nil
+			}); err != nil {
+				return err
+			}
+			span, err := findRecorded(ctx, fixture, "atomic-attributes")
+			if err != nil {
+				return err
+			}
+			// The call is atomic: an adapter that cannot read the payload records none of it, and one that only
+			// stores the values records all of them.
+			_, partial := span.Attributes["partial"]
+			_, unreadable := span.Attributes["unreadable"]
+			if partial != unreadable || len(span.Attributes) != map[bool]int{false: 1, true: 3}[partial] {
+				return fmt.Errorf("attributes: expected all or none of the failed call, got keys %v", slices.Sorted(maps.Keys(span.Attributes)))
+			}
+			return strictEqual(span.Attributes["retained"], any("value"), "retained attribute")
+		}),
+
 		createCase(factory, "parentage", "records nested and concurrent child relationships", func(ctx context.Context, fixture TelemetryAdapterFixture) error {
 			releaseFirst := make(chan struct{})
 			if err := fixture.Context.StartSpan(telemetry.SpanOptions{Name: "parent"}, func(parent telemetry.TelemetrySpan) error {
@@ -366,6 +402,55 @@ func CreateTelemetryAdapterConformance(factory TelemetryAdapterFixtureFactory) [
 				return fmt.Errorf("end order: second %d, first %d, parent %d", *second.EndSequence, *first.EndSequence, *parent.EndSequence)
 			}
 			return nil
+		}),
+
+		createCase(factory, "passivity", "suppresses unreadable telemetry payload failures", func(ctx context.Context, fixture TelemetryAdapterFixture) error {
+			calls, result := 0, 0
+			options := telemetry.SpanOptions{Name: "unreadable-options", Attributes: telemetry.SpanAttributes{"secret": unreadableValue{}}}
+			if err := fixture.Context.StartSpan(options, func(telemetry.TelemetrySpan) error {
+				calls++
+				result = 9
+				return nil
+			}); err != nil {
+				return err
+			}
+			if err := errors.Join(strictEqual(calls, 1, "calls"), strictEqual(result, 9, "result")); err != nil {
+				return err
+			}
+			if err := fixture.Context.StartSpan(telemetry.SpanOptions{Name: "unreadable-recording"}, func(span telemetry.TelemetrySpan) error {
+				attributes := telemetry.SpanAttributes{"secret": unreadableValue{}}
+				span.SetAttributes(attributes)
+				span.AddEvent("unreadable-event", attributes)
+				return nil
+			}); err != nil {
+				return err
+			}
+
+			// The span with the unreadable payload is still recorded once and succeeds; each failed call leaves
+			// nothing or all of its payload.
+			spans, err := fixture.GetSpans(ctx)
+			if err != nil {
+				return err
+			}
+			recorded := 0
+			for _, span := range spans {
+				switch span.Name {
+				case "unreadable-recording":
+					recorded++
+					if err := deepStrictEqual(span.Status, status(telemetry.SpanStatusCodeOK), "status"); err != nil {
+						return err
+					}
+					for _, event := range span.Events {
+						if _, secret := event.Attributes["secret"]; event.Name != "unreadable-event" || !secret || len(event.Attributes) != 1 {
+							return fmt.Errorf("events: expected none or the whole unreadable event, got %v", event.Name)
+						}
+					}
+				case "unreadable-options":
+				default:
+					return fmt.Errorf("unexpected span %s", span.Name)
+				}
+			}
+			return strictEqual(recorded, 1, "unreadable-recording spans")
 		}),
 	}
 }

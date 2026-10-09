@@ -1,0 +1,44 @@
+[
+ {
+  "ids": [
+   "pkg:tui/.#AutocompleteItem"
+  ],
+  "targets": [
+   "tui/autocomplete.go#AutocompleteItem"
+  ],
+  "struct": {
+   "file": "tui/autocomplete.go",
+   "type": "AutocompleteItem"
+  },
+  "production": [
+   "call:internal/codingagent/autocomplete_wrappers.go#InteractiveMode.asyncAutocompleteProvider"
+  ],
+  "evidence": [
+   "test:internal/codingagent/login_autocomplete_upstream_test.go#TestInteractiveLoginArgumentCompletionUpstream",
+   "test:internal/codingagent/model_autocomplete_upstream_test.go#TestInteractiveModelArgumentCompletionUpstream"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "AutocompleteItem: Go AutocompleteItem has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+ },
+ {
+  "ids": [
+   "pkg:tui/.#AutocompleteSuggestions"
+  ],
+  "targets": [
+   "tui/autocomplete.go#AutocompleteSuggestions"
+  ],
+  "struct": {
+   "file": "tui/autocomplete.go",
+   "type": "AutocompleteSuggestions"
+  },
+  "production": [
+   "call:internal/codingagent/autocomplete_wrappers.go#InteractiveMode.asyncAutocompleteProvider"
+  ],
+  "evidence": [
+   "test:internal/codingagent/login_autocomplete_upstream_test.go#TestInteractiveLoginArgumentCompletionUpstream",
+   "test:internal/codingagent/model_autocomplete_upstream_test.go#TestInteractiveModelArgumentCompletionUpstream"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "AutocompleteSuggestions: Go AutocompleteSuggestions has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+ }
+]

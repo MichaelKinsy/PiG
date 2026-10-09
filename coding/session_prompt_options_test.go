@@ -114,7 +114,7 @@ export default function(pi){
 	resources := &SystemPromptResources{
 		AppendSystemPrompt: "APPENDED",
 		ContextFiles:       []extension.SystemPromptContextFile{{Path: "/work/AGENTS.md", Content: "project rules here\n"}},
-		Skills:             []extension.SystemPromptSkill{{Name: "review", Description: "Review code", FilePath: "/s/review/SKILL.md", BaseDir: "/s/review", SourceInfo: map[string]any{"scope": "project"}}},
+		Skills:             []extension.SystemPromptSkill{{Name: "review", Description: "Review code", FilePath: "/s/review/SKILL.md", BaseDir: "/s/review", SourceInfo: extension.SourceInfo{Scope: "project"}}},
 	}
 	h := newRecoveryHarness(t, harnessOptions{defaultTools: true, extension: ext, resources: resources}, fauxReply("ok", ai.StopReasonStop, 0))
 	context9789Prompt(t, h, "hello")

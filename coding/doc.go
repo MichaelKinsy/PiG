@@ -8,7 +8,7 @@
 //	    "github.com/MichaelKinsy/PiG/coding"
 //	)
 //
-//	svcs, err := coding.NewServices(coding.ServicesOptions{
+//	svcs, err := coding.CreateAgentSessionServices(coding.CreateAgentSessionServicesOptions{
 //	    CWD:      "/my/project",
 //	    AgentDir: coding.DefaultAgentDir(),
 //	})

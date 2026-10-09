@@ -2,7 +2,7 @@ export { dispatchProviderObject as dispatchNativeProvider } from "./provider-obj
 
 export function nativeDeclaration(provider, key) {
   const paths = [
-    "getModels", "filterModels", "refreshModels", "stream", "streamSimple", "fetchDeferred", "cancelDeferred", "generateImages", "classify",
+    "getModels", "getAllModels", "filterModels", "filterAllModels", "refreshModels", "stream", "streamSimple", "fetchDeferred", "cancelDeferred", "generateImages", "classify",
     "auth.apiKey.check", "auth.apiKey.resolve", "auth.apiKey.login", "auth.oauth.login", "auth.oauth.refresh", "auth.oauth.toAuth",
   ];
   const methods = paths.filter(path => typeof path.split(".").reduce((object, name) => object?.[name], provider) === "function");
@@ -17,7 +17,7 @@ export function nativeDeclaration(provider, key) {
   }
   return {
     id: provider.id, key, name: provider.name, baseUrl: provider.baseUrl, headers: provider.headers, auth, methods,
-    models: provider.getModels(),
+    models: provider.getAllModels?.() ?? provider.getModels(),
     oauth: provider.auth.oauth ? {
       name: provider.auth.oauth.name, isSubscription: provider.auth.oauth.isSubscription,
       has_login: typeof provider.auth.oauth.login === "function", has_refresh: true, has_get_api_key: true,

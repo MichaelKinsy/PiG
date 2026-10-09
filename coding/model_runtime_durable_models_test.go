@@ -14,6 +14,8 @@ import (
 var _ durable.Models = (*ModelRuntime)(nil)
 
 // TestModelRuntimeAnswersDurableHarnessGeneration opens a durable Harness whose models are a ModelRuntime and proves generation resolves the model and streams through the runtime's registry.
+// Pi source: packages/durable/src/harness/types.ts
+// mutation-checked: zeroing the results of Conversation.Submit fails it
 func TestModelRuntimeAnswersDurableHarnessGeneration(t *testing.T) {
 	ctx := context.Background()
 	services, _ := nativeCompatServices(t, "", nil)

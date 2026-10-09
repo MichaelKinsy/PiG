@@ -139,7 +139,7 @@ func (r *nodeAPIRig) execute(ext, tool, id string) (agent.AgentToolResult, error
 	if err != nil {
 		return agent.AgentToolResult{}, err
 	}
-	typed, ok := result.(agent.AgentToolResult)
+	typed, ok := result, true
 	if !ok {
 		r.t.Fatalf("%s result type = %T", tool, result)
 	}
@@ -207,7 +207,7 @@ func TestNodeMcpServerRegistration(t *testing.T) {
 		mcpPath, siblingPath := rig.exts["nodeapi-mcp"].Path, rig.exts["nodeapi-sibling"].Path
 		registered := func() []string {
 			var out []string
-			for _, s := range rig.host.Runtime().McpServers() {
+			for _, s := range rig.host.Runtime().McpServers().List() {
 				out = append(out, s.Name+"@"+s.ExtensionPath)
 			}
 			slices.Sort(out)
@@ -227,7 +227,7 @@ func TestNodeMcpServerRegistration(t *testing.T) {
 			t.Fatalf("after add: %v, want %v", got, want)
 		}
 		var late extension.RegisteredMcpServer
-		for _, s := range rig.host.Runtime().McpServers() {
+		for _, s := range rig.host.Runtime().McpServers().List() {
 			if s.Name == "node-late" {
 				late = s
 			}
@@ -281,7 +281,7 @@ func TestNodeMcpServerRegisteredByTheFactoryIsCheckedAtLoad(t *testing.T) {
 	if len(loaded) != 0 || len(failures) != 1 || !strings.Contains(failures[0].Error(), "Invalid MCP server registered by extension") {
 		t.Fatalf("loaded %d, failures %v", len(loaded), failures)
 	}
-	if servers := h.Runtime().McpServers(); len(servers) != 0 {
+	if servers := h.Runtime().McpServers().List(); len(servers) != 0 {
 		t.Fatalf("a failed load left %v registered", servers)
 	}
 }
@@ -308,7 +308,7 @@ export default function (pi) {
 }
 `
 
-// loader.ts:480-497 and virtual-models.ts:87-101: the declaration reaches the runtime queue without its route, the route runs in the extension against the request the Host sends and receives the extension context, and the physical model the router names is resolved by the Host. The value in the state is computed by the router from the state it was sent.
+// pi.registerVirtualModel (packages/coding-agent/src/core/extensions/types.ts:1872, loader.ts:500-509) and unregisterVirtualModel (packages/coding-agent/src/core/extensions/types.ts:1875, loader.ts:511-514), with virtual-models.ts:87-101: the declaration reaches the runtime queue without its route, the route runs in the extension against the request the Host sends and receives the extension context, and the physical model the router names is resolved by the Host. The value in the state is computed by the router from the state it was sent.
 func TestNodeVirtualModelRegistrationAndRouting(t *testing.T) {
 	eachNodeAPIIsolation(t, func(t *testing.T, isolation string) {
 		rig := newNodeAPIRig(t, isolation, &subprocess.HostCallbacks{}, nodeAPIFixture{"nodeapi-vm", nodeVirtualModelFixture})
@@ -321,7 +321,7 @@ func TestNodeVirtualModelRegistrationAndRouting(t *testing.T) {
 		}
 		got := pending()
 		if len(got) != 1 {
-			t.Fatalf("registered %v, want only noderouter/auto (dropped was unregistered while the factory ran)", got)
+			t.Fatalf("registerVirtualModel/unregisterVirtualModel: registered %v, want only noderouter/auto (dropped was unregistered while the factory ran)", got)
 		}
 		p := got["noderouter/auto"]
 		def := p.Definition
@@ -410,7 +410,7 @@ export default function (pi) {
     prepareLoadout: (loadout) => {
       const grep = loadout.getNamespace("grep") ?? {};
       return {
-        descriptions: { read: "node: " + loadout.callable.length + " callable, " + loadout.registered.length + " registered, grep is " + loadout.getExposure("grep") + " in " + grep.name + ", absent is " + loadout.getExposure("absent") },
+        descriptions: { read: "node: " + loadout.callable.length + " callable, " + loadout.registered.length + " registered, grep is " + loadout.getExposure("grep") + " in " + grep.name + ", absent is " + loadout.getExposure("absent") + ", grep guidelines " + JSON.stringify(loadout.getPromptGuidelines("grep")) + ", absent guidelines " + JSON.stringify(loadout.getPromptGuidelines("absent")) },
         hiddenDeclarations: loadout.declared.map((t) => t.name).filter((name) => name !== "read"),
       };
     },
@@ -491,8 +491,14 @@ func TestNodeToolExposureFieldsAndPrepareLoadout(t *testing.T) {
 				}
 				return nil
 			},
+			GetPromptGuidelines: func(name string) []string {
+				if name == "grep" {
+					return []string{"Use grep for patterns.", "Quote regexes."}
+				}
+				return nil
+			},
 		})
-		wantDescription := "node: 1 callable, 2 registered, grep is deferred in search-ns, absent is direct"
+		wantDescription := `node: 1 callable, 2 registered, grep is deferred in search-ns, absent is direct, grep guidelines ["Use grep for patterns.","Quote regexes."], absent guidelines []`
 		if changes == nil || changes.Descriptions["read"] != wantDescription || !slices.Equal(changes.HiddenDeclarations, []string{"grep"}) {
 			t.Fatalf("changes = %+v, want description %q hiding grep", changes, wantDescription)
 		}
@@ -524,7 +530,7 @@ func TestNodeToolResultCarriesStructuredContentAndIsError(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		typed, ok := final.(agent.AgentToolResult)
+		typed, ok := final, true
 		if !ok || string(typed.StructuredContent) != `{"step":2}` {
 			t.Fatalf("final = %#v", final)
 		}
@@ -557,7 +563,7 @@ func TestNodeGetAllToolsCarriesExposureNamespaceAndAnnotations(t *testing.T) {
 			return []subprocess.ToolInfo{{
 				Name: "grep", Description: "Grep", Parameters: json.RawMessage(`{"type":"object"}`),
 				Exposure: extension.ToolExposureDeferred, Namespace: &extension.ToolNamespace{Name: "search-ns"}, Annotations: &extension.ToolAnnotations{ReadOnlyHint: &readOnly},
-				SourceInfo: map[string]any{"path": "/x", "source": "builtin", "scope": "temporary", "origin": "top-level"}, Source: "builtin",
+				SourceInfo: extension.SourceInfo{Path: "/x", Source: "builtin", Scope: "temporary", Origin: "top-level"}, Source: "builtin",
 			}}
 		}}, nodeAPIFixture{"nodeapi-tools", nodeToolsFixture})
 		rig.command("nodeapi-tools", "all-tools", "")
@@ -635,7 +641,7 @@ func TestNodeExecuteToolAndCallableTools(t *testing.T) {
 				outcome := extension.AgentToolCallOutcome{ToolCall: ai.ToolCall{ID: callerID + "/1", Name: name, Arguments: ai.JsonObject{}}}
 				switch name {
 				case "echo":
-					if update, ok := options.OnUpdate.(func(agent.AgentToolResult) error); ok {
+					if update := options.OnUpdate; update != nil {
 						// The session rejects the call with the first sink error (agent-loop.ts:820-849); these rows' callbacks do not throw.
 						var first error
 						for _, step := range []string{"partial-one", "partial-two"} {
@@ -692,7 +698,7 @@ func TestNodeToolEventsAndNewEvents(t *testing.T) {
 		rig.waitNotification("outside|undefined|undefined")
 
 		base := extension.ToolCallEventBase{Type: "tool_call", ToolCallID: "outer-1/2", ParentToolCallID: "outer-1"}
-		if _, err := rig.runner.EmitToolCall(t.Context(), extension.BashToolCallEvent{ToolCallEventBase: base, ToolName: "bash", Input: map[string]any{"command": "ls"}}); err != nil {
+		if _, err := rig.runner.EmitToolCall(t.Context(), extension.CustomToolCallEvent{ToolCallEventBase: base, ToolName: "bash", Input: map[string]any{"command": "ls"}}); err != nil {
 			t.Fatal(err)
 		}
 		rig.waitNotification("tool_call|outer-1/2|outer-1")

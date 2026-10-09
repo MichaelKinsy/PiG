@@ -19,6 +19,7 @@ import (
 	"github.com/MichaelKinsy/PiG/coding/extension/host/inproc"
 	icodingagent "github.com/MichaelKinsy/PiG/internal/codingagent"
 	"github.com/MichaelKinsy/PiG/internal/testbudget"
+	"github.com/MichaelKinsy/PiG/tui"
 )
 
 type rebindFixture struct {
@@ -28,7 +29,7 @@ type rebindFixture struct {
 	events  map[*coding.Session]*extension.SessionStartEvent
 }
 
-func newRebindFixture(t testing.TB, handler func(*coding.Session, ...any) (any, error), onEvent func(*icodingagent.TestHarness, agent.AgentEvent), mutate ...func(*icodingagent.InteractiveOptions)) *rebindFixture {
+func newRebindFixture(t testing.TB, handler func(*coding.Session, ...any) (any, error), onEvent func(*icodingagent.TestHarness, agent.AgentEvent), mutate ...func(*icodingagent.InteractiveModeOptions)) *rebindFixture {
 	t.Helper()
 	f := &rebindFixture{runners: make(map[*coding.Session]*inproc.Runner), events: make(map[*coding.Session]*extension.SessionStartEvent)}
 	model := &ai.Model{ID: "faux-1", Provider: &scriptedProvider{replies: []scriptedReply{reply("assistant from start", ai.Usage{})}}, Capabilities: ai.ModelCapabilities{ContextWindow: 128000}}
@@ -38,7 +39,7 @@ func newRebindFixture(t testing.TB, handler func(*coding.Session, ...any) (any, 
 		t.Fatal(err)
 	}
 	factory := func(_ context.Context, options coding.CreateAgentSessionRuntimeOptions) (coding.CreateAgentSessionRuntimeResult, error) {
-		services, err := coding.NewServices(coding.ServicesOptions{CWD: options.CWD, AgentDir: options.AgentDir})
+		services, err := coding.CreateAgentSessionServices(coding.CreateAgentSessionServicesOptions{CWD: options.CWD, AgentDir: options.AgentDir})
 		if err != nil {
 			return coding.CreateAgentSessionRuntimeResult{}, err
 		}
@@ -64,7 +65,7 @@ func newRebindFixture(t testing.TB, handler func(*coding.Session, ...any) (any, 
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = f.runtime.Close() })
-	opts := icodingagent.InteractiveOptions{CWD: cwd, AgentDir: dir, SessionHandle: f.runtime.Session(), Model: model, SettingsManager: f.runtime.Services().SettingsManager(), ModelRegistry: f.runtime.Services().Registry().ModelRegistry, NoThemes: true, NoSkills: true, NoPromptTemplates: true}
+	opts := icodingagent.InteractiveModeOptions{CWD: cwd, AgentDir: dir, SessionHandle: f.runtime.Session(), Model: model, SettingsManager: f.runtime.Services().SettingsManager(), ModelRegistry: f.runtime.Services().Registry().ModelRegistry, NoThemes: true, NoSkills: true, NoPromptTemplates: true}
 	for _, apply := range mutate {
 		apply(&opts)
 	}
@@ -90,9 +91,9 @@ func rebindOriginalRecord(t *testing.T, family string, site int, title string) {
 	fmt.Println("RUNTIME_ORIGINAL " + string(data))
 }
 
-// Original #5943 sites240/277/332, with actual Runtime replacement rather than a leaf move or a successful Session facade.
+// Original #5943 sites241/279/335, with actual Runtime replacement rather than a leaf move or a successful Session facade.
 func TestSessionStartNotifyOriginalReplacement(t *testing.T) {
-	for _, site := range []int{240, 277, 332} {
+	for _, site := range []int{241, 279, 335} {
 		t.Run(fmt.Sprint(site), func(t *testing.T) {
 			icodingagent.ObserveRebindTitles(t, func(string) {})
 			var f *rebindFixture
@@ -114,15 +115,15 @@ func TestSessionStartNotifyOriginalReplacement(t *testing.T) {
 					return nil, fmt.Errorf("replacement pre-bind invariant failed")
 				}
 				switch site {
-				case 240:
+				case 241:
 					ui, err := extension.FromContext(args[1].(context.Context)).UI()
 					if err != nil {
 						return nil, err
 					}
 					ui.Notify("Hello Error", "error")
-				case 277:
+				case 279:
 					return nil, session.SendMessage(extension.CustomMessageRef{CustomType: "session-start", Content: "custom from start", Display: true}, nil)
-				case 332:
+				case 335:
 					return nil, extension.FromContext(args[1].(context.Context)).SendUserMessage("user from start", nil)
 				}
 				return nil, nil
@@ -152,7 +153,7 @@ func TestSessionStartNotifyOriginalReplacement(t *testing.T) {
 			if t.Failed() {
 				t.FailNow()
 			}
-			if site == 332 {
+			if site == 335 {
 				select {
 				case <-assistantDone:
 				case <-time.After(testbudget.Wait(t)):
@@ -168,16 +169,16 @@ func TestSessionStartNotifyOriginalReplacement(t *testing.T) {
 			chat := f.h.Chat()
 			title := "renders replacement session state before session_start handlers can notify"
 			switch site {
-			case 240:
+			case 241:
 				if !strings.Contains(chat, "Hello Error") {
 					t.Fatalf("replacement lost session_start notification: %q", chat)
 				}
-			case 277:
+			case 279:
 				title = "subscribes before replacement session_start handlers send messages"
 				if len(received) != 2 || !strings.HasPrefix(received[0], "message_start:custom:") || !strings.HasPrefix(received[1], "message_end:custom:") || !strings.Contains(received[0], "custom from start") || !strings.Contains(received[1], "custom from start") {
 					t.Fatalf("custom event order = %v", received)
 				}
-			case 332:
+			case 335:
 				title = "subscribes before replacement session_start handlers send user messages"
 				for _, want := range []struct{ kind, text string }{{"message_start:user:", "user from start"}, {"message_end:user:", "user from start"}, {"message_end:assistant:", "assistant from start"}} {
 					if !slices.ContainsFunc(received, func(got string) bool { return strings.HasPrefix(got, want.kind) && strings.Contains(got, want.text) }) {
@@ -200,7 +201,7 @@ func (s *countedRebindSession) Events() <-chan agent.AgentEvent {
 	return s.InteractiveSessionHandle.Events()
 }
 
-// Original startup-session-rebind-duplicate-subscription.test.ts:23. Each bind completion is released independently; count the actual subscription boundary as well as the title updates.
+// Original startup-session-rebind-duplicate-subscription.test.ts:24. Each bind completion is released independently; count the actual subscription boundary as well as the title updates.
 func TestStartupRebindOriginalStaleCompletion(t *testing.T) {
 	var titles, binds, subscriptions atomic.Int32
 	icodingagent.ObserveRebindTitles(t, func(string) { titles.Add(1) })
@@ -278,5 +279,29 @@ func TestStartupRebindOriginalStaleCompletion(t *testing.T) {
 	if got := titles.Load(); got != 1 {
 		t.Errorf("replacement title updates = %d, want1", got)
 	}
-	rebindOriginalRecord(t, "rebind", 23, "does not subscribe from the stale startup rebind")
+	rebindOriginalRecord(t, "rebind", 24, "does not subscribe from the stale startup rebind")
+}
+
+// Pi 1.1.0 interactive-mode.ts rebindCurrentSession resets the program status before it binds the replacement (`this.programStatus.reset()`, #10607): a run of the old session is not reported for the new one.
+func TestRebindResetsProgramStatus(t *testing.T) {
+	icodingagent.ObserveRebindTitles(t, func(string) {})
+	f := newRebindFixture(t, func(*coding.Session, ...any) (any, error) { return nil, nil }, nil)
+	var states func() []tui.ProgramState
+	f.h.Do(func() {
+		states = f.h.ObserveProgramStatus()
+		f.h.SendProgramStatusEvent(agent.AgentStartEvent{})
+	})
+	var before []tui.ProgramState
+	f.h.Do(func() { before = states() })
+	if len(before) != 1 || before[0] != tui.ProgramStateWorking {
+		t.Fatalf("states before replacement = %v, want [working]", before)
+	}
+	if result, err := f.runtime.NewSession(t.Context(), nil); err != nil || result.Cancelled {
+		t.Fatalf("replacement = %+v, %v", result, err)
+	}
+	var after []tui.ProgramState
+	f.h.Do(func() { after = states() })
+	if len(after) < 2 || after[len(after)-1] != tui.ProgramStateIdle {
+		t.Fatalf("states after replacement = %v, want idle last", after)
+	}
 }

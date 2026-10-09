@@ -1,5 +1,7 @@
 package services
 
+// pi: packages/coding-agent/src/experimental/services/connection.ts
+
 import (
 	"context"
 	"errors"

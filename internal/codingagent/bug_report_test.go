@@ -1,5 +1,11 @@
 package codingagent
 
+// pi: packages/coding-agent/src/modes/interactive/bug-report.ts
+
+// pi: packages/coding-agent/src/utils/pi-user-agent.ts
+
+// pi: packages/coding-agent/src/core/bug-report.ts
+
 import (
 	"archive/zip"
 	"bufio"
@@ -249,7 +255,7 @@ func TestBugExportWritesArchiveRecordsSessionAndLinksPigIssue(t *testing.T) {
 	assertSessionBranchJSONL(t, files["session.jsonl"], session)
 
 	var recorded CustomEntry
-	entries := session.Entries()
+	entries := session.GetEntries()
 	if err := json.Unmarshal(entries[len(entries)-1].Raw(), &recorded); err != nil {
 		t.Fatal(err)
 	}
@@ -453,5 +459,25 @@ func TestBugReportIDUsesTheSharedUUIDv7Generator(t *testing.T) {
 	}
 	if step := sequenceOf(metadata.ID) - sequenceOf(before); step == 0 || step > 1<<16 {
 		t.Fatalf("report id %q does not follow the shared generator's %q (sequence step %d)", metadata.ID, before, step)
+	}
+}
+
+// bug-report.ts describeProvider reports provider.baseUrl, which a built-in provider declares in providers/<id>.ts (`baseUrl: "https://api.openai.com/v1"`); a provider with no declared base URL reports null.
+func TestBugReportProviderInfoReportsTheBuiltInProviderBaseURL(t *testing.T) {
+	registry := NewModelRegistry(t.TempDir())
+	for providerID, want := range map[string]string{
+		"openai":    "https://api.openai.com/v1",
+		"anthropic": "https://api.anthropic.com",
+		"groq":      "https://api.groq.com/openai/v1",
+	} {
+		info := registry.BugReportProviderInfo(providerID)
+		if info == nil || info.BaseURL == nil || *info.BaseURL != want {
+			t.Errorf("%s base URL = %v, want %s", providerID, info, want)
+		}
+	}
+	for _, providerID := range []string{"opencode", "amazon-bedrock", "not-a-provider"} {
+		if info := registry.BugReportProviderInfo(providerID); info == nil || info.BaseURL != nil {
+			t.Errorf("%s declares no provider base URL, got %+v", providerID, info)
+		}
 	}
 }

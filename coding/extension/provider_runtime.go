@@ -26,7 +26,18 @@ type virtualModelRegistrationQueue struct {
 
 // ExtensionRuntime shares pending and bound provider actions between extension loading and the Runner. It stores no model catalog and does not execute factories.
 type ExtensionRuntime struct {
+	// ExtensionActions are the action handlers of upstream ExtensionRuntime, which extends ExtensionActions. Runner.BindCore installs the host's handlers and every extension context calls through them; they are nil until a runner binds.
+	ExtensionActions
+	// FlagValues holds the value of each extension flag: defaults set during registration, command-line values set afterwards.
+	// upstream: types.ts ExtensionRuntimeState.flagValues
+	FlagValues map[string]any
+
 	mu                           sync.Mutex
+	pendingNativeProviders       []PendingNativeProviderRegistration
+	staleMessage                 string
+	eventBusUnsubscribers        []*eventBusSubscription
+	factoryAPIs                  map[string]func(message string)
+	nativeBound                  bool
 	pendingProviderRegistrations *providerRegistrationQueue
 	providerActions              ProviderActions
 	bound                        bool
@@ -41,11 +52,36 @@ type ExtensionRuntime struct {
 	// createContext builds an extension Context for a virtual model's Route. It fails before the runner binds.
 	// upstream: types.ts:2099 (ExtensionRuntime.createContext)
 	createContext func() (*Context, error)
+	// reportError delivers a diagnostic to the bound runner's error
+	// listeners, the channel each mode shows extension errors on.
+	reportError func(*ExtensionError)
+}
+
+// SetErrorReporter installs the bound runner's error reporting. pig additive
+// (D107): a subprocess host reports diagnostics that arise outside any
+// handler, such as a rejected extension view, through it.
+func (r *ExtensionRuntime) SetErrorReporter(report func(*ExtensionError)) {
+	r.mu.Lock()
+	r.reportError = report
+	r.mu.Unlock()
+}
+
+// ReportError delivers err to the bound runner's error listeners. It
+// reports false when no runner has bound.
+func (r *ExtensionRuntime) ReportError(err *ExtensionError) bool {
+	r.mu.Lock()
+	report := r.reportError
+	r.mu.Unlock()
+	if report == nil {
+		return false
+	}
+	report(err)
+	return true
 }
 
 // CreateExtensionRuntime creates the pre-bind provider registration state.
 func CreateExtensionRuntime() *ExtensionRuntime {
-	return &ExtensionRuntime{pendingProviderRegistrations: &providerRegistrationQueue{}, pendingVirtualModelRegistrations: &virtualModelRegistrationQueue{}, mcpServers: NewMcpServerRegistry()}
+	return &ExtensionRuntime{FlagValues: map[string]any{}, pendingProviderRegistrations: &providerRegistrationQueue{}, pendingVirtualModelRegistrations: &virtualModelRegistrationQueue{}, mcpServers: NewMcpServerRegistry()}
 }
 
 // PendingProviderRegistrations returns the current queue in registration order. Repeated provider names remain separate entries.
@@ -73,11 +109,17 @@ func (r *ExtensionRuntime) RegisterProvider(name string, config ProviderConfig, 
 }
 
 // UnregisterProvider removes every queued registration of name before binding, and invokes the registry immediately afterward.
-func (r *ExtensionRuntime) UnregisterProvider(name string) {
+// The optional extensionPath is accepted as upstream's second parameter; neither upstream branch reads it.
+// upstream: loader.ts:220 `unregisterProvider: (name) =>`, runner.ts:534
+func (r *ExtensionRuntime) UnregisterProvider(name string, extensionPath ...string) {
+	_ = extensionPath
 	r.mu.Lock()
 	if !r.bound {
 		// Pi's filter replaces the queue array; an already-running bind iteration retains its original array.
 		r.pendingProviderRegistrations = &providerRegistrationQueue{entries: slices.DeleteFunc(slices.Clone(r.pendingProviderRegistrations.entries), func(entry PendingProviderRegistration) bool { return entry.Name == name })}
+		r.pendingNativeProviders = slices.DeleteFunc(slices.Clone(r.pendingNativeProviders), func(entry PendingNativeProviderRegistration) bool {
+			return entry.carrier != nil && entry.carrier.ID == name
+		})
 		r.mu.Unlock()
 		return
 	}
@@ -88,12 +130,22 @@ func (r *ExtensionRuntime) UnregisterProvider(name string) {
 	}
 }
 
-// BindProviderActions drains the loading queues in order, reports each failure before continuing, and installs immediate actions. Provider registrations drain first, then virtual models. Actions left nil leave their queue pending. The owner serializes binding with other binds. Callbacks run outside state locks and may register or unregister providers and virtual models.
+// BoundProviderActions returns the provider actions a host already bound to this runtime. A field is nil until its queue was drained by BindProviderActions.
+func (r *ExtensionRuntime) BoundProviderActions() ProviderActions {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	return r.providerActions
+}
+
+// BindProviderActions drains the loading queues in order, reports each failure before continuing, and installs immediate actions. Provider registrations drain first, then native providers, then virtual models. Actions left nil leave their queue pending. The owner serializes binding with other binds. Callbacks run outside state locks and may register or unregister providers and virtual models.
 //
 // upstream: runner.ts:265-294, 413-417, 497-541 (bindCore)
 func (r *ExtensionRuntime) BindProviderActions(actions ProviderActions, report func(*ExtensionError)) {
 	if actions.RegisterProvider != nil {
 		r.bindProviders(actions, report)
+	}
+	if actions.bindsNativeProvider() {
+		r.bindNativeProviders(actions, report)
 	}
 	if actions.RegisterVirtualModel != nil {
 		r.bindVirtualModels(actions, report)

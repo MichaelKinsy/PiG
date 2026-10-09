@@ -15,11 +15,11 @@ func (n *treeTestNode) NodeID() string               { return n.id }
 func (n *treeTestNode) NodeLabel() string            { return n.id }
 func (n *treeTestNode) NodeChildren() []tui.TreeNode { return n.kids }
 
-func newTestTree() *tui.TreeSelect {
+func newTestTree() *tui.TreeSelectorComponent {
 	root := &treeTestNode{id: "root", kids: []tui.TreeNode{
 		&treeTestNode{id: "a"}, &treeTestNode{id: "b"}, &treeTestNode{id: "c"},
 	}}
-	return tui.NewTreeSelect("", root)
+	return tui.NewTreeSelectorComponent("", root)
 }
 
 // TestModalSelectorDropsKittyKeyRelease pins the contract that chunks produced
@@ -34,7 +34,7 @@ func newTestTree() *tui.TreeSelect {
 //
 // Mirrors upstream tui.ts:887 (isKeyRelease(data) && !wantsKeyRelease -> drop).
 func TestModalSelectorDropsKittyKeyRelease(t *testing.T) {
-	// NewTreeSelect opens with the cursor on the last row ("c"), so a single
+	// NewTreeSelectorComponent opens with the cursor on the last row ("c"), so a single
 	// Up must land on "b"; a dispatched release moves twice, to "a".
 	tests := []struct {
 		name  string

@@ -10,7 +10,7 @@ import (
 // 100ms tick loop, which does not Invalidate it. If IsDirty() did not report
 // the live state, the container cache would freeze the elapsed counter.
 func TestToolExecutionIsDirtyWhileRunningBash(t *testing.T) {
-	c := NewToolExecutionComponent("bash", "sleep 5")
+	c := newToolCardForTest("bash", "sleep 5")
 	c.StartedAt = time.Now()
 	c.NeedsRedraw() // clear any construction-time dirty flag
 	if !c.IsDirty() {
@@ -27,7 +27,7 @@ func TestToolExecutionIsDirtyWhileRunningBash(t *testing.T) {
 // A running non-bash tool has no wall-clock footer, so it must be cacheable
 // (IsDirty false once settled): the cache optimization depends on this.
 func TestToolExecutionNonBashCacheableWhenSettled(t *testing.T) {
-	c := NewToolExecutionComponent("read", "file.go")
+	c := newToolCardForTest("read", "file.go")
 	c.StartedAt = time.Now()
 	c.NeedsRedraw()
 	if c.IsDirty() {
@@ -39,14 +39,14 @@ func TestToolExecutionNonBashCacheableWhenSettled(t *testing.T) {
 // advanced by the tick loop without Invalidating the block. IsDirty must report
 // the running state so the cache does not freeze the spinner.
 func TestBashExecutionBlockIsDirtyWhileRunning(t *testing.T) {
-	b := NewBashExecutionBlock("sleep 5", false)
+	b := NewBashExecutionComponent("sleep 5", nil, false, 1)
 	b.NeedsRedraw()
 	if !b.IsDirty() {
 		t.Fatal("running bash-execution block must report dirty so its spinner animates")
 	}
 
 	zero := 0
-	b.SetComplete(&zero, false, false)
+	b.SetComplete(&zero, false, nil, "")
 	b.NeedsRedraw()
 	if b.IsDirty() {
 		t.Fatal("completed bash-execution block must be clean so the cache can reuse it")

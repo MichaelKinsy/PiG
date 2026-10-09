@@ -51,7 +51,7 @@ func TestDeferredBashRetainsCompletionState(t *testing.T) {
 func TestCancelledBashWireAndPersistence(t *testing.T) {
 	sess := newBashTestSession(t, `{}`)
 	before := time.Now().UnixMilli()
-	result, err := sess.ExecuteBashWithOperations(t.Context(), "held", false, func(string) { sess.AbortBash() }, cancelledWireOperations{}, nil)
+	result, err := sess.ExecuteBash(t.Context(), "held", func(string) { sess.AbortBash() }, &ExecuteBashOptions{Operations: cancelledWireOperations{}})
 	if err != nil {
 		t.Fatal(err)
 	}

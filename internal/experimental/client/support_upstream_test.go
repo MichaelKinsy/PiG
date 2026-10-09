@@ -37,13 +37,13 @@ func newMemoryByteServer(serverId string) *memoryByteServer {
 }
 
 // factory connects every transport attempt to this server, as `(handlers) => server.connect(handlers)`.
-func (server *memoryByteServer) factory() ByteTransportFactory {
-	return func(_ context.Context, handlers ByteTransportHandlers, complete func(ByteTransport, error)) {
+func (server *memoryByteServer) factory() callbackByteTransportFactory {
+	return func(_ context.Context, handlers ByteTransportHandlers, complete func(callbackByteTransport, error)) {
 		complete(server.connect(handlers), nil)
 	}
 }
 
-func (server *memoryByteServer) connect(handlers ByteTransportHandlers) ByteTransport {
+func (server *memoryByteServer) connect(handlers ByteTransportHandlers) callbackByteTransport {
 	decoder, err := protocol.NewClientMessageDecoder(protocol.FrameDecoderOptions{})
 	if err != nil {
 		panic(err)
@@ -61,7 +61,7 @@ type memoryTransport struct {
 	closed   bool
 }
 
-func (transport *memoryTransport) Send(chunk []byte, complete func(error)) {
+func (transport *memoryTransport) Submit(chunk []byte, complete func(error)) {
 	server := transport.server
 	server.mu.Lock()
 	messages, err := server.decoder.Push(chunk)
@@ -327,7 +327,7 @@ func connectClient(t *testing.T, server *memoryByteServer, expectedServerId stri
 	if expectedServerId == "" {
 		expectedServerId = testServerId
 	}
-	return Connect(t.Context(), ClientOptions{ServerId: expectedServerId, TransportFactory: server.factory()})
+	return Connect(t.Context(), ClientOptions{ServerId: expectedServerId, TransportFactory: callbackFactory(server.factory())})
 }
 
 func mustConnectClient(t *testing.T, server *memoryByteServer) *Client {

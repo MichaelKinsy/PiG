@@ -24,6 +24,7 @@ pub use provider::{Provider, ProviderAuth, APIKeyAuth, OAuthAuth, APIKeyAuthInpu
 mod constrained_sampling;
 pub use constrained_sampling::ToolConstrainedSampling;
 mod context;
+mod editor_component;
 mod event_bus;
 #[cfg(test)]
 mod event_bus_tests;
@@ -37,10 +38,13 @@ pub use extension_api::{
     ToolPrepareLoadout, VirtualModel,
 };
 mod replaced_session;
+mod setup_session;
+pub use setup_session::{SetupFn, SetupSessionManager};
 pub use replaced_session::{ReplacedSessionContext, WithSessionFn};
 mod session_manager;
 pub use session_manager::SessionManager;
 mod extension;
+pub mod kit;
 mod login;
 mod oauth;
 mod protocol;
@@ -50,21 +54,24 @@ mod tool_render;
 mod tool_start_order;
 mod transport;
 mod user_bash;
+pub use user_bash::{BashExecFn, BashExecOptions, BashOperations};
 
 mod js_string;
 pub use js_string::JsString;
+pub use editor_component::{EditorBase, EditorComponent, EditorCursor, EditorFactory, EditorMouseEvent};
 
 pub use context::{
     CommandInfo, CompactCompleteHandler, CompactErrorHandler, CompactOptions, Context,
-    CustomMessage, DialogOptions, ExecOptions, ExecResult, ModelEventStream, ModelRegistry,
+    CustomMessage, DialogOptions, ExecOptions, ExecResult, ModelEventStream, ModelFetchRequest, ModelFetchResponse, ModelRegistry, ModelStreamCallbacks, MouseEvent, OverlayBounds, OverlayHandle, OverlayState, UnfocusTarget,
     RemoteComponent, RemoteComponentInvalidate, RemoteComponentResult, SendMessageOptions,
-    SourceInfo, TerminalInputResult, TerminalInputSubscription, ToolInfo, message_role,
-    message_text,
+    SourceInfo, TerminalInputResult, TerminalInputSubscription, ToolInfo, ViewComponent, message_role,
+    message_text, is_bash_tool_result, is_powershell_tool_result, is_read_tool_result, is_edit_tool_result, is_write_tool_result, is_grep_tool_result, is_find_tool_result, is_ls_tool_result,
 };
 pub use events::*;
 #[doc(hidden)]
 pub use extension::report_load_failure;
 pub use extension::{
+    EventSubscriber, EventSubscription,
     CommandResult, Extension, Factory, FlagOptions, FlagType, MarkdownTransformContext, ProjectTrustDecision, ProjectTrustResult, ToolDefinition,
     ToolHandler, ToolPrepareArguments, ToolResult,
 };
@@ -77,7 +84,7 @@ pub use oauth::{
 pub use protocol::{AutocompleteItem, ConstrainedSampling, Schema, empty_schema};
 pub use theme::{Color, TextAttributes, Theme, ThemeAppearance, ThemeColorFn, ThemeSlot, ThemeStyle};
 pub use tool_render::{
-    SharedToolRenderCall, SharedToolRenderResult, ToolRenderCallHandler, ToolRenderContext,
-    ToolRenderResult, ToolRenderResultHandler, ToolRenderResultOptions, ToolRenderShell,
-    ToolRendererResolver, ToolRendererSet,
+    SharedToolRenderCall, SharedToolRenderCallView, SharedToolRenderResult, SharedToolRenderResultView,
+    ToolRenderCallHandler, ToolRenderCallViewHandler, ToolRenderContext, ToolRenderResult, ToolRenderResultHandler,
+    ToolRenderResultOptions, ToolRenderResultViewHandler, ToolRenderShell, ToolRendererResolver, ToolRendererSet,
 };

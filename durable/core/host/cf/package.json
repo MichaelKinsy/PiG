@@ -1,0 +1,21 @@
+{
+	"name": "durable-core-cf-host",
+	"private": true,
+	"type": "module",
+	"description": "The Cloudflare Durable Object host of the Durable core: ABI 1 shim, effects, alarms, and the pi-durable-compatible facade.",
+	"engines": { "node": ">=26.7.0" },
+	"scripts": {
+		"check": "tsc -p . && node --test --test-timeout=120000 test/*.test.ts"
+	},
+	"dependencies": {
+		"@earendil-works/chord": "1.0.4",
+		"@earendil-works/pi-ai": "1.0.4",
+		"@earendil-works/pi-durable": "1.0.4"
+	},
+	"devDependencies": {
+		"@cloudflare/workers-types": "5.20261006.1",
+		"esbuild": "0.28.2",
+		"miniflare": "4.20260730.0",
+		"typescript": "7.0.2"
+	}
+}

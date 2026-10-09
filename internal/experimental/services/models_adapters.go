@@ -30,7 +30,7 @@ func (view modelsView) CycleThinking(ctx context.Context) error {
 	return target.CycleThinking(ctx)
 }
 
-func (view modelsView) GetThinkingLevels(ctx context.Context) ([]ai.ThinkingLevel, error) {
+func (view modelsView) GetThinkingLevels(ctx context.Context) ([]ai.ModelThinkingLevel, error) {
 	target, err := view.resolve()
 	if err != nil {
 		return nil, err
@@ -54,7 +54,7 @@ func (view modelsView) Select(ctx context.Context, model ModelRef) error {
 	return target.Select(ctx, model)
 }
 
-func (view modelsView) SelectThinking(ctx context.Context, level ai.ThinkingLevel) error {
+func (view modelsView) SelectThinking(ctx context.Context, level ai.ModelThinkingLevel) error {
 	target, err := view.resolve()
 	if err != nil {
 		return err
@@ -77,8 +77,8 @@ func (models remoteModels) CycleThinking(ctx context.Context) error {
 	return err
 }
 
-func (models remoteModels) GetThinkingLevels(ctx context.Context) ([]ai.ThinkingLevel, error) {
-	return chord.CallResult[[]ai.ThinkingLevel](ctx, models.service, "getThinkingLevels")
+func (models remoteModels) GetThinkingLevels(ctx context.Context) ([]ai.ModelThinkingLevel, error) {
+	return chord.CallResult[[]ai.ModelThinkingLevel](ctx, models.service, "getThinkingLevels")
 }
 
 func (models remoteModels) Refresh(ctx context.Context) error {
@@ -91,7 +91,7 @@ func (models remoteModels) Select(ctx context.Context, model ModelRef) error {
 	return err
 }
 
-func (models remoteModels) SelectThinking(ctx context.Context, level ai.ThinkingLevel) error {
+func (models remoteModels) SelectThinking(ctx context.Context, level ai.ModelThinkingLevel) error {
 	_, err := models.service.Call(ctx, "selectThinking", level)
 	return err
 }

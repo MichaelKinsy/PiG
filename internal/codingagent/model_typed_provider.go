@@ -23,7 +23,7 @@ func builtinImageModelsOf(providerID string) []*ai.ImageModel {
 		builtinImageModels.byID = map[string][]*ai.ImageModel{}
 		for _, provider := range ai.GetImageProviders() {
 			for _, model := range ai.GetImageModels(provider) {
-				builtinImageModels.byID[provider] = append(builtinImageModels.byID[provider], new(model))
+				builtinImageModels.byID[string(provider)] = append(builtinImageModels.byID[string(provider)], new(model))
 			}
 		}
 	})

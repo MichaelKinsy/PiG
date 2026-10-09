@@ -11,12 +11,12 @@ import (
 
 // RemoteServiceBindingOptions configures CreateRemoteServiceBinding.
 type RemoteServiceBindingOptions struct {
-	// Services is the allowlist of service IDs this binding may use.
-	Services []string
+	// Services is the allowlist of services this binding may use (`readonly { readonly id: string }[]`, types.ts:269-270): a service definition, or a [ServiceID].
+	Services []ServiceReference
 	// Transport carries calls and subscriptions.
 	Transport RemoteServiceTransport
-	// Unbound starts the binding unbound (upstream bound: false).
-	Unbound bool
+	// Bound is upstream `bound?: boolean`: nil starts the binding bound; a pointer to false starts it unbound.
+	Bound *bool
 	// OnError receives asynchronous subscription, replica and observer errors.
 	OnError func(error)
 	// AssertAccess guards every handle access (for example facet revocation).
@@ -93,10 +93,11 @@ func CreateRemoteServiceBinding(options RemoteServiceBindingOptions) (*RemoteSer
 		modes:        map[string]ServiceMode{},
 		singletons:   map[string]*singletonBinding{},
 		keyed:        map[string]*keyedBinding{},
-		bound:        !options.Unbound,
+		bound:        options.Bound == nil || *options.Bound,
 		transition:   settledTask(),
 	}
-	for _, id := range options.Services {
+	for _, service := range options.Services {
+		id := service.Id()
 		if binding.allowlist[id] {
 			return nil, errors.New("Remote service binding has duplicate service IDs")
 		}
@@ -121,10 +122,8 @@ func (binding *RemoteServiceBinding) assertHandleAccess() error {
 	return binding.assertAccess()
 }
 
-func (binding *RemoteServiceBinding) assertAvailableLocked(serviceId string, local bool, mode ServiceMode) error {
-	if local {
-		return remoteError(ErrServiceNotAllowed, "Service %s is process-local", serviceId)
-	}
+// assertAvailableLocked is upstream #assertAvailable. UseRemote and ObserveRemote run #assertRemotable before it, so a process-local service reports that error even after dispose.
+func (binding *RemoteServiceBinding) assertAvailableLocked(serviceId string, mode ServiceMode) error {
 	if binding.disposed {
 		return errors.New("Remote service binding is disposed")
 	}
@@ -151,7 +150,7 @@ func UseRemote[T any](binding *RemoteServiceBinding, def ServiceDefinition[T]) (
 func (binding *RemoteServiceBinding) Use(serviceId string) (*RemoteService, error) {
 	binding.mu.Lock()
 	defer binding.mu.Unlock()
-	if err := binding.assertAvailableLocked(serviceId, false, ServiceSingleton); err != nil {
+	if err := binding.assertAvailableLocked(serviceId, ServiceSingleton); err != nil {
 		return nil, err
 	}
 	if existing, ok := binding.singletons[serviceId]; ok {
@@ -223,7 +222,7 @@ func (binding *RemoteServiceBinding) startSingleton(serviceId string, single *si
 			} else {
 				err = single.facade.install(ctx, *update.Snapshot, epoch)
 			}
-		case update.Type == UpdateState && update.Address == nil:
+		case update.Type == UpdateState && update.Instance == nil:
 			err = single.facade.update(ctx, update.Member, update.Sequence, update.Ops, epoch)
 		}
 		if err != nil {
@@ -276,7 +275,7 @@ func (binding *RemoteServiceBinding) Observe(serviceId string, handler func(cont
 // observeConnecting is Observe that also returns the keyed subscription start the observer joined, or nil when the binding is unbound.
 func (binding *RemoteServiceBinding) observeConnecting(serviceId string, handler func(context.Context, *RemoteService) error) (func(), *task, error) {
 	binding.mu.Lock()
-	if err := binding.assertAvailableLocked(serviceId, false, ServiceKeyed); err != nil {
+	if err := binding.assertAvailableLocked(serviceId, ServiceKeyed); err != nil {
 		binding.mu.Unlock()
 		return nil, nil, err
 	}
@@ -411,8 +410,8 @@ func decodeCallResult[R any](raw json.RawMessage, err error, serviceId, member s
 }
 
 type memberSlot struct {
-	kind     string
-	expected string
+	kind     ServiceMemberKind
+	expected ServiceMemberKind
 	replica  *replicaCore
 }
 
@@ -427,14 +426,17 @@ type serviceFacade struct {
 	epoch        atomic.Int64
 	mu           sync.Mutex
 	slots        map[string]*memberSlot
-	descriptions map[string]string
+	descriptions map[string]ServiceMemberKind
+
+	// slotOrder lists slot names in creation order: upstream's slot Map iterates in insertion order, which decides the first unknown member an install reports.
+	slotOrder []string
 }
 
 func newServiceFacade(serviceId string, address *ServiceInstanceAddress, transport RemoteServiceTransport, isActive func() bool, assertAccess func() error, reportError func(error)) *serviceFacade {
 	return &serviceFacade{
 		serviceId: serviceId, address: address, transport: transport, isActive: isActive,
 		assertAccess: assertAccess, reportError: reportError,
-		slots: map[string]*memberSlot{}, descriptions: map[string]string{},
+		slots: map[string]*memberSlot{}, descriptions: map[string]ServiceMemberKind{},
 	}
 }
 
@@ -443,11 +445,12 @@ func (facade *serviceFacade) slotLocked(member string) *memberSlot {
 	if !ok {
 		slot = &memberSlot{replica: newReplica(facade.reportError), kind: facade.descriptions[member]}
 		facade.slots[member] = slot
+		facade.slotOrder = append(facade.slotOrder, member)
 	}
 	return slot
 }
 
-func (facade *serviceFacade) expectLocked(member, kind string) error {
+func (facade *serviceFacade) expectLocked(member string, kind ServiceMemberKind) error {
 	slot := facade.slotLocked(member)
 	if slot.expected != "" && slot.expected != kind {
 		return remoteError(ErrServiceMemberMismatch, "Remote service member %s.%s was used as two different kinds", facade.serviceId, member)
@@ -459,7 +462,7 @@ func (facade *serviceFacade) expectLocked(member, kind string) error {
 	return nil
 }
 
-func (facade *serviceFacade) setDescriptionLocked(member, kind string) error {
+func (facade *serviceFacade) setDescriptionLocked(member string, kind ServiceMemberKind) error {
 	slot := facade.slotLocked(member)
 	if slot.kind != "" && slot.kind != kind {
 		return fmt.Errorf("Remote service member %s.%s changed kind", facade.serviceId, member)
@@ -536,7 +539,7 @@ func (facade *serviceFacade) install(ctx context.Context, snapshot ServiceInstan
 		members[member.Name] = member
 	}
 	facade.mu.Lock()
-	for name := range facade.slots {
+	for _, name := range facade.slotOrder {
 		if _, ok := members[name]; !ok {
 			facade.mu.Unlock()
 			return remoteError(ErrServiceMemberNotFound, "Unknown remote service member %s.%s", facade.serviceId, name)
@@ -546,34 +549,27 @@ func (facade *serviceFacade) install(ctx context.Context, snapshot ServiceInstan
 	for name, member := range members {
 		facade.descriptions[name] = member.Kind
 	}
-	type hydration struct {
-		replica  *replicaCore
-		sequence int
-		ops      []Op
-	}
-	var hydrations []hydration
-	for _, member := range snapshot.Members {
-		slot, exists := facade.slots[member.Name]
-		if member.Kind == MemberState {
-			if !exists {
-				slot = facade.slotLocked(member.Name)
-			}
-			if err := facade.setDescriptionLocked(member.Name, MemberState); err != nil {
-				facade.mu.Unlock()
-				return err
-			}
-			hydrations = append(hydrations, hydration{slot.replica, member.Sequence, member.Ops})
-		} else if exists {
-			if err := facade.setDescriptionLocked(member.Name, member.Kind); err != nil {
-				facade.mu.Unlock()
-				return err
-			}
-		}
-	}
 	facade.mu.Unlock()
-	for _, entry := range hydrations {
-		if err := entry.replica.hydrate(ctx, entry.sequence, entry.ops, facade.valid(epoch)); err != nil {
+	// Upstream describes and hydrates one member at a time in snapshot order, so an error leaves the earlier state members hydrated and the later ones untouched.
+	for _, member := range snapshot.Members {
+		facade.mu.Lock()
+		slot, exists := facade.slots[member.Name]
+		if member.Kind != MemberState && !exists {
+			facade.mu.Unlock()
+			continue
+		}
+		if !exists {
+			slot = facade.slotLocked(member.Name)
+		}
+		err := facade.setDescriptionLocked(member.Name, member.Kind)
+		facade.mu.Unlock()
+		if err != nil {
 			return err
+		}
+		if member.Kind == MemberState {
+			if err := slot.replica.hydrate(ctx, member.Sequence, member.Ops, facade.valid(epoch)); err != nil {
+				return err
+			}
 		}
 	}
 	return nil
@@ -597,8 +593,8 @@ func (facade *serviceFacade) update(ctx context.Context, member string, sequence
 func (facade *serviceFacade) clear() {
 	facade.mu.Lock()
 	slots := make([]*memberSlot, 0, len(facade.slots))
-	for _, slot := range facade.slots {
-		slots = append(slots, slot)
+	for _, name := range facade.slotOrder {
+		slots = append(slots, facade.slots[name])
 	}
 	facade.mu.Unlock()
 	for _, slot := range slots {

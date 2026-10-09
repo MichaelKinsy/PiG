@@ -106,18 +106,20 @@ pub struct ToolLoadout {
     pub registered: Vec<AgentTool>,
     exposures: HashMap<String, ToolExposure>,
     namespaces: HashMap<String, ToolNamespace>,
+    prompt_guidelines: HashMap<String, Vec<String>>,
 }
 
 impl ToolLoadout {
-    /// A loadout with the exposure and namespace tables the host sent.
+    /// A loadout with the exposure, namespace and prompt guideline tables the host sent.
     pub fn new(
         declared: Vec<AgentTool>,
         callable: Vec<AgentTool>,
         registered: Vec<AgentTool>,
         exposures: HashMap<String, ToolExposure>,
         namespaces: HashMap<String, ToolNamespace>,
+        prompt_guidelines: HashMap<String, Vec<String>>,
     ) -> Self {
-        Self { declared, callable, registered, exposures, namespaces }
+        Self { declared, callable, registered, exposures, namespaces, prompt_guidelines }
     }
 
     /// Upstream `getExposure`: a tool the host does not list is `direct`, as `_getToolExposure` defaults (`agent-session.ts:1481`).
@@ -128,6 +130,12 @@ impl ToolLoadout {
     /// Upstream `getNamespace`: `None` for a tool without a namespace.
     pub fn get_namespace(&self, name: &str) -> Option<&ToolNamespace> {
         self.namespaces.get(name)
+    }
+
+    /// Upstream `getPromptGuidelines`: a tool's `promptGuidelines` as the system prompt has them (trimmed, without
+    /// duplicates); empty for a tool without any. Hidden declarations leave them out of the system prompt.
+    pub fn get_prompt_guidelines(&self, name: &str) -> &[String] {
+        self.prompt_guidelines.get(name).map(Vec::as_slice).unwrap_or_default()
     }
 }
 
@@ -185,6 +193,9 @@ pub struct AgentToolCallOutcome {
     pub result: AgentToolResult,
     #[serde(default, rename = "isError")]
     pub is_error: bool,
+    /// Milliseconds `execute()` took, measured with a monotonic clock; absent when the tool did not run (`types.ts:454`).
+    #[serde(default, rename = "durationMs")]
+    pub duration_ms: Option<i64>,
 }
 
 /// Partial results of a nested tool, in order.
@@ -366,11 +377,13 @@ pub(crate) struct ToolLoadoutPayload {
     exposures: HashMap<String, ToolExposure>,
     #[serde(default)]
     namespaces: HashMap<String, ToolNamespace>,
+    #[serde(default, rename = "promptGuidelines")]
+    prompt_guidelines: HashMap<String, Vec<String>>,
 }
 
 impl From<ToolLoadoutPayload> for ToolLoadout {
     fn from(payload: ToolLoadoutPayload) -> Self {
-        ToolLoadout::new(payload.declared, payload.callable, payload.registered, payload.exposures, payload.namespaces)
+        ToolLoadout::new(payload.declared, payload.callable, payload.registered, payload.exposures, payload.namespaces, payload.prompt_guidelines)
     }
 }
 

@@ -12,7 +12,7 @@ import (
 func TestSkillExpansionReadsCurrentFileAndPreservesCommandParsing(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "test-skill.md")
-	skill := &SkillDef{Name: "test", Path: path, Dir: dir, Body: "discovery-time body"}
+	skill := &SkillDef{Name: "test", FilePath: path, BaseDir: dir, Body: "discovery-time body"}
 	for _, body := range []string{"", "first body", "second body", "\u0085body\u0085", "\ufeffbody\ufeff", strings.Repeat("large body\n", 65536)} {
 		if err := os.WriteFile(path, []byte("---\nname: test\n---\n\n"+body+"\n"), 0o600); err != nil {
 			t.Fatal(err)
@@ -45,7 +45,7 @@ func TestSkillExpansionReadsCurrentFileAndPreservesCommandParsing(t *testing.T) 
 
 func TestSkillExpansionReportsFileFailureWithoutCachedBody(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "missing.md")
-	got, ok, failure := ExpandSkillCommand("/skill:test explain", []*SkillDef{{Name: "test", Path: path, Body: "cached body"}})
+	got, ok, failure := ExpandSkillCommand("/skill:test explain", []*SkillDef{{Name: "test", FilePath: path, Body: "cached body"}})
 	if ok || got != "" || failure == nil || failure.ExtensionPath != path || failure.Event != "skill_expansion" || failure.Error != "ENOENT: no such file or directory, open '"+path+"'" {
 		t.Fatalf("expansion=%q matched=%v failure=%+v", got, ok, failure)
 	}
@@ -58,7 +58,7 @@ func BenchmarkSkillInvocation(b *testing.B) {
 			if err := os.WriteFile(path, []byte(strings.Repeat("x", size)), 0o600); err != nil {
 				b.Fatal(err)
 			}
-			skills := []*SkillDef{{Name: "test", Path: path, Dir: filepath.Dir(path)}}
+			skills := []*SkillDef{{Name: "test", FilePath: path, BaseDir: filepath.Dir(path)}}
 			b.ReportAllocs()
 			for b.Loop() {
 				if _, ok, failure := ExpandSkillCommand("/skill:test args", skills); !ok || failure != nil {

@@ -30,7 +30,7 @@ func TestExtractGoCurrentSettingsAndPrompts(t *testing.T) {
 	var ids []string
 	for _, item := range inventory.Tables[0].Items {
 		ids = append(ids, item.ID)
-		if item.ID == "image-width-cells" && !reflect.DeepEqual(item.CurrentCalls, []string{"fmt.Sprintf", "s.GetImageWidthCells"}) {
+		if item.ID == "image-width-cells" && !reflect.DeepEqual(item.CurrentCalls, []string{"strconv.Itoa"}) {
 			t.Fatalf("image-width-cells current calls = %v", item.CurrentCalls)
 		}
 	}
@@ -51,7 +51,7 @@ func TestExtractGoCurrentSettingsAndPrompts(t *testing.T) {
 	}
 	for _, callback := range callbacks {
 		if callback.ID == "image-width-cells" {
-			if !reflect.DeepEqual(callback.Writes, []string{"n", "s.ImageWidthCells"}) || !reflect.DeepEqual(callback.Calls, []string{"strconv.Atoi"}) {
+			if len(callback.Writes) != 0 || !reflect.DeepEqual(callback.Calls, []string{"callbacks.OnImageWidthCellsChange", "settingsParseInt"}) {
 				t.Fatalf("image-width-cells effects = %#v", callback)
 			}
 		}
@@ -89,11 +89,11 @@ func TestExtractGoCurrentSettingsAndPrompts(t *testing.T) {
 	}
 	var ordered []string
 	for _, call := range compact.Calls {
-		if call.Callee == "generateSummary" || call.Callee == "generateTurnPrefixSummary" || call.Callee == "combineUsage" {
+		if call.Callee == "GenerateSummaryWithUsageUsing" || call.Callee == "generateTurnPrefixSummary" || call.Callee == "combineUsage" {
 			ordered = append(ordered, call.Callee)
 		}
 	}
-	if !reflect.DeepEqual(ordered, []string{"generateSummary", "generateTurnPrefixSummary", "combineUsage", "generateSummary"}) {
+	if !reflect.DeepEqual(ordered, []string{"GenerateSummaryWithUsageUsing", "generateTurnPrefixSummary", "combineUsage", "GenerateSummaryWithUsageUsing"}) {
 		t.Fatalf("compact ordered calls = %v", ordered)
 	}
 	var stateProfile []string
@@ -234,11 +234,11 @@ func TestAddGoFunctionCallersRetainsAllReviewedCallSites(t *testing.T) {
 			// These are parser inputs for the reviewed caller paths, not runtime stubs.
 			for path, source := range map[string]string{
 				"coding/session_summarization_auth.go":           "package fixture\nfunc runDefaultCompaction() { compaction.Compact() }\n",
-				"internal/codingagent/compaction/compaction.go":  "package fixture\nfunc Compact() { generateTurnPrefixSummary() }\n",
-				"internal/codingagent/settings.go":               "package fixture\nfunc Load() {\n" + tc.body + "}\nfunc UpdateGlobal() { saveSettingsPatch() }\nfunc SetProjectPackages() { sm.UpdateProject() }\n",
-				"cmd/pig/cli_runtime_build.go":                   "package fixture\ntype cliRuntimeBuilder struct{}\nfunc (b *cliRuntimeBuilder) buildResources() { services.SettingsManager().SetProjectTrusted(true) }\n",
+				"internal/codingagent/compaction/compaction.go":  "package fixture\nfunc CompactUsing() { generateTurnPrefixSummary() }\n",
+				"internal/codingagent/settings.go":               "package fixture\nfunc Load() {\n" + tc.body + "}\nfunc UpdateGlobal() { saveSettingsPatch() }\nfunc SetBlockImages() { sm.UpdateGlobal() }\nfunc SetProjectPackages() { sm.UpdateProject() }\n",
+				"coding/cli/cli_runtime_build.go":                "package fixture\ntype cliRuntimeBuilder struct{}\nfunc (b *cliRuntimeBuilder) buildResources() { services.SettingsManager().SetProjectTrusted(true) }\n",
 				"internal/codingagent/interactive_commands.go":   "package fixture\nfunc buildSlashContext() { m.opts.SettingsManager.Reload() }\n",
-				"internal/codingagent/slash_session_handlers.go": "package fixture\nfunc settingsHandlerTUI() { sc.SettingsManager.UpdateGlobal() }\nfunc settingsHandler() { settingsHandlerTUI() }\n",
+				"internal/codingagent/slash_session_handlers.go": "package fixture\nfunc settingsHandlerTUI() {}\nfunc settingsHandler() { settingsHandlerTUI() }\n",
 			} {
 				path = filepath.Join(root, path)
 				if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
@@ -271,7 +271,7 @@ func TestAddGoFunctionCallersRetainsAllReviewedCallSites(t *testing.T) {
 			}
 			// resource-loader.ts:399 applies the resolved trust; PiG does so in the cliRuntimeBuilder.buildResources method.
 			trustCall := "services.SettingsManager().SetProjectTrusted(true)"
-			wantTrust := []FunctionCaller{{Path: "cmd/pig/cli_runtime_build.go", Symbol: "buildResources", Expression: trustCall, StartLine: 3, SourceHash: hashString(trustCall)}}
+			wantTrust := []FunctionCaller{{Path: "coding/cli/cli_runtime_build.go", Symbol: "buildResources", Expression: trustCall, StartLine: 3, SourceHash: hashString(trustCall)}}
 			if got := functions[3].Callers; !reflect.DeepEqual(got, wantTrust) {
 				t.Fatalf("setProjectTrusted callsite pins = %#v, want %#v", got, wantTrust)
 			}
@@ -298,5 +298,32 @@ func apply(s *Settings, v string) {
 	}
 	if !reflect.DeepEqual(effects.Reads, []string{"s.Enabled", "s.Value"}) {
 		t.Fatalf("reads = %v", effects.Reads)
+	}
+}
+
+// A cycle row may pass its values as typed closed-union constants, with or without the string conversion; an unknown name or a non-constant stays unresolved.
+func TestGoConstantStringResolvesNamedStringConstants(t *testing.T) {
+	file, err := parser.ParseFile(token.NewFileSet(), "settings.go", "package p\n\ntype Mode string\n\nconst (\n\tModeA Mode = \"a\"\n\tModeB Mode = \"b\"\n)\n\nvar notConstant = \"x\"\n", 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	constants := goStringConstants(file)
+	for source, want := range map[string]string{"string(ModeA)": "a", "ModeB": "b"} {
+		expression, err := parser.ParseExpr(source)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got, ok := goConstantString(expression, constants); !ok || got != want {
+			t.Fatalf("%s = %q, %v; want %q", source, got, ok, want)
+		}
+	}
+	for _, source := range []string{"string(Missing)", "notConstant", `"literal"`, "f(ModeA)"} {
+		expression, err := parser.ParseExpr(source)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got, ok := goConstantString(expression, constants); ok {
+			t.Fatalf("%s resolved to %q", source, got)
+		}
 	}
 }

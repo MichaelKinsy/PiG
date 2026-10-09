@@ -240,6 +240,10 @@ func findRustSDKRoot(extensions []RustExtension) (string, error) {
 			return abs, nil
 		}
 	}
+	// pig additive (D92): only an author override serves a Rust SDK the active Piglet strips; this binary staged none.
+	if err := StrippedSDKError("rust"); err != nil {
+		return "", err
+	}
 	for _, root := range stagedSDKRoots("sdk-rs") {
 		if _, err := os.Stat(filepath.Join(root, "Cargo.toml")); err == nil {
 			return root, nil

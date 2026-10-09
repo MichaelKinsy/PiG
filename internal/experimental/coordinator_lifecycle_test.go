@@ -92,7 +92,7 @@ func TestCoordinatorPublicGenerationReplacement(t *testing.T) {
 
 func TestCoordinatorSocketOwnership(t *testing.T) {
 	t.Run("regular file", func(t *testing.T) {
-		dir := t.TempDir()
+		dir := socketDir(t)
 		public, control := filepath.Join(dir, "p"), filepath.Join(dir, "c")
 		if err := os.WriteFile(control, []byte("keep"), 0o600); err != nil {
 			t.Fatal(err)
@@ -115,7 +115,7 @@ func TestCoordinatorSocketOwnership(t *testing.T) {
 		lease.want(t, `{"type":"peer_registered","peerId":"alive"}`)
 	})
 	t.Run("stale sockets", func(t *testing.T) {
-		dir := t.TempDir()
+		dir := socketDir(t)
 		public, control := filepath.Join(dir, "p"), filepath.Join(dir, "c")
 		for _, path := range []string{public, control} {
 			listener, err := net.ListenUnix("unix", &net.UnixAddr{Name: path, Net: "unix"})
@@ -143,7 +143,7 @@ func TestCoordinatorSocketOwnership(t *testing.T) {
 		}
 	})
 	t.Run("second listen fails", func(t *testing.T) {
-		dir := t.TempDir()
+		dir := socketDir(t)
 		control := filepath.Join(dir, "c")
 		if _, err := startCoordinator(filepath.Join(dir, "absent", "p"), control); err == nil {
 			t.Fatal("missing directory accepted")
@@ -179,7 +179,7 @@ func TestCoordinatorStartupLease(t *testing.T) {
 }
 
 func TestEnsureCoordinatorSpawnsNativeEntry(t *testing.T) {
-	dir := t.TempDir()
+	dir := socketDir(t)
 	public, control := filepath.Join(dir, "p"), filepath.Join(dir, "c")
 	lease, err := EnsureCoordinator(t.Context(), public, control, InternalProcessSpawnOptions{Env: map[string]string{"PIG_TEST_COORDINATOR": "1"}})
 	if err != nil {
@@ -206,7 +206,7 @@ func TestEnsureCoordinatorSpawnsNativeEntry(t *testing.T) {
 }
 
 func TestCoordinatorCanceledTimerCannotRetireNewGeneration(t *testing.T) {
-	dir := t.TempDir()
+	dir := socketDir(t)
 	c, err := startCoordinator(filepath.Join(dir, "p"), filepath.Join(dir, "c"))
 	if err != nil {
 		t.Fatal(err)

@@ -74,14 +74,17 @@ func TestOverlayFuseImportsFactoryPackageWithoutWritingGoMod(t *testing.T) {
 		t.Fatal(err)
 	}
 	extRoot := t.TempDir()
+	if err := os.WriteFile(filepath.Join(extRoot, "go.mod"), []byte("module example.com/extensions\n\ngo 1.26\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
 	overlay, err := newBuildOverlay(t.TempDir())
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := overlayFuse(overlay, root, []fusedEntry{{
+	if _, err := overlayFuse(overlay, root, []fusedEntry{{
 		Name: "review", Pkg: "ext_review", Factory: "Extension", Root: extRoot,
 		ModulePath: "example.com/extensions", Package: "example.com/extensions/review",
-	}}); err != nil {
+	}}, nil); err != nil {
 		t.Fatal(err)
 	}
 	stagedMod, err := os.ReadFile(overlay.replace[filepath.Join(root, "go.mod")])
@@ -161,10 +164,10 @@ func Extension() *sdk.Extension { return sdk.New(shared.Name()) }
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := overlayFuse(overlay, root, []fusedEntry{{
+	if _, err := overlayFuse(overlay, root, []fusedEntry{{
 		Name: "review", Pkg: "ext_review", Factory: "Extension", Root: extRoot,
 		ModulePath: "example.com/extensions", Package: "example.com/extensions/review",
-	}}); err != nil {
+	}}, nil); err != nil {
 		t.Fatal(err)
 	}
 	overlayPath, err := overlay.write()
@@ -179,27 +182,99 @@ func Extension() *sdk.Extension { return sdk.New(shared.Name()) }
 	}
 }
 
+// A frontend member alone is enough to build: the overlay registers it in
+// frontendpack, pins its module, and leaves the fused-extension registry as
+// it is.
+func TestOverlayFuseRegistersFrontendMember(t *testing.T) {
+	root := t.TempDir()
+	sdkRoot, err := filepath.Abs(filepath.Join("..", "..", "extensions", "sdk"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	goMod := "module example.com/pig\n\ngo 1.26\n\nrequire github.com/MichaelKinsy/PiG/extensions/sdk v0.0.0\nreplace github.com/MichaelKinsy/PiG/extensions/sdk => " + filepath.ToSlash(sdkRoot) + "\n"
+	if err := os.WriteFile(filepath.Join(root, "go.mod"), []byte(goMod), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	frontendDir := filepath.Join(root, "internal", "frontendpack")
+	if err := os.MkdirAll(frontendDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	base := `package frontendpack
+import "github.com/MichaelKinsy/PiG/extensions/sdk/frontend"
+var selected func() frontend.Frontend
+func register(factory func() frontend.Frontend) { selected = factory }
+`
+	if err := os.WriteFile(filepath.Join(frontendDir, "base.go"), []byte(base), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(frontendDir, "registry_generated.go"), []byte("package frontendpack\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	memberRoot := t.TempDir()
+	memberGoMod := "module example.com/tern\n\ngo 1.26\n\nrequire github.com/MichaelKinsy/PiG/extensions/sdk v0.0.0\n"
+	if err := os.WriteFile(filepath.Join(memberRoot, "go.mod"), []byte(memberGoMod), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	memberSource := `package tern
+import "github.com/MichaelKinsy/PiG/extensions/sdk/frontend"
+type member struct{}
+func (member) Open(frontend.Env) (frontend.Session, error) { return nil, nil }
+func Frontend() frontend.Frontend { return member{} }
+`
+	if err := os.WriteFile(filepath.Join(memberRoot, "tern.go"), []byte(memberSource), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	overlay, err := newBuildOverlay(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	member := &fusedEntry{Name: "frontend", Pkg: "frontendmember", Factory: "Frontend", Root: memberRoot, ModulePath: "example.com/tern", Package: "example.com/tern"}
+	if _, err := overlayFuse(overlay, root, nil, member); err != nil {
+		t.Fatal(err)
+	}
+	if _, ok := overlay.replace[filepath.Join(root, "coding", "extension", "host", "fusepack", "registry_generated.go")]; ok {
+		t.Fatal("a frontend-only build replaced the fused-extension registry")
+	}
+	overlayPath, err := overlay.write()
+	if err != nil {
+		t.Fatal(err)
+	}
+	cmd := exec.Command("go", "build", "-overlay", overlayPath, "./internal/frontendpack")
+	cmd.Dir = root
+	cmd.Env = append(os.Environ(), "GOWORK=off")
+	if output, err := cmd.CombinedOutput(); err != nil {
+		t.Fatalf("frontend member registry did not compile: %v\n%s", err, output)
+	}
+	registry, err := os.ReadFile(overlay.replace[filepath.Join(frontendDir, "registry_generated.go")])
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(registry), "register(frontendmember.Frontend)") {
+		t.Fatalf("registry = %s", registry)
+	}
+}
+
 func TestPigletBinaryBuildArgsBakesReleaseVersionOnly(t *testing.T) {
-	bare := pigletBinaryBuildArgs("/tmp/pig-x", "", "")
-	if strings.Contains(strings.Join(bare, " "), "main.PigletBinaryVersion") {
+	bare := pigletBinaryBuildArgs("/tmp/pig-x", "", "", nil)
+	if strings.Contains(strings.Join(bare, " "), "github.com/MichaelKinsy/PiG/coding/cli.PigletBinaryVersion") {
 		t.Fatalf("no release version should bake no version: %v", bare)
 	}
 	if bare[0] != "build" || bare[len(bare)-1] != "./cmd/pig" {
 		t.Fatalf("unexpected build args: %v", bare)
 	}
-	baked := pigletBinaryBuildArgs("/tmp/pig-x", "1.2.3", "/tmp/overlay.json")
+	baked := pigletBinaryBuildArgs("/tmp/pig-x", "1.2.3", "/tmp/overlay.json", nil)
 	joined := strings.Join(baked, " ")
 	if strings.Contains(joined, "DefaultUpdateURL") {
 		t.Fatalf("build baked a publication endpoint: %v", baked)
 	}
-	if !strings.Contains(joined, "main.PigletBinaryVersion=1.2.3") {
+	if !strings.Contains(joined, "github.com/MichaelKinsy/PiG/coding/cli.PigletBinaryVersion=1.2.3") {
 		t.Fatalf("Piglet Binary version not baked via ldflags: %v", baked)
 	}
 }
 
 func TestPigletBinaryBuildArgsDisablesAutomaticVCSStamping(t *testing.T) {
 	for _, version := range []string{"", "1.2.3"} {
-		args := pigletBinaryBuildArgs("/tmp/pig-x", version, "")
+		args := pigletBinaryBuildArgs("/tmp/pig-x", version, "", nil)
 		if !slices.Contains(args, "-buildvcs=false") {
 			t.Fatalf("version %q: build did not disable automatic VCS stamping: %v", version, args)
 		}
@@ -210,7 +285,7 @@ func TestPigletBinaryBuildArgsDisablesAutomaticVCSStamping(t *testing.T) {
 // symbols or absolute build paths regardless of whether a release version is set.
 func TestPigletBinaryBuildArgsStripsAndTrims(t *testing.T) {
 	for _, version := range []string{"", "1.2.3"} {
-		joined := strings.Join(pigletBinaryBuildArgs("/tmp/pig-x", version, ""), " ")
+		joined := strings.Join(pigletBinaryBuildArgs("/tmp/pig-x", version, "", nil), " ")
 		if !strings.Contains(joined, "-trimpath") {
 			t.Fatalf("version %q: build did not trim paths: %s", version, joined)
 		}

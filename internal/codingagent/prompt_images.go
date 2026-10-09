@@ -2,11 +2,9 @@ package codingagent
 
 import (
 	"encoding/base64"
-	"encoding/json"
 	"strings"
 
 	"github.com/MichaelKinsy/PiG/ai"
-	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/internal/imageprocessing"
 )
 
@@ -48,39 +46,6 @@ func NormalizePromptContent(content []ai.UserContentBlock, autoResize bool, mode
 		}
 	}
 	return append([]ai.UserContentBlock{ai.TextContent{Text: hintText}}, normalized...)
-}
-
-func extensionImages(images []ai.ImageContent) []extension.ImageContent {
-	if images == nil {
-		return nil
-	}
-	result := make([]extension.ImageContent, len(images))
-	for i, image := range images {
-		result[i] = image
-	}
-	return result
-}
-
-func imagesFromExtension(images []extension.ImageContent) []ai.ImageContent {
-	if images == nil {
-		return nil
-	}
-	result := make([]ai.ImageContent, 0, len(images))
-	for _, image := range images {
-		if typed, ok := image.(ai.ImageContent); ok {
-			result = append(result, typed)
-			continue
-		}
-		data, err := json.Marshal(image)
-		if err != nil {
-			continue
-		}
-		var decoded ai.ImageContent
-		if json.Unmarshal(data, &decoded) == nil {
-			result = append(result, decoded)
-		}
-	}
-	return result
 }
 
 func promptContent(text string, images []ai.ImageContent) ai.UserContentBlocks {

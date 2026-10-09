@@ -1,5 +1,7 @@
 package tui
 
+// pi: packages/tui/src/kill-ring.ts
+
 import "testing"
 
 func TestKillRing_PeekEmpty(t *testing.T) {

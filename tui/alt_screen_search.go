@@ -376,9 +376,7 @@ func formatSearchKey(keys []string) string {
 			parts[i] = "Option"
 			continue
 		}
-		if part != "" {
-			parts[i] = strings.ToUpper(part[:1]) + part[1:]
-		}
+		parts[i] = jsUpperFirstUnit(part)
 	}
 	return strings.Join(parts, "+")
 }

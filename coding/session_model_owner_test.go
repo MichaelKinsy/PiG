@@ -24,7 +24,7 @@ func TestSetModelOnMainDispatchesAllStateBeforeNotifications(t *testing.T) {
 				t.Fatal(err)
 			}
 			initial := fakeModel()
-			initial.Capabilities.MaxThinking = ai.ThinkingHigh
+			initial.Capabilities.MaxThinking = ai.ThinkingLevelHigh
 			sess, err := NewSession(svcs, SessionOptions{Model: initial})
 			if err != nil {
 				t.Fatal(err)
@@ -33,7 +33,7 @@ func TestSetModelOnMainDispatchesAllStateBeforeNotifications(t *testing.T) {
 			if err := sess.SetThinkingLevel(ai.ThinkingHigh); err != nil {
 				t.Fatal(err)
 			}
-			before := len(sess.Inner().Entries())
+			before := len(sess.Inner().GetEntries())
 			callbacks, release := make(chan struct{}, 1), make(chan struct{})
 			var inDispatch atomic.Bool
 			sess.ReplaceRunner(inproc.NewRunner([]extension.Extension{{Handlers: map[string][]extension.HandlerFn{
@@ -45,7 +45,7 @@ func TestSetModelOnMainDispatchesAllStateBeforeNotifications(t *testing.T) {
 				}},
 				"model_select": {func(args ...any) (any, error) {
 					event := args[0].(extension.ModelSelectEvent)
-					if event.Model.(*ai.Model).ID == "next" {
+					if event.Model.ID == "next" {
 						callbacks <- struct{}{}
 						if inDispatch.Load() {
 							t.Error("model callback ran inside owner dispatch")
@@ -68,7 +68,7 @@ func TestSetModelOnMainDispatchesAllStateBeforeNotifications(t *testing.T) {
 				})
 			}()
 			mutate := <-dispatched
-			if sess.Model() != initial || svcs.SettingsManager().GetDefaultModel() != "" || len(sess.Inner().Entries()) != before || sess.ThinkingLevel() != ai.ThinkingHigh {
+			if sess.Model() != initial || svcs.SettingsManager().GetDefaultModel() != "" || len(sess.Inner().GetEntries()) != before || sess.ThinkingLevel() != ai.ThinkingHigh {
 				t.Fatal("state changed before owner dispatch")
 			}
 			if reject {
@@ -77,7 +77,7 @@ func TestSetModelOnMainDispatchesAllStateBeforeNotifications(t *testing.T) {
 				if err := <-done; !errors.Is(err, stale) {
 					t.Fatalf("error = %v", err)
 				}
-				if sess.Model() != initial || svcs.SettingsManager().GetDefaultModel() != "" || len(sess.Inner().Entries()) != before || sess.ThinkingLevel() != ai.ThinkingHigh {
+				if sess.Model() != initial || svcs.SettingsManager().GetDefaultModel() != "" || len(sess.Inner().GetEntries()) != before || sess.ThinkingLevel() != ai.ThinkingHigh {
 					t.Fatal("rejected dispatch changed state")
 				}
 				select {

@@ -29,20 +29,20 @@ func newMatrixProviderWithKey(t *testing.T, m *GeneratedModel, url string, oauth
 	case APIOpenAIResponses:
 		return NewOpenAIResponsesProvider(OpenAIResponsesConfig{APIKey: key, Model: m.ID, ProviderID: m.Provider, BaseURL: url, Compat: m.Compat, IsReasoning: m.Reasoning})
 	case APIAzureOpenAIResponses:
-		return NewAzureOpenAIResponsesProvider(AzureOpenAIResponsesConfig{APIKey: key, Model: m.ID, ProviderID: m.Provider, BaseURL: url, AzureDeploymentName: m.ID, Compat: m.Compat})
+		return NewAzureOpenAIResponsesProvider(AzureOpenAIResponsesConfig{APIKey: key, Model: m.ID, ProviderID: m.Provider, BaseURL: url, Compat: m.Compat})
 	case APIOpenAICodexResponses:
 		if key == "matrix-key" {
 			key = codexTestToken(t, "matrix-account")
 		}
 		return NewOpenAICodexResponsesProvider(OpenAICodexResponsesConfig{APIKey: key, Model: m.ID, ProviderID: m.Provider, BaseURL: url, Compat: m.Compat})
 	case APIGoogleVertex:
-		return NewGoogleVertexProvider(GoogleVertexConfig{APIKey: key, Model: m.ID, ProviderID: m.Provider, BaseURL: url, Project: "matrix-project", Location: "us-central1"})
+		return newGoogleVertexTestProvider(GoogleVertexConfig{APIKey: key, Model: m.ID, ProviderID: m.Provider, BaseURL: url, Project: "matrix-project", Location: "us-central1"}, nil)
 	case APIGoogleGenerativeAI:
 		return NewGoogleProvider(GoogleConfig{APIKey: key, Model: m.ID, ProviderID: m.Provider, BaseURL: url})
 	case APIMistralConversations:
-		return NewMistralProvider(MistralConfig{APIKey: key, Model: m.ID, ProviderID: m.Provider, BaseURL: url, Reasoning: m.Reasoning})
+		return newMistralTestProvider(MistralConfig{APIKey: key, Model: m.ID, ProviderID: m.Provider, BaseURL: url, Reasoning: m.Reasoning}, nil)
 	case APIBedrockConverseStream:
-		return NewBedrockProviderWithName(m.ID, m.DisplayName, url)
+		return NewBedrockTestProvider(m.ID, m.DisplayName, url)
 	default:
 		t.Fatalf("unsupported matrix API %s for %s/%s", m.API, m.Provider, m.ID)
 		return nil

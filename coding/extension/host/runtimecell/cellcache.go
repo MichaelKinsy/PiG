@@ -17,6 +17,8 @@ import (
 	"time"
 
 	"github.com/gofrs/flock"
+
+	"github.com/MichaelKinsy/PiG/extensions/sdk/upgrade"
 )
 
 // cellReadyFile is the readiness marker written last into a published cache
@@ -49,7 +51,9 @@ type cellFailureMeta struct {
 	Message     string `json:"message"`
 	Cause       string `json:"cause"`
 	Log         string `json:"log,omitempty"`
-	Created     int64  `json:"created"`
+	// Drift is the SDK drift of the failure: a recorded failure keeps the changes the build named.
+	Drift   []upgrade.Drift `json:"drift,omitempty"` //portlint:allow emptydrop PiG-only cache record of a build failure; Pi has no such record and no reader tells absent from empty
+	Created int64           `json:"created"`
 }
 
 type cacheableBuildFailure struct {
@@ -131,7 +135,7 @@ func cachedBuildFailure(finalDir, inputDigest, language string) (error, bool) {
 		return nil, false
 	}
 	_ = TouchUsage(finalDir, time.Now())
-	return &BuildFailure{Summary: meta.Message, Cause: meta.Cause, Log: meta.Log, Cached: true}, true
+	return &BuildFailure{Summary: meta.Message, Cause: meta.Cause, Log: meta.Log, Cached: true, Drift: meta.Drift}, true
 }
 
 func publishCellFailure(ctx context.Context, finalDir, inputDigest, language string, failure *BuildFailure) error {
@@ -147,6 +151,7 @@ func publishCellFailure(ctx context.Context, finalDir, inputDigest, language str
 		Message:     failure.Summary,
 		Cause:       failure.Cause,
 		Log:         failure.Log,
+		Drift:       failure.Drift,
 		Created:     time.Now().Unix(),
 	})
 	if err != nil {

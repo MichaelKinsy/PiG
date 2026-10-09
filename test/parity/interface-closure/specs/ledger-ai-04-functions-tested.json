@@ -1,0 +1,269 @@
+[
+ {
+  "ids": [
+   "pkg:ai/utils/model-operations#assertChatModel"
+  ],
+  "targets": [
+   "ai/model_operations_export.go#AssertChatModel"
+  ],
+  "production": [
+   "call:coding/model_runtime_typed.go#assertChat"
+  ],
+  "evidence": [
+   "test:ai/interface_ledger_test.go#TestAssertModelTypeRejectsOtherModelTypesLikeUpstream"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "assertChatModel: Go AssertChatModel has the upstream parameters and result (signatures reviewed); callers attributed by go/types."
+ },
+ {
+  "ids": [
+   "pkg:ai/utils/model-operations#assertClassifierModel"
+  ],
+  "targets": [
+   "ai/model_operations_export.go#AssertClassifierModel"
+  ],
+  "production": [
+   "call:coding/model_runtime_classify.go#ModelRuntime.classify"
+  ],
+  "evidence": [
+   "test:ai/interface_ledger_test.go#TestAssertModelTypeRejectsOtherModelTypesLikeUpstream"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "assertClassifierModel: Go AssertClassifierModel has the upstream parameters and result (signatures reviewed); callers attributed by go/types."
+ },
+ {
+  "ids": [
+   "pkg:ai/utils/model-operations#assertImageModel"
+  ],
+  "targets": [
+   "ai/model_operations_export.go#AssertImageModel"
+  ],
+  "production": [
+   "call:internal/codingagent/extension_model_operations.go#extensionGenerateImages"
+  ],
+  "evidence": [
+   "test:ai/interface_ledger_test.go#TestAssertModelTypeRejectsOtherModelTypesLikeUpstream"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "assertImageModel: Go AssertImageModel has the upstream parameters and result (signatures reviewed); callers attributed by go/types."
+ },
+ {
+  "ids": [
+   "pkg:ai/utils/model-operations#classifierErrorResult"
+  ],
+  "targets": [
+   "ai/model_operations_export.go#ClassifierErrorResult"
+  ],
+  "production": [
+   "call:coding/extension/host/subprocess/ui_bridge.go#UIBridge.handleClassify"
+  ],
+  "evidence": [
+   "test:ai/interface_ledger_test.go#TestModelOperationErrorResultsCarryTheModelAndStopReasonLikeUpstream"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "classifierErrorResult: Go ClassifierErrorResult has the upstream parameters and result (signatures reviewed); callers attributed by go/types."
+ },
+ {
+  "ids": [
+   "pkg:ai/utils/model-operations#imageErrorResult"
+  ],
+  "targets": [
+   "ai/model_operations_export.go#ImageErrorResult"
+  ],
+  "production": [
+   "call:coding/extension/host/subprocess/ui_bridge.go#UIBridge.handleGenerateImages"
+  ],
+  "evidence": [
+   "test:ai/interface_ledger_test.go#TestModelOperationErrorResultsCarryTheModelAndStopReasonLikeUpstream"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "imageErrorResult: Go ImageErrorResult has the upstream parameters and result (signatures reviewed); callers attributed by go/types."
+ },
+ {
+  "ids": [
+   "pkg:ai/utils/estimate#estimateTextTokens"
+  ],
+  "targets": [
+   "ai/estimate.go#EstimateTextTokens"
+  ],
+  "production": [
+   "call:ai/estimate.go#EstimateMessageTokens"
+  ],
+  "evidence": [
+   "test:ai/interface_ledger_test.go#TestEstimateTextTokensCountsFourUTF16UnitsPerTokenLikeUpstream"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "estimateTextTokens: Go EstimateTextTokens has the upstream parameters and result (signatures reviewed); callers attributed by go/types."
+ },
+ {
+  "ids": [
+   "pkg:ai/utils/error-body#truncateErrorText"
+  ],
+  "targets": [
+   "ai/errors.go#TruncateErrorText"
+  ],
+  "production": [
+   "call:ai/errors.go#providerErrorBody"
+  ],
+  "evidence": [
+   "test:ai/interface_ledger_test.go#TestTruncateErrorTextReportsOmittedUTF16UnitsLikeUpstream"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "truncateErrorText: Go TruncateErrorText has the upstream parameters and result (signatures reviewed); callers attributed by go/types."
+ },
+ {
+  "ids": [
+   "pkg:ai/utils/error-body#safeJsonStringify"
+  ],
+  "targets": [
+   "ai/errors.go#SafeJsonStringify"
+  ],
+  "production": [
+   "call:ai/errors.go#NormalizeProviderError"
+  ],
+  "evidence": [
+   "test:ai/interface_ledger_test.go#TestSafeJsonStringifyLeavesHTMLAndFallsBackLikeUpstream"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "safeJsonStringify: Go SafeJsonStringify has the upstream parameters and result (signatures reviewed); callers attributed by go/types."
+ },
+ {
+  "ids": [
+   "pkg:ai/.#createInitialSystemMessage",
+   "pkg:ai/compat#createInitialSystemMessage",
+   "pkg:ai/utils/transcript#createInitialSystemMessage"
+  ],
+  "targets": [
+   "ai/transcript.go#CreateInitialSystemMessage"
+  ],
+  "production": [
+   "call:agent/agent.go#NewAgent"
+  ],
+  "evidence": [
+   "test:ai/interface_ledger_test.go#TestCreateInitialSystemMessageIsEmptyOnlyWithoutPromptAndToolsLikeUpstream"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "createInitialSystemMessage: Go CreateInitialSystemMessage has the upstream parameters and result (signatures reviewed); callers attributed by go/types."
+ },
+ {
+  "ids": [
+   "pkg:ai/.#getInitialSystemMessage",
+   "pkg:ai/compat#getInitialSystemMessage",
+   "pkg:ai/utils/transcript#getInitialSystemMessage"
+  ],
+  "targets": [
+   "ai/transcript.go#GetInitialSystemMessage"
+  ],
+  "production": [
+   "call:agent/message_json.go#AgentMessage.Clone"
+  ],
+  "evidence": [
+   "test:ai/interface_ledger_test.go#TestInitialSystemMessageHelpersOnlyLookAtTheFirstMessageLikeUpstream"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "getInitialSystemMessage: Go GetInitialSystemMessage has the upstream parameters and result (signatures reviewed); callers attributed by go/types."
+ },
+ {
+  "ids": [
+   "pkg:ai/.#withoutInitialSystemMessage",
+   "pkg:ai/compat#withoutInitialSystemMessage",
+   "pkg:ai/utils/transcript#withoutInitialSystemMessage"
+  ],
+  "targets": [
+   "ai/transcript.go#WithoutInitialSystemMessage"
+  ],
+  "production": [
+   "call:ai/anthropic.go#anthropicProvider.buildParams"
+  ],
+  "evidence": [
+   "test:ai/interface_ledger_test.go#TestInitialSystemMessageHelpersOnlyLookAtTheFirstMessageLikeUpstream"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "withoutInitialSystemMessage: Go WithoutInitialSystemMessage has the upstream parameters and result (signatures reviewed); callers attributed by go/types."
+ },
+ {
+  "ids": [
+   "pkg:ai/.#getDeclaredTools",
+   "pkg:ai/compat#getDeclaredTools",
+   "pkg:ai/utils/transcript#getDeclaredTools"
+  ],
+  "targets": [
+   "ai/transcript.go#GetDeclaredTools"
+  ],
+  "production": [
+   "call:ai/openai.go#openAIProvider.Stream"
+  ],
+  "evidence": [
+   "test:ai/interface_ledger_test.go#TestDeclaredToolsAndTranscriptToolsFollowTheToolHistoryLikeUpstream"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "getDeclaredTools: Go GetDeclaredTools has the upstream parameters and result (signatures reviewed); callers attributed by go/types."
+ },
+ {
+  "ids": [
+   "pkg:ai/.#resolveTranscriptTools",
+   "pkg:ai/compat#resolveTranscriptTools",
+   "pkg:ai/utils/transcript#resolveTranscriptTools"
+  ],
+  "targets": [
+   "ai/transcript.go#ResolveTranscriptTools"
+  ],
+  "production": [
+   "call:ai/openai.go#openAIProvider.Stream"
+  ],
+  "evidence": [
+   "test:ai/interface_ledger_test.go#TestDeclaredToolsAndTranscriptToolsFollowTheToolHistoryLikeUpstream"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "resolveTranscriptTools: Go ResolveTranscriptTools has the upstream parameters and result (signatures reviewed); callers attributed by go/types."
+ },
+ {
+  "ids": [
+   "pkg:ai/api/azure-openai-config#resolveAzureConfig"
+  ],
+  "targets": [
+   "ai/azure_config.go#ResolveAzureConfig"
+  ],
+  "production": [
+   "call:ai/azure_openai_responses.go#NewAzureOpenAIResponsesProvider"
+  ],
+  "evidence": [
+   "test:ai/interface_ledger_test.go#TestResolveAzureConfigPairsTheBaseURLWithTheAPIVersionLikeUpstream"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "resolveAzureConfig: Go ResolveAzureConfig has the upstream parameters and result (signatures reviewed); callers attributed by go/types."
+ },
+ {
+  "ids": [
+   "pkg:ai/api/simple-options#resolveSamplingParams"
+  ],
+  "targets": [
+   "ai/simple_options.go#ResolveSamplingParams"
+  ],
+  "production": [
+   "call:ai/openai.go#openAIProvider.Stream"
+  ],
+  "evidence": [
+   "test:ai/interface_ledger_test.go#TestResolveSamplingParamsMergesDefaultsLevelAndRequestInOrderLikeUpstream"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "resolveSamplingParams: Go ResolveSamplingParams has the upstream parameters and result (signatures reviewed); callers attributed by go/types."
+ },
+ {
+  "ids": [
+   "pkg:ai/api/azure-openai-config#resolveDeploymentName"
+  ],
+  "targets": [
+   "ai/azure_config.go#ResolveAzureDeploymentName"
+  ],
+  "production": [
+   "call:ai/azure.go#azureCompletionsEndpoint.resolve"
+  ],
+  "evidence": [
+   "test:ai/azure_openai_responses_test.go#TestResolveAzureDeploymentName",
+   "test:ai/azure_openai_responses_test.go#TestResolveAzureDeploymentNameParsesTheMapLikePi"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "resolveDeploymentName: Go ResolveAzureDeploymentName has the upstream parameters and result (signatures reviewed); callers attributed by go/types."
+ }
+]

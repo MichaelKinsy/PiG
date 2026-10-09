@@ -1,5 +1,5 @@
 {
-  "piVersion": "1.0.3",
+  "piVersion": "1.1.0",
   "node": "v24.19.0",
   "cases": [
     {
@@ -312,7 +312,7 @@
         ]
       ],
       "stopReason": "error",
-      "errorMessage": "Provider stopped with: error"
+      "errorMessage": "Provider stopped with: error (server error)"
     },
     {
       "fixture": "malformed",

@@ -1,5 +1,7 @@
 package services
 
+// pi: packages/coding-agent/src/experimental/services/server.ts
+
 import (
 	"context"
 	"encoding/json"
@@ -7,6 +9,8 @@ import (
 	"os/exec"
 	"path/filepath"
 	"slices"
+	"strconv"
+	"sync"
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/internal/chord"
@@ -128,7 +132,7 @@ func TestServerServicesMatchPinnedUpstream(t *testing.T) {
 	transport := chord.NewJSONCopyTransport(testServerEndpoint{a})
 	catalogue, err := transport.Invoke(t.Context(), chord.CreateServiceCatalogueCall())
 	requireModelsOK(t, err)
-	binding, err := chord.CreateRemoteServiceBinding(chord.RemoteServiceBindingOptions{Services: []string{SessionDirectoryDefinition.Id()}, Transport: transport, OnError: func(err error) { t.Error(err) }})
+	binding, err := chord.CreateRemoteServiceBinding(chord.RemoteServiceBindingOptions{Services: chord.ServiceIDs(SessionDirectoryDefinition.Id()), Transport: transport, OnError: func(err error) { t.Error(err) }})
 	requireModelsOK(t, err)
 	directory, err := chord.UseRemote(binding, SessionDirectoryDefinition)
 	requireModelsOK(t, err)
@@ -188,4 +192,55 @@ func TestServerServicesMatchPinnedUpstream(t *testing.T) {
 	var decoded any
 	requireModelsOK(t, json.Unmarshal(encoded, &decoded))
 	checkModelsEqual(t, decoded, expected)
+}
+
+// A TypeScript service member applies its synchronous prefix during invoke, so mutations from one connection join
+// serviceMutationTail in call order (packages/chord/src/services/provider.ts:234; experimental/server-services.ts mutation tail).
+// The attachment exposes that admission boundary: begun in sequence, mutations run in sequence, whatever the scheduler does.
+func TestServerServicesAdmitMutationsInCallOrder(t *testing.T) {
+	const calls = 400
+	var mu sync.Mutex
+	var order []string
+	services, err := CreateExperimentalServerServices(ExperimentalServerServicesOptions{
+		List: func(context.Context) ([]SessionSummary, error) { return nil, nil },
+		Create: func(_ context.Context, options SessionCreateOptions) (SessionSummary, error) {
+			mu.Lock()
+			order = append(order, *options.Id)
+			mu.Unlock()
+			return SessionSummary{SessionAddress{"server", *options.Id}, 1}, nil
+		},
+		Remove: func(context.Context, string) error { return nil },
+		PrepareSessionPlugins: func(context.Context, string, []string) (PreparedSessionPlugins, error) {
+			return PreparedSessionPlugins{}, nil
+		},
+		ReloadPresentationPlugins: func(context.Context, []string) (chord.JsonValue, error) { return nil, nil },
+	})
+	requireModelsOK(t, err)
+	t.Cleanup(func() { requireModelsOK(t, services.Dispose()) })
+	attachment, err := services.Host.AttachClient(t.Context(), testServerPresentation{})
+	requireModelsOK(t, err)
+	initiator, ok := any(attachment).(interface {
+		BeginInvokeService(context.Context, chord.ServiceCall, chord.ServiceUpdatePublisher) (*chord.ServiceInvocation, error)
+	})
+	if !ok {
+		t.Fatal("RoutedServerServiceAttachment has no admission boundary (BeginInvokeService)")
+	}
+	invocations := make([]*chord.ServiceInvocation, calls)
+	for i := range invocations {
+		argument, _ := json.Marshal(map[string]any{"id": strconv.Itoa(i)})
+		invocations[i], err = initiator.BeginInvokeService(t.Context(), chord.ServiceCall{ServiceId: "pi.session-management", Member: "create", Args: []json.RawMessage{argument}}, nil)
+		requireModelsOK(t, err)
+	}
+	for _, invocation := range invocations {
+		_, err := invocation.Wait(t.Context())
+		requireModelsOK(t, err)
+	}
+	for i, id := range order {
+		if id != strconv.Itoa(i) {
+			t.Fatalf("position %d ran mutation %s; order %v", i, id, order[:min(len(order), i+6)])
+		}
+	}
+	if len(order) != calls {
+		t.Fatalf("%d mutations ran, want %d", len(order), calls)
+	}
 }

@@ -58,7 +58,7 @@ func (m *InteractiveMode) showExtensionError(extensionPath, message, stack strin
 		m.chatContainer.Add(tui.NewThemedText(func() string {
 			rendered := make([]string, len(lines))
 			for i, line := range lines {
-				rendered[i] = tui.ActiveTheme().FgText("dim", "  "+strings.TrimSpace(line))
+				rendered[i] = tui.ActiveTheme().Fg("dim", "  "+strings.TrimSpace(line))
 			}
 			return strings.Join(rendered, "\n")
 		}, 1, 0))

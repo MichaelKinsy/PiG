@@ -93,7 +93,7 @@ func TestCoordinatorConnectionListenerIdentitySocket(t *testing.T) {
 		t.Run(fmt.Sprintf("upstream/%d", cleanup), func(t *testing.T) {
 			ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
 			defer cancel()
-			cmd := exec.CommandContext(ctx, "node", "--import", upstreamLoaderImport(root), filepath.Join(root, "internal/experimental/testdata/coordinator-listener-oracle.mjs"), t.TempDir(), fmt.Sprint(cleanup))
+			cmd := exec.CommandContext(ctx, "node", "--import", upstreamLoaderImport(root), filepath.Join(root, "internal/experimental/testdata/coordinator-listener-oracle.mjs"), socketDir(t), fmt.Sprint(cleanup))
 			cmd.Env = append(os.Environ(), "PIG_TEST_ROOT="+root)
 			output, err := cmd.CombinedOutput()
 			if err != nil {

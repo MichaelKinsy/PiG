@@ -6,8 +6,8 @@ package tui
 // Manages package resources (extensions, skills, prompts, themes)
 // with enable/disable toggling and search filtering.
 //
-// In pig's line renderer this is a FilterableList-based overlay
-// rather than upstream's full Container + Input + custom list.
+// The component is a Container of upstream's constructor children; the
+// header and the resource list are private children reading its state.
 // The data model (groups, subgroups, items) mirrors upstream exactly.
 
 import (
@@ -38,16 +38,19 @@ var resourceTypeLabels = map[ResourceType]string{
 
 // ResourceItem is a single toggleable resource.
 type ResourceItem struct {
-	Path             string
-	Enabled          bool
-	ResourceType     ResourceType
-	DisplayName      string
-	GroupKey         string
-	SubgroupKey      string
-	Scope            string // "user" or "project"
-	Origin           string // "package" or "top-level"
-	Source           string
-	BaseDir          string // for package-relative pattern generation
+	Path         string
+	Enabled      bool
+	ResourceType ResourceType
+	DisplayName  string
+	GroupKey     string
+	SubgroupKey  string
+	Scope        string // "user" or "project"
+	Origin       string // "package" or "top-level"
+	Source       string
+	BaseDir      string // for package-relative pattern generation
+	// PackageRoot is the root of the package a resource belongs to (package-manager.ts PathMetadata.packageRoot): set for a local
+	// directory or an installed npm or git package, empty for a local file source, whose BaseDir is only the file's directory.
+	PackageRoot      string
 	Pattern          string // authored Package-relative member path
 	Health           string // empty or "missing"
 	Override         string // "inherit", "load", or "unload" in project mode
@@ -82,7 +85,7 @@ type flatEntry struct {
 
 // ConfigSelectorComponent manages the resource configuration overlay.
 type ConfigSelectorComponent struct {
-	invalidatable
+	Container
 	groupsByScope        map[string][]*ResourceGroup
 	groups               []*ResourceGroup
 	writeScope           string
@@ -113,11 +116,21 @@ func NewScopedConfigSelector(global, project []*ResourceGroup, terminalRows int,
 		groupsByScope: map[string][]*ResourceGroup{"global": global, "project": project},
 		groups:        global, writeScope: writeScope, projectModeAvailable: projectModeAvailable,
 		maxVisible: configSelectorMaxVisible(terminalRows), terminalRows: terminalRows,
-		input: NewTextInput(""),
+		input: NewInput(InputOptions{}), // config-selector.ts:243 `new Input()`: callback mode, so Enter without onSubmit leaves it editable
 	}
+	cs.input.Focused = true
 	cs.groups = cs.groupsByScope[writeScope]
 	cs.buildFlatList()
 	cs.filtered = append([]flatEntry{}, cs.flatItems...)
+	// config-selector.ts:910-939 constructor children.
+	cs.Add(NewSpacer(1))
+	cs.Add(NewDynamicBorder())
+	cs.Add(NewSpacer(1))
+	cs.Add(configSelectorHeader{cs})
+	cs.Add(NewSpacer(1))
+	cs.Add(configResourceList{cs})
+	cs.Add(NewSpacer(1))
+	cs.Add(NewDynamicBorder())
 	return cs
 }
 
@@ -243,16 +256,15 @@ func (cs *ConfigSelectorComponent) filterItems() {
 	cs.selectFirstItem()
 }
 
-// Render produces the config selector overlay.
-func (cs *ConfigSelectorComponent) Render(width int) []string {
+// configSelectorHeader is the title, key hints and scope hint rows (config-selector.ts ConfigSelectorHeader). It reads the owner's write scope on every render, so it is not cached by the parent Container.
+type configSelectorHeader struct{ cs *ConfigSelectorComponent }
+
+func (configSelectorHeader) Invalidate() {}
+
+func (h configSelectorHeader) Render(width int) []string {
+	cs := h.cs
 	t := ActiveTheme()
-	border := NewDynamicBorder("")
-
 	var lines []string
-	lines = append(lines, "")
-	lines = append(lines, border.Render(width)...)
-	lines = append(lines, "")
-
 	// Header mirrors upstream global/project write-scope ownership.
 	titleText := "Global Resources"
 	scopeHint := "~/.pig/agent/settings.json"
@@ -263,7 +275,7 @@ func (cs *ConfigSelectorComponent) Render(width int) []string {
 		action = "cycle inherit/+/-"
 	}
 	title := "\x1b[1m" + titleText + "\x1b[22m"
-	sep := t.Muted + " · " + "\x1b[0m"
+	sep := t.Muted + " · " + "\x1b[39m"
 	hint := RawKeyHint("space", action) + sep + RawKeyHint("esc", "close")
 	if cs.projectModeAvailable {
 		hint = RawKeyHint("tab", "switch mode") + sep + hint
@@ -275,9 +287,21 @@ func (cs *ConfigSelectorComponent) Render(width int) []string {
 	// width (items with "...", the rest without an ellipsis).
 	fit := func(line string) string { return widthx.TruncateToWidth(line, width, "", false) }
 	lines = append(lines, fit(title+strings.Repeat(" ", spacing)+hint))
-	lines = append(lines, fit(t.Muted+scopeHint+"\x1b[0m"))
-	lines = append(lines, "")
+	lines = append(lines, fit(t.Muted+scopeHint+"\x1b[39m"))
 
+	return lines
+}
+
+// configResourceList is the search input and the resource rows (config-selector.ts ResourceList). It reads the owner's filter state on every render.
+type configResourceList struct{ cs *ConfigSelectorComponent }
+
+func (configResourceList) Invalidate() {}
+
+func (l configResourceList) Render(width int) []string {
+	cs := l.cs
+	t := ActiveTheme()
+	fit := func(line string) string { return widthx.TruncateToWidth(line, width, "", false) }
+	var lines []string
 	// Search input: mirrors upstream config-selector.ts which renders
 	// `this.searchInput.render(width)` (an Input component → `> <value>`
 	// surface). Using TextInput directly here keeps the prompt prefix and
@@ -286,7 +310,7 @@ func (cs *ConfigSelectorComponent) Render(width int) []string {
 	lines = append(lines, "")
 
 	if len(cs.filtered) == 0 {
-		lines = append(lines, fit(t.Muted+"  No resources found"+"\x1b[0m"))
+		lines = append(lines, fit(t.Muted+"  No resources found"+"\x1b[39m"))
 	} else {
 		// Calculate visible range.
 		start := max(0, min(cs.cursor-cs.maxVisible/2, len(cs.filtered)-cs.maxVisible))
@@ -304,14 +328,14 @@ func (cs *ConfigSelectorComponent) Render(width int) []string {
 					label += " · inherited global"
 					color = t.Dim
 				}
-				gl := color + "\x1b[1m" + label + "\x1b[22m\x1b[0m"
+				gl := color + "\x1b[1m" + label + "\x1b[22m\x1b[39m"
 				lines = append(lines, fit("  "+gl))
 			case "subgroup":
 				color := t.Muted
 				if cs.writeScope == "project" && e.group.Scope == "user" {
 					color = t.Dim
 				}
-				sgl := color + e.subgroup.Label + "\x1b[0m"
+				sgl := color + e.subgroup.Label + "\x1b[39m"
 				lines = append(lines, fit("    "+sgl))
 			case "item":
 				cursor := "  "
@@ -319,24 +343,26 @@ func (cs *ConfigSelectorComponent) Render(width int) []string {
 					cursor = "> "
 				}
 				dimmed := cs.writeScope == "project" && e.item.Inherited && e.item.Override == "inherit"
-				checkbox := t.Dim + "[ ]" + "\x1b[0m"
-				if e.item.Enabled && !dimmed {
-					checkbox = t.Success + "[x]" + "\x1b[0m"
-				} else if e.item.Enabled {
-					checkbox = t.Dim + "[x]" + "\x1b[0m"
+				// upstream renderCheckbox: outside the project scope an enabled item is green; in it only an override is coloured and an inherited state is dim, enabled or not.
+				checkbox := t.Dim + "[ ]" + "\x1b[39m"
+				switch {
+				case cs.writeScope == "project" && e.item.Enabled:
+					checkbox = t.Dim + "[x]" + "\x1b[39m"
+				case cs.writeScope != "project" && e.item.Enabled:
+					checkbox = t.Success + "[x]" + "\x1b[39m"
 				}
 				suffix := ""
 				if cs.writeScope == "project" {
 					switch e.item.Override {
 					case "load":
-						checkbox = t.Success + "[+]" + "\x1b[0m"
-						suffix = t.Muted + "  project load" + "\x1b[0m"
+						checkbox = t.Success + "[+]" + "\x1b[39m"
+						suffix = t.Muted + "  project load" + "\x1b[39m"
 					case "unload":
-						checkbox = t.Warning + "[-]" + "\x1b[0m"
-						suffix = t.Muted + "  project unload" + "\x1b[0m"
+						checkbox = t.Warning + "[-]" + "\x1b[39m"
+						suffix = t.Muted + "  project unload" + "\x1b[39m"
 					case "inherit":
 						if e.item.Inherited {
-							suffix = t.Dim + "  inherited global" + "\x1b[0m"
+							suffix = t.Dim + "  inherited global" + "\x1b[39m"
 						}
 					}
 				}
@@ -345,11 +371,11 @@ func (cs *ConfigSelectorComponent) Render(width int) []string {
 					name = "\x1b[1m" + name + "\x1b[22m"
 				}
 				if dimmed {
-					name = t.Dim + name + "\x1b[0m"
+					name = t.Dim + name + "\x1b[39m"
 				}
 				status := ""
 				if e.item.Health != "" {
-					status = t.Warning + "  " + e.item.Health + "\x1b[0m"
+					status = t.Warning + "  " + e.item.Health + "\x1b[39m"
 				}
 				lines = append(lines, widthx.TruncateToWidth(cursor+"    "+checkbox+" "+name+suffix+status, width, "...", false))
 			}
@@ -369,13 +395,11 @@ func (cs *ConfigSelectorComponent) Render(width int) []string {
 				}
 			}
 			if itemCount > 0 {
-				lines = append(lines, fit(t.Dim+fmt.Sprintf("  (%d/%d)", currentItemIndex, itemCount)+"\x1b[0m"))
+				lines = append(lines, fit(t.Dim+fmt.Sprintf("  (%d/%d)", currentItemIndex, itemCount)+"\x1b[39m"))
 			}
 		}
 	}
 
-	lines = append(lines, "")
-	lines = append(lines, border.Render(width)...)
 	return lines
 }
 
@@ -408,11 +432,14 @@ func (cs *ConfigSelectorComponent) HandleInput(data string) {
 		if cs.OnCancel != nil {
 			cs.OnCancel()
 		}
-	case MatchesKeyID(data, "ctrl+c"): // config-selector.ts:491: Ctrl+C when tui.select.cancel is rebound; CSI-u under the Kitty protocol
+	case MatchesKeyID(data, Key.Ctrl("c")): // config-selector.ts:491: Ctrl+C when tui.select.cancel is rebound; CSI-u under the Kitty protocol
 		if cs.OnExit != nil {
 			cs.OnExit()
 		}
-	case kb.Matches(data, KBInputTab) && cs.projectModeAvailable:
+	case kb.Matches(data, KBInputTab): // config-selector.ts:495-498: Tab never reaches the search input; onSwitchMode is set only when project mode is available
+		if !cs.projectModeAvailable {
+			break
+		}
 		if cs.writeScope == "global" {
 			cs.writeScope = "project"
 		} else {
@@ -444,16 +471,10 @@ func (cs *ConfigSelectorComponent) HandleInput(data string) {
 			}
 		}
 	default:
-		// Forward all remaining input (printable chars, backspace, word
-		// navigation, kill/yank, paste, etc.) to the TextInput so its
-		// editing semantics match upstream Input. Re-filter on every
-		// keystroke (upstream filters on Input mutation; here we filter
-		// unconditionally: cheap for the typical resource count).
-		before := cs.input.Text()
+		// config-selector.ts:518-519: every key that reaches the search Input re-filters, so a key that
+		// leaves the query unchanged still resets the selection to the first item.
 		cs.input.HandleInput(data)
-		if cs.input.Text() != before {
-			cs.filterItems()
-		}
+		cs.filterItems()
 	}
 	cs.Invalidate()
 }

@@ -1,0 +1,135 @@
+[
+ {
+  "ids": [
+   "pkg:ai/compat#getImagesApiProvider"
+  ],
+  "targets": [
+   "ai/images.go#GetImagesAPIProvider"
+  ],
+  "production": [
+   "call:internal/codingagent/model_typed_provider.go#builtinTypedBase"
+  ],
+  "evidence": [
+   "test:ai/images_registry_race_test.go#TestImagesAPIProviderRegistryIsSafeForConcurrentUse"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "getImagesApiProvider: Go GetImagesAPIProvider has the upstream parameters and result (signatures reviewed); callers attributed by go/types."
+ },
+ {
+  "ids": [
+   "pkg:ai/providers/radius-config#normalizeRadiusGatewayUrl"
+  ],
+  "targets": [
+   "ai/radius_config.go#NormalizeRadiusGatewayURL"
+  ],
+  "production": [
+   "call:ai/oauth_radius.go#CreateRadiusOAuth"
+  ],
+  "evidence": [
+   "test:ai/radius_config_test.go#TestNormalizeRadiusGatewayURL"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "normalizeRadiusGatewayUrl: Go NormalizeRadiusGatewayURL has the upstream parameters and result (signatures reviewed); callers attributed by go/types."
+ },
+ {
+  "ids": [
+   "pkg:ai/utils/oauth-page#oauthErrorHtml"
+  ],
+  "targets": [
+   "ai/oauth_page.go#OAuthErrorHTML"
+  ],
+  "production": [
+   "call:ai/oauth_openai_chatgpt.go#startChatGPTCallbackServer"
+  ],
+  "evidence": [
+   "test:ai/oauth_page_upstream_test.go#TestOAuthPageMatchesThePinnedPackage"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "oauthErrorHtml: Go OAuthErrorHTML has the upstream parameters and result (signatures reviewed); callers attributed by go/types."
+ },
+ {
+  "ids": [
+   "pkg:ai/utils/oauth-page#oauthSuccessHtml"
+  ],
+  "targets": [
+   "ai/oauth_page.go#OAuthSuccessHTML"
+  ],
+  "production": [
+   "call:ai/oauth_openai_chatgpt.go#startChatGPTCallbackServer"
+  ],
+  "evidence": [
+   "test:ai/oauth_page_upstream_test.go#TestOAuthPageMatchesThePinnedPackage"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "oauthSuccessHtml: Go OAuthSuccessHTML has the upstream parameters and result (signatures reviewed); callers attributed by go/types."
+ },
+ {
+  "ids": [
+   "pkg:ai/compat#registerBuiltInImagesApiProviders"
+  ],
+  "targets": [
+   "ai/openrouter_images.go#RegisterBuiltInImagesAPIProviders"
+  ],
+  "production": [
+   "call:internal/codingagent/model_typed_provider.go#builtinTypedBase"
+  ],
+  "evidence": [
+   "test:ai/images_registry_race_test.go#TestImagesAPIProviderRegistryIsSafeForConcurrentUse"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "registerBuiltInImagesApiProviders: Go RegisterBuiltInImagesAPIProviders has the upstream parameters and result (signatures reviewed); callers attributed by go/types."
+ },
+ {
+  "ids": [
+   "pkg:ai/api/azure-openai-config#resolveAzureBaseUrl"
+  ],
+  "targets": [
+   "ai/azure_config.go#ResolveAzureBaseURL"
+  ],
+  "production": [
+   "call:ai/azure.go#azureCompletionsEndpoint.resolve"
+  ],
+  "evidence": [
+   "test:ai/azure_upstream_test.go#TestAzureUpstreamBaseURL",
+   "test:ai/azure_openai_responses_test.go#TestResolveAzureBaseURL"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "resolveAzureBaseUrl: Go ResolveAzureBaseURL has the upstream parameters and result (signatures reviewed); callers attributed by go/types."
+ },
+ {
+  "ids": [
+   "pkg:ai/.#lazyApi",
+   "pkg:ai/api/lazy#lazyApi",
+   "pkg:ai/compat#lazyApi"
+  ],
+  "targets": [
+   "ai/provider_streams.go#LazyAPI"
+  ],
+  "production": [
+   "public-api:ai/provider_streams.go#LazyAPI"
+  ],
+  "evidence": [
+   "test:ai/providers_dispatch_upstream_test.go#TestLazyAPIOnlyDeclaredDeferredCapabilitiesUpstream",
+   "test:ai/provider_streams_test.go#TestLazyAPISetupOrderingCancellationAndLoadFailure"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "lazyApi: Go LazyAPI has the upstream parameters and result (signatures reviewed); callers attributed by go/types."
+ },
+ {
+  "ids": [
+   "pkg:ai/.#contentText",
+   "pkg:ai/compat#contentText",
+   "pkg:ai/utils/text#contentText"
+  ],
+  "targets": [
+   "ai/text.go#ContentText"
+  ],
+  "production": [
+   "call:ai/transcript.go#systemContentText"
+  ],
+  "evidence": [
+   "test:ai/text_upstream_test.go#TestContentTextUpstream"
+  ],
+  "rationale": "contentText: Go ContentText[T] accepts a string or any of the typed content slices with an optional variadic separator and returns the text blocks joined as upstream (signature reviewed); caller attributed by go/types; upstream text.test.ts ported."
+ }
+]

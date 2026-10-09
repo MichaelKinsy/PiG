@@ -11,7 +11,7 @@ The dispatcher is exhaustive - every command here is a parity-mirrored upstream 
 | `/thinking [level]` | Complete and set an available thinking level, or open the selector without a level. |
 | `/scoped-models` | Enable/disable models for Ctrl+P cycling. |
 | `/login` | Configure provider authentication. |
-| `/logout` | Remove stored provider authentication. |
+| `/logout` | Remove provider authentication. |
 | `/new` | Start a new session in the same cwd. |
 | `/resume` | Resume a different session. |
 | `/fork` | Fork from a previous user message. |
@@ -43,7 +43,7 @@ default). `/hotkeys` lists the current bindings.
 
 | Command | Description |
 |---|---|
-| `/piglet` | Inspect the Piglet active in this process. |
+| `/piglet` | Inspect the Piglet active in this process. A Piglet can strip it with `strip.commands: [/piglet]`. |
 
 PiG Standard and other Piglets can add commands through selected extension
 Resources. Stock PiG does not register `/runner`, `/pig-runner`, or other

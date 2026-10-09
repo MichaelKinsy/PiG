@@ -1,4 +1,3 @@
-# SPDX-FileCopyrightText: Copyright Hewlett Packard Enterprise Development LP
 # SPDX-License-Identifier: MIT
 #
 # Documents that keep the number of an earlier Pi release because they record
@@ -82,5 +81,41 @@ reason = "Records of work done against Pi 1.0.0 before the 1.0.1 leap: the rpc33
 paths = [
   "docs/findings/rpc33-observation-matrix.md",
   "docs/parity/DIVERGENCES.md",
+  "docs/plan/",
+]
+
+[[record]]
+version = "1.0.0"
+reason = "The closure record states that the 13 experimental files did not change between Pi 1.0.0 and 1.0.4, the range the lane compared."
+paths = ["docs/parity/gap-closure/gap-exp-services.md"]
+
+[[record]]
+version = "0.99"
+reason = "The closure record says the review corrected citations that pointed at Pi 0.99 lines."
+paths = ["docs/parity/gap-closure/gap-exp-services.md"]
+
+[[record]]
+version = "1.0.1"
+reason = "The closure record dates the project override of `mcp list` to Pi 1.0.1, the release that added it."
+paths = ["docs/parity/gap-closure/gap-mcp.md"]
+
+[[record]]
+version = "0.99.2"
+reason = "The closure record states the last release that contained the session-backends package."
+paths = ["docs/parity/gap-closure/gap-remote-stack.md"]
+
+[[record]]
+version = "1.0.4"
+reason = "Gap-closure records and the plan and progress ledgers written against Pi 1.0.4 before the 1.1.0 leap. Their bases, probes, oracles and line citations describe the release they were written against."
+paths = [
+  "docs/parity/gap-closure/",
+  "docs/plan/",
+]
+
+[[record]]
+version = "1.0"
+reason = "The remote-stack closure record states which Pi 1.0.x releases contained the session-backends package, and the sprites progress ledger names the Pi 1.0 aggregate branch it merged."
+paths = [
+  "docs/parity/gap-closure/gap-remote-stack.md",
   "docs/plan/",
 ]

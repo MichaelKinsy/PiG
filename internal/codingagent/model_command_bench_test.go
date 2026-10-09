@@ -16,10 +16,10 @@ func BenchmarkModelCommandCachedMatch(b *testing.B) {
 			for i := range models {
 				models[i] = extension.ProviderModelConfig{ID: fmt.Sprintf("cached-%d", i)}
 			}
-			if err := registry.RegisterProvider("bench", extension.ProviderConfig{API: ai.APIOpenAICompletions, APIKey: "key", BaseURL: "http://localhost:1", Models: models}); err != nil {
+			if err := registry.RegisterExtensionProvider("bench", extension.ProviderConfig{API: ai.APIOpenAICompletions, APIKey: "key", BaseURL: "http://localhost:1", Models: models}); err != nil {
 				b.Fatal(err)
 			}
-			m := NewInteractiveMode(InteractiveOptions{ModelRegistry: registry})
+			m := NewInteractiveMode(nil, InteractiveModeOptions{ModelRegistry: registry})
 			b.ReportAllocs()
 			for b.Loop() {
 				called := false

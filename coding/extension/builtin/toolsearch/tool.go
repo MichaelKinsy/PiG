@@ -84,17 +84,17 @@ func Definition() extension.ToolDefinition {
 				Limit *float64 `json:"limit"`
 			}
 			if err := json.Unmarshal(params, &input); err != nil {
-				return nil, fmt.Errorf("invalid tool_search input: %w", err)
+				return extension.AgentToolResult{}, fmt.Errorf("invalid tool_search input: %w", err)
 			}
 			if jsstring.Trim(input.Query) == "" {
-				return nil, errors.New("query must not be empty")
+				return extension.AgentToolResult{}, errors.New("query must not be empty")
 			}
 			limit := float64(DefaultLimit)
 			if input.Limit != nil {
 				limit = *input.Limit
 			}
 			if limit != math.Trunc(limit) || limit <= 0 {
-				return nil, errors.New("limit must be a positive integer")
+				return extension.AgentToolResult{}, errors.New("limit must be a positive integer")
 			}
 			var found []resultTool
 			if tc := extension.FromContext(ctx); tc != nil {
@@ -122,16 +122,16 @@ func Definition() extension.ToolDefinition {
 	}
 }
 
-// Extension is the `builtin:tool-search` extension: the tool registered inactive. Activate it with `--tools`, the
+// CreateToolSearchExtension is the factory of the `builtin:tool-search` extension: it registers the tool inactive. Activate it with `--tools`, the
 // `defaultTools` setting or `setActiveTools()`.
 //
 // Ports packages/coding-agent/src/extensions/tool-search/index.ts (createToolSearchExtension).
-func Extension() (extension.Extension, error) {
-	definition := Definition()
-	inactive := false
-	definition.DefaultActive = &inactive
-	return extension.Extension{
-		Tools:     map[string]extension.RegisteredTool{ToolName: {Definition: definition}},
-		ToolOrder: []string{ToolName},
-	}, nil
+func CreateToolSearchExtension() extension.ExtensionFactory {
+	return func(pi extension.API) error {
+		definition := Definition()
+		inactive := false
+		definition.DefaultActive = &inactive
+		pi.RegisterTool(definition)
+		return nil
+	}
 }

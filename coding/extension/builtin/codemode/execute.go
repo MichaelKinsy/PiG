@@ -9,6 +9,7 @@ import (
 	"maps"
 	"math"
 	"slices"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -121,7 +122,7 @@ func textOf(result agent.AgentToolResult) string {
 // `structuredContent`, also for error results that carry one (such as MCP results with `isError`); any other tool
 // resolves to its text content. Other failures reject with the tool's error text.
 func toScriptValue(tool extension.AgentTool, outcome extension.AgentToolCallOutcome) (json.RawMessage, error) {
-	result, _ := outcome.Result.(agent.AgentToolResult)
+	result := outcome.Result
 	if len(tool.OutputSchema) > 0 && result.StructuredContent != nil {
 		return result.StructuredContent, nil
 	}
@@ -144,32 +145,60 @@ func valueText(value json.RawMessage) string {
 	return string(value)
 }
 
+// storeEntryData is the data of a codemode-store entry when it passes upstream's isStoreEntryData: `set` is a non-null
+// object (an array applies its indexes as keys, as Object.entries does) and `delete` is an array of strings.
+func storeEntryData(raw json.RawMessage) (set map[string]json.RawMessage, deleted []string, ok bool) {
+	var fields struct {
+		Set    json.RawMessage   `json:"set"`
+		Delete []json.RawMessage `json:"delete"`
+	}
+	if json.Unmarshal(raw, &fields) != nil || fields.Delete == nil {
+		return nil, nil, false
+	}
+	deleted = make([]string, len(fields.Delete))
+	for i, member := range fields.Delete {
+		if json.Unmarshal(member, &deleted[i]) != nil || len(member) == 0 || member[0] != '"' {
+			return nil, nil, false
+		}
+	}
+	if json.Unmarshal(fields.Set, &set) == nil && set != nil {
+		return set, deleted, true
+	}
+	var items []json.RawMessage
+	if json.Unmarshal(fields.Set, &items) != nil || items == nil {
+		return nil, nil, false
+	}
+	set = make(map[string]json.RawMessage, len(items))
+	for i, item := range items {
+		set[strconv.Itoa(i)] = item
+	}
+	return set, deleted, true
+}
+
 // storeOf reads the values of `load()`: the `codemode-store` entries on the branch, applied from the root. Entries
 // with malformed data are ignored.
 func storeOf(branch []codingagent.SessionEntry) map[string]json.RawMessage {
 	store := map[string]json.RawMessage{}
 	for _, entry := range branch {
-		if entry.Base.Type != "custom" {
+		if entry.Base().Type != "custom" {
 			continue
 		}
 		var fields struct {
-			CustomType string `json:"customType"`
-			Data       *struct {
-				Set    map[string]json.RawMessage `json:"set"`
-				Delete []string                   `json:"delete"`
-			} `json:"data"`
+			CustomType string          `json:"customType"`
+			Data       json.RawMessage `json:"data"`
 		}
 		raw, err := json.Marshal(entry)
 		if err != nil || json.Unmarshal(raw, &fields) != nil || fields.CustomType != StoreEntryType {
 			continue
 		}
-		if fields.Data == nil || fields.Data.Set == nil || fields.Data.Delete == nil {
+		set, deleted, ok := storeEntryData(fields.Data)
+		if !ok {
 			continue
 		}
-		for _, key := range fields.Data.Delete {
+		for _, key := range deleted {
 			delete(store, key)
 		}
-		maps.Copy(store, fields.Data.Set)
+		maps.Copy(store, set)
 	}
 	return store
 }
@@ -179,10 +208,8 @@ func storeOf(branch []codingagent.SessionEntry) map[string]json.RawMessage {
 //
 // upstream: codemode/execute.ts:285 (`ctx.sessionManager.getBranch()`), 301 (`options.appendEntry`, which index.ts:35 binds to `pi.appendEntry`).
 type session struct {
-	manager interface {
-		GetBranch() []codingagent.SessionEntry
-	}
-	tool *extension.ToolContext
+	manager extension.ReadonlySessionManager
+	tool    *extension.ToolContext
 }
 
 func (s session) branch() []codingagent.SessionEntry { return s.manager.GetBranch() }
@@ -200,13 +227,7 @@ func sessionOf(tc *extension.ToolContext) *session {
 	if err != nil || manager == nil {
 		return nil
 	}
-	branch, ok := manager.(interface {
-		GetBranch() []codingagent.SessionEntry
-	})
-	if !ok {
-		return nil
-	}
-	return &session{manager: branch, tool: tc}
+	return &session{manager: manager, tool: tc}
 }
 
 func spillOutput(text string) (string, error) {
@@ -273,6 +294,64 @@ func saveImages(items []ai.ToolResultMessageContent) ([]ai.ToolResultMessageCont
 		out = append(out, item)
 	}
 	return out, nil
+}
+
+// formatOutput lays out the script's output so the model can tell items apart: providers join adjacent text blocks with
+// a newline or with nothing. With more than one text item (`text()` or the returned value), each starts with a
+// `==> text N/M <==` line. `console.*` lines follow all other output in one `<console_output>` block.
+//
+// upstream: execute.ts formatOutput
+func formatOutput(output []sandbox.OutputItem) []ai.ToolResultMessageContent {
+	total := 0
+	for _, item := range output {
+		if item.Type == sandbox.OutputItemText && !item.Console {
+			total++
+		}
+	}
+	items := make([]ai.ToolResultMessageContent, 0, len(output)+1)
+	var consoleLines []string
+	index := 0
+	for _, item := range output {
+		switch {
+		case item.Type != sandbox.OutputItemText:
+			items = append(items, ai.ImageContent{Data: item.Data, MimeType: item.MimeType})
+		case item.Console:
+			consoleLines = append(consoleLines, item.Text)
+		default:
+			index++
+			text := item.Text
+			if total > 1 {
+				text = fmt.Sprintf("==> text %d/%d <==\n%s", index, total, item.Text)
+			}
+			items = append(items, ai.TextContent{Text: text})
+		}
+	}
+	if len(consoleLines) > 0 {
+		items = append(items, ai.TextContent{Text: "<console_output>\n" + strings.Join(consoleLines, "\n") + "\n</console_output>"})
+	}
+	return items
+}
+
+// joinAdjacentText joins adjacent text items into one, each part starting on its own line.
+//
+// upstream: execute.ts joinAdjacentText
+func joinAdjacentText(items []ai.ToolResultMessageContent) []ai.ToolResultMessageContent {
+	joined := make([]ai.ToolResultMessageContent, 0, len(items))
+	for _, item := range items {
+		text, isText := item.(ai.TextContent)
+		if isText && len(joined) > 0 {
+			if last, lastIsText := joined[len(joined)-1].(ai.TextContent); lastIsText {
+				separator := "\n"
+				if last.Text == "" || strings.HasSuffix(last.Text, "\n") {
+					separator = ""
+				}
+				joined[len(joined)-1] = ai.TextContent{Text: last.Text + separator + text.Text}
+				continue
+			}
+		}
+		joined = append(joined, item)
+	}
+	return joined
 }
 
 // truncateOutput applies the token budget: when the combined text exceeds it, the text items become one item that
@@ -382,9 +461,20 @@ func Execute(ctx context.Context, toolCallID string, params json.RawMessage, onU
 		callable = callableTools(tools)
 	}
 	// ALL_TOOLS entries carry the declaration.
+	// upstream: index.ts getToolGuidelines reads pi.getAllTools().
+	guidelines := map[string][]string{}
+	if tc != nil {
+		for _, info := range tc.GetAllTools() {
+			guidelines[info.Name] = info.PromptGuidelines
+		}
+	}
 	samples := make(map[string]string, len(callable))
 	for _, tool := range callable {
-		samples[tool.Name] = sandbox.RenderToolSample(toDeclaration(tool), 0)
+		sample, err := sandbox.RenderToolSample(toDeclaration(tool, guidelines[tool.Name]), sandbox.ToolRenderOptions{})
+		if err != nil {
+			return agent.AgentToolResult{}, err
+		}
+		samples[tool.Name] = sample
 	}
 	sandboxTools := make([]sandbox.Tool, len(callable))
 	for i, tool := range callable {
@@ -423,14 +513,7 @@ func Execute(ctx context.Context, toolCallID string, params json.RawMessage, onU
 	// Calls still marked running were cut off by the script ending, a timeout, or an abort.
 	calls := run.finishCalls()
 
-	items := make([]ai.ToolResultMessageContent, 0, len(result.Output)+2)
-	for _, item := range result.Output {
-		if item.Type == "text" {
-			items = append(items, ai.TextContent{Text: item.Text})
-		} else {
-			items = append(items, ai.ImageContent{Data: item.Data, MimeType: item.MimeType})
-		}
-	}
+	scriptOutput := slices.Clone(result.Output)
 	if result.OK {
 		writes := result.StoreWrites
 		if session := sessionOf(tc); session != nil && (len(writes.Set) > 0 || len(writes.Delete) > 0) {
@@ -448,9 +531,11 @@ func Execute(ctx context.Context, toolCallID string, params json.RawMessage, onU
 		}
 		// pi extension: a returned value is appended like text().
 		if result.Value != nil {
-			items = append(items, ai.TextContent{Text: valueText(result.Value)})
+			scriptOutput = append(scriptOutput, sandbox.OutputItem{Type: sandbox.OutputItemText, Text: valueText(result.Value)})
 		}
-	} else {
+	}
+	items := formatOutput(scriptOutput)
+	if !result.OK {
 		items = append(items, ai.TextContent{Text: "Script error:\n" + formatError(result.Error, calls)})
 	}
 	if generated := run.imagesGenerated(); generated > 0 && !slices.ContainsFunc(items, func(item ai.ToolResultMessageContent) bool {
@@ -468,13 +553,14 @@ func Execute(ctx context.Context, toolCallID string, params json.RawMessage, onU
 	if parsed.Options.MaxOutputTokens != nil {
 		maxTokens = *parsed.Options.MaxOutputTokens
 	}
-	truncated, fullOutputPath := truncateOutput(items, maxTokens)
+	truncated, fullOutputPath := truncateOutput(joinAdjacentText(items), maxTokens)
 	// After truncation, which joins the text items and moves images after them, so each path stays next to its image
 	// and is never cut.
-	output, err := saveImages(truncated)
+	saved, err := saveImages(truncated)
 	if err != nil {
 		return agent.AgentToolResult{}, err
 	}
+	output := joinAdjacentText(saved)
 	title := "Script failed"
 	if result.OK {
 		title = "Script completed"

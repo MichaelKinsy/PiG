@@ -88,6 +88,7 @@ func TestExtractToolResultFields_AllVariantsCovered(t *testing.T) {
 
 // TestSessionBeforeIsCancel_AllVariantsCovered verifies cancellation for every
 // value and pointer form in the SessionBefore result union.
+// Pi: packages/coding-agent/src/core/extensions/types.ts:1478 (SessionBeforeTreeResult.cancel).
 func TestSessionBeforeIsCancel_AllVariantsCovered(t *testing.T) {
 	cases := []struct {
 		name       string

@@ -18,7 +18,7 @@ import (
 	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/internal/coding/pigversion"
 	"github.com/MichaelKinsy/PiG/internal/configvalue"
-	"github.com/MichaelKinsy/PiG/internal/nodepath"
+	"github.com/MichaelKinsy/PiG/internal/jsstring"
 	"github.com/MichaelKinsy/PiG/internal/nodeurl"
 	"github.com/MichaelKinsy/PiG/mcp"
 	"github.com/MichaelKinsy/PiG/mcp/oauth"
@@ -39,6 +39,11 @@ const (
 // server that failed with a transient error.
 // upstream: packages/coding-agent/src/extensions/mcp/runtime.ts:CONNECT_RETRY_DELAYS_MS
 var connectRetryDelays = []time.Duration{250 * time.Millisecond, 1_000 * time.Millisecond}
+
+// stderrTailOf is `stderr.trim().slice(-STDERR_TAIL_CHARS)`: the last stderrTailChars UTF-16 units of the trimmed text.
+func stderrTailOf(stderr string) string {
+	return jsstring.Slice(strings.TrimFunc(stderr, isJSWhitespace), -stderrTailChars)
+}
 
 // ServerState is the state of one [Connection]. `disconnected` means the
 // connection dropped (for example the stdio server exited); the next call
@@ -168,7 +173,7 @@ func withoutTemplates[T any](list func() (T, error), empty T) (T, error) {
 	value, err := list()
 	if err != nil {
 		var mcpErr *mcp.McpError
-		if errors.As(err, &mcpErr) && mcpErr.Code == mcp.JSONRPCMethodNotFound {
+		if errors.As(err, &mcpErr) && mcpErr.Code == mcp.JSONRPCErrorCodes.MethodNotFound {
 			return empty, nil
 		}
 	}
@@ -687,66 +692,10 @@ func (c *Connection) open(ctx context.Context) (*mcp.Client, error) {
 
 // pathToFileURL is Node's url.pathToFileURL(path).href (Node 24.19.0).
 func pathToFileURL(path string) string {
-	return pathToFileURLFor(path, runtime.GOOS == "windows")
+	return nodeurl.PathToFileURL(path, runtime.GOOS == "windows")
 }
 
-// pathToFileURLFor resolves path as path.posix or path.win32 does, keeps a
-// trailing separator, and percent-encodes what Node's encodePathChars and
-// the WHATWG path state encode: C0 controls, space, `"#%<>?[\]^` + "`{|}~",
-// DEL and every non-ASCII byte. A Windows UNC path names the URL's host.
-func pathToFileURLFor(path string, windows bool) string {
-	resolved := path
-	unc := windows && strings.HasPrefix(path, `\\`)
-	if !unc {
-		var err error
-		if windows {
-			resolved, err = nodepath.Win32Resolve(nodepath.Process(), path)
-		} else {
-			resolved, err = nodepath.PosixResolve(nodepath.Process(), path)
-		}
-		if err != nil {
-			resolved = path
-		}
-	}
-	host := ""
-	if windows && strings.HasPrefix(resolved, `\\`) {
-		rest := strings.TrimPrefix(resolved, `\\`)
-		if after, ok := strings.CutPrefix(resolved, `\\?\UNC\`); ok {
-			rest = after
-		}
-		if server, share, ok := strings.Cut(rest, `\`); ok && server != "" {
-			host, resolved = server, `\`+share
-			if ascii, err := nodeurl.FileHost(server); err == nil {
-				host = ascii
-			}
-		}
-	}
-	// path.resolve strips a trailing separator, so it is added back.
-	endsInSeparator := strings.HasSuffix(resolved, "/") || windows && strings.HasSuffix(resolved, `\`)
-	if last := path[max(len(path)-1, 0):]; (last == "/" || windows && last == `\`) && !endsInSeparator {
-		resolved += "/"
-	}
-	const hex = "0123456789ABCDEF"
-	var b strings.Builder
-	b.WriteString("file://" + host)
-	if windows && host == "" {
-		b.WriteByte('/')
-	}
-	for i := range len(resolved) {
-		c := resolved[i]
-		switch {
-		case windows && c == '\\':
-			b.WriteByte('/')
-		case c <= 0x20 || c >= 0x7f || strings.IndexByte("\"#%<>?[\\]^`{|}~", c) >= 0:
-			b.WriteByte('%')
-			b.WriteByte(hex[c>>4])
-			b.WriteByte(hex[c&15])
-		default:
-			b.WriteByte(c)
-		}
-	}
-	return b.String()
-}
+func pathToFileURLFor(path string, windows bool) string { return nodeurl.PathToFileURL(path, windows) }
 
 func (c *Connection) connectOnce(ctx context.Context) (*mcp.Client, error) {
 	client := mcp.NewClient(mcp.ClientOptions{
@@ -761,10 +710,7 @@ func (c *Connection) connectOnce(ctx context.Context) (*mcp.Client, error) {
 	fail := func(err error) (*mcp.Client, error) {
 		_ = client.Close()
 		if stdio != nil {
-			tail := strings.TrimSpace(stdio.Stderr())
-			if runes := []rune(tail); len(runes) > stderrTailChars {
-				tail = string(runes[len(runes)-stderrTailChars:])
-			}
+			tail := stderrTailOf(stdio.Stderr())
 			c.mu.Lock()
 			c.stderrTail = tail
 			c.mu.Unlock()
@@ -883,10 +829,7 @@ func (c *Connection) handleClientClose(client *mcp.Client, stdio *mcp.StdioTrans
 	c.state = StateDisconnected
 	c.errText = "Connection closed"
 	if stdio != nil {
-		tail := strings.TrimSpace(stdio.Stderr())
-		if runes := []rune(tail); len(runes) > stderrTailChars {
-			tail = string(runes[len(runes)-stderrTailChars:])
-		}
+		tail := stderrTailOf(stdio.Stderr())
 		if tail != "" {
 			c.errText = "Connection closed\n" + tail
 		}

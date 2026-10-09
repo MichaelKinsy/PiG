@@ -38,6 +38,7 @@ func acceptOne(t *testing.T, listener net.Listener) <-chan net.Conn {
 }
 
 // packages/server/src/testing/client.ts:152-174: socket data reaches the client, and the peer's close marks it closed and rejects pending waits.
+// mutation-checked: negating the condition `err != nil` at client.go:309 fails it.
 func TestConnectUnixTestClientFollowsThePeer(t *testing.T) {
 	ctx := boundedContext(t)
 	listener, path := listenUnix(t)
@@ -77,6 +78,7 @@ func TestConnectUnixTestClientFollowsThePeer(t *testing.T) {
 }
 
 // packages/server/src/testing/client.ts:161-166: closing the client destroys the socket, waits for its close, and reports no socket error.
+// mutation-checked: negating the condition `!errors.Is(err, io.EOF) && !channel.destroyed.Load()` at client.go:336 fails it.
 func TestConnectUnixTestClientCloseWaitsForTheSocket(t *testing.T) {
 	ctx := boundedContext(t)
 	listener, path := listenUnix(t)

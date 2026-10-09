@@ -5,31 +5,34 @@ import (
 	"maps"
 
 	"github.com/MichaelKinsy/PiG/ai"
+
 	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/internal/jsonstringify"
 )
 
-// wireEventPayload projects the Go-native models an event carries onto Pi's extension-facing Model shape. Upstream hands extensions the Session's Model objects (agent-session.ts:2372-2384 _emitModelSelect).
+// wireEventPayload projects the Go-native models an event carries onto Pi's extension-facing Model shape. Upstream hands extensions the Session's Model objects (agent-session.ts:2457-2469 _emitModelSelect).
 func wireEventPayload(event any) any {
 	selected, ok := event.(extension.ModelSelectEvent)
 	if !ok {
 		return event
 	}
-	selected.Model = wireModel(selected.Model)
-	selected.PreviousModel = wireModel(selected.PreviousModel)
-	return selected
+	return modelSelectWire{Type: selected.Type, Model: wireModel(selected.Model), PreviousModel: wireModel(selected.PreviousModel), Source: selected.Source}
+}
+
+// modelSelectWire is extension.ModelSelectEvent with its models in the wire shape; the members keep the event's order.
+type modelSelectWire struct {
+	Type          string                      `json:"type"`
+	Model         any                         `json:"model"`
+	PreviousModel any                         `json:"previousModel,omitempty"`
+	Source        extension.ModelSelectSource `json:"source"`
 }
 
 // wireModel returns an untyped nil for an absent model so the omitted previousModel stays undefined.
-func wireModel(model extension.Model) extension.Model {
-	native, ok := model.(*ai.Model)
-	if !ok {
-		return model
-	}
-	if native == nil {
+func wireModel(model *ai.Model) any {
+	if model == nil {
 		return nil
 	}
-	return extension.ModelInfo(native)
+	return extension.ModelInfo(model)
 }
 
 // applyToolCallInput replaces the members of a tool_call event's input with the input an extension's handler left, in the order it left them (JSON.stringify of the edited object). The event's Input map and the wire bytes it points at are what the agent loop reads after the handlers ran (coding/session_extension_hooks.go), so both change in place and the next handler and the tool see the edit. A value that is not an object cannot be an input a tool accepts, and the event keeps its own.

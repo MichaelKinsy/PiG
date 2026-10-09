@@ -180,6 +180,7 @@ def test_prepare_loadout_request_runs_the_hook_with_the_loadout() -> None:
         payload = {
             "declared": [read, grep], "callable": [read], "registered": [read, grep],
             "exposures": {"read": "direct", "grep": "deferred"}, "namespaces": {"grep": {"name": "search"}},
+            "promptGuidelines": {"grep": ["Use grep for patterns.", "Quote regexes."]},
         }
         request = {"method": "tool_prepare_loadout", "tool": "codemode", "args": payload}
         _, response = _drive(host, "r1", request)
@@ -190,6 +191,8 @@ def test_prepare_loadout_request_runs_the_hook_with_the_loadout() -> None:
         assert loadout.get_exposure("missing") == "direct"
         assert loadout.get_namespace("grep") == {"name": "search"}
         assert loadout.get_namespace("read") is None and loadout.get_namespace("missing") is None
+        assert loadout.get_prompt_guidelines("grep") == ["Use grep for patterns.", "Quote regexes."]
+        assert loadout.get_prompt_guidelines("read") == [] and loadout.get_prompt_guidelines("missing") == []
 
         answer[0] = None
         _, response = _drive(host, "r2", request)

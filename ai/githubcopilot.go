@@ -16,12 +16,14 @@ import (
 	"math"
 	"net/http"
 	"net/url"
+	"regexp"
 	"slices"
 	"strings"
 	"sync"
 	"time"
 
 	"github.com/MichaelKinsy/PiG/internal/jsnumber"
+	"github.com/MichaelKinsy/PiG/internal/nodeurl"
 )
 
 // CopilotClientID is the OAuth client ID used by the upstream pi-ai package
@@ -177,6 +179,8 @@ func LoginGitHubCopilot(ctx context.Context, cb CopilotLoginCallbacks) (Credenti
 	return cred, err
 }
 
+// normalizeDomain is Pi's normalizeDomain (github-copilot.ts:41): the hostname of `new URL(trimmed)`, or of `new URL("https://" + trimmed)` when the
+// input has no "://". ok is false where Pi returns null or an empty hostname, which every caller treats alike.
 func normalizeDomain(input string) (string, bool) {
 	t := trimJSWhitespace(input)
 	if t == "" {
@@ -185,11 +189,14 @@ func normalizeDomain(input string) (string, bool) {
 	if !strings.Contains(t, "://") {
 		t = "https://" + t
 	}
-	u, err := url.Parse(t)
-	if err != nil || u.Host == "" {
-		return "", false
-	}
-	return strings.ToLower(u.Hostname()), true
+	hostname, ok := urlHostname(t)
+	return hostname, ok && hostname != ""
+}
+
+// urlHostname is `new URL(value).hostname`.
+func urlHostname(value string) (string, bool) {
+	parsed, err := nodeurl.ParseURL(value)
+	return parsed.Hostname, err == nil
 }
 
 func startDeviceFlow(ctx context.Context, domain string) (*deviceCodeResponse, error) {
@@ -542,17 +549,9 @@ func copilotFetchWithRetry(ctx context.Context, policy copilotRetryPolicy, newRe
 		if closeErr != nil {
 			return copilotHTTPResult{}, closeErr
 		}
-		// Node setTimeout truncates fractions and uses 1ms outside this range.
-		// Compare the original floating-point delay to the budget before converting.
-		if delayMs < 1 || delayMs > math.MaxInt32 {
-			delayMs = 1
-		}
-		timer := time.NewTimer(time.Duration(delayMs) * time.Millisecond)
-		select {
-		case <-requestCtx.Done():
-			timer.Stop()
-			return copilotHTTPResult{}, requestCtx.Err()
-		case <-timer.C:
+		// The delay was compared to the budget as a floating-point value; Sleep applies Node's setTimeout coercion.
+		if err := Sleep(requestCtx, delayMs); err != nil {
+			return copilotHTTPResult{}, err
 		}
 	}
 }
@@ -738,14 +737,7 @@ func NewCopilotProvider(cfg CopilotProviderConfig) (Provider, error) {
 
 	dynamicHeaders := func(transcript TranscriptContext, _ StreamOptions) map[string]string {
 		messages := transcript.Messages()
-		h := map[string]string{
-			"X-Initiator":   inferInitiator(messages),
-			"Openai-Intent": "conversation-edits",
-		}
-		if hasImages(messages) {
-			h["Copilot-Vision-Request"] = "true"
-		}
-		return h
+		return BuildCopilotDynamicHeaders(messages, HasCopilotVisionInput(messages))
 	}
 
 	// Route to the Anthropic Messages API for Claude models proxied through
@@ -929,21 +921,19 @@ func (m *copilotTokenManager) getBaseURL(ctx context.Context) (string, error) {
 	return getCopilotBaseURL(tok, domain), nil
 }
 
-// getCopilotBaseURL parses the `proxy-ep=...` claim from the access token
-// and replaces a leading proxy. prefix with api., preserving all other hosts.
-// Falls back to enterprise / default if the token is unparseable.
+// copilotProxyEndpoint is getBaseUrlFromToken's `/proxy-ep=([^;]+)/`: the first claim anywhere in the token, whitespace and all.
+var copilotProxyEndpoint = regexp.MustCompile(`proxy-ep=([^;]+)`)
+
+// getCopilotBaseURL is Pi's getGitHubCopilotBaseUrl (github-copilot.ts:78): the API URL from the token's `proxy-ep=` claim, with a leading proxy.
+// replaced by api., else the enterprise domain's, else the individual default.
 func getCopilotBaseURL(accessToken, enterpriseDomain string) string {
 	if accessToken != "" {
-		for part := range strings.SplitSeq(accessToken, ";") {
-			if v, ok := strings.CutPrefix(part, "proxy-ep="); ok {
-				v = strings.TrimSpace(v)
-				if v != "" {
-					if host, ok := strings.CutPrefix(v, "proxy."); ok {
-						v = "api." + host
-					}
-					return "https://" + v
-				}
+		if match := copilotProxyEndpoint.FindStringSubmatch(accessToken); match != nil {
+			host := match[1]
+			if rest, ok := strings.CutPrefix(host, "proxy."); ok {
+				host = "api." + rest
 			}
+			return "https://" + host
 		}
 	}
 	if enterpriseDomain != "" {
@@ -972,10 +962,9 @@ func ResolveCopilotEnvFallback(auth *AuthStorage, envToken string) (bearer, base
 
 // ─── Per-request dynamic headers ──────────────────────────────────────────────
 
-// inferInitiator returns "agent" if the most recent message is from the
-// assistant or a tool result, "user" otherwise. Mirrors upstream
-// inferCopilotInitiator().
-func inferInitiator(msgs []Message) string {
+// InferCopilotInitiator returns "agent" if the most recent message is from the
+// assistant or a tool result, "user" otherwise. Ports packages/ai/src/api/github-copilot-headers.ts inferCopilotInitiator.
+func InferCopilotInitiator(msgs []Message) string {
 	if len(msgs) == 0 {
 		return "user"
 	}
@@ -987,11 +976,11 @@ func inferInitiator(msgs []Message) string {
 	}
 }
 
-// hasImages reports whether any message carries image content, including
+// HasCopilotVisionInput reports whether any message carries image content, including
 // images returned by tools (e.g. the read tool reading a PNG). Triggers the
-// Copilot-Vision-Request header. Mirrors upstream hasCopilotVisionInput, which
+// Copilot-Vision-Request header. Ports github-copilot-headers.ts hasCopilotVisionInput, which
 // checks both user messages and tool-result messages for image blocks.
-func hasImages(messages []Message) bool {
+func HasCopilotVisionInput(messages []Message) bool {
 	for _, message := range messages {
 		switch message := message.(type) {
 		case UserMessage:
@@ -1013,6 +1002,18 @@ func hasImages(messages []Message) bool {
 		}
 	}
 	return false
+}
+
+// BuildCopilotDynamicHeaders returns the per-request Copilot headers. Ports github-copilot-headers.ts buildCopilotDynamicHeaders.
+func BuildCopilotDynamicHeaders(messages []Message, hasImages bool) map[string]string {
+	headers := map[string]string{
+		"X-Initiator":   InferCopilotInitiator(messages),
+		"Openai-Intent": "conversation-edits",
+	}
+	if hasImages {
+		headers["Copilot-Vision-Request"] = "true"
+	}
+	return headers
 }
 
 // ─── small helpers ────────────────────────────────────────────────────────────

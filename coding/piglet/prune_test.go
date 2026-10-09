@@ -139,9 +139,11 @@ func TestPigletPruneRemovesOldBuildsOnly(t *testing.T) {
 			t.Fatalf("newer record removed: %v", err)
 		}
 	}
-	// The listing validates every record against its resolution and artifact.
-	if piglets, err := List(); err != nil || len(piglets) != 2 {
-		t.Fatalf("store is inconsistent after prune: %v (%d Piglets listed, want the 2 kept builds)", err, len(piglets))
+	// The listing validates every record against its resolution and artifact. The kept builds are
+	// two records of the one binary-only Piglet.
+	piglets, err := List()
+	if err != nil || len(piglets) != 1 || len(piglets[0].Records) != 2 {
+		t.Fatalf("store is inconsistent after prune: %v (%#v, want one Piglet with the 2 kept builds)", err, piglets)
 	}
 }
 

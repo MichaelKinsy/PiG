@@ -5,10 +5,10 @@ import (
 	"encoding/base64"
 	"fmt"
 	"os"
-	"path/filepath"
 	"strings"
 
 	"github.com/MichaelKinsy/PiG/ai"
+	"github.com/MichaelKinsy/PiG/internal/codingagent/tools"
 	"github.com/MichaelKinsy/PiG/internal/imageprocessing"
 	"github.com/MichaelKinsy/PiG/internal/text"
 )
@@ -39,11 +39,11 @@ func ProcessCLIFileArguments(fileArgs []string, cwd string, options ...ProcessFi
 	var out strings.Builder
 	var images []ai.ImageContent
 	for _, arg := range fileArgs {
-		absPath := arg
-		if !filepath.IsAbs(absPath) {
-			absPath = filepath.Join(cwd, arg)
+		// upstream: file-processor.ts `resolve(resolveReadPath(fileArg, process.cwd()))`: `~` expansion, the `@` prefix and the macOS screenshot name variants.
+		absPath, err := tools.ResolveReadPath(arg, cwd)
+		if err != nil {
+			return ProcessedCLIArgs{}, err
 		}
-		absPath = filepath.Clean(absPath)
 		info, err := os.Stat(absPath)
 		if err != nil {
 			return ProcessedCLIArgs{}, fmt.Errorf("File not found: %s", absPath)

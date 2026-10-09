@@ -1,4 +1,4 @@
-# Only runtime.test.ts:125 and 5943-session-start-notify.test.ts:220 are paired here.
+# Only runtime.test.ts:125 and 5943-session-start-notify.test.ts:221 are paired here.
 # The Pi adapter executes the original assertion bodies against the pinned published production modules.
 # Compare actual assistant roles/costs and unmodified resource/chat containment/order predicates.
 # This does not claim runtime replacement, stale contexts, subscriptions, or reload closure.
@@ -13,7 +13,7 @@ override_base_args = true
 pig_bin = "/usr/bin/env"
 pi_bin = "/usr/bin/env"
 pig_args = ["bash", "./test/parity/testdata/session-runtime-pig.sh"]
-pi_args = ["bash", "-c", "node --experimental-import-meta-resolve ./test/parity/testdata/session-runtime-pi.mjs runtime 125 && node --experimental-import-meta-resolve ./test/parity/testdata/session-runtime-pi.mjs notify 220"]
+pi_args = ["bash", "-c", "node --experimental-import-meta-resolve ./test/parity/testdata/session-runtime-pi.mjs runtime 125 && node --experimental-import-meta-resolve ./test/parity/testdata/session-runtime-pi.mjs notify 221"]
 
 [cli]
 cwd = "../../../.."

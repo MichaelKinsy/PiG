@@ -3,6 +3,7 @@ package coding
 import (
 	"context"
 	"reflect"
+	"sync/atomic"
 	"testing"
 	"testing/synctest"
 
@@ -10,6 +11,7 @@ import (
 	"github.com/MichaelKinsy/PiG/coding/extension"
 )
 
+// Pi: packages/coding-agent/src/core/agent-session.ts:1653 (Session.setScopedModels).
 func TestSessionModelCycleBoundaries(t *testing.T) {
 	for _, tc := range []struct {
 		name, direction, current, want string
@@ -56,7 +58,7 @@ func TestSessionPromptAwaitsInputBeforeProvider(t *testing.T) {
 			return fauxReply("done", ai.StopReasonStop, 0)(messages)
 		})
 		done := make(chan error, 1)
-		go func() { _, err := h.session.Prompt(context.Background(), "original"); done <- err }()
+		go func() { err := h.session.Prompt(context.Background(), "original"); done <- err }()
 		<-started
 		synctest.Wait()
 		if observed != "" {
@@ -80,11 +82,40 @@ func TestSessionPromptAwaitsInputBeforeProvider(t *testing.T) {
 func TestRejectedModelSelectionPreservesState(t *testing.T) {
 	h := newModelExtensionHarness(t, []bool{true, true}, "", false, extension.Extension{}, nil)
 	previous := h.session.Model()
-	entries := h.session.Inner().Entries()
+	entries := h.session.Inner().GetEntries()
 	if err := h.session.SetModel(h.models[1], ModelMutationOptions{Persist: true}); err == nil {
 		t.Fatal("unconfigured model accepted")
 	}
-	if h.session.Model() != previous || !reflect.DeepEqual(h.session.Inner().Entries(), entries) || h.services.Settings().DefaultModel != "" {
+	if h.session.Model() != previous || !reflect.DeepEqual(h.session.Inner().GetEntries(), entries) || h.services.Settings().DefaultModel != "" {
 		t.Fatal("rejected selection changed model, history or settings")
+	}
+}
+
+// Pi: agent-session.ts:2570-2600 (_cycleAvailableModel) mutates the model before awaiting model_select; BeginModelCycle is that prefix, so RPC can admit its next command there.
+func TestBeginModelCycleSplitsMutationFromNotification(t *testing.T) {
+	var calls atomic.Int32
+	h := newModelExtensionHarness(t, []bool{true, true}, "", true, extension.Extension{Path: "/ext/model", Handlers: map[string][]extension.HandlerFn{"model_select": {func(args ...any) (any, error) {
+		calls.Add(1)
+		return nil, nil
+	}}}}, nil)
+	result, complete, err := h.session.BeginModelCycle(context.Background(), "forward")
+	if err != nil || result == nil || result.Model.ID != "faux-2" || result.IsScoped {
+		t.Fatalf("result=%+v err=%v", result, err)
+	}
+	if h.session.Model().ID != "faux-2" {
+		t.Fatal("model was not applied before the notification")
+	}
+	if complete == nil {
+		t.Fatal("a registered model_select handler left no completion")
+	}
+	if calls.Load() != 0 {
+		t.Fatal("model_select ran before the completion")
+	}
+	complete()
+	if calls.Load() != 1 {
+		t.Fatalf("model_select calls=%d after completion", calls.Load())
+	}
+	if _, _, err := h.session.BeginModelCycle(context.Background(), "sideways"); err == nil {
+		t.Fatal("unknown direction accepted")
 	}
 }

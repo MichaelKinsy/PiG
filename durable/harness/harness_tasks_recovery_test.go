@@ -193,7 +193,7 @@ func TestTaskRecovery(t *testing.T) {
 		record := tkTaskRecord(t, second, id)
 		tkExpectState(t, record, durable.TaskPending, false)
 		if !reflect.DeepEqual(record.Memos, map[string]durable.JsonValue{"requested": float64(7)}) ||
-			!reflect.DeepEqual(*record.State.Checkpoint, map[string]any{"phase": "apply", "key": fmt.Sprintf("transfer-%d", id)}) {
+			!reflect.DeepEqual(plainObject(*record.State.Checkpoint), map[string]any{"phase": "apply", "key": fmt.Sprintf("transfer-%d", id)}) {
 			t.Fatalf("record %+v keeps neither memos nor the checkpoint", record)
 		}
 		if service.callCount() != 1 {
@@ -211,9 +211,8 @@ func TestTaskRecovery(t *testing.T) {
 		mustClose(t, second)
 
 		third, _, _ := openTasks(t, tkOpenSqlite(t, path), []durable.AnyTask{transfer})
-		if stored := tkTaskRecord(t, third, id); !reflect.DeepEqual(stored, receipt) {
-			t.Fatalf("stored %+v differs from the receipt %+v", stored, receipt)
-		}
+		// toEqual: the stored record and the receipt have the same JSON members.
+		expectSameJSON(t, tkTaskRecord(t, third, id), receipt)
 		mustClose(t, third)
 	})
 
@@ -636,9 +635,8 @@ func TestBlockedTasks(t *testing.T) {
 			N int `json:"n"`
 		}
 		scratch := durable.DefineDoc(durable.DocDefinition[scratchState]{
-			CommonDocDefinition: durable.CommonDocDefinition[scratchState]{Kind: "test.orphan-scratch", Version: 1},
+			CommonDocDefinition: durable.CommonDocDefinition[scratchState]{Kind: "test.orphan-scratch", Version: 1, Initial: func() scratchState { return scratchState{} }},
 			DocumentSemantics:   durable.DocumentSemantics{Scope: durable.ScopeTask},
-			Initial:             func() scratchState { return scratchState{} },
 		})
 		harness, _, _ := openTasks(t, storage.NewMemoryStorage(), nil)
 		root := mustRoot(t, harness, nil)
@@ -1094,6 +1092,8 @@ func slicesContains(items []string, item string) bool {
 	return slices.Contains(items, item)
 }
 
+// Pi source: packages/durable/src/storage/memory.ts
+// mutation-checked: zeroing the results of MemoryStorage.Task fails it
 func TestTaskRecoveryHarnessOpen(t *testing.T) {
 	t.Run("releases its registry subscription and closes the Session when open fails", func(t *testing.T) {
 		store := newControlledStorage()

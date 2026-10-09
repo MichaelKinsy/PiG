@@ -46,11 +46,12 @@ type providerKeys interface {
 func eventContext(ctx context.Context) EventContext {
 	c := extension.FromContext(ctx)
 	if c == nil {
-		return EventContext{}
+		return EventContext{Context: ctx}
 	}
 	cwd, _ := c.CWD()
 	return EventContext{
-		Cwd: cwd,
+		Context: ctx,
+		Cwd:     cwd,
 		IsProjectTrusted: func() bool {
 			trusted, err := c.IsProjectTrusted()
 			return err == nil && trusted
@@ -74,6 +75,16 @@ func eventContext(ctx context.Context) EventContext {
 				ui.Notify(message, level)
 			}
 		},
+	}
+}
+
+// CreateMcpExtension is upstream's createMcpExtension (extensions/mcp/index.ts:280): the extension factory of the MCP extension, which registers its events,
+// `/mcp` command and tools on the api it is given. [Factory] is the same registration for a caller that also needs the extension's actions.
+func CreateMcpExtension(options Options) extension.ExtensionFactory {
+	factory := Factory(options)
+	return func(pi extension.API) error {
+		factory(newPiAdapter(pi))
+		return nil
 	}
 }
 
@@ -151,11 +162,11 @@ func commandContext(ctx context.Context, copyToClipboard func(text string) error
 		return out
 	}
 	out.Select = func(ctx context.Context, title string, options []string) (string, bool) {
-		choice, err := ui.Select(ctx, title, options, nil)
+		choice, err := ui.Select(ctx, title, options, extension.ExtensionUIDialogOptions{})
 		return choice, err == nil && choice != ""
 	}
 	out.Input = func(ctx context.Context, title, placeholder string) (string, bool) {
-		value, err := ui.Input(ctx, title, placeholder, nil)
+		value, err := ui.Input(ctx, title, placeholder, extension.ExtensionUIDialogOptions{})
 		return value, err == nil && value != ""
 	}
 	out.ShowManager = func(ctx context.Context, manage func(McpUi) error) error {
@@ -169,7 +180,7 @@ func commandContext(ctx context.Context, copyToClipboard func(text string) error
 func showManager(ctx context.Context, ui extension.UIContext, events EventContext, copyToClipboard func(text string) error, manage func(McpUi) error) error {
 	var running sync.WaitGroup
 	defer running.Wait()
-	_, err := ui.Custom(ctx, extension.CustomFactory(func(host extension.CustomHost, theme extension.Theme, keybindings extension.KeybindingsManager, done func(any)) (extension.Component, error) {
+	_, err := ui.Custom(ctx, extension.CustomFactory(func(host extension.TUI, theme *tui.Theme, keybindings extension.KeybindingsManager, done func(any)) (extension.DisposableComponent, error) {
 		view := NewMcpManagerView(host, themeOf(theme), keybindingsOf(keybindings))
 		view.SetCopyToClipboard(copyToClipboard)
 		running.Go(func() {
@@ -184,8 +195,8 @@ func showManager(ctx context.Context, ui extension.UIContext, events EventContex
 }
 
 func keybindingsOf(keybindings extension.KeybindingsManager) *tui.TUIKeybindingsManager {
-	if kb, ok := keybindings.(*tui.TUIKeybindingsManager); ok && kb != nil {
-		return kb
+	if keybindings != nil {
+		return keybindings
 	}
 	return tui.GetTUIKeybindings()
 }

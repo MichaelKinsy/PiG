@@ -23,6 +23,7 @@ export class ToolExecutionComponent extends Container {
     expanded = false;
     showImages;
     imageWidthCells;
+    outputPad;
     isPartial = true;
     toolDefinition;
     ui;
@@ -39,6 +40,7 @@ export class ToolExecutionComponent extends Container {
         this.toolDefinition = toolDefinition;
         this.showImages = options.showImages ?? true;
         this.imageWidthCells = options.imageWidthCells ?? 60;
+        this.outputPad = options.outputPad ?? 1;
         this.ui = ui;
         this.cwd = cwd;
         this.addChild(new Spacer(1));
@@ -86,6 +88,8 @@ export class ToolExecutionComponent extends Container {
             expanded: this.expanded,
             showImages: this.showImages,
             isError: this.result?.isError ?? false,
+            durationMs: this.isPartial ? undefined : this.result?.durationMs,
+            outputPad: this.outputPad,
         };
     }
     createCallFallback() {
@@ -134,6 +138,10 @@ export class ToolExecutionComponent extends Container {
     }
     setExpanded(expanded) {
         this.expanded = expanded;
+        this.updateDisplay();
+    }
+    setOutputPad(outputPad) {
+        this.outputPad = outputPad;
         this.updateDisplay();
     }
     setShowImages(show) {
@@ -200,6 +208,7 @@ export class ToolExecutionComponent extends Container {
             const renderContainer = this.getRenderShell() === "self" ? this.selfRenderContainer : this.contentBox;
             if (renderContainer instanceof Box) {
                 renderContainer.setBgFn(bgFn);
+                renderContainer.setPaddingX(this.outputPad);
             }
             renderContainer.clear();
             const callRenderer = this.getCallRenderer();
@@ -249,6 +258,7 @@ export class ToolExecutionComponent extends Container {
         }
         else {
             this.contentText.setCustomBgFn(bgFn);
+            this.contentText.setPaddingX(this.outputPad);
             this.contentText.setText(this.formatToolExecution());
             hasContent = true;
         }

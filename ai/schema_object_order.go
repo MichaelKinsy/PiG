@@ -8,6 +8,8 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+
+	"github.com/MichaelKinsy/PiG/internal/jsstring"
 )
 
 // schemaObjectOrder retains object-key enumeration across Go map normalization. JSON Schema's required array is emitted in properties enumeration order by Pi.
@@ -228,7 +230,7 @@ func marshalSchemaWithOrder(value any, order schemaObjectOrder, path string) ([]
 		out.WriteByte(']')
 		return out.Bytes(), nil
 	default:
-		return marshalJSONUnescaped(value)
+		return jsstring.MarshalJSON(value)
 	}
 }
 

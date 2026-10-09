@@ -23,7 +23,7 @@ func TestResponsesConvertMessages_EmptyToolResultUsesPlaceholder(t *testing.T) {
 
 	items, _ := p.convertMessages(messages, nil)
 
-	var fco *respInputItem
+	var fco *ResponsesInputItem
 	for i := range items {
 		if items[i].Type == "function_call_output" {
 			fco = &items[i]

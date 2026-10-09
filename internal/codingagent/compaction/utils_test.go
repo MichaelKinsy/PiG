@@ -1,5 +1,7 @@
 package compaction
 
+// pi: packages/coding-agent/src/core/compaction/utils.ts
+
 import (
 	"strings"
 	"testing"
@@ -109,6 +111,7 @@ func TestComputeFileLists_ModifiedNotInRead(t *testing.T) {
 	}
 }
 
+// Pi: packages/coding-agent/src/core/compaction/utils.ts:14 (FileOperations.written).
 func TestComputeFileLists_BothSorted(t *testing.T) {
 	ops := NewFileOps()
 	ops.Read["c.go"] = struct{}{}

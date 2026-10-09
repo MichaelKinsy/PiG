@@ -180,14 +180,8 @@ func TestSessionCwdMatches_ResolvesSymlinks(t *testing.T) {
 	}
 }
 
-// TestFindMostRecentTieBreaksByCreated covers a CI flake: on a coarse-mtime
-// filesystem two sessions written back-to-back share an identical mtime, so a
-// pure-mtime sort leaves their order undefined and FindMostRecent can return
-// the older one. The header creation timestamp (RFC3339Nano) breaks the tie
-// deterministically. Filenames are chosen so the lexically-first file is the
-// OLDER session, so the unfixed mtime-only sort returns it (red) and the
-// Created tie-break returns the newer one (green).
-func TestFindMostRecentTieBreaksByCreated(t *testing.T) {
+// TestFindMostRecentTiesKeepDirectoryOrder: upstream `findMostRecentSession` sorts the `.jsonl` files by `mtimeMs` descending with a stable sort over `readdirSync` order, so two sessions with the same mtime resolve to the file that sorts first by name, whatever their header timestamps say. (An earlier Pig version broke the tie by header creation time to hide the unstable Go sort; `TestFindMostRecentSessionMatchesPi` pins Pi's rule.)
+func TestFindMostRecentTiesKeepDirectoryOrder(t *testing.T) {
 	dir := t.TempDir()
 	sameMtime := time.Now().Truncate(time.Second)
 
@@ -205,44 +199,24 @@ func TestFindMostRecentTieBreaksByCreated(t *testing.T) {
 		return path
 	}
 
-	write("a.jsonl", "2025-01-01T00:00:00.000000001Z")              // lexically first, older
-	wantNewer := write("b.jsonl", "2025-01-01T00:00:00.000000002Z") // lexically second, newer
+	wantFirst := write("a.jsonl", "2025-01-01T00:00:00.000000001Z")
+	write("b.jsonl", "2025-01-01T00:00:00.000000002Z")
 
 	sm := NewSessionManagerWithDir("/p", dir)
-	if got := sm.FindMostRecent(); got != wantNewer {
-		t.Errorf("FindMostRecent=%q want %q (later-created wins the equal-mtime tie)", got, wantNewer)
+	if got := sm.FindMostRecent(); got != wantFirst {
+		t.Errorf("FindMostRecent=%q want %q (equal mtimes keep directory order)", got, wantFirst)
 	}
 }
 
-// compareSessionRecencyDesc must be a strict total order: slices.SortFunc is
-// not stable, so two distinct sessions that tie on both mtime and Created must
-// still compare non-zero and antisymmetric, or their order is undefined. This
-// is the deeper invariant behind the equal-mtime flake: Created resolves the
-// realistic case (nanosecond session headers), Path guarantees determinism even
-// in the degenerate mtime==Created tie. Red without the Path fallback (returns
-// 0 for distinct paths).
-func TestCompareSessionRecencyDescIsTotalOrder(t *testing.T) {
-	mt := time.Unix(1000, 0)
-	ct := time.Unix(2000, 0)
-	a := SessionInfo{Path: "/x/a.jsonl", Modified: mt, Created: ct}
-	b := SessionInfo{Path: "/x/b.jsonl", Modified: mt, Created: ct}
-
-	if got := compareSessionRecencyDesc(a, b); got >= 0 {
-		t.Errorf("equal mtime+created: compareSessionRecencyDesc(a,b)=%d, want <0 (path breaks the tie)", got)
+// compareSessionModifiedDesc is Pi's sortSessionInfos: milliseconds of activity, newest first, nothing else, so a stable sort over the file order (locale order of the names, descending) decides every tie.
+func TestCompareSessionModifiedDescOrdersByMillisecondsOnly(t *testing.T) {
+	mt := time.UnixMilli(1000)
+	a := SessionInfo{Path: "/x/a.jsonl", Modified: mt, Created: time.Unix(2000, 0)}
+	b := SessionInfo{Path: "/x/b.jsonl", Modified: mt.Add(500 * time.Microsecond), Created: time.Unix(1, 0)}
+	if got := compareSessionModifiedDesc(a, b); got != 0 {
+		t.Errorf("same millisecond: got %d, want 0 (ties keep file order)", got)
 	}
-	if compareSessionRecencyDesc(a, b) != -compareSessionRecencyDesc(b, a) {
-		t.Errorf("comparator not antisymmetric under the path tie-break")
-	}
-
-	// mtime dominates Created and Path: a newer mtime sorts first even with an
-	// older Created and a lexically larger path.
-	newer := SessionInfo{Path: "/x/z.jsonl", Modified: mt.Add(time.Second), Created: time.Unix(1, 0)}
-	if got := compareSessionRecencyDesc(newer, a); got >= 0 {
-		t.Errorf("newer mtime must sort first: got %d, want <0", got)
-	}
-	// Created dominates Path when mtime ties.
-	createdNewer := SessionInfo{Path: "/x/z.jsonl", Modified: mt, Created: ct.Add(time.Second)}
-	if got := compareSessionRecencyDesc(createdNewer, a); got >= 0 {
-		t.Errorf("later Created must sort first when mtime ties: got %d, want <0", got)
+	if got := compareSessionModifiedDesc(SessionInfo{Modified: mt.Add(time.Millisecond)}, a); got >= 0 {
+		t.Errorf("newer first: got %d", got)
 	}
 }

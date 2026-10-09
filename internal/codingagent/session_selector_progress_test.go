@@ -65,7 +65,7 @@ func TestSessionSelectorListingAdapterCancellation(t *testing.T) {
 		stopped <- options.Context.Err()
 		return nil, options.Context.Err()
 	}
-	s := newSessionSelector(loader, loader, nil, nil, "", sessionSelectorInputBindings(t))
+	s := newSessionSelectorFromListers(loader, loader, nil, nil, "", sessionSelectorInputBindings(t))
 	<-started
 	update := <-s.work.updates
 	update()

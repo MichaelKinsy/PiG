@@ -33,7 +33,7 @@ Run `make generate` from the repository root after changing exported Go API, CLI
 | `custom-factory-ledger` | Generated custom-factory call-surface ledger |
 | `coverage RESULTS=` | `test/parity/coverage.md`, the `AGENTS.md` coverage block, and the parity badge |
 | `model-catalogs` | Text and image model catalogs |
-| `help-text` | `cmd/pig/help_upstream.txt` |
+| `help-text` | `coding/cli/help_upstream.txt` |
 | `knowledge-graph` | Knowledge-graph pages, JSON-LD, Mermaid, and the troubleshooting docs mirror |
 
 Review and commit the output. Never hand-edit generated files. `make generate` does not change reviewed mappings, dispositions, or evidence. A contract review failure still needs review; regeneration cannot accept a port. It ignores transient parity results for deterministic coverage. Use `make coverage RESULTS=<path>` separately to include a measured run.
@@ -69,7 +69,11 @@ The automation writes only where the environment allows. Set these when the defa
 
 | Script | Purpose |
 |---|---|
-| `test-grouped.sh` | The `make test` scheduler: runs Go packages in groups sized for the machine, and `cmd/pig` in shards. |
+| `test-grouped.sh` | The `make test` scheduler: runs Go packages in groups sized for the machine, and `cmd/pig` in shards. `changed` mode (`make test-changed`) runs only the packages `changed-packages.py` selects. |
+| `changed-packages.py` | Maps the files changed since the merge base with `TEST_BASE` (default `@{upstream}`, then `main`) to the packages that hold, embed or name them, and adds every package whose tests import one (`go list -test -deps` reverse closure). |
+| `test-json-report.py` | Summarizes `go test -json` as it streams: package results, failed-test output, the slowest tests and packages; keeps the raw events. |
+| `reap-test-processes.sh` | Kills and reports processes still running under a test group's scratch `TMPDIR` after `go test` returned; the group fails. |
+| `cached-gate.sh` | Replays a whole-repository gate's passing run while no tracked, modified or untracked file changed (`port-lint`, `interface-gaps`); failures, `CI` and `PIG_GATE_CACHE=0` always run it. |
 | `test-shard-pattern.sh` | Prints the `go test -run` pattern for one shard of a package's tests. `make test-cli` and the Windows `cli-1` to `cli-8` jobs run `cmd/pig` in these shards, each shard in its own parallel job, `go test` process and timeout. |
 | `test-fixtures.sh` | Builds the Go and Rust extension fixtures tests load. |
 | `test-race.sh` | Race and goroutine-leak gate for the TUI concurrency model. |
@@ -80,6 +84,7 @@ The automation writes only where the environment allows. Set these when the defa
 | `check-divergence-consistency.sh` | Every ledger entry has a source marker and every marker has an entry. |
 | `check-divergence-quality.py` | Divergence and additive records are current, enforceable contracts. |
 | `divguard/` | Divergence guard (`make divergence-guard`): syntactic checks for invented limits and timeouts, dropped events, swallowed errors and success on unknown stop reasons, ratcheted by `divguard/baseline.toml`. |
+| `portlint/` | Porting anti-pattern analyzers (`make port-lint`): `go/analysis` passes for JS-to-Go semantic drift, goroutine and request lifetime, error identity and test isolation, ratcheted by `portlint/baseline.toml`. |
 | `check-divergence-delta.sh` | A release adds no divergence without its per-entry justification. |
 | `check-coverage-delta.sh`, `check-coverage-drift.py` | Parity coverage did not regress, and `test/parity/coverage.md` and the badge match `docs/parity/PORT_MAP.md`. |
 | `check-public-claims.py` | Public prose makes no claim the evidence contradicts: overclaim phrases, unrecorded governance claims, Pi versions other than the pin, and porting or verification figures that differ from the AGENTS.md coverage block. Runs in `make docs-drift`; pass delivery or blog drafts as extra arguments to audit them too. |
@@ -87,7 +92,7 @@ The automation writes only where the environment allows. Set these when the defa
 | `check-port-map-drift.py` | `docs/parity/PORT_MAP.md` accounts for every upstream source file. |
 | `check-dco.sh` | Every commit in a pull request carries a DCO sign-off. |
 | `check-npm-lock-integrity.py` | npm lockfiles pin integrity hashes. |
-| `npm-locked.py` | Installs locked npm dependencies when manifest content changes; refuses replacement through a shared symlink. |
+| `npm-locked.py` | Installs locked npm dependencies when manifest content changes; refuses replacement through a shared symlink. With `PIG_NODE_MODULES_STORE` set, installs each manifest once per host under that directory and links `node_modules` to it. |
 | `build-ci-image.sh`, `seed-ci-image-bases.sh` | Build and seed the CI container images in `images/`. |
 
 ## gen

@@ -1,5 +1,7 @@
 package coding
 
+// pi: packages/coding-agent/src/core/provider-composer.ts
+
 import (
 	"context"
 	"net/http"
@@ -13,12 +15,12 @@ import (
 )
 
 func TestRegisteredProviderCallbackPanicIsRequestError(t *testing.T) {
-	services, err := NewServices(ServicesOptions{CWD: t.TempDir(), AgentDir: t.TempDir()})
+	services, err := CreateAgentSessionServices(CreateAgentSessionServicesOptions{CWD: t.TempDir(), AgentDir: t.TempDir()})
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(services.Close)
-	services.Registry().RegisterProvider("throws", extension.ProviderConfig{API: "custom-api", BaseURL: "https://extension.invalid", APIKey: "key", Models: []extension.ProviderModelConfig{{ID: "model", Name: "Model"}}, StreamSimple: func(extension.Model, extension.AIContext, extension.SimpleStreamOptions) extension.AssistantMessageEventStream {
+	services.Registry().RegisterExtensionProvider("throws", extension.ProviderConfig{API: "custom-api", BaseURL: "https://extension.invalid", APIKey: "key", Models: []extension.ProviderModelConfig{{ID: "model", Name: "Model"}}, StreamSimple: func(extension.Model, extension.AIContext, extension.SimpleStreamOptions) extension.AssistantMessageEventStream {
 		panic("callback failure")
 	}})
 	model := services.ModelRuntime().GetModel("throws", "model")
@@ -32,16 +34,16 @@ func TestRegisteredProviderCallbackPanicIsRequestError(t *testing.T) {
 func TestRegisteredProviderCustomStreamUpstream(t *testing.T) {
 	for _, method := range []string{"stream", "streamSimple"} {
 		t.Run(method, func(t *testing.T) {
-			services, err := NewServices(ServicesOptions{CWD: t.TempDir(), AgentDir: t.TempDir()})
+			services, err := CreateAgentSessionServices(CreateAgentSessionServicesOptions{CWD: t.TempDir(), AgentDir: t.TempDir()})
 			if err != nil {
 				t.Fatal(err)
 			}
 			t.Cleanup(services.Close)
 			var receivedKey string
-			services.Registry().RegisterProvider("extension-provider", extension.ProviderConfig{
+			services.Registry().RegisterExtensionProvider("extension-provider", extension.ProviderConfig{
 				API: "issue-8964-extension-api", APIKey: "extension-key", BaseURL: "https://extension.invalid", Models: []extension.ProviderModelConfig{{ID: "faux", Name: "Faux", Input: []string{"text"}}},
 				StreamSimple: func(_ extension.Model, _ extension.AIContext, raw extension.SimpleStreamOptions) extension.AssistantMessageEventStream {
-					receivedKey = raw.(ai.StreamOptions).APIKey
+					receivedKey = raw.APIKey
 					message := &ai.AssistantMessage{Content: []ai.AssistantContentBlock{ai.TextContent{Text: "custom provider response"}}, StopReason: ai.StopReasonStop}
 					return newSessionTestStream(ai.StartEvent{Partial: message}, ai.TextStartEvent{ContentIndex: 0, Partial: message}, ai.TextDeltaEvent{ContentIndex: 0, Delta: "custom provider response", Partial: message}, ai.TextEndEvent{ContentIndex: 0, Content: "custom provider response", Partial: message}, ai.DoneEvent{Reason: ai.StopReasonStop, Message: message})
 				},
@@ -85,9 +87,9 @@ func TestRegisteredProviderCallbackServesOnlyItsAPI(t *testing.T) {
 		message := &ai.AssistantMessage{Content: []ai.AssistantContentBlock{ai.TextContent{Text: "from callback"}}, StopReason: ai.StopReasonStop}
 		return newSessionTestStream(ai.StartEvent{Partial: message}, ai.DoneEvent{Reason: ai.StopReasonStop, Message: message})
 	}
-	registrations := map[string]func(*Services) error{
-		"legacy": func(services *Services) error {
-			return services.Registry().RegisterProvider("mixed", extension.ProviderConfig{
+	registrations := map[string]func(*AgentSessionServices) error{
+		"legacy": func(services *AgentSessionServices) error {
+			return services.Registry().RegisterExtensionProvider("mixed", extension.ProviderConfig{
 				API: "mixed-api", BaseURL: server.URL, APIKey: "key",
 				Models: []extension.ProviderModelConfig{{ID: "custom", Name: "Custom", ContextWindow: 128, MaxTokens: 16}, {ID: "stock", Name: "Stock", API: ai.APIOpenAICompletions, ContextWindow: 128, MaxTokens: 16}},
 				StreamSimple: func(extension.Model, extension.AIContext, extension.SimpleStreamOptions) extension.AssistantMessageEventStream {
@@ -95,7 +97,7 @@ func TestRegisteredProviderCallbackServesOnlyItsAPI(t *testing.T) {
 				},
 			})
 		},
-		"native": func(services *Services) error {
+		"native": func(services *AgentSessionServices) error {
 			custom, stock := nativeCompatModel("custom", "mixed", server.URL), nativeCompatModel("stock", "mixed", server.URL)
 			custom.ProviderMeta.API = "mixed-api"
 			return services.ModelRuntime().RegisterProvider("mixed", ProviderConfigInput{
@@ -108,7 +110,7 @@ func TestRegisteredProviderCallbackServesOnlyItsAPI(t *testing.T) {
 	}
 	request := ai.Context{Messages: []ai.Message{ai.UserMessage{Content: ai.UserText("hello")}}}
 	for registration, register := range registrations {
-		services, err := NewServices(ServicesOptions{CWD: t.TempDir(), AgentDir: t.TempDir()})
+		services, err := CreateAgentSessionServices(CreateAgentSessionServicesOptions{CWD: t.TempDir(), AgentDir: t.TempDir()})
 		if err != nil {
 			t.Fatal(err)
 		}

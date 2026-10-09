@@ -1,0 +1,34 @@
+[
+ {
+  "ids": [
+   "pkg:tui/.#KeybindingsManager::property:getKeys"
+  ],
+  "targets": [
+   "tui/keybindings.go#TUIKeybindingsManager.GetKeys"
+  ],
+  "production": [
+   "call:coding/mcpext/manager.go#McpManagerView.keyHint"
+  ],
+  "evidence": [
+   "test:internal/codingagent/interactive_remapped_submit_test.go#TestTerminalInputPreservesRemappedSubmitBindings",
+   "test:internal/codingagent/keybindings_platform_test.go#TestKeybindingsManagerInstallsAppDefinitionsInTUIRegistry"
+  ],
+  "rationale": "KeybindingsManager.getKeys is the Go method TUIKeybindingsManager.GetKeys; signature reviewed against the upstream declaration (the upstream class KeybindingsManager is tui.TUIKeybindingsManager); callers and tests attributed by go/types (methodrefs)."
+ },
+ {
+  "ids": [
+   "pkg:tui/.#KeybindingsManager::property:matches"
+  ],
+  "targets": [
+   "tui/keybindings.go#TUIKeybindingsManager.Matches"
+  ],
+  "production": [
+   "call:coding/mcpext/manager.go#McpManagerView.Menu"
+  ],
+  "evidence": [
+   "test:internal/codingagent/keybindings_platform_test.go#TestKeybindingsManagerInstallsAppDefinitionsInTUIRegistry",
+   "test:internal/codingagent/keybindings_test.go#TestKeybindingsManagerLegacyShortNamesMigrateTui"
+  ],
+  "rationale": "KeybindingsManager.matches is the Go method TUIKeybindingsManager.Matches; signature reviewed against the upstream declaration (the upstream class KeybindingsManager is tui.TUIKeybindingsManager); callers and tests attributed by go/types (methodrefs)."
+ }
+]

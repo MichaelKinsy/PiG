@@ -19,14 +19,14 @@ func TestPrepareLoadoutDescriptionsReachThePromptRequest(t *testing.T) {
 	session, faux := newOrchestrationSession(t, orchestratorExtension(&toolCalls, &mu))
 	var declared []string
 	faux.SetResponses([]ai.FauxResponseStep{
-		ai.FauxFactoryStep(func(request ai.TranscriptContext, _ ai.StreamOptions, _ *ai.FauxProviderState, _ *ai.Model) (ai.FauxResponse, error) {
+		ai.FauxFactoryStep(func(request ai.TranscriptContext, _ ai.StreamOptions, _ *ai.FauxProviderState, _ *ai.Model) (ai.AssistantMessage, error) {
 			for _, tool := range ai.GetCurrentTools(request.Messages()) {
 				declared = append(declared, tool.Name+": "+tool.Description)
 			}
-			return ai.FauxResponse{Content: []ai.FauxContentBlock{ai.FauxText("done")}, StopReason: "stop"}, nil
+			return ai.FauxResponse{Content: []ai.FauxContentBlock{ai.FauxText("done")}, StopReason: "stop"}.AssistantMessage(), nil
 		}),
 	})
-	if _, err := session.Prompt(t.Context(), "go"); err != nil {
+	if err := session.Prompt(t.Context(), "go"); err != nil {
 		t.Fatal(err)
 	}
 	// echo's declaration is hidden; run_tools is declared with the hook's description.

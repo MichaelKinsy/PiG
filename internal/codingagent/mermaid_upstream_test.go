@@ -1,3 +1,5 @@
+//go:build !pig_strip_mermaid
+
 package codingagent
 
 import (
@@ -50,7 +52,7 @@ func TestMermaidRenderingUpstream(t *testing.T) {
 	t.Run("maps semantic spans through the Pi theme", func(t *testing.T) {
 		// The native theme is concrete rather than a callback object. Assert its distinct border and edge foreground tokens at the same span boundary.
 		theme := tui.ActiveTheme()
-		border, accent := theme.Fg("borderMuted"), theme.Fg("accent")
+		border, accent := theme.GetFgAnsi("borderMuted"), theme.GetFgAnsi("accent")
 		if border == "" || accent == "" || border == accent {
 			t.Fatalf("theme fixture needs distinct nonempty role markers: border=%q accent=%q", border, accent)
 		}

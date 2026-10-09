@@ -8,6 +8,7 @@ import (
 
 	"github.com/MichaelKinsy/PiG/agent"
 	"github.com/MichaelKinsy/PiG/ai"
+	icodingagent "github.com/MichaelKinsy/PiG/internal/codingagent"
 	"github.com/MichaelKinsy/PiG/internal/codingagent/prompts"
 	"github.com/MichaelKinsy/PiG/tui/widthx"
 )
@@ -67,11 +68,7 @@ func (s *Session) setActiveToolsByName(names []string) {
 //
 // upstream: agent-session.ts _isAllowedTool
 func (r *sessionToolRegistry) isAllowedTool(name string) bool {
-	if _, allowed := r.allowed[name]; r.allowed != nil && !allowed {
-		return false
-	}
-	_, excluded := r.excluded[name]
-	return !excluded
+	return r.filter.Allows(name)
 }
 
 // addPendingTools adds names to the pending tools, each once, keeping insertion order. The caller holds toolRegistryMu.
@@ -117,32 +114,17 @@ func (s *Session) rebuildSystemPrompt(toolNames []string) {
 	s.baseSystemPrompt.Store(new(ai.GetCurrentSystemPrompt([]ai.Message{ai.SystemMessage{Sections: s.baseSystemSections}})))
 }
 
-// toolPromptMetadata returns the registry's normalized prompt snippets and guidelines, keeping only tools that have one (agent-session.ts:3178-3192). Tools whose declarations the loadout hides are not listed: they are only callable through another tool, and the list must match the declarations the request carries (agent-session.ts:1634-1638, 1671-1677).
+// toolPromptMetadata returns the registry's normalized prompt snippets and guidelines, keeping only tools that have one (agent-session.ts _rebuildSystemPrompt). Tools whose declarations the loadout hides stay in it: the prompt builder leaves them out through the options' hiddenTools.
 func (s *Session) toolPromptMetadata() (map[string]string, map[string][]string) {
 	hints := make(map[string]string)
 	guidelines := make(map[string][]string)
-	var hidden map[string]struct{}
-	if hiddenSet := s.loadout.hidden.Load(); hiddenSet != nil {
-		hidden = *hiddenSet
-	}
 	for _, entry := range s.toolRegistry.entries {
 		definition := entry.registration.Definition
 		name := definition.Name
 		if snippet := strings.Join(strings.FieldsFunc(definition.PromptSnippet, widthx.IsJSSpace), " "); snippet != "" {
-			if _, isHidden := hidden[name]; !isHidden {
-				hints[name] = snippet
-			}
+			hints[name] = snippet
 		}
-		var unique []string
-		seen := make(map[string]struct{})
-		for _, raw := range definition.PromptGuidelines {
-			guideline := widthx.JSTrim(raw)
-			if _, duplicate := seen[guideline]; guideline == "" || duplicate {
-				continue
-			}
-			seen[guideline] = struct{}{}
-			unique = append(unique, guideline)
-		}
+		unique := normalizePromptGuidelines(definition.PromptGuidelines)
 		if len(unique) > 0 {
 			guidelines[name] = unique
 		}
@@ -150,10 +132,27 @@ func (s *Session) toolPromptMetadata() (map[string]string, map[string][]string) 
 	return hints, guidelines
 }
 
+// normalizePromptGuidelines trims each guideline and drops the empty and repeated ones.
+//
+// upstream: agent-session.ts _normalizePromptGuidelines
+func normalizePromptGuidelines(guidelines []string) []string {
+	var unique []string
+	seen := make(map[string]struct{})
+	for _, raw := range guidelines {
+		guideline := widthx.JSTrim(raw)
+		if _, duplicate := seen[guideline]; guideline == "" || duplicate {
+			continue
+		}
+		seen[guideline] = struct{}{}
+		unique = append(unique, guideline)
+	}
+	return unique
+}
+
 // buildToolSystemPromptSections uses executable definitions' prompt metadata, including extension overrides.
 func (s *Session) buildToolSystemPromptSections(names []string) ai.OrderedSections {
 	hints, guidelines := s.toolPromptMetadata()
-	options := prompts.Options{Cwd: s.services.CWD(), Tools: names, ToolHints: hints, ToolGuidelines: guidelines}
+	options := prompts.Options{Cwd: s.services.CWD(), Tools: names, HiddenTools: s.HiddenDeclarationNames(), ToolHints: hints, ToolGuidelines: guidelines}
 	var resources *SystemPromptResources
 	if s.systemPromptResources.Load() == nil {
 		resources = s.loaderSystemPromptResources()
@@ -228,13 +227,16 @@ func (s *Session) DiscardAddedDefaultTools() {
 // ReloadSettings reloads the settings files. When the initial tools came from the `defaultTools` setting, the next RefreshTools activates the tools the reload newly added to it, replacing the list an earlier reload staged (each reload() call computes its own, agent-session.ts:3598-3601); removed tools stay active and tools disabled during the session stay disabled unless the setting newly adds them.
 // upstream: agent-session.ts:3592-3609
 func (s *Session) ReloadSettings() {
-	settings := s.services.SettingsManager()
+	settings := s.SettingsManager()
 	s.toolRegistryMu.Lock()
 	usesDefaultTools := s.toolRegistry.usesDefaultTools
+	modifiers := s.toolRegistry.defaultToolModifiers
 	s.toolRegistryMu.Unlock()
+	// upstream: agent-session.ts:3665-3671 getDefaultTools applies the session's --tools +name/-name entries to the setting.
+	defaultTools := func() []string { return icodingagent.ApplyToolModifiers(settings.ResolvedDefaultTools(), modifiers) }
 	var previous []string
 	if usesDefaultTools {
-		previous = settings.ResolvedDefaultTools()
+		previous = defaultTools()
 	}
 	settings.Reload()
 	// upstream: agent-session.ts:3596 syncQueueModesFromSettings
@@ -244,7 +246,7 @@ func (s *Session) ReloadSettings() {
 		return
 	}
 	var added []string
-	for _, name := range settings.ResolvedDefaultTools() {
+	for _, name := range defaultTools() {
 		if !slices.Contains(previous, name) {
 			added = append(added, name)
 		}

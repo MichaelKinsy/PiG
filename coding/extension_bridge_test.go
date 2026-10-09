@@ -3,15 +3,21 @@
 
 package coding
 
+// pi: packages/coding-agent/src/core/extensions/wrapper.ts
+
+// pi: packages/coding-agent/src/core/tools/tool-definition-wrapper.ts
+
 import (
 	"context"
 	"encoding/json"
 	"errors"
+	"slices"
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/agent"
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/coding/extension"
+	"github.com/MichaelKinsy/PiG/coding/extension/host/inproc"
 )
 
 // fixtureTool is a minimal extension.RegisteredTool for bridge tests.
@@ -147,7 +153,7 @@ func TestBridgeToolPrepareArguments(t *testing.T) {
 // `agent.AgentToolResult` (the pig-native shape).
 func TestBridgeTool_Execute_RoundTripResult(t *testing.T) {
 	want := agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: "ok"}}, IsError: false}
-	rt := fixtureTool("t", "x", `{}`, func(_ context.Context, _ string, _ json.RawMessage, _ any) (any, error) {
+	rt := fixtureTool("t", "x", `{}`, func(_ context.Context, _ string, _ json.RawMessage, _ extension.AgentToolUpdateCallback) (extension.AgentToolResult, error) {
 		return want, nil
 	})
 	bt, _ := newBridgeTool(rt)
@@ -160,12 +166,11 @@ func TestBridgeTool_Execute_RoundTripResult(t *testing.T) {
 	}
 }
 
-// TestBridgeTool_Execute_NilResultIsZeroValue locks that nil returns
-// are accepted (legacy idiom: some builtins return (nil, nil) for
-// success-with-empty-payload).
-func TestBridgeTool_Execute_NilResultIsZeroValue(t *testing.T) {
-	rt := fixtureTool("t", "x", `{}`, func(_ context.Context, _ string, _ json.RawMessage, _ any) (any, error) {
-		return nil, nil
+// TestBridgeTool_Execute_ZeroResultPassesThrough locks that a tool returning the zero AgentToolResult
+// (success with an empty payload) reaches the agent loop unchanged.
+func TestBridgeTool_Execute_ZeroResultPassesThrough(t *testing.T) {
+	rt := fixtureTool("t", "x", `{}`, func(_ context.Context, _ string, _ json.RawMessage, _ extension.AgentToolUpdateCallback) (extension.AgentToolResult, error) {
+		return extension.AgentToolResult{}, nil
 	})
 	bt, _ := newBridgeTool(rt)
 	got, err := bt.Execute(context.Background(), "c", nil, nil)
@@ -177,21 +182,8 @@ func TestBridgeTool_Execute_NilResultIsZeroValue(t *testing.T) {
 	}
 }
 
-// TestBridgeTool_Execute_WrongResultTypeIsError locks the boundary
-// guard: D1 erases the result type but tools that return the wrong
-// concrete shape produce an actionable error rather than a panic.
-func TestBridgeTool_Execute_WrongResultTypeIsError(t *testing.T) {
-	rt := fixtureTool("t", "x", `{}`, func(_ context.Context, _ string, _ json.RawMessage, _ any) (any, error) {
-		return "not a tool result", nil
-	})
-	bt, _ := newBridgeTool(rt)
-	_, err := bt.Execute(context.Background(), "c", nil, nil)
-	if err == nil {
-		t.Fatal("expected error for wrong result type, got nil")
-	}
-}
-
 // .upstream/v0.87.1/packages/agent/src/agent-loop.ts:514 selects sequential execution only for the explicit literal; omitted and unknown values are parallel.
+// Pi: packages/coding-agent/src/core/extensions/types.ts:626 (ToolDefinition.executionMode).
 func TestBridgeTool_ExecutionMode(t *testing.T) {
 	cases := []struct {
 		raw  string
@@ -223,8 +215,8 @@ func TestBridgeTool_ExecutionMode(t *testing.T) {
 // underlying ToolExecuteFunc reach the agent loop verbatim.
 func TestBridgeTool_ExecutePropagatesError(t *testing.T) {
 	want := errors.New("boom")
-	rt := fixtureTool("t", "x", `{}`, func(_ context.Context, _ string, _ json.RawMessage, _ any) (any, error) {
-		return nil, want
+	rt := fixtureTool("t", "x", `{}`, func(_ context.Context, _ string, _ json.RawMessage, _ extension.AgentToolUpdateCallback) (extension.AgentToolResult, error) {
+		return extension.AgentToolResult{}, want
 	})
 	bt, _ := newBridgeTool(rt)
 	_, err := bt.Execute(context.Background(), "c", nil, nil)
@@ -333,5 +325,62 @@ func TestBridgeToolKeepsExplicitConstrainedSamplingFalse(t *testing.T) {
 		if got := tool.Schema().ConstrainedSamplingDisabled; got != want {
 			t.Errorf("constrained_sampling %q: disabled = %t, want %t", raw, got, want)
 		}
+	}
+}
+
+// types.ts ToolDefinition.execute(toolCallId, params, signal, onUpdate: AgentToolUpdateCallback, ctx): AgentToolResult. The agent loop hands the bridge tool its update
+// callback (agent-loop.ts:778-786) and the definition's Execute streams partial AgentToolResults through that callback before it returns its AgentToolResult.
+func TestBridgeToolForwardsTheAgentsUpdateCallbackAndReturnsTheDefinitionsResult(t *testing.T) {
+	partial := agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: "partial"}}, Details: map[string]any{"n": 1}}
+	final := agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: "final"}}, IsError: true}
+	rt := fixtureTool("t", "x", `{}`, func(_ context.Context, _ string, _ json.RawMessage, onUpdate extension.AgentToolUpdateCallback) (extension.AgentToolResult, error) {
+		onUpdate(partial)
+		return final, nil
+	})
+	bt, _ := newBridgeTool(rt)
+	var updates []agent.AgentToolResult
+	got, err := bt.Execute(context.Background(), "call-1", nil, func(p agent.AgentToolResult) { updates = append(updates, p) })
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(updates) != 1 || updates[0].Text() != "partial" || updates[0].Details.(map[string]any)["n"] != 1 {
+		t.Errorf("updates = %+v, want the one partial result", updates)
+	}
+	if got.Text() != "final" || !got.IsError {
+		t.Errorf("result = %+v, want the definition's final result", got)
+	}
+}
+
+// wrapper.ts:17-29 wrapRegisteredTool(s) gives every call of a registered tool its runner's createToolContext(toolCallId, signal), in registration order;
+// the Session builds its extension tools through it (agent-session.ts:3547), so a tool run through a real Session registry sees the same context.
+func TestWrapRegisteredToolsGiveEachCallTheRunnersToolContext(t *testing.T) {
+	runner := inproc.NewRunner(nil, t.TempDir())
+	var seen []string
+	record := func(label string) extension.ToolExecuteFunc {
+		return func(ctx context.Context, id string, _ json.RawMessage, _ extension.AgentToolUpdateCallback) (extension.AgentToolResult, error) {
+			if extension.ToolContextFromContext(ctx) == nil || extension.FromContext(ctx) == nil {
+				t.Errorf("%s call %q ran without the runner's context", label, id)
+			}
+			seen = append(seen, label+":"+id)
+			return agent.AgentToolResult{}, nil
+		}
+	}
+	tools, err := WrapRegisteredTools([]extension.RegisteredTool{
+		fixtureTool("first", "d", `{"type":"object"}`, record("first")),
+		fixtureTool("second", "d", `{"type":"object"}`, record("second")),
+	}, runner)
+	if err != nil || len(tools) != 2 || tools[0].Name() != "first" || tools[1].Name() != "second" {
+		t.Fatalf("WrapRegisteredTools = %v, %v", tools, err)
+	}
+	for i, tool := range tools {
+		if _, err := tool.Execute(t.Context(), "c"+string(rune('1'+i)), json.RawMessage(`{}`), nil); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if want := []string{"first:c1", "second:c2"}; !slices.Equal(seen, want) {
+		t.Fatalf("calls = %v, want %v", seen, want)
+	}
+	if _, err := WrapRegisteredTools([]extension.RegisteredTool{fixtureTool("bad", "d", `{`, nil)}, runner); err == nil {
+		t.Fatal("a tool whose schema does not parse was wrapped")
 	}
 }

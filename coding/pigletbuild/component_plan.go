@@ -47,8 +47,11 @@ func buildPigletComponentPlan(cells []subprocess.CellSpec, delivery Plan, inputs
 				component.Fusible = true
 			case DecisionSidecar:
 				component.Materialization = sidecarMaterialization(cell.Language, extension)
-				if cell.Language == string(Python) {
-					component.Runtime = &pigletartifact.RuntimeRequirement{Name: "python"}
+				// An interpreted component records the runtime it runs on: Python's
+				// comes from the agent environment, and an embedded Node cell runs with
+				// the user's installed Node, as Stock PiG runs it.
+				if cell.Language == string(Python) || cell.Language == string(Node) {
+					component.Runtime = &pigletartifact.RuntimeRequirement{Name: cell.Language}
 				}
 			default:
 				return pigletartifact.Plan{}, fmt.Errorf("component plan: extension %q has unsupported delivery decision %q", config.Name, extension.Decision)

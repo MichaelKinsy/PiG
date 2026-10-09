@@ -13,6 +13,7 @@ import (
 	"strings"
 
 	"github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell"
+	"github.com/MichaelKinsy/PiG/internal/codingagent"
 )
 
 // cells holds this binary's embedded packed-cell binaries and their manifest.
@@ -49,8 +50,13 @@ func LoadedCells() []LoadedCell {
 // no-op when the embedded manifest is empty (stock pig), so it never changes
 // stock behavior.
 func Register() error {
+	return registerFrom(cells)
+}
+
+// registerFrom is Register for the cells embedded in fsys.
+func registerFrom(fsys fs.FS) error {
 	loadedCells = nil
-	m, err := loadManifest(cells)
+	m, err := loadManifest(fsys)
 	if err != nil {
 		return err
 	}
@@ -61,7 +67,7 @@ func Register() error {
 	if err != nil {
 		return err
 	}
-	if err := extract(cells, m, dest); err != nil {
+	if err := extract(fsys, m, dest); err != nil {
 		return err
 	}
 	runtimecell.SetPrebuiltResolver(NewResolver(m, dest))
@@ -72,11 +78,15 @@ func Register() error {
 func loadedCellsFromManifest(m Manifest, baseDir string) []LoadedCell {
 	out := make([]LoadedCell, 0, len(m.Cells))
 	for _, c := range m.Cells {
+		binaryPath := extractedBinaryPath(baseDir, c.Binary)
+		if c.Language == nodeLanguage {
+			binaryPath = nodeSourcesDir(baseDir, c.Digest)
+		}
 		out = append(out, LoadedCell{
 			Language:   c.Language,
 			Key:        c.Key,
 			Strategy:   c.Strategy,
-			BinaryPath: extractedBinaryPath(baseDir, c.Binary),
+			BinaryPath: binaryPath,
 			Extensions: append([]ExtEntry(nil), c.Extensions...),
 		})
 	}
@@ -102,12 +112,19 @@ func loadManifest(fsys fs.FS) (Manifest, error) {
 // the destination directory, then rename), so parallel Piglet Binary instances
 // sharing the per-user extraction directory never observe a half-written binary
 // and never corrupt each other's cell: the paths are content-addressed, so
-// concurrent writers produce identical bytes.
+// concurrent writers produce identical bytes. A Node cell's archive is checked
+// against its digest and unpacked into the directory nodeSourcesDir names.
 func extract(fsys fs.FS, m Manifest, dest string) error {
 	for _, c := range m.Cells {
 		data, err := fs.ReadFile(fsys, path.Join("cells", c.Binary))
 		if err != nil {
 			return fmt.Errorf("read embedded cell %s: %w", c.Binary, err)
+		}
+		if c.Language == nodeLanguage {
+			if err := extractNodeCell(data, c, dest); err != nil {
+				return fmt.Errorf("extract Node cell %s: %w", c.Binary, err)
+			}
+			continue
 		}
 		out := extractedBinaryPath(dest, c.Binary)
 		if err := os.MkdirAll(filepath.Dir(out), 0o755); err != nil {
@@ -155,11 +172,11 @@ func atomicWriteFile(path string, data []byte, mode os.FileMode) error {
 	return os.Rename(tmpName, path)
 }
 
+// extractDir is the absolute piglet-binary-cells directory under the PiG configuration root ($PIG_HOME, else $XDG_CONFIG_HOME/pig, else ~/.pig). It is absolute because the host starts a cell binary in the session's working directory, which a relative path would be resolved against.
 func extractDir() (string, error) {
-	home, err := os.UserHomeDir()
+	dir, err := filepath.Abs(filepath.Join(codingagent.ConfigRoot(), "piglet-binary-cells"))
 	if err != nil {
 		return "", err
 	}
-	dir := filepath.Join(home, ".pig", "piglet-binary-cells")
 	return dir, os.MkdirAll(dir, 0o755)
 }

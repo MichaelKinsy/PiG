@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"maps"
 	"os"
 	"path/filepath"
 	"runtime/debug"
@@ -14,6 +15,7 @@ import (
 	"time"
 
 	"github.com/MichaelKinsy/PiG/extensions/sdk/json"
+	"github.com/MichaelKinsy/PiG/extensions/sdk/kit"
 )
 
 // ErrUnsupportedSubprocessUI is returned for UI methods whose upstream API
@@ -93,6 +95,9 @@ type RemoteOverlayOptions struct {
 	// OverlayOptions is upstream ui.custom()'s overlayOptions: the overlay's
 	// position and size. Nil leaves them to the host's defaults.
 	OverlayOptions *OverlayOptions `json:"overlayOptions,omitempty"`
+	// OnHandle is upstream ui.custom()'s onHandle: it receives the mounted overlay's [OverlayHandle] (Overlay must be true). It stays in
+	// this process.
+	OnHandle OverlayHandleFunc `json:"-"`
 }
 
 // OverlayOptions is the serializable subset of upstream pi-tui OverlayOptions:
@@ -786,9 +791,11 @@ func (c Context) GetSystemPrompt() (string, error) {
 type SystemPromptOptions struct {
 	CustomPrompt string `json:"customPrompt,omitempty"`
 	// CustomPromptSet distinguishes an explicitly empty custom prompt from absence without changing CustomPrompt's string type.
-	CustomPromptSet    bool                      `json:"-"`
-	ForceSystemPrompt  *string                   `json:"forceSystemPrompt,omitempty"`
-	SelectedTools      []string                  `json:"selectedTools,omitempty"`
+	CustomPromptSet   bool     `json:"-"`
+	ForceSystemPrompt *string  `json:"forceSystemPrompt,omitempty"`
+	SelectedTools     []string `json:"selectedTools,omitempty"`
+	// HiddenTools are the selected tools whose declarations requests leave out; the tool list and rules leave them out too.
+	HiddenTools        []string                  `json:"hiddenTools,omitempty"`
 	ToolSnippets       map[string]string         `json:"toolSnippets,omitempty"`
 	ToolGuidelines     map[string][]string       `json:"toolGuidelines,omitempty"`
 	PromptGuidelines   []string                  `json:"promptGuidelines,omitempty"`
@@ -1353,11 +1360,23 @@ func (r ModelRegistry) stream(model, request, options map[string]any, simple boo
 	for key, value := range request {
 		merged[key] = value
 	}
+	callbacks := takeModelStreamCallbacks(options, model)
 	for key, value := range options {
-		merged[key] = value
+		if !modelStreamCallbackOption(key) {
+			merged[key] = value
+		}
+	}
+	if callbacks != nil {
+		r.context.ext.modelStreamsMu.Lock()
+		r.context.ext.modelStreamCallbacks[streamID] = callbacks
+		r.context.ext.modelStreamsMu.Unlock()
 	}
 	go func() {
-		result, err := r.context.callHost("modelStream", map[string]any{"streamId": streamID, "model": model, "request": merged, "simple": simple})
+		call := map[string]any{"streamId": streamID, "model": model, "request": merged, "simple": simple}
+		if callbacks != nil {
+			callbacks.flags(call)
+		}
+		result, err := r.context.callHost("modelStream", call)
 		if err := callResultError(result, err); err != nil {
 			stream.push(modelStreamErrorEvent(err, model))
 		} else {
@@ -1370,7 +1389,11 @@ func (r ModelRegistry) stream(model, request, options map[string]any, simple boo
 		}
 		r.context.ext.modelStreamsMu.Lock()
 		delete(r.context.ext.modelStreams, streamID)
+		delete(r.context.ext.modelStreamCallbacks, streamID)
 		r.context.ext.modelStreamsMu.Unlock()
+		if callbacks != nil {
+			callbacks.closeFetches()
+		}
 	}()
 	return stream
 }
@@ -1503,7 +1526,16 @@ func (c Context) SetTheme(name string) (bool, string) {
 // setWidget returns void, so it may be called from an [Context.OnWidthChange]
 // handler, and the error reports only a failure to send. Every other shape
 // waits for the host.
+//
+// A [kit.View] is the kit form of a widget component factory (D107): the host
+// renders it at the widget's width every frame. Without options it goes out
+// as a widget_push, and with options as a ui.setWidget call; neither carries
+// lines.
 func (c Context) SetWidget(key string, content any, options ...WidgetOptions) error {
+	if view, ok := content.(kit.View); ok {
+		return c.setWidgetView(key, view, options)
+	}
+	c.ext.replaceViewSurface(widgetViewSurfaceID(key), nil)
 	if lines, ok := content.([]string); ok && lines != nil && len(options) == 0 {
 		return c.ext.conn.pushWidget(key, lines)
 	}
@@ -1563,29 +1595,41 @@ func (c Context) SetHeader(lines []string) error {
 	return c.setSurface(headerMethod, lines)
 }
 
-// Custom opens a focused remote component. Pass a [RemoteComponent] as factory
-// and [RemoteOverlayOptions] (or an equivalent JSON object) as options. Other
-// factory values retain the explicit unsupported error because live host TUI
-// component objects cannot cross a subprocess boundary. With no UI, Custom returns nil without invoking component callbacks.
+// Custom opens a focused remote component. Pass a [RemoteComponent], or a
+// [ViewComponent] the host renders, as factory and [RemoteOverlayOptions] (or
+// an equivalent JSON object) as options. Other factory values retain the
+// explicit unsupported error because live host TUI component objects cannot
+// cross a subprocess boundary. With no UI, Custom returns nil without invoking
+// component callbacks.
 func (c Context) Custom(factory any, options any) (any, error) {
 	if !c.HasUI() {
 		return nil, nil
 	}
 	c.reportRequestState("blocked", "user")
-	component, ok := factory.(RemoteComponent)
-	if !ok || component == nil {
+	var component overlayComponent
+	switch factory := factory.(type) {
+	case ViewComponent:
+		component = factory
+	case RemoteComponent:
+		component = factory
+	}
+	if component == nil {
 		result, err := c.callHost("ui.custom", map[string]any{})
 		if err := callResultError(result, err); err != nil {
 			return nil, err
 		}
-		return nil, fmt.Errorf("%w: custom component must implement sdk.RemoteComponent", ErrUnsupportedSubprocessUI)
+		return nil, fmt.Errorf("%w: custom component must implement sdk.RemoteComponent or sdk.ViewComponent", ErrUnsupportedSubprocessUI)
 	}
 	return c.runRemoteComponent(component, options)
 }
 
-func (c Context) runRemoteComponent(component RemoteComponent, options any) (_ any, returnErr error) {
+func (c Context) runRemoteComponent(component overlayComponent, options any) (_ any, returnErr error) {
 	key := fmt.Sprintf("custom-%d", c.ext.overlaySeq.Add(1))
 	overlay := newRemoteOverlay(component)
+	overlay.frontend = c.ext.frontendAttached
+	onHandle, options := overlayOnHandle(options)
+	overlay.onHandle = onHandle
+	overlay.ext = c.ext
 	c.ext.overlaysMu.Lock()
 	c.ext.overlays[key] = overlay
 	c.ext.overlaysMu.Unlock()
@@ -1620,6 +1664,13 @@ func (c Context) runRemoteComponent(component RemoteComponent, options any) (_ a
 			return nil, fmt.Errorf("custom overlay options must be an object: %w", err)
 		}
 		args["key"] = key
+	}
+	overlay.renderWidth = remoteRenderWidth(args)
+	// Pi sets hasHandle only for an overlay: a plain focused component has no handle to publish.
+	if onHandle != nil && args["overlay"] == true {
+		args["hasHandle"] = true
+	} else {
+		overlay.onHandle = nil
 	}
 	// Arm input and invalidation before the host sees the open call. A fused
 	// transport can focus the overlay and return the first key while beginCallFor
@@ -1702,13 +1753,23 @@ func (c Context) OnTerminalInput(handler TerminalInputHandler) (func(), error) {
 	return unsubscribe, nil
 }
 
-// SetEditorComponent clears the custom editor when factory is nil. With no UI, it ignores the factory.
-func (c Context) SetEditorComponent(factory any) error {
-	if !c.HasUI() {
+// SetEditorComponent installs an editor in place of the host's, as Pi's ctx.ui.setEditorComponent does. The
+// factory is an [EditorFactory]: it receives the host's default editor, which the component embeds as its
+// `super`. A nil factory restores the host's editor. With no UI, or in RPC mode, it ignores the factory, as Pi does.
+func (c Context) SetEditorComponent(factory EditorFactory) error {
+	// upstream: modes/rpc/rpc-mode.ts setEditorComponent is a no-op, so the factory never runs there.
+	if !c.HasUI() || c.Mode() == "rpc" {
 		return nil
 	}
 	if factory != nil {
-		return fmt.Errorf("%w: editor component factories cannot be serialized", ErrUnsupportedSubprocessUI)
+		return c.ext.installEditor(factory)
+	}
+	c.ext.editorMu.Lock()
+	previous := c.ext.editor
+	c.ext.editor = nil
+	c.ext.editorMu.Unlock()
+	if previous != nil {
+		previous.close()
 	}
 	result, err := c.callHost("ui.setEditorComponent", map[string]any{"clear": true})
 	return callResultError(result, err)
@@ -1734,18 +1795,59 @@ func (c Context) SetToolsExpanded(expanded bool) {
 
 // ── Local state (cached from ready message) ──────────────────────────────────
 
-// ConfigHome returns the pig config root directory.
-// Reads PIG_HOME env var, defaulting to ~/.pig.
-func (c Context) ConfigHome() string {
-	if h := os.Getenv("PIG_HOME"); h != "" {
-		return h
+// ConfigHome returns the pig config root directory: PIG_HOME, else XDG_CONFIG_HOME/pig, else ~/.pig. An empty variable falls through to the next choice, a leading ~ or ~/ expands to the home directory, and any other value stays literal. It returns an error, never a relative path, when the home directory is needed and cannot be found. It is the same policy as the host's internal/configroot and the Python, Rust and Node SDKs; test/extension-conformance runs one env matrix through all of them.
+func (c Context) ConfigHome() (string, error) {
+	home := func() (string, error) {
+		dir, err := os.UserHomeDir()
+		if err != nil {
+			return "", fmt.Errorf("locate home directory: %w", err)
+		}
+		return dir, nil
 	}
-	home, _ := os.UserHomeDir()
-	return filepath.Join(home, ".pig")
+	expand := func(path string) (string, error) {
+		rest, ok := strings.CutPrefix(path, "~/")
+		if path != "~" && !ok {
+			return path, nil
+		}
+		dir, err := home()
+		if err != nil {
+			return "", err
+		}
+		if path == "~" {
+			return dir, nil
+		}
+		return filepath.Join(dir, rest), nil
+	}
+	if v := os.Getenv("PIG_HOME"); v != "" {
+		return expand(v)
+	}
+	if v := os.Getenv("XDG_CONFIG_HOME"); v != "" {
+		base, err := expand(v)
+		if err != nil {
+			return "", err
+		}
+		return filepath.Join(base, "pig"), nil
+	}
+	dir, err := home()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(dir, ".pig"), nil
 }
 
-// Cwd returns the working directory (from the ready message).
+// assertActive panics with the Host's stale message once the session was replaced or reloaded, as Pi's ExtensionContext getters throw it (runner.ts:571-600, assertActive). A replacement context belongs to the new session and is not stale. The handler dispatcher reports the panic as the handler's error.
+func (c Context) assertActive() {
+	if c.replacement != nil || c.ext == nil {
+		return
+	}
+	if message := c.ext.stale.Load(); message != nil {
+		panic(errors.New(*message))
+	}
+}
+
+// Cwd returns the working directory (from the ready message). It panics with the stale message after the session was replaced or reloaded.
 func (c Context) Cwd() string {
+	c.assertActive()
 	if c.replacement != nil {
 		return c.replacement.cwd
 	}
@@ -1758,6 +1860,7 @@ func (c Context) Cwd() string {
 // "print" (from the ready message). Guard terminal-only UI on "tui".
 // Defaults to "print" when the host did not specify one.
 func (c Context) Mode() string {
+	c.assertActive()
 	if c.replacement != nil && c.replacement.mode != "" {
 		return c.replacement.mode
 	}
@@ -1771,6 +1874,7 @@ func (c Context) Mode() string {
 
 // HasUI reports whether the host has bound a UI context. Print and JSON modes have no UI; interactive and RPC modes do.
 func (c Context) HasUI() bool {
+	c.assertActive()
 	if c.replacement != nil {
 		return c.replacement.hasUI
 	}
@@ -1797,6 +1901,7 @@ func (c Context) Height() int {
 // Model returns the active provider model ID when the host exposes one, falling
 // back to the model name from the ready/state message.
 func (c Context) Model() string {
+	c.assertActive()
 	if c.replacement != nil {
 		id, _ := c.replacementModel()
 		return id
@@ -1810,6 +1915,7 @@ func (c Context) Model() string {
 // "anthropic"). Returns "" if unknown. Use with Model() to build a
 // provider-qualified model string: provider + "/" + model.
 func (c Context) ModelProvider() string {
+	c.assertActive()
 	if c.replacement != nil {
 		_, provider := c.replacementModel()
 		return provider
@@ -1822,6 +1928,7 @@ func (c Context) ModelProvider() string {
 // ModelQualified returns the provider-qualified model string
 // ("provider/model"). If the provider is unknown, returns just the model name.
 func (c Context) ModelQualified() string {
+	c.assertActive()
 	if c.replacement != nil {
 		id, provider := c.replacementModel()
 		if provider != "" {
@@ -1974,9 +2081,29 @@ func (c Context) WaitForIdle() error {
 	return callResultError(result, err)
 }
 
-// NewSession starts a new session. opts may hold "parentSession" and a "withSession" WithSessionFunc.
+// NewSession starts a new session. opts may hold "parentSession", a "setup" SetupFunc that seeds the new session through its SessionManager before it starts (types.ts:411), and a "withSession" WithSessionFunc.
 func (c Context) NewSession(opts map[string]any) (CancelledResult, error) {
-	return c.callReplacement("newSession", opts)
+	args, setup, err := setupOption(opts)
+	if err != nil {
+		return CancelledResult{}, err
+	}
+	if setup == nil {
+		return c.callReplacement("newSession", opts)
+	}
+	handle, entry := c.ext.setups.add(c.ext.name, setup)
+	defer c.ext.setups.remove(handle)
+	args = maps.Clone(args)
+	if args == nil {
+		args = map[string]any{}
+	}
+	args["setup"] = handle
+	result, err := c.callReplacement("newSession", args)
+	if err != nil {
+		if failure := entry.failure(); failure != nil {
+			return CancelledResult{}, failure
+		}
+	}
+	return result, err
 }
 
 // Fork creates a new branch from an entry. opts may hold "position" and a "withSession" WithSessionFunc.

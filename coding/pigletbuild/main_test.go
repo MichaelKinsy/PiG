@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	piglet "github.com/MichaelKinsy/PiG/coding/piglet"
+	"github.com/MichaelKinsy/PiG/internal/pigstrip"
 )
 
 func TestParseArgsAcceptsBuilderAndRejectsUnregisteredVerification(t *testing.T) {
@@ -86,6 +87,92 @@ func TestRunBuildRejectsRequiredFusedFallback(t *testing.T) {
 	}
 	if _, err := os.Stat(output); !os.IsNotExist(err) {
 		t.Fatalf("rejected build output stat error = %v, want not exist", err)
+	}
+}
+
+// A Piglet that lists an extension that resolves to nothing still fails with
+// the unresolved extension and the "resolves to no extensions" blocker, and
+// writes no Binary.
+func TestRunBuildRejectsListedExtensionThatResolvesToNothing(t *testing.T) {
+	dir := t.TempDir()
+	pigletPath := filepath.Join(dir, "missing.yaml")
+	if err := os.WriteFile(pigletPath, []byte("name: missing\nextensions:\n  - name: gone\n    origins: [local:./gone]\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	output := filepath.Join(dir, "pig-missing")
+	var stdout, stderr strings.Builder
+	code := runBuild([]string{pigletPath, "--format", "binary", "--builder", "native", "--out", output}, &stdout, &stderr)
+	if code != 1 || !strings.Contains(stderr.String(), `Piglet will not build: unresolved extension: extension "gone": `) || !strings.Contains(stderr.String(), "; piglet resolves to no extensions") {
+		t.Fatalf("code=%d stdout=%q stderr=%q", code, stdout.String(), stderr.String())
+	}
+	if _, err := os.Stat(output); !os.IsNotExist(err) {
+		t.Fatalf("rejected build output stat error = %v, want not exist", err)
+	}
+}
+
+// A Piglet whose extension cells all stay outside the Binary (here one
+// Python factory) still fails with "nothing to embed or fuse": only a Piglet
+// that lists no extensions builds a Binary of PiG's own parts (D18).
+func TestRunBuildRejectsPigletWhoseCellsAllStayOutsideTheBinary(t *testing.T) {
+	dir := t.TempDir()
+	t.Setenv("PIG_HOME", filepath.Join(dir, "home"))
+	t.Setenv("HOME", filepath.Join(dir, "home"))
+	extensionDir := filepath.Join(dir, "sidecar")
+	if err := os.Mkdir(extensionDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(extensionDir, "sidecar.py"), []byte("def new_extension() -> Extension:\n    return None\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	pigletPath := filepath.Join(dir, "outside.yaml")
+	if err := os.WriteFile(pigletPath, []byte("name: outside\nextensions:\n  - name: sidecar\n    origins: [local:./sidecar]\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	output := filepath.Join(dir, "pig-outside")
+	var stdout, stderr strings.Builder
+	code := runBuild([]string{pigletPath, "--format", "binary", "--builder", "native", "--out", output}, &stdout, &stderr)
+	if code != 1 || !strings.Contains(stderr.String(), `piglet "outside" has nothing to embed or fuse; nothing to build`) {
+		t.Fatalf("code=%d stdout=%q stderr=%q", code, stdout.String(), stderr.String())
+	}
+	if _, err := os.Stat(output); !os.IsNotExist(err) {
+		t.Fatalf("rejected build output stat error = %v, want not exist", err)
+	}
+}
+
+// The functional floor refuses a Piglet whose effective strip removes every
+// built-in tool and /quit before the build plans anything; the build loader
+// accepts a Piglet that strips every tool alone or /quit alone.
+func TestRunBuildRejectsPigletBelowTheStripFloor(t *testing.T) {
+	dir := t.TempDir()
+	tools := strings.Join(pigstrip.Known(pigstrip.ListTools), ", ")
+	if err := os.WriteFile(filepath.Join(dir, "chat.yaml"), []byte("name: chat\nstrip:\n  tools: ["+tools+"]\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	pigletPath := filepath.Join(dir, "stuck.yaml")
+	if err := os.WriteFile(pigletPath, []byte("name: stuck\nextends:\n  source: local:./chat.yaml\nstrip:\n  commands: [/quit]\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	output := filepath.Join(dir, "pig-stuck")
+	var stdout, stderr strings.Builder
+	code := runBuild([]string{pigletPath, "--format", "binary", "--builder", "native", "--out", output}, &stdout, &stderr)
+	want := "a Piglet can't strip every tool and /quit (strip.tools: " + tools + "; strip.commands: /quit); keep at least one tool or /quit"
+	if code != 1 || !strings.Contains(stderr.String(), want) {
+		t.Fatalf("code=%d stdout=%q stderr=%q", code, stdout.String(), stderr.String())
+	}
+	if _, err := os.Stat(output); !os.IsNotExist(err) {
+		t.Fatalf("rejected build output stat error = %v, want not exist", err)
+	}
+	for _, source := range []string{
+		"name: chatonly\nextends:\n  source: local:./chat.yaml\n",
+		"name: noquit\nstrip:\n  commands: [/quit]\n",
+	} {
+		path := filepath.Join(dir, "allowed.yaml")
+		if err := os.WriteFile(path, []byte(source), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := loadPiglet(path); err != nil {
+			t.Fatalf("%s: %v", source, err)
+		}
 	}
 }
 

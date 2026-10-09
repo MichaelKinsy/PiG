@@ -21,7 +21,10 @@ func thinkingVisibleSGR() string { return ActiveTheme().ThinkingText + "\033[3m"
 
 const thinkingHiddenResetSGR = SGRBoldDimReset + SGRItalicReset
 const thinkingVisibleResetSGR = SGRFgReset + SGRItalicReset
-const thinkingHiddenLabel = "Thinking..."
+const thinkingHiddenLabel = DefaultHiddenThinkingLabel
+
+// DefaultHiddenThinkingLabel is the label that stands in for a hidden thinking run (interactive-mode.ts defaultHiddenThinkingLabel).
+const DefaultHiddenThinkingLabel = "Thinking..."
 
 // ThinkingBlock is a TUI component that renders a thinking/reasoning block.
 type ThinkingBlock struct {

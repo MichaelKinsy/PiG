@@ -19,7 +19,7 @@ func TestResourceCollisionDiagnostics_SkillIncludesSourceInfo(t *testing.T) {
 		winner: {Path: winner, ResourceType: "skills", Enabled: true, Scope: "user", Origin: "package", Source: "npm:pkg-a", BaseDir: filepath.FromSlash("/pkg-a")},
 		loser:  {Path: loser, ResourceType: "skills", Enabled: true, Scope: "project", Origin: "package", Source: "git:https://example.com/pkg-b.git", BaseDir: filepath.FromSlash("/pkg-b")},
 	}
-	m.opts.Skills = []*SkillDef{{Name: "demo", Path: winner}}
+	m.opts.Skills = []*SkillDef{{Name: "demo", FilePath: winner}}
 	m.opts.SkillDiagnostics = []extension.ResourceDiagnostic{collisionDiagnostic("skill", "demo", winner, loser)}
 	m.showLoadedResources(false, true)
 	want := "[Skill conflicts]\n  \"demo\" collision:\n    ✓ npm:pkg-a (user) skills/demo/SKILL.md\n    ✗ /pkg-b/skills/demo/SKILL.md (skipped)"

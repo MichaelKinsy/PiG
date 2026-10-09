@@ -20,12 +20,12 @@ func main() {
 	counter := filepath.Join(dir, "called")
 	script := filepath.Join(dir, "key.cjs")
 	must(os.WriteFile(script, []byte(`require("node:fs").appendFileSync(`+strconv.Quote(counter)+`,"called\n"); console.log("configured-key");`), 0o600))
-	services, err := coding.NewServices(coding.ServicesOptions{CWD: dir, AgentDir: dir})
+	services, err := coding.CreateAgentSessionServices(coding.CreateAgentSessionServicesOptions{CWD: dir, AgentDir: dir})
 	must(err)
-	must(services.Registry().RegisterProvider("metadata-refresh", extension.ProviderConfig{API: "openai-completions", BaseURL: "https://before.test", APIKey: "!node " + strconv.Quote(script), Models: []extension.ProviderModelConfig{{ID: "model", Name: "Model"}}}))
+	must(services.Registry().RegisterExtensionProvider("metadata-refresh", extension.ProviderConfig{API: "openai-completions", BaseURL: "https://before.test", APIKey: "!node " + strconv.Quote(script), Models: []extension.ProviderModelConfig{{ID: "model", Name: "Model"}}}))
 	runtime := services.ModelRuntime()
 	ext := extension.Extension{Path: "metadata-refresh", Commands: map[string]extension.RegisteredCommand{"refresh-metadata": {Name: "refresh-metadata", Description: "Refresh metadata", Handler: func(context.Context, string) error {
-		return services.Registry().RegisterProvider("metadata-refresh", extension.ProviderConfig{BaseURL: "https://after.test"})
+		return services.Registry().RegisterExtensionProvider("metadata-refresh", extension.ProviderConfig{BaseURL: "https://after.test"})
 	}}}}
 	session, err := coding.NewSession(services, coding.SessionOptions{Runner: inproc.NewRunner([]extension.Extension{ext}, dir), Model: runtime.GetModel("metadata-refresh", "model"), NoSession: true, SkipBuiltinTools: true})
 	must(err)

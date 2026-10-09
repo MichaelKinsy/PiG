@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/internal/testenv"
+	"github.com/MichaelKinsy/PiG/test/parity/upstreampackages"
 )
 
 const testShapeHash = "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
@@ -141,11 +142,47 @@ func TestPortedParentCannotHidePendingMember(t *testing.T) {
 	}
 }
 
+func TestPortedParentMayCarryReviewedClosedMembers(t *testing.T) {
+	parentID := "pkg:client/.#ServerError"
+	for _, closed := range []string{"designed-out", "divergence"} {
+		childID := parentID + "::property:stack"
+		problems := validateParentClosure(
+			[]inventoryEntry{{ID: parentID}, {ID: childID, ParentID: parentID}},
+			map[string]mappingEntry{
+				parentID: {ID: parentID, Disposition: "ported"},
+				childID:  {ID: childID, Disposition: closed},
+			},
+		)
+		if len(problems) != 0 {
+			t.Fatalf("a %s member blocked its ported parent: %v", closed, problems)
+		}
+	}
+}
+
+// A designed-out child is a closed decision: it does not hold a ported owner open, while a pending sibling still does.
+func TestPortedParentClosesOverADesignedOutMember(t *testing.T) {
+	parentID := "pkg:server/.#ServerError"
+	stack, code := parentID+"::property:stack", parentID+"::property:code"
+	upstream := []inventoryEntry{{ID: parentID}, {ID: stack, ParentID: parentID}, {ID: code, ParentID: parentID}}
+	mapped := map[string]mappingEntry{
+		parentID: {ID: parentID, Disposition: "ported"},
+		stack:    {ID: stack, Disposition: "designed-out"},
+		code:     {ID: code, Disposition: "ported"},
+	}
+	if problems := validateParentClosure(upstream, mapped); len(problems) != 0 {
+		t.Fatalf("a designed-out member kept its owner open: %v", problems)
+	}
+	mapped[code] = mappingEntry{ID: code, Disposition: "pending"}
+	if problems := validateParentClosure(upstream, mapped); len(problems) != 1 || !strings.Contains(problems[0], code) {
+		t.Fatalf("a pending sibling must still be reported: %v", problems)
+	}
+}
+
 func TestPortedMappingsRequireKnownKindSpecificLayersAndAsyncContract(t *testing.T) {
 	entry := mappingEntry{
-		ID: "cli:pi/--approve", Disposition: "ported", PigTargets: []string{"cmd/pig/args.go"},
+		ID: "cli:pi/--approve", Disposition: "ported", PigTargets: []string{"coding/cli/args.go"},
 		Layers:     map[string]string{"anything": "complete", "parser": "complete"},
-		Production: []string{"call:cmd/pig/main.go"}, Evidence: []string{"scenario:test/parity/scenarios/project-trust/03-approve-loads-project-extension.toml"},
+		Production: []string{"call:coding/cli/main.go"}, Evidence: []string{"scenario:test/parity/scenarios/project-trust/03-approve-loads-project-extension.toml"},
 	}
 	upstream := inventoryEntry{ID: entry.ID, Shape: json.RawMessage(`{"returns":"Promise<void>"}`)}
 	problems := validateMappingClosure(entry, upstream, false)
@@ -252,6 +289,114 @@ func TestMappingReferencesRejectEscapesAndMissingFragments(t *testing.T) {
 		return strings.Contains(problem, "scenario proof must reference a TOML scenario")
 	}) {
 		t.Fatalf("proof-kind problems = %v", problems)
+	}
+}
+
+func publicAPIEntry() mappingEntry {
+	return mappingEntry{
+		ID: "pkg:coding-agent/.#RpcClient::property:abort", Disposition: "ported", UpstreamShapeHash: testShapeHash,
+		PigTargets: []string{"client/client.go#Client.Abort"},
+		Layers:     map[string]string{"shape": "complete", "production": "public-api-tested", "behavior": "complete"},
+		Production: []string{"public-api:client/client.go#Client.Abort"},
+		Evidence:   []string{"test:client/client_test.go#TestAbort"},
+	}
+}
+
+func publicAPIRoot(t *testing.T) string {
+	t.Helper()
+	root := t.TempDir()
+	for file, content := range map[string]string{
+		"client/client.go":      "package client\ntype Client struct{}\nfunc (Client) Abort() {}\nfunc (Client) abort() {}\nfunc Exported() {}\nfunc hidden() {}\n",
+		"client/client_test.go": "package client\nfunc TestAbort() {}\n",
+	} {
+		path := filepath.Join(root, file)
+		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	return root
+}
+
+func hasProblem(problems []string, want string) bool {
+	return slices.ContainsFunc(problems, func(problem string) bool { return strings.Contains(problem, want) })
+}
+
+// A public library API whose Pi counterpart is a public export may close on test callers, but only under the
+// distinct public-api-tested production status, so the ledger never reports it as production-reachable.
+func TestPublicAPITestedClosureIsDistinctFromProduction(t *testing.T) {
+	root := publicAPIRoot(t)
+	entry := publicAPIEntry()
+	upstream := inventoryEntry{ID: entry.ID}
+	if problems := append(validateMappingClosure(entry, upstream, true), validateMappingReferences(entry, root)...); len(problems) != 0 {
+		t.Fatalf("a public-api-tested row is rejected: %v", problems)
+	}
+
+	claimed := publicAPIEntry()
+	claimed.Layers["production"] = "complete"
+	if problems := validateMappingClosure(claimed, upstream, true); !hasProblem(problems, "public-api production must be marked public-api-tested") {
+		t.Fatalf("claiming production for public-api-only references: %v", problems)
+	}
+
+	mixed := publicAPIEntry()
+	mixed.Production = append(mixed.Production, "call:client/client.go#Exported")
+	if problems := validateMappingClosure(mixed, upstream, true); !hasProblem(problems, "public-api-tested production layer needs every production reference to be public-api") {
+		t.Fatalf("mixing a call reference into a public-api-tested row: %v", problems)
+	}
+
+	untested := publicAPIEntry()
+	untested.Evidence = []string{"scenario:test/parity/scenarios/x.toml"}
+	if problems := validateMappingClosure(untested, upstream, true); !hasProblem(problems, "public-api-tested production layer needs a test reference") {
+		t.Fatalf("public-api-tested without a test: %v", problems)
+	}
+
+	hidden := publicAPIEntry()
+	hidden.Production = []string{"public-api:client/client.go#hidden"}
+	if problems := validateMappingReferences(hidden, root); !hasProblem(problems, "is not an exported") {
+		t.Fatalf("an unexported function: %v", problems)
+	}
+	method := publicAPIEntry()
+	method.Production = []string{"public-api:client/client.go#Client.abort"}
+	if problems := validateMappingReferences(method, root); !hasProblem(problems, "is not an exported") {
+		t.Fatalf("an unexported method: %v", problems)
+	}
+	for _, path := range []string{"internal/codingagent/session.go", "coding/internal/x.go", "cmd/pig/main_default.go", "tui/testdata/x.go"} {
+		if err := validatePublicAPIFragment(path, "Exported"); err == nil || !strings.Contains(err.Error(), "not in an importable public package") {
+			t.Fatalf("a symbol in %s: %v", path, err)
+		}
+	}
+	inTest := publicAPIEntry()
+	inTest.Production = []string{"public-api:client/client_test.go#TestAbort"}
+	if problems := validateMappingReferences(inTest, root); !hasProblem(problems, "test file") {
+		t.Fatalf("a symbol declared in a test file: %v", problems)
+	}
+}
+
+// A parity-harness probe runs only under PIG_PARITY_HARNESS=1, so a production reference to it does not prove that the binary reaches the symbol.
+func TestProductionReferenceRejectsParityHarnessProbe(t *testing.T) {
+	root := publicAPIRoot(t)
+	harness := filepath.Join(root, "internal", "codingagent", "parity_harness.go")
+	if err := os.MkdirAll(filepath.Dir(harness), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(harness, []byte("package codingagent\ntype InteractiveMode struct{}\nfunc (*InteractiveMode) probeLoader() {}\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	entry := mappingEntry{
+		ID: "pkg:tui/.#Loader::property:render", Disposition: "ported", UpstreamShapeHash: testShapeHash,
+		PigTargets: []string{"client/client.go#Client.Abort"},
+		Layers:     map[string]string{"shape": "complete", "production": "complete", "behavior": "complete"},
+		Production: []string{"call:internal/codingagent/parity_harness.go#InteractiveMode.probeLoader"},
+		Evidence:   []string{"test:client/client_test.go#TestAbort"},
+	}
+	if problems := validateMappingReferences(entry, root); !hasProblem(problems, "is a parity-harness probe") {
+		t.Fatalf("a parity-harness production reference: %v", problems)
+	}
+	entry.Production = []string{"call:client/client.go#Exported"}
+	if problems := validateMappingReferences(entry, root); len(problems) != 0 {
+		t.Fatalf("an ordinary call reference is rejected: %v", problems)
 	}
 }
 
@@ -445,43 +590,49 @@ func TestDecodeJSONFileRejectsUnknownAndTrailingData(t *testing.T) {
 	}
 }
 
-func TestValidateInventoryTracksOptionalMcpAndCodemodePackages(t *testing.T) {
+func TestValidateInventoryRequiresEveryListedPackage(t *testing.T) {
 	packageProblems := func(keys ...string) []string {
-		names := map[string]string{
-			"agent": "@earendil-works/pi-agent-core", "ai": "@earendil-works/pi-ai", "codemode": "@earendil-works/pi-codemode",
-			"coding-agent": "@earendil-works/pi-coding-agent", "mcp": "@earendil-works/pi-mcp", "tui": "@earendil-works/pi-tui",
-		}
 		upstream := testInventory()
+		byKey := map[string]upstreampackages.Package{}
+		for _, listed := range upstreampackages.All() {
+			byKey[listed.Key] = listed
+		}
 		for _, key := range keys {
-			upstream.Packages = append(upstream.Packages, inventoryPackage{Key: key, Name: names[key], Version: upstream.UpstreamVersion})
+			upstream.Packages = append(upstream.Packages, inventoryPackage{Key: key, Name: byKey[key].Name, Version: upstream.UpstreamVersion, Origin: "published"})
 		}
 		return slices.DeleteFunc(validateInventory(upstream), func(problem string) bool {
 			return !strings.Contains(problem, "inventory package") && !strings.Contains(problem, "tracked package")
 		})
 	}
-	core := []string{"agent", "ai", "coding-agent", "tui"}
-	if problems := packageProblems(core...); len(problems) != 0 {
-		t.Fatalf("the four core packages alone (a release before mcp and codemode) = %v", problems)
+	var all []string
+	for _, listed := range upstreampackages.All() {
+		all = append(all, listed.Key)
 	}
-	if problems := packageProblems(append(core, "codemode", "mcp")...); len(problems) != 0 {
-		t.Fatalf("core packages plus codemode and mcp = %v", problems)
+	if problems := packageProblems(all...); len(problems) != 0 {
+		t.Fatalf("every listed package = %v", problems)
 	}
-	if problems := packageProblems("agent", "ai", "tui", "mcp", "codemode"); len(problems) != 1 || !strings.Contains(problems[0], "missing tracked package coding-agent") {
-		t.Fatalf("a missing core package must still be reported, got %v", problems)
+	without := slices.DeleteFunc(slices.Clone(all), func(key string) bool { return key == "env" })
+	if problems := packageProblems(without...); len(problems) != 1 || !strings.Contains(problems[0], "missing tracked package env") {
+		t.Fatalf("a package missing from the inventory must be reported, got %v", problems)
 	}
 	upstream := testInventory()
-	upstream.Packages = []inventoryPackage{{Key: "chord", Name: "@earendil-works/chord", Version: upstream.UpstreamVersion}}
+	upstream.Packages = []inventoryPackage{{Key: "unlisted", Name: "@earendil-works/unlisted", Version: upstream.UpstreamVersion, Origin: "published"}}
 	if problems := validateInventory(upstream); !slices.ContainsFunc(problems, func(problem string) bool {
-		return strings.Contains(problem, `unexpected key/name "@earendil-works/chord"`)
+		return strings.Contains(problem, `unexpected key/name "@earendil-works/unlisted"`)
 	}) {
-		t.Fatalf("an untracked package must be rejected, got %v", problems)
+		t.Fatalf("an unlisted package must be rejected, got %v", problems)
+	}
+	upstream = testInventory()
+	upstream.Packages = []inventoryPackage{{Key: "agent", Name: "@earendil-works/pi-agent-core", Version: upstream.UpstreamVersion}}
+	if problems := validateInventory(upstream); !slices.ContainsFunc(problems, func(problem string) bool { return strings.Contains(problem, "origin") }) {
+		t.Fatalf("a package without an origin must be rejected, got %v", problems)
 	}
 }
 
-func TestPendingMappingLedgerCarriesOnlyScopeRowsWithAnUnchangedShape(t *testing.T) {
+func TestPendingMappingLedgerCarriesEveryRowWithAnUnchangedShape(t *testing.T) {
 	const oldHash = "sha256:1111111111111111111111111111111111111111111111111111111111111111"
 	previous := filepath.Join(t.TempDir(), "mapping-old.json")
-	// An unchanged shape does not prove unchanged behavior, so behavior claims are reviewed again.
+	// A version leap never resets status: every row with an unchanged shape is carried, and the gap detector re-derives it.
 	ported := `{"id":"pkg:ai/.#ported","disposition":"ported","upstreamShapeHash":"` + testShapeHash + `","pigTargets":["ai/kept.go#Kept"],"layers":{"shape":"complete"}}`
 	partial := `{"id":"pkg:ai/.#partial","disposition":"partial","upstreamShapeHash":"` + testShapeHash + `","pigTargets":["ai/partial.go#Partial"]}`
 	divergence := `{"id":"pkg:ai/.#divergence","disposition":"divergence","upstreamShapeHash":"` + testShapeHash + `","divergence":"D1","rationale":"r"}`
@@ -515,8 +666,7 @@ func TestPendingMappingLedgerCarriesOnlyScopeRowsWithAnUnchangedShape(t *testing
 		return `{"id":"` + id + `","disposition":"pending","upstreamShapeHash":"` + testShapeHash + `"}`
 	}
 	want := []string{
-		pending("pkg:ai/.#added"), pending("pkg:ai/.#changed"), deferred, designed,
-		pending("pkg:ai/.#divergence"), pending("pkg:ai/.#partial"), pending("pkg:ai/.#ported"),
+		pending("pkg:ai/.#added"), pending("pkg:ai/.#changed"), deferred, designed, divergence, partial, ported,
 	}
 	got := make([]string, len(ledger.Mappings))
 	for i, row := range ledger.Mappings {
@@ -524,5 +674,23 @@ func TestPendingMappingLedgerCarriesOnlyScopeRowsWithAnUnchangedShape(t *testing
 	}
 	if !slices.Equal(got, want) {
 		t.Fatalf("rows =\n%s\nwant\n%s", strings.Join(got, "\n"), strings.Join(want, "\n"))
+	}
+}
+
+func TestReferenceFragmentNamesMethodsOfGenericTypes(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "state.go")
+	src := "package p\n\ntype State[T any] struct{}\n\nfunc (s *State[T]) Dispose() {}\n\ntype Pair[K comparable, V any] struct{}\n\nfunc (p Pair[K, V]) Key() K { var k K; return k }\n"
+	if err := os.WriteFile(path, []byte(src), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	for _, fragment := range []string{"State.Dispose", "Pair.Key", "State"} {
+		if err := validateReferenceFragment(path, fragment); err != nil {
+			t.Errorf("%s: %v", fragment, err)
+		}
+	}
+	for _, fragment := range []string{"State.Missing", "Pair.Dispose", "Other.Dispose"} {
+		if err := validateReferenceFragment(path, fragment); err == nil {
+			t.Errorf("%s must not name a declaration", fragment)
+		}
 	}
 }

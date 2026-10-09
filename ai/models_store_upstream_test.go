@@ -24,8 +24,8 @@ func TestFileModelsStoreUpstream(t *testing.T) {
 	t.Run("persists provider catalogs without replacing unrelated providers", func(t *testing.T) {
 		path := filepath.Join(t.TempDir(), "models-store.json")
 		store := NewFileModelsStore(path)
-		one := ModelsStoreEntry{Models: []json.RawMessage{upstreamStoredModel("one", "m1")}, CheckedAt: new(100.0)}
-		two := ModelsStoreEntry{Models: []json.RawMessage{upstreamStoredModel("two", "m2")}, CheckedAt: new(200.0)}
+		one := ModelsStoreEntry{Models: mustStoredModels([]json.RawMessage{upstreamStoredModel("one", "m1")}), CheckedAt: new(100.0)}
+		two := ModelsStoreEntry{Models: mustStoredModels([]json.RawMessage{upstreamStoredModel("two", "m2")}), CheckedAt: new(200.0)}
 		if err := store.Write(t.Context(), "one", one); err != nil {
 			t.Fatal(err)
 		}
@@ -64,7 +64,7 @@ func TestFileModelsStoreUpstream(t *testing.T) {
 		if err := os.Chmod(path, 0o660); err != nil {
 			t.Fatal(err)
 		}
-		if err := NewFileModelsStore(path).Write(t.Context(), "one", ModelsStoreEntry{Models: []json.RawMessage{upstreamStoredModel("one", "m1")}, CheckedAt: new(100.0)}); err != nil {
+		if err := NewFileModelsStore(path).Write(t.Context(), "one", ModelsStoreEntry{Models: mustStoredModels([]json.RawMessage{upstreamStoredModel("one", "m1")}), CheckedAt: new(100.0)}); err != nil {
 			t.Fatal(err)
 		}
 		info, err := os.Stat(path)
@@ -78,7 +78,7 @@ func TestFileModelsStoreUpstream(t *testing.T) {
 	// .upstream/v0.87.1/packages/coding-agent/test/models-store.test.ts:130
 	t.Run("cancels a catalog write waiting for a held file lock without writing later", func(t *testing.T) {
 		path := filepath.Join(t.TempDir(), "models-store.json")
-		initial := map[string]ModelsStoreEntry{"one": {Models: []json.RawMessage{upstreamStoredModel("one", "existing")}}}
+		initial := map[string]ModelsStoreEntry{"one": {Models: mustStoredModels([]json.RawMessage{upstreamStoredModel("one", "existing")})}}
 		if err := os.WriteFile(path, []byte(mustStoreJSON(t, initial)), 0o600); err != nil {
 			t.Fatal(err)
 		}
@@ -97,7 +97,7 @@ func TestFileModelsStoreUpstream(t *testing.T) {
 			defer cancel()
 			done := make(chan error, 1)
 			go func() {
-				done <- NewFileModelsStore(path).Write(ctx, "two", ModelsStoreEntry{Models: []json.RawMessage{upstreamStoredModel("two", "cancelled")}})
+				done <- NewFileModelsStore(path).Write(ctx, "two", ModelsStoreEntry{Models: mustStoredModels([]json.RawMessage{upstreamStoredModel("two", "cancelled")})})
 			}()
 			synctest.Wait()
 			cancel()

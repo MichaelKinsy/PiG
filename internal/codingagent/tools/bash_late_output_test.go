@@ -1,8 +1,11 @@
 package tools
 
+// pi: packages/coding-agent/src/core/tools/output-accumulator.ts
+
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"slices"
 	"strings"
 	"testing"
@@ -51,10 +54,14 @@ func (o lateOutputOperations) Exec(_ context.Context, _, _ string, opts BashOper
 // bash.ts:313-320 stops accepting output before the final snapshot and file close. Assert retained accumulator state too: a copied result string alone cannot detect an accepted late chunk.
 func TestFinishedShellOutputDoesNotRetainLateChunks(t *testing.T) {
 	output := NewOutputAccumulator("pi-bash")
-	output.Append([]byte("before\n"))
+	if err := output.Append([]byte("before\n")); err != nil {
+		t.Fatal(err)
+	}
 	output.Finish()
 	before := output.Snapshot(false)
-	output.Append([]byte("late\n"))
+	if err := output.Append([]byte("late\n")); !errors.Is(err, errAppendAfterFinish) {
+		t.Fatalf("late chunk error = %v, want %v", err, errAppendAfterFinish)
+	}
 	if after := output.Snapshot(false); after != before {
 		t.Fatalf("late chunk changed retained output: %+v, want %+v", after, before)
 	}

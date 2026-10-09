@@ -20,6 +20,43 @@ type RemoteServiceEndpoint interface {
 	Dispose()
 }
 
+// InitiatingServiceEndpoint is an endpoint with an explicit admission boundary: BeginInvoke returns once the call has taken its place in
+// the provider's ordering, as a TypeScript invoke does before its Promise settles. It reports ErrInvocationAdmissionUnavailable when the
+// addressed implementation cannot expose that boundary; the caller then starts the call itself.
+type InitiatingServiceEndpoint interface {
+	RemoteServiceEndpoint
+	BeginInvoke(ctx context.Context, call ServiceCall, publish ServiceUpdatePublisher) (*ServiceInvocation, error)
+}
+
+// BeginEndpointInvoke admits one endpoint call. An endpoint with an admission boundary admits it synchronously. Otherwise the call
+// starts on a goroutine that has begun running before this returns, so consecutive calls start in admission order but the callee
+// cannot observe its position before an earlier call's goroutine reaches its first instruction.
+func BeginEndpointInvoke(ctx context.Context, endpoint RemoteServiceEndpoint, call ServiceCall, publish ServiceUpdatePublisher) (*ServiceInvocation, error) {
+	if initiating, ok := endpoint.(InitiatingServiceEndpoint); ok {
+		invocation, err := initiating.BeginInvoke(ctx, call, publish)
+		if !errors.Is(err, ErrInvocationAdmissionUnavailable) {
+			return invocation, err
+		}
+	}
+	var result json.RawMessage
+	var failure error
+	begun, done := make(chan struct{}), make(chan struct{})
+	go func() {
+		close(begun)
+		defer close(done)
+		result, failure = endpoint.Invoke(ctx, call, publish)
+	}()
+	<-begun
+	return NewServiceInvocation(func(waitCtx context.Context) (json.RawMessage, error) {
+		select {
+		case <-done:
+			return result, failure
+		case <-waitCtx.Done():
+			return nil, context.Cause(waitCtx)
+		}
+	}), nil
+}
+
 type remoteServiceEndpoint struct {
 	provider      *RemoteServiceProvider
 	mu            sync.Mutex
@@ -82,6 +119,26 @@ func (endpoint *remoteServiceEndpoint) Invoke(ctx context.Context, call ServiceC
 		return nil, subscription.Close(ctx)
 	}
 	return nil, fmt.Errorf("unknown control call %q", control.Type)
+}
+
+// BeginInvoke admits a provider call. Catalogue and subscribe control calls complete synchronously during admission; unsubscribe and
+// members without an admission boundary report ErrInvocationAdmissionUnavailable.
+func (endpoint *remoteServiceEndpoint) BeginInvoke(ctx context.Context, call ServiceCall, publish ServiceUpdatePublisher) (*ServiceInvocation, error) {
+	endpoint.mu.Lock()
+	disposed := endpoint.disposed
+	endpoint.mu.Unlock()
+	if disposed {
+		return nil, errors.New("Remote service endpoint is disposed")
+	}
+	control, ok := DecodeServiceControlCall(call)
+	if !ok {
+		return endpoint.provider.BeginInvoke(ctx, call)
+	}
+	if control.Type == controlUnsubscribe {
+		return nil, ErrInvocationAdmissionUnavailable
+	}
+	result, err := endpoint.Invoke(ctx, call, publish)
+	return NewServiceInvocation(func(context.Context) (json.RawMessage, error) { return result, err }), nil
 }
 
 func (endpoint *remoteServiceEndpoint) Dispose() {

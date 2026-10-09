@@ -1,0 +1,27 @@
+# Behavior family: interactive-rendering (syntax highlighting output)
+# Pi 1.1.0 probe: renderHighlightedHtml over about 5000 seeded highlight.js-shaped HTML strings (nested and unbalanced spans, every class-attribute spelling,
+# scopes with dots and dashes, named/decimal/hex/malformed/too-long character references, newlines inside scopes, stray markup) against themes that map
+# a random subset of scopes; each result is compared byte for byte. The Go test TestRenderHighlightedHtmlMatchesPi runs the same corpus against the
+# installed Pi; this scenario compares the two printed streams.
+name = "55-render-highlighted-html"
+description = "Highlighted HTML is rendered to formatted text as in Pi."
+covers = ["packages/coding-agent/src/utils/syntax-highlight.ts"]
+tags = ["fast", "hermetic", "tui"]
+driver = "cli-mode"
+
+[env]
+override_base_args = true
+pig_bin = "/usr/bin/env"
+pi_bin = "/usr/bin/env"
+pig_args = ["node", "./test/parity/testdata/render-highlighted-html-pig.mjs"]
+pi_args = ["node", "./test/parity/testdata/render-highlighted-html-pi.mjs"]
+
+[cli]
+cwd = "../../../.."
+timeout_seconds = 240
+
+[assert]
+exit_code = 0
+output_equal = true
+both_contain = ['<keyword>', 'line one']
+runs = 2

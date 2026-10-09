@@ -38,8 +38,11 @@ func imagesOptionsWire(o ai.ImagesOptions) map[string]any {
 	if o.TimeoutMs != 0 {
 		values["timeoutMs"] = o.TimeoutMs
 	}
-	if o.MaxRetries != 0 {
-		values["maxRetries"] = o.MaxRetries
+	if o.MaxRetries != nil {
+		values["maxRetries"] = *o.MaxRetries
+	}
+	if o.MaxRetryDelayMs != nil {
+		values["maxRetryDelayMs"] = *o.MaxRetryDelayMs
 	}
 	return values
 }
@@ -135,5 +138,20 @@ func (p *nativeProviderProxy) operations(carrier *extension.NativeProvider) {
 	}
 	if slices.Contains(p.declaration.Methods, "classify") {
 		carrier.Classify = p.classify
+	}
+	if slices.Contains(p.declaration.Methods, "getModels") {
+		carrier.GetModels = p.getModels
+	}
+	if slices.Contains(p.declaration.Methods, "getAllModels") {
+		carrier.GetAllModels = p.allModels
+	}
+	if slices.Contains(p.declaration.Methods, "filterAllModels") {
+		carrier.FilterAllModels = p.filterAllModels
+	}
+	if slices.Contains(p.declaration.Methods, "fetchDeferred") {
+		carrier.FetchDeferred = p.fetchDeferred
+	}
+	if slices.Contains(p.declaration.Methods, "cancelDeferred") {
+		carrier.CancelDeferred = p.cancelDeferred
 	}
 }

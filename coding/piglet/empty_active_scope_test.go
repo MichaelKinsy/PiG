@@ -13,10 +13,11 @@ import (
 // ever narrows further: it must never widen what an earlier extension narrowed, including to zero tools.
 // upstream: agent-session.ts setActiveToolsByName applies exactly the requested names; Pi has no Piglets, so the rule
 // is that no later extension widens the set an earlier one chose.
+// Pi: packages/coding-agent/src/core/extensions/types.ts:913 (BeforeAgentStartEvent.type).
 func TestPigletScopeNeverWidensWhatAnExtensionNarrowed(t *testing.T) {
 	tools := []extension.ToolInfo{
-		{Name: "read", SourceInfo: struct{ Path, Source string }{"builtin:read", "builtin"}},
-		{Name: "bash", SourceInfo: struct{ Path, Source string }{"builtin:bash", "builtin"}},
+		{Name: "read", SourceInfo: extension.SourceInfo{Path: "builtin:read", Source: "builtin"}},
+		{Name: "bash", SourceInfo: extension.SourceInfo{Path: "builtin:bash", Source: "builtin"}},
 	}
 	readOnly := []string{"read"}
 	for _, test := range []struct {

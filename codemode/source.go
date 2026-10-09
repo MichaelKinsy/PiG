@@ -6,6 +6,7 @@ import (
 	"math"
 	"strings"
 
+	"github.com/MichaelKinsy/PiG/internal/jsonparse"
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
 )
 
@@ -30,9 +31,19 @@ type ParsedSource struct {
 }
 
 // SourceError reports empty input or invalid options.
-type SourceError struct{ Message string }
+type SourceError struct {
+	Message string
+}
 
 func (e *SourceError) Error() string { return e.Message }
+
+// Name is the upstream error's `name`.
+func (*SourceError) Name() string { return "CodemodeSourceError" }
+
+// NewSourceError is `new CodemodeSourceError(message)`.
+func NewSourceError(message string) *SourceError {
+	return &SourceError{Message: message}
+}
 
 const (
 	supportedFieldsText = "`max_output_tokens` and `timeout_ms`"
@@ -55,7 +66,7 @@ SOURCE: /[\s\S]+/
 `
 
 func sourceErrorf(format string, args ...any) error {
-	return &SourceError{Message: fmt.Sprintf(format, args...)}
+	return NewSourceError(fmt.Sprintf(format, args...))
 }
 
 // safeInteger converts a JSON value to an integer if it is a number that Number.isSafeInteger accepts and is not negative.
@@ -75,9 +86,12 @@ func parseOptions(directive string) (SourceOptions, error) {
 	if directive == "" {
 		return SourceOptions{}, sourceErrorf("@options must be a JSON object with supported fields %s", supportedFieldsText)
 	}
+	if err := jsonparse.Validate([]byte(directive)); err != nil {
+		// err carries the message V8's JSON.parse throws.
+		return SourceOptions{}, sourceErrorf("@options must be valid JSON with supported fields %s: %s", supportedFieldsText, err)
+	}
 	value, err := decodeJSON([]byte(directive))
 	if err != nil {
-		// The detail is Go's JSON error, not V8's SyntaxError message; the fixed prefix is upstream's.
 		return SourceOptions{}, sourceErrorf("@options must be valid JSON with supported fields %s: %s", supportedFieldsText, err)
 	}
 	fields, ok := value.(*object)

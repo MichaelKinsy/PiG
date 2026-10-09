@@ -14,6 +14,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/durable"
 	"github.com/MichaelKinsy/PiG/durable/env"
 	"github.com/MichaelKinsy/PiG/durable/session"
@@ -192,6 +193,14 @@ type TaskSchedulerOptions struct {
 // rejected. mu guards the in-memory state; it is never held while waiting for the line.
 type TaskScheduler struct {
 	options TaskSchedulerOptions
+	// contexts extends each conversation's derived context across the reads task handlers make.
+	contexts *contextCache
+	// keptContexts is, per conversation whose derived context the scheduler keeps, the Harness time it was first seen
+	// idle (nil while busy). The kept context is derived and never persisted; it is dropped at the first idle check after
+	// settings.ContextRetentionMs of idleness, and at close (scheduler.ts #contexts).
+	keptContexts map[durable.ConversationId]*keptContext
+	// contextExpiry is the timer of the earliest expiry of an idle kept context.
+	contextExpiry *contextExpiry
 
 	mu                 sync.Mutex
 	live               map[durable.TaskId]anyTaskRecord
@@ -223,6 +232,13 @@ type TaskScheduler struct {
 	background  sync.WaitGroup
 }
 
+type keptContext struct{ idleSince *float64 }
+
+type contextExpiry struct {
+	at    float64
+	timer *time.Timer
+}
+
 type failedMigration struct {
 	task durable.AnyTask
 	err  error
@@ -232,6 +248,8 @@ type failedMigration struct {
 func NewTaskScheduler(options TaskSchedulerOptions) *TaskScheduler {
 	return &TaskScheduler{
 		options:             options,
+		contexts:            newContextCache(),
+		keptContexts:        map[durable.ConversationId]*keptContext{},
 		sealed:              make(chan struct{}),
 		live:                map[durable.TaskId]anyTaskRecord{},
 		invocations:         map[durable.TaskId]*invocation{},
@@ -616,17 +634,130 @@ func (s *TaskScheduler) observe(publication durable.CommitPublication) {
 	}
 	s.mu.Unlock()
 	for _, record := range terminal {
-		s.taskWaiters.Resolve(record.Id, record)
+		s.options.Session.DeferUntilPublished(func() { s.taskWaiters.Resolve(record.Id, record) })
 	}
 	if !changed {
 		return
 	}
-	s.resolveIdleWaiters()
+	s.options.Session.DeferUntilPublished(s.resolveIdleWaiters)
 	s.kick()
 }
 
-func (s *TaskScheduler) resolveIdleWaiters() {
+// contextRetentionMs is settings.ContextRetentionMs, or 0 when the host's settings throw. A kept context is only a cache,
+// so dropping it is safe, while a throw here would escape commit listeners, reconciliation, and the expiry timer.
+func (s *TaskScheduler) contextRetentionMs() (retention float64) {
+	defer func() {
+		if recovered := recover(); recovered != nil {
+			err, isError := recovered.(error)
+			if !isError {
+				err = fmt.Errorf("%v", recovered)
+			}
+			s.options.Report(err)
+			retention = 0
+		}
+	}()
+	return s.options.Settings().ContextRetentionMs
+}
+
+// settleContextsLocked drops each kept context whose conversation has been idle for the retention period, tracks when the
+// others went idle, and rearms the expiry timer.
+func (s *TaskScheduler) settleContextsLocked(retention float64) {
+	now := s.options.Now()
+	for conversationId, kept := range s.keptContexts {
+		switch {
+		case kept.idleSince != nil && now-*kept.idleSince >= retention:
+			s.dropContextLocked(conversationId)
+		case !s.idleLocked(&conversationId):
+			kept.idleSince = nil
+		case retention > 0:
+			if kept.idleSince == nil {
+				kept.idleSince = &now
+			}
+		default:
+			s.dropContextLocked(conversationId)
+		}
+	}
+	s.scheduleContextExpiryLocked(retention)
+}
+
+func (s *TaskScheduler) dropContextLocked(conversationId durable.ConversationId) {
+	delete(s.keptContexts, conversationId)
+	s.contexts.drop(conversationId)
+}
+
+// scheduleContextExpiryLocked runs settleContexts when the earliest idle kept context expires. The timer holds nothing
+// open: close stops it.
+func (s *TaskScheduler) scheduleContextExpiryLocked(retention float64) {
+	var at *float64
+	for _, kept := range s.keptContexts {
+		if kept.idleSince == nil {
+			continue
+		}
+		if expires := *kept.idleSince + retention; at == nil || expires < *at {
+			at = &expires
+		}
+	}
+	if s.contextExpiry != nil && at != nil && s.contextExpiry.at == *at {
+		return
+	}
+	if s.contextExpiry != nil {
+		s.contextExpiry.timer.Stop()
+		s.contextExpiry = nil
+	}
+	if at == nil || s.closing {
+		return
+	}
+	delay := math.Min(math.Max(0, *at-s.options.Now()), maxTimerDelay)
+	expiry := &contextExpiry{at: *at}
+	expiry.timer = time.AfterFunc(time.Duration(delay*float64(time.Millisecond)), func() {
+		// The host's settings run outside the mutex: they are user code.
+		retention := s.contextRetentionMs()
+		s.mu.Lock()
+		defer s.mu.Unlock()
+		if s.contextExpiry != expiry || s.closing {
+			return
+		}
+		s.contextExpiry = nil
+		s.settleContextsLocked(retention)
+	})
+	s.contextExpiry = expiry
+}
+
+// keepContext applies the retention rules to the context a task handler just read from conversationId.
+func (s *TaskScheduler) keepContext(conversationId durable.ConversationId, invocation *invocation) {
+	// The host's settings run outside the mutex: they are user code.
+	retention := s.contextRetentionMs()
 	s.mu.Lock()
+	defer s.mu.Unlock()
+	kept := s.keptContexts[conversationId]
+	if s.closing || invocation.ended.Load() {
+		// A read that finishes after its task ended, or after close, keeps nothing beyond what was kept before.
+		if kept == nil {
+			s.contexts.drop(conversationId)
+		}
+		return
+	}
+	// A read of another, idle conversation starts or continues its retention period.
+	switch {
+	case !s.idleLocked(&conversationId):
+		s.keptContexts[conversationId] = &keptContext{}
+	case retention > 0:
+		idleSince := s.options.Now()
+		if kept != nil && kept.idleSince != nil {
+			idleSince = *kept.idleSince
+		}
+		s.keptContexts[conversationId] = &keptContext{idleSince: &idleSince}
+		s.scheduleContextExpiryLocked(retention)
+	default:
+		s.dropContextLocked(conversationId)
+	}
+}
+
+func (s *TaskScheduler) resolveIdleWaiters() {
+	// The host's settings run outside the mutex: they are user code.
+	retention := s.contextRetentionMs()
+	s.mu.Lock()
+	s.settleContextsLocked(retention)
 	var idle []durable.ConversationId
 	for _, conversationId := range s.idleWaiters.Keys() {
 		if s.idleLocked(&conversationId) {
@@ -654,7 +785,9 @@ func (s *TaskScheduler) scheduleReconcileLocked() {
 		s.reconcilesIdle = make(chan struct{})
 	}
 	s.reconciles++
-	s.background.Go(s.reconcile)
+	// Taken now, in the turn that scheduled it, as upstream's queued reconcile microtask is.
+	ticket := s.options.Session.TakeLineTicket()
+	s.background.Go(func() { s.reconcile(ticket) })
 }
 
 // awaitReconcilesLocked returns, with s.mu held, once no reconcile pass is scheduled or running. Upstream queues a
@@ -675,7 +808,7 @@ func (s *TaskScheduler) awaitReconcilesLocked() {
 // with cancellation intent (spec §5.4), failFast marks (spec §5.5), withdrawn queued inputs below cancelled owners, and
 // the final terminal record of every completing task whose ordinary owned work is gone. The durable records are the
 // intent, so this also repairs whatever a crash left unapplied. It resolves idle waiters that the loaded edges decide.
-func (s *TaskScheduler) reconcile() {
+func (s *TaskScheduler) reconcile(ticket *session.LineTicket) {
 	defer s.endReconcile()
 	s.mu.Lock()
 	s.reconcileScheduled = false
@@ -684,7 +817,7 @@ func (s *TaskScheduler) reconcile() {
 	checks := slices.Sorted(maps.Keys(s.failFastChecks))
 	clear(s.failFastChecks)
 	s.mu.Unlock()
-	_, err := s.options.Session.CommitWith(s.options.Context, func(tx *session.Transaction) (any, error) {
+	_, err := s.options.Session.CommitWithTicket(ticket, s.options.Context, func(tx *session.Transaction) (any, error) {
 		s.mu.Lock()
 		defer s.mu.Unlock()
 		if s.closing {
@@ -1068,10 +1201,16 @@ func (s *TaskScheduler) seal() {
 	s.sealing.Store(true)
 	s.mu.Lock()
 	s.closing = true
+	clear(s.keptContexts)
+	s.contexts.clear()
+	if s.contextExpiry != nil {
+		s.contextExpiry.timer.Stop()
+		s.contextExpiry = nil
+	}
 	unsubscribe := s.unsubscribeRegistry
-	var running []*invocation
+	// scheduler.ts #seal sets #closing and aborts every invocation in one synchronous turn, so a commit that the flag rejects always finds its signal aborted (tool.ts:327-328 reports a rejection only while the signal is live). Another goroutine can observe the flag as soon as the lock is released, so the signals are aborted before that.
 	for _, invocation := range s.invocations {
-		running = append(running, invocation)
+		invocation.cancel(closedError())
 	}
 	s.mu.Unlock()
 	// From here no pass starts, so Join may wait on the background group.
@@ -1080,9 +1219,6 @@ func (s *TaskScheduler) seal() {
 	s.taskWaiters.RejectAll(closedError())
 	s.idleWaiters.RejectAll(closedError())
 	s.idleHarness.RejectAll(closedError())
-	for _, invocation := range running {
-		invocation.cancel(closedError())
-	}
 }
 
 func (s *TaskScheduler) kick() {
@@ -1093,11 +1229,18 @@ func (s *TaskScheduler) kick() {
 		return
 	}
 	s.draining = true
-	// Never commit synchronously from a commit or registry listener.
-	s.background.Go(s.drain)
+	// Never commit synchronously from a commit or registry listener. The pass takes its place on the Session line now,
+	// as upstream's queueMicrotask takes it in the publishing turn, so a commit started after this point queues behind.
+	ticket := s.options.Session.TakeLineTicket()
+	s.background.Go(func() { s.drain(ticket) })
 }
 
-func (s *TaskScheduler) drain() {
+func (s *TaskScheduler) drain(ticket *session.LineTicket) {
+	defer func() {
+		if ticket != nil {
+			ticket.Release()
+		}
+	}()
 	for {
 		s.mu.Lock()
 		if !s.dirty || !s.enabled || s.closing {
@@ -1111,9 +1254,12 @@ func (s *TaskScheduler) drain() {
 			return
 		}
 		s.dirty = false
-		s.awaitReconcilesLocked()
+		if ticket == nil {
+			s.awaitReconcilesLocked()
+		}
 		s.mu.Unlock()
-		reservations, err := s.reserve()
+		reservations, err := s.reserve(ticket)
+		ticket = nil
 		if err != nil {
 			s.mu.Lock()
 			closing := s.closing
@@ -1135,9 +1281,9 @@ func (s *TaskScheduler) drain() {
 }
 
 // reserve reserves every eligible task in one commit and orphans abort-marked tasks no definition can take.
-func (s *TaskScheduler) reserve() ([]reservation, error) {
+func (s *TaskScheduler) reserve(ticket *session.LineTicket) ([]reservation, error) {
 	var reservations []reservation
-	_, err := s.options.Session.CommitWith(s.options.Context, func(tx *session.Transaction) (any, error) {
+	_, err := s.options.Session.CommitWithTicket(ticket, s.options.Context, func(tx *session.Transaction) (any, error) {
 		s.mu.Lock()
 		defer s.mu.Unlock()
 		if !s.enabled || s.closing {
@@ -1773,7 +1919,14 @@ type runtimeHooks struct{ runtime *taskRuntime }
 
 func (hooks runtimeHooks) Each(name string, invoke func(handlers any) error) error {
 	runtime := hooks.runtime
-	agent, err := runtime.Agent(runtime.invocation.ctx)
+	// scheduler.ts:1132-1137 agent() (no caller context): rejects only once the invocation ended, not when it is signalled, so the handlers of a
+	// signalled invocation still run and their error propagates (scheduler.ts:1141).
+	if err := runtime.check(); err != nil {
+		return err
+	}
+	resolution := runtime.resolveAgent()
+	<-resolution.done
+	agent, err := resolution.agent, resolution.err
 	if err != nil {
 		return err
 	}
@@ -1893,11 +2046,22 @@ func (runtime *taskRuntime) Entry(ctx context.Context, id durable.EntryId) (*dur
 	return &entry, nil
 }
 
-func (runtime *taskRuntime) Context(ctx context.Context, conversationId durable.ConversationId, at *durable.EntryId) (durable.ContextView, error) {
+func (runtime *taskRuntime) Context(ctx context.Context, conversationId durable.ConversationId, options *durable.ContextOptions) (durable.ContextView, error) {
 	if err := runtime.check(); err != nil {
 		return durable.ContextView{}, err
 	}
-	return ReadContext(ctx, lineAdapter{runtime.scheduler.options.Session}, runtime.scheduler.options.Storage, conversationId, at)
+	var at *durable.EntryId
+	if options != nil {
+		at = options.At
+	}
+	view, err := readContext(ctx, lineAdapter{runtime.scheduler.options.Session}, runtime.scheduler.options.Storage, conversationId, at, runtime.scheduler.contexts)
+	if err == nil {
+		runtime.scheduler.keepContext(conversationId, runtime.invocation)
+	}
+	if err != nil || ctx.Value(sharedContextKey{}) != nil {
+		return view, err
+	}
+	return ownedView(runtime.scheduler.options.Storage, view), nil
 }
 
 // Now returns the Harness clock; after the invocation ended it panics, as upstream's now() throws.
@@ -2098,21 +2262,20 @@ func sameTaskDefinition(left, right durable.AnyTask) bool {
 }
 
 func phaseName(checkpoint durable.JsonValue) string {
-	object, _ := checkpoint.(map[string]any)
-	name, _ := object["phase"].(string)
+	name, _ := jsonMember(checkpoint, "phase").(string)
 	return name
 }
 
 // jsonEqual is structural equality of two JSON values; object key order is ignored.
 func jsonEqual(left, right durable.JsonValue) bool {
 	switch typed := left.(type) {
-	case map[string]any:
-		other, ok := right.(map[string]any)
-		if !ok || len(typed) != len(other) {
+	case *delta.JsonObject:
+		other, ok := right.(*delta.JsonObject)
+		if !ok || typed.Len() != other.Len() {
 			return false
 		}
-		for key, value := range typed {
-			counterpart, present := other[key]
+		for key, value := range typed.All() {
+			counterpart, present := other.Get(key)
 			if !present || !jsonEqual(value, counterpart) {
 				return false
 			}

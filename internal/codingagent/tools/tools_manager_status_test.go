@@ -178,7 +178,7 @@ func TestSearchToolEnsureRemainsSilent(t *testing.T) {
 	t.Setenv("PATH", t.TempDir())
 	t.Setenv("PIG_OFFLINE", "1")
 	binDir := filepath.Join(t.TempDir(), "bin")
-	for _, tool := range CreateCodingTools(t.TempDir(), nil, binDir) {
+	for _, tool := range CreateCodingTools(t.TempDir(), &ToolsOptions{BinDir: binDir}) {
 		if tool.Name() != "grep" && tool.Name() != "find" {
 			continue
 		}

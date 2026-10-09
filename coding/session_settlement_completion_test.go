@@ -23,7 +23,7 @@ func TestPromptWaitsForSettlementSubscriberWithoutExtensions(t *testing.T) {
 			}
 		})
 		done := make(chan error, 1)
-		go func() { _, err := h.session.Prompt(t.Context(), "hello"); done <- err }()
+		go func() { err := h.session.Prompt(t.Context(), "hello"); done <- err }()
 		synctest.Wait()
 		select {
 		case <-entered:

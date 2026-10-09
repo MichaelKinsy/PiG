@@ -86,15 +86,6 @@ for (const [target, method] of [[sdk.ModelRuntime, "create"], [sdk.ModelRuntime.
   catch (error) { trace("sdk error", method, String(error)); throw error; }
  };
 }
-const proto = sdk.__runtime().constructor.prototype;
-for (const method of ["call", "handleRequest"]) {
- const original = proto[method];
- proto[method] = async function(...args) {
-  trace("enter", this.entry, method, args.slice(0, 2));
-  try { const result = await original.apply(this, args); trace("done", method, args.slice(0, 2)); return result; }
-  catch (error) { trace("error", method, String(error)); throw error; }
- };
-}
 ''' + ready_source
                     (probe / "ready.mjs").write_text(ready_source)
                     (agent / "settings.json").write_text(json.dumps({"lastChangelogVersion": "0.87.1", "packages": ["npm:pi-btw", str(probe)], "theme": "dark", "cacheWarming": {"mode": "off"}}))

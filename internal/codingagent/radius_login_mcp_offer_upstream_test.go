@@ -1,3 +1,5 @@
+//go:build !pig_strip_mcp
+
 package codingagent
 
 import (
@@ -9,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/MichaelKinsy/PiG/internal/pigstrip"
 	"github.com/MichaelKinsy/PiG/tui"
 )
 
@@ -137,4 +140,46 @@ func TestRadiusLoginOffersTheRadiusMCPServerUpstream(t *testing.T) {
 			t.Fatalf("mcp.json = %s, want %v", data, want)
 		}
 	})
+
+	// pig additive (D92): a runtime strip of mcp (cmd/pig applyPigletStrip records it in pigstrip) offers nothing.
+	t.Run("a stripped mcp offers nothing", func(t *testing.T) {
+		t.Cleanup(pigstrip.Strip(pigstrip.ListExtensions, "mcp"))
+		m := newPostLoginTestMode(t)
+		mcpPath := filepath.Join(m.opts.AgentDir, "mcp.json")
+		pumpUntilLoginReturns(t, m, startRadiusLogin(t, m))
+		if got := plainRender(m.editorContainer); strings.Contains(got, "Configure Radius MCP") {
+			t.Fatalf("the Radius MCP offer is shown under strip.extensions mcp:\n%s", got)
+		}
+		if _, err := os.Stat(mcpPath); !os.IsNotExist(err) {
+			t.Fatalf("mcp.json written under strip.extensions mcp: %v", err)
+		}
+	})
+}
+
+// Pi 1.0.0 interactive-mode.ts:6297-6316: an existing Radius MCP entry keeps its members in order with auth set and
+// oauth removed; a new entry is the Radius MCP URL with the Radius login.
+func TestRadiusMcpServerConfig(t *testing.T) {
+	dir := t.TempDir()
+	mcpPath := filepath.Join(dir, "mcp.json")
+	if err := os.WriteFile(mcpPath, []byte(`{"mcpServers":{"gateway":{"description":"Radius tools","url":"`+RadiusMcpURL+`/","oauth":{"clientName":"x"},"timeout":30}}}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	existing, err := radiusMcpServerConfig(mcpPath, "gateway", true, "radius")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := `{"description":"Radius tools","url":"` + RadiusMcpURL + `/","timeout":30,"auth":{"provider":"radius"}}`; string(existing) != want {
+		t.Fatalf("existing=%s\nwant     %s", existing, want)
+	}
+	added, err := radiusMcpServerConfig(mcpPath, "radius", false, "radius")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var config map[string]any
+	if err := json.Unmarshal(added, &config); err != nil {
+		t.Fatal(err)
+	}
+	if want := `{"url":"https://radius.pi.dev/mcp","auth":{"provider":"radius"}}`; string(added) != want {
+		t.Fatalf("added=%s, want %s", added, want)
+	}
 }

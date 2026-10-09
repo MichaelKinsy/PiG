@@ -1,5 +1,5 @@
 {
-  "piVersion": "1.0.3",
+  "piVersion": "1.1.0",
   "node": "v24.19.0",
   "scenarios": [
     {
@@ -189,7 +189,8 @@
         },
         "stopReason": "toolUse",
         "responseId": "r1",
-        "rawStopReason": "tool_calls"
+        "rawStopReason": "tool_calls",
+        "durationMs": 34
       }
     },
     {
@@ -414,7 +415,8 @@
         },
         "stopReason": "toolUse",
         "responseId": "r1",
-        "rawStopReason": "tool_calls"
+        "rawStopReason": "tool_calls",
+        "durationMs": 2
       }
     },
     {
@@ -1359,7 +1361,8 @@
         },
         "stopReason": "toolUse",
         "responseId": "r1",
-        "rawStopReason": "tool_calls"
+        "rawStopReason": "tool_calls",
+        "durationMs": 2
       }
     },
     {
@@ -1554,7 +1557,8 @@
         },
         "stopReason": "toolUse",
         "responseId": "r1",
-        "rawStopReason": "tool_calls"
+        "rawStopReason": "tool_calls",
+        "durationMs": 1
       }
     },
     {
@@ -1744,7 +1748,8 @@
         },
         "stopReason": "toolUse",
         "responseId": "r1",
-        "rawStopReason": "tool_calls"
+        "rawStopReason": "tool_calls",
+        "durationMs": 1
       }
     },
     {
@@ -1865,7 +1870,8 @@
         },
         "stopReason": "error",
         "responseId": "r1",
-        "errorMessage": "Mistral stream ended without a finish reason"
+        "errorMessage": "Mistral stream ended without a finish reason",
+        "durationMs": 1
       }
     },
     {
@@ -2055,7 +2061,8 @@
         },
         "stopReason": "toolUse",
         "responseId": "r1",
-        "rawStopReason": "tool_calls"
+        "rawStopReason": "tool_calls",
+        "durationMs": 1
       }
     },
     {
@@ -2245,7 +2252,8 @@
         },
         "stopReason": "toolUse",
         "responseId": "r1",
-        "rawStopReason": "tool_calls"
+        "rawStopReason": "tool_calls",
+        "durationMs": 1
       }
     },
     {
@@ -2435,7 +2443,8 @@
         },
         "stopReason": "toolUse",
         "responseId": "r1",
-        "rawStopReason": "tool_calls"
+        "rawStopReason": "tool_calls",
+        "durationMs": 1
       }
     },
     {
@@ -2630,7 +2639,8 @@
         },
         "stopReason": "toolUse",
         "responseId": "r1",
-        "rawStopReason": "tool_calls"
+        "rawStopReason": "tool_calls",
+        "durationMs": 1
       }
     },
     {
@@ -2756,7 +2766,8 @@
         },
         "stopReason": "toolUse",
         "responseId": "r1",
-        "rawStopReason": "tool_calls"
+        "rawStopReason": "tool_calls",
+        "durationMs": 1
       }
     },
     {
@@ -2849,7 +2860,8 @@
         },
         "stopReason": "error",
         "responseId": "r1",
-        "errorMessage": "Mistral stream ended without a finish reason"
+        "errorMessage": "Mistral stream ended without a finish reason",
+        "durationMs": 1
       }
     },
     {
@@ -2913,7 +2925,7 @@
         ]
       ],
       "stopReason": "error",
-      "errorMessage": "Provider stopped with: error",
+      "errorMessage": "Provider stopped with: error (server error)",
       "result": {
         "role": "assistant",
         "content": [
@@ -2942,7 +2954,8 @@
         "stopReason": "error",
         "responseId": "r1",
         "rawStopReason": "error",
-        "errorMessage": "Provider stopped with: error"
+        "errorMessage": "Provider stopped with: error (server error)",
+        "durationMs": 0
       }
     },
     {
@@ -3027,7 +3040,8 @@
         "stopReason": "error",
         "responseId": "r1",
         "rawStopReason": "weird",
-        "errorMessage": "Provider stopped with: weird"
+        "errorMessage": "Provider stopped with: weird",
+        "durationMs": 0
       }
     },
     {
@@ -3111,7 +3125,8 @@
         },
         "stopReason": "length",
         "responseId": "r1",
-        "rawStopReason": "model_length"
+        "rawStopReason": "model_length",
+        "durationMs": 0
       }
     },
     {
@@ -3227,7 +3242,8 @@
         },
         "stopReason": "error",
         "responseId": "r1",
-        "errorMessage": "Mistral stream ended without a finish reason"
+        "errorMessage": "Mistral stream ended without a finish reason",
+        "durationMs": 0
       }
     },
     {
@@ -3421,7 +3437,8 @@
         },
         "stopReason": "toolUse",
         "responseId": "r1",
-        "rawStopReason": "tool_calls"
+        "rawStopReason": "tool_calls",
+        "durationMs": 1
       }
     },
     {
@@ -3505,7 +3522,8 @@
         },
         "stopReason": "stop",
         "responseId": "r1",
-        "rawStopReason": "stop"
+        "rawStopReason": "stop",
+        "durationMs": 0
       }
     },
     {
@@ -3593,7 +3611,8 @@
         },
         "stopReason": "toolUse",
         "responseId": "r1",
-        "rawStopReason": "tool_calls"
+        "rawStopReason": "tool_calls",
+        "durationMs": 0
       }
     },
     {
@@ -3681,7 +3700,8 @@
         },
         "stopReason": "error",
         "responseId": "r1",
-        "errorMessage": "Mistral stream ended without a finish reason"
+        "errorMessage": "Mistral stream ended without a finish reason",
+        "durationMs": 0
       }
     },
     {
@@ -3757,7 +3777,8 @@
         },
         "stopReason": "error",
         "responseId": "r1",
-        "errorMessage": "Unexpected end of JSON input"
+        "errorMessage": "Unexpected end of JSON input",
+        "durationMs": 0
       }
     },
     {
@@ -3833,7 +3854,8 @@
         },
         "stopReason": "error",
         "responseId": "r1",
-        "errorMessage": "Unexpected token 'o', \"oops\" is not valid JSON"
+        "errorMessage": "Unexpected token 'o', \"oops\" is not valid JSON",
+        "durationMs": 0
       }
     },
     {
@@ -3909,7 +3931,8 @@
         },
         "stopReason": "error",
         "responseId": "r1",
-        "errorMessage": "Invalid Mistral streaming event"
+        "errorMessage": "Invalid Mistral streaming event",
+        "durationMs": 0
       }
     },
     {
@@ -3993,7 +4016,8 @@
         },
         "stopReason": "stop",
         "responseId": "r1",
-        "rawStopReason": "stop"
+        "rawStopReason": "stop",
+        "durationMs": 0
       }
     },
     {
@@ -4077,7 +4101,8 @@
         },
         "stopReason": "stop",
         "responseId": "r1",
-        "rawStopReason": "stop"
+        "rawStopReason": "stop",
+        "durationMs": 0
       }
     },
     {
@@ -4132,7 +4157,8 @@
         },
         "stopReason": "stop",
         "responseId": "r1",
-        "rawStopReason": "stop"
+        "rawStopReason": "stop",
+        "durationMs": 0
       }
     },
     {
@@ -4208,7 +4234,8 @@
         },
         "stopReason": "error",
         "responseId": "r1",
-        "errorMessage": "Cannot read properties of undefined (reading 'content')"
+        "errorMessage": "Cannot read properties of undefined (reading 'content')",
+        "durationMs": 1
       }
     },
     {
@@ -4292,7 +4319,8 @@
         },
         "stopReason": "stop",
         "responseId": "r1",
-        "rawStopReason": "stop"
+        "rawStopReason": "stop",
+        "durationMs": 0
       }
     },
     {
@@ -4376,7 +4404,8 @@
         },
         "stopReason": "error",
         "responseId": "r1",
-        "errorMessage": "Cannot read properties of undefined (reading 'name')"
+        "errorMessage": "Cannot read properties of undefined (reading 'name')",
+        "durationMs": 1
       }
     },
     {
@@ -4452,7 +4481,8 @@
         },
         "stopReason": "error",
         "responseId": "r1",
-        "errorMessage": "Cannot read properties of null (reading 'type')"
+        "errorMessage": "Cannot read properties of null (reading 'type')",
+        "durationMs": 1
       }
     },
     {
@@ -4560,7 +4590,8 @@
         },
         "stopReason": "error",
         "responseId": "r1",
-        "errorMessage": "body failed"
+        "errorMessage": "body failed",
+        "durationMs": 1
       }
     },
     {
@@ -4612,7 +4643,8 @@
           }
         },
         "stopReason": "error",
-        "errorMessage": "body failed"
+        "errorMessage": "body failed",
+        "durationMs": 0
       }
     },
     {
@@ -4664,7 +4696,8 @@
           }
         },
         "stopReason": "error",
-        "errorMessage": "Mistral stream ended without a finish reason"
+        "errorMessage": "Mistral stream ended without a finish reason",
+        "durationMs": 0
       }
     }
   ]

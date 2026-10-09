@@ -6,35 +6,50 @@ import (
 	"context"
 
 	"github.com/MichaelKinsy/PiG/ai"
-	icodingagent "github.com/MichaelKinsy/PiG/internal/codingagent"
+	"github.com/MichaelKinsy/PiG/coding/extension"
 )
 
-// GetAll returns the full model catalog without resolving request credentials.
-func (registry *ModelRegistry) GetAll() []icodingagent.ModelEntry {
-	var entries []icodingagent.ModelEntry
-	for _, model := range registry.GetAllModelData() {
-		entries = append(entries, icodingagent.NativeModelEntry(model))
-	}
-	return entries
+// NewModelRegistry is the synchronous facade over runtime's registry (model-registry.ts constructor(runtime)). Services builds the one facade of its runtime this way.
+func NewModelRegistry(runtime *ModelRuntime) *ModelRegistry {
+	return &ModelRegistry{ModelRegistry: runtime.services.registry.ModelRegistry, runtime: runtime}
+}
+
+// The Session's registry is what an extension reaches through ctx.modelRegistry.
+var _ extension.ModelRegistry = (*ModelRegistry)(nil)
+
+// Refresh reloads models.json and the provider catalogs and returns the outcome (model-registry.ts:56 refresh, which hands it to runtime.refresh). It hides the embedded registry's Refresh(), which reloads synchronously without options.
+func (registry *ModelRegistry) Refresh(ctx context.Context, options ai.ModelsRefreshOptions) ai.ModelsRefreshResult {
+	return registry.runtime.Refresh(ctx, options)
+}
+
+// GetAll returns the full model catalog without resolving request credentials (model-registry.ts getAll). Each model carries its cost through Capabilities (ai.Model.CostRates).
+func (registry *ModelRegistry) GetAll() []*ai.Model { return registry.runtime.GetModels() }
+
+// GetAvailable returns the models of providers with configured auth from the last published availability, without credential or catalog I/O (model-registry.ts getAvailable).
+func (registry *ModelRegistry) GetAvailable() []*ai.Model {
+	return registry.runtime.GetAvailableSnapshot()
+}
+
+// HasConfiguredAuth reports whether the model's provider has configured auth (model-registry.ts hasConfiguredAuth(model)).
+func (registry *ModelRegistry) HasConfiguredAuth(model *ai.Model) bool {
+	return registry.runtime.HasConfiguredAuth(model.ProviderID())
 }
 
 // GetError returns the current model configuration diagnostic, or an empty string.
 func (registry *ModelRegistry) GetError() string { return registry.LoadError() }
 
-// RegisterProviderConfig registers the core provider input; RegisterProvider retains the extension host's distinct Go registration payload.
-func (registry *ModelRegistry) RegisterProviderConfig(id string, config ProviderConfigInput) error {
-	return registry.runtime.RegisterProvider(id, config)
+// RegisterProvider registers a provider by name with its core configuration (model-registry.ts registerProvider(providerName, config)). ModelRuntime.RegisterNativeProvider is its Provider overload, and RegisterExtensionProvider (promoted from the internal registry) takes the extension host's distinct Go registration payload.
+func (registry *ModelRegistry) RegisterProvider(name string, config ProviderConfigInput) error {
+	return registry.runtime.RegisterProvider(name, config)
 }
 
-// ResolvedRequestAuth is the compatibility result for a model's request credentials.
-type ResolvedRequestAuth struct {
-	OK      bool               `json:"ok"`
-	APIKey  *string            `json:"apiKey,omitempty"`
-	Headers ai.ProviderHeaders `json:"headers,omitempty"`
-	BaseURL string             `json:"baseUrl,omitempty"`
-	Env     map[string]string  `json:"env,omitempty"`
-	Error   string             `json:"error,omitempty"`
+// RegisterProviderObject registers a Provider object (model-registry.ts:210 registerProvider(provider: Provider), which hands it to runtime.registerNativeProvider at :218). Go names the overload apart from RegisterProvider(name, config); the promoted RegisterNativeProvider takes the extension host's payload.
+func (registry *ModelRegistry) RegisterProviderObject(provider *ai.ModelsProvider) error {
+	return registry.runtime.RegisterNativeProvider(provider)
 }
+
+// ResolvedRequestAuth is the compatibility result for a model's request credentials (model-registry.ts:33).
+type ResolvedRequestAuth = extension.ResolvedRequestAuth
 
 // GetAPIKeyAndHeaders returns compatibility headers even for an unconfigured provider.
 func (registry *ModelRegistry) GetAPIKeyAndHeaders(ctx context.Context, model *ai.Model) ResolvedRequestAuth {
@@ -47,6 +62,11 @@ func (registry *ModelRegistry) GetAPIKeyAndHeaders(ctx context.Context, model *a
 		result.APIKey = new(resolution.Auth.APIKey)
 	}
 	return result
+}
+
+// IsUsingOAuth reports whether the model's provider is authenticated with OAuth in the latest published availability snapshot (model-registry.ts isUsingOAuth).
+func (registry *ModelRegistry) IsUsingOAuth(model *ai.Model) bool {
+	return registry.runtime.IsUsingOAuth(model.ProviderID())
 }
 
 // GetProviderAuth resolves current provider authentication without caching configuration commands.

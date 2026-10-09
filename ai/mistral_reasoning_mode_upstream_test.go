@@ -8,7 +8,7 @@ import (
 )
 
 // mistralLevels builds a ThinkingLevelMap the way the upstream fixtures spread NONE_HIGH_LEVELS: a nil value is `null`.
-func mistralLevels(overrides map[ThinkingLevel]*string) ThinkingLevelMap {
+func mistralLevels(overrides map[ModelThinkingLevel]*string) ThinkingLevelMap {
 	levels := ThinkingLevelMap{ThinkingOff: new("none"), ThinkingMinimal: nil, ThinkingLow: nil, ThinkingMedium: nil, ThinkingHigh: new("high"), ThinkingXHigh: nil, ThinkingMax: nil}
 	maps.Copy(levels, overrides)
 	return levels
@@ -17,14 +17,14 @@ func mistralLevels(overrides map[ThinkingLevel]*string) ThinkingLevelMap {
 // Ports packages/ai/test/mistral-reasoning-mode.test.ts (0.99.1): models with a thinking level map use reasoning_effort; other reasoning models use prompt_mode.
 func TestMistralReasoningModeUpstream(t *testing.T) {
 	noneHigh := mistralLevels(nil)
-	glm52 := mistralLevels(map[ThinkingLevel]*string{ThinkingMax: new("max")})
-	glm53 := mistralLevels(map[ThinkingLevel]*string{ThinkingOff: nil, ThinkingLow: new("low"), ThinkingMax: new("max")})
+	glm52 := mistralLevels(map[ModelThinkingLevel]*string{ThinkingMax: new("max")})
+	glm53 := mistralLevels(map[ModelThinkingLevel]*string{ThinkingOff: nil, ThinkingLow: new("low"), ThinkingMax: new("max")})
 	// expect maps each payload field the upstream case asserts to its value; "" is toBeUndefined. Fields the upstream case does not assert are not checked.
 	type testCase struct {
 		name, id  string
 		reasoning bool
 		levels    ThinkingLevelMap
-		thinking  ThinkingLevel
+		thinking  ModelThinkingLevel
 		session   string
 		retention CacheRetention
 		expect    map[string]string
@@ -68,7 +68,7 @@ func TestMistralReasoningModeUpstream(t *testing.T) {
 			m := &Model{ID: tc.id, DisplayName: tc.id, Input: []string{"text"}, ThinkingLevelMap: tc.levels, ProviderMeta: ProviderMetadata{API: APIMistralConversations, ProviderID: "mistral", BaseURL: "http://127.0.0.1:9", Reasoning: tc.reasoning}, Capabilities: ModelCapabilities{ContextWindow: 128000, MaxOutputTokens: 16384}}
 			var payload map[string]any
 			sentinel := errors.New("payload captured")
-			_, err := StreamSimple(t.Context(), m, NormalizeContext(Context{Messages: []Message{UserMessage{Content: UserText("Hello")}}}), StreamOptions{APIKey: "fake-key", Thinking: tc.thinking, SessionID: tc.session, CacheRetention: tc.retention, OnPayload: func(p any, _ *Model) (any, error) {
+			_, err := StreamSimple(t.Context(), m, NormalizeContext(Context{Messages: []Message{UserMessage{Content: UserText("Hello")}}}), StreamOptions{APIKey: "fake-key", Thinking: tc.thinking.ReasoningOption(), SessionID: tc.session, CacheRetention: tc.retention, OnPayload: func(p any, _ *Model) (any, error) {
 				data, e := json.Marshal(p)
 				if e != nil {
 					t.Fatal(e)

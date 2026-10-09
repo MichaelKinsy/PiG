@@ -48,18 +48,20 @@ func (m *InteractiveMode) extensionResumeHost() resumeHost {
 	return resumeHost{
 		await: func(ctx context.Context, work func(context.Context) error) error { return work(ctx) },
 		confirm: func(ctx context.Context, title, message string) bool {
-			confirmed, err := (&ExtUIContext{m: m}).Confirm(ctx, title, message, nil)
+			confirmed, err := (&ExtUIContext{m: m}).Confirm(ctx, title, message, extension.ExtensionUIDialogOptions{})
 			return err == nil && confirmed
 		},
 	}
 }
 
 // projectTrustUI is Pi's createProjectTrustContext (interactive-mode.ts:2521-2534): the live extension UI serves the project trust prompt of a resumed Session's destination.
-func (m *InteractiveMode) projectTrustUI(string) extension.UIContext { return &ExtUIContext{m: m} }
+func (m *InteractiveMode) projectTrustUI(cwd string) extension.ProjectTrustContext {
+	return extension.ProjectTrustContext{Cwd: cwd, Mode: extension.ModeTUI, HasUI: true, UI: &ExtUIContext{m: m}}
+}
 
 // resumeThroughRuntime is Pi's handleResumeSession: the switch prompts for trust in the destination project, and a missing stored cwd offers the current directory. It returns the status Pi shows: empty when a session_before_switch handler cancelled, statusResumeCancelled when the user declined the current directory, statusResumedInCWD after a retry with it, statusResumed otherwise.
 func (m *InteractiveMode) resumeThroughRuntime(ctx context.Context, host resumeHost, path string, options *extension.SwitchSessionOptions) (extension.CancelledResult, string, error) {
-	rt := m.opts.Runtime
+	rt := m.runtimeHost
 	run := func(cwdOverride string) (extension.CancelledResult, error) {
 		var result extension.CancelledResult
 		err := host.await(ctx, func(ctx context.Context) error {
@@ -88,7 +90,7 @@ func (m *InteractiveMode) resumeThroughRuntime(ctx context.Context, host resumeH
 
 // replaceThroughRuntime replaces the Session through the runtime host, as Pi's /new, /resume, /fork and /clone do with runtimeHost, while servicing extension dialogs and event barriers on the input loop.
 func (m *InteractiveMode) replaceThroughRuntime(ctx context.Context, operation, target string) error {
-	rt := m.opts.Runtime
+	rt := m.runtimeHost
 	var result extension.CancelledResult
 	var fork InteractiveForkResult
 	var err error
@@ -138,14 +140,18 @@ func (m *InteractiveMode) replaceThroughRuntime(ctx context.Context, operation, 
 
 // confirmSelection asks a yes/no question in the editor slot, as upstream showExtensionConfirm does.
 func (m *InteractiveMode) confirmSelection(title, message string) bool {
-	sel := tui.NewExtensionSelector(title+"\n"+message, []string{"Yes", "No"})
+	// interactive-mode.ts:2755 reports the confirmation as a permission request named by the title alone.
+	reporter := m.programStatusReporter()
+	reporter.SetBlocked(extensionDialogStatusSource, &BlockedStatus{Kind: tui.ProgramStatusKindPermission, Message: title})
+	defer reporter.SetBlocked(extensionDialogStatusSource, nil)
+	sel := tui.NewExtensionSelectorComponent(title+"\n"+message, []string{"Yes", "No"}, nil, nil)
 	idx, ok := m.runEditorSlotExtensionSelector(sel)
 	return ok && idx == 0
 }
 
 // replaceSessionFromCommand awaits the same Session owner used by extension commands while servicing extension dialogs and event barriers on the input loop.
 func (m *InteractiveMode) replaceSessionFromCommand(ctx context.Context, operation, target string) error {
-	if m.opts.Runtime != nil {
+	if m.runtimeHost != nil {
 		return m.replaceThroughRuntime(ctx, operation, target)
 	}
 	handle, ok := m.opts.SessionHandle.(extensionSessionController)
@@ -157,8 +163,8 @@ func (m *InteractiveMode) replaceSessionFromCommand(ctx context.Context, operati
 	var result extension.CancelledResult
 	text := ""
 	if operation == "fork" {
-		if entry, ok := m.currentSession().EntryByID(target); ok {
-			if message, ok := entry.AsMessage(); ok {
+		if entry, ok := m.currentSession().GetEntry(target); ok {
+			if message, ok := entry.(MessageEntry); ok {
 				text = extractMessageText(message)
 			}
 		}
@@ -213,7 +219,7 @@ func (m *InteractiveMode) bindSessionRebind() {
 
 func (m *InteractiveMode) extensionReplacementActions() extension.CommandActions {
 	var actions extension.CommandActions
-	if rt := m.opts.Runtime; rt != nil {
+	if rt := m.runtimeHost; rt != nil {
 		actions = rt.ExtensionCommandActions(m.opts.SessionHandle)
 	} else {
 		handle, ok := m.opts.SessionHandle.(extensionSessionController)
@@ -233,8 +239,8 @@ func (m *InteractiveMode) extensionReplacementActions() extension.CommandActions
 	fork := func(ctx context.Context, id string, opts *extension.ForkOptions) (extension.CancelledResult, error) {
 		text := ""
 		if opts == nil || opts.Position != "at" {
-			if entry, ok := m.currentSession().EntryByID(id); ok {
-				if message, ok := entry.AsMessage(); ok {
+			if entry, ok := m.currentSession().GetEntry(id); ok {
+				if message, ok := entry.(MessageEntry); ok {
 					text = extractMessageText(message)
 				}
 			}
@@ -246,7 +252,7 @@ func (m *InteractiveMode) extensionReplacementActions() extension.CommandActions
 		if err := m.prepareExtensionSessionUI(ctx); err != nil {
 			return extension.CancelledResult{}, err
 		}
-		if m.opts.Runtime == nil {
+		if m.runtimeHost == nil {
 			result, err := actions.SwitchSessionContext(ctx, path, opts)
 			return m.finishExtensionSessionUI(ctx, result, err, "resume", statusResumed)
 		}

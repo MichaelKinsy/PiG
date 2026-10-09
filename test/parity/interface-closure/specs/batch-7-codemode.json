@@ -1,0 +1,273 @@
+[
+ {
+  "ids": [
+   "pkg:codemode/.#toCodemodeIdentifier",
+   "pkg:codemode/declarations#toCodemodeIdentifier"
+  ],
+  "targets": [
+   "codemode/identifier.go#ToCodemodeIdentifier"
+  ],
+  "production": [
+   "call:coding/extension/builtin/codemode/run.go#isNamespaceName"
+  ],
+  "evidence": [
+   "test:codemode/upstream_oracle_test.go#TestToCodemodeIdentifierMatchesPi"
+  ],
+  "rationale": "identifier.ts toCodemodeIdentifier(name) is ToCodemodeIdentifier(string) string. codemode/testdata/upstream-oracle.mjs runs Pi's function over a corpus and TestToCodemodeIdentifierMatchesPi compares the Go output with the recorded Pi output."
+ },
+ {
+  "ids": [
+   "pkg:codemode/.#parseCodemodeSource",
+   "pkg:codemode/source#parseCodemodeSource"
+  ],
+  "targets": [
+   "codemode/source.go#ParseCodemodeSource"
+  ],
+  "production": [
+   "call:coding/extension/builtin/codemode/execute.go#Execute"
+  ],
+  "evidence": [
+   "test:codemode/upstream_oracle_test.go#TestParseCodemodeSourceMatchesPi",
+   "test:codemode/source_test.go#TestParseCodemodeSourceParsesTheOptionsLineAndKeepsLineNumbers"
+  ],
+  "rationale": "source.ts parseCodemodeSource(input) returns ParsedCodemodeSource or throws CodemodeSourceError; Go returns (ParsedSource, error), the error carrying the SourceError message. TestParseCodemodeSourceMatchesPi compares every recorded Pi result and error message."
+ },
+ {
+  "ids": [
+   "pkg:codemode/source#ParsedCodemodeSource",
+   "pkg:codemode/.#ParsedCodemodeSource"
+  ],
+  "targets": [
+   "codemode/source.go#ParsedSource"
+  ],
+  "production": [
+   "call:codemode/source.go#ParseCodemodeSource"
+  ],
+  "evidence": [
+   "test:codemode/upstream_oracle_test.go#TestParseCodemodeSourceMatchesPi"
+  ],
+  "rationale": "source.ts ParsedCodemodeSource {code, options}: Go ParsedSource {Code string, Options SourceOptions}.",
+  "properties": {
+   "code": {
+    "targets": [
+     "codemode/source.go#ParsedSource.Code"
+    ],
+    "evidence": [
+     "test:codemode/upstream_oracle_test.go#TestParseCodemodeSourceMatchesPi"
+    ]
+   },
+   "options": {
+    "targets": [
+     "codemode/source.go#ParsedSource.Options"
+    ],
+    "evidence": [
+     "test:codemode/upstream_oracle_test.go#TestParseCodemodeSourceMatchesPi"
+    ]
+   }
+  }
+ },
+ {
+  "ids": [
+   "pkg:codemode/source#CodemodeSourceOptions",
+   "pkg:codemode/.#CodemodeSourceOptions"
+  ],
+  "targets": [
+   "codemode/source.go#SourceOptions"
+  ],
+  "production": [
+   "call:codemode/source.go#ParseCodemodeSource"
+  ],
+  "evidence": [
+   "test:codemode/upstream_oracle_test.go#TestParseCodemodeSourceMatchesPi"
+  ],
+  "rationale": "source.ts CodemodeSourceOptions {timeoutMs?, maxOutputTokens?}: Go SourceOptions with *int64 fields, nil for absent.",
+  "properties": {
+   "timeoutMs": {
+    "targets": [
+     "codemode/source.go#SourceOptions.TimeoutMs"
+    ],
+    "evidence": [
+     "test:codemode/upstream_oracle_test.go#TestParseCodemodeSourceMatchesPi"
+    ]
+   },
+   "maxOutputTokens": {
+    "targets": [
+     "codemode/source.go#SourceOptions.MaxOutputTokens"
+    ],
+    "evidence": [
+     "test:codemode/upstream_oracle_test.go#TestParseCodemodeSourceMatchesPi"
+    ]
+   }
+  }
+ },
+ {
+  "ids": [
+   "pkg:codemode/source#CODEMODE_OPTIONS_PREFIX",
+   "pkg:codemode/.#CODEMODE_OPTIONS_PREFIX"
+  ],
+  "targets": [
+   "codemode/source.go#CodemodeOptionsPrefix"
+  ],
+  "production": [
+   "call:codemode/source.go#ParseCodemodeSource"
+  ],
+  "evidence": [
+   "test:codemode/source_test.go#TestParseCodemodeSourceParsesTheOptionsLineAndKeepsLineNumbers"
+  ],
+  "rationale": "source.ts CODEMODE_OPTIONS_PREFIX = \"// @options:\" is the Go constant of the same value; the parser recognises it on the first line."
+ },
+ {
+  "ids": [
+   "pkg:codemode/.#CodemodeCallStatus"
+  ],
+  "targets": [
+   "codemode/types.go#CallStatus"
+  ],
+  "production": [
+   "call:codemode/execution.go#execution.startCall"
+  ],
+  "evidence": [
+   "test:codemode/sandbox_test.go#TestAbortsViaContextAndCancelsInFlightCalls",
+   "test:codemode/sandbox_test.go#TestTurnsToolErrorsIntoCatchableErrorsInTheScript"
+  ],
+  "rationale": "types.ts CodemodeCallStatus = \"ok\" | \"error\" | \"cancelled\" is the Go string type CallStatus with CallOK, CallError and CallCancelled."
+ },
+ {
+  "ids": [
+   "pkg:codemode/.#CodemodeCall"
+  ],
+  "targets": [
+   "codemode/types.go#Call"
+  ],
+  "production": [
+   "call:codemode/execution.go#execution.startCall"
+  ],
+  "evidence": [
+   "test:codemode/sandbox_test.go#TestExposesToolsAsAsyncFunctionsAndRecordsCalls"
+  ],
+  "rationale": "types.ts CodemodeCall {name, status, durationMs}: Go Call {Name, Status CallStatus, DurationMs float64}.",
+  "properties": {
+   "name": {
+    "targets": [
+     "codemode/types.go#Call.Name"
+    ],
+    "evidence": [
+     "test:codemode/sandbox_test.go#TestExposesToolsAsAsyncFunctionsAndRecordsCalls"
+    ]
+   },
+   "status": {
+    "targets": [
+     "codemode/types.go#Call.Status"
+    ],
+    "evidence": [
+     "test:codemode/sandbox_test.go#TestExposesToolsAsAsyncFunctionsAndRecordsCalls"
+    ]
+   },
+   "durationMs": {
+    "targets": [
+     "codemode/types.go#Call.DurationMs"
+    ],
+    "evidence": [
+     "test:codemode/sandbox_test.go#TestExposesToolsAsAsyncFunctionsAndRecordsCalls"
+    ]
+   }
+  }
+ },
+ {
+  "ids": [
+   "pkg:codemode/.#CodemodeErrorKind"
+  ],
+  "targets": [
+   "codemode/types.go#ErrorKind"
+  ],
+  "production": [
+   "call:codemode/execution.go#execution.finish"
+  ],
+  "evidence": [
+   "test:codemode/lifetime_test.go#TestExecuteReturnsOnlyAfterTheVMIsClosedForEveryTerminalKind"
+  ],
+  "rationale": "types.ts CodemodeErrorKind = \"script\" | \"timeout\" | \"aborted\" | \"sandbox\" is the Go string type ErrorKind with ErrorScript, ErrorTimeout, ErrorAborted and ErrorSandbox; the test reaches every kind."
+ },
+ {
+  "ids": [
+   "pkg:codemode/.#CodemodeError"
+  ],
+  "targets": [
+   "codemode/types.go#Error"
+  ],
+  "production": [
+   "call:codemode/execution.go#execution.finish"
+  ],
+  "evidence": [
+   "test:codemode/sandbox_test.go#TestReportsSyntaxErrorsWithTheScriptsLineNumber"
+  ],
+  "rationale": "types.ts CodemodeError {kind, message, name?, stack?}: Go Error {Kind ErrorKind, Name, Message, Stack string}; the empty string is an absent name or stack.",
+  "properties": {
+   "kind": {
+    "targets": [
+     "codemode/types.go#Error.Kind"
+    ],
+    "evidence": [
+     "test:codemode/lifetime_test.go#TestExecuteReturnsOnlyAfterTheVMIsClosedForEveryTerminalKind"
+    ]
+   },
+   "message": {
+    "targets": [
+     "codemode/types.go#Error.Message"
+    ],
+    "evidence": [
+     "test:codemode/sandbox_test.go#TestReportsSyntaxErrorsWithTheScriptsLineNumber"
+    ]
+   },
+   "name": {
+    "targets": [
+     "codemode/types.go#Error.Name"
+    ],
+    "evidence": [
+     "test:codemode/sandbox_test.go#TestReportsSyntaxErrorsWithTheScriptsLineNumber"
+    ]
+   },
+   "stack": {
+    "targets": [
+     "codemode/types.go#Error.Stack"
+    ],
+    "evidence": [
+     "test:codemode/sandbox_test.go#TestFormatsStacksLikeV8WithoutPreludeFrames"
+    ]
+   }
+  }
+ },
+ {
+  "ids": [
+   "pkg:codemode/.#CodemodeStoreWrites"
+  ],
+  "targets": [
+   "codemode/types.go#StoreWrites"
+  ],
+  "production": [
+   "call:codemode/execution.go#execution.finish"
+  ],
+  "evidence": [
+   "test:codemode/sandbox_test.go#TestEndsTheScriptSuccessfullyOnExitKeepingOutputAndStoreWrites"
+  ],
+  "rationale": "types.ts CodemodeStoreWrites {set, delete}: Go StoreWrites {Set map[string]json.RawMessage, Delete []string}.",
+  "properties": {
+   "set": {
+    "targets": [
+     "codemode/types.go#StoreWrites.Set"
+    ],
+    "evidence": [
+     "test:codemode/sandbox_test.go#TestEndsTheScriptSuccessfullyOnExitKeepingOutputAndStoreWrites"
+    ]
+   },
+   "delete": {
+    "targets": [
+     "codemode/types.go#StoreWrites.Delete"
+    ],
+    "evidence": [
+     "test:codemode/sandbox_test.go#TestEndsTheScriptSuccessfullyOnExitKeepingOutputAndStoreWrites"
+    ]
+   }
+  }
+ }
+]

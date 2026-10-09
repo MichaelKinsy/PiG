@@ -1,0 +1,147 @@
+[
+ {
+  "ids": [
+   "pkg:ai/.#AssistantImages"
+  ],
+  "targets": [
+   "ai/images.go#AssistantImages"
+  ],
+  "struct": {
+   "file": "ai/images.go",
+   "type": "AssistantImages"
+  },
+  "production": [
+   "call:ai/builtin_providers.go#builtinProvider"
+  ],
+  "evidence": [
+   "test:ai/models_typed_upstream_test.go#TestModelTypesUpstream",
+   "test:ai/telemetry_options_upstream_test.go#TestTelemetryOptionsSurviveImageDispatchUpstream"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "AssistantImages: Go AssistantImages has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+ },
+ {
+  "ids": [
+   "pkg:ai/.#AuthContext"
+  ],
+  "targets": [
+   "ai/auth_resolve.go#AuthContext"
+  ],
+  "struct": {
+   "file": "ai/auth_resolve.go",
+   "type": "AuthContext"
+  },
+  "production": [
+   "call:ai/auth_resolve.go#DefaultProviderAuthContext"
+  ],
+  "evidence": [
+   "test:ai/anthropic_federation_upstream_test.go#TestAnthropicAuthTreatsEmptyContextValuesAsAbsent",
+   "test:ai/anthropic_federation_upstream_test.go#TestAnthropicWorkloadIdentityFederation"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "AuthContext: Go AuthContext has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+ },
+ {
+  "ids": [
+   "pkg:ai/.#ImagesContext"
+  ],
+  "targets": [
+   "ai/images.go#ImagesContext"
+  ],
+  "struct": {
+   "file": "ai/images.go",
+   "type": "ImagesContext"
+  },
+  "production": [
+   "call:ai/builtin_providers.go#builtinProvider"
+  ],
+  "evidence": [
+   "test:ai/fetch_option_upstream_test.go#TestFetchOptionUpstream",
+   "test:ai/images_upstream_test.go#TestImagesUpstream"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "ImagesContext: Go ImagesContext has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+ },
+ {
+  "ids": [
+   "pkg:ai/.#Context"
+  ],
+  "targets": [
+   "ai/transcript.go#Context"
+  ],
+  "struct": {
+   "file": "ai/transcript.go",
+   "type": "Context"
+  },
+  "production": [
+   "call:agent/agent_loop.go#loopRun.streamAssistantResponse"
+  ],
+  "evidence": [
+   "test:agent/proxy_upstream_test.go#TestStreamProxyEmitsAnErrorInsteadOfHangingWhenTheStreamEndsWithoutATerminalEvent",
+   "test:agent/proxy_upstream_test.go#TestStreamProxyPreservesToolCallMetadataReceivedOnlyOnToolCallEnd"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "Context: Go Context has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+ },
+ {
+  "ids": [
+   "pkg:ai/.#ProviderClassifier"
+  ],
+  "targets": [
+   "ai/classifier.go#ProviderClassifier"
+  ],
+  "struct": {
+   "file": "ai/classifier.go",
+   "type": "ProviderClassifier"
+  },
+  "production": [
+   "call:ai/system_one.go#CloudflareClassifier"
+  ],
+  "evidence": [
+   "test:coding/extension_model_types_wire_test.go#TestExtensionProviderConfigKeepsTypedModelsAndImplementations"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "ProviderClassifier: Go ProviderClassifier has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+ },
+ {
+  "ids": [
+   "pkg:ai/.#ProviderImages"
+  ],
+  "targets": [
+   "ai/models_provider.go#ProviderImages"
+  ],
+  "struct": {
+   "file": "ai/models_provider.go",
+   "type": "ProviderImages"
+  },
+  "production": [
+   "call:coding/extension/host/subprocess/provider_operations.go#Host.attachProviderOperations"
+  ],
+  "evidence": [
+   "test:coding/extension_model_types_wire_test.go#TestExtensionProviderConfigKeepsTypedModelsAndImplementations"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "ProviderImages: Go ProviderImages has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+ },
+ {
+  "ids": [
+   "pkg:ai/.#CreateProviderOptions"
+  ],
+  "targets": [
+   "ai/models_provider.go#CreateProviderOptions"
+  ],
+  "struct": {
+   "file": "ai/models_provider.go",
+   "type": "CreateProviderOptions"
+  },
+  "production": [
+   "call:ai/builtin_providers.go#builtinProvider"
+  ],
+  "evidence": [
+   "test:ai/classifier_models_upstream_test.go#TestClassifierModelsUpstream",
+   "test:ai/models_collection_upstream_test.go#TestModelsDeferredResolvedRequestOptionsUpstream"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "CreateProviderOptions: Go CreateProviderOptions has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+ }
+]

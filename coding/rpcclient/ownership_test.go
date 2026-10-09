@@ -28,6 +28,7 @@ func waitForRPCReaders(t *testing.T, client *RpcClient) {
 	}
 }
 
+// packages/coding-agent/src/modes/rpc/rpc-client.ts:74 (RpcClient.start); packages/coding-agent/src/modes/rpc/rpc-client.ts:145 (RpcClient.stop); packages/coding-agent/src/modes/rpc/rpc-client.ts:172 (RpcClient.onEvent).
 func TestRPCStopFromListenerIsReentrantAndReadersJoin(t *testing.T) {
 	client, _ := childClient(t, "emit")
 	stopped := make(chan struct{})
@@ -45,6 +46,7 @@ func TestRPCStopFromListenerIsReentrantAndReadersJoin(t *testing.T) {
 	waitForRPCReaders(t, client)
 }
 
+// packages/coding-agent/src/modes/rpc/rpc-client.ts:74 (RpcClient.start); packages/coding-agent/src/modes/rpc/rpc-client.ts:145 (RpcClient.stop); packages/coding-agent/src/modes/rpc/rpc-client.ts:251 (RpcClient.getState).
 func TestRPCRestartDoesNotRetargetOldRequestWrite(t *testing.T) {
 	client, logPath := childClient(t, "canned")
 	if err := client.Start(); err != nil {
@@ -179,6 +181,7 @@ func (w *delayedRPCWrite) Close() error {
 
 // Upstream times out only the request. A stream write that drains later leaves
 // the same child transport available for subsequent commands.
+// packages/coding-agent/src/modes/rpc/rpc-client.ts:251 (RpcClient.getState).
 func TestRPCTimedOutWriteKeepsSameChildUsable(t *testing.T) {
 	writer := &delayedRPCWrite{release: make(chan struct{})}
 	client := NewRpcClient(RpcClientOptions{})
@@ -212,6 +215,7 @@ func TestRPCTimedOutWriteKeepsSameChildUsable(t *testing.T) {
 
 // Upstream calls stdin.write even while an earlier record is backpressured.
 // Each request may time out, but every record remains in the process FIFO.
+// packages/coding-agent/src/modes/rpc/rpc-client.ts:251 (RpcClient.getState).
 func TestRPCQueuedTimeoutRetainsRecord(t *testing.T) {
 	writer := &delayedRPCWrite{release: make(chan struct{})}
 	client := NewRpcClient(RpcClientOptions{})
@@ -247,6 +251,7 @@ func TestRPCQueuedTimeoutRetainsRecord(t *testing.T) {
 	}
 }
 
+// packages/coding-agent/src/modes/rpc/rpc-client.ts:74 (RpcClient.start); packages/coding-agent/src/modes/rpc/rpc-client.ts:145 (RpcClient.stop); packages/coding-agent/src/modes/rpc/rpc-client.ts:251 (RpcClient.getState).
 func TestRPCBlockedChildWriteCannotOutliveRestart(t *testing.T) {
 	client, logPath := childClient(t, "not-reading")
 	if err := client.Start(); err != nil {
@@ -335,6 +340,7 @@ func (w *serialRPCWrite) Close() error {
 	return nil
 }
 
+// packages/coding-agent/src/modes/rpc/rpc-client.ts:251 (RpcClient.getState).
 func TestRPCConcurrentWritesRemainWholeJSONLRecords(t *testing.T) {
 	writer := &serialRPCWrite{started: make(chan struct{}), release: make(chan struct{})}
 	client := NewRpcClient(RpcClientOptions{})
@@ -423,6 +429,9 @@ func TestCollectorRegistrationIsReadyBeforePublication(t *testing.T) {
 	}
 }
 
+// mutation-checked: zeroing the results of RpcClient.OnEvent fails it
+// Pi: packages/coding-agent/src/modes/rpc/rpc-client.ts:172 (onEvent)
+// packages/coding-agent/src/modes/rpc/rpc-client.ts:172 (RpcClient.onEvent).
 func TestRPCListenerPanicIsConfinedToItsLine(t *testing.T) {
 	client := NewRpcClient(RpcClientOptions{})
 	remove := client.OnEvent(func(JsonAgentSessionEvent) { panic("listener failed") })

@@ -1,0 +1,65 @@
+[
+ {
+  "ids": [
+   "pkg:coding-agent/.#BranchSummaryMessageComponent::property:render"
+  ],
+  "targets": [
+   "tui/branch_summary.go#BranchSummaryComponent.Render"
+  ],
+  "production": [
+   "public-api:tui/branch_summary.go#BranchSummaryComponent.Render"
+  ],
+  "evidence": [
+   "test:tui/branch_summary_test.go#TestBranchSummaryCollapsed",
+   "test:tui/branch_summary_test.go#TestBranchSummaryExpanded"
+  ],
+  "rationale": "BranchSummaryMessageComponent.render is the Go method BranchSummaryComponent.Render; signature reviewed against the upstream declaration."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#CompactionSummaryMessageComponent::property:render"
+  ],
+  "targets": [
+   "tui/compaction_summary.go#CompactionSummaryComponent.Render"
+  ],
+  "production": [
+   "public-api:tui/compaction_summary.go#CompactionSummaryComponent.Render"
+  ],
+  "evidence": [
+   "test:tui/compaction_summary_test.go#TestCompactionSummaryCollapsed",
+   "test:tui/compaction_summary_test.go#TestCompactionSummaryExpanded"
+  ],
+  "rationale": "CompactionSummaryMessageComponent.render is the Go method CompactionSummaryComponent.Render; signature reviewed against the upstream declaration."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#DynamicBorder::property:render"
+  ],
+  "targets": [
+   "tui/dynamic_border.go#DynamicBorder.Render"
+  ],
+  "production": [
+   "call:internal/codingagent/earendil_announcement.go#earendilAnnouncementComponent.Render"
+  ],
+  "evidence": [
+   "test:tui/dynamic_border_render_test.go#TestDynamicBorderRenderRepeatsTheRuleAtLeastOnce",
+   "test:tui/trust_style_regression_test.go#TestBorderAndKeyHintPreserveEnclosingStyles"
+  ],
+  "rationale": "DynamicBorder.render is the Go method DynamicBorder.Render; signature reviewed against the upstream declaration."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#SkillInvocationMessageComponent::property:setExpanded"
+  ],
+  "targets": [
+   "tui/skill_invocation.go#SkillInvocationMessageComponent.SetExpanded"
+  ],
+  "production": [
+   "call:tui/skill_invocation.go#SkillInvocationMessageComponent.HandleMouse"
+  ],
+  "evidence": [
+   "test:tui/skill_invocation_expand_test.go#TestSkillInvocationSetExpandedSwitchesTheDisplay"
+  ],
+  "rationale": "SkillInvocationMessageComponent.setExpanded is the Go method SkillInvocationMessageComponent.SetExpanded; signature reviewed against the upstream declaration."
+ }
+]

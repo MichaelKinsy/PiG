@@ -49,6 +49,7 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/orderedjson"
 	"github.com/MichaelKinsy/PiG/internal/toolchain"
 	"github.com/MichaelKinsy/PiG/test/extension-conformance/testfixture"
+	"github.com/MichaelKinsy/PiG/tui"
 )
 
 // recording is the normalized cross-transport observation that gets
@@ -101,6 +102,9 @@ type harness struct {
 	actions *[]string
 	ui      *recordingUI
 	bridge  *subprocess.UIBridge
+	// wire records the calls the extension sends while recording is on;
+	// nil for inproc-go.
+	wire    *wireTap
 	cleanup func()
 }
 
@@ -127,6 +131,17 @@ func sdkHarnessCases() []harnessCase {
 	return cases[1:]
 }
 
+// packedSDKHarnessCases are the Go, Rust and Python SDKs loaded into one shared runtime cell beside a peer extension, through the production
+// factory builder. Node's packed case is in allHarnessCases.
+func packedSDKHarnessCases() []harnessCase {
+	var cases []harnessCase
+	for _, language := range []string{"go", "rust", "python"} {
+		extName := map[string]string{"go": "sdk-fixture", "rust": "rust-sdk-fixture", "python": "python-sdk-fixture"}[language]
+		cases = append(cases, harnessCase{name: "subprocess-" + language + "-packed", extName: extName, make: func(t *testing.T) *harness { return makePackedUIHarness(t, language) }})
+	}
+	return cases
+}
+
 type conformanceLinesComponent struct {
 	lines []string
 }
@@ -142,6 +157,7 @@ func (*conformanceWidthComponent) Invalidate()                 {}
 func (c *conformanceLinesComponent) Render(int) []string { return append([]string(nil), c.lines...) }
 func (*conformanceLinesComponent) Invalidate()           {}
 
+// Pi: packages/coding-agent/src/core/extensions/runner.ts:797 (Runner.getEntryRenderer).
 func TestConformance_TransportsMatch(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping conformance suite in short mode (builds subprocess fixture)")
@@ -169,6 +185,50 @@ func TestConformance_TransportsMatch(t *testing.T) {
 			if !strings.Contains(got.ContextProbe, wantShape) {
 				t.Fatalf("%s: context probe = %q, want it to contain %q", tc.name, got.ContextProbe, wantShape)
 			}
+			// packages/coding-agent/src/core/extensions/types.ts:1692-1715 (ExtensionAPI.sendMessage, sendUserMessage, appendEntry, setSessionName): each
+			// call reaches the host with the arguments the extension passed, in every SDK, not only the same as the baseline transport's recording.
+			for _, wantAction := range []string{
+				"sendMessage:notice:hello-custom:steer:true",
+				"sendMessage:notice:default:unset:unset",
+				"sendMessage:notice:no-turn:unset:false",
+				"sendUserMessage:hello-user:followUp",
+				"setSessionName:conformance-session",
+				"appendEntry:conformance-entry:hello-entry",
+			} {
+				if !slices.Contains(got.ActionCalls, wantAction) {
+					t.Errorf("%s: host action %q was not recorded; got %v", tc.name, wantAction, got.ActionCalls)
+				}
+			}
+			// packages/coding-agent/src/core/extensions/types.ts:1676-1682 (ExtensionAPI.registerMessageRenderer, registerEntryRenderer): the renderer an extension
+			// registers for a custom type draws the host's message and entry at width 72 in every SDK.
+			if want := []string{"renderer:hello:expanded=true:width=72"}; !slices.Equal(got.MessageRenderer, want) {
+				t.Errorf("%s: registerMessageRenderer lines = %q, want %q", tc.name, got.MessageRenderer, want)
+			}
+			if want := []string{"entryrenderer:hi-entry:expanded=true:width=72"}; !slices.Equal(got.EntryRenderer, want) {
+				t.Errorf("%s: registerEntryRenderer lines = %q, want %q", tc.name, got.EntryRenderer, want)
+			}
+			// packages/coding-agent/src/core/extensions/types.ts:735-789 (pi.on session_start, session_shutdown, session_info_changed, session_before_compact,
+			// session_compact, session_compact_failed) and :680 (pi.on project_trust), :994 (pi.on agent_before_settle), :1006-1014 (pi.on ui_prompt_start, ui_prompt_end):
+			// each SDK's handler receives the event the host emitted with its payload fields, so the recording is the literal below and not only the baseline's.
+			wantSessionEvents := []string{
+				"session_start:startup:info", "session_shutdown:quit:info", "session_info_changed:conformance-session:info",
+				"session_before_compact:threshold:true:info", "session_compact:threshold:true:true:info",
+				"session_compact_failed:overflow:recovery failed:false:false:true:info", "turn_end:assistant-entry:tool-entry:info",
+			}
+			if !slices.Equal(got.SessionEventNotify, wantSessionEvents) {
+				t.Errorf("%s: session events = %q, want %q", tc.name, got.SessionEventNotify, wantSessionEvents)
+			}
+			if !strings.HasPrefix(got.AgentBeforeSettle, "agent_before_settle:completed:") {
+				t.Errorf("%s: agent_before_settle = %q", tc.name, got.AgentBeforeSettle)
+			}
+			if got.ProjectTrustDecision != "yes" {
+				t.Errorf("%s: project_trust decision = %q, want yes", tc.name, got.ProjectTrustDecision)
+			}
+			for _, promptEvent := range []string{"ui_prompt:ui_prompt_start:ui_prompt:select:Pick:info", "ui_prompt:ui_prompt_end:ui_prompt:select:Pick:info"} {
+				if !slices.Contains(got.UIPromptEvents, promptEvent) {
+					t.Errorf("%s: ui_prompt events lack %q: %q", tc.name, promptEvent, got.UIPromptEvents)
+				}
+			}
 			if i == 0 {
 				baseline = got
 				baselineName = tc.name
@@ -194,9 +254,9 @@ func TestModelStreamingSDKsMatch(t *testing.T) {
 	cases := sdkHarnessCases()
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
+			h := tc.make(t) // building a subprocess fixture can take minutes: the call's own deadline starts after it
 			ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 			defer cancel()
-			h := tc.make(t)
 			t.Cleanup(func() {
 				if h.cleanup != nil {
 					h.cleanup()
@@ -332,7 +392,7 @@ func (productionTool) Execute(_ context.Context, _ string, _ json.RawMessage, up
 
 func runProductionToolExecution(t *testing.T, runner *inproc.Runner) agent.ToolResultMessage {
 	t.Helper()
-	services, err := coding.NewServices(coding.ServicesOptions{CWD: t.TempDir(), AgentDir: t.TempDir()})
+	services, err := coding.CreateAgentSessionServices(coding.CreateAgentSessionServicesOptions{CWD: t.TempDir(), AgentDir: t.TempDir()})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -410,6 +470,7 @@ func TestProductionToolExecutionPayloadsMatchAcrossSDKs(t *testing.T) {
 	}
 }
 
+// Pi: packages/coding-agent/src/core/extensions/types.ts:1068 (ToolExecutionUpdateEvent.type); packages/coding-agent/src/core/extensions/types.ts:1069 (ToolExecutionUpdateEvent.toolCallId); packages/coding-agent/src/core/extensions/types.ts:1079 (ToolExecutionEndEvent.type).
 func TestModelEventPayloadsMatchAcrossSDKs(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping extension event conformance in short mode")
@@ -434,8 +495,8 @@ func TestModelEventPayloadsMatchAcrossSDKs(t *testing.T) {
 				}
 			})
 			h.ui.ClearRecorded()
-			events := []any{
-				extension.MessageUpdateEvent{Type: "message_update", Message: map[string]any{"role": "assistant"}, AssistantMessageEvent: ai.TextDeltaEvent{ContentIndex: 2, Delta: "delta"}},
+			events := []extension.ExtensionEvent{
+				extension.MessageUpdateEvent{Type: "message_update", Message: wireAgentMessage(map[string]any{"role": "assistant"}), AssistantMessageEvent: ai.TextDeltaEvent{ContentIndex: 2, Delta: "delta"}},
 				extension.ToolExecutionUpdateEvent{Type: "tool_execution_update", ToolCallID: "call", ToolName: "read", Args: map[string]any{"path": "x"}, PartialResult: map[string]any{"content": []any{map[string]any{"type": "text", "text": "working"}}, "details": map[string]any{"progress": 1}}},
 				extension.ToolExecutionEndEvent{Type: "tool_execution_end", ToolCallID: "call", ToolName: "read", Result: map[string]any{"content": []any{map[string]any{"type": "text", "text": "done"}, map[string]any{"type": "image", "data": "aW1n", "mimeType": "image/png"}}, "details": map[string]any{"nested": map[string]any{"value": "kept"}}}, IsError: true},
 			}
@@ -566,7 +627,7 @@ func captureRecording(t *testing.T, h *harness) recording {
 	if err != nil {
 		t.Fatalf("echo execute: %v", err)
 	}
-	tr, ok := result.(agent.AgentToolResult)
+	tr, ok := result, true
 	if !ok {
 		t.Fatalf("echo result type = %T, want agent.AgentToolResult", result)
 	}
@@ -579,7 +640,7 @@ func captureRecording(t *testing.T, h *harness) recording {
 	if err != nil {
 		t.Fatalf("rich_tool execute: %v", err)
 	}
-	rich, ok := richResult.(agent.AgentToolResult)
+	rich, ok := richResult, true
 	if !ok {
 		t.Fatalf("rich_tool result type = %T, want agent.AgentToolResult", richResult)
 	}
@@ -587,7 +648,7 @@ func captureRecording(t *testing.T, h *harness) recording {
 
 	// agent-loop.ts:707-716: prepareArguments runs before the host validates, so the row goes through the agent's dispatch
 	// (a legacy shape the schema rejects) instead of calling Definition.PrepareArguments and Definition.Execute by hand.
-	prepared := dispatchToolCalls(t, h, []ai.FauxContentBlock{ai.FauxToolCall("prepared_tool", map[string]any{"legacy": "hello"}, "tc-conformance-prepare")})
+	prepared := dispatchToolCalls(t, h, []ai.FauxContentBlock{ai.FauxToolCall("prepared_tool", map[string]any{"legacy": "hello"}, &ai.FauxToolCallOptions{ID: "tc-conformance-prepare"})})
 	if len(prepared) != 1 || prepared[0].IsError {
 		t.Fatalf("prepared_tool results = %s", describeToolResults(prepared))
 	}
@@ -609,7 +670,7 @@ func captureRecording(t *testing.T, h *harness) recording {
 	if err != nil {
 		t.Fatalf("tool_is_error execute: %v", err)
 	}
-	softTR, ok := softResult.(agent.AgentToolResult)
+	softTR, ok := softResult, true
 	if !ok {
 		t.Fatalf("tool_is_error result type = %T, want agent.AgentToolResult", softResult)
 	}
@@ -659,6 +720,23 @@ func captureRecording(t *testing.T, h *harness) recording {
 
 	statusBurst := captureStatusBurst(ctx, t, h)
 
+	// The paged-log read runs before append_entry below: the harness serves a fixed three-entry log and records appends without adding them, while Pi's pi.appendEntry adds the entry to the log the next read sees (agent-session.ts:3406-3411), as the Node runtime now does.
+	*h.notify = nil
+	sessionLogCtx := ctx
+	if h.host == nil {
+		cc := h.runner.CreateCommandContext()
+		sessionLogCtx = extension.WithCommandContext(extension.WithContext(ctx, cc.Context), cc)
+	}
+	sessionLogCmd, ok := findCommand(h.runner, "session-log-probe")
+	if !ok {
+		t.Fatal("session-log-probe command not registered")
+	}
+	if err := sessionLogCmd.Handler(sessionLogCtx, ""); err != nil {
+		t.Fatalf("session-log-probe command: %v", err)
+	}
+	waitFor(t, func() bool { return len(*h.notify) > 0 })
+	sessionLogProbe := (*h.notify)[0]
+
 	*h.actions = nil
 	for _, name := range []string{"send_message", "send_message_default", "send_message_no_turn", "send_user_message", "set_session_name", "append_entry"} {
 		cmd, ok := findCommand(h.runner, name)
@@ -671,7 +749,6 @@ func captureRecording(t *testing.T, h *harness) recording {
 	}
 	waitFor(t, func() bool { return len(*h.actions) >= 6 })
 	actionCalls := append([]string(nil), (*h.actions)...)
-
 	*h.notify = nil
 	loginCmd, ok := findCommand(h.runner, "login-probe")
 	if !ok {
@@ -717,7 +794,7 @@ func captureRecording(t *testing.T, h *harness) recording {
 	if _, err := h.runner.Emit(ctx, extension.SessionCompactFailedEvent{Type: "session_compact_failed", Reason: "overflow", ErrorMessage: "recovery failed", Aborted: false, WillRetry: false, FromExtension: true}); err != nil {
 		t.Fatalf("session_compact_failed emit: %v", err)
 	}
-	if _, err := h.runner.Emit(ctx, extension.TurnEndEvent{Type: "turn_end", MessageEntryID: "assistant-entry", ToolResultEntryIds: []string{"tool-entry"}}); err != nil {
+	if _, err := h.runner.Emit(ctx, extension.TurnEndEvent{Type: "turn_end", Message: wireAgentMessage(map[string]any{"role": "assistant", "content": []any{}}), MessageEntryID: "assistant-entry", ToolResultEntryIds: []string{"tool-entry"}}); err != nil {
 		t.Fatalf("turn_end emit: %v", err)
 	}
 	waitFor(t, func() bool { return len(*h.notify) >= 7 })
@@ -749,7 +826,7 @@ func captureRecording(t *testing.T, h *harness) recording {
 	projectTrust, projectTrustErrors, err := inproc.EmitProjectTrust(h.runner, ctx, extension.ProjectTrustEvent{
 		Type: "project_trust",
 		Cwd:  "/fixture/project",
-	})
+	}, extension.ProjectTrustContext{})
 	if err != nil {
 		t.Fatalf("project_trust emit: %v", err)
 	}
@@ -781,17 +858,6 @@ func captureRecording(t *testing.T, h *harness) recording {
 	}
 	waitFor(t, func() bool { return len(*h.notify) > 0 })
 	contextProbe := (*h.notify)[0]
-
-	*h.notify = nil
-	sessionLogCmd, ok := findCommand(h.runner, "session-log-probe")
-	if !ok {
-		t.Fatal("session-log-probe command not registered")
-	}
-	if err := sessionLogCmd.Handler(probeCtx, ""); err != nil {
-		t.Fatalf("session-log-probe command: %v", err)
-	}
-	waitFor(t, func() bool { return len(*h.notify) > 0 })
-	sessionLogProbe := (*h.notify)[0]
 
 	// Each dialog reports ui_prompt_start/ui_prompt_end without awaiting
 	// handlers, so the reports arrive alongside the command's own summary.
@@ -837,7 +903,7 @@ func captureRecording(t *testing.T, h *harness) recording {
 	if renderer == nil {
 		t.Fatal("conformance-message renderer not registered")
 	}
-	component, ok := renderer(extension.CustomMessageRef{
+	component, ok := renderer(extension.CustomMessage{
 		CustomType: "conformance-message",
 		Content:    "hello",
 		Display:    true,
@@ -859,7 +925,7 @@ func captureRecording(t *testing.T, h *harness) recording {
 		t.Fatal("conformance-entry renderer not registered")
 	}
 	entryComponent, ok := entryRenderer(
-		map[string]any{"customType": "conformance-entry", "data": "hi-entry"},
+		extension.CustomEntry{CustomType: "conformance-entry", Data: "hi-entry"},
 		extension.EntryRenderOptions{Expanded: true}, nil,
 	).(interface {
 		Render(int) []string
@@ -895,6 +961,8 @@ func captureRecording(t *testing.T, h *harness) recording {
 	renderContext := extension.ToolRenderContext{
 		Args: json.RawMessage(`{"topic":"alpha"}`), ToolCallID: "render-probe-1", Card: "conformance-card",
 		State: map[string]any{}, Invalidate: func() {}, ExecutionStarted: true, ArgsComplete: true,
+		// A value no SDK defaults to: an SDK that drops the field renders duration=none.
+		DurationMs: new(int64(4200)),
 	}
 	renderCall, ok := renderProbe.RenderCall(json.RawMessage(`{"topic":"alpha"}`), nil, renderContext).(interface{ Render(int) []string })
 	if !ok {
@@ -912,7 +980,7 @@ func captureRecording(t *testing.T, h *harness) recording {
 	}
 	waitFor(t, func() bool {
 		lines := renderResult.Render(72)
-		return len(lines) == 1 && lines[0] == "toolrender:result:out:v:expanded=true:calls=1:width=72"
+		return len(lines) == 1 && lines[0] == "toolrender:result:out:v:expanded=true:calls=1:width=72:duration=4200"
 	})
 	toolRenderer = append(toolRenderer, renderResult.Render(72)...)
 
@@ -996,6 +1064,19 @@ func captureStatusBurst(ctx context.Context, t *testing.T, h *harness) []string 
 // with explicit source overrides like sourced_tool).
 const inprocFixtureName = "inproc-conformance-fixture"
 
+// conformanceKnownModel is the one model the conformance host can switch to; setModel of any other reports false.
+const conformanceKnownModel = "conformance/known-model"
+
+// conformanceThinkingLevel and conformanceHostCommands are the host's thinking level and slash commands. Neither is an SDK's
+// empty fallback, so an SDK that never asks the host cannot report them.
+const conformanceThinkingLevel = "xhigh"
+
+var conformanceHostCommands = []subprocess.CommandInfo{
+	{Name: "conformance-listed", Description: "Listed by the host", Source: "prompt"},
+	{Name: "review", Description: "Review the diff", Source: "prompt", SourceInfo: extension.SourceInfo{Path: "/prompts/review.md", Source: "local", Scope: "project", Origin: "top-level"}},
+	{Name: "lint", Source: "skill", SourceInfo: extension.SourceInfo{Path: "/skills/lint/SKILL.md", Source: "local", Scope: "user", Origin: "top-level"}},
+}
+
 func makeInprocGoHarness(t *testing.T) *harness {
 	t.Helper()
 	notify := &[]string{}
@@ -1036,7 +1117,7 @@ func conformanceSystemPromptOptions() extension.BuildSystemPromptOptions {
 		ToolGuidelines:    map[string][]string{"read": {"Read carefully."}},
 		Skills: []extension.SystemPromptSkill{{
 			Name: "review", BaseDir: "/review", FilePath: "/review/SKILL.md",
-			SourceInfo: map[string]any{"scope": "project", "source": "local"},
+			SourceInfo: extension.SourceInfo{Scope: "project", Source: "local"},
 		}},
 		Cwd: "/probe-cwd",
 	}
@@ -1087,7 +1168,7 @@ func makeInprocFixture(ui extension.UIContext, actions *[]string) extension.Exte
 	var abortObserved atomic.Bool
 	var inprocStartedCalls atomic.Int64
 	update := func(onUpdate extension.AgentToolUpdateCallback, text string) {
-		if cb, ok := onUpdate.(agent.ToolUpdateCallback); ok {
+		if cb := onUpdate; cb != nil {
 			cb(agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: text}}})
 		}
 	}
@@ -1099,7 +1180,7 @@ func makeInprocFixture(ui extension.UIContext, actions *[]string) extension.Exte
 		ResolvedPath: "inproc-conformance-fixture",
 		MessageRenderers: map[string]extension.MessageRenderer{
 			"conformance-message": func(message extension.CustomMessage, options extension.MessageRenderOptions, _ extension.Theme) extension.Component {
-				custom := message.(extension.CustomMessageRef)
+				custom := message
 				if custom.Content == "padding-options" {
 					wire, _ := json.Marshal(options)
 					return &conformanceLinesComponent{lines: []string{string(wire)}}
@@ -1109,8 +1190,7 @@ func makeInprocFixture(ui extension.UIContext, actions *[]string) extension.Exte
 		},
 		EntryRenderers: map[string]extension.EntryRenderer{
 			"conformance-entry": func(entry extension.CustomEntry, options extension.EntryRenderOptions, _ extension.Theme) extension.Component {
-				data, _ := entry.(map[string]any)
-				return &conformanceLinesComponent{lines: []string{fmt.Sprintf("entryrenderer:%v:expanded=%t:width=72", data["data"], options.Expanded)}}
+				return &conformanceLinesComponent{lines: []string{fmt.Sprintf("entryrenderer:%v:expanded=%t:width=72", entry.Data, options.Expanded)}}
 			},
 		},
 		MarkdownTransformer: func(markdown string, context extension.MarkdownTransformContext) string {
@@ -1162,15 +1242,19 @@ func makeInprocFixture(ui extension.UIContext, actions *[]string) extension.Exte
 						}}
 					},
 					RenderResult: func(result extension.AgentToolResult, options extension.ToolRenderResultOptions, _ extension.Theme, render extension.ToolRenderContext) extension.Component {
-						value := result.(agent.AgentToolResult)
+						value := result
 						details, _ := value.Details.(map[string]any)
 						calls := render.State.(map[string]any)["calls"]
 						return &conformanceWidthComponent{line: func(width int) string {
-							return fmt.Sprintf("toolrender:result:%v:%v:expanded=%t:calls=%v:width=%d", value.Text(), details["k"], options.Expanded, calls, width)
+							duration := "none"
+							if render.DurationMs != nil {
+								duration = fmt.Sprint(*render.DurationMs)
+							}
+							return fmt.Sprintf("toolrender:result:%v:%v:expanded=%t:calls=%v:width=%d:duration=%s", value.Text(), details["k"], options.Expanded, calls, width, duration)
 						}}
 					},
 				},
-				SourceInfo: inprocFixtureName,
+				Source: inprocFixtureName,
 			},
 			"update_tool": {
 				Definition: extension.ToolDefinition{
@@ -1183,7 +1267,7 @@ func makeInprocFixture(ui extension.UIContext, actions *[]string) extension.Exte
 						return agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: "done"}}}, nil
 					},
 				},
-				SourceInfo: inprocFixtureName,
+				Source: inprocFixtureName,
 			},
 			"ordered_details": {
 				Definition: extension.ToolDefinition{
@@ -1192,13 +1276,13 @@ func makeInprocFixture(ui extension.UIContext, actions *[]string) extension.Exte
 					Parameters:  json.RawMessage(`{"type":"object","properties":{}}`),
 					Execute: func(_ context.Context, _ string, _ json.RawMessage, onUpdate extension.AgentToolUpdateCallback) (extension.AgentToolResult, error) {
 						details := json.RawMessage(`{"zeta":1,"alpha":{"yy":2,"bb":3},"mid":[{"qq":1,"aa":2}]}`)
-						if cb, ok := onUpdate.(agent.ToolUpdateCallback); ok {
+						if cb := onUpdate; cb != nil {
 							cb(agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: "partial"}}, Details: details})
 						}
 						return agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: "done"}}, Details: details}, nil
 					},
 				},
-				SourceInfo: inprocFixtureName,
+				Source: inprocFixtureName,
 			},
 			"ordered_result": {
 				Definition: extension.ToolDefinition{
@@ -1206,13 +1290,13 @@ func makeInprocFixture(ui extension.UIContext, actions *[]string) extension.Exte
 					Description: "Return a result whose members are not in the declared order",
 					Parameters:  json.RawMessage(`{"type":"object","properties":{}}`),
 					Execute: func(_ context.Context, _ string, _ json.RawMessage, onUpdate extension.AgentToolUpdateCallback) (extension.AgentToolResult, error) {
-						if cb, ok := onUpdate.(agent.ToolUpdateCallback); ok {
+						if cb := onUpdate; cb != nil {
 							cb(agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: "partial"}}, Details: map[string]any{"k": 1}})
 						}
 						return agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: "done"}}, Details: map[string]any{"k": 1}, IsError: true}, nil
 					},
 				},
-				SourceInfo: inprocFixtureName,
+				Source: inprocFixtureName,
 			},
 			"abort_tool": {
 				Definition: extension.ToolDefinition{
@@ -1226,7 +1310,20 @@ func makeInprocFixture(ui extension.UIContext, actions *[]string) extension.Exte
 						return agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: "aborted"}}}, nil
 					},
 				},
-				SourceInfo: inprocFixtureName,
+				Source: inprocFixtureName,
+			},
+			"hang_tool": {
+				Definition: extension.ToolDefinition{
+					Name:        "hang_tool",
+					Description: "Ignore the abort signal",
+					Parameters:  json.RawMessage(`{"type":"object","properties":{}}`),
+					Execute: func(_ context.Context, _ string, _ json.RawMessage, onUpdate extension.AgentToolUpdateCallback) (extension.AgentToolResult, error) {
+						update(onUpdate, "waiting")
+						time.Sleep(8 * time.Second)
+						return agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: "late"}}}, nil
+					},
+				},
+				Source: inprocFixtureName,
 			},
 			"rich_tool": {
 				Definition: extension.ToolDefinition{
@@ -1240,7 +1337,7 @@ func makeInprocFixture(ui extension.UIContext, actions *[]string) extension.Exte
 						}, nil
 					},
 				},
-				SourceInfo: inprocFixtureName,
+				Source: inprocFixtureName,
 			},
 			"echo": {
 				Definition: extension.ToolDefinition{
@@ -1265,7 +1362,7 @@ func makeInprocFixture(ui extension.UIContext, actions *[]string) extension.Exte
 							nil
 					},
 				},
-				SourceInfo: inprocFixtureName,
+				Source: inprocFixtureName,
 			},
 			"prepared_tool": {
 				Definition: extension.ToolDefinition{
@@ -1284,12 +1381,12 @@ func makeInprocFixture(ui extension.UIContext, actions *[]string) extension.Exte
 							Text string `json:"text"`
 						}
 						if err := json.Unmarshal(raw, &input); err != nil {
-							return nil, err
+							return extension.AgentToolResult{}, err
 						}
 						return agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: "prepared:" + input.Text}}}, nil
 					},
 				},
-				SourceInfo: inprocFixtureName,
+				Source: inprocFixtureName,
 			},
 			"start_order": {
 				Definition: extension.ToolDefinition{
@@ -1301,12 +1398,12 @@ func makeInprocFixture(ui extension.UIContext, actions *[]string) extension.Exte
 							N json.Number `json:"n"`
 						}
 						if err := json.Unmarshal(raw, &input); err != nil {
-							return nil, err
+							return extension.AgentToolResult{}, err
 						}
 						return agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: fmt.Sprintf("start#%d n=%s", inprocStartedCalls.Add(1), input.N)}}}, nil
 					},
 				},
-				SourceInfo: inprocFixtureName,
+				Source: inprocFixtureName,
 			},
 			"tool_error": {
 				Definition: extension.ToolDefinition{
@@ -1314,10 +1411,10 @@ func makeInprocFixture(ui extension.UIContext, actions *[]string) extension.Exte
 					Description: "Return a thrown tool error",
 					Parameters:  json.RawMessage(`{"type":"object"}`),
 					Execute: func(context.Context, string, json.RawMessage, extension.AgentToolUpdateCallback) (extension.AgentToolResult, error) {
-						return nil, errors.New("tool exploded")
+						return extension.AgentToolResult{}, errors.New("tool exploded")
 					},
 				},
-				SourceInfo: inprocFixtureName,
+				Source: inprocFixtureName,
 			},
 			"tool_is_error": {
 				Definition: extension.ToolDefinition{
@@ -1328,7 +1425,7 @@ func makeInprocFixture(ui extension.UIContext, actions *[]string) extension.Exte
 						return agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: "soft tool error"}}, IsError: true}, nil
 					},
 				},
-				SourceInfo: inprocFixtureName,
+				Source: inprocFixtureName,
 			},
 			"guided_tool": {
 				Definition: extension.ToolDefinition{
@@ -1341,7 +1438,7 @@ func makeInprocFixture(ui extension.UIContext, actions *[]string) extension.Exte
 						return agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: "guided"}}}, nil
 					},
 				},
-				SourceInfo: inprocFixtureName,
+				Source: inprocFixtureName,
 			},
 			"sourced_tool": {
 				Definition: extension.ToolDefinition{
@@ -1353,7 +1450,7 @@ func makeInprocFixture(ui extension.UIContext, actions *[]string) extension.Exte
 						return agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: "sourced"}}}, nil
 					},
 				},
-				SourceInfo: "mcp:test-server",
+				Source: "mcp:test-server",
 			},
 			"sampling_disabled": {
 				Definition: extension.ToolDefinition{
@@ -1362,7 +1459,7 @@ func makeInprocFixture(ui extension.UIContext, actions *[]string) extension.Exte
 						return agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: "disabled"}}}, nil
 					},
 				},
-				SourceInfo: inprocFixtureName,
+				Source: inprocFixtureName,
 			},
 			"grammar_tool": {
 				Definition: extension.ToolDefinition{
@@ -1375,7 +1472,7 @@ func makeInprocFixture(ui extension.UIContext, actions *[]string) extension.Exte
 						return agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: "grammar"}}}, nil
 					},
 				},
-				SourceInfo: inprocFixtureName,
+				Source: inprocFixtureName,
 			},
 		},
 		Commands: map[string]extension.RegisteredCommand{
@@ -1560,6 +1657,15 @@ func makeInprocFixture(ui extension.UIContext, actions *[]string) extension.Exte
 					return nil
 				},
 			},
+			"set_model": {
+				Name:        "set_model",
+				Description: "Switch to the model in the arguments",
+				Handler: func(_ context.Context, args string) error {
+					*actions = append(*actions, "setModel:"+args)
+					ui.Notify(fmt.Sprintf("setModel=%t", args == conformanceKnownModel), "info")
+					return nil
+				},
+			},
 			"append_entry": {
 				Name:        "append_entry",
 				Description: "Append a custom entry",
@@ -1627,7 +1733,7 @@ func makeInprocFixture(ui extension.UIContext, actions *[]string) extension.Exte
 						return err
 					}
 					dialogs := commandUI(ctx, ui)
-					selected, err := dialogs.Select(ctx, "Pick", []string{"first", "second"}, nil)
+					selected, err := dialogs.Select(ctx, "Pick", []string{"first", "second"}, extension.ExtensionUIDialogOptions{})
 					if err != nil {
 						return err
 					}
@@ -1667,7 +1773,7 @@ func makeInprocFixture(ui extension.UIContext, actions *[]string) extension.Exte
 						return fmt.Errorf("session manager not bound: %T", manager)
 					}
 					leaf := ""
-					if value := session.LeafID(); value != nil {
+					if value := session.GetLeafID(); value != nil {
 						leaf = *value
 					}
 					optional := func(value string) *string {
@@ -1708,7 +1814,7 @@ func makeInprocFixture(ui extension.UIContext, actions *[]string) extension.Exte
 					if err != nil {
 						return err
 					}
-					selected, err := ui.Select(ctx, "expand", []string{"chosen"}, nil)
+					selected, err := ui.Select(ctx, "expand", []string{"chosen"}, extension.ExtensionUIDialogOptions{})
 					if err != nil {
 						return err
 					}
@@ -1720,7 +1826,7 @@ func makeInprocFixture(ui extension.UIContext, actions *[]string) extension.Exte
 					if err != nil {
 						return err
 					}
-					result := ui.SetTheme("missing")
+					result := ui.SetTheme(extension.ThemeName("missing"))
 					ui.Notify(fmt.Sprintf("selected=%s expanded=%t named=%s missing=%t success=%t error=%s", selected, ui.GetToolsExpanded(), named.(map[string]any)["name"], missing == nil, result.Success, result.Error), "info")
 					return nil
 				},
@@ -1823,8 +1929,7 @@ func makeInprocFixture(ui extension.UIContext, actions *[]string) extension.Exte
 					}
 					skillSource := ""
 					if len(opts.Skills) > 0 {
-						source, _ := opts.Skills[0].SourceInfo.(map[string]any)
-						skillSource, _ = source["scope"].(string)
+						skillSource = opts.Skills[0].SourceInfo.Scope
 					}
 					// normalizeBuildSystemPromptOptions (system-prompt.ts:48-64): every collection is present, empty or not.
 					shapes := fmt.Sprintf("selectedTools:array:%d,toolSnippets:object:%d,toolGuidelines:object:%d,promptGuidelines:array:%d,appendSystemPrompt:string:%d,sections:object:%d,contextFiles:array:%d,skills:array:%d",
@@ -1847,10 +1952,10 @@ func makeInprocFixture(ui extension.UIContext, actions *[]string) extension.Exte
 				Description: "Exercise interactive dialog responses",
 				Handler: func(ctx context.Context, _ string) error {
 					dialogs := commandUI(ctx, ui)
-					selected, selectErr := dialogs.Select(ctx, "Pick", []string{"first", "second"}, nil)
-					input, inputErr := dialogs.Input(ctx, "Input", "placeholder", nil)
+					selected, selectErr := dialogs.Select(ctx, "Pick", []string{"first", "second"}, extension.ExtensionUIDialogOptions{})
+					input, inputErr := dialogs.Input(ctx, "Input", "placeholder", extension.ExtensionUIDialogOptions{})
 					edited, editorErr := dialogs.Editor(ctx, "Editor", "prefill")
-					confirmed, confirmErr := dialogs.Confirm(ctx, "Confirm", "message", nil)
+					confirmed, confirmErr := dialogs.Confirm(ctx, "Confirm", "message", extension.ExtensionUIDialogOptions{})
 					if selectErr != nil || inputErr != nil || editorErr != nil || confirmErr != nil {
 						return errors.Join(selectErr, inputErr, editorErr, confirmErr)
 					}
@@ -1868,6 +1973,18 @@ func makeInprocFixture(ui extension.UIContext, actions *[]string) extension.Exte
 						return err
 					}
 					ui.Notify(fmt.Sprintf("focused=%v disposed=true", selected), "info")
+					return nil
+				},
+			},
+			"kit-probe": {
+				Name:        "kit-probe",
+				Description: "Exercise the component kit (D107)",
+				Handler: func(ctx context.Context, _ string) error {
+					result, err := commandUI(ctx, ui).Custom(ctx, extension.CustomFactory(newInprocKitProbe), nil)
+					if err != nil {
+						return err
+					}
+					ui.Notify(fmt.Sprintf("kit=%v", result), "info")
 					return nil
 				},
 			},
@@ -1910,14 +2027,17 @@ func makeInprocFixture(ui extension.UIContext, actions *[]string) extension.Exte
 					return nil, nil
 				},
 			},
-			// Typed tool events: the in-process reference narrows the upstream
-			// PowerShell and bash variants with a type switch.
+			// Tool events: the Session emits CustomToolCallEvent for every tool, so the in-process reference reads the bash and PowerShell calls from it.
 			"tool_call": {
 				func(args ...any) (any, error) {
 					var name string
 					var input map[string]any
 					switch event := args[0].(type) {
 					case extension.CustomToolCallEvent:
+						if event.ToolName == "bash" || event.ToolName == "powershell" {
+							name, input = event.ToolName, event.Input
+							break
+						}
 						// The in-process handler edits event.Input in place, as Pi's handler edits event.input. It receives the event by value, so it has no way to give the tool another object: rewrite_reassign_probe leaves the input as it was.
 						if event.ToolName != "rewrite_probe" && event.ToolName != "rewrite_block_probe" {
 							return nil, nil
@@ -1932,10 +2052,6 @@ func makeInprocFixture(ui extension.UIContext, actions *[]string) extension.Exte
 							return &extension.ToolCallEventResult{Block: true, Reason: "blocked after rewrite"}, nil
 						}
 						return nil, nil
-					case extension.PowerShellToolCallEvent:
-						name, input = event.ToolName, asMap(event.Input)
-					case extension.BashToolCallEvent:
-						name, input = event.ToolName, asMap(event.Input)
 					default:
 						return nil, nil
 					}
@@ -2154,11 +2270,14 @@ var wantUIPromptEvents = []string{
 
 // recordingUI records notifications and mutable UI values used by the conformance fixtures.
 type recordingUI struct {
+	// runOverlay replaces RunRemoteOverlay when a test supplies its own mounted-overlay behaviour.
+	runOverlay    func(extension.RemoteOverlayOptions, extension.RemoteOverlayHost, func(extension.RemoteOverlayHandle)) (any, bool)
 	notify        *[]string
 	status        *[]string
 	logins        []string
 	sprites       []string
 	editorText    string
+	editor        extension.RemoteEditor
 	toolsExpanded bool
 
 	// terminalInput captures the raw-input handler an extension registers, so
@@ -2170,6 +2289,10 @@ type recordingUI struct {
 	// cleared surface records a nil frame.
 	footers []*extension.WidthLines
 	headers []*extension.WidthLines
+	// footerViews and headerViews hold, per recorded frame, the view a
+	// frame drawn from a view (D107) carries, nil for a lines frame.
+	footerViews []*extension.FramedView
+	headerViews []*extension.FramedView
 
 	// recordMu guards notify and status. The host calls Notify from the
 	// goroutine servicing the extension socket while the test body reads the
@@ -2278,22 +2401,49 @@ func (u *recordingUI) SetWorkingMessage(string)                              {}
 func (u *recordingUI) SetWorkingVisible(bool)                                {}
 func (u *recordingUI) SetWorkingIndicator(extension.WorkingIndicatorOptions) {}
 func (u *recordingUI) SetHiddenThinkingLabel(string)                         {}
-func (u *recordingUI) SetWidget(string, any, extension.ExtensionWidgetOptions) {
+func (u *recordingUI) SetWidgetFactory(string, extension.WidgetFactory, *extension.ExtensionWidgetOptions) {
 }
-func (u *recordingUI) SetFooter(factory any) { u.recordSurface(&u.footers, factory) }
-func (u *recordingUI) SetHeader(factory any) { u.recordSurface(&u.headers, factory) }
+func (u *recordingUI) SetWidget(string, []string, *extension.ExtensionWidgetOptions) {
+}
+func (u *recordingUI) SetFooter(build extension.FooterFactory) {
+	factory := frameOf(build, 3)
+	u.recordSurface(&u.footers, &u.footerViews, factory)
+}
+func (u *recordingUI) SetHeader(build extension.HeaderFactory) {
+	factory := frameOf(build, 2)
+	u.recordSurface(&u.headers, &u.headerViews, factory)
+}
 
-func (u *recordingUI) recordSurface(frames *[]*extension.WidthLines, factory any) {
+func (u *recordingUI) recordSurface(frames *[]*extension.WidthLines, views *[]*extension.FramedView, factory any) {
 	var frame *extension.WidthLines
+	var view *extension.FramedView
 	switch v := factory.(type) {
 	case []string:
 		frame = &extension.WidthLines{Lines: v}
 	case extension.WidthLines:
 		frame = &v
+	case extension.FramedView:
+		frame, view = &extension.WidthLines{Width: v.Width}, &v
 	}
 	u.recordMu.Lock()
 	defer u.recordMu.Unlock()
 	*frames = append(*frames, frame)
+	*views = append(*views, view)
+}
+
+// SurfaceView returns the view of the latest footer or header frame, or nil
+// when that frame is not drawn from a view.
+func (u *recordingUI) SurfaceView(header bool) *extension.FramedView {
+	u.recordMu.Lock()
+	defer u.recordMu.Unlock()
+	views := u.footerViews
+	if header {
+		views = u.headerViews
+	}
+	if len(views) == 0 {
+		return nil
+	}
+	return views[len(views)-1]
 }
 
 // SurfaceFrames returns the footer or header frames received so far.
@@ -2353,9 +2503,11 @@ func (u *recordingUI) LoginDefinitions() []string {
 	defer u.recordMu.Unlock()
 	return append([]string(nil), u.logins...)
 }
-func (u *recordingUI) SetTitle(string)                               {}
-func (u *recordingUI) Custom(context.Context, any, any) (any, error) { return "gamma", nil }
-func (u *recordingUI) PasteToEditor(string)                          {}
+func (u *recordingUI) SetTitle(string) {}
+func (u *recordingUI) Custom(context.Context, extension.CustomFactory, *extension.CustomOptions) (any, error) {
+	return "gamma", nil
+}
+func (u *recordingUI) PasteToEditor(string) {}
 func (u *recordingUI) SetEditorText(text string) {
 	u.recordMu.Lock()
 	defer u.recordMu.Unlock()
@@ -2372,12 +2524,22 @@ func (u *recordingUI) Editor(context.Context, string, string) (string, error) {
 func (u *recordingUI) AddAutocompleteProvider(extension.AutocompleteProviderFactory) error {
 	return nil
 }
-func (u *recordingUI) SetEditorComponent(any)                   {}
-func (u *recordingUI) GetEditorComponent() any                  { return nil }
-func (u *recordingUI) Theme() extension.Theme                   { return nil }
-func (u *recordingUI) GetAllThemes() []extension.ThemeMeta      { return nil }
-func (u *recordingUI) GetTheme(string) (extension.Theme, error) { return nil, nil }
-func (u *recordingUI) SetTheme(any) extension.SetThemeResult {
+func (u *recordingUI) SetEditorComponent(factory extension.EditorFactory) {
+	editor := remoteEditorOfFactory(factory)
+	u.recordMu.Lock()
+	u.editor = editor
+	u.recordMu.Unlock()
+}
+func (u *recordingUI) installedEditor() extension.RemoteEditor {
+	u.recordMu.Lock()
+	defer u.recordMu.Unlock()
+	return u.editor
+}
+func (u *recordingUI) GetEditorComponent() extension.EditorFactory { return nil }
+func (u *recordingUI) Theme() extension.Theme                      { return nil }
+func (u *recordingUI) GetAllThemes() []extension.ThemeMeta         { return nil }
+func (u *recordingUI) GetTheme(string) (extension.Theme, error)    { return nil, nil }
+func (u *recordingUI) SetTheme(extension.ThemeSelection) extension.SetThemeResult {
 	return extension.SetThemeResult{Success: true}
 }
 func (u *recordingUI) GetToolsExpanded() bool {
@@ -2391,6 +2553,9 @@ func (u *recordingUI) SetToolsExpanded(expanded bool) {
 	u.toolsExpanded = expanded
 }
 func (u *recordingUI) RunRemoteOverlay(opts extension.RemoteOverlayOptions, host extension.RemoteOverlayHost, onHandle func(extension.RemoteOverlayHandle)) (any, bool) {
+	if u.runOverlay != nil {
+		return u.runOverlay(opts, host, onHandle)
+	}
 	handle := &conformanceOverlayHandle{closed: make(chan struct{}), changed: make(chan struct{}, 1)}
 	onHandle(handle)
 	if opts.Title == "Timer" {
@@ -2474,6 +2639,7 @@ func makeSubprocessGoHarness(t *testing.T) *harness {
 	h := subprocess.NewHost(t.TempDir())
 	h.SetMode(conformanceMode)
 	h.SetUIBridge(bridge)
+	wire := observeWire(h)
 
 	// IMPORTANT: do NOT bind subprocess lifetime to a function-scoped
 	// context. Host.Load passes ctx into exec.CommandContext via a
@@ -2493,7 +2659,7 @@ func makeSubprocessGoHarness(t *testing.T) *harness {
 
 	runner := inproc.NewRunner([]extension.Extension{*ext}, t.TempDir())
 	bridge.SetUIPromptScope(runner)
-	return &harness{runner: runner, host: h, notify: notify, status: status, actions: actions, ui: ui, bridge: bridge}
+	return &harness{runner: runner, host: h, notify: notify, status: status, actions: actions, ui: ui, bridge: bridge, wire: wire}
 }
 
 func makeFusedGoHarness(t *testing.T) *harness {
@@ -2511,6 +2677,7 @@ func makeFusedGoHarness(t *testing.T) *harness {
 	host := subprocess.NewHost(t.TempDir())
 	host.SetMode(conformanceMode)
 	host.SetUIBridge(bridge)
+	wire := observeWire(host)
 	ext := testfixture.Extension()
 	loaded, err := host.LoadInProcess(context.Background(), subprocess.ExtConfig{
 		Name:    "sdk-fixture",
@@ -2523,7 +2690,7 @@ func makeFusedGoHarness(t *testing.T) *harness {
 
 	runner := inproc.NewRunner([]extension.Extension{*loaded}, t.TempDir())
 	bridge.SetUIPromptScope(runner)
-	return &harness{runner: runner, host: host, notify: notify, status: status, actions: actions, ui: ui, bridge: bridge}
+	return &harness{runner: runner, host: host, notify: notify, status: status, actions: actions, ui: ui, bridge: bridge, wire: wire}
 }
 
 func conformanceModel(id, name string) map[string]any {
@@ -2605,8 +2772,18 @@ func conformanceActions(actions *[]string) *subprocess.HostCallbacks {
 			*actions = append(*actions, "setSessionName:"+name)
 			return nil
 		},
+		GetThinkingLevel: func() string { return conformanceThinkingLevel },
+		GetCommands:      func() []subprocess.CommandInfo { return conformanceHostCommands },
+		SetModel: func(_ context.Context, model string) (bool, error) {
+			*actions = append(*actions, "setModel:"+model)
+			return model == conformanceKnownModel, nil
+		},
 		AppendEntry: func(customType string, data any, _ *subprocess.DirectEntryAppend) error {
 			*actions = append(*actions, fmt.Sprintf("appendEntry:%s:%v", customType, data))
+			return nil
+		},
+		SetLabel: func(entryID, label string) error {
+			*actions = append(*actions, "setLabel:"+entryID+":"+label)
 			return nil
 		},
 	}
@@ -2632,6 +2809,7 @@ func makeSubprocessNodeHarness(t *testing.T) *harness {
 	h := subprocess.NewHost(t.TempDir())
 	h.SetMode(conformanceMode)
 	h.SetUIBridge(bridge)
+	wire := observeWire(h)
 
 	ext, err := h.Load(context.Background(), subprocess.ExtConfig{
 		Name:    "node-sdk-fixture",
@@ -2644,7 +2822,7 @@ func makeSubprocessNodeHarness(t *testing.T) *harness {
 
 	runner := inproc.NewRunner([]extension.Extension{*ext}, t.TempDir())
 	bridge.SetUIPromptScope(runner)
-	return &harness{runner: runner, host: h, notify: notify, status: status, actions: actions, ui: ui, bridge: bridge}
+	return &harness{runner: runner, host: h, notify: notify, status: status, actions: actions, ui: ui, bridge: bridge, wire: wire}
 }
 
 // makeSubprocessNodePackedHarness is makeSubprocessNodeHarness's packed-cell
@@ -2680,6 +2858,7 @@ func makeSubprocessNodePackedHarness(t *testing.T) *harness {
 	h := subprocess.NewHost(t.TempDir())
 	h.SetMode(conformanceMode)
 	h.SetUIBridge(bridge)
+	wire := observeWire(h)
 
 	exts, errs := h.LoadAll(context.Background(), []subprocess.ExtConfig{
 		{Name: "node-sdk-fixture", Source: path, Enabled: true},
@@ -2691,7 +2870,7 @@ func makeSubprocessNodePackedHarness(t *testing.T) *harness {
 
 	runner := inproc.NewRunner(exts, t.TempDir())
 	bridge.SetUIPromptScope(runner)
-	return &harness{runner: runner, host: h, notify: notify, status: status, actions: actions, ui: ui, bridge: bridge}
+	return &harness{runner: runner, host: h, notify: notify, status: status, actions: actions, ui: ui, bridge: bridge, wire: wire}
 }
 
 func makeSubprocessPythonHarness(t *testing.T) *harness {
@@ -2711,6 +2890,7 @@ func makeSubprocessPythonHarness(t *testing.T) *harness {
 	h := subprocess.NewHost(t.TempDir())
 	h.SetMode(conformanceMode)
 	h.SetUIBridge(bridge)
+	wire := observeWire(h)
 
 	ext, err := h.Load(context.Background(), subprocess.ExtConfig{
 		Name:            "python-sdk-fixture",
@@ -2724,7 +2904,7 @@ func makeSubprocessPythonHarness(t *testing.T) *harness {
 
 	runner := inproc.NewRunner([]extension.Extension{*ext}, t.TempDir())
 	bridge.SetUIPromptScope(runner)
-	return &harness{runner: runner, host: h, notify: notify, status: status, actions: actions, ui: ui, bridge: bridge}
+	return &harness{runner: runner, host: h, notify: notify, status: status, actions: actions, ui: ui, bridge: bridge, wire: wire}
 }
 
 func makeSubprocessRustHarness(t *testing.T) *harness {
@@ -2744,6 +2924,7 @@ func makeSubprocessRustHarness(t *testing.T) *harness {
 	h := subprocess.NewHost(t.TempDir())
 	h.SetMode(conformanceMode)
 	h.SetUIBridge(bridge)
+	wire := observeWire(h)
 
 	ext, err := h.Load(context.Background(), subprocess.ExtConfig{
 		Name:    "rust-sdk-fixture",
@@ -2756,7 +2937,7 @@ func makeSubprocessRustHarness(t *testing.T) *harness {
 
 	runner := inproc.NewRunner([]extension.Extension{*ext}, t.TempDir())
 	bridge.SetUIPromptScope(runner)
-	return &harness{runner: runner, host: h, notify: notify, status: status, actions: actions, ui: ui, bridge: bridge}
+	return &harness{runner: runner, host: h, notify: notify, status: status, actions: actions, ui: ui, bridge: bridge, wire: wire}
 }
 
 // buildSDKFixture builds the same factory linked by the fused harness, or uses
@@ -2999,8 +3180,8 @@ func TestConformance_SourceMetadata(t *testing.T) {
 
 			for _, tool := range tools {
 				name := tool.Definition.Name
-				source, ok := tool.SourceInfo.(string)
-				if !ok || source == "" {
+				source := tool.Source
+				if source == "" {
 					t.Errorf("tool %q has empty/nil SourceInfo", name)
 					continue
 				}
@@ -3254,7 +3435,7 @@ func TestToolDetailsKeepMemberOrderAcrossSDKs(t *testing.T) {
 			if err != nil {
 				t.Fatalf("ordered_details: %v", err)
 			}
-			final, _ := result.(agent.AgentToolResult)
+			final := result
 			if encoded, err := json.Marshal(final.Details); err != nil || string(encoded) != details {
 				t.Errorf("result details = %s, %v, want %s", encoded, err, details)
 			}
@@ -3309,7 +3490,7 @@ func TestToolSignalAndUpdatesSDKsMatch(t *testing.T) {
 			if err != nil {
 				t.Fatalf("update_tool: %v", err)
 			}
-			if final, _ := result.(agent.AgentToolResult); final.Text() != "done" || !slices.Equal(updates, []string{"step 1", "step 2"}) {
+			if final := result; final.Text() != "done" || !slices.Equal(updates, []string{"step 1", "step 2"}) {
 				t.Fatalf("update_tool updates = %q result = %#v, want [step 1 step 2] then done", updates, result)
 			}
 
@@ -3469,4 +3650,13 @@ func TestConformance_StringWidgetUsesPiTextLayoutInEverySDK(t *testing.T) {
 			})
 		})
 	}
+}
+
+// remoteEditorOfFactory is the editor in an extension's process that factory builds (extension.RemoteEditorFactory); nil for a nil factory.
+func remoteEditorOfFactory(factory extension.EditorFactory) extension.RemoteEditor {
+	if factory == nil {
+		return nil
+	}
+	editor, _ := extension.RemoteEditorOf(factory(nil, tui.EditorTheme{}, nil))
+	return editor
 }

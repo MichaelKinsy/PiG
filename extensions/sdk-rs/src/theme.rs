@@ -181,8 +181,9 @@ impl Theme {
         }
     }
 
-    /// Colors `text` with the foreground of `token`. An unknown token leaves
-    /// the text unstyled.
+    /// Colors `text` with the foreground of `token`. A token the palette lacks
+    /// panics with upstream's `Unknown theme color: <token>` error once the host
+    /// has sent a palette; before that the text stays unstyled.
     pub fn fg(&self, token: &str, text: &str) -> String {
         match self.foregrounds.get(token).filter(|open| !open.is_empty()) {
             Some(open) => {
@@ -194,17 +195,26 @@ impl Theme {
                 };
                 format!("{open}{text}{close}")
             }
-            None => text.to_string(),
+            None => self.unknown_or_unstyled(token, text),
         }
     }
 
-    /// Colors `text` with the background of `token`. An unknown token leaves
-    /// the text unstyled.
+    /// Colors `text` with the background of `token`. A token the palette lacks
+    /// panics with upstream's `Unknown theme color: <token>` error once the host
+    /// has sent a palette; before that the text stays unstyled.
     pub fn bg(&self, token: &str, text: &str) -> String {
         match self.backgrounds.get(token).filter(|open| !open.is_empty()) {
             Some(open) => format!("{open}{text}\x1b[49m"),
-            None => text.to_string(),
+            None => self.unknown_or_unstyled(token, text),
         }
+    }
+
+    /// A token the palette lacks is upstream's `Unknown theme color` throw (theme.ts:374); a theme the host has not sent a palette to has no tokens to lack.
+    fn unknown_or_unstyled(&self, token: &str, text: &str) -> String {
+        if self.foregrounds.is_empty() && self.backgrounds.is_empty() {
+            return text.to_string();
+        }
+        panic!("Unknown theme color: {token}");
     }
 
     pub fn bold(&self, text: &str) -> String {
@@ -238,13 +248,13 @@ impl Theme {
     }
 
     /// The background escape sequence of `color`, or upstream's
-    /// `Unknown theme background color: <color>` error.
+    /// `Unknown theme color: <color>` error.
     pub fn get_bg_ansi(&self, color: &str) -> Result<String, String> {
         self.backgrounds
             .get(color)
             .filter(|ansi| !ansi.is_empty())
             .cloned()
-            .ok_or_else(|| format!("Unknown theme background color: {color}"))
+            .ok_or_else(|| format!("Unknown theme color: {color}"))
     }
 
     /// The background the theme is designed for, or `None` before the host has sent a palette. The host resolves it with the palette (upstream `Theme.appearance`).
@@ -389,7 +399,6 @@ mod tests {
         assert_eq!(theme.name, "dark");
         assert_eq!(theme.source_path.as_deref(), Some("/themes/dark.json"));
         assert_eq!(theme.fg("accent", "x"), "\x1b[38;5;1mx\x1b[39m");
-        assert_eq!(theme.fg("missing", "x"), "x");
         assert_eq!(theme.bg("selectedBg", "x"), "\x1b[48;5;2mx\x1b[49m");
         assert_eq!(theme.bold("x"), "\x1b[1mx\x1b[22m");
         assert_eq!(theme.strikethrough("x"), "\x1b[9mx\x1b[29m");
@@ -400,11 +409,10 @@ mod tests {
         );
         assert_eq!(
             theme.get_bg_ansi("nope").unwrap_err(),
-            "Unknown theme background color: nope"
+            "Unknown theme color: nope"
         );
         assert_eq!(theme.get_color_mode(), "256color");
         assert_eq!(theme.get_thinking_border_color("high")("t"), "<h>t\x1b[39m");
-        assert_eq!(theme.get_thinking_border_color("bogus")("t"), "t");
         assert_eq!(theme.get_bash_mode_border_color()("t"), "<b>t\x1b[39m");
 
         let plain = Theme::from_palette(&json!({"modifiers": false, "sourcePath": ""}));
@@ -587,6 +595,26 @@ mod tests {
         ] {
             assert_eq!(theme.style("x", &style), Err(want.to_string()), "{style:?}");
         }
+    }
+
+    // theme.ts:361-376: fg and bg throw `Unknown theme color: <token>` for a token the palette lacks, one of the other slot included. Before any palette arrives the text stays unstyled.
+    #[test]
+    fn fg_and_bg_panic_for_an_unknown_token() {
+        let theme = Theme::from_palette(&json!({
+            "foregrounds": {"success": "\x1b[38;5;2m"},
+            "backgrounds": {"toolSuccessBg": "\x1b[48;5;4m"},
+            "modifiers": true,
+            "mode": "256color"
+        }));
+        for (slot, token) in [("fg", "notAToken"), ("fg", "toolSuccessBg"), ("bg", "notAToken"), ("bg", "success")] {
+            let caught = std::panic::catch_unwind(|| {
+                if slot == "fg" { theme.fg(token, "x") } else { theme.bg(token, "x") }
+            });
+            let message = caught.expect_err("an unknown token panics").downcast::<String>().expect("a formatted message");
+            assert_eq!(*message, format!("Unknown theme color: {token}"));
+        }
+        assert_eq!(theme.get_bg_ansi("notAToken"), Err("Unknown theme color: notAToken".to_string()));
+        assert_eq!(Theme::default().fg("accent", "x"), "x");
     }
 
     // Pi 0.99.2 theme.ts:363 closes a faint token's foreground with SGR 22;39; the host opens it with SGR 2

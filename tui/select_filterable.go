@@ -65,6 +65,9 @@ type FilterableList struct {
 	// clipped to MaxWidth, matching upstream SelectListLayoutOptions.
 	TruncatePrimary func(context SelectListTruncatePrimaryContext) string
 
+	// ScrollInfo styles the "(n/total)" line, as the scrollInfo function of upstream's SelectListTheme does. Nil styles it muted, the default theme's choice.
+	ScrollInfo func(text string) string
+
 	// MaxVisible bounds the visible window. Mirrors upstream
 	// SelectList.maxVisible. Defaults to 20.
 	MaxVisible int
@@ -99,6 +102,12 @@ func NewFilterableList(title string, labels []string) *FilterableList {
 
 // Done reports whether the user has confirmed or cancelled.
 func (f *FilterableList) Done() bool { return f.done }
+
+// Reset clears the confirmed or cancelled state, so a host that reacts to each confirm or cancel as upstream's per-key onSelect and
+// onCancel callbacks do sees only the key that caused it.
+func (f *FilterableList) Reset() {
+	f.done, f.cancelled, f.selectedIndex = false, false, -1
+}
 
 // FilterText returns the current filter query typed by the user.
 // Used by ShowExtensionEditor to retrieve free-text input.
@@ -168,7 +177,12 @@ func (f *FilterableList) Render(width int) []string {
 	// Scroll indicator when list is larger than the visible window.
 	if start > 0 || end < len(f.filtered) {
 		scrollText := fmt.Sprintf("  (%d/%d)", f.cursor+1, len(f.filtered))
-		lines = append(lines, fg(muted, widthx.TruncateToWidth(scrollText, width-2, "", false)))
+		scrollText = widthx.TruncateToWidth(scrollText, width-2, "", false)
+		if f.ScrollInfo != nil {
+			lines = append(lines, f.ScrollInfo(scrollText))
+		} else {
+			lines = append(lines, fg(muted, scrollText))
+		}
 	}
 
 	return lines
@@ -379,22 +393,8 @@ func (f *FilterableList) HandleInput(data string) {
 	// ~/.pig/keybindings.json (tui.select.* / tui.input.*) take effect
 	// here. Mirrors upstream filterable-list.ts handleInput dispatch.
 	kb := GetTUIKeybindings()
+	// up and down are checked before confirm and cancel, as in upstream SelectList, so a key bound to two actions keeps the earlier one.
 	switch {
-	case kb.Matches(data, KBSelectCancel):
-		f.cancelled = true
-		f.done = true
-		f.selectedIndex = -1
-		if f.onCancel != nil {
-			f.onCancel()
-		}
-	case kb.Matches(data, KBSelectConfirm):
-		if len(f.filtered) > 0 && f.cursor < len(f.filtered) {
-			f.selectedIndex = f.filtered[f.cursor]
-			f.done = true
-			if f.onSelect != nil {
-				f.onSelect(f.selectedIndex)
-			}
-		}
 	case f.EnableSearch && (data == "\x7f" || data == "\b"): // Backspace: filter edit
 		if len(f.filter) > 0 {
 			f.filter = f.filter[:len(f.filter)-1]
@@ -420,6 +420,21 @@ func (f *FilterableList) HandleInput(data string) {
 			} else {
 				f.moveCursor(1)
 			}
+		}
+	case kb.Matches(data, KBSelectConfirm):
+		if len(f.filtered) > 0 && f.cursor < len(f.filtered) {
+			f.selectedIndex = f.filtered[f.cursor]
+			f.done = true
+			if f.onSelect != nil {
+				f.onSelect(f.selectedIndex)
+			}
+		}
+	case kb.Matches(data, KBSelectCancel):
+		f.cancelled = true
+		f.done = true
+		f.selectedIndex = -1
+		if f.onCancel != nil {
+			f.onCancel()
 		}
 	case f.EnableSearch && kb.Matches(data, KBSelectPageUp):
 		f.moveCursor(-10)

@@ -19,7 +19,7 @@ func TestExtensionSignalIsTheAgentRunSignal(t *testing.T) {
 	started := make(chan context.Context, 1)
 	m := &InteractiveMode{}
 	// The agent is installed as a Session binding installs it: extensionSignal reads the extension-facing reference setAgent publishes.
-	m.setAgent(agent.NewAgent(agent.AgentOptions{
+	m.setAgent(mustNewAgent(agent.AgentOptions{
 		Model: &ai.Model{ID: "blocking"},
 		StreamFn: func(ctx context.Context, _ *ai.Model, _ ai.TranscriptContext, _ ai.StreamOptions) (*ai.AssistantMessageEventStream, error) {
 			started <- ctx
@@ -78,7 +78,7 @@ func quickAgentStream(context.Context, *ai.Model, ai.TranscriptContext, ai.Strea
 }
 
 func quickAgent() *agent.Agent {
-	return agent.NewAgent(agent.AgentOptions{Model: &ai.Model{ID: "quick"}, StreamFn: quickAgentStream})
+	return mustNewAgent(agent.AgentOptions{Model: &ai.Model{ID: "quick"}, StreamFn: quickAgentStream})
 }
 
 // Pi reads `this.agent.signal` when the extension asks (agent-session.ts:3368, agent.ts:336-338), so every extension runtime sees a run begin and end the moment it does.
@@ -135,10 +135,10 @@ var _ runSignalNotifier = (*subprocess.UIBridge)(nil)
 // A Session replacement runs applyRuntimeSettings on the main loop (interactive_rebind.go): it must publish the replacement's agent to the extension host and report that agent's runs to the bridge the replacement installed.
 func TestApplyRuntimeSettingsPublishesTheReplacementAgentToTheExtensionHost(t *testing.T) {
 	model := &ai.Model{ID: "m", DisplayName: "m", Capabilities: ai.ModelCapabilities{ContextWindow: 8000}}
-	m := NewInteractiveMode(InteractiveOptions{CWD: t.TempDir(), Model: model})
+	m := NewInteractiveMode(nil, InteractiveModeOptions{CWD: t.TempDir(), Model: model})
 	bridge := &runSignalBridge{signal: m.extensionSignal}
 	m.opts.SubprocessUIBridge = bridge
-	replacement := agent.NewAgent(agent.AgentOptions{Model: model, StreamFn: quickAgentStream})
+	replacement := mustNewAgent(agent.AgentOptions{Model: model, StreamFn: quickAgentStream})
 	m.opts.SessionHandle = &replacementRecordingHandle{recordingCompactHandle: &recordingCompactHandle{agent: replacement}}
 	m.applyRuntimeSettings()
 	_, _ = replacement.Send(t.Context(), "work")

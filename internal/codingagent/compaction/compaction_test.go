@@ -1,5 +1,8 @@
 package compaction
 
+// pi: packages/coding-agent/src/core/compaction/utils.ts
+// pi: packages/coding-agent/src/core/compaction/compaction.ts
+
 import (
 	"context"
 	"encoding/json"
@@ -7,6 +10,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/MichaelKinsy/PiG/internal/sessionentry"
 
 	"github.com/MichaelKinsy/PiG/agent"
 	"github.com/MichaelKinsy/PiG/ai"
@@ -25,7 +30,7 @@ func mustSessionEntry(t *testing.T, v map[string]any) codingagent.SessionEntry {
 	if err := json.Unmarshal(raw, &base); err != nil {
 		t.Fatalf("unmarshal base: %v", err)
 	}
-	return codingagent.NewSessionEntry(raw, base)
+	return sessionentry.DecodeSessionEntry(raw)
 }
 
 func userEntry(id, text string) map[string]any {
@@ -95,10 +100,10 @@ func TestCapMaxTokens(t *testing.T) {
 }
 
 func TestCompactMissingFirstKeptEntryMatchesUpstreamError(t *testing.T) {
-	_, err := Compact(t.Context(), CompactionPreparation{
+	_, err := CompactUsing(t.Context(), CompactionPreparation{
 		MessagesToSummarize: []agent.AgentMessage{{User: &agent.UserMessage{Role: "user"}}},
 		Settings:            CompactionSettings{ReserveTokens: 100},
-	}, &ai.Model{}, &fakeCompleter{response: "summary"}, nil, "", "", nil, "")
+	}, &ai.Model{}, "", nil, "", "", &fakeCompleter{response: "summary"}, nil, nil, nil, ai.RetryCallbacks{}, "")
 	if err == nil || err.Error() != "First kept entry has no UUID - session may need migration" {
 		t.Fatalf("Compact() error = %v", err)
 	}
@@ -152,7 +157,7 @@ func TestBashExecutionCutPoint(t *testing.T) {
 	// Must include the bash_execution entry at index 2.
 	found := false
 	for _, idx := range pts {
-		if entries[idx].Base.Type == "bash_execution" {
+		if entries[idx].Base().Type == "bash_execution" {
 			found = true
 		}
 	}
@@ -190,8 +195,8 @@ func TestFindCutPoint(t *testing.T) {
 
 	// The cut entry must never be a tool_result message.
 	cutEntry := entries[cut.FirstKeptEntryIndex]
-	if cutEntry.Base.Type == "message" {
-		me, ok := cutEntry.AsMessage()
+	if cutEntry.Base().Type == "message" {
+		me, ok := cutEntry.(codingagent.MessageEntry)
 		if ok && me.Message.ToolResult != nil {
 			t.Errorf("cut landed on a tool_result entry at index %d", cut.FirstKeptEntryIndex)
 		}
@@ -366,7 +371,7 @@ func TestCompactCustomInstructionsReachSummaryPrompt(t *testing.T) {
 		}}},
 		Settings: CompactionSettings{ReserveTokens: 1000},
 	}
-	if _, err := Compact(context.Background(), prep, &ai.Model{}, completer, nil, "Keep exact file names", "", nil, ""); err != nil {
+	if _, err := CompactUsing(context.Background(), prep, &ai.Model{}, "", nil, "Keep exact file names", "", completer, nil, nil, nil, ai.RetryCallbacks{}, ""); err != nil {
 		t.Fatal(err)
 	}
 	if !strings.Contains(prompt.String(), "Additional focus: Keep exact file names") {
@@ -399,7 +404,7 @@ func TestCompactSplitTurnAwaitsHistoryBeforePrefix(t *testing.T) {
 	}
 	done := make(chan error, 1)
 	go func() {
-		_, err := Compact(context.Background(), prep, &ai.Model{}, completer, nil, "", "", nil, "")
+		_, err := CompactUsing(context.Background(), prep, &ai.Model{}, "", nil, "", "", completer, nil, nil, nil, ai.RetryCallbacks{}, "")
 		done <- err
 	}()
 
@@ -438,7 +443,7 @@ func TestCompactTurnPrefixCancellationSurfacesUpstreamError(t *testing.T) {
 		Settings:    CompactionSettings{ReserveTokens: 1000},
 	}
 	completer := &cancelledCompleter{}
-	_, err := Compact(context.Background(), prep, &ai.Model{}, completer, nil, "", "", nil, "")
+	_, err := CompactUsing(context.Background(), prep, &ai.Model{}, "", nil, "", "", completer, nil, nil, nil, ai.RetryCallbacks{}, "")
 	if err == nil {
 		t.Fatal("Compact error = nil")
 	}
@@ -472,7 +477,7 @@ func TestCompact_UsesMaxTokensBudget(t *testing.T) {
 	fc := &fakeCompleter{response: "## Summary\nThis is the summary."}
 	model := &ai.Model{ID: "fake-model", Capabilities: ai.ModelCapabilities{MaxOutputTokens: 600}}
 
-	result, err := Compact(context.Background(), prep, model, fc, nil, "", "", nil, "")
+	result, err := CompactUsing(context.Background(), prep, model, "", nil, "", "", fc, nil, nil, nil, ai.RetryCallbacks{}, "")
 	if err != nil {
 		t.Fatalf("Compact returned error: %v", err)
 	}
@@ -504,7 +509,7 @@ func TestCompact_UsesStreamFnWhenProvided(t *testing.T) {
 		return "stream summary", nil, nil
 	}
 
-	result, err := Compact(context.Background(), *prep, &ai.Model{}, completer, streamFn, "", "", nil, "")
+	result, err := CompactUsing(context.Background(), *prep, &ai.Model{}, "", nil, "", "", completer, streamFn, nil, nil, ai.RetryCallbacks{}, "")
 	if err != nil {
 		t.Fatalf("Compact: %v", err)
 	}
@@ -519,6 +524,7 @@ func TestCompact_UsesStreamFnWhenProvided(t *testing.T) {
 	}
 }
 
+// Pi: packages/coding-agent/src/core/compaction/utils.ts:13 (FileOperations.read).
 func TestCompact_FakeCompleter(t *testing.T) {
 	prep := CompactionPreparation{
 		FirstKeptEntryID: "kept-entry-1",
@@ -539,7 +545,7 @@ func TestCompact_FakeCompleter(t *testing.T) {
 	fc := &fakeCompleter{response: "## Summary\nThis is the summary."}
 	model := &ai.Model{ID: "fake-model"}
 
-	result, err := Compact(context.Background(), prep, model, fc, nil, "", "", nil, "")
+	result, err := CompactUsing(context.Background(), prep, model, "", nil, "", "", fc, nil, nil, nil, ai.RetryCallbacks{}, "")
 	if err != nil {
 		t.Fatalf("Compact returned error: %v", err)
 	}
@@ -582,7 +588,7 @@ func TestCompactPropagatesUsage(t *testing.T) {
 		Settings: CompactionSettings{ReserveTokens: 1000},
 	}
 	fc := &fakeCompleter{response: "summary", usage: &ai.Usage{Input: 42, Output: 7}}
-	result, err := Compact(context.Background(), prep, &ai.Model{}, fc, nil, "", "", nil, "")
+	result, err := CompactUsing(context.Background(), prep, &ai.Model{}, "", nil, "", "", fc, nil, nil, nil, ai.RetryCallbacks{}, "")
 	if err != nil {
 		t.Fatalf("Compact: %v", err)
 	}

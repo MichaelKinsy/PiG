@@ -5,6 +5,8 @@ import (
 	"os"
 	"sync"
 	"time"
+
+	"github.com/MichaelKinsy/PiG/internal/configroot"
 )
 
 var (
@@ -25,12 +27,11 @@ func renderCaptureOn() bool {
 // count changed. Gated by PIG_RENDER_DEBUG. The two buffers can be replayed
 // through the scroll-aware VT in render_grow_test.go to reproduce (or rule out)
 // a transient stale-row artifact deterministically, so a fix can be proven
-// rather than guessed. Appends to $PIG_HOME/agent/pig-render.log (or ~/.pig/...).
+// rather than guessed. Appends to agent/pig-render.log under the config root (internal/configroot).
 func appendRenderCapture(prevLines, newLines []string, firstChanged, lastChanged, hwCursorRow, prevViewportTop, height int) {
-	dir := os.Getenv("PIG_HOME")
-	if dir == "" {
-		home, _ := os.UserHomeDir()
-		dir = home + "/.pig"
+	dir, err := configroot.Resolve()
+	if err != nil {
+		return
 	}
 	if err := os.MkdirAll(dir+"/agent", 0o755); err != nil {
 		return

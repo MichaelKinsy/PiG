@@ -80,7 +80,7 @@ func compactionSettings(settings *codingagent.SettingsManager) *harness.Compacti
 
 func retrySettings(settings *codingagent.SettingsManager) *harness.RetryPolicyPatch {
 	retry := settings.GetRetrySettings()
-	return &harness.RetryPolicyPatch{Enabled: &retry.Enabled, MaxRetries: &retry.MaxRetries, BaseDelayMs: &retry.BaseDelayMs, MaxAgentDelayMs: &retry.MaxDelayMs}
+	return &harness.RetryPolicyPatch{Enabled: &retry.Enabled, MaxRetries: &retry.MaxRetries, BaseDelayMs: &retry.BaseDelayMs, MaxAgentDelayMs: &retry.MaxAgentDelayMs}
 }
 
 // CreateCodingRegistry is a registry with pi's coding tools and system prompt.
@@ -154,7 +154,7 @@ type InitialModel struct {
 type DefaultModelSettings interface {
 	GetDefaultProvider() string
 	GetDefaultModel() string
-	GetDefaultThinkingLevel() string
+	GetDefaultThinkingLevel() ai.ThinkingLevel
 }
 
 // FindInitialAgentModel is the model a new root conversation starts with: an explicit --provider/--model, or pi's default resolution (harness-setup.ts:93-124).
@@ -168,12 +168,12 @@ func FindInitialAgentModel(selection ModelSelection, settings DefaultModelSettin
 			}
 			return InitialModel{}, errors.New("Could not resolve model: " + message)
 		}
-		return InitialModel{Model: &durable.ModelRef{Provider: resolved.Model.Provider, ModelId: resolved.Model.ID}, ThinkingLevel: resolved.ThinkingLevel}, nil
+		return InitialModel{Model: &durable.ModelRef{Provider: resolved.Model.Provider, ModelId: resolved.Model.ID}, ThinkingLevel: string(resolved.ThinkingLevel)}, nil
 	}
 	initial, err := codingagent.FindInitialModel(codingagent.FindInitialModelOptions{
 		ModelRuntime: selection, IsContinuing: false,
 		DefaultProvider: settings.GetDefaultProvider(), DefaultModelId: settings.GetDefaultModel(),
-		DefaultThinkingLevel: settings.GetDefaultThinkingLevel(),
+		DefaultThinkingLevel: string(settings.GetDefaultThinkingLevel()),
 	})
 	if err != nil {
 		return InitialModel{}, err

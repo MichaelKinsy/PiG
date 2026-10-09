@@ -63,28 +63,7 @@ func ToolResultEventOverride(result *extension.ToolResultEventResult) agent.Afte
 		// upstream: agent-loop.ts:884 `afterResult.details ?? result.details`: null details keep the tool's own.
 		details = nil
 	}
-	return agent.AfterToolCallResult{Content: content, Details: details, StructuredContent: result.StructuredContent, IsError: result.IsError, Usage: toolResultUsage(result.Usage)}
-}
-
-// toolResultUsage decodes a handler's usage override; nil keeps the tool's own.
-func toolResultUsage(value any) *ai.Usage {
-	switch usage := value.(type) {
-	case nil:
-		return nil
-	case *ai.Usage:
-		return usage
-	case ai.Usage:
-		return &usage
-	}
-	raw, err := json.Marshal(value)
-	if err != nil {
-		return nil
-	}
-	var usage ai.Usage
-	if json.Unmarshal(raw, &usage) != nil {
-		return nil
-	}
-	return &usage
+	return agent.AfterToolCallResult{Content: content, Details: details, StructuredContent: result.StructuredContent, IsError: result.IsError, Usage: result.Usage}
 }
 
 // toolResultBlockFields returns a content block's JSON object fields. A value

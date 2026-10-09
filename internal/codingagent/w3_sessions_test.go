@@ -23,7 +23,7 @@ func TestInteractiveCloneUnsavedRefusesWithoutWriting(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err = sess.AppendThinkingLevelChange("off"); err != nil {
+	if _, err = sess.AppendThinkingLevelChange("off"); err != nil {
 		t.Fatal(err)
 	}
 	m.opts.SessionHandle.ReplaceInner(sess)
@@ -136,14 +136,14 @@ func TestForkUnsavedRefusalPreservesSource(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := sess.AppendThinkingLevelChange("off"); err != nil {
+	if _, err := sess.AppendThinkingLevelChange("off"); err != nil {
 		t.Fatal(err)
 	}
-	leaf := *sess.LeafID()
+	leaf := *sess.GetLeafID()
 	if err := sess.CheckSavedForFork(); err == nil || err.Error() != unsavedForkMessage {
 		t.Fatalf("setup-only session: err=%v", err)
 	}
-	if sm.Current() != sess || *sess.LeafID() != leaf {
+	if sm.Current() != sess || *sess.GetLeafID() != leaf {
 		t.Fatal("failed check mutated source")
 	}
 	files, err := os.ReadDir(sm.SessionDir())

@@ -1,6 +1,9 @@
 package ai
 
-import "testing"
+import (
+	"reflect"
+	"testing"
+)
 
 func TestAdjustMaxTokensForThinking(t *testing.T) {
 	cases := []struct {
@@ -55,5 +58,67 @@ func TestTransportConstants(t *testing.T) {
 	}
 	if API("xiaomi") != "xiaomi" {
 		t.Fatalf("API(xiaomi) = %q, want xiaomi", API("xiaomi"))
+	}
+}
+
+// packages/ai/src/api/simple-options.ts buildBaseOptions: maxTokens = clampMaxTokensToContext(model, context, options?.maxTokens ?? model.maxTokens); samplingParams = resolveSamplingParams(model, options?.reasoning ?? "off", options?.samplingParams); apiKey = apiKey || options?.apiKey; every other field is carried.
+func TestBuildBaseOptions(t *testing.T) {
+	model := &Model{
+		Capabilities:                  ModelCapabilities{ContextWindow: 8192, MaxOutputTokens: 100_000},
+		SamplingParams:                SamplingParams{"temperature": 0.5},
+		SamplingParamsByThinkingLevel: SamplingParamsByThinkingLevel{"off": {"top_k": 4}, "high": {"top_k": 9}},
+		ProviderMeta:                  ProviderMetadata{Reasoning: true},
+	}
+	empty := NormalizeContext(Context{})
+	cases := []struct {
+		name    string
+		options StreamOptions
+		apiKey  string
+		check   func(t *testing.T, got StreamOptions)
+	}{
+		{"unset maxTokens is the model maximum, clamped to the window", StreamOptions{}, "", func(t *testing.T, got StreamOptions) {
+			if want := 8192 - contextSafetyTokens; got.MaxTokens != want {
+				t.Errorf("MaxTokens = %d, want %d", got.MaxTokens, want)
+			}
+		}},
+		{"a requested budget that fits is kept", StreamOptions{MaxTokens: 1000}, "", func(t *testing.T, got StreamOptions) {
+			if got.MaxTokens != 1000 {
+				t.Errorf("MaxTokens = %d, want 1000", got.MaxTokens)
+			}
+		}},
+		{"unset reasoning resolves the off level's sampling parameters", StreamOptions{}, "", func(t *testing.T, got StreamOptions) {
+			if want := (SamplingParams{"temperature": 0.5, "top_k": 4}); !reflect.DeepEqual(got.SamplingParams, want) {
+				t.Errorf("SamplingParams = %v, want %v", got.SamplingParams, want)
+			}
+		}},
+		{"the reasoning level selects its own sampling parameters and the request wins", StreamOptions{Thinking: ThinkingLevel(ThinkingHigh), SamplingParams: SamplingParams{"temperature": 0.1}}, "", func(t *testing.T, got StreamOptions) {
+			if want := (SamplingParams{"temperature": 0.1, "top_k": 9}); !reflect.DeepEqual(got.SamplingParams, want) {
+				t.Errorf("SamplingParams = %v, want %v", got.SamplingParams, want)
+			}
+		}},
+		{"apiKey replaces the option's key", StreamOptions{APIKey: "from-options"}, "from-caller", func(t *testing.T, got StreamOptions) {
+			if got.APIKey != "from-caller" {
+				t.Errorf("APIKey = %q", got.APIKey)
+			}
+		}},
+		{"an empty apiKey keeps the option's key", StreamOptions{APIKey: "from-options"}, "", func(t *testing.T, got StreamOptions) {
+			if got.APIKey != "from-options" {
+				t.Errorf("APIKey = %q", got.APIKey)
+			}
+		}},
+		{"other fields are carried", StreamOptions{SessionID: "s1", Headers: map[string]*string{}, Thinking: ThinkingLevel(ThinkingHigh)}, "", func(t *testing.T, got StreamOptions) {
+			if got.SessionID != "s1" || got.Headers == nil || got.Thinking != ThinkingLevel(ThinkingHigh) {
+				t.Errorf("options = %+v", got)
+			}
+		}},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			before := tc.options
+			tc.check(t, BuildBaseOptions(model, empty, tc.options, tc.apiKey))
+			if !reflect.DeepEqual(before, tc.options) {
+				t.Error("the caller's options were modified")
+			}
+		})
 	}
 }

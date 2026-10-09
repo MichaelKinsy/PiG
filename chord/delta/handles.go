@@ -1,7 +1,7 @@
 package delta
 
 import (
-	"maps"
+	"errors"
 	"slices"
 	"sort"
 	"strconv"
@@ -74,21 +74,19 @@ func (object *Object) Array(key string) *Array {
 	return result
 }
 
-// Keys returns the present keys in JavaScript's own-key order: integer-like keys ascending, then the other keys. The
-// other keys are the base keys in sorted order (a Go map has no insertion order), then keys added by this change in
-// write order; a key deleted and added again counts as added.
+// Keys returns the present keys in JavaScript's own-key order: array-index keys ascending, then the other keys in draft order: the base keys in their order, then keys added by this change in write order; a key deleted and added again counts as added.
 func (object *Object) Keys() []string {
 	defer object.n.lock()()
 	n := object.n
-	base := n.base.(map[string]any)
-	keys := make([]string, 0, len(base)+len(n.order))
-	for _, key := range slices.Sorted(maps.Keys(base)) {
+	base := n.base.(*JsonObject)
+	keys := make([]string, 0, base.Len()+len(n.order))
+	for key := range base.All() {
 		if !n.deletes[key] && !n.readded[key] {
 			keys = append(keys, key)
 		}
 	}
 	for _, key := range n.writtenKeys() {
-		if _, inBase := base[key]; inBase && !n.readded[key] {
+		if base.Has(key) && !n.readded[key] {
 			continue
 		}
 		keys = append(keys, key)
@@ -160,9 +158,9 @@ func (object *Object) Delete(key string) {
 // Snapshot returns a detached copy of the draft's present content. Changing
 // the copy never changes the draft, its pending placements, or the base
 // revision, as a value read out of upstream's Proxy draft cannot write through.
-func (object *Object) Snapshot() map[string]any {
+func (object *Object) Snapshot() *JsonObject {
 	defer object.n.lock()()
-	value, _ := copyTrusted(object.n.current()).(map[string]any)
+	value, _ := copyTrusted(object.n.current()).(*JsonObject)
 	return value
 }
 
@@ -220,7 +218,22 @@ func (array *Array) Set(index int, value any) error {
 		n.structural = true
 	} else {
 		e := n.entries[index]
+		if !isContainer(stored) {
+			// Writing the value a slot already holds changes nothing; writing a base element's own value back drops its override (tracker.ts setArrayIndex).
+			if current := n.entryValue(e); !isContainer(current) && current == stored {
+				return nil
+			}
+			if e.index >= 0 && n.base.([]any)[e.index] == stored {
+				e.set, e.value, e.setSeq = false, nil, 0
+				n.markChanged()
+				return nil
+			}
+		}
 		e.value = n.wrap(stored, "", e)
+		if !e.set {
+			n.ctx.writeSeq++
+			e.setSeq = n.ctx.writeSeq
+		}
 		e.set = true
 	}
 	n.markChanged()
@@ -256,10 +269,7 @@ func (n *node) splice(start, remove int, stored []any) []any {
 		inserted[index] = n.newEntry(value)
 	}
 	// A nil entry list means an untouched array (ensureEntries), so an emptied array keeps a non-nil empty list.
-	entries := make([]*entry, 0, len(n.entries)-remove+len(inserted))
-	entries = append(entries, n.entries[:start]...)
-	entries = append(entries, inserted...)
-	n.entries = append(entries, n.entries[start+remove:]...)
+	n.entries = slices.Replace(n.entries, start, start+remove, inserted...)
 	if remove > 0 || len(inserted) > 0 {
 		n.structural = true
 		n.markChanged()
@@ -371,6 +381,38 @@ func (array *Array) Reverse() {
 	slices.Reverse(n.entries)
 	n.structural = true
 	n.markChanged()
+}
+
+// Reorder rearranges the elements so that the element now at position i is the one that was at permutation[i], the
+// permutation of the "m" operation. It is the sort and reverse of tracker.ts with the resulting order given directly.
+// permutation must name every current position exactly once.
+func (array *Array) Reorder(permutation []int) error {
+	defer array.n.lock()()
+	n := array.n
+	n.ensureEntries()
+	if len(permutation) != len(n.entries) {
+		return errors.New("permutation length does not match the array length")
+	}
+	seen := make([]bool, len(permutation))
+	for _, position := range permutation {
+		if position < 0 || position >= len(seen) || seen[position] {
+			return errors.New("permutation must name every array position exactly once")
+		}
+		seen[position] = true
+	}
+	if !n.attached() {
+		return nil
+	}
+	reordered := make([]*entry, len(permutation))
+	for position, source := range permutation {
+		reordered[position] = n.entries[source]
+	}
+	if !slices.Equal(reordered, n.entries) {
+		n.entries = reordered
+		n.structural = true
+		n.markChanged()
+	}
+	return nil
 }
 
 // clampIndex is tracker.ts clampIndex: a negative index counts from the end, and the result lies in [0, length].

@@ -1,5 +1,7 @@
 package routing_test
 
+// pi: packages/server/src/server.ts
+
 import (
 	"context"
 	"encoding/json"
@@ -127,6 +129,7 @@ func (attachment *countingServerAttachment) Release(context.Context) error {
 	return nil
 }
 
+// mutation-checked: negating the condition `value := r.hosted[id]; value != nil` at session_router.go:246 fails it.
 func TestSessionProtocol(t *testing.T) {
 	// upstream: packages/server/test/conformance.test.ts:81 "handshake identifies the logical server without listing sessions"
 	t.Run("handshake identifies the logical server without listing sessions", func(t *testing.T) {
@@ -498,6 +501,7 @@ func (attachment bareAttachment) Release(context.Context) error {
 // routerIsDraining reports that the Session router's close has snapshotted its in-flight acquisitions and is waiting on them. Upstream's event loop orders that snapshot ahead of the gate release; Go schedules the two independently.
 func routerIsDraining() bool { return goroutinesBlockedIn("SessionRouter[...]).closeInternal(") > 0 }
 
+// mutation-checked: negating the condition `failure != nil` at host.go:262 fails it.
 func TestRoutedSessionAcquisitionFailures(t *testing.T) {
 	// upstream: packages/server/test/conformance.test.ts:398 "releases a lease acquired concurrently with Harness termination"
 	t.Run("releases a lease acquired concurrently with Harness termination", func(t *testing.T) {

@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/ai"
+	"github.com/MichaelKinsy/PiG/chord/delta"
 )
 
 func mustJSON(t *testing.T, value any) string {
@@ -72,7 +73,8 @@ func TestEntryRecordRoundTripsMessagesByRole(t *testing.T) {
 	if err := json.Unmarshal([]byte(`{"id":5,"conversationId":1,"kind":"note","data":{"a":1}}`), &display); err != nil {
 		t.Fatal(err)
 	}
-	if display.Model != nil || !reflect.DeepEqual(display.Data, map[string]any{"a": float64(1)}) {
+	// Data holds the text's object, keys in order, as JSON.parse gives Pi.
+	if display.Model != nil || !reflect.DeepEqual(display.Data, delta.JsonObjectOf("a", float64(1))) {
 		t.Fatalf("display = %#v", display)
 	}
 }
@@ -108,5 +110,33 @@ func TestDecodeUserContentAcceptsTextAndBlocks(t *testing.T) {
 	}
 	if typed, ok := blocks.(ai.UserContentBlocks); !ok || len(typed) != 1 || typed[0].(ai.TextContent).Text != "a" {
 		t.Fatalf("blocks = %#v", blocks)
+	}
+}
+
+// A delta DocumentContent decoded from JSON keeps the key order of the objects its operations carry, as Pi's storage JSON.parse does (types.ts DocumentContent; storage/sqlite/storage.ts:63). A Go map would list them sorted.
+//
+// mutation-checked: decoding Ops as a plain []Op fails it.
+func TestDocumentContentDecodesOperationObjectsInKeyOrder(t *testing.T) {
+	const text = `{"version":2,"kind":"delta","ops":[["s",["a"],{"z":1,"b":{"y":2,"c":3}}],["r",{"q":1,"p":2}]]}`
+	var content DocumentContent
+	if err := json.Unmarshal([]byte(text), &content); err != nil {
+		t.Fatal(err)
+	}
+	if _, ordered := content.Ops[0][2].(JsonObject); !ordered {
+		t.Fatalf("operation payload is %T, want an ordered JsonObject", content.Ops[0][2])
+	}
+	encoded, err := json.Marshal(content)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(encoded) != text {
+		t.Fatalf("round trip = %s, want %s", encoded, text)
+	}
+	var base DocumentContent
+	if err := json.Unmarshal([]byte(`{"version":1,"kind":"base","value":{"z":1,"a":2}}`), &base); err != nil {
+		t.Fatal(err)
+	}
+	if encoded, _ := json.Marshal(base); string(encoded) != `{"version":1,"kind":"base","value":{"z":1,"a":2}}` {
+		t.Fatalf("base round trip = %s", encoded)
 	}
 }

@@ -1,0 +1,26 @@
+# Upstream evidence: Pi 1.1.0 packages/tui/src/components/cancellable-loader.ts:37-39 (dispose() calls stop()) driven on a real CancellableLoader.
+# The loader animates, dispose() freezes the rendered frame for a further 250ms, and neither aborted nor onAbort changes; a second dispose is harmless.
+# Pig's probe starts the animation with Start (Pi's constructor does it through setIndicator; Pig's host otherwise drives frames with Tick).
+# Exact equality of the JSON observation line; no normalization. Before the fix Dispose was an empty method and the animation kept running.
+name = "27-cancellable-loader-dispose"
+description = "CancellableLoader.dispose stops the animation and leaves the abort state alone."
+covers = ["packages/tui/src/components/cancellable-loader.ts"]
+tags = ["fast", "hermetic", "tui"]
+driver = "cli-mode"
+
+[env]
+override_base_args = true
+pig_bin = "/usr/bin/env"
+pi_bin = "/usr/bin/env"
+pig_args = ["node", "./test/parity/testdata/cancellable-loader-dispose-pig.mjs"]
+pi_args = ["node", "./test/parity/testdata/cancellable-loader-dispose-pi.mjs"]
+
+[cli]
+cwd = "../../../.."
+timeout_seconds = 120
+
+[assert]
+exit_code = 0
+output_equal = true
+both_contain = ['"animated":true', '"frozenAfterDispose":true', '"aborted":false,"onAbortCalls":0']
+runs = 3

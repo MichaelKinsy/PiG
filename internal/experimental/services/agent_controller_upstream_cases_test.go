@@ -6,6 +6,7 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/MichaelKinsy/PiG/durable"
 	"github.com/MichaelKinsy/PiG/durable/harness"
 	"github.com/MichaelKinsy/PiG/internal/chord"
 	"github.com/MichaelKinsy/PiG/internal/experimental/durableadapter"
@@ -44,7 +45,7 @@ func viewOf(t *testing.T, conversation *durableadapter.Session) services.Convers
 func inboxModes(t *testing.T, view services.ConversationView) []string {
 	t.Helper()
 	var inbox harness.InboxState
-	encoded, err := json.Marshal(view.Docs[services.InboxDocKind])
+	encoded, err := json.Marshal(viewDocument(view.Docs, services.InboxDocKind))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -126,7 +127,7 @@ func TestUpstreamAgentController(t *testing.T) {
 			t.Fatal(err)
 		}
 		var live harness.LiveState
-		encoded, err := json.Marshal(viewOf(t, durable.Conversation).Docs[services.LiveDocKind])
+		encoded, err := json.Marshal(viewDocument(viewOf(t, durable.Conversation).Docs, services.LiveDocKind))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -149,4 +150,10 @@ func TestUpstreamAgentController(t *testing.T) {
 			t.Fatalf("compact = %#v, %v", got, err)
 		}
 	})
+}
+
+// viewDocument is the view's document of kind, or nil when it is absent.
+func viewDocument(docs harness.ViewDocs, kind string) durable.JsonObject {
+	document, _ := docs.Get(kind)
+	return document
 }

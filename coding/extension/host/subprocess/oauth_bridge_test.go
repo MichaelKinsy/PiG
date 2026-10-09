@@ -108,7 +108,7 @@ func TestOAuthCallbackInitiationFollowsRealCallbackEntry(t *testing.T) {
 			return err
 		}},
 		{name: "manual code", run: func(session oauthLoginSession, ctx context.Context) error {
-			_, err := session.OnManualCodeInput(ctx)
+			_, err := session.OnManualCodeInput(ctx, ai.AuthManualCodePrompt{})
 			return err
 		}},
 	}

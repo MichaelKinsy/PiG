@@ -26,6 +26,9 @@ func (runtime *ModelRuntime) classify(ctx context.Context, model *ai.ClassifierM
 	if err := ai.AssertClassifierModel(model); err != nil {
 		return ai.ClassifierResult{}, err
 	}
+	if err := ai.AssertClassifierInputSupported(model, request); err != nil {
+		return ai.ClassifierResult{}, err
+	}
 	if err := context.Cause(ctx); err != nil {
 		return ai.ClassifierResult{}, err
 	}

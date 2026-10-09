@@ -3,6 +3,8 @@
 package harness
 
 import (
+	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/ai"
@@ -51,7 +53,7 @@ func (setup contextSetup) view(conversation ...Conversation) durable.ContextView
 	if len(conversation) > 0 {
 		target = conversation[0]
 	}
-	view, err := target.Context(testContext)
+	view, err := target.Context(testContext, nil)
 	if err != nil {
 		setup.t.Fatal(err)
 	}
@@ -194,7 +196,7 @@ func TestConversationContext(t *testing.T) {
 		childView := setup.view(child)
 		expectStrings(t, describeMessages(childView.Messages), []string{"user:go", "assistant:calling", "result:x:error", "result:y:error"})
 		missing, ok := childView.Messages[2].(ai.ToolResultMessage)
-		if !ok || missing.ToolName != "tool-x" || missing.Details.(map[string]any)["reason"] != "missing_result" {
+		if !ok || missing.ToolName != "tool-x" || plainObject(missing.Details)["reason"] != "missing_result" {
 			t.Fatalf("missing %+v", childView.Messages[2])
 		}
 
@@ -208,4 +210,86 @@ func TestConversationContext(t *testing.T) {
 		}
 		expectStrings(t, kinds, []string{"reset", "message"})
 	})
+
+	// Pi 1.1.0 (#10542): packages/durable/src/harness/context.ts leadWithSystem.
+	t.Run("leads with a system message that only user messages precede, and keeps later ones in place", func(t *testing.T) {
+		setup := setupContext(t)
+		setup.message(user("first"))
+		setup.message(user("steered"))
+		setup.message(system(ai.PromptSection{Name: "preamble", Value: new("You help.")}), "pi.system")
+		setup.message(assistant("answer"))
+		setup.message(user("next"))
+		setup.message(system(ai.PromptSection{Name: "cwd", Value: new("/repo")}), "pi.system")
+		view := setup.view()
+		expectStrings(t, describeMessages(view.Messages), []string{
+			"system:preamble", "user:first", "user:steered", "assistant:answer", "user:next", "system:cwd",
+		})
+		// Stored order and contributions stay as committed.
+		var contributed []ai.Message
+		for _, contribution := range view.Contributions {
+			contributed = append(contributed, contribution...)
+		}
+		expectStrings(t, describeMessages(contributed)[:3], []string{"user:first", "user:steered", "system:preamble"})
+
+		// After a reset, the baseline written after the handoff leads too.
+		setup.append(durable.EntryDraft{Kind: "reset", HeadSelf: true, Model: []ai.Message{user("handoff")}})
+		setup.message(system(ai.PromptSection{Name: "preamble", Value: new("Baseline.")}), "pi.system")
+		expectStrings(t, describeMessages(setup.view().Messages), []string{"system:preamble", "user:handoff"})
+	})
+
+	t.Run("reads the context as of an earlier entry, as a fork at that entry starts", func(t *testing.T) {
+		setup := setupContext(t)
+		first := setup.message(user("first"))
+		call := setup.message(assistant("calling", assistantOptions{calls: []string{"x", "y"}}))
+		result := setup.message(toolResult("x"))
+		setup.message(toolResult("y"))
+		edit := setup.append(durable.EntryDraft{Kind: "edit", Edits: []durable.ContextEdit{{Target: first.Id, Action: durable.EditReplace, Messages: []ai.Message{user("first v2")}}}})
+		reset := setup.append(durable.EntryDraft{Kind: "reset", HeadSelf: true, Model: []ai.Message{user("fresh start")}})
+		tail := setup.message(assistant("after reset"))
+
+		contextAt := func(conversation Conversation, at *durable.EntryId) durable.ContextView {
+			t.Helper()
+			var options *durable.ContextOptions
+			if at != nil {
+				options = &durable.ContextOptions{At: at}
+			}
+			view, err := conversation.Context(testContext, options)
+			if err != nil {
+				t.Fatal(err)
+			}
+			return view
+		}
+		for _, at := range []durable.EntryRecord{first, call, result, edit, reset, tail} {
+			fork, err := setup.root.Fork(testContext, at.Id, ConversationCreateOptions{Ownership: durable.ConversationOwnership{Kind: durable.ConversationOwnerless}})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got, want := contextAt(setup.root, &at.Id), contextAt(fork, nil); !reflect.DeepEqual(got, want) {
+				t.Fatalf("context at entry %d is %+v, its fork starts with %+v", at.Id, got, want)
+			}
+		}
+		// Stepped back before the edit and the reset: neither applies, and a cut call gets synthesized results.
+		expectStrings(t, describeMessages(contextAt(setup.root, &call.Id).Messages), []string{"user:first", "assistant:calling", "result:x:error", "result:y:error"})
+		if got, want := contextAt(setup.root, &tail.Id), contextAt(setup.root, nil); !reflect.DeepEqual(got, want) {
+			t.Fatalf("context at the tail %+v differs from the whole context %+v", got, want)
+		}
+		if got, want := must1(setup.root.Context(testContext, &durable.ContextOptions{})), contextAt(setup.root, nil); !reflect.DeepEqual(got, want) {
+			t.Fatalf("empty options changed the context: %+v vs %+v", got, want)
+		}
+
+		other, err := setup.root.Fork(testContext, first.Id, ConversationCreateOptions{Ownership: durable.ConversationOwnership{Kind: durable.ConversationOwnerless}})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, err := other.Context(testContext, &durable.ContextOptions{At: &tail.Id}); err == nil || !strings.Contains(err.Error(), "is not visible") {
+			t.Fatalf("a context at an entry the conversation does not see returned %v, want \"is not visible\"", err)
+		}
+	})
+}
+
+func must1[T any](value T, err error) T {
+	if err != nil {
+		panic(err)
+	}
+	return value
 }

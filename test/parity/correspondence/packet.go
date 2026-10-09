@@ -240,7 +240,7 @@ type runtimeEffectConcept struct {
 
 var settingRuntimeEffectConcepts = map[string][]runtimeEffectConcept{
 	"autocompact": {
-		{sourceAny: []string{"this.session.setAutoCompactionEnabled"}, targetAny: []string{"sc.SettingsManager.UpdateGlobal"}},
+		{sourceAny: []string{"this.session.setAutoCompactionEnabled"}, targetAny: []string{"sm.SetCompactionEnabled"}},
 		{sourceAny: []string{"this.footer.setAutoCompactEnabled"}, targetAny: []string{"m.statusLine.SetAutoCompactEnabled"}},
 	},
 	"show-images": {
@@ -260,7 +260,7 @@ var settingRuntimeEffectConcepts = map[string][]runtimeEffectConcept{
 	},
 	"output-padding": {
 		{sourceAny: []string{"this.outputPad"}, targetAny: []string{"m.outputPad"}},
-		{sourceAny: []string{"this.rebuildChatFromMessages", "child.setOutputPad"}, targetAny: []string{"m.rebuildChatFromSession", "comp.SetOutputPad"}},
+		{sourceAny: []string{"this.rebuildChatFromMessages", "child.setOutputPad"}, targetAny: []string{"m.applyOutputPad", "m.rebuildChatFromSession", "comp.SetOutputPad"}},
 	},
 	"autocomplete-max-visible": {
 		{sourceAny: []string{"this.defaultEditor.setAutocompleteMaxVisible", "this.editor.setAutocompleteMaxVisible"}, targetAny: []string{"m.editor.SetAutocompleteMaxVisible"}},

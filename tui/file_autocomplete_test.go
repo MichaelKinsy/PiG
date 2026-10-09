@@ -269,7 +269,7 @@ func TestCombinedProviderAtPrefix(t *testing.T) {
 
 	t.Run("@hel suggests hello.go", func(t *testing.T) {
 		lines := []string{"@hel"}
-		res := p.GetSuggestions(lines, 0, 4)
+		res := p.GetSuggestions(context.Background(), lines, 0, 4, AutocompleteSuggestionOptions{})
 		if res == nil {
 			t.Fatal("expected suggestions")
 		}
@@ -290,7 +290,7 @@ func TestCombinedProviderAtPrefix(t *testing.T) {
 	// Pi autocomplete.ts:750 returns no attachment suggestions without fd.
 	t.Run("@hel without fd suggests nothing", func(t *testing.T) {
 		withoutFd := NewCombinedProvider(nil, tmp, "")
-		if res := withoutFd.GetSuggestions([]string{"@hel"}, 0, 4); res != nil {
+		if res := withoutFd.GetSuggestions(context.Background(), []string{"@hel"}, 0, 4, AutocompleteSuggestionOptions{}); res != nil {
 			t.Fatalf("suggestions without fd = %+v, want none", res.Items)
 		}
 	})
@@ -299,7 +299,7 @@ func TestCombinedProviderAtPrefix(t *testing.T) {
 		cmds := []SlashCommand{{Name: "help", Description: "Show help"}}
 		cp := NewCombinedProvider(cmds, tmp, "")
 		lines := []string{"/hel"}
-		res := cp.GetSuggestions(lines, 0, 4)
+		res := cp.GetSuggestions(context.Background(), lines, 0, 4, AutocompleteSuggestionOptions{})
 		if res == nil {
 			t.Fatal("expected slash suggestions")
 		}
@@ -378,7 +378,7 @@ func TestCombinedProviderNakedPath(t *testing.T) {
 	p := NewCombinedProvider(nil, dir, "")
 
 	// upstream: packages/tui/src/autocomplete.ts:380-393. The provider answers path queries; the Editor, not the provider, gates automatic queries.
-	natural := p.GetSuggestions([]string{"./"}, 0, 2)
+	natural := p.GetSuggestions(context.Background(), []string{"./"}, 0, 2, AutocompleteSuggestionOptions{})
 	if natural == nil || natural.Prefix != "./" || len(natural.Items) != 2 || natural.Items[0].Value != "./beta/" || natural.Items[1].Value != "./alpha.txt" {
 		t.Fatalf("path suggestions=%+v, want ./beta/ then ./alpha.txt", natural)
 	}
@@ -390,11 +390,11 @@ func TestCombinedProviderNakedPath(t *testing.T) {
 		t.Fatal("typing a naked path opened the editor popup")
 	}
 	// Plain word without force returns nil.
-	if res := p.GetSuggestions([]string{"hello"}, 0, 5); res != nil {
+	if res := p.GetSuggestions(context.Background(), []string{"hello"}, 0, 5, AutocompleteSuggestionOptions{}); res != nil {
 		t.Errorf("plain word triggered popup: %+v", res)
 	}
 	// Force triggers file suggestions, including for `./`.
-	res := p.GetSuggestionsForce([]string{"./"}, 0, 2)
+	res := p.GetSuggestions(context.Background(), []string{"./"}, 0, 2, AutocompleteSuggestionOptions{Force: true})
 	if res == nil || len(res.Items) == 0 {
 		t.Fatalf("expected forced ./ to suggest entries, got %+v", res)
 	}
@@ -402,7 +402,7 @@ func TestCombinedProviderNakedPath(t *testing.T) {
 		t.Errorf("prefix = %q, want ./", res.Prefix)
 	}
 	// Force also triggers on empty buffer.
-	if res := p.GetSuggestionsForce([]string{""}, 0, 0); res == nil {
+	if res := p.GetSuggestions(context.Background(), []string{""}, 0, 0, AutocompleteSuggestionOptions{Force: true}); res == nil {
 		t.Errorf("force on empty buffer returned nil")
 	}
 
@@ -588,7 +588,7 @@ func TestAsyncFileSearch_GatesSyncFdPath(t *testing.T) {
 	col := len("@sou")
 
 	// Async OFF (default): the synchronous fd path finds the file.
-	if res := p.GetSuggestions(lines, 0, col); res == nil || len(res.Items) == 0 {
+	if res := p.GetSuggestions(context.Background(), lines, 0, col, AutocompleteSuggestionOptions{}); res == nil || len(res.Items) == 0 {
 		t.Fatal("sync fd path should find source.txt when async off")
 	}
 
@@ -601,7 +601,7 @@ func TestAsyncFileSearch_GatesSyncFdPath(t *testing.T) {
 	p.SetAsyncFileSearch(true)
 	// Async ON: GetSuggestions defers fd, returning nothing synchronously
 	// even though the file exists.
-	if res := p.GetSuggestions(lines, 0, col); res != nil {
+	if res := p.GetSuggestions(context.Background(), lines, 0, col, AutocompleteSuggestionOptions{}); res != nil {
 		t.Fatalf("GetSuggestions must not run fd synchronously when async on; got %+v", res)
 	}
 	prefix, run, ok := p.FileSearchTask(lines, 0, col)
@@ -656,7 +656,7 @@ type countingAsyncFileProvider struct {
 	calls atomic.Int32
 }
 
-func (f *countingAsyncFileProvider) GetSuggestions([]string, int, int) *AutocompleteSuggestions {
+func (f *countingAsyncFileProvider) GetSuggestions(context.Context, []string, int, int, AutocompleteSuggestionOptions) *AutocompleteSuggestions {
 	return nil
 }
 
@@ -704,7 +704,7 @@ type fakeAsyncFileProvider struct {
 	items   []AutocompleteItem
 }
 
-func (f *fakeAsyncFileProvider) GetSuggestions([]string, int, int) *AutocompleteSuggestions {
+func (f *fakeAsyncFileProvider) GetSuggestions(context.Context, []string, int, int, AutocompleteSuggestionOptions) *AutocompleteSuggestions {
 	return nil // async path owns @-queries
 }
 

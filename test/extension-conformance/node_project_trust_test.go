@@ -36,7 +36,7 @@ func TestNodeProjectTrustMultipleHandlers(t *testing.T) {
 	result, handlerErrors, err := inproc.EmitProjectTrust(runner, context.Background(), extension.ProjectTrustEvent{
 		Type: "project_trust",
 		Cwd:  t.TempDir(),
-	})
+	}, extension.ProjectTrustContext{})
 	if err != nil {
 		t.Fatal(err)
 	}

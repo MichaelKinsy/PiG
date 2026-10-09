@@ -139,8 +139,7 @@ func TestEditor_WordBoundaryHelpers(t *testing.T) {
 		{"underscore-stays-in-word", "foo_bar", 7, 0, 7},
 		{"empty", "", 0, 0, 0},
 		{"only-spaces-from-end", "   word", 7, 3, 7},
-		// Pi 0.87.1 Intl.Segmenter splits 学生/です; cursor columns are UTF-16 units.
-		{"cjk-dictionary-word-backward", "学生です", 4, 2, 4},
+		// Pi 0.87.1 Intl.Segmenter splits 学生/です in word_dictionary_navigation_test.go; cursor columns are UTF-16 units.
 		{"cjk-ascii-punct-boundary", "学生.です", 5, 3, 5},
 	}
 	for _, tc := range cases {

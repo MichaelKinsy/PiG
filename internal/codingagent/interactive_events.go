@@ -83,6 +83,7 @@ func (m *InteractiveMode) handleAgentEvent(ev agent.AgentEvent) {
 		barrier.AcknowledgeEvent()
 		return
 	}
+	m.programStatusReporter().HandleEvent(ev)
 	switch e := ev.(type) {
 	case agent.SessionInfoChangedEvent:
 		tui.SetTerminalTitle(tui.BuildTerminalTitle(e.Name, m.opts.CWD))
@@ -149,7 +150,9 @@ func (m *InteractiveMode) handleAgentEvent(ev agent.AgentEvent) {
 				if !m.chatContainer.IsEmpty() {
 					m.appendToChat(tui.NewSpacer(1))
 				}
-				m.appendToChat(m.newUserMessageBlock(text))
+				block := m.newUserMessageBlock(text)
+				block.SetImages(userMessageImages(e.Message))
+				m.appendToChat(block)
 				m.tuiInst.RequestRender()
 			}
 			// A queued steering/follow-up message that just got injected as a
@@ -220,15 +223,8 @@ func (m *InteractiveMode) handleAgentEvent(ev agent.AgentEvent) {
 		if pta.id != "" {
 			comp := m.toolByID[pta.id]
 			if comp == nil {
-				argsPreview := tui.HeaderForTool(pta.name, nil, m.opts.CWD)
-				comp = tui.NewToolExecutionComponent(pta.name, argsPreview)
-				comp.Cwd = m.opts.CWD
+				comp = m.newToolCard(pta.name, pta.id, nil)
 				m.applyToolPresentation(comp, pta.id, pta.name, json.RawMessage(pta.args.String()))
-				if m.opts.SettingsManager != nil {
-					s := m.opts.SettingsManager.Get()
-					comp.ShowImages = s.GetShowImages() && !s.BlockImages
-					comp.ImageWidthCells = s.GetImageWidthCells()
-				}
 				if m.toolsExpanded {
 					comp.SetExpanded(true)
 				}
@@ -238,7 +234,7 @@ func (m *InteractiveMode) handleAgentEvent(ev agent.AgentEvent) {
 				m.appendToChat(comp)
 			} else {
 				m.applyToolPresentation(comp, pta.id, pta.name, json.RawMessage(pta.args.String()))
-				comp.UpdateArgs(pta.name, pta.args.String())
+				comp.UpdateArgs(json.RawMessage(pta.args.String()))
 				m.toolMu.Unlock()
 			}
 		} else {
@@ -248,9 +244,15 @@ func (m *InteractiveMode) handleAgentEvent(ev agent.AgentEvent) {
 
 	case agent.MessageEndEvent:
 		defer m.refreshFooterContextUsage()
-		if m.evCurrentBlock != nil && e.Message.Assistant != nil {
-			updateAssistantMessageBlock(m.evCurrentBlock, e.Message.Assistant)
-			m.lastAssistantText = strings.TrimSpace(m.evCurrentBlock.Text())
+		finished := e.Message.Assistant
+		if finished != nil && finished.StopReason == ai.StopReasonAborted {
+			// upstream: interactive-mode.ts:3544 replaces an aborted message's errorMessage before rendering it.
+			aborted := *finished
+			aborted.ErrorMessage = m.abortedMessageText()
+			finished = &aborted
+		}
+		if m.evCurrentBlock != nil && finished != nil {
+			updateAssistantMessageBlock(m.evCurrentBlock, finished)
 		}
 		if e.Message.Assistant != nil {
 			if e.Message.Assistant.Usage != nil {
@@ -258,7 +260,7 @@ func (m *InteractiveMode) handleAgentEvent(ev agent.AgentEvent) {
 			}
 			if m.showCacheMissNotices() {
 				if notice := formatCacheMissNotice(m.currentSession().detectCacheMiss(e.Message.Assistant)); notice != "" {
-					m.appendChatBlock(tui.NewText("\033[33m" + notice + "\033[0m"))
+					m.addCacheMissNotice(notice)
 				}
 			}
 			m.maybeSuggestBugReport(e.Message.Assistant)
@@ -272,16 +274,16 @@ func (m *InteractiveMode) handleAgentEvent(ev agent.AgentEvent) {
 			(e.Message.Assistant.StopReason == "aborted" || e.Message.Assistant.StopReason == "error")
 		m.toolMu.Lock()
 		if isAbortOrError {
-			errMsg := "Operation aborted"
-			if e.Message.Assistant.StopReason == "error" {
+			errMsg := finished.ErrorMessage
+			if finished.StopReason != ai.StopReasonAborted && errMsg == "" {
 				errMsg = "Error"
-			}
-			if e.Message.Assistant.ErrorMessage != "" {
-				errMsg = e.Message.Assistant.ErrorMessage
 			}
 			for _, comp := range m.toolByID {
 				comp.SetResultValue(agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: errMsg}}, IsError: true})
 				comp.SetResult(errMsg, true, 0)
+				if e.Message.Assistant.StopReason == "aborted" {
+					comp.MarkAborted() // pig additive (D91): a frontend shows it cancelled
+				}
 			}
 			clear(m.toolByID)
 			clear(m.toolStarts)
@@ -344,15 +346,8 @@ func (m *InteractiveMode) handleAgentEvent(ev agent.AgentEvent) {
 		} else {
 			// No streaming component: create fresh (extension tools,
 			// or providers that don't emit per-delta tool IDs).
-			comp = tui.NewToolExecutionComponent(e.ToolName, argsPreview)
-			comp.Cwd = m.opts.CWD
-			comp.SetHeaderArgs(e.Args)
+			comp = m.newToolCard(e.ToolName, e.ToolCallID, e.Args)
 			m.applyToolPresentation(comp, e.ToolCallID, e.ToolName, e.Args)
-			if m.opts.SettingsManager != nil {
-				s := m.opts.SettingsManager.Get()
-				comp.ShowImages = s.GetShowImages() && !s.BlockImages
-				comp.ImageWidthCells = s.GetImageWidthCells()
-			}
 			if m.toolsExpanded {
 				comp.SetExpanded(true)
 			}
@@ -381,14 +376,11 @@ func (m *InteractiveMode) handleAgentEvent(ev agent.AgentEvent) {
 			// renderer (upstream renderers/bash.ts, isPartial).
 			comp.BodyRenderer = makeShellBodyRenderer(e.PartialResult.Text(), e.PartialResult.Details, true, nil)
 		}
-		if comp.HasDefinition() {
-			// Upstream hands a partial result to renderResult with isPartial, as `{...event.partialResult, isError: false}`.
-			// upstream: modes/interactive/interactive-mode.ts:3527-3533
-			partial := e.PartialResult
-			partial.IsError = false
-			comp.SetResultValue(partial)
-		}
-		comp.SetStreaming(e.PartialResult.Text())
+		// Upstream hands a partial result to updateResult as `{...event.partialResult, isError: false}`.
+		// upstream: modes/interactive/interactive-mode.ts:3527-3533
+		partial := e.PartialResult
+		partial.IsError = false
+		comp.UpdateResult(ToolExecutionResultOf(partial, 0), true)
 		m.tuiInst.RequestRender()
 
 	case agent.ToolExecutionEndEvent:
@@ -419,24 +411,16 @@ func (m *InteractiveMode) handleAgentEvent(ev agent.AgentEvent) {
 		}
 		// Attach a per-tool body renderer so Ctrl+O reveals a diff /
 		// line-numbered view instead of raw text.
+		took = recordedTook(e.ToolName, e.DurationMs, took)
 		comp.BodyRenderer = toolBodyRenderer(e.ToolName, result, took)
 		if hasFileCall {
 			// File renderers own their call arguments; wire results carry no private preview state.
-			comp.BodyRenderer = toolBodyRendererForCall(call, result)
+			comp.BodyRenderer = toolBodyRendererForCall(call, result, took)
 		}
-		// Wire image blocks from tool results so they render inline.
-		// Mirrors upstream tool-execution.ts updateResult → image block handling.
-		images := result.Images()
-		if len(images) > 0 {
-			blocks := make([]tui.ImageBlock, len(images))
-			for i, img := range images {
-				blocks[i] = tui.ImageBlock{Data: img.Data, MIMEType: img.MimeType}
-			}
-			comp.ImageBlocks = blocks
-		}
-		comp.SetResultValue(result)
-		comp.SetResult(result.Text(), result.IsError, elapsed)
-		m.maybeConvertImagesForKitty(comp)
+		// upstream: tool-execution.ts:187 updateResult takes the content blocks, so images render inline.
+		final := ToolExecutionResultOf(result, elapsed)
+		final.DurationMs = e.DurationMs
+		comp.UpdateResult(final, false)
 		m.tuiInst.Render()
 
 	case agent.CompactionStartEvent:
@@ -470,7 +454,7 @@ func (m *InteractiveMode) handleAgentEvent(ev agent.AgentEvent) {
 		case e.Summary != "":
 			var entries []SessionEntry
 			if session := m.currentSession(); session != nil {
-				entries = BuildContextEntries(session.GetBranch())
+				entries = BuildContextEntries(session.GetBranch(), new(""), nil)
 			}
 			m.renderCompactionResult(e, entries)
 			m.statusLine.Invalidate()
@@ -537,3 +521,49 @@ func (m *InteractiveMode) handleAgentEvent(ev agent.AgentEvent) {
 // unsynchronized state. applyEditorMaxVisible derives from Height(), so a
 // coalesced/dropped post is re-applied by the next render. Mirrors upstream's
 // single-event-loop resize.
+
+// abortedMessageText is the text an aborted turn shows, naming the automatic retries it was aborted after.
+// upstream: packages/coding-agent/src/modes/interactive/interactive-mode.ts:3544 (message_end) and :4010 (renderSessionContext).
+func (m *InteractiveMode) abortedMessageText() string {
+	attempt := 0
+	if m.opts.SessionHandle != nil {
+		attempt = m.opts.SessionHandle.RetryAttempt()
+	}
+	return abortedMessageForRetries(attempt)
+}
+
+func abortedMessageForRetries(attempt int) string {
+	if attempt <= 0 {
+		return "Operation aborted"
+	}
+	if attempt == 1 {
+		return "Aborted after 1 retry attempt"
+	}
+	return fmt.Sprintf("Aborted after %d retry attempts", attempt)
+}
+
+// toolExecutionOptions are the image settings every tool card is constructed with (interactive-mode.ts:3516, 3594, 3997 pass
+// showImages and imageWidthCells from the settings manager; blockImages does not hide them). Without a settings manager the card keeps its defaults.
+func (m *InteractiveMode) toolExecutionOptions() tui.ToolExecutionOptions {
+	pad := m.outputPad
+	if m.opts.SettingsManager == nil {
+		return tui.ToolExecutionOptions{OutputPad: &pad}
+	}
+	s := m.opts.SettingsManager.Get()
+	show, width := s.GetShowImages(), s.GetImageWidthCells()
+	return tui.ToolExecutionOptions{ShowImages: &show, ImageWidthCells: &width, OutputPad: &pad}
+}
+
+// toolResultUpdate is a tool result as tool-execution.ts updateResult takes it: its content blocks, error state and structured result.
+func toolResultUpdate(result agent.AgentToolResult) tui.ToolResultUpdate {
+	content := make([]tui.ToolResultContent, 0, len(result.Content))
+	for _, block := range result.Content {
+		switch value := block.(type) {
+		case ai.TextContent:
+			content = append(content, tui.ToolResultContent{Type: "text", Text: value.Text})
+		case ai.ImageContent:
+			content = append(content, tui.ToolResultContent{Type: "image", Data: value.Data, MimeType: value.MimeType})
+		}
+	}
+	return tui.ToolResultUpdate{Content: content, Details: result.Details, IsError: result.IsError, Result: result}
+}

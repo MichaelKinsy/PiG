@@ -10,6 +10,7 @@ import (
 	"slices"
 
 	"github.com/MichaelKinsy/PiG/ai"
+	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/durable"
 	"github.com/MichaelKinsy/PiG/durable/env"
 )
@@ -173,13 +174,14 @@ var AgentDoc = durable.DefineDoc(durable.DocDefinition[AgentState]{
 		Kind:           "pi.agent",
 		Version:        1,
 		CheckpointWhen: func(AgentState, []durable.Op, durable.CheckpointInfo) bool { return true },
+
+		Initial: func() AgentState { return AgentState{} },
 	},
 	DocumentSemantics: durable.DocumentSemantics{
 		Scope:   durable.ScopeConversation,
 		History: durable.HistoryRewindable,
 		Fork:    durable.ForkAsOf,
 	},
-	Initial: func() AgentState { return AgentState{} },
 })
 
 // Change is one field of AgentChange: unset leaves the stored field, Cleared removes it, and SetTo replaces it.
@@ -239,7 +241,14 @@ type HarnessSettings struct {
 	ToolExecution durable.ToolExecutionMode
 	SteeringMode  durable.QueueMode
 	FollowUpMode  durable.QueueMode
+	// ContextRetentionMs is how long an idle conversation keeps its last context read in memory, so its next run reads
+	// only newer entries. Busy conversations always keep it; 0 drops it once the conversation is idle. Nil selects the
+	// default, ten minutes.
+	ContextRetentionMs *float64
 }
+
+// defaultContextRetentionMs is the default of HarnessSettings.ContextRetentionMs: ten minutes.
+const defaultContextRetentionMs = 600_000
 
 // RetryPolicyPatch is Partial<ConversationRetryPolicy>; nil fields keep the defaults.
 type RetryPolicyPatch struct {
@@ -265,14 +274,21 @@ type ProgressPolicyPatch struct {
 
 // ResolveSettings resolves host settings: every field over its built-in default, object fields merged.
 func ResolveSettings(settings *HarnessSettings) durable.Settings {
+	retry := DefaultRetryPolicy
+	// Pi spreads the default, so a resolved policy never shares storage with it.
+	retry.MaxAgentDelayMs = new(*DefaultRetryPolicy.MaxAgentDelayMs)
 	resolved := durable.Settings{
-		Retry:         DefaultRetryPolicy,
+		Retry:         retry,
 		Compaction:    DefaultCompactionPolicy,
 		Progress:      DefaultProgressPolicy,
 		ToolExecution: durable.ToolExecutionParallel,
 		SteeringMode:  durable.QueueOneAtATime,
 		FollowUpMode:  durable.QueueOneAtATime,
+
+		ContextRetentionMs: defaultContextRetentionMs,
 	}
+	// The spread copies the default's values; the pointer field must not alias the shared default.
+	resolved.Retry.MaxAgentDelayMs = new(*DefaultRetryPolicy.MaxAgentDelayMs)
 	if settings == nil {
 		return resolved
 	}
@@ -307,6 +323,7 @@ func ResolveSettings(settings *HarnessSettings) durable.Settings {
 	if settings.FollowUpMode != "" {
 		resolved.FollowUpMode = settings.FollowUpMode
 	}
+	assign(&resolved.ContextRetentionMs, settings.ContextRetentionMs)
 	return resolved
 }
 
@@ -363,13 +380,13 @@ func AddTools(tx durable.Tx, conversationId durable.ConversationId, added []stri
 			remaining = append(remaining, name)
 		}
 	}
-	return state.Set("tools", map[string]any{"remove": remaining})
+	return state.Set("tools", delta.JsonObjectOf("remove", remaining))
 }
 
 func applyChange(state durable.Draft[AgentState], change AgentChange) error {
 	var model any
 	if change.Model.state == changeSet {
-		model = map[string]any{"provider": change.Model.value.Provider, "modelId": change.Model.value.ModelId}
+		model = delta.JsonObjectOf("provider", change.Model.value.Provider, "modelId", change.Model.value.ModelId)
 	}
 	if err := setField(state, "model", change.Model.state, model); err != nil {
 		return err
@@ -383,12 +400,12 @@ func applyChange(state durable.Draft[AgentState], change AgentChange) error {
 		if selection.Exact {
 			extensions = namesJSON(extensionNames(selection.List))
 		} else {
-			edit := map[string]any{}
+			edit := delta.NewJsonObject(2)
 			if selection.Add != nil {
-				edit["add"] = namesJSON(extensionNames(selection.Add))
+				edit.Set("add", namesJSON(extensionNames(selection.Add)))
 			}
 			if selection.Remove != nil {
-				edit["remove"] = namesJSON(extensionNames(selection.Remove))
+				edit.Set("remove", namesJSON(extensionNames(selection.Remove)))
 			}
 			extensions = edit
 		}
@@ -401,7 +418,7 @@ func applyChange(state durable.Draft[AgentState], change AgentChange) error {
 		if change.Tools.value.Exact {
 			tools = namesJSON(toolNames(change.Tools.value.List))
 		} else {
-			tools = map[string]any{"remove": namesJSON(toolNames(change.Tools.value.Remove))}
+			tools = delta.JsonObjectOf("remove", namesJSON(toolNames(change.Tools.value.Remove)))
 		}
 	}
 	if err := setField(state, "tools", change.Tools.state, tools); err != nil {
@@ -469,9 +486,9 @@ func CreateAgent(tx durable.Tx, conversation durable.ConversationRecord) error {
 		return err
 	}
 	// Object.assign(agent, copy): each owner field is one assignment, in the owner's key order.
-	values := copied.(map[string]any)
+	values := copied.(*delta.JsonObject)
 	for _, key := range owner.Keys() {
-		if err := agent.Set(key, values[key]); err != nil {
+		if err := agent.Set(key, values.Value(key)); err != nil {
 			return err
 		}
 	}
@@ -512,10 +529,15 @@ func ResolveAgent(state *AgentState, snapshot durable.RegistrySnapshot, settings
 	}
 	for _, extension := range extensions {
 		for _, wrap := range extension.Wraps {
-			if wrap.WrapTool != nil {
-				applyWrap(composed, wrap.Tool, wrap.WrapTool, func(tool *durable.ToolRegistration) string { return tool.Name }, report)
-			} else if wrap.WrapSection != nil {
-				applyWrap(sections, wrap.Section, wrap.WrapSection, func(section *durable.PromptSection) string { return section.Key }, report)
+			switch wrap := wrap.(type) {
+			case durable.ToolWrap:
+				if wrap.Wrap != nil {
+					applyWrap(composed, wrap.Tool, wrap.Wrap, func(tool *durable.ToolRegistration) string { return tool.Name }, report)
+				}
+			case durable.SectionWrap:
+				if wrap.Wrap != nil {
+					applyWrap(sections, wrap.Section, wrap.Wrap, func(section *durable.PromptSection) string { return section.Key }, report)
+				}
 			}
 		}
 	}

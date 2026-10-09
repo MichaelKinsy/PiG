@@ -19,6 +19,31 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/codingagent/tools"
 )
 
+// SkillFrontmatter is upstream's SkillFrontmatter (core/skills.ts:67): the parsed header of a skill file. The three named fields have typed accessors; every other key stays in the map.
+type SkillFrontmatter map[string]any
+
+// Name is the skill's `name`, or "" when absent.
+func (f SkillFrontmatter) Name() string { return frontmatter.Doc{Frontmatter: f}.String("name") }
+
+// Description is the skill's `description`, or "" when absent.
+func (f SkillFrontmatter) Description() string {
+	return frontmatter.Doc{Frontmatter: f}.String("description")
+}
+
+// DisableModelInvocation is the skill's `disable-model-invocation` flag.
+func (f SkillFrontmatter) DisableModelInvocation() bool {
+	return frontmatter.Doc{Frontmatter: f}.Bool("disable-model-invocation")
+}
+
+// ParseSkillFrontmatter splits a skill file into its header and trimmed body, as upstream's parseFrontmatter<SkillFrontmatter> does.
+func ParseSkillFrontmatter(content string) (SkillFrontmatter, string, error) {
+	doc := frontmatter.Parse(content)
+	if doc.Err != nil {
+		return nil, "", doc.Err
+	}
+	return SkillFrontmatter(doc.Frontmatter), doc.Body, nil
+}
+
 // SkillDef is a parsed Markdown skill with frontmatter and body.
 //
 // Pig loads these on `--skill <name>` and appends the body
@@ -30,11 +55,11 @@ type SkillDef struct {
 	DisableModelInvocation bool
 	// Body is the markdown content (stripped of frontmatter).
 	Body string
-	// Path is the source Markdown file.
-	Path string
-	// Dir is the skill's containing directory: used so callers can
+	// FilePath is the source Markdown file.
+	FilePath string
+	// BaseDir is the skill's containing directory: used so callers can
 	// resolve referenced sibling files.
-	Dir string
+	BaseDir string
 }
 
 // LoadSkill loads a skill by name from `<skillsDir>/<name>/SKILL.md`.
@@ -58,17 +83,17 @@ func LoadSkill(skillsDir, name string) (*SkillDef, error) {
 	if err != nil {
 		return nil, fmt.Errorf("skill: read %s: %w", path, err)
 	}
-	doc := frontmatter.Parse(string(data))
-	if doc.Err != nil {
-		return nil, fmt.Errorf("skill: parse %s: %w", path, doc.Err)
+	front, body, err := ParseSkillFrontmatter(string(data))
+	if err != nil {
+		return nil, fmt.Errorf("skill: parse %s: %w", path, err)
 	}
 	return &SkillDef{
-		Name:                   firstNonEmpty(doc.String("name"), name),
-		Description:            doc.String("description"),
-		DisableModelInvocation: doc.Bool("disable-model-invocation"),
-		Body:                   strings.TrimSpace(doc.Body),
-		Path:                   path,
-		Dir:                    filepath.Dir(path),
+		Name:                   firstNonEmpty(front.Name(), name),
+		Description:            front.Description(),
+		DisableModelInvocation: front.DisableModelInvocation(),
+		Body:                   jsTrim(body),
+		FilePath:               path,
+		BaseDir:                filepath.Dir(path),
 	}, nil
 }
 
@@ -119,14 +144,14 @@ func DeduplicateSkillsWithDiagnostics(defs []*SkillDef) ([]*SkillDef, []extensio
 	realPaths := make(map[string]bool, len(defs))
 	var diagnostics []extension.ResourceDiagnostic
 	for _, def := range defs {
-		realPath := canonicalizePath(def.Path)
-		if def.Path != "" && realPaths[realPath] {
+		realPath := canonicalizePath(def.FilePath)
+		if def.FilePath != "" && realPaths[realPath] {
 			continue
 		}
 		if winner, exists := seen[def.Name]; exists {
 			diagnostics = append(diagnostics, extension.ResourceDiagnostic{
-				Type: extension.DiagnosticCollision, Message: fmt.Sprintf(`name "%s" collision`, def.Name), Path: def.Path,
-				Collision: &extension.ResourceCollision{ResourceType: "skill", Name: def.Name, WinnerPath: winner.Path, LoserPath: def.Path},
+				Type: extension.DiagnosticCollision, Message: fmt.Sprintf(`name "%s" collision`, def.Name), Path: def.FilePath,
+				Collision: &extension.ResourceCollision{ResourceType: "skill", Name: def.Name, WinnerPath: winner.FilePath, LoserPath: def.FilePath},
 			})
 			continue
 		}
@@ -153,21 +178,21 @@ func LoadSkillPath(path string) (*SkillDef, error) {
 	if err != nil {
 		return nil, fmt.Errorf("skill: read %s: %w", path, err)
 	}
-	doc := frontmatter.Parse(string(data))
-	if doc.Err != nil {
-		return nil, fmt.Errorf("skill: parse %s: %w", path, doc.Err)
+	front, body, err := ParseSkillFrontmatter(string(data))
+	if err != nil {
+		return nil, fmt.Errorf("skill: parse %s: %w", path, err)
 	}
-	name := doc.String("name")
+	name := front.Name()
 	if name == "" {
 		name = filepath.Base(filepath.Dir(path))
 	}
 	return &SkillDef{
 		Name:                   name,
-		Description:            doc.String("description"),
-		DisableModelInvocation: doc.Bool("disable-model-invocation"),
-		Body:                   strings.TrimSpace(doc.Body),
-		Path:                   path,
-		Dir:                    filepath.Dir(path),
+		Description:            front.Description(),
+		DisableModelInvocation: front.DisableModelInvocation(),
+		Body:                   jsTrim(body),
+		FilePath:               path,
+		BaseDir:                filepath.Dir(path),
 	}, nil
 }
 
@@ -213,7 +238,7 @@ func LoadSkillsFromPath(path string) ([]*SkillDef, error) {
 		if skill == nil {
 			continue
 		}
-		canonical := canonicalizePath(skill.Path)
+		canonical := canonicalizePath(skill.FilePath)
 		if _, ok := seen[canonical]; ok {
 			continue
 		}
@@ -241,7 +266,7 @@ func loadSkillFile(path string) (*SkillDef, error) {
 		}
 		return nil, nil
 	}
-	if strings.TrimSpace(skill.Description) == "" {
+	if jsTrim(skill.Description) == "" {
 		return nil, nil
 	}
 	return skill, nil
@@ -284,27 +309,27 @@ func ExpandSkillCommand(text string, skills []*SkillDef) (string, bool, *extensi
 	}
 	// pig additive (D18): an inline Piglet skill uses its supplied body; its source path may identify the defining manifest rather than a Markdown file.
 	body := skill.Body
-	if skill.Path != "" && skill.SourceInfo.Source != "inline" {
-		content, err := os.ReadFile(skill.Path)
+	if skill.FilePath != "" && skill.SourceInfo.Source != "inline" {
+		content, err := os.ReadFile(skill.FilePath)
 		if err != nil {
-			operation, path := "open", skill.Path
+			operation, path := "open", skill.FilePath
 			if pathError, ok := errors.AsType[*os.PathError](err); ok && pathError.Op == "read" {
 				operation, path = "read", ""
 			}
-			return "", false, &extension.ExtensionError{ExtensionPath: skill.Path, Event: "skill_expansion", Error: tools.NodeFSError(err, operation, path)}
+			return "", false, &extension.ExtensionError{ExtensionPath: skill.FilePath, Event: "skill_expansion", Error: tools.NodeFSError(err, operation, path)}
 		}
 		decoded, err := unicode.UTF8.NewDecoder().String(string(content))
 		if err != nil {
-			return "", false, &extension.ExtensionError{ExtensionPath: skill.Path, Event: "skill_expansion", Error: err.Error()}
+			return "", false, &extension.ExtensionError{ExtensionPath: skill.FilePath, Event: "skill_expansion", Error: err.Error()}
 		}
-		doc := frontmatter.Parse(decoded)
-		if doc.Err != nil {
-			return "", false, &extension.ExtensionError{ExtensionPath: skill.Path, Event: "skill_expansion", Error: doc.Err.Error()}
+		stripped, err := frontmatter.Strip(decoded)
+		if err != nil {
+			return "", false, &extension.ExtensionError{ExtensionPath: skill.FilePath, Event: "skill_expansion", Error: err.Error()}
 		}
-		body = jsTrim(doc.Body)
+		body = jsTrim(stripped)
 	}
-	block := "<skill name=\"" + skill.Name + "\" location=\"" + skill.Path + "\">\n" +
-		"References are relative to " + skill.Dir + ".\n\n" +
+	block := "<skill name=\"" + skill.Name + "\" location=\"" + skill.FilePath + "\">\n" +
+		"References are relative to " + skill.BaseDir + ".\n\n" +
 		body + "\n</skill>"
 	if args != "" {
 		return block + "\n\n" + args, true, nil
@@ -339,7 +364,7 @@ func ParseSkillBlock(text string) *ParsedSkillBlockFromText {
 	}
 	userMsg := ""
 	if len(m) > 4 {
-		userMsg = strings.TrimSpace(m[4])
+		userMsg = jsTrim(m[4])
 	}
 	return &ParsedSkillBlockFromText{
 		Name:        m[1],

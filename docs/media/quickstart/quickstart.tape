@@ -1,4 +1,3 @@
-# SPDX-FileCopyrightText: Copyright Hewlett Packard Enterprise Development LP
 # SPDX-License-Identifier: MIT
 # Run through render.sh. The shell has an isolated HOME and no credentials.
 # Fullscreen keeps VHS Screen waits in the visible xterm buffer (VHS ignores scrollback offsets).

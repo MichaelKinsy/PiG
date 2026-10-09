@@ -1,4 +1,3 @@
-// SPDX-FileCopyrightText: Copyright Hewlett Packard Enterprise Development LP
 // SPDX-License-Identifier: MIT
 
 //! Public SDK calls over length-prefixed JSON, without the SDK's private wire helpers.
@@ -95,6 +94,8 @@ impl Host {
         let listener = UnixListener::bind(&socket).unwrap();
         let runner = thread::spawn(move || ext.run_with_socket(socket.to_str().unwrap()));
         let (stream, _) = listener.accept().unwrap();
+        // A missing frame fails the test after 10 s instead of hanging it.
+        stream.set_read_timeout(Some(std::time::Duration::from_secs(10))).unwrap();
         Self {
             stream,
             runner: Some(runner),

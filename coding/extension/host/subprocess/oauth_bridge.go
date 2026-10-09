@@ -309,7 +309,7 @@ type oauthLoginSession struct {
 	OnDeviceCode      func(ai.OAuthDeviceCodeInfo)
 	OnPrompt          func(context.Context, ai.OAuthPrompt) (string, error)
 	OnProgress        func(string)
-	OnManualCodeInput func(context.Context) (string, error)
+	OnManualCodeInput func(context.Context, ai.AuthManualCodePrompt) (string, error)
 	OnSelect          func(context.Context, ai.OAuthSelectPrompt) (string, error)
 }
 
@@ -340,7 +340,10 @@ func initiatedOAuthLoginSession(callbacks ai.OAuthLoginCallbacks) oauthLoginSess
 			extension.CallInitiated(ctx)
 			return value, err
 		},
-		OnManualCodeInput: func(ctx context.Context) (string, error) {
+		OnManualCodeInput: func(ctx context.Context, prompt ai.AuthManualCodePrompt) (string, error) {
+			if callbacks.OnManualCodePromptContext != nil {
+				return callbacks.OnManualCodePromptContext(ctx, prompt)
+			}
 			if callbacks.OnManualCodeInputContext != nil {
 				return callbacks.OnManualCodeInputContext(ctx)
 			}
@@ -378,8 +381,8 @@ func (h *Host) oauthLoginSession(name string) (oauthLoginSession, bool) {
 
 // handleOAuthCallback routes an oauth.cb.* ext→host call to the login callbacks
 // the proxy's in-flight Login published. Value-returning callbacks reply with an
-// OAuthInputResult; a handler error is reported as a user cancel so the login
-// flow stops cleanly rather than crashing.
+// OAuthInputResult: the user's cancel is {cancel: true}, and any other handler
+// failure is the call's error.
 func (h *Host) handleOAuthCallback(ctx context.Context, extName string, call *CallPayload) (*CallResultPayload, error) {
 	cb, ok := h.oauthLoginSession(extName)
 	if !ok {
@@ -439,8 +442,24 @@ func (h *Host) handleOAuthCallback(ctx context.Context, extName string, call *Ca
 			return cb.OnSelect(ctx, ai.OAuthSelectPrompt{Message: w.Message, Options: opts})
 		})
 	case CallOAuthOnManualCodeInput:
+		// upstream: provider-composer.ts:363 adaptOAuth asks a legacy onManualCodeInput() as the manual_code prompt
+		// "Paste the authorization code"; a provider object's own manual_code prompt keeps its message
+		// (interactive-mode.ts:6283-6284 showAuthPrompt).
+		prompt := ai.AuthManualCodePrompt{Message: "Paste the authorization code"}
+		var w struct {
+			Type string `json:"type"`
+			ai.AuthManualCodePrompt
+		}
+		if len(call.Args) > 0 {
+			if err := json.Unmarshal(call.Args, &w); err != nil {
+				return nil, err
+			}
+		}
+		if w.Type == "manual_code" {
+			prompt = w.AuthManualCodePrompt
+		}
 		return oauthInputResult(func() (string, error) {
-			return cb.OnManualCodeInput(ctx)
+			return cb.OnManualCodeInput(ctx, prompt)
 		})
 	default:
 		return nil, fmt.Errorf("unknown oauth callback %q", call.Method)
@@ -450,6 +469,11 @@ func (h *Host) handleOAuthCallback(ctx context.Context, extName string, call *Ca
 func oauthInputResult(fn func() (string, error)) (*CallResultPayload, error) {
 	val, err := fn()
 	if err != nil {
+		// upstream: interactive-mode.ts:6278-6300 showAuthPrompt rejects with "Login cancelled" only for the user's cancel or the login's abort; any other failure rejects the flow's await with that error.
+		//portlint:allow erroridentity a prompt's cancel is Pi's "Login cancelled" message, which flows and SDKs create as plain errors
+		if err.Error() != "Login cancelled" && !errors.Is(err, context.Canceled) && !errors.Is(err, context.DeadlineExceeded) {
+			return nil, err
+		}
 		b, _ := json.Marshal(OAuthInputResult{Cancel: true})
 		return &CallResultPayload{Result: b}, nil
 	}

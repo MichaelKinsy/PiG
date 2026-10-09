@@ -9,22 +9,24 @@ package tools
 // The `patch` field of the edit tool's details is a machine-readable SDK
 // contract, so it must match pi byte-for-byte. Go's diff libraries use
 // different algorithms (difflib/Myers variants) that pick different hunk
-// boundaries, so this ports jsdiff's own pipeline: line tokenizer → Myers
-// diff (with jsdiff's diagonal tie-breaking) → structuredPatch hunking →
-// formatPatch rendering.
+// boundaries, so this ports jsdiff's own pipeline: internal/jsdiff's line
+// tokenizer and Myers diff, then structuredPatch hunking and formatPatch
+// rendering.
 //
 // Source: node_modules/diff/libesm/{diff/base.js,diff/line.js,patch/create.js}.
 
 import (
-	"math"
 	"strconv"
 	"strings"
+
+	"github.com/MichaelKinsy/PiG/internal/jsdiff"
 )
 
 // GenerateUnifiedPatch returns a unified diff for path byte-identical to
-// upstream's generateUnifiedPatch with the default 4 lines of context.
-func GenerateUnifiedPatch(path, oldStr, newStr string) string {
-	return generateUnifiedPatch(path, oldStr, newStr, 4)
+// upstream's generateUnifiedPatch; contextLines is its optional fourth
+// parameter (default 4).
+func GenerateUnifiedPatch(path, oldStr, newStr string, contextLines ...int) string {
+	return generateUnifiedPatch(path, oldStr, newStr, optionalContextLines(contextLines))
 }
 
 func generateUnifiedPatch(path, oldStr, newStr string, context int) string {
@@ -43,162 +45,14 @@ type diffComp struct {
 	lines   []string // nil until computed; the sentinel carries an empty slice
 }
 
-// ─── line tokenizer (diff/line.js tokenize, line mode) ─────────────────────────
-
-// tokenizeLines splits text into line tokens, each including its trailing
-// newline (\n or \r\n); the final line has no terminator when text does not
-// end in a newline. Mirrors jsdiff's line tokenizer after removeEmpty (no
-// empty tokens arise from this input).
-func tokenizeLines(text string) []string {
-	if text == "" {
-		return nil
-	}
-	var out []string
-	start := 0
-	for i := 0; i < len(text); i++ {
-		if text[i] == '\n' {
-			out = append(out, text[start:i+1])
-			start = i + 1
-		}
-	}
-	if start < len(text) {
-		out = append(out, text[start:])
-	}
-	return out
-}
-
-// ─── Myers diff (diff/base.js) ─────────────────────────────────────────────────
-
-type pathComponent struct {
-	count   int
-	added   bool
-	removed bool
-	prev    *pathComponent
-}
-
-type pathNode struct {
-	oldPos int
-	last   *pathComponent
-}
-
+// myersLineDiff is jsdiff's diffLines (internal/jsdiff) as the diff components the hunking below reads.
 func myersLineDiff(oldStr, newStr string) []diffComp {
-	oldTokens := tokenizeLines(oldStr)
-	newTokens := tokenizeLines(newStr)
-	oldLen := len(oldTokens)
-	newLen := len(newTokens)
-
-	maxEditLength := newLen + oldLen
-	bestPath := map[int]*pathNode{0: {oldPos: -1}}
-
-	newPos := extractCommon(bestPath[0], newTokens, oldTokens, 0)
-	if bestPath[0].oldPos+1 >= oldLen && newPos+1 >= newLen {
-		return buildValues(bestPath[0].last, newTokens, oldTokens)
+	changes := jsdiff.DiffLines(oldStr, newStr)
+	comps := make([]diffComp, len(changes))
+	for i, change := range changes {
+		comps[i] = diffComp{value: change.Value, added: change.Added, removed: change.Removed, count: change.Count}
 	}
-
-	minDiagonal, maxDiagonal := math.MinInt, math.MaxInt
-	for editLength := 1; editLength <= maxEditLength; editLength++ {
-		lo := max(minDiagonal, -editLength)
-		for diagonal := lo; diagonal <= min(maxDiagonal, editLength); diagonal += 2 {
-			removePath := bestPath[diagonal-1]
-			addPath := bestPath[diagonal+1]
-			if removePath != nil {
-				delete(bestPath, diagonal-1)
-			}
-
-			canAdd := false
-			if addPath != nil {
-				addPathNewPos := addPath.oldPos - diagonal
-				canAdd = addPathNewPos >= 0 && addPathNewPos < newLen
-			}
-			canRemove := removePath != nil && removePath.oldPos+1 < oldLen
-			if !canAdd && !canRemove {
-				delete(bestPath, diagonal)
-				continue
-			}
-
-			var basePath *pathNode
-			if !canRemove || (canAdd && removePath.oldPos < addPath.oldPos) {
-				basePath = addToPath(addPath, true, false, 0)
-			} else {
-				basePath = addToPath(removePath, false, true, 1)
-			}
-
-			newPos = extractCommon(basePath, newTokens, oldTokens, diagonal)
-			if basePath.oldPos+1 >= oldLen && newPos+1 >= newLen {
-				return buildValues(basePath.last, newTokens, oldTokens)
-			}
-			bestPath[diagonal] = basePath
-			if basePath.oldPos+1 >= oldLen {
-				maxDiagonal = min(maxDiagonal, diagonal-1)
-			}
-			if newPos+1 >= newLen {
-				minDiagonal = max(minDiagonal, diagonal+1)
-			}
-		}
-	}
-	return nil
-}
-
-func addToPath(path *pathNode, added, removed bool, oldPosInc int) *pathNode {
-	last := path.last
-	if last != nil && last.added == added && last.removed == removed {
-		return &pathNode{
-			oldPos: path.oldPos + oldPosInc,
-			last:   &pathComponent{count: last.count + 1, added: added, removed: removed, prev: last.prev},
-		}
-	}
-	return &pathNode{
-		oldPos: path.oldPos + oldPosInc,
-		last:   &pathComponent{count: 1, added: added, removed: removed, prev: last},
-	}
-}
-
-func extractCommon(basePath *pathNode, newTokens, oldTokens []string, diagonal int) int {
-	newLen := len(newTokens)
-	oldLen := len(oldTokens)
-	oldPos := basePath.oldPos
-	newPos := oldPos - diagonal
-	commonCount := 0
-	for newPos+1 < newLen && oldPos+1 < oldLen && oldTokens[oldPos+1] == newTokens[newPos+1] {
-		newPos++
-		oldPos++
-		commonCount++
-	}
-	if commonCount > 0 {
-		basePath.last = &pathComponent{count: commonCount, prev: basePath.last}
-	}
-	basePath.oldPos = oldPos
-	return newPos
-}
-
-func buildValues(last *pathComponent, newTokens, oldTokens []string) []diffComp {
-	var comps []*pathComponent
-	for last != nil {
-		comps = append(comps, last)
-		last = last.prev
-	}
-	// Reverse into forward order.
-	for i, j := 0, len(comps)-1; i < j; i, j = i+1, j-1 {
-		comps[i], comps[j] = comps[j], comps[i]
-	}
-
-	out := make([]diffComp, 0, len(comps))
-	newPos, oldPos := 0, 0
-	for _, c := range comps {
-		var value string
-		if !c.removed {
-			value = strings.Join(newTokens[newPos:newPos+c.count], "")
-			newPos += c.count
-			if !c.added {
-				oldPos += c.count
-			}
-		} else {
-			value = strings.Join(oldTokens[oldPos:oldPos+c.count], "")
-			oldPos += c.count
-		}
-		out = append(out, diffComp{value: value, added: c.added, removed: c.removed, count: c.count})
-	}
-	return out
+	return comps
 }
 
 // ─── structuredPatch hunking (patch/create.js diffLinesResultToPatch) ──────────

@@ -79,14 +79,6 @@ func serveClientMessages(conn net.Conn, handle func(protocol.ClientMessage) bool
 	}
 }
 
-func encodeServer(message protocol.ServerMessage) []byte {
-	frame, err := protocol.EncodeServerMessage(message, protocol.FrameDecoderOptions{})
-	if err != nil {
-		panic(err)
-	}
-	return frame
-}
-
 // TestUnixTransportSocketsUpstream holds the cases upstream gates with describe.runIf(process.platform !== "win32").
 func TestUnixTransportSocketsUpstream(t *testing.T) {
 	t.Parallel()
@@ -201,13 +193,12 @@ func TestUnixTransportSocketsUpstream(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
+		transport, err := factory(t.Context(), ByteTransportHandlers{OnData: func([]byte) {}, OnClose: func() {}, OnError: func(error) {}})
+		if transport != nil {
+			transport.Close()
+		}
 		completed := make(chan error, 1)
-		factory(t.Context(), ByteTransportHandlers{OnData: func([]byte) {}, OnClose: func() {}, OnError: func(error) {}}, func(transport ByteTransport, err error) {
-			if transport != nil {
-				transport.Close()
-			}
-			completed <- err
-		})
+		completed <- err
 		if err := <-completed; !errors.Is(err, syscall.ENOENT) {
 			t.Fatalf("factory error = %v; want ENOENT", err)
 		}

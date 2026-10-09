@@ -3,13 +3,14 @@ package tui
 import (
 	"fmt"
 	"strings"
+	"testing"
 )
 
-// hostUndoKey is the host platform's first default undo key: ctrl+- except on
-// native Windows (ctrl+z) and WSL (alt+z), as upstream coding-agent
-// KEYBINDINGS["tui.editor.undo"].
+// hostUndoKey is the first undo key of the tui default registry: upstream
+// TUI_KEYBINDINGS binds ctrl+- on every platform. The Windows and WSL keys
+// belong to the coding agent's table.
 func hostUndoKey() string {
-	return TUIKeybindingDefinitionsFor(HostKeybindingPlatform())[KBEditorUndo].DefaultKeys[0]
+	return NewTUIKeybindingsManager(nil).GetKeys(KBEditorUndo)[0]
 }
 
 // hostUndoInput is the legacy terminal input for hostUndoKey.
@@ -28,4 +29,14 @@ func hostUndoKittyInput() string {
 	modifier, char, _ := strings.Cut(key, "+")
 	code := map[string]int{"ctrl": 5, "alt": 3}[modifier]
 	return fmt.Sprintf("\x1b[%d;%du", char[0], code)
+}
+
+// restoreKeybindingsAfterTest returns the global keybinding manager to its current value when the test ends. A test that
+// installs a manager built for the host platform (TUIKeybindingDefinitionsFor(HostKeybindingPlatform())) must call it
+// first: on Windows and WSL that manager binds undo to ctrl+z or alt+z, and leaving it installed fails every later test
+// that sends the default ctrl+- undo key.
+func restoreKeybindingsAfterTest(t testing.TB) {
+	t.Helper()
+	previous := globalTUIKeybindings.Load()
+	t.Cleanup(func() { globalTUIKeybindings.Store(previous) })
 }

@@ -1,0 +1,136 @@
+[
+ {
+  "ids": [
+   "pkg:tui/.#ImageRenderOptions"
+  ],
+  "targets": [
+   "tui/terminal_image.go#ImageRenderOptions"
+  ],
+  "struct": {
+   "file": "tui/terminal_image.go",
+   "type": "ImageRenderOptions"
+  },
+  "production": [
+   "call:tui/tool_execution.go#ToolExecutionComponent.renderImages"
+  ],
+  "evidence": [
+   "test:tui/terminal_image_upstream_test.go#TestUpstreamTerminalImageEncoding",
+   "test:tui/terminal_image_sizing_upstream_test.go#TestUpstreamImageCellSizing"
+  ],
+  "rationale": "terminal-image.ts ImageRenderOptions {maxWidthCells?, maxHeightCells?, preserveAspectRatio?, imageId?, moveCursor?}: Go ImageRenderOptions with the same five fields, *bool for the two booleans (nil absent) and zero for an absent number. Go adds Name for the iTerm2 file name."
+ },
+ {
+  "ids": [
+   "pkg:tui/.#TerminalCapabilities"
+  ],
+  "targets": [
+   "tui/terminal_image.go#TerminalCapabilities"
+  ],
+  "struct": {
+   "file": "tui/terminal_image.go",
+   "type": "TerminalCapabilities"
+  },
+  "production": [
+   "call:tui/terminal_image.go#GetCapabilities"
+  ],
+  "evidence": [
+   "test:tui/terminal_image_upstream_test.go#TestUpstreamTerminalImageCapabilities"
+  ],
+  "rationale": "terminal-image.ts TerminalCapabilities {images, trueColor, hyperlinks}: Go TerminalCapabilities with the same three fields; images is the ImageProtocol string."
+ },
+ {
+  "ids": [
+   "pkg:tui/.#CellDimensions"
+  ],
+  "targets": [
+   "tui/terminal_image.go#CellDimensions"
+  ],
+  "struct": {
+   "file": "tui/terminal_image.go",
+   "type": "CellDimensions"
+  },
+  "production": [
+   "call:tui/image.go#Image.Render"
+  ],
+  "evidence": [
+   "test:tui/terminal_image_sizing_upstream_test.go#TestUpstreamImageCellSizing"
+  ],
+  "rationale": "terminal-image.ts CellDimensions {widthPx, heightPx}: Go CellDimensions {WidthPx, HeightPx int}."
+ },
+ {
+  "ids": [
+   "pkg:tui/.#ImageDimensions"
+  ],
+  "targets": [
+   "tui/terminal_image.go#ImageDimensions"
+  ],
+  "struct": {
+   "file": "tui/terminal_image.go",
+   "type": "ImageDimensions"
+  },
+  "production": [
+   "call:tui/terminal_image.go#RenderImage"
+  ],
+  "evidence": [
+   "test:tui/terminal_image_upstream_test.go#TestUpstreamTerminalImageEncoding"
+  ],
+  "rationale": "terminal-image.ts ImageDimensions {widthPx, heightPx}: Go ImageDimensions {WidthPx, HeightPx int}."
+ },
+ {
+  "ids": [
+   "pkg:tui/.#FuzzyMatch"
+  ],
+  "targets": [
+   "tui/fuzzy.go#FuzzyMatch"
+  ],
+  "struct": {
+   "file": "tui/fuzzy.go",
+   "type": "FuzzyMatch"
+  },
+  "production": [
+   "call:tui/fuzzy.go#FuzzyFilter"
+  ],
+  "evidence": [
+   "test:tui/fuzzy_upstream_test.go#TestUpstreamFuzzyMatch"
+  ],
+  "rationale": "fuzzy.ts FuzzyMatch {matches, score}: Go FuzzyMatch {Matches bool, Score float64}."
+ },
+ {
+  "ids": [
+   "pkg:tui/.#RgbColor"
+  ],
+  "targets": [
+   "tui/theme.go#RgbColor"
+  ],
+  "struct": {
+   "file": "tui/theme.go",
+   "type": "RgbColor"
+  },
+  "production": [
+   "call:tui/colors.go#indexedToRgb"
+  ],
+  "evidence": [
+   "test:tui/colors_upstream_test.go#TestUpstreamColors"
+  ],
+  "rationale": "colors.ts RgbColor {r, g, b}: Go RgbColor {R, G, B float64}."
+ },
+ {
+  "ids": [
+   "pkg:tui/.#TerminalColors"
+  ],
+  "targets": [
+   "tui/terminal_colors.go#TerminalColors"
+  ],
+  "struct": {
+   "file": "tui/terminal_colors.go",
+   "type": "TerminalColors"
+  },
+  "production": [
+   "call:tui/terminal_color_query.go#pendingTerminalColorQuery.colors"
+  ],
+  "evidence": [
+   "test:tui/terminal_colors_query_upstream_test.go#TestUpstreamQueryTerminalColors"
+  ],
+  "rationale": "terminal-colors.ts TerminalColors {foreground?, background?, palette?}: Go TerminalColors with *RgbColor and []RgbColor, nil for absent."
+ }
+]

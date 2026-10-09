@@ -34,7 +34,7 @@ func TestResponsesReplayIdentityUsesSourceMetadata(t *testing.T) {
 }
 
 func TestAzureResponsesReplayUsesLogicalModelIdentity(t *testing.T) {
-	provider := NewAzureOpenAIResponsesProvider(AzureOpenAIResponsesConfig{ProviderID: "custom-azure", Model: "logical-model", AzureDeploymentName: "deployment", BaseURL: "https://example.test", APIKey: "test"}).(*openAIResponsesProvider)
+	provider := NewAzureOpenAIResponsesProvider(AzureOpenAIResponsesConfig{ProviderID: "custom-azure", Model: "logical-model", BaseURL: "https://example.test", APIKey: "test"}).(*openAIResponsesProvider)
 	messages := []Message{AssistantMessage{Provider: "custom-azure", API: APIAzureOpenAIResponses, Model: "logical-model", StopReason: StopReasonToolUse, Content: []AssistantContentBlock{ToolCall{ID: "call_1|ctc_1", Name: "sample_tool", Arguments: JsonObject{"payload": "abc"}, Namespace: "functions"}}}}
 	items, err := provider.convertMessages(messages, map[string]string{"sample_tool": "payload"})
 	if err != nil {

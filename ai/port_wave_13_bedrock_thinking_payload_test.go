@@ -1,3 +1,5 @@
+//go:build !pig_strip_bedrock_converse_stream
+
 package ai
 
 import (
@@ -12,7 +14,7 @@ func TestPortWave13BedrockThinkingPayload(t *testing.T) {
 	const profile = "arn:aws:bedrock:us-east-1:123456789012:application-inference-profile/my-profile"
 	for _, tc := range []struct {
 		name, base, id, displayName, region, thinking, effort, beta string
-		level                                                       ThinkingLevel
+		level                                                       ModelThinkingLevel
 		budgetAny                                                   bool
 	}{
 		// upstream: packages/ai/test/bedrock-thinking-payload.test.ts:68
@@ -53,7 +55,7 @@ func TestPortWave13BedrockThinkingPayload(t *testing.T) {
 			if level == "" {
 				level = ThinkingHigh
 			}
-			input := captureBedrockCommand(t, model, Context{Messages: []Message{UserMessage{Content: UserText("Hello"), Timestamp: time.Now().UnixMilli()}}}, StreamOptions{Thinking: level, IsReasoning: model.ProviderMeta.Reasoning, Region: tc.region})
+			input := captureBedrockCommand(t, model, Context{Messages: []Message{UserMessage{Content: UserText("Hello"), Timestamp: time.Now().UnixMilli()}}}, StreamOptions{Thinking: level.ReasoningOption(), IsReasoning: model.ProviderMeta.Reasoning, Region: tc.region})
 			if input.AdditionalModelRequestFields == nil {
 				t.Fatal("missing additionalModelRequestFields")
 			}

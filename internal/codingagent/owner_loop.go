@@ -35,8 +35,9 @@ func (m *InteractiveMode) onOwnerLoop() bool {
 
 // ownerPost is a task the owner loop posted to its own full queue, with the context that may abandon it.
 type ownerPost struct {
-	ctx context.Context
-	fn  func()
+	// done is the posting context's Done channel; a post without a context has a nil channel, which never abandons it.
+	done <-chan struct{}
+	fn   func()
 }
 
 // postFromOwner queues fn from the owner loop without blocking it and without running fn inline. A full queue that only this goroutine drains cannot make room while it waits, and running fn now would run it ahead of the tasks already queued and inside the caller's current work. Upstream's event loop runs a posted callback after the current task and after every callback queued before it, so fn waits in ownerOverflow, behind earlier overflow, and one background forwarder hands it to the loop. A post whose ctx ends, or that is still waiting at shutdown, is abandoned as a blocked off-loop post would be.
@@ -46,10 +47,11 @@ func (m *InteractiveMode) postFromOwner(ctx context.Context, fn func()) {
 	if len(m.ownerOverflow) == 0 && m.postUITask(fn) {
 		return
 	}
-	if ctx == nil {
-		ctx = context.Background()
+	var done <-chan struct{}
+	if ctx != nil {
+		done = ctx.Done()
 	}
-	m.ownerOverflow = append(m.ownerOverflow, ownerPost{ctx: ctx, fn: fn})
+	m.ownerOverflow = append(m.ownerOverflow, ownerPost{done: done, fn: fn})
 	if len(m.ownerOverflow) == 1 {
 		m.ownerOverflowActive.Store(true)
 		m.backgroundTasks.Go(m.forwardOwnerOverflow)
@@ -76,7 +78,7 @@ func (m *InteractiveMode) forwardOwnerOverflow() {
 		stop := false
 		select {
 		case m.uiTaskCh <- next.fn:
-		case <-next.ctx.Done():
+		case <-next.done:
 		case <-shutdown:
 			stop = true
 		}

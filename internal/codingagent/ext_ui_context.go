@@ -13,16 +13,17 @@ package codingagent
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"math"
 	"os"
+	"slices"
 	"sync"
 	"time"
 
 	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/coding/piglogin"
+	"github.com/MichaelKinsy/PiG/extensions/sdk/frontend"
 	"github.com/MichaelKinsy/PiG/tui"
 	"github.com/MichaelKinsy/PiG/tui/widthx"
 )
@@ -39,9 +40,14 @@ type specialLinesComponent struct {
 	lines      []string
 	linesWidth int
 	render     func(width int) []string
-	// mouse handles mouse events for the built-in header; installing other lines or another renderer removes it.
+	// mouse handles mouse events for the built-in header, and click reports the part of its lines that takes a click;
+	// installing other lines or another renderer removes both.
 	mouse      func(event tui.TuiMouseEvent) *tui.TuiMouseDispatchResult
+	click      func() (frontend.Area, bool)
 	invalidate func()
+	// view draws the header or footer when the extension's frame carried a
+	// view (D107); linesWidth is then a Node frame's width, or 0.
+	view extension.ViewSurface
 }
 
 func newSpecialLinesComponent(invalidate func()) *specialLinesComponent {
@@ -60,6 +66,9 @@ func (c *specialLinesComponent) Render(width int) []string {
 	defer c.mu.RUnlock()
 	if c.render != nil {
 		return c.render(width)
+	}
+	if c.view != nil {
+		return widthx.FrameAt(c.view.Render(width), c.linesWidth, width)
 	}
 	if len(c.lines) == 0 {
 		return nil
@@ -81,11 +90,51 @@ func (c *specialLinesComponent) repaint() {
 
 func (c *specialLinesComponent) SetLines(lines []string) { c.SetLinesAt(lines, 0) }
 
+// SetView draws the component from an extension's view surface (D107):
+// an authoritative view (width 0) or one annotating lines laid out at width.
+func (c *specialLinesComponent) SetView(view extension.ViewSurface, width int) {
+	c.mu.Lock()
+	c.render, c.mouse, c.click, c.lines = nil, nil, nil, nil
+	c.view = view
+	c.linesWidth = width
+	c.mu.Unlock()
+	if c.invalidate != nil {
+		c.invalidate()
+	}
+}
+
+// FrontendView reports the view's structure to a D91 frontend (D107).
+func (c *specialLinesComponent) FrontendView(width int) *frontend.View {
+	c.mu.RLock()
+	view, linesWidth := c.view, c.linesWidth
+	c.mu.RUnlock()
+	if view == nil || (linesWidth > 0 && linesWidth != width) {
+		return nil
+	}
+	return view.FrontendView(width)
+}
+
+// SetComponent installs a component the extension built: a frame the extension process rendered keeps the width it was rendered at; any other
+// component renders at the width it is asked for.
+func (c *specialLinesComponent) SetComponent(component tui.Component) {
+	if framed, ok := component.(extension.FramedView); ok {
+		c.SetView(framed.View, framed.Width)
+		return
+	}
+	if frame, ok := component.(extension.WidthLines); ok {
+		c.SetLinesAt(frame.Lines, frame.Width)
+		return
+	}
+	c.SetRenderer(component.Render)
+}
+
 // SetLinesAt installs lines rendered at width (0 when unknown).
 func (c *specialLinesComponent) SetLinesAt(lines []string, width int) {
 	c.mu.Lock()
 	c.render = nil
 	c.mouse = nil
+	c.click = nil
+	c.view = nil
 	c.linesWidth = width
 	if len(lines) == 0 {
 		c.lines = nil
@@ -102,23 +151,38 @@ func (c *specialLinesComponent) SetLinesAt(lines []string, width int) {
 func (c *specialLinesComponent) HasContent() bool {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
-	return c.render != nil || len(c.lines) > 0
+	return c.render != nil || len(c.lines) > 0 || c.view != nil
 }
 
 func (c *specialLinesComponent) SetRenderer(render func(width int) []string) {
-	c.SetRendererWithMouse(render, nil)
+	c.SetRendererWithMouse(render, nil, nil)
 }
 
-// SetRendererWithMouse installs a renderer and the mouse handler of the component it draws.
-func (c *specialLinesComponent) SetRendererWithMouse(render func(width int) []string, mouse func(event tui.TuiMouseEvent) *tui.TuiMouseDispatchResult) {
+// SetRendererWithMouse installs a renderer, the mouse handler of the component it draws, and the part of its lines that
+// takes a click (nil for none).
+func (c *specialLinesComponent) SetRendererWithMouse(render func(width int) []string, mouse func(event tui.TuiMouseEvent) *tui.TuiMouseDispatchResult, click func() (frontend.Area, bool)) {
 	c.mu.Lock()
 	c.lines = nil
+	c.view = nil
 	c.render = render
 	c.mouse = mouse
+	c.click = click
 	c.mu.Unlock()
 	if c.invalidate != nil {
 		c.invalidate()
 	}
+}
+
+// ClickArea reports the part of the lines last rendered that takes a click.
+// pig additive (D91): a frontend session reports a click there.
+func (c *specialLinesComponent) ClickArea() (frontend.Area, bool) {
+	c.mu.RLock()
+	click := c.click
+	c.mu.RUnlock()
+	if click == nil {
+		return frontend.Area{}, false
+	}
+	return click()
 }
 
 // HandleMouse forwards an event to the installed mouse handler, if any.
@@ -148,34 +212,26 @@ func (u *ExtUIContext) ReportsDialogInitiation() bool { return true }
 // does, tick shows the seconds left and expire cancels the dialog.
 type dialogCountdown struct {
 	timeout time.Duration
-	tick    func(seconds int)
-	expire  func()
+	// start runs the component's own countdown (StartCountdown) and dispose stops it (Dispose).
+	start   func(timeout time.Duration, dispatch func(func()), onTick, onExpire func())
+	dispose func()
 }
 
 // dialogTimeout reads ExtensionUIDialogOptions.timeout. Upstream's interactive
 // dialogs count down only for a positive number of milliseconds
 // (extension-selector.ts:56, extension-input.ts:60).
 func dialogTimeout(opts extension.ExtensionUIDialogOptions) time.Duration {
-	if opts == nil {
+	if opts.Timeout == nil || !(*opts.Timeout > 0) {
 		return 0
 	}
-	data, err := json.Marshal(opts)
-	if err != nil {
-		return 0
-	}
-	var value struct {
-		Timeout float64 `json:"timeout"`
-	}
-	if json.Unmarshal(data, &value) != nil || !(value.Timeout > 0) {
-		return 0
-	}
+	timeout := *opts.Timeout
 	// The countdown shows whole seconds; a timeout beyond Duration's range
 	// counts down from its largest.
 	longest := time.Duration(math.MaxInt64) - time.Second
-	if value.Timeout >= float64(longest/time.Millisecond) {
+	if timeout >= float64(longest/time.Millisecond) {
 		return longest
 	}
-	return time.Duration(value.Timeout * float64(time.Millisecond))
+	return time.Duration(timeout * float64(time.Millisecond))
 }
 
 func (u *ExtUIContext) runDialog(
@@ -184,6 +240,7 @@ func (u *ExtUIContext) runDialog(
 	handle func(string),
 	result func() (value string, done, cancelled bool),
 	countdown dialogCountdown,
+	blocked BlockedStatus,
 ) (string, error) {
 	if u.m.layout == nil || u.m.tuiInst == nil {
 		return "", fmt.Errorf("no TUI available")
@@ -210,17 +267,17 @@ func (u *ExtUIContext) runDialog(
 			return
 		}
 
-		var timer *tui.CountdownTimer
 		finish := func() {
 			value, done, cancelled := result()
 			if !done {
 				u.m.tuiInst.Render()
 				return
 			}
-			if timer != nil {
-				timer.Dispose()
+			if countdown.dispose != nil {
+				countdown.dispose()
 			}
 			u.m.extensionDialog = nil
+			u.m.programStatusReporter().SetBlocked("extension-dialog", nil)
 			u.m.editorContainer.SetChildren(u.m.editor)
 			u.m.setExtensionDialogViewMode(false, 0)
 			u.m.tuiInst.RequestRender()
@@ -229,6 +286,8 @@ func (u *ExtUIContext) runDialog(
 		u.m.setExtensionDialogViewMode(true, u.m.extensionDialogLines(component))
 		u.m.editorContainer.SetChildren(component)
 		u.m.extensionDialog = &extensionDialog{component: component}
+		// Extension dialogs share the editor slot: opening one replaces the status of a displaced one (interactive-mode.ts:2729).
+		u.m.programStatusReporter().SetBlocked("extension-dialog", &blocked)
 		u.m.extensionDialog.handle = func(data string) {
 			handle(data)
 			finish()
@@ -236,16 +295,10 @@ func (u *ExtUIContext) runDialog(
 		if countdown.timeout > 0 {
 			// Each second runs on this loop, so expiry replaces the dialog
 			// before any frame shows a zero countdown.
-			timer = tui.NewCountdownTimer(countdown.timeout, func(second func()) {
+			countdown.start(countdown.timeout, func(second func()) {
 				_ = u.m.postToMain(ctx, second)
-			}, func(seconds int) {
-				countdown.tick(seconds)
-				u.m.tuiInst.RequestRender()
-			}, func() {
-				countdown.expire()
-				finish()
-			})
-			context.AfterFunc(ctx, timer.Dispose)
+			}, func() { u.m.requestRender() }, finish)
+			context.AfterFunc(ctx, countdown.dispose)
 		}
 		u.m.tuiInst.Render()
 	})
@@ -273,6 +326,7 @@ func (u *ExtUIContext) runDialog(
 				return
 			}
 			u.m.extensionDialog = nil
+			u.m.programStatusReporter().SetBlocked("extension-dialog", nil)
 			u.m.editorContainer.SetChildren(u.m.editor)
 			u.m.setExtensionDialogViewMode(false, 0)
 			u.m.tuiInst.RequestRender()
@@ -290,10 +344,15 @@ func (u *ExtUIContext) runDialog(
 // title row, fixed hint row). A positive opts timeout counts down in the
 // title and cancels the selector when it expires.
 func (u *ExtUIContext) Select(ctx context.Context, title string, options []string, opts extension.ExtensionUIDialogOptions) (string, error) {
-	sel := tui.NewExtensionSelector(title, options, u.m.toggleAllTools)
+	return u.selectWithStatus(ctx, title, options, opts, BlockedStatus{Kind: tui.ProgramStatusKindQuestion, Message: title})
+}
+
+// selectWithStatus is showExtensionSelector(title, options, opts, blocked): blocked is what the program reports while the selector waits.
+func (u *ExtUIContext) selectWithStatus(ctx context.Context, title string, options []string, opts extension.ExtensionUIDialogOptions, blocked BlockedStatus) (string, error) {
+	sel := tui.NewExtensionSelectorComponent(title, options, nil, nil, tui.ExtensionSelectorOptions{OnToggleToolsExpanded: u.m.toggleAllTools})
 	return u.runDialog(ctx, sel, sel.HandleInput, func() (string, bool, bool) {
 		return sel.SelectedValue(), sel.Done(), sel.Cancelled()
-	}, dialogCountdown{timeout: dialogTimeout(opts), tick: sel.SetCountdown, expire: sel.Cancel})
+	}, dialogCountdown{timeout: dialogTimeout(opts), start: sel.StartCountdown, dispose: sel.Dispose}, blocked)
 }
 
 // Confirm shows a Yes/No selector. Mirrors upstream's
@@ -303,7 +362,7 @@ func (u *ExtUIContext) Confirm(ctx context.Context, title, message string, opts 
 	if message != "" {
 		prompt = title + "\n" + message
 	}
-	result, err := u.Select(ctx, prompt, []string{"Yes", "No"}, opts)
+	result, err := u.selectWithStatus(ctx, prompt, []string{"Yes", "No"}, opts, BlockedStatus{Kind: tui.ProgramStatusKindPermission, Message: title})
 	if err != nil {
 		return false, err
 	}
@@ -315,23 +374,29 @@ func (u *ExtUIContext) Confirm(ctx context.Context, title, message string, opts 
 // showExtensionInput in interactive-mode.ts. A positive opts timeout counts
 // down in the title and cancels the input when it expires.
 func (u *ExtUIContext) Input(ctx context.Context, title, placeholder string, opts extension.ExtensionUIDialogOptions) (string, error) {
-	input := tui.NewExtensionInputComponent(title, placeholder)
+	input := tui.NewExtensionInputComponent(title, placeholder, nil, nil)
 	return u.runDialog(ctx, input, input.HandleInput, func() (string, bool, bool) {
 		return input.Text(), input.Done(), input.Cancelled()
-	}, dialogCountdown{timeout: dialogTimeout(opts), tick: input.SetCountdown, expire: input.Cancel})
+	}, dialogCountdown{timeout: dialogTimeout(opts), start: input.StartCountdown, dispose: input.Dispose}, BlockedStatus{Kind: tui.ProgramStatusKindQuestion, Message: title})
 }
 
 // Editor shows a multi-line editor in the editor slot. Mirrors upstream's
 // showExtensionEditor in interactive-mode.ts, which creates an
 // ExtensionEditorComponent and swaps it into the editorContainer.
 func (u *ExtUIContext) Editor(ctx context.Context, title, prefill string) (string, error) {
-	ed := tui.NewExtensionEditorComponent(title, prefill)
-	ed.SetExternalEditor(func(content string, apply func(string)) {
-		u.m.openExternalEditorBuffer(ctx, content, apply)
+	var value string
+	var done, cancelled bool
+	ed := NewExtensionEditorComponent(u.m.tuiInst, u.m.keybindings, title, prefill,
+		func(text string) { value, done = text, true },
+		func() { done, cancelled = true, true },
+		nil, u.m.externalEditorCommand())
+	ed.SetFocused(true)
+	ed.SetExternalEditor(func(command, content string, apply func(string)) {
+		u.m.openExternalEditorBuffer(ctx, command, content, apply)
 	})
 	return u.runDialog(ctx, ed, ed.HandleInput, func() (string, bool, bool) {
-		return ed.Value(), ed.Done(), ed.Cancelled()
-	}, dialogCountdown{})
+		return value, done, cancelled
+	}, dialogCountdown{}, BlockedStatus{Kind: tui.ProgramStatusKindQuestion, Message: title})
 }
 
 // ─── Notifications & Status ──────────────────────────────────────────────────
@@ -340,6 +405,18 @@ func (u *ExtUIContext) Notify(message, kind string) {
 	u.m.runOnMain(u.m.runCtx, func() {
 		u.m.showExtensionNotify(message, kind)
 	})
+}
+
+// showExtensionNotify mirrors interactive-mode.ts showExtensionNotify.
+func (m *InteractiveMode) showExtensionNotify(message, notifyType string) {
+	switch notifyType {
+	case "error":
+		m.showError(message)
+	case "warning":
+		m.showWarning(message)
+	default:
+		m.showStatus(message)
+	}
 }
 
 // SetStatus forwards a keyed status to the footer and requests a render, like
@@ -370,53 +447,53 @@ func (u *ExtUIContext) SetWorkingIndicator(options extension.WorkingIndicatorOpt
 	if u.m == nil {
 		return
 	}
-	data, err := json.Marshal(options)
-	if err != nil {
-		return
+	// The update runs later on the owner loop, so it takes its own copy of the caller's frames and interval.
+	owned := extension.WorkingIndicatorOptions{}
+	if options.Frames != nil {
+		owned.Frames = new(slices.Clone(*options.Frames))
 	}
-	var parsed *workingIndicatorOptions
-	if json.Unmarshal(data, &parsed) != nil {
-		return
+	if options.IntervalMs != nil {
+		owned.IntervalMs = new(*options.IntervalMs)
 	}
-	u.m.updateStatusOnOwner(func() { u.m.setWorkingIndicator(parsed) })
+	u.m.updateStatusOnOwner(func() { u.m.setWorkingIndicator(&owned) })
 }
 
 func (u *ExtUIContext) SetHiddenThinkingLabel(label string) {
-	if u.m.statusLine != nil {
-		u.m.statusLine.SetHiddenThinkingLabel(label)
-	}
+	u.m.updateStatusOnOwner(func() { u.m.setHiddenThinkingLabel(label) })
 }
 
-func (u *ExtUIContext) SetWidget(key string, content any, opts extension.ExtensionWidgetOptions) {
-	// Subprocess widgets are rendered via PushProxy, not this path.
-	// In-process extensions do not use widgets, so this is a noop.
-}
-
-// widthLines normalizes a header/footer frame: plain lines carry no render
-// width; a subprocess frame carries the width it was rendered at.
-func widthLines(factory any) (extension.WidthLines, bool) {
-	switch v := factory.(type) {
-	case []string:
-		return extension.WidthLines{Lines: v}, true
-	case extension.WidthLines:
-		return v, true
-	}
-	return extension.WidthLines{}, false
-}
-
-func (u *ExtUIContext) SetFooter(factory any) {
+func (u *ExtUIContext) SetFooter(factory extension.FooterFactory) {
 	if u.m.extFooter == nil {
 		return
 	}
 	// Upstream setExtensionFooter swaps the built-in footer for the
 	// extension's component whatever it renders, so a frame with no lines
 	// is an empty footer; only a cleared footer (nil) restores the built-in. Ownership changes before SetLinesAt, whose invalidation callback can paint synchronously.
-	if frame, ok := widthLines(factory); ok {
+	// upstream: interactive-mode.ts:2530 setExtensionFooter disposes the existing custom footer first.
+	u.m.extComponentMu.Lock()
+	previous := u.m.extFooterComponent
+	u.m.extFooterComponent = nil
+	u.m.extComponentMu.Unlock()
+	if previous != nil {
+		previous.Dispose()
+	}
+	if factory != nil {
+		var footerData extension.ReadonlyFooterDataProvider
 		if u.m.statusLine != nil {
-			u.m.statusLine.SetSuppressedByExtFooter(true)
+			footerData = u.m.statusLine.FooterDataProvider
 		}
-		u.m.extFooter.SetLinesAt(frame.Lines, frame.Width)
-		return
+		// upstream: interactive-mode.ts setExtensionFooter calls the factory with (this.ui, theme, this.footerDataProvider).
+		component := factory(u.m.tuiInst, tui.ActiveTheme(), footerData)
+		if component != nil {
+			u.m.extComponentMu.Lock()
+			u.m.extFooterComponent = component
+			u.m.extComponentMu.Unlock()
+			if u.m.statusLine != nil {
+				u.m.statusLine.SetSuppressedByExtFooter(true)
+			}
+			u.m.extFooter.SetComponent(component)
+			return
+		}
 	}
 	if u.m.statusLine != nil {
 		u.m.statusLine.SetSuppressedByExtFooter(false)
@@ -424,13 +501,27 @@ func (u *ExtUIContext) SetFooter(factory any) {
 	u.m.extFooter.SetLines(nil)
 }
 
-func (u *ExtUIContext) SetHeader(factory any) {
+func (u *ExtUIContext) SetHeader(factory extension.HeaderFactory) {
 	if u.m.extHeader == nil {
 		return
 	}
-	if frame, ok := widthLines(factory); ok {
-		u.m.extHeader.SetLinesAt(frame.Lines, frame.Width)
-		return
+	// upstream: interactive-mode.ts:2558 setExtensionHeader disposes the existing custom header first.
+	u.m.extComponentMu.Lock()
+	previous := u.m.extHeaderComponent
+	u.m.extHeaderComponent = nil
+	u.m.extComponentMu.Unlock()
+	if previous != nil {
+		previous.Dispose()
+	}
+	if factory != nil {
+		// upstream: interactive-mode.ts setExtensionHeader calls the factory with (this.ui, theme).
+		if component := factory(u.m.tuiInst, tui.ActiveTheme()); component != nil {
+			u.m.extComponentMu.Lock()
+			u.m.extHeaderComponent = component
+			u.m.extComponentMu.Unlock()
+			u.m.extHeader.SetComponent(component)
+			return
+		}
 	}
 	u.m.restoreBuiltInHeader()
 }
@@ -536,7 +627,7 @@ func (m *InteractiveMode) setBuiltInHeader(expanded bool) {
 	// selection a game or another PiG wrote since startup (/reload restores the built-in header).
 	piglogin.Refresh()
 	piglogin.Active()
-	m.extHeader.SetRendererWithMouse(m.renderBuiltInHeader, m.handleBuiltInHeaderMouse)
+	m.extHeader.SetRendererWithMouse(m.renderBuiltInHeader, m.handleBuiltInHeaderMouse, m.builtInHeaderClickArea)
 }
 
 func (u *ExtUIContext) SetTitle(title string) {
@@ -562,6 +653,9 @@ func (u *ExtUIContext) RunRemoteOverlay(opts extension.RemoteOverlayOptions, hos
 	overlay.terminalWidth = u.m.tuiInst.Width
 	if host != nil {
 		overlay.SetOnInput(host.OnInput)
+		if mouse, ok := host.(extension.RemoteOverlayMouseHost); ok {
+			overlay.SetOnMouse(mouse.OnMouse)
+		}
 	}
 	defer overlay.setInputActive(u.m, false)
 
@@ -575,7 +669,7 @@ func (u *ExtUIContext) RunRemoteOverlay(opts extension.RemoteOverlayOptions, hos
 	runOnOwner(ctx, func() {
 		var cleanup func()
 		if opts.Overlay || u.m.layout == nil {
-			h := u.m.tuiInst.OpenOverlay(overlay, remoteOverlayTUIOptions(opts))
+			h := u.m.tuiInst.ShowOverlay(overlay, remoteOverlayTUIOptions(opts))
 			u.bindOverlayControls(overlay, h, runOnOwner)
 			cleanup = h.Close
 		} else {
@@ -697,16 +791,21 @@ func (u *ExtUIContext) OnRemoteTerminalInput(extensionName string, handler exten
 
 // ─── Autocomplete ────────────────────────────────────────────────────────────
 
-// SetEditorComponent installs an extension's editor component in place of
-// the editor, or with nil restores the editor, as Pi's setEditorComponent
-// does (remote_editor.go).
-func (u *ExtUIContext) SetEditorComponent(factory any) {
-	editor, _ := factory.(extension.RemoteEditor)
-	u.m.runOnMain(u.m.backgroundCtx, func() { u.m.setRemoteEditor(editor) })
+// SetEditorComponent installs the component factory builds in place of the editor, or with nil restores the editor
+// (interactive-mode.ts setCustomEditorComponent). The factory is called on the owner loop with the TUI, the editor theme and the keybindings.
+func (u *ExtUIContext) SetEditorComponent(factory extension.EditorFactory) {
+	// interactive-mode.ts:2876 records the factory first, so getEditorComponent answers the new factory at once; the owner loop installs it.
+	u.m.extComponentMu.Lock()
+	u.m.editorFactory = factory
+	u.m.extComponentMu.Unlock()
+	u.m.runOnMain(u.m.backgroundCtx, func() { u.m.setCustomEditorComponent(factory) })
 }
 
-func (u *ExtUIContext) GetEditorComponent() any {
-	return nil
+// GetEditorComponent is the factory the last SetEditorComponent installed (interactive-mode.ts:2664 `this.editorComponentFactory`).
+func (u *ExtUIContext) GetEditorComponent() extension.EditorFactory {
+	u.m.extComponentMu.Lock()
+	defer u.m.extComponentMu.Unlock()
+	return u.m.editorFactory
 }
 
 // ─── Theme ───────────────────────────────────────────────────────────────────
@@ -734,10 +833,10 @@ func ExtensionThemePalette(theme *tui.Theme) extension.Theme {
 		// as upstream's chalk decides from its own stdout.
 		"modifiers": chalkModifiersEnabled(),
 		// mode is upstream Theme.getColorMode(): the mode the theme's own escape sequences are built for, which style draws a concrete color in.
-		"mode": string(theme.ColorMode()),
+		"mode": string(theme.GetColorMode()),
 		// appearance and colors are upstream Theme.appearance and Theme.colors (theme.ts:311-336). The host resolves them: they depend on the terminal's reported colors, which the extension process cannot see.
 		"appearance": string(theme.Appearance()),
-		"colors":     extensionThemeColors(theme.ColorValues()),
+		"colors":     extensionThemeColors(theme.Colors()),
 	}
 	// sourcePath is upstream Theme.sourcePath: the file a custom theme was
 	// loaded from, absent for built-in themes.
@@ -809,18 +908,30 @@ func (u *ExtUIContext) GetTheme(name string) (extension.Theme, error) {
 
 // SetTheme disables automatic switching, applies a named theme, and persists a successful choice.
 // An unknown name falls back to the system theme and returns failure without changing the stored selection (theme.ts setTheme).
-func (u *ExtUIContext) SetTheme(theme any) extension.SetThemeResult {
-	name, ok := theme.(string)
-	if !ok {
-		return extension.SetThemeResult{Success: false, Error: "expected theme name string"}
-	}
+func (u *ExtUIContext) SetTheme(selection extension.ThemeSelection) extension.SetThemeResult {
 	if u.m == nil {
 		return extension.SetThemeResult{Success: false, Error: "no interactive UI is active"}
+	}
+	var name string
+	switch selection := selection.(type) {
+	case extension.ThemeName:
+		name = string(selection)
+	case extension.ThemeInstance:
+		// upstream: interactive-mode.ts:2670 `themeOrName instanceof Theme` -> themeController.setThemeInstance
+		if selection.Theme == nil {
+			return extension.SetThemeResult{Success: false, Error: "expected a theme"}
+		}
+		core := u.m.theme()
+		core.renderer = func() tui.TUI { return ownerInvalidatingRenderer{TUI: u.m.tuiInst, m: u.m} }
+		core.setThemeInstance(selection.Theme)
+		return extension.SetThemeResult{Success: true}
+	default:
+		return extension.SetThemeResult{Success: false, Error: "expected theme name string"}
 	}
 	// upstream 0.99.1 interactive-mode.ts:2575-2586 extension setTheme: select by name, and persist only a theme that loaded.
 	core := u.m.theme()
 	// An extension calls off the owner loop, which alone may touch the renderer.
-	core.renderer = func() tui.Renderer { return ownerInvalidatingRenderer{Renderer: u.m.tuiInst, m: u.m} }
+	core.renderer = func() tui.TUI { return ownerInvalidatingRenderer{TUI: u.m.tuiInst, m: u.m} }
 	if err := core.setThemeName(name, false); err != nil {
 		return extension.SetThemeResult{Success: false, Error: err.Error()}
 	}
@@ -859,16 +970,16 @@ func (u *ExtUIContext) SetToolsExpanded(expanded bool) {
 
 // ownerInvalidatingRenderer runs Invalidate on the owner loop and requests the render an extension's theme change needs.
 type ownerInvalidatingRenderer struct {
-	tui.Renderer
+	tui.TUI
 	m *InteractiveMode
 }
 
 func (r ownerInvalidatingRenderer) Invalidate() {
-	if r.Renderer == nil {
+	if r.TUI == nil {
 		return
 	}
 	// The embedded renderer, not this wrapper: the wrapper's own Invalidate would recurse.
-	base := r.Renderer
+	base := r.TUI
 	invalidate := func() { base.Invalidate(); base.RequestRender() }
 	if r.m.runCtx == nil {
 		invalidate()

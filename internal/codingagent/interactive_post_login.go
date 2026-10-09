@@ -22,6 +22,28 @@ func isUnknownModel(model *ai.Model) bool {
 // invalidatePostLoginSelection invalidates pending authentication selection when an owner-loop model or Session command starts, including commands that retain the same model pointer.
 func (m *InteractiveMode) invalidatePostLoginSelection() { m.modelSelectionGeneration++ }
 
+// synchronizeLoginCredential recomposes the provider after a login stored its credential, as upstream ModelRuntime.login does before the login returns. A failure is shown here as upstream's login catch blocks show it, and the caller skips completing the authentication.
+// upstream: packages/coding-agent/src/modes/interactive/interactive-mode.ts:showApiKeyLoginDialog, showLoginDialog
+func (m *InteractiveMode) synchronizeLoginCredential(ctx context.Context, providerID, providerName string, authType ai.CredentialType, redact func(string) string) (failed bool) {
+	runtime := m.opts.RequestAuthRuntime
+	if runtime == nil {
+		return false
+	}
+	err := runtime.SynchronizeCredentialState(ctx, providerID, CredentialSynchronizationLogin, nil)
+	if err == nil {
+		return false
+	}
+	if redact == nil {
+		redact = func(text string) string { return text }
+	}
+	actionLabel := "Logged in to " + providerName
+	if authType == ai.CredentialAPIKey {
+		actionLabel = "Saved API key for " + providerName
+	}
+	m.showError(redact(actionLabel + ", but local model state could not be synchronized: " + err.Error()))
+	return true
+}
+
 // completeProviderAuthentication completes local selection before starting the bounded catalog refresh. Deferred selection never replaces a model or session chosen during that refresh. authPath is the credential store's reported location; an empty path uses the ordinary auth.json store.
 func (m *InteractiveMode) completeProviderAuthentication(providerID, providerName string, authType ai.CredentialType, previousModel *ai.Model, authPath string, redact func(string) string) {
 	if redact == nil {
@@ -44,7 +66,7 @@ func (m *InteractiveMode) completeProviderAuthentication(providerID, providerNam
 		return model.Provider == providerID && model.ID == defaultID
 	})
 	session, handle := m.currentSession(), m.opts.SessionHandle
-	registry, llamaHost := m.opts.ModelRegistry, m.opts.Llama
+	registry := m.opts.ModelRegistry
 	refresh := func() {
 		ctx := m.backgroundCtx
 		if ctx == nil {
@@ -61,13 +83,6 @@ func (m *InteractiveMode) completeProviderAuthentication(providerID, providerNam
 			result := CatalogRefreshResult{}
 			if registry != nil {
 				result = registry.RefreshCatalogs(refreshCtx, CatalogRefreshOptions{AllowNetwork: ModelNetworkEnabled(), Providers: []string{providerID}})
-			}
-			if llamaHost != nil && llamaHost.Provider().ID == providerID {
-				llamaResult := llamaHost.Refresh(refreshCtx, true)
-				result.Aborted = result.Aborted || llamaResult.Aborted
-				if llamaResult.Err != nil {
-					result.Errors = map[string]error{providerID: llamaResult.Err}
-				}
 			}
 			m.runOnMain(ownerCtx, func() {
 				if ctx.Err() != nil {
@@ -237,4 +252,12 @@ func (m *InteractiveMode) finishProviderAuthentication(providerID, actionLabel s
 			finish(model, err)
 		})
 	})
+}
+
+// llamaCppPostLoginGuidance mirrors interactive-mode.ts llamaCppPostLoginGuidance.
+func llamaCppPostLoginGuidance(actionLabel string, loadedModelCount int) string {
+	if loadedModelCount == 0 {
+		return actionLabel + ". No llama.cpp models are loaded. Use /llama to load a model, then /model to select it."
+	}
+	return actionLabel + ". Use /model to select a loaded llama.cpp model, or /llama to manage models."
 }

@@ -27,7 +27,7 @@ func openRoot(t *testing.T) (harness.Conversation, func()) {
 	return root, opened.(interface{ WaitDeliveries() }).WaitDeliveries
 }
 
-func configure(t *testing.T, conversation harness.Conversation, level ai.ThinkingLevel) {
+func configure(t *testing.T, conversation harness.Conversation, level ai.ModelThinkingLevel) {
 	t.Helper()
 	if err := conversation.Configure(t.Context(), harness.AgentChange{ThinkingLevel: harness.SetTo(level)}); err != nil {
 		t.Fatal(err)

@@ -14,7 +14,7 @@ func newLifecycleMode(t *testing.T) (*InteractiveMode, context.Context, context.
 	m := newPendingDisplayHarness(t)
 	m.chatContainer = tui.NewContainer()
 	m.statusContainer = tui.NewContainer()
-	m.agent = agent.NewAgent(agent.AgentOptions{})
+	m.agent = mustNewAgent(agent.AgentOptions{})
 	ctx, cancel := context.WithCancel(context.Background())
 	t.Cleanup(cancel)
 	m.runCtx = ctx

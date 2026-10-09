@@ -1,0 +1,52 @@
+[
+ {
+  "ids": [
+   "pkg:mcp/.#StdioTransportOptions"
+  ],
+  "targets": [
+   "mcp/stdio.go#StdioTransportOptions"
+  ],
+  "struct": {
+   "file": "mcp/stdio.go",
+   "type": "StdioTransportOptions"
+  },
+  "production": [
+   "call:coding/mcpext/runtime.go#CreateDefaultTransport"
+  ],
+  "evidence": [
+   "test:mcp/stdio_test.go#TestStdioTransportConnectsToANewlineDelimitedMCPServerAndCapturesStderr",
+   "test:mcp/stdio_env_test.go#TestStdioTransportPassesEveryPropertyWhoseNameHoldsAnEqualsSign",
+   "test:mcp/stdio_options_test.go#TestStdioTransportRunsTheServerInTheConfiguredCwd",
+   "test:mcp/stdio_options_test.go#TestStdioTransportKeepsOnlyTheLastMaxStderrBytesOfStderr",
+   "test:mcp/stdio_options_test.go#TestStdioTransportRejectsAStdoutLineLongerThanMaxMessageBytes",
+   "test:mcp/stdio_options_test.go#TestStdioTransportInheritsStderrWithoutCapturingIt"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "StdioTransportOptions: every upstream option has a Go field; each option is set by a test that observes its effect (cwd, maxStderrBytes, maxMessageBytes, stderr inherit and headers by PiG's own tests, red under mutation; the rest by the ported upstream tests)."
+ },
+ {
+  "ids": [
+   "pkg:mcp/.#StreamableHttpTransportOptions"
+  ],
+  "targets": [
+   "mcp/streamable_http.go#StreamableHTTPTransportOptions"
+  ],
+  "struct": {
+   "file": "mcp/streamable_http.go",
+   "type": "StreamableHTTPTransportOptions"
+  },
+  "production": [
+   "call:coding/mcpext/runtime.go#CreateDefaultTransport"
+  ],
+  "evidence": [
+   "test:mcp/streamable_http_test.go#TestStreamableHTTPTransportHandlesJSONAndSSEResponsesWithSessionAndProtocolHeaders",
+   "test:mcp/streamable_http_options_test.go#TestStreamableHTTPTransportSendsTheConfiguredHeadersOnEveryRequest",
+   "test:mcp/streamable_http_options_test.go#TestStreamableHTTPTransportRejectsAnSSEEventLargerThanMaxMessageBytes",
+   "test:mcp/streamable_http_test.go#TestStreamableHTTPTransportRoutesEveryRequestThroughTheFetchInUse",
+   "test:mcp/streamable_http_test.go#TestStreamableHTTPTransportReconnectsTheGETStreamAfterItDrops",
+   "test:mcp/streamable_http_test.go#TestStreamableHTTPTransportHandsUnauthorizedAndInsufficientScopeResponsesToTheAuthProviderWithTheRejectedToken"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "StreamableHTTPTransportOptions: every upstream option has a Go field; each option is set by a test that observes its effect (cwd, maxStderrBytes, maxMessageBytes, stderr inherit and headers by PiG's own tests, red under mutation; the rest by the ported upstream tests)."
+ }
+]

@@ -12,7 +12,7 @@ func TestInprocExtensionContextReadsCurrentModel(t *testing.T) {
 	runner := inproc.NewRunner([]extension.Extension{{Name: "model-reader"}}, t.TempDir())
 	mode := &InteractiveMode{
 		newRunner: runner,
-		opts:      InteractiveOptions{},
+		opts:      InteractiveModeOptions{},
 	}
 	mode.wireInprocContextActions()
 	ctx := runner.CreateCommandContext()
@@ -25,16 +25,15 @@ func TestInprocExtensionContextReadsCurrentModel(t *testing.T) {
 		t.Fatalf("model before selection = %#v, want nil", model)
 	}
 
-	mode.opts.Model = &ai.Model{ID: "selected-model", DisplayName: "Selected Model"}
+	// upstream: runner.ts:906-909 `get model()` returns getModel(), the Session's own Model object (agent-session.ts:3437), with every member an extension reads (provider, api), not an id and display-name projection.
+	selected := &ai.Model{ID: "selected-model", DisplayName: "Selected Model", ProviderMeta: ai.ProviderMetadata{ProviderID: "capture", API: "openai-responses"}}
+	mode.opts.Model = selected
 	model, err = ctx.Model()
 	if err != nil {
 		t.Fatal(err)
 	}
-	got, ok := model.(map[string]any)
-	if !ok {
-		t.Fatalf("model type = %T, want map[string]any", model)
-	}
-	if got["id"] != "selected-model" || got["displayName"] != "Selected Model" {
-		t.Fatalf("model = %#v", got)
+	// upstream: types.ts ExtensionContext.model is the Session's Model object.
+	if model != mode.opts.Model || model.ID != "selected-model" || model.DisplayName != "Selected Model" {
+		t.Fatalf("model = %#v, want the Session's model", model)
 	}
 }

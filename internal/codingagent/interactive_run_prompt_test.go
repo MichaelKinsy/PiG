@@ -53,8 +53,8 @@ func TestRunPromptEndsBeforeIdlePublication(t *testing.T) {
 func TestInteractiveSetActiveToolsRebuildsForcedPrompt(t *testing.T) {
 	runner := inproc.NewRunner(nil, t.TempDir())
 	mode := &InteractiveMode{
-		newRunner: runner, tuiInst: tui.NewWithOutput(io.Discard, 80, 24), layout: tui.NewContainer(), agent: agent.NewAgent(agent.AgentOptions{}),
-		opts: InteractiveOptions{CWD: t.TempDir(), SystemPromptOptions: extension.BuildSystemPromptOptions{Cwd: "/prompt", ToolSnippets: prompts.DefaultToolSnippets()},
+		newRunner: runner, tuiInst: tui.NewWithOutput(io.Discard, 80, 24), layout: tui.NewContainer(), agent: mustNewAgent(agent.AgentOptions{}),
+		opts: InteractiveModeOptions{CWD: t.TempDir(), SystemPromptOptions: extension.BuildSystemPromptOptions{Cwd: "/prompt", ToolSnippets: prompts.DefaultToolSnippets()},
 			ActiveBuiltinTools: map[string]struct{}{"read": {}, "bash": {}},
 		},
 	}
@@ -98,5 +98,42 @@ func TestInteractiveSetActiveToolsRebuildsForcedPrompt(t *testing.T) {
 	ctx.SetActiveTools([]string{"bash"})
 	if prompt := forced(); !strings.Contains(prompt, "- bash:") || strings.Contains(prompt, "- read:") {
 		t.Fatalf("base prompt after setActiveTools = %q", prompt)
+	}
+}
+
+// runPromptHandle records the run interactive mode publishes to its Session.
+type runPromptHandle struct {
+	InteractiveSessionHandle
+	published []*BeforeAgentStartRun
+}
+
+func (h *runPromptHandle) SetRunPrompt(run *BeforeAgentStartRun) {
+	h.published = append(h.published, run)
+}
+
+// agent-session.ts prompt builds the run's options for every mode, and the Session records the run's sections in the
+// transcript before the first request. Interactive mode prepares its own run, so it must hand it to the Session while the
+// run lasts and take it back when the run ends; without it the extension sections (for example `mcp_servers`) never reach
+// the transcript.
+func TestInteractiveRunPromptIsPublishedToTheSessionForTheRunsDuration(t *testing.T) {
+	handle := &runPromptHandle{}
+	mode := &InteractiveMode{agent: mustNewAgent(agent.AgentOptions{}), opts: InteractiveModeOptions{SessionHandle: handle, SystemPrompt: "base"}}
+	sections := ai.OrderedSections{{Name: "mcp_servers", Value: new("- mcp__docs (codemode)")}}
+	run := BeforeAgentStartRun{Sections: sections}
+
+	if err := mode.beginRunPrompt(3, run); err != nil {
+		t.Fatal(err)
+	}
+	if len(handle.published) != 1 || handle.published[0] == nil || len(handle.published[0].Sections) != 1 || handle.published[0].Sections[0].Name != "mcp_servers" {
+		t.Fatalf("published after begin = %+v, want the run with its sections", handle.published)
+	}
+
+	mode.endRunPrompt(2) // another run's end leaves this run alone
+	if len(handle.published) != 1 {
+		t.Fatalf("a stale end published %d times", len(handle.published))
+	}
+	mode.endRunPrompt(3)
+	if len(handle.published) != 2 || handle.published[1] != nil {
+		t.Fatalf("published after end = %+v, want the run ended with nil", handle.published)
 	}
 }

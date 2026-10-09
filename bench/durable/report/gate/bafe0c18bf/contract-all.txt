@@ -1,0 +1,20 @@
+FAIL pi W1-1000 (dcore-loop): {"problem":"memory grows 6.8 MiB per measured turn (rss: 168 MiB after turn 0, 229 MiB after turn 9); it may grow 52 MiB over these turns (4 MiB per turn plus 16 MiB)","commits":770,"reference":"+9.5 MiB/turn rss 245 MiB over 10 turns"}
+FAIL pi W2-1000 (dcore-loop): {"problem":"memory grows 7.4 MiB per measured turn (rss: 173 MiB after turn 0, 240 MiB after turn 9); it may grow 52 MiB over these turns (4 MiB per turn plus 16 MiB)","commits":770,"reference":"+7.0 MiB/turn rss 239 MiB over 10 turns"}
+FAIL pi W4c-1000 (dcore-loop): {"problem":"memory grows 9.6 MiB per measured turn (rss: 152 MiB after turn 0, 181 MiB after turn 3); it may grow 28 MiB over these turns (4 MiB per turn plus 16 MiB)","commits":164,"reference":"+12.7 MiB/turn rss 179 MiB over 4 turns"}
+FAIL pi W1-3500 (dcore-loop): {"problem":"memory grows 6.2 MiB per measured turn (rss: 249 MiB after turn 0, 305 MiB after turn 9); it may grow 52 MiB over these turns (4 MiB per turn plus 16 MiB)","commits":770,"reference":"+4.9 MiB/turn rss 294 MiB over 10 turns"}
+FAIL pi W2-3500 (dcore-loop): {"problem":"memory grows 9.3 MiB per measured turn (rss: 254 MiB after turn 0, 338 MiB after turn 9); it may grow 52 MiB over these turns (4 MiB per turn plus 16 MiB)","commits":770,"reference":"+11.6 MiB/turn rss 351 MiB over 10 turns"}
+
+per-lane results (pass/fail/pending/skipped)   report: report.json
+lane               pi                     native                 wasm-tinygo            wasm-go               
+dcore-host         7/0/0/3                7/0/0/3                7/0/0/3                7/0/0/3               
+dcore-loop         40/5/2/2               45/0/2/2               45/0/2/2               45/0/2/2              
+dcore-session      36/0/0/0               36/0/0/0               36/0/0/0               36/0/0/0              
+dcore-store        17/0/0/2               17/0/0/2               17/0/0/2               17/0/0/2              
+native: built with `sh durable/core/budget/build-native.sh`
+wasm-tinygo: built with `make -C durable/core build-tinygo`
+wasm-go: built with `make -C durable/core build-go`
+totals pi: pass 100  fail 5  pending 2  skipped 7
+totals native: pass 105  fail 0  pending 2  skipped 7
+totals wasm-tinygo: pass 105  fail 0  pending 2  skipped 7
+totals wasm-go: pass 105  fail 0  pending 2  skipped 7
+EXIT 1

@@ -265,7 +265,7 @@ export default function(pi) {
 
 func BenchmarkSessionNameNotifications(b *testing.B) {
 	b.Setenv("PIG_HOME", b.TempDir())
-	services, err := NewServices(ServicesOptions{CWD: b.TempDir()})
+	services, err := CreateAgentSessionServices(CreateAgentSessionServicesOptions{CWD: b.TempDir()})
 	if err != nil {
 		b.Fatal(err)
 	}

@@ -213,7 +213,7 @@ func TestSessionSelectorTrashDeletionStatus(t *testing.T) {
 	t.Setenv("PATH", installFakeTrash(t))
 	t.Setenv(fakeTrashEnv, "move")
 	sm := NewSessionManager(cwd)
-	s := newSessionSelector(
+	s := newSessionSelectorFromListers(
 		func(o SessionListOptions) ([]SessionInfo, error) { return sm.ListCurrentSessions(o) },
 		func(o SessionListOptions) ([]SessionInfo, error) { return sm.ListAllSessions(o) },
 		nil, sm.deleteListedSession, "", sessionSelectorInputBindings(t))

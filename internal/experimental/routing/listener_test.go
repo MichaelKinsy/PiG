@@ -62,12 +62,14 @@ func createTestServer(t *testing.T, options routingtest.TestServerOptions) *rout
 	return created.Server
 }
 
+// TestServerListenerComposition: packages/server/src/listener.ts:4-8 start(accept) and close() are called on every configured listener (server.ts start/close).
+// mutation-checked: Server.Start not calling ServerListener.Start, and Server.Close not calling ServerListener.Close, fail it.
 func TestServerListenerComposition(t *testing.T) {
 	// upstream: packages/server/test/listener.test.ts:28 "starts and closes every configured listener"
 	t.Run("starts and closes every configured listener", func(t *testing.T) {
 		first, second := &testListener{}, &testListener{}
 		server := createTestServer(t, routingtest.TestServerOptions{Listeners: []routing.ServerListener{first, second}})
-		if err := server.Start(); err != nil {
+		if _, err := server.Start(); err != nil {
 			t.Fatal(err)
 		}
 		for _, listener := range []*testListener{first, second} {
@@ -92,7 +94,7 @@ func TestServerListenerComposition(t *testing.T) {
 		second := &testListener{startError: failure}
 		server := createTestServer(t, routingtest.TestServerOptions{Listeners: []routing.ServerListener{first, second}})
 		// listener.test.ts:48 rejects.toBe(failure): the listener's own error, not a wrapper.
-		if err := server.Start(); err != failure { //nolint:errorlint // identity is the upstream contract (toBe).
+		if _, err := server.Start(); err != failure { //nolint:errorlint // identity is the upstream contract (toBe).
 			t.Fatalf("Start = %v, want the listener's own error", err)
 		}
 		if _, closes := first.counts(); closes != 1 {
@@ -102,4 +104,27 @@ func TestServerListenerComposition(t *testing.T) {
 			t.Fatalf("failed listener close count = %d, want 0", closes)
 		}
 	})
+}
+
+// upstream: packages/server/src/listener.ts:4-8 ServerListener.start(accept) / close(): a listener is driven through its interface, start hands it the acceptor, close is observable on the same value, and a start failure is the listener's own error.
+func TestServerListenerInterfaceStartAndClose(t *testing.T) {
+	impl := &testListener{}
+	var listener routing.ServerListener = impl
+	if err := listener.Start(func(routing.ByteConnection) routing.ByteConnectionHandler { return routing.ByteConnectionHandler{} }); err != nil {
+		t.Fatal(err)
+	}
+	if accepting, closes := impl.counts(); !accepting || closes != 0 {
+		t.Fatalf("after Start accepting = %v, closes = %d", accepting, closes)
+	}
+	if err := listener.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if _, closes := impl.counts(); closes != 1 {
+		t.Fatalf("closes = %d, want 1", closes)
+	}
+	failing := &testListener{startError: errors.New("bind failed")}
+	listener = failing
+	if err := listener.Start(nil); err == nil || err.Error() != "bind failed" {
+		t.Fatalf("Start error = %v", err)
+	}
 }

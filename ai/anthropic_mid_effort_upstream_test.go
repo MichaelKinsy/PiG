@@ -39,8 +39,8 @@ func TestAnthropicMidConversationEffortPayloadFailureRetainsMetadata(t *testing.
 }
 
 func TestAnthropicUpstreamMidConversationEffort(t *testing.T) {
-	config := AnthropicConfig{Model: "claude-fable-5-1", ProviderID: "anthropic", Compat: &AnthropicMessagesCompat{ForceAdaptiveThinking: new(true), SupportsMidConvoEffort: new(true)}, ModelMetadata: &Model{ID: "claude-fable-5-1", DisplayName: "Claude Fable 5.1", Input: []string{"text"}, Capabilities: ModelCapabilities{MaxThinking: ThinkingMax, ContextWindow: 200000, MaxOutputTokens: 32000}, ProviderMeta: ProviderMetadata{ProviderID: "anthropic", API: APIAnthropicMessages, BaseURL: "http://127.0.0.1:9", Reasoning: true}, ThinkingLevelMap: ThinkingLevelMap{ThinkingOff: nil, ThinkingMinimal: new("low"), ThinkingLow: new("low"), ThinkingMedium: new("medium"), ThinkingHigh: new("high"), ThinkingMax: new("max")}}}
-	capture := func(t *testing.T, cfg AnthropicConfig, ctx Context, effort ThinkingLevel) (*AssistantMessage, map[string]json.RawMessage) {
+	config := AnthropicConfig{Model: "claude-fable-5-1", ProviderID: "anthropic", Compat: &AnthropicMessagesCompat{ForceAdaptiveThinking: new(true), SupportsMidConvoEffort: new(true)}, ModelMetadata: &Model{ID: "claude-fable-5-1", DisplayName: "Claude Fable 5.1", Input: []string{"text"}, Capabilities: ModelCapabilities{MaxThinking: ThinkingLevelMax, ContextWindow: 200000, MaxOutputTokens: 32000}, ProviderMeta: ProviderMetadata{ProviderID: "anthropic", API: APIAnthropicMessages, BaseURL: "http://127.0.0.1:9", Reasoning: true}, ThinkingLevelMap: ThinkingLevelMap{ThinkingOff: nil, ThinkingMinimal: new("low"), ThinkingLow: new("low"), ThinkingMedium: new("medium"), ThinkingHigh: new("high"), ThinkingMax: new("max")}}}
+	capture := func(t *testing.T, cfg AnthropicConfig, ctx Context, effort ModelThinkingLevel) (*AssistantMessage, map[string]json.RawMessage) {
 		t.Helper()
 		cfg.APIKey = "test-key"
 		cfg.BaseURL = "http://127.0.0.1:9"
@@ -51,7 +51,7 @@ func TestAnthropicUpstreamMidConversationEffort(t *testing.T) {
 			}
 		}()
 		var payload map[string]json.RawMessage
-		stream, err := provider.Stream(t.Context(), NormalizeContext(ctx), StreamOptions{ThinkingEnabled: new(true), Effort: string(effort), CacheRetention: CacheRetentionNone, OnPayload: func(value any, _ *Model) (any, error) {
+		stream, err := provider.Stream(t.Context(), NormalizeContext(ctx), StreamOptions{ThinkingEnabled: new(true), Effort: AnthropicEffort(effort), CacheRetention: CacheRetentionNone, OnPayload: func(value any, _ *Model) (any, error) {
 			encoded, err := json.Marshal(value)
 			if err != nil {
 				return nil, err
@@ -128,7 +128,7 @@ func TestAnthropicUpstreamMidConversationEffort(t *testing.T) {
 		}
 	})
 	// .upstream/v0.87.1/packages/ai/test/anthropic-mid-conversation-effort.test.ts:121 (all five rows)
-	for _, effort := range []ThinkingLevel{ThinkingLow, ThinkingMedium, ThinkingHigh, ThinkingXHigh, ThinkingMax} {
+	for _, effort := range []ModelThinkingLevel{ThinkingLow, ThinkingMedium, ThinkingHigh, ThinkingXHigh, ThinkingMax} {
 		t.Run("preserves native effort "+string(effort), func(t *testing.T) {
 			result, payload := capture(t, config, Context{Messages: []Message{UserMessage{Content: UserText("one"), Timestamp: 1}}}, effort)
 			encoded, err := json.Marshal(markers(t, payload))

@@ -1,0 +1,113 @@
+[
+ {
+  "ids": [
+   "pkg:coding-agent/.#CreateModelRuntimeOptions"
+  ],
+  "targets": [
+   "coding/model_runtime_create.go#CreateModelRuntimeOptions"
+  ],
+  "properties": {
+   "allowModelNetwork": {
+    "targets": [
+     "coding/model_runtime_create.go#CreateModelRuntimeOptions.AllowModelNetwork"
+    ],
+    "evidence": [
+     "test:coding/cli/port_wave_10_package_command_paths_test.go#TestPortWave10ModelRuntimeCreation"
+    ],
+    "rationale": "AllowModelNetwork bool; the subtests assert an explicit initial network refresh, and that offline mode blocks it."
+   },
+   "authPath": {
+    "targets": [
+     "coding/model_runtime_create.go#CreateModelRuntimeOptions.AuthPath"
+    ],
+    "evidence": [
+     "test:coding/cli/port_wave_10_package_command_paths_test.go#TestPortWave10ModelRuntimeCreation",
+     "test:coding/model_availability_create_test.go#TestCreateModelRuntimeSkipsAvailabilityWhenRefreshDisabled"
+    ],
+    "rationale": "AuthPath string; empty selects auth.json in the agent directory."
+   },
+   "catalogBaseUrl": {
+    "targets": [
+     "coding/model_runtime_create.go#CreateModelRuntimeOptions.CatalogBaseURL"
+    ],
+    "evidence": [
+     "test:coding/model_catalog_protocol_upstream_test.go#TestModelCatalogProtocolWithTheCurrentClient"
+    ],
+    "rationale": "CatalogBaseURL string; the test points the runtime at a stand-in catalog server."
+   },
+   "credentials": {
+    "targets": [
+     "coding/model_runtime_create.go#CreateModelRuntimeOptions.Credentials"
+    ],
+    "evidence": [
+     "test:coding/model_runtime_injected_credentials_test.go#TestInjectedCredentialStoreDoesNotOpenAuthPath"
+    ],
+    "rationale": "Credentials ai.CredentialStore; when set no auth.json is opened."
+   },
+   "modelRefreshTimeoutMs": {
+    "targets": [
+     "coding/model_runtime_create.go#CreateModelRuntimeOptions.ModelRefreshTimeoutMs"
+    ],
+    "evidence": [
+     "test:coding/cli/port_wave_10_package_command_paths_test.go#TestPortWave10ModelRuntimeCreation"
+    ],
+    "rationale": "ModelRefreshTimeoutMs *int; nil for undefined; the subtest bounds a network refresh with 1 ms."
+   },
+   "modelsPath": {
+    "targets": [
+     "coding/model_runtime_create.go#CreateModelRuntimeOptions.ModelsPath"
+    ],
+    "evidence": [
+     "test:coding/cli/port_wave_10_package_command_paths_test.go#TestPortWave10ModelRuntimeCreation"
+    ],
+    "rationale": "ModelsPath **string: nil is undefined (default models.json), a pointer to nil is upstream null (no models.json), a pointer to a string is the path."
+   },
+   "modelsStore": {
+    "targets": [
+     "coding/model_runtime_create.go#CreateModelRuntimeOptions.ModelsStore"
+    ],
+    "evidence": [
+     "test:coding/model_catalog_protocol_upstream_test.go#TestModelCatalogProtocolWithTheCurrentClient",
+     "test:coding/cli/port_wave_10_package_command_paths_test.go#TestPortWave10ModelRuntimeCreation"
+    ],
+    "rationale": "ModelsStore ai.ModelsStore."
+   },
+   "modelsStorePath": {
+    "targets": [
+     "coding/model_runtime_create.go#CreateModelRuntimeOptions.ModelsStorePath"
+    ],
+    "evidence": [
+     "test:coding/model_runtime_store_path_test.go#TestCreateModelRuntimeRestoresCachedCatalogsFromModelsStorePath"
+    ],
+    "rationale": "ModelsStorePath string; new test seeds a catalog in that file and asserts the first refresh restores it (mutation-checked)."
+   },
+   "refreshOnCreate": {
+    "targets": [
+     "coding/model_runtime_create.go#CreateModelRuntimeOptions.RefreshOnCreate"
+    ],
+    "evidence": [
+     "test:coding/model_availability_create_test.go#TestCreateModelRuntimeSkipsAvailabilityWhenRefreshDisabled",
+     "test:coding/cli/port_wave_10_package_command_paths_test.go#TestPortWave10ModelRuntimeCreation"
+    ],
+    "rationale": "RefreshOnCreate *bool; nil for undefined (refresh)."
+   },
+   "signal": {
+    "targets": [
+     "coding/model_runtime_create.go#CreateModelRuntime"
+    ],
+    "evidence": [
+     "test:coding/model_runtime_injected_credentials_test.go#TestInjectedCredentialStoreRefreshCancellationDoesNotWaitForRead"
+    ],
+    "rationale": "signal is the ctx argument of CreateModelRuntime."
+   }
+  },
+  "production": [
+   "call:coding/cli/package_model_catalogs.go#refreshModelCatalogs"
+  ],
+  "evidence": [
+   "test:coding/cli/port_wave_10_package_command_paths_test.go#TestPortWave10ModelRuntimeCreation"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "CreateModelRuntimeOptions is coding.CreateModelRuntimeOptions."
+ }
+]

@@ -1,4 +1,3 @@
-// SPDX-FileCopyrightText: Copyright Hewlett Packard Enterprise Development LP
 // SPDX-FileCopyrightText: Copyright (c) 2025 Mario Zechner
 // SPDX-License-Identifier: MIT
 
@@ -58,6 +57,7 @@ func (p *manualDuringResponseProvider) Stream(ctx context.Context, _ ai.Transcri
 }
 
 // .upstream/v0.87.1/packages/coding-agent/test/suite/regressions/7253-manual-compact-during-response.test.ts:26
+// Pi: packages/coding-agent/src/core/settings-manager.ts:19 (CompactionSettingsJSON.reserveTokens); packages/coding-agent/src/core/settings-manager.ts:20 (CompactionSettingsJSON.keepRecentTokens); packages/coding-agent/src/core/settings-manager.ts:29 (CompactionSettingsJSON.enabled).
 func TestManualCompactPersistsAbortedResponseBeforeCompaction(t *testing.T) {
 	provider := &manualDuringResponseProvider{started: make(chan context.Context, 1), released: make(chan struct{})}
 	model := fakeModelWithProvider(provider)
@@ -89,7 +89,7 @@ func TestManualCompactPersistsAbortedResponseBeforeCompaction(t *testing.T) {
 		err    error
 	}
 	compactDone := make(chan compactOutcome, 1)
-	go func() { result, err := s.CompactResult(t.Context(), ""); compactDone <- compactOutcome{result, err} }()
+	go func() { result, err := s.Compact(t.Context(), ""); compactDone <- compactOutcome{result, err} }()
 	// Pi starts abort synchronously before compact() returns its promise. Wait for
 	// that observable initiation before releasing the Go provider factory.
 	<-responseContext.Done()
@@ -114,12 +114,12 @@ func TestManualCompactPersistsAbortedResponseBeforeCompaction(t *testing.T) {
 		t.Fatalf("starts=%v ends=%v", starts, ends)
 	}
 	aborted, compacted, count := -1, -1, 0
-	for i, entry := range s.inner.Entries() {
-		if entry.Base.Type == "compaction" {
+	for i, entry := range s.inner.GetEntries() {
+		if entry.Base().Type == "compaction" {
 			compacted = i
 			count++
 		}
-		if m, ok := entry.AsMessage(); ok && m.Message.Assistant != nil && m.Message.Assistant.StopReason == ai.StopReasonAborted {
+		if m, ok := entry.(icodingagent.MessageEntry); ok && m.Message.Assistant != nil && m.Message.Assistant.StopReason == ai.StopReasonAborted {
 			aborted = i
 		}
 	}

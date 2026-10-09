@@ -8,7 +8,7 @@ Most hosted providers accept an API key, and some also accept a browser or devic
 
 Raw Provider-object access from extensions has documented 0.3.x gaps (D78, owner decision 2026-09-28). Registered-native methods cross the SDK bridge, but Go, Rust and Python cannot yet retrieve every builtin/composed raw Provider object. Foreign registered-configuration data is a snapshot, not a live alias of the author's object; callable handles do not synchronize arbitrary property writes. Same-process Node roots, children, functions and receivers must retain Pi's behavior. This limit does not change normal model selection or approve incorrect authentication, refresh, cancellation or registration cleanup.
 
-PiG ships the same built-in chat providers and classifier models as Pi 1.0.3. `typesafe` has only classifier models, and `cloudflare-workers-ai`, `opencode`, `openrouter` and `vercel-ai-gateway` list them beside their chat models. The provider key is the first part of a `provider/model` spec. The wire column lists the APIs that the provider's built-in chat models use.
+PiG ships the same built-in chat providers and classifier models as Pi 1.1.0. `typesafe` has only classifier models, and `cloudflare-workers-ai`, `opencode`, `openrouter` and `vercel-ai-gateway` list them beside their chat models. The provider key is the first part of a `provider/model` spec. The wire column lists the APIs that the provider's built-in chat models use.
 
 | Provider key | Name | Wire | Credential |
 |---|---|---|---|
@@ -97,7 +97,7 @@ PiG stores credentials in `~/.pig/agent/auth.json`. Agent startup creates a miss
 
 `auth.json` can contain API keys and OAuth tokens. Keep it private and do not commit it.
 
-Interactive login prompts marked as secret use PiG's `maskSecretInput` setting (default `true`). **Mask secret input** in `/settings` shows dots, a character count and the last four characters while typing, then retains only the masked preview after submission. Inputs shorter than five characters show no suffix. Set `maskSecretInput` to `false` to restore Pi 1.0.3's plain-text behavior. This configurable feature is recorded as divergence D80. Ordinary text and manual-code prompts remain visible. Credentials still belong in `auth.json` or the provider's credential store; the setting protects dialog and authentication-diagnostic output, not credential storage.
+Interactive login prompts marked as secret use PiG's `maskSecretInput` setting (default `true`). **Mask secret input** in `/settings` shows dots, a character count and the last four characters while typing, then retains only the masked preview after submission. Inputs shorter than five characters show no suffix. Set `maskSecretInput` to `false` to restore Pi 1.1.0's plain-text behavior. This configurable feature is recorded as divergence D80. Ordinary text and manual-code prompts remain visible. Credentials still belong in `auth.json` or the provider's credential store; the setting protects dialog and authentication-diagnostic output, not credential storage.
 
 ### Interactive login and logout
 
@@ -148,7 +148,7 @@ On Windows, PiG passes browser login URLs directly to the Windows URL handler wi
 
 Device-code login shows the verification URL, user code, and waiting status without opening a browser. Open the displayed link yourself. Browser authorization URL events still open the default browser.
 
-Built-in OAuth targets are `anthropic`, `github-copilot`, `kimi-coding`, `meta`, `openai-codex`, `openrouter`, `radius`, and `xai`. Each provider owns its flow. For example, GitHub Copilot uses device authorization, while callback-based providers can open a localhost callback server. Tokens are persisted to `auth.json` unless the provider owns another store, and supported providers refresh them when required.
+Built-in OAuth targets are `anthropic`, `github-copilot`, `kimi-coding`, `meta`, `openai-codex`, `openrouter`, `radius`, and `xai`. Each provider owns its flow. For example, GitHub Copilot uses device authorization, while callback-based providers can open a localhost callback server. Anthropic's browser sign-in listens on `127.0.0.1:53692` so the port can be forwarded; when that port cannot be bound, it uses a free loopback port and the sign-in URL and token exchange follow the port it bound. The Sign in with ChatGPT and OpenAI Codex sign-ins name PiG (`PiG` and `pig`) to OpenAI; a model header named `originator` or `User-Agent`, set in `models.json` or on a request, replaces the Codex default. Tokens are persisted to `auth.json` unless the provider owns another store, and supported providers refresh them when required.
 
 Anthropic login asks for **Browser login (default)** or **Copy code login (headless)**. Browser login listens for the callback on the local machine and also accepts the pasted redirect URL. Copy code login works when the browser runs on another machine: sign in through the printed URL, then paste the code Anthropic shows (`code#state`). Escape in the login dialog reports `Failed to login to Anthropic: This operation was aborted`.
 
@@ -212,7 +212,7 @@ export AZURE_OPENAI_RESOURCE_NAME=your-resource
 
 The `azure` provider serves the OpenAI Responses API and, for Foundry deployments, Chat Completions. The built-in `azure/deepseek-v4-pro` uses Chat Completions. Add other Foundry models to the `azure` provider in `models.json` with `"api": "openai-completions"` and a `"baseUrl"` on the provider or the model, because the built-in Azure models have none. Without one, the `azure` entry of `models.json` is rejected with `"baseUrl" is required when defining custom models.`
 
-The provider ID was `azure-openai-responses` before Pi 1.0.3. The API ID and the `AZURE_OPENAI_*` variables are unchanged. PiG does not migrate old entries. Rename the provider key in `auth.json` (or run `/login` again), in `models.json`, and in `settings.json` (`defaultProvider`, `enabledModels` patterns, and `modelThinkingLevels` keys). A session that used the old provider falls back to another model when resumed, and its prompt cache is not reused.
+The provider ID was `azure-openai-responses` in Pi before 1.0.3. The API ID and the `AZURE_OPENAI_*` variables are unchanged. PiG does not migrate old entries. Rename the provider key in `auth.json` (or run `/login` again), in `models.json`, and in `settings.json` (`defaultProvider`, `enabledModels` patterns, and `modelThinkingLevels` keys). A session that used the old provider falls back to another model when resumed, and its prompt cache is not reused.
 
 ### Amazon Bedrock
 
@@ -281,7 +281,7 @@ To use a service-account key file, set `GOOGLE_APPLICATION_CREDENTIALS` with the
 
 Radius is a gateway that speaks Pi's own message protocol, `pi-messages`: PiG posts the conversation to `<baseUrl>/messages` and reads the reply as a stream of Pi events. `/login` → **Sign in with Radius** (or **Sign in with an account** → **Radius**) offers a browser sign-in (a callback on `127.0.0.1:1456`) or a device code for signing in from another machine. You can also paste a key with **Sign in with an API key** or set `RADIUS_API_KEY`. After a Radius sign-in, `/login` offers to configure the Radius MCP server in the global `mcp.json` with `"auth": { "provider": "radius" }`; answering **Yes** writes the entry and runs `/reload`. Nothing is asked when a global server for the Radius MCP URL already uses the Radius login.
 
-PiG ships Radius's published model list. With credentials configured, PiG fetches the gateway's current list from `<gateway>/v1/config` in the background when interactive or RPC mode starts and after you sign in with `/login`, and caches it in `~/.pig/agent/models-store.json`. Print mode and `--list-models` use the cached list. `PI_OFFLINE` (any value) or `PIG_OFFLINE` (`1`, `true` or `yes`) turns the fetch off. Without Radius credentials, PiG contacts the gateway only while you sign in.
+PiG ships Radius's published model list until it knows the gateway's own. With credentials configured, PiG fetches the gateway's current list from `<gateway>/v1/config` in the background when interactive or RPC mode starts and after you sign in with `/login`, and caches it in `~/.pig/agent/models-store.json`. Once PiG has the gateway's list, that list replaces the published one, so models an organization owner disabled are not listed. Print mode and `--list-models` use the cached list. `PI_OFFLINE` (any value) or `PIG_OFFLINE` (`1`, `true` or `yes`) turns the fetch off. Without Radius credentials, PiG contacts the gateway only while you sign in.
 
 To use another Radius gateway, add a provider with `"oauth": "radius"` to `models.json`. `baseUrl` is required; PiG drops a trailing `v1` path segment to find the gateway. The published model list applies only to the default gateway.
 

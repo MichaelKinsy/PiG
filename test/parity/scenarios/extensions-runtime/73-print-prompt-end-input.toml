@@ -1,0 +1,45 @@
+# Behavior family: extensions-runtime
+# Scenario: print mode disposes the runtime before any callback the handled input queued can run.
+#
+# Pi's print mode awaits the prompt, here consumed by an input handler, and disposes the runtime
+# in the same continuation (print-mode.ts:131-166, agent-session-runtime.ts:404-410,
+# agent-session.ts:1393-1406): session_shutdown runs, then the runner is invalidated, with no
+# event-loop turn between. print-prompt-end.mjs queues an immediate in the input handler and
+# records which immediates are still pending when session_shutdown arrives.
+#
+# Upstream evidence (2026-10-07, Pi 1.0.4; re-probed 2026-10-08 with Pi 1.1.0, same log):
+#   PI_CODING_AGENT_DIR=testdata/pi-agent PROMPT_END_LOG=/tmp/prompt-end.log pi --no-extensions \
+#     -e ../../testdata/test-faux-provider.ts -e testdata/ext/print-prompt-end.mjs \
+#     --model test-faux/faux-1 --no-session --print "handled input"
+#   output: empty, exit 0
+#   /tmp/prompt-end.log: "input", "session_shutdown pending=input"
+
+name = "73-print-prompt-end-input"
+description = "Print mode runs session_shutdown before a callback the handled input queued"
+covers = [
+  "packages/coding-agent/src/modes/print-mode.ts",
+  "packages/coding-agent/src/core/agent-session-runtime.ts",
+]
+tags = ["hermetic", "fast"]
+driver = "cli-mode"
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_HOME=testdata/pig-home", "PROMPT_END_LOG={{TEMP}}/prompt-end.log"]
+pi = ["PI_CODING_AGENT_DIR=testdata/pi-agent", "PROMPT_END_LOG={{TEMP}}/prompt-end.log"]
+pig_extensions = ["testdata/ext/print-prompt-end.mjs"]
+pi_extensions = [
+  "../../testdata/test-faux-provider.ts",
+  "testdata/ext/print-prompt-end.mjs",
+]
+
+[cli]
+args = ["--model", "test-faux/faux-1", "--no-session", "--print", "handled input"]
+artifact_path = "{{TEMP}}/prompt-end.log"
+timeout_seconds = 30
+
+[assert]
+exit_code = 0
+output_equal = true
+artifact_equal = true
+artifact_both_contain = ["session_shutdown pending=input"]
+runs = 3

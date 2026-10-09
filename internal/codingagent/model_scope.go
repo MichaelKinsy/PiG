@@ -3,9 +3,16 @@ package codingagent
 // Ports packages/coding-agent/src/core/model-resolver.ts.
 
 import (
-	"path"
+	"context"
+	"fmt"
+	"io"
+	"os"
 	"slices"
 	"strings"
+
+	"golang.org/x/term"
+
+	"github.com/MichaelKinsy/PiG/internal/minimatch"
 )
 
 // ScopedModel pairs a model with an explicitly selected thinking level, if any.
@@ -26,6 +33,37 @@ type ModelScopeDiagnostic struct {
 type ResolveModelScopeResult struct {
 	ScopedModels []ScopedModel
 	Diagnostics  []ModelScopeDiagnostic
+}
+
+// ModelScopeRuntime supplies the models a scope resolves against (upstream ModelRuntime.getAvailable).
+type ModelScopeRuntime interface {
+	GetAvailable(ctx context.Context) ([]RuntimeModel, error)
+}
+
+// ResolveModelScopeWithDiagnostics resolves patterns against the runtime's available models and returns the diagnostics with the scope.
+// A GetAvailable failure is returned unchanged, as upstream's awaited getAvailable rejects (model-resolver.ts resolveModelScopeWithDiagnostics).
+func ResolveModelScopeWithDiagnostics(ctx context.Context, patterns []string, runtime ModelScopeRuntime) (ResolveModelScopeResult, error) {
+	models, err := runtime.GetAvailable(ctx)
+	if err != nil {
+		return ResolveModelScopeResult{}, err
+	}
+	return ResolveModelScopeFromModels(patterns, models), nil
+}
+
+// ResolveModelScope is ResolveModelScopeWithDiagnostics that writes each diagnostic to stderr as a yellow "Warning: " line and returns only the scope (model-resolver.ts:372-382 resolveModelScope, console.warn(chalk.yellow(...))).
+func ResolveModelScope(ctx context.Context, patterns []string, runtime ModelScopeRuntime) ([]ScopedModel, error) {
+	return resolveModelScopeWarningTo(ctx, os.Stderr, term.IsTerminal(int(os.Stderr.Fd())), patterns, runtime)
+}
+
+func resolveModelScopeWarningTo(ctx context.Context, w io.Writer, color bool, patterns []string, runtime ModelScopeRuntime) ([]ScopedModel, error) {
+	result, err := ResolveModelScopeWithDiagnostics(ctx, patterns, runtime)
+	if err != nil {
+		return nil, err
+	}
+	for _, diagnostic := range result.Diagnostics {
+		_, _ = fmt.Fprintln(w, formatReportedDiagnostic(AgentSessionRuntimeDiagnostic{Type: "warning", Message: diagnostic.Message}, color))
+	}
+	return result.ScopedModels, nil
 }
 
 // ResolveModelScopeFromModels resolves a scope without refreshing or reading authentication.
@@ -74,7 +112,7 @@ func ResolveModelScopeFromModels(patterns []string, models []RuntimeModel) Resol
 	return result
 }
 
+// modelGlobMatch is minimatch(name, pattern, { nocase: true }).
 func modelGlobMatch(pattern, name string) bool {
-	matched, err := path.Match(strings.ToLower(pattern), strings.ToLower(name))
-	return err == nil && matched
+	return minimatch.Match(name, pattern, minimatch.Options{NoCase: true})
 }

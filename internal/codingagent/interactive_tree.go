@@ -113,7 +113,7 @@ func (m *InteractiveMode) navigateTree(ctx context.Context, targetID string, sum
 				return outcome.result, inputErr
 			}
 			if outcome.err == nil && !outcome.result.Cancelled && !outcome.result.Aborted {
-				m.rebuildChatFromSession()
+				m.repaintInitialMessages()
 			}
 			return outcome.result, outcome.err
 		case <-cancelled:

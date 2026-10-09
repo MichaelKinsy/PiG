@@ -2,6 +2,7 @@ package extensionconformance
 
 import (
 	"encoding/json"
+	"errors"
 	"reflect"
 	"testing"
 	"time"
@@ -130,6 +131,15 @@ func captureOAuthRecording(t *testing.T) oauthRecording {
 	rec.LoginAccountID, rec.LoginScope = creds.AccountID, creds.Scope
 	if rec.LoginAccountID != "account-login" || rec.LoginScope != "scope-login" {
 		t.Fatalf("login metadata lost: %#v", creds)
+	}
+
+	// Pi's legacy callbacks are the login interaction's prompt (provider-composer.ts:361-364 adaptOAuth), and the user's cancel
+	// rejects that prompt with "Login cancelled" (interactive-mode.ts:6243-6300), so a flow that does not catch it rejects with
+	// that message and /login returns to the previous menu (interactive-mode.ts:6365-6366). Each SDK's cancel must carry it.
+	cancelled := cb
+	cancelled.OnPrompt = func(ai.OAuthPrompt) (string, error) { return "", errors.New("Login cancelled") }
+	if _, err := provider.Login(cancelled); err == nil || err.Error() != "Login cancelled" {
+		t.Fatalf("a login whose prompt the user cancelled failed with %v, want Login cancelled", err)
 	}
 
 	rec.APIKey = provider.GetAPIKey(ai.OAuthCredentials{Access: "abc"})

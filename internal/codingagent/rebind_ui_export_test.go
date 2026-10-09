@@ -7,6 +7,7 @@ import (
 	"github.com/MichaelKinsy/PiG/agent"
 	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/coding/extension/host/inproc"
+	"github.com/MichaelKinsy/PiG/tui"
 )
 
 // RebindSession installs a factory result on the test owner and drives the production rebind path.
@@ -57,4 +58,21 @@ func (h *TestHarness) LoadStartupResources() {
 		h.m.loadPromptTemplates()
 		h.m.loadThemes()
 	})
+}
+
+// ObserveProgramStatus replaces the mode's reporter with one that records what it sends the terminal and returns the recorded states. Call it through Do.
+func (h *TestHarness) ObserveProgramStatus() func() []tui.ProgramState {
+	recorder := recordProgramStatus(h.m, "")
+	return func() []tui.ProgramState {
+		states := make([]tui.ProgramState, 0, len(recorder.reports))
+		for _, report := range recorder.reports {
+			states = append(states, report.State)
+		}
+		return states
+	}
+}
+
+// SendProgramStatusEvent feeds one Session event to the mode's reporter. Call it through Do.
+func (h *TestHarness) SendProgramStatusEvent(event agent.AgentEvent) {
+	h.m.programStatus.HandleEvent(event)
 }

@@ -1,4 +1,3 @@
-# SPDX-FileCopyrightText: Copyright Hewlett Packard Enterprise Development LP
 # SPDX-License-Identifier: MIT
 """A deterministic model server for OpenAI Chat Completions, OpenAI Responses, and Anthropic Messages.
 

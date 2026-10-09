@@ -13,7 +13,7 @@ import (
 // truncation at every narrow width.
 const widthTableText = "This selector text is intentionally long so that every narrow width must wrap or truncate it before rendering"
 
-func widthTableSessionSelector(t *testing.T) *sessionSelector {
+func widthTableSessionSelector(t *testing.T) *SessionSelectorComponent {
 	t.Helper()
 	now := time.Now()
 	sessions := []SessionInfo{
@@ -63,11 +63,12 @@ func TestInteractiveComponentsNeverExceedRenderWidth(t *testing.T) {
 			return sel
 		}},
 		{"AutomaticThemeMenu", func(t *testing.T) widthTableRenderer {
-			return newAutomaticThemeMenu("light-theme-with-a-long-name", "dark-theme-with-a-long-name")
+			light, dark := "light-theme-with-a-long-name", "dark-theme-with-a-long-name"
+			return newThemeSubmenu(light+"/"+dark, "dark", []string{light, dark}, SettingsCallbacks{}, func(*string) {})
 		}},
-		{"StatusLine", func(t *testing.T) widthTableRenderer {
+		{"FooterComponent", func(t *testing.T) widthTableRenderer {
 			model := &ai.Model{ID: "model-with-a-long-identifier", DisplayName: "Model", Capabilities: ai.ModelCapabilities{ContextWindow: 200000}}
-			return NewStatusLine(model, "agent-with-a-long-name", nil)
+			return NewFooterComponent(model, "agent-with-a-long-name", nil)
 		}},
 		{"LoginHeader", func(t *testing.T) widthTableRenderer {
 			return newLoginHeaderRenderer(loginHeaderFixture(t), LoginHeaderOptions{TrueColor: true})

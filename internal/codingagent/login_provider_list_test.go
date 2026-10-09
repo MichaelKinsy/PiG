@@ -35,7 +35,7 @@ func (testExternalOAuthProvider) DeleteOAuthCredentials() (bool, error) { return
 // (legacy)" (flow "OpenAI (ChatGPT Plus/Pro)") and meta.ts "Meta" (flow "Meta (Muse subscription)"). The names come
 // from the provider catalog for every built-in provider, not from a per-provider override.
 func TestOAuthProviderListMatchesUpstreamAccountProviderNames(t *testing.T) {
-	m := &InteractiveMode{opts: InteractiveOptions{AgentDir: t.TempDir()}}
+	m := &InteractiveMode{opts: InteractiveModeOptions{AgentDir: t.TempDir()}}
 
 	providers := m.oauthProviderList("login-oauth")
 	for _, id := range ai.GeneratedProviders {
@@ -60,7 +60,7 @@ func TestOAuthProviderListKeepsTheFlowNameOfAProviderOutsideTheCatalog(t *testin
 	ai.RegisterOAuthProvider("external-oauth-test", testExternalOAuthProvider{})
 	defer ai.UnregisterOAuthProvider("external-oauth-test")
 
-	m := &InteractiveMode{opts: InteractiveOptions{AgentDir: t.TempDir()}}
+	m := &InteractiveMode{opts: InteractiveModeOptions{AgentDir: t.TempDir()}}
 	got, ok := findOAuthProvider(m.oauthProviderList("login-oauth"), "external-oauth-test")
 	if !ok || got.Name != "ZZZ External OAuth" {
 		t.Fatalf("external picker entry = %+v (found %v), want the flow's own name", got, ok)
@@ -71,14 +71,14 @@ func TestOAuthProviderListReadsExternalCredentialStatus(t *testing.T) {
 	ai.RegisterOAuthProvider("external-oauth-test", testExternalOAuthProvider{})
 	defer ai.UnregisterOAuthProvider("external-oauth-test")
 
-	m := &InteractiveMode{opts: InteractiveOptions{AgentDir: t.TempDir()}}
+	m := &InteractiveMode{opts: InteractiveModeOptions{AgentDir: t.TempDir()}}
 	providers := m.oauthProviderList("login-oauth")
 	got, ok := findOAuthProvider(providers, "external-oauth-test")
 	if !ok {
 		t.Fatalf("external provider missing from account-login provider list: %+v", providers)
 	}
-	if !got.Stored || got.StoredType != "oauth" || got.AuthStatusSource != "stored" {
-		t.Fatalf("external status = stored:%v type:%q source:%q, want stored oauth/stored", got.Stored, got.StoredType, got.AuthStatusSource)
+	if got.Status == nil || got.Status.AuthCheckType() != "oauth" || got.Status.AuthCheckSource() != "stored" {
+		t.Fatalf("external status = %+v, want an oauth check sourced from stored", got.Status)
 	}
 }
 
@@ -100,7 +100,7 @@ func TestOAuthProviderListUsesTheComposedRuntimeProviderName(t *testing.T) {
 		{ID: "anthropic", Name: "Corp Anthropic", Auth: ai.ProviderAuth{OAuth: &ai.OAuthAuth{}}},
 		{ID: "github-copilot", Name: "GitHub Copilot", Auth: ai.ProviderAuth{OAuth: &ai.OAuthAuth{}}},
 	}}
-	m := &InteractiveMode{opts: InteractiveOptions{AgentDir: t.TempDir(), RequestAuthRuntime: runtime}}
+	m := &InteractiveMode{opts: InteractiveModeOptions{AgentDir: t.TempDir(), RequestAuthRuntime: runtime}}
 	providers := m.oauthProviderList("login-oauth", false)
 	for id, want := range map[string]string{"anthropic": "Corp Anthropic", "github-copilot": "GitHub Copilot", "meta": "Meta"} {
 		if got, ok := findOAuthProvider(providers, id); !ok || got.Name != want {
@@ -117,7 +117,7 @@ func TestLoginProviderOptionsListAnExtensionOAuthProviderUnderAccountSignIn(t *t
 	defer ai.UnregisterOAuthProvider("external-oauth-test")
 	dir := t.TempDir()
 	registry := NewModelRegistry(dir)
-	if err := registry.RegisterProvider("external-oauth-test", extension.ProviderConfig{
+	if err := registry.RegisterExtensionProvider("external-oauth-test", extension.ProviderConfig{
 		API:     "external-api",
 		BaseURL: "https://external.test",
 		OAuth:   &extension.ProviderOAuth{Name: "ZZZ External OAuth"},
@@ -125,7 +125,7 @@ func TestLoginProviderOptionsListAnExtensionOAuthProviderUnderAccountSignIn(t *t
 	}); err != nil {
 		t.Fatal(err)
 	}
-	m := &InteractiveMode{opts: InteractiveOptions{AgentDir: dir, ModelRegistry: registry}}
+	m := &InteractiveMode{opts: InteractiveModeOptions{AgentDir: dir, ModelRegistry: registry}}
 
 	var kinds []string
 	for _, option := range m.getLoginProviderOptions(false) {
@@ -156,7 +156,7 @@ func TestExtensionOAuthProviderOutsideTheCatalogKeepsItsSubscriptionFlag(t *test
 		}
 		dir := t.TempDir()
 		registry := NewModelRegistry(dir)
-		if err := registry.RegisterProvider("external-oauth-test", extension.ProviderConfig{
+		if err := registry.RegisterExtensionProvider("external-oauth-test", extension.ProviderConfig{
 			Name:    "Extension OAuth",
 			API:     "external-api",
 			BaseURL: "https://external.test",
@@ -169,7 +169,7 @@ func TestExtensionOAuthProviderOutsideTheCatalogKeepsItsSubscriptionFlag(t *test
 			t.Errorf("isSubscription=%v: ProviderIsSubscription = %v", subscription, got)
 		}
 		// model-runtime-auth-options.test.ts:302: one oauth option, named for the provider, whose method is the extension's flow.
-		m := &InteractiveMode{opts: InteractiveOptions{AgentDir: dir, ModelRegistry: registry}}
+		m := &InteractiveMode{opts: InteractiveModeOptions{AgentDir: dir, ModelRegistry: registry}}
 		var options []tui.OAuthProvider
 		for _, option := range m.getLoginProviderOptions(false) {
 			if option.ID == "external-oauth-test" {
@@ -180,7 +180,7 @@ func TestExtensionOAuthProviderOutsideTheCatalogKeepsItsSubscriptionFlag(t *test
 			t.Fatalf("isSubscription=%v: login options = %+v, want one oauth option", subscription, options)
 		}
 		option := options[0]
-		if option.AuthType != "oauth" || option.Name != "Extension OAuth" || option.MethodName != "ZZZ External OAuth" || option.Subscription == nil || *option.Subscription != subscription {
+		if option.AuthType != "oauth" || option.Name != "Extension OAuth" || option.Method == nil || option.Method.AuthMethodName() != "ZZZ External OAuth" || option.Subscription == nil || *option.Subscription != subscription {
 			t.Errorf("isSubscription=%v: login option = %+v", subscription, option)
 		}
 	}
@@ -198,7 +198,7 @@ func TestModelsJSONProviderOutsideTheCatalogGainsNoOAuthFromTheFlowRegistry(t *t
 		t.Fatal(err)
 	}
 	registry := NewModelRegistry(dir)
-	m := &InteractiveMode{opts: InteractiveOptions{AgentDir: dir, ModelRegistry: registry}}
+	m := &InteractiveMode{opts: InteractiveModeOptions{AgentDir: dir, ModelRegistry: registry}}
 
 	var kinds []string
 	for _, option := range m.getLoginProviderOptions(false) {

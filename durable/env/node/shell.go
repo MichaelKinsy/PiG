@@ -30,11 +30,11 @@ func resolveTimeout(timeout *float64) (time.Duration, error) {
 	}
 	seconds := *timeout
 	if math.IsNaN(seconds) || math.IsInf(seconds, 0) || seconds <= 0 {
-		return 0, &durableenv.ExecutionError{Code: durableenv.ExecutionErrorTimeout, Message: "Invalid timeout: must be a finite number of seconds"}
+		return 0, durableenv.NewExecutionError(durableenv.ExecutionErrorTimeout, "Invalid timeout: must be a finite number of seconds", nil)
 	}
 	timeoutMs := seconds * 1000
 	if timeoutMs > maxTimeoutMs {
-		return 0, &durableenv.ExecutionError{Code: durableenv.ExecutionErrorTimeout, Message: "Invalid timeout: maximum is " + formatNumber(maxTimeoutSeconds) + " seconds"}
+		return 0, durableenv.NewExecutionError(durableenv.ExecutionErrorTimeout, "Invalid timeout: maximum is "+formatNumber(maxTimeoutSeconds)+" seconds", nil)
 	}
 	// Upstream arms setTimeout(timeoutMs), and Node runs a delay below 1 ms
 	// after 1 ms (lib/internal/timers.js Timeout), so a valid timeout never
@@ -71,7 +71,7 @@ func getShellConfig(ctx context.Context, customShellPath string) (shellConfig, e
 		if pathExists(customShellPath) {
 			return getBashShellConfig(customShellPath), nil
 		}
-		return shellConfig{}, &durableenv.ExecutionError{Code: durableenv.ExecutionErrorShellUnavailable, Message: "Custom shell path not found: " + customShellPath}
+		return shellConfig{}, durableenv.NewExecutionError(durableenv.ExecutionErrorShellUnavailable, "Custom shell path not found: "+customShellPath, nil)
 	}
 	return platformShellConfig(ctx)
 }

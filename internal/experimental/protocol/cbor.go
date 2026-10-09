@@ -23,9 +23,19 @@ const (
 )
 
 // CborError reports a value outside the strict definite-length protocol subset.
-type CborError struct{ Message string }
+type CborError struct {
+	Message string
+}
 
 func (err *CborError) Error() string { return err.Message }
+
+// Name is the upstream error's `name`.
+func (*CborError) Name() string { return "CborError" }
+
+// NewCborError is `new CborError(message)`.
+func NewCborError(message string) *CborError {
+	return &CborError{Message: message}
+}
 
 // CborOptions preserves omitted limits separately from zero and validates JavaScript numeric option semantics.
 type CborOptions struct {
@@ -495,5 +505,5 @@ func DecodeCbor(data []byte, options CborOptions) (any, error) {
 	return value, nil
 }
 func cborFailure(format string, args ...any) error {
-	return &CborError{Message: fmt.Sprintf(format, args...)}
+	return NewCborError(fmt.Sprintf(format, args...))
 }

@@ -6,16 +6,22 @@ import (
 	"strings"
 )
 
-func unmarshalJSONWithRepair(data string, target any) error {
-	err := json.Unmarshal([]byte(data), target)
+// ParseJSONWithRepair parses json into T and, when strict parsing fails, parses the repairJSON rewrite instead. It returns the strict error when the repair changes nothing (upstream utils/json-parse.ts parseJsonWithRepair).
+func ParseJSONWithRepair[T any](data string) (T, error) {
+	var value T
+	err := json.Unmarshal([]byte(data), &value)
 	if err == nil {
-		return nil
+		return value, nil
 	}
 	repaired := repairJSON(data)
 	if repaired == data {
-		return err
+		return value, err
 	}
-	return json.Unmarshal([]byte(repaired), target)
+	var repairedValue T
+	if err := json.Unmarshal([]byte(repaired), &repairedValue); err != nil {
+		return repairedValue, err
+	}
+	return repairedValue, nil
 }
 
 // repairJSON mirrors Pi's repairJson for provider payloads that contain raw

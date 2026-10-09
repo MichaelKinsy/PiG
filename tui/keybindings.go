@@ -11,7 +11,7 @@ import (
 	"os"
 	"runtime"
 	"slices"
-	"strings"
+	"sync/atomic"
 )
 
 // TUIKeybinding is a named action for TUI components.
@@ -164,8 +164,8 @@ func (k PlatformKeys) For(platform KeybindingPlatform) []string {
 // platform: upstream TUI_KEYBINDINGS (packages/tui/src/keybindings.ts) with
 // the per-platform tui.* defaults that coding-agent's KEYBINDINGS applies on
 // top (core/keybindings.ts). Every call returns a fresh map.
-func TUIKeybindingDefinitionsFor(platform KeybindingPlatform) map[string]TUIKeybindingDef {
-	return map[string]TUIKeybindingDef{
+func TUIKeybindingDefinitionsFor(platform KeybindingPlatform) KeybindingDefinitions {
+	return KeybindingDefinitions{
 		KBEditorCursorUp:          {DefaultKeys: []string{"up"}, Description: "Move cursor up"},
 		KBEditorCursorDown:        {DefaultKeys: []string{"down"}, Description: "Move cursor down"},
 		KBEditorHistoryPrevious:   {DefaultKeys: []string{}, Description: "Select previous prompt history entry"},
@@ -222,28 +222,34 @@ func TUIKeybindingDefinitionsFor(platform KeybindingPlatform) map[string]TUIKeyb
 	}
 }
 
-// tuiKeybindingDefs is the built-in definition table for this host.
-var tuiKeybindingDefs = TUIKeybindingDefinitionsFor(hostKeybindingPlatform)
+// TUIKeybindings is upstream TUI_KEYBINDINGS, the table getKeybindings() uses until an application installs its own. It has no platform column: the Windows and WSL keys are coding-agent KEYBINDINGS overrides, which the coding agent installs through its own manager. The Linux column carries none of those overrides.
+var TUIKeybindings = TUIKeybindingDefinitionsFor(KeybindingPlatformLinux)
 
-// TUIKeybindingConflict records a key bound to multiple actions.
+// TUIKeybindingConflict is pi-tui's KeybindingConflict: a key claimed by more than one keybinding.
 type TUIKeybindingConflict struct {
-	Key     string
-	Actions []string
+	Key         string
+	Keybindings []string
 }
+
+// KeybindingsConfig is upstream KeybindingsConfig (keybindings.ts:69): the user's key overrides by keybinding id.
+// A single key and a one-element list are the same override.
+type KeybindingsConfig = map[string][]string
+
+// KeybindingDefinitions is upstream KeybindingDefinitions (keybindings.ts:68): each keybinding id's default keys and description.
+type KeybindingDefinitions = map[string]TUIKeybindingDef
 
 // TUIKeybindingsManager resolves keybindings for TUI components.
 // Mirrors upstream KeybindingsManager in packages/tui/src/keybindings.ts.
 type TUIKeybindingsManager struct {
-	definitions  map[string]TUIKeybindingDef
+	definitions  KeybindingDefinitions
 	userBindings map[string][]string // nil = not set (use default)
 	keysById     map[string][]string
 	conflicts    []TUIKeybindingConflict
 }
 
-// NewTUIKeybindingsManager creates a manager with the built-in TUI definitions
-// for this host and optional user overrides.
-func NewTUIKeybindingsManager(userBindings map[string][]string) *TUIKeybindingsManager {
-	return NewKeybindingsManager(tuiKeybindingDefs, userBindings)
+// NewTUIKeybindingsManager creates a manager over upstream TUI_KEYBINDINGS, the same on every platform, with optional user overrides.
+func NewTUIKeybindingsManager(userBindings KeybindingsConfig) *TUIKeybindingsManager {
+	return NewKeybindingsManager(TUIKeybindings, userBindings)
 }
 
 // NewKeybindingsManager creates a manager over an explicit definition table.
@@ -251,7 +257,7 @@ func NewTUIKeybindingsManager(userBindings map[string][]string) *TUIKeybindingsM
 // coding agent passes its merged tui.* and app.* table here so components in
 // this package resolve app actions (tree labels, thinking save) through the
 // same manager, as upstream's single KEYBINDINGS table does.
-func NewKeybindingsManager(definitions map[string]TUIKeybindingDef, userBindings map[string][]string) *TUIKeybindingsManager {
+func NewKeybindingsManager(definitions KeybindingDefinitions, userBindings KeybindingsConfig) *TUIKeybindingsManager {
 	m := &TUIKeybindingsManager{
 		definitions:  definitions,
 		userBindings: userBindings,
@@ -283,6 +289,10 @@ func (m *TUIKeybindingsManager) rebuild() {
 	// Detect user-binding conflicts.
 	userClaims := make(map[string]map[string]bool)
 	for action, keys := range m.userBindings {
+		// upstream: packages/tui/src/keybindings.ts:KeybindingsManager.rebuild skips a user id the definitions do not hold.
+		if _, ok := m.definitions[action]; !ok {
+			continue
+		}
 		for _, key := range dedupeKeys(keys) {
 			if userClaims[key] == nil {
 				userClaims[key] = make(map[string]bool)
@@ -297,7 +307,7 @@ func (m *TUIKeybindingsManager) rebuild() {
 				list = append(list, a)
 			}
 			slices.Sort(list)
-			m.conflicts = append(m.conflicts, TUIKeybindingConflict{Key: key, Actions: list})
+			m.conflicts = append(m.conflicts, TUIKeybindingConflict{Key: key, Keybindings: list})
 		}
 	}
 
@@ -355,13 +365,13 @@ func (m *TUIKeybindingsManager) GetDefinition(action TUIKeybinding) (TUIKeybindi
 func (m *TUIKeybindingsManager) GetConflicts() []TUIKeybindingConflict {
 	out := make([]TUIKeybindingConflict, len(m.conflicts))
 	for i, c := range m.conflicts {
-		out[i] = TUIKeybindingConflict{Key: c.Key, Actions: slices.Clone(c.Actions)}
+		out[i] = TUIKeybindingConflict{Key: c.Key, Keybindings: slices.Clone(c.Keybindings)}
 	}
 	return out
 }
 
 // SetUserBindings replaces user overrides and rebuilds.
-func (m *TUIKeybindingsManager) SetUserBindings(bindings map[string][]string) {
+func (m *TUIKeybindingsManager) SetUserBindings(bindings KeybindingsConfig) {
 	m.userBindings = bindings
 	if m.userBindings == nil {
 		m.userBindings = make(map[string][]string)
@@ -371,7 +381,7 @@ func (m *TUIKeybindingsManager) SetUserBindings(bindings map[string][]string) {
 
 // GetUserBindings returns a defensive copy of the raw user overrides.
 // Mirrors upstream KeybindingsManager.getUserBindings().
-func (m *TUIKeybindingsManager) GetUserBindings() map[string][]string {
+func (m *TUIKeybindingsManager) GetUserBindings() KeybindingsConfig {
 	out := make(map[string][]string, len(m.userBindings))
 	for k, v := range m.userBindings {
 		out[k] = slices.Clone(v)
@@ -379,19 +389,14 @@ func (m *TUIKeybindingsManager) GetUserBindings() map[string][]string {
 	return out
 }
 
-// GetResolvedBindings returns the fully resolved binding table after applying
-// defaults and user overrides. Mirrors upstream getResolvedBindings().
-func (m *TUIKeybindingsManager) GetResolvedBindings() map[string]any {
-	resolved := make(map[string]any, len(m.definitions))
+// GetResolvedBindings returns the fully resolved binding table after applying defaults and user overrides (keybindings.ts:299
+// getResolvedBindings). Pi gives a lone key as a string and several as an array; KeybindingsConfig holds each as a key list.
+func (m *TUIKeybindingsManager) GetResolvedBindings() KeybindingsConfig {
+	resolved := make(KeybindingsConfig, len(m.definitions))
 	for id := range m.definitions {
-		keys := m.keysById[id]
-		switch len(keys) {
-		case 0:
+		resolved[id] = slices.Clone(m.keysById[id])
+		if resolved[id] == nil {
 			resolved[id] = []string{}
-		case 1:
-			resolved[id] = keys[0]
-		default:
-			resolved[id] = slices.Clone(keys)
 		}
 	}
 	return resolved
@@ -550,48 +555,52 @@ func MatchesKeyID(data, keyID string) bool {
 // Dynamically representable keys use the protocol- and mode-aware matcher.
 // Function keys and clear fall back to their legacy sequence tables.
 func matchesKeyID(data, keyID string) bool {
-	baseKey, _, parsed := parseKeyID(keyID)
-	if parsed {
-		if _, dynamic := resolveKeyCodepoint(baseKey); dynamic {
-			return matchesKeyDynamic(data, keyID)
-		}
+	baseKey, modifier, parsed := parseKeyID(keyID)
+	if !parsed {
+		return false
+	}
+	if _, dynamic := resolveKeyCodepoint(baseKey); dynamic {
+		return matchesKeyDynamic(data, keyID)
 	}
 
 	// Function keys and clear have no CSI-u codepoint in Pi's key vocabulary,
 	// so they retain their legacy lookup. Every dynamically representable key
 	// goes through the mode-aware matcher above; consulting this table first
 	// would make ambiguous legacy bytes match the wrong key while Kitty mode is
-	// active.
-	normalized := strings.ToLower(keyID)
-	if seqs, ok := tuiKeyIDInputs[keyID]; ok && slices.Contains(seqs, data) {
-		return true
+	// active. keys.ts matchesKey: a function key matches only without a
+	// modifier, and clear also with exactly shift or ctrl.
+	switch modifier {
+	case 0:
+	case modShift:
+		baseKey = "shift+" + baseKey
+	case modCtrl:
+		baseKey = "ctrl+" + baseKey
+	default:
+		return false
 	}
-	if normalized != keyID {
-		if seqs, ok := tuiKeyIDInputs[normalized]; ok && slices.Contains(seqs, data) {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(tuiKeyIDInputs[baseKey], data)
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
 // Global TUI keybindings: mirrors upstream setKeybindings / getKeybindings.
 // ──────────────────────────────────────────────────────────────────────────────
 
-var globalTUIKeybindings *TUIKeybindingsManager
+// globalTUIKeybindings is atomic because components read it where they are built, which for extension views is off the UI
+// loop, while a keybindings reload replaces it.
+var globalTUIKeybindings atomic.Pointer[TUIKeybindingsManager]
 
 // SetKeybindings mirrors upstream setKeybindings().
 func SetKeybindings(kb *TUIKeybindingsManager) {
-	globalTUIKeybindings = kb
-
+	globalTUIKeybindings.Store(kb)
 }
 
 // GetKeybindings mirrors upstream getKeybindings().
 func GetKeybindings() *TUIKeybindingsManager {
-	if globalTUIKeybindings == nil {
-		globalTUIKeybindings = NewTUIKeybindingsManager(nil)
+	if kb := globalTUIKeybindings.Load(); kb != nil {
+		return kb
 	}
-	return globalTUIKeybindings
+	globalTUIKeybindings.CompareAndSwap(nil, NewTUIKeybindingsManager(nil))
+	return globalTUIKeybindings.Load()
 }
 
 // SetTUIKeybindings sets the global TUI keybinding manager.

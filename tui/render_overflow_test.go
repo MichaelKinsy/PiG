@@ -30,7 +30,7 @@ func renderRecover(r interface{ Render() }) (value any) {
 	return nil
 }
 
-func newOverflowTUI(t *testing.T, out *bytes.Buffer, width, height int, lines *[]string) (*TUI, string) {
+func newOverflowTUI(t *testing.T, out *bytes.Buffer, width, height int, lines *[]string) (*TuiMainScreen, string) {
 	t.Helper()
 	dir := t.TempDir()
 	ui := NewWithOutput(out, width, height)
@@ -52,14 +52,14 @@ func requireNoCrashLog(t *testing.T, dir string) {
 func TestOverflowFullRenderPathsEmitRowUnchanged(t *testing.T) {
 	cases := []struct {
 		name   string
-		setup  func(ui *TUI, lines *[]string) // after a fitting first frame
+		setup  func(ui *TuiMainScreen, lines *[]string) // after a fitting first frame
 		prefix string
 	}{
 		{name: "initial", prefix: "\x1b[?2026h"},
-		{name: "forced", setup: func(ui *TUI, _ *[]string) { ui.ForceFullRender() }, prefix: "\x1b[?2026h\x1b[2J\x1b[H\x1b[3J"},
-		{name: "width-change", setup: func(ui *TUI, _ *[]string) { ui.width = 20 }, prefix: "\x1b[?2026h\x1b[2J\x1b[H\x1b[3J"},
-		{name: "height-change", setup: func(ui *TUI, _ *[]string) { ui.height = 12 }, prefix: "\x1b[?2026h\x1b[2J\x1b[H\x1b[3J"},
-		{name: "clear-on-shrink", setup: func(ui *TUI, lines *[]string) {
+		{name: "forced", setup: func(ui *TuiMainScreen, _ *[]string) { ui.ForceFullRender() }, prefix: "\x1b[?2026h\x1b[2J\x1b[H\x1b[3J"},
+		{name: "width-change", setup: func(ui *TuiMainScreen, _ *[]string) { ui.width = 20 }, prefix: "\x1b[?2026h\x1b[2J\x1b[H\x1b[3J"},
+		{name: "height-change", setup: func(ui *TuiMainScreen, _ *[]string) { ui.height = 12 }, prefix: "\x1b[?2026h\x1b[2J\x1b[H\x1b[3J"},
+		{name: "clear-on-shrink", setup: func(ui *TuiMainScreen, lines *[]string) {
 			ui.SetClearOnShrink(true)
 			*lines = []string{"fits", "ok", "extra"}
 			ui.Render()
@@ -237,7 +237,7 @@ func TestOverflowDifferentialWithOverlay(t *testing.T) {
 			var out bytes.Buffer
 			lines := []string{"r0", "r1", "r2", "r3"}
 			ui, dir := newOverflowTUI(t, &out, 20, 10, &lines)
-			ui.OpenOverlay(&recordingComponent{lines: []string{"modal"}}, OverlayOptions{width: overlayCells(8), anchor: overlayTopLeft})
+			ui.ShowOverlay(&recordingComponent{lines: []string{"modal"}}, OverlayOptions{width: overlayCells(8), anchor: overlayTopLeft})
 			ui.Render()
 			next := append([]string(nil), lines...)
 			next[tc.row] = overflowRow

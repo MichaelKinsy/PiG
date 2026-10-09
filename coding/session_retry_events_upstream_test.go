@@ -29,7 +29,7 @@ func streamScriptedMessageWithDeltas(ctx context.Context, request ai.TranscriptC
 		case ai.ThinkingContent:
 			blocks = append(blocks, ai.FauxThinking(block.Thinking))
 		case ai.ToolCall:
-			blocks = append(blocks, ai.FauxToolCall(block.Name, map[string]any(block.Arguments), block.ID))
+			blocks = append(blocks, ai.FauxToolCall(block.Name, map[string]any(block.Arguments), &ai.FauxToolCallOptions{ID: block.ID}))
 		}
 	}
 	provider.SetResponses([]ai.FauxResponseStep{ai.FauxStaticStep(ai.FauxResponse{Content: blocks, StopReason: string(message.StopReason), ErrorMessage: message.ErrorMessage})})
@@ -173,16 +173,15 @@ func retrySummary(log *eventLog) []string {
 	return out
 }
 
-// sessionIsRetrying reads the unexported retry state because Session has no IsRetrying (upstream isRetrying is a deferred interface row).
+// sessionIsRetrying is the public state a Pi test reads after prompt() returns: no retry wait in progress and no retry attempt counted
+// (agent-session.ts get isRetrying and retryAttempt).
 func sessionIsRetrying(s *Session) bool {
-	s.retryMu.Lock()
-	defer s.retryMu.Unlock()
-	return s.retryCancel != nil || s.retryAttempt.Load() != 0
+	return s.IsRetrying() || s.RetryAttempt() != 0
 }
 
 func retryPrompt(t *testing.T, h *recoveryHarness, text string) {
 	t.Helper()
-	if _, err := h.session.Prompt(t.Context(), text, nil); err != nil {
+	if err := h.session.Prompt(t.Context(), text, nil); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -190,6 +189,7 @@ func retryPrompt(t *testing.T, h *recoveryHarness, text string) {
 func overloaded() scriptedResponse { return fauxError("overloaded_error") }
 
 // upstream: packages/coding-agent/test/suite/agent-session-retry-events.test.ts
+// Pi: packages/coding-agent/src/core/agent-session.ts:1381 (Session.abortRetry).
 func TestUpstreamSessionRetryEvents(t *testing.T) {
 	// :33
 	t.Run("retries after a transient error and succeeds", func(t *testing.T) {
@@ -272,7 +272,7 @@ func TestUpstreamSessionRetryEvents(t *testing.T) {
 	// :125 The 40ms delay is the upstream stimulus that yields the message_end handler, not a wait for completion.
 	t.Run("prompt waits for retry completion even when assistant message_end handling is delayed", func(t *testing.T) {
 		ext := extension.Extension{Handlers: map[string][]extension.HandlerFn{"message_end": {func(args ...any) (any, error) {
-			if message, ok := args[0].(extension.MessageEndEvent).Message.(agent.AgentMessage); ok && message.Assistant != nil {
+			if message := args[0].(extension.MessageEndEvent).Message; message.Assistant != nil {
 				time.Sleep(40 * time.Millisecond)
 			}
 			return nil, nil
@@ -314,7 +314,7 @@ func TestUpstreamSessionRetryEvents(t *testing.T) {
 		})
 		done := make(chan error, 1)
 		go func() {
-			_, err := h.session.Prompt(t.Context(), "test", nil)
+			err := h.session.Prompt(t.Context(), "test", nil)
 			done <- err
 		}()
 		select {
@@ -367,11 +367,11 @@ func TestUpstreamSessionRetryEvents(t *testing.T) {
 		}
 		ext := extension.Extension{Handlers: map[string][]extension.HandlerFn{
 			"message_start": {func(args ...any) (any, error) {
-				record("extension:message_start:" + args[0].(extension.MessageStartEvent).Message.(agent.AgentMessage).Role())
+				record("extension:message_start:" + args[0].(extension.MessageStartEvent).Message.Role())
 				return nil, nil
 			}},
 			"message_end": {func(args ...any) (any, error) {
-				record("extension:message_end:" + args[0].(extension.MessageEndEvent).Message.(agent.AgentMessage).Role())
+				record("extension:message_end:" + args[0].(extension.MessageEndEvent).Message.Role())
 				return nil, nil
 			}},
 		}}
@@ -429,7 +429,7 @@ func TestUpstreamSessionRetryEvents(t *testing.T) {
 	t.Run("emits streaming deltas for text, thinking, and tool calls in message_update events", func(t *testing.T) {
 		h := newRetryEventsHarness(t, "{}", extension.Extension{}, nil, fauxThinkingTextToolCall("plan", "answer", "echo", ai.JsonObject{"text": "hello"}))
 		log := recordSessionEvents(h.session)
-		_, _ = h.session.Prompt(t.Context(), "hi", nil) // upstream: prompt("hi").catch(() => {}); the unregistered echo tool ends the loop with an error.
+		_ = h.session.Prompt(t.Context(), "hi", nil) // upstream: prompt("hi").catch(() => {}); the unregistered echo tool ends the loop with an error.
 		types := map[ai.AssistantEventType]bool{}
 		for _, update := range eventsOf[agent.MessageUpdateEvent](log) {
 			types[update.AssistantMessageEvent.EventType()] = true
@@ -466,7 +466,7 @@ func TestUpstreamSessionRetryEvents(t *testing.T) {
 		})
 		done := make(chan error, 1)
 		go func() {
-			_, err := h.session.Prompt(t.Context(), "hi", nil)
+			err := h.session.Prompt(t.Context(), "hi", nil)
 			done <- err
 		}()
 		select {

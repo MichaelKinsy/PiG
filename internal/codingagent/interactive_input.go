@@ -126,8 +126,14 @@ func (m *InteractiveMode) inputLoopUntil(ctx context.Context, source io.Reader, 
 			}
 		}()
 		for {
-			dispatched = dispatched || len(input.data) > 0
+			m.frontendTookInput = false
 			continues, dispatchErr := dispatchInput(input)
+			// pig additive (D91): a sequence a frontend session took, such as
+			// a protocol acknowledgement, paints nothing; the actions it asks
+			// for request their own frames. Painting after each one would
+			// render once per acknowledged frame, and an animation then runs
+			// at the frontend's frame rate instead of its own.
+			dispatched = dispatched || (len(input.data) > 0 && !m.frontendTookInput)
 			if dispatchErr != nil || !continues {
 				return dispatchErr
 			}
@@ -488,6 +494,11 @@ func (m *InteractiveMode) dispatchKey(ctx context.Context, data string) error {
 // subprocess terminal-input listener must answer first, it returns before the
 // keystroke is handled, and handling resumes on the main loop with the verdict.
 func (m *InteractiveMode) dispatchInputChunk(ctx context.Context, data string, ticket *inputTicket) error {
+	// pig additive (D91): frontend protocol replies and events never reach
+	// key handling.
+	if m.frontendInput(data) {
+		return nil
+	}
 	if m.consumeTerminalThemeInput(data) {
 		return nil
 	}
@@ -523,13 +534,14 @@ func (m *InteractiveMode) dispatchInputChunk(ctx context.Context, data string, t
 	}
 	// In fullscreen mode, viewport input (mouse wheel/click, focus events) is
 	// handled by the alt-screen renderer and must not reach the editor. Mirrors
-	// upstream's addInputListener(handleViewportInput) on the alt-screen; pig is
-	// driver-owned, so the driver routes it explicitly.
-	if m.altScreen != nil {
-		consumed := m.altScreen.HandleViewportInput(data)
-		if consumed {
+	// upstream's addInputListener(handleViewportInput) on the alt-screen, which
+	// the alt-screen renderer registers; the driver runs the renderer's listeners.
+	if m.tuiInst != nil {
+		current, done := m.tuiInst.RunInputListeners(data)
+		if done {
 			return nil
 		}
+		data = current
 	}
 	if m.extensionDialog != nil {
 		// The dialog is the focused component, so releases are dropped unless
@@ -537,6 +549,9 @@ func (m *InteractiveMode) dispatchInputChunk(ctx context.Context, data string, t
 		// never runs while a dialog is open, which is what made every arrow
 		// press move a selector cursor two rows.
 		if m.tuiInst != nil && m.tuiInst.ConsumeCellSizeResponse(data) {
+			return nil
+		}
+		if m.tuiInst != nil && m.tuiInst.ConsumeDebugKey(data) {
 			return nil
 		}
 		if !tui.ShouldDeliverKey(m.extensionDialog.component, data) {
@@ -566,7 +581,10 @@ func (m *InteractiveMode) handleKey(ctx context.Context, data string) error {
 	if m.tuiInst != nil && m.tuiInst.ConsumeCellSizeResponse(data) {
 		return nil
 	}
-
+	// The global debug key (Shift+Ctrl+D) runs the TUI's onDebug whatever has focus, after the cell-size reply (tui.ts:1076).
+	if m.tuiInst != nil && m.tuiInst.ConsumeDebugKey(data) {
+		return nil
+	}
 	// While fullscreen transcript search has focus it is upstream's focused
 	// component, so the remaining keys edit its query instead of the editor.
 	if m.altScreen != nil && m.altScreen.HandleFocusedSearchInput(data) {
@@ -577,15 +595,10 @@ func (m *InteractiveMode) handleKey(ctx context.Context, data string) error {
 	if m.tuiInst != nil {
 		focused := m.tuiInst.ActiveOverlay()
 		if focused == nil {
-			focused = m.tuiInst.FocusedComponent()
+			focused = m.tuiInst.GetFocusedComponent()
 		}
 		if focused != nil && focused != m.editor {
-			if tui.ShouldDeliverKey(focused, data) {
-				if input, ok := focused.(tui.InputHandler); ok {
-					input.HandleInput(data)
-					m.tuiInst.RequestImmediateRender()
-				}
-			}
+			m.tuiInst.DispatchFocusedInput(data)
 			return nil
 		}
 	}
@@ -610,7 +623,69 @@ func (m *InteractiveMode) handleKey(ctx context.Context, data string) error {
 		return nil
 	}
 
-	return m.handleEditorAction(ctx, classifyKeyWithBindings(data, m.keybindings), data)
+	return m.handleCustomEditorKey(ctx, data)
+}
+
+// handleCustomEditorKey gives one key to the default editor, Pi's CustomEditor.handleInput, and reports the error an app action returned.
+func (m *InteractiveMode) handleCustomEditorKey(ctx context.Context, data string) error {
+	editor := m.defaultCustomEditor()
+	previousCtx, previousErr := m.inputCtx, m.inputErr
+	m.inputCtx, m.inputErr = ctx, nil
+	defer func() { m.inputCtx, m.inputErr = previousCtx, previousErr }()
+	editor.HandleInput(data)
+	return m.inputErr
+}
+
+// defaultCustomEditor returns the CustomEditor over the current default editor, registering the app handlers Pi's setupKeyHandlers binds the
+// first time and again whenever the editor changes.
+func (m *InteractiveMode) defaultCustomEditor() *CustomEditor {
+	if m.customEditor != nil && m.customEditor.Editor == m.editor && m.customEditor.keybindings == m.keybindings {
+		return m.customEditor
+	}
+	// interactive-mode.ts:645-651 builds the editor from the settings' editorPaddingX and autocompleteMaxVisible.
+	paddingX, autocompleteMaxVisible := m.opts.Settings.GetEditorPaddingX(), m.opts.Settings.GetAutocompleteMaxVisible()
+	options := CustomEditorOptions{PaddingX: &paddingX, AutocompleteMaxVisible: &autocompleteMaxVisible, EmbedWorkingStatus: true}
+	superInput := func(data string) {
+		m.runEditorAction(classifyKeyWithBindings(data, m.keybindings), data)
+	}
+	if m.editor == nil {
+		// interactive-mode.ts:645 `new CustomEditor(this.ui, getEditorTheme(), this.keybindings, {...})`: the default editor is the CustomEditor's own.
+		m.customEditor = NewCustomEditor(m.tuiInst, tui.EditorTheme{}, m.keybindings, options)
+		m.customEditor.superInput = superInput
+		m.editor = m.customEditor.Editor
+	} else {
+		m.customEditor = wrapCustomEditor(m.editor, m.keybindings, superInput, options)
+	}
+	m.setupKeyHandlers(m.customEditor)
+	return m.customEditor
+}
+
+// runEditorAction runs the editor handling for one classified key under the key's context and keeps the first error for handleCustomEditorKey.
+func (m *InteractiveMode) runEditorAction(action keyAction, data string) {
+	if err := m.handleEditorAction(m.inputCtx, action, data); err != nil && m.inputErr == nil {
+		m.inputErr = err
+	}
+}
+
+// setupKeyHandlers binds the app actions on the default editor in the order interactive-mode.ts setupKeyHandlers registers them.
+func (m *InteractiveMode) setupKeyHandlers(editor *CustomEditor) {
+	editor.OnEscape = func() { m.runEditorAction(actionInterrupt, "") }
+	editor.OnCtrlD = func() { m.runEditorAction(actionExit, "") }
+	editor.OnPasteImage = func() { m.runEditorAction(actionPasteImage, "") }
+	editor.OnExtensionShortcut = func(data string) bool {
+		m.terminalInputMu.Lock()
+		listener := m.extensionShortcutListener
+		m.terminalInputMu.Unlock()
+		return listener != nil && listener(data)
+	}
+	for _, action := range []AppKeybinding{
+		AppClear, AppSuspend, AppThinkingCycle, AppModelCycleForward, AppModelCycleBackward, AppModelSelect,
+		AppToolsExpand, AppThinkingToggle, AppEditorExternal, AppMessageCopy, AppMessageFollowUp, AppMessageDequeue,
+		AppSessionNew, AppSessionTree, AppSessionFork, AppSessionResume,
+	} {
+		key, _ := appActionKey(action)
+		editor.OnAction(action, func() { m.runEditorAction(key, "") })
+	}
 }
 
 // handleEditorAction runs what Pi's editor handlers do for one classified
@@ -726,8 +801,7 @@ func (m *InteractiveMode) handleEditorAction(ctx context.Context, action keyActi
 		// Upstream clearEditor() just clears the text and re-renders; it
 		// shows no "cleared" status (interactive-mode.ts:3629). Pig used
 		// to flash "cleared" here, which diverged.
-		m.editor.Clear()
-		m.tuiInst.Render()
+		m.ClearEditor()
 
 	case outcomeToggleTools:
 		m.toggleAllTools()
@@ -810,18 +884,10 @@ func (m *InteractiveMode) handleEditorAction(ctx context.Context, action keyActi
 		if text == "" {
 			return nil
 		}
-		if m.editor.OnSubmit != nil {
-			m.editor.Clear()
-			m.editor.OnSubmit(text)
+		m.editor.Clear()
+		if m.submit(ctx, text) {
 			return nil
 		}
-		m.editor.AddToHistory(text)
-		m.editor.Clear()
-		// handleSubmit is upstream's onSubmit: commands and `!` bash run
-		// immediately, input during compaction queues for after it, and
-		// anything else goes through prompt() with streamingBehavior "steer"
-		// while a run is active.
-		m.handleSubmit(ctx, text)
 
 	case outcomeNewline:
 		m.editor.HandleInput("\n")
@@ -929,6 +995,22 @@ func (m *InteractiveMode) handleEditorAction(ctx context.Context, action keyActi
 	return nil
 }
 
+// submit runs what Enter does with the editor's trimmed text once the editor
+// is cleared: the installed onSubmit handler, or, without one, history and
+// handleSubmit, which is upstream's onSubmit: commands and `!` bash run
+// immediately, input during compaction queues for after it, and anything else
+// goes through prompt() with streamingBehavior "steer" while a run is active.
+// It reports whether the handler took the text.
+func (m *InteractiveMode) submit(ctx context.Context, text string) bool {
+	if m.editor.OnSubmit != nil {
+		m.editor.OnSubmit(text)
+		return true
+	}
+	m.editor.AddToHistory(text)
+	m.handleSubmit(ctx, text)
+	return false
+}
+
 // expandSkillCommand checks if prompt starts with "/skill:name" and if so,
 // expands it to the skill's XML block. Returns (expanded, true) on match.
 // Delegates to ExpandSkillCommand with the session's loaded skills.
@@ -958,7 +1040,6 @@ func (m *InteractiveMode) syncExtensionSlashCommands() {
 	for _, rc := range commands {
 		nr := m.newRunner
 		cmdName := strings.TrimPrefix(rc.InvocationName, "/")
-		runsLlama := m.opts.Llama != nil && IsLlamaCommand(rc)
 		dynamic = append(dynamic, SlashCommand{
 			Name:        cmdName,
 			Description: rc.Description,
@@ -966,10 +1047,6 @@ func (m *InteractiveMode) syncExtensionSlashCommands() {
 				baseCtx := m.runCtx
 				if baseCtx == nil {
 					baseCtx = context.Background()
-				}
-				// The built-in llama.cpp extension's /llama runs the llama host with this mode's command context.
-				if runsLlama {
-					return m.runLlamaCommand(baseCtx)
 				}
 				// Use the runner's command context and error channel, as Session command dispatch does. IPC stays off the input loop.
 				go nr.ExecuteCommand(baseCtx, cmdName, args)
@@ -991,9 +1068,8 @@ func (m *InteractiveMode) resolvableSlashCommand(prompt string) bool {
 	if !strings.HasPrefix(prompt, "/") {
 		return false
 	}
-	name, _ := parseSlashLine(prompt)
 	m.syncExtensionSlashCommands()
-	_, ok := m.slashRegistry.Resolve(name)
+	_, ok := m.slashRegistry.Match(prompt)
 	return ok
 }
 
@@ -1105,6 +1181,7 @@ func (m *InteractiveMode) isExtensionCommand(text string) bool {
 	if !strings.HasPrefix(text, "/") || m.newRunner == nil {
 		return false
 	}
+	// interactive-mode.ts isExtensionCommand: the name is the text before the first space.
 	name, _ := parseSlashLine(text)
 	for _, command := range m.newRunner.Commands() {
 		if strings.TrimPrefix(command.InvocationName, "/") == name {

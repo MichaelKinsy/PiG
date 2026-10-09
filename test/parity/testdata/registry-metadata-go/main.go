@@ -42,7 +42,7 @@ func run() (resultErr error) {
 	if err := os.WriteFile(filepath.Join(dir, "models.json"), data, 0o600); err != nil {
 		return err
 	}
-	services, err := coding.NewServices(coding.ServicesOptions{CWD: dir, AgentDir: dir})
+	services, err := coding.CreateAgentSessionServices(coding.CreateAgentSessionServicesOptions{CWD: dir, AgentDir: dir})
 	if err != nil {
 		return err
 	}
@@ -90,10 +90,12 @@ func run() (resultErr error) {
 	if err := services.Auth().Set("github-copilot", ai.Credential{Type: ai.CredentialOAuth, Access: "tid=test;exp=9999999999;proxy-ep=proxy.individual.githubcopilot.com;", Refresh: "github-access-token", Expires: time.Now().Add(time.Minute).UnixMilli(), AvailableModelIDs: ids}); err != nil {
 		return err
 	}
+	// registry-metadata.mjs:45 refreshes the runtime after the credential changes, offline: the availability snapshot follows the credential.
+	services.ModelRuntime().Refresh(ctx, ai.ModelsRefreshOptions{AllowNetwork: new(false)})
 	var available []string
 	for _, model := range registry.GetAvailable() {
-		if model.ProviderID == "github-copilot" {
-			available = append(available, model.ModelID)
+		if model.ProviderID() == "github-copilot" {
+			available = append(available, model.ModelID())
 		}
 	}
 	output["copilot"] = available

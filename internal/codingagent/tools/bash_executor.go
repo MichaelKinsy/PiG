@@ -83,9 +83,13 @@ func ExecuteBashWithOperations(ctx context.Context, command, cwd string, operati
 			}
 		}
 	}
-	onData := func(data []byte) {
-		totalBytes += len(data)
-		text := strings.ReplaceAll(SanitizeBinaryOutput(string(StripANSI([]byte(decoder.decode(data, true))))), "\r", "")
+	// Unfinished escape sequence at the end of the previous chunk, completed by the next chunk (bash-executor.ts pendingAnsi).
+	pendingAnsi := ""
+	appendText := func(rawText string) {
+		text := strings.ReplaceAll(SanitizeBinaryOutput(string(StripANSI([]byte(rawText)))), "\r", "")
+		if text == "" {
+			return
+		}
 		if totalBytes > DefaultMaxBytesUpstream {
 			ensureTempFile()
 		}
@@ -102,9 +106,20 @@ func ExecuteBashWithOperations(ctx context.Context, command, cwd string, operati
 			opts.OnChunk(text)
 		}
 	}
+	onData := func(data []byte) {
+		totalBytes += len(data)
+		var complete string
+		complete, pendingAnsi = SplitIncompleteAnsiSuffix(pendingAnsi + decoder.decode(data, true))
+		appendText(complete)
+	}
+	flushOutput := func() {
+		rest := pendingAnsi + decoder.decode(nil, false)
+		pendingAnsi = ""
+		appendText(rest)
+	}
 	finish := func(exitCode *int, cancelled bool) BashResult {
 		fullOutput := strings.Join(outputChunks, "")
-		tr := TruncateTail(fullOutput, DefaultMaxBytesUpstream, DefaultMaxLinesUpstream)
+		tr := TruncateTail(fullOutput, TruncationOptions{})
 		if tr.Truncated {
 			ensureTempFile()
 		}
@@ -126,6 +141,7 @@ func ExecuteBashWithOperations(ctx context.Context, command, cwd string, operati
 		}
 		return BashResult{}, err
 	}
+	flushOutput()
 	exitCode := result.ExitCode
 	if cancelled {
 		exitCode = nil

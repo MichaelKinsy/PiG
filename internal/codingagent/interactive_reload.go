@@ -4,13 +4,19 @@ package codingagent
 
 import (
 	"context"
+	"errors"
 
 	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/internal/ctxowner"
 	"github.com/MichaelKinsy/PiG/tui"
 )
 
+// errReloadBlocked reports a reload refused while a response streams or a compaction runs. The refusal is already shown as a warning, and the caller's reload completes without error.
+var errReloadBlocked = errors.New("reload blocked")
+
 // reloadFromExtension runs /reload for an extension's ctx.reload(). The reloaded extension processes live under the context the reload runs with, and a call's context ends with its command, so the reload runs under the run's context: the command awaits it, and its return must not stop the extensions it started.
+// As /reload, it shows the reload status, or the failure as an error, and then completes without error; only a cancelled call or a crashed mode returns one.
+// upstream: packages/coding-agent/src/modes/interactive/interactive-mode.ts:handleReloadCommand
 func (m *InteractiveMode) reloadFromExtension(ctx context.Context) error {
 	extension.CallInitiated(ctx)
 	owner := m.runCtx
@@ -18,7 +24,12 @@ func (m *InteractiveMode) reloadFromExtension(ctx context.Context) error {
 		owner = ctx
 	}
 	return m.runOnMainAndWait(ctx, func() error {
-		return m.buildSlashContext(ctxowner.WithValuesOf(owner, ctx)).Reload()
+		err := reloadHandler(m.buildSlashContext(ctxowner.WithValuesOf(owner, ctx)))
+		if err == nil || ctx.Err() != nil || errors.Is(err, ErrInteractiveCrashed) {
+			return err
+		}
+		m.showError(err.Error())
+		return nil
 	})
 }
 
@@ -27,11 +38,11 @@ func (m *InteractiveMode) beginReloadBlocker() func() {
 	if m.editorContainer == nil || m.tuiInst == nil {
 		return func() {}
 	}
-	previous := m.tuiInst.FocusedComponent()
+	previous := m.tuiInst.GetFocusedComponent()
 	box := tui.NewContainer(
-		tui.NewDynamicBorder(""), tui.NewSpacer(1),
+		tui.NewDynamicBorder(), tui.NewSpacer(1),
 		themedNotice("muted", "Reloading keybindings, extensions, skills, prompts, themes, and context files...", 1),
-		tui.NewSpacer(1), tui.NewDynamicBorder(""),
+		tui.NewSpacer(1), tui.NewDynamicBorder(),
 	)
 	m.editorContainer.SetChildren(box)
 	m.tuiInst.SetFocus(box)

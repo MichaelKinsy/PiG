@@ -41,7 +41,7 @@ func TestUpstreamSessionQueue(t *testing.T) {
 	t.Run("dispatches extension commands immediately when prompted while idle", func(t *testing.T) {
 		var commandRuns []string
 		h := newHarness(t, queueCommandExtension(func(_ context.Context, args string) error { commandRuns = append(commandRuns, args); return nil }), nil)
-		if _, err := h.session.Prompt(t.Context(), "/testcmd hello world", nil); err != nil {
+		if err := h.session.Prompt(t.Context(), "/testcmd hello world", nil); err != nil {
 			t.Fatal(err)
 		}
 		if !reflect.DeepEqual(commandRuns, []string{"hello world"}) {
@@ -278,7 +278,7 @@ func TestUpstreamSessionQueue(t *testing.T) {
 			sawCustomMessage = queueProviderHasTextBlock(messages, "carry this")
 			return fauxReply("done", ai.StopReasonStop, 0)(messages)
 		}}
-		if _, err := h.session.Prompt(t.Context(), "normal prompt", nil); err != nil {
+		if err := h.session.Prompt(t.Context(), "normal prompt", nil); err != nil {
 			t.Fatal(err)
 		}
 		if !sawCustomMessage {
@@ -348,7 +348,7 @@ func TestUpstreamSessionQueue(t *testing.T) {
 		}}}}, nil)
 		api = h.session.currentRunner().CreateCommandContext()
 		h.provider.responses = []scriptedResponse{fauxReply("reply", ai.StopReasonStop, 0), fauxReply("follow-up reply", ai.StopReasonStop, 0)}
-		if _, err := h.session.Prompt(t.Context(), "hello", nil); err != nil {
+		if err := h.session.Prompt(t.Context(), "hello", nil); err != nil {
 			t.Fatal(err)
 		}
 		if err := h.session.WaitForIdle(t.Context()); err != nil {

@@ -1,0 +1,7 @@
+### Fixed
+
+- PiG, the extension SDKs and the sprite selection use one configuration root: `PIG_HOME`, else `$XDG_CONFIG_HOME/pig`, else `~/.pig`. The Python SDK's `config_home` ignored `XDG_CONFIG_HOME`, the Rust SDK's `config_home` still read the retired `GOPI_HOME`, and the Go SDK, the sprite selection and several host paths each had their own copy of the rule, so an extension could read or write a different directory than the CLI. An empty `PIG_HOME` or `XDG_CONFIG_HOME` now falls through to the next choice, a leading `~` or `~/` expands to your home directory everywhere, and any other value is used as written. If the configuration root needs your home directory and PiG cannot find it, PiG reports an error and exits (`pig --version` and other commands that need no root still run) instead of writing under a path relative to the working directory. Pi-sharing mode (`PIG_USE_PI_DIRS=1`) still moves only the agent and project directories, so a fresh `pig` in that mode writes its documentation and stages the extension SDKs under `$XDG_CONFIG_HOME/pig`. Reported by @baggiiiie (#200).
+
+### Changed
+
+- The extension SDK getters for the configuration root can fail. The Go SDK's `Context.ConfigHome` returns `(string, error)`, the Python SDK's `config_home` raises `RuntimeError`, and the Rust SDK's `Context::config_home` returns `io::Result<String>`, each when the home directory is needed and unavailable. The Rust SDK no longer reads `GOPI_HOME`. Set `PIG_HOME` instead. The Node.js runtime exposes the same rule as `getConfigRoot` in its `pig-config` module.

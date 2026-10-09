@@ -1,4 +1,3 @@
-// SPDX-FileCopyrightText: Copyright Hewlett Packard Enterprise Development LP
 // SPDX-FileCopyrightText: Copyright (c) 2025 Mario Zechner
 // SPDX-License-Identifier: MIT
 
@@ -12,6 +11,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/MichaelKinsy/PiG/internal/sessionentry"
 
 	"github.com/MichaelKinsy/PiG/agent"
 
@@ -66,65 +67,77 @@ type branchAuthProvider struct {
 func (p *branchAuthProvider) Auth() ai.ProviderAuth { return p.auth }
 
 // agent-session.ts:_getSummarizationRequestAuth supplies resolved key/headers/env/baseUrl to stock and custom streams alike. Only custom streams may continue when registry auth is absent.
+// Branch summaries (agent-session.ts:4045-4046) and bug report summaries (agent-session.ts:4312-4313) both take it. A header the auth deletes is
+// dropped from the summary request (agent-session.ts:241 withoutDeletedHeaders, 589).
 func TestBranchSummaryRequestAuth(t *testing.T) {
-	for _, kind := range []string{"api-key", "ambient-headers", "oauth"} {
-		for _, custom := range []bool{false, true} {
-			t.Run(fmt.Sprintf("%s/custom=%v", kind, custom), func(t *testing.T) {
-				h := newRecoveryHarness(t, harnessOptions{})
-				wantAuth := ai.ModelAuth{APIKey: "resolved-key", BaseURL: "https://auth.example.test/v1"}
-				if kind == "ambient-headers" {
-					wantAuth.APIKey = ""
-					wantAuth.Headers = ai.ProviderHeadersFromStrings(map[string]string{"Authorization": "Bearer ambient-token"})
-				}
-				resolved := 0
-				p := &branchAuthProvider{upstreamBranchProvider: upstreamBranchProvider{response: ai.AssistantMessage{Content: []ai.AssistantContentBlock{ai.TextContent{Text: "summary"}}, StopReason: ai.StopReasonStop}}}
-				if kind == "oauth" {
-					if err := h.session.services.Auth().Set(p.ID(), ai.Credential{Type: ai.CredentialOAuth, Access: "oauth-token", Refresh: "refresh", Expires: time.Now().Add(time.Hour).UnixMilli()}); err != nil {
+	for _, operation := range []string{"branch", "bug-report"} {
+		for _, kind := range []string{"api-key", "ambient-headers", "deleted-header", "oauth"} {
+			for _, custom := range []bool{false, true} {
+				t.Run(fmt.Sprintf("%s/%s/custom=%v", operation, kind, custom), func(t *testing.T) {
+					h := newRecoveryHarness(t, harnessOptions{})
+					wantAuth := ai.ModelAuth{APIKey: "resolved-key", BaseURL: "https://auth.example.test/v1"}
+					if kind == "ambient-headers" || kind == "deleted-header" {
+						wantAuth.APIKey = ""
+						wantAuth.Headers = ai.ProviderHeadersFromStrings(map[string]string{"Authorization": "Bearer ambient-token"})
+					}
+					resolvedAuth := wantAuth
+					if kind == "deleted-header" {
+						resolvedAuth.Headers = ai.ProviderHeaders{"Authorization": new("Bearer ambient-token"), "X-Deleted": nil}
+					}
+					resolved := 0
+					p := &branchAuthProvider{upstreamBranchProvider: upstreamBranchProvider{response: ai.AssistantMessage{Content: []ai.AssistantContentBlock{ai.TextContent{Text: "summary"}}, StopReason: ai.StopReasonStop}}}
+					if kind == "oauth" {
+						if err := h.session.services.Auth().Set(p.ID(), ai.Credential{Type: ai.CredentialOAuth, Access: "oauth-token", Refresh: "refresh", Expires: time.Now().Add(time.Hour).UnixMilli()}); err != nil {
+							t.Fatal(err)
+						}
+						wantAuth.APIKey = "oauth-token"
+						p.auth.OAuth = &ai.OAuthAuth{Name: "Test OAuth", ToAuth: func(c ai.Credential) (ai.ModelAuth, error) {
+							resolved++
+							if c.Access != wantAuth.APIKey {
+								t.Errorf("OAuth access = %q", c.Access)
+							}
+							return wantAuth, nil
+						}}
+					} else {
+						p.auth.APIKey = &ai.APIKeyAuth{Name: "Test auth", Resolve: func(context.Context, ai.APIKeyAuthInput) (*ai.AuthResult, error) {
+							resolved++
+							return &ai.AuthResult{Auth: resolvedAuth, Env: map[string]string{"REQUEST_AUTH": "ambient"}}, nil
+						}}
+					}
+					installCompactionModel(h.session, p, 200000, 8192)
+					h.session.Model().ProviderMeta.BaseURL = "https://catalog.example.test/v1"
+					if custom {
+						h.session.Agent().SetStreamFunction(func(ctx context.Context, model *ai.Model, transcript ai.TranscriptContext, options ai.StreamOptions) (*ai.AssistantMessageEventStream, error) {
+							if model.ProviderMeta.BaseURL != wantAuth.BaseURL {
+								t.Errorf("request endpoint = %q", model.ProviderMeta.BaseURL)
+							}
+							return p.Stream(ctx, transcript, options)
+						})
+					}
+					target := appendTreeUser(t, h.session, "first branch")
+					appendTreeAssistant(t, h.session, "abandoned reply")
+					if operation == "branch" {
+						if _, err := h.session.NavigateTree(t.Context(), target, NavigateTreeOptions{Summarize: true}); err != nil {
+							t.Fatal(err)
+						}
+					} else if _, err := h.session.SummarizeForBugReport(t.Context(), ""); err != nil {
 						t.Fatal(err)
 					}
-					wantAuth.APIKey = "oauth-token"
-					p.auth.OAuth = &ai.OAuthAuth{Name: "Test OAuth", ToAuth: func(c ai.Credential) (ai.ModelAuth, error) {
-						resolved++
-						if c.Access != wantAuth.APIKey {
-							t.Errorf("OAuth access = %q", c.Access)
-						}
-						return wantAuth, nil
-					}}
-				} else {
-					p.auth.APIKey = &ai.APIKeyAuth{Name: "Test auth", Resolve: func(context.Context, ai.APIKeyAuthInput) (*ai.AuthResult, error) {
-						resolved++
-						return &ai.AuthResult{Auth: wantAuth, Env: map[string]string{"REQUEST_AUTH": "ambient"}}, nil
-					}}
-				}
-				installCompactionModel(h.session, p, 200000, 8192)
-				h.session.Model().ProviderMeta.BaseURL = "https://catalog.example.test/v1"
-				if custom {
-					h.session.Agent().SetStreamFunction(func(ctx context.Context, model *ai.Model, transcript ai.TranscriptContext, options ai.StreamOptions) (*ai.AssistantMessageEventStream, error) {
-						if model.ProviderMeta.BaseURL != wantAuth.BaseURL {
-							t.Errorf("request endpoint = %q", model.ProviderMeta.BaseURL)
-						}
-						return p.Stream(ctx, transcript, options)
-					})
-				}
-				target := appendTreeUser(t, h.session, "first branch")
-				appendTreeAssistant(t, h.session, "abandoned reply")
-				if _, err := h.session.NavigateTree(t.Context(), target, NavigateTreeOptions{Summarize: true}); err != nil {
-					t.Fatal(err)
-				}
-				if resolved != 1 || len(p.options) != 1 {
-					t.Fatalf("auth resolutions=%d stream calls=%d, want 1/1", resolved, len(p.options))
-				}
-				options := p.options[0]
-				if options.APIKey != wantAuth.APIKey || !reflect.DeepEqual(options.Headers, wantAuth.Headers) || options.CacheRetention != ai.CacheRetentionNone {
-					t.Fatalf("request options = %+v", options)
-				}
-				if kind != "oauth" && options.Env["REQUEST_AUTH"] != "ambient" {
-					t.Fatalf("auth environment = %v", options.Env)
-				}
-				if h.session.Model().ProviderMeta.BaseURL != "https://catalog.example.test/v1" {
-					t.Fatal("request auth mutated the selected model")
-				}
-			})
+					if resolved != 1 || len(p.options) != 1 {
+						t.Fatalf("auth resolutions=%d stream calls=%d, want 1/1", resolved, len(p.options))
+					}
+					options := p.options[0]
+					if options.APIKey != wantAuth.APIKey || !reflect.DeepEqual(options.Headers, wantAuth.Headers) || options.CacheRetention != ai.CacheRetentionNone {
+						t.Fatalf("request options = %+v", options)
+					}
+					if kind != "oauth" && options.Env["REQUEST_AUTH"] != "ambient" {
+						t.Fatalf("auth environment = %v", options.Env)
+					}
+					if h.session.Model().ProviderMeta.BaseURL != "https://catalog.example.test/v1" {
+						t.Fatal("request auth mutated the selected model")
+					}
+				})
+			}
 		}
 	}
 }
@@ -147,9 +160,9 @@ func TestSummarizationUsesAgentStreamOverride(t *testing.T) {
 				return nil, errors.New("custom summary failure")
 			})
 			if operation == "branch" {
-				_, err = h.session.NavigateTree(t.Context(), h.session.inner.Entries()[0].Base.ID, NavigateTreeOptions{Summarize: true})
+				_, err = h.session.NavigateTree(t.Context(), h.session.inner.GetEntries()[0].Base().ID, NavigateTreeOptions{Summarize: true})
 			} else {
-				_, err = h.session.CompactResult(t.Context(), "")
+				_, err = h.session.Compact(t.Context(), "")
 			}
 			if calls != 1 || err == nil || !strings.Contains(err.Error(), "custom summary failure") {
 				t.Fatalf("calls=%d error=%v, want custom failure after one call despite absent registry auth", calls, err)
@@ -158,6 +171,7 @@ func TestSummarizationUsesAgentStreamOverride(t *testing.T) {
 	}
 }
 
+// Pi: packages/coding-agent/src/core/agent-session.ts:1383 (Session.abortBranchSummary); packages/coding-agent/src/core/agent-session.ts:1452 (Session.isCompacting).
 func TestBranchSummaryAgentStreamCancellation(t *testing.T) {
 	h := newRecoveryHarness(t, harnessOptions{})
 	target := appendTreeUser(t, h.session, "first branch")
@@ -202,7 +216,7 @@ func TestModelCompleterAgentStreamOverride(t *testing.T) {
 				message.Content = []ai.AssistantContentBlock{ai.ToolCall{ID: "call", Name: "read", Arguments: ai.JsonObject{}}}
 			}
 			calls := 0
-			c := modelCompleter{streamFn: func(_ context.Context, gotModel *ai.Model, transcript ai.TranscriptContext, options ai.StreamOptions) (*ai.AssistantMessageEventStream, error) {
+			c := compaction.ProviderCompleter{StreamFn: func(_ context.Context, gotModel *ai.Model, transcript ai.TranscriptContext, options ai.StreamOptions) (*ai.AssistantMessageEventStream, error) {
 				calls++
 				if gotModel != model || ai.GetCurrentSystemPrompt(transcript.Messages()) != "summarize" || options.APIKey != "" {
 					t.Fatal("collector changed request model, system prompt or absent auth")
@@ -267,9 +281,8 @@ func TestBranchSummarizationUpstream(t *testing.T) {
 			model.DisplayName = "Test Model"
 			model.Capabilities.ContextWindow = 200000
 			model.Capabilities.MaxOutputTokens = tc.max
-			base := codingagent.SessionEntryBase{Type: "message", ID: "branch-user", Timestamp: "1970-01-01T00:00:00.001Z"}
-			entry := codingagent.NewSessionEntry([]byte(`{"type":"message","id":"branch-user","parentId":null,"timestamp":"1970-01-01T00:00:00.001Z","message":{"role":"user","content":"Abandoned request","timestamp":1}}`), base)
-			result := compaction.GenerateBranchSummary(t.Context(), []codingagent.SessionEntry{entry}, compaction.GenerateBranchSummaryOptions{Model: model, Completer: modelCompleter{}})
+			entry := sessionentry.DecodeSessionEntry([]byte(`{"type":"message","id":"branch-user","parentId":null,"timestamp":"1970-01-01T00:00:00.001Z","message":{"role":"user","content":"Abandoned request","timestamp":1}}`))
+			result := compaction.GenerateBranchSummary(t.Context(), []codingagent.SessionEntry{entry}, compaction.GenerateBranchSummaryOptions{Model: model, Completer: compaction.ProviderCompleter{}})
 			if result.Error != tc.wantError {
 				t.Fatalf("error = %q, want %q", result.Error, tc.wantError)
 			}

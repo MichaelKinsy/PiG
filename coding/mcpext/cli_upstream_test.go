@@ -19,7 +19,7 @@ import (
 //
 // Forced differences, each the same in every case:
 //   - the test binary itself is the stdio fixture server (fixtures_test.go `stdio-server`, packages/mcp/test/fixtures/stdio-server.mjs) where upstream spawns `process.execPath FIXTURE`;
-//   - PiG's identity replaces Pi's: the command is `pig`, the project directory `.pig` (upstream APP_NAME `pi`, CONFIG_DIR_NAME `.pi`; see cmd/pig/help_upstream.txt).
+//   - PiG's identity replaces Pi's: the command is `pig`, the project directory `.pig` (upstream APP_NAME `pi`, CONFIG_DIR_NAME `.pi`; see coding/cli/help_upstream.txt).
 
 // serverEntry is one `mcpServers` member; the list keeps upstream's object key order.
 type serverEntry struct{ name, json string }
@@ -340,4 +340,49 @@ func TestMcpCommandRemovesGlobalServers(t *testing.T) {
 		t.Fatalf("removing a missing server: exit code = %d", missing.exitCode)
 	}
 	mustContain(t, missing.output, `No global MCP server named "broken"`)
+}
+
+// cli.ts (1.0.4) list: a global server that a trusted project's `mcp.json` overrides reports the project file in
+// `override` (`--json`) and in a `  project override:` line after its transport (text). The override turns the server
+// off, so the command does not connect.
+func TestMcpCommandListReportsTheProjectOverrideOfAGlobalServer(t *testing.T) {
+	agentDir, project := t.TempDir(), t.TempDir()
+	if err := os.MkdirAll(filepath.Join(project, ".pig"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	overrideFile := filepath.Join(project, ".pig", "mcp.json")
+	if err := os.WriteFile(overrideFile, []byte(`{"mcpServers":{"fixture":{"enabled":false}}}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(agentDir, "mcp.json"), []byte(`{"mcpServers":{"fixture":`+fixtureServer()+`}}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	run := func(args ...string) string {
+		var output []string
+		add := func(line string) { output = append(output, line) }
+		code := mcpext.RunMcpCommand(context.Background(), args, mcpext.McpCommandOptions{
+			Cwd: project, AgentDir: agentDir, AppName: "pig", ConfigDirName: ".pig", Log: add, Error: add,
+			IsProjectTrusted: func(string) (bool, error) { return true, nil },
+		})
+		if code != 0 {
+			t.Fatalf("mcp %v exited %d: %s", args, code, strings.Join(output, "\n"))
+		}
+		return strings.Join(output, "\n")
+	}
+	text := run("list")
+	mustContain(t, text, "fixture: disabled (codemode, global)\n  "+os.Args[0]+" -test.run=^$\n  project override: "+overrideFile)
+	var listing struct {
+		Servers []struct {
+			Name     string `json:"name"`
+			Override string `json:"override"`
+			Enabled  bool   `json:"enabled"`
+		} `json:"servers"`
+	}
+	if err := json.Unmarshal([]byte(run("list", "--json")), &listing); err != nil {
+		t.Fatal(err)
+	}
+	reports := listing.Servers
+	if len(reports) != 1 || reports[0].Override != overrideFile || reports[0].Enabled {
+		t.Fatalf("reports = %+v, want one disabled fixture overridden by %s", reports, overrideFile)
+	}
 }

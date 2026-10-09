@@ -11,7 +11,7 @@ import (
 
 // The helpers in .upstream/v0.99.1/packages/ai/test/abort.test.ts:14-99 assert cancellation and follow-up behavior independently of generated wording. The paced faux provider supplies the deterministic generation side; remote transport cancellation is live-only.
 func TestAbortMatrixUpstream(t *testing.T) {
-	services, err := coding.NewServices(coding.ServicesOptions{CWD: t.TempDir(), AgentDir: t.TempDir()})
+	services, err := coding.CreateAgentSessionServices(coding.CreateAgentSessionServicesOptions{CWD: t.TempDir(), AgentDir: t.TempDir()})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -33,7 +33,7 @@ func TestAbortMatrixUpstream(t *testing.T) {
 			if _, ok := ai.LookupModelExact(spec.provider + "/" + spec.model); !ok {
 				t.Fatal("missing upstream model", spec)
 			}
-			provider := ai.NewFauxProvider(ai.FauxConfig{ProviderID: spec.provider, Model: spec.model, TokensPerSecond: 100, MinTokenSize: 1, MaxTokenSize: 1})
+			provider := ai.NewFauxProvider(ai.FauxConfig{ProviderID: spec.provider, Model: spec.model, TokensPerSecond: 100, TokenSize: &ai.FauxTokenSize{Min: new(1), Max: new(1)}})
 			provider.SetResponses([]ai.FauxResponseStep{ai.FauxStaticStep(ai.FauxResponse{Content: []ai.FauxContentBlock{ai.FauxText(strings.Repeat("Alice Bob Carol David ", 10))}, StopReason: "stop"})})
 			model := &ai.Model{ID: spec.model, Provider: provider}
 			ctx, cancel := context.WithCancel(t.Context())

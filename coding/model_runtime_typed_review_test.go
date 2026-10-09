@@ -195,3 +195,44 @@ func TestModelRuntimeGetAllModelsLeavesTheProviderListUnchanged(t *testing.T) {
 		t.Fatalf("provider list was rewritten: %p != %p", owned[0], chat)
 	}
 }
+
+// model-runtime.ts getAllAvailable(providerId?) and getModels(providerId?): every available model of every type for one provider or all of them, and the chat models of one provider.
+func TestModelRuntimeGetAllAvailableAndGetModelsTakeAProviderFilter(t *testing.T) {
+	services, _ := nativeCompatServices(t, "", nil)
+	runtime := services.ModelRuntime()
+	if err := runtime.RegisterNativeProvider(ai.CreateProvider(ai.CreateProviderOptions{
+		ID:   "filtered",
+		Auth: imagesTestKeyAuth("Filtered key"),
+		Models: []ai.AnyModel{
+			nativeCompatModel("kept", "filtered", "https://filtered.test/v1"),
+			nativeCompatModel("hidden", "filtered", "https://filtered.test/v1"),
+			imagesTestImageModel("filtered", "flux"),
+		},
+		API: &ai.ProviderStreams{Stream: nativeUnusedStream, StreamSimple: nativeUnusedStream},
+		FilterModels: func(models []*ai.Model, _ *ai.Credential) []*ai.Model {
+			return slices.DeleteFunc(slices.Clone(models), func(model *ai.Model) bool { return model.ID == "hidden" })
+		},
+	})); err != nil {
+		t.Fatal(err)
+	}
+	services.Registry().SetRuntimeAPIKey("filtered", "sk-filtered")
+
+	all, err := runtime.GetAllAvailable(t.Context(), "filtered")
+	if err != nil || !reflect.DeepEqual(typedModelIDs(all), []string{"chat:kept", "image:flux"}) {
+		t.Fatalf("GetAllAvailable(filtered) = %v, %v; want the filtered chat model and the image model", typedModelIDs(all), err)
+	}
+	if everything, err := runtime.GetAllAvailable(t.Context()); err != nil || len(everything) < len(all) {
+		t.Fatalf("GetAllAvailable() = %d models, %v; want at least the provider's", len(everything), err)
+	}
+	models := runtime.GetModels("filtered")
+	var ids []string
+	for _, model := range models {
+		ids = append(ids, model.ID)
+	}
+	if !reflect.DeepEqual(ids, []string{"kept", "hidden"}) {
+		t.Fatalf("GetModels(filtered) = %v, want that provider's chat models, unfiltered by availability", ids)
+	}
+	if len(runtime.GetModels()) <= len(models) {
+		t.Fatalf("GetModels() must list every provider's chat models")
+	}
+}

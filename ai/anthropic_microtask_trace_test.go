@@ -340,8 +340,8 @@ func TestAnthropicMicrotaskTrace(t *testing.T) {
 		name := oracle.Shape + "/" + oracle.Delivery
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
-			got := runAnthropicTrace(t, plan)
-			want := oracleConsumerRecords(append([]anthropicOracleRecord(nil), oracle.Trace...))
+			got := anthropicDurationPresence(runAnthropicTrace(t, plan))
+			want := anthropicDurationPresence(oracleConsumerRecords(append([]anthropicOracleRecord(nil), oracle.Trace...)))
 			if !reflect.DeepEqual(got, want) {
 				t.Fatalf("Go trace differs from Pi\n--- Go\n%s\n--- Pi\n%s", describeAnthropicTrace(got), describeAnthropicTrace(want))
 			}
@@ -363,4 +363,14 @@ func deliveredJSON(t *testing.T, message *AssistantMessage) []byte {
 		t.Fatal(err)
 	}
 	return encoded
+}
+
+// anthropicDurationPresence keeps only the presence of durationMs: Pi 1.1.0 sets it from wall time on the final message (event-stream.ts:127-128), and the earlier states show it once the message is final because they share its object.
+func anthropicDurationPresence(records []anthropicOracleRecord) []anthropicOracleRecord {
+	for _, record := range records {
+		if _, ok := record.Message["durationMs"]; ok {
+			record.Message["durationMs"] = float64(0)
+		}
+	}
+	return records
 }

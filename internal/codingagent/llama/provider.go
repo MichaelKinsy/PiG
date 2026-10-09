@@ -29,6 +29,10 @@ const openAICompletionsAPI = "openai-completions"
 // llamaCppClassifyAPI is the classifier API the provider serves (pi-ai api/llama-cpp-classify).
 const llamaCppClassifyAPI = "llama-cpp-classify"
 
+// typesafeSystemOneAPI is the classifier API of llama.cpp decision models, which answer natively through /v1/systemone
+// (pi-ai api/typesafe-system-one).
+const typesafeSystemOneAPI = "typesafe-system-one"
+
 // ThinkingLevelMap mirrors the thinkingLevelMap object toPiModel builds, in
 // upstream key order; nil entries serialize as null.
 type ThinkingLevelMap struct {
@@ -83,7 +87,7 @@ type AnyModel interface{ anyModel() }
 func (Model) anyModel()           {}
 func (ClassifierModel) anyModel() {}
 
-// ClassifierModel mirrors the pi-ai ClassifierModel<"llama-cpp-classify"> the provider publishes and persists.
+// ClassifierModel mirrors the pi-ai ClassifierModel<"llama-cpp-classify" | "typesafe-system-one"> the provider publishes and persists.
 type ClassifierModel struct {
 	Type          string    `json:"type"`
 	ID            string    `json:"id"`
@@ -309,15 +313,34 @@ func contextWindowOf(model LlamaModelInfo, cachedContextWindow int) int {
 	return 128000
 }
 
-// toPiClassifierModel is the same llama.cpp model used as a classifier: answers are read from next-token label probabilities (provider.ts toPiClassifierModel).
+// isDecisionModel reports whether llama.cpp reports a native decision model. Since llama.cpp 0.6.0, GET /models lists
+// `decisions` in architecture.output_modalities for these models, including unloaded and sleeping ones. Older servers
+// report ["text"] or omit architecture, so their models are treated as chat models (provider.ts isDecisionModel).
+func isDecisionModel(model LlamaModelInfo) bool {
+	return model.Architecture != nil && slices.Contains(model.Architecture.OutputModalities, "decisions")
+}
+
+// isChatModel reports whether the model is listed for chat: decision-only models cannot generate text (provider.ts isChatModel).
+func isChatModel(model LlamaModelInfo) bool {
+	return !isDecisionModel(model) || (model.Architecture != nil && slices.Contains(model.Architecture.OutputModalities, "text"))
+}
+
+// toPiClassifierModel is a llama.cpp model used as a classifier. Decision models answer natively through llama.cpp's
+// System One endpoint (/v1/systemone). Chat models fall back to llama-cpp-classify, which reads answers from next-token
+// label probabilities (provider.ts toPiClassifierModel).
 func toPiClassifierModel(model LlamaModelInfo, serverURL string, cachedContextWindow int) ClassifierModel {
+	api, baseURL := llamaCppClassifyAPI, serverURL
+	if isDecisionModel(model) {
+		inferenceURL, _ := LlamaInferenceURL(serverURL)
+		api, baseURL = typesafeSystemOneAPI, inferenceURL
+	}
 	return ClassifierModel{
 		Type:          "classifier",
 		ID:            model.ID,
 		Name:          model.ID,
-		API:           llamaCppClassifyAPI,
+		API:           api,
 		Provider:      LlamaProviderID,
-		BaseURL:       serverURL,
+		BaseURL:       baseURL,
 		Input:         []string{"text"},
 		ContextWindow: contextWindowOf(model, cachedContextWindow),
 	}
@@ -359,7 +382,9 @@ func (c *LlamaProviderController) SetCatalog(catalog []LlamaModelInfo, serverURL
 	var classifiers []ClassifierModel
 	for _, model := range catalog {
 		if modelIsSelectable(model, routerAutoload) {
-			models = append(models, toPiModel(model, serverURL, nil, 0))
+			if isChatModel(model) {
+				models = append(models, toPiModel(model, serverURL, nil, 0))
+			}
 			classifiers = append(classifiers, toPiClassifierModel(model, serverURL, 0))
 		}
 	}
@@ -416,11 +441,28 @@ func CreateLlamaProvider() *LlamaProviderController {
 	return controller
 }
 
-// classify reads next-token label probabilities from llama-server through the shared llama-cpp-classify implementation
-// (provider.ts:140 llamaCppClassifyApi, :262 classify).
+// classify sends decision models to llama-server's System One endpoint and reads the answers of chat models from
+// next-token label probabilities through the shared llama-cpp-classify implementation (provider.ts classify).
 func classify(ctx context.Context, model ClassifierModel, request ai.ClassifierContext, options ai.ClassifierOptions) ai.ClassifierResult {
-	return ai.ClassifyLlamaCpp(ctx, model.aiModel(), request, options)
+	classifier := fallbackClassifier
+	if model.API == typesafeSystemOneAPI {
+		classifier = decisionClassifier
+	}
+	target := model.aiModel()
+	result, err := classifier.Classify(ctx, &target, request, options)
+	if err != nil {
+		result.StopReason = ai.ClassifierStopReasonError
+		result.ErrorMessage = err.Error()
+	}
+	return result
 }
+
+// decisionClassifier answers decision models natively and fallbackClassifier reads chat models' next-token label probabilities.
+// upstream: provider.ts decisionClassifier = createTypesafeSystemOneApi(), fallbackClassifier = createLlamaCppClassifyApi()
+var (
+	decisionClassifier = ai.TypesafeSystemOneAPI()
+	fallbackClassifier = ai.LlamaCppClassifyAPI()
+)
 
 func (m ClassifierModel) aiModel() ai.ClassifierModel {
 	return ai.ClassifierModel{
@@ -506,11 +548,15 @@ func resolve(_ context.Context, auth AuthContext, credential *ai.Credential) (*A
 	return &AuthResult{Auth: ModelAuth{APIKey: apiKey, BaseURL: inferenceURL}, Env: env, Source: authSource(credential)}, nil
 }
 
-// restoredModels mirrors the stored-model filters: chat models with the openai-completions API and classifier models with the llama-cpp-classify API. Entries that do not decode as a model are skipped.
+// restoredModels mirrors the stored-model filters: chat models with the openai-completions API and classifier models with the llama-cpp-classify or typesafe-system-one API. Entries that do not decode as a model are skipped.
 func restoredModels(stored *ai.ModelsStoreEntry) ([]Model, []ClassifierModel) {
 	var models []Model
 	var classifiers []ClassifierModel
-	for _, raw := range stored.Models {
+	for _, stored := range stored.Models {
+		raw, err := ai.EncodeStoredModel(stored)
+		if err != nil {
+			continue
+		}
 		var kind struct{ Type, Provider string }
 		if json.Unmarshal(raw, &kind) != nil || kind.Provider != LlamaProviderID {
 			continue
@@ -523,7 +569,7 @@ func restoredModels(stored *ai.ModelsStoreEntry) ([]Model, []ClassifierModel) {
 			}
 		case "classifier":
 			var model ClassifierModel
-			if json.Unmarshal(raw, &model) == nil && model.API == llamaCppClassifyAPI {
+			if json.Unmarshal(raw, &model) == nil && (model.API == llamaCppClassifyAPI || model.API == typesafeSystemOneAPI) {
 				classifiers = append(classifiers, model)
 			}
 		}
@@ -567,7 +613,8 @@ func (c *LlamaProviderController) refreshModels(refresh RefreshModelsContext) er
 		return nil
 	}
 	selectable := selectableModels(catalog, routerAutoload)
-	refreshed, err := classifyModels(ctx, client, selectable, serverURL, cachedContextWindows)
+	chat := slices.DeleteFunc(slices.Clone(selectable), func(model LlamaModelInfo) bool { return !isChatModel(model) })
+	refreshed, err := classifyModels(ctx, client, chat, serverURL, cachedContextWindows)
 	if err != nil || ctx.Err() != nil {
 		return err
 	}
@@ -575,20 +622,30 @@ func (c *LlamaProviderController) refreshModels(refresh RefreshModelsContext) er
 	for index, model := range selectable {
 		refreshedClassifiers[index] = toPiClassifierModel(model, serverURL, cachedContextWindows[model.ID])
 	}
-	encoded := make([]json.RawMessage, 0, len(refreshed)+len(refreshedClassifiers))
-	for _, model := range refreshed {
+	encoded := make([]ai.AnyModel, 0, len(refreshed)+len(refreshedClassifiers))
+	persist := func(model any) error {
 		raw, err := json.Marshal(model)
 		if err != nil {
 			return err
 		}
-		encoded = append(encoded, raw)
+		stored, known, err := ai.DecodeStoredModel(raw)
+		if err != nil {
+			return err
+		}
+		if known {
+			encoded = append(encoded, stored)
+		}
+		return nil
+	}
+	for _, model := range refreshed {
+		if err := persist(model); err != nil {
+			return err
+		}
 	}
 	for _, model := range refreshedClassifiers {
-		raw, err := json.Marshal(model)
-		if err != nil {
+		if err := persist(model); err != nil {
 			return err
 		}
-		encoded = append(encoded, raw)
 	}
 	checkedAt := float64(time.Now().UnixMilli())
 	_, err = refresh.Publish(ModelsPublication{
@@ -618,9 +675,10 @@ func classifyModels(ctx context.Context, client *LlamaClient, selectable []Llama
 	var once sync.Once
 	var firstErr error
 	for index, model := range selectable {
-		// Only loaded models expose their template without side effects. Unloaded autoload presets
-		// would need to be loaded, while querying sleeping models may wake them. Those models remain
-		// unclassified until they are loaded or woken and a later catalog refresh discovers them.
+		// Only loaded models expose their chat template without side effects. Unloaded autoload presets would need to be
+		// loaded, while querying sleeping models may wake them. Those models remain without thinking support until they
+		// are loaded and a later catalog refresh discovers it. Decision models need no template, and llama.cpp reports
+		// them in the catalog regardless of their status.
 		if model.Status.Value != LlamaModelStatusLoaded {
 			results[index] = toPiModel(model, serverURL, nil, cachedContextWindows[model.ID])
 			continue

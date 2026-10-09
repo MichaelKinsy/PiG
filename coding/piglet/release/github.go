@@ -3,8 +3,32 @@ package release
 import (
 	"fmt"
 	"net/url"
+	"os"
 	"strings"
 )
+
+// GitHubURLEnv names the loopback test server that replaces github.com and api.github.com for Piglet release download and discovery.
+const GitHubURLEnv = "PIG_PIGLET_GITHUB_URL"
+
+// githubURL returns https://<host><path>, or <override><path> when GitHubURLEnv is set.
+// pig additive (D18): the override serves tests of the real pull and update commands. It is honoured only together with PIG_PIGLET_PULL_ALLOW_LOOPBACK_HTTP and only for a loopback base; any other value is refused rather than ignored.
+func githubURL(host, path string) (string, error) {
+	raw := strings.TrimSpace(os.Getenv(GitHubURLEnv))
+	if raw == "" {
+		return "https://" + host + path, nil
+	}
+	if !loopbackHTTPAllowed() {
+		return "", urlPolicyError(GitHubURLEnv + " requires PIG_PIGLET_PULL_ALLOW_LOOPBACK_HTTP=1")
+	}
+	base, err := url.Parse(raw)
+	if err != nil || base.Scheme != "http" && base.Scheme != "https" || base.Host == "" || base.User != nil || base.RawQuery != "" || base.Fragment != "" || strings.Trim(base.Path, "/") != "" {
+		return "", urlPolicyError(GitHubURLEnv + " must be a bare http(s) loopback origin such as http://127.0.0.1:8080")
+	}
+	if name := base.Hostname(); !isLoopbackHost(name) {
+		return "", urlPolicyError(GitHubURLEnv + " must name a loopback host, not " + name)
+	}
+	return base.Scheme + "://" + base.Host + path, nil
+}
 
 // GitHubRelease binds a signed index to its repository and per-Piglet tag namespace.
 // An empty TagPrefix selects the repository's unprefixed v<version> tags.
@@ -26,9 +50,9 @@ func (g GitHubRelease) Reference(version string) string {
 	return "github:" + repo + "@" + version
 }
 
-// IndexURL returns the release download URL with its Git tag escaped as one segment.
-func (g GitHubRelease) IndexURL(version string) string {
-	return "https://github.com/" + g.Repository + "/releases/download/" + url.PathEscape(g.Tag(version)) + "/piglet-release.json"
+// indexPath returns the release download path with its Git tag escaped as one segment.
+func (g GitHubRelease) indexPath(version string) string {
+	return "/" + g.Repository + "/releases/download/" + url.PathEscape(g.Tag(version)) + "/piglet-release.json"
 }
 
 // pig additive (D18): explicit name/ prefixes prevent repository layout changes from changing release identity.
@@ -88,7 +112,11 @@ func parseReleaseReference(ref, version string) (releaseReference, error) {
 		name = parts[2]
 		g.TagPrefix = name + "/"
 	}
-	return releaseReference{url: g.IndexURL(v), version: v, piglet: name, github: g}, nil
+	indexURL, err := githubURL("github.com", g.indexPath(v))
+	if err != nil {
+		return releaseReference{}, err
+	}
+	return releaseReference{url: indexURL, version: v, piglet: name, github: g}, nil
 }
 
 func (r releaseReference) match(index Index) error {

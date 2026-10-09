@@ -117,7 +117,7 @@ func TestLoginHeaderAppliesHostThemeColorsWithoutChangingExtensionPalette(t *tes
 	}
 
 	m := &InteractiveMode{
-		opts: InteractiveOptions{
+		opts: InteractiveModeOptions{
 			LoginVisible: true,
 			LoginHeaderOptions: LoginHeaderOptions{
 				TrueColor:      true,
@@ -354,13 +354,13 @@ func TestLoginHeaderRendererCachesDefensivelyAndTracksTheme(t *testing.T) {
 func TestExtUIContextSetLoginSharesHeaderSlotAndInvalidPreservesCurrent(t *testing.T) {
 	const builtInHeader = "stock header"
 	m := &InteractiveMode{
-		opts:      InteractiveOptions{BuiltInHeaderLines: []string{builtInHeader}, LoginHeaderOptions: LoginHeaderOptions{TrueColor: true}, LoginVisible: true},
+		opts:      InteractiveModeOptions{BuiltInHeaderLines: []string{builtInHeader}, LoginHeaderOptions: LoginHeaderOptions{TrueColor: true}, LoginVisible: true},
 		extHeader: newSpecialLinesComponent(func() {}),
 	}
 	m.restoreBuiltInHeader()
 	ui := &ExtUIContext{m: m}
 
-	ui.SetHeader([]string{"custom header"})
+	ui.SetHeader(extension.FrameHeader([]string{"custom header"}, 0))
 	if got := ui.SetLogin(extension.LoginDefinition{}); got == nil {
 		t.Fatal("invalid SetLogin returned nil error")
 	}
@@ -390,7 +390,7 @@ func TestExtUIContextSetLoginSharesHeaderSlotAndInvalidPreservesCurrent(t *testi
 
 func TestRestoreBuiltInHeaderUsesConfiguredLines(t *testing.T) {
 	m := &InteractiveMode{
-		opts:      InteractiveOptions{BuiltInHeaderLines: []string{"minimal identity"}, LoginVisible: true},
+		opts:      InteractiveModeOptions{BuiltInHeaderLines: []string{"minimal identity"}, LoginVisible: true},
 		extHeader: newSpecialLinesComponent(func() {}),
 	}
 	m.restoreBuiltInHeader()
@@ -401,7 +401,7 @@ func TestRestoreBuiltInHeaderUsesConfiguredLines(t *testing.T) {
 
 func TestExtUIContextSetLoginHonorsStartupSilenceGate(t *testing.T) {
 	m := &InteractiveMode{
-		opts:      InteractiveOptions{LoginVisible: false},
+		opts:      InteractiveModeOptions{LoginVisible: false},
 		extHeader: newSpecialLinesComponent(func() {}),
 	}
 	ui := &ExtUIContext{m: m}
@@ -422,7 +422,7 @@ func TestExtUIContextSetLoginHonorsStartupSilenceGate(t *testing.T) {
 
 func TestExtUIContextSetLoginKeepsOperationalRowsWithoutBuiltInArt(t *testing.T) {
 	m := &InteractiveMode{
-		opts: InteractiveOptions{
+		opts: InteractiveModeOptions{
 			LoginVisible:       true,
 			LoginHeaderOptions: LoginHeaderOptions{OperationalLines: []string{"PiG v1", "startup hints"}},
 			BuiltInHeaderLines: []string{"minimal identity"},
@@ -452,7 +452,7 @@ func TestExtUIContextSetLoginKeepsOperationalRowsWithoutBuiltInArt(t *testing.T)
 func TestNewSessionResetRestoresBuiltInHeaderBeforeHandlers(t *testing.T) {
 	const builtInHeader = "stock header"
 	m := &InteractiveMode{
-		opts: InteractiveOptions{
+		opts: InteractiveModeOptions{
 			BuiltInHeaderLines: []string{builtInHeader},
 			LoginVisible:       true,
 		},
@@ -470,7 +470,7 @@ func TestSuccessfulReloadRestoresBuiltInHeaderAndFailedReloadPreservesCurrentLog
 	restoreStartupTheme(t) // Reload applies the theme setting, which selects the process-wide active theme.
 	const builtInHeader = "stock header"
 	host := &orderRecordingHost{}
-	m := reloadTestMode(InteractiveOptions{
+	m := reloadTestMode(InteractiveModeOptions{
 		BuiltInHeaderLines: []string{builtInHeader},
 		LoginVisible:       true,
 		SubprocessHost:     host,
@@ -496,9 +496,9 @@ func TestSuccessfulReloadRestoresBuiltInHeaderAndFailedReloadPreservesCurrentLog
 
 // D60: SetLogin and SetHeader share one slot and the last successful call wins. A quiet startup accepts the login but keeps the slot hidden, so it replaces an earlier extension header instead of leaving that header visible. The bridge already treats the login as newer than that header (a delayed older setHeader is dropped), so in-order application must agree.
 func TestQuietLoginReplacesEarlierExtensionHeaderWithHiddenSlot(t *testing.T) {
-	m := &InteractiveMode{opts: InteractiveOptions{LoginVisible: false}, extHeader: newSpecialLinesComponent(func() {})}
+	m := &InteractiveMode{opts: InteractiveModeOptions{LoginVisible: false}, extHeader: newSpecialLinesComponent(func() {})}
 	ui := &ExtUIContext{m: m}
-	ui.SetHeader(extension.WidthLines{Lines: []string{"earlier header"}, Width: 80})
+	ui.SetHeader(extension.FrameHeader([]string{"earlier header"}, 80))
 	if got := m.extHeader.Render(80); len(got) == 0 {
 		t.Fatal("setup: extension header not shown")
 	}

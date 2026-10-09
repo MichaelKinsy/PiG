@@ -3,164 +3,100 @@ package mcpext
 import (
 	"context"
 	"fmt"
-	"reflect"
-	"sync"
 	"sync/atomic"
 
 	"github.com/MichaelKinsy/PiG/coding/extension"
 )
 
-// NewBuiltin builds the `builtin:mcp` extension: [Factory] registered on an in-process API, so the extension's event
-// handlers, `/mcp` command and tools reach a Session's runner like those of any extension. The loader names it and
-// supplies its source.
-//
-// Ports packages/coding-agent/src/extensions/index.ts (the `mcp` entry of builtInExtensions).
-func NewBuiltin(options Options) (extension.Extension, error) {
-	api := &builtinAPI{ext: &extension.Extension{Commands: map[string]extension.RegisteredCommand{}}}
-	Factory(options)(api)
-	// The returned value shares both registries with api.ext, so a tool registered after load reaches the runner's copy.
-	api.ext.InitializeEventHandlers()
-	api.ext.InitializeToolRegistry()
-	return *api.ext, nil
-}
-
-// builtinAPI is the [API] of an in-process extension: handlers, commands and tools are recorded on ext, and the calls that
-// read or change the Session go through the context of the latest event, which a runner binds to its Session. Upstream's
-// `pi` object is bound to the runner the same way, through the runtime the runner binds in bindCore.
-type builtinAPI struct {
-	ext *extension.Extension
-
-	mu     sync.Mutex
-	nextID int
-	// context is the context of the latest event. The extension calls the API from goroutines it owns (a connection
-	// that settles, a server that changes its tool list), after the handler that started them returned.
+// piAdapter is the [API] the MCP extension registers on, over the extension API its factory receives. The extension calls the API from
+// goroutines it owns (a connection that settles, a server that changes its tool list), after the handler that started them returned;
+// a tool it registers then reports a failure to the user through the context of the latest event, since the call has no error to return it to.
+type piAdapter struct {
+	pi      extension.API
 	context atomic.Pointer[extension.Context]
 }
 
-// subscribe records a handler for event. call receives the event and the handler context; its result is the handler's.
-func subscribe[E any](a *builtinAPI, event string, call func(ctx context.Context, evt E) (any, error)) {
-	a.mu.Lock()
-	a.nextID++
-	id := a.nextID
-	a.mu.Unlock()
-	a.ext.AddEventHandler(event, id, func(args ...any) (any, error) {
-		if len(args) != 2 {
-			return nil, fmt.Errorf("%s handler called with %d arguments, want the event and its context", event, len(args))
-		}
-		evt, ok := args[0].(E)
-		if !ok {
-			return nil, fmt.Errorf("%s handler called with event %T", event, args[0])
-		}
-		ctx, ok := args[1].(context.Context)
-		if !ok {
-			return nil, fmt.Errorf("%s handler called with context %T", event, args[1])
-		}
-		if c := extension.FromContext(ctx); c != nil {
-			a.context.Store(c)
-		}
-		return call(ctx, evt)
-	})
-}
+func newPiAdapter(pi extension.API) *piAdapter { return &piAdapter{pi: pi} }
 
-// resultOrNil is a handler result that carries nothing as nil, as a handler that returns `undefined` upstream.
-func resultOrNil[R any](result R) any {
-	if reflect.ValueOf(&result).Elem().IsZero() {
-		return nil
+// track records the extension context a runner put in ctx.
+func (a *piAdapter) track(ctx context.Context) {
+	if c := extension.FromContext(ctx); c != nil {
+		a.context.Store(c)
 	}
-	return &result
 }
 
-func (a *builtinAPI) OnSessionStart(handler func(ctx context.Context, evt extension.SessionStartEvent) error) {
-	subscribe(a, "session_start", func(ctx context.Context, evt extension.SessionStartEvent) (any, error) {
-		return nil, handler(ctx, evt)
+func (a *piAdapter) OnSessionStart(handler func(ctx context.Context, evt extension.SessionStartEvent) error) {
+	a.pi.OnSessionStart(func(ctx context.Context, evt extension.SessionStartEvent) error {
+		a.track(ctx)
+		return handler(ctx, evt)
 	})
 }
 
-func (a *builtinAPI) OnBeforeAgentStart(handler func(ctx context.Context, evt extension.BeforeAgentStartEvent) (extension.BeforeAgentStartEventResult, error)) {
-	subscribe(a, "before_agent_start", func(ctx context.Context, evt extension.BeforeAgentStartEvent) (any, error) {
-		result, err := handler(ctx, evt)
-		return resultOrNil(result), err
+func (a *piAdapter) OnBeforeAgentStart(handler func(ctx context.Context, evt extension.BeforeAgentStartEvent) (extension.BeforeAgentStartEventResult, error)) {
+	a.pi.OnBeforeAgentStart(func(ctx context.Context, evt extension.BeforeAgentStartEvent) (extension.BeforeAgentStartEventResult, error) {
+		a.track(ctx)
+		return handler(ctx, evt)
 	})
 }
 
-func (a *builtinAPI) OnToolCall(handler func(ctx context.Context, evt extension.ToolCallEvent) (extension.ToolCallEventResult, error)) {
-	subscribe(a, "tool_call", func(ctx context.Context, evt extension.ToolCallEvent) (any, error) {
-		result, err := handler(ctx, evt)
-		return resultOrNil(result), err
+func (a *piAdapter) OnToolCall(handler func(ctx context.Context, evt extension.ToolCallEvent) (extension.ToolCallEventResult, error)) {
+	a.pi.OnToolCall(func(ctx context.Context, evt extension.ToolCallEvent) (extension.ToolCallEventResult, error) {
+		a.track(ctx)
+		return handler(ctx, evt)
 	})
 }
 
-func (a *builtinAPI) OnTurnStart(handler func(ctx context.Context, evt extension.TurnStartEvent) error) {
-	subscribe(a, "turn_start", func(ctx context.Context, evt extension.TurnStartEvent) (any, error) {
-		return nil, handler(ctx, evt)
+func (a *piAdapter) OnTurnStart(handler func(ctx context.Context, evt extension.TurnStartEvent) error) {
+	a.pi.OnTurnStart(func(ctx context.Context, evt extension.TurnStartEvent) error {
+		a.track(ctx)
+		return handler(ctx, evt)
 	})
 }
 
-func (a *builtinAPI) OnMcpServersChange(handler func(ctx context.Context, evt extension.McpServersChangeEvent) error) {
-	subscribe(a, "mcp_servers_change", func(ctx context.Context, evt extension.McpServersChangeEvent) (any, error) {
-		return nil, handler(ctx, evt)
+func (a *piAdapter) OnMcpServersChange(handler func(ctx context.Context, evt extension.McpServersChangeEvent) error) {
+	a.pi.OnMcpServersChange(func(ctx context.Context, evt extension.McpServersChangeEvent) error {
+		a.track(ctx)
+		return handler(ctx, evt)
 	})
 }
 
-func (a *builtinAPI) OnSessionShutdown(handler func(ctx context.Context, evt extension.SessionShutdownEvent) error) {
-	subscribe(a, "session_shutdown", func(ctx context.Context, evt extension.SessionShutdownEvent) (any, error) {
-		return nil, handler(ctx, evt)
+func (a *piAdapter) OnSessionShutdown(handler func(ctx context.Context, evt extension.SessionShutdownEvent) error) {
+	a.pi.OnSessionShutdown(func(ctx context.Context, evt extension.SessionShutdownEvent) error {
+		a.track(ctx)
+		return handler(ctx, evt)
 	})
 }
 
-// RegisterCommand records the command. The loader gives it its source.
-func (a *builtinAPI) RegisterCommand(name string, options extension.CommandOptions) {
-	if _, exists := a.ext.Commands[name]; !exists {
-		a.ext.CommandOrder = append(a.ext.CommandOrder, name)
-	}
-	a.ext.Commands[name] = extension.RegisteredCommand{Name: name, Description: options.Description, GetArgumentCompletions: options.GetArgumentCompletions, Handler: options.Handler}
+func (a *piAdapter) RegisterCommand(name string, options extension.CommandOptions) {
+	a.pi.RegisterCommand(name, options)
 }
 
-// RegisterTool replaces the registration of the tool's name and refreshes the Session's tool registry, as a tool
-// registered while a Session runs is admitted and, when it activates on registration, declared. A failure to admit the
-// tool is shown to the user, since the caller has no error to return it to.
+func (a *piAdapter) RegisterToolRenderer(resolver extension.ToolRendererResolver) {
+	a.pi.RegisterToolRenderer(resolver)
+}
+
+// RegisterTool registers the tool, which refreshes the Session's tool registry once a Session runs. A failure to admit the tool is shown
+// to the user, since the caller has no error to return it to.
 //
 // upstream: core/extensions/loader.ts:273-284 (registerTool)
-func (a *builtinAPI) RegisterToolRenderer(resolver extension.ToolRendererResolver) {
-	a.ext.ToolRenderers = append(a.ext.ToolRenderers, resolver)
-}
-
-func (a *builtinAPI) RegisterTool(definition extension.ToolDefinition) {
-	a.ext.SetRegisteredTool(extension.RegisteredTool{Definition: definition})
-	c := a.context.Load()
-	if c == nil {
-		return
-	}
-	if err := c.RefreshTools(); err != nil {
-		if ui, uiErr := c.UI(); uiErr == nil {
-			ui.Notify(fmt.Sprintf("MCP tool %s could not be registered: %v", definition.Name, err), "error")
+func (a *piAdapter) RegisterTool(definition extension.ToolDefinition) {
+	defer func() {
+		if recovered := recover(); recovered != nil {
+			// upstream: registerTool throws; the extension has no caller to throw to, so the failure reaches the user.
+			if c := a.context.Load(); c != nil {
+				if ui, err := c.UI(); err == nil {
+					ui.Notify(fmt.Sprintf("MCP tool %s could not be registered: %v", definition.Name, recovered), "error")
+				}
+			}
 		}
-	}
+	}()
+	a.pi.RegisterTool(definition)
 }
 
-func (a *builtinAPI) GetAllTools() []extension.ToolInfo {
-	if c := a.context.Load(); c != nil {
-		return c.GetAllTools()
-	}
-	return nil
-}
+func (a *piAdapter) GetAllTools() []extension.ToolInfo { return a.pi.GetAllTools() }
 
-func (a *builtinAPI) GetActiveTools() []string {
-	if c := a.context.Load(); c != nil {
-		return c.GetActiveTools()
-	}
-	return nil
-}
+func (a *piAdapter) GetActiveTools() []string { return a.pi.GetActiveTools() }
 
-func (a *builtinAPI) SetActiveTools(names []string) {
-	if c := a.context.Load(); c != nil {
-		c.SetActiveTools(names)
-	}
-}
+func (a *piAdapter) SetActiveTools(names []string) { a.pi.SetActiveTools(names) }
 
-func (a *builtinAPI) GetMcpServers() []extension.RegisteredMcpServer {
-	if c := a.context.Load(); c != nil {
-		return c.GetMcpServers()
-	}
-	return nil
-}
+func (a *piAdapter) GetMcpServers() []extension.RegisteredMcpServer { return a.pi.GetMcpServers() }

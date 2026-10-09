@@ -24,6 +24,18 @@ func terminalInputBuffered(*os.File) bool { return false }
 // returns without blocking. A readable descriptor always does.
 func terminalInputPending(*os.File) (bool, error) { return true, nil }
 
+// terminalHungUp reports whether the terminal behind file has been hung up, as when the master side of a pseudo-terminal closes.
+func terminalHungUp(file *os.File) bool {
+	pollfds := []unix.PollFd{{Fd: int32(file.Fd()), Events: unix.POLLIN}}
+	for {
+		n, err := unix.Poll(pollfds, 0)
+		if errors.Is(err, unix.EINTR) {
+			continue
+		}
+		return err == nil && n > 0 && pollfds[0].Revents&unix.POLLHUP != 0
+	}
+}
+
 // pollReadable waits up to ms milliseconds for fd to become readable. It
 // returns n>0 when readable, 0 on timeout. EINTR is retried internally so the
 // caller never observes it. Mirrors the original DrainInput poll loop.

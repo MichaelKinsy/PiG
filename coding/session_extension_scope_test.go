@@ -47,7 +47,7 @@ func TestSessionExtensionHandlerContextCarriesStreamScope(t *testing.T) {
 	var duringWait, afterWait []byte
 	ext := extension.Extension{Path: "scoped-wait", Handlers: map[string][]extension.HandlerFn{
 		"message_start": {func(args ...any) (any, error) {
-			message := args[0].(extension.MessageStartEvent).Message.(agent.AgentMessage)
+			message := args[0].(extension.MessageStartEvent).Message
 			if message.Assistant == nil {
 				return nil, nil
 			}

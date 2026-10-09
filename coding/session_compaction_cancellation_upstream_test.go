@@ -1,4 +1,3 @@
-// SPDX-FileCopyrightText: Copyright Hewlett Packard Enterprise Development LP
 // SPDX-FileCopyrightText: Copyright (c) 2025 Mario Zechner
 // SPDX-License-Identifier: MIT
 
@@ -45,6 +44,8 @@ func installCompactionModel(s *Session, provider ai.Provider, window, maxTokens 
 	s.agent.SetModel(model)
 }
 
+// Pi: packages/coding-agent/src/core/agent-session.ts:1382 (Session.abortCompaction); packages/coding-agent/src/core/agent-session.ts:1452 (Session.isCompacting).
+// Pi: packages/coding-agent/src/core/extensions/types.ts:1473 (SessionBeforeCompactResult.cancel).
 func TestAutomaticCompactionCancellationUpstream(t *testing.T) {
 	// .upstream/v0.87.1/packages/coding-agent/test/suite/regressions/9340-9777-auto-compaction-cancellation.test.ts:47
 	t.Run("does not start post-run auto-compaction after abort", func(t *testing.T) {

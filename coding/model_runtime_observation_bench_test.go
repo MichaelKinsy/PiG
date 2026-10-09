@@ -49,7 +49,7 @@ func BenchmarkModelRuntimeObservation(b *testing.B) {
 			if err := os.WriteFile(filepath.Join(agentDir, "models.json"), []byte(config), 0o600); err != nil {
 				b.Fatal(err)
 			}
-			services, err := NewServices(ServicesOptions{CWD: b.TempDir(), AgentDir: agentDir})
+			services, err := CreateAgentSessionServices(CreateAgentSessionServicesOptions{CWD: b.TempDir(), AgentDir: agentDir})
 			if err != nil {
 				b.Fatal(err)
 			}

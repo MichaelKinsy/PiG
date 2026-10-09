@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"testing/synctest"
 	"time"
 
 	"github.com/MichaelKinsy/PiG/ai"
@@ -23,7 +24,7 @@ import (
 func TestInteractiveBashDoesNotRunWhenUserBashHandlerFails(t *testing.T) {
 	dir := t.TempDir()
 	model := &ai.Model{ID: "m", DisplayName: "m", Capabilities: ai.ModelCapabilities{ContextWindow: 8000}}
-	m := NewInteractiveMode(InteractiveOptions{CWD: dir, Model: model})
+	m := NewInteractiveMode(nil, InteractiveModeOptions{CWD: dir, Model: model})
 	m.chatContainer = tui.NewContainer()
 	m.pendingMessagesContainer = tui.NewContainer()
 	m.tuiInst = tui.NewWithOutput(io.Discard, 100, 30)
@@ -62,7 +63,7 @@ func TestInteractiveBashShowsAndRecordsUserBashResult(t *testing.T) {
 		t.Fatal(err)
 	}
 	handle := &recordingCompactHandle{inner: session}
-	m := NewInteractiveMode(InteractiveOptions{CWD: dir, Model: model, SessionHandle: handle})
+	m := NewInteractiveMode(nil, InteractiveModeOptions{CWD: dir, Model: model, SessionHandle: handle})
 	m.chatContainer = tui.NewContainer()
 	m.pendingMessagesContainer = tui.NewContainer()
 	m.tuiInst = tui.NewWithOutput(io.Discard, 100, 30)
@@ -96,12 +97,106 @@ func TestInteractiveBashShowsAndRecordsUserBashResult(t *testing.T) {
 		t.Fatalf("the replacement result is not shown:\n%s", chat)
 	}
 	recorded := false
-	for _, entry := range session.Entries() {
-		if message, ok := entry.AsMessage(); ok && message.Message.Role() == "bashExecution" {
+	for _, entry := range session.GetEntries() {
+		if message, ok := entry.(MessageEntry); ok && message.Message.Role() == "bashExecution" {
 			recorded = strings.Contains(string(entry.Raw()), "ran remotely")
 		}
 	}
 	if !recorded {
 		t.Fatal("the replacement result was not recorded in the session")
 	}
+}
+
+// Upstream handleBashCommand awaits session.executeBash, which records the result through recordBashResult; when
+// that throws, the catch completes the block with setComplete(undefined, false) and shows
+// showError(`Bash command failed: ${message}`) (interactive-mode.ts handleBashCommand). PiG appended to the inner
+// Session itself, kept the block's result and printed a hard-coded yellow "bash session persist warning".
+func TestInteractiveBashRecordFailureShowsBashCommandFailed(t *testing.T) {
+	dir := t.TempDir()
+	model := &ai.Model{ID: "m", DisplayName: "m", Capabilities: ai.ModelCapabilities{ContextWindow: 8000}}
+	session, err := NewSessionManagerWithDir(dir, t.TempDir()).Create("user-bash-record-failure", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	handle := &recordingCompactHandle{inner: session, bashRecordErr: errors.New("ENOSPC: no space left on device")}
+	m := NewInteractiveMode(nil, InteractiveModeOptions{CWD: dir, Model: model, SessionHandle: handle})
+	m.chatContainer = tui.NewContainer()
+	m.pendingMessagesContainer = tui.NewContainer()
+	m.tuiInst = tui.NewWithOutput(io.Discard, 100, 30)
+	ctx, cancel := context.WithCancel(t.Context())
+	m.runCtx = ctx
+	m.abortCtx, m.abortFn = context.WithCancel(ctx)
+	loopDone := make(chan struct{})
+	go m.drainLoop(ctx, loopDone)
+	defer func() { cancel(); <-loopDone }()
+	m.newRunner = inproc.NewRunner(nil, dir)
+
+	submitted := make(chan struct{})
+	m.runOnMain(ctx, func() {
+		m.handleBashCommand(ctx, "echo recorded-output; exit 3", false)
+		close(submitted)
+	})
+	<-submitted
+	m.backgroundTasks.Wait()
+	chat := widthx.StripAnsi(strings.Join(m.chatContainer.Render(100), "\n"))
+	if !strings.Contains(chat, "Error: Bash command failed: ENOSPC: no space left on device") {
+		t.Fatalf("the recording failure is not shown as upstream's showError:\n%s", chat)
+	}
+	if strings.Contains(chat, "persist warning") || strings.Contains(chat, "(exit 3)") {
+		t.Fatalf("the block kept its result or a PiG-only warning after the recording failure:\n%s", chat)
+	}
+}
+
+// On the user_bash result path upstream handleBashCommand completes the block and then calls
+// session.recordBashResult outside any try (interactive-mode.ts handleBashCommand). A persistence failure rejects the
+// onSubmit promise the editor does not await, and Node raises it to the uncaughtException handler, which ends the
+// process. The owner loop therefore raises uncaughtError for Run's recover after completing the block, rather than
+// adding an error line and continuing.
+func TestInteractiveBashResultRecordFailureIsUncaught(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		m, ctx, cancel := userBashOwnerProbe(t, func(...any) (any, error) { return userBashOwnedResult(), nil })
+		recordErr := errors.New("ENOSPC: no space left on device")
+		m.opts.SessionHandle = &recordingCompactHandle{bashRecordErr: recordErr}
+		raised := make(chan any, 1)
+		loopDone := make(chan struct{})
+		go func() {
+			defer close(loopDone)
+			for {
+				select {
+				case fn := <-m.uiTaskCh:
+					func() {
+						defer func() {
+							if value := recover(); value != nil {
+								raised <- value
+							}
+						}()
+						fn()
+					}()
+				case <-ctx.Done():
+					return
+				}
+			}
+		}()
+		m.runOnMain(ctx, func() { m.handleBashCommand(ctx, "owned", false) })
+		synctest.Wait()
+		var value any
+		select {
+		case value = <-raised:
+		default:
+		}
+		chat := widthx.StripAnsi(strings.Join(m.chatContainer.Render(100), "\n"))
+		cancel()
+		<-loopDone
+		m.backgroundTasks.Wait()
+		rejection, ok := value.(uncaughtError)
+		if !ok || !errors.Is(rejection, recordErr) {
+			t.Fatalf("raised %T (%v), want uncaughtError wrapping the record failure", value, value)
+		}
+		if !strings.Contains(chat, "(exit 7)") {
+			t.Fatalf("the block was not completed with the extension's result before the failure was raised:\n%s", chat)
+		}
+		if strings.Contains(chat, "Bash command failed") {
+			t.Fatalf("the uncaught failure was also shown as a handled error:\n%s", chat)
+		}
+	})
 }

@@ -1,5 +1,7 @@
 package chord
 
+// pi: packages/chord/src/services/handle.ts
+
 import (
 	"context"
 	"errors"
@@ -40,10 +42,17 @@ func (reader remoteReader) Read(ctx context.Context) (string, error) {
 	return CallResult[string](ctx, reader.service, "read")
 }
 
+// readerDefinitions holds each registered reader definition, so a test that defines its services survives -count reruns: service views are package-global and register once per id.
+var readerDefinitions sync.Map
+
 func defineReader(id string) ServiceDefinition[Reader] {
+	if definition, ok := readerDefinitions.Load(id); ok {
+		return definition.(ServiceDefinition[Reader])
+	}
 	definition := DefineService[Reader](id)
 	RegisterServiceView(definition, func(resolve func() (Reader, error)) Reader { return readerView{resolve} })
 	RegisterRemoteClient(definition, func(service *RemoteService) Reader { return remoteReader{service} })
+	readerDefinitions.Store(id, definition)
 	return definition
 }
 
@@ -125,7 +134,7 @@ func (view hostValuesView) Use() string {
 }
 
 var hostValuesDefinition = func() ServiceDefinition[HostValues] {
-	definition := DefineServiceWithOptions[HostValues]("test.experimental.host-values", ServiceOptions{Local: true})
+	definition := DefineService[HostValues]("test.experimental.host-values", ServiceOptions{Local: true})
 	RegisterServiceView(definition, func(resolve func() (HostValues, error)) HostValues { return hostValuesView{resolve} })
 	return definition
 }()
@@ -163,7 +172,7 @@ func (view localKeyedView) Read() (string, error) {
 }
 
 var localKeyedDefinition = func() ServiceDefinition[LocalKeyedValue] {
-	definition := DefineServiceWithOptions[LocalKeyedValue]("test.experimental.local-keyed-value", ServiceOptions{Local: true})
+	definition := DefineService[LocalKeyedValue]("test.experimental.local-keyed-value", ServiceOptions{Local: true})
 	RegisterServiceView(definition, func(resolve func() (LocalKeyedValue, error)) LocalKeyedValue { return localKeyedView{resolve} })
 	return definition
 }()
@@ -241,6 +250,40 @@ func observingConsumer(t *testing.T, id string, observed *locked[observation]) F
 			return nil
 		})
 	}})
+}
+
+// TestFacetReplicatedState: facets/host.ts:586-589 creates replicated state only while the facet is running (set up or active); a facet
+// that has been disposed throws instead of building state.
+func TestReplicatedState(t *testing.T) {
+	type counter struct {
+		N int `json:"n"`
+	}
+	var env *FacetEnvironment
+	var created *MutableReplicatedState[counter]
+	facet := DefineFacet(Facet{Id: "counter", Setup: func(e *FacetEnvironment) error {
+		env = e
+		state, err := ReplicatedState(e, counter{N: 3})
+		created = state
+		return err
+	}})
+	host := mustFacetHost(t, FacetOptions{Facets: []Facet{facet}})
+	if created == nil || created.Value().N != 3 {
+		t.Fatalf("a running facet creates state holding its initial value, got %+v", created)
+	}
+	if again, err := ReplicatedState(env, counter{N: 4}); err != nil || again.Value().N != 4 {
+		t.Fatalf("an active facet creates state, got %+v %v", again, err)
+	}
+	if _, err := ReplicatedState(env, 7); err == nil {
+		t.Fatal("a scalar is not a strict JSON object or array")
+	}
+	if err := host.Dispose(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	state, err := ReplicatedState(env, counter{N: 5})
+	expectErrorContaining(t, err, "Facet counter cannot create replicated state while")
+	if state != nil {
+		t.Fatalf("a stopped facet must not build state, got %+v", state)
+	}
 }
 
 func TestFacetHost(t *testing.T) {
@@ -329,7 +372,7 @@ func TestFacetHost(t *testing.T) {
 		if got := trace.get(); !reflect.DeepEqual(got, []string{"activate provider", "activate observer", "observe one"}) {
 			t.Fatalf("trace = %v", got)
 		}
-		remote := loopbackBinding(t, host.Services(), RemoteServiceBindingOptions{Services: []string{keyedValueDefinition.Id()}})
+		remote := loopbackBinding(t, host.Services(), RemoteServiceBindingOptions{Services: ServiceIDs(keyedValueDefinition.Id())})
 		remoteValues := &locked[string]{}
 		if _, err := remote.Observe(keyedValueDefinition.Id(), func(ctx context.Context, service *RemoteService) error {
 			value, err := remoteReader{service}.Read(ctx)
@@ -378,7 +421,11 @@ func TestFacetHost(t *testing.T) {
 		}
 	})
 
-	for _, tc := range []struct{ name, failing, id string }{
+	for _, tc := range []struct {
+		name    string
+		failing ServiceProviderUpdateType
+		id      string
+	}{
 		{"terminates the host when keyed replacement publication fails", UpdateSpawned, "failing-keyed-provider"},
 		{"terminates the host when keyed retirement publication fails", UpdateClosed, "failing-keyed-retirement-provider"},
 	} {
@@ -479,7 +526,7 @@ func TestFacetHost(t *testing.T) {
 		}})
 		provider := func(value int) Facet {
 			return DefineFacet(Facet{Id: "state-provider", Setup: func(env *FacetEnvironment) error {
-				state, err := NewReplicatedState(&valueDocState{Value: value})
+				state, err := ReplicatedState(env, &valueDocState{Value: value})
 				if err != nil {
 					return err
 				}
@@ -593,7 +640,7 @@ func TestFacetHost(t *testing.T) {
 		}})
 		provider := DefineFacet(Facet{Id: "provider", Setup: func(env *FacetEnvironment) error {
 			var err error
-			if state, err = NewReplicatedState(&valueDocState{}); err != nil {
+			if state, err = ReplicatedState(env, &valueDocState{}); err != nil {
 				return err
 			}
 			return ProvideService(env, watchedDefinition, Watched(watchedImpl{state}))
@@ -617,6 +664,35 @@ func TestFacetHost(t *testing.T) {
 		changeValue(2)
 		if deliveries != 2 {
 			t.Fatalf("deliveries after dispose = %d", deliveries)
+		}
+	})
+
+	// facets/host.ts:586-589 env.replicatedState: `lifecycle.assertRunning("create replicated state")` precedes the state's creation, so a
+	// retained environment cannot create state once its facet is disposed.
+	t.Run("refuses to create replicated state once the facet is disposed", func(t *testing.T) {
+		var retained *FacetEnvironment
+		facet := DefineFacet(Facet{Id: "stateful", Setup: func(env *FacetEnvironment) error {
+			retained = env
+			state, err := ReplicatedState(env, &valueDocState{Value: 7})
+			if err != nil {
+				return err
+			}
+			if state.Value().Value != 7 {
+				t.Errorf("created state = %+v, want the initial value", state.Value())
+			}
+			return nil
+		}})
+		host := mustFacetHost(t, FacetOptions{Facets: []Facet{facet}})
+		if state, err := ReplicatedState(retained, &valueDocState{}); err != nil || state == nil {
+			t.Fatalf("an active facet's state = %v, %v", state, err)
+		}
+		if err := host.Dispose(ctx); err != nil {
+			t.Fatal(err)
+		}
+		state, err := ReplicatedState(retained, &valueDocState{})
+		expectErrorContaining(t, err, "Facet stateful cannot create replicated state while dead")
+		if state != nil {
+			t.Fatalf("a disposed facet created state %+v", state)
 		}
 	})
 
@@ -829,4 +905,32 @@ type disposeCounting struct {
 func (counting disposeCounting) Dispose(ctx context.Context) error {
 	counting.onDispose()
 	return counting.RemoteServiceBinding.Dispose(ctx)
+}
+
+// facets/host.ts:586-589 env.replicatedState asserts the facet is running ("create replicated state") and returns a MutableReplicatedStateImpl of the initial value (facets.test.ts:417 creates one in setup and provides it); after the host is disposed the facet is dead and creating state fails.
+func TestFacetReplicatedStateIsCreatedOnlyWhileTheFacetRuns(t *testing.T) {
+	ctx := context.Background()
+	var captured *FacetEnvironment
+	var created *MutableReplicatedState[valueDocState]
+	facet := DefineFacet(Facet{Id: "stateful", Setup: func(env *FacetEnvironment) error {
+		captured = env
+		state, err := ReplicatedState(env, valueDocState{Value: 7})
+		created = state
+		return err
+	}})
+	host, err := CreateFacetHost(ctx, FacetOptions{Facets: []Facet{facet}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if created == nil || created.Value().Value != 7 {
+		t.Fatalf("state created in setup = %+v", created)
+	}
+	if _, err := ReplicatedState(captured, valueDocState{}); err != nil {
+		t.Fatalf("an active facet creates state: %v", err)
+	}
+	if err := host.Dispose(ctx); err != nil {
+		t.Fatal(err)
+	}
+	_, err = ReplicatedState(captured, valueDocState{})
+	expectErrorContaining(t, err, "Facet stateful cannot create replicated state while dead")
 }

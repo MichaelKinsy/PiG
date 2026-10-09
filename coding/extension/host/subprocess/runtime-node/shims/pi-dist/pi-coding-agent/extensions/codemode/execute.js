@@ -78,7 +78,7 @@ function describeValue(value) {
     }
     return typeof value === "string" ? "a string" : `a ${typeof value}`;
 }
-const CLASSIFIER_CONTEXT_SHAPE = '{ state: { ... }, questions: { <id>: { type: "choice", instructions, criteria: { <label>: <meaning> } } | { type: "score", instructions, criteria: [<lowest level>, ..., <highest level>] } | { type: "bool", instructions, criteria: { true: <meaning>, false: <meaning> } } } }';
+const CLASSIFIER_CONTEXT_SHAPE = '{ state: { ... }, images?: [{ type: "image", data: <base64>, mimeType }], questions: { <id>: { type: "choice", instructions, criteria: { <label>: <meaning> } } | { type: "score", instructions, criteria: [<lowest level>, ..., <highest level>] } | { type: "bool", instructions, criteria: { true: <meaning>, false: <meaning> } } } }';
 /** Check a script's classifier context, so mistakes fail with the expected shape instead of a provider error. */
 function checkClassifierContext(context) {
     const fail = (problem) => new Error(`models.classify() ${problem}. Expected context: ${CLASSIFIER_CONTEXT_SHAPE}. See "Classify" in ${CODEMODE_DOCS_PATH}.`);
@@ -86,6 +86,19 @@ function checkClassifierContext(context) {
         throw fail(`expects a context object as its second argument, got ${describeValue(context)}`);
     if (!isRecord(context.state))
         throw fail(`context.state must be an object, got ${describeValue(context.state)}`);
+    const { images } = context;
+    if (images !== undefined) {
+        if (!Array.isArray(images))
+            throw fail(`context.images must be an array, got ${describeValue(images)}`);
+        images.forEach((image, index) => {
+            if (!isRecord(image) ||
+                image.type !== "image" ||
+                typeof image.data !== "string" ||
+                typeof image.mimeType !== "string") {
+                throw fail(`context.images[${index}] must be an image block, got ${describeValue(image)}`);
+            }
+        });
+    }
     const { questions } = context;
     if (!isRecord(questions) || Object.keys(questions).length === 0) {
         throw fail(`context.questions must map question IDs to questions, got ${describeValue(questions)}`);
@@ -190,6 +203,49 @@ function valueText(value) {
     if (typeof value === "string")
         return value;
     return JSON.stringify(value) ?? String(value);
+}
+/**
+ * Lay out the script's output so the model can tell items apart: providers join adjacent text
+ * blocks with a newline or with nothing. With more than one text item (`text()` or the returned
+ * value), each starts with a `==> text N/M <==` line. `console.*` lines follow all other output in
+ * one `<console_output>` block.
+ */
+function formatOutput(output) {
+    const total = output.filter((item) => item.type === "text" && !item.console).length;
+    const items = [];
+    const consoleLines = [];
+    let index = 0;
+    for (const item of output) {
+        if (item.type === "image") {
+            items.push(item);
+        }
+        else if (item.console) {
+            consoleLines.push(item.text);
+        }
+        else {
+            index++;
+            items.push({ type: "text", text: total > 1 ? `==> text ${index}/${total} <==\n${item.text}` : item.text });
+        }
+    }
+    if (consoleLines.length > 0) {
+        items.push({ type: "text", text: `<console_output>\n${consoleLines.join("\n")}\n</console_output>` });
+    }
+    return items;
+}
+/** Join adjacent text items into one, each part starting on its own line. */
+function joinAdjacentText(items) {
+    const joined = [];
+    for (const item of items) {
+        const last = joined.at(-1);
+        if (item.type === "text" && last?.type === "text") {
+            const separator = last.text === "" || last.text.endsWith("\n") ? "" : "\n";
+            joined[joined.length - 1] = { type: "text", text: `${last.text}${separator}${item.text}` };
+        }
+        else {
+            joined.push(item);
+        }
+    }
+    return joined;
 }
 function formatCallSummary(calls) {
     if (calls.length === 0)
@@ -322,7 +378,8 @@ export async function executeCodemode(toolCallId, input, signal, onUpdate, ctx, 
     const publish = () => onUpdate?.({ content: [], details: snapshot() });
     const callable = ctx ? getCodemodeCallableTools(ctx.tools) : [];
     // ALL_TOOLS entries carry the declaration.
-    const samples = new Map(callable.map((tool) => [tool.name, renderToolSample(toCodemodeDeclaration(tool))]));
+    const guidelines = options.getToolGuidelines?.();
+    const samples = new Map(callable.map((tool) => [tool.name, renderToolSample(toCodemodeDeclaration(tool, guidelines?.get(tool.name)))]));
     const sandboxTools = callable.map((tool) => ({
         name: tool.name,
         description: samples.get(tool.name),
@@ -379,7 +436,7 @@ export async function executeCodemode(toolCallId, input, signal, onUpdate, ctx, 
         if (call.status === "running")
             call.status = "cancelled";
     }
-    const items = result.output.map((item) => item.type === "text" ? { type: "text", text: item.text } : item);
+    const scriptOutput = [...result.output];
     if (result.ok) {
         const { set, delete: deleted } = result.storeWrites;
         if (Object.keys(set).length > 0 || deleted.length > 0) {
@@ -387,21 +444,21 @@ export async function executeCodemode(toolCallId, input, signal, onUpdate, ctx, 
         }
         // pi extension: a returned value is appended like text().
         if (result.value !== undefined)
-            items.push({ type: "text", text: valueText(result.value) });
+            scriptOutput.push({ type: "text", text: valueText(result.value) });
     }
-    else {
+    const items = formatOutput(scriptOutput);
+    if (!result.ok)
         items.push({ type: "text", text: `Script error:\n${formatError(result, calls)}` });
-    }
     if (generatedImages > 0 && !items.some((item) => item.type === "image")) {
         items.push({
             type: "text",
             text: `Note: models.generateImages() returned ${generatedImages} image${generatedImages === 1 ? "" : "s"} that the script did not show. Show each image block of result.output with image(block).`,
         });
     }
-    const truncated = await truncateOutput(items, sourceOptions.maxOutputTokens ?? DEFAULT_MAX_OUTPUT_TOKENS);
+    const truncated = await truncateOutput(joinAdjacentText(items), sourceOptions.maxOutputTokens ?? DEFAULT_MAX_OUTPUT_TOKENS);
     // After truncation, which joins the text items and moves images after them, so each path stays
     // next to its image and is never cut.
-    const output = await saveImages(truncated.items);
+    const output = joinAdjacentText(await saveImages(truncated.items));
     const wallTime = ((performance.now() - startedAt) / 1000).toFixed(1);
     const header = `${result.ok ? "Script completed" : "Script failed"}\nWall time ${wallTime} seconds\nOutput:\n`;
     const details = snapshot();

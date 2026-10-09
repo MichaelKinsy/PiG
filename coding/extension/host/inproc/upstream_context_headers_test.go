@@ -10,6 +10,7 @@ import (
 	"github.com/MichaelKinsy/PiG/coding/extension/host/inproc"
 )
 
+// Pi: packages/coding-agent/src/core/extensions/runner.ts:1298 (Runner.emitContext); packages/coding-agent/src/core/extensions/runner.ts:1392 (Runner.emitBeforeProviderHeaders); packages/coding-agent/src/core/extensions/types.ts:892 (BeforeProviderHeadersEvent.headers).
 func TestUpstreamRunnerContextAndHeaders(t *testing.T) {
 	// .upstream/v0.87.1/packages/coding-agent/test/extensions-runner.test.ts:130
 	t.Run("continues past undecided handlers and returns the first yes/no decision", func(t *testing.T) {
@@ -23,7 +24,7 @@ func TestUpstreamRunnerContextAndHeaders(t *testing.T) {
 		r := inproc.NewRunner(exts, cwd)
 		r.SetUIContext(nil, extension.ModeTUI)
 		r.BindCore(extension.ExtensionActions{}, extension.ContextActions{}, nil)
-		result, reported, err := inproc.EmitProjectTrust(r, t.Context(), extension.ProjectTrustEvent{Type: "project_trust", Cwd: cwd})
+		result, reported, err := inproc.EmitProjectTrust(r, t.Context(), extension.ProjectTrustEvent{Type: "project_trust", Cwd: cwd}, extension.ProjectTrustContext{})
 		if err != nil {
 			t.Fatal(err)
 		}

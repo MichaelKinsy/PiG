@@ -12,6 +12,7 @@ import (
 // lists, and settings {enabled, reserveTokens, keepRecentTokens}. fileOps
 // holds upstream's three Sets; the subprocess wire carries each as a sorted
 // string array.
+// Pi: packages/coding-agent/src/core/compaction/utils.ts:15 (FileOperations.edited).
 func TestCompactionPreparationWireFormatMatchesUpstreamFieldNames(t *testing.T) {
 	ops := NewFileOps()
 	ops.Read["b.go"] = struct{}{}

@@ -1,5 +1,7 @@
 package tui
 
+// pi: packages/coding-agent/src/core/tools/renderers/index.ts
+
 import (
 	"encoding/json"
 	"strings"
@@ -134,7 +136,7 @@ func TestToolExecutionComponent_ShellElapsedFooterRows(t *testing.T) {
 			},
 		} {
 			t.Run(tool.name+"/"+branch.name, func(t *testing.T) {
-				c := NewToolExecutionComponent(tool.name, tool.header)
+				c := newToolCardForTest(tool.name, tool.header)
 				c.MarkExecutionStarted()
 				c.StartedAt = time.Now().Add(-61 * time.Second)
 				branch.set(c)

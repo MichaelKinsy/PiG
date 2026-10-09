@@ -15,7 +15,7 @@ func TestCustomProviderSummaryKeepsCallerOwnedAuth(t *testing.T) {
 	model.ProviderMeta.ProviderID = model.Provider.ID()
 	h.session.agent.SetModel(&model)
 	suiteCompactionSeed(t, h.session)
-	result, err := h.session.CompactResult(t.Context(), "")
+	result, err := h.session.Compact(t.Context(), "")
 	if err != nil || result == nil || !strings.Contains(result.Summary, "custom provider summary") || h.provider.callCount() != 1 {
 		t.Fatalf("result=%+v error=%v calls=%d", result, err, h.provider.callCount())
 	}

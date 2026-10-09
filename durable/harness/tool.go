@@ -6,12 +6,13 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"math"
 	"slices"
 	"strings"
 	"sync"
 	"sync/atomic"
+	"time"
 
-	"github.com/MichaelKinsy/PiG/agent"
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/durable"
@@ -44,7 +45,7 @@ func HarnessError(code, message string) durable.ToolExecutionResult {
 // AppendToolResult appends a pi.tool-result entry (tool.ts:438-460). The content ends with the rendered diagnostics,
 // so the stored message is exactly what the model sees; data keeps the structured list. A result's usage is added to
 // pi.usage in the same commit.
-func AppendToolResult(tx durable.Tx, conversationId durable.ConversationId, call ai.ToolCall, result durable.ToolExecutionResult, timestamp float64) (*durable.TypedEntry[durable.ToolResultEntryData], error) {
+func AppendToolResult(tx durable.Tx, conversationId durable.ConversationId, call ai.ToolCall, result durable.ToolExecutionResult, timestamp float64, durationMs *int64) (*durable.TypedEntry[durable.ToolResultEntryData], error) {
 	diagnostics := append([]durable.ToolDiagnostic{}, result.Diagnostics...)
 	content := append([]ai.ToolResultMessageContent{}, result.Content...)
 	if len(diagnostics) > 0 {
@@ -55,6 +56,7 @@ func AppendToolResult(tx durable.Tx, conversationId durable.ConversationId, call
 		ToolName:   call.Name,
 		Content:    content,
 		IsError:    result.IsError != nil && *result.IsError,
+		DurationMs: durationMs,
 		Timestamp:  int64(timestamp),
 	}
 	if result.HasDetails {
@@ -84,27 +86,30 @@ func renderDiagnostics(diagnostics []durable.ToolDiagnostic) string {
 // ToolTaskCheckpoint is the tool task's checkpoint: call, or execute with the durable intent, the final arguments and
 // the replay policy recorded before execution (tool.ts:35-38).
 type ToolTaskCheckpoint struct {
-	Phase     string             `json:"phase"`
-	Arguments durable.JsonObject `json:"arguments"`
+	Phase     ToolTaskPhase      `json:"phase"`
+	Arguments map[string]any     `json:"arguments"`
 	Replay    durable.ToolReplay `json:"replay"`
 }
 
+// ToolTaskPhase names a phase of the tool task (tool.ts:36-38).
+type ToolTaskPhase string
+
 const (
-	toolPhaseCall    = "call"
-	toolPhaseExecute = "execute"
+	toolPhaseCall    ToolTaskPhase = "call"
+	toolPhaseExecute ToolTaskPhase = "execute"
 )
 
 // MarshalJSON writes {"phase":"call"} or the execute intent with its arguments and replay.
 func (checkpoint ToolTaskCheckpoint) MarshalJSON() ([]byte, error) {
 	if checkpoint.Phase != toolPhaseExecute {
 		return json.Marshal(struct {
-			Phase string `json:"phase"`
+			Phase ToolTaskPhase `json:"phase"`
 		}{checkpoint.Phase})
 	}
 	type execute ToolTaskCheckpoint
 	arguments := checkpoint.Arguments
 	if arguments == nil {
-		arguments = durable.JsonObject{}
+		arguments = map[string]any{}
 	}
 	return json.Marshal(execute{Phase: checkpoint.Phase, Arguments: arguments, Replay: checkpoint.Replay})
 }
@@ -125,8 +130,8 @@ func init() {
 		Version: 1,
 		Initial: func(ToolTaskInput) ToolTaskCheckpoint { return ToolTaskCheckpoint{Phase: toolPhaseCall} },
 		Phases: map[string]durable.PhaseHandler[ToolTaskInput, ToolTaskCheckpoint, ToolTaskResult, *ToolHooks]{
-			toolPhaseCall:    toolCallPhase,
-			toolPhaseExecute: toolExecutePhase,
+			string(toolPhaseCall):    toolCallPhase,
+			string(toolPhaseExecute): toolExecutePhase,
 		},
 		Abort: toolAbort,
 	})
@@ -312,11 +317,11 @@ func awaitEarlierAborts(ctx context.Context, runtime toolRuntime) error {
 
 // readCall returns the tool call callId of the assistant entry (tool.ts:123-135).
 func readCall(ctx context.Context, runtime toolRuntime, input ToolTaskInput) (ai.ToolCall, error) {
-	entry, err := runtime.Entry(ctx, input.Assistant)
+	entry, err := durable.TaskEntry(ctx, runtime, durable.AssistantEntry, input.Assistant)
 	if err != nil {
 		return ai.ToolCall{}, err
 	}
-	if durable.AssistantEntry.Is(entry) && len(entry.Model) > 0 {
+	if entry != nil && len(entry.Model) > 0 {
 		if message, ok := entry.Model[0].(ai.AssistantMessage); ok {
 			for _, block := range message.Content {
 				if call, ok := block.(ai.ToolCall); ok && call.ID == input.CallId {
@@ -343,7 +348,7 @@ func findTool(ctx context.Context, runtime toolRuntime, name string) (*durable.T
 
 // prepareArguments returns the call's arguments as repaired by the tool; a failing repair makes them invalid, and
 // the reason is returned.
-func prepareArguments(tool *durable.ToolRegistration, args durable.JsonObject) (durable.JsonObject, string) {
+func prepareArguments(tool *durable.ToolRegistration, args map[string]any) (map[string]any, string) {
 	if tool.PrepareArguments == nil {
 		return args, ""
 	}
@@ -366,16 +371,21 @@ func prepareArguments(tool *durable.ToolRegistration, args durable.JsonObject) (
 	if err != nil {
 		return nil, err.Error()
 	}
-	object, _ := copied.(map[string]any)
+	// Tool arguments are pi-ai values, which Go keeps as ai.JsonObject maps.
+	var object map[string]any
+	if encoded, isObject := copied.(*delta.JsonObject); isObject {
+		text, _ := json.Marshal(encoded)
+		_ = json.Unmarshal(text, &object)
+	}
 	return object, ""
 }
 
 // validateArguments returns the arguments validated and coerced against the implementation's schema, or why they
 // are invalid.
-func validateArguments(tool *durable.ToolRegistration, call ai.ToolCall, args durable.JsonObject) (durable.JsonObject, string) {
+func validateArguments(tool *durable.ToolRegistration, call ai.ToolCall, args map[string]any) (map[string]any, string) {
 	checked := call
 	checked.Arguments = args
-	validated, err := agent.ValidateToolArguments(tool.ToolSchema, checked)
+	validated, err := ai.ValidateToolArguments(tool.ToolSchema, checked)
 	if err != nil {
 		return nil, err.Error()
 	}
@@ -423,7 +433,7 @@ type toolEnding struct {
 var toolCompleted = toolEnding{status: durable.OutcomeCompleted}
 
 // runTool executes with the resolved implementation, then settles its result (tool.ts:157-262).
-func runTool(ctx context.Context, runtime toolRuntime, call ai.ToolCall, tool *durable.ToolRegistration, args durable.JsonObject) error {
+func runTool(ctx context.Context, runtime toolRuntime, call ai.ToolCall, tool *durable.ToolRegistration, args map[string]any) error {
 	limits := OutputLimits{MaxBytes: durable.DEFAULT_MAX_BYTES, MaxLines: durable.DEFAULT_MAX_LINES, Retain: string(durable.RetainHead)}
 	if tool.OutputLimits != nil {
 		if tool.OutputLimits.MaxBytes != nil {
@@ -450,6 +460,9 @@ func runTool(ctx context.Context, runtime toolRuntime, call ai.ToolCall, tool *d
 
 	var result durable.ToolExecutionResult
 	ending := toolCompleted
+	// Execution time of this attempt; a rerun after recovery measures only itself. The environment build and the hooks are
+	// not part of it, and a failed Execute still has a duration.
+	var durationMs *int64
 	err := callTool(func() error {
 		// Built for this call, so a rerun after recovery gets the conversation's environment at that time.
 		environment, err := runtime.Env(ctx)
@@ -457,6 +470,10 @@ func runTool(ctx context.Context, runtime toolRuntime, call ai.ToolCall, tool *d
 			return err
 		}
 		api.env = environment
+		startedAt := time.Now()
+		defer func() {
+			durationMs = new(int64(math.Round(float64(time.Since(startedAt)) / float64(time.Millisecond))))
+		}()
 		result, err = tool.Execute(ctx, args, api)
 		return err
 	})
@@ -482,7 +499,7 @@ func runTool(ctx context.Context, runtime toolRuntime, call ai.ToolCall, tool *d
 	pending := progress.Stop()
 	settled, err := finalResult(ctx, runtime, call, result, reported)
 	if err == nil {
-		err = settleTool(ctx, runtime, call, ending, func(*ToolSlot) durable.ToolExecutionResult { return settled })
+		err = settleTool(ctx, runtime, call, ending, func(*ToolSlot) durable.ToolExecutionResult { return settled }, durationMs)
 	}
 	if err != nil {
 		for _, waiter := range pending {
@@ -524,18 +541,20 @@ func (api *toolApi) CallId() string { return api.call.ID }
 
 func (api *toolApi) Registry() durable.RegistrySnapshot { return api.runtime.Registry() }
 
+func (api *toolApi) Models() durable.Models { return api.runtime.Models() }
+
 func (api *toolApi) Agent(ctx context.Context) (durable.Agent, error) { return api.runtime.Agent(ctx) }
 
 func (api *toolApi) Env() env.ExecutionEnv { return api.env }
 
-// Output appends a string or byte chunk to the retained output.
-func (api *toolApi) Output(chunk any) {
-	api.output(chunk, nil)
-}
-
-// OutputSkipping appends a chunk that follows output an environment omitted; tail retention only.
-func (api *toolApi) OutputSkipping(chunk any, skipped env.ShellOutputSkip) {
-	api.output(chunk, &skipped)
+// Output appends a string or byte chunk to the retained output. A chunk that follows output an environment omitted
+// carries skipped; tail retention only.
+func (api *toolApi) Output(chunk any, skipped ...env.ShellOutputSkip) {
+	if len(skipped) == 0 {
+		api.output(chunk, nil)
+		return
+	}
+	api.output(chunk, &skipped[0])
 }
 
 // OutputWindow is the tail window offered to the environment; nil for head retention.
@@ -818,7 +837,7 @@ func sameContent(left, right []ai.ToolResultMessageContent) bool {
 // settleTool commits the tool's terminal state (tool.ts:359-385): it appends the result entry, marks the slot done,
 // and completes or ends aborted with the entry ID. build receives the slot so interruption and abort can report the
 // durable partial output.
-func settleTool(ctx context.Context, runtime toolRuntime, call ai.ToolCall, ending toolEnding, build func(slot *ToolSlot) durable.ToolExecutionResult) error {
+func settleTool(ctx context.Context, runtime toolRuntime, call ai.ToolCall, ending toolEnding, build func(slot *ToolSlot) durable.ToolExecutionResult, durationMs ...*int64) error {
 	return runtime.Commit(ctx, func(tx durable.Tx, _ toolRecord) (*toolNext, error) {
 		live, err := docDraft(tx, LiveDoc, runtime.ConversationId())
 		if err != nil {
@@ -834,7 +853,11 @@ func settleTool(ctx context.Context, runtime toolRuntime, call ai.ToolCall, endi
 			state = &decoded
 		}
 		result := build(state)
-		entry, err := AppendToolResult(tx, runtime.ConversationId(), call, result, runtime.Now())
+		var duration *int64
+		if len(durationMs) > 0 {
+			duration = durationMs[0]
+		}
+		entry, err := AppendToolResult(tx, runtime.ConversationId(), call, result, runtime.Now(), duration)
 		if err != nil {
 			return nil, err
 		}

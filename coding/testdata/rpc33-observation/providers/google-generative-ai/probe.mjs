@@ -1,7 +1,7 @@
-// Pi 1.0.3 / @google/genai 2.21.0: exact partial-message observation and microtask order for the google-generative-ai provider.
+// Pi 1.1.0 / @google/genai 2.21.0: exact partial-message observation and microtask order for the google-generative-ai provider.
 //
 // Usage: node probe.mjs <pi.json> [inputs.json]
-//   env PI_PACKAGE_ROOT  installed @earendil-works/pi-coding-agent 1.0.3 (its dependency tree provides pi-ai, pi-agent-core and @google/genai)
+//   env PI_PACKAGE_ROOT  installed @earendil-works/pi-coding-agent 1.1.0 (its dependency tree provides pi-ai, pi-agent-core and @google/genai)
 //   env PROBE_TICKS=0    disable the tick counter; the run must then produce the same records once tick fields are removed (this proves the counter does not perturb order)
 //   env PROBE_SKIP_RPC=1 skip the real `pi --mode rpc` observations
 //
@@ -26,7 +26,7 @@ import { createInterface } from 'node:readline';
 
 const root = process.env.PI_PACKAGE_ROOT;
 const base = root + '/node_modules/@earendil-works/';
-for (const [path, version] of [[root + '/package.json', '1.0.3'], [base + 'pi-ai/package.json', '1.0.3'], [base + 'pi-agent-core/package.json', '1.0.3'], [root + '/node_modules/@google/genai/package.json', '2.21.0']]) {
+for (const [path, version] of [[root + '/package.json', '1.1.0'], [base + 'pi-ai/package.json', '1.1.0'], [base + 'pi-agent-core/package.json', '1.1.0'], [root + '/node_modules/@google/genai/package.json', '2.21.0']]) {
   assert.equal(JSON.parse(await readFile(path, 'utf8')).version, version, path);
 }
 const ticksEnabled = process.env.PROBE_TICKS !== '0';
@@ -212,7 +212,7 @@ async function probeOnce(shape, delivery, consumer, layers) {
 
 // The job pass and the round pass observe the same case twice. Their records must agree in every field except the clock, or the round pass perturbed order.
 // Wall-clock values (assistant timestamps and the `_<ms>_<counter>` of generated tool-call ids) differ between the two passes by construction.
-const strip = ({tick: _t, round: _r, ...rest}) => JSON.stringify(rest).replace(/"timestamp":\d{13}/g, '"timestamp":0').replace(/_\d{13}_\d+/g, '_T_N');
+const strip = ({tick: _t, round: _r, ...rest}) => JSON.stringify(rest).replace(/"timestamp":\d{13}/g, '"timestamp":0').replace(/"durationMs":\d+/g, '"durationMs":0').replace(/_\d{13}_\d+/g, '_T_N');
 async function probe(shape, delivery, consumer, layers) {
   if (!ticksEnabled) return probeOnce(shape, delivery, consumer, layers);
   mode = 'jobs';
@@ -279,7 +279,7 @@ if (process.env.PROBE_SKIP_RPC !== '1') {
   }
 }
 if (process.argv[3]) {
-  await writeFile(process.argv[3], JSON.stringify({piVersion: '1.0.3', genaiVersion: '2.21.0', axes, bodies, laterBody}, null, 2) + '\n');
+  await writeFile(process.argv[3], JSON.stringify({piVersion: '1.1.0', genaiVersion: '2.21.0', axes, bodies, laterBody}, null, 2) + '\n');
 }
 // Generated tool-call ids are `read_<ms>_<counter>` (google-generative-ai.ts:199). The clock and the process-wide counter are not part of the contract, so the oracle
 // stores `read_T_N`; assistant timestamps stay raw (the Go comparator canonicalizes them as the OpenAI oracle's does).
@@ -287,5 +287,5 @@ const canonicalId = value => JSON.stringify(value).replace(/_\d{13}_\d+"/g, '_T_
 // One case per line keeps diffs reviewable.
 const lines = outputs.map(o => '  ' + canonicalId(o));
 const rpcLines = rpc.map(o => '  ' + canonicalId(o));
-await writeFile(process.argv[2], `{"piVersion":"1.0.3","genaiVersion":"2.21.0","cases":[\n${lines.join(',\n')}\n],"rpc":[\n${rpcLines.join(',\n')}\n]}\n`);
+await writeFile(process.argv[2], `{"piVersion":"1.1.0","genaiVersion":"2.21.0","cases":[\n${lines.join(',\n')}\n],"rpc":[\n${rpcLines.join(',\n')}\n]}\n`);
 process.exit(0);

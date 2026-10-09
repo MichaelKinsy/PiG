@@ -144,6 +144,7 @@ func TestModelRuntimeExtensionImageModelsUseTheirImplementationHeadersAndBaseURL
 }
 
 // The model-registry.ts facade (findOfType, getModelsOfType, getAvailableOfType, getModelOfType) reads the same typed lists as the runtime.
+// Pi: packages/coding-agent/src/core/model-registry.ts:151 (ModelRegistry.getModelsOfType); packages/coding-agent/src/core/model-registry.ts:156 (ModelRegistry.getAvailableOfType); packages/coding-agent/src/core/model-registry.ts:76 (ModelRegistry.findOfType); packages/coding-agent/src/core/model-registry.ts:82 (ModelRegistry.getModelOfType).
 func TestModelRegistryTypedFacadeMatchesTheRuntime(t *testing.T) {
 	services, _ := nativeCompatServices(t, "", nil)
 	registry, runtime := services.Registry(), services.ModelRuntime()

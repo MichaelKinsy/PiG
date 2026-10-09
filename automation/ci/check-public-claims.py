@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# SPDX-FileCopyrightText: Copyright Hewlett Packard Enterprise Development LP
 # SPDX-License-Identifier: MIT
 """Flag public claims that the repository's own evidence contradicts.
 
@@ -100,6 +99,12 @@ PI_VERSION = re.compile(r"\bPi v?(\d+\.\d+(?:\.\d+)?)\b")
 TAG_VERSION = re.compile(r"(?:earendil-works/pi/releases/tag/v|pi-coding-agent@|Pi%20\w+-)(\d+\.\d+\.\d+)")
 NUMBER_CONTEXT = re.compile(r"\b(?:port(?:ed|ing)?|parity|coverage|verif\w*|intended-portable)\b", re.IGNORECASE)
 PERCENT = re.compile(r"(?<![\w.])(\d+(?:\.\d+)?)\s?%")
+SCOPE_LINE = re.compile(
+    r"^- \*\*[^\n]*?:\*\* (\d+) / (\d+) intended-portable files ✅ \((\d+\.\d)%\) from (\d+) rows; "
+    r"(\d+) behavioral \((\d+\.\d)%\)",
+    re.MULTILINE,
+)
+PACKAGE_ROW = re.compile(r"^\| `[^`]+` \|(?: \d+ \|){6} (\d+\.\d)% \| (\d+\.\d)% \|$", re.MULTILINE)
 RATIO = re.compile(r"\b(\d+)\s*(?:/|of)\s*(\d+)\s+(?:intended-portable|upstream files|PORT_MAP|ported)")
 
 SKIP_DIRS = {"node_modules", "vendor", "public", ".next", "out"}
@@ -124,6 +129,10 @@ class Coverage:
     porting_pct: str
     behavioral: int
     behavioral_pct: str
+    # Every other figure the generated block states: the per-scope bullet lines and the
+    # per-package table. They are as generated as the headline, so prose may quote them.
+    pcts: frozenset[str] = frozenset()
+    pairs: frozenset[tuple[int, int]] = frozenset()
 
 
 @dataclass
@@ -153,7 +162,16 @@ def coverage_block(root: pathlib.Path) -> Coverage:
     if not match:
         sys.exit("public-claims: AGENTS.md has no generated coverage summary; run: make generate (or: make coverage RESULTS=)")
     ported, intended, porting_pct, behavioral, behavioral_pct = match.groups()
-    return Coverage(int(ported), int(intended), porting_pct, int(behavioral), behavioral_pct)
+    block = agents[match.start():agents.find("<!-- END COVERAGE -->", match.start())]
+    pcts = {porting_pct, behavioral_pct}
+    pairs = {(int(ported), int(intended)), (int(behavioral), int(ported))}
+    for scope in SCOPE_LINE.finditer(block):
+        s_ported, s_intended, s_pct, _rows, s_behavioral, s_bpct = scope.groups()
+        pcts.update((s_pct, s_bpct))
+        pairs.update(((int(s_ported), int(s_intended)), (int(s_behavioral), int(s_ported))))
+    for row in PACKAGE_ROW.finditer(block):
+        pcts.update(row.groups())
+    return Coverage(int(ported), int(intended), porting_pct, int(behavioral), behavioral_pct, frozenset(pcts), frozenset(pairs))
 
 
 def public_files(root: pathlib.Path) -> list[pathlib.Path]:
@@ -268,14 +286,14 @@ def number_findings(line: str, cov: Coverage) -> list[str]:
     if not NUMBER_CONTEXT.search(line):
         return []
     problems = []
-    current = {cov.porting_pct, cov.behavioral_pct}
+    current = {cov.porting_pct, cov.behavioral_pct, *cov.pcts}
     for match in PERCENT.finditer(line):
         value = match.group(1)
         if f"{float(value):.1f}" not in current:
             problems.append(f"{value}% is not a current porting ({cov.porting_pct}%) or verification ({cov.behavioral_pct}%) figure")
     for match in RATIO.finditer(line):
         pair = (int(match.group(1)), int(match.group(2)))
-        if pair not in {(cov.ported, cov.intended), (cov.behavioral, cov.ported)}:
+        if pair not in {(cov.ported, cov.intended), (cov.behavioral, cov.ported), *cov.pairs}:
             problems.append(f"{pair[0]}/{pair[1]} is not the current {cov.ported}/{cov.intended} porting or {cov.behavioral}/{cov.ported} verification ratio")
     return problems
 

@@ -3,9 +3,7 @@ package codingagent
 import (
 	"bytes"
 	"context"
-	"crypto/rand"
 	"encoding/base64"
-	"encoding/hex"
 	"errors"
 	"io"
 	"os"
@@ -15,6 +13,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/google/uuid"
 
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
 	"github.com/MichaelKinsy/PiG/internal/nodespawn"
@@ -208,9 +208,7 @@ func (c clipboardCopier) writerCommands() [][]string {
 // PowerShell reads the text from a file because clip.exe and PowerShell stdin
 // decode piped bytes with the console code page, which mangles UTF-8. The file uses Node's UTF-8 encoding, replacing lone UTF-16 units.
 func (c clipboardCopier) copyViaWindowsClipboard(text string) bool {
-	suffix := make([]byte, 16)
-	_, _ = rand.Read(suffix)
-	tmpFile := filepath.Join(c.tempDir(), "pi-wsl-clip-"+hex.EncodeToString(suffix)+".txt")
+	tmpFile := filepath.Join(c.tempDir(), "pi-wsl-clip-"+uuid.NewString()+".txt")
 	if err := os.WriteFile(tmpFile, jsstring.ToUTF8(text), 0o600); err != nil {
 		return false
 	}
@@ -272,9 +270,9 @@ func (c clipboardCopier) unavailableError(oversized bool) error {
 	switch {
 	case oversized:
 		return errors.New("Clipboard unavailable: text exceeds the OSC 52 size limit")
-	case c.platform != "linux":
 	case c.getenv("TERMUX_VERSION") != "":
 		return errors.New("Clipboard unavailable: install the Termux:API app and `termux-api` package")
+	case c.platform != "linux":
 	case c.getenv("WAYLAND_DISPLAY") != "":
 		return errors.New("Clipboard unavailable: install `wl-clipboard` (`wl-copy`) or check Wayland access")
 	case c.getenv("DISPLAY") != "":

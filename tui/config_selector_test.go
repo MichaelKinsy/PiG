@@ -1,5 +1,7 @@
 package tui
 
+// pi: packages/coding-agent/src/modes/interactive/components/config-selector.ts
+
 import (
 	"path/filepath"
 	"strings"
@@ -44,7 +46,7 @@ func TestConfigSelectorProjectStatesMatchUpstreamRendering(t *testing.T) {
 	cs := NewScopedConfigSelector(groups, groups, 0, "project", true)
 	rendered := strings.Join(cs.Render(120), "\n")
 	theme := ActiveTheme()
-	reset := "\x1b[0m"
+	reset := "\x1b[39m" // theme.fg closes with SGR 39, as in Pi
 	for _, want := range []string{
 		theme.Dim + "[x]" + reset + " " + theme.Dim + "inherited.md" + reset + theme.Dim + "  inherited global" + reset,
 		theme.Success + "[+]" + reset + " load.md" + theme.Muted + "  project load" + reset,
@@ -192,6 +194,7 @@ func TestConfigSelectorCancelAndExitKeys(t *testing.T) {
 		{"rebound escape cancels", map[string][]string{"tui.select.cancel": {"escape"}}, true, "\x1b[27u", true, false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			restoreKeybindingsAfterTest(t)
 			SetTUIKeybindings(NewTUIKeybindingsManager(tc.bindings))
 			SetKittyProtocolActive(tc.kitty)
 			cs := NewConfigSelector(nil, 0)
@@ -203,5 +206,21 @@ func TestConfigSelectorCancelAndExitKeys(t *testing.T) {
 				t.Fatalf("%q: cancelled=%v exited=%v, want %v/%v", tc.key, cancelled, exited, tc.wantCancel, tc.wantExit)
 			}
 		})
+	}
+}
+
+// config-selector.ts:910-939: ConfigSelectorComponent extends Container with spacer, border, spacer, header, spacer, resource list, spacer, border.
+func TestConfigSelectorIsAContainerOfPisConstructorChildren(t *testing.T) {
+	items := []ResourceItem{{Path: "/g/a.md", ResourceType: ResourcePrompts, DisplayName: "a.md", Enabled: true, Scope: "user", Origin: "top-level", Source: "auto"}}
+	cs := NewScopedConfigSelector(BuildResourceGroups(items), BuildResourceGroups(items), 0, "global", true)
+	if got := len(cs.Children()); got != 8 {
+		t.Fatalf("children = %d, want 8", got)
+	}
+	if got := strings.Join(cs.Render(60), "\n"); !strings.Contains(got, "Global Resources") {
+		t.Fatalf("missing global header: %s", got)
+	}
+	cs.HandleInput("\t")
+	if got := strings.Join(cs.Render(60), "\n"); !strings.Contains(got, "Project Local Resources") {
+		t.Fatalf("scope switch not visible in the header child: %s", got)
 	}
 }

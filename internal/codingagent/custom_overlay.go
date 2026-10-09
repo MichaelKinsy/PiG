@@ -6,6 +6,7 @@ import (
 	"sync"
 
 	"github.com/MichaelKinsy/PiG/coding/extension"
+	"github.com/MichaelKinsy/PiG/extensions/sdk/frontend"
 	"github.com/MichaelKinsy/PiG/tui"
 )
 
@@ -24,13 +25,18 @@ type customOverlay struct {
 	mu    sync.RWMutex
 	lines []string
 	width int
+	// view draws the overlay when its frames carry a view (D107); lines is
+	// then unused.
+	view extension.ViewSurface
 	// terminalWidth runs only during Render on the owning TUI loop. The
 	// component's render width may be smaller than this terminal geometry key.
 	terminalWidth func() int
 	done          bool
 	result        any
 	onInput       func(data string)
-	onChange      func()
+	// onMouse hands a mouse event to the extension's component.
+	onMouse  func(event extension.RemoteMouseEvent) extension.ViewMouseResult
+	onChange func()
 
 	// closedCh is closed exactly once by Close so a waiter blocked on input can
 	// observe an extension-initiated close instead of sitting on its input
@@ -53,10 +59,18 @@ func newCustomOverlay(onChange func()) *customOverlay {
 func (c *customOverlay) Render(width int) []string {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
+	renderWidth := width
 	if c.terminalWidth != nil {
 		width = c.terminalWidth()
 	}
-	if len(c.lines) == 0 || (c.width > 0 && c.width != width) {
+	if c.width > 0 && c.width != width {
+		return nil
+	}
+	if c.view != nil {
+		// The host renders the view at the overlay's own width.
+		return c.view.Render(renderWidth)
+	}
+	if len(c.lines) == 0 {
 		return nil
 	}
 	out := make([]string, len(c.lines))
@@ -64,7 +78,41 @@ func (c *customOverlay) Render(width int) []string {
 	return out
 }
 
-func (c *customOverlay) Invalidate() {}
+// Invalidate drops a view's cached lines; cached lines from the extension
+// have nothing to drop.
+func (c *customOverlay) Invalidate() {
+	c.mu.RLock()
+	view := c.view
+	c.mu.RUnlock()
+	if view != nil {
+		view.Invalidate()
+	}
+}
+
+// FrontendView reports the view's structure to a D91 frontend (D107).
+func (c *customOverlay) FrontendView(width int) *frontend.View {
+	c.mu.RLock()
+	view := c.view
+	c.mu.RUnlock()
+	if view == nil {
+		return nil
+	}
+	return view.FrontendView(width)
+}
+
+// UpdateViewAt draws the overlay from a view surface laid out for the
+// terminal width (0 for any width). Satisfies extension.ViewTarget.
+func (c *customOverlay) UpdateViewAt(view extension.ViewSurface, width int) {
+	c.mu.Lock()
+	c.view = view
+	c.lines = nil
+	c.width = width
+	cb := c.onChange
+	c.mu.Unlock()
+	if cb != nil {
+		cb()
+	}
+}
 
 // HandleInput forwards the input chunk to the registered handler.
 // Satisfies tui.InputHandler.
@@ -85,6 +133,53 @@ func (c *customOverlay) SetOnInput(fn func(data string)) {
 	c.mu.Unlock()
 }
 
+// SetOnMouse registers the mouse handler: the bridge's view dispatch and
+// forward to the extension.
+func (c *customOverlay) SetOnMouse(fn func(event extension.RemoteMouseEvent) extension.ViewMouseResult) {
+	c.mu.Lock()
+	c.onMouse = fn
+	c.mu.Unlock()
+}
+
+// HandleMouse hands a fullscreen mouse event to the component, as Pi's
+// renderer calls an extension component's handleMouse; the
+// component lives in the extension. The overlay stays the target of
+// the gesture, so its drag, release and click come back here too; the
+// view's own components follow the gesture inside. Satisfies
+// tui.MouseHandler.
+func (c *customOverlay) HandleMouse(event tui.TuiMouseEvent) *tui.TuiMouseDispatchResult {
+	c.mu.RLock()
+	fn, done := c.onMouse, c.done
+	c.mu.RUnlock()
+	if fn == nil || done {
+		return nil
+	}
+	result := fn(remoteMouseEvent(event))
+	if !result.Handled && !result.Capture && !result.Focus {
+		return nil
+	}
+	dispatched := &tui.TuiMouseDispatchResult{
+		TuiMouseEventResult: tui.TuiMouseEventResult{Handled: true, Capture: result.Capture, Focus: result.Focus, Render: result.Render},
+		Target: tui.TuiMouseDispatchTarget{
+			Component: c, OriginX: event.ScreenX - event.X, OriginY: event.ScreenY - event.Y,
+			Width: event.Width, Height: event.Height,
+		},
+	}
+	if result.Focus {
+		dispatched.FocusTarget = c
+	}
+	return dispatched
+}
+
+// remoteMouseEvent is event as it crosses to an extension.
+func remoteMouseEvent(event tui.TuiMouseEvent) extension.RemoteMouseEvent {
+	return extension.RemoteMouseEvent{
+		Type: string(event.Type), Button: string(event.Button), X: event.X, Y: event.Y, ScreenX: event.ScreenX,
+		ScreenY: event.ScreenY, Width: event.Width, Height: event.Height, Shift: event.Shift, Alt: event.Alt,
+		Ctrl: event.Ctrl, WheelDelta: event.WheelDelta, ClickCount: event.ClickCount,
+	}
+}
+
 // UpdateLines replaces the cached lines and triggers a re-render.
 func (c *customOverlay) UpdateLines(lines []string) {
 	c.UpdateLinesAt(lines, 0)
@@ -93,10 +188,11 @@ func (c *customOverlay) UpdateLines(lines []string) {
 // UpdateLinesAt retains the terminal width with the snapshot so a resize cannot paint stale rows.
 func (c *customOverlay) UpdateLinesAt(lines []string, width int) {
 	c.mu.Lock()
-	if c.width == width && slices.Equal(c.lines, lines) {
+	if c.view == nil && c.width == width && slices.Equal(c.lines, lines) {
 		c.mu.Unlock()
 		return
 	}
+	c.view = nil
 	if len(lines) == 0 {
 		c.lines = nil
 	} else {
@@ -142,8 +238,11 @@ func (c *customOverlay) Result() any {
 	return c.result
 }
 
-// Compile-time component check.
-var _ tui.Component = (*customOverlay)(nil)
+// Compile-time component checks.
+var (
+	_ tui.Component    = (*customOverlay)(nil)
+	_ tui.MouseHandler = (*customOverlay)(nil)
+)
 
 // remoteOverlayTUIOptions maps a remote ui.custom() overlay request onto TUI
 // overlay options. Upstream showOverlay mounts the component with no frame and
@@ -181,10 +280,9 @@ func remoteOverlayTUIOptions(opts extension.RemoteOverlayOptions) tui.OverlayOpt
 	}
 	if m := l.Margin; m != nil {
 		if m.All != nil {
-			all := *m.All
-			spec.MarginAll = &all
+			spec.Margin = tui.OverlayMarginAll(*m.All)
 		} else {
-			spec.Margin = &tui.OverlayMarginSpec{Top: m.Top, Right: m.Right, Bottom: m.Bottom, Left: m.Left}
+			spec.Margin = tui.OverlayMarginSpec{Top: m.Top, Right: m.Right, Bottom: m.Bottom, Left: m.Left}
 		}
 	}
 	return spec.Options()

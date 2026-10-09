@@ -34,15 +34,23 @@ const (
 // loadingBusCall reports whether a call may arrive while its factory is still loading, before the register handshake: the shared event bus, and the registry reads and checks of a Node factory's `pi` object, which Pi answers synchronously when the factory calls them, and its exec, which Pi spawns directly.
 func loadingBusCall(method string) bool {
 	switch method {
-	case callXrefHello, callXrefOp, callEventsOn, callEventsOff, callEventsEmit, callEventsSettle, CallGetMcpServers, CallCheckMcpServer, CallLoadingExec:
+	case callXrefHello, callXrefOp, callEventsOn, callEventsOff, callEventsEmit, callEventsSettle, CallGetMcpServers, CallCheckMcpServer, "exec", CallLoadingExec:
 		return true
 	}
 	return false
 }
 
-// observeXref attaches reference accounting and bus cleanup to a connection before it starts reading.
+// observeXref attaches reference accounting, bus cleanup, event-loop turn
+// forwarding, the view diagnostic and the inbound observer to a connection
+// before it starts reading.
 func (h *Host) observeXref(conn *Conn) {
+	conn.onLoopTurned = func() { h.forwardLoopTurned(conn) }
+	conn.reportView = func(surface string, err error) { h.reportViewRejection(conn, surface, err) }
+	observe := h.inboundObserver
 	conn.inbound = func(env *Envelope) {
+		if observe != nil {
+			observe(conn.name, env)
+		}
 		if env.Type == MsgNotify && env.Notify != nil && env.Notify.Method == notifyEventsQuiesce {
 			h.eventBus.quiesce(conn, env.Notify.Args)
 			return
@@ -66,6 +74,9 @@ type busListener struct {
 	snapshots int
 	removed   bool
 	released  bool
+	// untrack removes the listener once; the Host's ExtensionRuntime retains it until the runtime is invalidated.
+	// upstream: loader.ts:201 trackEventBusSubscription
+	untrack func()
 }
 
 // busEmission counts foreign dispatches of one routed emit whose realms have not yet reported their microtask checkpoint.
@@ -337,12 +348,31 @@ func releaseBusHandler(listener *busListener) {
 	_ = listener.conn.Send(&Envelope{Type: MsgNotify, Notify: &NotifyPayload{Method: notifyEventsRelease, Args: args}})
 }
 
-// remove unregisters a listener and reports whether no dispatch snapshot can still call it.
-func (b *hostEventBus) remove(key busHandlerKey) (*busListener, bool) {
+// lookup returns the registered listener for key, or nil.
+func (b *hostEventBus) lookup(key busHandlerKey) *busListener {
 	b.mu.Lock()
 	defer b.mu.Unlock()
-	listener := b.handlers[key]
-	if listener == nil {
+	return b.handlers[key]
+}
+
+// removeBusListener unregisters the listener, releases its handler once no dispatch snapshot holds it, and emits removeListener as EventEmitter does after removing a listener.
+func (h *Host) removeBusListener(ctx context.Context, listener *busListener) {
+	removed, release := h.eventBus.remove(listener)
+	if removed == nil {
+		return
+	}
+	if release {
+		releaseBusHandler(removed)
+	}
+	h.dispatchEvent(ctx, "removeListener", newChannelPayload(removed.channel), nil, removed.realm, "", nil)
+}
+
+// remove unregisters listener and reports whether no dispatch snapshot can still call it. It returns nil when listener is no longer the one registered under its key: a retained unsubscribe that runs after its connection closed must not remove a later listener that reuses the realm and handler id.
+func (b *hostEventBus) remove(listener *busListener) (*busListener, bool) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	key := busHandlerKey{listener.realm, listener.handlerID}
+	if b.handlers[key] != listener {
 		return nil, false
 	}
 	delete(b.handlers, key)
@@ -381,18 +411,20 @@ func (h *Host) forgetLocalRealm(conn *Conn) {
 	h.eventBus.mu.Unlock()
 }
 
-// closed drops a closed connection's listeners. A process that exits has no Pi counterpart, so no removeListener event is emitted.
+// closed drops a closed connection's listeners and forgets their runtime-retained unsubscribes, so the runtime does not keep a closed generation's listeners until it is invalidated. A process that exits has no Pi counterpart, so no removeListener event is emitted.
 func (b *hostEventBus) closed(conn *Conn) {
 	type release struct {
 		id    string
 		conns []*Conn
 	}
 	var releases []release
+	var dropped []*busListener
 	b.mu.Lock()
 	for key, listener := range b.handlers {
 		if listener.conn != conn {
 			continue
 		}
+		dropped = append(dropped, listener)
 		delete(b.handlers, key)
 		listener.removed = true
 		b.listeners[listener.channel] = slices.DeleteFunc(b.listeners[listener.channel], func(candidate *busListener) bool { return candidate == listener })
@@ -416,6 +448,12 @@ func (b *hostEventBus) closed(conn *Conn) {
 	b.mu.Unlock()
 	for _, r := range releases {
 		proceed(r.id, r.conns)
+	}
+	// The listener is already unregistered, so its unsubscribe only drops the runtime's retained entry.
+	for _, listener := range dropped {
+		if listener.untrack != nil {
+			listener.untrack()
+		}
 	}
 }
 
@@ -460,17 +498,13 @@ func (h *Host) handleEventBusCall(ctx context.Context, me *managedExt, conn *Con
 		}
 		// EventEmitter emits newListener before adding the listener.
 		h.dispatchEvent(dispatchCtx, "newListener", newChannelPayload(*args.Channel), nil, realm, "", nil)
-		h.eventBus.add(&busListener{conn: conn, realm: realm, handlerID: args.HandlerID, channel: *args.Channel, value: args.Value})
+		listener := &busListener{conn: conn, realm: realm, handlerID: args.HandlerID, channel: *args.Channel, value: args.Value}
+		listener.untrack = h.providerRuntime.TrackEventBusSubscription(func() { h.removeBusListener(dispatchCtx, listener) })
+		h.eventBus.add(listener)
 	case callEventsOff:
-		listener, release := h.eventBus.remove(busHandlerKey{realm, args.HandlerID})
-		if listener == nil {
-			break
+		if listener := h.eventBus.lookup(busHandlerKey{realm, args.HandlerID}); listener != nil {
+			listener.untrack()
 		}
-		if release {
-			releaseBusHandler(listener)
-		}
-		// EventEmitter emits removeListener after removing the listener.
-		h.dispatchEvent(dispatchCtx, "removeListener", newChannelPayload(listener.channel), nil, realm, "", nil)
 	case callEventsEmit:
 		if args.Channel == nil {
 			return nil, errors.New("events.emit requires channel")

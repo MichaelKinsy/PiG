@@ -46,12 +46,12 @@ func run() error {
 					ThinkingConfig json.RawMessage `json:"thinkingConfig"`
 				} `json:"config"`
 			}
-			// The paired Pi probe calls streamSimple, which lowers omitted reasoning to explicit off.
-			level := test.Level
-			if level == "" {
-				level = ai.ThinkingOff
+			// The paired Pi probe calls streamSimple, which sends `thinking: { enabled: false }` for omitted reasoning.
+			api := ai.APIGoogleGenerativeAI
+			if vertex {
+				api = ai.APIGoogleVertex
 			}
-			_, err = provider.Stream(context.Background(), ai.NormalizeContext(ai.Context{Messages: []ai.Message{ai.UserMessage{Content: ai.UserText("Hello")}}}), ai.StreamOptions{IsReasoning: true, Thinking: level, ThinkingBudgets: &ai.ThinkingBudgets{High: test.Budget}, OnPayload: func(value any, _ *ai.Model) (any, error) {
+			options := ai.StreamOptions{IsReasoning: true, Thinking: test.Level, ThinkingBudgets: &ai.ThinkingBudgets{High: test.Budget}, OnPayload: func(value any, _ *ai.Model) (any, error) {
 				data, e := json.Marshal(value)
 				if e != nil {
 					return nil, e
@@ -60,7 +60,9 @@ func run() error {
 					return nil, e
 				}
 				return nil, captured
-			}})
+			}}
+			ai.ApplyOmittedReasoning(&ai.Model{ProviderMeta: ai.ProviderMetadata{API: api}}, &options)
+			_, err = provider.Stream(context.Background(), ai.NormalizeContext(ai.Context{Messages: []ai.Message{ai.UserMessage{Content: ai.UserText("Hello")}}}), options)
 			if !errors.Is(err, captured) {
 				return err
 			}

@@ -1,0 +1,280 @@
+[
+ {
+  "ids": [
+   "pkg:ai/.#InMemoryCredentialStore",
+   "pkg:ai/compat#InMemoryCredentialStore"
+  ],
+  "targets": [
+   "ai/in_memory_credential_store.go#InMemoryCredentialStore"
+  ],
+  "production": [
+   "call:ai/auth_resolve.go#readProviderCredential"
+  ],
+  "evidence": [
+   "test:ai/interface_ledger_test.go#TestInMemoryCredentialStoreDeleteRemovesOnlyTheNamedEntryLikeUpstream",
+   "test:ai/models_runtime_credentials_upstream_test.go#TestInMemoryCredentialStoreLiteralOrderAndActiveCancellation"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal (options.signal) is the context.Context argument; no detached goroutine.",
+  "rationale": "InMemoryCredentialStore: the Go InMemoryCredentialStore has a method for every upstream member (signatures reviewed; options.signal is the context.Context parameter).",
+  "properties": {
+   "read": {
+    "targets": [
+     "ai/in_memory_credential_store.go#InMemoryCredentialStore.Read"
+    ],
+    "evidence": [
+     "test:ai/models_runtime_credentials_upstream_test.go#TestInMemoryCredentialStoreLiteralOrderAndActiveCancellation"
+    ],
+    "production": [
+     "call:ai/auth_resolve.go#readProviderCredential"
+    ],
+    "rationale": "The upstream member read is the Go method InMemoryCredentialStore.Read: the options.signal argument is the context.Context parameter and `undefined` is nil; production reaches it through the store interface."
+   },
+   "list": {
+    "targets": [
+     "ai/in_memory_credential_store.go#InMemoryCredentialStore.List"
+    ],
+    "evidence": [
+     "test:ai/models_runtime_credentials_upstream_test.go#TestInMemoryCredentialStoreLiteralOrderAndActiveCancellation"
+    ],
+    "production": [
+     "call:ai/runtime_credentials.go#RuntimeCredentials.List"
+    ],
+    "rationale": "The upstream member list is the Go method InMemoryCredentialStore.List: the options.signal argument is the context.Context parameter and `undefined` is nil; production reaches it through the store interface."
+   },
+   "modify": {
+    "targets": [
+     "ai/in_memory_credential_store.go#InMemoryCredentialStore.Modify"
+    ],
+    "evidence": [
+     "test:ai/models_runtime_credentials_upstream_test.go#TestInMemoryCredentialStoreLiteralOrderAndActiveCancellation"
+    ],
+    "production": [
+     "call:ai/auth_resolve.go#refreshStoredOAuthLocked"
+    ],
+    "rationale": "The upstream member modify is the Go method InMemoryCredentialStore.Modify: the options.signal argument is the context.Context parameter and `undefined` is nil; production reaches it through the store interface."
+   },
+   "delete": {
+    "targets": [
+     "ai/in_memory_credential_store.go#InMemoryCredentialStore.Delete"
+    ],
+    "evidence": [
+     "test:ai/interface_ledger_test.go#TestInMemoryCredentialStoreDeleteRemovesOnlyTheNamedEntryLikeUpstream"
+    ],
+    "production": [
+     "call:ai/models_runtime_auth.go#Models.Logout"
+    ],
+    "rationale": "The upstream member delete is the Go method InMemoryCredentialStore.Delete: the options.signal argument is the context.Context parameter and `undefined` is nil; production reaches it through the store interface."
+   }
+  }
+ },
+ {
+  "ids": [
+   "pkg:ai/.#InMemoryCredentialStore::construct:0",
+   "pkg:ai/compat#InMemoryCredentialStore::construct:0"
+  ],
+  "targets": [
+   "ai/in_memory_credential_store.go#NewInMemoryCredentialStore"
+  ],
+  "production": [
+   "call:ai/models_runtime.go#createModels"
+  ],
+  "evidence": [
+   "test:ai/interface_ledger_test.go#TestInMemoryCredentialStoreDeleteRemovesOnlyTheNamedEntryLikeUpstream"
+  ],
+  "rationale": "The constructor of InMemoryCredentialStore is the Go function NewInMemoryCredentialStore; production builds the default store with it."
+ },
+ {
+  "ids": [
+   "pkg:ai/.#CredentialStore",
+   "pkg:ai/compat#CredentialStore"
+  ],
+  "targets": [
+   "ai/auth_store.go#CredentialStore"
+  ],
+  "production": [
+   "call:ai/auth_resolve.go#readProviderCredential"
+  ],
+  "evidence": [
+   "test:ai/interface_ledger_test.go#TestInMemoryCredentialStoreDeleteRemovesOnlyTheNamedEntryLikeUpstream",
+   "test:ai/models_runtime_credentials_upstream_test.go#TestInMemoryCredentialStoreLiteralOrderAndActiveCancellation"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal (options.signal) is the context.Context argument; no detached goroutine.",
+  "rationale": "CredentialStore: the Go interface CredentialStore has a method for every upstream member.",
+  "properties": {
+   "read": {
+    "targets": [
+     "ai/auth_store.go#CredentialStore.Read"
+    ],
+    "evidence": [
+     "test:ai/models_runtime_credentials_upstream_test.go#TestInMemoryCredentialStoreLiteralOrderAndActiveCancellation"
+    ],
+    "production": [
+     "call:ai/auth_resolve.go#readProviderCredential"
+    ],
+    "rationale": "The upstream member read is the Go interface method CredentialStore.Read: the options.signal argument is the context.Context parameter and `undefined` is nil."
+   },
+   "list": {
+    "targets": [
+     "ai/auth_store.go#CredentialStore.List"
+    ],
+    "evidence": [
+     "test:ai/models_runtime_credentials_upstream_test.go#TestInMemoryCredentialStoreLiteralOrderAndActiveCancellation"
+    ],
+    "production": [
+     "call:ai/runtime_credentials.go#RuntimeCredentials.List"
+    ],
+    "rationale": "The upstream member list is the Go interface method CredentialStore.List: the options.signal argument is the context.Context parameter and `undefined` is nil."
+   },
+   "modify": {
+    "targets": [
+     "ai/auth_store.go#CredentialStore.Modify"
+    ],
+    "evidence": [
+     "test:ai/models_runtime_credentials_upstream_test.go#TestInMemoryCredentialStoreLiteralOrderAndActiveCancellation"
+    ],
+    "production": [
+     "call:ai/auth_resolve.go#refreshStoredOAuthLocked"
+    ],
+    "rationale": "The upstream member modify is the Go interface method CredentialStore.Modify: the options.signal argument is the context.Context parameter and `undefined` is nil."
+   },
+   "delete": {
+    "targets": [
+     "ai/auth_store.go#CredentialStore.Delete"
+    ],
+    "evidence": [
+     "test:ai/interface_ledger_test.go#TestInMemoryCredentialStoreDeleteRemovesOnlyTheNamedEntryLikeUpstream"
+    ],
+    "production": [
+     "call:ai/models_runtime_auth.go#Models.Logout"
+    ],
+    "rationale": "The upstream member delete is the Go interface method CredentialStore.Delete: the options.signal argument is the context.Context parameter and `undefined` is nil."
+   }
+  }
+ },
+ {
+  "ids": [
+   "pkg:ai/.#InMemoryModelsStore",
+   "pkg:ai/compat#InMemoryModelsStore"
+  ],
+  "targets": [
+   "ai/models_store.go#InMemoryModelsStore"
+  ],
+  "production": [
+   "call:ai/models_runtime_refresh.go#Models.runProviderRefreshPhase"
+  ],
+  "evidence": [
+   "test:ai/models_store_test.go#TestInMemoryModelsStoreClonesAndDeletes"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal (options.signal) is the context.Context argument; no detached goroutine.",
+  "rationale": "InMemoryModelsStore: the Go InMemoryModelsStore has a method for every upstream member (signatures reviewed; options.signal is the context.Context parameter).",
+  "properties": {
+   "read": {
+    "targets": [
+     "ai/models_store.go#InMemoryModelsStore.Read"
+    ],
+    "evidence": [
+     "test:ai/models_store_test.go#TestInMemoryModelsStoreClonesAndDeletes"
+    ],
+    "production": [
+     "call:ai/models_runtime_refresh.go#Models.runProviderRefreshPhase"
+    ],
+    "rationale": "The upstream member read is the Go method InMemoryModelsStore.Read: the options.signal argument is the context.Context parameter and `undefined` is nil; production reaches it through the store interface."
+   },
+   "write": {
+    "targets": [
+     "ai/models_store.go#InMemoryModelsStore.Write"
+    ],
+    "evidence": [
+     "test:ai/models_store_test.go#TestInMemoryModelsStoreClonesAndDeletes"
+    ],
+    "production": [
+     "call:ai/models_runtime_refresh.go#Models.publishProviderModels"
+    ],
+    "rationale": "The upstream member write is the Go method InMemoryModelsStore.Write: the options.signal argument is the context.Context parameter and `undefined` is nil; production reaches it through the store interface."
+   },
+   "delete": {
+    "targets": [
+     "ai/models_store.go#InMemoryModelsStore.Delete"
+    ],
+    "evidence": [
+     "test:ai/models_store_test.go#TestInMemoryModelsStoreClonesAndDeletes"
+    ],
+    "production": [
+     "call:ai/models_runtime_refresh.go#Models.publishProviderModels"
+    ],
+    "rationale": "The upstream member delete is the Go method InMemoryModelsStore.Delete: the options.signal argument is the context.Context parameter and `undefined` is nil; production reaches it through the store interface."
+   }
+  }
+ },
+ {
+  "ids": [
+   "pkg:ai/.#InMemoryModelsStore::construct:0",
+   "pkg:ai/compat#InMemoryModelsStore::construct:0"
+  ],
+  "targets": [
+   "ai/models_store.go#NewInMemoryModelsStore"
+  ],
+  "production": [
+   "call:ai/models_runtime.go#createModels"
+  ],
+  "evidence": [
+   "test:ai/models_store_test.go#TestInMemoryModelsStoreClonesAndDeletes"
+  ],
+  "rationale": "The constructor of InMemoryModelsStore is the Go function NewInMemoryModelsStore; production builds the default store with it."
+ },
+ {
+  "ids": [
+   "pkg:ai/.#ModelsStore",
+   "pkg:ai/compat#ModelsStore"
+  ],
+  "targets": [
+   "ai/models_store.go#ModelsStore"
+  ],
+  "production": [
+   "call:ai/models_runtime_refresh.go#Models.runProviderRefreshPhase"
+  ],
+  "evidence": [
+   "test:ai/models_store_test.go#TestInMemoryModelsStoreClonesAndDeletes"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal (options.signal) is the context.Context argument; no detached goroutine.",
+  "rationale": "ModelsStore: the Go interface ModelsStore has a method for every upstream member.",
+  "properties": {
+   "read": {
+    "targets": [
+     "ai/models_store.go#ModelsStore.Read"
+    ],
+    "evidence": [
+     "test:ai/models_store_test.go#TestInMemoryModelsStoreClonesAndDeletes"
+    ],
+    "production": [
+     "call:ai/models_runtime_refresh.go#Models.runProviderRefreshPhase"
+    ],
+    "rationale": "The upstream member read is the Go interface method ModelsStore.Read: the options.signal argument is the context.Context parameter and `undefined` is nil."
+   },
+   "write": {
+    "targets": [
+     "ai/models_store.go#ModelsStore.Write"
+    ],
+    "evidence": [
+     "test:ai/models_store_test.go#TestInMemoryModelsStoreClonesAndDeletes"
+    ],
+    "production": [
+     "call:ai/models_runtime_refresh.go#Models.publishProviderModels"
+    ],
+    "rationale": "The upstream member write is the Go interface method ModelsStore.Write: the options.signal argument is the context.Context parameter and `undefined` is nil."
+   },
+   "delete": {
+    "targets": [
+     "ai/models_store.go#ModelsStore.Delete"
+    ],
+    "evidence": [
+     "test:ai/models_store_test.go#TestInMemoryModelsStoreClonesAndDeletes"
+    ],
+    "production": [
+     "call:ai/models_runtime_refresh.go#Models.publishProviderModels"
+    ],
+    "rationale": "The upstream member delete is the Go interface method ModelsStore.Delete: the options.signal argument is the context.Context parameter and `undefined` is nil."
+   }
+  }
+ }
+]

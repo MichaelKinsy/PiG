@@ -7,11 +7,10 @@ import (
 	"github.com/MichaelKinsy/PiG/ai"
 )
 
-// ConvertToLLM converts AgentMessages to the wire format expected by the AI provider.
-// It calls NormalizeMessages first to filter errored/aborted assistant messages and
-// insert synthetic tool results for orphaned tool calls.
-func ConvertToLLM(msgs []AgentMessage, model *ai.Model) []ai.Message {
-	msgs = NormalizeMessages(msgs, model)
+// ConvertToLLM converts AgentMessages to the wire format expected by the AI provider (convertToLlm, messages.ts:148).
+// Like upstream it only converts; callers that send the result to a provider run NormalizeMessages first to filter
+// errored/aborted assistant messages and insert synthetic tool results for orphaned tool calls.
+func ConvertToLLM(msgs []AgentMessage) []ai.Message {
 	out := make([]ai.Message, 0, len(msgs))
 	for _, m := range msgs {
 		switch {
@@ -20,42 +19,44 @@ func ConvertToLLM(msgs []AgentMessage, model *ai.Model) []ai.Message {
 		case m.User != nil:
 			out = append(out, m.User.LLMMessage())
 		case m.Assistant != nil:
-			message := m.Assistant.LLMMessage()
-			if len(message.Content) == 0 {
-				message.Content = []ai.AssistantContentBlock{ai.TextContent{Text: ""}}
-			}
-			out = append(out, message)
+			out = append(out, m.Assistant.LLMMessage())
 		case m.ToolResult != nil:
 			out = append(out, ai.ToolResultMessage{
 				ToolCallID: m.ToolResult.ToolCallID, ToolName: m.ToolResult.ToolName,
 				Content: m.ToolResult.Content, Details: m.ToolResult.Details, DetailsNull: m.ToolResult.DetailsNull,
 				Usage: m.ToolResult.Usage, NestedCalls: m.ToolResult.NestedCalls, IsError: m.ToolResult.IsError,
-				Timestamp: m.ToolResult.Timestamp,
+				DurationMs: m.ToolResult.DurationMs, Timestamp: m.ToolResult.Timestamp,
 			})
 		case m.Custom != nil:
-			// Mirrors upstream convertToLlm (coding-agent core/messages.ts):
-			// every known custom role becomes a user message whose content is a
-			// text-block array; "custom" block-array content passes through.
-			role, _ := m.Custom["role"].(string)
-			switch role {
-			case RoleBashExecution, RoleBranchSummary, RoleCompactionSummary:
-				if role == RoleBashExecution {
-					if excluded, _ := m.Custom["excludeFromContext"].(bool); excluded {
-						continue
-					}
-				}
-				out = append(out, ai.UserMessage{
-					Content:   ai.UserContentBlocks{ai.TextContent{Text: customMessageText(m.Custom)}},
-					Timestamp: customTimestamp(m.Custom),
-				})
-			case RoleCustom:
-				if content, ok := customMessageContent(m.Custom["content"]); ok {
-					out = append(out, ai.UserMessage{Content: content, Timestamp: customTimestamp(m.Custom)})
-				}
+			if user, ok := customUserMessage(m.Custom); ok {
+				out = append(out, user)
 			}
 		}
 	}
 	return out
+}
+
+// customUserMessage is the user message convertToLlm (coding-agent core/messages.ts) sends for a custom message, or false when
+// the message sends nothing: every known custom role becomes a user message whose content is a text-block array, a "custom"
+// message's block-array content passes through, and only a bash execution excluded from context or custom content that is not
+// user content sends nothing. NormalizeMessages asks it too, because upstream runs transformMessages after convertToLlm and a
+// custom message that becomes a user message ends the tool flow.
+func customUserMessage(m map[string]any) (ai.UserMessage, bool) {
+	role, _ := m["role"].(string)
+	switch role {
+	case RoleBashExecution, RoleBranchSummary, RoleCompactionSummary:
+		if role == RoleBashExecution {
+			if excluded, _ := m["excludeFromContext"].(bool); excluded {
+				return ai.UserMessage{}, false
+			}
+		}
+		return ai.UserMessage{Content: ai.UserContentBlocks{ai.TextContent{Text: customMessageText(m)}}, Timestamp: customTimestamp(m)}, true
+	case RoleCustom:
+		if content, ok := customMessageContent(m["content"]); ok {
+			return ai.UserMessage{Content: content, Timestamp: customTimestamp(m)}, true
+		}
+	}
+	return ai.UserMessage{}, false
 }
 
 // customMessageContent converts a "custom" message's content to user content
@@ -132,6 +133,7 @@ func (m *AssistantMessage) Observe() *AssistantMessage {
 	out.Diagnostics = owned.Diagnostics
 	out.Deferred = owned.Deferred
 	out.EndTurn = owned.EndTurn
+	out.DurationMs = owned.DurationMs
 	if m.Usage != nil {
 		out.Usage = &owned.Usage
 	}
@@ -180,12 +182,12 @@ func (m *AssistantMessage) LLMMessage() ai.AssistantMessage {
 		Diagnostics: m.Diagnostics,
 		Usage:       usage, StopReason: m.StopReason, Deferred: m.Deferred,
 		ErrorMessage: m.ErrorMessage, RawStopReason: m.RawStopReason,
-		EndTurn: m.EndTurn, Timestamp: m.Timestamp,
+		EndTurn: m.EndTurn, Timestamp: m.Timestamp, DurationMs: m.DurationMs,
 	}
 }
 
 func convertToLLM(msgs []AgentMessage, model *ai.Model) []ai.Message {
-	return ConvertToLLM(msgs, model)
+	return ConvertToLLM(NormalizeMessages(msgs, model))
 }
 
 // BranchSummaryContextText wraps a branch summary for LLM context.

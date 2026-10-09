@@ -146,7 +146,7 @@ func createFakeTransport(servers *serverSet, options fakeTransportOptions) mcp.T
 	return &hookTransport{InMemoryTransport: client, send: func(message mcp.JSONRPCMessage) error {
 		// Simulates the HTTP transport's 404 for a session the server no longer knows.
 		if message.Method == "tools/call" {
-			return mcp.NewSessionExpiredError("gone")
+			return mcp.NewMcpSessionExpiredError("gone")
 		}
 		return client.Send(message)
 	}}
@@ -157,12 +157,14 @@ func createFakeTransport(servers *serverSet, options fakeTransportOptions) mcp.T
 // name, tools with direct exposure are activated on registration, and hidden
 // tools are unreachable.
 type fakeHost struct {
-	mu      sync.Mutex
-	order   []string
-	tools   map[string]extension.ToolDefinition
-	paths   map[string]string
-	active  []string
-	servers []extension.RegisteredMcpServer
+	mu    sync.Mutex
+	order []string
+	// registrations lists every RegisterTool call by tool name and exposure, in call order.
+	registrations []string
+	tools         map[string]extension.ToolDefinition
+	paths         map[string]string
+	active        []string
+	servers       []extension.RegisteredMcpServer
 }
 
 func newFakeHost(active ...string) *fakeHost {
@@ -170,6 +172,9 @@ func newFakeHost(active ...string) *fakeHost {
 }
 
 func (h *fakeHost) RegisterTool(definition extension.ToolDefinition) {
+	h.mu.Lock()
+	h.registrations = append(h.registrations, definition.Name+":"+string(definition.Exposure))
+	h.mu.Unlock()
 	h.registerFrom("mcp", definition, true)
 }
 
@@ -209,7 +214,7 @@ func (h *fakeHost) GetAllTools() []extension.ToolInfo {
 		}
 		infos = append(infos, extension.ToolInfo{
 			Name: name, Description: d.Description, Parameters: d.Parameters,
-			SourceInfo: map[string]any{"path": h.paths[name]}, Exposure: exposure, Namespace: d.Namespace, Annotations: d.Annotations,
+			SourceInfo: extension.SourceInfo{Path: h.paths[name]}, Exposure: exposure, Namespace: d.Namespace, Annotations: d.Annotations,
 		})
 	}
 	return infos

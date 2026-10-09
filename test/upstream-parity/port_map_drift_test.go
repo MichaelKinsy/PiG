@@ -4,24 +4,22 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"runtime"
 	"strings"
 	"testing"
+
+	"github.com/MichaelKinsy/PiG/internal/testenv"
 )
 
 // portMapDriftFixture writes a minimal repo: one live upstream file, a pinned
 // version, and a PORT_MAP whose extra rows name files upstream no longer has.
 func portMapDriftFixture(t *testing.T, rows string) (script, root string) {
 	t.Helper()
-	_, thisFile, _, ok := runtime.Caller(0)
-	if !ok {
-		t.Fatal("runtime.Caller failed")
-	}
-	script = filepath.Join(filepath.Dir(thisFile), "..", "..", "automation", "ci", "check-port-map-drift.py")
+	script = filepath.Join(testenv.ModuleRoot(t), "automation", "ci", "check-port-map-drift.py")
 	root = t.TempDir()
 	files := map[string]string{
 		filepath.Join(".upstream", "current", "packages", "ai", "src", "live.ts"): "export const live = 1;\n",
-		filepath.Join("internal", "coding", "pigversion", "pigversion.go"):        "package pigversion\nconst UpstreamVersion = \"9.9.9\"\n",
+		"packages.json": `{"packages":[{"key":"ai","name":"@earendil-works/pi-ai","root":"packages/ai"}]}`,
+		filepath.Join("internal", "coding", "pigversion", "pigversion.go"): "package pigversion\nconst UpstreamVersion = \"9.9.9\"\n",
 		"docs/parity/PORT_MAP.md": "# PORT_MAP\n\n## `packages/ai/src/`\n\n| upstream | pig | status |\n|---|---|---|\n" +
 			"| `packages/ai/src/live.ts` | `ai/live.go` | ✅ |\n" + rows,
 	}
@@ -39,7 +37,7 @@ func portMapDriftFixture(t *testing.T, rows string) (script, root string) {
 
 func runPortMapDrift(t *testing.T, script, root string, extra ...string) (string, error) {
 	t.Helper()
-	args := append([]string{script, "--upstream", filepath.Join(root, ".upstream", "current"), "--port-map", filepath.Join(root, "docs/parity/PORT_MAP.md")}, extra...)
+	args := append([]string{script, "--upstream", filepath.Join(root, ".upstream", "current"), "--port-map", filepath.Join(root, "docs/parity/PORT_MAP.md"), "--packages", filepath.Join(root, "packages.json")}, extra...)
 	output, err := exec.Command("python3", args...).CombinedOutput()
 	return string(output), err
 }

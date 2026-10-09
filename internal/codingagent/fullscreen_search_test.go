@@ -91,7 +91,7 @@ func TestFullscreenTuiOptionsStyleIndicatorAndMatches(t *testing.T) {
 	if !strings.HasPrefix(match, "\x1b[4m") || !strings.HasPrefix(current, "\x1b[1m") || !strings.Contains(current, "\x1b[7m") {
 		t.Fatalf("match styles = %q / %q", match, current)
 	}
-	if bg := tui.ActiveTheme().Bg("searchMatchBg"); bg != "" && !strings.Contains(match, bg) {
+	if bg := tui.ActiveTheme().GetBgAnsi("searchMatchBg"); bg != "" && !strings.Contains(match, bg) {
 		t.Fatalf("match style lacks the searchMatchBg background: %q", match)
 	}
 	if got := opts.SearchNavigationButtonStyle("↓", true); got != "\x1b[4m↓\x1b[24m" {

@@ -143,7 +143,7 @@ var CodingProfile = Profile{
 // AgentOf is the agent document of a view; absent while the conversation has none.
 func AgentOf(view harness.ConversationView) harness.AgentState {
 	var agent harness.AgentState
-	if document := view.Docs["pi.agent"]; document != nil {
+	if document, _ := view.Docs.Get("pi.agent"); document != nil {
 		if decoded, err := durable.DecodeDoc[harness.AgentState](document); err == nil && decoded != nil {
 			agent = *decoded
 		}
@@ -471,7 +471,7 @@ func (runtime *durableRuntime) agentModel() (*ai.Model, harness.AgentState, erro
 	return model, agent, nil
 }
 
-func thinkingOf(agent harness.AgentState) ai.ThinkingLevel {
+func thinkingOf(agent harness.AgentState) ai.ModelThinkingLevel {
 	if agent.ThinkingLevel != "" {
 		return agent.ThinkingLevel
 	}
@@ -652,7 +652,7 @@ func Open(ctx context.Context, options OpenDurableOptions, profile Profile) (res
 		_ = location.Release()
 	}()
 
-	collaborators, err := coding.NewServices(coding.ServicesOptions{CWD: location.CWD, AgentDir: codingagent.AgentDir()})
+	collaborators, err := coding.CreateAgentSessionServices(coding.CreateAgentSessionServicesOptions{CWD: location.CWD, AgentDir: codingagent.AgentDir()})
 	if err != nil {
 		return nil, err
 	}
@@ -687,7 +687,7 @@ func Open(ctx context.Context, options OpenDurableOptions, profile Profile) (res
 	var initial InitialModel
 	rootAgent := profile.RootAgent(location.CWD)
 	if location.Created {
-		initial, err = FindInitialAgentModel(ModelSelection{Runtime: modelRuntime, ConfiguredAuth: collaborators.Registry().HasConfiguredAuth}, settings, "", "")
+		initial, err = FindInitialAgentModel(ModelSelection{Runtime: modelRuntime, ConfiguredAuth: collaborators.Registry().ModelRegistry.HasConfiguredAuth}, settings, "", "")
 		if err != nil {
 			return nil, err
 		}

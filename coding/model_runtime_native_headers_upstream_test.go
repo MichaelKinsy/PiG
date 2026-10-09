@@ -32,7 +32,7 @@ func headerTestModel(headers map[string]string) *ai.Model {
 	return model
 }
 
-func registerCapturingHeaderProvider(t *testing.T, services *Services, headers map[string]string) (*ai.Model, func() (ai.StreamOptions, *ai.Model)) {
+func registerCapturingHeaderProvider(t *testing.T, services *AgentSessionServices, headers map[string]string) (*ai.Model, func() (ai.StreamOptions, *ai.Model)) {
 	t.Helper()
 	var mu sync.Mutex
 	var captured ai.StreamOptions
@@ -91,7 +91,7 @@ func TestNativeProviderModelsJSONOverrideHeadersReachRequestUpstream(t *testing.
 	if err := os.WriteFile(filepath.Join(agentDir, "models.json"), []byte(`{"providers":{"header-provider":{"modelOverrides":{"header-model":{"headers":{"x-override":"ov"}}}}}}`), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	services, err := NewServices(ServicesOptions{CWD: t.TempDir(), AgentDir: agentDir})
+	services, err := CreateAgentSessionServices(CreateAgentSessionServicesOptions{CWD: t.TempDir(), AgentDir: agentDir})
 	if err != nil {
 		t.Fatal(err)
 	}

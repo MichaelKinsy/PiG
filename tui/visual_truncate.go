@@ -47,7 +47,11 @@ func TruncateToVisualLinesKeeping(text string, maxVisualLines, width, paddingX i
 	if len(all) <= maxVisualLines {
 		return VisualTruncateResult{VisualLines: all}
 	}
-	truncated := all[len(all)-maxVisualLines:]
+	// JavaScript's slice(-0) is slice(0), so keeping zero end lines returns every line while still counting them as skipped.
+	truncated := all
+	if maxVisualLines > 0 {
+		truncated = all[len(all)-maxVisualLines:]
+	}
 	if keep == VisualKeepStart {
 		truncated = all[:maxVisualLines]
 	}

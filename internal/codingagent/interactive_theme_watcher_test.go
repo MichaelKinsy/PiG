@@ -12,15 +12,15 @@ import (
 )
 
 type themeWatcherRenderProbe struct {
-	tui.Renderer
+	tui.TUI
 	invalidations int
 	requests      int
 	fullRepaints  int
 }
 
-func (r *themeWatcherRenderProbe) Invalidate()      { r.invalidations++ }
-func (r *themeWatcherRenderProbe) RequestRender()   { r.requests++ }
-func (r *themeWatcherRenderProbe) ForceFullRender() { r.fullRepaints++ }
+func (r *themeWatcherRenderProbe) Invalidate()           { r.invalidations++ }
+func (r *themeWatcherRenderProbe) RequestRender(...bool) { r.requests++ }
+func (r *themeWatcherRenderProbe) ForceFullRender()      { r.fullRepaints++ }
 
 func TestInteractiveThemeWatcherAppliesOnOwnerLoop(t *testing.T) {
 	registry, active := tui.ActiveThemeRegistry(), tui.ActiveTheme()
@@ -57,8 +57,8 @@ func TestInteractiveThemeWatcherAppliesOnOwnerLoop(t *testing.T) {
 	}
 	tui.SetThemeRegistry(loaded)
 	tui.SetThemeByName("custom-test")
-	renderer := &themeWatcherRenderProbe{Renderer: tui.New()}
-	mode := &InteractiveMode{opts: InteractiveOptions{AgentDir: agent}, uiTaskCh: make(chan func(), 1), tuiInst: renderer}
+	renderer := &themeWatcherRenderProbe{TUI: tui.New()}
+	mode := &InteractiveMode{opts: InteractiveModeOptions{AgentDir: agent}, uiTaskCh: make(chan func(), 1), tuiInst: renderer}
 	watcher := mode.startThemeWatcher(t.Context())
 	defer watcher.Close()
 	write("#654321")
@@ -68,11 +68,11 @@ func TestInteractiveThemeWatcherAppliesOnOwnerLoop(t *testing.T) {
 	case <-time.After(5 * time.Second):
 		t.Fatal("theme reload did not reach owner loop")
 	}
-	if got := tui.ActiveTheme().Colors()["accent"]; got != "#123456" {
+	if got := tui.ActiveTheme().GetResolvedThemeColors()["accent"]; got != "#123456" {
 		t.Fatalf("worker mutated UI before dispatch: %q", got)
 	}
 	action()
-	if got := tui.ActiveTheme().Colors()["accent"]; got != "#654321" {
+	if got := tui.ActiveTheme().GetResolvedThemeColors()["accent"]; got != "#654321" {
 		t.Fatalf("owner did not apply theme: %q", got)
 	}
 	// upstream: packages/coding-agent/src/modes/interactive/interactive-mode.ts:1039-1043

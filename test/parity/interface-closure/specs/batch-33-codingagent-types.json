@@ -1,0 +1,355 @@
+[
+ {
+  "ids": [
+   "pkg:coding-agent/.#AgentSessionRuntimeDiagnostic"
+  ],
+  "targets": [
+   "internal/codingagent/settings_diagnostics.go#AgentSessionRuntimeDiagnostic"
+  ],
+  "struct": {
+   "file": "internal/codingagent/settings_diagnostics.go",
+   "type": "AgentSessionRuntimeDiagnostic"
+  },
+  "production": [
+   "call:coding/cli/cli_runtime_build.go#cliRuntimeBuilder.buildResources"
+  ],
+  "evidence": [
+   "test:coding/cli/extension_set_upstream_test.go#TestExtensionErrorDiagnosticsFormatBuiltinErrors",
+   "test:coding/cli/extension_set_upstream_test.go#TestExtensionWarningDiagnosticsFormatPackageWarnings"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "AgentSessionRuntimeDiagnostic: Go AgentSessionRuntimeDiagnostic has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#BranchSummaryEntry"
+  ],
+  "targets": [
+   "internal/codingagent/session.go#BranchSummaryEntry"
+  ],
+  "struct": {
+   "file": "internal/codingagent/session.go",
+   "type": "BranchSummaryEntry"
+  },
+  "production": [
+   "call:internal/codingagent/compaction/branch_summarization.go#getMessageFromEntryForBranch"
+  ],
+  "evidence": [
+   "test:internal/codingagent/session_tree_traversal_upstream_test.go#TestSessionTreeTraversalUpstream",
+   "test:coding/session_test.go#TestNavigateTree_SummaryJoinsDestinationFromAbandonedLeaf"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "BranchSummaryEntry: Go BranchSummaryEntry has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#CompactionEntry"
+  ],
+  "targets": [
+   "internal/codingagent/session.go#CompactionEntry"
+  ],
+  "struct": {
+   "file": "internal/codingagent/session.go",
+   "type": "CompactionEntry"
+  },
+  "production": [
+   "call:internal/codingagent/compaction/branch_summarization.go#getMessageFromEntryForBranch"
+  ],
+  "evidence": [
+   "test:coding/compaction_model_overrides_upstream_test.go#TestCompactionModelOverridesBuiltinBudgetsUpstream",
+   "test:coding/session_compaction_e2e_upstream_test.go#TestAgentSessionCompactionE2EUpstream"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "CompactionEntry: Go CompactionEntry has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#CompactionModelOverride"
+  ],
+  "targets": [
+   "internal/codingagent/settings.go#CompactionModelOverride"
+  ],
+  "struct": {
+   "file": "internal/codingagent/settings.go",
+   "type": "CompactionModelOverride"
+  },
+  "production": [
+   "call:internal/codingagent/settings.go#cloneCompactionSettings"
+  ],
+  "evidence": [
+   "test:coding/compaction_model_selection_upstream_test.go#TestCompactionCapturesModelBeforeAuthUpstream",
+   "test:coding/compaction_model_selection_upstream_test.go#TestCompactionNewModelPolicyUpstream"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "CompactionModelOverride: Go CompactionModelOverride has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#CustomEntry"
+  ],
+  "targets": [
+   "internal/codingagent/session.go#CustomEntry"
+  ],
+  "struct": {
+   "file": "internal/codingagent/session.go",
+   "type": "CustomEntry"
+  },
+  "production": [
+   "call:internal/codingagent/extension_session_read.go#AppendExtensionEntry"
+  ],
+  "evidence": [
+   "test:internal/codingagent/session_save_entry_upstream_test.go#TestSessionSavesCustomEntriesAndIncludesThemInTreeTraversal",
+   "test:internal/codingagent/session_tree_traversal_upstream_test.go#TestSessionTreeTraversalUpstream"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "CustomEntry: Go CustomEntry has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#CustomMessageEntry"
+  ],
+  "targets": [
+   "internal/codingagent/session.go#CustomMessageEntry"
+  ],
+  "struct": {
+   "file": "internal/codingagent/session.go",
+   "type": "CustomMessageEntry"
+  },
+  "production": [
+   "call:internal/codingagent/interactive_transcript.go#InteractiveMode.renderSessionEntryList"
+  ],
+  "evidence": [
+   "test:internal/codingagent/custom_message_padding_test.go#TestCustomMessageFallbackOutputPadProduction",
+   "test:internal/codingagent/custom_message_padding_test.go#TestCustomMessageOutputPadProduction"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "CustomMessageEntry: Go CustomMessageEntry has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#ModelChangeEntry"
+  ],
+  "targets": [
+   "internal/codingagent/session.go#ModelChangeEntry"
+  ],
+  "struct": {
+   "file": "internal/codingagent/session.go",
+   "type": "ModelChangeEntry"
+  },
+  "production": [
+   "call:coding/virtual_models.go#modelChangeSelection"
+  ],
+  "evidence": [
+   "test:internal/codingagent/session_tree_traversal_upstream_test.go#TestSessionTreeTraversalUpstream"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "ModelChangeEntry: Go ModelChangeEntry has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#SessionEntryBase"
+  ],
+  "targets": [
+   "internal/codingagent/session.go#SessionEntryBase"
+  ],
+  "struct": {
+   "file": "internal/codingagent/session.go",
+   "type": "SessionEntryBase"
+  },
+  "production": [
+   "call:internal/codingagent/extension_session_read.go#AppendExtensionEntry"
+  ],
+  "evidence": [
+   "test:coding/extension/builtin/codemode/session_free_upstream_test.go#TestFoldsStoreEntriesFromTheRootIgnoringMalformedData",
+   "test:coding/session_branch_summary_upstream_test.go#TestBranchSummarizationUpstream"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "SessionEntryBase: Go SessionEntryBase has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#SessionHeader"
+  ],
+  "targets": [
+   "internal/codingagent/session.go#SessionHeader"
+  ],
+  "struct": {
+   "file": "internal/codingagent/session.go",
+   "type": "SessionHeader"
+  },
+  "production": [
+   "call:internal/codingagent/session.go#NewSession"
+  ],
+  "evidence": [
+   "test:coding/session_runtime_replacement_upstream_test.go#TestRuntimeOriginalImportCollision",
+   "test:coding/cli/rpc_user_content_surrogate_test.go#TestRPCPersistedUserContentPreservesSurrogateEscapes"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "SessionHeader: Go SessionHeader has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#SessionInfoEntry"
+  ],
+  "targets": [
+   "internal/codingagent/session.go#SessionInfoEntry"
+  ],
+  "struct": {
+   "file": "internal/codingagent/session.go",
+   "type": "SessionInfoEntry"
+  },
+  "production": [
+   "call:internal/codingagent/session.go#Session.AppendSessionInfoName"
+  ],
+  "evidence": [
+   "test:internal/codingagent/session_info_test.go#TestAppendSessionInfoSanitizesPersistedNames",
+   "test:internal/codingagent/session_test.go#TestGetSessionNameLatestWins"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "SessionInfoEntry: Go SessionInfoEntry has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#PromptTemplate"
+  ],
+  "targets": [
+   "internal/codingagent/prompt_templates.go#PromptTemplate"
+  ],
+  "struct": {
+   "file": "internal/codingagent/prompt_templates.go",
+   "type": "PromptTemplate"
+  },
+  "production": [
+   "call:coding/cli/headless_resources.go#headlessCommandCatalog.extendFromExtensions"
+  ],
+  "evidence": [
+   "test:coding/cli/resource_loader_gaps_upstream_test.go#TestUpstreamResourceLoaderProjectOverUserCollisions",
+   "test:internal/codingagent/resource_extend_upstream_test.go#TestUpstreamExtendResourcesLoadsSkillsAndPromptsWithExtensionMetadata"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "PromptTemplate: Go PromptTemplate has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#LoadSkillsFromDirOptions"
+  ],
+  "targets": [
+   "internal/codingagent/skills_loader.go#LoadSkillsFromDirOptions"
+  ],
+  "struct": {
+   "file": "internal/codingagent/skills_loader.go",
+   "type": "LoadSkillsFromDirOptions"
+  },
+  "production": [
+   "call:internal/codingagent/skills_loader.go#LoadSkills"
+  ],
+  "evidence": [
+   "test:internal/codingagent/upstream_skills_test.go#TestCoreSkillMetadataUsesYAMLTypes",
+   "test:internal/codingagent/upstream_skills_test.go#TestUpstreamCoreSkillsDetectNameCollisionsAndKeepFirst"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "LoadSkillsFromDirOptions: Go LoadSkillsFromDirOptions has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#ModelScopeDiagnostic"
+  ],
+  "targets": [
+   "internal/codingagent/model_scope.go#ModelScopeDiagnostic"
+  ],
+  "struct": {
+   "file": "internal/codingagent/model_scope.go",
+   "type": "ModelScopeDiagnostic"
+  },
+  "production": [
+   "call:internal/codingagent/model_scope.go#ResolveModelScopeFromModels"
+  ],
+  "evidence": [
+   "test:coding/cli/model_resolver_patterns_upstream_test.go#TestModelResolverScopeUpstream"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "ModelScopeDiagnostic: Go ModelScopeDiagnostic has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#ResolveModelScopeResult"
+  ],
+  "targets": [
+   "internal/codingagent/model_scope.go#ResolveModelScopeResult"
+  ],
+  "struct": {
+   "file": "internal/codingagent/model_scope.go",
+   "type": "ResolveModelScopeResult"
+  },
+  "production": [
+   "call:internal/codingagent/model_scope.go#ResolveModelScopeFromModels"
+  ],
+  "evidence": [
+   "test:coding/cli/model_resolver_patterns_upstream_test.go#TestModelResolverScopeUpstream"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "ResolveModelScopeResult: Go ResolveModelScopeResult has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#ProjectTrustStoreEntry"
+  ],
+  "targets": [
+   "internal/codingagent/trust_manager.go#ProjectTrustStoreEntry"
+  ],
+  "struct": {
+   "file": "internal/codingagent/trust_manager.go",
+   "type": "ProjectTrustStoreEntry"
+  },
+  "production": [
+   "call:internal/codingagent/trust_manager.go#ProjectTrustStore.GetEntry"
+  ],
+  "evidence": [
+   "test:internal/codingagent/trust_selector_upstream_test.go#TestTrustSelectorUpstream"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "ProjectTrustStoreEntry: Go ProjectTrustStoreEntry has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#CacheWarmingStatus"
+  ],
+  "targets": [
+   "internal/codingagent/cache_warmer.go#CacheWarmingStatus"
+  ],
+  "struct": {
+   "file": "internal/codingagent/cache_warmer.go",
+   "type": "CacheWarmingStatus"
+  },
+  "production": [
+   "call:internal/codingagent/cache_warmer.go#CacheWarmer.Status"
+  ],
+  "evidence": [
+   "test:coding/session_cache_warming_test.go#TestReplaceInnerRetiresTheCacheWarmer",
+   "test:coding/session_cache_warming_test.go#TestResumedSessionWaitsForTheNextRequest"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "CacheWarmingStatus: Go CacheWarmingStatus has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#CacheWarmingDecision"
+  ],
+  "targets": [
+   "internal/codingagent/cache_warmer.go#CacheWarmingDecision"
+  ],
+  "struct": {
+   "file": "internal/codingagent/cache_warmer.go",
+   "type": "CacheWarmingDecision"
+  },
+  "production": [
+   "call:internal/codingagent/cache_warmer.go#CacheWarmer.beginRefresh"
+  ],
+  "evidence": [
+   "test:internal/codingagent/cache_warmer_test.go#TestCacheWarmingFormatsStatusAndUsageEntries",
+   "test:internal/codingagent/slash_session_cache_warming_test.go#TestSessionHandlerRendersCacheWarmingSection"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "CacheWarmingDecision: Go CacheWarmingDecision has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+ }
+]

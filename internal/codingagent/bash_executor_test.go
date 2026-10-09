@@ -17,7 +17,7 @@ func defaultShell(t *testing.T) tools.ShellConfig {
 	if runtime.GOOS == "windows" {
 		t.Skip("bash executor tests assume POSIX shell")
 	}
-	cfg, err := tools.GetShellConfig(nil)
+	cfg, err := tools.GetShellConfig("")
 	if err != nil {
 		t.Fatalf("resolve shell: %v", err)
 	}

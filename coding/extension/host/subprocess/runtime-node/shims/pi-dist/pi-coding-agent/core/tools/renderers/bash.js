@@ -31,7 +31,7 @@ function formatShellCall(args, prompt) {
     const commandDisplay = command === null ? invalidArgText(theme) : command ? command : theme.fg("toolOutput", "...");
     return theme.fg("toolTitle", theme.bold(`${prompt} ${commandDisplay}`)) + timeoutSuffix;
 }
-function rebuildBashResultRenderComponent(component, result, options, showImages, startedAt, endedAt) {
+function rebuildBashResultRenderComponent(component, result, options, showImages, startedAt, endedAt, durationMs) {
     component.clear();
     let output = getTextOutput(result, showImages).trim();
     const truncation = result.details?.truncation;
@@ -76,7 +76,12 @@ function rebuildBashResultRenderComponent(component, result, options, showImages
         }
         component.addChild(new Text(`\n${theme.fg("warning", `[${warnings.join(". ")}]`)}`, 0, 0));
     }
-    if (startedAt !== undefined) {
+    // A final result's recorded duration wins: it is monotonic and survives reloads. The renderer's own clock is the
+    // fallback for live progress and for results stored without one.
+    if (!options.isPartial && durationMs !== undefined) {
+        component.addChild(new Text(`\n${theme.fg("muted", `Took ${formatDuration(durationMs)}`)}`, 0, 0));
+    }
+    else if (startedAt !== undefined) {
         const label = options.isPartial ? "Elapsed" : "Took";
         const endTime = endedAt ?? Date.now();
         component.addChild(new Text(`\n${theme.fg("muted", `${label} ${formatDuration(endTime - startedAt)}`)}`, 0, 0));
@@ -108,7 +113,7 @@ export function createShellRenderers(prompt) {
                 }
             }
             const component = context.lastComponent ?? new Container();
-            rebuildBashResultRenderComponent(component, result, options, context.showImages, state.startedAt, state.endedAt);
+            rebuildBashResultRenderComponent(component, result, options, context.showImages, state.startedAt, state.endedAt, context.durationMs);
             component.invalidate();
             return component;
         },

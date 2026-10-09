@@ -1,0 +1,23 @@
+// Pi 1.1.0 CancellableLoader.dispose() (cancellable-loader.ts:37) stops the animation without aborting.
+import assert from 'node:assert/strict';
+import { readFileSync, realpathSync } from 'node:fs';
+import { join } from 'node:path';
+import { pathToFileURL } from 'node:url';
+const root = process.env.PI_PACKAGE_ROOT ?? realpathSync('extensions/sdk-ts/node_modules/@earendil-works/pi-coding-agent');
+assert.equal(JSON.parse(readFileSync(join(root, 'package.json'), 'utf8')).version, '1.1.0');
+const dist = join(root, 'node_modules/@earendil-works/pi-tui/dist');
+const { CancellableLoader } = await import(pathToFileURL(join(dist, 'components/cancellable-loader.js')).href);
+const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
+const ui = { requestRender() {} };
+const loader = new CancellableLoader(ui, text => text, text => text, 'working');
+let aborts = 0;
+loader.onAbort = () => { aborts++; };
+const first = loader.render(40).join('\n');
+await sleep(250);
+const animated = loader.render(40).join('\n') !== first;
+loader.dispose();
+const stopped = loader.render(40).join('\n');
+await sleep(250);
+const frozen = loader.render(40).join('\n') === stopped;
+loader.dispose();
+process.stdout.write(JSON.stringify({ animated, frozenAfterDispose: frozen, aborted: loader.aborted, onAbortCalls: aborts }) + '\n');

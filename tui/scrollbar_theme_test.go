@@ -31,7 +31,8 @@ func loadThemeBody(t *testing.T, body string) *Theme {
 		t.Fatal(err)
 	}
 	colors := strings.TrimSuffix(strings.TrimPrefix(string(fields.Colors), "{"), "}")
-	theme, err := LoadThemeFile(writeThemeFile(t, completeThemeJSON(t, fields.Name, colors)))
+	// The expectations are truecolor SGR sequences, so the mode is explicit instead of the detected one.
+	theme, err := LoadThemeFromPath(writeThemeFile(t, completeThemeJSON(t, fields.Name, colors)), TerminalColorModeTrueColor)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -48,7 +49,7 @@ func TestFullscreenThemeTokensFallBackWhenOmitted(t *testing.T) {
 		"scrollbarThumb": "text",
 		"thinkingMax":    "thinkingXhigh",
 	} {
-		if got, want := theme.Fg(token), theme.Fg(fallback); got != want || got == "" {
+		if got, want := theme.GetFgAnsi(token), theme.GetFgAnsi(fallback); got != want || got == "" {
 			t.Fatalf("%s fg = %q, want %s fallback %q", token, got, fallback, want)
 		}
 	}
@@ -58,10 +59,10 @@ func TestFullscreenThemeTokensFallBackWhenOmitted(t *testing.T) {
 // explicitly configured scrollbar colors".
 func TestFullscreenThemeUsesExplicitScrollbarColors(t *testing.T) {
 	theme := loadThemeBody(t, `{"name":"custom-scrollbar-theme","colors":{`+fullscreenThemeBaseColors+`,"scrollbarTrack":"#654321","scrollbarThumb":"#123456"}}`)
-	if got := theme.Fg("scrollbarTrack"); got != "\x1b[38;2;101;67;33m" {
+	if got := theme.GetFgAnsi("scrollbarTrack"); got != "\x1b[38;2;101;67;33m" {
 		t.Fatalf("scrollbarTrack fg = %q", got)
 	}
-	if got := theme.Fg("scrollbarThumb"); got != "\x1b[38;2;18;52;86m" {
+	if got := theme.GetFgAnsi("scrollbarThumb"); got != "\x1b[38;2;18;52;86m" {
 		t.Fatalf("scrollbarThumb fg = %q", got)
 	}
 }
@@ -70,10 +71,10 @@ func TestFullscreenThemeUsesExplicitScrollbarColors(t *testing.T) {
 // existing selection and text colors for search highlights".
 func TestFullscreenThemeSearchHighlightsFallBack(t *testing.T) {
 	theme := loadThemeBody(t, `{"name":"legacy-search-theme","colors":{`+fullscreenThemeBaseColors+`}}`)
-	if got, want := theme.Bg("searchMatchBg"), theme.Bg("selectedBg"); got != want || got == "" {
+	if got, want := theme.GetBgAnsi("searchMatchBg"), theme.GetBgAnsi("selectedBg"); got != want || got == "" {
 		t.Fatalf("searchMatchBg bg = %q, want selectedBg %q", got, want)
 	}
-	if got, want := theme.Fg("searchMatchText"), theme.Fg("text"); got != want || got == "" {
+	if got, want := theme.GetFgAnsi("searchMatchText"), theme.GetFgAnsi("text"); got != want || got == "" {
 		t.Fatalf("searchMatchText fg = %q, want text %q", got, want)
 	}
 }
@@ -82,10 +83,10 @@ func TestFullscreenThemeSearchHighlightsFallBack(t *testing.T) {
 // explicitly configured search highlight colors".
 func TestFullscreenThemeUsesExplicitSearchHighlightColors(t *testing.T) {
 	theme := loadThemeBody(t, `{"name":"custom-search-theme","colors":{`+fullscreenThemeBaseColors+`,"searchMatchBg":"#112233","searchMatchText":"#223344"}}`)
-	if got := theme.Bg("searchMatchBg"); got != "\x1b[48;2;17;34;51m" {
+	if got := theme.GetBgAnsi("searchMatchBg"); got != "\x1b[48;2;17;34;51m" {
 		t.Fatalf("searchMatchBg bg = %q", got)
 	}
-	if got := theme.Fg("searchMatchText"); got != "\x1b[38;2;34;51;68m" {
+	if got := theme.GetFgAnsi("searchMatchText"); got != "\x1b[38;2;34;51;68m" {
 		t.Fatalf("searchMatchText fg = %q", got)
 	}
 }
@@ -100,7 +101,7 @@ func TestFullscreenThemeFallbacksReachANSIPaletteAndColorKeys(t *testing.T) {
 		if !slices.Contains(theme.ColorKeys(), fallback.token) {
 			t.Fatalf("ColorKeys omits %s: %v", fallback.token, theme.ColorKeys())
 		}
-		if got, want := theme.Colors()[fallback.token], theme.Colors()[fallback.from]; got != want {
+		if got, want := theme.GetResolvedThemeColors()[fallback.token], theme.GetResolvedThemeColors()[fallback.from]; got != want {
 			t.Fatalf("Colors[%s] = %q, want %s fallback %q", fallback.token, got, fallback.from, want)
 		}
 		if fg[fallback.token] != fg[fallback.from] || bg[fallback.token] != bg[fallback.from] {
@@ -128,7 +129,7 @@ func TestScrollbarThumbExplicitKeepsColorKeyPosition(t *testing.T) {
 // empty scrollbarThumb is retained, only omission falls back.
 func TestScrollbarThumbExplicitEmptyIsRetained(t *testing.T) {
 	theme := loadThemeBody(t, `{"name":"empty-scrollbar-theme","colors":{`+fullscreenThemeBaseColors+`,"scrollbarThumb":""}}`)
-	if got := theme.Fg("scrollbarThumb"); got != SGRFgReset {
+	if got := theme.GetFgAnsi("scrollbarThumb"); got != SGRFgReset {
 		t.Fatalf("explicit empty scrollbarThumb fg = %q, want terminal-default reset %q (not the text fallback)", got, SGRFgReset)
 	}
 }

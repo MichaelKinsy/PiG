@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"io"
 	"net"
+	"os"
 	"runtime"
 	"sync"
 	"sync/atomic"
@@ -200,6 +201,7 @@ func TestPendingWaitForIdleDoesNotBlockLaterAbort(t *testing.T) {
 	})
 }
 
+// Pi: packages/coding-agent/src/core/extensions/types.ts:2198 (CommandActions.waitForIdle).
 func TestBindCommandActionsWaitForIdleInitiatesBeforeItWaits(t *testing.T) {
 	bridge := NewUIBridge(func() {})
 	returned := false
@@ -327,6 +329,7 @@ func (u *gatedDialogUI) Select(ctx context.Context, _ string, _ []string, _ exte
 // that handler answers, so a call that starts a lane must not wait for a
 // waitForIdle that another request has pending. Upstream runs setStatus at
 // once.
+// Pi: packages/coding-agent/src/core/extensions/types.ts:2198 (CommandActions.waitForIdle).
 func TestPendingWaitForIdleDoesNotGateAnotherRequestsCall(t *testing.T) {
 	for _, form := range []string{"legacy", "context", "unmarked"} {
 		t.Run(form, func(t *testing.T) { pendingWaitForIdleDoesNotGate(t, form) })
@@ -398,5 +401,29 @@ func TestOnlyDialogCallsGateOtherLanes(t *testing.T) {
 		if gatesOtherLanes(method) {
 			t.Errorf("%s gates other lanes", method)
 		}
+	}
+}
+
+// A factory's pi.exec before a session binds the exec action reports initiation once, after ExecCommand attempted the
+// spawn, as the bound exec action does; reporting it before would release the lane before the command started.
+func TestUnboundExecReportsInitiationAfterSpawn(t *testing.T) {
+	host := NewHost(t.TempDir())
+	defer host.Shutdown("test done")
+	var marks int
+	ctx := extension.WithCallInitiation(t.Context(), func() { marks++ })
+	args, err := json.Marshal(map[string]any{"command": os.Args[0], "args": []string{"-test.run=^$"}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	result, err := host.handleUnboundExec(ctx, &CallPayload{Method: "exec", Args: args})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var res extension.ExecResult
+	if err := json.Unmarshal(result.Result, &res); err != nil || res.Code != 0 {
+		t.Fatalf("exec result = %s, %v; want code 0", result.Result, err)
+	}
+	if marks != 1 {
+		t.Fatalf("initiation reported %d times; want once, after the spawn", marks)
 	}
 }

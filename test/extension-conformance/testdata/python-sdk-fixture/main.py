@@ -4,14 +4,99 @@ from __future__ import annotations
 import dataclasses
 import json
 import pathlib
+import struct
 import sys
 import threading
 import time
+import zlib
+
+# kit-kinds' image, a 1×1 PNG every SDK fixture embeds byte for byte.
+KIT_KINDS_PNG = "89504e470d0a1a0a0000000d49484452000000010000000108060000001f15c48900000010494441547801010500faff002a005fff026a01892888e8cd0000000049454e44ae426082"
 
 ROOT = pathlib.Path(__file__).resolve().parents[4]
 sys.path.insert(0, str(ROOT / "extensions" / "sdk-py"))
 
 import pig_sdk  # noqa: E402
+from pig_sdk import kit  # noqa: E402
+
+
+def kit_probe_view() -> kit.View:
+    """The component kit's conformance view (D107,
+    docs/plan/extension-component-kit.md §10)."""
+    items = [kit.SelectItem(f"k{i}", f"Track {i}", f"Artist {i}") for i in range(5)]
+    return kit.View(
+        kit.Container([
+            kit.DynamicBorder("accent"),
+            kit.Text("Kit probe", 2, 0, bg="customMessageBg"),
+            kit.Markdown("- one\n- **two**", 1, 0),
+            kit.HStack(
+                [kit.StackEntry(kit.TruncatedText("left side", 0, 0), grow=1), kit.StackEntry(kit.TruncatedText("right", 0, 0), grow=1)],
+                gap=1,
+            ),
+            kit.Spacer(1),
+            kit.SelectList("kit-tracks", items, 3, selected_index=2),
+        ]),
+        focus="kit-tracks",
+        theme={"accent": "#d75f00"},
+    )
+
+
+class KitProbe:
+    """kit-probe's component: logs every input and view event and closes on
+    select with the log joined by ","."""
+
+    def __init__(self) -> None:
+        self.log: list[str] = []
+
+    def view(self, _width: int) -> kit.View:
+        return kit_probe_view()
+
+    def handle_input(self, data: str) -> pig_sdk.RemoteComponentResult:
+        self.log.append("input:" + data)
+        return pig_sdk.RemoteComponentResult()
+
+    def handle_view_event(self, event: kit.Event) -> pig_sdk.RemoteComponentResult:
+        self.log.append(f"{event.type}:{event.index}:{event.item.value if event.item else ''}")
+        if event.type == kit.SELECT:
+            return pig_sdk.RemoteComponentResult(done=True, value=",".join(self.log))
+        return pig_sdk.RemoteComponentResult()
+
+
+class MouseProbe:
+    """The extension mouse row's component: logs every mouse event it
+    receives, all of its fields, and closes on a click with the log joined by
+    ","."""
+
+    def __init__(self) -> None:
+        self.log: list[str] = []
+
+    def render(self, _width: int) -> list[str]:
+        return ["mouse probe", "row 1", "row 2", "row 3"]
+
+    def handle_input(self, _data: str) -> pig_sdk.RemoteComponentResult:
+        return pig_sdk.RemoteComponentResult()
+
+    def handle_mouse(self, event: pig_sdk.MouseEvent) -> pig_sdk.RemoteComponentResult:
+        mods = "".join(name for on, name in ((event.shift, "S"), (event.alt, "A"), (event.ctrl, "C")) if on)
+        self.log.append(
+            f"{event.type}/{event.button}/{event.x},{event.y}/{event.screen_x},{event.screen_y}/"
+            f"{event.width}x{event.height}/w{event.wheel_delta}/c{event.click_count}/{mods}"
+        )
+        if event.type == "click":
+            return pig_sdk.RemoteComponentResult(done=True, value=",".join(self.log))
+        return pig_sdk.RemoteComponentResult()
+
+
+def kit_image_png(n: int) -> bytes:
+    """Image n of kit-images: a 1×1 RGBA PNG whose pixel encodes n, so each n
+    has its own bytes and ref."""
+
+    def chunk(kind: bytes, data: bytes) -> bytes:
+        return struct.pack(">I", len(data)) + kind + data + struct.pack(">I", zlib.crc32(kind + data))
+
+    pixel = bytes([0, n & 0xFF, (n >> 8) & 0xFF, 0x5F, 0xFF])
+    header = struct.pack(">IIBBBBB", 1, 1, 8, 6, 0, 0, 0)
+    return b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", header) + chunk(b"IDAT", zlib.compress(pixel)) + chunk(b"IEND", b"")
 
 
 class FocusedList:
@@ -82,6 +167,35 @@ class TimerFocused:
         self.disposed = True
 
 
+class ConformanceBashOperations:
+    """The BashOperations every SDK fixture returns for the user_bash command "operations" (TestConformance_UserBashOperationsRunInTheExtension)."""
+
+    def exec(self, command: str, cwd: str, options: pig_sdk.BashExecOptions) -> int | None:
+        if command == "echo":
+            options.on_data(f"cmd:{command}\n".encode())
+            options.on_data(f"cwd:{cwd}\n".encode())
+            if options.env is not None and not options.env:
+                options.on_data(b"env-empty\n")
+            for name in sorted(options.env or {}):
+                options.on_data(f"env:{name}={options.env[name]}\n".encode())
+            if options.timeout is not None:
+                options.on_data(f"timeout:{options.timeout:g}\n".encode())
+            return 3
+        if command == "chunks":
+            for chunk in (b"a", b"b", b"c"):
+                options.on_data(chunk)
+            return None
+        if command == "binary":
+            options.on_data(bytes([0xFF, 0x00, 0x80]))
+            return 0
+        if command == "wait":
+            options.on_data(b"waiting")
+            options.signal.wait()
+            options.on_data(b"stopped")
+            raise RuntimeError("aborted")
+        raise RuntimeError(f"exec failed: {command}")
+
+
 def conformance_login_definition() -> pig_sdk.LoginDefinition:
     return pig_sdk.LoginDefinition(
         brand=["A" * 41 for _ in range(5)],
@@ -125,6 +239,40 @@ def new_extension() -> pig_sdk.Extension:
         ext.tool("schema-invalid", "Must not register", None, lambda ctx, args: {"content": "bad"})
     except ValueError as error:
         schema_rejected = str(error) == 'Tool "schema-invalid" registered by extension "python-sdk-fixture" must define an object parameter schema.'
+    class ConformanceEditor(pig_sdk.EditorComponent):
+        """Swallows "q", rewrites "a" to "A", upper-cases the host's setText, and frames super.render."""
+
+        def handle_input(self, data):
+            if data == "q":
+                return
+            if data == "L":
+                super().set_text("raw:lines=" + "|".join(self.base.get_lines()))
+                return
+            super().handle_input("A" if data == "a" else data)
+
+        def set_text(self, text):
+            super().set_text(text if text.startswith("raw:") else text.upper())
+
+        def render(self, width):
+            return ["[custom editor]"] + super().render(width)
+
+    class EmbeddingEditor(ConformanceEditor):
+        embed_working_status = True
+
+    def eager_editor(ctx, _args):
+        def factory(base):
+            try:
+                base.set_text("eager")
+                ctx.notify("eager:" + base.get_text(), "info")
+            except Exception as exc:  # noqa: BLE001
+                ctx.notify("eager-error:" + str(exc), "info")
+            return ConformanceEditor(base)
+
+        ctx.set_editor_component(factory)
+
+    ext.command("editor-install-eager", "Install a custom editor that calls super in its factory", eager_editor)
+    ext.command("editor-install-embed", "Install a custom editor that embeds the working status", lambda ctx, _args: ctx.set_editor_component(EmbeddingEditor))
+    ext.command("editor-install", "Install a custom editor component", lambda ctx, _args: ctx.set_editor_component(ConformanceEditor))
     ext.command("schema-probe", "Report schema rejection", lambda ctx, _args: ctx.notify("schema-rejected:" + str(schema_rejected).lower(), "info"))
     for name, kind, value in [("flag-true", "boolean", True), ("flag-false", "boolean", False), ("flag-string", "string", "default"), ("flag-empty", "string", ""), ("flag-unset", "string", None)]:
         ext.flag(name, flag_type=kind, default=value)
@@ -169,6 +317,28 @@ def new_extension() -> pig_sdk.Extension:
                 ctx.notify(f"rejected:{error}", "info")
 
     ext.command("exec-reject-probe", "Report exec outcomes", exec_reject_probe)
+    ext.command("thinking-model", "Read the thinking level and switch the model", lambda ctx, _args: (ctx.set_thinking_level("high"), ctx.notify(json.dumps([ctx.get_thinking_level(), ctx.set_model("probe/model")[0]], separators=(",", ":")), "info"))[-1])
+    ext.command("active_tools_set", "Set the active tools to the comma-separated names", lambda ctx, args: ctx.set_active_tools(args.strip().split(",")))
+    def session_actions_unbound(ctx, _args):
+        parts = []
+        for name, call in (("new", lambda: ctx.new_session()), ("fork", lambda: ctx.fork("entry")), ("navigate", lambda: ctx.navigate_tree("entry")), ("switch", lambda: ctx.switch_session("/s.jsonl"))):
+            try:
+                parts.append("%s=%s" % (name, str(call()["cancelled"]).lower()))
+            except Exception as error:
+                parts.append("%s=error:%s" % (name, error))
+        try:
+            ctx.reload()
+            parts.append("reload=ok")
+        except Exception as error:
+            parts.append("reload=error:%s" % error)
+        ctx.notify("unbound:" + ",".join(parts), "info")
+
+    ext.command("session_actions_unbound", "Report what unbound session actions answer", session_actions_unbound)
+    ext.command("active_tools_get", "Report the active tools", lambda ctx, _args: ctx.notify("active_tools:%s" % ",".join(ctx.get_active_tools()), "info"))
+    # provider_probe_register and provider_probe_unregister register and unregister a plain provider after the extension connected.
+    ext.command("provider_probe_register", "Register a provider with one model", lambda ctx, _args: ext.register_provider("conformance-probe", json.loads(r'''{"baseUrl":"https://probe.invalid/v1","api":"openai-completions","apiKey":"probe-key","models":[{"id":"probe-model","name":"Probe Model","reasoning":false,"input":["text"],"cost":{"input":0,"output":0,"cacheRead":0,"cacheWrite":0},"contextWindow":1000,"maxTokens":100}]}''')))
+    ext.command("provider_probe_unregister", "Unregister the provider", lambda ctx, _args: ext.unregister_provider("conformance-probe"))
+    ext.command("commands-probe", "Read the host's slash commands", lambda ctx, _args: ctx.notify(json.dumps([[c["name"], c["source"], c.get("description", "")] for c in ctx.get_commands() if c["name"] == "conformance-listed"], separators=(",", ":")), "info"))
     ext.command("session-identity", "Read context identity accessors", lambda ctx, _args: ctx.notify(json.dumps([ctx.get_session_id(), ctx.get_session_file(), ctx.get_leaf_id(), ctx.get_session_name()]), "info"))
     ext.command("registry-session", "Read registry and session facades", registry_session)
     ext.message_renderer(
@@ -178,10 +348,22 @@ def new_extension() -> pig_sdk.Extension:
             % (message.get("content", ""), str(bool(options.get("expanded"))).lower(), width)
         ],
     )
-    ext.markdown_transformer(
-        lambda markdown, context: "md:%s:%s:streaming=%s:width=%d"
-        % (markdown, context.get("messageType", ""), str(bool(context.get("isStreaming"))).lower(), int(context.get("availableWidth") or 0))
-    )
+    ext.message_view_renderer("kit-message", lambda _ctx, _message, _options, _width: kit_probe_view())
+    def transform_markdown(markdown, context):
+        # "trace:<dir>:<name>" records the body's entry in <dir>/trace; the body named "first" returns only once <dir>/release exists. newline="" keeps "\n" from becoming CRLF on Windows.
+        if markdown.startswith("trace:"):
+            # The name is the last field: a Windows <dir> contains a drive colon.
+            directory, name = markdown[len("trace:"):].rsplit(":", 1)
+            with open(directory + "/trace", "a", newline="") as trace:
+                trace.write("entered %s\n" % name)
+            while name == "first" and not pathlib.Path(directory + "/release").exists():
+                time.sleep(0.01)
+            if name == "first":
+                with open(directory + "/trace", "a", newline="") as trace:
+                    trace.write("returned first\n")
+        return "md:%s:%s:streaming=%s:width=%d" % (markdown, context.get("messageType", ""), str(bool(context.get("isStreaming"))).lower(), int(context.get("availableWidth") or 0))
+
+    ext.markdown_transformer(transform_markdown)
     def resolved_line(prefix: str, tool: str):
         return lambda _ctx, args, _render, _width: ["%s:%s:%s" % (prefix, tool, args.get("q"))]
 
@@ -232,8 +414,8 @@ def new_extension() -> pig_sdk.Extension:
 
     def render_probe_result(_ctx, result, options, render, width):
         return [
-            "toolrender:result:%s:%s:expanded=%s:calls=%s:width=%d"
-            % (result["content"][0]["text"], result["details"]["k"], str(bool(options.get("expanded"))).lower(), render.state.get("calls"), width)
+            "toolrender:result:%s:%s:expanded=%s:calls=%s:width=%d:duration=%s"
+            % (result["content"][0]["text"], result["details"]["k"], str(bool(options.get("expanded"))).lower(), render.state.get("calls"), width, "none" if render.duration_ms is None else render.duration_ms)
         ]
 
     ext.tool_renderers("render_probe", render_call=render_probe_call, render_result=render_probe_result, render_shell="self")
@@ -259,10 +441,17 @@ def new_extension() -> pig_sdk.Extension:
         abort_observed[0] = True
         return {"content": "aborted"}
 
+    # hang_tool ignores its abort signal for longer than the host's abort grace period (D111).
+    def hang_tool(ctx, _params):
+        ctx.on_update({"content": [{"type": "text", "text": "waiting"}]})
+        time.sleep(8)
+        return {"content": "late"}
+
     ext.tool("update_tool", "Stream two partial results", {"type": "object", "properties": {}}, update_tool)
     ext.tool("ordered_details", "Return details whose members are not in alphabetical order", {"type": "object", "properties": {}}, ordered_details)
     ext.tool("ordered_result", "Return a result whose members are not in the declared order", {"type": "object", "properties": {}}, ordered_result)
     ext.tool("abort_tool", "Wait for the abort signal", {"type": "object", "properties": {}}, abort_tool)
+    ext.tool("hang_tool", "Ignore the abort signal", {"type": "object", "properties": {}}, hang_tool)
     ext.command(
         "abort_probe",
         "Report whether abort_tool saw its abort signal",
@@ -406,6 +595,96 @@ def new_extension() -> pig_sdk.Extension:
 
     ext.command("model-stream-probe", "Exercise model streaming", model_stream_probe)
 
+    def model_stream_callback_probe(ctx: pig_sdk.Context, _args: str) -> None:
+        model = {"provider": "conformance", "id": "declared", "modelId": "declared", "api": "openai-responses"}
+        request = {"systemPrompt": "callbacks", "messages": [{"role": "user", "content": "hello", "timestamp": 1}]}
+        seen: dict[str, Any] = {}
+
+        def on_payload(payload: Any, callback_model: dict[str, Any]) -> Any:
+            seen["payload"] = payload
+            seen["model"] = callback_model.get("id")
+            return {**payload, "mark": "on-payload"}
+
+        def on_response(response: dict[str, Any], _callback_model: dict[str, Any]) -> None:
+            seen["response"] = response
+
+        def transform_headers(headers: dict[str, Any], _callback_model: dict[str, Any]) -> dict[str, Any]:
+            return {**headers, "x-transformed": "yes"}
+
+        stream = ctx.model_registry.stream(model, request, {"onPayload": on_payload, "onResponse": on_response, "transformHeaders": transform_headers})
+        if stream.result()["stopReason"] != "stop":
+            raise RuntimeError("callback stream did not stop")
+        if (seen.get("payload") or {}).get("original") is not True or seen.get("model") != "declared":
+            raise RuntimeError(f"onPayload saw {seen}")
+        response = seen.get("response") or {}
+        if response.get("status") != 201 or (response.get("headers") or {}).get("x-upstream") != "seen":
+            raise RuntimeError(f"onResponse saw {response}")
+        if ctx.model_registry.stream(model, request, {}).result()["stopReason"] != "stop":
+            raise RuntimeError("plain stream did not stop")
+        ctx.notify("model-callbacks=ok", "info")
+
+    class HandleProbeComponent:
+        def render(self, width: int) -> list[str]:
+            return ["overlay"]
+
+        def handle_input(self, data: str) -> pig_sdk.RemoteComponentResult:
+            return pig_sdk.RemoteComponentResult(done=data == "q", value="closed" if data == "q" else None)
+
+    def overlay_handle_probe(ctx: pig_sdk.Context, _args: str) -> None:
+        failures: list[str] = []
+
+        def expect(label: str, actual: Any, expected: Any) -> None:
+            if actual != expected:
+                failures.append(f"{label}: {actual!r} != {expected!r}")
+
+        def on_handle(handle: pig_sdk.OverlayHandle) -> None:
+            expect("initial focused", handle.is_focused(), True)
+            expect("initial hidden", handle.is_hidden(), False)
+            expect("initial bounds", handle.get_bounds(), {"row": 3, "col": 4, "width": 20, "height": 5})
+            handle.focus()
+            expect("focus", handle.is_focused(), True)
+            handle.set_hidden(True)
+            expect("hidden", [handle.is_hidden(), handle.is_focused(), handle.get_bounds()], [True, False, None])
+            handle.set_hidden(False)
+            expect("shown", [handle.is_hidden(), handle.is_focused()], [False, False])
+            handle.focus()
+            expect("refocus", handle.is_focused(), True)
+            handle.unfocus()
+            expect("unfocus", handle.is_focused(), False)
+            handle.unfocus(None)
+
+        ctx.custom(HandleProbeComponent(), {"overlay": True, "onHandle": on_handle})
+        if failures:
+            raise RuntimeError("; ".join(failures))
+        ctx.notify("overlay-handle=ok", "info")
+
+    ext.command("overlay-handle-probe", "Exercise the overlay handle ui.custom hands to on_handle", overlay_handle_probe)
+
+    def model_stream_fetch_probe(ctx: pig_sdk.Context, _args: str) -> None:
+        model = {"provider": "conformance", "id": "declared", "modelId": "declared", "api": "openai-responses"}
+        request = {"systemPrompt": "fetch", "messages": [{"role": "user", "content": "hello", "timestamp": 1}]}
+        seen: dict[str, Any] = {}
+
+        def fetch(call: dict[str, Any]) -> dict[str, Any]:
+            seen["url"] = call["url"]
+            seen["method"] = call["method"]
+            seen["host"] = (call["headers"].get("X-Host") or [None])[0]
+            seen["body"] = call["body"].decode()
+            return {"status": 207, "statusText": "Answered", "headers": {"x-sdk-fetch": "answered"}, "body": bytes(index % 251 for index in range(70000))}
+
+        stream = ctx.model_registry.stream(model, request, {"fetch": fetch})
+        if stream.result()["stopReason"] != "stop":
+            raise RuntimeError("fetch stream did not stop")
+        if seen != {"url": "https://fetch.invalid/v1/chat?x=1", "method": "POST", "host": "1", "body": "ping-body"}:
+            raise RuntimeError(f"fetch saw {seen}")
+        if ctx.model_registry.stream(model, request, {}).result()["stopReason"] != "stop":
+            raise RuntimeError("plain stream did not stop")
+        ctx.notify("model-fetch=ok", "info")
+
+    ext.command("model-stream-fetch-probe", "Exercise the fetch option of model_registry.stream", model_stream_fetch_probe)
+
+    ext.command("model-stream-callback-probe", "Exercise the provider request callbacks of model_registry.stream", model_stream_callback_probe)
+
     def command_error(ctx: pig_sdk.Context, args: str) -> None:
         raise RuntimeError("command exploded")
 
@@ -427,6 +706,19 @@ def new_extension() -> pig_sdk.Extension:
             ctx.set_status("burst", str(i))
 
     ext.command("status_burst", "Set one status repeatedly without awaiting", status_burst)
+    event_probe_off: list = []
+
+    def event_probe_subscribe(ctx, args):
+        event_probe_off.append(
+            ext.on_event("turn_end", lambda hctx, data: hctx.notify("event_probe:%s" % data.get("messageEntryId", ""), "info"))
+        )
+
+    def event_probe_unsubscribe(ctx, args):
+        while event_probe_off:
+            event_probe_off.pop()()
+
+    ext.command("event_probe_subscribe", "Subscribe to turn_end after connecting", event_probe_subscribe)
+    ext.command("event_probe_unsubscribe", "Remove the turn_end handler registered after connecting", event_probe_unsubscribe)
     ext.command(
         "report_geometry",
         "Report observed terminal geometry",
@@ -478,8 +770,90 @@ def new_extension() -> pig_sdk.Extension:
     ext.command("send_message_default", "Send a custom message with default options", lambda ctx, args: ctx.send_message("notice", "default"))
     ext.command("send_message_no_turn", "Send a custom message that never starts a turn", lambda ctx, args: ctx.send_message("notice", "no-turn", trigger_turn=False))
     ext.command("send_user_message", "Send a user message", lambda ctx, args: ctx.send_user_message(json.loads(args) if args else "hello-user", "followUp"))
+    ext.command("settings_probe", "Report the effective settings", lambda ctx, args: ctx.notify("settings_probe:" + json.dumps(ctx.get_settings(), separators=(",", ":")), "info"))
+
+    def model_set(ctx, args):
+        ok, _error = ctx.set_model(args.strip())
+        ctx.notify("model_set:%s" % str(ok).lower(), "info")
+
+    ext.command("model_set", "Switch the model", model_set)
+    ext.command("thinking_set", "Set the thinking level", lambda ctx, args: ctx.set_thinking_level(args.strip()))
+    ext.command("thinking_get", "Report the thinking level", lambda ctx, args: ctx.notify("thinking_get:%s" % ctx.get_thinking_level(), "info"))
     ext.command("set_session_name", "Set the session name", lambda ctx, args: ctx.set_session_name("conformance-session"))
+
+    def host_state_probe(ctx: pig_sdk.Context, _args: str) -> None:
+        commands = ["|".join([c["name"], c.get("description", ""), c["source"], c["sourceInfo"]["path"], c["sourceInfo"]["scope"]]) for c in ctx.get_commands()]
+        ctx.notify(f"getThinkingLevel={ctx.get_thinking_level()};getCommands={','.join(commands)}", "info")
+
+    ext.command("host_state_probe", "Report the thinking level and the session commands", host_state_probe)
+
+    def set_model(ctx: pig_sdk.Context, args: str) -> None:
+        ok, error = ctx.set_model(args)
+        if error:
+            raise RuntimeError(error)
+        ctx.notify(f"setModel={'true' if ok else 'false'}", "info")
+
+    ext.command("set_model", "Switch to the model in the arguments", set_model)
     ext.command("append_entry", "Append a custom entry", lambda ctx, args: ctx.append_entry("conformance-entry", "hello-entry"))
+
+    def event_field_probe(ctx, args):
+        name, field = args.split()
+        ext.on_event(name, lambda hctx, data: hctx.notify("event_field:%s.%s=%s" % (name, field, json.dumps(data[field], separators=(",", ":")) if field in data else "absent"), "info"))
+
+    ext.command("event_field_probe", "Report a field of the events named by the argument `<event> <field>`", event_field_probe)
+    event_probe_on_offs: dict = {}
+
+    event_probe_results: dict = {}
+
+    def event_probe_result(ctx, args):
+        name, _, raw = args.strip().partition(" ")
+        event_probe_results.setdefault(name, []).append(json.loads(raw))
+
+    def event_probe_on(ctx, args):
+        name = args.strip()
+
+        def probe(hctx, data):
+            hctx.notify("event_probe_on:%s" % name, "info")
+            hctx.notify("event_payload:%s:%s" % (name, json.dumps(data)), "info")
+            # The event as the host sent it, for the tests that compare a payload field with the Go reference's.
+            hctx.notify("event_probe_data:%s:%s" % (name, json.dumps(data, separators=(",", ":"))), "info")
+            # mcp_servers_change carries every registered server (types.ts:699-709): report their names, which only the host's registry knows.
+            if isinstance(data, dict) and isinstance(data.get("servers"), list):
+                hctx.notify("event_probe_servers:%s" % ",".join(str(s.get("name")) for s in data["servers"]), "info")
+            queued = event_probe_results.get(name)
+            return queued.pop(0) if queued else None
+
+        off = ext.on_event(name, probe)
+        event_probe_on_offs.setdefault(name, []).append(off)
+
+    def event_probe_on_off(ctx, args):
+        for off in event_probe_on_offs.pop(args.strip(), []):
+            off()
+
+    ext.command("event_probe_result", "Queue the JSON result the next event_probe_on handler call of an event returns", event_probe_result)
+    ext.command("event_probe_on", "Subscribe to the event named by the argument", event_probe_on)
+
+    def event_result_probe(ctx, args):
+        # Subscribe to the event named first with a handler that returns the JSON that follows: the result an SDK extension gives the host.
+        name, _, raw = args.strip().partition(" ")
+        result = json.loads(raw)
+        ext.on_event(name, lambda hctx, data: result)
+
+    ext.command("event_result_probe", "Subscribe to an event with a handler that returns the given JSON", event_result_probe)
+    ext.command("event_probe_off", "Unsubscribe the event_probe_on handlers of the event named by the argument", event_probe_on_off)
+    def event_payload_probe(ctx, args):
+        name = args.strip()
+        ext.on_event(name, lambda hctx, data: hctx.notify("event_payload:%s:%s" % (name, json.dumps(data)), "info"))
+
+    ext.command("event_payload_probe", "Subscribe and report the payload of the event named by the argument", event_payload_probe)
+    ext.command("set_label", "Set an entry label", lambda ctx, args: ctx.set_label("label-entry", "conformance-label"))
+    # label_probe labels the entry named first with the rest of the arguments: an entry the host's Session holds.
+    def label_probe(ctx, args):
+        parts = args.strip().split(" ", 1)
+        ctx.set_label(parts[0], parts[1] if len(parts) > 1 else "")
+
+    ext.command("label_probe", "Label the entry named first", label_probe)
+    ext.shortcut("ctrl+alt+y", "Conformance shortcut", lambda ctx: None)
 
     def ui_availability(ctx: pig_sdk.Context, args: str) -> None:
         selected, _ = ctx.select("Pick", ["first", "second"])
@@ -570,6 +944,16 @@ def new_extension() -> pig_sdk.Extension:
 
     ext.command("signal-poll", "Poll ctx.signal until it is live or none", signal_poll)
     ext.command("signal-probe", "Report ctx.signal", signal_probe)
+    # Upstream ctx.cwd, ctx.mode, ctx.hasUI and ctx.model throw the stale message after invalidation (runner.ts:571-600).
+    # The members are read before the report, and a failed report is ignored, so only the local members can fail the command: the Host also rejects the stale ui.notify call with the same message.
+    def stale_probe(ctx: pig_sdk.Context, args: str) -> None:
+        report = "stale:%s|%s|%s|%s" % (ctx.cwd, ctx.mode, str(ctx.has_ui()).lower(), ctx.model)
+        try:
+            ctx.notify(report, "info")
+        except Exception:
+            pass
+
+    ext.command("stale-probe", "Report cwd, mode, hasUI and model", stale_probe)
     ext.command("signal-wait", "Wait for ctx.signal to abort", signal_wait)
     ext.command("usage-probe", "Report context usage", lambda ctx, args: ctx.notify(json.dumps(ctx.get_context_usage()), "info"))
 
@@ -665,6 +1049,126 @@ def new_extension() -> pig_sdk.Extension:
 
     ext.command("focused-probe", "Exercise focused subprocess UI", focused_probe)
 
+    def kit_probe(ctx: pig_sdk.Context, _args: str) -> None:
+        result = ctx.custom(KitProbe(), {"title": "Kit"})
+        ctx.notify(f"kit={'' if result is None else result}", "info")
+
+    ext.command("kit-probe", "Exercise the component kit (D107)", kit_probe)
+
+    # mouse-probe opens the mouse row's component: the host hands it
+    # fullscreen mouse events, and it closes on a click with what it got.
+    def mouse_probe(ctx: pig_sdk.Context, _args: str) -> None:
+        result = ctx.custom(MouseProbe(), {"overlay": True})
+        ctx.notify(f"mouse={'' if result is None else result}", "info")
+
+    ext.command("mouse-probe", "Exercise extension mouse input", mouse_probe)
+
+    # kit-surfaces shows the kit probe's tree on every other view surface
+    # (D107, spec §10): a pushed widget, the header, the footer and a tool
+    # result. The message renderer "kit-message" draws it too.
+    def kit_surfaces(ctx: pig_sdk.Context, _args: str) -> None:
+        ctx.set_widget("kit-probe", kit_probe_view())
+        ctx.set_header_view(kit_probe_view())
+        ctx.set_footer_view(kit_probe_view())
+        ctx.register_tool(pig_sdk.ToolDefinition(
+            name="kit_view_tool",
+            label="kit_view_tool",
+            description="Render its result as the kit probe",
+            parameters={"type": "object"},
+            execute=lambda _ctx, _params: "kit",
+            result_view=lambda _ctx, _result, _options, _render, _width: kit_probe_view(),
+        ))
+
+    ext.command("kit-surfaces", "Show the kit probe on every view surface (D107)", kit_surfaces)
+
+    # kit-images drives the image transport (D107, spec §7): step "a<k>"
+    # shows image 0 and step "b<n>" image n (1 ≤ n ≤ 64), each with its step
+    # as the text, as one ui.setWidget call on the "kit-img" widget.
+    def kit_images(ctx: pig_sdk.Context, args: str) -> None:
+        n = int(args[1:]) if args[1:].isdecimal() else 0
+        if args[:1] == "a" and n >= 1:
+            image = 0
+        elif args[:1] == "b" and 1 <= n <= 64:
+            image = n
+        else:
+            raise ValueError(f"kit-images: unknown step {args!r}")
+        view = kit.View(kit.Container([kit.Image(kit_image_png(image), "image/png"), kit.Text(args, 0, 0)]))
+        ctx.set_widget("kit-img", view, {})
+
+    ext.command("kit-images", "Exercise the component kit's image transport (D107)", kit_images)
+
+    # kit-kinds sets the "kit-kinds" widget to the kinds kit-probe does not
+    # draw (D107, spec §10): a box, a settings list, a loader, an image and a
+    # lines node whose list annotation goes out only while a frontend draws.
+    def kit_kinds(ctx: pig_sdk.Context, _args: str) -> None:
+        settings = kit.SettingsList("kit-settings", [
+            kit.SettingItem("theme", "Theme", "dark", description="Color theme", values=["dark", "light"]),
+            kit.SettingItem("wrap", "Wrap", "on", description="Wrap lines", values=["on", "off"]),
+        ], 3)
+        loader = kit.Loader("Working", spinner_color="accent", message_color="muted", indicator=kit.LoaderIndicator(frames=["*"]))
+        lines = kit.Lines(
+            ["track one", "track two"],
+            list=kit.List([kit.ListItem("track one", "A"), kit.ListItem("track two", "B")], selected=1),
+        )
+        stack = kit.VStack([
+            kit.Box(1, 0, bg="customMessageBg", children=[kit.Text("boxed", 0, 0)]),
+            settings,
+            loader,
+            kit.Image(bytes.fromhex(KIT_KINDS_PNG), "image/png"),
+            lines,
+        ], gap=1)
+        ctx.set_widget("kit-kinds", kit.View(stack, theme={"accent": "#d75f00"}), {})
+
+    ext.command("kit-kinds", "Show every other component kit kind (D107)", kit_kinds)
+
+    # kit-conversation sets the "kit-conversation" widget to every
+    # conversation kind (D107, spec §2.1, §10); "next" updates the nodes
+    # with an id as a Pi author updates kept components.
+    def kit_conversation(ctx: pig_sdk.Context, args: str) -> None:
+        nxt = args == "next"
+        user = kit.UserMessage("Fix **the** kit build\n\n- one\n- two")
+        streaming = kit.AssistantMessage(id="kit-a1")
+        reply = "Done. **Bold** reply\n\n1. a\n2. b"
+        if nxt:
+            reply += "\n\nThen more kit."
+        streaming.update_content(kit.Message([kit.thinking_block("Reading the *kit* file"), kit.text_block(reply)]), not nxt)
+        failed = kit.AssistantMessage(kit.Message([kit.thinking_block("secret"), kit.text_block("Visible kit")], stop_reason="error", error_message="kit-boom-7"))
+        failed.set_hide_thinking_block(True)
+        failed.set_hidden_thinking_label("Pondering kit...")
+        failed.set_output_pad(0)
+
+        def card(id: str, name: str, call_id: str, card_args: dict[str, Any], **options: Any) -> kit.ToolExecution:  # noqa: A002
+            tool = kit.ToolExecution(name, call_id, card_args, "/work/kit", id=id, **options)
+            tool.set_args_complete()
+            tool.mark_execution_started()
+            return tool
+
+        ls = card("kit-t1", "ls", "call-1", {"path": "src"})
+        ls.update_result(kit.ToolResult([kit.text_content("a.go\nb.go")]), False)
+        grep = card("kit-t2", "grep", "call-2", {"pattern": "TODO"})
+        if nxt:
+            grep.update_result(kit.ToolResult([kit.text_content("x.go:1: TODO kit\ny.go:2: TODO kit")]), False)
+        else:
+            grep.update_result(kit.ToolResult([kit.text_content("x.go:1: TODO kit")]), True)
+        read = card("", "read", "call-3", {"path": "missing.txt"})
+        read.update_result(kit.ToolResult([kit.text_content("ENOENT: kit")], is_error=True), False)
+        read.set_expanded(True)
+        custom = card("", "kit_tool", "call-4", {"q": "x"}, tool_definition=kit.TOOL_DEFINITION_EMPTY)
+        custom.update_result(kit.ToolResult([kit.text_content("answer 42")]), False)
+        exited = kit.BashExecution("ls -la", id="kit-b1")
+        exited.append_output("a.txt\n")
+        exited.append_output("b.txt")
+        exited.set_complete(2)
+        exited.set_expanded(nxt)
+        seq = kit.BashExecution("seq 25", True)
+        seq.append_output("\n".join(str(i + 1) for i in range(25)))
+        seq.set_complete(0)
+        diff = kit.Diff(" 1 keep\n-2 old kit line\n+2 new kit line\n 3 tail", file_path="kit.go")
+        root = kit.Container([user, streaming, failed, ls, grep, read, custom, exited, seq, diff])
+        ctx.set_widget("kit-conversation", kit.View(root), {})
+
+    ext.command("kit-conversation", "Show Pi's conversation components (D107)", kit_conversation)
+
     def timer_focused_probe(ctx: pig_sdk.Context, args: str) -> None:
         component = TimerFocused()
         frame = ctx.custom(component, {"title": "Timer"})
@@ -675,6 +1179,26 @@ def new_extension() -> pig_sdk.Extension:
         )
 
     ext.command("timer-focused-probe", "Exercise timer-driven focused UI", timer_focused_probe)
+
+    class OverlayWidthProbe:
+        def __init__(self) -> None:
+            self.width = 0
+
+        def render(self, width: int) -> list[str]:
+            self.width = width
+            return [f"overlay width={width}"]
+
+        def handle_input(self, data: str) -> pig_sdk.RemoteComponentResult:
+            if data == "\r":
+                return pig_sdk.RemoteComponentResult(done=True, value=self.width)
+            return pig_sdk.RemoteComponentResult()
+
+    def overlay_width_probe(ctx: pig_sdk.Context, _args: str) -> None:
+        default_width = ctx.custom(OverlayWidthProbe(), {"overlay": True})
+        percent_width = ctx.custom(OverlayWidthProbe(), {"overlay": True, "overlayOptions": {"width": "50%"}})
+        ctx.notify(f"overlay-width default={default_width} percent={percent_width}", "info")
+
+    ext.command("overlay-width-probe", "Report the width overlay components render at", overlay_width_probe)
 
     def project_trust_error(_ctx: pig_sdk.Context, _data: dict[str, object]) -> dict[str, object]:
         raise RuntimeError("trust-boom")
@@ -747,6 +1271,8 @@ def new_extension() -> pig_sdk.Extension:
             result["exitCode"] = "invalid"
         elif command == "null-operations":
             value["operations"] = None
+        elif command == "operations":
+            return {"operations": ConformanceBashOperations()}
         elif command != "valid":
             return None
         return value
@@ -806,7 +1332,7 @@ def new_extension() -> pig_sdk.Extension:
     ext.on_event("tool_execution_end", tool_execution_end)
     ext.on_project_trust(project_trust_error)
     ext.on_project_trust(lambda _ctx, _data: {"trusted": "undecided"})
-    ext.on_project_trust(lambda _ctx, _data: {"trusted": "yes", "remember": True})
+    ext.on_project_trust(lambda _ctx, data: {"trusted": "undecided"} if data.get("cwd") == "/probe" else {"trusted": "yes", "remember": True})
     def cache_warming_decision(_ctx: pig_sdk.Context, data: dict[str, Any]) -> dict[str, Any]:
         if data.get("warmCost") != 0.05 or data.get("missCost") != 0.5 or data.get("continuationProbability") != 0.15 or data.get("action") != "warm":
             raise ValueError("unexpected cache decision")

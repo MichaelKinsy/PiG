@@ -1,3 +1,5 @@
+//go:build !pig_strip_google_vertex && !pig_strip_mistral_conversations
+
 package ai
 
 import (

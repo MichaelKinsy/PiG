@@ -21,11 +21,11 @@ func fauxAnswer(text string) ai.FauxResponseStep {
 
 // fauxAfter is an async faux response that answers text once gate is resolved.
 func fauxAfter(gate *deferredGate, text string) ai.FauxResponseStep {
-	return ai.FauxFactoryStep(func(_ ai.TranscriptContext, options ai.StreamOptions, _ *ai.FauxProviderState, _ *ai.Model) (ai.FauxResponse, error) {
+	return ai.FauxFactoryStep(func(_ ai.TranscriptContext, options ai.StreamOptions, _ *ai.FauxProviderState, _ *ai.Model) (ai.AssistantMessage, error) {
 		if err := gate.wait(options.Signal); err != nil {
-			return ai.FauxResponse{}, err
+			return ai.FauxResponse{}.AssistantMessage(), err
 		}
-		return ai.FauxResponse{Content: []ai.FauxContentBlock{ai.FauxText(text)}}, nil
+		return ai.FauxResponse{Content: []ai.FauxContentBlock{ai.FauxText(text)}}.AssistantMessage(), nil
 	})
 }
 

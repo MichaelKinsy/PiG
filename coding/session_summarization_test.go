@@ -40,7 +40,7 @@ func TestSummarizationRejectsIncompleteResponses(t *testing.T) {
 				} else {
 					prep.MessagesToSummarize = messages
 				}
-				_, err := compaction.Compact(context.Background(), prep, fakeModelWithProvider(provider), modelCompleter{}, nil, "", "", nil, "")
+				_, err := compaction.Compact(context.Background(), prep, fakeModelWithProvider(provider), "", nil, "", "", nil, nil, nil, ai.RetryCallbacks{}, "")
 				if err == nil || err.Error() != label+" "+tc.want {
 					t.Fatalf("error = %v, want %s %s", err, label, tc.want)
 				}
@@ -73,12 +73,12 @@ func TestCompactDoesNotPersistLengthLimitedSummary(t *testing.T) {
 	}
 	sess.refreshContext()
 
-	if _, err := sess.CompactResult(t.Context(), ""); err == nil || !strings.Contains(err.Error(), "generation hit the token cap") {
+	if _, err := sess.Compact(t.Context(), ""); err == nil || !strings.Contains(err.Error(), "generation hit the token cap") {
 		t.Fatalf("CompactResult error = %v, want token-cap failure", err)
 	}
-	for _, entry := range sess.inner.Entries() {
-		if entry.Base.Type == "compaction" {
-			t.Fatalf("length-limited summary persisted as entry %q", entry.Base.ID)
+	for _, entry := range sess.inner.GetEntries() {
+		if entry.Base().Type == "compaction" {
+			t.Fatalf("length-limited summary persisted as entry %q", entry.Base().ID)
 		}
 	}
 }
@@ -127,7 +127,7 @@ func TestSessionSummarizationPreservesModelCost(t *testing.T) {
 	}
 	sess.refreshContext()
 
-	result, err := sess.CompactResult(context.Background(), "")
+	result, err := sess.Compact(context.Background(), "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -159,10 +159,11 @@ func (p *summaryRoutingProvider) Stream(_ context.Context, request ai.Transcript
 // (each summary gets a fresh one); the bug report summary also forwards the
 // session ID. Neither writes prompt cache (agent-session.ts
 // _runDefaultCompaction, summarizeForBugReport).
+// Pi: packages/coding-agent/src/core/agent-session.ts:4307 (Session.summarizeForBugReport).
 func TestSessionSummarizationRoutingAndThinkingLevel(t *testing.T) {
 	provider := &summaryRoutingProvider{}
 	model := fakeModelWithProvider(provider)
-	model.Capabilities.MaxThinking = ai.ThinkingHigh
+	model.Capabilities.MaxThinking = ai.ThinkingLevelHigh
 	sess, err := NewSession(newTestServicesSmallKeep(t), SessionOptions{Model: model})
 	if err != nil {
 		t.Fatal(err)
@@ -187,7 +188,7 @@ func TestSessionSummarizationRoutingAndThinkingLevel(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err := sess.Compact(context.Background(), ""); err != nil {
+	if _, err := sess.Compact(context.Background(), ""); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := sess.SummarizeForBugReport(context.Background(), ""); err != nil {
@@ -208,11 +209,20 @@ func TestSessionSummarizationRoutingAndThinkingLevel(t *testing.T) {
 		t.Fatalf("bug report routing ID = %q, want %q", bug.SessionID, sess.ID())
 	}
 	for i, options := range provider.options {
-		if options.Thinking != ai.ThinkingMedium || options.Env["PI_CACHE_RETENTION"] != "none" || options.CacheRetention != ai.CacheRetentionNone {
+		if options.Thinking != ai.ThinkingLevelMedium || options.Env["PI_CACHE_RETENTION"] != "none" || options.CacheRetention != ai.CacheRetentionNone {
 			t.Fatalf("summary options = thinking %q cache env %q retention %q", options.Thinking, options.Env["PI_CACHE_RETENTION"], options.CacheRetention)
 		}
 		if len(ai.GetCurrentTools(provider.requests[i])) != 0 {
 			t.Fatalf("summary request %d exposed session tools", i)
 		}
+	}
+}
+
+// agent-session.ts:4308-4311 summarizeForBugReport rejects a session without a model before it resolves auth.
+func TestSummarizeForBugReportWithoutModel(t *testing.T) {
+	h := newRecoveryHarness(t, harnessOptions{})
+	h.session.agent.SetModel(nil)
+	if _, err := h.session.SummarizeForBugReport(t.Context(), ""); err == nil || err.Error() != "No model selected" {
+		t.Fatalf("err = %v, want No model selected", err)
 	}
 }

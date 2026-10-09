@@ -243,7 +243,7 @@ func TestViewState(t *testing.T) {
 			t.Fatal(err)
 		}
 		t.Cleanup(unsubscribe)
-		levels := []ai.ThinkingLevel{ai.ThinkingLow, ai.ThinkingHigh}
+		levels := []ai.ModelThinkingLevel{ai.ThinkingLow, ai.ThinkingHigh}
 		configure := func(index int) {
 			level := levels[index%2]
 			if err := opened.Conversation.Configure(t.Context(), services.ConversationConfiguration{ThinkingLevel: &level}); err != nil {

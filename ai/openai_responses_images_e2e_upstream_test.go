@@ -104,7 +104,7 @@ func runResponsesImageCase(t *testing.T, ctx context.Context, providerID, model,
 	})
 	options := StreamOptions{}
 	if providerID != "azure" {
-		options.Thinking = ThinkingLow
+		options.Thinking = ThinkingLevelLow
 		options.IsReasoning = true
 	}
 	if hermetic && providerID == "openai-codex" {

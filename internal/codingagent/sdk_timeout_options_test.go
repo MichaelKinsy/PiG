@@ -7,6 +7,7 @@ import (
 	"github.com/MichaelKinsy/PiG/ai"
 )
 
+// Pi: packages/coding-agent/src/core/settings-manager.ts:1042 (SettingsManager.getWebSocketConnectTimeoutMs).
 func TestWebSocketConnectTimeoutSettingPresence(t *testing.T) {
 	for _, tc := range []struct {
 		raw     string

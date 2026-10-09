@@ -284,6 +284,44 @@ func TestOpenAICodexOAuthUpstream(t *testing.T) {
 		}
 	})
 	// .upstream/v0.99.1/packages/ai/test/openai-codex-oauth.test.ts:488
+	// .upstream/v1.1.0/packages/ai/test/openai-codex-oauth.test.ts:488
+	t.Run("uses the app's agent name as the browser login originator", func(t *testing.T) {
+		// The callback port is held so the pasted redirect URL is the only way the login can finish.
+		holdCodexCallbackPort(t)
+		previous := http.DefaultClient.Transport
+		http.DefaultClient.Transport = codexRoundTrip(func(*http.Request) (*http.Response, error) {
+			header, _ := json.Marshal(map[string]string{"alg": "none"})
+			payload, _ := json.Marshal(map[string]any{"https://api.openai.com/auth": map[string]string{"chatgpt_account_id": "acct"}})
+			access := base64.StdEncoding.EncodeToString(header) + "." + base64.StdEncoding.EncodeToString(payload) + ".signature"
+			return codexJSONResp(200, fmt.Sprintf(`{"access_token":%q,"refresh_token":"refresh","expires_in":3600}`, access)), nil
+		})
+		t.Cleanup(func() { http.DefaultClient.Transport = previous })
+
+		authURL := ""
+		agentName := "my-app"
+		_, err := (CodexOAuthProvider{}).LoginContext(t.Context(), OAuthLoginCallbacks{
+			AgentName: &agentName,
+			OnSelect:  func(OAuthSelectPrompt) (string, error) { return "browser", nil },
+			OnAuth:    func(info OAuthAuthInfo) { authURL = info.URL },
+			OnManualCodeInput: func() (string, error) {
+				parsed, err := url.Parse(authURL)
+				if err != nil {
+					return "", err
+				}
+				return "http://localhost:1455/auth/callback?code=pasted-code&state=" + url.QueryEscape(parsed.Query().Get("state")), nil
+			},
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		parsed, err := url.Parse(authURL)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got := parsed.Query().Get("originator"); got != "my-app" {
+			t.Fatalf("originator = %q, want my-app", got)
+		}
+	})
 	t.Run("falls back to the pasted redirect URL when the fixed callback port is taken", func(t *testing.T) {
 		// Port 1455 is registered with OpenAI; the Codex CLI may hold it. Occupy it unless it already is.
 		holdCodexCallbackPort(t)
@@ -319,6 +357,43 @@ func TestOpenAICodexOAuthUpstream(t *testing.T) {
 		}
 		if credentials.AccountID != "acct" || exchange.Get("code") != "pasted-code" || exchange.Get("redirect_uri") != "http://localhost:1455/auth/callback" {
 			t.Fatalf("credentials=%+v exchange=%v", credentials, exchange)
+		}
+	})
+	// .upstream/v1.1.0/packages/ai/test/openai-codex-oauth.test.ts "uses the app's agent name as the browser login originator"
+	t.Run("uses the app's agent name as the browser login originator", func(t *testing.T) {
+		holdCodexCallbackPort(t)
+		previous := http.DefaultClient.Transport
+		http.DefaultClient.Transport = codexRoundTrip(func(r *http.Request) (*http.Response, error) {
+			header, _ := json.Marshal(map[string]string{"alg": "none"})
+			payload, _ := json.Marshal(map[string]any{"https://api.openai.com/auth": map[string]string{"chatgpt_account_id": "acct"}})
+			access := base64.StdEncoding.EncodeToString(header) + "." + base64.StdEncoding.EncodeToString(payload) + ".signature"
+			return codexJSONResp(200, fmt.Sprintf(`{"access_token":%q,"refresh_token":"refresh","expires_in":3600}`, access)), nil
+		})
+		t.Cleanup(func() { http.DefaultClient.Transport = previous })
+
+		authURL := ""
+		agentName := "my-app"
+		_, err := (CodexOAuthProvider{}).LoginContext(t.Context(), OAuthLoginCallbacks{
+			AgentName: &agentName,
+			OnSelect:  func(OAuthSelectPrompt) (string, error) { return "browser", nil },
+			OnAuth:    func(info OAuthAuthInfo) { authURL = info.URL },
+			OnManualCodeInput: func() (string, error) {
+				parsed, err := url.Parse(authURL)
+				if err != nil {
+					return "", err
+				}
+				return "http://localhost:1455/auth/callback?code=pasted-code&state=" + url.QueryEscape(parsed.Query().Get("state")), nil
+			},
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		parsed, err := url.Parse(authURL)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got := parsed.Query().Get("originator"); got != "my-app" {
+			t.Fatalf("originator=%q, want my-app", got)
 		}
 	})
 }

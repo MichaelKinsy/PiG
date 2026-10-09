@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/MichaelKinsy/PiG/tui/widthx"
 )
@@ -119,6 +120,11 @@ func TestTUIRender_ShowHardwareCursorToggleAffectsOutput(t *testing.T) {
 
 	var out bytes.Buffer
 	ui := NewWithOutput(&out, 20, 5)
+	var pending func()
+	ui.afterFunc = func(_ time.Duration, fn func()) stoppableTimer {
+		pending = fn
+		return stoppedOracleTimer{}
+	}
 	ui.Add(comp)
 	ui.Render()
 	if !strings.Contains(out.String(), "\x1b[?25l") {
@@ -127,7 +133,11 @@ func TestTUIRender_ShowHardwareCursorToggleAffectsOutput(t *testing.T) {
 
 	out.Reset()
 	ui.SetShowHardwareCursor(true)
-	// SetShowHardwareCursor triggers a render after first render.
+	// upstream setShowHardwareCursor requests a frame (tui.ts:567) rather than drawing one, so the frame runs on the render tick.
+	if out.Len() != 0 || pending == nil {
+		t.Fatalf("SetShowHardwareCursor drew synchronously (%q) or did not request a frame", out.String())
+	}
+	pending()
 	got := out.String()
 	if !strings.Contains(got, "\x1b[?25h") {
 		t.Fatalf("enabling hardware cursor should emit show-cursor escape, got %q", got)
@@ -253,7 +263,7 @@ func TestTUICaptureRestoreRenderStateRoundTrip(t *testing.T) {
 	tu.Render()
 
 	captured := tu.CaptureRenderState()
-	if len(captured.PrevLines) == 0 {
+	if len(captured.PreviousLines) == 0 {
 		t.Fatal("captured render state has no previous lines after a render")
 	}
 
@@ -273,17 +283,17 @@ func TestTUICaptureRestoreRenderStateRoundTrip(t *testing.T) {
 
 	tu.mu.Lock()
 	defer tu.mu.Unlock()
-	if len(tu.prevLines) != len(captured.PrevLines) {
-		t.Fatalf("prevLines len = %d, want %d", len(tu.prevLines), len(captured.PrevLines))
+	if len(tu.prevLines) != len(captured.PreviousLines) {
+		t.Fatalf("prevLines len = %d, want %d", len(tu.prevLines), len(captured.PreviousLines))
 	}
 	if tu.cursorRow != captured.CursorRow || tu.hardwareCursorRow != captured.HardwareCursorRow {
 		t.Fatalf("cursor rows = (%d,%d), want (%d,%d)", tu.cursorRow, tu.hardwareCursorRow, captured.CursorRow, captured.HardwareCursorRow)
 	}
-	if tu.maxLinesRendered != captured.MaxLinesRendered || tu.prevViewportTop != captured.PrevViewportTop {
-		t.Fatalf("maxLines/viewportTop = (%d,%d), want (%d,%d)", tu.maxLinesRendered, tu.prevViewportTop, captured.MaxLinesRendered, captured.PrevViewportTop)
+	if tu.maxLinesRendered != captured.MaxLinesRendered || tu.prevViewportTop != captured.PreviousViewportTop {
+		t.Fatalf("maxLines/viewportTop = (%d,%d), want (%d,%d)", tu.maxLinesRendered, tu.prevViewportTop, captured.MaxLinesRendered, captured.PreviousViewportTop)
 	}
-	if tu.prevWidth != captured.PrevWidth || tu.prevHeight != captured.PrevHeight {
-		t.Fatalf("width/height = (%d,%d), want (%d,%d)", tu.prevWidth, tu.prevHeight, captured.PrevWidth, captured.PrevHeight)
+	if tu.prevWidth != captured.PreviousWidth || tu.prevHeight != captured.PreviousHeight {
+		t.Fatalf("width/height = (%d,%d), want (%d,%d)", tu.prevWidth, tu.prevHeight, captured.PreviousWidth, captured.PreviousHeight)
 	}
 	if !tu.hasRendered {
 		t.Fatal("hasRendered = false after restoring non-empty content; next render would be a full redraw")
@@ -301,7 +311,7 @@ func TestTUIRestoreRenderStateBlanksImageLines(t *testing.T) {
 	var out bytes.Buffer
 	tu := NewWithOutput(&out, 40, 10)
 	tu.previousKittyImageIDs = []int{7}
-	tu.RestoreRenderState(TUIRenderState{PrevLines: []string{"text", imageLine, "more"}})
+	tu.RestoreRenderState(TuiMainScreenRenderState{PreviousLines: []string{"text", imageLine, "more"}})
 
 	tu.mu.Lock()
 	defer tu.mu.Unlock()
@@ -340,5 +350,17 @@ func TestTUIStopPreserveScreenOmitsFinalNewline(t *testing.T) {
 	b.StopWithOptions(StopOptions{PreserveScreen: true})
 	if strings.Contains(preserved.String(), "\r\n") {
 		t.Fatalf("preserve-screen stop emitted a final newline: %q", preserved.String())
+	}
+}
+
+// tui.ts:570-590: TuiBase stores clearOnShrink, so the alternate screen reports what was set though it never acts on it.
+func TestTuiAltScreenStoresClearOnShrink(t *testing.T) {
+	screen := NewTuiAltScreenWithOutput(&bytes.Buffer{}, 20, 5, TuiAltScreenOptions{})
+	if screen.GetClearOnShrink() {
+		t.Fatal("clearOnShrink must default to false")
+	}
+	screen.SetClearOnShrink(true)
+	if !screen.GetClearOnShrink() {
+		t.Fatal("alt screen dropped SetClearOnShrink(true)")
 	}
 }

@@ -8,6 +8,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/MichaelKinsy/PiG/internal/sessionentry"
+
 	"github.com/MichaelKinsy/PiG/agent"
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/coding/extension"
@@ -24,7 +26,7 @@ func laxMessageEntry(t *testing.T, fields map[string]any) icodingagent.SessionEn
 	if err := json.Unmarshal(raw, &base); err != nil {
 		t.Fatal(err)
 	}
-	return icodingagent.NewSessionEntry(raw, base)
+	return sessionentry.DecodeSessionEntry(raw)
 }
 
 func laxRoleContent(t *testing.T, message agent.AgentMessage) []any {
@@ -76,7 +78,7 @@ func TestUpstreamLaxExtensionContent(t *testing.T) {
 	// .upstream/v0.87.1/packages/coding-agent/test/suite/lax-message-content.test.ts:62
 	t.Run("normalizes null content in message_end extension replacements", func(t *testing.T) {
 		ext := extension.Extension{Handlers: map[string][]extension.HandlerFn{"message_end": {func(args ...any) (any, error) {
-			message := args[0].(extension.MessageEndEvent).Message.(agent.AgentMessage)
+			message := args[0].(extension.MessageEndEvent).Message
 			if message.Assistant == nil {
 				return nil, nil
 			}
@@ -89,7 +91,13 @@ func TestUpstreamLaxExtensionContent(t *testing.T) {
 				return nil, err
 			}
 			replacement["content"] = nil
-			var value extension.AgentMessage = replacement
+			if raw, err = json.Marshal(replacement); err != nil {
+				return nil, err
+			}
+			var value extension.AgentMessage
+			if err := json.Unmarshal(raw, &value); err != nil {
+				return nil, err
+			}
 			return &extension.MessageEndEventResult{Message: &value}, nil
 		}}}}
 		h := newRecoveryHarness(t, harnessOptions{extension: ext}, fauxReply("hello", ai.StopReasonStop, 0))

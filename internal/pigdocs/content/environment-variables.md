@@ -115,6 +115,8 @@ Each has a setting that does the same thing. A `terminal.hyperlinks`,
 | `PIG_CELL_BUILD_TIMEOUT` | Time an extension build may take |
 | `PIG_BUILDERS_FILE` | Container builder configuration for `pig piglet build`. Default `$PIG_HOME/state/pigletbuild/builders.json` |
 | `PIG_CONTAINER_ENGINE` | Engine of the built-in `container` builder for `pig piglet build`: `docker` or `podman`. Default: Podman when on `PATH`, else Docker |
+| `PIG_PIGLET_PULL_ALLOW_LOOPBACK_HTTP` | Allow `pig piglet pull`, `pig piglet update` and `pig piglet publish --to npm --binaries` to use an `http://localhost` or loopback release URL. Accepts `1`, `true` or `yes`. For testing a release server |
+| `PIG_PIGLET_GITHUB_URL` | Loopback origin, such as `http://127.0.0.1:8080`, that replaces `github.com` and `api.github.com` for `github:` release refs (`pig piglet pull`, `pig piglet publish --to npm --binaries`) and `pig piglet update` discovery. Requires `PIG_PIGLET_PULL_ALLOW_LOOPBACK_HTTP`; any other host is refused. For testing a release server |
 | `PIG_LOGO_GLYPHFREE` | `1` renders the logo without special glyphs in `pig extension preview-login`, and `0` keeps the glyphs. Unset, Pig drops the glyphs only in Apple Terminal |
 
 The `PIG_SDK_*` variables point a build at an SDK checkout instead of the staged

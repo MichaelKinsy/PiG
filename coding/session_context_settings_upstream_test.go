@@ -1,4 +1,3 @@
-// SPDX-FileCopyrightText: Copyright Hewlett Packard Enterprise Development LP
 // SPDX-License-Identifier: MIT
 
 package coding
@@ -23,10 +22,10 @@ func TestRestoreSessionRuntimeStateDoesNotProjectMessages(t *testing.T) {
 	if _, err := session.AppendMessage(agent.AgentMessage{Assistant: &agent.AssistantMessage{Role: "assistant", Content: []ai.AssistantContentBlock{ai.TextContent{Text: "last"}}, StopReason: ai.StopReasonStop}}); err != nil {
 		t.Fatal(err)
 	}
-	if err := session.AppendThinkingLevelChange("high"); err != nil {
+	if _, err := session.AppendThinkingLevelChange("high"); err != nil {
 		t.Fatal(err)
 	}
-	projection := testing.AllocsPerRun(10, func() { _ = icodingagent.BuildSessionProjection(session.GetBranch()) })
+	projection := testing.AllocsPerRun(10, func() { _ = icodingagent.BuildSessionProjection(session.GetBranch(), icodingagent.LastLeaf(), nil) })
 	restored := testing.AllocsPerRun(10, func() { restoreSessionRuntimeState(session, services, nil, ai.ThinkingLow, true) })
 	if restored >= projection {
 		t.Fatalf("settings restoration allocates %.0f, full message projection %.0f", restored, projection)
@@ -40,7 +39,7 @@ func TestRestoreSessionRuntimeStateExplicitModelSelection(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := manager.AppendModelSwitch("openai", "gpt-4o", ""); err != nil {
+	if _, err := manager.AppendModelChange("openai", "gpt-4o"); err != nil {
 		t.Fatal(err)
 	}
 	fallback := fakeModel()
@@ -70,27 +69,27 @@ func TestRestoreSessionRuntimeStateUsesActiveBranchAssistantModel(t *testing.T) 
 		t.Fatal(err)
 	}
 	s := icodingagent.NewSession("restored", "/project")
-	if err := s.AppendModelSwitch("openai", "gpt-5", ""); err != nil {
+	if _, err := s.AppendModelChange("openai", "gpt-5"); err != nil {
 		t.Fatal(err)
 	}
 	assistant, err := s.AppendMessage(agent.AgentMessage{Assistant: &agent.AssistantMessage{Role: "assistant", Content: []ai.AssistantContentBlock{ai.TextContent{Text: "selected answer"}}, Provider: "openai", ModelID: "gpt-4o", API: "openai-completions", StopReason: ai.StopReasonStop}})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := s.AppendModelSwitch("openai", "gpt-5", ""); err != nil {
+	if _, err := s.AppendModelChange("openai", "gpt-5"); err != nil {
 		t.Fatal(err)
 	}
-	if err := s.AppendThinkingLevelChange("high"); err != nil {
+	if _, err := s.AppendThinkingLevelChange("high"); err != nil {
 		t.Fatal(err)
 	}
-	if err := s.Fork(assistant); err != nil {
+	if err := s.Branch(assistant); err != nil {
 		t.Fatal(err)
 	}
 	model, thinking := restoreSessionRuntimeState(s, services, fallback, ai.ThinkingLow, true)
 	if model.ID != "gpt-4o" || thinking != ai.ThinkingLow {
 		t.Fatalf("restored=%s/%s want gpt-4o/low", model.ID, thinking)
 	}
-	state := icodingagent.BuildSessionContext(s.GetBranch())
+	state := icodingagent.BuildSessionContext(s.GetBranch(), icodingagent.LastLeaf(), nil)
 	fmt.Printf("SESSION_CONTEXT model=%s thinking=%s\n", state.Model.ModelID, state.ThinkingLevel)
 	if _, err := s.AppendMessage(agent.AgentMessage{Assistant: &agent.AssistantMessage{Role: "assistant", Content: []ai.AssistantContentBlock{ai.TextContent{Text: "untagged historical reply"}}, StopReason: ai.StopReasonStop}}); err != nil {
 		t.Fatal(err)
@@ -98,5 +97,28 @@ func TestRestoreSessionRuntimeStateUsesActiveBranchAssistantModel(t *testing.T) 
 	model, thinking = restoreSessionRuntimeState(s, services, fallback, ai.ThinkingLow, true)
 	if model.ID != fallback.ID || thinking != ai.ThinkingLow {
 		t.Fatalf("missing assistant metadata did not use the fallback: %s/%s", model.ID, thinking)
+	}
+}
+
+// virtual-models.ts:134-136 returns the last model_change even when its provider is not a string, and sdk.ts:213-220
+// then restores nothing (the lookup compares strings), so the explicit fallback stays; the earlier model_change is not
+// restored.
+func TestRestoreSessionRuntimeStateStopsAtAModelChangeWithANonStringProvider(t *testing.T) {
+	t.Setenv("OPENAI_API_KEY", "test")
+	services := newTestServices(t)
+	fallback, err := BuildModel("openai/gpt-5", services)
+	if err != nil {
+		t.Fatal(err)
+	}
+	s := icodingagent.NewSession("non-string-provider", "/project")
+	if _, err := s.AppendModelChange("openai", "gpt-4o"); err != nil {
+		t.Fatal(err)
+	}
+	parent := s.GetLeafID()
+	if err := s.AppendEntry(map[string]any{"type": "model_change", "id": "hand-edited", "parentId": parent, "timestamp": "2026-10-05T00:00:00.000Z", "provider": 5, "modelId": "gpt-4o"}); err != nil {
+		t.Fatal(err)
+	}
+	if model, _ := restoreSessionRuntimeState(s, services, fallback, ai.ThinkingLow, true); model != fallback {
+		t.Fatalf("restored %v, want the fallback", model)
 	}
 }

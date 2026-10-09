@@ -146,7 +146,7 @@ func TestSearchToolsResolveAgentBinAtCallTime(t *testing.T) {
 	agentDir := t.TempDir()
 	binDir := filepath.Join(agentDir, "bin")
 	var grep agent.AgentTool
-	for _, tool := range CreateCodingTools(t.TempDir(), nil, binDir) {
+	for _, tool := range CreateCodingTools(t.TempDir(), &ToolsOptions{BinDir: binDir}) {
 		if tool.Name() == "grep" {
 			grep = tool
 		}

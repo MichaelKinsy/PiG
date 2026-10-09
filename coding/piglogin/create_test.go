@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/coding/extension"
 )
 
@@ -18,7 +19,9 @@ type createUI struct {
 	notified []string
 }
 
-func (u *createUI) Custom(context.Context, any, any) (any, error) { return nil, nil }
+func (u *createUI) Custom(context.Context, extension.CustomFactory, *extension.CustomOptions) (any, error) {
+	return nil, nil
+}
 
 func (u *createUI) Select(_ context.Context, _ string, options []string, _ extension.ExtensionUIDialogOptions) (string, error) {
 	u.options = options
@@ -27,14 +30,18 @@ func (u *createUI) Select(_ context.Context, _ string, options []string, _ exten
 
 func (u *createUI) Notify(message, _ string) { u.notified = append(u.notified, message) }
 
-type providerCount int
+// providerCount is a registry that reports only how many providers have auth; it embeds the interface for the members the login flow never calls.
+type providerCount struct {
+	extension.ModelRegistry
+	n int
+}
 
-func (p providerCount) AvailableProviderCount() int { return int(p) }
+func (p providerCount) AvailableProviderCount() int { return p.n }
 
 func createContext(t *testing.T, ui *createUI, model extension.Model, providers int, sent *[]any) context.Context {
 	t.Helper()
 	c := extension.NewContext(t.TempDir(), ui, func() error { return nil }, extension.ContextActions{
-		ModelRegistry: providerCount(providers),
+		ModelRegistry: providerCount{n: providers},
 		GetModel:      func() extension.Model { return model },
 		SendUserMessage: func(content any, _ *extension.SendUserMessageOptions) error {
 			*sent = append(*sent, content)
@@ -49,14 +56,13 @@ func createContext(t *testing.T, ui *createUI, model extension.Model, providers 
 func TestSpriteCreate(t *testing.T) {
 	t.Setenv("PIG_HOME", t.TempDir())
 	Refresh()
-	type model struct{ id string }
-	var nilModel *model
+	var nilModel *ai.Model
 	for _, tc := range []struct {
 		name      string
 		model     extension.Model
 		providers int
 		sends     bool
-	}{{"model", &model{"m"}, 1, true}, {"no model", nil, 1, false}, {"typed nil model", nilModel, 1, false}, {"model without credentials", &model{"m"}, 0, false}} {
+	}{{"model", &ai.Model{ID: "m"}, 1, true}, {"no model", nil, 1, false}, {"typed nil model", nilModel, 1, false}, {"model without credentials", &ai.Model{ID: "m"}, 0, false}} {
 		t.Run(tc.name, func(t *testing.T) {
 			ui := &createUI{}
 			var sent []any
@@ -82,7 +88,10 @@ func TestSpriteCreate(t *testing.T) {
 // The prompt carries the default pig's 14 rows of 16 cells and a color for each non-transparent symbol, and the template
 // it shows is a sprite registerSprite accepts: a palette entry for '.' fails with "'.' is reserved for transparency".
 func TestCreatePromptCarriesTheStandardPig(t *testing.T) {
-	prompt := CreatePrompt()
+	prompt, err := CreatePrompt()
+	if err != nil {
+		t.Fatal(err)
+	}
 	for _, row := range pigMascot {
 		if !strings.Contains(prompt, `"`+row+`",`) {
 			t.Fatalf("prompt omits mascot row %q", row)
@@ -118,11 +127,10 @@ func TestCreatePromptCarriesTheStandardPig(t *testing.T) {
 func TestSpritePickerCreateYourOwnShowsTheHint(t *testing.T) {
 	t.Setenv("PIG_HOME", t.TempDir())
 	Refresh()
-	type model struct{ id string }
 	for _, providers := range []int{0, 1} {
 		ui := &createUI{selected: CreateOption}
 		var sent []any
-		if err := selectSprite(createContext(t, ui, &model{"m"}, providers, &sent), ""); err != nil {
+		if err := selectSprite(createContext(t, ui, &ai.Model{ID: "m"}, providers, &sent), ""); err != nil {
 			t.Fatal(err)
 		}
 		if got := ui.options[len(ui.options)-1]; got != CreateOption {

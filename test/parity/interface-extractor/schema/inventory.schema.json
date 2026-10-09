@@ -4,32 +4,74 @@
   "title": "Pig upstream semantic interface inventory",
   "type": "object",
   "additionalProperties": false,
-  "required": ["upstreamVersion", "typescriptVersion", "origin", "packages", "interfaces"],
+  "required": [
+    "upstreamVersion",
+    "typescriptVersion",
+    "origin",
+    "packages",
+    "interfaces"
+  ],
   "properties": {
-    "upstreamVersion": { "type": "string", "minLength": 1 },
-    "typescriptVersion": { "type": "string", "minLength": 1 },
-    "origin": { "enum": ["source", "published"] },
+    "upstreamVersion": {
+      "type": "string",
+      "minLength": 1
+    },
+    "typescriptVersion": {
+      "type": "string",
+      "minLength": 1
+    },
+    "origin": {
+      "enum": [
+        "source",
+        "published"
+      ]
+    },
     "packages": {
       "type": "array",
       "items": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["key", "name", "version", "entrypoints"],
+        "required": [
+          "key",
+          "name",
+          "version",
+          "origin",
+          "entrypoints"
+        ],
         "properties": {
-          "key": { "enum": ["agent", "ai", "coding-agent", "tui"] },
-          "name": { "type": "string" },
-          "version": { "type": "string" },
+          "key": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "version": {
+            "type": "string"
+          },
           "entrypoints": {
             "type": "array",
             "items": {
               "type": "object",
               "additionalProperties": false,
-              "required": ["subpath", "file"],
+              "required": [
+                "subpath",
+                "file"
+              ],
               "properties": {
-                "subpath": { "type": "string" },
-                "file": { "type": "string" }
+                "subpath": {
+                  "type": "string"
+                },
+                "file": {
+                  "type": "string"
+                }
               }
             }
+          },
+          "origin": {
+            "enum": [
+              "source",
+              "published"
+            ]
           }
         }
       }
@@ -39,25 +81,72 @@
       "items": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["id", "package", "entrypoint", "name", "kind", "shape", "shapeHash", "source"],
+        "required": [
+          "id",
+          "package",
+          "entrypoint",
+          "name",
+          "kind",
+          "shape",
+          "shapeHash",
+          "source"
+        ],
         "properties": {
-          "id": { "type": "string", "pattern": "^pkg:[^#]+#[^#]+$" },
-          "parentId": { "type": "string", "pattern": "^pkg:[^#]+#[^#]+$" },
-          "role": { "enum": ["property", "call-overload", "construct-overload", "enum-member"] },
-          "package": { "type": "string" },
-          "entrypoint": { "type": "string" },
-          "name": { "type": "string" },
-          "kind": { "type": "string" },
-          "shape": { "type": "object" },
-          "shapeHash": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" },
+          "id": {
+            "type": "string",
+            "pattern": "^pkg:[^#]+#[^#]+$"
+          },
+          "parentId": {
+            "type": "string",
+            "pattern": "^pkg:[^#]+#[^#]+$"
+          },
+          "role": {
+            "enum": [
+              "property",
+              "call-overload",
+              "construct-overload",
+              "enum-member"
+            ]
+          },
+          "package": {
+            "type": "string"
+          },
+          "entrypoint": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string"
+          },
+          "shape": {
+            "type": "object"
+          },
+          "shapeHash": {
+            "type": "string",
+            "pattern": "^sha256:[0-9a-f]{64}$"
+          },
           "source": {
             "type": "object",
             "additionalProperties": false,
-            "required": ["path", "line", "column"],
+            "required": [
+              "path",
+              "line",
+              "column"
+            ],
             "properties": {
-              "path": { "type": "string" },
-              "line": { "type": "integer", "minimum": 1 },
-              "column": { "type": "integer", "minimum": 1 }
+              "path": {
+                "type": "string"
+              },
+              "line": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "column": {
+                "type": "integer",
+                "minimum": 1
+              }
             }
           }
         }

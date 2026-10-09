@@ -140,6 +140,14 @@ func (s *Session) HiddenDeclarations() map[string]struct{} {
 	return maps.Clone(s.hiddenDeclarations())
 }
 
+// HiddenDeclarationNames lists the tools whose declarations the loadout hides, in the order the hooks hid them: upstream's `hiddenTools: [...this._hiddenDeclarations]` (agent-session.ts _rebuildSystemPrompt).
+func (s *Session) HiddenDeclarationNames() []string {
+	if order := s.loadout.hiddenOrder.Load(); order != nil {
+		return slices.Clone(*order)
+	}
+	return []string{}
+}
+
 // SystemPrompt returns the effective run prompt while running and the base prompt between runs, independently of the retained active loadout.
 func (s *Session) SystemPrompt() string {
 	return s.systemPrompt()
@@ -225,7 +233,7 @@ func (s *Session) prepareRequest(ctx context.Context, _ agent.PrepareRequestCont
 	projection := s.inner.BuildSessionProjection()
 	projected := s.contextFromProjection(projection)
 	if !IsVirtualModel(model) {
-		return &agent.AgentRequestUpdate{Context: projected, Model: model, ThinkingLevel: &thinking}, nil
+		return &agent.AgentRequestUpdate{Context: s.executableContext(projected), Model: model, ThinkingLevel: &thinking}, nil
 	}
 	// A routing failure rejects, which ends the run with an error response.
 	route, err := s.routeRequest(ctx, model, thinking, projected, failed)
@@ -243,7 +251,14 @@ func (s *Session) prepareRequest(ctx context.Context, _ agent.PrepareRequestCont
 		}
 		projected = s.projectedContext()
 	}
-	return &agent.AgentRequestUpdate{Context: projected, Model: route.Model, ThinkingLevel: &route.ThinkingLevel}, nil
+	return &agent.AgentRequestUpdate{Context: s.executableContext(projected), Model: route.Model, ThinkingLevel: &route.ThinkingLevel}, nil
+}
+
+// executableContext is the projected transcript with the agent's current tools: messages declare the provider-visible loadout and context.tools keeps the executable implementations.
+//
+// upstream: agent-session.ts _installAgentRequestProjection (`tools: this.agent.state.tools.slice()`)
+func (s *Session) executableContext(messages []agent.AgentMessage) *agent.AgentContext {
+	return &agent.AgentContext{Messages: messages, Tools: s.agent.Tools()}
 }
 
 // exceedsCompactionThreshold reports whether projection, the current session projection, exceeds the compaction threshold of model.
@@ -283,7 +298,7 @@ func (s *Session) prepareNextTurn(ctx context.Context, _ agent.PrepareNextTurnCo
 	}
 	thinking := s.agent.ThinkingLevel()
 	projected := s.contextFromProjection(projection)
-	update := &agent.AgentLoopTurnUpdate{Context: projected, Model: s.agent.Model(), ThinkingLevel: &thinking}
+	update := &agent.AgentLoopTurnUpdate{Context: s.executableContext(projected), Model: s.agent.Model(), ThinkingLevel: &thinking}
 	// agent-session.ts:697-709 refreshes the run's options before each later turn and keeps them.
 	if run := s.runPrompt.Load(); run != nil {
 		next := *run

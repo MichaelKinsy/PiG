@@ -6,7 +6,7 @@ import (
 )
 
 func toolMouseCard(self bool) *ToolExecutionComponent {
-	card := NewToolExecutionComponent("read", "")
+	card := newToolCardForTest("read", "")
 	card.SetDefinition(&ToolDefinitionRenderers{Self: self, Call: func(ToolRenderInput) (Component, bool) { return NewText("read notes.txt"), true }, Result: func(input ToolRenderInput) (Component, bool) {
 		text := ""
 		if input.Expanded {
@@ -39,6 +39,7 @@ func TestToolResultClickThroughTerminal(t *testing.T) {
 }
 
 // tool-execution.ts createResultRegion requires a result and leaves padding, image rows and nested component handlers to their own owners.
+// Pi: packages/coding-agent/src/modes/interactive/components/tool-execution.ts:120 (ToolExecutionComponent.invalidate).
 func TestToolResultMouseRegions(t *testing.T) {
 	card := toolMouseCard(false)
 	lines := card.Render(120)
@@ -75,7 +76,7 @@ func TestToolResultMouseRegions(t *testing.T) {
 }
 
 func TestToolMouseDelegatesNestedHandlersBeforeExpansion(t *testing.T) {
-	card := NewToolExecutionComponent("custom", "")
+	card := newToolCardForTest("custom", "")
 	calls := 0
 	card.SetDefinition(&ToolDefinitionRenderers{Call: func(ToolRenderInput) (Component, bool) {
 		return NewMouseRegion(NewText("interactive"), func(event TuiMouseEvent) *TuiMouseEventResult {

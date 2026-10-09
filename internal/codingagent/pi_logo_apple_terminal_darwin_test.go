@@ -17,7 +17,7 @@ func TestBuiltInHeaderShowsTheWordmarkInAppleTerminalUpstream(t *testing.T) {
 	km.rebuild()
 	for _, expanded := range []bool{false, true} {
 		m := &InteractiveMode{
-			opts:        InteractiveOptions{LoginVisible: true},
+			opts:        InteractiveModeOptions{LoginVisible: true},
 			keybindings: km,
 			extHeader:   newSpecialLinesComponent(nil),
 			tuiInst:     tui.NewWithOutput(io.Discard, 100, 40),

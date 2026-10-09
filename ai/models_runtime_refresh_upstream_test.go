@@ -2,7 +2,6 @@ package ai
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"reflect"
@@ -31,24 +30,14 @@ func (s modelsRuntimeCatalogStore) Delete(ctx context.Context, id string) error 
 
 func modelsRuntimeStored(t *testing.T, models ...*Model) ModelsStoreEntry {
 	t.Helper()
-	raw, err := encodeModelsCatalog(AnyModels(models))
-	if err != nil {
-		t.Fatal(err)
-	}
-	return ModelsStoreEntry{Models: raw}
+	return ModelsStoreEntry{Models: AnyModels(models)}
 }
 func modelsRuntimeStoredID(t *testing.T, entry *ModelsStoreEntry) string {
 	t.Helper()
 	if entry == nil || len(entry.Models) == 0 {
 		t.Fatal("missing stored model")
 	}
-	var value struct {
-		ID string `json:"id"`
-	}
-	if err := json.Unmarshal(entry.Models[0], &value); err != nil {
-		t.Fatal(err)
-	}
-	return value.ID
+	return entry.Models[0].ModelID()
 }
 func modelsRuntimeFactory(id string, auth ProviderAuth, fetch func(RefreshModelsContext) ([]AnyModel, error)) *ModelsProvider {
 	return CreateProvider(CreateProviderOptions{ID: id, Auth: auth, Models: []AnyModel{}, FetchModels: fetch, API: &ProviderStreams{Stream: func(context.Context, *Model, TranscriptContext, StreamOptions) (*AssistantMessageEventStream, error) {

@@ -130,7 +130,8 @@ func readFile(ctx context.Context, executionEnv env.ExecutionEnv, input ReadTool
 		return durable.ToolExecutionResult{}, err
 	}
 	defer func() { _ = reader.Close(ctx) }()
-	// A concurrent writer can change the file between the scan and the reads; retry once from a fresh scan.
+	// A concurrent writer can change the file between the scan and the reads. Appending (a growing log) leaves the scanned
+	// bytes as they were; a file that shrank or was rewritten in place is read again once.
 	for attempt := 0; ; attempt++ {
 		before, err := reader.Info(ctx)
 		if err != nil {
@@ -144,7 +145,7 @@ func readFile(ctx context.Context, executionEnv env.ExecutionEnv, input ReadTool
 		if err != nil {
 			return durable.ToolExecutionResult{}, err
 		}
-		if after.Size == before.Size && after.MtimeMs == before.MtimeMs {
+		if after.Size > before.Size || after.Size == before.Size && after.MtimeMs == before.MtimeMs {
 			return result, nil
 		}
 		if attempt == 1 {

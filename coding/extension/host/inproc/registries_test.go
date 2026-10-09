@@ -242,6 +242,7 @@ func TestShortcuts_NormalizesKeysToLowercase(t *testing.T) {
 // Tools/Flags first-wins).
 //
 // upstream: runner.ts:444-451 (assignment overwrites after diagnostic)
+// Pi: packages/coding-agent/src/core/extensions/types.ts:2057 (ExtensionShortcut.description).
 func TestShortcuts_LastWinsOnConflict(t *testing.T) {
 	exts := []extension.Extension{
 		extWithShortcut("/ext/first", "ctrl+r", "from first (should be hidden)"),

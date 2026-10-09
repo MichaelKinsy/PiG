@@ -405,6 +405,9 @@ __export(typebox_exports, {
   Void: () => Void,
   With: () => With
 });
+
+// node_modules/typebox/build/index.mjs
+var build_default = typebox_exports;
 export {
   AddImmutable,
   AddImmutableDeferred,
@@ -691,5 +694,6 @@ export {
   WithInstantiate,
   _Array_,
   _Function_,
-  _Object_
+  _Object_,
+  build_default as default
 };

@@ -1,0 +1,202 @@
+[
+ {
+  "ids": [
+   "pkg:mcp/.#CallToolResult::property:_meta"
+  ],
+  "targets": [
+   "mcp/content.go#CallToolResult.Meta"
+  ],
+  "production": [
+   "call:coding/mcpext/runtime.go#Connection.CallTool"
+  ],
+  "evidence": [
+   "test:mcp/upstream_oracle_test.go#TestToLLMContentMatchesPi",
+   "test:coding/mcpext/connection_test.go#TestMCPConnectionsStartsANewSessionAndRetriesOnceWhenTheSessionExpired"
+  ],
+  "rationale": "CallToolResult: Go CallToolResult has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types.",
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
+ },
+ {
+  "ids": [
+   "pkg:mcp/.#CallToolResult::property:structuredContent"
+  ],
+  "targets": [
+   "mcp/content.go#CallToolResult.StructuredContent"
+  ],
+  "production": [
+   "call:coding/mcpext/runtime.go#Connection.CallTool"
+  ],
+  "evidence": [
+   "test:mcp/upstream_oracle_test.go#TestToLLMContentMatchesPi",
+   "test:coding/mcpext/connection_test.go#TestMCPConnectionsStartsANewSessionAndRetriesOnceWhenTheSessionExpired"
+  ],
+  "rationale": "CallToolResult: Go CallToolResult has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types.",
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
+ },
+ {
+  "ids": [
+   "pkg:mcp/.#UnauthorizedContext"
+  ],
+  "targets": [
+   "mcp/auth_provider.go#UnauthorizedContext"
+  ],
+  "struct": {
+   "file": "mcp/auth_provider.go",
+   "type": "UnauthorizedContext"
+  },
+  "production": [
+   "call:mcp/streamable_http.go#StreamableHTTPTransport.authorizedFetch"
+  ],
+  "evidence": [
+   "test:coding/mcpext/oauth_metadata_refresh_test.go#TestMcpAuthProviderRefreshUsesTheConfiguredAuthServerMetadataURL",
+   "test:mcp/oauth/oauth_test.go#TestMCPOAuthAsksForAuthorizationInsteadOfRefreshingWhenTheServerNeedsMoreScope"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "UnauthorizedContext: Go UnauthorizedContext has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+ },
+ {
+  "ids": [
+   "pkg:mcp/oauth#AuthorizationServerMetadata"
+  ],
+  "targets": [
+   "mcp/oauth/types.go#AuthorizationServerMetadata"
+  ],
+  "struct": {
+   "file": "mcp/oauth/types.go",
+   "type": "AuthorizationServerMetadata"
+  },
+  "production": [
+   "call:coding/mcpext/oauth.go#createProvider"
+  ],
+  "evidence": [
+   "test:mcp/oauth/absent_test.go#TestAuthorizeMcpWithAConfiguredMetadataURLBypassesCachedDiscovery",
+   "test:mcp/oauth/oauth_test.go#TestMCPOAuthExchangesACodeOnlyWhenItsIssParameterNamesTheAuthorizationServer"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "AuthorizationServerMetadata: Go AuthorizationServerMetadata has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+ },
+ {
+  "ids": [
+   "pkg:mcp/oauth#McpOAuthProviderOptions"
+  ],
+  "targets": [
+   "mcp/oauth/provider.go#McpOAuthProviderOptions"
+  ],
+  "struct": {
+   "file": "mcp/oauth/provider.go",
+   "type": "McpOAuthProviderOptions"
+  },
+  "production": [
+   "call:coding/mcpext/oauth.go#createProvider"
+  ],
+  "evidence": [
+   "test:mcp/oauth/oauth_test.go#TestMCPOAuthBindsPersistedCredentialsToTheExactMCPServerURL",
+   "test:mcp/oauth/oauth_test.go#TestMCPOAuthSharesOneRefreshBetweenConcurrent401sWhenRefreshTokensRotate"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "McpOAuthProviderOptions: Go McpOAuthProviderOptions has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+ },
+ {
+  "ids": [
+   "pkg:mcp/oauth#McpOAuthState"
+  ],
+  "targets": [
+   "mcp/oauth/provider.go#McpOAuthState"
+  ],
+  "struct": {
+   "file": "mcp/oauth/provider.go",
+   "type": "McpOAuthState"
+  },
+  "production": [
+   "call:coding/mcpext/oauth.go#McpOAuthCredentialStore.Tokens"
+  ],
+  "evidence": [
+   "test:coding/mcpext/oauth_metadata_refresh_test.go#TestMcpAuthProviderRefreshUsesTheConfiguredAuthServerMetadataURL",
+   "test:coding/mcpext/review_regression_test.go#TestMcpOAuthCredentialStoreKeepsServerOrderAndJSONStringifyEscapes"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "McpOAuthState: Go McpOAuthState has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+ },
+ {
+  "ids": [
+   "pkg:mcp/oauth#OAuthChallenge"
+  ],
+  "targets": [
+   "mcp/oauth/types.go#OAuthChallenge"
+  ],
+  "struct": {
+   "file": "mcp/oauth/types.go",
+   "type": "OAuthChallenge"
+  },
+  "production": [
+   "call:coding/mcpext/runtime.go#NewConnection"
+  ],
+  "evidence": [
+   "test:coding/mcpext/oauth_refresh_test.go#TestMCPOAuthSignInKeepsTheGrantedScopeWhenTheServerAsksForMore"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "OAuthChallenge: Go OAuthChallenge has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+ },
+ {
+  "ids": [
+   "pkg:mcp/oauth#OAuthClientInformation"
+  ],
+  "targets": [
+   "mcp/oauth/types.go#OAuthClientInformation"
+  ],
+  "struct": {
+   "file": "mcp/oauth/types.go",
+   "type": "OAuthClientInformation"
+  },
+  "production": [
+   "call:mcp/oauth/provider.go#NewMcpOAuthProvider"
+  ],
+  "evidence": [
+   "test:coding/mcpext/oauth_metadata_refresh_test.go#TestMcpAuthProviderRefreshUsesTheConfiguredAuthServerMetadataURL"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "OAuthClientInformation: Go OAuthClientInformation has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+ },
+ {
+  "ids": [
+   "pkg:mcp/oauth#OAuthClientMetadata"
+  ],
+  "targets": [
+   "mcp/oauth/types.go#OAuthClientMetadata"
+  ],
+  "struct": {
+   "file": "mcp/oauth/types.go",
+   "type": "OAuthClientMetadata"
+  },
+  "production": [
+   "call:coding/mcpext/oauth.go#createProvider"
+  ],
+  "evidence": [
+   "test:mcp/oauth/absent_test.go#TestAuthorizeMcpChecksAPresentEmptyIssAndSkipsAnEmptyAdvertisedScope",
+   "test:mcp/oauth/oauth_test.go#TestMCPOAuthBindsPersistedCredentialsToTheExactMCPServerURL"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "OAuthClientMetadata: Go OAuthClientMetadata has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+ },
+ {
+  "ids": [
+   "pkg:mcp/oauth#OAuthFlowOptions"
+  ],
+  "targets": [
+   "mcp/oauth/flow.go#OAuthFlowOptions"
+  ],
+  "struct": {
+   "file": "mcp/oauth/flow.go",
+   "type": "OAuthFlowOptions"
+  },
+  "production": [
+   "call:coding/mcpext/oauth.go#SignInMcpServer"
+  ],
+  "evidence": [
+   "test:mcp/oauth/absent_test.go#TestAuthorizeMcpChecksAPresentEmptyIssAndSkipsAnEmptyAdvertisedScope",
+   "test:mcp/oauth/absent_test.go#TestAuthorizeMcpWithAConfiguredMetadataURLBypassesCachedDiscovery"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "OAuthFlowOptions: Go OAuthFlowOptions has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+ }
+]

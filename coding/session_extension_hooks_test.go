@@ -12,6 +12,8 @@ import (
 	"testing"
 	"time"
 
+	icodingagent "github.com/MichaelKinsy/PiG/internal/codingagent"
+
 	"github.com/MichaelKinsy/PiG/agent"
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/coding/extension"
@@ -49,6 +51,20 @@ func fauxProbeCall(args string) scriptedResponse {
 		_ = json.Unmarshal([]byte(args), &arguments)
 		return &ai.AssistantMessage{
 			Content:  []ai.AssistantContentBlock{ai.ToolCall{ID: "call-probe", Name: "probe", Arguments: arguments}},
+			Provider: "faux", Model: "faux-1", StopReason: ai.StopReasonToolUse, Timestamp: time.Now().UnixMilli(),
+		}
+	}
+}
+
+// fauxOrderedProbeCall is fauxProbeCall with the arguments' member order kept, as a provider's parsed tool call keeps it.
+func fauxOrderedProbeCall(t *testing.T, args string) scriptedResponse {
+	return func([]ai.Message) *ai.AssistantMessage {
+		call := ai.ToolCall{ID: "call-probe", Name: "probe"}
+		if err := call.SetArgumentsJSON([]byte(args)); err != nil {
+			t.Error(err)
+		}
+		return &ai.AssistantMessage{
+			Content:  []ai.AssistantContentBlock{call},
 			Provider: "faux", Model: "faux-1", StopReason: ai.StopReasonToolUse, Timestamp: time.Now().UnixMilli(),
 		}
 	}
@@ -127,6 +143,44 @@ func TestToolCallTerminateAndInputMutation(t *testing.T) {
 			t.Fatalf("tool ran with %v, want the mutated input", calls)
 		}
 	})
+	// Pi's tool runs with the object the handlers edited, so its members keep the order the model wrote and the handler added them in. A subprocess handler's reply leaves that order in WireInput. A Go map has no insertion order, so members an in-process handler adds follow the model's members in sorted order.
+	for name, tc := range map[string]struct {
+		edit func(extension.CustomToolCallEvent)
+		want string
+	}{
+		"subprocess member order": {func(event extension.CustomToolCallEvent) {
+			event.Input["path"] = "rewritten"
+			event.Input["aaa"] = true
+			*event.WireInput = json.RawMessage(`{"zeta":1,"path":"rewritten","aaa":true}`)
+		}, `{"zeta":1,"path":"rewritten","aaa":true}`},
+		"in-process edit": {func(event extension.CustomToolCallEvent) {
+			event.Input["path"] = "rewritten"
+			event.Input["bbb"] = true
+			event.Input["aaa"] = true
+		}, `{"zeta":1,"path":"rewritten","aaa":true,"bbb":true}`},
+	} {
+		t.Run(name, func(t *testing.T) {
+			tool := &probeTool{}
+			h := newRecoveryHarness(t, harnessOptions{
+				tools: []agent.AgentTool{tool},
+				extension: toolCallExtension(func(args ...any) (any, error) {
+					event := args[0].(extension.CustomToolCallEvent)
+					if event.WireInput == nil || string(*event.WireInput) != `{"zeta":1,"path":"a"}` {
+						t.Errorf("wire input = %v, want the model's arguments", event.WireInput)
+						return nil, nil
+					}
+					tc.edit(event)
+					return nil, nil
+				}),
+			}, fauxOrderedProbeCall(t, `{"zeta":1,"path":"a"}`), fauxReply("done", ai.StopReasonStop, 0))
+			if _, err := h.session.Send(context.Background(), "go"); err != nil {
+				t.Fatal(err)
+			}
+			if calls := tool.executions(); len(calls) != 1 || calls[0] != tc.want {
+				t.Fatalf("tool ran with %v, want %s", calls, tc.want)
+			}
+		})
+	}
 }
 
 // The hook resolves the current runner and its handlers at call time: a
@@ -241,7 +295,7 @@ func TestContextHandlerResultShrinksProviderRequest(t *testing.T) {
 		"context": {func(args ...any) (any, error) {
 			event := args[0].(extension.ContextEvent)
 			for _, message := range event.Messages {
-				if m, ok := message.(agent.AgentMessage); ok && m.System != nil {
+				if m := message; m.System != nil {
 					sawSystem.Store(true)
 				}
 			}
@@ -340,21 +394,21 @@ func TestMessageEndReplacementPersisted(t *testing.T) {
 	h := newRecoveryHarness(t, harnessOptions{extension: extension.Extension{Path: "/ext/redact", Handlers: map[string][]extension.HandlerFn{
 		"message_end": {
 			func(args ...any) (any, error) {
-				message := args[0].(extension.MessageEndEvent).Message.(agent.AgentMessage)
+				message := args[0].(extension.MessageEndEvent).Message
 				if message.Assistant == nil {
 					return nil, nil
 				}
 				replacement := *message.Assistant
 				replacement.Content = []ai.AssistantContentBlock{ai.TextContent{Text: "[redacted]"}}
 				replacement.Usage = &wantUsage
-				var out extension.AgentMessage = agent.AgentMessage{Assistant: &replacement}
+				out := extension.AgentMessage(agent.AgentMessage{Assistant: &replacement})
 				return &extension.MessageEndEventResult{Message: &out}, nil
 			},
 			func(args ...any) (any, error) {
-				if args[0].(extension.MessageEndEvent).Message.(agent.AgentMessage).Assistant == nil {
+				if args[0].(extension.MessageEndEvent).Message.Assistant == nil {
 					return nil, nil
 				}
-				var out extension.AgentMessage = map[string]any{"role": "user", "content": []any{}}
+				out := extension.AgentMessage(agent.AgentMessage{User: &agent.UserMessage{Role: "user", Content: ai.UserContentBlocks{}}})
 				return &extension.MessageEndEventResult{Message: &out}, nil
 			},
 		},
@@ -376,7 +430,7 @@ func TestMessageEndReplacementPersisted(t *testing.T) {
 	}
 	var persisted []string
 	for _, entry := range h.entries("message") {
-		if message, ok := entry.AsMessage(); ok && message.Message.Assistant != nil {
+		if message, ok := entry.(icodingagent.MessageEntry); ok && message.Message.Assistant != nil {
 			persisted = append(persisted, assistantText(message.Message.Assistant))
 			if got := message.Message.Assistant.Usage; got == nil || *got != wantUsage {
 				t.Fatalf("persisted usage = %+v, want %+v", got, wantUsage)
@@ -470,7 +524,7 @@ func TestCloneKeepsToolCallHooks(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(agentDir, "settings.json"), []byte(`{"thinkingBudgets":{"high":4321}}`), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	svcs, err := NewServices(ServicesOptions{CWD: t.TempDir(), AgentDir: agentDir})
+	svcs, err := CreateAgentSessionServices(CreateAgentSessionServicesOptions{CWD: t.TempDir(), AgentDir: agentDir})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -481,7 +535,7 @@ func TestCloneKeepsToolCallHooks(t *testing.T) {
 	})}, t.TempDir())
 	provider := &optionsProvider{}
 	tool := &probeTool{}
-	model := &ai.Model{ID: "faux-1", DisplayName: "faux-1", Provider: provider, Capabilities: ai.ModelCapabilities{ContextWindow: 128_000, MaxThinking: ai.ThinkingHigh}}
+	model := &ai.Model{ID: "faux-1", DisplayName: "faux-1", Provider: provider, Capabilities: ai.ModelCapabilities{ContextWindow: 128_000, MaxThinking: ai.ThinkingLevelHigh}}
 	sess, err := NewSession(svcs, SessionOptions{
 		Model: model, SkipBuiltinTools: true, Tools: []agent.AgentTool{tool}, Runner: runner, EventBufferSize: 7,
 		BeforeToolCall: []agent.BeforeToolCallHook{func(context.Context, string, string, json.RawMessage) agent.ToolCallHookResult {
@@ -581,6 +635,7 @@ func TestBeforeAgentStartMessagesReachProvider(t *testing.T) {
 // ctx.navigateTree from an extension command reaches the Session in every mode
 // (upstream binds it from session.navigateTree), including after a runner
 // swap, and a clone sharing the runner does not take the binding over.
+// Pi: packages/coding-agent/src/core/extensions/types.ts:422 (CommandContext.navigateTree).
 func TestExtensionCommandNavigateTreeIsBound(t *testing.T) {
 	svcs := newTestServices(t)
 	runner := inproc.NewRunner(nil, t.TempDir())
@@ -601,12 +656,12 @@ func TestExtensionCommandNavigateTreeIsBound(t *testing.T) {
 
 	navigate := func(r *inproc.Runner) {
 		t.Helper()
-		before := *sess.Inner().LeafID()
+		before := *sess.Inner().GetLeafID()
 		result, err := r.CreateCommandContext().NavigateTree(first, nil)
 		if err != nil || result.Cancelled {
 			t.Fatalf("NavigateTree = %+v, %v; want a navigation", result, err)
 		}
-		if leaf := sess.Inner().LeafID(); leaf != nil && *leaf == before {
+		if leaf := sess.Inner().GetLeafID(); leaf != nil && *leaf == before {
 			t.Fatal("the Session's leaf did not move")
 		}
 	}
@@ -620,6 +675,7 @@ func TestExtensionCommandNavigateTreeIsBound(t *testing.T) {
 
 // ctx.waitForIdle from an extension command uses the Session's run state in
 // every mode (upstream binds it from session.waitForIdle).
+// Pi: packages/coding-agent/src/core/extensions/types.ts:406 (CommandContext.waitForIdle).
 func TestExtensionCommandWaitForIdleIsBound(t *testing.T) {
 	svcs := newTestServices(t)
 	runner := inproc.NewRunner(nil, t.TempDir())
@@ -657,7 +713,7 @@ func TestContextWithSystemHandlerSeesAndReplacesTranscript(t *testing.T) {
 	h := newRecoveryHarness(t, harnessOptions{extension: extension.Extension{Path: "/ext/full", Handlers: map[string][]extension.HandlerFn{
 		"context_with_system": {func(args ...any) (any, error) {
 			messages := args[0].(extension.ContextWithSystemEvent).Messages
-			if first, ok := messages[0].(agent.AgentMessage); ok && first.System != nil {
+			if first := messages[0]; first.System != nil {
 				sawSystem.Store(true)
 			}
 			replacement := &ai.SystemMessage{Content: ai.SystemText("REPLACED-PROMPT")}
@@ -700,7 +756,7 @@ func TestMessageEndCustomMessageReplacement(t *testing.T) {
 				}},
 				"message_end": {func(args ...any) (any, error) {
 					message := args[0].(extension.MessageEndEvent).Message
-					if m, ok := message.(agent.AgentMessage); !ok || m.Custom == nil {
+					if m := message; m.Custom == nil {
 						return nil, nil
 					}
 					out := tc.replace(message)
@@ -734,7 +790,7 @@ func TestContextTransformsDoNotMutateTranscript(t *testing.T) {
 						messages = e.Messages
 					}
 					for _, message := range messages {
-						if m, ok := message.(agent.AgentMessage); ok && m.User != nil {
+						if m := message; m.User != nil {
 							m.User.Content = ai.UserContentBlocks{ai.TextContent{Text: "REQUEST-ONLY"}}
 						}
 					}

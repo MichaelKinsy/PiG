@@ -43,9 +43,9 @@ func TestToolArgumentValidationPiOracle(t *testing.T) {
 				t.Fatal(err)
 			}
 			tool := &validationOracleTool{fakeTool: fakeTool{name: row.Tool, params: params}, schema: fixture.Schemas[row.Schema]}
-			a := NewAgent(AgentOptions{Tools: []AgentTool{tool}})
+			a := mustNewAgent(AgentOptions{Tools: []AgentTool{tool}})
 			call := pendingToolCall{id: "call", name: row.Tool, args: toolCallArguments(row.Input)}
-			got := a.prepareToolCall(context.Background(), call)
+			got := a.testHost().prepareToolCall(context.Background(), call)
 			if row.Error != "" {
 				if got.finalized == nil || got.finalized.result.Text() != row.Error {
 					t.Fatalf("error = %+v; want %s", got.finalized, row.Error)

@@ -1,0 +1,36 @@
+[
+ {
+  "ids": [
+   "pkg:ai/.#ClassifierAnswer",
+   "pkg:ai/compat#ClassifierAnswer"
+  ],
+  "targets": [
+   "ai/classifier.go#ClassifierAnswer"
+  ],
+  "production": [
+   "call:ai/classifier_wire.go#unmarshalClassifierAnswer"
+  ],
+  "evidence": [
+   "test:ai/wire_shape_upstream_test.go#TestClassifierQuestionAndAnswerWireShapesMatchUpstream",
+   "test:ai/classifier_wire_test.go#TestClassifierContextAndResultRoundTripKeepOrder"
+  ],
+  "rationale": "ClassifierAnswer is the union of the three variants; Go declares it as the closed interface implemented by exactly the bool, choice and score variants (each variant row is closed); unmarshalClassifierAnswer decodes into it and the wire tests marshal and decode every variant."
+ },
+ {
+  "ids": [
+   "pkg:ai/.#ClassifierQuestion",
+   "pkg:ai/compat#ClassifierQuestion"
+  ],
+  "targets": [
+   "ai/classifier.go#ClassifierQuestion"
+  ],
+  "production": [
+   "call:ai/classifier.go#unmarshalClassifierQuestion"
+  ],
+  "evidence": [
+   "test:ai/wire_shape_upstream_test.go#TestClassifierQuestionAndAnswerWireShapesMatchUpstream",
+   "test:ai/classifier_wire_test.go#TestClassifierContextAndResultRoundTripKeepOrder"
+  ],
+  "rationale": "ClassifierQuestion is the union of the three variants; Go declares it as the closed interface implemented by exactly the bool, choice and score variants (each variant row is closed); unmarshalClassifierQuestion decodes into it and the wire tests marshal and decode every variant."
+ }
+]

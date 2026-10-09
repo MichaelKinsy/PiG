@@ -9,7 +9,7 @@ import (
 )
 
 // logRedraw appends redraw reasons only to the configured log directory when PI_TUI_DEBUG_REDRAW is enabled. Synchronous filesystem failures propagate to the rendering caller.
-func (t *TUI) logRedraw(reason string, newLen, height int) {
+func (t *TuiMainScreen) logRedraw(reason string, newLen, height int) {
 	if os.Getenv("PI_TUI_DEBUG_REDRAW") != "1" || t.logDirectory == "" {
 		return
 	}

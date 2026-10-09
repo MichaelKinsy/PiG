@@ -60,7 +60,7 @@ func runConfigMigrationsCaptured(t *testing.T, agentDir string) string {
 // upstream: packages/coding-agent/test/model-runtime-test-utils.ts:15-24. The production Services-owned ModelRuntime and extension registry facade construct and refresh offline; all file-backed state is temporary.
 func newMigrationModelRegistry(t *testing.T, agentDir string) *coding.ModelRegistry {
 	t.Helper()
-	services, err := coding.NewServices(coding.ServicesOptions{CWD: agentDir, AgentDir: agentDir})
+	services, err := coding.CreateAgentSessionServices(coding.CreateAgentSessionServicesOptions{CWD: agentDir, AgentDir: agentDir})
 	if err != nil {
 		t.Fatal(err)
 	}

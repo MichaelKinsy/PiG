@@ -166,3 +166,33 @@ func TestPipesWaitReturnsOnEOFOfEveryPipe(t *testing.T) {
 		t.Fatalf("output = %q", got)
 	}
 }
+
+// packages/coding-agent/src/utils/child-process.ts:15 EXIT_STDIO_GRACE_MS. The tests above measure in units of Grace, so only
+// this assertion pins its value.
+func TestGraceIsTheUpstreamExitStdioGrace(t *testing.T) {
+	if Grace != 100*time.Millisecond {
+		t.Fatalf("Grace = %v, want 100ms", Grace)
+	}
+}
+
+// Node reads a pipe in chunks of up to 64 KiB (the size libuv offers a stream read), so a writer that has filled the pipe delivers one 64 KiB chunk, as pi's
+// bash_execution_update deltas show for a fast writer. A regular file holding 64 KiB + 1 bytes makes every read return as much as the buffer takes, so the
+// chunk sizes show the read size itself, on every OS and without depending on the host's pipe capacity (fs.pipe-user-pages-soft shrinks new pipes to one page).
+func TestStartReadsUpTo64KiBPerChunk(t *testing.T) {
+	file, err := os.CreateTemp(t.TempDir(), "chunks")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := file.WriteString(strings.Repeat("x", 64*1024+1)); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := file.Seek(0, io.SeekStart); err != nil {
+		t.Fatal(err)
+	}
+	var sizes []int
+	pipes := Start([]*os.File{file}, func(_ int, chunk []byte) { sizes = append(sizes, len(chunk)) }, Hooks{})
+	pipes.Wait(func() bool { return false })
+	if len(sizes) != 2 || sizes[0] != 64*1024 || sizes[1] != 1 {
+		t.Fatalf("chunk sizes = %v, want [65536 1]", sizes)
+	}
+}

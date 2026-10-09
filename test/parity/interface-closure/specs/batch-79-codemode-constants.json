@@ -1,0 +1,116 @@
+[
+ {
+  "ids": [
+   "pkg:codemode/.#DEFAULT_INPUT_SCHEMA_MAX_CHARS",
+   "pkg:codemode/declarations#DEFAULT_INPUT_SCHEMA_MAX_CHARS"
+  ],
+  "targets": [
+   "codemode/declarations.go#DefaultInputSchemaMaxChars"
+  ],
+  "production": [
+   "call:codemode/declarations.go#RenderToolSignature"
+  ],
+  "evidence": [
+   "test:codemode/upstream_oracle_test.go#TestExportedConstantsMatchPi"
+  ],
+  "rationale": "DefaultInputSchemaMaxChars is the Go const with Pi's value 16000, checked against Pi's export by the oracle."
+ },
+ {
+  "ids": [
+   "pkg:codemode/.#MCP_TYPESCRIPT_PREAMBLE",
+   "pkg:codemode/declarations#MCP_TYPESCRIPT_PREAMBLE"
+  ],
+  "targets": [
+   "codemode/declarations.go#McpTypescriptPreamble"
+  ],
+  "production": [
+   "call:coding/extension/builtin/codemode/description.go#CreateDescription"
+  ],
+  "evidence": [
+   "test:codemode/upstream_oracle_test.go#TestExportedConstantsMatchPi",
+   "test:codemode/declarations_test.go#TestRenderToolSignatureRendersMCPCallToolResultOutputSchemasAsCallToolResult"
+  ],
+  "rationale": "McpTypescriptPreamble is the Go const holding Pi's preamble text byte for byte (oracle)."
+ },
+ {
+  "ids": [
+   "pkg:codemode/.#CODEMODE_SOURCE_GRAMMAR",
+   "pkg:codemode/source#CODEMODE_SOURCE_GRAMMAR"
+  ],
+  "targets": [
+   "codemode/source.go#CodemodeSourceGrammar"
+  ],
+  "production": [
+   "call:coding/extension/builtin/codemode/tool.go#constrainedSampling"
+  ],
+  "evidence": [
+   "test:codemode/upstream_oracle_test.go#TestExportedConstantsMatchPi",
+   "test:codemode/source_test.go#TestParseCodemodeSourceReturnsPlainCodeUnchanged"
+  ],
+  "rationale": "CodemodeSourceGrammar is the Go const holding Pi's Lark grammar byte for byte (oracle)."
+ },
+ {
+  "ids": [
+   "pkg:codemode/.#MAX_OUTPUT_CHARS"
+  ],
+  "targets": [
+   "codemode/assets.go#MaxOutputChars"
+  ],
+  "production": [
+   "public-api:codemode/assets.go#MaxOutputChars"
+  ],
+  "evidence": [
+   "test:codemode/upstream_oracle_test.go#TestExportedConstantsMatchPi",
+   "test:codemode/limits_test.go#TestPreludeEmbedsTheExportedLimits"
+  ],
+  "rationale": "MaxOutputChars is the Go const with Pi's value; the embedded prelude enforces it as a literal, and a test pins the literal to the const. Closed as public-api-tested: no PiG function reads the const."
+ },
+ {
+  "ids": [
+   "pkg:codemode/.#MAX_OUTPUT_ITEMS"
+  ],
+  "targets": [
+   "codemode/assets.go#MaxOutputItems"
+  ],
+  "production": [
+   "public-api:codemode/assets.go#MaxOutputItems"
+  ],
+  "evidence": [
+   "test:codemode/upstream_oracle_test.go#TestExportedConstantsMatchPi",
+   "test:codemode/limits_test.go#TestPreludeEmbedsTheExportedLimits"
+  ],
+  "rationale": "MaxOutputItems, as MaxOutputChars."
+ },
+ {
+  "ids": [
+   "pkg:codemode/.#MAX_STORE_VALUE_CHARS"
+  ],
+  "targets": [
+   "codemode/assets.go#MaxStoreValueChars"
+  ],
+  "production": [
+   "public-api:codemode/assets.go#MaxStoreValueChars"
+  ],
+  "evidence": [
+   "test:codemode/upstream_oracle_test.go#TestExportedConstantsMatchPi",
+   "test:codemode/limits_test.go#TestStoreLimitsAreInclusiveAtTheExportedValues"
+  ],
+  "rationale": "MaxStoreValueChars is the Go const with Pi's value; the prelude's store() enforces it, tested at the exact boundary."
+ },
+ {
+  "ids": [
+   "pkg:codemode/.#MAX_STORE_TOTAL_CHARS"
+  ],
+  "targets": [
+   "codemode/assets.go#MaxStoreTotalChars"
+  ],
+  "production": [
+   "public-api:codemode/assets.go#MaxStoreTotalChars"
+  ],
+  "evidence": [
+   "test:codemode/upstream_oracle_test.go#TestExportedConstantsMatchPi",
+   "test:codemode/limits_test.go#TestStoreLimitsAreInclusiveAtTheExportedValues"
+  ],
+  "rationale": "MaxStoreTotalChars, as MaxStoreValueChars (the total counts key lengths too)."
+ }
+]

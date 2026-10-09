@@ -42,6 +42,31 @@ func SetImageTranscoder(transcoder ImageTranscoder) {
 	clear(pngCacheIndex)
 }
 
+// ImageTranscoderRegistered reports whether an image transcoder is registered.
+func ImageTranscoderRegistered() bool {
+	imageTranscoderMu.Lock()
+	defer imageTranscoderMu.Unlock()
+	return imageTranscoder != nil
+}
+
+var imageTranscoderLoader func(onRegistered func())
+
+// SetImageTranscoderLoader installs the host function that registers the PNG transcoder for Kitty-protocol terminals
+// (coding-agent utils/image-convert.ts ensurePngTranscoder). A tool card calls it when it shows a non-PNG image, so the
+// transcoder is available in any host. The loader runs onRegistered once the transcoder is newly registered, and not when
+// it was already registered or cannot load. Set it at start-up, before a card renders.
+func SetImageTranscoderLoader(loader func(onRegistered func())) {
+	imageTranscoderLoader = loader
+}
+
+// ensureImageTranscoder asks the installed loader to register the transcoder; with no loader, non-PNG images keep their
+// text fallbacks.
+func ensureImageTranscoder(onRegistered func()) {
+	if imageTranscoderLoader != nil {
+		imageTranscoderLoader(onRegistered)
+	}
+}
+
 // toPng converts through the registered transcoder and the shared cache.
 func toPng(base64Data, mimeType string) (string, bool) {
 	imageTranscoderMu.Lock()
@@ -92,26 +117,36 @@ type Image struct {
 	pngData string
 }
 
-func NewImage(base64Data, mimeType string, options ImageOptions, dimensions *ImageDimensions) *Image {
+// DefaultImageTheme is the theme-aware ImageTheme: the fallback text is muted in the active theme.
+func DefaultImageTheme() ImageTheme {
+	th := ActiveTheme()
+	return ImageTheme{FallbackColor: func(s string) string {
+		if th.Muted != "" {
+			return th.Muted + s + th.Reset
+		}
+		return s
+	}}
+}
+
+// NewImage creates an image component with Pi's constructor shape (base64Data, mimeType, theme, options, dimensions). Dimensions default to the data's own size, or 800x600 when it cannot be read; an ImageTheme without FallbackColor styles nothing.
+// upstream: packages/tui/src/components/image.ts constructor
+func NewImage(base64Data, mimeType string, theme ImageTheme, options ImageOptions, dimensions *ImageDimensions) *Image {
 	dims := ImageDimensions{WidthPx: 800, HeightPx: 600}
 	if dimensions != nil {
 		dims = *dimensions
 	} else if got := GetImageDimensions(base64Data, mimeType); got != nil {
 		dims = *got
 	}
-	th := ActiveTheme()
+	if theme.FallbackColor == nil {
+		theme = ImageTheme{FallbackColor: func(text string) string { return text }}
+	}
 	return &Image{
 		Base64Data: base64Data,
 		MIMEType:   mimeType,
 		Dimensions: dims,
-		Theme: ImageTheme{FallbackColor: func(s string) string {
-			if th.Muted != "" {
-				return th.Muted + s + th.Reset
-			}
-			return s
-		}},
-		Options: options,
-		imageID: options.ImageID,
+		Theme:      theme,
+		Options:    options,
+		imageID:    options.ImageID,
 	}
 }
 
@@ -123,17 +158,23 @@ func (i *Image) Invalidate() {
 	i.cachedWidth = 0
 }
 
+// imageMaxWidthCells is the width in cells an image draws at in width
+// columns with the maxWidthCells option, 60 when it is unset
+// (image.ts render: Math.max(1, Math.min(width - 2, maxWidthCells ?? 60))).
+func imageMaxWidthCells(width, maxWidthCells int) int {
+	if maxWidthCells <= 0 {
+		maxWidthCells = 60
+	}
+	return max(1, min(width-2, maxWidthCells))
+}
+
 // Render returns image protocol rows or a width-bounded, styled fallback.
 func (i *Image) Render(width int) []string {
 	if i.cachedLines != nil && i.cachedWidth == width {
 		return i.cachedLines
 	}
 	// Mirrors upstream image.ts:66-98.
-	maxCells := i.Options.MaxWidthCells
-	if maxCells <= 0 {
-		maxCells = 60
-	}
-	maxWidth := max(1, min(width-2, maxCells))
+	maxWidth := imageMaxWidthCells(width, i.Options.MaxWidthCells)
 	cellDimensions := GetCellDimensions()
 	defaultMaxHeight := max(1, (maxWidth*cellDimensions.WidthPx+cellDimensions.HeightPx-1)/cellDimensions.HeightPx)
 	maxHeight := i.Options.MaxHeightCells

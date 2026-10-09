@@ -38,7 +38,7 @@ func TestSessionExplicitThinkingOverridesSettingsAndResume(t *testing.T) {
 					t.Fatal(err)
 				}
 				opts.ResumePath = previous.Path()
-				before = len(previous.Inner().Entries())
+				before = len(previous.Inner().GetEntries())
 				if err := previous.Close(); err != nil {
 					t.Fatal(err)
 				}
@@ -50,8 +50,8 @@ func TestSessionExplicitThinkingOverridesSettingsAndResume(t *testing.T) {
 			if session.ThinkingLevel() != ai.ThinkingHigh {
 				t.Fatalf("thinking=%s, want high", session.ThinkingLevel())
 			}
-			if resume && len(session.Inner().Entries()) != before {
-				t.Errorf("explicit resume thinking rewrote existing metadata: %d -> %d", before, len(session.Inner().Entries()))
+			if resume && len(session.Inner().GetEntries()) != before {
+				t.Errorf("explicit resume thinking rewrote existing metadata: %d -> %d", before, len(session.Inner().GetEntries()))
 			}
 			if services.SettingsManager().GetDefaultThinkingLevel() != "medium" {
 				t.Error("session thinking rewrote global default")

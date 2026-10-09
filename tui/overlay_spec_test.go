@@ -25,10 +25,10 @@ func (c *widthFrameComponent) Invalidate() {}
 // one-row top margin, every row and the HUD visible, and no modal border.
 func TestOverlaySpecDoomFrameComposesUnframedAndUncropped(t *testing.T) {
 	pct := func(v float64) *OverlayValue { return &OverlayValue{Value: v, Percent: true} }
-	opts := OverlaySpec{Width: pct(75), MaxHeight: pct(95), Anchor: "center", Margin: &OverlayMarginSpec{Top: 1}}.Options()
-	ui := NewWithOutput(io.Discard, 120, 40)
+	opts := OverlaySpec{Width: pct(75), MaxHeight: pct(95), Anchor: "center", Margin: OverlayMarginSpec{Top: 1}}.Options()
+	ui := newManualRenderTUI(io.Discard, 120, 40)
 	comp := &widthFrameComponent{}
-	if ui.OpenOverlay(comp, opts) == nil {
+	if ui.ShowOverlay(comp, opts) == nil {
 		t.Fatal("overlay not mounted")
 	}
 	rows := ui.composeOverlayLines(nil, 120, 40)
@@ -47,5 +47,20 @@ func TestOverlaySpecDoomFrameComposesUnframedAndUncropped(t *testing.T) {
 		if strings.ContainsAny(r, "│┌└") {
 			t.Fatalf("unexpected modal border: %q", r)
 		}
+	}
+}
+
+// overlay-options.test.ts:294 "should respect margin as number": `margin: 5` places a top-left overlay at row 5, col 5 (tui.ts:1213-1216 turns the
+// number into all four edges). OverlayMarginAll is that numeric form.
+func TestOverlaySpecMarginAsNumber(t *testing.T) {
+	spec := OverlaySpec{Anchor: "top-left", Width: &OverlayValue{Value: 10}, Margin: OverlayMarginAll(5)}
+	g := ResolveOverlayGeometry(spec.Options(), 3, 80, 24)
+	if g.Row != 5 || g.Col != 5 {
+		t.Errorf("row, col = %d, %d; want 5, 5", g.Row, g.Col)
+	}
+	// A width that would not fit inside the margin is clamped to the space left by the numeric margin (availWidth, tui.ts:1223).
+	wide := OverlaySpec{Anchor: "top-left", Width: &OverlayValue{Value: 100}, Margin: OverlayMarginAll(2)}
+	if g := ResolveOverlayGeometry(wide.Options(), 3, 80, 24); g.Width != 76 {
+		t.Errorf("width with margin 2 on 80 columns = %d, want 76", g.Width)
 	}
 }

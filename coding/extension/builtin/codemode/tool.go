@@ -8,7 +8,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/MichaelKinsy/PiG/agent"
 	sandbox "github.com/MichaelKinsy/PiG/codemode"
 	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/internal/codingagent"
@@ -21,6 +20,14 @@ type Options struct {
 	// GetSettings returns the effective settings, read on every use: `codemode.mode` and `codemode.inlineBudget`.
 	// Nil means the defaults (mode `on`, the default budget).
 	GetSettings func() extension.Settings
+	// Mode overrides the `codemode.mode` setting: [ModeOn] or [ModeOnly]. Empty reads the setting.
+	//
+	// Ports packages/coding-agent/src/extensions/codemode/index.ts (CodemodeExtensionOptions.mode).
+	Mode string
+	// InlineBudget overrides the `codemode.inlineBudget` setting. Nil reads the setting.
+	//
+	// Ports packages/coding-agent/src/extensions/codemode/index.ts (CodemodeExtensionOptions.inlineBudget).
+	InlineBudget *int
 	// CacheDir holds wazero's on-disk compilation cache for the sandbox module; empty compiles in memory.
 	CacheDir string
 	// Models declares and serves the `models` namespace of the tool [Definition] (createCodemodeToolDefinition's
@@ -38,6 +45,9 @@ const (
 )
 
 func (o Options) mode() string {
+	if o.Mode == ModeOn || o.Mode == ModeOnly {
+		return o.Mode
+	}
 	if o.GetSettings != nil {
 		if codemode, ok := o.GetSettings()["codemode"].(map[string]any); ok && codemode["mode"] == ModeOnly {
 			return ModeOnly
@@ -47,10 +57,14 @@ func (o Options) mode() string {
 }
 
 func (o Options) inlineBudget() *int {
+	if o.InlineBudget != nil {
+		return o.InlineBudget
+	}
 	if o.GetSettings != nil {
 		if codemode, ok := o.GetSettings()["codemode"].(map[string]any); ok {
 			if budget, ok := codemode["inlineBudget"].(float64); ok && !math.IsInf(budget, 0) && !math.IsNaN(budget) && budget >= 0 {
-				value := int(budget)
+				// A budget beyond the int range still holds every tool section.
+				value := int(min(budget, math.MaxInt32))
 				return &value
 			}
 		}
@@ -70,10 +84,13 @@ var inputSchema = json.RawMessage(`{"type":"object","properties":{"code":{"descr
 // (`{ output, exit_code, full_output_path? }`), or the rendered type for anything else.
 //
 // Ports packages/coding-agent/src/extensions/codemode/tool.ts (describeOutput).
-func describeOutput(schema json.RawMessage) string {
-	rendered := sandbox.RenderToolOutputType(schema)
+func describeOutput(schema json.RawMessage) (string, error) {
+	rendered, err := sandbox.RenderToolOutputType(schema)
+	if err != nil {
+		return "", err
+	}
 	if rendered == "string" {
-		return "a string"
+		return "a string", nil
 	}
 	if object := objectOf(schema); object != nil && sandbox.McpStructuredContentSchema(schema) == nil {
 		// upstream: `typeof properties === "object"` also holds for an array, whose keys are its indexes.
@@ -105,10 +122,10 @@ func describeOutput(schema json.RawMessage) string {
 					fields = append(fields, name+"?")
 				}
 			}
-			return "`{ " + strings.Join(fields, ", ") + " }`"
+			return "`{ " + strings.Join(fields, ", ") + " }`", nil
 		}
 	}
-	return "`" + jsWhitespace.ReplaceAllString(rendered, " ") + "`"
+	return "`" + jsWhitespace.ReplaceAllString(rendered, " ") + "`", nil
 }
 
 // jsWhitespace is JavaScript's `\s+`.
@@ -118,8 +135,12 @@ var jsWhitespace = lazyregexp.New(`[\t\n\v\f\r \x{a0}\x{1680}\x{2000}-\x{200a}\x
 // The arguments are the tool's declared parameters, so they are not repeated.
 //
 // Ports packages/coding-agent/src/extensions/codemode/tool.ts (describeScriptCall).
-func describeScriptCall(tool extension.AgentTool) string {
-	return jsstring.Trim(tool.Description) + "\n\nCodemode: `tools." + sandbox.ToCodemodeIdentifier(tool.Name) + "(args)` resolves to " + describeOutput(toDeclaration(tool).OutputSchema) + "."
+func describeScriptCall(tool extension.AgentTool) (string, error) {
+	output, err := describeOutput(toDeclaration(tool, nil).OutputSchema)
+	if err != nil {
+		return "", err
+	}
+	return jsstring.Trim(tool.Description) + "\n\nCodemode: `tools." + sandbox.ToCodemodeIdentifier(tool.Name) + "(args)` resolves to " + output + ".", nil
 }
 
 // prepareLoadout is how the tool presents tools that are both declared and callable from scripts:
@@ -127,6 +148,8 @@ func describeScriptCall(tool extension.AgentTool) string {
 //     without `direct` exposure.
 //   - `only`: the codemode description lists every callable tool, and requests leave out the declarations of active
 //     `direct` tools.
+//
+// Listed tools carry their prompt guidelines, which the system prompt only has for declared tools.
 //
 // Listing by exposure, not by the active set, keeps the codemode description unchanged when `tool_search` loads a
 // tool, so loads do not redeclare codemode.
@@ -144,7 +167,12 @@ func prepareLoadout(loadout extension.ToolLoadout, options Options) *extension.T
 	if mode == ModeOn {
 		for _, tool := range loadout.Declared {
 			if callableNames[tool.Name] {
-				descriptions[tool.Name] = describeScriptCall(tool)
+				description, err := describeScriptCall(tool)
+				if err != nil {
+					// upstream: prepareLoadout throws; the session reports it as a prepare_loadout extension error (extension.ToolPrepareLoadoutFunc).
+					panic(err)
+				}
+				descriptions[tool.Name] = description
 			}
 		}
 	}
@@ -162,12 +190,21 @@ func prepareLoadout(loadout extension.ToolLoadout, options Options) *extension.T
 			deferred[tool.Name] = true
 		}
 	}
+	// Listed tools carry their prompt guidelines, which the system prompt only has for declared tools.
+	guidelines := map[string][]string{}
+	for _, tool := range listed {
+		guidelines[tool.Name] = loadout.GetPromptGuidelines(tool.Name)
+	}
 	budget := options.inlineBudget()
 	if budget == nil {
 		defaultBudget := DefaultInlineBudget
 		budget = &defaultBudget
 	}
-	descriptions[ToolName] = CreateDescription(listed, DescriptionOptions{Models: options.Models, Namespaces: namespaces, Deferred: deferred, InlineBudget: budget})
+	description, err := CreateDescription(listed, DescriptionOptions{Models: options.Models, Namespaces: namespaces, Guidelines: guidelines, Deferred: deferred, InlineBudget: budget})
+	if err != nil {
+		panic(err) // upstream: see above, a thrown prepareLoadout.
+	}
+	descriptions[ToolName] = description
 	hidden := []string{}
 	if mode == ModeOnly {
 		declared := map[string]bool{}
@@ -187,10 +224,12 @@ func prepareLoadout(loadout extension.ToolLoadout, options Options) *extension.T
 //
 // Ports packages/coding-agent/src/extensions/codemode/tool.ts (createCodemodeToolDefinition).
 func Definition(options Options) extension.ToolDefinition {
+	// No tools are listed, so no schema reference is decoded and rendering cannot fail.
+	description, _ := CreateDescription(nil, DescriptionOptions{Models: options.Models})
 	return extension.ToolDefinition{
 		Name:             ToolName,
 		Label:            ToolName,
-		Description:      CreateDescription(nil, DescriptionOptions{Models: options.Models}),
+		Description:      description,
 		PromptSnippet:    promptSnippet,
 		PromptGuidelines: promptGuidelines,
 		Parameters:       inputSchema,
@@ -203,8 +242,7 @@ func Definition(options Options) extension.ToolDefinition {
 		ConstrainedSampling: constrainedSampling(),
 		// The sandbox loads on the first call, not at startup.
 		Execute: func(ctx context.Context, toolCallID string, params json.RawMessage, onUpdate extension.AgentToolUpdateCallback) (extension.AgentToolResult, error) {
-			update, _ := onUpdate.(agent.ToolUpdateCallback)
-			return Execute(ctx, toolCallID, params, update, options)
+			return Execute(ctx, toolCallID, params, onUpdate, options)
 		},
 		// upstream: tool.ts createCodemodeToolDefinition spreads codemodeRenderers into the definition.
 		RenderCall:   codingagent.CodemodeRenderers.RenderCall,
@@ -217,17 +255,20 @@ func constrainedSampling() json.RawMessage {
 	return data
 }
 
-// Extension is the `builtin:codemode` extension: the tool registered inactive. Activate it with `--tools`, the
-// `defaultTools` setting or `setActiveTools()`.
+// CreateCodemodeExtension is the factory of the `builtin:codemode` extension: it registers the tool inactive. Activate it with `--tools`,
+// the `defaultTools` setting or `setActiveTools()`. The tool reads `codemode.mode` and `codemode.inlineBudget` through the API's
+// GetSettings on every use, unless the options override them (upstream's readMode and readInlineBudget).
 //
 // Ports packages/coding-agent/src/extensions/codemode/index.ts (createCodemodeExtension).
-func Extension(options Options) (extension.Extension, error) {
-	options.Models = !options.DisableModels
-	definition := Definition(options)
-	inactive := false
-	definition.DefaultActive = &inactive
-	return extension.Extension{
-		Tools:     map[string]extension.RegisteredTool{ToolName: {Definition: definition}},
-		ToolOrder: []string{ToolName},
-	}, nil
+func CreateCodemodeExtension(options Options) extension.ExtensionFactory {
+	return func(pi extension.API) error {
+		o := options
+		o.Models = !o.DisableModels
+		o.GetSettings = pi.GetSettings
+		definition := Definition(o)
+		inactive := false
+		definition.DefaultActive = &inactive
+		pi.RegisterTool(definition)
+		return nil
+	}
 }

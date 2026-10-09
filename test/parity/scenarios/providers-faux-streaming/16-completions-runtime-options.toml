@@ -23,5 +23,5 @@ timeout_seconds = 60
 [assert]
 exit_code = 0
 output_equal = true
-both_contain = ['"case":"context-default","maxCompletion":3904', '"case":"context-explicit","maxCompletion":3904', '"path":"/v1/account-id/gateway-id/compat/chat/completions"', '"auth":"Bearer upstream-token","gatewayAuth":"Bearer cf-token"']
+both_contain = ['"case":"context-default","maxCompletion":3618', '"case":"context-explicit","maxCompletion":3618', '"path":"/v1/account-id/gateway-id/compat/chat/completions"', '"auth":"Bearer upstream-token","gatewayAuth":"Bearer cf-token"']
 runs = 3

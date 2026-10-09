@@ -21,7 +21,8 @@ func markdownDecoration(open, close, text string) string {
 	return ansiSpan(open, close, text)
 }
 
-func defaultMarkdownTheme() MarkdownTheme {
+// GetMarkdownTheme returns the markdown theme that styles each span with the active theme's markdown tokens (upstream theme.ts getMarkdownTheme). Every function reads ActiveTheme when it runs, so a theme switch restyles components that hold the result.
+func GetMarkdownTheme() MarkdownTheme {
 	return MarkdownTheme{
 		Heading:         func(s string) string { return markdownForeground(ActiveTheme().MDHeading, s) },
 		Link:            func(s string) string { return markdownForeground(ActiveTheme().MDLink, s) },
@@ -40,11 +41,15 @@ func defaultMarkdownTheme() MarkdownTheme {
 		HighlightCode:   highlightMarkdownCode,
 	}
 }
+
+// activeMarkdownTheme is GetMarkdownTheme built once. Its functions read the active theme when called, so one value serves every render.
+var activeMarkdownTheme = GetMarkdownTheme()
+
 func (m *Markdown) markdownTheme() MarkdownTheme {
 	if m.theme != nil {
 		return *m.theme
 	}
-	return defaultMarkdownTheme()
+	return activeMarkdownTheme
 }
 func markdownStylePrefix(style func(string) string) string {
 	styled := style("\x00")
@@ -74,6 +79,7 @@ func (m *Markdown) childMarkdown(content string) *Markdown {
 	child.defaultItalic = m.defaultItalic
 	child.styleContext = m.styleContext
 	child.styleOwner = m
+	child.inlineState = m.lexerState()
 	if m.styleOwner != nil {
 		child.styleOwner = m.styleOwner
 	}
@@ -81,14 +87,19 @@ func (m *Markdown) childMarkdown(content string) *Markdown {
 }
 func (m *Markdown) latexEnabled() bool { return m.options.RenderLatex == nil || *m.options.RenderLatex }
 
-func (m *Markdown) renderQuote(content string, width int) []string {
+func (m *Markdown) renderQuote(content string, lazyUnderlines []int, width int) []string {
 	theme := m.markdownTheme()
 	quoteStyle := func(text string) string { return theme.Quote(theme.Italic(text)) }
 	prefix := markdownStylePrefix(quoteStyle)
 	child := m.childMarkdown(content)
 	child.styleContext = &inlineStyleContext{applyText: func(s string) string { return s }, stylePrefix: prefix}
+	child.lazyUnderlines = lazyUnderlines
 	contentWidth := max(1, width-2)
 	logical := child.renderContent(content, contentWidth)
+	// markdown.ts drops trailing empty quote lines, which renderContent keeps only before a link definition.
+	for len(logical) > 0 && logical[len(logical)-1] == "" {
+		logical = logical[:len(logical)-1]
+	}
 	var out []string
 	for _, line := range logical {
 		if prefix != "" {

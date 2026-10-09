@@ -1,5 +1,4 @@
 #!/usr/bin/env bash
-# SPDX-FileCopyrightText: Copyright Hewlett Packard Enterprise Development LP
 # SPDX-License-Identifier: MIT
 #
 # Usage: windows-native-shard.sh <shard>
@@ -20,7 +19,7 @@ ROOT=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../.." && pwd)
 module=github.com/MichaelKinsy/PiG
 all=$("$ROOT/automation/ci/windows-test-packages.sh")
 # grep -v exits 1 when nothing remains; an empty list is caught below.
-all=$(printf '%s\n' "$all" | grep -v -x -e "$module/coding/extension/host/runtimecell" -e "$module/coding/extension/host/subprocess" -e "$module/cmd/pig" || true)
+all=$(printf '%s\n' "$all" | grep -v -x -e "$module/coding/extension/host/runtimecell" -e "$module/coding/extension/host/subprocess" -e "$module/coding/cli" || true)
 shard1=("$module/coding" "$module/tui")
 shard2=("$module/internal/experimental" "$module/ai")
 case $1 in

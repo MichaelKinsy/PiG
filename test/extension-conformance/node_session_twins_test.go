@@ -41,7 +41,7 @@ func newNodeSessionRig(t *testing.T, isolation, settings string, models []ai.Fau
 	if err := os.WriteFile(filepath.Join(agentDir, "settings.json"), []byte("{"+settings+"}"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	services, err := coding.NewServices(coding.ServicesOptions{CWD: t.TempDir(), AgentDir: agentDir})
+	services, err := coding.CreateAgentSessionServices(coding.CreateAgentSessionServicesOptions{CWD: t.TempDir(), AgentDir: agentDir})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -60,8 +60,8 @@ func newNodeSessionRig(t *testing.T, isolation, settings string, models []ai.Fau
 	bridge := subprocess.NewUIBridge(func() {})
 	bridge.SetUIContext(ui)
 	bridge.SetNotifyFunc(ui.RecordNotify)
-	// The models the Node registry reads are the runtime's, as in the binary (cmd/pig/extensions.go wireSubprocessModelRegistry).
-	detach := codingagent.WireModelOperations(bridge, codingagent.ModelOperationBindings{ModelLookup: runtime.GetModel, ModelCatalog: runtime.GetModels, Registry: services.Registry().ModelRegistry})
+	// The models the Node registry reads are the runtime's, as in the binary (coding/cli/extensions.go wireSubprocessModelRegistry).
+	detach := codingagent.WireModelOperations(bridge, codingagent.ModelOperationBindings{ModelLookup: runtime.GetModel, ModelCatalog: func(...string) []*ai.Model { return runtime.GetModels() }, Registry: services.Registry().ModelRegistry})
 	t.Cleanup(detach)
 	h, loaded := loadNodeFixtures(t, isolation, bridge, fixtures)
 
@@ -87,7 +87,7 @@ func newNodeSessionRig(t *testing.T, isolation, settings string, models []ai.Fau
 		}
 	}()
 	t.Cleanup(func() { _ = session.Close(); <-events })
-	if err := session.BindExtensions(t.Context()); err != nil {
+	if err := session.BindExtensions(t.Context(), coding.ExtensionBindings{}); err != nil {
 		t.Fatal(err)
 	}
 	return &nodeSessionRig{t: t, session: session, ui: ui, faux: faux, events: events}
@@ -181,17 +181,17 @@ func TestNodeSessionToolOrchestrationSupportsToolsThatCallOtherToolsUnderAnyName
 
 			var requestTools [][]string
 			rig.faux.SetResponses([]ai.FauxResponseStep{
-				ai.FauxFactoryStep(func(request ai.TranscriptContext, _ ai.StreamOptions, _ *ai.FauxProviderState, _ *ai.Model) (ai.FauxResponse, error) {
+				ai.FauxFactoryStep(func(request ai.TranscriptContext, _ ai.StreamOptions, _ *ai.FauxProviderState, _ *ai.Model) (ai.AssistantMessage, error) {
 					var names []string
 					for _, tool := range ai.GetCurrentTools(request.Messages()) {
 						names = append(names, tool.Name)
 					}
 					requestTools = append(requestTools, names)
-					return ai.FauxResponse{Content: []ai.FauxContentBlock{ai.FauxToolCall("run_tools", map[string]any{}, "")}, StopReason: "toolUse"}, nil
+					return ai.FauxResponse{Content: []ai.FauxContentBlock{ai.FauxToolCall("run_tools", map[string]any{}, &ai.FauxToolCallOptions{ID: ""})}, StopReason: "toolUse"}.AssistantMessage(), nil
 				}),
 				ai.FauxStaticStep(ai.FauxResponse{Content: []ai.FauxContentBlock{ai.FauxText("done")}, StopReason: "stop"}),
 			})
-			if _, err := session.Prompt(t.Context(), "go"); err != nil {
+			if err := session.Prompt(t.Context(), "go"); err != nil {
 				t.Fatal(err)
 			}
 
@@ -226,7 +226,7 @@ func TestNodeSessionToolOrchestrationSupportsToolsThatCallOtherToolsUnderAnyName
 			assertEqualNode(t, "nested calls", rows, []row{{parent + "/1", "helper", ai.NestedToolCallOK}, {parent + "/2", "echo", ai.NestedToolCallOK}, {parent + "/3", "run_tools", ai.NestedToolCallError}})
 			// The record is persisted with the session.
 			for _, entry := range session.Inner().GetBranch() {
-				if message, ok := entry.AsMessage(); ok && message.Message.ToolResult != nil {
+				if message, ok := entry.(codingagent.MessageEntry); ok && message.Message.ToolResult != nil {
 					if !reflect.DeepEqual(message.Message.ToolResult.NestedCalls, result.NestedCalls) {
 						t.Fatalf("persisted nestedCalls = %+v, want %+v", message.Message.ToolResult.NestedCalls, result.NestedCalls)
 					}
@@ -242,10 +242,10 @@ func TestNodeSessionToolOrchestrationSupportsToolsThatCallOtherToolsUnderAnyName
 func TestNodeSessionToolOrchestrationLeavesResultsWithoutNestedCallsUnchanged(t *testing.T) {
 	rig := newNodeSessionRig(t, "strict", "", []ai.FauxModelDefinition{{ID: "faux-1"}}, nodeAPIFixture{"nodeapi-orchestrator", nodeOrchestratorFixture})
 	rig.faux.SetResponses([]ai.FauxResponseStep{
-		ai.FauxStaticStep(ai.FauxResponse{Content: []ai.FauxContentBlock{ai.FauxToolCall("echo", map[string]any{"text": "x"}, "")}, StopReason: "toolUse"}),
+		ai.FauxStaticStep(ai.FauxResponse{Content: []ai.FauxContentBlock{ai.FauxToolCall("echo", map[string]any{"text": "x"}, &ai.FauxToolCallOptions{ID: ""})}, StopReason: "toolUse"}),
 		ai.FauxStaticStep(ai.FauxResponse{Content: []ai.FauxContentBlock{ai.FauxText("done")}, StopReason: "stop"}),
 	})
-	if _, err := rig.session.Prompt(t.Context(), "go"); err != nil {
+	if err := rig.session.Prompt(t.Context(), "go"); err != nil {
 		t.Fatal(err)
 	}
 	for _, message := range rig.session.Messages() {
@@ -346,11 +346,11 @@ func TestNodeVirtualSuiteRoutesEachRequestIncludingRetriesWhileTheSelectionStays
 	rig := newNodeRoutedRig(t, nodeRetrySettings, `return defaultRoute(request, ctx);`)
 	rig.faux.SetResponses([]ai.FauxResponseStep{
 		fauxErrorStepNode("overloaded_error"),
-		ai.FauxStaticStep(ai.FauxResponse{Content: []ai.FauxContentBlock{ai.FauxToolCall("echo", map[string]any{"text": "hi"}, "")}, StopReason: "toolUse"}),
+		ai.FauxStaticStep(ai.FauxResponse{Content: []ai.FauxContentBlock{ai.FauxToolCall("echo", map[string]any{"text": "hi"}, &ai.FauxToolCallOptions{ID: ""})}, StopReason: "toolUse"}),
 		fauxTextStep("done"),
 	})
 
-	if _, err := rig.session.Prompt(t.Context(), "hello"); err != nil {
+	if err := rig.session.Prompt(t.Context(), "hello"); err != nil {
 		t.Fatal(err)
 	}
 
@@ -382,14 +382,14 @@ func TestNodeVirtualSuiteRetriesTheFirstRequestOfATurnOnTheModelRoutedForThatTur
 		t.Fatal(err)
 	}
 	rig.faux.SetResponses([]ai.FauxResponseStep{fauxTextStep("easy answer"), fauxErrorStepNode("overloaded_error"), fauxTextStep("hard answer")})
-	if _, err := rig.session.Prompt(t.Context(), "easy"); err != nil {
+	if err := rig.session.Prompt(t.Context(), "easy"); err != nil {
 		t.Fatal(err)
 	}
 	if err := rig.session.SetThinkingLevel(ai.ThinkingHigh); err != nil {
 		t.Fatal(err)
 	}
 
-	if _, err := rig.session.Prompt(t.Context(), "hard"); err != nil {
+	if err := rig.session.Prompt(t.Context(), "hard"); err != nil {
 		t.Fatal(err)
 	}
 
@@ -411,19 +411,19 @@ func TestNodeVirtualSuiteStoresRouterStateOnTheBranchAndPassesItToLaterRequests(
       if (request.reason === "continuation") return { ...route, state: request.state };
       return { ...route, state: { turns: turns + 1 } };`)
 	rig.faux.SetResponses([]ai.FauxResponseStep{
-		ai.FauxStaticStep(ai.FauxResponse{Content: []ai.FauxContentBlock{ai.FauxToolCall("echo", map[string]any{"text": "hi"}, "")}, StopReason: "toolUse"}),
+		ai.FauxStaticStep(ai.FauxResponse{Content: []ai.FauxContentBlock{ai.FauxToolCall("echo", map[string]any{"text": "hi"}, &ai.FauxToolCallOptions{ID: ""})}, StopReason: "toolUse"}),
 		fauxTextStep("first"), fauxTextStep("second"), fauxTextStep("summary"), fauxTextStep("summary"),
 	})
 
 	for _, text := range []string{"one", "two"} {
-		if _, err := rig.session.Prompt(t.Context(), text); err != nil {
+		if err := rig.session.Prompt(t.Context(), text); err != nil {
 			t.Fatal(err)
 		}
 	}
 	stored := func() []string {
 		var out []string
 		for _, entry := range rig.session.Inner().GetBranch() {
-			if entry.Base.Type != "custom" {
+			if entry.Base().Type != "custom" {
 				continue
 			}
 			var custom struct {
@@ -438,7 +438,7 @@ func TestNodeVirtualSuiteStoresRouterStateOnTheBranchAndPassesItToLaterRequests(
 	}
 	assertEqualNode(t, "stored", stored(), []string{`{"provider":"router","modelId":"auto","state":{"turns":1}}`, `{"provider":"router","modelId":"auto","state":{"turns":2}}`})
 
-	if err := rig.session.Compact(t.Context(), ""); err != nil {
+	if _, err := rig.session.Compact(t.Context(), ""); err != nil {
 		t.Fatal(err)
 	}
 

@@ -99,3 +99,53 @@ func TestAnthropicOAuthManualFailureCancelsPromptContext(t *testing.T) {
 		t.Fatal("failed manual prompt context was not canceled")
 	}
 }
+
+// anthropic-oauth.test.ts:224-240 (Pi 1.1.0, #10571): when the preferred callback port cannot be bound, login falls back to a free loopback port and sends that redirect URI to both the authorization page and the token exchange.
+func TestAnthropicOAuthFallsBackToAFreeCallbackPortWhenThePreferredPortIsTaken(t *testing.T) {
+	host := isolateAnthropicCallbackHost(t)
+	blocker, err := net.Listen("tcp", net.JoinHostPort(host, "53692"))
+	if err != nil {
+		t.Skipf("the preferred port is held by another process: %v", err)
+	}
+	defer func() { _ = blocker.Close() }()
+	var exchangedRedirect string
+	mockAnthropicOAuthToken(t, `{"access_token":"access","refresh_token":"refresh","expires_in":3600}`, func(_ *http.Request, body map[string]string) {
+		exchangedRedirect = body["redirect_uri"]
+	})
+	var authRedirect string
+	var pageStatus int
+	credential, err := LoginAnthropic(t.Context(), OAuthLoginCallbacks{OnAuth: func(info OAuthAuthInfo) {
+		parsed, parseErr := url.Parse(info.URL)
+		if parseErr != nil {
+			t.Error(parseErr)
+			return
+		}
+		authRedirect = parsed.Query().Get("redirect_uri")
+		redirect, parseErr := url.Parse(authRedirect)
+		if parseErr != nil {
+			t.Error(parseErr)
+			return
+		}
+		redirect.Host = net.JoinHostPort(host, redirect.Port())
+		response, getErr := (&http.Client{Transport: &http.Transport{}}).Get(redirect.String() + "?code=browser-code&state=" + url.QueryEscape(parsed.Query().Get("state")))
+		if getErr != nil {
+			t.Error(getErr)
+			return
+		}
+		pageStatus = response.StatusCode
+		_ = response.Body.Close()
+	}, OnManualCodeInput: func() (string, error) { select {} }, OnManualCodeInputContext: func(ctx context.Context) (string, error) { <-ctx.Done(); return "", ctx.Err() }})
+	if err != nil {
+		t.Fatal(err)
+	}
+	redirect, err := url.Parse(authRedirect)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if redirect.Hostname() != "localhost" || redirect.Path != "/callback" || redirect.Port() == "" || redirect.Port() == "53692" {
+		t.Fatalf("redirect_uri = %q, want a localhost callback on a free port", authRedirect)
+	}
+	if credential.Access != "access" || exchangedRedirect != authRedirect || pageStatus != http.StatusOK {
+		t.Fatalf("access=%q exchanged redirect=%q (auth %q) page=%d", credential.Access, exchangedRedirect, authRedirect, pageStatus)
+	}
+}

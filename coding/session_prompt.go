@@ -9,7 +9,6 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/MichaelKinsy/PiG/agent"
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/coding/extension"
 	icodingagent "github.com/MichaelKinsy/PiG/internal/codingagent"
@@ -141,7 +140,7 @@ func (s *Session) loaderSystemPromptResources() *SystemPromptResources {
 // buildSystemPromptOptions mirrors _rebuildSystemPrompt (agent-session.ts:1371-1394): registry snippets and guidelines plus the resource-loader state. Without resources, a caller-supplied prompt is the custom prompt, as Pi's system prompt override is.
 func (s *Session) buildSystemPromptOptions(toolNames []string) *extension.BuildSystemPromptOptions {
 	snippets, guidelines := s.toolPromptMetadata()
-	options := &extension.BuildSystemPromptOptions{Cwd: s.CWD(), SelectedTools: append([]string{}, toolNames...), ToolSnippets: snippets, ToolGuidelines: guidelines}
+	options := &extension.BuildSystemPromptOptions{Cwd: s.CWD(), SelectedTools: append([]string{}, toolNames...), HiddenTools: s.HiddenDeclarationNames(), ToolSnippets: snippets, ToolGuidelines: guidelines}
 	if resources := s.effectiveSystemPromptResources(); resources != nil {
 		options.CustomPrompt = resources.CustomPrompt
 		options.CustomPromptSet = resources.CustomPromptSet
@@ -157,19 +156,20 @@ func (s *Session) buildSystemPromptOptions(toolNames []string) *extension.BuildS
 }
 
 // Prompt awaits command/input dispatch, optional resource expansion, queueing or an ordinary turn. Extension command arguments retain all text after the first space. Invocation options do not replace system-prompt construction state.
-func (s *Session) Prompt(ctx context.Context, text string, options ...*PromptOptions) ([]agent.AgentMessage, error) {
+func (s *Session) Prompt(ctx context.Context, text string, options ...*PromptOptions) error {
 	var opts PromptOptions
 	if len(options) > 0 && options[0] != nil {
 		opts = *options[0]
 	}
-	if s.deferSettledAction(func() { _, err := s.Prompt(ctx, text, &opts); s.reportRuntimeError("prompt", err) }) {
-		return nil, nil
+	if s.deferSettledAction(func() { s.reportRuntimeError("prompt", s.Prompt(ctx, text, &opts)) }) {
+		return nil
 	}
 	run, err := s.preparePromptInvocation(ctx, text, opts)
 	if err != nil || run == nil {
-		return nil, err
+		return err
 	}
-	return run.Run()
+	_, err = run.Run()
+	return err
 }
 
 func (s *Session) preparePromptInvocation(ctx context.Context, text string, options PromptOptions) (*PreparedPromptRun, error) {
@@ -235,7 +235,7 @@ func (s *Session) ValidatePromptModelAuth(ctx context.Context) error {
 		return errors.New(icodingagent.FormatNoModelSelectedMessage())
 	}
 	provider := providerID(model)
-	if (s.services.Registry().GetProvider(provider) != nil || modelRuntimeRequiresAuth(provider)) && !s.services.Registry().HasConfiguredAuth(provider) {
+	if (s.services.Registry().GetProvider(provider) != nil || modelRuntimeRequiresAuth(provider)) && !s.services.Registry().ModelRegistry.HasConfiguredAuth(provider) {
 		check, err := s.modelRuntime.CheckAuth(ctx, provider)
 		if err != nil {
 			return err
@@ -263,8 +263,7 @@ func (s *Session) SendUserMessage(ctx context.Context, content any, options *ext
 			opts.ExpandPromptTemplates = options.ExpandPromptTemplates
 		}
 	}
-	_, err = s.Prompt(ctx, text, &opts)
-	return err
+	return s.Prompt(ctx, text, &opts)
 }
 
 // SendExtensionUserMessage is the bound extension action. The Session owns its continuation and reports failures without making the extension await the model turn.
@@ -281,7 +280,7 @@ func (s *Session) SendExtensionUserMessage(content any, options *extension.SendU
 		}
 	}
 	ctx := s.backgroundContext()
-	if s.deferSettledAction(func() { _, err := s.Prompt(ctx, text, &opts); s.reportRuntimeError("send_user_message", err) }) {
+	if s.deferSettledAction(func() { s.reportRuntimeError("send_user_message", s.Prompt(ctx, text, &opts)) }) {
 		return nil
 	}
 	run, err := s.preparePromptInvocation(ctx, text, opts)

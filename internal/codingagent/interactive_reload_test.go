@@ -9,7 +9,7 @@ import (
 
 func TestReloadStepPumpsUIAndJoinsCancellation(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
-		m := NewInteractiveMode(InteractiveOptions{})
+		m := NewInteractiveMode(nil, InteractiveModeOptions{})
 		ctx, cancel := context.WithCancelCause(t.Context())
 		entered, cancelled, release := make(chan struct{}), make(chan struct{}), make(chan struct{})
 		done := make(chan error, 1)
@@ -57,7 +57,7 @@ func TestReloadStepPumpsUIAndJoinsCancellation(t *testing.T) {
 }
 
 func TestReloadStepDoesNotCancelSuccessfulOperationContext(t *testing.T) {
-	m := NewInteractiveMode(InteractiveOptions{})
+	m := NewInteractiveMode(nil, InteractiveModeOptions{})
 	parent, cancel := context.WithCancel(t.Context())
 	defer cancel()
 	var observed context.Context
@@ -74,7 +74,7 @@ func TestReloadStepDoesNotCancelSuccessfulOperationContext(t *testing.T) {
 }
 
 func TestReloadStepPreservesErrorsAndRejectsCancelledAdmission(t *testing.T) {
-	m := NewInteractiveMode(InteractiveOptions{})
+	m := NewInteractiveMode(nil, InteractiveModeOptions{})
 	want := errors.New("extension callback failed")
 	if err := m.awaitReloadStep(t.Context(), func(context.Context) error { return want }); !errors.Is(err, want) {
 		t.Fatalf("reload error = %v", err)

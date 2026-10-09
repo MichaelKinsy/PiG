@@ -24,7 +24,7 @@ func TestUpstreamOverlayCJKBoundary(t *testing.T) {
 	})
 	// .upstream/v0.87.1/packages/tui/test/regression-overlay-cjk-boundary.test.ts:25
 	t.Run("composites an overlay at the requested column when it starts inside a wide grapheme", func(t *testing.T) {
-		got := compositeTuiLine("abcd让EFGH", "│XX│", 5, 4, 20)
+		got := CompositeTuiLine("abcd让EFGH", "│XX│", 5, 4, 20)
 		prefix, overlay := widthx.SliceByColumn(got, 0, 5, true), widthx.SliceByColumn(got, 5, 4, true)
 		if strings.Contains(got, "让") || widthx.VisibleWidth(got) != 20 || widthx.VisibleWidth(prefix) != 5 || widthx.VisibleWidth(overlay) != 4 || !strings.Contains(overlay, "│XX│") {
 			t.Fatalf("line=%q prefix=%q overlay=%q", got, prefix, overlay)
@@ -32,7 +32,7 @@ func TestUpstreamOverlayCJKBoundary(t *testing.T) {
 	})
 	// .upstream/v0.87.1/packages/tui/test/regression-overlay-cjk-boundary.test.ts:37
 	t.Run("composites an overlay when it starts at a wide grapheme boundary", func(t *testing.T) {
-		got := compositeTuiLine("abcd让EFGH", "│XX│", 4, 4, 20)
+		got := CompositeTuiLine("abcd让EFGH", "│XX│", 4, 4, 20)
 		overlay := widthx.SliceByColumn(got, 4, 4, true)
 		if strings.Contains(got, "让") || widthx.VisibleWidth(got) != 20 || widthx.VisibleWidth(overlay) != 4 || !strings.Contains(overlay, "│XX│") {
 			t.Fatalf("line=%q overlay=%q", got, overlay)

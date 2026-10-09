@@ -1,0 +1,24 @@
+[
+ {
+  "ids": [
+   "pkg:ai/.#ModelCostTier",
+   "pkg:ai/compat#ModelCostTier"
+  ],
+  "targets": [
+   "ai/types.go#CostTier"
+  ],
+  "struct": {
+   "file": "ai/types.go",
+   "type": "CostTier"
+  },
+  "production": [
+   "call:ai/model_utils.go#calculateUsageCost"
+  ],
+  "evidence": [
+   "test:ai/model_utils_test.go#TestCalculateCost",
+   "test:ai/models_runtime_basic_upstream_test.go#TestModelsRuntimeBasicUpstream"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "ModelCostTier: Go CostTier has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+ }
+]

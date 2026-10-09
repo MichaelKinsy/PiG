@@ -104,7 +104,7 @@ func assertPromptOptionEdits(t *testing.T, ext extension.Extension) {
 			ToolGuidelines:     map[string][]string{"read": {"base guideline"}},
 			AppendSystemPrompt: "base append",
 		}
-		result, err := runner.EmitBeforeAgentStart(t.Context(), prompt, nil, "base", base)
+		result, err := runner.EmitBeforeAgentStart(t.Context(), prompt, nil, base)
 		if err != nil {
 			t.Fatal(err)
 		}

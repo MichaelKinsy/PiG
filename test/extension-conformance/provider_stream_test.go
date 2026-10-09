@@ -32,7 +32,7 @@ func TestProviderProducersAcrossSDKs(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			services, err := coding.NewServices(coding.ServicesOptions{CWD: t.TempDir(), AgentDir: t.TempDir()})
+			services, err := coding.CreateAgentSessionServices(coding.CreateAgentSessionServicesOptions{CWD: t.TempDir(), AgentDir: t.TempDir()})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -44,7 +44,7 @@ func TestProviderProducersAcrossSDKs(t *testing.T) {
 			defer func() { _ = session.Close() }()
 			host := subprocess.NewHost(t.TempDir())
 			defer host.Shutdown("test done")
-			host.SetProviderCallbacks(services.Registry().RegisterProvider, services.Registry().UnregisterProvider)
+			host.SetProviderCallbacks(services.Registry().RegisterExtensionProvider, services.Registry().UnregisterProvider)
 			bridge := subprocess.NewUIBridge(func() {})
 			entered := make(chan struct{}, 1)
 			// The provider blocks before returning its stream. Use a UI-independent host call as its entry barrier; headless Notify is correctly a no-op.
@@ -55,7 +55,7 @@ func TestProviderProducersAcrossSDKs(t *testing.T) {
 				entered <- struct{}{}
 				return extension.ExecResult{}, nil
 			})
-			detach := icodingagent.WireModelOperations(bridge, icodingagent.ModelOperationBindings{CurrentModel: session.Model, ModelLookup: services.ModelRuntime().GetModel, ModelCatalog: services.ModelRuntime().GetModels, Registry: services.Registry().ModelRegistry, ModelBuilder: func(spec string) (*ai.Model, error) { return coding.BuildModel(spec, services) }, SessionHandle: session})
+			detach := icodingagent.WireModelOperations(bridge, icodingagent.ModelOperationBindings{CurrentModel: session.Model, ModelLookup: services.ModelRuntime().GetModel, ModelCatalog: func(...string) []*ai.Model { return services.ModelRuntime().GetModels() }, Registry: services.Registry().ModelRegistry, ModelBuilder: func(spec string) (*ai.Model, error) { return coding.BuildModel(spec, services) }, SessionHandle: session})
 			defer detach()
 			host.SetUIBridge(bridge)
 			if tc.fused {
@@ -137,7 +137,7 @@ func TestProviderProducersAcrossSDKs(t *testing.T) {
 			if result.StopReason != ai.StopReasonError || result.ErrorMessage == "" {
 				t.Fatalf("cancel result=%+v", result)
 			}
-			other, createErr := coding.NewServices(coding.ServicesOptions{CWD: t.TempDir(), AgentDir: t.TempDir()})
+			other, createErr := coding.CreateAgentSessionServices(coding.CreateAgentSessionServicesOptions{CWD: t.TempDir(), AgentDir: t.TempDir()})
 			if createErr != nil {
 				t.Fatal(createErr)
 			}

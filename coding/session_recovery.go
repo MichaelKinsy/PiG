@@ -63,7 +63,7 @@ func (s *Session) refreshProjectedContext(preserveInstructionBaseline bool) {
 	for _, entry := range projection.Entries {
 		for _, message := range entry.Messages {
 			if key := messageIdentity(message); key != nil {
-				ids[key] = entry.SourceEntry.Base.ID
+				ids[key] = entry.SourceEntry.Base().ID
 			}
 		}
 	}
@@ -114,8 +114,8 @@ func (s *Session) findPersistedMessageEntryID(message agent.AgentMessage) (strin
 		for _, entry := range slices.Backward(projection.Entries) {
 			for _, projected := range entry.Messages {
 				if projected.ToolResult != nil && projected.ToolResult.ToolCallID == message.ToolResult.ToolCallID {
-					s.rememberMessageEntry(message, entry.SourceEntry.Base.ID)
-					return entry.SourceEntry.Base.ID, true
+					s.rememberMessageEntry(message, entry.SourceEntry.Base().ID)
+					return entry.SourceEntry.Base().ID, true
 				}
 			}
 		}
@@ -143,8 +143,8 @@ func (s *Session) findPersistedMessageEntryID(message agent.AgentMessage) (strin
 				if projected.Role() != message.Role() {
 					return "", false
 				}
-				s.rememberMessageEntry(message, entry.SourceEntry.Base.ID)
-				return entry.SourceEntry.Base.ID, true
+				s.rememberMessageEntry(message, entry.SourceEntry.Base().ID)
+				return entry.SourceEntry.Base().ID, true
 			}
 			projectedIndex++
 		}
@@ -184,7 +184,7 @@ func (s *Session) omitRecoveryAttempt(message *agent.AssistantMessage, toolResul
 		if err != nil {
 			return err
 		}
-		if entry, ok := s.inner.EntryByID(editID); ok {
+		if entry, ok := s.inner.GetEntry(editID); ok {
 			s.emitOrderedEvent(agent.EntryAppendedEvent{Entry: entry.Raw()})
 		}
 	}
@@ -197,7 +197,7 @@ func (s *Session) runPostAgentRuns(ctx context.Context, messages []agent.AgentMe
 	return s.runPostAgentRunsWith(ctx, messages, runErr, func(ctx context.Context) ([]agent.AgentMessage, error) {
 		s.mu.Unlock()
 		defer s.mu.Lock()
-		return s.agent.Continue(ctx)
+		return s.agent.ContinueMessages(ctx)
 	})
 }
 
@@ -280,7 +280,7 @@ func (s *Session) prepareRetry(ctx context.Context, message *agent.AssistantMess
 	schedule := s.retrySchedule
 	s.retryMu.Unlock()
 	wait, err := s.retryPrefix(schedule, func() (*sessionRetryWait, error) {
-		cfg := s.services.SettingsManager().GetRetrySettings()
+		cfg := s.SettingsManager().GetRetrySettings()
 		if !cfg.Enabled || s.agentRunAborted(ctx) {
 			return nil, nil
 		}
@@ -289,7 +289,7 @@ func (s *Session) prepareRetry(ctx context.Context, message *agent.AssistantMess
 			s.retryAttempt.Add(-1)
 			return nil, nil
 		}
-		delayMs := ai.RetryDelayMs(cfg.BaseDelayMs, &cfg.MaxDelayMs, attempt)
+		delayMs := ai.RetryDelayMs(ai.RetryPolicy{BaseDelayMs: cfg.BaseDelayMs, MaxAgentDelayMs: &cfg.MaxAgentDelayMs}, attempt)
 		errorMessage := message.ErrorMessage
 		if errorMessage == "" {
 			errorMessage = "Unknown error"
@@ -397,8 +397,8 @@ func (s *Session) contextWindow() int {
 }
 
 func (s *Session) currentBranch() []icodingagent.SessionEntry {
-	if leaf := s.inner.LeafID(); leaf != nil {
-		return s.inner.Branch(*leaf)
+	if leaf := s.inner.GetLeafID(); leaf != nil {
+		return s.inner.GetBranch(*leaf)
 	}
 	return nil
 }
@@ -407,11 +407,7 @@ func (s *Session) currentBranch() []icodingagent.SessionEntry {
 // with its compaction.modelOverrides entry applied (upstream
 // getCompactionSettings(this.model)).
 func (s *Session) compactionSettings() (compaction.CompactionSettings, error) {
-	provider, modelID := "", ""
-	if model := s.Model(); model != nil {
-		provider, modelID = providerID(model), model.ID
-	}
-	cfg, err := s.services.SettingsManager().GetModelCompactionSettings(provider, modelID)
+	cfg, err := s.SettingsManager().GetCompactionSettings(s.Model())
 	if err != nil {
 		return compaction.CompactionSettings{}, err
 	}

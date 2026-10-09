@@ -59,13 +59,14 @@ type sessionAccountingEntry struct {
 }
 
 type sessionAccountingMessage struct {
-	Role          string               `json:"role"`
-	Content       sessionToolCallCount `json:"content"`
-	Usage         *ai.Usage            `json:"usage,omitempty"`
-	Provider      string               `json:"provider,omitempty"`
-	ModelID       string               `json:"model,omitempty"`
-	ResponseModel string               `json:"responseModel,omitempty"`
-	Timestamp     int64                `json:"timestamp,omitempty"`
+	Role     string               `json:"role"`
+	Content  sessionToolCallCount `json:"content"`
+	Usage    *ai.Usage            `json:"usage,omitempty"`
+	Provider string               `json:"provider,omitempty"`
+	ModelID  string               `json:"model,omitempty"`
+	// ResponseModel is nil when the message has none; an empty string is a value (usage-totals.ts `responseModel ?? model`).
+	ResponseModel *string `json:"responseModel,omitempty"`
+	Timestamp     int64   `json:"timestamp,omitempty"`
 }
 
 type sessionToolCallCount int
@@ -101,7 +102,7 @@ func (s *Session) SetCacheReadPriceSource(prices ModelPriceSource) {
 	}
 	rebuilt := sessionAccountingAccumulator{prices: prices}
 	for _, e := range s.entries {
-		rebuilt.add(e.raw, e.Base.Type)
+		rebuilt.add(e.Raw(), e.Base().Type)
 	}
 	s.stats.prices = prices
 	s.stats.cachePrev = rebuilt.cachePrev
@@ -142,8 +143,8 @@ func (a *sessionAccountingAccumulator) add(raw json.RawMessage, wireType string)
 			a.stats.AssistantMessages++
 			a.stats.ToolCalls += int(message.Content)
 			key := message.Provider + "/" + message.ModelID
-			if message.ResponseModel != "" {
-				key = message.Provider + "/" + message.ResponseModel
+			if message.ResponseModel != nil {
+				key = message.Provider + "/" + *message.ResponseModel
 			}
 			a.addUsage(key, message.Usage)
 			a.stats.LatestCacheHitRate = latestCacheHitRate(message.Usage)

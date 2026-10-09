@@ -36,7 +36,7 @@ func TestSend_ToolPanic_BecomesLinkedErrorResult(t *testing.T) {
 				toolCallSeq(struct{ id, name string }{"tc-panic", "boom"}, struct{ id, name string }{"tc-ok", "fine"}),
 				textSeq("recovered"),
 			)
-			a := NewAgent(AgentOptions{
+			a := mustNewAgent(AgentOptions{
 				Model:    fakeTestModel(prov),
 				Tools:    []AgentTool{&panicTool{name: "boom", mode: mode, value: "index out of range"}, &fakeTool{name: "fine", mode: mode, content: "ok"}},
 				MaxTurns: 5,
@@ -64,10 +64,10 @@ func TestSend_ToolPanic_BecomesLinkedErrorResult(t *testing.T) {
 func TestSend_BeforeToolCallHookPanic_BecomesErrorResult(t *testing.T) {
 	prov := providerFromSeqs(toolCallSeq(struct{ id, name string }{"tc-1", "mytool"}), textSeq("done"))
 	tool := &fakeTool{name: "mytool", mode: ToolModeSequential, content: "should not run"}
-	a := NewAgent(AgentOptions{
+	a := mustNewAgent(AgentOptions{
 		Model: fakeTestModel(prov),
 		Tools: []AgentTool{tool},
-		BeforeToolCall: []BeforeToolCallHook{func(context.Context, string, string, json.RawMessage) ToolCallHookResult {
+		BeforeToolCallHooks: []BeforeToolCallHook{func(context.Context, string, string, json.RawMessage) ToolCallHookResult {
 			panic(errBeforeHook)
 		}},
 		MaxTurns: 5,
@@ -86,10 +86,10 @@ func TestSend_BeforeToolCallHookPanic_BecomesErrorResult(t *testing.T) {
 func TestSend_AfterToolCallHookPanic_BecomesErrorResult(t *testing.T) {
 	prov := providerFromSeqs(toolCallSeq(struct{ id, name string }{"tc-1", "mytool"}), textSeq("done"))
 	tool := &fakeTool{name: "mytool", mode: ToolModeSequential, content: "original"}
-	a := NewAgent(AgentOptions{
+	a := mustNewAgent(AgentOptions{
 		Model: fakeTestModel(prov),
 		Tools: []AgentTool{tool},
-		AfterToolCall: []AfterToolCallHook{func(context.Context, string, string, json.RawMessage, AgentToolResult) AfterToolCallResult {
+		AfterToolCallHooks: []AfterToolCallHook{func(context.Context, string, string, json.RawMessage, AgentToolResult) AfterToolCallResult {
 			panic("after hook failed")
 		}},
 		MaxTurns: 5,

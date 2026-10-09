@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/MichaelKinsy/PiG/coding/piglogin"
+	"github.com/MichaelKinsy/PiG/internal/pigstrip"
 	"github.com/MichaelKinsy/PiG/tui"
 )
 
@@ -67,8 +68,12 @@ type FirstTimeSetupComponent struct {
 const firstTimeSetupSpriteRows = 8
 
 // NewFirstTimeSetupComponent builds the dialog over the sprites offered at construction, starting on the active sprite.
+// pig additive (D92): pig-login owns /sprite, so with it stripped there are no sprites to offer and no sprite step.
 func NewFirstTimeSetupComponent(options FirstTimeSetupOptions) *FirstTimeSetupComponent {
-	c := &FirstTimeSetupComponent{Container: tui.NewContainer(), step: firstTimeSetupStepTheme, sprites: piglogin.All(), options: options}
+	c := &FirstTimeSetupComponent{Container: tui.NewContainer(), step: firstTimeSetupStepTheme, options: options}
+	if !pigstrip.Has(pigstrip.ListExtensions, piglogin.Name) {
+		c.sprites = piglogin.All()
+	}
 	active := piglogin.Active().ID
 	for i, sprite := range c.sprites {
 		if sprite.ID == active {
@@ -101,17 +106,17 @@ func (c *FirstTimeSetupComponent) logoSprite() piglogin.Variant {
 func (c *FirstTimeSetupComponent) update() {
 	t := tui.ActiveTheme()
 	c.Clear()
-	c.Add(tui.NewDynamicBorder(""))
+	c.Add(tui.NewDynamicBorder())
 	c.Add(tui.NewSpacer(1))
-	c.Add(tui.NewPaddedText(strings.Join(piglogin.HeadLines(c.logoSprite(), t.ColorMode()), "\n"), 1, 0, nil))
+	c.Add(tui.NewPaddedText(strings.Join(piglogin.HeadLines(c.logoSprite(), t.GetColorMode()), "\n"), 1, 0, nil))
 	c.Add(tui.NewSpacer(1))
 	// pig divergence (D88): the welcome names PiG where Pi's names APP_NAME.
-	c.Add(tui.NewPaddedText(t.FgText("accent", "\x1b[1mWelcome to PiG, the minimal coding agent.\x1b[22m"), 1, 0, nil))
+	c.Add(tui.NewPaddedText(t.Fg("accent", "\x1b[1mWelcome to PiG, the minimal coding agent.\x1b[22m"), 1, 0, nil))
 	c.Add(tui.NewSpacer(1))
 
 	switch c.step {
 	case firstTimeSetupStepTheme:
-		c.Add(tui.NewPaddedText(t.FgText("text", "Pick a theme."), 1, 0, nil))
+		c.Add(tui.NewPaddedText(t.Fg("text", "Pick a theme."), 1, 0, nil))
 		c.Add(tui.NewSpacer(1))
 		labels := make([]string, len(firstTimeSetupThemeOptions))
 		for i, option := range firstTimeSetupThemeOptions {
@@ -119,8 +124,8 @@ func (c *FirstTimeSetupComponent) update() {
 		}
 		c.addOptionList(labels, c.themeIndex)
 	case firstTimeSetupStepSprite:
-		c.Add(tui.NewPaddedText(t.FgText("text", "Pick a sprite."), 1, 0, nil))
-		c.Add(tui.NewPaddedText(t.FgText("muted", "The pig your header shows. Change it anytime with /sprite."), 1, 0, nil))
+		c.Add(tui.NewPaddedText(t.Fg("text", "Pick a sprite."), 1, 0, nil))
+		c.Add(tui.NewPaddedText(t.Fg("muted", "The pig your header shows. Change it anytime with /sprite."), 1, 0, nil))
 		c.Add(tui.NewSpacer(1))
 		labels := make([]string, len(c.sprites)+1)
 		for i, sprite := range c.sprites {
@@ -131,11 +136,11 @@ func (c *FirstTimeSetupComponent) update() {
 		if c.spriteIndex == len(c.sprites) {
 			// Enter keeps the active sprite and continues setup.
 			c.Add(tui.NewSpacer(1))
-			c.Add(tui.NewPaddedText(t.FgText("muted", piglogin.CreateHint), 1, 0, nil))
+			c.Add(tui.NewPaddedText(t.Fg("muted", piglogin.CreateHint), 1, 0, nil))
 		}
 	default:
-		c.Add(tui.NewPaddedText(t.FgText("text", "Opt-in to anonymous usage data sharing?"), 1, 0, nil))
-		c.Add(tui.NewPaddedText(t.FgText("muted", "Opting in stores a tracking identifier in settings.json and enables anonymous\nusage analytics. This helps us to better debug, reproduce, and resolve issues\nand bugs within PiG. You can observe what is shared using /privacy and make\nchanges anytime in settings.json."), 1, 0, nil))
+		c.Add(tui.NewPaddedText(t.Fg("text", "Opt-in to anonymous usage data sharing?"), 1, 0, nil))
+		c.Add(tui.NewPaddedText(t.Fg("muted", "Opting in stores a tracking identifier in settings.json and enables anonymous\nusage analytics. This helps us to better debug, reproduce, and resolve issues\nand bugs within PiG. You can observe what is shared using /privacy and make\nchanges anytime in settings.json."), 1, 0, nil))
 		c.Add(tui.NewSpacer(1))
 		labels := make([]string, len(firstTimeSetupAnalyticsOptions))
 		for i, option := range firstTimeSetupAnalyticsOptions {
@@ -152,15 +157,15 @@ func (c *FirstTimeSetupComponent) update() {
 	// Pi's keyHint shows keyText: the bound keys, not capitalized (keybinding-hints.ts:42-44).
 	c.Add(tui.NewPaddedText(tui.RawKeyHint("↑↓", "navigate")+"  "+tui.RawKeyHint(strings.Join(tui.GetTUIKeybindings().GetKeys(tui.KBSelectConfirm), "/"), confirm)+"  "+tui.RawKeyHint(strings.Join(tui.GetTUIKeybindings().GetKeys(tui.KBSelectCancel), "/"), "skip setup"), 1, 0, nil))
 	c.Add(tui.NewSpacer(1))
-	c.Add(tui.NewDynamicBorder(""))
+	c.Add(tui.NewDynamicBorder())
 }
 
 func (c *FirstTimeSetupComponent) addOptionList(labels []string, selectedIndex int) {
 	t := tui.ActiveTheme()
 	for i, label := range labels {
-		prefix, text := "  ", t.FgText("text", label)
+		prefix, text := "  ", t.Fg("text", label)
 		if i == selectedIndex {
-			prefix, text = t.FgText("accent", "→ "), t.FgText("accent", label)
+			prefix, text = t.Fg("accent", "→ "), t.Fg("accent", label)
 		}
 		c.Add(tui.NewPaddedText(prefix+text, 1, 0, nil))
 	}
@@ -174,7 +179,7 @@ func (c *FirstTimeSetupComponent) addScrolledOptionList(labels []string, selecte
 	}
 	start := max(0, min(selectedIndex-rows/2, len(labels)-rows))
 	c.addOptionList(labels[start:start+rows], selectedIndex-start)
-	c.Add(tui.NewPaddedText(tui.ActiveTheme().FgText("muted", fmt.Sprintf("  (%d/%d)", selectedIndex+1, len(labels))), 1, 0, nil))
+	c.Add(tui.NewPaddedText(tui.ActiveTheme().Fg("muted", fmt.Sprintf("  (%d/%d)", selectedIndex+1, len(labels))), 1, 0, nil))
 }
 
 func (c *FirstTimeSetupComponent) moveSelection(delta int) {
@@ -247,10 +252,10 @@ type FirstTimeSetupSettings interface {
 func ShowFirstTimeSetup(settings FirstTimeSetupSettings, opts StartupUIOptions) (*FirstTimeSetupResult, error) {
 	ui := tui.New()
 	ui.SetLogDirectory(opts.AgentDir)
-	return showFirstTimeSetupWith(settings, opts, ui, tui.NewProcessTerminal(os.Stdin, os.Stdout))
+	return showFirstTimeSetupWith(settings, opts, ui, tui.NewStdioProcessTerminal())
 }
 
-func showFirstTimeSetupWith(settings FirstTimeSetupSettings, opts StartupUIOptions, ui *tui.TUI, terminal startupTerminal) (*FirstTimeSetupResult, error) {
+func showFirstTimeSetupWith(settings FirstTimeSetupSettings, opts StartupUIOptions, ui *tui.TuiMainScreen, terminal startupTerminal) (*FirstTimeSetupResult, error) {
 	configureStartupTheme(opts.Settings, opts.ThemePaths)
 	preview := tui.SystemThemeName
 	tui.SetThemeByName(preview)

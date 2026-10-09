@@ -2,7 +2,6 @@ package codingagent
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -15,6 +14,8 @@ import (
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/internal/codingagent/tools"
+	"github.com/MichaelKinsy/PiG/internal/jsstring"
+	"github.com/MichaelKinsy/PiG/internal/nodeerrno"
 	"github.com/MichaelKinsy/PiG/tui"
 	"github.com/MichaelKinsy/PiG/tui/widthx"
 )
@@ -24,9 +25,8 @@ func (m *InteractiveMode) dispatchSlash(ctx context.Context, line string) {
 	// Mirror any extension-registered commands into the registry just
 	// before dispatch so a freshly loaded command resolves.
 	m.syncExtensionSlashCommands()
-	name, args := parseSlashLine(line)
-	if canonical, ok := m.slashRegistry.Resolve(name); ok && canonical == "model" && args != "" {
-		m.findExactModelMatch(ctx, args, func(spec string, found bool) {
+	if match, ok := m.slashRegistry.Match(line); ok && match.Builtin != nil && match.Builtin.Name == "model" && match.Args != "" {
+		m.findExactModelMatch(ctx, match.Args, func(spec string, found bool) {
 			sc.ResolveModel = func(string) (string, bool) { return spec, found }
 			m.dispatchSlashContext(sc, line)
 		})
@@ -51,6 +51,13 @@ func (m *InteractiveMode) dispatchSlashContext(sc *SlashContext, line string) {
 	m.tuiInst.Render()
 }
 
+// handleDebugCommand writes the debug log and confirms it in the transcript (interactive-mode.ts:6941), as /debug does: the TUI's debug key calls it.
+func (m *InteractiveMode) handleDebugCommand() {
+	if err := debugHandler(m.buildSlashContext(m.backgroundCtx)); err != nil {
+		m.showError(err.Error())
+	}
+}
+
 // writeDebugLog dumps the current frame and message history to a debug log
 // file under the agent dir and returns its path. Mirrors upstream
 // handleDebugCommand (interactive-mode.ts:5580) and getDebugLogPath
@@ -61,31 +68,31 @@ func (m *InteractiveMode) writeDebugLog() (string, error) {
 	lines := m.tuiInst.RenderSnapshot(width)
 
 	var b strings.Builder
-	fmt.Fprintf(&b, "Debug output at %s\n", time.Now().UTC().Format(time.RFC3339))
+	fmt.Fprintf(&b, "Debug output at %s\n", isoTimestamp(time.Now()))
 	fmt.Fprintf(&b, "Terminal: %dx%d\n", width, height)
 	fmt.Fprintf(&b, "Total lines: %d\n\n", len(lines))
 	b.WriteString("=== All rendered lines with visible widths ===\n")
 	for i, line := range lines {
-		esc, _ := json.Marshal(line)
+		// Encoding a string never fails.
+		esc, _ := jsstring.MarshalJSON(line)
 		fmt.Fprintf(&b, "[%d] (w=%d) %s\n", i, widthx.VisibleWidth(line), esc)
 	}
 	b.WriteString("\n=== Agent messages (JSONL) ===\n")
 	for _, msg := range m.agent.Messages() {
-		j, err := json.Marshal(msg)
+		j, err := jsstring.MarshalJSON(msg)
 		if err != nil {
 			return "", fmt.Errorf("marshal message: %w", err)
 		}
 		b.Write(j)
 		b.WriteByte('\n')
 	}
-	b.WriteByte('\n')
 
 	path := filepath.Join(m.opts.AgentDir, AppName+"-debug.log")
-	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+	if err := nodeerrno.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		return "", err
 	}
 	if err := os.WriteFile(path, []byte(b.String()), 0o644); err != nil {
-		return "", err
+		return "", nodeerrno.FromPathError(err)
 	}
 	return path, nil
 }
@@ -93,6 +100,7 @@ func (m *InteractiveMode) writeDebugLog() (string, error) {
 // buildAutocompleteProvider constructs slash-command and @-file autocomplete in Pi's builtin, template, extension, then skill order. Equal fuzzy scores preserve that order.
 // Mirrors createBaseAutocompleteProvider (interactive-mode.ts:747-776).
 func (m *InteractiveMode) buildAutocompleteProvider() tui.AutocompleteProvider {
+	// pig additive (D92): a Piglet's stripped built-in commands are absent from autocomplete.
 	builtins := BuiltinSlashCommands()
 	cmds := make([]tui.SlashCommand, 0, len(builtins)+len(m.promptTemplates))
 	for _, b := range builtins {
@@ -115,13 +123,15 @@ func (m *InteractiveMode) buildAutocompleteProvider() tui.AutocompleteProvider {
 	// Add prompt templates as slash commands in autocomplete.
 	// Mirrors upstream createBaseAutocompleteProvider templateCommands
 	// (interactive-mode.ts:445-452).
-	// Upstream templates always carry the resource loader's sourceInfo; the loaded ones here carry only their path, so
-	// the tag uses the same provenance pi.getCommands() reports for them (SlashCommandCatalog.Commands).
+	// Upstream templates carry the resource loader's sourceInfo (resource-loader.ts updatePromptsFromPaths):
+	// findSourceInfoForPath ?? the template loader's sourceInfo ?? getDefaultSourceInfoForPath.
 	templateSources := SlashCommandCatalog{CWD: m.opts.CWD, AgentDir: m.opts.AgentDir, SourceInfo: m.resourceSourceInfo}
 	for _, pt := range m.promptTemplates {
-		info := sourceInfoOf(pt.SourceInfo)
-		if info == nil && pt.FilePath != "" {
-			resolved := templateSources.SourceInfoForPath(pt.FilePath, "prompts")
+		var info *PiSourceInfo
+		if recorded, found := templateSources.recordedSourceInfo(pt.FilePath); pt.FilePath != "" && found {
+			info = &recorded
+		} else if info = sourceInfoOf(pt.SourceInfo); info == nil && pt.FilePath != "" {
+			resolved := templateSources.defaultSourceInfo(pt.FilePath, "prompts")
 			info = &resolved
 		}
 		sc := tui.SlashCommand{
@@ -133,7 +143,13 @@ func (m *InteractiveMode) buildAutocompleteProvider() tui.AutocompleteProvider {
 	}
 
 	if m.newRunner != nil {
+		// An extension command named like a built-in is left out of autocomplete (interactive-mode.ts:793-799 filters on cmd.name); the
+		// conflict diagnostic says so.
+		builtinNames := upstreamBuiltinCommandNames()
 		for _, rc := range m.newRunner.Commands() {
+			if _, conflicts := builtinNames[rc.Name]; conflicts {
+				continue
+			}
 			cmds = append(cmds, m.extensionCommandSlashEntry(rc))
 		}
 	}
@@ -166,6 +182,10 @@ func (m *InteractiveMode) buildAutocompleteProvider() tui.AutocompleteProvider {
 // modelArgCompletions fuzzy-filters the available runtime snapshot using getModelSearchText.
 func (m *InteractiveMode) modelArgCompletions(prefix string) []tui.AutocompleteItem {
 	items := m.availableModelItems()
+	// A model scope narrows the completions to the scoped models (interactive-mode.ts:731-733).
+	if len(m.scopedModelIDs) > 0 {
+		items = m.scopedModelItems(items)
+	}
 	filtered := tui.FuzzyFilter(items, prefix, func(item tui.ModelSelectorItem) string {
 		return tui.GetModelSearchText(tui.ModelSearchItem{ID: item.ID, Provider: item.Provider, Name: item.Name})
 	})
@@ -196,28 +216,18 @@ func (m *InteractiveMode) resolveAvailableModel(input string) (string, bool) {
 	return resolveModelFromItems(input, items)
 }
 
+// resolveModelFromItems is findExactModelReferenceMatch (core/model-resolver.ts:88) over the selector's models; it returns the match's
+// provider/id specification.
 func resolveModelFromItems(input string, items []tui.ModelSelectorItem) (string, bool) {
-	needle := strings.TrimSpace(strings.ToLower(input))
-	if needle == "" {
+	models := make([]RuntimeModel, len(items))
+	for i, item := range items {
+		models[i] = RuntimeModel{Provider: item.Provider, ID: item.ID}
+	}
+	match := FindExactModelReferenceMatch(input, models)
+	if match == nil {
 		return "", false
 	}
-	bareID := ""
-	for _, mm := range items {
-		fq := mm.FQ()
-		if strings.EqualFold(fq, needle) {
-			return fq, true
-		}
-		if strings.EqualFold(mm.ID, needle) {
-			if bareID != "" {
-				return "", false
-			}
-			bareID = fq
-		}
-	}
-	if bareID != "" {
-		return bareID, true
-	}
-	return "", false
+	return match.Provider + "/" + match.ID, true
 }
 
 // buildSlashContext assembles the SlashContext for one dispatch.
@@ -269,7 +279,7 @@ func (m *InteractiveMode) buildSlashContext(ctx context.Context) *SlashContext {
 			}
 			// Upstream handleClearCommand (interactive-mode.ts:6664-6665).
 			m.chatContainer.Add(tui.NewSpacer(1))
-			m.chatContainer.Add(tui.NewPaddedText(tui.ActiveTheme().FgText("accent", "✓ New session started"), 1, 1, nil))
+			m.chatContainer.Add(tui.NewPaddedText(tui.ActiveTheme().Fg("accent", "✓ New session started"), 1, 1, nil))
 			return nil
 		},
 		FatalRuntimeError: func(prefix string, err error) error {
@@ -294,7 +304,7 @@ func (m *InteractiveMode) buildSlashContext(ctx context.Context) *SlashContext {
 			// Include the coding-tool baseline (read/write/bash/edit/grep/find/ls)
 			// unless --no-builtin-tools hid them.
 			if !m.opts.NoBuiltinTools {
-				for _, t := range tools.CreateCodingTools(m.opts.CWD, m.opts.Settings, filepath.Join(m.opts.AgentDir, "bin")) {
+				for _, t := range tools.CreateCodingTools(m.opts.CWD, tools.ToolsOptionsFromSettings(m.opts.Settings, filepath.Join(m.opts.AgentDir, "bin"))) {
 					names = append(names, t.Name())
 				}
 			}
@@ -330,7 +340,7 @@ func (m *InteractiveMode) buildSlashContext(ctx context.Context) *SlashContext {
 			}
 			return m.currentSession().ID(), m.currentSession().CWD(), n
 		},
-		LastAssistant: func() string { return m.lastAssistantText },
+		LastAssistant: m.lastAssistantMessageText,
 		CopyClipboard: copyToClipboard,
 		CostSummary: func() string {
 			if m.agent == nil {
@@ -351,6 +361,12 @@ func (m *InteractiveMode) buildSlashContext(ctx context.Context) *SlashContext {
 
 		// Session ops.
 		CurrentSession: func() *Session { return m.currentSession() },
+		ExportToJsonl: func(outputPath string) (string, error) {
+			if m.opts.SessionHandle == nil {
+				return ExportSessionToJsonl(m.currentSession(), outputPath, nil)
+			}
+			return m.opts.SessionHandle.ExportToJsonl(outputPath)
+		},
 		CacheWarmingStatus: func() *CacheWarmingStatus {
 			if m.opts.SessionHandle == nil {
 				return nil
@@ -436,6 +452,7 @@ func (m *InteractiveMode) buildSlashContext(ctx context.Context) *SlashContext {
 		// coding.Session.Compact() which emits CompactionStart/End events
 		// that processAgentEvents handles for spinner + chat rebuild.
 		CompactSession: func(customInstructions string) error {
+			m.clearStatusIndicator("") // upstream: packages/coding-agent/src/modes/interactive/interactive-mode.ts:handleCompactCommand
 			if m.opts.SessionHandle == nil {
 				return fmt.Errorf("no active session")
 			}
@@ -443,19 +460,8 @@ func (m *InteractiveMode) buildSlashContext(ctx context.Context) *SlashContext {
 			// CompactionStart/End events drive the TUI state machine.
 			sessHandle := m.opts.SessionHandle
 			go func() {
-				// coding.Session.Compact is accessed via the Inner() icodingagent.Session
-				// pointer, but Compact() lives on the *coding.Session wrapper.
-				// We access it through the InteractiveSessionHandle's underlying
-				// *coding.Session by casting: both types implement the same
-				// interface from this call site's perspective. Since only
-				// coding.Session implements InteractiveSessionHandle in production,
-				// this type assertion is safe. If it fails (test double), we no-op.
-				type compactor interface {
-					Compact(ctx context.Context, customInstructions string) error
-				}
-				if c, ok := sessHandle.(compactor); ok {
-					_ = c.Compact(ctx, customInstructions)
-				}
+				// The compaction events report both the result and a rejection such as "Nothing to compact".
+				_, _ = sessHandle.Compact(ctx, customInstructions)
 			}()
 			return nil
 		},
@@ -465,7 +471,7 @@ func (m *InteractiveMode) buildSlashContext(ctx context.Context) *SlashContext {
 		// a bordered editor-slot overlay (no filter input, fixed title + hint),
 		// not the floating FilterableList overlay this used to be.
 		ShowExtensionSelector: func(title string, options []string, description string) (string, bool) {
-			sel := tui.NewExtensionSelector(title, options)
+			sel := tui.NewExtensionSelectorComponent(title, options, nil, nil)
 			sel.SetDescription(description)
 			idx, ok := m.runEditorSlotExtensionSelector(sel)
 			if !ok || idx < 0 || idx >= len(options) {
@@ -479,9 +485,16 @@ func (m *InteractiveMode) buildSlashContext(ctx context.Context) *SlashContext {
 		// ExtensionEditorComponent (border + spacer + Editor + spacer +
 		// border + hint) and swaps it into the editorContainer.
 		ShowExtensionEditor: func(title, description, prefill string) (string, bool) {
-			ed := tui.NewExtensionEditorComponent(title, prefill)
-			ed.SetDescription(description)
-			return m.runEditorSlotExtensionEditor(ed)
+			var value string
+			var done, cancelled bool
+			ed := NewExtensionEditorComponent(m.tuiInst, m.keybindings, title, prefill,
+				func(text string) { value, done = text, true },
+				func() { done, cancelled = true, true },
+				&ExtensionEditorOptions{Description: description}, m.externalEditorCommand())
+			ed.SetFocused(true)
+			m.programStatusReporter().SetBlocked(extensionDialogStatusSource, &BlockedStatus{Kind: tui.ProgramStatusKindQuestion, Message: title})
+			defer m.programStatusReporter().SetBlocked(extensionDialogStatusSource, nil)
+			return m.runEditorSlotExtensionEditor(ed, func() (string, bool, bool) { return value, done, cancelled })
 		},
 		BugReportInputs:       m.bugReportInputs,
 		BugReportProviderName: m.bugReportProviderName,
@@ -495,20 +508,19 @@ func (m *InteractiveMode) buildSlashContext(ctx context.Context) *SlashContext {
 			m.showStatus("Close active overlays before changing TUI mode")
 			return false
 		},
-		ShowSettingsList: func(items []tui.SettingItem, onChange func(id, value string) string) {
-			sl := tui.NewSettingsList(items)
-			m.runModalSettingsList(sl, onChange)
+		ShowSettingsSelector: m.runModalSettingsSelector,
+		PreviewTheme:         m.previewTheme,
+		ThemeSelection: func() string {
+			if selection := m.getThemeSelection(); selection != nil {
+				return *selection
+			}
+			return ""
 		},
-		ShowSettingsSubmenu: func(items []tui.SettingItem, onChange func(id, value string) string) {
-			sl := tui.NewSettingsListWithOptions(items, min(len(items), 10), false)
-			m.runModalSettingsList(sl, onChange)
-		},
+		SettingsModels:          m.settingsModels,
+		ApplyModelThinkingLevel: m.applyModelThinkingLevel,
 		ShowSelectList: func(title, description string, items []tui.SelectItem, currentValue string) (string, bool) {
 			sel := tui.NewSelectSubmenu(title, description, items, currentValue)
 			return m.runEditorSlotSelectSubmenu(sel)
-		},
-		ShowThemeSelector: func(currentTheme string) (string, bool) {
-			return m.runEditorSlotThemeSubmenu(currentTheme)
 		},
 		AvailableThinkingLevels: func() []string {
 			return levelsForModel(m.opts.Model)
@@ -516,7 +528,6 @@ func (m *InteractiveMode) buildSlashContext(ctx context.Context) *SlashContext {
 		CurrentThinkingLevel: func() string { return m.thinkingLevel },
 		SelectThinkingLevel:  func(level string) { m.selectThinkingLevel(level, false) },
 		ShowThinkingSelector: m.showThinkingSelector,
-		ModelThinkingSubmenu: m.modelThinkingSettingsSubmenu,
 		NavigateTreeFull:     m.navigateTree,
 		AbortBranchSummary: func() {
 			if m.opts.SessionHandle != nil {
@@ -534,7 +545,7 @@ func (m *InteractiveMode) buildSlashContext(ctx context.Context) *SlashContext {
 			if m.currentSession() == nil {
 				return "", fmt.Errorf("no active session")
 			}
-			leaf := m.currentSession().LeafID()
+			leaf := m.currentSession().GetLeafID()
 			if leaf == nil {
 				return "", fmt.Errorf("session is empty: nothing to clone")
 			}
@@ -552,52 +563,60 @@ func (m *InteractiveMode) buildSlashContext(ctx context.Context) *SlashContext {
 			if m.currentSession() == nil {
 				return ""
 			}
-			return renderTreeASCII(m.currentSession().Tree())
+			return renderTreeASCII(m.currentSession().treeRoot())
 		},
 		PickSession: func() (string, bool) {
 			sm := m.newSessionManager()
-			allLoader := func(options SessionListOptions) ([]SessionInfo, error) { return sm.ListAllSessions(options) }
-			if m.opts.SessionDir != "" {
-				allLoader = func(options SessionListOptions) ([]SessionInfo, error) { return sm.ListSessions(options) }
+			allLoader := func(ctx context.Context, onProgress SessionListProgress) ([]SessionInfo, error) {
+				return sm.ListAllSessions(SessionListOptions{Context: ctx, OnProgress: onProgress})
 			}
-			selector := newSessionSelector(
-				func(options SessionListOptions) ([]SessionInfo, error) { return sm.ListCurrentSessions(options) },
-				allLoader,
-				func(path, name string) error {
-					return m.runModalOperation(func() error { return sm.RenameSession(path, name) })
+			if m.opts.SessionDir != "" {
+				allLoader = func(ctx context.Context, onProgress SessionListProgress) ([]SessionInfo, error) {
+					return sm.ListSessions(SessionListOptions{Context: ctx, OnProgress: onProgress})
+				}
+			}
+			currentPath := ""
+			if m.currentSession() != nil {
+				currentPath = m.currentSession().Path()
+			}
+			outcome := &sessionSelectorOutcome{}
+			selector := NewSessionSelectorComponent(
+				func(ctx context.Context, onProgress SessionListProgress) ([]SessionInfo, error) {
+					return sm.ListCurrentSessions(SessionListOptions{Context: ctx, OnProgress: onProgress})
 				},
-				sm.deleteListedSession,
-				func() string {
-					if m.currentSession() == nil {
-						return ""
-					}
-					return m.currentSession().Path()
-				}(),
-				m.keybindings,
+				allLoader,
+				outcome.onSelect,
+				outcome.onCancel,
+				m.requestShutdown,
+				m.requestRender,
+				&SessionSelectorOptions{
+					RenameSession: func(path, name string) error {
+						return m.runModalOperation(func() error { return sm.RenameSession(path, name) })
+					},
+					ShowRenameHint: new(true),
+					Keybindings:    m.keybindings,
+					DeleteSession:  sm.deleteListedSession,
+				},
+				currentPath,
 			)
-			return m.runEditorSlotSessionSelector(selector)
+			return m.runEditorSlotSessionSelector(selector, outcome)
 		},
 		PickUserMessage: func() (string, bool) {
 			if m.currentSession() == nil {
 				return "", false
 			}
-			ids, labels := userMessageSelectorItems(m.currentSession())
-			if len(ids) == 0 {
+			items := userMessageSelectorItems(m.currentSession())
+			if len(items) == 0 {
 				m.showStatus("No messages to fork from")
 				return "", false
 			}
-			list := tui.NewFilterableList("Fork from message", labels)
-			idx, ok := m.runModalSelector(list, tui.OverlayOptions{Title: "Fork from message", WidthFraction: 0.85, HeightFraction: 0.7})
-			if !ok || idx < 0 || idx >= len(ids) {
-				return "", false
-			}
-			return ids[idx], true
+			return m.runEditorSlotUserMessageSelector(items)
 		},
 		PickTreeEntry: func(initialSelectedID string) (string, bool) {
 			if m.currentSession() == nil {
 				return "", false
 			}
-			root := m.currentSession().Tree()
+			root := m.currentSession().treeRoot()
 			if root == nil {
 				return "", false
 			}
@@ -611,7 +630,7 @@ func (m *InteractiveMode) buildSlashContext(ctx context.Context) *SlashContext {
 					if label != "" {
 						lp = &label
 					}
-					if err := m.currentSession().AppendLabelChange(entryID, lp); err != nil {
+					if _, err := m.currentSession().AppendLabelChange(entryID, lp); err != nil {
 						m.showError(err.Error())
 					}
 				}
@@ -631,7 +650,8 @@ func (m *InteractiveMode) buildSlashContext(ctx context.Context) *SlashContext {
 			if label != "" {
 				lp = &label
 			}
-			return m.currentSession().AppendLabelChange(targetID, lp)
+			_, err := m.currentSession().AppendLabelChange(targetID, lp)
+			return err
 		},
 		LoadSessionPath: func(path string) error {
 			m.invalidatePostLoginSelection()
@@ -649,7 +669,7 @@ func (m *InteractiveMode) buildSlashContext(ctx context.Context) *SlashContext {
 		},
 		ImportSession: func(inputPath, cwdOverride string) (bool, error) {
 			var importer sessionImporter
-			if rt := m.opts.Runtime; rt != nil {
+			if rt := m.runtimeHost; rt != nil {
 				importer = runtimeImporter{rt}
 			} else if session, ok := m.opts.SessionHandle.(sessionImporter); ok {
 				importer = session
@@ -721,6 +741,15 @@ func (m *InteractiveMode) buildSlashContext(ctx context.Context) *SlashContext {
 		// Mirrors upstream handleReloadCommand (interactive-mode.ts:6223)
 		// and session.reload() (agent-session.ts:3291).
 		Reload: func() error {
+			// upstream: packages/coding-agent/src/modes/interactive/interactive-mode.ts:handleReloadCommand
+			if m.runStreaming() {
+				m.showWarning("Wait for the current response to finish before reloading.")
+				return errReloadBlocked
+			}
+			if m.isCompacting {
+				m.showWarning("Wait for compaction to finish before reloading.")
+				return errReloadBlocked
+			}
 			if err := m.settleUserBash(); err != nil {
 				return err
 			}
@@ -761,9 +790,7 @@ func (m *InteractiveMode) buildSlashContext(ctx context.Context) *SlashContext {
 
 			// 3. Reload keybindings.
 			if m.keybindings != nil {
-				if err := m.keybindings.Reload(); err != nil {
-					fmt.Fprintf(os.Stderr, "keybindings reload: %v\n", err)
-				}
+				m.keybindings.Reload()
 				m.publishExtensionKeybindings()
 			}
 
@@ -890,7 +917,7 @@ func (m *InteractiveMode) buildSlashContext(ctx context.Context) *SlashContext {
 			// re-reading the display settings the rebuilt transcript uses
 			// (restoreChatBeforeSessionStart, interactive-mode.ts:6210-6218).
 			m.hideThinking = m.opts.Settings.GetHideThinkingBlock()
-			m.outputPad = m.opts.Settings.GetOutputPad()
+			m.outputPad = int(m.opts.Settings.GetOutputPad())
 			m.rebuildChatFromSession()
 
 			// The rebuilt chat precedes session_start notifications.
@@ -916,17 +943,25 @@ func (m *InteractiveMode) buildSlashContext(ctx context.Context) *SlashContext {
 			if m.opts.SettingsManager != nil {
 				tui.SetCapabilityOverrides(m.opts.SettingsManager.GetTerminalCapabilityOverrides())
 			}
-			ensurePngTranscoder()
+			m.ensurePngTranscoder()
 			m.applyThemeFromSettings(ctx)
 
 			// 8c. Upstream rebuilds the loaded-resources listing from the
 			//     reloaded resources (showLoadedResources after reload).
 			m.showLoadedResources(false, true)
+			// upstream: packages/coding-agent/src/modes/interactive/interactive-mode.ts:handleReloadCommand saves an implicit project trust, then reports a models.json error, before its status.
+			m.reloadSavedProjectTrust = m.maybeSaveImplicitProjectTrustAfterReload()
+			m.showModelsJSONError()
 
 			// 9. Rebuild autocomplete (may have new slash commands from
 			//    reloaded extensions).
 			m.editor.SetAutocomplete(m.buildAutocompleteProvider())
 			return nil
+		},
+		ReloadSavedProjectTrust: func() bool {
+			saved := m.reloadSavedProjectTrust
+			m.reloadSavedProjectTrust = false
+			return saved
 		},
 		// ReloadDiagnostics returns resource counts after reload for the
 		// /reload summary message. Mirrors upstream showLoadedResources
@@ -1032,7 +1067,7 @@ func (m *InteractiveMode) buildSlashContext(ctx context.Context) *SlashContext {
 						reverted = "fullscreen"
 					}
 					if m.opts.SettingsManager != nil {
-						_ = m.opts.SettingsManager.SetTuiMode(reverted)
+						_ = m.opts.SettingsManager.SetTuiMode(tui.TuiMode(reverted))
 					}
 					m.showStatus("Close active overlays before changing TUI mode")
 					break
@@ -1047,7 +1082,7 @@ func (m *InteractiveMode) buildSlashContext(ctx context.Context) *SlashContext {
 				// nil in regular mode (no-op). Mirrors upstream
 				// applyFullscreenScrollbarSetting() (interactive-mode.ts:1877).
 				if m.transcriptScrollView != nil {
-					m.transcriptScrollView.SetScrollbar(value)
+					m.transcriptScrollView.SetScrollbar(tui.ScrollViewScrollbar(value))
 				}
 			case "fullscreen-copy-on-select":
 				if m.altScreen != nil {
@@ -1071,22 +1106,9 @@ func (m *InteractiveMode) buildSlashContext(ctx context.Context) *SlashContext {
 			case "output-padding":
 				if padding, err := strconv.Atoi(value); err == nil {
 					m.outputPad = max(0, min(1, padding))
-					if m.agent.IsStreaming() {
-						for _, block := range m.userBlocks {
-							block.SetOutputPad(m.outputPad)
-						}
-						for _, block := range m.assistantBlocks {
-							block.SetOutputPad(m.outputPad)
-						}
-						for _, component := range m.customMessageOrder {
-							if padded, ok := component.(interface{ SetOutputPad(int) }); ok {
-								padded.SetOutputPad(m.outputPad)
-							}
-						}
-						m.tuiInst.RequestRender()
-					} else {
-						m.rebuildChatFromSession()
-					}
+					// Every chat and pending-message child, and a queued `!` block, that has setOutputPad takes the new padding in place; nothing is
+					// rebuilt (interactive-mode.ts:5078-5088 onOutputPadChange).
+					m.applyOutputPad()
 				}
 			case "autocomplete-max-visible":
 				if maxVisible, err := strconv.Atoi(value); err == nil {
@@ -1096,10 +1118,11 @@ func (m *InteractiveMode) buildSlashContext(ctx context.Context) *SlashContext {
 				m.agent.SetSteeringMode(agent.QueueMode(value))
 			case "follow-up-mode":
 				m.agent.SetFollowUpMode(agent.QueueMode(value))
-			case "show-images", "image-width-cells", "auto-resize-images", "block-images":
-				// Update all existing tool execution components with new image settings.
+			case "show-images", "image-width-cells":
+				// Update all existing tool execution components with the new image display settings (interactive-mode.ts:4924-4939). blockImages
+				// only filters images sent to the model, so its change leaves the cards alone (onBlockImagesChange, interactive-mode.ts:4943-4945).
 				s := m.opts.SettingsManager.Get()
-				show := s.GetShowImages() && !s.BlockImages
+				show := s.GetShowImages()
 				width := s.GetImageWidthCells()
 				m.toolMu.Lock()
 				for _, comp := range m.toolOrder {
@@ -1129,16 +1152,21 @@ func (m *InteractiveMode) buildSlashContext(ctx context.Context) *SlashContext {
 		LogoutProviders:        m.getLogoutProviderOptions,
 		SelectAuthMethod:       m.showLoginAuthTypeSelector,
 		SelectAuthProvider: func(mode string, providers []tui.OAuthProvider, initialSearch string) (tui.OAuthProvider, bool) {
-			sel := tui.NewOAuthSelector(mode, providers, initialSearch)
+			var chosen tui.OAuthProvider
+			sel := tui.NewOAuthSelectorComponent(mode, providers, func(providerID, authType string) {
+				for _, provider := range providers {
+					if provider.ID == providerID && provider.AuthType == authType {
+						chosen = provider
+						return
+					}
+				}
+			}, nil, initialSearch)
 			_, ok := m.runEditorSlotOAuthSelector(sel)
-			return sel.SelectedProvider(), ok
+			return chosen, ok
 		},
 		StartProviderLogin: func(provider tui.OAuthProvider) error {
 			if provider.AuthType == "oauth" {
-				return m.runOAuthLogin(ctx, provider.ID)
-			}
-			if m.loginAPIKeyProvider(provider.ID) {
-				return nil
+				return m.runOAuthLogin(ctx, provider)
 			}
 			return m.runAPIKeyLogin(provider)
 		},
@@ -1160,18 +1188,17 @@ func buildAuthProviderName(provider string) string {
 }
 
 // newSessionTreeSelect builds the /tree selector opened at the current leaf (or an explicit re-open target). It starts in the configured treeFilterMode, as Pi passes settingsManager.getTreeFilterMode() as initialFilterMode (interactive-mode.ts:5403, :5531).
-func (m *InteractiveMode) newSessionTreeSelect(root *SessionTreeNode, initialSelectedID string) *tui.TreeSelect {
+func (m *InteractiveMode) newSessionTreeSelect(root *SessionTreeNode, initialSelectedID string) *tui.TreeSelectorComponent {
 	settings := m.opts.SettingsManager
 	if settings == nil {
 		settings = &SettingsManager{merged: m.opts.Settings}
 	}
-	ts := tui.NewTreeSelectWithInitialFilter("Session tree", &treeNodeAdapter{n: root, f: newTreeRowFormatter(m.currentSession())}, settings.GetTreeFilterMode())
-	ts.MaxVisibleLines = tui.TreeVisibleLines(m.tuiInst.Height())
 	// Open at the current leaf instead of the bottom row, so /tree after forking lands where the user is (interactive-mode.ts:4621).
-	currentLeafID := ""
-	if leaf := m.currentSession().LeafID(); leaf != nil {
-		currentLeafID = *leaf
+	currentLeafID := m.currentSession().GetLeafID()
+	var selectedID *string
+	if initialSelectedID != "" {
+		selectedID = &initialSelectedID
 	}
-	ts.SetInitialCursor(currentLeafID, initialSelectedID)
-	return ts
+	// The host polls Done, Cancelled and SelectedID, so it passes no select or cancel callbacks; labels persist through OnLabelEdit.
+	return NewTreeSelectorComponent(root.Children, currentLeafID, m.tuiInst.Height(), nil, nil, nil, selectedID, settings.GetTreeFilterMode())
 }

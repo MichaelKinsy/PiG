@@ -206,7 +206,8 @@ Piglets do not change the upstream Session header or bind a transcript to a
 Piglet, carrier, component plan, or environment. Resume, clone, and fork load
 the selected conversation under the current process composition; current tool,
 secret, environment, and platform policy governs every new action. `/piglet`
-inspects the Piglet active in this process and writes nothing to the Session.
+inspects the Piglet active in this process and writes nothing to the Session;
+a Piglet that strips it (`strip.commands: [/piglet]`) runs without it.
 A different Piglet is selected with another `pig --piglet` invocation, which
 may resume the same Session when the caller chooses it.
 

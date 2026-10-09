@@ -1,0 +1,19 @@
+[
+ {
+  "ids": [
+   "pkg:ai/.#AssistantMessageEvent",
+   "pkg:ai/compat#AssistantMessageEvent"
+  ],
+  "targets": [
+   "ai/events.go#AssistantMessageEvent"
+  ],
+  "production": [
+   "call:ai/event_stream.go#AssistantMessageEventStream.events"
+  ],
+  "evidence": [
+   "test:ai/wire_shape_upstream_test.go#TestAssistantMessageEventVariantsMatchUpstreamShapes",
+   "test:ai/event_stream_test.go#TestAssistantMessageEventStreamAcceptsTypedEventOrder"
+  ],
+  "rationale": "AssistantMessageEvent is the twelve-variant union; Go declares it as the closed interface implemented by one event type per variant, and the wire test marshals every variant and compares its type literal and property names with upstream."
+ }
+]

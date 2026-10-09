@@ -27,7 +27,7 @@ func TestScopedModelsRefreshUpstream7153(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			registry, _, store := radiusTestRegistry(t, `{"providers":{"radius":{"baseUrl":"https://catalog.example.test","oauth":"radius"}}}`, map[string]ai.Credential{"radius": {Type: ai.CredentialAPIKey, Key: "test-key"}})
-			if err := store.Write(t.Context(), "radius", ai.ModelsStoreEntry{Models: []json.RawMessage{storedPickerModel("cached", "Cached")}}); err != nil {
+			if err := store.Write(t.Context(), "radius", ai.ModelsStoreEntry{Models: mustStoredModels([]json.RawMessage{storedPickerModel("cached", "Cached")})}); err != nil {
 				t.Fatal(err)
 			}
 			registry.RefreshCatalogs(t.Context(), CatalogRefreshOptions{})
@@ -38,7 +38,7 @@ func TestScopedModelsRefreshUpstream7153(t *testing.T) {
 				m.opts.ModelRegistry = registry
 				m.opts.AgentDir = registry.agentDir
 				m.runCtx = t.Context()
-				m.statusLine = NewStatusLine(nil, "", nil)
+				m.statusLine = NewFooterComponent(nil, "", nil)
 				done := make(chan struct{})
 				go func() { m.showScopedModels(); close(done) }()
 				signal := <-blocked.started
@@ -49,7 +49,7 @@ func TestScopedModelsRefreshUpstream7153(t *testing.T) {
 				}
 				input, _ := m.modalRoute()
 				if !tc.cancel {
-					if err := store.Write(t.Context(), "radius", ai.ModelsStoreEntry{Models: []json.RawMessage{storedPickerModel("cached", "Cached"), storedPickerModel("refreshed", "Refreshed")}}); err != nil {
+					if err := store.Write(t.Context(), "radius", ai.ModelsStoreEntry{Models: mustStoredModels([]json.RawMessage{storedPickerModel("cached", "Cached"), storedPickerModel("refreshed", "Refreshed")})}); err != nil {
 						t.Fatal(err)
 					}
 					close(blocked.release)
@@ -84,7 +84,7 @@ func TestScopedModelsUsesAvailableSnapshot(t *testing.T) {
 		m.opts.ModelRegistry = NewModelRegistry(m.opts.AgentDir)
 		m.opts.ModelRegistry.SetModelsStore(ai.NewInMemoryModelsStore())
 		m.runCtx = t.Context()
-		m.statusLine = NewStatusLine(nil, "", nil)
+		m.statusLine = NewFooterComponent(nil, "", nil)
 		done := make(chan struct{})
 		go func() { m.showScopedModels(); close(done) }()
 		synctest.Wait()
@@ -124,7 +124,7 @@ func TestModelsJSONHotReloadUpstream6999(t *testing.T) {
 			m.opts.AgentDir = dir
 			m.opts.ModelRegistry = registry
 			m.runCtx = t.Context()
-			m.statusLine = NewStatusLine(nil, "", nil)
+			m.statusLine = NewFooterComponent(nil, "", nil)
 			done := make(chan struct{})
 			go func() { m.pickModel(t.Context(), ""); close(done) }()
 			synctest.Wait()

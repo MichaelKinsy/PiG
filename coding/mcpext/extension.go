@@ -9,6 +9,7 @@ import (
 	"slices"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 	"unicode/utf16"
 
@@ -16,6 +17,7 @@ import (
 	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/internal/lazyregexp"
 	"github.com/MichaelKinsy/PiG/internal/nodepath"
+	"github.com/MichaelKinsy/PiG/mcp"
 )
 
 // Ports packages/coding-agent/src/extensions/mcp/index.ts.
@@ -68,6 +70,8 @@ type Host interface {
 
 // EventContext is the extension context an event handler receives.
 type EventContext struct {
+	// Context is the handler's context, which carries the extension context (extension.FromContext). A zero EventContext has none.
+	Context context.Context
 	// Cwd is the working directory of the session, for stdio servers.
 	Cwd string
 	// ProviderToken is the current token of a pi provider of the session's model registry, for servers with
@@ -90,8 +94,8 @@ func (c EventContext) notify(message, level string) {
 
 // Options configure the extension.
 type Options struct {
-	// LoadConfig defaults to reading `mcp.json` from the agent directory and the trusted project.
-	LoadConfig func(ctx EventContext) LoadedMcpConfig
+	// LoadConfig defaults to reading `mcp.json` from the agent directory and the trusted project. Its context carries the extension context (extension.FromContext), as a handler's does.
+	LoadConfig func(ctx context.Context) LoadedMcpConfig
 	// CreateTransport defaults to stdio and streamable HTTP transports built from the server config.
 	CreateTransport TransportFactory
 	// Credentials defaults to `mcp-auth.json` in the agent directory.
@@ -106,10 +110,10 @@ type Options struct {
 	// UpdateConfig saves `/mcp` changes to the server's config file: its project Override when set, else its
 	// Source. Defaults to editing that `mcp.json`.
 	UpdateConfig func(entry McpServerEntry, patch McpServerConfigPatch) error
-	// StartupWait is how long the first prompt waits for servers that are still
-	// connecting at startup. Their tools become available when they connect.
-	// Default: 10 seconds.
-	StartupWait time.Duration
+	// StartupWaitMs is how many milliseconds the first prompt waits for servers that are still connecting at startup. Their tools
+	// become available when they connect. Nil waits 10000 ms; 0 does not wait for a server that is not yet ready
+	// (index.ts:90, 294 `options.startupWaitMs ?? DEFAULT_STARTUP_WAIT_MS`).
+	StartupWaitMs *int
 	// AgentDir and ConfigDirName locate the configuration and the credentials.
 	AgentDir      string
 	ConfigDirName string
@@ -124,8 +128,9 @@ type Options struct {
 }
 
 const (
+	// defaultStartupWaitMs is the startup wait of an Options without StartupWaitMs.
 	// upstream: packages/coding-agent/src/extensions/mcp/index.ts:DEFAULT_STARTUP_WAIT_MS
-	defaultStartupWait = 10 * time.Second
+	defaultStartupWaitMs = 10_000
 	// CodemodeToolName and ToolSearchToolName are the tools that reach MCP tools that are not declared.
 	CodemodeToolName   = "codemode"
 	ToolSearchToolName = "tool_search"
@@ -133,16 +138,25 @@ const (
 
 // server is a configured server. Disabled servers have no connection.
 type server struct {
-	entry      McpServerEntry
-	connection *Connection
+	entry McpServerEntry
+	// connection is read by the UI goroutine (describeState, lists) while a background start stores it, so it is atomic.
+	connection atomic.Pointer[Connection]
 	// registeredConfig is, for servers extensions registered, the config as
 	// registered, to detect re-registrations.
 	registeredConfig string
 	// message is the result of the last `/mcp` action that failed, shown in the manager.
 	message string
+	// attempt identifies the current connection attempt; disabling or replacing it invalidates earlier work.
+	attempt *attemptToken
 	// ready is closed when the connection started for the server connected or failed.
 	ready chan struct{}
+	// closing is closed when the cleanup of a detached connection finished; a replacement waits for it before
+	// opening a transport.
+	closing chan struct{}
 }
+
+// attemptToken is the identity of one connection attempt (a JavaScript `Symbol()`).
+type attemptToken struct{ _ byte }
 
 func (s *server) enabled() bool { return s.entry.Config.Enabled == nil || *s.entry.Config.Enabled }
 
@@ -335,14 +349,16 @@ type Extension struct {
 	// projectConfig is the trusted project's `mcp.json`, where `/mcp` saves project overrides of global servers.
 	projectConfig      string
 	overridden         []string
-	sessionActive      bool
 	autoEnableCodemode bool
 	warnedUnreachable  bool
 	pending            chan struct{}
 	waitedForStartup   bool
-	// generation is bumped on every session start and shutdown so work that
-	// finishes late is dropped.
-	generation int
+	// session is the lifetime of the current session: it ends on session_shutdown, and before the first
+	// session_start (registrations before that are read on session_start). Work captures it when it starts and
+	// drops late results once it ended. Work that outlives the command that started it also stops with it and is
+	// registered in background, so shutdown can wait for its cleanup.
+	session    context.Context
+	endSession context.CancelFunc
 	sessionCwd string
 	// providerToken resolves the tokens of `auth.provider` servers from the session's model registry.
 	providerToken func(ctx context.Context, provider string) string
@@ -354,13 +370,15 @@ type Extension struct {
 	// as they were when the sign-in was needed. `pi mcp login` in another
 	// process (for example run by the agent) changes them.
 	tokensAtSignIn map[*Connection]string
-	background     sync.WaitGroup
+	// background is the work registered with [Extension.track]: connections opening or closing, manager
+	// actions, and sign-ins.
+	background backgroundTasks
 
 	toolMu sync.Mutex
 	// toolOwners maps a tool name to the `<server>\0<tool>` it was assigned to, so names stay unique and stable.
 	toolOwners map[string]string
 	// serverTools are the tool names currently offered by each server.
-	serverTools map[string]map[string]bool
+	serverTools map[string]*toolSet
 	// lanes keep the calls to each server in call order (see extension.CallLane).
 	lanes map[string]*extension.CallLane
 	// definitions is the last definition registered under each tool name, to re-register withdrawn tools as hidden.
@@ -372,9 +390,6 @@ type Extension struct {
 
 // New returns the extension for host.
 func New(host Host, options Options) *Extension {
-	if options.StartupWait == 0 {
-		options.StartupWait = defaultStartupWait
-	}
 	if options.IsCodemodeTool == nil {
 		options.IsCodemodeTool = func(tool extension.ToolInfo) bool {
 			return tool.Name == CodemodeToolName && sourcePath(tool) == "builtin:codemode"
@@ -385,7 +400,11 @@ func New(host Host, options Options) *Extension {
 			return tool.Name == ToolSearchToolName && sourcePath(tool) == "builtin:tool-search"
 		}
 	}
+	session, endSession := context.WithCancel(context.Background())
+	endSession()
 	return &Extension{
+		session:            session,
+		endSession:         endSession,
 		host:               host,
 		options:            options,
 		autoEnableCodemode: true,
@@ -393,7 +412,7 @@ func New(host Host, options Options) *Extension {
 		listeners:          map[int]func(){},
 		tokensAtSignIn:     map[*Connection]string{},
 		toolOwners:         map[string]string{},
-		serverTools:        map[string]map[string]bool{},
+		serverTools:        map[string]*toolSet{},
 		lanes:              map[string]*extension.CallLane{},
 		definitions:        map[string]extension.ToolDefinition{},
 	}
@@ -501,6 +520,30 @@ func (e *Extension) currentEntry(connection *Connection) McpServerEntry {
 	return connection.Entry
 }
 
+// toolSet is a JavaScript Set of tool names: it iterates in insertion order. A nil set is empty.
+type toolSet struct {
+	order []string
+	in    map[string]bool
+}
+
+func newToolSet() *toolSet { return &toolSet{in: map[string]bool{}} }
+
+func (s *toolSet) add(name string) {
+	if !s.in[name] {
+		s.in[name] = true
+		s.order = append(s.order, name)
+	}
+}
+
+func (s *toolSet) has(name string) bool { return s != nil && s.in[name] }
+
+func (s *toolSet) names() []string {
+	if s == nil {
+		return nil
+	}
+	return slices.Clone(s.order)
+}
+
 // registerTools registers the tools a connection offers. It is the connection's
 // OnTools callback.
 func (e *Extension) registerTools(connection *Connection) {
@@ -514,7 +557,7 @@ func (e *Extension) registerTools(connection *Connection) {
 
 	e.toolMu.Lock()
 	previous := e.serverTools[name]
-	current := map[string]bool{}
+	current := newToolSet()
 	// Like Codex, all tools whose names sanitize to the same name get the hash suffix, so which one would keep the plain
 	// name does not depend on the order of the list.
 	var plain []string
@@ -528,11 +571,11 @@ func (e *Extension) registerTools(connection *Connection) {
 	assignName := func(tool, owner string) string {
 		toolName := CreateMcpToolName(name, tool, func(candidate string) bool {
 			existing, taken := e.toolOwners[candidate]
-			return (taken && existing != owner) || current[candidate] ||
+			return (taken && existing != owner) || current.has(candidate) ||
 				countOf(plain, candidate) > 1
 		})
 		e.toolOwners[toolName] = owner
-		current[toolName] = true
+		current.add(toolName)
 		return toolName
 	}
 	var register []extension.ToolDefinition
@@ -544,10 +587,10 @@ func (e *Extension) registerTools(connection *Connection) {
 			Exposure:  extension.GetMcpToolExposure(entry.Config, tool.Name),
 			Namespace: namespace,
 			Timeout:   int(connection.Timeout().Milliseconds()),
-			GetClient: func(context.Context) (McpToolCaller, error) { return connection, nil },
+			GetClient: func(context.Context) (McpToolCaller, error) { return e.currentClient(name, tool.Name) },
 			Lane:      e.lane(name),
 			ReadableResources: func() bool {
-				return slices.ContainsFunc(e.resourceServers(), func(s McpResourceServer) bool { return s == McpResourceServer(connection) })
+				return slices.ContainsFunc(e.serversWithResources(), func(s *server) bool { return s.entry.Name == name })
 			},
 		})
 		e.definitions[definition.Name] = definition
@@ -556,8 +599,8 @@ func (e *Extension) registerTools(connection *Connection) {
 	e.serverTools[name] = current
 	// Tools cannot be unregistered, so tools the server dropped are re-registered as hidden. When
 	// the server offers them again they are registered with their configured exposure above.
-	for toolName := range previous {
-		if definition, ok := e.definitions[toolName]; ok && !current[toolName] {
+	for _, toolName := range previous.names() {
+		if definition, ok := e.definitions[toolName]; ok && !current.has(toolName) {
 			hidden := definition
 			hidden.Exposure = extension.ToolExposureHidden
 			register = append(register, hidden)
@@ -570,21 +613,45 @@ func (e *Extension) registerTools(connection *Connection) {
 	e.syncResourceTools()
 }
 
+// currentClient resolves the connection a prepared call uses when it executes. A call can outlive the definition's
+// connection while the readiness hook waits for a disable and re-enable, so the replacement is resolved at execution
+// time.
+// upstream: packages/coding-agent/src/extensions/mcp/index.ts:registerTools (getClient)
+func (e *Extension) currentClient(serverName, toolName string) (McpToolCaller, error) {
+	e.mu.Lock()
+	current := e.findServerLocked(serverName)
+	var client *Connection
+	var entry McpServerEntry
+	if current != nil && current.enabled() {
+		client, entry = current.connection.Load(), current.entry
+	}
+	e.mu.Unlock()
+	if current == nil || !current.enabled() {
+		return nil, fmt.Errorf(`MCP server "%s" is disabled.`, serverName)
+	}
+	if client == nil {
+		return nil, fmt.Errorf(`MCP server "%s" is still starting.`, serverName)
+	}
+	if extension.GetMcpToolExposure(entry.Config, toolName) == extension.McpExposureHidden ||
+		(client.State() == StateConnected && !slices.ContainsFunc(client.Tools(), func(offered mcp.Tool) bool { return offered.Name == toolName })) {
+		return nil, fmt.Errorf(`MCP tool "%s/%s" is no longer available.`, serverName, toolName)
+	}
+	return client, nil
+}
+
 // hideTools makes a disabled server's tools unreachable.
 func (e *Extension) hideTools(name string) {
 	e.toolMu.Lock()
 	var register []extension.ToolDefinition
-	for toolName := range e.serverTools[name] {
+	for _, toolName := range e.serverTools[name].names() {
 		if definition, ok := e.definitions[toolName]; ok {
 			hidden := definition
 			hidden.Exposure = extension.ToolExposureHidden
 			register = append(register, hidden)
 		}
 	}
-	e.serverTools[name] = map[string]bool{}
+	e.serverTools[name] = newToolSet()
 	e.toolMu.Unlock()
-	// Registration order follows the tool names, so hiding is deterministic.
-	slices.SortFunc(register, func(a, b extension.ToolDefinition) int { return strings.Compare(a.Name, b.Name) })
 	for _, definition := range register {
 		e.host.RegisterTool(definition)
 	}
@@ -598,7 +665,7 @@ func (e *Extension) serversWithResources() []*server {
 	defer e.mu.Unlock()
 	var out []*server
 	for _, s := range e.servers {
-		if s.connection != nil && s.connection.HasResources() && s.enabled() && exposureOf(s.entry) != extension.McpExposureHidden {
+		if s.connection.Load() != nil && s.connection.Load().HasResources() && s.enabled() && exposureOf(s.entry) != extension.McpExposureHidden {
 			out = append(out, s)
 		}
 	}
@@ -608,7 +675,7 @@ func (e *Extension) serversWithResources() []*server {
 func (e *Extension) resourceServers() []McpResourceServer {
 	var out []McpResourceServer
 	for _, s := range e.serversWithResources() {
-		out = append(out, s.connection)
+		out = append(out, s.connection.Load())
 	}
 	return out
 }
@@ -800,8 +867,14 @@ func (e *Extension) storedTokensLocked(connection *Connection) string {
 	return string(data)
 }
 
-// createConnection creates the server's connection.
-func (e *Extension) createConnection(s *server) (*Connection, error) {
+// attemptCurrentLocked reports whether work started for attempt still applies: its session did not end, the server
+// was not disabled, replaced, or removed meanwhile. The caller holds e.mu.
+func (e *Extension) attemptCurrentLocked(session context.Context, s *server, attempt *attemptToken) bool {
+	return session.Err() == nil && s.attempt == attempt && s.enabled() && slices.Contains(e.servers, s)
+}
+
+// createConnection creates the server's connection, or returns nil when isCurrent reports that the attempt no longer applies.
+func (e *Extension) createConnection(s *server, isCurrent func() bool) (*Connection, error) {
 	e.mu.Lock()
 	cwd := e.sessionCwd
 	e.mu.Unlock()
@@ -823,17 +896,32 @@ func (e *Extension) createConnection(s *server) (*Connection, error) {
 			}
 			return token(ctx, provider)
 		},
-		Log:           e.getServerLog(),
-		OnTools:       e.registerTools,
-		OnChange:      e.onConnectionChange,
+		Log: e.getServerLog(),
+		OnTools: func(connection *Connection) {
+			if isCurrent() {
+				e.registerTools(connection)
+			}
+		},
+		OnChange: func(connection *Connection) {
+			if isCurrent() {
+				e.onConnectionChange(connection)
+				return
+			}
+			e.mu.Lock()
+			delete(e.tokensAtSignIn, connection)
+			e.mu.Unlock()
+		},
 		ClientName:    e.options.ClientName,
 		ClientVersion: e.options.ClientVersion,
 	})
 	if err != nil {
 		return nil, err
 	}
+	if !isCurrent() {
+		return nil, nil
+	}
 	e.mu.Lock()
-	s.connection = connection
+	s.connection.Store(connection)
 	e.mu.Unlock()
 	e.emitChange()
 	return connection, nil
@@ -841,57 +929,88 @@ func (e *Extension) createConnection(s *server) (*Connection, error) {
 
 // startConnection connects the server in the background on a goroutine the extension owns and drains in
 // [Extension.SessionShutdown]. The server's ready channel, set before it returns, is closed when the server connected
-// or failed; failures show in its state. isCurrent stops the connection when the session ended meanwhile. The returned
-// channel is that ready channel.
+// or failed; failures show in its state. It starts after `after` (nil: at once), unless the server was disabled,
+// replaced, or the session ended meanwhile. The returned channel is the ready channel.
 //
 // Ports packages/coding-agent/src/extensions/mcp/index.ts (startConnection).
-func (e *Extension) startConnection(ctx EventContext, s *server, isCurrent func() bool) <-chan struct{} {
+func (e *Extension) startConnection(ctx EventContext, s *server, after <-chan struct{}) <-chan struct{} {
 	ready := make(chan struct{})
+	attempt := &attemptToken{}
 	e.mu.Lock()
+	session := e.session
+	s.attempt = attempt
 	s.ready = ready
-	e.background.Add(1)
 	e.mu.Unlock()
-	go func() {
-		defer e.background.Done()
+	isCurrent := func() bool {
+		e.mu.Lock()
+		defer e.mu.Unlock()
+		return e.attemptCurrentLocked(session, s, attempt)
+	}
+	e.background.Go(func() {
 		defer close(ready)
+		if after != nil {
+			<-after
+		}
 		if !isCurrent() {
 			return
 		}
-		connection, err := e.createConnection(s)
+		connection, err := e.createConnection(s, isCurrent)
 		if err != nil {
 			ctx.notify("MCP failed to load: "+err.Error(), "error")
 			return
 		}
-		if !isCurrent() {
+		if connection == nil || !isCurrent() {
 			return
 		}
 		_, _ = connection.GetClient(context.Background())
-	}()
+	})
 	return ready
 }
 
-// waitForServers waits for servers still connecting until they settle or ctx ends.
+// waitForServers waits for the latest connection attempts of the servers, including ones queued while waiting, or
+// until ctx ends.
 //
 // Ports packages/coding-agent/src/extensions/mcp/index.ts (waitForServers).
-func waitForServers(ctx context.Context, waiting []*server, readyOf func(*server) chan struct{}) {
-	for _, s := range waiting {
-		ready := readyOf(s)
-		if ready == nil {
-			continue
+func (e *Extension) waitForServers(ctx context.Context, waiting []*server) {
+	type attempt struct {
+		server *server
+		ready  chan struct{}
+	}
+	live := func(s *server) bool { return s.enabled() && slices.Contains(e.servers, s) }
+	for {
+		var attempts []attempt
+		e.mu.Lock()
+		for _, s := range waiting {
+			if live(s) && s.ready != nil {
+				attempts = append(attempts, attempt{s, s.ready})
+			}
 		}
-		select {
-		case <-ready:
-		case <-ctx.Done():
+		e.mu.Unlock()
+		if len(attempts) == 0 || ctx.Err() != nil {
+			return
+		}
+		for _, a := range attempts {
+			select {
+			case <-a.ready:
+			case <-ctx.Done():
+				return
+			}
+		}
+		if ctx.Err() != nil {
+			return
+		}
+		e.mu.Lock()
+		unchanged := true
+		for _, a := range attempts {
+			if live(a.server) && a.ready != a.server.ready {
+				unchanged = false
+			}
+		}
+		e.mu.Unlock()
+		if unchanged {
 			return
 		}
 	}
-}
-
-// readyOf is the channel that closes when the server settled, or nil when it never started connecting.
-func (e *Extension) readyOf(s *server) chan struct{} {
-	e.mu.Lock()
-	defer e.mu.Unlock()
-	return s.ready
 }
 
 // describeState is the short state for lists and the startup report. withError
@@ -900,7 +1019,7 @@ func describeState(s *server, withError bool) string {
 	if !s.enabled() {
 		return "disabled"
 	}
-	connection := s.connection
+	connection := s.connection.Load()
 	if connection == nil {
 		return "starting"
 	}
@@ -944,10 +1063,10 @@ func (e *Extension) reportProblems(ctx EventContext, only []*server) {
 	}
 	e.mu.Unlock()
 	for _, s := range servers {
-		if s.connection == nil {
+		if s.connection.Load() == nil {
 			continue
 		}
-		if state := s.connection.State(); state == StateNeedsAuth || state == StateFailed {
+		if state := s.connection.Load().State(); state == StateNeedsAuth || state == StateFailed {
 			lines = append(lines, s.entry.Name+": "+describeState(s, true))
 		}
 	}
@@ -961,28 +1080,8 @@ func (e *Extension) reportProblems(ctx EventContext, only []*server) {
 	ctx.notify("MCP servers need attention:\n"+strings.Join(indented, "\n")+"\nRun /mcp to fix.", "warning")
 }
 
-// sourcePath is the path of the extension that registered a tool. A Session reports the source info of a built-in
-// extension as a typed value and an extension host reports a decoded JSON object, so both are read by their `path` member.
-func sourcePath(tool extension.ToolInfo) string {
-	if info, ok := tool.SourceInfo.(map[string]any); ok {
-		path, _ := info["path"].(string)
-		return path
-	}
-	if tool.SourceInfo == nil {
-		return ""
-	}
-	encoded, err := json.Marshal(tool.SourceInfo)
-	if err != nil {
-		return ""
-	}
-	var info struct {
-		Path string `json:"path"`
-	}
-	if json.Unmarshal(encoded, &info) != nil {
-		return ""
-	}
-	return info.Path
-}
+// sourcePath is the path of the extension that registered a tool.
+func sourcePath(tool extension.ToolInfo) string { return tool.SourceInfo.Path }
 
 // saveConfig saves a config change; it returns an error message when the file
 // could not be updated. Changes to registered servers only apply to the
@@ -1051,7 +1150,7 @@ func (e *Extension) Servers() []ServerView {
 	defer e.mu.Unlock()
 	views := make([]ServerView, len(e.servers))
 	for i, s := range e.servers {
-		views[i] = ServerView{Entry: s.entry, Connection: s.connection, Enabled: s.enabled(), Message: s.message}
+		views[i] = ServerView{Entry: s.entry, Connection: s.connection.Load(), Enabled: s.enabled(), Message: s.message}
 	}
 	return views
 }
@@ -1083,14 +1182,16 @@ func (e *Extension) DescribeState(name string, withError bool) string {
 type SignInPrompt = McpSignInPrompt
 
 // SignIn signs in to a server through the browser flow and reconnects. It
-// returns a message describing a failure, or "" on success.
+// returns a message describing a failure, or "" on success. Ending ctx (the
+// caller's cancellation) or the session stops the sign-in.
 func (e *Extension) SignIn(ctx context.Context, name string, prompt McpSignInPrompt) string {
 	s := e.findServer(name)
 	if s == nil {
 		return fmt.Sprintf(`No MCP server named "%s".`, name)
 	}
 	e.mu.Lock()
-	connection := s.connection
+	connection := s.connection.Load()
+	session := e.session
 	e.mu.Unlock()
 	if connection == nil || connection.OAuthURL() == "" {
 		return fmt.Sprintf(`MCP server "%s" does not use OAuth.`, name)
@@ -1104,9 +1205,16 @@ func (e *Extension) SignIn(ctx context.Context, name string, prompt McpSignInPro
 	if err != nil {
 		return "Sign-in failed: " + err.Error()
 	}
-	if err := SignInMcpServer(ctx, SignInOptions{
+	// The sign-in stops with the session as well as with ctx.
+	signal, cancel := context.WithCancel(ctx)
+	defer cancel()
+	defer context.AfterFunc(session, cancel)()
+	exit := e.background.enter()
+	err = SignInMcpServer(signal, SignInOptions{
 		ServerURL: url, Store: store, Settings: settings, Challenge: connection.Challenge(), Prompt: prompt, AppName: e.options.ClientName,
-	}); err != nil {
+	})
+	exit()
+	if err != nil {
 		if _, cancelled := errors.AsType[*McpSignInCancelledError](err); cancelled {
 			return "Sign-in cancelled."
 		}
@@ -1128,7 +1236,7 @@ func (e *Extension) SignOut(name string) (bool, error) {
 		return false, nil
 	}
 	e.mu.Lock()
-	connection := s.connection
+	connection := s.connection.Load()
 	e.mu.Unlock()
 	if connection == nil || connection.OAuthURL() == "" {
 		return false, nil
@@ -1146,20 +1254,37 @@ func (e *Extension) SignOut(name string) (bool, error) {
 // Reconnect connects a server again. It returns a message describing a
 // failure, or "" on success.
 func (e *Extension) Reconnect(ctx context.Context, name string) string {
+	return e.beginReconnect(name)(ctx)
+}
+
+// beginReconnect starts a reconnect and returns what waits for it: the reconnect queues behind the server's current
+// connection attempt, and tool calls wait for it through the server's ready channel. The start runs synchronously;
+// the returned function blocks until the reconnect settled.
+func (e *Extension) beginReconnect(name string) func(ctx context.Context) string {
 	s := e.findServer(name)
 	if s == nil {
-		return fmt.Sprintf(`No MCP server named "%s".`, name)
+		return func(context.Context) string { return fmt.Sprintf(`No MCP server named "%s".`, name) }
 	}
 	e.mu.Lock()
-	connection := s.connection
-	e.mu.Unlock()
+	connection := s.connection.Load()
 	if connection == nil {
-		return fmt.Sprintf(`MCP server "%s" is disabled.`, name)
+		e.mu.Unlock()
+		return func(context.Context) string { return fmt.Sprintf(`MCP server "%s" is disabled.`, name) }
 	}
-	if err := connection.Reconnect(ctx); err != nil {
-		return err.Error()
+	previous := s.ready
+	ready := make(chan struct{})
+	s.ready = ready
+	e.mu.Unlock()
+	return func(ctx context.Context) string {
+		defer close(ready)
+		if previous != nil {
+			<-previous
+		}
+		if err := connection.Reconnect(ctx); err != nil {
+			return err.Error()
+		}
+		return ""
 	}
-	return ""
 }
 
 // SetEnabled enables or disables a server and saves the choice, as a project
@@ -1167,27 +1292,63 @@ func (e *Extension) Reconnect(ctx context.Context, name string) string {
 // returns an error message when the config could not be saved; connection
 // errors show in the state.
 func (e *Extension) SetEnabled(ctx EventContext, name string, enabled bool, inProject ...bool) string {
+	return e.beginSetEnabled(ctx, name, enabled, len(inProject) > 0 && inProject[0])()
+}
+
+// beginSetEnabled changes a server's enabled state and returns what waits for the connection to open or close. The
+// change runs synchronously; the returned function blocks until the connection settled. A replacement connection
+// waits for the cleanup of the one it replaces before it opens a transport.
+func (e *Extension) beginSetEnabled(ctx EventContext, name string, enabled, inProject bool) func() string {
 	s := e.findServer(name)
 	if s == nil {
-		return fmt.Sprintf(`No MCP server named "%s".`, name)
+		return func() string { return fmt.Sprintf(`No MCP server named "%s".`, name) }
 	}
-	if failed := e.saveConfig(s, McpServerConfigPatch{Enabled: &enabled}, len(inProject) > 0 && inProject[0]); failed != "" {
-		return failed
+	if failed := e.saveConfig(s, McpServerConfigPatch{Enabled: &enabled}, inProject); failed != "" {
+		return func() string { return failed }
 	}
-	if !enabled {
+	if enabled {
 		e.mu.Lock()
-		connection := s.connection
-		s.connection = nil
+		closing := s.closing
 		e.mu.Unlock()
-		e.hideTools(name)
-		e.emitChange()
-		if connection != nil {
-			connection.Close()
+		ready := e.startConnection(ctx, s, closing)
+		return func() string {
+			<-ready
+			return ""
 		}
+	}
+	e.mu.Lock()
+	connection := s.connection.Load()
+	s.attempt = nil
+	s.connection.Store(nil)
+	if connection != nil {
+		// A reconnect may already have detached its old client while shutting its transport down. Closing the
+		// connection alone does not wait for that reconnect.
+		ready := s.ready
+		closing := make(chan struct{})
+		s.closing = closing
+		e.background.Go(func() {
+			defer close(closing)
+			connection.Close()
+			if ready != nil {
+				<-ready
+			}
+		})
+	}
+	closing := s.closing
+	e.mu.Unlock()
+	e.hideTools(name)
+	e.emitChange()
+	return func() string {
+		if closing != nil {
+			<-closing
+		}
+		e.mu.Lock()
+		if s.closing == closing {
+			s.closing = nil
+		}
+		e.mu.Unlock()
 		return ""
 	}
-	<-e.startConnection(ctx, s, func() bool { return true })
-	return ""
 }
 
 // SetExposure changes a server's exposure and saves the choice. It returns an
@@ -1201,7 +1362,7 @@ func (e *Extension) SetExposure(name string, exposure extension.McpExposure) str
 		return failed
 	}
 	e.mu.Lock()
-	connection := s.connection
+	connection := s.connection.Load()
 	e.mu.Unlock()
 	if connection != nil && connection.State() == StateConnected {
 		e.registerTools(connection)
@@ -1219,7 +1380,7 @@ func (e *Extension) SetExposure(name string, exposure extension.McpExposure) str
 	e.toolMu.Unlock()
 	var active []string
 	for _, toolName := range e.host.GetActiveTools() {
-		if !owned[toolName] || !indirect[toolName] {
+		if !owned.has(toolName) || !indirect[toolName] {
 			active = append(active, toolName)
 		}
 	}
@@ -1280,7 +1441,7 @@ func (e *Extension) FormatStatus() string {
 	for _, s := range servers {
 		name := s.entry.Name
 		exposure := exposureOf(s.entry)
-		connection := s.connection
+		connection := s.connection.Load()
 		if connection != nil && connection.State() == StateNeedsAuth {
 			lines = append(lines, fmt.Sprintf("%s: needs sign-in, run /mcp login %s (%s)", name, name, exposure))
 			continue
@@ -1321,7 +1482,10 @@ func (e *Extension) FormatStatus() string {
 
 func (e *Extension) loadConfig(ctx EventContext) LoadedMcpConfig {
 	if e.options.LoadConfig != nil {
-		return e.options.LoadConfig(ctx)
+		if ctx.Context == nil {
+			return e.options.LoadConfig(context.Background())
+		}
+		return e.options.LoadConfig(ctx.Context)
 	}
 	trusted := false
 	if ctx.IsProjectTrusted != nil {
@@ -1344,9 +1508,9 @@ func (e *Extension) SessionStart(ctx EventContext) {
 	e.waitedForStartup = false
 	e.sessionCwd = ctx.Cwd
 	e.providerToken = ctx.ProviderToken
-	e.generation++
-	current := e.generation
-	e.sessionActive = true
+	e.endSession()
+	e.session, e.endSession = context.WithCancel(context.Background())
+	session := e.session
 	e.configuredEntries = loaded.Servers
 	e.mu.Unlock()
 	registered, overridden := e.registeredServers()
@@ -1372,32 +1536,23 @@ func (e *Extension) SessionStart(ctx EventContext) {
 		e.reportProblems(ctx, nil)
 		return
 	}
-	isCurrent := func() bool { return e.currentGeneration(current) }
 	readies := make([]<-chan struct{}, len(enabled))
 	for i, s := range enabled {
-		readies[i] = e.startConnection(ctx, s, isCurrent)
+		readies[i] = e.startConnection(ctx, s, nil)
 	}
 	pending := make(chan struct{})
 	e.mu.Lock()
 	e.pending = pending
-	e.background.Add(1)
 	e.mu.Unlock()
-	go func() {
-		defer e.background.Done()
+	e.background.Go(func() {
 		defer close(pending)
 		for _, ready := range readies {
 			<-ready
 		}
-		if isCurrent() {
+		if session.Err() == nil {
 			e.reportProblems(ctx, nil)
 		}
-	}()
-}
-
-func (e *Extension) currentGeneration(generation int) bool {
-	e.mu.Lock()
-	defer e.mu.Unlock()
-	return generation == e.generation
+	})
 }
 
 // waitForDirectServers makes the first prompt wait for servers whose tools are declared to the model, so they are
@@ -1410,7 +1565,10 @@ func (e *Extension) waitForDirectServers(ctx EventContext) {
 		return
 	}
 	e.waitedForStartup = true
-	wait := e.options.StartupWait
+	wait := defaultStartupWaitMs * time.Millisecond
+	if ms := e.options.StartupWaitMs; ms != nil {
+		wait = time.Duration(*ms) * time.Millisecond
+	}
 	var ready []chan struct{}
 	for _, s := range e.servers {
 		if s.enabled() && hasDirectTools(s.entry) && s.ready != nil {
@@ -1424,6 +1582,11 @@ func (e *Extension) waitForDirectServers(ctx EventContext) {
 	timer := time.NewTimer(wait)
 	defer timer.Stop()
 	for _, ch := range ready {
+		select {
+		case <-ch:
+			continue // a ready server settles Promise.all before an expired timer fires (index.ts:1047-1052)
+		default:
+		}
 		select {
 		case <-ch:
 		case <-timer.C:
@@ -1445,8 +1608,8 @@ func (e *Extension) BeforeAgentStart(ctx EventContext, options *extension.BuildS
 	listing := make([]McpServerListing, len(e.servers))
 	for i, s := range e.servers {
 		listing[i] = McpServerListing{Entry: s.entry}
-		if s.connection != nil {
-			listing[i].Instructions = s.connection.Instructions()
+		if s.connection.Load() != nil {
+			listing[i].Instructions = s.connection.Load().Instructions()
 		}
 	}
 	e.mu.Unlock()
@@ -1488,7 +1651,8 @@ func scriptNeedsServer(code, server string) bool {
 
 // ToolCall is the `tool_call` handler: a codemode script waits for the servers it names, or for every server when it
 // searches or enumerates tools, so their tools are registered before the script runs. tool_search and the resource
-// tools reach every server, so they wait for all of them. It returns when the servers settled or ctx ends.
+// tools reach every server, so they wait for all of them. Direct MCP calls wait only for their own server. It returns
+// when the servers settled or ctx ends.
 //
 // Ports packages/coding-agent/src/extensions/mcp/index.ts (pi.on("tool_call")).
 func (e *Extension) ToolCall(ctx context.Context, toolName string, input map[string]any) {
@@ -1502,30 +1666,42 @@ func (e *Extension) ToolCall(ctx context.Context, toolName string, input map[str
 	if tool == nil {
 		return
 	}
+	// Readiness can be pending while the display state is still connected: a reconnect first closes the old
+	// transport, then opens a new one. Settled attempts return at once.
 	e.mu.Lock()
-	var pendingServers []*server
+	var readyServers []*server
 	for _, s := range e.servers {
-		if s.enabled() && s.ready != nil && (s.connection == nil || s.connection.State() != StateConnected) {
-			pendingServers = append(pendingServers, s)
+		if s.enabled() && s.ready != nil {
+			readyServers = append(readyServers, s)
 		}
 	}
 	e.mu.Unlock()
-	if len(pendingServers) == 0 {
+	if len(readyServers) == 0 {
 		return
 	}
 	var waiting []*server
 	switch {
 	case e.options.IsCodemodeTool(*tool):
 		source, _ := input["code"].(string)
-		for _, s := range pendingServers {
+		for _, s := range readyServers {
 			if scriptNeedsServer(source, s.entry.Name) {
 				waiting = append(waiting, s)
 			}
 		}
 	case e.options.IsToolSearchTool(*tool) || resourceToolNames[tool.Name]:
-		waiting = pendingServers
+		waiting = readyServers
+	default:
+		// A direct MCP call waits only for its own server, including a reconnect still closing its old transport.
+		e.toolMu.Lock()
+		owner, _, _ := strings.Cut(e.toolOwners[toolName], "\x00")
+		e.toolMu.Unlock()
+		for _, s := range readyServers {
+			if s.entry.Name == owner {
+				waiting = append(waiting, s)
+			}
+		}
 	}
-	waitForServers(ctx, waiting, e.readyOf)
+	e.waitForServers(ctx, waiting)
 }
 
 // resourceToolNames are the tools that reach the resources of every server.
@@ -1546,10 +1722,9 @@ func (e *Extension) TurnStart(ctx EventContext) {
 // unregistered during the session connect or disconnect right away.
 func (e *Extension) McpServersChange(ctx EventContext) {
 	e.mu.Lock()
-	active := e.sessionActive
-	current := e.generation
+	session := e.session
 	e.mu.Unlock()
-	if !active {
+	if session.Err() != nil {
 		return
 	}
 	registered, overridden := e.registeredServers()
@@ -1588,7 +1763,7 @@ func (e *Extension) McpServersChange(ctx EventContext) {
 	var closing sync.WaitGroup
 	for _, s := range removed {
 		e.mu.Lock()
-		connection := s.connection
+		connection := s.connection.Load()
 		e.mu.Unlock()
 		if connection != nil {
 			closing.Go(connection.Close)
@@ -1601,23 +1776,22 @@ func (e *Extension) McpServersChange(ctx EventContext) {
 			connecting = append(connecting, s)
 		}
 	}
-	if !e.currentGeneration(current) || len(connecting) == 0 {
+	if session.Err() != nil || len(connecting) == 0 {
 		return
 	}
-	isCurrent := func() bool { return e.currentGeneration(current) }
 	readies := make([]<-chan struct{}, len(connecting))
 	for i, s := range connecting {
-		readies[i] = e.startConnection(ctx, s, isCurrent)
+		readies[i] = e.startConnection(ctx, s, nil)
 	}
 	for _, ready := range readies {
 		<-ready
 	}
-	if !isCurrent() {
+	if session.Err() != nil {
 		// The session ended meanwhile: close what connected.
 		var wg sync.WaitGroup
 		for _, s := range connecting {
 			e.mu.Lock()
-			connection := s.connection
+			connection := s.connection.Load()
 			e.mu.Unlock()
 			if connection != nil {
 				wg.Go(connection.Close)
@@ -1629,16 +1803,16 @@ func (e *Extension) McpServersChange(ctx EventContext) {
 	e.reportProblems(ctx, connecting)
 }
 
-// SessionShutdown is the `session_shutdown` handler: it closes every
-// connection and waits for the extension's background work.
+// SessionShutdown is the `session_shutdown` handler: it ends the session, which
+// stops running sign-ins, closes every connection and waits for the extension's
+// background work.
 func (e *Extension) SessionShutdown() {
 	e.mu.Lock()
-	e.sessionActive = false
-	e.generation++
+	e.endSession()
 	var closing []*Connection
 	for _, s := range e.servers {
-		if s.connection != nil {
-			closing = append(closing, s.connection)
+		if s.connection.Load() != nil {
+			closing = append(closing, s.connection.Load())
 		}
 	}
 	e.servers = nil

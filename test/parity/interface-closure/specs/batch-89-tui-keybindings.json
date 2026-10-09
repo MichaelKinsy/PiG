@@ -1,0 +1,583 @@
+[
+ {
+  "ids": [
+   "pkg:tui/.#Keybindings"
+  ],
+  "targets": [
+   "tui/keybindings.go#tuiKeybindingDefs"
+  ],
+  "production": [
+   "call:tui/keybindings.go#NewTUIKeybindingsManager"
+  ],
+  "evidence": [
+   "test:tui/keybindings_inventory_test.go#TestTUIKeybindingDefinitionsMatchUpstreamInventory"
+  ],
+  "rationale": "Upstream's Keybindings interface lists the 47 tui.* action ids; Go has one exported TUIKeybinding constant per id and the definition table keyed by them. The inventory test compares ids, default keys per platform and descriptions with the upstream inventory (no known gaps).",
+  "properties": {
+   "tui.altScreen.bottom": {
+    "targets": [
+     "tui/keybindings.go#KBAltScreenBottom"
+    ],
+    "evidence": [
+     "test:tui/keybindings_inventory_test.go#TestTUIKeybindingDefinitionsMatchUpstreamInventory"
+    ],
+    "production": [
+     "call:tui/keybindings.go#NewTUIKeybindingsManager"
+    ],
+    "rationale": "The property tui.altScreen.bottom is the constant KBAltScreenBottom whose value is that id."
+   },
+   "tui.altScreen.halfPageDown": {
+    "targets": [
+     "tui/alt_screen_keybindings.go#KBAltScreenHalfPageDown"
+    ],
+    "evidence": [
+     "test:tui/keybindings_inventory_test.go#TestTUIKeybindingDefinitionsMatchUpstreamInventory"
+    ],
+    "production": [
+     "call:tui/keybindings.go#NewTUIKeybindingsManager"
+    ],
+    "rationale": "The property tui.altScreen.halfPageDown is the constant KBAltScreenHalfPageDown whose value is that id."
+   },
+   "tui.altScreen.halfPageUp": {
+    "targets": [
+     "tui/alt_screen_keybindings.go#KBAltScreenHalfPageUp"
+    ],
+    "evidence": [
+     "test:tui/keybindings_inventory_test.go#TestTUIKeybindingDefinitionsMatchUpstreamInventory"
+    ],
+    "production": [
+     "call:tui/keybindings.go#NewTUIKeybindingsManager"
+    ],
+    "rationale": "The property tui.altScreen.halfPageUp is the constant KBAltScreenHalfPageUp whose value is that id."
+   },
+   "tui.altScreen.lineDown": {
+    "targets": [
+     "tui/alt_screen_keybindings.go#KBAltScreenLineDown"
+    ],
+    "evidence": [
+     "test:tui/keybindings_inventory_test.go#TestTUIKeybindingDefinitionsMatchUpstreamInventory"
+    ],
+    "production": [
+     "call:tui/keybindings.go#NewTUIKeybindingsManager"
+    ],
+    "rationale": "The property tui.altScreen.lineDown is the constant KBAltScreenLineDown whose value is that id."
+   },
+   "tui.altScreen.lineUp": {
+    "targets": [
+     "tui/alt_screen_keybindings.go#KBAltScreenLineUp"
+    ],
+    "evidence": [
+     "test:tui/keybindings_inventory_test.go#TestTUIKeybindingDefinitionsMatchUpstreamInventory"
+    ],
+    "production": [
+     "call:tui/keybindings.go#NewTUIKeybindingsManager"
+    ],
+    "rationale": "The property tui.altScreen.lineUp is the constant KBAltScreenLineUp whose value is that id."
+   },
+   "tui.altScreen.nextPrompt": {
+    "targets": [
+     "tui/keybindings.go#KBAltScreenNextPrompt"
+    ],
+    "evidence": [
+     "test:tui/keybindings_inventory_test.go#TestTUIKeybindingDefinitionsMatchUpstreamInventory"
+    ],
+    "production": [
+     "call:tui/keybindings.go#NewTUIKeybindingsManager"
+    ],
+    "rationale": "The property tui.altScreen.nextPrompt is the constant KBAltScreenNextPrompt whose value is that id."
+   },
+   "tui.altScreen.pageDown": {
+    "targets": [
+     "tui/keybindings.go#KBAltScreenPageDown"
+    ],
+    "evidence": [
+     "test:tui/keybindings_inventory_test.go#TestTUIKeybindingDefinitionsMatchUpstreamInventory"
+    ],
+    "production": [
+     "call:tui/keybindings.go#NewTUIKeybindingsManager"
+    ],
+    "rationale": "The property tui.altScreen.pageDown is the constant KBAltScreenPageDown whose value is that id."
+   },
+   "tui.altScreen.pageUp": {
+    "targets": [
+     "tui/keybindings.go#KBAltScreenPageUp"
+    ],
+    "evidence": [
+     "test:tui/keybindings_inventory_test.go#TestTUIKeybindingDefinitionsMatchUpstreamInventory"
+    ],
+    "production": [
+     "call:tui/keybindings.go#NewTUIKeybindingsManager"
+    ],
+    "rationale": "The property tui.altScreen.pageUp is the constant KBAltScreenPageUp whose value is that id."
+   },
+   "tui.altScreen.previousPrompt": {
+    "targets": [
+     "tui/keybindings.go#KBAltScreenPreviousPrompt"
+    ],
+    "evidence": [
+     "test:tui/keybindings_inventory_test.go#TestTUIKeybindingDefinitionsMatchUpstreamInventory"
+    ],
+    "production": [
+     "call:tui/keybindings.go#NewTUIKeybindingsManager"
+    ],
+    "rationale": "The property tui.altScreen.previousPrompt is the constant KBAltScreenPreviousPrompt whose value is that id."
+   },
+   "tui.altScreen.search": {
+    "targets": [
+     "tui/alt_screen_keybindings.go#KBAltScreenSearch"
+    ],
+    "evidence": [
+     "test:tui/keybindings_inventory_test.go#TestTUIKeybindingDefinitionsMatchUpstreamInventory"
+    ],
+    "production": [
+     "call:tui/keybindings.go#NewTUIKeybindingsManager"
+    ],
+    "rationale": "The property tui.altScreen.search is the constant KBAltScreenSearch whose value is that id."
+   },
+   "tui.altScreen.searchClose": {
+    "targets": [
+     "tui/alt_screen_keybindings.go#KBAltScreenSearchClose"
+    ],
+    "evidence": [
+     "test:tui/keybindings_inventory_test.go#TestTUIKeybindingDefinitionsMatchUpstreamInventory"
+    ],
+    "production": [
+     "call:tui/keybindings.go#NewTUIKeybindingsManager"
+    ],
+    "rationale": "The property tui.altScreen.searchClose is the constant KBAltScreenSearchClose whose value is that id."
+   },
+   "tui.altScreen.searchNext": {
+    "targets": [
+     "tui/alt_screen_keybindings.go#KBAltScreenSearchNext"
+    ],
+    "evidence": [
+     "test:tui/keybindings_inventory_test.go#TestTUIKeybindingDefinitionsMatchUpstreamInventory"
+    ],
+    "production": [
+     "call:tui/keybindings.go#NewTUIKeybindingsManager"
+    ],
+    "rationale": "The property tui.altScreen.searchNext is the constant KBAltScreenSearchNext whose value is that id."
+   },
+   "tui.altScreen.searchPrevious": {
+    "targets": [
+     "tui/alt_screen_keybindings.go#KBAltScreenSearchPrevious"
+    ],
+    "evidence": [
+     "test:tui/keybindings_inventory_test.go#TestTUIKeybindingDefinitionsMatchUpstreamInventory"
+    ],
+    "production": [
+     "call:tui/keybindings.go#NewTUIKeybindingsManager"
+    ],
+    "rationale": "The property tui.altScreen.searchPrevious is the constant KBAltScreenSearchPrevious whose value is that id."
+   },
+   "tui.altScreen.top": {
+    "targets": [
+     "tui/keybindings.go#KBAltScreenTop"
+    ],
+    "evidence": [
+     "test:tui/keybindings_inventory_test.go#TestTUIKeybindingDefinitionsMatchUpstreamInventory"
+    ],
+    "production": [
+     "call:tui/keybindings.go#NewTUIKeybindingsManager"
+    ],
+    "rationale": "The property tui.altScreen.top is the constant KBAltScreenTop whose value is that id."
+   },
+   "tui.editor.cursorDown": {
+    "targets": [
+     "tui/keybindings.go#KBEditorCursorDown"
+    ],
+    "evidence": [
+     "test:tui/keybindings_inventory_test.go#TestTUIKeybindingDefinitionsMatchUpstreamInventory"
+    ],
+    "production": [
+     "call:tui/keybindings.go#NewTUIKeybindingsManager"
+    ],
+    "rationale": "The property tui.editor.cursorDown is the constant KBEditorCursorDown whose value is that id."
+   },
+   "tui.editor.cursorLeft": {
+    "targets": [
+     "tui/keybindings.go#KBEditorCursorLeft"
+    ],
+    "evidence": [
+     "test:tui/keybindings_inventory_test.go#TestTUIKeybindingDefinitionsMatchUpstreamInventory"
+    ],
+    "production": [
+     "call:tui/keybindings.go#NewTUIKeybindingsManager"
+    ],
+    "rationale": "The property tui.editor.cursorLeft is the constant KBEditorCursorLeft whose value is that id."
+   },
+   "tui.editor.cursorLineEnd": {
+    "targets": [
+     "tui/keybindings.go#KBEditorCursorLineEnd"
+    ],
+    "evidence": [
+     "test:tui/keybindings_inventory_test.go#TestTUIKeybindingDefinitionsMatchUpstreamInventory"
+    ],
+    "production": [
+     "call:tui/keybindings.go#NewTUIKeybindingsManager"
+    ],
+    "rationale": "The property tui.editor.cursorLineEnd is the constant KBEditorCursorLineEnd whose value is that id."
+   },
+   "tui.editor.cursorLineStart": {
+    "targets": [
+     "tui/keybindings.go#KBEditorCursorLineStart"
+    ],
+    "evidence": [
+     "test:tui/keybindings_inventory_test.go#TestTUIKeybindingDefinitionsMatchUpstreamInventory"
+    ],
+    "production": [
+     "call:tui/keybindings.go#NewTUIKeybindingsManager"
+    ],
+    "rationale": "The property tui.editor.cursorLineStart is the constant KBEditorCursorLineStart whose value is that id."
+   },
+   "tui.editor.cursorRight": {
+    "targets": [
+     "tui/keybindings.go#KBEditorCursorRight"
+    ],
+    "evidence": [
+     "test:tui/keybindings_inventory_test.go#TestTUIKeybindingDefinitionsMatchUpstreamInventory"
+    ],
+    "production": [
+     "call:tui/keybindings.go#NewTUIKeybindingsManager"
+    ],
+    "rationale": "The property tui.editor.cursorRight is the constant KBEditorCursorRight whose value is that id."
+   },
+   "tui.editor.cursorUp": {
+    "targets": [
+     "tui/keybindings.go#KBEditorCursorUp"
+    ],
+    "evidence": [
+     "test:tui/keybindings_inventory_test.go#TestTUIKeybindingDefinitionsMatchUpstreamInventory"
+    ],
+    "production": [
+     "call:tui/keybindings.go#NewTUIKeybindingsManager"
+    ],
+    "rationale": "The property tui.editor.cursorUp is the constant KBEditorCursorUp whose value is that id."
+   },
+   "tui.editor.cursorWordLeft": {
+    "targets": [
+     "tui/keybindings.go#KBEditorCursorWordLeft"
+    ],
+    "evidence": [
+     "test:tui/keybindings_inventory_test.go#TestTUIKeybindingDefinitionsMatchUpstreamInventory"
+    ],
+    "production": [
+     "call:tui/keybindings.go#NewTUIKeybindingsManager"
+    ],
+    "rationale": "The property tui.editor.cursorWordLeft is the constant KBEditorCursorWordLeft whose value is that id."
+   },
+   "tui.editor.cursorWordRight": {
+    "targets": [
+     "tui/keybindings.go#KBEditorCursorWordRight"
+    ],
+    "evidence": [
+     "test:tui/keybindings_inventory_test.go#TestTUIKeybindingDefinitionsMatchUpstreamInventory"
+    ],
+    "production": [
+     "call:tui/keybindings.go#NewTUIKeybindingsManager"
+    ],
+    "rationale": "The property tui.editor.cursorWordRight is the constant KBEditorCursorWordRight whose value is that id."
+   },
+   "tui.editor.deleteCharBackward": {
+    "targets": [
+     "tui/keybindings.go#KBEditorDeleteCharBack"
+    ],
+    "evidence": [
+     "test:tui/keybindings_inventory_test.go#TestTUIKeybindingDefinitionsMatchUpstreamInventory"
+    ],
+    "production": [
+     "call:tui/keybindings.go#NewTUIKeybindingsManager"
+    ],
+    "rationale": "The property tui.editor.deleteCharBackward is the constant KBEditorDeleteCharBack whose value is that id."
+   },
+   "tui.editor.deleteCharForward": {
+    "targets": [
+     "tui/keybindings.go#KBEditorDeleteCharForward"
+    ],
+    "evidence": [
+     "test:tui/keybindings_inventory_test.go#TestTUIKeybindingDefinitionsMatchUpstreamInventory"
+    ],
+    "production": [
+     "call:tui/keybindings.go#NewTUIKeybindingsManager"
+    ],
+    "rationale": "The property tui.editor.deleteCharForward is the constant KBEditorDeleteCharForward whose value is that id."
+   },
+   "tui.editor.deleteToLineEnd": {
+    "targets": [
+     "tui/keybindings.go#KBEditorDeleteToLineEnd"
+    ],
+    "evidence": [
+     "test:tui/keybindings_inventory_test.go#TestTUIKeybindingDefinitionsMatchUpstreamInventory"
+    ],
+    "production": [
+     "call:tui/keybindings.go#NewTUIKeybindingsManager"
+    ],
+    "rationale": "The property tui.editor.deleteToLineEnd is the constant KBEditorDeleteToLineEnd whose value is that id."
+   },
+   "tui.editor.deleteToLineStart": {
+    "targets": [
+     "tui/keybindings.go#KBEditorDeleteToLineStart"
+    ],
+    "evidence": [
+     "test:tui/keybindings_inventory_test.go#TestTUIKeybindingDefinitionsMatchUpstreamInventory"
+    ],
+    "production": [
+     "call:tui/keybindings.go#NewTUIKeybindingsManager"
+    ],
+    "rationale": "The property tui.editor.deleteToLineStart is the constant KBEditorDeleteToLineStart whose value is that id."
+   },
+   "tui.editor.deleteWordBackward": {
+    "targets": [
+     "tui/keybindings.go#KBEditorDeleteWordBack"
+    ],
+    "evidence": [
+     "test:tui/keybindings_inventory_test.go#TestTUIKeybindingDefinitionsMatchUpstreamInventory"
+    ],
+    "production": [
+     "call:tui/keybindings.go#NewTUIKeybindingsManager"
+    ],
+    "rationale": "The property tui.editor.deleteWordBackward is the constant KBEditorDeleteWordBack whose value is that id."
+   },
+   "tui.editor.deleteWordForward": {
+    "targets": [
+     "tui/keybindings.go#KBEditorDeleteWordForward"
+    ],
+    "evidence": [
+     "test:tui/keybindings_inventory_test.go#TestTUIKeybindingDefinitionsMatchUpstreamInventory"
+    ],
+    "production": [
+     "call:tui/keybindings.go#NewTUIKeybindingsManager"
+    ],
+    "rationale": "The property tui.editor.deleteWordForward is the constant KBEditorDeleteWordForward whose value is that id."
+   },
+   "tui.editor.historyNext": {
+    "targets": [
+     "tui/keybindings.go#KBEditorHistoryNext"
+    ],
+    "evidence": [
+     "test:tui/keybindings_inventory_test.go#TestTUIKeybindingDefinitionsMatchUpstreamInventory"
+    ],
+    "production": [
+     "call:tui/keybindings.go#NewTUIKeybindingsManager"
+    ],
+    "rationale": "The property tui.editor.historyNext is the constant KBEditorHistoryNext whose value is that id."
+   },
+   "tui.editor.historyPrevious": {
+    "targets": [
+     "tui/keybindings.go#KBEditorHistoryPrevious"
+    ],
+    "evidence": [
+     "test:tui/keybindings_inventory_test.go#TestTUIKeybindingDefinitionsMatchUpstreamInventory"
+    ],
+    "production": [
+     "call:tui/keybindings.go#NewTUIKeybindingsManager"
+    ],
+    "rationale": "The property tui.editor.historyPrevious is the constant KBEditorHistoryPrevious whose value is that id."
+   },
+   "tui.editor.jumpBackward": {
+    "targets": [
+     "tui/keybindings.go#KBEditorJumpBackward"
+    ],
+    "evidence": [
+     "test:tui/keybindings_inventory_test.go#TestTUIKeybindingDefinitionsMatchUpstreamInventory"
+    ],
+    "production": [
+     "call:tui/keybindings.go#NewTUIKeybindingsManager"
+    ],
+    "rationale": "The property tui.editor.jumpBackward is the constant KBEditorJumpBackward whose value is that id."
+   },
+   "tui.editor.jumpForward": {
+    "targets": [
+     "tui/keybindings.go#KBEditorJumpForward"
+    ],
+    "evidence": [
+     "test:tui/keybindings_inventory_test.go#TestTUIKeybindingDefinitionsMatchUpstreamInventory"
+    ],
+    "production": [
+     "call:tui/keybindings.go#NewTUIKeybindingsManager"
+    ],
+    "rationale": "The property tui.editor.jumpForward is the constant KBEditorJumpForward whose value is that id."
+   },
+   "tui.editor.pageDown": {
+    "targets": [
+     "tui/keybindings.go#KBEditorPageDown"
+    ],
+    "evidence": [
+     "test:tui/keybindings_inventory_test.go#TestTUIKeybindingDefinitionsMatchUpstreamInventory"
+    ],
+    "production": [
+     "call:tui/keybindings.go#NewTUIKeybindingsManager"
+    ],
+    "rationale": "The property tui.editor.pageDown is the constant KBEditorPageDown whose value is that id."
+   },
+   "tui.editor.pageUp": {
+    "targets": [
+     "tui/keybindings.go#KBEditorPageUp"
+    ],
+    "evidence": [
+     "test:tui/keybindings_inventory_test.go#TestTUIKeybindingDefinitionsMatchUpstreamInventory"
+    ],
+    "production": [
+     "call:tui/keybindings.go#NewTUIKeybindingsManager"
+    ],
+    "rationale": "The property tui.editor.pageUp is the constant KBEditorPageUp whose value is that id."
+   },
+   "tui.editor.undo": {
+    "targets": [
+     "tui/keybindings.go#KBEditorUndo"
+    ],
+    "evidence": [
+     "test:tui/keybindings_inventory_test.go#TestTUIKeybindingDefinitionsMatchUpstreamInventory"
+    ],
+    "production": [
+     "call:tui/keybindings.go#NewTUIKeybindingsManager"
+    ],
+    "rationale": "The property tui.editor.undo is the constant KBEditorUndo whose value is that id."
+   },
+   "tui.editor.yank": {
+    "targets": [
+     "tui/keybindings.go#KBEditorYank"
+    ],
+    "evidence": [
+     "test:tui/keybindings_inventory_test.go#TestTUIKeybindingDefinitionsMatchUpstreamInventory"
+    ],
+    "production": [
+     "call:tui/keybindings.go#NewTUIKeybindingsManager"
+    ],
+    "rationale": "The property tui.editor.yank is the constant KBEditorYank whose value is that id."
+   },
+   "tui.editor.yankPop": {
+    "targets": [
+     "tui/keybindings.go#KBEditorYankPop"
+    ],
+    "evidence": [
+     "test:tui/keybindings_inventory_test.go#TestTUIKeybindingDefinitionsMatchUpstreamInventory"
+    ],
+    "production": [
+     "call:tui/keybindings.go#NewTUIKeybindingsManager"
+    ],
+    "rationale": "The property tui.editor.yankPop is the constant KBEditorYankPop whose value is that id."
+   },
+   "tui.input.copy": {
+    "targets": [
+     "tui/keybindings.go#KBInputCopy"
+    ],
+    "evidence": [
+     "test:tui/keybindings_inventory_test.go#TestTUIKeybindingDefinitionsMatchUpstreamInventory"
+    ],
+    "production": [
+     "call:tui/keybindings.go#NewTUIKeybindingsManager"
+    ],
+    "rationale": "The property tui.input.copy is the constant KBInputCopy whose value is that id."
+   },
+   "tui.input.newLine": {
+    "targets": [
+     "tui/keybindings.go#KBInputNewLine"
+    ],
+    "evidence": [
+     "test:tui/keybindings_inventory_test.go#TestTUIKeybindingDefinitionsMatchUpstreamInventory"
+    ],
+    "production": [
+     "call:tui/keybindings.go#NewTUIKeybindingsManager"
+    ],
+    "rationale": "The property tui.input.newLine is the constant KBInputNewLine whose value is that id."
+   },
+   "tui.input.submit": {
+    "targets": [
+     "tui/keybindings.go#KBInputSubmit"
+    ],
+    "evidence": [
+     "test:tui/keybindings_inventory_test.go#TestTUIKeybindingDefinitionsMatchUpstreamInventory"
+    ],
+    "production": [
+     "call:tui/keybindings.go#NewTUIKeybindingsManager"
+    ],
+    "rationale": "The property tui.input.submit is the constant KBInputSubmit whose value is that id."
+   },
+   "tui.input.tab": {
+    "targets": [
+     "tui/keybindings.go#KBInputTab"
+    ],
+    "evidence": [
+     "test:tui/keybindings_inventory_test.go#TestTUIKeybindingDefinitionsMatchUpstreamInventory"
+    ],
+    "production": [
+     "call:tui/keybindings.go#NewTUIKeybindingsManager"
+    ],
+    "rationale": "The property tui.input.tab is the constant KBInputTab whose value is that id."
+   },
+   "tui.select.cancel": {
+    "targets": [
+     "tui/keybindings.go#KBSelectCancel"
+    ],
+    "evidence": [
+     "test:tui/keybindings_inventory_test.go#TestTUIKeybindingDefinitionsMatchUpstreamInventory"
+    ],
+    "production": [
+     "call:tui/keybindings.go#NewTUIKeybindingsManager"
+    ],
+    "rationale": "The property tui.select.cancel is the constant KBSelectCancel whose value is that id."
+   },
+   "tui.select.confirm": {
+    "targets": [
+     "tui/keybindings.go#KBSelectConfirm"
+    ],
+    "evidence": [
+     "test:tui/keybindings_inventory_test.go#TestTUIKeybindingDefinitionsMatchUpstreamInventory"
+    ],
+    "production": [
+     "call:tui/keybindings.go#NewTUIKeybindingsManager"
+    ],
+    "rationale": "The property tui.select.confirm is the constant KBSelectConfirm whose value is that id."
+   },
+   "tui.select.down": {
+    "targets": [
+     "tui/keybindings.go#KBSelectDown"
+    ],
+    "evidence": [
+     "test:tui/keybindings_inventory_test.go#TestTUIKeybindingDefinitionsMatchUpstreamInventory"
+    ],
+    "production": [
+     "call:tui/keybindings.go#NewTUIKeybindingsManager"
+    ],
+    "rationale": "The property tui.select.down is the constant KBSelectDown whose value is that id."
+   },
+   "tui.select.pageDown": {
+    "targets": [
+     "tui/keybindings.go#KBSelectPageDown"
+    ],
+    "evidence": [
+     "test:tui/keybindings_inventory_test.go#TestTUIKeybindingDefinitionsMatchUpstreamInventory"
+    ],
+    "production": [
+     "call:tui/keybindings.go#NewTUIKeybindingsManager"
+    ],
+    "rationale": "The property tui.select.pageDown is the constant KBSelectPageDown whose value is that id."
+   },
+   "tui.select.pageUp": {
+    "targets": [
+     "tui/keybindings.go#KBSelectPageUp"
+    ],
+    "evidence": [
+     "test:tui/keybindings_inventory_test.go#TestTUIKeybindingDefinitionsMatchUpstreamInventory"
+    ],
+    "production": [
+     "call:tui/keybindings.go#NewTUIKeybindingsManager"
+    ],
+    "rationale": "The property tui.select.pageUp is the constant KBSelectPageUp whose value is that id."
+   },
+   "tui.select.up": {
+    "targets": [
+     "tui/keybindings.go#KBSelectUp"
+    ],
+    "evidence": [
+     "test:tui/keybindings_inventory_test.go#TestTUIKeybindingDefinitionsMatchUpstreamInventory"
+    ],
+    "production": [
+     "call:tui/keybindings.go#NewTUIKeybindingsManager"
+    ],
+    "rationale": "The property tui.select.up is the constant KBSelectUp whose value is that id."
+   }
+  }
+ }
+]

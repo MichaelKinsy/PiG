@@ -50,7 +50,7 @@ func compareJSONResults(g, p Result, rules []JSONAliasRule) error {
 		if rule.Reason == "" || len(rule.Paths) == 0 {
 			return fmt.Errorf("JSON alias requires paths and reason")
 		}
-		if rule.Kind != "id" && rule.Kind != "timestamp" && rule.Kind != "duration" && rule.Kind != "path" && rule.Kind != "literal" && rule.Kind != "session_file" {
+		if rule.Kind != "id" && rule.Kind != "timestamp" && rule.Kind != "duration" && rule.Kind != "duration_ms" && rule.Kind != "path" && rule.Kind != "literal" && rule.Kind != "session_file" {
 			return fmt.Errorf("unknown JSON alias kind %q", rule.Kind)
 		}
 		if rule.Kind == "literal" && (rule.Pig == "" || rule.Pi == "") {
@@ -80,6 +80,10 @@ func compareJSONResults(g, p Result, rules []JSONAliasRule) error {
 				}
 			case "duration":
 				if validDuration(a) && validDuration(b) {
+					return nil
+				}
+			case "duration_ms":
+				if validMilliseconds(a) && validMilliseconds(b) {
 					return nil
 				}
 			case "path":
@@ -193,6 +197,15 @@ func validTimestamp(value any) bool {
 
 // decisecondSpelling is the JSON spelling of Math.round(ms / 100) / 10 (bash.ts:392): a non-negative decimal with at most one fractional digit.
 var decisecondSpelling = regexp.MustCompile(`^(0|[1-9][0-9]*)(\.[0-9])?$`)
+
+// millisecondSpelling is the JSON spelling of Math.round(performance.now() - start) (event-stream.ts durationMs, agent-loop.ts tool durationMs): a non-negative integer.
+var millisecondSpelling = regexp.MustCompile(`^(0|[1-9][0-9]*)$`)
+
+// validMilliseconds accepts a measured elapsed time in whole milliseconds. Other types, negative values and fractional or exponent spellings stay distinct.
+func validMilliseconds(value any) bool {
+	number, ok := value.(json.Number)
+	return ok && millisecondSpelling.MatchString(string(number))
+}
 
 // validDuration accepts a measured elapsed time in Pi's 0.1 s steps. Other types, negative values and unrounded or exponent spellings stay distinct.
 func validDuration(value any) bool {

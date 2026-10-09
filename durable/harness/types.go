@@ -15,6 +15,8 @@ type HookApi interface {
 	durable.DocumentReader
 	TaskId() durable.TaskId
 	ConversationId() durable.ConversationId
+	// Models is HarnessOptions.Models.
+	Models() durable.Models
 	// Memo reads a memo; ok is false when absent.
 	Memo(ctx context.Context, name string) (value durable.JsonValue, ok bool, err error)
 	// MemoCandidate stores candidate unless a memo already exists and returns the durable winner.
@@ -45,7 +47,7 @@ type GenerationHooks struct {
 
 // BeforeToolResult is a beforeTool decision: a non-nil Block blocks the call, otherwise non-nil Arguments replace its arguments.
 type BeforeToolResult struct {
-	Arguments durable.JsonObject
+	Arguments map[string]any
 	Block     *string
 }
 
@@ -177,8 +179,11 @@ type Conversation interface {
 	Compact(ctx context.Context, instructions *string) (durable.TaskId, error)
 	// Commit runs a Session commit whose tx.CreateTask defaults to this conversation.
 	Commit(ctx context.Context, change func(tx durable.Tx) (any, error)) (any, error)
-	Context(ctx context.Context) (durable.ContextView, error)
-	// Entries returns the newest-first fork-aware history of this conversation; query.ConversationId is ignored.
+	// Context returns the committed raw active transcript and model context. With options.At, it returns the context as
+	// of that visible entry: the same view Fork(at) would start with, without creating a conversation.
+	Context(ctx context.Context, options *durable.ContextOptions) (durable.ContextView, error)
+	// Entries returns the fork-aware history of this conversation, newest first unless query.Order is ScanAscending;
+	// query.ConversationId is ignored.
 	Entries(ctx context.Context, query durable.EntryQuery, limit int, cursor durable.Cursor) (durable.Page[durable.EntryRecord, durable.Cursor], error)
 	Fork(ctx context.Context, at durable.EntryId, options ConversationCreateOptions) (Conversation, error)
 	// Abort withdraws queued inputs (queued writes stay), marks every live non-background task of the ordinary ownership scope, signals them, and returns once the scope is idle. Background subtrees survive unless options.Background is set.

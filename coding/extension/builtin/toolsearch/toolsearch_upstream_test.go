@@ -1,5 +1,7 @@
 package toolsearch_test
 
+// pi: packages/coding-agent/src/extensions/tool-search/tool.ts
+
 import (
 	"encoding/json"
 	"reflect"
@@ -109,5 +111,18 @@ func TestBm25RankerIncludesTheNamespaceInstructionsInTheSearchText(t *testing.T)
 	got := toolsearch.NewBm25Ranker().Rank("kubernetes", []toolsearch.Document{document}, 8)
 	if len(got) != 1 || got[0].Name != "mcp__x__run" || got[0].Score <= 0 {
 		t.Fatalf("Rank = %+v", got)
+	}
+}
+
+// packages/coding-agent/src/extensions/tool-search/tool.ts:65-69: the plural folds have length floors: "ies" and the
+// "ches|shes|sses|xes|zes" endings fold above four characters, a bare trailing "s" above three and never after "ss".
+func TestTokenizeFoldsPluralsOnlyAboveTheirLengthFloors(t *testing.T) {
+	for term, want := range map[string]string{
+		"bus": "bus", "abs": "abs", "tabs": "tab", "axes": "axe", "ties": "tie",
+		"cries": "cry", "boxes": "box", "class": "class", "searches": "search", "issues": "issue",
+	} {
+		if got := toolsearch.Tokenize(term); len(got) != 1 || got[0] != want {
+			t.Errorf("Tokenize(%q) = %q, want [%q]", term, got, want)
+		}
 	}
 }

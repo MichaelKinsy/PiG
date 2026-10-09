@@ -70,7 +70,7 @@ func (m *InteractiveMode) setStatusContainerLabel(label string) {
 		m.activeStatusIndicator.SetMessage(label)
 		return
 	}
-	m.showStatusIndicator(&tui.StatusIndicator{Kind: "retry", Loader: tui.NewStyledLoader(tui.ActiveTheme().Warning, tui.ActiveTheme().Muted, label, nil)})
+	m.showStatusIndicator(&tui.StatusIndicator{Kind: "retry", Loader: tui.NewLoader(m.tuiInst, tui.ThemeFg("warning"), tui.ThemeFg("muted"), label, nil)})
 }
 
 func (m *InteractiveMode) startWorkingLoader() {
@@ -81,7 +81,7 @@ func (m *InteractiveMode) startWorkingLoader() {
 	if message == "" {
 		message = "Working"
 	}
-	indicator := &tui.StatusIndicator{Kind: "working", Loader: tui.NewStyledLoader(tui.ActiveTheme().Accent, tui.ActiveTheme().Muted, message, nil)}
+	indicator := &tui.StatusIndicator{Kind: "working", Loader: tui.NewLoader(m.tuiInst, tui.ThemeFg("accent"), tui.ThemeFg("muted"), message, nil)}
 	m.applyWorkingIndicatorOptions(indicator)
 	m.showStatusIndicator(indicator)
 	m.tuiInst.RequestRender()

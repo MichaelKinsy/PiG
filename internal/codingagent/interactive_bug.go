@@ -61,7 +61,7 @@ func (m *InteractiveMode) summarizeForBugReport(modelName, hint string) (string,
 	if !ok || m.layout == nil {
 		return "", false, errNoBugReportSummarizer
 	}
-	loader := tui.NewBorderedLoader("Writing summary with "+modelName+"...", true)
+	loader := tui.NewBorderedLoader(m.tuiInst, tui.ActiveTheme(), "Writing summary with "+modelName+"...")
 	ctx, cancel := context.WithCancel(loader.CancellableContext().Context())
 	defer cancel()
 	if m.runCtx != nil {

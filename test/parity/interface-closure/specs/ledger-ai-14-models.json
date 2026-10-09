@@ -1,0 +1,697 @@
+[
+ {
+  "ids": [
+   "pkg:ai/.#Models",
+   "pkg:ai/compat#Models",
+   "pkg:ai/models#Models"
+  ],
+  "targets": [
+   "ai/models_runtime.go#Models"
+  ],
+  "production": [
+   "call:internal/codingagent/native_model_runtime.go#ModelRegistry.refreshNativeModels"
+  ],
+  "evidence": [
+   "test:ai/models_runtime_auth_upstream_test.go#TestModelsRuntimeAuthUpstream"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal (options.signal) is the context.Context argument; no detached goroutine.",
+  "rationale": "Models: the Go Models type has a method for every upstream member (signatures reviewed; options.signal is the context.Context argument).",
+  "properties": {
+   "cancelDeferred": {
+    "targets": [
+     "ai/models_runtime_stream.go#Models.CancelDeferred"
+    ],
+    "evidence": [
+     "test:ai/faux_deferred_models_upstream_test.go#TestFauxModelsDeferredFailureAndCancellationUpstream",
+     "test:ai/models_collection_upstream_test.go#TestModelsDeferredResolvedRequestOptionsUpstream"
+    ],
+    "production": [
+     "call:coding/model_runtime_native.go#ModelRuntime.CancelDeferred"
+    ],
+    "rationale": "Models.cancelDeferred is the Go method Models.CancelDeferred; signature reviewed against the upstream declaration (upstream Models is Go ai.Models; an optional options argument is a variadic tail); callers and tests attributed by go/types (methodrefs)."
+   },
+   "checkAuth": {
+    "targets": [
+     "ai/models_runtime_auth.go#Models.CheckAuth"
+    ],
+    "evidence": [
+     "test:ai/models_runtime_auth_upstream_test.go#TestModelsRuntimeAuthUpstream"
+    ],
+    "production": [
+     "call:internal/codingagent/native_model_runtime.go#ModelRegistry.refreshNativeModels"
+    ],
+    "rationale": "The upstream member checkAuth is the Go method Models.CheckAuth: options.signal is the context.Context argument, the optional options object is the variadic options value, and a Promise return is the blocking return."
+   },
+   "classify": {
+    "targets": [
+     "ai/classifier.go#Models.Classify"
+    ],
+    "evidence": [
+     "test:ai/classifier_models_upstream_test.go#TestClassifierModelsUpstream",
+     "test:ai/cloudflare_workers_ai_system_one_upstream_test.go#TestCloudflareWorkersAISystemOneUpstream"
+    ],
+    "production": [
+     "public-api:ai/classifier.go#Models.Classify"
+    ],
+    "rationale": "The upstream member classify is the Go method Models.Classify: options.signal is the context.Context argument, the optional options object is the variadic options value, and a Promise return is the blocking return."
+   },
+   "complete": {
+    "targets": [
+     "ai/models_runtime_stream.go#Models.Complete"
+    ],
+    "evidence": [
+     "test:ai/models_typed_upstream_test.go#TestModelTypesUpstream"
+    ],
+    "production": [
+     "public-api:ai/models_runtime_stream.go#Models.Complete"
+    ],
+    "rationale": "The upstream member complete is the Go method Models.Complete: options.signal is the context.Context argument, the optional options object is the variadic options value, and a Promise return is the blocking return."
+   },
+   "completeSimple": {
+    "targets": [
+     "ai/models_runtime_stream.go#Models.CompleteSimple"
+    ],
+    "evidence": [
+     "test:ai/anthropic_federation_upstream_test.go#TestAnthropicWorkloadIdentityFederation",
+     "test:ai/faux_deferred_models_upstream_test.go#TestFauxModelsDeferredFailureAndCancellationUpstream"
+    ],
+    "production": [
+     "public-api:ai/models_runtime_stream.go#Models.CompleteSimple"
+    ],
+    "rationale": "The upstream member completeSimple is the Go method Models.CompleteSimple: options.signal is the context.Context argument, the optional options object is the variadic options value, and a Promise return is the blocking return."
+   },
+   "fetchDeferred": {
+    "targets": [
+     "ai/models_runtime_stream.go#Models.FetchDeferred"
+    ],
+    "evidence": [
+     "test:ai/faux_deferred_models_upstream_test.go#TestFauxModelsDeferredFailureAndCancellationUpstream",
+     "test:ai/faux_deferred_models_upstream_test.go#TestFauxModelsSubmitPollRedeemDeferredUpstream"
+    ],
+    "production": [
+     "call:coding/model_runtime_native.go#ModelRuntime.FetchDeferred"
+    ],
+    "rationale": "Models.fetchDeferred is the Go method Models.FetchDeferred; signature reviewed against the upstream declaration (upstream Models is Go ai.Models; an optional options argument is a variadic tail); callers and tests attributed by go/types (methodrefs)."
+   },
+   "generateImages": {
+    "targets": [
+     "ai/models_runtime_typed.go#Models.GenerateImages"
+    ],
+    "evidence": [
+     "test:ai/images_models_wire_test.go#TestModelsGenerateImagesAuthThroughOpenRouter",
+     "test:ai/models_typed_regression_test.go#TestGenerateImagesMergesTheImageModelHeaders"
+    ],
+    "production": [
+     "public-api:ai/models_runtime_typed.go#Models.GenerateImages"
+    ],
+    "rationale": "Models.generateImages is the Go method ai.Models.GenerateImages (upstream Models/MutableModels both map to ai.Models); signature reviewed against the upstream declaration (a Promise or rejection is the returned error; an options object is a variadic argument). Closed as public-api-tested: the method is exported from the public ai package and no PiG binary calls it; test callers (go/types) are the proof."
+   },
+   "getAllAvailable": {
+    "targets": [
+     "ai/models_runtime_auth.go#Models.GetAllAvailable"
+    ],
+    "evidence": [
+     "test:ai/models_typed_upstream_test.go#TestModelTypesUpstream",
+     "test:ai/models_typed_regression_test.go#TestGetAllAvailableAppliesTheProviderFilters"
+    ],
+    "production": [
+     "call:internal/codingagent/model_typed_provider.go#ModelRegistry.availableProviderAllModels"
+    ],
+    "rationale": "The upstream member getAllAvailable is the Go method Models.GetAllAvailable: options.signal is the context.Context argument, the optional options object is the variadic options value, and a Promise return is the blocking return."
+   },
+   "getAllModels": {
+    "targets": [
+     "ai/models_runtime_typed.go#Models.GetAllModels"
+    ],
+    "evidence": [
+     "test:ai/classifier_models_upstream_test.go#TestClassifierModelsUpstream",
+     "test:ai/models_typed_regression_test.go#TestCreateProviderOverlayReplacesOnlyTheSameTypeAndID"
+    ],
+    "production": [
+     "call:ai/models_runtime_typed.go#Models.GetModelsOfType"
+    ],
+    "rationale": "Models.getAllModels is the Go method Models.GetAllModels; signature reviewed against the upstream declaration (upstream Models is Go ai.Models; an optional options argument is a variadic tail); callers and tests attributed by go/types (methodrefs)."
+   },
+   "getAuth": {
+    "targets": [
+     "ai/models_runtime_auth.go#Models.GetAuth"
+    ],
+    "evidence": [
+     "test:ai/auth_refresh_gc_test.go#TestOAuthRefreshDoneSurvivesGC",
+     "test:ai/auth_refresh_signal_test.go#TestOAuthRefreshTimeoutMarksStoredResolutionAndModelsRefresh"
+    ],
+    "production": [
+     "call:ai/models_runtime_auth.go#Models.GetModelAuth"
+    ],
+    "rationale": "Models.getAuth is the Go method Models.GetAuth; signature reviewed against the upstream declaration (upstream Models is Go ai.Models; an optional options argument is a variadic tail); callers and tests attributed by go/types (methodrefs)."
+   },
+   "getAvailable": {
+    "targets": [
+     "ai/models_runtime_auth.go#Models.GetAvailable"
+    ],
+    "evidence": [
+     "test:ai/models_available_scope_upstream_test.go#TestModelsAvailabilityScopesCredentialReadsUpstream",
+     "test:ai/models_runtime_auth_upstream_test.go#TestModelsRuntimeAuthUpstream"
+    ],
+    "production": [
+     "call:internal/codingagent/model_availability.go#ModelRegistry.availableProviderModels"
+    ],
+    "rationale": "The upstream member getAvailable is the Go method Models.GetAvailable: options.signal is the context.Context argument, the optional options object is the variadic options value, and a Promise return is the blocking return."
+   },
+   "getAvailableOfType": {
+    "targets": [
+     "ai/models_runtime_auth.go#Models.GetAvailableOfType"
+    ],
+    "evidence": [
+     "test:ai/classifier_models_upstream_test.go#TestClassifierModelsUpstream",
+     "test:ai/models_typed_upstream_test.go#TestModelTypesUpstream"
+    ],
+    "production": [
+     "public-api:ai/models_runtime_auth.go#Models.GetAvailableOfType"
+    ],
+    "rationale": "The upstream member getAvailableOfType is the Go method Models.GetAvailableOfType: options.signal is the context.Context argument, the optional options object is the variadic options value, and a Promise return is the blocking return."
+   },
+   "getModel": {
+    "targets": [
+     "ai/models_runtime_auth.go#Models.GetModel"
+    ],
+    "evidence": [
+     "test:ai/classifier_models_upstream_test.go#TestClassifierModelsUpstream",
+     "test:ai/cloudflare_workers_ai_system_one_upstream_test.go#TestCloudflareWorkersAISystemOneUpstream"
+    ],
+    "production": [
+     "call:internal/codingagent/model_registry.go#ModelRegistry.HasModelDefinition"
+    ],
+    "rationale": "Models.getModel is the Go method Models.GetModel; signature reviewed against the upstream declaration (upstream Models is Go ai.Models; an optional options argument is a variadic tail); callers and tests attributed by go/types (methodrefs)."
+   },
+   "getModelOfType": {
+    "targets": [
+     "ai/models_runtime_typed.go#Models.GetModelOfType"
+    ],
+    "evidence": [
+     "test:ai/classifier_models_upstream_test.go#TestClassifierModelsUpstream",
+     "test:ai/cloudflare_workers_ai_system_one_upstream_test.go#TestCloudflareWorkersAISystemOneUpstream"
+    ],
+    "production": [
+     "public-api:ai/models_runtime_typed.go#Models.GetModelOfType"
+    ],
+    "rationale": "Models.getModelOfType is the Go method ai.Models.GetModelOfType (upstream Models/MutableModels both map to ai.Models); signature reviewed against the upstream declaration (a Promise or rejection is the returned error; an options object is a variadic argument). Closed as public-api-tested: the method is exported from the public ai package and no PiG binary calls it; test callers (go/types) are the proof."
+   },
+   "getModels": {
+    "targets": [
+     "ai/models_runtime_auth.go#Models.GetModels"
+    ],
+    "evidence": [
+     "test:ai/lazy_module_load_upstream_test.go#TestLazyModuleLoadProbe",
+     "test:ai/models_entry_upstream_test.go#TestLightweightModelsEntryUpstream"
+    ],
+    "production": [
+     "call:ai/models_runtime_auth.go#Models.GetModel"
+    ],
+    "rationale": "Models.getModels is the Go method Models.GetModels; signature reviewed against the upstream declaration (upstream Models is Go ai.Models; an optional options argument is a variadic tail); callers and tests attributed by go/types (methodrefs)."
+   },
+   "getModelsOfType": {
+    "targets": [
+     "ai/models_runtime_typed.go#Models.GetModelsOfType"
+    ],
+    "evidence": [
+     "test:ai/classifier_models_upstream_test.go#TestClassifierModelsUpstream",
+     "test:ai/models_typed_upstream_test.go#TestModelTypesUpstream"
+    ],
+    "production": [
+     "call:ai/models_runtime_typed.go#Models.GetModelOfType"
+    ],
+    "rationale": "Models.getModelsOfType is the Go method Models.GetModelsOfType; signature reviewed against the upstream declaration (upstream Models is Go ai.Models; an optional options argument is a variadic tail); callers and tests attributed by go/types (methodrefs)."
+   },
+   "getProvider": {
+    "targets": [
+     "ai/models_runtime_auth.go#Models.GetProvider"
+    ],
+    "evidence": [
+     "test:ai/models_refresh_replacement_test.go#TestModelsRefreshCannotStartAReplacedProviderSnapshot",
+     "test:ai/models_runtime_basic_upstream_test.go#TestModelsRuntimeBasicUpstream"
+    ],
+    "production": [
+     "call:ai/models_runtime_auth.go#Models.CheckAuth"
+    ],
+    "rationale": "Models.getProvider is the Go method Models.GetProvider; signature reviewed against the upstream declaration (upstream Models is Go ai.Models; an optional options argument is a variadic tail); callers and tests attributed by go/types (methodrefs)."
+   },
+   "getProviders": {
+    "targets": [
+     "ai/models_runtime_auth.go#Models.GetProviders"
+    ],
+    "evidence": [
+     "test:ai/models_entry_upstream_test.go#TestLightweightModelsEntryUpstream",
+     "test:ai/models_refresh_replacement_test.go#TestModelsRefreshCannotStartAReplacedProviderSnapshot"
+    ],
+    "production": [
+     "call:ai/models_runtime_auth.go#Models.GetModels"
+    ],
+    "rationale": "Models.getProviders is the Go method Models.GetProviders; signature reviewed against the upstream declaration (upstream Models is Go ai.Models; an optional options argument is a variadic tail); callers and tests attributed by go/types (methodrefs)."
+   },
+   "login": {
+    "targets": [
+     "ai/models_runtime_auth.go#Models.Login"
+    ],
+    "evidence": [
+     "test:ai/anthropic_copy_code_test.go#TestAnthropicCopyCodeLoginPromptsThroughTheModelRuntime",
+     "test:ai/anthropic_oauth_exchange_test.go#TestAnthropicNativeLoginCleansUpBeforeExchangeSettles"
+    ],
+    "production": [
+     "public-api:ai/models_runtime_auth.go#Models.Login"
+    ],
+    "rationale": "Models.login is the Go method ai.Models.Login (upstream Models/MutableModels both map to ai.Models); signature reviewed against the upstream declaration (a Promise or rejection is the returned error; an options object is a variadic argument). Closed as public-api-tested: the method is exported from the public ai package and no PiG binary calls it; test callers (go/types) are the proof."
+   },
+   "logout": {
+    "targets": [
+     "ai/models_runtime_auth.go#Models.Logout"
+    ],
+    "evidence": [
+     "test:ai/auth_storage_lock_error_upstream_test.go#TestAuthStorageLockErrorIsProperLockfileErrorUpstream",
+     "test:ai/models_runtime_auth_upstream_test.go#TestModelsRuntimeAuthUpstream"
+    ],
+    "production": [
+     "call:internal/codingagent/native_model_runtime.go#ModelRegistry.LogoutNativeProvider"
+    ],
+    "rationale": "The upstream member logout is the Go method Models.Logout: options.signal is the context.Context argument, the optional options object is the variadic options value, and a Promise return is the blocking return."
+   },
+   "refresh": {
+    "targets": [
+     "ai/models_runtime_refresh.go#Models.Refresh"
+    ],
+    "evidence": [
+     "test:ai/auth_refresh_signal_test.go#TestOAuthRefreshTimeoutMarksStoredResolutionAndModelsRefresh",
+     "test:ai/models_refresh_upstream_test.go#TestModelsNewerDynamicRefreshSupersedesBlockedFetchUpstream"
+    ],
+    "production": [
+     "call:internal/codingagent/native_model_runtime.go#ModelRegistry.refreshNativeModels"
+    ],
+    "rationale": "Models.refresh is the Go method Models.Refresh; signature reviewed against the upstream declaration (upstream Models is Go ai.Models; an optional options argument is a variadic tail); callers and tests attributed by go/types (methodrefs)."
+   },
+   "stream": {
+    "targets": [
+     "ai/models_runtime_stream.go#Models.Stream"
+    ],
+    "evidence": [
+     "test:ai/telemetry_options_upstream_test.go#TestTelemetryOptionsSurviveProviderAndModelsDispatchUpstream",
+     "test:ai/port_wave_12_helpers_test.go#TestPortWave12ProviderFetchTransport"
+    ],
+    "production": [
+     "call:coding/services.go#ModelRuntime.Stream"
+    ],
+    "rationale": "The upstream member stream is the Go method Models.Stream: options.signal is the context.Context argument, the optional options object is the variadic options value, and a Promise return is the blocking return."
+   },
+   "streamDeferred": {
+    "targets": [
+     "ai/models_runtime_stream.go#Models.StreamDeferred"
+    ],
+    "evidence": [
+     "test:ai/interface_ledger_test.go#TestModelsStreamDeferredStreamsThePolledStateLikeUpstream"
+    ],
+    "production": [
+     "call:coding/model_runtime_native.go#ModelRuntime.StreamDeferred"
+    ],
+    "rationale": "The upstream member streamDeferred is the Go method Models.StreamDeferred: options.signal is the context.Context argument, the optional options object is the variadic options value, and a Promise return is the blocking return."
+   },
+   "streamSimple": {
+    "targets": [
+     "ai/models_runtime_stream.go#Models.StreamSimple"
+    ],
+    "evidence": [
+     "test:ai/faux_deferred_models_upstream_test.go#TestFauxModelsSubmitPollRedeemDeferredUpstream",
+     "test:ai/models_runtime_basic_upstream_test.go#TestModelsRuntimeBasicUpstream"
+    ],
+    "production": [
+     "call:coding/model_runtime_native.go#nativeModelBackend.Stream"
+    ],
+    "rationale": "The upstream member streamSimple is the Go method Models.StreamSimple: options.signal is the context.Context argument, the optional options object is the variadic options value, and a Promise return is the blocking return."
+   }
+  }
+ },
+ {
+  "ids": [
+   "pkg:ai/.#MutableModels",
+   "pkg:ai/compat#MutableModels",
+   "pkg:ai/models#MutableModels"
+  ],
+  "targets": [
+   "ai/models_runtime.go#Models"
+  ],
+  "production": [
+   "call:internal/codingagent/native_model_runtime.go#ModelRegistry.refreshNativeModels"
+  ],
+  "evidence": [
+   "test:ai/models_runtime_auth_upstream_test.go#TestModelsRuntimeAuthUpstream"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal (options.signal) is the context.Context argument; no detached goroutine.",
+  "rationale": "MutableModels: the Go Models type has a method for every upstream member (signatures reviewed; options.signal is the context.Context argument).",
+  "properties": {
+   "cancelDeferred": {
+    "targets": [
+     "ai/models_runtime_stream.go#Models.CancelDeferred"
+    ],
+    "evidence": [
+     "test:ai/faux_deferred_models_upstream_test.go#TestFauxModelsDeferredFailureAndCancellationUpstream",
+     "test:ai/models_collection_upstream_test.go#TestModelsDeferredResolvedRequestOptionsUpstream"
+    ],
+    "production": [
+     "call:coding/model_runtime_native.go#ModelRuntime.CancelDeferred"
+    ],
+    "rationale": "MutableModels.cancelDeferred is the Go method Models.CancelDeferred; signature reviewed against the upstream declaration (upstream MutableModels is Go ai.Models; an optional options argument is a variadic tail); callers and tests attributed by go/types (methodrefs)."
+   },
+   "checkAuth": {
+    "targets": [
+     "ai/models_runtime_auth.go#Models.CheckAuth"
+    ],
+    "evidence": [
+     "test:ai/models_runtime_auth_upstream_test.go#TestModelsRuntimeAuthUpstream"
+    ],
+    "production": [
+     "call:internal/codingagent/native_model_runtime.go#ModelRegistry.refreshNativeModels"
+    ],
+    "rationale": "The upstream member checkAuth is the Go method Models.CheckAuth: options.signal is the context.Context argument, the optional options object is the variadic options value, and a Promise return is the blocking return."
+   },
+   "classify": {
+    "targets": [
+     "ai/classifier.go#Models.Classify"
+    ],
+    "evidence": [
+     "test:ai/classifier_models_upstream_test.go#TestClassifierModelsUpstream",
+     "test:ai/cloudflare_workers_ai_system_one_upstream_test.go#TestCloudflareWorkersAISystemOneUpstream"
+    ],
+    "production": [
+     "public-api:ai/classifier.go#Models.Classify"
+    ],
+    "rationale": "The upstream member classify is the Go method Models.Classify: options.signal is the context.Context argument, the optional options object is the variadic options value, and a Promise return is the blocking return."
+   },
+   "clearProviders": {
+    "targets": [
+     "ai/models_runtime_auth.go#Models.ClearProviders"
+    ],
+    "evidence": [
+     "test:ai/models_runtime_basic_upstream_test.go#TestModelsRuntimeBasicUpstream"
+    ],
+    "production": [
+     "public-api:ai/models_runtime_auth.go#Models.ClearProviders"
+    ],
+    "rationale": "MutableModels.clearProviders is the Go method ai.Models.ClearProviders (upstream Models/MutableModels both map to ai.Models); signature reviewed against the upstream declaration (a Promise or rejection is the returned error; an options object is a variadic argument). Closed as public-api-tested: the method is exported from the public ai package and no PiG binary calls it; test callers (go/types) are the proof."
+   },
+   "complete": {
+    "targets": [
+     "ai/models_runtime_stream.go#Models.Complete"
+    ],
+    "evidence": [
+     "test:ai/models_typed_upstream_test.go#TestModelTypesUpstream"
+    ],
+    "production": [
+     "public-api:ai/models_runtime_stream.go#Models.Complete"
+    ],
+    "rationale": "The upstream member complete is the Go method Models.Complete: options.signal is the context.Context argument, the optional options object is the variadic options value, and a Promise return is the blocking return."
+   },
+   "completeSimple": {
+    "targets": [
+     "ai/models_runtime_stream.go#Models.CompleteSimple"
+    ],
+    "evidence": [
+     "test:ai/anthropic_federation_upstream_test.go#TestAnthropicWorkloadIdentityFederation",
+     "test:ai/faux_deferred_models_upstream_test.go#TestFauxModelsDeferredFailureAndCancellationUpstream"
+    ],
+    "production": [
+     "public-api:ai/models_runtime_stream.go#Models.CompleteSimple"
+    ],
+    "rationale": "The upstream member completeSimple is the Go method Models.CompleteSimple: options.signal is the context.Context argument, the optional options object is the variadic options value, and a Promise return is the blocking return."
+   },
+   "deleteProvider": {
+    "targets": [
+     "ai/models_runtime_auth.go#Models.DeleteProvider"
+    ],
+    "evidence": [
+     "test:ai/models_runtime_basic_upstream_test.go#TestModelsRuntimeBasicUpstream"
+    ],
+    "production": [
+     "call:internal/codingagent/native_model_runtime.go#ModelRegistry.unregisterNativeProvider"
+    ],
+    "rationale": "MutableModels.deleteProvider is the Go method Models.DeleteProvider; signature reviewed against the upstream declaration (upstream MutableModels is Go ai.Models; an optional options argument is a variadic tail); callers and tests attributed by go/types (methodrefs)."
+   },
+   "fetchDeferred": {
+    "targets": [
+     "ai/models_runtime_stream.go#Models.FetchDeferred"
+    ],
+    "evidence": [
+     "test:ai/faux_deferred_models_upstream_test.go#TestFauxModelsDeferredFailureAndCancellationUpstream",
+     "test:ai/faux_deferred_models_upstream_test.go#TestFauxModelsSubmitPollRedeemDeferredUpstream"
+    ],
+    "production": [
+     "call:coding/model_runtime_native.go#ModelRuntime.FetchDeferred"
+    ],
+    "rationale": "MutableModels.fetchDeferred is the Go method Models.FetchDeferred; signature reviewed against the upstream declaration (upstream MutableModels is Go ai.Models; an optional options argument is a variadic tail); callers and tests attributed by go/types (methodrefs)."
+   },
+   "generateImages": {
+    "targets": [
+     "ai/models_runtime_typed.go#Models.GenerateImages"
+    ],
+    "evidence": [
+     "test:ai/images_models_wire_test.go#TestModelsGenerateImagesAuthThroughOpenRouter",
+     "test:ai/models_typed_regression_test.go#TestGenerateImagesMergesTheImageModelHeaders"
+    ],
+    "production": [
+     "public-api:ai/models_runtime_typed.go#Models.GenerateImages"
+    ],
+    "rationale": "MutableModels.generateImages is the Go method ai.Models.GenerateImages (upstream Models/MutableModels both map to ai.Models); signature reviewed against the upstream declaration (a Promise or rejection is the returned error; an options object is a variadic argument). Closed as public-api-tested: the method is exported from the public ai package and no PiG binary calls it; test callers (go/types) are the proof."
+   },
+   "getAllAvailable": {
+    "targets": [
+     "ai/models_runtime_auth.go#Models.GetAllAvailable"
+    ],
+    "evidence": [
+     "test:ai/models_typed_upstream_test.go#TestModelTypesUpstream",
+     "test:ai/models_typed_regression_test.go#TestGetAllAvailableAppliesTheProviderFilters"
+    ],
+    "production": [
+     "call:internal/codingagent/model_typed_provider.go#ModelRegistry.availableProviderAllModels"
+    ],
+    "rationale": "The upstream member getAllAvailable is the Go method Models.GetAllAvailable: options.signal is the context.Context argument, the optional options object is the variadic options value, and a Promise return is the blocking return."
+   },
+   "getAllModels": {
+    "targets": [
+     "ai/models_runtime_typed.go#Models.GetAllModels"
+    ],
+    "evidence": [
+     "test:ai/classifier_models_upstream_test.go#TestClassifierModelsUpstream",
+     "test:ai/models_typed_regression_test.go#TestCreateProviderOverlayReplacesOnlyTheSameTypeAndID"
+    ],
+    "production": [
+     "call:ai/models_runtime_typed.go#Models.GetModelsOfType"
+    ],
+    "rationale": "MutableModels.getAllModels is the Go method Models.GetAllModels; signature reviewed against the upstream declaration (upstream MutableModels is Go ai.Models; an optional options argument is a variadic tail); callers and tests attributed by go/types (methodrefs)."
+   },
+   "getAuth": {
+    "targets": [
+     "ai/models_runtime_auth.go#Models.GetAuth"
+    ],
+    "evidence": [
+     "test:ai/auth_refresh_gc_test.go#TestOAuthRefreshDoneSurvivesGC",
+     "test:ai/auth_refresh_signal_test.go#TestOAuthRefreshTimeoutMarksStoredResolutionAndModelsRefresh"
+    ],
+    "production": [
+     "call:ai/models_runtime_auth.go#Models.GetModelAuth"
+    ],
+    "rationale": "MutableModels.getAuth is the Go method Models.GetAuth; signature reviewed against the upstream declaration (upstream MutableModels is Go ai.Models; an optional options argument is a variadic tail); callers and tests attributed by go/types (methodrefs)."
+   },
+   "getAvailable": {
+    "targets": [
+     "ai/models_runtime_auth.go#Models.GetAvailable"
+    ],
+    "evidence": [
+     "test:ai/models_available_scope_upstream_test.go#TestModelsAvailabilityScopesCredentialReadsUpstream",
+     "test:ai/models_runtime_auth_upstream_test.go#TestModelsRuntimeAuthUpstream"
+    ],
+    "production": [
+     "call:internal/codingagent/model_availability.go#ModelRegistry.availableProviderModels"
+    ],
+    "rationale": "The upstream member getAvailable is the Go method Models.GetAvailable: options.signal is the context.Context argument, the optional options object is the variadic options value, and a Promise return is the blocking return."
+   },
+   "getAvailableOfType": {
+    "targets": [
+     "ai/models_runtime_auth.go#Models.GetAvailableOfType"
+    ],
+    "evidence": [
+     "test:ai/classifier_models_upstream_test.go#TestClassifierModelsUpstream",
+     "test:ai/models_typed_upstream_test.go#TestModelTypesUpstream"
+    ],
+    "production": [
+     "public-api:ai/models_runtime_auth.go#Models.GetAvailableOfType"
+    ],
+    "rationale": "The upstream member getAvailableOfType is the Go method Models.GetAvailableOfType: options.signal is the context.Context argument, the optional options object is the variadic options value, and a Promise return is the blocking return."
+   },
+   "getModel": {
+    "targets": [
+     "ai/models_runtime_auth.go#Models.GetModel"
+    ],
+    "evidence": [
+     "test:ai/classifier_models_upstream_test.go#TestClassifierModelsUpstream",
+     "test:ai/cloudflare_workers_ai_system_one_upstream_test.go#TestCloudflareWorkersAISystemOneUpstream"
+    ],
+    "production": [
+     "call:internal/codingagent/model_registry.go#ModelRegistry.HasModelDefinition"
+    ],
+    "rationale": "MutableModels.getModel is the Go method Models.GetModel; signature reviewed against the upstream declaration (upstream MutableModels is Go ai.Models; an optional options argument is a variadic tail); callers and tests attributed by go/types (methodrefs)."
+   },
+   "getModelOfType": {
+    "targets": [
+     "ai/models_runtime_typed.go#Models.GetModelOfType"
+    ],
+    "evidence": [
+     "test:ai/classifier_models_upstream_test.go#TestClassifierModelsUpstream",
+     "test:ai/cloudflare_workers_ai_system_one_upstream_test.go#TestCloudflareWorkersAISystemOneUpstream"
+    ],
+    "production": [
+     "public-api:ai/models_runtime_typed.go#Models.GetModelOfType"
+    ],
+    "rationale": "MutableModels.getModelOfType is the Go method ai.Models.GetModelOfType (upstream Models/MutableModels both map to ai.Models); signature reviewed against the upstream declaration (a Promise or rejection is the returned error; an options object is a variadic argument). Closed as public-api-tested: the method is exported from the public ai package and no PiG binary calls it; test callers (go/types) are the proof."
+   },
+   "getModels": {
+    "targets": [
+     "ai/models_runtime_auth.go#Models.GetModels"
+    ],
+    "evidence": [
+     "test:ai/lazy_module_load_upstream_test.go#TestLazyModuleLoadProbe",
+     "test:ai/models_entry_upstream_test.go#TestLightweightModelsEntryUpstream"
+    ],
+    "production": [
+     "call:ai/models_runtime_auth.go#Models.GetModel"
+    ],
+    "rationale": "MutableModels.getModels is the Go method Models.GetModels; signature reviewed against the upstream declaration (upstream MutableModels is Go ai.Models; an optional options argument is a variadic tail); callers and tests attributed by go/types (methodrefs)."
+   },
+   "getModelsOfType": {
+    "targets": [
+     "ai/models_runtime_typed.go#Models.GetModelsOfType"
+    ],
+    "evidence": [
+     "test:ai/classifier_models_upstream_test.go#TestClassifierModelsUpstream",
+     "test:ai/models_typed_upstream_test.go#TestModelTypesUpstream"
+    ],
+    "production": [
+     "call:ai/models_runtime_typed.go#Models.GetModelOfType"
+    ],
+    "rationale": "MutableModels.getModelsOfType is the Go method Models.GetModelsOfType; signature reviewed against the upstream declaration (upstream MutableModels is Go ai.Models; an optional options argument is a variadic tail); callers and tests attributed by go/types (methodrefs)."
+   },
+   "getProvider": {
+    "targets": [
+     "ai/models_runtime_auth.go#Models.GetProvider"
+    ],
+    "evidence": [
+     "test:ai/models_refresh_replacement_test.go#TestModelsRefreshCannotStartAReplacedProviderSnapshot",
+     "test:ai/models_runtime_basic_upstream_test.go#TestModelsRuntimeBasicUpstream"
+    ],
+    "production": [
+     "call:ai/models_runtime_auth.go#Models.CheckAuth"
+    ],
+    "rationale": "MutableModels.getProvider is the Go method Models.GetProvider; signature reviewed against the upstream declaration (upstream MutableModels is Go ai.Models; an optional options argument is a variadic tail); callers and tests attributed by go/types (methodrefs)."
+   },
+   "getProviders": {
+    "targets": [
+     "ai/models_runtime_auth.go#Models.GetProviders"
+    ],
+    "evidence": [
+     "test:ai/models_entry_upstream_test.go#TestLightweightModelsEntryUpstream",
+     "test:ai/models_refresh_replacement_test.go#TestModelsRefreshCannotStartAReplacedProviderSnapshot"
+    ],
+    "production": [
+     "call:ai/models_runtime_auth.go#Models.GetModels"
+    ],
+    "rationale": "MutableModels.getProviders is the Go method Models.GetProviders; signature reviewed against the upstream declaration (upstream MutableModels is Go ai.Models; an optional options argument is a variadic tail); callers and tests attributed by go/types (methodrefs)."
+   },
+   "login": {
+    "targets": [
+     "ai/models_runtime_auth.go#Models.Login"
+    ],
+    "evidence": [
+     "test:ai/anthropic_copy_code_test.go#TestAnthropicCopyCodeLoginPromptsThroughTheModelRuntime",
+     "test:ai/anthropic_oauth_exchange_test.go#TestAnthropicNativeLoginCleansUpBeforeExchangeSettles"
+    ],
+    "production": [
+     "public-api:ai/models_runtime_auth.go#Models.Login"
+    ],
+    "rationale": "MutableModels.login is the Go method ai.Models.Login (upstream Models/MutableModels both map to ai.Models); signature reviewed against the upstream declaration (a Promise or rejection is the returned error; an options object is a variadic argument). Closed as public-api-tested: the method is exported from the public ai package and no PiG binary calls it; test callers (go/types) are the proof."
+   },
+   "logout": {
+    "targets": [
+     "ai/models_runtime_auth.go#Models.Logout"
+    ],
+    "evidence": [
+     "test:ai/auth_storage_lock_error_upstream_test.go#TestAuthStorageLockErrorIsProperLockfileErrorUpstream",
+     "test:ai/models_runtime_auth_upstream_test.go#TestModelsRuntimeAuthUpstream"
+    ],
+    "production": [
+     "call:internal/codingagent/native_model_runtime.go#ModelRegistry.LogoutNativeProvider"
+    ],
+    "rationale": "The upstream member logout is the Go method Models.Logout: options.signal is the context.Context argument, the optional options object is the variadic options value, and a Promise return is the blocking return."
+   },
+   "refresh": {
+    "targets": [
+     "ai/models_runtime_refresh.go#Models.Refresh"
+    ],
+    "evidence": [
+     "test:ai/auth_refresh_signal_test.go#TestOAuthRefreshTimeoutMarksStoredResolutionAndModelsRefresh",
+     "test:ai/models_refresh_upstream_test.go#TestModelsNewerDynamicRefreshSupersedesBlockedFetchUpstream"
+    ],
+    "production": [
+     "call:internal/codingagent/native_model_runtime.go#ModelRegistry.refreshNativeModels"
+    ],
+    "rationale": "MutableModels.refresh is the Go method Models.Refresh; signature reviewed against the upstream declaration (upstream MutableModels is Go ai.Models; an optional options argument is a variadic tail); callers and tests attributed by go/types (methodrefs)."
+   },
+   "setProvider": {
+    "targets": [
+     "ai/models_runtime_auth.go#Models.SetProvider"
+    ],
+    "evidence": [
+     "test:ai/anthropic_copy_code_test.go#TestAnthropicCopyCodeLoginPromptsThroughTheModelRuntime",
+     "test:ai/anthropic_federation_upstream_test.go#TestAnthropicWorkloadIdentityFederation"
+    ],
+    "production": [
+     "call:internal/codingagent/native_credential_operations.go#ModelRegistry.synchronizeCredentialState"
+    ],
+    "rationale": "MutableModels.setProvider is the Go method Models.SetProvider; signature reviewed against the upstream declaration (upstream MutableModels is Go ai.Models; an optional options argument is a variadic tail); callers and tests attributed by go/types (methodrefs)."
+   },
+   "stream": {
+    "targets": [
+     "ai/models_runtime_stream.go#Models.Stream"
+    ],
+    "evidence": [
+     "test:ai/telemetry_options_upstream_test.go#TestTelemetryOptionsSurviveProviderAndModelsDispatchUpstream",
+     "test:ai/port_wave_12_helpers_test.go#TestPortWave12ProviderFetchTransport"
+    ],
+    "production": [
+     "call:coding/services.go#ModelRuntime.Stream"
+    ],
+    "rationale": "The upstream member stream is the Go method Models.Stream: options.signal is the context.Context argument, the optional options object is the variadic options value, and a Promise return is the blocking return."
+   },
+   "streamDeferred": {
+    "targets": [
+     "ai/models_runtime_stream.go#Models.StreamDeferred"
+    ],
+    "evidence": [
+     "test:ai/interface_ledger_test.go#TestModelsStreamDeferredStreamsThePolledStateLikeUpstream"
+    ],
+    "production": [
+     "call:coding/model_runtime_native.go#ModelRuntime.StreamDeferred"
+    ],
+    "rationale": "The upstream member streamDeferred is the Go method Models.StreamDeferred: options.signal is the context.Context argument, the optional options object is the variadic options value, and a Promise return is the blocking return."
+   },
+   "streamSimple": {
+    "targets": [
+     "ai/models_runtime_stream.go#Models.StreamSimple"
+    ],
+    "evidence": [
+     "test:ai/faux_deferred_models_upstream_test.go#TestFauxModelsSubmitPollRedeemDeferredUpstream",
+     "test:ai/models_runtime_basic_upstream_test.go#TestModelsRuntimeBasicUpstream"
+    ],
+    "production": [
+     "call:coding/model_runtime_native.go#nativeModelBackend.Stream"
+    ],
+    "rationale": "The upstream member streamSimple is the Go method Models.StreamSimple: options.signal is the context.Context argument, the optional options object is the variadic options value, and a Promise return is the blocking return."
+   }
+  }
+ }
+]

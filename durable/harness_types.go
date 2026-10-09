@@ -175,15 +175,15 @@ type ToolExecutionApi interface {
 	Registry() RegistrySnapshot
 	// Agent is the calling conversation's agent, as the tool task's phase resolved it.
 	Agent(ctx context.Context) (Agent, error)
+	// Models is HarnessOptions.Models: the catalog, credentials, and request transforms generation uses.
+	Models() Models
 	// Env is built by HarnessOptions.env for this call; nil without an environment.
 	Env() env.ExecutionEnv
 	// Output appends running output, a string or []byte; it becomes the result content when the result omits
-	// Content.
-	Output(chunk any)
-	// OutputSkipping is Output of a chunk that follows output an environment omitted, as reported by an environment
-	// given OutputWindow (ShellOutputInfo.Skipped). The omitted output is more than the tail window by at least one
-	// byte or line, and only tail retention accepts it. Upstream's output(chunk, skipped) is Output and this method.
-	OutputSkipping(chunk any, skipped env.ShellOutputSkip)
+	// Content. The optional skipped marks a chunk that follows output an environment omitted, as reported by an
+	// environment given OutputWindow (ShellOutputInfo.Skipped). The omitted output is more than the tail window by at
+	// least one byte or line, and only tail retention accepts it. Only the first skipped counts.
+	Output(chunk any, skipped ...env.ShellOutputSkip)
 	// OutputWindow is the tail this call's output keeps and the pace of its progress commits, for
 	// ShellExecOptions.Window; nil when the tool keeps the head of its output, which cannot accept skips. A wrapper
 	// that replaces Output and transforms text must also replace this with nil, so skipped text cannot bypass its
@@ -275,14 +275,24 @@ type HookRegistration struct {
 	Handlers any
 }
 
-// Wrap is built by WrapTool (Tool and WrapTool set) and WrapSection (Section and WrapSection set); it targets a tool
-// name or a section key. Wrappers are pure.
-type Wrap struct {
-	Tool        string
-	WrapTool    func(tool *ToolRegistration) *ToolRegistration
-	Section     string
-	WrapSection func(section *PromptSection) *PromptSection
+// Wrap is upstream's `{ tool; wrap(tool) } | { section; wrap(section) }` (harness/types.ts:263-265): a sealed union of ToolWrap, built by WrapTool,
+// and SectionWrap, built by WrapSection. A wrap targets a tool name or a section key. Wrappers are pure.
+type Wrap interface{ isWrap() }
+
+// ToolWrap is the `{ tool: string; wrap(tool: Tool): Tool }` member of Wrap.
+type ToolWrap struct {
+	Tool string
+	Wrap func(tool *ToolRegistration) *ToolRegistration
 }
+
+// SectionWrap is the `{ section: string; wrap(section: PromptSection<Tool>): PromptSection<Tool> }` member of Wrap.
+type SectionWrap struct {
+	Section string
+	Wrap    func(section *PromptSection) *PromptSection
+}
+
+func (ToolWrap) isWrap()    {}
+func (SectionWrap) isWrap() {}
 
 // Extension is a named bundle of code, installed in a registry and selected by conversations by name.
 type Extension struct {
@@ -343,7 +353,7 @@ type ConversationStreamOptions struct {
 	MaxRetries      *int               `json:"maxRetries,omitempty"`
 	MaxRetryDelayMs *int               `json:"maxRetryDelayMs,omitempty"`
 	Headers         map[string]string  `json:"headers,omitempty"`
-	Metadata        JsonObject         `json:"metadata,omitempty"`
+	Metadata        map[string]any     `json:"metadata,omitempty"`
 	CacheRetention  ai.CacheRetention  `json:"cacheRetention,omitempty"`
 	Deferred        *ai.DeferredOption `json:"deferred,omitempty"`
 }
@@ -399,6 +409,9 @@ type Settings struct {
 	ToolExecution ToolExecutionMode
 	SteeringMode  QueueMode
 	FollowUpMode  QueueMode
+	// ContextRetentionMs is how long an idle conversation keeps its last context read in memory, so its next run reads
+	// only newer entries. Busy conversations always keep it; 0 drops it once the conversation is idle.
+	ContextRetentionMs float64
 }
 
 // ContextView is the raw active transcript and the derived model context.

@@ -42,3 +42,11 @@ type SqliteDatabase interface {
 	Transaction(callback func(transaction SqliteExecutor) error) error
 	Close() error
 }
+
+// TextReader is implemented by a database that can hand the first column of each result row to a callback as the row
+// is read, without building rows. The bytes are valid until the callback returns. Readers of many rows use it to avoid
+// a map and a copy per row; the callback must not call the database.
+// pig additive (D104): row reading without per-row maps has no Pi counterpart.
+type TextReader interface {
+	EachText(sql string, params []SqliteValue, fn func(text []byte) error) error
+}

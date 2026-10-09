@@ -446,3 +446,50 @@ func TestRetryTransport_UnparseableRetryAfterWaitsForBackoff(t *testing.T) {
 		t.Fatalf("retried after %v, want at least the 500ms exponential backoff", elapsed)
 	}
 }
+
+// TestRetryTransport_EarlyResponseDoesNotRaceRequestBody covers a server that
+// answers 503 with Connection: close before it reads the request body. The
+// base transport's write loop can still be reading req.Body when RoundTrip
+// returns, so the retry must not write req.Body or the caller's request.
+// Run under -race: assigning req.Body for the retry is a data race.
+func TestRetryTransport_EarlyResponseDoesNotRaceRequestBody(t *testing.T) {
+	resetProviderRetry(t)
+	if err := ConfigureProviderRetry(3, 60000); err != nil {
+		t.Fatal(err)
+	}
+	providerRetryJitter = func() float64 { return 1 }
+	var attempts atomic.Int64
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if attempts.Add(1) <= 1 {
+			w.Header().Set("Connection", "close")
+			w.WriteHeader(http.StatusServiceUnavailable)
+			return
+		}
+		_, _ = io.Copy(io.Discard, r.Body)
+		w.WriteHeader(http.StatusOK)
+	}))
+	t.Cleanup(srv.Close)
+	transport := &http.Transport{DisableKeepAlives: false}
+	t.Cleanup(transport.CloseIdleConnections)
+	rt := &retryTransport{base: transport}
+	payload := bytes.Repeat([]byte("x"), 8<<20)
+	for range 6 {
+		attempts.Store(0)
+		req, err := http.NewRequestWithContext(t.Context(), http.MethodPost, srv.URL, bytes.NewReader(payload))
+		if err != nil {
+			t.Fatal(err)
+		}
+		origBody := req.Body
+		resp, err := rt.RoundTrip(req)
+		if err != nil {
+			t.Fatalf("RoundTrip: %v", err)
+		}
+		_ = resp.Body.Close()
+		if resp.StatusCode != http.StatusOK {
+			t.Fatalf("status = %d, want 200", resp.StatusCode)
+		}
+		if req.Body != origBody {
+			t.Fatal("retry replaced the caller's req.Body; a RoundTripper must not modify its request")
+		}
+	}
+}

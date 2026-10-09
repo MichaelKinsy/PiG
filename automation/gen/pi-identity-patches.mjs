@@ -34,6 +34,9 @@ export const identityPatches = {
   "pi-ai/auth/oauth/openai-codex.js": [
     ['async function createAuthorizationFlow(originator = "pi") {', `async function createAuthorizationFlow(originator = "${identity.codexOriginator}") {`],
   ],
+  "pi-ai/auth/oauth/openai-chatgpt.js": [
+    ['const AGENT_NAME_HINT = "Pi";', `const AGENT_NAME_HINT = "${identity.chatgptAgentName}";`],
+  ],
   "pi-ai/auth/oauth/xai.js": [
     ['referrer: "pi",', `referrer: "${identity.xaiReferrer}",`],
   ],

@@ -65,7 +65,7 @@ func assertEditContains(t *testing.T, text string, wants ...string) {
 	}
 }
 
-func editCardFixture(t *testing.T, id, path string, edits []tools.EditReplacement) (editComponentFixture, *tui.TUI, *bytes.Buffer, chan func()) {
+func editCardFixture(t *testing.T, id, path string, edits []tools.EditReplacement) (editComponentFixture, *tui.TuiMainScreen, *bytes.Buffer, chan func()) {
 	t.Helper()
 	cwd, err := os.Getwd()
 	if err != nil {
@@ -77,9 +77,9 @@ func editCardFixture(t *testing.T, id, path string, edits []tools.EditReplacemen
 	if err != nil {
 		t.Fatal(err)
 	}
-	mode := &InteractiveMode{opts: InteractiveOptions{CWD: cwd}, chatContainer: tui.NewContainer(), tuiInst: tui.NewWithOutput(io.Discard, 80, 24)}
+	mode := &InteractiveMode{opts: InteractiveModeOptions{CWD: cwd}, chatContainer: tui.NewContainer(), tuiInst: tui.NewWithOutput(io.Discard, 80, 24)}
 	mode.newRunner = inproc.NewRunner([]extension.Extension{{Tools: map[string]extension.RegisteredTool{"edit": {Definition: definition}}}}, cwd)
-	card := tui.NewToolExecutionComponent("edit", tui.HeaderForTool("edit", raw, cwd))
+	card := newToolCardForTest("edit", tui.HeaderForTool("edit", raw, cwd))
 	card.Cwd = cwd
 	card.SetHeaderArgs(raw)
 	mode.applyToolPresentation(card, id, "edit", raw)
@@ -107,15 +107,17 @@ func waitEditPreview(t *testing.T, card *tui.ToolExecutionComponent, renders <-c
 	}
 }
 
+// Pi: packages/coding-agent/src/modes/interactive/components/tool-execution.ts:175 (ToolExecutionComponent.setArgsComplete).
 func TestEditToolNoFullRedrawUpstream(t *testing.T) {
 	// .upstream/v0.87.1/packages/coding-agent/test/edit-tool-no-full-redraw.test.ts:79
 	t.Run("renders the large diff in the call preview and does not full-redraw when the result settles", func(t *testing.T) {
 		path, lines := editFixtureFile(t, "large-edit.txt", 1000)
 		edits := largeFixtureEdits(lines)
-		diff := tools.ComputeEditsDiff(path, edits, "")
-		if diff.Error != "" {
-			t.Fatal(diff.Error)
+		outcome := tools.ComputeEditsDiff(path, edits, "")
+		if failure, failed := outcome.(tools.EditDiffError); failed {
+			t.Fatal(failure.Error)
 		}
+		diff := outcome.(tools.EditDiffResult)
 		f, ui, output, renders := editCardFixture(t, "tool-call-1", path, edits)
 		f.mode.chatContainer.Clear()
 		for i := range 200 {
@@ -147,10 +149,11 @@ func TestEditToolNoFullRedrawUpstream(t *testing.T) {
 	t.Run("reconstructs the boxed preview from a settled result without argsComplete", func(t *testing.T) {
 		path, lines := editFixtureFile(t, "replay-edit.txt", 200)
 		edits := largeFixtureEdits(lines)
-		diff := tools.ComputeEditsDiff(path, edits, "")
-		if diff.Error != "" {
-			t.Fatal(diff.Error)
+		outcome := tools.ComputeEditsDiff(path, edits, "")
+		if failure, failed := outcome.(tools.EditDiffError); failed {
+			t.Fatal(failure.Error)
 		}
+		diff := outcome.(tools.EditDiffResult)
 		if err := os.Remove(path); err != nil {
 			t.Fatal(err)
 		}

@@ -32,7 +32,7 @@ func TestExtensionOAuthSubscriptionFooter(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	m := &InteractiveMode{opts: InteractiveOptions{AgentDir: agentDir}}
+	m := &InteractiveMode{opts: InteractiveModeOptions{AgentDir: agentDir}}
 	m.statusLine = m.newFooter()
 	for _, tc := range []struct {
 		provider string

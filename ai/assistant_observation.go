@@ -38,7 +38,11 @@ func newAssistantMessageCell(message *AssistantMessage) *assistantMessageCell {
 
 // publish runs under producer ownership of message, before the producer suspends. It never changes delivered public fields.
 func (cell *assistantMessageCell) publish(message *AssistantMessage, replacements assistantMessageReplacements) {
-	next := cloneAssistantMessage(*message)
+	// The previous snapshot's content is immutable once published, so the copy below may share what has not changed.
+	cell.mu.RLock()
+	previous := cell.current.Content
+	cell.mu.RUnlock()
+	next := cloneAssistantMessageFrom(*message, previous)
 	cell.mu.Lock()
 	defer cell.mu.Unlock()
 	// Absent optional properties are not object references; adding or removing one is an assignment even without an explicit replacement flag.
@@ -136,6 +140,9 @@ func (message *AssistantMessage) ShallowCopy() *AssistantMessage {
 		// endTurn is an optional JavaScript boolean, not an object reference.
 		if copy.EndTurn != nil {
 			copy.EndTurn = new(*copy.EndTurn)
+		}
+		if copy.DurationMs != nil {
+			copy.DurationMs = new(*copy.DurationMs)
 		}
 		return &copy
 	}

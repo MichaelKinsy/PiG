@@ -1,4 +1,3 @@
-// SPDX-FileCopyrightText: Copyright Hewlett Packard Enterprise Development LP
 // SPDX-FileCopyrightText: Copyright (c) 2025 Mario Zechner
 // SPDX-License-Identifier: MIT
 
@@ -8,6 +7,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 )
@@ -41,14 +41,31 @@ func TestEncodeCwdForSessionDir(t *testing.T) {
 	}
 }
 
+// posixCwdSessionTail is the session directory name of the absolute POSIX path cwd ("/tmp/foo"). Pi resolves the cwd
+// with path.resolve first, and on win32 a path with no drive takes the drive of the process's working directory:
+// "/tmp/foo" resolves to "D:\tmp\foo" there and encodes as "--D--tmp-foo--".
+func posixCwdSessionTail(t *testing.T, cwd string) string {
+	t.Helper()
+	encoded := strings.ReplaceAll(strings.TrimPrefix(cwd, "/"), "/", "-")
+	if runtime.GOOS == "windows" {
+		wd, err := os.Getwd()
+		if err != nil {
+			t.Fatal(err)
+		}
+		drive := filepath.VolumeName(wd)
+		encoded = strings.TrimSuffix(drive, ":") + "--" + encoded
+	}
+	return "--" + encoded + "--"
+}
+
 func TestDefaultSessionDirUsesUpstreamEncoding(t *testing.T) {
 	// Ensures defaultSessionDir wires the upstream-parity encoder.
 	// We don't care about the agent-dir prefix here; we only check
 	// the trailing component.
 	got := defaultSessionDir("/tmp/parity-check")
 	tail := filepath.Base(got)
-	if tail != "--tmp-parity-check--" {
-		t.Errorf("tail=%q want=--tmp-parity-check--", tail)
+	if want := posixCwdSessionTail(t, "/tmp/parity-check"); tail != want {
+		t.Errorf("tail=%q want=%s", tail, want)
 	}
 }
 

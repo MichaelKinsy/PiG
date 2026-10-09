@@ -1,0 +1,842 @@
+[
+  {
+    "upstream": "packages/chord/src/api.ts",
+    "package": "./internal/chord",
+    "tests": [
+      "TestConsumerRejectsMalformedResets",
+      "TestDeltaRetainedFacetStateSubscriptionFollowsReload",
+      "TestDeltaRetainedFacetStateValueRejectsRevocation",
+      "TestDeltaStagedKeyedInstancesConnectInInsertionOrder",
+      "TestFacetDynamicConsumerUsesLoopback",
+      "TestFacetHost",
+      "TestFacetHostExternalServiceSource",
+      "TestFacetHostKeyedProvisionObservedLocallyAndRemotely",
+      "TestFacetHostOrdersActivationAndDisposesOnce",
+      "TestFacetHostReadinessUsesBackgroundContext",
+      "TestFacetHostRemoteConsumerAndReloadCutover",
+      "TestFacetHostSourcesRunConcurrentlyAndDisposeIndependently",
+      "TestFacetHostValidationAndStartupCleanup",
+      "TestFacetLoader",
+      "TestFacetServiceFollowsLocalCutover",
+      "TestIsolatedFacetKeyedObservationJoinsActivation",
+      "TestKeyedObservationPrefixFailureReportsDuringSpawn",
+      "TestLocalKeyedObserverRunsBeforeSpawnReturns",
+      "TestRemoteServices",
+      "TestReviewFacetCleanupPanicStillRunsRemainingEffects",
+      "TestReviewFacetSetupPanicCleansOwnedResources",
+      "TestReviewRetainedFacetImplementationRetargetsAndRevokes",
+      "TestServiceRefWithoutRegisteredViewFails",
+      "TestUpstreamReentrantHostTransitionIsRejected",
+      "TestUpstreamReloadActivationFailureKeepsOldGeneration",
+      "TestUpstreamRetainedKeyedViewClosesWithInstance",
+      "TestUpstreamRetirementFailureTerminatesHost"
+    ],
+    "upstream_reference": "packages/chord/test/services.test.ts, facets.test.ts, state.test.ts (defineService, createRemoteServiceBinding, createFacetHost, createStaticFacetLoader, combineFacetLoaders, createReplicatedState, attachReplicatedState entry points); api.ts",
+    "mutation": "internal/chord/service.go:153: return errors.New(\"Remote service reset has an invalid instance address\") -> return errors.New(\"~emote service reset has an invalid instance address\") (TestConsumerRejectsMalformedResets FAIL); internal/chord/facets.go:862: if facet.Id == \"\" { -> if facet.Id != \"\" { (TestDeltaRetainedFacetStateSubscriptionFollowsReload, TestDeltaRetainedFacetStateValueRejectsRevocation, TestDeltaStagedKeyedInstancesConnectInInsertionOrder FAIL); internal/chord/state.go:649: if err == nil { -> if err != nil { (TestRemoteServices FAIL); internal/chord/service.go:163: return errors.New(\"Remote service reset must contain full root replacements\") -> return errors.New(\"~emote service reset must contain full root replacements\") (TestConsumerRejectsMalformedResets FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/chord/src/bundler.ts",
+    "package": "./internal/experimental",
+    "tests": [
+      "TestBundleFacetPackageUsesCallerConventionsAndSharedServerCompiler",
+      "TestBundleFacetsOwnsOutputPathsVersionAndReplacement",
+      "TestBundleFacetsPreservesRecordValidationOrder",
+      "TestFacetBundles",
+      "TestNodeFacetContextAbortAcceptsUncomparableContext",
+      "TestNodeFacetContextAbortRecordOutlivesInFlightRequests",
+      "TestNodeFacetObserverForgetsAbortRecords",
+      "TestNodeFacetObserverKeepsSharedResultReferences",
+      "TestNodeFacetObserverReleasesFinishedObservations",
+      "TestNodeFacetObserverReportsAssimilatedFailures",
+      "TestNodeFacetObserverRunsPrefixWithoutAwaitingPromise",
+      "TestNodeFacetsRegisterReplaceRunAndDispose",
+      "TestNodeFacetsRemoteMethodsAndState"
+    ],
+    "upstream_reference": "packages/chord/test/bundle.test.ts (bundleFacets / bundleFacetPackage output, manifest and entry validation); bundler.ts",
+    "mutation": "internal/experimental/plugin_package_build.go:199: if err := replaceFacetBuildDirectory(temporary, output); err != nil { -> if err := replaceFacetBuildDirectory(temporary, output); err == nil { (TestBundleFacetPackageUsesCallerConventionsAndSharedServerCompiler, TestBundleFacetsOwnsOutputPathsVersionAndReplacement, TestFacetBundles FAIL); internal/experimental/facet_bundle_build.go:118: return errors.New(\"Facet bundle external import must not be empty\") -> return errors.New(\"~acet bundle external import must not be empty\") (TestBundleFacetsPreservesRecordValidationOrder FAIL); internal/experimental/plugin_package_build.go:182: if input.Name != \"__proto__\" { -> if input.Name == \"__proto__\" { (TestBundleFacetPackageUsesCallerConventionsAndSharedServerCompiler, TestBundleFacetsOwnsOutputPathsVersionAndReplacement, TestFacetBundles FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/chord/src/context/index.ts",
+    "package": "./internal/chord/chordctx",
+    "tests": [
+      "TestContextInheritsParentCancellationAndIsolatesChildCancellation",
+      "TestContextStopsWaitingWhenTheInvocationIsCancelled",
+      "TestContextWithAnAlreadyCancelledSignalIsCancelledOnReturn"
+    ],
+    "upstream_reference": "packages/chord/test/context.test.ts (distinct root contexts, layered values, cancellation inheritance and isolation, mandatory cleanup masking, await cancellation); context/index.ts",
+    "mutation": "internal/chord/chordctx/chordctx.go:65: if err := ctx.Err(); err != nil { -> if err := ctx.Err(); err == nil { (TestContextStopsWaitingWhenTheInvocationIsCancelled, TestContextWithAnAlreadyCancelledSignalIsCancelledOnReturn FAIL); internal/chord/chordctx/chordctx.go:35: if signal.Err() != nil { -> if signal.Err() == nil { (TestContextInheritsParentCancellationAndIsolatesChildCancellation, TestContextStopsWaitingWhenTheInvocationIsCancelled, TestContextWithAnAlreadyCancelledSignalIsCancelledOnReturn FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/chord/src/delta/diff.ts",
+    "package": "./chord/delta",
+    "tests": [
+      "TestCheckedImmutableOperationApplication",
+      "TestDeltaCanonicalStrings",
+      "TestDeltaDiff",
+      "TestDeltaImmutableTrackerLifecycle",
+      "TestDeltaOperationApplicationAndValidation",
+      "TestDeltaPathAndPrototypeSafety",
+      "TestDeltaTrackerRetentionAcrossGCJobs",
+      "TestStateDiff",
+      "TestStateFuzzConvergesAcrossRandomizedPreparedRevisions",
+      "TestStateValueOwnership",
+      "TestTrackerByValuePlacements",
+      "TestTrackerObjectEmissionScaling",
+      "TestTrackerOwnership",
+      "TestTrackerPieceArrays",
+      "TestTrackerPolicyView",
+      "TestTrackerRandomizedTransactions",
+      "TestTrackerSecurityAndStorageStyleCloning",
+      "TestTrackerTransactionalOverlayLifecycle",
+      "TestTransactionalOverlayDrafts"
+    ],
+    "upstream_reference": "packages/chord/test/delta-diff.test.ts and state-diff.test.ts (diffRevisions batches replay to the target revision); delta/diff.ts",
+    "mutation": "chord/delta/diff.go:159: if !exists || entry.used == len(entry.indices) { -> if !exists || entry.used != len(entry.indices) { (TestDeltaDiff, TestStateDiff, TestTrackerPieceArrays FAIL); chord/delta/diff.go:64: return leftTracked == rightTracked && leftID == rightID && sameKind(left, right) -> return leftTracked != rightTracked && leftID == rightID && sameKind(left, right) (TestCheckedImmutableOperationApplication, TestDeltaCanonicalStrings, TestDeltaDiff FAIL); chord/delta/diff.go:76: return leftArray == rightArray -> return leftArray != rightArray (TestCheckedImmutableOperationApplication, TestDeltaCanonicalStrings, TestDeltaDiff FAIL); chord/delta/diff.go:417: for beforeStart < beforeEnd && afterStart < afterEnd && sameValue(before[beforeEnd-1], after[afterEnd-1]) { -> for beforeStart <= beforeEnd && afterStart < afterEnd && sameValue(before[beforeEnd-1], after[afterEnd-1]) { (TestDeltaImmutableTrackerLifecycle FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/chord/src/delta/index.ts",
+    "package": "./chord/delta",
+    "tests": [
+      "TestDeltaArrayIndexSafety",
+      "TestDeltaCodec",
+      "TestDeltaDiff",
+      "TestDeltaOperationApplicationAndValidation",
+      "TestDeltaOperationAssertions",
+      "TestDeltaOperationStructureSafety",
+      "TestDeltaPathAndPrototypeSafety",
+      "TestStateDiff"
+    ],
+    "upstream_reference": "packages/chord/test/delta.test.ts, delta-apply-immutable.test.ts and delta-clone.test.ts (operation validation, apply, immutable apply, codec, overlap); delta/index.ts",
+    "mutation": "chord/delta/delta.go:456: if len(op) != 3 || !integer(op[1], 0) { -> if len(op) == 3 || !integer(op[1], 0) { (TestDeltaCodec, TestDeltaOperationApplicationAndValidation, TestDeltaOperationAssertions FAIL); chord/delta/apply.go:409: if sc != nil { -> if sc == nil { (TestDeltaArrayIndexSafety FAIL); chord/delta/codec.go:85: if err := AssertValidWireOp(op); err != nil { -> if err := AssertValidWireOp(op); err == nil { (TestDeltaCodec, TestDeltaDiff, TestDeltaOperationStructureSafety FAIL); chord/delta/delta.go:353: if err := assertPathArg(op[1], false); err != nil { -> if err := assertPathArg(op[1], false); err == nil { (TestDeltaOperationStructureSafety FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/chord/src/delta/tracker.ts",
+    "package": "./chord/delta",
+    "tests": [
+      "TestArrayReorderRecordsThePermutation",
+      "TestTrackerArrayRootOperationsMatchPiForRandomizedEdits",
+      "TestTrackerOperationsMatchPiForRandomizedEdits",
+      "TestTrackerSortComparatorWritesAndReentrantAppends",
+      "TestTrackerSortKeepsComparatorEditsOnObjectDrafts",
+      "TestTrackerSortNormalizesDuplicatesFromReentrantStructuralEdits",
+      "TestTrackerSupportsRootArrays"
+    ],
+    "upstream_reference": "packages/chord/test/delta-tracker/tracker.test.ts and state-draft.test.ts plus the 1,700 recorded Pi edit scripts (chord/delta/testdata/pi_change_operations.mjs): the tracker records Pi's exact operation batches, order included; delta/tracker.ts",
+    "mutation": "chord/delta/tracker.go:597: if len(a.path) != len(b.path) { -> if len(a.path) == len(b.path) { (TestTrackerArrayRootOperationsMatchPiForRandomizedEdits, TestTrackerOperationsMatchPiForRandomizedEdits, TestTrackerSortNormalizesDuplicatesFromReentrantStructuralEdits FAIL); chord/delta/tracker.go:794: for index := 0; index < len(n.entries); { -> for index := 0; index <= len(n.entries); { (TestTrackerSupportsRootArrays FAIL); chord/delta/apply.go:332: if !isArray || len(items) != len(permutation) { -> if !isArray || len(items) == len(permutation) { (TestArrayReorderRecordsThePermutation, TestTrackerArrayRootOperationsMatchPiForRandomizedEdits, TestTrackerOperationsMatchPiForRandomizedEdits FAIL); chord/delta/handles.go:393: if len(permutation) != len(n.entries) { -> if len(permutation) == len(n.entries) { (TestArrayReorderRecordsThePermutation FAIL); chord/delta/tracker.go:227: if err != nil { -> if err == nil { (TestTrackerSupportsRootArrays FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/chord/src/facets/host.ts",
+    "package": "./internal/chord",
+    "tests": [
+      "TestDeltaStagedKeyedInstancesConnectInInsertionOrder",
+      "TestFacetHost",
+      "TestFacetHostExternalServiceSource",
+      "TestFacetHostKeyedProvisionObservedLocallyAndRemotely",
+      "TestFacetHostReadinessUsesBackgroundContext",
+      "TestFacetHostSourcesRunConcurrentlyAndDisposeIndependently",
+      "TestIsolatedFacetKeyedObservationJoinsActivation"
+    ],
+    "upstream_reference": "packages/chord/test/facets.test.ts:1-900 (facet phases, setup/activate/deactivate order, service provision and use, reload, dispose and abort); facets/host.ts",
+    "mutation": "internal/chord/facets.go:1165: if services == nil { -> if services != nil { (TestFacetHost, TestFacetHostExternalServiceSource, TestFacetHostReadinessUsesBackgroundContext FAIL); internal/chord/facets.go:752: if start := registry.startLocked(observer, instance); start != nil { -> if start := registry.startLocked(observer, instance); start == nil { (TestFacetHost, TestFacetHostKeyedProvisionObservedLocallyAndRemotely FAIL); internal/chord/facets.go:325: if err := lifecycle.assertSettingUp(\"register activation callbacks\"); err != nil { -> if err := lifecycle.assertSettingUp(\"register activation callbacks\"); err == nil { (TestDeltaStagedKeyedInstancesConnectInInsertionOrder FAIL); internal/chord/facets.go:222: if err := safeCall(func() error { stop, started = start(); return nil }); err != nil { -> if err := safeCall(func() error { stop, started = start(); return nil }); err == nil { (TestFacetHost, TestIsolatedFacetKeyedObservationJoinsActivation FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/chord/src/facets/loader.ts",
+    "package": "./internal/chord",
+    "tests": [
+      "TestCombineFacetLoadersReleasesInReverseOnce",
+      "TestCombinedLoaderDisposeIsReentrant",
+      "TestDeltaLoaderPanicCleansEarlierLoads",
+      "TestFacetLoader"
+    ],
+    "upstream_reference": "packages/chord/test/facet-loader.test.ts (static and combined loaders, disposal joins errors in an AggregateError); facets/loader.ts",
+    "mutation": "internal/chord/facets.go:134: if set.Dispose == nil { -> if set.Dispose != nil { (TestCombineFacetLoadersReleasesInReverseOnce, TestCombinedLoaderDisposeIsReentrant, TestDeltaLoaderPanicCleansEarlierLoads FAIL); internal/chord/facets.go:137: if err := safeCall(func() error { return set.Dispose(ctx) }); err != nil { -> if err := safeCall(func() error { return set.Dispose(ctx) }); err == nil { (TestFacetLoader FAIL); internal/chord/facets.go:101: if err != nil { -> if err == nil { (TestCombineFacetLoadersReleasesInReverseOnce, TestDeltaLoaderPanicCleansEarlierLoads, TestFacetLoader FAIL); internal/chord/facets.go:104: if cleanup := disposeLoaded(ctx, reversed); len(cleanup) > 0 { -> if cleanup := disposeLoaded(ctx, reversed); len(cleanup) >= 0 { (TestFacetLoader FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/chord/src/index.ts",
+    "package": "./internal/chord",
+    "tests": [
+      "TestBeginRebindRevokesKeyedHandleBeforeSubscriptionRelease",
+      "TestBindingAllowlistAndModeValidation",
+      "TestBindingRebindAndDisposeRejectWithAggregateErrorMessageOnly",
+      "TestConcurrentChangesReachReplicaGapFree",
+      "TestEndpointDisposeReleasesProviderSubscriptions",
+      "TestFacetHostExternalServiceSource",
+      "TestFacetHostKeyedProvisionObservedLocallyAndRemotely",
+      "TestFacetHostReadinessUsesBackgroundContext",
+      "TestFacetHostRemoteConsumerAndReloadCutover",
+      "TestFacetHostSourcesRunConcurrentlyAndDisposeIndependently",
+      "TestKeyedGenerationsObservationAndStaleCalls",
+      "TestKeyedObserverRunsBeforeSnapshotReadiness",
+      "TestRebindAndDisposeCloseSubscriptionsExactlyOnce",
+      "TestRemoteMethodPanicIsReturnedToCaller",
+      "TestRemoteServices",
+      "TestServiceWireProtocol",
+      "TestSingletonReplaceRehydratesAndWithdrawClears",
+      "TestSingletonReplicaHydratesThenReceivesOperationStream",
+      "TestWireUpdateRoundTrip"
+    ],
+    "upstream_reference": "packages/chord/test/services.test.ts, service-wire.test.ts and state.test.ts import the runtime surface re-exported by index.ts (error codes, wire parsing, service and state entry points); index.ts is a barrel, so its behavior is what those exports do",
+    "mutation": "internal/chord/types.go:162: return errors.As(err, &remote) && remote.Code == code -> return errors.As(err, &remote) && remote.Code != code (TestBeginRebindRevokesKeyedHandleBeforeSubscriptionRelease, TestBindingAllowlistAndModeValidation, TestKeyedGenerationsObservationAndStaleCalls FAIL); internal/chord/wire.go:106: if wire.Sequence != nil || wire.Ops != nil { -> if wire.Sequence == nil || wire.Ops != nil { (TestBindingRebindAndDisposeRejectWithAggregateErrorMessageOnly, TestConcurrentChangesReachReplicaGapFree, TestEndpointDisposeReleasesProviderSubscriptions FAIL); internal/chord/state_wire_parse.go:124: if err != nil { -> if err == nil { (TestServiceWireProtocol FAIL); internal/chord/wire.go:176: if err := json.Unmarshal(wire.Instance, result.Address); err != nil { -> if err := json.Unmarshal(wire.Instance, result.Address); err == nil { (TestKeyedGenerationsObservationAndStaleCalls, TestWireUpdateRoundTrip FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/chord/src/json.ts",
+    "package": "./internal/chord/chordjson",
+    "tests": [
+      "TestCopy",
+      "TestOmitsUnsetObjectEntriesWithoutNormalizingArrays",
+      "TestStored"
+    ],
+    "upstream_reference": "packages/chord/test/json.test.ts (strict JSON copy, cycle and non-finite rejection, isValue, stored copies); json.ts copyJson/isJsonValue",
+    "mutation": "internal/chord/chordjson/chordjson.go:88: if err != nil { -> if err == nil { (TestCopy, TestOmitsUnsetObjectEntriesWithoutNormalizingArrays FAIL); internal/chord/chordjson/chordjson.go:172: if err := json.Unmarshal(encoded, &stored); err != nil { -> if err := json.Unmarshal(encoded, &stored); err == nil { (TestOmitsUnsetObjectEntriesWithoutNormalizingArrays, TestStored FAIL); internal/chord/chordjson/chordjson.go:107: if err != nil { -> if err == nil { (TestCopy FAIL); internal/chord/chordjson/chordjson.go:168: if err != nil { -> if err == nil { (TestOmitsUnsetObjectEntriesWithoutNormalizingArrays, TestStored FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/chord/src/node.ts",
+    "package": "./internal/experimental",
+    "tests": [
+      "TestFacetBundles",
+      "TestNodeFacetsRegisterReplaceRunAndDispose",
+      "TestReadFacetBundleManifestVersionDiagnostics"
+    ],
+    "upstream_reference": "packages/chord/test/bundle.test.ts and the Node facet runtime tests (internal/experimental/node_facets_test.go): createFacetBundleLoader, artifact loader, readFacetBundleArtifact and readFacetBundleManifest; node.ts",
+    "mutation": "internal/experimental/node_facets.go:207: if err != nil { -> if err == nil { (TestFacetBundles FAIL); internal/experimental/node_facets.go:495: if number == 0 { -> if number != 0 { (TestReadFacetBundleManifestVersionDiagnostics FAIL); internal/experimental/node_facets.go:299: if entry.SourceMap != nil { -> if entry.SourceMap == nil { (TestFacetBundles, TestNodeFacetsRegisterReplaceRunAndDispose FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/chord/src/node/bundle-loader.ts",
+    "package": "./internal/experimental",
+    "tests": [
+      "TestNodeFacetObserverForgetsAbortRecords",
+      "TestNodeFacetObserverReleasesFinishedObservations",
+      "TestNodeFacetObserverReportsAssimilatedFailures",
+      "TestNodeFacetObserverRunsPrefixWithoutAwaitingPromise",
+      "TestNodeFacetsRegisterReplaceRunAndDispose",
+      "TestNodeFacetsRemoteMethodsAndState"
+    ],
+    "upstream_reference": "packages/chord/test/bundle.test.ts and internal/experimental/node_facets_test.go: the vendored upstream bundle-loader runs in an isolated Node process and the Go host drives its protocol; node/bundle-loader.ts",
+    "mutation": "internal/experimental/node_facets_host.go:902: if len(args) == 0 { -> if len(args) != 0 { (TestNodeFacetsRegisterReplaceRunAndDispose FAIL); internal/experimental/node_facets_protocol.go:328: if reference.Kind != \"node\" || !reference.Callable { -> if reference.Kind == \"node\" || !reference.Callable { (TestNodeFacetObserverForgetsAbortRecords, TestNodeFacetObserverReleasesFinishedObservations, TestNodeFacetObserverReportsAssimilatedFailures FAIL); internal/experimental/node_facets_protocol.go:298: if err != nil { -> if err == nil { (TestNodeFacetsRegisterReplaceRunAndDispose FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/chord/src/node/bundle.ts",
+    "package": "./internal/experimental",
+    "tests": [
+      "TestBundleFacetPackageUsesCallerConventionsAndSharedServerCompiler",
+      "TestBundleFacetsOwnsOutputPathsVersionAndReplacement",
+      "TestBundleFacetsPreservesRecordValidationOrder",
+      "TestFacetBundles",
+      "TestNodeFacetContextAbortAcceptsUncomparableContext",
+      "TestNodeFacetContextAbortRecordOutlivesInFlightRequests",
+      "TestNodeFacetObserverForgetsAbortRecords",
+      "TestNodeFacetObserverKeepsSharedResultReferences",
+      "TestNodeFacetObserverReleasesFinishedObservations",
+      "TestNodeFacetObserverReportsAssimilatedFailures",
+      "TestNodeFacetObserverRunsPrefixWithoutAwaitingPromise",
+      "TestNodeFacetsRegisterReplaceRunAndDispose",
+      "TestNodeFacetsRemoteMethodsAndState"
+    ],
+    "upstream_reference": "packages/chord/test/bundle.test.ts (esbuild bundle of facets, externals and sources); node/bundle.ts",
+    "mutation": "internal/experimental/plugin_package_build.go:207: if manifest.Plugin.Version != nil { -> if manifest.Plugin.Version == nil { (TestFacetBundles FAIL); internal/experimental/plugin_package_build.go:71: if err != nil { -> if err == nil { (TestBundleFacetPackageUsesCallerConventionsAndSharedServerCompiler FAIL); internal/experimental/plugin_package_build.go:127: if err := validateFacetBuild(options, entries); err != nil { -> if err := validateFacetBuild(options, entries); err == nil { (TestBundleFacetPackageUsesCallerConventionsAndSharedServerCompiler, TestBundleFacetsOwnsOutputPathsVersionAndReplacement, TestBundleFacetsPreservesRecordValidationOrder FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/chord/src/node/manifest.ts",
+    "package": "./internal/experimental",
+    "tests": [
+      "TestFacetBundleManifestConstantsAndPluginAreTheOnesManifestTSDeclares",
+      "TestFacetBundles",
+      "TestReadFacetBundleArtifact",
+      "TestNodeFacetPromiseWaitCancellationRetiresOnlyObserver"
+    ],
+    "upstream_reference": "packages/chord/src/node/manifest.ts:1-5 (FACET_BUNDLE_FORMAT, FACET_BUNDLE_FORMAT_VERSION, FACET_BUNDLE_MANIFEST_FILE, artifact format and version) and :25-28 (FacetBundlePlugin optional version); packages/chord/test/bundle.test.ts",
+    "mutation": "internal/experimental/facet_bundle.go:29: if plugin.Version != nil { -> if plugin.Version == nil { (TestNodeFacetPromiseWaitCancellationRetiresOnlyObserver FAIL); internal/experimental/facet_bundle.go:29: if plugin.Version != nil { -> if plugin.Version != nil && *plugin.Version != \"\" { (TestFacetBundleManifestConstantsAndPluginAreTheOnesManifestTSDeclares FAIL); internal/experimental/facet_bundle.go:15: FacetBundleManifestFile = \"chord-facets.json\" -> \"chord-facet.json\" (TestFacetBundleManifestConstantsAndPluginAreTheOnesManifestTSDeclares FAIL; survived every other -run TestNodeFacet|TestFacetBundles|TestReadFacetBundle|TestBundleFacet test); internal/experimental/facet_bundle.go:13: FacetBundleFormat = \"chord.facet-bundle\" -> \"chord.facet-bundles\" (TestFacetBundles, TestNodeFacetObserverReleasesFinishedObservations FAIL); internal/experimental/facet_bundle.go:17: FacetBundleArtifactFormatVersion = 2 -> 3 (TestFacetBundles, TestNodeFacetPromiseWaitCancellationRetiresOnlyObserver, TestReadFacetBundleArtifact FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/chord/src/node/package.ts",
+    "package": "./internal/experimental",
+    "tests": [
+      "TestBundleFacetPackageUsesCallerConventionsAndSharedServerCompiler",
+      "TestBundleFacetsPreservesRecordValidationOrder",
+      "TestFacetBundles"
+    ],
+    "upstream_reference": "packages/chord/test/bundle.test.ts (package metadata and entry resolution); node/package.ts",
+    "mutation": "internal/experimental/plugin_package_metadata.go:251: if err != nil { -> if err == nil { (TestBundleFacetPackageUsesCallerConventionsAndSharedServerCompiler, TestFacetBundles FAIL); internal/experimental/facet_bundle_build.go:118: return errors.New(\"Facet bundle external import must not be empty\") -> return errors.New(\"~acet bundle external import must not be empty\") (TestBundleFacetsPreservesRecordValidationOrder FAIL); internal/experimental/plugin_package_metadata.go:323: if entry.Value == false { -> if entry.Value != false { (TestFacetBundles FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/chord/src/services/consumer.ts",
+    "package": "./internal/chord",
+    "tests": [
+      "TestBeginRebindFencesBeforeCompletionAndJoinsCancellation",
+      "TestBeginRebindRevokesKeyedHandleBeforeSubscriptionRelease",
+      "TestBindingAllowlistAndModeValidation",
+      "TestBindingReadyRejectsWithoutWaitingForEarlierPendingService",
+      "TestBindingRebindAndDisposeRejectWithAggregateErrorMessageOnly",
+      "TestDeltaRetainedFacetStateSubscriptionFollowsReload",
+      "TestDeltaRetainedFacetStateValueRejectsRevocation",
+      "TestFacetDynamicConsumerUsesLoopback",
+      "TestFacetHost",
+      "TestFacetHostExternalServiceSource",
+      "TestFacetHostKeyedProvisionObservedLocallyAndRemotely",
+      "TestFacetHostOrdersActivationAndDisposesOnce",
+      "TestFacetHostRemoteConsumerAndReloadCutover",
+      "TestFacetHostSourcesRunConcurrentlyAndDisposeIndependently",
+      "TestFacetLoader",
+      "TestIsolatedFacetKeyedObservationJoinsActivation",
+      "TestKeyedGenerationsObservationAndStaleCalls",
+      "TestKeyedObserverRunsBeforeSnapshotReadiness",
+      "TestKeyedResetsRetainLiveGenerationsAndReconcileClosedAndReusedKeys",
+      "TestRebindAndDisposeCloseSubscriptionsExactlyOnce",
+      "TestRemoteMethodPanicIsReturnedToCaller",
+      "TestRemoteServices",
+      "TestReviewRetainedFacetImplementationRetargetsAndRevokes",
+      "TestReviewUnbindFencesSnapshotAlreadyBeingInstalled",
+      "TestSingletonReplicaHydratesThenReceivesOperationStream",
+      "TestUpstreamRetainedRemoteStateRevokedByDispose",
+      "TestRemoteServiceMemberUsedAsTwoKindsIsRejected"
+    ],
+    "upstream_reference": "packages/chord/test/services.test.ts, service-delivery.test.ts, service-wire.test.ts (remote service binding: calls, observers, cancellation, replacement); services/consumer.ts",
+    "mutation": "internal/chord/binding.go:338: if err := closing.wait(context.Background()); err != nil { -> if err := closing.wait(context.Background()); err == nil { (TestBeginRebindFencesBeforeCompletionAndJoinsCancellation, TestBeginRebindRevokesKeyedHandleBeforeSubscriptionRelease, TestBindingReadyRejectsWithoutWaitingForEarlierPendingService FAIL); internal/chord/binding.go:613: return *left == *right -> return *left != *right (TestBeginRebindRevokesKeyedHandleBeforeSubscriptionRelease, TestFacetHost, TestFacetHostKeyedProvisionObservedLocallyAndRemotely FAIL); internal/chord/binding_async.go:62: if ctx.Err() != nil { -> if ctx.Err() == nil { (TestBindingRebindAndDisposeRejectWithAggregateErrorMessageOnly, TestFacetHost, TestFacetHostExternalServiceSource FAIL); internal/chord/binding.go:279: if err := binding.assertAvailableLocked(serviceId, false, ServiceKeyed); err != nil { -> if err := binding.assertAvailableLocked(serviceId, false, ServiceKeyed); err == nil { (TestBindingAllowlistAndModeValidation, TestFacetHost, TestFacetHostKeyedProvisionObservedLocallyAndRemotely FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS; review rev-gap-behavior-libs-r (consumer.ts:104-117 #expect): internal/chord/binding.go: the `was used as two different kinds` check removed (TestRemoteServiceMemberUsedAsTwoKindsIsRejected FAIL); slot.expected = kind -> slot.expected = \"\" (TestRemoteServiceMemberUsedAsTwoKindsIsRejected FAIL); compiled test FAIL (go test -overlay), baseline PASS"
+  },
+  {
+    "upstream": "packages/chord/src/services/errors.ts",
+    "package": "./internal/chord",
+    "tests": [
+      "TestRemoteServiceErrorCodesAreTheStringsErrorsTSDeclares",
+      "TestBeginRebindRevokesKeyedHandleBeforeSubscriptionRelease",
+      "TestBindingAllowlistAndModeValidation",
+      "TestKeyedGenerationsObservationAndStaleCalls",
+      "TestRebindAndDisposeCloseSubscriptionsExactlyOnce",
+      "TestRemoteServices",
+      "TestSingletonReplaceRehydratesAndWithdrawClears",
+      "TestSingletonReplicaHydratesThenReceivesOperationStream"
+    ],
+    "upstream_reference": "packages/chord/src/services/errors.ts:1-26 (REMOTE_SERVICE_ERROR_CODES literals, carried on the session-worker wire and validated by session-worker.ts:61; RemoteServiceError code and message); packages/chord/test/services.test.ts and service-wire.test.ts",
+    "mutation": "internal/chord/types.go:162: return errors.As(err, &remote) && remote.Code == code -> return errors.As(err, &remote) && remote.Code != code (TestBeginRebindRevokesKeyedHandleBeforeSubscriptionRelease, TestBindingAllowlistAndModeValidation, TestKeyedGenerationsObservationAndStaleCalls FAIL); internal/chord/types.go:143: ErrServiceStaleInstance = \"service_stale_instance\" -> \"service_stale\" (TestRemoteServiceErrorCodesAreTheStringsErrorsTSDeclares FAIL; survived every other internal/chord test); internal/chord/types.go:153: Error() returns err.Message -> string(err.Code) + \": \" + err.Message (TestRemoteServiceErrorCodesAreTheStringsErrorsTSDeclares FAIL); internal/chord/types.go:162: errors.As(err, &remote) && remote.Code == code -> errors.As(err, &remote) (TestRemoteServiceErrorCodesAreTheStringsErrorsTSDeclares FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/chord/src/services/handle.ts",
+    "package": "./internal/chord",
+    "tests": [
+      "TestDeltaRetainedFacetStateSubscriptionFollowsReload",
+      "TestFacetHostRemoteConsumerAndReloadCutover"
+    ],
+    "upstream_reference": "packages/chord/test/services.test.ts and facets.test.ts (service handles resolve through a slot, unbound and replaced handles); services/handle.ts",
+    "mutation": "internal/chord/views.go:62: if err != nil { -> if err == nil { (TestFacetHostRemoteConsumerAndReloadCutover FAIL); internal/chord/facets.go:556: if err := ref.access(); err != nil { -> if err := ref.access(); err == nil { (TestDeltaRetainedFacetStateSubscriptionFollowsReload FAIL); internal/chord/views.go:70: if err != nil { -> if err == nil { (TestDeltaRetainedFacetStateSubscriptionFollowsReload FAIL); internal/chord/facets.go:598: if err != nil { -> if err == nil { (TestDeltaRetainedFacetStateSubscriptionFollowsReload FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/chord/src/services/instances.ts",
+    "package": "./internal/chord",
+    "tests": [
+      "TestBeginRebindRevokesKeyedHandleBeforeSubscriptionRelease",
+      "TestContinueObservationReportsOnlyLiveRejection",
+      "TestFacetHost",
+      "TestFacetHostKeyedProvisionObservedLocallyAndRemotely",
+      "TestIsolatedFacetKeyedObservationJoinsActivation",
+      "TestKeyedGenerationsObservationAndStaleCalls",
+      "TestKeyedObservationPrefixFailureReportsDuringSpawn",
+      "TestKeyedObserverRunsBeforeSnapshotReadiness",
+      "TestKeyedResetsRetainLiveGenerationsAndReconcileClosedAndReusedKeys",
+      "TestLocalKeyedObserverRunsBeforeSpawnReturns",
+      "TestRemoteServices"
+    ],
+    "upstream_reference": "packages/chord/test/services.test.ts (keyed service instance directory: spawn, observe, remove, duplicate keys); services/instances.ts",
+    "mutation": "internal/chord/keyed.go:420: if snapshot.Mode != ServiceKeyed || snapshot.ServiceId != keyed.serviceId { -> if snapshot.Mode == ServiceKeyed || snapshot.ServiceId != keyed.serviceId { (TestBeginRebindRevokesKeyedHandleBeforeSubscriptionRelease, TestFacetHost, TestFacetHostKeyedProvisionObservedLocallyAndRemotely FAIL); internal/chord/keyed.go:271: if keyed.bound && keyed.starting == nil { -> if keyed.bound && keyed.starting != nil { (TestFacetHost, TestFacetHostKeyedProvisionObservedLocallyAndRemotely, TestIsolatedFacetKeyedObservationJoinsActivation FAIL); internal/chord/keyed.go:474: if err := validateResetSnapshot(snapshot, keyed.serviceId, ServiceKeyed); err != nil { -> if err := validateResetSnapshot(snapshot, keyed.serviceId, ServiceKeyed); err == nil { (TestKeyedResetsRetainLiveGenerationsAndReconcileClosedAndReusedKeys FAIL); internal/chord/keyed.go:186: if ctx.Err() != nil { -> if ctx.Err() == nil { (TestContinueObservationReportsOnlyLiveRejection, TestFacetHost, TestFacetHostKeyedProvisionObservedLocallyAndRemotely FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/chord/src/services/loopback.ts",
+    "package": "./internal/chord",
+    "tests": [
+      "TestFacetHost",
+      "TestFacetHostOrdersActivationAndDisposesOnce",
+      "TestFacetHostRemoteConsumerAndReloadCutover",
+      "TestLoopbackTransportForwardsInvokeAdmissionAndSubscribeToTheProvider"
+    ],
+    "upstream_reference": "packages/chord/test/services.test.ts and facets.test.ts (createLoopbackServiceTransport forwards invoke, admission and subscribe to the provider unchanged); services/loopback.ts",
+    "mutation": "internal/chord/endpoint.go:174: return transport.provider.BeginInvoke(ctx, call) -> return nil, errors.New(\"no admission\") (TestLoopbackTransportForwardsInvokeAdmissionAndSubscribeToTheProvider FAIL); internal/chord/endpoint.go:178: return transport.provider.Subscribe(serviceId, mode, listener) -> return nil, errors.New(\"loopback has no subscriptions\") (TestFacetHost, TestFacetHostOrdersActivationAndDisposesOnce, TestFacetHostRemoteConsumerAndReloadCutover FAIL); internal/chord/endpoint.go:169: return transport.provider.Invoke(ctx, call) -> return transport.provider.Invoke(context.Background(), call) (TestLoopbackTransportForwardsInvokeAdmissionAndSubscribeToTheProvider FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/chord/src/services/provider.ts",
+    "package": "./internal/chord",
+    "tests": [
+      "TestBindingRebindAndDisposeRejectWithAggregateErrorMessageOnly",
+      "TestConcurrentChangesReachReplicaGapFree",
+      "TestFacetHost",
+      "TestFacetHostExternalServiceSource",
+      "TestFacetHostOrdersActivationAndDisposesOnce",
+      "TestFacetHostReadinessUsesBackgroundContext",
+      "TestFacetHostRemoteConsumerAndReloadCutover",
+      "TestFacetHostSourcesRunConcurrentlyAndDisposeIndependently",
+      "TestFacetLoader",
+      "TestKeyedGenerationsObservationAndStaleCalls",
+      "TestRemoteMethodPanicIsReturnedToCaller",
+      "TestRemoteServices",
+      "TestReviewRetainedFacetImplementationRetargetsAndRevokes",
+      "TestSingletonReplaceRehydratesAndWithdrawClears",
+      "TestSingletonReplicaHydratesThenReceivesOperationStream"
+    ],
+    "upstream_reference": "packages/chord/test/services.test.ts, service-wire.test.ts, service-delivery.test.ts (provider endpoint: member dispatch, keyed instances, delivery order, errors); services/provider.ts",
+    "mutation": "internal/chord/endpoint.go:220: if err != nil { -> if err == nil { (TestConcurrentChangesReachReplicaGapFree, TestFacetHostExternalServiceSource, TestFacetHostReadinessUsesBackgroundContext FAIL); internal/chord/provider.go:400: if err != nil { -> if err == nil { (TestConcurrentChangesReachReplicaGapFree, TestFacetHost, TestFacetHostExternalServiceSource FAIL); internal/chord/endpoint.go:242: if subscription == nil { -> if subscription != nil { (TestConcurrentChangesReachReplicaGapFree, TestFacetHostRemoteConsumerAndReloadCutover, TestKeyedGenerationsObservationAndStaleCalls FAIL); internal/chord/provider.go:544: if err := provider.assertAccessLocked(serviceId, local); err != nil { -> if err := provider.assertAccessLocked(serviceId, local); err == nil { (TestBindingRebindAndDisposeRejectWithAggregateErrorMessageOnly FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/chord/src/services/state-codec.ts",
+    "package": "./internal/chord",
+    "tests": [
+      "TestAnOverflowResetCanMakeASingletonUnavailableBeforeALaterReplacement",
+      "TestKeyedResetsRetainLiveGenerationsAndReconcileClosedAndReusedKeys",
+      "TestRebaselinesEveryMemberThroughWireCodecsThenResumesContiguousDeltas",
+      "TestServiceWireProtocol"
+    ],
+    "upstream_reference": "packages/chord/test/service-wire.test.ts and state.test.ts (state frame encode/decode); services/state-codec.ts",
+    "mutation": "internal/chord/state_codec.go:218: if err != nil { -> if err == nil { (TestKeyedResetsRetainLiveGenerationsAndReconcileClosedAndReusedKeys, TestRebaselinesEveryMemberThroughWireCodecsThenResumesContiguousDeltas, TestServiceWireProtocol FAIL); internal/chord/state_codec.go:130: if err != nil { -> if err == nil { (TestKeyedResetsRetainLiveGenerationsAndReconcileClosedAndReusedKeys, TestRebaselinesEveryMemberThroughWireCodecsThenResumesContiguousDeltas, TestServiceWireProtocol FAIL); internal/chord/state_codec.go:96: if member.Kind == MemberState { -> if member.Kind != MemberState { (TestAnOverflowResetCanMakeASingletonUnavailableBeforeALaterReplacement, TestKeyedResetsRetainLiveGenerationsAndReconcileClosedAndReusedKeys, TestRebaselinesEveryMemberThroughWireCodecsThenResumesContiguousDeltas FAIL); internal/chord/state_codec.go:190: if err != nil { -> if err == nil { (TestAnOverflowResetCanMakeASingletonUnavailableBeforeALaterReplacement, TestKeyedResetsRetainLiveGenerationsAndReconcileClosedAndReusedKeys, TestRebaselinesEveryMemberThroughWireCodecsThenResumesContiguousDeltas FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/chord/src/services/state-internals.ts",
+    "package": "./internal/chord",
+    "tests": [
+      "TestAnOverflowResetCanMakeASingletonUnavailableBeforeALaterReplacement",
+      "TestBeginRebindFencesBeforeCompletionAndJoinsCancellation",
+      "TestBeginRebindRevokesKeyedHandleBeforeSubscriptionRelease",
+      "TestBindingRebindAndDisposeRejectWithAggregateErrorMessageOnly",
+      "TestConcurrentChangesReachReplicaGapFree",
+      "TestDeltaRetainedFacetStateSubscriptionFollowsReload",
+      "TestDeltaRetainedFacetStateValueRejectsRevocation",
+      "TestFacetDynamicConsumerUsesLoopback",
+      "TestFacetHost",
+      "TestFacetHostExternalServiceSource",
+      "TestFacetHostKeyedProvisionObservedLocallyAndRemotely",
+      "TestFacetHostOrdersActivationAndDisposesOnce",
+      "TestFacetHostReadinessUsesBackgroundContext",
+      "TestFacetHostRemoteConsumerAndReloadCutover",
+      "TestFacetHostSourcesRunConcurrentlyAndDisposeIndependently",
+      "TestKeyedGenerationsObservationAndStaleCalls",
+      "TestKeyedObserverRunsBeforeSnapshotReadiness",
+      "TestKeyedResetsRetainLiveGenerationsAndReconcileClosedAndReusedKeys",
+      "TestPublicDelivery",
+      "TestRebaselinesEveryMemberThroughWireCodecsThenResumesContiguousDeltas",
+      "TestRebindAndDisposeCloseSubscriptionsExactlyOnce",
+      "TestRemoteMethodPanicIsReturnedToCaller",
+      "TestRemoteServices",
+      "TestReplicaRejectsGapsAndUpdatesBeforeHydration",
+      "TestReviewRetainedFacetImplementationRetargetsAndRevokes",
+      "TestServiceRefWithoutRegisteredViewFails",
+      "TestSingletonReplaceRehydratesAndWithdrawClears",
+      "TestSingletonReplicaHydratesThenReceivesOperationStream",
+      "TestTransactionalReplicatedState",
+      "TestUpstreamRetainedRemoteStateRevokedByDispose"
+    ],
+    "upstream_reference": "packages/chord/test/state.test.ts and state-delivery.test.ts (ReplicatedStateInternals: atomic snapshot of sequence and value, hydrate/update of a replica); services/state-internals.ts",
+    "mutation": "internal/chord/state.go:940: if err := validateRevision(ops); err != nil { -> if err := validateRevision(ops); err == nil { (TestDeltaRetainedFacetStateSubscriptionFollowsReload FAIL); internal/chord/state.go:933: if base && !delta.IsBase(ops) { -> if base || !delta.IsBase(ops) { (TestAnOverflowResetCanMakeASingletonUnavailableBeforeALaterReplacement, TestBeginRebindFencesBeforeCompletionAndJoinsCancellation, TestBeginRebindRevokesKeyedHandleBeforeSubscriptionRelease FAIL); internal/chord/state.go:937: if err != nil { -> if err == nil { (TestDeltaRetainedFacetStateSubscriptionFollowsReload FAIL); internal/chord/state.go:895: if err != nil { -> if err == nil { (TestDeltaRetainedFacetStateSubscriptionFollowsReload, TestFacetHostRemoteConsumerAndReloadCutover FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/chord/src/services/state.ts",
+    "package": "./internal/chord",
+    "tests": [
+      "TestAuthoritativeReplicatedStateSources",
+      "TestDeltaRetainedFacetStateSubscriptionFollowsReload",
+      "TestFacetHostRemoteConsumerAndReloadCutover",
+      "TestPublicDelivery",
+      "TestRemoteServiceEndpointsPublishAndCleanUpProviderSubscriptions",
+      "TestRemoteServices",
+      "TestReplaceChangesTheRootKind",
+      "TestStateListenerFailureIsReportedAfterCommit",
+      "TestTransactionalReplicatedState"
+    ],
+    "upstream_reference": "packages/chord/test/state.test.ts, state-delivery.test.ts, state-draft.test.ts (replicated state: change/replace, subscribe ordering and delivery, attach and dispose); services/state.ts",
+    "mutation": "internal/chord/state.go:105: if err != nil { -> if err == nil { (TestFacetHostRemoteConsumerAndReloadCutover, TestStateListenerFailureIsReportedAfterCommit FAIL); internal/chord/state_overlay.go:83: if op.Verb() == \"m\" { -> if op.Verb() != \"m\" { (TestDeltaRetainedFacetStateSubscriptionFollowsReload FAIL); internal/chord/state.go:749: if expected := state.cursor + 1; frame.Cursor != expected { -> if expected := state.cursor + 1; frame.Cursor == expected { (TestAuthoritativeReplicatedStateSources, TestPublicDelivery, TestRemoteServices FAIL); internal/chord/state_overlay.go:15: if _, object := candidate.(map[string]any); object != baseObject { -> if _, object := candidate.(map[string]any); object == baseObject { (TestRemoteServiceEndpointsPublishAndCleanUpProviderSubscriptions, TestRemoteServices, TestReplaceChangesTheRootKind FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/chord/src/services/wire.ts",
+    "package": "./internal/chord",
+    "tests": [
+      "TestAnOverflowResetCanMakeASingletonUnavailableBeforeALaterReplacement",
+      "TestFacetHostRemoteConsumerAndReloadCutover",
+      "TestKeyedResetsRetainLiveGenerationsAndReconcileClosedAndReusedKeys",
+      "TestRebaselinesEveryMemberThroughWireCodecsThenResumesContiguousDeltas",
+      "TestServiceWireProtocol",
+      "TestSingletonReplaceRehydratesAndWithdrawClears",
+      "TestWireUpdateRoundTrip"
+    ],
+    "upstream_reference": "packages/chord/test/service-wire.test.ts (wire frames: request, response, state, error shapes and validation); services/wire.ts",
+    "mutation": "internal/chord/state_wire.go:60: if err := json.Unmarshal(data, &fields); err != nil { -> if err := json.Unmarshal(data, &fields); err == nil { (TestAnOverflowResetCanMakeASingletonUnavailableBeforeALaterReplacement, TestKeyedResetsRetainLiveGenerationsAndReconcileClosedAndReusedKeys, TestRebaselinesEveryMemberThroughWireCodecsThenResumesContiguousDeltas FAIL); internal/chord/state_wire_parse.go:39: return value == string(ServiceSingleton) || value == string(ServiceKeyed) -> return value != string(ServiceSingleton) || value == string(ServiceKeyed) (TestAnOverflowResetCanMakeASingletonUnavailableBeforeALaterReplacement, TestRebaselinesEveryMemberThroughWireCodecsThenResumesContiguousDeltas, TestServiceWireProtocol FAIL); internal/chord/wire.go:189: if err := json.Unmarshal(wire.Snapshot, result.Snapshot); err != nil { -> if err := json.Unmarshal(wire.Snapshot, result.Snapshot); err == nil { (TestFacetHostRemoteConsumerAndReloadCutover, TestSingletonReplaceRehydratesAndWithdrawClears, TestWireUpdateRoundTrip FAIL); internal/chord/state_wire.go:115: if len(fields.Instance) != 0 { -> if len(fields.Instance) == 0 { (TestAnOverflowResetCanMakeASingletonUnavailableBeforeALaterReplacement, TestKeyedResetsRetainLiveGenerationsAndReconcileClosedAndReusedKeys, TestRebaselinesEveryMemberThroughWireCodecsThenResumesContiguousDeltas FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/chord/src/types.ts",
+    "package": "./internal/chord",
+    "tests": [
+      "TestBeginRebindRevokesKeyedHandleBeforeSubscriptionRelease",
+      "TestBindingAllowlistAndModeValidation",
+      "TestDeltaRetainedFacetStateSubscriptionFollowsReload",
+      "TestFacetHostRemoteConsumerAndReloadCutover",
+      "TestKeyedGenerationsObservationAndStaleCalls",
+      "TestRebindAndDisposeCloseSubscriptionsExactlyOnce",
+      "TestRemoteServices",
+      "TestSingletonReplaceRehydratesAndWithdrawClears",
+      "TestSingletonReplicaHydratesThenReceivesOperationStream"
+    ],
+    "upstream_reference": "packages/chord/test/services.test.ts and service-wire.test.ts (error codes, service and member classification, views over the Go forms of the types.ts contracts); types.ts",
+    "mutation": "internal/chord/types.go:162: return errors.As(err, &remote) && remote.Code == code -> return errors.As(err, &remote) && remote.Code != code (TestBeginRebindRevokesKeyedHandleBeforeSubscriptionRelease, TestBindingAllowlistAndModeValidation, TestKeyedGenerationsObservationAndStaleCalls FAIL); internal/chord/views.go:62: if err != nil { -> if err == nil { (TestFacetHostRemoteConsumerAndReloadCutover FAIL); internal/chord/views.go:70: if err != nil { -> if err == nil { (TestDeltaRetainedFacetStateSubscriptionFollowsReload FAIL); internal/chord/views.go:27: if err != nil { -> if err == nil { (TestDeltaRetainedFacetStateSubscriptionFollowsReload FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/codemode/src/identifier.ts",
+    "package": "./codemode",
+    "tests": [
+      "TestToCodemodeIdentifierMatchesPi",
+      "TestExposesToolsUnderNormalizedIdentifiersAndListsThemInALL_TOOLS"
+    ],
+    "upstream_reference": "packages/codemode/src/identifier.ts:1-13 (toCodemodeIdentifier) compared with a Node-recorded oracle by codemode/upstream_oracle_test.go; packages/codemode/test/sandbox.test.ts 'exposes tools under normalized identifiers'",
+    "mutation": "codemode/identifier.go: if identifier.Len() > 0 { -> if false { (TestToCodemodeIdentifierMatchesPi FAIL); codemode/identifier.go: identifier.Len() == 0 {\n\t\treturn \"_\" -> identifier.Len() == 0 {\n\t\treturn \"__\" (TestToCodemodeIdentifierMatchesPi FAIL); codemode/identifier.go: char == '_' || char == '$' || -> char == '_' || (TestToCodemodeIdentifierMatchesPi FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/codemode/src/runtime/host.ts",
+    "package": "./codemode",
+    "tests": [
+      "TestTerminatesASynchronousInfiniteLoopOnTimeout",
+      "TestAbortsViaContextAndCancelsInFlightCalls",
+      "TestRejectsExecuteAfterClose",
+      "TestRunsExecutionsInParallelWithoutSharingState",
+      "TestAbortsUnawaitedCallsWhenTheScriptReturns",
+      "TestExposesToolsAsAsyncFunctionsAndRecordsCalls",
+      "TestRunsConcurrentCallsAndListsToolNames",
+      "TestTurnsToolErrorsIntoCatchableErrorsInTheScript",
+      "TestRejectsCallsToUnknownTools",
+      "TestFailsAScriptThatWaitsOnAPromiseNothingCanSettle",
+      "TestKeepsOutputProducedBeforeAFailure",
+      "TestEndsTheScriptSuccessfullyOnExitKeepingOutputAndStoreWrites",
+      "TestTimeoutMessageNamesTheDeadlineInMilliseconds",
+      "TestACallCancelledByTheEndOfTheExecutionRecordsHowLongItRan",
+      "TestRunsWithoutADeadlineWhenTimeoutIsNotFinite"
+    ],
+    "upstream_reference": "packages/codemode/test/sandbox.test.ts:1-700 against host.ts CodemodeSandbox (execute, timeout, abort, close, call recording and cancellation, output kept on failure); codemode/execution.go and sandbox.go are the in-process wazero host that replaces the worker",
+    "mutation": "codemode/execution.go: e.finish(&Error{Kind: ErrorTimeout, Message: timeoutMessage(e.timeoutMs)}, nil, StoreWrites{}) -> e.finish(&Error{Kind: ErrorAborted, Message: timeoutMessage(e.timeoutMs)}, nil, StoreWrites{}) (TestTerminatesASynchronousInfiniteLoopOnTimeout, TestTimeoutMessageNamesTheDeadlineInMilliseconds FAIL); codemode/sandbox.go: return \"Execution timed out after \" + jsNumberString(timeoutMs) + \" ms\" -> return \"Execution timed out after \" + jsNumberString(timeoutMs) + \"ms\" (TestTimeoutMessageNamesTheDeadlineInMilliseconds FAIL); codemode/execution.go: record = &Call{Name: name, Status: CallCancelled} -> record = &Call{Name: name, Status: CallError} (TestAbortsUnawaitedCallsWhenTheScriptReturns, TestAbortsViaContextAndCancelsInFlightCalls FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS; review rev-gap-behavior-libs-r (host.ts:303-306 finish records the duration of a cancelled pending call): codemode/execution.go: p.record.DurationMs = millisSince(p.startedAt, now) -> _ = now (TestACallCancelledByTheEndOfTheExecutionRecordsHowLongItRan FAIL); compiled test FAIL (go test -overlay), baseline PASS; review rev-gap-behavior-libs-r (host.ts:147 `Number.isFinite(options.timeoutMs)`): codemode/execution.go: if !math.IsInf(e.timeoutMs, 0) && !math.IsNaN(e.timeoutMs) { -> if !math.IsInf(e.timeoutMs, 1) { (TestRunsWithoutADeadlineWhenTimeoutIsNotFinite FAIL); -> if !math.IsInf(e.timeoutMs, 1) && !math.IsNaN(e.timeoutMs) { (TestRunsWithoutADeadlineWhenTimeoutIsNotFinite FAIL); compiled test FAIL (go test -overlay), baseline PASS"
+  },
+  {
+    "upstream": "packages/codemode/src/runtime/prelude-source.ts",
+    "package": "./codemode",
+    "tests": [
+      "TestEmbeddedSourcesMatchTheirRecordedHashes",
+      "TestRejectsInvalidKeysValuesAndOversizedWritesInsideTheScript",
+      "TestExplainsOversizedWrites",
+      "TestSandboxFailsAScriptWhoseOutputPassesTheLimitsEvenIfItCatchesTheError",
+      "TestKeepsToolsAndConsoleFrozen",
+      "TestStoreReadsTheSnapshotAndReportsWrites",
+      "TestStoreLimitsAreTheExportedConstantsAndApplyAtTheBoundary"
+    ],
+    "upstream_reference": "packages/codemode/src/runtime/prelude-source.ts (PRELUDE_SOURCE, MAX_STORE_VALUE_CHARS, MAX_STORE_TOTAL_CHARS, MAX_OUTPUT_CHARS, MAX_OUTPUT_ITEMS) and packages/codemode/test/sandbox.test.ts store and output-limit cases; assets/prelude.js is byte-equal to PRELUDE_SOURCE (SHA-256 recorded)",
+    "mutation": "codemode/assets/prelude.js: if (json.length > 262144) { -> if (json.length > 262145) { (TestEmbeddedSourcesMatchTheirRecordedHashes, TestStoreLimitsAreTheExportedConstantsAndApplyAtTheBoundary FAIL); codemode/assets/prelude.js: if (next > 1048576) { -> if (next > 1048577) { (TestEmbeddedSourcesMatchTheirRecordedHashes FAIL); codemode/assets/prelude.js: outputItems > 100000 -> outputItems > 100001 (TestEmbeddedSourcesMatchTheirRecordedHashes, TestSandboxFailsAScriptWhoseOutputPassesTheLimitsEvenIfItCatchesTheError FAIL); codemode/assets.go: MaxStoreTotalChars = 1024 * 1024 -> MaxStoreTotalChars = 1024 * 1025 (TestStoreLimitsAreTheExportedConstantsAndApplyAtTheBoundary FAIL); codemode/assets.go: MaxOutputItems = 100_000 -> MaxOutputItems = 100_001 (TestSandboxFailsAScriptWhoseOutputPassesTheLimitsEvenIfItCatchesTheError, TestStoreLimitsAreTheExportedConstantsAndApplyAtTheBoundary FAIL); codemode/assets.go: MaxStoreValueChars = 256 * 1024 -> MaxStoreValueChars = 256 * 1023 (TestStoreLimitsAreTheExportedConstantsAndApplyAtTheBoundary FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/codemode/src/source.ts",
+    "package": "./codemode",
+    "tests": [
+      "TestParseCodemodeSourceReturnsPlainCodeUnchanged",
+      "TestParseCodemodeSourceParsesTheOptionsLineAndKeepsLineNumbers",
+      "TestParseCodemodeSourceOnlyTreatsTheFirstLineAsAnOptionsLine",
+      "TestParseCodemodeSourceRejectsEmptyInputAndInvalidOptions",
+      "TestParseCodemodeSourceMatchesPi"
+    ],
+    "upstream_reference": "packages/codemode/test/source.test.ts:1-60 and parseCodemodeSource (source.ts:1-120: @options first line, field validation, timeout bound, line-number preserving code) compared with a Node-recorded oracle (codemode/testdata/upstream-golden.json)",
+    "mutation": "codemode/source.go: if !isInt || n == 0 || n > maxTimeoutMs { -> if !isInt || n > maxTimeoutMs { (TestParseCodemodeSourceMatchesPi, TestParseCodemodeSourceRejectsEmptyInputAndInvalidOptions FAIL); codemode/source.go: if key != \"max_output_tokens\" && key != \"timeout_ms\" { -> if key != \"max_output_tokens\" { (TestParseCodemodeSourceMatchesPi, TestParseCodemodeSourceParsesTheOptionsLineAndKeepsLineNumbers, TestParseCodemodeSourceRejectsEmptyInputAndInvalidOptions FAIL); codemode/source.go: f != math.Trunc(f) || f < 0 || -> f != math.Trunc(f) || (TestParseCodemodeSourceMatchesPi FAIL); codemode/source.go: code = input[newline:] -> code = input[newline+1:] (TestParseCodemodeSourceMatchesPi, TestParseCodemodeSourceParsesTheOptionsLineAndKeepsLineNumbers FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/codemode/src/types.ts",
+    "package": "./codemode",
+    "tests": [
+      "TestResultKindsStatusesAndOutputTypesAreTheStringsTypesTSDeclares",
+      "TestCollectsTextImageAndConsoleOutputInOrder",
+      "TestTurnsToolErrorsIntoCatchableErrorsInTheScript",
+      "TestAbortsUnawaitedCallsWhenTheScriptReturns"
+    ],
+    "upstream_reference": "packages/codemode/src/types.ts:47-65 (CodemodeOutputItem, CodemodeCallStatus 'ok' | 'error' | 'cancelled', failure kinds 'script' | 'timeout' | 'aborted' | 'sandbox') as observed on real executions",
+    "mutation": "codemode/types.go: CallCancelled CallStatus = \"cancelled\" -> CallCancelled CallStatus = \"canceled\" (TestResultKindsStatusesAndOutputTypesAreTheStringsTypesTSDeclares FAIL); codemode/types.go: ErrorTimeout ErrorKind = \"timeout\" -> ErrorTimeout ErrorKind = \"timed_out\" (TestResultKindsStatusesAndOutputTypesAreTheStringsTypesTSDeclares FAIL); codemode/types.go: ErrorAborted ErrorKind = \"aborted\" -> ErrorAborted ErrorKind = \"abort\" (TestResultKindsStatusesAndOutputTypesAreTheStringsTypesTSDeclares FAIL); codemode/types.go: ErrorSandbox ErrorKind = \"sandbox\" -> ErrorSandbox ErrorKind = \"vm\" (TestResultKindsStatusesAndOutputTypesAreTheStringsTypesTSDeclares FAIL); codemode/types.go: ErrorScript ErrorKind = \"script\" -> ErrorScript ErrorKind = \"error\" (TestResultKindsStatusesAndOutputTypesAreTheStringsTypesTSDeclares FAIL); codemode/types.go: CallOK        CallStatus = \"ok\" -> CallOK        CallStatus = \"success\" (TestResultKindsStatusesAndOutputTypesAreTheStringsTypesTSDeclares FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/codemode/src/wasm.ts",
+    "package": "./codemode",
+    "tests": [
+      "TestReportsAFailingWasmModuleAsASandboxError",
+      "TestCorruptWasmModuleIsASandboxError",
+      "TestEmbeddedSourcesMatchTheirRecordedHashes",
+      "TestReturnsTheScriptsReturnValueAfterAJSONRoundTrip"
+    ],
+    "upstream_reference": "packages/codemode/src/wasm.ts:1-35 (loadQuickJSWasm: the module compiles once and a failed load is retried) as used by sandbox.test.ts 'reports a missing worker file as a sandbox error' (Go: a failing or corrupt module); the embedded quickjs.wasm hash pinned by TestEmbeddedSourcesMatchTheirRecordedHashes",
+    "mutation": "codemode/sandbox.go: \"Failed to load QuickJS: \" -> \"Failed to load QuickJs: \" (TestCorruptWasmModuleIsASandboxError, TestReportsAFailingWasmModuleAsASandboxError FAIL); codemode/assets.go: func QuickJSWasm() []byte { return quickJSWasm } -> func QuickJSWasm() []byte { return quickJSWasm[:len(quickJSWasm)-1] } (TestEmbeddedSourcesMatchTheirRecordedHashes, TestReturnsTheScriptsReturnValueAfterAJSONRoundTrip FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/durable/src/entries.ts",
+    "package": "./durable",
+    "tests": [
+      "TestDefineEntryGuardsByKindAndDecodesTypedData"
+    ],
+    "upstream_reference": "packages/durable/src/entries.ts:6-12 (defineEntry: TypeError for an empty kind, is() narrows by EntryRecord.kind); typed decode and draft of the Go Entry token",
+    "mutation": "durable/entries.go:18: return entry != nil && entry.Kind == token.Kind -> return entry != nil (TestDefineEntryGuardsByKindAndDecodesTypedData FAIL); durable/entries.go:10: if kind == \"\" { -> if kind == \"x\" { (TestDefineEntryGuardsByKindAndDecodesTypedData FAIL); durable/entries.go:23: if !token.Is(entry) { -> if token.Is(entry) { (TestDefineEntryGuardsByKindAndDecodesTypedData FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS; durable/entries.go:11: panic(\"Entry kind must be a non-empty string\") -> panic(\"entry kind must not be empty\") (TestDefineEntryGuardsByKindAndDecodesTypedData FAIL)"
+  },
+  {
+    "upstream": "packages/evals/src/cli.ts",
+    "package": "./internal/evals",
+    "tests": [
+      "TestParseEvalCliMatchesUpstream",
+      "TestRunEvalCliPlansRunsAndReports",
+      "TestRunEvalCliExitsZeroWhenEveryPairScores",
+      "TestRunEvalCliFailures",
+      "TestRunEvalCliSortsRequestedFilesByCodeUnit",
+      "TestRunEvalCliOrdersRequestedFilesByUTF16CodeUnit"
+    ],
+    "upstream_reference": "packages/evals/src/cli.ts:1-192 (parseEvalCli argument grammar, model selection from PI_PROVIDER/PI_MODEL, runs-per-variant validation, file selection sorted by code unit, protocol.json/expected-runs.json/observations.jsonl/report outputs, exit code 1 on blocked pairs); testdata/cli_oracle.json holds 42 vectors recorded from the pinned cli.ts on Node 24",
+    "mutation": "internal/evals/cli.go: if value == \"\" || (!hasEquals && strings.HasPrefix(value, \"-\")) { -> if value == \"\" { (TestParseEvalCliMatchesUpstream FAIL); internal/evals/cli.go: runsPerVariant < 1 || -> runsPerVariant < 0 || (TestParseEvalCliMatchesUpstream FAIL); internal/evals/cli.go: if len(report.BlockedPairs) > 0 {\n\t\treturn 1, nil -> if len(report.BlockedPairs) >= 0 {\n\t\treturn 1, nil (TestRunEvalCliExitsZeroWhenEveryPairScores FAIL); internal/evals/cli.go: slices.SortFunc(files, compareUTF16) -> slices.SortFunc(files, strings.Compare) (TestRunEvalCliOrdersRequestedFilesByUTF16CodeUnit FAIL); internal/evals/cli.go: if provider == \"\" || model == \"\" {\n\t\t\treturn EvalCliOptions{}, errors.New(\"CLI model -> if provider == \"\" && model == \"\" {\n\t\t\treturn EvalCliOptions{}, errors.New(\"CLI model (TestParseEvalCliMatchesUpstream FAIL); internal/evals/cli.go: if images.WithDocs.ID == images.WithoutDocs.ID { -> if false { (TestRunEvalCliFailures FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/evals/src/docker.ts",
+    "package": "./internal/evals",
+    "tests": [
+      "TestRunEvalCliPlansRunsAndReports",
+      "TestRunEvalCliFailures",
+      "TestRequireEvalAuthFileValidatesCredentials",
+      "TestRunTaskEscapesTheCaseNameAndNamesTheDirectoryByIdentity"
+    ],
+    "upstream_reference": "packages/evals/src/docker.ts:1-175 (buildImages target/tag/inspect, requireEvalAuthFile credential check, docker run argument vector with read-only root, tmpfs, artifact mount, sandbox ids, auth mount, discoverCases, runTask exact-name pattern and identity-named directory)",
+    "mutation": "internal/evals/docker.go: {\"PI_EVAL_SANDBOX_UID\", \"65532\"} -> {\"PI_EVAL_SANDBOX_UID\", \"65533\"} (TestRunEvalCliPlansRunsAndReports FAIL); internal/evals/docker.go: \"run\", \"--rm\", \"--read-only\", -> \"run\", \"--rm\", (TestRunEvalCliPlansRunsAndReports FAIL); internal/evals/docker.go: exactName := \"^\" + -> exactName := \"\"+ (TestRunEvalCliPlansRunsAndReports, TestRunTaskEscapesTheCaseNameAndNamesTheDirectoryByIdentity FAIL); internal/evals/docker.go: !isObject || !hasProvider -> !isObject || (!hasProvider && !isObject) (TestRequireEvalAuthFileValidatesCredentials, TestRunEvalCliFailures FAIL); internal/evals/docker.go: if _, err := os.Stat(reportPath); err != nil {\n\t\treturn \"\", nil -> if _, err := os.Stat(reportPath); err != nil {\n\t\treturn reportPath, nil (TestRunTaskEscapesTheCaseNameAndNamesTheDirectoryByIdentity FAIL); internal/evals/docker.go: \"--target\", string(variant) -> \"--target\", \"with_docs\" (TestRunEvalCliPlansRunsAndReports FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/evals/src/harness.ts",
+    "package": "./internal/evals",
+    "tests": [
+      "TestHarnessUpstream",
+      "TestCreatePiDocumentationEvalHarnessInSandbox",
+      "TestRunPiCodingAgentAnswersAndRecordsTheRun",
+      "TestRunPiCodingAgentFailures",
+      "TestRunPiCodingAgentTransformsTheSystemPromptThroughTheBridge",
+      "TestResolveSandboxIdentityRequiresBothIdsOrNeither",
+      "TestExcludePiDocumentationRequiresTheWorkingDirectorySectionAfterTheDocumentation",
+      "TestToTranscriptEventsGivesAFailedToolResultItsTextOrAGenericMessage",
+      "TestSettledResponseRejectsRunsWithoutAUsableAssistantMessage"
+    ],
+    "upstream_reference": "packages/evals/test/harness.test.ts:1-116 (model selection, isolated environment, sandbox identity, system-prompt verification, documentation exclusion, documentation harness) and the end-to-end RunPiCodingAgent runs against a scripted provider through the real pig binary mirroring harness.ts runPiCodingAgent/promptAgent (stop reasons, empty output, transcript, cleanup AggregateError)",
+    "mutation": "internal/evals/harness.go: id < 1 || -> id < 0 || (TestCreatePiDocumentationEvalHarnessInSandbox, TestResolveSandboxIdentityRequiresBothIdsOrNeither FAIL); internal/evals/harness.go: if !hasUID || !hasGID { -> if !hasUID { (TestResolveSandboxIdentityRequiresBothIdsOrNeither FAIL); internal/evals/harness.go: cwdStart < documentationEnd -> cwdStart < 0 (TestExcludePiDocumentationRequiresTheWorkingDirectorySectionAfterTheDocumentation FAIL); internal/evals/harness.go: new(variant == DocumentationVariantWithDocs) -> new(variant == DocumentationVariantWithoutDocs) (TestCreatePiDocumentationEvalHarnessInSandbox FAIL); internal/evals/harness_run.go: if message, ok := assistant[\"errorMessage\"].(string); ok { -> ok && false { (TestRunPiCodingAgentFailures, TestSettledResponseRejectsRunsWithoutAUsableAssistantMessage FAIL); internal/evals/harness_run.go: if message, ok := assistant[\"errorMessage\"].(string); ok { -> ok && message != \"\" { (TestSettledResponseRejectsRunsWithoutAUsableAssistantMessage FAIL: harness.ts:249 `errorMessage ?? fallback` keeps an empty message); internal/evals/harness_run.go: if output == \"\" && stopReason == \"stop\" { -> if false { (TestRunPiCodingAgentFailures FAIL); internal/evals/harness_run.go: text = \"Tool failed\" -> text = \"Tool failure\" (TestToTranscriptEventsGivesAFailedToolResultItsTextOrAGenericMessage FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/evals/src/plan.ts",
+    "package": "./internal/evals",
+    "tests": [
+      "TestPlanUpstream",
+      "TestCreateTaskPlanRejectsEveryMalformedModelIdentity"
+    ],
+    "upstream_reference": "packages/evals/test/plan.test.ts:7-42 (parseDiscoveredCases identity and duplicate rejection, createTaskPlan variant order alternating by repetition, model and runs validation); plan.ts:1-59",
+    "mutation": "internal/evals/plan.go: if runNumber%2 == 0 { -> if runNumber%2 == 1 { (TestPlanUpstream FAIL); internal/evals/plan.go: identities[key] = true -> _ = key (TestPlanUpstream FAIL); internal/evals/plan.go: if runsPerVariant < 1 { -> if runsPerVariant < 0 { (TestPlanUpstream FAIL); internal/evals/plan.go: strings.HasSuffix(model, \"/\") -> false (TestCreateTaskPlanRejectsEveryMalformedModelIdentity FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/evals/src/report.ts",
+    "package": "./internal/evals",
+    "tests": [
+      "TestReportUpstream",
+      "TestSummarizeEvalObservationsMatchesUpstream",
+      "TestReadTaskObservationMatchesUpstream"
+    ],
+    "upstream_reference": "packages/evals/test/report.test.ts:1-208 and packages/evals/test/comparison.test.ts:1-125 (pairing, blocked pairs, pass rates, flags, totals) plus the Node-recorded oracle testdata/oracle.json; report.ts summarizeEvalObservations, resolvePair, comparisonFlags",
+    "mutation": "internal/evals/report.go: return observation.Score != nil && *observation.Score >= 1 -> return observation.Score != nil && *observation.Score > 1 (TestSummarizeEvalObservationsMatchesUpstream FAIL); internal/evals/report.go: if *treatmentPassRate < *controlPassRate { -> if *treatmentPassRate <= *controlPassRate { (TestSummarizeEvalObservationsMatchesUpstream FAIL); internal/evals/report.go: if expected != 1 { -> if expected != 2 { (TestSummarizeEvalObservationsMatchesUpstream FAIL); internal/evals/report.go: if len(values) > 1 { -> if len(values) > 2 { (TestSummarizeEvalObservationsMatchesUpstream FAIL); internal/evals/report.go: total.AvailableRuns++ -> total.AvailableRuns += 2 (TestSummarizeEvalObservationsMatchesUpstream FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/mcp/src/auth-provider.ts",
+    "package": "./mcp",
+    "tests": [
+      "TestStreamableHTTPTransportHandsUnauthorizedAndInsufficientScopeResponsesToTheAuthProviderWithTheRejectedToken"
+    ],
+    "upstream_reference": "packages/mcp/test/streamable-http.test.ts (hands 401 and 403 insufficient_scope responses to AuthProvider.onUnauthorized with the rejected token) and auth-provider.ts UnauthorizedContext {response, serverUrl, fetch, token}",
+    "mutation": "mcp/streamable_http.go: Fetch: t.fetch, Token: token}) -> Fetch: t.fetch, Token: token[:0]}) (TestStreamableHTTPTransportHandsUnauthorizedAndInsufficientScopeResponsesToTheAuthProviderWithTheRejectedToken FAIL); mcp/streamable_http.go: ServerURL: t.URL, Fetch -> ServerURL: nil, Fetch (TestStreamableHTTPTransportHandsUnauthorizedAndInsufficientScopeResponsesToTheAuthProviderWithTheRejectedToken FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/mcp/src/oauth/callback.ts",
+    "package": "./mcp/oauth",
+    "tests": [
+      "TestOAuthCallbackServerPagesRendersPlainTextByDefault",
+      "TestOAuthCallbackServerPagesRendersPagesThroughRenderPage",
+      "TestOAuthCallbackServerRejectsAResponseOnAnotherPathThanTheExpectedOne",
+      "TestOAuthCallbackServerAnswersEachAuthorizationResponseLikeCallbackTS",
+      "TestOAuthCallbackServerRenderedPagesAreHTMLAndNotCached"
+    ],
+    "upstream_reference": "packages/mcp/test/oauth.test.ts callback server cases and packages/mcp/src/oauth/callback.ts:1-164 (state routing, path check, error/description and missing-code responses, plain-text default pages, renderPage HTML with no-store)",
+    "mutation": "mcp/oauth/callback.go: return \"Authorization complete. You may close this window.\" -> return \"Authorization complete.\" (TestOAuthCallbackServerAnswersEachAuthorizationResponseLikeCallbackTS, TestOAuthCallbackServerPagesRendersPlainTextByDefault FAIL); mcp/oauth/callback.go: w.Header().Set(\"Cache-Control\", \"no-store\") ->  (TestOAuthCallbackServerRenderedPagesAreHTMLAndNotCached FAIL); mcp/oauth/callback.go: if entry.path != \"\" && r.URL.Path != entry.path { -> if false { (TestOAuthCallbackServerRejectsAResponseOnAnotherPathThanTheExpectedOne FAIL); mcp/oauth/callback.go: entry.timer.Stop()\n\tdelete(s.pending, state) -> entry.timer.Stop() (TestOAuthCallbackServerAnswersEachAuthorizationResponseLikeCallbackTS FAIL: the replayed state is answered 200, then Close blocks); mcp/oauth/callback.go: if state == \"\" || entry == nil { -> if entry == nil { (TestOAuthCallbackServerAnswersEachAuthorizationResponseLikeCallbackTS FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/mcp/src/oauth/errors.ts",
+    "package": "./mcp/oauth",
+    "tests": [
+      "TestOAuthIssuerMismatchErrorNamesAMissingIssAsNone",
+      "TestOAuthIssuerMismatchErrorQuotesIssuersAsJSONStringify",
+      "TestTokenRequestsRefuseNonLoopbackHTTPEndpoints",
+      "TestOAuthErrorMessagesAreTheOnesErrorsTSBuilds"
+    ],
+    "upstream_reference": "packages/mcp/src/oauth/errors.ts:1-55 (error classes and messages: OAuthIssuerMismatchError uses JSON.stringify for both issuers and 'none' for a missing iss; OAuthInsecureEndpointError message) with packages/mcp/test/oauth.test.ts",
+    "mutation": "mcp/oauth/errors.go: received := \"none\" -> received := \"null\" (TestOAuthIssuerMismatchErrorNamesAMissingIssAsNone FAIL); mcp/oauth/errors.go: case '\\\\':\n\t\t\tb.WriteString(`\\\\`) -> case '\\\\':\n\t\t\tb.WriteString(`\\`) (TestOAuthIssuerMismatchErrorQuotesIssuersAsJSONStringify FAIL); mcp/oauth/errors.go: \"Refusing to send OAuth credentials to non-HTTPS endpoint \" -> \"Refusing to send OAuth credentials to non-HTTPS endpoints \" (TestOAuthErrorMessagesAreTheOnesErrorsTSBuilds FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/mcp/src/oauth/flow.ts",
+    "package": "./mcp/oauth",
+    "tests": [
+      "TestMCPOAuthDiscoversRegistersAuthorizesWithPKCEAndRefreshesOn401",
+      "TestMCPOAuthSharesOneRefreshBetweenConcurrent401sWhenRefreshTokensRotate",
+      "TestMCPOAuthAsksForAuthorizationInsteadOfRefreshingWhenTheServerNeedsMoreScope",
+      "TestMCPOAuthRegistersWithAnApplicationTypeDerivedFromTheRedirectURIsUnlessOneIsSet",
+      "TestMCPOAuthRejectsAuthorizationMetadataWhoseIssuerDoesNotMatchDiscovery",
+      "TestMCPOAuthUsesAConfiguredAuthorizationServerMetadataDocumentAsIs",
+      "TestMCPOAuthExchangesACodeOnlyWhenItsIssParameterNamesTheAuthorizationServer",
+      "TestRefreshAuthorizationKeepsTheOldRefreshTokenWhenTheServerDoesNotRotateIt",
+      "TestTokenRequestsRefuseNonLoopbackHTTPEndpoints",
+      "TestStartAuthorizationKeepsUpstreamParameterOrder",
+      "TestStepUpScopeMatchesPi",
+      "TestStepUpScopeAddsTheChallengedScopesToTheGrantedOnes",
+      "TestAuthorizeMcpChecksAPresentEmptyIssAndSkipsAnEmptyAdvertisedScope",
+      "TestAuthorizeMcpWithAConfiguredMetadataURLBypassesCachedDiscovery",
+      "TestStartAuthorizationSendsTheS256ChallengeOfTheReturnedVerifier",
+      "TestTokenRequestsAuthenticateTheClientWithTheMethodTheServerPolicySelects"
+    ],
+    "upstream_reference": "packages/mcp/test/oauth.test.ts (discovery, registration with application_type, PKCE authorization, RFC 9207 iss check, refresh sharing, step-up scope, non-loopback http refusal) and packages/mcp/src/oauth/flow.ts:1-467",
+    "mutation": "mcp/oauth/flow.go: params.Set(\"code_challenge_method\", \"S256\") -> params.Set(\"code_challenge_method\", \"plain\") (TestStartAuthorizationSendsTheS256ChallengeOfTheReturnedVerifier FAIL); mcp/oauth/flow.go: if slices.Contains(strings.Fields(options.Scope), \"offline_access\") { -> if false { (TestStartAuthorizationKeepsUpstreamParameterOrder FAIL); mcp/oauth/flow.go: if (u.Scheme != \"http\" && u.Scheme != \"https\") || loopback(u.Hostname()) { -> if loopback(u.Hostname()) { (TestMCPOAuthRegistersWithAnApplicationTypeDerivedFromTheRedirectURIsUnlessOneIsSet FAIL); mcp/oauth/flow.go: if u.Scheme != \"https\" && !loopback(u.Hostname()) && !loopback(u.Host) { -> if u.Scheme != \"https\" && !loopback(u.Hostname()) && !loopback(u.Host) && false { (TestMCPOAuthUsesAConfiguredAuthorizationServerMetadataDocumentAsIs, TestTokenRequestsRefuseNonLoopbackHTTPEndpoints FAIL); mcp/oauth/flow.go: if information.ClientSecret != \"\" && slices.Contains(supported, \"client_secret_basic\") { -> if information.ClientSecret != \"\" && slices.Contains(supported, \"client_secret_post\") { (TestTokenRequestsAuthenticateTheClientWithTheMethodTheServerPolicySelects FAIL); mcp/oauth/flow.go: if method == \"client_secret_post\" && information.ClientSecret != \"\" { -> if information.ClientSecret != \"\" { (TestTokenRequestsAuthenticateTheClientWithTheMethodTheServerPolicySelects FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/mcp/src/oauth/provider.ts",
+    "package": "./mcp/oauth",
+    "tests": [
+      "TestMcpOAuthProviderKeepsFailingAfterAFailedWrite",
+      "TestMcpOAuthProviderIsNotPoisonedByACancelledCall",
+      "TestMCPOAuthBindsPersistedCredentialsToTheExactMCPServerURL",
+      "TestMCPOAuthSharesOneRefreshBetweenConcurrent401sWhenRefreshTokensRotate",
+      "TestMcpOAuthProviderInvalidateCredentialsDropsOnlyTheNamedState"
+    ],
+    "upstream_reference": "packages/mcp/src/oauth/provider.ts:1-168 (McpOAuthProvider state store: credentials bound to the exact server URL, serialized updates, a failed write rejects later calls) with packages/mcp/test/oauth.test.ts",
+    "mutation": "mcp/oauth/provider.go: if state != nil && state.ServerURL == p.serverURL { -> if state != nil { (TestMCPOAuthBindsPersistedCredentialsToTheExactMCPServerURL FAIL); mcp/oauth/provider.go: if err != nil && ctx.Err() == nil { -> if err != nil { (TestMcpOAuthProviderIsNotPoisonedByACancelledCall FAIL); mcp/oauth/provider.go: if kind == \"all\" || kind == \"tokens\" { -> if kind == \"all\" { (TestMcpOAuthProviderInvalidateCredentialsDropsOnlyTheNamedState FAIL); mcp/oauth/provider.go: if p.configuredClient != nil {\n\t\treturn nil\n\t} -> if false {\n\t\treturn nil\n\t} (TestMcpOAuthProviderKeepsFailingAfterAFailedWrite FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/mcp/src/protocol/jsonrpc.ts",
+    "package": "./mcp",
+    "tests": [
+      "TestParseJSONRPCMessageMatchesPi"
+    ],
+    "upstream_reference": "packages/mcp/src/protocol/jsonrpc.ts parseJsonRpcMessage/isJsonRpcRequest/Notification/Response and McpError classes, compared with a Node-recorded oracle (mcp/testdata/upstream-golden.json, seeded corpus) by mcp/upstream_oracle_test.go",
+    "mutation": "mcp/jsonrpc.go: if isNumber && isJSONString(obj[\"message\"]) -> if isNumber (TestParseJSONRPCMessageMatchesPi FAIL); mcp/jsonrpc.go: m.hasError = true -> m.hasError = false (TestParseJSONRPCMessageMatchesPi FAIL); mcp/jsonrpc.go: if len(raw) > 0 && raw[0] == '\"' && json.Unmarshal(raw, &v) == nil { -> if json.Unmarshal(raw, &v) == nil { (TestParseJSONRPCMessageMatchesPi FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/mcp/src/protocol/types.ts",
+    "package": "./mcp",
+    "tests": [
+      "TestClientAcceptsServersThatAnswerWithAnOlderProtocolVersion",
+      "TestClientInitializesTheConnectionBeforeExposingServerInformation",
+      "TestClientPaginatesToolsAndPreservesProtocolToolDefinitions",
+      "TestToolsAndContentBlocksTrackWhetherTheServerSentATitle",
+      "TestProtocolVersionsAreTheOnesMcpTypesDeclare"
+    ],
+    "upstream_reference": "packages/mcp/src/protocol/types.ts:1-131 (LATEST_PROTOCOL_VERSION and SUPPORTED_PROTOCOL_VERSIONS negotiated by client.test.ts initialize cases; Tool, ToolAnnotations and content definitions preserved by client.test.ts 'paginates tools')",
+    "mutation": "mcp/types.go: var SupportedProtocolVersions = []string{LatestProtocolVersion, \"2025-06-18\", \"2025-03-26\", \"2024-11-05\"} -> var SupportedProtocolVersions = []string{LatestProtocolVersion, \"2025-06-18\", \"2025-03-26\"} (TestClientAcceptsServersThatAnswerWithAnOlderProtocolVersion, TestProtocolVersionsAreTheOnesMcpTypesDeclare FAIL); mcp/types.go: const LatestProtocolVersion = \"2025-11-25\" -> const LatestProtocolVersion = \"2025-11-24\" (TestProtocolVersionsAreTheOnesMcpTypesDeclare FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/mcp/src/transports/in-memory.ts",
+    "package": "./mcp",
+    "tests": [
+      "TestInMemoryTransportPairDeliversCopiesInOrderAndClosesBothEnds",
+      "TestInMemoryTransportRejectsSendsBeforeStartAndToAnUnstartedOrMissingPeer"
+    ],
+    "upstream_reference": "packages/mcp/src/transports/in-memory.ts:5-51 (connectPeer rejects a second peer, send needs both ends started and open, delivery is an ordered structuredClone, close closes the peer and emits once)",
+    "mutation": "mcp/mcptest/inmemory.go: if t.peer != nil {\n\t\treturn errors.New(\"In-memory MCP transport already has a peer\") -> if false {\n\t\treturn errors.New(\"In-memory MCP transport already has a peer\") (TestInMemoryTransportRejectsSendsBeforeStartAndToAnUnstartedOrMissingPeer FAIL); mcp/mcptest/inmemory.go: if !started || closed { -> if !started && false || closed { (TestInMemoryTransportRejectsSendsBeforeStartAndToAnUnstartedOrMissingPeer FAIL); mcp/mcptest/inmemory.go: peerOK := peer.started && !peer.closed -> peerOK := !peer.closed (TestInMemoryTransportRejectsSendsBeforeStartAndToAnUnstartedOrMissingPeer FAIL by test timeout: the send to the unstarted peer waits for a delivery that never runs); mcp/mcptest/inmemory.go: copied, err := mcp.ParseJSONRPCMessage(data) -> _ = data\n\tcopied, err := message, error(nil) (TestInMemoryTransportPairDeliversCopiesInOrderAndClosesBothEnds FAIL); mcp/mcptest/inmemory.go: if peer != nil {\n\t\treturn peer.Close() -> if peer != nil {\n\t\treturn nil (TestInMemoryTransportPairDeliversCopiesInOrderAndClosesBothEnds FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/mcp/src/transports/stdio.ts",
+    "package": "./mcp",
+    "tests": [
+      "TestStdioTransportConnectsToANewlineDelimitedMCPServerAndCapturesStderr",
+      "TestStdioTransportKillsAServerThatIgnoresShutdownIncludingItsChildren",
+      "TestStdioTransportTerminatesTheChildrenOfAServerThatExitsOnStdinClose",
+      "TestStdioTransportSendsSIGTERMAfterTheStdinGracePeriod",
+      "TestStdioTransportPassesEveryPropertyWhoseNameHoldsAnEqualsSign",
+      "TestStdioTransportReportsAMissingProgramAsNodeDoes",
+      "TestStdioTransportSkipsOnlyLinesThatAreBlankToJavaScriptTrim",
+      "TestStdioTransportReportsAnIncompleteMessageOnlyWhenTheRemainderIsNotBlankToJavaScriptTrim"
+    ],
+    "upstream_reference": "packages/mcp/test/stdio.test.ts:1-120 (newline-delimited server, stderr capture, kill of an ignoring server and its children, SIGTERM after the stdin grace period) and packages/mcp/src/transports/stdio.ts:1-216",
+    "mutation": "mcp/stdio.go: // Children of a server that ignored stdin closing would otherwise outlive it.\n\tkillProcessTree(cmd, exited, false) -> // Children of a server that ignored stdin closing would otherwise outlive it.\n\t_ = cmd (TestStdioTransportTerminatesTheChildrenOfAServerThatExitsOnStdinClose FAIL); mcp/stdio.go: termTimer := time.AfterFunc(grace, func() { killProcessTree(cmd, exited, false) }) -> termTimer := time.AfterFunc(grace*1000, func() { killProcessTree(cmd, exited, false) }) (TestStdioTransportSendsSIGTERMAfterTheStdinGracePeriod FAIL); mcp/stdio.go: killProcessTree(cmd, exited, true)\n\t\t// A descendant -> killProcessTree(cmd, exited, false)\n\t\t// A descendant (TestStdioTransportKillsAServerThatIgnoresShutdownIncludingItsChildren FAIL by test timeout: Close waits for a server that ignores SIGTERM); compiled test FAIL (go test -overlay without -cover), baseline PASS; review rev-gap-behavior-libs-r (stdio.ts:119, 200 `trim()`): mcp/stdio.go: if jsstring.Trim(text) == \"\" { -> if strings.TrimSpace(text) == \"\" { (TestStdioTransportSkipsOnlyLinesThatAreBlankToJavaScriptTrim FAIL); if jsstring.Trim(string(rest)) != \"\" { -> if strings.TrimSpace(string(rest)) != \"\" { (TestStdioTransportReportsAnIncompleteMessageOnlyWhenTheRemainderIsNotBlankToJavaScriptTrim FAIL); compiled test FAIL (go test -overlay), baseline PASS"
+  },
+  {
+    "upstream": "packages/mcp/src/transports/streamable-http.ts",
+    "package": "./mcp",
+    "tests": [
+      "TestStreamableHTTPTransportHandlesJSONAndSSEResponsesWithSessionAndProtocolHeaders",
+      "TestStreamableHTTPTransportClassifiesAuthenticationFailures",
+      "TestStreamableHTTPTransportFailsOnlyTheRequestWhoseSSEStreamBreaks",
+      "TestStreamableHTTPTransportOpensTheGETStreamAfterInitializationAndSendsLastEventIDOnlyWhenResuming",
+      "TestStreamableHTTPTransportResumesAResponseStreamTheServerClosedBeforeAnswering",
+      "TestStreamableHTTPTransportFailsARequestWhoseResponseStreamEndsWithoutAnAnswer",
+      "TestStreamableHTTPTransportReconnectsTheGETStreamAfterItDrops",
+      "TestStreamableHTTPTransportRejectsARequestTheServerAcceptsWithoutAResponse",
+      "TestStreamableHTTPTransportIncludesTheResponseBodyInHTTPErrors",
+      "TestStreamableHTTPTransportRoutesEveryRequestThroughTheFetchInUse",
+      "TestStreamableHTTPTransportClassifiesAnExpiredEstablishedSession",
+      "TestStreamableHTTPTransportKeepsMaxErrorBodyUTF16UnitsOfAnErrorBody",
+      "TestStreamableHTTPTransportDropsALeadingBOMFromAnErrorBody",
+      "TestStreamableHTTPTransportRejectsAnInvalidJSONBodyWithJSONParseMessage",
+      "TestStreamableHTTPTransportAcceptsAJSONBodyWithALeadingBOM",
+      "TestConsumeSSEStreamParsesChunkedCRLFEventsCommentsIDsAndMultilineData",
+      "TestStreamableHTTPTransportWaitsTheServersRetryDelayBeforeResumingAResponseStream",
+      "TestStreamableHTTPTransportResetsTheResumeBudgetWhileAResponseStreamMakesProgress",
+      "TestStreamableHTTPTransportStopsResumingAResponseStreamAfterMaxRetriesWithoutProgress",
+      "TestStreamableHTTPTransportRetriesTheGETStreamOnlyOnTransientStatusesAndUpToMaxRetries",
+      "TestStreamableHTTPReconnectDelayDoublesFromTheInitialDelayUpToTheCapUnlessTheServerSetsIt",
+      "TestStreamableHTTPTransportSkipsOnlySSEDataThatIsBlankToJavaScriptTrim",
+      "TestDescribeHTTPFailureTrimsTheBodyLikeJavaScript"
+    ],
+    "upstream_reference": "packages/mcp/test/streamable-http.test.ts:1-420 (JSON and SSE responses, session and protocol headers, GET stream open/resume/reconnect with Last-Event-ID, authentication and expired-session classification, error bodies) and packages/mcp/src/transports/streamable-http.ts:1-500",
+    "mutation": "mcp/streamable_http.go: headers.Set(\"MCP-Protocol-Version\", version) -> _ = version (TestStreamableHTTPTransportHandlesJSONAndSSEResponsesWithSessionAndProtocolHeaders FAIL); mcp/streamable_http.go: headers.Set(\"Mcp-Session-Id\", sessionID) -> _ = sessionID (TestStreamableHTTPTransportHandlesJSONAndSSEResponsesWithSessionAndProtocolHeaders FAIL); mcp/streamable_http.go: maxErrorBodyBytes           = 8 * 1024 -> maxErrorBodyBytes           = 4 * 1024 (TestStreamableHTTPTransportKeepsMaxErrorBodyUTF16UnitsOfAnErrorBody FAIL); mcp/streamable_http.go: response.StatusCode == http.StatusAccepted || response.StatusCode == http.StatusNoContent -> response.StatusCode == http.StatusAccepted (TestStreamableHTTPTransportRejectsARequestTheServerAcceptsWithoutAResponse FAIL); mcp/streamable_http.go: jsstring.FromUTF8(bytes.TrimPrefix(data, []byte(\"\\uFEFF\"))) -> jsstring.FromUTF8(data) (TestStreamableHTTPTransportDropsALeadingBOMFromAnErrorBody FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS; review rev-gap-behavior-libs-r (reconnect policy, streamable-http.ts:166-168, 366-505): mcp/streamable_http.go: if cursor.hasRetry { -> if false && cursor.hasRetry { (TestStreamableHTTPReconnectDelayDoublesFromTheInitialDelayUpToTheCapUnlessTheServerSetsIt FAIL); return status == 408 || status == 429 || status >= 500 -> return status == 429 || status >= 500 (TestStreamableHTTPTransportRetriesTheGETStreamOnlyOnTransientStatusesAndUpToMaxRetries FAIL); if cursor.received { attempt = 0 } removed (TestStreamableHTTPTransportResetsTheResumeBudgetWhileAResponseStreamMakesProgress FAIL); if !cursor.hasEventID || attempt >= t.maxRetries() { -> attempt > t.maxRetries() (TestStreamableHTTPTransportStopsResumingAResponseStreamAfterMaxRetriesWithoutProgress FAIL); runGetStream if attempt >= t.maxRetries() { -> attempt > t.maxRetries() (TestStreamableHTTPTransportRetriesTheGETStreamOnlyOnTransientStatusesAndUpToMaxRetries FAIL); delay *= 2 -> delay *= 3 (TestStreamableHTTPReconnectDelayDoublesFromTheInitialDelayUpToTheCapUnlessTheServerSetsIt FAIL); jsstring.Trim(event.Data) -> strings.TrimSpace(event.Data) (TestStreamableHTTPTransportSkipsOnlySSEDataThatIsBlankToJavaScriptTrim FAIL); jsstring.Trim(body) -> strings.TrimSpace(body) (TestDescribeHTTPFailureTrimsTheBodyLikeJavaScript FAIL); compiled test FAIL (go test -overlay), baseline PASS"
+  },
+  {
+    "upstream": "packages/mcp/src/transports/transport.ts",
+    "package": "./mcp",
+    "tests": [
+      "TestTransportEventsDeliverInRegistrationOrderUntilDisposed",
+      "TestTransportEventsEmitCloseOnceAndHonorDisposal",
+      "TestClientNotifiesCloseListenersOnceWhenTheTransportDrops"
+    ],
+    "upstream_reference": "packages/mcp/src/transports/transport.ts:21-54 (TransportEvents: ordered listeners, dispose function from onMessage/onError/onClose, emitClose fires at most once)",
+    "mutation": "mcp/transport.go: if t.closeCalled {\n\t\tt.mu.Unlock()\n\t\treturn\n\t} -> if false {\n\t\tt.mu.Unlock()\n\t\treturn\n\t} (TestTransportEventsEmitCloseOnceAndHonorDisposal FAIL); mcp/transport.go: t.messages = removeEntry(t.messages, id, func(e messageEntry) int { return e.id }) -> _ = removeEntry(t.messages, id, func(e messageEntry) int { return e.id }) (TestTransportEventsDeliverInRegistrationOrderUntilDisposed FAIL); mcp/transport.go: t.closes = removeEntry(t.closes, id, func(e closeEntry) int { return e.id }) -> _ = removeEntry(t.closes, id, func(e closeEntry) int { return e.id }) (TestTransportEventsEmitCloseOnceAndHonorDisposal FAIL); mcp/transport.go: t.errors = append(t.errors, errorEntry{id, listener}) -> t.errors = append([]errorEntry{{id, listener}}, t.errors...) (TestTransportEventsDeliverInRegistrationOrderUntilDisposed FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/telemetry/src/index.ts",
+    "package": "./telemetry",
+    "tests": [
+      "TestTelemetryUpstream",
+      "TestTelemetrySchemaKeepsEmptyMembers",
+      "TestTypedSpanStarterRecordsStartAttributesAndNestsByCallbackSpan"
+    ],
+    "upstream_reference": "packages/telemetry/test/telemetry.test.ts:28-155 (serializable schema definitions; createTypedSpanStarter binds the child starter to the parent span and reads no schema); index.ts createTypedSpanStarter",
+    "mutation": "telemetry/schema.go: return callback(span, bindTypedSpanStarter(span)) -> return callback(span, bindTypedSpanStarter(telemetryContext)) (TestTelemetryUpstream, TestTypedSpanStarterRecordsStartAttributesAndNestsByCallbackSpan FAIL); telemetry/schema.go: telemetryContext.StartSpan(SpanOptions{Name: name, Attributes: attributes} -> telemetryContext.StartSpan(SpanOptions{Name: name} (TestTypedSpanStarterRecordsStartAttributesAndNestsByCallbackSpan FAIL); telemetry/schema.go: `json:\"spans,omitzero\"` -> `json:\"spans,omitempty\"` (TestTelemetrySchemaKeepsEmptyMembers FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/telemetry/src/memory.ts",
+    "package": "./telemetry",
+    "tests": [
+      "TestConformanceUpstream"
+    ],
+    "upstream_reference": "packages/telemetry/test/conformance.test.ts:18-45 and packages/telemetry/src/testing/conformance.ts:60-315 run against InMemoryTelemetryContext (memory.ts:50-219: copyAttributes drops undefined, settleSpan keeps an explicit status and assigns endSequence, a settled parent makes children no-op spans)",
+    "mutation": "telemetry/memory.go: if failed && !span.explicitStatus { -> if failed { (TestConformanceUpstream FAIL); telemetry/memory.go: if parent != nil && parent.record.Settled { -> if parent != nil && false { (TestConformanceUpstream FAIL); telemetry/memory.go: span.owner.nextEndSequence++ -> span.owner.nextEndSequence += 2 (TestConformanceUpstream FAIL); telemetry/memory.go: maps.Copy(span.record.Attributes, copyAttributes(attributes)) -> maps.Copy(span.record.Attributes, attributes) (TestConformanceUpstream FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/telemetry/src/noop.ts",
+    "package": "./telemetry",
+    "tests": [
+      "TestTelemetryUpstream"
+    ],
+    "upstream_reference": "packages/telemetry/test/telemetry.test.ts:157-197 (NOOP_TELEMETRY_CONTEXT admits the callback once with one shared inert span, preserves thrown values, never inspects payloads); noop.ts:3-20",
+    "mutation": "telemetry/context.go: return callback(NoopTelemetryContext) -> return nil (TestTelemetryUpstream FAIL); telemetry/context.go: func (noopTelemetrySpan) StartSpan(_ SpanOptions, callback func(TelemetrySpan) error) error {\n\treturn callback(NoopTelemetryContext) -> func (noopTelemetrySpan) StartSpan(_ SpanOptions, callback func(TelemetrySpan) error) error {\n\tcallback(NoopTelemetryContext)\n\treturn nil (TestTelemetryUpstream FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/telemetry/src/testing/conformance.ts",
+    "package": "./telemetry",
+    "tests": [
+      "TestConformanceUpstream"
+    ],
+    "upstream_reference": "packages/telemetry/src/testing/conformance.ts:60-315 (the nine runner-independent adapter cases) executed by packages/telemetry/test/conformance.test.ts:18",
+    "mutation": "telemetry/telemetrytest/conformance.go: strictEqual(admitted, true, \"admitted\"), strictEqual(calls, 1, \"calls\") -> strictEqual(admitted, true, \"admitted\"), strictEqual(calls, 2, \"calls\") (TestConformanceUpstream FAIL); telemetry/telemetrytest/conformance.go: deepStrictEqual(spans[0].Status, status(telemetry.SpanStatusCodeOK), \"status\") -> deepStrictEqual(spans[0].Status, status(telemetry.SpanStatusCodeError), \"status\") (TestConformanceUpstream FAIL); telemetry/telemetrytest/conformance.go: {\"last-status\", status(telemetry.SpanStatusCodeOK)}, -> {\"last-status\", status(telemetry.SpanStatusCodeError)}, (TestConformanceUpstream FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/telemetry/src/testing/types.ts",
+    "package": "./telemetry",
+    "tests": [
+      "TestConformanceFixtureIsOwnedAndDisposedByEachCase",
+      "TestConformanceFixtureDisposesAfterAFailingCaseAndJoinsTheDisposeError"
+    ],
+    "upstream_reference": "packages/telemetry/src/testing/types.ts:5-9 (TelemetryAdapterFixture extends AsyncDisposable, one fresh fixture per case) as consumed by conformance.ts:19-24 (`await using fixture = await factory()`); types.ts declares types only, so its behavior is the fixture ownership contract createCase applies",
+    "mutation": "telemetry/telemetrytest/conformance.go: if fixture.Dispose == nil {\n\t\t\t\t\treturn\n\t\t\t\t} -> if fixture.Dispose == nil || err != nil {\n\t\t\t\t\treturn\n\t\t\t\t} (TestConformanceFixtureDisposesAfterAFailingCaseAndJoinsTheDisposeError FAIL); telemetry/telemetrytest/conformance.go: err = errors.Join(err, disposeErr) -> err = disposeErr (TestConformanceFixtureDisposesAfterAFailingCaseAndJoinsTheDisposeError FAIL); telemetry/telemetrytest/conformance.go: fixture, err := factory(ctx)\n\t\t\tif err != nil {\n\t\t\t\treturn err\n\t\t\t} -> fixture, err := factory(ctx)\n\t\t\tif err != nil {\n\t\t\t\tif fixture.Dispose != nil {\n\t\t\t\t\t_ = fixture.Dispose(ctx)\n\t\t\t\t}\n\t\t\t\treturn err\n\t\t\t} (TestConformanceFixtureDisposesAfterAFailingCaseAndJoinsTheDisposeError FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  }
+]

@@ -21,7 +21,7 @@ import (
 // environment and passes os.Executable() (this same test binary) as the
 // command, so the same test works on every OS the test binary runs on,
 // including native Windows, instead of depending on /bin/echo or a
-// cmd.exe-only builtin. Mirrors cmd/pig/testmain_test.go's identical helper.
+// cmd.exe-only builtin. Mirrors coding/cli/testmain_test.go's identical helper.
 const execEchoHelperEnv = "PIG_TEST_EXEC_ECHO_HELPER"
 
 // argvRecordEnv names a file to which this test binary, run under another program's name, appends that name and its arguments as one JSON line, then exits. A test copies the binary over a launcher such as rundll32.exe to observe exactly what production code would pass to it.

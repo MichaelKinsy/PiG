@@ -14,7 +14,7 @@ timeout_seconds = 20
 
 [[rpc.steps]]
 line = '{"id":"run","type":"prompt","message":"Run: extension echo hello"}'
-wait_event = '{"type":"agent_settled"}'
+wait_event = '{"type":"agent_settled","aborted":false}'
 wait_timeout_seconds = 10
 [[rpc.steps]]
 line = '{"id":"messages","type":"get_messages"}'
@@ -38,12 +38,13 @@ exit_code = 0
 json_output_equal = true
 stderr_equal = true
 runs = 3
-# canonical_json sorts members, so these substrings are in sorted order.
+# canonical_json sorts members, so these substrings are in sorted order; the measured durationMs (Pi 1.1.0, #10549) varies per run.
 both_contain = [
   # tool_execution_end's result.
   '"result":{"content":[{"text":"echo-bridge: hello","type":"text"}],"details":null}',
   # The toolResult message in message_start/end, turn_end, agent_end, get_messages and the get_entries session entry.
-  '"details":null,"isError":false,"role":"toolResult"',
+  '"details":null,"durationMs":',
+  '"isError":false,"role":"toolResult"',
   '"command":"get_entries"',
 ]
 [[assert.json_aliases]]
@@ -60,3 +61,8 @@ kind = "id"
 group = "entry"
 pattern = '^[a-f0-9]{8,16}$'
 reason = "Generated entry keys vary per process. A bijection retains every parent and leaf reference; command and tool-call IDs stay literal."
+
+[[assert.json_aliases]]
+paths = ["/**/durationMs"]
+kind = "duration"
+reason = "Pi 1.1.0 measures each response and tool execution (#10549) with a monotonic clock; the value varies per run. Retain presence, type and position."

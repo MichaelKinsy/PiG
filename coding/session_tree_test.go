@@ -70,7 +70,7 @@ func newTreeTestSessionWithSettings(t *testing.T, settings string) *Session {
 	if err := os.WriteFile(filepath.Join(agentDir, "settings.json"), []byte(settings), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	svcs, err := NewServices(ServicesOptions{CWD: t.TempDir(), AgentDir: agentDir})
+	svcs, err := CreateAgentSessionServices(CreateAgentSessionServicesOptions{CWD: t.TempDir(), AgentDir: agentDir})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -105,7 +105,7 @@ func (c *promptCapturingCompleter) CompleteSimple(_ context.Context, _ *ai.Model
 }
 
 func treeLeaf(sess *Session) string {
-	if leaf := sess.inner.LeafID(); leaf != nil {
+	if leaf := sess.inner.GetLeafID(); leaf != nil {
 		return *leaf
 	}
 	return "<nil>"
@@ -118,7 +118,7 @@ func TestNavigateTreeToCurrentLeafIsNoOp(t *testing.T) {
 	appendTreeUser(t, sess, "hello")
 	appendTreeAssistant(t, sess, "hi")
 	leaf := appendTreeUser(t, sess, "unanswered")
-	entriesBefore := len(sess.inner.Entries())
+	entriesBefore := len(sess.inner.GetEntries())
 
 	res, err := sess.NavigateTree(context.Background(), leaf, NavigateTreeOptions{Summarize: true})
 	if err != nil {
@@ -130,7 +130,7 @@ func TestNavigateTreeToCurrentLeafIsNoOp(t *testing.T) {
 	if got := treeLeaf(sess); got != leaf {
 		t.Fatalf("leaf = %s, want unchanged %s", got, leaf)
 	}
-	if got := len(sess.inner.Entries()); got != entriesBefore {
+	if got := len(sess.inner.GetEntries()); got != entriesBefore {
 		t.Fatalf("entries = %d, want %d", got, entriesBefore)
 	}
 }
@@ -191,7 +191,7 @@ func TestNavigateTreeCustomMessageTarget(t *testing.T) {
 			sess := newTreeTestSession(t)
 			appendTreeUser(t, sess, "hello")
 			parent := appendTreeAssistant(t, sess, "hi")
-			target, err := sess.inner.AppendCustomMessage("note", tc.content, true, nil)
+			target, err := sess.inner.AppendCustomMessageEntry("note", tc.content, true, nil)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -295,8 +295,8 @@ func TestNavigateTreeSummaryReplaceInstructions(t *testing.T) {
 func treeLabelTargets(t *testing.T, sess *Session) map[string]string {
 	t.Helper()
 	labels := map[string]string{}
-	for _, entry := range sess.inner.Entries() {
-		if entry.Base.Type != "label" {
+	for _, entry := range sess.inner.GetEntries() {
+		if entry.Base().Type != "label" {
 			continue
 		}
 		var label icodingagent.LabelEntry
@@ -324,9 +324,9 @@ func TestNavigateTreeLabelsTargetWithoutSummary(t *testing.T) {
 	if got := treeLabelTargets(t, sess); got[target] != "checkpoint" || len(got) != 1 {
 		t.Fatalf("labels = %v, want %s labelled checkpoint", got, target)
 	}
-	leaf, ok := sess.inner.EntryByID(treeLeaf(sess))
-	if !ok || leaf.Base.Type != "label" || leaf.Base.ParentID == nil || *leaf.Base.ParentID != target {
-		t.Fatalf("leaf = %+v, want label entry under %s", leaf.Base, target)
+	leaf, ok := sess.inner.GetEntry(treeLeaf(sess))
+	if !ok || leaf.Base().Type != "label" || leaf.Base().ParentID == nil || *leaf.Base().ParentID != target {
+		t.Fatalf("leaf = %+v, want label entry under %s", leaf.Base(), target)
 	}
 }
 
@@ -343,9 +343,9 @@ func TestNavigateTreeLabelsBranchSummary(t *testing.T) {
 		t.Fatalf("NavigateTree: %v", err)
 	}
 	var summaryID string
-	for _, entry := range sess.inner.Entries() {
-		if entry.Base.Type == "branch_summary" {
-			summaryID = entry.Base.ID
+	for _, entry := range sess.inner.GetEntries() {
+		if entry.Base().Type == "branch_summary" {
+			summaryID = entry.Base().ID
 		}
 	}
 	if summaryID == "" {
@@ -378,7 +378,7 @@ func TestNavigateTreeRootUserMessageResetsLeaf(t *testing.T) {
 	if res.Cancelled || res.EditorText != "First message" || res.SummaryEntry != nil {
 		t.Fatalf("result = %+v", res)
 	}
-	if leaf := sess.inner.LeafID(); leaf != nil {
+	if leaf := sess.inner.GetLeafID(); leaf != nil {
 		t.Fatalf("leaf = %s, want nil", *leaf)
 	}
 }
@@ -437,9 +437,9 @@ func TestNavigateTreeSummaryAttachesToNestedUserParent(t *testing.T) {
 		t.Fatalf("summary parentId = %v, want %s", res.SummaryEntry.ParentID, a1)
 	}
 	var childTypes []string
-	for _, entry := range sess.inner.Entries() {
-		if entry.Base.ParentID != nil && *entry.Base.ParentID == a1 {
-			childTypes = append(childTypes, entry.Base.Type)
+	for _, entry := range sess.inner.GetEntries() {
+		if entry.Base().ParentID != nil && *entry.Base().ParentID == a1 {
+			childTypes = append(childTypes, entry.Base().Type)
 		}
 	}
 	if len(childTypes) != 2 || !slices.Contains(childTypes, "branch_summary") || !slices.Contains(childTypes, "message") {
@@ -478,7 +478,7 @@ func TestNavigateTreeWithoutSummarizeCreatesNoEntries(t *testing.T) {
 	appendTreeAssistant(t, sess, "a1")
 	appendTreeUser(t, sess, "Second")
 	appendTreeAssistant(t, sess, "a2")
-	before := len(sess.inner.Entries())
+	before := len(sess.inner.GetEntries())
 
 	res, err := sess.NavigateTree(context.Background(), first, NavigateTreeOptions{})
 	if err != nil {
@@ -487,7 +487,7 @@ func TestNavigateTreeWithoutSummarizeCreatesNoEntries(t *testing.T) {
 	if res.SummaryEntry != nil || completer.called.Load() {
 		t.Fatalf("summary created without summarize: %+v", res)
 	}
-	if got := len(sess.inner.Entries()); got != before {
+	if got := len(sess.inner.GetEntries()); got != before {
 		t.Fatalf("entries = %d, want %d", got, before)
 	}
 }
@@ -500,7 +500,7 @@ func TestNavigateTreeBetweenBranchesSummarizesLeftBranch(t *testing.T) {
 	a1 := appendTreeAssistant(t, sess, "a1")
 	u2 := appendTreeUser(t, sess, "Main branch continue")
 	appendTreeAssistant(t, sess, "a2")
-	if err := sess.inner.Fork(a1); err != nil {
+	if err := sess.inner.Branch(a1); err != nil {
 		t.Fatal(err)
 	}
 	appendTreeUser(t, sess, "Branch path")
@@ -528,7 +528,7 @@ func TestNavigateTreeAbortDuringSummarization(t *testing.T) {
 	appendTreeAssistant(t, sess, "a1")
 	appendTreeUser(t, sess, "Continue")
 	leafBefore := appendTreeAssistant(t, sess, "a2")
-	entriesBefore := len(sess.inner.Entries())
+	entriesBefore := len(sess.inner.GetEntries())
 
 	type outcome struct {
 		res NavigateTreeResult
@@ -552,7 +552,7 @@ func TestNavigateTreeAbortDuringSummarization(t *testing.T) {
 	if !got.res.Cancelled || !got.res.Aborted || got.res.SummaryEntry != nil {
 		t.Fatalf("result = %+v, want cancelled and aborted without summary", got.res)
 	}
-	if n := len(sess.inner.Entries()); n != entriesBefore {
+	if n := len(sess.inner.GetEntries()); n != entriesBefore {
 		t.Fatalf("entries = %d, want %d", n, entriesBefore)
 	}
 	if leaf := treeLeaf(sess); leaf != leafBefore {
@@ -567,13 +567,14 @@ func withTreeHandlers(sess *Session, t *testing.T, handlers map[string][]extensi
 
 // Upstream emits session_before_tree from navigateTree with the full
 // TreePreparation and the branch summary abort signal.
+// Pi: packages/coding-agent/src/core/extensions/types.ts:827 (SessionBeforeTreeEvent.type); packages/coding-agent/src/core/extensions/types.ts:828 (SessionBeforeTreeEvent.preparation).
 func TestNavigateTreeEmitsSessionBeforeTreeWithPreparation(t *testing.T) {
 	sess := newTreeTestSession(t)
 	sess.completer = &fakeCompleter{summary: "summary"}
 	appendTreeUser(t, sess, "hello")
 	common := appendTreeAssistant(t, sess, "hi")
 	target := appendTreeUser(t, sess, "target")
-	if err := sess.inner.Fork(common); err != nil {
+	if err := sess.inner.Branch(common); err != nil {
 		t.Fatal(err)
 	}
 	abandonedUser := appendTreeUser(t, sess, "abandoned")
@@ -597,13 +598,10 @@ func TestNavigateTreeEmitsSessionBeforeTreeWithPreparation(t *testing.T) {
 	if event.Type != "session_before_tree" || event.Signal == nil {
 		t.Fatalf("event = %+v", event)
 	}
-	preparation, ok := event.Preparation.(*TreePreparation)
-	if !ok {
-		t.Fatalf("preparation = %T, want *TreePreparation", event.Preparation)
-	}
+	preparation := event.Preparation
 	var summarized []string
 	for _, entry := range preparation.EntriesToSummarize {
-		summarized = append(summarized, entry.Base.ID)
+		summarized = append(summarized, entry.Base().ID)
 	}
 	if preparation.TargetID != target || preparation.OldLeafID == nil || *preparation.OldLeafID != oldLeaf ||
 		preparation.CommonAncestorID == nil || *preparation.CommonAncestorID != common ||
@@ -659,20 +657,21 @@ func TestNavigateTreeSessionBeforeTreeCancel(t *testing.T) {
 
 // .upstream/v0.87.1/packages/coding-agent/test/branch-summary-extensions.test.ts:15
 // persists extension-provided summary usage in session totals.
+// Pi: packages/coding-agent/src/core/session-manager.ts:111 (BranchSummaryEntry.details); packages/coding-agent/src/core/session-manager.ts:115 (BranchSummaryEntry.fromHook).
 func TestNavigateTreeExtensionSummary(t *testing.T) {
 	sess := newTreeTestSession(t)
 	completer := &fakeCompleter{summary: "must not run"}
 	sess.completer = completer
-	usage := map[string]any{
-		"input": 10, "output": 20, "cacheRead": 30, "cacheWrite": 40, "totalTokens": 100,
-		"cost": map[string]any{"input": 0.1, "output": 0.2, "cacheRead": 0.3, "cacheWrite": 0.4, "total": 1},
+	usage := ai.Usage{
+		Input: 10, Output: 20, CacheRead: 30, CacheWrite: 40, TotalTokens: 100,
+		Cost: ai.UsageCost{Input: 0.1, Output: 0.2, CacheRead: 0.3, CacheWrite: 0.4, Total: 1},
 	}
 	withTreeHandlers(sess, t, map[string][]extension.HandlerFn{
 		"session_before_tree": {func(...any) (any, error) {
 			return extension.SessionBeforeTreeResult{Summary: &extension.SessionBeforeTreeResultSummary{
 				Summary: "Summary provided by extension",
 				Details: map[string]any{"source": "extension"},
-				Usage:   usage,
+				Usage:   &usage,
 			}}, nil
 		}},
 	})
@@ -697,8 +696,8 @@ func TestNavigateTreeExtensionSummary(t *testing.T) {
 	if summary.Usage == nil || *summary.Usage != wantUsage {
 		t.Fatalf("summary usage = %+v, want %+v", summary.Usage, wantUsage)
 	}
-	if details, ok := summary.Details.(map[string]any); !ok || details["source"] != "extension" {
-		t.Fatalf("summary details = %#v", summary.Details)
+	if details, err := json.Marshal(summary.Details); err != nil || string(details) != `{"source":"extension"}` {
+		t.Fatalf("summary details = %s (%v)", details, err)
 	}
 	if completer.called.Load() {
 		t.Fatal("extension summary still ran the summarizer")
@@ -762,9 +761,50 @@ func TestNavigateTreeSessionBeforeTreeOverrides(t *testing.T) {
 	}
 }
 
+// agent-session.ts navigateTree: a session_before_tree result overrides customInstructions, replaceInstructions and label only for the fields it defines, so an explicit replaceInstructions false overrides the caller's true, and an omitted field keeps the caller's value. A Go handler returns the typed extension.SessionBeforeTreeResult.
+// Pi: packages/coding-agent/src/core/extensions/types.ts:1485 (SessionBeforeTreeResult.customInstructions); packages/coding-agent/src/core/extensions/types.ts:1487 (SessionBeforeTreeResult.replaceInstructions); packages/coding-agent/src/core/extensions/types.ts:1488 (SessionBeforeTreeResult.label).
+func TestNavigateTreeTypedSessionBeforeTreeResultOverridesOnlyDefinedFields(t *testing.T) {
+	for _, tc := range []struct {
+		name       string
+		result     extension.SessionBeforeTreeResult
+		wantSuffix string
+		wantLabel  string
+	}{
+		{"explicit false and label", extension.SessionBeforeTreeResult{ReplaceInstructions: new(false), Label: new("typed")}, "Additional focus: user focus", "typed"},
+		{"instructions replace", extension.SessionBeforeTreeResult{CustomInstructions: new("TYPED ONLY"), ReplaceInstructions: new(true)}, "</conversation>\n\nTYPED ONLY", "user-label"},
+		{"nothing defined", extension.SessionBeforeTreeResult{}, "</conversation>\n\nuser focus", "user-label"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			sess := newTreeTestSession(t)
+			completer := &promptCapturingCompleter{summary: "summary"}
+			sess.completer = completer
+			withTreeHandlers(sess, t, map[string][]extension.HandlerFn{
+				"session_before_tree": {func(...any) (any, error) { return tc.result, nil }},
+			})
+			appendTreeUser(t, sess, "hello")
+			target := appendTreeAssistant(t, sess, "hi")
+			appendTreeUser(t, sess, "abandoned")
+			res, err := sess.NavigateTree(context.Background(), target, NavigateTreeOptions{Summarize: true, CustomInstructions: "user focus", ReplaceInstructions: true, Label: "user-label"})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if len(completer.prompts) != 1 || !strings.HasSuffix(completer.prompts[0], tc.wantSuffix) {
+				t.Fatalf("summary prompt = %q, want suffix %q", completer.prompts, tc.wantSuffix)
+			}
+			if res.SummaryEntry == nil {
+				t.Fatal("summary entry missing")
+			}
+			if got := treeLabelTargets(t, sess); got[res.SummaryEntry.ID] != tc.wantLabel || len(got) != 1 {
+				t.Fatalf("labels = %v, want summary labelled %q", got, tc.wantLabel)
+			}
+		})
+	}
+}
+
 // Upstream emits session_tree after every completed navigation with the new
 // and old leaf, and the summary entry plus fromExtension when a summary was
 // created.
+// Pi: packages/coding-agent/src/core/extensions/types.ts:1479 (SessionBeforeTreeResult.summary); packages/coding-agent/src/core/extensions/types.ts:835 (SessionTreeEvent.newLeafId); packages/coding-agent/src/core/extensions/types.ts:836 (SessionTreeEvent.oldLeafId); packages/coding-agent/src/core/extensions/types.ts:837 (SessionTreeEvent.summaryEntry); packages/coding-agent/src/core/extensions/types.ts:838 (SessionTreeEvent.fromExtension).
 func TestNavigateTreeEmitsSessionTree(t *testing.T) {
 	type treeEvent struct {
 		newLeaf, oldLeaf string
@@ -782,11 +822,13 @@ func TestNavigateTreeEmitsSessionTree(t *testing.T) {
 			event := args[0].(extension.SessionTreeEvent)
 			got := treeEvent{newLeaf: leafString(event.NewLeafID), oldLeaf: leafString(event.OldLeafID), fromExtension: event.FromExtension}
 			if event.SummaryEntry != nil {
-				entry, ok := event.SummaryEntry.(icodingagent.SessionEntry)
-				if !ok || entry.Base.Type != "branch_summary" {
+				if event.SummaryEntry.Type != "branch_summary" {
 					t.Errorf("summaryEntry = %#v", event.SummaryEntry)
 				}
-				got.summaryID = entry.Base.ID
+				got.summaryID = event.SummaryEntry.ID
+				if event.SummaryEntry.Summary == "" || event.SummaryEntry.FromID == "" {
+					t.Errorf("summaryEntry = %#v, want the persisted summary and the branch it came from", event.SummaryEntry)
+				}
 			}
 			*events = append(*events, got)
 			return nil, nil

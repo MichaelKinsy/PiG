@@ -46,6 +46,7 @@ func (s modelsRuntimeStore) Delete(ctx context.Context, id string) error {
 	return s.base.Delete(ctx, id)
 }
 
+// Pi: packages/ai/src/auth/resolve.ts:20 (AuthResolutionOverrides.apiKey).
 func TestModelsRuntimeAuthUpstream(t *testing.T) {
 	// .upstream/v0.87.1/packages/ai/test/models-runtime.test.ts:617
 	t.Run("passes caller signals to provider auth callbacks", func(t *testing.T) {

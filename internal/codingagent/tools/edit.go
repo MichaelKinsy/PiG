@@ -5,9 +5,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/MichaelKinsy/PiG/agent"
 	"github.com/MichaelKinsy/PiG/ai"
+	"github.com/MichaelKinsy/PiG/internal/jsonstringify"
+	"github.com/MichaelKinsy/PiG/internal/orderedjson"
 	"github.com/MichaelKinsy/PiG/internal/text"
 )
 
@@ -107,58 +110,83 @@ func (t *EditTool) PrepareArguments(raw json.RawMessage) (json.RawMessage, error
 	return prepareEditArgumentsRaw(raw), nil
 }
 
-// isSingleEditInput mirrors upstream isSingleEditInput: a non-array object
-// whose oldText and newText are strings.
-func isSingleEditInput(value any) bool {
-	edit, ok := value.(map[string]any)
-	if !ok {
-		return false
-	}
-	_, oldOK := edit["oldText"].(string)
-	_, newOK := edit["newText"].(string)
-	return oldOK && newOK
-}
-
 // prepareEditArgumentsRaw mirrors upstream prepareEditArguments on the raw
 // JSON arguments.
 func prepareEditArgumentsRaw(raw json.RawMessage) json.RawMessage {
-	var args map[string]any
-	if err := json.Unmarshal(raw, &args); err != nil || args == nil {
+	args, err := orderedjson.Parse(raw)
+	if err != nil {
 		return raw
 	}
 	changed := false
-	switch edits := args["edits"].(type) {
-	case string:
-		var parsed any
-		if err := json.Unmarshal([]byte(edits), &parsed); err == nil {
-			if list, ok := parsed.([]any); ok {
-				args["edits"], changed = list, true
-			} else if isSingleEditInput(parsed) {
-				args["edits"], changed = []any{parsed}, true
+	// Assigning args.edits keeps its position when the member exists and appends it otherwise, as a JS object does.
+	if editsRaw, ok := args.Get("edits"); ok && isJSONString(editsRaw) {
+		var inner string
+		if json.Unmarshal(editsRaw, &inner) == nil {
+			// JSON.parse skips only JSON whitespace; strings.TrimSpace would also accept \v, \f, U+0085 and U+00A0.
+			switch innerRaw := json.RawMessage(strings.Trim(inner, " \t\n\r")); {
+			case json.Valid(innerRaw) && len(innerRaw) > 0 && innerRaw[0] == '[':
+				args.Set("edits", innerRaw)
+				changed = true
+			case json.Valid(innerRaw) && isSingleEditInput(innerRaw):
+				args.Set("edits", append(append(json.RawMessage("["), innerRaw...), ']'))
+				changed = true
 			}
 		}
-	default:
-		if isSingleEditInput(edits) {
-			args["edits"], changed = []any{edits}, true
-		}
+	} else if ok && isSingleEditInput(editsRaw) {
+		args.Set("edits", append(append(json.RawMessage("["), editsRaw...), ']'))
+		changed = true
 	}
-	oldText, oldOK := args["oldText"].(string)
-	newText, newOK := args["newText"].(string)
-	if oldOK && newOK {
-		existing, _ := args["edits"].([]any)
-		args["edits"] = append(append([]any(nil), existing...), map[string]any{"oldText": oldText, "newText": newText})
-		delete(args, "oldText")
-		delete(args, "newText")
+	oldRaw, _ := args.Get("oldText")
+	newRaw, _ := args.Get("newText")
+	if isJSONString(oldRaw) && isJSONString(newRaw) {
+		// {...rest, edits}: rest keeps its order minus oldText and newText, and edits keeps its place in rest or goes last.
+		edits := []json.RawMessage{}
+		if current, ok := args.Get("edits"); ok {
+			_ = json.Unmarshal(current, &edits)
+		}
+		edit := orderedjson.New()
+		edit.Set("oldText", oldRaw)
+		edit.Set("newText", newRaw)
+		editRaw, _ := edit.MarshalJSON()
+		edits = append(edits, editRaw)
+		list, err := json.Marshal(edits)
+		if err != nil {
+			return raw
+		}
+		args.Delete("oldText")
+		args.Delete("newText")
+		args.Set("edits", list)
 		changed = true
 	}
 	if !changed {
 		return raw
 	}
-	out, err := json.Marshal(args)
+	out, err := args.MarshalJSON()
 	if err != nil {
 		return raw
 	}
-	return out
+	// JSON.stringify form: no HTML escaping, integer-like members first.
+	canonical, err := jsonstringify.Canonicalize(out)
+	if err != nil {
+		return raw
+	}
+	return canonical
+}
+
+// isSingleEditInput mirrors upstream isSingleEditInput: a non-array object whose oldText and newText are strings.
+func isSingleEditInput(raw json.RawMessage) bool {
+	edit, err := orderedjson.Parse(raw)
+	if err != nil {
+		return false
+	}
+	oldRaw, _ := edit.Get("oldText")
+	newRaw, _ := edit.Get("newText")
+	return isJSONString(oldRaw) && isJSONString(newRaw)
+}
+
+// isJSONString reports whether raw is a JSON string.
+func isJSONString(raw json.RawMessage) bool {
+	return len(raw) > 0 && raw[0] == '"'
 }
 
 // prepareEditArguments prepares the raw arguments and decodes them.
@@ -249,7 +277,7 @@ func (t *EditTool) editLocked(ctx context.Context, absPath string, p editParams)
 	if aborted() {
 		return editError("Operation aborted")
 	}
-	diff, firstChangedLine := GenerateDiffString(applied.baseContent, applied.newContent)
+	diff, firstChangedLine := diffAndFirstLine(applied.baseContent, applied.newContent)
 	patch := GenerateUnifiedPatch(p.Path, applied.baseContent, applied.newContent)
 	return agent.AgentToolResult{
 		Content: []ai.ToolResultMessageContent{ai.TextContent{Text: fmt.Sprintf("Successfully replaced %d block(s) in %s.", len(p.Edits), p.Path)}},

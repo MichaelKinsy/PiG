@@ -122,7 +122,7 @@ stay subprocess-only without giving up the pi extension API:
 Do not, without an explicit approved spec:
 - add a WASM or embedded-JS extension runtime,
 - add a dynamic Go plugin / `plugin.Open` extension loader,
-- add a linked/in-process production extension runtime,
+- add a linked/in-process production extension runtime, except the compiled-in extension factory form of `docs/specs/extension-factory-trust.md`: an `extension.ExtensionFactory` that the source of the binary's own `main` package passes to the loader by value (Stock PiG's built-in rows, or an embedding program's own factories). A Piglet member, including a D31 fused extension, never uses it. Settings and `-e builtin:<name>` may select or disable a registered built-in by name, as Pi does; no user, project, Package, file, settings entry, Piglet, or wire peer can supply or add factory code,
 - introduce multi-register (`RegisterPayload.Extensions`,
   `RequestPayload.TargetExtension`): packed cells deliberately stay on
   one socket and one registration per extension,
@@ -273,42 +273,65 @@ make async-contracts` or `make verify` from `docs/parity/PORT_MAP.md` and `test/
   port. Everything else is invariant rule, not progress narrative.
 -->
 
-**Porting:** 379 / 493 intended-portable entries ✅ (76.9%); **Verification:** 355 behavioral (93.7%), 3 weak-only (no behavioral verification), 21 untested.
-Raw PORT_MAP rows: 550. Breakdown: 57 n/a (designed out) · 102 🟡 partial · 12 ⬜ not started. See docs/parity/DIVERGENCES.md for the documented exceptions.
+**Porting:** 636 / 654 intended-portable entries ✅ (97.2%); **Verification:** 636 behavioral (100.0%), 0 untested.
+Raw PORT_MAP rows: 728. Breakdown: 74 n/a (designed out) · 18 🟡 partial. See docs/parity/DIVERGENCES.md for the documented exceptions.
+
+| package | src files | n/a | intended | ✅ | 🟡 | ⬜ | ported | behavioral |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| `agent` | 6 | 1 | 5 | 4 | 1 | 0 | 80.0% | 100.0% |
+| `ai` | 203 | 22 | 181 | 176 | 5 | 0 | 97.2% | 100.0% |
+| `chord` | 29 | 3 | 26 | 26 | 0 | 0 | 100.0% | 100.0% |
+| `client` | 8 | 2 | 6 | 6 | 0 | 0 | 100.0% | 100.0% |
+| `codemode` | 10 | 3 | 7 | 7 | 0 | 0 | 100.0% | 100.0% |
+| `coding-agent` | 300 | 30 | 270 | 263 | 7 | 0 | 97.4% | 100.0% |
+| `durable` | 67 | 4 | 63 | 63 | 0 | 0 | 100.0% | 100.0% |
+| `env` | 6 | 1 | 5 | 5 | 0 | 0 | 100.0% | 100.0% |
+| `evals` | 5 | 0 | 5 | 5 | 0 | 0 | 100.0% | 100.0% |
+| `mcp` | 18 | 3 | 15 | 11 | 4 | 0 | 73.3% | 100.0% |
+| `protocol` | 8 | 2 | 6 | 6 | 0 | 0 | 100.0% | 100.0% |
+| `server` | 16 | 2 | 14 | 14 | 0 | 0 | 100.0% | 100.0% |
+| `telemetry` | 6 | 1 | 5 | 5 | 0 | 0 | 100.0% | 100.0% |
+| `tui` | 46 | 0 | 46 | 45 | 1 | 0 | 97.8% | 100.0% |
+
+- **Four core packages (agent, ai, coding-agent, tui):** 488 / 502 intended-portable files ✅ (97.2%) from 555 rows; 488 behavioral (100.0%), 0 weak-only, 0 untested.
+- **Shipped surface (agent, ai, chord, codemode, coding-agent, mcp, telemetry, tui; coding-agent without packages/coding-agent/src/cli/experimental/, packages/coding-agent/src/client/, packages/coding-agent/src/experimental/):** 488 / 506 intended-portable files ✅ (96.4%) from 566 rows; 488 behavioral (100.0%), 0 weak-only, 0 untested.
+- **Whole monorepo (14 packages):** 636 / 654 intended-portable files ✅ (97.2%) from 728 rows; 636 behavioral (100.0%), 0 weak-only, 0 untested.
+- **Interface closure:** 12318 of 12324 semantic interface IDs closed (366 designed-out, 6 pending, 11952 ported). A file-level ✅ does not close an interface ID.
+
 Behavioral evidence includes paired scenarios and reviewed mutation-proven unit tests; the family table below counts paired scenarios only.
 Weak scenarios not counted as behavioral verification: 4 boot-only, 4 registration-only, 1 smoke-only.
 
 | family | scenarios | behavioral | boot-only | weak | deferred | upstream behavioral covered | last run |
 |---|---:|---:|---:|---:|---:|---:|---|
-| `_top` | 1 | 1 | 0 | 0 | 0 | 1 | not run |
-| `ai-sdk` | 3 | 3 | 0 | 0 | 0 | 90 | not run |
-| `autocomplete` | 13 | 13 | 0 | 0 | 0 | 5 | not run |
-| `cli-utils` | 25 | 25 | 0 | 0 | 0 | 13 | not run |
-| `clipboard-images` | 7 | 7 | 0 | 0 | 2 | 11 | not run |
-| `compaction` | 14 | 14 | 0 | 0 | 0 | 10 | not run |
-| `export-html` | 6 | 6 | 0 | 0 | 0 | 1 | not run |
-| `extension-host` | 1 | 1 | 0 | 0 | 0 | 2 | not run |
-| `extensions-runtime` | 103 | 102 | 0 | 1 | 0 | 58 | not run |
-| `footer` | 11 | 11 | 0 | 0 | 0 | 9 | not run |
-| `fullscreen` | 12 | 12 | 0 | 0 | 0 | 9 | not run |
-| `interactive-rendering` | 55 | 54 | 1 | 0 | 0 | 35 | not run |
-| `json` | 10 | 10 | 0 | 0 | 0 | 7 | not run |
-| `model-resolver-selector` | 25 | 25 | 0 | 0 | 0 | 15 | not run |
-| `model-runtime-store-catalog` | 25 | 25 | 0 | 0 | 0 | 24 | not run |
-| `oauth` | 29 | 29 | 0 | 0 | 0 | 18 | not run |
-| `print` | 7 | 7 | 0 | 0 | 0 | 6 | not run |
-| `project-trust` | 23 | 23 | 0 | 0 | 0 | 18 | not run |
-| `providers-faux-streaming` | 65 | 64 | 0 | 1 | 0 | 48 | not run |
-| `providers-registry` | 7 | 4 | 0 | 3 | 0 | 26 | not run |
-| `rpc` | 49 | 49 | 0 | 0 | 0 | 23 | not run |
-| `selectors` | 14 | 14 | 0 | 0 | 1 | 15 | not run |
-| `session` | 41 | 41 | 0 | 0 | 0 | 19 | not run |
-| `settings` | 14 | 14 | 0 | 0 | 0 | 19 | not run |
-| `slash-commands` | 16 | 15 | 1 | 0 | 0 | 16 | not run |
-| `startup` | 18 | 17 | 1 | 0 | 0 | 10 | not run |
-| `tools` | 29 | 29 | 0 | 0 | 0 | 31 | not run |
-| `tree` | 8 | 7 | 1 | 0 | 0 | 5 | not run |
-| `tui-components` | 26 | 26 | 0 | 0 | 0 | 27 | not run |
+| `_top` | 1 | 1 | 0 | 0 | 0 | 1 | 1 pass |
+| `ai-sdk` | 3 | 3 | 0 | 0 | 0 | 90 | 3 pass |
+| `autocomplete` | 13 | 13 | 0 | 0 | 0 | 5 | 13 pass |
+| `cli-utils` | 33 | 33 | 0 | 0 | 0 | 15 | 33 pass |
+| `clipboard-images` | 7 | 7 | 0 | 0 | 2 | 11 | 6 pass / 1 not run |
+| `compaction` | 14 | 14 | 0 | 0 | 0 | 10 | 14 pass |
+| `export-html` | 7 | 7 | 0 | 0 | 0 | 2 | 7 pass |
+| `extension-host` | 1 | 1 | 0 | 0 | 0 | 2 | 1 pass |
+| `extensions-runtime` | 118 | 117 | 0 | 1 | 0 | 60 | 108 pass / **1 fail** |
+| `footer` | 11 | 11 | 0 | 0 | 0 | 9 | 9 pass / 2 not run |
+| `fullscreen` | 13 | 13 | 0 | 0 | 0 | 10 | 13 pass |
+| `interactive-rendering` | 66 | 65 | 1 | 0 | 0 | 36 | 65 pass / 1 not run |
+| `json` | 10 | 10 | 0 | 0 | 0 | 7 | 10 pass |
+| `model-resolver-selector` | 25 | 25 | 0 | 0 | 0 | 15 | 25 pass |
+| `model-runtime-store-catalog` | 25 | 25 | 0 | 0 | 0 | 24 | 25 pass |
+| `oauth` | 29 | 29 | 0 | 0 | 1 | 18 | 29 pass |
+| `print` | 7 | 7 | 0 | 0 | 0 | 6 | 6 pass / 1 not run |
+| `project-trust` | 24 | 24 | 0 | 0 | 0 | 18 | 24 pass |
+| `providers-faux-streaming` | 65 | 64 | 0 | 1 | 0 | 48 | 65 pass |
+| `providers-registry` | 7 | 4 | 0 | 3 | 0 | 26 | 7 pass |
+| `rpc` | 59 | 59 | 0 | 0 | 0 | 27 | 57 pass / **1 fail** |
+| `selectors` | 14 | 14 | 0 | 0 | 1 | 15 | 14 pass |
+| `session` | 41 | 41 | 0 | 0 | 0 | 19 | 41 pass |
+| `settings` | 16 | 16 | 0 | 0 | 0 | 21 | 16 pass |
+| `slash-commands` | 28 | 27 | 1 | 0 | 0 | 20 | 28 pass |
+| `startup` | 18 | 17 | 1 | 0 | 0 | 10 | 18 pass |
+| `tools` | 32 | 32 | 0 | 0 | 0 | 35 | 32 pass |
+| `tree` | 8 | 7 | 1 | 0 | 0 | 5 | 8 pass |
+| `tui-components` | 37 | 37 | 0 | 0 | 0 | 36 | 37 pass |
 
 Full per-file detail: `test/parity/coverage.md`.
 
@@ -534,6 +557,8 @@ make lint-changed
 make lint
 ```
 
+`make port-lint` runs the porting anti-pattern analyzers (`automation/ci/portlint/README.md`) against a ratcheting `baseline.toml`. Fix a finding at the source, or mark one reviewed false positive with `//portlint:allow <check> <reason>`. Never add a baseline entry for new code.
+
 Use `make lint-changed` in the development loop. It runs every configured linter over whole changed Go files in changed packages relative to the merge base with `main`. Use `make lint` for the full-repository gate. `make check` always runs the full-repository gate.
 
 ## Commands
@@ -557,6 +582,7 @@ make coverage
 
 Other gates as needed:
 ```bash
+make port-lint
 make schedule-report
 make test-stress
 make parity-stress
@@ -567,6 +593,8 @@ go tool govulncheck ./...
 go tool deadcode ./...
 go fix -diff ./...
 ```
+
+Choose the test tier by the moment, as `docs/project/test-economy.md` defines: `go test ./<pkg> -run '<Tests>'` while iterating, `make test-changed`, `make lint-changed` and `go vet` on touched packages before a handoff commit, `make ci-drift ci-contracts` and the affected `make parity-family` runs before reporting ready, and the full suites (`make test`, `make check`, `make verify`, `make parity`, `go test ./...`) in CI, integration and release preview. Do not pass `-count=1` unless the test reads inputs through a child process. Use `-race` on edited packages, not the whole module. Bound `go test -fuzz` with `-parallel` and `-fuzztime`. On a shared host, build with `-trimpath`.
 
 `make test` requires and exercises the Go, Node, Python, and Rust toolchains; fixture build failures are fatal. `make check` combines deterministic gates with one strict Pig/Pi pair per hermetic scenario. `make verify` is the end-of-loop gate: it runs each scenario's declared durability and regenerates coverage. `make parity` runs declared scenario pairs in parallel with default concurrency groups and suppresses `runtime_ratio_max` because parallel CPU contention makes that metric unreliable. `make parity-perf` runs serially and enforces runtime ratios; use it for release gates or cron, not normal loops.
 

@@ -1,0 +1,32 @@
+[
+ {
+  "ids": [
+   "pkg:coding-agent/.#ToolExecutionComponent::property:setShowImages"
+  ],
+  "targets": [
+   "tui/tool_execution.go#ToolExecutionComponent.SetShowImages"
+  ],
+  "production": [
+   "call:internal/codingagent/interactive_commands.go#InteractiveMode.buildSlashContext"
+  ],
+  "evidence": [
+   "test:tui/tool_execution_image_setters_test.go#TestToolExecutionImageSettersRedrawLikeUpstream"
+  ],
+  "rationale": "ToolExecutionComponent.setShowImages is SetShowImages; it now drops the cached render so the image appears or disappears at the next render (red: the cached lines were returned unchanged)."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#ToolExecutionComponent::property:setImageWidthCells"
+  ],
+  "targets": [
+   "tui/tool_execution.go#ToolExecutionComponent.SetImageWidthCells"
+  ],
+  "production": [
+   "call:internal/codingagent/interactive_commands.go#InteractiveMode.buildSlashContext"
+  ],
+  "evidence": [
+   "test:tui/tool_execution_image_setters_test.go#TestToolExecutionImageSettersRedrawLikeUpstream"
+  ],
+  "rationale": "ToolExecutionComponent.setImageWidthCells is SetImageWidthCells; stores max(1, width) (Go int, so floor is implicit) and drops the cached render."
+ }
+]

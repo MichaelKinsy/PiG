@@ -1,4 +1,3 @@
-// SPDX-FileCopyrightText: Copyright Hewlett Packard Enterprise Development LP
 // SPDX-FileCopyrightText: Copyright (c) 2025 Mario Zechner
 // SPDX-FileCopyrightText: Copyright (c) Sindre Sorhus <sindresorhus@gmail.com> (https://sindresorhus.com)
 // SPDX-License-Identifier: MIT
@@ -15,6 +14,8 @@ package tools
 
 import (
 	"strings"
+	"unicode/utf16"
+	"unicode/utf8"
 
 	"github.com/MichaelKinsy/PiG/internal/lazyregexp"
 )
@@ -63,4 +64,62 @@ func SanitizeBinaryOutput(s string) string {
 		}
 	}
 	return b.String()
+}
+
+// maxPendingAnsiLength is utils/ansi.ts MAX_PENDING_ANSI_LENGTH: the longest unfinished sequence held back while streaming, in
+// UTF-16 code units. A longer one is processed as it is.
+const maxPendingAnsiLength = 256
+
+// unfinishedCSIAtEnd is the CSI half of utils/ansi.ts unfinishedAnsiAtEndRegex: an introducer, its optional intermediates and
+// parameters, and no final byte before the end of the text.
+var unfinishedCSIAtEnd = lazyregexp.New(`^[\x1b\x{9b}][\[\]()#;?]*(?:\d{1,4}(?:[;:]\d{0,4})*)?$`)
+
+// unfinishedOSCAtEnd reports whether s, which starts with ESC ], is an OSC sequence without its string terminator: the
+// OSC half of unfinishedAnsiAtEndRegex, `ESC](?:[^BEL U+009C ESC]|ESC(?!\\))*$`. A trailing ESC may start ESC \.
+func unfinishedOSCAtEnd(s string) bool {
+	if !strings.HasPrefix(s, "\x1b]") {
+		return false
+	}
+	rest := s[2:]
+	for rest != "" {
+		r, size := utf8.DecodeRuneInString(rest)
+		switch r {
+		case '\a', '\u009c':
+			return false
+		case '\x1b':
+			if strings.HasPrefix(rest[size:], "\\") {
+				return false
+			}
+		}
+		rest = rest[size:]
+	}
+	return true
+}
+
+// SplitIncompleteAnsiSuffix mirrors utils/ansi.ts splitIncompleteAnsiSuffix: it splits streamed text into a part that is safe to
+// strip now and a trailing unfinished escape sequence that belongs in front of the next chunk. Only the last
+// maxPendingAnsiLength UTF-16 code units are searched.
+func SplitIncompleteAnsiSuffix(value string) (complete, pending string) {
+	if !strings.Contains(value, "\x1b") && !strings.Contains(value, "\u009b") {
+		return value, ""
+	}
+	windowStart, units := len(value), 0
+	for windowStart > 0 {
+		r, size := utf8.DecodeLastRuneInString(value[:windowStart])
+		if units+utf16.RuneLen(r) > maxPendingAnsiLength {
+			break
+		}
+		units += utf16.RuneLen(r)
+		windowStart -= size
+	}
+	for i, r := range value[windowStart:] {
+		if r != '\x1b' && r != '\u009b' {
+			continue
+		}
+		tail := value[windowStart+i:]
+		if unfinishedOSCAtEnd(tail) || unfinishedCSIAtEnd.MatchString(tail) {
+			return value[:windowStart+i], tail
+		}
+	}
+	return value, ""
 }

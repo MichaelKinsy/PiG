@@ -84,11 +84,13 @@ func TestEditor_InsertsCapitalFromModifyOtherKeys(t *testing.T) {
 	}
 }
 
-func TestTextInput_InsertsCapitalFromModifyOtherKeys(t *testing.T) {
+// input.ts decodes only Kitty CSI-u text (decodeKittyPrintable), so a modifyOtherKeys sequence is rejected as control input
+// (TestInputHandleInputMatchesPi covers it against Pi); only the Editor accepts it through decodePrintableKey.
+func TestTextInputIgnoresModifyOtherKeysText(t *testing.T) {
 	ti := NewTextInput("")
 	ti.HandleInput("x")
 	ti.HandleInput("\x1b[27;2;89~") // Shift+y
-	if got := ti.Text(); got != "xY" {
-		t.Fatalf("text input = %q, want %q", got, "xY")
+	if got := ti.Text(); got != "x" {
+		t.Fatalf("text input = %q, want %q", got, "x")
 	}
 }

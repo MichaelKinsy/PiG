@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"strings"
 	"testing"
+
+	"github.com/MichaelKinsy/PiG/internal/sessionentry"
 )
 
 func TestSessionEntriesRawPageBoundsPayload(t *testing.T) {
@@ -12,7 +14,7 @@ func TestSessionEntriesRawPageBoundsPayload(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		return SessionEntry{raw: raw}
+		return sessionentry.DecodeSessionEntry(raw)
 	}
 	entries := []SessionEntry{entry("a", 700), entry("b", 700), entry("c", 700)}
 	page, next := sessionEntriesRawPage(entries, 0, 1500)
@@ -27,7 +29,7 @@ func TestSessionEntriesRawPageBoundsPayload(t *testing.T) {
 
 func TestSessionEntriesRawPageMakesProgressForOversizedEntry(t *testing.T) {
 	raw := json.RawMessage(`{"id":"large","body":"` + strings.Repeat("x", 2048) + `"}`)
-	page, next := sessionEntriesRawPage([]SessionEntry{{raw: raw}}, 0, 64)
+	page, next := sessionEntriesRawPage([]SessionEntry{sessionentry.DecodeSessionEntry(raw)}, 0, 64)
 	if len(page) != 1 || next != 1 {
 		t.Fatalf("oversized page len=%d next=%d", len(page), next)
 	}

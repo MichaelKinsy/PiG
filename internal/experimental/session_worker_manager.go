@@ -323,7 +323,20 @@ func (a *RoutedSessionAttachment) Release(ctx context.Context) error {
 	}
 	return err
 }
+
+// InvokeService forwards one call to the worker and waits for its outcome.
 func (a *RoutedSessionAttachment) InvokeService(ctx context.Context, call chord.ServiceCall, publish chord.ServiceUpdatePublisher) (json.RawMessage, error) {
+	invocation, err := a.BeginInvokeService(ctx, call, publish)
+	if err != nil {
+		return nil, err
+	}
+	return invocation.Wait(context.Background())
+}
+
+// BeginInvokeService is the attachment's admission boundary. Subscription bookkeeping, the pending operation and the queued
+// worker write happen before it returns, in one synchronous step as upstream's invokeService (session-worker-manager.ts:328-357),
+// so calls begun in sequence reach the worker in that sequence.
+func (a *RoutedSessionAttachment) BeginInvokeService(ctx context.Context, call chord.ServiceCall, publish chord.ServiceUpdatePublisher) (*chord.ServiceInvocation, error) {
 	m := a.manager
 	control, isControl := chord.DecodeServiceControlCall(call)
 	added := ""
@@ -339,7 +352,22 @@ func (a *RoutedSessionAttachment) InvokeService(ctx context.Context, call chord.
 		m.subscriptions[added] = &workerServiceSubscription{worker: a.worker, scope: a.scope, publish: publish, subscriptionID: control.SubscriptionId, tail: tail}
 		m.mu.Unlock()
 	}
-	result, err := m.invoke(ctx, a.worker, a.scope, call)
+	wait, err := m.beginInvoke(ctx, a.worker, a.scope, call)
+	if err != nil {
+		a.settleInvocation(call, added, err)
+		return nil, err
+	}
+	return chord.NewServiceInvocation(func(context.Context) (json.RawMessage, error) {
+		result, err := wait()
+		a.settleInvocation(call, added, err)
+		return result, err
+	}), nil
+}
+
+// settleInvocation applies the subscription bookkeeping that follows a control call's outcome.
+func (a *RoutedSessionAttachment) settleInvocation(call chord.ServiceCall, added string, err error) {
+	m := a.manager
+	control, isControl := chord.DecodeServiceControlCall(call)
 	if err != nil && added != "" {
 		m.mu.Lock()
 		delete(m.subscriptions, added)
@@ -355,7 +383,6 @@ func (a *RoutedSessionAttachment) InvokeService(ctx context.Context, call chord.
 		delete(m.subscriptions, subscriptionKey(a.scope, control.SubscriptionId))
 		m.mu.Unlock()
 	}
-	return result, err
 }
 
 func (m *SessionWorkerManager) applyDemand(worker *workerRecord, attachmentID string, attached, compensate bool, ctx context.Context) error {
@@ -431,6 +458,15 @@ func (m *SessionWorkerManager) demandTimedOut(worker *workerRecord, id string, p
 }
 
 func (m *SessionWorkerManager) invoke(ctx context.Context, worker *workerRecord, scope WorkerOperationScope, call chord.ServiceCall) (json.RawMessage, error) {
+	wait, err := m.beginInvoke(ctx, worker, scope, call)
+	if err != nil {
+		return nil, err
+	}
+	return wait()
+}
+
+// beginInvoke registers the operation and queues its worker write synchronously; wait settles it.
+func (m *SessionWorkerManager) beginInvoke(ctx context.Context, worker *workerRecord, scope WorkerOperationScope, call chord.ServiceCall) (func() (json.RawMessage, error), error) {
 	m.mu.Lock()
 	if m.detached || m.shuttingDown || worker.stopping {
 		m.mu.Unlock()
@@ -454,6 +490,10 @@ func (m *SessionWorkerManager) invoke(ctx context.Context, worker *workerRecord,
 		m.mu.Unlock()
 	})
 	m.mu.Unlock()
+	return func() (json.RawMessage, error) { return m.awaitOperation(ctx, worker, scope, id, pending) }, nil
+}
+
+func (m *SessionWorkerManager) awaitOperation(ctx context.Context, worker *workerRecord, scope WorkerOperationScope, id string, pending *workerOperationRequest) (json.RawMessage, error) {
 	select {
 	case <-pending.done:
 		return pending.result, pending.err

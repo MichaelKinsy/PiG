@@ -106,6 +106,8 @@ func (loaded *LoadedDocument) deltaCount() int {
 // holds the mutation line.
 type transactionHost struct {
 	storage durable.Storage
+	// now is the wall clock in milliseconds for task lifecycle times.
+	now func() float64
 	// cached returns the cached current incarnation without loading.
 	cached func(addressId string) *LoadedDocument
 	// load returns the cached current incarnation, cold-loading and migrating it when necessary.
@@ -771,7 +773,7 @@ func (tx *Transaction) SetTask(value AnyTaskRecord) error {
 	if candidate != nil && candidate.ConversationId != value.ConversationId {
 		return fmt.Errorf("Task %d cannot change conversations", value.Id)
 	}
-	owned, err := copyTaskRecord(value)
+	owned, err := copyTaskRecord(tx.stampTimes(value, candidate))
 	if err != nil {
 		return err
 	}
@@ -780,6 +782,30 @@ func (tx *Transaction) SetTask(value AnyTaskRecord) error {
 	}
 	task.write = &owned
 	return nil
+}
+
+// stampTimes sets the lifecycle times: StartedAt on the first change to running, EndedAt on the change to terminal. Once
+// set, they carry over from the replaced candidate; records written before they existed lack them.
+func (tx *Transaction) stampTimes(value AnyTaskRecord, candidate *AnyTaskRecord) AnyTaskRecord {
+	stamp := func(current, carried *float64, stamps bool) *float64 {
+		switch {
+		case carried != nil:
+			return carried
+		case current != nil:
+			return current
+		case stamps:
+			now := tx.host.now()
+			return &now
+		}
+		return nil
+	}
+	var candidateStarted, candidateEnded *float64
+	if candidate != nil {
+		candidateStarted, candidateEnded = candidate.StartedAt, candidate.EndedAt
+	}
+	value.StartedAt = stamp(value.StartedAt, candidateStarted, value.State.Status == durable.TaskRunning)
+	value.EndedAt = stamp(value.EndedAt, candidateEnded, value.State.Status == durable.TaskTerminal)
+	return value
 }
 
 // copyTaskRecord takes ownership of a task record's JSON.
@@ -869,9 +895,9 @@ func (tx *Transaction) doc(token durable.AnyDocToken, args []any) (*delta.Object
 	var seed durable.JsonValue
 	if definition.Family {
 		// A missing seed is upstream's undefined argument, which copyJson rejects (transaction.ts doc, json.ts copy);
-		// an explicit nil is JSON null.
+		// an explicit nil is JSON null. A typed Go seed is stored through its JSON encoding, as Snapshot and CreateTask do.
 		if resolved.NextArgument < len(args) {
-			seed, err = chord.CopyJSON(args[resolved.NextArgument])
+			seed, err = durable.ToJsonValue(args[resolved.NextArgument])
 		} else {
 			err = errUndefinedSeed
 		}

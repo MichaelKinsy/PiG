@@ -7,6 +7,7 @@ package codingagent
 import (
 	"archive/zip"
 	"bytes"
+	"cmp"
 	"encoding/json"
 	"fmt"
 	"net/url"
@@ -395,21 +396,34 @@ func (r *ModelRegistry) BugReportProviderInfo(providerID string) *BugReportProvi
 		config, configured = r.config.Providers[providerID]
 	}
 	dynamic, registered := r.dynamic[providerID]
+	nativeCarrier := r.native[providerID].provider
 	r.mu.RUnlock()
 	if registered {
 		config = dynamic
 	}
+	// bug-report.ts:119 lists Object.keys(provider.headers ?? {}). The composed Provider's headers are base?.headers (provider-composer.ts:609): the
+	// native Provider object's own headers (models.ts:155). models.json and registerProvider headers are request headers, not Provider.headers, and
+	// built-in providers declare none (createProvider, models.ts:1041), so only a native provider's headers are named.
+	var headerNames map[string]*string
+	if nativeCarrier != nil {
+		headerNames = nativeCarrier.Headers
+	}
 	info := &BugReportProvider{
 		ID:                    providerID,
 		Name:                  r.GetProviderDisplayName(providerID),
-		HeaderNames:           sortedKeys(config.Headers),
+		HeaderNames:           sortedKeys(headerNames),
 		AuthStatus:            BugReportAuthStatus{Configured: status.Configured, Source: string(status.Source), Label: status.Label},
 		UsingOAuth:            r.hasStoredOAuth(providerID),
 		RegisteredByExtension: registered,
 	}
-	if (configured || registered) && config.BaseURL != "" {
-		baseURL := RedactBugReportURL(config.BaseURL)
-		info.BaseURL = &baseURL
+	// upstream: provider-composer.ts composeProvider: `extension?.baseUrl ?? config?.baseUrl ?? base?.baseUrl`; describeProvider (bug-report.ts) reports the provider's baseUrl.
+	configuredBaseURL := ""
+	if configured || registered {
+		configuredBaseURL = config.BaseURL
+	}
+	if baseURL := cmp.Or(configuredBaseURL, ai.ProviderBaseURL(providerID)); baseURL != "" {
+		redacted := RedactBugReportURL(baseURL)
+		info.BaseURL = &redacted
 	}
 	return info
 }
@@ -577,11 +591,10 @@ func CollectBugReportDiagnostics(sessionID string, entries []SessionEntry, crash
 		Crashes:       make([]CrashRecord, 0, len(crashes)),
 	}
 	for _, crash := range crashes {
-		crash.Notified = false
-		diagnostics.Crashes = append(diagnostics.Crashes, crash)
+		diagnostics.Crashes = append(diagnostics.Crashes, crash.withoutNotified())
 	}
 	for _, entry := range entries {
-		message, ok := entry.AsMessage()
+		message, ok := entry.(MessageEntry)
 		if !ok || message.Message.Assistant == nil {
 			continue
 		}
@@ -591,8 +604,8 @@ func CollectBugReportDiagnostics(sessionID string, entries []SessionEntry, crash
 			continue
 		}
 		turn := BugReportAssistantDiagnostic{
-			EntryID:       entry.Base.ID,
-			Timestamp:     entry.Base.Timestamp,
+			EntryID:       entry.Base().ID,
+			Timestamp:     entry.Base().Timestamp,
 			Provider:      assistant.Provider,
 			Model:         assistant.ModelID,
 			API:           string(assistant.API),
@@ -745,9 +758,9 @@ func BugReportBranch(session *Session) []SessionEntry {
 	if session == nil {
 		return nil
 	}
-	leaf := session.LeafID()
+	leaf := session.GetLeafID()
 	if leaf == nil {
 		return nil
 	}
-	return session.Branch(*leaf)
+	return session.GetBranch(*leaf)
 }

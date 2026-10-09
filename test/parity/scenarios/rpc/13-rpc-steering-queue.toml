@@ -50,6 +50,15 @@ paths = ["/**/timestamp"]
 kind = "timestamp"
 reason = "Independent message wall clocks vary; retain field presence, type, string whitespace and every event."
 [[assert.json_aliases]]
+paths = ["/**/durationMs"]
+kind = "duration"
+reason = "Pi 1.1.0 times each response and tool run with a monotonic clock (event-stream.ts, agent-loop.ts), so the whole-millisecond value differs between runs; retain the field's presence, its position and its number spelling."
+[[assert.json_aliases]]
 paths = ["/**/sections/cwd"]
 kind = "path"
 reason = "D2: alias only the exact isolated cwd embedded in the system section; retain its tags, whitespace and suffix."
+
+[[assert.json_aliases]]
+paths = ["/**/durationMs"]
+kind = "duration"
+reason = "Pi 1.1.0 measures each response and tool execution (#10549) with a monotonic clock; the value varies per run. Retain presence, type and position."

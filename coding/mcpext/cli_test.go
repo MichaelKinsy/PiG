@@ -1,5 +1,7 @@
 package mcpext_test
 
+// pi: packages/coding-agent/src/extensions/mcp/cli.ts
+
 import (
 	"context"
 	"encoding/json"
@@ -276,6 +278,10 @@ func TestMcpLoginRegistersWithTheConfiguredClientName(t *testing.T) {
 	if got := fallback.server.registrationClientNames(); !reflect.DeepEqual(got, []any{"pig"}) {
 		t.Fatalf("client names = %v, want [pig]", got)
 	}
+	// OpenID Connect servers reject the loopback redirect URI of a `web` client (agent-session-mcp-oauth.test.ts, 1.0.4, #10493).
+	if got := fallback.server.registrationApplicationTypes(); !reflect.DeepEqual(got, []any{"native"}) {
+		t.Fatalf("application types = %v, want [native]", got)
+	}
 }
 
 // A terminal takes the pasted redirect URL instead of the browser callback (cli.ts:548-575).
@@ -373,5 +379,28 @@ func TestMcpCommandListConnectsToTheServersConcurrently(t *testing.T) {
 	}
 	if strings.Index(result.output, "a: connected") > strings.Index(result.output, "b: connected") || strings.Index(result.output, "b: connected") > strings.Index(result.output, "c: connected") {
 		t.Fatalf("the servers are not reported in configuration order:\n%s", result.output)
+	}
+}
+
+// #10565: --timeout limits the whole sign-in, also while the authorization server hangs (agent-session-mcp-oauth.test.ts "gives up on pi mcp login after --timeout").
+func TestMcpCommandEndsASignInAtTimeoutWhileTheAuthorizationServerHangs(t *testing.T) {
+	o := newOAuthRun(t)
+	o.server.stallPath("/.well-known/oauth-authorization-server")
+	type result struct {
+		code   int
+		output string
+	}
+	done := make(chan result, 1)
+	go func() {
+		code, output := o.run(t, mcpext.McpCommandOptions{OpenURL: func(string) {}}, "login", "oauth", "--timeout", "0.5")
+		done <- result{code, output}
+	}()
+	select {
+	case got := <-done:
+		if got.code != 1 || !strings.HasSuffix(got.output, "was cancelled or not completed within 1 seconds.") {
+			t.Fatalf("login = %d %q", got.code, got.output)
+		}
+	case <-time.After(20 * time.Second):
+		t.Fatal("the sign-in ignored --timeout while the authorization server hung")
 	}
 }

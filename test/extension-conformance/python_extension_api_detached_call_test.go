@@ -81,7 +81,7 @@ func TestPythonSDKHostCallStartedByAHandlerOutlivesItsResponse(t *testing.T) {
 		go func() {
 			result, err := def.Definition.Execute(t.Context(), "call-d", args, nil)
 			text := ""
-			if typed, ok := result.(agent.AgentToolResult); ok {
+			if typed, ok := result, true; ok {
 				text = typed.Text()
 			}
 			returned <- done{text, err}

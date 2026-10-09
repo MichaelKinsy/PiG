@@ -39,17 +39,17 @@ func TestBranch_OrderRootToLeaf(t *testing.T) {
 	const n = 200
 	s, leaf := buildLinearSession(t, n)
 
-	got := s.Branch(leaf)
+	got := s.GetBranch(leaf)
 	if len(got) != n {
 		t.Fatalf("Branch len = %d, want %d", len(got), n)
 	}
 	// entries[i] was appended i-th; on a linear branch Branch must return
 	// them in that exact order.
-	want := s.Entries()
+	want := s.GetEntries()
 	for i := range got {
-		if got[i].Base.ID != want[i].Base.ID {
+		if got[i].Base().ID != want[i].Base().ID {
 			t.Fatalf("Branch[%d].ID = %q, want %q (root→leaf order not preserved)",
-				i, got[i].Base.ID, want[i].Base.ID)
+				i, got[i].Base().ID, want[i].Base().ID)
 		}
 	}
 }
@@ -82,7 +82,7 @@ func BenchmarkBranch(b *testing.B) {
 	s, leaf := buildLinearSession(b, branchBenchN)
 	b.ResetTimer()
 	for range b.N {
-		_ = s.Branch(leaf)
+		_ = s.GetBranch(leaf)
 	}
 }
 

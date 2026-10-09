@@ -27,6 +27,7 @@ import (
 	"github.com/BurntSushi/toml"
 
 	"github.com/MichaelKinsy/PiG/coding"
+	"github.com/MichaelKinsy/PiG/test/parity/upstreampackages"
 )
 
 type inventory struct {
@@ -71,11 +72,14 @@ var classOrder = []classification{
 // packageSourceRoots maps each upstream npm package (as it appears in the
 // inventory's package field) to its upstream monorepo source root, which is the
 // path space PORT_MAP keys on. These are stable for a pinned upstream version.
-var packageSourceRoots = map[string]string{
-	"@earendil-works/pi-agent-core":   "packages/agent/src",
-	"@earendil-works/pi-ai":           "packages/ai/src",
-	"@earendil-works/pi-coding-agent": "packages/coding-agent/src",
-	"@earendil-works/pi-tui":          "packages/tui/src",
+var packageSourceRoots = sourceRootsByName()
+
+func sourceRootsByName() map[string]string {
+	roots := map[string]string{}
+	for name, pkg := range upstreampackages.ByName() {
+		roots[name] = pkg.SourceRoot()
+	}
+	return roots
 }
 
 var (

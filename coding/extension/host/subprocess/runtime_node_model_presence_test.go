@@ -1,3 +1,5 @@
+//go:build !pig_strip_node_extensions
+
 package subprocess_test
 
 import (
@@ -33,7 +35,7 @@ func TestConnectedNodeProviderPreservesModelListPresence(t *testing.T) {
 	t.Setenv("TMP", sockDir)
 	t.Setenv("TEMP", sockDir)
 
-	services, err := coding.NewServices(coding.ServicesOptions{CWD: t.TempDir(), AgentDir: t.TempDir()})
+	services, err := coding.CreateAgentSessionServices(coding.CreateAgentSessionServicesOptions{CWD: t.TempDir(), AgentDir: t.TempDir()})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -55,7 +57,7 @@ func TestConnectedNodeProviderPreservesModelListPresence(t *testing.T) {
 		if name == "node-collision" {
 			config.BaseURL = server.URL
 		}
-		if err := services.Registry().RegisterProvider(name, config); err != nil {
+		if err := services.Registry().RegisterExtensionProvider(name, config); err != nil {
 			return err
 		}
 		registrations <- struct {

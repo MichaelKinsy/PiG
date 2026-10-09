@@ -268,18 +268,14 @@ func metaErrorDetail(body map[string]any) string {
 	return ""
 }
 
-// metaTrustedHTTPURL accepts only http(s) URLs: the verification URI is
-// opened in the user's browser.
+// metaTrustedHTTPURL is meta.ts trustedHttpUrl: the href of an http(s) URL, or "" for anything else. The verification URI is opened in the user's browser.
 func metaTrustedHTTPURL(value any) string {
 	raw, _ := value.(string)
 	if raw == "" {
 		return ""
 	}
-	parsed, err := url.Parse(raw)
-	if err != nil || (parsed.Scheme != "https" && parsed.Scheme != "http") || parsed.Host == "" {
-		return ""
-	}
-	return parsed.String()
+	href, _ := trustedURLHref(raw, false)
+	return href
 }
 
 func metaPositiveNumber(value any) *float64 {

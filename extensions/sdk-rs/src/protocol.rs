@@ -400,7 +400,11 @@ pub struct NotifyMsg {
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct CustomInputArgs {
     pub key: String,
+    #[serde(alias = "text")]
     pub data: JsString,
+    /// The host's state of the mounted overlay (`ui.custom.input` only).
+    #[serde(default)]
+    pub state: Option<Value>,
 }
 
 // Rust queries editor text through the typed host call; it does not consume that
@@ -425,7 +429,7 @@ struct RawNotifyMsg {
 impl TryFrom<RawNotifyMsg> for NotifyMsg {
     type Error = serde_json::Error;
     fn try_from(raw: RawNotifyMsg) -> Result<Self, Self::Error> {
-        if raw.method == "ui.custom.input" {
+        if matches!(raw.method.as_str(), "ui.custom.input" | "ui.editor.input" | "ui.editor.setText" | "ui.editor.insertText" | "ui.editor.addToHistory") {
             let custom_input = raw.args.as_ref().map(|args| serde_json::from_str(args.get())).transpose()?;
             return Ok(Self { method: raw.method, args: None, custom_input });
         }
@@ -484,12 +488,16 @@ pub struct CallResultMsg<R = Value> {
     pub error: Option<ErrorInfo>,
 }
 
-/// A string list widget. It has no width: the host lays the list out at its
-/// own width, as Pi does for `setWidget(key, string[])`.
+/// A widget frame: a string list without a width, which the host lays out at
+/// its own width as Pi does for `setWidget(key, string[])`, or a kit view
+/// (D107) with the lines absent, which the host renders.
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct WidgetPushMsg {
     pub key: String,
-    pub lines: Vec<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub lines: Option<Vec<String>>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub view: Option<Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -549,13 +557,21 @@ pub struct Connection {
     pub(crate) api_state: Mutex<crate::extension_api::ApiState>,
     /// The replicated signal of the run in progress, with the host's run number. None while no run is active (`Context::signal`).
     pub(crate) run_signal: Mutex<Option<(u64, crate::provider::ProviderSignal)>>,
+    /// The Host's invalidate message; the first one wins (runner.ts:725-727).
+    pub(crate) stale_message: Mutex<Option<String>>,
     /// Virtual models by provider and id, load-time and post-load registrations alike.
     pub(crate) virtual_models: crate::extension_api::VirtualModels,
     /// Dispatchers of in-flight nested calls, by execute id. Each update travels with the channel its answer returns on.
     pub(crate) execute_updates: Mutex<HashMap<String, mpsc::Sender<ExecuteUpdate>>>,
     pub(crate) execute_seq: std::sync::atomic::AtomicU64,
+    /// The BashOperations objects a user_bash reply named by handle (see `Context::bash_operations`).
+    pub(crate) bash_operations: crate::user_bash::BashOperationsTable,
     /// The withSession callbacks of this connection's replacement calls in flight.
     pub(crate) with_sessions: crate::replaced_session::WithSessionRegistry,
+    /// The frontend flag, the image refs sent, and the live widget, header and footer views (D107).
+    pub(crate) views: crate::kit::ViewLedger,
+    /// The setup callbacks of this connection's newSession calls in flight.
+    pub(crate) setups: crate::setup_session::SetupRegistry,
     reader: Mutex<UnixStream>,
     writer: Mutex<UnixStream>,
     // control ends the socket for every clone without waiting on a reader or writer lock.
@@ -573,6 +589,13 @@ struct PendingCallSender {
 }
 
 impl Connection {
+    /// Records the Host's `invalidate` notification: a captured context raises the message from its locally answered members afterwards.
+    pub(crate) fn apply_invalidate(&self, args: &serde_json::Value) {
+        if let Some(message) = args.get("message").and_then(|v| v.as_str()).filter(|m| !m.is_empty()) {
+            self.stale_message.lock().unwrap().get_or_insert_with(|| message.to_string());
+        }
+    }
+
     /// Installs the host's `run_signal` frame: one signal for the whole run, cancelled when the run aborts.
     pub(crate) fn apply_run_signal(&self, args: &serde_json::Value) {
         let active = args.get("active").and_then(|v| v.as_bool()).unwrap_or(false);
@@ -625,10 +648,14 @@ impl Connection {
             provider_callbacks: std::sync::OnceLock::new(),
             api_state: Mutex::new(Default::default()),
             run_signal: Mutex::new(None),
+            stale_message: Mutex::new(None),
             virtual_models: Mutex::new(HashMap::new()),
             execute_updates: Mutex::new(HashMap::new()),
             execute_seq: std::sync::atomic::AtomicU64::new(0),
+            bash_operations: Default::default(),
             with_sessions: Default::default(),
+            views: Default::default(),
+            setups: Default::default(),
             registered_tools: Mutex::new(HashMap::new()),
             tool_registration_lock: Mutex::new(()),
             late_tool_renderers: Default::default(),
@@ -854,6 +881,23 @@ impl Connection {
         })
     }
 
+    /// Send a notify whose arguments serialize themselves, so [`JsString`] fields keep lone UTF-16 units that a `serde_json::Value` cannot hold.
+    pub(crate) fn notify_typed<A: Serialize>(&self, method: &str, args: Option<A>) -> io::Result<()> {
+        #[derive(Serialize)]
+        struct TypedNotify<'a, A> {
+            method: &'a str,
+            #[serde(skip_serializing_if = "Option::is_none")]
+            args: Option<A>,
+        }
+        #[derive(Serialize)]
+        struct TypedEnvelope<'a, A> {
+            #[serde(rename = "type")]
+            msg_type: &'static str,
+            notify: TypedNotify<'a, A>,
+        }
+        Self::write_envelope_to(&mut self.writer.lock().unwrap(), &TypedEnvelope { msg_type: "notify", notify: TypedNotify { method, args } })
+    }
+
     /// Complete a pending host call. Returns true when the envelope was routed.
     pub fn complete_call<R: Serialize>(&self, env: &Envelope<R>) -> bool {
         if env.msg_type != "call_result" {
@@ -892,12 +936,18 @@ impl Connection {
 
     /// Push a widget update (fire-and-forget).
     pub fn push_widget(&self, key: &str, lines: Vec<String>) -> io::Result<()> {
+        self.write_widget_push(WidgetPushMsg { key: key.to_string(), lines: Some(lines), view: None })
+    }
+
+    /// Push a widget's authoritative kit view (fire-and-forget, D107).
+    pub(crate) fn push_widget_view(&self, key: &str, view: Value) -> io::Result<()> {
+        self.write_widget_push(WidgetPushMsg { key: key.to_string(), lines: None, view: Some(view) })
+    }
+
+    fn write_widget_push(&self, push: WidgetPushMsg) -> io::Result<()> {
         self.write_envelope(&Envelope {
             msg_type: "widget_push".to_string(),
-            widget_push: Some(WidgetPushMsg {
-                key: key.to_string(),
-                lines,
-            }),
+            widget_push: Some(push),
             ..Default::default()
         })
     }

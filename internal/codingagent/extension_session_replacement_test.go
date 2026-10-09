@@ -77,7 +77,7 @@ func TestInteractiveExtensionReplacementFailureUsesFatalPath(t *testing.T) {
 func TestInteractiveExtensionReplacementBindings(t *testing.T) {
 	handle := &replacementRecordingHandle{recordingCompactHandle: &recordingCompactHandle{}}
 	bridge := subprocess.NewUIBridge(func() {})
-	m := &InteractiveMode{opts: InteractiveOptions{SessionHandle: handle, SubprocessUIBridge: bridge}, newRunner: inproc.NewRunner(nil, t.TempDir())}
+	m := &InteractiveMode{opts: InteractiveModeOptions{SessionHandle: handle, SubprocessUIBridge: bridge}, newRunner: inproc.NewRunner(nil, t.TempDir())}
 	m.wireInprocContextActions()
 	command := m.newRunner.CreateCommandContext()
 	result, err := command.NewSession(&extension.NewSessionOptions{ParentSession: "source"})

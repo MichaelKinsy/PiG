@@ -44,7 +44,7 @@ func TestNodeFactoryMcpRegistrationThrowsInsideTheFactory(t *testing.T) {
 		rig := newNodeAPIRig(t, isolation, nil, nodeAPIFixture{"nodeapi-owner", nodeMcpSiblingOwnerFixture}, nodeAPIFixture{"nodeapi-catch", nodeMcpFactoryCatchFixture})
 		ownerPath, catchPath := rig.exts["nodeapi-owner"].Path, rig.exts["nodeapi-catch"].Path
 		var registered []string
-		for _, server := range rig.host.Runtime().McpServers() {
+		for _, server := range rig.host.Runtime().McpServers().List() {
 			registered = append(registered, server.Name+"@"+server.ExtensionPath)
 		}
 		slices.Sort(registered)
@@ -97,7 +97,7 @@ const nodeVirtualModelRemoverFixture = `export default function (pi) {
 }
 `
 
-// loader.ts:228-232: before the runner binds, unregisterVirtualModel filters the runtime-wide pending list, so a virtual model an earlier-loaded extension queued is removed too.
+// pi.unregisterVirtualModel (packages/coding-agent/src/core/extensions/types.ts:1875, loader.ts:511-514) reaches loader.ts:229-233: before the runner binds, unregisterVirtualModel filters the runtime-wide pending list, so a virtual model an earlier-loaded extension queued is removed too.
 func TestNodeUnregisterVirtualModelBeforeBindFiltersTheRuntimeWidePendingList(t *testing.T) {
 	t.Parallel()
 	eachNodeAPIIsolation(t, func(t *testing.T, isolation string) {
@@ -107,7 +107,7 @@ func TestNodeUnregisterVirtualModelBeforeBindFiltersTheRuntimeWidePendingList(t 
 			pending = append(pending, p.Definition.Provider+"/"+p.Definition.ID)
 		}
 		if want := []string{"noderouter/kept"}; !slices.Equal(pending, want) {
-			t.Fatalf("pending virtual models %v, want %v", pending, want)
+			t.Fatalf("unregisterVirtualModel: pending virtual models %v, want %v", pending, want)
 		}
 	})
 }
@@ -226,8 +226,31 @@ export default function (pi) {
       }
     },
   });
+  pi.registerTool({
+    name: "nest_duration", label: "nest_duration", description: "Reports the durationMs of a nested outcome", parameters: { type: "object" },
+    execute: async (_id, _params, _signal, _onUpdate, ctx) => {
+      const outcome = await ctx.executeTool("timed", {});
+      return { content: [{ type: "text", text: String(outcome.durationMs) }], details: {} };
+    },
+  });
 }
 `
+
+// types.ts:454 and nested-tool-calls.ts:246: executeTool's outcome carries the nested call's durationMs.
+func TestNodeExecuteToolOutcomeCarriesDuration(t *testing.T) {
+	eachNodeAPIIsolation(t, func(t *testing.T, isolation string) {
+		actions := &subprocess.HostCallbacks{
+			ExecuteTool: func(context.Context, string, string, json.RawMessage, extension.ExecuteToolOptions) (extension.AgentToolCallOutcome, error) {
+				return extension.AgentToolCallOutcome{DurationMs: new(int64(4321))}, nil
+			},
+		}
+		rig := newNodeAPIRig(t, isolation, actions, nodeAPIFixture{"nodeapi-throw", nodeNestedThrowFixture})
+		result, err := rig.execute("nodeapi-throw", "nest_duration", "call-d")
+		if err != nil || result.IsError || result.Text() != "4321" {
+			t.Fatalf("nest_duration = %+v, %v, want 4321", result, err)
+		}
+	})
+}
 
 // nested-tool-calls.ts:219-248 and agent-loop.ts:820-849: a throw from the caller's onUpdate rejects the nested call after the tool returned. The call never reaches afterToolCall or tool_execution_end, every partial result still reaches onUpdate, and the extension sees the rejection. The Host's ExecuteTool action stands in for the session: it keeps Pi's rule for the error its update sink returns, so what the row proves is that the Host hands the sink the extension's throw before the next update.
 func TestNodeExecuteToolOnUpdateThrowRejectsTheNestedCall(t *testing.T) {
@@ -237,7 +260,7 @@ func TestNodeExecuteToolOnUpdateThrowRejectsTheNestedCall(t *testing.T) {
 		var completed []string
 		actions := &subprocess.HostCallbacks{
 			ExecuteTool: func(_ context.Context, callerID, name string, _ json.RawMessage, options extension.ExecuteToolOptions) (extension.AgentToolCallOutcome, error) {
-				sink, _ := options.OnUpdate.(func(agent.AgentToolResult) error)
+				sink := options.OnUpdate
 				if sink == nil {
 					return extension.AgentToolCallOutcome{}, nil
 				}

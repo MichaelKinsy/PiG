@@ -13,7 +13,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/MichaelKinsy/PiG/agent"
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/coding/extension/host/inproc"
@@ -113,9 +112,10 @@ func newModelTypesRig(t *testing.T) *modelTypesRig {
 			r.mu.Lock()
 			r.classify = append(r.classify, classifyCall{model, request, options})
 			r.mu.Unlock()
-			// The answers are the questions' in reverse; the probability is the state's length, so only a request the SDK built from the caller's context produces them.
+			// The answers are the questions' in reverse; the probability is the state's length plus ten per image, so only a request the SDK built from the caller's context, images included, produces them.
 			var context struct {
-				State     map[string]any `json:"state"`
+				State     map[string]any    `json:"state"`
+				Images    []json.RawMessage `json:"images"`
 				Questions json.RawMessage
 			}
 			if err := json.Unmarshal(request, &context); err != nil {
@@ -124,7 +124,7 @@ func newModelTypesRig(t *testing.T) *modelTypesRig {
 			keys := orderedKeys(context.Questions)
 			answers := make([]string, 0, len(keys))
 			for _, key := range slices.Backward(keys) {
-				answers = append(answers, fmt.Sprintf("%q:{\"type\":\"bool\",\"probability\":%v}", key, float64(len(fmt.Sprint(context.State["text"])))/100))
+				answers = append(answers, fmt.Sprintf("%q:{\"type\":\"bool\",\"probability\":%v}", key, float64(len(fmt.Sprint(context.State["text"]))+10*len(context.Images))/100))
 			}
 			return json.RawMessage(fmt.Sprintf(`{"api":%q,"provider":%q,"model":%q,"answers":{%s},"stopReason":"stop","timestamp":3}`, model["api"], model["provider"], model["id"], strings.Join(answers, ","))), nil
 		},
@@ -237,7 +237,7 @@ func (r *modelTypesRig) toolWith(name string, args map[string]any) map[string]an
 	if err != nil {
 		r.t.Fatalf("%s: %v", name, err)
 	}
-	typed, ok := result.(agent.AgentToolResult)
+	typed, ok := result, true
 	if !ok {
 		r.t.Fatalf("%s returned %T", name, result)
 	}
@@ -267,10 +267,19 @@ func modelTypesSDKs() []modelTypesSDK {
 
 func eachModelTypesPlacement(t *testing.T, body func(t *testing.T, r *modelTypesRig)) {
 	t.Helper()
+	eachModelTypesPlacementOf(t, nil, body)
+}
+
+// eachModelTypesPlacementOf runs body for every placement of the named SDKs, or of every SDK when sdks is empty.
+func eachModelTypesPlacementOf(t *testing.T, sdks []string, body func(t *testing.T, r *modelTypesRig)) {
+	t.Helper()
 	if testing.Short() {
 		t.Skip("skipping conformance suite in short mode (starts SDK subprocesses)")
 	}
 	for _, kit := range modelTypesSDKs() {
+		if len(sdks) != 0 && !slices.Contains(sdks, kit.name) {
+			continue
+		}
 		for placement, load := range kit.placements {
 			t.Run(kit.name+"-"+placement, func(t *testing.T) {
 				r := newModelTypesRig(t)
@@ -405,6 +414,14 @@ CANCELLED = {"n": 0}
 ZERO = {"input": 0, "output": 0, "cacheRead": 0, "cacheWrite": 0}
 
 
+def theme_fg(theme, token):
+    # theme.fg(token, "x"), or "throw:" and the message when the SDK raises, so one unknown token does not hide the others.
+    try:
+        return theme.fg(token, "x")
+    except Exception as error:
+        return "throw:" + str(error)
+
+
 def image_impl(model, request, options):
     prompt = request["input"][0]["text"]
     if prompt == "fail":
@@ -421,7 +438,7 @@ def classify_impl(model, request, options):
         options.signal.wait()
         CANCELLED["n"] += 1
         raise RuntimeError("classifier cancelled")
-    answers = {key: {"type": "bool", "probability": len(state) / 100} for key in reversed(list(request["questions"]))}
+    answers = {key: {"type": "bool", "probability": (len(state) + 10 * len(request.get("images") or [])) / 100} for key in reversed(list(request["questions"]))}
     return {"api": model["api"], "provider": model["provider"], "model": model["id"], "answers": answers, "stopReason": "stop", "timestamp": 2}
 
 
@@ -474,7 +491,8 @@ def new_extension():
         model = registry.find_of_type("classifier", "typesafe", "jev-latest")
         result = registry.classify(model, approval("Looks good"), {"apiKey": "sk-conf"})
         failed = registry.classify(model, approval("fail"))
-        return json.dumps({"stop": result["stopReason"], "answers": list(result["answers"]), "approved": result["answers"]["approved"]["probability"], "model": result["model"],
+        with_images = registry.classify(model, {**approval("Looks good"), "images": [{"type": "image", "data": "aW1hZ2U=", "mimeType": "image/png"}]})
+        return json.dumps({"stop": result["stopReason"], "answers": list(result["answers"]), "approved": result["answers"]["approved"]["probability"], "imagesApproved": with_images["answers"]["approved"]["probability"], "model": result["model"],
                            "failedStop": failed["stopReason"], "failedMessage": failed.get("errorMessage"), "failedProvider": failed.get("provider")})
 
     def images_probe(ctx, args):
@@ -506,7 +524,7 @@ def new_extension():
             except Exception as error:
                 styles.append({"error": str(error)})
         colors = theme.colors
-        return json.dumps({"appearance": theme.appearance, "colors": {token: colors.get(token) for token in args.get("tokens", [])}, "styles": styles, "fgs": {token: theme.fg(token, "x") for token in args.get("fgTokens", [])}})
+        return json.dumps({"appearance": theme.appearance, "colors": {token: colors.get(token) for token in args.get("tokens", [])}, "styles": styles, "fgs": {token: theme_fg(theme, token) for token in args.get("fgTokens", [])}})
 
     def late_provider(ctx, args):
         registry = ctx.model_registry
@@ -610,8 +628,18 @@ func TestModelTypesClassifyAcrossSDKs(t *testing.T) {
 		}
 		r.mu.Lock()
 		defer r.mu.Unlock()
-		if len(r.classify) != 2 {
+		if len(r.classify) != 3 {
 			t.Fatalf("the host classified %d times: %+v", len(r.classify), r.classify)
+		}
+		// types.ts ClassifierContext.images: the images the caller passed reach the host with the state and the questions. The host adds ten to each probability per image, so an SDK that drops them answers 0.1 instead of 0.2.
+		if report["imagesApproved"] != 0.2 {
+			t.Fatalf("classify_probe with an image answered %v, want 0.2: %v", report["imagesApproved"], report)
+		}
+		var withImages struct {
+			Images []map[string]any `json:"images"`
+		}
+		if err := json.Unmarshal(r.classify[2].Request, &withImages); err != nil || !reflect.DeepEqual(withImages.Images, []map[string]any{{"type": "image", "data": "aW1hZ2U=", "mimeType": "image/png"}}) {
+			t.Fatalf("the images reached the host as %s (%v)", r.classify[2].Request, err)
 		}
 		first := r.classify[0]
 		if first.Model["id"] != "jev-latest" || first.Model["type"] != "classifier" || first.Model["contextWindow"] != float64(64000) || first.Options["apiKey"] != "sk-conf" {
@@ -626,7 +654,7 @@ func TestModelTypesClassifyAcrossSDKs(t *testing.T) {
 		if got := orderedKeys(sent.Questions); !reflect.DeepEqual(got, []string{"tone", "approved"}) {
 			t.Fatalf("the questions reached the host as %s (order %v)", first.Request, got)
 		}
-		if r.classify[1].Options != nil {
+		if r.classify[1].Options != nil || r.classify[2].Options != nil {
 			t.Fatalf("omitted options reached the host: %v", r.classify[1].Options)
 		}
 	})
@@ -660,17 +688,18 @@ func TestModelTypesGenerateImagesAcrossSDKs(t *testing.T) {
 }
 
 // model-registry.ts:161-168: registerVirtualModel and unregisterVirtualModel of the facade are the runtime's; a refusal is the caller's error.
+// packages/coding-agent/src/core/extensions/types.ts:1872-1875 (ExtensionAPI.registerVirtualModel, unregisterVirtualModel).
 func TestModelTypesVirtualModelsAcrossSDKs(t *testing.T) {
 	t.Parallel()
 	eachModelTypesPlacement(t, func(t *testing.T, r *modelTypesRig) {
 		report := r.tool("virtual_probe")
 		if report["first"] != true || !strings.Contains(fmt.Sprint(report["refused"]), "router/claimed is the id of a physical model") {
-			t.Fatalf("virtual_probe = %v", report)
+			t.Fatalf("registerVirtualModel probe virtual_probe = %v", report)
 		}
 		r.mu.Lock()
 		defer r.mu.Unlock()
 		if want := []string{"register router/late", "unregister router/late"}; !reflect.DeepEqual(r.virtual, want) {
-			t.Fatalf("host registrations = %v, want %v", r.virtual, want)
+			t.Fatalf("registerVirtualModel/unregisterVirtualModel host registrations = %v, want %v", r.virtual, want)
 		}
 	})
 }
@@ -732,6 +761,13 @@ func TestModelTypesProviderConfigImplementationsAcrossSDKs(t *testing.T) {
 		}
 		if _, err := classifier.Classify(t.Context(), classifierModel, modelTypesClassifierContext("fail"), ai.ClassifierOptions{}); err == nil || !strings.Contains(err.Error(), "classifier failed") {
 			t.Fatalf("an extension error must be the call's error: %v", err)
+		}
+		// types.ts ClassifierContext.images: the host's context reaches the extension's classify with its images; the implementation adds ten per image to the state's length, so an SDK that drops them answers 0.04.
+		shown := modelTypesClassifierContext("four")
+		shown.Images = []ai.ImageContent{{Data: "aW1hZ2U=", MimeType: "image/png"}, {Data: "aW1hZ2U=", MimeType: "image/jpeg"}}
+		withImages, err := classifier.Classify(t.Context(), classifierModel, shown, ai.ClassifierOptions{})
+		if err != nil || len(withImages.Answers) != 3 || withImages.Answers[0].Answer != (ai.ClassifierBoolAnswer{Probability: 0.24}) {
+			t.Fatalf("classifier result with images = %+v, %v", withImages, err)
 		}
 	})
 }

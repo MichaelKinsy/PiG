@@ -68,10 +68,10 @@ func TestExperimentalDurableServerCompositionRemoteB(t *testing.T) {
 		trackExperimentalClient(t, connected)
 		var mu sync.Mutex
 		var failures []error
-		transportClient, releaseDelay := delaySessionServiceSubscription(t, connected, "demo-2", services.ModelsDefinition.Id())
+		wrapTransport, releaseDelay, held := delaySessionServiceSubscription(t, "demo-2", services.ModelsDefinition.Id())
 		defer releaseDelay()
 		binding := createSessionServiceBinding(t, connected, []string{services.ModelsDefinition.Id()}, ClientServiceSourceOptions{
-			TransportClient: transportClient,
+			wrapTransport: wrapTransport,
 			OnError: func(err error) {
 				mu.Lock()
 				defer mu.Unlock()
@@ -107,6 +107,9 @@ func TestExperimentalDurableServerCompositionRemoteB(t *testing.T) {
 		attachSession(t, connected, "demo-1")
 		if err := binding.WhenAttached(t.Context(), "demo-1"); err != nil {
 			t.Fatal(err)
+		}
+		if held.Load() == 0 {
+			t.Fatal("the demo-2 Models subscription never reached the spied client subscription")
 		}
 		if got := binding.Attachment().Value(); got == nil || *got != (services.SessionAttachmentState{Status: "attached", SessionID: "demo-1"}) {
 			t.Fatalf("attachment = %#v, want attached/demo-1", got)

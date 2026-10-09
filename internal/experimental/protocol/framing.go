@@ -20,9 +20,20 @@ type FrameDecoderOptions struct {
 }
 
 // FrameError reports a malformed frame or an invalid decoder transition.
-type FrameError struct{ Message string }
+type FrameError struct {
+	Message string
+}
+
+// NewFrameError is `new FrameError(message)`.
+func NewFrameError(message string) *FrameError {
+	err := &FrameError{Message: message}
+	return err
+}
 
 func (err *FrameError) Error() string { return err.Message }
+
+// Name is the `name` property, "FrameError".
+func (*FrameError) Name() string { return "FrameError" }
 
 // RangeError reports a numeric framing option outside Pi's accepted range.
 type RangeError struct{ Message string }
@@ -68,10 +79,10 @@ func NewFrameDecoder(options FrameDecoderOptions) (*FrameDecoder, error) {
 // Push emits complete frames in order. A framing error permanently fails the decoder and discards its retained partial frame.
 func (decoder *FrameDecoder) Push(chunk []byte) ([][]byte, error) {
 	if decoder.state == "ended" {
-		return nil, &FrameError{Message: "Frame decoder has ended"}
+		return nil, NewFrameError("Frame decoder has ended")
 	}
 	if decoder.state == "failed" {
-		return nil, &FrameError{Message: "Frame decoder has failed"}
+		return nil, NewFrameError("Frame decoder has failed")
 	}
 	frames := make([][]byte, 0)
 	for len(chunk) > 0 {
@@ -128,10 +139,10 @@ func (decoder *FrameDecoder) Push(chunk []byte) ([][]byte, error) {
 // End closes a clean stream or fails a truncated one. End is not idempotent.
 func (decoder *FrameDecoder) End() error {
 	if decoder.state == "ended" {
-		return &FrameError{Message: "Frame decoder has ended"}
+		return NewFrameError("Frame decoder has ended")
 	}
 	if decoder.state == "failed" {
-		return &FrameError{Message: "Frame decoder has failed"}
+		return NewFrameError("Frame decoder has failed")
 	}
 	if decoder.headerLength != 0 || decoder.expectedPayloadLength != 0 {
 		return decoder.fail("Truncated frame at end of stream")
@@ -152,5 +163,5 @@ func (decoder *FrameDecoder) fail(message string) error {
 	decoder.headerLength = 0
 	decoder.expectedPayloadLength = 0
 	decoder.clearPayload()
-	return &FrameError{Message: message}
+	return NewFrameError(message)
 }

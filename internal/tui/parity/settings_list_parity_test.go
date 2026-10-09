@@ -27,12 +27,12 @@ func testSettingItems() []tui.SettingItem {
 }
 
 func TestParitySettingsList_GoldenVisibleState(t *testing.T) {
-	sl := tui.NewSettingsList(testSettingItems())
+	sl := tui.NewSettingsList(testSettingItems(), 10, tui.GetSettingsListTheme(), nil, nil, tui.SettingsListOptions{EnableSearch: true})
 	AssertGolden(t, "settings-list-visible", 14, 54, renderSettingsListToTUI(t, 14, 54, sl))
 }
 
 func TestParitySettingsList_GoldenFilteredState(t *testing.T) {
-	sl := tui.NewSettingsList(testSettingItems())
+	sl := tui.NewSettingsList(testSettingItems(), 10, tui.GetSettingsListTheme(), nil, nil, tui.SettingsListOptions{EnableSearch: true})
 	for _, ch := range "theme" {
 		sl.HandleInput(string(ch))
 	}

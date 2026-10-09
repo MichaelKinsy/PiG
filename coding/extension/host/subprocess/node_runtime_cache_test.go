@@ -1,3 +1,5 @@
+//go:build !pig_strip_node_extensions
+
 package subprocess
 
 import (
@@ -7,6 +9,8 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/MichaelKinsy/PiG/internal/fspublish"
 )
 
 func TestNodeRuntimeMaterializesOncePerContentHash(t *testing.T) {
@@ -55,10 +59,10 @@ func TestNodeRuntimeCopyFallbackDoesNotOverwrite(t *testing.T) {
 	if err := os.WriteFile(source, []byte("runtime bytes"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if err := copyNodeRuntimeFile(source, target); err != nil {
+	if err := fspublish.LinkOrCopy(source, target); err != nil {
 		t.Fatal(err)
 	}
-	if err := copyNodeRuntimeFile(source, target); !errors.Is(err, os.ErrExist) {
+	if err := fspublish.LinkOrCopy(source, target); !errors.Is(err, os.ErrExist) {
 		t.Fatalf("fallback overwrote existing destination: %v", err)
 	}
 	got, err := os.ReadFile(target)

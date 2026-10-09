@@ -1,0 +1,2 @@
+### Changed
+- TypeScript and JavaScript extensions packed into one Node process cost about 4 MiB and 5 ms each instead of about 32 MiB and 27 ms. The process runs one IO worker for all of its extensions, not one each, and reads, validates and decodes each model catalog update the host sends to every extension once; each extension still gets its own copy of the models it reads. With 10 extensions the process peaks at about 140 MiB instead of 385 MiB, and `-p` starts in about 259 ms instead of 464 ms.

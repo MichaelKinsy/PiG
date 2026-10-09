@@ -1,5 +1,9 @@
 package codingagent
 
+// pi: packages/coding-agent/src/modes/interactive/components/easter-egg-3d.ts
+
+// pi: packages/coding-agent/src/modes/interactive/components/easter-egg-3d.lazy.ts
+
 import (
 	"bytes"
 	"encoding/json"
@@ -54,7 +58,7 @@ func TestPig3dAnimationMatchesPinnedPi(t *testing.T) {
 		{name: "early exit while growing", width: 60, height: 18, variant: piglogin.FindVariant("kratos"), foreground: logoRgb{200, 200, 200}, bg: logoRgb{0, 0, 0}, appearance: "dark", renderMs: []float64{0, 100, 300, 600}, closeMs: 650, closeKind: "ctrl+c"},
 		{name: "narrow screen hides the hint", width: 14, height: 8, variant: piglogin.Default(), foreground: logoRgb{220, 220, 220}, bg: logoRgb{20, 20, 20}, appearance: "dark", renderMs: []float64{0, 400, 1500, 2600, (puzzle + 0.5) * 1000}, closeMs: (puzzle + 0.6) * 1000, closeKind: "key"},
 	}
-	colors := tui.ActiveTheme().ColorValues()
+	colors := tui.ActiveTheme().Colors()
 	theme := map[string]logoRgb{"text": logoToRgb(colors["text"]), "muted": logoToRgb(colors["muted"]), "dim": logoToRgb(colors["dim"])}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -111,7 +115,7 @@ func TestPig3dAnimationMatchesPinnedPi(t *testing.T) {
 			input := map[string]any{
 				"upstream": pigversion.UpstreamVersion, "width": tc.width, "height": tc.height, "screen": screen,
 				"foreground": tc.foreground, "background": tc.bg, "appearance": tc.appearance,
-				"theme": theme, "colorMode": string(tui.ActiveTheme().ColorMode()),
+				"theme": theme, "colorMode": string(tui.ActiveTheme().GetColorMode()),
 				"columns": a.model.columns, "rows": a.model.rows, "pixels": pig3dOraclePixels(a.model),
 				"steps": steps,
 			}
@@ -161,7 +165,7 @@ func TestPig3dPlaysOnlyInFullscreen(t *testing.T) {
 	t.Run("fullscreen plays the 3D pig", func(t *testing.T) {
 		m, alt := newLogoClickMode(t, 100, 30)
 		m.chatContainer = tui.NewContainer()
-		m.handleArminSaysHi(t.Context())
+		m.handleArminSaysHi()
 		if len(m.arminComponents) != 0 || len(m.chatContainer.Children()) != 0 {
 			t.Fatal("fullscreen /pigsayhi drew the inline pig head")
 		}
@@ -171,7 +175,7 @@ func TestPig3dPlaysOnlyInFullscreen(t *testing.T) {
 			t.Fatalf("fullscreen /pigsayhi played %+v, want the 3D pig growing out of the center", a.model)
 		}
 		// A second command while it plays starts nothing else.
-		m.handleArminSaysHi(t.Context())
+		m.handleArminSaysHi()
 		if len(m.arminComponents) != 0 || m.logoAnimation != a {
 			t.Fatal("a second /pigsayhi while the 3D pig plays changed what plays")
 		}
@@ -185,8 +189,8 @@ func TestPig3dPlaysOnlyInFullscreen(t *testing.T) {
 	t.Run("an open overlay plays nothing", func(t *testing.T) {
 		m, alt := newLogoClickMode(t, 100, 30)
 		m.chatContainer = tui.NewContainer()
-		dialog := alt.OpenOverlay(tui.NewText("dialog"), tui.OverlaySpec{Anchor: "center"}.Options())
-		m.handleArminSaysHi(t.Context())
+		dialog := alt.ShowOverlay(tui.NewText("dialog"), tui.OverlaySpec{Anchor: "center"}.Options())
+		m.handleArminSaysHi()
 		if m.logoAnimationPlaying || len(m.arminComponents) != 0 || len(m.chatContainer.Children()) != 0 {
 			t.Fatal("/pigsayhi over an open overlay played or drew something")
 		}
@@ -195,7 +199,7 @@ func TestPig3dPlaysOnlyInFullscreen(t *testing.T) {
 	t.Run("inline keeps the flat pig head", func(t *testing.T) {
 		m := newPendingDisplayHarness(t)
 		m.chatContainer = tui.NewContainer()
-		m.handleArminSaysHi(t.Context())
+		m.handleArminSaysHi()
 		if len(m.arminComponents) != 1 || m.logoAnimationPlaying {
 			t.Fatal("inline /pigsayhi did not draw the inline pig head")
 		}

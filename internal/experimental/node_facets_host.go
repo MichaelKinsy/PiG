@@ -28,7 +28,7 @@ type nodeFacetHostRequest struct {
 	Method      string          `json:"method"`
 	Args        json.RawMessage `json:"args"`
 	Sequence    int             `json:"sequence"`
-	Ops         []chord.Op      `json:"ops"`
+	Ops         chord.Ops       `json:"ops"`
 	Origin      string          `json:"origin"`
 	Cancellable bool            `json:"cancellable"`
 	Context     nodeFacetValue  `json:"context"`
@@ -201,10 +201,10 @@ func (generation *nodeFacetGeneration) environmentCall(ctx context.Context, requ
 		if err != nil {
 			return nodeFacetValue{}, err
 		}
-		definition := chord.DefineServiceWithOptions[any](args.Service.Id, chord.ServiceOptions{Local: args.Service.Local})
+		definition := chord.DefineService[any](args.Service.Id, chord.ServiceOptions{Local: args.Service.Local})
 		return undefined, chord.ProvideService(env, definition, implementation)
 	case "provideMany":
-		definition := chord.DefineServiceWithOptions[any](args.Service.Id, chord.ServiceOptions{Local: args.Service.Local})
+		definition := chord.DefineService[any](args.Service.Id, chord.ServiceOptions{Local: args.Service.Local})
 		spawner, err := chord.ProvideMany(env, definition)
 		if err != nil {
 			return nodeFacetValue{}, err

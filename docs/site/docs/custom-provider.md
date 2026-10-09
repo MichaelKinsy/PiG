@@ -96,6 +96,10 @@ Registration inspection constructs the extension but does not dispatch Session, 
 
 Duplicate provider IDs fail and identify both owners. Login starts only the extension that owns the selected provider.
 
+In interactive `/login`, an option-selection prompt opens a selector in the login dialog. Cancelling the selector cancels the login.
+
+A provider object (the `registerProvider(provider)` form, Pi's `registerNativeProvider`) logs in with the methods its `auth` declares, as in Pi. `/login` lists an account sign-in when `auth.oauth` is declared, labelled with its `loginLabel`. The API-key login runs the provider's own `auth.apiKey.login` and its prompts. A provider without its own API-key login gets the generic API-key prompt.
+
 ## Credential ownership
 
 Use PiG's normal credential store when the provider does not declare its own store. Use an extension-owned store only when the provider contract requires it.

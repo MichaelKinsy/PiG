@@ -13,7 +13,10 @@ const LatestProtocolVersion = "2025-11-25"
 // SupportedProtocolVersions are the versions the client accepts from a server.
 // Servers that do not support the requested version answer with their own
 // latest one, so older versions stay accepted for servers built on older SDKs.
-var SupportedProtocolVersions = []string{LatestProtocolVersion, "2025-06-18", "2025-03-26", "2024-11-05"}
+var SupportedProtocolVersions = []SupportedProtocolVersion{LatestProtocolVersion, "2025-06-18", "2025-03-26", "2024-11-05"}
+
+// SupportedProtocolVersion is one of SupportedProtocolVersions (types.ts:10).
+type SupportedProtocolVersion string
 
 // Implementation names a client or server implementation.
 type Implementation struct {
@@ -45,6 +48,27 @@ type ClientCapabilities struct {
 	Roots        *ListChangedCapability `json:"roots,omitempty"`
 	Sampling     map[string]any         `json:"sampling,omitempty"`
 	Elicitation  map[string]any         `json:"elicitation,omitempty"`
+}
+
+// MarshalJSON emits a non-nil empty map as an empty object: `{sampling: {}}` declares the capability, and encoding/json's
+// omitempty would drop it.
+func (c ClientCapabilities) MarshalJSON() ([]byte, error) {
+	wire := struct {
+		Experimental any                    `json:"experimental,omitempty"`
+		Roots        *ListChangedCapability `json:"roots,omitempty"`
+		Sampling     any                    `json:"sampling,omitempty"`
+		Elicitation  any                    `json:"elicitation,omitempty"`
+	}{Roots: c.Roots}
+	if c.Experimental != nil {
+		wire.Experimental = c.Experimental
+	}
+	if c.Sampling != nil {
+		wire.Sampling = c.Sampling
+	}
+	if c.Elicitation != nil {
+		wire.Elicitation = c.Elicitation
+	}
+	return json.Marshal(wire)
 }
 
 // ServerCapabilities are the capabilities a server declares. A non-nil field
@@ -149,14 +173,34 @@ type ToolExecution struct {
 // Tool is a tool a server lists in tools/list. Fields the protocol does not
 // define are not kept.
 type Tool struct {
-	Name         string           `json:"name"`
-	Title        string           `json:"title,omitempty"`
+	Name  string `json:"name"`
+	Title string `json:"title,omitempty"`
+	// HasTitle is set when the server sent a non-null `title`, possibly empty. A title of a tool built in Go is present
+	// when it is not empty.
+	HasTitle     bool             `json:"-"`
 	Description  string           `json:"description,omitempty"`
 	InputSchema  json.RawMessage  `json:"inputSchema"`
 	OutputSchema json.RawMessage  `json:"outputSchema,omitempty"`
 	Annotations  *ToolAnnotations `json:"annotations,omitempty"`
 	Execution    *ToolExecution   `json:"execution,omitempty"`
 	Meta         json.RawMessage  `json:"_meta,omitempty"`
+}
+
+// UnmarshalJSON reads a tool and records whether the server sent a `title`.
+func (t *Tool) UnmarshalJSON(data []byte) error {
+	type plain Tool
+	var wire struct {
+		plain
+		Title *string `json:"title"`
+	}
+	if err := json.Unmarshal(data, &wire); err != nil {
+		return err
+	}
+	*t = Tool(wire.plain)
+	if wire.Title != nil {
+		t.Title, t.HasTitle = *wire.Title, true
+	}
+	return nil
 }
 
 // ListToolsResult is one page of tools/list.
@@ -176,6 +220,8 @@ type Resource struct {
 	Size        *float64            `json:"size,omitempty"`
 	Annotations *ContentAnnotations `json:"annotations,omitempty"`
 	Meta        json.RawMessage     `json:"_meta,omitempty"`
+	// Raw is the list entry as the server sent it, with `name` defaulted to the URI; empty for a Resource built in Go.
+	Raw json.RawMessage `json:"-"`
 }
 
 // ResourceTemplate is a family of resources addressed by an RFC 6570 URI
@@ -188,6 +234,9 @@ type ResourceTemplate struct {
 	MimeType    string              `json:"mimeType,omitempty"`
 	Annotations *ContentAnnotations `json:"annotations,omitempty"`
 	Meta        json.RawMessage     `json:"_meta,omitempty"`
+	// Raw is the list entry as the server sent it, with `name` defaulted to the URI template; empty for a
+	// ResourceTemplate built in Go.
+	Raw json.RawMessage `json:"-"`
 }
 
 // ListResourcesResult is one page of resources/list.

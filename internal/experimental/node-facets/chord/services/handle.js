@@ -1,3 +1,4 @@
+var _a;
 /** Host-owned mutable target with consumer-owned guarded views. */
 export class ServiceSlot {
     #serviceId;
@@ -87,12 +88,13 @@ class ValueView {
             return current;
         let child = this.#children.get(property);
         if (child === undefined) {
-            child = new ValueView(resolve, true);
+            child = new _a(resolve, true);
             this.#children.set(property, child);
         }
         return child.proxy;
     }
 }
+_a = ValueView;
 function isObject(value) {
     return (typeof value === "object" && value !== null) || typeof value === "function";
 }

@@ -1,0 +1,278 @@
+--- /dev/null
++++ b/bench/probe.ts
+@@ -0,0 +1,82 @@
++// Where-it-runs probe: per request inside the Durable Object, for pi-head and the PiG targets. Run with BENCH_PROBE=count
++// (crossing counts, SQLite rows, CPU, memory) or BENCH_PROBE=time (adds the time spent inside the core's exports; wall
++// time per crossing is a Miniflare measurement, because Cloudflare freezes timers during a request). Appends one line per
++// sample to results/probe.jsonl; results/results.jsonl (the latency runs) is untouched.
++//   BENCH_PROBE=count bun bench/probe.ts <target> [sizes...]
++import { execFileSync } from "node:child_process"
++import { appendFileSync, mkdirSync, readdirSync, readFileSync, rmSync } from "node:fs"
++import { MEASURED_TOOLS, turn } from "../src/plan.ts"
++import { call, MEASURED_TURNS, PROBE, prepare, SIZES, stage, start, target, TARGETS } from "./targets.ts"
++
++if (!PROBE) throw new Error("set BENCH_PROBE=count or BENCH_PROBE=time")
++const name = target(process.argv[2])
++if (name !== "pi-head" && !TARGETS[name].core) throw new Error("probe: pi-head or a PiG target")
++const sizes = process.argv.length > 3 ? process.argv.slice(3).map(Number) : SIZES
++const samples = Number(process.env.SAMPLES ?? 3)
++
++// workerd processes under this one; their threads' schedstat field 1 is the nanoseconds they ran on a CPU.
++function workerd(): number[] {
++  const rows = execFileSync("ps", ["-A", "-o", "pid=,ppid=,comm="], { encoding: "utf8" }).trim().split("\n").map(line => line.trim().split(/\s+/))
++  const tree = new Set([process.pid])
++  for (let grew = true; grew;) {
++    grew = false
++    for (const [pid, ppid] of rows) if (tree.has(Number(ppid)) && !tree.has(Number(pid))) { tree.add(Number(pid)); grew = true }
++  }
++  return rows.filter(([pid, , comm]) => tree.has(Number(pid)) && comm === "workerd").map(([pid]) => Number(pid))
++}
++const cpuNs = (pids: number[]) => pids.reduce((sum, pid) => sum + readdirSync(`/proc/${pid}/task`).reduce((s, task) => {
++  try { return s + Number(readFileSync(`/proc/${pid}/task/${task}/schedstat`, "utf8").split(" ")[0]) } catch { return s }
++}, 0), 0)
++
++type Heap = { usedSize: number; totalSize: number; backingStorageSize: number }
++async function inspector(url: URL) {
++  const list = await (await fetch(`http://${url.host}/json`)).json() as { title: string; webSocketDebuggerUrl: string }[]
++  const user = list.find(t => t.title.startsWith("workerd: worker core:user:"))
++  if (!user) throw new Error(`probe: no user worker among ${list.map(t => t.title).join(", ")}`)
++  const ws = new WebSocket(user.webSocketDebuggerUrl)
++  await new Promise((ok, fail) => { ws.onopen = ok; ws.onerror = fail })
++  let id = 0
++  const send = <T>(method: string) => new Promise<T>(ok => {
++    const want = ++id
++    ws.onmessage = event => { const m = JSON.parse(String(event.data)); if (m.id === want) ok(m.result) }
++    ws.send(JSON.stringify({ id: want, method }))
++  })
++  const heap = () => send<Heap>("Runtime.getHeapUsage")
++  // A full collection, so the reading after it is what the isolate retains (not garbage it has yet to collect).
++  // workerd answers HeapProfiler.takeHeapSnapshot (it collects garbage first) but not collectGarbage; the chunks are dropped.
++  const gc = () => send<unknown>("HeapProfiler.takeHeapSnapshot")
++  return { heap, gc, close: () => ws.close() }
++}
++
++await prepare(name)
++mkdirSync("results", { recursive: true })
++for (const size of sizes) {
++  for (let sample = 0; sample < samples; sample++) {
++    const dir = stage(name, size)
++    const mf = await start(name, dir, { inspector: true })
++    const pids = workerd()
++    const insp = await inspector(new URL(String(await mf.getInspectorURL())))
++    const request = async (path: string, body?: unknown) => {
++      const c0 = cpuNs(pids), t0 = performance.now()
++      await call(mf, path, body)
++      const ms = performance.now() - t0, cpuMs = (cpuNs(pids) - c0) / 1e6
++      const probe = await call<Record<string, number>>(mf, "/probe")
++      const heap = await insp.heap()
++      return { ms, cpuMs, ...probe, heapUsed: heap.usedSize, heapTotal: heap.totalSize, backing: heap.backingStorageSize }
++    }
++    const open = await request("/wake")
++    const turns = []
++    for (let i = 0; i < MEASURED_TURNS; i++) turns.push(await request("/turn", turn(`m${i}`, MEASURED_TOOLS)))
++    // Retained memory, once after the last turn so no request pays for the forced collection.
++    await insp.gc()
++    const after = await insp.heap()
++    const wasmBytes = (await call<Record<string, number>>(mf, "/probe")).wasmBytes
++    const retained = { heapUsed: after.usedSize, heapTotal: after.totalSize, backing: after.backingStorageSize, wasmBytes }
++    insp.close()
++    await mf.dispose()
++    rmSync(dir, { recursive: true, force: true })
++    const line = { kind: "probe", mode: PROBE, target: name, version: TARGETS[name].version, turns: size, sample, open, turn: turns, retained, at: new Date().toISOString() }
++    appendFileSync("results/probe.jsonl", JSON.stringify(line) + "\n")
++    process.stderr.write(`probe ${PROBE} ${name} ${size} #${sample}\n`)
++  }
++}
+--- /dev/null
++++ b/bench/size.ts
+@@ -0,0 +1,19 @@
++// Bundle size of each target as Cloudflare counts it: the uncompressed upload (bundle plus its Wasm module) against the
++// 64 MiB Worker size limit, with gzip for reference (Cloudflare shows it; it is not a limit). One line per target to
++// results/size.jsonl.  bun bench/size.ts <target...>
++import { appendFileSync, mkdirSync, readFileSync } from "node:fs"
++import { join } from "node:path"
++import { gzipSync } from "node:zlib"
++import { bundleFor, PROBE, target, TARGETS } from "./targets.ts"
++
++if (PROBE) throw new Error("size: measure the latency bundle; unset BENCH_PROBE")
++mkdirSync("results", { recursive: true })
++for (const arg of process.argv.slice(2)) {
++  const name = target(arg)
++  const path = await bundleFor(name)
++  const files = [path, ...(TARGETS[name].core ? [join(path, "../pig-core.wasm")] : [])].map(file => readFileSync(file))
++  const bytes = files.reduce((sum, f) => sum + f.length, 0), gzip = files.reduce((sum, f) => sum + gzipSync(f).length, 0)
++  const wasm = TARGETS[name].core ? files[1]!.length : 0
++  appendFileSync("results/size.jsonl", JSON.stringify({ kind: "size", target: name, version: TARGETS[name].version, bytes, gzip, wasm, at: new Date().toISOString() }) + "\n")
++  process.stderr.write(`size ${name} ${bytes} B, gzip ${gzip} B\n`)
++}
+--- a/bench/targets.ts
++++ b/bench/targets.ts
+@@ -93,9 +93,16 @@
+ const bundles = new Map<Target, Promise<string>>()
+ 
++// BENCH_PROBE (count | time) builds the where-it-runs probe into pi-head and the PiG targets (src/probe.ts) in its own
++// dist directory; the latency runs bundle without it.
++export const PROBE = process.env.BENCH_PROBE ?? ""
++if (PROBE && PROBE !== "count" && PROBE !== "time") throw new Error("BENCH_PROBE: count | time")
++
+ const bundle = (name: Target) => bundles.get(name) ?? bundles.set(name, (async () => {
+   const core = TARGETS[name]!.core
+   // A PiG target's bundle sits beside its own copy of the core, which it imports as ./pig-core.wasm.
+-  const outfile = core ? `dist/${name}/bench.mjs` : `dist/${name}.mjs`
++  const dist = PROBE ? `dist/probe-${PROBE}` : "dist"
++  const outfile = core ? `${dist}/${name}/bench.mjs` : `${dist}/${name}.mjs`
+   await build({
++    define: { BENCH_PROBE: JSON.stringify(PROBE !== ""), BENCH_PROBE_TIME: JSON.stringify(PROBE === "time") },
+     entryPoints: [TARGETS[name].entry], outfile, bundle: true, format: "esm", platform: "neutral", target: "es2024",
+     conditions: ["workerd", "worker", "browser", "import"], mainFields: ["module", "main"],
+@@ -103,15 +110,19 @@
+     plugins: name === "pi-head" ? [fromSource] : TARGETS[name]!.core ? [fromPig] : [],
+   })
+-  if (core) cpSync(join(pigHost(), "dist", core), `dist/${name}/pig-core.wasm`)
++  if (core) cpSync(join(pigHost(), "dist", core), `${dist}/${name}/pig-core.wasm`)
+   return outfile
+ })()).get(name)!
+ 
++export const bundleFor = (name: Target) => bundle(name)
++
+ export async function prepare(name: Target) {
+   await bundle(name)
+ }
+ 
+-export async function start(name: Target, persist: string) {
++export async function start(name: Target, persist: string, options: { inspector?: boolean } = {}) {
++  const path = await bundle(name)
+   const mf = new Miniflare({
+-    modules: [{ type: "ESModule", path: await bundle(name) }, ...(TARGETS[name]!.core ? [{ type: "CompiledWasm" as const, path: `dist/${name}/pig-core.wasm` }] : [])],
++    ...(options.inspector ? { inspectorPort: 0 } : {}),
++    modules: [{ type: "ESModule", path }, ...(TARGETS[name]!.core ? [{ type: "CompiledWasm" as const, path: join(path, "../pig-core.wasm") }] : [])],
+     compatibilityDate: "2026-07-30",
+     compatibilityFlags: ["nodejs_compat"],
+--- a/src/pig.ts
++++ b/src/pig.ts
+@@ -5,5 +5,8 @@
+ // @ts-expect-error the bundle supplies the compiled core module
+ import core from "./pig-core.wasm"
++import { probeWasm } from "./probe.ts"
+ 
++declare const BENCH_PROBE: boolean
++if (BENCH_PROBE) probeWasm()
+ useCore(core)
+ 
+--- a/src/pi-head.ts
++++ b/src/pi-head.ts
+@@ -7,6 +7,9 @@
+ import { openDurableObjectSqliteStorage } from "@earendil-works/pi-durable/storage/sqlite/cloudflare"
+ import { fingerprint, next, payload, type Message, type Turn } from "./plan.ts"
++import { probeSql, take } from "./probe.ts"
+ import { serve, tables, type Bench } from "./serve.ts"
+ 
++declare const BENCH_PROBE: boolean
++
+ const SYSTEM = "You are a benchmark agent. Call lookup as instructed, then answer briefly."
+ 
+@@ -46,4 +49,11 @@
+   private root?: Conversation
+ 
++  constructor(ctx: DurableObjectState, env: unknown) {
++    super(ctx, env)
++    if (BENCH_PROBE) probeSql(ctx.storage.sql)
++  }
++
++  async probe() { return take() }
++
+   private async open() {
+     if (this.root) return this.root
+--- /dev/null
++++ b/src/probe.ts
+@@ -0,0 +1,76 @@
++// Where-it-runs probe (the report's "where TinyGo runs" slide): counts what one request costs inside the Durable Object.
++// Every JS<->Wasm boundary crossing (export calls into the core, import calls out of it) is counted; with
++// BENCH_PROBE_TIME set at bundle time, the time spent inside export calls is summed too (performance.now advances inside a
++// request in Miniflare only, at 1 ms resolution, so the sum over a turn's calls is an unbiased estimate; on Cloudflare it is
++// frozen, so time is a Miniflare measurement). hopSteps counts step calls delivering ABI event 18 (hopped): the crossings
++// the hop-chain model adds. SQLite rows read and written
++// are the cursors' counters, the Durable Object's billed storage metric. take() returns the counts since the last take().
++declare const BENCH_PROBE_TIME: boolean
++
++type Counts = { crossings: number; exportCalls: number; importCalls: number; hopSteps: number; coreMs: number; instantiateMs: number; rowsRead: number; rowsWritten: number }
++const zero = (): Counts => ({ crossings: 0, exportCalls: 0, importCalls: 0, hopSteps: 0, coreMs: 0, instantiateMs: 0, rowsRead: 0, rowsWritten: 0 })
++let counts = zero()
++const memories: WebAssembly.Memory[] = []
++let cursors: { rowsRead: number; rowsWritten: number }[] = []
++const timed = typeof BENCH_PROBE_TIME !== "undefined" && BENCH_PROBE_TIME
++let depth = 0
++const HOPPED = 18 // ABI event kind hopped
++
++function wrapImports(imports: WebAssembly.Imports | undefined): WebAssembly.Imports | undefined {
++  if (!imports) return imports
++  return Object.fromEntries(Object.entries(imports).map(([module, fields]) => [module, Object.fromEntries(Object.entries(fields).map(([name, value]) =>
++    [name, typeof value === "function" ? (...args: unknown[]) => { counts.importCalls++; counts.crossings++; return (value as Function)(...args) } : value]))]))
++}
++
++function wrapExports(exports: WebAssembly.Exports): WebAssembly.Exports {
++  const out: Record<string, unknown> = {}
++  for (const [name, value] of Object.entries(exports)) {
++    if (value instanceof WebAssembly.Memory) memories.push(value)
++    out[name] = typeof value !== "function" ? value : (...args: unknown[]) => {
++      counts.exportCalls++
++      counts.crossings++
++      if (name === "step" && args[1] === HOPPED) counts.hopSteps++
++      if (!timed || depth++ > 0) { try { return (value as Function)(...args) } finally { if (timed) depth-- } }
++      const t0 = performance.now()
++      try { return (value as Function)(...args) } finally { counts.coreMs += performance.now() - t0; depth-- }
++    }
++  }
++  return Object.freeze(out) as WebAssembly.Exports
++}
++
++/** Install the Wasm wrapper. Call before the core is instantiated. */
++export function probeWasm() {
++  const Real = WebAssembly.Instance
++  const Instance = function (this: unknown, module: WebAssembly.Module, imports?: WebAssembly.Imports) {
++    const t0 = performance.now()
++    const instance = new Real(module, wrapImports(imports))
++    counts.instantiateMs += performance.now() - t0
++    return { exports: wrapExports(instance.exports) }
++  } as unknown as typeof WebAssembly.Instance
++  Object.defineProperty(WebAssembly, "Instance", { value: Instance, configurable: true, writable: true })
++}
++
++/** Count rows read and written of every statement run through sql. */
++export function probeSql(sql: SqlStorage) {
++  const exec = sql.exec.bind(sql)
++  sql.exec = ((query: string, ...bindings: unknown[]) => {
++    // Statements are consumed before the next one runs, so earlier cursors' counters are final: fold them now.
++    fold()
++    const cursor = exec(query, ...bindings)
++    cursors.push(cursor)
++    return cursor
++  }) as typeof sql.exec
++}
++
++/** The counts since the last take, with the current Wasm linear memory size. */
++function fold() {
++  for (const cursor of cursors) { counts.rowsRead += cursor.rowsRead; counts.rowsWritten += cursor.rowsWritten }
++  cursors = []
++}
++
++export function take() {
++  fold()
++  const out = { ...counts, wasmBytes: memories.reduce((sum, memory) => sum + memory.buffer.byteLength, 0), timed }
++  counts = zero()
++  return out
++}
+--- a/src/serve.ts
++++ b/src/serve.ts
+@@ -6,4 +6,5 @@
+   seed(turns: Turn[]): Promise<string>
+   stats(): Promise<Stats>
++  probe?(): Promise<unknown>
+ }
+ 
+@@ -23,4 +24,5 @@
+       case "/seed": return Response.json(await target.seed(body as Turn[]))
+       case "/stats": return Response.json(await target.stats())
++      case "/probe": return Response.json(await target.probe?.() ?? null)
+       default: return new Response("not found", { status: 404 })
+     }

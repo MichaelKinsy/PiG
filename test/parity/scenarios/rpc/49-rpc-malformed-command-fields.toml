@@ -1,0 +1,470 @@
+# Behavior family: rpc
+# Surface: commands whose fields are missing or have another JSON type.
+#
+# Pi 1.1.0 rpc-mode.ts handleCommand never checks field types: set_model builds "Model not found: ${provider}/${modelId}" from whatever arrived
+# (undefined, null, numbers, arrays, objects), session.prompt/steer/followUp call text.startsWith on the message, set_session_name calls
+# command.name.trim(), switch_session calls startsWith on its path, bash runs `${command}`, fork rejects a non-string entry id, get_entries looks the
+# `since` value up by id, set_thinking_level treats a non-string as an unavailable level, and set_auto_compaction/set_auto_retry read truthiness.
+# Pig decoded these into typed structs and answered with a Go decoder message, or started a run with an empty prompt. Not probed because Pig differs
+# and the cause is Pi storing the raw JSON value: non-string steering and follow-up modes, and non-boolean enabled flags echoed by get_state (the
+# scenario restores booleans before each get_state); compact with a non-string customInstructions (Pi's TypeError depends on session state).
+
+name = "49-rpc-malformed-command-fields"
+description = "RPC model and thinking commands across plain, reasoning and xhigh models."
+covers = [
+  "packages/coding-agent/src/modes/rpc/rpc-mode.ts",
+  "packages/coding-agent/src/core/agent-session.ts",
+]
+tags = ["hermetic", "fast"]
+driver = "rpc-mode"
+
+[rpc]
+canonical_json = true
+timeout_seconds = 60
+[[rpc.steps]]
+line = '''{"id":"p00","type":"set_model"}'''
+wait_contains = ['"id":"p00","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '''{"id":"p01","type":"set_model","provider":"fixture"}'''
+wait_contains = ['"id":"p01","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '''{"id":"p02","type":"set_model","provider":"fixture","modelId":null}'''
+wait_contains = ['"id":"p02","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '''{"id":"p03","type":"set_model","provider":"fixture","modelId":5}'''
+wait_contains = ['"id":"p03","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '''{"id":"p04","type":"set_thinking_level"}'''
+wait_contains = ['"id":"p04","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '''{"id":"p05","type":"set_thinking_level","level":null}'''
+wait_contains = ['"id":"p05","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '''{"id":"p06","type":"set_thinking_level","level":"HIGH"}'''
+wait_contains = ['"id":"p06","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '''{"id":"p07","type":"set_thinking_level","level":"max"}'''
+wait_contains = ['"id":"p07","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '''{"id":"p08","type":"set_thinking_level","level":["high"]}'''
+wait_contains = ['"id":"p08","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '''{"id":"p09","type":"set_steering_mode"}'''
+wait_contains = ['"id":"p09","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '''{"id":"p10","type":"set_steering_mode","mode":"bogus"}'''
+wait_contains = ['"id":"p10","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '''{"id":"p12","type":"set_follow_up_mode","mode":"all"}'''
+wait_contains = ['"id":"p12","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '''{"id":"p13","type":"set_follow_up_mode","mode":"nope"}'''
+wait_contains = ['"id":"p13","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '''{"id":"r01","type":"set_auto_compaction","enabled":true}'''
+wait_contains = ['"id":"r01","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '''{"id":"r02","type":"set_auto_retry","enabled":true}'''
+wait_contains = ['"id":"r02","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '''{"id":"p14","type":"get_state"}'''
+wait_contains = ['"id":"p14","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '''{"id":"p15","type":"set_auto_compaction"}'''
+wait_contains = ['"id":"p15","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '''{"id":"p16","type":"set_auto_compaction","enabled":"yes"}'''
+wait_contains = ['"id":"p16","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '''{"id":"p17","type":"set_auto_compaction","enabled":0}'''
+wait_contains = ['"id":"p17","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '''{"id":"p18","type":"set_auto_retry"}'''
+wait_contains = ['"id":"p18","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '''{"id":"p19","type":"set_auto_retry","enabled":"x"}'''
+wait_contains = ['"id":"p19","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '''{"id":"r03","type":"set_auto_compaction","enabled":true}'''
+wait_contains = ['"id":"r03","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '''{"id":"r04","type":"set_auto_retry","enabled":true}'''
+wait_contains = ['"id":"r04","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '''{"id":"p20","type":"get_state"}'''
+wait_contains = ['"id":"p20","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '''{"id":"p21","type":"set_session_name"}'''
+wait_contains = ['"id":"p21","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '''{"id":"p22","type":"set_session_name","name":5}'''
+wait_contains = ['"id":"p22","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '''{"id":"p23","type":"set_session_name","name":"   "}'''
+wait_contains = ['"id":"p23","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '''{"id":"p24","type":"set_session_name","name":"  named  "}'''
+wait_contains = ['"id":"p24","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '''{"id":"p25","type":"set_session_name","name":null}'''
+wait_contains = ['"id":"p25","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '''{"id":"r05","type":"set_auto_compaction","enabled":true}'''
+wait_contains = ['"id":"r05","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '''{"id":"r06","type":"set_auto_retry","enabled":true}'''
+wait_contains = ['"id":"r06","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '''{"id":"p26","type":"get_state"}'''
+wait_contains = ['"id":"p26","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '''{"id":"p27","type":"fork"}'''
+wait_contains = ['"id":"p27","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '''{"id":"p28","type":"fork","entryId":5}'''
+wait_contains = ['"id":"p28","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '''{"id":"p29","type":"fork","entryId":"zzz"}'''
+wait_contains = ['"id":"p29","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '''{"id":"p30","type":"get_entries","since":5}'''
+wait_contains = ['"id":"p30","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '''{"id":"p31","type":"get_entries","since":null}'''
+wait_contains = ['"id":"p31","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '''{"id":"p32","type":"get_entries","since":"zzz"}'''
+wait_contains = ['"id":"p32","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '''{"id":"p34","type":"switch_session"}'''
+wait_contains = ['"id":"p34","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '''{"id":"p35","type":"switch_session","sessionPath":5}'''
+wait_contains = ['"id":"p35","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '''{"id":"p37","type":"clone"}'''
+wait_contains = ['"id":"p37","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '''{"id":"p38","type":"new_session","parentSession":5}'''
+wait_contains = ['"id":"p38","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '''{"id":"p39","type":"export_html","outputPath":5}'''
+wait_contains = ['"id":"p39","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '''{"id":"p40","type":"prompt"}'''
+wait_contains = ['"id":"p40","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '''{"id":"p41","type":"prompt","message":5}'''
+wait_contains = ['"id":"p41","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '''{"id":"p42","type":"steer"}'''
+wait_contains = ['"id":"p42","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '''{"id":"p43","type":"follow_up","message":null}'''
+wait_contains = ['"id":"p43","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '''{"id":"p45","type":"bash"}'''
+wait_contains = ['"id":"p45","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '''{"id":"p46","type":"bash","command":5}'''
+wait_contains = ['"id":"p46","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '''{"id":"p47","type":"abort"}'''
+wait_contains = ['"id":"p47","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '''{"id":"r07","type":"set_auto_compaction","enabled":true}'''
+wait_contains = ['"id":"r07","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '''{"id":"r08","type":"set_auto_retry","enabled":true}'''
+wait_contains = ['"id":"r08","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '''{"id":"p48","type":"get_state"}'''
+wait_contains = ['"id":"p48","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '''{"id":"q00","type":"steer","message":5}'''
+wait_contains = ['"id":"q00","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '''{"id":"q01","type":"follow_up","message":5}'''
+wait_contains = ['"id":"q01","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '''{"id":"q02","type":"steer","message":["a"]}'''
+wait_contains = ['"id":"q02","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '''{"id":"q03","type":"prompt","message":{"a":1}}'''
+wait_contains = ['"id":"q03","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '''{"id":"q04","type":"prompt","message":true}'''
+wait_contains = ['"id":"q04","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '''{"id":"q05","type":"switch_session","sessionPath":null}'''
+wait_contains = ['"id":"q05","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '''{"id":"q06","type":"switch_session","sessionPath":true}'''
+wait_contains = ['"id":"q06","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '''{"id":"q07","type":"fork","entryId":null}'''
+wait_contains = ['"id":"q07","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '''{"id":"q08","type":"fork","entryId":["x"]}'''
+wait_contains = ['"id":"q08","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '''{"id":"q09","type":"get_entries","since":true}'''
+wait_contains = ['"id":"q09","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '''{"id":"q10","type":"get_entries","since":{"a":1}}'''
+wait_contains = ['"id":"q10","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '''{"id":"q13","type":"set_session_name","name":true}'''
+wait_contains = ['"id":"q13","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '''{"id":"q14","type":"set_session_name","name":["a "]}'''
+wait_contains = ['"id":"q14","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '''{"id":"q15","type":"set_session_name","name":{}}'''
+wait_contains = ['"id":"q15","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '''{"id":"q16","type":"set_model","provider":{"a":1},"modelId":["x","y"]}'''
+wait_contains = ['"id":"q16","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '''{"id":"q17","type":"set_model","provider":true,"modelId":1.5}'''
+wait_contains = ['"id":"q17","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '''{"id":"q18","type":"set_model","provider":null,"modelId":1e21}'''
+wait_contains = ['"id":"q18","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '''{"id":"q19","type":"bash","command":null}'''
+wait_contains = ['"id":"q19","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '''{"id":"q20","type":"bash","command":["echo","hi"]}'''
+wait_contains = ['"id":"q20","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '''{"id":"q21","type":"bash","command":"echo ok","excludeFromContext":"yes"}'''
+wait_contains = ['"id":"q21","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '''{"id":"q22","type":"export_html","outputPath":null}'''
+wait_contains = ['"id":"q22","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '''{"id":"q23","type":"new_session","parentSession":{"a":1}}'''
+wait_contains = ['"id":"q23","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '''{"id":"q24","type":"new_session","parentSession":null}'''
+wait_contains = ['"id":"q24","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '''{"id":"q25","type":"set_thinking_level","level":{"a":1}}'''
+wait_contains = ['"id":"q25","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '''{"id":"q26","type":"set_thinking_level","level":true}'''
+wait_contains = ['"id":"q26","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '''{"id":"q31","type":"set_auto_compaction","enabled":null}'''
+wait_contains = ['"id":"q31","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '''{"id":"q32","type":"set_auto_compaction","enabled":"false"}'''
+wait_contains = ['"id":"q32","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '''{"id":"q33","type":"set_auto_compaction","enabled":[]}'''
+wait_contains = ['"id":"q33","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '''{"id":"q34","type":"set_auto_retry","enabled":{"a":1}}'''
+wait_contains = ['"id":"q34","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '''{"id":"q35","type":"set_auto_retry","enabled":1.5}'''
+wait_contains = ['"id":"q35","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '''{"id":"r09","type":"set_auto_compaction","enabled":true}'''
+wait_contains = ['"id":"r09","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '''{"id":"r10","type":"set_auto_retry","enabled":true}'''
+wait_contains = ['"id":"r10","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '''{"id":"q36","type":"get_state"}'''
+wait_contains = ['"id":"q36","type":"response"']
+wait_timeout_seconds = 15
+
+[env]
+pig = ["PIG_HOME=testdata/model-thinking"]
+pi = ["PI_CODING_AGENT_DIR=testdata/model-thinking/agent"]
+pig_args = ["--offline", "--no-session", "--model", "fixture/plain"]
+pi_args = ["--offline", "--no-session", "--model", "fixture/plain"]
+
+[assert]
+exit_code = 0
+output_normalized_equal = true
+runs = 3
+
+# normalize-rationale: sessionId is a random UUID each process draws; the rule masks only that value inside its "sessionId" field, so the
+# surrounding JSON, every other field and the field order stay compared byte for byte.
+[[assert.normalize_replace]]
+pattern = '"sessionId":"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}"'
+with = '"sessionId":"00000000-0000-0000-0000-000000000000"'
+reason = "Each process draws its own random UUID session id; retain the field placement and the UUID syntax."

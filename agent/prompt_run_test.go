@@ -11,7 +11,7 @@ import (
 // Pi agent.ts:503-517,561-610 clears run error before agent_start and commits prompt messages only at message_end. Splitting admission from execution must preserve both boundaries.
 func TestPromptRunStartPreservesCompletedTranscript(t *testing.T) {
 	provider := &scriptedProvider{respond: func(int, scriptedRequest) *ai.AssistantMessageEventStream { return errorStream(ai.StopReasonError) }}
-	a := NewAgent(AgentOptions{Model: scriptedModel(provider)})
+	a := mustNewAgent(AgentOptions{Model: scriptedModel(provider)})
 	mustSend(t, a, "fail first")
 	if a.ErrorMessage() != "error" {
 		t.Fatalf("initial failure state = %q", a.ErrorMessage())

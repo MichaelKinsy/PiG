@@ -6,6 +6,8 @@ import (
 	"testing"
 	"time"
 
+	icodingagent "github.com/MichaelKinsy/PiG/internal/codingagent"
+
 	"github.com/MichaelKinsy/PiG/agent"
 	"github.com/MichaelKinsy/PiG/ai"
 )
@@ -42,7 +44,7 @@ func TestCompactAbortsActiveRun(t *testing.T) {
 	}()
 	<-provider.started
 	compacted := make(chan error, 1)
-	go func() { compacted <- sess.Compact(context.Background(), "") }()
+	go func() { _, err := sess.Compact(context.Background(), ""); compacted <- err }()
 	select {
 	case err := <-compacted:
 		if err != nil {
@@ -52,15 +54,15 @@ func TestCompactAbortsActiveRun(t *testing.T) {
 		t.Fatal("Compact waited for the active run instead of aborting it")
 	}
 	<-sent
-	entries := sess.inner.Entries()
-	if last := entries[len(entries)-1]; last.Base.Type != "compaction" || !abortedRunPersisted(sess) {
-		t.Fatalf("last entry %s, aborted run persisted %v; want the aborted run, then the compaction", last.Base.Type, abortedRunPersisted(sess))
+	entries := sess.inner.GetEntries()
+	if last := entries[len(entries)-1]; last.Base().Type != "compaction" || !abortedRunPersisted(sess) {
+		t.Fatalf("last entry %s, aborted run persisted %v; want the aborted run, then the compaction", last.Base().Type, abortedRunPersisted(sess))
 	}
 }
 
 func abortedRunPersisted(sess *Session) bool {
-	for _, entry := range sess.inner.Entries() {
-		if message, ok := entry.AsMessage(); ok && message.Message.Assistant != nil && message.Message.Assistant.StopReason == ai.StopReasonAborted {
+	for _, entry := range sess.inner.GetEntries() {
+		if message, ok := entry.(icodingagent.MessageEntry); ok && message.Message.Assistant != nil && message.Message.Assistant.StopReason == ai.StopReasonAborted {
 			return true
 		}
 	}

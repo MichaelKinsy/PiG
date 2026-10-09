@@ -17,8 +17,21 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/codingagent"
 )
 
-// Pi loader.ts:273-284 and agent-session.ts:3144-3235 require immediate publication, in-place replacement, and activation only for newly admitted names.
+// sessionAPI is the Go reference for the tool members of extension.API: the production Session behind getActiveTools, getAllTools
+// and setActiveTools, the actions the host wires for every SDK.
+type sessionAPI struct {
+	extension.API
+	session *coding.Session
+}
+
+func (a sessionAPI) GetActiveTools() []string          { return a.session.ActiveToolNames() }
+func (a sessionAPI) GetAllTools() []extension.ToolInfo { return a.session.GetAllTools() }
+func (a sessionAPI) SetActiveTools(names []string)     { a.session.SetActiveToolsByName(names) }
+
+// Pi pi.registerTool (packages/coding-agent/src/core/extensions/types.ts:1632, loader.ts:289-301) and agent-session.ts:3481-3579 _refreshToolRegistry require immediate publication, in-place replacement, and activation only for newly admitted names.
 func TestDynamicToolRegistrationAcrossSDKs(t *testing.T) {
+	requireAPIMember(t, "GetActiveTools", extension.API.GetActiveTools)
+	requireAPIMember(t, "SetActiveTools", extension.API.SetActiveTools)
 	t.Parallel()
 	root := findModuleRoot(t)
 	for _, language := range []string{"go", "python", "rust", "node", "fused-go"} {
@@ -65,7 +78,7 @@ func TestDynamicToolRegistrationAcrossSDKs(t *testing.T) {
 					}
 				}
 				runner := inproc.NewRunner(loaded, t.TempDir())
-				services, err := coding.NewServices(coding.ServicesOptions{CWD: t.TempDir(), AgentDir: t.TempDir()})
+				services, err := coding.CreateAgentSessionServices(coding.CreateAgentSessionServicesOptions{CWD: t.TempDir(), AgentDir: t.TempDir()})
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -74,19 +87,20 @@ func TestDynamicToolRegistrationAcrossSDKs(t *testing.T) {
 					t.Fatal(err)
 				}
 				t.Cleanup(func() { _ = session.Close() })
+				var api extension.API = sessionAPI{session: session}
 				bridge.SetHostAction("refreshTools", session.RefreshTools)
 				bridge.SetHostAction("setActiveTools", session.SetActiveToolsByName)
 				bridge.SetHostAction("getActiveTools", session.ActiveToolNames)
 				bridge.SetHostAction("getAllTools", func() []subprocess.ToolInfo {
 					return codingagent.ExtensionToolInfos(runner, map[string]struct{}{"late": {}, "stable": {}, "shout": {}}, nil)
 				})
-				if got := session.ActiveToolNames(); !slices.Equal(got, []string{"stable"}) {
+				if got := api.GetActiveTools(); !slices.Equal(got, []string{"stable"}) {
 					t.Fatal(got)
 				}
-				if err := session.BindExtensions(t.Context()); err != nil {
+				if err := session.BindExtensions(t.Context(), coding.ExtensionBindings{}); err != nil {
 					t.Fatal(err)
 				}
-				if got := session.ActiveToolNames(); !slices.Equal(got, []string{"stable", "late"}) {
+				if got := api.GetActiveTools(); !slices.Equal(got, []string{"stable", "late"}) {
 					t.Fatalf("startup active=%v", got)
 				}
 				executeDynamicTool(t, session, "late", "v1:hello")
@@ -94,10 +108,10 @@ func TestDynamicToolRegistrationAcrossSDKs(t *testing.T) {
 				if err := command.Handler(t.Context(), ""); err != nil {
 					t.Fatal(err)
 				}
-				if got := session.ActiveToolNames(); !slices.Equal(got, []string{"stable", "shout"}) {
-					t.Fatalf("replacement reactivated disabled tool or failed to activate new tool: %v", got)
+				if got := api.GetActiveTools(); !slices.Equal(got, []string{"stable", "shout"}) {
+					t.Fatalf("registerTool replacement reactivated disabled tool or failed to activate new tool: %v", got)
 				}
-				infos := session.GetAllTools()
+				infos := api.GetAllTools()
 				names := make([]string, len(infos))
 				for i, info := range infos {
 					names[i] = info.Name
@@ -109,7 +123,7 @@ func TestDynamicToolRegistrationAcrossSDKs(t *testing.T) {
 				if !ok || def.Description != "v2" || def.PromptSnippet != "summary v2" || !reflect.DeepEqual(def.PromptGuidelines, []string{"Use late v2"}) {
 					t.Fatalf("replacement metadata=%+v", def)
 				}
-				session.SetActiveToolsByName([]string{"late", "shout"})
+				api.SetActiveTools([]string{"late", "shout"})
 				executeDynamicTool(t, session, "late", "v2:hello")
 				executeDynamicTool(t, session, "shout", "new:hello")
 			})

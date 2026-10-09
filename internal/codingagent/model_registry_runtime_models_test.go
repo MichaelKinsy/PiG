@@ -58,7 +58,7 @@ func TestRuntimeModelsPreservesOverlaysAndLiveNativeCatalogs(t *testing.T) {
 	assertProjection()
 	for _, models := range [][]extension.ProviderModelConfig{nil, {}, {{ID: "replacement", Name: "dynamic selection", Reasoning: true}}} {
 		input := extension.ProviderConfig{BaseURL: "https://selection.invalid/v1", API: ai.APIOpenAICompletions, APIKey: "fixture", Models: models}
-		if err := registry.RegisterProvider(base.Provider, input); err != nil {
+		if err := registry.RegisterExtensionProvider(base.Provider, input); err != nil {
 			t.Fatal(err)
 		}
 		assertProjection()

@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"os/signal"
+	"strings"
 	"syscall"
 	"testing"
 	"time"
@@ -36,6 +37,26 @@ func TestMain(m *testing.M) {
 	case "term-server":
 		runShutdownFixture(false)
 		return
+	case "cwd":
+		wd, err := os.Getwd()
+		if err != nil {
+			os.Exit(1)
+		}
+		fmt.Fprint(os.Stderr, wd)
+		return
+	case "stderr-flood":
+		// 4000 bytes of "a", then the marker; the transport keeps only the tail.
+		fmt.Fprint(os.Stderr, strings.Repeat("a", 4000)+"TAIL")
+		return
+	case "blank-lines":
+		// Lines of only JavaScript whitespace (BOM, no-break space), a notification, then a line of only U+0085, which
+		// String.prototype.trim does not remove; then wait for SIGTERM.
+		_, _ = fmt.Fprint(os.Stdout, "\ufeff\n\u00a0 \u2003\n{\"jsonrpc\":\"2.0\",\"method\":\"ping\"}\n\u0085\n")
+		sleepForever()
+	case "stdout-flood":
+		// One 3000-byte line with no newline, then wait for SIGTERM.
+		_, _ = fmt.Fprint(os.Stdout, strings.Repeat("x", 3000))
+		sleepForever()
 	case "environ":
 		// The server reports its environment, in block order, on stderr.
 		if err := json.NewEncoder(os.Stderr).Encode(os.Environ()); err != nil {

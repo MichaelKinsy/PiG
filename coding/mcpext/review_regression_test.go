@@ -1,5 +1,7 @@
 package mcpext_test
 
+// pi: packages/coding-agent/src/extensions/mcp/config.ts
+
 import (
 	"context"
 	"encoding/json"

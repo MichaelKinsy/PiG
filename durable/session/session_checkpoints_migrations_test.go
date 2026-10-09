@@ -6,6 +6,7 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/durable"
 	"github.com/MichaelKinsy/PiG/durable/session/sessiontest"
 )
@@ -46,10 +47,10 @@ func touch(t *testing.T, harness sessiontest.Harness, token durable.AnyDocToken,
 func TestSessionDocumentCheckpoints(t *testing.T) {
 	t.Run("calls checkpointWhen with its definition as the receiver", func(t *testing.T) {
 		// Upstream reads this.initial(); a Go predicate reaches its definition's initial value by closure.
-		initial := func() obj { return obj{"count": 0} }
+		initial := func() obj { return delta.JsonObjectOf("count", 0) }
 		document := defineDoc("checkpoint.receiver", 1, sessionScope, initial,
 			withCheckpoint(func(value obj, _ []durable.Op, _ durable.CheckpointInfo) bool {
-				return num(value["count"]) == num(initial()["count"])+2
+				return num(value.Value("count")) == num(initial().Value("count"))+2
 			}))
 		harness := open()
 		for count := 0; count <= 2; count++ {
@@ -72,17 +73,17 @@ func TestSessionDocumentCheckpoints(t *testing.T) {
 			ops   []durable.Op
 		}
 		var calls, falseCalls []call
-		baseDoc := defineDoc("checkpoint.base", 1, sessionScope, func() obj { return obj{"items": []any{}} },
+		baseDoc := defineDoc("checkpoint.base", 1, sessionScope, func() obj { return delta.JsonObjectOf("items", []any{}) },
 			withCheckpoint(func(value obj, ops []durable.Op, _ durable.CheckpointInfo) bool {
 				calls = append(calls, call{value, ops})
 				return true
 			}))
-		deltaDoc := defineDoc("checkpoint.delta", 1, sessionScope, func() obj { return obj{"count": 0} },
+		deltaDoc := defineDoc("checkpoint.delta", 1, sessionScope, func() obj { return delta.JsonObjectOf("count", 0) },
 			withCheckpoint(func(value obj, ops []durable.Op, _ durable.CheckpointInfo) bool {
 				falseCalls = append(falseCalls, call{value, ops})
 				return false
 			}))
-		defaultDoc := defineDoc("checkpoint.default", 1, sessionScope, func() obj { return obj{"count": 0} })
+		defaultDoc := defineDoc("checkpoint.default", 1, sessionScope, func() obj { return delta.JsonObjectOf("count", 0) })
 		harness := open()
 		commit(t, harness.Session, func(tx durable.Tx) error {
 			for _, token := range []durable.AnyDocToken{baseDoc, deltaDoc, defaultDoc} {
@@ -140,13 +141,13 @@ func TestSessionDocumentCheckpoints(t *testing.T) {
 
 	t.Run("passes the stored delta count since the newest base, including after unload and version bases", func(t *testing.T) {
 		var seen []any
-		v1 := defineDoc("checkpoint.deltas-since-base", 1, sessionScope, func() obj { return obj{"count": 0} },
+		v1 := defineDoc("checkpoint.deltas-since-base", 1, sessionScope, func() obj { return delta.JsonObjectOf("count", 0) },
 			withCheckpoint(func(_ obj, _ []durable.Op, info durable.CheckpointInfo) bool {
 				seen = append(seen, info.DeltasSinceBase)
 				return info.DeltasSinceBase >= 2
 			}))
-		v2 := defineDoc("checkpoint.deltas-since-base", 2, sessionScope, func() obj { return obj{"count": 0} },
-			withMigrate(func(value obj, _ int) obj { return obj{"count": value["count"]} }),
+		v2 := defineDoc("checkpoint.deltas-since-base", 2, sessionScope, func() obj { return delta.JsonObjectOf("count", 0) },
+			withMigrate(func(value obj, _ int) obj { return delta.JsonObjectOf("count", value.Value("count")) }),
 			withCheckpoint(func(_ obj, _ []durable.Op, info durable.CheckpointInfo) bool {
 				seen = append(seen, info.DeltasSinceBase)
 				return false
@@ -178,7 +179,7 @@ func TestSessionDocumentCheckpoints(t *testing.T) {
 
 	t.Run("skips the predicate for empty batches but calls it for nonempty structural no-ops", func(t *testing.T) {
 		calls := 0
-		document := defineDoc("checkpoint.no-op", 1, sessionScope, func() obj { return obj{"items": []any{"a", "b"}} },
+		document := defineDoc("checkpoint.no-op", 1, sessionScope, func() obj { return delta.JsonObjectOf("items", []any{"a", "b"}) },
 			withCheckpoint(func(obj, []durable.Op, durable.CheckpointInfo) bool { calls++; return false }))
 		harness := open()
 		touch(t, harness, document)
@@ -205,9 +206,9 @@ func TestSessionDocumentCheckpoints(t *testing.T) {
 	t.Run("rolls back every prepared document when a checkpoint predicate throws", func(t *testing.T) {
 		throwCheckpoint := true
 		firstCalls := 0
-		first := defineDoc("checkpoint.rollback.first", 1, sessionScope, func() obj { return obj{"count": 0} },
+		first := defineDoc("checkpoint.rollback.first", 1, sessionScope, func() obj { return delta.JsonObjectOf("count", 0) },
 			withCheckpoint(func(obj, []durable.Op, durable.CheckpointInfo) bool { firstCalls++; return false }))
-		second := defineDoc("checkpoint.rollback.second", 1, sessionScope, func() obj { return obj{"count": 0} },
+		second := defineDoc("checkpoint.rollback.second", 1, sessionScope, func() obj { return delta.JsonObjectOf("count", 0) },
 			withCheckpoint(func(obj, []durable.Op, durable.CheckpointInfo) bool {
 				if throwCheckpoint {
 					panic(errors.New("checkpoint failed"))
@@ -242,13 +243,13 @@ func TestSessionDocumentCheckpoints(t *testing.T) {
 			must(t, mustDoc(t, tx, first).Set("count", 3))
 			return mustDoc(t, tx, second).Set("count", 4)
 		})
-		expectEqual(t, snapshot(t, harness.Session, first), obj{"count": 3})
-		expectEqual(t, snapshot(t, harness.Session, second), obj{"count": 4})
+		expectEqual(t, snapshot(t, harness.Session, first), delta.JsonObjectOf("count", 3))
+		expectEqual(t, snapshot(t, harness.Session, second), delta.JsonObjectOf("count", 4))
 	})
 
 	t.Run("persists repeated false decisions as deltas and replays the complete tail", func(t *testing.T) {
 		calls := 0
-		document := defineDoc("checkpoint.tail", 1, sessionScope, func() obj { return obj{"values": []any{}} },
+		document := defineDoc("checkpoint.tail", 1, sessionScope, func() obj { return delta.JsonObjectOf("values", []any{}) },
 			withCheckpoint(func(obj, []durable.Op, durable.CheckpointInfo) bool { calls++; return false }))
 		harness := open()
 		touch(t, harness, document)
@@ -271,13 +272,13 @@ func TestSessionDocumentCheckpoints(t *testing.T) {
 			}
 		}
 		must(t, harness.Session.UnloadDocuments())
-		expectEqual(t, snapshot(t, harness.Session, document), obj{"values": []any{1, 2, 3, 4, 5, 6, 7, 8}})
+		expectEqual(t, snapshot(t, harness.Session, document), delta.JsonObjectOf("values", []any{1, 2, 3, 4, 5, 6, 7, 8}))
 	})
 
 	t.Run("keeps a prepared root replacement as a delta when the predicate is false", func(t *testing.T) {
-		initial := obj{}
+		initial := delta.NewJsonObject(0)
 		for index := range 4_100 {
-			initial[fmt.Sprintf("field%d", index)] = 0
+			initial.Set(fmt.Sprintf("field%d", index), 0)
 		}
 		document := defineDoc("checkpoint.root-replacement", 1, sessionScope, func() obj { return initial },
 			withCheckpoint(func(obj, []durable.Op, durable.CheckpointInfo) bool { return false }))
@@ -297,12 +298,12 @@ func TestSessionDocumentCheckpoints(t *testing.T) {
 			t.Fatal("a root replacement delta")
 		}
 		must(t, harness.Session.UnloadDocuments())
-		expectEqual(t, snapshot(t, harness.Session, document)["field4099"], 1)
+		expectEqual(t, snapshot(t, harness.Session, document).Value("field4099"), 1)
 	})
 
 	t.Run("uses ordinary checkpoint selection before retirement", func(t *testing.T) {
 		calls := 0
-		document := defineDoc("checkpoint.retire", 1, sessionScope, func() obj { return obj{"count": 0} },
+		document := defineDoc("checkpoint.retire", 1, sessionScope, func() obj { return delta.JsonObjectOf("count", 0) },
 			withCheckpoint(func(obj, []durable.Op, durable.CheckpointInfo) bool { calls++; return true }))
 		harness := open()
 		touch(t, harness, document)
@@ -319,16 +320,16 @@ func TestSessionDocumentCheckpoints(t *testing.T) {
 
 func TestSessionDocumentMigrations(t *testing.T) {
 	t.Run("migrates read-only once per cold load, copies the callback result, and writes nothing", func(t *testing.T) {
-		old := defineDoc("migration.read-only", 1, sessionScope, func() obj { return obj{"count": 2} })
+		old := defineDoc("migration.read-only", 1, sessionScope, func() obj { return delta.JsonObjectOf("count", 2) })
 		calls := 0
 		var retained obj
-		current := defineDoc("migration.read-only", 3, sessionScope, func() obj { return obj{"count": 0, "labels": []any{}} },
+		current := defineDoc("migration.read-only", 3, sessionScope, func() obj { return delta.JsonObjectOf("count", 0, "labels", []any{}) },
 			withMigrate(func(value obj, fromVersion int) obj {
 				if fromVersion != 1 {
 					t.Errorf("fromVersion %d", fromVersion)
 				}
 				calls++
-				retained = obj{"count": value["count"], "labels": []any{"migrated"}}
+				retained = delta.JsonObjectOf("count", value.Value("count"), "labels", []any{"migrated"})
 				return retained
 			}))
 		harness := open()
@@ -339,9 +340,9 @@ func TestSessionDocumentMigrations(t *testing.T) {
 		if !same(snapshot(t, harness.Session, current), first) || calls != 1 || len(harness.Storage.Commits()) != commits {
 			t.Fatal("one read-only migration")
 		}
-		retained["count"] = 99
-		retained["labels"] = append(retained["labels"].([]any), "mutated")
-		expectEqual(t, first, obj{"count": 2, "labels": []any{"migrated"}})
+		retained.Set("count", 99)
+		retained.Set("labels", append(retained.Value("labels").([]any), "mutated"))
+		expectEqual(t, first, delta.JsonObjectOf("count", 2, "labels", []any{"migrated"}))
 		must(t, harness.Session.UnloadDocuments())
 		second := snapshot(t, harness.Session, current)
 		if same(second, first) || !equal(second, first) || calls != 2 || len(harness.Storage.Commits()) != commits {
@@ -350,11 +351,11 @@ func TestSessionDocumentMigrations(t *testing.T) {
 	})
 
 	t.Run("writes the required base on the first successful transaction, then writes deltas", func(t *testing.T) {
-		old := defineDoc("migration.transition", 1, sessionScope, func() obj { return obj{"count": 4} })
+		old := defineDoc("migration.transition", 1, sessionScope, func() obj { return delta.JsonObjectOf("count", 4) })
 		checkpoints := 0
-		current := defineDoc("migration.transition", 3, sessionScope, func() obj { return obj{"count": 0} },
+		current := defineDoc("migration.transition", 3, sessionScope, func() obj { return delta.JsonObjectOf("count", 0) },
 			withMigrate(func(value obj, fromVersion int) obj {
-				return obj{"count": num(value["count"]) + float64(fromVersion) - 1}
+				return delta.JsonObjectOf("count", num(value.Value("count"))+float64(fromVersion)-1)
 			}),
 			withCheckpoint(func(obj, []durable.Op, durable.CheckpointInfo) bool { checkpoints++; return false }))
 		harness := open()
@@ -364,7 +365,7 @@ func TestSessionDocumentMigrations(t *testing.T) {
 		watch := watchDoc(t, harness, ctx, old)
 		frames := &watchRecorder{}
 		watch.Start(func(_ ctxT, value obj, ops []durable.Op) error { frames.record(value, ops); return nil })
-		expectEqual(t, snapshot(t, harness.Session, current), obj{"count": 4})
+		expectEqual(t, snapshot(t, harness.Session, current), delta.JsonObjectOf("count", 4))
 		value := snapshot(t, harness.Session, current)
 		// An observer of the new shape: the migration changes nothing it sees.
 		currentWatch := watchDoc(t, harness, ctx, current)
@@ -376,7 +377,7 @@ func TestSessionDocumentMigrations(t *testing.T) {
 		if base.Content.Kind != durable.ContentBase || base.Content.Version != 3 {
 			t.Fatal("the version base")
 		}
-		expectEqual(t, base.Content.Value, obj{"count": 4})
+		expectEqual(t, base.Content.Value, delta.JsonObjectOf("count", 4))
 		if checkpoints != 0 {
 			t.Fatal("a version base consults no predicate")
 		}
@@ -385,13 +386,13 @@ func TestSessionDocumentMigrations(t *testing.T) {
 		if len(documents) != 1 || *documents[0].Version != 3 || len(documents[0].Ops) != 0 {
 			t.Fatal("one migration-only publication")
 		}
-		expectEqual(t, documents[0].Value, obj{"count": 4})
+		expectEqual(t, documents[0].Value, delta.JsonObjectOf("count", 4))
 		received := frames.all()
 		if len(received) != 1 {
 			t.Fatalf("frames %d", len(received))
 		}
-		expectEqual(t, received[0].value, obj{"count": 4})
-		expectEqual(t, received[0].ops, []any{[]any{"r", obj{"count": 4}}})
+		expectEqual(t, received[0].value, delta.JsonObjectOf("count", 4))
+		expectEqual(t, received[0].ops, []any{[]any{"r", delta.JsonObjectOf("count", 4)}})
 		if len(currentFrames.all()) != 0 {
 			t.Fatal("the new-shape watch receives nothing")
 		}
@@ -406,14 +407,17 @@ func TestSessionDocumentMigrations(t *testing.T) {
 			t.Fatal("later edits are deltas")
 		}
 		must(t, harness.Session.UnloadDocuments())
-		expectEqual(t, snapshot(t, harness.Session, current), obj{"count": 7})
+		expectEqual(t, snapshot(t, harness.Session, current), delta.JsonObjectOf("count", 7))
 	})
 
 	t.Run("rolls migration and edits back with the callback, then coalesces later edits into one base", func(t *testing.T) {
-		old := defineDoc("migration.rollback", 1, sessionScope, func() obj { return obj{"count": 1} })
+		old := defineDoc("migration.rollback", 1, sessionScope, func() obj { return delta.JsonObjectOf("count", 1) })
 		migrations := 0
-		current := defineDoc("migration.rollback", 2, sessionScope, func() obj { return obj{"count": 0, "migrated": false} },
-			withMigrate(func(value obj, _ int) obj { migrations++; return obj{"count": value["count"], "migrated": true} }))
+		current := defineDoc("migration.rollback", 2, sessionScope, func() obj { return delta.JsonObjectOf("count", 0, "migrated", false) },
+			withMigrate(func(value obj, _ int) obj {
+				migrations++
+				return delta.JsonObjectOf("count", value.Value("count"), "migrated", true)
+			}))
 		harness := open()
 		touch(t, harness, old)
 		must(t, harness.Session.UnloadDocuments())
@@ -426,7 +430,7 @@ func TestSessionDocumentMigrations(t *testing.T) {
 		if len(harness.Storage.Commits()) != commits {
 			t.Fatal("nothing is written")
 		}
-		expectEqual(t, snapshot(t, harness.Session, current), obj{"count": 1, "migrated": true})
+		expectEqual(t, snapshot(t, harness.Session, current), delta.JsonObjectOf("count", 1, "migrated", true))
 		if migrations != 1 {
 			t.Fatal("one migration")
 		}
@@ -443,7 +447,7 @@ func TestSessionDocumentMigrations(t *testing.T) {
 		if base.Content.Kind != durable.ContentBase || base.Content.Version != 2 {
 			t.Fatal("one coalesced base")
 		}
-		expectEqual(t, base.Content.Value, obj{"count": 9, "migrated": false})
+		expectEqual(t, base.Content.Value, delta.JsonObjectOf("count", 9, "migrated", false))
 		flush(harness)
 		published := lastPublishedDocument(harness)
 		admitted := lastAdmitted(harness)[0].(durable.DocumentChangeWrite)
@@ -453,11 +457,11 @@ func TestSessionDocumentMigrations(t *testing.T) {
 	})
 
 	t.Run("strict-checks migration results before tracker ownership and remains usable after rejection", func(t *testing.T) {
-		old := defineDoc("migration.invalid", 1, sessionScope, func() obj { return obj{"count": 1} })
+		old := defineDoc("migration.invalid", 1, sessionScope, func() obj { return delta.JsonObjectOf("count", 1) })
 		// Upstream returns a Date; the Go counterpart is a kind with no JSON form.
-		invalid := defineDoc("migration.invalid", 2, sessionScope, func() obj { return obj{} },
-			withMigrate(func(obj, int) obj { return obj{"invalid": make(chan int)} }))
-		other := defineDoc("migration.invalid.other", 1, sessionScope, func() obj { return obj{"ok": true} })
+		invalid := defineDoc("migration.invalid", 2, sessionScope, func() obj { return delta.NewJsonObject(0) },
+			withMigrate(func(obj, int) obj { return delta.JsonObjectOf("invalid", make(chan int)) }))
+		other := defineDoc("migration.invalid.other", 1, sessionScope, func() obj { return delta.JsonObjectOf("ok", true) })
 		harness := open()
 		touch(t, harness, old)
 		must(t, harness.Session.UnloadDocuments())
@@ -469,13 +473,13 @@ func TestSessionDocumentMigrations(t *testing.T) {
 			t.Fatal("nothing is written")
 		}
 		touch(t, harness, other)
-		expectEqual(t, snapshot(t, harness.Session, other), obj{"ok": true})
+		expectEqual(t, snapshot(t, harness.Session, other), delta.JsonObjectOf("ok", true))
 	})
 
 	t.Run("rejects newer stored versions and older versions without migration for snapshots and transactions", func(t *testing.T) {
-		v2 := defineDoc("migration.compatibility", 2, sessionScope, func() obj { return obj{"count": 2} })
-		v1 := defineDoc("migration.compatibility", 1, sessionScope, func() obj { return obj{"count": 1} })
-		v3 := defineDoc("migration.compatibility", 3, sessionScope, func() obj { return obj{"count": 3} })
+		v2 := defineDoc("migration.compatibility", 2, sessionScope, func() obj { return delta.JsonObjectOf("count", 2) })
+		v1 := defineDoc("migration.compatibility", 1, sessionScope, func() obj { return delta.JsonObjectOf("count", 1) })
+		v3 := defineDoc("migration.compatibility", 3, sessionScope, func() obj { return delta.JsonObjectOf("count", 3) })
 		harness := open()
 		touch(t, harness, v2)
 		must(t, harness.Session.UnloadDocuments())
@@ -492,9 +496,9 @@ func TestSessionDocumentMigrations(t *testing.T) {
 	})
 
 	t.Run("persists a required migration base before retirement without consulting the checkpoint predicate", func(t *testing.T) {
-		old := defineDoc("migration.retire", 1, sessionScope, func() obj { return obj{"count": 1} })
-		current := defineDoc("migration.retire", 2, sessionScope, func() obj { return obj{"count": 0} },
-			withMigrate(func(value obj, _ int) obj { return obj{"count": value["count"]} }),
+		old := defineDoc("migration.retire", 1, sessionScope, func() obj { return delta.JsonObjectOf("count", 1) })
+		current := defineDoc("migration.retire", 2, sessionScope, func() obj { return delta.JsonObjectOf("count", 0) },
+			withMigrate(func(value obj, _ int) obj { return delta.JsonObjectOf("count", value.Value("count")) }),
 			withCheckpoint(func(obj, []durable.Op, durable.CheckpointInfo) bool { panic(errors.New("must not run")) }))
 		harness := open()
 		touch(t, harness, old)
@@ -512,17 +516,20 @@ func TestSessionDocumentMigrations(t *testing.T) {
 		if base.Content.Kind != durable.ContentBase || base.Content.Version != 2 {
 			t.Fatal("the migration base")
 		}
-		expectEqual(t, base.Content.Value, obj{"count": 1})
+		expectEqual(t, base.Content.Value, delta.JsonObjectOf("count", 1))
 	})
 
 	t.Run("leaves unaccessed older documents and unavailable definitions untouched", func(t *testing.T) {
-		firstV1 := defineDoc("migration.lazy.first", 1, sessionScope, func() obj { return obj{"count": 1} })
-		secondV1 := defineDoc("migration.lazy.second", 1, sessionScope, func() obj { return obj{"count": 2} })
+		firstV1 := defineDoc("migration.lazy.first", 1, sessionScope, func() obj { return delta.JsonObjectOf("count", 1) })
+		secondV1 := defineDoc("migration.lazy.second", 1, sessionScope, func() obj { return delta.JsonObjectOf("count", 2) })
 		secondMigrations := 0
-		firstV2 := defineDoc("migration.lazy.first", 2, sessionScope, func() obj { return obj{"count": 0} },
-			withMigrate(func(value obj, _ int) obj { return obj{"count": value["count"]} }))
-		defineDoc("migration.lazy.second", 2, sessionScope, func() obj { return obj{"count": 0} },
-			withMigrate(func(value obj, _ int) obj { secondMigrations++; return obj{"count": value["count"]} }))
+		firstV2 := defineDoc("migration.lazy.first", 2, sessionScope, func() obj { return delta.JsonObjectOf("count", 0) },
+			withMigrate(func(value obj, _ int) obj { return delta.JsonObjectOf("count", value.Value("count")) }))
+		defineDoc("migration.lazy.second", 2, sessionScope, func() obj { return delta.JsonObjectOf("count", 0) },
+			withMigrate(func(value obj, _ int) obj {
+				secondMigrations++
+				return delta.JsonObjectOf("count", value.Value("count"))
+			}))
 		harness := open()
 		commit(t, harness.Session, func(tx durable.Tx) error {
 			_, err := tx.Doc(firstV1)
@@ -532,7 +539,7 @@ func TestSessionDocumentMigrations(t *testing.T) {
 		})
 		must(t, harness.Session.UnloadDocuments())
 		commits := len(harness.Storage.Commits())
-		expectEqual(t, snapshot(t, harness.Session, firstV2), obj{"count": 1})
+		expectEqual(t, snapshot(t, harness.Session, firstV2), delta.JsonObjectOf("count", 1))
 		if len(harness.Storage.Commits()) != commits || secondMigrations != 0 {
 			t.Fatal("unaccessed documents stay untouched")
 		}
@@ -548,16 +555,16 @@ func TestSessionDocumentMigrations(t *testing.T) {
 
 func TestSessionHistoricalDocumentSnapshots(t *testing.T) {
 	t.Run("migrates current and historical rewindable values independently and follows fork ancestry", func(t *testing.T) {
-		v1 := defineDoc("history.migration", 1, rewindableScope(durable.ForkAsOf), func() obj { return obj{"count": 0} })
-		family := defineFamily("history.family", 1, rewindableScope(durable.ForkAsOf), func(seed string) obj { return obj{"seed": seed, "count": 0} })
+		v1 := defineDoc("history.migration", 1, rewindableScope(durable.ForkAsOf), func() obj { return delta.JsonObjectOf("count", 0) })
+		family := defineFamily("history.family", 1, rewindableScope(durable.ForkAsOf), func(seed string) obj { return delta.JsonObjectOf("seed", seed, "count", 0) })
 		var mu sync.Mutex
 		var migrations []any
-		v3 := defineDoc("history.migration", 3, rewindableScope(durable.ForkAsOf), func() obj { return obj{"count": 0, "version": 3} },
+		v3 := defineDoc("history.migration", 3, rewindableScope(durable.ForkAsOf), func() obj { return delta.JsonObjectOf("count", 0, "version", 3) },
 			withMigrate(func(value obj, fromVersion int) obj {
 				mu.Lock()
 				migrations = append(migrations, fromVersion)
 				mu.Unlock()
-				return obj{"count": value["count"], "version": 3}
+				return delta.JsonObjectOf("count", value.Value("count"), "version", 3)
 			}))
 		harness := open()
 		conversationId := createConversation(t, harness)
@@ -573,7 +580,7 @@ func TestSessionHistoricalDocumentSnapshots(t *testing.T) {
 		})
 		must(t, harness.Session.UnloadDocuments())
 		commits := len(harness.Storage.Commits())
-		expectEqual(t, snapshot(t, harness.Session, v3, conversationId), obj{"count": 2, "version": 3})
+		expectEqual(t, snapshot(t, harness.Session, v3, conversationId), delta.JsonObjectOf("count", 2, "version", 3))
 		expectEqual(t, migrations, []any{1})
 		if len(harness.Storage.Commits()) != commits {
 			t.Fatal("nothing is written")
@@ -598,15 +605,15 @@ func TestSessionHistoricalDocumentSnapshots(t *testing.T) {
 			must(t, err)
 			return value
 		}
-		expectEqual(t, asOf(v3, firstEntry, conversationId), obj{"count": 1, "version": 3})
-		expectEqual(t, asOf(v3, secondEntry, conversationId), obj{"count": 2, "version": 3})
-		expectEqual(t, asOf(v3, thirdEntry, conversationId), obj{"count": 2, "version": 3})
+		expectEqual(t, asOf(v3, firstEntry, conversationId), delta.JsonObjectOf("count", 1, "version", 3))
+		expectEqual(t, asOf(v3, secondEntry, conversationId), delta.JsonObjectOf("count", 2, "version", 3))
+		expectEqual(t, asOf(v3, thirdEntry, conversationId), delta.JsonObjectOf("count", 2, "version", 3))
 		expectEqual(t, migrations, []any{1, 1, 1})
-		expectEqual(t, asOf(family, firstEntry, conversationId, "member"), obj{"seed": "seed", "count": 1})
+		expectEqual(t, asOf(family, firstEntry, conversationId, "member"), delta.JsonObjectOf("seed", "seed", "count", 1))
 		child := fork(t, harness, conversationId, secondEntry)
-		expectEqual(t, asOf(v3, firstEntry, child.Id), obj{"count": 1, "version": 3})
-		expectEqual(t, asOf(v3, secondEntry, child.Id), obj{"count": 2, "version": 3})
-		expectEqual(t, asOf(family, firstEntry, child.Id, "member"), obj{"seed": "seed", "count": 1})
+		expectEqual(t, asOf(v3, firstEntry, child.Id), delta.JsonObjectOf("count", 1, "version", 3))
+		expectEqual(t, asOf(v3, secondEntry, child.Id), delta.JsonObjectOf("count", 2, "version", 3))
+		expectEqual(t, asOf(family, firstEntry, child.Id, "member"), delta.JsonObjectOf("seed", "seed", "count", 1))
 		_, err := harness.Session.SnapshotAsOfErased(ctx, v3, thirdEntry, child.Id)
 		expectErrorContains(t, err, fmt.Sprintf("Entry %d is not visible", thirdEntry))
 	})
@@ -643,8 +650,8 @@ func TestSessionHistoricalDocumentSnapshots(t *testing.T) {
 		if asOf(beforeCreation) != nil || asOf(retiredAt) != nil {
 			t.Fatal("no incarnation was alive")
 		}
-		expectEqual(t, asOf(createdAt), obj{"value": "old"})
-		expectEqual(t, asOf(recreatedAt), obj{"value": "new"})
+		expectEqual(t, asOf(createdAt), delta.JsonObjectOf("value", "old"))
+		expectEqual(t, asOf(recreatedAt), delta.JsonObjectOf("value", "new"))
 		must(t, harness.Session.Close(ctx))
 		_, err := harness.Session.SnapshotAsOfErased(ctx, document, recreatedAt, conversationId)
 		expectErrorContains(t, err, "closed")
@@ -652,18 +659,18 @@ func TestSessionHistoricalDocumentSnapshots(t *testing.T) {
 }
 
 var (
-	cacheV1Doc = defineDoc("cache.versioned", 1, sessionScope, func() obj { return obj{"name": "first"} })
-	cacheV2Doc = defineDoc("cache.versioned", 2, sessionScope, func() obj { return obj{"names": []any{}} },
-		withMigrate(func(value obj, _ int) obj { return obj{"names": []any{value["name"]}} }))
+	cacheV1Doc = defineDoc("cache.versioned", 1, sessionScope, func() obj { return delta.JsonObjectOf("name", "first") })
+	cacheV2Doc = defineDoc("cache.versioned", 2, sessionScope, func() obj { return delta.JsonObjectOf("names", []any{}) },
+		withMigrate(func(value obj, _ int) obj { return delta.JsonObjectOf("names", []any{value.Value("name")}) }))
 )
 
 func TestSessionTrackerCacheAcrossDefinitionVersions(t *testing.T) {
 	t.Run("migrates a document cached by an older token without unloading", func(t *testing.T) {
 		harness := open()
 		touch(t, harness, cacheV1Doc)
-		expectEqual(t, snapshot(t, harness.Session, cacheV1Doc), obj{"name": "first"})
+		expectEqual(t, snapshot(t, harness.Session, cacheV1Doc), delta.JsonObjectOf("name", "first"))
 		// Reloaded extension code accesses the still-cached document with a newer token.
-		expectEqual(t, snapshot(t, harness.Session, cacheV2Doc), obj{"names": []any{"first"}})
+		expectEqual(t, snapshot(t, harness.Session, cacheV2Doc), delta.JsonObjectOf("names", []any{"first"}))
 		commit(t, harness.Session, func(tx durable.Tx) error {
 			_, err := mustDoc(t, tx, cacheV2Doc).Array("names").Push("second")
 			return err
@@ -672,7 +679,7 @@ func TestSessionTrackerCacheAcrossDefinitionVersions(t *testing.T) {
 		if write.Content.Kind != durable.ContentBase || write.Content.Version != 2 {
 			t.Fatal("a version base")
 		}
-		expectEqual(t, write.Content.Value, obj{"names": []any{"first", "second"}})
+		expectEqual(t, write.Content.Value, delta.JsonObjectOf("names", []any{"first", "second"}))
 		_, err := harness.Session.SnapshotErased(ctx, cacheV1Doc)
 		expectErrorContains(t, err, "newer version 2")
 	})
@@ -690,9 +697,9 @@ func TestSessionTrackerCacheAcrossDefinitionVersions(t *testing.T) {
 		})
 		frames := <-delivered
 		flush(harness)
-		expectEqual(t, state.Value(), obj{"names": []any{"first", "second"}})
-		expectEqual(t, watch.Value(), obj{"names": []any{"first", "second"}})
-		expectEqual(t, frames, []any{[]any{"r", obj{"names": []any{"first", "second"}}}})
+		expectEqual(t, state.Value(), delta.JsonObjectOf("names", []any{"first", "second"}))
+		expectEqual(t, watch.Value(), delta.JsonObjectOf("names", []any{"first", "second"}))
+		expectEqual(t, frames, []any{[]any{"r", delta.JsonObjectOf("names", []any{"first", "second"})}})
 		state.Dispose()
 		_, _ = watch.Stop()
 	})
@@ -701,9 +708,9 @@ func TestSessionTrackerCacheAcrossDefinitionVersions(t *testing.T) {
 		harness := open()
 		touch(t, harness, cacheV1Doc)
 		must(t, harness.Session.UnloadDocuments())
-		expectEqual(t, snapshot(t, harness.Session, cacheV2Doc), obj{"names": []any{"first"}})
-		expectEqual(t, snapshot(t, harness.Session, cacheV1Doc), obj{"name": "first"})
+		expectEqual(t, snapshot(t, harness.Session, cacheV2Doc), delta.JsonObjectOf("names", []any{"first"}))
+		expectEqual(t, snapshot(t, harness.Session, cacheV1Doc), delta.JsonObjectOf("name", "first"))
 		commit(t, harness.Session, func(tx durable.Tx) error { return mustDoc(t, tx, cacheV1Doc).Set("name", "renamed") })
-		expectEqual(t, snapshot(t, harness.Session, cacheV2Doc), obj{"names": []any{"renamed"}})
+		expectEqual(t, snapshot(t, harness.Session, cacheV2Doc), delta.JsonObjectOf("names", []any{"renamed"}))
 	})
 }

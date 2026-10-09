@@ -3,6 +3,8 @@
 
 package harness
 
+// pi: packages/durable/src/harness/tool.ts
+
 import (
 	"context"
 	"errors"
@@ -45,7 +47,7 @@ type tlCall struct {
 func tlCalls(list ...tlCall) ai.FauxResponse {
 	blocks := make([]ai.FauxContentBlock, 0, len(list))
 	for _, call := range list {
-		blocks = append(blocks, ai.FauxToolCall(call.name, call.args, call.id))
+		blocks = append(blocks, ai.FauxToolCall(call.name, call.args, &ai.FauxToolCallOptions{ID: call.id}))
 	}
 	return ai.FauxResponse{Content: blocks, StopReason: "toolUse"}
 }
@@ -118,7 +120,7 @@ func tlSystems(entries []durable.EntryRecord) []ai.SystemMessage {
 
 func tlDiagnosticCodes(entry durable.EntryRecord) []string {
 	codes := []string{}
-	for _, diagnostic := range entry.Data.(map[string]any)["diagnostics"].([]any) {
+	for _, diagnostic := range plainObject(entry.Data)["diagnostics"].([]any) {
 		code, _ := diagnostic.(map[string]any)["code"].(string)
 		codes = append(codes, code)
 	}
@@ -206,7 +208,7 @@ func TestToolRound(t *testing.T) {
 			t.Fatalf("result %+v", results[0])
 		}
 		tlExpectText(t, tlResultText(results[0]), "echo hi")
-		if !reflect.DeepEqual(run.entries[3].Data, map[string]any{"diagnostics": []any{}}) {
+		if !reflect.DeepEqual(plainObject(run.entries[3].Data), map[string]any{"diagnostics": []any{}}) {
 			t.Fatalf("result data %v, want empty diagnostics", run.entries[3].Data)
 		}
 		if run.entries[3].ByTaskId == nil {
@@ -216,7 +218,7 @@ func TestToolRound(t *testing.T) {
 		if setup.Faux.CallCount() != 2 {
 			t.Fatalf("%d provider calls, want 2", setup.Faux.CallCount())
 		}
-		if live, err := run.harness.SnapshotErased(testContext, LiveDoc, run.root.Id()); err != nil || !reflect.DeepEqual(live, durable.JsonObject{}) {
+		if live, err := run.harness.SnapshotErased(testContext, LiveDoc, run.root.Id()); err != nil || live.Len() != 0 {
 			t.Fatalf("live document %v %v, want {}", live, err)
 		}
 		mustClose(t, run.harness)
@@ -239,7 +241,7 @@ func TestToolRound(t *testing.T) {
 			t.Fatalf("echo result %+v", echo)
 		}
 		wantData := map[string]any{"diagnostics": []any{map[string]any{"severity": "error", "code": "tool_unavailable", "message": "Tool ghost is not available"}}}
-		if got := tlFirstToolResultEntry(t, run.entries).Data; !reflect.DeepEqual(got, wantData) {
+		if got := tlFirstToolResultEntry(t, run.entries).Data; !reflect.DeepEqual(plainObject(got), wantData) {
 			t.Fatalf("ghost data %v, want %v", got, wantData)
 		}
 		if count := len(tlToolTasks(tlScanTasks(t, run.harness, run.root.Id()))); count != 1 {
@@ -256,12 +258,12 @@ func TestToolRound(t *testing.T) {
 			return durable.ToolExecutionResult{Content: []ai.ToolResultMessageContent{}}, nil
 		}))
 		root := &syncValue[Conversation]{}
-		deactivate := ai.FauxFactoryStep(func(ai.TranscriptContext, ai.StreamOptions, *ai.FauxProviderState, *ai.Model) (ai.FauxResponse, error) {
+		deactivate := ai.FauxFactoryStep(func(ai.TranscriptContext, ai.StreamOptions, *ai.FauxProviderState, *ai.Model) (ai.AssistantMessage, error) {
 			conversation, _ := root.get()
 			if err := conversation.Configure(testContext, AgentChange{Tools: SetTo(ToolChange{Exact: true})}); err != nil {
-				return ai.FauxResponse{}, err
+				return ai.FauxResponse{}.AssistantMessage(), err
 			}
-			return tlCalls(tlCall{"echo", map[string]any{}, "c1"}), nil
+			return tlCalls(tlCall{"echo", map[string]any{}, "c1"}).AssistantMessage(), nil
 		})
 		run := tlRun(t, setup, []ai.FauxResponseStep{deactivate, tlDone()}, func(_ Harness, conversation Conversation) { root.put(conversation) })
 		if seen.Load() != 0 {
@@ -345,9 +347,9 @@ func TestToolRound(t *testing.T) {
 		addTool(t, setup.Registry, tlTool("a", slow("a")))
 		addTool(t, setup.Registry, tlTool("b", slow("b")))
 		// Changed while the model request runs: the round that follows uses it.
-		request := ai.FauxFactoryStep(func(ai.TranscriptContext, ai.StreamOptions, *ai.FauxProviderState, *ai.Model) (ai.FauxResponse, error) {
+		request := ai.FauxFactoryStep(func(ai.TranscriptContext, ai.StreamOptions, *ai.FauxProviderState, *ai.Model) (ai.AssistantMessage, error) {
 			tlSetExecution(setup, durable.ToolExecutionSequential)
-			return tlCalls(tlCall{"a", map[string]any{}, "c1"}, tlCall{"b", map[string]any{}, "c2"}), nil
+			return tlCalls(tlCall{"a", map[string]any{}, "c1"}, tlCall{"b", map[string]any{}, "c2"}).AssistantMessage(), nil
 		})
 		run := tlRun(t, setup, []ai.FauxResponseStep{request, tlDone()}, nil)
 		if want := []string{"start a", "end a", "start b", "end b"}; !reflect.DeepEqual(events.all(), want) {
@@ -425,6 +427,9 @@ func TestToolRound(t *testing.T) {
 	})
 }
 
+// Pi source: packages/durable/src/harness/types.ts
+// mutation-checked: zeroing the results of HookApi.ConversationId fails it
+// mutation-checked: dropping the reads and writes of ShellOutputWindow.MinIntervalMs fails it
 func TestToolResults(t *testing.T) {
 	t.Run("uses retained output and the last details when the result omits them, with diagnostics in order", func(t *testing.T) {
 		setup := chatSetup(t)
@@ -471,7 +476,7 @@ func TestToolResults(t *testing.T) {
 		addTool(t, setup.Registry, tlTool("tailed", func(_ context.Context, _ any, api durable.ToolExecutionApi) (durable.ToolExecutionResult, error) {
 			record(api.OutputWindow())
 			api.Output("dropped\n")
-			api.OutputSkipping("x\ny\n", env.ShellOutputSkip{Bytes: 8, Newlines: 1, EndsWithNewline: true})
+			api.Output("x\ny\n", env.ShellOutputSkip{Bytes: 8, Newlines: 1, EndsWithNewline: true})
 			return durable.ToolExecutionResult{}, nil
 		}, func(tool *durable.ToolRegistration) {
 			lines := 1
@@ -555,9 +560,9 @@ func TestToolResults(t *testing.T) {
 			case "throw":
 				return nil, errors.New("hook failed")
 			case "bad":
-				return &BeforeToolResult{Arguments: durable.JsonObject{"text": map[string]any{"not": "a string"}}}, nil
+				return &BeforeToolResult{Arguments: map[string]any{"text": map[string]any{"not": "a string"}}}, nil
 			}
-			return &BeforeToolResult{Arguments: durable.JsonObject{"text": fmt.Sprintf("%v!", call.Arguments["text"])}}, nil
+			return &BeforeToolResult{Arguments: map[string]any{"text": fmt.Sprintf("%v!", call.Arguments["text"])}}, nil
 		}})
 		run := tlRun(t, setup, []ai.FauxResponseStep{tlCallsStep(
 			tlCall{"echo", map[string]any{"text": float64(1)}, "coerced"},
@@ -608,7 +613,7 @@ func TestToolResults(t *testing.T) {
 			return durable.ToolExecutionResult{Content: []ai.ToolResultMessageContent{}}, nil
 		}, func(tool *durable.ToolRegistration) {
 			tool.PrepareArguments = func(args any) (any, error) {
-				text := args.(durable.JsonObject)["text"]
+				text := args.(map[string]any)["text"]
 				if text == "throw" {
 					return nil, errors.New("cannot repair")
 				}
@@ -816,13 +821,13 @@ func TestGenerationHooks(t *testing.T) {
 	t.Run("replaces request messages, observes responses, and continues on yield", func(t *testing.T) {
 		setup := chatSetup(t)
 		requests := &syncList[[]string]{}
-		record := ai.FauxFactoryStep(func(request ai.TranscriptContext, _ ai.StreamOptions, _ *ai.FauxProviderState, _ *ai.Model) (ai.FauxResponse, error) {
+		record := ai.FauxFactoryStep(func(request ai.TranscriptContext, _ ai.StreamOptions, _ *ai.FauxProviderState, _ *ai.Model) (ai.AssistantMessage, error) {
 			rendered := []string{}
 			for _, message := range request.Messages() {
 				rendered = append(rendered, tlRoleText(message))
 			}
 			requests.add(rendered)
-			return ai.FauxResponse{Content: []ai.FauxContentBlock{ai.FauxText(fmt.Sprintf("answer %d", requests.len()))}}, nil
+			return ai.FauxResponse{Content: []ai.FauxContentBlock{ai.FauxText(fmt.Sprintf("answer %d", requests.len()))}}.AssistantMessage(), nil
 		})
 		addHooks(t, setup.Registry, GenerationTask, &GenerationHooks{BeforeRequest: func(_ context.Context, request GenerationRequest, _ HookApi) (*GenerationRequest, error) {
 			messages := append(slices.Clone(request.Messages), ai.UserMessage{Content: ai.UserText("injected"), Timestamp: 0})
@@ -882,15 +887,15 @@ func TestGenerationHooks(t *testing.T) {
 			}
 			return nil, nil
 		}})
-		second := ai.FauxFactoryStep(func(ai.TranscriptContext, ai.StreamOptions, *ai.FauxProviderState, *ai.Model) (ai.FauxResponse, error) {
+		second := ai.FauxFactoryStep(func(ai.TranscriptContext, ai.StreamOptions, *ai.FauxProviderState, *ai.Model) (ai.AssistantMessage, error) {
 			harness, _ := harnessRef.get()
 			live, err := durable.Snapshot[LiveState](testContext, harness, LiveDoc, durable.ConversationId(1))
 			if err != nil || live == nil || live.Run == nil || len(live.Run.Inputs) == 0 {
-				return ai.FauxResponse{}, fmt.Errorf("live run %+v: %w", live, err)
+				return ai.FauxResponse{}.AssistantMessage(), fmt.Errorf("live run %+v: %w", live, err)
 			}
 			input.put(live.Run.Inputs[0])
 			statusAtSecondRequest.put(ownSubmissionStatus(t, harness, live.Run.Inputs[0]).Status)
-			return ai.FauxResponse{Content: []ai.FauxContentBlock{ai.FauxText("second")}}, nil
+			return ai.FauxResponse{Content: []ai.FauxContentBlock{ai.FauxText("second")}}.AssistantMessage(), nil
 		})
 		run := tlRun(t, setup, []ai.FauxResponseStep{fauxAnswer("first"), second}, func(harness Harness, _ Conversation) { harnessRef.put(harness) })
 		if status, _ := statusAtSecondRequest.get(); status != durable.SubmissionPlaced {
@@ -1028,6 +1033,9 @@ func TestGenerationHooks(t *testing.T) {
 	})
 }
 
+// Pi: packages/durable/src/harness/types.ts:173 (agent).
+// Pi: packages/durable/src/harness/types.ts:169 (callId).
+// Pi: packages/durable/src/harness/types.ts:171 (registry).
 func TestToolExecutionApi(t *testing.T) {
 	t.Run("builds the environment per call from the conversation's cwd and runs commits, memos, and child tasks", func(t *testing.T) {
 		setup := chatSetup(t)
@@ -1095,6 +1103,21 @@ func TestToolExecutionApi(t *testing.T) {
 				return durable.ToolExecutionResult{}, err
 			}
 			seen.add(describeOutcome(*done.State.Outcome))
+			// packages/durable/src/harness/types.ts:192 memo(name) reads the stored memo; :200 getTask(id) reads the child's record.
+			stored, present, err := api.Memo(testContext, "m")
+			if err != nil || !present || stored != first {
+				t.Errorf("Memo(m) = %v, %v, %v; want the first candidate %v", stored, present, err, first)
+			}
+			if _, absent, err := api.Memo(testContext, "never-written"); err != nil || absent {
+				t.Errorf("Memo(never-written) = %v, %v", absent, err)
+			}
+			record, err := api.GetTask(testContext, id)
+			if err != nil || record == nil || record.State.Outcome == nil || describeOutcome(*record.State.Outcome) != describeOutcome(*done.State.Outcome) {
+				t.Errorf("GetTask(%v) = %+v, %v", id, record, err)
+			}
+			if missing, err := api.GetTask(testContext, id+1000000); err != nil || missing != nil {
+				t.Errorf("GetTask(absent) = %+v, %v", missing, err)
+			}
 			return durable.ToolExecutionResult{Content: []ai.ToolResultMessageContent{}}, nil
 		})
 		addTool(t, setup.Registry, probe)

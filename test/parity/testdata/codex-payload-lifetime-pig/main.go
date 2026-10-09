@@ -32,7 +32,7 @@ func run() error {
 	}))
 	defer server.Close()
 	token := "aaa." + base64.StdEncoding.EncodeToString([]byte(`{"https://api.openai.com/auth":{"chatgpt_account_id":"acc_test"}}`)) + ".bbb"
-	model := &ai.Model{ID: "gpt-5.5", DisplayName: "Mapped Codex", ThinkingLevelMap: ai.ThinkingLevelMap{ai.ThinkingMinimal: new("low"), ai.ThinkingXHigh: new("xhigh")}, Capabilities: ai.ModelCapabilities{MaxThinking: ai.ThinkingXHigh}}
+	model := &ai.Model{ID: "gpt-5.5", DisplayName: "Mapped Codex", ThinkingLevelMap: ai.ThinkingLevelMap{ai.ThinkingMinimal: new("low"), ai.ThinkingXHigh: new("xhigh")}, Capabilities: ai.ModelCapabilities{MaxThinking: ai.ThinkingLevelXHigh}}
 	cfg := ai.OpenAICodexResponsesConfig{APIKey: token, Model: model.ID, ModelMetadata: model, ProviderID: "openai-codex", BaseURL: server.URL}
 	for _, tier := range []string{"flex", "priority"} {
 		provider := ai.NewOpenAICodexResponsesProvider(cfg)
@@ -44,7 +44,7 @@ func run() error {
 			Reasoning struct{ Effort string }
 			Tools     []struct{ Strict json.RawMessage }
 		}
-		stream, err := provider.Stream(context.Background(), ai.NormalizeContext(ai.Context{Messages: []ai.Message{ai.UserMessage{Content: ai.UserText("Hi"), Timestamp: 1}}, Tools: []ai.ToolSchema{tool}}), ai.StreamOptions{Transport: ai.TransportSSE, ReasoningEffort: "minimal", SamplingParams: map[string]any{"service_tier": tier}, ModelCost: ai.ModelCost{Input: 1, Output: 2}, OnPayload: func(value any, _ *ai.Model) (any, error) {
+		stream, err := provider.Stream(context.Background(), ai.NormalizeContext(ai.Context{Messages: []ai.Message{ai.UserMessage{Content: ai.UserText("Hi"), Timestamp: 1}}, Tools: []ai.ToolSchema{tool}}), ai.StreamOptions{Transport: ai.TransportSSE, ReasoningEffort: "minimal", ServiceTier: tier, ModelCost: ai.ModelCost{Input: 1, Output: 2}, OnPayload: func(value any, _ *ai.Model) (any, error) {
 			data, err := json.Marshal(value)
 			if err == nil {
 				err = json.Unmarshal(data, &payload)

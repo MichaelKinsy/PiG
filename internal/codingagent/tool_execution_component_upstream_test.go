@@ -1,5 +1,11 @@
 package codingagent
 
+// pi: packages/coding-agent/src/core/tools/renderers/write.ts
+
+// pi: packages/coding-agent/src/core/tools/renderers/read.ts
+
+// pi: packages/coding-agent/src/core/tools/renderers/edit.ts
+
 import (
 	"context"
 	"encoding/json"
@@ -52,13 +58,13 @@ func toolComponentRaw(t *testing.T, name, id string, raw json.RawMessage, defini
 	if err != nil {
 		t.Fatal(err)
 	}
-	m := &InteractiveMode{opts: InteractiveOptions{CWD: cwd}, chatContainer: tui.NewContainer(), tuiInst: tui.NewWithOutput(io.Discard, 120, 40), toolByID: make(map[string]*tui.ToolExecutionComponent), toolStarts: make(map[string]time.Time)}
+	m := &InteractiveMode{opts: InteractiveModeOptions{CWD: cwd}, chatContainer: tui.NewContainer(), tuiInst: tui.NewWithOutput(io.Discard, 120, 40), toolByID: make(map[string]*tui.ToolExecutionComponent), toolStarts: make(map[string]time.Time)}
 	m.tuiInst.SetRenderDispatcher(func(func()) {})
 	t.Cleanup(m.tuiInst.CancelPendingRender)
 	if definition != nil {
 		m.newRunner = inproc.NewRunner([]extension.Extension{{Name: "fixture", Tools: map[string]extension.RegisteredTool{name: {Definition: *definition}}}}, cwd)
 	}
-	card := tui.NewToolExecutionComponent(name, tui.HeaderForTool(name, raw, cwd))
+	card := newToolCardForTest(name, tui.HeaderForTool(name, raw, cwd))
 	card.Cwd = cwd
 	card.SetHeaderArgs(raw)
 	m.applyToolPresentation(card, id, name, raw)
@@ -67,13 +73,10 @@ func toolComponentRaw(t *testing.T, name, id string, raw json.RawMessage, defini
 	m.tuiInst.Add(m.chatContainer)
 	return toolComponentFixture{m, card, id, name}
 }
+
+// update is tool-execution.ts updateResult(result, isPartial): every ported case drives the card through UpdateResult.
 func (f toolComponentFixture) update(result agent.AgentToolResult, partial bool) {
-	f.card.SetResultValue(result)
-	if partial {
-		f.card.SetStreaming(result.Text())
-	} else {
-		f.card.SetResult(result.Text(), result.IsError, 0)
-	}
+	f.card.UpdateResult(toolResultUpdate(result), partial)
 }
 func (f toolComponentFixture) plain(width int) string { return plainRows(f.card.Render(width)) }
 func assertToolContains(t *testing.T, text string, wants ...string) {
@@ -329,7 +332,7 @@ func TestToolExecutionComponentUpstream(t *testing.T) {
 		f.update(agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: message}}, IsError: true}, false)
 		raw := strings.Join(f.card.Render(120), "\n")
 		assertToolContains(t, stripANSITest(raw), message)
-		assertToolContains(t, raw, tui.ActiveTheme().FgText("toolOutput", message))
+		assertToolContains(t, raw, tui.ActiveTheme().Fg("toolOutput", message))
 	})
 	// .upstream/v0.99.1/packages/coding-agent/test/tool-execution-component.test.ts:563
 	t.Run("expands a collapsed tool result when clicked", func(t *testing.T) {
@@ -398,7 +401,7 @@ func TestToolExecutionCompactReadsUpstream(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	readme := filepath.Join(ConfigRoot(), "docs", "README.md")
+	readme := GetReadmePath() // tool-execution-component.test.ts:669 path: getReadmePath()
 	for _, tc := range []struct{ title, path, content, compact, hidden, absent string }{
 		{"SKILL.md", filepath.Join(cwd, "attio", "SKILL.md"), "---\nname: attio\ndescription: CRM helper\n---\n\n# Hidden skill instructions", "[skill] attio", "Hidden skill instructions", "read skill attio"},
 		{"AGENTS.md", filepath.Join(cwd, ".pi", "AGENTS.md"), "Hidden resource instructions", "read resource .pi/AGENTS.md", "Hidden resource instructions", ""},
@@ -435,6 +438,7 @@ func TestToolExecutionCompactReadsUpstream(t *testing.T) {
 }
 
 // .upstream/v0.99.1/packages/coding-agent/test/tool-execution-component.test.ts:242 (all ten rows).
+// Pi: packages/coding-agent/src/modes/interactive/components/tool-execution.ts:120 (ToolExecutionComponent.invalidate).
 func TestToolExecutionBashDurationUpstream(t *testing.T) {
 	for _, tc := range []struct {
 		ms        int
@@ -460,6 +464,33 @@ func TestToolExecutionBashDurationUpstream(t *testing.T) {
 				assertToolContains(t, completed, "Took "+tc.formatted)
 			})
 		})
+	}
+}
+
+// upstream: .upstream/v1.1.0/packages/coding-agent/test/tool-execution-component.test.ts:262-290 (#10549): the bash renderer shows the
+// recorded duration of a final result, live or rebuilt without a start, and the wall clock does not move it.
+func TestToolExecutionBashShowsRecordedDuration(t *testing.T) {
+	for _, live := range []bool{true, false} {
+		for _, withDefinition := range []bool{true, false} {
+			t.Run(fmt.Sprintf("live=%t/definition=%t", live, withDefinition), func(t *testing.T) {
+				synctest.Test(t, func(t *testing.T) {
+					var def *extension.ToolDefinition
+					if withDefinition {
+						d := withBuiltInRenderers("bash", baseToolDefinition("bash"))
+						def = &d
+					}
+					f := toolComponent(t, "bash", "tool-bash-recorded", map[string]any{"command": "sleep 4"}, def)
+					if live {
+						f.mode.handleAgentEvent(agent.ToolExecutionStartEvent{ToolCallID: f.id, ToolName: f.name, Args: json.RawMessage(`{"command":"sleep 4"}`)})
+						f.mode.handleAgentEvent(agent.ToolExecutionUpdateEvent{ToolCallID: f.id, ToolName: f.name, PartialResult: agent.AgentToolResult{Content: []ai.ToolResultMessageContent{}}})
+						// The wall clock jumps; the recorded duration does not.
+						time.Sleep(time.Hour)
+					}
+					f.mode.handleAgentEvent(agent.ToolExecutionEndEvent{ToolCallID: f.id, ToolName: f.name, Result: agent.AgentToolResult{}, DurationMs: new(int64(4200))})
+					assertToolContains(t, f.plain(120), "Took 4.2s")
+				})
+			})
+		}
 	}
 }
 

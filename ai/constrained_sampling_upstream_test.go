@@ -47,7 +47,7 @@ func TestConstrainedSamplingConversionUpstream(t *testing.T) {
 	}
 	grammar := sampleGrammarTool(&ConstrainedSamplingConfig{Type: "grammar", Variants: map[string]string{"openai_lark": "start: /[a-z]+/"}})
 	tools, err = provider.convertTools([]ToolSchema{grammar}, true, true)
-	if err != nil || tools[0].Type != "custom" || tools[0].Name != "sample_tool" || !reflect.DeepEqual(tools[0].Format, &respToolFormat{Type: "grammar", Syntax: "lark", Definition: "start: /[a-z]+/"}) {
+	if err != nil || tools[0].Type != "custom" || tools[0].Name != "sample_tool" || !reflect.DeepEqual(tools[0].Format, &ResponsesToolFormat{Type: "grammar", Syntax: "lark", Definition: "start: /[a-z]+/"}) {
 		t.Fatalf("grammar=%#v error=%v", tools, err)
 	}
 	missing := sampleGrammarTool(&ConstrainedSamplingConfig{Type: "grammar", Variants: map[string]string{}})
@@ -80,7 +80,7 @@ func TestConstrainedSamplingUnsupportedSchemasUpstream(t *testing.T) {
 			}
 			tool := sampleGrammarTool(&ConstrainedSamplingConfig{Type: "json_schema", Strict: "prefer"})
 			tool.Parameters = parameters
-			if _, err := makeStrictJSONSchema(parameters); err == nil || !strings.Contains(err.Error(), tc.message) {
+			if _, err := MakeStrictJSONSchema(parameters, nil); err == nil || !strings.Contains(err.Error(), tc.message) {
 				t.Fatalf("strict schema=%v", err)
 			}
 			strict, err := resolveJSONSchemaStrictSampling(tool, true, nil)

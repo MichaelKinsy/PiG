@@ -216,3 +216,33 @@ func IsKeyRelease(data string) bool {
 		strings.Contains(data, ":3H") ||
 		strings.Contains(data, ":3F")
 }
+
+// KeyID is upstream's KeyId (keys.ts:152): a key name such as "enter", "ctrl+c" or "ctrl+shift+f5". Upstream's template-literal union is
+// open here; use the Key helper to build identifiers.
+type KeyID = string
+
+// KeyEventType is the Kitty key event kind of an input sequence (keys.ts:505). Upstream's parser records it only in write-only module
+// state (keys.ts:521 _lastEventType); IsKeyRepeat and IsKeyRelease answer the observable questions.
+type KeyEventType string
+
+// The KeyEventType values.
+const (
+	KeyEventPress   KeyEventType = "press"
+	KeyEventRepeat  KeyEventType = "repeat"
+	KeyEventRelease KeyEventType = "release"
+)
+
+// IsKeyRepeat reports whether a raw input chunk is a Kitty key-repeat event (flag 2, ":2" variants). Bracketed-paste content is never treated as a repeat even when it contains ":2" byte patterns. Mirrors upstream isKeyRepeat.
+func IsKeyRepeat(data string) bool {
+	if strings.Contains(data, "\x1b[200~") {
+		return false
+	}
+	return strings.Contains(data, ":2u") ||
+		strings.Contains(data, ":2~") ||
+		strings.Contains(data, ":2A") ||
+		strings.Contains(data, ":2B") ||
+		strings.Contains(data, ":2C") ||
+		strings.Contains(data, ":2D") ||
+		strings.Contains(data, ":2H") ||
+		strings.Contains(data, ":2F")
+}

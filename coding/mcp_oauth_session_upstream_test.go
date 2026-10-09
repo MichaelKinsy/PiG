@@ -4,6 +4,7 @@ package coding
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"net"
 	"net/http"
@@ -16,6 +17,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/MichaelKinsy/PiG/agent"
 	"github.com/MichaelKinsy/PiG/ai"
@@ -188,6 +190,105 @@ func expireStoredTokens(t *testing.T, backend *mcpext.InMemoryAuthStorageBackend
 	})
 	if err != nil {
 		t.Fatal(err)
+	}
+}
+
+// shutdown emits session_shutdown like quitting does; it returns how long the handlers took.
+func (s *mcpOAuthSession) shutdown() time.Duration {
+	start := time.Now()
+	s.session.EmitSessionShutdown("quit")
+	return time.Since(start)
+}
+
+// Ports "cancels a sign-in waiting on <path> when the session shuts down" (1.1.0, #10565;
+// packages/coding-agent/test/suite/agent-session-mcp-oauth.test.ts).
+func TestAgentSessionMCPOAuthCancelsASignInWaitingOnTheAuthorizationServerWhenTheSessionShutsDown(t *testing.T) {
+	for _, path := range []string{"/.well-known/oauth-authorization-server", "/token"} {
+		t.Run(path, func(t *testing.T) {
+			h := setupMCPOAuth(t, "follow", nil)
+			h.server.stallPath(path)
+			login := make(chan error, 1)
+			go func() { login <- h.session.Prompt(t.Context(), "/mcp login issues", nil) }()
+			mcpWaitFor(t, "the sign-in to reach "+path, func() bool { return len(h.server.stalledRequests()) == 1 })
+
+			// Shutdown waits for the sign-in to clean up, which aborting makes immediate.
+			if took := h.shutdown(); took >= 2*time.Second {
+				t.Fatalf("shutdown took %s, want under 2s", took)
+			}
+			if err := <-login; err != nil {
+				t.Fatal(err)
+			}
+			// The request is aborted instead of left open, and the ended session reports nothing.
+			select {
+			case <-h.server.stalledRequests()[0].closed:
+			case <-time.After(5 * time.Second):
+				t.Fatal("the stalled request stayed open after the session ended")
+			}
+			for _, note := range h.notes.all() {
+				if strings.HasPrefix(note, "Sign-in") {
+					t.Errorf("the ended session reported %q", note)
+				}
+			}
+		})
+	}
+}
+
+// Ports "closes the session without refreshing an expiring token" (1.1.0, #10565;
+// packages/coding-agent/test/suite/agent-session-mcp-oauth.test.ts).
+func TestAgentSessionMCPOAuthClosesTheSessionWithoutRefreshingAnExpiringToken(t *testing.T) {
+	h := setupMCPOAuth(t, "follow", nil)
+	h.prompt(t, "/mcp login issues")
+	requireEqual(t, "last notification", h.notes.last(), `Signed in to MCP server "issues" (1 tools).`)
+	// Still accepted, but close enough to expiry that the next request would refresh it first.
+	err := h.backend.WithLock(func(current string, _ bool) (*string, error) {
+		next := tokensExpireAt.ReplaceAllString(current, fmt.Sprintf(`"tokensExpireAt": %d`, time.Now().UnixMilli()+10_000))
+		return &next, nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	h.server.stallPath("/token")
+
+	if took := h.shutdown(); took >= 2*time.Second {
+		t.Fatalf("shutdown took %s, want under 2s", took)
+	}
+	requireEqual(t, "stalled requests", len(h.server.stalledRequests()), 0)
+	requireEqual(t, "DELETE tokens", h.server.deleteTokens(), []string{"access-1"})
+}
+
+// Ports "gives up on pi mcp login after --timeout, also while the authorization server hangs" (1.1.0, #10565;
+// packages/coding-agent/test/suite/agent-session-mcp-oauth.test.ts).
+func TestAgentSessionMCPOAuthGivesUpOnPigMcpLoginAfterTimeoutAlsoWhileTheAuthorizationServerHangs(t *testing.T) {
+	server := startMcpOAuthServer(t)
+	agentDir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(agentDir, "mcp.json"), []byte(`{"mcpServers":{"issues":{"url":"`+server.URL+`"}}}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	login := func() (int, []string) {
+		var output []string
+		record := func(line string) { output = append(output, line) }
+		exitCode := mcpext.RunMcpCommand(t.Context(), []string{"login", "issues", "--timeout", "0.5"}, mcpext.McpCommandOptions{
+			Cwd: agentDir, AgentDir: agentDir,
+			Credentials: mcpext.NewMcpOAuthCredentialStoreWithBackend(&mcpext.InMemoryAuthStorageBackend{}, ""),
+			// The user never approves in the browser.
+			OpenURL: func(string) {},
+			Log:     record, Error: record,
+		})
+		return exitCode, output
+	}
+
+	exitCode, output := login()
+	requireEqual(t, "exit code", exitCode, 1)
+	if last := output[len(output)-1]; !strings.Contains(last, "was cancelled or not completed within") {
+		t.Errorf("unapproved: last line = %q", last)
+	}
+
+	// #10565
+	server.stallPath("/.well-known/oauth-authorization-server")
+	exitCode, output = login()
+	requireEqual(t, "exit code", exitCode, 1)
+	if last := output[len(output)-1]; !strings.Contains(last, "was cancelled or not completed within") {
+		t.Errorf("stalled: last line = %q", last)
 	}
 }
 

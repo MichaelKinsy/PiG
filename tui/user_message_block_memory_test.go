@@ -4,7 +4,7 @@ import "testing"
 
 // user-message.ts:38-59 (Pi 1.0.0): the Markdown pads and colors its own background, so no Box keeps a second full-width copy of every line. A cached render therefore costs only the returned copy of the Markdown's cached lines and the two zone-marker lines: one slice and two strings.
 func TestUserMessageBlockCachedRenderKeepsOneCopy(t *testing.T) {
-	block := NewUserMessageBlock("hello **world**\n\nsecond paragraph with more text")
+	block := NewUserMessageComponent("hello **world**\n\nsecond paragraph with more text", nil, 1, nil)
 	first := block.Render(80)
 	if len(first) < 2 {
 		t.Fatalf("lines = %q", first)

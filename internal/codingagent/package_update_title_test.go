@@ -22,7 +22,7 @@ func TestFinishPackageUpdateCheckRestoresTheTitleOnWindows(t *testing.T) {
 	session := NewSession("title", cwd)
 	m := &InteractiveMode{
 		chatContainer: tui.NewContainer(),
-		opts:          InteractiveOptions{CWD: cwd, SessionHandle: &recordingCompactHandle{inner: session}},
+		opts:          InteractiveModeOptions{CWD: cwd, SessionHandle: &recordingCompactHandle{inner: session}},
 	}
 
 	m.finishPackageUpdateCheck("linux", nil)

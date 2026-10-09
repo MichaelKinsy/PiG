@@ -34,7 +34,7 @@ func mustFrame(t *testing.T, encoder *AssistantMessageFrameEncoder, event Assist
 
 func encodeAll(t *testing.T, events []AssistantMessageEvent) []AssistantMessageFrame {
 	t.Helper()
-	encoder := &AssistantMessageFrameEncoder{}
+	encoder := NewAssistantMessageFrameEncoder()
 	var frames []AssistantMessageFrame
 	for _, event := range events {
 		frame, err := encoder.Encode(event)
@@ -95,7 +95,7 @@ func assertErrorContains(t *testing.T, err error, want string) {
 
 func TestAssistantMessageFrameUsesAuthoritativeTextEndContentAndSignature(t *testing.T) {
 	partial := frameSeed()
-	encoder := &AssistantMessageFrameEncoder{}
+	encoder := NewAssistantMessageFrameEncoder()
 	frames := []AssistantMessageFrame{mustFrame(t, encoder, StartEvent{Partial: partial})}
 	partial.Content = append(partial.Content, TextContent{Text: "Hello "})
 	frames = append(frames, mustFrame(t, encoder, TextStartEvent{ContentIndex: 0, Partial: partial}))
@@ -112,7 +112,7 @@ func TestAssistantMessageFrameUsesAuthoritativeTextEndContentAndSignature(t *tes
 func TestAssistantMessageFramePreservesProviderThinkingLevelFromStart(t *testing.T) {
 	partial := frameSeed()
 	partial.ProviderThinkingLevel = "high"
-	start := mustFrame(t, &AssistantMessageFrameEncoder{}, StartEvent{Partial: partial})
+	start := mustFrame(t, NewAssistantMessageFrameEncoder(), StartEvent{Partial: partial})
 	if start.(StartFrame).Partial.ProviderThinkingLevel != "high" {
 		t.Fatalf("start = %#v", start)
 	}
@@ -123,7 +123,7 @@ func TestAssistantMessageFramePreservesProviderThinkingLevelFromStart(t *testing
 
 func TestAssistantMessageFramePreservesThinkingMetadataIncludingRedaction(t *testing.T) {
 	partial := frameSeed()
-	encoder := &AssistantMessageFrameEncoder{}
+	encoder := NewAssistantMessageFrameEncoder()
 	frames := []AssistantMessageFrame{mustFrame(t, encoder, StartEvent{Partial: partial})}
 	partial.Content = append(partial.Content, ThinkingContent{Thinking: "[redacted]", ThinkingSignature: "encrypted-start", Redacted: true})
 	frames = append(frames, mustFrame(t, encoder, ThinkingStartEvent{ContentIndex: 0, Partial: partial}))
@@ -200,7 +200,7 @@ func TestAssistantMessageFrameReconcilesQueuedTextAgainstAdvancedLivePartial(t *
 
 func TestAssistantMessageFrameTrimsOnlyCoveredPrefixInsideDelta(t *testing.T) {
 	partial := frameSeed()
-	encoder := &AssistantMessageFrameEncoder{}
+	encoder := NewAssistantMessageFrameEncoder()
 	frames := []AssistantMessageFrame{mustFrame(t, encoder, StartEvent{Partial: partial})}
 	partial.Content = append(partial.Content, TextContent{Text: "Hel"})
 	frames = append(frames, mustFrame(t, encoder, TextStartEvent{ContentIndex: 0, Partial: partial}))
@@ -252,7 +252,7 @@ func frameTypeStrings(types []AssistantMessageFrameType) []string {
 
 func TestAssistantMessageFrameResumesLegacyGrammarToolJSONFromInitialArguments(t *testing.T) {
 	partial := frameSeed()
-	encoder := &AssistantMessageFrameEncoder{}
+	encoder := NewAssistantMessageFrameEncoder()
 	frames := []AssistantMessageFrame{mustFrame(t, encoder, StartEvent{Partial: partial})}
 	partial.Content = append(partial.Content, ToolCall{ID: "call", Name: "bash", Arguments: JsonObject{"input": "a"}})
 	frames = append(frames, mustFrame(t, encoder, ToolCallStartEvent{ContentIndex: 0, Partial: partial}))
@@ -269,7 +269,7 @@ func TestAssistantMessageFrameResumesLegacyGrammarToolJSONFromInitialArguments(t
 
 func TestAssistantMessageFrameStreamsToolJSONCompactlyFromEmptyStart(t *testing.T) {
 	partial := frameSeed()
-	encoder := &AssistantMessageFrameEncoder{}
+	encoder := NewAssistantMessageFrameEncoder()
 	frames := []AssistantMessageFrame{mustFrame(t, encoder, StartEvent{Partial: partial})}
 	partial.Content = append(partial.Content, ToolCall{ID: "call", Name: "bash", Arguments: JsonObject{}})
 	frames = append(frames, mustFrame(t, encoder, ToolCallStartEvent{ContentIndex: 0, Partial: partial}))
@@ -284,19 +284,21 @@ func TestAssistantMessageFrameStreamsToolJSONCompactlyFromEmptyStart(t *testing.
 	}
 }
 
+// Pi source: packages/ai/src/utils/assistant-message-frame.ts
+// mutation-checked: zeroing the results of AssistantMessageFrameEncoder.Encode fails it
 func TestAssistantMessageFrameAcceptsPreGenerationErrorButRejectsSuccessOrUpdateBeforeStart(t *testing.T) {
 	failed := frameSeed()
 	failed.StopReason = StopReasonError
 	failed.ErrorMessage = "setup failed"
-	if frame, err := (&AssistantMessageFrameEncoder{}).Encode(ErrorEvent{Reason: StopReasonError, Error: failed}); err != nil || frame != nil {
+	if frame, err := (NewAssistantMessageFrameEncoder()).Encode(ErrorEvent{Reason: StopReasonError, Error: failed}); err != nil || frame != nil {
 		t.Fatalf("pre-generation error = %#v, %v", frame, err)
 	}
 
 	completed := frameSeed()
 	completed.StopReason = StopReasonStop
-	_, err := (&AssistantMessageFrameEncoder{}).Encode(DoneEvent{Reason: StopReasonStop, Message: completed})
+	_, err := (NewAssistantMessageFrameEncoder()).Encode(DoneEvent{Reason: StopReasonStop, Message: completed})
 	assertErrorContains(t, err, "done event appears before start")
-	_, err = (&AssistantMessageFrameEncoder{}).Encode(TextDeltaEvent{ContentIndex: 0, Delta: "x", Partial: frameSeed()})
+	_, err = (NewAssistantMessageFrameEncoder()).Encode(TextDeltaEvent{ContentIndex: 0, Delta: "x", Partial: frameSeed()})
 	assertErrorContains(t, err, "text_delta event appears before start")
 }
 
@@ -323,7 +325,7 @@ func TestAssistantMessageFrameStoresAuthoritativeFinalArgumentsInToolCallEnd(t *
 	partial := frameSeed()
 	toolCall := ToolCall{ID: "call-1", Name: "read", Arguments: JsonObject{"path": "README.md"}, ThoughtSignature: "thought", Namespace: "files"}
 	partial.Content = append(partial.Content, toolCall)
-	encoder := &AssistantMessageFrameEncoder{}
+	encoder := NewAssistantMessageFrameEncoder()
 	mustFrame(t, encoder, StartEvent{Partial: partial})
 	mustFrame(t, encoder, ToolCallStartEvent{ContentIndex: 0, Partial: partial})
 	end := mustFrame(t, encoder, ToolCallEndEvent{ContentIndex: 0, ToolCall: toolCall, Partial: partial})
@@ -343,7 +345,7 @@ func TestAssistantMessageFrameWhitelistsPublicFieldsFromProviderPartials(t *test
 	partial.ErrorMessage = "scratch"
 	partial.RawStopReason = "scratch"
 	partial.Deferred = &DeferredHandle{Data: map[string]any{"scratch": true}}
-	encoder := &AssistantMessageFrameEncoder{}
+	encoder := NewAssistantMessageFrameEncoder()
 	start := mustFrame(t, encoder, StartEvent{Partial: partial}).(StartFrame)
 	mustFrame(t, encoder, TextStartEvent{ContentIndex: 0, Partial: partial})
 	mustFrame(t, encoder, ThinkingStartEvent{ContentIndex: 1, Partial: partial})
@@ -377,7 +379,7 @@ func TestAssistantMessageFrameSupportsInterleavedStreamsByContentIndex(t *testin
 func TestAssistantMessageFrameSnapshotsMutableEventDataAndKeepsReductionPure(t *testing.T) {
 	partial := frameSeed()
 	partial.Diagnostics = []AssistantMessageDiagnostic{{Type: "test", Timestamp: 2, Details: map[string]any{"value": "original"}}}
-	encoder := &AssistantMessageFrameEncoder{}
+	encoder := NewAssistantMessageFrameEncoder()
 	start := mustFrame(t, encoder, StartEvent{Partial: partial})
 	partial.Diagnostics[0].Details["value"] = "mutated"
 	partial.Usage.Cost.Total = 99
@@ -398,7 +400,7 @@ func TestAssistantMessageFrameSnapshotsMutableEventDataAndKeepsReductionPure(t *
 
 func TestAssistantMessageFrameOmitsTerminalEvents(t *testing.T) {
 	message := frameSeed()
-	completed := &AssistantMessageFrameEncoder{}
+	completed := NewAssistantMessageFrameEncoder()
 	mustFrame(t, completed, StartEvent{Partial: message})
 	message.StopReason = StopReasonStop
 	if frame, err := completed.Encode(DoneEvent{Reason: StopReasonStop, Message: message}); err != nil || frame != nil {
@@ -408,7 +410,7 @@ func TestAssistantMessageFrameOmitsTerminalEvents(t *testing.T) {
 	assertErrorContains(t, err, "follows a terminal event")
 	message.StopReason = StopReasonError
 	message.ErrorMessage = "failed"
-	if frame, err := (&AssistantMessageFrameEncoder{}).Encode(ErrorEvent{Reason: StopReasonError, Error: message}); err != nil || frame != nil {
+	if frame, err := (NewAssistantMessageFrameEncoder()).Encode(ErrorEvent{Reason: StopReasonError, Error: message}); err != nil || frame != nil {
 		t.Fatalf("error = %#v, %v", frame, err)
 	}
 }
@@ -454,7 +456,7 @@ func TestReduceAssistantMessageFramesRejectsInvalidSequences(t *testing.T) {
 
 func TestAssistantMessageFrameRejectsEventsPointingToWrongBlockKind(t *testing.T) {
 	partial := frameSeed()
-	encoder := &AssistantMessageFrameEncoder{}
+	encoder := NewAssistantMessageFrameEncoder()
 	mustFrame(t, encoder, StartEvent{Partial: partial})
 	partial.Content = append(partial.Content, ThinkingContent{})
 	_, err := encoder.Encode(TextStartEvent{ContentIndex: 0, Partial: partial})
@@ -463,7 +465,7 @@ func TestAssistantMessageFrameRejectsEventsPointingToWrongBlockKind(t *testing.T
 
 func TestAssistantMessageFrameRejectsNonJSONToolArguments(t *testing.T) {
 	partial := frameSeed()
-	encoder := &AssistantMessageFrameEncoder{}
+	encoder := NewAssistantMessageFrameEncoder()
 	mustFrame(t, encoder, StartEvent{Partial: partial})
 	partial.Content = append(partial.Content, ToolCall{ID: "call", Name: "run", Arguments: JsonObject{"value": math.NaN()}})
 	_, err := encoder.Encode(ToolCallStartEvent{ContentIndex: 0, Partial: partial})

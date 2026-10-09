@@ -15,7 +15,7 @@ func maxTokensRequested(t *testing.T, contextWindow, maxOutput int, messages []A
 	t.Helper()
 	provider := &scriptedProvider{respond: replyText("ok")}
 	model := &ai.Model{ID: "mock", Provider: provider, Capabilities: ai.ModelCapabilities{ContextWindow: contextWindow, MaxOutputTokens: maxOutput}}
-	a := NewAgent(AgentOptions{Model: model})
+	a := mustNewAgent(AgentOptions{Model: model})
 	a.SetMessages(messages)
 	if _, err := a.Send(context.Background(), "new prompt"); err != nil {
 		t.Fatal(err)
@@ -45,8 +45,8 @@ func TestClampIgnoresUsageOlderThanPrefix(t *testing.T) {
 // Upstream estimateMessageTokens counts system text and tool declarations.
 func TestClampCountsSystemAndTools(t *testing.T) {
 	system := &ai.SystemMessage{Content: ai.SystemText(strings.Repeat("s", 40_000))}
-	// 40,000 system chars are 10,000 tokens; the prompt adds 3.
-	want := 16_000 - 10_000 - 3 - 4096
+	// 40,000 system chars are ceil(40,000 / 3.5) = 11,429 tokens (estimate.ts CHARS_PER_TOKEN, #10497); the prompt adds 3.
+	want := 16_000 - 11_429 - 3 - 4096
 	if got := maxTokensRequested(t, 16_000, 64_000, []AgentMessage{{System: system}}); got != want {
 		t.Fatalf("max_tokens = %d, want %d", got, want)
 	}

@@ -36,7 +36,7 @@ def new_extension():
     return e
 `
 
-// loader.ts:228-232: before the runner binds, unregisterVirtualModel filters the runtime-wide pending list, so a virtual model an earlier-loaded extension queued is removed too.
+// pi.unregisterVirtualModel (packages/coding-agent/src/core/extensions/types.ts:1875, loader.ts:511-514) reaches loader.ts:229-233: before the runner binds, unregisterVirtualModel filters the runtime-wide pending list, so a virtual model an earlier-loaded extension queued is removed too.
 func TestPythonSDKUnregisterVirtualModelBeforeBindFiltersTheRuntimeWidePendingList(t *testing.T) {
 	eachPyAPIIsolation(t, func(t *testing.T, isolation string) {
 		rig := newPyAPIRig(t, isolation, nil, pyAPIFixture{"pyapi-vm-owner", pyVirtualModelOwnerFixture}, pyAPIFixture{"pyapi-vm-remover", pyVirtualModelRemoverFixture})
@@ -45,7 +45,7 @@ func TestPythonSDKUnregisterVirtualModelBeforeBindFiltersTheRuntimeWidePendingLi
 			pending = append(pending, p.Definition.Provider+"/"+p.Definition.ID)
 		}
 		if want := []string{"pyrouter/kept"}; !slices.Equal(pending, want) {
-			t.Fatalf("pending virtual models %v, want %v", pending, want)
+			t.Fatalf("unregisterVirtualModel: pending virtual models %v, want %v", pending, want)
 		}
 	})
 }
@@ -144,8 +144,29 @@ def new_extension():
             return "rejected: %s after %s" % (exc, ",".join(seen))
 
     e.tool("nest_throw", "Raises from on_update", {"type": "object"}, nest_throw)
+
+    def nest_duration(ctx, args):
+        return str(ctx.execute_tool("timed", {})["durationMs"])
+
+    e.tool("nest_duration", "Reports the durationMs of a nested outcome", {"type": "object"}, nest_duration)
     return e
 `
+
+// types.ts:454 and nested-tool-calls.ts:246: executeTool's outcome carries the nested call's durationMs.
+func TestPythonSDKExecuteToolOutcomeCarriesDuration(t *testing.T) {
+	eachPyAPIIsolation(t, func(t *testing.T, isolation string) {
+		actions := &subprocess.HostCallbacks{
+			ExecuteTool: func(context.Context, string, string, json.RawMessage, extension.ExecuteToolOptions) (extension.AgentToolCallOutcome, error) {
+				return extension.AgentToolCallOutcome{DurationMs: new(int64(4321))}, nil
+			},
+		}
+		rig := newPyAPIRig(t, isolation, actions, pyAPIFixture{"pyapi-throw", pyNestedThrowFixture})
+		result, err := rig.execute("pyapi-throw", "nest_duration", "call-d")
+		if err != nil || result.IsError || result.Text() != "4321" {
+			t.Fatalf("nest_duration = %+v, %v, want 4321", result, err)
+		}
+	})
+}
 
 // nested-tool-calls.ts:219-248 and agent-loop.ts:820-849: an exception from the caller's on_update rejects the nested call after the tool returned, every partial result still reaches on_update, and the call never reaches afterToolCall or tool_execution_end.
 func TestPythonSDKExecuteToolOnUpdateRaiseRejectsTheNestedCall(t *testing.T) {
@@ -155,9 +176,10 @@ func TestPythonSDKExecuteToolOnUpdateRaiseRejectsTheNestedCall(t *testing.T) {
 		var completed []string
 		actions := &subprocess.HostCallbacks{
 			ExecuteTool: func(_ context.Context, callerID, name string, _ json.RawMessage, options extension.ExecuteToolOptions) (extension.AgentToolCallOutcome, error) {
-				sink, _ := options.OnUpdate.(func(agent.AgentToolResult) error)
+				sink := options.OnUpdate
 				if sink == nil {
-					return extension.AgentToolCallOutcome{}, nil
+					// A value no SDK defaults to (types.ts:454): an SDK that drops durationMs reports none.
+					return extension.AgentToolCallOutcome{DurationMs: new(int64(4321))}, nil
 				}
 				var first error
 				for _, step := range []string{"one", "two"} {

@@ -30,6 +30,9 @@ type interactiveThemeState struct {
 	terminalColors *tui.TerminalColors
 	// colorQuery is closed when the latest color query completed or timed out and its colors applied. Owner loop only.
 	colorQuery chan struct{}
+	// attachedTo is the renderer whose light/dark reports the theme follows, and detach unsubscribes from it. Owner loop only.
+	attachedTo tui.TUI
+	detach     func()
 }
 
 // presentationTheme is the theme-controller state machine shared by InteractiveMode and standalone presentations. Every method runs on the presentation owner loop.
@@ -37,7 +40,7 @@ type presentationTheme struct {
 	state      *interactiveThemeState
 	getSetting func() *string
 	output     func() io.Writer
-	renderer   func() tui.Renderer
+	renderer   func() tui.TUI
 	showError  func(string)
 	// changed is onChanged: it runs after every applied theme, and the caller renders.
 	changed func()
@@ -78,6 +81,7 @@ func (theme presentationTheme) resolveThemeName() string {
 
 // initTheme applies the initial theme, as the theme controller's constructor does. The system theme starts in grayscale; color follows once the terminal reports its colors.
 func (theme presentationTheme) initTheme() {
+	theme.attach()
 	name := theme.resolveThemeName()
 	theme.state.activeThemeName.Store(&name)
 	tui.MarkTerminalColorsPending()
@@ -105,7 +109,12 @@ func (theme presentationTheme) setAutoSync(enabled bool) {
 	theme.writeThemeNotifications(enabled)
 }
 
+// writeThemeNotifications turns the terminal's light/dark reports on or off through the renderer, which also restores them across Stop and Start.
 func (theme presentationTheme) writeThemeNotifications(enabled bool) {
+	if ui := theme.renderer(); ui != nil {
+		ui.SetTerminalColorSchemeNotifications(enabled)
+		return
+	}
 	sequence := "\x1b[?2031l"
 	if enabled {
 		sequence = "\x1b[?2031h"
@@ -146,6 +155,15 @@ func (theme presentationTheme) setThemeName(name string, showError bool) error {
 		theme.state.currentThemeSetting.Store(&name)
 	}
 	return err
+}
+
+// setThemeInstance applies a theme object, as an extension's setTheme does (theme-controller.ts:138 setThemeInstance).
+func (theme presentationTheme) setThemeInstance(instance *tui.Theme) {
+	theme.setAutoSync(false)
+	tui.SetThemeInstance(instance)
+	name := tui.InMemoryThemeName
+	theme.state.activeThemeName.Store(&name)
+	theme.notifyChanged()
 }
 
 // previewTheme applies a setting or name without storing it.
@@ -261,11 +279,31 @@ func (theme presentationTheme) consumeInput(data string) bool {
 	if ui := theme.renderer(); ui != nil && ui.ConsumeTerminalColorResponse(data) {
 		return true
 	}
-	if scheme := tui.ParseTerminalColorSchemeReport(data); scheme != "" {
-		theme.applyTerminalColorSchemeChange(scheme)
-		return true
+	if ui := theme.renderer(); ui != nil {
+		return ui.ConsumeTerminalColorSchemeReport(data)
 	}
 	return false
+}
+
+// attach subscribes the theme to the renderer's light/dark reports, as Pi's theme controller does with onTerminalColorSchemeChange. It follows one renderer at a time and does nothing when it already follows the current one.
+func (theme presentationTheme) attach() {
+	ui := theme.renderer()
+	if ui == nil || theme.state.attachedTo == ui {
+		return
+	}
+	if theme.state.detach != nil {
+		theme.state.detach()
+	}
+	theme.state.attachedTo = ui
+	theme.state.detach = ui.OnTerminalColorSchemeChange(theme.applyTerminalColorSchemeChange)
+}
+
+// detachRenderer stops following the renderer's reports.
+func (theme presentationTheme) detachRenderer() {
+	if theme.state.detach != nil {
+		theme.state.detach()
+	}
+	theme.state.attachedTo, theme.state.detach = nil, nil
 }
 
 // applyTerminalColorSchemeChange handles a light/dark switch report. The terminal's colors changed too, so they are queried again: they decide the appearance. The reported scheme only matters for terminals that do not report their background.
@@ -307,7 +345,7 @@ type InteractiveThemeController struct {
 }
 
 // NewInteractiveThemeController resolves the initial theme on the owner loop, as theme-controller.ts's constructor calls initTheme.
-func NewInteractiveThemeController(ctx context.Context, ui tui.Renderer, options InteractiveThemeControllerOptions) (*InteractiveThemeController, error) {
+func NewInteractiveThemeController(ctx context.Context, ui tui.TUI, options InteractiveThemeControllerOptions) (*InteractiveThemeController, error) {
 	if ui == nil || options.GetSettingsManager == nil || options.RunOnMain == nil || options.Output == nil || options.ShowError == nil || options.OnChanged == nil {
 		return nil, errors.New("Theme controller requires a renderer, settings, owner executor, output and callbacks")
 	}
@@ -317,7 +355,7 @@ func NewInteractiveThemeController(ctx context.Context, ui tui.Renderer, options
 	controller.core = presentationTheme{
 		state:      state,
 		getSetting: func() *string { return options.GetSettingsManager().GetThemeSetting() },
-		output:     func() io.Writer { return options.Output }, renderer: func() tui.Renderer { return ui },
+		output:     func() io.Writer { return options.Output }, renderer: func() tui.TUI { return ui },
 		showError: options.ShowError, changed: options.OnChanged,
 		post: func(ctx context.Context, fn func()) error {
 			return options.RunOnMain(ctx, fn)
@@ -372,7 +410,10 @@ func (controller *InteractiveThemeController) Dispose() error {
 		controller.closed = true
 		controller.cancel()
 		controller.mu.Unlock()
-		controller.disposeError = controller.options.RunOnMain(context.Background(), controller.core.dispose)
+		controller.disposeError = controller.options.RunOnMain(context.Background(), func() {
+			controller.core.detachRenderer()
+			controller.core.dispose()
+		})
 		controller.tasks.Wait()
 	})
 	return controller.disposeError

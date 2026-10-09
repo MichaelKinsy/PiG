@@ -1,4 +1,3 @@
-// SPDX-FileCopyrightText: Copyright Hewlett Packard Enterprise Development LP
 // SPDX-License-Identifier: MIT
 
 package sdk
@@ -30,7 +29,7 @@ import (
 // a partial SDK when session_mirror.go was added: the file compiled into pig, was
 // never staged, and every extension kept building against an SDK missing it.
 //
-//go:embed LICENSE go.mod *.go json/*.go json/LICENSE
+//go:embed LICENSE go.mod *.go json/*.go json/LICENSE frontend/*.go kit/*.go internal/kitwire/*.go upgrade/*.go
 var Source embed.FS
 
 // BundledFiles lists the embedded filenames in a stable order. It is the

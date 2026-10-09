@@ -1,0 +1,133 @@
+[
+ {
+  "ids": [
+   "pkg:ai/.#AuthInteraction",
+   "pkg:ai/compat#AuthInteraction"
+  ],
+  "targets": [
+   "ai/auth_interaction.go#AuthInteraction"
+  ],
+  "production": [
+   "call:ai/auth_login.go#envAPIKeyLogin"
+  ],
+  "evidence": [
+   "test:ai/auth_login_test.go#TestProviderLoginCancellationAndPromptFailure",
+   "test:ai/auth_native_login_test.go#TestModelsLoginUsesNativeEnvKeyPrompt"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "AuthInteraction: every upstream property maps to a Go field (types reviewed against the upstream declaration); production and tests attributed by go/types. The interaction signal is the context passed to Prompt and to the login that owns the interaction.",
+  "properties": {
+   "notify": {
+    "targets": [
+     "ai/auth_interaction.go#AuthInteraction.Notify"
+    ],
+    "evidence": [
+     "test:ai/auth_login_test.go#TestProviderLoginCancellationAndPromptFailure",
+     "test:ai/auth_native_login_test.go#TestModelsLoginUsesNativeEnvKeyPrompt"
+    ],
+    "production": [
+     "call:ai/auth_login.go#envAPIKeyLogin"
+    ],
+    "rationale": "The upstream property notify is the Go field AuthInteraction.Notify."
+   },
+   "prompt": {
+    "targets": [
+     "ai/auth_interaction.go#AuthInteraction.Prompt"
+    ],
+    "evidence": [
+     "test:ai/auth_login_test.go#TestProviderLoginCancellationAndPromptFailure",
+     "test:ai/auth_native_login_test.go#TestModelsLoginUsesNativeEnvKeyPrompt"
+    ],
+    "production": [
+     "call:ai/auth_login.go#envAPIKeyLogin"
+    ],
+    "rationale": "The upstream property prompt is the Go field AuthInteraction.Prompt."
+   },
+   "signal": {
+    "targets": [
+     "ai/auth_interaction.go#AuthInteraction"
+    ],
+    "evidence": [
+     "test:ai/auth_login_test.go#TestProviderLoginCancellationAndPromptFailure",
+     "test:ai/auth_native_login_test.go#TestModelsLoginUsesNativeEnvKeyPrompt"
+    ],
+    "production": [
+     "call:ai/auth_login.go#envAPIKeyLogin"
+    ],
+    "rationale": "AbortSignal is the context.Context argument of the Go call; there is no signal field."
+   }
+  }
+ },
+ {
+  "ids": [
+   "pkg:ai/.#ModelsRefreshOptions",
+   "pkg:ai/compat#ModelsRefreshOptions"
+  ],
+  "targets": [
+   "ai/models_runtime.go#ModelsRefreshOptions"
+  ],
+  "production": [
+   "call:ai/models_runtime_refresh.go#Models.Refresh"
+  ],
+  "evidence": [
+   "test:ai/models_refresh_upstream_test.go#TestModelsNewerDynamicRefreshSupersedesBlockedFetchUpstream",
+   "test:ai/models_runtime_refresh_upstream_test.go#TestModelsRuntimeRefreshUpstream"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "ModelsRefreshOptions: every upstream property maps to a Go field (types reviewed against the upstream declaration); production and tests attributed by go/types. The refresh signal is the context.Context of Models.Refresh.",
+  "properties": {
+   "allowNetwork": {
+    "targets": [
+     "ai/models_runtime.go#ModelsRefreshOptions.AllowNetwork"
+    ],
+    "evidence": [
+     "test:ai/models_refresh_upstream_test.go#TestModelsNewerDynamicRefreshSupersedesBlockedFetchUpstream",
+     "test:ai/models_runtime_refresh_upstream_test.go#TestModelsRuntimeRefreshUpstream"
+    ],
+    "production": [
+     "call:ai/models_runtime_refresh.go#Models.Refresh"
+    ],
+    "rationale": "The upstream property allowNetwork is the Go field ModelsRefreshOptions.AllowNetwork."
+   },
+   "force": {
+    "targets": [
+     "ai/models_runtime.go#ModelsRefreshOptions.Force"
+    ],
+    "evidence": [
+     "test:ai/models_refresh_upstream_test.go#TestModelsNewerDynamicRefreshSupersedesBlockedFetchUpstream",
+     "test:ai/models_runtime_refresh_upstream_test.go#TestModelsRuntimeRefreshUpstream"
+    ],
+    "production": [
+     "call:ai/models_runtime_refresh.go#Models.Refresh"
+    ],
+    "rationale": "The upstream property force is the Go field ModelsRefreshOptions.Force."
+   },
+   "providers": {
+    "targets": [
+     "ai/models_runtime.go#ModelsRefreshOptions.Providers"
+    ],
+    "evidence": [
+     "test:ai/models_refresh_upstream_test.go#TestModelsNewerDynamicRefreshSupersedesBlockedFetchUpstream",
+     "test:ai/models_runtime_refresh_upstream_test.go#TestModelsRuntimeRefreshUpstream"
+    ],
+    "production": [
+     "call:ai/models_runtime_refresh.go#Models.Refresh"
+    ],
+    "rationale": "The upstream property providers is the Go field ModelsRefreshOptions.Providers."
+   },
+   "signal": {
+    "targets": [
+     "ai/models_runtime.go#ModelsRefreshOptions"
+    ],
+    "evidence": [
+     "test:ai/models_refresh_upstream_test.go#TestModelsNewerDynamicRefreshSupersedesBlockedFetchUpstream",
+     "test:ai/models_runtime_refresh_upstream_test.go#TestModelsRuntimeRefreshUpstream"
+    ],
+    "production": [
+     "call:ai/models_runtime_refresh.go#Models.Refresh"
+    ],
+    "rationale": "AbortSignal is the context.Context argument of the Go call; there is no signal field."
+   }
+  }
+ }
+]

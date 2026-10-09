@@ -115,12 +115,13 @@ type imagesWireModel struct {
 
 // imagesWireOptions is the serializable part of ai.ModelsImagesOptions; the request's context carries the signal.
 type imagesWireOptions struct {
-	APIKey     *string            `json:"apiKey"`
-	Headers    ai.ProviderHeaders `json:"headers"`
-	Env        map[string]string  `json:"env"`
-	TimeoutMs  *int               `json:"timeoutMs"`
-	MaxRetries *int               `json:"maxRetries"`
-	Metadata   map[string]any     `json:"metadata"`
+	APIKey          *string            `json:"apiKey"`
+	Headers         ai.ProviderHeaders `json:"headers"`
+	Env             map[string]string  `json:"env"`
+	TimeoutMs       *int               `json:"timeoutMs"`
+	MaxRetries      *int               `json:"maxRetries"`
+	MaxRetryDelayMs *int               `json:"maxRetryDelayMs"`
+	Metadata        map[string]any     `json:"metadata"`
 }
 
 func (o imagesWireOptions) options() ai.ModelsImagesOptions {
@@ -128,9 +129,7 @@ func (o imagesWireOptions) options() ai.ModelsImagesOptions {
 	if o.TimeoutMs != nil {
 		options.TimeoutMs = *o.TimeoutMs
 	}
-	if o.MaxRetries != nil {
-		options.MaxRetries = *o.MaxRetries
-	}
+	options.MaxRetries, options.MaxRetryDelayMs = o.MaxRetries, o.MaxRetryDelayMs
 	if o.APIKey != nil {
 		options.APIKey, options.APIKeySet = *o.APIKey, true
 	}

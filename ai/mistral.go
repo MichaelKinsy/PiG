@@ -1,3 +1,5 @@
+//go:build !pig_strip_mistral_conversations
+
 package ai
 
 // Ports packages/ai/src/api/mistral-conversations.ts.
@@ -17,6 +19,7 @@ import (
 
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
 	"github.com/MichaelKinsy/PiG/internal/nodeurl"
+	"github.com/MichaelKinsy/PiG/internal/pigstrip"
 )
 
 const (
@@ -24,21 +27,6 @@ const (
 	maxMistralErrorBodyChars = 4000
 	mistralJSWhitespace      = "\t\n\v\f\r \u00a0\u1680\u2000\u2001\u2002\u2003\u2004\u2005\u2006\u2007\u2008\u2009\u200a\u2028\u2029\u202f\u205f\u3000\ufeff"
 )
-
-// MistralConfig configures the Mistral API provider.
-type MistralConfig struct {
-	// ModelMetadata retains the selected model's input capabilities, identity and thinking map.
-	ModelMetadata *Model
-	APIKey        string
-	Model         string
-	ProviderID    string
-	BaseURL       string
-	ExtraHeaders  map[string]string
-	// SessionID for x-affinity header (KV-cache reuse).
-	SessionID string
-	// Reasoning indicates whether the model supports extended reasoning.
-	Reasoning bool
-}
 
 type mistralProvider struct {
 	cfg    MistralConfig
@@ -54,6 +42,25 @@ func NewMistralProvider(cfg MistralConfig) Provider {
 		cfg.ProviderID = "mistral"
 	}
 	return &mistralProvider{cfg: cfg, client: streamingHTTPClientNoRetry()}
+}
+
+// NewMistralAPIProvider builds the mistral-conversations provider for cfg, the provider every model-to-provider factory uses.
+func NewMistralAPIProvider(cfg MistralConfig) (Provider, error) {
+	// pig additive (D92): a Piglet's strip.apis disables Mistral at runtime the way a pig_strip_mistral_conversations build compiles it out.
+	if pigstrip.Has(pigstrip.ListAPIs, string(APIMistralConversations)) {
+		return nil, strippedMistralError(&cfg)
+	}
+	return NewMistralProvider(cfg), nil
+}
+
+func init() {
+	builtInProviders[APIMistralConversations] = func(apiKey, model, baseURL string) Provider {
+		return NewMistralProvider(MistralConfig{
+			APIKey:  apiKey,
+			Model:   model,
+			BaseURL: baseURL,
+		})
+	}
 }
 
 func (p *mistralProvider) ID() string   { return p.cfg.ProviderID }
@@ -209,7 +216,7 @@ func deriveMistralToolCallID(id string, attempt int) string {
 	if attempt > 0 {
 		seed = fmt.Sprintf("%s:%d", seedBase, attempt)
 	}
-	h := shortHash32(seed)
+	h := ShortHash(seed)
 	// Filter to alnum
 	var out strings.Builder
 	for _, r := range h {
@@ -255,6 +262,24 @@ func (n *mistralIDNormalizer) normalize(id string) string {
 
 // ─── Stream ──────────────────────────────────────────────────────────────────
 
+// mistralToolChoice ports mistral-conversations.ts mapToolChoice and its `if (options?.toolChoice)` guard: an absent or empty
+// choice is omitted, "auto", "none", "any" and "required" pass through, and an object choice is rebuilt as
+// {type:"function", function:{name}} from its function name, so no other member of the caller's object reaches the request.
+func mistralToolChoice(choice any) any {
+	if name, ok := toolChoiceName(choice); ok {
+		if name == "" {
+			return nil
+		}
+		return name
+	}
+	object, ok := choice.(map[string]any)
+	if !ok {
+		return choice
+	}
+	function, _ := object["function"].(map[string]any)
+	return map[string]any{"type": "function", "function": map[string]any{"name": function["name"]}}
+}
+
 func (p *mistralProvider) resolveModel() *Model {
 	if p.cfg.ModelMetadata != nil {
 		return new(*p.cfg.ModelMetadata)
@@ -265,7 +290,7 @@ func (p *mistralProvider) resolveModel() *Model {
 	return &Model{
 		ID: p.cfg.Model, Input: []string{"text"},
 		ProviderMeta: ProviderMetadata{API: APIMistralConversations, ProviderID: p.cfg.ProviderID, BaseURL: p.cfg.BaseURL, Headers: p.cfg.ExtraHeaders, Reasoning: p.cfg.Reasoning},
-		Capabilities: ModelCapabilities{MaxThinking: ThinkingHigh},
+		Capabilities: ModelCapabilities{MaxThinking: ThinkingLevelHigh},
 	}
 }
 
@@ -305,9 +330,9 @@ func (p *mistralProvider) Stream(ctx context.Context, transcript TranscriptConte
 	}
 	if opts.IsReasoning && model.ProviderMeta.Reasoning {
 		// Models with a thinking level map use reasoning_effort; other reasoning models use prompt_mode (mistral-conversations.ts:streamSimple).
-		var reasoning ThinkingLevel
+		var reasoning ModelThinkingLevel
 		if opts.Thinking != "" {
-			if clamped := ClampThinkingLevel(model, opts.Thinking); clamped != ThinkingOff {
+			if clamped := ClampThinkingLevel(model, ModelThinkingLevel(opts.Thinking)); clamped != ThinkingOff {
 				reasoning = clamped
 			}
 		}
@@ -338,7 +363,7 @@ func (p *mistralProvider) Stream(ctx context.Context, transcript TranscriptConte
 	if opts.ReasoningEffort != "" {
 		req.ReasoningEffort = opts.ReasoningEffort
 	}
-	req.ToolChoice = opts.ToolChoice
+	req.ToolChoice = mistralToolChoice(opts.ToolChoice)
 	// Upstream shouldUsePromptCaching requires an explicit request session ID and retention other than none.
 	if shouldUseMistralPromptCaching(opts.SessionID, opts.CacheRetention) {
 		req.PromptCacheKey = opts.SessionID
@@ -856,7 +881,9 @@ func mapMistralStopReason(reason string) (StopReason, string) {
 	case "tool_calls":
 		return StopReasonToolUse, ""
 	case "error":
-		return StopReasonError, "Provider stopped with: error"
+		// Mistral reports transient server failures this way; "server error" makes the message retryable (#10487).
+		// upstream: mistral-conversations.ts:932-934 mapChatStopReason
+		return StopReasonError, "Provider stopped with: error (server error)"
 	default:
 		return StopReasonError, "Provider stopped with: " + reason
 	}

@@ -15,6 +15,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/MichaelKinsy/PiG/coding"
+
 	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/internal/chord"
 	"github.com/MichaelKinsy/PiG/internal/codingagent"
@@ -142,7 +144,7 @@ type pendingClientSelection struct {
 
 // ExperimentalClientTui presents one attached Session through Chord services. UI methods run on the supplied owner executor; admitted transport operations and facet lifecycle operations are owned background work joined by Close, while a selected service call without an admission boundary keeps running on the background Context after Close, as in Pi.
 type ExperimentalClientTui struct {
-	ui                       tui.Renderer
+	ui                       tui.TUI
 	requestRender            func()
 	finish                   func()
 	runOnMain                func(context.Context, func()) error
@@ -256,8 +258,8 @@ func (component *ExperimentalClientTui) initialize() {
 	viewport := codingagent.CreateChatViewport(codingagent.ChatViewportOptions{
 		Document: component.documentContainer, PendingMessages: component.pendingMessagesContainer,
 		Status: component.statusContainer, Editor: component.editorContainer, Footer: component.footerComponent,
-		ScrollbarTrackStyle: func(text string) string { return tui.ActiveTheme().FgText("scrollbarTrack", text) },
-		ScrollbarThumbStyle: func(text string) string { return tui.ActiveTheme().FgText("scrollbarThumb", text) },
+		ScrollbarTrackStyle: func(text string) string { return tui.ActiveTheme().Fg("scrollbarTrack", text) },
+		ScrollbarThumbStyle: func(text string) string { return tui.ActiveTheme().Fg("scrollbarThumb", text) },
 	})
 	component.layoutRoot, component.transcriptScrollView = viewport.Root, viewport.Transcript
 	component.rebuild()
@@ -593,7 +595,7 @@ func (component *ExperimentalClientTui) openLane(ctx context.Context, feature *c
 }
 
 func (component *ExperimentalClientTui) populateLane(ctx context.Context, feature *clientTuiSessionFeature, generation uint64) error {
-	view := NewExperimentalChatView(component.ctx, component.cwd, component.ui.RequestRender, component.runOnMain)
+	view := NewExperimentalChatView(component.ctx, component.cwd, func() { component.ui.RequestRender() }, component.runOnMain)
 	var gate sync.Mutex
 	var latest *services.ConversationView
 	active, closed := false, false
@@ -820,17 +822,17 @@ func (component *ExperimentalClientTui) rebuild() {
 	}
 	heading := ""
 	if component.opened {
-		heading = tui.ActiveTheme().FgText("dim", "Server: "+component.selectedServerId+"\nSession: "+component.sessionId)
+		heading = tui.ActiveTheme().Fg("dim", "Server: "+component.selectedServerId+"\nSession: "+component.sessionId)
 	}
 	component.sessionHeading.SetText(heading)
 	component.statusContainer.Clear()
 	if component.status != "" {
-		component.statusContainer.Add(tui.NewPaddedText(tui.ActiveTheme().FgText("dim", component.status), 1, 0, nil))
+		component.statusContainer.Add(tui.NewPaddedText(tui.ActiveTheme().Fg("dim", component.status), 1, 0, nil))
 	}
 	if component.chatView != nil {
 		component.statusContainer.Add(component.chatView.Status)
 	}
-	component.footerComponent.SetText(tui.ActiveTheme().FgText("dim", component.footer()))
+	component.footerComponent.SetText(tui.ActiveTheme().Fg("dim", component.footer()))
 	component.editorContainer.Clear()
 	if selection := component.selection; selection != nil {
 		component.chatInput.Focused = false
@@ -1292,9 +1294,26 @@ func RunClientTui(ctx context.Context, command ClientCommand, options RunClientT
 	}
 	agentDir := codingagent.AgentDir()
 	settings := codingagent.NewSettingsManager(cwd, agentDir)
-	// client-tui.ts:731-741 loads only theme resources before registering them. The caller resolves those paths with the stable CLI's resource precedence.
+	// client-tui.ts:731-745: a DefaultResourceLoader without extensions, skills, prompt templates or context files reloads, then its themes are registered.
+	var resourceLoader coding.ResourceLoader = coding.NewDefaultResourceLoader(coding.DefaultResourceLoaderOptions{
+		CWD:               cwd,
+		AgentDir:          agentDir,
+		SettingsManager:   settings,
+		NoSkills:          true,
+		NoPromptTemplates: true,
+		NoContextFiles:    true,
+	})
+	if err := resourceLoader.Reload(); err != nil {
+		return err
+	}
 	registry := tui.NewThemeRegistry()
-	codingagent.LoadThemePaths(registry, options.ThemePaths, nil)
+	for _, theme := range resourceLoader.GetThemes().Themes {
+		if theme.SourcePath != "" {
+			registry.AddFile(theme, theme.SourcePath)
+		} else {
+			registry.Add(theme)
+		}
+	}
 	tui.SetThemeRegistry(registry)
 	runtime, err := OpenClientRuntime(ctx, command, options.OpenClientRuntimeOptions)
 	if err != nil {
@@ -1307,9 +1326,11 @@ func RunClientTui(ctx context.Context, command ClientCommand, options RunClientT
 	defer cancelUI()
 	wheel := settings.GetFullscreenWheelScrollLines()
 	wheelScrollLines := tui.WheelScrollLines{Auto: wheel.Auto, Lines: wheel.Lines}
-	ui := codingagent.CreateInteractiveTui(codingagent.InteractiveTuiOptions{TuiMode: "fullscreen", ShowHardwareCursor: new(settings.GetShowHardwareCursor()), LogDirectory: agentDir, FullscreenWheelScrollLines: &wheelScrollLines})
+	// The renderer drives this terminal (createInteractiveTui(terminal, ...)), not the process-wide one built when the
+	// package loaded, which holds the stdout of that moment.
+	terminal := tui.NewStdioProcessTerminal()
+	ui := codingagent.CreateInteractiveTui(codingagent.InteractiveTuiOptions{TuiMode: "fullscreen", Terminal: terminal, ShowHardwareCursor: new(settings.GetShowHardwareCursor()), LogDirectory: agentDir, FullscreenWheelScrollLines: &wheelScrollLines})
 	alt := ui.(*tui.TuiAltScreen)
-	terminal := tui.NewProcessTerminal(os.Stdin, os.Stdout)
 	finished := make(chan struct{})
 	var finishOnce sync.Once
 	failures := make(chan error, 1)
@@ -1384,7 +1405,7 @@ func RunClientTui(ctx context.Context, command ClientCommand, options RunClientT
 	}
 	component, err = CreateExperimentalClientTui(uiCtx, ExperimentalClientTuiOptions{
 		Command: command, UI: ui, Servers: servers, FacetLoader: options.FacetLoader,
-		RequestRender: ui.RequestRender, RunOnMain: executor.RunOnMain, QueueMicrotask: executor.QueueMicrotask,
+		RequestRender: func() { ui.RequestRender() }, RunOnMain: executor.RunOnMain, QueueMicrotask: executor.QueueMicrotask,
 		Finish: func() {
 			theme.DisableAutoSync()
 			if uiStarted {
@@ -1405,7 +1426,7 @@ func RunClientTui(ctx context.Context, command ClientCommand, options RunClientT
 		case input <- slices.Clone(data):
 		case <-uiCtx.Done():
 		}
-	}, func() { dispatch(ui.RequestRender) }, report)
+	}, func() { dispatch(func() { ui.RequestRender() }) }, report)
 	if err != nil {
 		return err
 	}

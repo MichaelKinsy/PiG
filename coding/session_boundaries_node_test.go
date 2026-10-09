@@ -44,12 +44,12 @@ func TestUpstreamSessionBoundariesNodeAbort(t *testing.T) {
 	diagnostics := []string{}
 	h.session.currentRunner().AddErrorListener(func(err *extension.ExtensionError) { diagnostics = append(diagnostics, err.Error) })
 	prompt := make(chan error, 1)
-	go func() { _, err := h.session.Prompt(t.Context(), "start", nil); prompt <- err }()
+	go func() { err := h.session.Prompt(t.Context(), "start", nil); prompt <- err }()
 	<-started
 	h.session.RequestAbort()
 	abort := make(chan error, 1)
 	go func() { abort <- h.session.Abort(t.Context()) }()
-	if _, err := h.session.Prompt(t.Context(), "/release-boundary", nil); err != nil {
+	if err := h.session.Prompt(t.Context(), "/release-boundary", nil); err != nil {
 		t.Error(err)
 	}
 	if err := <-prompt; err != nil {

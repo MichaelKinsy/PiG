@@ -115,12 +115,13 @@ func TestMouseWheelMovesEditorAutocompleteSelection(t *testing.T) {
 }
 
 func TestMouseActivatesSettingsRows(t *testing.T) {
-	list := NewSettingsListWithOptions([]SettingItem{
+	list := NewSettingsList([]SettingItem{
 		{ID: "mode", Label: "Mode", CurrentValue: "one", Values: []string{"one", "two"}},
 		{ID: "other", Label: "Other", CurrentValue: "off", Values: []string{"off", "on"}},
 		{ID: "third", Label: "Third", CurrentValue: "low", Values: []string{"low", "high"}},
 		{ID: "fourth", Label: "Fourth", CurrentValue: "x", Values: []string{"x", "y"}},
-	}, 3, false)
+	}, 3, GetSettingsListTheme(), nil, nil, SettingsListOptions{EnableSearch: false})
+
 	list.Render(40)
 
 	DispatchMouseEvent(list, componentMouseEvent(MousePress, 1, 2))
@@ -176,7 +177,7 @@ func TestMouseIgnoresHoverAndClicksVisibleRowsAfterScrolling(t *testing.T) {
 					CurrentValue: "off", Values: []string{"off", "on"},
 				}
 			}
-			list := NewSettingsListWithOptions(items, 5, true)
+			list := NewSettingsList(items, 5, GetSettingsListTheme(), nil, nil, SettingsListOptions{EnableSearch: true})
 			list.cursor = 5
 			wheel := componentMouseEvent(MouseWheel, 1, row+2)
 			wheel.WheelDelta = 1
@@ -209,13 +210,13 @@ type submenuHost struct {
 	list *FilterableList
 }
 
-func newSubmenuHost(done func(*string)) *submenuHost {
+func newSubmenuHost(done func(*string, *SubmenuDoneOptions)) *submenuHost {
 	list := NewFilterableList("", []string{"First", "Second"})
 	list.EnableSearch = false
 	list.MaxVisible = 5
 	values := []string{"first", "second"}
-	list.onSelect = func(index int) { done(&values[index]) }
-	list.onCancel = func() { done(nil) }
+	list.onSelect = func(index int) { done(&values[index], nil) }
+	list.onCancel = func() { done(nil, nil) }
 	return &submenuHost{Container: NewContainer(list), list: list}
 }
 
@@ -226,17 +227,18 @@ func TestMouseSettingsListStaysFocusedWhenSubmenuClickClosesIt(t *testing.T) {
 	type change struct{ id, value string }
 	h := newAltHarness(t, 30, 6, TuiAltScreenOptions{})
 	var changes []change
-	list := NewSettingsListWithOptions([]SettingItem{
-		{ID: "theme", Label: "Theme", CurrentValue: "first", Submenu: func(_ string, done func(*string)) Component {
-			return newSubmenuHost(func(value *string) {
+	list := NewSettingsList([]SettingItem{
+		{ID: "theme", Label: "Theme", CurrentValue: "first", Submenu: func(_ string, done func(*string, *SubmenuDoneOptions)) Component {
+			return newSubmenuHost(func(value *string, options *SubmenuDoneOptions) {
 				if value != nil {
 					changes = append(changes, change{"theme", *value})
 				}
-				done(value)
+				done(value, options)
 			})
 		}},
 		{ID: "other", Label: "Other", CurrentValue: "off", Values: []string{"off", "on"}},
-	}, 5, false)
+	}, 5, GetSettingsListTheme(), nil, nil, SettingsListOptions{EnableSearch: false})
+
 	h.tui.Add(list)
 	h.tui.SetFocus(list)
 	h.start()
@@ -247,8 +249,8 @@ func TestMouseSettingsListStaysFocusedWhenSubmenuClickClosesIt(t *testing.T) {
 	if !slices.Equal(changes, []change{{"theme", "second"}}) {
 		t.Fatalf("changes = %v", changes)
 	}
-	if h.tui.FocusedComponent() != list {
-		t.Fatalf("focused component = %T, want the settings list", h.tui.FocusedComponent())
+	if h.tui.GetFocusedComponent() != list {
+		t.Fatalf("focused component = %T, want the settings list", h.tui.GetFocusedComponent())
 	}
 
 	// Keys reach the visible list again instead of the closed submenu.
@@ -269,7 +271,7 @@ func TestMousePositionsAndFocusesEditorThroughAltScreenDispatch(t *testing.T) {
 	h.start()
 
 	h.send("\x1b[<0;3;2M", "\x1b[<0;3;2m", "X")
-	if focused := h.tui.FocusedComponent(); focused != editor {
+	if focused := h.tui.GetFocusedComponent(); focused != editor {
 		t.Fatalf("focused component = %T, want editor", focused)
 	}
 	if got := editor.Text(); got != "heXllo" {

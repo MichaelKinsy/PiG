@@ -27,7 +27,7 @@ func (h *navigateRecordingHandle) NavigateTreeHandle(_ context.Context, target s
 // the binding survives an extension reload's runner swap.
 func TestInteractiveExtensionNavigateTreeIsBound(t *testing.T) {
 	handle := &navigateRecordingHandle{recordingCompactHandle: &recordingCompactHandle{}}
-	m := &InteractiveMode{opts: InteractiveOptions{SessionHandle: handle}, newRunner: inproc.NewRunner(nil, t.TempDir())}
+	m := &InteractiveMode{opts: InteractiveModeOptions{SessionHandle: handle}, newRunner: inproc.NewRunner(nil, t.TempDir())}
 	m.wireInprocContextActions()
 	result, err := m.newRunner.CreateCommandContext().NavigateTree("entry-1", &extension.NavigateTreeOptions{Summarize: true})
 	if err != nil || result.Cancelled || handle.target != "entry-1" || !handle.summarize {
@@ -58,7 +58,7 @@ func (h *blockingNavigateInitiationHandle) NavigateTreeHandle(ctx context.Contex
 // independent after admission.
 func TestInteractiveExtensionNavigateInitiationFollowsSessionAdmission(t *testing.T) {
 	handle := &blockingNavigateInitiationHandle{recordingCompactHandle: &recordingCompactHandle{}, release: make(chan struct{})}
-	m := &InteractiveMode{opts: InteractiveOptions{SessionHandle: handle}}
+	m := &InteractiveMode{opts: InteractiveModeOptions{SessionHandle: handle}}
 	initiated := make(chan struct{})
 	ctx := extension.WithCallInitiation(t.Context(), func() {
 		if !handle.entered.Load() {

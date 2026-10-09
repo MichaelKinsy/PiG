@@ -1,5 +1,7 @@
 package managementhttp
 
+// pi: packages/coding-agent/src/utils/management-http.ts
+
 import (
 	"context"
 	"errors"

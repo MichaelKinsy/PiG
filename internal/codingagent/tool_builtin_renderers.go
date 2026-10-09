@@ -42,6 +42,11 @@ func withBuiltInRenderers(name string, definition extension.ToolDefinition) exte
 	return definition
 }
 
+// computeEditsDiff computes the edit call's preview. Upstream's preview is a
+// promise continuation, so it never lands before the synchronous render that
+// follows renderCall; a test replaces it to hold the preview until that render.
+var computeEditsDiff = tools.ComputeEditsDiff
+
 // linesComponent renders the rows a function produces for a width.
 type linesComponent struct{ render func(width int) []string }
 
@@ -61,7 +66,7 @@ type builtInRenderState struct {
 	stopTick  chan struct{}
 
 	editArgsKey  string
-	editPreview  *tools.EditsDiffPreview
+	editPreview  tools.EditDiffOutcome
 	editPending  bool
 	editSettledE bool
 	// editCall reports that the built-in edit renderCall drew this card, so
@@ -109,16 +114,22 @@ func headerRenderCall(header func(json.RawMessage, string) string) extension.Too
 	}
 }
 
-func renderResultValue(result extension.AgentToolResult) agent.AgentToolResult {
+func renderResultValue(result any) agent.AgentToolResult {
+	value, _ := toolResultOf(result)
+	return value
+}
+
+// toolResultOf reads the tool result a tool card holds (a value or a pointer); ok is false when the card has none.
+func toolResultOf(result any) (agent.AgentToolResult, bool) {
 	switch value := result.(type) {
 	case agent.AgentToolResult:
-		return value
+		return value, true
 	case *agent.AgentToolResult:
 		if value != nil {
-			return *value
+			return *value, true
 		}
 	}
-	return agent.AgentToolResult{}
+	return agent.AgentToolResult{}, false
 }
 
 func stringArg(args any, keys ...string) (string, bool) {
@@ -201,7 +212,11 @@ func shellRenderResult(result extension.AgentToolResult, options extension.ToolR
 	value := renderResultValue(result)
 	details := shellDetailsFrom(value.Details)
 	footer := ""
-	if !startedAt.IsZero() {
+	// A final result's recorded duration wins: it is monotonic and survives reloads. The card's own clock is the fallback for
+	// live progress and for results stored without one. upstream: renderers/bash.ts:101-111
+	if !options.IsPartial && context.DurationMs != nil {
+		footer = themeFg(tui.ActiveTheme().Muted, "Took "+tui.FormatToolDuration(time.Duration(*context.DurationMs)*time.Millisecond))
+	} else if !startedAt.IsZero() {
 		label := "Took"
 		if options.IsPartial {
 			label = "Elapsed"
@@ -213,7 +228,7 @@ func shellRenderResult(result extension.AgentToolResult, options extension.ToolR
 		footer = themeFg(tui.ActiveTheme().Muted, label+" "+tui.FormatToolDuration(end.Sub(startedAt)))
 	}
 	return linesComponent{render: func(width int) []string {
-		lines := shellResultLines(value.Text(), details, options.IsPartial, options.Expanded, width)
+		lines := shellResultLines(toolResultTextOutput(value, context.ShowImages), details, options.IsPartial, options.Expanded, width)
 		if footer != "" {
 			lines = append(lines, tui.NewPaddedText("\n"+footer, 0, 0, nil).Render(width)...)
 		}
@@ -256,7 +271,7 @@ func readRenderResult(result extension.AgentToolResult, options extension.ToolRe
 	theme := tui.ActiveTheme()
 	value := renderResultValue(result)
 	rawPath, _ := stringArg(context.Args, "file_path", "path")
-	output := shellTextOutput(value.Text())
+	output := toolResultTextOutput(value, context.ShowImages)
 	lang := ""
 	if !context.IsError && rawPath != "" {
 		lang = tui.LanguageFromPath(rawPath)
@@ -334,9 +349,9 @@ func readTruncation(details any) *tools.TruncationResult {
 
 // listRenderResult is upstream grep.ts, find.ts and ls.ts renderResult.
 func listRenderResult(name string) extension.ToolRenderResultFunc {
-	return func(result extension.AgentToolResult, options extension.ToolRenderResultOptions, _ extension.Theme, _ extension.ToolRenderContext) extension.Component {
+	return func(result extension.AgentToolResult, options extension.ToolRenderResultOptions, _ extension.Theme, context extension.ToolRenderContext) extension.Component {
 		value := renderResultValue(result)
-		body := makeListBodyRenderer(name, value.Text(), value.Details)
+		body := makeListBodyRenderer(name, toolResultTextOutput(value, context.ShowImages), value.Details)
 		return linesComponent{render: func(width int) []string {
 			lines := body(width, options.Expanded)
 			if len(lines) == 0 {
@@ -496,11 +511,11 @@ func editRenderCall(args json.RawMessage, _ extension.Theme, context extension.T
 			if cancelled {
 				return
 			}
-			preview := tools.ComputeEditsDiff(path, edits, cwd)
+			preview := computeEditsDiff(path, edits, cwd)
 			state.mu.Lock()
 			current := !state.closed && (state.lifetime == nil || state.lifetime.Err() == nil) && state.editArgsKey == key
 			if current {
-				state.editPreview = &preview
+				state.editPreview = preview
 				state.editPending = false
 			}
 			state.mu.Unlock()
@@ -517,23 +532,25 @@ func editRenderCall(args json.RawMessage, _ extension.Theme, context extension.T
 		state.mu.Unlock()
 		theme := tui.ActiveTheme()
 		token := "toolPendingBg"
+		_, previewFailed := preview.(tools.EditDiffError)
 		switch {
-		case preview != nil && preview.Error != "":
+		case previewFailed:
 			token = "toolErrorBg"
 		case preview != nil:
 			token = "toolSuccessBg"
 		case settledError:
 			token = "toolErrorBg"
 		}
-		open := theme.Bg(token)
-		box := tui.NewPaddedBox(1, 1, func(text string) string { return open + text + tui.SGRBgReset })
+		open := theme.GetBgAnsi(token)
+		box := tui.NewPaddedBox(context.OutputPad, 1, func(text string) string { return open + text + tui.SGRBgReset })
 		box.AddChild(tui.NewPaddedText(header, 0, 0, nil))
 		if preview != nil {
 			box.AddChild(tui.NewSpacer(1))
-			if preview.Error != "" {
-				box.AddChild(tui.NewPaddedText(themeFg(theme.Error, preview.Error), 0, 0, nil))
-			} else {
-				diff := preview.Diff
+			switch outcome := preview.(type) {
+			case tools.EditDiffError:
+				box.AddChild(tui.NewPaddedText(themeFg(theme.Error, outcome.Error), 0, 0, nil))
+			case tools.EditDiffResult:
+				diff := outcome.Diff
 				box.AddChild(linesComponent{render: func(width int) []string { return diffRows(diff, width) }})
 			}
 		}
@@ -574,12 +591,12 @@ func editRenderResult(result extension.AgentToolResult, _ extension.ToolRenderRe
 	if ok {
 		key = editArgsKey(path, edits)
 	}
-	var preview *tools.EditsDiffPreview
+	var preview tools.EditDiffOutcome
 	state.mu.Lock()
 	if state.editCall {
 		if !context.IsError {
 			if diff, isString := editResultDiff(value.Details); isString {
-				state.editPreview = &tools.EditsDiffPreview{Diff: diff}
+				state.editPreview = tools.EditDiffResult{Diff: diff}
 				state.editArgsKey = key
 				state.editPending = false
 			}
@@ -590,8 +607,11 @@ func editRenderResult(result extension.AgentToolResult, _ extension.ToolRenderRe
 	state.mu.Unlock()
 
 	previewDiff, previewError := "", ""
-	if preview != nil {
-		previewDiff, previewError = preview.Diff, preview.Error
+	switch outcome := preview.(type) {
+	case tools.EditDiffResult:
+		previewDiff = outcome.Diff
+	case tools.EditDiffError:
+		previewError = outcome.Error
 	}
 	empty := linesComponent{render: func(int) []string { return nil }}
 	if context.IsError {
@@ -600,7 +620,7 @@ func editRenderResult(result extension.AgentToolResult, _ extension.ToolRenderRe
 		}
 		output := themeFg(tui.ActiveTheme().Error, value.Text())
 		return linesComponent{render: func(width int) []string {
-			return append([]string{""}, tui.NewPaddedText(output, 1, 0, nil).Render(width)...)
+			return append([]string{""}, tui.NewPaddedText(output, context.OutputPad, 0, nil).Render(width)...)
 		}}
 	}
 	diff, _ := editResultDiff(value.Details)
@@ -608,7 +628,7 @@ func editRenderResult(result extension.AgentToolResult, _ extension.ToolRenderRe
 		return empty
 	}
 	return linesComponent{render: func(width int) []string {
-		rows := diffRows(diff, max(1, width-2))
-		return append([]string{""}, tui.NewPaddedText(strings.Join(rows, "\n"), 1, 0, nil).Render(width)...)
+		rows := diffRows(diff, max(1, width-2*context.OutputPad))
+		return append([]string{""}, tui.NewPaddedText(strings.Join(rows, "\n"), context.OutputPad, 0, nil).Render(width)...)
 	}}
 }

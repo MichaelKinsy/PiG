@@ -29,7 +29,7 @@ func TestSessionShutdownReturnsWhileAServerIsStillConnecting(t *testing.T) {
 	host := newFakeHost()
 	entry := mcpext.McpServerEntry{Name: "slow", Config: extension.McpServerConfig{URL: "http://unused.invalid"}, Source: "test"}
 	ext := mcpext.New(host, mcpext.Options{
-		LoadConfig: func(mcpext.EventContext) mcpext.LoadedMcpConfig {
+		LoadConfig: func(context.Context) mcpext.LoadedMcpConfig {
 			return mcpext.LoadedMcpConfig{Servers: []mcpext.McpServerEntry{entry}}
 		},
 		CreateTransport: func(mcpext.McpServerEntry, string, mcp.AuthProvider) (mcp.Transport, error) {

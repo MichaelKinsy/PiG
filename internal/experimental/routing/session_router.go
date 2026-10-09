@@ -94,18 +94,37 @@ func runRouterClient[C comparable, T any](r *SessionRouter[C], client C, operati
 	r.mu.Unlock()
 	return result
 }
+
+// ExecuteServiceCall admits one service call and waits for its result.
 func (r *SessionRouter[C]) ExecuteServiceCall(ctx context.Context, call chord.ServiceCall, target protocol.RpcTarget, client C, publish chord.ServiceUpdatePublisher) (json.RawMessage, error) {
-	admitted := runRouterClient(r, client, func() (*routerResult[json.RawMessage], error) {
+	return r.QueueServiceCall(ctx, call, target, client, publish).Wait()
+}
+
+// QueuedServiceCall is a service call whose position in its client's admission order is fixed.
+type QueuedServiceCall struct {
+	admitted *routerResult[*routerResult[json.RawMessage]]
+}
+
+// QueueServiceCall fixes the call's position among its client's admissions before it returns, as upstream's
+// executeServiceCall does by calling runForClient synchronously (packages/server/src/session-router.ts:54).
+// Calls queued in sequence reach the Session endpoint in that sequence.
+func (r *SessionRouter[C]) QueueServiceCall(ctx context.Context, call chord.ServiceCall, target protocol.RpcTarget, client C, publish chord.ServiceUpdatePublisher) *QueuedServiceCall {
+	return &QueuedServiceCall{admitted: runRouterClient(r, client, func() (*routerResult[json.RawMessage], error) {
 		return r.startServiceCall(ctx, client, target, call, publish)
-	})
-	<-admitted.done
-	if admitted.err != nil {
-		return nil, admitted.err
+	})}
+}
+
+// Wait returns the admitted call's result or the admission error.
+func (q *QueuedServiceCall) Wait() (json.RawMessage, error) {
+	<-q.admitted.done
+	if q.admitted.err != nil {
+		return nil, q.admitted.err
 	}
-	result := admitted.value
+	result := q.admitted.value
 	<-result.done
 	return result.value, result.err
 }
+
 func (r *SessionRouter[C]) AttachClient(ctx context.Context, client C, sessionID string) error {
 	if r.options.IsClosing() {
 		return NewServerDrainingError()
@@ -312,6 +331,49 @@ func (r *SessionRouter[C]) attachClientNow(ctx context.Context, client C, sessio
 	return r.options.PublishAttachment(ctx, client, &protocol.SessionTarget{ServerId: r.options.ServerId, SessionId: sessionID, AttachmentId: attachment.id})
 }
 func (r *SessionRouter[C]) startServiceCall(ctx context.Context, client C, target protocol.RpcTarget, call chord.ServiceCall, publish chord.ServiceUpdatePublisher) (*routerResult[json.RawMessage], error) {
+	result, err := r.admitServiceCall(ctx, client, target, call, publish)
+	return result, err
+}
+
+// ServiceInitiator is an endpoint's admission boundary. Upstream invokes an endpoint synchronously, so the call's synchronous
+// prefix runs before the next call is admitted (packages/server/src/session-router.ts:207). A Go endpoint exposes that
+// prefix by implementing BeginInvokeService: it returns once the call is admitted, and the invocation delivers the outcome. It
+// reports chord.ErrInvocationAdmissionUnavailable for a call it cannot admit; the router then starts that call itself. The router
+// holds its lock during BeginInvokeService, so the endpoint must not block or call back into the router before it returns.
+type ServiceInitiator interface {
+	BeginInvokeService(context.Context, chord.ServiceCall, chord.ServiceUpdatePublisher) (*chord.ServiceInvocation, error)
+}
+
+// beginServiceCall admits one endpoint call. An endpoint without ServiceInitiator is started on a goroutine that has begun
+// running before this returns: consecutive calls then start in admission order, but the endpoint cannot observe its
+// position before an earlier call's goroutine reaches its first instruction.
+func beginServiceCall(endpoint RoutedServerServiceAttachment, ctx context.Context, call chord.ServiceCall, publish chord.ServiceUpdatePublisher, spawn func(func())) (*chord.ServiceInvocation, error) {
+	if initiator, ok := endpoint.(ServiceInitiator); ok {
+		invocation, err := initiator.BeginInvokeService(ctx, call, publish)
+		if !errors.Is(err, chord.ErrInvocationAdmissionUnavailable) {
+			return invocation, err
+		}
+	}
+	result := newRouterResult[json.RawMessage]()
+	begun := make(chan struct{})
+	spawn(func() {
+		close(begun)
+		result.value, result.err = endpoint.InvokeService(ctx, call, publish)
+		close(result.done)
+	})
+	<-begun
+	return chord.NewServiceInvocation(func(waitContext context.Context) (json.RawMessage, error) {
+		select {
+		case <-result.done:
+			return result.value, result.err
+		case <-waitContext.Done():
+			return nil, context.Cause(waitContext)
+		}
+	}), nil
+}
+
+// admitServiceCall registers the operation and begins its endpoint call.
+func (r *SessionRouter[C]) admitServiceCall(ctx context.Context, client C, target protocol.RpcTarget, call chord.ServiceCall, publish chord.ServiceUpdatePublisher) (*routerResult[json.RawMessage], error) {
 	if r.options.IsClosing() {
 		return nil, NewServerDrainingError()
 	}
@@ -330,8 +392,13 @@ func (r *SessionRouter[C]) startServiceCall(ctx context.Context, client C, targe
 	}
 	result := newRouterResult[json.RawMessage]()
 	attachment.operations[result] = true
+	invocation, err := beginServiceCall(attachment.lease, ctx, call, publish, r.work.Go)
+	if err != nil {
+		delete(attachment.operations, result)
+		return nil, err
+	}
 	r.work.Go(func() {
-		result.value, result.err = attachment.lease.InvokeService(ctx, call, publish)
+		result.value, result.err = invocation.Wait(context.Background())
 		close(result.done)
 		r.mu.Lock()
 		delete(attachment.operations, result)

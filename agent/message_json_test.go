@@ -2,6 +2,7 @@ package agent
 
 import (
 	"encoding/json"
+	"strings"
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/ai"
@@ -161,5 +162,65 @@ func TestAgentMessageJSONRejectsInvalidUnion(t *testing.T) {
 	}
 	if extension.Custom["role"] != "artifact" || extension.Custom["id"] != "a1" {
 		t.Fatalf("extension message = %#v", extension.Custom)
+	}
+}
+
+// upstream: packages/agent/src/agent-loop.ts createToolResultMessage (1.1.0) writes durationMs between isError and timestamp; a result without one has no key (#10549).
+func TestAgentMessageJSONToolResultDurationMs(t *testing.T) {
+	duration := int64(4200)
+	message := AgentMessage{ToolResult: &ToolResultMessage{
+		Role: RoleToolResult, ToolCallID: "call-1", ToolName: "bash",
+		Content: []ai.ToolResultMessageContent{ai.TextContent{Text: "ok"}}, DurationMs: &duration, Timestamp: 5,
+	}}
+	encoded, err := json.Marshal(message)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := `{"role":"toolResult","toolCallId":"call-1","toolName":"bash","content":[{"type":"text","text":"ok"}],"isError":false,"durationMs":4200,"timestamp":5}`
+	if string(encoded) != want {
+		t.Fatalf("Marshal = %s, want %s", encoded, want)
+	}
+	var decoded AgentMessage
+	if err := json.Unmarshal(encoded, &decoded); err != nil {
+		t.Fatal(err)
+	}
+	if decoded.ToolResult == nil || decoded.ToolResult.DurationMs == nil || *decoded.ToolResult.DurationMs != 4200 {
+		t.Fatalf("decoded = %#v", decoded.ToolResult)
+	}
+	// A result stored before durations were recorded decodes without one and encodes without the key.
+	var legacy AgentMessage
+	if err := json.Unmarshal([]byte(`{"role":"toolResult","toolCallId":"c","toolName":"bash","content":[],"isError":false,"timestamp":1}`), &legacy); err != nil {
+		t.Fatal(err)
+	}
+	if legacy.ToolResult.DurationMs != nil {
+		t.Fatalf("legacy durationMs = %v", *legacy.ToolResult.DurationMs)
+	}
+	reencoded, err := json.Marshal(legacy)
+	if err != nil || strings.Contains(string(reencoded), "durationMs") {
+		t.Fatalf("re-encoded = %s, %v", reencoded, err)
+	}
+}
+
+// upstream: event-stream.ts #time assigns durationMs when the provider pushes the final message, agent-loop.ts assigns thinkingLevel after that (#10549).
+func TestAgentMessageJSONAssistantDurationMsOrder(t *testing.T) {
+	duration := int64(40)
+	encoded, err := json.Marshal(AgentMessage{Assistant: &AssistantMessage{Role: RoleAssistant, Content: []ai.AssistantContentBlock{}, StopReason: ai.StopReasonStop, Timestamp: 7, DurationMs: &duration, ThinkingLevel: ai.ThinkingHigh}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.HasSuffix(string(encoded), `"timestamp":7,"durationMs":40,"thinkingLevel":"high"}`) {
+		t.Fatalf("assistant JSON = %s", encoded)
+	}
+}
+
+// Pi's providers build the output with its timestamp and set errorMessage in the catch block, so an errored message lists errorMessage after the timestamp (the live RPC events and the reloaded session agree).
+func TestAgentMessageJSONAssistantErrorMessageFollowsTimestamp(t *testing.T) {
+	duration := int64(3)
+	encoded, err := json.Marshal(AgentMessage{Assistant: &AssistantMessage{Role: RoleAssistant, Content: []ai.AssistantContentBlock{}, StopReason: ai.StopReasonError, ErrorMessage: "boom", Timestamp: 7, DurationMs: &duration, ThinkingLevel: ai.ThinkingOff}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.HasSuffix(string(encoded), `"stopReason":"error","timestamp":7,"errorMessage":"boom","durationMs":3,"thinkingLevel":"off"}`) {
+		t.Fatalf("assistant JSON = %s", encoded)
 	}
 }

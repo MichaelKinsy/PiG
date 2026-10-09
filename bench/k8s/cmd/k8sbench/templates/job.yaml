@@ -1,0 +1,112 @@
+# One Job runs one measurement session in one pod (bench/k8s, docs/site/docs/benchmarking.md).
+# Every value comes from the runner's configuration; `json` writes it as a quoted YAML flow value. In bundle mode the
+# container runs a public base image and waits for the runner to copy the artifact bundle into /bundle.
+# Requests equal limits and the CPU count is an integer, so the pod has Guaranteed QoS and a static
+# CPU manager can give it exclusive cores.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ json .Name }}
+  namespace: {{ json .Namespace }}
+  labels: {{ json .Labels }}
+spec:
+  backoffLimit: 0
+  activeDeadlineSeconds: {{ .DeadlineSeconds }}
+  ttlSecondsAfterFinished: {{ .TTLSeconds }}
+  template:
+    metadata:
+      labels: {{ json .Labels }}
+    spec:
+      restartPolicy: Never
+      enableServiceLinks: false
+      automountServiceAccountToken: false
+{{- if .ServiceAccountName }}
+      serviceAccountName: {{ json .ServiceAccountName }}
+{{- end }}
+{{- if .NodeSelector }}
+      nodeSelector: {{ json .NodeSelector }}
+{{- end }}
+{{- if .Node }}
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchFields:
+                  - key: metadata.name
+                    operator: In
+                    values: [{{ json .Node }}]
+{{- end }}
+{{- if .Tolerations }}
+      tolerations: {{ json .Tolerations }}
+{{- end }}
+{{- if .ImagePullSecrets }}
+      imagePullSecrets: {{ json .ImagePullSecrets }}
+{{- end }}
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+        runAsGroup: 65532
+        fsGroup: 65532
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: bench
+          image: {{ json .Image }}
+          imagePullPolicy: IfNotPresent
+          command: {{ json .Command }}
+          env:
+            - name: K8SBENCH_PLAN
+              value: {{ json .Plan }}
+            - name: NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: TMPDIR
+              value: /data/tmp
+            - name: HOME
+              value: /data/home
+{{- range .Env }}
+            - name: {{ json .Name }}
+              value: {{ json .Value }}
+{{- end }}
+          resources:
+            requests:
+              cpu: {{ json .CPU }}
+              memory: {{ json .Memory }}
+            limits:
+              cpu: {{ json .CPU }}
+              memory: {{ json .Memory }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          volumeMounts:
+            - name: data
+              mountPath: /data
+{{- if .Bundle }}
+            - name: bundle
+              mountPath: /bundle
+{{- end }}
+{{- if .PVC }}
+            - name: results
+              mountPath: /results
+{{- end }}
+      volumes:
+        - name: data
+          emptyDir:
+            sizeLimit: {{ json .ScratchSize }}
+{{- if .Bundle }}
+        - name: bundle
+          emptyDir:
+            sizeLimit: 2Gi
+{{- end }}
+{{- if .PVC }}
+        - name: results
+          persistentVolumeClaim:
+            claimName: {{ json .PVC }}
+{{- end }}

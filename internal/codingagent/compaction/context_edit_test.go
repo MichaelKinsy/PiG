@@ -83,7 +83,7 @@ func (e *editSession) custom(customType string, data any) string {
 
 func (e *editSession) customMessage(customType, content string) string {
 	e.t.Helper()
-	id, err := e.sess.AppendCustomMessage(customType, content, false, nil)
+	id, err := e.sess.AppendCustomMessageEntry(customType, content, false, nil)
 	if err != nil {
 		e.t.Fatal(err)
 	}
@@ -112,7 +112,9 @@ func (e *editSession) compact(summary, firstKept string, tokensBefore int) {
 	}
 }
 
-func (e *editSession) branch() []codingagent.SessionEntry { return e.sess.Branch(*e.sess.LeafID()) }
+func (e *editSession) branch() []codingagent.SessionEntry {
+	return e.sess.GetBranch(*e.sess.GetLeafID())
+}
 
 func (e *editSession) estimate() agent.ContextUsageEstimate {
 	return EstimateProjectedContextTokens(e.sess.BuildSessionProjection(), e.branch())
@@ -359,13 +361,13 @@ func TestTurnPrefixSummaryUsesMarkdownHeadingFraming(t *testing.T) {
 		return "prefix summary", nil, nil
 	})
 	prefix := []agent.AgentMessage{editUser("build the parser"), editAssistant("started on lexer.go", defaultEditUsage)}
-	result, err := Compact(context.Background(), CompactionPreparation{
+	result, err := CompactUsing(context.Background(), CompactionPreparation{
 		FirstKeptEntryID:   "keep",
 		TurnPrefixMessages: prefix,
 		IsSplitTurn:        true,
 		PreviousSummary:    "earlier checkpoint",
 		Settings:           CompactionSettings{ReserveTokens: 1000},
-	}, &ai.Model{}, completer, nil, "", "", nil, "")
+	}, &ai.Model{}, "", nil, "", "", completer, nil, nil, nil, ai.RetryCallbacks{}, "")
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -1,0 +1,261 @@
+[
+ {
+  "ids": [
+   "pkg:tui/.#ScrollView::property:clear"
+  ],
+  "targets": [
+   "tui/scroll_view.go#ScrollView.Clear"
+  ],
+  "production": [
+   "public-api:tui/scroll_view.go#ScrollView.Clear"
+  ],
+  "evidence": [
+   "test:tui/scroll_view_test.go#TestScrollViewMutatorsPanic"
+  ],
+  "rationale": "ScrollView.clear is the Go method ScrollView.Clear; signature reviewed against the upstream declaration (a boolean or style property is a getter method). Upstream throws `ScrollView child cannot be cleared`; Go panics with the same message (a throw in a void method)."
+ },
+ {
+  "ids": [
+   "pkg:tui/.#ScrollView::property:followEnd"
+  ],
+  "targets": [
+   "tui/scroll_view.go#ScrollView.FollowEnd"
+  ],
+  "production": [
+   "call:tui/tui_alt_screen_mouse.go#TuiAltScreen.compositeScrollToEndIndicator"
+  ],
+  "evidence": [
+   "test:tui/layout_scrollbar_test.go#TestScrollViewScrollToDisableFollowAtEnd"
+  ],
+  "rationale": "ScrollView.followEnd is the Go method ScrollView.FollowEnd; signature reviewed against the upstream declaration (a boolean or style property is a getter method)."
+ },
+ {
+  "ids": [
+   "pkg:tui/.#ScrollView::property:getContentWidth"
+  ],
+  "targets": [
+   "tui/scroll_view.go#ScrollView.GetContentWidth"
+  ],
+  "production": [
+   "call:tui/scroll_view.go#ScrollView.Render"
+  ],
+  "evidence": [
+   "test:tui/scroll_view_test.go#TestScrollViewGetContentWidthReservesColumnForAlwaysScrollbar"
+  ],
+  "rationale": "ScrollView.getContentWidth is the Go method ScrollView.GetContentWidth; signature reviewed against the upstream declaration (a boolean or style property is a getter method)."
+ },
+ {
+  "ids": [
+   "pkg:tui/.#ScrollView::property:isScrollbarActive"
+  ],
+  "targets": [
+   "tui/scroll_view.go#ScrollView.IsScrollbarActive"
+  ],
+  "production": [
+   "call:tui/layout.go#paintScrollbar"
+  ],
+  "evidence": [
+   "test:tui/tui_alt_screen_v087_test.go#TestAltScreenRevealsHiddenAutoScrollbarOnHover"
+  ],
+  "rationale": "ScrollView.isScrollbarActive is the Go method ScrollView.IsScrollbarActive; signature reviewed against the upstream declaration (a boolean or style property is a getter method)."
+ },
+ {
+  "ids": [
+   "pkg:tui/.#ScrollView::property:overscroll"
+  ],
+  "targets": [
+   "tui/scroll_view.go#ScrollView.Overscroll"
+  ],
+  "production": [
+   "call:tui/tui_alt_screen_mouse.go#TuiAltScreen.routeWheel"
+  ],
+  "evidence": [
+   "test:tui/scroll_view_test.go#TestScrollViewDefaults"
+  ],
+  "rationale": "ScrollView.overscroll is the Go method ScrollView.Overscroll; signature reviewed against the upstream declaration (a boolean or style property is a getter method)."
+ },
+ {
+  "ids": [
+   "pkg:tui/.#ScrollView::property:primary"
+  ],
+  "targets": [
+   "tui/scroll_view.go#ScrollView.Primary"
+  ],
+  "production": [
+   "public-api:tui/scroll_view.go#ScrollView.Primary"
+  ],
+  "evidence": [
+   "test:tui/scroll_view_test.go#TestScrollViewDefaults"
+  ],
+  "rationale": "ScrollView.primary is the Go method ScrollView.Primary; signature reviewed against the upstream declaration (a boolean or style property is a getter method)."
+ },
+ {
+  "ids": [
+   "pkg:tui/.#ScrollView::property:render"
+  ],
+  "targets": [
+   "tui/scroll_view.go#ScrollView.Render"
+  ],
+  "production": [
+   "public-api:tui/scroll_view.go#ScrollView.Render"
+  ],
+  "evidence": [
+   "test:tui/scroll_view_test.go#TestScrollViewRenderPadsWhenScrollbarReserved"
+  ],
+  "rationale": "ScrollView.render is the Go method ScrollView.Render; signature reviewed against the upstream declaration (a boolean or style property is a getter method)."
+ },
+ {
+  "ids": [
+   "pkg:tui/.#ScrollView::property:scrollbar"
+  ],
+  "targets": [
+   "tui/scroll_view.go#ScrollView.Scrollbar"
+  ],
+  "production": [
+   "call:tui/layout.go#getScrollbarGeometry"
+  ],
+  "evidence": [
+   "test:internal/codingagent/chat_viewport_test.go#TestCreateChatViewportDefaultsScrollbarToAuto",
+   "test:internal/codingagent/interactive_teardown_test.go#TestOnSettingAppliedFullscreenScrollbarAppliesLive"
+  ],
+  "rationale": "ScrollView.scrollbar is the Go method ScrollView.Scrollbar; signature reviewed against the upstream declaration (a boolean or style property is a getter method)."
+ },
+ {
+  "ids": [
+   "pkg:tui/.#ScrollView::property:scrollbarThumbStyle"
+  ],
+  "targets": [
+   "tui/scroll_view.go#ScrollView.ScrollbarThumbStyle"
+  ],
+  "production": [
+   "call:tui/layout.go#paintScrollbar"
+  ],
+  "evidence": [
+   "test:internal/codingagent/interactive_test.go#TestBuildChatViewportWiresLiveThemedScrollbar"
+  ],
+  "rationale": "ScrollView.scrollbarThumbStyle is the Go method ScrollView.ScrollbarThumbStyle; signature reviewed against the upstream declaration (a boolean or style property is a getter method)."
+ },
+ {
+  "ids": [
+   "pkg:tui/.#ScrollView::property:scrollbarTrackStyle"
+  ],
+  "targets": [
+   "tui/scroll_view.go#ScrollView.ScrollbarTrackStyle"
+  ],
+  "production": [
+   "call:tui/layout.go#paintScrollbar"
+  ],
+  "evidence": [
+   "test:internal/codingagent/interactive_test.go#TestBuildChatViewportWiresLiveThemedScrollbar"
+  ],
+  "rationale": "ScrollView.scrollbarTrackStyle is the Go method ScrollView.ScrollbarTrackStyle; signature reviewed against the upstream declaration (a boolean or style property is a getter method)."
+ },
+ {
+  "ids": [
+   "pkg:tui/.#ScrollView::property:scrollTo"
+  ],
+  "targets": [
+   "tui/scroll_view.go#ScrollView.ScrollTo",
+   "tui/scroll_view.go#ScrollView.ScrollToWithOptions"
+  ],
+  "production": [
+   "call:tui/tui_alt_screen_input.go#TuiAltScreen.scrollToPrompt"
+  ],
+  "evidence": [
+   "test:tui/scroll_view_test.go#TestScrollViewScrollToClamps",
+   "test:tui/layout_scrollbar_test.go#TestScrollViewScrollToDisableFollowAtEnd"
+  ],
+  "rationale": "scrollTo(scrollTop, options?) is the pair ScrollTo(scrollTop) and ScrollToWithOptions(scrollTop, ScrollViewScrollToOptions): Go has no optional argument."
+ },
+ {
+  "ids": [
+   "pkg:tui/.#ScrollView::property:scrollToEnd"
+  ],
+  "targets": [
+   "tui/scroll_view.go#ScrollView.ScrollToEnd"
+  ],
+  "production": [
+   "call:internal/experimental/durable_tui.go#durableTui.Apply"
+  ],
+  "evidence": [
+   "test:tui/layout_scrollbar_test.go#TestLayoutRendersProportionalGlyphScrollbar"
+  ],
+  "rationale": "ScrollView.scrollToEnd is the Go method ScrollView.ScrollToEnd; signature reviewed against the upstream declaration (a boolean or style property is a getter method)."
+ },
+ {
+  "ids": [
+   "pkg:tui/.#ScrollView::property:scrollToStart"
+  ],
+  "targets": [
+   "tui/scroll_view.go#ScrollView.ScrollToStart"
+  ],
+  "production": [
+   "call:tui/tui_alt_screen.go#TuiAltScreen.ScrollToTop"
+  ],
+  "evidence": [
+   "test:tui/layout_scrollbar_test.go#TestLayoutRendersProportionalGlyphScrollbar"
+  ],
+  "rationale": "ScrollView.scrollToStart is the Go method ScrollView.ScrollToStart; signature reviewed against the upstream declaration (a boolean or style property is a getter method)."
+ },
+ {
+  "ids": [
+   "pkg:tui/.#ScrollView::property:setScrollbarActive"
+  ],
+  "targets": [
+   "tui/scroll_view.go#ScrollView.SetScrollbarActive"
+  ],
+  "production": [
+   "call:tui/tui_alt_screen_mouse.go#TuiAltScreen.unlockAndApplyHover"
+  ],
+  "evidence": [
+   "test:tui/layout_scrollbar_test.go#TestLayoutRendersProportionalGlyphScrollbar"
+  ],
+  "rationale": "ScrollView.setScrollbarActive is the Go method ScrollView.SetScrollbarActive; signature reviewed against the upstream declaration (a boolean or style property is a getter method)."
+ },
+ {
+  "ids": [
+   "pkg:tui/.#ScrollView::property:updateLayout"
+  ],
+  "targets": [
+   "tui/scroll_view.go#ScrollView.UpdateLayout"
+  ],
+  "production": [
+   "public-api:tui/scroll_view.go#ScrollView.UpdateLayout"
+  ],
+  "evidence": [
+   "test:internal/codingagent/interactive_teardown_test.go#TestStopInteractiveTuiDisposesTranscriptView",
+   "test:tui/layout_scrollbar_test.go#TestScrollViewScrollToDisableFollowAtEnd"
+  ],
+  "rationale": "ScrollView.updateLayout is the Go method ScrollView.UpdateLayout; signature reviewed against the upstream declaration (a boolean or style property is a getter method)."
+ },
+ {
+  "ids": [
+   "pkg:tui/.#ScrollView::property:addChild"
+  ],
+  "targets": [
+   "tui/scroll_view.go#ScrollView.Add"
+  ],
+  "production": [
+   "public-api:tui/scroll_view.go#ScrollView.Add"
+  ],
+  "evidence": [
+   "test:tui/scroll_view_test.go#TestScrollViewMutatorsPanic"
+  ],
+  "rationale": "ScrollView.addChild is ScrollView.Add; upstream throws `ScrollView has exactly one child` and Go panics with the same message (a throw in a void method). Closed as public-api-tested: only tests call it."
+ },
+ {
+  "ids": [
+   "pkg:tui/.#ScrollView::property:removeChild"
+  ],
+  "targets": [
+   "tui/scroll_view.go#ScrollView.Remove"
+  ],
+  "production": [
+   "public-api:tui/scroll_view.go#ScrollView.Remove"
+  ],
+  "evidence": [
+   "test:tui/scroll_view_test.go#TestScrollViewMutatorsPanic"
+  ],
+  "rationale": "ScrollView.removeChild is ScrollView.Remove; upstream throws `ScrollView child cannot be removed` and Go panics with the same message (a throw in a void method). Closed as public-api-tested: only tests call it."
+ }
+]

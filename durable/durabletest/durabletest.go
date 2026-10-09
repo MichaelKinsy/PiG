@@ -10,10 +10,12 @@ package durabletest
 import (
 	"bytes"
 	"fmt"
+	"math"
 	"reflect"
 	"strings"
 	"testing"
 
+	chorddelta "github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/durable"
 	"github.com/MichaelKinsy/PiG/extensions/sdk/json"
 )
@@ -23,7 +25,8 @@ import (
 // Values compare by their JSON form, as upstream's Vitest matchers compare plain data: absent optional fields equal
 // missing ones, and every Go number type compares by value.
 type StorageConformanceAssertions interface {
-	Ok(value bool, message string)
+	// Ok asserts that value is truthy as JavaScript defines it; message is optional.
+	Ok(value any, message ...string)
 	StrictEqual(actual, expected any)
 	DeepEqual(actual, expected any)
 	PartialDeepEqual(actual, expected any)
@@ -54,11 +57,34 @@ func CreateTestingAssertions(tb testing.TB) StorageConformanceAssertions {
 
 type testingAssertions struct{ tb testing.TB }
 
-func (assertions testingAssertions) Ok(value bool, message string) {
+func (assertions testingAssertions) Ok(value any, message ...string) {
 	assertions.tb.Helper()
-	if !value {
-		assertions.tb.Fatalf("expected a truthy value: %s", message)
+	if !jsTruthy(value) {
+		assertions.tb.Fatalf("expected a truthy value: %s", strings.Join(message, " "))
 	}
+}
+
+// jsTruthy is JavaScript truthiness for a Go value: nil (undefined or null), false, 0, NaN and "" are falsy; every other value, including an empty slice or map, is truthy.
+func jsTruthy(value any) bool {
+	if value == nil {
+		return false
+	}
+	v := reflect.ValueOf(value)
+	switch v.Kind() {
+	case reflect.Bool:
+		return v.Bool()
+	case reflect.String:
+		return v.Len() != 0
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+		return v.Int() != 0
+	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uintptr:
+		return v.Uint() != 0
+	case reflect.Float32, reflect.Float64:
+		return v.Float() != 0 && !math.IsNaN(v.Float())
+	case reflect.Pointer, reflect.Map, reflect.Slice, reflect.Interface, reflect.Func, reflect.Chan:
+		return !v.IsNil()
+	}
+	return true
 }
 
 func (assertions testingAssertions) StrictEqual(actual, expected any) {
@@ -127,12 +153,17 @@ func Describe(value any) string {
 func MatchObject(actual, expected any) bool {
 	switch want := expected.(type) {
 	case map[string]any:
-		got, ok := actual.(map[string]any)
-		if !ok {
+		var lookup func(string) (any, bool)
+		switch got := actual.(type) {
+		case map[string]any:
+			lookup = func(key string) (any, bool) { item, present := got[key]; return item, present }
+		case *chorddelta.JsonObject:
+			lookup = got.Get // a stored object read back from text
+		default:
 			return false
 		}
 		for key, value := range want {
-			item, present := got[key]
+			item, present := lookup(key)
 			if !present || !MatchObject(item, value) {
 				return false
 			}

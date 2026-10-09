@@ -1,17 +1,17 @@
-version = "1.0.3"
+version = "1.1.0"
 
 [[files]]
 path = "packages/agent/src/agent-loop.ts"
 disposition = "deferred"
 contracts = ["concurrent-joined", "microtask-ordering"]
-evidence = ["test:test/extension-conformance/tool_dispatch_test.go", "test:coding/extension/host/subprocess/tool_dispatch_wire_test.go", "test:cmd/pig/audit_992_subprocess_tool_dispatch_test.go", "test:extensions/sdk/tool_prepare_arguments_test.go", "test:extensions/sdk-py/tests/test_tool_dispatch.py", "test:extensions/sdk-rs/tests/tool_dispatch_wire.rs"]
+evidence = ["test:test/extension-conformance/tool_dispatch_test.go", "test:coding/extension/host/subprocess/tool_dispatch_wire_test.go", "test:coding/cli/audit_992_subprocess_tool_dispatch_test.go", "test:extensions/sdk/tool_prepare_arguments_test.go", "test:extensions/sdk-py/tests/test_tool_dispatch.py", "test:extensions/sdk-rs/tests/tool_dispatch_wire.rs"]
 rationale = "Extension tool dispatch: prepareToolCall (:707-716) runs the tool's prepareArguments, then validates the result, so a subprocess tool is asked for its prepared arguments (tool_prepare_arguments, awaited by the source-order loop) before the host validates. executeToolCallsParallel (:619-647, 820-837) invokes every prepared call through Promise.all(map) in source order and each reaches tool.execute synchronously: the host writes a batch's tool_call requests in source order (one call lane per connection, each call releasing its place once its request is written) and every SDK runtime starts handlers in arrival order. Completion is joined, and tool_execution_end and results keep the source-order rules the agent package already tests. Existing full-file async obligations outside extension tool dispatch remain deferred."
 
 [[files]]
 path = "packages/agent/src/agent.ts"
 disposition = "deferred"
 contracts = ["awaited", "cancellable", "microtask-ordering"]
-evidence = ["test:agent/prompt_run_test.go", "test:coding/session_preflight_cancellation_test.go", "test:coding/session_preflight_test.go", "test:cmd/pig/rpc_preflight_admission_test.go", "test:cmd/pig/rpc_prompt_admission_test.go", "scenario:test/parity/scenarios/rpc/13-rpc-steering-queue.toml", "probe:docs/findings/rpc-preflight-admission.md", "probe:docs/findings/pr70-steering-admission.md"]
+evidence = ["test:agent/prompt_run_test.go", "test:coding/session_preflight_cancellation_test.go", "test:coding/session_preflight_test.go", "test:coding/cli/rpc_preflight_admission_test.go", "test:coding/cli/rpc_prompt_admission_test.go", "scenario:test/parity/scenarios/rpc/13-rpc-steering-queue.toml", "probe:docs/findings/rpc-preflight-admission.md", "probe:docs/findings/pr70-steering-admission.md"]
 rationale = "Prompt claim, first-event dispatch, concurrent-run rejection and release are separated so RPC preflight can settle before Agent execution. The claimed run must drain even after Start failure or cancellation. Existing full-file async obligations outside prompt admission remain deferred."
 
 [[files]]
@@ -55,6 +55,13 @@ disposition = "deferred"
 contracts = []
 evidence = []
 rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`ai/bedrock.go`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/ai/src/api/classifier-shared.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "async/Promise source new in Pi 1.1.0; its per-file ordering/cancellation/error contract has not been reviewed. The port of this file is tracked by test/parity/upstream-sync/v1.1.0.toml."
 
 [[files]]
 path = "packages/ai/src/api/cloudflare-ai-binding.ts"
@@ -132,6 +139,20 @@ disposition = "deferred"
 contracts = []
 evidence = []
 rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`ai/openai.go`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/ai/src/api/openai-decisions.lazy.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "async/Promise source new in Pi 1.1.0; its per-file ordering/cancellation/error contract has not been reviewed. The port of this file is tracked by test/parity/upstream-sync/v1.1.0.toml."
+
+[[files]]
+path = "packages/ai/src/api/openai-decisions.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "async/Promise source new in Pi 1.1.0; its per-file ordering/cancellation/error contract has not been reviewed. The port of this file is tracked by test/parity/upstream-sync/v1.1.0.toml."
 
 [[files]]
 path = "packages/ai/src/api/openai-responses-shared.ts"
@@ -313,7 +334,7 @@ path = "packages/ai/src/cli.ts"
 disposition = "deferred"
 contracts = []
 evidence = []
-rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`cmd/pig/auth_commands.go (login/logout)`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`coding/cli/auth_commands.go (login/logout)`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
 
 [[files]]
 path = "packages/ai/src/compat.ts"
@@ -334,7 +355,7 @@ path = "packages/ai/src/env-api-keys.ts"
 disposition = "deferred"
 contracts = []
 evidence = []
-rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`cmd/pig/main.go`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`coding/cli/main.go`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
 
 [[files]]
 path = "packages/ai/src/images-api-registry.ts"
@@ -376,7 +397,7 @@ path = "packages/ai/src/providers/anthropic.ts"
 disposition = "deferred"
 contracts = []
 evidence = []
-rationale = "PORT_MAP marks this file 🟡 partial: `ai/anthropic.go + ai/anthropic_client.go + ai/oauth_anthropic.go + internal/codingagent/model_registry.go + coding/model.go (catalog; env auth in upstream order: ANTHROPIC_AUTH_TOKEN as an Authorization bearer header, then ANTHROPIC_OAUTH_TOKEN, then ANTHROPIC_API_KEY; subscription OAuth login, resolved per request in coding/model.go, whose sk-ant-oat token requests carry the Claude Code identity; tests in ai/anthropic_oauth_test.go, internal/codingagent/anthropic_env_auth_test.go, coding/anthropic_auth_test.go, cmd/pig/model_anthropic_auth_test.go); missing: a stored auth.json credential does not outrank ambient ANTHROPIC_OAUTH_TOKEN/ANTHROPIC_API_KEY in cmd/pig/model.go and coding/model.go (upstream resolveProviderAuth consults it first), and a stored api_key credential never reaches Anthropic requests`; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+rationale = "PORT_MAP marks this file 🟡 partial: `ai/anthropic.go + ai/anthropic_client.go + ai/oauth_anthropic.go + internal/codingagent/model_registry.go + coding/model.go (catalog; env auth in upstream order: ANTHROPIC_AUTH_TOKEN as an Authorization bearer header, then ANTHROPIC_OAUTH_TOKEN, then ANTHROPIC_API_KEY; subscription OAuth login, resolved per request in coding/model.go, whose sk-ant-oat token requests carry the Claude Code identity; tests in ai/anthropic_oauth_test.go, internal/codingagent/anthropic_env_auth_test.go, coding/anthropic_auth_test.go, coding/cli/model_anthropic_auth_test.go); missing: a stored auth.json credential does not outrank ambient ANTHROPIC_OAUTH_TOKEN/ANTHROPIC_API_KEY in coding/cli/model.go and coding/model.go (upstream resolveProviderAuth consults it first), and a stored api_key credential never reaches Anthropic requests`; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
 
 [[files]]
 path = "packages/ai/src/providers/azure.ts"
@@ -523,7 +544,7 @@ path = "packages/coding-agent/src/cli/config-selector.ts"
 disposition = "deferred"
 contracts = []
 evidence = []
-rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`cmd/pig/config_command.go + tui/config_selector.go`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`coding/cli/config_command.go + tui/config_selector.go`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
 
 [[files]]
 path = "packages/coding-agent/src/cli/credential-print.ts"
@@ -572,7 +593,7 @@ path = "packages/coding-agent/src/cli/project-trust.ts"
 disposition = "deferred"
 contracts = []
 evidence = []
-rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`cmd/pig/project_trust.go`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`coding/cli/project_trust.go`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
 
 [[files]]
 path = "packages/coding-agent/src/cli/session-picker.ts"
@@ -606,7 +627,7 @@ rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`coding/
 path = "packages/coding-agent/src/core/agent-session.ts"
 disposition = "deferred"
 contracts = ["awaited", "concurrent-joined", "cancellable", "microtask-ordering"]
-evidence = ["test:coding/session_retry_scheduler_test.go", "test:coding/session_model_runtime_request_test.go", "test:cmd/pig/rpc_retry_reactions_test.go", "scenario:test/parity/scenarios/rpc/17-rpc-abort-retry.toml", "test:coding/session_model_dispatch_test.go", "test:coding/session_preflight_test.go", "test:cmd/pig/rpc_preflight_admission_test.go", "scenario:test/parity/scenarios/rpc/13-rpc-steering-queue.toml", "scenario:test/parity/scenarios/rpc/31-rpc-cycle-await-interleaving.toml", "scenario:test/parity/scenarios/rpc/32-rpc-cycle-prefix-and-completion.toml", "scenario:test/parity/scenarios/rpc/36-rpc-preflight-admission.toml", "probe:docs/findings/rpc-command-dispatch.md", "probe:docs/findings/rpc-preflight-admission.md", "probe:docs/findings/pr70-steering-admission.md"]
+evidence = ["test:coding/session_retry_scheduler_test.go", "test:coding/session_model_runtime_request_test.go", "test:coding/cli/rpc_retry_reactions_test.go", "scenario:test/parity/scenarios/rpc/17-rpc-abort-retry.toml", "test:coding/session_model_dispatch_test.go", "test:coding/session_preflight_test.go", "test:coding/cli/rpc_preflight_admission_test.go", "scenario:test/parity/scenarios/rpc/13-rpc-steering-queue.toml", "scenario:test/parity/scenarios/rpc/31-rpc-cycle-await-interleaving.toml", "scenario:test/parity/scenarios/rpc/32-rpc-cycle-prefix-and-completion.toml", "scenario:test/parity/scenarios/rpc/36-rpc-preflight-admission.toml", "probe:docs/findings/rpc-command-dispatch.md", "probe:docs/findings/rpc-preflight-admission.md", "probe:docs/findings/pr70-steering-admission.md"]
 rationale = "Model-cycle prefix/notification and prompt preflight admission are covered. Input and before_agent_start awaits do not reserve the Agent or hold the Session run lock; streaming is sampled after input, normalization follows before_agent_start, and acceptance precedes the Agent claim. Suspended preflight permits another prompt and both queues. Retry cancellation queues its catch before command replies and resolves the awaited retry in a later reaction; the Go host scheduler binding joins both phases. Session abort cancels the Agent signal without turning it into forced caller-context cancellation. The complete Session Promise contract remains deferred for other replacement, retry and compaction obligations."
 
 [[files]]
@@ -726,13 +747,13 @@ path = "packages/coding-agent/src/core/model-resolver.ts"
 disposition = "deferred"
 contracts = []
 evidence = []
-rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`cmd/pig/model.go`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`coding/cli/model.go`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
 
 [[files]]
 path = "packages/coding-agent/src/core/model-runtime.ts"
 disposition = "deferred"
 contracts = ["awaited", "concurrent-joined", "cancellable", "detached-owned", "microtask-ordering"]
-evidence = ["test:coding/model_availability_failfast_test.go", "test:coding/model_registration_refresh_test.go", "test:coding/model_registration_snapshot_test.go", "test:internal/codingagent/native_provider_registration_test.go", "test:cmd/pig/startup_native_provider_test.go", "test:internal/codingagent/registration_refresh_hold_test.go", "test:coding/services_model_tasks_test.go", "test:internal/codingagent/model_tasks_test.go", "test:internal/codingagent/model_availability_failfast_test.go", "test:cmd/pig/model_tasks_exit_test.go", "scenario:test/parity/scenarios/model-runtime-store-catalog/31-availability-failfast.toml", "test:coding/model_availability_upstream_test.go", "test:coding/model_availability_boundaries_test.go", "test:coding/model_availability_native_test.go", "test:coding/model_availability_create_test.go", "test:coding/model_availability_subscription_test.go", "test:coding/model_runtime_native_upstream_test.go", "test:coding/model_runtime_native_async_test.go", "test:coding/model_refresh_metadata_test.go", "test:coding/custom_provider_subprocess_test.go", "test:test/extension-conformance/provider_stream_test.go", "scenario:test/parity/scenarios/providers-faux-streaming/22-extension-provider-stream.toml", "scenario:test/parity/scenarios/providers-faux-streaming/23-metadata-refresh-and-native-result.toml", "scenario:test/parity/scenarios/model-runtime-store-catalog/25-native-provider-compat.toml"]
+evidence = ["test:coding/model_availability_failfast_test.go", "test:coding/model_registration_refresh_test.go", "test:coding/model_registration_snapshot_test.go", "test:internal/codingagent/native_provider_registration_test.go", "test:coding/cli/startup_native_provider_test.go", "test:internal/codingagent/registration_refresh_hold_test.go", "test:coding/services_model_tasks_test.go", "test:internal/codingagent/model_tasks_test.go", "test:internal/codingagent/model_availability_failfast_test.go", "test:coding/cli/model_tasks_exit_test.go", "scenario:test/parity/scenarios/model-runtime-store-catalog/31-availability-failfast.toml", "test:coding/model_availability_upstream_test.go", "test:coding/model_availability_boundaries_test.go", "test:coding/model_availability_native_test.go", "test:coding/model_availability_create_test.go", "test:coding/model_availability_subscription_test.go", "test:coding/model_runtime_native_upstream_test.go", "test:coding/model_runtime_native_async_test.go", "test:coding/model_refresh_metadata_test.go", "test:coding/custom_provider_subprocess_test.go", "test:test/extension-conformance/provider_stream_test.go", "scenario:test/parity/scenarios/providers-faux-streaming/22-extension-provider-stream.toml", "scenario:test/parity/scenarios/providers-faux-streaming/23-metadata-refresh-and-native-result.toml", "scenario:test/parity/scenarios/model-runtime-store-catalog/25-native-provider-compat.toml"]
 rationale = "Native login, deferred fetch/cancel and refresh await their provider-owned operations. Shared ai.Models owns cancelled callbacks and rejects late publication; the coding coordinator joins its refresh waiters. Full and provider-scoped availability passes generation-check snapshot and error publication; stale operations still return their errors without replacing current state. Credential synchronization awaits availability before notifying consumers. Cancellation retains the latest non-cancelled error, and synchronous snapshot/auth-type getters perform no credential I/O. Native compatibility cases and real Session dispatch are reviewed. Availability Promise.all rejects on the first settled error without cancelling its siblings; Services owns and drains their work, and Close stops admission and cancels the shared lifetime. Success still waits for all children, and per-provider error maps retain completion order. Caller values, cancellation causes/deadlines and retained Done observers survive early settlement. Runtime.Close does not close caller-owned Services. Provider registration and removal return after the synchronous snapshot projection, including registerProvider's provisional configured auth: the projection rereads every provider's catalog and publishes the whole catalog of every configured provider, so account-filtered membership widens until the queued refresh recomputes it, as in Pi's updateModelSnapshot, and it invalidates availability passes that read the catalog earlier. Pi's unawaited `void this.refresh({ allowNetwork: false })` is a microtask continuation that cannot pass its first await before the registering caller yields and never runs concurrently with provider callbacks; PiG queues it and runs one pass for the registrations queued before it starts on the Services task group, at the start of the caller's next awaited model-runtime call (Refresh, GetAvailable, CheckAuth, Login, Logout), where only a caller covering every provider waits for it and a provider-scoped caller does not, since Pi launches the refresh unawaited and scoped calls select only their own providers, or when an extension host registration returns after startup, without waiting (startup registrations stay queued until the startup refresh, which runs after every extension factory; an interactive /reload holds the queue until the host has loaded every extension); a registration queued while a pass runs gets its own concurrent pass that supersedes the running one. Startup awaits createAgentSessionServices' local refresh after flushing extension registrations (agent-session-services.ts:182), which yields to that pass before model resolution. No provider request and no free goroutine runs it. The pass has no signal: the yielding caller's cancellation stops only its wait, Services.Close cancels and drains it, its failure reaches GetError only, and listener notification runs on listener-owned goroutines. A full refresh reloads models.json and recomposes every provider, even with an aborted signal (ModelConfig.load takes no signal), so it supersedes in-flight provider refreshes. Legacy facade contracts remain under the model-registry test obligation; this file is not claimed async-closed."
 
 [[files]]
@@ -760,7 +781,7 @@ rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`interna
 path = "packages/coding-agent/src/core/package-manager.ts"
 disposition = "deferred"
 contracts = ["awaited", "concurrent-joined"]
-evidence = ["test:cmd/pig/package_cli_parity_test.go", "test:cmd/pig/package_git_parity_test.go", "test:cmd/pig/package_process_test.go"]
+evidence = ["test:coding/cli/package_cli_parity_test.go", "test:coding/cli/package_git_parity_test.go", "test:coding/cli/package_process_test.go"]
 rationale = "Package mutation commands block until the child exits, stream inherited output before reporting failure, and persist only after success. npm metadata checks precede per-scope batches and Git updates; four-worker pools bound metadata and Git work and join started operations. Git ref reconciliation waits for fetch, compares commits, then resets/cleans/installs or repairs only missing dependencies. Full resolve/temporary-source and startup-update async behavior remains unreviewed, so this file is not async-closed."
 
 [[files]]
@@ -768,7 +789,7 @@ path = "packages/coding-agent/src/core/project-trust.ts"
 disposition = "deferred"
 contracts = []
 evidence = []
-rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`cmd/pig/project_trust.go + internal/codingagent/trust_manager.go`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`coding/cli/project_trust.go + internal/codingagent/trust_manager.go`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
 
 [[files]]
 path = "packages/coding-agent/src/core/provider-composer.ts"
@@ -789,7 +810,7 @@ path = "packages/coding-agent/src/core/resource-loader.ts"
 disposition = "deferred"
 contracts = []
 evidence = []
-rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`coding/packagecontent/packagecontent.go + internal/codingagent/resources.go + cmd/pig/configured_resources.go + internal/codingagent/prompt_templates.go + internal/codingagent/skills.go + cmd/pig/config_command.go + cmd/pig/reload_resources.go + cmd/pig/resource_source_info.go + internal/codingagent/interactive.go + internal/codingagent/reload_resources.go`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`coding/packagecontent/packagecontent.go + internal/codingagent/resources.go + coding/cli/configured_resources.go + internal/codingagent/prompt_templates.go + internal/codingagent/skills.go + coding/cli/config_command.go + coding/cli/reload_resources.go + coding/cli/resource_source_info.go + internal/codingagent/interactive.go + internal/codingagent/reload_resources.go`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
 
 [[files]]
 path = "packages/coding-agent/src/core/runtime-credentials.ts"
@@ -1223,7 +1244,7 @@ path = "packages/coding-agent/src/extensions/llama/index.ts"
 disposition = "deferred"
 contracts = []
 evidence = []
-rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`internal/codingagent/llama/index.go + internal/codingagent/interactive_llama.go + internal/codingagent/slash_commands.go + cmd/pig/rpc_mode.go`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`internal/codingagent/llama/index.go + internal/codingagent/interactive_llama.go + internal/codingagent/slash_commands.go + coding/cli/rpc_mode.go`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
 
 [[files]]
 path = "packages/coding-agent/src/extensions/llama/provider.ts"
@@ -1241,24 +1262,24 @@ rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`interna
 
 [[files]]
 path = "packages/coding-agent/src/extensions/mcp/cli.ts"
-disposition = "deferred"
-contracts = []
-evidence = []
-rationale = "async/Promise source new in 0.99.1; PORT_MAP status ⬜ ((not started: the pi mcp subcommand family)); no per-file ordering, cancellation and error contract has been reviewed yet, and no evidence is claimed. Review with the owning family before marking translated."
+disposition = "translated"
+contracts = ["awaited", "cancellable"]
+evidence = ["test:coding/mcp_oauth_session_upstream_test.go#TestAgentSessionMCPOAuthGivesUpOnPigMcpLoginAfterTimeoutAlsoWhileTheAuthorizationServerHangs", "test:coding/mcpext/oauth_cancel_test.go#TestSignInMcpServerReportsAnAbortedAuthorizationServerRequestAsACancellation"]
+rationale = "login() awaits signInMcpServer with AbortSignal.timeout(timeoutMs), so --timeout (1.1.0, #10565) bounds the whole sign-in, including requests to the authorization server, and the aborted sign-in is reported as the cancelled-or-timed-out message. waitForRedirectUrl resolves undefined when that signal aborts (the callback arrived or the sign-in timed out). PiG runs SignInMcpServer under context.WithTimeout of the command context and the redirect prompt returns when that context ends; the timeout covers the sign-in only, not the reconnect after it."
 
 [[files]]
 path = "packages/coding-agent/src/extensions/mcp/index.ts"
-disposition = "deferred"
-contracts = []
-evidence = []
-rationale = "async/Promise source new in 0.99.1; PORT_MAP status 🟡 (coding/mcpext/extension.go + coding/mcpext/register.go (extension_test.go)); no per-file ordering, cancellation and error contract has been reviewed yet, and no evidence is claimed. Review with the owning family before marking translated."
+disposition = "translated"
+contracts = ["awaited", "cancellable", "detached-owned", "ui-handoff"]
+evidence = ["test:coding/mcpext/responsive_test.go#TestMcpCommandOpensTheManagerBeforeTheStartupConnectionsFinish", "test:coding/mcpext/responsive_test.go#TestMcpManagerEnablesAServerInTheBackground", "test:coding/mcpext/responsive_test.go#TestMcpDirectToolCallWaitsForItsServersReconnect", "test:coding/mcpext/responsive_test.go#TestMcpPreparedToolCallResolvesTheConnectionWhenItExecutes", "test:coding/mcpext/manager_test.go#TestMcpManagerReconnectRunsInTheBackgroundWithoutAStatusScreen", "test:coding/mcp_oauth_session_upstream_test.go#TestAgentSessionMCPOAuthCancelsASignInWaitingOnTheAuthorizationServerWhenTheSessionShutsDown", "test:coding/mcp_oauth_session_upstream_test.go#TestAgentSessionMCPOAuthClosesTheSessionWithoutRefreshingAnExpiringToken", "test:coding/mcpext/extension_test.go#TestAgentSessionMCPCodemodeScriptWaitsForTheServersItNames"]
+rationale = "The extension owns one AbortController per session (aborted on session_shutdown and before the first session_start); work captures its signal when it starts and drops late results once it aborted. startConnection waits for its `after` promise, starts only while its attempt token, the server's enabled state and the session still apply, and publishes server.ready; waitForServers loops until the latest attempts settle or the tool call aborts; reconnect chains behind server.ready and replaces it; disabling clears the attempt token and records a closing promise that a replacement awaits before opening a transport. `/mcp` opens the manager without awaiting the startup connections, and runInBackground runs connection actions off the menu, dropping a result whose attempt was replaced; sign-ins stop on Esc and on the session signal and are registered with track so session_shutdown awaits their cleanup. PiG maps the controller to a context owned by the Extension, the promises to channels closed by goroutines registered in backgroundTasks (drained by SessionShutdown, which also admits tasks started while it waits), the attempt token to a pointer compared under the extension mutex, and runInBackground to a goroutine whose synchronous part (config save, detaching the connection, installing the ready channel) runs before it starts, as the Promise's synchronous prefix does."
 
 [[files]]
 path = "packages/coding-agent/src/extensions/mcp/oauth.ts"
-disposition = "deferred"
-contracts = []
-evidence = []
-rationale = "async/Promise source new in 0.99.1; PORT_MAP status 🟡 (coding/mcpext/oauth.go + coding/mcpext/storage.go (oauth_refresh_test.go)); no per-file ordering, cancellation and error contract has been reviewed yet, and no evidence is claimed. Review with the owning family before marking translated."
+disposition = "translated"
+contracts = ["awaited", "cancellable"]
+evidence = ["test:coding/mcpext/oauth_cancel_test.go#TestSignInMcpServerStopsWhileWaitingForTheBrowser", "test:coding/mcpext/oauth_cancel_test.go#TestSignInMcpServerReportsAnAbortedAuthorizationServerRequestAsACancellation", "test:coding/mcpext/oauth_cancel_test.go#TestSignInMcpServerStopsWithoutRequestsWhenItsContextAlreadyEnded", "test:coding/mcpext/oauth_request_timeout_internal_test.go#TestSignInMcpServerGivesEveryAuthorizationServerRequestTheOAuthRequestTimeout", "test:coding/mcpext/oauth_request_timeout_internal_test.go#TestTimedFetchGivesEveryRequestTheOAuthRequestTimeout", "test:coding/mcpext/oauth_refresh_test.go#TestMCPOAuthRefreshRefreshesOnceWhenSeveralProcessesFindTheSameTokenRejected", "test:coding/mcp_oauth_session_upstream_test.go#TestAgentSessionMCPOAuthCancelsASignInWaitingOnTheAuthorizationServerWhenTheSessionShutsDown"]
+rationale = "signInMcpServer awaits the flow and takes an AbortSignal that stops it at any step with McpSignInCancelledError (an aborted request is reported as the cancellation it is); waitForAuthorizationResponse races the callback and the pasted-URL prompt, whose signal also aborts with the sign-in; timedFetch gives each authorization-server request OAUTH_REQUEST_TIMEOUT_MS (15 s) on top of the request's own signal (1.1.0, #10565). The refresh the auth provider runs is deliberately not cancellable, because an answered refresh may have rotated the refresh token. PiG maps the signal to the context.Context of SignInMcpServer, the 15 s bound to timeoutFetch, and the detached refresh to a context without cancellation; the refresh single-flight is joined on the flight's done channel."
 
 [[files]]
 path = "packages/coding-agent/src/extensions/mcp/resources.ts"
@@ -1300,7 +1321,7 @@ path = "packages/coding-agent/src/main.ts"
 disposition = "deferred"
 contracts = []
 evidence = []
-rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`cmd/pig/main.go`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`coding/cli/main.go`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
 
 [[files]]
 path = "packages/coding-agent/src/migrations.ts"
@@ -1335,7 +1356,7 @@ path = "packages/coding-agent/src/modes/interactive/components/login-dialog.ts"
 disposition = "deferred"
 contracts = []
 evidence = []
-rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`cmd/pig/auth_commands.go + interactive.go`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`coding/cli/auth_commands.go + interactive.go`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
 
 [[files]]
 path = "packages/coding-agent/src/modes/interactive/components/model-selector.ts"
@@ -1419,7 +1440,7 @@ path = "packages/coding-agent/src/modes/print-mode.ts"
 disposition = "deferred"
 contracts = []
 evidence = []
-rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`cmd/pig/print_mode.go (text) and cmd/pig/json_mode.go (json): upstream runs both modes from one function, pig splits them by mode. json streams the session event stream as JSONL while the turn runs; text still prints only the final assistant message. Behavioral coverage: print/01-print-mode-arithmetic, json/01-json-mode-streams-events`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`coding/cli/print_mode.go (text) and coding/cli/json_mode.go (json): upstream runs both modes from one function, pig splits them by mode. json streams the session event stream as JSONL while the turn runs; text still prints only the final assistant message. Behavioral coverage: print/01-print-mode-arithmetic, json/01-json-mode-streams-events`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
 
 [[files]]
 path = "packages/coding-agent/src/modes/rpc/rpc-client.ts"
@@ -1432,14 +1453,14 @@ rationale = "PORT_MAP marks this file ⏸ deferred: `(deferred: PiG exposes the 
 path = "packages/coding-agent/src/modes/rpc/rpc-mode.ts"
 disposition = "deferred"
 contracts = ["awaited", "concurrent-joined", "cancellable", "microtask-ordering"]
-evidence = ["test:cmd/pig/rpc_retry_reactions_test.go", "scenario:test/parity/scenarios/rpc/17-rpc-abort-retry.toml", "test:cmd/pig/rpc_dispatch_test.go", "test:cmd/pig/rpc_queue_await_test.go", "scenario:test/parity/scenarios/rpc/07-rpc-model-thinking-commands.toml", "scenario:test/parity/scenarios/rpc/20-rpc-runtime-boundary-values.toml", "scenario:test/parity/scenarios/rpc/35-rpc-queue-prompt-await.toml", "scenario:test/parity/scenarios/rpc/31-rpc-cycle-await-interleaving.toml", "scenario:test/parity/scenarios/rpc/32-rpc-cycle-prefix-and-completion.toml", "probe:docs/findings/rpc-command-dispatch.md", "probe:docs/findings/rpc-h1-continuations.md", "test:cmd/pig/rpc_admission_test.go", "test:cmd/pig/rpc_preflight_admission_test.go", "scenario:test/parity/scenarios/rpc/36-rpc-preflight-admission.toml", "probe:docs/findings/rpc-preflight-admission.md", "test:cmd/pig/rpc_prompt_admission_test.go", "scenario:test/parity/scenarios/rpc/13-rpc-steering-queue.toml", "probe:docs/findings/pr70-steering-admission.md"]
+evidence = ["test:coding/cli/rpc_retry_reactions_test.go", "scenario:test/parity/scenarios/rpc/17-rpc-abort-retry.toml", "test:coding/cli/rpc_dispatch_test.go", "test:coding/cli/rpc_queue_await_test.go", "scenario:test/parity/scenarios/rpc/07-rpc-model-thinking-commands.toml", "scenario:test/parity/scenarios/rpc/20-rpc-runtime-boundary-values.toml", "scenario:test/parity/scenarios/rpc/35-rpc-queue-prompt-await.toml", "scenario:test/parity/scenarios/rpc/31-rpc-cycle-await-interleaving.toml", "scenario:test/parity/scenarios/rpc/32-rpc-cycle-prefix-and-completion.toml", "probe:docs/findings/rpc-command-dispatch.md", "probe:docs/findings/rpc-h1-continuations.md", "test:coding/cli/rpc_admission_test.go", "test:coding/cli/rpc_preflight_admission_test.go", "scenario:test/parity/scenarios/rpc/36-rpc-preflight-admission.toml", "probe:docs/findings/rpc-preflight-admission.md", "test:coding/cli/rpc_prompt_admission_test.go", "scenario:test/parity/scenarios/rpc/13-rpc-steering-queue.toml", "probe:docs/findings/pr70-steering-admission.md"]
 rationale = "All 33 upstream command branches and their conditional await boundaries are inventoried in the dispatch report. Prompt/input/preflight and nested queue completions now resume through the same FIFO await executor as synchronous replies. Handler invocation is admitted in order through its first suspension; completion remains independently awaited. Preflight is idle, rechecks streaming after input, accepts before claiming the Agent, and drains on EOF. Model-cycle prefixes and notifications retain their ordering. Shell completion never waits for a pending Provider. Retry reactions share the input executor, and abort joins settlement off the input loop so later synchronous commands retain pre-settlement state. Full-file async closure remains deferred for the other command implementations."
 
 [[files]]
 path = "packages/coding-agent/src/package-manager-cli.ts"
 disposition = "deferred"
 contracts = ["awaited"]
-evidence = ["test:cmd/pig/package_cli_parity_test.go", "test:cmd/pig/package_git_parity_test.go", "scenario:test/parity/scenarios/cli-utils/11-package-uninstall-alias.toml", "scenario:test/parity/scenarios/cli-utils/12-package-update-error.toml"]
+evidence = ["test:coding/cli/package_cli_parity_test.go", "test:coding/cli/package_git_parity_test.go", "scenario:test/parity/scenarios/cli-utils/11-package-uninstall-alias.toml", "scenario:test/parity/scenarios/cli-utils/12-package-update-error.toml"]
 rationale = "Package aliases route before Session/model startup. Removal, installation and update complete before success output; thrown errors appear after inherited child diagnostics. Native self-update ownership remains D39; the complete upstream managed-update and configuration async family remains unreviewed, so this file is not async-closed."
 
 [[files]]
@@ -1583,6 +1604,13 @@ evidence = []
 rationale = "`(Go archive/zip, used by internal/codingagent/bug_report.go)`"
 
 [[files]]
+path = "packages/durable/src/storage/sqlite/cloudflare.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "async/Promise source new in Pi 1.1.0; its per-file ordering/cancellation/error contract has not been reviewed. The port of this file is tracked by test/parity/upstream-sync/v1.1.0.toml."
+
+[[files]]
 path = "packages/mcp/src/auth-provider.ts"
 disposition = "no-runtime-async"
 contracts = []
@@ -1608,14 +1636,14 @@ path = "packages/mcp/src/oauth/discovery.ts"
 disposition = "translated"
 contracts = ["awaited"]
 evidence = ["test:mcp/oauth/oauth_test.go#TestMCPOAuthDiscoversRegistersAuthorizesWithPKCEAndRefreshesOn401", "test:mcp/oauth/oauth_test.go#TestMCPOAuthRejectsAuthorizationMetadataWhoseIssuerDoesNotMatchDiscovery"]
-rationale = "Each discovery step awaits one metadata fetch (with the well-known fallback order) and a failure of the optional authorization-server probe returns undefined; the Go functions block on the injected McpFetch with the caller's context, and the response body of a discarded response is cancelled."
+rationale = "Each discovery step awaits one metadata fetch (with the well-known fallback order) and a failure of the optional authorization-server probe returns undefined; the Go functions block on the injected McpFetch with the caller's context (the `signal` option of 1.1.0, #10565), and the response body of a discarded response is cancelled."
 
 [[files]]
 path = "packages/mcp/src/oauth/flow.ts"
 disposition = "translated"
-contracts = ["awaited", "concurrent-joined"]
-evidence = ["test:mcp/oauth/oauth_test.go#TestMCPOAuthSharesOneRefreshBetweenConcurrent401sWhenRefreshTokensRotate", "test:mcp/oauth/oauth_test.go#TestMCPOAuthAsksForAuthorizationInsteadOfRefreshingWhenTheServerNeedsMoreScope", "test:mcp/oauth/oauth_test.go#TestMCPOAuthDiscoversRegistersAuthorizesWithPKCEAndRefreshesOn401"]
-rationale = "authorizeMcp awaits discovery, registration, refresh or redirect in order. adaptOAuthProvider keeps one inFlight promise so concurrent 401s share one refresh, clears it in finally, and a request whose token was already replaced just retries; PiG shares one refreshFlight (done channel) across concurrent OnUnauthorized calls and clears it when the flight ends."
+contracts = ["awaited", "cancellable", "concurrent-joined"]
+evidence = ["test:mcp/oauth/oauth_test.go#TestMCPOAuthSharesOneRefreshBetweenConcurrent401sWhenRefreshTokensRotate", "test:mcp/oauth/oauth_test.go#TestMCPOAuthAsksForAuthorizationInsteadOfRefreshingWhenTheServerNeedsMoreScope", "test:mcp/oauth/oauth_test.go#TestMCPOAuthDiscoversRegistersAuthorizesWithPKCEAndRefreshesOn401", "test:mcp/oauth/oauth_test.go#TestAuthorizeMcpStopsWhenItsContextEndsWithoutFallingBackToARedirect"]
+rationale = "authorizeMcp awaits discovery, registration, refresh or redirect in order. adaptOAuthProvider keeps one inFlight promise so concurrent 401s share one refresh, clears it in finally, and a request whose token was already replaced just retries. Every request of the flow takes the flow's `signal` (1.1.0, #10565) and an aborted refresh rethrows instead of falling back to a new authorization; PiG passes the caller's context to every request and returns its error from an aborted refresh. PiG shares one refreshFlight (done channel) across concurrent OnUnauthorized calls and clears it when the flight ends."
 
 [[files]]
 path = "packages/mcp/src/oauth/provider.ts"
@@ -1642,8 +1670,8 @@ rationale = "close() ends stdin, then the grace timer sends SIGTERM and the clos
 path = "packages/mcp/src/transports/streamable-http.ts"
 disposition = "translated"
 contracts = ["awaited", "cancellable", "detached-owned"]
-evidence = ["test:mcp/streamable_http_test.go#TestStreamableHTTPTransportRoutesEveryRequestThroughTheFetchInUse", "test:mcp/streamable_http_test.go#TestStreamableHTTPTransportFailsOnlyTheRequestWhoseSSEStreamBreaks", "test:mcp/streamable_http_test.go#TestStreamableHTTPTransportResumesAResponseStreamTheServerClosedBeforeAnswering", "test:mcp/streamable_http_test.go#TestStreamableHTTPTransportReconnectsTheGETStreamAfterItDrops", "test:mcp/streamable_http_test.go#TestStreamableHTTPTransportHandsUnauthorizedAndInsufficientScopeResponsesToTheAuthProviderWithTheRejectedToken", "test:mcp/streamable_http_test.go#TestStreamableHTTPTransportClassifiesAnExpiredEstablishedSession"]
-rationale = "send() awaits the POST and its auth retry; a response SSE stream is consumed by a void consumeResponseStream per request and the GET stream by a void runGetStream with its sleep() aborted by the transport's AbortController; close() aborts that controller and sends the DELETE with a one-second abort. PiG runs each stream reader and the GET loop as goroutines owned by the transport context, cancelled and drained by Close, and the DELETE under sessionDeleteTimeout. The 0.99.2 fetch change (#10188) is covered by the first cited test: every request, including UnauthorizedContext.Fetch, goes through the injected McpFetch."
+evidence = ["test:mcp/streamable_http_test.go#TestStreamableHTTPTransportRoutesEveryRequestThroughTheFetchInUse", "test:mcp/streamable_http_test.go#TestStreamableHTTPTransportFailsOnlyTheRequestWhoseSSEStreamBreaks", "test:mcp/streamable_http_test.go#TestStreamableHTTPTransportResumesAResponseStreamTheServerClosedBeforeAnswering", "test:mcp/streamable_http_test.go#TestStreamableHTTPTransportReconnectsTheGETStreamAfterItDrops", "test:mcp/streamable_http_test.go#TestStreamableHTTPTransportHandsUnauthorizedAndInsufficientScopeResponsesToTheAuthProviderWithTheRejectedToken", "test:mcp/streamable_http_test.go#TestStreamableHTTPTransportClassifiesAnExpiredEstablishedSession", "test:mcp/streamable_http_test.go#TestStreamableHTTPTransportClosesTheSessionWithTheLastRequestsTokenWithoutAskingTheAuthProvider"]
+rationale = "send() awaits the POST and its auth retry; a response SSE stream is consumed by a void consumeResponseStream per request and the GET stream by a void runGetStream with its sleep() aborted by the transport's AbortController; close() aborts that controller and sends the DELETE with a one-second abort, using the token of the last request instead of asking the auth provider, which could refresh over the network first (1.1.0, #10565). PiG runs each stream reader and the GET loop as goroutines owned by the transport context, cancelled and drained by Close, and the DELETE with the remembered token under sessionDeleteTimeout. The 0.99.2 fetch change (#10188) is covered by the first cited test: every request, including UnauthorizedContext.Fetch, goes through the injected McpFetch."
 
 [[files]]
 path = "packages/mcp/src/transports/transport.ts"
@@ -1684,7 +1712,7 @@ rationale = "PORT_MAP marks this file ⬜ not started (`(new upstream by 0.87.1;
 path = "packages/tui/src/terminal.ts"
 disposition = "deferred"
 contracts = []
-evidence = ["test:tui/terminal_input_reader_test.go", "test:tui/terminal_input_regression_test.go", "test:internal/codingagent/terminal_negotiation_upstream_test.go", "test:cmd/pig/config_selector_reader_test.go", "scenario:test/parity/scenarios/tui-components/14-terminal-negotiation-framing.toml"]
+evidence = ["test:tui/terminal_input_reader_test.go", "test:tui/terminal_input_regression_test.go", "test:internal/codingagent/terminal_negotiation_upstream_test.go", "test:coding/cli/config_selector_reader_test.go", "scenario:test/parity/scenarios/tui-components/14-terminal-negotiation-framing.toml"]
 rationale = "Input callbacks settle in order before later negotiation effects. The decoder retains framing and fragment deadlines, the driver retains one paint boundary per read, and raw readers cancel and join across terminal handoffs. Progress cancellation joins in-flight writes. The complete drainInput Promise and platform error contract remains outside this reviewed subset, so the file-level disposition stays deferred and PORT_MAP remains partial."
 
 [[files]]
@@ -1700,3 +1728,598 @@ disposition = "deferred"
 contracts = []
 evidence = ["test:tui/terminal_colors_query_upstream_test.go", "test:internal/codingagent/terminal_colors_upstream_test.go", "test:internal/codingagent/terminal_color_query_integration_test.go", "scenario:test/parity/scenarios/tui-components/15-terminal-background-query-lifecycle.toml"]
 rationale = "Background queries register FIFO reply ownership before writing, settle once, retain timed-out reply slots without timers or resolvers, preserve their deadlines across Stop, and surface write errors. Bounded timer callbacks only settle query state; they never mutate UI or retain the renderer. Startup and interactive theme detection share the renderer queue, and replies precede autocomplete, terminal-input listeners and focus dispatch. Complete TuiBase async closure remains deferred for the other query and callback lifetimes; PORT_MAP is partial."
+
+[[files]]
+path = "packages/chord/src/api.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "Added to the accounting when every monorepo package was listed: the Promise and async contract of this file is not yet reviewed. The chord lane records it as translated with evidence, or as no-runtime-async, before the release."
+
+[[files]]
+path = "packages/chord/src/context/index.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "Added to the accounting when every monorepo package was listed: the Promise and async contract of this file is not yet reviewed. The chord lane records it as translated with evidence, or as no-runtime-async, before the release."
+
+[[files]]
+path = "packages/chord/src/facets/host.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "Added to the accounting when every monorepo package was listed: the Promise and async contract of this file is not yet reviewed. The chord lane records it as translated with evidence, or as no-runtime-async, before the release."
+
+[[files]]
+path = "packages/chord/src/facets/loader.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "Added to the accounting when every monorepo package was listed: the Promise and async contract of this file is not yet reviewed. The chord lane records it as translated with evidence, or as no-runtime-async, before the release."
+
+[[files]]
+path = "packages/chord/src/node/bundle-loader.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "Added to the accounting when every monorepo package was listed: the Promise and async contract of this file is not yet reviewed. The chord lane records it as translated with evidence, or as no-runtime-async, before the release."
+
+[[files]]
+path = "packages/chord/src/node/bundle.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "Added to the accounting when every monorepo package was listed: the Promise and async contract of this file is not yet reviewed. The chord lane records it as translated with evidence, or as no-runtime-async, before the release."
+
+[[files]]
+path = "packages/chord/src/node/package.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "Added to the accounting when every monorepo package was listed: the Promise and async contract of this file is not yet reviewed. The chord lane records it as translated with evidence, or as no-runtime-async, before the release."
+
+[[files]]
+path = "packages/chord/src/services/consumer.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "Added to the accounting when every monorepo package was listed: the Promise and async contract of this file is not yet reviewed. The chord lane records it as translated with evidence, or as no-runtime-async, before the release."
+
+[[files]]
+path = "packages/chord/src/services/instances.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "Added to the accounting when every monorepo package was listed: the Promise and async contract of this file is not yet reviewed. The chord lane records it as translated with evidence, or as no-runtime-async, before the release."
+
+[[files]]
+path = "packages/chord/src/services/loopback.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "Added to the accounting when every monorepo package was listed: the Promise and async contract of this file is not yet reviewed. The chord lane records it as translated with evidence, or as no-runtime-async, before the release."
+
+[[files]]
+path = "packages/chord/src/services/provider.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "Added to the accounting when every monorepo package was listed: the Promise and async contract of this file is not yet reviewed. The chord lane records it as translated with evidence, or as no-runtime-async, before the release."
+
+[[files]]
+path = "packages/chord/src/services/state.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "Added to the accounting when every monorepo package was listed: the Promise and async contract of this file is not yet reviewed. The chord lane records it as translated with evidence, or as no-runtime-async, before the release."
+
+[[files]]
+path = "packages/chord/src/types.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "Added to the accounting when every monorepo package was listed: the Promise and async contract of this file is not yet reviewed. The chord lane records it as translated with evidence, or as no-runtime-async, before the release."
+
+[[files]]
+path = "packages/client/src/client.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "Added to the accounting when every monorepo package was listed: the Promise and async contract of this file is not yet reviewed. The remote-stack lane records it as translated with evidence, or as no-runtime-async, before the release."
+
+[[files]]
+path = "packages/client/src/connection.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "Added to the accounting when every monorepo package was listed: the Promise and async contract of this file is not yet reviewed. The remote-stack lane records it as translated with evidence, or as no-runtime-async, before the release."
+
+[[files]]
+path = "packages/client/src/promise.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "Added to the accounting when every monorepo package was listed: the Promise and async contract of this file is not yet reviewed. The remote-stack lane records it as translated with evidence, or as no-runtime-async, before the release."
+
+[[files]]
+path = "packages/client/src/transport.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "Added to the accounting when every monorepo package was listed: the Promise and async contract of this file is not yet reviewed. The remote-stack lane records it as translated with evidence, or as no-runtime-async, before the release."
+
+[[files]]
+path = "packages/client/src/types.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "Added to the accounting when every monorepo package was listed: the Promise and async contract of this file is not yet reviewed. The remote-stack lane records it as translated with evidence, or as no-runtime-async, before the release."
+
+[[files]]
+path = "packages/client/src/unix.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "Added to the accounting when every monorepo package was listed: the Promise and async contract of this file is not yet reviewed. The remote-stack lane records it as translated with evidence, or as no-runtime-async, before the release."
+
+[[files]]
+path = "packages/durable/src/env/index.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "Added to the accounting when every monorepo package was listed: the Promise and async contract of this file is not yet reviewed. The durable lane records it as translated with evidence, or as no-runtime-async, before the release."
+
+[[files]]
+path = "packages/durable/src/env/node-watch.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "Added to the accounting when every monorepo package was listed: the Promise and async contract of this file is not yet reviewed. The durable lane records it as translated with evidence, or as no-runtime-async, before the release."
+
+[[files]]
+path = "packages/durable/src/env/node.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "Added to the accounting when every monorepo package was listed: the Promise and async contract of this file is not yet reviewed. The durable lane records it as translated with evidence, or as no-runtime-async, before the release."
+
+[[files]]
+path = "packages/durable/src/harness/agent.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "Added to the accounting when every monorepo package was listed: the Promise and async contract of this file is not yet reviewed. The durable lane records it as translated with evidence, or as no-runtime-async, before the release."
+
+[[files]]
+path = "packages/durable/src/harness/compaction.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "Added to the accounting when every monorepo package was listed: the Promise and async contract of this file is not yet reviewed. The durable lane records it as translated with evidence, or as no-runtime-async, before the release."
+
+[[files]]
+path = "packages/durable/src/harness/context.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "Added to the accounting when every monorepo package was listed: the Promise and async contract of this file is not yet reviewed. The durable lane records it as translated with evidence, or as no-runtime-async, before the release."
+
+[[files]]
+path = "packages/durable/src/harness/events.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "Added to the accounting when every monorepo package was listed: the Promise and async contract of this file is not yet reviewed. The durable lane records it as translated with evidence, or as no-runtime-async, before the release."
+
+[[files]]
+path = "packages/durable/src/harness/generation.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "Added to the accounting when every monorepo package was listed: the Promise and async contract of this file is not yet reviewed. The durable lane records it as translated with evidence, or as no-runtime-async, before the release."
+
+[[files]]
+path = "packages/durable/src/harness/harness.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "Added to the accounting when every monorepo package was listed: the Promise and async contract of this file is not yet reviewed. The durable lane records it as translated with evidence, or as no-runtime-async, before the release."
+
+[[files]]
+path = "packages/durable/src/harness/inbox.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "Added to the accounting when every monorepo package was listed: the Promise and async contract of this file is not yet reviewed. The durable lane records it as translated with evidence, or as no-runtime-async, before the release."
+
+[[files]]
+path = "packages/durable/src/harness/live.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "Added to the accounting when every monorepo package was listed: the Promise and async contract of this file is not yet reviewed. The durable lane records it as translated with evidence, or as no-runtime-async, before the release."
+
+[[files]]
+path = "packages/durable/src/harness/output.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "Added to the accounting when every monorepo package was listed: the Promise and async contract of this file is not yet reviewed. The durable lane records it as translated with evidence, or as no-runtime-async, before the release."
+
+[[files]]
+path = "packages/durable/src/harness/prompt.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "Added to the accounting when every monorepo package was listed: the Promise and async contract of this file is not yet reviewed. The durable lane records it as translated with evidence, or as no-runtime-async, before the release."
+
+[[files]]
+path = "packages/durable/src/harness/provider.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "Added to the accounting when every monorepo package was listed: the Promise and async contract of this file is not yet reviewed. The durable lane records it as translated with evidence, or as no-runtime-async, before the release."
+
+[[files]]
+path = "packages/durable/src/harness/scheduler.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "Added to the accounting when every monorepo package was listed: the Promise and async contract of this file is not yet reviewed. The durable lane records it as translated with evidence, or as no-runtime-async, before the release."
+
+[[files]]
+path = "packages/durable/src/harness/submissions.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "Added to the accounting when every monorepo package was listed: the Promise and async contract of this file is not yet reviewed. The durable lane records it as translated with evidence, or as no-runtime-async, before the release."
+
+[[files]]
+path = "packages/durable/src/harness/task-graph.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "Added to the accounting when every monorepo package was listed: the Promise and async contract of this file is not yet reviewed. The durable lane records it as translated with evidence, or as no-runtime-async, before the release."
+
+[[files]]
+path = "packages/durable/src/harness/tool.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "Added to the accounting when every monorepo package was listed: the Promise and async contract of this file is not yet reviewed. The durable lane records it as translated with evidence, or as no-runtime-async, before the release."
+
+[[files]]
+path = "packages/durable/src/harness/types.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "Added to the accounting when every monorepo package was listed: the Promise and async contract of this file is not yet reviewed. The durable lane records it as translated with evidence, or as no-runtime-async, before the release."
+
+[[files]]
+path = "packages/durable/src/harness/usage.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "Added to the accounting when every monorepo package was listed: the Promise and async contract of this file is not yet reviewed. The durable lane records it as translated with evidence, or as no-runtime-async, before the release."
+
+[[files]]
+path = "packages/durable/src/harness/util.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "Added to the accounting when every monorepo package was listed: the Promise and async contract of this file is not yet reviewed. The durable lane records it as translated with evidence, or as no-runtime-async, before the release."
+
+[[files]]
+path = "packages/durable/src/harness/view.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "Added to the accounting when every monorepo package was listed: the Promise and async contract of this file is not yet reviewed. The durable lane records it as translated with evidence, or as no-runtime-async, before the release."
+
+[[files]]
+path = "packages/durable/src/session/forks.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "Added to the accounting when every monorepo package was listed: the Promise and async contract of this file is not yet reviewed. The durable lane records it as translated with evidence, or as no-runtime-async, before the release."
+
+[[files]]
+path = "packages/durable/src/session/observation.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "Added to the accounting when every monorepo package was listed: the Promise and async contract of this file is not yet reviewed. The durable lane records it as translated with evidence, or as no-runtime-async, before the release."
+
+[[files]]
+path = "packages/durable/src/session/session.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "Added to the accounting when every monorepo package was listed: the Promise and async contract of this file is not yet reviewed. The durable lane records it as translated with evidence, or as no-runtime-async, before the release."
+
+[[files]]
+path = "packages/durable/src/session/transaction.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "Added to the accounting when every monorepo package was listed: the Promise and async contract of this file is not yet reviewed. The durable lane records it as translated with evidence, or as no-runtime-async, before the release."
+
+[[files]]
+path = "packages/durable/src/storage/jsonl/node.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "Added to the accounting when every monorepo package was listed: the Promise and async contract of this file is not yet reviewed. The durable lane records it as translated with evidence, or as no-runtime-async, before the release."
+
+[[files]]
+path = "packages/durable/src/storage/jsonl/storage.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "Added to the accounting when every monorepo package was listed: the Promise and async contract of this file is not yet reviewed. The durable lane records it as translated with evidence, or as no-runtime-async, before the release."
+
+[[files]]
+path = "packages/durable/src/storage/memory.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "Added to the accounting when every monorepo package was listed: the Promise and async contract of this file is not yet reviewed. The durable lane records it as translated with evidence, or as no-runtime-async, before the release."
+
+[[files]]
+path = "packages/durable/src/storage/sqlite/database.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "Added to the accounting when every monorepo package was listed: the Promise and async contract of this file is not yet reviewed. The durable lane records it as translated with evidence, or as no-runtime-async, before the release."
+
+[[files]]
+path = "packages/durable/src/storage/sqlite/migrations.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "Added to the accounting when every monorepo package was listed: the Promise and async contract of this file is not yet reviewed. The durable lane records it as translated with evidence, or as no-runtime-async, before the release."
+
+[[files]]
+path = "packages/durable/src/storage/sqlite/node.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "Added to the accounting when every monorepo package was listed: the Promise and async contract of this file is not yet reviewed. The durable lane records it as translated with evidence, or as no-runtime-async, before the release."
+
+[[files]]
+path = "packages/durable/src/storage/sqlite/storage.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "Added to the accounting when every monorepo package was listed: the Promise and async contract of this file is not yet reviewed. The durable lane records it as translated with evidence, or as no-runtime-async, before the release."
+
+[[files]]
+path = "packages/durable/src/testing/assertions.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "Added to the accounting when every monorepo package was listed: the Promise and async contract of this file is not yet reviewed. The durable lane records it as translated with evidence, or as no-runtime-async, before the release."
+
+[[files]]
+path = "packages/durable/src/testing/env-conformance.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "Added to the accounting when every monorepo package was listed: the Promise and async contract of this file is not yet reviewed. The durable lane records it as translated with evidence, or as no-runtime-async, before the release."
+
+[[files]]
+path = "packages/durable/src/testing/runner.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "Added to the accounting when every monorepo package was listed: the Promise and async contract of this file is not yet reviewed. The durable lane records it as translated with evidence, or as no-runtime-async, before the release."
+
+[[files]]
+path = "packages/durable/src/testing/storage-benchmark.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "Added to the accounting when every monorepo package was listed: the Promise and async contract of this file is not yet reviewed. The durable lane records it as translated with evidence, or as no-runtime-async, before the release."
+
+[[files]]
+path = "packages/durable/src/testing/storage-conformance.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "Added to the accounting when every monorepo package was listed: the Promise and async contract of this file is not yet reviewed. The durable lane records it as translated with evidence, or as no-runtime-async, before the release."
+
+[[files]]
+path = "packages/durable/src/testing/types.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "Added to the accounting when every monorepo package was listed: the Promise and async contract of this file is not yet reviewed. The durable lane records it as translated with evidence, or as no-runtime-async, before the release."
+
+[[files]]
+path = "packages/durable/src/tools/bash.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "Added to the accounting when every monorepo package was listed: the Promise and async contract of this file is not yet reviewed. The durable lane records it as translated with evidence, or as no-runtime-async, before the release."
+
+[[files]]
+path = "packages/durable/src/tools/edit.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "Added to the accounting when every monorepo package was listed: the Promise and async contract of this file is not yet reviewed. The durable lane records it as translated with evidence, or as no-runtime-async, before the release."
+
+[[files]]
+path = "packages/durable/src/tools/file-mutation-queue.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "Added to the accounting when every monorepo package was listed: the Promise and async contract of this file is not yet reviewed. The durable lane records it as translated with evidence, or as no-runtime-async, before the release."
+
+[[files]]
+path = "packages/durable/src/tools/image.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "Added to the accounting when every monorepo package was listed: the Promise and async contract of this file is not yet reviewed. The durable lane records it as translated with evidence, or as no-runtime-async, before the release."
+
+[[files]]
+path = "packages/durable/src/tools/path-utils.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "Added to the accounting when every monorepo package was listed: the Promise and async contract of this file is not yet reviewed. The durable lane records it as translated with evidence, or as no-runtime-async, before the release."
+
+[[files]]
+path = "packages/durable/src/tools/read.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "Added to the accounting when every monorepo package was listed: the Promise and async contract of this file is not yet reviewed. The durable lane records it as translated with evidence, or as no-runtime-async, before the release."
+
+[[files]]
+path = "packages/durable/src/tools/write.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "Added to the accounting when every monorepo package was listed: the Promise and async contract of this file is not yet reviewed. The durable lane records it as translated with evidence, or as no-runtime-async, before the release."
+
+[[files]]
+path = "packages/durable/src/types.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "Added to the accounting when every monorepo package was listed: the Promise and async contract of this file is not yet reviewed. The durable lane records it as translated with evidence, or as no-runtime-async, before the release."
+
+[[files]]
+path = "packages/env/src/connection.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "Added to the accounting when every monorepo package was listed: the Promise and async contract of this file is not yet reviewed. The env lane records it as translated with evidence, or as no-runtime-async, before the release."
+
+[[files]]
+path = "packages/env/src/remote-env.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "Added to the accounting when every monorepo package was listed: the Promise and async contract of this file is not yet reviewed. The env lane records it as translated with evidence, or as no-runtime-async, before the release."
+
+[[files]]
+path = "packages/env/src/ssh.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "Added to the accounting when every monorepo package was listed: the Promise and async contract of this file is not yet reviewed. The env lane records it as translated with evidence, or as no-runtime-async, before the release."
+
+[[files]]
+path = "packages/env/src/watch.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "Added to the accounting when every monorepo package was listed: the Promise and async contract of this file is not yet reviewed. The env lane records it as translated with evidence, or as no-runtime-async, before the release."
+
+[[files]]
+path = "packages/evals/src/harness.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "Added to the accounting when every monorepo package was listed: the Promise and async contract of this file is not yet reviewed. The telemetry and evals lane records it as translated with evidence, or as no-runtime-async, before the release."
+
+[[files]]
+path = "packages/evals/src/report.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "Added to the accounting when every monorepo package was listed: the Promise and async contract of this file is not yet reviewed. The telemetry and evals lane records it as translated with evidence, or as no-runtime-async, before the release."
+
+[[files]]
+path = "packages/server/src/connection.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "Added to the accounting when every monorepo package was listed: the Promise and async contract of this file is not yet reviewed. The remote-stack lane records it as translated with evidence, or as no-runtime-async, before the release."
+
+[[files]]
+path = "packages/server/src/listener.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "Added to the accounting when every monorepo package was listed: the Promise and async contract of this file is not yet reviewed. The remote-stack lane records it as translated with evidence, or as no-runtime-async, before the release."
+
+[[files]]
+path = "packages/server/src/server.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "Added to the accounting when every monorepo package was listed: the Promise and async contract of this file is not yet reviewed. The remote-stack lane records it as translated with evidence, or as no-runtime-async, before the release."
+
+[[files]]
+path = "packages/server/src/session-router.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "Added to the accounting when every monorepo package was listed: the Promise and async contract of this file is not yet reviewed. The remote-stack lane records it as translated with evidence, or as no-runtime-async, before the release."
+
+[[files]]
+path = "packages/server/src/testing/client.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "Added to the accounting when every monorepo package was listed: the Promise and async contract of this file is not yet reviewed. The remote-stack lane records it as translated with evidence, or as no-runtime-async, before the release."
+
+[[files]]
+path = "packages/server/src/testing/host.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "Added to the accounting when every monorepo package was listed: the Promise and async contract of this file is not yet reviewed. The remote-stack lane records it as translated with evidence, or as no-runtime-async, before the release."
+
+[[files]]
+path = "packages/server/src/transports/unix/listener.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "Added to the accounting when every monorepo package was listed: the Promise and async contract of this file is not yet reviewed. The remote-stack lane records it as translated with evidence, or as no-runtime-async, before the release."
+
+[[files]]
+path = "packages/server/src/types.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "Added to the accounting when every monorepo package was listed: the Promise and async contract of this file is not yet reviewed. The remote-stack lane records it as translated with evidence, or as no-runtime-async, before the release."
+
+[[files]]
+path = "packages/telemetry/src/index.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "Added to the accounting when every monorepo package was listed: the Promise and async contract of this file is not yet reviewed. The telemetry and evals lane records it as translated with evidence, or as no-runtime-async, before the release."
+
+[[files]]
+path = "packages/telemetry/src/memory.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "Added to the accounting when every monorepo package was listed: the Promise and async contract of this file is not yet reviewed. The telemetry and evals lane records it as translated with evidence, or as no-runtime-async, before the release."
+
+[[files]]
+path = "packages/telemetry/src/noop.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "Added to the accounting when every monorepo package was listed: the Promise and async contract of this file is not yet reviewed. The telemetry and evals lane records it as translated with evidence, or as no-runtime-async, before the release."
+
+[[files]]
+path = "packages/telemetry/src/testing/conformance.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "Added to the accounting when every monorepo package was listed: the Promise and async contract of this file is not yet reviewed. The telemetry and evals lane records it as translated with evidence, or as no-runtime-async, before the release."
+
+[[files]]
+path = "packages/telemetry/src/testing/types.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "Added to the accounting when every monorepo package was listed: the Promise and async contract of this file is not yet reviewed. The telemetry and evals lane records it as translated with evidence, or as no-runtime-async, before the release."

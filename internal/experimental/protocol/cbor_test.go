@@ -1,5 +1,11 @@
 package protocol
 
+// pi: packages/protocol/src/cbor/options.ts
+
+// pi: packages/protocol/src/cbor/encoder.ts
+
+// pi: packages/protocol/src/cbor/decoder.ts
+
 import (
 	"encoding/hex"
 	"errors"

@@ -46,7 +46,7 @@ func TestInteractiveQuitPrintsOneHintAfterTerminalRestore(t *testing.T) {
 				t.Fatal(err)
 			}
 			m := &InteractiveMode{
-				opts:    InteractiveOptions{SessionHandle: &recordingCompactHandle{inner: session}},
+				opts:    InteractiveModeOptions{SessionHandle: &recordingCompactHandle{inner: session}},
 				tuiInst: tui.NewWithOutput(io.Discard, 80, 24),
 				editor:  tui.NewEditor(), keybindings: DefaultKeybindingsManager(), isIdle: true,
 			}

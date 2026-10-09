@@ -1,0 +1,23 @@
+# Upstream evidence: Pi 1.1.0 main.ts:932-936 reads PI_STARTUP_BENCHMARK with isTruthyEnvFlag ("1", "true" or "yes", main.ts:107-110) after createAgentSession and, outside interactive mode, prints chalk.red("Error: PI_STARTUP_BENCHMARK only supports interactive mode") and exits 1 before any prompt runs.
+# Both binaries run print mode with a resolved faux model, so the earlier no-model exit (main.ts:927-930) does not apply. stdout is a pipe, so chalk prints no color; the combined output is the one error line.
+name = "23-startup-benchmark-requires-interactive"
+description = "PI_STARTUP_BENCHMARK outside interactive mode fails with an error before the prompt runs"
+covers = ["packages/coding-agent/src/main.ts"]
+tags = ["hermetic", "fast"]
+driver = "cli-mode"
+
+[cli]
+args = ["--model", "test-faux/faux-1", "--no-session", "--print", "hello"]
+timeout_seconds = 30
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PI_STARTUP_BENCHMARK=yes"]
+pi = ["PI_STARTUP_BENCHMARK=yes"]
+pi_extensions = ["../../testdata/test-faux-provider.ts"]
+
+[assert]
+exit_code = 1
+runs = 3
+output_equal = true
+both_contain = ["Error: PI_STARTUP_BENCHMARK only supports interactive mode"]
+both_not_contain = ["TUI_LIVE_STREAM", "panic:"]

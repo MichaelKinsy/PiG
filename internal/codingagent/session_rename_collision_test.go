@@ -29,8 +29,8 @@ func TestRenameSessionChecksExistingEntryIDs(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	entries := loaded.Entries()
-	if len(entries) != 2 || entries[0].Base.ID != "01020304" || entries[1].Base.ID != "05060708" || entries[1].Base.ParentID == nil || *entries[1].Base.ParentID != entries[0].Base.ID {
+	entries := loaded.GetEntries()
+	if len(entries) != 2 || entries[0].Base().ID != "01020304" || entries[1].Base().ID != "05060708" || entries[1].Base().ParentID == nil || *entries[1].Base().ParentID != entries[0].Base().ID {
 		t.Fatalf("rename did not preserve the original entry and append its unique child: %#v", entries)
 	}
 }

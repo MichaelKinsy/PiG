@@ -1,0 +1,3 @@
+### Added
+
+- A Piglet Binary can carry TypeScript and JavaScript extensions. Before, `pig piglet build --format binary` of any Piglet with a Node extension failed with `node subprocess requires a runtime`, and a Piglet that strips `node-extensions` got that error instead of its strip conflict. The build now embeds each Node extension's sources, and the Binary runs them with the installed Node (22.13 or newer) through the same path Stock PiG uses, so the extension registers and behaves as it does under Stock PiG. Without a suitable Node the Binary reports the extension and the required Node version and exits, as Stock PiG does. See "TypeScript and JavaScript extensions" in `docs/site/docs/piglet-binaries.md`.

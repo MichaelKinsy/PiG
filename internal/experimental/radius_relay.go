@@ -1,5 +1,7 @@
 package experimental
 
+// Ports packages/coding-agent/src/experimental/radius-relay.ts.
+
 import (
 	"bytes"
 	"encoding/hex"

@@ -1,0 +1,52 @@
+# Cluster values for bench/k8s/cmd/k8sbench. Copy this file to bench/k8s/values.local.yaml (gitignored) and replace
+# every <placeholder>. K8SBENCH_* environment variables and command-line flags override these values. The runner
+# refuses a value that still holds a placeholder.
+
+# kubectl settings. Leave kubeconfig empty to use $KUBECONFIG or kubectl's default.
+kubeconfig: ""
+kubeContext: ""
+
+# The namespace in which the runner may create Jobs and read pods and logs.
+namespace: <namespace>
+
+# Set one of image or bundle.
+# image: the benchmark image, pinned by digest, for example <registry>/<repository>@sha256:<digest>.
+#   bench/k8s/image/build.sh prints this reference.
+image: ""
+# bundle: a local artifact bundle directory (k8sbench bundle -out DIR, or BUNDLE=DIR bench/k8s/image/build.sh).
+#   The pod then runs baseImage and the runner copies the bundle in with kubectl cp; no registry is needed.
+bundle: ""
+# baseImage: the image a bundle runs on. Empty means the pinned official Node image the runner names.
+baseImage: ""
+
+# Whole CPUs and memory for the pod. Requests equal limits, so the pod has Guaranteed QoS. The session pins every
+# measured process to this many cores.
+cpus: 2
+memory: 8Gi
+
+# Size limit of the pod's scratch volume, which holds the seeded fixtures.
+scratchSize: 8Gi
+
+# Optional: run on a dedicated node pool, for example {"<label key>": "<label value>"}.
+nodeSelector: {}
+
+# Optional: tolerate the dedicated pool's taints.
+#   - key: <taint key>
+#     operator: Equal
+#     value: <taint value>
+#     effect: NoSchedule
+tolerations: []
+
+# Optional: pin the pod to one node by name.
+node: ""
+
+# Optional: a PersistentVolumeClaim mounted at /results that keeps a copy of each session's raw output.
+pvc: ""
+
+# Optional: registry credentials and service account.
+imagePullSecrets: []
+serviceAccountName: ""
+
+# The Job's deadline and how long the cluster keeps a finished Job.
+deadlineSeconds: 21600
+ttlSecondsAfterFinished: 604800

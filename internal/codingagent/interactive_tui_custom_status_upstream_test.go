@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/MichaelKinsy/PiG/agent"
+	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/tui"
 	"github.com/MichaelKinsy/PiG/tui/widthx"
 )
@@ -23,7 +24,7 @@ func TestInteractiveTuiCustomEditorStandaloneStatusUpstream(t *testing.T) {
 			mode.opts.Settings.ClearOnShrink = new(true)
 			mode.tuiInst.SetClearOnShrink(true)
 			mode.editor.EmbedWorkingStatus = true
-			indicator := &tui.StatusIndicator{Kind: "working", Loader: tui.NewLoader("DEFAULT_STALE_STATUS")}
+			indicator := &tui.StatusIndicator{Kind: "working", Loader: tui.NewLoader(nil, nil, nil, "DEFAULT_STALE_STATUS", nil)}
 			mode.editor.SetWorkingStatusIndicator(indicator)
 			custom := &fakeRemoteEditor{}
 			mode.setRemoteEditor(custom)
@@ -99,13 +100,14 @@ func TestCustomEditorEmbeddedStatusEventPlacement(t *testing.T) {
 	}
 }
 
+// Pi: packages/coding-agent/src/core/extensions/types.ts:135 (WorkingIndicatorOptions.frames); packages/coding-agent/src/core/extensions/types.ts:138 (WorkingIndicatorOptions.intervalMs).
 func TestCustomEditorStatusUpdatesAndReplacement(t *testing.T) {
 	m := statusBorderMode(t, true)
 	first := &fakeRemoteEditor{embedWorkingStatus: true}
 	m.setRemoteEditor(first)
 	m.handleAgentEvent(agent.AgentStartEvent{})
 	m.setWorkingMessage("Indexing")
-	m.setWorkingIndicator(&workingIndicatorOptions{Frames: []string{"A", "B"}, IntervalMs: 200})
+	m.setWorkingIndicator(&extension.WorkingIndicatorOptions{Frames: &[]string{"A", "B"}, IntervalMs: new(200.0)})
 	status := first.configs[len(first.configs)-1].WorkingStatus
 	if status == nil || status.Message != "Indexing" || len(status.Frames) != 2 || status.Frames[0] != "A" || !status.IndicatorVerbatim {
 		t.Fatalf("working updates were not sent: %+v", status)
@@ -119,7 +121,7 @@ func TestCustomEditorStatusUpdatesAndReplacement(t *testing.T) {
 	if first.configs[len(first.configs)-1].WorkingStatus.Frame != 1 {
 		t.Fatal("custom animation did not reach the component")
 	}
-	m.setWorkingIndicator(&workingIndicatorOptions{Frames: []string{}})
+	m.setWorkingIndicator(&extension.WorkingIndicatorOptions{Frames: &[]string{}})
 	if frames := first.configs[len(first.configs)-1].WorkingStatus.Frames; frames == nil || len(frames) != 0 {
 		t.Fatalf("hidden spinner must send an empty array, not null: %v", frames)
 	}
@@ -205,7 +207,7 @@ func TestCustomEditorDoesNotInheritDefaultStatusOptIn(t *testing.T) {
 	mode.setRemoteEditor(&fakeRemoteEditor{})
 	for _, kind := range []string{"working", "compaction", "branchSummary", "retry"} {
 		t.Run(kind, func(t *testing.T) {
-			indicator := &tui.StatusIndicator{Kind: kind, Loader: tui.NewLoader(fmt.Sprint("STATUS_", kind))}
+			indicator := &tui.StatusIndicator{Kind: kind, Loader: tui.NewLoader(nil, nil, nil, fmt.Sprint("STATUS_", kind), nil)}
 			mode.showStatusIndicator(indicator)
 			_, last := mode.statusContainer.LastTwoChildren()
 			if mode.activeWorkingIndicatorEmbedded || mode.statusContainer.ChildCount() != 1 || last != indicator {

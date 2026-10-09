@@ -1,5 +1,6 @@
 import { isModelType, } from "../../../pi-ai/sdk-bundle/index.js";
 import { llamaCppClassifyApi } from "../../../pi-ai/api/llama-cpp-classify.lazy.js";
+import { typesafeSystemOneApi } from "../../../pi-ai/api/typesafe-system-one.lazy.js";
 import { stream, streamSimple } from "../../../pi-ai/sdk-bundle/compat.js";
 import { LlamaClient, llamaInferenceUrl, normalizeLlamaServerUrl, } from "./client.js";
 export const LLAMA_PROVIDER_ID = "llama.cpp";
@@ -55,19 +56,39 @@ function contextWindowOf(model, cachedContextWindow) {
     const trainingContextWindow = model.meta?.n_ctx_train;
     return trainingContextWindow && trainingContextWindow > 0 ? trainingContextWindow : 128000;
 }
-/** The same llama.cpp model used as a classifier: answers are read from next-token label probabilities. */
+/**
+ * Whether llama.cpp reports a native decision model. Since llama.cpp 0.6.0, `GET /models` lists
+ * `decisions` in `architecture.output_modalities` for these models, including unloaded and sleeping ones.
+ * Older servers report `["text"]` or omit `architecture`, so their models are treated as chat models.
+ */
+function isDecisionModel(model) {
+    return model.architecture?.output_modalities?.includes("decisions") === true;
+}
+/** Decision-only models cannot generate text and are not listed for chat. */
+function isChatModel(model) {
+    return !isDecisionModel(model) || model.architecture?.output_modalities?.includes("text") === true;
+}
+/**
+ * A llama.cpp model used as a classifier. Decision models answer natively through llama.cpp's
+ * System One endpoint (`/v1/systemone`). Chat models fall back to `llama-cpp-classify`, which reads
+ * answers from next-token label probabilities.
+ */
 function toPiClassifierModel(model, serverUrl, cachedContextWindow) {
+    const decision = isDecisionModel(model);
     return {
         type: "classifier",
         id: model.id,
         name: model.id,
-        api: "llama-cpp-classify",
+        api: decision ? "typesafe-system-one" : "llama-cpp-classify",
         provider: LLAMA_PROVIDER_ID,
-        baseUrl: serverUrl,
+        baseUrl: decision ? llamaInferenceUrl(serverUrl) : serverUrl,
         input: ["text"],
         cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
         contextWindow: contextWindowOf(model, cachedContextWindow),
     };
+}
+function isLlamaClassifierModel(model) {
+    return (isModelType(model, "classifier") && (model.api === "llama-cpp-classify" || model.api === "typesafe-system-one"));
 }
 function toPiModel(model, serverUrl, props, cachedContextWindow) {
     const contextWindow = contextWindowOf(model, cachedContextWindow);
@@ -100,10 +121,11 @@ function toPiModel(model, serverUrl, props, cachedContextWindow) {
 export function createLlamaProvider() {
     let models = [];
     let classifiers = [];
-    const classifier = llamaCppClassifyApi();
+    const fallbackClassifier = llamaCppClassifyApi();
+    const decisionClassifier = typesafeSystemOneApi();
     const setCatalog = (catalog, serverUrl, options = {}) => {
         const selectable = catalog.filter((model) => modelIsSelectable(model, options.routerAutoload === true));
-        models = selectable.map((model) => toPiModel(model, serverUrl));
+        models = selectable.filter(isChatModel).map((model) => toPiModel(model, serverUrl));
         classifiers = selectable.map((model) => toPiClassifierModel(model, serverUrl));
     };
     const provider = {
@@ -157,7 +179,7 @@ export function createLlamaProvider() {
             if (context.stored) {
                 const stored = context.stored.models.filter((model) => model.provider === LLAMA_PROVIDER_ID);
                 const restored = stored.filter((model) => isModelType(model, "chat") && model.api === "openai-completions");
-                const restoredClassifiers = stored.filter((model) => isModelType(model, "classifier") && model.api === "llama-cpp-classify");
+                const restoredClassifiers = stored.filter(isLlamaClassifierModel);
                 for (const model of [...restored, ...restoredClassifiers]) {
                     cachedContextWindows.set(model.id, model.contextWindow);
                 }
@@ -183,11 +205,12 @@ export function createLlamaProvider() {
             if (context.signal.aborted)
                 return;
             const selectable = catalog.filter((model) => modelIsSelectable(model, routerAutoload));
-            const refreshed = await Promise.all(selectable.map(async (model) => {
+            // Only loaded models expose their chat template without side effects. Unloaded autoload presets would
+            // need to be loaded, while querying sleeping models may wake them. Those models remain without thinking
+            // support until they are loaded and a later catalog refresh discovers it. Decision models need no
+            // template, and llama.cpp reports them in the catalog regardless of their status.
+            const refreshed = await Promise.all(selectable.filter(isChatModel).map(async (model) => {
                 const cachedContextWindow = cachedContextWindows.get(model.id);
-                // Only loaded models expose their template without side effects. Unloaded autoload presets
-                // would need to be loaded, while querying sleeping models may wake them. Those models remain
-                // unclassified until they are loaded or woken and a later catalog refresh discovers them.
                 if (model.status.value !== "loaded")
                     return toPiModel(model, serverUrl, undefined, cachedContextWindow);
                 const props = await client.props({ model: model.id, signal: context.signal });
@@ -206,7 +229,7 @@ export function createLlamaProvider() {
         },
         stream: (model, context, options) => stream(model, context, options),
         streamSimple: (model, context, options) => streamSimple(model, context, options),
-        classify: (model, context, options) => classifier.classify(model, context, options),
+        classify: (model, context, options) => (model.api === "typesafe-system-one" ? decisionClassifier : fallbackClassifier).classify(model, context, options),
     };
     return { provider, setCatalog };
 }

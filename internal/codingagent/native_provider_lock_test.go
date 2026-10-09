@@ -44,16 +44,14 @@ func TestNativeRefreshCredentialTransactionDoesNotReenterRegistry(t *testing.T) 
 			called := false
 			failure := errors.New("credential resolution failed")
 			p := &extension.NativeProvider{ID: id, Name: "Corner native", Models: []extension.ProviderModelConfig{},
-				Stream: func(context.Context, *ai.Model, ai.TranscriptContext, ai.StreamOptions, bool) (*ai.AssistantMessageEventStream, error) {
+				Stream: func(context.Context, *ai.Model, ai.TranscriptContext, ai.StreamOptions) (*ai.AssistantMessageEventStream, error) {
 					return nil, errors.New("unused stream")
 				},
 				ResolveAuth: func(context.Context, *ai.Credential, ai.AuthResolutionOverrides) (*ai.AuthResult, *ai.Credential, error) {
 					return nil, nil, errors.New("unused auth")
 				},
-				CheckAuth: func(context.Context, *ai.Credential) (*ai.AuthCheck, error) { return nil, nil },
-				RefreshModels: func(_ context.Context, _ *ai.Credential, _ *ai.ModelsStoreEntry, _ bool, _ *bool, _ func(extension.NativeProviderPublication) error) ([]extension.ProviderModelConfig, error) {
-					return []extension.ProviderModelConfig{}, nil
-				},
+				CheckAuth:     func(context.Context, *ai.Credential) (*ai.AuthCheck, error) { return nil, nil },
+				RefreshModels: func(ai.RefreshModelsContext) error { return nil },
 				ResolveRefreshCredential: func(_ context.Context, current *ai.Credential) (*ai.Credential, *ai.Credential, error) {
 					called = true
 					if tc.missing {

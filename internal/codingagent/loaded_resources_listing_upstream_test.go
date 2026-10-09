@@ -7,7 +7,7 @@ import (
 
 // Ports packages/coding-agent/test/interactive-mode-status.test.ts:702,718,735,753. Upstream stubs formatScopeGroups to the sentinel "resource-list"; PiG renders the real scope-grouped body, so the expanded cases assert its exact text instead of the sentinel.
 func TestLoadedResourcesSkillAndExtensionListingsUpstream(t *testing.T) {
-	skill := []*SkillDef{{Path: "/tmp/skill/SKILL.md", Name: "commit"}}
+	skill := []*SkillDef{{FilePath: "/tmp/skill/SKILL.md", Name: "commit"}}
 	t.Run("shows a compact resource listing by default", func(t *testing.T) {
 		m := upstreamListingMode(t, false, nil)
 		m.opts.Skills = skill

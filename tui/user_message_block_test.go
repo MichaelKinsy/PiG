@@ -11,7 +11,7 @@ func TestUserMessageBlock_AppliesBackgroundToEveryLine(t *testing.T) {
 	// Multi-line user input must have bg paint on every rendered
 	// row (incl. the padding rows). Pre-fix bug analog: blockquote
 	// rendering dropped the `│` bar on continuation lines.
-	b := NewUserMessageBlock("hello world\nsecond line\nthird line")
+	b := NewUserMessageComponent("hello world\nsecond line\nthird line", nil, 1, nil)
 	out := b.Render(60)
 	if len(out) < 5 {
 		t.Fatalf("expected ≥5 rows (top pad + 3 content + bottom pad), got %d:\n%v", len(out), out)
@@ -36,7 +36,7 @@ func TestUserMessageBlock_AppliesBackgroundToEveryLine(t *testing.T) {
 func TestUserMessageBlock_PadsToFullWidth(t *testing.T) {
 	// The bg paint must extend to the full width so the user sees
 	// a continuous coloured rectangle, not a ragged-right box.
-	b := NewUserMessageBlock("hi")
+	b := NewUserMessageComponent("hi", nil, 1, nil)
 	out := b.Render(40)
 	for i, line := range out {
 		visWidth := lineDisplayWidth(line)
@@ -48,14 +48,14 @@ func TestUserMessageBlock_PadsToFullWidth(t *testing.T) {
 
 func TestUserMessageBlockDiffersFromOrdinaryBlockquote(t *testing.T) {
 	// User messages carry a background frame and semantic prompt markers. Ordinary Markdown blockquotes do not acquire that frame.
-	user := NewUserMessageBlock("say hi").Render(20)
+	user := NewUserMessageComponent("say hi", nil, 1, nil).Render(20)
 	if len(user) == 0 || !strings.HasPrefix(user[0], "\x1b]133;A\x07"+UserMessageBgOpen()) {
 		t.Fatalf("user block first row should start with bg-open escape, got: %q", user[0])
 	}
 
 	// Sanity check: the markdown renderer used inside the block
 	// produces text WITHOUT a leading bg-open escape on its own.
-	// (UserMessageBlock applies the bg as a wrapper.)
+	// (UserMessageComponent applies the bg as a wrapper.)
 	plain := NewMarkdown("> blockquote text\n> more").Render(20)
 	for i, line := range plain {
 		if strings.HasPrefix(line, UserMessageBgOpen()) {
@@ -67,7 +67,7 @@ func TestUserMessageBlockDiffersFromOrdinaryBlockquote(t *testing.T) {
 func TestUserMessageBlock_PreservesInlineMarkdown(t *testing.T) {
 	// Bold/italic/code from the user's input should still render -
 	// the bg paint wraps but doesn't strip the inline ANSI.
-	b := NewUserMessageBlock("this has **bold** and `code`")
+	b := NewUserMessageComponent("this has **bold** and `code`", nil, 1, nil)
 	out := b.Render(50)
 	joined := strings.Join(out, "\n")
 	if !strings.Contains(joined, "\x1b[1m") {
@@ -81,7 +81,7 @@ func TestUserMessageBlock_PreservesInlineMarkdown(t *testing.T) {
 
 func TestUserMessageBlock_NarrowWidthClamp(t *testing.T) {
 	// Width below the minimum still produces output without panicking.
-	b := NewUserMessageBlock("xyz")
+	b := NewUserMessageComponent("xyz", nil, 1, nil)
 	out := b.Render(2)
 	if len(out) == 0 {
 		t.Fatal("expected output even at narrow width")

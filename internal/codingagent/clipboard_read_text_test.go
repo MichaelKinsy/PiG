@@ -79,7 +79,6 @@ func TestReadClipboardTextCommandResultStopsFallback(t *testing.T) {
 		{"WAYLAND_DISPLAY", "wl-paste", []string{"--no-newline", "--type", "text"}, []string{"wl-paste"}},
 		{"DISPLAY", "xclip", []string{"-selection", "clipboard", "-out"}, []string{"xclip"}},
 		{"DISPLAY", "xsel", []string{"--clipboard", "--output"}, []string{"xclip", "xsel"}},
-		{"TERMUX_VERSION", "termux-clipboard-get", nil, []string{"termux-clipboard-get"}},
 	}
 	for _, tc := range cases {
 		for _, text := range []string{"clipboard text", ""} {
@@ -120,6 +119,66 @@ func TestReadClipboardTextCommandResultStopsFallback(t *testing.T) {
 				}
 			})
 		}
+	}
+}
+
+// Upstream: "Termux reads termux-clipboard-get result %j on Android"
+// (clipboard.test.ts, #10391). Termux reports the platform "android", so the
+// command runs outside the Linux-only branch and the native helper stays
+// unconsulted.
+func TestReadClipboardTextTermuxReadsOnAndroid(t *testing.T) {
+	for _, text := range []string{"clipboard text", ""} {
+		t.Run(fmt.Sprintf("result %q", text), func(t *testing.T) {
+			var calls []string
+			var gotArgs []string
+			var gotTimeout time.Duration
+			nativeCalls := 0
+			useClipboardTextTestSeams(t, "android", map[string]string{"TERMUX_VERSION": "0.119"},
+				func(ctx context.Context, name string, args ...string) ([]byte, error) {
+					calls = append(calls, name)
+					gotArgs = slices.Clone(args)
+					if deadline, ok := ctx.Deadline(); ok {
+						gotTimeout = time.Until(deadline)
+					}
+					return []byte(text), nil
+				},
+				func() *tui.NativeClipboard {
+					nativeCalls++
+					return nil
+				},
+			)
+			if got := readClipboardText(t.Context()); got != text {
+				t.Fatalf("read = %q, want %q", got, text)
+			}
+			if !slices.Equal(calls, []string{"termux-clipboard-get"}) || len(gotArgs) != 0 {
+				t.Fatalf("calls = %v args = %v, want exactly termux-clipboard-get", calls, gotArgs)
+			}
+			if gotTimeout <= 4*time.Second || gotTimeout > clipboardTextTimeout {
+				t.Fatalf("timeout remaining = %v, want within (4s, 5s]", gotTimeout)
+			}
+			if nativeCalls != 0 {
+				t.Fatal("native clipboard consulted after a successful command")
+			}
+		})
+	}
+}
+
+// Android without Termux has no command backend, and Android never reaches
+// the Linux Wayland/X11 branch even when the variables are set (upstream
+// readClipboardText: only the Termux command sits outside platform() === "linux").
+func TestReadClipboardTextAndroidSkipsLinuxCommands(t *testing.T) {
+	var calls []string
+	useClipboardTextTestSeams(t, "android", map[string]string{"WAYLAND_DISPLAY": "wayland-0", "DISPLAY": ":0"},
+		func(_ context.Context, name string, _ ...string) ([]byte, error) {
+			calls = append(calls, name)
+			return []byte("x"), nil
+		},
+		func() *tui.NativeClipboard {
+			return nativeTextHelper(func(context.Context) (*string, error) { return new("native"), nil })
+		},
+	)
+	if got := readClipboardText(t.Context()); got != "native" || len(calls) != 0 {
+		t.Fatalf("read = %q, commands = %v, want native and no commands", got, calls)
 	}
 }
 

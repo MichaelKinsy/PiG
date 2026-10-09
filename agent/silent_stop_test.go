@@ -23,7 +23,7 @@ func TestSend_DefaultHasNoTurnCap(t *testing.T) {
 		prov.seqs = append(prov.seqs, toolCallSeq(struct{ id, name string }{"c", "t"}))
 	}
 	prov.seqs = append(prov.seqs, textSeq("done"))
-	a := NewAgent(AgentOptions{Model: fakeTestModel(prov), Tools: []AgentTool{&fakeTool{name: "t", mode: ToolModeSequential, content: "ok"}}})
+	a := mustNewAgent(AgentOptions{Model: fakeTestModel(prov), Tools: []AgentTool{&fakeTool{name: "t", mode: ToolModeSequential, content: "ok"}}})
 
 	msgs, err := a.Send(context.Background(), "go")
 	if err != nil {
@@ -43,7 +43,7 @@ func TestSend_ExplicitTurnCapIsAnError(t *testing.T) {
 		toolCallSeq(struct{ id, name string }{"c2", "t"}),
 		textSeq("done"),
 	)
-	a := NewAgent(AgentOptions{Model: fakeTestModel(prov), Tools: []AgentTool{&fakeTool{name: "t", mode: ToolModeSequential, content: "ok"}}, MaxTurns: 1})
+	a := mustNewAgent(AgentOptions{Model: fakeTestModel(prov), Tools: []AgentTool{&fakeTool{name: "t", mode: ToolModeSequential, content: "ok"}}, MaxTurns: 1})
 	msgs, err := a.Send(context.Background(), "go")
 	if !errors.Is(err, ErrMaxTurnsReached) {
 		t.Fatalf("Send err = %v, want ErrMaxTurnsReached", err)
@@ -57,7 +57,7 @@ func TestSend_ExplicitTurnCapIsAnError(t *testing.T) {
 // (shouldTerminateToolBatch); it stays a clean end.
 func TestSend_TerminatedBatchEndsCleanlyOnToolResults(t *testing.T) {
 	prov := providerFromSeqs(toolCallSeq(struct{ id, name string }{"c1", "stop"}), textSeq("unused"))
-	a := NewAgent(AgentOptions{Model: fakeTestModel(prov), Tools: []AgentTool{&terminateTool{fakeTool{mode: ToolModeSequential}}}})
+	a := mustNewAgent(AgentOptions{Model: fakeTestModel(prov), Tools: []AgentTool{&terminateTool{fakeTool{mode: ToolModeSequential}}}})
 	msgs, err := a.Send(context.Background(), "go")
 	if err != nil {
 		t.Fatalf("Send: %v", err)
@@ -99,10 +99,10 @@ func TestCheckRunEndReportsUnansweredToolResults(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			a := NewAgent(AgentOptions{})
+			a := mustNewAgent(AgentOptions{})
 			a.messages = []AgentMessage{tc.last}
-			r := &loopRun{a: a, ctx: tc.ctx, toolResultsEndRun: tc.cleanEnd}
-			if got := r.checkRunEnd(tc.in); !errors.Is(got, tc.want) || (tc.want == nil && got != nil) {
+			r := &loopRun{ctx: tc.ctx, toolResultsEndRun: tc.cleanEnd}
+			if got := r.checkRunEnd(a.messages, tc.in); !errors.Is(got, tc.want) || (tc.want == nil && got != nil) {
 				t.Fatalf("checkRunEnd = %v, want %v", got, tc.want)
 			}
 		})

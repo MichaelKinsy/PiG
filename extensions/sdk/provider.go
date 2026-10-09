@@ -10,19 +10,25 @@ import (
 
 // Provider is Pi's callable provider object. The ModelRegistry resolves credentials and normalizes transcripts separately from these methods.
 type Provider struct {
-	handle         string
-	ID             string
-	Name           string
-	BaseURL        *string
-	Headers        map[string]string
-	Auth           ProviderAuth
-	GetModels      func() ([]map[string]any, error)
-	FilterModels   func([]map[string]any, map[string]any) ([]map[string]any, error)
-	RefreshModels  func(RefreshModelsContext) error
-	Stream         ProviderStreamFunc
-	StreamSimple   ProviderStreamFunc
-	FetchDeferred  ProviderStreamFunc
-	CancelDeferred func(map[string]any, map[string]any, ProviderStreamOptions) error
+	handle    string
+	ID        string
+	Name      string
+	BaseURL   *string
+	Headers   map[string]string
+	Auth      ProviderAuth
+	GetModels func() ([]map[string]any, error)
+	// GetAllModels lists the models of every type; without it GetModels does.
+	// upstream: packages/ai/src/models.ts Provider.getAllModels
+	GetAllModels func() ([]map[string]any, error)
+	FilterModels func([]map[string]any, map[string]any) ([]map[string]any, error)
+	// FilterAllModels filters the models of every type by credential; without it FilterModels filters the chat models.
+	// upstream: packages/ai/src/models.ts Provider.filterAllModels
+	FilterAllModels func([]map[string]any, map[string]any) ([]map[string]any, error)
+	RefreshModels   func(RefreshModelsContext) error
+	Stream          ProviderStreamFunc
+	StreamSimple    ProviderStreamFunc
+	FetchDeferred   ProviderStreamFunc
+	CancelDeferred  func(map[string]any, map[string]any, ProviderStreamOptions) error
 	// GenerateImages and Classify are the provider's image and classifier operations. The models they serve come from GetModels.
 	GenerateImages ProviderImagesFunc
 	Classify       ProviderClassifyFunc
@@ -129,13 +135,16 @@ func providerDeclaration(provider *Provider, key string) (providerObjectDeclarat
 	}
 	// Models treats a throwing getModels as an empty catalog; calling the object directly still returns its error.
 	decl.Models, _ = provider.GetModels()
+	if provider.GetAllModels != nil {
+		decl.Models, _ = provider.GetAllModels()
+	}
 	if decl.Models == nil {
 		decl.Models = []map[string]any{}
 	}
 	for _, entry := range []struct {
 		method  string
 		present bool
-	}{{"filterModels", provider.FilterModels != nil}, {"refreshModels", provider.RefreshModels != nil}, {"fetchDeferred", provider.FetchDeferred != nil}, {"cancelDeferred", provider.CancelDeferred != nil}, {"generateImages", provider.GenerateImages != nil}, {"classify", provider.Classify != nil}} {
+	}{{"getAllModels", provider.GetAllModels != nil}, {"filterModels", provider.FilterModels != nil}, {"filterAllModels", provider.FilterAllModels != nil}, {"refreshModels", provider.RefreshModels != nil}, {"fetchDeferred", provider.FetchDeferred != nil}, {"cancelDeferred", provider.CancelDeferred != nil}, {"generateImages", provider.GenerateImages != nil}, {"classify", provider.Classify != nil}} {
 		if entry.present {
 			decl.Methods = append(decl.Methods, entry.method)
 		}

@@ -6,7 +6,6 @@ package ai
 import (
 	"encoding/json"
 	"fmt"
-	"slices"
 	"time"
 )
 
@@ -21,29 +20,50 @@ type PiMessagesRewriteImpact struct {
 	SystemPromptChanged bool    `json:"systemPromptChanged"`
 }
 
+// PiMessagesEventType is the discriminator of the PiMessagesEvent union.
+type PiMessagesEventType string
+
+// The event types a pi-messages backend sends (pi-messages.ts PiMessagesEvent).
+const (
+	PiMessagesEventStart         PiMessagesEventType = "start"
+	PiMessagesEventTextStart     PiMessagesEventType = "text_start"
+	PiMessagesEventTextDelta     PiMessagesEventType = "text_delta"
+	PiMessagesEventTextEnd       PiMessagesEventType = "text_end"
+	PiMessagesEventThinkingStart PiMessagesEventType = "thinking_start"
+	PiMessagesEventThinkingDelta PiMessagesEventType = "thinking_delta"
+	PiMessagesEventThinkingEnd   PiMessagesEventType = "thinking_end"
+	PiMessagesEventToolcallStart PiMessagesEventType = "toolcall_start"
+	PiMessagesEventToolcallDelta PiMessagesEventType = "toolcall_delta"
+	PiMessagesEventToolcallEnd   PiMessagesEventType = "toolcall_end"
+	PiMessagesEventDone          PiMessagesEventType = "done"
+	PiMessagesEventError         PiMessagesEventType = "error"
+)
+
 // PiMessagesEvent is one serialized assistant-message event sent by a
 // pi-messages backend. Type selects which fields apply.
 type PiMessagesEvent struct {
-	Type                  string         `json:"type"`
-	ContentIndex          int            `json:"contentIndex"`
-	Delta                 string         `json:"delta"`
-	Content               string         `json:"content"`
-	ContentSignature      string         `json:"contentSignature"`
-	Redacted              bool           `json:"redacted"`
-	ID                    string         `json:"id"`
-	ToolName              string         `json:"toolName"`
-	ToolCall              *ToolCall      `json:"toolCall"`
-	Reason                StopReason     `json:"reason"`
-	Usage                 Usage          `json:"usage"`
-	ErrorMessage          string         `json:"errorMessage"`
-	ResponseID            string         `json:"responseId"`
-	ProviderThinkingLevel *string        `json:"providerThinkingLevel"`
-	Rewrite               map[string]any `json:"rewrite"`
+	Type                  PiMessagesEventType `json:"type"`
+	ContentIndex          int                 `json:"contentIndex"`
+	Delta                 string              `json:"delta"`
+	Content               string              `json:"content"`
+	ContentSignature      string              `json:"contentSignature"`
+	Redacted              bool                `json:"redacted"`
+	ID                    string              `json:"id"`
+	ToolName              string              `json:"toolName"`
+	ToolCall              *ToolCall           `json:"toolCall"`
+	Reason                StopReason          `json:"reason"`
+	Usage                 Usage               `json:"usage"`
+	ErrorMessage          string              `json:"errorMessage"`
+	ResponseID            string              `json:"responseId"`
+	ProviderThinkingLevel *string             `json:"providerThinkingLevel"`
+	Rewrite               map[string]any      `json:"rewrite"`
 }
 
 type piMessagesEventConverter struct {
 	partial  *AssistantMessage
 	toolJSON map[int]string
+	// streamed appends deltas to the open blocks without copying their earlier bytes again.
+	streamed streamedBlocks
 	// observe is the bound OnProviderStreamEvent callback, or nil.
 	observe func(data any) error
 	// replaced records the nested objects the last converted event assigned to partial. Shallow copies taken earlier keep the objects they retained.
@@ -66,7 +86,7 @@ func (c *piMessagesEventConverter) convert(raw json.RawMessage) ([]AssistantMess
 	if err := json.Unmarshal(raw, &event); err != nil {
 		return nil, err
 	}
-	if event.Type == "start" {
+	if event.Type == PiMessagesEventStart {
 		return []AssistantMessageEvent{StartEvent{Partial: c.partial}}, nil
 	}
 	var forwarded struct {
@@ -93,18 +113,18 @@ func (c *piMessagesEventConverter) convert(raw json.RawMessage) ([]AssistantMess
 
 func (c *piMessagesEventConverter) apply(event PiMessagesEvent) (AssistantMessageEvent, error) {
 	switch event.Type {
-	case "done":
+	case PiMessagesEventDone:
 		c.finish(event)
 		return DoneEvent{Reason: event.Reason, Message: c.partial}, nil
-	case "error":
+	case PiMessagesEventError:
 		c.finish(event)
 		c.partial.ErrorMessage = event.ErrorMessage
 		return ErrorEvent{Reason: event.Reason, Error: c.partial}, nil
-	case "text_start", "thinking_start", "toolcall_start":
+	case PiMessagesEventTextStart, PiMessagesEventThinkingStart, PiMessagesEventToolcallStart:
 		return c.startBlock(event)
-	case "text_delta", "thinking_delta", "toolcall_delta":
+	case PiMessagesEventTextDelta, PiMessagesEventThinkingDelta, PiMessagesEventToolcallDelta:
 		return c.deltaBlock(event)
-	case "text_end", "thinking_end", "toolcall_end":
+	case PiMessagesEventTextEnd, PiMessagesEventThinkingEnd, PiMessagesEventToolcallEnd:
 		return c.endBlock(event)
 	}
 	return nil, fmt.Errorf("unknown pi-messages event type %q", event.Type)
@@ -120,8 +140,7 @@ func (c *piMessagesEventConverter) finish(event PiMessagesEvent) {
 		c.partial.ProviderThinkingLevel = *event.ProviderThinkingLevel
 	}
 	if event.Rewrite != nil {
-		// diagnostics.ts:42-47 appendAssistantMessageDiagnostic assigns a new array.
-		c.partial.Diagnostics = append(slices.Clone(c.partial.Diagnostics), AssistantMessageDiagnostic{
+		AppendAssistantMessageDiagnostic(c.partial, AssistantMessageDiagnostic{
 			Type: "pi_messages_rewrite", Timestamp: time.Now().UnixMilli(), Details: event.Rewrite,
 		})
 		c.replaced.Diagnostics = true
@@ -136,13 +155,14 @@ func (c *piMessagesEventConverter) startBlock(event PiMessagesEvent) (AssistantM
 	var block AssistantContentBlock
 	var result AssistantMessageEvent
 	switch event.Type {
-	case "text_start":
+	case PiMessagesEventTextStart:
 		block, result = TextContent{}, TextStartEvent{ContentIndex: index, Partial: c.partial}
-	case "thinking_start":
+	case PiMessagesEventThinkingStart:
 		block, result = ThinkingContent{}, ThinkingStartEvent{ContentIndex: index, Partial: c.partial}
 	default:
 		block, result = ToolCall{ID: event.ID, Name: event.ToolName, Arguments: JsonObject{}}, ToolCallStartEvent{ContentIndex: index, Partial: c.partial}
 		c.toolJSON[index] = ""
+		c.streamed.release(index)
 	}
 	if index == len(c.partial.Content) {
 		c.partial.Content = append(c.partial.Content, block)
@@ -167,16 +187,16 @@ func (c *piMessagesEventConverter) deltaBlock(event PiMessagesEvent) (AssistantM
 	index := event.ContentIndex
 	switch block := current.(type) {
 	case TextContent:
-		block.Text += event.Delta
+		block.Text = c.streamed.appendContent(index, block.Text, event.Delta)
 		c.partial.Content[index] = block
 		return TextDeltaEvent{ContentIndex: index, Delta: event.Delta, Partial: c.partial}, nil
 	case ThinkingContent:
-		block.Thinking += event.Delta
+		block.Thinking = c.streamed.appendContent(index, block.Thinking, event.Delta)
 		c.partial.Content[index] = block
 		return ThinkingDeltaEvent{ContentIndex: index, Delta: event.Delta, Partial: c.partial}, nil
 	case ToolCall:
-		c.toolJSON[index] += event.Delta
-		block.SetStreamingArguments(c.toolJSON[index])
+		c.toolJSON[index] = c.streamed.appendArguments(index, c.toolJSON[index], event.Delta)
+		block.Arguments, block.argumentOrder = c.streamed.streamingArguments(index, c.toolJSON[index])
 		c.partial.Content[index] = block
 		return ToolCallDeltaEvent{ContentIndex: index, Delta: event.Delta, Partial: c.partial}, nil
 	}
@@ -192,9 +212,11 @@ func (c *piMessagesEventConverter) endBlock(event PiMessagesEvent) (AssistantMes
 	switch block := current.(type) {
 	case TextContent:
 		c.partial.Content[index] = TextContent{Text: event.Content, TextSignature: event.ContentSignature}
+		c.streamed.release(index)
 		return TextEndEvent{ContentIndex: index, Content: event.Content, Partial: c.partial}, nil
 	case ThinkingContent:
 		c.partial.Content[index] = ThinkingContent{Thinking: event.Content, ThinkingSignature: event.ContentSignature, Redacted: event.Redacted}
+		c.streamed.release(index)
 		return ThinkingEndEvent{ContentIndex: index, Content: event.Content, Partial: c.partial}, nil
 	case ToolCall:
 		if event.ToolCall != nil {
@@ -202,6 +224,7 @@ func (c *piMessagesEventConverter) endBlock(event PiMessagesEvent) (AssistantMes
 		}
 		c.partial.Content[index] = block
 		delete(c.toolJSON, index)
+		c.streamed.release(index)
 		return ToolCallEndEvent{ContentIndex: index, ToolCall: block, Partial: c.partial}, nil
 	}
 	return nil, fmt.Errorf("pi-messages %s does not match content block %d", event.Type, index)

@@ -45,7 +45,7 @@ type codemodeDetails struct {
 	FullOutputPath string `json:"fullOutputPath"`
 }
 
-func codemodeFg(token, text string) string { return tui.ActiveTheme().FgText(token, text) }
+func codemodeFg(token, text string) string { return tui.ActiveTheme().Fg(token, text) }
 
 // codemodeExpandKeyHint is upstream's keyHint("app.tools.expand", "to expand"): the key the user bound.
 func codemodeExpandKeyHint() string {

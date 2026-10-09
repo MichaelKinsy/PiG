@@ -1,5 +1,4 @@
 <!--
-SPDX-FileCopyrightText: Copyright Hewlett Packard Enterprise Development LP
 SPDX-License-Identifier: MIT
 -->
 
@@ -18,14 +17,14 @@ SPDX-License-Identifier: MIT
 [![Minimum Go version](https://img.shields.io/github/go-mod/go-version/MichaelKinsy/PiG?label=Go%20%E2%89%A5)](go.mod)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Latest release](https://img.shields.io/github/v/release/MichaelKinsy/PiG?sort=semver)](https://github.com/MichaelKinsy/PiG/releases)
-[![Pi pin 1.0.3](https://img.shields.io/badge/Pi%20pin-1.0.3-8A2BE2)](https://github.com/earendil-works/pi/releases/tag/v1.0.3)
+[![Pi pin 1.1.0](https://img.shields.io/badge/Pi%20pin-1.1.0-8A2BE2)](https://github.com/earendil-works/pi/releases/tag/v1.1.0)
 [![Pi port progress](.github/badges/parity-coverage.svg)](test/parity/coverage.md)
 [![Follow PiG on X](https://img.shields.io/badge/X-%40PiGCodingAgent-000000?logo=x&logoColor=white)](https://x.com/PiGCodingAgent)
 [![Join r/PiGCodingAgent](https://img.shields.io/badge/Reddit-r%2FPiGCodingAgent-FF4500?logo=reddit&logoColor=white)](https://www.reddit.com/r/PiGCodingAgent/)
 
 PiG is [Pi](https://github.com/earendil-works/pi), the minimal and extensible coding agent for the terminal, rebuilt in Go as one native binary. It starts quickly, needs no Node.js, and runs Pi's TypeScript extensions unchanged. You can also write extensions in Go, Rust, or Python, and bundle extensions, skills, and prompts into a Piglet: one named agent you can share or build into its own executable.
 
-PiG is a pre-stable 0.x release. Core paths are ported and checked against Pi 1.0.3 with paired parity scenarios; edge cases are still hardening. See the [port status](test/parity/coverage.md) and [file map](docs/parity/PORT_MAP.md) for current scope and evidence.
+PiG is a pre-stable 0.x release. Core paths are ported and checked against Pi 1.1.0 with paired parity scenarios; edge cases are still hardening. See the [port status](test/parity/coverage.md) and [file map](docs/parity/PORT_MAP.md) for current scope and evidence.
 
 If PiG behaves differently from Pi, that is either a bug or a documented divergence. Windows support is a preview.
 

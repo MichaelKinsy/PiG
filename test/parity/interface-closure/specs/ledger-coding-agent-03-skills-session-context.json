@@ -1,0 +1,166 @@
+[
+ {
+  "ids": [
+   "pkg:coding-agent/.#SessionContext"
+  ],
+  "targets": [
+   "internal/codingagent/session_context.go#SessionContext"
+  ],
+  "struct": {
+   "file": "internal/codingagent/session_context.go",
+   "type": "SessionContext"
+  },
+  "production": [
+   "call:coding/cli/print_mode_build.go#cliRuntimeBuilder.rebuild"
+  ],
+  "evidence": [
+   "test:internal/codingagent/session_context_upstream_test.go#TestBuildSessionContextUpstream",
+   "test:internal/codingagent/session_context_metadata_test.go#TestContextSettingsIgnoreUnrelatedEntryProperties"
+  ],
+  "rationale": "SessionContext: Go SessionContext has messages, thinkingLevel and model (*SessionContextModel {provider, modelId}, nil for upstream null); typed refs by go/types."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#SourceInfo"
+  ],
+  "targets": [
+   "internal/codingagent/extension_host_info.go#PiSourceInfo"
+  ],
+  "struct": {
+   "file": "internal/codingagent/extension_host_info.go",
+   "type": "PiSourceInfo"
+  },
+  "production": [
+   "call:coding/resource_loader.go#DefaultResourceLoader.loadSkills"
+  ],
+  "evidence": [
+   "test:coding/resource_loader_packages_test.go#TestUpstreamDefaultResourceLoaderKeepsPackageMetadata",
+   "test:coding/cli/extension_set_upstream_test.go#TestBuiltinExtensionSourceInfoIsSynthetic"
+  ],
+  "rationale": "SourceInfo: Go PiSourceInfo has path, source, scope, origin and baseDir (omitted when empty); the string unions SourceScope and SourceOrigin are strings."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#Skill"
+  ],
+  "targets": [
+   "internal/codingagent/skills.go#SkillDef"
+  ],
+  "production": [
+   "call:coding/cli/main.go#loadSkills"
+  ],
+  "evidence": [
+   "test:internal/codingagent/upstream_skills_test.go#TestUpstreamCoreSkillsFromDir",
+   "test:internal/codingagent/upstream_skills_test.go#TestCoreSkillMetadataUsesYAMLTypes"
+  ],
+  "rationale": "Skill: Go SkillDef carries every upstream property; filePath is Path and baseDir is Dir; Body is a Go-only addition.",
+  "properties": {
+   "name": {
+    "targets": [
+     "internal/codingagent/skills.go#SkillDef"
+    ],
+    "evidence": [
+     "test:internal/codingagent/upstream_skills_test.go#TestUpstreamCoreSkillsFromDir"
+    ]
+   },
+   "description": {
+    "targets": [
+     "internal/codingagent/skills.go#SkillDef"
+    ],
+    "evidence": [
+     "test:internal/codingagent/upstream_skills_test.go#TestUpstreamCoreSkillsFromDir"
+    ]
+   },
+   "filePath": {
+    "targets": [
+     "internal/codingagent/skills.go#SkillDef"
+    ],
+    "evidence": [
+     "test:internal/codingagent/upstream_skills_test.go#TestUpstreamCoreSkillsFromDir"
+    ],
+    "rationale": "filePath is SkillDef.Path."
+   },
+   "baseDir": {
+    "targets": [
+     "internal/codingagent/skills.go#SkillDef"
+    ],
+    "evidence": [
+     "test:internal/codingagent/upstream_skills_test.go#TestUpstreamCoreSkillsFromDir"
+    ],
+    "rationale": "baseDir is SkillDef.Dir."
+   },
+   "sourceInfo": {
+    "targets": [
+     "internal/codingagent/skills.go#SkillDef"
+    ],
+    "evidence": [
+     "test:internal/codingagent/upstream_skills_test.go#TestUpstreamCoreSkillsFromDir"
+    ],
+    "rationale": "sourceInfo is SkillDef.SourceInfo (PiSourceInfo)."
+   },
+   "disableModelInvocation": {
+    "targets": [
+     "internal/codingagent/skills.go#SkillDef"
+    ],
+    "evidence": [
+     "test:internal/codingagent/upstream_skills_test.go#TestCoreSkillMetadataUsesYAMLTypes"
+    ]
+   }
+  }
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#LoadSkillsResult"
+  ],
+  "targets": [
+   "internal/codingagent/skills_loader.go#LoadSkillsResult"
+  ],
+  "struct": {
+   "file": "internal/codingagent/skills_loader.go",
+   "type": "LoadSkillsResult"
+  },
+  "production": [
+   "call:coding/cli/main.go#loadSkills"
+  ],
+  "evidence": [
+   "test:internal/codingagent/upstream_skills_test.go#TestUpstreamCoreSkillsFromDir",
+   "test:internal/codingagent/upstream_skills_test.go#TestUpstreamCoreSkillsDetectNameCollisionsAndKeepFirst"
+  ],
+  "rationale": "LoadSkillsResult: Go LoadSkillsResult has skills ([]*SkillDef, upstream Skill[]) and diagnostics."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#ProjectTrustUpdate"
+  ],
+  "targets": [
+   "internal/codingagent/trust_manager.go#ProjectTrustUpdate"
+  ],
+  "struct": {
+   "file": "internal/codingagent/trust_manager.go",
+   "type": "ProjectTrustUpdate"
+  },
+  "production": [
+   "call:internal/codingagent/trust_manager.go#GetProjectTrustOptions"
+  ],
+  "evidence": [
+   "test:internal/codingagent/trust_selector_upstream_test.go#TestTrustSelectorUpstream",
+   "test:internal/codingagent/trust_manager_test.go#TestGetProjectTrustOptions"
+  ],
+  "rationale": "ProjectTrustUpdate: Go ProjectTrustUpdate has path and decision (*bool for ProjectTrustDecision boolean | null)."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#PackageSource"
+  ],
+  "targets": [
+   "internal/codingagent/settings.go#PackageSource"
+  ],
+  "production": [
+   "call:coding/cli/package_commands.go#addSourceToSettings"
+  ],
+  "evidence": [
+   "test:internal/codingagent/package_source_json_test.go#TestPackageSourceJSONKeepsTheStringOrObjectForm"
+  ],
+  "rationale": "PackageSource: Go PackageSource decodes and encodes the string-or-object union (MarshalJSON/UnmarshalJSON) with source, autoload and the four resource filters; WasObject keeps typeof pkg === 'object'."
+ }
+]

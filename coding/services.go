@@ -13,6 +13,7 @@ import (
 	"maps"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -58,7 +59,7 @@ type ModelRegistry struct {
 // path, the merged settings, or model lookup goes through this type.
 // Anything specific to a single conversation (history, tools, hooks)
 // belongs on Session, not Services.
-type Services struct {
+type AgentSessionServices struct {
 	cwd          string
 	agentDir     string
 	auth         *ai.AuthStorage
@@ -70,12 +71,27 @@ type Services struct {
 
 	// Keep the deterministic provider's counters across request-level model reconstruction.
 	testFauxProvider func() *ai.TestFauxProvider
+
+	// sharedRuntime marks a ModelRuntime owned by the caller: Close leaves it running.
+	sharedRuntime       bool
+	resourceLoader      *DefaultResourceLoader
+	extensionFlagValues []ExtensionFlagValue
+	diagnostics         []AgentSessionRuntimeDiagnostic
 }
 
-// ServicesOptions configures NewServices. All fields are optional;
+// ExtensionFlagValue is one entry of [CreateAgentSessionServicesOptions.ExtensionFlagValues]: the value of --Name, a bool or a string.
+type ExtensionFlagValue struct {
+	Name  string
+	Value any
+}
+
+// AgentSessionRuntimeDiagnostic is a startup problem found while creating Services (upstream AgentSessionRuntimeDiagnostic).
+type AgentSessionRuntimeDiagnostic = icodingagent.AgentSessionRuntimeDiagnostic
+
+// CreateAgentSessionServicesOptions configures CreateAgentSessionServices. All fields are optional;
 // empty values resolve to sensible defaults (current working directory,
 // $PIG_HOME/agent or ~/.pig/agent).
-type ServicesOptions struct {
+type CreateAgentSessionServicesOptions struct {
 	// CWD is the project directory used to discover per-project
 	// settings (.pig/settings.json) and to anchor session storage.
 	// Empty uses SessionManager.GetCwd when supplied, otherwise os.Getwd().
@@ -94,9 +110,33 @@ type ServicesOptions struct {
 
 	// SettingsManager supplies caller-owned file or memory settings instead of loading settings files.
 	SettingsManager *SettingsManager
+
+	// ModelRuntime shares a caller-owned runtime instead of creating one over AgentDir; the Services then use its
+	// registry and credentials and never close it. Upstream CreateAgentSessionServicesOptions.modelRuntime.
+	ModelRuntime *ModelRuntime
+
+	// ModelRuntimeSignal bounds the model catalog restore and the first availability refresh of the runtime the Services
+	// create; nil never cancels. Upstream CreateAgentSessionServicesOptions.modelRuntimeSignal (an AbortSignal).
+	ModelRuntimeSignal context.Context
+
+	// ExtensionFlagValues are the CLI values for extension flags in command-line order (a JavaScript Map keeps insertion order,
+	// and the order shows in diagnostics): true for a boolean flag, a string for a string flag.
+	// [Services.ApplyExtensionFlagValues] validates them against the loaded extensions.
+	// Upstream CreateAgentSessionServicesOptions.extensionFlagValues (Map<string, boolean | string>).
+	ExtensionFlagValues []ExtensionFlagValue
+
+	// ResourceLoaderOptions configure the Services' resource loader; its CWD, AgentDir and SettingsManager are the
+	// Services' own. Upstream CreateAgentSessionServicesOptions.resourceLoaderOptions
+	// (Omit<DefaultResourceLoaderOptions, "cwd" | "agentDir" | "settingsManager">). Nil leaves the resource loader to
+	// the Session, which builds a default one.
+	ResourceLoaderOptions *DefaultResourceLoaderOptions
+
+	// ResourceLoaderReloadOptions are the options of the Services' first resource reload. Upstream
+	// CreateAgentSessionServicesOptions.resourceLoaderReloadOptions. Nil or empty reloads without resolving trust.
+	ResourceLoaderReloadOptions *ResourceLoaderReloadOptions
 }
 
-// NewServices constructs a Services container. Failure modes:
+// CreateAgentSessionServices constructs a Services container. Failure modes:
 //
 //   - cannot resolve CWD when none provided → wrapped os.Getwd error
 //   - auth.json directory cannot be created/read → wrapped error
@@ -104,7 +144,7 @@ type ServicesOptions struct {
 // Settings and registry constructors never fail; they fall back to
 // defaults if their backing files are missing or malformed. The caller owns
 // Services.Close; a Runtime or Session supplied with these Services does not close them.
-func NewServices(opts ServicesOptions) (*Services, error) {
+func CreateAgentSessionServices(opts CreateAgentSessionServicesOptions) (*AgentSessionServices, error) {
 	cwd := opts.CWD
 	if cwd == "" && opts.SessionManager != nil {
 		cwd = opts.SessionManager.GetCwd()
@@ -112,20 +152,21 @@ func NewServices(opts ServicesOptions) (*Services, error) {
 	if cwd == "" {
 		c, err := os.Getwd()
 		if err != nil {
-			return nil, fmt.Errorf("coding.NewServices: resolve cwd: %w", err)
+			return nil, fmt.Errorf("coding.CreateAgentSessionServices: resolve cwd: %w", err)
 		}
 		cwd = c
 	}
 
 	agentDir := opts.AgentDir
+	if agentDir == "" && opts.ModelRuntime != nil {
+		agentDir = opts.ModelRuntime.services.agentDir
+	}
 	if agentDir == "" {
 		agentDir = DefaultAgentDir()
 	}
-
-	authPath := filepath.Join(agentDir, "auth.json")
-	auth, err := ai.NewAuthStorage(authPath)
-	if err != nil {
-		return nil, fmt.Errorf("coding.NewServices: open auth storage at %s: %w", authPath, err)
+	signal := opts.ModelRuntimeSignal
+	if signal == nil {
+		signal = context.Background()
 	}
 
 	projectTrusted := true
@@ -135,25 +176,59 @@ func NewServices(opts ServicesOptions) (*Services, error) {
 	// Ports packages/coding-agent/src/core/agent-session-services.ts:147.
 	sm := opts.SettingsManager
 	if sm == nil {
-		sm = icodingagent.NewSettingsManagerWithProjectTrust(cwd, agentDir, projectTrusted)
+		sm = icodingagent.NewSettingsManagerWithOptions(cwd, agentDir, icodingagent.SettingsManagerCreateOptions{ProjectTrusted: opts.ProjectTrusted})
 	} else if opts.ProjectTrusted != nil {
 		sm.SetProjectTrusted(projectTrusted)
 	}
-	reg := icodingagent.NewModelRegistry(agentDir)
-	reg.SetAuthStorage(auth)
-	// Mirrors ModelRuntime.create: restore stored dynamic catalogs (Radius)
-	// without network access. Network refreshes run from the modes.
-	reg.RefreshCatalogs(context.Background(), icodingagent.CatalogRefreshOptions{})
 
-	services, err := newConfiguredServices(cwd, agentDir, auth, auth, sm, reg)
-	if err == nil {
-		_ = services.ModelRuntime().queueAvailabilityRefresh(context.Background())
+	var services *AgentSessionServices
+	if shared := opts.ModelRuntime; shared != nil {
+		// agent-session-services.ts:140: `options.modelRuntime ?? ModelRuntime.create(...)`.
+		services = &AgentSessionServices{
+			cwd: cwd, agentDir: agentDir,
+			auth: shared.services.auth, credentials: shared.services.credentials,
+			settings: sm, registry: shared.services.registry, modelRuntime: shared,
+			testFauxProvider: shared.services.testFauxProvider, sharedRuntime: true,
+		}
+	} else {
+		authPath := filepath.Join(agentDir, "auth.json")
+		auth, err := ai.NewAuthStorage(authPath)
+		if err != nil {
+			return nil, fmt.Errorf("coding.CreateAgentSessionServices: open auth storage at %s: %w", authPath, err)
+		}
+		reg := icodingagent.NewModelRegistry(agentDir)
+		reg.SetAuthStorage(auth)
+		// Mirrors ModelRuntime.create: restore stored dynamic catalogs (Radius)
+		// without network access. Network refreshes run from the modes.
+		reg.RefreshCatalogs(signal, icodingagent.CatalogRefreshOptions{})
+		services, err = newConfiguredServices(cwd, agentDir, auth, auth, sm, reg)
+		if err != nil {
+			return nil, err
+		}
+		_ = services.ModelRuntime().queueAvailabilityRefresh(signal)
 	}
-	return services, err
+	services.extensionFlagValues = opts.ExtensionFlagValues
+	if opts.ResourceLoaderOptions != nil || opts.ResourceLoaderReloadOptions != nil {
+		loaderOptions := DefaultResourceLoaderOptions{}
+		if opts.ResourceLoaderOptions != nil {
+			loaderOptions = *opts.ResourceLoaderOptions
+		}
+		loaderOptions.CWD, loaderOptions.AgentDir, loaderOptions.SettingsManager = cwd, agentDir, sm
+		services.resourceLoader = NewDefaultResourceLoader(loaderOptions)
+		var reload ResourceLoaderReloadOptions
+		if opts.ResourceLoaderReloadOptions != nil {
+			reload = *opts.ResourceLoaderReloadOptions
+		}
+		if err := services.resourceLoader.ReloadWith(signal, reload); err != nil {
+			services.Close()
+			return nil, fmt.Errorf("coding.CreateAgentSessionServices: reload resources: %w", err)
+		}
+	}
+	return services, nil
 }
 
-func newConfiguredServices(cwd, agentDir string, auth *ai.AuthStorage, credentials ai.CredentialStore, sm *icodingagent.SettingsManager, reg *icodingagent.ModelRegistry) (*Services, error) {
-	services := &Services{
+func newConfiguredServices(cwd, agentDir string, auth *ai.AuthStorage, credentials ai.CredentialStore, sm *icodingagent.SettingsManager, reg *icodingagent.ModelRegistry) (*AgentSessionServices, error) {
+	services := &AgentSessionServices{
 		cwd:         cwd,
 		agentDir:    agentDir,
 		auth:        auth,
@@ -169,7 +244,7 @@ func newConfiguredServices(cwd, agentDir string, auth *ai.AuthStorage, credentia
 		return nil, err
 	}
 	services.modelRuntime = modelRuntime
-	services.registry.runtime = modelRuntime
+	services.registry = NewModelRegistry(modelRuntime)
 	reg.SetAvailabilityRefresh(func(ctx context.Context, providers []string) ai.ModelsRefreshResult {
 		return modelRuntime.refreshAvailability(ctx, ai.ModelsRefreshOptions{Providers: providers}, ai.ModelsRefreshResult{})
 	})
@@ -178,47 +253,57 @@ func newConfiguredServices(cwd, agentDir string, auth *ai.AuthStorage, credentia
 }
 
 // Close stops admission of model background work, cancels its lifetime, and drains admitted tasks. It does not close caller-owned credential or catalog storage. Call it after Sessions finish and outside model callbacks.
-func (s *Services) Close() {
-	if s != nil && s.registry != nil {
+func (s *AgentSessionServices) Close() {
+	if s != nil && s.registry != nil && !s.sharedRuntime {
 		s.registry.CloseModelTasks()
 	}
 }
 
+// ResourceLoader returns the loader created from CreateAgentSessionServicesOptions.ResourceLoaderOptions, already reloaded, or nil when
+// none was requested (a Session then builds a default loader). Upstream AgentSessionServices.resourceLoader.
+func (s *AgentSessionServices) ResourceLoader() *DefaultResourceLoader { return s.resourceLoader }
+
+// Diagnostics are the problems found while creating the Services and applying extension flags. Upstream
+// AgentSessionServices.diagnostics.
+func (s *AgentSessionServices) Diagnostics() []AgentSessionRuntimeDiagnostic {
+	return slices.Clone(s.diagnostics)
+}
+
 // CWD returns the working directory this Services container was
 // constructed with.
-func (s *Services) CWD() string { return s.cwd }
+func (s *AgentSessionServices) CWD() string { return s.cwd }
 
 // AgentDir returns the global agent config directory (typically
 // ~/.pig/agent or $PIG_HOME/agent).
-func (s *Services) AgentDir() string { return s.agentDir }
+func (s *AgentSessionServices) AgentDir() string { return s.agentDir }
 
 // Auth returns the credential storage backing auth.json. Read-mostly;
 // safe to share across goroutines (file lock serialises writes).
 // It is nil when the ModelRuntime was created with an injected CredentialStore; use Credentials for the store in effect.
-func (s *Services) Auth() *ai.AuthStorage { return s.auth }
+func (s *AgentSessionServices) Auth() *ai.AuthStorage { return s.auth }
 
 // Credentials returns the credential store backing model authentication: the auth.json store, or the CredentialStore passed to CreateModelRuntime.
-func (s *Services) Credentials() ai.CredentialStore { return s.credentials }
+func (s *AgentSessionServices) Credentials() ai.CredentialStore { return s.credentials }
 
 // Settings returns the currently merged settings (global ⊕ project).
 // This is a snapshot; call Settings() again to pick up changes after
 // settings files are edited externally.
-func (s *Services) Settings() Settings { return s.settings.Get() }
+func (s *AgentSessionServices) Settings() Settings { return s.settings.Get() }
 
 // SettingsManager returns the underlying live settings reader, useful
 // when callers need to call Reload() or inspect global vs project
 // layers separately.
-func (s *Services) SettingsManager() *SettingsManager { return s.settings }
+func (s *AgentSessionServices) SettingsManager() *SettingsManager { return s.settings }
 
 // ensureSettings loads the settings files of a Services built around a bare ModelRuntime, as upstream's createAgentSession does when no settingsManager is given (sdk.ts: `options.settingsManager ?? SettingsManager.create(cwd, agentDir)`).
-func (s *Services) ensureSettings() {
+func (s *AgentSessionServices) ensureSettings() {
 	s.settingsOnce.Do(func() {
 		if s.settings == nil {
 			cwd := s.cwd
 			if cwd == "" {
 				cwd, _ = os.Getwd()
 			}
-			s.settings = icodingagent.NewSettingsManagerWithProjectTrust(cwd, s.agentDir, true)
+			s.settings = icodingagent.NewSettingsManager(cwd, s.agentDir)
 		}
 	})
 }
@@ -226,11 +311,11 @@ func (s *Services) ensureSettings() {
 // Registry returns the model registry. Use Registry().Resolve(provider,
 // model) to obtain a ModelEntry with credentials resolved through
 // configvalue (env vars and !cmd shell prefixes).
-func (s *Services) Registry() *ModelRegistry { return s.registry }
+func (s *AgentSessionServices) Registry() *ModelRegistry { return s.registry }
 
 // ModelRuntime returns the one runtime shared by every Session and extension
 // registry facade created from these Services.
-func (s *Services) ModelRuntime() *ModelRuntime { return s.modelRuntime }
+func (s *AgentSessionServices) ModelRuntime() *ModelRuntime { return s.modelRuntime }
 
 // DefaultAgentDir returns the default global agent config directory:
 // $PIG_HOME/agent if PIG_HOME is set, else ~/.pig/agent. Mirrors
@@ -247,7 +332,7 @@ var ErrNoServices = errors.New("coding: nil Services")
 // and shared by every Session and extension ModelRegistry facade.
 type ModelRuntime struct {
 	modelNetworkEnabled bool
-	services            *Services
+	services            *AgentSessionServices
 	availability        modelAvailability
 	virtuals            virtualModelStore
 	prepare             func(context.Context, *ai.Model, ai.StreamOptions) (*ai.Model, ai.Provider, ai.StreamOptions, error)
@@ -255,7 +340,7 @@ type ModelRuntime struct {
 
 // NewModelRuntime constructs a runtime backed by services model configuration
 // and credentials.
-func NewModelRuntime(services *Services) (*ModelRuntime, error) {
+func NewModelRuntime(services *AgentSessionServices) (*ModelRuntime, error) {
 	if services == nil {
 		return nil, ErrNoServices
 	}
@@ -282,8 +367,8 @@ func (runtime *ModelRuntime) startBackground(work func(context.Context)) bool {
 	return runtime.services.Registry().StartModelTask(context.Background(), work)
 }
 
-// GetModels returns metadata snapshots for the complete static and explicitly registered model catalog.
-func (runtime *ModelRuntime) GetModels() []*ai.Model {
+// GetModels returns metadata snapshots for the complete static and explicitly registered model catalog, or only the given provider's models.
+func (runtime *ModelRuntime) GetModels(providerID ...string) []*ai.Model {
 	if runtime == nil || runtime.services == nil {
 		return nil
 	}
@@ -291,7 +376,11 @@ func (runtime *ModelRuntime) GetModels() []*ai.Model {
 	for i, model := range models {
 		models[i] = runtime.bindCatalogModel(model)
 	}
-	return runtime.virtuals.overlay(models)
+	models = runtime.virtuals.overlay(models)
+	if len(providerID) == 0 {
+		return models
+	}
+	return slices.DeleteFunc(models, func(model *ai.Model) bool { return model.ProviderMeta.ProviderID != providerID[0] })
 }
 
 // GetModel returns a registered model by exact provider and model ID without synthesizing unknown identities.
@@ -406,9 +495,7 @@ func (runtime *ModelRuntime) start(ctx context.Context, model *ai.Model, transcr
 	if native, ok := leaf.(*nativeModelProvider); ok {
 		native.simple = simple
 	} else if simple && registryBuilt && !registeredCallback {
-		if preparedOptions.Thinking == "" {
-			preparedOptions.Thinking = ai.ThinkingOff
-		}
+		ai.ApplyOmittedReasoning(preparedModel, &preparedOptions)
 		maxTokens := preparedOptions.MaxTokens
 		if maxTokens == 0 {
 			maxTokens = preparedModel.Capabilities.MaxOutputTokens
@@ -496,7 +583,7 @@ func (runtime *ModelRuntime) prepareRequest(ctx context.Context, model *ai.Model
 			return nil, nil, ai.StreamOptions{}, err
 		}
 		if auth == nil {
-			if options.APIKey == "" && modelRuntimeRequiresAuth(providerID) && registry.GetProvider(providerID) == nil && !registry.HasConfiguredAuth(providerID) {
+			if options.APIKey == "" && modelRuntimeRequiresAuth(providerID) && registry.GetProvider(providerID) == nil && !registry.ModelRegistry.HasConfiguredAuth(providerID) {
 				return nil, nil, ai.StreamOptions{}, &modelRuntimeAuthMissingError{provider: providerID}
 			}
 			resolved, err := buildModel(providerID+"/"+model.ID, runtime.services, options.APIKey)
@@ -533,7 +620,7 @@ func (runtime *ModelRuntime) prepareRequest(ctx context.Context, model *ai.Model
 	prepared := options
 	prepared.APIKey = ""
 	// The selected model can enable reasoning for a custom ID even when the provider's fallback catalog entry does not.
-	prepared.IsReasoning = options.IsReasoning || model.ProviderMeta.Reasoning || (model.Capabilities.MaxThinking != "" && model.Capabilities.MaxThinking != ai.ThinkingOff) || requestModel.ProviderMeta.Reasoning || (requestModel.Capabilities.MaxThinking != "" && requestModel.Capabilities.MaxThinking != ai.ThinkingOff)
+	prepared.IsReasoning = options.IsReasoning || model.ProviderMeta.Reasoning || (model.Capabilities.MaxThinking != "") || requestModel.ProviderMeta.Reasoning || (requestModel.Capabilities.MaxThinking != "")
 	prepared.ModelCost = requestModel.CostRates()
 	prepared.Headers = mergeRuntimeHeaders(configuredHeaders, options.Headers)
 	if nativeAuth != nil {

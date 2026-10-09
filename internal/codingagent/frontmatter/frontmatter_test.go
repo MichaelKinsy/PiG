@@ -67,7 +67,8 @@ body
 	if got := d.String("description"); got != "Use when reading, writing, or editing PDFs" {
 		t.Fatalf("description = %q", got)
 	}
-	if got := d.String("folded"); got != "First line second line" {
+	// Pi 1.0.4 parseFrontmatter reads the folded scalar at the end of the frontmatter as "First line second line\n": its YAML library ends the last line.
+	if got := d.String("folded"); got != "First line second line\n" {
 		t.Fatalf("folded = %q", got)
 	}
 	if d.Body != "body" {

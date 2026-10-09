@@ -27,7 +27,7 @@ func run() error {
 			panic(err)
 		}
 	}()
-	services, err := coding.NewServices(coding.ServicesOptions{AgentDir: dir, CWD: dir})
+	services, err := coding.CreateAgentSessionServices(coding.CreateAgentSessionServicesOptions{AgentDir: dir, CWD: dir})
 	if err != nil {
 		return err
 	}
@@ -39,14 +39,14 @@ func run() error {
 	request := ai.Context{Messages: []ai.Message{ai.UserMessage{Content: ai.UserText("Hello, how are you?")}}}
 	aborted := services.ModelRuntime().Complete(ctx, model, request, ai.StreamOptions{})
 	request.Messages = append(request.Messages, *aborted, ai.UserMessage{Content: ai.UserText("What is 2 + 2?")})
-	provider.SetResponses([]ai.FauxResponseStep{ai.FauxFactoryStep(func(request ai.TranscriptContext, _ ai.StreamOptions, _ *ai.FauxProviderState, _ *ai.Model) (ai.FauxResponse, error) {
+	provider.SetResponses([]ai.FauxResponseStep{ai.FauxFactoryStep(func(request ai.TranscriptContext, _ ai.StreamOptions, _ *ai.FauxProviderState, _ *ai.Model) (ai.AssistantMessage, error) {
 		messages := request.Messages()
 		if len(messages) == 3 {
 			if previous, ok := messages[1].(ai.AssistantMessage); ok && previous.StopReason == ai.StopReasonAborted && len(previous.Content) == 0 {
-				return ai.FauxResponse{Content: []ai.FauxContentBlock{ai.FauxText("4")}, StopReason: "stop"}, nil
+				return ai.FauxResponse{Content: []ai.FauxContentBlock{ai.FauxText("4")}, StopReason: "stop"}.AssistantMessage(), nil
 			}
 		}
-		return ai.FauxResponse{StopReason: "error", ErrorMessage: "missing aborted history"}, nil
+		return ai.FauxResponse{StopReason: "error", ErrorMessage: "missing aborted history"}.AssistantMessage(), nil
 	})})
 	follow := services.ModelRuntime().Complete(context.Background(), model, request, ai.StreamOptions{})
 	text := ""
@@ -55,7 +55,7 @@ func run() error {
 			text = block.Text
 		}
 	}
-	paced := ai.NewFauxProvider(ai.FauxConfig{TokensPerSecond: 100, MinTokenSize: 1, MaxTokenSize: 1})
+	paced := ai.NewFauxProvider(ai.FauxConfig{TokensPerSecond: 100, TokenSize: &ai.FauxTokenSize{Min: new(1), Max: new(1)}})
 	paced.SetResponses([]ai.FauxResponseStep{ai.FauxStaticStep(ai.FauxResponse{Content: []ai.FauxContentBlock{ai.FauxText(strings.Repeat("abcdefghijklmnopqrstuvwxyz", 4))}, StopReason: "stop"})})
 	midContext, stop := context.WithCancel(context.Background())
 	defer stop()

@@ -68,15 +68,17 @@ func TestBuiltinToolDetailsParityProbe(t *testing.T) {
 			result["details"] = r.Details
 		}
 		if r.StructuredContent != nil {
-			// bash.ts:392 measures the wall clock; the probe keeps only its type on both sides.
-			var structured map[string]any
+			var structured any
 			if err := json.Unmarshal(r.StructuredContent, &structured); err != nil {
 				t.Fatal(err)
 			}
-			if _, ok := structured["wall_time_seconds"].(float64); !ok {
-				t.Fatalf("wall_time_seconds = %#v", structured["wall_time_seconds"])
+			if fields, ok := structured.(map[string]any); ok {
+				// bash.ts:392 measures the wall clock; the probe keeps only its type on both sides.
+				if _, ok := fields["wall_time_seconds"].(float64); !ok {
+					t.Fatalf("wall_time_seconds = %#v", fields["wall_time_seconds"])
+				}
+				fields["wall_time_seconds"] = "NUMBER"
 			}
-			structured["wall_time_seconds"] = "NUMBER"
 			result["structuredContent"] = structured
 		}
 		printToolWire(t, tc.name, result)

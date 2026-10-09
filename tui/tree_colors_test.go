@@ -24,7 +24,7 @@ func TestTreeRenderLongRowTruncationPreservesANSI(t *testing.T) {
 	root := &fakeNode{id: "r", kids: []TreeNode{
 		&fakeNode{id: "u", label: th.Accent + "user: " + SGRFgReset + strings.Repeat("long ", 40)},
 	}}
-	ts := NewTreeSelect("", root)
+	ts := NewTreeSelectorComponent("", root)
 	lines := ts.Render(32)
 
 	var selected string
@@ -40,8 +40,9 @@ func TestTreeRenderLongRowTruncationPreservesANSI(t *testing.T) {
 	if !strings.Contains(selected, th.Accent+"user: "+SGRFgReset) {
 		t.Fatalf("truncated tree row should preserve role colour; row=%q", selected)
 	}
-	if strings.Contains(selected, SGRResetAll) {
-		t.Fatalf("truncated selected row must not contain full SGR 0; it clears the selected background: %q", selected)
+	// truncateToWidth closes a clipped styled row with SGR 0, so the highlight ends where the text does (TestTreeSelectorInputMatchesPi compares the bytes with Pi).
+	if !strings.HasSuffix(selected, SGRResetAll) {
+		t.Fatalf("truncated selected row should end with the full SGR 0 that truncateToWidth appends: %q", selected)
 	}
 	if !strings.Contains(selected, th.SelectedBg) {
 		t.Fatalf("selected row should keep full-width highlight; row=%q", selected)
@@ -54,7 +55,7 @@ func TestTreeRenderBranchLabelUsesWarningOutsideSelectedContent(t *testing.T) {
 	root := &fakeNode{id: "r", kids: []TreeNode{
 		&fakeNodeWithBranchLabel{fakeNode: fakeNode{id: "u", label: th.Accent + "user: " + SGRFgReset + "hello"}, branchLabel: "milestone"},
 	}}
-	ts := NewTreeSelect("", root)
+	ts := NewTreeSelectorComponent("", root)
 	lines := ts.Render(80)
 
 	var selected string
@@ -104,7 +105,7 @@ func TestTreeRenderSelectedRowStyling(t *testing.T) {
 		&fakeNode{id: "u", label: "user: hi"},
 		&fakeNode{id: "a", label: "assistant: yo"},
 	}}
-	ts := NewTreeSelect("", root)
+	ts := NewTreeSelectorComponent("", root)
 	ts.SetInitialCursor("a", "")
 	lines := ts.Render(80)
 	joined := strings.Join(lines, "\n")

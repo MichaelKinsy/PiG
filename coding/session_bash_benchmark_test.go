@@ -12,7 +12,7 @@ import (
 // Each sample owns a fresh Session, an operations-backed bash call, output-event delivery, and joined shutdown. It does not measure shell startup or growing-history append cost.
 func BenchmarkSessionBashLifecycle(b *testing.B) {
 	b.Setenv("PIG_HOME", b.TempDir())
-	services, err := NewServices(ServicesOptions{CWD: b.TempDir()})
+	services, err := CreateAgentSessionServices(CreateAgentSessionServicesOptions{CWD: b.TempDir()})
 	if err != nil {
 		b.Fatal(err)
 	}
@@ -37,7 +37,7 @@ func BenchmarkSessionBashLifecycle(b *testing.B) {
 						AcknowledgeEvent(event)
 					}
 				}()
-				_, runErr := session.ExecuteBashWithOperations(b.Context(), "custom", false, nil, operations, new("benchmark"))
+				_, runErr := session.ExecuteBash(b.Context(), "custom", nil, &ExecuteBashOptions{Operations: operations, ID: new("benchmark")})
 				flushErr := session.FlushEvents(b.Context())
 				closeErr := session.Close()
 				<-done

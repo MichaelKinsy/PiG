@@ -82,6 +82,9 @@ type ToolLoadout struct {
 	Registered   []AgentTool
 	GetExposure  func(name string) ToolExposure
 	GetNamespace func(name string) *ToolNamespace
+	// GetPromptGuidelines is a tool's `promptGuidelines`, normalized as the system prompt has them; nil for a tool without any.
+	// Hidden declarations leave them out of the system prompt.
+	GetPromptGuidelines func(name string) []string
 }
 
 // ToolLoadoutChanges are the changes [ToolDefinition.PrepareLoadout] makes to what the model sees.
@@ -143,6 +146,8 @@ type AgentToolCallOutcome struct {
 	ToolCall ToolCall        `json:"toolCall"`
 	Result   AgentToolResult `json:"result"`
 	IsError  bool            `json:"isError"`
+	// DurationMs is the milliseconds execute() took, measured with a monotonic clock; absent when the tool did not run. upstream: agent/src/types.ts:454 AgentToolCallOutcome.durationMs
+	DurationMs *int64 `json:"durationMs,omitempty"`
 }
 
 // ExecuteToolOptions are the options of [Context.ExecuteTool].
@@ -290,6 +295,7 @@ func (e *Extension) dispatchPrepareLoadout(tool string, args json.RawMessage) (a
 		Registered []AgentTool               `json:"registered"`
 		Exposures  map[string]ToolExposure   `json:"exposures"`
 		Namespaces map[string]*ToolNamespace `json:"namespaces"`
+		Guidelines map[string][]string       `json:"promptGuidelines"`
 	}
 	if err := json.Unmarshal(args, &payload); err != nil {
 		return nil, fmt.Errorf("decode tool loadout: %w", err)
@@ -304,6 +310,8 @@ func (e *Extension) dispatchPrepareLoadout(tool string, args json.RawMessage) (a
 			return ToolExposureDirect
 		},
 		GetNamespace: func(name string) *ToolNamespace { return payload.Namespaces[name] },
+		// upstream: agent-session.ts getPromptGuidelines: (name) => this._toolPromptGuidelines.get(name) ?? []
+		GetPromptGuidelines: func(name string) []string { return payload.Guidelines[name] },
 	})
 	if changes == nil {
 		return nil, nil

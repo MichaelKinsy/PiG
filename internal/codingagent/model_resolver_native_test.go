@@ -27,7 +27,7 @@ func TestResolveCliModelRetainsNativeModel(t *testing.T) {
 				native := &ai.Model{
 					ID: "base", DisplayName: "Catalog name", Provider: &cycleTestProvider{id: "native-custom"},
 					ProviderMeta: ai.ProviderMetadata{ProviderID: "native-custom", API: api, BaseURL: "https://catalog.invalid/v1", Headers: map[string]string{"X-Catalog": "retained"}, Compat: &ai.ModelCompat{SupportsDeveloperRole: new(false), SupportsStore: new(false)}},
-					Capabilities: ai.ModelCapabilities{MaxThinking: ai.ThinkingLow, SupportsImages: true, SupportsToolUse: true, ContextWindow: 234567, MaxOutputTokens: 4567, InputCostPer1M: 1.25, OutputCostPer1M: 3.5, CacheReadCostPer1M: 0.75, CacheWriteCostPer1M: 2, CostTiers: []ai.CostTier{{InputTokensAbove: 45678, InputCostPer1M: 2.5}}},
+					Capabilities: ai.ModelCapabilities{MaxThinking: ai.ThinkingLevelLow, SupportsImages: true, SupportsToolUse: true, ContextWindow: 234567, MaxOutputTokens: 4567, InputCostPer1M: 1.25, OutputCostPer1M: 3.5, CacheReadCostPer1M: 0.75, CacheWriteCostPer1M: 2, CostTiers: []ai.CostTier{{InputTokensAbove: 45678, InputCostPer1M: 2.5}}},
 					Input:        []string{"text", "image"}, ThinkingLevelMap: ai.ThinkingLevelMap{"high": new("native-high")},
 					SamplingParams: map[string]any{"top_p": 0.73}, PromptCache: ai.ModelPromptCache{"ttl": 120}, InputLimits: &ai.ModelInputLimits{MaxRequestBytes: 98765},
 				}
@@ -35,7 +35,7 @@ func TestResolveCliModelRetainsNativeModel(t *testing.T) {
 				metadata := RuntimeModel{NativeModel: native, Provider: "native-custom", ID: "base", Name: "Catalog name"}
 				runtime := &initialModelTestRuntime{models: []RuntimeModel{metadata}}
 				got := ResolveCliModel("native-custom", row.pattern, row.cliThinking, runtime)
-				if got.Error != "" || got.Model == nil || got.Model.NativeModel == nil || got.Model.ID != row.id || got.ThinkingLevel != row.thinking || got.Model.Reasoning != row.reasoning {
+				if got.Error != "" || got.Model == nil || got.Model.NativeModel == nil || got.Model.ID != row.id || string(got.ThinkingLevel) != row.thinking || got.Model.Reasoning != row.reasoning {
 					t.Fatalf("selection=%+v model=%+v", got, got.Model)
 				}
 				want := before

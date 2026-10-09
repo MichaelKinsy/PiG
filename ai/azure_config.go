@@ -11,14 +11,10 @@ import (
 
 const defaultAzureAPIVersion = "v1"
 
-// AzureEndpointOptions are the per-request Azure endpoint options. Azure models ship without a base URL: each user has their own resource, resolved per request.
-type AzureEndpointOptions struct {
-	APIVersion     string
-	ResourceName   string
-	BaseURL        string
-	DeploymentName string
-	Env            ProviderEnv
-}
+// AzureEndpointOptions are the per-request Azure endpoint options: the Azure fields of StreamOptions plus its Env. Azure models ship without a base URL: each user has their own resource, resolved per request.
+//
+// Ports AzureEndpointOptions (packages/ai/src/api/azure-openai-config.ts:7), which extends StreamOptions.
+type AzureEndpointOptions = StreamOptions
 
 // AzureConfig is the resolved Azure endpoint.
 type AzureConfig struct {
@@ -29,8 +25,8 @@ type AzureConfig struct {
 // ResolveAzureDeploymentName returns the request model's deployment name: the explicit option, else the AZURE_OPENAI_DEPLOYMENT_NAME_MAP entry for the model, else the model ID.
 // The map is parsed as upstream parseDeploymentNameMap does: each entry is trimmed with String.prototype.trim and split with split("=", 2), which drops the text after a second "="; a later entry for the same model replaces an earlier one; and a model mapped to an empty name falls back to the model ID.
 func ResolveAzureDeploymentName(modelID string, options AzureEndpointOptions) string {
-	if options.DeploymentName != "" {
-		return options.DeploymentName
+	if options.AzureDeploymentName != "" {
+		return options.AzureDeploymentName
 	}
 	mapped := ""
 	for entry := range strings.SplitSeq(getProviderEnvValue("AZURE_OPENAI_DEPLOYMENT_NAME_MAP", options.Env), ",") {
@@ -47,8 +43,8 @@ func ResolveAzureDeploymentName(modelID string, options AzureEndpointOptions) st
 
 // ResolveAzureBaseURL resolves the endpoint from the explicit option, AZURE_OPENAI_BASE_URL, the resource name, then the model's base URL, and normalizes it.
 func ResolveAzureBaseURL(modelBaseURL string, options AzureEndpointOptions) (string, error) {
-	baseURL := strings.TrimSpace(firstNonEmptyString(options.BaseURL, getProviderEnvValue("AZURE_OPENAI_BASE_URL", options.Env)))
-	resourceName := strings.TrimSpace(firstNonEmptyString(options.ResourceName, getProviderEnvValue("AZURE_OPENAI_RESOURCE_NAME", options.Env)))
+	baseURL := cmp.Or(trimJSWhitespace(options.AzureBaseURL), trimJSWhitespace(getProviderEnvValue("AZURE_OPENAI_BASE_URL", options.Env)))
+	resourceName := cmp.Or(options.AzureResourceName, getProviderEnvValue("AZURE_OPENAI_RESOURCE_NAME", options.Env))
 	if baseURL == "" && resourceName != "" {
 		baseURL = fmt.Sprintf("https://%s.openai.azure.com/openai/v1", resourceName)
 	}
@@ -67,11 +63,11 @@ func ResolveAzureConfig(modelBaseURL string, options AzureEndpointOptions) (Azur
 	if err != nil {
 		return AzureConfig{}, err
 	}
-	return AzureConfig{BaseURL: baseURL, APIVersion: firstNonEmptyString(options.APIVersion, getProviderEnvValue("AZURE_OPENAI_API_VERSION", options.Env), defaultAzureAPIVersion)}, nil
+	return AzureConfig{BaseURL: baseURL, APIVersion: cmp.Or(options.AzureAPIVersion, getProviderEnvValue("AZURE_OPENAI_API_VERSION", options.Env), defaultAzureAPIVersion)}, nil
 }
 
 func normalizeAzureBaseURL(baseURL string) (string, error) {
-	trimmed := strings.TrimSpace(strings.TrimRight(baseURL, "/"))
+	trimmed := strings.TrimRight(trimJSWhitespace(baseURL), "/")
 	if trimmed == "" || !strings.Contains(trimmed, "://") {
 		return "", fmt.Errorf("Invalid Azure OpenAI base URL: %s", baseURL)
 	}

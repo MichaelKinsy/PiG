@@ -84,7 +84,7 @@ func (u *ExtUIContext) bindOverlayControls(c *customOverlay, handle *tui.Overlay
 				}
 				handle.UnfocusWith(tui.OverlayUnfocusOptions{Target: component})
 				if other != nil && other != c {
-					other.setInputActive(u.m, u.m.tuiInst.FocusedComponent() == tui.Component(other))
+					other.setInputActive(u.m, u.m.tuiInst.GetFocusedComponent() == tui.Component(other))
 				}
 			default:
 				result <- outcome{err: fmt.Errorf("unknown overlay control: %s", action)}

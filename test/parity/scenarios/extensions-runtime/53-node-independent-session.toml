@@ -6,16 +6,20 @@ name = "53-node-independent-session"
 description = "Node SDK sessions execute private tools, provider hooks, persistence and cancellation without changing the parent"
 covers = ["packages/coding-agent/src/core/sdk.ts", "packages/coding-agent/src/core/agent-session.ts"]
 tags = ["hermetic", "fast"]
-driver = "cli-mode"
+driver = "rpc-mode"
+model = "test-faux/faux-1"
 
-[cli]
-args = ["--model", "test-faux/faux-1", "--mode", "rpc"]
+[rpc]
 cwd = "."
-input_lines = ['{"id":"child","type":"prompt","message":"/child-sdk {{TEMP}}/child/result.json"}']
-# The input pipe stays open for the awaited command and its artifact write.
-settle_seconds = 3
 timeout_seconds = 30
 artifact_path = "{{TEMP}}/child/result.json"
+
+# The command notifies after its artifact is written and its child sessions are disposed, so the run waits for that
+# output instead of a fixed settle time, which expired under CPU load before the command finished.
+[[rpc.steps]]
+line = '{"id":"child","type":"prompt","message":"/child-sdk {{TEMP}}/child/result.json"}'
+wait_contains = ["child-artifact-written"]
+wait_timeout_seconds = 30
 
 [env]
 pig = ["PIG_TEST_FAUX=1"]

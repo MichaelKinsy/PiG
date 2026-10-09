@@ -17,10 +17,11 @@ import (
 
 // ClientOptions selects one logical server and a fresh transport factory.
 type ClientOptions struct {
+	// TransportFactory is Pi's transportFactory: it returns a transport or the error that rejects the attempt.
 	TransportFactory ByteTransportFactory
 	ServerId         string
 	MaxFrameLength   *float64
-	OnListenerError  func(error)
+	OnListenerError  ListenerErrorHandler
 }
 
 type pendingRequest struct {
@@ -146,7 +147,7 @@ func (client *Client) Connect(ctx context.Context) (protocol.ServerHello, error)
 	client.mu.Lock()
 	if client.disposed {
 		client.mu.Unlock()
-		return protocol.ServerHello{}, &ClientDisposedError{}
+		return protocol.ServerHello{}, NewClientDisposedError()
 	}
 	client.hello = nil
 	client.mu.Unlock()
@@ -155,7 +156,12 @@ func (client *Client) Connect(ctx context.Context) (protocol.ServerHello, error)
 func (client *Client) Reconnect(ctx context.Context) (protocol.ServerHello, error) {
 	return client.Connect(ctx)
 }
-func (client *Client) Disconnect(reason error) { client.connection.Disconnect(reason) }
+
+// Disconnect ends the current attempt or connection with a [DisconnectedError] whose message is reason. client.ts:138 defaults an
+// omitted reason to "Client disconnected"; Go callers pass that text.
+func (client *Client) Disconnect(reason string) {
+	client.connection.Disconnect(&DisconnectedError{Message: reason})
+}
 func (client *Client) Disposed() bool {
 	client.mu.Lock()
 	defer client.mu.Unlock()
@@ -175,11 +181,11 @@ func (client *Client) Attachment() *protocol.SessionTarget {
 	return client.attachment
 }
 
-func (client *Client) OnConnectionStateChange(identity *ConnectionStateChangeListener) (func(), error) {
+func (client *Client) OnConnectionStateChange(identity *ConnectionStateChangeListener) (Unsubscribe, error) {
 	client.mu.Lock()
 	defer client.mu.Unlock()
 	if client.disposed {
-		return nil, &ClientDisposedError{}
+		return nil, NewClientDisposedError()
 	}
 	present := slices.ContainsFunc(client.connectionListeners, func(listener *connectionListener) bool { return !listener.closed && listener.identity == identity })
 	if !present {
@@ -198,11 +204,11 @@ func (client *Client) OnConnectionStateChange(identity *ConnectionStateChangeLis
 		client.mu.Unlock()
 	}, nil
 }
-func (client *Client) OnAttachmentChange(identity *AttachmentChangeListener) (func(), error) {
+func (client *Client) OnAttachmentChange(identity *AttachmentChangeListener) (Unsubscribe, error) {
 	client.mu.Lock()
 	defer client.mu.Unlock()
 	if client.disposed {
-		return nil, &ClientDisposedError{}
+		return nil, NewClientDisposedError()
 	}
 	present := slices.ContainsFunc(client.attachmentListeners, func(listener *attachmentListener) bool { return !listener.closed && listener.identity == identity })
 	if !present {
@@ -243,7 +249,7 @@ func (client *Client) beginRequest(ctx context.Context, target protocol.RpcTarge
 	client.mu.Lock()
 	if client.disposed {
 		client.mu.Unlock()
-		return nil, &ClientDisposedError{}
+		return nil, NewClientDisposedError()
 	}
 	if !client.Connected() {
 		client.mu.Unlock()
@@ -262,7 +268,7 @@ func (client *Client) beginRequest(ctx context.Context, target protocol.RpcTarge
 			var err error
 			value, err = transform(raw)
 			if err != nil {
-				failure := &protocol.ProtocolValidationError{Message: err.Error()}
+				failure := protocol.NewProtocolValidationError(err.Error())
 				client.connection.Fail(failure)
 				client.connection.afterDispatch(pending.reserve(nil, failure))
 				return
@@ -488,7 +494,7 @@ func (client *Client) handleMessage(message protocol.ServerMessage) {
 	switch message := message.(type) {
 	case protocol.AttachmentEnvelope:
 		if message.Attachment != nil && message.Attachment.ServerId != client.options.ServerId {
-			client.connection.Fail(&protocol.ProtocolValidationError{Message: "Attachment update belongs to another server"})
+			client.connection.Fail(protocol.NewProtocolValidationError("Attachment update belongs to another server"))
 			return
 		}
 		client.setAttachment(message.Attachment)
@@ -497,7 +503,7 @@ func (client *Client) handleMessage(message protocol.ServerMessage) {
 	case protocol.ResponseEnvelope:
 		pending := client.takePending(message.Id)
 		if pending == nil {
-			client.connection.Fail(&protocol.ProtocolValidationError{Message: "Response has no matching request"})
+			client.connection.Fail(protocol.NewProtocolValidationError("Response has no matching request"))
 			return
 		}
 		if !message.Ok {
@@ -552,7 +558,7 @@ func (client *Client) handleServiceUpdate(message protocol.ServiceEventEnvelope)
 	active.mu.Unlock()
 	client.mu.Unlock()
 	if err != nil {
-		client.connection.Fail(&protocol.ProtocolValidationError{Message: err.Error()})
+		client.connection.Fail(protocol.NewProtocolValidationError(err.Error()))
 	}
 }
 func (client *Client) admitDeliveryLocked(active *activeServiceListener, update chord.ServiceProviderUpdate) {
@@ -712,7 +718,7 @@ func (client *Client) Dispose() error {
 	}
 	client.disposed = true
 	client.mu.Unlock()
-	failure := &ClientDisposedError{}
+	failure := NewClientDisposedError()
 	client.rejectPending(failure)
 	client.connection.Disconnect(failure)
 	client.mu.Lock()
@@ -730,19 +736,15 @@ func (client *Client) Dispose() error {
 // WaitClosed joins Go-owned transport attempts, native I/O, and admitted subscription deliveries after Dispose. It is separate from callback-safe Dispose so a callback never waits for its own transport reader.
 func (client *Client) WaitClosed(ctx context.Context) error { return client.connection.waitClosed(ctx) }
 
-// ServiceTransportClient is the request/subscription capability consumed by a routed Chord transport. Decorators retain the production Client's lifecycle while interposing one service operation.
-type ServiceTransportClient interface {
-	Request(context.Context, protocol.RpcTarget, chord.ServiceCall) (json.RawMessage, error)
-	SubscribeService(context.Context, protocol.RpcTarget, string, chord.ServiceMode, func(chord.ServiceProviderUpdate) error) (*ServiceSubscription, error)
-}
-
-// CreateClientServiceTransport resolves the current target for each operation. Update listeners receive the background context, matching upstream's transport adapter.
-func CreateClientServiceTransport(client ServiceTransportClient, getTarget func() protocol.RpcTarget) chord.RemoteServiceTransport {
+// CreateClientServiceTransport adapts a lazily resolved routed client target to a Chord service transport. It resolves the
+// current target for each operation, and update listeners receive the background context. It is Pi's
+// createClientServiceTransport(client, getTarget) (packages/client/src/client.ts:447-471).
+func CreateClientServiceTransport(client *Client, getTarget func() protocol.RpcTarget) chord.RemoteServiceTransport {
 	return &clientServiceTransport{client: client, getTarget: getTarget}
 }
 
 type clientServiceTransport struct {
-	client    ServiceTransportClient
+	client    *Client
 	getTarget func() protocol.RpcTarget
 }
 

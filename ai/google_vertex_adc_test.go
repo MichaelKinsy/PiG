@@ -1,3 +1,5 @@
+//go:build !pig_strip_google_vertex
+
 package ai
 
 import (
@@ -17,16 +19,6 @@ import (
 
 	"golang.org/x/oauth2"
 )
-
-func vertexADCTestContext(t testing.TB, tokenClient *http.Client) (context.Context, StreamOptions) {
-	t.Helper()
-	path := filepath.Join(t.TempDir(), "adc.json")
-	if err := os.WriteFile(path, []byte(`{"type":"authorized_user","client_id":"test-client","client_secret":"test-secret","refresh_token":"test-refresh"}`), 0o600); err != nil {
-		t.Fatal(err)
-	}
-	t.Setenv("GOOGLE_APPLICATION_CREDENTIALS", filepath.Join(t.TempDir(), "missing.json"))
-	return context.WithValue(t.Context(), oauth2.HTTPClient, tokenClient), StreamOptions{Env: ProviderEnv{"GOOGLE_APPLICATION_CREDENTIALS": path}}
-}
 
 func BenchmarkGoogleVertexADCTokenResolution(b *testing.B) {
 	client := &http.Client{Transport: openAITestRoundTripperFunc(func(*http.Request) (*http.Response, error) {
@@ -194,5 +186,22 @@ func TestGoogleVertexADCFileTypes(t *testing.T) {
 				t.Fatalf("error=%v want %q", err, tc.want)
 			}
 		})
+	}
+}
+
+// Ports google-vertex.ts resolveProject/resolveLocation: GoogleVertexOptions.project and .location satisfy the
+// requirement without provider configuration or environment values.
+func TestGoogleVertexProjectAndLocationFromStreamOptions(t *testing.T) {
+	t.Setenv("GOOGLE_CLOUD_PROJECT", "")
+	t.Setenv("GCLOUD_PROJECT", "")
+	t.Setenv("GOOGLE_CLOUD_LOCATION", "")
+	provider := NewGoogleVertexProvider(GoogleVertexConfig{Model: "gemini-3-flash-preview"})
+	_, err := provider.Stream(t.Context(), NormalizeContext(Context{}), StreamOptions{Project: "opt-project"})
+	if err == nil || err.Error() != "Vertex AI requires a location. Set GOOGLE_CLOUD_LOCATION or pass location in options." {
+		t.Fatalf("project from options not accepted: %v", err)
+	}
+	_, err = provider.Stream(t.Context(), NormalizeContext(Context{}), StreamOptions{Project: "opt-project", Location: "us-central1"})
+	if err != nil && (strings.Contains(err.Error(), "requires a project ID") || strings.Contains(err.Error(), "requires a location")) {
+		t.Fatalf("project and location from options not accepted: %v", err)
 	}
 }

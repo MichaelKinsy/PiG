@@ -17,6 +17,7 @@ import (
 	"github.com/MichaelKinsy/PiG/coding"
 	"github.com/MichaelKinsy/PiG/internal/buildprogress"
 	"github.com/MichaelKinsy/PiG/internal/codingagent"
+	"github.com/MichaelKinsy/PiG/internal/fspublish"
 	"github.com/MichaelKinsy/PiG/internal/linkerexec"
 	"github.com/MichaelKinsy/PiG/internal/toolchain"
 )
@@ -199,32 +200,8 @@ func linkOrCopyTree(src, dst string) error {
 		if !entry.Type().IsRegular() {
 			return fmt.Errorf("module source %s is not a regular file", relative)
 		}
-		if os.Link(path, target) == nil {
-			return nil
-		}
-		return copyRegularFile(path, target)
+		return fspublish.LinkOrCopy(path, target)
 	})
-}
-
-func copyRegularFile(src, dst string) error {
-	info, err := os.Stat(src)
-	if err != nil {
-		return err
-	}
-	input, err := os.Open(src)
-	if err != nil {
-		return err
-	}
-	defer func() { _ = input.Close() }()
-	output, err := os.OpenFile(dst, os.O_WRONLY|os.O_CREATE|os.O_EXCL, info.Mode().Perm()|0o200)
-	if err != nil {
-		return err
-	}
-	if _, err := io.Copy(output, input); err != nil {
-		_ = output.Close()
-		return err
-	}
-	return output.Close()
 }
 
 // goModDownload runs `go mod download -json` outside any workspace and returns its stdout, which
@@ -236,7 +213,7 @@ func goModDownload(ctx context.Context, query string) ([]byte, error) {
 	}
 	command := linkerexec.CommandContext(ctx, goToolchain.Command, "mod", "download", "-json", query)
 	command.Dir = os.TempDir()
-	command.Env = goToolchain.Environ(moduleSourceBuildEnv(os.Environ()))
+	command.Env = toolchain.WorkDirEnv(command.Dir, goToolchain.Environ(moduleSourceBuildEnv(os.Environ())))
 	var stdout, stderr bytes.Buffer
 	command.Stdout = &stdout
 	command.Stderr = &stderr
@@ -279,6 +256,14 @@ func (s pigSource) buildEnv(env []string) []string {
 		return moduleSourceBuildEnv(env)
 	}
 	return sourceBuildEnv(s.Root, env)
+}
+
+// goCommand runs the go command in this source tree with its build environment.
+func (s pigSource) goCommand(ctx context.Context, goToolchain toolchain.GoToolchain, args ...string) *exec.Cmd {
+	cmd := linkerexec.CommandContext(ctx, goToolchain.Command, args...)
+	cmd.Dir = s.Root
+	cmd.Env = toolchain.WorkDirEnv(s.Root, goToolchain.Environ(s.buildEnv(os.Environ())))
+	return cmd
 }
 
 // sourceFiles lists the build source files of the tree relative to Root: Git's tracked and

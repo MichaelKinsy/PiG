@@ -11,11 +11,22 @@ func Duplicate(src, dst string) error {
 	if err == nil || !linkRefused(err) {
 		return err
 	}
-	return copyNew(src, dst)
+	return copyNew(src, dst, true)
 }
 
-// copyNew copies src to dst, which it creates exclusively.
-func copyNew(src, dst string) error {
+// LinkOrCopy makes the file at src also available at dst, which must not exist. It links src to dst and, when the link fails for any reason (a refused link, another file system, a platform without hard links), copies src to a new file at dst with src's permission bits whatever the umask. Unlike Duplicate, it does not sync the copy: its callers stage trees of thousands of files (a Go module source, the Node runtime), and a sync per file doubles the staging time. A copy that fails because dst exists reports that error.
+func LinkOrCopy(src, dst string) error {
+	if link(src, dst) == nil {
+		return nil
+	}
+	return copyNew(src, dst, false)
+}
+
+// syncFile is (*os.File).Sync; tests replace it to observe which copies sync.
+var syncFile = (*os.File).Sync
+
+// copyNew copies src to dst, which it creates exclusively, and syncs it when durable is set.
+func copyNew(src, dst string, durable bool) error {
 	in, err := os.Open(src)
 	if err != nil {
 		return err
@@ -34,8 +45,8 @@ func copyNew(src, dst string) error {
 	if err == nil {
 		_, err = io.Copy(out, in)
 	}
-	if err == nil {
-		err = out.Sync()
+	if err == nil && durable {
+		err = syncFile(out)
 	}
 	if closeErr := out.Close(); err == nil {
 		err = closeErr

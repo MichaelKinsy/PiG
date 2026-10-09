@@ -1,0 +1,90 @@
+[
+ {
+  "ids": [
+   "pkg:ai/.#LazyApiCapabilities",
+   "pkg:ai/api/lazy#LazyApiCapabilities",
+   "pkg:ai/compat#LazyApiCapabilities"
+  ],
+  "targets": [
+   "ai/provider_streams.go#LazyAPICapabilities"
+  ],
+  "struct": {
+   "file": "ai/provider_streams.go",
+   "type": "LazyAPICapabilities"
+  },
+  "production": [
+   "public-api:ai/provider_streams.go#LazyAPICapabilities"
+  ],
+  "evidence": [
+   "test:ai/providers_dispatch_upstream_test.go#TestLazyAPIOnlyDeclaredDeferredCapabilitiesUpstream",
+   "test:ai/provider_streams_test.go#TestLazyAPISetupOrderingCancellationAndLoadFailure"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "LazyApiCapabilities: Go LazyAPICapabilities has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+ },
+ {
+  "ids": [
+   "pkg:ai/.#OpenAICodexWebSocketDebugStats",
+   "pkg:ai/api/openai-codex-responses#OpenAICodexWebSocketDebugStats",
+   "pkg:ai/compat#OpenAICodexWebSocketDebugStats"
+  ],
+  "targets": [
+   "ai/openai_codex_websocket.go#OpenAICodexWebSocketDebugStats"
+  ],
+  "struct": {
+   "file": "ai/openai_codex_websocket.go",
+   "type": "OpenAICodexWebSocketDebugStats"
+  },
+  "production": [
+   "call:ai/openai_codex_websocket.go#codexDebugStatsLocked"
+  ],
+  "evidence": [
+   "test:ai/openai_codex_ws_upstream_test.go#TestCodexWebSocketTimeoutsUpstream",
+   "test:ai/openai_codex_ws_upstream_test.go#TestCodexWebSocketUpstream"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "OpenAICodexWebSocketDebugStats: Go OpenAICodexWebSocketDebugStats has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+ },
+ {
+  "ids": [
+   "pkg:ai/utils/error-body#NormalizedProviderError"
+  ],
+  "targets": [
+   "ai/errors.go#NormalizedProviderError"
+  ],
+  "struct": {
+   "file": "ai/errors.go",
+   "type": "NormalizedProviderError"
+  },
+  "production": [
+   "call:ai/bedrock.go#formatBedrockError"
+  ],
+  "evidence": [
+   "test:ai/error_body_upstream_test.go#TestNormalizeProviderErrorUpstream",
+   "test:ai/error_body_upstream_test.go#TestProviderErrorTrimmingMatchesJS"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "NormalizedProviderError: Go NormalizedProviderError has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+ },
+ {
+  "ids": [
+   "pkg:ai/utils/estimate#ContextUsageEstimate"
+  ],
+  "targets": [
+   "ai/estimate.go#ContextUsageEstimate"
+  ],
+  "struct": {
+   "file": "ai/estimate.go",
+   "type": "ContextUsageEstimate"
+  },
+  "production": [
+   "call:ai/estimate.go#EstimateContextTokens"
+  ],
+  "evidence": [
+   "test:ai/estimate_test.go#TestEstimateContextTokensIgnoresStaleUsageBeforeInsertedMessage",
+   "test:ai/estimate_test.go#TestEstimateContextTokensUsesUsageAfterResponseToInsertedContext"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "ContextUsageEstimate: Go ContextUsageEstimate has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+ }
+]

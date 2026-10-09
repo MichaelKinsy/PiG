@@ -1,0 +1,160 @@
+{
+	"server": [
+		{
+			"inCode": "invalid_request",
+			"inMessage": "bad call",
+			"name": "ServerError",
+			"message": "bad call",
+			"text": "ServerError: bad call",
+			"isError": true,
+			"hasCause": false,
+			"causeMessage": null,
+			"code": "invalid_request"
+		},
+		{
+			"inCode": "not_found",
+			"inMessage": "",
+			"name": "ServerError",
+			"message": "",
+			"text": "ServerError",
+			"isError": true,
+			"hasCause": false,
+			"causeMessage": null,
+			"code": "not_found"
+		},
+		{
+			"inCode": "internal_error",
+			"inMessage": "multi\nline 😀",
+			"name": "ServerError",
+			"message": "multi\nline 😀",
+			"text": "ServerError: multi\nline 😀",
+			"isError": true,
+			"hasCause": false,
+			"causeMessage": null,
+			"code": "internal_error"
+		}
+	],
+	"disconnected": [
+		{
+			"inMessage": null,
+			"inCause": null,
+			"name": "DisconnectedError",
+			"message": "Client is disconnected",
+			"text": "DisconnectedError: Client is disconnected",
+			"isError": true,
+			"hasCause": false,
+			"causeMessage": null,
+			"code": null
+		},
+		{
+			"inMessage": null,
+			"inCause": "ignored",
+			"name": "DisconnectedError",
+			"message": "Client is disconnected",
+			"text": "DisconnectedError: Client is disconnected",
+			"isError": true,
+			"hasCause": true,
+			"causeMessage": "ignored",
+			"code": null
+		},
+		{
+			"inMessage": "lost",
+			"inCause": null,
+			"name": "DisconnectedError",
+			"message": "lost",
+			"text": "DisconnectedError: lost",
+			"isError": true,
+			"hasCause": false,
+			"causeMessage": null,
+			"code": null
+		},
+		{
+			"inMessage": "lost",
+			"inCause": "socket reset",
+			"name": "DisconnectedError",
+			"message": "lost",
+			"text": "DisconnectedError: lost",
+			"isError": true,
+			"hasCause": true,
+			"causeMessage": "socket reset",
+			"code": null
+		},
+		{
+			"inMessage": "",
+			"inCause": null,
+			"name": "DisconnectedError",
+			"message": "",
+			"text": "DisconnectedError",
+			"isError": true,
+			"hasCause": false,
+			"causeMessage": null,
+			"code": null
+		},
+		{
+			"inMessage": "",
+			"inCause": "",
+			"name": "DisconnectedError",
+			"message": "",
+			"text": "DisconnectedError",
+			"isError": true,
+			"hasCause": true,
+			"causeMessage": "",
+			"code": null
+		}
+	],
+	"disposed": {
+		"name": "ClientDisposedError",
+		"message": "Client is disposed",
+		"text": "ClientDisposedError: Client is disposed",
+		"isError": true,
+		"hasCause": false,
+		"causeMessage": null,
+		"code": null
+	},
+	"to": [
+		{
+			"input": "plain failure",
+			"passthrough": false,
+			"name": "DisconnectedError",
+			"message": "plain failure",
+			"text": "DisconnectedError: plain failure",
+			"isError": true,
+			"hasCause": true,
+			"causeMessage": "plain failure",
+			"code": null
+		},
+		{
+			"input": "",
+			"passthrough": false,
+			"name": "DisconnectedError",
+			"message": "",
+			"text": "DisconnectedError",
+			"isError": true,
+			"hasCause": true,
+			"causeMessage": "",
+			"code": null
+		},
+		{
+			"input": "multi\nline",
+			"passthrough": false,
+			"name": "DisconnectedError",
+			"message": "multi\nline",
+			"text": "DisconnectedError: multi\nline",
+			"isError": true,
+			"hasCause": true,
+			"causeMessage": "multi\nline",
+			"code": null
+		},
+		{
+			"input": "already disconnected",
+			"passthrough": true,
+			"name": "DisconnectedError",
+			"message": "already disconnected",
+			"text": "DisconnectedError: already disconnected",
+			"isError": true,
+			"hasCause": true,
+			"causeMessage": "inner",
+			"code": null
+		}
+	]
+}

@@ -1,3 +1,5 @@
+//go:build !pig_strip_mistral_conversations
+
 package ai
 
 // Ports packages/ai/src/api/mistral-conversations.ts (readMistralEvents, findMistralEventBoundary, parseMistralEvent, and the `for await` in consumeChatStream that consumes them).

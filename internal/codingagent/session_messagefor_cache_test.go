@@ -1,17 +1,15 @@
 package codingagent
 
 import (
-	"strings"
 	"testing"
+
+	"github.com/MichaelKinsy/PiG/internal/sessionentry"
 )
 
-// messageFor must memoize a failed parse. Entries whose content-block
-// discriminator this build does not accept are otherwise re-scanned in full by
-// every traversal, and /tree walks the transcript several times per open (row
-// formatter pre-walk, child suppression, filter tags) plus once more per
-// filter or fold. On a long session that turned each keystroke into a re-parse
-// of the whole file.
-func TestMessageForCachesUnparseableEntry(t *testing.T) {
+// A message entry whose record does not decode into a MessageEntry is decided once, when the record is read: it is a RawEntry, so every
+// traversal (/tree walks the transcript several times per open: row formatter pre-walk, child suppression, filter tags) answers from the entry's
+// type and never parses the record again. messageFor counts it once however often it is asked.
+func TestMessageForReportsAnUnparseableEntryWithoutParsingItAgain(t *testing.T) {
 	sess := NewSession("sess-test", t.TempDir())
 
 	// A structurally invalid message: AgentMessage requires a non-empty role,
@@ -24,45 +22,34 @@ func TestMessageForCachesUnparseableEntry(t *testing.T) {
 	// "[<unknown:message>]".
 	raw := []byte(`{"type":"message","id":"e1","timestamp":"2026-01-01T00:00:00Z",` +
 		`"message":{"content":[{"type":"text","text":"no role"}]}}`)
-	entry := SessionEntry{
-		Base: SessionEntryBase{Type: "message", ID: "e1", Timestamp: "2026-01-01T00:00:00Z"},
-		raw:  raw,
-	}
+	entry := sessionentry.DecodeSessionEntry(raw)
 
-	if _, ok := entry.AsMessage(); ok {
+	if _, ok := entry.(MessageEntry); ok {
 		t.Fatal("fixture must be unparseable for this test to mean anything")
 	}
-
-	if _, ok := sess.messageFor(entry); ok {
-		t.Fatal("messageFor reported success for an unparseable entry")
+	if _, ok := entry.(RawEntry); !ok {
+		t.Fatalf("an unparseable message entry is %T, want the RawEntry that holds its record", entry)
 	}
-	sess.msgMu.Lock()
-	cached, hit := sess.msgCache["e1"]
-	sess.msgMu.Unlock()
-	if !hit {
-		t.Fatal("failed parse was not memoized; every later walk re-parses it")
-	}
-	if cached.ok {
-		t.Fatal("memoized outcome must record the failure, not a success")
+	if entry.Base().Type != "message" || entry.Base().ID != "e1" {
+		t.Fatalf("base = %+v, want the message entry's type and id", entry.Base())
 	}
 
-	// Repeat calls keep reporting failure from the cache.
 	for range 3 {
 		if _, ok := sess.messageFor(entry); ok {
-			t.Fatal("cached failure must keep reporting failure")
+			t.Fatal("messageFor reported success for an unparseable entry")
 		}
+	}
+	if n := sess.UndecodableCount(); n != 1 {
+		t.Fatalf("UndecodableCount = %d, want the entry counted once", n)
 	}
 }
 
-// A parseable entry still memoizes its decoded value and reports success.
-func TestMessageForCachesParsedEntry(t *testing.T) {
+// A parseable entry is a MessageEntry from the moment it is read and messageFor hands out its decoded message.
+func TestMessageForReportsAParsedEntry(t *testing.T) {
 	sess := NewSession("sess-test", t.TempDir())
 	raw := []byte(`{"type":"message","id":"e2","timestamp":"2026-01-01T00:00:00Z",` +
 		`"message":{"role":"assistant","content":[{"type":"text","text":"hello"}]}}`)
-	entry := SessionEntry{
-		Base: SessionEntryBase{Type: "message", ID: "e2", Timestamp: "2026-01-01T00:00:00Z"},
-		raw:  raw,
-	}
+	entry := sessionentry.DecodeSessionEntry(raw)
 
 	me, ok := sess.messageFor(entry)
 	if !ok {
@@ -71,17 +58,10 @@ func TestMessageForCachesParsedEntry(t *testing.T) {
 	if me.Message.Assistant == nil {
 		t.Fatal("assistant variant lost")
 	}
-	sess.msgMu.Lock()
-	cached, hit := sess.msgCache["e2"]
-	sess.msgMu.Unlock()
-	if !hit || !cached.ok {
-		t.Fatalf("successful parse not memoized (hit=%v ok=%v)", hit, cached.ok)
+	if me.ID != "e2" || string(entry.Raw()) != string(raw) {
+		t.Fatalf("entry = %+v, want id e2 and the record it was read from", me)
 	}
-	again, ok := sess.messageFor(entry)
-	if !ok || again.Message.Assistant == nil {
-		t.Fatal("cached success must keep reporting the decoded message")
-	}
-	if !strings.Contains(string(entry.raw), "hello") {
-		t.Fatal("fixture sanity")
+	if n := sess.UndecodableCount(); n != 0 {
+		t.Fatalf("UndecodableCount = %d, want 0", n)
 	}
 }

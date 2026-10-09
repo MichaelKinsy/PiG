@@ -4,6 +4,8 @@ import (
 	"context"
 	"testing"
 
+	icodingagent "github.com/MichaelKinsy/PiG/internal/codingagent"
+
 	"github.com/MichaelKinsy/PiG/ai"
 )
 
@@ -46,9 +48,9 @@ func TestNavigateToUserMessageAfterAbortLoadsEditor(t *testing.T) {
 	// Locate the user "Proceed" entry and confirm the leaf is the aborted
 	// assistant (its child), i.e. the user message is NOT the leaf.
 	var userID string
-	for _, e := range sess.inner.Entries() {
-		if me, ok := e.AsMessage(); ok && me.Message.User != nil {
-			userID = e.Base.ID
+	for _, e := range sess.inner.GetEntries() {
+		if me, ok := e.(icodingagent.MessageEntry); ok && me.Message.User != nil {
+			userID = e.Base().ID
 		}
 	}
 	if userID == "" {

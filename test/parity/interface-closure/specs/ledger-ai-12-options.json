@@ -1,0 +1,1129 @@
+[
+ {
+  "ids": [
+   "pkg:ai/.#StreamOptions",
+   "pkg:ai/compat#StreamOptions"
+  ],
+  "targets": [
+   "ai/types.go#StreamOptions"
+  ],
+  "production": [
+   "call:agent/agent_loop.go#loopRun.streamAssistantResponse"
+  ],
+  "evidence": [
+   "test:agent/agent_loop_upstream_test.go#TestAgentLoop_PreparesInitialRequestAfterPendingMessagesAndReplacesState",
+   "test:agent/agent_transcript_upstream_test.go#TestAgentLoop_BuildsProviderContextExclusivelyFromTranscriptMessages"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "StreamOptions: every upstream property maps to a Go field (types reviewed against the upstream declaration); production and tests attributed by go/types.",
+  "properties": {
+   "apiKey": {
+    "targets": [
+     "ai/types.go#StreamOptions.APIKey"
+    ],
+    "evidence": [
+     "test:agent/agent_loop_upstream_test.go#TestAgentLoop_PreparesInitialRequestAfterPendingMessagesAndReplacesState",
+     "test:agent/agent_transcript_upstream_test.go#TestAgentLoop_BuildsProviderContextExclusivelyFromTranscriptMessages"
+    ],
+    "production": [
+     "call:agent/agent_loop.go#loopRun.streamAssistantResponse"
+    ],
+    "rationale": "The upstream property apiKey is the Go field StreamOptions.APIKey."
+   },
+   "cacheRetention": {
+    "targets": [
+     "ai/types.go#StreamOptions.CacheRetention"
+    ],
+    "evidence": [
+     "test:agent/agent_loop_upstream_test.go#TestAgentLoop_PreparesInitialRequestAfterPendingMessagesAndReplacesState",
+     "test:agent/agent_transcript_upstream_test.go#TestAgentLoop_BuildsProviderContextExclusivelyFromTranscriptMessages"
+    ],
+    "production": [
+     "call:agent/agent_loop.go#loopRun.streamAssistantResponse"
+    ],
+    "rationale": "The upstream property cacheRetention is the Go field StreamOptions.CacheRetention."
+   },
+   "env": {
+    "targets": [
+     "ai/types.go#StreamOptions.Env"
+    ],
+    "evidence": [
+     "test:agent/agent_loop_upstream_test.go#TestAgentLoop_PreparesInitialRequestAfterPendingMessagesAndReplacesState",
+     "test:agent/agent_transcript_upstream_test.go#TestAgentLoop_BuildsProviderContextExclusivelyFromTranscriptMessages"
+    ],
+    "production": [
+     "call:agent/agent_loop.go#loopRun.streamAssistantResponse"
+    ],
+    "rationale": "The upstream property env is the Go field StreamOptions.Env."
+   },
+   "fetch": {
+    "targets": [
+     "ai/types.go#StreamOptions.Fetch"
+    ],
+    "evidence": [
+     "test:ai/fetch_option_upstream_test.go#TestFetchOptionUpstream",
+     "test:agent/agent_loop_upstream_test.go#TestAgentLoop_PreparesInitialRequestAfterPendingMessagesAndReplacesState"
+    ],
+    "production": [
+     "call:agent/agent_loop.go#loopRun.streamAssistantResponse"
+    ],
+    "rationale": "The upstream property fetch is the Go field StreamOptions.Fetch; fetch is the caller-owned *http.Client that replaces HTTP execution."
+   },
+   "headers": {
+    "targets": [
+     "ai/types.go#StreamOptions.Headers"
+    ],
+    "evidence": [
+     "test:agent/agent_loop_upstream_test.go#TestAgentLoop_PreparesInitialRequestAfterPendingMessagesAndReplacesState",
+     "test:agent/agent_transcript_upstream_test.go#TestAgentLoop_BuildsProviderContextExclusivelyFromTranscriptMessages"
+    ],
+    "production": [
+     "call:agent/agent_loop.go#loopRun.streamAssistantResponse"
+    ],
+    "rationale": "The upstream property headers is the Go field StreamOptions.Headers."
+   },
+   "maxRetries": {
+    "targets": [
+     "ai/types.go#StreamOptions.MaxRetries"
+    ],
+    "evidence": [
+     "test:agent/agent_loop_upstream_test.go#TestAgentLoop_PreparesInitialRequestAfterPendingMessagesAndReplacesState",
+     "test:agent/agent_transcript_upstream_test.go#TestAgentLoop_BuildsProviderContextExclusivelyFromTranscriptMessages"
+    ],
+    "production": [
+     "call:agent/agent_loop.go#loopRun.streamAssistantResponse"
+    ],
+    "rationale": "The upstream property maxRetries is the Go field StreamOptions.MaxRetries."
+   },
+   "maxRetryDelayMs": {
+    "targets": [
+     "ai/types.go#StreamOptions.MaxRetryDelayMs"
+    ],
+    "evidence": [
+     "test:agent/agent_loop_upstream_test.go#TestAgentLoop_PreparesInitialRequestAfterPendingMessagesAndReplacesState",
+     "test:agent/agent_transcript_upstream_test.go#TestAgentLoop_BuildsProviderContextExclusivelyFromTranscriptMessages"
+    ],
+    "production": [
+     "call:agent/agent_loop.go#loopRun.streamAssistantResponse"
+    ],
+    "rationale": "The upstream property maxRetryDelayMs is the Go field StreamOptions.MaxRetryDelayMs."
+   },
+   "maxTokens": {
+    "targets": [
+     "ai/types.go#StreamOptions.MaxTokens"
+    ],
+    "evidence": [
+     "test:agent/agent_loop_upstream_test.go#TestAgentLoop_PreparesInitialRequestAfterPendingMessagesAndReplacesState",
+     "test:agent/agent_transcript_upstream_test.go#TestAgentLoop_BuildsProviderContextExclusivelyFromTranscriptMessages"
+    ],
+    "production": [
+     "call:agent/agent_loop.go#loopRun.streamAssistantResponse"
+    ],
+    "rationale": "The upstream property maxTokens is the Go field StreamOptions.MaxTokens."
+   },
+   "metadata": {
+    "targets": [
+     "ai/types.go#StreamOptions.Metadata"
+    ],
+    "evidence": [
+     "test:agent/agent_loop_upstream_test.go#TestAgentLoop_PreparesInitialRequestAfterPendingMessagesAndReplacesState",
+     "test:agent/agent_transcript_upstream_test.go#TestAgentLoop_BuildsProviderContextExclusivelyFromTranscriptMessages"
+    ],
+    "production": [
+     "call:agent/agent_loop.go#loopRun.streamAssistantResponse"
+    ],
+    "rationale": "The upstream property metadata is the Go field StreamOptions.Metadata."
+   },
+   "onPayload": {
+    "targets": [
+     "ai/types.go#StreamOptions.OnPayload"
+    ],
+    "evidence": [
+     "test:agent/agent_loop_upstream_test.go#TestAgentLoop_PreparesInitialRequestAfterPendingMessagesAndReplacesState",
+     "test:agent/agent_transcript_upstream_test.go#TestAgentLoop_BuildsProviderContextExclusivelyFromTranscriptMessages"
+    ],
+    "production": [
+     "call:agent/agent_loop.go#loopRun.streamAssistantResponse"
+    ],
+    "rationale": "The upstream property onPayload is the Go field StreamOptions.OnPayload."
+   },
+   "onProviderStreamEvent": {
+    "targets": [
+     "ai/types.go#StreamOptions.OnProviderStreamEvent"
+    ],
+    "evidence": [
+     "test:agent/agent_loop_upstream_test.go#TestAgentLoop_PreparesInitialRequestAfterPendingMessagesAndReplacesState",
+     "test:agent/agent_transcript_upstream_test.go#TestAgentLoop_BuildsProviderContextExclusivelyFromTranscriptMessages"
+    ],
+    "production": [
+     "call:agent/agent_loop.go#loopRun.streamAssistantResponse"
+    ],
+    "rationale": "The upstream property onProviderStreamEvent is the Go field StreamOptions.OnProviderStreamEvent."
+   },
+   "onResponse": {
+    "targets": [
+     "ai/types.go#StreamOptions.OnResponse"
+    ],
+    "evidence": [
+     "test:agent/agent_loop_upstream_test.go#TestAgentLoop_PreparesInitialRequestAfterPendingMessagesAndReplacesState",
+     "test:agent/agent_transcript_upstream_test.go#TestAgentLoop_BuildsProviderContextExclusivelyFromTranscriptMessages"
+    ],
+    "production": [
+     "call:agent/agent_loop.go#loopRun.streamAssistantResponse"
+    ],
+    "rationale": "The upstream property onResponse is the Go field StreamOptions.OnResponse."
+   },
+   "samplingParams": {
+    "targets": [
+     "ai/types.go#StreamOptions.SamplingParams"
+    ],
+    "evidence": [
+     "test:agent/agent_loop_upstream_test.go#TestAgentLoop_PreparesInitialRequestAfterPendingMessagesAndReplacesState",
+     "test:agent/agent_transcript_upstream_test.go#TestAgentLoop_BuildsProviderContextExclusivelyFromTranscriptMessages"
+    ],
+    "production": [
+     "call:agent/agent_loop.go#loopRun.streamAssistantResponse"
+    ],
+    "rationale": "The upstream property samplingParams is the Go field StreamOptions.SamplingParams."
+   },
+   "sessionId": {
+    "targets": [
+     "ai/types.go#StreamOptions.SessionID"
+    ],
+    "evidence": [
+     "test:agent/agent_loop_upstream_test.go#TestAgentLoop_PreparesInitialRequestAfterPendingMessagesAndReplacesState",
+     "test:agent/agent_transcript_upstream_test.go#TestAgentLoop_BuildsProviderContextExclusivelyFromTranscriptMessages"
+    ],
+    "production": [
+     "call:agent/agent_loop.go#loopRun.streamAssistantResponse"
+    ],
+    "rationale": "The upstream property sessionId is the Go field StreamOptions.SessionID."
+   },
+   "signal": {
+    "targets": [
+     "ai/types.go#StreamOptions.Signal"
+    ],
+    "evidence": [
+     "test:agent/agent_loop_upstream_test.go#TestAgentLoop_PreparesInitialRequestAfterPendingMessagesAndReplacesState",
+     "test:agent/agent_transcript_upstream_test.go#TestAgentLoop_BuildsProviderContextExclusivelyFromTranscriptMessages"
+    ],
+    "production": [
+     "call:agent/agent_loop.go#loopRun.streamAssistantResponse"
+    ],
+    "rationale": "The upstream property signal is the Go field StreamOptions.Signal."
+   },
+   "telemetryContext": {
+    "targets": [
+     "ai/types.go#StreamOptions.TelemetryContext"
+    ],
+    "evidence": [
+     "test:agent/agent_loop_upstream_test.go#TestAgentLoop_PreparesInitialRequestAfterPendingMessagesAndReplacesState",
+     "test:agent/agent_transcript_upstream_test.go#TestAgentLoop_BuildsProviderContextExclusivelyFromTranscriptMessages"
+    ],
+    "production": [
+     "call:agent/agent_loop.go#loopRun.streamAssistantResponse"
+    ],
+    "rationale": "The upstream property telemetryContext is the Go field StreamOptions.TelemetryContext."
+   },
+   "temperature": {
+    "targets": [
+     "ai/types.go#StreamOptions.Temperature"
+    ],
+    "evidence": [
+     "test:agent/agent_loop_upstream_test.go#TestAgentLoop_PreparesInitialRequestAfterPendingMessagesAndReplacesState",
+     "test:agent/agent_transcript_upstream_test.go#TestAgentLoop_BuildsProviderContextExclusivelyFromTranscriptMessages"
+    ],
+    "production": [
+     "call:agent/agent_loop.go#loopRun.streamAssistantResponse"
+    ],
+    "rationale": "The upstream property temperature is the Go field StreamOptions.Temperature."
+   },
+   "timeoutMs": {
+    "targets": [
+     "ai/types.go#StreamOptions.TimeoutMs"
+    ],
+    "evidence": [
+     "test:agent/agent_loop_upstream_test.go#TestAgentLoop_PreparesInitialRequestAfterPendingMessagesAndReplacesState",
+     "test:agent/agent_transcript_upstream_test.go#TestAgentLoop_BuildsProviderContextExclusivelyFromTranscriptMessages"
+    ],
+    "production": [
+     "call:agent/agent_loop.go#loopRun.streamAssistantResponse"
+    ],
+    "rationale": "The upstream property timeoutMs is the Go field StreamOptions.TimeoutMs."
+   },
+   "transport": {
+    "targets": [
+     "ai/types.go#StreamOptions.Transport"
+    ],
+    "evidence": [
+     "test:agent/agent_loop_upstream_test.go#TestAgentLoop_PreparesInitialRequestAfterPendingMessagesAndReplacesState",
+     "test:agent/agent_transcript_upstream_test.go#TestAgentLoop_BuildsProviderContextExclusivelyFromTranscriptMessages"
+    ],
+    "production": [
+     "call:agent/agent_loop.go#loopRun.streamAssistantResponse"
+    ],
+    "rationale": "The upstream property transport is the Go field StreamOptions.Transport."
+   },
+   "websocketConnectTimeoutMs": {
+    "targets": [
+     "ai/types.go#StreamOptions.WebSocketConnectTimeoutMs"
+    ],
+    "evidence": [
+     "test:agent/agent_loop_upstream_test.go#TestAgentLoop_PreparesInitialRequestAfterPendingMessagesAndReplacesState",
+     "test:agent/agent_transcript_upstream_test.go#TestAgentLoop_BuildsProviderContextExclusivelyFromTranscriptMessages"
+    ],
+    "production": [
+     "call:agent/agent_loop.go#loopRun.streamAssistantResponse"
+    ],
+    "rationale": "The upstream property websocketConnectTimeoutMs is the Go field StreamOptions.WebSocketConnectTimeoutMs."
+   }
+  }
+ },
+ {
+  "ids": [
+   "pkg:ai/.#SimpleStreamOptions",
+   "pkg:ai/compat#SimpleStreamOptions"
+  ],
+  "targets": [
+   "ai/types.go#StreamOptions"
+  ],
+  "production": [
+   "call:agent/agent_loop.go#loopRun.streamAssistantResponse"
+  ],
+  "evidence": [
+   "test:agent/agent_loop_upstream_test.go#TestAgentLoop_PreparesInitialRequestAfterPendingMessagesAndReplacesState",
+   "test:agent/agent_transcript_upstream_test.go#TestAgentLoop_BuildsProviderContextExclusivelyFromTranscriptMessages"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "SimpleStreamOptions: every upstream property maps to a Go field (types reviewed against the upstream declaration); production and tests attributed by go/types. Go folds SimpleStreamOptions into StreamOptions (reasoning is Thinking, deferred is Deferred).",
+  "properties": {
+   "apiKey": {
+    "targets": [
+     "ai/types.go#StreamOptions.APIKey"
+    ],
+    "evidence": [
+     "test:agent/agent_loop_upstream_test.go#TestAgentLoop_PreparesInitialRequestAfterPendingMessagesAndReplacesState",
+     "test:agent/agent_transcript_upstream_test.go#TestAgentLoop_BuildsProviderContextExclusivelyFromTranscriptMessages"
+    ],
+    "production": [
+     "call:agent/agent_loop.go#loopRun.streamAssistantResponse"
+    ],
+    "rationale": "The upstream property apiKey is the Go field StreamOptions.APIKey."
+   },
+   "cacheRetention": {
+    "targets": [
+     "ai/types.go#StreamOptions.CacheRetention"
+    ],
+    "evidence": [
+     "test:agent/agent_loop_upstream_test.go#TestAgentLoop_PreparesInitialRequestAfterPendingMessagesAndReplacesState",
+     "test:agent/agent_transcript_upstream_test.go#TestAgentLoop_BuildsProviderContextExclusivelyFromTranscriptMessages"
+    ],
+    "production": [
+     "call:agent/agent_loop.go#loopRun.streamAssistantResponse"
+    ],
+    "rationale": "The upstream property cacheRetention is the Go field StreamOptions.CacheRetention."
+   },
+   "deferred": {
+    "targets": [
+     "ai/types.go#StreamOptions.Deferred"
+    ],
+    "evidence": [
+     "test:agent/agent_loop_upstream_test.go#TestAgentLoop_PreparesInitialRequestAfterPendingMessagesAndReplacesState",
+     "test:agent/agent_transcript_upstream_test.go#TestAgentLoop_BuildsProviderContextExclusivelyFromTranscriptMessages"
+    ],
+    "production": [
+     "call:agent/agent_loop.go#loopRun.streamAssistantResponse"
+    ],
+    "rationale": "The upstream property deferred is the Go field StreamOptions.Deferred."
+   },
+   "env": {
+    "targets": [
+     "ai/types.go#StreamOptions.Env"
+    ],
+    "evidence": [
+     "test:agent/agent_loop_upstream_test.go#TestAgentLoop_PreparesInitialRequestAfterPendingMessagesAndReplacesState",
+     "test:agent/agent_transcript_upstream_test.go#TestAgentLoop_BuildsProviderContextExclusivelyFromTranscriptMessages"
+    ],
+    "production": [
+     "call:agent/agent_loop.go#loopRun.streamAssistantResponse"
+    ],
+    "rationale": "The upstream property env is the Go field StreamOptions.Env."
+   },
+   "fetch": {
+    "targets": [
+     "ai/types.go#StreamOptions.Fetch"
+    ],
+    "evidence": [
+     "test:ai/fetch_option_upstream_test.go#TestFetchOptionUpstream",
+     "test:agent/agent_loop_upstream_test.go#TestAgentLoop_PreparesInitialRequestAfterPendingMessagesAndReplacesState"
+    ],
+    "production": [
+     "call:agent/agent_loop.go#loopRun.streamAssistantResponse"
+    ],
+    "rationale": "The upstream property fetch is the Go field StreamOptions.Fetch; fetch is the caller-owned *http.Client that replaces HTTP execution."
+   },
+   "headers": {
+    "targets": [
+     "ai/types.go#StreamOptions.Headers"
+    ],
+    "evidence": [
+     "test:agent/agent_loop_upstream_test.go#TestAgentLoop_PreparesInitialRequestAfterPendingMessagesAndReplacesState",
+     "test:agent/agent_transcript_upstream_test.go#TestAgentLoop_BuildsProviderContextExclusivelyFromTranscriptMessages"
+    ],
+    "production": [
+     "call:agent/agent_loop.go#loopRun.streamAssistantResponse"
+    ],
+    "rationale": "The upstream property headers is the Go field StreamOptions.Headers."
+   },
+   "maxRetries": {
+    "targets": [
+     "ai/types.go#StreamOptions.MaxRetries"
+    ],
+    "evidence": [
+     "test:agent/agent_loop_upstream_test.go#TestAgentLoop_PreparesInitialRequestAfterPendingMessagesAndReplacesState",
+     "test:agent/agent_transcript_upstream_test.go#TestAgentLoop_BuildsProviderContextExclusivelyFromTranscriptMessages"
+    ],
+    "production": [
+     "call:agent/agent_loop.go#loopRun.streamAssistantResponse"
+    ],
+    "rationale": "The upstream property maxRetries is the Go field StreamOptions.MaxRetries."
+   },
+   "maxRetryDelayMs": {
+    "targets": [
+     "ai/types.go#StreamOptions.MaxRetryDelayMs"
+    ],
+    "evidence": [
+     "test:agent/agent_loop_upstream_test.go#TestAgentLoop_PreparesInitialRequestAfterPendingMessagesAndReplacesState",
+     "test:agent/agent_transcript_upstream_test.go#TestAgentLoop_BuildsProviderContextExclusivelyFromTranscriptMessages"
+    ],
+    "production": [
+     "call:agent/agent_loop.go#loopRun.streamAssistantResponse"
+    ],
+    "rationale": "The upstream property maxRetryDelayMs is the Go field StreamOptions.MaxRetryDelayMs."
+   },
+   "maxTokens": {
+    "targets": [
+     "ai/types.go#StreamOptions.MaxTokens"
+    ],
+    "evidence": [
+     "test:agent/agent_loop_upstream_test.go#TestAgentLoop_PreparesInitialRequestAfterPendingMessagesAndReplacesState",
+     "test:agent/agent_transcript_upstream_test.go#TestAgentLoop_BuildsProviderContextExclusivelyFromTranscriptMessages"
+    ],
+    "production": [
+     "call:agent/agent_loop.go#loopRun.streamAssistantResponse"
+    ],
+    "rationale": "The upstream property maxTokens is the Go field StreamOptions.MaxTokens."
+   },
+   "metadata": {
+    "targets": [
+     "ai/types.go#StreamOptions.Metadata"
+    ],
+    "evidence": [
+     "test:agent/agent_loop_upstream_test.go#TestAgentLoop_PreparesInitialRequestAfterPendingMessagesAndReplacesState",
+     "test:agent/agent_transcript_upstream_test.go#TestAgentLoop_BuildsProviderContextExclusivelyFromTranscriptMessages"
+    ],
+    "production": [
+     "call:agent/agent_loop.go#loopRun.streamAssistantResponse"
+    ],
+    "rationale": "The upstream property metadata is the Go field StreamOptions.Metadata."
+   },
+   "onPayload": {
+    "targets": [
+     "ai/types.go#StreamOptions.OnPayload"
+    ],
+    "evidence": [
+     "test:agent/agent_loop_upstream_test.go#TestAgentLoop_PreparesInitialRequestAfterPendingMessagesAndReplacesState",
+     "test:agent/agent_transcript_upstream_test.go#TestAgentLoop_BuildsProviderContextExclusivelyFromTranscriptMessages"
+    ],
+    "production": [
+     "call:agent/agent_loop.go#loopRun.streamAssistantResponse"
+    ],
+    "rationale": "The upstream property onPayload is the Go field StreamOptions.OnPayload."
+   },
+   "onProviderStreamEvent": {
+    "targets": [
+     "ai/types.go#StreamOptions.OnProviderStreamEvent"
+    ],
+    "evidence": [
+     "test:agent/agent_loop_upstream_test.go#TestAgentLoop_PreparesInitialRequestAfterPendingMessagesAndReplacesState",
+     "test:agent/agent_transcript_upstream_test.go#TestAgentLoop_BuildsProviderContextExclusivelyFromTranscriptMessages"
+    ],
+    "production": [
+     "call:agent/agent_loop.go#loopRun.streamAssistantResponse"
+    ],
+    "rationale": "The upstream property onProviderStreamEvent is the Go field StreamOptions.OnProviderStreamEvent."
+   },
+   "onResponse": {
+    "targets": [
+     "ai/types.go#StreamOptions.OnResponse"
+    ],
+    "evidence": [
+     "test:agent/agent_loop_upstream_test.go#TestAgentLoop_PreparesInitialRequestAfterPendingMessagesAndReplacesState",
+     "test:agent/agent_transcript_upstream_test.go#TestAgentLoop_BuildsProviderContextExclusivelyFromTranscriptMessages"
+    ],
+    "production": [
+     "call:agent/agent_loop.go#loopRun.streamAssistantResponse"
+    ],
+    "rationale": "The upstream property onResponse is the Go field StreamOptions.OnResponse."
+   },
+   "reasoning": {
+    "targets": [
+     "ai/types.go#StreamOptions.Thinking"
+    ],
+    "evidence": [
+     "test:agent/agent_loop_upstream_test.go#TestAgentLoop_PreparesInitialRequestAfterPendingMessagesAndReplacesState",
+     "test:agent/agent_transcript_upstream_test.go#TestAgentLoop_BuildsProviderContextExclusivelyFromTranscriptMessages"
+    ],
+    "production": [
+     "call:agent/agent_loop.go#loopRun.streamAssistantResponse"
+    ],
+    "rationale": "The upstream property reasoning is the Go field StreamOptions.Thinking."
+   },
+   "samplingParams": {
+    "targets": [
+     "ai/types.go#StreamOptions.SamplingParams"
+    ],
+    "evidence": [
+     "test:agent/agent_loop_upstream_test.go#TestAgentLoop_PreparesInitialRequestAfterPendingMessagesAndReplacesState",
+     "test:agent/agent_transcript_upstream_test.go#TestAgentLoop_BuildsProviderContextExclusivelyFromTranscriptMessages"
+    ],
+    "production": [
+     "call:agent/agent_loop.go#loopRun.streamAssistantResponse"
+    ],
+    "rationale": "The upstream property samplingParams is the Go field StreamOptions.SamplingParams."
+   },
+   "sessionId": {
+    "targets": [
+     "ai/types.go#StreamOptions.SessionID"
+    ],
+    "evidence": [
+     "test:agent/agent_loop_upstream_test.go#TestAgentLoop_PreparesInitialRequestAfterPendingMessagesAndReplacesState",
+     "test:agent/agent_transcript_upstream_test.go#TestAgentLoop_BuildsProviderContextExclusivelyFromTranscriptMessages"
+    ],
+    "production": [
+     "call:agent/agent_loop.go#loopRun.streamAssistantResponse"
+    ],
+    "rationale": "The upstream property sessionId is the Go field StreamOptions.SessionID."
+   },
+   "signal": {
+    "targets": [
+     "ai/types.go#StreamOptions.Signal"
+    ],
+    "evidence": [
+     "test:agent/agent_loop_upstream_test.go#TestAgentLoop_PreparesInitialRequestAfterPendingMessagesAndReplacesState",
+     "test:agent/agent_transcript_upstream_test.go#TestAgentLoop_BuildsProviderContextExclusivelyFromTranscriptMessages"
+    ],
+    "production": [
+     "call:agent/agent_loop.go#loopRun.streamAssistantResponse"
+    ],
+    "rationale": "The upstream property signal is the Go field StreamOptions.Signal."
+   },
+   "telemetryContext": {
+    "targets": [
+     "ai/types.go#StreamOptions.TelemetryContext"
+    ],
+    "evidence": [
+     "test:agent/agent_loop_upstream_test.go#TestAgentLoop_PreparesInitialRequestAfterPendingMessagesAndReplacesState",
+     "test:agent/agent_transcript_upstream_test.go#TestAgentLoop_BuildsProviderContextExclusivelyFromTranscriptMessages"
+    ],
+    "production": [
+     "call:agent/agent_loop.go#loopRun.streamAssistantResponse"
+    ],
+    "rationale": "The upstream property telemetryContext is the Go field StreamOptions.TelemetryContext."
+   },
+   "temperature": {
+    "targets": [
+     "ai/types.go#StreamOptions.Temperature"
+    ],
+    "evidence": [
+     "test:agent/agent_loop_upstream_test.go#TestAgentLoop_PreparesInitialRequestAfterPendingMessagesAndReplacesState",
+     "test:agent/agent_transcript_upstream_test.go#TestAgentLoop_BuildsProviderContextExclusivelyFromTranscriptMessages"
+    ],
+    "production": [
+     "call:agent/agent_loop.go#loopRun.streamAssistantResponse"
+    ],
+    "rationale": "The upstream property temperature is the Go field StreamOptions.Temperature."
+   },
+   "thinkingBudgets": {
+    "targets": [
+     "ai/types.go#StreamOptions.ThinkingBudgets"
+    ],
+    "evidence": [
+     "test:agent/agent_loop_upstream_test.go#TestAgentLoop_PreparesInitialRequestAfterPendingMessagesAndReplacesState",
+     "test:agent/agent_transcript_upstream_test.go#TestAgentLoop_BuildsProviderContextExclusivelyFromTranscriptMessages"
+    ],
+    "production": [
+     "call:agent/agent_loop.go#loopRun.streamAssistantResponse"
+    ],
+    "rationale": "The upstream property thinkingBudgets is the Go field StreamOptions.ThinkingBudgets."
+   },
+   "timeoutMs": {
+    "targets": [
+     "ai/types.go#StreamOptions.TimeoutMs"
+    ],
+    "evidence": [
+     "test:agent/agent_loop_upstream_test.go#TestAgentLoop_PreparesInitialRequestAfterPendingMessagesAndReplacesState",
+     "test:agent/agent_transcript_upstream_test.go#TestAgentLoop_BuildsProviderContextExclusivelyFromTranscriptMessages"
+    ],
+    "production": [
+     "call:agent/agent_loop.go#loopRun.streamAssistantResponse"
+    ],
+    "rationale": "The upstream property timeoutMs is the Go field StreamOptions.TimeoutMs."
+   },
+   "toolChoice": {
+    "targets": [
+     "ai/types.go#StreamOptions.ToolChoice"
+    ],
+    "evidence": [
+     "test:agent/agent_loop_upstream_test.go#TestAgentLoop_PreparesInitialRequestAfterPendingMessagesAndReplacesState",
+     "test:agent/agent_transcript_upstream_test.go#TestAgentLoop_BuildsProviderContextExclusivelyFromTranscriptMessages"
+    ],
+    "production": [
+     "call:agent/agent_loop.go#loopRun.streamAssistantResponse"
+    ],
+    "rationale": "The upstream property toolChoice is the Go field StreamOptions.ToolChoice."
+   },
+   "transport": {
+    "targets": [
+     "ai/types.go#StreamOptions.Transport"
+    ],
+    "evidence": [
+     "test:agent/agent_loop_upstream_test.go#TestAgentLoop_PreparesInitialRequestAfterPendingMessagesAndReplacesState",
+     "test:agent/agent_transcript_upstream_test.go#TestAgentLoop_BuildsProviderContextExclusivelyFromTranscriptMessages"
+    ],
+    "production": [
+     "call:agent/agent_loop.go#loopRun.streamAssistantResponse"
+    ],
+    "rationale": "The upstream property transport is the Go field StreamOptions.Transport."
+   },
+   "websocketConnectTimeoutMs": {
+    "targets": [
+     "ai/types.go#StreamOptions.WebSocketConnectTimeoutMs"
+    ],
+    "evidence": [
+     "test:agent/agent_loop_upstream_test.go#TestAgentLoop_PreparesInitialRequestAfterPendingMessagesAndReplacesState",
+     "test:agent/agent_transcript_upstream_test.go#TestAgentLoop_BuildsProviderContextExclusivelyFromTranscriptMessages"
+    ],
+    "production": [
+     "call:agent/agent_loop.go#loopRun.streamAssistantResponse"
+    ],
+    "rationale": "The upstream property websocketConnectTimeoutMs is the Go field StreamOptions.WebSocketConnectTimeoutMs."
+   }
+  }
+ },
+ {
+  "ids": [
+   "pkg:ai/.#DeferredFetchOptions",
+   "pkg:ai/compat#DeferredFetchOptions"
+  ],
+  "targets": [
+   "ai/models_runtime.go#DeferredFetchOptions"
+  ],
+  "production": [
+   "call:ai/models_runtime_stream.go#Models.StreamDeferred"
+  ],
+  "evidence": [
+   "test:ai/faux_deferred_models_upstream_test.go#TestFauxModelsDeferredFailureAndCancellationUpstream",
+   "test:ai/faux_deferred_models_upstream_test.go#TestFauxModelsSubmitPollRedeemDeferredUpstream"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "DeferredFetchOptions: every upstream property maps to a Go field (types reviewed against the upstream declaration); production and tests attributed by go/types.",
+  "properties": {
+   "apiKey": {
+    "targets": [
+     "ai/types.go#StreamOptions.APIKey"
+    ],
+    "evidence": [
+     "test:ai/faux_deferred_models_upstream_test.go#TestFauxModelsDeferredFailureAndCancellationUpstream",
+     "test:ai/faux_deferred_models_upstream_test.go#TestFauxModelsSubmitPollRedeemDeferredUpstream"
+    ],
+    "production": [
+     "call:ai/models_runtime_stream.go#Models.StreamDeferred"
+    ],
+    "rationale": "The upstream property apiKey is the Go field StreamOptions.APIKey."
+   },
+   "env": {
+    "targets": [
+     "ai/types.go#StreamOptions.Env"
+    ],
+    "evidence": [
+     "test:ai/faux_deferred_models_upstream_test.go#TestFauxModelsDeferredFailureAndCancellationUpstream",
+     "test:ai/faux_deferred_models_upstream_test.go#TestFauxModelsSubmitPollRedeemDeferredUpstream"
+    ],
+    "production": [
+     "call:ai/models_runtime_stream.go#Models.StreamDeferred"
+    ],
+    "rationale": "The upstream property env is the Go field StreamOptions.Env."
+   },
+   "fetch": {
+    "targets": [
+     "ai/types.go#StreamOptions.Fetch"
+    ],
+    "evidence": [
+     "test:ai/fetch_option_upstream_test.go#TestFetchOptionUpstream",
+     "test:ai/faux_deferred_models_upstream_test.go#TestFauxModelsDeferredFailureAndCancellationUpstream"
+    ],
+    "production": [
+     "call:ai/models_runtime_stream.go#Models.StreamDeferred"
+    ],
+    "rationale": "The upstream property fetch is the Go field StreamOptions.Fetch; fetch is the caller-owned *http.Client that replaces HTTP execution."
+   },
+   "headers": {
+    "targets": [
+     "ai/types.go#StreamOptions.Headers"
+    ],
+    "evidence": [
+     "test:ai/faux_deferred_models_upstream_test.go#TestFauxModelsDeferredFailureAndCancellationUpstream",
+     "test:ai/faux_deferred_models_upstream_test.go#TestFauxModelsSubmitPollRedeemDeferredUpstream"
+    ],
+    "production": [
+     "call:ai/models_runtime_stream.go#Models.StreamDeferred"
+    ],
+    "rationale": "The upstream property headers is the Go field StreamOptions.Headers."
+   },
+   "maxRetries": {
+    "targets": [
+     "ai/types.go#StreamOptions.MaxRetries"
+    ],
+    "evidence": [
+     "test:ai/faux_deferred_models_upstream_test.go#TestFauxModelsDeferredFailureAndCancellationUpstream",
+     "test:ai/faux_deferred_models_upstream_test.go#TestFauxModelsSubmitPollRedeemDeferredUpstream"
+    ],
+    "production": [
+     "call:ai/models_runtime_stream.go#Models.StreamDeferred"
+    ],
+    "rationale": "The upstream property maxRetries is the Go field StreamOptions.MaxRetries."
+   },
+   "maxRetryDelayMs": {
+    "targets": [
+     "ai/types.go#StreamOptions.MaxRetryDelayMs"
+    ],
+    "evidence": [
+     "test:ai/faux_deferred_models_upstream_test.go#TestFauxModelsDeferredFailureAndCancellationUpstream",
+     "test:ai/faux_deferred_models_upstream_test.go#TestFauxModelsSubmitPollRedeemDeferredUpstream"
+    ],
+    "production": [
+     "call:ai/models_runtime_stream.go#Models.StreamDeferred"
+    ],
+    "rationale": "The upstream property maxRetryDelayMs is the Go field StreamOptions.MaxRetryDelayMs."
+   },
+   "onPayload": {
+    "targets": [
+     "ai/types.go#StreamOptions.OnPayload"
+    ],
+    "evidence": [
+     "test:ai/faux_deferred_models_upstream_test.go#TestFauxModelsDeferredFailureAndCancellationUpstream",
+     "test:ai/faux_deferred_models_upstream_test.go#TestFauxModelsSubmitPollRedeemDeferredUpstream"
+    ],
+    "production": [
+     "call:ai/models_runtime_stream.go#Models.StreamDeferred"
+    ],
+    "rationale": "The upstream property onPayload is the Go field StreamOptions.OnPayload."
+   },
+   "onResponse": {
+    "targets": [
+     "ai/types.go#StreamOptions.OnResponse"
+    ],
+    "evidence": [
+     "test:ai/faux_deferred_models_upstream_test.go#TestFauxModelsDeferredFailureAndCancellationUpstream",
+     "test:ai/faux_deferred_models_upstream_test.go#TestFauxModelsSubmitPollRedeemDeferredUpstream"
+    ],
+    "production": [
+     "call:ai/models_runtime_stream.go#Models.StreamDeferred"
+    ],
+    "rationale": "The upstream property onResponse is the Go field StreamOptions.OnResponse."
+   },
+   "signal": {
+    "targets": [
+     "ai/types.go#StreamOptions.Signal"
+    ],
+    "evidence": [
+     "test:ai/faux_deferred_models_upstream_test.go#TestFauxModelsDeferredFailureAndCancellationUpstream",
+     "test:ai/faux_deferred_models_upstream_test.go#TestFauxModelsSubmitPollRedeemDeferredUpstream"
+    ],
+    "production": [
+     "call:ai/models_runtime_stream.go#Models.StreamDeferred"
+    ],
+    "rationale": "The upstream property signal is the Go field StreamOptions.Signal."
+   },
+   "telemetryContext": {
+    "targets": [
+     "ai/types.go#StreamOptions.TelemetryContext"
+    ],
+    "evidence": [
+     "test:ai/faux_deferred_models_upstream_test.go#TestFauxModelsDeferredFailureAndCancellationUpstream",
+     "test:ai/faux_deferred_models_upstream_test.go#TestFauxModelsSubmitPollRedeemDeferredUpstream"
+    ],
+    "production": [
+     "call:ai/models_runtime_stream.go#Models.StreamDeferred"
+    ],
+    "rationale": "The upstream property telemetryContext is the Go field StreamOptions.TelemetryContext."
+   },
+   "timeoutMs": {
+    "targets": [
+     "ai/types.go#StreamOptions.TimeoutMs"
+    ],
+    "evidence": [
+     "test:ai/faux_deferred_models_upstream_test.go#TestFauxModelsDeferredFailureAndCancellationUpstream",
+     "test:ai/faux_deferred_models_upstream_test.go#TestFauxModelsSubmitPollRedeemDeferredUpstream"
+    ],
+    "production": [
+     "call:ai/models_runtime_stream.go#Models.StreamDeferred"
+    ],
+    "rationale": "The upstream property timeoutMs is the Go field StreamOptions.TimeoutMs."
+   },
+   "wait": {
+    "targets": [
+     "ai/models_runtime.go#DeferredFetchOptions.Wait"
+    ],
+    "evidence": [
+     "test:ai/faux_deferred_models_upstream_test.go#TestFauxModelsDeferredFailureAndCancellationUpstream",
+     "test:ai/faux_deferred_models_upstream_test.go#TestFauxModelsSubmitPollRedeemDeferredUpstream"
+    ],
+    "production": [
+     "call:ai/models_runtime_stream.go#Models.StreamDeferred"
+    ],
+    "rationale": "The upstream property wait is the Go field DeferredFetchOptions.Wait."
+   }
+  }
+ },
+ {
+  "ids": [
+   "pkg:ai/.#ProviderRequestOptions",
+   "pkg:ai/compat#ProviderRequestOptions"
+  ],
+  "targets": [
+   "ai/types.go#StreamOptions"
+  ],
+  "production": [
+   "call:agent/agent_loop.go#loopRun.streamAssistantResponse"
+  ],
+  "evidence": [
+   "test:agent/agent_loop_upstream_test.go#TestAgentLoop_PreparesInitialRequestAfterPendingMessagesAndReplacesState",
+   "test:agent/agent_transcript_upstream_test.go#TestAgentLoop_BuildsProviderContextExclusivelyFromTranscriptMessages"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "ProviderRequestOptions: every upstream property maps to a Go field (types reviewed against the upstream declaration); production and tests attributed by go/types.",
+  "properties": {
+   "apiKey": {
+    "targets": [
+     "ai/types.go#StreamOptions.APIKey"
+    ],
+    "evidence": [
+     "test:agent/agent_loop_upstream_test.go#TestAgentLoop_PreparesInitialRequestAfterPendingMessagesAndReplacesState",
+     "test:agent/agent_transcript_upstream_test.go#TestAgentLoop_BuildsProviderContextExclusivelyFromTranscriptMessages"
+    ],
+    "production": [
+     "call:agent/agent_loop.go#loopRun.streamAssistantResponse"
+    ],
+    "rationale": "The upstream property apiKey is the Go field StreamOptions.APIKey."
+   },
+   "env": {
+    "targets": [
+     "ai/types.go#StreamOptions.Env"
+    ],
+    "evidence": [
+     "test:agent/agent_loop_upstream_test.go#TestAgentLoop_PreparesInitialRequestAfterPendingMessagesAndReplacesState",
+     "test:agent/agent_transcript_upstream_test.go#TestAgentLoop_BuildsProviderContextExclusivelyFromTranscriptMessages"
+    ],
+    "production": [
+     "call:agent/agent_loop.go#loopRun.streamAssistantResponse"
+    ],
+    "rationale": "The upstream property env is the Go field StreamOptions.Env."
+   },
+   "fetch": {
+    "targets": [
+     "ai/types.go#StreamOptions.Fetch"
+    ],
+    "evidence": [
+     "test:ai/fetch_option_upstream_test.go#TestFetchOptionUpstream",
+     "test:agent/agent_loop_upstream_test.go#TestAgentLoop_PreparesInitialRequestAfterPendingMessagesAndReplacesState"
+    ],
+    "production": [
+     "call:agent/agent_loop.go#loopRun.streamAssistantResponse"
+    ],
+    "rationale": "The upstream property fetch is the Go field StreamOptions.Fetch; fetch is the caller-owned *http.Client that replaces HTTP execution."
+   },
+   "headers": {
+    "targets": [
+     "ai/types.go#StreamOptions.Headers"
+    ],
+    "evidence": [
+     "test:agent/agent_loop_upstream_test.go#TestAgentLoop_PreparesInitialRequestAfterPendingMessagesAndReplacesState",
+     "test:agent/agent_transcript_upstream_test.go#TestAgentLoop_BuildsProviderContextExclusivelyFromTranscriptMessages"
+    ],
+    "production": [
+     "call:agent/agent_loop.go#loopRun.streamAssistantResponse"
+    ],
+    "rationale": "The upstream property headers is the Go field StreamOptions.Headers."
+   },
+   "maxRetries": {
+    "targets": [
+     "ai/types.go#StreamOptions.MaxRetries"
+    ],
+    "evidence": [
+     "test:agent/agent_loop_upstream_test.go#TestAgentLoop_PreparesInitialRequestAfterPendingMessagesAndReplacesState",
+     "test:agent/agent_transcript_upstream_test.go#TestAgentLoop_BuildsProviderContextExclusivelyFromTranscriptMessages"
+    ],
+    "production": [
+     "call:agent/agent_loop.go#loopRun.streamAssistantResponse"
+    ],
+    "rationale": "The upstream property maxRetries is the Go field StreamOptions.MaxRetries."
+   },
+   "maxRetryDelayMs": {
+    "targets": [
+     "ai/types.go#StreamOptions.MaxRetryDelayMs"
+    ],
+    "evidence": [
+     "test:agent/agent_loop_upstream_test.go#TestAgentLoop_PreparesInitialRequestAfterPendingMessagesAndReplacesState",
+     "test:agent/agent_transcript_upstream_test.go#TestAgentLoop_BuildsProviderContextExclusivelyFromTranscriptMessages"
+    ],
+    "production": [
+     "call:agent/agent_loop.go#loopRun.streamAssistantResponse"
+    ],
+    "rationale": "The upstream property maxRetryDelayMs is the Go field StreamOptions.MaxRetryDelayMs."
+   },
+   "onPayload": {
+    "targets": [
+     "ai/types.go#StreamOptions.OnPayload"
+    ],
+    "evidence": [
+     "test:agent/agent_loop_upstream_test.go#TestAgentLoop_PreparesInitialRequestAfterPendingMessagesAndReplacesState",
+     "test:agent/agent_transcript_upstream_test.go#TestAgentLoop_BuildsProviderContextExclusivelyFromTranscriptMessages"
+    ],
+    "production": [
+     "call:agent/agent_loop.go#loopRun.streamAssistantResponse"
+    ],
+    "rationale": "The upstream property onPayload is the Go field StreamOptions.OnPayload."
+   },
+   "onResponse": {
+    "targets": [
+     "ai/types.go#StreamOptions.OnResponse"
+    ],
+    "evidence": [
+     "test:agent/agent_loop_upstream_test.go#TestAgentLoop_PreparesInitialRequestAfterPendingMessagesAndReplacesState",
+     "test:agent/agent_transcript_upstream_test.go#TestAgentLoop_BuildsProviderContextExclusivelyFromTranscriptMessages"
+    ],
+    "production": [
+     "call:agent/agent_loop.go#loopRun.streamAssistantResponse"
+    ],
+    "rationale": "The upstream property onResponse is the Go field StreamOptions.OnResponse."
+   },
+   "signal": {
+    "targets": [
+     "ai/types.go#StreamOptions.Signal"
+    ],
+    "evidence": [
+     "test:agent/agent_loop_upstream_test.go#TestAgentLoop_PreparesInitialRequestAfterPendingMessagesAndReplacesState",
+     "test:agent/agent_transcript_upstream_test.go#TestAgentLoop_BuildsProviderContextExclusivelyFromTranscriptMessages"
+    ],
+    "production": [
+     "call:agent/agent_loop.go#loopRun.streamAssistantResponse"
+    ],
+    "rationale": "The upstream property signal is the Go field StreamOptions.Signal."
+   },
+   "telemetryContext": {
+    "targets": [
+     "ai/types.go#StreamOptions.TelemetryContext"
+    ],
+    "evidence": [
+     "test:agent/agent_loop_upstream_test.go#TestAgentLoop_PreparesInitialRequestAfterPendingMessagesAndReplacesState",
+     "test:agent/agent_transcript_upstream_test.go#TestAgentLoop_BuildsProviderContextExclusivelyFromTranscriptMessages"
+    ],
+    "production": [
+     "call:agent/agent_loop.go#loopRun.streamAssistantResponse"
+    ],
+    "rationale": "The upstream property telemetryContext is the Go field StreamOptions.TelemetryContext."
+   },
+   "timeoutMs": {
+    "targets": [
+     "ai/types.go#StreamOptions.TimeoutMs"
+    ],
+    "evidence": [
+     "test:agent/agent_loop_upstream_test.go#TestAgentLoop_PreparesInitialRequestAfterPendingMessagesAndReplacesState",
+     "test:agent/agent_transcript_upstream_test.go#TestAgentLoop_BuildsProviderContextExclusivelyFromTranscriptMessages"
+    ],
+    "production": [
+     "call:agent/agent_loop.go#loopRun.streamAssistantResponse"
+    ],
+    "rationale": "The upstream property timeoutMs is the Go field StreamOptions.TimeoutMs."
+   }
+  }
+ },
+ {
+  "ids": [
+   "pkg:ai/.#ClassifierOptions",
+   "pkg:ai/compat#ClassifierOptions"
+  ],
+  "targets": [
+   "ai/classifier.go#ClassifierOptions"
+  ],
+  "production": [
+   "call:ai/classifier.go#Models.classify"
+  ],
+  "evidence": [
+   "test:ai/classifier_models_upstream_test.go#TestClassifierModelsUpstream",
+   "test:ai/llama_cpp_classify_upstream_test.go#TestLlamaCppClassifyUpstream"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "ClassifierOptions: every upstream property maps to a Go field (types reviewed against the upstream declaration); production and tests attributed by go/types.",
+  "properties": {
+   "apiKey": {
+    "targets": [
+     "ai/classifier.go#ClassifierOptions.APIKey"
+    ],
+    "evidence": [
+     "test:ai/classifier_models_upstream_test.go#TestClassifierModelsUpstream",
+     "test:ai/llama_cpp_classify_upstream_test.go#TestLlamaCppClassifyUpstream"
+    ],
+    "production": [
+     "call:ai/classifier.go#Models.classify"
+    ],
+    "rationale": "The upstream property apiKey is the Go field ClassifierOptions.APIKey."
+   },
+   "env": {
+    "targets": [
+     "ai/classifier.go#ClassifierOptions.Env"
+    ],
+    "evidence": [
+     "test:ai/classifier_models_upstream_test.go#TestClassifierModelsUpstream",
+     "test:ai/llama_cpp_classify_upstream_test.go#TestLlamaCppClassifyUpstream"
+    ],
+    "production": [
+     "call:ai/classifier.go#Models.classify"
+    ],
+    "rationale": "The upstream property env is the Go field ClassifierOptions.Env."
+   },
+   "fetch": {
+    "targets": [
+     "ai/classifier.go#ClassifierOptions.Fetch"
+    ],
+    "evidence": [
+     "test:ai/classifier_models_upstream_test.go#TestClassifierModelsUpstream",
+     "test:ai/llama_cpp_classify_upstream_test.go#TestLlamaCppClassifyUpstream"
+    ],
+    "production": [
+     "call:ai/classifier.go#Models.classify"
+    ],
+    "rationale": "The upstream property fetch is the Go field ClassifierOptions.Fetch; fetch is the caller-owned *http.Client that replaces HTTP execution."
+   },
+   "headers": {
+    "targets": [
+     "ai/classifier.go#ClassifierOptions.Headers"
+    ],
+    "evidence": [
+     "test:ai/classifier_models_upstream_test.go#TestClassifierModelsUpstream",
+     "test:ai/llama_cpp_classify_upstream_test.go#TestLlamaCppClassifyUpstream"
+    ],
+    "production": [
+     "call:ai/classifier.go#Models.classify"
+    ],
+    "rationale": "The upstream property headers is the Go field ClassifierOptions.Headers."
+   },
+   "maxRetries": {
+    "targets": [
+     "ai/classifier.go#ClassifierOptions.MaxRetries"
+    ],
+    "evidence": [
+     "test:ai/classifier_models_upstream_test.go#TestClassifierModelsUpstream",
+     "test:ai/llama_cpp_classify_upstream_test.go#TestLlamaCppClassifyUpstream"
+    ],
+    "production": [
+     "call:ai/classifier.go#Models.classify"
+    ],
+    "rationale": "The upstream property maxRetries is the Go field ClassifierOptions.MaxRetries."
+   },
+   "maxRetryDelayMs": {
+    "targets": [
+     "ai/classifier.go#ClassifierOptions.MaxRetryDelayMs"
+    ],
+    "evidence": [
+     "test:ai/classifier_models_upstream_test.go#TestClassifierModelsUpstream",
+     "test:ai/llama_cpp_classify_upstream_test.go#TestLlamaCppClassifyUpstream"
+    ],
+    "production": [
+     "call:ai/classifier.go#Models.classify"
+    ],
+    "rationale": "The upstream property maxRetryDelayMs is the Go field ClassifierOptions.MaxRetryDelayMs."
+   },
+   "onPayload": {
+    "targets": [
+     "ai/classifier.go#ClassifierOptions.OnPayload"
+    ],
+    "evidence": [
+     "test:ai/classifier_models_upstream_test.go#TestClassifierModelsUpstream",
+     "test:ai/llama_cpp_classify_upstream_test.go#TestLlamaCppClassifyUpstream"
+    ],
+    "production": [
+     "call:ai/classifier.go#Models.classify"
+    ],
+    "rationale": "The upstream property onPayload is the Go field ClassifierOptions.OnPayload."
+   },
+   "onResponse": {
+    "targets": [
+     "ai/classifier.go#ClassifierOptions.OnResponse"
+    ],
+    "evidence": [
+     "test:ai/classifier_models_upstream_test.go#TestClassifierModelsUpstream",
+     "test:ai/llama_cpp_classify_upstream_test.go#TestLlamaCppClassifyUpstream"
+    ],
+    "production": [
+     "call:ai/classifier.go#Models.classify"
+    ],
+    "rationale": "The upstream property onResponse is the Go field ClassifierOptions.OnResponse."
+   },
+   "signal": {
+    "targets": [
+     "ai/classifier.go#ClassifierFunction"
+    ],
+    "evidence": [
+     "test:ai/classifier_models_upstream_test.go#TestClassifierModelsUpstream",
+     "test:ai/llama_cpp_classify_upstream_test.go#TestLlamaCppClassifyUpstream"
+    ],
+    "production": [
+     "call:ai/classifier.go#Models.classify"
+    ],
+    "rationale": "AbortSignal is the context.Context argument of the Go call; there is no signal field."
+   },
+   "telemetryContext": {
+    "targets": [
+     "ai/classifier.go#ClassifierOptions.TelemetryContext"
+    ],
+    "evidence": [
+     "test:ai/classifier_models_upstream_test.go#TestClassifierModelsUpstream",
+     "test:ai/llama_cpp_classify_upstream_test.go#TestLlamaCppClassifyUpstream"
+    ],
+    "production": [
+     "call:ai/classifier.go#Models.classify"
+    ],
+    "rationale": "The upstream property telemetryContext is the Go field ClassifierOptions.TelemetryContext."
+   },
+   "temperature": {
+    "targets": [
+     "ai/classifier.go#ClassifierOptions.Temperature"
+    ],
+    "evidence": [
+     "test:ai/classifier_models_upstream_test.go#TestClassifierModelsUpstream",
+     "test:ai/llama_cpp_classify_upstream_test.go#TestLlamaCppClassifyUpstream"
+    ],
+    "production": [
+     "call:ai/classifier.go#Models.classify"
+    ],
+    "rationale": "The upstream property temperature is the Go field ClassifierOptions.Temperature."
+   },
+   "timeoutMs": {
+    "targets": [
+     "ai/classifier.go#ClassifierOptions.TimeoutMs"
+    ],
+    "evidence": [
+     "test:ai/classifier_models_upstream_test.go#TestClassifierModelsUpstream",
+     "test:ai/llama_cpp_classify_upstream_test.go#TestLlamaCppClassifyUpstream"
+    ],
+    "production": [
+     "call:ai/classifier.go#Models.classify"
+    ],
+    "rationale": "The upstream property timeoutMs is the Go field ClassifierOptions.TimeoutMs."
+   }
+  }
+ }
+]

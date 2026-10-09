@@ -440,15 +440,19 @@ func oauthProviderAuth(providerID string, provider OAuthProviderInterface) *OAut
 		// A registered flow outside the catalog carries its own isSubscription, as Pi's adaptOAuth does (provider-composer.ts:356).
 		subscription = flagged.IsSubscription()
 	}
-	return &OAuthAuth{
-		Name:           name,
-		LoginLabel:     loginLabel,
-		IsSubscription: subscription,
-		Login:          oauthNativeLogin(provider),
-		Refresh:        oauthRefresh(provider),
-		ToAuth:         oauthToAuth(providerID, provider),
-		store:          oauthCredentialStore(provider),
-	}
+	// providers/openai.ts:14 and its siblings advertise OAuth through lazyOAuth: the flow is built on the first login, refresh or toAuth call.
+	auth := LazyOAuth(LazyOAuthInput{Name: name, IsSubscription: subscription, LoginLabel: loginLabel, Load: func() (*OAuthAuth, error) {
+		return &OAuthAuth{
+			Name:           name,
+			LoginLabel:     loginLabel,
+			IsSubscription: subscription,
+			Login:          oauthNativeLogin(provider),
+			Refresh:        oauthRefresh(provider),
+			ToAuth:         oauthToAuth(providerID, provider),
+		}, nil
+	}})
+	auth.store = oauthCredentialStore(provider)
+	return auth
 }
 
 // oauthCredentialStore returns the extension-owned credential store an OAuth provider contributes (pig additive (D40)), or nil when its credentials belong in the core store.
@@ -520,21 +524,6 @@ var builtinAPIKeyNames = map[string]string{
 	"xiaomi-token-plan-sgp":      "Xiaomi Token Plan SGP API key",
 	"zai":                        "Z.AI API key",
 	"zai-coding-cn":              "Z.AI Coding CN API key",
-}
-
-// RadiusProviderAuth mirrors the auth of upstream radiusProvider: the
-// RADIUS_API_KEY api-key method and the provider's gateway OAuth, for the
-// built-in provider and every models.json "oauth": "radius" gateway.
-func RadiusProviderAuth(provider *RadiusProvider) ProviderAuth {
-	oauth := provider.OAuth()
-	return ProviderAuth{
-		APIKey: EnvAPIKeyAuth(builtinAPIKeyNames[RadiusProviderID], getAPIKeyEnvVars(RadiusProviderID)...),
-		OAuth: &OAuthAuth{
-			Name:    provider.Name(),
-			Refresh: oauthRefresh(oauth),
-			ToAuth:  oauthToAuth(provider.ID(), oauth),
-		},
-	}
 }
 
 // BuiltinProviderAuth returns a built-in provider's auth methods. The OAuth

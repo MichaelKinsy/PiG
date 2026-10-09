@@ -43,18 +43,18 @@
   },
   {
     "upstream": "packages/coding-agent/src/cli/credential-print.ts",
-    "package": "./cmd/pig",
+    "package": "./coding/cli",
     "tests": [
       "TestCredentialPrintPrintsResolvedAPIKey",
       "TestCredentialPrintPrintsBearerTokenFromAuthorizationHeader",
       "TestCredentialPrintRefreshesExpiredOAuthTokenBeforePrinting"
     ],
     "upstream_reference": "packages/coding-agent/src/cli/credential-print.ts resolveCredentialForPrint and packages/coding-agent/test/credential-print.test.ts API-key, bearer-token, OAuth-refresh, and persistence cases",
-    "mutation": "cmd/pig/credential_print.go: replace the sole resolved credential return value with \"mutant\"; compiling go test -overlay credential-print.json ./cmd/pig -run '^(TestCredentialPrintPrintsResolvedAPIKey|TestCredentialPrintPrintsBearerTokenFromAuthorizationHeader|TestCredentialPrintRefreshesExpiredOAuthTokenBeforePrinting)$' -count=1 fails all three selected credential tests; credential-print-red.log"
+    "mutation": "coding/cli/credential_print.go: replace the sole resolved credential return value with \"mutant\"; compiling go test -overlay credential-print.json ./cmd/pig -run '^(TestCredentialPrintPrintsResolvedAPIKey|TestCredentialPrintPrintsBearerTokenFromAuthorizationHeader|TestCredentialPrintRefreshesExpiredOAuthTokenBeforePrinting)$' -count=1 fails all three selected credential tests; credential-print-red.log"
   },
   {
     "upstream": "packages/coding-agent/src/cli/auth-check.ts",
-    "package": "./cmd/pig",
+    "package": "./coding/cli",
     "tests": [
       "TestAuthCheckReportsConfiguredProviderAsReady",
       "TestAuthCheckReadsCredentialsWithoutRefreshingOAuthWhenRequested",
@@ -63,26 +63,26 @@
       "TestAuthCheckDoesNotCreateAuthFileOrParentDirectory"
     ],
     "upstream_reference": "packages/coding-agent/src/cli/auth-check.ts checkProviderAuth/getProviderCredential/createAuthCheckModelRuntime and packages/coding-agent/test/auth-check.test.ts ready, no-refresh, unknown-provider, invalid-state, and no-file-write assertions",
-    "mutation": "cmd/pig/auth_check.go: change the successful final CheckProviderAuth status from ready to not_ready; compiling go test -overlay auth-check.json ./cmd/pig -run '^(TestAuthCheckReportsConfiguredProviderAsReady|TestAuthCheckReadsCredentialsWithoutRefreshingOAuthWhenRequested|TestAuthCheckReportsUnknownProviderAsNotReady|TestAuthCheckReportsMalformedAuthStateAsInvalid|TestAuthCheckDoesNotCreateAuthFileOrParentDirectory)$' -count=1 fails TestAuthCheckReportsConfiguredProviderAsReady; auth-check-red.log"
+    "mutation": "coding/cli/auth_check.go: change the successful final CheckProviderAuth status from ready to not_ready; compiling go test -overlay auth-check.json ./cmd/pig -run '^(TestAuthCheckReportsConfiguredProviderAsReady|TestAuthCheckReadsCredentialsWithoutRefreshingOAuthWhenRequested|TestAuthCheckReportsUnknownProviderAsNotReady|TestAuthCheckReportsMalformedAuthStateAsInvalid|TestAuthCheckDoesNotCreateAuthFileOrParentDirectory)$' -count=1 fails TestAuthCheckReportsConfiguredProviderAsReady; auth-check-red.log"
   },
   {
     "upstream": "packages/coding-agent/src/cli/auth-command.ts",
-    "package": "./cmd/pig",
+    "package": "./coding/cli",
     "tests": [
       "TestAuthCommandPrintsSecretsOnlyInTheRequestedForm",
       "TestAuthCommandExitCodesAndErrors",
       "TestParseAuthCommandLargeMinimumExpiry"
     ],
     "upstream_reference": "packages/coding-agent/src/cli/auth-command.ts parseAuthCommand/validateAuthCommandArgs/getAuthCredential and packages/coding-agent/test/credential-print.test.ts command parsing and error cases; TestParseAuthCommandLargeMinimumExpiry proves large-value acceptance without signed-integer overflow, not exact JavaScript multiplication or rounding",
-    "mutation": "cmd/pig/auth_command.go: change --credentials parsing from command.Credentials = true to false; compiling go test -overlay auth-command.json ./cmd/pig -run '^(TestAuthCommandPrintsSecretsOnlyInTheRequestedForm|TestAuthCommandExitCodesAndErrors|TestParseAuthCommandLargeMinimumExpiry)$' -count=1 fails TestAuthCommandPrintsSecretsOnlyInTheRequestedForm because credential output becomes ready; auth-command-red.log"
+    "mutation": "coding/cli/auth_command.go: change --credentials parsing from command.Credentials = true to false; compiling go test -overlay auth-command.json ./cmd/pig -run '^(TestAuthCommandPrintsSecretsOnlyInTheRequestedForm|TestAuthCommandExitCodesAndErrors|TestParseAuthCommandLargeMinimumExpiry)$' -count=1 fails TestAuthCommandPrintsSecretsOnlyInTheRequestedForm because credential output becomes ready; auth-command-red.log"
   },
   {
     "upstream": "packages/coding-agent/src/cli/setup.ts",
-    "package": "./cmd/pig",
+    "package": "./coding/cli",
     "tests": [
       "TestSetupCliSetsInheritedProcessMarkers"
     ],
     "upstream_reference": "packages/coding-agent/src/cli/setup.ts setupCli PI_CODING_AGENT and AI_AGENT environment markers inherited by child processes; process.title and Node warning suppression have no Go analogue",
-    "mutation": "cmd/pig/setup_cli.go: replace AI_AGENT value pi with mutant; compiling go test -overlay setup.json ./cmd/pig -run '^TestSetupCliSetsInheritedProcessMarkers$' -count=1 fails TestSetupCliSetsInheritedProcessMarkers; setup-red.log"
+    "mutation": "coding/cli/setup_cli.go: replace AI_AGENT value pi with mutant; compiling go test -overlay setup.json ./cmd/pig -run '^TestSetupCliSetsInheritedProcessMarkers$' -count=1 fails TestSetupCliSetsInheritedProcessMarkers; setup-red.log"
   }
 ]

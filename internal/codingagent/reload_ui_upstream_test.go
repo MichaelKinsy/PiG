@@ -19,7 +19,7 @@ import (
 
 func reloadOriginalPair(t testing.TB, handler extension.HandlerFn) (*coding.Session, *icodingagent.TestHarness, *inproc.Runner) {
 	t.Helper()
-	services, err := coding.NewServices(coding.ServicesOptions{CWD: t.TempDir(), AgentDir: t.TempDir()})
+	services, err := coding.CreateAgentSessionServices(coding.CreateAgentSessionServicesOptions{CWD: t.TempDir(), AgentDir: t.TempDir()})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -37,7 +37,7 @@ func reloadOriginalPair(t testing.TB, handler extension.HandlerFn) (*coding.Sess
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = session.Close() })
-	h := icodingagent.NewTestHarness(t, icodingagent.InteractiveOptions{CWD: services.CWD(), AgentDir: services.AgentDir(), Model: model, SessionHandle: session, SettingsManager: services.SettingsManager(), Settings: services.SettingsManager().Get(), ExtensionRunner: runner, NoSkills: true, NoThemes: true, NoPromptTemplates: true}, nil)
+	h := icodingagent.NewTestHarness(t, icodingagent.InteractiveModeOptions{CWD: services.CWD(), AgentDir: services.AgentDir(), Model: model, SessionHandle: session, SettingsManager: services.SettingsManager(), Settings: services.SettingsManager().Get(), ExtensionRunner: runner, NoSkills: true, NoThemes: true, NoPromptTemplates: true}, nil)
 	return session, h, runner
 }
 
@@ -92,7 +92,7 @@ func reloadOriginalRecord(t *testing.T, site int, title string) {
 	fmt.Println("RUNTIME_ORIGINAL " + string(data))
 }
 
-// Original 5943-session-start-notify.test.ts:382 (v1.0.0); agent-session.ts:3618 awaits the render hook before session_start.
+// Original 5943-session-start-notify.test.ts:386 (v1.0.0); agent-session.ts:3618 awaits the render hook before session_start.
 func TestSessionStartNotifyOriginalReloadRender(t *testing.T) {
 	var events []string
 	var h *icodingagent.TestHarness
@@ -133,12 +133,12 @@ func TestSessionStartNotifyOriginalReloadRender(t *testing.T) {
 	if got := h.Chat(); strings.Contains(got, "stale chat") || strings.Contains(got, "notify:startup") || !strings.Contains(got, "notify:reload") {
 		t.Fatalf("reload rebuilt after notify or retained stale chat: %q", got)
 	}
-	reloadOriginalRecord(t, 382, "runs the reload render hook before reload session_start handlers can notify")
+	reloadOriginalRecord(t, 386, "runs the reload render hook before reload session_start handlers can notify")
 }
 
-// Original sites415/439; independent completion barriers preserve the original pending-reload observation.
+// Original sites419/443; independent completion barriers preserve the original pending-reload observation.
 func TestSessionStartNotifyOriginalReloadDisplayAndFocus(t *testing.T) {
-	for _, site := range []int{415, 439} {
+	for _, site := range []int{419, 443} {
 		t.Run(fmt.Sprint(site), func(t *testing.T) {
 			waiting, finish := make(chan struct{}), make(chan struct{})
 			session, h, _ := reloadOriginalPair(t, func(...any) (any, error) {
@@ -146,7 +146,7 @@ func TestSessionStartNotifyOriginalReloadDisplayAndFocus(t *testing.T) {
 				<-finish
 				return nil, nil
 			})
-			if site == 415 {
+			if site == 419 {
 				if _, err := session.Inner().AppendMessage(agent.AgentMessage{Assistant: &agent.AssistantMessage{Role: "assistant", Provider: "faux", ModelID: "faux-1", Content: []ai.AssistantContentBlock{ai.ThinkingContent{Thinking: "private-plan-marker"}, ai.TextContent{Text: "visible-answer-marker"}}}}); err != nil {
 					t.Fatal(err)
 				}
@@ -175,10 +175,10 @@ func TestSessionStartNotifyOriginalReloadDisplayAndFocus(t *testing.T) {
 			if strings.Contains(chat, "stale chat") {
 				t.Errorf("chat was not restored before session_start: %q", chat)
 			}
-			if site == 415 && (!hidden || strings.Contains(chat, "private-plan-marker") || !strings.Contains(chat, "visible-answer-marker")) {
+			if site == 419 && (!hidden || strings.Contains(chat, "private-plan-marker") || !strings.Contains(chat, "visible-answer-marker")) {
 				t.Errorf("hideThinkingBlock was not refreshed before rebuilding chat: hidden=%v chat=%q", hidden, chat)
 			}
-			if site == 439 && focused {
+			if site == 443 && focused {
 				t.Error("editor retained focus while reload was pending")
 			}
 			h.Do(func() {
@@ -187,7 +187,7 @@ func TestSessionStartNotifyOriginalReloadDisplayAndFocus(t *testing.T) {
 				}
 			})
 			title := "refreshes hideThinkingBlock before rebuilding chat during reload"
-			if site == 439 {
+			if site == 443 {
 				title = "keeps the reload blocker focused until async reload completes"
 			}
 			reloadOriginalRecord(t, site, title)

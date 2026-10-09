@@ -98,6 +98,8 @@ func entryKinds(entries []durable.EntryRecord) []string {
 // are not sent, tool results are sent right after their call in call order, and a call without a result gets a
 // synthesized error result. A headed summary replaces everything before the entry it points at; Entries pages the
 // stored transcript newest first, including inherited parent entries; nothing is ever deleted by heads or edits.
+// Pi source: packages/durable/src/harness/types.ts
+// mutation-checked: zeroing the results of Conversation.Fork fails it
 func TestExample09Context(t *testing.T) {
 	opened := openHarness(t, harness.CreateRegistry(), nil)
 	transcript, err := opened.CreateConversation(background, harness.ConversationCreateOptions{Ownership: ownerless.Ownership})
@@ -134,7 +136,7 @@ func TestExample09Context(t *testing.T) {
 		return tx.AppendEntry(transcript.Id(), durable.EntryDraft{Kind: "note", Data: "display only"})
 	})
 
-	view := must(transcript.Context(background))
+	view := must(transcript.Context(background, nil))
 	expectEqual(t, "raw active entries", entryKinds(view.Entries), []string{"message", "message", "message", "message", "pi.system", "message", "message", "edit", "note"})
 	expectEqual(t, "request messages", shown(view.Messages), []string{
 		"user: read files a and b", // the edit replaced the question
@@ -150,7 +152,7 @@ func TestExample09Context(t *testing.T) {
 		t.Fatal(err)
 	}
 	// A fork at the tool call has no results yet; Context fills them in.
-	expectEqual(t, "fork messages", shown(must(cut.Context(background)).Messages), []string{
+	expectEqual(t, "fork messages", shown(must(cut.Context(background, nil)).Messages), []string{
 		"user: read a and b", // the edit came after the fork point
 		"assistant: reading call(a) call(b)",
 		"result(a) error",
@@ -161,7 +163,7 @@ func TestExample09Context(t *testing.T) {
 	commit(t, transcript, func(tx durable.Tx) (durable.EntryRecord, error) {
 		return tx.AppendEntry(transcript.Id(), durable.EntryDraft{Kind: "summary", HeadSelf: true, Model: []ai.Message{exampleUser("Summary: a and b are fine.", 5)}})
 	})
-	view = must(transcript.Context(background))
+	view = must(transcript.Context(background, nil))
 	if view.Head == nil || view.Head.Kind != "summary" {
 		t.Fatalf("head after summary: %+v", view.Head)
 	}

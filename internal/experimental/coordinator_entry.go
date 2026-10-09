@@ -1,5 +1,7 @@
 package experimental
 
+// Ports packages/coding-agent/src/experimental/coordinator-entry.ts.
+
 import (
 	"context"
 	"errors"

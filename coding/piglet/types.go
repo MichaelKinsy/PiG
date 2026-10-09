@@ -104,9 +104,11 @@ type Piglet struct {
 	SystemPrompt     *PromptRef          `yaml:"systemPrompt,omitempty"`
 	AgentEnv         *AgentEnvironment   `yaml:"agentEnv,omitempty"`
 	Model            *ModelConfig        `yaml:"model,omitempty"`
+	Slots            *Slots              `yaml:"slots,omitempty"`
 	Build            *BuildSpec          `yaml:"build,omitempty"`
 	Release          *ReleaseSpec        `yaml:"release,omitempty"`
 	Secrets          []SecretDeclaration `yaml:"secrets,omitempty"`
+	Strip            *StripSpec          `yaml:"strip,omitempty"` // pig additive (D92): built-ins this Piglet disables at runtime.
 	sourceDir        string              // Parse(path) anchor for relative origins; never serialized.
 	sourcePath       string              // Canonical parsed Piglet path; never serialized.
 	packageMu        sync.Mutex
@@ -135,6 +137,33 @@ type RemoveSpec struct {
 	Packages   []string `yaml:"packages,omitempty"`
 	Extensions []string `yaml:"extensions,omitempty"`
 	Skills     []string `yaml:"skills,omitempty"`
+	// Slots names inherited slots whose member is removed, so PiG's own
+	// part applies again.
+	// pig additive (D91): a Piglet frontend member draws the interactive mode.
+	Slots []string `yaml:"slots,omitempty"`
+	// Strip re-enables inherited strip entries. It widens the base, so it
+	// requires allowWiden.
+	// pig additive (D92): Piglet strip lists.
+	Strip *StripSpec `yaml:"strip,omitempty"`
+}
+
+// Slots names the members that replace a part of PiG. A child Piglet
+// inherits each slot, replaces a slot by naming it, or removes one with
+// extends.remove.slots.
+// pig additive (D91): a Piglet frontend member draws the interactive mode.
+type Slots struct {
+	// Frontend is the frontend member: a Go module whose root package
+	// exports func Frontend() frontend.Frontend. The native builder fuses
+	// it into the Binary.
+	Frontend *SlotMember `yaml:"frontend,omitempty"`
+}
+
+// SlotMember is the member that fills one slot.
+type SlotMember struct {
+	// Member is the member's directory, relative to the Piglet file that
+	// names it.
+	Member string `yaml:"member"`
+	dir    string // resolution-anchored absolute directory; never serialized
 }
 
 // SecretDeclaration declares a logical secret name and exactly one machine-
@@ -405,6 +434,18 @@ func ParseBytes(data []byte) (*Piglet, error) {
 			}
 		}
 	}
+	// pig additive (D92): keep mode expands here, against the running core's
+	// strip table, after the null and one-mode-per-list checks on the file as
+	// written.
+	if len(document.Content) > 0 {
+		if err := validateStripKeepNulls(document.Content[0]); err != nil {
+			return nil, err
+		}
+	}
+	if err := validateStripModes("strip", p.Strip); err != nil {
+		return nil, err
+	}
+	p.Strip.expandKeep()
 	if err := p.Validate(); err != nil {
 		return nil, err
 	}
@@ -434,6 +475,15 @@ func (p *Piglet) Validate() error {
 	if err := validateDiscovery(p.Discovery); err != nil {
 		return err
 	}
+	if err := validateStrip("strip", p.Strip); err != nil {
+		return err
+	}
+	if p.Strip.HasFeature("skills") && len(p.Skills) > 0 {
+		return fmt.Errorf("strip.features: %q disables the declared skills; remove them with extends.remove.skills or drop the skills entries", "skills")
+	}
+	if err := validateStripFloor(p.Strip); err != nil {
+		return err
+	}
 	if p.Extends != nil {
 		ref, err := validateTypedSource(p.Extends.Source, sourceref.BareReject)
 		if err != nil {
@@ -444,6 +494,14 @@ func (p *Piglet) Validate() error {
 		}
 		if p.Extends.Version != strings.TrimSpace(p.Extends.Version) {
 			return fmt.Errorf("extends.version must not have surrounding whitespace")
+		}
+		if p.Extends.Remove != nil {
+			if err := validateRemoveStrip(p.Extends.Remove.Strip); err != nil {
+				return err
+			}
+			if err := validateStrip("extends.remove.strip", p.Extends.Remove.Strip); err != nil {
+				return err
+			}
 		}
 	}
 	packageAliases := make(map[string]struct{}, len(p.Packages))
@@ -524,11 +582,40 @@ func (p *Piglet) Validate() error {
 			targets[binding.Target.Env] = true
 		}
 	}
+	if err := validateSlots(p.Slots, p.Extends); err != nil {
+		return err
+	}
 	if err := validateBuildSpec(p.Build); err != nil {
 		return err
 	}
 	if err := validateReleaseSpec(p.Release); err != nil {
 		return err
+	}
+	return nil
+}
+
+// slotIDs are the slots a Piglet can fill.
+var slotIDs = []string{"frontend"}
+
+// validateSlots checks that each member is a relative path inside the
+// Piglet's directory and that extends.remove.slots names known slots.
+func validateSlots(slots *Slots, extends *ExtendsSpec) error {
+	if slots != nil && slots.Frontend != nil {
+		member := slots.Frontend.Member
+		if member == "" {
+			return fmt.Errorf("slots.frontend.member is required")
+		}
+		clean := filepath.ToSlash(filepath.Clean(member))
+		if filepath.IsAbs(member) || strings.HasPrefix(member, "/") || filepath.VolumeName(member) != "" || clean == ".." || strings.HasPrefix(clean, "../") || strings.Contains(member, "\\") {
+			return fmt.Errorf("slots.frontend.member %q must be a relative path inside the Piglet directory", member)
+		}
+	}
+	if extends != nil && extends.Remove != nil {
+		for i, id := range extends.Remove.Slots {
+			if !slices.Contains(slotIDs, id) {
+				return fmt.Errorf("extends.remove.slots[%d]: unknown slot %q (known: %s)", i, id, strings.Join(slotIDs, ", "))
+			}
+		}
 	}
 	return nil
 }

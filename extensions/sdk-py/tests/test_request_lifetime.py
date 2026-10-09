@@ -10,7 +10,7 @@ import pytest
 
 
 @contextlib.contextmanager
-def connected_extension(ext):
+def connected_extension(ext, ready=None):
     with tempfile.TemporaryDirectory() as directory:
         listener = socket.socket(socket.AF_UNIX)
         listener.bind(directory + "/sdk.sock")
@@ -41,7 +41,7 @@ def connected_extension(ext):
 
         try:
             receive("register")
-            send({"type": "ready", "ready": {}})
+            send({"type": "ready", "ready": ready or {}})
             yield send, receive
         finally:
             host.close()
@@ -213,3 +213,64 @@ def test_run_with_socket_closes_its_connection_when_the_host_shuts_it_down():
             host.close()
             listener.close()
             ext._sock.close()
+
+
+STALE = "This extension ctx is stale after session replacement or reload."
+
+
+def _invalidate(send, receive, message=STALE):
+    send({"type": "notify", "notify": {"method": "invalidate", "args": {"message": message}}})
+    send({"type": "ping", "ping": {"nonce": "invalidated"}})
+    assert receive("pong")["pong"]["nonce"] == "invalidated"
+
+
+def test_local_context_members_raise_the_stale_message_after_invalidate():
+    # runner.ts:571-600 throws the stale message from cwd, mode, hasUI and model once the runtime is invalidated.
+    ext = pig_sdk.Extension("stale-context")
+    contexts = []
+    ext.command("capture", "Capture", lambda ctx, _: contexts.append(ctx))
+    ready = {"cwd": "/work", "mode": "tui", "model": "m", "state": {"hasUI": True}}
+    with connected_extension(ext, ready) as (send, receive):
+        send({"type": "request", "id": "origin", "request": {"method": "command", "tool": "capture"}})
+        assert receive("response")["id"] == "origin"
+        ctx = contexts[0]
+        assert (ctx.cwd, ctx.mode, ctx.model, ctx.has_ui()) == ("/work", "tui", "m", True)
+        _invalidate(send, receive)
+        for name, read in {
+            "cwd": lambda: ctx.cwd,
+            "mode": lambda: ctx.mode,
+            "model": lambda: ctx.model,
+            "has_ui": ctx.has_ui,
+        }.items():
+            with pytest.raises(RuntimeError, match="stale after session replacement or reload"):
+                read()
+            assert name
+
+
+def test_first_invalidate_message_wins():
+    # runner.ts:725-727 keeps the first staleMessage.
+    ext = pig_sdk.Extension("stale-first")
+    contexts = []
+    ext.command("capture", "Capture", lambda ctx, _: contexts.append(ctx))
+    with connected_extension(ext) as (send, receive):
+        send({"type": "request", "id": "origin", "request": {"method": "command", "tool": "capture"}})
+        assert receive("response")["id"] == "origin"
+        _invalidate(send, receive, "first")
+        _invalidate(send, receive, "second")
+        with pytest.raises(RuntimeError, match="^first$"):
+            contexts[0].cwd
+
+
+def test_loop_turned_notify_changes_nothing():
+    # protocol.go NotifyLoopTurned is the host step a Node runtime waits for after a print prompt's last call. A Python
+    # extension has no such wait, so the notify, which has no arguments, changes nothing: the next request runs with the
+    # state the extension held before it.
+    ext = pig_sdk.Extension("loop-turned")
+    seen = []
+    ext.command("read", "Read", lambda ctx, _: seen.append((ctx.cwd, ctx.has_ui())))
+    with connected_extension(ext, {"cwd": "/work", "mode": "print", "state": {"hasUI": True}}) as (send, receive):
+        send({"type": "notify", "notify": {"method": "loop_turned"}})
+        send({"type": "request", "id": "after", "request": {"method": "command", "tool": "read"}})
+        response = receive("response")
+        assert response["id"] == "after" and response["response"].get("error") is None, response
+        assert seen == [("/work", True)]

@@ -85,12 +85,12 @@ func (w *countingWriter) Write(p []byte) (int, error) {
 // returned so a caller can mutate the bottom of the buffer. The first child
 // handle is returned so a caller can mutate scrolled-off content. Width/height
 // are fixed so most of the transcript sits above the viewport.
-func buildConversation(out io.Writer, n int) (t *TUI, top, bottom *Text) {
+func buildConversation(out io.Writer, n int) (t *TuiMainScreen, top, bottom *Text) {
 	t = NewWithOutput(out, 120, 40)
 	top = NewText("\033[2m● first turn marker\033[0m")
 	t.Add(top)
 	for i := range n {
-		t.Add(NewUserMessageBlock(fmt.Sprintf("refactor the %d-th handler and keep the tests green", i)))
+		t.Add(NewUserMessageComponent(fmt.Sprintf("refactor the %d-th handler and keep the tests green", i), nil, 1, nil))
 		t.Add(NewMarkdown(fmt.Sprintf(
 			"Here is turn %d. It touches `pkg/foo`, `pkg/bar`, and a couple of call sites.\n\n"+
 				"- first point about the change\n- second point with more detail\n- third trade-off\n\n"+

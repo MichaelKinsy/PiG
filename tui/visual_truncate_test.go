@@ -1,5 +1,7 @@
 package tui
 
+// pi: packages/coding-agent/src/modes/interactive/components/visual-truncate.ts
+
 import (
 	"slices"
 	"strings"
@@ -21,6 +23,7 @@ func plain(lines []string) []string {
 // first ones; VisualLinePreview puts the hint before kept end lines and after kept start lines. The upstream tree has no
 // test file for either; the cases follow the branches of the source and the inputs of codemode-renderer.test.ts.
 
+// Pi: packages/coding-agent/src/modes/interactive/components/visual-truncate.ts:10 (VisualTruncateResult.visualLines); packages/coding-agent/src/modes/interactive/components/visual-truncate.ts:12 (VisualTruncateResult.skippedCount).
 func TestTruncateToVisualLinesKeepsTheEndByDefaultAndTheStartOnRequest(t *testing.T) {
 	text := "one\ntwo\nthree\nfour\nfive"
 	for _, tc := range []struct {
@@ -46,6 +49,7 @@ func TestTruncateToVisualLinesKeepsTheEndByDefaultAndTheStartOnRequest(t *testin
 	}
 }
 
+// Pi: packages/coding-agent/src/modes/interactive/components/visual-truncate.ts:10 (VisualTruncateResult.visualLines); packages/coding-agent/src/modes/interactive/components/visual-truncate.ts:12 (VisualTruncateResult.skippedCount).
 func TestTruncateToVisualLinesCountsWrappedLinesNotLogicalLines(t *testing.T) {
 	result := TruncateToVisualLinesKeeping(strings.Repeat("x", 1000), 5, 50, 0, VisualKeepStart)
 	if len(result.VisualLines) != 5 || result.SkippedCount != 15 || result.VisualLines[0] != strings.Repeat("x", 50) {
@@ -104,5 +108,18 @@ func TestVisualLinePreviewCachesItsLinesPerWidthUntilInvalidated(t *testing.T) {
 	preview.Render(20)
 	if calls != 3 {
 		t.Fatalf("hint formatted %d times after Invalidate, want 3", calls)
+	}
+}
+
+// visual-truncate.ts:42-44: with keep "end" the kept lines are allVisualLines.slice(-maxVisualLines), and slice(-0) is the whole
+// array, so a limit of zero keeps every line while skippedCount is still length - 0.
+func TestTruncateToVisualLinesWithAZeroLimitFollowsSliceMinusZero(t *testing.T) {
+	end := TruncateToVisualLinesKeeping("a\nb\nc", 0, 20, 0, VisualKeepEnd)
+	if len(end.VisualLines) != 3 || end.SkippedCount != 3 {
+		t.Fatalf("keep end: %d lines, %d skipped; want 3 and 3", len(end.VisualLines), end.SkippedCount)
+	}
+	start := TruncateToVisualLinesKeeping("a\nb\nc", 0, 20, 0, VisualKeepStart)
+	if len(start.VisualLines) != 0 || start.SkippedCount != 3 {
+		t.Fatalf("keep start: %d lines, %d skipped; want 0 and 3", len(start.VisualLines), start.SkippedCount)
 	}
 }

@@ -12,6 +12,8 @@ import (
 	"testing"
 	"time"
 
+	icodingagent "github.com/MichaelKinsy/PiG/internal/codingagent"
+
 	"github.com/MichaelKinsy/PiG/agent"
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/coding/extension"
@@ -140,7 +142,7 @@ func newConcurrentSession(t *testing.T, p *concurrentProvider, ext extension.Ext
 	}
 	options := SessionOptions{Model: model, NoSession: true, SkipBuiltinTools: len(tools) > 0, Tools: tools, Runner: runner}
 	if len(tools) == 0 {
-		options.ActiveBuiltinTools = map[string]struct{}{"read": {}, "bash": {}, "edit": {}, "write": {}}
+		options.InitialActiveToolNames = []string{"read", "bash", "edit", "write"}
 	}
 	services := newTestServices(t)
 	if err := services.Auth().Set("anthropic", ai.Credential{Type: ai.CredentialAPIKey, Key: "test-key"}); err != nil {
@@ -155,7 +157,7 @@ func newConcurrentSession(t *testing.T, p *concurrentProvider, ext extension.Ext
 		return p.Stream(ctx, request, options)
 	})
 	// Upstream injects an Agent whose initial system/tools message is not yet in the SessionManager. SetSystemPrompt would instead create a per-request override in Go.
-	initialAgent := agent.NewAgent(agent.AgentOptions{Model: model, SystemPrompt: "Test", Tools: tools})
+	initialAgent := mustNewAgent(agent.AgentOptions{Model: model, SystemPrompt: "Test", Tools: tools})
 	session.Agent().SetMessages(initialAgent.Messages())
 	drained := make(chan struct{})
 	go func() {
@@ -177,8 +179,8 @@ func newConcurrentSession(t *testing.T, p *concurrentProvider, ext extension.Ext
 
 func concurrentPersistedRoles(session *Session) []string {
 	var roles []string
-	for _, entry := range session.inner.Entries() {
-		if message, ok := entry.AsMessage(); ok {
+	for _, entry := range session.inner.GetEntries() {
+		if message, ok := entry.(icodingagent.MessageEntry); ok {
 			roles = append(roles, message.Message.Role())
 		}
 	}
@@ -201,14 +203,14 @@ func TestUpstreamConcurrentPrompt(t *testing.T) {
 			ctx, cancel := context.WithCancel(t.Context())
 			defer cancel()
 			first := make(chan error, 1)
-			go func() { _, err := s.Prompt(ctx, "First message"); first <- err }()
+			go func() { err := s.Prompt(ctx, "First message"); first <- err }()
 			<-p.started
 			if !s.IsStreaming() {
 				t.Fatal("isStreaming=false")
 			}
 			if mode == "reject" {
 				second := make(chan error, 1)
-				go func() { _, err := s.Prompt(ctx, "Second message"); second <- err }()
+				go func() { err := s.Prompt(ctx, "Second message"); second <- err }()
 				secondReturned := false
 				select {
 				case err := <-second:
@@ -281,7 +283,7 @@ func TestUpstreamConcurrentPrompt(t *testing.T) {
 		})
 		defer unsub()
 		first := make(chan error, 1)
-		go func() { _, err := s.Prompt(t.Context(), "First message"); first <- err }()
+		go func() { err := s.Prompt(t.Context(), "First message"); first <- err }()
 		<-p.started
 		if !s.IsStreaming() {
 			t.Fatal("isStreaming=false")
@@ -326,13 +328,13 @@ func TestUpstreamConcurrentPrompt(t *testing.T) {
 	// .upstream/v0.87.1/packages/coding-agent/test/agent-session-concurrent.test.ts:298
 	t.Run("should allow prompt() after previous completes", func(t *testing.T) {
 		s := newConcurrentSession(t, &concurrentProvider{mode: "sequential"}, extension.Extension{})
-		if _, err := s.Prompt(t.Context(), "First message"); err != nil {
+		if err := s.Prompt(t.Context(), "First message"); err != nil {
 			t.Fatal(err)
 		}
 		if s.IsStreaming() {
 			t.Fatal("isStreaming=true after completion")
 		}
-		if _, err := s.Prompt(t.Context(), "Second message"); err != nil {
+		if err := s.Prompt(t.Context(), "Second message"); err != nil {
 			t.Fatal(err)
 		}
 		observed = append(observed, []any{"sequential", true})
@@ -355,7 +357,7 @@ func TestUpstreamConcurrentPrompt(t *testing.T) {
 			if slow {
 				mode = "slow"
 				handlers["message_end"] = []extension.HandlerFn{func(args ...any) (any, error) {
-					if args[0].(extension.MessageEndEvent).Message.(agent.AgentMessage).Assistant != nil {
+					if args[0].(extension.MessageEndEvent).Message.Assistant != nil {
 						index := int(assistantEnds.Add(1)) - 1
 						if index >= len(release) {
 							return nil, fmt.Errorf("unexpected assistant message_end %d", index)
@@ -380,7 +382,7 @@ func TestUpstreamConcurrentPrompt(t *testing.T) {
 				}
 			})
 			promptDone := make(chan error, 1)
-			go func() { _, err := s.Prompt(t.Context(), "hi"); promptDone <- err }()
+			go func() { err := s.Prompt(t.Context(), "hi"); promptDone <- err }()
 			if slow {
 				prefixes := [][]string{{"system", "user"}, {"system", "user", "assistant", "toolResult", "system"}}
 				for index, want := range prefixes {

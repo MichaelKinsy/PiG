@@ -106,11 +106,11 @@ func TestRefreshContextBaselineDoesNotShiftRecoveryTargets(t *testing.T) {
 	if !ok {
 		t.Fatal("baseline entry not indexed")
 	}
-	entry, ok := session.Inner().EntryByID(baselineID)
-	if !ok || entry.Base.ParentID == nil {
+	entry, ok := session.Inner().GetEntry(baselineID)
+	if !ok || entry.Base().ParentID == nil {
 		t.Fatal("baseline entry missing parent")
 	}
-	if err := session.Inner().Fork(*entry.Base.ParentID); err != nil {
+	if err := session.Inner().Branch(*entry.Base().ParentID); err != nil {
 		t.Fatal(err)
 	}
 	assistant := agent.AgentMessage{Assistant: &agent.AssistantMessage{Role: agent.RoleAssistant, StopReason: ai.StopReasonError, ErrorMessage: "retry"}}

@@ -1,5 +1,7 @@
 package codingagent
 
+// pi: packages/coding-agent/src/utils/version-check.ts
+
 import (
 	"context"
 	"crypto/ed25519"
@@ -18,6 +20,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"slices"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -70,28 +73,71 @@ func newSignedManifestServer(t *testing.T, handler http.Handler) *httptest.Serve
 	}))
 }
 
-func TestCompareVersions(t *testing.T) {
+// TestComparePackageVersions pairs with version-check.ts comparePackageVersions/isNewerPackageVersion: node-semver's
+// valid() accepts a trimmed version with an optional "v", and a non-semver side makes any difference count as newer.
+func TestComparePackageVersions(t *testing.T) {
 	cases := []struct {
-		a, b string
-		want int
+		a, b   string
+		want   int
+		parsed bool
 	}{
-		{"0.1.1", "0.1.2", -1},
-		{"0.1.2", "0.1.1", 1},
-		{"0.1.1", "0.1.1", 0},
-		{"1.0.0", "0.9.9", 1},
-		{"0.2.0", "0.10.0", -1}, // numeric, not lexical
-		{"1.2.3", "1.2.3-rc1", 1},
-		{"1.2.3-rc1", "1.2.3", -1},
-		{"1.2.3-rc1", "1.2.3-rc2", -1},
-		{"1.2.3-2", "1.2.3-10", -1},     // numeric prerelease identifiers use SemVer ordering
-		{"v0.1.1", "0.1.2", 0},          // strict SemVer rejects a v prefix
-		{"0.0.0-tilt.abc", "0.1.0", -1}, // parseable prerelease core is genuinely lower
-		{"nonsense", "0.1.0", 0},        // unparseable → no nag
-		{"0.1.0", "also-bad", 0},
+		{"0.1.1", "0.1.2", -1, true},
+		{"0.1.2", "0.1.1", 1, true},
+		{"0.1.1", "0.1.1", 0, true},
+		{"1.0.0", "0.9.9", 1, true},
+		{"0.2.0", "0.10.0", -1, true}, // numeric, not lexical
+		{"1.2.3", "1.2.3-rc1", 1, true},
+		{"1.2.3-rc1", "1.2.3", -1, true},
+		{"1.2.3-rc1", "1.2.3-rc2", -1, true},
+		{"1.2.3-2", "1.2.3-10", -1, true}, // numeric prerelease identifiers use SemVer ordering
+		{"v0.1.1", "0.1.2", -1, true},     // valid() accepts a leading v
+		{" 0.1.2 ", "0.1.2", 0, true},     // valid() trims
+		{"1.2.3+a", "1.2.3+b", 0, true},   // build metadata is ignored
+		{"0.0.0-tilt.abc", "0.1.0", -1, true},
+		{"nonsense", "0.1.0", 0, false},
+		{"0.1.0", "also-bad", 0, false},
+		{"1.2", "1.2.0", 0, false}, // not a full version
+		{"vv1.2.3", "1.2.3", 0, false},
+		{"\ufeff1.2.4\u00a0", "1.2.3", 1, true},                   // JavaScript's trim() removes BOM and no-break space
+		{"\u00851.2.3", "1.2.3", 0, false},                        // but not NEL, which Go's TrimSpace removes
+		{"9007199254740991.0.0", "1.0.0", 1, true},                // Number.MAX_SAFE_INTEGER
+		{"9007199254740992.0.0", "1.0.0", 0, false},               // above it: "Invalid major version"
+		{"1.9007199254740992.0", "1.0.0", 0, false},               // minor
+		{"1.0.9007199254740992", "1.0.0", 0, false},               // patch
+		{"1.0.0+" + strings.Repeat("a", 250), "1.0.0", 0, true},   // 256 characters
+		{"1.0.0+" + strings.Repeat("a", 251), "1.0.0", 0, false},  // above node-semver's MAX_LENGTH
+		{"v1.0.0+" + strings.Repeat("a", 250), "1.0.0", 0, false}, // the limit counts the leading v
 	}
 	for _, tc := range cases {
-		if got := CompareVersions(tc.a, tc.b); got != tc.want {
-			t.Errorf("CompareVersions(%q,%q) = %d, want %d", tc.a, tc.b, got, tc.want)
+		got, parsed := ComparePackageVersions(tc.a, tc.b)
+		if got != tc.want || parsed != tc.parsed {
+			t.Errorf("ComparePackageVersions(%q,%q) = %d,%v, want %d,%v", tc.a, tc.b, got, parsed, tc.want, tc.parsed)
+		}
+	}
+}
+
+func TestIsNewerPackageVersion(t *testing.T) {
+	cases := []struct {
+		candidate, current string
+		want               bool
+	}{
+		{"0.70.5", "0.70.5", false},
+		{"0.70.6", "0.70.5", true},
+		{"0.70.4", "0.70.5", false},
+		{"1.2.3", "v1.2.3", false},
+		{"1.2.4", "v1.2.3", true},
+		// Either side not a semantic version: any trimmed difference is newer, and equal strings are not.
+		{"1.2.3", "dev", true},
+		{"dev", "1.2.3", true},
+		{" dev ", "dev", false},
+		{"nonsense", "nonsense", false},
+		{"1.2", "1.2.0", true},
+		{"\ufeffdev", "dev", false},
+		{"9007199254740992.0.0", "9007199254740993.0.0", true},
+	}
+	for _, tc := range cases {
+		if got := IsNewerPackageVersion(tc.candidate, tc.current); got != tc.want {
+			t.Errorf("IsNewerPackageVersion(%q,%q) = %v, want %v", tc.candidate, tc.current, got, tc.want)
 		}
 	}
 }
@@ -443,7 +489,7 @@ func TestCheckForBinaryUpdate(t *testing.T) {
 	t.Setenv("PIG_UPDATE_URL", srv.URL)
 	t.Setenv("PI_SKIP_VERSION_CHECK", "")
 
-	if u := CheckForBinaryUpdate(context.Background(), srv.Client(), "0.1.1"); u == nil || u.LatestVersion != "9.9.9" || u.Command != "pig update" {
+	if u := CheckForBinaryUpdate(context.Background(), srv.Client(), "0.1.1"); u == nil || u.Version != "9.9.9" {
 		t.Fatalf("CheckForBinaryUpdate = %#v, want newer", u)
 	}
 	if u := CheckForBinaryUpdate(context.Background(), srv.Client(), "9.9.9"); u != nil {
@@ -532,6 +578,53 @@ func TestSelfReplaceAtWithCommitRestoresPreviousExecutable(t *testing.T) {
 	matches, globErr := filepath.Glob(filepath.Join(dir, ".pig-update-backup-*"))
 	if globErr != nil || len(matches) != 0 {
 		t.Fatalf("rollback backups remain: %v (err=%v)", matches, globErr)
+	}
+}
+
+// Ports the retention rule of packages/coding-agent/test/package-command-paths.test.ts
+// "removes older managed releases after an update" (#10392): after an update only the
+// new release remains. A standalone installation has no release directory, so the
+// equivalent is that the install directory holds just the replaced executable, with
+// no previous executable, rollback hard link, staging file or lock sidecar.
+func TestSelfReplaceAtWithCommitKeepsOnlyTheNewExecutable(t *testing.T) {
+	requireStandaloneSelfUpdateTier(t)
+	allowLoopbackUpdateHTTP(t)
+	payload := []byte("#!/bin/sh\necho new\n")
+	sum := sha256.Sum256(payload)
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = w.Write(payload)
+	}))
+	defer srv.Close()
+
+	dir := t.TempDir()
+	exe := filepath.Join(dir, "pig")
+	if err := os.WriteFile(exe, []byte("old"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	err := SelfReplaceAtWithCommit(
+		context.Background(),
+		srv.Client(),
+		UpdateBinary{URL: srv.URL, SHA256: hex.EncodeToString(sum[:])},
+		exe,
+		func() error { return nil },
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got, readErr := os.ReadFile(exe)
+	if readErr != nil || string(got) != string(payload) {
+		t.Fatalf("executable = %q (err=%v), want the new release", got, readErr)
+	}
+	entries, readDirErr := os.ReadDir(dir)
+	if readDirErr != nil {
+		t.Fatal(readDirErr)
+	}
+	var names []string
+	for _, entry := range entries {
+		names = append(names, entry.Name())
+	}
+	if !slices.Equal(names, []string{"pig"}) {
+		t.Fatalf("install directory after update = %v, want only pig", names)
 	}
 }
 
@@ -811,7 +904,7 @@ func TestAC6CheckAndFallbackBehavior(t *testing.T) {
 	t.Run("newer_reports_update", func(t *testing.T) {
 		t.Setenv("PIG_OFFLINE", "")
 		t.Setenv("PI_OFFLINE", "")
-		if got := CheckForBinaryUpdate(context.Background(), srv.Client(), "0.1.0"); got == nil || got.LatestVersion != "9.9.9" {
+		if got := CheckForBinaryUpdate(context.Background(), srv.Client(), "0.1.0"); got == nil || got.Version != "9.9.9" {
 			t.Fatalf("newer startup check = %#v, want 9.9.9", got)
 		}
 	})

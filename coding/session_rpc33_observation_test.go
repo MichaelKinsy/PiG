@@ -12,6 +12,8 @@ import (
 	"testing/synctest"
 	"time"
 
+	icodingagent "github.com/MichaelKinsy/PiG/internal/codingagent"
+
 	"github.com/MichaelKinsy/PiG/agent"
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/coding/extension"
@@ -24,7 +26,7 @@ func TestSessionObservationReservationCanceledBeforeAdmission(t *testing.T) {
 		stream := newSessionTestStream(ai.StartEvent{Partial: &ai.AssistantMessage{StopReason: ai.StopReasonPending}}, ai.DoneEvent{Reason: ai.StopReasonStop, Message: &ai.AssistantMessage{StopReason: ai.StopReasonStop}})
 		started := make(chan struct{})
 		var once sync.Once
-		a := agent.NewAgent(agent.AgentOptions{
+		a := mustNewAgent(agent.AgentOptions{
 			Model: &ai.Model{ID: "probe"},
 			StreamFn: func(context.Context, *ai.Model, ai.TranscriptContext, ai.StreamOptions) (*ai.AssistantMessageEventStream, error) {
 				return stream, nil
@@ -74,7 +76,7 @@ func TestSessionObservationCloseJoinsClaimedCallback(t *testing.T) {
 		defer unsubscribe()
 		workerDone := make(chan struct{})
 		go func() { defer close(workerDone); session.forwardAgentEvents() }()
-		a := agent.NewAgent(agent.AgentOptions{
+		a := mustNewAgent(agent.AgentOptions{
 			Model: &ai.Model{ID: "probe"},
 			StreamFn: func(context.Context, *ai.Model, ai.TranscriptContext, ai.StreamOptions) (*ai.AssistantMessageEventStream, error) {
 				return stream, nil
@@ -153,7 +155,7 @@ func TestSessionObservesMessageAfterHeldExtension(t *testing.T) {
 			ext := extension.Extension{Path: "held-observation", Handlers: map[string][]extension.HandlerFn{
 				"message_start": {func(args ...any) (any, error) {
 					event := args[0].(extension.MessageStartEvent)
-					message := event.Message.(agent.AgentMessage)
+					message := event.Message
 					if message.Assistant == nil {
 						return nil, nil
 					}
@@ -218,8 +220,8 @@ func TestSessionObservesMessageAfterHeldExtension(t *testing.T) {
 				t.Errorf("terminal result identity/stopReason=%+v", result)
 			}
 			var persisted *agent.AssistantMessage
-			for _, entry := range h.session.Inner().Entries() {
-				message, ok := entry.AsMessage()
+			for _, entry := range h.session.Inner().GetEntries() {
+				message, ok := entry.(icodingagent.MessageEntry)
 				if ok && message.Message.Assistant != nil {
 					persisted = message.Message.Assistant
 				}
@@ -237,7 +239,7 @@ func TestSessionExtensionUpdateUsesCurrentMessage(t *testing.T) {
 	ext := extension.Extension{Path: "update-observation", Handlers: map[string][]extension.HandlerFn{
 		"message_update": {func(args ...any) (any, error) {
 			event := args[0].(extension.MessageUpdateEvent)
-			message := event.Message.(agent.AgentMessage)
+			message := event.Message
 			usage = append(usage, message.Assistant.Usage.Output)
 			return nil, nil
 		}},

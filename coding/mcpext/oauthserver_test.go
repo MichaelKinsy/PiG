@@ -38,6 +38,23 @@ type oauthMcpServer struct {
 	authorizations []url.Values
 	// tokenRequests are the parameters of token requests.
 	tokenRequests []url.Values
+	// stall holds paths whose requests are accepted and never answered, like an unresponsive server (`stall` of mcp-oauth-server.ts).
+	stall   map[string]bool
+	stalled int
+	release chan struct{}
+}
+
+func (s *oauthMcpServer) stalledCount() int {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.stalled
+}
+
+// stallPath makes the server accept requests to path and never answer them.
+func (s *oauthMcpServer) stallPath(path string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.stall[path] = true
 }
 
 func (s *oauthMcpServer) recordedAuthorizations() []url.Values {
@@ -67,6 +84,17 @@ func (s *oauthMcpServer) registrationClientNames() []any {
 		names = append(names, metadata["client_name"])
 	}
 	return names
+}
+
+// registrationApplicationTypes are the `application_type` values of the dynamic client registrations so far.
+func (s *oauthMcpServer) registrationApplicationTypes() []any {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	types := []any{}
+	for _, metadata := range s.registrations {
+		types = append(types, metadata["application_type"])
+	}
+	return types
 }
 
 func (s *oauthMcpServer) logEntries() []string {
@@ -161,6 +189,19 @@ func (s *oauthMcpServer) handleMcp(w http.ResponseWriter, r *http.Request) {
 
 func (s *oauthMcpServer) handle(w http.ResponseWriter, r *http.Request) {
 	origin := s.origin
+	s.mu.Lock()
+	stalled := s.stall[r.URL.Path]
+	if stalled {
+		s.stalled++
+	}
+	s.mu.Unlock()
+	if stalled {
+		select {
+		case <-r.Context().Done():
+		case <-s.release:
+		}
+		return
+	}
 	switch r.URL.Path {
 	case "/mcp":
 		s.handleMcp(w, r)
@@ -262,7 +303,7 @@ type oauthMcpServerOptions struct {
 
 func startOAuthMcpServer(t *testing.T, options ...oauthMcpServerOptions) *oauthMcpServer {
 	t.Helper()
-	s := &oauthMcpServer{validTokens: map[string]bool{}, refreshTokens: map[string]bool{}, challenges: map[string]string{}}
+	s := &oauthMcpServer{validTokens: map[string]bool{}, refreshTokens: map[string]bool{}, challenges: map[string]string{}, stall: map[string]bool{}, release: make(chan struct{})}
 	for _, o := range options {
 		s.options = o
 	}
@@ -270,6 +311,7 @@ func startOAuthMcpServer(t *testing.T, options ...oauthMcpServerOptions) *oauthM
 	s.origin = s.server.URL
 	s.URL = s.origin + "/mcp"
 	t.Cleanup(func() {
+		close(s.release)
 		s.server.CloseClientConnections()
 		s.server.Close()
 	})

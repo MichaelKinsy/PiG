@@ -16,8 +16,6 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
-
-	"github.com/MichaelKinsy/PiG/internal/coding/pigidentity"
 )
 
 func reviewCodexProvider(t *testing.T, url, account string) Provider {
@@ -313,9 +311,10 @@ func TestCodexWebSocketInvalidJSONIsProtocolError(t *testing.T) {
 }
 
 // Upstream openai-codex-responses.ts:1612-1636: buildBaseCodexHeaders /
-// buildSSEHeaders set chatgpt-account-id, originator, OpenAI-Beta,
-// session-id and x-client-request-id AFTER request headers, so callers cannot
-// override or delete them.
+// buildSSEHeaders set chatgpt-account-id, OpenAI-Beta, session-id and
+// x-client-request-id AFTER request headers, so callers cannot override or
+// delete them. originator and User-Agent are defaults since Pi 1.1.0 (#10429):
+// a caller's null deletes originator.
 func TestCodexSSEProtocolHeadersWinOverRequestHeaders(t *testing.T) {
 	var got http.Header
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -348,8 +347,8 @@ func TestCodexSSEProtocolHeadersWinOverRequestHeaders(t *testing.T) {
 	if v := got.Get("session-id"); v != "sess" {
 		t.Errorf("session-id=%q, want sess", v)
 	}
-	if v := got.Get("originator"); v != pigidentity.CodexOriginator {
-		t.Errorf("originator=%q, want %q", v, pigidentity.CodexOriginator)
+	if v := got.Get("originator"); v != "" {
+		t.Errorf("originator=%q, want it deleted by the caller's null header", v)
 	}
 	if v := got.Get("Authorization"); v == "" || v == "Bearer spoof" {
 		t.Errorf("Authorization=%q, want the Codex bearer token", v)

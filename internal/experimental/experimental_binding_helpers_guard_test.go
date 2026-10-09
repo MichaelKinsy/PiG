@@ -50,7 +50,21 @@ func (peer *bindingFixturePeer) send(message protocol.ServerMessage) {
 		peer.handlers.OnData(frame)
 	}
 }
-func (peer *bindingFixturePeer) Send(chunk []byte, complete func(error)) {
+
+// Send is Pi's ByteTransport.send: it returns when the peer has taken the chunk.
+func (peer *bindingFixturePeer) Send(ctx context.Context, chunk []byte) error {
+	done := make(chan error, 1)
+	peer.Submit(chunk, func(err error) { done <- err })
+	select {
+	case err := <-done:
+		return err
+	case <-ctx.Done():
+		return context.Cause(ctx)
+	}
+}
+
+// Submit admits a chunk synchronously, which Connection uses directly for a transport that has it.
+func (peer *bindingFixturePeer) Submit(chunk []byte, complete func(error)) {
 	peer.mu.Lock()
 	messages, err := peer.decoder.Push(chunk)
 	peer.mu.Unlock()
@@ -146,9 +160,9 @@ func TestExperimentalBindingHelpersUseRealSourcesAndEndpoint(t *testing.T) {
 	if err := chord.Provide[services.SessionManagement](provider, services.SessionManagementDefinition, bindingFixtureManagement{peer}); err != nil {
 		t.Fatal(err)
 	}
-	connected, err := client.Connect(t.Context(), client.ClientOptions{ServerId: "00000000-0000-4000-8000-000000000001", TransportFactory: func(_ context.Context, handlers client.ByteTransportHandlers, complete func(client.ByteTransport, error)) {
+	connected, err := client.Connect(t.Context(), client.ClientOptions{ServerId: "00000000-0000-4000-8000-000000000001", TransportFactory: func(_ context.Context, handlers client.ByteTransportHandlers) (client.ByteTransport, error) {
 		peer.handlers = handlers
-		complete(peer, nil)
+		return peer, nil
 	}})
 	if err != nil {
 		t.Fatal(err)
@@ -172,14 +186,15 @@ func TestExperimentalBindingHelpersUseRealSourcesAndEndpoint(t *testing.T) {
 	if state := binding.Attachment().Value(); state.Status != "attached" || state.SessionID != "demo" {
 		t.Fatalf("attachment=%+v", state)
 	}
-	decorated, release := delaySessionServiceSubscription(t, connected, "demo", "blocked")
+	wrap, release, _ := delaySessionServiceSubscription(t, "demo", "blocked")
+	decorated := wrap(client.CreateClientServiceTransport(connected, func() protocol.RpcTarget { return *connected.Attachment() }), func() protocol.RpcTarget { return *connected.Attachment() })
 	defer release()
 	ctx, cancel := context.WithCancelCause(t.Context())
 	reason := errors.New("fixture cancelled")
 	cancel(reason)
 	result := make(chan error, 1)
 	go func() {
-		_, err := decorated.SubscribeService(ctx, *connected.Attachment(), "blocked", chord.ServiceSingleton, func(chord.ServiceProviderUpdate) error { return nil })
+		_, err := decorated.Subscribe(ctx, "blocked", chord.ServiceSingleton, func(context.Context, chord.ServiceProviderUpdate) {})
 		result <- err
 	}()
 	release()

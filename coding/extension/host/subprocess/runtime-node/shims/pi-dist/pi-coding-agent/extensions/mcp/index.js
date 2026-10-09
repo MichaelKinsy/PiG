@@ -197,8 +197,6 @@ export function createMcpExtension(options = {}) {
         let projectConfig;
         /** Registered servers that `mcp.json` overrides, shown in `/mcp`. */
         let overridden = [];
-        /** Between session_start and session_shutdown. Registrations before that are read on session_start. */
-        let sessionActive = false;
         let autoEnableCodemode = true;
         /** Whether the "codemode tools unreachable" warning was shown since the session started. */
         let warnedUnreachable = false;
@@ -206,8 +204,6 @@ export function createMcpExtension(options = {}) {
         /** Whether a prompt already waited for the startup connections since the session started. */
         let waitedForStartup = false;
         const startupWaitMs = options.startupWaitMs ?? DEFAULT_STARTUP_WAIT_MS;
-        /** Bumped on every session start and shutdown so a runtime load that resolves late is dropped. */
-        let generation = 0;
         /** Working directory of the session, for stdio servers. */
         let sessionCwd = process.cwd();
         let credentials = options.credentials;
@@ -219,6 +215,23 @@ export function createMcpExtension(options = {}) {
             ((entry, patch) => updateMcpServerConfig(entry.override ?? entry.source, entry.name, patch, {
                 override: entry.override !== undefined,
             }));
+        /**
+         * Lifetime of the current session: aborted on session_shutdown, and before the first session_start
+         * (registrations before that are read on session_start). Work captures `session.signal` when it
+         * starts and drops late results once it aborted, for example a runtime load that resolves after
+         * shutdown. Work that outlives the command that started it also stops on the signal and is
+         * registered with `track`, so shutdown can wait for its cleanup.
+         */
+        let session = new AbortController();
+        session.abort();
+        /** Work registered with `track`: manager actions opening or closing connections, and sign-ins. */
+        const backgroundActions = new Set();
+        const track = (work) => {
+            const task = work.then(() => undefined, () => undefined);
+            backgroundActions.add(task);
+            void task.finally(() => backgroundActions.delete(task));
+            return work;
+        };
         const listeners = new Set();
         const emitChange = () => {
             for (const listener of listeners)
@@ -301,8 +314,22 @@ export function createMcpExtension(options = {}) {
                     exposure: getMcpToolExposure(entry.config, tool.name),
                     namespace,
                     timeoutMs: connection.timeoutMs,
-                    getClient: async () => connection,
-                    readableResources: () => resourceServers().includes(connection),
+                    getClient: async () => {
+                        // A prepared call can outlive this definition's connection while the readiness
+                        // hook waits for a disable/re-enable. Resolve the replacement at execution time.
+                        const current = findServer(server);
+                        if (!current || !isEnabled(current))
+                            throw new Error(`MCP server "${server}" is disabled.`);
+                        const client = current.connection;
+                        if (!client)
+                            throw new Error(`MCP server "${server}" is still starting.`);
+                        if (getMcpToolExposure(current.entry.config, tool.name) === "hidden" ||
+                            (client.state === "connected" && !client.tools.some((offered) => offered.name === tool.name))) {
+                            throw new Error(`MCP tool "${server}/${tool.name}" is no longer available.`);
+                        }
+                        return client;
+                    },
+                    readableResources: () => resourceServers().some((current) => current.name === server),
                 });
                 definitions.set(definition.name, definition);
                 pi.registerTool(definition);
@@ -423,8 +450,10 @@ export function createMcpExtension(options = {}) {
             ensureDiscoveryActive(ctx);
         };
         /** Create the server's connection, loading the MCP runtime on first use. */
-        const createConnection = async (server) => {
+        const createConnection = async (server, isCurrent) => {
             const runtime = await loadMcpRuntime();
+            if (!isCurrent())
+                return undefined;
             const connection = new runtime.McpServerConnection({
                 entry: server.entry,
                 cwd: sessionCwd,
@@ -432,8 +461,16 @@ export function createMcpExtension(options = {}) {
                 credentials: getCredentials(runtime),
                 providerToken: async (provider) => modelRegistry?.getApiKeyForProvider(provider),
                 log: getServerLog(runtime),
-                onTools: registerTools,
-                onChange: onConnectionChange,
+                onTools: (connection) => {
+                    if (isCurrent())
+                        registerTools(connection);
+                },
+                onChange: (connection) => {
+                    if (isCurrent())
+                        onConnectionChange(connection);
+                    else
+                        tokensAtSignIn.delete(connection);
+                },
             });
             server.connection = connection;
             emitChange();
@@ -441,37 +478,48 @@ export function createMcpExtension(options = {}) {
         };
         /**
          * Connect the server in the background. `server.ready` settles when it connected or failed;
-         * failures show in its state. It starts after `after`; `isCurrent` stops it when the session ended
+         * failures show in its state. It starts after `after`, unless disabled, replaced, or shut down
          * meanwhile. The returned promise rejects when the MCP runtime cannot be loaded.
          */
-        const startConnection = (server, isCurrent, after) => {
+        const startConnection = (server, after) => {
+            const { signal } = session;
+            const attempt = Symbol();
+            server.attempt = attempt;
+            const isCurrent = () => !signal.aborted && server.attempt === attempt && isEnabled(server) && servers.includes(server);
             const ready = (async () => {
                 await after;
                 if (!isCurrent())
                     return;
-                const connection = await createConnection(server);
-                if (!isCurrent())
+                const connection = await createConnection(server, isCurrent);
+                if (!connection || !isCurrent())
                     return;
                 await connection.getClient().catch(() => undefined);
             })();
             server.ready = ready.catch(() => undefined);
             return ready;
         };
-        /** Wait for servers still connecting, until they settle or `signal` aborts. */
+        /** Wait for the latest connection attempts, including ones queued while waiting, or an abort. */
         const waitForServers = async (waiting, signal) => {
-            const ready = waiting.flatMap((server) => (server.ready ? [server.ready] : []));
-            if (ready.length === 0 || signal?.aborted)
-                return;
-            let onAbort;
-            await Promise.race([
-                Promise.all(ready),
-                new Promise((resolve) => {
-                    onAbort = () => resolve();
-                    signal?.addEventListener("abort", onAbort, { once: true });
-                }),
-            ]);
-            if (onAbort)
-                signal?.removeEventListener("abort", onAbort);
+            for (;;) {
+                const ready = waiting.flatMap((server) => isEnabled(server) && servers.includes(server) && server.ready ? [{ server, ready: server.ready }] : []);
+                if (ready.length === 0 || signal?.aborted)
+                    return;
+                let onAbort;
+                await Promise.race([
+                    Promise.all(ready.map((attempt) => attempt.ready)),
+                    new Promise((resolve) => {
+                        onAbort = () => resolve();
+                        signal?.addEventListener("abort", onAbort, { once: true });
+                    }),
+                ]);
+                if (onAbort)
+                    signal?.removeEventListener("abort", onAbort);
+                if (signal?.aborted ||
+                    ready.every((attempt) => !isEnabled(attempt.server) ||
+                        !servers.includes(attempt.server) ||
+                        attempt.ready === attempt.server.ready))
+                    return;
+            }
         };
         /**
          * One message for everything that needs the user after startup, or only for `only`, servers
@@ -506,20 +554,23 @@ export function createMcpExtension(options = {}) {
             server.entry = { ...entry, config: { ...entry.config, ...patch } };
             return undefined;
         };
-        const signIn = async (server, prompt) => {
+        /** Sign in, then reconnect. Returns an error message on failure. `cancel` or the session's end stops the sign-in. */
+        const signIn = async (server, prompt, cancel) => {
             const connection = server.connection;
             const url = connection?.oauthUrl;
             if (!connection || !url)
                 return `MCP server "${server.entry.name}" does not use OAuth.`;
             const runtime = await loadMcpRuntime();
+            const signal = cancel ? AbortSignal.any([session.signal, cancel]) : session.signal;
             try {
-                await runtime.signInMcpServer({
+                await track(runtime.signInMcpServer({
                     serverUrl: url,
                     store: getCredentials(runtime).forServer(server.entry.name, url),
                     settings: connection.oauthSettings(),
                     challenge: connection.challenge,
                     prompt,
-                });
+                    signal,
+                }));
             }
             catch (error) {
                 if (error instanceof runtime.McpSignInCancelledError)
@@ -549,8 +600,14 @@ export function createMcpExtension(options = {}) {
             const connection = server.connection;
             if (!connection)
                 return `MCP server "${server.entry.name}" is disabled.`;
-            try {
+            const previous = server.ready;
+            const ready = (async () => {
+                await previous;
                 await connection.reconnect();
+            })();
+            server.ready = ready.catch(() => undefined);
+            try {
+                await ready;
                 return undefined;
             }
             catch (error) {
@@ -564,13 +621,26 @@ export function createMcpExtension(options = {}) {
                 return failed;
             if (!enabled) {
                 const connection = server.connection;
+                server.attempt = undefined;
                 server.connection = undefined;
+                if (connection) {
+                    // A reconnect may already have detached its old client while awaiting transport
+                    // shutdown. Closing the connection alone does not wait for that reconnect.
+                    server.closing = Promise.all([connection.close(), server.ready]).then(() => undefined);
+                }
+                const closing = server.closing;
                 hideTools(server.entry.name);
                 emitChange();
-                await connection?.close();
+                try {
+                    await closing;
+                }
+                finally {
+                    if (server.closing === closing)
+                        server.closing = undefined;
+                }
                 return undefined;
             }
-            await startConnection(server, () => true);
+            await startConnection(server, server.closing);
             return undefined;
         };
         const setExposure = (server, exposure) => {
@@ -718,11 +788,13 @@ export function createMcpExtension(options = {}) {
                 return undefined;
             return setExposure(server, choice);
         };
-        /** Sign in with the manager view's sign-in screen, which shows the URL with a copy key. */
+        /** Sign in with the manager view's sign-in screen, which shows the URL with a copy key and cancels with Esc. */
         const signInWithUi = (ui, server) => {
             const title = `Sign in to ${server.entry.name}`;
+            const cancel = new AbortController();
+            const status = (message) => ui.status(title, message, () => cancel.abort());
             let authorizationUrl = "";
-            ui.status(title, "Contacting the authorization server…");
+            status("Contacting the authorization server…");
             return signIn(server, {
                 showAuthorizationUrl: (url) => {
                     authorizationUrl = url.href;
@@ -730,22 +802,38 @@ export function createMcpExtension(options = {}) {
                 },
                 promptForRedirectUrl: async (signal) => {
                     const value = await ui.redirectUrl(title, authorizationUrl, signal);
-                    ui.status(title, "Connecting…");
+                    status("Connecting…");
                     return value;
                 },
-            });
+            }, cancel.signal);
+        };
+        /** Keep the subscribed menu usable while a connection opens or closes. */
+        const runInBackground = (ctx, server, operation) => {
+            const ready = operation();
+            const attempt = server.attempt;
+            const { signal } = session;
+            const finish = (message) => {
+                if (signal.aborted || server.attempt !== attempt || !servers.includes(server))
+                    return;
+                server.message = message;
+                ensureDiscoveryActive(ctx);
+                emitChange();
+            };
+            void track(ready.then(finish, (error) => finish(errorMessage(error))));
         };
         const runAction = async (ui, ctx, server, action) => {
-            const { name } = server.entry;
+            const { signal } = session;
             let message;
             switch (action) {
                 case "signin":
                     message = await signInWithUi(ui, server);
                     break;
                 case "reconnect":
-                    // A failure shows as the connection's state and error.
-                    ui.status(`MCP server ${name}`, "Reconnecting…");
-                    await reconnect(server);
+                    // Connection state and error already report failures, including required sign-ins.
+                    runInBackground(ctx, server, async () => {
+                        await reconnect(server);
+                        return undefined;
+                    });
                     break;
                 case "signout":
                     await signOut(server);
@@ -761,11 +849,13 @@ export function createMcpExtension(options = {}) {
                 case "enable-project":
                 case "disable-project": {
                     const enable = action.startsWith("enable");
-                    ui.status(`MCP server ${name}`, enable ? "Connecting…" : "Disconnecting…");
-                    message = await setEnabled(server, enable, action.endsWith("-project"));
+                    runInBackground(ctx, server, () => setEnabled(server, enable, action.endsWith("-project")));
                     break;
                 }
             }
+            // The session ended meanwhile (for example during a sign-in), which made ctx stale.
+            if (signal.aborted)
+                return;
             server.message = message;
             ensureDiscoveryActive(ctx);
             emitChange();
@@ -849,6 +939,7 @@ export function createMcpExtension(options = {}) {
                 ctx.ui.notify(`Signing in to MCP server "${name}" requires interactive mode.`, "error");
                 return;
             }
+            const { signal } = session;
             let failure;
             if (ctx.mode === "tui") {
                 await showMcpManager(ctx, async (ui) => {
@@ -864,6 +955,9 @@ export function createMcpExtension(options = {}) {
                     promptForRedirectUrl: (signal) => ctx.ui.input(`Waiting for sign-in to "${name}". If the browser cannot reach this machine, paste the URL it was redirected to.`, "http://127.0.0.1:.../callback?code=...", { signal }),
                 });
             }
+            // The session ended meanwhile, which cancelled the sign-in and made ctx stale.
+            if (signal.aborted)
+                return;
             if (failure) {
                 ctx.ui.notify(failure, failure === "Sign-in cancelled." ? "info" : "error");
                 return;
@@ -880,8 +974,8 @@ export function createMcpExtension(options = {}) {
             waitedForStartup = false;
             sessionCwd = ctx.cwd;
             modelRegistry = ctx.modelRegistry;
-            const current = ++generation;
-            sessionActive = true;
+            session = new AbortController();
+            const { signal } = session;
             configuredEntries = loaded.servers;
             const registered = registeredServers();
             overridden = registered.overridden;
@@ -898,10 +992,9 @@ export function createMcpExtension(options = {}) {
             // The MCP client loads only now, so sessions without servers never pay for it. Waiting one
             // event loop turn lets the first render happen before loading and connecting.
             const runtime = new Promise((resolve) => setImmediate(resolve)).then(() => loadMcpRuntime());
-            const isCurrent = () => current === generation;
-            pending = Promise.all(enabled.map((server) => startConnection(server, isCurrent, runtime)))
+            pending = Promise.all(enabled.map((server) => startConnection(server, runtime)))
                 .then(() => {
-                if (isCurrent())
+                if (!signal.aborted)
                     reportProblems(ctx);
             })
                 .catch((error) => {
@@ -947,22 +1040,29 @@ export function createMcpExtension(options = {}) {
         });
         // A codemode script waits for the servers it names, or for every server when it searches or
         // enumerates tools, so their tools are registered before the script runs. tool_search and the
-        // resource tools reach every server, so they wait for all of them.
+        // resource tools reach every server, so they wait for all of them. Direct MCP calls wait only
+        // for their own server, including a reconnect still closing its old transport.
         pi.on("tool_call", async (event, ctx) => {
             const tool = pi.getAllTools().find((candidate) => candidate.name === event.toolName);
             if (!tool)
                 return;
-            const pendingServers = servers.filter((server) => isEnabled(server) && server.connection?.state !== "connected" && server.ready);
-            if (pendingServers.length === 0)
+            // Readiness can be pending while the display state is still connected: reconnect first
+            // closes the old transport, then opens a new one. Settled promises return immediately.
+            const readyServers = servers.filter((server) => isEnabled(server) && server.ready);
+            if (readyServers.length === 0)
                 return;
             let waiting = [];
             if (isCodemodeTool(tool)) {
                 const { code } = event.input;
                 const source = typeof code === "string" ? code : "";
-                waiting = pendingServers.filter((server) => scriptNeedsServer(source, server.entry.name));
+                waiting = readyServers.filter((server) => scriptNeedsServer(source, server.entry.name));
             }
             else if (isToolSearchTool(tool) || RESOURCE_TOOL_NAMES.has(tool.name)) {
-                waiting = pendingServers;
+                waiting = readyServers;
+            }
+            else {
+                const owner = toolOwners.get(event.toolName)?.split("\0", 1)[0];
+                waiting = readyServers.filter((server) => server.entry.name === owner);
             }
             await waitForServers(waiting, ctx.signal);
         });
@@ -973,9 +1073,9 @@ export function createMcpExtension(options = {}) {
         });
         // Servers registered or unregistered during the session connect or disconnect right away.
         pi.on("mcp_servers_change", async (_event, ctx) => {
-            if (!sessionActive)
+            const { signal } = session;
+            if (signal.aborted)
                 return;
-            const current = generation;
             const registered = registeredServers();
             overridden = registered.overridden;
             const next = new Map(registered.servers.map((server) => [server.entry.name, server]));
@@ -991,11 +1091,11 @@ export function createMcpExtension(options = {}) {
             ensureDiscoveryActive(ctx);
             await Promise.all(removed.map((server) => server.connection?.close()));
             const connecting = added.filter(isEnabled);
-            if (current !== generation || connecting.length === 0)
+            if (signal.aborted || connecting.length === 0)
                 return;
             try {
-                await Promise.all(connecting.map((server) => startConnection(server, () => current === generation)));
-                if (current !== generation) {
+                await Promise.all(connecting.map((server) => startConnection(server)));
+                if (signal.aborted) {
                     await Promise.all(connecting.map((server) => server.connection?.close()));
                     return;
                 }
@@ -1004,17 +1104,16 @@ export function createMcpExtension(options = {}) {
                 ctx.ui.notify(`MCP failed to load: ${errorMessage(error)}`, "error");
                 return;
             }
-            if (current !== generation)
+            if (signal.aborted)
                 return;
             reportProblems(ctx, connecting);
         });
         pi.on("session_shutdown", async () => {
-            sessionActive = false;
-            generation++;
+            session.abort();
             const closing = connections();
             servers = [];
             emitChange();
-            await Promise.all(closing.map((connection) => connection.close()));
+            await Promise.all([...backgroundActions, ...closing.map((connection) => connection.close())]);
         });
         pi.registerCommand("mcp", {
             description: "Manage MCP servers: sign in, reconnect, enable or disable, and change exposure",
@@ -1040,19 +1139,21 @@ export function createMcpExtension(options = {}) {
                 return items.length > 0 ? items : null;
             },
             handler: async (args, ctx) => {
-                await pending;
                 const [action, name, ...extra] = args.trim().split(/\s+/).filter(Boolean);
                 if (action === undefined) {
                     if (ctx.mode === "tui")
                         await showMcpManager(ctx, (ui) => manage(ui, ctx));
-                    else
+                    else {
+                        await pending;
                         ctx.ui.notify(formatStatus(), "info");
+                    }
                     return;
                 }
                 if (extra.length > 0) {
                     ctx.ui.notify(MCP_USAGE, "warning");
                     return;
                 }
+                await pending;
                 switch (action) {
                     case "login": {
                         const server = await pickServer(name, ctx, oauthPick);

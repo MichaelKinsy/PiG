@@ -10,6 +10,8 @@ import (
 	"fmt"
 	"slices"
 	"strings"
+
+	"github.com/MichaelKinsy/PiG/extensions/sdk/frontend"
 )
 
 // ModelItem describes one model in the scoped-models list.
@@ -44,7 +46,10 @@ type ScopedModelsResult struct {
 
 // ScopedModelsList is the /scoped-models selector component.
 type ScopedModelsList struct {
-	invalidatable
+	Container
+	listContainer     *Container
+	refreshStatusText *Text
+	footerText        *Text
 
 	allIDs     []string // ordered list of all model IDs
 	models     map[string]ModelItem
@@ -88,6 +93,8 @@ func NewScopedModelsList(cfg ScopedModelsConfig) *ScopedModelsList {
 		searchInput:   NewTextInput(""),
 		refreshStatus: cfg.RefreshStatus,
 		refreshKind:   RefreshStatusMuted,
+
+		listContainer: NewContainer(),
 	}
 	for _, m := range cfg.AllModels {
 		s.allIDs = append(s.allIDs, m.FullID)
@@ -97,6 +104,23 @@ func NewScopedModelsList(cfg ScopedModelsConfig) *ScopedModelsList {
 		s.enabledIDs = slices.Clone(cfg.EnabledModelIDs)
 	}
 	s.refresh()
+	// upstream: scoped-models-selector.ts constructor children.
+	th := ActiveTheme()
+	s.refreshStatusText = NewPaddedText("", 0, 0, nil)
+	s.footerText = NewPaddedText("", 0, 0, nil)
+	s.Add(NewDynamicBorder())
+	s.Add(NewSpacer(1))
+	s.Add(NewPaddedText(fg(th.Accent, "\x1b[1mModel Configuration"+SGRBoldDimReset), 0, 0, nil))
+	s.Add(NewPaddedText(fg(th.Muted, "Session-only. "+ActionKeyDisplayTextOr("app.models.save", "ctrl+s")+" to save to settings."), 0, 0, nil))
+	s.Add(NewSpacer(1))
+	s.Add(s.searchInput)
+	s.Add(NewSpacer(1))
+	s.Add(s.listContainer)
+	s.Add(NewSpacer(1))
+	s.Add(s.refreshStatusText)
+	s.Add(s.footerText)
+	s.Add(NewDynamicBorder())
+	s.updateList()
 	return s
 }
 
@@ -118,6 +142,7 @@ func (s *ScopedModelsList) EnabledIDs() []string {
 func (s *ScopedModelsList) SetRefreshStatus(message string, kind RefreshStatusKind) {
 	s.refreshStatus = message
 	s.refreshKind = kind
+	s.updateList()
 	s.Invalidate()
 }
 
@@ -146,6 +171,7 @@ func (s *ScopedModelsList) UpdateModels(models []ModelItem, enabledIDs ...[]stri
 			s.fixScroll()
 		}
 	}
+	s.updateList()
 	s.Invalidate()
 }
 
@@ -190,12 +216,14 @@ func (s *ScopedModelsList) toggle(id string) {
 	}
 }
 
-func (s *ScopedModelsList) enableAll(targetIDs []string) {
+// enableAll is upstream enableAll(enabledIds, allIds, targetIds?): restricted is "targetIds is defined", so an empty target list
+// (a search with no matches) enables nothing instead of everything.
+func (s *ScopedModelsList) enableAll(targetIDs []string, restricted bool) {
 	if s.enabledIDs == nil {
 		return // already all enabled
 	}
 	targets := targetIDs
-	if targets == nil {
+	if !restricted {
 		targets = s.allIDs
 	}
 	for _, id := range targets {
@@ -206,12 +234,12 @@ func (s *ScopedModelsList) enableAll(targetIDs []string) {
 	s.enabledIDs = s.normalizeEnabled(s.enabledIDs)
 }
 
-func (s *ScopedModelsList) clearAll(targetIDs []string) {
+// clearAll is upstream clearAll(enabledIds, allIds, targetIds?); restricted is "targetIds is defined".
+func (s *ScopedModelsList) clearAll(targetIDs []string, restricted bool) {
 	if s.enabledIDs == nil {
-		if targetIDs != nil {
-			// Switch from "all" to "all except targets".
-			s.enabledIDs = nil
-			var keep []string
+		if restricted {
+			// Switch from "all" to "all except targets"; the result is an explicit list even when it is empty.
+			keep := []string{}
 			for _, id := range s.allIDs {
 				if !slices.Contains(targetIDs, id) {
 					keep = append(keep, id)
@@ -223,13 +251,13 @@ func (s *ScopedModelsList) clearAll(targetIDs []string) {
 		}
 		return
 	}
-	targets := targetIDs
-	if targets == nil {
+	if !restricted {
+		// upstream: with no target list the targets are the enabled ids themselves.
 		s.enabledIDs = []string{}
 		return
 	}
 	s.enabledIDs = slices.DeleteFunc(s.enabledIDs, func(id string) bool {
-		return slices.Contains(targets, id)
+		return slices.Contains(targetIDs, id)
 	})
 }
 
@@ -301,22 +329,11 @@ func (s *ScopedModelsList) fixScroll() {
 	s.scroll = max(0, min(ideal, maxScroll))
 }
 
-// Render draws the component. Mirrors upstream ScopedModelsSelectorComponent:
-// every text row is a Text(..., 0, 0) between two DynamicBorders.
-func (s *ScopedModelsList) Render(width int) []string {
+// updateList rebuilds the list rows, the refresh status and the footer from the current state (scoped-models-selector.ts updateList).
+func (s *ScopedModelsList) updateList() {
 	th := ActiveTheme()
-	border := NewDynamicBorder("")
-	lines := append([]string{}, border.Render(width)...)
-	text := func(content string) { lines = append(lines, NewPaddedText(content, 0, 0, nil).Render(width)...) }
-	spacer := func() { lines = append(lines, padOrTrunc("", width)) }
-
-	spacer()
-	text(fg(th.Accent, "\x1b[1mModel Configuration"+SGRBoldDimReset))
-	text(fg(th.Muted, "Session-only. "+ActionKeyDisplayTextOr("app.models.save", "ctrl+s")+" to save to settings."))
-	spacer()
-	lines = append(lines, s.searchInput.Render(width)...)
-	spacer()
-
+	s.listContainer.Clear()
+	text := func(content string) { s.listContainer.Add(NewPaddedText(content, 0, 0, nil)) }
 	if len(s.filteredItems) == 0 {
 		text(fg(th.Muted, "  No matching models"))
 	} else {
@@ -327,7 +344,7 @@ func (s *ScopedModelsList) Render(width int) []string {
 		if s.scroll > 0 || end < len(s.filteredItems) {
 			text(fg(th.Muted, fmt.Sprintf("  (%d/%d)", s.cursor+1, len(s.filteredItems))))
 		}
-		spacer()
+		s.listContainer.Add(NewSpacer(1))
 		if m, available := s.models[s.filteredItems[s.cursor].fullID]; available {
 			text(fg(th.Muted, "  Model Name: "+m.Name))
 		} else {
@@ -335,7 +352,6 @@ func (s *ScopedModelsList) Render(width int) []string {
 		}
 	}
 
-	spacer()
 	if s.refreshStatus != "" {
 		color := th.Muted
 		switch s.refreshKind {
@@ -344,18 +360,17 @@ func (s *ScopedModelsList) Render(width int) []string {
 		case RefreshStatusWarning:
 			color = th.Warning
 		}
-		text(fg(color, "  "+s.refreshStatus))
+		s.refreshStatusText.SetText(fg(color, "  "+s.refreshStatus))
+	} else {
+		s.refreshStatusText.SetText("")
 	}
 	footer := fg(th.Dim, "  "+strings.Join(s.footerParts(), " · "))
 	if s.dirty {
 		footer = fg(th.Dim, "  "+strings.Join(s.footerParts(), " · ")+" ") + fg(th.Warning, "(unsaved)")
 	}
-	text(footer)
-	return append(lines, border.Render(width)...)
+	s.footerText.SetText(footer)
 }
 
-// renderRow draws one model row: cursor, the enabled "✓ " column, the model
-// id (struck through when unavailable), and the provider badge.
 func (s *ScopedModelsList) renderRow(i int) string {
 	th := ActiveTheme()
 	item := s.filteredItems[i]
@@ -382,21 +397,6 @@ func (s *ScopedModelsList) renderRow(i int) string {
 
 // footerParts mirrors upstream getFooterText's key hints and enabled count.
 func (s *ScopedModelsList) footerParts() []string {
-	countText := "all enabled"
-	if s.enabledIDs != nil {
-		enabledCount, unavailableCount := 0, 0
-		for _, id := range s.enabledIDs {
-			if _, ok := s.models[id]; ok {
-				enabledCount++
-			} else {
-				unavailableCount++
-			}
-		}
-		countText = fmt.Sprintf("%d/%d enabled", enabledCount, len(s.allIDs))
-		if unavailableCount > 0 {
-			countText += fmt.Sprintf(" · %d unavailable", unavailableCount)
-		}
-	}
 	return []string{
 		ActionKeyDisplayText(KBSelectConfirm) + " toggle",
 		ActionKeyDisplayTextOr("app.models.enableAll", "ctrl+a") + " all",
@@ -404,8 +404,64 @@ func (s *ScopedModelsList) footerParts() []string {
 		ActionKeyDisplayTextOr("app.models.toggleProvider", "ctrl+p") + " provider",
 		ActionKeyDisplayTextOr("app.models.reorderUp", "alt+up") + "/" + ActionKeyDisplayTextOr("app.models.reorderDown", "alt+down") + " reorder",
 		ActionKeyDisplayTextOr("app.models.save", "ctrl+s") + " save",
-		countText,
+		s.enabledCountText(),
 	}
+}
+
+// enabledCountText is the footer's enabled count, "all enabled" when every
+// model is.
+func (s *ScopedModelsList) enabledCountText() string {
+	if s.enabledIDs == nil {
+		return "all enabled"
+	}
+	enabledCount, unavailableCount := 0, 0
+	for _, id := range s.enabledIDs {
+		if _, ok := s.models[id]; ok {
+			enabledCount++
+		} else {
+			unavailableCount++
+		}
+	}
+	countText := fmt.Sprintf("%d/%d enabled", enabledCount, len(s.allIDs))
+	if unavailableCount > 0 {
+		countText += fmt.Sprintf(" · %d unavailable", unavailableCount)
+	}
+	return countText
+}
+
+// NativeNode reports the list as a selector whose item ids are the models'
+// full ids and whose checks are the enabled models. pig additive (D91): the
+// status carries the refresh message, then the footer's enabled count and
+// unsaved marker without its key hints.
+func (s *ScopedModelsList) NativeNode() (frontend.Node, bool) {
+	status := s.enabledCountText()
+	if s.dirty {
+		status += " (unsaved)"
+	}
+	if s.refreshStatus != "" {
+		status = s.refreshStatus + "\n" + status
+	}
+	node := frontend.Selector{
+		Title:       "Model Configuration",
+		Description: "Session-only. " + ActionKeyDisplayTextOr("app.models.save", "ctrl+s") + " to save to settings.",
+		Searchable:  true,
+		Query:       s.searchInput.Text(),
+		Items:       make([]frontend.SelectorItem, len(s.filteredItems)),
+		Status:      status,
+	}
+	for i, entry := range s.filteredItems {
+		item := frontend.SelectorItem{ID: entry.fullID, Label: entry.fullID, Detail: "unavailable"}
+		if m, available := s.models[entry.fullID]; available {
+			item.Label = strings.TrimPrefix(m.FullID, m.Provider+"/")
+			item.Detail = m.Provider
+			item.Checked = entry.enabled
+		}
+		node.Items[i] = item
+	}
+	if s.cursor >= 0 && s.cursor < len(node.Items) {
+		node.Selected = node.Items[s.cursor].ID
+	}
+	return node, true
 }
 
 // HandleInput processes a keystroke.
@@ -413,16 +469,9 @@ func (s *ScopedModelsList) HandleInput(data string) {
 	if s.done {
 		return
 	}
+	defer s.updateList()
 
 	kb := GetTUIKeybindings()
-	if scopedModelsActionMatches(kb, data, "app.models.save", "ctrl+s") {
-		s.pendingSaveIDs = s.EnabledIDs()
-		s.pendingSave = true
-		s.dirty = false
-		s.Invalidate()
-		return
-	}
-
 	switch {
 	// Navigation.
 	case kb.Matches(data, KBSelectUp):
@@ -469,26 +518,28 @@ func (s *ScopedModelsList) HandleInput(data string) {
 
 	// Ctrl+A: enable all.
 	case scopedModelsActionMatches(kb, data, "app.models.enableAll", "ctrl+a"):
-		var targets []string
-		if s.searchInput.Text() != "" {
+		targets := []string{}
+		restricted := s.searchInput.Text() != ""
+		if restricted {
 			for _, item := range s.filteredItems {
 				targets = append(targets, item.fullID)
 			}
 		}
-		s.enableAll(targets)
+		s.enableAll(targets, restricted)
 		s.dirty = true
 		s.refresh()
 		s.Invalidate()
 
 	// Ctrl+X: clear all.
 	case scopedModelsActionMatches(kb, data, "app.models.clearAll", "ctrl+x"):
-		var targets []string
-		if s.searchInput.Text() != "" {
+		targets := []string{}
+		restricted := s.searchInput.Text() != ""
+		if restricted {
 			for _, item := range s.filteredItems {
 				targets = append(targets, item.fullID)
 			}
 		}
-		s.clearAll(targets)
+		s.clearAll(targets, restricted)
 		s.dirty = true
 		s.refresh()
 		s.Invalidate()
@@ -517,14 +568,21 @@ func (s *ScopedModelsList) HandleInput(data string) {
 				}
 			}
 			if allEnabled {
-				s.clearAll(providerIDs)
+				s.clearAll(providerIDs, true)
 			} else {
-				s.enableAll(providerIDs)
+				s.enableAll(providerIDs, true)
 			}
 			s.dirty = true
 			s.refresh()
 			s.Invalidate()
 		}
+
+	// Ctrl+S: save (checked after the other actions, as upstream orders them).
+	case scopedModelsActionMatches(kb, data, "app.models.save", "ctrl+s"):
+		s.pendingSaveIDs = s.EnabledIDs()
+		s.pendingSave = true
+		s.dirty = false
+		s.Invalidate()
 
 	// Ctrl+C: clear search or cancel.
 	case matchesKeyID(data, "ctrl+c"):

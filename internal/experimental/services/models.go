@@ -29,8 +29,8 @@ type ModelsCatalog struct {
 
 // ModelsConfiguration uses a nil Model for an unconfigured lane.
 type ModelsConfiguration struct {
-	Model         *ModelRef        `json:"model"`
-	ThinkingLevel ai.ThinkingLevel `json:"thinkingLevel"`
+	Model         *ModelRef             `json:"model"`
+	ThinkingLevel ai.ModelThinkingLevel `json:"thinkingLevel"`
 }
 
 // ModelsRefresh reports idle, refreshing, done, or warning with provider errors.
@@ -50,10 +50,10 @@ type ModelsState struct {
 type Models interface {
 	State() chord.ReplicatedStateOf[*ModelsState]
 	CycleThinking(context.Context) error
-	GetThinkingLevels(context.Context) ([]ai.ThinkingLevel, error)
+	GetThinkingLevels(context.Context) ([]ai.ModelThinkingLevel, error)
 	Refresh(context.Context) error
 	Select(context.Context, ModelRef) error
-	SelectThinking(context.Context, ai.ThinkingLevel) error
+	SelectThinking(context.Context, ai.ModelThinkingLevel) error
 }
 
 // ModelsDefinition is the pi.models token; Go types and values share a namespace.

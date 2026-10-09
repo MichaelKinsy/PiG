@@ -51,7 +51,7 @@ func newDurableListSelector(title string, items []durableSelectItem, onSelect fu
 	theme := tui.ActiveTheme()
 	selector.Add(tui.NewDynamicBorderToken("border"))
 	selector.Add(tui.NewSpacer(1))
-	selector.Add(tui.NewPaddedText(theme.FgText("accent", boldText(title)), 1, 0, nil))
+	selector.Add(tui.NewPaddedText(theme.Fg("accent", boldText(title)), 1, 0, nil))
 	selector.Add(selector.input)
 	selector.Add(tui.NewSpacer(1))
 	selector.Add(selector.rows)
@@ -128,7 +128,7 @@ type durableCompaction struct {
 
 func newDurableCompaction(summary, expandKey string, expanded bool) *durableCompaction {
 	theme := tui.ActiveTheme()
-	component := &durableCompaction{Box: tui.NewPaddedBox(1, 1, func(text string) string { return theme.BgText("customMessageBg", text) }), summary: summary, hint: expandKey}
+	component := &durableCompaction{Box: tui.NewPaddedBox(1, 1, func(text string) string { return theme.Bg("customMessageBg", text) }), summary: summary, hint: expandKey}
 	component.SetExpanded(expanded)
 	return component
 }
@@ -136,7 +136,7 @@ func newDurableCompaction(summary, expandKey string, expanded bool) *durableComp
 func (component *durableCompaction) SetExpanded(expanded bool) {
 	theme := tui.ActiveTheme()
 	component.Clear()
-	component.AddChild(tui.NewPaddedText(theme.FgText("customMessageLabel", boldText("[compaction]")), 0, 0, nil))
+	component.AddChild(tui.NewPaddedText(theme.Fg("customMessageLabel", boldText("[compaction]")), 0, 0, nil))
 	component.AddChild(tui.NewSpacer(1))
 	if expanded {
 		markdown := tui.NewMarkdown(component.summary)
@@ -144,7 +144,7 @@ func (component *durableCompaction) SetExpanded(expanded bool) {
 		component.AddChild(markdown)
 		return
 	}
-	component.AddChild(tui.NewPaddedText(theme.FgText("customMessageText", "Earlier context summarized (")+theme.FgText("dim", component.hint)+theme.FgText("customMessageText", " to expand)"), 0, 0, nil))
+	component.AddChild(tui.NewPaddedText(theme.Fg("customMessageText", "Earlier context summarized (")+theme.Fg("dim", component.hint)+theme.Fg("customMessageText", " to expand)"), 0, 0, nil))
 }
 
 // durableTuiHandlers are what the TUI asks of the application.
@@ -186,7 +186,7 @@ type durableTui struct {
 
 	expanded         bool
 	renderedEntryIds []durable.EntryId
-	streaming        *tui.AssistantMessageBlock
+	streaming        *tui.AssistantMessageComponent
 	indicator        *tui.StatusIndicator
 	stopIndicator    context.CancelFunc
 	statusText       string
@@ -235,16 +235,16 @@ func newDurableTui(ctx context.Context, options durableTuiOptions) *durableTui {
 	theme := tui.ActiveTheme()
 	view.transcript = tui.NewScrollView(content, tui.ScrollViewOptions{
 		Follow: "end", Primary: true, Overscroll: "chain",
-		ScrollbarTrackStyle: func(text string) string { return theme.FgText("scrollbarTrack", text) },
-		ScrollbarThumbStyle: func(text string) string { return theme.FgText("scrollbarThumb", text) },
+		ScrollbarTrackStyle: func(text string) string { return theme.Fg("scrollbarTrack", text) },
+		ScrollbarThumbStyle: func(text string) string { return theme.Fg("scrollbarThumb", text) },
 	})
-	shrinking := func(component tui.Component, minSize int) tui.StackChild {
-		return tui.StackChild{Component: component, StackEntryOptions: tui.StackEntryOptions{Shrink: new(1), MinSize: new(minSize)}}
+	shrinking := func(component tui.Component, minSize int) tui.StackEntry {
+		return tui.StackEntry{Component: component, StackEntryOptions: tui.StackEntryOptions{Shrink: new(1), MinSize: new(minSize)}}
 	}
-	dock := tui.NewVStack([]tui.StackChild{
+	dock := tui.NewVStack([]tui.StackEntry{
 		shrinking(view.tasks, 0), shrinking(view.queue, 0), shrinking(view.notices, 0), shrinking(view.editorSlot, 3), shrinking(view.footer, 0),
 	}, tui.StackOptions{})
-	view.layoutRoot = tui.NewVStack([]tui.StackChild{
+	view.layoutRoot = tui.NewVStack([]tui.StackEntry{
 		{Component: view.transcript, StackEntryOptions: tui.StackEntryOptions{Basis: new(0), Grow: new(1), Shrink: new(1), MinSize: new(1)}},
 		{Component: dock, StackEntryOptions: tui.StackEntryOptions{Grow: new(0), Shrink: new(1), MinSize: new(1)}},
 	}, tui.StackOptions{})
@@ -389,7 +389,7 @@ func (view *durableTui) Apply(state durableagent.DurableView) error {
 		return err
 	}
 	var partial *agent.AssistantMessage
-	if generation := live.Generation; generation != nil && len(generation.Message) != 0 {
+	if generation := live.Generation; generation != nil && generation.Message != nil {
 		message, err := agentMessageOf(generation.Message)
 		if err != nil {
 			return err
@@ -529,7 +529,7 @@ func (view *durableTui) syncTasks(graph *harness.TaskGraph) {
 	// Object.values of integer keys runs in ascending order.
 	slices.SortFunc(nodes, func(left, right harness.TaskGraphNode) int { return int(left.Id) - int(right.Id) })
 	theme := tui.ActiveTheme()
-	lines := []string{theme.FgText("accent", "Tasks ("+strconv.Itoa(len(nodes))+" live, /tasks to hide)")}
+	lines := []string{theme.Fg("accent", "Tasks ("+strconv.Itoa(len(nodes))+" live, /tasks to hide)")}
 	// A conversation-owned task sits under the task that owns its conversation, when that task is live.
 	owned := map[durable.ConversationId]bool{}
 	for _, node := range nodes {
@@ -559,7 +559,7 @@ func (view *durableTui) syncTasks(graph *harness.TaskGraph) {
 		}
 	}
 	for _, line := range lines {
-		view.tasks.Add(tui.NewPaddedTruncatedText(theme.FgText("muted", line), 1, 0))
+		view.tasks.Add(tui.NewTruncatedText(theme.Fg("muted", line), 1, 0))
 	}
 }
 
@@ -568,7 +568,7 @@ func (view *durableTui) syncQueue(inbox harness.InboxState) error {
 	for _, item := range inbox.Items {
 		var text string
 		if item.Mode == harness.InboxWrite {
-			kind, _ := item.Entry["kind"].(string)
+			kind, _ := item.Entry.Value("kind").(string)
 			text = "<" + kind + ">"
 		} else {
 			content, err := decodeInboxContent(item.Content)
@@ -577,7 +577,7 @@ func (view *durableTui) syncQueue(inbox harness.InboxState) error {
 			}
 			text = userContentText(content)
 		}
-		view.queue.Add(tui.NewPaddedTruncatedText(tui.ActiveTheme().FgText("muted", "["+string(item.Mode)+"] "+text), 1, 0))
+		view.queue.Add(tui.NewTruncatedText(tui.ActiveTheme().Fg("muted", "["+string(item.Mode)+"] "+text), 1, 0))
 	}
 	return nil
 }
@@ -597,7 +597,7 @@ func (view *durableTui) syncNotices(state durableagent.DurableView) {
 		case durableagent.NoticeWarning:
 			color = "warning"
 		}
-		view.notices.Add(tui.NewPaddedTruncatedText(theme.FgText(color, item.Message), 1, 0))
+		view.notices.Add(tui.NewTruncatedText(theme.Fg(color, item.Message), 1, 0))
 	}
 }
 
@@ -630,8 +630,7 @@ func (view *durableTui) syncStatus(live harness.LiveState) {
 		view.editor.SetWorkingStatusIndicator(nil)
 		return
 	}
-	theme := tui.ActiveTheme()
-	indicator := &tui.StatusIndicator{Kind: "working", Loader: tui.NewStyledLoader(theme.Accent, theme.Muted, text, nil)}
+	indicator := &tui.StatusIndicator{Kind: "working", Loader: tui.NewLoader(nil, tui.ThemeFg("accent"), tui.ThemeFg("muted"), text, nil)}
 	view.indicator = indicator
 	view.editor.SetWorkingStatusIndicator(indicator)
 	view.startIndicator(indicator)
@@ -747,11 +746,11 @@ func (view *durableTui) syncFooter(state durableagent.DurableView, agentState ha
 		}
 		text := percent + "%/" + codingagent.FormatTokens(contextWindow)
 		if known && float64(tokens)/float64(contextWindow)*100 > 90 {
-			text = theme.FgText("error", text)
+			text = theme.Fg("error", text)
 		}
 		stats = append(stats, text)
 	}
-	view.footerStats.SetText(theme.FgText("dim", strings.Join(stats, " ")+"  "+state.Session.CWD))
+	view.footerStats.SetText(theme.Fg("dim", strings.Join(stats, " ")+"  "+state.Session.CWD))
 	model := "no model"
 	if agentState.Model != nil {
 		model = agentState.Model.Provider + "/" + agentState.Model.ModelId
@@ -766,7 +765,7 @@ func (view *durableTui) syncFooter(state durableagent.DurableView, agentState ha
 	if label == "main" {
 		color = "dim"
 	}
-	view.footerHints.SetText(theme.FgText(color, label) + theme.FgText("dim",
+	view.footerHints.SetText(theme.Fg(color, label) + theme.Fg("dim",
 		fmt.Sprintf(" · %s · thinking:%s (%s) · %s or /model · /agents · /compact · /tasks · %s follow-up · %s exit",
 			model, thinkingOrOff(agentState), view.keybindings.KeyText("app.thinking.cycle"), view.keybindings.KeyText("app.model.select"),
 			view.keybindings.KeyText("app.message.followUp"), view.keybindings.KeyText("app.clear"))))
@@ -819,11 +818,11 @@ func (view *durableTui) addEntry(entry durable.EntryRecord) error {
 	switch {
 	case entry.Kind == "pi.user" && message != nil && message.User != nil:
 		view.chat.Add(tui.NewSpacer(1))
-		view.chat.Add(tui.NewUserMessageBlock(userMessageText(*message)))
+		view.chat.Add(tui.NewUserMessageComponent(userMessageText(*message), nil, 1, nil))
 	case entry.Kind == "pi.assistant" && message != nil && message.Assistant != nil:
 		component := view.streaming
 		if component == nil {
-			component = tui.NewAssistantMessageBlock(false)
+			component = tui.NewAssistantMessageComponent(nil, false, nil, "", nil, nil)
 			view.chat.Add(component)
 		}
 		view.streaming = nil
@@ -874,7 +873,7 @@ func (view *durableTui) addEntry(entry durable.EntryRecord) error {
 
 func (view *durableTui) syncStreaming(message *agent.AssistantMessage) error {
 	if view.streaming == nil {
-		view.streaming = tui.NewAssistantMessageBlock(false)
+		view.streaming = tui.NewAssistantMessageComponent(nil, false, nil, "", nil, nil)
 		view.chat.Add(view.streaming)
 	}
 	applyClientAssistant(view.streaming, message)
@@ -892,7 +891,7 @@ func (view *durableTui) syncStreaming(message *agent.AssistantMessage) error {
 
 func (view *durableTui) addText(text string) {
 	view.chat.Add(tui.NewSpacer(1))
-	view.chat.Add(tui.NewPaddedText(tui.ActiveTheme().FgText("muted", text), 1, 0, nil))
+	view.chat.Add(tui.NewPaddedText(tui.ActiveTheme().Fg("muted", text), 1, 0, nil))
 }
 
 // tool is the card of a call. hasArgs updates an existing card's arguments; fresh starts a new card for a call ID an earlier turn used.
@@ -903,7 +902,7 @@ func (view *durableTui) tool(name, id string, args any, hasArgs, fresh bool) (*c
 			if err != nil {
 				return nil, err
 			}
-			existing.Component.UpdateArgs(name, string(encoded))
+			existing.Component.UpdateArgs(encoded)
 		}
 		return existing, nil
 	}
@@ -924,29 +923,5 @@ func (view *durableTui) tool(name, id string, args any, hasArgs, fresh bool) (*c
 
 func (view *durableTui) updateResult(id string, card *codingagent.ToolRendererCard, result agent.AgentToolResult, partial bool) {
 	component := card.Component
-	component.SetResultValue(result)
-	component.ImageBlocks = nil
-	for _, block := range result.Content {
-		if image, ok := block.(ai.ImageContent); ok {
-			component.ImageBlocks = append(component.ImageBlocks, tui.ImageBlock{Data: image.Data, MIMEType: image.MimeType})
-		}
-	}
-	if partial {
-		component.SetStreaming(result.Text())
-	} else {
-		component.SetResult(result.Text(), result.IsError, 0)
-	}
-	for _, request := range component.PendingKittyImageConversions() {
-		view.background.Go(func() {
-			if view.ctx.Err() != nil {
-				return
-			}
-			converted := codingagent.ConvertToPng(request.Data, request.MimeType)
-			_ = view.runOnMain(view.ctx, func() {
-				if view.tools[id] == card && card.Component.ApplyConvertedImage(request, converted) {
-					view.requestRender()
-				}
-			})
-		})
-	}
+	component.UpdateResult(codingagent.ToolExecutionResultOf(result, 0), partial)
 }

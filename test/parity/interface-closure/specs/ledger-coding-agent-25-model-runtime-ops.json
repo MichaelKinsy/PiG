@@ -1,0 +1,70 @@
+[
+ {
+  "ids": [
+   "pkg:coding-agent/.#ModelRuntime::property:classify"
+  ],
+  "targets": [
+   "coding/model_runtime_classify.go#ModelRuntime.Classify"
+  ],
+  "production": [
+   "call:coding/cli/extensions.go#wireSubprocessModelRegistry"
+  ],
+  "evidence": [
+   "test:coding/model_runtime_classifiers_upstream_test.go#TestModelRuntimeClassifiersUpstream"
+  ],
+  "rationale": "ModelRuntime.classify is the Go method ModelRuntime.Classify; signature reviewed against the upstream declaration.",
+  "async": "An awaited Promise is a blocking Go call that returns the value; AbortSignal is the context.Context first argument; a provider failure is reported in the returned result or message as upstream does, not as a rejection; no detached goroutine."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#ModelRuntime::property:completeSimple"
+  ],
+  "targets": [
+   "coding/services.go#ModelRuntime.CompleteSimple"
+  ],
+  "production": [
+   "call:internal/evals/configured_runtime.go#InspectProvider"
+  ],
+  "evidence": [
+   "test:coding/cloudflare_compat_upstream_test.go#TestModelRuntimeCloudflareCompatUpstream",
+   "test:coding/model_runtime_0861_test.go#TestModelRuntimeStreamSimpleUsesSamePreparationAndResultIdentity"
+  ],
+  "rationale": "ModelRuntime.completeSimple is the Go method ModelRuntime.CompleteSimple; signature reviewed against the upstream declaration.",
+  "async": "An awaited Promise is a blocking Go call that returns the value; AbortSignal is the context.Context first argument; a provider failure is reported in the returned result or message as upstream does, not as a rejection; no detached goroutine."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#ModelRuntime::property:generateImages"
+  ],
+  "targets": [
+   "coding/model_runtime_typed.go#ModelRuntime.GenerateImages"
+  ],
+  "production": [
+   "call:coding/cli/extensions.go#wireSubprocessModelRegistry"
+  ],
+  "evidence": [
+   "test:coding/model_runtime_images_upstream_test.go#TestModelRuntimeImagesUpstream",
+   "test:coding/model_runtime_typed_test.go#TestModelRuntimeGenerateImagesReportsFailuresAsResults"
+  ],
+  "rationale": "ModelRuntime.generateImages is the Go method ModelRuntime.GenerateImages; signature reviewed against the upstream declaration.",
+  "async": "An awaited Promise is a blocking Go call that returns the value; AbortSignal is the context.Context first argument; a provider failure is reported in the returned result or message as upstream does, not as a rejection; no detached goroutine."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#ModelRuntime::property:streamSimple"
+  ],
+  "targets": [
+   "coding/services.go#ModelRuntime.StreamSimple"
+  ],
+  "production": [
+   "call:coding/model.go#ModelRegistry.StreamSimple"
+  ],
+  "evidence": [
+   "test:coding/codex_stream_upstream_test.go#TestModelRuntimeCodexSimpleThinkingAndAutoTransport",
+   "test:coding/model_runtime_0861_test.go#TestModelRuntimeStreamSimpleUsesSamePreparationAndResultIdentity",
+   "test:coding/virtual_models_upstream_test.go#TestVirtualModelRoutesDirectStreamSimpleCallsWithinTheRoutedModelsLimits"
+  ],
+  "rationale": "ModelRuntime.streamSimple is the Go method ModelRuntime.StreamSimple; signature reviewed against the upstream declaration.",
+  "async": "An awaited Promise is a blocking Go call that returns the value; AbortSignal is the context.Context first argument; a provider failure is reported in the returned result or message as upstream does, not as a rejection; no detached goroutine."
+ }
+]

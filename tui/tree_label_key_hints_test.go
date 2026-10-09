@@ -19,7 +19,7 @@ func TestTreeLabelHintsResolveConfiguredKeys(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			useTreeKeybindings(t, tc.bindings)
-			selector := NewTreeSelect("", &fakeNode{id: "root", kids: []TreeNode{&fakeNode{id: "entry", label: "message"}}})
+			selector := NewTreeSelectorComponent("", &fakeNode{id: "root", kids: []TreeNode{&fakeNode{id: "entry", label: "message"}}})
 			selector.OnLabelEdit = func(string, string) {}
 			selector.HandleInput("L")
 			lines := selector.Render(120)

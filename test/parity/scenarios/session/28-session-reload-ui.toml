@@ -1,4 +1,4 @@
-# Pi 1.0.0 original #5943 sites382/415/439, re-probed against published production modules.
+# Pi 1.1.0 original #5943 sites386/419/443, re-probed against published production modules.
 # Records follow complete assertions over reload render ordering, display settings and independently released completion barriers.
 # Go uses a real Session and the interactive owner, not a replacement success facade. The terminal frame is not normalized or claimed here.
 name = "28-session-reload-ui"

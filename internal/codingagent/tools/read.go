@@ -1,6 +1,7 @@
 package tools
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -26,6 +27,19 @@ type ReadTool struct {
 	CWD              string
 	AutoResizeImages *bool
 	ResizeOptions    *ai.ModelImageResizeOptions
+	// Operations delegates the file reads; nil selects the local filesystem (upstream options.operations).
+	Operations *ReadOperations
+}
+
+// ReadOperations is upstream's ReadOperations: pluggable file reads, for example over SSH.
+// Ports packages/coding-agent/src/core/tools/read.ts.
+type ReadOperations struct {
+	// ReadFile reads the file contents.
+	ReadFile func(absolutePath string) ([]byte, error)
+	// Access fails when the file is not readable.
+	Access func(absolutePath string) error
+	// DetectImageMimeType returns the image MIME type, or "" for a non-image. A nil function treats every file as text.
+	DetectImageMimeType func(absolutePath string) (string, error)
 }
 
 func (t *ReadTool) Name() string  { return "read" }
@@ -48,6 +62,48 @@ func (t *ReadTool) Schema() ai.ToolSchema {
 
 func (t *ReadTool) ExecutionMode() agent.ToolExecutionMode { return agent.ToolModeParallel }
 
+// readOutputSchema mirrors upstream readOutputSchema (read.ts): the result for programmatic callers such as codemode
+// scripts, the text for text files and an image block for images that codemode's `image()` accepts. `note` is the text
+// that goes with the image, such as resize hints. The key order is TypeBox's serialization.
+const readOutputSchema = `{"anyOf":[{"type":"string"},{"type":"object","required":["type","data","mimeType","note"],"properties":{"type":{"type":"string","const":"image"},"data":{"type":"string"},"mimeType":{"type":"string"},"note":{"type":"string"}}}]}`
+
+// OutputSchema is the schema of the result's structured content.
+func (t *ReadTool) OutputSchema() json.RawMessage { return json.RawMessage(readOutputSchema) }
+
+// readStructuredContent mirrors upstream toReadOutput: the image block and its note, or the text for text files and for
+// images that could not be processed.
+func readStructuredContent(content []ai.ToolResultMessageContent) json.RawMessage {
+	var text string
+	var image *ai.ImageContent
+	haveText := false
+	for _, block := range content {
+		switch block := block.(type) {
+		case ai.TextContent:
+			if !haveText {
+				text, haveText = block.Text, true
+			}
+		case ai.ImageContent:
+			if image == nil {
+				image = &block
+			}
+		}
+	}
+	var out any = text
+	if image != nil {
+		out = struct {
+			Type     string `json:"type"`
+			Data     string `json:"data"`
+			MimeType string `json:"mimeType"`
+			Note     string `json:"note"`
+		}{"image", image.Data, image.MimeType, text}
+	}
+	var buf bytes.Buffer
+	encoder := json.NewEncoder(&buf)
+	encoder.SetEscapeHTML(false)
+	_ = encoder.Encode(out)
+	return json.RawMessage(bytes.TrimRight(buf.Bytes(), "\n"))
+}
+
 // Execute mirrors upstream read.ts execute: resolve the path, check it is
 // readable, return a supported image as an attachment, and otherwise decode
 // the text (invalid UTF-8 becomes U+FFFD, as Buffer.toString does) and apply
@@ -69,24 +125,45 @@ func (t *ReadTool) Execute(ctx context.Context, _ string, rawParams json.RawMess
 	if err != nil {
 		return agent.AgentToolResult{}, err
 	}
-	if err := checkReadable(path); err != nil {
+	access, readFile := checkReadable, os.ReadFile
+	detect := func(path string, _ []byte) (string, error) {
+		return imageprocessing.DetectSupportedImageMimeTypeFromFile(path)
+	}
+	if ops := t.Operations; ops != nil {
+		access, readFile = ops.Access, ops.ReadFile
+		detect = func(path string, _ []byte) (string, error) {
+			if ops.DetectImageMimeType == nil {
+				return "", nil
+			}
+			return ops.DetectImageMimeType(path)
+		}
+	}
+	if err := access(path); err != nil {
 		return agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: NodeFSError(err, "access", path)}}, Details: map[string]any{}, IsError: true, Thrown: true}, nil
 	}
-	data, err := os.ReadFile(path)
+	// upstream: read.ts:129 a detection failure is a failed read, as the surrounding try/catch reports it.
+	mime, err := detect(path, nil)
+	if err != nil {
+		return agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: err.Error()}}, Details: map[string]any{}, IsError: true, Thrown: true}, nil
+	}
+	data, err := readFile(path)
 	if err != nil {
 		return agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: NodeFSError(err, "read", "")}}, Details: map[string]any{}, IsError: true, Thrown: true}, nil
 	}
 	if ctx.Err() != nil {
 		return agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: "Operation aborted"}}, Details: map[string]any{}, IsError: true, Thrown: true}, nil
 	}
-	if mime := SupportedImageMime(data); mime != "" {
-		return t.readImage(ctx, data, mime), nil
+	if mime != "" {
+		result := t.readImage(ctx, data, mime)
+		result.StructuredContent = readStructuredContent(result.Content)
+		return result, nil
 	}
 	var decoder utf8StreamDecoder
 	result, err := readTextResult(p, decoder.decode(data, false))
 	if err != nil {
 		return agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: err.Error()}}, Details: map[string]any{}, IsError: true, Thrown: true}, nil
 	}
+	result.StructuredContent = readStructuredContent(result.Content)
 	return result, nil
 }
 
@@ -106,7 +183,14 @@ func readTextResult(p readParams, textContent string) (agent.AgentToolResult, er
 	// offset is 1-indexed; JavaScript's slice truncates a fractional index.
 	startLine := 0
 	if p.Offset != nil && *p.Offset != 0 {
-		startLine = int(math.Max(0, *p.Offset-1))
+		// The comparison runs on the float, because an offset past the int range converts to a negative start.
+		start := math.Max(0, *p.Offset-1)
+		if start < float64(totalFileLines) {
+			//portlint:allow numbers start is below totalFileLines (checked above), so the conversion stays in range
+			startLine = int(start)
+		} else {
+			startLine = totalFileLines
+		}
 	}
 	startLineDisplay := startLine + 1
 	if startLine >= totalFileLines {
@@ -118,6 +202,7 @@ func readTextResult(p readParams, textContent string) (agent.AgentToolResult, er
 	if hasUserLimit {
 		// Math.min(startLine + limit, allLines.length), then slice(startLine,
 		// endLine): a negative end counts from the end of the array.
+		//portlint:allow numbers the minimum is at most the line count above; a limit below the int range converts to a negative end, which the slice rule below maps to an empty slice as JavaScript does
 		endLine := int(math.Min(float64(startLine)+*p.Limit, float64(totalFileLines)))
 		sliceEnd := endLine
 		if sliceEnd < 0 {
@@ -128,7 +213,7 @@ func readTextResult(p readParams, textContent string) (agent.AgentToolResult, er
 	} else {
 		selected = strings.Join(allLines[startLine:], "\n")
 	}
-	tr := TruncateHead(selected, DefaultMaxBytes, DefaultMaxLines)
+	tr := TruncateHead(selected, TruncationOptions{})
 
 	var output string
 	var truncation *TruncationResult
@@ -193,13 +278,4 @@ func (t *ReadTool) readImage(ctx context.Context, data []byte, mime string) agen
 		result.Content = append(result.Content, ai.ImageContent{MimeType: processedMIME, Data: base64Encode(processed)})
 	}
 	return result
-}
-
-func readToolWithSettings(cwd string, settings BashSettingsView) *ReadTool {
-	tool := &ReadTool{CWD: cwd}
-	if images, ok := settings.(interface{ GetImageAutoResize() bool }); ok {
-		autoResize := images.GetImageAutoResize()
-		tool.AutoResizeImages = &autoResize
-	}
-	return tool
 }

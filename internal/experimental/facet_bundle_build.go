@@ -18,14 +18,66 @@ type FacetEntrySource struct {
 	Source string
 }
 
-// BundleFacetsOptions selects independent entries and their output directory. A nil plugin version stays omitted; SourceMap defaults to false. WorkingDirectory defaults to the current directory.
+// FacetEntrySources is upstream's Record<string, string> of entry names to sources (bundle.ts BundleFacetsOptions.entries,
+// package.ts defaultFacets): the insertion-ordered slice of FacetEntrySource. MarshalJSON writes the JSON object with the key order
+// Object.entries enumerates; UnmarshalJSON reads one with that order and with repeated names collapsed.
+type FacetEntrySources []FacetEntrySource
+
+// MarshalJSON writes the entries as one JSON object, integer names first and a repeated name once at its first position (the order
+// protocol.ToJSON gives an object).
+func (s FacetEntrySources) MarshalJSON() ([]byte, error) {
+	object := make(protocol.Object, len(s))
+	for index, entry := range s {
+		object[index] = protocol.Property{Key: entry.Name, Value: entry.Source}
+	}
+	return protocol.ToJSON(object)
+}
+
+// UnmarshalJSON reads a JSON object of string values into the entries in enumeration order.
+func (s *FacetEntrySources) UnmarshalJSON(data []byte) error {
+	value, err := protocol.FromJSON(data)
+	if err != nil {
+		return err
+	}
+	properties, ok := value.(protocol.Object)
+	if !ok {
+		return fmt.Errorf("facet entries must be a JSON object, got %T", value)
+	}
+	entries := make(FacetEntrySources, len(properties))
+	for index, property := range properties {
+		key, keyOK := property.Key.(string)
+		source, sourceOK := property.Value.(string)
+		if !keyOK || !sourceOK {
+			return fmt.Errorf("facet entry %v must have a string source", property.Key)
+		}
+		entries[index] = FacetEntrySource{Name: key, Source: source}
+	}
+	*s = entries
+	return nil
+}
+
+// FacetBundlePlatform selects the esbuild platform of a facet bundle (bundle.ts FacetBundlePlatform).
+type FacetBundlePlatform string
+
+// The facet bundle platforms. The empty value selects FacetBundlePlatformNode.
+const (
+	FacetBundlePlatformNode    FacetBundlePlatform = "node"
+	FacetBundlePlatformBrowser FacetBundlePlatform = "browser"
+	FacetBundlePlatformNeutral FacetBundlePlatform = "neutral"
+)
+
+// BundleFacetsOptions selects independent entries and their output directory. A nil plugin version stays omitted; SourceMap and Minify default to false. WorkingDirectory defaults to the current directory. A nil Define adds no replacements, an empty Platform selects node, and a nil Target selects node22.19 for the node platform and es2022 for the others; several targets are esbuild's comma-separated target list.
 type BundleFacetsOptions struct {
 	Plugin           FacetBundlePlugin
-	Entries          []FacetEntrySource
+	Entries          FacetEntrySources
 	Outdir           string
 	WorkingDirectory *string
 	External         []string
 	SourceMap        bool
+	Minify           bool
+	Define           map[string]string
+	Platform         FacetBundlePlatform
+	Target           []string
 }
 
 // BundleFacetsResult owns the manifest data and the absolute path of its installed manifest file.
@@ -38,7 +90,7 @@ type BundleFacetsResult struct {
 type BundleFacetPackageOptions struct {
 	PackagePath   string
 	Outdir        string
-	DefaultFacets []FacetEntrySource
+	DefaultFacets FacetEntrySources
 }
 
 // BundleFacetPackageResult includes the canonical package paths used to read metadata and resolve entries.

@@ -33,8 +33,9 @@ import {
   UnionScoreSelect,
   Update,
   pointer_exports,
+  value_default,
   value_exports
-} from "./typebox-shared-UUYEEUZA.mjs";
+} from "./typebox-shared-HOI5WX4G.mjs";
 import "./typebox-shared-52AGGYDU.mjs";
 export {
   Assert,
@@ -71,5 +72,6 @@ export {
   UnionPrioritySort,
   UnionScoreSelect,
   Update,
-  value_exports as Value
+  value_exports as Value,
+  value_default as default
 };

@@ -55,7 +55,7 @@ func listen(t *testing.T, harness Harness, conversation Conversation) *listening
 }
 
 func slowSetup(t *testing.T) *chatState {
-	return chatSetup(t, ai.FauxConfig{TokensPerSecond: 400, MinTokenSize: 1, MaxTokenSize: 1})
+	return chatSetup(t, ai.FauxConfig{TokensPerSecond: 400, TokenSize: &ai.FauxTokenSize{Min: new(1), Max: new(1)}})
 }
 
 func eventTypes(events []AgentEvent) []string {
@@ -164,12 +164,11 @@ func livePartial(change durable.DocumentChange) (any, bool) {
 	if change.Record.Kind != "pi.live" || change.Value == nil {
 		return nil, false
 	}
-	generation, _ := change.Value["generation"].(map[string]any)
+	generation, _ := change.Value.Value("generation").(*delta.JsonObject)
 	if generation == nil {
 		return nil, false
 	}
-	message, ok := generation["message"]
-	return message, ok
+	return generation.Get("message")
 }
 
 // partialsOf records the committed partials of the generation, one per commit that has one (harness-events.test.ts:94).
@@ -254,6 +253,7 @@ func changeLive(t *testing.T, conversation Conversation, edit func(live *delta.O
 	})
 }
 
+// Pi: packages/durable/src/harness/events.ts:97 (closed).
 func TestAgentEvents(t *testing.T) {
 	t.Run("streams a run as lifecycle events and text deltas that rebuild the answer", func(t *testing.T) {
 		setup := slowSetup(t)
@@ -319,7 +319,7 @@ func TestAgentEvents(t *testing.T) {
 	t.Run("reports tool start, output appends, and the result entry", func(t *testing.T) {
 		setup := chatSetup(t)
 		gate := deferred()
-		addTool(t, setup.Registry, new(durable.ToolRegistration{
+		addTool(t, setup.Registry, DefineTool(durable.ToolRegistration{
 			ToolSchema: ai.ToolSchema{Name: "print", Description: "Prints", Parameters: map[string]any{"type": "object", "properties": map[string]any{"n": map[string]any{"type": "number"}}, "required": []any{"n"}}},
 			Execute: func(ctx context.Context, _ any, api durable.ToolExecutionApi) (durable.ToolExecutionResult, error) {
 				api.Output("one\n")
@@ -332,7 +332,7 @@ func TestAgentEvents(t *testing.T) {
 			},
 		}))
 		setup.Faux.SetResponses([]ai.FauxResponseStep{
-			ai.FauxStaticStep(ai.FauxResponse{Content: []ai.FauxContentBlock{ai.FauxToolCall("print", map[string]any{"n": 1}, "c1")}, StopReason: "toolUse"}),
+			ai.FauxStaticStep(ai.FauxResponse{Content: []ai.FauxContentBlock{ai.FauxToolCall("print", map[string]any{"n": 1}, &ai.FauxToolCallOptions{ID: "c1"})}, StopReason: "toolUse"}),
 			fauxAnswer("done"),
 		})
 		harness, root := openChat(t, storage.NewMemoryStorage(), setup)
@@ -441,12 +441,12 @@ func TestAgentEvents(t *testing.T) {
 	})
 
 	t.Run("rebuilds every committed partial of thinking, text, and tool-call arguments from message changes", func(t *testing.T) {
-		setup := chatSetup(t, ai.FauxConfig{TokensPerSecond: 150, MinTokenSize: 1, MaxTokenSize: 1})
+		setup := chatSetup(t, ai.FauxConfig{TokensPerSecond: 150, TokenSize: &ai.FauxTokenSize{Min: new(1), Max: new(1)}})
 		setup.Faux.SetResponses([]ai.FauxResponseStep{
 			ai.FauxStaticStep(ai.FauxResponse{Content: []ai.FauxContentBlock{
 				ai.FauxThinking(strings.Repeat("thinking about it ", 10)),
 				ai.FauxText(strings.Repeat("some text ", 10)),
-				ai.FauxToolCall("missing", map[string]any{"path": strings.Repeat("a/long/path/", 10), "note": strings.Repeat("x", 60)}, "c1"),
+				ai.FauxToolCall("missing", map[string]any{"path": strings.Repeat("a/long/path/", 10), "note": strings.Repeat("x", 60)}, &ai.FauxToolCallOptions{ID: "c1"}),
 			}, StopReason: "toolUse"}),
 			fauxAnswer("done"),
 		})
@@ -477,7 +477,7 @@ func TestAgentEvents(t *testing.T) {
 		}
 		var want []any
 		for _, partial := range committedPartials {
-			want = append(want, partial.(map[string]any)["content"])
+			want = append(want, partial.(*delta.JsonObject).Value("content"))
 		}
 		expectSameJSON(t, rebuilt, want)
 		types := map[string]bool{}
@@ -496,7 +496,7 @@ func TestAgentEvents(t *testing.T) {
 	t.Run("rebuilds a sliding tail window from output trims and appends", func(t *testing.T) {
 		setup := chatSetup(t)
 		gate := deferred()
-		addTool(t, setup.Registry, new(durable.ToolRegistration{
+		addTool(t, setup.Registry, DefineTool(durable.ToolRegistration{
 			ToolSchema:   ai.ToolSchema{Name: "tail", Description: "Prints lines", Parameters: emptyObjectSchema()},
 			OutputLimits: &durable.ToolOutputLimits{MaxLines: new(3), Retain: durable.RetainTail},
 			Execute: func(ctx context.Context, _ any, api durable.ToolExecutionApi) (durable.ToolExecutionResult, error) {
@@ -511,7 +511,7 @@ func TestAgentEvents(t *testing.T) {
 			},
 		}))
 		setup.Faux.SetResponses([]ai.FauxResponseStep{
-			ai.FauxStaticStep(ai.FauxResponse{Content: []ai.FauxContentBlock{ai.FauxToolCall("tail", map[string]any{}, "c1")}, StopReason: "toolUse"}),
+			ai.FauxStaticStep(ai.FauxResponse{Content: []ai.FauxContentBlock{ai.FauxToolCall("tail", map[string]any{}, &ai.FauxToolCallOptions{ID: "c1"})}, StopReason: "toolUse"}),
 			fauxAnswer("done"),
 		})
 		harness, root := openChat(t, storage.NewMemoryStorage(), setup)
@@ -522,11 +522,11 @@ func TestAgentEvents(t *testing.T) {
 				if change.Record.Kind != "pi.live" || change.Value == nil {
 					continue
 				}
-				tools, _ := change.Value["tools"].([]any)
+				tools, _ := change.Value.Value("tools").([]any)
 				if len(tools) == 0 {
 					continue
 				}
-				output, ok := tools[0].(map[string]any)["output"].(string)
+				output, ok := tools[0].(*delta.JsonObject).Value("output").(string)
 				mu.Lock()
 				if ok && (len(outputs) == 0 || outputs[len(outputs)-1] != output) {
 					outputs = append(outputs, output)
@@ -602,14 +602,14 @@ func TestAgentEvents(t *testing.T) {
 
 	t.Run("ends a call that never runs and a tool aborted with its generation", func(t *testing.T) {
 		setup := chatSetup(t)
-		addTool(t, setup.Registry, new(durable.ToolRegistration{
+		addTool(t, setup.Registry, DefineTool(durable.ToolRegistration{
 			ToolSchema: ai.ToolSchema{Name: "wait", Description: "Waits until aborted", Parameters: emptyObjectSchema()},
 			Execute: func(ctx context.Context, _ any, _ durable.ToolExecutionApi) (durable.ToolExecutionResult, error) {
 				return durable.ToolExecutionResult{}, abortedBy(ctx)
 			},
 		}))
 		setup.Faux.SetResponses([]ai.FauxResponseStep{
-			ai.FauxStaticStep(ai.FauxResponse{Content: []ai.FauxContentBlock{ai.FauxToolCall("ghost", map[string]any{}, "c1"), ai.FauxToolCall("wait", map[string]any{}, "c2")}, StopReason: "toolUse"}),
+			ai.FauxStaticStep(ai.FauxResponse{Content: []ai.FauxContentBlock{ai.FauxToolCall("ghost", map[string]any{}, &ai.FauxToolCallOptions{ID: "c1"}), ai.FauxToolCall("wait", map[string]any{}, &ai.FauxToolCallOptions{ID: "c2"})}, StopReason: "toolUse"}),
 		})
 		harness, root := openChat(t, storage.NewMemoryStorage(), setup)
 		listened := listen(t, harness, root)
@@ -653,14 +653,14 @@ func TestAgentEvents(t *testing.T) {
 	t.Run("reports a steer without run events, a reset as an appended entry, and nothing for other conversations", func(t *testing.T) {
 		setup := chatSetup(t)
 		gate := deferred()
-		addTool(t, setup.Registry, new(durable.ToolRegistration{
+		addTool(t, setup.Registry, DefineTool(durable.ToolRegistration{
 			ToolSchema: ai.ToolSchema{Name: "hold", Description: "Waits", Parameters: emptyObjectSchema()},
 			Execute: func(ctx context.Context, _ any, _ durable.ToolExecutionApi) (durable.ToolExecutionResult, error) {
 				return durable.ToolExecutionResult{}, gate.wait(ctx)
 			},
 		}))
 		setup.Faux.SetResponses([]ai.FauxResponseStep{
-			ai.FauxStaticStep(ai.FauxResponse{Content: []ai.FauxContentBlock{ai.FauxToolCall("hold", map[string]any{}, "c1")}, StopReason: "toolUse"}),
+			ai.FauxStaticStep(ai.FauxResponse{Content: []ai.FauxContentBlock{ai.FauxToolCall("hold", map[string]any{}, &ai.FauxToolCallOptions{ID: "c1"})}, StopReason: "toolUse"}),
 			fauxAnswer("done"),
 		})
 		harness, root := openChat(t, storage.NewMemoryStorage(), setup)
@@ -843,7 +843,7 @@ func TestAgentEvents(t *testing.T) {
 	})
 
 	t.Run("starts a message at the first committed partial and ends it with the converted entry on abort", func(t *testing.T) {
-		setup := chatSetup(t, ai.FauxConfig{TokensPerSecond: 100, MinTokenSize: 1, MaxTokenSize: 1})
+		setup := chatSetup(t, ai.FauxConfig{TokensPerSecond: 100, TokenSize: &ai.FauxTokenSize{Min: new(1), Max: new(1)}})
 		setup.Faux.SetResponses([]ai.FauxResponseStep{fauxAnswer(strings.Repeat("x", 400))})
 		harness, root := openChat(t, storage.NewMemoryStorage(), setup)
 		listened := listen(t, harness, root)

@@ -1,0 +1,208 @@
+[
+ {
+  "ids": [
+   "pkg:mcp/oauth#OAuthClientProvider"
+  ],
+  "targets": [
+   "mcp/oauth/flow.go#OAuthClientProvider",
+   "mcp/oauth/flow.go#StateProvider",
+   "mcp/oauth/flow.go#ClientInformationSaver",
+   "mcp/oauth/flow.go#ClientMetadataDocumentProvider",
+   "mcp/oauth/flow.go#ClientAuthenticator",
+   "mcp/oauth/flow.go#CredentialInvalidator",
+   "mcp/oauth/flow.go#DiscoveryStateStore"
+  ],
+  "production": [
+   "call:mcp/oauth/flow.go#runFlow"
+  ],
+  "evidence": [
+   "test:mcp/oauth/oauth_test.go#TestMCPOAuthDiscoversRegistersAuthorizesWithPKCEAndRefreshesOn401"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; a rejection is the returned error; undefined is nil or the empty value. A `void | Promise<void>` return is the single Go error.",
+  "rationale": "OAuthClientProvider is the Go interface OAuthClientProvider (the required members) plus six one- or two-method interfaces for the optional members; the flow type-asserts each optional one, so a provider implements exactly the members it has.",
+  "properties": {
+   "addClientAuthentication": {
+    "targets": [
+     "mcp/oauth/flow.go#ClientAuthenticator.AddClientAuthentication"
+    ],
+    "evidence": [
+     "test:mcp/oauth/provider_hooks_test.go#TestMCPOAuthTokenRequestUsesTheProvidersAddClientAuthentication"
+    ],
+    "production": [
+     "call:mcp/oauth/flow.go#runFlow"
+    ],
+    "rationale": "The optional property is the method of the optional Go interface ClientAuthenticator (a provider that does not implement it has no hook)."
+   },
+   "clientInformation": {
+    "targets": [
+     "mcp/oauth/flow.go#OAuthClientProvider.ClientInformation"
+    ],
+    "evidence": [
+     "test:mcp/oauth/oauth_test.go#TestMCPOAuthDiscoversRegistersAuthorizesWithPKCEAndRefreshesOn401"
+    ],
+    "production": [
+     "call:mcp/oauth/flow.go#runFlow"
+    ],
+    "rationale": "The property is the Go interface method OAuthClientProvider.ClientInformation; the flow (runFlow) calls it."
+   },
+   "clientMetadata": {
+    "targets": [
+     "mcp/oauth/flow.go#OAuthClientProvider.ClientMetadata"
+    ],
+    "evidence": [
+     "test:mcp/oauth/oauth_test.go#TestMCPOAuthDiscoversRegistersAuthorizesWithPKCEAndRefreshesOn401"
+    ],
+    "production": [
+     "call:mcp/oauth/flow.go#runFlow"
+    ],
+    "rationale": "The property is the Go interface method OAuthClientProvider.ClientMetadata; the flow (runFlow) calls it."
+   },
+   "clientMetadataDocument": {
+    "targets": [
+     "mcp/oauth/flow.go#ClientMetadataDocumentProvider.ClientMetadataDocument"
+    ],
+    "evidence": [
+     "test:mcp/oauth/provider_hooks_test.go#TestMCPOAuthUsesTheProvidersClientMetadataDocumentInsteadOfRegistering"
+    ],
+    "production": [
+     "call:mcp/oauth/flow.go#runFlow"
+    ],
+    "rationale": "The optional property is the method of the optional Go interface ClientMetadataDocumentProvider."
+   },
+   "codeVerifier": {
+    "targets": [
+     "mcp/oauth/flow.go#OAuthClientProvider.CodeVerifier"
+    ],
+    "evidence": [
+     "test:mcp/oauth/oauth_test.go#TestMCPOAuthExchangesACodeOnlyWhenItsIssParameterNamesTheAuthorizationServer"
+    ],
+    "production": [
+     "call:mcp/oauth/flow.go#runFlow"
+    ],
+    "rationale": "The property is the Go interface method OAuthClientProvider.CodeVerifier; the flow (runFlow) calls it."
+   },
+   "discoveryState": {
+    "targets": [
+     "mcp/oauth/flow.go#DiscoveryStateStore.DiscoveryState"
+    ],
+    "evidence": [
+     "test:mcp/oauth/oauth_test.go#TestMCPOAuthExchangesACodeOnlyWhenItsIssParameterNamesTheAuthorizationServer"
+    ],
+    "production": [
+     "call:mcp/oauth/flow.go#runFlow"
+    ],
+    "rationale": "The optional property is the method of the optional Go interface DiscoveryStateStore, which pairs it with SaveDiscoveryState."
+   },
+   "invalidateCredentials": {
+    "targets": [
+     "mcp/oauth/flow.go#CredentialInvalidator.InvalidateCredentials"
+    ],
+    "evidence": [
+     "test:mcp/oauth/oauth_test.go#TestMcpOAuthProviderKeepsFailingAfterAFailedWrite",
+     "test:mcp/oauth/provider_state_test.go#TestMcpOAuthProviderInvalidatesOnlyTheNamedCredentialKind"
+    ],
+    "production": [
+     "call:mcp/oauth/flow.go#AuthorizeMcp"
+    ],
+    "rationale": "The optional property is the method of the optional Go interface CredentialInvalidator; kind is a string."
+   },
+   "redirectToAuthorization": {
+    "targets": [
+     "mcp/oauth/flow.go#OAuthClientProvider.RedirectToAuthorization"
+    ],
+    "evidence": [
+     "test:mcp/oauth/oauth_test.go#TestMCPOAuthDiscoversRegistersAuthorizesWithPKCEAndRefreshesOn401"
+    ],
+    "production": [
+     "call:mcp/oauth/flow.go#runFlow"
+    ],
+    "rationale": "The property is the Go interface method OAuthClientProvider.RedirectToAuthorization; the flow (runFlow) calls it."
+   },
+   "redirectUrl": {
+    "targets": [
+     "mcp/oauth/flow.go#OAuthClientProvider.RedirectURL"
+    ],
+    "evidence": [
+     "test:mcp/oauth/oauth_test.go#TestMCPOAuthDiscoversRegistersAuthorizesWithPKCEAndRefreshesOn401"
+    ],
+    "production": [
+     "call:mcp/oauth/flow.go#runFlow"
+    ],
+    "rationale": "The property is the Go interface method RedirectURL() string; a URL value is its string form."
+   },
+   "saveClientInformation": {
+    "targets": [
+     "mcp/oauth/flow.go#ClientInformationSaver.SaveClientInformation"
+    ],
+    "evidence": [
+     "test:mcp/oauth/oauth_test.go#TestMCPOAuthDiscoversRegistersAuthorizesWithPKCEAndRefreshesOn401"
+    ],
+    "production": [
+     "call:mcp/oauth/flow.go#runFlow"
+    ],
+    "rationale": "The optional property is the method of the optional Go interface ClientInformationSaver; a provider without it makes a registration fail with `OAuth client information cannot be persisted`."
+   },
+   "saveCodeVerifier": {
+    "targets": [
+     "mcp/oauth/flow.go#OAuthClientProvider.SaveCodeVerifier"
+    ],
+    "evidence": [
+     "test:mcp/oauth/oauth_test.go#TestMCPOAuthDiscoversRegistersAuthorizesWithPKCEAndRefreshesOn401"
+    ],
+    "production": [
+     "call:mcp/oauth/flow.go#runFlow"
+    ],
+    "rationale": "The property is the Go interface method OAuthClientProvider.SaveCodeVerifier; the flow (runFlow) calls it."
+   },
+   "saveDiscoveryState": {
+    "targets": [
+     "mcp/oauth/flow.go#DiscoveryStateStore.SaveDiscoveryState"
+    ],
+    "evidence": [
+     "test:mcp/oauth/oauth_test.go#TestMCPOAuthUsesAConfiguredAuthorizationServerMetadataDocumentAsIs",
+     "test:mcp/oauth/oauth_test.go#TestMCPOAuthDiscoversRegistersAuthorizesWithPKCEAndRefreshesOn401"
+    ],
+    "production": [
+     "call:mcp/oauth/flow.go#runFlow"
+    ],
+    "rationale": "The optional property is the method of the optional Go interface DiscoveryStateStore."
+   },
+   "saveTokens": {
+    "targets": [
+     "mcp/oauth/flow.go#OAuthClientProvider.SaveTokens"
+    ],
+    "evidence": [
+     "test:mcp/oauth/oauth_test.go#TestMCPOAuthDiscoversRegistersAuthorizesWithPKCEAndRefreshesOn401"
+    ],
+    "production": [
+     "call:mcp/oauth/flow.go#runFlow"
+    ],
+    "rationale": "The property is the Go interface method OAuthClientProvider.SaveTokens; the flow (runFlow) calls it."
+   },
+   "state": {
+    "targets": [
+     "mcp/oauth/flow.go#StateProvider.State"
+    ],
+    "evidence": [
+     "test:mcp/oauth/oauth_test.go#TestMCPOAuthDiscoversRegistersAuthorizesWithPKCEAndRefreshesOn401"
+    ],
+    "production": [
+     "call:mcp/oauth/flow.go#runFlow"
+    ],
+    "rationale": "The optional property is the method of the optional Go interface StateProvider."
+   },
+   "tokens": {
+    "targets": [
+     "mcp/oauth/flow.go#OAuthClientProvider.Tokens"
+    ],
+    "evidence": [
+     "test:mcp/oauth/oauth_test.go#TestMCPOAuthDiscoversRegistersAuthorizesWithPKCEAndRefreshesOn401"
+    ],
+    "production": [
+     "call:mcp/oauth/flow.go#runFlow"
+    ],
+    "rationale": "The property is the Go interface method OAuthClientProvider.Tokens; the flow (runFlow) calls it."
+   }
+  }
+ }
+]

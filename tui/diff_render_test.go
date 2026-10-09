@@ -1,5 +1,7 @@
 package tui
 
+// pi: packages/coding-agent/src/modes/interactive/components/diff.ts
+
 import (
 	"slices"
 	"strings"
@@ -38,33 +40,6 @@ func TestRenderDiff_MultiLineNoIntra(t *testing.T) {
 	inverse := "\x1b[7m"
 	if strings.Contains(out, inverse) {
 		t.Error("should NOT contain inverse for multi-line diff")
-	}
-}
-
-func TestSplitWords(t *testing.T) {
-	got := splitWords("hello   world foo")
-	if len(got) != 5 {
-		t.Errorf("len = %d, want 5, got %v", len(got), got)
-	}
-}
-
-func TestDiffWords(t *testing.T) {
-	old := splitWords("hello world")
-	new := splitWords("hello universe")
-	chunks := diffWords(old, new)
-	// Should have: equal("hello"), equal(" "), remove("world"), add("universe")
-	hasRemove := false
-	hasAdd := false
-	for _, c := range chunks {
-		if c.op == diffRemove {
-			hasRemove = true
-		}
-		if c.op == diffAdd {
-			hasAdd = true
-		}
-	}
-	if !hasRemove || !hasAdd {
-		t.Errorf("expected remove and add ops, got %v", chunks)
 	}
 }
 
@@ -114,8 +89,16 @@ func TestParseDiffLine(t *testing.T) {
 func TestRenderDiffDrawsALineSeparatorRowAsContext(t *testing.T) {
 	th := ActiveTheme()
 	got := strings.Split(RenderDiff("-1 a\u2028b\n+1 c"), "\n")
-	want := []string{th.FgText("toolDiffContext", "-1 a\u2028b"), th.FgText("toolDiffAdded", "+1 c")}
+	want := []string{th.Fg("toolDiffContext", "-1 a\u2028b"), th.Fg("toolDiffAdded", "+1 c")}
 	if !slices.Equal(got, want) {
 		t.Errorf("RenderDiff = %q, want %q", got, want)
+	}
+}
+
+// diff.ts:68-79: renderDiff(diffText, _options) ignores the options; a file path changes nothing.
+func TestRenderDiffIgnoresItsOptions(t *testing.T) {
+	diff := "+1 added\n-2 removed\n 3 context"
+	if got, want := RenderDiff(diff, RenderDiffOptions{FilePath: "a.go"}), RenderDiff(diff); got != want || got == "" {
+		t.Fatalf("options changed the output:\n%q\n%q", got, want)
 	}
 }

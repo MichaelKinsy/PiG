@@ -28,7 +28,7 @@ func fauxAnswer(text string) ai.FauxResponseStep {
 }
 
 func fauxToolTurn(name string, args map[string]any, id string) ai.FauxResponseStep {
-	return ai.FauxStaticStep(ai.FauxResponse{Content: []ai.FauxContentBlock{ai.FauxToolCall(name, args, id)}, StopReason: "toolUse"})
+	return ai.FauxStaticStep(ai.FauxResponse{Content: []ai.FauxContentBlock{ai.FauxToolCall(name, args, &ai.FauxToolCallOptions{ID: id})}, StopReason: "toolUse"})
 }
 
 func fauxModels(responses ...ai.FauxResponseStep) *ai.Models {
@@ -128,7 +128,7 @@ func TestExample15SystemPrompt(t *testing.T) {
 		}, nil),
 	}})
 	agentsMd := new(durable.Extension{Name: "agents-md", Sections: []*durable.PromptSection{section("agents_md", text("Run npm run check after changes."), nil)}})
-	terse := new(durable.Extension{Name: "terse", Wraps: []durable.Wrap{{Section: "preamble", WrapSection: func(preamble *durable.PromptSection) *durable.PromptSection {
+	terse := new(durable.Extension{Name: "terse", Wraps: []durable.Wrap{durable.SectionWrap{Section: "preamble", Wrap: func(preamble *durable.PromptSection) *durable.PromptSection {
 		wrapped := *preamble
 		wrapped.Render = func(ctx context.Context, input durable.PromptInput) (*string, error) {
 			rendered, err := preamble.Render(ctx, input)

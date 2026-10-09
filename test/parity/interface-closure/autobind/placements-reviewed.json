@@ -1,0 +1,75 @@
+{
+ "agent:AfterToolCallContext": {
+  "go": [
+   "agent/agent.go#AfterToolCallHook"
+  ],
+  "members": {
+   "assistantMessage": "agent/tool_call_hook_context.go#ToolCallHookContext.AssistantMessage",
+   "context": "agent/tool_call_hook_context.go#ToolCallHookContext.Context",
+   "isError": "result.IsError",
+   "toolCall": "toolCallID toolName"
+  },
+  "reason": "Pi agent/src/types.ts:119-132 AfterToolCallContext is the single argument of afterToolCall; Go spreads it over AfterToolCallHook's positional parameters (agent/agent.go:658): toolCall is toolCallID and toolName, args and result are the same-named parameters, and isError is result.IsError, which the loop sets to the executed call's flag before each hook. assistantMessage and context, which agent-loop.ts:866-876 passes beside the call, reach every AfterToolCallHook through its context.Context as agent.ToolCallHookContext (agent/tool_call_hook_context.go; attached at agent/tool_execution.go:53 and agent/run_tool_call.go:58-59) (LEAD-RULINGS-1520 unblock-types 3)."
+ },
+ "agent:BeforeToolCallContext": {
+  "go": [
+   "agent/agent.go#BeforeToolCallHook"
+  ],
+  "members": {
+   "assistantMessage": "agent/tool_call_hook_context.go#ToolCallHookContext.AssistantMessage",
+   "context": "agent/tool_call_hook_context.go#ToolCallHookContext.Context",
+   "toolCall": "toolCallID toolName"
+  },
+  "reason": "Pi agent/src/types.ts:107-116 BeforeToolCallContext is the single argument of beforeToolCall; Go spreads it over BeforeToolCallHook's positional parameters (agent/agent.go:632): toolCall is toolCallID and toolName, args is the same-named parameter. assistantMessage and context, which agent-loop.ts:728-736 passes beside the call, reach every BeforeToolCallHook through its context.Context as agent.ToolCallHookContext (agent/tool_call_hook_context.go; attached at agent/tool_execution.go:53 and agent/run_tool_call.go:58-59) (LEAD-RULINGS-1520 unblock-types 3)."
+ },
+ "coding-agent:AgentSessionConfig": {
+  "go": [
+   "coding/services.go#AgentSessionServices",
+   "coding/runtime_replacement.go#CreateAgentSessionRuntimeOptions"
+  ],
+  "members": {
+   "allowedToolNames": "coding/session.go#SessionOptions.AllowedTools",
+   "excludedToolNames": "coding/session.go#SessionOptions.ExcludedTools"
+  },
+  "reason": "Pi coding-agent/src/core/agent-session.ts:247 AgentSessionConfig is the AgentSession constructor's one argument. Go splits it: SessionOptions (the renamed owner) holds the per-session members, the AgentSessionServices that NewSession takes beside it hold cwd, settingsManager and modelRuntime (coding/services.go:274-318), and sessionStartEvent, which agent-session.ts:497 emits as session_start, is CreateAgentSessionRuntimeOptions.SessionStartEvent (coding/runtime_replacement.go:27) with the same startup default (LEAD-RULINGS-1520 unblock-types 1(a)). The tool-name lists are the Go sets of other names (rule T5s judges the set type): Pi reads them only through createToolNameMatcher (core/mcp-servers.ts:21-25, a name set plus patterns) and allowedToolNames also for emptiness and an mcp__ entry (agent-session.ts:490-495; sdk.ts:271-273 for excludeTools), all independent of order and repeats, so Go's map[string]struct{} AllowedTools and ExcludedTools carry them."
+ },
+ "coding-agent:CreateAgentSessionFromServicesOptions": {
+  "go": [
+   "coding/services.go#AgentSessionServices",
+   "coding/runtime_replacement.go#CreateAgentSessionRuntimeOptions"
+  ],
+  "members": {
+   "excludeTools": "coding/session.go#SessionOptions.ExcludedTools"
+  },
+  "reason": "Pi coding-agent/src/core/agent-session-services.ts:54 CreateAgentSessionFromServicesOptions is createAgentSessionFromServices' one argument. Go splits it over NewSession(services, SessionOptions): the per-session members are SessionOptions (the renamed owner) and sessionStartEvent is CreateAgentSessionRuntimeOptions.SessionStartEvent (coding/runtime_replacement.go:27) (LEAD-RULINGS-1520 unblock-types 1(a)). The tool-name lists are the Go sets of other names (rule T5s judges the set type): Pi reads them only through createToolNameMatcher (core/mcp-servers.ts:21-25, a name set plus patterns) and allowedToolNames also for emptiness and an mcp__ entry (agent-session.ts:490-495; sdk.ts:271-273 for excludeTools), all independent of order and repeats, so Go's map[string]struct{} AllowedTools and ExcludedTools carry them."
+ },
+ "coding-agent:CreateAgentSessionOptions": {
+  "go": [
+   "coding/services.go#CreateAgentSessionServicesOptions",
+   "coding/services.go#AgentSessionServices",
+   "coding/runtime_replacement.go#CreateAgentSessionRuntimeOptions"
+  ],
+  "members": {
+   "excludeTools": "coding/session.go#SessionOptions.ExcludedTools"
+  },
+  "reason": "Pi coding-agent/src/core/sdk.ts:42 CreateAgentSessionOptions is createAgentSession's one argument: sdk.ts:182-190 builds the services from cwd, agentDir, modelRuntime and settingsManager, and :458 passes sessionStartEvent on. Go splits it: SessionOptions (the renamed owner) holds the per-session members, CreateAgentSessionServicesOptions (coding/services.go:94) the inputs CreateAgentSessionServices builds the services from, and CreateAgentSessionRuntimeOptions.SessionStartEvent (coding/runtime_replacement.go:27) the start event (LEAD-RULINGS-1520 unblock-types 1(a)). The tool-name lists are the Go sets of other names (rule T5s judges the set type): Pi reads them only through createToolNameMatcher (core/mcp-servers.ts:21-25, a name set plus patterns) and allowedToolNames also for emptiness and an mcp__ entry (agent-session.ts:490-495; sdk.ts:271-273 for excludeTools), all independent of order and repeats, so Go's map[string]struct{} AllowedTools and ExcludedTools carry them."
+ },
+ "ai:processResponsesStream": {
+  "go": [],
+  "folds": {
+   "openaiStream": "decoder",
+   "output": "builder",
+   "stream": "builder",
+   "model": "builder"
+  },
+  "reason": "Pi ai/src/api/openai-responses-shared.ts:433-439 processResponsesStream(openaiStream, output, stream, model, options). Go's processResponsesStream(ctx, decoder, builder, options) (ai/openai_responses.go:1509) reads the same events through the record decoder and folds output, stream and model into the assistantStreamBuilder, which holds the partial message, the event stream and the requested model's identity and cost (ai/stream_builder.go:10-30, newAssistantStreamBuilder :55). Recorded as folded behaviour (LEAD-RULINGS-1520 unblock-types 5)."
+ },
+ "ai:OpenAIResponsesStreamOptions.onProviderStreamEvent": {
+  "go": [],
+  "folds": {
+   "data": "data",
+   "model": "bound: the provider binds the request's model when it builds the request: ai/provider_stream_event.go:23 wraps StreamOptions.OnProviderStreamEvent(ctx, data, model) into the builder's one-argument callback, so the model Pi passes is the same request model"
+  },
+  "reason": "Pi ai/src/types.ts:200 onProviderStreamEvent(data, model), which openai-responses-shared.ts:111 reuses. Go's OpenAIResponsesStreamOptions.OnProviderStreamEvent func(data any) error (ai/openai_responses.go:1455) receives the data; the model is bound per request (ai/provider_stream_event.go:23). Recorded as folded behaviour (LEAD-RULINGS-1520 unblock-types 5)."
+ }
+}

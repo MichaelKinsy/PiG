@@ -127,7 +127,7 @@ func TestAC51HerdrImageCapabilityOwnsRowReservation(t *testing.T) {
 	ResetCapabilitiesCache()
 	t.Cleanup(ResetCapabilitiesCache)
 
-	image := NewImage("eA==", "image/png", ImageOptions{Filename: "probe.png"}, &ImageDimensions{WidthPx: 800, HeightPx: 600})
+	image := NewImage("eA==", "image/png", DefaultImageTheme(), ImageOptions{Filename: "probe.png"}, &ImageDimensions{WidthPx: 800, HeightPx: 600})
 	lines := image.Render(80)
 	if len(lines) != 1 {
 		t.Fatalf("Herdr fallback reserved %d rows: %#v", len(lines), lines)
@@ -144,7 +144,7 @@ func TestHerdrWithGraphicsSignalRendersKittyImage(t *testing.T) {
 	ResetCapabilitiesCache()
 	t.Cleanup(ResetCapabilitiesCache)
 
-	image := NewImage("eA==", "image/png", ImageOptions{Filename: "probe.png"}, &ImageDimensions{WidthPx: 800, HeightPx: 600})
+	image := NewImage("eA==", "image/png", DefaultImageTheme(), ImageOptions{Filename: "probe.png"}, &ImageDimensions{WidthPx: 800, HeightPx: 600})
 	lines := image.Render(80)
 	if len(lines) < 2 || !strings.Contains(lines[0], "\x1b_G") {
 		t.Fatalf("positive Herdr graphics render = %#v", lines)
@@ -171,7 +171,7 @@ func TestEncodeKittyAndITerm2(t *testing.T) {
 	if !strings.Contains(seq, "a=T") || !strings.Contains(seq, "i=42") || !strings.Contains(seq, "m=1") || !strings.Contains(seq, "m=0") {
 		t.Fatalf("kitty sequence malformed: %q", seq[:80])
 	}
-	iterm := EncodeITerm2("Zm9v", 10, "auto", "x.png", true)
+	iterm := EncodeITerm2("Zm9v", ITerm2Options{Width: 10, Height: "auto", Name: "x.png"})
 	if !strings.HasPrefix(iterm, "\x1b]1337;File=") || !strings.Contains(iterm, "inline=1") || !strings.Contains(iterm, ":Zm9v\x07") {
 		t.Fatalf("iterm sequence malformed: %q", iterm)
 	}
@@ -196,7 +196,7 @@ func TestEncodeKitty_ExactByteParity(t *testing.T) {
 }
 
 func TestEncodeITerm2_ExactByteParity(t *testing.T) {
-	got := EncodeITerm2("Zm9v", 10, "auto", "x.png", true)
+	got := EncodeITerm2("Zm9v", ITerm2Options{Width: 10, Height: "auto", Name: "x.png"})
 	// packages/tui/src/terminal-image.ts:294 includes Buffer.byteLength("Zm9v", "base64") = 3.
 	want := "\x1b]1337;File=inline=1;size=3;width=10;height=auto;name=eC5wbmc=:Zm9v\x07"
 	if got != want {
@@ -387,7 +387,7 @@ func TestImageComponent_RenderPlacementByProtocol(t *testing.T) {
 	}
 
 	SetCapabilities(TerminalCapabilities{Images: ImageProtocolKitty, TrueColor: true, Hyperlinks: true})
-	kitty := NewImage(pngData, "image/png", ImageOptions{MaxWidthCells: 10}, dims)
+	kitty := NewImage(pngData, "image/png", DefaultImageTheme(), ImageOptions{MaxWidthCells: 10}, dims)
 	kittyLines := kitty.Render(20)
 	if len(kittyLines) == 0 {
 		t.Fatal("kitty render returned no lines")
@@ -402,7 +402,7 @@ func TestImageComponent_RenderPlacementByProtocol(t *testing.T) {
 	}
 
 	SetCapabilities(TerminalCapabilities{Images: ImageProtocolITerm2, TrueColor: true, Hyperlinks: true})
-	iterm := NewImage(pngData, "image/png", ImageOptions{MaxWidthCells: 10}, dims)
+	iterm := NewImage(pngData, "image/png", DefaultImageTheme(), ImageOptions{MaxWidthCells: 10}, dims)
 	itermLines := iterm.Render(20)
 	if len(itermLines) == 0 {
 		t.Fatal("iterm render returned no lines")
@@ -429,7 +429,7 @@ func TestRenderImageAndImageComponent(t *testing.T) {
 	if got == nil || got.Rows < 1 || !strings.Contains(got.Sequence, "\x1b_G") {
 		t.Fatalf("RenderImage() = %+v", got)
 	}
-	img := NewImage(pngData, "image/png", ImageOptions{MaxWidthCells: 10}, dims)
+	img := NewImage(pngData, "image/png", DefaultImageTheme(), ImageOptions{MaxWidthCells: 10}, dims)
 	lines := img.Render(20)
 	if len(lines) == 0 {
 		t.Fatal("image render returned no lines")
@@ -447,5 +447,30 @@ func TestImageFallbackAndHyperlink(t *testing.T) {
 	link := Hyperlink("x", "https://example.com")
 	if !strings.Contains(link, "https://example.com") || !strings.Contains(link, "x") {
 		t.Fatalf("Hyperlink() malformed: %q", link)
+	}
+}
+
+// calculateImageRows (terminal-image.ts:515) is calculateImageCellSize(...).rows.
+func TestCalculateImageRows(t *testing.T) {
+	cell := CellDimensions{WidthPx: 10, HeightPx: 20}
+	for _, tc := range []struct {
+		name  string
+		dims  ImageDimensions
+		width int
+		cell  CellDimensions
+		want  int
+	}{
+		{"landscape", ImageDimensions{WidthPx: 200, HeightPx: 100}, 10, cell, 3},
+		{"square", ImageDimensions{WidthPx: 100, HeightPx: 100}, 10, cell, 5},
+		{"tall", ImageDimensions{WidthPx: 100, HeightPx: 400}, 10, cell, 20},
+		// terminal-image.ts's default cell size is 9x18.
+		{"default cell size", ImageDimensions{WidthPx: 90, HeightPx: 180}, 10, CellDimensions{WidthPx: 9, HeightPx: 18}, 10},
+	} {
+		if got := CalculateImageRows(tc.dims, tc.width, tc.cell); got != tc.want {
+			t.Errorf("%s: CalculateImageRows = %d, want %d", tc.name, got, tc.want)
+		}
+		if got, want := CalculateImageRows(tc.dims, tc.width, tc.cell), CalculateImageCellSize(tc.dims, tc.width, 0, tc.cell).Rows; got != want {
+			t.Errorf("%s: CalculateImageRows %d differs from CalculateImageCellSize rows %d", tc.name, got, want)
+		}
 	}
 }

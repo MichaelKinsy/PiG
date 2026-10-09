@@ -27,7 +27,9 @@ func TestArchStr(t *testing.T) {
 		{"amd64", "x86_64"},
 		{"x64", "x86_64"},
 		{"x86_64", "x86_64"},
-		{"riscv64", "riscv64"}, // unknown passes through
+		// tools-manager.ts getAssetName: any architecture other than arm64 selects the x86_64 archive.
+		{"riscv64", "x86_64"},
+		{"386", "x86_64"},
 	}
 	for _, tt := range tests {
 		if got := archStr(tt.in); got != tt.want {
@@ -43,14 +45,15 @@ func TestToolsTable_AssetNames(t *testing.T) {
 		// fd
 		{"fd", "darwin", "arm64", "fd-v9.0.0-aarch64-apple-darwin.tar.gz"},
 		{"fd", "darwin", "x64", "fd-v9.0.0-x86_64-apple-darwin.tar.gz"},
-		{"fd", "linux", "arm64", "fd-v9.0.0-aarch64-unknown-linux-gnu.tar.gz"},
-		{"fd", "linux", "x64", "fd-v9.0.0-x86_64-unknown-linux-gnu.tar.gz"},
+		// Upstream selects the musl archive for every Linux architecture of both tools.
+		{"fd", "linux", "arm64", "fd-v9.0.0-aarch64-unknown-linux-musl.tar.gz"},
+		{"fd", "linux", "x64", "fd-v9.0.0-x86_64-unknown-linux-musl.tar.gz"},
 		{"fd", "win32", "x64", "fd-v9.0.0-x86_64-pc-windows-msvc.zip"},
 		{"fd", "win32", "arm64", "fd-v9.0.0-aarch64-pc-windows-msvc.zip"},
 		// rg
 		{"rg", "darwin", "arm64", "ripgrep-14.0.0-aarch64-apple-darwin.tar.gz"},
 		{"rg", "linux", "x64", "ripgrep-14.0.0-x86_64-unknown-linux-musl.tar.gz"},
-		{"rg", "linux", "arm64", "ripgrep-14.0.0-aarch64-unknown-linux-gnu.tar.gz"},
+		{"rg", "linux", "arm64", "ripgrep-14.0.0-aarch64-unknown-linux-musl.tar.gz"},
 		{"rg", "win32", "x64", "ripgrep-14.0.0-x86_64-pc-windows-msvc.zip"},
 	}
 	versions := map[string]string{"fd": "9.0.0", "rg": "14.0.0"}
@@ -352,7 +355,9 @@ func TestDownloadTool_DarwinX64FdPin(t *testing.T) {
 	// 10.3.0, not whatever GitHub reports as latest.
 	var requestedAsset string
 	mux := http.NewServeMux()
+	latestLookups := 0
 	mux.HandleFunc("/sharkdp/fd/releases/latest", func(w http.ResponseWriter, r *http.Request) {
+		latestLookups++
 		http.Redirect(w, r, "/sharkdp/fd/releases/tag/v999.0.0", http.StatusFound)
 	})
 	mux.HandleFunc("/sharkdp/fd/releases/download/", func(w http.ResponseWriter, r *http.Request) {
@@ -371,6 +376,10 @@ func TestDownloadTool_DarwinX64FdPin(t *testing.T) {
 	_, err := tm.downloadTool(context.Background(), "fd")
 	if err != nil {
 		t.Fatalf("downloadTool: %v", err)
+	}
+	// Upstream skips the version lookup for the pinned release (tools-manager.ts downloadTool).
+	if latestLookups != 0 {
+		t.Errorf("latest-release lookups = %d, want 0 (darwin/x64 fd is pinned)", latestLookups)
 	}
 	want := "fd-v10.3.0-x86_64-apple-darwin.tar.gz"
 	if requestedAsset != want {

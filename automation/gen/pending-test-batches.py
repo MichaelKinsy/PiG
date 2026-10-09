@@ -82,7 +82,7 @@ def targets(entry, area):
             "sessions": ("coding", "internal/codingagent"),
             "extensions": ("coding", "coding/extension/host/inproc", "coding/extension/host/subprocess"),
             "tui": ("internal/codingagent", "tui"),
-            "cli": ("cmd/pig", "internal/codingagent"),
+            "cli": ("coding/cli", "internal/codingagent"),
             "utilities": ("internal/codingagent",),
         }[area])
         if "compact" in path or "branch-summar" in path:

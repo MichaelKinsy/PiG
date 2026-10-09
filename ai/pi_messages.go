@@ -23,14 +23,7 @@ import (
 	"time"
 )
 
-// PiMessagesResponse is the HTTP status and headers reported to OnResponse.
-type PiMessagesResponse struct {
-	Status  int
-	Headers map[string]string
-}
-
-// PiMessagesConfig configures a pi-messages provider. Debug, ToolChoice, and
-// OnResponse carry upstream PiMessagesOptions fields that StreamOptions lacks.
+// PiMessagesConfig configures a pi-messages provider. The per-request options (debug, toolChoice, onResponse) are StreamOptions fields.
 type PiMessagesConfig struct {
 	BaseURL      string
 	APIKey       string
@@ -38,11 +31,6 @@ type PiMessagesConfig struct {
 	Model        string
 	ProviderID   string
 	ExtraHeaders map[string]string
-	// Debug asks the backend for debug metadata (?debug=1).
-	Debug bool
-	// ToolChoice is "auto", "none", "required", or {type:"function",...}.
-	ToolChoice any
-	OnResponse func(PiMessagesResponse) error
 	// ModelMetadata is the selected model, which an OnProviderStreamEvent observer receives. Nil hands the observer the configured identity only.
 	ModelMetadata *Model
 }
@@ -69,6 +57,23 @@ type PiMessagesResponseError struct {
 }
 
 func (e *PiMessagesResponseError) Error() string { return e.Message }
+
+// NewPiMessagesResponseError ports pi-messages.ts PiMessagesResponseError constructor(message, code, diagnosticDetails); an empty code is upstream's undefined.
+func NewPiMessagesResponseError(message, code string, diagnosticDetails map[string]any) *PiMessagesResponseError {
+	e := &PiMessagesResponseError{Message: message, Code: code, DiagnosticDetails: diagnosticDetails}
+	return e
+}
+
+// Name is the upstream `name` property.
+func (*PiMessagesResponseError) Name() string { return "PiMessagesResponseError" }
+
+// DiagnosticCode is the upstream `code` property; it is absent when the backend sent none.
+func (e *PiMessagesResponseError) DiagnosticCode() any {
+	if e.Code == "" {
+		return nil
+	}
+	return e.Code
+}
 
 // Stream returns immediately; request and transport failures terminate the
 // stream with an error event, as upstream's stream() does.
@@ -171,7 +176,7 @@ func (p *piMessagesProvider) send(ctx context.Context, transcript TranscriptCont
 	if err != nil {
 		return nil, err
 	}
-	if p.cfg.Debug {
+	if opts.Debug {
 		query := endpoint.Query()
 		query.Set("debug", "1")
 		endpoint.RawQuery = query.Encode()
@@ -213,11 +218,6 @@ func mergeProviderHeaders(base, override ProviderHeaders) ProviderHeaders {
 }
 
 func (p *piMessagesProvider) checkResponse(endpoint *url.URL, response *http.Response) error {
-	if p.cfg.OnResponse != nil {
-		if err := p.cfg.OnResponse(PiMessagesResponse{Status: response.StatusCode, Headers: headersToRecord(response.Header)}); err != nil {
-			return err
-		}
-	}
 	if response.StatusCode >= 200 && response.StatusCode <= 299 {
 		return nil
 	}
@@ -252,7 +252,7 @@ func (p *piMessagesProvider) payload(transcript TranscriptContext, opts StreamOp
 	options := piMessagesPayloadOptions{
 		CacheRetention: resolvePiMessagesCacheRetention(opts.CacheRetention, opts.Env),
 		SessionID:      opts.SessionID,
-		ToolChoice:     p.cfg.ToolChoice,
+		ToolChoice:     opts.ToolChoice,
 	}
 	if opts.TemperatureSet || opts.Temperature != 0 {
 		options.Temperature = new(opts.Temperature)
@@ -260,8 +260,8 @@ func (p *piMessagesProvider) payload(transcript TranscriptContext, opts StreamOp
 	if opts.MaxTokens > 0 {
 		options.MaxTokens = &opts.MaxTokens
 	}
-	if opts.Thinking != "" && opts.Thinking != ThinkingOff {
-		options.Reasoning = string(opts.Thinking)
+	if opts.Thinking != "" {
+		options.Reasoning = string(ModelThinkingLevel(opts.Thinking))
 	}
 	var payload any = map[string]any{
 		"model":   p.cfg.Model,
@@ -318,7 +318,7 @@ func newPiMessagesResponseError(providerID, modelID, endpoint string, response *
 	} else {
 		details["body"] = truncateDiagnosticString(body)
 	}
-	return &PiMessagesResponseError{Message: text, Code: code, DiagnosticDetails: details}
+	return NewPiMessagesResponseError(text, code, details)
 }
 
 func truncateDiagnosticString(value string) string {
@@ -345,13 +345,7 @@ func (p *piMessagesProvider) errorEvent(ctx context.Context, err error) ErrorEve
 	}
 	var responseError *PiMessagesResponseError
 	if !aborted && errors.As(err, &responseError) {
-		info := &DiagnosticErrorInfo{Name: "PiMessagesResponseError", Message: responseError.Message}
-		if responseError.Code != "" {
-			info.Code = responseError.Code
-		}
-		message.Diagnostics = append(message.Diagnostics, AssistantMessageDiagnostic{
-			Type: "pi_messages_response_failure", Timestamp: time.Now().UnixMilli(), Error: info, Details: responseError.DiagnosticDetails,
-		})
+		AppendAssistantMessageDiagnostic(message, CreateAssistantMessageDiagnostic("pi_messages_response_failure", responseError, responseError.DiagnosticDetails))
 	}
 	return ErrorEvent{Reason: reason, Error: message}
 }

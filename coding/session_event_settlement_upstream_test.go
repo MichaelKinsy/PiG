@@ -8,6 +8,8 @@ import (
 	"testing/synctest"
 	"time"
 
+	icodingagent "github.com/MichaelKinsy/PiG/internal/codingagent"
+
 	"github.com/MichaelKinsy/PiG/agent"
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/coding/extension"
@@ -24,7 +26,7 @@ func createEchoTool(t *testing.T) *bridgeTool {
 				Text string `json:"text"`
 			}
 			if err := json.Unmarshal(args, &params); err != nil {
-				return nil, err
+				return extension.AgentToolResult{}, err
 			}
 			return agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: params.Text}}, Details: map[string]any{"text": params.Text}}, nil
 		},
@@ -38,7 +40,7 @@ func createEchoTool(t *testing.T) *bridgeTool {
 func persistedBranchRoles(session *Session) []string {
 	roles := []string{}
 	for _, entry := range session.inner.GetBranch() {
-		if message, ok := entry.AsMessage(); ok {
+		if message, ok := entry.(icodingagent.MessageEntry); ok {
 			roles = append(roles, message.Message.Role())
 		}
 	}
@@ -61,7 +63,7 @@ func TestUpstreamEventSettlementKeepsPersistedAssistantToolResultOrderWhenMessag
 		h := newRecoveryHarness(t, harnessOptions{tools: []agent.AgentTool{createEchoTool(t)}, extension: extension.Extension{Handlers: map[string][]extension.HandlerFn{
 			"message_end": {func(args ...any) (any, error) {
 				event := args[0].(extension.MessageEndEvent)
-				message := event.Message.(agent.AgentMessage)
+				message := event.Message
 				if message.Assistant != nil {
 					// The original handler awaits a 20ms timer. Synctest advances it virtually; it is not a synchronization sleep.
 					<-time.After(20 * time.Millisecond)

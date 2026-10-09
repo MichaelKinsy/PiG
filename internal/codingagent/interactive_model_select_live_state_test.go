@@ -55,12 +55,14 @@ func TestInteractiveModelSelectHandlersObserveTheSelectedModel(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		fields, _ := model.(map[string]any)
-		id, _ := fields["id"].(string)
+		id := ""
+		if model != nil {
+			id = model.ID
+		}
 		inproc = append(inproc, id)
 		info := bridge.actions["getModelInfo"].(func() map[string]any)()
-		id, _ = info["id"].(string)
-		subprocess = append(subprocess, id)
+		subprocessID, _ := info["id"].(string)
+		subprocess = append(subprocess, subprocessID)
 	}
 	m.opts.SessionHandle = handle
 
@@ -84,7 +86,7 @@ func TestInteractiveModelSelectHandlersObserveTheSelectedModel(t *testing.T) {
 func TestInteractiveExtensionStreamWithoutReasoningDoesNotThink(t *testing.T) {
 	m := modelPickerTestMode(t)
 	m.thinkingLevel = string(ai.ThinkingHigh)
-	model := &ai.Model{ID: "model", ProviderMeta: ai.ProviderMetadata{ProviderID: "provider"}, Capabilities: ai.ModelCapabilities{MaxThinking: ai.ThinkingHigh}}
+	model := &ai.Model{ID: "model", ProviderMeta: ai.ProviderMetadata{ProviderID: "provider"}, Capabilities: ai.ModelCapabilities{MaxThinking: ai.ThinkingLevelHigh}}
 	m.opts.ModelBuilder = func(string) (*ai.Model, error) { return model, nil }
 	handle := &modelRequestCaptureHandle{recordingCompactHandle: &recordingCompactHandle{agent: m.agent}}
 	m.opts.SessionHandle = handle
@@ -96,7 +98,7 @@ func TestInteractiveExtensionStreamWithoutReasoningDoesNotThink(t *testing.T) {
 	stream := bridge.actions["streamModel"].(func(context.Context, map[string]any, map[string]any) (*ai.AssistantMessageEventStream, error))
 	for _, request := range []struct {
 		reasoning any
-		want      ai.ThinkingLevel
+		want      ai.ModelThinkingLevel
 	}{{nil, ""}, {"low", ai.ThinkingLow}} {
 		body := map[string]any{"messages": []any{}}
 		if request.reasoning != nil {
@@ -107,7 +109,7 @@ func TestInteractiveExtensionStreamWithoutReasoningDoesNotThink(t *testing.T) {
 			t.Fatal(err)
 		}
 		result.Result()
-		if handle.options.Thinking != request.want {
+		if handle.options.Thinking != request.want.ReasoningOption() {
 			t.Errorf("reasoning %v streamed with thinking %q, want %q", request.reasoning, handle.options.Thinking, request.want)
 		}
 	}

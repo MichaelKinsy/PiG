@@ -115,7 +115,7 @@ func TestManualCompactionCompletesWhenCompactionStartHandlerPanics(t *testing.T)
 
 	done := make(chan error, 1)
 	go func() {
-		result, err := sess.CompactResult(context.Background(), "")
+		result, err := sess.Compact(context.Background(), "")
 		if err == nil && !strings.Contains(result.Summary, "summary after panic") {
 			err = errors.New("unexpected summary " + result.Summary)
 		}

@@ -2,6 +2,8 @@
 
 package harness
 
+// pi: packages/durable/src/harness/events.ts
+
 import (
 	"context"
 	"encoding/json"
@@ -226,9 +228,8 @@ type taskNotesState struct {
 }
 
 var taskNotesDoc = durable.DefineDoc(durable.DocDefinition[taskNotesState]{
-	CommonDocDefinition: durable.CommonDocDefinition[taskNotesState]{Kind: "test.task-notes", Version: 1},
+	CommonDocDefinition: durable.CommonDocDefinition[taskNotesState]{Kind: "test.task-notes", Version: 1, Initial: func() taskNotesState { return taskNotesState{} }},
 	DocumentSemantics:   durable.DocumentSemantics{Scope: durable.ScopeTask},
-	Initial:             func() taskNotesState { return taskNotesState{} },
 })
 
 var conversationOwnedTask = durable.TaskOptions{Ownership: durable.TaskOwnership{Kind: durable.TaskOwnedByConversation}}
@@ -461,7 +462,7 @@ func TestTaskOwnership(t *testing.T) {
 		}))
 		names := []string{}
 		for _, task := range page.Items {
-			names = append(names, task.Input.(map[string]any)["name"].(string))
+			names = append(names, plainObject(task.Input)["name"].(string))
 		}
 		expectEqualJSON(t, names, `["eager"]`)
 
@@ -1477,7 +1478,7 @@ func structuredBlockingTool(name string) blocking {
 func toolCalls(calls ...[2]string) ai.FauxResponseStep {
 	blocks := []ai.FauxContentBlock{}
 	for _, call := range calls {
-		blocks = append(blocks, ai.FauxToolCall(call[0], map[string]any{}, call[1]))
+		blocks = append(blocks, ai.FauxToolCall(call[0], map[string]any{}, &ai.FauxToolCallOptions{ID: call[1]}))
 	}
 	return toolCallStep(blocks...)
 }
@@ -1500,6 +1501,8 @@ func scanTasks(t *testing.T, harness Harness, query durable.TaskQuery, limit int
 	})).Items
 }
 
+// Pi source: packages/durable/src/harness/types.ts
+// mutation-checked: dropping the reads and writes of GenerationHooks.AfterTools fails it
 func TestToolRounds(t *testing.T) {
 	t.Run("owns its tool tasks, waits for them, and hands the run to a conversation-owned generation", func(t *testing.T) {
 		resetNodes(t)
@@ -2307,7 +2310,7 @@ func TestToolRoundsAndEvents(t *testing.T) {
 		resetNodes(t)
 		setup := chatSetup(t)
 		addTask(t, setup.Registry, nodeTask)
-		addTool(t, setup.Registry, new(durable.ToolRegistration{ToolSchema: ai.ToolSchema{Name: "delegate", Description: "Starts work in a conversation it owns", Parameters: map[string]any{"type": "object", "properties": map[string]any{}}}, Execute: func(ctx context.Context, _ any, api durable.ToolExecutionApi) (durable.ToolExecutionResult, error) {
+		addTool(t, setup.Registry, DefineTool(durable.ToolRegistration{ToolSchema: ai.ToolSchema{Name: "delegate", Description: "Starts work in a conversation it owns", Parameters: map[string]any{"type": "object", "properties": map[string]any{}}}, Execute: func(ctx context.Context, _ any, api durable.ToolExecutionApi) (durable.ToolExecutionResult, error) {
 			_, err := api.Commit(ctx, func(tx durable.Tx) (any, error) {
 				child, err := tx.CreateConversation(durable.CreateConversationOptions{Ownership: durable.ConversationOwnership{Kind: durable.ConversationOwnedByTask, TaskId: api.TaskId()}})
 				if err != nil {
@@ -2354,7 +2357,7 @@ func TestToolRoundsAndEvents(t *testing.T) {
 		setup := chatSetup(t)
 		addTask(t, setup.Registry, nodeTask)
 		scriptNode("held", nodeBehavior{abort: gatedAbort("abort.held")})
-		addTool(t, setup.Registry, new(durable.ToolRegistration{ToolSchema: ai.ToolSchema{Name: "broken", Description: "Starts owned work, then returns a result that is not strict JSON", Parameters: map[string]any{"type": "object", "properties": map[string]any{}}}, Execute: func(ctx context.Context, _ any, api durable.ToolExecutionApi) (durable.ToolExecutionResult, error) {
+		addTool(t, setup.Registry, DefineTool(durable.ToolRegistration{ToolSchema: ai.ToolSchema{Name: "broken", Description: "Starts owned work, then returns a result that is not strict JSON", Parameters: map[string]any{"type": "object", "properties": map[string]any{}}}, Execute: func(ctx context.Context, _ any, api durable.ToolExecutionApi) (durable.ToolExecutionResult, error) {
 			if _, err := api.Commit(ctx, func(tx durable.Tx) (any, error) {
 				return durable.CreateTask(tx, nodeTask, nodeInput{Name: "held"}, ownedBy(api.TaskId()))
 			}); err != nil {

@@ -13,7 +13,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/MichaelKinsy/PiG/agent"
 	"github.com/MichaelKinsy/PiG/internal/testbudget"
 )
 
@@ -167,7 +166,7 @@ func recoveryBus(t *testing.T, h *Host, name string) string {
 	if err != nil {
 		t.Fatal(err)
 	}
-	return recoveryBusPlacement(t, result.(agent.AgentToolResult).Text())
+	return recoveryBusPlacement(t, result.Text())
 }
 
 // recoveryBusPlacement renders a ping result as the listeners in dispatch order and the members grouped by hosting process.
@@ -196,6 +195,7 @@ func recoveryBusPlacement(t *testing.T, text string) string {
 }
 
 func TestNodeCrashQuarantinesOnlyCulpritAndDoesNotReplay(t *testing.T) {
+	skipWithoutNodeExtensions(t)
 	t.Parallel()
 	h, configs, trace := nodeRecoveryFixture(t, 3)
 	h.mu.Lock()
@@ -219,7 +219,7 @@ func TestNodeCrashQuarantinesOnlyCulpritAndDoesNotReplay(t *testing.T) {
 		t.Fatalf("recovery placement: %d %d %d", a, b, c)
 	}
 	result, err := original(context.Background(), "new-call", json.RawMessage(`{}`), nil)
-	if err != nil || recoveryBusPlacement(t, result.(agent.AgentToolResult).Text()) != "member0,member1,member2 | member0+member2 member1" {
+	if err != nil || recoveryBusPlacement(t, result.Text()) != "member0,member1,member2 | member0+member2 member1" {
 		t.Fatalf("registered tool did not recover: %v %v", result, err)
 	}
 	if _, err := staleHandler(); err == nil {
@@ -251,6 +251,7 @@ func TestNodeCrashQuarantinesOnlyCulpritAndDoesNotReplay(t *testing.T) {
 	}
 }
 func TestNodeRepeatedUnknownCrashBisectsAndRejoinsHealthyMembers(t *testing.T) {
+	skipWithoutNodeExtensions(t)
 	t.Parallel()
 	h, _, _ := nodeRecoveryFixture(t, 4)
 	for round := range 4 {
@@ -278,6 +279,7 @@ func TestNodeRepeatedUnknownCrashBisectsAndRejoinsHealthyMembers(t *testing.T) {
 }
 
 func TestNodeFactoryCrashKeepsHealthyMembersTogether(t *testing.T) {
+	skipWithoutNodeExtensions(t)
 	t.Parallel()
 	nodeCellRequireNode(t)
 	root := t.TempDir()
@@ -313,6 +315,7 @@ export default function(pi) { %s
 }
 
 func TestNodeTimerCrashUsesRuntimeStackAttribution(t *testing.T) {
+	skipWithoutNodeExtensions(t)
 	t.Parallel()
 	h, configs, _ := nodeRecoveryFixture(t, 3, true)
 	h.mu.Lock()
@@ -328,6 +331,7 @@ func TestNodeTimerCrashUsesRuntimeStackAttribution(t *testing.T) {
 }
 
 func TestNodeUnattributableCrashRestartsWholeGroup(t *testing.T) {
+	skipWithoutNodeExtensions(t)
 	t.Parallel()
 	h, _, _ := nodeRecoveryFixture(t, 3)
 	h.mu.Lock()

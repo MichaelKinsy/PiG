@@ -11,7 +11,7 @@ import (
 func BenchmarkSessionToolRegistry(b *testing.B) {
 	for _, count := range []int{0, 64, 1024} {
 		b.Run(fmt.Sprint(count), func(b *testing.B) {
-			services, err := NewServices(ServicesOptions{CWD: b.TempDir(), AgentDir: b.TempDir()})
+			services, err := CreateAgentSessionServices(CreateAgentSessionServicesOptions{CWD: b.TempDir(), AgentDir: b.TempDir()})
 			if err != nil {
 				b.Fatal(err)
 			}

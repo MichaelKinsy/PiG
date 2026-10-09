@@ -57,7 +57,7 @@ func startDiscoveryServer(t *testing.T, directory, fileServerId, reportedServerI
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := server.Start(); err != nil {
+	if _, err := server.Start(); err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = server.Close() })

@@ -32,12 +32,12 @@ func TestXAIResponsesRoutesEveryBuiltInModelThroughResponses(t *testing.T) {
 	}
 	for _, tc := range []struct {
 		id   string
-		want []ThinkingLevel
+		want []ModelThinkingLevel
 	}{
-		{"grok-4.5", []ThinkingLevel{ThinkingLow, ThinkingMedium, ThinkingHigh}},
-		{"grok-4.6", []ThinkingLevel{ThinkingLow, ThinkingMedium, ThinkingHigh, ThinkingXHigh}},
-		{"grok-4.7", []ThinkingLevel{ThinkingLow, ThinkingMedium, ThinkingHigh, ThinkingXHigh}},
-		{"grok-4.3", []ThinkingLevel{ThinkingOff, ThinkingLow, ThinkingMedium, ThinkingHigh}},
+		{"grok-4.5", []ModelThinkingLevel{ThinkingLow, ThinkingMedium, ThinkingHigh}},
+		{"grok-4.6", []ModelThinkingLevel{ThinkingLow, ThinkingMedium, ThinkingHigh, ThinkingXHigh}},
+		{"grok-4.7", []ModelThinkingLevel{ThinkingLow, ThinkingMedium, ThinkingHigh, ThinkingXHigh}},
+		{"grok-4.3", []ModelThinkingLevel{ThinkingOff, ThinkingLow, ThinkingMedium, ThinkingHigh}},
 	} {
 		if got := GetSupportedThinkingLevels(upstreamThinkingModel(t, "xai/"+tc.id)); !slices.Equal(got, tc.want) {
 			t.Errorf("%s levels = %v, want %v", tc.id, got, tc.want)
@@ -65,13 +65,13 @@ func TestXAIResponsesRequestUpstream(t *testing.T) {
 		absent           []string
 	}{
 		// .upstream/v0.87.1/packages/ai/test/xai-responses.test.ts:164
-		{"uses /responses with bearer auth and xAI-compatible request fields", "grok-4.5", "You are a careful coding assistant.", StreamOptions{SessionID: "pi-session-123", CacheRetention: CacheRetentionLong, Thinking: ThinkingMedium}, map[string]any{"model": "grok-4.5", "store": false, "stream": true, "prompt_cache_key": "pi-session-123", "reasoning": map[string]any{"effort": "medium", "summary": "auto"}, "include": []any{"reasoning.encrypted_content"}}, []string{"prompt_cache_retention"}},
+		{"uses /responses with bearer auth and xAI-compatible request fields", "grok-4.5", "You are a careful coding assistant.", StreamOptions{SessionID: "pi-session-123", CacheRetention: CacheRetentionLong, Thinking: ThinkingLevelMedium}, map[string]any{"model": "grok-4.5", "store": false, "stream": true, "prompt_cache_key": "pi-session-123", "reasoning": map[string]any{"effort": "medium", "summary": "auto"}, "include": []any{"reasoning.encrypted_content"}}, []string{"prompt_cache_retention"}},
 		// .upstream/v0.87.1/packages/ai/test/xai-responses.test.ts:202
 		{"requests encrypted reasoning without an effort override", "grok-4.5", "", StreamOptions{}, map[string]any{"model": "grok-4.5", "store": false, "include": []any{"reasoning.encrypted_content"}}, []string{"reasoning"}},
 		// .upstream/v0.87.1/packages/ai/test/xai-responses.test.ts:217
-		{"uses /responses for Grok 4.7 with xhigh effort and encrypted reasoning", "grok-4.7", "You are a careful coding assistant.", StreamOptions{Thinking: ThinkingXHigh}, map[string]any{"model": "grok-4.7", "store": false, "stream": true, "reasoning": map[string]any{"effort": "xhigh", "summary": "auto"}, "include": []any{"reasoning.encrypted_content"}}, nil},
+		{"uses /responses for Grok 4.7 with xhigh effort and encrypted reasoning", "grok-4.7", "You are a careful coding assistant.", StreamOptions{Thinking: ThinkingLevelXHigh}, map[string]any{"model": "grok-4.7", "store": false, "stream": true, "reasoning": map[string]any{"effort": "xhigh", "summary": "auto"}, "include": []any{"reasoning.encrypted_content"}}, nil},
 		// .upstream/v0.87.1/packages/ai/test/xai-responses.test.ts:240
-		{"uses /responses for Grok 4.3", "grok-4.3", "", StreamOptions{Thinking: ThinkingLow}, map[string]any{"model": "grok-4.3", "store": false, "reasoning": map[string]any{"effort": "low", "summary": "auto"}, "include": []any{"reasoning.encrypted_content"}}, nil},
+		{"uses /responses for Grok 4.3", "grok-4.3", "", StreamOptions{Thinking: ThinkingLevelLow}, map[string]any{"model": "grok-4.3", "store": false, "reasoning": map[string]any{"effort": "low", "summary": "auto"}, "include": []any{"reasoning.encrypted_content"}}, nil},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			m := upstreamThinkingModel(t, "xai/"+tc.id)

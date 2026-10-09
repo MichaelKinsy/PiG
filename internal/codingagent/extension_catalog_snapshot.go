@@ -153,6 +153,10 @@ func copyCatalogInput(out, value reflect.Value) bool {
 		}
 	case reflect.Struct:
 		for i := range value.NumField() {
+			// The snapshot feeds a JSON encoding, which ignores unexported members (a model's persisted-record shape among them).
+			if !value.Type().Field(i).IsExported() {
+				continue
+			}
 			if !copyCatalogInput(out.FieldByIndex([]int{i}), value.FieldByIndex([]int{i})) {
 				return false
 			}

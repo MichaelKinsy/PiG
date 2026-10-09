@@ -89,7 +89,7 @@ func registerThemeProbe(e *sdk.Extension) {
 			fgTokens, _ := args["fgTokens"].([]any)
 			for _, raw := range fgTokens {
 				token, _ := raw.(string)
-				fgs[token] = theme.Fg(token, "x")
+				fgs[token] = themeFg(theme, token)
 			}
 			var appearance any
 			if value := theme.Appearance(); value != "" {
@@ -98,4 +98,14 @@ func registerThemeProbe(e *sdk.Extension) {
 			return text(map[string]any{"appearance": appearance, "colors": colors, "styles": styles, "fgs": fgs})
 		},
 	})
+}
+
+// themeFg is theme.fg(token, "x"), or "throw:" and the message when the SDK raises, so one unknown token does not hide the others.
+func themeFg(theme sdk.UITheme, token string) (result string) {
+	defer func() {
+		if recovered := recover(); recovered != nil {
+			result = fmt.Sprintf("throw:%v", recovered)
+		}
+	}()
+	return theme.Fg(token, "x")
 }

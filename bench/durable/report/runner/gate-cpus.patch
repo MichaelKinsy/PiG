@@ -1,0 +1,15 @@
+diff --git i/bench/targets.ts w/bench/targets.ts
+index 757992e..b52ed8e 100644
+--- i/bench/targets.ts
++++ w/bench/targets.ts
+@@ -107,7 +107,9 @@ export async function call<T = unknown>(mf: Miniflare, path: string, body?: unkn
+   return await response.json() as T
+ }
+ 
+-const ticks = () => cpus().reduce((sum, { times }) => {
++// repro: GATE_CPUS="23,87" restricts the CPU gate to the pinned core (and its SMT sibling); unset = all CPUs, as published.
++const gateCpus = process.env.GATE_CPUS ? new Set(process.env.GATE_CPUS.split(",").map(Number)) : undefined
++const ticks = () => cpus().filter((_, i) => !gateCpus || gateCpus.has(i)).reduce((sum, { times }) => {
+   const total = times.user + times.nice + times.sys + times.irq + times.idle
+   return { busy: sum.busy + total - times.idle, total: sum.total + total }
+ }, { busy: 0, total: 0 })

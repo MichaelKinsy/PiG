@@ -78,11 +78,10 @@ func newExtensionAPIHarness(t *testing.T, placement string) *extensionAPIHarness
 		},
 	})
 	// A virtual model an earlier-loaded extension queued before the runner binds; the fixture unregisters it (loader.ts:228-232).
-	if err := h.host.Runtime().RegisterVirtualModel(extension.VirtualModelDefinition{Provider: "router", ID: "victim", Name: "Victim", Route: func(context.Context, extension.ModelRouteRequest) (extension.ModelRoute, error) {
+	var peer extension.API = mcpRegistryAPI{runtime: h.host.Runtime(), extensionPath: "/ext/peer.go"}
+	peer.RegisterVirtualModel(extension.ExtensionVirtualModel{Provider: "router", ID: "victim", Name: "Victim", Route: func(context.Context, extension.ModelRouteRequest) (extension.ModelRoute, error) {
 		return extension.ModelRoute{}, nil
-	}}, "/ext/peer.go"); err != nil {
-		t.Fatal(err)
-	}
+	}})
 	h.host.SetProviderCallbacks(func(name string, config extension.ProviderConfig) error {
 		h.mu.Lock()
 		h.providers[name] = config
@@ -221,7 +220,7 @@ func (h *extensionAPIHarness) executeTool(ctx context.Context, callerID, name st
 	switch name {
 	case "slow":
 		// Pi's runToolCall rejects with the first update sink error after the tool returned, and never reaches afterToolCall or tool_execution_end for that call (agent-loop.ts:820-849; nested-tool-calls.ts:219-248).
-		update, _ := options.OnUpdate.(func(agent.AgentToolResult) error)
+		update := options.OnUpdate
 		var first error
 		for _, step := range []string{"one", "two"} {
 			if update != nil {
@@ -237,6 +236,10 @@ func (h *extensionAPIHarness) executeTool(ctx context.Context, callerID, name st
 			return extension.AgentToolCallOutcome{}, first
 		}
 		return textResult("done", false)
+	case "timed":
+		// A value no SDK defaults to: an SDK that drops the outcome's durationMs reports none (types.ts:454).
+		outcome.DurationMs = new(int64(4321))
+		return textResult("timed", false)
 	case "hang":
 		h.hangStarted <- struct{}{}
 		<-ctx.Done()
@@ -262,7 +265,7 @@ func (h *extensionAPIHarness) executeTool(ctx context.Context, callerID, name st
 		return textResult(err.Error(), true)
 	}
 	outcome.Result = result
-	if typed, ok := result.(agent.AgentToolResult); ok {
+	if typed, ok := result, true; ok {
 		outcome.IsError = typed.IsError
 	}
 	return outcome, nil
@@ -279,7 +282,7 @@ func (h *extensionAPIHarness) run(ctx context.Context, name, callID string, args
 	if err != nil {
 		return agent.AgentToolResult{}, err
 	}
-	typed, ok := result.(agent.AgentToolResult)
+	typed, ok := result, true
 	if !ok {
 		h.t.Fatalf("tool %s returned %T", name, result)
 	}
@@ -304,7 +307,7 @@ func TestExtensionAPIRegistrationsAtLoadGo(t *testing.T) {
 	for _, placement := range extensionAPIPlacements() {
 		t.Run(placement, func(t *testing.T) {
 			h := newExtensionAPIHarness(t, placement)
-			servers := h.host.Runtime().McpServers()
+			servers := h.host.Runtime().McpServers().List()
 			if len(servers) != 1 || servers[0].Name != "docs" || servers[0].ExtensionPath != h.ext.Path || servers[0].Config.URL != "http://docs.invalid/mcp" || servers[0].Config.Exposure != extension.McpExposureDeferred {
 				t.Fatalf("mcp servers = %+v (extension path %q)", servers, h.ext.Path)
 			}
@@ -344,6 +347,40 @@ func TestExtensionAPIRegistrationsAtLoadGo(t *testing.T) {
 	}
 }
 
+// mcpRegistryAPI is the Go reference for the MCP server and virtual model members of extension.API: the host runtime's registries behind
+// registerMcpServer, unregisterMcpServer, getMcpServers, registerVirtualModel and unregisterVirtualModel, as one extension (extensionPath) sees it.
+type mcpRegistryAPI struct {
+	extension.API
+	runtime       *extension.ExtensionRuntime
+	extensionPath string
+}
+
+func (a mcpRegistryAPI) RegisterMcpServer(name string, config extension.McpServerConfig) error {
+	raw, err := json.Marshal(config)
+	if err != nil {
+		return err
+	}
+	return a.runtime.RegisterMcpServer(a.extensionPath, name, raw)
+}
+
+func (a mcpRegistryAPI) UnregisterMcpServer(name string) {
+	a.runtime.UnregisterMcpServer(a.extensionPath, name)
+}
+
+func (a mcpRegistryAPI) RegisterVirtualModel(model extension.ExtensionVirtualModel) {
+	if err := a.runtime.RegisterVirtualModel(model, a.extensionPath); err != nil {
+		panic(err)
+	}
+}
+
+func (a mcpRegistryAPI) UnregisterVirtualModel(provider, id string) {
+	a.runtime.UnregisterVirtualModel(provider, id)
+}
+
+func (a mcpRegistryAPI) GetMcpServers() []extension.RegisteredMcpServer {
+	return a.runtime.McpServers().List()
+}
+
 // Upstream types.ts:1708 (getSettings), 1839 (getMcpServers) and 385 (tools): the extension reads them synchronously, from state the host replicated. Registering an MCP server after load reaches the runtime's registry, a name another extension owns is refused with upstream's message, and unregistering removes only the extension's own.
 func TestExtensionAPIReplicatedStateAndLateRegistrationGo(t *testing.T) {
 	for _, placement := range extensionAPIPlacements() {
@@ -358,12 +395,14 @@ func TestExtensionAPIReplicatedStateAndLateRegistrationGo(t *testing.T) {
 				t.Fatalf("mcpServers = %#v, want %v", report["mcpServers"], wantServers)
 			}
 			// executeTool and ctx.tools: the callable tools are the host's, in the host's order.
-			if want := []any{"echo", "helper", "soft_fail", "nested_updates", "nested_cancel", "nested_own_signal", "probe_state", "live_tools", "nested_throw", "detached_call", "register_late", "unregister_late"}; !reflect.DeepEqual(report["callableTools"], want) {
+			if want := []any{"echo", "helper", "soft_fail", "nested_updates", "nested_duration", "nested_cancel", "nested_own_signal", "probe_state", "live_tools", "nested_throw", "detached_call", "register_late", "unregister_late"}; !reflect.DeepEqual(report["callableTools"], want) {
 				t.Fatalf("callableTools = %#v, want %v", report["callableTools"], want)
 			}
 
 			// Another extension's registration: refused with upstream's message.
-			if err := h.host.Runtime().RegisterMcpServer("/ext/other.ts", "taken", json.RawMessage(`{"url":"http://taken.invalid"}`)); err != nil {
+			var other extension.API = mcpRegistryAPI{runtime: h.host.Runtime(), extensionPath: "/ext/other.ts"}
+			var api extension.API = mcpRegistryAPI{runtime: h.host.Runtime(), extensionPath: h.ext.Path}
+			if err := other.RegisterMcpServer("taken", extension.McpServerConfig{URL: "http://taken.invalid"}); err != nil {
 				t.Fatal(err)
 			}
 			refused, err := h.run(t.Context(), "register_late", "c1", `{"mcp":"taken"}`)
@@ -380,13 +419,13 @@ func TestExtensionAPIReplicatedStateAndLateRegistrationGo(t *testing.T) {
 				t.Fatalf("register_late = %q, %v", registered.Text(), err)
 			}
 			names := []string{}
-			for _, server := range h.host.Runtime().McpServers() {
+			for _, server := range api.GetMcpServers() {
 				names = append(names, server.Name)
 			}
 			if want := []string{"docs", "taken", "late"}; !reflect.DeepEqual(names, want) {
 				t.Fatalf("registry = %v, want %v", names, want)
 			}
-			late, _ := h.host.Runtime().McpServers()[2], 0
+			late, _ := h.host.Runtime().McpServers().List()[2], 0
 			if late.ExtensionPath != h.ext.Path || late.Config.Command != "late-server" || !reflect.DeepEqual(late.Config.Env.Keys(), []string{"B", "A"}) {
 				t.Fatalf("late server = %+v", late)
 			}
@@ -406,6 +445,32 @@ func TestExtensionAPIReplicatedStateAndLateRegistrationGo(t *testing.T) {
 			if got := h.probe()["mcpServers"]; !reflect.DeepEqual(got, []any{"docs@" + h.ext.Path, "taken@/ext/other.ts"}) {
 				t.Fatalf("mcpServers after unregister = %#v", got)
 			}
+			// The reference registers and unregisters a virtual model through the API; the host sees both (loader.ts:228-232, types.ts registerVirtualModel).
+			other.RegisterVirtualModel(extension.ExtensionVirtualModel{Provider: "router", ID: "ref", Name: "Ref", Route: func(context.Context, extension.ModelRouteRequest) (extension.ModelRoute, error) {
+				return extension.ModelRoute{}, nil
+			}})
+			h.mu.Lock()
+			_, hasRef := h.virtualModels["router/ref"]
+			h.mu.Unlock()
+			if !hasRef {
+				t.Fatal("the virtual model the reference registered did not reach the host")
+			}
+			other.UnregisterVirtualModel("router", "ref")
+			h.mu.Lock()
+			_, hasRef = h.virtualModels["router/ref"]
+			h.mu.Unlock()
+			if hasRef {
+				t.Fatal("the virtual model the reference unregistered is still at the host")
+			}
+			// The reference's own unregistration removes only the server its extension registered.
+			other.UnregisterMcpServer("taken")
+			names = names[:0]
+			for _, server := range api.GetMcpServers() {
+				names = append(names, server.Name)
+			}
+			if want := []string{"docs"}; !reflect.DeepEqual(names, want) {
+				t.Fatalf("registry after the reference unregistered taken = %v, want %v", names, want)
+			}
 			h.mu.Lock()
 			_, hasLate = h.virtualModels["router/late"]
 			h.mu.Unlock()
@@ -416,7 +481,7 @@ func TestExtensionAPIReplicatedStateAndLateRegistrationGo(t *testing.T) {
 	}
 }
 
-// Upstream virtual-models.ts:55-85 and loader.ts:485-487: the host's route request runs the extension's router. The route's state echoes the request it saw, so the values are the request's, and the extension returns the routed model, level and state.
+// pi.registerVirtualModel (packages/coding-agent/src/core/extensions/types.ts:1872, loader.ts:500-509) and virtual-models.ts:55-85: the host's route request runs the extension's router. The route's state echoes the request it saw, so the values are the request's, and the extension returns the routed model, level and state.
 func TestExtensionAPIVirtualModelRouteRunsInTheExtensionGo(t *testing.T) {
 	for _, placement := range extensionAPIPlacements() {
 		t.Run(placement, func(t *testing.T) {
@@ -425,7 +490,7 @@ func TestExtensionAPIVirtualModelRouteRunsInTheExtensionGo(t *testing.T) {
 			auto := h.virtualModels["router/auto"]
 			h.mu.Unlock()
 			if auto.Route == nil {
-				t.Fatal("no route")
+				t.Fatal("registerVirtualModel: router/auto has no route")
 			}
 			model := &ai.Model{ID: "auto", ProviderMeta: ai.ProviderMetadata{ProviderID: "router"}}
 			route, err := auto.Route(t.Context(), extension.ModelRouteRequest{
@@ -483,13 +548,35 @@ func TestExtensionAPIExecuteToolOrchestrationGo(t *testing.T) {
 				Declared: []extension.AgentTool{echo, runTools}, Callable: []extension.AgentTool{echo, helper}, Registered: []extension.AgentTool{echo, helper, runTools},
 				GetExposure:  func(string) extension.ToolExposure { return extension.ToolExposureDirect },
 				GetNamespace: func(string) *extension.ToolNamespace { return nil },
+				GetPromptGuidelines: func(name string) []string {
+					if name == "echo" {
+						return []string{"Echo with care.", "Quote the text."}
+					}
+					return nil
+				},
 			})
 			wantChanges := &extension.ToolLoadoutChanges{
-				Descriptions:       map[string]string{"run_tools": "Runs tools: echo, helper", "echo": "Echo text (also callable from run_tools)."},
+				Descriptions:       map[string]string{"run_tools": "Runs tools: echo, helper [Echo with care. | Quote the text.]", "echo": "Echo text (also callable from run_tools)."},
 				HiddenDeclarations: []string{"echo"},
 			}
 			if !reflect.DeepEqual(changes, wantChanges) {
 				t.Fatalf("changes = %+v, want %+v", changes, wantChanges)
+			}
+		})
+	}
+}
+
+// Upstream types.ts:454 and nested-tool-calls.ts:246: executeTool's outcome carries durationMs when the tool ran, and none otherwise.
+func TestExtensionAPIExecuteToolOutcomeDurationGo(t *testing.T) {
+	for _, placement := range extensionAPIPlacements() {
+		t.Run(placement, func(t *testing.T) {
+			h := newExtensionAPIHarness(t, placement)
+			result, err := h.run(t.Context(), "nested_duration", "call-d", `{}`)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if result.Text() != "4321|none" {
+				t.Fatalf("nested_duration = %q, want the host's 4321 and none for an outcome without one", result.Text())
 			}
 		})
 	}

@@ -185,6 +185,25 @@ test("the optional mcp and codemode packages join the inventory when a release h
   }
 });
 
+test("a package missing from the published install is read from the pinned source, and a private package has no interface", (t) => {
+  const fixture = buildFixture();
+  t.after(() => fs.rmSync(fixture.root, { recursive: true, force: true }));
+  const exportsIndex = { exports: { ".": { types: "./dist/index.d.ts", import: "./dist/index.js" } } };
+  write(fixture.source, "packages/protocol/package.json", manifest("@earendil-works/pi-protocol", exportsIndex));
+  write(fixture.source, "packages/protocol/src/index.ts", `export interface Frame {\n  kind: string;\n}\nexport function encodeFrame(frame: Frame): Uint8Array { return new Uint8Array(); }\n`);
+  write(fixture.source, "packages/evals/package.json", JSON.stringify({ name: "@earendil-works/pi-evals", version: VERSION, private: true }));
+  write(fixture.source, "packages/evals/src/cli.ts", "export const run = 1;\n");
+  const published = extractInventory({ origin: "published", root: fixture.published, sourceRoot: fixture.source, upstreamVersion: VERSION });
+  const byKey = Object.fromEntries(published.packages.map((entry) => [entry.key, entry]));
+  assert.equal(byKey.protocol.origin, "source");
+  assert.equal(byKey.agent.origin, "published");
+  assert.deepEqual(byKey.evals.entrypoints, []);
+  assert.ok(published.interfaces.some((entry) => entry.id === "pkg:protocol/.#encodeFrame"));
+  assert.ok(!published.interfaces.some((entry) => entry.package === "@earendil-works/pi-evals"));
+  const withoutSource = extractInventory({ origin: "published", root: fixture.published, upstreamVersion: VERSION });
+  assert.ok(!withoutSource.packages.some((entry) => entry.key === "protocol"), "no source root: the package stays absent");
+});
+
 test("normalizes compiler dependency source paths", () => {
   const root = path.join(os.tmpdir(), "pig-interface-root");
   assert.equal(stableSourcePath(root, path.join(root, "packages", "agent", "src", "index.ts")), "packages/agent/src/index.ts");

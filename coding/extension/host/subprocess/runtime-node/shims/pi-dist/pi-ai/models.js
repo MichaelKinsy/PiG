@@ -4,7 +4,7 @@ import { InMemoryCredentialStore } from "./auth/credential-store.js";
 import { ModelsError, refreshStoredOAuthCredential, resolveProviderAuth, } from "./auth/resolve.js";
 import { InMemoryModelsStore } from "./models-store.js";
 import { operationSignal, raceWithAbortSignal } from "./utils/abort.js";
-import { assertChatModel, assertClassifierModel, assertImageModel, classifierErrorResult, getModelType, imageErrorResult, isModelType, } from "./utils/model-operations.js";
+import { assertChatModel, assertClassifierInputSupported, assertClassifierModel, assertImageModel, classifierErrorResult, getModelType, imageErrorResult, isModelType, } from "./utils/model-operations.js";
 import { normalizeContext } from "./utils/transcript.js";
 export { ModelsError } from "./auth/resolve.js";
 export { getModelType, isModelType } from "./utils/model-operations.js";
@@ -500,6 +500,7 @@ class ModelsImpl {
     async classify(model, context, options) {
         try {
             assertClassifierModel(model);
+            assertClassifierInputSupported(model, context);
             const provider = this.requireProvider(model);
             if (!provider.classify) {
                 throw new ModelsError("provider", `Provider ${model.provider} does not support classification`);

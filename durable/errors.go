@@ -1,6 +1,8 @@
 package durable
 
-import "fmt"
+import (
+	"fmt"
+)
 
 // Ports packages/durable/src/errors.ts
 
@@ -11,7 +13,13 @@ type ReadAfterWrite struct {
 }
 
 // NewReadAfterWrite returns the error for the Tx method that read after a write.
-func NewReadAfterWrite(method string) *ReadAfterWrite { return &ReadAfterWrite{Method: method} }
+func NewReadAfterWrite(method string) *ReadAfterWrite {
+	e := &ReadAfterWrite{Method: method}
+	return e
+}
+
+// Name is the `name` property, "ReadAfterWrite".
+func (*ReadAfterWrite) Name() string { return "ReadAfterWrite" }
 
 func (e *ReadAfterWrite) Error() string {
 	return fmt.Sprintf("Tx.%s() cannot read tables after the first table write", e.Method)
@@ -26,8 +34,12 @@ type StorageRejected struct {
 
 // NewStorageRejected returns a StorageRejected error; cause may be nil.
 func NewStorageRejected(message string, cause error) *StorageRejected {
-	return &StorageRejected{Message: message, Cause: cause}
+	e := &StorageRejected{Message: message, Cause: cause}
+	return e
 }
+
+// Name is the `name` property, "StorageRejected".
+func (*StorageRejected) Name() string { return "StorageRejected" }
 
 func (e *StorageRejected) Error() string { return e.Message }
 
@@ -41,8 +53,12 @@ type ConversationBusy struct {
 
 // NewConversationBusy returns the error for a busy conversation.
 func NewConversationBusy(conversationId ConversationId) *ConversationBusy {
-	return &ConversationBusy{ConversationId: conversationId}
+	e := &ConversationBusy{ConversationId: conversationId}
+	return e
 }
+
+// Name is the `name` property, "ConversationBusy".
+func (*ConversationBusy) Name() string { return "ConversationBusy" }
 
 func (e *ConversationBusy) Error() string {
 	return fmt.Sprintf("Conversation %d is busy", e.ConversationId)

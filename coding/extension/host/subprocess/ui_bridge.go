@@ -8,6 +8,7 @@ import (
 	"slices"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"weak"
 
 	"github.com/MichaelKinsy/PiG/extensions/sdk/json"
@@ -88,7 +89,13 @@ type UIBridge struct {
 	pendingHeaderClear bool
 	pendingHeader      []string
 	pendingHeaderW     int
-	pendingLogin       *extension.LoginDefinition
+	// pendingFooterView and pendingHeaderView replace the pending lines when
+	// the extension's frame carried a view (D107); footerView and headerView
+	// are the slots' view surfaces, kept while their connection sets them.
+	pendingFooterView, pendingHeaderView *extension.FramedView
+	footerView, headerView               *viewSurface
+	footerViewConn, headerViewConn       *Conn
+	pendingLogin                         *extension.LoginDefinition
 	// sprites are the sprites each extension registered, in registration order. They are kept across UI bindings and
 	// handed to every UI that keeps sprites (extension.SpriteRegistrar), and dropped with their extension. spritesMu
 	// guards them and orders their registrations with the UI's; it is taken before mu.
@@ -103,6 +110,8 @@ type UIBridge struct {
 
 	// withSession builds the WithSession option of a replacement call that names a callback handle. Set by the Host.
 	withSession func(ctx context.Context, extName string, owner *Conn, handle string) func(*extension.ReplacedSessionContext) error
+	// setup builds the Setup option of a newSession call that names a setup callback handle. Set by the Host.
+	setup func(ctx context.Context, extName string, owner *Conn, handle string) func(any) error
 
 	// registeredProviderConfigs holds the provider configs extensions
 	// registered, merged per upstream registerProvider, and
@@ -134,6 +143,21 @@ type UIBridge struct {
 	// invalidateTUI triggers a TUI render cycle.
 	invalidateTUI func()
 	currentWidth  int
+	// frontend is true while a D91 frontend session draws the interactive
+	// mode (D107). Every state snapshot carries it as StatePayload.frontend.
+	frontend bool
+	// frontendPush is the owned worker that pushes the state_update for a
+	// SetFrontend change off the caller's goroutine. pending coalesces changes
+	// made while a push runs, since each push reads the current flag;
+	// StopFrontendPushes stops the worker and waits for it.
+	frontendPush struct {
+		mu      sync.Mutex
+		cond    *sync.Cond
+		pending bool
+		started bool
+		stopped bool
+		wg      sync.WaitGroup
+	}
 
 	// notifyFunc renders notifications via the TUI chat area.
 	// Set by InteractiveMode after TUI creation.
@@ -143,7 +167,7 @@ type UIBridge struct {
 	// The callback receives all current widget proxies so the host can sync
 	// them into the TUI layout.
 	widgetSyncFunc    func(widgets map[string]*PushProxy)
-	widgetRequestFunc func(extName, key string, lines []string, opts extension.ExtensionWidgetOptions)
+	widgetRequestFunc func(extName, key string, lines []string, opts *extension.ExtensionWidgetOptions)
 }
 
 // sessionLogPageBytes sizes one session-log chunk on the wire. Every reader
@@ -477,10 +501,11 @@ func (b *UIBridge) Snapshot(flagNames []string, cursor int, wantSessionLog bool)
 	theme := b.theme
 	keybindings := b.keybindings
 	mcpServers := b.mcpServers
+	frontend := b.frontend
 	b.mu.RUnlock()
 
 	// Upstream runner.ts:578-580 reports UI availability from the bound context.
-	state := &StatePayload{IsIdle: true, HasUI: uiCtx != nil && uiCtx != extension.NoopUIContext, ProjectTrusted: true, ScopedModels: []scopedModelSnapshot{}, McpServers: []extension.RegisteredMcpServer{}}
+	state := &StatePayload{IsIdle: true, HasUI: uiCtx != nil && uiCtx != extension.NoopUIContext, Frontend: frontend, ProjectTrusted: true, ScopedModels: []scopedModelSnapshot{}, McpServers: []extension.RegisteredMcpServer{}}
 	// pi.getMcpServers() is synchronous upstream (types.ts:1839), so the SDKs answer it from state.
 	if mcpServers != nil {
 		state.McpServers = mcpServers()
@@ -634,6 +659,74 @@ func (b *UIBridge) SetTerminalCapabilitiesFunc(fn func() TerminalCapabilitiesPay
 	b.terminalCapabilities = fn
 }
 
+// SetFrontend records whether a frontend session draws the interactive mode
+// and, when that changes, pushes a state_update so extensions see
+// StatePayload.frontend: Node derives views and the SDKs send frontend-only
+// annotations only while it is true. The push runs on the bridge's owned
+// worker, off the caller's goroutine, because the caller is the UI loop and a
+// push waits on every extension's connection.
+//
+// pig additive (D107): stock PiG has no frontend and never sets it.
+func (b *UIBridge) SetFrontend(on bool) {
+	b.mu.Lock()
+	changed := b.frontend != on
+	b.frontend = on
+	b.mu.Unlock()
+	if !changed {
+		return
+	}
+	w := &b.frontendPush
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	if w.stopped {
+		return
+	}
+	w.pending = true
+	if !w.started {
+		w.started = true
+		w.cond = sync.NewCond(&w.mu)
+		w.wg.Go(b.runFrontendPushes)
+	}
+	w.cond.Signal()
+}
+
+// runFrontendPushes pushes one state_update per batch of SetFrontend changes
+// until StopFrontendPushes.
+func (b *UIBridge) runFrontendPushes() {
+	w := &b.frontendPush
+	for {
+		w.mu.Lock()
+		for !w.pending && !w.stopped {
+			w.cond.Wait()
+		}
+		if w.stopped {
+			w.mu.Unlock()
+			return
+		}
+		w.pending = false
+		w.mu.Unlock()
+		b.mu.RLock()
+		push := b.OnStateChanged
+		b.mu.RUnlock()
+		if push != nil {
+			push()
+		}
+	}
+}
+
+// StopFrontendPushes stops the SetFrontend push worker and waits for a push
+// in flight; later SetFrontend changes update the flag without a push.
+func (b *UIBridge) StopFrontendPushes() {
+	w := &b.frontendPush
+	w.mu.Lock()
+	w.stopped = true
+	if w.cond != nil {
+		w.cond.Broadcast()
+	}
+	w.mu.Unlock()
+	w.wg.Wait()
+}
+
 func NewUIBridge(invalidateTUI func()) *UIBridge {
 	bridge := &UIBridge{
 		widgets:          make(map[string]*PushProxy),
@@ -701,8 +794,14 @@ func (b *UIBridge) SetUIContext(ctx extension.UIContext) {
 	ready := ctx != extension.NoopUIContext
 	b.uiReady = ready
 	statuses := maps.Clone(b.pendingStatuses)
-	footerSet, footer := b.pendingFooterSet, framedLines(b.pendingFooter, b.pendingFooterW)
-	headerSet, header := b.pendingHeaderSet, framedLines(b.pendingHeader, b.pendingHeaderW)
+	footerSet, footer := b.pendingFooterSet, extension.FrameFooter(b.pendingFooter, b.pendingFooterW)
+	headerSet, header := b.pendingHeaderSet, extension.FrameHeader(b.pendingHeader, b.pendingHeaderW)
+	if b.pendingFooterView != nil {
+		footer = extension.ViewFooter(*b.pendingFooterView)
+	}
+	if b.pendingHeaderView != nil {
+		header = extension.ViewHeader(*b.pendingHeaderView)
+	}
 	if b.pendingFooterClear {
 		footer = nil
 	}
@@ -721,7 +820,7 @@ func (b *UIBridge) SetUIContext(ctx extension.UIContext) {
 			ctx.SetStatus(key, text)
 		}
 		if editor := b.activeEditor(); editor != nil {
-			ctx.SetEditorComponent(editor)
+			ctx.SetEditorComponent(extension.RemoteEditorFactory(editor))
 		}
 		if footerSet {
 			ctx.SetFooter(footer)
@@ -740,6 +839,7 @@ func (b *UIBridge) SetUIContext(ctx extension.UIContext) {
 				b.pendingLogin = nil
 				b.pendingHeaderSet = false
 				b.pendingHeader = nil
+				b.pendingHeaderView = nil
 				b.mu.Unlock()
 			}
 		} else if headerSet {
@@ -786,7 +886,7 @@ func (b *UIBridge) SetWidgetSyncFunc(fn func(widgets map[string]*PushProxy)) {
 }
 
 // SetWidgetRequestFunc installs a mode-specific serialized-widget observer.
-func (b *UIBridge) SetWidgetRequestFunc(fn func(extName, key string, lines []string, opts extension.ExtensionWidgetOptions)) {
+func (b *UIBridge) SetWidgetRequestFunc(fn func(extName, key string, lines []string, opts *extension.ExtensionWidgetOptions)) {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 	b.widgetRequestFunc = fn
@@ -1137,7 +1237,9 @@ func (b *UIBridge) handleCall(ctx context.Context, extName string, owner *Conn, 
 		return nil, errors.New("nil extension host call")
 	}
 	// A blocking dialog opens its ui_prompt scope now and closes it on return.
-	defer b.beginUIPrompt(call)()
+	// A dialog waiting for terminal focus settles after the dialog holding it, so the holder's scope closes before focus passes on.
+	endPrompt := sync.OnceFunc(b.beginUIPrompt(call))
+	defer endPrompt()
 	// Snapshot UI context and actions under lock.
 	b.mu.RLock()
 	ui := b.uiCtx
@@ -1168,13 +1270,19 @@ func (b *UIBridge) handleCall(ctx context.Context, extName string, owner *Conn, 
 	if call.Method != CallUICustom && takesInteractiveFocus(call.Method) {
 		select {
 		case <-b.interactiveFocus:
-			defer func() { b.interactiveFocus <- struct{}{} }()
+			defer func() {
+				endPrompt()
+				b.interactiveFocus <- struct{}{}
+			}()
 		default:
 			// Another dialog holds focus: this one starts when it closes.
 			extension.CallInitiated(ctx)
 			select {
 			case <-b.interactiveFocus:
-				defer func() { b.interactiveFocus <- struct{}{} }()
+				defer func() {
+					endPrompt()
+					b.interactiveFocus <- struct{}{}
+				}()
 			case <-ctx.Done():
 				return &CallResultPayload{Error: &ErrorInfo{Code: "cancelled", Message: ctx.Err().Error()}}, nil
 			}
@@ -1196,7 +1304,7 @@ func (b *UIBridge) handleCall(ctx context.Context, extName string, owner *Conn, 
 	case "ui.setHiddenThinkingLabel":
 		return b.handleSetHiddenThinkingLabel(ui, call.Args)
 	case "ui.setWidget":
-		return b.handleSetWidget(extName, call.Args)
+		return b.handleSetWidget(extName, owner, call.Args)
 
 	// ── Category 2: User Interaction (blocking) ──────────────────────────
 	case "ui.select":
@@ -1226,6 +1334,8 @@ func (b *UIBridge) handleCall(ctx context.Context, extName string, owner *Conn, 
 		return b.handleSetTitle(ui, call.Args)
 	case "ui.setEditorComponent":
 		return b.handleSetEditorComponent(ui, call.Args)
+	case "ui.editor.base":
+		return b.handleEditorBase(ctx, extName, owner, call.Args)
 
 	// ── Category 4: Editor Access ────────────────────────────────────────
 	case "ui.pasteToEditor":
@@ -1388,16 +1498,66 @@ func (b *UIBridge) handleCall(ctx context.Context, extName string, owner *Conn, 
 	}
 }
 
-// HandleWidgetPush processes a widget_push message. A push with a width is a
-// frame a component rendered at that width. A push without one is a string
-// list widget (the Go, Rust and Python SDKs' setWidget(key, string[])), which
-// the host lays out at its own width as Pi's setExtensionWidget does.
-func (b *UIBridge) HandleWidgetPush(extName string, push *WidgetPushPayload) {
+// HandleWidgetPush processes a widget_push message from conn. A push with a
+// width is a frame a component rendered at that width. A push without one is
+// a string list widget (the Go, Rust and Python SDKs' setWidget(key,
+// string[])), which the host lays out at its own width as Pi's
+// setExtensionWidget does. A push with a view (D107) is drawn from it.
+func (b *UIBridge) HandleWidgetPush(extName string, conn *Conn, push *WidgetPushPayload) {
+	if hasView(push.View) {
+		b.updateWidgetView(extName, conn, push.Key, push.View, push.Lines, push.Width, "")
+		return
+	}
 	placement := ""
 	if push.Width == 0 {
 		placement = "aboveEditor"
 	}
 	b.updateWidget(extName, push.Key, push.Lines, push.Width, placement)
+}
+
+// hasView reports a carrier's view field that holds a view.
+func hasView(raw json.RawMessage) bool {
+	return len(raw) > 0 && string(raw) != "null"
+}
+
+// updateWidgetView draws a widget from a view (D107), keeping its proxy and
+// view surface across frames so the host-owned state survives. An empty
+// placement keeps the widget's slot ("aboveEditor" for a new one).
+func (b *UIBridge) updateWidgetView(extName string, conn *Conn, widgetKey string, raw json.RawMessage, lines []string, width int, placement string) {
+	key := extName + ":" + widgetKey
+	b.mu.Lock()
+	if b.uiCtx == extension.NoopUIContext {
+		b.mu.Unlock()
+		return
+	}
+	proxy, exists := b.widgets[key]
+	if !exists {
+		proxy = NewPushProxy(b.Invalidate, nil)
+		b.widgets[key] = proxy
+	}
+	proxy.mu.Lock()
+	moved := placement != "" && placement != proxy.placement
+	if !exists || moved {
+		b.widgetOrder++
+		proxy.order = b.widgetOrder
+	}
+	if placement != "" {
+		proxy.placement = placement
+	}
+	proxy.mu.Unlock()
+	b.mu.Unlock()
+
+	view := proxy.viewSurface(conn)
+	if acceptView(view, "widget "+widgetKey, raw, lines) {
+		linesWidth := 0
+		if lines != nil {
+			linesWidth = width
+		}
+		proxy.UpdateView(view, linesWidth)
+	}
+	if !exists || moved {
+		b.notifyWidgetSync()
+	}
 }
 
 // updateWidget replaces string-list widgets and updates component frames. An empty placement keeps a frame's current slot.
@@ -1554,13 +1714,17 @@ func (b *UIBridge) ModelCatalog() []map[string]any {
 }
 
 // PublishModelCatalog sends the current registry snapshot to every connected
-// extension. With no connection it builds nothing: a later connection receives
-// its own snapshot from RegisterExtConn.
+// extension that replicates the model registry (RegisterPayload.WantsModelRegistry).
+// With no such connection it builds nothing: a later one receives its own
+// snapshot from RegisterExtConn.
 func (b *UIBridge) PublishModelCatalog() {
 	b.mu.RLock()
 	connections := make([]*Conn, 0, len(b.extConns))
 	for _, connection := range b.extConns {
-		connections = append(connections, connection)
+		// pig additive (D19): a runtime that reads getModelRegistryState on use gets no snapshot it would discard.
+		if connection.modelRegistry {
+			connections = append(connections, connection)
+		}
 	}
 	b.mu.RUnlock()
 	if len(connections) == 0 {
@@ -1699,13 +1863,19 @@ func (b *UIBridge) ForgetProviderRegistration(name string) {
 
 // RegisterExtConn associates an extension's socket connection with the
 // bridge so input notifications generated by overlay surfaces can be
-// forwarded back to the extension subprocess.
+// forwarded back to the extension subprocess. A connection whose runtime
+// declared RegisterPayload.WantsModelRegistry receives the current registry
+// snapshot now and every later publication.
 //
 // pig-specific: no upstream equivalent.
-func (b *UIBridge) RegisterExtConn(extName string, conn *Conn) {
+func (b *UIBridge) RegisterExtConn(extName string, conn *Conn, wantsModelRegistry bool) {
 	b.mu.Lock()
 	b.extConns[extName] = conn
+	conn.modelRegistry = wantsModelRegistry
 	b.mu.Unlock()
+	if !wantsModelRegistry {
+		return
+	}
 	if message := b.modelCatalogUpdate(); message != nil {
 		_ = conn.sendEncoded(message)
 	}
@@ -1729,6 +1899,13 @@ func (b *UIBridge) HandleNotifyFrom(extName string, owner *Conn, n *NotifyPayloa
 		return
 	}
 	switch n.Method {
+	case "ui.notify":
+		// The Go, Python and Rust editor components report a failed component method as a notify, because their editor session cannot wait for a call result.
+		b.mu.RLock()
+		ui := b.uiCtx
+		b.mu.RUnlock()
+		// A malformed notify has no caller to answer, as with the overlay frames below.
+		_, _ = b.handleNotify(ui, n.Args)
 	case NotifyUICustomRender:
 		var p RemoteOverlayRenderPayload
 		if err := json.Unmarshal(n.Args, &p); err != nil {
@@ -1741,7 +1918,13 @@ func (b *UIBridge) HandleNotifyFrom(extName string, owner *Conn, n *NotifyPayloa
 		if !ok {
 			return
 		}
-		handle.(*overlayProxy).UpdateFrame(p.Lines, p.Width, p.Seq, width)
+		proxy := handle.(*overlayProxy)
+		proxy.mouse.Store(p.Mouse)
+		if len(p.View) > 0 && string(p.View) != "null" {
+			proxy.UpdateViewFrame(owner, p.Key, p.View, p.Lines, p.Width, p.Seq, width)
+			return
+		}
+		proxy.UpdateFrame(p.Lines, p.Width, p.Seq, width)
 	case NotifyUICustomClose:
 		var p RemoteOverlayClosePayload
 		if err := json.Unmarshal(n.Args, &p); err != nil {
@@ -1830,6 +2013,13 @@ func (b *UIBridge) sendCustomInput(ctx context.Context, extName string, conn *Co
 		proxy.Close(remoteOverlayError{message: "extension connection is unavailable"})
 		return
 	}
+	// A key the view's focused list binds stays on the host (D107, §4.3).
+	proxy.mu.Lock()
+	view := proxy.view
+	proxy.mu.Unlock()
+	if view != nil && view.HandleViewInput(data) {
+		return
+	}
 	payload := RemoteOverlayInputPayload{Key: key, Data: data}
 	if state, err := proxy.Control(ctx, "", false, nil); err == nil {
 		payload.State = &state
@@ -1844,6 +2034,39 @@ func (b *UIBridge) sendCustomInput(ctx context.Context, extName string, conn *Co
 	}); err != nil {
 		proxy.Close(remoteOverlayError{message: "deliver focused input: " + err.Error()})
 	}
+}
+
+// sendCustomMouse hands a mouse event to the focused component: first to
+// its view's components, then, when the component takes the mouse, to the
+// extension. It reports what the view's components did,
+// Handled also when the extension took the event.
+func (b *UIBridge) sendCustomMouse(extName string, conn *Conn, key string, event extension.RemoteMouseEvent) extension.ViewMouseResult {
+	b.mu.RLock()
+	handle, ok := b.customOverlays[customOverlayOwnerPrefix(extName, conn)+key]
+	b.mu.RUnlock()
+	if !ok || conn == nil {
+		return extension.ViewMouseResult{}
+	}
+	proxy := handle.(*overlayProxy)
+	proxy.mu.Lock()
+	view, closed := proxy.view, proxy.closed
+	proxy.mu.Unlock()
+	if closed {
+		return extension.ViewMouseResult{}
+	}
+	if view != nil {
+		if result := view.HandleViewMouse(event); result.Handled {
+			return result
+		}
+	}
+	if !proxy.mouse.Load() {
+		return extension.ViewMouseResult{}
+	}
+	args, _ := json.Marshal(RemoteOverlayMousePayload{Key: key, Event: event})
+	if err := conn.Send(&Envelope{Type: MsgNotify, Notify: &NotifyPayload{Method: NotifyUICustomMouse, Args: args}}); err != nil {
+		proxy.Close(remoteOverlayError{message: "deliver focused mouse: " + err.Error()})
+	}
+	return extension.ViewMouseResult{Handled: true}
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -2003,16 +2226,23 @@ func (b *UIBridge) replacementCallback(ctx context.Context, extName string, owne
 
 func (b *UIBridge) handleNewSession(ctx context.Context, extName string, owner *Conn, actions *HostCallbacks, args json.RawMessage) (*CallResultPayload, error) {
 	if actions == nil || actions.NewSession == nil {
+		// runner.ts:383-386: a command context whose actions are not bound answers { cancelled: false }.
 		extension.CallInitiated(ctx)
-		return &CallResultPayload{Error: &ErrorInfo{Code: "unsupported", Message: "newSession not available"}}, nil
+		result, _ := json.Marshal(extension.CancelledResult{})
+		return &CallResultPayload{Result: result}, nil
 	}
 	var p struct {
 		ParentSession string `json:"parentSession"`
+		Setup         string `json:"setup"`
 	}
 	if len(args) > 0 {
 		_ = json.Unmarshal(args, &p)
 	}
 	opts := extension.NewSessionOptions{ParentSession: p.ParentSession, WithSession: b.replacementCallback(ctx, extName, owner, args)}
+	if p.Setup != "" && owner != nil && b.setup != nil {
+		setup := b.setup(ctx, extName, owner, p.Setup)
+		opts.Setup = func(manager extension.SessionManager) error { return setup(manager) }
+	}
 	res, err := actions.NewSession(ctx, &opts)
 	if err != nil {
 		return &CallResultPayload{Error: &ErrorInfo{Code: "session_error", Message: err.Error()}}, nil
@@ -2023,8 +2253,10 @@ func (b *UIBridge) handleNewSession(ctx context.Context, extName string, owner *
 
 func (b *UIBridge) handleFork(ctx context.Context, extName string, owner *Conn, actions *HostCallbacks, args json.RawMessage) (*CallResultPayload, error) {
 	if actions == nil || actions.Fork == nil {
+		// runner.ts:383-386: a command context whose actions are not bound answers { cancelled: false }.
 		extension.CallInitiated(ctx)
-		return &CallResultPayload{Error: &ErrorInfo{Code: "unsupported", Message: "fork not available"}}, nil
+		result, _ := json.Marshal(extension.CancelledResult{})
+		return &CallResultPayload{Result: result}, nil
 	}
 	var p struct {
 		EntryID  string `json:"entryId"`
@@ -2044,8 +2276,10 @@ func (b *UIBridge) handleFork(ctx context.Context, extName string, owner *Conn, 
 
 func (b *UIBridge) handleNavigateTree(ctx context.Context, actions *HostCallbacks, args json.RawMessage) (*CallResultPayload, error) {
 	if actions == nil || actions.NavigateTree == nil {
+		// runner.ts:383-386: a command context whose actions are not bound answers { cancelled: false }.
 		extension.CallInitiated(ctx)
-		return &CallResultPayload{Error: &ErrorInfo{Code: "unsupported", Message: "navigateTree not available"}}, nil
+		result, _ := json.Marshal(extension.CancelledResult{})
+		return &CallResultPayload{Result: result}, nil
 	}
 	var p struct {
 		TargetID            string `json:"targetId"`
@@ -2073,8 +2307,10 @@ func (b *UIBridge) handleNavigateTree(ctx context.Context, actions *HostCallback
 
 func (b *UIBridge) handleSwitchSession(ctx context.Context, extName string, owner *Conn, actions *HostCallbacks, args json.RawMessage) (*CallResultPayload, error) {
 	if actions == nil || actions.SwitchSession == nil {
+		// runner.ts:383-386: a command context whose actions are not bound answers { cancelled: false }.
 		extension.CallInitiated(ctx)
-		return &CallResultPayload{Error: &ErrorInfo{Code: "unsupported", Message: "switchSession not available"}}, nil
+		result, _ := json.Marshal(extension.CancelledResult{})
+		return &CallResultPayload{Result: result}, nil
 	}
 	var p struct {
 		SessionPath string `json:"sessionPath"`
@@ -2092,8 +2328,9 @@ func (b *UIBridge) handleSwitchSession(ctx context.Context, extName string, owne
 
 func (b *UIBridge) handleReload(ctx context.Context, actions *HostCallbacks) (*CallResultPayload, error) {
 	if actions == nil || actions.Reload == nil {
+		// runner.ts:386-387,561: an unbound reload handler is `async () => {}`.
 		extension.CallInitiated(ctx)
-		return &CallResultPayload{Error: &ErrorInfo{Code: "unsupported", Message: "reload not available"}}, nil
+		return &CallResultPayload{}, nil
 	}
 	if err := actions.Reload(ctx); err != nil {
 		// session.reload() rejects with the Error it threw (agent-session.ts:3575-3625), so the extension sees its own message.
@@ -2126,9 +2363,7 @@ func (b *UIBridge) handleSetStatus(args json.RawMessage) (*CallResultPayload, er
 }
 
 func (b *UIBridge) handleSetWorkingIndicator(ui extension.UIContext, args json.RawMessage) (*CallResultPayload, error) {
-	// WorkingIndicatorOptions is an opaque (`any`) type in the extension
-	// package, so decode the raw JSON into a map and forward it.
-	var opts map[string]any
+	var opts extension.WorkingIndicatorOptions
 	if err := json.Unmarshal(args, &opts); err != nil {
 		return nil, fmt.Errorf("parse setWorkingIndicator args: %w", err)
 	}
@@ -2342,6 +2577,12 @@ func (h *customOverlayHost) OnInput(data string) {
 	h.bridge.sendCustomInput(h.ctx, h.extName, h.owner, h.key, data)
 }
 
+// OnMouse hands a mouse event to the component; see
+// [extension.RemoteOverlayMouseHost].
+func (h *customOverlayHost) OnMouse(event extension.RemoteMouseEvent) extension.ViewMouseResult {
+	return h.bridge.sendCustomMouse(h.extName, h.owner, h.key, event)
+}
+
 // overlayProxy is the buffering RemoteOverlayHandle registered
 // synchronously when handleCustom starts. It absorbs UpdateLines/Close
 // calls that arrive before the UI-side overlay constructor binds the
@@ -2357,6 +2598,13 @@ type overlayProxy struct {
 	closed   bool
 	closeVal any
 	lastSeq  uint64
+	// view is the overlay's view surface once a frame carries a view
+	// (D107); hasView buffers it until the target binds.
+	view      *viewSurface
+	viewWidth int
+	hasView   bool
+	// mouse reports that the latest frame's component takes the mouse.
+	mouse atomic.Bool
 }
 
 func newOverlayProxy() *overlayProxy {
@@ -2384,6 +2632,11 @@ func (p *overlayProxy) UpdateFrame(lines []string, width int, seq uint64, curren
 	if seq > 0 {
 		p.lastSeq = seq
 	}
+	if p.view != nil {
+		// A frame without a view ends the view and its host-owned state.
+		p.view.close()
+		p.view = nil
+	}
 	if p.target != nil {
 		target := p.target
 		p.mu.Unlock()
@@ -2393,7 +2646,54 @@ func (p *overlayProxy) UpdateFrame(lines []string, width int, seq uint64, curren
 	p.buffered = append([]string(nil), lines...)
 	p.width = width
 	p.hasBuf = true
+	p.hasView = false
 	p.mu.Unlock()
+}
+
+// UpdateViewFrame accepts a ui.custom frame carrying a view (D107), under
+// the same stale-width and seq rules as a lines frame.
+func (p *overlayProxy) UpdateViewFrame(conn *Conn, key string, raw json.RawMessage, lines []string, width int, seq uint64, currentWidth int) {
+	p.mu.Lock()
+	if p.closed || (width > 0 && currentWidth > 0 && width != currentWidth) || (seq > 0 && seq <= p.lastSeq) {
+		p.mu.Unlock()
+		return
+	}
+	if seq > 0 {
+		p.lastSeq = seq
+	}
+	if p.view == nil {
+		p.view = newConnViewSurface(conn, key)
+		p.view.repaint = p.repaintView
+	}
+	view := p.view
+	p.mu.Unlock()
+	if !acceptView(view, "ui.custom "+key, raw, lines) {
+		return
+	}
+	p.mu.Lock()
+	if p.closed {
+		p.mu.Unlock()
+		return
+	}
+	p.viewWidth = width
+	target := p.target
+	if target == nil {
+		p.hasView, p.hasBuf = true, false
+		p.mu.Unlock()
+		return
+	}
+	p.mu.Unlock()
+	updateOverlayView(target, view, width)
+}
+
+// repaintView draws again after a change the view made on its own.
+func (p *overlayProxy) repaintView() {
+	p.mu.Lock()
+	target, view, width, closed := p.target, p.view, p.viewWidth, p.closed
+	p.mu.Unlock()
+	if target != nil && !closed {
+		updateOverlayView(target, view, width)
+	}
 }
 
 func (p *overlayProxy) Close(result any) {
@@ -2404,6 +2704,9 @@ func (p *overlayProxy) Close(result any) {
 	}
 	p.closed = true
 	p.closeVal = result
+	if p.view != nil {
+		p.view.close()
+	}
 	if p.target != nil {
 		target := p.target
 		p.mu.Unlock()
@@ -2429,13 +2732,18 @@ func (p *overlayProxy) SetTarget(target extension.RemoteOverlayHandle) {
 	hasBuf := p.hasBuf
 	lines := p.buffered
 	width := p.width
+	hasView, view, viewWidth := p.hasView, p.view, p.viewWidth
 	closed := p.closed
 	closeVal := p.closeVal
 	p.buffered = nil
 	p.hasBuf = false
+	p.hasView = false
 	p.mu.Unlock()
 	if hasBuf {
 		updateOverlayLines(target, lines, width)
+	}
+	if hasView {
+		updateOverlayView(target, view, viewWidth)
 	}
 	if closed {
 		target.Close(closeVal)
@@ -2450,6 +2758,16 @@ func updateOverlayLines(target extension.RemoteOverlayHandle, lines []string, wi
 		return
 	}
 	target.UpdateLines(lines)
+}
+
+// updateOverlayView hands a view surface to a target that draws views, and
+// its lines at the frame's width to one that does not.
+func updateOverlayView(target extension.RemoteOverlayHandle, view *viewSurface, width int) {
+	if v, ok := target.(extension.ViewTarget); ok {
+		v.UpdateViewAt(view, width)
+		return
+	}
+	updateOverlayLines(target, view.Render(width), width)
 }
 
 func (b *UIBridge) handleEditor(ctx context.Context, ui extension.UIContext, args json.RawMessage) (*CallResultPayload, error) {
@@ -2507,24 +2825,38 @@ func (b *UIBridge) handleSetFooter(extName string, conn *Conn, args json.RawMess
 	b.footerMu.Lock()
 	defer b.footerMu.Unlock()
 	var p struct {
-		Clear      bool     `json:"clear"`
-		Lines      []string `json:"lines"`
-		Width      int      `json:"width"`
-		SurfaceID  int      `json:"surfaceId"`
-		UpdateOnly bool     `json:"updateOnly"`
+		Clear      bool            `json:"clear"`
+		Lines      []string        `json:"lines"`
+		Width      int             `json:"width"`
+		SurfaceID  int             `json:"surfaceId"`
+		UpdateOnly bool            `json:"updateOnly"`
+		View       json.RawMessage `json:"view"`
 	}
 	_ = json.Unmarshal(args, &p)
 	if !b.admitSurface("footer", surfaceOwner{extName: extName, conn: conn, id: p.SurfaceID}, p.UpdateOnly) {
 		return &CallResultPayload{}, nil
 	}
 	cleared := p.Clear || len(args) == 0 || string(args) == "null"
-	var factory any
+	var factory extension.FooterFactory
+	var view *extension.FramedView
 	if !cleared {
-		factory = framedLines(p.Lines, p.Width)
+		factory = extension.FrameFooter(p.Lines, p.Width)
+		if hasView(p.View) {
+			var ok bool
+			if view, ok = b.slotView("footer", conn, p.View, p.Lines, p.Width); !ok {
+				return &CallResultPayload{}, nil
+			}
+			factory = extension.ViewFooter(*view)
+		}
 	}
 	b.mu.Lock()
+	if view == nil && b.footerView != nil {
+		b.footerView.close()
+		b.footerView, b.footerViewConn = nil, nil
+	}
 	b.pendingFooterSet = true
 	b.pendingFooterClear = cleared
+	b.pendingFooterView = view
 	if cleared {
 		b.pendingFooter = nil
 	} else {
@@ -2537,28 +2869,71 @@ func (b *UIBridge) handleSetFooter(extName string, conn *Conn, args json.RawMess
 	return &CallResultPayload{}, nil
 }
 
+// slotView accepts a header or footer frame carrying a view (D107) on the
+// slot's view surface, made anew when another connection sets the slot. It
+// reports false for a rejected frame, which leaves the slot as it is.
+func (b *UIBridge) slotView(kind string, conn *Conn, raw json.RawMessage, lines []string, width int) (*extension.FramedView, bool) {
+	b.mu.Lock()
+	surface, surfaceConn := &b.footerView, &b.footerViewConn
+	if kind == "header" {
+		surface, surfaceConn = &b.headerView, &b.headerViewConn
+	}
+	if *surface == nil || *surfaceConn != conn {
+		if *surface != nil {
+			(*surface).close()
+		}
+		*surface = newConnViewSurface(conn, "")
+		(*surface).repaint = b.Invalidate
+		*surfaceConn = conn
+	}
+	view := *surface
+	b.mu.Unlock()
+	if !acceptView(view, kind, raw, lines) {
+		return nil, false
+	}
+	framedWidth := 0
+	if lines != nil {
+		framedWidth = width
+	}
+	return &extension.FramedView{View: view, Width: framedWidth}, true
+}
+
 func (b *UIBridge) handleSetHeader(extName string, conn *Conn, args json.RawMessage) (*CallResultPayload, error) {
 	b.headerMu.Lock()
 	defer b.headerMu.Unlock()
 	var p struct {
-		Clear      bool     `json:"clear"`
-		Lines      []string `json:"lines"`
-		Width      int      `json:"width"`
-		SurfaceID  int      `json:"surfaceId"`
-		UpdateOnly bool     `json:"updateOnly"`
+		Clear      bool            `json:"clear"`
+		Lines      []string        `json:"lines"`
+		Width      int             `json:"width"`
+		SurfaceID  int             `json:"surfaceId"`
+		UpdateOnly bool            `json:"updateOnly"`
+		View       json.RawMessage `json:"view"`
 	}
 	_ = json.Unmarshal(args, &p)
 	if !b.admitSurface("header", surfaceOwner{extName: extName, conn: conn, id: p.SurfaceID}, p.UpdateOnly) {
 		return &CallResultPayload{}, nil
 	}
 	cleared := p.Clear || len(args) == 0 || string(args) == "null"
-	var factory any
+	var factory extension.HeaderFactory
+	var view *extension.FramedView
 	if !cleared {
-		factory = framedLines(p.Lines, p.Width)
+		factory = extension.FrameHeader(p.Lines, p.Width)
+		if hasView(p.View) {
+			var ok bool
+			if view, ok = b.slotView("header", conn, p.View, p.Lines, p.Width); !ok {
+				return &CallResultPayload{}, nil
+			}
+			factory = extension.ViewHeader(*view)
+		}
 	}
 	b.mu.Lock()
+	if view == nil && b.headerView != nil {
+		b.headerView.close()
+		b.headerView, b.headerViewConn = nil, nil
+	}
 	b.pendingHeaderSet = true
 	b.pendingHeaderClear = cleared
+	b.pendingHeaderView = view
 	b.pendingLogin = nil
 	if cleared {
 		b.pendingHeader = nil
@@ -2600,6 +2975,7 @@ func (b *UIBridge) handleSetLogin(extName string, conn *Conn, args json.RawMessa
 	b.mu.Lock()
 	b.pendingHeaderSet = false
 	b.pendingHeader = nil
+	b.pendingHeaderView = nil
 	if ready {
 		b.pendingLogin = nil
 	} else {
@@ -2733,7 +3109,13 @@ func (b *UIBridge) handleGetEditorText(ui extension.UIContext) (*CallResultPaylo
 }
 
 func (b *UIBridge) handleGetEditorComponent(ui extension.UIContext) (*CallResultPayload, error) {
-	result, _ := json.Marshal(map[string]any{"component": ui.GetEditorComponent()})
+	// The factory is a function of the host process; an extension process keeps its own factory (runtime.mjs getEditorComponent), so the wire
+	// carries whether the host has one installed.
+	var installed any
+	if ui.GetEditorComponent() != nil {
+		installed = true
+	}
+	result, _ := json.Marshal(map[string]any{"component": installed})
 	return &CallResultPayload{Result: result}, nil
 }
 
@@ -2795,7 +3177,7 @@ func (b *UIBridge) handleSetTheme(ui extension.UIContext, args json.RawMessage) 
 	if err := json.Unmarshal(args, &p); err != nil {
 		return nil, fmt.Errorf("parse setTheme args: %w", err)
 	}
-	res := ui.SetTheme(p.Theme)
+	res := ui.SetTheme(extension.ThemeName(p.Theme))
 	result, _ := json.Marshal(res)
 	return &CallResultPayload{Result: result}, nil
 }
@@ -2955,6 +3337,8 @@ func (b *UIBridge) handleSendUserMessage(actions *HostCallbacks, args json.RawMe
 type DirectEntryAppend struct {
 	ID        string `json:"id"`
 	Timestamp string `json:"timestamp"`
+	// Event marks pi.appendEntry, which the Node runtime also appends in its own process: the mode emits entry_appended for it as for a host-assigned pi.appendEntry (agent-session.ts:3406-3411). ctx.sessionManager.appendCustomEntry leaves it false and only writes the log.
+	Event bool `json:"event,omitempty"`
 }
 
 func (b *UIBridge) handleAppendEntry(actions *HostCallbacks, args json.RawMessage) (*CallResultPayload, error) {
@@ -2976,6 +3360,13 @@ func (b *UIBridge) handleAppendEntry(actions *HostCallbacks, args json.RawMessag
 		}, nil
 	}
 	return &CallResultPayload{}, nil
+}
+
+// hasExecAction reports whether a session bound the exec action.
+func (b *UIBridge) hasExecAction() bool {
+	b.mu.RLock()
+	defer b.mu.RUnlock()
+	return b.actions != nil && (b.actions.ExecContext != nil || b.actions.Exec != nil)
 }
 
 func (b *UIBridge) handleExec(ctx context.Context, actions *HostCallbacks, args json.RawMessage) (*CallResultPayload, error) {
@@ -3618,13 +4009,14 @@ func (b *UIBridge) handleCancelModelStream(owner *Conn, args json.RawMessage) (*
 // Widget management
 // ═══════════════════════════════════════════════════════════════════════════════
 
-func (b *UIBridge) handleSetWidget(extName string, args json.RawMessage) (*CallResultPayload, error) {
+func (b *UIBridge) handleSetWidget(extName string, owner *Conn, args json.RawMessage) (*CallResultPayload, error) {
 	var p struct {
-		Key     string                           `json:"key"`
-		Lines   []string                         `json:"lines"` // legacy/current fast path
-		Content []string                         `json:"content"`
-		Width   int                              `json:"width"`
-		Options extension.ExtensionWidgetOptions `json:"options"`
+		Key     string                            `json:"key"`
+		Lines   []string                          `json:"lines"` // legacy/current fast path
+		Content []string                          `json:"content"`
+		Width   int                               `json:"width"`
+		Options *extension.ExtensionWidgetOptions `json:"options"`
+		View    json.RawMessage                   `json:"view"`
 	}
 	if err := json.Unmarshal(args, &p); err != nil {
 		return nil, fmt.Errorf("parse setWidget args: %w", err)
@@ -3637,10 +4029,21 @@ func (b *UIBridge) handleSetWidget(extName string, args json.RawMessage) (*CallR
 	request := b.widgetRequestFunc
 	b.mu.RUnlock()
 	if request != nil {
-		request(extName, p.Key, lines, p.Options)
+		// An authoritative view is a component widget of a native SDK, which
+		// Pi's non-interactive modes do not forward; lines still reach them.
+		if lines != nil || !hasView(p.View) {
+			request(extName, p.Key, lines, p.Options)
+		}
 		return &CallResultPayload{}, nil
 	}
-
+	if hasView(p.View) {
+		placement := "aboveEditor"
+		if p.Options != nil && p.Options.Placement == extension.WidgetPlacementBelowEditor {
+			placement = "belowEditor"
+		}
+		b.updateWidgetView(extName, owner, p.Key, p.View, lines, p.Width, placement)
+		return &CallResultPayload{}, nil
+	}
 	if lines == nil {
 		// Clear the widget.
 		key := extName + ":" + p.Key
@@ -3657,10 +4060,9 @@ func (b *UIBridge) handleSetWidget(extName string, args json.RawMessage) (*CallR
 		// A list with no width is a string[] widget: content the host lays out
 		// at its own width, as Pi's setExtensionWidget does. A list with a width
 		// is a frame a Node component rendered at that width.
-		options, _ := p.Options.(map[string]any)
-		placement := "aboveEditor"
-		if options["placement"] == "belowEditor" {
-			placement = "belowEditor"
+		placement := string(extension.WidgetPlacementAboveEditor)
+		if p.Options != nil && p.Options.Placement == extension.WidgetPlacementBelowEditor {
+			placement = string(extension.WidgetPlacementBelowEditor)
 		}
 		b.updateWidget(extName, p.Key, lines, p.Width, placement)
 	}
@@ -3697,15 +4099,4 @@ func (b *UIBridge) handleWatchSessionLog(extName string, args json.RawMessage) (
 		return nil, fmt.Errorf("marshal session log: %w", err)
 	}
 	return &CallResultPayload{Result: result}, nil
-}
-
-// framedLines passes header/footer lines to the UI context: plain lines when
-// the extension reported no render width, otherwise the lines with the width
-// they were rendered at, so the host never paints them at another width.
-func framedLines(lines []string, width int) any {
-	lines = append([]string(nil), lines...)
-	if width == 0 {
-		return lines
-	}
-	return extension.WidthLines{Lines: lines, Width: width}
 }

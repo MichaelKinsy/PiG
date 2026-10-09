@@ -9,7 +9,7 @@ import (
 )
 
 func BenchmarkExtensionHeaderContainer(b *testing.B) {
-	m := &InteractiveMode{opts: InteractiveOptions{LoginVisible: true}, extHeader: newSpecialLinesComponent(nil)}
+	m := &InteractiveMode{opts: InteractiveModeOptions{LoginVisible: true}, extHeader: newSpecialLinesComponent(nil)}
 	m.extHeader.SetLinesAt([]string{"header", "", "model", "context", "last row"}, 100)
 	header := m.headerContainer()
 	b.ReportAllocs()
@@ -29,7 +29,7 @@ func TestExtensionHeaderKeepsHostSpacers(t *testing.T) {
 		m.mountInteractiveTui(true)
 		ui := &ExtUIContext{m: m}
 		for _, lines := range [][]string{{"first"}, {"", "second", ""}, {}, {"last"}} {
-			ui.SetHeader(extension.WidthLines{Lines: lines, Width: 80})
+			ui.SetHeader(extension.FrameHeader(lines, 80))
 			want := slices.Clone(lines)
 			if visible {
 				want = append(append([]string{""}, want...), "")

@@ -19,16 +19,31 @@ func (m *InteractiveMode) handleStartupSubmit(text string) {
 	m.showStatus("Startup is still in progress")
 }
 
-// handleStartupInput gives one early input sequence to the editor, keeping terminal theme replies out of it.
+// handleStartupInput gives one early input sequence to the editor, keeping frontend protocol input and terminal theme replies out of it.
 func (m *InteractiveMode) handleStartupInput(input inputChunk, render bool) {
 	defer input.ticket.settle()
-	if m.consumeTerminalThemeInput(string(input.data)) {
+	// pig additive (D91): a frontend's answers to its Open queries arrive
+	// during startup.
+	if m.frontendInput(string(input.data)) || m.consumeTerminalThemeInput(string(input.data)) {
 		return
 	}
 	m.editor.HandleInput(string(input.data))
 	if render && m.tuiInst != nil {
 		m.tuiInst.Render()
 	}
+}
+
+// hiddenSubmitCommand names the commands the submit handler recognizes by exact text and that are not in the slash registry (interactive-mode.ts
+// setupEditorSubmitHandler: /arminsayshi and /dementedelves), or returns "".
+func hiddenSubmitCommand(text string) string {
+	switch text {
+	// pig divergence (D87): /pigsayhi is PiG's name for the same easter egg; Pi sends it to the model.
+	case "/arminsayshi", "/pigsayhi":
+		return "arminsayshi"
+	case "/dementedelves":
+		return "dementedelves"
+	}
+	return ""
 }
 
 var flushPendingBashComponents = (*InteractiveMode).flushPendingBashBlocks
@@ -42,13 +57,12 @@ func (m *InteractiveMode) setupEditorSubmitHandler(ctx context.Context) {
 			return
 		}
 		// Pi recognizes the hidden commands only here, before history, compaction queueing and prompt dispatch.
-		switch text {
-		// pig divergence (D87): /pigsayhi is PiG's name for the same easter egg; Pi sends it to the model.
-		case "/arminsayshi", "/pigsayhi":
-			m.handleArminSaysHi(ctx)
+		switch hiddenSubmitCommand(text) {
+		case "arminsayshi":
+			m.handleArminSaysHi()
 			m.editor.SetText("")
 			return
-		case "/dementedelves":
+		case "dementedelves":
 			m.handleDementedDelves()
 			m.editor.SetText("")
 			return

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"sync"
+	"sync/atomic"
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/internal/chord"
@@ -77,7 +78,7 @@ func createServerServiceBinding(t *testing.T, peer *client.Client, ids []string,
 	if err != nil {
 		t.Fatal(err)
 	}
-	scope, err := source.Open(chord.RemoteServiceSourceOpenOptions{Services: ids, OnError: options.OnError})
+	scope, err := source.Open(chord.RemoteServiceSourceOpenOptions{Services: chord.ServiceIDs(ids...), OnError: options.OnError})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -111,40 +112,48 @@ func createSessionServiceBinding(t *testing.T, peer *client.Client, ids []string
 	if err != nil {
 		t.Fatal(err)
 	}
-	scope, err := source.Open(chord.RemoteServiceSourceOpenOptions{Services: ids, OnError: options.OnError})
+	scope, err := source.Open(chord.RemoteServiceSourceOpenOptions{Services: chord.ServiceIDs(ids...), OnError: options.OnError})
 	if err != nil {
 		t.Fatal(err)
 	}
 	return &experimentalSessionServiceBinding{SessionServiceSource: source, experimentalBindingScope: newExperimentalBindingScope(t, scope, source.Dispose, options.OnError)}
 }
 
-// upstream: packages/coding-agent/test/experimental-remote-runtime.test.ts:480-533. Release must run before disposing the source that owns the delayed subscription.
-func delaySessionServiceSubscription(t *testing.T, peer *client.Client, sessionId, serviceId string) (client.ServiceTransportClient, func()) {
+// upstream: packages/coding-agent/test/experimental-remote-runtime.test.ts:480-533, which spies on client.subscribeService
+// to hold the subscription for serviceId on session sessionId; the counter reports how many reached the hold. The returned wrapper interposes on the routed transport
+// that calls it. Release must run before disposing the source that owns the delayed subscription.
+func delaySessionServiceSubscription(t *testing.T, sessionId, serviceId string) (func(chord.RemoteServiceTransport, func() protocol.RpcTarget) chord.RemoteServiceTransport, func(), *atomic.Int32) {
 	t.Helper()
 	release := make(chan struct{})
 	var once sync.Once
 	unblock := func() { once.Do(func() { close(release) }) }
 	t.Cleanup(unblock)
-	return &delayedSessionSubscription{ServiceTransportClient: peer, sessionId: sessionId, serviceId: serviceId, release: release}, unblock
+	held := new(atomic.Int32)
+	wrap := func(transport chord.RemoteServiceTransport, getTarget func() protocol.RpcTarget) chord.RemoteServiceTransport {
+		return &delayedSessionSubscription{RemoteServiceTransport: transport, getTarget: getTarget, sessionId: sessionId, serviceId: serviceId, release: release, held: held}
+	}
+	return wrap, unblock, held
 }
 
 type delayedSessionSubscription struct {
-	client.ServiceTransportClient
+	chord.RemoteServiceTransport
+	getTarget            func() protocol.RpcTarget
 	sessionId, serviceId string
 	release              <-chan struct{}
+	held                 *atomic.Int32 // subscriptions that reached the delay
 }
 
-func (decorator *delayedSessionSubscription) BeginInvoke(ctx context.Context, target protocol.RpcTarget, call chord.ServiceCall) (*chord.ServiceInvocation, error) {
-	initiating, ok := decorator.ServiceTransportClient.(client.InitiatingServiceTransportClient)
+func (decorator *delayedSessionSubscription) BeginInvoke(ctx context.Context, call chord.ServiceCall) (*chord.ServiceInvocation, error) {
+	initiating, ok := decorator.RemoteServiceTransport.(chord.InitiatingServiceTransport)
 	if !ok {
-		return nil, errors.New("Decorated client does not expose invocation admission")
+		return nil, errors.New("Decorated transport does not expose invocation admission")
 	}
-	return initiating.BeginInvoke(ctx, target, call)
+	return initiating.BeginInvoke(ctx, call)
 }
 
-func (decorator *delayedSessionSubscription) SubscribeService(ctx context.Context, target protocol.RpcTarget, serviceId string, mode chord.ServiceMode, listener func(chord.ServiceProviderUpdate) error) (*client.ServiceSubscription, error) {
+func (decorator *delayedSessionSubscription) Subscribe(ctx context.Context, serviceId string, mode chord.ServiceMode, listener chord.UpdateListener) (chord.ServiceSubscription, error) {
 	var sessionId string
-	switch target := target.(type) {
+	switch target := decorator.getTarget().(type) {
 	case protocol.SessionTarget:
 		sessionId = target.SessionId
 	case *protocol.SessionTarget:
@@ -153,9 +162,10 @@ func (decorator *delayedSessionSubscription) SubscribeService(ctx context.Contex
 		}
 	}
 	if sessionId == decorator.sessionId && serviceId == decorator.serviceId {
+		decorator.held.Add(1)
 		<-decorator.release
 	}
-	return decorator.ServiceTransportClient.SubscribeService(ctx, target, serviceId, mode, listener)
+	return decorator.RemoteServiceTransport.Subscribe(ctx, serviceId, mode, listener)
 }
 
 // upstream: packages/coding-agent/test/experimental-remote-runtime.test.ts:55-66.

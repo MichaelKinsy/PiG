@@ -1,0 +1,54 @@
+[
+ {
+  "ids": [
+   "pkg:coding-agent/.#ExtensionRunner::property:emitContext"
+  ],
+  "targets": [
+   "coding/extension/host/inproc/runner.go#Runner.EmitContext"
+  ],
+  "production": [
+   "public-api:coding/extension/host/inproc/runner.go#Runner.EmitContext"
+  ],
+  "evidence": [
+   "test:coding/extension/host/inproc/upstream_context_headers_test.go#TestUpstreamRunnerContextAndHeaders",
+   "test:coding/extension/host/inproc/chain_dispatch_test.go#TestEmitContext_ChainCompounds",
+   "test:coding/extension/host/inproc/chain_dispatch_test.go#TestEmitContext_HandlerErrorRoutesViaEmitErrorAndContinues"
+  ],
+  "rationale": "ExtensionRunner.emitContext is the Go method Runner.EmitContext; signature reviewed against the upstream declaration.",
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; handlers run sequentially in registration order, each awaited before the next; no detached goroutine."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#ExtensionRunner::property:emitInput"
+  ],
+  "targets": [
+   "coding/extension/host/inproc/runner.go#Runner.EmitInput"
+  ],
+  "production": [
+   "call:internal/codingagent/event_bridge.go#RunInputHandlers"
+  ],
+  "evidence": [
+   "test:coding/extension/host/inproc/upstream_input_event_test.go#TestUpstreamInputEvent",
+   "test:coding/extension/host/inproc/upstream_input_event_test.go#TestUpstreamInputEventAwaitsHandler",
+   "test:coding/extension/host/inproc/input_dispatch_test.go#TestEmitInput_TransformChainCompounds"
+  ],
+  "rationale": "ExtensionRunner.emitInput is the Go method Runner.EmitInput; signature reviewed against the upstream declaration.",
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; handlers run sequentially in registration order, each awaited before the next; no detached goroutine."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#ExtensionRunner::property:hasUI"
+  ],
+  "targets": [
+   "coding/extension/host/inproc/runner.go#Runner.HasUI"
+  ],
+  "production": [
+   "public-api:coding/extension/host/inproc/runner.go#Runner.HasUI"
+  ],
+  "evidence": [
+   "test:coding/extension/host/inproc/upstream_modes_test.go#TestRunnerCapturedContextsFollowUIBinding"
+  ],
+  "rationale": "ExtensionRunner.hasUI is the Go method Runner.HasUI; signature reviewed against the upstream declaration.",
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; handlers run sequentially in registration order, each awaited before the next; no detached goroutine."
+ }
+]

@@ -39,7 +39,7 @@ func TestReloadResourceResolutionPumpsOwner(t *testing.T) {
 						<-release // A pending child exit, not a detached or completed refresh.
 						return fresh
 					}
-					opts := InteractiveOptions{
+					opts := InteractiveModeOptions{
 						Settings: Settings{Theme: "dark"}, NoThemes: true, NoSkills: true, NoPromptTemplates: true,
 						StageExtensionSDKs: func() error { order = append(order, "stage"); return nil },
 					}
@@ -94,7 +94,7 @@ func TestReloadResourceResolutionPumpsOwner(t *testing.T) {
 					if !maps.Equal(m.resourceSourceInfo, old) || !slices.Equal(order, []string{"resolve"}) {
 						t.Errorf("reload published resources or advanced before resolution: infos=%v order=%v", m.resourceSourceInfo, order)
 					}
-					if m.tuiInst.FocusedComponent() == m.editor {
+					if m.tuiInst.GetFocusedComponent() == m.editor {
 						t.Error("pending resolution restored editor focus")
 					}
 					select {
@@ -112,7 +112,7 @@ func TestReloadResourceResolutionPumpsOwner(t *testing.T) {
 					} else if err != nil || !maps.Equal(m.resourceSourceInfo, fresh) || !slices.Equal(order, []string{"resolve", "stage"}) {
 						t.Errorf("completed reload: err=%v infos=%v order=%v", err, m.resourceSourceInfo, order)
 					}
-					if m.tuiInst.FocusedComponent() != m.editor || m.modalInputCh != nil {
+					if m.tuiInst.GetFocusedComponent() != m.editor || m.modalInputCh != nil {
 						t.Error("reload retained its focus or input route after joining")
 					}
 				})

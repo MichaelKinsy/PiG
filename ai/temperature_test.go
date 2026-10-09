@@ -1,3 +1,5 @@
+//go:build !pig_strip_bedrock_converse_stream && !pig_strip_mistral_conversations
+
 package ai
 
 import (

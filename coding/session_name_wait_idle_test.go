@@ -51,7 +51,7 @@ func TestSessionNameHandlerWaitForIdleReleasesNotifications(t *testing.T) {
 		// Registered after the harness so even a failed assertion releases the Provider before Close.
 		t.Cleanup(release)
 		promptDone := make(chan error, 1)
-		go func() { _, err := s.Prompt(t.Context(), "hello"); promptDone <- err }()
+		go func() { err := s.Prompt(t.Context(), "hello"); promptDone <- err }()
 		synctest.Wait()
 		select {
 		case <-providerEntered:
@@ -168,7 +168,7 @@ func TestWaitForIdleAcknowledgesOnlyPendingWait(t *testing.T) {
 }
 
 func BenchmarkSessionWaitForIdleSuspension(b *testing.B) {
-	services, err := NewServices(ServicesOptions{CWD: b.TempDir(), AgentDir: b.TempDir()})
+	services, err := CreateAgentSessionServices(CreateAgentSessionServicesOptions{CWD: b.TempDir(), AgentDir: b.TempDir()})
 	if err != nil {
 		b.Fatal(err)
 	}

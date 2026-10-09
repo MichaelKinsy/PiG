@@ -1,4 +1,3 @@
-// SPDX-FileCopyrightText: Copyright Hewlett Packard Enterprise Development LP
 // SPDX-FileCopyrightText: Copyright (c) 2025 Mario Zechner
 // SPDX-License-Identifier: MIT
 
@@ -12,6 +11,8 @@ import (
 	"reflect"
 	"regexp"
 	"testing"
+
+	"github.com/MichaelKinsy/PiG/internal/sessionentry"
 )
 
 func restoredEntry(t *testing.T, raw string) json.RawMessage {
@@ -21,6 +22,16 @@ func restoredEntry(t *testing.T, raw string) json.RawMessage {
 	}
 	return json.RawMessage(raw)
 }
+
+// fileEntriesOf reads each record as the FileEntry it is.
+func fileEntriesOf(records []json.RawMessage) []FileEntry {
+	entries := make([]FileEntry, len(records))
+	for i, raw := range records {
+		entries[i] = sessionentry.DecodeFileEntry(raw)
+	}
+	return entries
+}
+
 func migrationFixture(version int) []json.RawMessage {
 	header := fmt.Sprintf(`{"type":"session","id":"sess-1","version":%d,"timestamp":"2025-01-01T00:00:00Z","cwd":"/tmp"}`, version)
 	if version == 1 {
@@ -33,15 +44,15 @@ func TestSessionMigrationUpstream(t *testing.T) {
 	// .upstream/v0.87.1/packages/coding-agent/test/session-manager/migration.test.ts:5
 	t.Run("should add id parentId to v1 entries", func(t *testing.T) {
 		raw := migrationFixture(1)
-		s, err := newSessionFromEntries("/tmp", "", raw)
+		s, err := newSessionFromEntries("/tmp", "", fileEntriesOf(raw))
 		if err != nil {
 			t.Fatal(err)
 		}
-		entries := s.Entries()
-		if s.Header().Version != 3 || len(entries) != 2 {
-			t.Fatalf("header=%+v entries=%v", s.Header(), entries)
+		entries := s.GetEntries()
+		if s.GetHeader().Version != 3 || len(entries) != 2 {
+			t.Fatalf("header=%+v entries=%v", s.GetHeader(), entries)
 		}
-		if len(entries[0].Base.ID) != 8 || len(entries[1].Base.ID) != 8 || entries[0].Base.ParentID != nil || entries[1].Base.ParentID == nil || *entries[1].Base.ParentID != entries[0].Base.ID {
+		if len(entries[0].Base().ID) != 8 || len(entries[1].Base().ID) != 8 || entries[0].Base().ParentID != nil || entries[1].Base().ParentID == nil || *entries[1].Base().ParentID != entries[0].Base().ID {
 			t.Fatalf("migration chain=%+v", entries)
 		}
 	})
@@ -63,12 +74,12 @@ func TestSessionMigrationUpstream(t *testing.T) {
 				t.Fatal(err)
 			}
 		}
-		s, err := newSessionFromEntries("/tmp", "", raw)
+		s, err := newSessionFromEntries("/tmp", "", fileEntriesOf(raw))
 		if err != nil {
 			t.Fatal(err)
 		}
-		entries := s.Entries()
-		if entries[0].Base.ID != "abc12345" || entries[1].Base.ID != "def67890" || entries[1].Base.ParentID == nil || *entries[1].Base.ParentID != "abc12345" {
+		entries := s.GetEntries()
+		if entries[0].Base().ID != "abc12345" || entries[1].Base().ID != "def67890" || entries[1].Base().ParentID == nil || *entries[1].Base().ParentID != "abc12345" {
 			t.Fatalf("entries=%+v", entries)
 		}
 	})
@@ -79,7 +90,7 @@ func TestSessionPreloadedEntriesUpstream(t *testing.T) {
 		s := NewSession("source", "/project")
 		build(s)
 		var out []json.RawMessage
-		for _, e := range s.Entries() {
+		for _, e := range s.GetEntries() {
 			out = append(out, e.Raw())
 		}
 		return out
@@ -93,7 +104,7 @@ func TestSessionPreloadedEntriesUpstream(t *testing.T) {
 	}
 	load := func(t *testing.T, id string, entries []json.RawMessage) *Session {
 		t.Helper()
-		s, err := newSessionFromEntries("/project", id, entries)
+		s, err := newSessionFromEntries("/project", id, fileEntriesOf(entries))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -103,13 +114,13 @@ func TestSessionPreloadedEntriesUpstream(t *testing.T) {
 	t.Run("adopts entries verbatim", func(t *testing.T) {
 		raw := makeEntries(func(s *Session) {
 			message(s, "hello")
-			if err := s.AppendModelSwitch("anthropic", "claude-opus-4-5", ""); err != nil {
+			if _, err := s.AppendModelChange("anthropic", "claude-opus-4-5"); err != nil {
 				t.Fatal(err)
 			}
 			message(s, "again")
 		})
 		s := load(t, "", raw)
-		for i, e := range s.Entries() {
+		for i, e := range s.GetEntries() {
 			if string(e.Raw()) != string(raw[i]) {
 				t.Fatal("entry changed")
 			}
@@ -119,10 +130,10 @@ func TestSessionPreloadedEntriesUpstream(t *testing.T) {
 	t.Run("keeps the loaded leaf so appends continue the conversation", func(t *testing.T) {
 		raw := makeEntries(func(s *Session) { message(s, "hello"); message(s, "again") })
 		s := load(t, "", raw)
-		previous := *s.LeafID()
+		previous := *s.GetLeafID()
 		id := message(s, "continued")
-		e, _ := s.EntryByID(id)
-		if *s.LeafID() != id || e.Base.ParentID == nil || *e.Base.ParentID != previous {
+		e, _ := s.GetEntry(id)
+		if *s.GetLeafID() != id || e.Base().ParentID == nil || *e.Base().ParentID != previous {
 			t.Fatal("lost loaded leaf")
 		}
 	})
@@ -134,10 +145,10 @@ func TestSessionPreloadedEntriesUpstream(t *testing.T) {
 			}
 		})
 		s := load(t, "", raw)
-		old := s.Entries()
+		old := s.GetEntries()
 		id := message(s, "continued")
 		for _, e := range old {
-			if e.Base.ID == id {
+			if e.Base().ID == id {
 				t.Fatal("ID collision")
 			}
 		}
@@ -147,12 +158,12 @@ func TestSessionPreloadedEntriesUpstream(t *testing.T) {
 		raw := makeEntries(func(s *Session) {
 			id := message(s, "hello")
 			message(s, "abandoned")
-			if err := s.Fork(id); err != nil {
+			if err := s.Branch(id); err != nil {
 				t.Fatal(err)
 			}
 			message(s, "kept")
 		})
-		roots := load(t, "", raw).Tree().Children
+		roots := load(t, "", raw).GetTree()
 		if len(roots) != 1 || len(roots[0].Children) != 2 {
 			t.Fatalf("tree=%+v", roots)
 		}
@@ -163,12 +174,12 @@ func TestSessionPreloadedEntriesUpstream(t *testing.T) {
 		raw := makeEntries(func(s *Session) {
 			id = message(s, "hello")
 			label := "checkpoint"
-			if err := s.AppendLabelChange(id, &label); err != nil {
+			if _, err := s.AppendLabelChange(id, &label); err != nil {
 				t.Fatal(err)
 			}
 		})
-		roots := load(t, "", raw).Tree().Children
-		if len(roots) != 1 || roots[0].Entry.Base.ID != id || roots[0].Label != "checkpoint" {
+		roots := load(t, "", raw).GetTree()
+		if len(roots) != 1 || roots[0].Entry.Base().ID != id || roots[0].Label != "checkpoint" {
 			t.Fatalf("labels=%+v", roots)
 		}
 	})
@@ -185,7 +196,7 @@ func TestSessionPreloadedEntriesUpstream(t *testing.T) {
 		s := load(t, "", raw)
 		found := false
 		for _, e := range s.BuildSessionProjection().Entries {
-			if e.SourceEntry.Base.ID == id {
+			if e.SourceEntry.Base().ID == id {
 				found = true
 			}
 		}
@@ -196,15 +207,15 @@ func TestSessionPreloadedEntriesUpstream(t *testing.T) {
 	// .upstream/v0.87.1/packages/coding-agent/test/session-manager/load-entries.test.ts:96
 	t.Run("creates a header from the options when the entries carry none", func(t *testing.T) {
 		s := load(t, "restored-session", makeEntries(func(s *Session) { message(s, "hello") }))
-		if s.ID() != "restored-session" || s.Header().ID != s.ID() || s.Header().CWD != "/project" {
-			t.Fatalf("header=%+v", s.Header())
+		if s.ID() != "restored-session" || s.GetHeader().ID != s.ID() || s.GetHeader().CWD != "/project" {
+			t.Fatalf("header=%+v", s.GetHeader())
 		}
 	})
 	// .upstream/v0.87.1/packages/coding-agent/test/session-manager/load-entries.test.ts:106
 	t.Run("generates a session id when the options carry none", func(t *testing.T) {
 		s := load(t, "", makeEntries(func(s *Session) { message(s, "hello") }))
-		if !regexp.MustCompile(`^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$`).MatchString(s.ID()) || s.Header().ID != s.ID() {
-			t.Fatal(s.Header())
+		if !regexp.MustCompile(`^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$`).MatchString(s.ID()) || s.GetHeader().ID != s.ID() {
+			t.Fatal(s.GetHeader())
 		}
 	})
 	// .upstream/v0.87.1/packages/coding-agent/test/session-manager/load-entries.test.ts:115
@@ -218,7 +229,7 @@ func TestSessionPreloadedEntriesUpstream(t *testing.T) {
 	// .upstream/v0.87.1/packages/coding-agent/test/session-manager/load-entries.test.ts:125
 	t.Run("starts an empty session when the entries are empty", func(t *testing.T) {
 		s := load(t, "empty-session", nil)
-		if s.ID() != "empty-session" || len(s.Entries()) != 0 || s.LeafID() != nil {
+		if s.ID() != "empty-session" || len(s.GetEntries()) != 0 || s.GetLeafID() != nil {
 			t.Fatal("nonempty state")
 		}
 	})
@@ -227,18 +238,18 @@ func TestSessionPreloadedEntriesUpstream(t *testing.T) {
 		raw := makeEntries(func(s *Session) { message(s, "hello") })
 		raw = append([]json.RawMessage{[]byte(`{"type":"session","version":3,"id":"stored-session","timestamp":"2026-01-01T00:00:00Z","cwd":"/stored"}`)}, raw...)
 		s := load(t, "ignored", raw)
-		if s.ID() != "stored-session" || s.Header().CWD != "/stored" {
-			t.Fatal(s.Header())
+		if s.ID() != "stored-session" || s.GetHeader().CWD != "/stored" {
+			t.Fatal(s.GetHeader())
 		}
 	})
 	// .upstream/v0.87.1/packages/coding-agent/test/session-manager/load-entries.test.ts:146
 	t.Run("migrates entries restored with an older header", func(t *testing.T) {
 		s := load(t, "", []json.RawMessage{[]byte(`{"type":"session","version":2,"id":"v2-session","timestamp":"2026-01-01T00:00:00Z","cwd":"/project"}`), restoredEntry(t, `{"type":"message","id":"abc12345","parentId":null,"timestamp":"2026-01-01T00:00:01Z","message":{"role":"hookMessage","content":"from a hook","timestamp":1}}`)})
 		var e map[string]any
-		if err := json.Unmarshal(s.Entries()[0].Raw(), &e); err != nil {
+		if err := json.Unmarshal(s.GetEntries()[0].Raw(), &e); err != nil {
 			t.Fatal(err)
 		}
-		if s.Header().Version != 3 || e["id"] != "abc12345" || e["message"].(map[string]any)["role"] != "custom" {
+		if s.GetHeader().Version != 3 || e["id"] != "abc12345" || e["message"].(map[string]any)["role"] != "custom" {
 			t.Fatal(e)
 		}
 	})
@@ -246,7 +257,7 @@ func TestSessionPreloadedEntriesUpstream(t *testing.T) {
 	t.Run("adopts headerless entries as current-version without migrating them", func(t *testing.T) {
 		raw := restoredEntry(t, `{"type":"message","id":"abc12345","parentId":null,"timestamp":"2026-01-01T00:00:01Z","message":{"role":"hookMessage","content":"from a hook","timestamp":1}}`)
 		s := load(t, "", []json.RawMessage{raw})
-		if !reflect.DeepEqual(s.Entries()[0].Raw(), raw) {
+		if !reflect.DeepEqual(s.GetEntries()[0].Raw(), raw) {
 			t.Fatal("headerless entry migrated")
 		}
 	})
@@ -266,17 +277,17 @@ func TestSessionFileMigrationRewritesAndReloads(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if s.Header().Version != 3 || len(s.BuildContext(nil)) != 2 {
-		t.Fatalf("not migrated: %+v", s.Header())
+	if s.GetHeader().Version != 3 || len(s.BuildContext(nil)) != 2 {
+		t.Fatalf("not migrated: %+v", s.GetHeader())
 	}
 	reread, err := loadSessionFile(path)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !reflect.DeepEqual(s.Entries(), reread.Entries()) {
+	if !reflect.DeepEqual(s.GetEntries(), reread.GetEntries()) {
 		t.Fatal("migration not persisted")
 	}
-	fmt.Printf("SESSION_MIGRATION version=%d entries=%d chain=%t\n", s.Header().Version, len(s.Entries()), *s.Entries()[1].Base.ParentID == s.Entries()[0].Base.ID)
+	fmt.Printf("SESSION_MIGRATION version=%d entries=%d chain=%t\n", s.GetHeader().Version, len(s.GetEntries()), *s.GetEntries()[1].Base().ParentID == s.GetEntries()[0].Base().ID)
 }
 
 func TestSessionMigrationCompactionIndex(t *testing.T) {
@@ -284,15 +295,15 @@ func TestSessionMigrationCompactionIndex(t *testing.T) {
 		t.Run(fmt.Sprint(index), func(t *testing.T) {
 			raw := migrationFixture(1)
 			raw = append(raw, json.RawMessage(fmt.Sprintf(`{"type":"compaction","timestamp":"2025-01-01T00:00:03Z","summary":"saved","tokensBefore":1000,"firstKeptEntryIndex":%d}`, index)))
-			s, err := newSessionFromEntries("/tmp", "", raw)
+			s, err := newSessionFromEntries("/tmp", "", fileEntriesOf(raw))
 			if err != nil {
 				t.Fatal(err)
 			}
 			var comp map[string]any
-			if err := json.Unmarshal(s.Entries()[2].Raw(), &comp); err != nil {
+			if err := json.Unmarshal(s.GetEntries()[2].Raw(), &comp); err != nil {
 				t.Fatal(err)
 			}
-			if comp["firstKeptEntryId"] != s.Entries()[index-1].Base.ID {
+			if comp["firstKeptEntryId"] != s.GetEntries()[index-1].Base().ID {
 				t.Fatalf("compaction boundary = %v", comp)
 			}
 			if _, found := comp["firstKeptEntryIndex"]; found {

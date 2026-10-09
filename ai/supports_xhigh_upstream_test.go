@@ -9,52 +9,52 @@ import (
 func TestSupportsXHighUpstream(t *testing.T) {
 	for _, tc := range []struct {
 		name, model     string
-		present, absent []ThinkingLevel
-		exact           []ThinkingLevel
+		present, absent []ModelThinkingLevel
+		exact           []ModelThinkingLevel
 	}{
 		// .upstream/v0.99.1/packages/ai/test/supports-xhigh.test.ts:5
-		{name: "includes max but not xhigh for Anthropic Opus 4.6 on anthropic-messages API", model: "anthropic/claude-opus-4-6", present: []ThinkingLevel{ThinkingMax}, absent: []ThinkingLevel{ThinkingXHigh}},
+		{name: "includes max but not xhigh for Anthropic Opus 4.6 on anthropic-messages API", model: "anthropic/claude-opus-4-6", present: []ModelThinkingLevel{ThinkingMax}, absent: []ModelThinkingLevel{ThinkingXHigh}},
 		// .upstream/v0.99.1/packages/ai/test/supports-xhigh.test.ts:12
-		{name: "includes xhigh and max for Anthropic Opus 4.8 on anthropic-messages API", model: "anthropic/claude-opus-4-8", present: []ThinkingLevel{ThinkingXHigh, ThinkingMax}},
+		{name: "includes xhigh and max for Anthropic Opus 4.8 on anthropic-messages API", model: "anthropic/claude-opus-4-8", present: []ModelThinkingLevel{ThinkingXHigh, ThinkingMax}},
 		// .upstream/v0.99.1/packages/ai/test/supports-xhigh.test.ts:19
-		{name: "includes xhigh and max for Anthropic Opus 5 on anthropic-messages API", model: "anthropic/claude-opus-5", present: []ThinkingLevel{ThinkingXHigh, ThinkingMax}},
+		{name: "includes xhigh and max for Anthropic Opus 5 on anthropic-messages API", model: "anthropic/claude-opus-5", present: []ModelThinkingLevel{ThinkingXHigh, ThinkingMax}},
 		// .upstream/v0.99.1/packages/ai/test/supports-xhigh.test.ts:59 keeps this name but asserts toContain("xhigh"). The published
 		// pi-ai 0.99.1 catalog gives claude-sonnet-4-6 thinkingLevelMap {"max":"max"}, and its getSupportedThinkingLevels returns
 		// off, minimal, low, medium, high, max (Node 24), so that upstream case fails against Pi's shipped data. This row keeps
 		// Pi's shipped behavior, which the 0.87.1 case (:42) asserted.
-		{name: "includes max but not xhigh for Anthropic Sonnet 4.6 on anthropic-messages API", model: "anthropic/claude-sonnet-4-6", present: []ThinkingLevel{ThinkingMax}, absent: []ThinkingLevel{ThinkingXHigh}},
+		{name: "includes max but not xhigh for Anthropic Sonnet 4.6 on anthropic-messages API", model: "anthropic/claude-sonnet-4-6", present: []ModelThinkingLevel{ThinkingMax}, absent: []ModelThinkingLevel{ThinkingXHigh}},
 		// .upstream/v0.99.1/packages/ai/test/supports-xhigh.test.ts:66
-		{name: "includes xhigh and max for Anthropic Sonnet 5 on anthropic-messages API", model: "anthropic/claude-sonnet-5", present: []ThinkingLevel{ThinkingXHigh, ThinkingMax}},
+		{name: "includes xhigh and max for Anthropic Sonnet 5 on anthropic-messages API", model: "anthropic/claude-sonnet-5", present: []ModelThinkingLevel{ThinkingXHigh, ThinkingMax}},
 		// .upstream/v0.99.1/packages/ai/test/supports-xhigh.test.ts:73
-		{name: "includes xhigh and max but not off for Anthropic Claude Fable 5 on anthropic-messages API", model: "anthropic/claude-fable-5", present: []ThinkingLevel{ThinkingXHigh, ThinkingMax}, absent: []ThinkingLevel{ThinkingOff}},
+		{name: "includes xhigh and max but not off for Anthropic Claude Fable 5 on anthropic-messages API", model: "anthropic/claude-fable-5", present: []ModelThinkingLevel{ThinkingXHigh, ThinkingMax}, absent: []ModelThinkingLevel{ThinkingOff}},
 		// .upstream/v0.99.1/packages/ai/test/supports-xhigh.test.ts:81
-		{name: "does not include xhigh or max for Claude Sonnet 4.5", model: "anthropic/claude-sonnet-4-5", absent: []ThinkingLevel{ThinkingXHigh, ThinkingMax}},
+		{name: "does not include xhigh or max for Claude Sonnet 4.5", model: "anthropic/claude-sonnet-4-5", absent: []ModelThinkingLevel{ThinkingXHigh, ThinkingMax}},
 		// .upstream/v0.99.1/packages/ai/test/supports-xhigh.test.ts:160
-		{name: "includes only medium/high/xhigh for OpenAI GPT-5.5 Pro", model: "openai/gpt-5.5-pro", exact: []ThinkingLevel{ThinkingMedium, ThinkingHigh, ThinkingXHigh}},
+		{name: "includes only medium/high/xhigh for OpenAI GPT-5.5 Pro", model: "openai/gpt-5.5-pro", exact: []ModelThinkingLevel{ThinkingMedium, ThinkingHigh, ThinkingXHigh}},
 		// .upstream/v0.99.1/packages/ai/test/supports-xhigh.test.ts:166
-		{name: "includes only medium/high/xhigh for OpenRouter GPT-5.5 Pro", model: "openrouter/openai/gpt-5.5-pro", exact: []ThinkingLevel{ThinkingMedium, ThinkingHigh, ThinkingXHigh}},
+		{name: "includes only medium/high/xhigh for OpenRouter GPT-5.5 Pro", model: "openrouter/openai/gpt-5.5-pro", exact: []ModelThinkingLevel{ThinkingMedium, ThinkingHigh, ThinkingXHigh}},
 		// .upstream/v0.99.1/packages/ai/test/supports-xhigh.test.ts:172
-		{name: "includes low/high/max plus off for DeepSeek V4.1 Flash on the DeepSeek provider", model: "deepseek/deepseek-flash", exact: []ThinkingLevel{ThinkingOff, ThinkingLow, ThinkingHigh, ThinkingMax}},
+		{name: "includes low/high/max plus off for DeepSeek V4.1 Flash on the DeepSeek provider", model: "deepseek/deepseek-flash", exact: []ModelThinkingLevel{ThinkingOff, ThinkingLow, ThinkingHigh, ThinkingMax}},
 		// .upstream/v0.99.1/packages/ai/test/supports-xhigh.test.ts:178
-		{name: "includes low/high/max plus off for DeepSeek V4 Flash on opencode-go", model: "opencode-go/deepseek-v4-flash", exact: []ThinkingLevel{ThinkingOff, ThinkingLow, ThinkingHigh, ThinkingMax}},
+		{name: "includes low/high/max plus off for DeepSeek V4 Flash on opencode-go", model: "opencode-go/deepseek-v4-flash", exact: []ModelThinkingLevel{ThinkingOff, ThinkingLow, ThinkingHigh, ThinkingMax}},
 		// .upstream/v0.99.1/packages/ai/test/supports-xhigh.test.ts:184
-		{name: "preserves low/high/max metadata for DeepSeek V4.1 Flash on OpenRouter", model: "openrouter/deepseek/deepseek-v4.1-flash", exact: []ThinkingLevel{ThinkingOff, ThinkingLow, ThinkingHigh, ThinkingMax}},
+		{name: "preserves low/high/max metadata for DeepSeek V4.1 Flash on OpenRouter", model: "openrouter/deepseek/deepseek-v4.1-flash", exact: []ModelThinkingLevel{ThinkingOff, ThinkingLow, ThinkingHigh, ThinkingMax}},
 		// .upstream/v0.99.1/packages/ai/test/supports-xhigh.test.ts:190
-		{name: "preserves low/high/max metadata for DeepSeek V4.1 Flash on opencode-go", model: "opencode-go/deepseek-v4.1-flash", exact: []ThinkingLevel{ThinkingLow, ThinkingHigh, ThinkingMax}},
+		{name: "preserves low/high/max metadata for DeepSeek V4.1 Flash on opencode-go", model: "opencode-go/deepseek-v4.1-flash", exact: []ModelThinkingLevel{ThinkingLow, ThinkingHigh, ThinkingMax}},
 		// .upstream/v0.99.1/packages/ai/test/supports-xhigh.test.ts:211
-		{name: "includes only low, high, max for Kimi Coding K3", model: "kimi-coding/k3", exact: []ThinkingLevel{ThinkingLow, ThinkingHigh, ThinkingMax}},
+		{name: "includes only low, high, max for Kimi Coding K3", model: "kimi-coding/k3", exact: []ModelThinkingLevel{ThinkingLow, ThinkingHigh, ThinkingMax}},
 		// .upstream/v0.99.1/packages/ai/test/supports-xhigh.test.ts:217
-		{name: "includes only high for OpenCode Grok Build", model: "opencode/grok-build-0.1", exact: []ThinkingLevel{ThinkingHigh}},
+		{name: "includes only high for OpenCode Grok Build", model: "opencode/grok-build-0.1", exact: []ModelThinkingLevel{ThinkingHigh}},
 		// .upstream/v0.99.1/packages/ai/test/supports-xhigh.test.ts:223
-		{name: "includes only high/xhigh plus off for DeepSeek V4 Flash on OpenRouter", model: "openrouter/deepseek/deepseek-v4-flash", exact: []ThinkingLevel{ThinkingOff, ThinkingHigh, ThinkingXHigh}},
+		{name: "includes only high/xhigh plus off for DeepSeek V4 Flash on OpenRouter", model: "openrouter/deepseek/deepseek-v4-flash", exact: []ModelThinkingLevel{ThinkingOff, ThinkingHigh, ThinkingXHigh}},
 		// .upstream/v0.99.1/packages/ai/test/supports-xhigh.test.ts:229
-		{name: "includes max but not xhigh for OpenRouter Opus 4.6 (openai-completions API)", model: "openrouter/anthropic/claude-opus-4.6", present: []ThinkingLevel{ThinkingMax}, absent: []ThinkingLevel{ThinkingXHigh}},
+		{name: "includes max but not xhigh for OpenRouter Opus 4.6 (openai-completions API)", model: "openrouter/anthropic/claude-opus-4.6", present: []ModelThinkingLevel{ThinkingMax}, absent: []ModelThinkingLevel{ThinkingXHigh}},
 		// .upstream/v0.99.1/packages/ai/test/supports-xhigh.test.ts:236
-		{name: "includes xhigh and max for Bedrock Claude Opus 5", model: "amazon-bedrock/global.anthropic.claude-opus-5", present: []ThinkingLevel{ThinkingXHigh, ThinkingMax}},
+		{name: "includes xhigh and max for Bedrock Claude Opus 5", model: "amazon-bedrock/global.anthropic.claude-opus-5", present: []ModelThinkingLevel{ThinkingXHigh, ThinkingMax}},
 		// .upstream/v0.99.1/packages/ai/test/supports-xhigh.test.ts:243
-		{name: "includes xhigh but not off or max for xAI Grok 4.6", model: "xai/grok-4.6", exact: []ThinkingLevel{ThinkingLow, ThinkingMedium, ThinkingHigh, ThinkingXHigh}},
+		{name: "includes xhigh but not off or max for xAI Grok 4.6", model: "xai/grok-4.6", exact: []ModelThinkingLevel{ThinkingLow, ThinkingMedium, ThinkingHigh, ThinkingXHigh}},
 		// .upstream/v0.99.1/packages/ai/test/supports-xhigh.test.ts:249
-		{name: "includes xhigh and max but not off for Bedrock Claude Fable 5", model: "amazon-bedrock/global.anthropic.claude-fable-5", present: []ThinkingLevel{ThinkingXHigh, ThinkingMax}, absent: []ThinkingLevel{ThinkingOff}},
+		{name: "includes xhigh and max but not off for Bedrock Claude Fable 5", model: "amazon-bedrock/global.anthropic.claude-fable-5", present: []ModelThinkingLevel{ThinkingXHigh, ThinkingMax}, absent: []ModelThinkingLevel{ThinkingOff}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			got := GetSupportedThinkingLevels(upstreamThinkingModel(t, tc.model))
@@ -84,7 +84,7 @@ func TestSupportsXHighUpstream(t *testing.T) {
 	// .upstream/v0.99.1/packages/ai/test/supports-xhigh.test.ts:103
 	for _, id := range []string{"gpt-5.6-sol", "gpt-5.6-terra", "gpt-5.6-luna", "gpt-6-sol", "gpt-6-luna"} {
 		t.Run("includes xhigh and max for OpenAI "+id+" models", func(t *testing.T) {
-			want := []ThinkingLevel{ThinkingOff, ThinkingLow, ThinkingMedium, ThinkingHigh, ThinkingXHigh, ThinkingMax}
+			want := []ModelThinkingLevel{ThinkingOff, ThinkingLow, ThinkingMedium, ThinkingHigh, ThinkingXHigh, ThinkingMax}
 			if got := GetSupportedThinkingLevels(upstreamThinkingModel(t, "openai/"+id)); !slices.Equal(got, want) {
 				t.Fatalf("levels = %v, want %v", got, want)
 			}
@@ -93,7 +93,7 @@ func TestSupportsXHighUpstream(t *testing.T) {
 	// .upstream/v0.99.1/packages/ai/test/supports-xhigh.test.ts:196
 	t.Run("excludes thinking off for Moonshot Kimi K2.7 Code models", func(t *testing.T) {
 		for _, provider := range []string{"moonshotai", "moonshotai-cn"} {
-			want := []ThinkingLevel{ThinkingMinimal, ThinkingLow, ThinkingMedium, ThinkingHigh}
+			want := []ModelThinkingLevel{ThinkingMinimal, ThinkingLow, ThinkingMedium, ThinkingHigh}
 			if got := GetSupportedThinkingLevels(upstreamThinkingModel(t, provider+"/kimi-k2.7-code")); !slices.Equal(got, want) {
 				t.Errorf("%s: levels = %v, want %v", provider, got, want)
 			}
@@ -102,7 +102,7 @@ func TestSupportsXHighUpstream(t *testing.T) {
 	// .upstream/v0.99.1/packages/ai/test/supports-xhigh.test.ts:205
 	for _, provider := range []string{"moonshotai", "moonshotai-cn"} {
 		t.Run("uses the verified effort options for "+provider+" Kimi K3", func(t *testing.T) {
-			want := []ThinkingLevel{ThinkingLow, ThinkingHigh, ThinkingMax}
+			want := []ModelThinkingLevel{ThinkingLow, ThinkingHigh, ThinkingMax}
 			if got := GetSupportedThinkingLevels(upstreamThinkingModel(t, provider+"/kimi-k3")); !slices.Equal(got, want) {
 				t.Fatalf("levels = %v, want %v", got, want)
 			}
@@ -111,7 +111,7 @@ func TestSupportsXHighUpstream(t *testing.T) {
 	// .upstream/v0.99.1/packages/ai/test/supports-xhigh.test.ts:26
 	t.Run("includes Claude Opus 5.5 with its always-on effort levels and official pricing", func(t *testing.T) {
 		m := upstreamThinkingModel(t, "anthropic/claude-opus-5-5")
-		want := []ThinkingLevel{ThinkingLow, ThinkingMedium, ThinkingHigh, ThinkingXHigh, ThinkingMax}
+		want := []ModelThinkingLevel{ThinkingLow, ThinkingMedium, ThinkingHigh, ThinkingXHigh, ThinkingMax}
 		if got := GetSupportedThinkingLevels(m); !slices.Equal(got, want) {
 			t.Errorf("levels = %v, want %v", got, want)
 		}
@@ -139,7 +139,7 @@ func TestSupportsXHighUpstream(t *testing.T) {
 		if c == nil || c.ForceAdaptiveThinking == nil || !*c.ForceAdaptiveThinking || c.SupportsMidConvoEffort == nil || !*c.SupportsMidConvoEffort || c.SupportsMidConvoSystemMessages == nil || !*c.SupportsMidConvoSystemMessages || c.SupportsMidConvoToolChanges == nil || !*c.SupportsMidConvoToolChanges || c.SupportsTemperature == nil || *c.SupportsTemperature {
 			t.Errorf("compat = %+v", c)
 		}
-		if got, want := GetSupportedThinkingLevels(m), []ThinkingLevel{ThinkingLow, ThinkingMedium, ThinkingHigh, ThinkingXHigh, ThinkingMax}; !slices.Equal(got, want) {
+		if got, want := GetSupportedThinkingLevels(m), []ModelThinkingLevel{ThinkingLow, ThinkingMedium, ThinkingHigh, ThinkingXHigh, ThinkingMax}; !slices.Equal(got, want) {
 			t.Errorf("levels = %v, want %v", got, want)
 		}
 	})
@@ -147,11 +147,11 @@ func TestSupportsXHighUpstream(t *testing.T) {
 	t.Run("does not support off for GPT-6.1 Sol", func(t *testing.T) {
 		for _, tc := range []struct {
 			provider string
-			levels   []ThinkingLevel
+			levels   []ModelThinkingLevel
 		}{
-			{"openai", []ThinkingLevel{ThinkingLow, ThinkingMedium, ThinkingHigh, ThinkingXHigh, ThinkingMax}},
-			{"azure", []ThinkingLevel{ThinkingLow, ThinkingMedium, ThinkingHigh, ThinkingXHigh, ThinkingMax}},
-			{"openai-codex", []ThinkingLevel{ThinkingMinimal, ThinkingLow, ThinkingMedium, ThinkingHigh, ThinkingXHigh, ThinkingMax}},
+			{"openai", []ModelThinkingLevel{ThinkingLow, ThinkingMedium, ThinkingHigh, ThinkingXHigh, ThinkingMax}},
+			{"azure", []ModelThinkingLevel{ThinkingLow, ThinkingMedium, ThinkingHigh, ThinkingXHigh, ThinkingMax}},
+			{"openai-codex", []ModelThinkingLevel{ThinkingMinimal, ThinkingLow, ThinkingMedium, ThinkingHigh, ThinkingXHigh, ThinkingMax}},
 		} {
 			m := upstreamThinkingModel(t, tc.provider+"/gpt-6.1-sol")
 			if got := GetSupportedThinkingLevels(m); !slices.Equal(got, tc.levels) {

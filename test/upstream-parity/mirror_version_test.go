@@ -4,8 +4,9 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
-	"runtime"
 	"testing"
+
+	"github.com/MichaelKinsy/PiG/internal/testenv"
 
 	"github.com/MichaelKinsy/PiG/coding"
 )
@@ -18,11 +19,7 @@ import (
 // upstream in 0.80.3).
 // This guard turns that silent drift into an explicit failure with the fix.
 func TestUpstreamMirror_MatchesPin(t *testing.T) {
-	_, thisFile, _, ok := runtime.Caller(0)
-	if !ok {
-		t.Fatal("cannot determine caller path")
-	}
-	repoRoot := filepath.Join(filepath.Dir(thisFile), "..", "..")
+	repoRoot := testenv.ModuleRoot(t)
 	pkgJSON := filepath.Join(repoRoot, ".upstream", "current",
 		"packages", "coding-agent", "package.json")
 	raw, err := os.ReadFile(pkgJSON)

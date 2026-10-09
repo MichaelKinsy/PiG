@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"maps"
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
@@ -81,7 +82,7 @@ func TestGetCopilotBaseURL(t *testing.T) {
 
 // ─── inferInitiator ───────────────────────────────────────────────────────────
 
-func TestInferInitiator(t *testing.T) {
+func TestInferCopilotInitiator(t *testing.T) {
 	cases := []struct {
 		name string
 		msgs []Message
@@ -94,16 +95,16 @@ func TestInferInitiator(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			if got := inferInitiator(tc.msgs); got != tc.want {
+			if got := InferCopilotInitiator(tc.msgs); got != tc.want {
 				t.Errorf("got %q, want %q", got, tc.want)
 			}
 		})
 	}
 }
 
-// ─── hasImages ────────────────────────────────────────────────────────────────
+// ─── HasCopilotVisionInput ────────────────────────────────────────────────────────────────
 
-func TestHasImages(t *testing.T) {
+func TestHasCopilotVisionInput(t *testing.T) {
 	cases := []struct {
 		name string
 		msgs []Message
@@ -125,7 +126,7 @@ func TestHasImages(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			if got := hasImages(tc.msgs); got != tc.want {
+			if got := HasCopilotVisionInput(tc.msgs); got != tc.want {
 				t.Errorf("got %v, want %v", got, tc.want)
 			}
 		})
@@ -400,7 +401,7 @@ data: [DONE]
 		},
 		DynamicHeaders: func(transcript TranscriptContext, _ StreamOptions) map[string]string {
 			return map[string]string{
-				"X-Initiator":   inferInitiator(transcript.Messages()),
+				"X-Initiator":   InferCopilotInitiator(transcript.Messages()),
 				"Openai-Intent": "conversation-edits",
 			}
 		},
@@ -477,10 +478,10 @@ data: [DONE]
 		GetBaseURL:   func(ctx context.Context) (string, error) { return srv.URL, nil },
 		DynamicHeaders: func(transcript TranscriptContext, _ StreamOptions) map[string]string {
 			headers := map[string]string{
-				"X-Initiator":   inferInitiator(transcript.Messages()),
+				"X-Initiator":   InferCopilotInitiator(transcript.Messages()),
 				"Openai-Intent": "conversation-edits",
 			}
-			if hasImages(transcript.Messages()) {
+			if HasCopilotVisionInput(transcript.Messages()) {
 				headers["Copilot-Vision-Request"] = "true"
 			}
 			return headers
@@ -525,10 +526,10 @@ data: [DONE]
 		GetBaseURL: func(ctx context.Context) (string, error) { return srv.URL, nil },
 		DynamicHeaders: func(transcript TranscriptContext, _ StreamOptions) map[string]string {
 			headers := map[string]string{
-				"X-Initiator":   inferInitiator(transcript.Messages()),
+				"X-Initiator":   InferCopilotInitiator(transcript.Messages()),
 				"Openai-Intent": "conversation-edits",
 			}
-			if hasImages(transcript.Messages()) {
+			if HasCopilotVisionInput(transcript.Messages()) {
 				headers["Copilot-Vision-Request"] = "true"
 			}
 			return headers
@@ -642,7 +643,7 @@ func TestCopilotAnthropicUpstream(t *testing.T) {
 				assertCatalogJSON(t, levels, `["low","medium","high","xhigh","max"]`)
 				continue
 			}
-			for level, want := range map[ThinkingLevel]string{ThinkingMinimal: "low", ThinkingMax: "max"} {
+			for level, want := range map[ModelThinkingLevel]string{ThinkingMinimal: "low", ThinkingMax: "max"} {
 				if got := m.ThinkingLevelMap[level]; got == nil || *got != want {
 					t.Fatalf("%s map[%s] = %v", id, level, got)
 				}
@@ -677,7 +678,7 @@ func TestCopilotAnthropicUpstream(t *testing.T) {
 			t.Cleanup(server.Close)
 			p := NewAnthropicProvider(AnthropicConfig{Model: m.ID, ModelMetadata: m.ToModel(), ProviderID: m.Provider, BaseURL: server.URL, APIKey: "tid_copilot_session_test_token", ExtraHeaders: m.Headers, Compat: m.Compat, UseBearerAuth: true,
 				DynamicHeaders: func(c TranscriptContext, _ StreamOptions) map[string]string {
-					return map[string]string{"X-Initiator": inferInitiator(c.Messages()), "Openai-Intent": "conversation-edits"}
+					return map[string]string{"X-Initiator": InferCopilotInitiator(c.Messages()), "Openai-Intent": "conversation-edits"}
 				},
 			})
 			opts := StreamOptions{}
@@ -769,7 +770,7 @@ data: {"type":"message_stop"}
 		},
 		DynamicHeaders: func(transcript TranscriptContext, _ StreamOptions) map[string]string {
 			return map[string]string{
-				"X-Initiator":   inferInitiator(transcript.Messages()),
+				"X-Initiator":   InferCopilotInitiator(transcript.Messages()),
 				"Openai-Intent": "conversation-edits",
 			}
 		},
@@ -781,7 +782,7 @@ data: {"type":"message_stop"}
 		UserMessage{Content: UserText("Hi")},
 	}})
 	stream, err := inner.Stream(context.Background(), transcript, StreamOptions{
-		MaxTokens: 1024, Thinking: ThinkingMedium, IsReasoning: true,
+		MaxTokens: 1024, Thinking: ThinkingLevelMedium, IsReasoning: true,
 	})
 	if err != nil {
 		t.Fatalf("Stream() error: %v", err)
@@ -918,7 +919,7 @@ func TestCopilotClientID_NotEmpty(t *testing.T) {
 // Copilot-Vision-Request header is set; otherwise Copilot's Anthropic proxy
 // rejects the vision content. Mirrors upstream hasCopilotVisionInput checking
 // tool-result messages.
-func TestHasImages_DetectsToolResultImages(t *testing.T) {
+func TestHasCopilotVisionInput_DetectsToolResultImages(t *testing.T) {
 	cases := []struct {
 		name string
 		msgs []Message
@@ -935,7 +936,7 @@ func TestHasImages_DetectsToolResultImages(t *testing.T) {
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			if got := hasImages(c.msgs); got != c.want {
+			if got := HasCopilotVisionInput(c.msgs); got != c.want {
 				t.Fatalf("hasImages = %v, want %v", got, c.want)
 			}
 		})
@@ -1348,5 +1349,51 @@ func TestNewCopilotProviderCatalogCompat(t *testing.T) {
 			}
 			tc.check(t, body)
 		})
+	}
+}
+
+// upstream: github-copilot-headers.ts buildCopilotDynamicHeaders adds Copilot-Vision-Request only when hasImages is true.
+func TestBuildCopilotDynamicHeaders(t *testing.T) {
+	user := []Message{UserMessage{Content: UserText("hi")}}
+	agent := []Message{ToolResultMessage{Content: []ToolResultMessageContent{TextContent{Text: "r"}}}}
+	cases := []struct {
+		name      string
+		messages  []Message
+		hasImages bool
+		want      map[string]string
+	}{
+		{"user without images", user, false, map[string]string{"X-Initiator": "user", "Openai-Intent": "conversation-edits"}},
+		{"agent with images", agent, true, map[string]string{"X-Initiator": "agent", "Openai-Intent": "conversation-edits", "Copilot-Vision-Request": "true"}},
+		{"user with images", user, true, map[string]string{"X-Initiator": "user", "Openai-Intent": "conversation-edits", "Copilot-Vision-Request": "true"}},
+	}
+	for _, tc := range cases {
+		if got := BuildCopilotDynamicHeaders(tc.messages, tc.hasImages); !maps.Equal(got, tc.want) {
+			t.Errorf("%s: got %v, want %v", tc.name, got, tc.want)
+		}
+	}
+}
+
+// NewCopilotProvider's per-request headers are buildCopilotDynamicHeaders({ messages, hasImages: hasCopilotVisionInput(messages) })
+// (packages/ai/src/api/github-copilot-headers.ts): a tool-result image sets Copilot-Vision-Request and the agent initiator.
+func TestNewCopilotProviderDynamicHeadersFollowTheTranscript(t *testing.T) {
+	auth, err := NewAuthStorage(t.TempDir() + "/auth.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	p, err := NewCopilotProvider(CopilotProviderConfig{Auth: auth, Model: "gpt-4o"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	headers := p.(*openAIProvider).cfg.DynamicHeaders
+	withImage := newTranscriptContext([]Message{
+		UserMessage{Content: UserText("look")},
+		ToolResultMessage{ToolCallID: "c1", Content: []ToolResultMessageContent{ImageContent{MimeType: "image/png", Data: "A"}}},
+	})
+	if got, want := headers(withImage, StreamOptions{}), map[string]string{"X-Initiator": "agent", "Openai-Intent": "conversation-edits", "Copilot-Vision-Request": "true"}; !maps.Equal(got, want) {
+		t.Errorf("tool-result image headers = %v, want %v", got, want)
+	}
+	textOnly := newTranscriptContext([]Message{UserMessage{Content: UserText("hi")}})
+	if got, want := headers(textOnly, StreamOptions{}), map[string]string{"X-Initiator": "user", "Openai-Intent": "conversation-edits"}; !maps.Equal(got, want) {
+		t.Errorf("text headers = %v, want %v", got, want)
 	}
 }

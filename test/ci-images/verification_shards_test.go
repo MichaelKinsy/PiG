@@ -1,4 +1,3 @@
-// SPDX-FileCopyrightText: Copyright Hewlett Packard Enterprise Development LP
 // SPDX-License-Identifier: MIT
 
 package ciimages
@@ -9,6 +8,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"runtime"
 	"slices"
 	"strconv"
 	"strings"
@@ -29,9 +29,11 @@ type verificationJob struct {
 		Matrix   struct{ Shard []string }
 	}
 	Steps []struct {
-		If  string
-		Run string
-		Env map[string]string
+		If   string
+		Uses string
+		With map[string]string
+		Run  string
+		Env  map[string]string
 	}
 }
 
@@ -147,7 +149,7 @@ var fakeTests = func() []string {
 	return append(names, "ExampleFixture", "FuzzFixture")
 }()
 
-// groupedTestFixture copies test-grouped.sh and the scripts it runs into a fresh root whose fake go lists five packages, lists fakeTests for go test -list, and appends the packages each go test receives to $TEST_LOG and each -run pattern, after its package, to $RUN_LOG. LIST_FAIL fails the listing, LIST_EXTRA adds a name to it, and FAIL_TEST fails each go test whose -run pattern names that test. When LEAK_TMP is set, the fake go test leaves a file in the TMPDIR it runs under, as a leaking test package would. When WIPE_AGENT_AUTH is set it rewrites auth.json in the agent directory its environment names, as the 2026-10-06 lane wipe did, and RECORD_AGENT_ENV names a file that receives the agent environment each go test sees.
+// groupedTestFixture copies test-grouped.sh and the scripts it runs into a fresh root whose fake go lists five packages, lists fakeTests for go test -list, and appends the packages each go test receives to $TEST_LOG and each -run pattern, after its package, to $RUN_LOG. LIST_FAIL fails the listing, LIST_EXTRA adds a name to it, and FAIL_TEST fails each go test whose -run pattern names that test. When LEAK_TMP is set, the fake go test leaves a file in the TMPDIR it runs under, as a leaking test package would; when LEAK_PROCESS is set it leaves a sleep of that many seconds running, as a test that leaks a child process would. ARGS_LOG receives each go test command line, and FD_LOG the targets of the file descriptors each go test holds (Linux). When WIPE_AGENT_AUTH is set it rewrites auth.json in the agent directory its environment names, as the 2026-10-06 lane wipe did, and RECORD_AGENT_ENV names a file that receives the agent environment each go test sees.
 func groupedTestFixture(t *testing.T) string {
 	t.Helper()
 	root := t.TempDir()
@@ -155,6 +157,7 @@ func groupedTestFixture(t *testing.T) string {
 	copyCIFixture(t, root, "automation/ci/test-shard-pattern.sh")
 	copyCIFixture(t, root, "automation/ci/assert-clean-tmp.sh")
 	copyCIFixture(t, root, "automation/ci/agent-dir-guard.sh")
+	copyCIFixture(t, root, "automation/ci/reap-test-processes.sh")
 	// test-grouped.sh enters the in-repo Porter extension module to warm its dependency-module build cache.
 	writeCIFixture(t, root, "piglets/porter/extensions/pig-porter/.keep", "")
 	writeCIFixture(t, root, "automation/ci/test-fixtures.sh", "#!/bin/sh\nprintf 'export CI_TEST_FIXTURES=ready\\n'\n")
@@ -164,7 +167,7 @@ case "$1" in
   list)
     shift
     if [[ "$*" == ./... ]]; then
-      printf '%s\n' ./alpha ./beta ./cmd/pig ./coding/extension/host/subprocess ./test/extension-conformance
+      printf '%s\n' ./alpha ./beta ./coding/cli ./coding/extension/host/subprocess ./test/extension-conformance
     else
       printf '%s\n' "$@"
     fi
@@ -178,6 +181,7 @@ case "$1" in
       exit 0
     fi
     test "$CI_TEST_FIXTURES" = ready
+    saved_args="$*"
     shift 3
     packages=() run=
     while (($#)); do
@@ -188,9 +192,12 @@ case "$1" in
       esac
     done
     printf '%s\n' "${packages[@]}" >> "$TEST_LOG"
+    if [[ -n "${ARGS_LOG:-}" ]]; then printf '%s\n' "$saved_args" >> "$ARGS_LOG"; fi
+    if [[ -n "${FD_LOG:-}" ]]; then for fd in /proc/$$/fd/*; do readlink "$fd" || true; done >> "$FD_LOG"; fi
     if [[ -n "$run" ]]; then printf '%s %s\n' "${packages[*]}" "$run" >> "$RUN_LOG"; fi
     if [[ -n "${FAIL_TEST:-}" && "$run" == *"$FAIL_TEST"* ]]; then exit 1; fi
     if [[ -n "${LEAK_TMP:-}" ]]; then : > "$TMPDIR/pig-leak"; fi
+    if [[ -n "${LEAK_PROCESS:-}" ]]; then sleep "$LEAK_PROCESS" </dev/null >/dev/null 2>&1 & fi
     if [[ -n "${WIPE_AGENT_AUTH:-}" ]]; then printf '{}' > "$PIG_CODING_AGENT_DIR/auth.json"; fi
     # Under Git Bash this script sees POSIX paths (/tmp/... for the Windows temporary directory) where the Go test, and a real go.exe, see Windows paths. Record each directory in the host's own form: pwd -W prints it there, and is rejected on every other bash.
     native() { (cd "$1" 2>/dev/null && { pwd -W 2>/dev/null || pwd; }) || printf '%s\n' "$1"; }
@@ -388,6 +395,97 @@ func TestGroupedTestsFailOnTemporaryLeakAndRemoveScratch(t *testing.T) {
 		t.Fatalf("leaking run: err=%v, want the leak reported\n%s", err, output)
 	}
 	requireScratchRemoved()
+}
+
+// A process a test started and left running fails its group and is killed when go test returns, so leaked tmux servers, Node oracles and helper processes cannot outlive the run. Linux only: other hosts expose no other process's environment.
+func TestGroupedTestsFailOnLeakedProcessAndKillIt(t *testing.T) {
+	if runtime.GOOS != "linux" {
+		t.Skip("reap-test-processes.sh reads /proc")
+	}
+	root := groupedTestFixture(t)
+	t.Setenv("TEST_LOG", filepath.Join(root, "packages"))
+	// A distinctive duration names the leaked sleep among every process on the host.
+	duration := strconv.Itoa(86400 + os.Getpid()%10000)
+	t.Setenv("LEAK_PROCESS", duration)
+	cmd := exec.CommandContext(t.Context(), testenv.Bash(t), filepath.Join(root, "automation/ci/test-grouped.sh"), "fast")
+	output, err := cmd.CombinedOutput()
+	if err == nil || !strings.Contains(string(output), "[reap-test-processes]") || !strings.Contains(string(output), "sleep "+duration) {
+		t.Fatalf("leaking run: err=%v, want the leaked process reported\n%s", err, output)
+	}
+	survivors, _ := exec.CommandContext(t.Context(), "pgrep", "-f", "^sleep "+duration+"$").Output()
+	if len(strings.TrimSpace(string(survivors))) != 0 {
+		t.Fatalf("leaked process still running: %s", survivors)
+	}
+}
+
+// CI restores test results from earlier commits with the build cache, and the cache key misses what child processes read, so under CI every go test runs with -count=1; elsewhere unchanged packages replay their cached results, and stress keeps its own count.
+func TestGroupedTestsRunEveryTestUnderCI(t *testing.T) {
+	root := groupedTestFixture(t)
+	t.Setenv("TEST_LOG", filepath.Join(root, "packages"))
+	t.Setenv("RUN_LOG", filepath.Join(root, "runs"))
+	argsLog := filepath.Join(root, "args")
+	t.Setenv("ARGS_LOG", argsLog)
+	for _, tc := range []struct {
+		mode, ci string
+		want     []string
+		reject   string
+	}{
+		{"fast", "true", []string{"-count=1"}, ""},
+		{"cli", "1", []string{"-count=1"}, ""},
+		{"fast", "", nil, "-count"},
+		{"stress", "true", []string{"-count=3"}, "-count=1"},
+	} {
+		writeCIFixture(t, root, "args", "")
+		t.Setenv("CI", tc.ci)
+		cmd := exec.CommandContext(t.Context(), testenv.Bash(t), filepath.Join(root, "automation/ci/test-grouped.sh"), tc.mode)
+		if output, err := cmd.CombinedOutput(); err != nil {
+			t.Fatalf("mode %s CI=%q: %v\n%s", tc.mode, tc.ci, err, output)
+		}
+		data, err := os.ReadFile(argsLog)
+		if err != nil {
+			t.Fatal(err)
+		}
+		lines := strings.Split(strings.TrimSpace(string(data)), "\n")
+		if len(lines) == 0 || lines[0] == "" {
+			t.Fatalf("mode %s CI=%q ran no go test", tc.mode, tc.ci)
+		}
+		for _, line := range lines {
+			args := strings.Fields(line)
+			for _, want := range tc.want {
+				if !slices.Contains(args, want) {
+					t.Errorf("mode %s CI=%q: go %s lacks %s", tc.mode, tc.ci, line, want)
+				}
+			}
+			if tc.reject != "" && strings.Contains(line, tc.reject) {
+				t.Errorf("mode %s CI=%q: go %s has %s", tc.mode, tc.ci, line, tc.reject)
+			}
+		}
+	}
+}
+
+// The checkout lock is held by test-grouped.sh alone. A go test that inherited it would pass it to every process a test starts, and one such process left running would block every later run in the checkout.
+func TestGroupedTestsKeepTheCheckoutLockFromTests(t *testing.T) {
+	if runtime.GOOS != "linux" {
+		t.Skip("the fake go test reads its descriptors from /proc")
+	}
+	root := groupedTestFixture(t)
+	t.Setenv("TEST_LOG", filepath.Join(root, "packages"))
+	fdLog := filepath.Join(root, "fds")
+	t.Setenv("FD_LOG", fdLog)
+	cmd := exec.CommandContext(t.Context(), testenv.Bash(t), filepath.Join(root, "automation/ci/test-grouped.sh"), "fast")
+	if output, err := cmd.CombinedOutput(); err != nil {
+		t.Fatalf("fast: %v\n%s", err, output)
+	}
+	data, err := os.ReadFile(fdLog)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(data), "/dev/") && !strings.Contains(string(data), "pipe:") {
+		t.Fatalf("descriptor log holds no standard streams; the probe did not run:\n%s", data)
+	}
+	if strings.Contains(string(data), "test-grouped.lock") {
+		t.Fatalf("go test holds the checkout lock:\n%s", data)
+	}
 }
 
 // isUnderDir reports whether path is dir or lies beneath it. It compares file identity, not spelling: Git Bash names the Windows temporary directory /tmp/... while Go names it C:\\..., and a path may use forward slashes or 8.3 short names, so no string prefix test holds on every host.

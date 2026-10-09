@@ -9,6 +9,8 @@ import (
 	"sync"
 	"testing"
 
+	icodingagent "github.com/MichaelKinsy/PiG/internal/codingagent"
+
 	"github.com/MichaelKinsy/PiG/agent"
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/coding/extension"
@@ -22,8 +24,8 @@ func (operations bashPersistenceOperations) Exec(ctx context.Context, command, c
 
 func bashEntryTypes(session *Session) []string {
 	var types []string
-	for _, entry := range session.Inner().Entries() {
-		types = append(types, entry.Base.Type)
+	for _, entry := range session.Inner().GetEntries() {
+		types = append(types, entry.Base().Type)
 	}
 	return types
 }
@@ -116,7 +118,7 @@ func TestUpstreamBashPersistence(t *testing.T) {
 	// upstream: packages/coding-agent/test/suite/agent-session-bash-persistence.test.ts:116
 	t.Run("executes bash commands and records the result", func(t *testing.T) {
 		h := harness(t, harnessOptions{emptySessionManager: true})
-		result, err := h.session.ExecuteBash(t.Context(), "printf 'hello'", false)
+		result, err := h.session.ExecuteBash(t.Context(), "printf 'hello'", nil, nil)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -278,15 +280,15 @@ func TestUpstreamBashPersistence(t *testing.T) {
 			t.Fatal(err)
 		}
 		join()
-		entries := h.session.Inner().Entries()
+		entries := h.session.Inner().GetEntries()
 		if len(entries) == 0 {
 			t.Fatal("no persisted assistant")
 		}
 		last := entries[len(entries)-1]
-		if last.Base.Type != "message" {
-			t.Fatalf("last type=%q", last.Base.Type)
+		if last.Base().Type != "message" {
+			t.Fatalf("last type=%q", last.Base().Type)
 		}
-		message, ok := last.AsMessage()
+		message, ok := last.(icodingagent.MessageEntry)
 		if !ok || message.Message.Assistant == nil {
 			t.Fatalf("last entry is not assistant: %s", last.Raw())
 		}
@@ -301,7 +303,7 @@ func TestUpstreamBashPersistence(t *testing.T) {
 			options.OnData([]byte("hello from custom ops"))
 			return extension.BashOperationsResult{ExitCode: new(0)}, nil
 		})
-		result, err := h.session.ExecuteBashWithOperations(t.Context(), "custom", false, nil, operations, nil)
+		result, err := h.session.ExecuteBash(t.Context(), "custom", nil, &ExecuteBashOptions{Operations: operations})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -309,5 +311,83 @@ func TestUpstreamBashPersistence(t *testing.T) {
 			t.Fatalf("output=%q", result.Output)
 		}
 		assertLastBashRole(t, h.session)
+	})
+}
+
+// Regression tests for https://github.com/earendil-works/pi/issues/10504: an escape sequence split across output chunks.
+// upstream: packages/coding-agent/test/suite/agent-session-bash-persistence.test.ts:342 (v1.1.0)
+func TestUpstreamBashEscapeSequencesSplitAcrossChunks(t *testing.T) {
+	// runChunks runs a user bash command whose fake shell emits the given chunks; beforeExit sees what was streamed by then.
+	runChunks := func(t *testing.T, chunks [][]byte, beforeExit func(streamed string)) (output, streamed, recorded string) {
+		t.Helper()
+		h := newRecoveryHarness(t, harnessOptions{emptySessionManager: true, defaultTools: true})
+		var deltas []string
+		operations := bashPersistenceOperations(func(_ context.Context, _, _ string, options extension.BashOperationsExecOptions) (extension.BashOperationsResult, error) {
+			for _, chunk := range chunks {
+				options.OnData(chunk)
+			}
+			if beforeExit != nil {
+				beforeExit(strings.Join(deltas, ""))
+			}
+			return extension.BashOperationsResult{ExitCode: new(0)}, nil
+		})
+		result, err := h.session.ExecuteBash(t.Context(), "custom", func(delta string) { deltas = append(deltas, delta) }, &ExecuteBashOptions{Operations: operations})
+		if err != nil {
+			t.Fatal(err)
+		}
+		messages := h.session.Messages()
+		last := messages[len(messages)-1]
+		if last.Role() == agent.RoleBashExecution {
+			recorded, _ = last.Custom["output"].(string)
+		}
+		return result.Output, strings.Join(deltas, ""), recorded
+	}
+	text := func(chunks ...string) [][]byte {
+		out := make([][]byte, len(chunks))
+		for i, chunk := range chunks {
+			out[i] = []byte(chunk)
+		}
+		return out
+	}
+
+	// upstream: packages/coding-agent/test/suite/agent-session-bash-persistence.test.ts:366
+	t.Run("strips a color reset split inside its parameters", func(t *testing.T) {
+		output, streamed, recorded := runChunks(t, text("\x1b[31mERROR: file.py:1\x1b[0", "m\n"), nil)
+		const want = "ERROR: file.py:1\n"
+		if output != want || streamed != want || recorded != want {
+			t.Fatalf("output=%q streamed=%q recorded=%q want %q", output, streamed, recorded, want)
+		}
+	})
+	// upstream: packages/coding-agent/test/suite/agent-session-bash-persistence.test.ts:373
+	t.Run("strips a color code split right after ESC", func(t *testing.T) {
+		output, streamed, _ := runChunks(t, text("before\x1b", "[32mafter\n"), nil)
+		const want = "beforeafter\n"
+		if output != want || streamed != want {
+			t.Fatalf("output=%q streamed=%q want %q", output, streamed, want)
+		}
+	})
+	// upstream: packages/coding-agent/test/suite/agent-session-bash-persistence.test.ts:379
+	t.Run("strips an OSC sequence split before its terminator", func(t *testing.T) {
+		output, _, _ := runChunks(t, text("a\x1b]0;window ", "title\x1b", "\\b\n"), nil)
+		if output != "ab\n" {
+			t.Fatalf("output=%q want %q", output, "ab\n")
+		}
+	})
+	// upstream: packages/coding-agent/test/suite/agent-session-bash-persistence.test.ts:384
+	t.Run("flushes an incomplete multi-byte character at the end of output", func(t *testing.T) {
+		output, streamed, _ := runChunks(t, [][]byte{[]byte("ok"), []byte("\u00e9")[:1]}, nil)
+		const want = "ok\uFFFD"
+		if output != want || streamed != want {
+			t.Fatalf("output=%q streamed=%q want %q", output, streamed, want)
+		}
+	})
+	// upstream: packages/coding-agent/test/suite/agent-session-bash-persistence.test.ts:390
+	t.Run("does not hold back output behind a long unterminated sequence", func(t *testing.T) {
+		long := strings.Repeat("x", 300)
+		var streamedBeforeExit string
+		runChunks(t, text("\x1b]"+long), func(streamed string) { streamedBeforeExit = streamed })
+		if want := "]" + long; streamedBeforeExit != want {
+			t.Fatalf("streamed before exit = %q want %q", streamedBeforeExit, want)
+		}
 	})
 }

@@ -48,32 +48,30 @@ func PngTranscoder(base64Data, _ string) (string, bool) {
 }
 
 // ensurePngTranscoder registers [PngTranscoder] as the tui image transcoder on a Kitty-protocol terminal, so non-PNG
-// images render. The Go transcoder needs no asynchronous load, so it registers at once.
+// images render. The Go transcoder needs no asynchronous load, so it registers at once. onRegistered runs after a new
+// registration, and not when a transcoder was already registered, so callers can re-render images that showed text fallbacks.
 // upstream: packages/coding-agent/src/utils/image-convert.ts:ensurePngTranscoder
-func ensurePngTranscoder() {
-	if tui.GetCapabilities().Images != tui.ImageProtocolKitty {
+func ensurePngTranscoder(onRegistered func()) {
+	if tui.GetCapabilities().Images != tui.ImageProtocolKitty || tui.ImageTranscoderRegistered() {
 		return
 	}
 	tui.SetImageTranscoder(PngTranscoder)
+	if onRegistered != nil {
+		onRegistered()
+	}
 }
+
+func init() { tui.SetImageTranscoderLoader(ensurePngTranscoder) }
 
 func decodeNodeBase64(data string) []byte { return imageprocessing.DecodeNodeBase64(data) }
 
-// maybeConvertImagesForKitty mirrors upstream tool-execution.ts
-// maybeConvertImagesForKitty. Upstream starts one unawaited convertToPng per
-// pending image and applies each result on the event loop; here each
-// conversion runs on its own goroutine and hands its result to the main loop
-// through runOnMain, which drops it once the run context ends. The component
-// ignores a result whose source image was replaced meanwhile.
-func (m *InteractiveMode) maybeConvertImagesForKitty(comp *tui.ToolExecutionComponent) {
-	for _, req := range comp.PendingKittyImageConversions() {
-		go func() {
-			converted := ConvertToPng(req.Data, req.MimeType)
-			m.runOnMain(m.runCtx, func() {
-				if comp.ApplyConvertedImage(req, converted) && m.tuiInst != nil {
-					m.tuiInst.RequestRender()
-				}
-			})
-		}()
-	}
+// ensurePngTranscoder lets extension images use the PNG transcoder; tool results register it themselves. A new registration
+// re-renders what showed text fallbacks (interactive-mode.ts ensurePngTranscoder).
+func (m *InteractiveMode) ensurePngTranscoder() {
+	ensurePngTranscoder(func() {
+		if m.tuiInst != nil {
+			m.tuiInst.Invalidate()
+			m.tuiInst.RequestRender()
+		}
+	})
 }

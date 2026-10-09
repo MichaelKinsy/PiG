@@ -30,12 +30,12 @@ func TestCloneReconstructsLabelsAndRetainedChain(t *testing.T) {
 	appendRow(`{"type":"label","id":"00000006","parentId":"00000005","timestamp":"2026-01-01T00:00:00.006Z","targetId":"00000005","label":"last"}`)
 	appendRow(`{"type":"label","id":"00000007","parentId":"00000006","timestamp":"2026-01-01T00:00:00.007Z","targetId":"00000003","label":"model"}`)
 	appendRow(`{"type":"label","id":"00000008","parentId":"00000007","timestamp":"2026-01-01T00:00:00.008Z","targetId":"00000005","label":"updated"}`)
-	before, _ := json.Marshal(s.Entries())
+	before, _ := json.Marshal(s.GetEntries())
 	clone, err := NewSessionManagerWithDir(s.CWD(), t.TempDir()).Clone(s, "00000005")
 	if err != nil {
 		t.Fatal(err)
 	}
-	rows := clone.Entries()
+	rows := clone.GetEntries()
 	if len(rows) != 5 {
 		t.Fatalf("clone contains %d entries, want 3 retained entries + 2 resolved labels: %s", len(rows), mustJSON(t, rows))
 	}
@@ -57,11 +57,11 @@ func TestCloneReconstructsLabelsAndRetainedChain(t *testing.T) {
 		if got.TargetID != label.target || got.Label == nil || *got.Label != label.value || got.Timestamp != label.timestamp {
 			t.Fatalf("label: %+v", got)
 		}
-		if got.ParentID == nil || *got.ParentID != rows[i+2].Base.ID {
+		if got.ParentID == nil || *got.ParentID != rows[i+2].Base().ID {
 			t.Fatalf("orphan label: %+v", got)
 		}
 	}
-	after, _ := json.Marshal(s.Entries())
+	after, _ := json.Marshal(s.GetEntries())
 	if string(before) != string(after) {
 		t.Fatal("clone mutated source")
 	}
@@ -75,10 +75,10 @@ func TestClonePreservesCompactionContextAtRemovedLabel(t *testing.T) {
 		t.Fatal(err)
 	}
 	label := "checkpoint"
-	if err := s.AppendLabelChange(old, &label); err != nil {
+	if _, err := s.AppendLabelChange(old, &label); err != nil {
 		t.Fatal(err)
 	}
-	boundary := *s.LeafID()
+	boundary := *s.GetLeafID()
 	kept, err := s.AppendMessage(mkUserMsg("kept"))
 	if err != nil {
 		t.Fatal(err)
@@ -95,7 +95,7 @@ func TestClonePreservesCompactionContextAtRemovedLabel(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	entry, _ := clone.EntryByID(compaction)
+	entry, _ := clone.GetEntry(compaction)
 	var c CompactionEntry
 	if err := json.Unmarshal(entry.Raw(), &c); err != nil {
 		t.Fatal(err)
@@ -120,13 +120,13 @@ func TestGeneratedEntryWireIdentity(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := s.AppendModelSwitch("anthropic", "test", ""); err != nil {
+	if _, err := s.AppendModelChange("anthropic", "test"); err != nil {
 		t.Fatal(err)
 	}
-	if err := s.AppendThinkingLevelChange("off"); err != nil {
+	if _, err := s.AppendThinkingLevelChange("off"); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := s.AppendCustomMessage("probe", "text", true, nil); err != nil {
+	if _, err := s.AppendCustomMessageEntry("probe", "text", true, nil); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := s.AppendUsage("summary", "anthropic", "test", ai.Usage{}, ""); err != nil {
@@ -135,26 +135,26 @@ func TestGeneratedEntryWireIdentity(t *testing.T) {
 	if _, err := s.AppendCompaction("summary", id, 100, nil, false, nil); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := s.AppendBranchSummary(&id, "branch", nil, false, nil); err != nil {
+	if _, err := s.BranchWithSummary(&id, "branch", nil, false, nil); err != nil {
 		t.Fatal(err)
 	}
-	if err := s.AppendLabelChange(id, new("checkpoint")); err != nil {
+	if _, err := s.AppendLabelChange(id, new("checkpoint")); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := s.AppendBashExecution(BashExecutionMessage{Command: "true", ExitCode: new(0), Timestamp: 1}); err != nil {
 		t.Fatal(err)
 	}
 	ids := map[string]bool{}
-	for _, e := range s.Entries() {
-		if !regexp.MustCompile(`^[0-9a-f]{8}$`).MatchString(e.Base.ID) {
-			t.Errorf("%s id=%q", e.Base.Type, e.Base.ID)
+	for _, e := range s.GetEntries() {
+		if !regexp.MustCompile(`^[0-9a-f]{8}$`).MatchString(e.Base().ID) {
+			t.Errorf("%s id=%q", e.Base().Type, e.Base().ID)
 		}
-		if ids[e.Base.ID] {
-			t.Errorf("duplicate id=%q", e.Base.ID)
+		if ids[e.Base().ID] {
+			t.Errorf("duplicate id=%q", e.Base().ID)
 		}
-		ids[e.Base.ID] = true
-		if !regexp.MustCompile(`^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d\.\d{3}Z$`).MatchString(e.Base.Timestamp) {
-			t.Errorf("%s timestamp=%q", e.Base.Type, e.Base.Timestamp)
+		ids[e.Base().ID] = true
+		if !regexp.MustCompile(`^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d\.\d{3}Z$`).MatchString(e.Base().Timestamp) {
+			t.Errorf("%s timestamp=%q", e.Base().Type, e.Base().Timestamp)
 		}
 	}
 }
@@ -171,13 +171,13 @@ func BenchmarkSessionClone(b *testing.B) {
 			b.Fatal(err)
 		}
 		if i%10 == 0 {
-			if err := source.AppendLabelChange(id, new("checkpoint")); err != nil {
+			if _, err := source.AppendLabelChange(id, new("checkpoint")); err != nil {
 				b.Fatal(err)
 			}
 		}
 	}
 	manager := NewSessionManagerWithDir(source.CWD(), b.TempDir())
-	leaf := *source.LeafID()
+	leaf := *source.GetLeafID()
 	b.ReportAllocs()
 	for b.Loop() {
 		clone, err := manager.Clone(source, leaf)

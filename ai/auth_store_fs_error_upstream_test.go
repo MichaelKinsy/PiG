@@ -1,7 +1,6 @@
 package ai
 
 import (
-	"encoding/json"
 	"os"
 	"path/filepath"
 	"testing"
@@ -67,7 +66,7 @@ func TestFileModelsStoreFSErrorsAreNodeErrorsUpstream(t *testing.T) {
 		}
 		path := filepath.Join(file, "models", "models-store.json")
 		want := runPiLockedStore(t, "models-write", path)
-		err := NewFileModelsStore(path).Write(t.Context(), "probe", ModelsStoreEntry{Models: []json.RawMessage{}})
+		err := NewFileModelsStore(path).Write(t.Context(), "probe", ModelsStoreEntry{Models: []AnyModel{}})
 		if err == nil || err.Error() != want {
 			t.Fatalf("Write error = %v, want Pi's %q", err, want)
 		}
@@ -79,7 +78,7 @@ func TestFileModelsStoreFSErrorsAreNodeErrorsUpstream(t *testing.T) {
 		}
 		path := filepath.Join(dir, "models-store.json")
 		want := runPiLockedStore(t, "models-write", path)
-		err := NewFileModelsStore(path).Write(t.Context(), "probe", ModelsStoreEntry{Models: []json.RawMessage{}})
+		err := NewFileModelsStore(path).Write(t.Context(), "probe", ModelsStoreEntry{Models: []AnyModel{}})
 		if err == nil || err.Error() != want {
 			t.Fatalf("Write error = %v, want Pi's %q", err, want)
 		}
@@ -90,7 +89,7 @@ func TestFileModelsStoreFSErrorsAreNodeErrorsUpstream(t *testing.T) {
 			t.Fatal(err)
 		}
 		want := runPiLockedStore(t, "models-write", path)
-		err := NewFileModelsStore(path).Write(t.Context(), "probe", ModelsStoreEntry{Models: []json.RawMessage{}})
+		err := NewFileModelsStore(path).Write(t.Context(), "probe", ModelsStoreEntry{Models: []AnyModel{}})
 		if err == nil || err.Error() != want {
 			t.Fatalf("Write error = %v, want Pi's %q", err, want)
 		}
@@ -106,7 +105,7 @@ func TestFileModelsStoreFSErrorsAreNodeErrorsUpstream(t *testing.T) {
 		if want == "ok" {
 			t.Skip("this user can write a read-only file")
 		}
-		err := NewFileModelsStore(path).Write(t.Context(), "probe", ModelsStoreEntry{Models: []json.RawMessage{}})
+		err := NewFileModelsStore(path).Write(t.Context(), "probe", ModelsStoreEntry{Models: []AnyModel{}})
 		if err == nil || err.Error() != want {
 			t.Fatalf("Write error = %v, want Pi's %q", err, want)
 		}

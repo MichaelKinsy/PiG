@@ -26,7 +26,7 @@ func newAnthropicWarningMode(t *testing.T, model *ai.Model) (*InteractiveMode, *
 		t.Fatal(err)
 	}
 	m := &InteractiveMode{
-		opts: InteractiveOptions{
+		opts: InteractiveModeOptions{
 			AgentDir:           agentDir,
 			Model:              model,
 			SettingsManager:    NewSettingsManager(t.TempDir(), agentDir),
@@ -110,6 +110,7 @@ func TestMaybeWarnAboutAnthropicSubscriptionAuthIgnoresOtherModels(t *testing.T)
 	}
 }
 
+// Pi: packages/coding-agent/src/core/settings-manager.ts:1528 (SettingsManager.setWarnings).
 func TestMaybeWarnAboutAnthropicSubscriptionAuthHonorsDisabledSetting(t *testing.T) {
 	m, store := newAnthropicWarningMode(t, anthropicWarningTestModel())
 	if err := store.Set("anthropic", ai.Credential{Type: ai.CredentialOAuth, Refresh: "refresh"}); err != nil {
@@ -130,7 +131,7 @@ func TestMaybeWarnAboutAnthropicSubscriptionAuthHonorsDisabledSetting(t *testing
 // ChatGPT fails without it (#146).
 func TestInteractiveLoginDeviceIDComesFromSettings(t *testing.T) {
 	sm := NewSettingsManager(t.TempDir(), t.TempDir())
-	m := &InteractiveMode{opts: InteractiveOptions{SettingsManager: sm}}
+	m := &InteractiveMode{opts: InteractiveModeOptions{SettingsManager: sm}}
 	id := m.loginDeviceID()
 	if id == "" || id != sm.GetOrCreateDeviceID() {
 		t.Fatalf("login device ID = %q, settings = %q", id, sm.GetOrCreateDeviceID())
@@ -142,7 +143,7 @@ func TestInteractiveLoginDeviceIDComesFromSettings(t *testing.T) {
 func TestRegisteredOAuthLoginReceivesSettingsDeviceID(t *testing.T) {
 	sm := NewSettingsManager(t.TempDir(), t.TempDir())
 	provider := &initiationCaptureOAuthProvider{callbacks: make(chan ai.OAuthLoginCallbacks, 1)}
-	mode := NewInteractiveMode(InteractiveOptions{AgentDir: t.TempDir(), SettingsManager: sm})
+	mode := NewInteractiveMode(nil, InteractiveModeOptions{AgentDir: t.TempDir(), SettingsManager: sm})
 	if err := mode.runLoginRegisteredOAuth(t.Context(), provider, ""); err != nil {
 		t.Fatal(err)
 	}
@@ -187,7 +188,7 @@ func TestOpenAICodexLoginReceivesSettingsDeviceID(t *testing.T) {
 func TestCycleModelChecksAnthropicSubscriptionAuth(t *testing.T) {
 	anthropic := anthropicWarningTestModel()
 	m, _ := newAnthropicWarningMode(t, anthropic)
-	m.statusLine = NewStatusLine(nil, "test", nil)
+	m.statusLine = NewFooterComponent(nil, "test", nil)
 	ctx, cancel := context.WithCancel(context.Background())
 	m.runCtx, m.backgroundCtx = ctx, ctx
 	m.opts.RequestAuthRuntime.providerByID["anthropic"].Auth = ai.ProviderAuth{APIKey: &ai.APIKeyAuth{}}

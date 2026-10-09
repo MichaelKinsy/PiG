@@ -8,10 +8,10 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/MichaelKinsy/PiG/internal/chord/delta"
+	"github.com/MichaelKinsy/PiG/chord/delta"
 )
 
-// JsonValue is a strict JSON value: nil, bool, float64, string, []any, or map[string]any.
+// JsonValue is a strict JSON value: nil, bool, float64, string, []any, or *chordjson.Object (an object that keeps JavaScript property order).
 type JsonValue = any
 
 // Op is one chord/delta operation tuple.
@@ -19,6 +19,9 @@ type Op = delta.Op
 
 // WireOp is a delta tuple with optional path interning or batch-local path omission. Decode it before applying operations to a replica.
 type WireOp = delta.WireOp
+
+// Ops is a batch of operations that keeps object key order when it decodes JSON.
+type Ops = delta.Ops
 
 // Delta codec, validation and error types live in package delta.
 type (
@@ -31,7 +34,7 @@ type (
 var (
 	NewEncoder        = delta.NewEncoder
 	NewDecoder        = delta.NewDecoder
-	AssertValidOp     = delta.AssertValidOp
+	AssertValidOp     = delta.AssertValidOpValue
 	AssertValidWireOp = delta.AssertValidWireOp
 )
 
@@ -60,17 +63,41 @@ type ServiceDefinition[T any] struct {
 	local bool
 }
 
+// ServiceReference is upstream's `{ readonly id: string }` (types.ts:269-270,308-312): the identity a binding or a source is asked for. A ServiceDefinition is one, and so is a [ServiceID].
+type ServiceReference interface{ Id() string }
+
+// ServiceID is a service id as a [ServiceReference].
+type ServiceID string
+
+// Id is the service id.
+func (id ServiceID) Id() string { return string(id) }
+
+// ServiceIDs lists service ids as references.
+func ServiceIDs(ids ...string) []ServiceReference {
+	references := make([]ServiceReference, len(ids))
+	for i, id := range ids {
+		references[i] = ServiceID(id)
+	}
+	return references
+}
+
 // ServiceOptions selects whether a service stays on the local control plane (upstream packages/chord/src/api.ts defineService).
 type ServiceOptions struct {
 	Local bool
 }
 
-// DefineService declares a transport-visible service token without activating it. It panics for empty or reserved identifiers.
-func DefineService[T any](id string) ServiceDefinition[T] {
-	return DefineServiceWithOptions[T](id, ServiceOptions{})
+// DefineService is upstream defineService(id, options?) (the overload with the optional options): it declares a transport-visible service token without activating it. The optional options argument is the variadic tail (a second one is ignored, as extra JavaScript arguments are); Local services never cross the transport boundary. It panics for empty or reserved identifiers.
+// upstream: packages/chord/src/api.ts:73-85
+func DefineService[T any](id string, options ...ServiceOptions) ServiceDefinition[T] {
+	var chosen ServiceOptions
+	if len(options) > 0 {
+		chosen = options[0]
+	}
+	return DefineServiceWithOptions[T](id, chosen)
 }
 
-// DefineServiceWithOptions is upstream defineService(id, options). Go has no overloads, so the optional options argument is a separate function. Local services never cross the transport boundary. It panics for empty or reserved identifiers.
+// DefineServiceWithOptions is upstream defineService(id, options) with the required options (the `{ readonly local: true }` overload, api.ts:73): the options select whether the service stays on the local control plane. It panics for empty or reserved identifiers.
+// upstream: packages/chord/src/api.ts:73-85
 func DefineServiceWithOptions[T any](id string, options ServiceOptions) ServiceDefinition[T] {
 	if id == "" {
 		panic("Service ID must not be empty")
@@ -135,8 +162,6 @@ func deltaTuple(value any) ([]any, bool) {
 		return typed, true
 	case WireOp:
 		return typed, true
-	case Op:
-		return typed, true
 	default:
 		return nil, false
 	}
@@ -159,7 +184,7 @@ func validateResetSnapshot(snapshot ServiceSubscriptionSnapshot, serviceId strin
 			keys[instance.Instance.Key] = true
 		}
 		for _, member := range instance.Members {
-			if member.Kind == MemberState && (len(member.Ops) != 1 || member.Ops[0].Verb() != "r") {
+			if member.Kind == MemberState && (len(member.Ops) != 1 || delta.Verb(member.Ops[0]) != "r") {
 				return errors.New("Remote service reset must contain full root replacements")
 			}
 		}

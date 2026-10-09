@@ -13,7 +13,7 @@ import (
 // below follows one branch of the function.
 func TestFormatToolCallWithArgs(t *testing.T) {
 	theme := ActiveTheme()
-	header := theme.FgText("toolTitle", boldText("custom_tool"))
+	header := theme.Fg("toolTitle", boldText("custom_tool"))
 	long := strings.Repeat("x", 200)
 	for _, tc := range []struct {
 		name     string
@@ -75,11 +75,11 @@ func TestFormatToolCallWithArgs(t *testing.T) {
 // render-utils.ts:92,96: the arguments follow the title in the muted color; collapsed on the title line after one space, expanded on their own lines.
 func TestFormatToolCallWithArgsColorsTheArgumentsMuted(t *testing.T) {
 	theme := ActiveTheme()
-	header := theme.FgText("toolTitle", boldText("t"))
-	if got, want := FormatToolCallWithArgs("t", json.RawMessage(`{"a":1}`), theme, false), header+" "+theme.FgText("muted", "a=1"); got != want {
+	header := theme.Fg("toolTitle", boldText("t"))
+	if got, want := FormatToolCallWithArgs("t", json.RawMessage(`{"a":1}`), theme, false), header+" "+theme.Fg("muted", "a=1"); got != want {
 		t.Fatalf("collapsed = %q, want %q", got, want)
 	}
-	if got, want := FormatToolCallWithArgs("t", json.RawMessage(`{"a":"x\ny"}`), theme, true), header+"\n"+theme.FgText("muted", "  a: x\n    y"); got != want {
+	if got, want := FormatToolCallWithArgs("t", json.RawMessage(`{"a":"x\ny"}`), theme, true), header+"\n"+theme.Fg("muted", "  a: x\n    y"); got != want {
 		t.Fatalf("expanded = %q, want %q", got, want)
 	}
 	if got := FormatToolCallWithArgs("t", nil, theme, false); got != header {
@@ -89,7 +89,7 @@ func TestFormatToolCallWithArgsColorsTheArgumentsMuted(t *testing.T) {
 
 // The deprecated SetStructuredArgs keeps compiling callers and draws upstream's registered-tool fallback header.
 func TestDeprecatedSetStructuredArgsDrawsTheFallbackHeader(t *testing.T) {
-	c := NewToolExecutionComponent("edit_spec", "")
+	c := newToolCardForTest("edit_spec", "")
 	c.Label = "ignored label"
 	c.SetStructuredArgs(json.RawMessage(`{"find":"alpha"}`))
 	if !c.HasDefinition() {

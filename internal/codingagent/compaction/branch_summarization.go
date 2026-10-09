@@ -75,6 +75,10 @@ type CollectEntriesResult struct {
 type GenerateBranchSummaryOptions struct {
 	// Model to use for summarization.
 	Model *ai.Model
+	// APIKey, Headers and Env are the request auth for the model (branch-summarization.ts:71-75).
+	APIKey  string
+	Headers map[string]string
+	Env     map[string]string
 	// Completer handles the actual LLM call.
 	Completer SimpleCompleter
 	// StreamFn overrides Completer when supplied, as in compaction.
@@ -87,8 +91,10 @@ type GenerateBranchSummaryOptions struct {
 	// prompt + response budget. Default 16384.
 	ReserveTokens int
 	// Retry, when non-nil, retries transient summarization errors with bounded
-	// exponential backoff. Mirrors upstream branch-summarization retry wiring.
-	Retry *RetryOptions
+	// exponential backoff (upstream retry?: RetryPolicy).
+	Retry *ai.RetryPolicy
+	// Callbacks report retries, e.g. to TUI retry indicators (upstream callbacks?: RetryCallbacks).
+	Callbacks ai.RetryCallbacks
 }
 
 // ─── ReadonlySession ──────────────────────────────────────────────────────────
@@ -96,14 +102,14 @@ type GenerateBranchSummaryOptions struct {
 // ReadonlySession provides read-only access needed for branch entry collection.
 // Mirrors upstream ReadonlySessionManager used in branch-summarization.ts.
 //
-// *codingagent.Session satisfies this interface via its Branch and EntryByID methods.
+// *codingagent.Session satisfies this interface via its GetBranch and GetEntry methods.
 type ReadonlySession interface {
-	// Branch returns the root-first path ending at leafID.
+	// GetBranch returns the root-first path ending at the first argument.
 	// Returns nil if leafID is not found.
-	Branch(leafID string) []codingagent.SessionEntry
+	GetBranch(fromID ...string) []codingagent.SessionEntry
 	// EntryByID looks up a single entry by ID.
 	// Returns (zero, false) if not found.
-	EntryByID(id string) (codingagent.SessionEntry, bool)
+	GetEntry(id string) (codingagent.SessionEntry, bool)
 }
 
 // ─── Prompts ──────────────────────────────────────────────────────────────────
@@ -161,18 +167,18 @@ func CollectEntriesForBranchSummary(session ReadonlySession, oldLeafID, targetID
 	}
 
 	// Build a set of IDs on the old path for O(1) ancestor lookup.
-	oldPath := session.Branch(oldLeafID)
+	oldPath := session.GetBranch(oldLeafID)
 	oldPathIDs := make(map[string]struct{}, len(oldPath))
 	for _, e := range oldPath {
-		oldPathIDs[e.Base.ID] = struct{}{}
+		oldPathIDs[e.Base().ID] = struct{}{}
 	}
 
 	// Find deepest common ancestor: iterate targetPath root→leaf in reverse.
-	targetPath := session.Branch(targetID)
+	targetPath := session.GetBranch(targetID)
 	var commonAncestorID string
 	for _, t := range slices.Backward(targetPath) {
-		if _, ok := oldPathIDs[t.Base.ID]; ok {
-			commonAncestorID = t.Base.ID
+		if _, ok := oldPathIDs[t.Base().ID]; ok {
+			commonAncestorID = t.Base().ID
 			break
 		}
 	}
@@ -181,15 +187,15 @@ func CollectEntriesForBranchSummary(session ReadonlySession, oldLeafID, targetID
 	var entries []codingagent.SessionEntry
 	current := oldLeafID
 	for current != "" && current != commonAncestorID {
-		e, ok := session.EntryByID(current)
+		e, ok := session.GetEntry(current)
 		if !ok {
 			break
 		}
 		entries = append(entries, e)
-		if e.Base.ParentID == nil {
+		if e.Base().ParentID == nil {
 			break
 		}
-		current = *e.Base.ParentID
+		current = *e.Base().ParentID
 	}
 
 	// Reverse to chronological order (root first, leaf last).
@@ -210,7 +216,7 @@ func CollectEntriesForBranchSummary(session ReadonlySession, oldLeafID, targetID
 // Tool results are skipped because the assistant tool call already carries
 // their position; compaction entries contribute their summary.
 func getMessageFromEntryForBranch(e codingagent.SessionEntry) (agent.AgentMessage, bool) {
-	switch e.Base.Type {
+	switch e.Base().Type {
 	case "message", "bash_execution", "custom_message":
 		messages := codingagent.SessionEntryToContextMessages(e)
 		if len(messages) != 1 || messages[0].ToolResult != nil {
@@ -271,7 +277,7 @@ func PrepareBranchEntries(entries []codingagent.SessionEntry, tokenBudget int) B
 	// First pass: seed file ops from prior branch_summary details and all
 	// assistant tool calls. Only process pi-generated summaries (fromHook == false).
 	for _, entry := range entries {
-		if entry.Base.Type == "branch_summary" {
+		if entry.Base().Type == "branch_summary" {
 			var raw struct {
 				FromHook bool                  `json:"fromHook"`
 				Details  *BranchSummaryDetails `json:"details"`
@@ -307,7 +313,7 @@ func PrepareBranchEntries(entries []codingagent.SessionEntry, tokenBudget int) B
 		if tokenBudget > 0 && totalTokens+tokens > tokenBudget {
 			// Summary entries get priority: include even if slightly over budget,
 			// as long as we're under 90% utilisation.
-			if entry.Base.Type == "compaction" || entry.Base.Type == "branch_summary" {
+			if entry.Base().Type == "compaction" || entry.Base().Type == "branch_summary" {
 				if float64(totalTokens) < float64(tokenBudget)*0.9 {
 					messages = append([]agent.AgentMessage{msg}, messages...)
 					totalTokens += tokens
@@ -393,7 +399,7 @@ func GenerateBranchSummary(ctx context.Context, entries []codingagent.SessionEnt
 		maxTokens = min(maxTokens, opts.Model.Capabilities.MaxOutputTokens)
 	}
 
-	raw, usage, err := completeSummarization(ctx, opts.Model, opts.Completer, opts.StreamFn, opts.Retry, SummarizationSystemPrompt, req, ai.StreamOptions{MaxTokens: maxTokens})
+	raw, usage, err := completeSummarization(ctx, opts.Model, opts.Completer, opts.StreamFn, opts.Retry, opts.Callbacks, SummarizationSystemPrompt, req, ai.StreamOptions{MaxTokens: maxTokens, APIKey: opts.APIKey, Headers: ai.ProviderHeadersFromStrings(opts.Headers), Env: opts.Env})
 	if err != nil {
 		// Distinguish context cancellation (aborted) from other errors.
 		if ctx.Err() != nil {

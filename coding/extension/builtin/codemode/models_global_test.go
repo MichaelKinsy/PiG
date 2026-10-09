@@ -15,10 +15,11 @@ import (
 // scriptModels is a model registry that records what `models.*` asks of it (execute.ts createModelGlobals uses
 // ctx.modelRegistry through CodemodeModelRuntime).
 type scriptModels struct {
-	mu         sync.Mutex
-	classified []*ai.ClassifierModel
-	images     []ai.ImagesContext
-	models     []ai.AnyModel
+	extension.ModelRegistry // the catalog members the models tool never calls
+	mu                      sync.Mutex
+	classified              []*ai.ClassifierModel
+	images                  []ai.ImagesContext
+	models                  []ai.AnyModel
 }
 
 func (r *scriptModels) GetModelsOfType(modelType ai.ModelType, provider ...string) []ai.AnyModel {
@@ -63,12 +64,12 @@ func (r *scriptModels) GenerateImages(_ context.Context, model *ai.ImageModel, r
 	return ai.AssistantImages{API: model.API, Provider: model.Provider, Model: model.ID, StopReason: ai.ImagesStopReasonError, ErrorMessage: "not used"}
 }
 
-func modelsToolContext(registry any) context.Context {
+func modelsToolContext(registry extension.ModelRegistry) context.Context {
 	base := extension.NewContext("", nil, func() error { return nil }, extension.ContextActions{ModelRegistry: registry})
 	return extension.WithToolContext(context.Background(), extension.NewToolContext(base, "call", context.Background(), extension.ToolActions{}))
 }
 
-func runModelsScript(t *testing.T, registry any, code string) (map[string]any, agent.AgentToolResult) {
+func runModelsScript(t *testing.T, registry extension.ModelRegistry, code string) (map[string]any, agent.AgentToolResult) {
 	t.Helper()
 	params, _ := json.Marshal(map[string]string{"code": code})
 	result, err := Execute(modelsToolContext(registry), "call", params, nil, Options{Models: true})
@@ -90,6 +91,7 @@ func runModelsScript(t *testing.T, registry any, code string) (map[string]any, a
 
 // upstream: execute.ts createModelGlobals. A script lists and finds models of a type without the credentials
 // headers carry, classifies by provider and id only, and the classification's usage becomes the result's usage.
+// Pi: packages/coding-agent/src/extensions/codemode/execute.ts:241 (ToolDetails.calls).
 func TestModelsGlobalServesTheRegistryToScripts(t *testing.T) {
 	judge := &ai.ClassifierModel{ID: "judge", Name: "Judge", API: "test-classifier", Provider: "scorer", BaseURL: "https://classifier.test/v1", Input: []string{"text"}, ContextWindow: 1000, Headers: map[string]string{"X-Secret": "hunter2"}}
 	registry := &scriptModels{models: []ai.AnyModel{judge}}
@@ -164,18 +166,18 @@ func TestModelsGlobalListsPiModelObjects(t *testing.T) {
 // upstream: createCodemodeExtension declares `models` unless its `models` option is false (index.ts `options.models ?? true`).
 // In 1.0.0 the description names the `models` global in one line (tool.ts describeGlobals) instead of declaring its API.
 func TestExtensionServesModelsUnlessDisabled(t *testing.T) {
-	served, err := Extension(Options{})
+	served, err := loadExtension(Options{})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if description := served.Tools[ToolName].Definition.Description; !strings.Contains(description, "`models`: classifiers and image generation") {
+	if description := registeredDefinition(served).Description; !strings.Contains(description, "`models`: classifiers and image generation") {
 		t.Error("the extension does not declare `models` by default")
 	}
-	disabled, err := Extension(Options{DisableModels: true})
+	disabled, err := loadExtension(Options{DisableModels: true})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if description := disabled.Tools[ToolName].Definition.Description; strings.Contains(description, "`models`") {
+	if description := registeredDefinition(disabled).Description; strings.Contains(description, "`models`") {
 		t.Error("the extension declares `models` with DisableModels")
 	}
 }

@@ -48,7 +48,7 @@ func imageImpl(model, request map[string]any, options sdk.ProviderOperationOptio
 // cancelled counts the classifications the host cancelled while they waited.
 var cancelled atomic.Int64
 
-// classifyImpl answers each question with the length of the state's text, in the reverse of the question order.
+// classifyImpl answers each question with the length of the state's text plus ten per image, in the reverse of the question order.
 func classifyImpl(model map[string]any, request sdk.ClassifierContext, options sdk.ProviderOperationOptions) (sdk.ClassifierResult, error) {
 	state, _ := request.State["text"].(string)
 	switch state {
@@ -62,7 +62,7 @@ func classifyImpl(model map[string]any, request sdk.ClassifierContext, options s
 	keys := request.Questions.Keys()
 	pairs := make([]any, 0, len(keys)*2)
 	for _, key := range slices.Backward(keys) {
-		pairs = append(pairs, key, map[string]any{"type": "bool", "probability": float64(len(state)) / 100})
+		pairs = append(pairs, key, map[string]any{"type": "bool", "probability": float64(len(state)+10*len(request.Images)) / 100})
 	}
 	return sdk.ClassifierResult{API: fmt.Sprint(model["api"]), Provider: fmt.Sprint(model["provider"]), Model: fmt.Sprint(model["id"]), Answers: sdk.NewOrderedObject(pairs...), StopReason: "stop", Timestamp: 2}, nil
 }
@@ -162,8 +162,12 @@ func Extension() *sdk.Extension {
 			key := "sk-conf"
 			result := registry.Classify(model, approvalContext("Looks good"), &sdk.ClassifierOptions{APIKey: &key})
 			failed := registry.Classify(model, approvalContext("fail"), nil)
+			shown := approvalContext("Looks good")
+			shown.Images = []sdk.ImageContent{{Data: "aW1hZ2U=", MimeType: "image/png"}}
+			withImages := registry.Classify(model, shown, nil)
 			probability, _ := result.Answers.Get("approved")
-			return text(map[string]any{"stop": result.StopReason, "answers": result.Answers.Keys(), "approved": probability.(map[string]any)["probability"], "model": result.Model, "failedStop": failed.StopReason, "failedMessage": failed.ErrorMessage, "failedProvider": failed.Provider})
+			imagesProbability, _ := withImages.Answers.Get("approved")
+			return text(map[string]any{"stop": result.StopReason, "answers": result.Answers.Keys(), "approved": probability.(map[string]any)["probability"], "imagesApproved": imagesProbability.(map[string]any)["probability"], "model": result.Model, "failedStop": failed.StopReason, "failedMessage": failed.ErrorMessage, "failedProvider": failed.Provider})
 		},
 	})
 	e.RegisterTool(sdk.ToolDefinition{

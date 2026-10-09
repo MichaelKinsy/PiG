@@ -22,10 +22,12 @@ import (
 	"errors"
 	"fmt"
 	"sync"
+	"time"
 
 	"github.com/MichaelKinsy/PiG/chord"
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/durable"
+	"github.com/MichaelKinsy/PiG/internal/lineadmission"
 )
 
 // PoisonedError rejects every operation after a commit failed once Storage
@@ -66,10 +68,14 @@ type closeListener struct{ listener func() }
 // Storage settlement, adoption, and publication runs while the line is held;
 // asynchronous listeners run later.
 type SessionImpl struct {
-	storage   durable.Storage
-	hooks     Hooks
-	host      *transactionHost
-	scheduler *pending
+	// deferMu guards the publication in progress: its flag and the work listeners deferred past the listener loop.
+	deferMu    sync.Mutex
+	publishing bool
+	deferred   []func()
+	storage    durable.Storage
+	hooks      Hooks
+	host       *transactionHost
+	scheduler  *pending
 
 	lineMu   sync.Mutex
 	tail     chan struct{}
@@ -86,14 +92,31 @@ type SessionImpl struct {
 	poison       error
 }
 
-// CreateSession opens a Session kernel over one storage backend.
-func CreateSession(storage durable.Storage) *SessionImpl { return NewSessionImpl(storage, Hooks{}) }
+// CreateSessionOptions is the optional argument of CreateSession.
+type CreateSessionOptions struct {
+	// Now is the wall clock in milliseconds for task times; the default is the system clock.
+	Now func() float64
+}
 
-// NewSessionImpl opens a Session kernel with extension hooks.
-func NewSessionImpl(storage durable.Storage, hooks Hooks) *SessionImpl {
+// CreateSession opens a Session kernel over one storage backend.
+func CreateSession(storage durable.Storage, options ...CreateSessionOptions) *SessionImpl {
+	var now func() float64
+	if len(options) > 0 {
+		now = options[0].Now
+	}
+	return NewSessionImpl(storage, Hooks{}, now)
+}
+
+// NewSessionImpl opens a Session kernel with extension hooks. now is the wall clock in milliseconds for task times;
+// nil selects the system clock.
+func NewSessionImpl(storage durable.Storage, hooks Hooks, now func() float64) *SessionImpl {
+	if now == nil {
+		now = func() float64 { return float64(time.Now().UnixMilli()) }
+	}
 	session := &SessionImpl{storage: storage, hooks: hooks, scheduler: newPending(), documents: map[string]*LoadedDocument{}}
 	session.host = &transactionHost{
 		storage: storage,
+		now:     now,
 		cached: func(addressId string) *LoadedDocument {
 			session.mu.Lock()
 			defer session.mu.Unlock()
@@ -124,12 +147,19 @@ func NewSessionImpl(storage durable.Storage, hooks Hooks) *SessionImpl {
 
 // enqueue runs job on the mutation line after every previously admitted job. With admit, the Session must be usable
 // when the job takes its ticket: upstream checks #assertUsable and enqueues in one synchronous turn, so a job that
-// passed admission is always queued ahead of the close job and settles before Storage closes.
-func enqueue[T any](session *SessionImpl, admit bool, job func() (T, error)) (T, error) {
+// passed admission is always queued ahead of the close job and settles before Storage closes. admitted, when non-nil,
+// runs once the job holds its ticket and before it waits for earlier jobs: the point at which upstream's synchronous
+// caller has extended the line's Promise chain.
+func enqueue[T any](session *SessionImpl, admit bool, admitted func(), job func() (T, error)) (T, error) {
 	session.lineMu.Lock()
 	if admit {
-		if err := session.assertUsable(); err != nil {
+		if listenersRan, err := session.usable(); err != nil {
+			// Wait for the close listeners without the line mutex: a listener may need a lock whose holder is taking a
+			// line ticket (the Harness scheduler's seal and kick).
 			session.lineMu.Unlock()
+			if listenersRan != nil {
+				<-listenersRan
+			}
 			var zero T
 			return zero, err
 		}
@@ -145,6 +175,9 @@ func enqueue[T any](session *SessionImpl, admit bool, job func() (T, error)) (T,
 		session.lineMu.Unlock()
 		close(done)
 	}()
+	if admitted != nil {
+		admitted()
+	}
 	if previous != nil {
 		<-previous
 	}
@@ -156,15 +189,21 @@ func enqueue[T any](session *SessionImpl, admit bool, job func() (T, error)) (T,
 // closing state, which its listener sets, to decide whether to report a rejected commit. Here a rejection waits for the
 // listeners, which must not call Session operations.
 func (session *SessionImpl) assertUsable() error {
-	session.mu.Lock()
-	closing, listenersRan := session.closing, session.listenersRan
-	if closing != nil {
-		session.mu.Unlock()
+	listenersRan, err := session.usable()
+	if listenersRan != nil {
 		<-listenersRan
-		return errSessionClosed
 	}
+	return err
+}
+
+// usable is assertUsable without the wait: once close began it returns the channel the rejection waits on.
+func (session *SessionImpl) usable() (listenersRan <-chan struct{}, err error) {
+	session.mu.Lock()
 	defer session.mu.Unlock()
-	return session.assertHealthyLocked()
+	if session.closing != nil {
+		return session.listenersRan, errSessionClosed
+	}
+	return nil, session.assertHealthyLocked()
 }
 
 func (session *SessionImpl) assertHealthy() error {
@@ -192,7 +231,60 @@ func (session *SessionImpl) CommitWith(ctx context.Context, change func(tx *Tran
 	if err := session.assertUsable(); err != nil {
 		return nil, err
 	}
-	result, err := enqueue(session, true, func() (any, error) { return session.runCommit(ctx, change, scope) })
+	result, err := enqueue(session, true, lineadmission.From(ctx), func() (any, error) { return session.runCommit(ctx, change, scope) })
+	session.scheduler.runDrains()
+	return result, err
+}
+
+// LineTicket is a position on the mutation line taken before its job runs.
+type LineTicket struct {
+	session  *SessionImpl
+	previous chan struct{}
+	done     chan struct{}
+}
+
+// TakeLineTicket takes the next line position now, or returns nil once close began.
+func (session *SessionImpl) TakeLineTicket() *LineTicket {
+	session.lineMu.Lock()
+	defer session.lineMu.Unlock()
+	session.mu.Lock()
+	closing := session.closing != nil
+	session.mu.Unlock()
+	if closing {
+		return nil
+	}
+	ticket := &LineTicket{session: session, previous: session.tail, done: make(chan struct{})}
+	session.tail = ticket.done
+	session.lineJobs++
+	return ticket
+}
+
+// Release gives up the position. Jobs queued behind it keep waiting for the jobs queued before it.
+func (ticket *LineTicket) Release() {
+	if ticket.previous != nil {
+		<-ticket.previous
+	}
+	ticket.session.lineMu.Lock()
+	ticket.session.lineJobs--
+	ticket.session.lineMu.Unlock()
+	close(ticket.done)
+}
+
+// CommitWithTicket runs a commit at the ticket's position and releases it.
+func (session *SessionImpl) CommitWithTicket(ticket *LineTicket, ctx context.Context, change func(tx *Transaction) (any, error), scope TransactionScope) (any, error) {
+	if ticket == nil {
+		return session.CommitWith(ctx, change, scope)
+	}
+	result, err := func() (any, error) {
+		defer ticket.Release()
+		if ticket.previous != nil {
+			<-ticket.previous
+		}
+		if err := session.assertUsable(); err != nil {
+			return nil, err
+		}
+		return session.runCommit(ctx, change, scope)
+	}()
 	session.scheduler.runDrains()
 	return result, err
 }
@@ -202,7 +294,7 @@ func (session *SessionImpl) ReadOnLine(job func() (any, error)) (any, error) {
 	if err := session.assertUsable(); err != nil {
 		return nil, err
 	}
-	return enqueue(session, true, func() (any, error) {
+	return enqueue(session, true, nil, func() (any, error) {
 		if err := session.assertHealthy(); err != nil {
 			return nil, err
 		}
@@ -257,7 +349,7 @@ func (session *SessionImpl) SnapshotErased(ctx context.Context, token durable.An
 	session.mu.Unlock()
 	loaded := cached
 	if cached == nil || cached.ValueVersion != definition.Version {
-		loaded, err = enqueue(session, true, func() (*LoadedDocument, error) {
+		loaded, err = enqueue(session, true, nil, func() (*LoadedDocument, error) {
 			if err := session.assertHealthy(); err != nil {
 				return nil, err
 			}
@@ -277,7 +369,7 @@ func (session *SessionImpl) SnapshotErased(ctx context.Context, token durable.An
 }
 
 // DocumentStateErased returns a disposable read-only state of a document's committed value, or nil when absent.
-func (session *SessionImpl) DocumentStateErased(ctx context.Context, token durable.AnyDocToken, args ...any) (*chord.AttachedReplicatedState[durable.JsonObject], error) {
+func (session *SessionImpl) DocumentStateErased(ctx context.Context, token durable.AnyDocToken, args ...any) (durable.DocumentState[durable.JsonObject], error) {
 	if err := session.assertUsable(); err != nil {
 		return nil, err
 	}
@@ -286,7 +378,7 @@ func (session *SessionImpl) DocumentStateErased(ctx context.Context, token durab
 	if err != nil {
 		return nil, err
 	}
-	return enqueue(session, true, func() (*chord.AttachedReplicatedState[durable.JsonObject], error) {
+	return enqueue(session, true, nil, func() (*chord.AttachedReplicatedState[durable.JsonObject], error) {
 		if err := session.assertHealthy(); err != nil {
 			return nil, err
 		}
@@ -330,7 +422,7 @@ func (session *SessionImpl) watchDoc(ctx context.Context, token durable.AnyDocTo
 	if err != nil {
 		return nil, err
 	}
-	watch, err := enqueue(session, true, func() (*CommittedWatch[durable.JsonObject], error) {
+	watch, err := enqueue(session, true, nil, func() (*CommittedWatch[durable.JsonObject], error) {
 		if err := session.assertHealthy(); err != nil {
 			return nil, err
 		}
@@ -385,7 +477,7 @@ func (session *SessionImpl) SnapshotAsOfErased(ctx context.Context, token durabl
 		return nil, errors.New("Session.snapshotAsOf() requires a conversation document")
 	}
 	conversationId := resolved.Address.Scope.ConversationId
-	return enqueue(session, true, func() (durable.JsonObject, error) {
+	return enqueue(session, true, nil, func() (durable.JsonObject, error) {
 		if err := session.assertHealthy(); err != nil {
 			return nil, err
 		}
@@ -437,7 +529,7 @@ func (session *SessionImpl) Close(ctx context.Context) error {
 			if session.hooks.BeforeClose != nil {
 				session.hooks.BeforeClose()
 			}
-			_, err := enqueue(session, false, func() (struct{}, error) {
+			_, err := enqueue(session, false, nil, func() (struct{}, error) {
 				session.mu.Lock()
 				session.commitOrder = nil
 				clear(session.documents)
@@ -549,7 +641,7 @@ func (session *SessionImpl) subscribeClose(listener func()) (func(), error) {
 
 // UnloadDocuments drops every loaded tracker on the mutation line; later access cold-loads from Storage.
 func (session *SessionImpl) UnloadDocuments() error {
-	_, err := enqueue(session, false, func() (struct{}, error) {
+	_, err := enqueue(session, false, nil, func() (struct{}, error) {
 		session.mu.Lock()
 		clear(session.documents)
 		session.mu.Unlock()
@@ -633,9 +725,39 @@ func (session *SessionImpl) publish(ctx context.Context, seq durable.Seq, writes
 		changes = append(changes, document)
 	}
 	publication := durable.CommitPublication{Seq: seq, Changes: changes}
+	session.deferMu.Lock()
+	session.publishing = true
+	session.deferred = nil
+	session.deferMu.Unlock()
+	// A panicking listener propagates out of the commit as upstream's throw does, but the waiters that earlier
+	// listeners settled still wake, as their promises already resolved, and later publications start clean.
+	defer func() {
+		session.deferMu.Lock()
+		deferred := session.deferred
+		session.publishing, session.deferred = false, nil
+		session.deferMu.Unlock()
+		for _, run := range deferred {
+			run()
+		}
+	}()
 	for _, listener := range listeners {
 		listener.listener(ctx, publication)
 	}
+}
+
+// DeferUntilPublished runs run once every listener of the publication in progress has run, and at once when none is.
+// Upstream settles a waiter by resolving a promise inside a listener, and the awaiting code resumes after the
+// synchronous listener loop; a goroutine woken inside a listener would race the listeners that follow, so waiters
+// wake through this. Listeners call it from the publishing goroutine, as publications are serialized on the line.
+func (session *SessionImpl) DeferUntilPublished(run func()) {
+	session.deferMu.Lock()
+	if !session.publishing {
+		session.deferMu.Unlock()
+		run()
+		return
+	}
+	session.deferred = append(session.deferred, run)
+	session.deferMu.Unlock()
 }
 
 // documentObserver is a committed state source or watch attached to one incarnation.

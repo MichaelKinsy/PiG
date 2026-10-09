@@ -135,12 +135,12 @@ func TestSettingsManagerOriginalStorage(t *testing.T) {
 	// .upstream/v0.99.1/packages/coding-agent/test/settings-manager.test.ts:293
 	t.Run("should read default project trust from global settings only", func(t *testing.T) {
 		sm := writeSettingsLayers(t, `{"defaultProjectTrust":"always"}`, `{"defaultProjectTrust":"never"}`)
-		settingsEqual(t, sm.GetDefaultProjectTrust(), "always")
+		settingsEqual(t, sm.GetDefaultProjectTrust(), DefaultProjectTrustAlways)
 	})
 	// .upstream/v0.99.1/packages/coding-agent/test/settings-manager.test.ts:302
 	t.Run("should default invalid project trust settings to ask", func(t *testing.T) {
 		sm := writeSettingsLayers(t, `{"defaultProjectTrust":"sometimes"}`, `{}`)
-		settingsEqual(t, sm.GetDefaultProjectTrust(), "ask")
+		settingsEqual(t, sm.GetDefaultProjectTrust(), DefaultProjectTrustAsk)
 	})
 	for _, tc := range []struct {
 		name  string
@@ -187,8 +187,8 @@ func TestSettingsManagerOriginalValues(t *testing.T) {
 	})
 	// .upstream/v0.99.1/packages/coding-agent/test/settings-manager.test.ts:375
 	t.Run("defaults and overrides agent retry delay cap", func(t *testing.T) {
-		settingsEqual(t, memorySettingsJSON(t, `{}`).GetRetrySettings(), RetryConfig{Enabled: true, MaxRetries: 3, BaseDelayMs: 2000, MaxDelayMs: 60000})
-		settingsEqual(t, memorySettingsJSON(t, `{"retry":{"enabled":true,"maxRetries":10,"baseDelayMs":500,"maxAgentDelayMs":5000}}`).GetRetrySettings(), RetryConfig{Enabled: true, MaxRetries: 10, BaseDelayMs: 500, MaxDelayMs: 5000})
+		settingsEqual(t, memorySettingsJSON(t, `{}`).GetRetrySettings(), RetryConfig{Enabled: true, MaxRetries: 3, BaseDelayMs: 2000, MaxAgentDelayMs: 60000})
+		settingsEqual(t, memorySettingsJSON(t, `{"retry":{"enabled":true,"maxRetries":10,"baseDelayMs":500,"maxAgentDelayMs":5000}}`).GetRetrySettings(), RetryConfig{Enabled: true, MaxRetries: 10, BaseDelayMs: 500, MaxAgentDelayMs: 5000})
 	})
 	for _, tc := range []struct {
 		name, g, p string
@@ -232,10 +232,10 @@ func TestSettingsManagerOriginalValues(t *testing.T) {
 	// .upstream/v1.0.0/packages/coding-agent/test/settings-manager.test.ts:481
 	t.Run("defaults to fullscreen and persists regular mode", func(t *testing.T) {
 		sm := writeSettingsLayers(t, `{}`, `{}`)
-		settingsEqual(t, sm.GetTuiMode(), "fullscreen")
+		settingsEqual(t, sm.GetTuiMode(), tui.TuiModeFullscreen)
 		settingsOK(t, sm.SetTuiMode("regular"))
 		settingsOK(t, sm.Flush())
-		settingsEqual(t, sm.GetTuiMode(), "regular")
+		settingsEqual(t, sm.GetTuiMode(), tui.TuiModeRegular)
 		assertSettingsFileJSON(t, sm.GlobalPath(), `{"tuiMode":"regular"}`)
 	})
 	for _, tc := range []struct{ name, initial string }{
@@ -245,13 +245,13 @@ func TestSettingsManagerOriginalValues(t *testing.T) {
 		{"does not recognize the old uiMode setting", `{"uiMode":"regular"}`},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			settingsEqual(t, writeSettingsLayers(t, tc.initial, `{}`).GetTuiMode(), "fullscreen")
+			settingsEqual(t, writeSettingsLayers(t, tc.initial, `{}`).GetTuiMode(), tui.TuiModeFullscreen)
 		})
 	}
 	// .upstream/v0.99.1/packages/coding-agent/test/settings-manager.test.ts:511
 	t.Run("validates and persists fullscreen settings", func(t *testing.T) {
 		sm := writeSettingsLayers(t, `{}`, `{}`)
-		settingsEqual(t, sm.GetFullscreenExitOutput(), "transcript")
+		settingsEqual(t, sm.GetFullscreenExitOutput(), FullscreenExitOutputTranscript)
 		settingsEqual(t, sm.GetFullscreenScrollbar(), "auto")
 		settingsEqual(t, sm.GetFullscreenCopyOnSelect(), true)
 		settingsOK(t, sm.SetFullscreenExitOutput("resume-hint"))
@@ -261,35 +261,35 @@ func TestSettingsManagerOriginalValues(t *testing.T) {
 		assertSettingsFileJSON(t, sm.GlobalPath(), `{"fullscreenExitOutput":"resume-hint","fullscreenScrollbar":"hidden","fullscreenCopyOnSelect":false}`)
 		writeSettingsFixture(t, sm.GlobalPath(), `{"fullscreenExitOutput":"nothing","fullscreenScrollbar":"sometimes"}`)
 		sm = NewSettingsManager(sm.CWD(), sm.AgentDir())
-		settingsEqual(t, sm.GetFullscreenExitOutput(), "transcript")
+		settingsEqual(t, sm.GetFullscreenExitOutput(), FullscreenExitOutputTranscript)
 		settingsEqual(t, sm.GetFullscreenScrollbar(), "auto")
 		settingsEqual(t, sm.GetFullscreenCopyOnSelect(), true)
 	})
 	// .upstream/v0.99.1/packages/coding-agent/test/settings-manager.test.ts:558
 	t.Run("should default to 1 and persist binary values", func(t *testing.T) {
 		sm := writeSettingsLayers(t, `{}`, `{}`)
-		settingsEqual(t, sm.GetOutputPad(), 1)
+		settingsEqual(t, sm.GetOutputPad(), OutputPadOne)
 		settingsOK(t, sm.SetOutputPad(0))
 		settingsOK(t, sm.Flush())
-		settingsEqual(t, sm.GetOutputPad(), 0)
+		settingsEqual(t, sm.GetOutputPad(), OutputPadNone)
 		assertSettingsFileJSON(t, sm.GlobalPath(), `{"outputPad":0}`)
 	})
 	// .upstream/v0.99.1/packages/coding-agent/test/settings-manager.test.ts:571
 	t.Run("should treat unsupported outputPad values as default padding", func(t *testing.T) {
-		settingsEqual(t, writeSettingsLayers(t, `{"outputPad":2}`, `{}`).GetOutputPad(), 1)
+		settingsEqual(t, writeSettingsLayers(t, `{"outputPad":2}`, `{}`).GetOutputPad(), OutputPadOne)
 	})
 	// .upstream/v0.99.1/packages/coding-agent/test/settings-manager.test.ts:581
 	t.Run("defaults to streaming and persists rendering modes", func(t *testing.T) {
 		sm := writeSettingsLayers(t, `{}`, `{}`)
-		settingsEqual(t, sm.GetMermaidRenderingMode(), "streaming")
+		settingsEqual(t, sm.GetMermaidRenderingMode(), MermaidRenderingStreaming)
 		settingsOK(t, sm.SetMermaidRenderingMode("final"))
 		settingsOK(t, sm.Flush())
-		settingsEqual(t, sm.GetMermaidRenderingMode(), "final")
+		settingsEqual(t, sm.GetMermaidRenderingMode(), MermaidRenderingFinal)
 		assertSettingsFileJSON(t, sm.GlobalPath(), `{"markdown":{"mermaid":"final"}}`)
 	})
 	// .upstream/v0.99.1/packages/coding-agent/test/settings-manager.test.ts:594
 	t.Run("falls back to streaming for unsupported values", func(t *testing.T) {
-		settingsEqual(t, writeSettingsLayers(t, `{"markdown":{"mermaid":"sometimes"}}`, `{}`).GetMermaidRenderingMode(), "streaming")
+		settingsEqual(t, writeSettingsLayers(t, `{"markdown":{"mermaid":"sometimes"}}`, `{}`).GetMermaidRenderingMode(), MermaidRenderingStreaming)
 	})
 	// .upstream/v0.99.1/packages/coding-agent/test/settings-manager.test.ts:602
 	t.Run("should load shellCommandPrefix from settings", func(t *testing.T) {
@@ -338,8 +338,8 @@ func TestSettingsOutputPadStrictZero(t *testing.T) {
 	} {
 		t.Run(tc.raw, func(t *testing.T) {
 			sm := writeSettingsLayers(t, tc.raw, `{}`)
-			settingsEqual(t, sm.GetOutputPad(), tc.want)
-			settingsEqual(t, sm.Get().GetOutputPad(), tc.want)
+			settingsEqual(t, sm.GetOutputPad(), OutputPad(tc.want))
+			settingsEqual(t, sm.Get().GetOutputPad(), OutputPad(tc.want))
 		})
 	}
 }
@@ -352,7 +352,7 @@ func TestSettingsOutputPadReloadRejectsNegative(t *testing.T) {
 	session := NewSession("padding", dir)
 	_, err := session.AppendMessage(assistantMsg("", ai.TextContent{Text: "answer"}))
 	settingsOK(t, err)
-	m := reloadTestMode(InteractiveOptions{
+	m := reloadTestMode(InteractiveModeOptions{
 		SettingsManager: sm,
 		Settings:        sm.Get(),
 		SessionHandle:   &recordingCompactHandle{inner: session},
@@ -406,6 +406,7 @@ func TestSettingsManagerOriginalPaths(t *testing.T) {
 	}
 }
 
+// Pi: packages/coding-agent/src/core/settings-manager.ts:1216 (SettingsManager.getSkillPaths); packages/coding-agent/src/core/settings-manager.ts:1232 (SettingsManager.getPromptTemplatePaths); packages/coding-agent/src/core/settings-manager.ts:1248 (SettingsManager.getThemePaths).
 func TestInMemorySettingsClonesAndTrustScopes(t *testing.T) {
 	t.Chdir(t.TempDir())
 	sm := memorySettingsJSON(t, `{"defaultTools":[],"extensions":[],"skills":[],"prompts":[],"themes":[],"enabledModels":[],"npmCommand":[]}`)
@@ -432,4 +433,23 @@ func TestInMemorySettingsClonesAndTrustScopes(t *testing.T) {
 	sm.ApplyOverrides(Settings{Theme: "transient"})
 	sm.Reload()
 	settingsEqual(t, sm.GetTheme(), "")
+}
+
+// Pi settings-manager.ts:1100-1108: setDefaultProjectTrust stores the mode in the global settings and saves; the getter returns "ask" for a value other than "always" or "never".
+func TestSetDefaultProjectTrustPersistsToGlobalSettings(t *testing.T) {
+	for _, trust := range []DefaultProjectTrust{DefaultProjectTrustAlways, DefaultProjectTrustNever, DefaultProjectTrustAsk} {
+		t.Run(string(trust), func(t *testing.T) {
+			sm := writeSettingsLayers(t, `{}`, `{"defaultProjectTrust":"never"}`)
+			if err := sm.SetDefaultProjectTrust(trust); err != nil {
+				t.Fatal(err)
+			}
+			if err := sm.Flush(); err != nil {
+				t.Fatal(err)
+			}
+			settingsEqual(t, sm.GetDefaultProjectTrust(), trust)
+			if got := sm.GetGlobalSettings().DefaultProjectTrust; got != string(trust) {
+				t.Fatalf("global defaultProjectTrust = %q, want %q", got, trust)
+			}
+		})
+	}
 }

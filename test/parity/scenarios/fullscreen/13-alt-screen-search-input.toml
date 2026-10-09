@@ -1,0 +1,78 @@
+# Behavior family: fullscreen
+# Surface: AltScreenSearchComponent.handleInput (packages/tui/src/alt-screen-search.ts): the search key opens the box and typed text edits the query.
+#
+# Upstream evidence (pi 1.0.4): in fullscreen after one conversation turn, Ctrl+Shift+F (CSI-u 102;6u) opens the search box and typing
+# "expr" shows the query and the result counter. The unit oracle tui.TestAltScreenSearchComponentMatchesPi compares 480 key/render/hover
+# probes against the pinned component; this scenario proves the same path through the real alternate-screen host.
+# Window and comparator rationale match 02-keyboard-navigation-fullscreen.
+
+name = "13-alt-screen-search-input"
+description = "Fullscreen transcript search: Ctrl+Shift+F opens the search box and typed text edits the query, with the match counter, identically in pig and pi."
+covers = [
+  "packages/tui/src/alt-screen-search.ts",
+  "packages/tui/src/tui-alt-screen.ts",
+  "packages/tui/src/components/scroll-view.ts",
+]
+tags = ["fast", "hermetic", "tui", "fullscreen"]
+driver = "interactive-tmux"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_CODING_AGENT_DIR=testdata/pig-agent"]
+pi = ["PI_CODING_AGENT_DIR=testdata/pi-agent", "PI_SKIP_VERSION_CHECK=1"]
+pi_extensions = ["../../testdata/test-faux-provider.ts"]
+pig_args = ["--no-extensions", "--session-dir", "{{TEMP}}/sessions"]
+pi_args = ["--session-dir", "{{TEMP}}/sessions"]
+
+[tmux]
+width = 100
+height = 24
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "(auto)"
+ready_timeout_seconds = 30
+capture_start = "┌────"
+capture_end_regex = "└────"
+
+[[tmux.steps]]
+keys = ["Run: expr 20 + 22", "Enter"]
+settle_seconds = 6
+wait_contains = ["Took"]
+wait_timeout_seconds = 15
+
+# Ctrl+Shift+F (tui.altScreen.search, CSI-u): open the transcript search box; typing "expr" reaches AltScreenSearchComponent.handleInput, which edits the query and reports the change.
+[[tmux.steps]]
+keys = ["hex:1b 5b 31 30 32 3b 36 75"]
+settle_seconds = 2
+
+[[tmux.steps]]
+keys = ["expr"]
+settle_seconds = 2
+
+[assert]
+both_reach_ready = true
+both_not_contain = ["unknown command", "panic:", "goroutine "]
+# After Home then End the viewport is bottom-aligned again; the conversation crop
+# is byte-identical to pi 0.84 at the SGR level (same basis as 01: escaped
+# capture-pane -e, only the sub-second tool duration normalized).
+escaped_output_equal = true
+runtime_ratio_max = 2.0
+runs = 3
+
+# normalize-rationale: only the sub-second tool duration varies with scheduling.
+[[assert.normalize_replace]]
+pattern = "Took \\d+\\.\\ds"
+with = "Took Ns"
+reason = "The measured sub-second tool duration varies with scheduling; retain the label, units and surrounding cells."
+
+# normalize-rationale: the search box overlays the top-right of the startup content, whose left side lists the loaded context files and
+# extensions (pig loads none with --no-extensions); that text is outside the surface under test, so the left cells of the two box
+# rows that carry it are dropped and every box cell (border, query, cursor, counter styling) is compared byte for byte.
+[[assert.normalize_replace]]
+pattern = "(?m)^[^\\n]*?│ expr"
+with = "│ expr"
+reason = "Startup-content text left of the search box differs because pig runs with --no-extensions; the box row itself is retained."
+
+[[assert.normalize_replace]]
+pattern = "(?m)^\\x1b\\[38;2;126;136;142m  [^\\n]*?└"
+with = "└"
+reason = "Startup-content text left of the search box's bottom border differs for the same reason; the border is retained."

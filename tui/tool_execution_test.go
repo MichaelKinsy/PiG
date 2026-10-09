@@ -1,8 +1,19 @@
 package tui
 
+// pi: packages/coding-agent/src/modes/interactive/components/tool-execution.ts
+
+// pi: packages/coding-agent/src/core/tools/renderers/ls.ts
+
+// pi: packages/coding-agent/src/core/tools/renderers/grep.ts
+
+// pi: packages/coding-agent/src/core/tools/renderers/find.ts
+
+// pi: packages/coding-agent/src/core/tools/renderers/bash.ts
+
 import (
 	"encoding/json"
 	"fmt"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -25,7 +36,7 @@ func toolHeader(out []string) string {
 func TestToolExecutionReadErrorUsesToolOutputColor(t *testing.T) {
 	// read.ts formatReadResult disables syntax highlighting on failure and
 	// uses toolOutput, not the terminal default or the error foreground.
-	c := NewToolExecutionComponent("read", "example.go")
+	c := newToolCardForTest("read", "example.go")
 	c.SetResult("Operation aborted", true, 0)
 	want := ActiveTheme().ToolOutput + "Operation aborted" + SGRFgReset
 	if got := c.renderResultBody(80); len(got) != 1 || got[0] != want {
@@ -34,7 +45,7 @@ func TestToolExecutionReadErrorUsesToolOutputColor(t *testing.T) {
 }
 
 func TestToolExecutionRunningHeader(t *testing.T) {
-	c := NewToolExecutionComponent("read", HeaderForTool("read", json.RawMessage(`{"path":"README.md"}`), ""))
+	c := newToolCardForTest("read", HeaderForTool("read", json.RawMessage(`{"path":"README.md"}`), ""))
 	out := c.Render(80)
 	if len(out) != toolFrameMinLines {
 		t.Fatalf("running with no output should be %d-line frame, got %d: %v", toolFrameMinLines, len(out), out)
@@ -62,7 +73,7 @@ func TestToolExecutionRunningHeader(t *testing.T) {
 // renders at column 0 with no background (the visible gaps/fragments in a
 // wrapped edit diff). Every Render() element must be exactly one visual row.
 func TestToolExecutionBodyRendererFlattensEmbeddedNewlines(t *testing.T) {
-	c := NewToolExecutionComponent("edit", "")
+	c := newToolCardForTest("edit", "")
 	c.SetResult("diff", false, 0)
 	bgOpen := c.bgOpenSGR()
 	// Mirror styleAndWrap output for a diff line wrapped into two visual rows.
@@ -95,7 +106,7 @@ func TestToolExecutionBodyRendererFlattensEmbeddedNewlines(t *testing.T) {
 // stray blank row inside the box: the header/body separator is skipped.
 // Mirrors upstream #5299.
 func TestToolExecutionEmptyBodyRendererSkipsSeparator(t *testing.T) {
-	c := NewToolExecutionComponent("read", `path:"x"`)
+	c := newToolCardForTest("read", `path:"x"`)
 	c.SetResult("some output", false, 0)
 	c.BodyRenderer = func(width int, expanded bool) []string { return nil }
 	c.Collapsed = true
@@ -109,7 +120,6 @@ func TestToolExecutionEmptyBodyRendererSkipsSeparator(t *testing.T) {
 
 	// Non-empty body keeps the separator (frame + separator + 1 body line).
 	c.BodyRenderer = func(width int, expanded bool) []string { return []string{"body line"} }
-	c.cachedLines = nil // bust render cache
 	out = c.Render(80)
 	if len(out) != toolFrameMinLines+2 {
 		t.Fatalf("non-empty body should add separator + body line, got %d: %q", len(out), out)
@@ -117,7 +127,7 @@ func TestToolExecutionEmptyBodyRendererSkipsSeparator(t *testing.T) {
 }
 
 func TestToolExecutionDoneAutoCollapse(t *testing.T) {
-	c := NewToolExecutionComponent("read", HeaderForTool("read", json.RawMessage(`{"path":"x"}`), ""))
+	c := newToolCardForTest("read", HeaderForTool("read", json.RawMessage(`{"path":"x"}`), ""))
 	body := strings.Repeat("line\n", 20)
 	c.SetResult(body, false, 1234*time.Millisecond)
 	out := c.Render(80)
@@ -149,7 +159,7 @@ func TestToolExecutionDoneAutoCollapse(t *testing.T) {
 }
 
 func TestToolExecutionShortOutputStaysExpanded(t *testing.T) {
-	c := NewToolExecutionComponent("read", "")
+	c := newToolCardForTest("read", "")
 	c.SetResult("hi\nthere\n", false, 0)
 	out := c.Render(80)
 	// 2 body lines + 1 header = 3
@@ -159,7 +169,7 @@ func TestToolExecutionShortOutputStaysExpanded(t *testing.T) {
 }
 
 func TestToolExecutionErrorAutoExpands(t *testing.T) {
-	c := NewToolExecutionComponent("read", HeaderForTool("read", json.RawMessage(`{"path":"missing"}`), ""))
+	c := newToolCardForTest("read", HeaderForTool("read", json.RawMessage(`{"path":"missing"}`), ""))
 	long := strings.Repeat("err\n", 50)
 	c.SetResult(long, true, 0)
 	out := c.Render(80)
@@ -182,7 +192,7 @@ func TestToolExecutionErrorAutoExpands(t *testing.T) {
 }
 
 func TestToolExecutionToggleSticky(t *testing.T) {
-	c := NewToolExecutionComponent("bash", "")
+	c := newToolCardForTest("bash", "")
 	c.SetResult(strings.Repeat("a\n", 50), false, 0)
 	if !c.Collapsed {
 		t.Fatal("should auto-collapse")
@@ -198,7 +208,7 @@ func TestToolExecutionToggleSticky(t *testing.T) {
 }
 
 func TestToolExecutionSetExpanded(t *testing.T) {
-	c := NewToolExecutionComponent("bash", "")
+	c := newToolCardForTest("bash", "")
 	c.SetResult(strings.Repeat("a\n", 50), false, 0)
 	if !c.Collapsed {
 		t.Fatal("should auto-collapse")
@@ -219,7 +229,7 @@ func TestToolExecutionSetExpanded(t *testing.T) {
 }
 
 func TestToolExecutionBodyTruncation(t *testing.T) {
-	c := NewToolExecutionComponent("bash", "")
+	c := newToolCardForTest("bash", "")
 	c.BodyMaxLines = 5
 	c.SetResult(strings.Repeat("x\n", 100), false, 0)
 	c.Expand()
@@ -239,7 +249,7 @@ func TestToolExecutionBodyTruncation(t *testing.T) {
 // (no BodyMaxLines set) emits every line of output: fixes the bug
 // where Ctrl+O claimed to "expand" but the body still capped at 40.
 func TestToolExecutionBodyDefaultUnlimited(t *testing.T) {
-	c := NewToolExecutionComponent("bash", "")
+	c := newToolCardForTest("bash", "")
 	c.SetResult(strings.Repeat("line\n", 245), false, 0)
 	c.Expand()
 	out := c.Render(80)
@@ -258,7 +268,7 @@ func TestToolExecutionBodyDefaultUnlimited(t *testing.T) {
 // painted edge-to-edge in the lifecycle bg: closes collapsed-state
 // requirement (header keeps frame even when body is hidden).
 func TestToolExecutionBgPaintedEdgeToEdge(t *testing.T) {
-	c := NewToolExecutionComponent("read", "")
+	c := newToolCardForTest("read", "")
 	c.SetResult(strings.Repeat("ok\n", 20), false, 0) // auto-collapses
 	out := c.Render(80)
 	for i, line := range out {
@@ -277,7 +287,7 @@ func TestToolExecutionBgPaintedEdgeToEdge(t *testing.T) {
 func TestToolExecutionStreamingFallbackUsesLeadingPreview(t *testing.T) {
 	for _, toolName := range []string{"bash", "extension_tool"} {
 		t.Run(toolName, func(t *testing.T) {
-			c := NewToolExecutionComponent(toolName, "long-running call")
+			c := newToolCardForTest(toolName, "long-running call")
 
 			var output strings.Builder
 			for i := range 100 {
@@ -305,7 +315,7 @@ func TestToolExecutionStreamingFallbackUsesLeadingPreview(t *testing.T) {
 func TestToolExecutionStreamingExpansionStaysStickyThroughCompletion(t *testing.T) {
 	for _, toolName := range []string{"bash", "extension_tool"} {
 		t.Run(toolName, func(t *testing.T) {
-			c := NewToolExecutionComponent(toolName, "long-running call")
+			c := newToolCardForTest(toolName, "long-running call")
 			c.SetStreaming("first\nsecond\n")
 			c.Toggle()
 			if c.Collapsed {
@@ -326,7 +336,7 @@ func TestToolExecutionStreamingExpansionStaysStickyThroughCompletion(t *testing.
 // reliably paint background color through tab stops, causing visible gaps
 // in the tinted tool box (e.g. grep -n output with indented source code).
 func TestToolExecutionTabsReplacedInBgPaint(t *testing.T) {
-	c := NewToolExecutionComponent("bash", "grep -n foo bar.ts")
+	c := newToolCardForTest("bash", "grep -n foo bar.ts")
 	c.MarkExecutionStarted()
 	// Simulate grep -n output with literal tabs.
 	c.SetStreaming("105-\tprivate getRenderShell(): \"default\" {\n106-\t\tif (!this.builtIn) {\n107:\t\t\treturn this.def;\n")
@@ -410,7 +420,7 @@ func TestStripControlEscapesPreservesSGR(t *testing.T) {
 // disaster: bash output contains a `\x1b[2J` (clear) and `\x1b[5;5H`
 // (cursor jump). The rendered body must NOT contain either escape.
 func TestRenderBodyStripsControlsBeforeRender(t *testing.T) {
-	c := NewToolExecutionComponent("bash", "")
+	c := newToolCardForTest("bash", "")
 	c.SetResult("\x1b[2J\x1b[Hhello\nworld\n", false, 0)
 	c.Expand()
 	out := strings.Join(c.Render(80), "\n")
@@ -422,36 +432,32 @@ func TestRenderBodyStripsControlsBeforeRender(t *testing.T) {
 	}
 }
 
+// Pi builds an Image component only when the terminal has an image protocol and showImages is on
+// (tool-execution.ts:356); without one the result text carries the fallback (render-utils.ts getTextOutput), so the
+// card draws no image rows of its own.
 func TestToolExecutionImageBlocks(t *testing.T) {
 	SetCapabilities(TerminalCapabilities{})
 	defer ResetCapabilitiesCache()
-	c := NewToolExecutionComponent("read", `path:"test.png"`)
+	c := newToolCardForTest("read", `path:"test.png"`)
 	c.ImageBlocks = []ImageBlock{
 		{Data: "iVBORw0KGgoAAAANSUhEUg==", MIMEType: "image/png"},
 	}
 	c.ShowImages = true
 	c.SetResult("image file read", false, 0)
 
-	lines := c.Render(80)
-	// Should include image fallback text (no real image protocol in test)
-	found := false
-	for _, l := range lines {
-		if strings.Contains(l, "image/png") || strings.Contains(l, "Image") || strings.Contains(l, "📷") {
-			found = true
-			break
+	for i, l := range c.Render(80) {
+		if strings.Contains(l, "image/png") || strings.Contains(l, "Image") {
+			t.Errorf("row %d draws an image fallback without an image protocol: %q", i, l)
 		}
 	}
-	if !found {
-		t.Log("Lines rendered:")
-		for i, l := range lines {
-			t.Logf("  [%d] %q", i, l)
-		}
-		t.Error("expected image fallback text in rendered output")
+	SetCapabilities(TerminalCapabilities{Images: ImageProtocolKitty})
+	if !slices.ContainsFunc(c.Render(80), func(l string) bool { return strings.Contains(l, "\x1b_G") }) {
+		t.Error("a Kitty terminal does not receive the image sequence")
 	}
 }
 
 func TestToolExecutionImageHiddenWhenShowImagesFalse(t *testing.T) {
-	c := NewToolExecutionComponent("read", `path:"test.png"`)
+	c := newToolCardForTest("read", `path:"test.png"`)
 	c.ImageBlocks = []ImageBlock{
 		{Data: "iVBORw0KGgoAAAANSUhEUg==", MIMEType: "image/png"},
 	}
@@ -539,7 +545,7 @@ func TestFormatLsHeaderDefaultPath(t *testing.T) {
 // (Bug: tool_result entries don't store ToolName; fix uses comp.Name as fallback.)
 func TestToolExecutionNamePreservedForFallback(t *testing.T) {
 	const toolName = "bash"
-	c := NewToolExecutionComponent(toolName, "$ ls")
+	c := newToolCardForTest(toolName, "$ ls")
 	if c.Name != toolName {
 		t.Fatalf("Name = %q, want %q", c.Name, toolName)
 	}
@@ -599,7 +605,7 @@ func TestFormatBuiltinToolHeader(t *testing.T) {
 }
 
 func TestToolExecution_BodyRendererDefaultsCollapsed(t *testing.T) {
-	c := NewToolExecutionComponent("write", "test_args")
+	c := newToolCardForTest("write", "test_args")
 	c.BodyRenderer = func(width int, expanded bool) []string {
 		if expanded {
 			return []string{"line1", "line2", "line3", "line4", "line5"}
@@ -623,8 +629,10 @@ func TestToolExecution_BodyRendererDefaultsCollapsed(t *testing.T) {
 	}
 }
 
+// Pi: packages/coding-agent/src/modes/interactive/components/tool-execution.ts:164 (ToolExecutionComponent.updateArgs).
+// Pi packages/coding-agent/src/modes/interactive/components/tool-execution.ts:181 updateArgs(args): one argument, the tool name stays the constructor's.
 func TestToolExecution_UpdateArgs(t *testing.T) {
-	c := NewToolExecutionComponent("edit", "")
+	c := newToolCardForTest("edit", "")
 
 	// Before any args: header shows tool name.
 	lines := c.Render(80)
@@ -640,7 +648,7 @@ func TestToolExecution_UpdateArgs(t *testing.T) {
 	}
 
 	// Partial JSON: incomplete, should not crash, header stays as tool name.
-	c.UpdateArgs("edit", `{"path": "main`)
+	c.UpdateArgs(json.RawMessage(`{"path": "main`))
 	lines = c.Render(80)
 	// Should still render without panic.
 	if len(lines) == 0 {
@@ -648,7 +656,7 @@ func TestToolExecution_UpdateArgs(t *testing.T) {
 	}
 
 	// Complete JSON: header should update to "edit main.go".
-	c.UpdateArgs("edit", `{"path": "main.go"}`)
+	c.UpdateArgs(json.RawMessage(`{"path": "main.go"}`))
 	lines = c.Render(80)
 	found = false
 	for _, line := range lines {
@@ -663,7 +671,7 @@ func TestToolExecution_UpdateArgs(t *testing.T) {
 }
 
 func TestToolExecution_MarkExecutionStarted(t *testing.T) {
-	c := NewToolExecutionComponent("bash", "$ echo hello")
+	c := newToolCardForTest("bash", "$ echo hello")
 
 	if c.State != ToolStateRunning {
 		t.Fatal("expected Running state")
@@ -679,7 +687,7 @@ func TestToolExecution_MarkExecutionStarted(t *testing.T) {
 }
 
 func TestToolExecution_IsPartialBgTransition(t *testing.T) {
-	c := NewToolExecutionComponent("bash", "$ echo hello")
+	c := newToolCardForTest("bash", "$ echo hello")
 
 	// Initially IsPartial is true: should use pending bg.
 	if !c.IsPartial {
@@ -703,24 +711,8 @@ func TestToolExecution_IsPartialBgTransition(t *testing.T) {
 	}
 }
 
-func TestFormatEditHeaderShowsPatchFiles(t *testing.T) {
-	header := FormatEditHeader(json.RawMessage(`{"patch":"*** Begin Patch\n*** Update File: tui/a.go\n*** Add File: tui/b.go\n*** End Patch"}`), "/workspace")
-	plain := stripANSI(header)
-	if !strings.Contains(plain, "tui/a.go") || !strings.Contains(plain, "+1 file") {
-		t.Fatalf("patch edit header does not identify affected files: %q", plain)
-	}
-}
-
-func TestFormatEditHeaderShowsMultipleFiles(t *testing.T) {
-	header := FormatEditHeader(json.RawMessage(`{"multi":[{"path":"test/parity/testdata/provider.ts"},{"path":"ai/test_faux.go"}]}`), "/workspace")
-	plain := stripANSI(header)
-	if !strings.Contains(plain, "test/parity/testdata/provider.ts") || !strings.Contains(plain, "+1 file") {
-		t.Fatalf("multi-file edit header does not identify affected files: %q", plain)
-	}
-}
-
 func TestToolExecution_SetArgsComplete(t *testing.T) {
-	c := NewToolExecutionComponent("edit", "edit main.go")
+	c := newToolCardForTest("edit", "edit main.go")
 
 	c.SetArgsComplete()
 
@@ -735,7 +727,7 @@ func TestToolExecution_SetArgsComplete(t *testing.T) {
 // definition has no result renderer shows upstream's first ten lines and a
 // "more lines" hint.
 func TestToolExecutionCollapsedPreview(t *testing.T) {
-	c := NewToolExecutionComponent("read_session", "mode:toc")
+	c := newToolCardForTest("read_session", "mode:toc")
 	c.SetDefinition(&ToolDefinitionRenderers{}, json.RawMessage(`{"mode":"toc"}`))
 	lines := make([]string, 30)
 	for i := range lines {
@@ -776,7 +768,7 @@ func TestToolExecutionCollapsedPreview(t *testing.T) {
 }
 
 func TestToolExecutionWithoutDefinitionShowsFullResult(t *testing.T) {
-	c := NewToolExecutionComponent("unknown_tool", "")
+	c := newToolCardForTest("unknown_tool", "")
 	lines := make([]string, 30)
 	for i := range lines {
 		lines[i] = fmt.Sprintf("output line %d", i+1)
@@ -796,7 +788,7 @@ func TestToolExecutionWithoutDefinitionShowsFullResult(t *testing.T) {
 // TestToolExecutionCollapsedPreviewShort verifies that output within the
 // ten-line fallback limit has no truncation hint.
 func TestToolExecutionCollapsedPreviewShort(t *testing.T) {
-	c := NewToolExecutionComponent("custom_tool", "args")
+	c := newToolCardForTest("custom_tool", "args")
 	// 3 lines: below threshold for collapsing but force it.
 	c.SetResult("a\nb\nc\n", false, 0)
 	// Force collapse (would normally auto-expand for < 8 lines).
@@ -820,7 +812,7 @@ func TestToolExecutionCollapsedPreviewShort(t *testing.T) {
 // footer (mirrors upstream bash.ts renderResult). Non-bash tools and completed
 // tools must not show it. The line cache must not freeze the value.
 func TestToolExecutionComponent_LiveBashElapsed(t *testing.T) {
-	c := NewToolExecutionComponent("bash", "$ sleep 5")
+	c := newToolCardForTest("bash", "$ sleep 5")
 	c.MarkExecutionStarted()
 	c.StartedAt = time.Now().Add(-3200 * time.Millisecond)
 
@@ -837,7 +829,7 @@ func TestToolExecutionComponent_LiveBashElapsed(t *testing.T) {
 	}
 
 	// Non-bash running tool: no Elapsed footer.
-	r := NewToolExecutionComponent("read", "read x.go")
+	r := newToolCardForTest("read", "read x.go")
 	r.MarkExecutionStarted()
 	r.StartedAt = time.Now().Add(-2 * time.Second)
 	if got := strings.Join(r.Render(80), "\n"); strings.Contains(got, "Elapsed") {
@@ -856,7 +848,7 @@ func TestToolExecutionComponent_LiveBashElapsed(t *testing.T) {
 // (the runaway timer that forced a repaint on every keystroke/agent chunk and
 // broke scrollback), keeps its partial output, and is a no-op once terminal.
 func TestToolExecutionComponent_FinalizeAbortedFreezesElapsed(t *testing.T) {
-	c := NewToolExecutionComponent("bash", "echo hi")
+	c := newToolCardForTest("bash", "echo hi")
 	c.MarkExecutionStarted()
 	c.StartedAt = time.Now().Add(-2 * time.Second) // backdate for a measurable elapsed
 	c.SetStreaming("partial output")
@@ -883,4 +875,52 @@ func TestToolExecutionComponent_FinalizeAbortedFreezesElapsed(t *testing.T) {
 	if c.Elapsed != 2*time.Second {
 		t.Errorf("FinalizeAborted on a terminal tool must be a no-op; elapsed=%v", c.Elapsed)
 	}
+}
+
+// tool-execution.ts:93-104: ToolExecutionComponent extends Container with a spacer, the content box and the images; a state change reaches the next render without a cache to bust.
+func TestToolExecutionComponentIsAContainerOfSpacerCardAndImages(t *testing.T) {
+	c := newToolCardForTest("custom", "")
+	if got := len(c.Children()); got != 3 {
+		t.Fatalf("children = %d, want spacer, card, images", got)
+	}
+	c.Output = "first"
+	if got := strings.Join(c.Render(40), "\n"); !strings.Contains(got, "first") {
+		t.Fatalf("output missing: %s", got)
+	}
+	c.Output = "second"
+	if got := strings.Join(c.Render(40), "\n"); !strings.Contains(got, "second") || strings.Contains(got, "first") {
+		t.Fatalf("direct field change did not reach the next render: %s", got)
+	}
+}
+
+// tool-execution.ts updateResult(result, isPartial = false): a partial result streams its text into the running card without settling it; a final
+// result settles the card with its error state, records its durationMs and wires its image blocks.
+func TestToolExecutionUpdateResult(t *testing.T) {
+	text := func(s string) ToolResultContent { return ToolResultContent{Type: "text", Text: s} }
+	t.Run("a partial result streams and leaves the card running", func(t *testing.T) {
+		c := newToolCardForTest("custom", "")
+		c.UpdateResult(ToolResultUpdate{Content: []ToolResultContent{text("one"), text("two")}, DurationMs: new(int64(9))}, true)
+		if c.State != ToolStateRunning || c.Output != "one\ntwo" || c.DurationMs != nil {
+			t.Fatalf("state=%v output=%q durationMs=%v", c.State, c.Output, c.DurationMs)
+		}
+	})
+	t.Run("a final result settles the card, records the duration and images", func(t *testing.T) {
+		c := newToolCardForTest("custom", "")
+		c.UpdateResult(ToolResultUpdate{Content: []ToolResultContent{text("boom"), {Type: "image", Data: "AAAA", MimeType: "image/png"}}, IsError: true, DurationMs: new(int64(4200))})
+		if c.State != ToolStateError || c.IsPartial || c.Output != "boom" || c.DurationMs == nil || *c.DurationMs != 4200 || len(c.ImageBlocks) != 1 || c.ImageBlocks[0].MIMEType != "image/png" {
+			t.Fatalf("state=%v partial=%v output=%q durationMs=%v images=%v", c.State, c.IsPartial, c.Output, c.DurationMs, c.ImageBlocks)
+		}
+		c2 := newToolCardForTest("custom", "")
+		c2.UpdateResult(ToolResultUpdate{Content: []ToolResultContent{text("fine")}})
+		if c2.State != ToolStateDone || c2.DurationMs != nil {
+			t.Fatalf("state=%v durationMs=%v", c2.State, c2.DurationMs)
+		}
+	})
+	t.Run("the structured result reaches the definition's renderer", func(t *testing.T) {
+		c := newToolCardForTest("custom", "")
+		c.UpdateResult(ToolResultUpdate{Content: []ToolResultContent{text("x")}, Result: "structured"})
+		if c.ResultValue() != "structured" {
+			t.Fatalf("ResultValue = %v", c.ResultValue())
+		}
+	})
 }

@@ -59,6 +59,17 @@ func (q *FileMutationQueue) With(filePath string, fn func() error) error {
 	return fn()
 }
 
+// WithFileMutationQueue is upstream's withFileMutationQueue (file-mutation-queue.ts:32): it runs fn once every mutation registered earlier for the same canonical path has completed, through the process-wide queue that every edit and write tool made by the Create functions shares, and returns fn's result. Mutations of different files run in parallel. An error from resolving the path's canonical form is returned without running fn, as upstream's rejection is.
+func WithFileMutationQueue[T any](filePath string, fn func() (T, error)) (T, error) {
+	var result T
+	err := processFileMutationQueue.With(filePath, func() error {
+		var err error
+		result, err = fn()
+		return err
+	})
+	return result, err
+}
+
 // MutationTicket is a reserved position in a FileMutationQueue, obtained via
 // Reserve. It lets a caller fix its place in call order before starting any
 // concurrent work, rather than only being able to register and wait in one

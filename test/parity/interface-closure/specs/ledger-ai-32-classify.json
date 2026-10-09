@@ -1,0 +1,53 @@
+[
+ {
+  "ids": [
+   "pkg:ai/api/cloudflare-workers-ai-system-one#classify",
+   "pkg:ai/api/cloudflare-workers-ai-system-one#classify::call:0"
+  ],
+  "targets": [
+   "ai/system_one.go#ClassifyCloudflareWorkersAISystemOne"
+  ],
+  "production": [
+   "call:ai/system_one.go#CloudflareWorkersAISystemOneAPI"
+  ],
+  "evidence": [
+   "test:ai/cloudflare_workers_ai_system_one_upstream_test.go#TestCloudflareWorkersAISystemOneUpstream"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the ClassifierResult; failures are reported in the result like upstream; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "classify: the Go Classify function has the ClassifierFunction signature (model, request, options) and is the classifier module registered by the API constructor; the upstream-derived test drives it."
+ },
+ {
+  "ids": [
+   "pkg:ai/api/llama-cpp-classify#classify",
+   "pkg:ai/api/llama-cpp-classify#classify::call:0"
+  ],
+  "targets": [
+   "ai/llama_cpp_classify.go#ClassifyLlamaCpp"
+  ],
+  "production": [
+   "call:ai/llama_cpp_classify.go#LlamaCppClassifyAPI"
+  ],
+  "evidence": [
+   "test:ai/llama_cpp_classify_upstream_test.go#TestLlamaCppClassifyUpstream"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the ClassifierResult; failures are reported in the result like upstream; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "classify: the Go Classify function has the ClassifierFunction signature (model, request, options) and is the classifier module registered by the API constructor; the upstream-derived test drives it."
+ },
+ {
+  "ids": [
+   "pkg:ai/api/typesafe-system-one#classify",
+   "pkg:ai/api/typesafe-system-one#classify::call:0"
+  ],
+  "targets": [
+   "ai/system_one.go#ClassifyTypesafeSystemOne"
+  ],
+  "production": [
+   "call:ai/system_one.go#TypesafeSystemOneAPI"
+  ],
+  "evidence": [
+   "test:ai/typesafe_system_one_upstream_test.go#TestTypesafeSystemOneUpstream"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the ClassifierResult; failures are reported in the result like upstream; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "classify: the Go Classify function has the ClassifierFunction signature (model, request, options) and is the classifier module registered by the API constructor; the upstream-derived test drives it."
+ }
+]

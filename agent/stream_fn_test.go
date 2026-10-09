@@ -23,7 +23,7 @@ func TestStreamFnSendsEachProviderRequest(t *testing.T) {
 	}
 	var requests []request
 	model := &ai.Model{ID: "m", Provider: provider}
-	agent := NewAgent(AgentOptions{
+	agent := mustNewAgent(AgentOptions{
 		Model:     model,
 		Tools:     []AgentTool{echoTool{}},
 		SessionID: "session",
@@ -63,7 +63,7 @@ func TestStreamFnOwnsCallerPrefixThroughIteratorAdoption(t *testing.T) {
 		order = append(order, value)
 		mu.Unlock()
 	}
-	a := NewAgent(AgentOptions{
+	a := mustNewAgent(AgentOptions{
 		Model: &ai.Model{ID: "m"},
 		StreamFn: func(ctx context.Context, _ *ai.Model, _ ai.TranscriptContext, _ ai.StreamOptions) (*ai.AssistantMessageEventStream, error) {
 			observation := ai.StreamObservationFromContext(ctx)
@@ -108,7 +108,7 @@ func TestStreamFnOwnsCallerPrefixThroughIteratorAdoption(t *testing.T) {
 // that provider runtime explicitly instead.
 func TestStreamFnDefaultsToModelProvider(t *testing.T) {
 	provider := &fakeProvider{responses: []fakeResponse{{text: "default"}}}
-	agent := NewAgent(AgentOptions{Model: &ai.Model{ID: "m", Provider: provider}})
+	agent := mustNewAgent(AgentOptions{Model: &ai.Model{ID: "m", Provider: provider}})
 
 	if _, err := agent.Send(t.Context(), "hi"); err != nil {
 		t.Fatal(err)
@@ -128,7 +128,7 @@ func TestMessagesSnapshotIsSafeDuringARun(t *testing.T) {
 		{toolCalls: []fakeToolCall{{id: "b", name: "echo", args: `{}`}}},
 		{text: "done"},
 	}}
-	agent := NewAgent(AgentOptions{Model: &ai.Model{Provider: provider}, Tools: []AgentTool{echoTool{}}})
+	agent := mustNewAgent(AgentOptions{Model: &ai.Model{Provider: provider}, Tools: []AgentTool{echoTool{}}})
 	stop := make(chan struct{})
 	var readers sync.WaitGroup
 	readers.Go(func() {

@@ -14,15 +14,19 @@ import (
 	"sync"
 	"time"
 
+	"golang.org/x/text/collate"
+	"golang.org/x/text/language"
+
 	"github.com/MichaelKinsy/PiG/agent"
 	"github.com/MichaelKinsy/PiG/ai"
+	"github.com/MichaelKinsy/PiG/internal/jsstring"
 	"github.com/MichaelKinsy/PiG/internal/nodepath"
 	"github.com/MichaelKinsy/PiG/internal/nodespawn"
 	"github.com/MichaelKinsy/PiG/tui"
 	"github.com/MichaelKinsy/PiG/tui/widthx"
 )
 
-// StatusLine is the rich footer rendered at the bottom of the
+// FooterComponent is the rich footer rendered at the bottom of the
 // interactive viewport. Renders as two lines matching upstream pi's
 // FooterComponent (footer.ts):
 //
@@ -36,7 +40,7 @@ import (
 //	>90%   red (error)
 //
 // All inputs are read on every Render() so the line reflects live state.
-type StatusLine struct {
+type FooterComponent struct {
 	tui.BaseComponent
 
 	mu sync.RWMutex
@@ -57,10 +61,9 @@ type StatusLine struct {
 	// subscriptionFor decides the "(sub)" marker for a newly bound model.
 	subscriptionFor func(*ai.Model) bool
 
-	// Cwd and gitBranch for line 1.
-	cwd       string
-	gitBranch string    // cached; resolved from the initial repository binding
-	gitPaths  *gitPaths // repository binding captured before extension startup
+	// FooterDataProvider holds the cwd, git branch, extension statuses and provider count the footer reads on each render
+	// (footer.ts footerData; footer-data-provider.ts).
+	*FooterDataProvider
 
 	// Session name shown in footer as " • <name>".
 	name string
@@ -74,75 +77,64 @@ type StatusLine struct {
 	// Empty = use default spinner. Mirrors upstream loadingAnimation.setMessage.
 	customWorkingMessage string
 
-	// hiddenThinkingLabel: extension-set label for hidden thinking blocks.
-	// Empty = use default "Thinking...". Mirrors upstream setHiddenThinkingLabel.
-	hiddenThinkingLabel string
-
-	// providerCount: number of authenticated+reachable providers.
-	// When >1, model line shows "(provider) model" prefix.
-	// Mirrors upstream footer-data-provider.ts.
-	providerCount int
 	// usingSubscription: OAuth subscription pricing (e.g. GitHub Copilot).
 	// Shows "(sub)" in cost display. Mirrors upstream footer.ts:128.
 	usingSubscription bool
 	statusHook        func(string)
-
-	// branchChangeMu guards the OnBranchChange subscribers, upstream
-	// footer-data-provider.ts branchChangeCallbacks.
-	branchChangeMu     sync.Mutex
-	branchChangeHooks  map[int]func()
-	branchChangeNextID int
-
-	// extensionStatuses: keyed status strings set by extensions via
-	// ctx.setStatus(key, text). Rendered as a third footer line when
-	// non-empty. Mirrors upstream footer.ts:205-215 / footer-data-provider.ts.
-	extensionStatuses map[string]string
 
 	// suppressedByExtFooter hides the standard footer. The custom footer owns
 	// keyed status presentation through its FooterData snapshot.
 	suppressedByExtFooter bool
 }
 
-// NewStatusLine creates a StatusLine bound to the given model + agent.
+// NewFooterComponent creates a FooterComponent bound to the given model + agent.
 // timings may be nil; cost/elapsed columns are then suppressed.
-func NewStatusLine(model *ai.Model, agentName string, timings *agent.Recorder) *StatusLine {
+func NewFooterComponent(model *ai.Model, agentName string, timings *agent.Recorder) *FooterComponent {
 	if agentName == "" {
 		agentName = "default"
 	}
-	s := &StatusLine{
+	s := &FooterComponent{
 		model:              model,
 		agentName:          agentName,
 		timings:            timings,
 		autoCompactEnabled: true, // default matches upstream
-		extensionStatuses:  make(map[string]string),
-		branchChangeHooks:  make(map[int]func()),
+		FooterDataProvider: NewFooterDataProvider(),
 	}
 	return s
 }
 
-// SetCwd binds the footer and its branch watcher to the repository present at initialization.
-func (s *StatusLine) SetCwd(cwd string) {
-	s.mu.Lock()
-	s.cwd = cwd
-	s.gitPaths = nil
-	s.gitBranch = ""
-	if paths, ok := findGitPaths(cwd); cwd != "" && ok {
-		s.gitPaths = &paths
-		s.gitBranch = resolveGitBranchFromPaths(paths)
+// NewFooterComponentForSession is Pi's FooterComponent constructor (footer.ts:68-71): a footer that reads usage totals and the routed model
+// from session and its cwd, git branch, extension statuses and provider count from footerData. The model is set with SetModel.
+func NewFooterComponentForSession(session FooterSession, footerData *FooterDataProvider) *FooterComponent {
+	s := NewFooterComponent(nil, "", nil)
+	if footerData != nil {
+		s.FooterDataProvider = footerData
 	}
-	s.mu.Unlock()
+	s.SetSession(session)
+	return s
+}
+
+// GitBranch returns the cached git branch, empty outside a repo.
+func (s *FooterComponent) GitBranch() string { return s.GetGitBranch() }
+
+// ProviderCount returns the number of authenticated, reachable providers.
+func (s *FooterComponent) ProviderCount() int { return s.GetAvailableProviderCount() }
+
+// SetCwd binds the footer and its branch watcher to the repository present at initialization.
+func (s *FooterComponent) SetCwd(cwd string) {
+	s.FooterDataProvider.SetCwd(cwd)
 	s.Invalidate()
 }
 
 // SetWorking flips the spinner column on/off.
-func (s *StatusLine) SetWorking(b bool) {
+func (s *FooterComponent) SetWorking(b bool) {
 	s.mu.Lock()
 	s.working = b
 	s.mu.Unlock()
 	s.Invalidate()
 }
 
-func (s *StatusLine) SetStatusHook(fn func(string)) {
+func (s *FooterComponent) SetStatusHook(fn func(string)) {
 	s.mu.Lock()
 	s.statusHook = fn
 	s.mu.Unlock()
@@ -151,7 +143,7 @@ func (s *StatusLine) SetStatusHook(fn func(string)) {
 // Flash forwards status text to the interactive-mode chat status sink.
 // The ttl argument is retained so existing callers do not need to change,
 // but upstream-style status lines are not time-based footer overlays.
-func (s *StatusLine) Flash(msg string, ttl time.Duration) {
+func (s *FooterComponent) Flash(msg string, ttl time.Duration) {
 	_ = ttl
 	s.mu.Lock()
 	hook := s.statusHook
@@ -162,7 +154,7 @@ func (s *StatusLine) Flash(msg string, ttl time.Duration) {
 }
 
 // SetAgentName updates the agent persona label.
-func (s *StatusLine) SetAgentName(name string) {
+func (s *FooterComponent) SetAgentName(name string) {
 	s.mu.Lock()
 	s.agentName = name
 	s.mu.Unlock()
@@ -171,7 +163,7 @@ func (s *StatusLine) SetAgentName(name string) {
 
 // SetModel rebinds the model. Upstream footer.ts derives the subscription
 // marker from the active model on every render, so a rebind re-evaluates it.
-func (s *StatusLine) SetModel(m *ai.Model) {
+func (s *FooterComponent) SetModel(m *ai.Model) {
 	s.mu.RLock()
 	subscriptionFor := s.subscriptionFor
 	s.mu.RUnlock()
@@ -189,22 +181,45 @@ func (s *StatusLine) SetModel(m *ai.Model) {
 }
 
 // SetSubscriptionResolver installs the "(sub)" decision used by SetModel.
-func (s *StatusLine) SetSubscriptionResolver(resolve func(*ai.Model) bool) {
+func (s *FooterComponent) SetSubscriptionResolver(resolve func(*ai.Model) bool) {
 	s.mu.Lock()
 	s.subscriptionFor = resolve
 	s.mu.Unlock()
 }
 
-// SetUsageTotalsSource installs the session usage totals read on each render.
-func (s *StatusLine) SetUsageTotalsSource(source func() footerUsageTotals) {
+// FooterSession is the members of Pi's AgentSession that FooterComponent reads (footer.ts:103-107, :241): sessionManager, whose entries carry the
+// all-entry usage totals (getSessionStats), and routedModel, the physical model the latest response was routed to. Go's AgentSession is
+// coding.Session, which imports this package, so the footer takes this consumer-owned interface of exactly those two members, and package coding
+// asserts that *coding.Session implements it.
+type FooterSession interface {
+	// SessionManager is `sessionManager`; a nil manager has no usage.
+	SessionManager() *Session
+	// RoutedModelSelection is `routedModel` in the form the footer renders: nil unless a virtual model selection routed the latest response.
+	RoutedModelSelection() *RoutedModelSelection
+}
+
+// SetSession points the footer at another session (footer.ts setSession); the next render reads that session's totals and routed model.
+// A nil session reads neither.
+func (s *FooterComponent) SetSession(session FooterSession) {
 	s.mu.Lock()
-	s.usageTotals = source
+	if session == nil {
+		s.usageTotals, s.routedModel = nil, nil
+	} else {
+		s.usageTotals = func() footerUsageTotals {
+			manager := session.SessionManager()
+			if manager == nil {
+				return footerUsageTotals{}
+			}
+			return manager.FooterUsageTotals()
+		}
+		s.routedModel = session.RoutedModelSelection
+	}
 	s.mu.Unlock()
 	s.Invalidate()
 }
 
 // SetName updates the session name shown in the footer.
-func (s *StatusLine) SetName(name string) {
+func (s *FooterComponent) SetName(name string) {
 	s.mu.Lock()
 	s.name = name
 	s.mu.Unlock()
@@ -212,7 +227,7 @@ func (s *StatusLine) SetName(name string) {
 }
 
 // SetThinkingLevel updates the thinking level display.
-func (s *StatusLine) SetThinkingLevel(level string) {
+func (s *FooterComponent) SetThinkingLevel(level string) {
 	s.mu.Lock()
 	s.thinkingLevel = level
 	s.mu.Unlock()
@@ -220,7 +235,7 @@ func (s *StatusLine) SetThinkingLevel(level string) {
 }
 
 // SetAutoCompactEnabled updates the "(auto)" indicator.
-func (s *StatusLine) SetAutoCompactEnabled(enabled bool) {
+func (s *FooterComponent) SetAutoCompactEnabled(enabled bool) {
 	s.mu.Lock()
 	s.autoCompactEnabled = enabled
 	s.mu.Unlock()
@@ -230,45 +245,14 @@ func (s *StatusLine) SetAutoCompactEnabled(enabled bool) {
 // SetProviderCount updates the number of authenticated+reachable providers.
 // When >1, the footer shows "(provider) model" instead of just "model".
 // Mirrors upstream footer.ts:165-170.
-func (s *StatusLine) SetProviderCount(n int) {
-	s.mu.Lock()
-	s.providerCount = n
-	s.mu.Unlock()
+func (s *FooterComponent) SetProviderCount(n int) {
+	s.FooterDataProvider.SetProviderCount(n)
 	s.Invalidate()
-}
-
-// OnBranchChange subscribes to git-branch updates. Returns an unsubscribe.
-func (s *StatusLine) OnBranchChange(fn func()) func() {
-	s.branchChangeMu.Lock()
-	id := s.branchChangeNextID
-	s.branchChangeNextID++
-	s.branchChangeHooks[id] = fn
-	s.branchChangeMu.Unlock()
-	return func() {
-		s.branchChangeMu.Lock()
-		delete(s.branchChangeHooks, id)
-		s.branchChangeMu.Unlock()
-	}
-}
-
-// notifyBranchChange runs the OnBranchChange subscribers in subscription order,
-// like upstream footer-data-provider's branchChangeCallbacks.
-func (s *StatusLine) notifyBranchChange() {
-	s.branchChangeMu.Lock()
-	ids := slices.Sorted(maps.Keys(s.branchChangeHooks))
-	hooks := make([]func(), len(ids))
-	for i, id := range ids {
-		hooks[i] = s.branchChangeHooks[id]
-	}
-	s.branchChangeMu.Unlock()
-	for _, fn := range hooks {
-		fn()
-	}
 }
 
 // SetUsingSubscription updates the OAuth subscription indicator.
 // When true, cost display shows "(sub)". Mirrors upstream footer.ts:128.
-func (s *StatusLine) SetUsingSubscription(v bool) {
+func (s *FooterComponent) SetUsingSubscription(v bool) {
 	s.mu.Lock()
 	s.usingSubscription = v
 	s.mu.Unlock()
@@ -278,44 +262,14 @@ func (s *StatusLine) SetUsingSubscription(v bool) {
 // SetExtensionStatus sets (or clears) a keyed status entry in the footer's
 // extension-status line. Mirrors upstream footer-data-provider.ts setStatus.
 // Pass empty text to remove the key.
-func (s *StatusLine) SetExtensionStatus(key, text string) {
-	s.mu.Lock()
-	if text == "" {
-		delete(s.extensionStatuses, key)
-	} else {
-		s.extensionStatuses[key] = text
-	}
-	s.mu.Unlock()
+func (s *FooterComponent) SetExtensionStatus(key, text string) {
+	s.FooterDataProvider.SetExtensionStatus(key, text)
 	s.Invalidate()
-}
-
-// GitBranch returns the cached git branch, empty outside a repo.
-func (s *StatusLine) GitBranch() string {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-	return s.gitBranch
-}
-
-// ProviderCount returns the number of authenticated, reachable providers.
-func (s *StatusLine) ProviderCount() int {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-	return s.providerCount
-}
-
-// GetExtensionStatuses returns a snapshot of all extension statuses.
-// Used by diagnostics and the footer renderer.
-func (s *StatusLine) GetExtensionStatuses() map[string]string {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-	cp := make(map[string]string, len(s.extensionStatuses))
-	maps.Copy(cp, s.extensionStatuses)
-	return cp
 }
 
 // SetTurnContextUsage records the latest usage for the context-window column.
 // Token and cost totals come from the usage totals source instead.
-func (s *StatusLine) SetTurnContextUsage(u *ai.Usage) {
+func (s *FooterComponent) SetTurnContextUsage(u *ai.Usage) {
 	if u == nil {
 		return
 	}
@@ -331,7 +285,7 @@ func (s *StatusLine) SetTurnContextUsage(u *ai.Usage) {
 
 // ResetContextUsage clears the context-window column before a transcript
 // rebuild re-reads it from the branch.
-func (s *StatusLine) ResetContextUsage() {
+func (s *FooterComponent) ResetContextUsage() {
 	s.mu.Lock()
 	s.contextTokens = 0
 	s.mu.Unlock()
@@ -341,7 +295,7 @@ func (s *StatusLine) ResetContextUsage() {
 // SetWorkingMessage sets a custom message shown during streaming.
 // Pass empty to restore the default spinner. Mirrors upstream
 // loadingAnimation.setMessage (interactive-mode.ts:1877-1885).
-func (s *StatusLine) SetWorkingMessage(message string) {
+func (s *FooterComponent) SetWorkingMessage(message string) {
 	s.mu.Lock()
 	s.customWorkingMessage = message
 	s.mu.Unlock()
@@ -349,37 +303,16 @@ func (s *StatusLine) SetWorkingMessage(message string) {
 }
 
 // GetWorkingMessage returns the current custom working message or "".
-func (s *StatusLine) GetWorkingMessage() string {
+func (s *FooterComponent) GetWorkingMessage() string {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	return s.customWorkingMessage
 }
 
-// SetHiddenThinkingLabel sets the label for hidden thinking blocks.
-// Pass empty to restore the default "Thinking...". Mirrors upstream
-// setHiddenThinkingLabel (interactive-mode.ts:1635-1649).
-func (s *StatusLine) SetHiddenThinkingLabel(label string) {
-	s.mu.Lock()
-	s.hiddenThinkingLabel = label
-	s.mu.Unlock()
-	s.Invalidate()
-}
-
-// GetHiddenThinkingLabel returns the current hidden thinking label
-// or "Thinking..." if not set.
-func (s *StatusLine) GetHiddenThinkingLabel() string {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-	if s.hiddenThinkingLabel != "" {
-		return s.hiddenThinkingLabel
-	}
-	return "Thinking..."
-}
-
 // SetSuppressedByExtFooter controls whether an extension-owned footer replaces
 // the complete standard footer, including the keyed status row. The custom
 // footer receives those statuses through FooterData and owns their rendering.
-func (s *StatusLine) SetSuppressedByExtFooter(v bool) {
+func (s *FooterComponent) SetSuppressedByExtFooter(v bool) {
 	s.mu.Lock()
 	s.suppressedByExtFooter = v
 	s.mu.Unlock()
@@ -387,7 +320,21 @@ func (s *StatusLine) SetSuppressedByExtFooter(v bool) {
 }
 
 // Render returns the footer lines (normally 2 plus keyed statuses).
-func (s *StatusLine) Render(width int) []string {
+func (s *FooterComponent) Render(width int) []string {
+	totals, routed, snap := s.footerSources()
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	if s.suppressedByExtFooter {
+		return nil
+	}
+
+	return renderFooter(s.footerDataLocked(totals, routed, snap), width)
+}
+
+// footerSources reads the usage totals and the routed model, which may take
+// the session's locks, without holding s.mu.
+func (s *FooterComponent) footerSources() (footerUsageTotals, *RoutedModelSelection, footerSnapshot) {
 	s.mu.RLock()
 	source, routedSource := s.usageTotals, s.routedModel
 	s.mu.RUnlock()
@@ -399,20 +346,25 @@ func (s *StatusLine) Render(width int) []string {
 	if routedSource != nil {
 		routed = routedSource()
 	}
+	cwd, gitBranch, providerCount, extensionStatuses := s.snapshot()
+	return totals, routed, footerSnapshot{cwd: cwd, gitBranch: gitBranch, providerCount: providerCount, extensionStatuses: extensionStatuses}
+}
 
-	s.mu.RLock()
-	defer s.mu.RUnlock()
+// footerSnapshot is the footer data provider's state, read together without holding s.mu.
+type footerSnapshot struct {
+	cwd, gitBranch    string
+	providerCount     int
+	extensionStatuses map[string]string
+}
 
-	if s.suppressedByExtFooter {
-		return nil
-	}
-
-	return renderFooter(footerData{
+// footerDataLocked snapshots the footer's inputs; the caller holds s.mu.
+func (s *FooterComponent) footerDataLocked(totals footerUsageTotals, routed *RoutedModelSelection, snap footerSnapshot) footerData {
+	return footerData{
 		model:                  s.model,
 		agentName:              s.agentName,
 		sessionName:            s.name,
-		cwd:                    s.cwd,
-		gitBranch:              s.gitBranch,
+		cwd:                    snap.cwd,
+		gitBranch:              snap.gitBranch,
 		usage:                  totals,
 		routed:                 routed,
 		contextTokens:          s.contextTokens,
@@ -422,10 +374,10 @@ func (s *StatusLine) Render(width int) []string {
 		working:                s.working,
 		thinkingLevel:          s.thinkingLevel,
 		autoCompactEnabled:     s.autoCompactEnabled,
-		providerCount:          s.providerCount,
+		providerCount:          snap.providerCount,
 		usingSubscription:      s.usingSubscription,
-		extensionStatuses:      s.extensionStatuses,
-	}, width)
+		extensionStatuses:      snap.extensionStatuses,
+	}
 }
 
 // footerData is the snapshot of all data needed to render the footer.
@@ -535,16 +487,7 @@ func renderFooter(d footerData, width int) []string {
 	}
 
 	// ── Line 1: pwd ──────────────────────────────────────────────────
-	// Upstream's session cwd is always absolute. Without one, pig shows ".",
-	// which is not a path to abbreviate.
-	pwd := "."
-	if d.cwd != "" {
-		home := os.Getenv("HOME")
-		if home == "" {
-			home = os.Getenv("USERPROFILE")
-		}
-		pwd = formatCwdForFooter(d.cwd, home)
-	}
+	pwd := footerCwd(d.cwd)
 	if d.gitBranch != "" {
 		pwd += " (" + d.gitBranch + ")"
 	}
@@ -558,33 +501,12 @@ func renderFooter(d footerData, width int) []string {
 	leftParts := footerUsageParts(d.usage, d.usingSubscription)
 
 	// Context usage: context%/window (auto)
-	// Upstream footer.ts uses session.getContextUsage() which returns the
-	// LAST turn's token count (not cumulative). This reflects actual current
-	// context window pressure. d.contextTokens is set per-turn in AddUsage.
-	contextWindow := 0
-	// The window is getContextUsage's: the limits model's, which under a virtual selection is the physical model that answered last, then the selected model's (footer.ts:162, agent-session.ts:4139-4144 _limitsModel).
-	limits := d.model
-	if d.routed != nil && d.routed.Model != nil {
-		limits = d.routed.Model
-	}
-	switch {
-	case limits != nil && limits.Capabilities.ContextWindow > 0:
-		contextWindow = limits.Capabilities.ContextWindow
-	case d.model != nil:
-		contextWindow = d.model.Capabilities.ContextWindow
-	case d.projectedContextWindow > 0:
-		contextWindow = d.projectedContextWindow
-	}
-	tokens := d.contextTokens
-	pct := 0.0
-	if contextWindow > 0 {
-		pct = float64(tokens) / float64(contextWindow) * 100
-	}
+	contextWindow, pct := footerContextUsage(d)
 	autoTag := ""
 	if d.autoCompactEnabled {
 		autoTag = " (auto)"
 	}
-	display := fmt.Sprintf("%.1f%%/%s%s", pct, formatTokens(contextWindow), autoTag)
+	display := tui.JSToFixed(pct, 1) + "%/" + formatTokens(contextWindow) + autoTag
 	if d.contextUnknown {
 		display = fmt.Sprintf("?/%s%s", formatTokens(contextWindow), autoTag)
 	}
@@ -606,33 +528,17 @@ func renderFooter(d footerData, width int) []string {
 	// Right side: [provider] model • thinking
 	// When multiple providers are available, prepend "(provider)" prefix.
 	// Mirrors upstream footer.ts:165-174.
-	// The upstream Agent supplies its "unknown" default model when no model is
-	// selected, so the footer still renders a stable model identity.
-	modelName := "unknown"
-	modelProvider := ""
-	modelReasoning := false
-	if d.model != nil {
-		modelName = d.model.ID
-		if d.model.Provider != nil {
-			modelProvider = d.model.Provider.ID()
-		}
-		modelReasoning = d.model.Capabilities.MaxThinking != ""
-	}
-
+	modelName, modelProvider, thinkingLevel := footerModel(d)
 	rightSide := modelName
-	if modelReasoning {
-		level := d.thinkingLevel
-		if level == "" {
-			level = "off"
-		}
-		// Upstream footer.ts:160-162 renders the thinking level as plain
-		// text: no per-level color. The entire right side is wrapped in
-		// dim() with the rest of line 2, so it appears in dim grey.
-		if level == "off" {
-			rightSide = modelName + " \u2022 thinking " + level
-		} else {
-			rightSide = modelName + " \u2022 " + level
-		}
+	// Upstream footer.ts:160-162 renders the thinking level as plain
+	// text: no per-level color. The entire right side is wrapped in
+	// dim() with the rest of line 2, so it appears in dim grey.
+	switch thinkingLevel {
+	case "":
+	case "off":
+		rightSide = modelName + " \u2022 thinking " + thinkingLevel
+	default:
+		rightSide = modelName + " \u2022 " + thinkingLevel
 	}
 
 	// A virtual model routes each request; show where the latest response went (footer.ts:237-243).
@@ -684,7 +590,8 @@ func renderFooter(d footerData, width int) []string {
 			padding := strings.Repeat(" ", max(0, width-statsLeftWidth-truncWidth))
 			line2 = dim(statsLeft) + dim(padding+truncRight)
 		} else {
-			line2 = dim(statsLeft)
+			// The remainder after the stats is empty but still dimmed (footer.ts:262-263).
+			line2 = dim(statsLeft) + dim("")
 		}
 	}
 
@@ -700,37 +607,105 @@ func renderFooter(d footerData, width int) []string {
 	return result
 }
 
+// renderExtensionStatuses is footer.ts:205-215: the statuses sorted by key with localeCompare, each sanitized (sanitizeStatusText) and
+// joined by spaces on one row, truncated to the width with a dim ellipsis. An empty sanitized text still takes its place.
 func renderExtensionStatuses(statuses map[string]string, width int) (string, bool) {
-	if len(statuses) == 0 {
-		return "", false
-	}
-	keys := slices.Sorted(maps.Keys(statuses))
-	parts := make([]string, 0, len(keys))
-	for _, key := range keys {
-		text := strings.Join(strings.Fields(statuses[key]), " ")
-		if text != "" {
-			parts = append(parts, text)
-		}
-	}
+	parts := footerExtensionStatuses(statuses)
 	if len(parts) == 0 {
 		return "", false
 	}
 	return widthx.TruncateToWidth(strings.Join(parts, " "), width, dim("..."), false), true
 }
 
-// colorContextPercent renders just the percent number with the same
-// thresholds. Retained for unit-test compatibility; the live footer
-// path uses colorContextDisplay which wraps the full pct/window string
-// to match upstream footer.ts.
-//
-//	<=70%  no color (plain)
-//	>70%   yellow (warning)
-//	>90%   red (error)
-//
-// Mirrors upstream footer.ts:143-150.
-func colorContextPercent(pct float64) string {
-	body := fmt.Sprintf("%.1f%%", pct)
-	return applyContextColor(pct, body)
+// footerExtensionStatuses returns the non-blank extension statuses in key
+// order, each with its runs of white space collapsed, as footer.ts's
+// sanitizeStatusText does.
+func footerExtensionStatuses(statuses map[string]string) []string {
+	if len(statuses) == 0 {
+		return nil
+	}
+	keys := slices.Collect(maps.Keys(statuses))
+	collator := collate.New(language.Und)
+	slices.SortStableFunc(keys, func(a, b string) int { return collator.CompareString(a, b) })
+	parts := make([]string, len(keys))
+	for i, key := range keys {
+		parts[i] = sanitizeStatusText(statuses[key])
+	}
+	return parts
+}
+
+// footerCwd is the footer's working directory with home abbreviated.
+// Upstream's session cwd is always absolute. Without one, pig shows ".",
+// which is not a path to abbreviate.
+func footerCwd(cwd string) string {
+	if cwd == "" {
+		return "."
+	}
+	home := os.Getenv("HOME")
+	if home == "" {
+		home = os.Getenv("USERPROFILE")
+	}
+	return formatCwdForFooter(cwd, home)
+}
+
+// footerContextUsage returns the context window and the context's percentage
+// of it. Upstream footer.ts uses session.getContextUsage(), which returns the
+// last turn's token count (not cumulative), the actual current context window
+// pressure.
+func footerContextUsage(d footerData) (contextWindow int, pct float64) {
+	// The window is getContextUsage's: the limits model's, which under a virtual selection is the physical model that answered last, then the selected model's (footer.ts:162, agent-session.ts:4139-4144 _limitsModel).
+	limits := d.model
+	if d.routed != nil && d.routed.Model != nil {
+		limits = d.routed.Model
+	}
+	switch {
+	case limits != nil && limits.Capabilities.ContextWindow > 0:
+		contextWindow = limits.Capabilities.ContextWindow
+	case d.model != nil:
+		contextWindow = d.model.Capabilities.ContextWindow
+	case d.projectedContextWindow > 0:
+		contextWindow = d.projectedContextWindow
+	}
+	if contextWindow > 0 {
+		pct = float64(d.contextTokens) / float64(contextWindow) * 100
+	}
+	return contextWindow, pct
+}
+
+// footerModel returns the model's id, its provider's id, and the thinking
+// level of a model that reasons ("off" when unset), or "" for one that does
+// not. The upstream Agent supplies its "unknown" default model when no model
+// is selected, so the footer still renders a stable model identity.
+func footerModel(d footerData) (name, provider, thinkingLevel string) {
+	if d.model == nil {
+		return "unknown", "", ""
+	}
+	if d.model.Provider != nil {
+		provider = d.model.Provider.ID()
+	}
+	if d.model.Capabilities.MaxThinking != "" {
+		thinkingLevel = d.thinkingLevel
+		if thinkingLevel == "" {
+			thinkingLevel = "off"
+		}
+	}
+	return d.model.ID, provider, thinkingLevel
+}
+
+// sanitizeStatusText is footer.ts sanitizeStatusText: carriage returns, newlines and tabs become spaces, runs of spaces collapse to
+// one, and JavaScript's trim removes the ends. Other whitespace, such as a no-break space, stays.
+func sanitizeStatusText(text string) string {
+	text = strings.NewReplacer("\r", " ", "\n", " ", "\t", " ").Replace(text)
+	var b strings.Builder
+	previousSpace := false
+	for _, r := range text {
+		if r == ' ' && previousSpace {
+			continue
+		}
+		previousSpace = r == ' '
+		b.WriteRune(r)
+	}
+	return jsstring.Trim(b.String())
 }
 
 // colorContextDisplay wraps the full `pct%/window (auto)` display
@@ -744,9 +719,9 @@ func colorContextDisplay(pct float64, display string) string {
 func applyContextColor(pct float64, body string) string {
 	switch {
 	case pct > 90:
-		return ansi(31, body) // red
+		return tui.ActiveTheme().Fg("error", body)
 	case pct > 70:
-		return ansi(33, body) // yellow
+		return tui.ActiveTheme().Fg("warning", body)
 	default:
 		return body // no color
 	}
@@ -771,23 +746,13 @@ func formatTokens(n int) string {
 	}
 }
 
-// formatDuration renders a duration as "1.2s" / "3m12s" / "0.0s".
-func formatDuration(d time.Duration) string {
-	if d < time.Minute {
-		return fmt.Sprintf("%.1fs", d.Seconds())
-	}
-	mins := int(d / time.Minute)
-	secs := int((d % time.Minute) / time.Second)
-	return fmt.Sprintf("%dm%02ds", mins, secs)
-}
-
 // dim wraps text in the theme's dim foreground. Mirrors upstream footer.ts:
 // theme.fg("dim", text), the token's resolved color (e.g.
 // \x1b[38;2;102;102;102m for dark) and an fg-only reset. The system theme's
 // dim token is faint text in the terminal's default color, closed with
 // \x1b[22;39m (theme.ts fg of a dim token).
 func dim(s string) string {
-	return tui.ActiveTheme().FgText("dim", s)
+	return tui.ActiveTheme().Fg("dim", s)
 }
 
 // boldWarning renders text in bold with the theme's warning foreground,
@@ -797,10 +762,6 @@ func dim(s string) string {
 func boldWarning(s string) string {
 	th := tui.ActiveTheme()
 	return "\x1b[1m" + th.Warning + s + "\x1b[39m" + tui.SGRBoldDimReset
-}
-
-func ansi(code int, body string) string {
-	return fmt.Sprintf("\033[%dm%s\033[0m", code, body)
 }
 
 // stripANSI removes ANSI escape sequences (delegates to widthx.StripAnsi).
@@ -849,7 +810,7 @@ func gitBranchCommand(ctx context.Context, repoDir string) *exec.Cmd {
 
 // SetContextUsage stores the Session projection estimate outside the render path.
 // Nil tokens indicate unknown usage after compaction until a valid response.
-func (s *StatusLine) SetContextUsage(tokens *int, contextWindow int) {
+func (s *FooterComponent) SetContextUsage(tokens *int, contextWindow int) {
 	s.mu.Lock()
 	s.contextUnknown = tokens == nil && contextWindow > 0
 	s.projectedContextWindow = contextWindow
@@ -864,13 +825,5 @@ func (s *StatusLine) SetContextUsage(tokens *int, contextWindow int) {
 // RoutedModelSelection is the physical model and thinking level a virtual model selection currently resolves to (AgentSession.routedModel).
 type RoutedModelSelection struct {
 	Model         *ai.Model
-	ThinkingLevel ai.ThinkingLevel
-}
-
-// SetRoutedModelSource installs the routed model read on each render.
-func (s *StatusLine) SetRoutedModelSource(source func() *RoutedModelSelection) {
-	s.mu.Lock()
-	s.routedModel = source
-	s.mu.Unlock()
-	s.Invalidate()
+	ThinkingLevel ai.ModelThinkingLevel
 }

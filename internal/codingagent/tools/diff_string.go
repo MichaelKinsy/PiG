@@ -10,12 +10,32 @@ import (
 	"strings"
 )
 
+// DiffStringResult is upstream's `{ diff: string; firstChangedLine: number | undefined }`.
+// FirstChangedLine is nil when there was no change (upstream `undefined`).
+type DiffStringResult struct {
+	Diff             string
+	FirstChangedLine *int
+}
+
 // GenerateDiffString returns the line-numbered display diff and the first
 // changed line number in the new file, byte-identical to upstream
-// generateDiffString with the default 4 lines of context. A returned
-// firstChangedLine of 0 means there was no change (upstream `undefined`).
-func GenerateDiffString(oldContent, newContent string) (diff string, firstChangedLine int) {
-	return generateDiffString(oldContent, newContent, 4)
+// generateDiffString. contextLines is upstream's optional third parameter
+// (default 4).
+func GenerateDiffString(oldContent, newContent string, contextLines ...int) DiffStringResult {
+	diff, first := generateDiffString(oldContent, newContent, optionalContextLines(contextLines))
+	result := DiffStringResult{Diff: diff}
+	if first != 0 {
+		result.FirstChangedLine = &first
+	}
+	return result
+}
+
+// optionalContextLines is upstream's `contextLines = 4` default parameter.
+func optionalContextLines(contextLines []int) int {
+	if len(contextLines) > 0 {
+		return contextLines[0]
+	}
+	return 4
 }
 
 func generateDiffString(oldContent, newContent string, contextLines int) (string, int) {
@@ -127,4 +147,13 @@ func leftPad(s string, width int) string {
 		return s
 	}
 	return strings.Repeat(" ", width-len(s)) + s
+}
+
+// diffAndFirstLine unpacks GenerateDiffString for details structs that carry the first changed line as a number, 0 meaning none.
+func diffAndFirstLine(oldContent, newContent string) (string, int) {
+	result := GenerateDiffString(oldContent, newContent)
+	if result.FirstChangedLine == nil {
+		return result.Diff, 0
+	}
+	return result.Diff, *result.FirstChangedLine
 }

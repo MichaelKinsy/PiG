@@ -39,6 +39,12 @@ func (t *Text) SetText(content string) {
 	t.Invalidate()
 }
 
+// SetPaddingX sets the horizontal padding and invalidates the cached lines (text.ts setPaddingX).
+func (t *Text) SetPaddingX(paddingX int) {
+	t.PaddingX = paddingX
+	t.Invalidate()
+}
+
 func (t *Text) SetCustomBgFn(bgFn func(string) string) {
 	t.CustomBgFn = bgFn
 	t.Invalidate()

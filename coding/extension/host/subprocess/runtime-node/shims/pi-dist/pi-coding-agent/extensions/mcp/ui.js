@@ -103,8 +103,16 @@ export class McpManagerView {
             });
         });
     }
-    status(title, message) {
-        this.setContent(frame(this.theme, title, [new Spacer(1), new Text(this.theme.fg("muted", message), 1, 0)]));
+    status(title, message, onCancel) {
+        const body = [new Spacer(1), new Text(this.theme.fg("muted", message), 1, 0)];
+        if (!onCancel) {
+            this.setContent(frame(this.theme, title, body));
+            return;
+        }
+        this.setContent(frame(this.theme, title, body, keyHint("tui.select.cancel", "cancel")), (data) => {
+            if (this.keybindings.matches(data, "tui.select.cancel"))
+                onCancel();
+        });
     }
     redirectUrl(title, authorizationUrl, signal) {
         return new Promise((resolve) => {

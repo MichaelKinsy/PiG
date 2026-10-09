@@ -80,7 +80,7 @@ func (m *Models) GetModels(provider ...string) []*Model {
 		}
 		models, err := provider.GetModels()
 		if err == nil {
-			out = append(out, models...)
+			out = append(out, OfferedModels(models)...)
 		}
 	}
 	return out
@@ -216,7 +216,7 @@ func (m *Models) GetAvailable(ctx context.Context, providerID ...string) ([]*Mod
 			if entry.provider.FilterModels != nil {
 				models = entry.provider.FilterModels(models, entry.credential)
 			}
-			out = append(out, models...)
+			out = append(out, OfferedModels(models)...)
 		}
 		return out, nil
 	})
@@ -261,7 +261,7 @@ func (m *Models) GetAllAvailable(ctx context.Context, providerID ...string) ([]A
 					return IsModelType(model, ModelTypeChat) && !availableChat[model.ModelID()]
 				})
 			}
-			out = append(out, models...)
+			out = append(out, OfferedModels(models)...)
 		}
 		return out, nil
 	})

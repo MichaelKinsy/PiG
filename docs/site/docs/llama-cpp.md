@@ -90,6 +90,15 @@ If the router disconnects, `/llama` shows **Retry** and **Close**. Retry reconne
 
 A model whose chat template reads `enable_thinking` is a reasoning model. PiG offers it the `off`, `minimal`, `low`, `medium` and `high` thinking levels. Each level other than `off` sends `chat_template_kwargs.enable_thinking: true` and a per-request `thinking_budget_tokens` of 1024, 2048, 8192 or 16384 tokens (or your `thinkingBudgets`). `off` sends `enable_thinking: false`. llama-server applies the budget only when its command line sets no `--reasoning-budget`. Pi offers only `off` and `medium` and sends no budget (D90).
 
+## Classification
+
+Classifier models answer typed `choice`, `bool`, and `score` questions about JSON state, like TypeSafe's Jev models. The model reaches them from `codemode` scripts, and extensions through `ctx.modelRegistry.classify()`. PiG lists llama.cpp models as classifiers in two ways:
+
+- **Decision models** such as [Julia-1, Laya, Kev, lev, and OpenJev](https://huggingface.co/collections/ggml-org/decision-models-6abf80cca3c83f127060a769) answer natively through llama.cpp's `/v1/systemone` endpoint. They appear only as classifiers, with the `typesafe-system-one` API, and not in `/model`.
+- **Chat models** are also listed as classifiers with the same ID and the `llama-cpp-classify` API, which reads answers from next-token probabilities.
+
+llama.cpp 0.6.0 and later report decision models in the router's model list: their `architecture.output_modalities` contains `decisions`. The router reads this from the GGUF metadata without loading the model, so PiG recognizes unloaded and sleeping decision models too. Older llama.cpp builds do not report it, and PiG lists their decision models as chat models. A model that reports both `text` and `decisions` is listed for chat as well.
+
 ## Troubleshooting
 
 Check that the router is reachable:

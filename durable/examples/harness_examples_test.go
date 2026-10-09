@@ -121,6 +121,8 @@ func TestExample06Harness(t *testing.T) {
 }
 
 // 07-configuration.ts: a conversation stores its agent configuration; the registry and settings resolve live.
+// Pi source: packages/durable/src/harness/registry.ts
+// mutation-checked: zeroing the results of Registry.Uninstall fails it
 func TestExample07Configuration(t *testing.T) {
 	read := exampleTool("read", "Read a file")
 	write := exampleTool("write", "Write a file")
@@ -278,7 +280,7 @@ func TestExample10RegistryReload(t *testing.T) {
 
 	audit := new(durable.Extension{
 		Name: "audit",
-		Wraps: []durable.Wrap{{Tool: "read", WrapTool: func(tool *durable.ToolRegistration) *durable.ToolRegistration {
+		Wraps: []durable.Wrap{durable.ToolWrap{Tool: "read", Wrap: func(tool *durable.ToolRegistration) *durable.ToolRegistration {
 			wrapped := *tool
 			wrapped.Description = tool.Description + " (audited)"
 			return &wrapped

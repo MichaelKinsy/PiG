@@ -1,4 +1,3 @@
-// SPDX-FileCopyrightText: Copyright Hewlett Packard Enterprise Development LP
 // SPDX-FileCopyrightText: Copyright (c) 2025 opentui
 // SPDX-License-Identifier: MIT
 
@@ -286,5 +285,26 @@ func TestStdinBufferEmptyFlushPreservesKittyDuplicateState(t *testing.T) {
 	}
 	if got := buffer.ProcessString("@"); len(got) != 0 {
 		t.Fatalf("empty flush forgot matching Kitty printable: %q", got)
+	}
+}
+
+// stdin-buffer.ts:441-443 destroy() is clear(): it drops the pending partial sequence, an open bracketed paste and a pending Kitty
+// printable, so bytes fed afterwards start from an empty buffer. terminal.ts:451 calls it when the terminal stops.
+func TestStdinBufferDestroyClearsEveryPendingState(t *testing.T) {
+	for _, c := range []struct{ name, pending string }{
+		{"partial CSI", "\x1b[1;"},
+		{"open bracketed paste", "\x1b[200~half a paste"},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			buffer := NewStdinBuffer(StdinBufferOptions{})
+			buffer.ProcessString(c.pending)
+			buffer.Destroy()
+			if got := buffer.GetBuffer(); got != "" {
+				t.Fatalf("buffer after Destroy = %q", got)
+			}
+			if got := buffer.ProcessString("a"); len(got) != 1 || got[0] != "a" {
+				t.Fatalf("input after Destroy = %q, want [a] (no stale prefix or paste)", got)
+			}
+		})
 	}
 }

@@ -4,8 +4,10 @@ package tui
 
 import (
 	"context"
+	"errors"
 	"io"
 	"os"
+	"syscall"
 )
 
 // ReadInputStream delivers raw reads synchronously until EOF, a read error, or cancellation. The callback must return when ctx is cancelled. Files stay open for the next terminal owner. Other ReadClosers are closed on cancellation to interrupt Read; non-closable readers must complete each Read without waiting for external input.
@@ -75,7 +77,12 @@ func (r *terminalReader) read(ms int) ([]byte, error) {
 			return nil, err
 		}
 	}
-	return ReadInputChunk(r.source)
+	data, err := ReadInputChunk(r.source)
+	if r.file != nil && errors.Is(err, syscall.EIO) && terminalHungUp(r.file) {
+		// Closing a pseudo-terminal's master hangs the terminal up, and a read racing that hang-up reports either the end of input or EIO. Node reports the end of input every time, so a hung-up terminal is the end of input here too; an EIO from a terminal that is not hung up (an orphaned process group) stays an error.
+		err = io.EOF
+	}
+	return data, err
 }
 
 func (r *terminalReader) close() {

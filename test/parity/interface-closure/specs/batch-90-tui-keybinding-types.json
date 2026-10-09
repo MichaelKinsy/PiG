@@ -1,0 +1,100 @@
+[
+ {
+  "ids": [
+   "pkg:tui/.#KeybindingDefinition"
+  ],
+  "targets": [
+   "tui/keybindings.go#TUIKeybindingDef"
+  ],
+  "production": [
+   "call:tui/keybindings.go#NewTUIKeybindingsManager"
+  ],
+  "evidence": [
+   "test:tui/keybindings_inventory_test.go#TestTUIKeybindingDefinitionsMatchUpstreamInventory",
+   "test:tui/keybindings_test.go#TestTUIKeybindingsManager_GetDefinition"
+  ],
+  "rationale": "KeybindingDefinition is the Go struct TUIKeybindingDef; defaultKeys (KeyId or KeyId[]) is the []string DefaultKeys and an absent description is the empty string.",
+  "properties": {
+   "defaultKeys": {
+    "targets": [
+     "tui/keybindings.go#TUIKeybindingDef.DefaultKeys"
+    ],
+    "evidence": [
+     "test:tui/keybindings_inventory_test.go#TestTUIKeybindingDefinitionsMatchUpstreamInventory"
+    ],
+    "production": [
+     "call:tui/keybindings.go#NewTUIKeybindingsManager"
+    ],
+    "rationale": "DefaultKeys []string holds the single key or the array."
+   },
+   "description": {
+    "targets": [
+     "tui/keybindings.go#TUIKeybindingDef.Description"
+    ],
+    "evidence": [
+     "test:tui/keybindings_inventory_test.go#TestTUIKeybindingDefinitionsMatchUpstreamInventory"
+    ],
+    "production": [
+     "call:tui/keybindings.go#NewTUIKeybindingsManager"
+    ],
+    "rationale": "Description; empty is undefined."
+   }
+  }
+ },
+ {
+  "ids": [
+   "pkg:tui/.#KeybindingConflict"
+  ],
+  "targets": [
+   "tui/keybindings.go#TUIKeybindingConflict"
+  ],
+  "production": [
+   "call:tui/keybindings.go#NewTUIKeybindingsManager"
+  ],
+  "evidence": [
+   "test:tui/keybindings_test.go#TestTUIKeybindingsManager_Conflicts"
+  ],
+  "rationale": "KeybindingConflict is the Go struct TUIKeybindingConflict; `keybindings` is the field Actions.",
+  "properties": {
+   "key": {
+    "targets": [
+     "tui/keybindings.go#TUIKeybindingConflict.Key"
+    ],
+    "evidence": [
+     "test:tui/keybindings_test.go#TestTUIKeybindingsManager_Conflicts"
+    ],
+    "production": [
+     "call:tui/keybindings.go#NewTUIKeybindingsManager"
+    ],
+    "rationale": "Key."
+   },
+   "keybindings": {
+    "targets": [
+     "tui/keybindings.go#TUIKeybindingConflict.Keybindings"
+    ],
+    "evidence": [
+     "test:tui/keybindings_test.go#TestTUIKeybindingsManager_Conflicts"
+    ],
+    "production": [
+     "call:tui/keybindings.go#NewTUIKeybindingsManager"
+    ],
+    "rationale": "The conflicting action ids are Actions."
+   }
+  }
+ },
+ {
+  "ids": [
+   "pkg:tui/.#TUI_KEYBINDINGS"
+  ],
+  "targets": [
+   "tui/keybindings.go#tuiKeybindingDefs"
+  ],
+  "production": [
+   "call:tui/keybindings.go#NewTUIKeybindingsManager"
+  ],
+  "evidence": [
+   "test:tui/keybindings_inventory_test.go#TestTUIKeybindingDefinitionsMatchUpstreamInventory"
+  ],
+  "rationale": "TUI_KEYBINDINGS is the definition table tuiKeybindingDefs (TUIKeybindingDefinitionsFor the host platform); the inventory test compares every id, default key set per platform and description with the upstream inventory."
+ }
+]

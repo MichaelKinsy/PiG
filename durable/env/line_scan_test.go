@@ -2,6 +2,10 @@
 
 package env
 
+// pi: packages/durable/src/env/line-scan.ts
+
+// pi: packages/durable/src/env/decode.ts
+
 import (
 	"bytes"
 	"strings"
@@ -62,6 +66,8 @@ func decodeSpan(file []byte, from, to int64) string {
 	return text
 }
 
+// Pi source: packages/durable/src/env/decode.ts
+// mutation-checked: zeroing the results of StreamDecoder.Decode fails it
 func TestStreamDecoder(t *testing.T) {
 	// Node's streaming TextDecoder with BOM handling dropped this U+FEFF, which follows an invalid sequence.
 	t.Run("keeps a U+FEFF that does not start the stream", func(t *testing.T) {
@@ -161,6 +167,9 @@ func TestStartsWithBom(t *testing.T) {
 	}
 }
 
+// Pi source: packages/durable/src/env/line-scan.ts
+// mutation-checked: zeroing the results of LineScanner.Finish, LineScanner.Push fails it
+// mutation-checked: dropping the reads and writes of LineScan.End, LineScan.FirstLineBytes, LineScan.FirstLineEnd, LineScan.LastLineStart, LineScan.Newlines, LineScan.SelectedBytes, LineScan.Start fails it
 func TestLineScanner(t *testing.T) {
 	t.Run("agrees with decoding and splitting the whole file", func(t *testing.T) {
 		// upstream: packages/durable/test/env-line-scan.test.ts:69

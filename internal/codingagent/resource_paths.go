@@ -82,12 +82,14 @@ func findGitRepoRoot(startDir string) string {
 	}
 }
 
-// PathMetadata is package-manager.ts PathMetadata: where a resolved resource came from.
+// PathMetadata is package-manager.ts PathMetadata: where a resolved resource came from. BaseDir and PackageRoot are the Package directory for an npm, git or local-directory Package resource; a single-file local source has its directory as BaseDir and no PackageRoot. Extension package warnings read the root through ExtensionPackageRoot.
 type PathMetadata struct {
 	Source  string
 	Scope   string
 	Origin  string
 	BaseDir string
+	// PackageRoot is the directory of the npm, git or local-directory Package that supplied the resource; it is empty for a top-level resource and for a local source that is a single file.
+	PackageRoot string
 }
 
 // ResolvedResource is a resolved resource path with its PathMetadata (package-manager.ts ResolvedResource).
@@ -179,6 +181,24 @@ func AmbientPromptResources(cwd, agentDir string, sm *SettingsManager, project b
 	return append(resources, topLevelResources("user", agentDir, sm.GetGlobalSettings().Prompts, packagecontent.Prompts)...)
 }
 
+// AmbientThemeResources lists the themes that settings and auto-discovery yield: project entries and auto-discovery, then user entries and auto-discovery, each with the PathMetadata package-manager.ts records. The project half is skipped when project is false.
+func AmbientThemeResources(cwd, agentDir string, sm *SettingsManager, project bool) []ResolvedResource {
+	resources := make([]ResolvedResource, 0)
+	if project {
+		resources = append(resources, topLevelResources("project", ProjectConfigDir(cwd), sm.GetProjectSettings().Themes, packagecontent.Themes)...)
+	}
+	return append(resources, topLevelResources("user", agentDir, sm.GetGlobalSettings().Themes, packagecontent.Themes)...)
+}
+
+// AmbientExtensionResources lists the extensions that settings and auto-discovery yield: project entries and auto-discovery, then user entries and auto-discovery, each with the PathMetadata package-manager.ts records. The project half is skipped when project is false.
+func AmbientExtensionResources(cwd, agentDir string, sm *SettingsManager, project bool) []ResolvedResource {
+	resources := make([]ResolvedResource, 0)
+	if project {
+		resources = append(resources, topLevelResources("project", ProjectConfigDir(cwd), sm.GetProjectSettings().Extensions, packagecontent.Extensions)...)
+	}
+	return append(resources, topLevelResources("user", agentDir, sm.GetGlobalSettings().Extensions, packagecontent.Extensions)...)
+}
+
 // AmbientPromptPaths lists the paths of AmbientPromptResources.
 func AmbientPromptPaths(cwd, agentDir string, sm *SettingsManager, project bool) []string {
 	return ResourcePaths(AmbientPromptResources(cwd, agentDir, sm, project))
@@ -226,7 +246,7 @@ func SystemPromptSkills(skills []*SkillDef) []extension.SystemPromptSkill {
 	out := make([]extension.SystemPromptSkill, 0, len(skills))
 	for _, skill := range skills {
 		out = append(out, extension.SystemPromptSkill{
-			Name: skill.Name, Description: skill.Description, FilePath: skill.Path, BaseDir: skill.Dir,
+			Name: skill.Name, Description: skill.Description, FilePath: skill.FilePath, BaseDir: skill.BaseDir,
 			SourceInfo: skill.SourceInfo, DisableModelInvocation: skill.DisableModelInvocation,
 		})
 	}
@@ -240,7 +260,7 @@ func DefaultSourceInfoForPath(cwd, agentDir, filePath string) PiSourceInfo {
 		if source == "" {
 			source = "temporary"
 		}
-		return PiSourceInfo{Path: filePath, Source: source, Scope: "temporary", Origin: "top-level"}
+		return CreateSyntheticSourceInfo(filePath, SyntheticSourceInfoOptions{Source: source})
 	}
 	normalized, _ := filepath.Abs(filePath)
 	for _, root := range resourceRoots(agentDir) {
@@ -257,7 +277,7 @@ func DefaultSourceInfoForPath(cwd, agentDir, filePath string) PiSourceInfo {
 	if info, err := os.Stat(normalized); err == nil && info.IsDir() {
 		baseDir = normalized
 	}
-	return PiSourceInfo{Path: filePath, Source: "local", Scope: "temporary", Origin: "top-level", BaseDir: baseDir}
+	return CreateSyntheticSourceInfo(filePath, SyntheticSourceInfoOptions{Source: "local", BaseDir: baseDir})
 }
 
 func resourceRoots(dir string) []string {

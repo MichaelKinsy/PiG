@@ -31,7 +31,7 @@ func classifyCompactRead(rawPath, cwd string) (tui.CompactReadClassification, bo
 		}
 		return tui.CompactReadClassification{Kind: "skill", Label: label}, true
 	}
-	if label, ok := pigDocsLabel(absolutePath, filepath.Join(ConfigRoot(), "docs")); ok {
+	if label, ok := pigDocsLabel(absolutePath, GetDocsPath()); ok {
 		return tui.CompactReadClassification{Kind: "docs", Label: label}, true
 	}
 	if compactResourceFileNames[fileName] {

@@ -1,9 +1,7 @@
 package subprocess
 
 import (
-	"archive/zip"
 	"context"
-	_ "embed"
 	"fmt"
 	"io/fs"
 	"os"
@@ -13,11 +11,9 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/klauspost/compress/zstd"
-	"golang.org/x/mod/semver"
-
 	extsource "github.com/MichaelKinsy/PiG/coding/extension/source"
 	"github.com/MichaelKinsy/PiG/internal/linkerexec"
+	"github.com/MichaelKinsy/PiG/internal/pigstrip"
 )
 
 const nodeRuntimeVersion = "v2"
@@ -35,40 +31,11 @@ const nodeLauncherFormat = "direct-node-v3"
 // extension entry the launcher runs.
 const nodeEntryFile = "entry"
 
-//go:generate go run ./internal/noderuntimegen
-//go:embed runtime-node.zip
-var nodeRuntimeArchive string
-
-// The archive is opened only on materialization. Warm cache keys use the generated digest without reading or decompressing the runtime.
-var nodeRuntimeZip = sync.OnceValues(func() (*zip.Reader, error) {
-	reader, err := zip.NewReader(strings.NewReader(nodeRuntimeArchive), int64(len(nodeRuntimeArchive)))
-	if err != nil {
-		return nil, err
-	}
-	reader.RegisterDecompressor(zstd.ZipMethodWinZip, zstd.ZipDecompressor())
-	return reader, nil
-})
-
 var nodeRuntimeDigest = func() []byte { return []byte(nodeRuntimeHash) }
 
-var nodeRuntimeFS nodeArchiveFS
-
-type nodeArchiveFS struct{}
-
-func (nodeArchiveFS) Open(name string) (fs.File, error) {
-	archive, err := nodeRuntimeZip()
-	if err != nil {
-		return nil, err
-	}
-	return archive.Open(name)
-}
-
-func (nodeArchiveFS) ReadFile(name string) ([]byte, error) {
-	archive, err := nodeRuntimeZip()
-	if err != nil {
-		return nil, err
-	}
-	return fs.ReadFile(archive, name)
+// pig additive (D92): the embedded Node runtime (nodeRuntimeFS, ensureNodeRuntime) lives in node_runtime_on.go, which a Piglet Binary compiles out with pig_strip_node_extensions.
+func errNodeExtensionsStripped() error {
+	return pigstrip.Error("The TypeScript and JavaScript extension runtime", pigstrip.ListFeatures, pigstrip.NodeExtensions)
 }
 
 func isNodeSourcePath(path string) bool {
@@ -90,7 +57,8 @@ func hasNodeSource(dir string) bool {
 			return true
 		}
 	}
-	return false
+	_, ok := extsource.NodeDirectoryImport(dir)
+	return ok
 }
 
 func resolveNodeEntrypoint(src string) (string, error) {
@@ -150,6 +118,10 @@ func resolveNodeEntrypoint(src string) (string, error) {
 			return candidate, nil
 		}
 	}
+	// A directory with no manifest entries and no index.ts or index.js is itself the extension path (package-manager.ts:1379-1384), and the loader's jiti import of it resolves the file it loads, such as index.mjs.
+	if file, ok := extsource.NodeDirectoryImport(src); ok {
+		return file, nil
+	}
 	return "", fmt.Errorf("cannot resolve node extension entrypoint in %s", src)
 }
 
@@ -174,37 +146,6 @@ func usesNodeRuntime(binPath, runtimeLanguage string) bool {
 
 func minimumNodeRuntimeDisplay() string {
 	return strings.TrimSuffix(strings.TrimPrefix(minimumNodeRuntimeVersion, "v"), ".0")
-}
-
-func ensureNodeRuntime(ctx context.Context) (string, error) {
-	requirement := fmt.Sprintf("TypeScript extensions need Node.js %s or newer", minimumNodeRuntimeDisplay())
-	nodePath, err := exec.LookPath("node")
-	if err != nil {
-		return "", fmt.Errorf("%s; node was not found on PATH", requirement)
-	}
-	output, err := linkerexec.CommandContext(ctx, nodePath, "--version").CombinedOutput()
-	if err != nil {
-		if ctxErr := ctx.Err(); ctxErr != nil {
-			return "", ctxErr
-		}
-		detail := strings.TrimSpace(string(output))
-		if detail == "" {
-			detail = err.Error()
-		}
-		return "", fmt.Errorf("%s; node --version failed: %s", requirement, detail)
-	}
-	found := strings.TrimSpace(string(output))
-	normalized := found
-	if !strings.HasPrefix(normalized, "v") {
-		normalized = "v" + normalized
-	}
-	if !semver.IsValid(normalized) {
-		return "", fmt.Errorf("%s; node --version returned %q", requirement, found)
-	}
-	if semver.Compare(normalized, minimumNodeRuntimeVersion) < 0 {
-		return "", fmt.Errorf("%s; found %s", requirement, found)
-	}
-	return nodePath, nil
 }
 
 // nodeLauncherCommand runs the node command of a published launcher directly,

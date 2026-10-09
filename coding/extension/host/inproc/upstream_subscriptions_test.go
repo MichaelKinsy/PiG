@@ -114,6 +114,7 @@ func TestUpstreamRunnerEventSubscriptions(t *testing.T) {
 
 // Upstream runner.ts:snapshotEventHandlers snapshots ALL extensions before the
 // first callback. A callback may synchronously change a later extension's list.
+// Pi: packages/coding-agent/src/core/extensions/runner.ts:1144 (Runner.emitMessageEnd).
 func TestRunnerSnapshotsAllExtensionsBeforeDispatch(t *testing.T) {
 	for _, kind := range []string{"agent_end", "context", "context_with_system", "before_provider_request", "before_provider_headers", "message_end", "input", "tool_call", "tool_result", "user_bash", "before_agent_start", "resources_discover", "agent_before_settle", "project_trust"} {
 		t.Run(kind, func(t *testing.T) {
@@ -161,7 +162,7 @@ func dispatchSubscriptionEvent(ctx context.Context, r *inproc.Runner, kind strin
 	case "before_provider_headers":
 		_, err = r.EmitBeforeProviderHeaders(ctx, extension.ProviderHeaders{})
 	case "message_end":
-		_, err = r.EmitMessageEnd(ctx, nil)
+		_, err = r.EmitMessageEnd(ctx, extension.MessageEndEvent{Type: "message_end"})
 	case "input":
 		_, err = r.EmitInput(ctx, "hello", nil, extension.InputSource("interactive"), "")
 	case "tool_call":
@@ -171,7 +172,7 @@ func dispatchSubscriptionEvent(ctx context.Context, r *inproc.Runner, kind strin
 	case "user_bash":
 		_, err = r.EmitUserBash(ctx, extension.UserBashEvent{Type: kind, Command: "pwd"})
 	case "before_agent_start":
-		_, err = r.EmitBeforeAgentStart(ctx, "hello", nil, "base", extension.BuildSystemPromptOptions{})
+		_, err = r.EmitBeforeAgentStart(ctx, "hello", nil, extension.BuildSystemPromptOptions{})
 	case "resources_discover":
 		_, err = r.EmitResourcesDiscover(ctx, "cwd", "startup")
 	case "agent_before_settle":
@@ -179,7 +180,7 @@ func dispatchSubscriptionEvent(ctx context.Context, r *inproc.Runner, kind strin
 			return extension.BoundaryContextPreview{}, nil
 		})
 	case "project_trust":
-		_, _, err = inproc.EmitProjectTrust(r, ctx, extension.ProjectTrustEvent{Type: kind})
+		_, _, err = inproc.EmitProjectTrust(r, ctx, extension.ProjectTrustEvent{Type: kind}, extension.ProjectTrustContext{})
 	}
 	return err
 }

@@ -19,8 +19,8 @@ func TestThemeWithColorModeReleasesSourceTheme(t *testing.T) {
 		}
 		return weak.Make(theme), theme.WithColorMode(TerminalColorMode256)
 	}()
-	if converted.ColorMode() != TerminalColorMode256 || converted.Accent != "\x1b[38;5;140m" {
-		t.Fatalf("converted theme = %q (%s)", converted.Accent, converted.ColorMode())
+	if converted.GetColorMode() != TerminalColorMode256 || converted.Accent != "\x1b[38;5;140m" {
+		t.Fatalf("converted theme = %q (%s)", converted.Accent, converted.GetColorMode())
 	}
 	runtime.GC()
 	if source.Value() != nil {
@@ -90,8 +90,8 @@ func refreshThemeRoundTrips(t *testing.T, rounds int) []weak.Pointer[Theme] {
 			if trueColor {
 				wantMode, wantAccent = TerminalColorModeTrueColor, "\x1b[38;2;167;152;215m"
 			}
-			if got := ActiveTheme(); got.ColorMode() != wantMode || got.Accent != wantAccent || got.Fg("accent") != wantAccent {
-				t.Fatalf("refreshed theme = %q (%s), want %q (%s)", got.Accent, got.ColorMode(), wantAccent, wantMode)
+			if got := ActiveTheme(); got.GetColorMode() != wantMode || got.Accent != wantAccent || got.GetFgAnsi("accent") != wantAccent {
+				t.Fatalf("refreshed theme = %q (%s), want %q (%s)", got.Accent, got.GetColorMode(), wantAccent, wantMode)
 			}
 		}
 	}

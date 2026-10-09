@@ -63,12 +63,12 @@ func TestImageToolResultMatrixUpstream(t *testing.T) {
 			if !strings.Contains(strings.ToLower(firstPayload), `"name":"`+name+`"`) {
 				t.Fatal("tool declaration missing from provider request")
 			}
-			services, err := coding.NewServices(coding.ServicesOptions{CWD: t.TempDir(), AgentDir: t.TempDir()})
+			services, err := coding.CreateAgentSessionServices(coding.CreateAgentSessionServicesOptions{CWD: t.TempDir(), AgentDir: t.TempDir()})
 			if err != nil {
 				t.Fatal(err)
 			}
 			faux := ai.NewFauxProvider(ai.FauxConfig{ProviderID: spec.provider, Model: spec.model})
-			faux.SetResponses([]ai.FauxResponseStep{ai.FauxStaticStep(ai.FauxResponse{Content: []ai.FauxContentBlock{ai.FauxToolCall(name, map[string]any{}, "image_call")}, StopReason: "toolUse"})})
+			faux.SetResponses([]ai.FauxResponseStep{ai.FauxStaticStep(ai.FauxResponse{Content: []ai.FauxContentBlock{ai.FauxToolCall(name, map[string]any{}, &ai.FauxToolCallOptions{ID: "image_call"})}, StopReason: "toolUse"})})
 			first := services.ModelRuntime().Complete(t.Context(), &ai.Model{ID: spec.model, Provider: faux}, request, ai.StreamOptions{})
 			if first.StopReason != ai.StopReasonToolUse {
 				t.Fatal(first.StopReason)
@@ -100,11 +100,11 @@ func TestImageToolResultMatrixUpstream(t *testing.T) {
 			if !imagePresent || !textPresent {
 				t.Logf("image=%v text=%v payload=%s", imagePresent, textPresent, secondPayload)
 			}
-			faux.SetResponses([]ai.FauxResponseStep{ai.FauxFactoryStep(func(ai.TranscriptContext, ai.StreamOptions, *ai.FauxProviderState, *ai.Model) (ai.FauxResponse, error) {
+			faux.SetResponses([]ai.FauxResponseStep{ai.FauxFactoryStep(func(ai.TranscriptContext, ai.StreamOptions, *ai.FauxProviderState, *ai.Model) (ai.AssistantMessage, error) {
 				if !imagePresent || !textPresent {
-					return ai.FauxResponse{StopReason: "error", ErrorMessage: "provider request lost image or text"}, nil
+					return ai.FauxResponse{StopReason: "error", ErrorMessage: "provider request lost image or text"}.AssistantMessage(), nil
 				}
-				return ai.FauxResponse{Content: []ai.FauxContentBlock{ai.FauxText("A red circle with a diameter of 100 pixels.")}, StopReason: "stop"}, nil
+				return ai.FauxResponse{Content: []ai.FauxContentBlock{ai.FauxText("A red circle with a diameter of 100 pixels.")}, StopReason: "stop"}.AssistantMessage(), nil
 			})})
 			second := services.ModelRuntime().Complete(t.Context(), &ai.Model{ID: spec.model, Provider: faux}, request, ai.StreamOptions{})
 			if second.StopReason != ai.StopReasonStop || second.ErrorMessage != "" {

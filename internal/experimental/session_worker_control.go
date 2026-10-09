@@ -149,10 +149,13 @@ func handleWorkerCommand(raw json.RawMessage, control *workerControlConnection, 
 		release, admissionError := lifecycle.BeginRequest(request.Scope.ServerConnectionID, request.Scope.AttachmentID)
 		ctx, cancel := context.WithCancelCause(context.Background())
 		active := &workerActiveRequest{scope: request.Scope, cancel: cancel}
+		var invocation *chord.ServiceInvocation
 		if admissionError == nil {
 			requests.mu.Lock()
 			requests.values[request.RequestID] = active
 			requests.mu.Unlock()
+			// Begin the call here, in message order: upstream's handleOperation reaches the endpoint synchronously.
+			invocation, admissionError = workerServices.BeginInvoke(ctx, request.Call, services.WorkerServiceScope{ServerConnectionId: request.Scope.ServerConnectionID, AttachmentId: request.Scope.AttachmentID})
 		}
 		requests.work.Go(func() {
 			defer cancel(nil)
@@ -168,7 +171,7 @@ func handleWorkerCommand(raw json.RawMessage, control *workerControlConnection, 
 			}()
 			result, err := json.RawMessage(nil), admissionError
 			if err == nil {
-				result, err = workerServices.Invoke(ctx, request.Call, services.WorkerServiceScope{ServerConnectionId: request.Scope.ServerConnectionID, AttachmentId: request.Scope.AttachmentID})
+				result, err = invocation.Wait(context.Background())
 			}
 			response := map[string]any{"requestId": request.RequestID, "scope": request.Scope}
 			if err == nil && len(result) != 0 && !json.Valid(result) {

@@ -72,3 +72,37 @@ func TestMemBus_PubSub(t *testing.T) {
 		t.Fatalf("after cancel: got %v", got)
 	}
 }
+
+// packages/coding-agent/src/core/extensions/types.ts:698 ProjectTrustHandler and :1558 on("project_trust", handler): a handler registered
+// through the API keeps its registration order and is called with the event and the ProjectTrustContext of the decision.
+// Pi: packages/coding-agent/src/core/extensions/types.ts:1558 (API.on).
+func TestFake_RecordsProjectTrustHandlersWithTheirTrustContext(t *testing.T) {
+	f := extensiontest.NewFake()
+	var seen []extension.ProjectTrustContext
+	register := func(decision extension.ProjectTrustEventDecision) {
+		var handler extension.ProjectTrustHandler = func(_ context.Context, evt extension.ProjectTrustEvent, trust extension.ProjectTrustContext) (extension.ProjectTrustEventResult, error) {
+			if evt.Cwd != "/project" {
+				t.Errorf("event cwd = %q", evt.Cwd)
+			}
+			seen = append(seen, trust)
+			return extension.ProjectTrustEventResult{Trusted: decision}, nil
+		}
+		var api extension.API = f
+		api.OnProjectTrust(handler)
+	}
+	register(extension.ProjectTrustUndecided)
+	register(extension.ProjectTrustYes)
+	if len(f.OnProjectTrustHandlers) != 2 {
+		t.Fatalf("OnProjectTrustHandlers = %d, want 2", len(f.OnProjectTrustHandlers))
+	}
+	want := extension.ProjectTrustContext{Cwd: "/project", Mode: extension.ModeRPC, HasUI: true, UI: extension.NoopUIContext}
+	for i, wantDecision := range []extension.ProjectTrustEventDecision{extension.ProjectTrustUndecided, extension.ProjectTrustYes} {
+		result, err := f.OnProjectTrustHandlers[i](context.Background(), extension.ProjectTrustEvent{Type: "project_trust", Cwd: "/project"}, want)
+		if err != nil || result.Trusted != wantDecision {
+			t.Fatalf("handler %d: %+v, %v", i, result, err)
+		}
+	}
+	if len(seen) != 2 || seen[0] != want || seen[1] != want {
+		t.Fatalf("handlers saw %+v", seen)
+	}
+}

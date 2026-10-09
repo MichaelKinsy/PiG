@@ -25,7 +25,7 @@ func TestGetAllTools_IncludesBuiltinTools(t *testing.T) {
 	runner := inproc.NewRunner([]extension.Extension{{
 		Name: "test-ext",
 		Tools: map[string]extension.RegisteredTool{
-			"ext_tool": {Definition: extension.ToolDefinition{Name: "ext_tool", Description: "test"}, SourceInfo: "test-ext"},
+			"ext_tool": {Definition: extension.ToolDefinition{Name: "ext_tool", Description: "test"}, Source: "test-ext"},
 		},
 	}}, t.TempDir())
 
@@ -33,7 +33,7 @@ func TestGetAllTools_IncludesBuiltinTools(t *testing.T) {
 		newRunner: runner,
 		tuiInst:   tui.NewWithOutput(io.Discard, 80, 24),
 		layout:    tui.NewContainer(),
-		opts: InteractiveOptions{
+		opts: InteractiveModeOptions{
 			CWD: t.TempDir(),
 		},
 	}
@@ -66,7 +66,7 @@ func TestGetAllTools_IncludesBuiltinTools(t *testing.T) {
 	// Built-in tools must have source "builtin".
 	for _, ti := range allTools {
 		if slices.Contains(tools.BuiltinToolNames(), ti.Name) {
-			source, _ := ti.SourceInfo.(string)
+			source := ti.Source
 			if source != "builtin" {
 				t.Errorf("built-in tool %q has source %q, want %q", ti.Name, source, "builtin")
 			}
@@ -82,7 +82,7 @@ func TestGetActiveTools_IncludesBuiltinTools(t *testing.T) {
 	runner := inproc.NewRunner([]extension.Extension{{
 		Name: "test-ext",
 		Tools: map[string]extension.RegisteredTool{
-			"ext_tool": {Definition: extension.ToolDefinition{Name: "ext_tool", Description: "test"}, SourceInfo: "test-ext"},
+			"ext_tool": {Definition: extension.ToolDefinition{Name: "ext_tool", Description: "test"}, Source: "test-ext"},
 		},
 	}}, t.TempDir())
 
@@ -90,7 +90,7 @@ func TestGetActiveTools_IncludesBuiltinTools(t *testing.T) {
 		newRunner: runner,
 		tuiInst:   tui.NewWithOutput(io.Discard, 80, 24),
 		layout:    tui.NewContainer(),
-		opts: InteractiveOptions{
+		opts: InteractiveModeOptions{
 			CWD: t.TempDir(),
 		},
 	}
@@ -121,8 +121,8 @@ func TestPowerShellToolActivatedByAllowlist(t *testing.T) {
 		newRunner: runner,
 		tuiInst:   tui.NewWithOutput(io.Discard, 80, 24),
 		layout:    tui.NewContainer(),
-		agent:     agent.NewAgent(agent.AgentOptions{}),
-		opts: InteractiveOptions{
+		agent:     mustNewAgent(agent.AgentOptions{}),
+		opts: InteractiveModeOptions{
 			CWD:          t.TempDir(),
 			AllowedTools: map[string]struct{}{"powershell": {}, "read": {}},
 		},
@@ -150,15 +150,15 @@ func TestActiveToolsReportTheAgentLoadout(t *testing.T) {
 	runner := inproc.NewRunner([]extension.Extension{{
 		Name: "lazy-ext",
 		Tools: map[string]extension.RegisteredTool{
-			"lazy_tool": {Definition: extension.ToolDefinition{Name: "lazy_tool", Description: "lazy"}, SourceInfo: "lazy-ext"},
+			"lazy_tool": {Definition: extension.ToolDefinition{Name: "lazy_tool", Description: "lazy"}, Source: "lazy-ext"},
 		},
 	}}, t.TempDir())
 	m := &InteractiveMode{
 		newRunner: runner,
 		tuiInst:   tui.NewWithOutput(io.Discard, 80, 24),
 		layout:    tui.NewContainer(),
-		agent:     agent.NewAgent(agent.AgentOptions{}),
-		opts: InteractiveOptions{
+		agent:     mustNewAgent(agent.AgentOptions{}),
+		opts: InteractiveModeOptions{
 			CWD:                t.TempDir(),
 			ActiveBuiltinTools: map[string]struct{}{"read": {}},
 			BridgeExtensionTools: func(registered []extension.RegisteredTool) ([]agent.AgentTool, []error) {
@@ -197,7 +197,7 @@ func TestGetAllTools_RespectsActiveBuiltinTools(t *testing.T) {
 		newRunner: runner,
 		tuiInst:   tui.NewWithOutput(io.Discard, 80, 24),
 		layout:    tui.NewContainer(),
-		opts: InteractiveOptions{
+		opts: InteractiveModeOptions{
 			CWD:                t.TempDir(),
 			ActiveBuiltinTools: activeBuiltin,
 		},
@@ -237,7 +237,7 @@ func TestGetAllTools_AllBuiltinToolsWhenActiveBuiltinNil(t *testing.T) {
 		newRunner: runner,
 		tuiInst:   tui.NewWithOutput(io.Discard, 80, 24),
 		layout:    tui.NewContainer(),
-		opts: InteractiveOptions{
+		opts: InteractiveModeOptions{
 			CWD: t.TempDir(),
 			// ActiveBuiltinTools is nil → all builtins active
 		},
@@ -272,7 +272,7 @@ func TestSetActiveTools_PreservesBuiltinToolsAfterScoping(t *testing.T) {
 	runner := inproc.NewRunner([]extension.Extension{{
 		Name: "test-ext",
 		Tools: map[string]extension.RegisteredTool{
-			"ext_tool": {Definition: extension.ToolDefinition{Name: "ext_tool", Description: "test"}, SourceInfo: "test-ext"},
+			"ext_tool": {Definition: extension.ToolDefinition{Name: "ext_tool", Description: "test"}, Source: "test-ext"},
 		},
 	}}, t.TempDir())
 
@@ -283,7 +283,7 @@ func TestSetActiveTools_PreservesBuiltinToolsAfterScoping(t *testing.T) {
 		newRunner: runner,
 		tuiInst:   tui.NewWithOutput(io.Discard, 80, 24),
 		layout:    tui.NewContainer(),
-		opts: InteractiveOptions{
+		opts: InteractiveModeOptions{
 			CWD:                t.TempDir(),
 			Settings:           Settings{},
 			ActiveBuiltinTools: activeBuiltin,
@@ -295,7 +295,7 @@ func TestSetActiveTools_PreservesBuiltinToolsAfterScoping(t *testing.T) {
 				return result, nil
 			},
 		},
-		agent: agent.NewAgent(agent.AgentOptions{}),
+		agent: mustNewAgent(agent.AgentOptions{}),
 	}
 	m.wireInprocContextActions()
 
@@ -339,14 +339,14 @@ func TestGetAllTools_ExtensionOverrideSuppressesDuplicateBuiltin(t *testing.T) {
 	runner := inproc.NewRunner([]extension.Extension{{
 		Name: "override-ext",
 		Tools: map[string]extension.RegisteredTool{
-			"bash": {Definition: extension.ToolDefinition{Name: "bash", Description: "override"}, SourceInfo: "override-ext"},
+			"bash": {Definition: extension.ToolDefinition{Name: "bash", Description: "override"}, Source: "override-ext"},
 		},
 	}}, t.TempDir())
 	m := &InteractiveMode{
 		newRunner: runner,
 		tuiInst:   tui.NewWithOutput(io.Discard, 80, 24),
 		layout:    tui.NewContainer(),
-		opts:      InteractiveOptions{CWD: t.TempDir()},
+		opts:      InteractiveModeOptions{CWD: t.TempDir()},
 	}
 	m.wireInprocContextActions()
 	ctx := runner.CreateCommandContext()
@@ -357,8 +357,8 @@ func TestGetAllTools_ExtensionOverrideSuppressesDuplicateBuiltin(t *testing.T) {
 			continue
 		}
 		count++
-		if tool.SourceInfo != "override-ext" {
-			t.Fatalf("bash source = %#v", tool.SourceInfo)
+		if tool.Source != "override-ext" {
+			t.Fatalf("bash source = %#v", tool.Source)
 		}
 	}
 	if count != 1 {
@@ -385,15 +385,15 @@ func TestSubprocessGetAllTools_ExtensionOverrideReplacesBuiltinInPlace(t *testin
 		Name:       "override-ext",
 		SourceInfo: PiSourceInfo{Path: "/ext/override.ts", Source: "cli", Scope: "temporary", Origin: "top-level"},
 		Tools: map[string]extension.RegisteredTool{
-			"bash":  {Definition: extension.ToolDefinition{Name: "bash", Description: "override", Parameters: json.RawMessage(`{"type":"object"}`)}, SourceInfo: "override-ext"},
-			"extra": {Definition: extension.ToolDefinition{Name: "extra", Description: "extra tool", Parameters: json.RawMessage(`{"type":"object","properties":{}}`), PromptGuidelines: []string{"Use extra."}}, SourceInfo: "override-ext"},
+			"bash":  {Definition: extension.ToolDefinition{Name: "bash", Description: "override", Parameters: json.RawMessage(`{"type":"object"}`)}, Source: "override-ext"},
+			"extra": {Definition: extension.ToolDefinition{Name: "extra", Description: "extra tool", Parameters: json.RawMessage(`{"type":"object","properties":{}}`), PromptGuidelines: []string{"Use extra."}}, Source: "override-ext"},
 		},
 		ToolOrder: []string{"bash", "extra"},
 	}}, t.TempDir())
 	bridge := &captureUIBridge{}
 	m := &InteractiveMode{
 		newRunner: runner,
-		opts:      InteractiveOptions{CWD: t.TempDir(), SubprocessUIBridge: bridge, ExcludedTools: map[string]struct{}{"ls": {}}},
+		opts:      InteractiveModeOptions{CWD: t.TempDir(), SubprocessUIBridge: bridge, ExcludedTools: map[string]struct{}{"ls": {}}},
 	}
 	m.wireSubprocessHostCallbacks()
 	getAll, ok := bridge.actions["getAllTools"].(func() []subprocess.ToolInfo)
@@ -439,8 +439,8 @@ func TestSubprocessGetCommands_ListsExtensionCommandsTemplatesAndSkills(t *testi
 	m := &InteractiveMode{
 		newRunner:       runner,
 		promptTemplates: []PromptTemplate{{Name: "review", Description: "Review code", FilePath: templatePath}},
-		opts: InteractiveOptions{CWD: t.TempDir(), AgentDir: agentDir, SubprocessUIBridge: bridge,
-			Skills: []*SkillDef{{Name: "lint", Description: "Lint code", Path: skillPath}}},
+		opts: InteractiveModeOptions{CWD: t.TempDir(), AgentDir: agentDir, SubprocessUIBridge: bridge,
+			Skills: []*SkillDef{{Name: "lint", Description: "Lint code", FilePath: skillPath}}},
 	}
 	m.wireSubprocessHostCallbacks()
 	m.publishSlashCommandCatalog()

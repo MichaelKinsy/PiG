@@ -52,7 +52,7 @@ func editorCursorRow(t *testing.T, lines []string) string {
 
 // Pi's Editor.render pads every content row to the content width, so the
 // cursor's closing reset is followed by cells and survives Pi's
-// compositeTuiLine, which drops SGR codes after the last "before" cell. An
+// CompositeTuiLine, which drops SGR codes after the last "before" cell. An
 // overlay covering the editor row must leave exactly one inverse cell.
 func TestOverlayOverEditorRowKeepsOneCursorCell(t *testing.T) {
 	const width = 40
@@ -76,7 +76,7 @@ func TestOverlayOverEditorRowKeepsOneCursorCell(t *testing.T) {
 			if got := widthx.VisibleWidth(row); got != width {
 				t.Fatalf("editor row width = %d, want %d (Pi pads rows to the content width): %q", got, width, row)
 			}
-			composed := compositeTuiLine(row, "│box│", 12, 5, width)
+			composed := CompositeTuiLine(row, "│box│", 12, 5, width)
 			if got := inverseCells(composed); got != 1 {
 				t.Fatalf("inverse cells = %d, want 1: %q", got, composed)
 			}

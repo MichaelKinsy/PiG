@@ -104,6 +104,7 @@ func modelIDs[T AnyModel](models []T) []string {
 	return ids
 }
 
+// Pi: packages/ai/src/auth/resolve.ts:20 (AuthResolutionOverrides.apiKey).
 func TestModelTypesUpstream(t *testing.T) {
 	request := ImagesContext{Input: []ContentBlock{TextContent{Text: "a red circle"}}}
 	// .upstream/v0.99.1/packages/ai/test/images-models.test.ts:125
@@ -442,10 +443,10 @@ func TestModelTypesUpstream(t *testing.T) {
 	})
 	// .upstream/v0.99.1/packages/ai/test/images-models.test.ts:373
 	t.Run("keeps existing built-in and compat model reads chat-only", func(t *testing.T) {
-		chat := builtinChatModels("openrouter")
+		chat := GetBuiltinModels("openrouter")
 		images := GetImageModels("openrouter")
 		all := GetAllBuiltinModels("openrouter")
-		compat := builtinChatModels("openrouter")
+		compat := GetBuiltinModels("openrouter")
 
 		for _, model := range chat {
 			if !IsModelType(model, ModelTypeChat) || model.Capabilities.ContextWindow <= 0 {
@@ -556,12 +557,12 @@ func TestModelTypesUpstream(t *testing.T) {
 		}
 		chatExtra := `"reasoning":false,"contextWindow":1000,"maxTokens":100`
 		imageExtra := `"output":["image"]`
-		stored := ModelsStoreEntry{Models: []json.RawMessage{
+		stored := ModelsStoreEntry{Models: mustStoredModels([]json.RawMessage{
 			record("stored-chat", "test-chat", "", chatExtra),
 			record("stored-image", "test-images", "image", imageExtra),
 			record("future-embedding", "test-chat", "embedding", chatExtra),
 			record("future-video", "test-images", "video", imageExtra),
-		}}
+		})}
 		if err := store.Write(t.Context(), "dyn", stored); err != nil {
 			t.Fatal(err)
 		}
@@ -619,17 +620,11 @@ func typedNoAuth() ProviderAuth {
 	return ProviderAuth{APIKey: &APIKeyAuth{Name: "Test", Resolve: func(context.Context, APIKeyAuthInput) (*AuthResult, error) { return &AuthResult{}, nil }}}
 }
 
-func storedModelIDs(t *testing.T, raw []json.RawMessage) []string {
+func storedModelIDs(t *testing.T, models []AnyModel) []string {
 	t.Helper()
 	ids := []string{}
-	for _, data := range raw {
-		var record struct {
-			ID string `json:"id"`
-		}
-		if err := json.Unmarshal(data, &record); err != nil {
-			t.Fatal(err)
-		}
-		ids = append(ids, record.ID)
+	for _, model := range models {
+		ids = append(ids, model.ModelID())
 	}
 	return ids
 }

@@ -1,0 +1,27 @@
+# Behavior family: extensions-runtime (the /llama manager view)
+# Pi 1.1.0 probe: LlamaView through showLlamaUi over 700 seeded scenarios at four widths, for every flow that does not search: the loading view, the model list
+# (loaded models first, locale order, context label from n_ctx, n_ctx_train or the launch arguments), select, confirm, connection error, status and the progress bar
+# (clamped ratio, rounded percentage, detail), each with a seeded key sequence including cancel; every frame's bytes and what each step settled are compared. The Go test
+# TestLlamaViewMatchesPi runs the same scenarios against the installed Pi; this scenario compares the two printed streams.
+name = "75-llama-view"
+description = "The /llama manager view draws and answers keys as Pi's does."
+covers = ["packages/coding-agent/src/extensions/llama/ui.ts"]
+tags = ["fast", "hermetic", "tui"]
+driver = "cli-mode"
+
+[env]
+override_base_args = true
+pig_bin = "/usr/bin/env"
+pi_bin = "/usr/bin/env"
+pig_args = ["node", "./test/parity/testdata/llama-view-pig.mjs"]
+pi_args = ["node", "./test/parity/testdata/llama-view-pi.mjs"]
+
+[cli]
+cwd = "../../../.."
+timeout_seconds = 240
+
+[assert]
+exit_code = 0
+output_equal = true
+both_contain = ['llama.cpp', 'frames']
+runs = 2

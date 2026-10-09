@@ -62,7 +62,7 @@ func TestUnixTransportRemoteCloseNotifiesBeforeSettlingWrites(t *testing.T) {
 			},
 			OnError: func(err error) { record("error: " + err.Error()) },
 		})
-		transport.Send([]byte("hello"), func(err error) {
+		transport.Submit([]byte("hello"), func(err error) {
 			if err == nil {
 				record("sent")
 				return
@@ -71,7 +71,7 @@ func TestUnixTransportRemoteCloseNotifiesBeforeSettlingWrites(t *testing.T) {
 		})
 		queued := make(chan error, 1)
 		<-conn.writing
-		transport.Send([]byte("queued"), func(err error) { queued <- err })
+		transport.Submit([]byte("queued"), func(err error) { queued <- err })
 		go transport.read()
 		close(conn.eof)
 		<-transport.Done()
@@ -110,7 +110,7 @@ func TestUnixTransportSendDuringRemoteCloseSettlesAfterHandlers(t *testing.T) {
 		go transport.read()
 		close(conn.eof)
 		<-entered
-		transport.Send([]byte("late"), func(err error) {
+		transport.Submit([]byte("late"), func(err error) {
 			if err == nil {
 				record("sent")
 				return

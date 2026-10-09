@@ -37,6 +37,36 @@ impl RemoteComponentResult {
 
 pub type RemoteComponentInvalidate = Arc<dyn Fn() + Send + Sync>;
 
+/// pi-tui's `TuiMouseEvent`: one cell-based pointer event, zero-based, with
+/// `x`/`y` relative to the component's first rendered cell. `kind` is
+/// `"press"`, `"release"`, `"move"`, `"drag"`, `"click"` or `"wheel"`, and
+/// `button` is `"left"`, `"middle"`, `"right"` or `"none"`.
+#[derive(Debug, Clone, Default, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct MouseEvent {
+    #[serde(rename = "type")]
+    pub kind: String,
+    pub button: String,
+    pub x: i32,
+    pub y: i32,
+    pub screen_x: i32,
+    pub screen_y: i32,
+    pub width: i32,
+    pub height: i32,
+    #[serde(default)]
+    pub shift: bool,
+    #[serde(default)]
+    pub alt: bool,
+    #[serde(default)]
+    pub ctrl: bool,
+    /// Lines a wheel event scrolls; negative scrolls up.
+    #[serde(default)]
+    pub wheel_delta: i32,
+    /// 1, 2 or 3 for consecutive clicks on one cell.
+    #[serde(default)]
+    pub click_count: i32,
+}
+
 /// A subprocess component rendered locally while the host overlay owns focus.
 pub trait RemoteComponent: Send {
     fn render(&self, width: u32) -> Vec<String>;
@@ -44,19 +74,299 @@ pub trait RemoteComponent: Send {
     fn handle_input(&mut self, data: &crate::JsString) -> Result<RemoteComponentResult, String>;
     fn set_invalidate(&mut self, _invalidate: Option<RemoteComponentInvalidate>) {}
     fn dispose(&mut self) {}
+    /// Whether the component takes the mouse, as an upstream component with
+    /// `handleMouse` does; see [`Self::handle_mouse`]. The default is false.
+    fn handles_mouse(&self) -> bool {
+        false
+    }
+    /// A fullscreen mouse event inside the component's bounds, delivered
+    /// while [`Self::handles_mouse`] is true: press, release, move, drag,
+    /// click and wheel, in order; a left click arrives as press, release,
+    /// then click. Pi routes the mouse to components only in fullscreen
+    /// mode, and so does PiG. The host answers the terminal at once, so a
+    /// component that takes the mouse handles every event in its bounds and
+    /// text selection does not start over it. It runs on the worker
+    /// [`Self::handle_input`] runs on, and its result means the same.
+    fn handle_mouse(&mut self, _event: &MouseEvent) -> Result<RemoteComponentResult, String> {
+        Ok(RemoteComponentResult::pending())
+    }
+}
+
+/// A focused `ui.custom` component that describes its frame as a kit view
+/// (D107), opened with [`Context::custom_view`]. The host renders the view
+/// and owns the state of its lists: keys the focused list binds go to it,
+/// every other key reaches [`Self::handle_input`].
+///
+/// The lists' callbacks arrive at [`Self::handle_view_event`] after every
+/// input sent before them, on the same worker as [`Self::handle_input`], so
+/// the two never run at once. A result means what it means for input: done
+/// closes the overlay with its value, an error closes it with the error, and
+/// pending renders the next frame.
+pub trait ViewComponent: Send {
+    fn view(&self, width: u32) -> crate::kit::View;
+    /// Raw input preserves lone UTF-16 units just like terminal listeners.
+    fn handle_input(&mut self, data: &crate::JsString) -> Result<RemoteComponentResult, String>;
+    /// A callback of an interactive node (select, cancel, selectionChange,
+    /// change). The default ignores it.
+    fn handle_view_event(&mut self, _event: crate::kit::Event) -> Result<RemoteComponentResult, String> {
+        Ok(RemoteComponentResult::pending())
+    }
+    fn set_invalidate(&mut self, _invalidate: Option<RemoteComponentInvalidate>) {}
+    fn dispose(&mut self) {}
+    /// Whether the component takes the mouse; see
+    /// [`RemoteComponent::handles_mouse`]. The default is false.
+    fn handles_mouse(&self) -> bool {
+        false
+    }
+    /// A fullscreen mouse event the view's components left: they take one
+    /// first, as Pi's do (a select-list row selects on press and fires
+    /// select on click). See [`RemoteComponent::handle_mouse`].
+    fn handle_mouse(&mut self, _event: &MouseEvent) -> Result<RemoteComponentResult, String> {
+        Ok(RemoteComponentResult::pending())
+    }
+}
+
+/// The component of a focused overlay: one that draws lines or one that
+/// describes a view.
+pub(crate) enum OverlayComponent {
+    Lines(Box<dyn RemoteComponent>),
+    View(Box<dyn ViewComponent>),
+}
+
+impl OverlayComponent {
+    fn handle_input(&mut self, data: &crate::JsString) -> Result<RemoteComponentResult, String> {
+        match self {
+            OverlayComponent::Lines(component) => component.handle_input(data),
+            OverlayComponent::View(component) => component.handle_input(data),
+        }
+    }
+
+    fn handles_mouse(&self) -> bool {
+        match self {
+            OverlayComponent::Lines(component) => component.handles_mouse(),
+            OverlayComponent::View(component) => component.handles_mouse(),
+        }
+    }
+
+    fn handle_mouse(&mut self, event: &MouseEvent) -> Result<RemoteComponentResult, String> {
+        match self {
+            OverlayComponent::Lines(component) => component.handle_mouse(event),
+            OverlayComponent::View(component) => component.handle_mouse(event),
+        }
+    }
+
+    fn set_invalidate(&mut self, invalidate: Option<RemoteComponentInvalidate>) {
+        match self {
+            OverlayComponent::Lines(component) => component.set_invalidate(invalidate),
+            OverlayComponent::View(component) => component.set_invalidate(invalidate),
+        }
+    }
+
+    fn dispose(&mut self) {
+        match self {
+            OverlayComponent::Lines(component) => component.dispose(),
+            OverlayComponent::View(component) => component.dispose(),
+        }
+    }
 }
 
 pub(crate) struct RemoteComponentState {
-    pub(crate) component: Box<dyn RemoteComponent>,
+    pub(crate) component: OverlayComponent,
     pub(crate) last_lines: Vec<String>,
+    /// The last view frame's wire body, without image data, and the width it
+    /// went out for.
+    pub(crate) last_view: Option<(serde_json::Value, u32)>,
     pub(crate) seq: u64,
     pub(crate) last_render: Option<Instant>,
+    /// The overlay layout whose width the component renders at; `None` renders at the terminal width.
+    pub(crate) layout: Option<serde_json::Map<String, serde_json::Value>>,
+}
+
+/// Pi renders an overlay component at the width `TUI.resolveOverlayLayout` resolves and an inline component at the
+/// terminal width. The host composites an overlay with the same layout unless it opens the legacy titled modal (no
+/// `overlayOptions`, with `title`, `widthFraction` or `heightFraction`), which renders at the terminal width.
+pub(crate) fn overlay_render_layout(
+    options: &serde_json::Map<String, serde_json::Value>,
+) -> Option<serde_json::Map<String, serde_json::Value>> {
+    use serde_json::Value;
+    if options.get("overlay").and_then(Value::as_bool) != Some(true) {
+        return None;
+    }
+    if let Some(Value::Object(layout)) = options.get("overlayOptions") {
+        return Some(layout.clone());
+    }
+    let positive = |name: &str| options.get(name).and_then(Value::as_f64).is_some_and(|value| value > 0.0);
+    let titled = options.get("title").and_then(Value::as_str).is_some_and(|title| !title.is_empty());
+    if titled || positive("widthFraction") || positive("heightFraction") {
+        return None;
+    }
+    Some(serde_json::Map::new())
+}
+
+/// Upstream `parseSizeValue` (tui.ts:228-237): a number is cells, `N%` is a floored share of `reference`.
+fn parse_overlay_size(value: Option<&serde_json::Value>, reference: f64) -> Option<f64> {
+    match value? {
+        serde_json::Value::Number(number) => number.as_f64(),
+        serde_json::Value::String(text) => {
+            let digits = text.strip_suffix('%')?;
+            let (whole, fraction) = match digits.split_once('.') {
+                Some((whole, fraction)) => (whole, Some(fraction)),
+                None => (digits, None),
+            };
+            let all_digits = |part: &str| !part.is_empty() && part.bytes().all(|b| b.is_ascii_digit());
+            if !all_digits(whole) || fraction.is_some_and(|fraction| !all_digits(fraction)) {
+                return None;
+            }
+            Some((reference * digits.parse::<f64>().ok()? / 100.0).floor())
+        }
+        _ => None,
+    }
+}
+
+/// The width rule of upstream `TUI.resolveOverlayLayout` (tui.ts:1212-1233).
+pub(crate) fn resolve_overlay_width(layout: &serde_json::Map<String, serde_json::Value>, term_width: u32) -> u32 {
+    use serde_json::Value;
+    let (left, right) = match layout.get("margin") {
+        Some(Value::Number(all)) => {
+            let all = all.as_f64().unwrap_or(0.0);
+            (all, all)
+        }
+        Some(Value::Object(edges)) => {
+            let edge = |name: &str| edges.get(name).and_then(Value::as_f64).unwrap_or(0.0);
+            (edge("left"), edge("right"))
+        }
+        _ => (0.0, 0.0),
+    };
+    let term = f64::from(term_width);
+    let avail = (term - left.max(0.0) - right.max(0.0)).max(1.0);
+    let mut width = parse_overlay_size(layout.get("width"), term).unwrap_or_else(|| avail.min(80.0));
+    if let Some(min_width) = layout.get("minWidth").and_then(Value::as_f64) {
+        width = width.max(min_width);
+    }
+    width.min(avail).max(1.0).trunc() as u32
 }
 
 enum RemoteComponentEvent {
     Render,
     Input(crate::JsString),
+    ViewEvent(crate::kit::Event),
+    Mouse(MouseEvent),
+    /// The host's `ui.custom.opened`: the overlay is mounted, with this state.
+    Opened(OverlayState),
     Stop,
+}
+
+/// The host's state of a mounted overlay at a control or input boundary.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct OverlayState {
+    pub hidden: bool,
+    pub focused: bool,
+    pub visible: bool,
+    pub bounds: Option<OverlayBounds>,
+}
+
+/// The last rendered terminal-relative rectangle of a mounted overlay.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct OverlayBounds {
+    pub row: i64,
+    pub col: i64,
+    pub width: i64,
+    pub height: i64,
+}
+
+impl OverlayState {
+    pub(crate) fn from_wire(value: &serde_json::Value) -> Self {
+        let flag = |name: &str| value.get(name).and_then(|flag| flag.as_bool()).unwrap_or(false);
+        let bounds = value.get("bounds").filter(|bounds| bounds.is_object()).map(|bounds| {
+            let number = |name: &str| bounds.get(name).and_then(|number| number.as_i64()).unwrap_or(0);
+            OverlayBounds { row: number("row"), col: number("col"), width: number("width"), height: number("height") }
+        });
+        Self { hidden: flag("hidden"), focused: flag("focused"), visible: flag("visible"), bounds }
+    }
+}
+
+/// Where `unfocus_target` puts keyboard focus (Pi's `unfocus({ target })`): nothing, the editor component installed with
+/// `set_editor_component`, or another overlay this extension mounted.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum UnfocusTarget {
+    Nothing,
+    Editor,
+    Overlay(String),
+}
+
+type OnHandleFn = Arc<dyn Fn(OverlayHandle) + Send + Sync>;
+
+/// Pi's `OverlayHandle` (tui.ts) of a mounted overlay: pass `on_handle` to [`Context::custom_component_with_handle`] and it is called once,
+/// on the component's own event queue, when the host mounted the overlay. Each control is a host call that returns after the host applied it;
+/// `is_hidden`, `is_focused` and `bounds` read the state it returned. After the overlay closed they read the last state and the controls do
+/// nothing, except `set_hidden`, which records its value.
+#[derive(Clone)]
+pub struct OverlayHandle {
+    conn: Arc<Connection>,
+    key: String,
+    overlay: RemoteComponentRef,
+    /// The scope of the call that opened the overlay, which its controls belong to.
+    request_parent: Option<Arc<crate::protocol::RequestParent>>,
+    request_id: String,
+}
+
+impl OverlayHandle {
+    /// The overlay's key, to name it as another overlay's `unfocus_target`.
+    pub fn key(&self) -> &str {
+        &self.key
+    }
+    fn control(&self, action: &str, hidden: Option<bool>, target: Option<serde_json::Value>) -> io::Result<()> {
+        if !self.overlay.active.load(Ordering::Acquire) {
+            if let ("setHidden", Some(hidden)) = (action, hidden) {
+                self.overlay.handle_state.lock().unwrap().hidden = hidden;
+            }
+            return Ok(());
+        }
+        let mut args = serde_json::json!({"key": self.key, "action": action});
+        if let Some(hidden) = hidden {
+            args["hidden"] = serde_json::Value::Bool(hidden);
+        }
+        if let Some(target) = target {
+            args["target"] = target;
+        }
+        let state = self.conn.call_for_scope(self.request_parent.as_deref(), (!self.request_id.is_empty()).then_some(self.request_id.as_str()), "ui.custom.control", Some(args)).and_then(call_result_value)?;
+        *self.overlay.handle_state.lock().unwrap() = OverlayState::from_wire(&state);
+        Ok(())
+    }
+    /// Removes the overlay (Pi's `hide()` disposes it).
+    pub fn hide(&self) -> io::Result<()> {
+        self.control("hide", None, None)
+    }
+    pub fn set_hidden(&self, hidden: bool) -> io::Result<()> {
+        self.control("setHidden", Some(hidden), None)
+    }
+    pub fn is_hidden(&self) -> bool {
+        self.overlay.handle_state.lock().unwrap().hidden
+    }
+    pub fn focus(&self) -> io::Result<()> {
+        self.control("focus", None, None)
+    }
+    /// Takes keyboard focus from the overlay; the host puts it back where it chooses.
+    pub fn unfocus(&self) -> io::Result<()> {
+        self.control("unfocus", None, None)
+    }
+    /// Takes keyboard focus from the overlay and gives it to exactly `target`.
+    pub fn unfocus_target(&self, target: UnfocusTarget) -> io::Result<()> {
+        let target = match target {
+            UnfocusTarget::Nothing => serde_json::json!({"kind": "null"}),
+            UnfocusTarget::Editor => serde_json::json!({"kind": "editor"}),
+            UnfocusTarget::Overlay(key) => serde_json::json!({"kind": "overlay", "key": key}),
+        };
+        self.control("unfocus", None, Some(target))
+    }
+    pub fn is_focused(&self) -> bool {
+        self.overlay.handle_state.lock().unwrap().focused
+    }
+    /// The overlay's last rendered rectangle, None while it is not visible.
+    pub fn bounds(&self) -> Option<OverlayBounds> {
+        let state = self.overlay.handle_state.lock().unwrap();
+        if state.visible { state.bounds } else { None }
+    }
 }
 
 pub(crate) struct RemoteOverlay {
@@ -64,6 +374,15 @@ pub(crate) struct RemoteOverlay {
     events: SyncSender<RemoteComponentEvent>,
     pub(crate) active: AtomicBool,
     render_pending: AtomicBool,
+    /// The image refs the last view frame names, apart from `state`, which a
+    /// running handler holds.
+    view_refs: Mutex<Vec<String>>,
+    /// Sends the next view frame even when it equals the last one, after the
+    /// host evicted one of its images.
+    force_view: AtomicBool,
+    /// ui.custom()'s onHandle option, called once when the host mounted the overlay, and the host's last state of it.
+    on_handle: Mutex<Option<OnHandleFn>>,
+    pub(crate) handle_state: Mutex<OverlayState>,
 }
 
 impl RemoteOverlay {
@@ -86,15 +405,41 @@ impl RemoteOverlay {
     }
 
     pub(crate) fn send_input(&self, data: crate::JsString) -> Result<(), String> {
+        self.send(RemoteComponentEvent::Input(data))
+    }
+
+    /// Queues the host's `ui.custom.opened` behind the input already queued.
+    pub(crate) fn send_opened(&self, state: OverlayState) -> Result<(), String> {
+        self.send(RemoteComponentEvent::Opened(state))
+    }
+
+    /// Queues a `ui.view.event` behind the input already queued.
+    pub(crate) fn send_view_event(&self, event: crate::kit::Event) -> Result<(), String> {
+        self.send(RemoteComponentEvent::ViewEvent(event))
+    }
+
+    /// Queues a `ui.custom.mouse` event behind the input already queued.
+    pub(crate) fn send_mouse(&self, event: MouseEvent) -> Result<(), String> {
+        self.send(RemoteComponentEvent::Mouse(event))
+    }
+
+    fn send(&self, event: RemoteComponentEvent) -> Result<(), String> {
         if !self.active.load(Ordering::Acquire) {
             return Ok(());
         }
-        self.events
-            .try_send(RemoteComponentEvent::Input(data))
-            .map_err(|err| match err {
-                TrySendError::Full(_) => "focused input queue is full".to_string(),
-                TrySendError::Disconnected(_) => "focused component is closed".to_string(),
-            })
+        self.events.try_send(event).map_err(|err| match err {
+            TrySendError::Full(_) => "focused input queue is full".to_string(),
+            TrySendError::Disconnected(_) => "focused component is closed".to_string(),
+        })
+    }
+
+    /// Renders a view component again, bypassing dedup, when its last frame
+    /// names an evicted image.
+    pub(crate) fn resend_if_references(&self, evicted: &std::collections::HashSet<String>) {
+        if self.view_refs.lock().unwrap().iter().any(|reference| evicted.contains(reference)) {
+            self.force_view.store(true, Ordering::Release);
+            self.request_render();
+        }
     }
 
     fn stop(&self) {
@@ -113,20 +458,50 @@ fn render_remote_component_frame(
     width: u32,
 ) -> io::Result<()> {
     let mut state = overlay.state.lock().unwrap();
-    let lines = catch_unwind(AssertUnwindSafe(|| state.component.render(width)))
-        .map_err(|_| io::Error::other("focused render panicked"))?;
-    state.last_render = Some(Instant::now());
-    if lines == state.last_lines {
-        return Ok(());
+    let render_width = state.layout.as_ref().map_or(width, |layout| resolve_overlay_width(layout, width));
+    let frame = match &state.component {
+        OverlayComponent::Lines(component) => {
+            catch_unwind(AssertUnwindSafe(|| crate::kit::Rendered::Lines(component.render(render_width))))
+        }
+        OverlayComponent::View(component) => {
+            catch_unwind(AssertUnwindSafe(|| crate::kit::Rendered::View(component.view(width))))
+        }
     }
-    state.last_lines.clone_from(&lines);
+    .map_err(|_| io::Error::other("focused render panicked"))?;
+    state.last_render = Some(Instant::now());
+    let mut frame = match frame {
+        crate::kit::Rendered::Lines(lines) => {
+            if lines == state.last_lines {
+                return Ok(());
+            }
+            state.last_lines.clone_from(&lines);
+            serde_json::json!({"key": key, "lines": lines, "width": width})
+        }
+        // An authoritative view: lines absent (D107). A frame equal to the
+        // last one at the same width is not sent, unless it names images the
+        // connection has not sent or the host evicted one of its images.
+        crate::kit::Rendered::View(view) => {
+            let encoded = conn.views.encode(&view).map_err(io::Error::other)?;
+            let force = overlay.force_view.swap(false, Ordering::AcqRel);
+            if !force
+                && state.last_view.as_ref().is_some_and(|(body, last)| *body == encoded.body && *last == width)
+                && !conn.views.has_unsent(&encoded)
+            {
+                return Ok(());
+            }
+            state.last_view = Some((encoded.body.clone(), width));
+            *overlay.view_refs.lock().unwrap() = encoded.refs();
+            serde_json::json!({"key": key, "view": conn.views.wire(&encoded), "width": width})
+        }
+    };
     state.seq += 1;
-    let seq = state.seq;
+    frame["seq"] = serde_json::Value::from(state.seq);
+    // The host hands a component that takes the mouse its events.
+    if state.component.handles_mouse() {
+        frame["mouse"] = serde_json::Value::Bool(true);
+    }
     drop(state);
-    conn.notify(
-        "ui.custom.render",
-        Some(serde_json::json!({"key": key, "lines": lines, "width": width, "seq": seq})),
-    )
+    conn.notify("ui.custom.render", Some(frame))
 }
 
 fn run_remote_component_worker(
@@ -136,6 +511,8 @@ fn run_remote_component_worker(
     width: Arc<AtomicU32>,
     events: Receiver<RemoteComponentEvent>,
     done: std::sync::mpsc::Sender<()>,
+    request_parent: Option<Arc<crate::protocol::RequestParent>>,
+    request_id: String,
 ) {
     while overlay.active.load(Ordering::Acquire) {
         let Ok(event) = events.recv() else {
@@ -162,13 +539,33 @@ fn run_remote_component_worker(
                 }
                 render_remote_component_frame(&conn, &key, &overlay, width.load(Ordering::Relaxed))
             }
-            RemoteComponentEvent::Input(data) => {
-                let input = {
+            RemoteComponentEvent::Input(_) | RemoteComponentEvent::ViewEvent(_) | RemoteComponentEvent::Mouse(_) => {
+                // Pi's renderer draws again after press, click, drag and wheel only
+                // (tui-alt-screen.ts applyMouseDispatchResult).
+                let redraw = !matches!(&event, RemoteComponentEvent::Mouse(mouse) if mouse.kind == "move" || mouse.kind == "release");
+                let outcome = {
                     let mut state = overlay.state.lock().unwrap();
-                    catch_unwind(AssertUnwindSafe(|| state.component.handle_input(&data)))
-                        .map_err(|_| "focused input panicked".to_string())
+                    match (&mut state.component, event) {
+                        (component, RemoteComponentEvent::Input(data)) => Some(
+                            catch_unwind(AssertUnwindSafe(|| component.handle_input(&data)))
+                                .map_err(|_| "focused input panicked".to_string()),
+                        ),
+                        (OverlayComponent::View(component), RemoteComponentEvent::ViewEvent(event)) => Some(
+                            catch_unwind(AssertUnwindSafe(|| component.handle_view_event(event)))
+                                .map_err(|_| "focused view event panicked".to_string()),
+                        ),
+                        (component, RemoteComponentEvent::Mouse(event)) => Some(
+                            catch_unwind(AssertUnwindSafe(|| component.handle_mouse(&event)))
+                                .map_err(|_| "focused mouse panicked".to_string()),
+                        ),
+                        // A line component has no view, so it ignores view events.
+                        _ => None,
+                    }
                 };
-                match input {
+                let Some(outcome) = outcome else {
+                    continue;
+                };
+                match outcome {
                     Ok(Ok(result)) if result.done => {
                         overlay.active.store(false, Ordering::Release);
                         conn.notify(
@@ -176,6 +573,7 @@ fn run_remote_component_worker(
                             Some(serde_json::json!({"key": &key, "result": result.value})),
                         )
                     }
+                    Ok(Ok(_)) if !redraw => Ok(()),
                     Ok(Ok(_)) => render_remote_component_frame(
                         &conn,
                         &key,
@@ -183,6 +581,16 @@ fn run_remote_component_worker(
                         width.load(Ordering::Relaxed),
                     ),
                     Ok(Err(err)) | Err(err) => Err(io::Error::other(err)),
+                }
+            }
+            RemoteComponentEvent::Opened(state) => {
+                *overlay.handle_state.lock().unwrap() = state;
+                let on_handle = overlay.on_handle.lock().unwrap().clone();
+                if let Some(on_handle) = on_handle {
+                    let handle = OverlayHandle { conn: conn.clone(), key: key.clone(), overlay: overlay.clone(), request_parent: request_parent.clone(), request_id: request_id.clone() };
+                    catch_unwind(AssertUnwindSafe(|| on_handle(handle))).map_err(|_| io::Error::other("onHandle panicked"))
+                } else {
+                    Ok(())
                 }
             }
             RemoteComponentEvent::Stop => break,
@@ -311,6 +719,232 @@ struct ModelStreamState {
 pub struct ModelEventStream {
     state: Mutex<ModelStreamState>,
     changed: Condvar,
+    callbacks: Mutex<Option<(serde_json::Value, ModelStreamCallbacks)>>,
+}
+
+type OnPayloadFn = Arc<dyn Fn(serde_json::Value, &serde_json::Value) -> Result<Option<serde_json::Value>, String> + Send + Sync>;
+type OnResponseFn = Arc<dyn Fn(serde_json::Value, &serde_json::Value) -> Result<(), String> + Send + Sync>;
+type TransformHeadersFn = Arc<dyn Fn(serde_json::Value, &serde_json::Value) -> Result<serde_json::Value, String> + Send + Sync>;
+
+/// Pi's `ProviderRequestOptions` callbacks `onPayload`, `onResponse` and `transformHeaders` (packages/ai/src/types.ts) of one model stream.
+/// They stay in this process; the host is told which exist and asks for each by name (`model_stream_callback`) while its provider request
+/// proceeds. `on_payload` returns the replacement payload, `None` keeps it; `transform_headers` returns the headers the request is sent with;
+/// an `Err` rejects the provider request. Each receives the stream's model as its second argument.
+#[derive(Clone, Default)]
+pub struct ModelStreamCallbacks {
+    on_payload: Option<OnPayloadFn>,
+    on_response: Option<OnResponseFn>,
+    transform_headers: Option<TransformHeadersFn>,
+    fetch: Option<ModelFetchFn>,
+    fetches: Arc<Mutex<ModelFetchState>>,
+}
+
+type ModelFetchBody = Arc<Mutex<Box<dyn std::io::Read + Send>>>;
+
+/// One fetch of a stream: its signal and, once the response arrived, its body.
+struct ModelFetchEntry {
+    signal: crate::ProviderSignal,
+    body: Option<ModelFetchBody>,
+}
+
+#[derive(Default)]
+struct ModelFetchState {
+    closed: bool,
+    entries: HashMap<String, ModelFetchEntry>,
+}
+
+/// A model request reaching the extension's `fetch` (Pi's `ProviderRequestOptions.fetch`). `signal` is Pi's `init.signal`: it is
+/// cancelled when the host cancels the fetch or a body read, when the host closes the response, and when the stream ends.
+#[derive(Clone)]
+pub struct ModelFetchRequest {
+    pub url: String,
+    pub method: String,
+    pub headers: Vec<(String, String)>,
+    pub body: Option<Vec<u8>>,
+    pub signal: crate::ProviderSignal,
+}
+
+/// The extension's answer to a [`ModelFetchRequest`]; `body` streams back to the host in bounded reads and is dropped when the host closes it.
+pub struct ModelFetchResponse {
+    pub status: u16,
+    pub status_text: String,
+    pub headers: Vec<(String, String)>,
+    pub body: Option<Box<dyn std::io::Read + Send>>,
+}
+
+type ModelFetchFn = Arc<dyn Fn(ModelFetchRequest) -> Result<ModelFetchResponse, String> + Send + Sync>;
+
+impl ModelStreamCallbacks {
+    pub fn new() -> Self {
+        Self::default()
+    }
+    pub fn on_payload(mut self, callback: impl Fn(serde_json::Value, &serde_json::Value) -> Result<Option<serde_json::Value>, String> + Send + Sync + 'static) -> Self {
+        self.on_payload = Some(Arc::new(callback));
+        self
+    }
+    pub fn on_response(mut self, callback: impl Fn(serde_json::Value, &serde_json::Value) -> Result<(), String> + Send + Sync + 'static) -> Self {
+        self.on_response = Some(Arc::new(callback));
+        self
+    }
+    pub fn transform_headers(mut self, callback: impl Fn(serde_json::Value, &serde_json::Value) -> Result<serde_json::Value, String> + Send + Sync + 'static) -> Self {
+        self.transform_headers = Some(Arc::new(callback));
+        self
+    }
+    /// The transport the provider request goes through (Pi's `fetch(input, init)`, which has no model argument). The host's request
+    /// reaches it with its method, URL, headers, body and signal. A response that arrives after the stream ended or after its signal was
+    /// cancelled is dropped and the fetch fails.
+    pub fn fetch(mut self, callback: impl Fn(ModelFetchRequest) -> Result<ModelFetchResponse, String> + Send + Sync + 'static) -> Self {
+        self.fetch = Some(Arc::new(callback));
+        self
+    }
+    fn is_empty(&self) -> bool {
+        self.on_payload.is_none() && self.on_response.is_none() && self.transform_headers.is_none() && self.fetch.is_none()
+    }
+}
+
+impl ModelStreamCallbacks {
+    /// Ends the stream's fetch transport, as runtime-node/model-fetch.mjs `disposeFetch` does: every fetch's signal is cancelled and the
+    /// bodies the host did not close are dropped.
+    fn dispose_fetches(&self) {
+        let entries = {
+            let mut state = self.fetches.lock().unwrap();
+            state.closed = true;
+            std::mem::take(&mut state.entries)
+        };
+        for entry in entries.into_values() {
+            entry.signal.cancel();
+        }
+    }
+}
+
+/// Serves the host's `fetch`, `fetchRead` and `fetchClose`. `cancel` is the host's request for this one callback: its cancellation
+/// cancels the fetch's signal while the fetch or a read is in progress.
+fn serve_model_fetch(callbacks: &ModelStreamCallbacks, name: &str, value: &serde_json::Value, cancel: &crate::ProviderSignal) -> Result<serde_json::Value, String> {
+    use std::io::Read;
+    let id = value.get("id").and_then(|id| id.as_str()).unwrap_or_default().to_string();
+    let forward = |signal: &crate::ProviderSignal| {
+        let signal = signal.clone();
+        cancel.subscribe(Arc::new(move || signal.cancel()))
+    };
+    match name {
+        "fetch" => {
+            let mut headers = Vec::new();
+            for (header, values) in value.get("headers").and_then(|headers| headers.as_object()).into_iter().flatten() {
+                for entry in values.as_array().into_iter().flatten().filter_map(|entry| entry.as_str()) {
+                    headers.push((header.clone(), entry.to_string()));
+                }
+            }
+            let body = match value.get("body").and_then(|body| body.as_str()) {
+                Some(encoded) => Some(crate::user_bash::base64_decode(encoded).ok_or("fetch body is not base64")?),
+                None => None,
+            };
+            let signal = crate::ProviderSignal::new();
+            {
+                let mut state = callbacks.fetches.lock().unwrap();
+                if state.closed {
+                    return Err("model fetch transport is closed".to_string());
+                }
+                state.entries.insert(id.clone(), ModelFetchEntry { signal: signal.clone(), body: None });
+            }
+            let request = ModelFetchRequest {
+                url: value.get("url").and_then(|url| url.as_str()).unwrap_or_default().to_string(),
+                method: value.get("method").and_then(|method| method.as_str()).unwrap_or_default().to_string(),
+                headers,
+                body,
+                signal: signal.clone(),
+            };
+            let subscription = forward(&signal);
+            let result = (callbacks.fetch.as_ref().unwrap())(request);
+            drop(subscription);
+            let mut state = callbacks.fetches.lock().unwrap();
+            let response = match result {
+                Ok(response) => response,
+                Err(error) => {
+                    if state.entries.get(&id).is_some_and(|entry| entry.body.is_none()) {
+                        state.entries.remove(&id);
+                    }
+                    return Err(error);
+                }
+            };
+            let closed = state.closed;
+            let aborted = closed || signal.is_cancelled();
+            let has_body = response.body.is_some();
+            if aborted || !has_body {
+                if state.entries.get(&id).is_some_and(|entry| entry.body.is_none()) {
+                    state.entries.remove(&id);
+                }
+            } else if let Some(entry) = state.entries.get_mut(&id) {
+                entry.body = response.body.map(|body| Arc::new(Mutex::new(body)));
+            }
+            drop(state);
+            if aborted {
+                return Err(if closed { "model fetch transport is closed" } else { "model fetch was cancelled" }.to_string());
+            }
+            Ok(serde_json::json!({
+                "status": response.status,
+                "statusText": response.status_text,
+                "headers": response.headers.iter().map(|(name, value)| [name, value]).collect::<Vec<_>>(),
+                "body": has_body,
+            }))
+        }
+        "fetchRead" => {
+            let (signal, body) = {
+                let state = callbacks.fetches.lock().unwrap();
+                match state.entries.get(&id) {
+                    Some(ModelFetchEntry { signal, body: Some(body) }) => (signal.clone(), body.clone()),
+                    _ => return Err(format!("unknown model fetch response {id}")),
+                }
+            };
+            let size = value.get("size").and_then(|size| size.as_u64()).unwrap_or(0) as usize;
+            if !(1..=64 * 1024).contains(&size) {
+                return Err("invalid model fetch read size".to_string());
+            }
+            let subscription = forward(&signal);
+            let mut buffer = vec![0u8; size];
+            let count = body.lock().unwrap().read(&mut buffer).map_err(|err| err.to_string());
+            drop(subscription);
+            let count = count?;
+            Ok(serde_json::json!({"data": crate::user_bash::base64(&buffer[..count]), "done": count == 0}))
+        }
+        _ => {
+            let entry = {
+                let mut state = callbacks.fetches.lock().unwrap();
+                if state.entries.get(&id).is_some_and(|entry| entry.body.is_some()) { state.entries.remove(&id) } else { None }
+            };
+            if let Some(entry) = entry {
+                entry.signal.cancel();
+            }
+            Ok(serde_json::Value::Null)
+        }
+    }
+}
+
+/// Answers the host's `model_stream_callback` request for a stream in flight.
+pub(crate) fn dispatch_model_stream_callback(streams: &ModelStreams, args: &serde_json::Value, cancel: &crate::ProviderSignal) -> Result<serde_json::Value, String> {
+    let stream_id = args.get("streamId").and_then(|value| value.as_str()).unwrap_or("");
+    let name = args.get("callback").and_then(|value| value.as_str()).unwrap_or("");
+    let value = args.get("value").cloned().unwrap_or(serde_json::Value::Null);
+    let stream = streams.lock().unwrap().get(stream_id).cloned();
+    let owned = stream.and_then(|stream| stream.callbacks.lock().unwrap().clone());
+    let Some((model, callbacks)) = owned else {
+        if name == "fetchClose" {
+            return Ok(serde_json::Value::Null); // a deferred Body.Close may follow the terminal stream event
+        }
+        return Err(format!("unknown model stream callback {stream_id}/{name}"));
+    };
+    match name {
+        "fetch" | "fetchRead" | "fetchClose" if callbacks.fetch.is_some() => serve_model_fetch(&callbacks, name, &value, cancel),
+        "onPayload" if callbacks.on_payload.is_some() => {
+            let replacement = (callbacks.on_payload.as_ref().unwrap())(value, &model)?;
+            Ok(serde_json::json!({"defined": replacement.is_some(), "value": replacement}))
+        }
+        "onResponse" if callbacks.on_response.is_some() => {
+            (callbacks.on_response.as_ref().unwrap())(value, &model)?;
+            Ok(serde_json::Value::Null)
+        }
+        "transformHeaders" if callbacks.transform_headers.is_some() => (callbacks.transform_headers.as_ref().unwrap())(value, &model),
+        _ => Err(format!("unknown model stream callback {stream_id}/{name}")),
+    }
 }
 
 impl Default for ModelEventStream {
@@ -324,6 +958,7 @@ impl ModelEventStream {
         Self {
             state: Mutex::new(ModelStreamState::default()),
             changed: Condvar::new(),
+            callbacks: Mutex::new(None),
         }
     }
     pub(crate) fn mark_started(&self,error:Option<String>){let mut state=self.state.lock().unwrap();if state.started.is_none(){state.started=Some(error.map_or(Ok(()),Err));self.changed.notify_all();}}
@@ -673,14 +1308,38 @@ impl ModelRegistry {
         request: serde_json::Value,
         options: serde_json::Value,
     ) -> Arc<ModelEventStream> {
-        self.stream_with_method(model,request,options,false)
+        self.stream_with_method(model,request,options,false,ModelStreamCallbacks::default())
     }
-    fn stream_with_method(&self,model:serde_json::Value,request:serde_json::Value,options:serde_json::Value,simple:bool)->Arc<ModelEventStream> {
+    /// `stream` with Pi's provider request callbacks (`onPayload`, `onResponse`, `transformHeaders`).
+    pub fn stream_with_callbacks(
+        &self,
+        model: serde_json::Value,
+        request: serde_json::Value,
+        options: serde_json::Value,
+        callbacks: ModelStreamCallbacks,
+    ) -> Arc<ModelEventStream> {
+        self.stream_with_method(model,request,options,false,callbacks)
+    }
+    /// `stream_simple` with Pi's provider request callbacks.
+    pub fn stream_simple_with_callbacks(
+        &self,
+        model: serde_json::Value,
+        request: serde_json::Value,
+        options: serde_json::Value,
+        callbacks: ModelStreamCallbacks,
+    ) -> Arc<ModelEventStream> {
+        self.stream_with_method(model,request,options,true,callbacks)
+    }
+    fn stream_with_method(&self,model:serde_json::Value,request:serde_json::Value,options:serde_json::Value,simple:bool,callbacks:ModelStreamCallbacks)->Arc<ModelEventStream> {
         let id = format!(
             "model-stream-{}",
             self.sequence.fetch_add(1, Ordering::Relaxed) + 1
         );
         let stream = Arc::new(ModelEventStream::new());
+        let flags = (callbacks.on_payload.is_some(), callbacks.on_response.is_some(), callbacks.transform_headers.is_some(), callbacks.fetch.is_some());
+        if !callbacks.is_empty() {
+            *stream.callbacks.lock().unwrap() = Some((model.clone(), callbacks));
+        }
         self.streams
             .lock()
             .unwrap()
@@ -702,7 +1361,15 @@ impl ModelRegistry {
                 request_parent.as_deref(),
                 (!parent.is_empty()).then_some(parent.as_str()),
                 "modelStream",
-                Some(serde_json::json!({"streamId": id, "model": model, "request": merged, "simple":simple})),
+                {
+                    let mut call = serde_json::json!({"streamId": id, "model": model, "request": merged, "simple":simple});
+                    for (set, name) in [(flags.0, "onPayload"), (flags.1, "onResponse"), (flags.2, "transformHeaders"), (flags.3, "fetch")] {
+                        if set {
+                            call[name] = serde_json::Value::Bool(true);
+                        }
+                    }
+                    Some(call)
+                },
             );
             let error = match result {
                 Err(error) => Some(error.to_string()),
@@ -712,6 +1379,10 @@ impl ModelRegistry {
                 output.push(model_stream_error_event(&error, &error_model));
             }
             streams.lock().unwrap().remove(&id);
+            // The stream's fetches end with it: their signals are cancelled and the bodies the host did not close are released.
+            if let Some((_, callbacks)) = output.callbacks.lock().unwrap().as_ref() {
+                callbacks.dispose_fetches();
+            }
         });
         stream
     }
@@ -721,7 +1392,7 @@ impl ModelRegistry {
         request: serde_json::Value,
         options: serde_json::Value,
     ) -> Arc<ModelEventStream> {
-        self.stream_with_method(model, request, options,true)
+        self.stream_with_method(model, request, options,true,ModelStreamCallbacks::default())
     }
     pub fn complete(
         &self,
@@ -756,6 +1427,7 @@ pub struct Context {
     pub(crate) cancel_reason: Arc<Mutex<Option<String>>>,
     pub(crate) overlay_seq: Arc<AtomicU64>,
     pub(crate) overlays: RemoteComponents,
+    pub(crate) editor_slot: crate::editor_component::EditorSlot,
     pub(crate) terminal_input: TerminalInputSubs,
     pub(crate) terminal_input_seq: Arc<AtomicU64>,
     pub(crate) width_change: WidthChangeSubs,
@@ -979,14 +1651,28 @@ impl Context {
 
     // ─── Read-only session state ─────────────────────────────────────────
 
-    /// Returns the working directory.
+    /// Panics with the Host's stale message once the session was replaced or reloaded, as Pi's ExtensionContext getters throw it (runner.ts:571-600). A replacement context belongs to the new session and is not stale. The handler dispatcher reports the panic as the handler's error.
+    fn assert_active(&self) {
+        if self.replacement {
+            return;
+        }
+        // Copy the message out before panicking: a panic with the guard held would poison the lock for every later read.
+        let message = self.conn.stale_message.lock().unwrap().clone();
+        if let Some(message) = message {
+            panic!("{message}");
+        }
+    }
+
+    /// Returns the working directory. Panics with the stale message after the session was replaced or reloaded.
     pub fn cwd(&self) -> &str {
+        self.assert_active();
         &self.cwd
     }
 
     /// Returns the run mode pi is operating in: "tui", "rpc", "json", or
     /// "print". Guard terminal-only UI on "tui". Defaults to "print".
     pub fn mode(&self) -> &str {
+        self.assert_active();
         if self.mode.is_empty() {
             "print"
         } else {
@@ -1007,6 +1693,7 @@ impl Context {
 
     /// Returns the current model name.
     pub fn model(&self) -> String {
+        self.assert_active();
         if self.replacement {
             // This process replicates only the requesting Session's model.
             if let Ok(info) = self.get_model_info() {
@@ -1042,6 +1729,12 @@ impl Context {
         )
     }
 
+    /// Keeps a [`crate::BashOperations`] in the extension and returns the `user_bash` reply that names it: return the value from the handler, as Pi's handler returns `{ operations }`. The host runs commands through the object until it drops it.
+    pub fn bash_operations(&self, operations: crate::BashOperations) -> serde_json::Value {
+        let handle = self.conn.bash_operations.register(operations);
+        serde_json::json!({"operations": {"handle": handle}})
+    }
+
     /// Upstream's `ctx.signal`: the cancellation of the run in progress, or `None` while no run is active. Every read during one run returns the same signal, and aborting the run cancels it, including for a handler still in flight. It is the run's, not the request's: [`Context::is_cancelled`] reports the request.
     pub fn signal(&self) -> Option<crate::provider::ProviderSignal> {
         self.conn.run_signal.lock().unwrap().as_ref().map(|(_, signal)| signal.clone())
@@ -1066,14 +1759,11 @@ impl Context {
         self.tool_call_id.as_deref()
     }
 
-    /// Returns the pig config home directory.
-    pub fn config_home(&self) -> String {
-        std::env::var("PIG_HOME")
-            .or_else(|_| std::env::var("GOPI_HOME"))
-            .unwrap_or_else(|_| {
-                let home = std::env::var("HOME").unwrap_or_default();
-                format!("{}/.pig", home)
-            })
+    /// Returns the pig config root: `PIG_HOME`, else `XDG_CONFIG_HOME/pig`, else `~/.pig`. An empty variable falls through to the next choice, a
+    /// leading `~` or `~/` expands to the home directory, and any other value stays literal. It fails, and never returns a relative path, when the
+    /// home directory is needed and cannot be found. The host's `internal/configroot` and the Go, Python and Node SDKs follow the same policy.
+    pub fn config_home(&self) -> io::Result<String> {
+        config_home_from(|name| std::env::var(name).ok())
     }
 
     pub(crate) fn call_wire(
@@ -1121,7 +1811,8 @@ impl Context {
             "prompt_guidelines": definition.prompt_guidelines, "constrained_sampling": definition.constrained_sampling,
             "execution_mode": definition.execution_mode,
             "render_shell": if definition.render_shell == crate::ToolRenderShell::SelfShell { "self" } else { "default" },
-            "renders_call": definition.render_call.is_some(), "renders_result": definition.render_result.is_some(),
+            "renders_call": definition.render_call.is_some() || definition.render_call_view.is_some(),
+            "renders_result": definition.render_result.is_some() || definition.render_result_view.is_some(),
         });
         let optional = [
             ("output_schema", definition.output_schema.clone()),
@@ -1542,7 +2233,43 @@ impl Context {
     /// [`Self::on_width_change`] handler, and the error reports only a failure
     /// to send. [`Self::set_widget_value`] waits for the host.
     pub fn set_widget(&self, key: &str, lines: Vec<String>) -> io::Result<()> {
+        self.conn.views.widgets.lock().unwrap().remove(key);
         self.conn.push_widget(key, lines)
+    }
+
+    /// Sets a widget to a kit view (D107), which the host renders at the
+    /// widget's width; the subprocess form of Pi's `setWidget(key, factory)`
+    /// for a tree of Pi's components. With no options it goes out as a
+    /// `widget_push` frame, which the host never answers, as
+    /// [`Self::set_widget`] does; with options (upstream
+    /// `ExtensionWidgetOptions`) it waits for the host.
+    pub fn set_widget_view(
+        &self,
+        key: &str,
+        view: crate::kit::View,
+        options: Option<serde_json::Value>,
+    ) -> io::Result<()> {
+        let encoded = self.conn.views.encode(&view).map_err(io::Error::other)?;
+        // Held across the send, so an eviction's resend and this frame keep their order.
+        let mut widgets = self.conn.views.widgets.lock().unwrap();
+        let wire = self.conn.views.wire(&encoded);
+        widgets.insert(key.to_string(), (encoded, options.clone()));
+        self.send_widget_view(key, wire, options)
+    }
+
+    fn send_widget_view(
+        &self,
+        key: &str,
+        view: serde_json::Value,
+        options: Option<serde_json::Value>,
+    ) -> io::Result<()> {
+        match options {
+            None => self.conn.push_widget_view(key, view),
+            Some(options) => call_result_to_io(self.call_wire(
+                "ui.setWidget",
+                Some(serde_json::json!({"key": key, "view": view, "options": options})),
+            )?),
+        }
     }
 
     /// Set or clear a widget using the full host-call shape.
@@ -1552,6 +2279,7 @@ impl Context {
         content: serde_json::Value,
         options: Option<serde_json::Value>,
     ) -> io::Result<()> {
+        self.conn.views.widgets.lock().unwrap().remove(key);
         call_result_to_io(self.call_wire("ui.setWidget", Some(serde_json::json!({"key": key, "content": content, "options": options.unwrap_or_default()})))?)
     }
 
@@ -1582,8 +2310,26 @@ impl Context {
         self.set_surface("ui.setHeader", None)
     }
 
-    /// Clear a custom editor component. Passing live component factories is intentionally unsupported by the subprocess bridge.
+    /// Install an editor in place of the host's, as Pi's `ctx.ui.setEditorComponent` does. The factory receives
+    /// the host's default editor, the component's `super`; see [`crate::EditorComponent`]. With no UI, or in RPC mode,
+    /// it is ignored, as in Pi.
+    pub fn set_editor_component(
+        &self,
+        factory: impl FnOnce(crate::EditorBase) -> Box<dyn crate::EditorComponent> + Send + 'static,
+    ) -> io::Result<()> {
+        // upstream: modes/rpc/rpc-mode.ts setEditorComponent is a no-op, so the factory never runs there.
+        if !self.has_ui() || self.mode() == "rpc" {
+            return Ok(());
+        }
+        let seq = self.overlay_seq.fetch_add(1, Ordering::Relaxed) + 1;
+        crate::editor_component::install_editor(&self.conn, &self.editor_slot, &self.shared_width, seq, Box::new(factory))
+    }
+
+    /// Restore the host's editor.
     pub fn clear_editor_component(&self) -> io::Result<()> {
+        if let Some(previous) = self.editor_slot.lock().unwrap().take() {
+            previous.close();
+        }
         call_result_to_io(self.call_wire(
             "ui.setEditorComponent",
             Some(serde_json::json!({"clear": true})),
@@ -1607,6 +2353,47 @@ impl Context {
         component: impl RemoteComponent + 'static,
         options: serde_json::Value,
     ) -> io::Result<Option<serde_json::Value>> {
+        self.open_overlay(OverlayComponent::Lines(Box::new(component)), options)
+    }
+
+    /// Open a focused component whose frames are kit views (D107), which the
+    /// host renders: [`Self::custom_component`] for a [`ViewComponent`]. The
+    /// host owns the state of the view's lists; their callbacks reach
+    /// [`ViewComponent::handle_view_event`] in order with the input. With no
+    /// UI, returns None without invoking component callbacks.
+    pub fn custom_view(
+        &self,
+        component: impl ViewComponent + 'static,
+        options: serde_json::Value,
+    ) -> io::Result<Option<serde_json::Value>> {
+        self.open_overlay(OverlayComponent::View(Box::new(component)), options)
+    }
+
+    /// [`Self::custom_component`] with Pi's `onHandle`: `on_handle` receives the mounted overlay's [`OverlayHandle`] (the options must set
+    /// `"overlay": true`).
+    pub fn custom_component_with_handle(
+        &self,
+        component: impl RemoteComponent + 'static,
+        options: serde_json::Value,
+        on_handle: impl Fn(OverlayHandle) + Send + Sync + 'static,
+    ) -> io::Result<Option<serde_json::Value>> {
+        self.open_overlay_with_handle(OverlayComponent::Lines(Box::new(component)), options, Some(Arc::new(on_handle)))
+    }
+
+    fn open_overlay(
+        &self,
+        component: OverlayComponent,
+        options: serde_json::Value,
+    ) -> io::Result<Option<serde_json::Value>> {
+        self.open_overlay_with_handle(component, options, None)
+    }
+
+    fn open_overlay_with_handle(
+        &self,
+        component: OverlayComponent,
+        options: serde_json::Value,
+        on_handle: Option<OnHandleFn>,
+    ) -> io::Result<Option<serde_json::Value>> {
         if !self.has_ui() {
             return Ok(None);
         }
@@ -1626,15 +2413,24 @@ impl Context {
         let (events_tx, events_rx) = sync_channel(64);
         let overlay: RemoteComponentRef = Arc::new(RemoteOverlay {
             state: Mutex::new(RemoteComponentState {
-                component: Box::new(component),
+                component,
                 last_lines: Vec::new(),
+                last_view: None,
                 seq: 0,
                 last_render: None,
+                layout: overlay_render_layout(&args),
             }),
             events: events_tx,
             active: AtomicBool::new(true),
             render_pending: AtomicBool::new(false),
+            view_refs: Mutex::new(Vec::new()),
+            force_view: AtomicBool::new(false),
+            on_handle: Mutex::new(on_handle.filter(|_| args.get("overlay") == Some(&serde_json::Value::Bool(true)))),
+            handle_state: Mutex::new(OverlayState::default()),
         });
+        if overlay.on_handle.lock().unwrap().is_some() {
+            args.insert("hasHandle".to_string(), serde_json::Value::Bool(true));
+        }
         let weak_overlay = Arc::downgrade(&overlay);
         let attach_result = catch_unwind(AssertUnwindSafe(|| {
             overlay
@@ -1679,6 +2475,8 @@ impl Context {
             let worker_key = key.clone();
             let worker_overlay = overlay.clone();
             let width = self.shared_width.clone();
+            let worker_request_parent = self.request_parent.clone();
+            let worker_request_id = self.request_id.clone();
             thread::Builder::new()
                 .name(format!("pig-overlay-{key}"))
                 .spawn(move || {
@@ -1689,6 +2487,8 @@ impl Context {
                         width,
                         events_rx,
                         worker_done_tx,
+                        worker_request_parent,
+                        worker_request_id,
                     )
                 })
         };
@@ -1959,7 +2759,7 @@ impl Context {
     }
 
     /// Get the base inputs pi currently uses to build the system prompt
-    /// (customPrompt, selectedTools, toolSnippets, promptGuidelines,
+    /// (customPrompt, selectedTools, hiddenTools, toolSnippets, promptGuidelines,
     /// appendSystemPrompt, cwd, contextFiles, skills). Reports current
     /// base inputs only, not per-turn before_agent_start changes. May
     /// include full context-file contents; treat as sensitive.
@@ -2513,6 +3313,20 @@ impl Context {
         self.set_surface("ui.setHeader", Some(lines))
     }
 
+    /// Replaces the footer with a kit view (D107), which the host renders at
+    /// its width every frame, as Pi renders a footer component. It replaces
+    /// any footer rows or renderer; [`Self::clear_footer`] restores the
+    /// default.
+    pub fn set_footer_view(&self, view: crate::kit::View) -> io::Result<()> {
+        self.set_surface_view("ui.setFooter", view)
+    }
+
+    /// Replaces the header with a kit view (D107), as
+    /// [`Self::set_footer_view`] does for the footer.
+    pub fn set_header_view(&self, view: crate::kit::View) -> io::Result<()> {
+        self.set_surface_view("ui.setHeader", view)
+    }
+
     /// Installs a footer that `render` lays out at the host's terminal width,
     /// the subprocess form of the component factory Pi's `ctx.ui.setFooter`
     /// takes. The SDK renders at the width the host reports and again after
@@ -2538,6 +3352,7 @@ impl Context {
 
     /// Upstream `ctx.hasUI`, from the host's replicated state.
     pub fn has_ui(&self) -> bool {
+        self.assert_active();
         self.shared_ui.lock().unwrap().has_ui
     }
 
@@ -2609,6 +3424,58 @@ pub fn message_role(data: &serde_json::Value) -> Option<String> {
         .get("role")?
         .as_str()
         .map(str::to_owned)
+}
+
+fn tool_result_named(data: &serde_json::Value, name: &str) -> bool {
+    data.get("toolName").and_then(serde_json::Value::as_str) == Some(name)
+}
+
+/// Whether a `tool_result` event is the result of the bash tool (Pi core/extensions/types.ts:1315
+/// `isBashToolResult`, `e.toolName === "bash"`). A payload without a string `toolName` is the result of no built-in tool.
+pub fn is_bash_tool_result(data: &serde_json::Value) -> bool {
+    tool_result_named(data, "bash")
+}
+
+/// Whether a `tool_result` event is the result of the powershell tool (Pi core/extensions/types.ts:1318
+/// `isPowerShellToolResult`, `e.toolName === "powershell"`). A payload without a string `toolName` is the result of no built-in tool.
+pub fn is_powershell_tool_result(data: &serde_json::Value) -> bool {
+    tool_result_named(data, "powershell")
+}
+
+/// Whether a `tool_result` event is the result of the read tool (Pi core/extensions/types.ts:1321
+/// `isReadToolResult`, `e.toolName === "read"`). A payload without a string `toolName` is the result of no built-in tool.
+pub fn is_read_tool_result(data: &serde_json::Value) -> bool {
+    tool_result_named(data, "read")
+}
+
+/// Whether a `tool_result` event is the result of the edit tool (Pi core/extensions/types.ts:1324
+/// `isEditToolResult`, `e.toolName === "edit"`). A payload without a string `toolName` is the result of no built-in tool.
+pub fn is_edit_tool_result(data: &serde_json::Value) -> bool {
+    tool_result_named(data, "edit")
+}
+
+/// Whether a `tool_result` event is the result of the write tool (Pi core/extensions/types.ts:1327
+/// `isWriteToolResult`, `e.toolName === "write"`). A payload without a string `toolName` is the result of no built-in tool.
+pub fn is_write_tool_result(data: &serde_json::Value) -> bool {
+    tool_result_named(data, "write")
+}
+
+/// Whether a `tool_result` event is the result of the grep tool (Pi core/extensions/types.ts:1330
+/// `isGrepToolResult`, `e.toolName === "grep"`). A payload without a string `toolName` is the result of no built-in tool.
+pub fn is_grep_tool_result(data: &serde_json::Value) -> bool {
+    tool_result_named(data, "grep")
+}
+
+/// Whether a `tool_result` event is the result of the find tool (Pi core/extensions/types.ts:1333
+/// `isFindToolResult`, `e.toolName === "find"`). A payload without a string `toolName` is the result of no built-in tool.
+pub fn is_find_tool_result(data: &serde_json::Value) -> bool {
+    tool_result_named(data, "find")
+}
+
+/// Whether a `tool_result` event is the result of the ls tool (Pi core/extensions/types.ts:1336
+/// `isLsToolResult`, `e.toolName === "ls"`). A payload without a string `toolName` is the result of no built-in tool.
+pub fn is_ls_tool_result(data: &serde_json::Value) -> bool {
+    tool_result_named(data, "ls")
 }
 
 /// Concatenated text blocks of an event's message payload. Non-text blocks
@@ -2957,6 +3824,7 @@ impl SurfaceRenderer {
 impl Context {
     /// Retires the renderer installed for `method` and installs `next`.
     fn replace_surface(&self, method: &'static str, next: Option<Arc<SurfaceRenderer>>) {
+        self.conn.views.surfaces.lock().unwrap().remove(method);
         let previous = {
             let mut surfaces = self.surfaces.lock().unwrap();
             let previous = match &next {
@@ -2978,6 +3846,50 @@ impl Context {
             None => serde_json::json!({"clear": true}),
         };
         call_result_to_io(self.call_wire(method, Some(args))?)
+    }
+
+    /// Installs an authoritative view: no rows and no width, since the host
+    /// renders it at its own width (D107).
+    fn set_surface_view(&self, method: &'static str, view: crate::kit::View) -> io::Result<()> {
+        let encoded = self.conn.views.encode(&view).map_err(io::Error::other)?;
+        self.replace_surface(method, None);
+        // Held across the send, so an eviction's resend and this frame keep their order.
+        let mut surfaces = self.conn.views.surfaces.lock().unwrap();
+        let wire = self.conn.views.wire(&encoded);
+        surfaces.insert(method, encoded);
+        call_result_to_io(self.call_wire(method, Some(serde_json::json!({"view": wire})))?)
+    }
+
+    /// Handles `ui.view.evicted`: forgets the refs, and sends again, with the
+    /// image data, the latest frame of every live surface that names one.
+    /// Called on the thread that reads host frames, so the widget, header and
+    /// footer sends, which may wait for the host, run on a thread of their
+    /// own, each holding its registry so a newer frame the author sends goes
+    /// out after it.
+    pub(crate) fn resend_evicted_views(&self, refs: std::collections::HashSet<String>) {
+        self.conn.views.forget(&refs);
+        let overlays: Vec<_> = self.overlays.lock().unwrap().values().cloned().collect();
+        for overlay in overlays {
+            overlay.resend_if_references(&refs);
+        }
+        let ctx = self.clone();
+        thread::spawn(move || {
+            let views = &ctx.conn.views;
+            {
+                let widgets = views.widgets.lock().unwrap();
+                for (key, (encoded, options)) in widgets.iter() {
+                    if encoded.references(&refs) {
+                        let _ = ctx.send_widget_view(key, views.wire(encoded), options.clone());
+                    }
+                }
+            }
+            let surfaces = views.surfaces.lock().unwrap();
+            for (method, encoded) in surfaces.iter() {
+                if encoded.references(&refs) {
+                    let _ = ctx.call_wire(method, Some(serde_json::json!({"view": views.wire(encoded)})));
+                }
+            }
+        });
     }
 
     fn set_surface_renderer<F>(&self, method: &'static str, render: Option<F>) -> io::Result<()>
@@ -3073,6 +3985,109 @@ impl Context {
     }
 }
 
+/// The config root policy over an environment lookup; `get` returns `None` for an unset variable.
+fn config_home_from(get: impl Fn(&str) -> Option<String>) -> io::Result<String> {
+    let var = |name: &str| get(name).filter(|value| !value.is_empty());
+    let home = || {
+        var(if cfg!(windows) { "USERPROFILE" } else { "HOME" }).ok_or_else(|| {
+            io::Error::new(io::ErrorKind::NotFound, "locate home directory: home environment variable is not defined")
+        })
+    };
+    let expand = |path: String| -> io::Result<String> {
+        if path == "~" {
+            return home();
+        }
+        match path.strip_prefix("~/") {
+            Some(rest) => Ok(join_clean(&home()?, rest)),
+            None => Ok(path),
+        }
+    };
+    if let Some(root) = var("PIG_HOME") {
+        return expand(root);
+    }
+    if let Some(root) = var("XDG_CONFIG_HOME") {
+        return Ok(join_clean(&expand(root)?, "pig"));
+    }
+    Ok(join_clean(&home()?, ".pig"))
+}
+
+/// Go's `filepath.Join(base, rest)` as the host's `internal/configroot` uses it: the elements joined by the separator, then lexically cleaned
+/// (repeated and trailing separators and `.` dropped, `name/..` removed, `..` at the root dropped). `Path::join` would instead replace `base` when
+/// `rest` is absolute (`~//p` must stay under the home directory) and keep `..`.
+fn join_clean(base: &str, rest: &str) -> String {
+    use std::path::{Component, Path, PathBuf};
+    let joined = format!("{base}{}{rest}", std::path::MAIN_SEPARATOR);
+    let mut out: Vec<Component> = Vec::new();
+    for component in Path::new(&joined).components() {
+        match component {
+            Component::CurDir => {}
+            Component::ParentDir => match out.last() {
+                Some(Component::Normal(_)) => {
+                    out.pop();
+                }
+                Some(Component::RootDir) => {}
+                _ => out.push(component),
+            },
+            _ => out.push(component),
+        }
+    }
+    if out.is_empty() {
+        return ".".to_string();
+    }
+    out.iter().collect::<PathBuf>().to_string_lossy().into_owned()
+}
+
+#[cfg(test)]
+mod config_home_tests {
+    use super::config_home_from;
+    use serde_json::Value;
+    use std::collections::HashMap;
+
+    fn matrix() -> Vec<Value> {
+        let path = concat!(env!("CARGO_MANIFEST_DIR"), "/../../test/extension-conformance/testdata/configroot-matrix.json");
+        let doc: Value = serde_json::from_str(&std::fs::read_to_string(path).unwrap()).unwrap();
+        doc["cases"].as_array().unwrap().clone()
+    }
+
+    fn home_key() -> &'static str {
+        if cfg!(windows) { "USERPROFILE" } else { "HOME" }
+    }
+
+    // The shared env matrix (test/extension-conformance/testdata/configroot-matrix.json): the same answers as the host and the Go, Python and Node SDKs.
+    #[test]
+    fn config_home_matches_the_shared_matrix() {
+        let cases = matrix();
+        assert!(!cases.is_empty());
+        for case in cases {
+            let name = case["name"].as_str().unwrap();
+            let mut env: HashMap<String, String> = HashMap::new();
+            env.insert(home_key().to_string(), "/home/probe".to_string());
+            for (key, value) in case["env"].as_object().unwrap() {
+                let key = if key == "HOME" { home_key() } else { key.as_str() };
+                match value.as_str() {
+                    Some(value) => env.insert(key.to_string(), value.to_string()),
+                    None => env.remove(key),
+                };
+            }
+            let got = config_home_from(|key| env.get(key).cloned());
+            match case["want"].as_str() {
+                None => assert!(got.is_err(), "{name}: got {got:?}, want an error"),
+                Some(want) => assert_eq!(got.unwrap(), want.replace("<HOME>", "/home/probe"), "{name}"),
+            }
+        }
+    }
+
+    // Prints the getter's answer under the process environment, for test/extension-conformance's cross-language comparison.
+    #[test]
+    #[ignore = "driven by the cross-language comparison, which sets the environment"]
+    fn probe_config_home() {
+        match super::config_home_from(|name| std::env::var(name).ok()) {
+            Ok(path) => println!("CONFIG_HOME_OK={path}"),
+            Err(error) => println!("CONFIG_HOME_ERR={error}"),
+        }
+    }
+}
+
 #[cfg(test)]
 mod width_change_tests {
     use super::*;
@@ -3110,6 +4125,7 @@ mod width_change_tests {
             cancel_reason: Arc::new(Mutex::new(None)),
             overlay_seq: Arc::new(AtomicU64::new(0)),
             overlays: Arc::new(Mutex::new(Default::default())),
+            editor_slot: Arc::new(Mutex::new(None)),
             terminal_input: Arc::new(Mutex::new(Vec::new())),
             terminal_input_seq: Arc::new(AtomicU64::new(0)),
             width_change: subs,
@@ -3220,6 +4236,7 @@ mod login_call_tests {
             cancel_reason: Arc::new(Mutex::new(None)),
             overlay_seq: Arc::new(AtomicU64::new(0)),
             overlays: Arc::new(Mutex::new(Default::default())),
+            editor_slot: Arc::new(Mutex::new(None)),
             terminal_input: Arc::new(Mutex::new(Vec::new())),
             terminal_input_seq: Arc::new(AtomicU64::new(0)),
             width_change: Arc::new(Mutex::new(Vec::new())),
@@ -3231,6 +4248,38 @@ mod login_call_tests {
             surfaces: Arc::new(Mutex::new(HashMap::new())),
             replacement: false,
         })
+    }
+
+    // runner.ts:571-600 throws the stale message from cwd, mode, hasUI and model once the runtime is invalidated; the first message wins (runner.ts:725-727).
+    #[test]
+    fn local_members_panic_with_the_stale_message_after_invalidate() {
+        let (extension_stream, _host_stream) = UnixStream::pair().unwrap();
+        let mut ctx = Arc::try_unwrap(context(extension_stream)).ok().unwrap();
+        ctx.cwd = "/work".into();
+        ctx.mode = "tui".into();
+        *ctx.shared_model.lock().unwrap() = "m".into();
+        ctx.shared_ui.lock().unwrap().has_ui = true;
+        assert_eq!((ctx.cwd(), ctx.mode(), ctx.model().as_str(), ctx.has_ui()), ("/work", "tui", "m", true));
+        const STALE: &str = "This extension ctx is stale after session replacement or reload.";
+        ctx.conn.apply_invalidate(&serde_json::json!({ "message": STALE }));
+        ctx.conn.apply_invalidate(&serde_json::json!({ "message": "second" }));
+        let reads: [(&str, Box<dyn Fn() + '_>); 4] = [
+            ("cwd", Box::new(|| drop(ctx.cwd()))),
+            ("mode", Box::new(|| drop(ctx.mode()))),
+            ("model", Box::new(|| drop(ctx.model()))),
+            ("has_ui", Box::new(|| drop(ctx.has_ui()))),
+        ];
+        for (name, read) in reads {
+            let panic = std::panic::catch_unwind(std::panic::AssertUnwindSafe(read)).expect_err(name);
+            let message = panic.downcast_ref::<String>().cloned().or_else(|| panic.downcast_ref::<&str>().map(|s| s.to_string()));
+            assert_eq!(message.as_deref(), Some(STALE), "{name}");
+        }
+        // A replacement context belongs to the new session.
+        let mut replacement = Arc::try_unwrap(context(UnixStream::pair().unwrap().0)).ok().unwrap();
+        replacement.replacement = true;
+        replacement.conn.apply_invalidate(&serde_json::json!({ "message": STALE }));
+        replacement.cwd = "/new".into();
+        assert_eq!(replacement.cwd(), "/new");
     }
 
     // Pi's loader appends a resolver registered after loading; the host learns the extension's new resolver count
@@ -3479,6 +4528,7 @@ mod sdk_surface_call_tests {
             cancel_reason: Arc::new(Mutex::new(None)),
             overlay_seq: Arc::new(AtomicU64::new(0)),
             overlays: Arc::new(Mutex::new(Default::default())),
+            editor_slot: Arc::new(Mutex::new(None)),
             terminal_input: Arc::new(Mutex::new(Vec::new())),
             terminal_input_seq: Arc::new(AtomicU64::new(0)),
             width_change: Arc::new(Mutex::new(Vec::new())),
@@ -3774,5 +4824,191 @@ mod sdk_surface_call_tests {
         let (entries, branch) = caller.join().unwrap();
         assert!(entries.unwrap_err().to_string().contains("boom"));
         assert!(branch.unwrap_err().to_string().contains("boom"), "the second read must report the same failure without a second call");
+    }
+}
+
+#[cfg(test)]
+mod overlay_width_tests {
+    use super::{overlay_render_layout, resolve_overlay_width};
+    use serde_json::json;
+
+    /// A focused overlay component renders at the width Pi's `TUI.resolveOverlayLayout` resolves (tui.ts:1212-1233); the
+    /// table matches the Node runtime's (runtime_node_overlay_sizing_test.go). Inline components and the legacy titled
+    /// modal render at the terminal width.
+    #[test]
+    fn overlay_render_width_follows_upstream_layout() {
+        let cases = [
+            ("default", json!({"overlay": true}), 80),
+            ("empty layout", json!({"overlay": true, "overlayOptions": {}}), 80),
+            ("percent width", json!({"overlay": true, "overlayOptions": {"width": "75%", "maxHeight": "95%", "margin": {"top": 1}}}), 90),
+            ("minWidth clamped after margins", json!({"overlay": true, "overlayOptions": {"width": 20, "minWidth": 200, "margin": 2}}), 116),
+            ("percentage before margin", json!({"overlay": true, "overlayOptions": {"width": "50%", "margin": {"left": 10, "right": 10}}}), 60),
+            ("zero width", json!({"overlay": true, "overlayOptions": {"width": 0}}), 1),
+            ("invalid width", json!({"overlay": true, "overlayOptions": {"width": "oops"}}), 80),
+            ("legacy titled modal", json!({"overlay": true, "title": "Picker"}), 120),
+            ("titled overlay with layout", json!({"overlay": true, "title": "Picker", "overlayOptions": {"width": 30}}), 30),
+            ("inline", json!({}), 120),
+        ];
+        for (name, options, want) in cases {
+            let layout = overlay_render_layout(options.as_object().unwrap());
+            let got = layout.as_ref().map_or(120, |layout| resolve_overlay_width(layout, 120));
+            assert_eq!(got, want, "{name}");
+        }
+    }
+}
+
+// The reference is runtime-node/model-fetch.mjs (Pi's ProviderRequestOptions.fetch, packages/ai/src/types.ts): the fetch's init.signal is
+// cancelled when the host cancels the fetch callback or a fetchRead, when the host closes the response, and when the stream ends; a
+// response that arrives after the stream ended is dropped and the fetch fails.
+#[cfg(test)]
+mod model_fetch_tests {
+    use super::*;
+    use std::sync::mpsc::channel;
+
+    fn call(id: &str) -> serde_json::Value {
+        serde_json::json!({"id": id, "url": "https://fetch.invalid/v1", "method": "POST", "headers": {"X-Host": ["1"]}, "body": crate::user_bash::base64(b"ping")})
+    }
+
+    fn response(body: impl std::io::Read + Send + 'static) -> ModelFetchResponse {
+        ModelFetchResponse { status: 200, status_text: String::new(), headers: Vec::new(), body: Some(Box::new(body)) }
+    }
+
+    /// A body whose read blocks until its signal is cancelled; drop reports itself.
+    struct SignalledBody(crate::ProviderSignal, Option<std::sync::mpsc::Sender<()>>, Option<std::sync::mpsc::Sender<()>>);
+    impl std::io::Read for SignalledBody {
+        fn read(&mut self, _: &mut [u8]) -> std::io::Result<usize> {
+            if let Some(reading) = self.2.take() {
+                let _ = reading.send(());
+            }
+            self.0.wait();
+            Err(std::io::Error::new(std::io::ErrorKind::Interrupted, "read cancelled"))
+        }
+    }
+    impl Drop for SignalledBody {
+        fn drop(&mut self) {
+            if let Some(dropped) = self.1.take() {
+                let _ = dropped.send(());
+            }
+        }
+    }
+
+    #[test]
+    fn fetch_has_no_model_argument_and_streams_the_body() {
+        let seen = Arc::new(Mutex::new(None));
+        let recorded = seen.clone();
+        let callbacks = ModelStreamCallbacks::new().fetch(move |request| {
+            *recorded.lock().unwrap() = Some((request.url, request.method, request.headers, request.body));
+            Ok(response(std::io::Cursor::new(b"abc".to_vec())))
+        });
+        let none = crate::ProviderSignal::new();
+        let answer = serve_model_fetch(&callbacks, "fetch", &call("1"), &none).unwrap();
+        assert_eq!(answer["body"], true);
+        assert_eq!(*seen.lock().unwrap(), Some(("https://fetch.invalid/v1".to_string(), "POST".to_string(), vec![("X-Host".to_string(), "1".to_string())], Some(b"ping".to_vec()))));
+        let read = serve_model_fetch(&callbacks, "fetchRead", &serde_json::json!({"id": "1", "size": 2}), &none).unwrap();
+        assert_eq!(read, serde_json::json!({"data": crate::user_bash::base64(b"ab"), "done": false}));
+        assert_eq!(serve_model_fetch(&callbacks, "fetchRead", &serde_json::json!({"id": "1", "size": 65537}), &none).unwrap_err(), "invalid model fetch read size");
+    }
+
+    #[test]
+    fn host_cancellation_of_the_fetch_cancels_its_signal() {
+        let cancel = crate::ProviderSignal::new();
+        let host = cancel.clone();
+        let callbacks = ModelStreamCallbacks::new().fetch(move |request| {
+            host.cancel(); // the host cancels the fetch callback while the fetch runs
+            assert!(request.signal.is_cancelled(), "the fetch's signal was not cancelled");
+            Err("aborted".to_string())
+        });
+        assert_eq!(serve_model_fetch(&callbacks, "fetch", &call("1"), &cancel).unwrap_err(), "aborted");
+        assert!(callbacks.fetches.lock().unwrap().entries.is_empty());
+    }
+
+    #[test]
+    fn host_cancellation_of_a_read_cancels_the_fetch_signal() {
+        let callbacks = ModelStreamCallbacks::new().fetch(|request| Ok(response(SignalledBody(request.signal.clone(), None, None))));
+        serve_model_fetch(&callbacks, "fetch", &call("1"), &crate::ProviderSignal::new()).unwrap();
+        let cancel = crate::ProviderSignal::new();
+        cancel.cancel();
+        assert_eq!(serve_model_fetch(&callbacks, "fetchRead", &serde_json::json!({"id": "1", "size": 4}), &cancel).unwrap_err(), "read cancelled");
+    }
+
+    #[test]
+    fn a_blocked_read_does_not_block_closing_another_response() {
+        let (reading_tx, reading) = channel();
+        let reading_tx = Mutex::new(Some(reading_tx));
+        let callbacks = ModelStreamCallbacks::new().fetch(move |request| Ok(response(SignalledBody(request.signal.clone(), None, reading_tx.lock().unwrap().take()))));
+        let none = crate::ProviderSignal::new();
+        serve_model_fetch(&callbacks, "fetch", &call("1"), &none).unwrap();
+        serve_model_fetch(&callbacks, "fetch", &call("2"), &none).unwrap();
+        let reader = callbacks.clone();
+        let (done, read) = channel();
+        let worker = thread::spawn(move || {
+            let _ = done.send(serve_model_fetch(&reader, "fetchRead", &serde_json::json!({"id": "1", "size": 4}), &crate::ProviderSignal::new()));
+        });
+        reading.recv_timeout(Duration::from_secs(10)).unwrap();
+        // Closing response 2 while response 1's read blocks must not wait for that read.
+        serve_model_fetch(&callbacks, "fetchClose", &serde_json::json!({"id": "2"}), &none).unwrap();
+        assert!(read.try_recv().is_err(), "the read of response 1 ended early");
+        serve_model_fetch(&callbacks, "fetchClose", &serde_json::json!({"id": "1"}), &none).unwrap();
+        assert_eq!(read.recv_timeout(Duration::from_secs(10)).unwrap().unwrap_err(), "read cancelled");
+        worker.join().unwrap();
+    }
+
+    #[test]
+    fn stream_end_cancels_a_fetch_in_flight_and_drops_its_late_body() {
+        let (started_tx, started) = channel();
+        let (release_tx, release) = channel::<()>();
+        let release = Mutex::new(release);
+        let (dropped_tx, dropped) = channel();
+        let dropped_tx = Mutex::new(Some(dropped_tx));
+        let seen = Arc::new(Mutex::new(None));
+        let recorded = seen.clone();
+        let callbacks = ModelStreamCallbacks::new().fetch(move |request| {
+            *recorded.lock().unwrap() = Some(request.signal.clone());
+            started_tx.send(()).unwrap();
+            release.lock().unwrap().recv().unwrap(); // a fetch that ignores its signal and answers after the stream ended
+            Ok(response(SignalledBody(crate::ProviderSignal::new(), dropped_tx.lock().unwrap().take(), None)))
+        });
+        let fetcher = callbacks.clone();
+        let worker = thread::spawn(move || serve_model_fetch(&fetcher, "fetch", &call("1"), &crate::ProviderSignal::new()));
+        started.recv_timeout(Duration::from_secs(10)).unwrap();
+        callbacks.dispose_fetches();
+        assert!(seen.lock().unwrap().as_ref().unwrap().is_cancelled(), "the stream ended and the fetch's signal is not cancelled");
+        release_tx.send(()).unwrap();
+        assert_eq!(worker.join().unwrap().unwrap_err(), "model fetch transport is closed");
+        dropped.recv_timeout(Duration::from_secs(10)).expect("the late body is retained");
+        assert!(callbacks.fetches.lock().unwrap().entries.is_empty());
+        assert_eq!(serve_model_fetch(&callbacks, "fetch", &call("2"), &crate::ProviderSignal::new()).unwrap_err(), "model fetch transport is closed");
+    }
+}
+
+#[cfg(test)]
+mod tool_result_guard_tests {
+    use super::*;
+    use serde_json::json;
+
+    /// Pi core/extensions/types.ts:1315-1338: each tool_result guard is `e.toolName === "<tool>"`.
+    #[test]
+    fn each_guard_is_true_for_its_own_tool_only() {
+        let guards: [(&str, fn(&serde_json::Value) -> bool); 8] = [
+            ("bash", is_bash_tool_result),
+            ("powershell", is_powershell_tool_result),
+            ("read", is_read_tool_result),
+            ("edit", is_edit_tool_result),
+            ("write", is_write_tool_result),
+            ("grep", is_grep_tool_result),
+            ("find", is_find_tool_result),
+            ("ls", is_ls_tool_result),
+        ];
+        for (tool, _) in guards {
+            let event = json!({"type": "tool_result", "toolName": tool});
+            for (other, guard) in guards {
+                assert_eq!(guard(&event), other == tool, "guard {other} on a {tool} result");
+            }
+        }
+        for (other, guard) in guards {
+            for payload in [json!({"toolName": "my-tool"}), json!({"type": "tool_result"}), json!({"toolName": 7}), json!(null)] {
+                assert!(!guard(&payload), "guard {other} accepted {payload}");
+            }
+        }
     }
 }

@@ -36,6 +36,23 @@ type TelemetryContext interface {
 	StartSpan(SpanOptions, func(TelemetrySpan) error) error
 }
 
+// StartSpan starts a span from telemetryContext and returns the callback's result, as upstream startSpan<T> resolves to it. A rejected
+// callback returns its error and the zero value. Go interface methods cannot be generic, so the typed result travels through this
+// function over TelemetryContext.StartSpan.
+func StartSpan[T any](telemetryContext TelemetryContext, options SpanOptions, callback func(TelemetrySpan) (T, error)) (T, error) {
+	var result T
+	err := telemetryContext.StartSpan(options, func(span TelemetrySpan) error {
+		value, err := callback(span)
+		result = value
+		return err
+	})
+	if err != nil {
+		var zero T
+		return zero, err
+	}
+	return result, nil
+}
+
 // TelemetrySpan records attributes, events and status while active.
 type TelemetrySpan interface {
 	TelemetryContext

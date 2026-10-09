@@ -4,7 +4,7 @@ import { resolve, join } from "node:path";
 import { pathToFileURL } from "node:url";
 
 const root = process.env.PI_PACKAGE_ROOT ?? resolve("extensions/sdk-ts/node_modules/@earendil-works/pi-coding-agent");
-assert.equal(JSON.parse(readFileSync(join(root, "package.json"), "utf8")).version, "1.0.3");
+assert.equal(JSON.parse(readFileSync(join(root, "package.json"), "utf8")).version, "1.1.0");
 const { createBashTool, createLocalShellOperations } = await import(pathToFileURL(join(root,"dist/core/tools/bash.js")));
 const tool = createBashTool(process.cwd(),{operations:createLocalShellOperations("bash",()=>({shell:"/nonexistent-shell-path-xyz123",args:["-c"]}))});
 let failure;

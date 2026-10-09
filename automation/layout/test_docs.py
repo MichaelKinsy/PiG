@@ -1,4 +1,3 @@
-# SPDX-FileCopyrightText: Copyright Hewlett Packard Enterprise Development LP
 # SPDX-License-Identifier: MIT
 """Behavior tests for the docs codemod; no Pi runtime or workflow-YAML assertions."""
 
@@ -205,11 +204,11 @@ class DocsTests(unittest.TestCase):
         self.assertEqual(self.snapshot(), before)
 
     def test_reviewed_format_records_remain_sorted_after_path_moves(self):
-        self.put("parity/format-versions.toml", '[[fields]]\nid = "ai/auth.go#Version"\npath = "ai/auth.go"\nclassification = "upstream"\nrationale = "Pi ai/auth/oauth/github-copilot.ts owns this."\n\n[[fields]]\nid = "cmd/pig/main.go#Version"\npath = "cmd/pig/main.go"\nclassification = "release-content"\nrationale = "Release identity."\n')
+        self.put("parity/format-versions.toml", '[[fields]]\nid = "ai/auth.go#Version"\npath = "ai/auth.go"\nclassification = "upstream"\nrationale = "Pi ai/auth/oauth/github-copilot.ts owns this."\n\n[[fields]]\nid = "coding/cli/main.go#Version"\npath = "coding/cli/main.go"\nclassification = "release-content"\nrationale = "Release identity."\n')
         self.git("add", "parity/format-versions.toml")
         docs.apply(self.root)
         result = self.read("parity/format-versions.toml")
-        self.assertLess(result.index("cmd/pig/main.go#Version"), result.index("internal/ai/auth.go#Version"))
+        self.assertLess(result.index("coding/cli/main.go#Version"), result.index("internal/ai/auth.go#Version"))
         self.assertIn('rationale = "Pi ai/auth/oauth/github-copilot.ts owns this."', result)
         self.assertIn('classification = "upstream"', result)
         self.assertEqual(docs.apply(self.root)["rewritten"], [])

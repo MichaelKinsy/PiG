@@ -1,5 +1,7 @@
 package ai
 
+// pi: packages/ai/src/auth/oauth/anthropic.ts
+
 import (
 	"context"
 	"errors"

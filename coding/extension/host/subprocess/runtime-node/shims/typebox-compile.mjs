@@ -10,7 +10,7 @@ import {
   HasCodec,
   ParseError,
   Parser
-} from "./typebox-shared-UUYEEUZA.mjs";
+} from "./typebox-shared-HOI5WX4G.mjs";
 import {
   arguments_exports,
   settings_exports
@@ -156,8 +156,12 @@ function Compile(...args) {
   });
   return new Validator(context, type);
 }
+
+// node_modules/typebox/build/compile/index.mjs
+var compile_default = Compile;
 export {
   Code,
   Compile,
-  Validator
+  Validator,
+  compile_default as default
 };

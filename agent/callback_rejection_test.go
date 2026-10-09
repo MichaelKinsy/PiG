@@ -23,7 +23,7 @@ func TestRequestAndFinishTurnRejectionsUseFailedTurnLifecycle(t *testing.T) {
 			} else {
 				options.FinishTurn = func(context.Context, AgentTurnContext) (*AgentTurnDecision, error) { return nil, reject() }
 			}
-			a := NewAgent(options)
+			a := mustNewAgent(options)
 			events := []string{}
 			a.Subscribe(func(_ context.Context, event AgentEvent) error {
 				switch event := event.(type) {

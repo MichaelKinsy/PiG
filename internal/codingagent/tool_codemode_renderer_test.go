@@ -24,7 +24,7 @@ func renderCodemodeCard(t *testing.T, definition extension.ToolDefinition, args 
 		tuiInst:       tui.NewWithOutput(io.Discard, 80, 30),
 		toolByID:      make(map[string]*tui.ToolExecutionComponent),
 		toolStarts:    make(map[string]time.Time),
-		opts:          InteractiveOptions{CWD: t.TempDir()},
+		opts:          InteractiveModeOptions{CWD: t.TempDir()},
 	}
 	m.handleAgentEvent(agent.ToolExecutionStartEvent{ToolCallID: "c", ToolName: "codemode", Args: json.RawMessage(args)})
 	card := m.toolByID["c"]

@@ -39,7 +39,7 @@ func main() {
 	if err := os.WriteFile(filepath.Join(dir, "models.json"), []byte(config), 0600); err != nil {
 		panic(err)
 	}
-	services, err := coding.NewServices(coding.ServicesOptions{CWD: dir, AgentDir: dir})
+	services, err := coding.CreateAgentSessionServices(coding.CreateAgentSessionServicesOptions{CWD: dir, AgentDir: dir})
 	if err != nil {
 		panic(err)
 	}
@@ -49,7 +49,7 @@ func main() {
 		if err != nil {
 			panic(err)
 		}
-		for _, effort := range []ai.ThinkingLevel{"", ai.ThinkingMedium} {
+		for _, effort := range []ai.ThinkingLevel{"", ai.ThinkingLevelMedium} {
 			s := services.ModelRuntime().Stream(context.Background(), model, ai.Context{Messages: []ai.Message{ai.UserMessage{Content: ai.UserText("hello"), Timestamp: 1}}}, ai.StreamOptions{Thinking: effort})
 			result := s.Result()
 			if result.StopReason != ai.StopReasonStop {

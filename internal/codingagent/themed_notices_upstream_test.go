@@ -29,13 +29,13 @@ func TestChatNoticesFollowThemeChangesUpstream(t *testing.T) {
 			tui.SetThemeByName("dark")
 			m := &InteractiveMode{chatContainer: tui.NewContainer(), tuiInst: tui.NewWithOutput(io.Discard, 100, 30)}
 			tc.add(m)
-			dark := tui.ActiveTheme().Fg(tc.token)
+			dark := tui.ActiveTheme().GetFgAnsi(tc.token)
 			if got := strings.Join(m.chatContainer.Render(100), "\n"); !strings.Contains(got, dark) {
 				t.Fatalf("notice %q lacks the dark %s color %q", got, tc.token, dark)
 			}
 
 			tui.SetThemeByName("light")
-			light := tui.ActiveTheme().Fg(tc.token)
+			light := tui.ActiveTheme().GetFgAnsi(tc.token)
 			if light == dark {
 				t.Fatalf("the built-in themes share the %s color %q", tc.token, light)
 			}

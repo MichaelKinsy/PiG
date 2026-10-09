@@ -15,10 +15,10 @@ import (
 // Ports packages/durable/test/session-states.test.ts
 
 var stateStateDoc = defineDoc("state.state", 1, sessionScope, func() obj {
-	return obj{"value": 0, "retained": obj{"label": "stable"}}
+	return delta.JsonObjectOf("value", 0, "retained", delta.JsonObjectOf("label", "stable"))
 })
 
-var stateFamilyDoc = defineFamily("state.family", 1, sessionScope, func(seed string) obj { return obj{"value": len(seed)} })
+var stateFamilyDoc = defineFamily("state.family", 1, sessionScope, func(seed string) obj { return delta.JsonObjectOf("value", len(seed)) })
 
 func createStateHarness(t *testing.T) sessiontest.Harness {
 	t.Helper()
@@ -36,7 +36,9 @@ func setStateValue(t *testing.T, harness sessiontest.Harness, token durable.AnyD
 	commit(t, harness.Session, func(tx durable.Tx) error { return mustDoc(t, tx, token).Set("value", value) })
 }
 
-func documentState(t *testing.T, harness sessiontest.Harness, token durable.AnyDocToken, args ...any) *chord.AttachedReplicatedState[obj] {
+// documentState attaches types.ts:842 DocumentState (AttachedReplicatedState of a document's value) through Session.documentState
+// (types.ts:941-951): the returned state is the durable.DocumentState of the document's JSON object.
+func documentState(t *testing.T, harness sessiontest.Harness, token durable.AnyDocToken, args ...any) durable.DocumentState[obj] {
 	t.Helper()
 	state, err := harness.Session.DocumentStateErased(ctx, token, args...)
 	if err != nil {
@@ -97,7 +99,7 @@ func TestSessionDocumentStates(t *testing.T) {
 		var sequences, values []any
 		for _, delivery := range recorded.all() {
 			sequences = append(sequences, delivery.sequence)
-			values = append(values, delivery.value["value"])
+			values = append(values, delivery.value.Value("value"))
 		}
 		expectEqual(t, sequences, []any{0, 1, 2})
 		expectEqual(t, values, []any{0, 1, 2})
@@ -116,11 +118,11 @@ func TestSessionDocumentStates(t *testing.T) {
 		}
 		setStateValue(t, harness, stateStateDoc, 1)
 		flush(harness)
-		expectEqual(t, []any{first.Value()["value"], second.Value()["value"]}, []any{1, 1})
+		expectEqual(t, []any{first.Value().Value("value"), second.Value().Value("value")}, []any{1, 1})
 		first.Dispose()
 		setStateValue(t, harness, stateStateDoc, 2)
 		flush(harness)
-		expectEqual(t, []any{first.Value()["value"], second.Value()["value"]}, []any{1, 2})
+		expectEqual(t, []any{first.Value().Value("value"), second.Value().Value("value")}, []any{1, 2})
 		second.Dispose()
 	})
 
@@ -145,7 +147,7 @@ func TestSessionDocumentStates(t *testing.T) {
 		if !same(receivedOps, published.Ops) {
 			t.Fatal("Chord receives the published operation batch")
 		}
-		if !same(state.Value()["retained"], snapshot(t, harness.Session, stateStateDoc)["retained"]) {
+		if !same(state.Value().Value("retained"), snapshot(t, harness.Session, stateStateDoc).Value("retained")) {
 			t.Fatal("unchanged subtrees are shared")
 		}
 		state.Dispose()
@@ -158,7 +160,7 @@ func TestSessionDocumentStates(t *testing.T) {
 		recorded := &deliveries{}
 		_, _ = state.Subscribe(recorded.listener)
 		flush(harness)
-		expectEqual(t, state.Value()["value"], 1)
+		expectEqual(t, state.Value().Value("value"), 1)
 		if got := recorded.all(); len(got) != 1 || got[0].sequence != 0 {
 			t.Fatalf("deliveries %v", got)
 		}
@@ -187,19 +189,19 @@ func TestSessionDocumentStates(t *testing.T) {
 		expectEqual(t, retirementOps, []any{[]any{"r", nil}})
 		mu.Unlock()
 		replacement := documentState(t, harness, stateStateDoc)
-		expectEqual(t, replacement.Value()["value"], 10)
+		expectEqual(t, replacement.Value().Value("value"), 10)
 		setStateValue(t, harness, stateStateDoc, 11)
 		flush(harness)
 		if oldState.Value() != nil {
 			t.Fatal("the old state does not follow the replacement")
 		}
-		expectEqual(t, replacement.Value()["value"], 11)
+		expectEqual(t, replacement.Value().Value("value"), 11)
 		oldState.Dispose()
 		replacement.Dispose()
 	})
 
 	t.Run("cold-loads a definition-free fork copy", func(t *testing.T) {
-		copied := defineDoc("state.copied", 1, latestScope(durable.ForkCurrent), func() obj { return obj{"value": 0} })
+		copied := defineDoc("state.copied", 1, latestScope(durable.ForkCurrent), func() obj { return delta.JsonObjectOf("value", 0) })
 		harness := open()
 		parentId := createConversation(t, harness)
 		var at durable.EntryId
@@ -217,7 +219,7 @@ func TestSessionDocumentStates(t *testing.T) {
 		})
 		reads := harness.Storage.DocumentReadCount()
 		state := documentState(t, harness, copied, childId)
-		expectEqual(t, state.Value(), obj{"value": 7})
+		expectEqual(t, state.Value(), delta.JsonObjectOf("value", 7))
 		if harness.Storage.DocumentReadCount() <= reads {
 			t.Fatal("a fork copy cold-loads from Storage")
 		}
@@ -225,15 +227,15 @@ func TestSessionDocumentStates(t *testing.T) {
 	})
 
 	t.Run("hydrates a migrated tracker without writing and skips an equal version-base update", func(t *testing.T) {
-		old := defineDoc("state.migration", 1, sessionScope, func() obj { return obj{"value": 3} })
-		current := defineDoc("state.migration", 2, sessionScope, func() obj { return obj{"value": 0, "migrated": false} },
-			withMigrate(func(value obj, _ int) obj { return obj{"value": value["value"], "migrated": true} }))
+		old := defineDoc("state.migration", 1, sessionScope, func() obj { return delta.JsonObjectOf("value", 3) })
+		current := defineDoc("state.migration", 2, sessionScope, func() obj { return delta.JsonObjectOf("value", 0, "migrated", false) },
+			withMigrate(func(value obj, _ int) obj { return delta.JsonObjectOf("value", value.Value("value"), "migrated", true) }))
 		harness := open()
 		commit(t, harness.Session, func(tx durable.Tx) error { _, err := tx.Doc(old); return err })
 		must(t, harness.Session.UnloadDocuments())
 		commits := len(harness.Storage.Commits())
 		state := documentState(t, harness, current)
-		expectEqual(t, state.Value(), obj{"value": 3, "migrated": true})
+		expectEqual(t, state.Value(), delta.JsonObjectOf("value", 3, "migrated", true))
 		if len(harness.Storage.Commits()) != commits {
 			t.Fatal("hydration writes nothing")
 		}
@@ -248,7 +250,7 @@ func TestSessionDocumentStates(t *testing.T) {
 		}
 		setStateValue(t, harness, current, 4)
 		flush(harness)
-		expectEqual(t, state.Value(), obj{"value": 4, "migrated": true})
+		expectEqual(t, state.Value(), delta.JsonObjectOf("value", 4, "migrated", true))
 		state.Dispose()
 	})
 
@@ -265,7 +267,7 @@ func TestSessionDocumentStates(t *testing.T) {
 		}
 		setStateValue(t, harness, stateStateDoc, 6)
 		flush(harness)
-		expectEqual(t, state.Value()["value"], 6)
+		expectEqual(t, state.Value().Value("value"), 6)
 		state.Dispose()
 	})
 
@@ -297,7 +299,7 @@ func TestSessionStateSubscribersRunBeforeTheCommitReturns(t *testing.T) {
 		}
 		setStateValue(t, harness, stateStateDoc, 1)
 		got := recorded.all()
-		if len(got) != 2 || got[1].sequence != 1 || got[1].value["value"] != float64(1) {
+		if len(got) != 2 || got[1].sequence != 1 || got[1].value.Value("value") != float64(1) {
 			t.Fatalf("deliveries when Commit returned = %+v, want hydrate then update 1", got)
 		}
 	})

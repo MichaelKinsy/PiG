@@ -31,7 +31,7 @@ func run() (resultErr error) {
 	var snapshots []snapshot
 	for i, tc := range []struct{ scoped, persist bool }{{true, true}, {false, true}, {true, false}} {
 		dir := filepath.Join(root, fmt.Sprint(i))
-		services, err := coding.NewServices(coding.ServicesOptions{CWD: dir, AgentDir: dir})
+		services, err := coding.CreateAgentSessionServices(coding.CreateAgentSessionServicesOptions{CWD: dir, AgentDir: dir})
 		if err != nil {
 			return err
 		}

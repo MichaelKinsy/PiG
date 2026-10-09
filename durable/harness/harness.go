@@ -93,12 +93,16 @@ func (conversation *conversationImpl) Commit(ctx context.Context, change func(tx
 	}, session.TransactionScope{ConversationId: &id})
 }
 
-func (conversation *conversationImpl) Context(ctx context.Context) (durable.ContextView, error) {
-	return ReadContext(ctx, conversation.host.harness.line, conversation.host.storage, conversation.id, nil)
+func (conversation *conversationImpl) Context(ctx context.Context, options *durable.ContextOptions) (durable.ContextView, error) {
+	var at *durable.EntryId
+	if options != nil {
+		at = options.At
+	}
+	return ReadContext(ctx, conversation.host.harness.line, conversation.host.storage, conversation.id, at)
 }
 
 func (conversation *conversationImpl) Entries(ctx context.Context, query durable.EntryQuery, limit int, cursor durable.Cursor) (durable.Page[durable.EntryRecord, durable.Cursor], error) {
-	bounded := durable.EntryQuery{ConversationId: conversation.id, MinEntryId: query.MinEntryId, MaxEntryId: query.MaxEntryId}
+	bounded := durable.EntryQuery{ConversationId: conversation.id, MinEntryId: query.MinEntryId, MaxEntryId: query.MaxEntryId, Order: query.Order}
 	page, err := conversation.host.harness.ReadOnLine(func() (any, error) {
 		return conversation.host.storage.ScanEntries(ctx, bounded, limit, cursor)
 	})
@@ -513,7 +517,7 @@ func newHarness(ctx context.Context, storage durable.Storage, options HarnessOpt
 		ConversationCreated: harness.conversationCreated,
 		// Join task invocations after admission is sealed and before Storage closes; writes no task outcome.
 		BeforeClose: func() { harness.tasks.Join() },
-	})
+	}, options.Now)
 	harness.line = sessionLine{harness.SessionImpl}
 	harness.tasks = NewTaskScheduler(TaskSchedulerOptions{
 		Session:  harness.SessionImpl,

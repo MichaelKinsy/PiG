@@ -27,6 +27,11 @@ func TestMain(m *testing.M) {
 	case "stdio-server":
 		runStdioServer()
 		return
+	case "stderr-flood":
+		// A server that dies at startup after a long stderr: U+FEFF around the text (JS whitespace the tail trims) and
+		// 1500 astral characters, 3000 UTF-16 units.
+		fmt.Fprint(os.Stderr, "\uFEFF\u0085", strings.Repeat("a", 10), strings.Repeat("\U0001F600", 1500), "\uFEFF")
+		os.Exit(3)
 	}
 	os.Exit(m.Run())
 }

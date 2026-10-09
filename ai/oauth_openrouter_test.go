@@ -1,5 +1,7 @@
 package ai
 
+// pi: packages/ai/src/auth/oauth/openrouter.ts
+
 import (
 	"context"
 	"crypto/sha256"

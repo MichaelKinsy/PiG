@@ -1,0 +1,21 @@
+# Behavior family: cli-utils
+# Pi 1.1.0 session-manager.ts:268-273 assertValidSessionId: the error reads "Session id must be non-empty, contain only alphanumeric characters,
+# '-', '_', and '.', and start and end with an alphanumeric character" (capital S); main.ts:328-334 prints it as "Error: <message>" and exits 1.
+name = "32-session-id-invalid-format"
+description = "An invalid --session-id fails with Pi's message"
+covers = ["packages/coding-agent/src/main.ts", "packages/coding-agent/src/core/session-manager.ts"]
+tags = ["fast", "hermetic"]
+driver = "cli-mode"
+
+[env]
+override_base_args = true
+
+[cli]
+args = ["--session-id", "a/b", "-p", "hi"]
+timeout_seconds = 10
+
+[assert]
+exit_code = 1
+output_equal = true
+stderr_equal = true
+runs = 3

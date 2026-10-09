@@ -13,6 +13,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/base64"
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -25,12 +26,13 @@ import (
 	"github.com/MichaelKinsy/PiG/agent"
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/internal/nodespawn"
+	"github.com/MichaelKinsy/PiG/internal/truncate"
 )
 
 // upstream: coding-agent/src/core/tools/truncate.ts:DEFAULT_MAX_BYTES
 const (
-	DefaultMaxBytes = 50 * 1024 // upstream: packages/coding-agent/src/core/tools/truncate.ts:DEFAULT_MAX_BYTES
-	DefaultMaxLines = 2_000     // upstream: packages/coding-agent/src/core/tools/truncate.ts:DEFAULT_MAX_LINES
+	DefaultMaxBytes = truncate.DefaultMaxBytes
+	DefaultMaxLines = truncate.DefaultMaxLines
 )
 
 type systemToolConfig struct {
@@ -153,47 +155,223 @@ func SelectBuiltinTools(all []agent.AgentTool, active, allowed map[string]struct
 
 // ─── All Tools ────────────────────────────────────────────────────────────────
 
-// CreateCodingTools returns the default set of LLM-callable coding tools.
-// Edit and write share one FileMutationQueue.
-//
-// settings is consulted by BashTool to resolve shellPath and
-// commandPrefix. nil falls through to the upstream defaults (getShellConfig,
-// no prefix).
-//
-// agentBinDir, when non-empty, is <agentDir>/bin: grep and find resolve rg
-// and fd there first, then on PATH, and download them when missing (upstream
-// ensureTool); bash puts it on PATH. Pass "" for PATH-only lookup and no
-// downloads.
-func CreateCodingTools(cwd string, settings BashSettingsView, agentBinDir string) []agent.AgentTool {
-	// The shared FileMutationQueue serialises concurrent write/edit
-	// calls to the same file (from parallel tool batches in beta.1).
-	fmq := NewFileMutationQueue()
-	prefix := ""
-	if settings != nil {
-		prefix = settings.GetCommandPrefix()
+// ReadToolOptions is upstream's ReadToolOptions (read.ts:63-70).
+type ReadToolOptions struct {
+	// AutoResizeImages resizes images before they reach the model; nil is true.
+	AutoResizeImages *bool
+	// ResizeOptions is the fallback resize profile when the execution context has no model metadata.
+	ResizeOptions *ai.ModelImageResizeOptions
+	// Operations delegates file reads; nil is the local filesystem.
+	Operations *ReadOperations
+}
+
+// BashToolOptions is upstream's BashToolOptions (bash.ts:214-226).
+type BashToolOptions struct {
+	// Operations delegates command execution; nil is the local shell.
+	Operations BashOperations
+	// BinDir is the managed tools directory (Pi's getBinDir()); ToolsOptions.BinDir sets it for the built-in sets.
+	BinDir string
+	// CommandPrefix is prepended to every command.
+	CommandPrefix string
+	// ShellPath is an explicit shell path.
+	ShellPath string
+	// Settings resolves the shell path live when ShellPath is empty. It stands in for Pi's getShellConfig(settingsManager.getShellPath()) read at call time.
+	Settings SettingsView
+	// ExposeSessionEnvironment exposes the PI_* session variables; nil is true.
+	ExposeSessionEnvironment *bool
+	// SpawnHook adjusts the command, working directory or environment before execution.
+	SpawnHook BashSpawnHook
+}
+
+// PowerShellToolOptions is upstream's PowerShellToolOptions: the operations, session-environment and spawn-hook options of BashToolOptions.
+type PowerShellToolOptions struct {
+	Operations BashOperations
+	// BinDir is the managed tools directory (Pi's getBinDir()).
+	BinDir                   string
+	ExposeSessionEnvironment *bool
+	SpawnHook                PowerShellSpawnHook
+}
+
+// WriteToolOptions is upstream's WriteToolOptions.
+type WriteToolOptions struct{ Operations *WriteOperations }
+
+// EditToolOptions is upstream's EditToolOptions.
+type EditToolOptions struct{ Operations *EditOperations }
+
+// GrepToolOptions is upstream's GrepToolOptions.
+type GrepToolOptions struct {
+	Operations *GrepOperations
+	// BinDir is the managed tools directory (Pi's getBinDir()).
+	BinDir string
+}
+
+// FindToolOptions is upstream's FindToolOptions.
+type FindToolOptions struct {
+	Operations *FindOperations
+	// BinDir is the managed tools directory (Pi's getBinDir()).
+	BinDir string
+}
+
+// LsToolOptions is upstream's LsToolOptions.
+type LsToolOptions struct{ Operations *LsOperations }
+
+// ToolsOptions is upstream's ToolsOptions (tools/index.ts:107-116).
+type ToolsOptions struct {
+	Read       *ReadToolOptions
+	Bash       *BashToolOptions
+	Powershell *PowerShellToolOptions
+	Write      *WriteToolOptions
+	Edit       *EditToolOptions
+	Grep       *GrepToolOptions
+	Find       *FindToolOptions
+	Ls         *LsToolOptions
+	// BinDir is <agentDir>/bin: grep and find resolve rg and fd there first, then on PATH, and download them when missing (upstream ensureTool); bash and powershell put it on PATH. Empty means PATH-only lookup and no downloads. It stands in for Pi's process-wide getBinDir().
+	BinDir string
+}
+
+// ToolsOptionsFromSettings builds the options a session passes for its settings: the command prefix, the live shell path and the image auto-resize flag. agentBinDir is ToolsOptions.BinDir.
+func ToolsOptionsFromSettings(settings BashSettingsView, agentBinDir string) *ToolsOptions {
+	options := &ToolsOptions{BinDir: agentBinDir}
+	if settings == nil {
+		return options
 	}
-	manager := searchToolsManager(agentBinDir)
+	options.Bash = &BashToolOptions{CommandPrefix: settings.GetCommandPrefix(), Settings: settings}
+	if images, ok := settings.(interface{ GetImageAutoResize() bool }); ok {
+		autoResize := images.GetImageAutoResize()
+		options.Read = &ReadToolOptions{AutoResizeImages: &autoResize}
+	}
+	return options
+}
+
+func orEmpty[T any](options *T) T {
+	if options == nil {
+		return *new(T)
+	}
+	return *options
+}
+
+// CreateReadTool is upstream's createReadTool (read.ts:222).
+func CreateReadTool(cwd string, options *ReadToolOptions) *ReadTool {
+	o := orEmpty(options)
+	return &ReadTool{CWD: cwd, AutoResizeImages: o.AutoResizeImages, ResizeOptions: o.ResizeOptions, Operations: o.Operations}
+}
+
+// CreateBashTool is upstream's createBashTool (bash.ts:434).
+func CreateBashTool(cwd string, options *BashToolOptions) *BashTool {
+	o := orEmpty(options)
+	settings := o.Settings
+	if o.ShellPath != "" {
+		settings = fixedShellPath(o.ShellPath)
+	}
+	return &BashTool{
+		CWD: cwd, Operations: o.Operations, Settings: settings, CommandPrefix: o.CommandPrefix, BinDir: o.BinDir,
+		HideSessionEnvironment: o.ExposeSessionEnvironment != nil && !*o.ExposeSessionEnvironment, SpawnHook: o.SpawnHook,
+	}
+}
+
+// fixedShellPath is a SettingsView with an explicit shell path.
+type fixedShellPath string
+
+func (p fixedShellPath) GetShellPath() (string, error) { return string(p), nil }
+
+// CreatePowerShellTool is upstream's createPowerShellTool (powershell.ts:59).
+func CreatePowerShellTool(cwd string, options *PowerShellToolOptions) *PowerShellTool {
+	o := orEmpty(options)
+	return &PowerShellTool{CWD: cwd, Operations: o.Operations, BinDir: o.BinDir, HideSessionEnvironment: o.ExposeSessionEnvironment != nil && !*o.ExposeSessionEnvironment, SpawnHook: o.SpawnHook}
+}
+
+// processFileMutationQueue is upstream's module-level fileMutationQueues map (file-mutation-queue.ts:4): every edit and write tool made by the Create functions serialises through it, however many tools or sessions the process holds.
+var processFileMutationQueue = NewFileMutationQueue()
+
+// CreateEditTool is upstream's createEditTool (edit.ts:218); its mutations serialise with every other edit and write tool's through the process queue.
+func CreateEditTool(cwd string, options *EditToolOptions) *EditTool {
+	return &EditTool{CWD: cwd, Queue: processFileMutationQueue, Operations: orEmpty(options).Operations}
+}
+
+// CreateWriteTool is upstream's createWriteTool (write.ts:95); its mutations serialise with every other edit and write tool's through the process queue.
+func CreateWriteTool(cwd string, options *WriteToolOptions) *WriteTool {
+	return &WriteTool{CWD: cwd, Queue: processFileMutationQueue, Operations: orEmpty(options).Operations}
+}
+
+// CreateGrepTool is upstream's createGrepTool (grep.ts:321).
+func CreateGrepTool(cwd string, options *GrepToolOptions) *GrepTool {
+	o := orEmpty(options)
+	return &GrepTool{CWD: cwd, Tools: searchToolsManager(o.BinDir), Operations: o.Operations}
+}
+
+// CreateFindTool is upstream's createFindTool (find.ts:316).
+func CreateFindTool(cwd string, options *FindToolOptions) *FindTool {
+	o := orEmpty(options)
+	return &FindTool{CWD: cwd, Tools: searchToolsManager(o.BinDir), Operations: o.Operations}
+}
+
+// CreateLsTool is upstream's createLsTool (ls.ts:173).
+func CreateLsTool(cwd string, options *LsToolOptions) *LsTool {
+	return &LsTool{CWD: cwd, Operations: orEmpty(options).Operations}
+}
+
+// withOption is a copy of the options with set applied, so the built-in sets can inject ToolsOptions.BinDir without changing the caller's options.
+func withOption[T any](p *T, set func(*T)) *T {
+	var c T
+	if p != nil {
+		c = *p
+	}
+	set(&c)
+	return &c
+}
+
+// CreateTool is upstream's createTool: the built-in tool with the given name.
+func CreateTool(name, cwd string, options *ToolsOptions) (agent.AgentTool, error) {
+	o := orEmpty(options)
+	switch name {
+	case "read":
+		return CreateReadTool(cwd, o.Read), nil
+	case "bash":
+		return CreateBashTool(cwd, withOption(o.Bash, func(b *BashToolOptions) { b.BinDir = o.BinDir })), nil
+	case "powershell":
+		return CreatePowerShellTool(cwd, withOption(o.Powershell, func(p *PowerShellToolOptions) { p.BinDir = o.BinDir })), nil
+	case "edit":
+		return CreateEditTool(cwd, o.Edit), nil
+	case "write":
+		return CreateWriteTool(cwd, o.Write), nil
+	case "grep":
+		return CreateGrepTool(cwd, withOption(o.Grep, func(g *GrepToolOptions) { g.BinDir = o.BinDir })), nil
+	case "find":
+		return CreateFindTool(cwd, withOption(o.Find, func(f *FindToolOptions) { f.BinDir = o.BinDir })), nil
+	case "ls":
+		return CreateLsTool(cwd, o.Ls), nil
+	}
+	return nil, fmt.Errorf("unknown tool name %q", name)
+}
+
+// CreateCodingTools returns the default set of LLM-callable coding tools,
+// mirroring upstream createCodingTools (tools/index.ts:195). Edit and write
+// serialise concurrent write/edit calls to the same file from parallel tool
+// batches through the process-wide mutation queue.
+func CreateCodingTools(cwd string, options *ToolsOptions) []agent.AgentTool {
+	o := orEmpty(options)
 	// Upstream order (Pi 0.87.1 createAllTools): read, bash, edit, write, then grep, find, ls.
 	return []agent.AgentTool{
-		readToolWithSettings(cwd, settings),
-		&BashTool{CWD: cwd, Settings: settings, CommandPrefix: prefix, BinDir: agentBinDir},
-		&EditTool{CWD: cwd, Queue: fmq},
-		&WriteTool{CWD: cwd, Queue: fmq},
-		&GrepTool{CWD: cwd, Tools: manager},
-		&FindTool{CWD: cwd, Tools: manager},
-		&LsTool{CWD: cwd},
+		CreateReadTool(cwd, o.Read),
+		CreateBashTool(cwd, withOption(o.Bash, func(b *BashToolOptions) { b.BinDir = o.BinDir })),
+		CreateEditTool(cwd, o.Edit),
+		CreateWriteTool(cwd, o.Write),
+		CreateGrepTool(cwd, withOption(o.Grep, func(g *GrepToolOptions) { g.BinDir = o.BinDir })),
+		CreateFindTool(cwd, withOption(o.Find, func(f *FindToolOptions) { f.BinDir = o.BinDir })),
+		CreateLsTool(cwd, o.Ls),
 	}
 }
 
 // CreateAllTools returns every registered built-in tool, mirroring upstream
-// createAllTools (tools/index.ts): CreateCodingTools plus the opt-in
+// createAllTools (tools/index.ts:213): CreateCodingTools plus the opt-in
 // powershell tool, in upstream registry order. Callers select the active
 // subset with SelectBuiltinTools.
-func CreateAllTools(cwd string, settings BashSettingsView, agentBinDir string) []agent.AgentTool {
-	coding := CreateCodingTools(cwd, settings, agentBinDir)
+func CreateAllTools(cwd string, options *ToolsOptions) []agent.AgentTool {
+	o := orEmpty(options)
+	coding := CreateCodingTools(cwd, options)
 	all := make([]agent.AgentTool, 0, len(coding)+1)
 	all = append(all, coding[:2]...) // read, bash
-	all = append(all, &PowerShellTool{CWD: cwd, BinDir: agentBinDir})
+	all = append(all, CreatePowerShellTool(cwd, withOption(o.Powershell, func(p *PowerShellToolOptions) { p.BinDir = o.BinDir })))
 	return append(all, coding[2:]...)
 }
 
@@ -276,21 +454,14 @@ type BashSettingsView interface {
 	GetCommandPrefix() string
 }
 
-// CreateReadOnlyTools returns read-only tools (read, bash, grep, find, ls).
-//
-// agentBinDir: see CreateCodingTools for semantics.
-func CreateReadOnlyTools(cwd string, settings BashSettingsView, agentBinDir string) []agent.AgentTool {
-	prefix := ""
-	if settings != nil {
-		prefix = settings.GetCommandPrefix()
-	}
-	manager := searchToolsManager(agentBinDir)
+// CreateReadOnlyTools returns read-only tools (read, grep, find, ls), mirroring upstream createReadOnlyTools (tools/index.ts:204).
+func CreateReadOnlyTools(cwd string, options *ToolsOptions) []agent.AgentTool {
+	o := orEmpty(options)
 	return []agent.AgentTool{
-		readToolWithSettings(cwd, settings),
-		&BashTool{CWD: cwd, Settings: settings, CommandPrefix: prefix, BinDir: agentBinDir},
-		&GrepTool{CWD: cwd, Tools: manager},
-		&FindTool{CWD: cwd, Tools: manager},
-		&LsTool{CWD: cwd},
+		CreateReadTool(cwd, o.Read),
+		CreateGrepTool(cwd, withOption(o.Grep, func(g *GrepToolOptions) { g.BinDir = o.BinDir })),
+		CreateFindTool(cwd, withOption(o.Find, func(f *FindToolOptions) { f.BinDir = o.BinDir })),
+		CreateLsTool(cwd, o.Ls),
 	}
 }
 

@@ -8,7 +8,7 @@ import (
 )
 
 func isProjectedTurnStart(entry codingagent.ProjectedSessionEntry) bool {
-	if entry.SourceEntry.Base.Type == "compaction" {
+	if entry.SourceEntry.Base().Type == "compaction" {
 		return false
 	}
 	return slices.ContainsFunc(entry.Messages, isTurnStartMessage)
@@ -26,7 +26,7 @@ func findProjectedTurnStartIndex(entries []codingagent.ProjectedSessionEntry, en
 // isIntrinsicallyVisible reports whether an entry contributes context before
 // context edits apply. Context edits themselves never do.
 func isIntrinsicallyVisible(entry codingagent.ProjectedSessionEntry) bool {
-	return entry.SourceEntry.Base.Type != "context_edit" && len(codingagent.SessionEntryToContextMessages(entry.SourceEntry)) > 0
+	return entry.SourceEntry.Base().Type != "context_edit" && len(codingagent.SessionEntryToContextMessages(entry.SourceEntry)) > 0
 }
 
 func isOmitted(entry codingagent.ProjectedSessionEntry) bool {
@@ -34,10 +34,10 @@ func isOmitted(entry codingagent.ProjectedSessionEntry) bool {
 }
 
 func isOmittedAssistantAttempt(entry codingagent.ProjectedSessionEntry) bool {
-	if entry.SourceEntry.Base.Type != "message" || !isOmitted(entry) {
+	if entry.SourceEntry.Base().Type != "message" || !isOmitted(entry) {
 		return false
 	}
-	message, ok := entry.SourceEntry.AsMessage()
+	message, ok := entry.SourceEntry.(codingagent.MessageEntry)
 	return ok && message.Message.Assistant != nil
 }
 
@@ -50,11 +50,11 @@ func isRecoveryOmissionSuffix(suffix []codingagent.ProjectedSessionEntry) bool {
 	omittedIDs := make(map[string]struct{})
 	for _, entry := range suffix {
 		if isOmitted(entry) {
-			omittedIDs[entry.SourceEntry.Base.ID] = struct{}{}
+			omittedIDs[entry.SourceEntry.Base().ID] = struct{}{}
 		}
 	}
 	for _, entry := range suffix {
-		if entry.SourceEntry.Base.Type != "context_edit" {
+		if entry.SourceEntry.Base().Type != "context_edit" {
 			continue
 		}
 		var edit codingagent.ContextEditEntry
@@ -69,7 +69,7 @@ func isRecoveryOmissionSuffix(suffix []codingagent.ProjectedSessionEntry) bool {
 		return false
 	}
 	for _, entry := range suffix {
-		if entry.SourceEntry.Base.Type == "compaction" || (isIntrinsicallyVisible(entry) && !isOmitted(entry)) {
+		if entry.SourceEntry.Base().Type == "compaction" || (isIntrinsicallyVisible(entry) && !isOmitted(entry)) {
 			return false
 		}
 	}
@@ -82,7 +82,7 @@ func isRecoveryOmissionSuffix(suffix []codingagent.ProjectedSessionEntry) bool {
 func findProjectedCutPoint(entries []codingagent.ProjectedSessionEntry, startIndex, endIndex, keepRecentTokens int) CutPointResult {
 	var cutPoints []int
 	for i := startIndex; i < endIndex; i++ {
-		if entries[i].SourceEntry.Base.Type != "compaction" && slices.ContainsFunc(entries[i].Messages, isCutPointMessage) {
+		if entries[i].SourceEntry.Base().Type != "compaction" && slices.ContainsFunc(entries[i].Messages, isCutPointMessage) {
 			cutPoints = append(cutPoints, i)
 		}
 	}
@@ -115,7 +115,7 @@ func findProjectedCutPoint(entries []codingagent.ProjectedSessionEntry, startInd
 
 	for cutIndex > startIndex {
 		previous := entries[cutIndex-1]
-		if previous.SourceEntry.Base.Type == "compaction" || len(previous.Messages) > 0 {
+		if previous.SourceEntry.Base().Type == "compaction" || len(previous.Messages) > 0 {
 			break
 		}
 		cutIndex--

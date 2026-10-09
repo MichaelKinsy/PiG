@@ -14,18 +14,13 @@ import (
 type TruncatedText struct {
 	invalidatable
 	Content  string
-	MaxLines int
 	PaddingX int
 	PaddingY int
 }
 
-func NewTruncatedText(content string, maxLines int) *TruncatedText {
-	return &TruncatedText{Content: content, MaxLines: maxLines}
-}
-
-// NewPaddedTruncatedText creates a truncated text with padding.
-func NewPaddedTruncatedText(content string, paddingX, paddingY int) *TruncatedText {
-	return &TruncatedText{Content: content, MaxLines: 1, PaddingX: paddingX, PaddingY: paddingY}
+// NewTruncatedText ports the constructor (text, paddingX = 0, paddingY = 0) of truncated-text.ts:12; Go has no default parameters, so a caller passes 0.
+func NewTruncatedText(content string, paddingX, paddingY int) *TruncatedText {
+	return &TruncatedText{Content: content, PaddingX: paddingX, PaddingY: paddingY}
 }
 
 func (t *TruncatedText) Render(width int) []string {

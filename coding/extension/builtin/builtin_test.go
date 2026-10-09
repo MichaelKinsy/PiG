@@ -1,10 +1,13 @@
-//go:build !nocodemode
+//go:build !pig_strip_codemode && !pig_strip_tool_search
 
 package builtin_test
 
 import (
 	"slices"
 	"testing"
+
+	"github.com/MichaelKinsy/PiG/coding/extension"
+	"github.com/MichaelKinsy/PiG/coding/extension/factoryload"
 
 	"github.com/MichaelKinsy/PiG/coding/extension/builtin"
 )
@@ -59,13 +62,13 @@ func TestFactoriesRegisterTheirToolInactive(t *testing.T) {
 		if entry.Factory == nil {
 			t.Fatalf("%s: no factory", name)
 		}
-		ext, err := entry.Factory()
+		ext, err := factoryload.LoadExtensionFromFactory(entry.Factory, ".", extension.CreateEventBus(), extension.CreateExtensionRuntime(), "builtin:"+name+"")
 		if err != nil {
 			t.Fatalf("%s: %v", name, err)
 		}
-		registered, ok := ext.Tools[tool]
-		if !ok || !slices.Equal(ext.ToolOrder, []string{tool}) {
-			t.Fatalf("%s registers %v (order %v), want only %s", name, ext.Tools, ext.ToolOrder, tool)
+		registered, ok := ext.RegisteredTool(tool)
+		if !ok || len(ext.RegisteredTools()) != 1 {
+			t.Fatalf("%s registers %v, want only %s", name, ext.RegisteredTools(), tool)
 		}
 		definition := registered.Definition
 		if definition.DefaultActive == nil || *definition.DefaultActive {

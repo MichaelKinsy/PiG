@@ -1,5 +1,9 @@
 package tui
 
+// pi: packages/coding-agent/src/modes/interactive/theme/theme.ts
+
+// pi: packages/coding-agent/src/modes/interactive/theme/theme-json.ts
+
 import (
 	"encoding/json"
 	"maps"
@@ -57,6 +61,9 @@ func TestProductionThemesMatchPinnedBuiltins(t *testing.T) {
 				t.Fatal(err)
 			}
 			SetTheme(name)
+			// The resolved-colour cache is filled lazily by whichever test asked for Colors first on the shared builtin; it is not a loaded field.
+			ActiveTheme().resolvedColorSet.Store(nil)
+			want.resolvedColorSet.Store(nil)
 			if got := ActiveTheme(); !reflect.DeepEqual(got, want) {
 				t.Errorf("ActiveTheme after SetTheme(%q) does not match pinned builtin\n got: %#v\nwant: %#v", name, got, want)
 			}
@@ -85,7 +92,7 @@ func TestBuiltinThemeOptionalColorsMatchPinnedThemes(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			colors := theme.Colors()
+			colors := theme.GetResolvedThemeColors()
 			for token, want := range tc.want {
 				if got := colors[token]; got != want {
 					t.Errorf("Colors[%s] = %q, want %q", token, got, want)
@@ -197,17 +204,17 @@ func TestLoadThemeFileIndexedColors(t *testing.T) {
 	}
 	for _, tc := range []struct{ name, got, want string }{
 		{"Accent", th.Accent, "\x1b[38;5;123m"},
-		{"Fg(accent)", th.Fg("accent"), "\x1b[38;5;123m"},
+		{"Fg(accent)", th.GetFgAnsi("accent"), "\x1b[38;5;123m"},
 		{"UserMessageBg", th.UserMessageBg, "\x1b[48;5;236m"},
-		{"Bg(userMessageBg)", th.Bg("userMessageBg"), "\x1b[48;5;236m"},
+		{"Bg(userMessageBg)", th.GetBgAnsi("userMessageBg"), "\x1b[48;5;236m"},
 		{"Success (var)", th.Success, "\x1b[38;5;34m"},
 		{"Error (var chain)", th.Error, "\x1b[38;5;34m"},
 		{"ThinkingText (1.2e2)", th.ThinkingText, "\x1b[38;5;120m"},
 		{"Border (hex)", th.Border, "\x1b[38;2;128;128;128m"},
-		{"FgText", th.FgText("accent", "x"), "\x1b[38;5;123mx\x1b[39m"},
-		{"Colors[accent]", th.Colors()["accent"], "#87ffff"},
-		{"Colors[userMessageBg]", th.Colors()["userMessageBg"], "#303030"},
-		{"Colors[success]", th.Colors()["success"], "#00af00"},
+		{"Fg", th.Fg("accent", "x"), "\x1b[38;5;123mx\x1b[39m"},
+		{"Colors[accent]", th.GetResolvedThemeColors()["accent"], "#87ffff"},
+		{"Colors[userMessageBg]", th.GetResolvedThemeColors()["userMessageBg"], "#303030"},
+		{"Colors[success]", th.GetResolvedThemeColors()["success"], "#00af00"},
 		{"ExportPageBg", th.ExportPageBg, "#000000"},
 		{"ExportCardBg (var)", th.ExportCardBg, "#eeeeee"},
 		{"ExportInfoBg (empty)", th.ExportInfoBg, ""},
@@ -249,14 +256,12 @@ func TestLoadThemeFileExplicitEmptyColors(t *testing.T) {
 			}
 			for _, check := range []struct{ name, got, want string }{
 				{name: "Accent var", got: theme.Accent, want: SGRFgReset},
-				{name: "Fg", got: theme.Fg("accent"), want: SGRFgReset},
-				{name: "FgText", got: theme.FgText("accent", "x"), want: SGRFgReset + "x" + SGRFgReset},
+				{name: "Fg", got: theme.GetFgAnsi("accent"), want: SGRFgReset},
+				{name: "Fg", got: theme.Fg("accent", "x"), want: SGRFgReset + "x" + SGRFgReset},
 				{name: "UserMessageBg", got: theme.UserMessageBg, want: SGRBgReset},
-				{name: "Bg", got: theme.Bg("userMessageBg"), want: SGRBgReset},
-				{name: "Colors[accent]", got: theme.Colors()["accent"], want: tc.wantFg},
-				{name: "Colors[userMessageBg]", got: theme.Colors()["userMessageBg"], want: tc.wantBg},
-				{name: "missing Fg", got: theme.Fg("not-a-token"), want: ""},
-				{name: "missing Bg", got: theme.Bg("not-a-token"), want: ""},
+				{name: "Bg", got: theme.GetBgAnsi("userMessageBg"), want: SGRBgReset},
+				{name: "Colors[accent]", got: theme.GetResolvedThemeColors()["accent"], want: tc.wantFg},
+				{name: "Colors[userMessageBg]", got: theme.GetResolvedThemeColors()["userMessageBg"], want: tc.wantBg},
 			} {
 				if check.got != check.want {
 					t.Errorf("%s = %q, want %q", check.name, check.got, check.want)
@@ -399,5 +404,41 @@ func TestThemeRegistryRecordsSourceFiles(t *testing.T) {
 	r.Add(&Theme{Name: "from-file"})
 	if got := r.PathOf("from-file"); got != "" {
 		t.Errorf("PathOf after pathless Add = %q, want empty", got)
+	}
+}
+
+// upstream: packages/coding-agent/src/modes/interactive/theme/theme.ts:625-629 (loadThemeFromPath passes themePath to createTheme, so Theme.sourcePath is the file the theme came from)
+// mutation-checked: dropping the assignment in LoadThemeFromPath fails it
+func TestLoadThemeFromPathRecordsItsSourcePath(t *testing.T) {
+	dir := t.TempDir()
+	writeWatchedTheme(t, dir, "from-file", "")
+	path := filepath.Join(dir, "from-file.json")
+	theme, err := LoadThemeFromPath(path, TerminalColorModeTrueColor)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if theme.SourcePath != path {
+		t.Fatalf("SourcePath() = %q, want %q", theme.SourcePath, path)
+	}
+	builtin, err := LoadBuiltinTheme("dark")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if builtin.SourcePath != "" {
+		t.Fatalf("a built-in theme has no source path, got %q", builtin.SourcePath)
+	}
+}
+
+// theme-json.ts ColorValue is `string | number`: a value read from JSON writes back as the same string or 256-color index.
+func TestThemeColorValueRoundTripsItsJSONKind(t *testing.T) {
+	for _, raw := range []string{`"#ff0000"`, `""`, `"accent"`, `0`, `255`} {
+		var value ThemeColorValue
+		if err := json.Unmarshal([]byte(raw), &value); err != nil {
+			t.Fatalf("%s: %v", raw, err)
+		}
+		out, err := json.Marshal(value)
+		if err != nil || string(out) != raw {
+			t.Errorf("%s round-trips as %s (%v)", raw, out, err)
+		}
 	}
 }

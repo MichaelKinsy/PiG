@@ -135,6 +135,11 @@ func googleOracleComparable(t *testing.T, records []json.RawMessage) []byte {
 		}
 		cleaned = append(cleaned, value)
 	}
+	// The matrix drops the oracle's ticks, and whether an earlier record shows the final message's durationMs (Pi 1.1.0, #10549)
+	// depends on which tick the consumer reads it in, so durationMs is not compared here. The Google tick order itself is
+	// compared in ai (TestGoogleProviderConsumerMatchesNodeTickOrder), and durationMs presence in the rpc, json and
+	// observation scenarios for the other providers.
+	stripGoogleDuration(cleaned)
 	data := observationComparable(t, cleaned)
 	return googleGeneratedID.ReplaceAll(data, []byte(`_T_N"`))
 }
@@ -248,7 +253,7 @@ func runGoogleObservationCase(t *testing.T, c googleObservationCase, inputs *goo
 	user := agent.AgentMessage{User: &agent.UserMessage{Role: agent.RoleUser, Content: ai.UserContentBlocks{ai.TextContent{Text: "probe"}}, Timestamp: 1}}
 	held := strings.HasPrefix(c.Consumer, "held")
 	if strings.HasSuffix(c.Consumer, "agent") {
-		a := agent.NewAgent(agent.AgentOptions{Model: model, Tools: []agent.AgentTool{}, StreamFn: streamFn,
+		a := mustNewAgent(agent.AgentOptions{Model: model, Tools: []agent.AgentTool{}, StreamFn: streamFn,
 			FinishTurn: func(context.Context, agent.AgentTurnContext) (*agent.AgentTurnDecision, error) {
 				return &agent.AgentTurnDecision{Action: agent.AgentTurnEnd}, nil
 			},
@@ -323,4 +328,18 @@ func runGoogleObservationCase(t *testing.T, c googleObservationCase, inputs *goo
 		t.Errorf("provider requests = %d; Pi finishTurn ends after the single response", requests.Load())
 	}
 	return c
+}
+
+func stripGoogleDuration(value any) {
+	switch value := value.(type) {
+	case []any:
+		for _, item := range value {
+			stripGoogleDuration(item)
+		}
+	case map[string]any:
+		delete(value, "durationMs")
+		for _, item := range value {
+			stripGoogleDuration(item)
+		}
+	}
 }

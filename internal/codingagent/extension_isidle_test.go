@@ -20,7 +20,7 @@ import (
 // (interactive-mode.ts:1980), so it structurally cannot latch. Reading live
 // state here removes a divergence rather than adding one.
 func TestExtensionIsIdleSurvivesADroppedTurnEndCallback(t *testing.T) {
-	m := &InteractiveMode{agent: agent.NewAgent(agent.AgentOptions{})}
+	m := &InteractiveMode{agent: mustNewAgent(agent.AgentOptions{})}
 
 	if !m.extensionIsIdle() {
 		t.Fatal("a session that has run nothing reported busy")
@@ -71,7 +71,7 @@ func TestRunOnMainDropsWorkWhenTheContextIsAlreadyDone(t *testing.T) {
 // accepted the reset, so a cached read reported busy at the moment the run
 // finished. turnActive clears before both.
 func TestExtensionIsIdleIsTrueByTheTimeAgentSettledCanBeObserved(t *testing.T) {
-	m := &InteractiveMode{agent: agent.NewAgent(agent.AgentOptions{})}
+	m := &InteractiveMode{agent: mustNewAgent(agent.AgentOptions{})}
 	m.turnActive.Store(true)
 	m.isIdle = false
 

@@ -47,7 +47,7 @@ data: {"type":"response.output_item.done","output_index":0,"item":{"type":"funct
 			}()
 			var mu sync.Mutex
 			var events []agent.AgentEvent
-			a := agent.NewAgent(agent.AgentOptions{
+			a := mustNewAgent(agent.AgentOptions{
 				Model: &ai.Model{ID: "probe", Provider: provider},
 				Tools: []agent.AgentTool{&stubTool{name: "read"}},
 				OnEvent: func(event agent.AgentEvent) {

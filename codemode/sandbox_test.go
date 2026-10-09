@@ -118,7 +118,7 @@ func TestEmbeddedSourcesMatchTheirRecordedHashes(t *testing.T) {
 	// upstream "embedded sources parse as JavaScript": the prelude parses (and runs) in every execution below; the
 	// hashes pin the exact upstream bytes that the engine and the prelude were verified against.
 	sum := func(b []byte) string { h := sha256.Sum256(b); return hex.EncodeToString(h[:]) }
-	if got := sum([]byte(codemode.PreludeSource)); got != "c8c292ac0bc913654384ae12ecd759d6de89862acab0ce912f2e733878749880" {
+	if got := sum([]byte(codemode.PreludeSource)); got != "224cd74082a03a57105af78e1fe205bda692f096252ff4202121016dd78f6228" {
 		t.Errorf("prelude sha256 = %s", got)
 	}
 	if got := sum(codemode.QuickJSWasm()); got != "d4c9375f2b1ca4dc95f72c8aa2982a7a9951ac8011490d79c6582df732b4bbd9" {
@@ -160,7 +160,7 @@ func TestCollectsTextImageAndConsoleOutputInOrder(t *testing.T) {
 		t.Fatalf("failed: %+v", result.Error)
 	}
 	want := []codemode.OutputItem{
-		{Type: "text", Text: `hello 1 {"a":1}`},
+		{Type: "text", Text: `hello 1 {"a":1}`, Console: true},
 		{Type: "text", Text: `{"json":true}`},
 		{Type: "text", Text: "undefined"},
 		{Type: "text", Text: "7"},
@@ -175,7 +175,7 @@ func TestCollectsTextImageAndConsoleOutputInOrder(t *testing.T) {
 		t.Fatalf("output = %+v", result.Output)
 	}
 	last := result.Output[len(want)]
-	if last.Type != "text" || !regexp.MustCompile(`^Error: bad`).MatchString(last.Text) {
+	if last.Type != "text" || !last.Console || !regexp.MustCompile(`^Error: bad`).MatchString(last.Text) {
 		t.Fatalf("last output = %+v", last)
 	}
 }
@@ -435,6 +435,9 @@ func TestAbortsUnawaitedCallsWhenTheScriptReturns(t *testing.T) {
 	}
 }
 
+// Pi source: packages/codemode/src/runtime/host.ts
+// mutation-checked: zeroing the results of Sandbox.UnregisterTool fails it
+// Pi: packages/codemode/src/runtime/host.ts:377 (unregisterTool)
 func TestSupportsRegisterAndUnregisterBetweenExecutions(t *testing.T) {
 	sandbox := newSandbox(t, 10_000)
 	if err := sandbox.RegisterTool(echo); err != nil {
@@ -447,8 +450,12 @@ func TestSupportsRegisterAndUnregisterBetweenExecutions(t *testing.T) {
 		t.Fatalf("Tools() = %+v", tools)
 	}
 	wantOK(t, run(t, sandbox, "return await tools.echo('a')"), `"a"`)
-	if !sandbox.UnregisterTool("echo") {
+	unregister := func(s *codemode.Sandbox, name string) bool { return s.UnregisterTool(name) }
+	if !unregister(sandbox, "echo") {
 		t.Fatal("UnregisterTool(echo) = false")
+	}
+	if unregister(sandbox, "echo") {
+		t.Fatal("UnregisterTool of an already removed tool = true, want false (Map.delete)")
 	}
 	wantOK(t, run(t, sandbox, "return 'echo' in tools"), "false")
 }
@@ -832,6 +839,71 @@ func TestRejectsDynamicImport(t *testing.T) {
 		`)
 	if !result.OK || string(result.Value) == `"imported"` {
 		t.Fatalf("result = %+v (%s)", result, result.Value)
+	}
+}
+
+// .upstream/v1.0.4/packages/codemode/test/sandbox.test.ts:723 (#10444): the prelude shares the built-ins with the script,
+// so patching them could corrupt what the prelude sends to the host.
+func TestIgnoresPatchesToBuiltinsAndBuiltinGlobals(t *testing.T) {
+	result := run(t, newSandbox(t, 10_000, echo), `
+			Array.prototype.toJSON = () => null;
+			Object.prototype.toJSON = () => 5;
+			Promise.prototype.then = () => {};
+			Map.prototype.get = () => undefined;
+			globalThis.JSON = { stringify: () => "x", parse: () => "x" };
+			store("k", [1]);
+			return [await tools.echo([2]), JSON.stringify({ a: 1 })];
+		`)
+	wantOK(t, result, `[[2],"{\"a\":1}"]`)
+	if len(result.StoreWrites.Set) != 1 {
+		t.Fatalf("store writes = %+v", result.StoreWrites)
+	}
+	sameJSON(t, "store k", result.StoreWrites.Set["k"], `[1]`)
+}
+
+// .upstream/v1.0.4/packages/codemode/test/sandbox.test.ts:740 (#10444).
+func TestFreezesIntrinsicsThatAreOnlyReachableFromInstances(t *testing.T) {
+	wantOK(t, run(t, newSandbox(t, 10_000), `
+			return [
+				Object.getPrototypeOf(function* () {}).prototype,
+				Object.getPrototypeOf(async function () {}),
+				Object.getPrototypeOf(Int8Array).prototype,
+				Object.getPrototypeOf([][Symbol.iterator]()),
+				Object.getPrototypeOf(Object.getPrototypeOf([][Symbol.iterator]())),
+				Object.getPrototypeOf(new Map()[Symbol.iterator]()),
+				Object.getPrototypeOf(/a/[Symbol.matchAll]("")),
+			].every((object) => Object.isFrozen(object));
+		`), `true`)
+}
+
+// .upstream/v1.0.4/packages/codemode/test/sandbox.test.ts:756 (#10444).
+func TestStillLetsInstancesOverridePropertiesOfFrozenPrototypes(t *testing.T) {
+	wantOK(t, run(t, newSandbox(t, 10_000), `
+			const object = {};
+			object.toString = () => "custom";
+			function Legacy() {}
+			Legacy.prototype = Object.create(Error.prototype);
+			Legacy.prototype.constructor = Legacy;
+			const bare = new Error();
+			bare.message = "set later";
+			class MyError extends Error {
+				constructor(message) {
+					super(message);
+					this.name = "MyError";
+				}
+			}
+			let patched = "silent";
+			try { Error.prototype.name = "Patched"; } catch (error) { patched = error.constructor.name; }
+			return [String(object), new Legacy().constructor === Legacy, bare.message, new MyError("x").name, Error.prototype.name, patched];
+		`), `["custom",true,"set later","MyError","Error","TypeError"]`)
+}
+
+// .upstream/v1.0.4/packages/codemode/test/sandbox.test.ts:781 (#10444).
+func TestReportsErrorsWhoseNameOrMessageIsNotAString(t *testing.T) {
+	result := run(t, newSandbox(t, 10_000), "const error = new Error('x'); error.message = 42; throw error;")
+	failure := wantFailure(t, result, codemode.ErrorScript)
+	if failure.Name != "Error" || failure.Message != "42" {
+		t.Fatalf("error = %+v", failure)
 	}
 }
 

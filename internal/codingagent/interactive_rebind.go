@@ -50,7 +50,10 @@ func (m *InteractiveMode) rebindCurrentSession(ctx context.Context, renderBefore
 			return errors.New("interactive: SessionHandle is required")
 		}
 		m.eventCh = nil
+		m.programStatusReporter().Reset()
 		m.applyRuntimeSettings()
+		// interactive-mode.ts applyRuntimeSettings: this.footer.setSession(this.session)
+		m.statusLine.SetSession(m)
 		if renderBeforeBind {
 			m.renderCurrentSessionState()
 			m.subscribeToAgent()
@@ -125,7 +128,7 @@ func (m *InteractiveMode) applyRuntimeSettings() {
 	m.installRunPromptTurnRefresh()
 	m.opts.Model = m.agent.Model()
 	m.hideThinking = m.opts.Settings.GetHideThinkingBlock()
-	m.outputPad = m.opts.Settings.GetOutputPad()
+	m.outputPad = int(m.opts.Settings.GetOutputPad())
 	m.thinkingLevel = string(m.agent.ThinkingLevel())
 	if m.statusLine != nil {
 		m.statusLine.timings = m.agent.Timings()
@@ -148,5 +151,5 @@ func (m *InteractiveMode) renderCurrentSessionState() {
 		m.pendingMessagesContainer.Clear()
 	}
 	m.compactionQueue = nil
-	m.rebuildChatFromSession()
+	m.repaintInitialMessages()
 }

@@ -96,7 +96,7 @@ func TestParallelDispatchReservesMutationOrderInSourceOrder(t *testing.T) {
 	for i, id := range ids {
 		calls[i] = toolCall(id, "p", ai.JsonObject{"value": id})
 	}
-	a := NewAgent(AgentOptions{
+	a := mustNewAgent(AgentOptions{
 		Model: scriptedModel(&scriptedProvider{respond: toolCallsThenText(calls...)}),
 		Tools: []AgentTool{tool},
 	})

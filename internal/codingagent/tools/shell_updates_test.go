@@ -35,13 +35,17 @@ func TestShellUpdateSchedulerCountsWork(t *testing.T) {
 		}
 	})
 
-	acc.Append([]byte("x\n"))
+	if err := acc.Append([]byte("x\n")); err != nil {
+		t.Fatal(err)
+	}
 	u.schedule()
 	<-firstStarted
 
 	const chunks = 10000
 	for range chunks - 1 {
-		acc.Append([]byte("x\n"))
+		if err := acc.Append([]byte("x\n")); err != nil {
+			t.Fatal(err)
+		}
 		u.schedule()
 	}
 	if got := updates.Load(); got != 1 {

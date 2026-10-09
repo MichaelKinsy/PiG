@@ -1,4 +1,4 @@
-upstream_version = "1.0.3"
+upstream_version = "1.1.0"
 
 [[contract]]
 id = "coding-agent/extension-input/remapped-confirm"
@@ -6,7 +6,7 @@ upstream_id = "input:packages/coding-agent/src/modes/interactive/components/exte
 family = "selectors"
 kind = "boundary-transition"
 claim = "select.confirm and literal LF submit before select.cancel; delegated Input submit has no callback and cannot complete the dialog"
-status = "pending"
+status = "ported"
 pig_targets = ["tui/extension_input.go#HandleInput", "internal/codingagent/ext_ui_context.go#Input"]
 evidence = [
   "tui/extension_dialog_bindings_test.go#TestExtensionDialogsMatchPiBindingsAndPalette",
@@ -27,7 +27,7 @@ upstream_id = "input:packages/coding-agent/src/modes/interactive/components/exte
 family = "selectors"
 kind = "boundary-transition"
 claim = "the manager resolves expansion before clamped navigation before confirm before cancel; empty lists and empty-string choices do not submit; literal j/k/LF remain supported"
-status = "pending"
+status = "ported"
 pig_targets = ["tui/extension_selector.go#HandleInput", "internal/codingagent/ext_ui_context.go#Select"]
 evidence = [
   "tui/extension_dialog_bindings_test.go#TestExtensionDialogsMatchPiBindingsAndPalette",
@@ -41,6 +41,28 @@ start = "\thandleInput(keyData: string): void {"
 end = "\tdispose(): void {"
 sha256 = "c625a029c61aa7418ccd053ce87479b8e73b389ce6469fd5646130f523212d72"
 keybindings = ["app.tools.expand", "tui.select.up", "tui.select.down", "tui.select.confirm", "tui.select.cancel"]
+
+[[contract]]
+id = "coding-agent/extension-editor/cancel-before-external-editor"
+upstream_id = "input:packages/coding-agent/src/modes/interactive/components/extension-editor.ts#ExtensionEditorComponent.handleInput"
+family = "selectors"
+kind = "boundary-transition"
+claim = "tui.select.cancel is tested before app.editor.external, so a remapped external key that equals the cancel key cancels; every other key reaches the editor, whose Enter submits and Shift+Enter inserts a newline"
+status = "ported"
+pig_targets = ["internal/codingagent/extension_editor.go#HandleInput", "internal/codingagent/ext_ui_context.go#Editor"]
+evidence = [
+  "internal/codingagent/extension_editor_test.go#TestExtensionEditorHandleInputMatchesPi",
+  "internal/codingagent/extension_editor_test.go#TestExtensionEditorHandleInputTransitions",
+  "internal/codingagent/extension_editor_test.go#TestExtensionEditorExternalAction",
+  "test/parity/scenarios/selectors/10-extension-editor.toml",
+]
+
+[contract.upstream]
+path = "packages/coding-agent/src/modes/interactive/components/extension-editor.ts"
+start = "\thandleInput(keyData: string): void {"
+end = "\tprivate async handleOpenExternalEditor(): Promise<void> {"
+sha256 = "574dd4d83f03bdbb8f2cf9770c598f0a10029970fb68314af801951b6e39d68d"
+keybindings = ["app.editor.external", "tui.select.cancel"]
 
 # The generated startup owner is init. Its ExpandableText header receives subsequent expansion changes through setToolsExpanded; this contract closes that transition, not the complete init surface.
 [[contract]]
@@ -117,11 +139,12 @@ upstream_id = "input:packages/coding-agent/src/modes/interactive/components/mode
 family = "model-resolver-selector"
 kind = "boundary-transition"
 claim = "tui.select.up wraps first-to-last and tui.select.down wraps last-to-first within the filtered model list"
-status = "pending"
+status = "ported"
 pig_targets = [
   "tui/model_select.go#moveCursor",
 ]
 evidence = [
+  "tui/model_selector_oracle_test.go#TestModelSelectorInputMatchesPi",
   "tui/model_select_test.go#TestModelSelectorArrowNavigationWrapsAtBothEnds",
   "test/parity/scenarios/model-resolver-selector/11-model-picker-arrow-wrap.toml",
 ]
@@ -184,12 +207,13 @@ upstream_id = "render:packages/tui/src/utils.ts#<module>.splitIntoTokensWithAnsi
 family = "tui-components"
 kind = "unicode-line-break"
 claim = "Han, Hiragana, Katakana, Hangul, and Bopomofo graphemes form independent wrap tokens so a CJK word can fill the remaining line cells"
-status = "pending"
+status = "ported"
 pig_targets = [
   "tui/widthx/wrap.go#splitIntoTokensWithAnsi",
 ]
 evidence = [
   "tui/widthx/wrap_test.go#TestWrapTextWithAnsi_CJKBreaksWithinRemainingLineWidth",
+  "tui/widthx/pi_width_diff_test.go#TestPiWidthDifferential",
   "test/parity/scenarios/tui-components/06-widthx-cjk-double-width.toml",
 ]
 
@@ -256,7 +280,7 @@ start = "\tprivate showExtensionSelector("
 end = """
 	/**
 	 * Hide the extension selector."""
-sha256 = "0b44fdf66330e1b95f474f4b0b9ea6ae2930c235be5412f0f47ad0036c7d0cdc"
+sha256 = "9726e7a141545df5f93d9b69336e91496d11cdf58ea359ef4314e5ec7785bca6"
 keybindings = []
 
 [[contract]]
@@ -286,7 +310,7 @@ start = "\tprivate showExtensionInput("
 end = """
 	/**
 	 * Hide the extension input."""
-sha256 = "4becf8d1b5faee06f2d4ce428b330bee9b32abe0c0faf3f534acea13d65e2c78"
+sha256 = "97faead6128bcc6179c1fdad789dacb3fdd8ad9056ee1e37e06ac7f3f02646a5"
 keybindings = []
 
 [[contract]]
@@ -315,7 +339,7 @@ start = "\tprivate showExtensionEditor("
 end = """
 	/**
 	 * Hide the extension editor."""
-sha256 = "5a5429fb2c2027603e9b694eeb8598ea8867aad5ada9c686102968d1ceeffc42"
+sha256 = "e359904c0ace81a13a9c1c88c960568df882167352b2156d192f4fb805de7f75"
 keybindings = []
 
 [[contract]]
@@ -369,7 +393,7 @@ evidence = [
 path = "packages/tui/src/terminal.ts"
 start = "const DESIRED_KITTY_KEYBOARD_PROTOCOL_FLAGS = 7;"
 end = "\n\nexport type KeyboardProtocolNegotiationSequence"
-sha256 = "d82727b6678184581a57d3c5b430d018a3df2bbc0823e6cdafd4a987b5fbeb8a"
+sha256 = "97407311561c6e3fd966bc0e464c13f648e13f24314acb45ace1e896ead80965"
 keybindings = []
 
 [[contract]]
@@ -477,7 +501,7 @@ start = "\tprivate async _emitExtensionEvent("
 end = """
 	/**
 	 * Subscribe to agent events."""
-sha256 = "955e5ef042930395a89361e6cf05ce7ab3d1777b5baca681f10c1dba0bbd41cb"
+sha256 = "48dedb7591225d870c4d54e3b98fbf7578bd2711d509ce58118239c0d9ed01d2"
 keybindings = []
 
 [[contract]]
@@ -508,14 +532,15 @@ id = "coding-agent/scoped-models/input-state-machine"
 upstream_id = "input:packages/coding-agent/src/modes/interactive/components/scoped-models-selector.ts#ScopedModelsSelectorComponent.handleInput"
 family = "model-resolver-selector"
 kind = "selector-input-state-machine"
-claim = "scoped-model input preserves wrap navigation, fuzzy search, filtered bulk actions, unavailable IDs, provider toggles, bounded reorder, session-only dirty/save state, configurable action bindings, and explicit cancellation"
-status = "pending"
+claim = "scoped-model input preserves wrap navigation, fuzzy search, filtered bulk actions, unavailable IDs, provider toggles, bounded reorder, session-only dirty/save state, configurable action bindings, explicit cancellation, and key-order precedence when bindings overlap"
+status = "ported"
 pig_targets = [
   "tui/scoped_models_list.go#HandleInput",
   "tui/scoped_models_list.go#refresh",
   "internal/codingagent/keybindings.go#syncToTUI",
 ]
 evidence = [
+  "internal/codingagent/scoped_models_oracle_test.go#TestScopedModelsSelectorMatchesPi",
   "tui/scoped_models_list_test.go#TestScopedModels_ArrowNavigationWraps",
   "tui/scoped_models_list_test.go#TestScopedModels_SearchUsesFuzzySubsequenceOrdering",
   "tui/scoped_models_list_test.go#TestScopedModels_FilteredClearAndEnableTargetOnlyMatches",
@@ -549,17 +574,18 @@ id = "coding-agent/model-selector/input-state-machine"
 upstream_id = "input:packages/coding-agent/src/modes/interactive/components/model-selector.ts#ModelSelectorComponent.handleInput"
 family = "model-resolver-selector"
 kind = "selector-input-state-machine"
-claim = "model picker preserves scope toggle guards, fuzzy Input editing, filter re-anchoring, wrapped arrows, clamped pages, selection, cancellation, and configured TUI action bindings"
-status = "pending"
+claim = "model picker preserves scope toggle guards, fuzzy Input editing whose own submit selects the highlighted model, filter re-anchoring, wrapped arrows, selection, cancellation, the save binding and configured TUI action bindings"
+status = "ported"
 pig_targets = [
   "tui/model_select.go#HandleInput",
   "tui/model_select.go#applyFilter",
 ]
 evidence = [
+  "tui/model_selector_oracle_test.go#TestModelSelectorInputMatchesPi",
   "tui/model_select_test.go#TestModelSelector_FilterResetsSelectionToBestMatch",
   "tui/model_select_test.go#TestModelSelector_FilterUsesFuzzySubsequence",
   "tui/model_select_test.go#TestModelSelector_SearchDelegatesCursorEditingToInput",
-  "tui/model_select_test.go#TestModelSelectorPageNavigationClampsWithoutWrapping",
+  "tui/model_select_test.go#TestModelSelectorPageKeysDoNotMoveSelection",
   "test/parity/scenarios/model-resolver-selector/06-model-scope-toggle.toml",
   "test/parity/scenarios/model-resolver-selector/09-model-filter-resets-selection.toml",
   "test/parity/scenarios/model-resolver-selector/14-model-picker-fuzzy-filter.toml",
@@ -584,13 +610,14 @@ id = "tui/cancellable-loader/cancel-input"
 upstream_id = "input:packages/tui/src/components/cancellable-loader.ts#CancellableLoader.handleInput"
 family = "tui-components"
 kind = "cancellation-input"
-claim = "the configured tui.select.cancel binding aborts once and invokes onAbort, while unrelated input leaves cancellation untouched"
-status = "pending"
+claim = "the configured tui.select.cancel binding aborts the signal and invokes onAbort on every press, while unrelated input, including the default Escape after a remap, leaves cancellation untouched"
+status = "ported"
 pig_targets = [
   "tui/cancellable_loader.go#HandleInput",
 ]
 evidence = [
   "tui/loader_image_parity_test.go#TestCancellableLoader_HandleInput_RouteBindings",
+  "tui/cancellable_loader_input_test.go#TestCancellableLoaderCancelFollowsTheBindingAndCallsOnAbortEachPress",
   "test/parity/scenarios/tui-components/09-cancellable-loader.toml",
 ]
 
@@ -606,14 +633,15 @@ id = "tui/cancellable-loader/dispose-without-abort"
 upstream_id = "input:packages/tui/src/components/cancellable-loader.ts#CancellableLoader.dispose"
 family = "tui-components"
 kind = "resource-lifecycle"
-claim = "disposing loader animation does not abort the operation or invoke onAbort"
-status = "pending"
+claim = "disposing the loader stops its animation timer and neither aborts the operation nor invokes onAbort; a second dispose is harmless"
+status = "ported"
 pig_targets = [
   "tui/cancellable_loader.go#Dispose",
 ]
 evidence = [
   "tui/loader_image_parity_test.go#TestCancellableLoaderDisposeStopsWithoutAborting",
-  "test/parity/scenarios/tui-components/09-cancellable-loader.toml",
+  "tui/cancellable_loader_dispose_parity_test.go#TestCancellableLoaderDisposeParity",
+  "test/parity/scenarios/tui-components/27-cancellable-loader-dispose.toml",
 ]
 
 [contract.upstream]
@@ -629,12 +657,14 @@ upstream_id = "input:packages/tui/src/components/select-list.ts#SelectList.handl
 family = "tui-components"
 kind = "selector-input-state-machine"
 claim = "SelectList mode wraps arrows, reports selection changes, confirms/cancels through configured actions, and ignores search-selector-only Page/Home/End input"
-status = "pending"
+status = "ported"
 pig_targets = [
+  "tui/select_list.go#HandleInput",
   "tui/select_filterable.go#HandleInput",
   "tui/select_submenu.go#HandleInput",
 ]
 evidence = [
+  "tui/select_list_oracle_test.go#TestSelectListInputMatchesPi",
   "tui/select_filterable_test.go#TestFilterableListUpWrapsToBottom",
   "tui/select_filterable_test.go#TestFilterableListDownWrapsToTop",
   "tui/select_filterable_test.go#TestFilterableList_DisabledSearchIgnoresNonSelectListNavigation",
@@ -659,18 +689,19 @@ id = "tui/input/edit-state-machine"
 upstream_id = "input:packages/tui/src/components/input.ts#Input.handleInput"
 family = "tui-components"
 kind = "single-line-input-state-machine"
-claim = "Input preserves configured submit/cancel/edit actions, grapheme cursor and deletion, word movement, kill/yank/undo chains, atomic cleaned paste, Kitty/modifyOtherKeys text, and C0/C1 rejection"
-status = "pending"
+claim = "Input preserves configured submit/cancel/edit actions, grapheme cursor and deletion, word movement, kill/yank/undo chains, atomic cleaned paste, Kitty CSI-u text (modifyOtherKeys sequences are rejected as control input), and C0/C1 rejection"
+status = "ported"
 pig_targets = [
   "tui/text_input.go#HandleInput",
 ]
 evidence = [
+  "tui/input_oracle_test.go#TestInputHandleInputMatchesPi",
   "tui/text_input_test.go#TestTextInputDeleteWordUndoAndYank",
   "tui/text_input_test.go#TestTextInputConsecutiveCtrlWAccumulatesIntoOneKillEntry",
   "tui/text_input_test.go#TestTextInputUndoCoalescesWordCharsAndSpacesSeparately",
   "tui/text_input_test.go#TestTextInputBracketedPasteCleansInput",
   "tui/keys_decode_test.go#TestTextInputDecodesKittyPrintable",
-  "tui/key_csiu_text_test.go#TestTextInput_InsertsCapitalFromModifyOtherKeys",
+  "tui/key_csiu_text_test.go#TestTextInputIgnoresModifyOtherKeysText",
   "test/parity/scenarios/extensions-runtime/11-subprocess-tool-ui-dialogs.toml",
 ]
 
@@ -729,12 +760,13 @@ upstream_id = "input:packages/coding-agent/src/modes/interactive/interactive-mod
 family = "compaction"
 kind = "lifecycle-input-override"
 claim = "compaction_start makes Escape call abortCompaction even while the agent is idle, and compaction_end restores normal dispatch while retaining manual cancellation in conversation output"
-status = "pending"
+status = "ported"
 pig_targets = [
   "internal/codingagent/interactive_input.go#dispatchKey",
   "internal/codingagent/interactive_events.go#handleAgentEvent",
 ]
 evidence = [
+  "internal/codingagent/interactive_test.go#TestInteractiveMode_EscapeAbortsCompactionOnlyBetweenStartAndEnd",
   "internal/codingagent/interactive_test.go#TestInteractiveMode_EscCancelsCompactionWhileAgentIsIdle",
   "internal/codingagent/interactive_test.go#TestInteractiveMode_ManualCompactionCancellationPersistsInConversation",
   "test/parity/scenarios/compaction/07-escape-cancels-compaction.toml",
@@ -783,7 +815,7 @@ family = "tui-components"
 kind = "submission-boundary"
 claim = "submission trims JavaScript whitespace before invoking onSubmit; FEFF trims, NEL remains, and empty submissions still invoke the callback once"
 status = "ported"
-pig_targets = ["tui/editor.go#submitValue", "tui/extension_editor.go#HandleInput"]
+pig_targets = ["tui/editor.go#submitValue", "internal/codingagent/extension_editor.go#HandleInput"]
 evidence = ["tui/editor_literal_input_upstream_test.go#TestEditorHistoryAndSubmissionUseJavaScriptTrim", "test/parity/scenarios/tui-components/19-editor-history-submission-whitespace.toml"]
 
 [contract.upstream]
@@ -853,6 +885,30 @@ claim = "ordinary input reaches Editor with the installed user bindings intact; 
 status = "ported"
 pig_targets = ["internal/codingagent/interactive_input.go#inputLoopUntil", "internal/codingagent/keys.go#classifyKeyWithBindings"]
 evidence = ["internal/codingagent/interactive_remapped_submit_test.go#TestTerminalInputPreservesRemappedSubmitBindings", "test/parity/scenarios/tui-components/22-editor-remapped-submit-with-key-diagnostics.toml"]
+
+[contract.upstream]
+path = "packages/coding-agent/src/modes/interactive/components/custom-editor.ts"
+start = "\thandleInput(data: string): void {"
+end = "\n\t}\n}\n"
+sha256 = "17e85c22925c34b2e99ec1cc3d1d6be4b7a2dec7040dd8a9aefb8f821889860b"
+keybindings = ["app.clipboard.pasteImage", "app.exit", "app.interrupt", "tui.editor.historyNext", "tui.editor.historyPrevious"]
+
+[[contract]]
+id = "coding-agent/custom-editor/handler-order"
+upstream_id = "input:packages/coding-agent/src/modes/interactive/components/custom-editor.ts#CustomEditor.handleInput"
+family = "interactive-rendering"
+kind = "boundary-transition"
+claim = "extension shortcuts come before the paste-image key, which comes before interrupt (only while no autocomplete is open; onEscape wins over the registered app.interrupt handler) and exit (only when the editor is empty; onCtrlD wins over app.exit); explicit editor history bindings beat every other app action; the remaining app actions run in registration order; every other key reaches the editor"
+status = "ported"
+pig_targets = ["internal/codingagent/custom_editor.go#HandleInput", "internal/codingagent/custom_editor.go#OnAction"]
+evidence = [
+  "internal/codingagent/custom_editor_test.go#TestCustomEditorExtensionShortcutThenPasteImageComeFirst",
+  "internal/codingagent/custom_editor_test.go#TestCustomEditorEscapePrefersOnEscapeThenTheInterruptActionThenTheEditor",
+  "internal/codingagent/custom_editor_test.go#TestCustomEditorExitOnlyWhenTheEditorIsEmpty",
+  "internal/codingagent/custom_editor_test.go#TestCustomEditorExplicitHistoryBindingBeatsModelCycling",
+  "internal/codingagent/custom_editor_test.go#TestCustomEditorRunsTheRegisteredAppActionAndReplacesIt",
+  "test/parity/scenarios/custom-editor-precedence.toml",
+]
 
 [contract.upstream]
 path = "packages/coding-agent/src/modes/interactive/components/custom-editor.ts"
@@ -946,3 +1002,2916 @@ start = "\trender(width: number): string[] {"
 end = "\t/** Each block's displacement from its place in the model at `time`, in grid units. */"
 sha256 = "bfa35aed241718b212e70e680f64c3ca47ab57615580177fe56f5a10293ebbef"
 keybindings = []
+
+[[contract]]
+id = "coding-agent/thinking-selector/empty-list-and-save"
+upstream_id = "input:packages/coding-agent/src/modes/interactive/components/thinking-selector.ts#ThinkingSelectorComponent.handleInput"
+family = "selectors"
+kind = "boundary-transition"
+claim = "the save binding saves the highlighted level only when an onSelectAsDefault handler exists and a level is highlighted; navigation and confirm/cancel keys drive the list before any key edits the search; a query matching no level leaves no item for save or confirm"
+status = "ported"
+pig_targets = ["internal/codingagent/thinking_selector.go#HandleInput"]
+evidence = [
+  "internal/codingagent/thinking_selector_oracle_test.go#TestThinkingSelectorInputMatchesPi",
+  "internal/codingagent/thinking_selector_test.go#TestThinkingSelectorBoundaryTransitions",
+  "internal/codingagent/thinking_selector_test.go#TestThinkingSelectorUsesTheConfiguredSaveBinding",
+  "internal/codingagent/thinking_selector_test.go#TestThinkingSelectorSearchSelectAndCancel",
+  "test/parity/scenarios/settings/06-thinking-selector-search-editing.toml",
+]
+
+[contract.upstream]
+path = "packages/coding-agent/src/modes/interactive/components/thinking-selector.ts"
+start = "\thandleInput(keyData: string): void {"
+end = "\tgetSelectList(): SelectList {"
+sha256 = "d3891fe9f432870543ede5439ca65b1afd2eafb14e29f1e560257e5ff504ccf8"
+keybindings = ["app.thinking.save", "tui.select.up", "tui.select.down", "tui.select.confirm", "tui.select.cancel"]
+
+[[contract]]
+id = "tui/settings-list/search-input-delegation"
+upstream_id = "input:packages/tui/src/components/settings-list.ts#SettingsList.handleInput"
+family = "settings"
+kind = "boundary-transition"
+claim = "an open submenu receives every key; otherwise up and down wrap, empty lists ignore them, up, down, confirm or space (when search is off or empty) and cancel are tested in that order, and every other key goes to the search Input and refilters, returning the selection to the first match"
+status = "ported"
+pig_targets = ["tui/settings_list.go#HandleInput", "tui/settings_list.go#applyFilter"]
+evidence = [
+  "tui/settings_list_input_test.go#TestSettingsListSearchDelegatesEditingKeysToTheInput",
+  "tui/settings_list_input_test.go#TestSettingsListAnyDelegatedKeyResetsTheSelectionToTheFirstMatch",
+  "tui/settings_list_input_test.go#TestSettingsListBoundActionsRunInUpstreamOrder",
+  "tui/settings_list_input_test.go#TestSettingsListEmptyAndSingletonNavigationBoundaries",
+  "tui/settings_list_input_test.go#TestSettingsListSubmenuReceivesEveryKeyIncludingCancel",
+  "tui/settings_list_keys_test.go#TestSettingsListPageAndHomeEndKeysFollowSearchState",
+  "test/parity/scenarios/settings/08-settings-search-editing.toml",
+]
+
+[contract.upstream]
+path = "packages/tui/src/components/settings-list.ts"
+start = "\thandleInput(data: string): void {"
+end = "\tprivate getDisplayItems(): SettingItem[] {"
+sha256 = "f10da89d0a8daa8f47b63b2d95210818c0cff24f9d2ee01876646c79a92549ba"
+keybindings = ["tui.select.cancel", "tui.select.confirm", "tui.select.down", "tui.select.up"]
+
+[[contract]]
+id = "coding-agent/oauth-selector/input-state-machine"
+upstream_id = "input:packages/coding-agent/src/modes/interactive/components/oauth-selector.ts#OAuthSelectorComponent.handleInput"
+family = "oauth"
+kind = "selector-input-state-machine"
+claim = "up and down clamp without wrapping, empty filtered lists ignore arrows and confirm, confirm and the search Input's submit (tui.input.submit or LF) select the highlighted provider, cancel cancels, and every other key edits the fuzzy search and clamps the selection"
+status = "ported"
+pig_targets = ["tui/oauth_selector.go#HandleInput", "tui/oauth_selector.go#confirm"]
+evidence = [
+  "tui/oauth_selector_input_test.go#TestOAuthSelectorInputMatchesPi",
+  "tui/oauth_selector_oracle_test.go#TestOAuthSelectorHandleInputMatchesPi",
+  "test/parity/scenarios/oauth/17-login-method-search.toml",
+]
+
+[contract.upstream]
+path = "packages/coding-agent/src/modes/interactive/components/oauth-selector.ts"
+start = "\thandleInput(keyData: string): void {"
+end = "\t\t}\n\t}\n}\n"
+sha256 = "17088a93a1c724c61a6aaa6262eaa6930983aa98d47c3915d3b217c1386c750f"
+keybindings = ["tui.select.cancel", "tui.select.confirm", "tui.select.down", "tui.select.up"]
+
+[[contract]]
+id = "coding-agent/thinking-selector/input-state-machine"
+upstream_id = "input:packages/coding-agent/src/modes/interactive/components/thinking-selector.ts#ThinkingSelectorComponent.handleInput"
+family = "settings"
+kind = "selector-input-state-machine"
+claim = "the save binding saves the highlighted level only when a save callback exists, up, down, confirm and cancel drive the list with wraparound and fire onSelect or onCancel once per key, and every other key edits the search Input (whose submit selects) and rebuilds the list around the highlighted level"
+status = "ported"
+pig_targets = ["internal/codingagent/thinking_selector.go#HandleInput"]
+evidence = [
+  "internal/codingagent/thinking_selector_oracle_test.go#TestThinkingSelectorInputMatchesPi",
+  "test/parity/scenarios/settings/06-thinking-selector-search-editing.toml",
+]
+
+[contract.upstream]
+path = "packages/coding-agent/src/modes/interactive/components/thinking-selector.ts"
+start = "\thandleInput(keyData: string): void {"
+end = "\tgetSelectList(): SelectList {"
+sha256 = "d3891fe9f432870543ede5439ca65b1afd2eafb14e29f1e560257e5ff504ccf8"
+keybindings = ["app.thinking.save", "tui.select.cancel", "tui.select.confirm", "tui.select.down", "tui.select.up"]
+
+[[contract]]
+id = "coding-agent/bordered-loader/cancel-input"
+upstream_id = "input:packages/coding-agent/src/modes/interactive/components/bordered-loader.ts#BorderedLoader.handleInput"
+family = "interactive-rendering"
+kind = "cancellation-input"
+claim = "a cancellable loader shows the hint of the configured tui.select.cancel binding and aborts on that key (onAbort on every press), while a non-cancellable loader has no hint, ignores every key and never aborts"
+status = "ported"
+pig_targets = ["tui/bordered_loader.go#HandleInput", "tui/bordered_loader.go#NewBorderedLoader"]
+evidence = [
+  "tui/bordered_loader_input_oracle_test.go#TestBorderedLoaderHandleInputMatchesPi",
+  "tui/bordered_loader_oracle_test.go#TestBorderedLoaderMatchesPi",
+  "test/parity/scenarios/tui-components/10-loader-countdown-bordered-behavior.toml",
+]
+
+[contract.upstream]
+path = "packages/coding-agent/src/modes/interactive/components/bordered-loader.ts"
+start = "\thandleInput(data: string): void {"
+end = "\tdispose(): void {"
+sha256 = "a6733e82611ec473d2f38c6d4e05c527db63e58e3fb531751484b0519ffdc154"
+keybindings = []
+
+[[contract]]
+id = "coding-agent/login-dialog/cancel-copy-input"
+upstream_id = "input:packages/coding-agent/src/modes/interactive/components/login-dialog.ts#LoginDialogComponent.handleInput"
+family = "oauth"
+kind = "boundary-transition"
+claim = "the configured tui.select.cancel binding cancels on every press (abort, onComplete, rejecting the pending input), app.message.copy copies a shown sign-in URL, every other key edits the prompt Input whose submit resolves the pending value and replaces the field with the submitted text, and a submit after cancel changes nothing"
+status = "ported"
+pig_targets = ["tui/login_dialog.go#HandleInput", "tui/login_dialog.go#showInput"]
+evidence = [
+  "tui/login_dialog_oracle_test.go#TestLoginDialogInputMatchesPi",
+  "tui/login_dialog_cancel_order_test.go#TestLoginDialogCancelAbortsBeforeEndingTheInput",
+  "test/parity/scenarios/oauth/26-login-cancel-returns-to-provider-list.toml",
+]
+
+[contract.upstream]
+path = "packages/coding-agent/src/modes/interactive/components/login-dialog.ts"
+start = "\thandleInput(data: string): void {"
+end = "\t\tthis.input.handleInput(data);\n\t}\n"
+sha256 = "bfa63e0009926a73edf461ae72bf088c56d01e59df7f9a37e669121c037f2a6c"
+keybindings = ["app.message.copy", "tui.select.cancel"]
+
+[[contract]]
+id = "coding-agent/session-selector/list-input-state-machine"
+upstream_id = "input:packages/coding-agent/src/modes/interactive/components/session-selector.ts#SessionList.handleInput"
+family = "session"
+kind = "state-machine"
+claim = "while a delete confirmation is pending only confirm and cancel act; otherwise tab, sort, named, path, delete, rename and noninvasive delete are checked in that order before the list actions up, down, page up, page down, confirm, cancel; anything else edits the search Input, whose own submit selects the highlighted session"
+status = "ported"
+pig_targets = ["internal/codingagent/session_selector.go#HandleInput"]
+evidence = [
+  "internal/codingagent/session_selector_oracle_test.go#TestSessionSelectorInputMatchesPi",
+  "test/parity/scenarios/session/20-session-selector-search.toml",
+]
+
+[contract.upstream]
+path = "packages/coding-agent/src/modes/interactive/components/session-selector.ts"
+start = "\thandleInput(keyData: string): void {"
+end = "}\n\ntype SessionsLoader"
+sha256 = "89815070a78a87e85565931cdcff60bda1908a3330e79acf0f2667b718c2387d"
+keybindings = ["app.session.delete", "app.session.deleteNoninvasive", "app.session.rename", "app.session.toggleNamedFilter", "app.session.togglePath", "app.session.toggleSort", "tui.input.tab", "tui.select.cancel", "tui.select.confirm", "tui.select.down", "tui.select.pageDown", "tui.select.pageUp", "tui.select.up"]
+
+[[contract]]
+id = "coding-agent/session-selector/rename-mode-input"
+upstream_id = "input:packages/coding-agent/src/modes/interactive/components/session-selector.ts#SessionSelectorComponent.handleInput"
+family = "session"
+kind = "state-machine"
+claim = "in rename mode the cancel binding leaves rename mode and every other key edits the rename Input; in list mode every key goes to the session list"
+status = "ported"
+pig_targets = ["internal/codingagent/session_selector.go#HandleInput"]
+evidence = [
+  "internal/codingagent/session_selector_oracle_test.go#TestSessionSelectorInputMatchesPi",
+  "test/parity/scenarios/session/20-session-selector-search.toml",
+]
+
+[contract.upstream]
+path = "packages/coding-agent/src/modes/interactive/components/session-selector.ts"
+start = "\thandleInput(data: string): void {\n\t\tif (this.mode === \"rename\") {"
+end = "\tprivate canRename = true;"
+sha256 = "443241b1075d5ae38804fa447b634970c288f23a0952bd9a18cf61930d9eb344"
+keybindings = ["tui.select.cancel"]
+
+[[contract]]
+id = "coding-agent/tree-selector/list-input-state-machine"
+upstream_id = "input:packages/coding-agent/src/modes/interactive/components/tree-selector.ts#TreeList.handleInput"
+family = "tree"
+kind = "state-machine"
+claim = "up/down wrap; fold and branch jumps; page moves; confirm selects; copy; cancel clears a search before cancelling; the filter keys set, toggle and cycle modes and clear folds; backspace trims the search; edit-label opens the label input; the timestamp key toggles; any other printable key appends to the search; each action is checked in Pi's order"
+status = "ported"
+pig_targets = ["tui/tree_select.go#HandleInput"]
+evidence = [
+  "internal/codingagent/tree_selector_oracle_test.go#TestTreeSelectorInputMatchesPi",
+  "test/parity/scenarios/tree/07-tree-fold-root.toml",
+  "test/parity/scenarios/tree/12-tree-digit-search.toml",
+]
+
+[contract.upstream]
+path = "packages/coding-agent/src/modes/interactive/components/tree-selector.ts"
+start = "\thandleInput(keyData: string): void {\n\t\tconst kb = getKeybindings();\n\t\tif (kb.matches(keyData, \"tui.select.up\"))"
+end = "\n\t/**\n\t * Whether a node can be folded."
+sha256 = "6a8545e87892e819d1f92bfd30b1a9856625ec20829d816e54be2377701e9519"
+keybindings = ["app.message.copy", "app.tree.editLabel", "app.tree.filter.all", "app.tree.filter.cycleBackward", "app.tree.filter.cycleForward", "app.tree.filter.default", "app.tree.filter.labeledOnly", "app.tree.filter.noTools", "app.tree.filter.userOnly", "app.tree.foldOrUp", "app.tree.toggleLabelTimestamp", "app.tree.unfoldOrDown", "tui.editor.cursorLeft", "tui.editor.cursorRight", "tui.editor.deleteCharBackward", "tui.select.cancel", "tui.select.confirm", "tui.select.down", "tui.select.pageDown", "tui.select.pageUp", "tui.select.up"]
+
+[[contract]]
+id = "coding-agent/tree-selector/label-input-state-machine"
+upstream_id = "input:packages/coding-agent/src/modes/interactive/components/tree-selector.ts#LabelInput.handleInput"
+family = "tree"
+kind = "state-machine"
+claim = "confirm saves the trimmed label (empty removes it) and hides the input, cancel hides it, every other key edits the label Input"
+status = "ported"
+pig_targets = ["tui/tree_select.go#handleLabelInput"]
+evidence = [
+  "internal/codingagent/tree_selector_oracle_test.go#TestTreeSelectorInputMatchesPi",
+  "test/parity/scenarios/tree/07-tree-fold-root.toml",
+  "test/parity/scenarios/tree/12-tree-digit-search.toml",
+]
+
+[contract.upstream]
+path = "packages/coding-agent/src/modes/interactive/components/tree-selector.ts"
+start = "\thandleInput(keyData: string): void {\n\t\tconst kb = getKeybindings();\n\t\tif (kb.matches(keyData, \"tui.select.confirm\")) {\n\t\t\tconst value"
+end = "}\n\n/**\n * Component that renders a session tree selector"
+sha256 = "ad024e4e17023018a0d606f28397bbce7e32b6f269565f7330a6f1b68c97f5d4"
+keybindings = ["tui.select.cancel", "tui.select.confirm"]
+
+[[contract]]
+id = "coding-agent/tree-selector/component-input-routing"
+upstream_id = "input:packages/coding-agent/src/modes/interactive/components/tree-selector.ts#TreeSelectorComponent.handleInput"
+family = "tree"
+kind = "state-machine"
+claim = "while the label input is open every key goes to it, otherwise to the tree list"
+status = "ported"
+pig_targets = ["tui/tree_select.go#HandleInput"]
+evidence = [
+  "internal/codingagent/tree_selector_oracle_test.go#TestTreeSelectorInputMatchesPi",
+  "test/parity/scenarios/tree/07-tree-fold-root.toml",
+  "test/parity/scenarios/tree/12-tree-digit-search.toml",
+]
+
+[contract.upstream]
+path = "packages/coding-agent/src/modes/interactive/components/tree-selector.ts"
+start = "\thandleInput(keyData: string): void {\n\t\tif (this.labelInput) {"
+end = "\tgetTreeList(): TreeList {"
+sha256 = "fdf968cae330f7f9381e145771626bb9ecbdb31214bc0c2e1956218bdf94b2f9"
+keybindings = []
+
+[[contract]]
+id = "coding-agent/tree-selector/search-line-ignores-input"
+upstream_id = "input:packages/coding-agent/src/modes/interactive/components/tree-selector.ts#SearchLine.handleInput"
+family = "tree"
+kind = "state-machine"
+claim = "the search line accepts and ignores every key; the query changes only through the tree list"
+status = "ported"
+pig_targets = ["tui/tree_select.go#renderSearchLine"]
+evidence = [
+  "internal/codingagent/tree_selector_oracle_test.go#TestTreeSelectorInputMatchesPi",
+  "test/parity/scenarios/tree/07-tree-fold-root.toml",
+  "test/parity/scenarios/tree/12-tree-digit-search.toml",
+]
+
+[contract.upstream]
+path = "packages/coding-agent/src/modes/interactive/components/tree-selector.ts"
+start = "\thandleInput(_keyData: string): void {}"
+end = "}\n\n/** Component that renders tree help"
+sha256 = "94160f07161306f41b5a6c395b16fcba4598135fcb0c57055d175886f993c94d"
+keybindings = []
+
+[[contract]]
+id = "tui/editor/input-state-machine"
+upstream_id = "input:packages/tui/src/components/editor.ts#Editor.handleInput"
+family = "tui-components"
+kind = "input-state-machine"
+claim = "the editor's key chain (action order, shared keys, cursor, word, line and page movement, deletion and kill ring, undo, history, newline and submit, tab, character jump, paste, literal text) matches Pi under default and rebound keybindings; autocomplete popup behavior is carried by the ported upstream autocomplete tests"
+status = "ported"
+pig_targets = ["tui/editor.go#HandleInput"]
+evidence = [
+  "tui/editor_oracle_test.go#TestEditorMatchesPiOracle",
+  "tui/editor_bindings_oracle_test.go#TestEditorRebindingsMatchPi",
+  "tui/editor_autocomplete_boundary_upstream_test.go#TestEditorAdvertisedTriggerCharactersRequestAfterCJKBoundary",
+  "tui/editor_kill_undo_upstream_test.go#TestUpstreamEditorKillRing",
+  "test/parity/scenarios/tui-components/25-editor-edit-state.toml",
+]
+
+[contract.upstream]
+path = "packages/tui/src/components/editor.ts"
+start = "\thandleInput(data: string): void {\n\t\tconst kb = getKeybindings();"
+end = "\n\tprivate layoutText("
+sha256 = "774d97716ae01a4977ef27bb859bd492f1197c592c88aed0afbe6ea470f8fc1b"
+keybindings = ['matchesKey:"shift+backspace"', 'matchesKey:"shift+delete"', 'matchesKey:"shift+space"', "tui.editor.cursorDown", "tui.editor.cursorLeft", "tui.editor.cursorLineEnd", "tui.editor.cursorLineStart", "tui.editor.cursorRight", "tui.editor.cursorUp", "tui.editor.cursorWordLeft", "tui.editor.cursorWordRight", "tui.editor.deleteCharBackward", "tui.editor.deleteCharForward", "tui.editor.deleteToLineEnd", "tui.editor.deleteToLineStart", "tui.editor.deleteWordBackward", "tui.editor.deleteWordForward", "tui.editor.historyNext", "tui.editor.historyPrevious", "tui.editor.jumpBackward", "tui.editor.jumpForward", "tui.editor.pageDown", "tui.editor.pageUp", "tui.editor.undo", "tui.editor.yank", "tui.editor.yankPop", "tui.input.copy", "tui.input.newLine", "tui.input.submit", "tui.input.tab", "tui.select.cancel", "tui.select.confirm", "tui.select.down", "tui.select.up"]
+
+[[contract]]
+id = "coding-agent/trust-selector/input-state-machine"
+upstream_id = "input:packages/coding-agent/src/modes/interactive/components/trust-selector.ts#TrustSelectorComponent.handleInput"
+family = "project-trust"
+kind = "selector-input-state-machine"
+claim = "up/down and k/j move the highlighted trust option and clamp at both ends, confirm or LF selects its trusted flag and updates, cancel cancels, every other key is ignored, and the saved decision picks the initial row"
+status = "ported"
+pig_targets = ["internal/codingagent/trust_selector.go#HandleInput"]
+evidence = [
+  "internal/codingagent/trust_selector_oracle_test.go#TestTrustSelectorInputMatchesPi",
+  "test/parity/scenarios/project-trust/09-trust-selector-state.toml",
+]
+
+[contract.upstream]
+path = "packages/coding-agent/src/modes/interactive/components/trust-selector.ts"
+start = "\thandleInput(keyData: string): void {"
+end = "\n\t}\n}\n"
+sha256 = "78552c74470b286a2a86c8c48c22238b56148f4bccb17fea77073a7cb64868fe"
+keybindings = ["tui.select.cancel", "tui.select.confirm", "tui.select.down", "tui.select.up"]
+
+[[contract]]
+id = "coding-agent/user-message-selector/input-state-machine"
+upstream_id = "input:packages/coding-agent/src/modes/interactive/components/user-message-selector.ts#UserMessageList.handleInput"
+family = "interactive-rendering"
+kind = "selector-input-state-machine"
+claim = "up and down wrap through the messages, then confirm selects the highlighted message and cancel cancels; the actions are checked in that order so a key bound to two of them keeps the earlier action, and other keys are ignored"
+status = "ported"
+pig_targets = ["tui/user_message_selector.go#HandleInput"]
+evidence = [
+  "tui/user_message_selector_oracle_test.go#TestUserMessageSelectorInputMatchesPi",
+  "test/parity/scenarios/interactive-rendering/16-user-message-selector.toml",
+]
+
+[contract.upstream]
+path = "packages/coding-agent/src/modes/interactive/components/user-message-selector.ts"
+start = "\thandleInput(keyData: string): void {"
+end = "\n}\n\n/**\n * Component that renders a user message selector"
+sha256 = "8120a51b15eb1a5434f052d0e5b91c01e931adab6c4d7dfa593947a611758e8f"
+keybindings = ["tui.select.cancel", "tui.select.confirm", "tui.select.down", "tui.select.up"]
+
+[[contract]]
+id = "coding-agent/bordered-loader/delegated-cancel"
+upstream_id = "input:packages/coding-agent/src/modes/interactive/components/bordered-loader.ts#BorderedLoader.handleInput"
+family = "tui-components"
+kind = "cancellation-input"
+claim = "input reaches the inner CancellableLoader only when the loader is cancellable, so the tui.select.cancel binding aborts once and invokes onAbort; a non-cancellable loader has no inner loader and ignores every key"
+status = "ported"
+pig_targets = ["tui/bordered_loader.go#HandleInput"]
+evidence = [
+  "tui/bordered_loader_test.go#TestBorderedLoader_HandleInput",
+  "tui/bordered_loader_oracle_test.go#TestBorderedLoaderMatchesPi",
+  "test/parity/scenarios/tui-components/10-loader-countdown-bordered-behavior.toml",
+]
+
+[contract.upstream]
+path = "packages/coding-agent/src/modes/interactive/components/bordered-loader.ts"
+start = "\thandleInput(data: string): void {"
+end = "\n\tdispose(): void {"
+sha256 = "5f468de5f481755916e40edd4be7deafb350d14437a1d41f08cd2f38e67010ca"
+keybindings = []
+
+[[contract]]
+id = "coding-agent/oauth-selector/boundary-transitions"
+upstream_id = "input:packages/coding-agent/src/modes/interactive/components/oauth-selector.ts#OAuthSelectorComponent.handleInput"
+family = "selectors"
+kind = "boundary-transition"
+claim = "up and down clamp at the first and last provider without wrapping, confirm selects nothing when the filtered list is empty, cancel is checked before the search input, and every other key edits the search and re-filters"
+status = "ported"
+pig_targets = ["tui/oauth_selector.go#HandleInput"]
+evidence = [
+  "test/parity/scenarios/oauth/26-login-cancel-returns-to-provider-list.toml",
+  "tui/oauth_selector_input_test.go#TestOAuthSelectorInputMatchesPi",
+  "tui/oauth_selector_test.go#TestOAuthSelector_Navigation",
+  "tui/oauth_selector_test.go#TestOAuthSelector_LettersEditSearch",
+  "tui/oauth_selector_input_test.go#TestOAuthSelectorInputMatchesPi",
+  "test/parity/scenarios/oauth/17-login-method-search.toml",
+]
+
+[contract.upstream]
+path = "packages/coding-agent/src/modes/interactive/components/oauth-selector.ts"
+start = "\thandleInput(keyData: string): void {"
+end = "\t\t\tthis.filterProviders(this.searchInput.getValue());\n"
+sha256 = "d20a4b95242ca6f4b5b1a85a39ddb19d3eca810f4c2db3e60b360334118679d8"
+keybindings = ["tui.select.up", "tui.select.down", "tui.select.confirm", "tui.select.cancel"]
+
+[[contract]]
+id = "coding-agent/extension-editor/cancel-and-external"
+upstream_id = "input:packages/coding-agent/src/modes/interactive/components/extension-editor.ts#ExtensionEditorComponent.handleInput"
+family = "selectors"
+kind = "cancellation-input"
+claim = "tui.select.cancel cancels before any other key, app.editor.external opens the external editor and its result replaces the editor text, and every other key reaches the editor"
+status = "ported"
+pig_targets = ["internal/codingagent/extension_editor.go#HandleInput"]
+evidence = [
+  "internal/codingagent/extension_editor_test.go#TestExtensionEditorHandleInputTransitions",
+  "internal/codingagent/extension_editor_test.go#TestExtensionEditorExternalAction",
+  "internal/codingagent/extension_editor_test.go#TestExtensionEditorHandleInputMatchesPi",
+  "test/parity/scenarios/selectors/10-extension-editor.toml",
+]
+
+[contract.upstream]
+path = "packages/coding-agent/src/modes/interactive/components/extension-editor.ts"
+start = "\thandleInput(keyData: string): void {"
+end = "\n\n\tprivate async handleOpenExternalEditor"
+sha256 = "393267b822266468cf8965df68a4229b7790bf379e19a52d6b69c5ea6a780969"
+keybindings = ["tui.select.cancel", "app.editor.external"]
+
+[[contract]]
+id = "coding-agent/select-submenu/input-state-machine"
+upstream_id = "input:packages/coding-agent/src/modes/interactive/components/settings-submenu.ts#SelectSubmenu.handleInput"
+family = "settings"
+kind = "selector-input-state-machine"
+claim = "navigation keys go to the select list and fire selection-change on every up or down over a non-empty list, other keys edit the optional search input and rebuild the fuzzy-filtered list; the search input never holds focus, so it emits no hardware cursor marker"
+status = "ported"
+pig_targets = ["tui/select_submenu.go#HandleInput"]
+evidence = [
+  "internal/codingagent/settings_submenu_oracle_test.go#TestSettingsSubmenusMatchPi",
+  "test/parity/scenarios/settings/08-settings-model-thinking-empty-search.toml",
+]
+
+[contract.upstream]
+path = "packages/coding-agent/src/modes/interactive/components/settings-submenu.ts"
+start = "\thandleInput(data: string): void {\n\t\tif (this.searchInput) {"
+end = "\n}\n\n// ===="
+sha256 = "63e96b947ace8711d62da42237583c9efecbda7161eb1edf9c145f67532c4b7c"
+keybindings = ["tui.select.cancel", "tui.select.confirm", "tui.select.down", "tui.select.up"]
+
+[[contract]]
+id = "coding-agent/stepped-submenu/input-state-machine"
+upstream_id = "input:packages/coding-agent/src/modes/interactive/components/settings-submenu.ts#SteppedSubmenu.handleInput"
+family = "settings"
+kind = "selector-input-state-machine"
+claim = "the active step takes the input; selecting advances (the last step completes, then cancels unless it loops), Escape goes back one step dropping that step's value and cancels at the first step; options, titles and preselect see the prior selections"
+status = "ported"
+pig_targets = ["internal/codingagent/settings_submenu.go#HandleInput"]
+evidence = [
+  "internal/codingagent/settings_submenu_oracle_test.go#TestSettingsSubmenusMatchPi",
+  "test/parity/scenarios/settings/07-settings-model-thinking-model-step.toml",
+]
+
+[contract.upstream]
+path = "packages/coding-agent/src/modes/interactive/components/settings-submenu.ts"
+start = "\thandleInput(data: string): void {\n\t\tthis.activeComponent"
+end = "\n\n\tinvalidate(): void {\n\t\tthis.activeComponent"
+sha256 = "d47e4fabd9d0b7c1dbbf3f0eb18d7c142d8a487c0eb8516f20bbebf67f5a14f7"
+keybindings = []
+
+[[contract]]
+id = "coding-agent/theme-submenu/input-state-machine"
+upstream_id = "input:packages/coding-agent/src/modes/interactive/components/settings-selector.ts#ThemeSubmenu.handleInput"
+family = "settings"
+kind = "selector-input-state-machine"
+claim = "the active single or automatic theme menu takes every key; browsing previews a theme, selecting applies it, Escape restores the original setting, and automatic mode edits the light and dark themes before applying or switching back to single mode"
+status = "ported"
+pig_targets = ["internal/codingagent/settings_selector.go#HandleInput"]
+evidence = [
+  "internal/codingagent/settings_selector_oracle_test.go#TestSettingsSelectorMatchesPi",
+  "test/parity/scenarios/settings/04-settings-theme-submenu.toml",
+]
+
+[contract.upstream]
+path = "packages/coding-agent/src/modes/interactive/components/settings-selector.ts"
+start = "\thandleInput(data: string): void {\n\t\tthis.inputComponent?.handleInput?.(data);"
+end = "\n\n\tprivate setContent"
+sha256 = "5d6e5dc25cde56f389f9596a4aa6376adc3535624bfb54d0f82ae3d2dd5b05bd"
+keybindings = []
+
+[[contract]]
+id = "coding-agent/warning-settings-submenu/input-state-machine"
+upstream_id = "input:packages/coding-agent/src/modes/interactive/components/settings-selector.ts#WarningSettingsSubmenu.handleInput"
+family = "settings"
+kind = "selector-input-state-machine"
+claim = "the single warnings row takes every key (toggle, cancel); a warning the settings never set shows as on, and each toggle reports the whole state with that warning set"
+status = "ported"
+pig_targets = ["internal/codingagent/settings_selector.go#HandleInput"]
+evidence = [
+  "internal/codingagent/settings_selector_oracle_test.go#TestSettingsSelectorMatchesPi",
+  "test/parity/scenarios/settings/04-settings-theme-submenu.toml",
+]
+
+[contract.upstream]
+path = "packages/coding-agent/src/modes/interactive/components/settings-selector.ts"
+start = "\thandleInput(data: string): void {\n\t\tthis.settingsList.handleInput(data);"
+end = "\n\t}\n}\n\nconst CLEAR_OVERRIDE_VALUE"
+sha256 = "51a64ed577543b397940d671a106c098194bd267a61624874226f509b825d099"
+keybindings = []
+
+[[contract]]
+id = "coding-agent/config-selector/input-state-machine"
+upstream_id = "input:packages/coding-agent/src/modes/interactive/components/config-selector.ts#ResourceList.handleInput"
+family = "selectors"
+kind = "selector-input-state-machine"
+claim = "ResourceList.handleInput against pinned Pi: up/down/page keys move only over item rows, tui.select.cancel closes and Ctrl+C exits when cancel is rebound, Tab switches the write scope only when project mode is available, Space/Enter toggle in global scope, and every other key edits the search Input and re-filters (resetting selection to the first item even when the query is unchanged)"
+status = "ported"
+pig_targets = ["tui/config_selector.go#HandleInput"]
+evidence = [
+  "tui/config_selector_oracle_test.go#TestConfigSelectorMatchesPi",
+  "test/parity/scenarios/selectors/14-config-ctrl-c-exits.toml",
+]
+
+[contract.upstream]
+path = "packages/coding-agent/src/modes/interactive/components/config-selector.ts"
+start = "\thandleInput(data: string): void {\n\t\tconst kb = getKeybindings();\n\n\t\tif (kb.matches(data, \"tui.select.up\")) {\n\t\t\tthis.selectedIndex = this.findNextItem"
+end = "\t\tthis.filterItems(this.searchInput.getValue());\n\t}\n\n\tprivate toggleResource"
+sha256 = "cb51db9951240d706d20bda6c145fb9c060e01b5204d8aabc1d9c6fc2719b2ba"
+keybindings = ["matchesKey:\"ctrl+c\"", "tui.input.tab", "tui.select.cancel", "tui.select.confirm", "tui.select.down", "tui.select.pageDown", "tui.select.pageUp", "tui.select.up"]
+
+[[contract]]
+id = "coding-agent/first-time-setup/input-state-machine"
+upstream_id = "input:packages/coding-agent/src/modes/interactive/components/first-time-setup.ts#FirstTimeSetupComponent.handleInput"
+family = "startup"
+kind = "selector-input-state-machine"
+claim = "k/up and j/down clamp over the options and preview the theme only when the selection changes; confirm or LF continues from the theme step then submits the chosen theme and analytics choice; the cancel binding skips; other keys do nothing. D88 adds a sprite step between theme and analytics"
+status = "divergence"
+pig_targets = ["internal/codingagent/first_time_setup.go#HandleInput"]
+evidence = [
+  "internal/codingagent/first_time_setup_oracle_test.go#TestFirstTimeSetupMatchesPi",
+  "internal/codingagent/first_time_setup_test.go",
+]
+
+[contract.upstream]
+path = "packages/coding-agent/src/modes/interactive/components/first-time-setup.ts"
+start = "\thandleInput(keyData: string): void {"
+end = "\t\t\tthis.options.onCancel();\n\t\t}\n\t}\n}"
+sha256 = "3fec5855cba41756c0aa58010f757dc7542faefb65bb0f94be32939adabc6a60"
+keybindings = ["tui.select.cancel", "tui.select.confirm", "tui.select.down", "tui.select.up"]
+
+[[contract]]
+id = "tui/alt-screen-search/input-query-change"
+upstream_id = "input:packages/tui/src/alt-screen-search.ts#AltScreenSearchComponent.handleInput"
+family = "fullscreen"
+kind = "selector-input-state-machine"
+claim = "keys are forwarded to the search Input and onQueryChange fires only when the query value changed; the box renders the query, the result counter and the navigation buttons (labels, arrows, none by width) and reports the button under a cell"
+status = "ported"
+pig_targets = ["tui/alt_screen_search.go#HandleInput"]
+evidence = [
+  "tui/alt_screen_search_oracle_test.go#TestAltScreenSearchComponentMatchesPi",
+  "test/parity/scenarios/fullscreen/13-alt-screen-search-input.toml",
+]
+
+[contract.upstream]
+path = "packages/tui/src/alt-screen-search.ts"
+start = "\thandleInput(data: string): void {"
+end = "\tinvalidate(): void {"
+sha256 = "0f525da90079a5eb380ee19011791069010d290acd009ef01a077e88d8136ba1"
+keybindings = []
+
+[[contract]]
+id = "coding-agent/custom-editor/app-key-precedence"
+upstream_id = "input:packages/coding-agent/src/modes/interactive/components/custom-editor.ts#CustomEditor.handleInput"
+family = "interactive-input"
+kind = "boundary-transition"
+claim = "an extension shortcut is tried first, then the clipboard image paste (consumed even without a handler), then app.interrupt (onEscape, else the registered handler; an open autocomplete popup gets Escape first), then app.exit only on an empty editor, then the explicit editor history bindings before every other registered app action in registration order, and finally the editor itself"
+status = "ported"
+pig_targets = ["internal/codingagent/custom_editor.go#HandleInput", "internal/codingagent/interactive_input.go#handleCustomEditorKey"]
+evidence = [
+  "internal/codingagent/custom_editor_test.go#TestCustomEditorExplicitHistoryBindingBeatsModelCycling",
+  "internal/codingagent/custom_editor_test.go#TestCustomEditorEscapePrefersOnEscapeThenTheInterruptActionThenTheEditor",
+  "internal/codingagent/custom_editor_test.go#TestCustomEditorExitOnlyWhenTheEditorIsEmpty",
+  "internal/codingagent/custom_editor_test.go#TestCustomEditorExtensionShortcutThenPasteImageComeFirst",
+  "test/parity/scenarios/custom-editor-precedence.toml",
+]
+
+[contract.upstream]
+path = "packages/coding-agent/src/modes/interactive/components/custom-editor.ts"
+start = "\thandleInput(data: string): void {"
+end = "\t}\n}"
+sha256 = "1a74cdab45af75482edc6d6191b07769290d27e4c9790a459677adc74334068e"
+keybindings = ["app.clipboard.pasteImage", "app.exit", "app.interrupt", "tui.editor.historyNext", "tui.editor.historyPrevious"]
+
+[[contract]]
+id = "coding-agent/mcp-manager/status-cancel"
+upstream_id = "input:packages/coding-agent/src/extensions/mcp/ui.ts#McpManagerView.<anonymous@165>"
+family = "extensions-runtime"
+kind = "boundary-transition"
+claim = "a status screen with an onCancel callback shows the cancel key hint and calls it when tui.select.cancel is pressed; any other key does nothing; a status screen without onCancel has no hint and no input handler"
+status = "ported"
+pig_targets = ["coding/mcpext/manager.go#Status"]
+evidence = [
+  "coding/mcpext/manager_test.go#TestMcpManagerStatusScreenCancelsTheRunningOperationWithTheCancelKey",
+  "coding/mcpext/manager_test.go#TestMcpManagerStatusScreenIgnoresTheCancelKeyForOperationsThatCannotBeCancelled",
+  "test/parity/scenarios/slash-commands/17-mcp-signin-status-cancel-hint.toml",
+  "test/parity/scenarios/slash-commands/18-mcp-signin-cancel.toml",
+]
+
+[contract.upstream]
+path = "packages/coding-agent/src/extensions/mcp/ui.ts"
+start = "\t\tthis.setContent(frame(this.theme, title, body, keyHint(\"tui.select.cancel\", \"cancel\")), (data) => {"
+end = "\t}\n\n\tredirectUrl("
+sha256 = "69119050d6b22f31d2989132ef5852a9d136b87ecf82c1d415aeda1edf46066c"
+keybindings = ["tui.select.cancel"]
+
+[[contract]]
+id = "coding-agent/mcp-manager/handle-input-delegates"
+upstream_id = "input:packages/coding-agent/src/extensions/mcp/ui.ts#McpManagerView.handleInput"
+family = "extensions-runtime"
+kind = "boundary-transition"
+claim = "the view passes every key to the handler of the content it shows, then asks for a render; a screen without a handler ignores the key"
+status = "ported"
+pig_targets = ["coding/mcpext/manager.go#HandleInput"]
+evidence = [
+  "coding/mcpext/manager_test.go#TestMcpManagerStatusScreenCancelsTheRunningOperationWithTheCancelKey",
+  "test/parity/scenarios/slash-commands/18-mcp-signin-cancel.toml",
+]
+
+[contract.upstream]
+path = "packages/coding-agent/src/extensions/mcp/ui.ts"
+start = "\thandleInput(data: string): void {"
+end = "\trender(width: number): string[] {"
+sha256 = "d330dc2094bd03ddae9c690315c3d32ad1a8116fe2f21c6f3d3334a534190df9"
+keybindings = []
+
+[[contract]]
+id = "coding-agent/mcp-manager/empty-menu-cancel"
+upstream_id = "input:packages/coding-agent/src/extensions/mcp/ui.ts#McpManagerView.<anonymous@130>"
+family = "extensions-runtime"
+kind = "boundary-transition"
+claim = "a menu without items shows its empty text and only the cancel hint, and tui.select.cancel is the only key that finishes it; every other key is ignored"
+status = "ported"
+pig_targets = ["coding/mcpext/manager.go#Menu"]
+evidence = [
+  "coding/mcpext/manager_test.go#TestMcpManagerViewEmptyMenu",
+  "test/parity/scenarios/slash-commands/19-mcp-manager-empty-menu-cancel.toml",
+]
+
+[contract.upstream]
+path = "packages/coding-agent/src/extensions/mcp/ui.ts"
+start = "\t\t\t\t\tthis.setContent(\n\t\t\t\t\t\tframe(this.theme, menu.title, body, keyHint(\"tui.select.cancel\", menu.cancelLabel)),"
+end = "\t\t\t\t\treturn;\n\t\t\t\t}\n\t\t\t\tconst list = new SelectList("
+sha256 = "0e2ef96b634f770379d195c48ef15039ed2abdd153e2570aa8e5ade4b3b5c1d6"
+keybindings = ["tui.select.cancel"]
+
+[[contract]]
+id = "coding-agent/mcp-manager/redirect-url-screen-keys"
+upstream_id = "input:packages/coding-agent/src/extensions/mcp/ui.ts#McpManagerView.<anonymous@206>"
+family = "extensions-runtime"
+kind = "boundary-transition"
+claim = "on the sign-in screen tui.select.confirm submits the trimmed input unless it is empty, tui.select.cancel finishes without a value, app.message.copy copies the authorization URL, and every other key goes to the input"
+status = "ported"
+pig_targets = ["coding/mcpext/manager.go#RedirectURL"]
+evidence = [
+  "coding/mcpext/manager_test.go#TestMcpManagerViewRedirectURL",
+  "coding/mcpext/manager_test.go#TestMcpManagerViewRedirectURLTrimsLikeJavaScript",
+  "coding/mcpext/manager_test.go#TestMcpManagerViewSignInScreenCopiesTheAuthorizationURL",
+  "test/parity/scenarios/slash-commands/20-mcp-signin-paste-redirect-url.toml",
+  "test/parity/scenarios/slash-commands/21-mcp-signin-redirect-screen-cancel.toml",
+]
+
+[contract.upstream]
+path = "packages/coding-agent/src/extensions/mcp/ui.ts"
+start = "\t\t\t\t(data) => {\n\t\t\t\t\tif (this.keybindings.matches(data, \"tui.select.confirm\")) {\n\t\t\t\t\t\tconst value = input.getValue().trim();"
+end = "\t\t\t\tinput,\n\t\t\t);\n\t\t});\n\t}\n\n\thandleInput"
+sha256 = "47d48551c84e2cb20201c58c41e8f5cd48a047e9be0a3d58e64bf8d3fa4f8713"
+keybindings = ["app.message.copy", "tui.select.cancel", "tui.select.confirm"]
+
+[[contract]]
+id = "coding-agent/mcp-manager/menu-render"
+upstream_id = "render:packages/coding-agent/src/extensions/mcp/ui.ts#McpManagerView.menu.render"
+family = "extensions-runtime"
+kind = "render-layout"
+claim = "a menu frame shows the title, the muted details, the error-colored error, a spacer, the item list capped at 12 visible rows or the empty text, and the confirm and cancel key hints; a change rebuilds it on the selected item"
+status = "ported"
+pig_targets = ["coding/mcpext/manager.go#Menu"]
+evidence = [
+  "coding/mcpext/manager_test.go#TestMcpManagerViewMenuLayout",
+  "coding/mcpext/manager_test.go#TestMcpManagerViewMenuRebuildsOnChangeKeepingTheSelection",
+  "test/parity/scenarios/slash-commands/14-mcp-manager-menu.toml",
+  "test/parity/scenarios/slash-commands/15-mcp-server-detail.toml",
+  "test/parity/scenarios/slash-commands/19-mcp-manager-empty-menu-cancel.toml",
+]
+
+[contract.upstream]
+path = "packages/coding-agent/src/extensions/mcp/ui.ts"
+start = "\tmenu(build: () => McpMenu, subscribe?: (listener: () => void) => () => void): Promise<string | undefined> {"
+end = "\tstatus(title: string, message: string, onCancel?: () => void): void {"
+sha256 = "1537a72378a9fb3da05b46f7e7c89f1b07ad2937281fbfdd6cff8837d8f8aed2"
+keybindings = []
+
+[[contract]]
+id = "coding-agent/mcp-manager/view-render"
+upstream_id = "render:packages/coding-agent/src/extensions/mcp/ui.ts#McpManagerView.render"
+family = "extensions-runtime"
+kind = "render-layout"
+claim = "the view renders its current content and cuts every row wider than the width to it, without a suffix"
+status = "ported"
+pig_targets = ["coding/mcpext/manager.go#Render"]
+evidence = [
+  "coding/mcpext/manager_test.go#TestMcpManagerViewCutsRowsToTheWidth",
+  "test/parity/scenarios/slash-commands/16-mcp-manager-while-connecting.toml",
+  "test/parity/scenarios/slash-commands/17-mcp-signin-status-cancel-hint.toml",
+]
+
+[contract.upstream]
+path = "packages/coding-agent/src/extensions/mcp/ui.ts"
+start = "\trender(width: number): string[] {"
+end = "\tinvalidate(): void {"
+sha256 = "00c6f74ebf834ff6d1476d015f407ca0dc0293d7604d2665ae38c5fe65ac11f7"
+keybindings = []
+
+[[contract]]
+id = "coding-agent/mcp/servers-section-render"
+upstream_id = "render:packages/coding-agent/src/extensions/mcp/index.ts#<module>.renderServersSection"
+family = "extensions-runtime"
+kind = "render-layout"
+claim = "the section lists every enabled server with codemode or deferred tools sorted by name, each with its namespace, how its tools are reached and a one-line description truncated to the space left under the section limit; servers that do not fit collapse into a count line; the intro names how each reach is used; no such server removes the section"
+status = "ported"
+pig_targets = ["coding/mcpext/extension.go#RenderServersSection"]
+evidence = [
+  "coding/mcpext/servers_section_test.go",
+  "coding/mcpext/servers_section_intro_upstream_test.go",
+  "test/parity/scenarios/slash-commands/23-mcp-servers-section-text.toml",
+  "test/parity/scenarios/slash-commands/22-mcp-servers-section-in-transcript.toml",
+]
+
+[contract.upstream]
+path = "packages/coding-agent/src/extensions/mcp/index.ts"
+start = "export function renderServersSection(servers: readonly McpServerListing[]): string | undefined {"
+end = "\n}\n\n/**\n * Whether a codemode script needs the server"
+sha256 = "54668e047eb4a3d5b74f7edfea350c5d3eb18d31e3af4df8412438ea443d2b44"
+keybindings = []
+
+[[contract]]
+id = "coding-agent/mcp/callback-page-render"
+upstream_id = "render:packages/coding-agent/src/extensions/mcp/oauth.ts#<module>.options.renderPage"
+family = "extensions-runtime"
+kind = "render-layout"
+claim = "a successful callback renders the success page with the MCP sign-in message and any other callback renders the error page with the page's message and details, as byte-identical HTML"
+status = "ported"
+pig_targets = ["coding/mcpext/oauth.go#listenForCallback"]
+evidence = [
+  "coding/mcpext/oauth_callback_page_internal_test.go",
+  "test/parity/scenarios/slash-commands/24-mcp-callback-error-page.toml",
+]
+
+[contract.upstream]
+path = "packages/coding-agent/src/extensions/mcp/oauth.ts"
+start = "\t\trenderPage: (page: OAuthCallbackPage) =>"
+end = "\t};\n\ttry {\n\t\treturn await OAuthCallbackServer.listen"
+sha256 = "193d67c3d101bfc1782ef0102560ae4a684d7b10bedb970d6c26db4ddc858349"
+keybindings = []
+
+[[contract]]
+id = "coding-agent/mcp/tool-call-render"
+upstream_id = "render:packages/coding-agent/src/extensions/mcp/tools.ts#<module>.renderCall"
+family = "extensions-runtime"
+kind = "render-layout"
+claim = "a call renders as the bold `server/tool` label followed by its arguments in the muted color, reusing the previous text component, with the arguments expanded when the card is expanded"
+status = "ported"
+pig_targets = ["coding/mcpext/render.go#renderCall"]
+evidence = [
+  "coding/mcpext/tools_render_test.go",
+  "test/parity/scenarios/slash-commands/25-mcp-tool-card.toml",
+]
+
+[contract.upstream]
+path = "packages/coding-agent/src/extensions/mcp/tools.ts"
+start = "\t\trenderCall(args, theme, context) {"
+end = "\t\trenderResult(result, options, theme, context) {"
+sha256 = "8577df32102b3e1b8912cfa92ddabf2c3a78861fb8dc9794a6441cf4b051ffdc"
+keybindings = []
+
+[[contract]]
+id = "coding-agent/mcp/tool-result-render"
+upstream_id = "render:packages/coding-agent/src/extensions/mcp/tools.ts#<module>.renderResult"
+family = "extensions-runtime"
+kind = "render-layout"
+claim = "a result renders its text output after a spacer in the toolOutput color (error color for an error), tabs as three spaces, all of it expanded or else a preview limited to five wrapped lines with the expand hint and the path of the full output; an empty output renders nothing"
+status = "ported"
+pig_targets = ["coding/mcpext/render.go#renderResult"]
+evidence = [
+  "coding/mcpext/tools_render_test.go",
+  "test/parity/scenarios/slash-commands/25-mcp-tool-card.toml",
+]
+
+[contract.upstream]
+path = "packages/coding-agent/src/extensions/mcp/tools.ts"
+start = "\t\trenderResult(result, options, theme, context) {"
+end = "\t\t\treturn component;\n\t\t},\n\t};\n}"
+sha256 = "601c462a7c70a7728bf2054b7ee010e5331a92ec48724176761ebf73f1a3aef2"
+keybindings = []
+
+[[contract]]
+id = "tui/terminal-input/pipeline-order"
+upstream_id = "input:packages/tui/src/tui.ts#TuiBase.handleTerminalInput"
+family = "tui-components"
+kind = "boundary-transition"
+claim = "a terminal color reply and a light/dark report are consumed before the input listeners; a listener consume or empty replacement ends the input; the cell-size reply and then the debug key (only when onDebug is set, and matched on the listeners' output) precede the focused component; an overlay that stopped being visible hands input to the focus it gives back; the focused component receives a key release only when it sets wantsKeyRelease; a delivered key requests an immediate render"
+status = "ported"
+pig_targets = [
+  "tui/tui_input.go#HandleTerminalInput",
+  "coding/cli/config_command.go#driveConfigSelector",
+]
+evidence = [
+  "tui/tui_input_pipeline_test.go#TestHandleTerminalInputRoutesTheDebugKeyOnlyWhenACallbackIsSet",
+  "tui/tui_input_pipeline_test.go#TestHandleTerminalInputMatchesTheDebugKeyAfterTheInputListeners",
+  "tui/tui_input_pipeline_test.go#TestHandleTerminalInputDropsKeyReleasesUnlessTheFocusAsksForThem",
+  "tui/tui_input_pipeline_test.go#TestHandleTerminalInputShowsKeyReleasesToTheInputListeners",
+  "tui/tui_input_pipeline_test.go#TestHandleTerminalInputRedirectsFromAnOverlayThatBecameInvisible",
+  "tui/tui_input_pipeline_test.go#TestHandleTerminalInputRequestsAnImmediateRenderOnlyForDeliveredKeys",
+  "tui/tui_input_pipeline_test.go#TestTerminalColorSchemeReportIsConsumedBeforeInputListeners",
+  "tui/terminal_input_parity_test.go#TestTerminalInputPipelineParity",
+  "test/parity/scenarios/tui-components/26-terminal-input-pipeline.toml",
+  "test/parity/scenarios/tui-components/14-overlay-input-restoration.toml",
+]
+
+[contract.upstream]
+path = "packages/tui/src/tui.ts"
+start = "\tprivate handleTerminalInput(data: string): void {"
+end = "\n\tprivate consumeTerminalColorResponse("
+sha256 = "be2869f917b41d5795bed90190543a223cb428163d762052cf15632cc35f5e6c"
+keybindings = ["matchesKey:\"shift+ctrl+d\""]
+
+[[contract]]
+id = "tui/select-list/render-window"
+upstream_id = "render:packages/tui/src/components/select-list.ts#SelectList.render"
+family = "tui-components"
+kind = "render-window"
+claim = "the empty filter result draws only the themed no-match line; the visible window is centered on the selection and clamped to the list; each row is rendered with the selection flag and the primary column width, descriptions are collapsed to one line first, and a themed \"(n/total)\" indicator truncated to width-2 follows when rows are hidden"
+status = "ported"
+pig_targets = [
+  "tui/select_list.go#Render"
+]
+evidence = [
+  "tui/select_list_oracle_test.go#TestSelectListInputMatchesPi",
+  "test/parity/scenarios/tui-components/11-select-list-input-state.toml",
+]
+
+[contract.upstream]
+path = "packages/tui/src/components/select-list.ts"
+start = "\trender(width: number): string[] {"
+end = "\n\thandleMouse(event: TuiMouseEvent)"
+sha256 = "af059d60afd8ef48c52c6f999657589515e4d8dc9930766616352eabdbd42330"
+keybindings = []
+
+[[contract]]
+id = "tui/select-list/render-item"
+upstream_id = "render:packages/tui/src/components/select-list.ts#SelectList.renderItem"
+family = "tui-components"
+kind = "render-layout"
+claim = "a described row uses two columns only above width 40 and when more than the minimum description width remains, the primary column is clamped by the layout bounds and the width, the selected row is wrapped by selectedText whole while an unselected description alone is themed, the display value falls back from label to value, and every truncation is by visible width (double-width, ANSI) without an ellipsis"
+status = "ported"
+pig_targets = [
+  "tui/select_list.go#renderItem",
+  "tui/select_list.go#primaryColumnWidth"
+]
+evidence = [
+  "tui/select_list_oracle_test.go#TestSelectListInputMatchesPi",
+  "test/parity/scenarios/tui-components/11-select-list-input-state.toml",
+]
+
+[contract.upstream]
+path = "packages/tui/src/components/select-list.ts"
+start = "\tprivate renderItem("
+end = "\n\tprivate getPrimaryColumnWidth(): number {"
+sha256 = "a1d04ca37530ffa04544133fe5fa102e6ff9bb2ca0161d10ca6c34a1b792fa03"
+keybindings = []
+
+[[contract]]
+id = "tui/text/render"
+upstream_id = "render:packages/tui/src/components/text.ts#Text.render"
+family = "tui-components"
+kind = "render-layout"
+claim = "text wraps ANSI-aware at the content width left after horizontal padding (clamped like Pi when the padding leaves no cell), tabs become three spaces, whitespace-only text renders nothing, every row is padded to the width and passed through the background function, vertical padding rows are background-only, and the cached result is returned for the same text and width until invalidated"
+status = "ported"
+pig_targets = [
+  "tui/text.go#Render"
+]
+evidence = [
+  "tui/basic_components_oracle_test.go#TestBasicComponentsRenderLikePi",
+  "test/parity/scenarios/tui-components/01-text-wrap-long-response.toml"
+]
+
+[contract.upstream]
+path = "packages/tui/src/components/text.ts"
+start = "\trender(width: number): string[] {"
+end = "\n}"
+sha256 = "9ad3b3b1dd9492c3aad9dd0fc697df9ae7ca24c21645389725b434faadd59269"
+keybindings = []
+
+[[contract]]
+id = "tui/spacer/render"
+upstream_id = "render:packages/tui/src/components/spacer.ts#Spacer.render"
+family = "tui-components"
+kind = "render-layout"
+claim = "a spacer renders exactly its configured number of empty rows at any width"
+status = "ported"
+pig_targets = [
+  "tui/spacer.go#Render"
+]
+evidence = [
+  "tui/basic_components_oracle_test.go#TestBasicComponentsRenderLikePi",
+  "test/parity/scenarios/tui-components/04-spacer-message-separation.toml"
+]
+
+[contract.upstream]
+path = "packages/tui/src/components/spacer.ts"
+start = "\trender(_width: number): string[] {"
+end = "\n}"
+sha256 = "146f0b8ced38ca23eb5b1b1f66c5c292469ab162f321e44883e83687665de801"
+keybindings = []
+
+[[contract]]
+id = "tui/box/render"
+upstream_id = "render:packages/tui/src/components/box.ts#Box.render"
+family = "tui-components"
+kind = "render-layout"
+claim = "a box with no rendered child lines renders nothing; children render at the width left after horizontal padding, every row is left-padded, widened to the width and passed through the background function, vertical padding rows are background-only, and the frame is cached until a child line, width, padding or background changes"
+status = "ported"
+pig_targets = [
+  "tui/box.go#Render"
+]
+evidence = [
+  "tui/basic_components_oracle_test.go#TestBasicComponentsRenderLikePi",
+  "test/parity/scenarios/tui-components/02-box-tool-result-paint.toml"
+]
+
+[contract.upstream]
+path = "packages/tui/src/components/box.ts"
+start = "\trender(width: number): string[] {"
+end = "\n}\n"
+sha256 = "53a80d8c41ad09da37d7908430334369d5ad1319b89d3ca2427f3ffbbda4eddb"
+keybindings = []
+
+[[contract]]
+id = "tui/truncated-text/render"
+upstream_id = "render:packages/tui/src/components/truncated-text.ts#TruncatedText.render"
+family = "tui-components"
+kind = "render-layout"
+claim = "only the first line is kept and truncated with an ellipsis to the width left after horizontal padding, rows are padded to the width and vertical padding rows are blank; D66 clamps the horizontal padding when it leaves no content cell, where Pi emits a row wider than the width"
+status = "divergence"
+pig_targets = [
+  "tui/truncated_text.go#Render"
+]
+evidence = [
+  "tui/basic_components_oracle_test.go#TestBasicComponentsRenderLikePi"
+]
+
+[contract.upstream]
+path = "packages/tui/src/components/truncated-text.ts"
+start = "\trender(width: number): string[] {"
+end = "\n}"
+sha256 = "f888af3edd5f7cc3b7d3aab3ae8078b51c28ed02d5464e5189054968df5c4fdc"
+keybindings = []
+
+[[contract]]
+id = "tui/utils/visible-width"
+upstream_id = "render:packages/tui/src/utils.ts#<module>.visibleWidth"
+family = "tui-components"
+kind = "text-layout"
+claim = "the terminal cell width of a string counts grapheme clusters (emoji sequences, ZWJ, flags, keycaps, VS15/VS16, Indic conjuncts, Hangul jamo, combining and zero-width marks) with East Asian widths, treats tabs as three cells and ignores CSI, OSC and APC sequences, for every code point and a fixed-seed adversarial corpus"
+status = "ported"
+pig_targets = [
+  "tui/widthx/widthx.go#VisibleWidth"
+]
+evidence = [
+  "tui/widthx/pi_width_diff_test.go#TestPiWidthDifferential",
+  "test/parity/scenarios/tui-components/06-widthx-cjk-double-width.toml"
+]
+
+[contract.upstream]
+path = "packages/tui/src/utils.ts"
+start = "export function visibleWidth(str: string): number {"
+end = "\nexport function stripTerminalSequences("
+sha256 = "a62de7fdc4def0cd916d68b8dcb58d27e54f04ce70c1c83176be8006ed208d4d"
+keybindings = []
+
+[[contract]]
+id = "tui/utils/truncate-to-width"
+upstream_id = "render:packages/tui/src/utils.ts#<module>.truncateToWidth"
+family = "tui-components"
+kind = "text-layout"
+claim = "text longer than the width is cut at a grapheme boundary and ended with the ellipsis and the style resets the cut leaves open, an ellipsis as wide as the width yields only its truncation, fitting text is returned whole, and pad fills to the width"
+status = "ported"
+pig_targets = [
+  "tui/widthx/truncate.go#TruncateToWidth"
+]
+evidence = [
+  "tui/widthx/pi_width_diff_test.go#TestPiWidthDifferential",
+  "test/parity/scenarios/tui-components/06-widthx-cjk-double-width.toml"
+]
+
+[contract.upstream]
+path = "packages/tui/src/utils.ts"
+start = "export function truncateToWidth("
+end = "\nexport function sliceByColumn("
+sha256 = "dac72bbd595851641e5079733a06a4ed62cca9e0d830dd702301ff8fb21d80f6"
+keybindings = []
+
+[[contract]]
+id = "tui/utils/wrap-text"
+upstream_id = "render:packages/tui/src/utils.ts#<module>.wrapTextWithAnsi"
+family = "tui-components"
+kind = "text-layout"
+claim = "text splits on newlines, each line wraps to the width, and the active SGR and OSC 8 state is closed at each break and reopened on the next row"
+status = "ported"
+pig_targets = [
+  "tui/widthx/wrap.go#WrapTextWithAnsi"
+]
+evidence = [
+  "tui/widthx/pi_width_diff_test.go#TestPiWidthDifferential",
+  "test/parity/scenarios/tui-components/06-widthx-cjk-double-width.toml"
+]
+
+[contract.upstream]
+path = "packages/tui/src/utils.ts"
+start = "export function wrapTextWithAnsi("
+end = "\nfunction wrapSingleLine("
+sha256 = "3fd540400433b1967dd8264b5feae84b2f81a9105eab322e79126d7e0b6ae511"
+keybindings = []
+
+[[contract]]
+id = "tui/utils/wrap-single-line"
+upstream_id = "render:packages/tui/src/utils.ts#<module>.wrapSingleLine"
+family = "tui-components"
+kind = "text-layout"
+claim = "a line within the width is kept whole; otherwise tokens fill rows at word and CJK boundaries, leading whitespace and trailing spaces are dropped per row, and a token wider than the width is broken by grapheme"
+status = "ported"
+pig_targets = [
+  "tui/widthx/wrap.go#wrapSingleLine"
+]
+evidence = [
+  "tui/widthx/pi_width_diff_test.go#TestPiWidthDifferential",
+  "test/parity/scenarios/tui-components/06-widthx-cjk-double-width.toml"
+]
+
+[contract.upstream]
+path = "packages/tui/src/utils.ts"
+start = "function wrapSingleLine("
+end = "\nexport function isWhitespaceChar("
+sha256 = "bb268950513da38d0c4941d0137ad3729478e8c016730a5443fc3d070b9c6fcc"
+keybindings = []
+
+[[contract]]
+id = "tui/utils/break-long-word"
+upstream_id = "render:packages/tui/src/utils.ts#<module>.breakLongWord"
+family = "tui-components"
+kind = "text-layout"
+claim = "a token wider than the width is cut by grapheme into rows no wider than the width, carrying the active ANSI state across the cuts"
+status = "ported"
+pig_targets = [
+  "tui/widthx/wrap.go#breakLongWord"
+]
+evidence = [
+  "tui/widthx/pi_width_diff_test.go#TestPiWidthDifferential",
+  "test/parity/scenarios/tui-components/06-widthx-cjk-double-width.toml"
+]
+
+[contract.upstream]
+path = "packages/tui/src/utils.ts"
+start = "function breakLongWord("
+end = "\nexport function applyBackgroundToLine("
+sha256 = "b36ee9f9c336a6f6eb66aca3afbb9488feb0a299b8b102ff783df25e4e0d10c1"
+keybindings = []
+
+[[contract]]
+id = "tui/loader/render"
+upstream_id = "render:packages/tui/src/components/loader.ts#Loader.render"
+family = "tui-components"
+kind = "render-layout"
+claim = "a loader renders one blank row above its text; the text is the current spinner frame (styled by the spinner function, verbatim for an extension indicator, nothing for an empty frame list) followed by a space and the styled message, wrapped at the width left after the loader's horizontal padding, after frame advances and message changes"
+status = "ported"
+pig_targets = [
+  "tui/loader.go#Render",
+]
+evidence = [
+  "tui/loader_render_oracle_test.go#TestLoaderRenderMatchesPi",
+  "test/parity/scenarios/tui-components/10-loader-countdown-bordered-behavior.toml",
+]
+
+[contract.upstream]
+path = "packages/tui/src/components/loader.ts"
+start = "\trender(width: number): string[] {"
+end = "\n\tstart(): void {"
+sha256 = "08f8b307ba9aef19e32f0bd25716413585915a7f76250e6da1b83632c07c39ba"
+keybindings = []
+
+[[contract]]
+id = "tui/input/render"
+upstream_id = "render:packages/tui/src/components/input.ts#Input.render"
+family = "tui-components"
+kind = "render-layout"
+claim = "the row is the prompt followed by the value scrolled so the cursor stays visible (half-width window, last cell reserved at the end of the text), the cursor drawn as reverse video behind the focus marker only while focused, the placeholder shown dimmed when the value is empty, and the rest padded to the width; a width without room for the prompt truncates the prompt"
+status = "ported"
+pig_targets = [
+  "tui/text_input.go#Render",
+]
+evidence = [
+  "tui/input_oracle_test.go#TestInputHandleInputMatchesPi",
+  "test/parity/scenarios/settings/08-settings-search-editing.toml",
+]
+
+[contract.upstream]
+path = "packages/tui/src/components/input.ts"
+start = "\trender(width: number): string[] {"
+end = "\n\t\treturn [line];\n\t}"
+sha256 = "09ffa81fd86c0873ce312979ead73ab939fde10c2aeb8092abd3799c5d69fbb5"
+keybindings = []
+
+[[contract]]
+id = "tui/container/render"
+upstream_id = "render:packages/tui/src/tui.ts#Container.render"
+family = "tui-components"
+kind = "render-layout"
+claim = "a container renders its children in order at the given width and concatenates their rows, reflecting every child edit, addition, removal, clear and invalidation; nested containers and mouse regions contribute their children's rows unchanged"
+status = "ported"
+pig_targets = [
+  "tui/tui.go#Render",
+  "tui/tui.go#renderBorrowedLocked"
+]
+evidence = [
+  "tui/container_render_oracle_test.go#TestContainerRenderMatchesPi",
+  "tui/container_render_oracle_test.go#TestContainerRenderParity",
+  "test/parity/scenarios/tui-components/28-container-render.toml"
+]
+
+[contract.upstream]
+path = "packages/tui/src/tui.ts"
+start = "\trender(width: number): string[] {\n\t\tconst lines: string[] = [];"
+end = "\n\t\tthis.mouseLayout = { width, children: mouseChildren };"
+sha256 = "6b7394bcb1d74b8529c76cbeb1288067d864bbaa7e06036cb785a8a4bacceecc"
+keybindings = []
+
+[[contract]]
+id = "tui/mouse-region/render"
+upstream_id = "render:packages/tui/src/components/mouse-region.ts#MouseRegion.render"
+family = "tui-components"
+kind = "render-layout"
+claim = "a mouse region renders exactly the rows of the component it wraps"
+status = "ported"
+pig_targets = [
+  "tui/mouse_region.go#Render"
+]
+evidence = [
+  "tui/container_render_oracle_test.go#TestContainerRenderMatchesPi",
+  "tui/container_render_oracle_test.go#TestContainerRenderParity",
+  "test/parity/scenarios/tui-components/28-container-render.toml"
+]
+
+[contract.upstream]
+path = "packages/tui/src/components/mouse-region.ts"
+start = "\trender(width: number): string[] {"
+end = "\n\thandleMouse("
+sha256 = "3e0720e65d6473836442bfc06a3b8e4b5737c0c14be84f59457ecf135f8a3200"
+keybindings = []
+
+[[contract]]
+id = "tui/markdown/render"
+upstream_id = "render:packages/tui/src/components/markdown.ts#Markdown.render"
+family = "tui-components"
+kind = "markdown-render"
+claim = "the markdown text is parsed into blocks and rendered at the content width, every row is wrapped to it, padded with the horizontal margins and the background function, and framed by the vertical padding rows; empty text renders nothing, and a text that ends in a blank line shows the trailing space row"
+status = "ported"
+pig_targets = [
+  "tui/markdown.go#Render"
+]
+evidence = [
+  "tui/markdown_render_oracle_test.go#TestMarkdownRenderMatchesPi",
+  "test/parity/scenarios/tui-components/05-markdown-text-fits.toml",
+  "test/parity/scenarios/tui-components/16-markdown-user-components.toml"
+]
+
+[contract.upstream]
+path = "packages/tui/src/components/markdown.ts"
+start = "\trender(width: number): string[] {"
+end = "\n\tprivate applyDefaultStyle("
+sha256 = "ad29bde2e7daca1517cca69f9721894ed57c418d9952047cd7bf3f404745351a"
+keybindings = []
+
+[[contract]]
+id = "tui/markdown/render-token"
+upstream_id = "render:packages/tui/src/components/markdown.ts#Markdown.renderToken"
+family = "tui-components"
+kind = "markdown-render"
+claim = "each block (heading with its depth styling, paragraph, fenced and indented code, block quote, rule, list, table, definition, space) renders as Pi does, including the blank row after a block when another block follows, the rows a quote or a code border adds, and the rows reference definitions leave"
+status = "ported"
+pig_targets = [
+  "tui/markdown.go#renderContent"
+]
+evidence = [
+  "tui/markdown_render_oracle_test.go#TestMarkdownRenderMatchesPi",
+  "test/parity/scenarios/tui-components/05-markdown-text-fits.toml",
+  "test/parity/scenarios/tui-components/16-markdown-user-components.toml"
+]
+
+[contract.upstream]
+path = "packages/tui/src/components/markdown.ts"
+start = "\tprivate renderToken("
+end = "\n\tprivate renderInlineTokens("
+sha256 = "fef36e3ebb976c63b5d0969326ac95ff5eba0fb6427925df81540452c8039b11"
+keybindings = []
+
+[[contract]]
+id = "tui/markdown/render-inline-tokens"
+upstream_id = "render:packages/tui/src/components/markdown.ts#Markdown.renderInlineTokens"
+family = "tui-components"
+kind = "markdown-render"
+claim = "inline text renders with CommonMark emphasis and strong (flanking, intraword underscore, rule of three, inner-side consumption), code spans, strikethrough, links with their url suffix when it differs from the text, reference links, images as alt text, autolinks (bare, <url>, <email>), hard breaks, escapes, and the style resets that restore the enclosing style after each token"
+status = "ported"
+pig_targets = [
+  "tui/markdown.go#renderInlineMarkdown",
+  "tui/markdown_marked.go#emStrong"
+]
+evidence = [
+  "tui/markdown_render_oracle_test.go#TestMarkdownRenderMatchesPi",
+  "test/parity/scenarios/tui-components/05-markdown-text-fits.toml",
+  "test/parity/scenarios/tui-components/16-markdown-user-components.toml"
+]
+
+[contract.upstream]
+path = "packages/tui/src/components/markdown.ts"
+start = "\tprivate renderInlineTokens("
+end = "\n\tprivate getOrderedListMarker("
+sha256 = "0b2c309be5f1758d9c4cbaf13cbdd02f0c6ad4e6a6080d92aad09588d82f2484"
+keybindings = []
+
+[[contract]]
+id = "tui/markdown/render-list"
+upstream_id = "render:packages/tui/src/components/markdown.ts#Markdown.renderList"
+family = "tui-components"
+kind = "markdown-render"
+claim = "unordered and ordered (renumbered or preserved) lists, task items, nested lists and loose items render with their markers, depth indentation and continuation rows as Pi does"
+status = "ported"
+pig_targets = [
+  "tui/markdown_list.go#renderList"
+]
+evidence = [
+  "tui/markdown_render_oracle_test.go#TestMarkdownRenderMatchesPi",
+  "test/parity/scenarios/tui-components/05-markdown-text-fits.toml",
+  "test/parity/scenarios/tui-components/16-markdown-user-components.toml"
+]
+
+[contract.upstream]
+path = "packages/tui/src/components/markdown.ts"
+start = "\tprivate renderList("
+end = "\n\tprivate getLongestWordWidth("
+sha256 = "0bbbea22e5c32024d37376dcb72873f3dd55e2bf066ee0943a13d04f10029148"
+keybindings = []
+
+[[contract]]
+id = "tui/markdown/render-table"
+upstream_id = "render:packages/tui/src/components/markdown.ts#Markdown.renderTable"
+family = "tui-components"
+kind = "markdown-render"
+claim = "a table renders with box-drawing borders, bold header cells, column alignment, widths shrunk to the available width with wrapped cells (CJK and emoji widths), and the raw text when it cannot fit, as Pi does"
+status = "ported"
+pig_targets = [
+  "tui/markdown.go#renderMarkdownTable",
+]
+evidence = [
+  "tui/markdown_render_oracle_test.go#TestMarkdownRenderMatchesPi",
+  "test/parity/scenarios/tui-components/05-markdown-text-fits.toml",
+  "test/parity/scenarios/tui-components/16-markdown-user-components.toml"
+]
+
+[contract.upstream]
+path = "packages/tui/src/components/markdown.ts"
+start = "\tprivate renderTable("
+end = "// Add spacing after table"
+sha256 = "f418423de94542dac9e1e207cb05e95545ff9f4574dca089a876e08fd12de344"
+keybindings = []
+
+[[contract]]
+id = "coding-agent/diff/render-intra-line"
+upstream_id = "render:packages/coding-agent/src/modes/interactive/components/diff.ts#<module>.renderIntraLineDiff"
+family = "interactive-rendering"
+kind = "render-layout"
+claim = "the removed and added line of a pair render with the changed words inverted, from jsdiff diffWords tokens (whitespace, punctuation, Unicode letters), leading whitespace of changed lines kept uninverted, and tabs replaced by three spaces"
+status = "ported"
+pig_targets = [
+  "tui/diff_render.go#RenderIntraLineDiff"
+]
+evidence = [
+  "tui/diff_render_oracle_test.go#TestRenderDiffMatchesPi",
+  "test/parity/scenarios/interactive-rendering/10-edit-tool-diff.toml",
+  "test/parity/scenarios/interactive-rendering/49-edit-tool-diff-output-pad-0.toml"
+]
+
+[contract.upstream]
+path = "packages/coding-agent/src/modes/interactive/components/diff.ts"
+start = "function renderIntraLineDiff("
+end = "export interface RenderDiffOptions"
+sha256 = "c22347f87fe5e86c8dbc397a661b9cd431e6d13335c64247a74e53ceb00ee23c"
+keybindings = []
+
+[[contract]]
+id = "coding-agent/diff/render-diff"
+upstream_id = "render:packages/coding-agent/src/modes/interactive/components/diff.ts#<module>.renderDiff"
+family = "interactive-rendering"
+kind = "render-layout"
+claim = "diff text renders row by row: context rows in the context token, a removed run followed by an added run of one line each gets intra-line highlighting, other removed and added rows use their tokens, rows without a parseable prefix show as context, and an empty diff renders an empty string"
+status = "ported"
+pig_targets = [
+  "tui/diff_render.go#RenderDiff"
+]
+evidence = [
+  "tui/diff_render_oracle_test.go#TestRenderDiffMatchesPi",
+  "test/parity/scenarios/interactive-rendering/10-edit-tool-diff.toml",
+  "test/parity/scenarios/interactive-rendering/49-edit-tool-diff-output-pad-0.toml"
+]
+
+[contract.upstream]
+path = "packages/coding-agent/src/modes/interactive/components/diff.ts"
+start = "export function renderDiff("
+end = "return result.join(\"\\n\");"
+sha256 = "732d65391f4bf24c36f72404cbe5690acd6c6085ad75db243180f680f1f19459"
+keybindings = []
+
+[[contract]]
+id = "coding-agent/visual-truncate/preview-render"
+upstream_id = "render:packages/coding-agent/src/modes/interactive/components/visual-truncate.ts#VisualLinePreview.render"
+family = "interactive-rendering"
+kind = "render-layout"
+claim = "the preview keeps the first or last maxVisualLines wrapped rows of the text, puts the hint (truncated to the width with \"...\") after kept start rows or before kept end rows when rows were skipped, and caches the rows per width"
+status = "ported"
+pig_targets = [
+  "tui/visual_truncate.go#Render"
+]
+evidence = [
+  "tui/visual_truncate_oracle_test.go#TestTruncateToVisualLinesMatchesPi",
+  "test/parity/scenarios/interactive-rendering/07-visual-truncate-bash-collapse.toml"
+]
+
+[contract.upstream]
+path = "packages/coding-agent/src/modes/interactive/components/visual-truncate.ts"
+start = "\trender(width: number): string[] {"
+end = "\n\tinvalidate(): void {"
+sha256 = "5de3fc1afd2167833825dc9c948b747e02176ba8bfbba25bfa1296c21da76922"
+keybindings = []
+
+[[contract]]
+id = "coding-agent/user-message-selector/render"
+upstream_id = "render:packages/coding-agent/src/modes/interactive/components/user-message-selector.ts#UserMessageList.render"
+family = "interactive-rendering"
+kind = "render-layout"
+claim = "the list shows the empty-state row or a window of maxVisible messages centred on the selection, each as cursor, message text with newlines turned into spaces and trimmed and truncated to the width less the cursor, a metadata row and a blank row, followed by a scroll position row when the window is not the whole list; D66 clips every row to the width, where Pi emits an over-wide metadata or scroll row"
+status = "divergence"
+pig_targets = [
+  "tui/user_message_selector.go#Render"
+]
+evidence = [
+  "tui/user_message_selector_oracle_test.go#TestUserMessageSelectorInputMatchesPi",
+  "test/parity/scenarios/interactive-rendering/16-user-message-selector.toml"
+]
+
+[contract.upstream]
+path = "packages/coding-agent/src/modes/interactive/components/user-message-selector.ts"
+start = "\trender(width: number): string[] {"
+end = "\n\thandleInput("
+sha256 = "b5d11f6ed90ef2b1726167a3d13d99b01ae4f2b15fe6bb70403fb46c56323901"
+keybindings = []
+
+[[contract]]
+id = "tui/alt-screen-search/render"
+upstream_id = "render:packages/tui/src/alt-screen-search.ts#AltScreenSearchComponent.render"
+family = "fullscreen"
+kind = "render-layout"
+claim = "the search box renders its query input, the result counter and the navigation buttons (full labels, arrows only, none as the width shrinks, Unbound and multi-key labels), with the hovered button styled by the host formatter, at every width including 0 and below"
+status = "ported"
+pig_targets = [
+  "tui/alt_screen_search.go#Render"
+]
+evidence = [
+  "tui/alt_screen_search_oracle_test.go#TestAltScreenSearchComponentMatchesPi",
+  "test/parity/scenarios/fullscreen/13-alt-screen-search-input.toml"
+]
+
+[contract.upstream]
+path = "packages/tui/src/alt-screen-search.ts"
+start = "\trender(width: number): string[] {"
+end = "\t\t];\n\t}\n}"
+sha256 = "0e53e4297a0b52ad6bf3ecc85547ae3be355f262a6278ab198ed3415ebd155c6"
+keybindings = []
+
+[[contract]]
+id = "tui/h-stack/render"
+upstream_id = "render:packages/tui/src/components/h-stack.ts#HStack.render"
+family = "fullscreen"
+kind = "render-layout"
+claim = "visible children render at the widths the allocator gives them from their intrinsic widths, basis, grow, shrink, min, max and the gap, are composited side by side at their x offsets with start, stretch, center or end vertical alignment, and an empty or all-hidden stack renders no rows"
+status = "ported"
+pig_targets = [
+  "tui/stack.go#Render"
+]
+evidence = [
+  "tui/stack_render_oracle_test.go#TestStackRenderMatchesPi",
+  "test/parity/scenarios/tui-components/29-stack-render.toml"
+]
+
+[contract.upstream]
+path = "packages/tui/src/components/h-stack.ts"
+start = "\toverride render(width: number): string[] {"
+end = "\t\treturn result;\n\t}\n}"
+sha256 = "1a81ce539e2934e850ec9ce62ba7c7b71ee163fd052d5d9f4c88ebf2fcd75bef"
+keybindings = []
+
+[[contract]]
+id = "tui/v-stack/render"
+upstream_id = "render:packages/tui/src/components/v-stack.ts#VStack.render"
+family = "fullscreen"
+kind = "render-layout"
+claim = "visible children render at the width, are cut or padded with blank rows to the heights the allocator gives them from their intrinsic heights and options, with the gap rows between them"
+status = "ported"
+pig_targets = [
+  "tui/stack.go#Render"
+]
+evidence = [
+  "tui/stack_render_oracle_test.go#TestStackRenderMatchesPi",
+  "test/parity/scenarios/tui-components/29-stack-render.toml"
+]
+
+[contract.upstream]
+path = "packages/tui/src/components/v-stack.ts"
+start = "\toverride render(width: number): string[] {"
+end = "\t\treturn lines;\n\t}\n}"
+sha256 = "b2b6f9c6ecf13ea2111dd2553575c26fd6c0b0c24c34850077d9fe0ebd9d5dfd"
+keybindings = []
+
+[[contract]]
+id = "tui/scroll-view/render"
+upstream_id = "render:packages/tui/src/components/scroll-view.ts#ScrollView.render"
+family = "fullscreen"
+kind = "render-layout"
+claim = "the child renders at the width less one column when the scrollbar is always shown and the width exceeds one, and each row then gets a trailing space for the scrollbar column"
+status = "ported"
+pig_targets = [
+  "tui/scroll_view.go#Render"
+]
+evidence = [
+  "tui/stack_render_oracle_test.go#TestStackRenderMatchesPi",
+  "test/parity/scenarios/tui-components/29-stack-render.toml"
+]
+
+[contract.upstream]
+path = "packages/tui/src/components/scroll-view.ts"
+start = "\toverride render(width: number): string[] {"
+end = "\n\t[LAYOUT_NODE]()"
+sha256 = "60755df4feb43af7d6271a1679897372c4b61f2e956b3be268988ad8516c7f6c"
+keybindings = []
+
+[[contract]]
+id = "tui/editor/render-top-border"
+upstream_id = "render:packages/tui/src/components/editor.ts#Editor.renderTopBorder"
+family = "tui-components"
+kind = "render-layout"
+claim = "the top border is a full-width rule passed through the border colour function (identity in the probes; the default and mode colours are not compared), or, when lines are scrolled out above, a rule with an up-arrow label of the hidden count centred, shortened to a left-aligned indicator, or cut with an ellipsis as the width shrinks"
+status = "ported"
+pig_targets = [
+  "tui/editor.go#renderTopBorder"
+]
+evidence = [
+  "tui/editor_scroll_border_oracle_test.go#TestEditorScrollBordersMatchPi",
+  "tui/editor_oracle_test.go#TestEditorMatchesPiOracle",
+  "test/parity/scenarios/tui-components/30-editor-scroll-borders.toml"
+]
+
+[contract.upstream]
+path = "packages/tui/src/components/editor.ts"
+start = "\tprotected renderTopBorder("
+end = "\n\tprotected renderBottomBorder("
+sha256 = "1894f0da5254b80734c85c0a1d3691be2b7fd534d8a8ba38291e7216c983a8cc"
+keybindings = []
+
+[[contract]]
+id = "tui/editor/render-bottom-border"
+upstream_id = "render:packages/tui/src/components/editor.ts#Editor.renderBottomBorder"
+family = "tui-components"
+kind = "render-layout"
+claim = "the bottom border is a full-width rule passed through the border colour function (identity in the probes; the default and mode colours are not compared), or, when lines remain below the visible window, a rule with a down-arrow label of the hidden count centred, shortened to a left-aligned indicator, or cut with an ellipsis as the width shrinks"
+status = "ported"
+pig_targets = [
+  "tui/editor.go#renderBottomBorder"
+]
+evidence = [
+  "tui/editor_scroll_border_oracle_test.go#TestEditorScrollBordersMatchPi",
+  "tui/editor_oracle_test.go#TestEditorMatchesPiOracle",
+  "test/parity/scenarios/tui-components/30-editor-scroll-borders.toml"
+]
+
+[contract.upstream]
+path = "packages/tui/src/components/editor.ts"
+start = "\tprotected renderBottomBorder("
+end = "\n\trender(width: number)"
+sha256 = "e42b96fe09979c56822b4754f0cd668ac3077defcd9a7ed167d75dbca033a84a"
+keybindings = []
+
+
+[[contract]]
+id = "tui/tui-base/terminal-input-pipeline"
+upstream_id = "input:packages/tui/src/tui.ts#TuiBase.handleTerminalInput"
+family = "tui-components"
+kind = "boundary-transition"
+claim = "a pending terminal color reply and a color-scheme report are consumed before the input listeners; listeners run in registration order, each seeing the previous one's replacement data, a consume stops the rest and an empty replacement drops the input; the cell-size reply is consumed after the listeners; Shift+Ctrl+D runs onDebug only when it is set; the focused or topmost visible overlay component then receives the data, except that a key release is dropped unless the component wants it, and the render is requested immediately after a delivery"
+status = "ported"
+pig_targets = [
+  "tui/tui_input.go#HandleTerminalInput",
+  "tui/tui_input.go#DispatchFocusedInput",
+  "tui/tui_input.go#RunInputListeners",
+  "tui/tui_input.go#ConsumeTerminalColorSchemeReport",
+  "tui/terminal_color_query.go#ConsumeTerminalColorResponse",
+  "tui/cell_size.go#ConsumeCellSizeResponse",
+  "tui/tui.go#ConsumeDebugKey",
+  "tui/keys_decode.go#ShouldDeliverKey",
+  "internal/codingagent/interactive_input.go#handleKey",
+]
+evidence = [
+  "tui/tui_input_pipeline_test.go#TestInputListenersRunInRegistrationOrderAndTransformData",
+  "tui/tui_input_pipeline_test.go#TestInputListenerConsumeStopsLaterListenersAndTheFocusedComponent",
+  "tui/tui_input_pipeline_test.go#TestInputListenerEmptyReplacementDropsTheInput",
+  "tui/tui_input_pipeline_test.go#TestTerminalColorSchemeReportIsConsumedBeforeInputListeners",
+  "tui/tui_input_pipeline_test.go#TestHandleTerminalInputHidesPendingColorRepliesAndCellSizeFromTheFocus",
+  "tui/tui_base_members_upstream_test.go#TestDebugKeyCallsOnDebug",
+  "tui/tui_input_pipeline_test.go#TestHandleTerminalInputRunsTheDebugKeyBeforeTheFocusedComponent",
+  "tui/tui_input_pipeline_test.go#TestHandleTerminalInputFiltersKeyReleasesUnlessTheFocusedComponentWantsThem",
+  "tui/tui_input_pipeline_test.go#TestDispatchFocusedInputRequestsAnImmediateRenderOnlyForADeliveredKey",
+  "test/parity/scenarios/tui-components/14-overlay-input-restoration.toml",
+]
+
+[contract.upstream]
+path = "packages/tui/src/tui.ts"
+start = "\tprivate handleTerminalInput(data: string): void {"
+end = "\tprivate consumeTerminalColorResponse(data: string): boolean {"
+sha256 = "1d56f514643b403bd3b1f142dda246bd2e717f21f0bce8d85a1550f50637304e"
+keybindings = ["matchesKey:\"shift+ctrl+d\""]
+
+[[contract]]
+id = "tui/editor/handle-input-oracle"
+upstream_id = "input:packages/tui/src/components/editor.ts#Editor.handleInput"
+family = "tui-components"
+kind = "input-state-machine"
+claim = "Editor.handleInput resolves every key through the configured keybindings: character jump, bracketed paste, autocomplete, submit, new line, history, undo, kill ring and yank pop, word and line movement and deletion, paging and the backslash-Enter newline produce Pi's text, cursor, expanded text, callbacks and rendered lines; shared and remapped keys keep Pi's action precedence"
+status = "ported"
+pig_targets = ["tui/editor.go#HandleInput"]
+evidence = [
+  "tui/editor_oracle_test.go#TestEditorMatchesPiOracle",
+  "tui/editor_bindings_oracle_test.go#TestEditorRebindingsMatchPi",
+  "test/parity/scenarios/tui-components/12-editor-wrapped-history-navigation.toml",
+  "test/parity/scenarios/tui-components/19-editor-history-submission-whitespace.toml",
+  "test/parity/scenarios/tui-components/20-editor-word-and-paste-segments.toml",
+  "test/parity/scenarios/tui-components/22-editor-remapped-submit-with-key-diagnostics.toml",
+  "test/parity/scenarios/tui-components/25-editor-edit-state.toml",
+]
+
+[contract.upstream]
+path = "packages/tui/src/components/editor.ts"
+start = "\thandleInput(data: string): void {"
+end = "\tprivate layoutText(contentWidth: number): LayoutLine[] {"
+sha256 = "db74740f5e59ce03150fbf946cec5bb9cf67e5016ee6763acfa206a1bf43b868"
+keybindings = ["matchesKey:\"shift+backspace\"", "matchesKey:\"shift+delete\"", "matchesKey:\"shift+space\"", "tui.editor.cursorDown", "tui.editor.cursorLeft", "tui.editor.cursorLineEnd", "tui.editor.cursorLineStart", "tui.editor.cursorRight", "tui.editor.cursorUp", "tui.editor.cursorWordLeft", "tui.editor.cursorWordRight", "tui.editor.deleteCharBackward", "tui.editor.deleteCharForward", "tui.editor.deleteToLineEnd", "tui.editor.deleteToLineStart", "tui.editor.deleteWordBackward", "tui.editor.deleteWordForward", "tui.editor.historyNext", "tui.editor.historyPrevious", "tui.editor.jumpBackward", "tui.editor.jumpForward", "tui.editor.pageDown", "tui.editor.pageUp", "tui.editor.undo", "tui.editor.yank", "tui.editor.yankPop", "tui.input.copy", "tui.input.newLine", "tui.input.submit", "tui.input.tab", "tui.select.cancel", "tui.select.confirm", "tui.select.down", "tui.select.up"]
+
+[[contract]]
+id = "coding-agent/themed-text/render"
+upstream_id = "render:packages/coding-agent/src/modes/interactive/components/themed-text.ts#ThemedText.render"
+family = "interactive-rendering"
+kind = "render-layout"
+claim = "the text is rebuilt from its builder before the first render and again only after an invalidation, so a change to the builder state shows only after invalidate; the rendered rows carry the horizontal and vertical padding like Text"
+status = "ported"
+pig_targets = [
+  "tui/themed_text.go#Render"
+]
+evidence = [
+  "tui/status_components_oracle_test.go#TestStatusComponentsMatchPi",
+  "test/parity/scenarios/tui-components/31-status-components.toml"
+]
+
+[contract.upstream]
+path = "packages/coding-agent/src/modes/interactive/components/themed-text.ts"
+start = "\toverride render(width: number): string[] {"
+end = "\t\treturn super.render(width);\n\t}\n}"
+sha256 = "cb10e061b5324e131196bf5eeb56a9f5b18ff515b95f63fe85705597d67cf072"
+keybindings = []
+
+[[contract]]
+id = "coding-agent/dynamic-border/render"
+upstream_id = "render:packages/coding-agent/src/modes/interactive/components/dynamic-border.ts#DynamicBorder.render"
+family = "interactive-rendering"
+kind = "render-layout"
+claim = "the border is one row of box-drawing rules as wide as the width, never fewer than one, passed through the color function"
+status = "ported"
+pig_targets = [
+  "tui/dynamic_border.go#Render"
+]
+evidence = [
+  "tui/status_components_oracle_test.go#TestStatusComponentsMatchPi",
+  "test/parity/scenarios/tui-components/31-status-components.toml"
+]
+
+[contract.upstream]
+path = "packages/coding-agent/src/modes/interactive/components/dynamic-border.ts"
+start = "\trender(width: number): string[] {"
+end = "\t\treturn [this.color(\"─\".repeat(Math.max(1, width)))];\n\t}\n}"
+sha256 = "87fbb3b31fa9e644147515c61b8c78f5836f8352ac75427546699f96a2686f39"
+keybindings = []
+
+[[contract]]
+id = "coding-agent/status-indicator/render-in-border"
+upstream_id = "render:packages/coding-agent/src/modes/interactive/components/status-indicator.ts#StatusIndicator.renderInBorder"
+family = "interactive-rendering"
+kind = "render-layout"
+claim = "the loader line for an editor border is the loader rendered two columns wider, its second row without one leading space and without trailing whitespace, truncated to the width without an ellipsis"
+status = "ported"
+pig_targets = [
+  "tui/status_indicator.go#RenderInBorder"
+]
+evidence = [
+  "tui/status_components_oracle_test.go#TestStatusComponentsMatchPi",
+  "test/parity/scenarios/tui-components/31-status-components.toml"
+]
+
+[contract.upstream]
+path = "packages/coding-agent/src/modes/interactive/components/status-indicator.ts"
+start = "\trenderInBorder(width: number): string {"
+end = "\n\trenderSpinnerInBorder("
+sha256 = "deefdb58e9d27480fa0b0fcf6c79a90a0a42b3815977802f4435211e9c546ffd"
+keybindings = []
+
+[[contract]]
+id = "coding-agent/status-indicator/render-spinner-in-border"
+upstream_id = "render:packages/coding-agent/src/modes/interactive/components/status-indicator.ts#StatusIndicator.renderSpinnerInBorder"
+family = "interactive-rendering"
+kind = "render-layout"
+claim = "the spinner alone is the current frame as the loader renders it, truncated to the width without an ellipsis"
+status = "ported"
+pig_targets = [
+  "tui/status_indicator.go#RenderSpinnerInBorder"
+]
+evidence = [
+  "tui/status_components_oracle_test.go#TestStatusComponentsMatchPi",
+  "test/parity/scenarios/tui-components/31-status-components.toml"
+]
+
+[contract.upstream]
+path = "packages/coding-agent/src/modes/interactive/components/status-indicator.ts"
+start = "\trenderSpinnerInBorder("
+end = "\n\tdispose(): void {"
+sha256 = "924953e16d706998074552f41e90320ae07c9811e07b53b34499ea0fea93d1d0"
+keybindings = []
+
+[[contract]]
+id = "coding-agent/status-indicator/idle-render"
+upstream_id = "render:packages/coding-agent/src/modes/interactive/components/status-indicator.ts#IdleStatus.render"
+family = "interactive-rendering"
+kind = "render-layout"
+claim = "the idle status is two rows of spaces as wide as the width"
+status = "ported"
+pig_targets = [
+  "tui/status_indicator.go#Render"
+]
+evidence = [
+  "tui/status_components_oracle_test.go#TestStatusComponentsMatchPi",
+  "test/parity/scenarios/tui-components/31-status-components.toml"
+]
+
+[contract.upstream]
+path = "packages/coding-agent/src/modes/interactive/components/status-indicator.ts"
+start = "\trender(width: number): string[] {"
+end = "\t\treturn [emptyLine, emptyLine];\n\t}\n}"
+sha256 = "0d9cd74bf83791913e2f77c7ca0e6682b22b2f1d49fbe06ee538454d1133f9fb"
+keybindings = []
+
+[[contract]]
+id = "tui/settings-list/render-main-list"
+upstream_id = "render:packages/tui/src/components/settings-list.ts#SettingsList.renderMainList"
+family = "settings"
+kind = "render-layout"
+claim = "the list shows the search box and a blank row when search is on, the empty or no-match message, a window of maxVisible rows centred on the selection with the cursor prefix and the label column capped at 36 cells, values truncated to the room left, the scroll counter, the wrapped description of the selected row and the hint line truncated to the width; D66 clips a row wider than the width"
+status = "divergence"
+pig_targets = [
+  "tui/settings_list.go#renderMainList"
+]
+evidence = [
+  "tui/settings_list_render_oracle_test.go#TestSettingsListRenderMatchesPi",
+  "test/parity/scenarios/settings/02-settings-selector.toml"
+]
+
+[contract.upstream]
+path = "packages/tui/src/components/settings-list.ts"
+start = "\tprivate renderMainList(width: number): string[] {"
+end = "\n\thandleMouse("
+sha256 = "2e114905968b22fc4c43b8489318a536b607e25225249a616358502fc7b26c52"
+keybindings = []
+
+[[contract]]
+id = "tui/settings-list/render"
+upstream_id = "render:packages/tui/src/components/settings-list.ts#SettingsList.render"
+family = "settings"
+kind = "render-layout"
+claim = "an open submenu renders instead of the list; otherwise the main list renders (D66 clips a row wider than the width)"
+status = "divergence"
+pig_targets = [
+  "tui/settings_list.go#Render"
+]
+evidence = [
+  "tui/settings_list_render_oracle_test.go#TestSettingsListRenderMatchesPi",
+  "test/parity/scenarios/settings/02-settings-selector.toml"
+]
+
+[contract.upstream]
+path = "packages/tui/src/components/settings-list.ts"
+start = "\trender(width: number): string[] {"
+end = "\n\tprivate renderMainList("
+sha256 = "9faa98a4b63e428cac48af05343036929bd7a9177bfdbcc91d328521a56bb9eb"
+keybindings = []
+
+[[contract]]
+id = "tui/latex/render-latex"
+upstream_id = "render:packages/tui/src/latex.ts#<module>.renderLatex"
+family = "markdown-rich-rendering"
+kind = "render-layout"
+claim = "a LaTeX expression renders to Unicode text, inline or display, or to undefined when any part is unsupported or malformed; a stacked layout is indented to its least-indented non-blank row, trimmed at the end and joined by newlines"
+status = "ported"
+pig_targets = [
+  "internal/latex/latex.go#RenderLatex"
+]
+evidence = [
+  "internal/latex/live_oracle_test.go#TestRenderLatexMatchesPiLive",
+  "test/parity/scenarios/tui-components/13-latex-upstream-layout.toml"
+]
+
+[contract.upstream]
+path = "packages/tui/src/latex.ts"
+start = "export function renderLatex("
+end = "\t\t.replaceAll(PROTECTED_SPACE, \" \");\n}"
+sha256 = "3f3787828a873994f54626da6e359dc785160cbbd12856e7a2a05638649956d1"
+keybindings = []
+
+[[contract]]
+id = "tui/latex/render-layout"
+upstream_id = "render:packages/tui/src/latex.ts#<module>.renderLayout"
+family = "markdown-rich-rendering"
+kind = "render-layout"
+claim = "layout markers in the rendered text expand to their stacked fractions, operator limits, matrices and cases, aligned on a common baseline with the surrounding text"
+status = "ported"
+pig_targets = [
+  "internal/latex/latex.go#renderLayout"
+]
+evidence = [
+  "internal/latex/live_oracle_test.go#TestRenderLatexMatchesPiLive",
+  "test/parity/scenarios/tui-components/13-latex-upstream-layout.toml"
+]
+
+[contract.upstream]
+path = "packages/tui/src/latex.ts"
+start = "function renderLayout(source: string, nodes: readonly LayoutNode[]): Layout {"
+end = "\nclass LatexParser {"
+sha256 = "fcf5f64a6bcb3a339f233f0823917b0583542c02576f80ab6b7fe015de93e8e2"
+keybindings = []
+
+[[contract]]
+id = "tui/latex/parser-render"
+upstream_id = "render:packages/tui/src/latex.ts#LatexParser.render"
+family = "markdown-rich-rendering"
+kind = "render-layout"
+claim = "the parser returns the normalized text only when the whole source was consumed and every construct was supported"
+status = "ported"
+pig_targets = [
+  "internal/latex/latex.go#render"
+]
+evidence = [
+  "internal/latex/live_oracle_test.go#TestRenderLatexMatchesPiLive",
+  "test/parity/scenarios/tui-components/13-latex-upstream-layout.toml"
+]
+
+[contract.upstream]
+path = "packages/tui/src/latex.ts"
+start = "\trender(): string | undefined {"
+end = "\t\treturn normalizeOutput(rendered);\n\t}"
+sha256 = "bf0ec1636018282309a69ca6bbb123b034cb9a0e19964939c87717237091f3b4"
+keybindings = []
+
+[[contract]]
+id = "tui/latex/render-cases"
+upstream_id = "render:packages/tui/src/latex.ts#LatexParser.renderCases"
+family = "markdown-rich-rendering"
+kind = "render-layout"
+claim = "a cases environment renders as a left brace with the stacked rows, each value and its condition aligned"
+status = "ported"
+pig_targets = [
+  "internal/latex/latex.go#parseEnvironment"
+]
+evidence = [
+  "internal/latex/live_oracle_test.go#TestRenderLatexMatchesPiLive",
+  "test/parity/scenarios/tui-components/13-latex-upstream-layout.toml"
+]
+
+[contract.upstream]
+path = "packages/tui/src/latex.ts"
+start = "\tprivate renderCases(body: string): string {"
+end = "\n\tprivate renderMatrix("
+sha256 = "879d4f74d75e7100a704a0d3e07221f79261a7da6527d3387cdb92ad439994f3"
+keybindings = []
+
+[[contract]]
+id = "tui/latex/render-matrix"
+upstream_id = "render:packages/tui/src/latex.ts#LatexParser.renderMatrix"
+family = "markdown-rich-rendering"
+kind = "render-layout"
+claim = "matrix environments render their cells in aligned columns with the delimiters of the environment, dropping rows without cells"
+status = "ported"
+pig_targets = [
+  "internal/latex/latex.go#renderMatrix"
+]
+evidence = [
+  "internal/latex/live_oracle_test.go#TestRenderLatexMatchesPiLive",
+  "test/parity/scenarios/tui-components/13-latex-upstream-layout.toml"
+]
+
+[contract.upstream]
+path = "packages/tui/src/latex.ts"
+start = "\tprivate renderMatrix(environment: string, body: string): string {"
+end = "\n\tprivate renderNested("
+sha256 = "91dfb1337f7c301b7889a9a0d3661d3d4d65fc3f11153daffd01393e2f283ff3"
+keybindings = []
+
+[[contract]]
+id = "tui/latex/render-nested"
+upstream_id = "render:packages/tui/src/latex.ts#LatexParser.renderNested"
+family = "markdown-rich-rendering"
+kind = "render-layout"
+claim = "a nested expression renders through a child parser sharing the layout nodes, stacking fractions only in display mode when the caller allows it, and marks the whole as unsupported when the child is"
+status = "ported"
+pig_targets = [
+  "internal/latex/latex.go#renderNested"
+]
+evidence = [
+  "internal/latex/live_oracle_test.go#TestRenderLatexMatchesPiLive",
+  "test/parity/scenarios/tui-components/13-latex-upstream-layout.toml"
+]
+
+[contract.upstream]
+path = "packages/tui/src/latex.ts"
+start = "\tprivate renderNested(source: string, stackFractions = true): string {"
+end = "\nexport interface RenderLatexOptions"
+sha256 = "072dd9daa929a1422fd461bbb5292f03b37b45ba05440ad1239a0d526a433a24"
+keybindings = []
+
+[[contract]]
+id = "tui/layout/render-layout-frame"
+upstream_id = "render:packages/tui/src/layout.ts#<module>.renderLayoutFrame"
+family = "fullscreen"
+kind = "render-layout"
+claim = "a component tree is laid out into a viewport of at least 1x1 and painted into one row per viewport line: stacks and scroll views allocate rects and clips, a scroll view scrolls to keep its position or follow the end, leaf rows are clipped to their boxes with the cursor row kept visible, scrollbars paint over the last column, and the primary scroll view is reported"
+status = "ported"
+pig_targets = [
+  "tui/layout.go#RenderLayoutFrame"
+]
+evidence = [
+  "tui/layout_frame_oracle_test.go#TestRenderLayoutFrameMatchesPi",
+  "test/parity/scenarios/fullscreen/01-conversation-fullscreen.toml",
+  "test/parity/scenarios/tui-components/17-layout-sparse-billion-rows.toml"
+]
+
+[contract.upstream]
+path = "packages/tui/src/layout.ts"
+start = "export function renderLayoutFrame("
+end = "\nfunction containsPoint("
+sha256 = "78e009ec05062666bfdf20d044e10e9f6d7872e24e75b35200ed6b4af86e6b1b"
+keybindings = []
+
+[[contract]]
+id = "tui/layout/render-cached"
+upstream_id = "render:packages/tui/src/layout.ts#<module>.renderCached"
+family = "fullscreen"
+kind = "render-layout"
+claim = "within one frame a component renders at most once per width, so every measurement and paint of it reuses the same rows; the probes record each leaf render call and its width in order and Pi's calls must be equal"
+status = "ported"
+pig_targets = [
+  "tui/layout.go#renderCached"
+]
+evidence = [
+  "tui/layout_frame_oracle_test.go#TestRenderLayoutFrameMatchesPi",
+  "test/parity/scenarios/fullscreen/01-conversation-fullscreen.toml",
+  "test/parity/scenarios/tui-components/17-layout-sparse-billion-rows.toml"
+]
+
+[contract.upstream]
+path = "packages/tui/src/layout.ts"
+start = "function renderCached("
+end = "\nfunction measureHeight("
+sha256 = "3c9c6286ad8de660ec120b795080229745b5884e5e5aaed2de288a806ac6473f"
+keybindings = []
+
+[[contract]]
+id = "coding-agent/user-message/render"
+upstream_id = "render:packages/coding-agent/src/modes/interactive/components/user-message.ts#UserMessageComponent.render"
+family = "interactive-rendering"
+kind = "render-layout"
+claim = "the user message renders as markdown on the user background with ordered-list markers and backslash escapes preserved, one blank padded row above and below, the output padding as given (not limited to 0 or 1), and OSC 133 zone marks before the first row and after the last"
+status = "ported"
+pig_targets = [
+  "tui/user_message_block.go#Render"
+]
+evidence = [
+  "tui/user_message_render_oracle_test.go#TestUserMessageComponentRenderMatchesPi",
+  "test/parity/scenarios/interactive-rendering/02-user-message-box.toml"
+]
+
+[contract.upstream]
+path = "packages/coding-agent/src/modes/interactive/components/user-message.ts"
+start = "\toverride render(width: number): string[] {"
+end = "\t\treturn lines;\n\t}\n}"
+sha256 = "56d100bf405607ab16be0dad2f33d40568e173cbee9703553edca09268bbdd13"
+keybindings = []
+
+[[contract]]
+id = "coding-agent/bash-execution/render"
+upstream_id = "render:packages/coding-agent/src/modes/interactive/components/bash-execution.ts#BashExecutionComponent.render"
+family = "interactive-rendering"
+kind = "render-layout"
+claim = "the component renders a blank row, a border, the bold command header, the collapsed preview or the expanded output, then the loader while running or the status rows (hidden-line hint, cancelled, exit code, truncation warning), then a border, with the output padding, the header colour of a normal or excluded command and the context truncation of very long output; compared byte for byte (colours and bold included), collapsed and expanded"
+status = "ported"
+pig_targets = [
+  "tui/bash_execution.go#Render"
+]
+evidence = [
+  "internal/codingagent/bash_execution_oracle_test.go#TestBashExecutionComponentMatchesPi",
+  "test/parity/scenarios/interactive-rendering/20-bash-execution-long-line-wrap.toml"
+]
+
+[contract.upstream]
+path = "packages/coding-agent/src/modes/interactive/components/bash-execution.ts"
+start = "\tprivate updateDisplay(): void {"
+end = "\n\t/**\n\t * Get the raw output"
+sha256 = "6125bc97f51b96b1350c64a8ac00a0c83d91bbf31c65c52b93643476697eafc5"
+keybindings = []
+
+[[contract]]
+id = "coding-agent/assistant-message/render"
+upstream_id = "render:packages/coding-agent/src/modes/interactive/components/assistant-message.ts#AssistantMessageComponent.render"
+family = "interactive-rendering"
+kind = "render-layout"
+claim = "the message renders its text and thinking runs as markdown (thinking collapsed to the italic label when hidden), a spacer before visible content and between runs, the length, aborted and error diagnostics (suppressed for aborted and error when tool calls exist), the output padding as given, and OSC 133 zone marks on the first and last row only when the message has no tool calls; compared byte for byte, including updates through setOutputPad, setHiddenThinkingLabel, setHideThinkingBlock and updateContent"
+status = "ported"
+pig_targets = [
+  "tui/assistant_message_block.go#Render"
+]
+evidence = [
+  "tui/assistant_message_render_oracle_test.go#TestAssistantMessageComponentRenderMatchesPi",
+  "test/parity/scenarios/interactive-rendering/01-assistant-message-text.toml"
+]
+
+[contract.upstream]
+path = "packages/coding-agent/src/modes/interactive/components/assistant-message.ts"
+start = "\toverride render(width: number): string[] {"
+end = "\n\tupdateContent("
+sha256 = "f5293bfe3559338da94f6b3cd283791ad7195f5d313a226dfc85938e58a4bb55"
+keybindings = []
+
+[[contract]]
+id = "coding-agent/config-selector/header-render"
+upstream_id = "render:packages/coding-agent/src/modes/interactive/components/config-selector.ts#ConfigSelectorHeader.render"
+family = "selectors"
+kind = "render-layout"
+claim = "the header shows the bold scope title, the tab, space and escape hints joined by the muted separator (the tab hint only when project mode is available, the space hint naming the scope's action) and the muted settings path line, compared byte for byte"
+status = "ported"
+pig_targets = [
+  "tui/config_selector.go#Render"
+]
+evidence = [
+  "tui/config_selector_oracle_test.go#TestConfigSelectorMatchesPi",
+  "test/parity/scenarios/selectors/02-config-resources-list.toml"
+]
+
+[contract.upstream]
+path = "packages/coding-agent/src/modes/interactive/components/config-selector.ts"
+start = "\trender(width: number): string[] {\n\t\tconst title = theme.bold("
+end = "\n}\n\nclass ResourceList"
+sha256 = "50f40763a2423f9870fb266427364cfb37a12de1c590bb9bf6f284750395a767"
+keybindings = []
+
+[[contract]]
+id = "coding-agent/config-selector/resource-checkbox"
+upstream_id = "render:packages/coding-agent/src/modes/interactive/components/config-selector.ts#ResourceList.renderCheckbox"
+family = "selectors"
+kind = "render-layout"
+claim = "outside the project scope an enabled item shows a green [x] and a disabled one a dim [ ]; in the project scope a load override shows a green [+], an unload override a yellow [-] and every other state a dim [x] or [ ], byte for byte"
+status = "ported"
+pig_targets = [
+  "tui/config_selector.go#Render"
+]
+evidence = [
+  "tui/config_selector_oracle_test.go#TestConfigSelectorMatchesPi",
+  "test/parity/scenarios/selectors/02-config-resources-list.toml"
+]
+
+[contract.upstream]
+path = "packages/coding-agent/src/modes/interactive/components/config-selector.ts"
+start = "\tprivate renderCheckbox("
+end = "\n\tprivate getItemSuffix("
+sha256 = "887b787bdb3f2b2a655770a15069bbcc5e52e00a40b32317a4d9af1382232e66"
+keybindings = []
+
+[[contract]]
+id = "coding-agent/config-selector/resource-list-render"
+upstream_id = "render:packages/coding-agent/src/modes/interactive/components/config-selector.ts#ResourceList.render"
+family = "selectors"
+kind = "render-layout"
+claim = "the list shows the search input, the grouped resources with bold coloured group and subgroup labels, the cursor and bold selected name, dimmed inherited items, the (n/total) counter and the empty message, byte for byte through navigation, search and toggling"
+status = "ported"
+pig_targets = [
+  "tui/config_selector.go#Render"
+]
+evidence = [
+  "tui/config_selector_oracle_test.go#TestConfigSelectorMatchesPi",
+  "test/parity/scenarios/selectors/02-config-resources-list.toml"
+]
+
+[contract.upstream]
+path = "packages/coding-agent/src/modes/interactive/components/config-selector.ts"
+start = "\trender(width: number): string[] {\n\t\tconst lines: string[] = [];"
+end = "\n\thandleInput(data: string): void {"
+sha256 = "9722f85b7b26e7a944d5eb6d72cdf0256469f73c812bb09e4a255ace0c472be1"
+keybindings = []
+
+[[contract]]
+id = "coding-agent/settings-submenu/stepped-render"
+upstream_id = "render:packages/coding-agent/src/modes/interactive/components/settings-submenu.ts#SteppedSubmenu.render"
+family = "settings"
+kind = "render-layout"
+claim = "a stepped submenu renders the active step's select submenu: the bold accent title, the muted description, the optional search box, the option list and the dim hint, byte for byte through step changes, searching, going back and looping"
+status = "ported"
+pig_targets = [
+  "tui/select_submenu.go#Render"
+]
+evidence = [
+  "internal/codingagent/settings_submenu_oracle_test.go#TestSettingsSubmenusMatchPi",
+  "test/parity/scenarios/settings/05-settings-thinking-submenu.toml"
+]
+
+[contract.upstream]
+path = "packages/coding-agent/src/modes/interactive/components/settings-submenu.ts"
+start = "\trender(width: number): string[] {"
+end = "\t\treturn this.activeComponent.render(width);\n\t}"
+sha256 = "87fbb3b31fa9e644147515c61b8c78f5836f8352ac75427546699f96a2686f39"
+keybindings = []
+
+[[contract]]
+id = "coding-agent/tree-selector/horizontal-viewport"
+upstream_id = "render:packages/coding-agent/src/modes/interactive/components/tree-selector.ts#<module>.renderHorizontalViewport"
+family = "tree"
+kind = "render-layout"
+claim = "a deep tree keeps the two-column cursor gutter and pans the body so the selected row's anchor stays visible, closing the clipped body with SGR 0 and cutting each row to the width without an ellipsis or padding, byte for byte at widths 24, 38, 64 and 100"
+status = "ported"
+pig_targets = [
+  "tui/tree_select.go#Render"
+]
+evidence = [
+  "internal/codingagent/tree_selector_oracle_test.go#TestTreeSelectorInputMatchesPi",
+  "test/parity/scenarios/tree/10-tree-scroll-cursor-visible.toml"
+]
+
+[contract.upstream]
+path = "packages/coding-agent/src/modes/interactive/components/tree-selector.ts"
+start = "function renderHorizontalViewport(rows: HorizontalViewportRow[], width: number): string[] {"
+end = "\t\treturn truncateToWidth(line, width, \"\");\n\t});\n}"
+sha256 = "7fe8a6725a07e7e82ee2d9bdda20ca4a8e4d1c1a8868be0ff7de4d428a1c228a"
+keybindings = []
+
+[[contract]]
+id = "coding-agent/tree-selector/list-render"
+upstream_id = "render:packages/coding-agent/src/modes/interactive/components/tree-selector.ts#TreeList.render"
+family = "tree"
+kind = "render-layout"
+claim = "the tree list shows the empty message or the window of rows (accent cursor, dim prefix with fold markers, accent path marker, warning branch label, muted label time, bold selected content on the selectedBg highlight spanning only its text) and the muted (n/total) line, truncated without padding, byte for byte"
+status = "ported"
+pig_targets = [
+  "tui/tree_select.go#Render"
+]
+evidence = [
+  "internal/codingagent/tree_selector_oracle_test.go#TestTreeSelectorInputMatchesPi",
+  "test/parity/scenarios/tree/05-tree-nonempty-overlay.toml"
+]
+
+[contract.upstream]
+path = "packages/coding-agent/src/modes/interactive/components/tree-selector.ts"
+start = "\t}\n\n\trender(width: number): string[] {\n\t\tconst lines: string[] = [];\n\n\t\tif (this.filteredNodes.length === 0) {"
+end = "\t\treturn lines;\n\t}\n\n\tprivate getEntryDisplayText("
+sha256 = "c8546f080068f14ccd45787c6ac3c16fd9b7aa76431be72be6e92a588373fd09"
+keybindings = []
+
+[[contract]]
+id = "coding-agent/tree-selector/search-line-render"
+upstream_id = "render:packages/coding-agent/src/modes/interactive/components/tree-selector.ts#SearchLine.render"
+family = "tree"
+kind = "render-layout"
+claim = "the search row shows the muted \"Type to search:\" prompt and, when a query exists, the accent query, cut to the width without padding, byte for byte"
+status = "ported"
+pig_targets = [
+  "tui/tree_select.go#Render"
+]
+evidence = [
+  "internal/codingagent/tree_selector_oracle_test.go#TestTreeSelectorInputMatchesPi",
+  "test/parity/scenarios/tree/12-tree-digit-search.toml"
+]
+
+[contract.upstream]
+path = "packages/coding-agent/src/modes/interactive/components/tree-selector.ts"
+start = "class SearchLine implements Component {"
+end = "\thandleInput(_keyData: string): void {}"
+sha256 = "46410df91d4e9637966958a9ae1accc0cd8f558560ab32ee27c221f4bb244cff"
+keybindings = []
+
+[[contract]]
+id = "coding-agent/tree-selector/help-render"
+upstream_id = "render:packages/coding-agent/src/modes/interactive/components/tree-selector.ts#TreeHelp.render"
+family = "tree"
+kind = "render-layout"
+claim = "the help rows show the key hints wrapped by chunk to the width, in the muted key and dim label styles, without padding, byte for byte at widths 24, 38, 64 and 100 and with rebound keys"
+status = "ported"
+pig_targets = [
+  "tui/tree_select.go#Render"
+]
+evidence = [
+  "internal/codingagent/tree_selector_oracle_test.go#TestTreeSelectorInputMatchesPi",
+  "test/parity/scenarios/tree/06-tree-header-spacing.toml"
+]
+
+[contract.upstream]
+path = "packages/coding-agent/src/modes/interactive/components/tree-selector.ts"
+start = "class TreeHelp implements Component {"
+end = "function formatHelpKeys"
+sha256 = "5c7cb8aa51861500e6db8b9dbae8c49cbb511302db69a7c67de76c64302dbd77"
+keybindings = []
+
+[[contract]]
+id = "coding-agent/tree-selector/label-input-render"
+upstream_id = "render:packages/coding-agent/src/modes/interactive/components/tree-selector.ts#LabelInput.render"
+family = "tree"
+kind = "render-layout"
+claim = "the label editor shows the muted prompt, the input rows indented by two and the save and cancel key hints, each truncated to the width, byte for byte at widths 24, 38, 64 and 100"
+status = "ported"
+pig_targets = [
+  "tui/tree_select.go#Render"
+]
+evidence = [
+  "internal/codingagent/tree_selector_oracle_test.go#TestTreeSelectorInputMatchesPi",
+  "test/parity/scenarios/tree/05-tree-nonempty-overlay.toml"
+]
+
+[contract.upstream]
+path = "packages/coding-agent/src/modes/interactive/components/tree-selector.ts"
+start = "class LabelInput implements Component, Focusable {"
+end = "\t\treturn lines;\n\t}\n\n\thandleInput(keyData: string): void {\n\t\tconst kb = getKeybindings();\n\t\tif (kb.matches(keyData, \"tui.select.confirm\")) {\n\t\t\tconst value"
+sha256 = "ecc6621020a8e6660b23b90c6bae84a6137c424f13da702cdd80088d7bed7838"
+keybindings = []
+
+[[contract]]
+id = "coding-agent/tool-renderers/read-rendercall"
+upstream_id = "render:packages/coding-agent/src/core/tools/renderers/read.ts#<module>.renderCall"
+family = "tools"
+kind = "render-layout"
+claim = "the read call header shows the bold toolTitle name, the accent path (or the invalid-arg text for a non-string path), the warning line range and the compact label, byte for byte in both themes at widths 80 and 28"
+status = "ported"
+pig_targets = [
+  "internal/codingagent/tool_builtin_renderers.go#readRenderCall"
+]
+evidence = [
+  "internal/codingagent/builtin_tool_cards_oracle_test.go#TestBuiltinToolCardsMatchPi",
+  "test/parity/scenarios/tools/24-tool-cards.toml"
+]
+
+[contract.upstream]
+path = "packages/coding-agent/src/core/tools/renderers/read.ts"
+start = "\trenderCall(rawArgs, theme, context) {"
+end = "\trenderResult(result, options, theme, context) {"
+sha256 = "08cab42fccf6870da744591c74b5efe47fb2b7911eb74d9c238b52017aeaaf4b"
+keybindings = []
+
+[[contract]]
+id = "coding-agent/tool-renderers/write-rendercall"
+upstream_id = "render:packages/coding-agent/src/core/tools/renderers/write.ts#<module>.renderCall"
+family = "tools"
+kind = "render-layout"
+claim = "the write call header, then the written content, syntax highlighted by the path's language, collapsed to its first lines with the expand hint, and the invalid content text, byte for byte in both themes at widths 80 and 28"
+status = "ported"
+pig_targets = [
+  "internal/codingagent/tool_builtin_renderers.go#writeRenderCall"
+]
+evidence = [
+  "internal/codingagent/builtin_tool_cards_oracle_test.go#TestBuiltinToolCardsMatchPi",
+  "test/parity/scenarios/tools/24-tool-cards.toml"
+]
+
+[contract.upstream]
+path = "packages/coding-agent/src/core/tools/renderers/write.ts"
+start = "\trenderCall(args, theme, context) {"
+end = "\trenderResult(result, _options, theme, context) {"
+sha256 = "7024365a8df692d28578097b27bb9aa021f7a23a787b77a013054202b7d9bfc8"
+keybindings = []
+
+[[contract]]
+id = "coding-agent/tool-renderers/grep-rendercall"
+upstream_id = "render:packages/coding-agent/src/core/tools/renderers/grep.ts#<module>.renderCall"
+family = "tools"
+kind = "render-layout"
+claim = "the grep call header with the accent pattern, the path, the glob and the limit, byte for byte in both themes at widths 80 and 28"
+status = "ported"
+pig_targets = [
+  "internal/codingagent/tool_builtin_renderers.go#builtInToolRenderers"
+]
+evidence = [
+  "internal/codingagent/builtin_tool_cards_oracle_test.go#TestBuiltinToolCardsMatchPi",
+  "test/parity/scenarios/tools/24-tool-cards.toml"
+]
+
+[contract.upstream]
+path = "packages/coding-agent/src/core/tools/renderers/grep.ts"
+start = "\trenderCall(args, theme, context) {"
+end = "\trenderResult(result, options, theme, context) {"
+sha256 = "878743de50a9a0dc98eb0397b5e5c18478b3a444f3b6edb3ad13544969f0d5ba"
+keybindings = []
+
+[[contract]]
+id = "coding-agent/tool-renderers/find-rendercall"
+upstream_id = "render:packages/coding-agent/src/core/tools/renderers/find.ts#<module>.renderCall"
+family = "tools"
+kind = "render-layout"
+claim = "the find call header with the accent pattern, the path and the limit, byte for byte in both themes at widths 80 and 28"
+status = "ported"
+pig_targets = [
+  "internal/codingagent/tool_builtin_renderers.go#builtInToolRenderers"
+]
+evidence = [
+  "internal/codingagent/builtin_tool_cards_oracle_test.go#TestBuiltinToolCardsMatchPi",
+  "test/parity/scenarios/tools/24-tool-cards.toml"
+]
+
+[contract.upstream]
+path = "packages/coding-agent/src/core/tools/renderers/find.ts"
+start = "\trenderCall(args, theme, context) {"
+end = "\trenderResult(result, options, theme, context) {"
+sha256 = "1e0195c8e89eb30a933df7c982715798af3eb96399597cd0beeede88d4df4311"
+keybindings = []
+
+[[contract]]
+id = "coding-agent/tool-renderers/ls-rendercall"
+upstream_id = "render:packages/coding-agent/src/core/tools/renderers/ls.ts#<module>.renderCall"
+family = "tools"
+kind = "render-layout"
+claim = "the ls call header with the path and the limit, byte for byte in both themes at widths 80 and 28"
+status = "ported"
+pig_targets = [
+  "internal/codingagent/tool_builtin_renderers.go#builtInToolRenderers"
+]
+evidence = [
+  "internal/codingagent/builtin_tool_cards_oracle_test.go#TestBuiltinToolCardsMatchPi",
+  "test/parity/scenarios/tools/24-tool-cards.toml"
+]
+
+[contract.upstream]
+path = "packages/coding-agent/src/core/tools/renderers/ls.ts"
+start = "\trenderCall(args, theme, context) {"
+end = "\trenderResult(result, options, theme, context) {"
+sha256 = "6f33dd75032a53cfe599c2f239321881d58f8e16e6365052ec5c8a3dd7f870fc"
+keybindings = []
+
+[[contract]]
+id = "coding-agent/tool-renderers/read-renderresult"
+upstream_id = "render:packages/coding-agent/src/core/tools/renderers/read.ts#<module>.renderResult"
+family = "tools"
+kind = "render-layout"
+claim = "the read result shows the tool output text, syntax highlighted by the path's language, collapsed to the preview lines with the expand hint, the truncation warning and image fallbacks, or the error text, byte for byte in both themes at widths 80 and 28"
+status = "ported"
+pig_targets = [
+  "internal/codingagent/tool_builtin_renderers.go#readRenderResult"
+]
+evidence = [
+  "internal/codingagent/builtin_tool_cards_oracle_test.go#TestBuiltinToolCardsMatchPi",
+  "test/parity/scenarios/tools/24-tool-cards.toml"
+]
+
+[contract.upstream]
+path = "packages/coding-agent/src/core/tools/renderers/read.ts"
+start = "\trenderResult(result, options, theme, context) {"
+end = "\t\treturn text;\n\t},\n};"
+sha256 = "ba34c5b34063527fda9a1f9c5f9c1a548d4a8ddd1eebbd86d91fb7fa87544aaf"
+keybindings = []
+
+[[contract]]
+id = "coding-agent/tool-renderers/write-renderresult"
+upstream_id = "render:packages/coding-agent/src/core/tools/renderers/write.ts#<module>.renderResult"
+family = "tools"
+kind = "render-layout"
+claim = "the write result shows nothing on success and the error text in the error colour on failure, byte for byte in both themes at widths 80 and 28"
+status = "ported"
+pig_targets = [
+  "internal/codingagent/tool_builtin_renderers.go#writeRenderResult"
+]
+evidence = [
+  "internal/codingagent/builtin_tool_cards_oracle_test.go#TestBuiltinToolCardsMatchPi",
+  "test/parity/scenarios/tools/24-tool-cards.toml"
+]
+
+[contract.upstream]
+path = "packages/coding-agent/src/core/tools/renderers/write.ts"
+start = "\trenderResult(result, _options, theme, context) {"
+end = "\t\ttext.setText(output);\n\t\treturn text;\n\t},\n};"
+sha256 = "4232cd61c2390145a8bcc0fa14d808abb46641186a024f3e1639802820a04802"
+keybindings = []
+
+[[contract]]
+id = "coding-agent/tool-renderers/grep-renderresult"
+upstream_id = "render:packages/coding-agent/src/core/tools/renderers/grep.ts#<module>.renderResult"
+family = "tools"
+kind = "render-layout"
+claim = "the grep result shows the matches in the output colour, collapsed to the preview lines with the expand hint, the limit and truncation warnings and image fallbacks, byte for byte in both themes at widths 80 and 28"
+status = "ported"
+pig_targets = [
+  "internal/codingagent/tool_builtin_renderers.go#listRenderResult"
+]
+evidence = [
+  "internal/codingagent/builtin_tool_cards_oracle_test.go#TestBuiltinToolCardsMatchPi",
+  "test/parity/scenarios/tools/24-tool-cards.toml"
+]
+
+[contract.upstream]
+path = "packages/coding-agent/src/core/tools/renderers/grep.ts"
+start = "\trenderResult(result, options, theme, context) {"
+end = "\t\treturn text;\n\t},\n};"
+sha256 = "8fa30df2ab5daf8306be3befbccc21282abb51048488d3905d546a464d82e9d4"
+keybindings = []
+
+[[contract]]
+id = "coding-agent/tool-renderers/find-renderresult"
+upstream_id = "render:packages/coding-agent/src/core/tools/renderers/find.ts#<module>.renderResult"
+family = "tools"
+kind = "render-layout"
+claim = "the find result shows the paths in the output colour, collapsed to the preview lines with the expand hint, the limit and truncation warnings and image fallbacks, byte for byte in both themes at widths 80 and 28"
+status = "ported"
+pig_targets = [
+  "internal/codingagent/tool_builtin_renderers.go#listRenderResult"
+]
+evidence = [
+  "internal/codingagent/builtin_tool_cards_oracle_test.go#TestBuiltinToolCardsMatchPi",
+  "test/parity/scenarios/tools/24-tool-cards.toml"
+]
+
+[contract.upstream]
+path = "packages/coding-agent/src/core/tools/renderers/find.ts"
+start = "\trenderResult(result, options, theme, context) {"
+end = "\t\treturn text;\n\t},\n};"
+sha256 = "3f51c52aa68fc9160ed53f943452840c6535f6b1228efdfe376694954512c01c"
+keybindings = []
+
+[[contract]]
+id = "coding-agent/tool-renderers/ls-renderresult"
+upstream_id = "render:packages/coding-agent/src/core/tools/renderers/ls.ts#<module>.renderResult"
+family = "tools"
+kind = "render-layout"
+claim = "the ls result shows the entries in the output colour, collapsed to the preview lines with the expand hint, the limit and truncation warnings and image fallbacks, byte for byte in both themes at widths 80 and 28"
+status = "ported"
+pig_targets = [
+  "internal/codingagent/tool_builtin_renderers.go#listRenderResult"
+]
+evidence = [
+  "internal/codingagent/builtin_tool_cards_oracle_test.go#TestBuiltinToolCardsMatchPi",
+  "test/parity/scenarios/tools/24-tool-cards.toml"
+]
+
+[contract.upstream]
+path = "packages/coding-agent/src/core/tools/renderers/ls.ts"
+start = "\trenderResult(result, options, theme, context) {"
+end = "\t\treturn text;\n\t},\n};"
+sha256 = "7408dab2cc010d208ed572e4bfbcb03835e2bff68cc7afb56a3dd8e102aad542"
+keybindings = []
+
+[[contract]]
+id = "coding-agent/tool-renderers/edit-renderresult"
+upstream_id = "render:packages/coding-agent/src/core/tools/renderers/edit.ts#<module>.renderResult"
+family = "tools"
+kind = "render-layout"
+claim = "the edit result shows the diff of a successful edit with line numbers and intra-line highlights or the error text, byte for byte in both themes at widths 80 and 28"
+status = "ported"
+pig_targets = [
+  "internal/codingagent/tool_builtin_renderers.go#editRenderResult"
+]
+evidence = [
+  "internal/codingagent/builtin_tool_cards_oracle_test.go#TestBuiltinToolCardsMatchPi",
+  "test/parity/scenarios/tools/24-tool-cards.toml"
+]
+
+[contract.upstream]
+path = "packages/coding-agent/src/core/tools/renderers/edit.ts"
+start = "\trenderResult(result, _options, theme, context) {"
+end = "\t\treturn component;\n\t},\n};"
+sha256 = "101b5281c16005433267198ca250db9e579050aed8564c04542a5dcfce492c86"
+keybindings = []
+
+[[contract]]
+id = "coding-agent/tool-renderers/bash-rendercall"
+upstream_id = "render:packages/coding-agent/src/core/tools/renderers/bash.ts#<module>.renderCall"
+family = "tools"
+kind = "render-layout"
+claim = "the shell call header shows the muted prompt, the command (or the placeholder or invalid-arg text) and the timeout suffix, byte for byte in both themes at widths 80 and 28"
+status = "ported"
+pig_targets = [
+  "internal/codingagent/tool_builtin_renderers.go#shellRenderCall"
+]
+evidence = [
+  "internal/codingagent/builtin_tool_cards_oracle_test.go#TestBuiltinToolCardsMatchPi",
+  "test/parity/scenarios/tools/24-tool-cards.toml"
+]
+
+[contract.upstream]
+path = "packages/coding-agent/src/core/tools/renderers/bash.ts"
+start = "\t\trenderCall(args, _theme, context) {"
+end = "\t\trenderResult(result, options, _theme, context) {"
+sha256 = "1b31c1f5276dab9c0dfbc910ac408c2f0718876c9d676560142d2b4209a9ab67"
+keybindings = []
+
+[[contract]]
+id = "coding-agent/tool-renderers/bash-renderresult"
+upstream_id = "render:packages/coding-agent/src/core/tools/renderers/bash.ts#<module>.renderResult"
+family = "tools"
+kind = "render-layout"
+claim = "the shell result shows the collapsed or expanded output with the truncation notice and full-output path, the image fallbacks and the Took/Elapsed footer, byte for byte in both themes at widths 80 and 28"
+status = "ported"
+pig_targets = [
+  "internal/codingagent/tool_builtin_renderers.go#shellRenderResult"
+]
+evidence = [
+  "internal/codingagent/builtin_tool_cards_oracle_test.go#TestBuiltinToolCardsMatchPi",
+  "test/parity/scenarios/tools/24-tool-cards.toml"
+]
+
+[contract.upstream]
+path = "packages/coding-agent/src/core/tools/renderers/bash.ts"
+start = "\t\trenderResult(result, options, _theme, context) {"
+end = "\t\t\tcomponent.invalidate();\n\t\t\treturn component;\n\t\t},\n\t};\n}"
+sha256 = "09e349cc186b4ed2b7e5c303456a9b06f48e58c5004bdc19e04cca0ec972a976"
+keybindings = []
+
+[[contract]]
+id = "coding-agent/codemode-renderer/call"
+upstream_id = "render:packages/coding-agent/src/extensions/codemode/renderer.ts#<module>.renderCall"
+family = "tools"
+kind = "render-layout"
+claim = "the codemode call card shows the bold toolTitle name and the code preview (first lines with the expand hint; tabs and carriage returns normalised) or the invalid-arg text, byte for byte at widths 80 and 28"
+status = "ported"
+pig_targets = [
+  "internal/codingagent/tool_codemode_renderer.go#codemodeRenderCall"
+]
+evidence = [
+  "internal/codingagent/codemode_cards_oracle_test.go#TestCodemodeCardsMatchPi",
+  "test/parity/scenarios/tools/25-codemode-cards.toml"
+]
+
+[contract.upstream]
+path = "packages/coding-agent/src/extensions/codemode/renderer.ts"
+start = "\trenderCall(args, theme, context) {"
+end = "\trenderResult(result, options, theme, context) {"
+sha256 = "abdf8e8a74df3df7729ebf0a0c3f30591effb542ba99fa1fbad35e032eb53962"
+keybindings = []
+
+[[contract]]
+id = "coding-agent/codemode-renderer/result"
+upstream_id = "render:packages/coding-agent/src/extensions/codemode/renderer.ts#<module>.renderResult"
+family = "tools"
+kind = "render-layout"
+claim = "the codemode result card shows the nested call rows (status icon, name, args, duration, cost, error), the earlier-calls hint, the model-call cost total and the script output in the success or error colour, collapsed to a visual-line preview with the full-output path or expanded, byte for byte at widths 80 and 28"
+status = "ported"
+pig_targets = [
+  "internal/codingagent/tool_codemode_renderer.go#codemodeRenderResult"
+]
+evidence = [
+  "internal/codingagent/codemode_cards_oracle_test.go#TestCodemodeCardsMatchPi",
+  "test/parity/scenarios/tools/25-codemode-cards.toml"
+]
+
+[contract.upstream]
+path = "packages/coding-agent/src/extensions/codemode/renderer.ts"
+start = "\trenderResult(result, options, theme, context) {"
+end = "\t\treturn component;\n\t},\n};"
+sha256 = "69476a9e07f3c9809b67a4fa7205deee4cf72ba8d6cf3f5901edefe519dd5005"
+keybindings = []
+
+[[contract]]
+id = "coding-agent/session-selector/header-render"
+upstream_id = "render:packages/coding-agent/src/modes/interactive/components/session-selector.ts#SessionSelectorHeader.render"
+family = "session"
+kind = "render-layout"
+claim = "the header shows the bold scope title with the right-aligned scope, name filter and sort texts (muted label, accent value), then the delete confirmation or the two key-hint rows truncated with \"…\"; the loading progress and status-message rows are not in the corpus, byte for byte in both themes at widths 20, 40, 72 and 100"
+status = "ported"
+pig_targets = [
+  "internal/codingagent/session_selector.go#sessionSelectorHeader"
+]
+evidence = [
+  "internal/codingagent/session_selector_oracle_test.go#TestSessionSelectorInputMatchesPi",
+  "test/parity/scenarios/session/01-session-selector.toml"
+]
+
+[contract.upstream]
+path = "packages/coding-agent/src/modes/interactive/components/session-selector.ts"
+start = "\trender(width: number): string[] {\n\t\tconst title = this.scope === \"current\""
+end = "\t\treturn [`${left}${\" \".repeat(spacing)}${rightText}`, hintLine1, hintLine2];"
+sha256 = "eb633e625f739429bfd12761d06083bd1b99aa9171a52e308e415af47907104c"
+keybindings = []
+
+[[contract]]
+id = "coding-agent/session-selector/list-render"
+upstream_id = "render:packages/coding-agent/src/modes/interactive/components/session-selector.ts#SessionList.render"
+family = "session"
+kind = "render-layout"
+claim = "the list shows the search input, the empty message or the window of rows (cursor, tree prefix, bold selected message, muted cwd and age, selected background, delete-confirm colours, named and path display) truncated with the default \"...\" ellipsis, and the muted (n/total) line, byte for byte in both themes at widths 20, 40, 72 and 100"
+status = "ported"
+pig_targets = [
+  "internal/codingagent/session_selector.go#renderList"
+]
+evidence = [
+  "internal/codingagent/session_selector_oracle_test.go#TestSessionSelectorInputMatchesPi",
+  "test/parity/scenarios/session/20-session-selector-search.toml"
+]
+
+[contract.upstream]
+path = "packages/coding-agent/src/modes/interactive/components/session-selector.ts"
+start = "\trender(width: number): string[] {\n\t\tconst lines: string[] = [];\n\n\t\t// Render search input"
+end = "\tprivate buildTreePrefix("
+sha256 = "5aa743e71f06fe6c27b6de5ccada654d124827e08c05f6c2e91dc46e24c4abef"
+keybindings = []
+
+[[contract]]
+id = "coding-agent/footer/render"
+upstream_id = "render:packages/coding-agent/src/modes/interactive/components/footer.ts#FooterComponent.render"
+family = "footer"
+kind = "render-layout"
+claim = "the footer shows the dim cwd line (home-relative path, branch, session name, truncated with a dim \"...\"), then the stats line (input/output/cache tokens, cost with the subscription marker, context percentage in its warning colours, auto tag, the dim bullet and bold warning xp badge when experimental) left of the model with its thinking level, routed model and provider prefix, and the sorted extension status row, byte for byte in both themes at several widths"
+status = "ported"
+pig_targets = [
+  "internal/codingagent/status_line.go#renderFooter"
+]
+evidence = [
+  "internal/codingagent/footer_component_oracle_test.go#TestFooterComponentMatchesPi",
+  "test/parity/scenarios/footer/01-footer-default.toml"
+]
+
+[contract.upstream]
+path = "packages/coding-agent/src/modes/interactive/components/footer.ts"
+start = "\trender(width: number): string[] {\n\t\tconst state = this.session.state;"
+end = "\t\treturn lines;\n\t}\n}"
+sha256 = "254477cbc27489c257c060e0b4dcef1c268affb7132f777f41cb5df7c0326fca"
+keybindings = []
+
+[[contract]]
+id = "coding-agent/radius-login/menu-render"
+upstream_id = "render:packages/coding-agent/src/modes/interactive/components/radius-login-selector.ts#RadiusLoginMenuComponent.render"
+family = "selectors"
+kind = "render-layout"
+claim = "the selected Radius row is re-rendered with the shimmering label (accent arrow, per-cell shimmer colours by elapsed time in every colour mode, wrapped at narrow widths); every other row is the extension selector's, byte for byte in both themes, with and without true colour"
+status = "ported"
+pig_targets = [
+  "internal/codingagent/radius_login_selector.go#Render"
+]
+evidence = [
+  "internal/codingagent/radius_login_oracle_test.go#TestRadiusLoginMenuRendersLikePi",
+  "test/parity/scenarios/oauth/27-login-radius-method-intro.toml"
+]
+
+[contract.upstream]
+path = "packages/coding-agent/src/modes/interactive/components/radius-login-selector.ts"
+start = "\toverride render(width: number): string[] {\n\t\tconst lines = super.render(width);"
+end = "\t\treturn lines;\n\t}\n\n\tprivate stopAnimation"
+sha256 = "4504d04e2a6dda9f9610553a26af8185358c58be6de5561206dcc5e735d5c6b9"
+keybindings = []
+
+[[contract]]
+id = "coding-agent/armin/render"
+upstream_id = "render:packages/coding-agent/src/modes/interactive/components/armin.ts#ArminComponent.render"
+family = "interactive-rendering"
+kind = "render-layout"
+claim = "Armin renders the cached grid as rows of one leading space, the accent-coloured clipped cells and right padding, with the label row, and reuses the cached rows until the width or grid version changes; every frame of the seven effects equals Pi's except the image and label (D87)"
+status = "divergence"
+pig_targets = [
+  "internal/codingagent/armin.go#Render"
+]
+evidence = [
+  "internal/codingagent/armin_test.go#TestArminFramesMatchPinnedPi",
+  "test/parity/scenarios/slash-commands/13-armin-bitmap.toml"
+]
+
+[contract.upstream]
+path = "packages/coding-agent/src/modes/interactive/components/armin.ts"
+start = "\trender(width: number): string[] {\n\t\tif (width === this.cachedWidth"
+end = "\tprivate createEmptyGrid(): string[][] {"
+sha256 = "a9ae377b8f1e704ccc48020085908d9616ada72e79a7eab779fde7db87e75b34"
+keybindings = []
+
+[[contract]]
+id = "coding-agent/custom-editor/render-top-border"
+upstream_id = "render:packages/coding-agent/src/modes/interactive/components/custom-editor.ts#CustomEditor.renderTopBorder"
+family = "interactive-rendering"
+kind = "render-layout"
+claim = "with an embedded working status the top border shows the status (spinner and message in the border colour) after a three-cell rule, the centred overflow label of scrolled-out rows when it fits beside the status, the spinner alone when it does not, and the plain border when the status is empty or the width too small; every border segment closes with the editor border colour function (SGR 39), byte for byte in both themes and at every width from 2 to 64"
+status = "ported"
+pig_targets = [
+  "tui/editor_status.go#renderStatusBorder"
+]
+evidence = [
+  "tui/editor_status_border_oracle_test.go#TestEditorStatusBorderMatchesPi",
+  "test/parity/scenarios/tui-components/32-editor-status-border.toml"
+]
+
+[contract.upstream]
+path = "packages/coding-agent/src/modes/interactive/components/custom-editor.ts"
+start = "\tprotected override renderTopBorder(width: number, hiddenLineCount: number): string {"
+end = "\t/**\n\t * Register a handler for an app action."
+sha256 = "b64e24612868af4becbd93f4da8fb11223cf0e9029719fe27b37402536e43181"
+keybindings = []
+
+[[contract]]
+id = "tui/image/render"
+upstream_id = "render:packages/tui/src/components/image.ts#Image.render"
+family = "clipboard-images"
+kind = "render-layout"
+claim = "the image renders as the kitty sequence followed by blank rows or, for iTerm2, blank rows then a cursor-up line and the sequence, sized by the cell size, the 60-cell and width-2 limits and the optional width and height limits from its header or explicit dimensions, reuses its kitty id and cached rows at the same width until invalidated, and otherwise as the truncated fallback text with the file name, byte for byte under both protocols and no protocol at widths 1 to 200"
+status = "ported"
+pig_targets = [
+  "tui/image.go#Render"
+]
+evidence = [
+  "tui/image_render_oracle_test.go#TestImageRenderMatchesPi",
+  "test/parity/scenarios/tui-components/33-image-render.toml"
+]
+
+[contract.upstream]
+path = "packages/tui/src/components/image.ts"
+start = "\trender(width: number): string[] {\n\t\tif (this.cachedLines && this.cachedWidth === width) {"
+end = "\t\tthis.cachedLines = lines;"
+sha256 = "02256075d6590e4a0cd1a06eb0b16e7145fc84a5258818588e55f1da3d2e7269"
+keybindings = []
+
+[[contract]]
+id = "tui/terminal-image/render-image"
+upstream_id = "render:packages/tui/src/terminal-image.ts#<module>.renderImage"
+family = "clipboard-images"
+kind = "render-layout"
+claim = "renderImage returns nothing without an image protocol; for kitty it sizes the image in cells (default width 80, the width and height limits, cell-aligned correction) and returns the escape sequence with its columns, rows, id and cursor-movement flag, chunked above 4096 payload characters; for iTerm2 it returns the inline sequence with the decoded size and the aspect-ratio flag, byte for byte over three cell sizes, seven aspect ratios and every payload padding"
+status = "ported"
+pig_targets = [
+  "tui/terminal_image.go#RenderImage"
+]
+evidence = [
+  "tui/render_image_oracle_test.go#TestRenderImageMatchesPi",
+  "test/parity/scenarios/tui-components/34-render-image.toml"
+]
+
+[contract.upstream]
+path = "packages/tui/src/terminal-image.ts"
+start = "export function renderImage("
+end = "\t\treturn { sequence, columns: size.columns, rows: size.rows };\n\t}\n\n\treturn null;\n}"
+sha256 = "5c076d5ed41b401536630422b0d5f9f51b8f65d39069d8e3168c4d9eb5bd926e"
+keybindings = []
+
+[[contract]]
+id = "tui/alt-screen-flash/render"
+upstream_id = "render:packages/tui/src/components/alt-screen-flash.ts#AltScreenFlashContainer.render"
+family = "fullscreen"
+kind = "render-layout"
+claim = "one row per active flash in insertion order, each message wrapped in one space either side, cut to the width with no ellipsis and drawn in reverse video; entries leave when their timer elapses (a negative duration is zero) or on dispose, and each change asks for one render, byte for byte over random operation sequences with wide, empty and ANSI messages at widths 0 to 80"
+status = "ported"
+pig_targets = [
+  "tui/alt_screen_flash.go#Render"
+]
+evidence = [
+  "tui/alt_screen_flash_oracle_test.go#TestAltScreenFlashContainerMatchesPi",
+  "test/parity/scenarios/tui-components/35-alt-screen-flash.toml"
+]
+
+[contract.upstream]
+path = "packages/tui/src/components/alt-screen-flash.ts"
+start = "\trender(width: number): string[] {\n\t\treturn this.entries.map"
+end = "\t\t});\n\t}\n}"
+sha256 = "912e8b73e8c5e51ed0ea5dd1aa28218200241aad7d7e3043fc97d71dcebc2b59"
+keybindings = []
+
+[[contract]]
+id = "tui/editor/render"
+upstream_id = "render:packages/tui/src/components/editor.ts#Editor.render"
+family = "tui-components"
+kind = "render-layout"
+claim = "the editor frame is the muted top border (with the up-scroll counter), the content rows (padding clamped to half the width, wrapped lines, the cursor cell and marker, right padding given up to a cursor in it), the bottom border (with the down-scroll counter) and, below them, the autocomplete popup built when the suggestions arrive (row limit, centred window, slash column layout, descriptions, scroll counter), byte for byte for typed input, pastes, history and live popup changes at widths 2 to 120; D66 clips popup rows wider than the content and Q8 records the one-column cursor"
+status = "divergence"
+pig_targets = [
+  "tui/editor.go#Render"
+]
+evidence = [
+  "tui/editor_autocomplete_render_oracle_test.go#TestEditorAutocompleteRenderMatchesPi",
+  "tui/editor_bindings_oracle_test.go",
+  "tui/editor_scroll_border_oracle_test.go#TestEditorScrollBordersMatchPi",
+  "test/parity/scenarios/tui-components/36-editor-autocomplete-render.toml",
+  "test/parity/scenarios/tui-components/30-editor-scroll-borders.toml"
+]
+
+[contract.upstream]
+path = "packages/tui/src/components/editor.ts"
+start = "\trender(width: number): string[] {\n\t\tconst maxPadding"
+end = "\n\thandleMouse(event: TuiMouseEvent)"
+sha256 = "cb2ef5997b2c11185da3ce05186e9168c59149b150ae80745b266e94d9232e4b"
+keybindings = []
+
+[[contract]]
+id = "coding-agent/render-utils/render-tool-path"
+upstream_id = "render:packages/coding-agent/src/core/tools/render-utils.ts#<module>.renderToolPath"
+family = "tools"
+kind = "render-layout"
+claim = "a null path renders the error-coloured invalid-arg text, an empty one the output-coloured \"...\" (or the fallback), and any other the accent path with a leading home directory replaced by ~ (by string prefix) and, when hyperlinks are supported, wrapped in an OSC 8 link to the file URL of the path resolved against the working directory, byte for byte over 24 path shapes, both themes and three working directories"
+status = "ported"
+pig_targets = [
+  "tui/tool_path_render.go#renderToolPathArg"
+]
+evidence = [
+  "tui/render_tool_path_oracle_test.go#TestRenderToolPathMatchesPi",
+  "test/parity/scenarios/tools/26-render-tool-path.toml"
+]
+
+[contract.upstream]
+path = "packages/coding-agent/src/core/tools/render-utils.ts"
+start = "export function renderToolPath("
+end = "\treturn linkPath(theme.fg(\"accent\", shortenPath(value)), value, cwd);\n}"
+sha256 = "6c0c9cf1ee9014ec80008014f13a005053bd6d39dd5807e6ca91d0a7b2bd3fd9"
+keybindings = []
+
+[[contract]]
+id = "tui/tui-alt-screen/render"
+upstream_id = "render:packages/tui/src/tui-alt-screen.ts#TuiAltScreen.render"
+family = "fullscreen"
+kind = "render-layout"
+claim = "the document the screen exposes is the layout root's render when one is set and its own children otherwise, and on exit that document is dumped to the main screen with zone prefixes and cursor markers removed, line resets applied and over-wide lines cut, byte for byte over 500 seeded trees with and without a layout root, with the preserve-screen exit and the iTerm2 capability suppress and restore"
+status = "ported"
+pig_targets = [
+  "tui/tui_alt_screen.go#renderDocument",
+  "tui/tui_alt_screen.go#StopWithOptions"
+]
+evidence = [
+  "tui/alt_screen_oracle_test.go#TestAltScreenFramesMatchPiOracle",
+  "test/parity/scenarios/fullscreen/01-conversation-fullscreen.toml"
+]
+
+[contract.upstream]
+path = "packages/tui/src/tui-alt-screen.ts"
+start = "override render(width: number): string[] {"
+end = "super.render(width);\n\t}"
+sha256 = "f5ff2e077a8fa39b584839b4c1c26ac8dd03ffc38a39ca5fe1b4267be1526ee7"
+keybindings = []
+
+[[contract]]
+id = "tui/tui-alt-screen/implicit-document-render"
+upstream_id = "render:packages/tui/src/tui-alt-screen.ts#TuiAltScreen.implicitDocument.render"
+family = "fullscreen"
+kind = "render-layout"
+claim = "the implicit document inside the primary scroll view renders the screen's own children, so scrolling by lines, to the top and to the bottom shows the same rows as Pi over 500 seeded trees"
+status = "ported"
+pig_targets = [
+  "tui/tui_alt_screen.go#renderBorrowed",
+  "tui/tui_alt_screen.go#NewTuiAltScreenWithOutput"
+]
+evidence = [
+  "tui/alt_screen_oracle_test.go#TestAltScreenFramesMatchPiOracle",
+  "test/parity/scenarios/fullscreen/01-conversation-fullscreen.toml"
+]
+
+[contract.upstream]
+path = "packages/tui/src/tui-alt-screen.ts"
+start = "render: (width) => super.render(width),"
+end = "handleMouse: (event) => super.handleMouse(event),"
+sha256 = "89366a252e6d8d81bbcd1fa5a18ee2dcbce14c55573c186435982c3698a8065d"
+keybindings = []
+
+[[contract]]
+id = "tui/tui-alt-screen/doRender"
+upstream_id = "render:packages/tui/src/tui-alt-screen.ts#TuiAltScreen.doRender"
+family = "fullscreen"
+kind = "render-layout"
+claim = "one frame of the alternate screen (layout, overlays, scroll-to-end indicator, selection, flashes, cursor extraction, line resets, width cut, full or per-row redraw, Kitty image placement cache with eviction and WezTerm ordering, iTerm2 clear, hardware cursor) writes the bytes Pi writes and counts the same full redraws, over 500 seeded trees with resizes, forced renders, overlays, flashes, scrolling, cursor toggles, kitty and iTerm2 images, tmux and WezTerm environments and 24-step image churn; the width and height change hooks are Pig-only and the 32 MiB transmission-size eviction boundary is not reached"
+status = "ported"
+pig_targets = [
+  "tui/tui_alt_screen.go#doRender",
+  "tui/tui_alt_screen.go#prepareKittyScreen",
+  "tui/tui_alt_screen.go#compositeOverlays",
+  "tui/tui_alt_screen.go#compositeFlashes"
+]
+evidence = [
+  "tui/alt_screen_oracle_test.go#TestAltScreenFramesMatchPiOracle",
+  "test/parity/scenarios/fullscreen/01-conversation-fullscreen.toml"
+]
+
+[contract.upstream]
+path = "packages/tui/src/tui-alt-screen.ts"
+start = "protected override doRender(): void {"
+end = "this.currentLayout = nextLayout;\n\t}"
+sha256 = "5ac303297a160dc6bbf907ea39ea958427288e9b082df3e3fc71426ae6cd893c"
+keybindings = []
+
+[[contract]]
+id = "coding-agent/syntax-highlight/render-highlighted-html"
+upstream_id = "render:packages/coding-agent/src/utils/syntax-highlight.ts#<module>.renderHighlightedHtml"
+family = "interactive-rendering"
+kind = "render-layout"
+claim = "highlight.js HTML is turned into formatted text: each run of text takes the formatter of its innermost span whose hljs- scope the theme maps (exact, then the part before a dot, then before a dash), else the theme default; every non-empty line is formatted alone; span tags are read with JavaScript whitespace and either quote; character references are decoded with parseInt and fromCodePoint rules within 16 UTF-16 units and adjacent surrogate halves join; stray and unclosed tags behave as in Pi, byte for byte over about 5000 seeded and table-driven strings"
+status = "ported"
+pig_targets = [
+  "tui/highlight.go#RenderHighlightedHtml",
+  "tui/highlight.go#renderHighlightedHTML",
+  "tui/highlight.go#spanClassValue",
+  "tui/highlight.go#decodeHTMLEntityAt"
+]
+evidence = [
+  "tui/render_highlighted_html_oracle_test.go#TestRenderHighlightedHtmlMatchesPi",
+  "test/parity/scenarios/interactive-rendering/55-render-highlighted-html.toml"
+]
+
+[contract.upstream]
+path = "packages/coding-agent/src/utils/syntax-highlight.ts"
+start = "export function renderHighlightedHtml(html: string, theme: HighlightTheme = {}): string {"
+end = "\tflushText();\n\treturn output;\n}"
+sha256 = "eb1e683d10f38b2e10c70085efbe1e5d2d347c1782bd2bba02e9e9ef864d27a1"
+keybindings = []
+
+[[contract]]
+id = "coding-agent/export-html/tool-renderer-render-call"
+upstream_id = "render:packages/coding-agent/src/core/export-html/tool-renderer.ts#<module>.renderCall"
+family = "export-html"
+kind = "render-layout"
+claim = "a custom tool call is rendered to HTML by storing its arguments under the call id first, then looking up the tool's renderers (a lookup, call or render that throws, or a tool without a call renderer, gives no HTML), calling the renderer with the stored arguments, the call's own state, the previous component of this call and the fixed flags (started, complete, partial, collapsed, no images, padding 1), and converting the component's lines at the export width to HTML, byte for byte over 1500 seeded scenarios"
+status = "ported"
+pig_targets = [
+  "internal/codingagent/export/tool_renderer.go#renderCall",
+  "internal/codingagent/export/tool_renderer.go#renderContext"
+]
+evidence = [
+  "internal/codingagent/export/tool_renderer_oracle_test.go#TestToolHTMLRendererMatchesPi",
+  "test/parity/scenarios/export-html/07-tool-html-renderer.toml"
+]
+
+[contract.upstream]
+path = "packages/coding-agent/src/core/export-html/tool-renderer.ts"
+start = "\t\trenderCall(toolCallId: string, toolName: string, args: unknown): string | undefined {"
+end = "return ansiLinesToHtml(lines);"
+sha256 = "227decb065f263ca55a17324e1d0f949a766f51f3296f5aa2dfb7804a0932b81"
+keybindings = []
+
+[[contract]]
+id = "coding-agent/export-html/tool-renderer-render-result"
+upstream_id = "render:packages/coding-agent/src/core/export-html/tool-renderer.ts#<module>.renderResult"
+family = "export-html"
+kind = "render-layout"
+claim = "a custom tool result is rendered twice, collapsed then expanded, each time with the stored call arguments, the result's own state and the previous result component; leading and trailing lines that are blank after SGR codes are dropped (JavaScript whitespace included); collapsed is returned only when it is non-empty and differs from expanded; a lookup, renderer or render that throws, or a tool without a result renderer, gives nothing, byte for byte over 1500 seeded scenarios"
+status = "ported"
+pig_targets = [
+  "internal/codingagent/export/tool_renderer.go#renderResult",
+  "internal/codingagent/export/tool_renderer.go#trimRenderedResultLines",
+  "internal/codingagent/export/tool_renderer.go#isBlankRenderedLine"
+]
+evidence = [
+  "internal/codingagent/export/tool_renderer_oracle_test.go#TestToolHTMLRendererMatchesPi",
+  "test/parity/scenarios/export-html/07-tool-html-renderer.toml"
+]
+
+[contract.upstream]
+path = "packages/coding-agent/src/core/export-html/tool-renderer.ts"
+start = "\t\trenderResult(\n\t\t\ttoolCallId: string,"
+end = "\t\t\t\treturn undefined;\n\t\t\t}\n\t\t},\n\t};"
+sha256 = "0bdb20aa24417f66833ca4f2fb4dddb271dd10c274ba7c7935b008359d59e3c9"
+keybindings = []
+
+[[contract]]
+id = "coding-agent/llama-view/render"
+upstream_id = "render:packages/coding-agent/src/extensions/llama/ui.ts#LlamaView.render"
+family = "extensions-runtime"
+kind = "render-layout"
+claim = "the view draws its current content (the loading view, model list, select, confirm, connection error, status or progress screen) with every line cut to the width, byte for byte at four widths over 700 seeded scenarios: the frame title is bold per line, the list shows loaded models first in locale order with the context label read from n_ctx, n_ctx_train or the launch arguments, its scroll line is dim, and the progress bar clamps the ratio and rounds the percentage"
+status = "ported"
+pig_targets = [
+  "internal/codingagent/llama/ui.go#Render",
+  "internal/codingagent/llama/ui.go#frame",
+  "internal/codingagent/llama/ui.go#ShowModels",
+  "internal/codingagent/llama/ui.go#updateProgressLocked"
+]
+evidence = [
+  "internal/codingagent/llama/ui_oracle_test.go#TestLlamaViewMatchesPi",
+  "test/parity/scenarios/extensions-runtime/75-llama-view.toml"
+]
+
+[contract.upstream]
+path = "packages/coding-agent/src/extensions/llama/ui.ts"
+start = "\trender(width: number): string[] {"
+end = "\n\t}\n\n\tinvalidate(): void {"
+sha256 = "dec9d206545003b3dd6796000bf512ed9b433cce44f7cf35bfa1ce6bfccf0dce"
+keybindings = []
+
+[[contract]]
+id = "coding-agent/llama-view/handle-input"
+upstream_id = "input:packages/coding-agent/src/extensions/llama/ui.ts#LlamaView.handleInput"
+family = "extensions-runtime"
+kind = "boundary-transition"
+claim = "while a progress screen is showing tui.select.cancel ends the progress wait and every other key is dropped; otherwise the key goes to the handler of the content shown (list navigation, confirm and cancel resolve the pending select, confirm or model choice), then a render is requested; the keys, frames and settlements agree with Pi over 700 seeded sequences"
+status = "ported"
+pig_targets = [
+  "internal/codingagent/llama/ui.go#HandleInput"
+]
+evidence = [
+  "internal/codingagent/llama/ui_oracle_test.go#TestLlamaViewMatchesPi",
+  "test/parity/scenarios/extensions-runtime/75-llama-view.toml"
+]
+
+[contract.upstream]
+path = "packages/coding-agent/src/extensions/llama/ui.ts"
+start = "\thandleInput(data: string): void {\n\t\tif (this.progressResolver"
+end = "\n\t\tthis.tui.requestRender();\n\t}\n\n\trender(width: number)"
+sha256 = "71bb4f74b9b1ccedcfca1185018cc379f5832242602cfad5df9d0d56f1afa493"
+keybindings = ["tui.select.cancel"]
+
+[[contract]]
+id = "coding-agent/llama-search/handle-input"
+upstream_id = "input:packages/coding-agent/src/extensions/llama/ui.ts#HuggingFaceSearch.handleInput"
+family = "extensions-runtime"
+kind = "boundary-transition"
+claim = "tui.select.up and tui.select.down move the selection with wrap-around over the filtered results, tui.select.confirm takes an owner/repository query as typed or the selected result, tui.select.cancel closes, and every other key edits the input; a changed trimmed query starts a new search: fewer than two characters show the hint, a cached query shows its results, otherwise the status reads Searching and the search starts after 500 ms, aborting the previous one; frames, settlements and completed searches (with their abort flags) agree with Pi over 600 seeded scenarios on a virtual clock; a key after close starts no timer (Q12)"
+status = "ported"
+pig_targets = [
+  "internal/codingagent/llama/ui.go#HandleInput",
+  "internal/codingagent/llama/ui.go#scheduleSearch",
+  "internal/codingagent/llama/ui.go#runSearch"
+]
+evidence = [
+  "internal/codingagent/llama/search_oracle_test.go#TestLlamaSearchMatchesPi",
+  "internal/codingagent/llama/search_oracle_test.go#TestLlamaSearchStartsNoSearchAfterClose",
+  "test/parity/scenarios/extensions-runtime/76-llama-search.toml"
+]
+
+[contract.upstream]
+path = "packages/coding-agent/src/extensions/llama/ui.ts"
+start = "\thandleInput(data: string): void {\n\t\tif (this.keybindings.matches(data, \"tui.select.up\")) {"
+end = "\t\tthis.scheduleSearch();\n\t}\n}"
+sha256 = "a7839f88ade8659df9860ad6bb7e9f7e87e54d840c879163ddd1e827d6fa37e8"
+keybindings = ["tui.select.cancel", "tui.select.confirm", "tui.select.down", "tui.select.up"]

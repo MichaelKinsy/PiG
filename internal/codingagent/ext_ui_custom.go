@@ -13,15 +13,6 @@ import (
 	"github.com/MichaelKinsy/PiG/tui"
 )
 
-// customHost is the `tui` a custom component's factory receives.
-type customHost struct{ m *InteractiveMode }
-
-func (h customHost) RequestRender() {
-	if h.m.tuiInst != nil {
-		h.m.tuiInst.RequestRender()
-	}
-}
-
 type customResult struct {
 	value any
 	err   error
@@ -46,37 +37,33 @@ type customCall struct {
 	savedText string
 }
 
-// customFactoryOf accepts the named factory type or the equal function literal.
-func customFactoryOf(factory any) (extension.CustomFactory, bool) {
-	switch f := factory.(type) {
-	case extension.CustomFactory:
-		return f, f != nil
-	case func(extension.CustomHost, extension.Theme, extension.KeybindingsManager, func(any)) (extension.Component, error):
-		return f, f != nil
+func customOptionsOf(opts *extension.CustomOptions) extension.CustomOptions {
+	if opts == nil {
+		return extension.CustomOptions{}
 	}
-	return nil, false
+	return *opts
 }
 
-func customOptionsOf(opts any) extension.CustomOptions {
-	switch o := opts.(type) {
-	case extension.CustomOptions:
-		return o
-	case *extension.CustomOptions:
-		if o != nil {
-			return *o
-		}
+// overlayOptionsOf resolves overlayOptions as upstream does: a function is called when the overlay is shown.
+// upstream: interactive-mode.ts:2902 `typeof options?.overlayOptions === "function" ? options.overlayOptions() : options?.overlayOptions`
+func overlayOptionsOf(source extension.OverlayOptionsSource) tui.OverlayOptions {
+	switch source := source.(type) {
+	case extension.OverlayOptionsValue:
+		return source.Options
+	case extension.OverlayOptionsFunc:
+		return source()
 	}
-	return extension.CustomOptions{}
+	return tui.OverlaySpec{}.Options()
 }
 
 // Custom runs an in-process factory and shows its component in the editor slot, or over the screen, until the
 // factory's done callback ends the call with a result.
 // upstream: packages/coding-agent/src/modes/interactive/interactive-mode.ts:2863-2935 (showExtensionCustom)
-func (u *ExtUIContext) Custom(ctx context.Context, factory any, opts any) (any, error) {
-	create, ok := customFactoryOf(factory)
-	if !ok {
-		return nil, fmt.Errorf("custom extension components need an extension.CustomFactory, got %T (a subprocess extension uses RunRemoteOverlay)", factory)
+func (u *ExtUIContext) Custom(ctx context.Context, factory extension.CustomFactory, opts *extension.CustomOptions) (any, error) {
+	if factory == nil {
+		return nil, errors.New("custom extension components need an extension.CustomFactory (a subprocess extension uses RunRemoteOverlay)")
 	}
+	create := factory
 	if u.m.tuiInst == nil || u.m.editorContainer == nil || u.m.editor == nil {
 		return nil, errors.New("no TUI available")
 	}
@@ -171,7 +158,7 @@ func (c *customCall) build(ctx context.Context, create extension.CustomFactory, 
 		c.result <- customResult{value: value}
 		return
 	}
-	component, isComponent := built.(tui.Component)
+	component, isComponent := built, built != nil
 	if err == nil && !isComponent {
 		err = fmt.Errorf("custom component factory returned %T, not a component", built)
 	}
@@ -189,7 +176,11 @@ func (c *customCall) build(ctx context.Context, create extension.CustomFactory, 
 	}
 	c.component = component
 	if options.Overlay {
-		c.handle = m.tuiInst.OpenOverlay(component, remoteOverlayTUIOptions(extension.RemoteOverlayOptions{Overlay: true, Layout: options.Layout}))
+		c.handle = m.tuiInst.ShowOverlay(component, overlayOptionsOf(options.OverlayOptions))
+		// upstream: interactive-mode.ts:2905 options.onHandle?.(handle)
+		if options.OnHandle != nil {
+			options.OnHandle(c.handle)
+		}
 	} else {
 		m.editorContainer.SetChildren(component)
 		m.tuiInst.SetFocus(component)
@@ -205,7 +196,7 @@ func (c *customCall) callFactory(create extension.CustomFactory, done func(any))
 			err = fmt.Errorf("custom component factory panicked: %v", r)
 		}
 	}()
-	return create(customHost{c.u.m}, tui.ActiveTheme(), tui.GetTUIKeybindings(), done)
+	return create(c.u.m.tuiInst, tui.ActiveTheme(), tui.GetTUIKeybindings(), done)
 }
 
 // finish ends the call on the owner loop: it takes the component down, resolves the call with the result, and only

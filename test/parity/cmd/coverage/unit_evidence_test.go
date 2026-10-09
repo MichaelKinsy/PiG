@@ -74,7 +74,7 @@ func TestUnitEvidenceCountsBehaviorWithoutInventingScenarioResults(t *testing.T)
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = file.Close() })
-	emitReport(file, entries, coverage, behavioral, nil, nil, testPortingStats{})
+	emitReport(file, entries, coverage, behavioral, nil, nil, testPortingStats{}, nil)
 	body, err := os.ReadFile(file.Name())
 	if err != nil {
 		t.Fatal(err)

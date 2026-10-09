@@ -17,12 +17,12 @@ func captureSDKStreamOptions(t *testing.T, api ai.API, settings icodingagent.Set
 	t.Helper()
 	services := newTestServicesWithSettings(t, settings)
 	var captured ai.StreamOptions
-	services.Registry().RegisterProvider("capture-provider", extension.ProviderConfig{API: api, BaseURL: "https://capture.invalid/v1", APIKey: "test-api-key", Headers: map[string]string{"x-provider": "provider"}, StreamSimple: func(model extension.Model, _ extension.AIContext, raw extension.SimpleStreamOptions) extension.AssistantMessageEventStream {
-		captured = raw.(ai.StreamOptions)
+	services.Registry().RegisterExtensionProvider("capture-provider", extension.ProviderConfig{API: api, BaseURL: "https://capture.invalid/v1", APIKey: "test-api-key", Headers: map[string]string{"x-provider": "provider"}, StreamSimple: func(model extension.Model, _ extension.AIContext, raw extension.SimpleStreamOptions) extension.AssistantMessageEventStream {
+		captured = raw
 		stream := ai.NewAssistantMessageEventStream()
 		if len(providerEvent) != 0 {
 			if captured.OnProviderStreamEvent != nil {
-				if err := captured.OnProviderStreamEvent(context.Background(), providerEvent[0], model.(*ai.Model)); err != nil {
+				if err := captured.OnProviderStreamEvent(context.Background(), providerEvent[0], model); err != nil {
 					t.Errorf("onProviderStreamEvent: %v", err)
 				}
 			}
@@ -41,7 +41,7 @@ func captureSDKStreamOptions(t *testing.T, api ai.API, settings icodingagent.Set
 	}
 	defer func() { _ = session.Close() }()
 	if len(providerEvent) != 0 {
-		if _, err := session.Prompt(t.Context(), "test"); err != nil {
+		if err := session.Prompt(t.Context(), "test"); err != nil {
 			t.Fatal(err)
 		}
 		return captured
@@ -100,7 +100,19 @@ func TestSDKForwardsProviderRetrySettings(t *testing.T) {
 	}
 }
 
+// sdk.ts:329 `options.maxRetries ?? providerRetrySettings.maxRetries`: an unset setting stays undefined, so the provider's own default applies, while an explicit 0 reaches the request as 0.
+func TestSDKLeavesAnUnsetProviderMaxRetriesUnset(t *testing.T) {
+	if got := captureSDKStreamOptions(t, ai.APIOpenAICompletions, icodingagent.Settings{}, ai.StreamOptions{}, nil); got.MaxRetries != nil {
+		t.Fatalf("unset maxRetries = %d, want nil", *got.MaxRetries)
+	}
+	got := captureSDKStreamOptions(t, ai.APIOpenAICompletions, icodingagent.Settings{Retry: &icodingagent.RetrySettingsJSON{Provider: &icodingagent.ProviderRetrySettings{MaxRetries: new(0)}}}, ai.StreamOptions{}, nil)
+	if got.MaxRetries == nil || *got.MaxRetries != 0 {
+		t.Fatalf("explicit maxRetries = %v, want 0", got.MaxRetries)
+	}
+}
+
 // .upstream/v0.99.1/packages/coding-agent/test/sdk-stream-options.test.ts:250
+// Pi: packages/coding-agent/src/core/extensions/types.ts:892 (BeforeProviderHeadersEvent.headers).
 func TestSDKStreamOptionsRunsHeadersHookOnAssembledHeaders(t *testing.T) {
 	runner := inproc.NewRunner([]extension.Extension{{Path: "/ext/headers", Handlers: map[string][]extension.HandlerFn{"before_provider_headers": {func(args ...any) (any, error) {
 		headers := args[0].(extension.BeforeProviderHeadersEvent).Headers

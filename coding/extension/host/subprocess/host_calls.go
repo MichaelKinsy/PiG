@@ -347,7 +347,7 @@ func (h *Host) runCall(me *managedExt, conn *Conn, callID string, call *CallPayl
 		result, err = h.handleProviderReference(conn, call)
 	case call.Method == CallProviderObject:
 		result, err = h.handleProviderObject(callCtx, conn, call)
-	case call.Method == CallProviderPublish || call.Method == CallProviderCallback:
+	case call.Method == CallProviderCallback:
 		result, err = h.handleProviderPublication(callCtx, conn, call)
 	case call.Method == "registerProvider" || call.Method == "unregisterProvider":
 		result, err = h.handleProviderRegistrationCall(callCtx, me, conn, callID, call)
@@ -355,6 +355,8 @@ func (h *Host) runCall(me *managedExt, conn *Conn, callID string, call *CallPayl
 		result, err = h.handleProviderConfigCall(callCtx, me, conn, callID, call)
 	case strings.HasPrefix(call.Method, "oauth.cb."):
 		result, err = h.handleOAuthCallback(callCtx, me.config.Name, call)
+	case call.Method == "exec" && (h.uiBridge == nil && h.onCall == nil || h.uiBridge != nil && !h.uiBridge.hasExecAction()):
+		result, err = h.handleUnboundExec(callCtx, call)
 	case h.uiBridge != nil:
 		result, err = h.uiBridge.handleCall(callCtx, me.config.Name, conn, call)
 	case h.onCall != nil:
@@ -490,4 +492,23 @@ func (h *Host) handleProviderRegistrationCall(ctx context.Context, me *managedEx
 		h.uiBridge.RecordProviderRegistration(request.Name, request.Config)
 	}
 	return &CallResultPayload{}, nil
+}
+
+// handleUnboundExec runs pi.exec for a call that arrives before a session binds the exec action, which is while a factory loads. Pi's pi.exec needs no session: it runs the command in the loader's working directory (core/extensions/loader.ts createExtensionAPI exec).
+func (h *Host) handleUnboundExec(ctx context.Context, call *CallPayload) (*CallResultPayload, error) {
+	var p struct {
+		Command string                 `json:"command"`
+		Args    []string               `json:"args"`
+		Options *extension.ExecOptions `json:"options,omitempty"`
+	}
+	if err := json.Unmarshal(call.Args, &p); err != nil {
+		return nil, fmt.Errorf("parse exec args: %w", err)
+	}
+	// ExecCommand reports the call initiated once its spawn was attempted, as the bound exec action does.
+	res, err := extension.ExecCommand(ctx, h.cwd, p.Command, p.Args, p.Options)
+	if err != nil {
+		return nil, err
+	}
+	result, _ := json.Marshal(res)
+	return &CallResultPayload{Result: result}, nil
 }

@@ -44,7 +44,7 @@ func TestInteractiveForkFooterUsesSelectedSessionName(t *testing.T) {
 			}
 			text := "ORIGINAL_B"
 			if tc.firstMessage {
-				selected = source.Entries()[0].Base.ID
+				selected = source.GetEntries()[0].Base().ID
 				text = "ORIGINAL_A"
 			}
 			sc := m.buildSlashContext(t.Context())

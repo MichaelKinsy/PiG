@@ -29,14 +29,14 @@ func assistantEnds(events []AgentEvent) []*AssistantMessage {
 }
 
 func TestAgentLoop_RecordsRequestedThinkingLevelOnFinalAssistantMessage(t *testing.T) {
-	for _, level := range []ai.ThinkingLevel{"", ai.ThinkingOff, ai.ThinkingMinimal, ai.ThinkingHigh, ai.ThinkingXHigh} {
+	for _, level := range []ai.ModelThinkingLevel{"", ai.ThinkingOff, ai.ThinkingMinimal, ai.ThinkingHigh, ai.ThinkingXHigh} {
 		want := level
 		if want == "" {
 			want = ai.ThinkingOff
 		}
 		provider := &scriptedProvider{respond: replyText("ok")}
 		rec := newEventRecorder(nil)
-		a := NewAgent(AgentOptions{Model: scriptedModel(provider), ThinkingLevel: level, EventCh: rec.ch})
+		a := mustNewAgent(AgentOptions{Model: scriptedModel(provider), ThinkingLevel: level, EventCh: rec.ch})
 
 		msgs := mustSend(t, a, "hello")
 
@@ -60,7 +60,7 @@ func TestAgentLoop_RecordsRequestedThinkingLevelOnFinalAssistantMessage(t *testi
 func TestAgentLoop_RecordsThinkingLevelOnErrorAndAbortedResponses(t *testing.T) {
 	for _, reason := range []ai.StopReason{ai.StopReasonError, ai.StopReasonAborted} {
 		provider := &scriptedProvider{respond: func(int, scriptedRequest) *ai.AssistantMessageEventStream { return errorStream(reason) }}
-		a := NewAgent(AgentOptions{Model: scriptedModel(provider), ThinkingLevel: ai.ThinkingMedium})
+		a := mustNewAgent(AgentOptions{Model: scriptedModel(provider), ThinkingLevel: ai.ThinkingMedium})
 
 		msgs := mustSend(t, a, "hello")
 
@@ -77,10 +77,10 @@ func TestAgentLoop_RecordsThinkingLevelOnErrorAndAbortedResponses(t *testing.T) 
 // function returns the setup error instead, and the loop synthesizes the same
 // final response, so it must record the level as well.
 func TestAgentLoop_RecordsThinkingLevelWhenTheStreamFunctionFailsBeforeStreaming(t *testing.T) {
-	for _, level := range []ai.ThinkingLevel{"", ai.ThinkingMedium} {
+	for _, level := range []ai.ModelThinkingLevel{"", ai.ThinkingMedium} {
 		want := recordedThinkingLevel(level)
 		rec := newEventRecorder(nil)
-		a := NewAgent(AgentOptions{
+		a := mustNewAgent(AgentOptions{
 			Model: scriptedModel(&scriptedProvider{respond: replyText("unused")}), ThinkingLevel: level, EventCh: rec.ch,
 			StreamFn: func(context.Context, *ai.Model, ai.TranscriptContext, ai.StreamOptions) (*ai.AssistantMessageEventStream, error) {
 				return nil, errors.New("no API key")
@@ -110,7 +110,7 @@ func TestAgentLoop_RecordsThinkingLevelWhenTheStreamFunctionFailsBeforeStreaming
 func TestAgentLoop_RecordsTheThinkingLevelPrepareRequestSelected(t *testing.T) {
 	provider := &scriptedProvider{respond: replyText("ok")}
 	high := ai.ThinkingHigh
-	a := NewAgent(AgentOptions{
+	a := mustNewAgent(AgentOptions{
 		Model: scriptedModel(provider),
 		PrepareRequest: func(context.Context, PrepareRequestContext) (*AgentRequestUpdate, error) {
 			return &AgentRequestUpdate{ThinkingLevel: &high}, nil
@@ -151,5 +151,21 @@ func TestAssistantMessageLLMMessageCarriesThinkingLevel(t *testing.T) {
 	message := &AssistantMessage{Role: RoleAssistant, ThinkingLevel: ai.ThinkingLow}
 	if got := message.LLMMessage().ThinkingLevel; got != ai.ThinkingLow {
 		t.Fatalf("LLMMessage thinkingLevel = %q, want low", got)
+	}
+}
+
+// upstream: packages/agent/src/agent.ts:471 (`reasoning: thinkingLevel === "off" ? undefined : thinkingLevel`) and agent-loop.ts:193-198, 232-237 for turn and request updates: an agent at "off" (or with no level) requests no reasoning, and every other level is the request option itself.
+func TestAgentLoop_RequestsReasoningOnlyForLevelsOtherThanOff(t *testing.T) {
+	for level, want := range map[ai.ModelThinkingLevel]ai.ThinkingLevel{"": "", ai.ThinkingOff: "", ai.ThinkingMinimal: ai.ThinkingLevelMinimal, ai.ThinkingHigh: ai.ThinkingLevelHigh, ai.ThinkingMax: ai.ThinkingLevelMax} {
+		var got []ai.ThinkingLevel
+		provider := &scriptedProvider{respond: func(_ int, req scriptedRequest) *ai.AssistantMessageEventStream {
+			got = append(got, req.opts.Thinking)
+			return doneStream(textMessage("ok"))
+		}}
+		a := mustNewAgent(AgentOptions{Model: scriptedModel(provider), ThinkingLevel: level})
+		mustSend(t, a, "hello")
+		if len(got) != 1 || got[0] != want {
+			t.Errorf("level %q: request reasoning = %q, want %q", level, got, want)
+		}
 	}
 }

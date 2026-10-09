@@ -48,7 +48,7 @@ func BenchmarkReviewJSONCopyIncrement(b *testing.B) {
 		b.Fatal(err)
 	}
 	endpoint := CreateRemoteServiceEndpoint(provider)
-	binding, err := CreateRemoteServiceBinding(RemoteServiceBindingOptions{Services: []string{def.Id()}, Transport: NewJSONCopyTransport(endpoint)})
+	binding, err := CreateRemoteServiceBinding(RemoteServiceBindingOptions{Services: ServiceIDs(def.Id()), Transport: NewJSONCopyTransport(endpoint)})
 	if err != nil {
 		b.Fatal(err)
 	}

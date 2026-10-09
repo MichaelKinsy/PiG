@@ -1,0 +1,54 @@
+# Behavior family: project-trust
+# Upstream evidence: Pi 1.0.4 interactive-mode.ts:611-613 rebinds a replacement Session with renderBeforeBind, so
+# renderCurrentSessionState (:2201-2210) clears the transcript and calls renderInitialMessages (:4168-4176), which paints
+# the entries and then renderProjectTrustWarningIfNeeded; handleClearCommand (:6889-6898) then adds the spacer and
+# "✓ New session started". An untrusted project therefore shows its warning again after /new. Before the fix PiG
+# repainted the entries only (rebuildChatFromSession, upstream rebuildChatFromMessages), so the crop had no warning.
+# --no-approve skips the startup prompt (core/project-trust.ts:46-49), not the warning.
+name = "21-new-session-repaints-trust-warning"
+description = "After /new an untrusted project shows the trust warning again, above the new-session notice."
+covers = ["packages/coding-agent/src/modes/interactive/interactive-mode.ts"]
+tags = ["hermetic", "fast", "security", "tui"]
+driver = "interactive-tmux"
+
+[env]
+pi = ["PI_CODING_AGENT_DIR=testdata/warning-agent", "PI_SKIP_VERSION_CHECK=1"]
+pig = ["PIG_CODING_AGENT_DIR=testdata/warning-agent"]
+override_base_args = true
+pi_args = ["--offline", "--no-extensions", "--no-skills", "--no-prompt-templates", "--no-themes", "--no-approve", "--no-session", "--model", "openai/gpt-4.1"]
+pig_args = ["--offline", "--no-extensions", "--no-skills", "--no-prompt-templates", "--no-themes", "--no-approve", "--no-session", "--model", "openai/gpt-4.1"]
+
+[tmux]
+width = 180
+height = 35
+cwd = "testdata/warning-project"
+ready_pattern_pig = "This project is not trusted."
+ready_pattern_pi = "This project is not trusted."
+ready_timeout_seconds = 30
+capture_start = "This project is not trusted."
+capture_start_last = true
+capture_end = "✓ New session started"
+
+[[tmux.steps]]
+keys = ["/new", "Enter"]
+wait_contains = ["✓ New session started"]
+wait_timeout_seconds = 15
+settle_seconds = 1
+
+[assert]
+both_reach_ready = true
+both_contain = ["This project is not trusted.", "✓ New session started"]
+both_not_contain = ["panic:"]
+escaped_output_equal = true
+runs = 3
+
+# normalize-rationale: D2 changes only configuration and command identity.
+[[assert.normalize_replace]]
+pattern = '\.pig'
+with = ".pi"
+reason = "D2: the warning names the project configuration directory; the crop holds no user content."
+
+[[assert.normalize_replace]]
+pattern = 'restart pig\.'
+with = "restart pi."
+reason = "D2: only the warning's restart command names the host executable."

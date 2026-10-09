@@ -59,8 +59,8 @@ func TestSetActiveToolsActivatesRegisteredBuiltins(t *testing.T) {
 				newRunner: runner,
 				tuiInst:   tui.NewWithOutput(io.Discard, 80, 24),
 				layout:    tui.NewContainer(),
-				agent:     agent.NewAgent(agent.AgentOptions{}),
-				opts: InteractiveOptions{
+				agent:     mustNewAgent(agent.AgentOptions{}),
+				opts: InteractiveModeOptions{
 					CWD:                 t.TempDir(),
 					ActiveBuiltinTools:  map[string]struct{}{"read": {}, "bash": {}, "edit": {}, "write": {}},
 					ToolRegistryAllowed: tc.allowed,

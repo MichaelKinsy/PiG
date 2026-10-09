@@ -19,7 +19,7 @@ func TestPortWave13AnthropicOpus48Smoke(t *testing.T) {
 		provider := newAnthropicTestProvider(t, cloneGeneratedModel(t, "anthropic/claude-opus-4-8"), key)
 		request := Context{SystemPrompt: "You are a precise assistant. Follow the user's instructions exactly.", Messages: []Message{UserMessage{Content: UserText("Compute 48291 * 7317 and 90844 - 17729, add the results, and determine whether the sum is divisible by 11. Reply with exactly this format and nothing else: sum=<sum>; divisibleBy11=<yes|no>"), Timestamp: time.Now().UnixMilli()}}}
 		var captured map[string]json.RawMessage
-		stream, err := provider.Stream(ctx, NormalizeContext(request), StreamOptions{Thinking: ThinkingHigh, MaxTokens: 1024, OnPayload: func(value any, _ *Model) (any, error) {
+		stream, err := provider.Stream(ctx, NormalizeContext(request), StreamOptions{Thinking: ThinkingLevelHigh, MaxTokens: 1024, OnPayload: func(value any, _ *Model) (any, error) {
 			data, err := json.Marshal(value)
 			if err != nil {
 				return nil, err

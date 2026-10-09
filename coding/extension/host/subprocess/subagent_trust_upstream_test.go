@@ -1,3 +1,5 @@
+//go:build !pig_strip_node_extensions
+
 package subprocess
 
 import (
@@ -9,7 +11,6 @@ import (
 	"sync/atomic"
 	"testing"
 
-	"github.com/MichaelKinsy/PiG/agent"
 	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/internal/testbudget"
 )
@@ -77,7 +78,7 @@ func TestSubagentProjectTrustUpstream(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			toolResult, ok := result.(agent.AgentToolResult)
+			toolResult, ok := result, true
 			if !ok {
 				t.Fatalf("tool result type=%T", result)
 			}

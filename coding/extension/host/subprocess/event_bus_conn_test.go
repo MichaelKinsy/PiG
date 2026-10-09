@@ -8,6 +8,7 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"sync"
 	"testing"
@@ -301,5 +302,65 @@ func TestHostCallAnswersOnDeliveringConnDuringAdoption(t *testing.T) {
 	}
 	if env := readFramed(t, replacementPeer); env.Type != MsgNotify || env.Notify == nil || env.Notify.Method != "sentinel" {
 		t.Fatalf("replacement connection received %+v before the sentinel", env)
+	}
+}
+
+// Pi loader.ts:201-210,198-199: an extension's events.on subscription is retained by the runtime and is unsubscribed when the runtime is invalidated; events.off unsubscribes it once.
+func TestHostEventBusListenerIsRetiredByRuntimeInvalidate(t *testing.T) {
+	h := NewHostWithConfigRoot(t.TempDir(), t.TempDir())
+	conn, peer := startedPipeConn(t, "listener")
+	me := withConn(&managedExt{config: ExtConfig{Name: "listener"}, host: h, nodeRealm: true}, conn)
+	h.runCall(me, conn, "hello", &CallPayload{Method: callXrefHello, Args: []byte(`{"realm":"realm-a"}`)}, nil)
+	readFramed(t, peer)
+	for _, id := range []string{"kept", "dropped"} {
+		h.runCall(me, conn, id, &CallPayload{Method: callEventsOn, Args: []byte(`{"channel":"c","handlerId":"` + id + `"}`)}, nil)
+		if env := readFramed(t, peer); env.CallResult == nil || env.CallResult.Error != nil {
+			t.Fatalf("events.on %s = %+v", id, env)
+		}
+	}
+	h.runCall(me, conn, "off", &CallPayload{Method: callEventsOff, Args: []byte(`{"handlerId":"dropped"}`)}, nil)
+	readFramed(t, peer)
+	if h.eventBus.lookup(busHandlerKey{"realm-a", "dropped"}) != nil || h.eventBus.lookup(busHandlerKey{"realm-a", "kept"}) == nil {
+		t.Fatal("events.off must remove only its own listener")
+	}
+	h.Runtime().Invalidate("reload")
+	if h.eventBus.lookup(busHandlerKey{"realm-a", "kept"}) != nil {
+		t.Fatal("runtime invalidate left the retained event-bus listener registered")
+	}
+}
+
+// A closed connection's listeners leave the runtime's retained unsubscribes too (loader.ts:201-210 retains a subscription only until it is unsubscribed), so a host that outlives many reload generations does not keep each generation's listeners and connections.
+func TestHostEventBusClosedConnectionForgetsRetainedSubscriptions(t *testing.T) {
+	h := NewHostWithConfigRoot(t.TempDir(), t.TempDir())
+	conn, peer := startedPipeConn(t, "listener")
+	me := withConn(&managedExt{config: ExtConfig{Name: "listener"}, host: h, nodeRealm: true}, conn)
+	h.runCall(me, conn, "hello", &CallPayload{Method: callXrefHello, Args: []byte(`{"realm":"realm-a"}`)}, nil)
+	readFramed(t, peer)
+	h.runCall(me, conn, "on", &CallPayload{Method: callEventsOn, Args: []byte(`{"channel":"c","handlerId":"h1"}`)}, nil)
+	if env := readFramed(t, peer); env.CallResult == nil || env.CallResult.Error != nil {
+		t.Fatalf("events.on = %+v", env)
+	}
+	retained := func() int { return reflect.ValueOf(h.Runtime()).Elem().FieldByName("eventBusUnsubscribers").Len() }
+	if retained() != 1 {
+		t.Fatalf("retained after events.on = %d, want 1", retained())
+	}
+	h.eventBus.closed(conn)
+	if retained() != 0 {
+		t.Fatalf("retained after the connection closed = %d, want 0", retained())
+	}
+}
+
+// A retained unsubscribe removes only its own listener: once its connection closed, a later listener under the same realm and handler id stays registered.
+func TestHostEventBusStaleUnsubscribeKeepsTheListenerThatReusedItsKey(t *testing.T) {
+	h := NewHostWithConfigRoot(t.TempDir(), t.TempDir())
+	conn, _ := startedPipeConn(t, "listener")
+	stale := &busListener{conn: conn, realm: "realm-a", handlerID: "h1", channel: "c"}
+	h.eventBus.add(stale)
+	h.eventBus.closed(conn)
+	current := &busListener{realm: "realm-a", handlerID: "h1", channel: "c"}
+	h.eventBus.add(current)
+	h.removeBusListener(context.Background(), stale)
+	if h.eventBus.lookup(busHandlerKey{"realm-a", "h1"}) != current {
+		t.Fatal("the stale listener's unsubscribe removed the listener that reused its key")
 	}
 }

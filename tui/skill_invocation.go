@@ -2,10 +2,8 @@ package tui
 
 // skill_invocation.go: skill invocation display component.
 //
-// Ports upstream skill-invocation-message.ts (55 LOC).
-// Renders a skill block with collapsed/expanded state.
-
-import "strings"
+// Ports upstream skill-invocation-message.ts: a Box that holds a mouse region over the collapsed line or the expanded
+// header and markdown body.
 
 // ParsedSkillBlock holds the parsed skill invocation data.
 // Mirrors upstream's ParsedSkillBlock.
@@ -14,68 +12,66 @@ type ParsedSkillBlock struct {
 	Content string
 }
 
-// SkillInvocationMessageComponent renders a skill invocation message.
+// SkillInvocationMessageComponent renders a skill invocation message. Like upstream's `extends Box`, it embeds the
+// Box (padding 1, 1 and the customMessageBg background), so the Box members are inherited; each display update clears
+// the Box and adds one mouse region.
 type SkillInvocationMessageComponent struct {
-	invalidatable
-	skillBlock ParsedSkillBlock
-	expanded   bool
+	*Box
+	skillBlock    ParsedSkillBlock
+	expanded      bool
+	markdownTheme *MarkdownTheme
 }
 
-// NewSkillInvocationMessage creates a skill invocation component.
-func NewSkillInvocationMessage(block ParsedSkillBlock) *SkillInvocationMessageComponent {
-	return &SkillInvocationMessageComponent{skillBlock: block}
+// NewSkillInvocationMessageComponent creates a skill invocation component (constructor(skillBlock, markdownTheme = getMarkdownTheme(), outputPad = 1), skill-invocation-message.ts:16). A nil markdownTheme is the default markdown theme; outputPad is the horizontal padding of the Box.
+func NewSkillInvocationMessageComponent(block ParsedSkillBlock, markdownTheme *MarkdownTheme, outputPad int) *SkillInvocationMessageComponent {
+	component := &SkillInvocationMessageComponent{
+		Box:           NewPaddedBox(outputPad, 1, func(text string) string { return ActiveTheme().Bg("customMessageBg", text) }),
+		skillBlock:    block,
+		markdownTheme: markdownTheme,
+	}
+	component.updateDisplay()
+	return component
 }
 
 // SetExpanded toggles expanded/collapsed rendering.
 func (s *SkillInvocationMessageComponent) SetExpanded(expanded bool) {
 	s.expanded = expanded
-	s.Invalidate()
+	s.updateDisplay()
 }
 
-// HandleMouse toggles the skill on a left click inside the box content, excluding its one-cell padding.
-// Ports packages/coding-agent/src/modes/interactive/components/skill-invocation-message.ts:56.
-func (s *SkillInvocationMessageComponent) HandleMouse(event TuiMouseEvent) *TuiMouseDispatchResult {
-	if event.Type != MouseClick || event.Button != MouseButtonLeft || event.X < 1 || event.X-1 >= max(1, event.Width-2) || event.Y < 1 || event.Y >= event.Height-1 {
-		return nil
-	}
-	s.SetExpanded(!s.expanded)
-	return &TuiMouseDispatchResult{TuiMouseEventResult: TuiMouseEventResult{Handled: true}}
+// Invalidate invalidates the Box and rebuilds the display, which bakes theme colors into its text.
+func (s *SkillInvocationMessageComponent) Invalidate() {
+	s.Box.Invalidate()
+	s.updateDisplay()
 }
 
-// Render produces the skill invocation lines.
-// Mirrors upstream SkillInvocationMessageComponent which extends Box(paddingX=1, paddingY=1).
-// In pig's line renderer, paddingY manifests as empty rows above and below content.
-func (s *SkillInvocationMessageComponent) Render(width int) []string {
-	t := ActiveTheme()
-	customMsgBgOpen := t.CustomMessageBg
-
+func (s *SkillInvocationMessageComponent) updateDisplay() {
+	s.Clear()
+	theme := ActiveTheme()
+	content := NewContainer()
 	if s.expanded {
-		var lines []string
-		// paddingY top
-		lines = append(lines, paintBgWith(customMsgBgOpen, "", width))
-		label := t.CustomMessageLabel + "\x1b[1m[skill]\x1b[22m\x1b[0m"
-		lines = append(lines, paintBgWith(customMsgBgOpen, " "+label, width))
-		// Header: bold skill name.
-		header := "\x1b[1m" + s.skillBlock.Name + "\x1b[22m"
-		lines = append(lines, paintBgWith(customMsgBgOpen, " "+t.CustomMessageText+header+"\x1b[0m", width))
-		lines = append(lines, paintBgWith(customMsgBgOpen, "", width))
-		// Content lines.
-		for line := range strings.SplitSeq(s.skillBlock.Content, "\n") {
-			lines = append(lines, paintBgWith(customMsgBgOpen, " "+t.CustomMessageText+line+"\x1b[0m", width))
+		label := theme.Fg("customMessageLabel", "\x1b[1m[skill]\x1b[22m")
+		content.Add(NewText(label))
+		header := "**" + s.skillBlock.Name + "**\n\n"
+		content.Add(NewMarkdownWithOptions(header+s.skillBlock.Content, 0, 0, s.markdownTheme, &DefaultTextStyle{
+			Color: func(text string) string { return ActiveTheme().Fg("customMessageText", text) },
+		}, nil))
+	} else {
+		line := theme.Fg("customMessageLabel", "\x1b[1m[skill]\x1b[22m ") +
+			theme.Fg("customMessageText", s.skillBlock.Name) +
+			theme.Fg("dim", " ("+AppKeyText("app.tools.expand", "ctrl+o")+" to expand)")
+		content.Add(NewText(line))
+	}
+	s.AddChild(NewMouseRegion(content, func(event TuiMouseEvent) *TuiMouseEventResult {
+		if event.Type != MouseClick || event.Button != MouseButtonLeft {
+			return nil
 		}
-		// paddingY bottom
-		lines = append(lines, paintBgWith(customMsgBgOpen, "", width))
-		return lines
-	}
+		s.SetExpanded(!s.expanded)
+		return &TuiMouseEventResult{Handled: true}
+	}))
+}
 
-	// Collapsed: single line: [skill] name (hint to expand).
-	// Upstream Box paddingY=1 adds 1 blank row above and below.
-	line := t.CustomMessageLabel + "\x1b[1m[skill]\x1b[22m\x1b[0m " +
-		t.CustomMessageText + s.skillBlock.Name + "\x1b[0m" +
-		t.Dim + " (ctrl+o to expand)" + "\x1b[0m"
-	return []string{
-		paintBgWith(customMsgBgOpen, "", width), // paddingY top
-		paintBgWith(customMsgBgOpen, " "+line, width),
-		paintBgWith(customMsgBgOpen, "", width), // paddingY bottom
-	}
+// SetOutputPad is Pi's setOutputPad(outputPad): the horizontal padding of the Box is the outputPad setting.
+func (c *SkillInvocationMessageComponent) SetOutputPad(outputPad int) {
+	c.SetPaddingX(outputPad)
 }

@@ -15,7 +15,7 @@ func TestToolsBashSignalsPort(t *testing.T) {
 	}{{"KILL", 137}, {"TERM", 143}} {
 		// .upstream/v0.87.1/packages/coding-agent/test/tools.test.ts:500
 		t.Run("should map signal-killed commands to 128 plus the signal number/"+tc.signal, func(t *testing.T) {
-			result, err := NewLocalBashOperations(nil, "").Exec(t.Context(), "kill -"+tc.signal+" $$", t.TempDir(), BashOperationsExecOptions{OnData: func([]byte) {}})
+			result, err := CreateLocalBashOperations(nil).Exec(t.Context(), "kill -"+tc.signal+" $$", t.TempDir(), BashOperationsExecOptions{OnData: func([]byte) {}})
 			if err != nil || result.ExitCode == nil || *result.ExitCode != tc.code {
 				t.Fatalf("result %+v, %v; want %d", result, err, tc.code)
 			}
@@ -35,7 +35,7 @@ func TestToolsLegacyWSLTransportPort(t *testing.T) {
 	if err := os.WriteFile(path, nil, 0o600); err != nil {
 		t.Fatal(err)
 	}
-	cfg, err := getShellConfig(path)
+	cfg, err := GetShellConfig(path)
 	want := ShellConfig{Path: path, Args: []string{"-s"}, CommandTransport: "stdin"}
 	if err != nil || !reflect.DeepEqual(cfg, want) {
 		t.Fatalf("shell = %+v, %v; want %+v", cfg, err, want)

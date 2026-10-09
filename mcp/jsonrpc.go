@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"math"
 	"strconv"
+
+	"github.com/MichaelKinsy/PiG/internal/jsnumber"
 )
 
 // Ports packages/mcp/src/protocol/jsonrpc.ts.
@@ -36,7 +38,7 @@ func (id JSONRPCID) String() string {
 	if id.isString {
 		return id.str
 	}
-	return strconv.FormatFloat(id.num, 'f', -1, 64)
+	return jsnumber.String(id.num)
 }
 
 func (id JSONRPCID) key() string {
@@ -89,6 +91,38 @@ type JSONRPCErrorObject struct {
 	Data    json.RawMessage `json:"data,omitempty"`
 }
 
+// JSONRPCResponse is jsonrpc.ts:34 JsonRpcResponse = JsonRpcSuccessResponse | JsonRpcErrorResponse: a response always has its id and carries either
+// a result or an error object, never both. [JSONRPCSuccessResponse] and [JSONRPCErrorResponse] are its two forms; [JSONRPCMessage.AsResponse]
+// produces one from a message for which [JSONRPCMessage.IsResponse] holds, and the client's handleResponse takes it (client.ts:476).
+type JSONRPCResponse interface {
+	// ResponseID is the id of the request the response answers.
+	ResponseID() JSONRPCID
+	jsonrpcResponse()
+}
+
+// JSONRPCSuccessResponse is jsonrpc.ts:22-26 JsonRpcSuccessResponse.
+type JSONRPCSuccessResponse struct {
+	JSONRPC string
+	ID      JSONRPCID
+	// Result is the raw result; JSON null is the raw "null".
+	Result json.RawMessage
+}
+
+// JSONRPCErrorResponse is jsonrpc.ts:28-32 JsonRpcErrorResponse.
+type JSONRPCErrorResponse struct {
+	JSONRPC string
+	ID      JSONRPCID
+	Error   JSONRPCErrorObject
+}
+
+// ResponseID returns the response's id.
+func (r JSONRPCSuccessResponse) ResponseID() JSONRPCID { return r.ID }
+func (JSONRPCSuccessResponse) jsonrpcResponse()        {}
+
+// ResponseID returns the response's id.
+func (r JSONRPCErrorResponse) ResponseID() JSONRPCID { return r.ID }
+func (JSONRPCErrorResponse) jsonrpcResponse()        {}
+
 // JSONRPCMessage is a request, a notification, or a response. Use
 // [JSONRPCMessage.IsRequest], [JSONRPCMessage.IsNotification], and
 // [JSONRPCMessage.IsResponse] to tell them apart.
@@ -103,6 +137,9 @@ type JSONRPCMessage struct {
 	Error  *JSONRPCErrorObject
 
 	hasMethod bool
+	// hasError records that the wire object had an `error` member, valid or not: a response with both a result and an
+	// error member is not a response.
+	hasError bool
 }
 
 // NewRequest builds a request message.
@@ -141,13 +178,25 @@ func (m JSONRPCMessage) IsNotification() bool {
 	return m.JSONRPC == "2.0" && m.ID == nil && m.hasMethod
 }
 
+// AsResponse is the JsonRpcResponse form of the message: ok is true exactly when [JSONRPCMessage.IsResponse] holds, and the result is a
+// [JSONRPCSuccessResponse] or, for an error response, a [JSONRPCErrorResponse].
+func (m JSONRPCMessage) AsResponse() (response JSONRPCResponse, ok bool) {
+	if !m.IsResponse() {
+		return nil, false
+	}
+	if m.Error != nil {
+		return JSONRPCErrorResponse{JSONRPC: m.JSONRPC, ID: *m.ID, Error: *m.Error}, true
+	}
+	return JSONRPCSuccessResponse{JSONRPC: m.JSONRPC, ID: *m.ID, Result: m.Result}, true
+}
+
 // IsResponse is upstream isJsonRpcResponse.
 func (m JSONRPCMessage) IsResponse() bool {
 	if m.JSONRPC != "2.0" || m.ID == nil || !m.ID.set {
 		return false
 	}
 	if m.Result != nil {
-		return m.Error == nil
+		return m.Error == nil && !m.hasError
 	}
 	return m.Error != nil
 }
@@ -195,10 +244,10 @@ func (m JSONRPCMessage) MarshalJSON() ([]byte, error) {
 // upstream parseJsonRpcMessage does. It returns *McpError with the invalid
 // request code for anything else.
 func ParseJSONRPCMessage(data []byte) (JSONRPCMessage, error) {
-	invalid := &McpError{Code: JSONRPCInvalidRequest, Message: "Invalid JSON-RPC message"}
+	invalid := func() error { return NewMcpError(JSONRPCInvalidRequest, "Invalid JSON-RPC message", nil) }
 	var fields map[string]json.RawMessage
 	if err := json.Unmarshal(data, &fields); err != nil || fields == nil {
-		return JSONRPCMessage{}, invalid
+		return JSONRPCMessage{}, invalid()
 	}
 	var m JSONRPCMessage
 	if raw, ok := fields["jsonrpc"]; ok {
@@ -218,7 +267,7 @@ func ParseJSONRPCMessage(data []byte) (JSONRPCMessage, error) {
 	}
 	if raw, ok := fields["method"]; ok {
 		var v string
-		if json.Unmarshal(raw, &v) == nil {
+		if len(raw) > 0 && raw[0] == '"' && json.Unmarshal(raw, &v) == nil {
 			m.Method, m.hasMethod = v, true
 		}
 	}
@@ -227,29 +276,25 @@ func ParseJSONRPCMessage(data []byte) (JSONRPCMessage, error) {
 		m.Result = raw
 	}
 	if raw, ok := fields["error"]; ok {
+		m.hasError = true
 		var e JSONRPCErrorObject
 		var obj map[string]json.RawMessage
 		if json.Unmarshal(raw, &obj) == nil && obj != nil {
-			var code float64
 			var message string
-			if json.Unmarshal(obj["code"], &code) == nil && json.Unmarshal(obj["message"], &message) == nil {
-				e = JSONRPCErrorObject{Code: int(code), Message: message, Data: obj["data"]}
+			code, isNumber := jsonNumber(obj["code"])
+			if isNumber && isJSONString(obj["message"]) && json.Unmarshal(obj["message"], &message) == nil {
+				e = JSONRPCErrorObject{Code: errorCode(code), Message: message, Data: obj["data"]}
 				m.Error = &e
 			}
-		}
-		if m.Error == nil {
-			// An error member of the wrong shape makes the response invalid.
-			m.Result = nil
-			m.ID = &JSONRPCID{}
 		}
 	}
 	if m.IsRequest() || m.IsNotification() || m.IsResponse() {
 		return m, nil
 	}
-	return JSONRPCMessage{}, invalid
+	return JSONRPCMessage{}, invalid()
 }
 
-// JSON-RPC error codes, upstream JSON_RPC_ERROR_CODES.
+// JSON-RPC error codes, the members of upstream JSON_RPC_ERROR_CODES (jsonrpc.ts:37).
 const (
 	JSONRPCParseError     = -32700
 	JSONRPCInvalidRequest = -32600
@@ -258,6 +303,16 @@ const (
 	JSONRPCInternalError  = -32603
 )
 
+// JSONRPCErrorCodes is upstream JSON_RPC_ERROR_CODES: the object whose members name the standard JSON-RPC error codes
+// (`JSON_RPC_ERROR_CODES.invalidRequest`). The mcp package and its callers read the codes through it.
+var JSONRPCErrorCodes = struct {
+	ParseError     int
+	InvalidRequest int
+	MethodNotFound int
+	InvalidParams  int
+	InternalError  int
+}{JSONRPCParseError, JSONRPCInvalidRequest, JSONRPCMethodNotFound, JSONRPCInvalidParams, JSONRPCInternalError}
+
 // McpError is a JSON-RPC error reported by the peer or by validation.
 type McpError struct {
 	Code    int
@@ -265,10 +320,31 @@ type McpError struct {
 	Data    json.RawMessage
 }
 
+// NewMcpError is `new McpError(code, message, data)`.
+func NewMcpError(code int, message string, data json.RawMessage) *McpError {
+	e := &McpError{Code: code, Message: message, Data: data}
+	return e
+}
+
 func (e *McpError) Error() string { return e.Message }
 
+// Name is the `name` property, "McpError".
+func (e *McpError) Name() string { return "McpError" }
+
+// Cause is the `cause` property. No upstream constructor sets one, so it is always nil.
+func (e *McpError) Cause() error { return nil }
+
 // McpConnectionClosedError reports a closed connection.
-type McpConnectionClosedError struct{ Message string }
+type McpConnectionClosedError struct {
+	Message string
+}
+
+// NewMcpConnectionClosedError is `new McpConnectionClosedError(message)`; an empty message is upstream's default
+// "MCP connection closed".
+func NewMcpConnectionClosedError(message string) *McpConnectionClosedError {
+	e := &McpConnectionClosedError{Message: message}
+	return e
+}
 
 func (e *McpConnectionClosedError) Error() string {
 	if e.Message == "" {
@@ -277,19 +353,46 @@ func (e *McpConnectionClosedError) Error() string {
 	return e.Message
 }
 
-// NewConnectionClosedError returns the error with its default message.
-func NewConnectionClosedError() *McpConnectionClosedError { return &McpConnectionClosedError{} }
+// Name is the `name` property, "McpConnectionClosedError".
+func (e *McpConnectionClosedError) Name() string { return "McpConnectionClosedError" }
+
+// Cause is the `cause` property. No upstream constructor sets one, so it is always nil.
+func (e *McpConnectionClosedError) Cause() error { return nil }
 
 // McpTimeoutError reports a request that exceeded its timeout.
-type McpTimeoutError struct{ TimeoutMs int }
+type McpTimeoutError struct {
+	TimeoutMs int
+}
+
+// NewMcpTimeoutError is `new McpTimeoutError(timeoutMs)`.
+func NewMcpTimeoutError(timeoutMs int) *McpTimeoutError {
+	e := &McpTimeoutError{TimeoutMs: timeoutMs}
+	return e
+}
 
 func (e *McpTimeoutError) Error() string {
 	return fmt.Sprintf("MCP request timed out after %dms", e.TimeoutMs)
 }
 
-// McpAbortError reports a request whose context ended. Its name upstream is
-// AbortError.
-type McpAbortError struct{ Message string }
+// Name is the `name` property, "McpTimeoutError".
+func (e *McpTimeoutError) Name() string { return "McpTimeoutError" }
+
+// Message is the `message` property, the text of Error.
+func (e *McpTimeoutError) Message() string { return e.Error() }
+
+// Cause is the `cause` property. No upstream constructor sets one, so it is always nil.
+func (e *McpTimeoutError) Cause() error { return nil }
+
+// McpAbortError reports a request whose context ended.
+type McpAbortError struct {
+	Message string
+}
+
+// NewMcpAbortError is `new McpAbortError(message)`; an empty message is upstream's default "MCP request aborted".
+func NewMcpAbortError(message string) *McpAbortError {
+	e := &McpAbortError{Message: message}
+	return e
+}
 
 func (e *McpAbortError) Error() string {
 	if e.Message == "" {
@@ -297,6 +400,12 @@ func (e *McpAbortError) Error() string {
 	}
 	return e.Message
 }
+
+// Name is the `name` property, upstream's "AbortError".
+func (e *McpAbortError) Name() string { return "AbortError" }
+
+// Cause is the `cause` property. No upstream constructor sets one, so it is always nil.
+func (e *McpAbortError) Cause() error { return nil }
 
 func isJSONObject(data []byte) bool {
 	data = bytes.TrimSpace(data)
@@ -306,4 +415,28 @@ func isJSONObject(data []byte) bool {
 func isJSONArray(data []byte) bool {
 	data = bytes.TrimSpace(data)
 	return len(data) > 0 && data[0] == '['
+}
+
+// jsonNumber reads a JSON number token, which JSON.parse turns into a JavaScript number: one beyond the float64 range
+// becomes an infinity and stays a number. Any other JSON value is not a number.
+func jsonNumber(raw json.RawMessage) (float64, bool) {
+	if len(raw) == 0 || (raw[0] != '-' && (raw[0] < '0' || raw[0] > '9')) {
+		return 0, false
+	}
+	f, err := strconv.ParseFloat(string(raw), 64)
+	if err != nil && !errors.Is(err, strconv.ErrRange) {
+		return 0, false
+	}
+	return f, true
+}
+
+// errorCode converts a JSON-RPC error code to an int; an infinite code saturates.
+func errorCode(code float64) int {
+	switch {
+	case code >= math.MaxInt:
+		return math.MaxInt
+	case code <= math.MinInt:
+		return math.MinInt
+	}
+	return int(code)
 }

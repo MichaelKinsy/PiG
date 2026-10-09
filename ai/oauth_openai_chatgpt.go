@@ -21,14 +21,16 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/MichaelKinsy/PiG/internal/coding/pigidentity"
+	"github.com/MichaelKinsy/PiG/internal/jsstring"
 	"github.com/MichaelKinsy/PiG/internal/lazyregexp"
 	"github.com/MichaelKinsy/PiG/internal/nodeerrno"
+	"github.com/MichaelKinsy/PiG/internal/nodeurl"
 )
 
 const (
 	// Every login registers a new client with this ID; OpenAI returns the issued client ID in the callback.
 	chatgptDynamicClientID  = "dynamic_agent_client"
-	chatgptAgentNameHint    = "Pi"
 	chatgptAuthorizeURL     = "https://auth.openai.com/api/accounts/authorize"
 	chatgptTokenRequestURL  = "https://auth.openai.com/api/accounts/oauth/token"
 	chatgptResource         = "https://api.openai.com/v1"
@@ -81,17 +83,23 @@ func chatgptResultFromCallback(query url.Values, expectedState string) (chatgptA
 }
 
 func chatgptResultFromManualInput(input, expectedState string) (chatgptAuthorizationResult, error) {
-	pasted, err := url.Parse(trimJSWhitespace(input))
-	// new URL throws for a relative reference and for an http(s), ws(s) or ftp URL without a host. Any other scheme, as in
-	// a pasted "localhost:1455/..." without "http://", parses with an opaque origin and then fails the origin check.
-	if err != nil || pasted.Scheme == "" || (pasted.Host == "" && pasted.Opaque == "" && slices.Contains([]string{"http", "https", "ws", "wss", "ftp"}, pasted.Scheme)) {
-		return chatgptAuthorizationResult{}, errors.New("Paste the full callback URL from the browser")
-	}
-	expected, _ := url.Parse(chatgptRedirectURI)
-	if pasted.Scheme+"://"+pasted.Host != expected.Scheme+"://"+expected.Host || pasted.Path != expected.Path {
+	trimmed := trimJSWhitespace(input)
+	pasted, err := nodeurl.ParseHTTPURL(trimmed)
+	if err != nil {
+		// new URL throws for a relative reference, for an http(s) URL it cannot parse and for a ws(s) or ftp URL without a
+		// host. Any other scheme, as in a pasted "localhost:1455/..." without "http://", parses with an opaque origin and
+		// then fails the origin check.
+		parsed, parseErr := url.Parse(trimmed)
+		if parseErr != nil || parsed.Scheme == "" || parsed.Scheme == "http" || parsed.Scheme == "https" || (parsed.Host == "" && parsed.Opaque == "" && slices.Contains([]string{"ws", "wss", "ftp"}, parsed.Scheme)) {
+			return chatgptAuthorizationResult{}, errors.New("Paste the full callback URL from the browser")
+		}
 		return chatgptAuthorizationResult{}, fmt.Errorf("The pasted callback URL must start with %s", chatgptRedirectURI)
 	}
-	query := pasted.Query()
+	expected, _ := nodeurl.ParseHTTPURL(chatgptRedirectURI)
+	if pasted.Origin() != expected.Origin() || pasted.Pathname != expected.Pathname {
+		return chatgptAuthorizationResult{}, fmt.Errorf("The pasted callback URL must start with %s", chatgptRedirectURI)
+	}
+	query := nodeurl.SearchParams(strings.TrimPrefix(pasted.Search, "?"))
 	if failure := query.Get("error"); failure != "" {
 		return chatgptAuthorizationResult{}, fmt.Errorf("ChatGPT authorization failed: %s", failure)
 	}
@@ -122,13 +130,14 @@ func startChatGPTCallbackServer(expectedState string) (*chatgptCallbackServer, e
 		return nil, err
 	}
 	s := &chatgptCallbackServer{served: make(chan struct{}), result: make(chan chatgptAuthorizationResultOrError, 1)}
-	send := writeOAuthPage
+	// sendHtml in openai-chatgpt.ts sets only Content-Type; callback-server.ts adds cache-control: no-store.
+	send := func(w http.ResponseWriter, status int, html string) { writePage(w, status, html, false) }
 	s.server = &http.Server{ReadHeaderTimeout: oauthCallbackHeaderTimeout, Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path != chatgptCallbackPath {
+		pathname, query := requestPathAndQuery(r, chatgptRedirectURI)
+		if pathname != chatgptCallbackPath {
 			send(w, http.StatusNotFound, OAuthErrorHTML("Callback route not found.", ""))
 			return
 		}
-		query := r.URL.Query()
 		if failure := query.Get("error"); failure != "" {
 			send(w, http.StatusBadRequest, OAuthErrorHTML("ChatGPT was not connected.", "Error: "+failure))
 			s.settle(chatgptAuthorizationResult{}, fmt.Errorf("ChatGPT authorization failed: %s", failure))
@@ -213,7 +222,7 @@ func chatgptCredentialFromTokenResponse(token chatgptTokenBody, clientID string)
 	if !ok || expiresIn <= 0 {
 		return OAuthCredentials{}, errors.New("OpenAI OAuth token response has invalid expires_in")
 	}
-	scopes := strings.Fields(scope)
+	scopes := strings.FieldsFunc(trimJSWhitespace(scope), jsstring.IsSpace)
 	if !slices.Contains(scopes, chatgptDirectTokenScope) {
 		return OAuthCredentials{}, fmt.Errorf("OpenAI OAuth grant did not include %s", chatgptDirectTokenScope)
 	}
@@ -306,8 +315,14 @@ func LoginOpenAIChatGPT(ctx context.Context, callbacks OAuthLoginCallbacks) (OAu
 	}
 	defer callback.close()
 
+	// agent_name_hint is options?.agentName ?? AGENT_NAME_HINT (openai-chatgpt.ts:253): an empty name is kept.
+	// pig divergence (D26): PiG names itself in the default agent name hint, as it does for the Codex originator.
+	agentNameHint := pigidentity.ChatGPTAgentName
+	if callbacks.AgentName != nil {
+		agentNameHint = *callbacks.AgentName
+	}
 	authorizeURL := chatgptAuthorizeURL + "?" + orderedQuery(
-		"client_id", chatgptDynamicClientID, "agent_name_hint", chatgptAgentNameHint, "ext_agent_host_id", hostID,
+		"client_id", chatgptDynamicClientID, "agent_name_hint", agentNameHint, "ext_agent_host_id", hostID,
 		"response_type", "code", "redirect_uri", chatgptRedirectURI, "resource", chatgptResource, "scope", chatgptScope,
 		"state", state, "code_challenge", pkce.Challenge, "code_challenge_method", "S256", "nonce", nonce,
 	)

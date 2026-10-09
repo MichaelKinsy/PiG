@@ -4,11 +4,14 @@ import (
 	"context"
 	"crypto/ed25519"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"runtime"
+	"slices"
 	"strings"
 
 	"golang.org/x/mod/modfile"
@@ -22,7 +25,7 @@ import (
 	pigletartifact "github.com/MichaelKinsy/PiG/coding/piglet/artifact"
 	"github.com/MichaelKinsy/PiG/coding/piglet/signature"
 	"github.com/MichaelKinsy/PiG/internal/buildprogress"
-	"github.com/MichaelKinsy/PiG/internal/linkerexec"
+	"github.com/MichaelKinsy/PiG/internal/pigstrip"
 	"github.com/MichaelKinsy/PiG/internal/toolchain"
 )
 
@@ -68,6 +71,9 @@ func buildNativeArtifact(ctx context.Context, source pigSource, p *piglet.Piglet
 			fused = append(fused, entries...)
 			continue
 		}
+		if err := stripRuntimeConflict(p, cell, true); err != nil {
+			return nil, err
+		}
 		buildprogress.Phase(ctx, "Building "+cell.Language+" members", members)
 		var sc stagedCell
 		switch cell.Strategy {
@@ -75,9 +81,13 @@ func buildNativeArtifact(ctx context.Context, source pigSource, p *piglet.Piglet
 			sc, err = buildGoCell(cellCtx, cell, cacheRoot, host)
 		case subprocess.CellStrategyPackedRust:
 			sc, err = buildRustCell(cellCtx, cell, cacheRoot, host)
+		case subprocess.CellStrategyPackedNode:
+			sc, err = buildNodeCell(cell, cacheRoot, host)
 		case subprocess.CellStrategyIsolated:
 			cfg := cell.Extensions[0]
 			switch {
+			case cfg.RuntimeLanguage == "node":
+				sc, err = buildNodeCell(cell, cacheRoot, host)
 			case cfg.EntrypointKind != "factory":
 				sc, err = buildSourceCell(cellCtx, cfg, cacheRoot, host)
 			case cfg.RuntimeLanguage == "go":
@@ -85,10 +95,16 @@ func buildNativeArtifact(ctx context.Context, source pigSource, p *piglet.Piglet
 			case cfg.RuntimeLanguage == "rust":
 				sc, err = buildRustCell(cellCtx, cell, cacheRoot, host)
 			default:
+				if err := stripRuntimeConflict(p, cell, false); err != nil {
+					return nil, err
+				}
 				_, _ = fmt.Fprintf(stderr, "warn: [not-embedded] isolated %s factory cell %q is not embedded yet; the Piglet Binary will build it at runtime and needs a toolchain\n", cfg.RuntimeLanguage, cell.Key)
 				continue
 			}
 		default:
+			if err := stripRuntimeConflict(p, cell, false); err != nil {
+				return nil, err
+			}
 			_, _ = fmt.Fprintf(stderr, "warn: [not-embedded] cell %q (%s) is not embedded; the Piglet Binary will build it at runtime and needs a toolchain\n", cell.Key, cell.Strategy)
 			continue
 		}
@@ -97,20 +113,32 @@ func buildNativeArtifact(ctx context.Context, source pigSource, p *piglet.Piglet
 		}
 		built = append(built, sc)
 	}
-	if len(built) == 0 && len(fused) == 0 {
+	frontendMember, err := resolveFrontendMember(p)
+	if err != nil {
+		return nil, err
+	}
+	// A Piglet without extension cells (an empty base) builds Stock PiG's own
+	// parts with its baked Piglet; one whose cells all stay outside the
+	// Binary has nothing the Binary would carry for them.
+	// pig additive (D18): a Piglet Binary needs no extension.
+	if len(cells) > 0 && len(built) == 0 && len(fused) == 0 && frontendMember == nil {
 		return nil, fmt.Errorf("piglet %q has nothing to embed or fuse; nothing to build", p.Name)
+	}
+	vetted := fused
+	if frontendMember != nil {
+		vetted = append(slices.Clone(fused), *frontendMember)
 	}
 	// pig additive (D31): linked extensions must not invoke process-global
 	// operations that are isolated by the normal subprocess realization.
-	if len(fused) > 0 {
+	if len(vetted) > 0 {
 		buildprogress.Phase(ctx, "Checking fused Go members", "Process-global safety checks")
 	}
-	if err := vetFusedPackages(ctx, fused); err != nil {
+	if err := vetFusedPackages(ctx, vetted); err != nil {
 		return nil, err
 	}
 
 	buildprogress.Phase(ctx, "Packing build inputs", "Embedding cells, resources, and component records")
-	overlayPath, err := writeBuildOverlay(filepath.Join(cacheRoot, "overlay"), sourceRoot, built, fused, resolution, opts)
+	overlayPath, err := writeBuildOverlay(filepath.Join(cacheRoot, "overlay"), sourceRoot, built, fused, frontendMember, resolution, opts, stderr)
 	if err != nil {
 		return nil, err
 	}
@@ -126,14 +154,18 @@ func buildNativeArtifact(ctx context.Context, source pigSource, p *piglet.Piglet
 	if !buildprogress.Enabled(ctx) {
 		_, _ = fmt.Fprintf(stdout, "building Piglet Binary %s (%d embedded cell(s), %d fused, target %s)...\n", p.Name, len(built), len(fused), host)
 	}
-	buildArgs := buildprogress.ToolArgs(ctx, "go", pigletBinaryBuildArgs(abary, opts.Version, overlayPath))
+	// pig additive (D92): the effective strip list's build tags compile its
+	// shimmed built-ins out of the Binary.
+	stripTags := p.Strip.BuildTags()
+	if len(stripTags) > 0 && !buildprogress.Enabled(ctx) {
+		_, _ = fmt.Fprintf(stdout, "compiling out stripped built-ins: %s\n", strings.Join(stripTags, ","))
+	}
+	buildArgs := buildprogress.ToolArgs(ctx, "go", pigletBinaryBuildArgs(abary, opts.Version, overlayPath, stripTags))
 	goToolchain, err := toolchain.ResolveGo()
 	if err != nil {
 		return nil, err
 	}
-	cmd := linkerexec.CommandContext(ctx, goToolchain.Command, buildArgs...)
-	cmd.Dir = sourceRoot
-	cmd.Env = goToolchain.Environ(source.buildEnv(os.Environ()))
+	cmd := source.goCommand(ctx, goToolchain, buildArgs...)
 	if err := buildprogress.Run(buildprogress.Member(ctx, p.Name), cmd); err != nil {
 		return nil, fmt.Errorf("build Piglet Binary: %w", err)
 	}
@@ -146,11 +178,38 @@ func buildNativeArtifact(ctx context.Context, source pigSource, p *piglet.Piglet
 	return embeddedFiles(built)
 }
 
+// stripRuntimeConflict fails when a cell the Binary starts needs an extension
+// runtime the Piglet strips from it: every Node cell needs the Node runtime,
+// every Python cell the Python SDK, and a Go or Rust cell the Binary builds at
+// runtime (embedded is false) needs that language's SDK.
+// pig additive (D92): a Binary never compiles out a runtime its own cells need.
+func stripRuntimeConflict(p *piglet.Piglet, cell subprocess.CellSpec, embedded bool) error {
+	var feature string
+	switch cell.Language {
+	case "node":
+		feature = pigstrip.NodeExtensions
+	case "python":
+		feature = pigstrip.ExtensionSDKPython
+	case "go":
+		if !embedded {
+			feature = pigstrip.ExtensionSDKGo
+		}
+	case "rust":
+		if !embedded {
+			feature = pigstrip.ExtensionSDKRust
+		}
+	}
+	if feature == "" || !p.Strip.HasFeature(feature) {
+		return nil
+	}
+	return fmt.Errorf("strip.features names %s, but the Piglet Binary runs extension cell %q (%s) with it; fuse the extension or remove the strip entry", feature, cell.Key, cell.Language)
+}
+
 // writeBuildOverlay routes the Piglet-specific embed inputs, fuse registry,
-// go.mod, and signer key to the compiler through one `go build -overlay`, so a
+// module files, and signer key to the compiler through one `go build -overlay`, so a
 // build never writes into the Pig source tree and concurrent builds never
 // observe each other. It returns the overlay description path.
-func writeBuildOverlay(dir, sourceRoot string, built []stagedCell, fused []fusedEntry, resolution *pigletartifact.Record, opts Options) (string, error) {
+func writeBuildOverlay(dir, sourceRoot string, built []stagedCell, fused []fusedEntry, frontendMember *fusedEntry, resolution *pigletartifact.Record, opts Options, stderr io.Writer) (string, error) {
 	overlay, err := newBuildOverlay(dir)
 	if err != nil {
 		return "", err
@@ -167,9 +226,18 @@ func writeBuildOverlay(dir, sourceRoot string, built []stagedCell, fused []fused
 			return "", err
 		}
 	}
-	if len(fused) > 0 {
-		if err := overlayFuse(overlay, sourceRoot, fused); err != nil {
+	if len(fused) > 0 || frontendMember != nil {
+		graph, err := overlayFuse(overlay, sourceRoot, fused, frontendMember)
+		if err != nil {
 			return "", err
+		}
+		for _, note := range graph.raised {
+			_, _ = fmt.Fprintf(stderr, "note: %s\n", note)
+		}
+		// pig additive (D31): the vet cannot read third-party module code, so
+		// the build names every external module it skipped.
+		if note := fusedVetScopeNote(graph.unvetted); note != "" {
+			_, _ = fmt.Fprintf(stderr, "note: %s\n", note)
 		}
 	}
 	if len(opts.BakedSettings) > 0 {
@@ -197,18 +265,21 @@ func writeBuildOverlay(dir, sourceRoot string, built []stagedCell, fused []fused
 }
 
 // pigletBinaryBuildArgs builds the `go build` argv, applies the build overlay,
-// and bakes the Piglet release version when present. Binaries are always stripped and trimmed: -s -w
+// passes the strip build tags, and bakes the Piglet release version when present. Binaries are always stripped and trimmed: -s -w
 // drop the symbol table and DWARF (Go stack traces come from pclntab, so panics
 // stay legible and only debugger attachment is given up), and -trimpath keeps
 // absolute build paths out of a redistributable artifact.
-func pigletBinaryBuildArgs(outPath, version, overlayPath string) []string {
+func pigletBinaryBuildArgs(outPath, version, overlayPath string, stripTags []string) []string {
 	ld := []string{"-s", "-w"}
 	if v := strings.TrimSpace(version); v != "" {
-		ld = append(ld, "-X main.PigletBinaryVersion="+v)
+		ld = append(ld, "-X github.com/MichaelKinsy/PiG/coding/cli.PigletBinaryVersion="+v)
 	}
 	args := []string{"build", "-buildvcs=false", "-trimpath", "-ldflags", strings.Join(ld, " ")}
 	if overlayPath != "" {
 		args = append(args, "-overlay", overlayPath)
+	}
+	if len(stripTags) > 0 {
+		args = append(args, "-tags", strings.Join(stripTags, ","))
 	}
 	return append(args, "-o", outPath, "./cmd/pig")
 }
@@ -503,60 +574,99 @@ func collectFused(cell subprocess.CellSpec) ([]fusedEntry, error) {
 	return out, nil
 }
 
-// overlayFuse imports each extension factory through its real package path and
-// pins local module roots in the build's view of Pig's go.mod.
-func overlayFuse(o *buildOverlay, sourceRoot string, fused []fusedEntry) error {
+// overlayFuse imports each extension factory and the frontend member through
+// their real package paths and adds the members' module graph to the build's
+// view of Pig's go.mod and checksum files. The go.sum overlay, and the
+// go.work.sum overlay of a workspace checkout, make the build read checksums
+// from the overlay: the Go command then verifies a fused build offline under
+// -mod=readonly and stops instead of writing a checksum into the source tree.
+// It returns the merged module graph.
+func overlayFuse(o *buildOverlay, sourceRoot string, fused []fusedEntry, frontendMember *fusedEntry) (fusedModuleGraph, error) {
 	fuseDir := filepath.Join(sourceRoot, "coding", "extension", "host", "fusepack")
 	genPath := filepath.Join(fuseDir, "registry_generated.go")
 	goModPath := filepath.Join(sourceRoot, "go.mod")
 
 	originalGoMod, err := os.ReadFile(goModPath)
 	if err != nil {
-		return fmt.Errorf("read Pig go.mod: %w", err)
+		return fusedModuleGraph{}, fmt.Errorf("read Pig go.mod: %w", err)
 	}
 	parsed, err := modfile.Parse(goModPath, originalGoMod, nil)
 	if err != nil {
-		return fmt.Errorf("parse Pig go.mod: %w", err)
+		return fusedModuleGraph{}, fmt.Errorf("parse Pig go.mod: %w", err)
 	}
-	for _, f := range fused {
-		if f.ModulePath == "" || f.Package == "" {
-			return fmt.Errorf("fuse %q: module and package paths are required", f.Name)
-		}
-		if err := parsed.AddRequire(f.ModulePath, "v0.0.0"); err != nil {
-			return fmt.Errorf("fuse %q require: %w", f.Name, err)
-		}
-		if err := parsed.AddReplace(f.ModulePath, "", f.Root, ""); err != nil {
-			return fmt.Errorf("fuse %q replace: %w", f.Name, err)
-		}
-		for _, moduleRoot := range f.WorkspaceModules {
-			moduleData, err := os.ReadFile(filepath.Join(moduleRoot, "go.mod"))
-			if err != nil {
-				return fmt.Errorf("fuse %q workspace module: %w", f.Name, err)
-			}
-			moduleFile, err := modfile.Parse(filepath.Join(moduleRoot, "go.mod"), moduleData, nil)
-			if err != nil || moduleFile.Module == nil {
-				return fmt.Errorf("fuse %q workspace module %s has no module path", f.Name, moduleRoot)
-			}
-			modulePath := moduleFile.Module.Mod.Path
-			if modulePath == f.ModulePath {
-				continue
-			}
-			if err := parsed.AddRequire(modulePath, "v0.0.0"); err != nil {
-				return err
-			}
-			if err := parsed.AddReplace(modulePath, "", moduleRoot, ""); err != nil {
-				return err
-			}
-		}
+	members := fused
+	if frontendMember != nil {
+		members = append(slices.Clone(fused), *frontendMember)
+	}
+	// pig additive (D31): a fused member's external modules join Pig's main
+	// module by minimum version selection, and their checksums come from the
+	// member's go.sum, never from writes into the Pig source tree.
+	graph, err := mergeFusedModules(parsed, members)
+	if err != nil {
+		return fusedModuleGraph{}, err
 	}
 	formatted, err := parsed.Format()
 	if err != nil {
-		return err
+		return fusedModuleGraph{}, err
 	}
 	if err := o.bytes(goModPath, formatted); err != nil {
-		return err
+		return fusedModuleGraph{}, err
 	}
-	return o.bytes(genPath, []byte(renderFuseRegistry(fused)))
+	sumFiles := []string{filepath.Join(sourceRoot, "go.sum")}
+	if _, err := os.Stat(filepath.Join(sourceRoot, "go.work")); err == nil {
+		sumFiles = append(sumFiles, filepath.Join(sourceRoot, "go.work.sum"))
+	}
+	for _, sumFile := range sumFiles {
+		original, err := os.ReadFile(sumFile)
+		if err != nil && !errors.Is(err, fs.ErrNotExist) {
+			return fusedModuleGraph{}, fmt.Errorf("read Pig checksums: %w", err)
+		}
+		merged, err := mergeGoSum(original, graph.roots)
+		if err != nil {
+			return fusedModuleGraph{}, fmt.Errorf("merge fused member checksums: %w", err)
+		}
+		if err := o.bytes(sumFile, merged); err != nil {
+			return fusedModuleGraph{}, err
+		}
+	}
+	if frontendMember != nil {
+		// pig additive (D91): register the frontend member.
+		frontendGen := filepath.Join(sourceRoot, "internal", "frontendpack", "registry_generated.go")
+		if err := o.bytes(frontendGen, []byte(renderFrontendRegistry(*frontendMember))); err != nil {
+			return fusedModuleGraph{}, err
+		}
+	}
+	if len(fused) == 0 {
+		return graph, nil
+	}
+	return graph, o.bytes(genPath, []byte(renderFuseRegistry(fused)))
+}
+
+func renderFrontendRegistry(member fusedEntry) string {
+	return fmt.Sprintf("// Code generated by pig piglet build. DO NOT EDIT.\npackage frontendpack\n\nimport %s %q\n\nfunc init() { register(%s.%s) }\n", member.Pkg, member.Package, member.Pkg, member.Factory)
+}
+
+// resolveFrontendMember maps the frontend slot's member to a fused entry for the module's
+// root package, or nil when the Piglet has no frontend member.
+func resolveFrontendMember(p *piglet.Piglet) (*fusedEntry, error) {
+	dir, err := p.FrontendDir()
+	if err != nil || dir == "" {
+		return nil, err
+	}
+	goModPath := filepath.Join(dir, "go.mod")
+	data, err := os.ReadFile(goModPath)
+	if err != nil {
+		return nil, fmt.Errorf("slots.frontend: a Go module is required: %w", err)
+	}
+	file, err := modfile.Parse(goModPath, data, nil)
+	if err != nil || file.Module == nil {
+		return nil, fmt.Errorf("slots.frontend: %s has no module path", goModPath)
+	}
+	modulePath := file.Module.Mod.Path
+	return &fusedEntry{
+		Name: "frontend", Pkg: "frontendmember", Factory: "Frontend",
+		Root: dir, ModulePath: modulePath, Package: modulePath,
+	}, nil
 }
 
 func renderFuseRegistry(fused []fusedEntry) string {

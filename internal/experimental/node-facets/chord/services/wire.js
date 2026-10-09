@@ -96,6 +96,19 @@ function assertProviderUpdate(value, assertOp) {
             for (const op of update.ops)
                 assertOp(op);
             return;
+        case "reset": {
+            assertKeys(update, ["type", "snapshot"], [], "reset update");
+            assertSubscriptionSnapshot(update.snapshot, assertOp);
+            const snapshot = update.snapshot;
+            for (const instance of snapshot.instances) {
+                for (const member of instance.members) {
+                    if (member.kind === "state" && (member.ops.length !== 1 || member.ops[0]?.[0] !== "r")) {
+                        throw new TypeError("Service reset must contain full root replacements");
+                    }
+                }
+            }
+            return;
+        }
         case "unavailable":
             assertKeys(update, ["type"], [], "unavailable update");
             return;

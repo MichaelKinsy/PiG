@@ -1,0 +1,170 @@
+[
+ {
+  "ids": [
+   "pkg:ai/providers/amazon-bedrock.models#AMAZON_BEDROCK_MODELS",
+   "pkg:ai/providers/ant-ling.models#ANT_LING_MODELS",
+   "pkg:ai/providers/anthropic.models#ANTHROPIC_MODELS",
+   "pkg:ai/providers/azure.models#AZURE_MODELS",
+   "pkg:ai/providers/baseten.models#BASETEN_MODELS",
+   "pkg:ai/providers/cerebras.models#CEREBRAS_MODELS",
+   "pkg:ai/providers/cloudflare-ai-gateway.models#CLOUDFLARE_AI_GATEWAY_MODELS",
+   "pkg:ai/providers/cloudflare-workers-ai.models#CLOUDFLARE_WORKERS_AI_MODELS",
+   "pkg:ai/providers/deepseek.models#DEEPSEEK_MODELS",
+   "pkg:ai/providers/fireworks.models#FIREWORKS_MODELS",
+   "pkg:ai/providers/github-copilot.models#GITHUB_COPILOT_MODELS",
+   "pkg:ai/providers/google-vertex.models#GOOGLE_VERTEX_MODELS",
+   "pkg:ai/providers/google.models#GOOGLE_MODELS",
+   "pkg:ai/providers/groq.models#GROQ_MODELS",
+   "pkg:ai/providers/huggingface.models#HUGGINGFACE_MODELS",
+   "pkg:ai/providers/kimi-coding.models#KIMI_CODING_MODELS",
+   "pkg:ai/providers/meta.models#META_MODELS",
+   "pkg:ai/providers/minimax-cn.models#MINIMAX_CN_MODELS",
+   "pkg:ai/providers/minimax.models#MINIMAX_MODELS",
+   "pkg:ai/providers/mistral.models#MISTRAL_MODELS",
+   "pkg:ai/providers/moonshotai-cn.models#MOONSHOTAI_CN_MODELS",
+   "pkg:ai/providers/moonshotai.models#MOONSHOTAI_MODELS",
+   "pkg:ai/providers/nvidia.models#NVIDIA_MODELS",
+   "pkg:ai/providers/openai-codex.models#OPENAI_CODEX_MODELS",
+   "pkg:ai/providers/openai.models#OPENAI_MODELS",
+   "pkg:ai/providers/opencode-go.models#OPENCODE_GO_MODELS",
+   "pkg:ai/providers/opencode.models#OPENCODE_MODELS",
+   "pkg:ai/providers/openrouter.models#OPENROUTER_MODELS",
+   "pkg:ai/providers/qwen-token-plan-cn.models#QWEN_TOKEN_PLAN_CN_MODELS",
+   "pkg:ai/providers/qwen-token-plan-individual.models#QWEN_TOKEN_PLAN_INDIVIDUAL_MODELS",
+   "pkg:ai/providers/qwen-token-plan.models#QWEN_TOKEN_PLAN_MODELS",
+   "pkg:ai/providers/radius.models#RADIUS_MODELS",
+   "pkg:ai/providers/together.models#TOGETHER_MODELS",
+   "pkg:ai/providers/typesafe.models#TYPESAFE_MODELS",
+   "pkg:ai/providers/vercel-ai-gateway.models#VERCEL_AI_GATEWAY_MODELS",
+   "pkg:ai/providers/xai.models#XAI_MODELS",
+   "pkg:ai/providers/xiaomi-token-plan-ams.models#XIAOMI_TOKEN_PLAN_AMS_MODELS",
+   "pkg:ai/providers/xiaomi-token-plan-cn.models#XIAOMI_TOKEN_PLAN_CN_MODELS",
+   "pkg:ai/providers/xiaomi-token-plan-sgp.models#XIAOMI_TOKEN_PLAN_SGP_MODELS",
+   "pkg:ai/providers/xiaomi.models#XIAOMI_MODELS",
+   "pkg:ai/providers/zai-coding-cn.models#ZAI_CODING_CN_MODELS",
+   "pkg:ai/providers/zai.models#ZAI_MODELS"
+  ],
+  "targets": [
+   "ai/registry.go#ListModels"
+  ],
+  "production": [
+   "call:coding/cli/diagnose.go#runDiagnose"
+  ],
+  "evidence": [
+   "test:ai/builtin_catalog_upstream_test.go#TestBuiltinCatalogsMatchPinnedProviderDataModules"
+  ],
+  "rationale": "Chat model catalog: the Go catalog (GeneratedModels, listed per provider by ListModels) is generated from the same providers/data/<provider>.json as the upstream module; TestBuiltinCatalogsMatchPinnedProviderDataModules compares every provider's chat model keys, identity, endpoint, capability, price, input, inputLimits and header fields with the pinned data and was shown red when a price in the Go catalog changed."
+ },
+ {
+  "ids": [
+   "pkg:ai/providers/amazon-bedrock.models#AMAZON_BEDROCK_IMAGE_MODELS",
+   "pkg:ai/providers/ant-ling.models#ANT_LING_IMAGE_MODELS",
+   "pkg:ai/providers/anthropic.models#ANTHROPIC_IMAGE_MODELS",
+   "pkg:ai/providers/azure.models#AZURE_IMAGE_MODELS",
+   "pkg:ai/providers/baseten.models#BASETEN_IMAGE_MODELS",
+   "pkg:ai/providers/cerebras.models#CEREBRAS_IMAGE_MODELS",
+   "pkg:ai/providers/cloudflare-ai-gateway.models#CLOUDFLARE_AI_GATEWAY_IMAGE_MODELS",
+   "pkg:ai/providers/cloudflare-workers-ai.models#CLOUDFLARE_WORKERS_AI_IMAGE_MODELS",
+   "pkg:ai/providers/deepseek.models#DEEPSEEK_IMAGE_MODELS",
+   "pkg:ai/providers/fireworks.models#FIREWORKS_IMAGE_MODELS",
+   "pkg:ai/providers/github-copilot.models#GITHUB_COPILOT_IMAGE_MODELS",
+   "pkg:ai/providers/google-vertex.models#GOOGLE_VERTEX_IMAGE_MODELS",
+   "pkg:ai/providers/google.models#GOOGLE_IMAGE_MODELS",
+   "pkg:ai/providers/groq.models#GROQ_IMAGE_MODELS",
+   "pkg:ai/providers/huggingface.models#HUGGINGFACE_IMAGE_MODELS",
+   "pkg:ai/providers/kimi-coding.models#KIMI_CODING_IMAGE_MODELS",
+   "pkg:ai/providers/meta.models#META_IMAGE_MODELS",
+   "pkg:ai/providers/minimax-cn.models#MINIMAX_CN_IMAGE_MODELS",
+   "pkg:ai/providers/minimax.models#MINIMAX_IMAGE_MODELS",
+   "pkg:ai/providers/mistral.models#MISTRAL_IMAGE_MODELS",
+   "pkg:ai/providers/moonshotai-cn.models#MOONSHOTAI_CN_IMAGE_MODELS",
+   "pkg:ai/providers/moonshotai.models#MOONSHOTAI_IMAGE_MODELS",
+   "pkg:ai/providers/nvidia.models#NVIDIA_IMAGE_MODELS",
+   "pkg:ai/providers/openai-codex.models#OPENAI_CODEX_IMAGE_MODELS",
+   "pkg:ai/providers/openai.models#OPENAI_IMAGE_MODELS",
+   "pkg:ai/providers/opencode-go.models#OPENCODE_GO_IMAGE_MODELS",
+   "pkg:ai/providers/opencode.models#OPENCODE_IMAGE_MODELS",
+   "pkg:ai/providers/openrouter.models#OPENROUTER_IMAGE_MODELS",
+   "pkg:ai/providers/qwen-token-plan-cn.models#QWEN_TOKEN_PLAN_CN_IMAGE_MODELS",
+   "pkg:ai/providers/qwen-token-plan-individual.models#QWEN_TOKEN_PLAN_INDIVIDUAL_IMAGE_MODELS",
+   "pkg:ai/providers/qwen-token-plan.models#QWEN_TOKEN_PLAN_IMAGE_MODELS",
+   "pkg:ai/providers/radius.models#RADIUS_IMAGE_MODELS",
+   "pkg:ai/providers/together.models#TOGETHER_IMAGE_MODELS",
+   "pkg:ai/providers/typesafe.models#TYPESAFE_IMAGE_MODELS",
+   "pkg:ai/providers/vercel-ai-gateway.models#VERCEL_AI_GATEWAY_IMAGE_MODELS",
+   "pkg:ai/providers/xai.models#XAI_IMAGE_MODELS",
+   "pkg:ai/providers/xiaomi-token-plan-ams.models#XIAOMI_TOKEN_PLAN_AMS_IMAGE_MODELS",
+   "pkg:ai/providers/xiaomi-token-plan-cn.models#XIAOMI_TOKEN_PLAN_CN_IMAGE_MODELS",
+   "pkg:ai/providers/xiaomi-token-plan-sgp.models#XIAOMI_TOKEN_PLAN_SGP_IMAGE_MODELS",
+   "pkg:ai/providers/xiaomi.models#XIAOMI_IMAGE_MODELS",
+   "pkg:ai/providers/zai-coding-cn.models#ZAI_CODING_CN_IMAGE_MODELS",
+   "pkg:ai/providers/zai.models#ZAI_IMAGE_MODELS"
+  ],
+  "targets": [
+   "ai/images_registry.go#GetImageModels"
+  ],
+  "production": [
+   "call:internal/codingagent/model_typed_provider.go#builtinImageModelsOf"
+  ],
+  "evidence": [
+   "test:ai/builtin_catalog_upstream_test.go#TestBuiltinCatalogsMatchPinnedProviderDataModules"
+  ],
+  "rationale": "Image model catalog: GetImageModels lists the generated image models of one provider; TestBuiltinCatalogsMatchPinnedProviderDataModules compares them with the image entries of the pinned providers/data/<provider>.json (identity, endpoint, input, output, price, inputLimits)."
+ },
+ {
+  "ids": [
+   "pkg:ai/providers/amazon-bedrock.models#AMAZON_BEDROCK_CLASSIFIER_MODELS",
+   "pkg:ai/providers/ant-ling.models#ANT_LING_CLASSIFIER_MODELS",
+   "pkg:ai/providers/anthropic.models#ANTHROPIC_CLASSIFIER_MODELS",
+   "pkg:ai/providers/azure.models#AZURE_CLASSIFIER_MODELS",
+   "pkg:ai/providers/baseten.models#BASETEN_CLASSIFIER_MODELS",
+   "pkg:ai/providers/cerebras.models#CEREBRAS_CLASSIFIER_MODELS",
+   "pkg:ai/providers/cloudflare-ai-gateway.models#CLOUDFLARE_AI_GATEWAY_CLASSIFIER_MODELS",
+   "pkg:ai/providers/cloudflare-workers-ai.models#CLOUDFLARE_WORKERS_AI_CLASSIFIER_MODELS",
+   "pkg:ai/providers/deepseek.models#DEEPSEEK_CLASSIFIER_MODELS",
+   "pkg:ai/providers/fireworks.models#FIREWORKS_CLASSIFIER_MODELS",
+   "pkg:ai/providers/github-copilot.models#GITHUB_COPILOT_CLASSIFIER_MODELS",
+   "pkg:ai/providers/google-vertex.models#GOOGLE_VERTEX_CLASSIFIER_MODELS",
+   "pkg:ai/providers/google.models#GOOGLE_CLASSIFIER_MODELS",
+   "pkg:ai/providers/groq.models#GROQ_CLASSIFIER_MODELS",
+   "pkg:ai/providers/huggingface.models#HUGGINGFACE_CLASSIFIER_MODELS",
+   "pkg:ai/providers/kimi-coding.models#KIMI_CODING_CLASSIFIER_MODELS",
+   "pkg:ai/providers/meta.models#META_CLASSIFIER_MODELS",
+   "pkg:ai/providers/minimax-cn.models#MINIMAX_CN_CLASSIFIER_MODELS",
+   "pkg:ai/providers/minimax.models#MINIMAX_CLASSIFIER_MODELS",
+   "pkg:ai/providers/mistral.models#MISTRAL_CLASSIFIER_MODELS",
+   "pkg:ai/providers/moonshotai-cn.models#MOONSHOTAI_CN_CLASSIFIER_MODELS",
+   "pkg:ai/providers/moonshotai.models#MOONSHOTAI_CLASSIFIER_MODELS",
+   "pkg:ai/providers/nvidia.models#NVIDIA_CLASSIFIER_MODELS",
+   "pkg:ai/providers/openai-codex.models#OPENAI_CODEX_CLASSIFIER_MODELS",
+   "pkg:ai/providers/openai.models#OPENAI_CLASSIFIER_MODELS",
+   "pkg:ai/providers/opencode-go.models#OPENCODE_GO_CLASSIFIER_MODELS",
+   "pkg:ai/providers/opencode.models#OPENCODE_CLASSIFIER_MODELS",
+   "pkg:ai/providers/openrouter.models#OPENROUTER_CLASSIFIER_MODELS",
+   "pkg:ai/providers/qwen-token-plan-cn.models#QWEN_TOKEN_PLAN_CN_CLASSIFIER_MODELS",
+   "pkg:ai/providers/qwen-token-plan-individual.models#QWEN_TOKEN_PLAN_INDIVIDUAL_CLASSIFIER_MODELS",
+   "pkg:ai/providers/qwen-token-plan.models#QWEN_TOKEN_PLAN_CLASSIFIER_MODELS",
+   "pkg:ai/providers/radius.models#RADIUS_CLASSIFIER_MODELS",
+   "pkg:ai/providers/together.models#TOGETHER_CLASSIFIER_MODELS",
+   "pkg:ai/providers/typesafe.models#TYPESAFE_CLASSIFIER_MODELS",
+   "pkg:ai/providers/vercel-ai-gateway.models#VERCEL_AI_GATEWAY_CLASSIFIER_MODELS",
+   "pkg:ai/providers/xai.models#XAI_CLASSIFIER_MODELS",
+   "pkg:ai/providers/xiaomi-token-plan-ams.models#XIAOMI_TOKEN_PLAN_AMS_CLASSIFIER_MODELS",
+   "pkg:ai/providers/xiaomi-token-plan-cn.models#XIAOMI_TOKEN_PLAN_CN_CLASSIFIER_MODELS",
+   "pkg:ai/providers/xiaomi-token-plan-sgp.models#XIAOMI_TOKEN_PLAN_SGP_CLASSIFIER_MODELS",
+   "pkg:ai/providers/xiaomi.models#XIAOMI_CLASSIFIER_MODELS",
+   "pkg:ai/providers/zai-coding-cn.models#ZAI_CODING_CN_CLASSIFIER_MODELS",
+   "pkg:ai/providers/zai.models#ZAI_CLASSIFIER_MODELS"
+  ],
+  "targets": [
+   "ai/builtin_providers.go#GetBuiltinClassifierModels"
+  ],
+  "production": [
+   "call:internal/codingagent/model_typed_provider.go#builtinClassifierModelsOf"
+  ],
+  "evidence": [
+   "test:ai/builtin_catalog_upstream_test.go#TestBuiltinCatalogsMatchPinnedProviderDataModules"
+  ],
+  "rationale": "Classifier model catalog: GetBuiltinClassifierModels lists the generated classifier models of one provider; TestBuiltinCatalogsMatchPinnedProviderDataModules compares them with the classifier entries of the pinned providers/data/<provider>.json (identity, endpoint, input, price, context window)."
+ }
+]

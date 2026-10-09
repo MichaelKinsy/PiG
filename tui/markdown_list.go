@@ -23,17 +23,13 @@ type markdownListBlock struct {
 	list *markdownList
 }
 
-func isMarkdownParagraphContinuation(lines []string, index int) bool {
-	line := lines[index]
-	if _, _, _, ok := parseMarkdownFenceOpen(line); ok {
+// markdownLatexBlockAt reports whether a block LaTeX token starts at lines[index]; pi-tui's latexBlock extension start() clips a paragraph there.
+func markdownLatexBlockAt(lines []string, index int) bool {
+	if !blockLatexStart(lines[index]) {
 		return false
 	}
-	if blockLatexStart(line) {
-		if _, ok := tokenizeBlockLatex(strings.Join(lines[index:], "\n")); ok {
-			return false
-		}
-	}
-	return isLazyBlockquoteContinuation(line)
+	_, ok := tokenizeBlockLatex(strings.Join(lines[index:], "\n"))
+	return ok
 }
 
 func markdownIndent(line string) int     { return len(line) - len(strings.TrimLeft(line, " ")) }
@@ -61,6 +57,11 @@ func parseMarkdownList(lines []string, start int) (*markdownList, int) {
 		spacing := markdownIndent(lines[i][markerEnd:])
 		if spacing == 0 {
 			spacing = 1
+		}
+		// Tokenizer.ts:308-311: content more than four spaces past the marker is indented code, so the item's content starts one space after the marker.
+		if spacing > 4 && body != "" {
+			spacing = 1
+			body = lines[i][markerEnd+1:]
 		}
 		contentIndent := markerEnd + spacing
 		entry := markdownListEntry{marker: rawMarker}
@@ -104,6 +105,12 @@ func parseMarkdownList(lines []string, start int) (*markdownList, int) {
 				}
 				ni, nm, _, nested := parseMarkdownListItem(lines[k])
 				if nested && len(ni) == base && markdownOrdered(nm) == list.ordered && nm[len(nm)-1] == delimiter {
+					// Tokenizer.ts:372-374: the blank lines stay in the item's text; only the last item's text is trimmed, so an indented code block keeps one trailing blank line.
+					for range k - j {
+						if len(pending) > 0 {
+							pending = append(pending, "")
+						}
+					}
 					list.loose = true
 					j = k
 					break

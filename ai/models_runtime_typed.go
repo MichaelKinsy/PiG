@@ -28,7 +28,7 @@ func (m *Models) GetAllModels(provider ...string) []AnyModel {
 		}
 		models, err := providerAllModels(entry)
 		if err == nil {
-			out = append(out, models...)
+			out = append(out, OfferedModels(models)...)
 		}
 	}
 	return out

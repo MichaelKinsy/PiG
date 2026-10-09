@@ -3,6 +3,7 @@
 package coding
 
 import (
+	"context"
 	"path/filepath"
 	"regexp"
 	"slices"
@@ -75,7 +76,7 @@ func setupMCPRegistered(t *testing.T, opts mcpRegisteredOptions) (*mcpSession, *
 	s := &mcpSession{calls: &mcpCallLog{}, notes: &mcpNotifications{}}
 	connected := &mcpConnected{}
 	options := builtin.Options{Mcp: mcpext.Options{
-		LoadConfig: func(mcpext.EventContext) mcpext.LoadedMcpConfig {
+		LoadConfig: func(context.Context) mcpext.LoadedMcpConfig {
 			return mcpext.LoadedMcpConfig{Servers: opts.configured}
 		},
 		CreateTransport: func(entry mcpext.McpServerEntry, _ string, _ mcp.AuthProvider) (mcp.Transport, error) {
@@ -87,9 +88,9 @@ func setupMCPRegistered(t *testing.T, opts mcpRegisteredOptions) (*mcpSession, *
 		Credentials: mcpext.NewMcpOAuthCredentialStoreWithBackend(&mcpext.InMemoryAuthStorageBackend{}, ""),
 		LogPath:     t.TempDir() + "/mcp.log",
 	}}
-	loaded = append(loaded, loadMcpBuiltin(t, "codemode", options))
+	loaded = append(loaded, loadMcpBuiltin(t, host.Runtime(), "codemode", options))
 	if !opts.withoutMCP {
-		loaded = append(loaded, loadMcpBuiltin(t, "mcp", options))
+		loaded = append(loaded, loadMcpBuiltin(t, host.Runtime(), "mcp", options))
 	}
 	s.recoveryHarness = newBoundaryHarness(t, harnessOptions{tools: []agent.AgentTool{}, extensions: loaded, runtime: host.Runtime()})
 	return s, connected

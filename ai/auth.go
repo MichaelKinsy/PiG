@@ -4,6 +4,7 @@ package ai
 // Credentials use Pi's JSON shape and proper-lockfile directory lock, including across Pi and PiG processes.
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -14,6 +15,7 @@ import (
 
 	"github.com/MichaelKinsy/PiG/extensions/sdk/json"
 	"github.com/MichaelKinsy/PiG/internal/configvalue"
+	"github.com/MichaelKinsy/PiG/internal/jsonstringify"
 	"github.com/MichaelKinsy/PiG/internal/nodeerrno"
 	"github.com/MichaelKinsy/PiG/internal/ownerfile"
 	"github.com/MichaelKinsy/PiG/internal/pilock"
@@ -101,6 +103,7 @@ type Credential struct {
 	GatewayConfig json.RawMessage `json:"gatewayConfig,omitempty"`
 
 	expiry credentialExpiry
+	order  credentialKeyOrder
 }
 
 // rawCredential mirrors Credential but also accepts the legacy `apiKey`
@@ -122,6 +125,7 @@ type rawCredential struct {
 	AvailableModelIDs json.RawMessage            `json:"availableModelIds,omitempty"`
 
 	expiry credentialExpiry
+	order  credentialKeyOrder
 }
 
 func (r rawCredential) normalize() Credential {
@@ -147,6 +151,7 @@ func (r rawCredential) normalize() Credential {
 	if c.Key == "" && r.LegacyAPIKey != "" {
 		c.Key = r.LegacyAPIKey
 	}
+	c.order = r.order.renamed("apiKey", "key").retainedFor(c.marshalFields)
 	return c
 }
 
@@ -350,11 +355,28 @@ func (a *AuthStorage) Delete(ctx context.Context, provider string) error {
 	})
 }
 
+// stringifyAuthStorage is JSON.stringify(data, null, 2) (auth-storage.ts:358,467,479): two-space indentation, no HTML escaping, and JS number and key order.
+func stringifyAuthStorage(creds *authStorageData) ([]byte, error) {
+	compact, err := creds.MarshalJSON()
+	if err != nil {
+		return nil, err
+	}
+	canonical, err := jsonstringify.Canonicalize(compact)
+	if err != nil {
+		return nil, err
+	}
+	var out bytes.Buffer
+	if err := json.Indent(&out, canonical, "", "  "); err != nil {
+		return nil, err
+	}
+	return out.Bytes(), nil
+}
+
 func (a *AuthStorage) writeLocked(creds *authStorageData, lock *pilock.Lock) error {
 	a.read.mu.Lock()
 	a.read.revision = ""
 	a.read.mu.Unlock()
-	data, err := json.MarshalIndent(creds, "", "  ")
+	data, err := stringifyAuthStorage(creds)
 	if err != nil {
 		return fmt.Errorf("auth: marshal: %w", err)
 	}

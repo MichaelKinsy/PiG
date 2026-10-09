@@ -1,5 +1,7 @@
 package codingagent
 
+// pi: packages/coding-agent/src/config.ts
+
 import (
 	"os"
 	"path/filepath"
@@ -194,5 +196,25 @@ func TestMarkPathIgnoredByCloudSync_InvokesPlatformCommand(t *testing.T) {
 		if len(lines) != 1 || lines[0] != want {
 			t.Fatalf("linux calls = %q, want [%q]", lines, want)
 		}
+	}
+}
+
+// packages/coding-agent/src/config.ts:449 getDocsPath() is resolve(join(<package dir>, "docs")); PiG's bundle lives under the
+// config root (D22), so the path is the absolute <config root>/docs and follows PIG_HOME and XDG_CONFIG_HOME.
+func TestGetDocsPathIsTheAbsoluteDocsDirectoryOfTheConfigRoot(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("PIG_HOME", home)
+	if got, want := GetDocsPath(), filepath.Join(home, "docs"); got != want {
+		t.Fatalf("GetDocsPath() = %q, want %q", got, want)
+	}
+	t.Setenv("PIG_HOME", "")
+	xdg := t.TempDir()
+	t.Setenv("XDG_CONFIG_HOME", xdg)
+	if got, want := GetDocsPath(), filepath.Join(xdg, "pig", "docs"); got != want {
+		t.Fatalf("GetDocsPath() under XDG_CONFIG_HOME = %q, want %q", got, want)
+	}
+	t.Setenv("PIG_HOME", "relative-home")
+	if got := GetDocsPath(); !filepath.IsAbs(got) || filepath.Base(got) != "docs" {
+		t.Fatalf("GetDocsPath() = %q, want an absolute path ending in docs (config.ts resolve)", got)
 	}
 }

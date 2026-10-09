@@ -55,10 +55,14 @@ changelog_headers_complete = true
 # The complete header sequence rejects an actual condensed-only response.
 # Release bodies may also mention the Unreleased section in prose (PiG 0.3.0
 # does), so reject the rendered "[Unreleased]" header that Pi skips, not the word.
+# Release bodies also describe goroutines in prose ("a timer goroutine", "goroutine traces"), so a Go crash dump is
+# detected by its "[running]:" state line, which "goroutine N [running]:" always carries, and not by the word. A fatal
+# runtime error (deadlock, concurrent map write) can dump only blocked goroutines, so its "fatal error:" line is rejected too.
 both_not_contain = [
   "unknown command",
   "panic:",
-  "goroutine ",
+  "[running]:",
+  "fatal error:",
   "Disable collapse-changelog",
   "[Unreleased]",
   "No changelog entries found",

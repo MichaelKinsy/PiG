@@ -18,7 +18,8 @@ import (
 // captureUIBridge is a minimal SubprocessUIBridge that records the host actions
 // wireSubprocessHostCallbacks registers, so a test can invoke one directly.
 type captureUIBridge struct {
-	actions map[string]any
+	actions  map[string]any
+	frontend []bool
 }
 
 func (b *captureUIBridge) SetInvalidate(func())                                     {}
@@ -27,6 +28,7 @@ func (b *captureUIBridge) SetUIContext(extension.UIContext)                     
 func (b *captureUIBridge) SetUIPromptScope(subprocess.UIPromptScope)                {}
 func (b *captureUIBridge) PublishModelCatalog()                                     {}
 func (b *captureUIBridge) SetWidgetSyncFunc(func(map[string]*subprocess.PushProxy)) {}
+func (b *captureUIBridge) SetFrontend(on bool)                                      { b.frontend = append(b.frontend, on) }
 func (b *captureUIBridge) SetHostAction(key string, fn any) {
 	if b.actions == nil {
 		b.actions = map[string]any{}
@@ -43,13 +45,13 @@ func newSendUserMessageHarness(t *testing.T) (*InteractiveMode, chan capturedStr
 		Provider:     captureStreamOptionsProvider{seen: seen},
 		Capabilities: ai.ModelCapabilities{ContextWindow: 8000},
 	}
-	m := NewInteractiveMode(InteractiveOptions{CWD: t.TempDir(), Model: model})
+	m := NewInteractiveMode(nil, InteractiveModeOptions{CWD: t.TempDir(), Model: model})
 	m.chatContainer = tui.NewContainer()
 	m.statusContainer = tui.NewContainer()
 	m.pendingMessagesContainer = tui.NewContainer()
 	m.tuiInst = tui.NewWithOutput(io.Discard, 100, 30)
-	m.statusLine = NewStatusLine(model, "", nil)
-	m.agent = agent.NewAgent(agent.AgentOptions{Model: model})
+	m.statusLine = NewFooterComponent(model, "", nil)
+	m.agent = mustNewAgent(agent.AgentOptions{Model: model})
 	m.keybindings = DefaultKeybindingsManager()
 	m.runCtx = context.Background()
 	m.abortCtx = context.Background()
@@ -159,8 +161,8 @@ func TestSendUserMessageActiveInputHandledBeforeQueue(t *testing.T) {
 			if event.Source != extension.InputSourceExtension || event.StreamingBehavior != string(extension.DeliverAsFollowUp) || len(event.Images) != 1 {
 				t.Fatalf("input metadata = %#v", event)
 			}
-			image, ok := event.Images[0].(ai.ImageContent)
-			if !ok || image.Data != "raw" || image.MimeType != "image/png" {
+			image := event.Images[0]
+			if image.Data != "raw" || image.MimeType != "image/png" {
 				t.Fatalf("input images = %#v", event.Images)
 			}
 			return extension.InputEventResultHandled{}, nil
@@ -173,7 +175,7 @@ func TestSendUserMessageActiveInputHandledBeforeQueue(t *testing.T) {
 	}
 	drainOneUITask(t, m)
 	runPromptDispatch(t, m)
-	if queued := m.agent.ClearFollowUpQueue(); !called || len(queued) != 0 {
+	if _, queued := m.agent.PendingMessages(); !called || len(queued) != 0 {
 		t.Fatalf("input handled hook called=%v, queued=%d", called, len(queued))
 	}
 }
@@ -215,7 +217,7 @@ func TestSendUserMessageActiveInputTransformReplacesTextAndImages(t *testing.T) 
 	}
 	drainOneUITask(t, m)
 	runPromptDispatch(t, m)
-	queued := m.agent.ClearSteeringQueue()
+	queued, _ := m.agent.PendingMessages()
 	if len(queued) != 1 || queued[0].User == nil || len(queued[0].User.Content.(ai.UserContentBlocks)) != 2 {
 		t.Fatalf("queued = %#v", queued)
 	}
@@ -287,7 +289,7 @@ func TestSubprocessShutdownHostActionRequestsExitViaOwnerLoop(t *testing.T) {
 	spy := &stopSpyRenderer{TuiAltScreen: tui.NewTuiAltScreenWithOutput(io.Discard, 80, 24, tui.TuiAltScreenOptions{})}
 	model := &ai.Model{ID: "m", DisplayName: "m", Capabilities: ai.ModelCapabilities{ContextWindow: 8000}}
 	agentDir := t.TempDir()
-	m := NewInteractiveMode(InteractiveOptions{CWD: t.TempDir(), AgentDir: agentDir, Model: model})
+	m := NewInteractiveMode(nil, InteractiveModeOptions{CWD: t.TempDir(), AgentDir: agentDir, Model: model})
 	m.tuiInst = spy
 	bridge := &captureUIBridge{}
 	m.opts.SubprocessUIBridge = bridge

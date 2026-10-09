@@ -5,7 +5,6 @@ package codingagent
 // resume, and import failures are recorded, and the next start announces them.
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -116,18 +115,7 @@ func (m *InteractiveMode) crashExtensionMetadata() []ExtensionStackMetadata {
 }
 
 func resourceSourceInfoValue(value extension.SourceInfo) ResourceSourceInfo {
-	if info, ok := value.(ResourceSourceInfo); ok {
-		return info
-	}
-	data, err := json.Marshal(value)
-	if err != nil {
-		return ResourceSourceInfo{}
-	}
-	var info ResourceSourceInfo
-	if json.Unmarshal(data, &info) != nil {
-		return ResourceSourceInfo{}
-	}
-	return info
+	return ResourceSourceInfo{Path: value.Path, Source: value.Source, Scope: value.Scope, Origin: value.Origin, BaseDir: value.BaseDir}
 }
 
 func (m *InteractiveMode) crashExtensionHint(stack string) string {

@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"context"
 	"fmt"
 	"slices"
 	"sync"
@@ -14,7 +15,7 @@ func TestAutocompleteNoFDDoesNotSubstituteDirectListing(t *testing.T) {
 	putAutocompleteTree(t, base, autocompleteTree{files: map[string]string{"README.md": "readme", "src/main.go": "package main"}})
 	for _, line := range []string{"@", "@READ", "@src/ma"} {
 		t.Run(line, func(t *testing.T) {
-			if got := provider.GetSuggestions([]string{line}, 0, len(line)); got != nil {
+			if got := provider.GetSuggestions(context.Background(), []string{line}, 0, len(line), AutocompleteSuggestionOptions{}); got != nil {
 				t.Fatalf("attachment suggestions without fd = %q, want none", autocompleteValues(got))
 			}
 		})
@@ -26,7 +27,7 @@ func TestAutocompleteDirectPathsIncludeGitDirectory(t *testing.T) {
 	_, base, _, provider := newAutocompleteFixture(t, false)
 	putAutocompleteTree(t, base, autocompleteTree{files: map[string]string{".git/config": "[core]", ".gitignore": "*.tmp"}})
 	line := "./.git"
-	got := provider.GetSuggestionsForce([]string{line}, 0, len(line))
+	got := provider.GetSuggestions(context.Background(), []string{line}, 0, len(line), AutocompleteSuggestionOptions{Force: true})
 	want := []string{"./.git/", "./.gitignore"}
 	if !slices.Equal(autocompleteValues(got), want) {
 		t.Fatalf("direct path suggestions = %q, want %q", autocompleteValues(got), want)
@@ -68,7 +69,7 @@ func TestAutocompleteConcurrentDirectQueriesOwnCollationState(t *testing.T) {
 		files[fmt.Sprintf("file-%02d.txt", i)] = "text"
 	}
 	putAutocompleteTree(t, base, autocompleteTree{files: files})
-	want := autocompleteValues(provider.GetSuggestionsForce([]string{"./"}, 0, 2))
+	want := autocompleteValues(provider.GetSuggestions(context.Background(), []string{"./"}, 0, 2, AutocompleteSuggestionOptions{Force: true}))
 	if len(want) != len(files) {
 		t.Fatalf("fixture suggestions=%d, want each of %d files", len(want), len(files))
 	}
@@ -78,7 +79,7 @@ func TestAutocompleteConcurrentDirectQueriesOwnCollationState(t *testing.T) {
 		workers.Go(func() {
 			<-start
 			for range 16 {
-				got := autocompleteValues(provider.GetSuggestionsForce([]string{"./"}, 0, 2))
+				got := autocompleteValues(provider.GetSuggestions(context.Background(), []string{"./"}, 0, 2, AutocompleteSuggestionOptions{Force: true}))
 				if !slices.Equal(got, want) {
 					t.Errorf("worker %d changed independent query ordering: got %q, want %q", worker, got, want)
 					return

@@ -50,7 +50,7 @@ func TestCompactionFailureWaitsForEndListeners(t *testing.T) {
 					defer close(done)
 					switch {
 					case strings.HasPrefix(mode, "manual"):
-						_, _ = sess.CompactResult(context.Background(), "")
+						_, _ = sess.Compact(context.Background(), "")
 					case mode == "exhausted-overflow":
 						sess.overflowRecoveryAttempted.Store(true)
 						_, _ = sess.checkCompaction(context.Background(), &agent.AssistantMessage{

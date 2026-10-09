@@ -7,6 +7,7 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/MichaelKinsy/PiG/internal/jsstring"
 	"github.com/MichaelKinsy/PiG/internal/lazyregexp"
 
 	"golang.org/x/text/collate"
@@ -38,14 +39,14 @@ func modelsAreEqual(a, b RuntimeModel) bool {
 
 // FindExactModelReferenceMatch mirrors upstream findExactModelReferenceMatch.
 func FindExactModelReferenceMatch(modelReference string, availableModels []RuntimeModel) *RuntimeModel {
-	trimmed := strings.TrimSpace(modelReference)
+	trimmed := jsstring.Trim(modelReference)
 	if trimmed == "" {
 		return nil
 	}
-	normalized := strings.ToLower(trimmed)
+	normalized := jsstring.ToLower(trimmed)
 	var canonical []RuntimeModel
 	for _, model := range availableModels {
-		if strings.ToLower(modelRef(model)) == normalized {
+		if jsstring.ToLower(modelRef(model)) == normalized {
 			canonical = append(canonical, model)
 		}
 	}
@@ -56,11 +57,11 @@ func FindExactModelReferenceMatch(modelReference string, availableModels []Runti
 		return nil
 	}
 	if provider, modelID, ok := strings.Cut(trimmed, "/"); ok {
-		provider, modelID = strings.TrimSpace(provider), strings.TrimSpace(modelID)
+		provider, modelID = jsstring.Trim(provider), jsstring.Trim(modelID)
 		if provider != "" && modelID != "" {
 			var matches []RuntimeModel
 			for _, model := range availableModels {
-				if strings.EqualFold(model.Provider, provider) && strings.EqualFold(model.ID, modelID) {
+				if jsstring.ToLower(model.Provider) == jsstring.ToLower(provider) && jsstring.ToLower(model.ID) == jsstring.ToLower(modelID) {
 					matches = append(matches, model)
 				}
 			}
@@ -74,7 +75,7 @@ func FindExactModelReferenceMatch(modelReference string, availableModels []Runti
 	}
 	var idMatches []RuntimeModel
 	for _, model := range availableModels {
-		if strings.ToLower(model.ID) == normalized {
+		if jsstring.ToLower(model.ID) == normalized {
 			idMatches = append(idMatches, model)
 		}
 	}
@@ -91,10 +92,10 @@ func tryMatchModel(pattern string, availableModels []RuntimeModel) *RuntimeModel
 	if exact := FindExactModelReferenceMatch(pattern, availableModels); exact != nil {
 		return exact
 	}
-	lower := strings.ToLower(pattern)
+	lower := jsstring.ToLower(pattern)
 	var aliases, dated []RuntimeModel
 	for _, model := range availableModels {
-		if !strings.Contains(strings.ToLower(model.ID), lower) && !strings.Contains(strings.ToLower(model.Name), lower) {
+		if !strings.Contains(jsstring.ToLower(model.ID), lower) && !strings.Contains(jsstring.ToLower(model.Name), lower) {
 			continue
 		}
 		if isAlias(model.ID) {

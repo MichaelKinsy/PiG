@@ -117,14 +117,14 @@ func TestSettingsListSubmenuMouseAlwaysFocusesTheList(t *testing.T) {
 	submenu := &funcMouseComponent{lines: []string{"submenu"}, handle: func(TuiMouseEvent) *TuiMouseEventResult {
 		return &TuiMouseEventResult{Handled: true}
 	}}
-	list := NewSettingsListWithOptions([]SettingItem{{ID: "a", Label: "A", CurrentValue: "x", Submenu: func(string, func(*string)) Component { return submenu }}}, 5, false)
+	list := NewSettingsList([]SettingItem{{ID: "a", Label: "A", CurrentValue: "x", Submenu: func(string, func(*string, *SubmenuDoneOptions)) Component { return submenu }}}, 5, GetSettingsListTheme(), nil, nil, SettingsListOptions{EnableSearch: false})
 	list.HandleInput("\r")
 	result := DispatchMouseEvent(list, componentMouseEvent(MouseClick, 1, 0))
 	if result == nil || !result.Handled || !result.Focus || result.FocusTarget != Component(list) {
 		t.Fatalf("result = %+v, want a handled result focusing the list", result)
 	}
 	// A submenu that is not mouse-aware leaves the event unhandled.
-	list = NewSettingsListWithOptions([]SettingItem{{ID: "a", Label: "A", CurrentValue: "x", Submenu: func(string, func(*string)) Component { return NewText("plain") }}}, 5, false)
+	list = NewSettingsList([]SettingItem{{ID: "a", Label: "A", CurrentValue: "x", Submenu: func(string, func(*string, *SubmenuDoneOptions)) Component { return NewText("plain") }}}, 5, GetSettingsListTheme(), nil, nil, SettingsListOptions{EnableSearch: false})
 	list.HandleInput("\r")
 	if result := DispatchMouseEvent(list, componentMouseEvent(MouseClick, 1, 0)); result != nil {
 		t.Fatalf("result = %+v, want none", result)
@@ -136,7 +136,7 @@ func TestSettingsListSubmenuPlainResultTargetsTheList(t *testing.T) {
 	submenu := &funcMouseComponent{lines: []string{"submenu"}, handle: func(TuiMouseEvent) *TuiMouseEventResult {
 		return &TuiMouseEventResult{}
 	}}
-	list := NewSettingsListWithOptions([]SettingItem{{ID: "a", Label: "A", CurrentValue: "x", Submenu: func(string, func(*string)) Component { return submenu }}}, 5, false)
+	list := NewSettingsList([]SettingItem{{ID: "a", Label: "A", CurrentValue: "x", Submenu: func(string, func(*string, *SubmenuDoneOptions)) Component { return submenu }}}, 5, GetSettingsListTheme(), nil, nil, SettingsListOptions{EnableSearch: false})
 	list.HandleInput("\r")
 	result := DispatchMouseEvent(list, componentMouseEvent(MouseClick, 1, 0))
 	if result == nil || !result.Handled || !result.Focus || result.FocusTarget != Component(list) || result.Target.Component != Component(list) {

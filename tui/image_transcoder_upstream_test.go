@@ -20,7 +20,7 @@ func TestUpstreamImageTranscoding(t *testing.T) {
 	var calls []string
 	identity := ImageTheme{FallbackColor: func(value string) string { return value }}
 	newImage := func(data, mimeType string, dimensions *ImageDimensions) *Image {
-		image := NewImage(data, mimeType, ImageOptions{}, dimensions)
+		image := NewImage(data, mimeType, DefaultImageTheme(), ImageOptions{}, dimensions)
 		image.Theme = identity
 		return image
 	}

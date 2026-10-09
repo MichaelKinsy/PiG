@@ -61,6 +61,7 @@ func TestIdentityJSONIsTheSingleSource(t *testing.T) {
 		"cloudflareUserAgent":  CloudflareUserAgent,
 		"openCodeClient":       OpenCodeClient,
 		"codexOriginator":      CodexOriginator,
+		"chatgptAgentName":     ChatGPTAgentName,
 		"xaiReferrer":          XAIReferrer,
 		"agentMarker":          AgentMarker,
 		"userAgentProduct":     UserAgentProduct,

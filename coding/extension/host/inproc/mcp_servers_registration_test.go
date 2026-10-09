@@ -9,6 +9,7 @@ import (
 
 	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/coding/extension/host/inproc"
+	"github.com/MichaelKinsy/PiG/internal/pigstrip"
 )
 
 func mcpConfig(url string) json.RawMessage { return json.RawMessage(`{"url":"` + url + `"}`) }
@@ -36,7 +37,7 @@ func TestRuntimeRegisterMcpServerRejectsNamesThatShareANamespace(t *testing.T) {
 	if err := runtime.RegisterMcpServer("/ext/a.ts", "my-server", mcpConfig("http://y.invalid")); err != nil {
 		t.Fatalf("re-registration: %v", err)
 	}
-	if got, want := mcpServerURLs(runtime.McpServers()), []string{"my-server=http://y.invalid@/ext/a.ts"}; !reflect.DeepEqual(got, want) {
+	if got, want := mcpServerURLs(runtime.McpServers().List()), []string{"my-server=http://y.invalid@/ext/a.ts"}; !reflect.DeepEqual(got, want) {
 		t.Fatalf("servers = %v, want %v", got, want)
 	}
 }
@@ -56,7 +57,7 @@ func TestRuntimeRegisterMcpServerValidatesChecksOwnershipAndReplacesOwnRegistrat
 		err.Error() != `Invalid MCP server registered by extension "/ext/a.ts": server "sse": legacy SSE transport is not supported; use the streamable HTTP URL` {
 		t.Fatalf("legacy SSE error = %v", err)
 	}
-	if got := runtime.McpServers(); len(got) != 0 {
+	if got := runtime.McpServers().List(); len(got) != 0 {
 		t.Fatalf("invalid registrations stored %v", mcpServerURLs(got))
 	}
 
@@ -70,7 +71,7 @@ func TestRuntimeRegisterMcpServerValidatesChecksOwnershipAndReplacesOwnRegistrat
 			t.Fatalf("register %s: %v", step.name, err)
 		}
 	}
-	if got, want := mcpServerURLs(runtime.McpServers()), []string{"taken=http://y.invalid@/ext/a.ts", "other=http://o.invalid@/ext/a.ts"}; !reflect.DeepEqual(got, want) {
+	if got, want := mcpServerURLs(runtime.McpServers().List()), []string{"taken=http://y.invalid@/ext/a.ts", "other=http://o.invalid@/ext/a.ts"}; !reflect.DeepEqual(got, want) {
 		t.Fatalf("servers = %v, want %v", got, want)
 	}
 
@@ -82,11 +83,11 @@ func TestRuntimeRegisterMcpServerValidatesChecksOwnershipAndReplacesOwnRegistrat
 
 	// mcp-servers.ts:227-233 unregister: servers of other extensions are left alone.
 	runtime.UnregisterMcpServer("/ext/b.ts", "taken")
-	if got := len(runtime.McpServers()); got != 2 {
-		t.Fatalf("a foreign unregister removed a server: %v", mcpServerURLs(runtime.McpServers()))
+	if got := len(runtime.McpServers().List()); got != 2 {
+		t.Fatalf("a foreign unregister removed a server: %v", mcpServerURLs(runtime.McpServers().List()))
 	}
 	runtime.UnregisterMcpServer("/ext/a.ts", "taken")
-	if got, want := mcpServerURLs(runtime.McpServers()), []string{"other=http://o.invalid@/ext/a.ts"}; !reflect.DeepEqual(got, want) {
+	if got, want := mcpServerURLs(runtime.McpServers().List()), []string{"other=http://o.invalid@/ext/a.ts"}; !reflect.DeepEqual(got, want) {
 		t.Fatalf("servers = %v, want %v", got, want)
 	}
 }
@@ -187,6 +188,29 @@ func TestRunnerReportsRegisteredMcpServersWhenNoExtensionHandlesThem(t *testing.
 	}
 	if len(reported) != 2 || reported[1].ExtensionPath != "/ext/late.ts" || reported[1].Event != "register_mcp_server" {
 		t.Fatalf("late registration was not reported: %+v", reported)
+	}
+}
+
+// pig additive (D92): with mcp stripped (a Binary's OFF shim or a Piglet's runtime strip records it in pigstrip), nothing
+// replaced the built-in MCP support, so the report names the strip instead of Pi's "another extension may have replaced".
+func TestRunnerNamesTheMcpStripForUnhandledMcpServers(t *testing.T) {
+	t.Cleanup(pigstrip.Strip(pigstrip.ListExtensions, "mcp"))
+	runtime := extension.CreateExtensionRuntime()
+	if err := runtime.RegisterMcpServer("/ext/orphan.ts", "orphan", mcpConfig("http://orphan.invalid")); err != nil {
+		t.Fatal(err)
+	}
+	runner := inproc.NewRunner(nil, t.TempDir(), runtime)
+	var reported []extension.ExtensionError
+	runner.AddErrorListener(func(err *extension.ExtensionError) { reported = append(reported, *err) })
+	runner.BindCore(extension.ExtensionActions{}, extension.ContextActions{}, nil)
+	runner.ReportUnhandledMcpServers()
+	want := extension.ExtensionError{
+		ExtensionPath: "/ext/orphan.ts",
+		Event:         "register_mcp_server",
+		Error:         `MCP server "orphan" is registered, but no loaded extension connects MCP servers; built-in MCP support is stripped from this Piglet (strip.extensions: mcp)`,
+	}
+	if !reflect.DeepEqual(reported, []extension.ExtensionError{want}) {
+		t.Fatalf("reported = %+v, want [%+v]", reported, want)
 	}
 }
 

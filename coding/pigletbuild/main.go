@@ -38,6 +38,7 @@ type pigletBuildOutput struct {
 	Log         string             `json:"log,omitempty"`
 	Error       string             `json:"error,omitempty"`
 	Unavailable []BuilderReadiness `json:"unavailable,omitempty"`
+	StripDelta  []string           `json:"stripDelta,omitempty"`
 }
 
 const buildUsage = `Usage:
@@ -98,6 +99,12 @@ func runBinaryBuild(ctx context.Context, progress *buildprogress.Reporter, pigle
 	if err != nil {
 		return fail(pigletName, err)
 	}
+	// pig additive (D92): the strip delta report against the newest Binary
+	// PiG built for this Piglet prints on every build, before the build runs.
+	stripDelta := piglet.StripDeltaReport(p.Name, p.Strip)
+	if len(stripDelta) > 0 {
+		_, _ = io.WriteString(progress, strings.Join(stripDelta, "\n")+"\n")
+	}
 	if opts.Format == "image" {
 		return fail(p.Name, fmt.Errorf("Piglet Image build is not implemented"))
 	}
@@ -117,7 +124,8 @@ func runBinaryBuild(ctx context.Context, progress *buildprogress.Reporter, pigle
 	cells, warnings := resolvePigletCells(p)
 	exts := extensionInputsFromCells(cells)
 	requireFused := p.Build != nil && p.Build.ExtensionRealization == "fused"
-	verdict := Validate(BuildPlan(exts, opts), warnings, len(exts), requireFused)
+	hasFrontend := p.HasFrontend()
+	verdict := Validate(BuildPlan(exts, opts), warnings, len(p.Extensions), len(exts), hasFrontend, requireFused)
 	if !verdict.OK {
 		return fail(p.Name, fmt.Errorf("Piglet will not build: %s", strings.Join(verdict.Blockers, "; ")))
 	}
@@ -149,7 +157,7 @@ func runBinaryBuild(ctx context.Context, progress *buildprogress.Reporter, pigle
 	if jsonMode {
 		writeBuildJSON(pigletBuildOutput{
 			Success: true, Piglet: p.Name, Format: "binary", Builder: result.Builder, Artifact: result.Artifact,
-			Record: result.Record, Log: strings.TrimSpace(buildLog.String()),
+			Record: result.Record, Log: strings.TrimSpace(buildLog.String()), StripDelta: stripDelta,
 		}, stdout)
 	}
 	return 0
@@ -515,6 +523,9 @@ func applyBakedPiglet(pigletName string, p *piglet.Piglet, opts *Options) error 
 func bakePiglet(p *piglet.Piglet, pigletDir string) ([]byte, error) {
 	baked := piglet.Clone(p)
 	baked.Build = nil
+	// The frontend member is fused into the Binary; its source path means
+	// nothing to the Binary's own Piglet.
+	baked.Slots = nil
 	baked.Release = nil
 	if baked.SystemPrompt != nil {
 		sp, err := bakePromptRef(*baked.SystemPrompt, pigletDir, "system prompt")

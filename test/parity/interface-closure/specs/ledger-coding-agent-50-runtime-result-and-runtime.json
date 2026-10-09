@@ -1,0 +1,177 @@
+[
+ {
+  "ids": [
+   "pkg:coding-agent/.#CreateAgentSessionRuntimeResult::property:session"
+  ],
+  "targets": [
+   "coding/runtime_replacement.go#CreateAgentSessionRuntimeResult.Session"
+  ],
+  "production": [
+   "call:coding/runtime_replacement.go#Runtime.applyRuntime"
+  ],
+  "evidence": [
+   "test:coding/runtime_result_test.go#TestRuntimeAdoptsTheFactoryResultSessionAndServices"
+  ],
+  "rationale": "CreateAgentSessionRuntimeResult.session is the Session field the factory returns; Runtime installs the pair and its replacements swap it."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#CreateAgentSessionRuntimeResult::property:services"
+  ],
+  "targets": [
+   "coding/runtime_replacement.go#CreateAgentSessionRuntimeResult.Services"
+  ],
+  "production": [
+   "call:coding/runtime_replacement.go#Runtime.applyRuntime"
+  ],
+  "evidence": [
+   "test:coding/runtime_result_test.go#TestRuntimeAdoptsTheFactoryResultSessionAndServices"
+  ],
+  "rationale": "CreateAgentSessionRuntimeResult.services is the Services field the factory returns; Runtime installs the pair and its replacements swap it."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#AgentSessionRuntime::property:cwd"
+  ],
+  "targets": [
+   "coding/runtime_replacement.go#Runtime.CWD"
+  ],
+  "production": [
+   "call:coding/runtime_replacement.go#Runtime.ImportFromJsonl"
+  ],
+  "evidence": [
+   "test:coding/runtime_mode_hooks_test.go#TestRuntimeSwitchSessionHonorsCWDOverride"
+  ],
+  "rationale": "AgentSessionRuntime.cwd is Runtime.CWD, the current Services directory (it follows a cwdOverride switch)."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#AgentSessionRuntime::property:services"
+  ],
+  "targets": [
+   "coding/runtime.go#Runtime.Services"
+  ],
+  "production": [
+   "call:coding/cli/main.go#Main"
+  ],
+  "evidence": [
+   "test:coding/runtime_result_test.go#TestRuntimeAdoptsTheFactoryResultSessionAndServices"
+  ],
+  "rationale": "AgentSessionRuntime.services is Runtime.Services, the current factory result."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#AgentSessionRuntime::property:session"
+  ],
+  "targets": [
+   "coding/runtime_replacement.go#Runtime.Session"
+  ],
+  "production": [
+   "call:coding/cli/main.go#Main"
+  ],
+  "evidence": [
+   "test:coding/runtime_result_test.go#TestRuntimeAdoptsTheFactoryResultSessionAndServices"
+  ],
+  "rationale": "AgentSessionRuntime.session is Runtime.Session, the current factory result."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#AgentSessionRuntime::property:setRebindSession"
+  ],
+  "targets": [
+   "coding/runtime_replacement.go#Runtime.SetRebindSession"
+  ],
+  "production": [
+   "call:coding/cli/print_mode.go#runPrintMode"
+  ],
+  "evidence": [
+   "test:coding/session_replaced_lifetime_test.go#TestWithSessionFollowsSetupAndRebind",
+   "test:coding/session_replaced_lifetime_test.go#TestWithSessionDoesNotRunAfterCancellationOrRebindFailure"
+  ],
+  "rationale": "setRebindSession(rebind?) is SetRebindSession(func(ctx, *Session) error); the awaited Promise is the returned error, nil clears it.",
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; a rejection is the returned error; the caller's ctx carries cancellation; no detached goroutine."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#AgentSessionRuntime::property:setBeforeSessionInvalidate"
+  ],
+  "targets": [
+   "coding/runtime.go#Runtime.SetBeforeSessionInvalidate"
+  ],
+  "production": [
+   "call:coding/cli/interactive_build.go#interactiveRuntime.SetBeforeSessionInvalidate"
+  ],
+  "evidence": [
+   "test:coding/runtime_result_test.go#TestRuntimeBeforeSessionInvalidateRunsBetweenShutdownAndInvalidation"
+  ],
+  "rationale": "setBeforeSessionInvalidate(fn?) is SetBeforeSessionInvalidate(func()); it runs between session_shutdown and runner invalidation on replacement and dispose."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#AgentSessionRuntime::property:dispose"
+  ],
+  "targets": [
+   "coding/runtime.go#Runtime.Close"
+  ],
+  "production": [
+   "call:coding/cli/main.go#Main"
+  ],
+  "evidence": [
+   "test:coding/runtime_mode_hooks_test.go#TestRuntimeEmitsQuitShutdownOnce",
+   "test:coding/runtime_result_test.go#TestRuntimeBeforeSessionInvalidateRunsBetweenShutdownAndInvalidation"
+  ],
+  "rationale": "dispose() is Runtime.Close: it emits session_shutdown(quit) once, runs the invalidate hook and disposes the Session; the Promise is the returned error.",
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; a rejection is the returned error; the caller's ctx carries cancellation; no detached goroutine."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#AgentSessionRuntime::property:newSession"
+  ],
+  "targets": [
+   "coding/runtime_replacement.go#Runtime.NewSession"
+  ],
+  "production": [
+   "call:coding/cli/rpc_mode.go#runRPCMode"
+  ],
+  "evidence": [
+   "test:coding/session_runtime_replacement_upstream_test.go#TestRuntimeOriginalNewResumeEvents",
+   "test:coding/session_replaced_lifetime_test.go#TestWithSessionFollowsSetupAndRebind"
+  ],
+  "rationale": "newSession(options?) is NewSession(ctx, *NewSessionOptions) returning CancelledResult; parentSession, setup and withSession are the NewSessionOptions fields.",
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; a rejection is the returned error; the caller's ctx carries cancellation; no detached goroutine."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#AgentSessionRuntime::property:fork"
+  ],
+  "targets": [
+   "coding/runtime_replacement.go#Runtime.Fork"
+  ],
+  "production": [
+   "call:coding/cli/rpc_mode.go#runRPCMode"
+  ],
+  "evidence": [
+   "test:coding/session_runtime_replacement_upstream_test.go#TestRuntimeOriginalForkEventsAndCancellation",
+   "test:coding/session_fork_active_upstream_test.go#TestInMemoryForkDoesNotAppendAbortedTurnToReplacementUpstream"
+  ],
+  "rationale": "fork(entryId, options?) is Fork(ctx, entryID, *ForkOptions) returning RuntimeForkResult{Cancelled, SelectedText *string}.",
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; a rejection is the returned error; the caller's ctx carries cancellation; no detached goroutine."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#AgentSessionRuntime::property:importFromJsonl"
+  ],
+  "targets": [
+   "coding/runtime_replacement.go#Runtime.ImportFromJsonl"
+  ],
+  "production": [
+   "call:coding/cli/interactive_build.go#interactiveRuntime.ImportFromJsonl"
+  ],
+  "evidence": [
+   "test:coding/session_runtime_replacement_upstream_test.go#TestRuntimeOriginalImportCollision",
+   "test:coding/session_runtime_boundaries_test.go#TestRuntimeImportFileURLAndMissingInput"
+  ],
+  "rationale": "importFromJsonl(inputPath, cwdOverride?) is ImportFromJsonl(ctx, input, cwdOverride ...string) returning CancelledResult.",
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; a rejection is the returned error; the caller's ctx carries cancellation; no detached goroutine."
+ }
+]

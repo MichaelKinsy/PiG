@@ -1,8 +1,11 @@
 package tools
 
+// pi: packages/coding-agent/src/core/tools/powershell.ts
+
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -236,7 +239,7 @@ func TestCreateAllToolsMirrorsUpstreamRegistry(t *testing.T) {
 		t.Fatalf("BuiltinToolNames() = %v, want %v", got, want)
 	}
 	var got []string
-	for _, tool := range CreateAllTools(t.TempDir(), nil, "") {
+	for _, tool := range CreateAllTools(t.TempDir(), nil) {
 		got = append(got, tool.Name())
 	}
 	if !slices.Equal(got, want) {
@@ -284,5 +287,56 @@ func TestShellToolPreservesTruncationSnapshot(t *testing.T) {
 	}
 	if !strings.Contains(res.Text(), "[Showing lines 10001-12000 of 12000. Full output:") {
 		t.Fatalf("missing whole-stream footer: %q", res.Text()[len(res.Text())-200:])
+	}
+}
+
+// powershell.ts:9-11, 28-45 and shell.ts getPowerShellConfig: Windows PowerShell is resolved with PowerShell 7 (pwsh.exe) first, the
+// fallback is powershell.exe, and no executable is a distinct error; other platforms report the tool as Windows-only.
+func TestPowerShellConfigResolutionOrder(t *testing.T) {
+	look := func(found ...string) func(string) (string, error) {
+		return func(name string) (string, error) {
+			if slices.Contains(found, name) {
+				return `C:\bin\` + name, nil
+			}
+			return "", errors.New("not found")
+		}
+	}
+	both, err := powerShellConfigFor("windows", look("powershell.exe", "pwsh.exe"))
+	if err != nil || both.Path != `C:\bin\pwsh.exe` || !slices.Equal(both.Args, PowerShellArgs) {
+		t.Fatalf("both installed = %+v, %v; want pwsh.exe first", both, err)
+	}
+	both.Args[0] = "mutated"
+	if PowerShellArgs[0] != "-NoProfile" {
+		t.Fatal("the resolved config shares the PowerShellArgs backing array")
+	}
+	if only, err := powerShellConfigFor("windows", look("powershell.exe")); err != nil || only.Path != `C:\bin\powershell.exe` {
+		t.Fatalf("powershell.exe only = %+v, %v", only, err)
+	}
+	if _, err := powerShellConfigFor("windows", look()); err == nil || err.Error() != "No PowerShell executable found. Install PowerShell or add powershell.exe/pwsh.exe to PATH." {
+		t.Fatalf("none installed: %v", err)
+	}
+	for _, goos := range []string{"linux", "darwin"} {
+		if _, err := powerShellConfigFor(goos, look("pwsh.exe")); err == nil || err.Error() != "The powershell tool is only available on Windows." {
+			t.Fatalf("%s: %v", goos, err)
+		}
+	}
+}
+
+// The tool's own execution config wires the UTF-8 output prefix, the "pi-powershell" temp prefix, the shell name and the session
+// environment switch (powershell.ts:13, createShellToolDefinition config).
+func TestPowerShellToolShellConfig(t *testing.T) {
+	cfg := (&PowerShellTool{CWD: "/work", BinDir: "/agent/bin"}).shellConfig()
+	ops, ok := cfg.operations.(*LocalShellOperations)
+	if !ok || cfg.name != "powershell" || cfg.shellName != "PowerShell" || cfg.tempFilePrefix != "pi-powershell" || ops.ShellName != "PowerShell" || !cfg.exposeSessionEnvironment || cfg.binDir != "/agent/bin" {
+		t.Fatalf("config = %+v ops = %+v", cfg, ops)
+	}
+	if got, want := ops.WrapCommand("Get-Date"), "try { [Console]::OutputEncoding=[System.Text.Encoding]::UTF8 } catch {}\nGet-Date"; got != want {
+		t.Fatalf("wrapped command = %q, want %q", got, want)
+	}
+	if _, err := ops.ResolveShell(); (runtime.GOOS != "windows") != (err != nil) {
+		t.Fatalf("ResolveShell on %s: %v", runtime.GOOS, err)
+	}
+	if hidden := (&PowerShellTool{HideSessionEnvironment: true}).shellConfig(); hidden.exposeSessionEnvironment {
+		t.Fatal("HideSessionEnvironment still exposes the session environment")
 	}
 }

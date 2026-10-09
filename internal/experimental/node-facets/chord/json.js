@@ -1,15 +1,82 @@
+const DATA_DESCRIPTOR = {
+    value: undefined,
+    writable: true,
+    enumerable: true,
+    configurable: true,
+};
+/** Copy a value into an alias-free strict-JSON tree owned by the caller. */
+export function copyJson(value, options) {
+    return copy(value, undefined, options?.omitUndefinedProperties === true);
+}
+function copy(value, ancestors, omitUndefinedProperties) {
+    if (value === null || typeof value === "string" || typeof value === "boolean")
+        return value;
+    if (typeof value === "number") {
+        if (Number.isFinite(value))
+            return value;
+        throw new TypeError("Value contains a non-finite number and is not strict JSON");
+    }
+    if (typeof value !== "object")
+        throw new TypeError(`Value contains a non-JSON ${typeof value}; expected strict JSON`);
+    const active = ancestors ?? new Set();
+    if (active.has(value))
+        throw new TypeError("Value contains cycles and is not strict JSON");
+    active.add(value);
+    try {
+        if (Array.isArray(value)) {
+            // Indices plus `length` only: extra, symbol, and missing keys all change the count.
+            if (Object.getPrototypeOf(value) !== Array.prototype || Reflect.ownKeys(value).length !== value.length + 1) {
+                throw new TypeError("Value must contain strict JSON dense plain arrays");
+            }
+            const result = new Array(value.length);
+            for (let index = 0; index < value.length; index++) {
+                const descriptor = Object.getOwnPropertyDescriptor(value, index);
+                if (descriptor === undefined || !descriptor.enumerable || !("value" in descriptor)) {
+                    throw new TypeError("Value must contain strict JSON enumerable indexed data properties");
+                }
+                defineData(result, String(index), copy(descriptor.value, active, omitUndefinedProperties));
+            }
+            return result;
+        }
+        const prototype = Object.getPrototypeOf(value);
+        if (prototype !== Object.prototype && prototype !== null) {
+            throw new TypeError("Value must contain strict JSON plain objects or arrays");
+        }
+        const result = Object.create(prototype);
+        for (const key of Reflect.ownKeys(value)) {
+            if (typeof key === "symbol")
+                throw new TypeError("Value contains a symbol key and is not strict JSON");
+            const descriptor = Object.getOwnPropertyDescriptor(value, key);
+            if (!descriptor.enumerable || !("value" in descriptor)) {
+                throw new TypeError("Value must contain strict JSON enumerable data properties");
+            }
+            if (descriptor.value === undefined && omitUndefinedProperties)
+                continue;
+            defineData(result, key, copy(descriptor.value, active, omitUndefinedProperties));
+        }
+        return result;
+    }
+    finally {
+        active.delete(value);
+    }
+}
+function defineData(target, key, value) {
+    DATA_DESCRIPTOR.value = value;
+    Object.defineProperty(target, key, DATA_DESCRIPTOR);
+    DATA_DESCRIPTOR.value = undefined;
+}
 /** Return whether a value is finite strict JSON with plain objects and no cycles. */
 export function isJsonValue(value) {
-    return check(value, new Set(), 0);
+    return check(value, new Set());
 }
-function check(value, ancestors, depth) {
-    if (depth > 512)
-        return false;
+function check(value, ancestors) {
     if (value === null || typeof value === "string" || typeof value === "boolean")
         return true;
     if (typeof value === "number")
         return Number.isFinite(value);
     if (Array.isArray(value)) {
+        if (Object.getPrototypeOf(value) !== Array.prototype)
+            return false;
         const keys = Reflect.ownKeys(value);
         if (keys.length !== value.length + 1 || keys.some((key) => typeof key !== "string"))
             return false;
@@ -22,7 +89,7 @@ function check(value, ancestors, depth) {
                 if (descriptor === undefined ||
                     !descriptor.enumerable ||
                     !("value" in descriptor) ||
-                    !check(descriptor.value, ancestors, depth + 1)) {
+                    !check(descriptor.value, ancestors)) {
                     return false;
                 }
             }
@@ -44,7 +111,7 @@ function check(value, ancestors, depth) {
     ancestors.add(value);
     try {
         for (const descriptor of Object.values(Object.getOwnPropertyDescriptors(value))) {
-            if (!descriptor.enumerable || !("value" in descriptor) || !check(descriptor.value, ancestors, depth + 1)) {
+            if (!descriptor.enumerable || !("value" in descriptor) || !check(descriptor.value, ancestors)) {
                 return false;
             }
         }

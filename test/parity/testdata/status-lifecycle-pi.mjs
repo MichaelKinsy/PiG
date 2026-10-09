@@ -42,9 +42,14 @@ try {
         };
         const m = Object.assign(Object.create(InteractiveMode.prototype), {
           isInitialized: true,
+          // Pi 1.1.0's InteractiveMode.handleEvent reports program status (OSC 7501) through this reporter.
+          programStatus: { handleEvent() {} },
           footer: { invalidate() {} },
+          programStatus: { handleEvent() {} },
           runtimeHost: { session: { settingsManager: { getShowTerminalProgress: () => false } } },
           options: { tuiMode: mode },
+          // Pi 1.1.0 forwards every agent event to the OSC 7501 reporter (interactive-mode.ts handleEvent).
+          programStatus: { handleEvent() {} },
           ui: { requestRender() {}, getClearOnShrink: () => clearOnShrink },
           chatContainer: new Container(),
           statusContainer: new Container(),

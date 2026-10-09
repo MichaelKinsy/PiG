@@ -149,6 +149,8 @@ type ExecuteToolOutcome struct {
 	ToolCall ai.ToolCall     `json:"toolCall"`
 	Result   json.RawMessage `json:"result"`
 	IsError  bool            `json:"isError"`
+	// DurationMs is the milliseconds execute() took, measured with a monotonic clock; absent when the tool did not run. upstream: agent/src/types.ts:454 AgentToolCallOutcome.durationMs
+	DurationMs *int64 `json:"durationMs,omitempty"`
 }
 
 // CallGetCallableTools (ext→host) lists the tools ctx.executeTool can call at the moment of the call (runner.ts:958-961). The result is a CallableToolsResult.
@@ -169,11 +171,13 @@ const RequestPrepareArguments = "tool_prepare_arguments"
 // RequestPrepareLoadout (host→ext) runs a tool's prepareLoadout. RequestPayload.Tool names the tool and Args is a ToolLoadoutPayload; the response is an extension.ToolLoadoutChanges, or null for no changes.
 const RequestPrepareLoadout = "tool_prepare_loadout"
 
-// ToolLoadoutPayload is upstream's ToolLoadout as JSON. Exposures and Namespaces answer getExposure and getNamespace for every registered tool.
+// ToolLoadoutPayload is upstream's ToolLoadout as JSON. Exposures, Namespaces and PromptGuidelines answer getExposure, getNamespace and getPromptGuidelines for every registered tool.
 type ToolLoadoutPayload struct {
 	Declared   []extension.AgentTool               `json:"declared"`
 	Callable   []extension.AgentTool               `json:"callable"`
 	Registered []extension.AgentTool               `json:"registered"`
 	Exposures  map[string]extension.ToolExposure   `json:"exposures"`
 	Namespaces map[string]*extension.ToolNamespace `json:"namespaces,omitempty"`
+	// PromptGuidelines lists the guidelines of each registered tool that has any.
+	PromptGuidelines map[string][]string `json:"promptGuidelines,omitempty"`
 }

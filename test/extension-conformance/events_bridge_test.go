@@ -91,7 +91,9 @@ func busSpec(language, isolation, name string, listeners ...busListenerAt) busFi
 }
 
 // A node emitter reaches a native listener, and the native listener's own emit reaches a node observer. The observer's line carries the value the listener computed from the payload, so no fallback can produce it (event-bus.ts:15-17).
+// ExtensionAPI.events is the shared EventBus (packages/coding-agent/src/core/extensions/types.ts:1889).
 func TestNativeEventBusNodeEmitterReachesListenerAndItsEcho(t *testing.T) {
+	requireEventsMember(t)
 	eachBusRealm(t, true, func(t *testing.T, language, isolation string) {
 		rig := newBusRig(t,
 			busSpec("node", isolation, "emitter"),

@@ -282,11 +282,11 @@ func parseXaiDeviceCode(body xaiBody) (xaiDeviceCode, error) {
 // xaiValidateHTTPSURL forces the browser verification URI to be https so a
 // malicious response cannot make the launcher open an untrusted scheme.
 func xaiValidateHTTPSURL(raw string) (string, error) {
-	u, err := url.Parse(raw)
-	if err != nil || u.Scheme != "https" || u.Host == "" {
+	href, ok := trustedURLHref(raw, true)
+	if !ok {
 		return "", errors.New("Untrusted verification URI in xAI OAuth response")
 	}
-	return u.String(), nil
+	return href, nil
 }
 
 func xaiRequestFailure(action string, status int, body xaiBody) error {

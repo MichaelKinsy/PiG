@@ -34,7 +34,7 @@ func newBoundaryHarness(t *testing.T, opts harnessOptions, responses ...scripted
 	runner := h.session.currentRunner()
 	runner.BindCore(extension.ExtensionActions{SendMessage: h.session.SendMessage, SendUserMessage: func(content any, options *extension.SendUserMessageOptions) error {
 		return h.session.SendExtensionUserMessage(content, options)
-	}}, extension.ContextActions{IsIdle: h.session.IsIdle, HasPendingMessages: h.session.HasPendingMessages, Abort: h.session.RequestAbort, SessionManager: h.session}, nil)
+	}}, extension.ContextActions{IsIdle: h.session.IsIdle, HasPendingMessages: h.session.HasPendingMessages, Abort: h.session.RequestAbort, SessionManager: h.session.inner}, nil)
 	return h
 }
 
@@ -71,7 +71,7 @@ func boundaryRecord(t *testing.T, h *recoveryHarness, site int, name string) {
 
 func boundaryPrompt(t *testing.T, h *recoveryHarness, text string) {
 	t.Helper()
-	if _, err := h.session.Prompt(t.Context(), text, nil); err != nil {
+	if err := h.session.Prompt(t.Context(), text, nil); err != nil {
 		t.Fatal(err)
 	}
 	if err := h.session.FlushEvents(t.Context()); err != nil {
@@ -117,8 +117,8 @@ func boundaryLastUser(t *testing.T, h *recoveryHarness) string {
 	t.Helper()
 	entries := h.session.Inner().GetBranch()
 	for _, entry := range slices.Backward(entries) {
-		if message, ok := entry.AsMessage(); ok && message.Message.User != nil {
-			return entry.Base.ID
+		if message, ok := entry.(icodingagent.MessageEntry); ok && message.Message.User != nil {
+			return entry.Base().ID
 		}
 	}
 	t.Error("missing user entry")

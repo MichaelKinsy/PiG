@@ -10,9 +10,11 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/codingagent"
 )
 
-type emptyBranch struct{}
+type emptyBranch struct {
+	extension.ReadonlySessionManager
+}
 
-func (emptyBranch) GetBranch() []codingagent.SessionEntry { return nil }
+func (emptyBranch) GetBranch(fromID ...string) []codingagent.SessionEntry { return nil }
 
 // Upstream execute.ts:298-301 calls `options.appendEntry` (index.ts:35 binds it to pi.appendEntry) without a catch, so a failing append rejects the tool's execute with that error as it is; the agent loop reports its message.
 func TestStoreAppendFailureRejectsWithTheAppendError(t *testing.T) {

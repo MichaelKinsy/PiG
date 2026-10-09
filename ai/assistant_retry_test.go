@@ -1,5 +1,7 @@
 package ai
 
+// pi: packages/coding-agent/src/utils/sleep.ts
+
 import (
 	"context"
 	"errors"
@@ -40,6 +42,9 @@ func TestIsRetryableAssistantErrorClassification(t *testing.T) {
 		{"matches DNS transport failure wording/ENOTFOUND", "connect ENOTFOUND api.example.com"},
 		{"matches DNS transport failure wording/EAI_AGAIN", "EAI_AGAIN api.example.com"},
 		{"matches DNS transport failure wording/getaddrinfo", "getaddrinfo failed for api.example.com"},
+		// .upstream/v1.0.4/packages/ai/test/retry.test.ts:65 (both rows, #10379)
+		{"matches HTTP/2 pending stream cancellation/bare", "The pending stream has been canceled"},
+		{"matches HTTP/2 pending stream cancellation/caused by", "The pending stream has been canceled (caused by: socket closed)"},
 		// .upstream/v0.87.1/packages/ai/test/retry.test.ts:65
 		{"matches OpenAI Responses streams that end before terminal events", "OpenAI Responses stream ended before a terminal response event"},
 		// .upstream/v0.87.1/packages/ai/test/retry.test.ts:73
@@ -74,18 +79,18 @@ func TestIsRetryableAssistantErrorClassification(t *testing.T) {
 	}
 }
 
-// .upstream/v0.87.1/packages/ai/test/retry.test.ts:108 — caps agent retry delay.
+// packages/ai/test/retry.test.ts:128 (retryDelayMs) — caps agent retry delay.
 func TestRetryDelayMsCapsAgentRetryDelay(t *testing.T) {
-	if got := RetryDelayMs(2000, nil, 6); got != 60000 {
+	if got := RetryDelayMs(RetryPolicy{BaseDelayMs: 2000}, 6); got != 60000 {
 		t.Fatalf("default cap = %d", got)
 	}
-	if got := RetryDelayMs(2000, new(5000), 5); got != 5000 {
+	if got := RetryDelayMs(RetryPolicy{BaseDelayMs: 2000, MaxAgentDelayMs: new(5000)}, 5); got != 5000 {
 		t.Fatalf("explicit cap = %d", got)
 	}
-	if got := RetryDelayMs(2000, new(0), 5); got != 0 {
+	if got := RetryDelayMs(RetryPolicy{BaseDelayMs: 2000, MaxAgentDelayMs: new(0)}, 5); got != 0 {
 		t.Fatalf("zero cap = %d", got)
 	}
-	if got := RetryDelayMs(1<<40, new(maxSafeInteger), 40); got != maxSafeInteger {
+	if got := RetryDelayMs(RetryPolicy{BaseDelayMs: 1 << 40, MaxAgentDelayMs: new(maxSafeInteger)}, 40); got != maxSafeInteger {
 		t.Fatalf("saturated delay = %d", got)
 	}
 }
@@ -367,7 +372,7 @@ func TestRetryDelayMsUsesSafeIntegerMagnitude(t *testing.T) {
 		{-2, 1025, maxSafeInteger},
 		{2, -1 << 63, 2},
 	} {
-		if got := RetryDelayMs(test.base, new(maxSafeInteger), test.attempt); got != test.want {
+		if got := RetryDelayMs(RetryPolicy{BaseDelayMs: test.base, MaxAgentDelayMs: new(maxSafeInteger)}, test.attempt); got != test.want {
 			t.Errorf("base=%d attempt=%d delay=%d want=%d", test.base, test.attempt, got, test.want)
 		}
 	}

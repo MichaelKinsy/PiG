@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math"
 	"sync"
 	"time"
 
@@ -42,22 +43,24 @@ type finalizedToolCall struct {
 // toolCtx is the context tools and tool hooks run under: the run's context
 // carrying the session state tools may export.
 func (r *loopRun) toolCtx() context.Context {
-	return WithToolEnvironment(r.ctx, r.a.toolEnvironment(r.model, r.thinking))
+	ctx := WithToolEnvironment(r.ctx, r.h.toolEnvironment(r.model, r.thinking))
+	return ctx
 }
 
 // executeToolCalls runs a batch sequentially when the loop is configured for
 // sequential execution or any call targets a tool whose ExecutionMode is
 // sequential; otherwise in parallel.
-func (r *loopRun) executeToolCalls(calls []pendingToolCall) executedToolCallBatch {
-	if r.cfg.toolExecution == ToolModeSequential || r.hasSequentialToolCall(calls) {
-		return r.executeToolCallsSequential(calls)
+func (r *loopRun) executeToolCalls(assistant *AssistantMessage, calls []pendingToolCall) executedToolCallBatch {
+	ctx := WithToolCallHookContext(r.toolCtx(), r.toolCallHookContext(assistant))
+	if r.h.cfg.ToolExecution == ToolModeSequential || r.hasSequentialToolCall(calls) {
+		return r.executeToolCallsSequential(ctx, calls)
 	}
-	return r.executeToolCallsParallel(calls)
+	return r.executeToolCallsParallel(ctx, calls)
 }
 
 func (r *loopRun) hasSequentialToolCall(calls []pendingToolCall) bool {
 	for _, call := range calls {
-		if tool := r.a.findTool(call.name); tool != nil && tool.ExecutionMode() == ToolModeSequential {
+		if tool := r.h.findTool(call.name); tool != nil && tool.ExecutionMode() == ToolModeSequential {
 			return true
 		}
 	}
@@ -67,19 +70,22 @@ func (r *loopRun) hasSequentialToolCall(calls []pendingToolCall) bool {
 // executeToolCallsSequential prepares, executes, and finalizes each call
 // before the next one starts, emitting each call's tool-result message as soon
 // as the call is finalized.
-func (r *loopRun) executeToolCallsSequential(calls []pendingToolCall) executedToolCallBatch {
-	ctx := r.toolCtx()
+func (r *loopRun) executeToolCallsSequential(ctx context.Context, calls []pendingToolCall) executedToolCallBatch {
 	finalized := make([]finalizedToolCall, 0, len(calls))
 	messages := make([]ToolResultMessage, 0, len(calls))
 	for _, call := range calls {
-		r.a.emitToolExecutionStart(call)
+		r.h.emitToolExecutionStart(call)
 		var f finalizedToolCall
-		if outcome := r.a.prepareToolCall(ctx, call); outcome.prepared != nil {
-			f = r.a.finalizeExecutedToolCall(ctx, *outcome.prepared, r.a.executePreparedToolCall(ctx, *outcome.prepared))
+		if outcome := r.h.prepareToolCall(ctx, call); outcome.prepared != nil {
+			executed, err := r.h.executePreparedToolCall(ctx, *outcome.prepared)
+			if err != nil {
+				panic(runFailure{err: err})
+			}
+			f = r.h.finalizeExecutedToolCall(ctx, *outcome.prepared, executed)
 		} else {
 			f = *outcome.finalized
 		}
-		r.a.emitToolExecutionEnd(f)
+		r.h.emitToolExecutionEnd(f)
 		messages = append(messages, r.appendToolResult(f))
 		finalized = append(finalized, f)
 		if ctx.Err() != nil {
@@ -100,13 +106,12 @@ func (r *loopRun) executeToolCallsSequential(calls []pendingToolCall) executedTo
 // prefix — including a file-mutation-queue registration — in call order,
 // before any call's async work begins, and Go's per-call goroutines below
 // have no equivalent guarantee on their own (see QueueOrderable).
-func (r *loopRun) executeToolCallsParallel(calls []pendingToolCall) executedToolCallBatch {
-	ctx := r.toolCtx()
+func (r *loopRun) executeToolCallsParallel(ctx context.Context, calls []pendingToolCall) executedToolCallBatch {
 	outcomes := make([]toolCallOutcome, 0, len(calls))
 	callCtxs := make([]context.Context, 0, len(calls))
 	for _, call := range calls {
-		r.a.emitToolExecutionStart(call)
-		outcome := r.a.prepareToolCall(ctx, call)
+		r.h.emitToolExecutionStart(call)
+		outcome := r.h.prepareToolCall(ctx, call)
 		callCtx := ctx
 		if outcome.prepared != nil {
 			if orderer, ok := outcome.prepared.tool.(QueueOrderable); ok {
@@ -116,7 +121,7 @@ func (r *loopRun) executeToolCallsParallel(calls []pendingToolCall) executedTool
 			}
 		}
 		if outcome.finalized != nil {
-			r.a.emitToolExecutionEnd(*outcome.finalized)
+			r.h.emitToolExecutionEnd(*outcome.finalized)
 		}
 		outcomes = append(outcomes, outcome)
 		callCtxs = append(callCtxs, callCtx)
@@ -127,6 +132,8 @@ func (r *loopRun) executeToolCallsParallel(calls []pendingToolCall) executedTool
 
 	finalized := make([]finalizedToolCall, len(outcomes))
 	var wg sync.WaitGroup
+	var failureMu sync.Mutex
+	var failure error
 	for i, outcome := range outcomes {
 		if outcome.prepared == nil {
 			finalized[i] = *outcome.finalized
@@ -136,10 +143,22 @@ func (r *loopRun) executeToolCallsParallel(calls []pendingToolCall) executedTool
 		// Pi awaits Promise.all over every prepared call, so all calls run at
 		// once. A CPU-count cap would serialize I/O-bound tools on small machines.
 		wg.Go(func() {
-			finalized[i] = r.a.runPreparedToolCall(callCtx, *outcome.prepared)
+			var err error
+			finalized[i], err = r.h.runPreparedToolCall(callCtx, *outcome.prepared)
+			if err != nil {
+				failureMu.Lock()
+				if failure == nil {
+					failure = err
+				}
+				failureMu.Unlock()
+			}
 		})
 	}
 	wg.Wait()
+	// Promise.all rejects with the first rejected call; the run fails on its own goroutine once every call has settled.
+	if failure != nil {
+		panic(runFailure{err: failure})
+	}
 
 	messages := make([]ToolResultMessage, 0, len(finalized))
 	for _, f := range finalized {
@@ -149,8 +168,9 @@ func (r *loopRun) executeToolCallsParallel(calls []pendingToolCall) executedTool
 }
 
 // runPreparedToolCall executes and finalizes one call of a parallel batch,
-// then emits its tool_execution_end.
-func (a *Agent) runPreparedToolCall(ctx context.Context, prepared preparedToolCall) finalizedToolCall {
+// then emits its tool_execution_end. It runs on its own goroutine, so a sink
+// failure is returned for the run to raise.
+func (h *loopHost) runPreparedToolCall(ctx context.Context, prepared preparedToolCall) (finalizedToolCall, error) {
 	var finalized finalizedToolCall
 	if ctx.Err() != nil {
 		// This call never reaches Execute, so a mutation ticket reserved for
@@ -170,10 +190,13 @@ func (a *Agent) runPreparedToolCall(ctx context.Context, prepared preparedToolCa
 		}
 		finalized = immediateToolCall(prepared.call, errorToolResult("Operation aborted"))
 	} else {
-		finalized = a.finalizeExecutedToolCall(ctx, prepared, a.executePreparedToolCall(ctx, prepared))
+		executed, err := h.executePreparedToolCall(ctx, prepared)
+		if err != nil {
+			return finalizedToolCall{}, err
+		}
+		finalized = h.finalizeExecutedToolCall(ctx, prepared, executed)
 	}
-	a.emitToolExecutionEnd(finalized)
-	return finalized
+	return finalized, h.deliver(toolExecutionEndEvent(finalized))
 }
 
 // failToolCallsFromTruncatedMessage fails every tool call of an assistant
@@ -183,10 +206,10 @@ func (a *Agent) runPreparedToolCall(ctx context.Context, prepared preparedToolCa
 func (r *loopRun) failToolCallsFromTruncatedMessage(calls []pendingToolCall) executedToolCallBatch {
 	messages := make([]ToolResultMessage, 0, len(calls))
 	for _, call := range calls {
-		r.a.emitToolExecutionStart(call)
+		r.h.emitToolExecutionStart(call)
 		finalized := immediateToolCall(call, errorToolResult(`Tool call "`+call.name+
 			`" was not executed: the response hit the output token limit, so its arguments may be truncated. Re-issue the tool call with complete arguments.`))
-		r.a.emitToolExecutionEnd(finalized)
+		r.h.emitToolExecutionEnd(finalized)
 		messages = append(messages, r.appendToolResult(finalized))
 	}
 	return executedToolCallBatch{messages: messages}
@@ -227,7 +250,7 @@ func errorToolResult(message string) AgentToolResult {
 	return AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: message}}, Details: map[string]any{}}
 }
 
-func (a *Agent) findTool(name string) AgentTool { return findTool(a.toolList(), name) }
+func (h *loopHost) findTool(name string) AgentTool { return findTool(h.tools(), name) }
 
 func findTool(tools []AgentTool, name string) AgentTool {
 	for _, t := range tools {
@@ -238,9 +261,9 @@ func findTool(tools []AgentTool, name string) AgentTool {
 	return nil
 }
 
-// toolCallHooks is the hook set every tool call of this agent runs through.
-func (a *Agent) toolCallHooks() ToolCallHooks {
-	return ToolCallHooks{BeforeToolCall: a.opts.BeforeToolCall, AfterToolCall: a.opts.AfterToolCall, PrepareToolResult: a.opts.PrepareToolResult}
+// toolCallHooks is the hook set every tool call of this run goes through.
+func (h *loopHost) toolCallHooks() ToolCallHooks {
+	return ToolCallHooks{BeforeToolCall: h.cfg.BeforeToolCall, AfterToolCall: h.cfg.AfterToolCall, BeforeToolCallHooks: h.cfg.BeforeToolCallHooks, AfterToolCallHooks: h.cfg.AfterToolCallHooks, PrepareToolResult: h.cfg.PrepareToolResult}
 }
 
 // prepareToolCall looks the tool up, prepares and validates the arguments,
@@ -248,8 +271,8 @@ func (a *Agent) toolCallHooks() ToolCallHooks {
 // validated arguments, arguments a hook returns execute without
 // revalidation, and a panic while preparing becomes an error result the way
 // upstream's catch turns a thrown error into one.
-func (a *Agent) prepareToolCall(ctx context.Context, call pendingToolCall) toolCallOutcome {
-	return prepareToolCall(ctx, a.toolList(), a.toolCallHooks(), call)
+func (h *loopHost) prepareToolCall(ctx context.Context, call pendingToolCall) toolCallOutcome {
+	return prepareToolCall(ctx, h.tools(), h.toolCallHooks(), call)
 }
 
 // prepareToolCall resolves the call against tools; see Agent.prepareToolCall.
@@ -277,14 +300,14 @@ func prepareToolCall(ctx context.Context, tools []AgentTool, hooks ToolCallHooks
 	}
 	var validationErr error
 	if schemaTool, ok := tool.(interface{ ArgumentSchema() json.RawMessage }); ok {
-		args, validationErr = validateToolArgsSchema(call.name, schemaTool.ArgumentSchema(), args)
+		args, validationErr = ai.ValidateToolArgumentsJSON(call.name, schemaTool.ArgumentSchema(), args)
 	} else {
-		args, validationErr = validateToolArgs(call.name, tool.Schema().Parameters, args)
+		args, validationErr = ai.ValidateToolArgumentsSchema(call.name, tool.Schema().Parameters, args)
 	}
 	if validationErr != nil {
 		return immediateOutcome(call, errorToolResult(validationErr.Error()))
 	}
-	for _, hook := range hooks.BeforeToolCall {
+	for _, hook := range hooks.before() {
 		hookResult := hook(ctx, call.id, call.name, args)
 		if ctx.Err() != nil {
 			return immediateOutcome(call, errorToolResult("Operation aborted"))
@@ -310,19 +333,23 @@ func prepareToolCall(ctx context.Context, tools []AgentTool, hooks ToolCallHooks
 
 // executePreparedToolCall runs the tool for the loop: every accepted update
 // becomes a tool_execution_update event, and the call's duration is recorded.
-func (a *Agent) executePreparedToolCall(ctx context.Context, prepared preparedToolCall) finalizedToolCall {
+// Updates may arrive on the tool's goroutines, so a sink failure is returned
+// once the call settled, as upstream's awaited update promises reject the call.
+func (h *loopHost) executePreparedToolCall(ctx context.Context, prepared preparedToolCall) (finalizedToolCall, error) {
 	rawArgs := json.RawMessage(prepared.call.args.String())
-	executed, _ := executePreparedToolCall(ctx, prepared, func(partial AgentToolResult) error {
-		a.emit(ToolExecutionUpdateEvent{
+	executed, err := executePreparedToolCall(ctx, prepared, func(partial AgentToolResult) error {
+		return h.deliver(ToolExecutionUpdateEvent{
 			ToolCallID:    prepared.call.id,
 			ToolName:      prepared.call.name,
 			PartialResult: partial,
 			Args:          rawArgs,
 		})
-		return nil
 	})
-	a.timings.RecordTool(prepared.call.name, executed.duration)
-	return executed
+	if err != nil {
+		return finalizedToolCall{}, err
+	}
+	h.timings.RecordTool(prepared.call.name, executed.duration)
+	return executed, nil
 }
 
 // executePreparedToolCall runs the tool. Progress updates are accepted only
@@ -359,11 +386,12 @@ func executePreparedToolCall(ctx context.Context, prepared preparedToolCall, onU
 
 	start := time.Now()
 	result, err := executeTool(ctx, prepared, sink)
+	// upstream: agent-loop.ts:841-846 reads elapsed() before it awaits the update events.
+	duration := time.Since(start)
 	mu.Lock()
 	accepting = false
 	mu.Unlock()
 	inflight.Wait()
-	duration := time.Since(start)
 	mu.Lock()
 	rejection := firstRejection
 	mu.Unlock()
@@ -411,8 +439,8 @@ func runAfterToolCallHook(ctx context.Context, hook AfterToolCallHook, prepared 
 	return hook(ctx, prepared.call.id, prepared.call.name, prepared.args, result), "", true
 }
 
-func (a *Agent) finalizeExecutedToolCall(ctx context.Context, prepared preparedToolCall, executed finalizedToolCall) finalizedToolCall {
-	return finalizeExecutedToolCall(ctx, a.toolCallHooks(), prepared, executed)
+func (h *loopHost) finalizeExecutedToolCall(ctx context.Context, prepared preparedToolCall, executed finalizedToolCall) finalizedToolCall {
+	return finalizeExecutedToolCall(ctx, h.toolCallHooks(), prepared, executed)
 }
 
 // finalizeExecutedToolCall applies the after hooks' overrides field by field.
@@ -429,7 +457,7 @@ func (a *Agent) finalizeExecutedToolCall(ctx context.Context, prepared preparedT
 // undefined does.
 func finalizeExecutedToolCall(ctx context.Context, hooks ToolCallHooks, prepared preparedToolCall, executed finalizedToolCall) finalizedToolCall {
 	result, isError := executed.result, executed.isError
-	for _, hook := range hooks.AfterToolCall {
+	for _, hook := range hooks.after() {
 		seen := result
 		seen.IsError = isError
 		override, message, ok := runAfterToolCallHook(ctx, hook, prepared, seen)
@@ -493,16 +521,29 @@ func isNullishJSON(raw json.RawMessage) bool {
 	return len(raw) == 0 || string(bytes.TrimSpace(raw)) == "null"
 }
 
-func (a *Agent) emitToolExecutionStart(call pendingToolCall) {
+func (h *loopHost) emitToolExecutionStart(call pendingToolCall) {
 	label := ""
-	if tool := a.findTool(call.name); tool != nil {
+	if tool := h.findTool(call.name); tool != nil {
 		label = tool.Label()
 	}
-	a.emit(ToolExecutionStartEvent{ToolCallID: call.id, ToolName: call.name, ToolLabel: label, Args: json.RawMessage(call.args.String())})
+	h.emit(ToolExecutionStartEvent{ToolCallID: call.id, ToolName: call.name, ToolLabel: label, Args: json.RawMessage(call.args.String())})
 }
 
-func (a *Agent) emitToolExecutionEnd(finalized finalizedToolCall) {
-	a.emit(ToolExecutionEndEvent{ToolCallID: finalized.call.id, ToolName: finalized.call.name, Result: finalized.result, IsError: finalized.isError, Duration: finalized.duration})
+func (h *loopHost) emitToolExecutionEnd(finalized finalizedToolCall) {
+	h.emit(toolExecutionEndEvent(finalized))
+}
+
+func toolExecutionEndEvent(finalized finalizedToolCall) ToolExecutionEndEvent {
+	return ToolExecutionEndEvent{ToolCallID: finalized.call.id, ToolName: finalized.call.name, Result: finalized.result, IsError: finalized.isError, DurationMs: finalized.durationMs()}
+}
+
+// durationMs is upstream's durationMs on a finalized outcome: the milliseconds execute() took, rounded like Math.round, and
+// absent when the tool did not run. upstream: agent-loop.ts:826-852,908
+func (f finalizedToolCall) durationMs() *int64 {
+	if !f.executed {
+		return nil
+	}
+	return new(int64(math.Round(float64(f.duration) / float64(time.Millisecond))))
 }
 
 // appendToolResult emits a finalized call's tool-result message and records it.
@@ -527,6 +568,7 @@ func createToolResultMessage(finalized finalizedToolCall, timestamp int64) ToolR
 		DetailsNull: result.DetailsNull(),
 		Usage:       result.Usage,
 		IsError:     finalized.isError,
+		DurationMs:  finalized.durationMs(),
 		Timestamp:   timestamp,
 	}
 }

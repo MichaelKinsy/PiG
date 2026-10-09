@@ -20,11 +20,10 @@ type interactiveRunPrompt struct {
 // prepareRunPrompt is the before_agent_start step of Pi's prompt() (agent-session.ts:1700-1748) for one turn. It emits the event with the base options, resolves the result with the Session's rule, applies an edited tool loadout, queues the returned messages and installs the run's prompt. An error rejects the prompt before the run starts.
 func (m *InteractiveMode) prepareRunPrompt(ctx context.Context, runner *inproc.Runner, gen uint64, prompt string, images []ai.ImageContent) error {
 	base := *m.currentSystemPromptOptions()
-	text := m.baseSystemPrompt()
 	var combined *extension.BeforeAgentStartCombinedResult
 	if runner != nil {
 		var err error
-		combined, err = runner.EmitBeforeAgentStart(ctx, prompt, extensionImages(images), text, base)
+		combined, err = runner.EmitBeforeAgentStart(ctx, prompt, images, base)
 		if err != nil {
 			return err
 		}
@@ -113,7 +112,17 @@ func (m *InteractiveMode) beginRunPrompt(gen uint64, run BeforeAgentStartRun) er
 	if m.agent != nil {
 		m.agent.SetSystemPrompt(text)
 	}
+	m.publishRunPrompt(&run)
 	return nil
+}
+
+// publishRunPrompt hands the run to the Session, whose request hooks append the run's prompt sections to the transcript
+// before the first request, as they do for a run the Session prepared. Nil ends the run. A mode without a Session has no
+// transcript hooks.
+func (m *InteractiveMode) publishRunPrompt(run *BeforeAgentStartRun) {
+	if session, ok := m.opts.SessionHandle.(interface{ SetRunPrompt(*BeforeAgentStartRun) }); ok {
+		session.SetRunPrompt(run)
+	}
 }
 
 // endRunPrompt clears the inputs of the run gen installed and forces the base prompt again, as agent-session.ts:1485 clears _runSystemPromptOptions before agent_settled. The loadout stays, as Pi keeps agent.state.tools. A newer run's inputs are left alone.
@@ -124,6 +133,7 @@ func (m *InteractiveMode) endRunPrompt(gen uint64) {
 		return
 	}
 	m.runPrompt = nil
+	m.publishRunPrompt(nil)
 	m.clearTurnSystemPrompt()
 	if m.agent != nil {
 		m.agent.SetSystemPrompt(m.baseSystemPrompt())
@@ -157,8 +167,8 @@ func (m *InteractiveMode) installRunPromptTurnRefresh() {
 		return
 	}
 	m.runPromptTurnAgent = target
-	previous := target.PrepareNextTurnHook()
-	target.SetPrepareNextTurn(func(ctx context.Context, turn agent.PrepareNextTurnContext) (*agent.AgentLoopTurnUpdate, error) {
+	previous := target.PrepareNextTurnWithContextHook()
+	target.SetPrepareNextTurnWithContext(func(ctx context.Context, turn agent.PrepareNextTurnContext) (*agent.AgentLoopTurnUpdate, error) {
 		var update *agent.AgentLoopTurnUpdate
 		if previous != nil {
 			var err error
@@ -212,6 +222,14 @@ func (m *InteractiveMode) renderRunPrompt(state *interactiveRunPrompt) (string, 
 }
 
 // hiddenDeclarations returns the tools whose declarations the Session's loadout hides from every request. A mode without a Session hides none.
+// hiddenDeclarationNames lists the hidden declarations in the order the Session's hooks hid them.
+func (m *InteractiveMode) hiddenDeclarationNames() []string {
+	if session, ok := m.opts.SessionHandle.(interface{ HiddenDeclarationNames() []string }); ok {
+		return session.HiddenDeclarationNames()
+	}
+	return HiddenToolNames(m.hiddenDeclarations())
+}
+
 func (m *InteractiveMode) hiddenDeclarations() map[string]struct{} {
 	if session, ok := m.opts.SessionHandle.(interface{ HiddenDeclarations() map[string]struct{} }); ok {
 		return session.HiddenDeclarations()

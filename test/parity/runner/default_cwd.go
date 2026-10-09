@@ -17,6 +17,8 @@ import (
 	"slices"
 	"strings"
 	"testing"
+
+	"github.com/MichaelKinsy/PiG/internal/testenv"
 )
 
 // Every driver copies its cwd fixture under a validated temporary root. Ancestor context discovery remains enabled in both binaries, so the root must be outside the checkout and have no discoverable ancestor context files.
@@ -148,11 +150,11 @@ const (
 
 // defaultCWDFixture returns test/parity/testdata/default-cwd.
 func defaultCWDFixture() string {
-	_, thisFile, _, ok := runtime.Caller(0)
-	if !ok {
+	dir, err := testenv.PackageDirPath()
+	if err != nil {
 		return filepath.Join("test/parity", "testdata", "default-cwd")
 	}
-	return filepath.Join(filepath.Dir(filepath.Dir(thisFile)), "testdata", "default-cwd")
+	return filepath.Join(filepath.Dir(dir), "testdata", "default-cwd")
 }
 
 // defaultCWD returns a fresh per-binary snapshot of the default cwd fixture.

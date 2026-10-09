@@ -50,7 +50,7 @@ func createQueueWaitingHarness(t *testing.T, ext extension.Extension) queueWaiti
 	ready := make(chan struct{})
 	readyPrompt := sync.OnceFunc(func() { close(ready) })
 	done := make(chan error, 1)
-	go func() { <-ready; _, err := h.session.Prompt(t.Context(), "start", nil); done <- err }()
+	go func() { <-ready; err := h.session.Prompt(t.Context(), "start", nil); done <- err }()
 	join := sync.OnceFunc(func() {
 		readyPrompt()
 		releaseTool()

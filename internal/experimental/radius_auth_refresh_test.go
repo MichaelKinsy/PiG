@@ -109,3 +109,45 @@ func TestRadiusAuthCachesRuntimeFailureAndDoesNotSelectDefaults(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+// upstream: packages/coding-agent/src/experimental/radius-auth.ts:47-49 asks the model runtime for an OAuth credential valid for at least 5 * 60_000 ms. A credential 4m30s from expiry is refreshed; one 5m30s from expiry is used as stored, so a shorter or longer threshold changes the gateway traffic.
+func TestRadiusAuthRefreshThresholdIsFiveMinutes(t *testing.T) {
+	for _, row := range []struct {
+		name      string
+		remaining time.Duration
+		refreshes int32
+		token     string
+	}{
+		{"4m30s remaining refreshes", 4*time.Minute + 30*time.Second, 1, "fresh-token"},
+		{"5m30s remaining is used as stored", 5*time.Minute + 30*time.Second, 0, "old-token"},
+	} {
+		t.Run(row.name, func(t *testing.T) {
+			var requests atomic.Int32
+			gateway := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				requests.Add(1)
+				w.Header().Set("Content-Type", "application/json")
+				_ = json.NewEncoder(w).Encode(map[string]any{"access_token": "fresh-token", "refresh_token": "refresh-new", "expires_in": 3600})
+			}))
+			defer gateway.Close()
+			dir := t.TempDir()
+			config, err := json.Marshal(map[string]any{"providers": map[string]any{"radius": map[string]any{"baseUrl": gateway.URL + "/v1", "oauth": "radius"}}})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := os.WriteFile(filepath.Join(dir, "models.json"), config, 0o600); err != nil {
+				t.Fatal(err)
+			}
+			store := ai.NewInMemoryAuthStorage(map[string]ai.Credential{"radius": {Type: ai.CredentialOAuth, Access: "old-token", Refresh: "refresh-old", Expires: time.Now().Add(row.remaining).UnixMilli()}})
+			resolver, err := NewRadiusRelayAuthResolver(RadiusRelayAuthOptions{Gateway: gateway.URL, CreateRuntime: func() (*codingagent.RequestAuthRuntime, error) {
+				return codingagent.NewRequestAuthRuntime(t.Context(), codingagent.RequestAuthRuntimeOptions{Credentials: store, AgentDir: dir})
+			}})
+			if err != nil {
+				t.Fatal(err)
+			}
+			auth, err := resolver.Resolve(t.Context(), true)
+			if err != nil || auth == nil || auth.Token != row.token || requests.Load() != row.refreshes {
+				t.Fatalf("resolve = %+v %v after %d gateway requests", auth, err, requests.Load())
+			}
+		})
+	}
+}

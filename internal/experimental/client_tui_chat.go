@@ -31,7 +31,7 @@ func LiveOf(view services.ConversationView) (harness.LiveState, error) {
 
 // decodeDocument decodes a built-in document of a view into out; an absent document leaves out empty.
 func decodeDocument(view services.ConversationView, kind string, out any) error {
-	document, present := view.Docs[kind]
+	document, present := view.Docs.Get(kind)
 	if !present {
 		return nil
 	}
@@ -59,7 +59,7 @@ type ExperimentalChatView struct {
 	// streamingCalls holds the call IDs whose cards the streaming answer created; its entry takes them over.
 	streamingCalls   map[string]struct{}
 	renderedEntryIds []durable.EntryId
-	streaming        *tui.AssistantMessageBlock
+	streaming        *tui.AssistantMessageComponent
 	indicator        *tui.Loader
 	stopIndicator    context.CancelFunc
 	statusText       string
@@ -139,7 +139,7 @@ func (view *ExperimentalChatView) Apply(conversation services.ConversationView) 
 		return err
 	}
 	var partial *agent.AssistantMessage
-	if generation := live.Generation; generation != nil && len(generation.Message) != 0 {
+	if generation := live.Generation; generation != nil && generation.Message != nil {
 		message, err := agentMessageOf(generation.Message)
 		if err != nil {
 			return err
@@ -239,7 +239,7 @@ func (view *ExperimentalChatView) syncQueue(inbox harness.InboxState) error {
 	for _, item := range inbox.Items {
 		var text string
 		if item.Mode == harness.InboxWrite {
-			kind, _ := item.Entry["kind"].(string)
+			kind, _ := item.Entry.Value("kind").(string)
 			text = "<" + kind + ">"
 		} else {
 			content, err := decodeInboxContent(item.Content)
@@ -248,7 +248,7 @@ func (view *ExperimentalChatView) syncQueue(inbox harness.InboxState) error {
 			}
 			text = collapseClientQueueWhitespace(userContentText(content))
 		}
-		view.PendingMessages.Add(tui.NewPaddedTruncatedText(view.theme().FgText("muted", "["+string(item.Mode)+"] "+text), 1, 0))
+		view.PendingMessages.Add(tui.NewTruncatedText(view.theme().Fg("muted", "["+string(item.Mode)+"] "+text), 1, 0))
 	}
 	return nil
 }
@@ -317,7 +317,7 @@ func (view *ExperimentalChatView) syncStatus(live harness.LiveState) {
 	if text == "" {
 		return
 	}
-	indicator := tui.NewStyledLoader(view.theme().Accent, view.theme().Muted, text, nil)
+	indicator := tui.NewLoader(nil, func(s string) string { return view.theme().Fg("accent", s) }, func(s string) string { return view.theme().Fg("muted", s) }, text, nil)
 	view.indicator = indicator
 	view.Status.Add(indicator)
 	view.startIndicator(indicator)
@@ -387,11 +387,11 @@ func (view *ExperimentalChatView) addEntry(entry durable.EntryRecord) error {
 	switch {
 	case entry.Kind == "pi.user" && message != nil && message.User != nil:
 		view.Transcript.Add(tui.NewSpacer(1))
-		view.Transcript.Add(tui.NewUserMessageBlock(userMessageText(*message)))
+		view.Transcript.Add(tui.NewUserMessageComponent(userMessageText(*message), nil, 1, nil))
 	case entry.Kind == "pi.assistant" && message != nil && message.Assistant != nil:
 		component := view.streaming
 		if component == nil {
-			component = tui.NewAssistantMessageBlock(false)
+			component = tui.NewAssistantMessageComponent(nil, false, nil, "", nil, nil)
 			view.Transcript.Add(component)
 		}
 		view.streaming = nil
@@ -425,17 +425,17 @@ func (view *ExperimentalChatView) addEntry(entry durable.EntryRecord) error {
 		}
 		view.updateResult(result.ToolCallID, card, result.Result(), false)
 	case entry.Kind == "pi.compaction":
-		view.addText(view.theme().FgText("muted", "[compaction]"))
+		view.addText(view.theme().Fg("muted", "[compaction]"))
 		if message != nil && message.User != nil {
 			view.addText(userMessageText(*message))
 		}
 	case entry.Kind == "pi.reset":
-		view.addText(view.theme().FgText("muted", "[new context]"))
+		view.addText(view.theme().Fg("muted", "[new context]"))
 	}
 	return nil
 }
 
-func applyClientAssistant(component *tui.AssistantMessageBlock, message *agent.AssistantMessage) {
+func applyClientAssistant(component *tui.AssistantMessageComponent, message *agent.AssistantMessage) {
 	segments := make([]tui.AssistantSegment, 0, len(message.Content))
 	hasToolCalls := false
 	for _, block := range message.Content {
@@ -456,7 +456,7 @@ func applyClientAssistant(component *tui.AssistantMessageBlock, message *agent.A
 
 func (view *ExperimentalChatView) syncStreaming(message *agent.AssistantMessage) error {
 	if view.streaming == nil {
-		view.streaming = tui.NewAssistantMessageBlock(false)
+		view.streaming = tui.NewAssistantMessageComponent(nil, false, nil, "", nil, nil)
 		view.Transcript.Add(view.streaming)
 	}
 	applyClientAssistant(view.streaming, message)
@@ -480,7 +480,7 @@ func (view *ExperimentalChatView) tool(name, id string, args any, hasArgs, fresh
 			if err != nil {
 				return nil, err
 			}
-			existing.Component.UpdateArgs(name, string(encoded))
+			existing.Component.UpdateArgs(encoded)
 		}
 		return existing, nil
 	}
@@ -500,36 +500,7 @@ func (view *ExperimentalChatView) tool(name, id string, args any, hasArgs, fresh
 
 func (view *ExperimentalChatView) updateResult(id string, card *codingagent.ToolRendererCard, result agent.AgentToolResult, partial bool) {
 	component := card.Component
-	component.SetResultValue(result)
-	component.ImageBlocks = nil
-	for _, block := range result.Content {
-		if image, ok := block.(ai.ImageContent); ok {
-			component.ImageBlocks = append(component.ImageBlocks, tui.ImageBlock{Data: image.Data, MIMEType: image.MimeType})
-		}
-	}
-	if partial {
-		component.SetStreaming(result.Text())
-	} else {
-		component.SetResult(result.Text(), result.IsError, 0)
-	}
-	requests := component.PendingKittyImageConversions()
-	for _, request := range requests {
-		view.startImageConversion(id, card, request)
-	}
-}
-
-func (view *ExperimentalChatView) startImageConversion(id string, card *codingagent.ToolRendererCard, request tui.KittyImageConversion) {
-	view.tasks.Go(func() {
-		if view.ctx.Err() != nil {
-			return
-		}
-		converted := codingagent.ConvertToPng(request.Data, request.MimeType)
-		view.recordTaskError(view.runOnMain(view.ctx, func() {
-			if view.tools[id] == card && card.Component.ApplyConvertedImage(request, converted) {
-				view.requestRender()
-			}
-		}))
-	})
+	component.UpdateResult(codingagent.ToolExecutionResultOf(result, 0), partial)
 }
 
 func (view *ExperimentalChatView) addText(text string) {

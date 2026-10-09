@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/ai"
+	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/durable"
 )
 
@@ -110,16 +111,16 @@ func TestGenerationRecovery(t *testing.T) {
 		sent := [][]string{}
 		timeouts := []*int{}
 		setup.Faux.SetResponses([]ai.FauxResponseStep{
-			ai.FauxFactoryStep(func(_ ai.TranscriptContext, options ai.StreamOptions, _ *ai.FauxProviderState, _ *ai.Model) (ai.FauxResponse, error) {
+			ai.FauxFactoryStep(func(_ ai.TranscriptContext, options ai.StreamOptions, _ *ai.FauxProviderState, _ *ai.Model) (ai.AssistantMessage, error) {
 				reached.resolve()
-				return ai.FauxResponse{}, abortedBy(options.Signal)
+				return ai.FauxResponse{}.AssistantMessage(), abortedBy(options.Signal)
 			}),
-			ai.FauxFactoryStep(func(request ai.TranscriptContext, options ai.StreamOptions, _ *ai.FauxProviderState, _ *ai.Model) (ai.FauxResponse, error) {
+			ai.FauxFactoryStep(func(request ai.TranscriptContext, options ai.StreamOptions, _ *ai.FauxProviderState, _ *ai.Model) (ai.AssistantMessage, error) {
 				mu.Lock()
 				sent = append(sent, roles(request.Messages()))
 				timeouts = append(timeouts, options.TimeoutMs)
 				mu.Unlock()
-				return ai.FauxResponse{Content: []ai.FauxContentBlock{ai.FauxText("answer")}}, nil
+				return ai.FauxResponse{Content: []ai.FauxContentBlock{ai.FauxText("answer")}}.AssistantMessage(), nil
 			}),
 		})
 		harness, root := openAt(t, path, setup)
@@ -144,7 +145,7 @@ func TestGenerationRecovery(t *testing.T) {
 		harness.Resume()
 		expectSettled(t, must(submissionOfHarness(t, harness, id).Wait(testContext)), durable.SubmissionDone, "")
 		mu.Lock()
-		expectEqualJSON(t, sent, `[["user","system"]]`)
+		expectEqualJSON(t, sent, `[["system","user"]]`)
 		expectEqualJSON(t, timeouts, `[1234]`)
 		mu.Unlock()
 		expectKinds(t, allEntries(t, root), "pi.user", "pi.system", "pi.assistant")
@@ -153,7 +154,7 @@ func TestGenerationRecovery(t *testing.T) {
 
 	t.Run("converts a committed partial into an aborted entry and resends the same messages", func(t *testing.T) {
 		path := filepath.Join(t.TempDir(), "session.sqlite")
-		slow := chatSetup(t, ai.FauxConfig{TokensPerSecond: 20, MinTokenSize: 1, MaxTokenSize: 1})
+		slow := chatSetup(t, ai.FauxConfig{TokensPerSecond: 20, TokenSize: &ai.FauxTokenSize{Min: new(1), Max: new(1)}})
 		slow.Faux.SetResponses([]ai.FauxResponseStep{fauxAnswer(strings.Repeat("z", 400))})
 		harness, root := openAt(t, path, slow)
 		harness.Resume()
@@ -162,9 +163,9 @@ func TestGenerationRecovery(t *testing.T) {
 		watched := ""
 		seen := false
 		watch.Start(func(_ context.Context, value durable.JsonObject, _ []durable.Op) error {
-			generation, _ := value["generation"].(map[string]any)
-			message, _ := generation["message"].(map[string]any)
-			if got, ok := messageText(t, message); ok {
+			generation, _ := value.Value("generation").(*delta.JsonObject)
+			message, _ := generation.Value("message").(*delta.JsonObject)
+			if got, ok := messageTextJSON(t, message); ok {
 				mu.Lock()
 				watched, seen = got, true
 				mu.Unlock()
@@ -182,11 +183,11 @@ func TestGenerationRecovery(t *testing.T) {
 		setup := chatSetup(t)
 		sent := [][]string{}
 		setup.Faux.SetResponses([]ai.FauxResponseStep{
-			ai.FauxFactoryStep(func(request ai.TranscriptContext, _ ai.StreamOptions, _ *ai.FauxProviderState, _ *ai.Model) (ai.FauxResponse, error) {
+			ai.FauxFactoryStep(func(request ai.TranscriptContext, _ ai.StreamOptions, _ *ai.FauxProviderState, _ *ai.Model) (ai.AssistantMessage, error) {
 				mu.Lock()
 				sent = append(sent, roles(request.Messages()))
 				mu.Unlock()
-				return ai.FauxResponse{Content: []ai.FauxContentBlock{ai.FauxText("answer")}}, nil
+				return ai.FauxResponse{Content: []ai.FauxContentBlock{ai.FauxText("answer")}}.AssistantMessage(), nil
 			}),
 		})
 		harness, root = openAt(t, path, setup)

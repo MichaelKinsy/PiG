@@ -21,7 +21,7 @@ func newRenderProxyRig(t *testing.T) (*renderProxyComponent, net.Conn, context.C
 	component := newRenderProxyComponent(
 		"fixture",
 		"notice",
-		extension.CustomMessageRef{CustomType: "notice", Content: "fallback body", Display: true},
+		extension.CustomMessage{CustomType: "notice", Content: "fallback body", Display: true},
 		extension.MessageRenderOptions{},
 		conn,
 		time.Second,
@@ -135,7 +135,7 @@ func TestRenderProxyExpandedStateRefreshesOffLoop(t *testing.T) {
 }
 
 func BenchmarkRenderProxyCached(b *testing.B) {
-	component := newRenderProxyComponent("fixture", "notice", nil, extension.MessageRenderOptions{}, nil, time.Second, nil)
+	component := newRenderProxyComponent("fixture", "notice", extension.CustomMessage{}, extension.MessageRenderOptions{}, nil, time.Second, nil)
 	component.width = 80
 	component.lines = []string{"cached renderer line"}
 	b.ReportAllocs()

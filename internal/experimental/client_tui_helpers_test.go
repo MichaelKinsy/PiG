@@ -28,7 +28,7 @@ func newClientTuiLoopbackServer(t *testing.T, serverId string, serverProvider, s
 			ids[i] = entry.ServiceId
 		}
 		binding, err := chord.CreateRemoteServiceBinding(chord.RemoteServiceBindingOptions{
-			Services: ids, Transport: chord.NewLoopbackTransport(provider), Unbound: true,
+			Services: chord.ServiceIDs(ids...), Transport: chord.NewLoopbackTransport(provider), Bound: new(false),
 			OnError: func(err error) { t.Errorf("loopback service binding: %v", err) },
 		})
 		if err != nil {
@@ -219,12 +219,15 @@ func resetEntry(id durable.EntryId) durable.EntryRecord {
 
 // conversationView is a view with the given entries and documents; a nil document is absent.
 func conversationView(entries []durable.EntryRecord, live *harness.LiveState, inbox *harness.InboxState) services.ConversationView {
-	docs := map[string]durable.JsonObject{}
-	for kind, document := range map[string]any{services.LiveDocKind: live, services.InboxDocKind: inbox} {
-		if reflect.ValueOf(document).IsNil() {
+	docs := harness.ViewDocs{}
+	for _, mounted := range []struct {
+		kind     string
+		document any
+	}{{services.LiveDocKind, live}, {services.InboxDocKind, inbox}} {
+		if reflect.ValueOf(mounted.document).IsNil() {
 			continue
 		}
-		docs[kind] = jsonObjectOf(document)
+		docs = harness.ViewDocsOf(docs, mounted.kind, jsonObjectOf(mounted.document))
 	}
 	return services.ConversationView{Conversation: durable.ConversationRecord{Id: durable.ROOT_CONVERSATION_ID}, Entries: entries, Docs: docs}
 }
@@ -242,5 +245,5 @@ func jsonObjectOf(value any) durable.JsonObject {
 }
 
 func generationOf(message ai.AssistantMessage) *harness.LiveGeneration {
-	return &harness.LiveGeneration{Message: jsonObjectOf(message)}
+	return &harness.LiveGeneration{Message: &message}
 }

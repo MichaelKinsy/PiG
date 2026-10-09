@@ -21,7 +21,7 @@ func TestAssistantMessageFrameProjectsToolScratchWithoutJSONRoundTrip(t *testing
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 			partial := frameSeed()
-			encoder := &AssistantMessageFrameEncoder{}
+			encoder := NewAssistantMessageFrameEncoder()
 			start := mustFrame(t, encoder, StartEvent{Partial: partial})
 			tool := ToolCall{ID: "call", Name: "run", Arguments: JsonObject{"nested": map[string]any{"value": "start"}, "customInput": "user argument"}, ThoughtSignature: "thought", Namespace: "tools", scratch: tc.scratch}
 			partial.Content = append(partial.Content, tool)
@@ -115,7 +115,7 @@ func BenchmarkAssistantMessageFrameToolProjection(b *testing.B) {
 	tool := message.Content[0].(ToolCall)
 	b.ReportAllocs()
 	for b.Loop() {
-		encoder := &AssistantMessageFrameEncoder{}
+		encoder := NewAssistantMessageFrameEncoder()
 		var frames []AssistantMessageFrame
 		for _, event := range []AssistantMessageEvent{StartEvent{Partial: message}, ToolCallStartEvent{ContentIndex: 0, Partial: message}, ToolCallEndEvent{ContentIndex: 0, ToolCall: tool, Partial: message}} {
 			frame, err := encoder.Encode(event)

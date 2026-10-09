@@ -1,5 +1,7 @@
 package codingagent
 
+// pi: packages/coding-agent/src/utils/clipboard-command.ts
+
 import (
 	"bytes"
 	"context"

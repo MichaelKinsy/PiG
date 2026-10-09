@@ -3,6 +3,8 @@
 
 package harness
 
+// pi: packages/durable/src/harness/scheduler.ts
+
 import (
 	"context"
 	"errors"
@@ -23,9 +25,8 @@ type tkNotes struct {
 
 func tkSessionNotes(kind string) durable.DocToken[tkNotes] {
 	return durable.DefineDoc(durable.DocDefinition[tkNotes]{
-		CommonDocDefinition: durable.CommonDocDefinition[tkNotes]{Kind: kind, Version: 1},
+		CommonDocDefinition: durable.CommonDocDefinition[tkNotes]{Kind: kind, Version: 1, Initial: func() tkNotes { return tkNotes{} }},
 		DocumentSemantics:   durable.DocumentSemantics{Scope: durable.ScopeSession},
-		Initial:             func() tkNotes { return tkNotes{} },
 	})
 }
 
@@ -104,6 +105,8 @@ func tkLastTaskWrites(storage *controlledStorage) []durable.TaskRecord[durable.J
 	return records
 }
 
+// Pi TaskRuntime.agent: packages/durable/src/types.ts:181.
+// Pi TaskRuntime.sleep: packages/durable/src/types.ts:229.
 func TestTaskRuntime(t *testing.T) {
 	t.Run("rejects runtime operations after the invocation ends and stops its watches", func(t *testing.T) {
 		notes := tkSessionNotes("test.task-notes")
@@ -129,7 +132,7 @@ func TestTaskRuntime(t *testing.T) {
 				if value == nil {
 					delivered.add("retired")
 				} else {
-					delivered.add(value["text"].(string))
+					delivered.add(value.Value("text").(string))
 				}
 				return nil
 			})
@@ -178,9 +181,8 @@ func TestTaskRuntime(t *testing.T) {
 
 	t.Run("reads committed documents and context through the runtime, and forwards the clock and reports", func(t *testing.T) {
 		notes := durable.DefineDoc(durable.DocDefinition[tkNotes]{
-			CommonDocDefinition: durable.CommonDocDefinition[tkNotes]{Kind: "test.runtime-notes", Version: 1},
+			CommonDocDefinition: durable.CommonDocDefinition[tkNotes]{Kind: "test.runtime-notes", Version: 1, Initial: func() tkNotes { return tkNotes{} }},
 			DocumentSemantics:   durable.DocumentSemantics{Scope: durable.ScopeConversation, History: durable.HistoryRewindable, Fork: durable.ForkAsOf},
-			Initial:             func() tkNotes { return tkNotes{} },
 		})
 		captured := &syncValue[stepRuntime]{}
 		seen := &syncList[any]{}
@@ -201,12 +203,12 @@ func TestTaskRuntime(t *testing.T) {
 				return err
 			}
 			seen.add(asOf.Text)
-			atFirst, err := runtime.Context(ctx, runtime.ConversationId(), &first)
+			atFirst, err := runtime.Context(ctx, runtime.ConversationId(), &durable.ContextOptions{At: &first})
 			if err != nil {
 				return err
 			}
 			seen.add(len(atFirst.Entries))
-			atSecond, err := runtime.Context(ctx, runtime.ConversationId(), &second)
+			atSecond, err := runtime.Context(ctx, runtime.ConversationId(), &durable.ContextOptions{At: &second})
 			if err != nil {
 				return err
 			}
@@ -425,6 +427,10 @@ func indexOf(text, fragment string) int {
 	return -1
 }
 
+// Pi source: packages/durable/src/errors.ts
+// mutation-checked: dropping the reads and writes of StorageRejected.Message fails it
+// TestTaskScheduling Conversation.waitForIdle resolves when the ordinary ownership scope has no live non-background task (packages/durable/src/harness/types.ts:546-550).
+// mutation-checked: Conversation.WaitForIdle returning without waiting fails it.
 func TestTaskScheduling(t *testing.T) {
 	t.Run("retries reservation on the next wakeup after a rejected reservation commit", func(t *testing.T) {
 		var runs atomic.Int32
@@ -1346,4 +1352,59 @@ func (reader *snapshotHook) Snapshot() durable.RegistrySnapshot {
 
 func (reader *snapshotHook) Subscribe(listener func()) func() {
 	return reader.registry.Subscribe(listener)
+}
+
+// scheduler.ts #seal sets #closing and aborts every invocation's controller in one synchronous turn, so a commit that
+// the closing flag rejects always finds its signal aborted; the tool progress writer relies on that to treat the
+// rejection as expected (tool.ts:327-328). Go observers run on other goroutines, so the flag and the abort must be
+// published together under the scheduler's lock.
+func TestTaskCloseAbortsHandlersBeforeClosingIsObservable(t *testing.T) {
+	reached := deferred()
+	var signal atomic.Pointer[context.Context]
+	running := tkOneStep("test.seal-order", func(_ context.Context, _ stepRecord, runtime stepRuntime) error {
+		current := runtime.Signal()
+		signal.Store(&current)
+		reached.resolve()
+		<-current.Done()
+		return nil
+	})
+	opened := tkOpenRoot(t, []durable.AnyTask{running})
+	tkStart(t, opened.root, running)
+	opened.harness.Resume()
+	if err := reached.wait(testContext); err != nil {
+		t.Fatal(err)
+	}
+	scheduler := opened.harness.(*harnessImpl).tasks
+	// Seal does its other work between publishing the flag and aborting; slowing it widens that gap without changing the order.
+	scheduler.mu.Lock()
+	unsubscribe := scheduler.unsubscribeRegistry
+	scheduler.unsubscribeRegistry = func() {
+		time.Sleep(20 * time.Millisecond)
+		unsubscribe()
+	}
+	scheduler.mu.Unlock()
+	handlerSignal := *signal.Load()
+	violation := make(chan bool, 1)
+	started := make(chan struct{})
+	go func() {
+		close(started)
+		for {
+			scheduler.mu.Lock()
+			closing := scheduler.closing
+			scheduler.mu.Unlock()
+			if closing {
+				violation <- handlerSignal.Err() == nil
+				return
+			}
+		}
+	}()
+	<-started
+	closing := make(chan error, 1)
+	go func() { closing <- opened.harness.Close(testContext) }()
+	if observed := <-violation; observed {
+		t.Error("the scheduler's closing flag was visible while an invocation's signal was still live")
+	}
+	if err := tkWaitErr(t, closing); err != nil {
+		t.Fatal(err)
+	}
 }

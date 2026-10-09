@@ -131,6 +131,10 @@ func (s *Session) RequestAbort() {
 	}
 }
 
+// AgentRunAbortRequested is upstream _agentRunAbortRequested: whether abort was requested while the current run was active. A new
+// run clears it.
+func (s *Session) AgentRunAbortRequested() bool { return s.runState.abortRequested.Load() }
+
 func (s *Session) agentRunAborted(ctx context.Context) bool {
 	return ctx.Err() != nil || s.runState.abortRequested.Load()
 }
@@ -218,7 +222,7 @@ func (s *Session) publishAgentSettled() {
 	s.runState.active.Store(false)
 	s.runState.settling.Store(true)
 	defer s.runState.settling.Store(false)
-	event := agent.AgentSettledEvent{}
+	event := agent.AgentSettledEvent{Aborted: s.runState.abortRequested.Load()}
 	// Session-owned handler effects must reach the output funnel before the settled event itself.
 	s.dispatchAgentEventToExtensions(event)
 	s.emitOrderedEventSync(event)

@@ -34,20 +34,10 @@ func (client *Client) BeginInvoke(ctx context.Context, target protocol.RpcTarget
 	}), nil
 }
 
-// InitiatingServiceTransportClient explicitly supplies a true request-admission boundary. A decorator forwards this capability only when it preserves that boundary.
-type InitiatingServiceTransportClient interface {
-	ServiceTransportClient
-	BeginInvoke(context.Context, protocol.RpcTarget, chord.ServiceCall) (*chord.ServiceInvocation, error)
-}
-
 func (transport *clientServiceTransport) BeginInvoke(ctx context.Context, call chord.ServiceCall) (*chord.ServiceInvocation, error) {
 	target := transport.getTarget()
 	if target == nil {
 		return nil, errors.New("Remote service target is unavailable")
 	}
-	client, ok := transport.client.(InitiatingServiceTransportClient)
-	if !ok {
-		return nil, errors.New("Remote client does not expose invocation admission")
-	}
-	return client.BeginInvoke(ctx, target, call)
+	return transport.client.BeginInvoke(ctx, target, call)
 }

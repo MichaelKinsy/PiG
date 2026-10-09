@@ -9,10 +9,9 @@
  * interfaces for hosts that render them, and so are icons. Read resources become text and images for
  * the model; binary resources are saved to temp files. Scripts get the JSON payloads.
  */
-import { limitMcpContent, READ_MCP_RESOURCE_TOOL, toModelContent, toToolExposure, } from "./tools.js";
-export const LIST_MCP_RESOURCES_TOOL = "list_mcp_resources";
-export const LIST_MCP_RESOURCE_TEMPLATES_TOOL = "list_mcp_resource_templates";
-export { READ_MCP_RESOURCE_TOOL };
+import { LIST_MCP_RESOURCE_TEMPLATES_TOOL, LIST_MCP_RESOURCES_TOOL, READ_MCP_RESOURCE_TOOL, } from "../../core/mcp-servers.js";
+import { limitMcpContent, toModelContent, toToolExposure } from "./tools.js";
+export { LIST_MCP_RESOURCE_TEMPLATES_TOOL, LIST_MCP_RESOURCES_TOOL, READ_MCP_RESOURCE_TOOL };
 /** MCP App user interfaces, which only hosts that render them can use. */
 export function isMcpAppResource(item) {
     const uri = item.uri ?? item.uriTemplate ?? "";

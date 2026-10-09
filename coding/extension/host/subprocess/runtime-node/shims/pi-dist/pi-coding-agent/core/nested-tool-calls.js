@@ -159,6 +159,7 @@ export class NestedToolCallRunner {
             toolName: name,
             result: outcome.result,
             isError: outcome.isError,
+            ...(outcome.durationMs === undefined ? {} : { durationMs: outcome.durationMs }),
             parentToolCallId: callerId,
         });
         return outcome;

@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"net/url"
 	"strings"
 	"time"
 
@@ -30,32 +29,31 @@ const (
 	anthropicScopes              = "org:create_api_key user:profile user:inference user:sessions:claude_code user:mcp_servers user:file_upload"
 )
 
-// parseAuthorizationInput ECMAScript-trims user-pasted input and extracts its code and state.
-func parseAuthorizationInput(input string) (code, state string) {
+// parseAuthorizationInput ECMAScript-trims user-pasted input and extracts its code and state. hasState is false where Pi's state is undefined:
+// a `code#` paste or an empty `state=` parameter gives an empty state that the login sends as is (anthropic.ts:189, :230 `parsed.state ?? verifier`).
+func parseAuthorizationInput(input string) (code, state string, hasState bool) {
 	v := trimJSWhitespace(input)
 	if v == "" {
-		return "", ""
+		return "", "", false
 	}
 
 	// Try as URL
-	if u, err := url.Parse(v); err == nil && u.Scheme != "" {
-		return u.Query().Get("code"), u.Query().Get("state")
+	if query, ok := authorizationURLQuery(v); ok {
+		return query.Get("code"), query.Get("state"), query.Has("state")
 	}
 
 	// code#state
-	if before, after, ok := strings.Cut(v, "#"); ok {
-		return before, after
+	if code, state, ok := authorizationFragmentPair(v); ok {
+		return code, state, true
 	}
 
 	// code=X&state=Y
 	if strings.Contains(v, "code=") {
-		q, err := url.ParseQuery(v)
-		if err == nil {
-			return q.Get("code"), q.Get("state")
-		}
+		query := authorizationQueryParams(v)
+		return query.Get("code"), query.Get("state"), query.Has("state")
 	}
 
-	return v, ""
+	return v, "", false
 }
 
 type anthropicTokenResponse struct {
@@ -113,26 +111,35 @@ func LoginAnthropic(ctx context.Context, callbacks OAuthLoginCallbacks) (OAuthCr
 	if err != nil {
 		return OAuthCredentials{}, fmt.Errorf("generate PKCE: %w", err)
 	}
-	// A busy callback port leaves the manual prompt as the only way to finish.
-	callback, err := StartOAuthCallbackServer(ctx, OAuthCallbackServerOptions[string]{
-		ProviderName: "Anthropic",
-		Host:         oauthCallbackHost(),
-		Port:         anthropicCallbackPort,
-		Path:         anthropicCallbackPath,
-		State:        &pkce.Verifier,
-		Complete:     func(_ context.Context, code string) (string, error) { return code, nil },
-	})
+	startCallbackServer := func(port int) (*OAuthCallbackServer[string], error) {
+		return StartOAuthCallbackServer(ctx, OAuthCallbackServerOptions[string]{
+			ProviderName: "Anthropic",
+			Host:         oauthCallbackHost(),
+			Port:         port,
+			Path:         anthropicCallbackPath,
+			RedirectHost: "localhost",
+			State:        &pkce.Verifier,
+			Complete:     func(_ context.Context, code string) (string, error) { return code, nil },
+		})
+	}
+	// The preferred port can be forwarded into containers or over SSH. Anthropic accepts any loopback port, so login falls back to a free port when the preferred one cannot be bound (anthropic.ts, #10571); without a callback server the manual prompt is the only way to finish.
+	callback, err := startCallbackServer(anthropicCallbackPort)
+	if err != nil {
+		callback, err = startCallbackServer(0)
+	}
+	redirectURI := anthropicRedirectURI
 	if err != nil {
 		callback = nil
 	} else {
 		defer callback.Close()
+		redirectURI = callback.RedirectURI
 	}
 
 	query := orderedQuery(
 		"code", "true",
 		"client_id", anthropicClientID,
 		"response_type", "code",
-		"redirect_uri", anthropicRedirectURI,
+		"redirect_uri", redirectURI,
 		"scope", anthropicScopes,
 		"code_challenge", pkce.Challenge,
 		"code_challenge_method", "S256",
@@ -145,7 +152,7 @@ func LoginAnthropic(ctx context.Context, callbacks OAuthLoginCallbacks) (OAuthCr
 
 	result, err := WaitForCallbackOrManualInput(ctx, manualCodeInteraction(callbacks), callback, AuthManualCodePrompt{
 		Message:     "Complete login in your browser, or paste the authorization code / redirect URL here:",
-		Placeholder: anthropicRedirectURI,
+		Placeholder: redirectURI,
 	})
 	if err != nil {
 		return OAuthCredentials{}, err
@@ -154,11 +161,12 @@ func LoginAnthropic(ctx context.Context, callbacks OAuthLoginCallbacks) (OAuthCr
 	if result.Callback {
 		code, state = result.Value, pkce.Verifier
 	} else {
-		code, state = parseAuthorizationInput(result.Input)
+		var hasState bool
+		code, state, hasState = parseAuthorizationInput(result.Input)
 		if state != "" && state != pkce.Verifier {
 			return OAuthCredentials{}, fmt.Errorf("OAuth state mismatch")
 		}
-		if state == "" {
+		if !hasState {
 			state = pkce.Verifier
 		}
 	}
@@ -168,7 +176,7 @@ func LoginAnthropic(ctx context.Context, callbacks OAuthLoginCallbacks) (OAuthCr
 	if callbacks.OnProgress != nil {
 		callbacks.OnProgress("Exchanging authorization code for tokens...")
 	}
-	return exchangeAnthropicCode(ctx, code, state, pkce.Verifier, anthropicRedirectURI)
+	return exchangeAnthropicCode(ctx, code, state, pkce.Verifier, redirectURI)
 }
 
 // LoginAnthropicCopyCode runs the Anthropic authorization code + PKCE flow without a callback server: Anthropic's page
@@ -203,14 +211,14 @@ func LoginAnthropicCopyCode(ctx context.Context, callbacks OAuthLoginCallbacks) 
 	if err != nil {
 		return OAuthCredentials{}, err
 	}
-	code, state := parseAuthorizationInput(input)
+	code, state, hasState := parseAuthorizationInput(input)
 	if state != "" && state != pkce.Verifier {
 		return OAuthCredentials{}, fmt.Errorf("OAuth state mismatch")
 	}
 	if code == "" {
 		return OAuthCredentials{}, fmt.Errorf("Missing authorization code")
 	}
-	if state == "" {
+	if !hasState {
 		state = pkce.Verifier
 	}
 	if callbacks.OnProgress != nil {

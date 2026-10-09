@@ -12,7 +12,7 @@ import (
 func TestMessageEndAllowsExtensionsToReplaceFinalizedAssistantUsageCost(t *testing.T) {
 	h := newRecoveryHarness(t, harnessOptions{extension: extension.Extension{Handlers: map[string][]extension.HandlerFn{
 		"message_end": {func(args ...any) (any, error) {
-			message := args[0].(extension.MessageEndEvent).Message.(agent.AgentMessage)
+			message := args[0].(extension.MessageEndEvent).Message
 			if message.Assistant == nil {
 				return nil, nil
 			}

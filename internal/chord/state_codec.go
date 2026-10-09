@@ -110,10 +110,10 @@ func (e *ServiceStateEncoder) encodeInstance(instance ServiceInstanceSnapshot) (
 func (e *ServiceStateEncoder) EncodeUpdate(update ServiceProviderUpdate) (WireServiceProviderUpdate, error) {
 	e.mu.Lock()
 	defer e.mu.Unlock()
-	out := WireServiceProviderUpdate{Type: update.Type, Address: update.Address, Member: update.Member, Sequence: update.Sequence}
 	switch update.Type {
 	case UpdateState:
-		codec, err := e.codecs.get(update.Address, update.Member)
+		out := WireStateServiceProviderUpdate{Instance: update.Instance, Member: update.Member, Sequence: update.Sequence}
+		codec, err := e.codecs.get(update.Instance, update.Member)
 		if err != nil {
 			return out, err
 		}
@@ -121,37 +121,43 @@ func (e *ServiceStateEncoder) EncodeUpdate(update ServiceProviderUpdate) (WireSe
 		return out, err
 	case UpdateReset:
 		if update.Reset == nil {
-			return out, fmt.Errorf("Invalid service subscription snapshot")
+			return WireResetServiceProviderUpdate{}, fmt.Errorf("Invalid service subscription snapshot")
 		}
 		clear(e.codecs.entries)
 		reset := WireServiceSubscriptionSnapshot{ServiceId: update.Reset.ServiceId, Mode: update.Reset.Mode, Instances: make([]WireServiceInstanceSnapshot, 0, len(update.Reset.Instances))}
 		for _, instance := range update.Reset.Instances {
 			encoded, err := e.encodeInstance(instance)
 			if err != nil {
-				return out, err
+				return WireResetServiceProviderUpdate{}, err
 			}
 			reset.Instances = append(reset.Instances, encoded)
 		}
-		out.Reset = &reset
-		return out, nil
-	case UpdateReplaced, UpdateSpawned:
-		if update.Type == UpdateReplaced {
-			clear(e.codecs.entries)
-		}
+		return WireResetServiceProviderUpdate{Snapshot: reset}, nil
+	case UpdateReplaced:
+		clear(e.codecs.entries)
 		if update.Snapshot == nil {
-			return out, fmt.Errorf("Invalid service instance snapshot")
+			return WireReplacedServiceProviderUpdate{}, fmt.Errorf("Invalid service instance snapshot")
 		}
 		instance, err := e.encodeInstance(*update.Snapshot)
-		out.Snapshot = &instance
-		return out, err
+		return WireReplacedServiceProviderUpdate{Snapshot: instance}, err
+	case UpdateSpawned:
+		if update.Snapshot == nil {
+			return WireSpawnedServiceProviderUpdate{}, fmt.Errorf("Invalid service instance snapshot")
+		}
+		instance, err := e.encodeInstance(*update.Snapshot)
+		return WireSpawnedServiceProviderUpdate{Instance: instance}, err
 	case UpdateUnavailable:
 		clear(e.codecs.entries)
+		return WireUnavailableServiceProviderUpdate{}, nil
 	case UpdateClosed:
-		e.codecs.removeInstance(update.Address)
-	default:
-		return out, fmt.Errorf("Invalid service provider update")
+		e.codecs.removeInstance(update.Instance)
+		out := WireClosedServiceProviderUpdate{}
+		if update.Instance != nil {
+			out.Instance = *update.Instance
+		}
+		return out, nil
 	}
-	return out, nil
+	return nil, fmt.Errorf("Invalid service provider update")
 }
 
 // ServiceStateDecoder keeps independent path dictionaries for each keyed instance and member, resetting them on snapshot, replacement, unavailability, or a member's base operation.
@@ -198,22 +204,20 @@ func (d *ServiceStateDecoder) decodeInstance(instance WireServiceInstanceSnapsho
 func (d *ServiceStateDecoder) DecodeUpdate(update WireServiceProviderUpdate) (ServiceProviderUpdate, error) {
 	d.mu.Lock()
 	defer d.mu.Unlock()
-	out := ServiceProviderUpdate{Type: update.Type, Address: update.Address, Member: update.Member, Sequence: update.Sequence}
-	switch update.Type {
-	case UpdateState:
-		codec, err := d.codecs.get(update.Address, update.Member)
+	switch update := update.(type) {
+	case WireStateServiceProviderUpdate:
+		out := ServiceProviderUpdate{Type: UpdateState, Instance: update.Instance, Member: update.Member, Sequence: update.Sequence}
+		codec, err := d.codecs.get(update.Instance, update.Member)
 		if err != nil {
 			return out, err
 		}
 		out.Ops, err = codec.Decode(update.Ops)
 		return out, err
-	case UpdateReset:
-		if update.Reset == nil {
-			return out, fmt.Errorf("Invalid service subscription snapshot")
-		}
+	case WireResetServiceProviderUpdate:
+		out := ServiceProviderUpdate{Type: UpdateReset}
 		clear(d.codecs.entries)
-		reset := ServiceSubscriptionSnapshot{ServiceId: update.Reset.ServiceId, Mode: update.Reset.Mode, Instances: make([]ServiceInstanceSnapshot, 0, len(update.Reset.Instances))}
-		for _, instance := range update.Reset.Instances {
+		reset := ServiceSubscriptionSnapshot{ServiceId: update.Snapshot.ServiceId, Mode: update.Snapshot.Mode, Instances: make([]ServiceInstanceSnapshot, 0, len(update.Snapshot.Instances))}
+		for _, instance := range update.Snapshot.Instances {
 			decoded, err := d.decodeInstance(instance)
 			if err != nil {
 				return out, err
@@ -222,22 +226,23 @@ func (d *ServiceStateDecoder) DecodeUpdate(update WireServiceProviderUpdate) (Se
 		}
 		out.Reset = &reset
 		return out, nil
-	case UpdateReplaced, UpdateSpawned:
-		if update.Type == UpdateReplaced {
-			clear(d.codecs.entries)
-		}
-		if update.Snapshot == nil {
-			return out, fmt.Errorf("Invalid service instance snapshot")
-		}
-		instance, err := d.decodeInstance(*update.Snapshot)
+	case WireReplacedServiceProviderUpdate:
+		out := ServiceProviderUpdate{Type: UpdateReplaced}
+		clear(d.codecs.entries)
+		instance, err := d.decodeInstance(update.Snapshot)
 		out.Snapshot = &instance
 		return out, err
-	case UpdateUnavailable:
+	case WireSpawnedServiceProviderUpdate:
+		out := ServiceProviderUpdate{Type: UpdateSpawned}
+		instance, err := d.decodeInstance(update.Instance)
+		out.Snapshot = &instance
+		return out, err
+	case WireUnavailableServiceProviderUpdate:
 		clear(d.codecs.entries)
-	case UpdateClosed:
-		d.codecs.removeInstance(update.Address)
-	default:
-		return out, fmt.Errorf("Invalid service provider update")
+		return ServiceProviderUpdate{Type: UpdateUnavailable}, nil
+	case WireClosedServiceProviderUpdate:
+		d.codecs.removeInstance(&update.Instance)
+		return ServiceProviderUpdate{Type: UpdateClosed, Instance: &update.Instance}, nil
 	}
-	return out, nil
+	return ServiceProviderUpdate{}, fmt.Errorf("Invalid service provider update")
 }

@@ -1,0 +1,92 @@
+[
+ {
+  "ids": [
+   "pkg:ai/.#AssistantMessageEventStream",
+   "pkg:ai/compat#AssistantMessageEventStream",
+   "pkg:ai/utils/event-stream#AssistantMessageEventStream"
+  ],
+  "targets": [
+   "ai/event_stream.go#AssistantMessageEventStream"
+  ],
+  "production": [
+   "call:agent/agent.go#Agent.consumeStream"
+  ],
+  "evidence": [
+   "test:ai/event_stream_test.go#TestAssistantMessageEventStreamAcceptsTypedEventOrder"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value; the iterator is an iter.Seq driven by a context.Context; no detached goroutine.",
+  "rationale": "AssistantMessageEventStream: the Go type has a method for every upstream member (push, end, result, the async iterator).",
+  "properties": {
+   "%5BSymbol.asyncIterator%5D": {
+    "targets": [
+     "ai/event_stream.go#AssistantMessageEventStream.Events"
+    ],
+    "evidence": [
+     "test:ai/event_stream_test.go#TestAssistantMessageEventStreamPreservesOrderWhileDraining",
+     "test:ai/event_stream_continuation_test.go#TestStreamContinuationIteratorMatchesPiYieldOrdering",
+     "test:ai/event_stream_test.go#TestAssistantMessageEventStreamDeliversToWaitingConsumersInRegistrationOrder"
+    ],
+    "production": [
+     "call:coding/extension/host/subprocess/ui_bridge.go#UIBridge.handleModelStream"
+    ],
+    "rationale": "[Symbol.asyncIterator] is the Go iterator AssistantMessageEventStream.Events(ctx) (iter.Seq); FIFO order, waiter registration order and cancellation are the tested contracts."
+   },
+   "end": {
+    "targets": [
+     "ai/event_stream.go#AssistantMessageEventStream.End"
+    ],
+    "evidence": [
+     "test:ai/event_stream_end_test.go#TestAssistantStreamEndResolvesWithoutEvents",
+     "test:ai/event_stream_end_test.go#TestAssistantStreamEndWithoutResultClosesOnlyIteration"
+    ],
+    "production": [
+     "call:ai/provider_streams.go#forwardLazySetup"
+    ],
+    "rationale": "end(result?) is the variadic End(result ...*AssistantMessage): an absent result closes only the iteration."
+   },
+   "push": {
+    "targets": [
+     "ai/event_stream.go#AssistantMessageEventStream.Push"
+    ],
+    "evidence": [
+     "test:ai/event_stream_test.go#TestAssistantMessageEventStreamAcceptsTypedEventOrder",
+     "test:ai/event_stream_test.go#TestAssistantMessageEventStreamDrainsBufferedEventsAndIgnoresLatePushes"
+    ],
+    "production": [
+     "call:ai/pi_messages.go#piMessagesProvider.run"
+    ],
+    "rationale": "push(event) is Push(event); a push after completion is ignored as upstream does. Go also returns an error for a payload no typed TypeScript caller can build."
+   },
+   "result": {
+    "targets": [
+     "ai/event_stream.go#AssistantMessageEventStream.Result"
+    ],
+    "evidence": [
+     "test:ai/event_stream_test.go#TestAssistantMessageEventStreamResultIsTerminalMessagePointerWithoutIteration",
+     "test:ai/event_stream_continuation_test.go#TestStreamContinuationResultAfterEndWaitsForExplicitResult"
+    ],
+    "production": [
+     "call:agent/agent.go#Agent.consumeStream"
+    ],
+    "rationale": "result() is the blocking Result() (ResultContext(ctx) adds cancellation): it returns the done message or the error message, or the explicit End result."
+   }
+  }
+ },
+ {
+  "ids": [
+   "pkg:ai/.#AssistantMessageEventStream::construct:0",
+   "pkg:ai/compat#AssistantMessageEventStream::construct:0",
+   "pkg:ai/utils/event-stream#AssistantMessageEventStream::construct:0"
+  ],
+  "targets": [
+   "ai/event_stream.go#NewAssistantMessageEventStream"
+  ],
+  "production": [
+   "call:ai/provider_streams.go#startLazyStream"
+  ],
+  "evidence": [
+   "test:ai/event_stream_test.go#TestAssistantMessageEventStreamAcceptsTypedEventOrder"
+  ],
+  "rationale": "The constructor is NewAssistantMessageEventStream."
+ }
+]
