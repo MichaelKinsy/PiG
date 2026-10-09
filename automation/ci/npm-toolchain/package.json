@@ -2,8 +2,10 @@
   "name": "pig-ci-npm-toolchain",
   "private": true,
   "version": "0.0.0",
-  "description": "The npm that CI installs with npm ci. Keep in step with NPM_VERSION in .github/workflows/ci.yml.",
+  "description": "The npm that CI installs with automation/ci/install-npm-toolchain.sh. Keep in step with NPM_VERSION in .github/workflows/ci.yml.",
   "dependencies": {
-    "npm": "12.1.0"
+    "http-cache-semantics": "4.3.0",
+    "npm": "12.1.0",
+    "postcss-selector-parser": "7.1.6"
   }
 }
