@@ -99,7 +99,7 @@ The Python codemod suite has 47 passing tests. The count is a measurement, not a
 
 ## Reproduction
 
-Use physical Go 1.27.1 on PATH, not a shim that selects another toolchain inside fixture modules. Use the isolation procedure from [REHEARSAL.md](REHEARSAL.md): temporary HOME, PiG agent, and Pi agent directories; a system temporary directory; shared compiler caches; and read-only links to the pinned mirror and installed Node dependencies.
+Use physical Go 1.27.2 on PATH, not a shim that selects another toolchain inside fixture modules. Use the isolation procedure from [REHEARSAL.md](REHEARSAL.md): temporary HOME, PiG agent, and Pi agent directories; a system temporary directory; shared compiler caches; and read-only links to the pinned mirror and installed Node dependencies.
 
 Run the complete entry point twice and compare tracked contents, modes, and the raw index. Then run the same gates as before, using the relocated parity command:
 

@@ -8,7 +8,7 @@ Codex has no provider key environment variable in Pi. `PIG_LIVE_CODEX_TOKEN` is 
 
 ## Run
 
-Run from the repository root with Go 1.27.1. Supply only the credentials for the tests you intend to run. Live calls can incur charges.
+Run from the repository root with Go 1.27.2. Supply only the credentials for the tests you intend to run. Live calls can incur charges.
 
 ```bash
 # Select live tests as well as the ordinary hermetic tests in these packages.

@@ -4,7 +4,7 @@ PiG supports source builds on Windows. Do not treat Windows as release-supported
 
 ## Build from source
 
-Install Git and Go 1.27.1. Then run:
+Install Git and Go 1.27.2. Then run:
 
 ```powershell
 git clone git@github.com:MichaelKinsy/PiG.git

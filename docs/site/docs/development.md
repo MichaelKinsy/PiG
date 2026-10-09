@@ -15,7 +15,7 @@ installing software.
 
 The qualified verification toolchain is:
 
-- Go 1.27.1;
+- Go 1.27.2;
 - macOS 13 or later for native macOS builds;
 - Git;
 - Node.js 24.19.0;
