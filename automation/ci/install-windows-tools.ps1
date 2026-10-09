@@ -4,8 +4,9 @@
 # Installs the pinned native tools in windows-tools.txt without a package feed.
 # Archives download from GitHub releases into $Cache (restored by actions/cache),
 # are verified against the committed SHA-256, and extract into $Bin, which joins
-# PATH. A missing or mismatched archive is fatal; a mismatched cached archive is
-# fetched again once.
+# PATH. A mismatched cached archive is fetched again, and a failed download is
+# retried, for up to five attempts; an archive still missing or mismatched after
+# them is fatal.
 param(
   [string]$Manifest = (Join-Path $PSScriptRoot 'windows-tools.txt'),
   [Parameter(Mandatory)][string]$Cache,
