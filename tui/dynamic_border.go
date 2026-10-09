@@ -7,8 +7,9 @@ package tui
 // DynamicBorder renders a full-width horizontal rule using "─".
 type DynamicBorder struct {
 	invalidatable
-	color string // ANSI fg escape; empty = use theme border color
-	token string // theme token resolved at render time; takes precedence over color
+	color   string              // ANSI fg escape; empty = use theme border color
+	token   string              // theme token resolved at render time; takes precedence over color
+	colorFn func(string) string // upstream color callback; takes precedence over token and color
 }
 
 // NewDynamicBorder creates a border. If color is empty, the active
@@ -22,8 +23,17 @@ func NewDynamicBorderToken(token string) *DynamicBorder {
 	return &DynamicBorder{token: token}
 }
 
+// NewDynamicBorderFunc mirrors upstream's DynamicBorder constructor: color
+// styles the whole rule.
+func NewDynamicBorderFunc(color func(string) string) *DynamicBorder {
+	return &DynamicBorder{colorFn: color}
+}
+
 // Render produces a full-width rule and resets only its foreground color.
 func (d *DynamicBorder) Render(width int) []string {
+	if d.colorFn != nil {
+		return []string{d.colorFn(repeatRune('─', max(1, width)))}
+	}
 	if d.token != "" {
 		return []string{ActiveTheme().FgText(d.token, repeatRune('─', max(1, width)))}
 	}

@@ -30,6 +30,7 @@ import (
 	sourceref "github.com/MichaelKinsy/PiG/coding/source"
 	"github.com/MichaelKinsy/PiG/internal/buildprogress"
 	"github.com/MichaelKinsy/PiG/internal/codingagent"
+	"github.com/MichaelKinsy/PiG/internal/fspublish"
 	"github.com/MichaelKinsy/PiG/internal/toolchain"
 )
 
@@ -753,7 +754,7 @@ func writeRecordFile(path string, record pigletartifact.Record) (bool, error) {
 	if err := stage.Close(); err != nil {
 		return false, err
 	}
-	if err := os.Link(stagePath, path); err != nil {
+	if err := fspublish.Publish(stagePath, path); err != nil {
 		return false, fmt.Errorf("commit Piglet record %s: %w", path, err)
 	}
 	return true, nil
@@ -804,7 +805,7 @@ func writeManagedArtifact(source, target, expectedDigest string) (bool, error) {
 	if digest != expectedDigest {
 		return false, fmt.Errorf("staged artifact digest %s does not match expected %s", digest, expectedDigest)
 	}
-	if err := os.Link(stagePath, target); err != nil {
+	if err := fspublish.Publish(stagePath, target); err != nil {
 		return false, fmt.Errorf("commit managed artifact %s: %w", target, err)
 	}
 	return true, nil

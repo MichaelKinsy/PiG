@@ -148,16 +148,17 @@ func (o *LocalShellOperations) Exec(ctx context.Context, command, cwd string, op
 	// byte: Git Bash parses it with MSYS2 rules, not the C runtime's.
 	nodespawn.SetProgram(cmd)
 	nodespawn.SetCommandLine(cmd)
-	// Start closes the child's ends of the pipes.
-	if err := nodespawn.Start(cmd); err != nil {
+	// Start closes the child's ends of the pipes. Upstream tracks the child from its spawn until its wait ends, so an
+	// exit without orderly shutdown kills it.
+	if err := detachedChildren.start(cmd); err != nil {
 		_ = pr.Close()
 		if stdinWrite != nil {
 			_ = stdinWrite.Close()
 		}
 		return BashOperationsResult{}, &shellSpawnError{path: shell.Path, cause: err}
 	}
-	attachProcessGroup(cmd.Process)
 	defer releaseProcessGroup(cmd.Process)
+	defer detachedChildren.untrack(cmd.Process)
 	// os/exec copies a reader to the child's stdin the same way, and Wait
 	// waits for that copy.
 	var input sync.WaitGroup

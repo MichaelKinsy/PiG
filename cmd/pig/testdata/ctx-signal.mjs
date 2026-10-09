@@ -17,6 +17,9 @@ const record = (where, ctx, extra = {}) => {
   appendFileSync(process.env.CTX_SIGNAL_REPORT, JSON.stringify({ where, signal: name(signal), aborted: signal?.aborted, ...extra }) + "\n");
 };
 let ownSignal;
+// Resolved once the nested call that carries its own signal has started: aborting it earlier cancels it before the Host runs it, and it never reports.
+let ownStarted;
+const ownStartedPromise = new Promise((resolve) => { ownStarted = resolve; });
 const hold = (signal, ms) => new Promise((resolve) => {
   if (!signal) return resolve("no-signal");
   const timer = setTimeout(() => resolve("timeout"), ms);
@@ -51,6 +54,7 @@ export default function (pi) {
       const own = signal === ownSignal;
       record(own ? "inner.explicit" : "inner.default", ctx, { sameAsCtx: signal === ctx.signal, paramAborted: signal?.aborted });
       if (own) {
+        ownStarted();
         const outcome = await hold(signal, 3000);
         record("inner.explicit.held", ctx, { outcome, paramAborted: signal.aborted });
       }
@@ -70,7 +74,8 @@ export default function (pi) {
         const controller = new AbortController();
         ownSignal = controller.signal;
         const nested = ctx.executeTool("inner", {}, { signal: controller.signal });
-        await new Promise((resolve) => setTimeout(resolve, 300));
+        // Abort once the call is running, not after a fixed delay: a loaded host can take longer than any delay to start it.
+        await Promise.race([ownStartedPromise, nested.then(() => {}, () => {})]);
         controller.abort();
         await nested;
       }

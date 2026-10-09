@@ -291,9 +291,9 @@ Weak scenarios not counted as behavioral verification: 4 boot-only, 4 registrati
 | `extensions-runtime` | 103 | 102 | 0 | 1 | 0 | 58 | not run |
 | `footer` | 11 | 11 | 0 | 0 | 0 | 9 | not run |
 | `fullscreen` | 12 | 12 | 0 | 0 | 0 | 9 | not run |
-| `interactive-rendering` | 46 | 45 | 1 | 0 | 0 | 34 | not run |
+| `interactive-rendering` | 55 | 54 | 1 | 0 | 0 | 35 | not run |
 | `json` | 10 | 10 | 0 | 0 | 0 | 7 | not run |
-| `model-resolver-selector` | 24 | 24 | 0 | 0 | 0 | 15 | not run |
+| `model-resolver-selector` | 25 | 25 | 0 | 0 | 0 | 15 | not run |
 | `model-runtime-store-catalog` | 25 | 25 | 0 | 0 | 0 | 24 | not run |
 | `oauth` | 29 | 29 | 0 | 0 | 0 | 18 | not run |
 | `print` | 7 | 7 | 0 | 0 | 0 | 6 | not run |
@@ -302,7 +302,7 @@ Weak scenarios not counted as behavioral verification: 4 boot-only, 4 registrati
 | `providers-registry` | 7 | 4 | 0 | 3 | 0 | 26 | not run |
 | `rpc` | 49 | 49 | 0 | 0 | 0 | 23 | not run |
 | `selectors` | 14 | 14 | 0 | 0 | 1 | 15 | not run |
-| `session` | 40 | 40 | 0 | 0 | 0 | 19 | not run |
+| `session` | 41 | 41 | 0 | 0 | 0 | 19 | not run |
 | `settings` | 14 | 14 | 0 | 0 | 0 | 19 | not run |
 | `slash-commands` | 16 | 15 | 1 | 0 | 0 | 16 | not run |
 | `startup` | 18 | 17 | 1 | 0 | 0 | 10 | not run |
@@ -521,7 +521,7 @@ Code and interface style:
   an explicit user-owned blocker. Passing unrelated gates does not close it.
 
 Go style:
-- Build, CI, release-candidate, security-analysis, and documented setup commands use Go 1.27.1.
+- Build, CI, release-candidate, security-analysis, and documented setup commands use Go 1.27.2.
 - Maintained modules declare Go 1.26 or 1.26.0 as their language floor unless a concrete language requirement is approved. Do not raise a `go` directive merely to match the build toolchain.
 - Use language features available at the module floor. Prefer applicable modern standard-library APIs such as `slices.Sort`, `slices.SortFunc`, `cmp.Compare`, `maps.Copy`, `slices.Sorted(maps.Keys(m))`, `strings.Cut`, `CutPrefix`, `SplitSeq`, `for i := range n`, `wg.Go`, `min`, and `max`.
 - `go fix -diff ./...` should be empty.

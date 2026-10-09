@@ -1,0 +1,57 @@
+# Behavior family: interactive-rendering
+# Surface: BashExecutionComponent: the loader a running `!` command shows, with the configured cancel keys in its text.
+#
+# Upstream evidence (pinned Pi 1.0.3, 2026-10-07, parity-runner tmux probe with COLORTERM=truecolor and the dark theme):
+# Rows below are the escaped crop, ESC shown as \e, a run of ─ as <border>.
+#
+#   $ sleep 30\e[0m
+#
+#    \e[38;2;94;178;134m⠋\e[39m \e[38;2;157;165;169mRunning... (escape/ctrl+c to cancel)\e[39m
+#   \e[38;2;94;178;134m<border>
+#
+# Upstream rule: the constructor's Loader colors the spinner with the command's color key and the message with "muted", and its text is `Running... (${keyText("tui.select.cancel")} to cancel)`; no status row while running.
+# Red: PiG at main 50e81255d said "Running... (Esc to cancel)". Green with the block port.
+
+name = "46-bash-execution-running-spinner"
+description = "A running `!` command shows Pi's loader row with the tui.select.cancel keys and no status row."
+covers = [
+  "packages/coding-agent/src/modes/interactive/components/bash-execution.ts",
+]
+tags = ["fast", "hermetic", "tui"]
+driver = "interactive-tmux"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_CODING_AGENT_DIR=testdata/pig-agent"]
+pi = ["PI_CODING_AGENT_DIR=testdata/pi-agent", "PI_SKIP_VERSION_CHECK=1"]
+pi_extensions = ["../../testdata/test-faux-provider.ts"]
+pig_args = ["--no-extensions", "--session-dir", "{{TEMP}}/sessions"]
+pi_args = ["--session-dir", "{{TEMP}}/sessions"]
+
+[tmux]
+width = 100
+height = 35
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "(auto)"
+ready_timeout_seconds = 30
+cwd = "testdata/bash-wrap-cwd"
+capture_start = "$ sleep 30"
+capture_end_regex = '─{100}'
+
+[[tmux.steps]]
+keys = ["!sleep 30", "Enter"]
+wait_visible_contains = ["Running... (escape/ctrl+c to cancel)"]
+wait_timeout_seconds = 10
+
+[assert]
+both_reach_ready = true
+both_contain = ["Running... (escape/ctrl+c to cancel)"]
+both_not_contain = ["panic:", "goroutine ", "(cancelled)"]
+escaped_output_equal = true
+runs = 3
+
+# normalize-rationale: the Loader's braille spinner frame advances every 80 ms, so which frame is in view at capture is timing; the spinner's color, position and the message bytes stay compared.
+[[assert.normalize_replace]]
+pattern = '[⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏]'
+with = "*"
+reason = "The Loader advances its braille frame every 80 ms, so the frame in view at capture depends on timing; only the frame glyph is replaced."

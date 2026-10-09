@@ -19,7 +19,7 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
-# Go comes from go.mod, Node from .node-version, and Pi from
+# Go comes from .go-version, Node from .node-version, and Pi from
 # internal/coding/pigversion/pigversion.go. make compliance checks every other copy
 # of these pins.
 env:
@@ -63,7 +63,7 @@ jobs:
           persist-credentials: false
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          go-version-file: go.mod
+          go-version-file: .go-version
           cache: true
       - name: Check the README, changelog and repository settings
         run: |
@@ -104,7 +104,7 @@ jobs:
           persist-credentials: false
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          go-version-file: go.mod
+          go-version-file: .go-version
           cache: true
       # setup-go restores the build cache keyed on go.sum and never refreshes it on a hit.
       # This restores the newest cache a previous run saved, so a job recompiles only what changed.
@@ -133,11 +133,8 @@ jobs:
         timeout-minutes: 10
         run: |
           set -euo pipefail
-          # We install nothing from packages.microsoft.com; drop the runner image's source so its outages cannot fail this step.
-          sudo rm -f /etc/apt/sources.list.d/microsoft-prod.list /etc/apt/sources.list.d/microsoft-prod.sources
-          sudo apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=30 -o Acquire::https::Timeout=30 update
           # The native clipboard fixtures compile C11 code and exercise a real X11 selection server.
-          sudo apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=30 -o Acquire::https::Timeout=30 install --yes tmux fd-find ripgrep build-essential xvfb xclip pkg-config libxcb1-dev
+          automation/ci/install-apt-packages.sh tmux fd-find ripgrep build-essential xvfb xclip pkg-config libxcb1-dev
       - name: Install parity toolchains
         shell: bash
         run: |
@@ -149,7 +146,7 @@ jobs:
         run: |
           set -euo pipefail
           # npm ci installs the lockfile-pinned npm; later steps use it via PATH.
-          npm ci --prefix automation/ci/npm-toolchain --ignore-scripts --no-audit --no-fund
+          automation/ci/install-npm-toolchain.sh
           bin="$PWD/automation/ci/npm-toolchain/node_modules/.bin"
           echo "$bin" >> "$GITHUB_PATH"
           export PATH="$bin:$PATH"
@@ -160,7 +157,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          test "$(go env GOVERSION)" = "$(awk '$1 == "toolchain" { print $2; exit }' go.mod)"
+          test "$(go env GOVERSION)" = "go$(tr -d '\r\n' < .go-version)"
           test "$(node --version)" = "v$(cat .node-version)"
           test "$(npm --version)" = "$NPM_VERSION"
           test "$(rustc --version | cut -d' ' -f2)" = "$RUST_VERSION"
@@ -194,7 +191,7 @@ jobs:
           persist-credentials: false
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          go-version-file: go.mod
+          go-version-file: .go-version
           cache: true
       # Install the oracle with the qualified npm runtime before selecting the
       # test runtime: pinned npm itself requires a newer Node than Pi's floor.
@@ -208,15 +205,12 @@ jobs:
         timeout-minutes: 10
         run: |
           set -euo pipefail
-          # We install nothing from packages.microsoft.com; drop the runner image's source so its outages cannot fail this step.
-          sudo rm -f /etc/apt/sources.list.d/microsoft-prod.list /etc/apt/sources.list.d/microsoft-prod.sources
-          sudo apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=30 -o Acquire::https::Timeout=30 update
           # ci-node-runtime runs the native clipboard upstream tests on each Node version.
-          sudo apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=30 -o Acquire::https::Timeout=30 install --yes tmux fd-find ripgrep build-essential xvfb xclip pkg-config libxcb1-dev
+          automation/ci/install-apt-packages.sh tmux fd-find ripgrep build-essential xvfb xclip pkg-config libxcb1-dev
       - name: Prepare the Pi oracle
         run: |
           set -euo pipefail
-          npm ci --prefix automation/ci/npm-toolchain --ignore-scripts --no-audit --no-fund
+          automation/ci/install-npm-toolchain.sh
           export PATH="$PWD/automation/ci/npm-toolchain/node_modules/.bin:$PATH"
           make upstream-mirror
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
@@ -248,7 +242,7 @@ jobs:
           persist-credentials: false
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          go-version-file: go.mod
+          go-version-file: .go-version
           cache: true
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
@@ -307,7 +301,7 @@ jobs:
           persist-credentials: false
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          go-version-file: go.mod
+          go-version-file: .go-version
           cache: true
       # setup-go restores the build cache keyed on go.sum and never refreshes it on a hit.
       # This restores the newest cache a previous run saved, so a job recompiles only what changed.
@@ -359,7 +353,7 @@ jobs:
         run: |
           set -euo pipefail
           # npm ci installs the lockfile-pinned npm; later steps use it via PATH.
-          npm ci --prefix automation/ci/npm-toolchain --ignore-scripts --no-audit --no-fund
+          automation/ci/install-npm-toolchain.sh
           bin="$PWD/automation/ci/npm-toolchain/node_modules/.bin"
           cygpath -w "$bin" >> "$GITHUB_PATH"
           export PATH="$bin:$PATH"
@@ -500,7 +494,7 @@ jobs:
           persist-credentials: false
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          go-version-file: go.mod
+          go-version-file: .go-version
           cache: true
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
@@ -513,7 +507,7 @@ jobs:
           set -euo pipefail
           brew install fd ripgrep
           # npm ci installs the lockfile-pinned npm; later steps use it via PATH.
-          npm ci --prefix automation/ci/npm-toolchain --ignore-scripts --no-audit --no-fund
+          automation/ci/install-npm-toolchain.sh
           bin="$PWD/automation/ci/npm-toolchain/node_modules/.bin"
           echo "$bin" >> "$GITHUB_PATH"
           export PATH="$bin:$PATH"
@@ -545,7 +539,7 @@ jobs:
           persist-credentials: false
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          go-version-file: go.mod
+          go-version-file: .go-version
           cache: true
       - name: Build and check the Android binary
         shell: bash

@@ -2,6 +2,7 @@ package codingagent
 
 import (
 	"context"
+	"errors"
 	"strings"
 	"testing"
 	"testing/synctest"
@@ -9,12 +10,15 @@ import (
 	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/coding/extension/host/inproc"
 	"github.com/MichaelKinsy/PiG/tui"
+	"github.com/MichaelKinsy/PiG/tui/widthx"
 )
 
 func userBashOwnerProbe(t *testing.T, handler extension.HandlerFn) (*InteractiveMode, context.Context, context.CancelFunc) {
 	t.Helper()
 	m := newRunOnMainProbe(t)
 	m.pendingMessagesContainer = tui.NewContainer()
+	// The probe has no input loop. Production runs throttled renders on that loop, so route them to the dispatcher instead of the timer goroutine, which would read the component tree while the test goroutine mutates it.
+	m.installRenderDispatcher()
 	ctx, cancel := context.WithCancel(t.Context())
 	m.runCtx, m.backgroundCtx = ctx, ctx
 	m.abortCtx, m.abortFn = context.WithCancel(ctx)
@@ -164,6 +168,62 @@ func TestInteractiveUserBashUsesStreamingStateAfterHook(t *testing.T) {
 		m.backgroundTasks.Wait()
 		if len(m.bashOrder) != 1 || len(m.pendingBashBlocks) != 0 || !m.isIdle {
 			t.Fatalf("completed hook used stale state: blocks=%d pending=%d idle=%v", len(m.bashOrder), len(m.pendingBashBlocks), m.isIdle)
+		}
+	})
+}
+
+// blockingBashOperations runs until its context is cancelled, as a long `!` command does.
+type blockingBashOperations struct{ started chan struct{} }
+
+func (o blockingBashOperations) Exec(ctx context.Context, _, _ string, _ extension.BashOperationsExecOptions) (extension.BashOperationsResult, error) {
+	close(o.started)
+	<-ctx.Done()
+	return extension.BashOperationsResult{}, errors.New("aborted")
+}
+
+// Pi's onEscape (interactive-mode.ts setupKeyHandlers) calls session.abortBash() when no agent run streams and a `!`
+// command runs: the command stops, its block ends with "(cancelled)", and no run abort is requested.
+func TestInteractiveEscapeCancelsRunningUserBash(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		ops := blockingBashOperations{started: make(chan struct{})}
+		m, ctx, cancel := userBashOwnerProbe(t, func(...any) (any, error) {
+			return &extension.UserBashEventResult{Operations: ops}, nil
+		})
+		handle := &compactionUIHandle{}
+		m.opts.SessionHandle = handle
+		loopDone := make(chan struct{})
+		go m.drainLoop(ctx, loopDone)
+		defer func() { cancel(); <-loopDone; m.backgroundTasks.Wait() }()
+		m.keybindings = DefaultKeybindingsManager()
+		m.runOnMain(ctx, func() { m.handleBashCommand(ctx, "sleep 30", false) })
+		<-ops.started
+		synctest.Wait()
+		m.runOnMain(ctx, func() {
+			if err := m.handleKey(ctx, "\x1b"); err != nil {
+				t.Error(err)
+			}
+		})
+		synctest.Wait()
+		type state struct {
+			blocks  int
+			block   string
+			running bool
+			idle    bool
+		}
+		got := make(chan state, 1)
+		m.runOnMain(ctx, func() {
+			s := state{blocks: len(m.bashOrder), running: m.bashCancel != nil, idle: m.isIdle}
+			if s.blocks == 1 {
+				s.block = widthx.StripAnsi(strings.Join(m.bashOrder[0].Render(60), "\n"))
+			}
+			got <- s
+		})
+		s := <-got
+		if s.blocks != 1 || !strings.Contains(s.block, "(cancelled)") || strings.Contains(s.block, "Running...") || s.running || !s.idle {
+			t.Fatalf("Escape left the command running: blocks=%d running=%v idle=%v block=\n%s", s.blocks, s.running, s.idle, s.block)
+		}
+		if handle.aborts != 0 {
+			t.Fatalf("Escape requested %d run aborts; upstream aborts only the bash command when no run streams", handle.aborts)
 		}
 	})
 }

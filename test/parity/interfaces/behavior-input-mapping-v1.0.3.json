@@ -442,12 +442,21 @@
     {
       "id": "input:packages/coding-agent/src/modes/interactive/interactive-mode.ts#InteractiveMode.setupKeyHandlers",
       "ownerFamily": "interactive-input",
-      "disposition": "pending",
-      "pigTargets": [],
-      "evidence": [],
-      "contracts": [],
+      "disposition": "partial",
+      "pigTargets": [
+        "internal/codingagent/interactive_input.go",
+        "internal/codingagent/interactive_models.go#cycleModel",
+        "coding/session_model_cycle.go#CycleModel"
+      ],
+      "evidence": [
+        "internal/codingagent/model_cycle_parity_test.go#TestInteractiveCycleUsesSessionSelections",
+        "test/parity/scenarios/model-resolver-selector/26-interactive-cycle-custom-scope.toml"
+      ],
+      "contracts": [
+        "coding-agent/interactive/model-cycle-actions"
+      ],
       "divergence": "",
-      "rationale": ""
+      "rationale": "The model-cycle actions are closed by the linked contract; the handler's other registered actions remain pending review."
     },
     {
       "id": "input:packages/coding-agent/src/modes/interactive/interactive-mode.ts#InteractiveMode.showExtensionEditor",

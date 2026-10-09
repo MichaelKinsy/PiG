@@ -16,6 +16,7 @@ import (
 
 	"github.com/MichaelKinsy/PiG/agent"
 	"github.com/MichaelKinsy/PiG/coding/extension"
+	"github.com/MichaelKinsy/PiG/internal/codingagent/tools"
 	"github.com/MichaelKinsy/PiG/tui"
 	"github.com/MichaelKinsy/PiG/tui/widthx"
 )
@@ -36,13 +37,15 @@ func (m *InteractiveMode) exitIfDeadTerminal(err error) {
 }
 
 // emergencyTerminalExit exits without terminal restoration: the terminal is gone, and restore writes would fail again.
-// Pi's extensions run inside the exiting process and die with it; pig's run as child processes in their own process
-// groups, so it kills them first, as upstream kills its tracked detached children, or they would outlive the exit and
-// keep writing into the session's directories.
+// It kills the tracked detached children first, as upstream does, so a running shell command does not outlive the exit
+// in its own process group. Pi's extensions run inside the exiting process and die with it; pig's run as child
+// processes in their own process groups, so it kills them too, or they would keep writing into the session's
+// directories.
 // Ports packages/coding-agent/src/modes/interactive/interactive-mode.ts (emergencyTerminalExit).
 func (m *InteractiveMode) emergencyTerminalExit(reason string) {
 	// pig additive (D102): Pi exits here with no trace.
 	RecordExit(m.opts.AgentDir, reason+" (exit 129)")
+	tools.KillTrackedDetachedChildren()
 	if m.opts.TerminateExtensionProcesses != nil {
 		m.opts.TerminateExtensionProcesses()
 	}
@@ -65,6 +68,7 @@ func (m *InteractiveMode) inputLoop(ctx context.Context, source io.Reader) error
 }
 
 func (m *InteractiveMode) inputLoopUntil(ctx context.Context, source io.Reader, until <-chan struct{}) (resultErr error) {
+	defer m.enterOwnerLoop()()
 	m.startTerminalInput(ctx, source)
 	if until == nil {
 		defer func() {
@@ -663,6 +667,13 @@ func (m *InteractiveMode) handleEditorAction(ctx context.Context, action keyActi
 	if action == actionInterrupt && m.branchSummaryCancel != nil {
 		m.branchSummaryCancel()
 		m.opts.SessionHandle.AbortBranchSummary()
+		return nil
+	}
+
+	// Upstream onEscape aborts the running `!` command (session.abortBash) when no agent run streams, and asks nothing
+	// else to abort. A deferred command can outlive the run that was streaming when it started.
+	if action == actionInterrupt && m.bashCancel != nil && m.retryCountdownStop == nil && !m.runStreaming() {
+		m.bashCancel()
 		return nil
 	}
 

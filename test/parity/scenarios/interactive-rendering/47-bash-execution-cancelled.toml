@@ -1,0 +1,56 @@
+# Behavior family: interactive-rendering
+# Surface: BashExecutionComponent: escape while a `!` command runs ends its block with `(cancelled)` in the theme's warning color.
+#
+# Upstream evidence (pinned Pi 1.0.3, 2026-10-07, parity-runner tmux probe with COLORTERM=truecolor and the dark theme):
+# Rows below are the escaped crop, ESC shown as \e, a run of ─ as <border>.
+#
+#   $ sleep 30\e[0m
+#
+#    \e[38;2;205;154;34m(cancelled)\e[39m
+#   \e[38;2;94;178;134m<border>
+#
+# Upstream rule: InteractiveMode.setupKeyHandlers onEscape calls session.abortBash() when no agent run streams and bash runs; setComplete(…, cancelled = true) replaces the loader with theme.fg("warning", "(cancelled)").
+# Red: PiG at main 50e81255d and with only the block port ignored Escape (the loader kept spinning until the 10 s step wait expired): Escape reached the working-state abort, which asks the session to abort a run but never cancelled the command. Green once Escape calls the running command's cancel (TestInteractiveEscapeCancelsRunningUserBash).
+
+name = "47-bash-execution-cancelled"
+description = "Escape cancels a running `!` command; the block ends with `(cancelled)` in the warning color and no loader."
+covers = [
+  "packages/coding-agent/src/modes/interactive/components/bash-execution.ts",
+]
+tags = ["fast", "hermetic", "tui"]
+driver = "interactive-tmux"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_CODING_AGENT_DIR=testdata/pig-agent"]
+pi = ["PI_CODING_AGENT_DIR=testdata/pi-agent", "PI_SKIP_VERSION_CHECK=1"]
+pi_extensions = ["../../testdata/test-faux-provider.ts"]
+pig_args = ["--no-extensions", "--session-dir", "{{TEMP}}/sessions"]
+pi_args = ["--session-dir", "{{TEMP}}/sessions"]
+
+[tmux]
+width = 100
+height = 35
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "(auto)"
+ready_timeout_seconds = 30
+cwd = "testdata/bash-wrap-cwd"
+capture_start = "$ sleep 30"
+capture_end_regex = '─{100}'
+
+[[tmux.steps]]
+keys = ["!sleep 30", "Enter"]
+wait_visible_contains = ["Running... (escape/ctrl+c to cancel)"]
+wait_timeout_seconds = 10
+
+[[tmux.steps]]
+keys = ["Escape"]
+wait_visible_contains = ["(cancelled)"]
+wait_timeout_seconds = 10
+
+[assert]
+both_reach_ready = true
+both_contain = ["(cancelled)"]
+both_not_contain = ["panic:", "goroutine ", "Running..."]
+escaped_output_equal = true
+runs = 3

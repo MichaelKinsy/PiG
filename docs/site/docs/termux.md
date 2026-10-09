@@ -115,6 +115,29 @@ PiG detects that it is running in Termux, but it cannot infer how you want it to
 
 Run `/reload` after changing the file during an active session.
 
+## Build Piglets
+
+`pig piglet build` uses Termux's own toolchains. `pig setup go` cannot download Go for Android, so install Go with `pkg`:
+
+```bash
+pkg install golang clang
+```
+
+Install Rust only when a Piglet has Rust extensions:
+
+```bash
+pkg install rust
+```
+
+`pig setup` prints which build toolchains PiG finds.
+
+- `--format script` writes a launcher script.
+- `--format binary` builds a native Android Piglet Binary. A release PiG fetches its own source on the first build, so that build needs network access and takes a few minutes. Later builds reuse the cache.
+- A Piglet Binary embeds Go and Rust extensions. A Piglet with no extensions, with only Python extensions, or with any Node extension builds only as a script.
+- The container builder does not run in Termux. Termux has no Podman or Docker, and the container builder builds only Linux targets, not the Android host.
+
+Keep about 2 GB free for the first Binary build. Go's module and build caches and PiG's build cache use about 1.3 GB.
+
 ## Build from source
 
 Termux's Go toolchain builds PiG for Android with cgo:
@@ -127,7 +150,7 @@ go build -o "$PREFIX/bin/pig" ./cmd/pig
 pig --version
 ```
 
-Use Go 1.27.1 for this build. The modules retain Go 1.26 as their language floor.
+Go 1.27.2 is recommended for this build. Go 1.27.1, the release Termux packages, also builds PiG: the `toolchain` line in `go.mod` stays at go1.27.1 so that `GOTOOLCHAIN=auto` does not request a `go1.27.2.android-arm64` toolchain that Go does not publish. The modules retain Go 1.26 as their language floor.
 
 ## Troubleshooting
 
@@ -154,6 +177,20 @@ Confirm that you installed both components:
 2. The `termux-api` command-line package
 
 Then run the clipboard verification commands above outside PiG. If they fail there, fix the Termux:API installation before retrying PiG's copy command.
+
+### A Piglet build reports `link ... permission denied`
+
+PiG 0.4.1 and earlier write Piglet scripts, Piglet Binaries, and added Piglets with hard links, and Android does not allow hard links in Termux's data directory. The build fails at its last step with `commit ...: link ...: permission denied`. Update PiG to a release that includes the fix.
+
+### `pig update` reports `preserve current executable for rollback: link ... permission denied`
+
+PiG 0.4.1 and earlier keep a rollback copy of the running `pig` with a hard link before they replace it, and Android does not allow hard links in Termux's data directory. The update stops before it changes anything. Such a release cannot update itself in Termux, so update a script installation by running the installer again:
+
+```bash
+curl -fsSL https://pi-in-go.dev/install.sh | sh
+```
+
+Later releases copy the running `pig` where the hard link is refused, and `pig update` works.
 
 ### Shared storage reports permission denied
 

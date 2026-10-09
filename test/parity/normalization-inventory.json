@@ -2519,11 +2519,6 @@
       "scenario": "test/parity/scenarios/interactive-rendering/06-bash-execution-success.toml",
       "transforms": [
         {
-          "kind": "output_normalized_equal",
-          "reason": "Declared plain-text/layout surface: BashExecutionComponent renders `!echo hello world` as a bordered block with a header, blank line, output, and final blank line. Exit 0 has no status line.",
-          "limitations": "ANSI, CR, trailing spaces and outer blank rows are not equality evidence."
-        },
-        {
           "kind": "terminal_crop",
           "configuration": {
             "capture_start": "$ echo hello world",
@@ -2807,11 +2802,6 @@
     {
       "scenario": "test/parity/scenarios/interactive-rendering/20-bash-execution-long-line-wrap.toml",
       "transforms": [
-        {
-          "kind": "output_normalized_equal",
-          "reason": "Declared plain-text/layout surface: A long Bash output line wraps, and the collapsed preview retains its last 20 visual rows.",
-          "limitations": "ANSI, CR, trailing spaces and outer blank rows are not equality evidence."
-        },
         {
           "kind": "terminal_crop",
           "configuration": {
@@ -3210,6 +3200,186 @@
             "capture_end": "Run the test"
           },
           "reason": "Owned visible surface: Ctrl+O expands a resumed skill invocation through the mounted transcript child.",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/interactive-rendering/45-bash-execution-exit-status.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "$ echo out; exit 3",
+            "capture_end_regex": "─{100}"
+          },
+          "reason": "Owned visible surface: A `!` command that exits 3 ends its block with `(exit 3)` in the error color.",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/interactive-rendering/46-bash-execution-running-spinner.toml",
+      "transforms": [
+        {
+          "kind": "normalize_replace",
+          "pattern": "[⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏]",
+          "with": "*",
+          "reason": "The Loader advances its braille frame every 80 ms, so the frame in view at capture depends on timing; only the frame glyph is replaced."
+        },
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "$ sleep 30",
+            "capture_end_regex": "─{100}"
+          },
+          "reason": "Owned visible surface: A running `!` command shows Pi's loader row with the tui.select.cancel keys and no status row.",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/interactive-rendering/47-bash-execution-cancelled.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "$ sleep 30",
+            "capture_end_regex": "─{100}"
+          },
+          "reason": "Owned visible surface: Escape cancels a running `!` command; the block ends with `(cancelled)` in the warning color and no loader.",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/interactive-rendering/48-bash-execution-expand-hint.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "$ seq 1 30",
+            "capture_end_regex": "─{100}"
+          },
+          "reason": "Owned visible surface: `!seq 1 30` has 31 output lines (the last is the empty line after the final newline); the block shows the last 20 visual rows and `... 11 more lines (ctrl+o to expand)` drawn by keyHint.",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/interactive-rendering/49-bash-execution-collapse-hint.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "$ seq 1 30",
+            "capture_end_regex": "─{100}"
+          },
+          "reason": "Owned visible surface: After app.tools.expand, a 30-line `!` output shows every line and `(ctrl+o to collapse)` drawn by keyHint.",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/interactive-rendering/50-bash-execution-line-limit.toml",
+      "transforms": [
+        {
+          "kind": "normalize_replace",
+          "pattern": "pi-bash-[0-9a-f]{16}\\.log",
+          "with": "pi-bash-RANDOM.log",
+          "reason": "Both programs name the full-output file pi-bash-<16 random hex digits>.log under the inherited temporary directory; only the random digits are replaced."
+        },
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "$ seq 1 2500",
+            "capture_end_regex": "─{200}"
+          },
+          "reason": "Owned visible surface: `!seq 1 2500` keeps the last 2000 lines (1980 hidden behind the preview) and shows `Output truncated. Full output: <path>` in the warning color.",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/interactive-rendering/51-bash-execution-byte-limit.toml",
+      "transforms": [
+        {
+          "kind": "normalize_replace",
+          "pattern": "pi-bash-[0-9a-f]{16}\\.log",
+          "with": "pi-bash-RANDOM.log",
+          "reason": "Both programs name the full-output file pi-bash-<16 random hex digits>.log under the inherited temporary directory; only the random digits are replaced."
+        },
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "$ awk",
+            "capture_end_regex": "─{200}"
+          },
+          "reason": "Owned visible surface: 600 lines of 101 bytes (60600 bytes) keep only the whole trailing lines within 50 KB, and the block shows Pi's truncation notice.",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/interactive-rendering/52-resumed-bash-execution.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "$ ",
+            "capture_end": "resume-end"
+          },
+          "reason": "Owned visible surface: A resumed session draws each persisted ! and !! command as Pi's bash block: success, non-zero exit, cancelled, truncated with its full-output path, and excluded from context.",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/interactive-rendering/53-resumed-bash-execution-poisoned.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "$ ",
+            "capture_end": "poison-end"
+          },
+          "reason": "Owned visible surface: A resumed bashExecution message with no exit code or flags, a null exit code, empty output with a non-zero exit, a cancelled non-zero exit, truncation without a full-output path, or ANSI and carriage-return output renders as Pi renders it.",
           "limitations": "No claim about output outside this crop or transient terminal bytes."
         },
         {
@@ -3877,6 +4047,24 @@
             "capture_end": "Model Name: Model One"
           },
           "reason": "Owned visible surface: Fullscreen PageDown scrolls the viewport and leaves the model picker selection alone.",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/model-resolver-selector/26-interactive-cycle-custom-scope.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "Switched to Custom Model",
+            "capture_start_last": true
+          },
+          "reason": "Owned visible surface: Ctrl+P cycles a mixed custom and built-in model scope in configured order.",
           "limitations": "No claim about output outside this crop or transient terminal bytes."
         },
         {
@@ -6205,6 +6393,24 @@
             "capture_end_regex": "─+"
           },
           "reason": "Owned visible surface: The interactive resume picker includes and accents the current session, resumes it on Enter, and retains fuzzy scoring",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/session/34-continue-resume-bash-execution.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "bash-start",
+            "capture_end": "continue-end"
+          },
+          "reason": "Owned visible surface: --continue draws the persisted ! and !! command blocks of the resumed session, and /resume of the same session draws them again.",
           "limitations": "No claim about output outside this crop or transient terminal bytes."
         },
         {

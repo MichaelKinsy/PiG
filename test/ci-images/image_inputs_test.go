@@ -67,7 +67,7 @@ func TestCIImageValidationDerivesToolchainInputs(t *testing.T) {
 		copyCIFixture(t, root, "automation/images/"+image+"/metadata.env")
 	}
 	for path, content := range map[string]string{
-		"go.mod":        "module fixture\n\ntoolchain go9.8.7\n",
+		".go-version":   "9.8.7\n",
 		".node-version": "98.7.6\n",
 		"internal/coding/pigversion/pigversion.go":   "const UpstreamVersion = \"7.6.5\"\n",
 		"automation/images/npm-runtime/package.json": `{"dependencies":{"npm":"8.7.6"}}`,
@@ -145,7 +145,7 @@ func TestCIImageWorkflowWatchesAuthoritativePins(t *testing.T) {
 	}
 	for _, event := range []string{"push", "pull_request"} {
 		paths := "\n" + strings.Join(workflow.On[event].Paths, "\n") + "\n"
-		for _, input := range []string{"go.mod", ".node-version", "internal/coding/pigversion/pigversion.go", ".github/workflows/ci.yml"} {
+		for _, input := range []string{".go-version", ".node-version", "internal/coding/pigversion/pigversion.go", ".github/workflows/ci.yml"} {
 			if !strings.Contains(paths, "\n"+input+"\n") {
 				t.Errorf("%s ignores authoritative image input %s", event, input)
 			}

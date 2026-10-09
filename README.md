@@ -207,7 +207,7 @@ Go writes the `pig` executable to `GOBIN`, or to the `bin` directory of the firs
 `~/go/bin` by default (`%USERPROFILE%\go\bin` on Windows). Add that directory to
 `PATH`. With an older Go 1.21 or later and the default `GOTOOLCHAIN=auto`, Go
 downloads a new enough toolchain automatically. Release binaries are built with
-Go 1.27.1.
+Go 1.27.2.
 
 Use an exact release such as `@v0.2.0` when reproducibility matters. Update a Go
 installation by running `go install` again. Each release tags the root module
@@ -220,7 +220,7 @@ PiG currently supports source builds on Linux, macOS, and Windows. Do not treat 
 
 Requirements:
 
-- Go 1.27.1
+- Go 1.27.2
 - Git
 - macOS 13 or later for native macOS builds
 - Node.js 24.19.0 and npm 12.1.0 for parity tooling

@@ -1,5 +1,6 @@
 go 1.26.0
 
+// Keep equal to the go.mod toolchain line.
 toolchain go1.27.1
 
 // Workspace builds ignore go.mod godebug lines. Keep this equal to the root go.mod: Windows directory junctions are symbolic links, as in Node.

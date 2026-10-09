@@ -106,8 +106,8 @@ else
     "$root"
 fi
 
-go_version="$(awk '$1 == "toolchain" { print $2; exit }' "$root/go.mod")"
-[ -n "$go_version" ] || { echo "go.mod has no toolchain pin" >&2; exit 2; }
+go_version="go$(tr -d '\r\n' < "$root/.go-version")"
+[ "$go_version" != go ] || { echo ".go-version has no Go pin" >&2; exit 2; }
 
 case "$image" in
   go)

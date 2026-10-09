@@ -94,7 +94,7 @@ jobs:
           set -euo pipefail
           # npm trusted publishing needs npm >= 11.5.1; npm ci installs the
           # lockfile-pinned npm (automation/ci/npm-toolchain) for the next steps.
-          npm ci --prefix automation/ci/npm-toolchain --ignore-scripts --no-audit --no-fund
+          automation/ci/install-npm-toolchain.sh
           echo "$PWD/automation/ci/npm-toolchain/node_modules/.bin" >> "$GITHUB_PATH"
           automation/ci/npm-toolchain/node_modules/.bin/npm --version
       - name: Publish platform packages, then the launcher

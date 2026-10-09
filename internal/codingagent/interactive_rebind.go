@@ -13,6 +13,13 @@ import (
 
 // runOnMainAndWait waits for an accepted owner operation, including its awaited work. A cancelled queued operation does not mutate the UI.
 func (m *InteractiveMode) runOnMainAndWait(ctx context.Context, work func() error) error {
+	if m.onOwnerLoop() {
+		// Queueing and waiting from the owner loop would wait for work only this goroutine can run.
+		if err := ctx.Err(); err != nil {
+			return context.Cause(ctx)
+		}
+		return work()
+	}
 	result := make(chan error, 1)
 	if err := m.postToMain(ctx, func() {
 		if ctx.Err() != nil {

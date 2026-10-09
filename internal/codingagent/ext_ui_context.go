@@ -566,7 +566,7 @@ func (u *ExtUIContext) RunRemoteOverlay(opts extension.RemoteOverlayOptions, hos
 	defer overlay.setInputActive(u.m, false)
 
 	ctx := u.m.runCtx
-	runOnOwner := u.m.runOnMain
+	runOnOwner := u.m.runOnOwner
 	if ctx == nil {
 		ctx = context.Background()
 		runOnOwner = func(_ context.Context, fn func()) { fn() }

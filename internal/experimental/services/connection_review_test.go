@@ -242,10 +242,33 @@ func TestListenerFailureDoesNotChangeTransitionWork(t *testing.T) {
 					if err := binding.Ready(t.Context()); err != nil {
 						t.Fatal(err)
 					}
-					if got := capturePanic(change); got != nil {
-						t.Fatalf("publication threw %v", got)
+					// Upstream publishes the settled state in transition.then(), a microtask after the synchronous change()
+					// and remove(); holding the transition until remove() gives Go the same order, so the listener sees
+					// only the publication change() makes, and a publication that waits for the transition is caught.
+					transitionGate := make(chan struct{})
+					var openGate sync.Once
+					releaseTransition := func() { openGate.Do(func() { close(transitionGate) }) }
+					// Every exit, including a Fatalf, releases the rebind goroutine blocked on the gate.
+					defer releaseTransition()
+					local.mu.Lock()
+					local.asyncRebind = true
+					local.rebind = func(context.Context, bool) error {
+						<-transitionGate
+						return nil
+					}
+					local.mu.Unlock()
+					published := make(chan any, 1)
+					go func() { published <- capturePanic(change) }()
+					select {
+					case got := <-published:
+						if got != nil {
+							t.Fatalf("publication threw %v", got)
+						}
+					case <-time.After(5 * time.Second):
+						t.Fatal("publication waited for its transition work")
 					}
 					remove()
+					releaseTransition()
 					if reconnect {
 						if kind == "server" {
 							client.connect("connected", nil)

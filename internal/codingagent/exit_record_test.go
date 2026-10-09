@@ -19,6 +19,7 @@ import (
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/coding/extension/host/inproc"
+	"github.com/MichaelKinsy/PiG/internal/codingagent/tools"
 	"github.com/MichaelKinsy/PiG/tui"
 )
 
@@ -78,6 +79,15 @@ func TestExitRecordChild(t *testing.T) {
 		SetUncaughtGoroutineHandler(m.uncaughtOffLoop)
 		m.backgroundTasks.Go(func() { panic(&os.PathError{Op: "write", Path: "/dev/tty", Err: syscall.EIO}) })
 		select {}
+	case "dead-terminal-running-shell", "crash-running-shell":
+		m := NewInteractiveMode(InteractiveOptions{CWD: "/work", AgentDir: agentDir, AppVersion: "9.9.9"})
+		startRunningShellCommand(agentDir)
+		if scenario == "dead-terminal-running-shell" {
+			m.emergencyTerminalExit("terminal gone: read /dev/tty: input/output error")
+		}
+		SetUncaughtGoroutineHandler(m.uncaughtOffLoop)
+		m.backgroundTasks.Go(func() { panic("boom while a shell command runs") })
+		select {}
 	}
 	os.Exit(0)
 }
@@ -90,6 +100,36 @@ func terminatedSentinel(agentDir string) func() {
 func extensionsTerminated(agentDir string) bool {
 	_, err := os.Stat(filepath.Join(agentDir, "extensions-terminated"))
 	return err == nil
+}
+
+// startRunningShellCommand starts a command through the shell operations a `!` command and the bash tool share, with no
+// cancellation, and returns once its background job has written its pid to agentDir/shell-job-pid. If the command ends
+// first or the pid does not appear within 10 s, the child exits with the cause, which the parent test reports.
+func startRunningShellCommand(agentDir string) {
+	type execResult struct {
+		result tools.BashOperationsResult
+		err    error
+	}
+	ended := make(chan execResult, 1)
+	go func() {
+		result, err := tools.NewLocalBashOperations(nil, "").Exec(context.Background(), "sleep 60 & echo $! > shell-job-pid.tmp && mv shell-job-pid.tmp shell-job-pid; wait", agentDir, tools.BashOperationsExecOptions{})
+		ended <- execResult{result, err}
+	}()
+	deadline := time.After(10 * time.Second)
+	for {
+		if _, err := os.Stat(filepath.Join(agentDir, "shell-job-pid")); err == nil {
+			return
+		}
+		select {
+		case end := <-ended:
+			fmt.Fprintf(os.Stderr, "the shell command ended before its background job started: %+v, %v\n", end.result, end.err)
+			os.Exit(2)
+		case <-deadline:
+			fmt.Fprintln(os.Stderr, "the shell command's background job did not start within 10s")
+			os.Exit(2)
+		case <-time.After(10 * time.Millisecond):
+		}
+	}
 }
 
 func runExitRecordChild(t *testing.T, scenario, agentDir string) (string, int) {
