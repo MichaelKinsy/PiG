@@ -329,19 +329,21 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw "Rust toolchain installation failed" }
           rustup default $env:RUST_VERSION
           if ($LASTEXITCODE -ne 0) { throw "Rust toolchain selection failed" }
+      # fd and ripgrep come from pinned GitHub release archives verified against
+      # automation/ci/windows-tools.txt, not from a package feed whose outages
+      # (504, missing lib paths) failed every Windows shard.
+      - name: Restore the native test tool archives
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ runner.temp }}\native-tool-archives
+          key: native-tools-${{ runner.os }}-${{ hashFiles('automation/ci/windows-tools.txt', 'automation/ci/install-windows-tools.ps1') }}
       - name: Install native test tools
         shell: pwsh
         run: |
-          choco install fd ripgrep --yes --no-progress
-          if ($LASTEXITCODE -ne 0) { throw "Native test tool installation failed" }
-          # Chocolatey puts shims on PATH that find the real binary relative to
-          # their own location, so a copied or linked shim cannot run. Put the
-          # real binaries first, as users install them.
-          foreach ($tool in @('fd', 'ripgrep')) {
-            $exe = Get-ChildItem "$env:ChocolateyInstall\lib\$tool" -Recurse -Include fd.exe, rg.exe | Select-Object -First 1
-            if (-not $exe) { throw "$tool binary not found under Chocolatey lib" }
-            Add-Content -Path $env:GITHUB_PATH -Value $exe.DirectoryName
-          }
+          $bin = Join-Path $env:RUNNER_TEMP 'native-tools'
+          ./automation/ci/install-windows-tools.ps1 -Cache (Join-Path $env:RUNNER_TEMP 'native-tool-archives') -Bin $bin
+          Add-Content -Path $env:GITHUB_PATH -Value $bin
+          $env:PATH = "$bin;$env:PATH"
           fd --version
           if ($LASTEXITCODE -ne 0) { throw "fd is not available" }
           rg --version
