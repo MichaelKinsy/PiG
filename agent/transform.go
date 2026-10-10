@@ -95,7 +95,18 @@ func NormalizeMessages(msgs []AgentMessage, model *ai.Model) []AgentMessage {
 		return queued[0]
 	}
 
+	// A system message that lands between a tool call and its results is held
+	// back and emitted after the results, synthetic ones included (upstream
+	// transformMessages heldSystemMessages): providers reject anything between
+	// a tool call and its results, and a held message never causes a duplicate
+	// result for a call that is answered later.
+	var heldSystem []AgentMessage
+
 	flushSynthetic := func() {
+		defer func() {
+			result = append(result, heldSystem...)
+			heldSystem = nil
+		}()
 		for i, id := range pendingToolUseIDs {
 			if seenResultIDs[id] {
 				continue
@@ -171,6 +182,26 @@ func NormalizeMessages(msgs []AgentMessage, model *ai.Model) []AgentMessage {
 		case msg.User != nil:
 			// User message interrupts any pending tool flow: flush first.
 			flushSynthetic()
+			result = append(result, msg)
+
+		case msg.System != nil:
+			if len(pendingToolUseIDs) > 0 {
+				heldSystem = append(heldSystem, msg)
+			} else {
+				result = append(result, msg)
+			}
+
+		case msg.Custom != nil:
+			// Upstream converts to LLM messages before transformMessages, so a
+			// custom message that becomes a user message (branch summary,
+			// compaction summary, bash execution, custom) ends the tool flow
+			// like any user turn. Pig normalizes first, so it must decide the
+			// same here: a synthetic result left behind the summary is an
+			// orphan tool_result on the wire. A custom message that sends
+			// nothing does not interrupt.
+			if _, sendsUser := customUserMessage(msg.Custom); sendsUser {
+				flushSynthetic()
+			}
 			result = append(result, msg)
 
 		default:

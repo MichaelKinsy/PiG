@@ -33,29 +33,39 @@ func ConvertToLLM(msgs []AgentMessage, model *ai.Model) []ai.Message {
 				Timestamp: m.ToolResult.Timestamp,
 			})
 		case m.Custom != nil:
-			// Mirrors upstream convertToLlm (coding-agent core/messages.ts):
-			// every known custom role becomes a user message whose content is a
-			// text-block array; "custom" block-array content passes through.
-			role, _ := m.Custom["role"].(string)
-			switch role {
-			case RoleBashExecution, RoleBranchSummary, RoleCompactionSummary:
-				if role == RoleBashExecution {
-					if excluded, _ := m.Custom["excludeFromContext"].(bool); excluded {
-						continue
-					}
-				}
-				out = append(out, ai.UserMessage{
-					Content:   ai.UserContentBlocks{ai.TextContent{Text: customMessageText(m.Custom)}},
-					Timestamp: customTimestamp(m.Custom),
-				})
-			case RoleCustom:
-				if content, ok := customMessageContent(m.Custom["content"]); ok {
-					out = append(out, ai.UserMessage{Content: content, Timestamp: customTimestamp(m.Custom)})
-				}
+			if user, ok := customUserMessage(m.Custom); ok {
+				out = append(out, user)
 			}
 		}
 	}
 	return out
+}
+
+// customUserMessage is the user message convertToLLM sends for a custom
+// message, or false when the message sends nothing. It mirrors upstream
+// convertToLlm (coding-agent core/messages.ts): every known custom role becomes
+// a user message whose content is a text-block array, and "custom" block-array
+// content passes through. NormalizeMessages asks the same question to end the
+// tool flow where upstream's transformMessages sees a user message.
+func customUserMessage(m map[string]any) (ai.UserMessage, bool) {
+	role, _ := m["role"].(string)
+	switch role {
+	case RoleBashExecution, RoleBranchSummary, RoleCompactionSummary:
+		if role == RoleBashExecution {
+			if excluded, _ := m["excludeFromContext"].(bool); excluded {
+				return ai.UserMessage{}, false
+			}
+		}
+		return ai.UserMessage{
+			Content:   ai.UserContentBlocks{ai.TextContent{Text: customMessageText(m)}},
+			Timestamp: customTimestamp(m),
+		}, true
+	case RoleCustom:
+		if content, ok := customMessageContent(m["content"]); ok {
+			return ai.UserMessage{Content: content, Timestamp: customTimestamp(m)}, true
+		}
+	}
+	return ai.UserMessage{}, false
 }
 
 // customMessageContent converts a "custom" message's content to user content

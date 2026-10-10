@@ -1,0 +1,3 @@
+### Fixed
+
+- A request sent after `/tree` navigation to a point between parallel tool calls and their results no longer fails with "unexpected tool_use_id in tool_result blocks". A branch summary, compaction summary, bash execution or custom message now ends the pending tool calls like any user turn, so the placeholder results come before it. A system message between a tool call and its results is now held until after the results, as in Pi.
