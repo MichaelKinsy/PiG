@@ -81,9 +81,10 @@ func TestConvertToLLMCustomMessagesMatchUpstreamConvertToLlm(t *testing.T) {
 	}
 }
 
-// Shapes recorded from pinned Pi 0.87.1: convertToLlm (coding-agent
+// Shapes recorded from Pi 1.0.4 dist: convertToLlm (coding-agent
 // dist/core/messages.js) then transformMessages (pi-ai
-// dist/api/transform-messages.js) over the same histories. Any custom message
+// dist/api/transform-messages.js) over the same histories. Both sources are
+// identical in the pinned Pi 1.0.3. Any custom message
 // closes a pending tool flow, because upstream converts it to a user message
 // before transformMessages runs; a system message is held until the flow
 // closes.
@@ -102,6 +103,14 @@ func TestConvertToLLMToolFlowMatchesUpstreamTransformOrder(t *testing.T) {
 		return AgentMessage{Custom: map[string]any{"role": RoleCustom, "customType": "n", "content": content, "timestamp": int64(5)}}
 	}
 	excluded := AgentMessage{Custom: map[string]any{"role": RoleBashExecution, "command": "ls", "output": "x", "exitCode": float64(0), "excludeFromContext": true, "timestamp": int64(5)}}
+	bash := AgentMessage{Custom: map[string]any{"role": RoleBashExecution, "command": "ls", "output": "x", "exitCode": float64(0), "timestamp": int64(5)}}
+	compaction := AgentMessage{Custom: map[string]any{"role": RoleCompactionSummary, "summary": "c", "tokensBefore": 1, "timestamp": int64(5)}}
+	text := AgentMessage{Assistant: &AssistantMessage{Role: "assistant", Content: []ai.AssistantContentBlock{ai.TextContent{Text: "t"}}, StopReason: "stop"}}
+	failed := func(stop ai.StopReason, ids ...string) AgentMessage {
+		message := calls(ids...)
+		message.Assistant.StopReason = stop
+		return message
+	}
 	for _, tc := range []struct {
 		name    string
 		history []AgentMessage
@@ -118,6 +127,14 @@ func TestConvertToLLMToolFlowMatchesUpstreamTransformOrder(t *testing.T) {
 		{"systemThenSummary", []AgentMessage{user("s"), calls("a", "b"), result("a"), system, summary, user("p")}, "user:s assistant toolResult:a toolResult:b! system user:The followin user:p"},
 		{"summaryThenSystem", []AgentMessage{user("s"), calls("a", "b"), result("a"), summary, system, user("p")}, "user:s assistant toolResult:a toolResult:b! user:The followin system user:p"},
 		{"trailingSystem", []AgentMessage{user("s"), calls("a", "b"), result("a"), system}, "user:s assistant toolResult:a toolResult:b! system"},
+		{"compactionSummary", []AgentMessage{user("s"), calls("a", "b"), result("a"), compaction, user("p")}, "user:s assistant toolResult:a toolResult:b! user:The conversa user:p"},
+		{"twoSystemsHeld", []AgentMessage{user("s"), calls("a", "b"), system, system, result("a"), result("b"), user("p")}, "user:s assistant toolResult:a toolResult:b system system user:p"},
+		{"systemNoCalls", []AgentMessage{user("s"), text, system, user("p")}, "user:s assistant system user:p"},
+		{"systemAfterErrored", []AgentMessage{user("s"), calls("a"), failed("error", "b"), system, user("p")}, "user:s assistant toolResult:a! system user:p"},
+		{"heldThenAborted", []AgentMessage{user("s"), calls("a", "b"), result("a"), system, failed("aborted", "z"), user("p")}, "user:s assistant toolResult:a toolResult:b! system user:p"},
+		// pig divergence (D48): Pi sends "toolResult:b! user:Ran `ls`... toolResult:b", an orphan
+		// result the provider rejects. Pig moves the real result into the placeholder slot.
+		{"bashBetweenResults", []AgentMessage{user("s"), calls("a", "b"), result("a"), bash, result("b"), user("p")}, "user:s assistant toolResult:a toolResult:b user:Ran `ls`\n``` user:p"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			wire := convertToLLM(tc.history, nil)
@@ -166,7 +183,7 @@ func upstreamOrderShape(wire []ai.Message) string {
 }
 
 // The user-message content each custom message puts on the wire, recorded from
-// pinned Pi 0.87.1 (convertToLlm, then the pi-ai openai-completions and
+// Pi 0.87.1 (convertToLlm, then the pi-ai openai-completions and
 // anthropic-messages stream functions against a capturing server). Upstream
 // sends every custom message as a text-block array, never as a plain string.
 // The contents are compared as decoded JSON: Pig's encoder escapes "<" as

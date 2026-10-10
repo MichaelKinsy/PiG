@@ -483,7 +483,9 @@ Deduplicating by id alone drops every turn after the first, which stalls the
 conversation, and counting occurrences alone lets a duplicate of an early call
 consume the allowance belonging to a later one.
 
-A result arriving after the next assistant turn is out of order rather than
+A result arriving after its tool flow closes (at the next assistant turn, or at a
+user turn, including a branch summary, compaction summary, bash execution or
+custom message that converts to a user message) is out of order rather than
 missing, so the placeholder slot carries that real result instead of upstream's
 `"No result provided"`, and the out-of-position copy is the one dropped. Upstream
 emits the placeholder and still sends the late copy, which the provider rejects;
