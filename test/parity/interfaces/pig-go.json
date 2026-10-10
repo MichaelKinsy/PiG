@@ -3534,6 +3534,17 @@
       "shapeHash": "sha256:b0b558f364e5b4f55ce2b2ce519148dbb7019aef70724b5132a515c34c0e8f67"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/agent#customUserMessage",
+      "package": "github.com/MichaelKinsy/PiG/agent",
+      "name": "customUserMessage",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(m map[string]any) (github.com/MichaelKinsy/PiG/ai.UserMessage, bool)"
+      },
+      "shapeHash": "sha256:68994860b5575e4648f20cad6386aae7098328eb412990c5e30f1689d75a0206"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/agent#decodeSystemMessage",
       "package": "github.com/MichaelKinsy/PiG/agent",
       "name": "decodeSystemMessage",
