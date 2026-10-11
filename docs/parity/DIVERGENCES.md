@@ -793,16 +793,16 @@ SCRUTINIZED:approved
 
 ## D63 `--version` prints PiG's composite version
 
-What: `pi --version` prints Pi's bare version (for example `0.99.1`). `pig --version` prints one composite version: PiG's release with the Pi release PiG ports as semver build metadata (for example `0.3.0+0.99.1`, `coding.Version`). The help and diagnostics banner, the interactive startup line, `pig build`'s installed line, and `pig verify` show the same composite. `pig version` keeps its separate `pig:` and `upstream pi:` fields, which the Piglet image check and `pig build` read.
+What: `pi --version` prints Pi's bare version (for example `1.0.3`). By default, `pig --version` and `pig -v` print one composite version: PiG's release with the Pi release PiG ports as semver build metadata (for example `0.4.1+1.0.3`, `coding.Version`). The product-neutral `PIG_VERSION_FORMAT=pi` opt-in makes only these two flags print the actual pinned Pi version (`coding.UpstreamVersion`) for launchers that apply Pi's minimum-version check. The match is exact; an empty or any other value preserves the composite output. The help and diagnostics banner, the interactive startup line, `pig build`'s installed line, `pig verify`, `pig version`, self-update identity, and SDK product versions do not read this opt-in. `pig version` keeps its separate `pig:` and `upstream pi:` fields, which the Piglet image check and `pig build` read.
 
 Why: one string tells a user both which PiG they run and which Pi it ports. The owner chose this on 2026-09-23.
 
-Observable effect: a script that runs `pig --version` and expects Pi's bare version sees `0.3.0+0.99.1`. Semver precedence ignores build metadata, so the composite sorts as `0.3.0`; self-update comparisons, release tags, and the Piglet compatibility check still use `coding.PigVersion` itself.
+Observable effect: by default, a script that runs `pig --version` and expects Pi's bare version sees `0.4.1+1.0.3`. Semver precedence ignores build metadata, so the composite sorts as `0.4.1`. With `PIG_VERSION_FORMAT=pi`, that script sees `1.0.3`, the pinned release Pig implements. Self-update comparisons, release tags, and the Piglet compatibility check still use `coding.PigVersion` itself.
 
 Call sites:
 - `cmd/pig/main.go`: `cliVersionString`.
 
-Locked by: `cmd/pig/main_test.go` `TestCLIVersionStringIsCompositeVersion`; the parity scenario `test/parity/scenarios/startup/01-version-flag.toml` asserts both outputs in its `[diverge]` block.
+Locked by: `cmd/pig/main_test.go` `TestCLIVersionStringFormat` and `TestVersionFlagsHonorPiFormatWithoutChangingDetailedVersion`; the parity scenario `test/parity/scenarios/startup/01-version-flag.toml` asserts the default output in its `[diverge]` block.
 
 Remove when: never, unless the owner returns `--version` to Pi's bare version.
 

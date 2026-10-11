@@ -39,6 +39,14 @@ Offline mode, from `--offline`, `PIG_OFFLINE` or `PI_OFFLINE`, sets
 inherit, as Pi does. Pi extensions that check `PI_OFFLINE` see PiG's offline
 mode.
 
+## Version output
+
+| Variable | Effect |
+|---|---|
+| `PIG_VERSION_FORMAT` | Exact value `pi` makes `pig --version` and `pig -v` print the pinned Pi version instead of PiG's composite version (D63). Empty and all other values keep the default composite output. This variable does not change `pig version`, help, banners, diagnostics, updates, or SDK versions |
+
+Use this opt-in when a Pi-compatible launcher checks the version before it starts PiG. The output is PiG's actual pinned `UpstreamVersion`, not a fabricated release.
+
 ## Diagnostics
 
 | Variable | Effect |

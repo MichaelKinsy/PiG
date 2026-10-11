@@ -1,9 +1,11 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"runtime"
 	"slices"
@@ -26,14 +28,82 @@ func assertNoTopLevelVersionJSON(t *testing.T, output string) {
 	}
 }
 
-// D63: --version prints the composite PigVersion+UpstreamVersion.
-func TestCLIVersionStringIsCompositeVersion(t *testing.T) {
-	want := PigVersion + "+" + UpstreamVersion
-	if got := cliVersionString(); got != want {
-		t.Fatalf("cliVersionString() = %q, want %q", got, want)
+// D63: --version prints the composite PigVersion+UpstreamVersion unless the caller explicitly requests Pi's version format.
+func TestCLIVersionStringFormat(t *testing.T) {
+	for _, test := range []struct {
+		name, format, want string
+		set                bool
+	}{
+		{name: "default", want: Version},
+		{name: "empty", format: "", want: Version, set: true},
+		{name: "unrecognized", format: "PI", want: Version, set: true},
+		{name: "pi", format: "pi", want: UpstreamVersion, set: true},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			if test.set {
+				t.Setenv("PIG_VERSION_FORMAT", test.format)
+			} else {
+				original, existed := os.LookupEnv("PIG_VERSION_FORMAT")
+				if err := os.Unsetenv("PIG_VERSION_FORMAT"); err != nil {
+					t.Fatal(err)
+				}
+				t.Cleanup(func() {
+					if existed {
+						_ = os.Setenv("PIG_VERSION_FORMAT", original)
+					}
+				})
+			}
+			if got := cliVersionString(); got != test.want {
+				t.Fatalf("cliVersionString() = %q, want %q", got, test.want)
+			}
+		})
 	}
-	if Version != want {
-		t.Fatalf("Version = %q, want %q", Version, want)
+	if Version != PigVersion+"+"+UpstreamVersion {
+		t.Fatalf("Version = %q, want %q", Version, PigVersion+"+"+UpstreamVersion)
+	}
+}
+
+func TestVersionFlagsHonorPiFormatWithoutChangingDetailedVersion(t *testing.T) {
+	binary := buildPigBinaryForSignalTest(t)
+	for _, test := range []struct {
+		name, format, want string
+		set                bool
+	}{
+		{name: "default", want: Version},
+		{name: "empty", format: "", want: Version, set: true},
+		{name: "unrecognized", format: "upstream", want: Version, set: true},
+		{name: "pi", format: "pi", want: UpstreamVersion, set: true},
+	} {
+		for _, flag := range []string{"--version", "-v"} {
+			t.Run(test.name+"/"+flag, func(t *testing.T) {
+				cmd := exec.CommandContext(t.Context(), binary, flag)
+				cmd.Env = os.Environ()
+				if test.set {
+					cmd.Env = append(cmd.Env, "PIG_VERSION_FORMAT="+test.format)
+				} else {
+					cmd.Env = slices.DeleteFunc(cmd.Env, func(value string) bool { return strings.HasPrefix(value, "PIG_VERSION_FORMAT=") })
+				}
+				cmd.Env = append(cmd.Env, "HOME="+t.TempDir(), "PIG_HOME="+t.TempDir(), "PIG_CODING_AGENT_DIR="+t.TempDir())
+				var stderr bytes.Buffer
+				cmd.Stderr = &stderr
+				output, err := cmd.Output()
+				if err != nil || stderr.Len() != 0 || string(output) != test.want+"\n" {
+					t.Fatalf("exit error=%v stdout=%q stderr=%q, want %q", err, output, stderr.String(), test.want+"\n")
+				}
+			})
+		}
+	}
+
+	cmd := exec.CommandContext(t.Context(), binary, "version")
+	cmd.Env = append(os.Environ(), "PIG_VERSION_FORMAT=pi", "HOME="+t.TempDir(), "PIG_HOME="+t.TempDir(), "PIG_CODING_AGENT_DIR="+t.TempDir())
+	output, err := cmd.Output()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{"pig: " + PigVersion + "\n", "upstream pi: " + UpstreamVersion + "\n", "go: ", "platform: "} {
+		if !strings.Contains(string(output), want) {
+			t.Fatalf("pig version = %q, missing %q", output, want)
+		}
 	}
 }
 
