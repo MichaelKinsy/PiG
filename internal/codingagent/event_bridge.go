@@ -13,6 +13,7 @@ import (
 	"encoding/json"
 	"slices"
 	"sync"
+	"weak"
 	"time"
 
 	"github.com/MichaelKinsy/PiG/agent"
@@ -242,15 +243,26 @@ type messageUpdateBatcher struct {
 	flushing bool
 }
 
-var messageUpdateBatchers sync.Map // *inproc.Runner -> *messageUpdateBatcher
+var messageUpdateBatchers sync.Map // weak.Pointer[inproc.Runner] -> *messageUpdateBatcher
 
+// messageUpdateBatcherFor returns runner's batcher, creating it on first use.
+// The map is keyed weakly so a retired runner and its extensions stay
+// garbage-collectable; dead entries are pruned opportunistically here so the
+// map itself does not grow across reloads.
 func messageUpdateBatcherFor(runner *inproc.Runner) *messageUpdateBatcher {
-	if v, ok := messageUpdateBatchers.Load(runner); ok {
+	key := weak.Make(runner)
+	if v, ok := messageUpdateBatchers.Load(key); ok {
 		return v.(*messageUpdateBatcher)
 	}
+	messageUpdateBatchers.Range(func(k, _ any) bool {
+		if wk, ok := k.(weak.Pointer[inproc.Runner]); ok && wk.Value() == nil {
+			messageUpdateBatchers.Delete(k)
+		}
+		return true
+	})
 	b := &messageUpdateBatcher{}
 	b.space = sync.NewCond(&b.mu)
-	actual, _ := messageUpdateBatchers.LoadOrStore(runner, b)
+	actual, _ := messageUpdateBatchers.LoadOrStore(key, b)
 	return actual.(*messageUpdateBatcher)
 }
 
@@ -261,7 +273,7 @@ func DrainMessageUpdates(runner *inproc.Runner) {
 	if runner == nil {
 		return
 	}
-	if v, ok := messageUpdateBatchers.Load(runner); ok {
+	if v, ok := messageUpdateBatchers.Load(weak.Make(runner)); ok {
 		b := v.(*messageUpdateBatcher)
 		b.mu.Lock()
 		for b.flushing {

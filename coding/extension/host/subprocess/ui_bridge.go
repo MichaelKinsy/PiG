@@ -842,6 +842,9 @@ func (b *UIBridge) SetActions(actions *HostCallbacks) {
 	defer b.mu.Unlock()
 	b.actions = actions
 	b.modelCatalogEncoder = nil
+	// The new callbacks may report a catalog for a version the old ones
+	// already served; drop the encoding so the next Snapshot re-reads them.
+	b.allToolsCacheVersion, b.allToolsCacheJSON = 0, nil
 }
 
 // BindCommandActions binds the non-nil command-context actions to the host
@@ -985,8 +988,10 @@ func (b *UIBridge) SetHostAction(key string, fn any) {
 		b.actions.GetActiveTools = fn.(func() []string)
 	case "getAllTools":
 		b.actions.GetAllTools = fn.(func() []ToolInfo)
+		b.allToolsCacheVersion, b.allToolsCacheJSON = 0, nil
 	case "getAllToolsVersion":
 		b.actions.GetAllToolsVersion = fn.(func() uint64)
+		b.allToolsCacheVersion, b.allToolsCacheJSON = 0, nil
 	case "getSettings":
 		b.actions.GetSettings = fn.(func() extension.Settings)
 	case "getCallableTools":
