@@ -23,6 +23,7 @@ All notable public changes to PiG will be recorded in this file.
 - With an active Piglet, an extension that denies every tool with `SetActiveTools([])` is no longer widened back to the Piglet's full tool scope. The Piglet scope only narrows what an earlier extension selected. `getActiveTools` replies and the replicated state carry `[]` for a session narrowed to no tools, never `null`.
 - On Windows, refreshing an MCP server's OAuth token no longer fails with `EPERM` when another `pig` process is still deleting the refresh lock. Lock acquisition that waits for a lock now retries every error, as Pi's lock does, and reports the most frequent error when it gives up.
 - Starting `pig` no longer waits for the daily cleanup of the extension cache. The cleanup now runs in the background after the session is running, stops when `pig` exits, and skips entries that are in use or that the file system reports busy (such as NFS `.nfs*` files) instead of failing and repeating at every start. `pig extensions cache prune` reports the skipped entries, and `pig extensions cache stats` shows the last background failure.
+- `SIGTERM` or `SIGHUP` during `pig -p` or `pig --mode json` delivers `session_shutdown` to extensions before `pig` exits with 143 or 129, as Pi does. `pig` had stopped the extension processes first, so their cleanup handlers never ran.
 
 ## [0.4.1] - 2026-10-05
 

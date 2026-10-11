@@ -201,6 +201,14 @@ func runPrintMode(ctx context.Context, host printModeRuntime, opts printModeOpti
 		case <-ctx.Done():
 		}
 	}()
+	// Pi's signal handler awaits disposeRuntime() (session_shutdown) before process.exit (print-mode.ts registerSignalHandlers). The root signal handler cancels the process context, which kills the extension subprocesses, after this hook returns, so the hook waits until the deferred Runtime.Close has run.
+	defer setTerminationShutdownHook(nil)
+	disposed := make(chan struct{})
+	defer close(disposed)
+	setTerminationShutdownHook(func() {
+		cancel()
+		<-disposed
+	})
 	defer func() {
 		// A termination signal outranks whatever error the cancelled run
 		// surfaced, so the caller reports the signal's exit code instead of a
