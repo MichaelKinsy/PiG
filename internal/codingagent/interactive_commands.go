@@ -38,7 +38,7 @@ func (m *InteractiveMode) dispatchSlash(ctx context.Context, line string) {
 func (m *InteractiveMode) dispatchSlashContext(sc *SlashContext, line string) {
 	extCtx := m.extCtx
 	if err := m.slashRegistry.Dispatch(sc, line, extCtx); err != nil {
-		if errors.Is(err, ErrInteractiveCrashed) {
+		if errors.Is(err, ErrInteractiveCrashed) || errors.Is(err, errInteractiveShutdown) {
 			return
 		}
 		if errors.Is(err, ErrUnknownSlashCommand) {

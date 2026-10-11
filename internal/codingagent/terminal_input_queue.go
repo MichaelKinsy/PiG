@@ -2,6 +2,7 @@ package codingagent
 
 import (
 	"context"
+	"errors"
 	"slices"
 	"sync"
 
@@ -239,9 +240,10 @@ func (p *terminalInputPass) await(l terminalInputListener) {
 }
 
 // failInputLoop ends the input loop with err, which a keystroke handled after
-// a remote verdict returns there instead of to the loop directly.
+// a remote verdict returns there instead of to the loop directly. A phase that
+// ended because the loop already shut down is not a failure.
 func (m *InteractiveMode) failInputLoop(err error) {
-	if err != nil && m.inputLoopErr == nil {
+	if err != nil && !errors.Is(err, errInteractiveShutdown) && m.inputLoopErr == nil {
 		m.inputLoopErr = err
 	}
 }

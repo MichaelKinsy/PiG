@@ -1,0 +1,44 @@
+# Behavior family: extensions-runtime
+# Scenario: a session_start handler calls ctx.shutdown() during startup and never settles.
+#
+# Upstream evidence (Pi 1.0.3): the event-context shutdownHandler calls shutdown() when the session is idle
+# (interactive-mode.ts:2020-2024). shutdown() (4251-4290) stops the TUI, awaits runtimeHost.dispose(), which emits
+# session_shutdown with reason "quit", prints "To resume this session: <cmd>" only when the session file exists, and
+# calls process.exit(0). It never awaits the session_start handler that asked for the shutdown.
+# Probed with Pi 1.0.3 in tmux (2026-10-11): the final frame, then "SHUTDOWN_EVENT quit", no resume line (no turn
+# was persisted, so no session file exists), exit 0. Pig had restored the terminal and then waited forever for the
+# startup phase that requested the shutdown.
+# The fixture's handler returns a Promise that never settles, so the host must exit without waiting for it; it
+# reports session_shutdown on the controlling terminal, after the TUI has stopped, in both hosts.
+
+name = "73-shutdown-from-session-start"
+description = "ctx.shutdown() from a never-settling session_start handler emits session_shutdown and exits 0 without a resume line"
+covers = [
+  "packages/coding-agent/src/modes/interactive/interactive-mode.ts",
+]
+tags = ["hermetic", "fast", "tui"]
+driver = "interactive-tmux"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_HOME=testdata/pig-home", "SHUTDOWN_AT=session_start"]
+pi = ["PI_CODING_AGENT_DIR=testdata/pi-agent", "PI_SKIP_VERSION_CHECK=1", "SHUTDOWN_AT=session_start"]
+pig_args = ["--no-extensions"]
+pig_extensions = ["testdata/ext/shutdown-in-awaited-phase.mjs"]
+pi_extensions = ["../../testdata/test-faux-provider.ts", "testdata/ext/shutdown-in-awaited-phase.mjs"]
+
+[tmux]
+width = 120
+height = 30
+ready_pattern_pig = "SHUTDOWN_EVENT"
+ready_pattern_pi = "SHUTDOWN_EVENT"
+ready_timeout_seconds = 30
+capture_start = "SHUTDOWN_EVENT"
+
+[assert]
+both_reach_ready = true
+exit_code = 0
+both_contain = ["SHUTDOWN_EVENT quit"]
+both_not_contain = ["To resume this session", "panic:", "uncaughtException"]
+output_equal = true
+runs = 3

@@ -155466,6 +155466,17 @@
       "shapeHash": "sha256:f4556d565c968176167c5ec83122a3e8e2bdfe11ca53cf6ba6fe2f3a48444dd6"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#errInteractiveShutdown",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "errInteractiveShutdown",
+      "kind": "variable",
+      "exported": false,
+      "shape": {
+        "type": "error"
+      },
+      "shapeHash": "sha256:6320ac68bd22b44fdcc4619eb1bb6166e15ab5fc8e78dbf2401aeda8f9e49a1d"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#errLoginAborted",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
       "name": "errLoginAborted",

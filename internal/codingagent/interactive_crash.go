@@ -137,6 +137,10 @@ func (m *InteractiveMode) crashExtensionHint(stack string) string {
 // handleFatalRuntimeError reports a runtime replacement failure and asks the
 // input loop to exit with status 1 after terminal restoration.
 func (m *InteractiveMode) handleFatalRuntimeError(prefix string, value any) error {
+	// A replacement that ended because the session already shut down is not a failure; Pi's process has exited by then.
+	if err, ok := value.(error); ok && errors.Is(err, errInteractiveShutdown) {
+		return err
+	}
 	message := crashMessage(value)
 	stack := string(debug.Stack())
 	m.showError(prefix + ": " + message)

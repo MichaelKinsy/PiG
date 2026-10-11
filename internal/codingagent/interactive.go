@@ -1577,6 +1577,9 @@ func (m *InteractiveMode) Run(ctx context.Context) (err error) {
 	if err := m.awaitExtensionUI(ctx, func(ctx context.Context) error {
 		return m.rebindCurrentSession(ctx, false)
 	}); err != nil {
+		if errors.Is(err, errInteractiveShutdown) {
+			return nil
+		}
 		return err
 	}
 	mark("post-emit-session-start")

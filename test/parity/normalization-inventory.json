@@ -1909,6 +1909,79 @@
       ]
     },
     {
+      "scenario": "test/parity/scenarios/extensions-runtime/73-shutdown-from-session-before-fork.toml",
+      "transforms": [
+        {
+          "kind": "normalize_replace",
+          "pattern": "pig? --session [0-9a-f-]{36}",
+          "with": "<bin> --session <session-id>",
+          "reason": "D2: the resume command names the host executable; the session id is random per run. The rest of the line and the session_shutdown line stay compared."
+        },
+        {
+          "kind": "output_normalized_equal",
+          "reason": "Declared plain-text/layout surface: ctx.shutdown() from a never-settling session_before_fork handler during /fork emits session_shutdown, prints the resume command and exits 0",
+          "limitations": "ANSI, CR, trailing spaces and outer blank rows are not equality evidence."
+        },
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "SHUTDOWN_EVENT"
+          },
+          "reason": "Owned visible surface: ctx.shutdown() from a never-settling session_before_fork handler during /fork emits session_shutdown, prints the resume command and exits 0",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/extensions-runtime/73-shutdown-from-session-before-switch.toml",
+      "transforms": [
+        {
+          "kind": "normalize_replace",
+          "pattern": "pig? --session [0-9a-f-]{36}",
+          "with": "<bin> --session <session-id>",
+          "reason": "D2: the resume command names the host executable; the session id is random per run. The rest of the line and the session_shutdown line stay compared."
+        },
+        {
+          "kind": "output_normalized_equal",
+          "reason": "Declared plain-text/layout surface: ctx.shutdown() from a never-settling session_before_switch handler during /new emits session_shutdown, prints the resume command and exits 0",
+          "limitations": "ANSI, CR, trailing spaces and outer blank rows are not equality evidence."
+        },
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "SHUTDOWN_EVENT"
+          },
+          "reason": "Owned visible surface: ctx.shutdown() from a never-settling session_before_switch handler during /new emits session_shutdown, prints the resume command and exits 0",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/extensions-runtime/73-shutdown-from-session-start.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "SHUTDOWN_EVENT"
+          },
+          "reason": "Owned visible surface: ctx.shutdown() from a never-settling session_start handler emits session_shutdown and exits 0 without a resume line",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
       "scenario": "test/parity/scenarios/footer/01-footer-default.toml",
       "transforms": [
         {

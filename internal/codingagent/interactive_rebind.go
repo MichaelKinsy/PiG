@@ -5,13 +5,14 @@ package codingagent
 import (
 	"context"
 	"errors"
+	"sync/atomic"
 
 	"github.com/MichaelKinsy/PiG/agent"
 	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/coding/extension/host/inproc"
 )
 
-// runOnMainAndWait waits for an accepted owner operation, including its awaited work. A cancelled queued operation does not mutate the UI.
+// runOnMainAndWait waits for an accepted owner operation, including its awaited work. A cancelled queued operation does not mutate the UI, and a caller whose ctx ends before the loop starts the operation abandons it.
 func (m *InteractiveMode) runOnMainAndWait(ctx context.Context, work func() error) error {
 	if m.onOwnerLoop() {
 		// Queueing and waiting from the owner loop would wait for work only this goroutine can run.
@@ -21,7 +22,12 @@ func (m *InteractiveMode) runOnMainAndWait(ctx context.Context, work func() erro
 		return work()
 	}
 	result := make(chan error, 1)
+	// claimed decides once whether the loop runs the operation or the cancelled caller abandons it.
+	var claimed atomic.Bool
 	if err := m.postToMain(ctx, func() {
+		if !claimed.CompareAndSwap(false, true) {
+			return
+		}
 		if ctx.Err() != nil {
 			result <- context.Cause(ctx)
 			return
@@ -33,6 +39,11 @@ func (m *InteractiveMode) runOnMainAndWait(ctx context.Context, work func() erro
 	select {
 	case err := <-result:
 		return err
+	case <-ctx.Done():
+		if claimed.CompareAndSwap(false, true) {
+			return context.Cause(ctx)
+		}
+		return <-result
 	case <-m.runCtx.Done():
 		return context.Cause(m.runCtx)
 	}
