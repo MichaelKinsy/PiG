@@ -42,6 +42,19 @@ func (observation *StreamObservation) Context(ctx context.Context) context.Conte
 	return context.WithValue(ctx, streamObservationContextKey{}, observation)
 }
 
+// WithoutStreamObservation returns ctx without the stream-continuation
+// bindings a host callback uses to attribute its waits to the provider turn
+// (the three keys StreamObservation.Context installs). A caller that
+// dispatches an awaited wait from its own goroutine — off the provider
+// continuation, such as the pig message_update batcher (D84) — uses this so
+// the wait runs as a plain blocking call instead of parking in AwaitExternal
+// with no turn left to resume it.
+func WithoutStreamObservation(ctx context.Context) context.Context {
+	ctx = context.WithValue(ctx, continuationExecutorKey{}, nil)
+	ctx = context.WithValue(ctx, continuationTurnKey{}, nil)
+	return context.WithValue(ctx, streamObservationContextKey{}, nil)
+}
+
 // StreamObservationFromContext returns the host observation, if this callback belongs to a scoped stream continuation. A callback that runs while a provider response turn holds execution belongs to that turn, even when its context was derived from a consumer that is parked in an await: an awaiting host callback must release the turn that is running.
 func StreamObservationFromContext(ctx context.Context) *StreamObservation {
 	if ctx == nil {

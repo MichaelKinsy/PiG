@@ -152,9 +152,10 @@ var pigOnlyRunnerMethods = map[string]string{
 	"ExtensionSources":        "SDK-surface: read-only resolved paths and sourceInfo for the loaded-resources listing (upstream reads extension.path and extension.sourceInfo directly)",
 	"ExecuteCommand":          "SDK-surface: active-runner command bridge for AgentSession/RPC invocation parity",
 	// Upstream's getAllRegisteredTools returns each tool with its extension's
-	// sourceInfo; Pig's RegisteredTool.SourceInfo carries the D23 per-tool
-	// source instead, so getAllTools reads the extension's through this.
 	"ToolSourceInfo": "SDK-surface: registering extension's sourceInfo for getAllTools (upstream RegisteredTool.sourceInfo)",
+	// The subprocess state push re-encodes getAllTools only when the host's
+	// tool-registry version changes; this feeds ui_bridge's marshal cache.
+	"ToolsVersion": "SDK-surface: sum of per-extension tool-registry versions, read by the subprocess host to cache the serialized getAllTools catalog between state pushes",
 	// Upstream's withUIPrompt is private because every ctx.ui call passes
 	// through the runner's wrapped UI context. Pig's subprocess dialogs reach
 	// the terminal through the subprocess UI bridge, which opens the same

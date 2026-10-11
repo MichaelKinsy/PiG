@@ -715,6 +715,18 @@ func (r *Runner) Tools() []extension.RegisteredTool {
 	return out
 }
 
+// ToolsVersion reports a value that changes whenever [Runner.Tools] can
+// return a different list: the extension count plus every extension's tool
+// registry mutation count. State pushers compare it to skip re-serializing
+// an unchanged tool catalog.
+func (r *Runner) ToolsVersion() uint64 {
+	var version uint64
+	for _, ext := range r.extensions {
+		version += ext.ToolRegistryVersion() + 1
+	}
+	return version
+}
+
 // ToolSourceInfo returns the SourceInfo of the extension whose tool
 // [Runner.Tools] reports under toolName. Upstream registerTool stamps the
 // registering extension's sourceInfo onto the tool (loader.ts), and

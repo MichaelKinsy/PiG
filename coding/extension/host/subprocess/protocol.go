@@ -469,9 +469,17 @@ type ReadyPayload struct {
 // notifies whenever the host knows it has changed.
 // State fields carry explicit empty/null values so a snapshot clears prior values; session log pages remain incremental.
 type StatePayload struct {
-	ActiveTools         []string                   `json:"activeTools"`
-	AllTools            []ToolInfo                 `json:"allTools"`
-	Commands            []CommandInfo              `json:"commands"`
+	ActiveTools []string `json:"activeTools"`
+	// AllTools is the wire form of the registered-tool catalog (a JSON array
+	// of ToolInfo). It is carried pre-encoded so the UIBridge can cache the
+	// serialization behind HostCallbacks.GetAllToolsVersion and skip
+	// re-marshaling an unchanged catalog on every state push. The host also
+	// omits it from state_update notifies whose recipient already has this
+	// version; the runtime's applyState retains absent keys.
+	AllTools json.RawMessage `json:"allTools,omitempty"`
+	// Commands is the wire form of the slash-command catalog ([]CommandInfo),
+	// pre-encoded for the same omit-when-unchanged pushing as AllTools.
+	Commands json.RawMessage `json:"commands,omitempty"`
 	ThinkingLevel       string                     `json:"thinkingLevel"`
 	Model               map[string]any             `json:"model"`
 	ScopedModels        []scopedModelSnapshot      `json:"scopedModels"`

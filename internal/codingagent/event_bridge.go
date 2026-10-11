@@ -12,6 +12,7 @@ import (
 	"context"
 	"encoding/json"
 	"slices"
+	"sync"
 	"time"
 
 	"github.com/MichaelKinsy/PiG/agent"
@@ -199,13 +200,141 @@ func emitMessageUpdate(runner *inproc.Runner, message extension.AgentMessage, as
 }
 
 func emitMessageUpdateContext(ctx context.Context, runner *inproc.Runner, message extension.AgentMessage, assistantMessageEvent any) {
-	if runner != nil && runner.HasHandlers(EventMessageUpdate) {
-		_, _ = runner.Emit(ctx, extension.MessageUpdateEvent{
-			Type:                  EventMessageUpdate,
-			Message:               message,
-			AssistantMessageEvent: assistantMessageEvent,
-		})
+	if runner == nil || !runner.HasHandlers(EventMessageUpdate) {
+		return
 	}
+	ev := extension.MessageUpdateEvent{
+		Type:                  EventMessageUpdate,
+		Message:               message,
+		AssistantMessageEvent: assistantMessageEvent,
+	}
+	b := messageUpdateBatcherFor(runner)
+	b.enqueue(queuedUpdate{ev: ev, ctx: ctx}, runner)
+}
+
+// pig divergence (D84): message_update delivery is queued, not synchronous.
+// Upstream awaits an in-process emit per delta, which costs microseconds; the
+// subprocess bridge pays an IPC round trip plus a state push per delivery,
+// which would throttle the provider stream to the extension round-trip rate.
+// Updates queue behind a background flusher that dispatches at the
+// extension's own pace; consecutive updates of the same delta kind merge
+// (text/thinking deltas concatenate, the message state is the latest), so
+// every assistantMessageEvent is still represented and no data drops. Every
+// other agent-loop event drains the queue first, so handlers observe
+// complete data in event order.
+
+// messageUpdateQueueCap bounds the batcher queue. A burst whose production
+// outruns the extension's dispatch rate blocks the producer here instead of
+// growing unbounded latency, so end-of-message drains stay bounded too.
+const messageUpdateQueueCap = 64
+
+type queuedUpdate struct {
+	ev  extension.MessageUpdateEvent
+	ctx context.Context
+}
+
+// messageUpdateBatcher coalesces queued message_update events for one runner
+// and dispatches them on a background goroutine.
+type messageUpdateBatcher struct {
+	mu       sync.Mutex
+	space    *sync.Cond
+	queued   []queuedUpdate
+	flushing bool
+}
+
+var messageUpdateBatchers sync.Map // *inproc.Runner -> *messageUpdateBatcher
+
+func messageUpdateBatcherFor(runner *inproc.Runner) *messageUpdateBatcher {
+	if v, ok := messageUpdateBatchers.Load(runner); ok {
+		return v.(*messageUpdateBatcher)
+	}
+	b := &messageUpdateBatcher{}
+	b.space = sync.NewCond(&b.mu)
+	actual, _ := messageUpdateBatchers.LoadOrStore(runner, b)
+	return actual.(*messageUpdateBatcher)
+}
+
+// DrainMessageUpdates waits until every queued message_update for runner has
+// been dispatched. Every non-message_update agent-loop event calls this so a
+// boundary is never observed before the updates that precede it.
+func DrainMessageUpdates(runner *inproc.Runner) {
+	if runner == nil {
+		return
+	}
+	if v, ok := messageUpdateBatchers.Load(runner); ok {
+		b := v.(*messageUpdateBatcher)
+		b.mu.Lock()
+		for b.flushing {
+			b.space.Wait()
+		}
+		b.mu.Unlock()
+	}
+}
+
+func (b *messageUpdateBatcher) enqueue(item queuedUpdate, runner *inproc.Runner) {
+	b.mu.Lock()
+	for len(b.queued) >= messageUpdateQueueCap {
+		b.space.Wait()
+	}
+	b.queued = appendMessageUpdate(b.queued, item)
+	if b.flushing {
+		b.mu.Unlock()
+		return
+	}
+	b.flushing = true
+	b.mu.Unlock()
+	go b.flush(runner)
+}
+
+func (b *messageUpdateBatcher) flush(runner *inproc.Runner) {
+	for {
+		b.mu.Lock()
+		if len(b.queued) == 0 {
+			b.flushing = false
+			b.space.Broadcast()
+			b.mu.Unlock()
+			return
+		}
+		next := b.queued[0]
+		b.queued = b.queued[1:]
+		b.space.Broadcast()
+		b.mu.Unlock()
+		// The flusher dispatches off the provider continuation, so strip the
+		// stream-observation bindings: a wait attributed to the turn would
+		// park in AwaitExternal with no turn left to resume it (D84).
+		_, _ = runner.Emit(ai.WithoutStreamObservation(next.ctx), next.ev)
+	}
+}
+
+// appendMessageUpdate merges item into the last queued update when both carry
+// the same kind of streaming delta; otherwise it queues separately.
+func appendMessageUpdate(queued []queuedUpdate, item queuedUpdate) []queuedUpdate {
+	if n := len(queued); n > 0 {
+		if merged, ok := concatMessageUpdateDeltas(queued[n-1].ev, item.ev); ok {
+			queued[n-1].ev = merged
+			return queued
+		}
+	}
+	return append(queued, item)
+}
+
+// concatMessageUpdateDeltas joins two same-type, same-index streaming deltas
+// into one event. The message state is the later update's, which already
+// contains both deltas' text.
+func concatMessageUpdateDeltas(prev, next extension.MessageUpdateEvent) (extension.MessageUpdateEvent, bool) {
+	switch p := prev.AssistantMessageEvent.(type) {
+	case ai.TextDeltaEvent:
+		if n, ok := next.AssistantMessageEvent.(ai.TextDeltaEvent); ok && p.ContentIndex == n.ContentIndex {
+			n.Delta = p.Delta + n.Delta
+			return extension.MessageUpdateEvent{Type: EventMessageUpdate, Message: next.Message, AssistantMessageEvent: n}, true
+		}
+	case ai.ThinkingDeltaEvent:
+		if n, ok := next.AssistantMessageEvent.(ai.ThinkingDeltaEvent); ok && p.ContentIndex == n.ContentIndex {
+			n.Delta = p.Delta + n.Delta
+			return extension.MessageUpdateEvent{Type: EventMessageUpdate, Message: next.Message, AssistantMessageEvent: n}, true
+		}
+	}
+	return extension.MessageUpdateEvent{}, false
 }
 
 // toolExecutionWireArgs is the model's argument JSON as written. The event carries it for the extension wire so a Node handler sees the keys in the order the model wrote them, as the parsed `toolCall.arguments` of agent-loop.ts:541-547 keeps its insertion order; the decoded map toolExecutionArgs returns sorts them.
@@ -389,6 +518,9 @@ func AgentEventContext(ev agent.AgentEvent) context.Context {
 
 // DispatchAgentLoopEvent maps one agent-loop event to the extension runner. Session awaits extension dispatch before notifying public listeners, as agent-session.ts::_handleAgentEvent does. Each message_update carries its own shallow message and full provider event; currentMessage retains the message_start value for callers that track it.
 func DispatchAgentLoopEvent(runner *inproc.Runner, ev agent.AgentEvent, currentMessage *extension.AgentMessage) {
+	if _, isUpdate := ev.(agent.MessageUpdateEvent); !isUpdate {
+		DrainMessageUpdates(runner)
+	}
 	if runner == nil {
 		return
 	}

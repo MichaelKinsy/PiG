@@ -515,28 +515,53 @@ func (h *Host) handleEventBusCall(ctx context.Context, me *managedExt, conn *Con
 func (h *Host) dispatchEvent(ctx context.Context, channel string, payload *busPayload, refs []xrefRef, emitter, emissionID string, emission *busEmission) bool {
 	listeners := h.eventBus.snapshot(channel)
 	defer h.eventBus.finish(listeners)
-	for _, listener := range listeners {
-		var (
-			args    json.RawMessage
-			err     error
-			foreign bool
-		)
+	for i := 0; i < len(listeners); {
+		listener := listeners[i]
 		if listener.value {
-			args, err = h.nativeDispatchArgs(ctx, listener, channel, payload)
-		} else {
-			h.xref.deliver(listener.realm, refs)
-			foreign = emission != nil && listener.realm != emitter
-			var marker string
-			if foreign {
-				marker = emissionID
-				h.eventBus.addPending(emission, listener.conn, 1)
-			}
+			// Native listeners keep their per-listener dispatch.
+			h.dispatchNativeListener(ctx, listener, channel, payload)
+			i++
+			continue
+		}
+		// Batch consecutive listeners of the same realm into one
+		// events.dispatch request (#112 §3): each listener's synchronous
+		// prefix still runs in registry order, but the realm pays one round
+		// trip instead of one per listener. A lone listener keeps the
+		// single-handler wire form.
+		j := i + 1
+		for j < len(listeners) && !listeners[j].value && listeners[j].realm == listener.realm {
+			j++
+		}
+		foreign := emission != nil && listener.realm != emitter
+		var marker string
+		if foreign {
+			marker = emissionID
+			// One pending count per request: the batched dispatch quiesces
+			// once after every prefix in the group has run, which is when the
+			// emitter's settle condition is met either way.
+			h.eventBus.addPending(emission, listener.conn, 1)
+		}
+		h.xref.deliver(listener.realm, refs)
+		var args json.RawMessage
+		var err error
+		if j-i == 1 {
 			args, err = json.Marshal(struct {
 				HandlerID string          `json:"handlerId"`
 				Channel   string          `json:"channel"`
 				Data      json.RawMessage `json:"data"`
 				Emission  string          `json:"emission,omitempty"`
 			}{listener.handlerID, channel, payload.encoded, marker})
+		} else {
+			ids := make([]string, 0, j-i)
+			for _, l := range listeners[i:j] {
+				ids = append(ids, l.handlerID)
+			}
+			args, err = json.Marshal(struct {
+				HandlerIDs []string        `json:"handlerIds"`
+				Channel    string          `json:"channel"`
+				Data       json.RawMessage `json:"data"`
+				Emission   string          `json:"emission,omitempty"`
+			}{ids, channel, payload.encoded, marker})
 		}
 		if err == nil {
 			var response *Envelope
@@ -551,8 +576,24 @@ func (h *Host) dispatchEvent(ctx context.Context, channel string, payload *busPa
 			}
 			reportEventBusError(channel, err)
 		}
+		i = j
 	}
 	return len(listeners) != 0
+}
+
+// dispatchNativeListener serves one in-process value listener.
+func (h *Host) dispatchNativeListener(ctx context.Context, listener *busListener, channel string, payload *busPayload) {
+	args, err := h.nativeDispatchArgs(ctx, listener, channel, payload)
+	if err == nil {
+		var response *Envelope
+		response, err = listener.conn.Request(ctx, &Envelope{Type: MsgRequest, Request: &RequestPayload{Method: methodEventsDispatch, Args: args}})
+		if err == nil && response.Response != nil && response.Response.Error != nil {
+			err = response.Response.Error.ToError()
+		}
+	}
+	if err != nil {
+		reportEventBusError(channel, err)
+	}
 }
 
 func mustJSONObject(value any) json.RawMessage {

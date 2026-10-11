@@ -597,6 +597,11 @@ type managedExt struct {
 	entryCursor           int
 	entryCursorMu         sync.Mutex
 	sessionTransferActive bool
+	// lastStatePush remembers what each connection's runtime last received
+	// in a state_update, guarded by entryCursorMu. pushStateTo uses it to
+	// skip identical writes and to omit catalog fields the recipient already
+	// holds byte-for-byte.
+	lastStatePush map[*Conn]*connStatePushCache
 	providerNames         []string
 	mcpServerNames        []string          // MCP servers this extension registered, guarded by Host.mu
 	virtualModels         []VirtualModelRef // virtual models this extension registered, guarded by Host.mu
@@ -1406,6 +1411,20 @@ func readableSessionFile(path string) bool {
 	return err == nil && info.Mode().IsRegular()
 }
 
+// connStatePushCache tracks what one connection's runtime last received
+// in a state_update so pushStateTo can skip identical writes and omit
+// catalog fields the recipient already holds. Guarded by the owning
+// managedExt's entryCursorMu.
+type connStatePushCache struct {
+	// lastPayload is the encoded args of the most recent state_update sent.
+	lastPayload []byte
+	// tools, commands and promptOptions are the catalog encodings the
+	// recipient holds; nil means it has not been sent one yet.
+	tools         []byte
+	commands      []byte
+	promptOptions []byte
+}
+
 // pushStateTo sends me's state on conn, one of me's connections.
 func (h *Host) pushStateTo(ctx context.Context, me *managedExt, conn *Conn) error {
 	if h.uiBridge == nil || me == nil || conn == nil {
@@ -1438,19 +1457,63 @@ func (h *Host) pushStateTo(ctx context.Context, me *managedExt, conn *Conn) erro
 			includeEntries = true
 			state = h.uiBridge.Snapshot(me.flagNames, me.entryCursor, includeEntries)
 		}
-		args, err := json.Marshal(map[string]any{"state": state})
+		// Omit catalog fields the recipient already holds byte-for-byte. The
+		// runtime's applyState retains keys a state_update leaves out, so the
+		// lighter payload is unobservable: every omitted field is identical
+		// to the copy the recipient would otherwise keep. A connection without a
+		// cache omits nothing, so its push is the full snapshot.
+		partial := *state
+		cache := me.lastStatePush[conn]
+		if cache != nil {
+			if bytes.Equal(state.AllTools, cache.tools) {
+				partial.AllTools = nil
+			}
+			if bytes.Equal(state.Commands, cache.commands) {
+				partial.Commands = nil
+			}
+			if bytes.Equal(state.SystemPromptOptions, cache.promptOptions) {
+				partial.SystemPromptOptions = nil
+			}
+		}
+		out, err := json.Marshal(map[string]any{"state": &partial})
 		if err != nil {
 			return err
+		}
+		if cache != nil && bytes.Equal(cache.lastPayload, out) {
+			// The write would leave the recipient's copy unchanged. Cursor
+			// bookkeeping still applies so a large session log keeps paging.
+			if state.Session == nil || !includeEntries {
+				return nil
+			}
+			me.entryCursor = state.Session.EntryCount
+			if !state.Session.EntriesRemaining {
+				return nil
+			}
+			continue
 		}
 		if err := conn.sendAndWait(ctx, &Envelope{
 			Type: MsgNotify,
 			Notify: &NotifyPayload{
 				Method: "state_update",
-				Args:   args,
+				Args:   out,
 			},
 		}); err != nil {
 			return err
 		}
+		// An omitted field is identical to the cached copy by construction, so
+		// recording the fresh value keeps the recipient view exact. The next
+		// identical push encodes the state without the catalog fields it just
+		// delivered, so that lean form is the comparison baseline.
+		lean := partial
+		lean.AllTools, lean.Commands, lean.SystemPromptOptions = nil, nil, nil
+		lastPayload := out
+		if encoded, err := json.Marshal(map[string]any{"state": &lean}); err == nil {
+			lastPayload = encoded
+		}
+		if me.lastStatePush == nil {
+			me.lastStatePush = make(map[*Conn]*connStatePushCache)
+		}
+		me.lastStatePush[conn] = &connStatePushCache{lastPayload: lastPayload, tools: state.AllTools, commands: state.Commands, promptOptions: state.SystemPromptOptions}
 		if state.Session == nil || !includeEntries {
 			return nil
 		}

@@ -363,6 +363,7 @@ func runPrintMode(ctx context.Context, host printModeRuntime, opts printModeOpti
 			st.Bridge.SetHostAction("getAllTools", func() []subprocess.ToolInfo {
 				return codingagent.ExtensionToolInfos(runner, st.ToolRegistryAllowed, st.ToolRegistryExcluded)
 			})
+			st.Bridge.SetHostAction("getAllToolsVersion", func() uint64 { return runner.ToolsVersion() })
 			st.Bridge.SetHostAction("getCommands", func() []subprocess.CommandInfo {
 				return publishedCommands.Load().slashCatalog().SubprocessCommands()
 			})

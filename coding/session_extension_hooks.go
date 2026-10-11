@@ -347,6 +347,9 @@ func (s *Session) extensionEventHook(ev agent.AgentEvent) {
 	if !runner.HasHandlers(icodingagent.EventMessageEnd) {
 		return
 	}
+	// A pending message_update batch flushes before message_end so the
+	// boundary is never observed ahead of the deltas that precede it (D84).
+	icodingagent.DrainMessageUpdates(runner)
 	replacement, err := runner.EmitMessageEnd(icodingagent.AgentEventContext(ev), end.Message)
 	if err != nil || replacement == nil {
 		return

@@ -29,6 +29,10 @@ import (
 // pig-specific: no upstream equivalent.
 type UIBridge struct {
 	modelCatalogEncoder func() (json.RawMessage, error)
+	// allToolsCacheVersion and allToolsCacheJSON memoize the serialized
+	// registered-tool catalog between matching GetAllToolsVersion readings.
+	allToolsCacheVersion uint64
+	allToolsCacheJSON    json.RawMessage
 	// mcpServers reads the servers extensions registered; the Host installs its runtime's registry.
 	mcpServers    func() []extension.RegisteredMcpServer
 	mu            sync.RWMutex
@@ -221,6 +225,12 @@ type HostCallbacks struct {
 	// GetAllTools returns metadata about all available tools.
 	// upstream: types.ts:1455
 	GetAllTools func() []ToolInfo
+
+	// GetAllToolsVersion, when set, reports a value that changes whenever
+	// GetAllTools can return a different catalog. The bridge caches the
+	// catalog's serialization between matching versions so repeated state
+	// pushes skip re-marshaling it.
+	GetAllToolsVersion func() uint64
 
 	// GetSettings returns the effective settings object: global and project settings merged, with overrides. Backs pi.getSettings().
 	// upstream: types.ts:2135 (GetSettingsHandler)
@@ -528,7 +538,31 @@ func (b *UIBridge) Snapshot(flagNames []string, cursor int, wantSessionLog bool)
 		state.ActiveTools = nonNilNames(actions.GetActiveTools())
 	}
 	if actions.GetAllTools != nil {
-		state.AllTools = actions.GetAllTools()
+		if actions.GetAllToolsVersion != nil {
+			// The catalog is large (every registered tool with its schema), so
+			// re-encode it only when the version the host reports changes. The
+			// wire form is identical to marshaling []ToolInfo directly.
+			version := actions.GetAllToolsVersion()
+			b.mu.Lock()
+			if b.allToolsCacheVersion == version && b.allToolsCacheJSON != nil {
+				raw := b.allToolsCacheJSON
+				b.mu.Unlock()
+				state.AllTools = raw
+			} else {
+				b.mu.Unlock()
+				tools := actions.GetAllTools()
+				if encoded, err := json.Marshal(tools); err == nil {
+					b.mu.Lock()
+					b.allToolsCacheVersion, b.allToolsCacheJSON = version, encoded
+					b.mu.Unlock()
+					state.AllTools = encoded
+				}
+			}
+		} else {
+			if encoded, err := json.Marshal(actions.GetAllTools()); err == nil {
+				state.AllTools = encoded
+			}
+		}
 	}
 	// pi.getSettings() is synchronous upstream (types.ts:1708).
 	if actions.GetSettings != nil {
@@ -537,7 +571,9 @@ func (b *UIBridge) Snapshot(flagNames []string, cursor int, wantSessionLog bool)
 		}
 	}
 	if actions.GetCommands != nil {
-		state.Commands = actions.GetCommands()
+		if encoded, err := json.Marshal(actions.GetCommands()); err == nil {
+			state.Commands = encoded
+		}
 	}
 	if actions.GetThinkingLevel != nil {
 		state.ThinkingLevel = actions.GetThinkingLevel()
@@ -949,6 +985,8 @@ func (b *UIBridge) SetHostAction(key string, fn any) {
 		b.actions.GetActiveTools = fn.(func() []string)
 	case "getAllTools":
 		b.actions.GetAllTools = fn.(func() []ToolInfo)
+	case "getAllToolsVersion":
+		b.actions.GetAllToolsVersion = fn.(func() uint64)
 	case "getSettings":
 		b.actions.GetSettings = fn.(func() extension.Settings)
 	case "getCallableTools":

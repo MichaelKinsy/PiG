@@ -9,9 +9,10 @@ import (
 )
 
 type toolRegistry struct {
-	mu    sync.RWMutex
-	tools map[string]RegisteredTool
-	order []string
+	mu      sync.RWMutex
+	tools   map[string]RegisteredTool
+	order   []string
+	version uint64
 }
 
 // InitializeToolRegistry enables synchronized runtime registration before an Extension is shared with runners.
@@ -35,6 +36,7 @@ func (e *Extension) SetRegisteredTool(tool RegisteredTool) {
 		state.order = append(state.order, name)
 	}
 	state.tools[name] = tool
+	state.version++
 }
 
 // ReplaceRegisteredTools replaces the shared registry when the owning runtime restarts.
@@ -51,6 +53,19 @@ func (e *Extension) ReplaceRegisteredTools(source *Extension) {
 		state.tools[name] = tool
 		state.order = append(state.order, name)
 	}
+	state.version++
+}
+
+// ToolRegistryVersion reports how many registrations have mutated this
+// extension's tool registry. Snapshot consumers use it to detect that the
+// registered-tool list may have changed without walking every definition.
+func (e *Extension) ToolRegistryVersion() uint64 {
+	if state := e.toolState; state != nil {
+		state.mu.RLock()
+		defer state.mu.RUnlock()
+		return state.version
+	}
+	return 0
 }
 
 // RegisteredTool looks up the current definition without copying the registry.
