@@ -677,7 +677,9 @@ func (m *InteractiveMode) buildSlashContext(ctx context.Context) *SlashContext {
 			// The Session emits model_select once, for a changed selection (agent-session.ts:2372-2384, 2411).
 			// With a Session, SetModel persists the default and extends a nonempty scope itself, before model_select (agent-session.ts:setModel; interactive-mode.ts:5314).
 			if m.opts.SessionHandle != nil {
-				if err := m.opts.SessionHandle.SetModel(newModel, ModelMutationOptions{Persist: sc.modelSelectionPersist}); err != nil {
+				if err := m.awaitReloadStep(ctx, func(context.Context) error {
+					return m.opts.SessionHandle.SetModel(newModel, ModelMutationOptions{Persist: sc.modelSelectionPersist})
+				}); err != nil {
 					return err
 				}
 			} else if m.agent != nil {

@@ -127,7 +127,16 @@ func (m *InteractiveMode) cycleModel(forward bool) {
 	if forward {
 		direction = "forward"
 	}
-	result, err := m.opts.SessionHandle.CycleModel(direction)
+	var result *ModelCycleResult
+	ctx := m.runCtx
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	err := m.awaitReloadStep(ctx, func(context.Context) error {
+		var err error
+		result, err = m.opts.SessionHandle.CycleModel(direction)
+		return err
+	})
 	if err != nil {
 		m.showError(err.Error())
 		return
