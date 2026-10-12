@@ -43,7 +43,7 @@ func (m *InteractiveMode) beginReloadBlocker() func() {
 	}
 }
 
-// awaitReloadStep keeps UI mutations on the current owner while an awaited resource or extension operation runs off-loop. Cancellation joins the operation before its caller can restore focus or replace state.
+// awaitReloadStep keeps UI mutations on the current owner while an awaited resource, extension, or model-change operation runs off-loop. Cancellation joins the operation before its caller can restore focus or replace state.
 func (m *InteractiveMode) awaitReloadStep(parent context.Context, work func(context.Context) error) error {
 	if err := parent.Err(); err != nil {
 		return context.Cause(parent)
@@ -73,7 +73,7 @@ func (m *InteractiveMode) awaitReloadStep(parent context.Context, work func(cont
 		case <-cancelled:
 			cancelled = nil
 		case <-input:
-			// The reload box owns input; it has no key actions.
+			// The awaited operation owns input; only its extension dialogs have key actions.
 		case task := <-m.uiTaskCh:
 			task()
 		case <-m.renderWakeCh:
