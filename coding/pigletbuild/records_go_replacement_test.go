@@ -3,6 +3,7 @@ package pigletbuild
 import (
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 
@@ -111,5 +112,40 @@ func TestBuildInputsFrontendDigestCoversItsModuleGraph(t *testing.T) {
 	write(filepath.Join(shared, "shared.go"), "package shared\n\nconst changed = true\n")
 	if after := digests(); after["frontend-dependency"] == afterSum["frontend-dependency"] {
 		t.Fatal("a local replacement source change kept the frontend dependency digest")
+	}
+}
+
+// A Piglet Binary carries a single-file extension (a lone .ts file) as that file (docs/site/docs/piglet-binaries.md, "TypeScript and
+// JavaScript extensions"). Locking it must not look for "<file>/go.mod": that read fails with ENOTDIR, which stopped the whole build.
+func TestBuildInputsLocksASingleFileExtension(t *testing.T) {
+	root := t.TempDir()
+	file := filepath.Join(root, "lone.ts")
+	if err := os.WriteFile(file, []byte("export default function (pi: any) {}\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	pigletPath := filepath.Join(root, "piglet.yaml")
+	if err := os.WriteFile(pigletPath, []byte("name: lone\nextensions:\n  - name: lone\n    origins: [local:lone.ts]\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	parsed, err := piglet.Parse(pigletPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	cells := []subprocess.CellSpec{{Extensions: []subprocess.ExtConfig{{Name: "lone", Source: file, ContentHash: strings.Repeat("b", 64)}}}}
+	inputs, err := buildInputs(parsed, cells)
+	if err != nil {
+		t.Fatalf("a single-file extension must lock: %v", err)
+	}
+	var kinds []string
+	for _, input := range inputs {
+		kinds = append(kinds, input.Kind+":"+input.Name)
+	}
+	if !slices.Contains(kinds, "extension:lone") {
+		t.Fatalf("inputs = %v, want the extension locked", kinds)
+	}
+	for _, kind := range kinds {
+		if strings.HasPrefix(kind, "extension-dependency:") {
+			t.Fatalf("a lone file has no Go replacements: %v", kinds)
+		}
 	}
 }
