@@ -113,7 +113,10 @@ func selfUpdateVersion() string {
 
 // cliVersionString is the `pig --version` output.
 func cliVersionString() string {
-	// pig divergence (D63): --version prints PiG's composite version, not the bare Pi version.
+	// pig divergence (D63): --version defaults to PiG's composite version; the product-neutral PIG_VERSION_FORMAT=pi opt-in exposes the actual pinned Pi version for Pi-compatible launchers.
+	if os.Getenv("PIG_VERSION_FORMAT") == "pi" {
+		return UpstreamVersion
+	}
 	return Version
 }
 
