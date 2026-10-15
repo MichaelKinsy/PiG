@@ -394,7 +394,11 @@ jobs:
           test "$(npm --version)" = "$NPM_VERSION"
           # Builds Pi from source at the pin and links it as the oracle (automation/pin/oracle.py); the published package is not the oracle.
           # setup-python on Windows provides python, not always python3.
-          "$(command -v python3 || command -v python)" automation/pin/pin.py install-oracle
+          py="$(command -v python3 || command -v python)"
+          "$py" automation/pin/pin.py install-oracle
+          # The oracle tests' own locked npm trees, as make parity-deps installs them on Linux.
+          "$py" automation/ci/npm-locked.py internal/typebox/testdata/npm
+          "$py" automation/ci/npm-locked.py ai/testdata/sdk
       - name: Mirror the pinned Pi source
         # The extension host's parity tests read Pi's source from
         # .upstream/current, as on Linux (make upstream-mirror).

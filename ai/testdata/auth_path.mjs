@@ -17,7 +17,8 @@ const results = [];
 for (const [index, probe] of JSON.parse(input).entries()) {
   const base = join(sandbox, `p${index}`);
   mkdirSync(join(base, "home"), { recursive: true });
-  process.env.HOME = join(base, "home");
+  // os.homedir() reads USERPROFILE on Windows and HOME elsewhere.
+  process.env.HOME = process.env.USERPROFILE = join(base, "home");
   process.chdir(base);
   let outcome;
   try {
@@ -27,6 +28,6 @@ for (const [index, probe] of JSON.parse(input).entries()) {
   } catch (error) {
     outcome = `error ${error.message.replaceAll(base, "{S}")}`;
   }
-  results.push({ outcome, files: tree(base).map((f) => f.replace(/^p\d+\//, "")).filter((f) => !f.endsWith(".lock") && !f.includes(".lock/")) });
+  results.push({ outcome, files: tree(base).map((f) => f.replace(/^p\d+[\\/]/, "")).filter((f) => !/\.lock($|[\\/])/.test(f)) });
 }
 process.stdout.write(JSON.stringify(results), () => process.exit(0));

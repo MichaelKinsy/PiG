@@ -53,7 +53,9 @@ func TestAuthStorageAuthPathSpellingsMatchPi(t *testing.T) {
 		if err := os.MkdirAll(filepath.Join(base, "home"), 0o755); err != nil {
 			t.Fatal(err)
 		}
+		// os.UserHomeDir reads USERPROFILE on Windows and HOME elsewhere, as Node's os.homedir() does.
 		t.Setenv("HOME", filepath.Join(base, "home"))
+		t.Setenv("USERPROFILE", filepath.Join(base, "home"))
 		t.Chdir(base)
 		got := authPathOut{Files: []string{}}
 		storage, err := NewAuthStorage(strings.ReplaceAll(probe, "{S}", base))

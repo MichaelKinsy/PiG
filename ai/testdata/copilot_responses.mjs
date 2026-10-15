@@ -13,7 +13,8 @@ const cut = (name) => {
 	return match[0];
 };
 const constants = source.split("\n").slice(9, 19).join("\n");
-const { GITHUB_COPILOT_MODELS } = await import(pathToFileURL(process.argv[2].replace(/oauth\/github-copilot\.ts$/, "../providers/github-copilot.models.ts").replace("/auth/../providers", "/providers")).href);
+// Resolve as a URL, not by string replacement, so Windows backslash paths work too: src/auth/oauth/github-copilot.ts -> src/providers/github-copilot.models.ts.
+const { GITHUB_COPILOT_MODELS } = await import(new URL("../../providers/github-copilot.models.ts", pathToFileURL(process.argv[2])).href);
 const names = ["getUrls", "fetchJson", "startDeviceFlow", "pollForGitHubAccessToken", "refreshGitHubCopilotAccessToken", "getBaseUrlFromToken", "getGitHubCopilotBaseUrl", "asRecord", "parseGitHubCopilotModelCatalog", "fetchWithRateLimitRetry", "fetchGitHubCopilotModels"];
 const body = stripTypeScriptTypes(`${constants}\n${names.map(cut).join("\n")}`);
 const fns = new Function("pollOAuthDeviceCodeFlow", "GITHUB_COPILOT_MODELS", "sleep", `${body}; return { startDeviceFlow, pollForGitHubAccessToken, refreshGitHubCopilotAccessToken, fetchGitHubCopilotModels };`)((options) => options.poll(), GITHUB_COPILOT_MODELS, async () => {});

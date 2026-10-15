@@ -26,13 +26,20 @@ func sseIdleScanStream() [][]byte {
 	return reads
 }
 
-// fastest is the least wall time of runs of work, the run least disturbed by the rest of the machine.
+// fastest is the least time per call of work over runs, the run least disturbed by the rest of the machine. Each run repeats work until it spans
+// 20 ms, so a clock as coarse as Windows' (about 0.5 ms) still measures a call that takes microseconds.
 func fastest(runs int, work func()) time.Duration {
 	best := time.Duration(1<<63 - 1)
 	for range runs {
+		calls := 0
 		start := time.Now()
-		work()
-		best = min(best, time.Since(start))
+		elapsed := time.Duration(0)
+		for elapsed < 20*time.Millisecond {
+			work()
+			calls++
+			elapsed = time.Since(start)
+		}
+		best = min(best, elapsed/time.Duration(calls))
 	}
 	return best
 }
@@ -57,7 +64,7 @@ func TestSSEIdleTrackerScanIsNotAPerByteLoop(t *testing.T) {
 		}
 	})
 	ratio := float64(scan) / float64(floor)
-	t.Logf("scan %v, line count (%d lines in 7 runs) and copy %v: %.1fx", scan, lines, floor, ratio)
+	t.Logf("scan %v, line count (%d lines counted) and copy %v: %.1fx", scan, lines, floor, ratio)
 	if ratio > 60 {
 		t.Fatalf("scanning 1 MB of SSE took %v, %.1fx counting its lines and copying it (%v); want at most 60x", scan, ratio, floor)
 	}

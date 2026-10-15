@@ -6,6 +6,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -77,10 +78,11 @@ func TestCodexWebSocketFallsBackToTheHTTPProxy(t *testing.T) {
 		line, _ := bufio.NewReader(connection).ReadString('\n')
 		lines <- strings.TrimSpace(line)
 	}()
-	t.Setenv("http_proxy", "http://"+listener.Addr().String())
+	// Clear the others first: Windows environment names are case-insensitive, so clearing HTTP_PROXY afterwards would clear http_proxy too.
 	for _, name := range []string{"HTTP_PROXY", "https_proxy", "HTTPS_PROXY", "NO_PROXY", "no_proxy"} {
 		t.Setenv(name, "")
 	}
+	t.Setenv("http_proxy", "http://"+listener.Addr().String())
 
 	ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
 	defer cancel()
@@ -147,15 +149,20 @@ func TestCodexWebSocketProxyFollowsEnvHttpProxyAgent(t *testing.T) {
 		env    map[string]string
 		target string
 		want   string
+		// caseOnly marks a case that sets two names differing only in case, which Windows (and Node there) cannot hold apart.
+		caseOnly bool
 	}{
-		{"lowercase https first", map[string]string{"https_proxy": "http://lower:1", "HTTPS_PROXY": "http://upper:1"}, "https://chatgpt.com/x", "http://lower:1"},
-		{"https falls back to http", map[string]string{"HTTP_PROXY": "http://plain:1"}, "https://chatgpt.com/x", "http://plain:1"},
-		{"http target ignores https proxy", map[string]string{"HTTPS_PROXY": "http://secure:1"}, "http://chatgpt.com/x", ""},
-		{"NO_PROXY names the host", map[string]string{"HTTPS_PROXY": "http://secure:1", "NO_PROXY": "chatgpt.com"}, "https://chatgpt.com/x", ""},
-		{"NO_PROXY names a parent domain", map[string]string{"HTTPS_PROXY": "http://secure:1", "no_proxy": ".example.test"}, "https://api.example.test/x", ""},
-		{"empty lowercase hides uppercase", map[string]string{"https_proxy": "", "HTTPS_PROXY": "http://secure:1"}, "https://chatgpt.com/x", ""},
+		{"lowercase https first", map[string]string{"https_proxy": "http://lower:1", "HTTPS_PROXY": "http://upper:1"}, "https://chatgpt.com/x", "http://lower:1", true},
+		{"https falls back to http", map[string]string{"HTTP_PROXY": "http://plain:1"}, "https://chatgpt.com/x", "http://plain:1", false},
+		{"http target ignores https proxy", map[string]string{"HTTPS_PROXY": "http://secure:1"}, "http://chatgpt.com/x", "", false},
+		{"NO_PROXY names the host", map[string]string{"HTTPS_PROXY": "http://secure:1", "NO_PROXY": "chatgpt.com"}, "https://chatgpt.com/x", "", false},
+		{"NO_PROXY names a parent domain", map[string]string{"HTTPS_PROXY": "http://secure:1", "no_proxy": ".example.test"}, "https://api.example.test/x", "", false},
+		{"empty lowercase hides uppercase", map[string]string{"https_proxy": "", "HTTPS_PROXY": "http://secure:1"}, "https://chatgpt.com/x", "", true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			if tc.caseOnly && runtime.GOOS == "windows" {
+				t.Skip("Windows environment names are case-insensitive")
+			}
 			for _, name := range []string{"HTTP_PROXY", "http_proxy", "HTTPS_PROXY", "https_proxy", "NO_PROXY", "no_proxy"} {
 				t.Setenv(name, "")
 				_ = os.Unsetenv(name)
