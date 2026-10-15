@@ -763,3 +763,43 @@ func TestTranscriptToolChangesOpenAICompletionsPoisonedHistory(t *testing.T) {
 		t.Errorf("tools = %v", got)
 	}
 }
+
+// .upstream/v1.2.0+b06c1f2c/packages/ai/test/transcript-tool-changes.test.ts (#10720): Kimi Coding uses Chat Completions,
+// so K3-style models keep added tools out of the top-level list, and Kimi Code Highspeed, which rejects tool-bearing
+// system messages, keeps them there.
+func TestTranscriptToolChangesKimiCodingAdditions(t *testing.T) {
+	for _, tc := range []struct {
+		model    string
+		tools    []string
+		anchored []string
+	}{
+		{"k3", []string{"base_tool"}, []string{"late_tool"}},
+		{"k3-256k", []string{"base_tool"}, []string{"late_tool"}},
+		{"kimi-for-coding", []string{"base_tool"}, []string{"late_tool"}},
+		{"kimi-for-coding-highspeed", []string{"base_tool", "late_tool"}, nil},
+	} {
+		t.Run(tc.model, func(t *testing.T) {
+			generated, ok := LookupModel("kimi-coding/" + tc.model)
+			if !ok {
+				t.Fatalf("catalog kimi-coding/%s missing", tc.model)
+			}
+			if generated.API != "openai-completions" {
+				t.Fatalf("api = %s, want openai-completions", generated.API)
+			}
+			request := captureCompletionsToolChanges(t, "kimi-coding", generated.Compat, additionContext())
+			if got := completionsToolNames(request.body["tools"]); !slices.Equal(got, tc.tools) {
+				t.Errorf("tools = %v, want %v", got, tc.tools)
+			}
+			var anchored []string
+			for _, message := range jsonItems(request.body["messages"]) {
+				if tools, ok := message["tools"]; ok {
+					anchored = completionsToolNames(tools)
+					break
+				}
+			}
+			if !slices.Equal(anchored, tc.anchored) {
+				t.Errorf("tool-bearing message tools = %v, want %v", anchored, tc.anchored)
+			}
+		})
+	}
+}

@@ -76,17 +76,6 @@ func TestAnthropicUpstreamEmptyThinkingSignature(t *testing.T) {
 			assertShapeJSON(t, assistantPayloadContent(t, payload), `[{"type":"thinking","thinking":"internal reasoning","signature":""},{"type":"text","text":"answer"}]`)
 		})
 	}
-	// Pi 6a1f799b anthropic-empty-thinking-signature-compat.test.ts:138-145 (kimi-coding is Anthropic Messages again)
-	for _, id := range []string{"k3"} {
-		t.Run("allows empty signatures for Kimi Coding "+id, func(t *testing.T) {
-			model := upstreamCatalogModel(t, "kimi-coding", id)
-			if !modelAllowsEmptySignature(model) {
-				t.Fatal("missing compat flag")
-			}
-			payload := upstreamAnthropicParams(t, model, emptySignatureContext("kimi-coding", id, "internal reasoning", " ", false), StreamOptions{})
-			assertShapeJSON(t, assistantPayloadContent(t, payload), `[{"type":"thinking","thinking":"internal reasoning","signature":""}]`)
-		})
-	}
 	// .upstream/v0.99.1/packages/ai/test/anthropic-empty-thinking-signature-compat.test.ts:127
 	t.Run("still converts cross-model Fireworks thinking to text", func(t *testing.T) {
 		model := upstreamCatalogModel(t, "fireworks", "accounts/fireworks/models/deepseek-v4p1-flash")

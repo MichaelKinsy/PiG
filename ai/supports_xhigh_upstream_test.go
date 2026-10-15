@@ -41,6 +41,8 @@ func TestSupportsXHighUpstream(t *testing.T) {
 		{name: "preserves low/high/max metadata for DeepSeek V4.1 Flash on opencode-go", model: "opencode-go/deepseek-v4.1-flash", exact: []ModelThinkingLevel{ThinkingLow, ThinkingHigh, ThinkingMax}},
 		// .upstream/v0.99.1/packages/ai/test/supports-xhigh.test.ts:211
 		{name: "includes only low, high, max for Kimi Coding K3", model: "kimi-coding/k3", exact: []ModelThinkingLevel{ThinkingLow, ThinkingHigh, ThinkingMax}},
+		// .upstream/v1.2.0+b06c1f2c/packages/ai/test/supports-xhigh.test.ts:212
+		{name: "excludes off for always-thinking Kimi Coding Highspeed", model: "kimi-coding/kimi-for-coding-highspeed", absent: []ModelThinkingLevel{ThinkingOff}},
 		// .upstream/v0.99.1/packages/ai/test/supports-xhigh.test.ts:217
 		{name: "includes only high for OpenCode Grok Build", model: "opencode/grok-build-0.1", exact: []ModelThinkingLevel{ThinkingHigh}},
 		// .upstream/v0.99.1/packages/ai/test/supports-xhigh.test.ts:223
