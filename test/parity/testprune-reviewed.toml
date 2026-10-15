@@ -697,3 +697,16 @@ path = "tui/theme_style_upstream_test.go"
 commit = "9080668e4a"
 class = "message-only"
 reason = "only the failure-message text changed; no expected behavior value"
+
+[[entry]]
+path = "internal/codingagent/canonical_path_win32_test.go"
+commit = "b1b54f1f2e"
+class = "CITE"
+cite = "packages/coding-agent/src/utils/paths.ts:30"
+reason = "Pi canonicalizes with fs.realpathSync, whose JS walk keeps the caller's spelling (case, 8.3 names); the cases no longer split on a native-resolution flag because every case now follows that walk"
+
+[[entry]]
+path = "internal/codingagent/select_page_keys_pr7680_test.go"
+commit = "b1b54f1f2e"
+class = "NOBEHAVIOR"
+reason = "the fixed /project cwd resolves to a drive path on Windows; the test now uses a temp dir and expects its canonical form, the same value on every host"
