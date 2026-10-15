@@ -503,7 +503,7 @@ func TestSessionModelRuntimeLooksUpCurrentRegisteredAndUnknownModels(t *testing.
 
 func TestSessionModelRuntimeAppliesOnlyKnownGeneratedModelOverrides(t *testing.T) {
 	agentDir := t.TempDir()
-	config := `{"providers":{"openrouter":{"modelOverrides":{"anthropic/claude-sonnet-4":{"name":"Configured Sonnet"},"nonexistent/model-id":{"name":"Must stay absent"}}}}}`
+	config := `{"providers":{"openrouter":{"modelOverrides":{"anthropic/claude-sonnet-4.5":{"name":"Configured Sonnet"},"nonexistent/model-id":{"name":"Must stay absent"}}}}}`
 	if err := os.WriteFile(filepath.Join(agentDir, "models.json"), []byte(config), 0o644); err != nil {
 		t.Fatal(err)
 	}
@@ -512,7 +512,7 @@ func TestSessionModelRuntimeAppliesOnlyKnownGeneratedModelOverrides(t *testing.T
 		t.Fatal(err)
 	}
 	t.Cleanup(services.Close)
-	model := services.ModelRuntime().GetModel("openrouter", "anthropic/claude-sonnet-4")
+	model := services.ModelRuntime().GetModel("openrouter", "anthropic/claude-sonnet-4.5")
 	if model == nil || model.DisplayName != "Configured Sonnet" {
 		t.Fatalf("known generated override = %#v", model)
 	}
@@ -525,7 +525,7 @@ func TestSessionModelRuntimeAppliesOnlyKnownGeneratedModelOverrides(t *testing.T
 			continue
 		}
 		switch model.ID {
-		case "anthropic/claude-sonnet-4":
+		case "anthropic/claude-sonnet-4.5":
 			knownCount++
 			if model.DisplayName != "Configured Sonnet" {
 				t.Fatalf("catalog override name = %q", model.DisplayName)
