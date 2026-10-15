@@ -538,6 +538,10 @@ All notable public changes to PiG will be recorded in this file.
 
 ### Fixed
 
+- On Windows, a session's private snapshot file is created in the temporary directory instead of the session directory, where it was listed while the session was open.
+- On Windows, an image fallback links a path that starts with a slash but no drive (`/tmp/x.png`) as Pi does, since `path.isAbsolute` counts it absolute.
+- Alt-screen frames outside the Kitty protocol no longer read the environment for WezTerm on every render, which allocated on Windows.
+- On Windows, a refused connection reads as Node's `connect ECONNREFUSED` and is not retried, as in Pi; it was reported as a retryable `fetch failed`.
 - In print and JSON mode, a Node extension no longer runs a timer or other callback between a prompt's last extension call (its command, a handled input or `agent_settled`) and `session_shutdown`, nor between `session_shutdown` and the runtime going stale. Pi runs those steps without an event-loop turn between them. Before, pi-goal-x's `create_goal` could start a goal turn while the run was ending, print `Extension error (<runtime>): This extension ctx is stale ...` and leave the goal paused.
 - Codemode scripts that patch built-ins, for example `Array.prototype.toJSON = ...`, no longer break the tool call: built-ins are frozen before the script runs, and a malformed message from the sandbox fails the run with a `sandbox` error.
 - Syntax highlighting keeps its colors after the first line of multiline strings and comments in fenced code blocks.
