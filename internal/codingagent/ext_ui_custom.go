@@ -218,9 +218,9 @@ func (c *customCall) teardown() {
 	}
 	c.torn = true
 	if c.isOverlay {
-		// upstream: interactive-mode.ts:2997 close() calls this.ui.hideOverlay(), which pops the topmost overlay whichever component
-		// closed (tui.ts:829-841), not this component's own entry.
-		c.u.m.tuiInst.HideOverlay()
+		// upstream: interactive-mode.ts:2999 close() hides this overlay through its own handle, not the topmost one: another overlay
+		// may have opened above it (Pi #10999).
+		c.handle.Hide()
 		return
 	}
 	c.restoreEditor()

@@ -309,42 +309,98 @@ func TestHostCustomOverlaysStackAndHandFocusBack(t *testing.T) {
 	}
 }
 
-// Pi 1.2.0 interactive-mode.ts:2994-2997: done() of an overlay component calls this.ui.hideOverlay(), which pops the topmost overlay
-// whichever component closed (tui.ts:829-841: overlayStack.pop(), then focus the topmost visible overlay or the popped entry's
-// preFocus). Closing the lower of two overlays first takes the upper one off the screen and leaves the lower one shown with focus.
-func TestHostCustomOverlayCloseOutOfOrderPopsTheTopmostOverlay(t *testing.T) {
-	r := newCustomRig(t)
-	open := func(label string) (*customProbe, *func(any), <-chan customOutcome) {
-		component := &customProbe{label: label}
-		done := new(func(any))
-		out := r.start(t.Context(), func(_ extension.TUI, _ *tui.Theme, _ extension.KeybindingsManager, d func(any)) (extension.DisposableComponent, error) {
-			*done = d
-			return component, nil
-		}, &extension.CustomOptions{Overlay: true})
-		r.pump(t, out, func() bool { return any(r.m.tuiInst.GetFocusedComponent()) == component })
-		return component, done, out
-	}
-	back, backDone, backOut := open("BACK")
-	_, frontDone, frontOut := open("FRONT")
-	go (*backDone)("back")
-	if got := r.finish(t, backOut); got.err != nil || got.value != "back" {
-		t.Fatalf("back custom = %v, %v", got.value, got.err)
-	}
-	requireFocus(t, r.m, back, "after the back overlay closed first (hideOverlay popped the front one)")
-	go (*frontDone)("front")
-	if got := r.finish(t, frontOut); got.err != nil || got.value != "front" {
-		t.Fatalf("front custom = %v, %v", got.value, got.err)
+// Pi 1.3.0 interactive-mode.ts:2999 (#10999, test interactive-mode-status.test.ts "closing a lower $lowerKind overlay custom UI removes
+// its own overlay, not the topmost one"): done() of an overlay component hides the overlay through its own handle. Closing the lower
+// of two overlays removes the lower one, leaves the upper one shown with the focus and the keys, and closing the upper one then
+// leaves no overlay and the editor focused. The lower overlay is capturing or non-capturing.
+func TestHostCustomOverlayCloseOutOfOrderRemovesItsOwnOverlay(t *testing.T) {
+	for _, lower := range []struct {
+		kind         string
+		nonCapturing bool
+	}{{"capturing", false}, {"non-capturing", true}} {
+		t.Run(lower.kind, func(t *testing.T) {
+			r := newCustomRig(t)
+			r.m.tuiInst.SetFocus(r.m.editor)
+			open := func(label string, options extension.OverlayOptionsSource) (*customProbe, *func(any), <-chan customOutcome) {
+				component := &customProbe{label: label}
+				done := new(func(any))
+				out := r.start(t.Context(), func(_ extension.TUI, _ *tui.Theme, _ extension.KeybindingsManager, d func(any)) (extension.DisposableComponent, error) {
+					*done = d
+					return component, nil
+				}, &extension.CustomOptions{Overlay: true, OverlayOptions: options})
+				r.pump(t, out, func() bool { return any(r.m.tuiInst.GetFocusedComponent()) == component })
+				return component, done, out
+			}
+			var options extension.OverlayOptionsSource
+			if lower.nonCapturing {
+				options = extension.OverlayOptionsValue{Options: tui.OverlaySpec{NonCapturing: true}.Options()}
+			}
+			var lowerComponent *customProbe
+			var closeLower *func(any)
+			var lowerOut <-chan customOutcome
+			if lower.nonCapturing {
+				// A non-capturing overlay does not take the focus; the pump waits for the component to mount instead.
+				lowerComponent = &customProbe{label: "LOWER"}
+				closeLower = new(func(any))
+				lowerOut = r.start(t.Context(), func(_ extension.TUI, _ *tui.Theme, _ extension.KeybindingsManager, d func(any)) (extension.DisposableComponent, error) {
+					*closeLower = d
+					return lowerComponent, nil
+				}, &extension.CustomOptions{Overlay: true, OverlayOptions: options})
+				r.pump(t, lowerOut, func() bool { return r.m.tuiInst.HasOverlay() })
+			} else {
+				lowerComponent, closeLower, lowerOut = open("LOWER", options)
+			}
+			upper, closeUpper, upperOut := open("UPPER", nil)
+			requireFocus(t, r.m, upper, "with both overlays shown")
+			go (*closeLower)("lower closed")
+			if got := r.finish(t, lowerOut); got.err != nil || got.value != "lower closed" {
+				t.Fatalf("lower custom = %v, %v", got.value, got.err)
+			}
+			if !r.m.tuiInst.HasOverlay() {
+				t.Fatal("closing the lower overlay removed the upper one too")
+			}
+			requireFocus(t, r.m, upper, "after the lower overlay closed")
+			if err := r.m.dispatchKey(t.Context(), "x"); err != nil {
+				t.Fatal(err)
+			}
+			if got := upper.received(); len(got) != 1 || got[0] != "x" {
+				t.Fatalf("upper overlay input = %q, want x", got)
+			}
+			if got := lowerComponent.received(); len(got) != 0 {
+				t.Fatalf("the closed lower overlay received %q", got)
+			}
+			go (*closeUpper)("upper closed")
+			if got := r.finish(t, upperOut); got.err != nil || got.value != "upper closed" {
+				t.Fatalf("upper custom = %v, %v", got.value, got.err)
+			}
+			if r.m.tuiInst.HasOverlay() {
+				t.Fatal("an overlay is left after both closed")
+			}
+			requireFocus(t, r.m, r.m.editor, "after both overlays closed")
+		})
 	}
 }
 
-// The same for subprocess overlays: the back component's close pops the front overlay and focus goes to the back one.
-func TestRemoteCustomOverlayCloseOutOfOrderPopsTheTopmostOverlay(t *testing.T) {
+// The same for subprocess overlays (RunRemoteOverlay): the back component's close removes its own overlay and the front one keeps the
+// focus and the keys.
+func TestRemoteCustomOverlayCloseOutOfOrderRemovesItsOwnOverlay(t *testing.T) {
 	r := newCustomRig(t)
+	r.m.tuiInst.SetFocus(r.m.editor)
 	back := r.openRemote(t, "BACK", true)
 	front := r.openRemote(t, "FRONT", true)
 	back.close(t, r, "back")
-	requireFocus(t, r.m, back.handle.(*customOverlay), "after the back overlay closed first (hideOverlay popped the front one)")
+	if !r.m.tuiInst.HasOverlay() {
+		t.Fatal("closing the back overlay removed the front one too")
+	}
+	requireFocus(t, r.m, front.handle.(*customOverlay), "after the back overlay closed first")
+	if got := r.routeKey(t, "x", front); got != "FRONT" {
+		t.Fatalf("key after the back overlay closed went to %s, want FRONT", got)
+	}
 	front.close(t, r, "front")
+	if r.m.tuiInst.HasOverlay() {
+		t.Fatal("an overlay is left after both closed")
+	}
+	requireFocus(t, r.m, r.m.editor, "after both overlays closed")
 }
 
 // onWorker runs fn off the owner loop and pumps the owner loop until it returns.

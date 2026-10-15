@@ -683,9 +683,8 @@ func (u *ExtUIContext) RunRemoteOverlay(opts extension.RemoteOverlayOptions, hos
 		if opts.Overlay || u.m.layout == nil {
 			h := u.m.tuiInst.ShowOverlay(overlay, remoteOverlayTUIOptions(opts))
 			u.bindOverlayControls(overlay, h, runOnOwner)
-			// upstream: interactive-mode.ts:2997 close() calls this.ui.hideOverlay(), which pops the topmost overlay whichever
-			// component closed (tui.ts:829-841).
-			cleanup = u.m.tuiInst.HideOverlay
+			// upstream: interactive-mode.ts:2999 close() hides this overlay through its own handle, not the topmost one (Pi #10999).
+			cleanup = h.Hide
 		} else {
 			// Match upstream ctx.ui.custom(): replace the editor slot directly
 			// rather than wrapping the component in a second modal shell.
