@@ -4,8 +4,10 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/MichaelKinsy/PiG/internal/testenv"
 )
@@ -39,6 +41,17 @@ func TestMain(m *testing.M) {
 		if code, ok := runNpmUpdateFixture(root); ok {
 			os.Exit(code)
 		}
+	}
+	// PIG_TEST_STALL_DUMP (a duration, set by the Windows CI cli steps) bounds the setup before m.Run, which go test's -timeout
+	// alarm does not cover: past it, every goroutine's stack goes to stderr and the binary exits, so a wedge names its frame.
+	stopStallDump := func() {}
+	if limit, err := time.ParseDuration(os.Getenv("PIG_TEST_STALL_DUMP")); err == nil && limit > 0 {
+		stall := time.AfterFunc(limit, func() {
+			buf := make([]byte, 64<<20)
+			fmt.Fprintf(os.Stderr, "coding/cli TestMain did not reach m.Run within %s; goroutines:\n%s\n", limit, buf[:runtime.Stack(buf, true)])
+			os.Exit(3)
+		})
+		stopStallDump = func() { stall.Stop() }
 	}
 	testRoot, err := os.MkdirTemp("", "pig-cmd-")
 	if err != nil {
@@ -89,6 +102,7 @@ func TestMain(m *testing.M) {
 			os.Exit(2)
 		}
 	}
+	stopStallDump()
 	code := m.Run()
 	if err := os.RemoveAll(testRoot); err != nil {
 		fmt.Fprintln(os.Stderr, "remove isolated test home:", err)
