@@ -23,7 +23,7 @@ SHARDED_SPEC=(
   ./chord/host:2
   ./codemode:2
   ./durable/codemode:2
-  ./coding/extension/host/subprocess:2
+  ./coding/extension/host/subprocess:3
 )
 MODE=${1:-default}
 COUNT_FLAG=()

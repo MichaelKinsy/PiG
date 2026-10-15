@@ -11,11 +11,6 @@
     "TestLazyRegexpPatternsAllCompile",
     "TestPackageInitWorkBudget"
   ],
-  "./coding/extension": [
-    "TestModelInfoScalarCompatibilityCopyAvoidsJSON",
-    "TestModelInfoCyclesReachJSONError",
-    "TestModelInfoSharedSubgraphsKeepCopySemantics"
-  ],
   "./coding/extension/host/subprocess": [
     "TestNodeRuntimeArchiveMatchesSources",
     "TestNodeRuntimeArchiveSizeBudget",

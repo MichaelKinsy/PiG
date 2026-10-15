@@ -24,7 +24,7 @@ func TestMacOSShardsTestTheMacOSSensitivePackages(t *testing.T) {
 	for shard := 1; shard <= shards; shard++ {
 		wantMatrix = append(wantMatrix, "cli-"+strconv.Itoa(shard))
 	}
-	wantMatrix = append(wantMatrix, "extension-host-1", "extension-host-2", "packages")
+	wantMatrix = append(wantMatrix, "extension-host-1", "extension-host-2", "extension-host-3", "packages")
 	if !slices.Equal(job.Strategy.Matrix.Shard, wantMatrix) {
 		t.Fatalf("macos shards = %v, want %v", job.Strategy.Matrix.Shard, wantMatrix)
 	}
@@ -35,7 +35,7 @@ func TestMacOSShardsTestTheMacOSSensitivePackages(t *testing.T) {
 		t.Errorf("macos timeout = %d minutes, want 1 to 60", job.Timeout)
 	}
 	cliStep := regexp.MustCompile(`(?m)^\s*run=\$\(automation/ci/test-shard-pattern\.sh "\$\{CLI_SHARD#cli-\}" ([0-9]+) ` + regexp.QuoteMeta(cliPkg) + `\)\n\s*go test -timeout 30m -run "\$run" ` + regexp.QuoteMeta(cliPkg) + `\n`)
-	hostStep := regexp.MustCompile(`test-shard-pattern\.sh "\$\{EXTENSION_SHARD##\*-\}" 2 \./coding/extension/host/subprocess\)\n\s*go test -timeout 30m -run "\$run" \./coding/extension/host/subprocess\n`)
+	hostStep := regexp.MustCompile(`test-shard-pattern\.sh "\$\{EXTENSION_SHARD##\*-\}" 3 \./coding/extension/host/subprocess\)\n\s*go test -timeout 30m -run "\$run" \./coding/extension/host/subprocess\n`)
 	steps := map[string]bool{}
 	for _, step := range job.Steps {
 		switch {
