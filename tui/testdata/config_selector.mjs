@@ -13,6 +13,7 @@ const { ConfigSelectorComponent } = await load("dist/modes/interactive/component
 let input = "";
 process.stdin.setEncoding("utf8"); // decode across chunk boundaries: `input += chunk` on Buffers splits a multi-byte character at a 64 KiB edge
 for await (const chunk of process.stdin) input += chunk;
+process.stderr.write(`oracle: read ${input.length} characters\n`);
 const arrays = (r) => ({ extensions: r.extensions ?? [], skills: r.skills ?? [], prompts: r.prompts ?? [], themes: r.themes ?? [] });
 const results = JSON.parse(input).map((test) => {
   test.resolved = { global: arrays(test.resolved.global), project: arrays(test.resolved.project) };
@@ -37,4 +38,9 @@ const results = JSON.parse(input).map((test) => {
   }
   return { steps, frames, crash };
 });
-process.stdout.write(JSON.stringify(results), () => process.exit(0));
+const text = JSON.stringify(results);
+process.stderr.write(`oracle: rendered ${results.length} probes, writing ${text.length} characters\n`);
+process.stdout.write(text, () => {
+  process.stderr.write("oracle: written\n");
+  process.exit(0);
+});

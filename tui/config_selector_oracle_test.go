@@ -2,6 +2,7 @@ package tui
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"math/rand"
@@ -10,6 +11,7 @@ import (
 	"slices"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/MichaelKinsy/PiG/internal/coding/pigversion"
 )
@@ -149,7 +151,12 @@ func TestConfigSelectorMatchesPi(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	cmd := exec.CommandContext(t.Context(), "node", "testdata/config_selector.mjs", pigversion.UpstreamPackageVersion)
+	// The oracle renders in about 3 s and prints its stages on stderr; a run that has not finished in 5 minutes is stuck, and the
+	// failure shows the last stage it reached (a Windows run once waited 29 minutes for it with no output).
+	ctx, cancel := context.WithTimeout(t.Context(), 5*time.Minute)
+	defer cancel()
+	cmd := exec.CommandContext(ctx, "node", "testdata/config_selector.mjs", pigversion.UpstreamPackageVersion)
+	cmd.WaitDelay = 10 * time.Second // after a kill, a descendant holding the pipes does not keep Output waiting
 	cmd.Stdin = bytes.NewReader(input)
 	var stderr bytes.Buffer
 	cmd.Stderr = &stderr
