@@ -25,9 +25,11 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"runtime"
 	"slices"
 	"sort"
 	"strings"
+	"sync"
 
 	"github.com/MichaelKinsy/PiG/internal/coding/pigversion"
 )
@@ -172,12 +174,31 @@ func checkWith(root string, needCoverage bool) ([]result, error) {
 			return nil, fmt.Errorf("%s: %w", mutantsFile, err)
 		}
 	}
-	var out []result
+	// Rows are independent: each runs its own evidence tests (go test processes with their own temp files), so the
+	// coverage runs go in parallel and the results keep PORT_MAP order.
+	var candidates []row
 	for _, r := range rows {
-		if r.Status != "✅" {
-			continue
+		if r.Status == "✅" {
+			candidates = append(candidates, r)
 		}
-		res := derive(root, r, inv, reviewed[r.Pi], markers)
+	}
+	slots := make([]result, len(candidates))
+	sem := make(chan struct{}, max(1, runtime.NumCPU()/2))
+	var wg sync.WaitGroup
+	for i, r := range candidates {
+		wg.Go(func() {
+			sem <- struct{}{}
+			defer func() { <-sem }()
+			slots[i] = deriveRow(root, r, inv, reviewed[r.Pi], markers, mutants[r.Pi], needCoverage)
+		})
+	}
+	wg.Wait()
+	return slots, nil
+}
+
+func deriveRow(root string, r row, inv *inventory, reviewed reviewedEntry, markers map[string][]string, rowMutants []mutant, needCoverage bool) result {
+	{
+		res := derive(root, r, inv, reviewed, markers)
 		if needCoverage && res.Marker && onlyMarkerReason(res) {
 			res.Reasons, res.Proven = nil, true // coverage and a killed mutant decide below
 		}
@@ -190,15 +211,14 @@ func checkWith(root string, needCoverage bool) ([]result, error) {
 				res.Proven = false
 				res.Reasons = append(res.Reasons, why)
 			} else if res.Marker {
-				if why := mutantProblem(root, res, mutants[r.Pi]); why != "" {
+				if why := mutantProblem(root, res, rowMutants); why != "" {
 					res.Proven = false
 					res.Reasons = append(res.Reasons, why)
 				}
 			}
 		}
-		out = append(out, res)
+		return res
 	}
-	return out, nil
 }
 
 func derive(root string, r row, inv *inventory, reviewed reviewedEntry, markers map[string][]string) result {

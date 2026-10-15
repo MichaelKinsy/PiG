@@ -181,7 +181,12 @@ func runRow(root string, r result, digest string) coverageEntry {
 	sort.Strings(pkgList)
 	for dir, names := range byDir {
 		sort.Strings(names)
-		profile := filepath.Join(os.TempDir(), "portmap-"+strconv.Itoa(os.Getpid())+".cover")
+		profileDir, err := os.MkdirTemp("", "portmap-cover-")
+		if err != nil {
+			failed = dir
+			continue
+		}
+		profile := filepath.Join(profileDir, "cover.out")
 		cmd := exec.Command("go", "test", "-count=1", "-run", "^("+strings.Join(names, "|")+")$", "-coverpkg="+strings.Join(pkgList, ","), "-coverprofile="+profile, "./"+dir)
 		cmd.Dir = root
 		scratch, err := os.MkdirTemp("", "portmap-agent-")
@@ -197,6 +202,7 @@ func runRow(root string, r result, digest string) coverageEntry {
 			continue
 		}
 		prof, err := os.ReadFile(profile)
+		_ = os.RemoveAll(profileDir)
 		if err != nil {
 			failed = dir
 			continue

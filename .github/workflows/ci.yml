@@ -123,6 +123,16 @@ jobs:
           key: gocache-${{ runner.os }}-${{ hashFiles('go.sum') }}-${{ github.sha }}
           restore-keys: |
             gocache-${{ runner.os }}-${{ hashFiles('go.sum') }}-
+      # portmap-check runs each proven PORT_MAP row's evidence tests under coverage and keeps the green results in
+      # build/portmap-coverage, keyed by the digest of the cited files and tests; restored here so contracts reruns only changed rows.
+      - name: Restore the PORT_MAP coverage cache
+        if: matrix.shard == 'contracts'
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: build/portmap-coverage
+          key: portmap-coverage-${{ github.sha }}
+          restore-keys: |
+            portmap-coverage-
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version-file: .node-version
@@ -201,6 +211,12 @@ jobs:
           CI: '1'
           SHARD: ${{ matrix.shard }}
         run: make "ci-$SHARD"
+      - name: Save the PORT_MAP coverage cache
+        if: always() && matrix.shard == 'contracts'
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: build/portmap-coverage
+          key: portmap-coverage-${{ github.sha }}
       - name: Save the Go build cache
         if: success() && matrix.shard == 'test-fast'
         uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
