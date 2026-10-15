@@ -250,7 +250,8 @@ func nodeNetErrorMessage(err error) (message string, ok bool) {
 		}
 		syscallError, isSyscall := errors.AsType[*os.SyscallError](op.Err)
 		address, isTCP := op.Addr.(*net.TCPAddr)
-		if !isSyscall || syscallError.Syscall != "connect" || !isTCP {
+		// Go names the Windows connect call ConnectEx ("connectex"); libuv reports it as connect there too.
+		if !isSyscall || (syscallError.Syscall != "connect" && syscallError.Syscall != "connectex") || !isTCP {
 			return "", false
 		}
 		code := nodeerrno.ErrorCode(syscallError)

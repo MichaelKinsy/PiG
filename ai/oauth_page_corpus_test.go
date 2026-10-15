@@ -50,11 +50,14 @@ func TestOAuthPageCorpusMatchesThePinnedPackage(t *testing.T) {
 		t.Fatal(err)
 	}
 	const script = `(async () => {
-  const [root, input] = process.argv.slice(1);
+  const root = process.argv[1], input = require('node:fs').readFileSync(0, 'utf8');
   const page = await import(require('node:url').pathToFileURL(require('node:path').join(root, 'node_modules/@earendil-works/pi-ai/dist/utils/oauth-page.js')).href);
   console.log(JSON.stringify(JSON.parse(input).flatMap((c) => [page.oauthSuccessHtml(c.message), page.oauthErrorHtml(c.message, c.details)])));
 })()`
-	out, err := exec.CommandContext(t.Context(), "node", "-e", script, piCodingAgentPackage(t), string(input)).CombinedOutput()
+	// The corpus goes on stdin: as an argument it overflows Windows' 32 KiB command line.
+	cmd := exec.CommandContext(t.Context(), "node", "-e", script, piCodingAgentPackage(t))
+	cmd.Stdin = bytes.NewReader(input)
+	out, err := cmd.CombinedOutput()
 	if err != nil {
 		t.Fatalf("render Pi's pages: %v\n%s", err, out)
 	}

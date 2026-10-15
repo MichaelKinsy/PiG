@@ -142,7 +142,7 @@ func TestOpenAIResponsesMistypedMembersMatchPi(t *testing.T) {
 	}
 	var want []result
 	const script = `(async () => {
-const [root, rowsJSON] = process.argv.slice(1);
+const root = process.argv[1], rowsJSON = require("node:fs").readFileSync(0, "utf8");
 const load = (rel) => import(require("node:url").pathToFileURL(require("node:path").join(root, rel)).href);
 const { createServer } = require("node:http");
 const api = await load("node_modules/@earendil-works/pi-ai/dist/api/openai-responses.js");
@@ -173,7 +173,10 @@ process.stdout.write(JSON.stringify(out) + "\n", () => process.exit(0));
 	if err != nil {
 		t.Fatal(err)
 	}
-	output, err := exec.CommandContext(t.Context(), "node", "-e", script, piCodingAgentPackage(t), string(encodedRows)).CombinedOutput()
+	// The rows go on stdin: as an argument they overflow Windows' 32 KiB command line.
+	cmd := exec.CommandContext(t.Context(), "node", "-e", script, piCodingAgentPackage(t))
+	cmd.Stdin = strings.NewReader(string(encodedRows))
+	output, err := cmd.CombinedOutput()
 	if err != nil {
 		t.Fatalf("node: %v\n%s", err, output)
 	}
