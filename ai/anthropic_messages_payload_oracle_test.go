@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"math/rand"
-	"strings"
 	"testing"
 	"unicode/utf16"
 
@@ -178,7 +177,6 @@ func TestAnthropicMessagesPayloadMatchesPi(t *testing.T) {
 			}
 			t.Fatalf("probe %d: Pi produced no payload where PiG did: %.300s", i, got)
 		}
-		want[i] = projectErroredToolResultImages(t, want[i], p.Context)
 		comparePayload(t, fmt.Sprintf("probe %d reasoning=%v simple=%v compat=%s levels=%s options=%v", i, p.Reasoning, p.Simple, p.Compat, p.Levels, p.Options), got, want[i], &failures, classes)
 	}
 	if failures > 0 {
@@ -195,101 +193,6 @@ func joinStrings(items []string) string {
 		out += item
 	}
 	return out
-}
-
-// projectErroredToolResultImages applies Pi 34a8bb38 (earendil-works/pi#10794, D171) to Pi 1.2.0's payload: each image of an errored tool result is replaced with a text note, so the result is sent as one string, because Anthropic rejects non-text content when is_error is true.
-// context is the probe's transcript: it tells which errored results have no text block.
-func projectErroredToolResultImages(t *testing.T, payload string, context json.RawMessage) string {
-	t.Helper()
-	decoder := json.NewDecoder(strings.NewReader(payload))
-	decoder.UseNumber()
-	var root map[string]any
-	if err := decoder.Decode(&root); err != nil {
-		t.Fatalf("undecodable Pi payload: %v", err)
-	}
-	textless := erroredResultsWithoutText(t, context)
-	messages, _ := root["messages"].([]any)
-	changed := false
-	for _, message := range messages {
-		blocks, _ := message.(map[string]any)["content"].([]any)
-		for _, block := range blocks {
-			result, _ := block.(map[string]any)
-			if result["type"] != "tool_result" || result["is_error"] != true {
-				continue
-			}
-			// A result without images is a string in Pi 1.2.0 and after 34a8bb38 alike ("" when it has no blocks).
-			parts, isArray := result["content"].([]any)
-			if !isArray {
-				continue
-			}
-			// Pi 1.2.0 puts a "(see attached image)" text block before the images of a result without text; after 34a8bb38 every image is a
-			// note, so the result has text and no placeholder. The placeholder cannot be told from a real text block in the payload, so the
-			// transcript decides; TestAnthropicErroredToolResultCarriesNoImageBlock pins it.
-			id, _ := result["tool_use_id"].(string)
-			placeholder := textless[id]
-			var lines []string
-			for index, part := range parts {
-				part, _ := part.(map[string]any)
-				switch {
-				case index == 0 && placeholder:
-				case part["type"] == "image":
-					lines = append(lines, "[image omitted: error tool results cannot contain images]")
-				default:
-					text, _ := part["text"].(string)
-					lines = append(lines, text)
-				}
-			}
-			result["content"] = strings.Join(lines, "\n")
-			changed = true
-		}
-	}
-	if !changed {
-		return payload
-	}
-	encoded, err := json.Marshal(root)
-	if err != nil {
-		t.Fatal(err)
-	}
-	return string(encoded)
-}
-
-// erroredResultsWithoutText returns the tool_use_id, as Pi's normalizeToolCallId writes it (anthropic-messages.ts:1290), of every errored tool
-// result in the transcript that has no text block.
-func erroredResultsWithoutText(t *testing.T, context json.RawMessage) map[string]bool {
-	t.Helper()
-	var transcript struct {
-		Messages []struct {
-			Role       string          `json:"role"`
-			ToolCallID string          `json:"toolCallId"`
-			IsError    bool            `json:"isError"`
-			Content    json.RawMessage `json:"content"`
-		} `json:"messages"`
-	}
-	if err := sdkjson.Unmarshal(context, &transcript); err != nil {
-		t.Fatal(err)
-	}
-	textless := map[string]bool{}
-	for _, message := range transcript.Messages {
-		if message.Role != "toolResult" || !message.IsError {
-			continue
-		}
-		var blocks []struct {
-			Type string `json:"type"`
-		}
-		if err := sdkjson.Unmarshal(message.Content, &blocks); err != nil {
-			t.Fatal(err)
-		}
-		hasText := false
-		for _, block := range blocks {
-			hasText = hasText || block.Type == "text"
-		}
-		if !hasText {
-			// Pi normalizes the id only when the transcript came from another provider, so both forms are keys.
-			textless[message.ToolCallID] = true
-			textless[normalizeAnthropicToolCallID(message.ToolCallID)] = true
-		}
-	}
-	return textless
 }
 
 // normalizeAnthropicToolCallID is anthropic-messages.ts normalizeToolCallId: id.replace(/[^a-zA-Z0-9_-]/g, "_").slice(0, 64), over UTF-16 units.

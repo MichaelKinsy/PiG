@@ -51,7 +51,8 @@ func TestReviewProvidersBedrockWhitespace(t *testing.T) {
 					t.Errorf("user %T: %#v, want %q", content, messages[0].Content, want)
 				}
 			}
-			result, err := bedrockToolResultBlock(ToolResultMessage{ToolCallID: "call", Content: []ToolResultMessageContent{TextContent{Text: tc.text}}})
+			message := ToolResultMessage{ToolCallID: "call", Content: []ToolResultMessageContent{TextContent{Text: tc.text}}}
+			result, err := bedrockToolResultBlock(message, message.Content)
 			if err != nil {
 				t.Fatal(err)
 			}

@@ -11,6 +11,42 @@ import (
 // trimJSWhitespace matches String.prototype.trim: ECMAScript includes BOM but excludes NEL.
 func trimJSWhitespace(value string) string { return jsstring.Trim(value) }
 
+const errorToolImagePlaceholder = "(image attached after the tool results)"
+
+// SplitErrorToolResult is an error tool result split into a text-only result and the images to send after the tool
+// results (transform-messages.ts SplitErrorToolResult).
+type SplitErrorToolResult struct {
+	// Content is the result content with each run of images replaced by a note.
+	Content []TextContent
+	// Caption is the text naming the tool call, to send before Images.
+	Caption string
+	Images  []ImageContent
+}
+
+// SplitErrorToolResultImages splits the images out of an error tool result, for APIs that reject images in error
+// results (Anthropic, and Claude on Bedrock). Send Content as the tool result and the caption and images after all tool
+// results of the turn, in the same user message. It returns nil for a result that needs no split (Pi #10794,
+// transform-messages.ts splitErrorToolResultImages).
+func SplitErrorToolResultImages(message ToolResultMessage) *SplitErrorToolResult {
+	if !message.IsError {
+		return nil
+	}
+	var images []ImageContent
+	for _, block := range message.Content {
+		if image, ok := block.(ImageContent); ok {
+			images = append(images, image)
+		}
+	}
+	if len(images) == 0 {
+		return nil
+	}
+	return &SplitErrorToolResult{
+		Content: replaceImagesWithPlaceholder(message.Content, errorToolImagePlaceholder),
+		Caption: "Images from the error result of tool call " + message.ToolCallID + " (" + message.ToolName + "):",
+		Images:  images,
+	}
+}
+
 func replaceImagesWithPlaceholder[T ContentBlock](content []T, placeholder string) []TextContent {
 	result := make([]TextContent, 0, len(content))
 	previousWasPlaceholder := false

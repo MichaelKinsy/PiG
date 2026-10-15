@@ -66,9 +66,6 @@ func (h *harness) judge(c testCase) outcome {
 	if contents, ok := piProj["contents"].([]any); ok {
 		piProj["contents"] = withD115(contents)
 	}
-	if messages, ok := piProj["messages"].([]any); ok && c.Target.API == "anthropic-messages" {
-		withD171(messages)
-	}
 	pigProj, err := projection(c.Target.API, pigBody)
 	if err != nil {
 		return outcome{Kind: "pig-error", Detail: err.Error()}
@@ -119,46 +116,6 @@ func sharedWithPi(c testCase, o outcome) bool {
 		}
 	}
 	return true
-}
-
-// withD171 rewrites Pi 1.2.0's Anthropic errored tool results into the shape D171 specifies, the behaviour of Pi 34a8bb38: each image of an errored result is replaced with a text note and the all-text result is one newline-joined string. Pi 1.2.0 sends an errored result without images as a string already; its "(see attached image)" placeholder leads an image-only result, and no generated text block holds that string.
-func withD171(messages []any) {
-	for _, message := range messages {
-		m, _ := message.(map[string]any)
-		blocks, _ := m["content"].([]any)
-		for _, block := range blocks {
-			result, _ := block.(map[string]any)
-			if result["type"] != "tool_result" || result["is_error"] != true {
-				continue
-			}
-			if content, ok := result["content"].([]any); ok {
-				var lines []string
-				placeholder := len(content) > 1
-				for index, part := range content {
-					part, _ := part.(map[string]any)
-					if index > 0 && part["type"] != "image" {
-						placeholder = false
-					}
-				}
-				if first, _ := content[0].(map[string]any); !placeholder || first["type"] != "text" || first["text"] != "(see attached image)" {
-					placeholder = false
-				}
-				// Pi 34a8bb38: each image becomes a note; Pi 1.2.0 puts "(see attached image)" before the images of a result without text.
-				for index, part := range content {
-					part, _ := part.(map[string]any)
-					switch {
-					case index == 0 && placeholder:
-					case part["type"] == "image":
-						lines = append(lines, "[image omitted: error tool results cannot contain images]")
-					default:
-						text, _ := part["text"].(string)
-						lines = append(lines, text)
-					}
-				}
-				result["content"] = strings.Join(lines, "\n")
-			}
-		}
-	}
 }
 
 // withD115 rewrites Pi's Google contents into the shape D115 specifies. Pi 1.1.0 (google-shared.ts convertMessages) pushes the image turn of a Gemini 2.x tool result ("Tool result image:") before the next result, which splits the function-response turn of parallel calls; PiG keeps every function response of a run of results in the run's first turn and puts the image turns after it, in result order.

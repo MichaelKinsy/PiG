@@ -216,7 +216,6 @@ func TestAnthropicMessagesCompatAndOptionsPayloadMatchesPi(t *testing.T) {
 			}
 			t.Fatalf("probe %d: Pi produced no payload where PiG did: %.300s", i, got)
 		}
-		want[i] = projectErroredToolResultImages(t, want[i], p.Context)
 		comparePayload(t, fmt.Sprintf("probe %d reasoning=%v simple=%v maxTokens=%d compat=%s levels=%s options=%v", i, p.Reasoning, p.Simple, p.ModelMaxTokens, p.Compat, p.Levels, p.Options), got, want[i], &failures, classes)
 	}
 	if failures > 0 {

@@ -1368,14 +1368,14 @@ func TestAnthConvertMessages_ToolResultCarriesImages(t *testing.T) {
 }
 
 func TestAnthToolResultContent_NoImagesStaysString(t *testing.T) {
-	got := anthToolResultContent([]ToolResultMessageContent{TextContent{Text: "plain output"}}, false)
+	got := anthToolResultContent([]ToolResultMessageContent{TextContent{Text: "plain output"}})
 	if s, ok := got.(string); !ok || s != "plain output" {
 		t.Fatalf("text-only tool result must stay a string, got %T %v", got, got)
 	}
 }
 
 func TestAnthToolResultContent_OnlyImagesGetsPlaceholder(t *testing.T) {
-	got := anthToolResultContent([]ToolResultMessageContent{ImageContent{MimeType: "image/png", Data: "AAAA"}}, false)
+	got := anthToolResultContent([]ToolResultMessageContent{ImageContent{MimeType: "image/png", Data: "AAAA"}})
 	blocks, ok := got.([]anthContentBlock)
 	if !ok || len(blocks) != 2 {
 		t.Fatalf("expected 2 blocks (placeholder text + image), got %T %v", got, got)
@@ -1610,13 +1610,13 @@ func TestAnthConvertMessages_ImageAndToolResultImage(t *testing.T) {
 	// tool_result with text + image → [text, image].
 	withText := anthToolResultContent([]ToolResultMessageContent{
 		TextContent{Text: "captured"}, ImageContent{MimeType: "image/png", Data: "QUJD"},
-	}, false)
+	})
 	tb, ok := withText.([]anthContentBlock)
 	if !ok || len(tb) != 2 || tb[0].Type != "text" || tb[0].Text != "captured" || tb[1].Type != "image" {
 		t.Errorf("tool_result [text,image] = %#v", withText)
 	}
 	// image-only tool_result → placeholder text then image.
-	imageOnly := anthToolResultContent([]ToolResultMessageContent{ImageContent{MimeType: "image/png", Data: "QUJD"}}, false)
+	imageOnly := anthToolResultContent([]ToolResultMessageContent{ImageContent{MimeType: "image/png", Data: "QUJD"}})
 	ib, ok := imageOnly.([]anthContentBlock)
 	if !ok || len(ib) != 2 || ib[0].Type != "text" || ib[0].Text != "(see attached image)" || ib[1].Type != "image" {
 		t.Errorf("image-only tool_result = %#v, want placeholder text + image", imageOnly)

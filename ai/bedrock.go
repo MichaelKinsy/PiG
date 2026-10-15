@@ -660,7 +660,7 @@ func convertBedrockMessages(msgs []Message, modelID, modelName string, cacheRete
 			// Collect this tool-result + all immediately following
 			// tool-result messages into a single user message, exactly
 			// like upstream's toolResult coalescing.
-			combined, consumed, err := bedrockToolResultRun(msgs, i)
+			combined, consumed, err := bedrockToolResultRun(msgs, i, isAnthropicClaudeBedrockModel(modelID, modelName))
 			if err != nil {
 				return nil, err
 			}
@@ -838,28 +838,56 @@ func sanitizeBedrockDocumentValue(value any) (any, error) {
 
 // bedrockToolResultRun walks a span of consecutive tool-result messages
 // starting at msgs[i] and produces a single content slice combining all
-// of them, plus the number of messages consumed.
-func bedrockToolResultRun(msgs []Message, i int) ([]btypes.ContentBlock, int, error) {
+// of them, plus the number of messages consumed. Claude rejects error tool
+// results that contain anything but text, so for Claude the images of an error
+// result follow all tool results of the turn under a caption naming the call
+// (Pi #10794, bedrock-converse-stream.ts convertMessages); other models keep
+// them in place.
+func bedrockToolResultRun(msgs []Message, i int, claude bool) ([]btypes.ContentBlock, int, error) {
 	out := []btypes.ContentBlock{}
+	var errorImages []btypes.ContentBlock
 	j := i
 	for j < len(msgs) {
 		result, ok := msgs[j].(ToolResultMessage)
 		if !ok {
 			break
 		}
-		block, err := bedrockToolResultBlock(result)
+		content := result.Content
+		var split *SplitErrorToolResult
+		if claude {
+			split = SplitErrorToolResultImages(result)
+		}
+		if split != nil {
+			content = make([]ToolResultMessageContent, len(split.Content))
+			for index, block := range split.Content {
+				content[index] = block
+			}
+		}
+		block, err := bedrockToolResultBlock(result, content)
 		if err != nil {
 			return nil, 0, err
 		}
 		out = append(out, block)
+		if split != nil {
+			errorImages = append(errorImages, &btypes.ContentBlockMemberText{Value: split.Caption})
+			for _, image := range split.Images {
+				imageBlock, err := bedrockImageBlock(image.MimeType, image.Data)
+				if err != nil {
+					return nil, 0, err
+				}
+				errorImages = append(errorImages, &btypes.ContentBlockMemberImage{Value: imageBlock})
+			}
+		}
 		j++
 	}
-	return out, j - i, nil
+	return append(out, errorImages...), j - i, nil
 }
 
-func bedrockToolResultBlock(message ToolResultMessage) (btypes.ContentBlock, error) {
+// bedrockToolResultBlock is the toolResult block of message with the given content, which is message.Content unless
+// the caller split an error result's images out.
+func bedrockToolResultBlock(message ToolResultMessage, content []ToolResultMessageContent) (btypes.ContentBlock, error) {
 	var parts []btypes.ToolResultContentBlock
-	for _, block := range message.Content {
+	for _, block := range content {
 		switch block := block.(type) {
 		case TextContent:
 			if text := sanitizeSurrogates(block.Text); trimJSWhitespace(text) != "" {

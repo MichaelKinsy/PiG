@@ -406,31 +406,24 @@ func normalizeAnthropicToolCallID(id string) string {
 	return string(normalized[:length])
 }
 
-// errorToolResultText replaces each image of an errored tool result with a text note, in place: Anthropic rejects non-text content when is_error is true (Pi 34a8bb38, #10794, anthropic-messages.ts convertToolResult).
-func errorToolResultText(content []ToolResultMessageContent) []ToolResultMessageContent {
-	text := make([]ToolResultMessageContent, len(content))
-	for index, block := range content {
-		if _, ok := block.(ImageContent); ok {
-			block = TextContent{Text: "[image omitted: error tool results cannot contain images]"}
-		}
-		text[index] = block
+// anthImageBlock is convertImageBlock: a base64 image block.
+func anthImageBlock(image ImageContent) anthContentBlock {
+	return anthContentBlock{
+		Type: "image",
+		Source: map[string]any{
+			"type": "base64", "media_type": image.MimeType, "data": image.Data,
+		},
 	}
-	return text
 }
 
-// anthToolResultContent joins every text-only element with a newline. Mixed text/image results preserve block order and explicit empty text; only an image-only result receives placeholder text. An errored result has each image replaced with a text note and is always sent as a string.
-func anthToolResultContent(content []ToolResultMessageContent, isError bool) any {
+// anthToolResultContent joins every text-only element with a newline. Mixed text/image results preserve block order and explicit empty text; only an image-only result receives placeholder text. The caller passes the images of an errored result as text, split out by SplitErrorToolResultImages.
+func anthToolResultContent(content []ToolResultMessageContent) any {
 	hasImages := false
 	for _, block := range content {
 		if _, ok := block.(ImageContent); ok {
 			hasImages = true
 			break
 		}
-	}
-	if isError {
-		// pig divergence (D171): Pi 1.2.0 sends the images of an errored tool_result, which Anthropic rejects; PiG follows Pi 34a8bb38 ahead of the pin.
-		content = errorToolResultText(content)
-		hasImages = false
 	}
 	if !hasImages {
 		var text strings.Builder
@@ -450,12 +443,7 @@ func anthToolResultContent(content []ToolResultMessageContent, isError bool) any
 			hasText = true
 			blocks = append(blocks, anthContentBlock{Type: "text", Text: sanitizeSurrogates(block.Text)})
 		case ImageContent:
-			blocks = append(blocks, anthContentBlock{
-				Type: "image",
-				Source: map[string]any{
-					"type": "base64", "media_type": block.MimeType, "data": block.Data,
-				},
-			})
+			blocks = append(blocks, anthImageBlock(block))
 		}
 	}
 	if !hasText {
@@ -639,20 +627,34 @@ func anthConvertMessagesDetailed(messages []Message, isOAuthToken, allowEmptySig
 			}
 		case ToolResultMessage:
 			var results []anthContentBlock
+			// Anthropic rejects error tool results that contain anything but text, so their images follow all tool results of
+			// the turn, which must come first in the user message (Pi #10794, anthropic-messages.ts convertMessages).
+			var errorImages []anthContentBlock
 			for index < len(messages) {
 				result, ok := messages[index].(ToolResultMessage)
 				if !ok {
 					break
 				}
 				isError := result.IsError
+				content := result.Content
+				if split := SplitErrorToolResultImages(result); split != nil {
+					content = make([]ToolResultMessageContent, len(split.Content))
+					for position, block := range split.Content {
+						content[position] = block
+					}
+					errorImages = append(errorImages, anthContentBlock{Type: "text", Text: split.Caption})
+					for _, image := range split.Images {
+						errorImages = append(errorImages, anthImageBlock(image))
+					}
+				}
 				results = append(results, anthContentBlock{
 					Type: "tool_result", ToolUseID: result.ToolCallID,
-					Content: anthToolResultContent(result.Content, isError), IsError: &isError,
+					Content: anthToolResultContent(content), IsError: &isError,
 				})
 				index++
 			}
 			index--
-			out = append(out, anthMessage{Role: "user", Content: results})
+			out = append(out, anthMessage{Role: "user", Content: append(results, errorImages...)})
 		}
 	}
 	out = append(out, pendingSystem...)
