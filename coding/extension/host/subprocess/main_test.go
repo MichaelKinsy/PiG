@@ -1,8 +1,10 @@
 package subprocess
 
 import (
+	"errors"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"testing"
 	"time"
@@ -10,7 +12,11 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/testenv"
 )
 
-const nodePreflightHelperFIFOEnv = "PIG_TEST_NODE_PREFLIGHT_FIFO"
+const (
+	nodePreflightHelperFIFOEnv  = "PIG_TEST_NODE_PREFLIGHT_FIFO"
+	fakeProviderBridgeNodeEnv   = "PIG_TEST_FAKE_PROVIDER_BRIDGE_NODE"
+	fakeProviderBridgeScriptEnv = "PIG_TEST_FAKE_PROVIDER_BRIDGE_SCRIPT"
+)
 
 var fixtureRoot string
 
@@ -29,6 +35,23 @@ func TestMain(m *testing.M) {
 		for {
 			time.Sleep(time.Hour)
 		}
+	}
+	if nodePath := os.Getenv(fakeProviderBridgeNodeEnv); nodePath != "" {
+		// `pig provider-bridge` stand-in: the shim spawns PIG_HARNESS_BINARY directly, and Windows runs only executables, not `#!/bin/sh` scripts.
+		script := os.Getenv(fakeProviderBridgeScriptEnv)
+		_ = os.Unsetenv(fakeProviderBridgeNodeEnv)
+		bridge := exec.Command(nodePath, script)
+		bridge.Stdin, bridge.Stdout, bridge.Stderr = os.Stdin, os.Stdout, os.Stderr
+		err := bridge.Run()
+		var exit *exec.ExitError
+		if errors.As(err, &exit) {
+			os.Exit(exit.ExitCode())
+		}
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "run fake provider bridge:", err)
+			os.Exit(2)
+		}
+		os.Exit(0)
 	}
 	testRoot, err := os.MkdirTemp("", "pig-sp-")
 	if err != nil {

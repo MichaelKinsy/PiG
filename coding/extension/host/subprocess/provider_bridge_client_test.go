@@ -113,10 +113,13 @@ func TestProviderBridgeClientHonoursTheBridgeWire(t *testing.T) {
 		return path
 	}
 	fake := write("fake-bridge.mjs", fakeProviderBridge, 0o644)
-	binary := write("pig", "#!/bin/sh\nexec "+node+" "+fake+" \"$@\"\n", 0o755)
+	binary, err := os.Executable()
+	if err != nil {
+		t.Fatal(err)
+	}
 	script := write("client.mjs", providerBridgeClientScript, 0o644)
 	command := exec.Command(node, script, filepath.Join(runtime, "shims", "provider-bridge-client.mjs"))
-	command.Env = append(os.Environ(), "PIG_HARNESS_BINARY="+binary)
+	command.Env = append(os.Environ(), "PIG_HARNESS_BINARY="+binary, fakeProviderBridgeNodeEnv+"="+node, fakeProviderBridgeScriptEnv+"="+fake)
 	done := make(chan struct{})
 	var output []byte
 	go func() {

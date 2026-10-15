@@ -19,6 +19,7 @@ func TestRestartAdoptsTheNewRegistrationsDeclarations(t *testing.T) {
 		shortSockDir(t)
 		t.Setenv("FIXTURE_GENERATION_FILE", filepath.Join(t.TempDir(), "generation"))
 		h := newTestHost(t)
+		t.Cleanup(func() { h.Shutdown("test done") })
 		recordCrashNotices(t, h)
 		cfg := ExtConfig{Name: "fixture", Path: binPath, Enabled: true, SupervisorConfig: SupervisorConfig{MaxCrashes: 3, CrashWindow: time.Minute, InitialDelay: time.Millisecond, MaxDelay: 10 * time.Millisecond, BackoffFactor: 2}}
 		if _, err := h.Load(t.Context(), cfg); err != nil {
