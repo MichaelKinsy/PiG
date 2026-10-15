@@ -216,13 +216,14 @@ func piSourceNames(root string) (map[string]bool, error) {
 // file while changing production code of the same directory, unless the commit
 // message or a line the commit adds to the test file cites a Pi source line
 // (a file piNames holds) whose behavior changed.
-func checkCoEdits(root string, rangeSpec string, from time.Time, piNames map[string]bool) ([]string, error) {
+func checkCoEdits(root string, rangeSpec string, from time.Time, piNames map[string]bool, ledger []reviewEntry) ([]string, error) {
 	edits, err := scanCoEdits(root, []string{rangeSpec, "--", "*.go"})
 	if err != nil {
 		return nil, err
 	}
 	var problems []string
 	seen := map[string]bool{}
+	used := make([]bool, len(ledger))
 	for _, e := range edits {
 		if e.ValueEdits == 0 || seen[e.Commit+e.Path] {
 			continue
@@ -242,10 +243,66 @@ func checkCoEdits(root string, rangeSpec string, from time.Time, piNames map[str
 		if cited {
 			continue
 		}
+		reviewed := false
+		for i, r := range ledger {
+			if len(r.Commit) < 10 || !strings.HasPrefix(e.Commit, r.Commit) || r.Path != e.Path {
+				continue
+			}
+			used[i] = true
+			if err := r.validate(root, piNames); err != nil {
+				problems = append(problems, fmt.Sprintf("%s %s: ledger entry %s", shortSHA(e.Commit), e.Path, err))
+			}
+			reviewed = true
+		}
+		if reviewed {
+			continue
+		}
 		problems = append(problems, fmt.Sprintf("%s %s: changes %d expected value(s) in %s together with %s; cite the Pi behavior that changed (a `Pi-Behavior-Change: <pi file.ts:line>` trailer, or a `name.ts:line` comment on a changed test line, naming a Pi file of %s), or leave the expectation alone",
 			shortSHA(e.Commit), e.Subject, e.ValueEdits, e.Path, strings.Join(e.Code, ", "), piInventories[0]))
 	}
+	for i, r := range ledger {
+		if !used[i] {
+			problems = append(problems, fmt.Sprintf("%s: stale ledger entry %s %s matches no finding", reviewedFile, shortSHA(r.Commit), r.Path))
+		}
+	}
 	return problems, nil
+}
+
+const reviewedFile = "test/parity/testprune-reviewed.toml"
+
+// reviewEntry is one reviewed finding: it satisfies the expected-value finding of exactly its commit and path.
+type reviewEntry struct {
+	Path   string `toml:"path"`
+	Commit string `toml:"commit"`
+	Class  string `toml:"class"`
+	Cite   string `toml:"cite"`
+	Reason string `toml:"reason"`
+}
+
+var divergenceIDRE = regexp.MustCompile(`^D\d+$`)
+
+func (r reviewEntry) validate(root string, piNames map[string]bool) error {
+	if strings.TrimSpace(r.Reason) == "" {
+		return fmt.Errorf("has no reason")
+	}
+	switch r.Class {
+	case "CITE":
+		m := piCiteRE.FindStringSubmatch("Pi-Behavior-Change: " + r.Cite)
+		if m == nil || !piNames[path.Base(m[1])] {
+			return fmt.Errorf("cite %q does not name a Pi file:line of %s", r.Cite, piInventories[0])
+		}
+	case "DIVERGENCE":
+		if !divergenceIDRE.MatchString(r.Cite) {
+			return fmt.Errorf("cite %q is not a divergence id", r.Cite)
+		}
+		if _, err := os.Stat(filepath.Join(root, "docs/parity/divergences", r.Cite+".md")); err != nil {
+			return fmt.Errorf("divergence %s has no docs/parity/divergences/%s.md", r.Cite, r.Cite)
+		}
+	case "NOBEHAVIOR", "message-only":
+	default:
+		return fmt.Errorf("unknown class %q", r.Class)
+	}
+	return nil
 }
 
 func shortSHA(s string) string {
@@ -298,7 +355,13 @@ func runLint(root string, args []string) error {
 		if err != nil {
 			return err
 		}
-		p, err := checkCoEdits(root, *base+".."+*head, from, piNames)
+		var reviewed struct {
+			Entry []reviewEntry `toml:"entry"`
+		}
+		if _, err := toml.DecodeFile(filepath.Join(root, reviewedFile), &reviewed); err != nil {
+			return err
+		}
+		p, err := checkCoEdits(root, *base+".."+*head, from, piNames, reviewed.Entry)
 		if err != nil {
 			return err
 		}

@@ -123,7 +123,7 @@ func TestCheckCoEditsRequiresAPiCitation(t *testing.T) {
 	}
 
 	edit("second", "make the test pass")
-	problems, err := checkCoEdits(dir, base+"..HEAD", time.Time{}, piNames)
+	problems, err := checkCoEdits(dir, base+"..HEAD", time.Time{}, piNames, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -131,13 +131,13 @@ func TestCheckCoEditsRequiresAPiCitation(t *testing.T) {
 		t.Fatalf("an expectation edited with its code passed review: %q", problems)
 	}
 
-	if problems, err := checkCoEdits(dir, base+"..HEAD", time.Now().Add(time.Hour), piNames); err != nil || len(problems) != 0 {
+	if problems, err := checkCoEdits(dir, base+"..HEAD", time.Now().Add(time.Hour), piNames, nil); err != nil || len(problems) != 0 {
 		t.Fatalf("a commit authored before the ratchet date was reviewed: %v %q", err, problems)
 	}
 
 	mid := gitIn(t, dir, "rev-parse", "HEAD")
 	edit("third", "follow Pi\n\nPi-Behavior-Change: packages/coding-agent/src/core/a.ts:42")
-	problems, err = checkCoEdits(dir, mid+"..HEAD", time.Time{}, piNames)
+	problems, err = checkCoEdits(dir, mid+"..HEAD", time.Time{}, piNames, nil)
 	if err != nil || len(problems) != 0 {
 		t.Fatalf("a Pi-cited change was rejected: %v %q", err, problems)
 	}
@@ -147,7 +147,7 @@ func TestCheckCoEditsRequiresAPiCitation(t *testing.T) {
 	write(t, dir, "pkg/a.go", "package pkg\n\nfunc A() string { return \"third\" }\n\nfunc unrelated() {}\n")
 	gitIn(t, dir, "add", ".")
 	gitIn(t, dir, "commit", "-q", "-m", "refactor")
-	problems, err = checkCoEdits(dir, tip+"..HEAD", time.Time{}, piNames)
+	problems, err = checkCoEdits(dir, tip+"..HEAD", time.Time{}, piNames, nil)
 	if err != nil || len(problems) != 0 {
 		t.Fatalf("a refactor that keeps every expected value was rejected: %v %q", err, problems)
 	}
@@ -156,7 +156,7 @@ func TestCheckCoEditsRequiresAPiCitation(t *testing.T) {
 	for i, message := range []string{"follow nobody\n\nPi-Behavior-Change: extensions/sdk-ts/src/index.ts:3", "follow nobody\n\nPi-Behavior-Change: invented.ts:1"} {
 		before := gitIn(t, dir, "rev-parse", "HEAD")
 		edit(fmt.Sprintf("uncited-%d", i), message)
-		if problems, err := checkCoEdits(dir, before+"..HEAD", time.Time{}, piNames); err != nil || len(problems) != 1 {
+		if problems, err := checkCoEdits(dir, before+"..HEAD", time.Time{}, piNames, nil); err != nil || len(problems) != 1 {
 			t.Fatalf("%q passed as a Pi citation: %v %q", message, err, problems)
 		}
 	}
@@ -166,7 +166,7 @@ func TestCheckCoEditsRequiresAPiCitation(t *testing.T) {
 		write(t, dir, "pkg/a_test.go", "package pkg\n\nimport \"testing\"\n\nfunc TestA(t *testing.T) {\n\t// "+comment+"\n\tif A() != \""+value+"\" {\n\t\tt.Fatal(\"bad\")\n\t}\n}\n")
 		gitIn(t, dir, "add", ".")
 		gitIn(t, dir, "commit", "-q", "-m", "change "+value)
-		problems, err := checkCoEdits(dir, before+"..HEAD", time.Time{}, piNames)
+		problems, err := checkCoEdits(dir, before+"..HEAD", time.Time{}, piNames, nil)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -188,7 +188,7 @@ func TestCheckCoEditsRequiresAPiCitation(t *testing.T) {
 	write(t, dir, "pkg/a_test.go", "package pkg\n\nimport \"testing\"\n\nfunc TestA(t *testing.T) {\n\t// see helper.ts:4\n\tif A() != \"fifth\" || where != \"pkg/moved/place\" {\n\t\tt.Fatal(\"bad\")\n\t}\n}\n")
 	gitIn(t, dir, "add", ".")
 	gitIn(t, dir, "commit", "-q", "-m", "move a path")
-	if problems, err := checkCoEdits(dir, before+"..HEAD", time.Time{}, piNames); err != nil || len(problems) != 0 {
+	if problems, err := checkCoEdits(dir, before+"..HEAD", time.Time{}, piNames, nil); err != nil || len(problems) != 0 {
 		t.Fatalf("a moved path counted as a changed expected value: %v %q", err, problems)
 	}
 }
@@ -440,5 +440,53 @@ func TestJourneyVerdictNeverStandsInForGuardsOrProtectedTests(t *testing.T) {
 		if got := journeyVerdict(c.name, c.class, c.blocks, c.missing, protected); got != c.want {
 			t.Errorf("%s: verdict %q, want %q", c.name, got, c.want)
 		}
+	}
+}
+
+func TestCheckCoEditsLedger(t *testing.T) {
+	piNames := map[string]bool{"a.ts": true}
+	dir := t.TempDir()
+	gitIn(t, dir, "init", "-q", "-b", "main")
+	write(t, dir, "pkg/a.go", "package pkg\n\nfunc A() string { return \"first\" }\n")
+	write(t, dir, "pkg/a_test.go", "package pkg\n\nimport \"testing\"\n\nfunc TestA(t *testing.T) {\n\tif A() != \"first\" {\n\t\tt.Fatal(\"bad\")\n\t}\n}\n")
+	gitIn(t, dir, "add", ".")
+	gitIn(t, dir, "commit", "-q", "-m", "base")
+	base := gitIn(t, dir, "rev-parse", "HEAD")
+	write(t, dir, "pkg/a.go", "package pkg\n\nfunc A() string { return \"second\" }\n")
+	write(t, dir, "pkg/a_test.go", "package pkg\n\nimport \"testing\"\n\nfunc TestA(t *testing.T) {\n\tif A() != \"second\" {\n\t\tt.Fatal(\"bad\")\n\t}\n}\n")
+	gitIn(t, dir, "add", ".")
+	gitIn(t, dir, "commit", "-q", "-m", "change")
+	tip := gitIn(t, dir, "rev-parse", "HEAD")
+	run := func(l ...reviewEntry) []string {
+		p, err := checkCoEdits(dir, base+"..HEAD", time.Time{}, piNames, l)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return p
+	}
+	good := reviewEntry{Path: "pkg/a_test.go", Commit: tip[:10], Class: "CITE", Cite: "packages/x/a.ts:12", Reason: "r"}
+	if p := run(good); len(p) != 0 {
+		t.Fatalf("matching entry rejected: %v", p)
+	}
+	if p := run(); len(p) != 1 {
+		t.Fatalf("no entry must leave the finding: %v", p)
+	}
+	other := good
+	other.Commit = base[:10]
+	if p := run(other); len(p) != 2 {
+		t.Fatalf("entry for another commit must not apply and must be stale: %v", p)
+	}
+	other = good
+	other.Path = "pkg/b_test.go"
+	if p := run(other); len(p) != 2 {
+		t.Fatalf("entry for another path must not apply: %v", p)
+	}
+	bad := good
+	bad.Cite = "packages/x/unknown.ts:12"
+	if p := run(bad); len(p) != 1 || !strings.Contains(p[0], "does not name a Pi file") {
+		t.Fatalf("unknown Pi file accepted: %v", p)
+	}
+	if p := run(good, reviewEntry{Path: "pkg/gone_test.go", Commit: tip[:10], Class: "NOBEHAVIOR", Reason: "r"}); len(p) != 1 || !strings.Contains(p[0], "stale") {
+		t.Fatalf("stale entry accepted: %v", p)
 	}
 }
