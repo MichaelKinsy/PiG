@@ -236910,8 +236910,8 @@
       ],
       "evidence": [
         "test:mcp/stdio_options_test.go#TestStdioTransportRejectsAStdoutLineLongerThanMaxMessageBytes",
-        "test:mcp/stdio_splitter_test.go#TestStdioSplitterChunkingEquivalence",
-        "test:mcp/stdio_splitter_test.go#TestStdioSplitterLargeMessageScalesLinearly"
+        "test:mcp/stdio_splitter_test.go#TestStdioTransportDeliversALargeMessageSpanningManyReads",
+        "test:mcp/stdio_splitter_test.go#TestStdioSplitterChunkingEquivalence"
       ]
     },
     {
