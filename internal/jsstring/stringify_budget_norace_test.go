@@ -6,6 +6,7 @@ import (
 	"bytes"
 	stdjson "encoding/json"
 	"fmt"
+	"os"
 	"runtime"
 	"strings"
 	"testing"
@@ -98,6 +99,11 @@ func TestStringifyChain200KBudget(t *testing.T) {
 	if testing.Short() {
 		t.Skip("CPU budget")
 	}
+	// A wall-clock budget: it runs in the serial startup-proxies job (automation/perf/startup-proxies.json requires it there), not beside
+	// the parallel test packages, where memory-bandwidth contention on a 4-CPU runner took it from 0.2 ms to 0.6-0.7 ms.
+	if os.Getenv("PIG_SERIAL_TIMING") == "" {
+		t.Skip("wall-clock budget: run by make startup-proxies (PIG_SERIAL_TIMING=1)")
+	}
 	payload := budgetPayload(200 << 10)
 	value := chain4{chain3{chain2{chain1{chainLeaf{payload}}}}}
 	want := `{"a":{"a":{"a":{"a":{"content":` + string(jsparity.AppendString(nil, payload)) + `}}}}}`
@@ -120,6 +126,11 @@ func TestStringifyChain200KBudget(t *testing.T) {
 func TestMarshalJSONString200KBudget(t *testing.T) {
 	if testing.Short() {
 		t.Skip("CPU budget")
+	}
+	// A wall-clock budget: it runs in the serial startup-proxies job (automation/perf/startup-proxies.json requires it there), not beside
+	// the parallel test packages, where memory-bandwidth contention on a 4-CPU runner took it from 0.2 ms to 0.6-0.7 ms.
+	if os.Getenv("PIG_SERIAL_TIMING") == "" {
+		t.Skip("wall-clock budget: run by make startup-proxies (PIG_SERIAL_TIMING=1)")
 	}
 	payload := budgetPayload(200 << 10)
 	ns, allocated := fastestRun(func() { _, _ = MarshalJSON(payload) })

@@ -83,5 +83,8 @@
   ],
   "./extensions/sdk/json": [
     "TestAppendString200KBudget"
+  ],
+  "./internal/jsstring": [
+    "TestStringifyChain200KBudget"
   ]
 }
