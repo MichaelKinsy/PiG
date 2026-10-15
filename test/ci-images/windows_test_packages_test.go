@@ -146,7 +146,8 @@ func TestWindowsShardsTestEverySelectedPackage(t *testing.T) {
 	if !slices.Equal(job.Strategy.Matrix.Shard, wantMatrix) {
 		t.Fatalf("windows shards = %v, want %v", job.Strategy.Matrix.Shard, wantMatrix)
 	}
-	shardStep := regexp.MustCompile(`(?m)^\s*run=\$\(automation/ci/test-shard-pattern\.sh "\$\{CLI_SHARD#cli-\}" ([0-9]+) \./` + regexp.QuoteMeta(cliPkg) + `\)\n\s*go test -timeout 30m -run "\$run" \./` + regexp.QuoteMeta(cliPkg) + `\n`)
+	// -v streams the shard's tests as they run, and -timeout 25m puts the alarm, and its stack dump, inside the 60-minute job after about 15 minutes of setup; a shard that wedged under -timeout 30m without -v printed nothing before the job was cancelled.
+	shardStep := regexp.MustCompile(`(?m)^\s*run=\$\(automation/ci/test-shard-pattern\.sh "\$\{CLI_SHARD#cli-\}" ([0-9]+) \./` + regexp.QuoteMeta(cliPkg) + `\)\n\s*go test -v -timeout 25m -run "\$run" \./` + regexp.QuoteMeta(cliPkg) + `\n`)
 	cliShardSteps := 0
 	selectLine := ""
 	extensionRuns := ""

@@ -86,6 +86,8 @@ func startRPCCommandAt(t *testing.T, cwd string, env []string, binary string, ar
 		budget:  testbudget.Wait(t),
 	}
 	cmd.Stderr = p.stderr
+	// A descendant that outlives pig and holds the stderr copy open must not hold cleanup and waitForExit: on Windows Kill ends only pig, and Wait would otherwise wait for that descendant with no bound.
+	cmd.WaitDelay = 10 * time.Second
 	if err := cmd.Start(); err != nil {
 		t.Fatal(err)
 	}

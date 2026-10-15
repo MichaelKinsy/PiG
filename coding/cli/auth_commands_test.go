@@ -19,6 +19,7 @@ import (
 	"github.com/MichaelKinsy/PiG/coding/extension/host/cellpack"
 	"github.com/MichaelKinsy/PiG/coding/extension/host/subprocess"
 	"github.com/MichaelKinsy/PiG/internal/codingagent"
+	"github.com/MichaelKinsy/PiG/internal/testbudget"
 )
 
 type testExternalOAuthStore struct {
@@ -830,8 +831,15 @@ func TestRunAuthCommand_LoginWaitsForAnotherProcessLock(t *testing.T) {
 	stdout, stderr, code := captureWithStdin(t, "", func() int {
 		return runLoginCommand([]string{"login", provider.ID()})
 	})
-	if err := <-provider.released; err != nil {
-		t.Fatalf("release the held lock: %v", err)
+	// The release goroutine starts only once login reaches the provider, so a login that fails first never sends: bound the wait and report the login's own output.
+	var releaseErr error
+	select {
+	case releaseErr = <-provider.released:
+	case <-time.After(testbudget.Wait(t)):
+		t.Fatalf("login never took the lock-holding provider: code = %d\nstdout:\n%s\nstderr:\n%s", code, stdout, stderr)
+	}
+	if releaseErr != nil {
+		t.Fatalf("release the held lock: %v", releaseErr)
 	}
 	if code != 0 || !strings.Contains(stdout, "Credentials saved to auth.json") {
 		t.Fatalf("code = %d\nstdout:\n%s\nstderr:\n%s", code, stdout, stderr)

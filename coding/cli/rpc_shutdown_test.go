@@ -129,6 +129,8 @@ func startJSONLProcessAt(t *testing.T, cwd string, env []string, command string,
 	}
 	p := &rpcProcess{t: t, cmd: cmd, stdin: stdin, stderr: &lockedBuffer{}, records: make(chan rpcRecord, 64), budget: testbudget.Wait(t)}
 	cmd.Stderr = p.stderr
+	// As in startRPCCommandAt: a descendant holding the stderr copy open must not hold Wait.
+	cmd.WaitDelay = 10 * time.Second
 	if err := cmd.Start(); err != nil {
 		t.Fatal(err)
 	}
