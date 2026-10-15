@@ -710,3 +710,10 @@ path = "internal/codingagent/select_page_keys_pr7680_test.go"
 commit = "b1b54f1f2e"
 class = "NOBEHAVIOR"
 reason = "the fixed /project cwd resolves to a drive path on Windows; the test now uses a temp dir and expects its canonical form, the same value on every host"
+
+[[entry]]
+path = "internal/codingagent/migrations_test.go"
+commit = "75351c7fca"
+class = "CITE"
+cite = "packages/coding-agent/src/migrations.ts:121"
+reason = "Pi names the migration target with file.split(\"/\").pop(), which on Windows is the whole backslash path, so the rename fails and the root session file stays in place; the expectations now state that per platform"
