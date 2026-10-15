@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: MIT
 """Run named deterministic startup guards; missing or skipped guards fail."""
 import json
+import os
 import pathlib
 import re
 import subprocess
@@ -22,7 +23,7 @@ def main():
             raise SystemExit(f"empty or duplicate startup guard list: {package}")
         pattern = "^(" + "|".join(re.escape(name) for name in names) + ")$"
         command = ["go", "test", "-json", "-count=1", package, "-run", pattern]
-        result = subprocess.run(command, cwd=ROOT, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+        result = subprocess.run(command, cwd=ROOT, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, env={**os.environ, "PIG_SERIAL_TIMING": "1"})
         passed = set()
         for line in result.stdout.splitlines():
             try:

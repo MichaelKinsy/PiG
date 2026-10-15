@@ -4,6 +4,7 @@ package jv
 
 import (
 	"fmt"
+	"os"
 	"strings"
 	"testing"
 )
@@ -37,6 +38,11 @@ func writeText() string {
 func TestAppendString200KBudget(t *testing.T) {
 	if testing.Short() {
 		t.Skip("CPU budget")
+	}
+	// A wall-clock ratio: it runs in the serial startup-proxies job (automation/perf/startup-proxies.json requires it there),
+	// not beside the parallel test packages, whose memory-bandwidth contention halves the ratio on a 4-CPU runner.
+	if os.Getenv("PIG_SERIAL_TIMING") == "" {
+		t.Skip("wall-clock ratio: run by make startup-proxies (PIG_SERIAL_TIMING=1)")
 	}
 	payload := writeText()
 	buf := make([]byte, 0, 2*len(payload))
