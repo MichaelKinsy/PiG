@@ -283,7 +283,7 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/ai/src/utils/model-operations.ts` | `ai/model_types.go (ModelType and the per-type Models operations)`, `ai/model_operations_export.go` | ✅ |
 | `packages/ai/src/utils/models-error.ts` | `ai/auth_resolve.go (ModelsErrorCode, ModelsError, NewModelsError)` | ✅ |
 | `packages/ai/src/utils/oauth-page.ts` | `ai/oauth_page.go (upstream 0.99.1 moved the file unchanged from auth/oauth/oauth-page.ts)` | ✅ |
-| `packages/ai/src/providers/openrouter-api.ts` | `ai/, cmd/gen-models/` | ✅ |
+| `packages/ai/src/providers/openrouter-api.ts` | `ai/, cmd/gen-models/ (mapped at the b06c1f2c pin; the interface ledger does not yet derive this row from exported members or `// pi:` test evidence)` | 🟡 |
 
 ## `packages/coding-agent/src/`
 
@@ -383,7 +383,7 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/coding-agent/src/core/tools/ls.ts` | `internal/codingagent/tools/ls.go`, `internal/codingagent/tools/tools.go`, `coding/tool_definitions.go`, `coding/extension/events.go`, `coding/extension/opaque_types.go` | ✅ |
 | `packages/coding-agent/src/core/tools/edit-diff.ts` | `internal/codingagent/tools/edit_diff.go + unified_patch.go (GenerateUnifiedPatch) + diff_string.go (GenerateDiffString); coding/extension/host/subprocess/runtime-node/shims/pi-coding-agent.mjs (vendored Node diff helpers)`, `internal/codingagent/tools/edit_preview.go` | ✅ |
 | `packages/coding-agent/src/core/tools/file-mutation-queue.ts` | `internal/codingagent/tools/mutation_queue.go` | ✅ |
-| `packages/coding-agent/src/core/tools/render-utils.ts` | `tui/tool_path_render.go (shortenPath, linkPath, renderToolPath) + tui/tool_call_args.go (FormatToolCallWithArgs) + tui/shell_renderers.go (invalidArgText) + internal/codingagent/tools/render_text_output.go (GetTextOutput) + internal/codingagent/tool_render_shell.go (shellTextOutput and toolResultTextOutput: getTextOutput for the built-in shell, read and list renderers; normalizeDisplayText is inline in the write renderer's writeRenderCall) + internal/codingagent/tool_render.go (replaceTabs)` | ✅ |
+| `packages/coding-agent/src/core/tools/render-utils.ts` | `tui/tool_path_render.go (shortenPath, linkPath, renderToolPath) + tui/tool_call_args.go (FormatToolCallWithArgs) + tui/shell_renderers.go (invalidArgText) + internal/codingagent/tools/render_text_output.go (GetTextOutput) + internal/codingagent/tool_render_shell.go (shellTextOutput and toolResultTextOutput: getTextOutput for the built-in shell, read and list renderers; normalizeDisplayText is inline in the write renderer's writeRenderCall) + internal/codingagent/tool_render.go (replaceTabs)`, `tui/compact_read_header.go` | ✅ |
 | `packages/coding-agent/src/core/tools/truncate.ts` | `internal/codingagent/tools/truncate.go + internal/truncate/tail.go (truncateTail's walk, shared with tui/bash_execution.go)`, `internal/codingagent/tools/tools.go`, `tui/truncation_result.go` | ✅ |
 | `packages/coding-agent/src/core/tools/tool-definition-wrapper.ts` | `coding/extension_bridge.go + coding/session_tool_registry.go` | ✅ |
 | `packages/coding-agent/src/core/tools/path-utils.ts` | `internal/codingagent/tools/path_utils.go` | ✅ |
@@ -662,15 +662,15 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/chord/src/connection.ts` | `chord/host/connection.go LinkOptions, AcceptOptions, Connection, RelayRef, RelayCall` | 🟡 |
 | `packages/chord/src/object.ts` | `chord/host/object.go ServeOptions, Factory, Self, SelfImpl, ResourceImpl, CtxImpl, RefImpl, ObjectImpl` | 🟡 |
 | `packages/chord/src/remote.ts` | `chord/host/remote.go RemoteRef, RemoteChannel` | 🟡 |
-| `packages/chord/src/cluster.ts` | `chord/host/` | ✅ |
+| `packages/chord/src/cluster.ts` | `chord/host/ (mapped at the b06c1f2c pin; the interface ledger does not yet derive this row from exported members or `// pi:` test evidence)` | 🟡 |
 | `packages/chord/src/contract.ts` | `chord/host/ (link protocol 2; the protocol 3 and 4 cases are owner exception B, 0.5.1: test/parity/upstream-sync/v1.2.0+b06c1f2c.toml)` | 🟡 |
 | `packages/chord/src/declare.ts` | `chord/host/ (link protocol 2; the protocol 3 and 4 cases are owner exception B, 0.5.1: test/parity/upstream-sync/v1.2.0+b06c1f2c.toml)` | 🟡 |
-| `packages/chord/src/errors.ts` | `chord/host/` | ✅ |
+| `packages/chord/src/errors.ts` | `chord/host/ (mapped at the b06c1f2c pin; the interface ledger does not yet derive this row from exported members or `// pi:` test evidence)` | 🟡 |
 | `packages/chord/src/host.ts` | `chord/host/ (link protocol 2; the protocol 3 and 4 cases are owner exception B, 0.5.1: test/parity/upstream-sync/v1.2.0+b06c1f2c.toml)` | 🟡 |
-| `packages/chord/src/registry.ts` | `chord/host/` | ✅ |
+| `packages/chord/src/registry.ts` | `chord/host/ (mapped at the b06c1f2c pin; the interface ledger does not yet derive this row from exported members or `// pi:` test evidence)` | 🟡 |
 | `packages/chord/src/reload.ts` | `chord/host/ (link protocol 2; the protocol 3 and 4 cases are owner exception B, 0.5.1: test/parity/upstream-sync/v1.2.0+b06c1f2c.toml)` | 🟡 |
-| `packages/chord/src/schema.ts` | `chord/host/` | ✅ |
-| `packages/chord/src/state.ts` | `chord/` | ✅ |
+| `packages/chord/src/schema.ts` | `chord/host/ (mapped at the b06c1f2c pin; the interface ledger does not yet derive this row from exported members or `// pi:` test evidence)` | 🟡 |
+| `packages/chord/src/state.ts` | `chord/ (mapped at the b06c1f2c pin; the interface ledger does not yet derive this row from exported members or `// pi:` test evidence)` | 🟡 |
 | `packages/chord/src/websocket.ts` | `chord/host/ (link protocol 2; the protocol 3 and 4 cases are owner exception B, 0.5.1: test/parity/upstream-sync/v1.2.0+b06c1f2c.toml)` | 🟡 |
 | `packages/chord/src/wire.ts` | `chord/host/ (link protocol 2; the protocol 3 and 4 cases are owner exception B, 0.5.1: test/parity/upstream-sync/v1.2.0+b06c1f2c.toml)` | 🟡 |
 
@@ -766,13 +766,13 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/durable/src/tools/write.ts` | `durable/tools/write.go` | ✅ |
 | `packages/durable/src/truncate.ts` | `durable/truncate.go` | ✅ |
 | `packages/durable/src/types.ts` | `durable/types.go`, `durable/documents.go`, `durable/entries.go`, `durable/tasks.go` | ✅ |
-| `packages/durable/src/codemode/codemode.ts` | `durable/codemode/` | ✅ |
-| `packages/durable/src/codemode/describe.ts` | `durable/codemode/` | ✅ |
+| `packages/durable/src/codemode/codemode.ts` | `durable/codemode/ (mapped at the b06c1f2c pin; the interface ledger does not yet derive this row from exported members or `// pi:` test evidence)` | 🟡 |
+| `packages/durable/src/codemode/describe.ts` | `durable/codemode/ (mapped at the b06c1f2c pin; the interface ledger does not yet derive this row from exported members or `// pi:` test evidence)` | 🟡 |
 | `packages/durable/src/codemode/index.ts` | `(barrel re-exports; Go has no barrel exports)` | n/a |
-| `packages/durable/src/codemode/models.ts` | `durable/codemode/` | ✅ |
-| `packages/durable/src/codemode/output.ts` | `durable/codemode/` | ✅ |
-| `packages/durable/src/images/node-worker.ts` | `durable/images/node/` | ✅ |
-| `packages/durable/src/search.ts` | `durable/internal/search/` | ✅ |
+| `packages/durable/src/codemode/models.ts` | `durable/codemode/ (mapped at the b06c1f2c pin; the interface ledger does not yet derive this row from exported members or `// pi:` test evidence)` | 🟡 |
+| `packages/durable/src/codemode/output.ts` | `durable/codemode/ (mapped at the b06c1f2c pin; the interface ledger does not yet derive this row from exported members or `// pi:` test evidence)` | 🟡 |
+| `packages/durable/src/images/node-worker.ts` | `durable/images/node/ (mapped at the b06c1f2c pin; the interface ledger does not yet derive this row from exported members or `// pi:` test evidence)` | 🟡 |
+| `packages/durable/src/search.ts` | `durable/internal/search/ (mapped at the b06c1f2c pin; the interface ledger does not yet derive this row from exported members or `// pi:` test evidence)` | 🟡 |
 | `packages/durable/src/tool-search/index.ts` | `(barrel re-exports; Go has no barrel exports)` | n/a |
 | `packages/durable/src/tool-search/tool-search.ts` | `durable/toolsearch/` | ✅ |
 
@@ -787,7 +787,7 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/env/src/ssh.ts` | `env/ssh.go` | ✅ |
 | `packages/env/src/terminal.ts` | `env/terminal.go` | ✅ |
 | `packages/env/src/watch.ts` | `env/watch.go` | ✅ |
-| `packages/env/src/list-files.ts` | `env/` | ✅ |
+| `packages/env/src/list-files.ts` | `env/ (mapped at the b06c1f2c pin; the interface ledger does not yet derive this row from exported members or `// pi:` test evidence)` | 🟡 |
 
 ## `packages/env/daemon/`
 

@@ -472,7 +472,9 @@ interface-mapping-quality: ## Validate mapping shapes, hierarchy, layers, refere
 interface-gaps: ## Decide NOT-A-GAP or GAP(reason) for every interface ID with fixed rules; write the sorted gap list and fail when it grows past the baseline
 	@./automation/ci/cached-gate.sh interface-gaps --out build/interface-gaps -- go run ./test/parity/interface-closure/autobind -check -out build/interface-gaps
 
-portmap-check: ## Derive the PORT_MAP ticks from the interface ledger; fail on a tick the ledger does not prove that the committed baseline does not list
+# The evidence tests of oracle-backed rows run Pi's code, so portmap-check installs the same oracle dependencies as test-fast; without them
+# every such row reads as COVERAGE failed.
+portmap-check: test-prereqs interface-deps parity-deps durable-interop-deps ## Derive the PORT_MAP ticks from the interface ledger; fail on a tick the ledger does not prove that the committed baseline does not list
 	@go run ./test/parity/cmd/portmapcheck
 
 portmap-check-update: ## Rewrite the unproven-tick baseline after a reviewed shrink
