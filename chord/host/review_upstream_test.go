@@ -9,11 +9,13 @@ package host
 // goroutines, then drained again.
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"slices"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -1039,5 +1041,67 @@ func TestReviewAnExpiredCtxAndAForeignCtxAreRefused(t *testing.T) {
 	}, RootOptions{})
 	if err != nil || foreign != true {
 		t.Fatalf("foreign = %v, %v", foreign, err)
+	}
+}
+
+// forgedCtx is a Ctx not made by Chord (Pi's `{ rootId, codeVersion, signal } as unknown as Ctx`).
+type forgedCtx struct{ signal context.Context }
+
+func (ctx forgedCtx) Signal() context.Context { return ctx.signal }
+func (forgedCtx) RootID() string              { return "forged" }
+func (forgedCtx) CodeVersion() int            { return 1 }
+func (forgedCtx) Principal() Principal        { return nil }
+func (forgedCtx) Get(*Contract, any, *GetOptions) (Ref, error) {
+	return nil, errors.New("forged ctx")
+}
+
+// review.test.ts:649-685 (Pi 9a3ca68b, #10959) "a remote reference refuses a foreign ctx and a ctx not made by Chord,
+// without calling": the same checks as a local reference (invalid/foreign_ctx), before anything crosses the link.
+func TestReviewARemoteReferenceRefusesAForeignCtxAndACtxNotMadeByChordWithoutCalling(t *testing.T) {
+	remoteTarget := Remote("t.remote-target", RemoteDef{
+		Version: 1, Input: tObject(), Host: NewHostNamed("server"),
+		Variants: Fields[VariantDef]{{"main", VariantDef{Methods: Fields[MethodSpec]{{"hit", Method(nil, nil)}}}}},
+	})
+	var hits atomic.Int32
+	server := requestsHost(t, HostOptions{Name: "server"})
+	requestsServe(t, server.Serve, remoteTarget, func(any, Principal, Self) (Implementation, error) {
+		return chordjson.ObjectOf("variant", "main", "hit", methodFunc(func(any, Ctx) (any, error) {
+			hits.Add(1)
+			return nil, nil
+		})), nil
+	}, ServeOptions{})
+	down, up := MemoryLinkPair()
+	if err := server.Accept(down, AcceptOptions{Kind: KindHost, Name: new("worker"), Principal: map[string]any{"worker": true}}); err != nil {
+		t.Fatal(err)
+	}
+	link := newCountingLink(up)
+	worker := requestsHost(t, HostOptions{Name: "worker"})
+	worker.Connect(link, ConnectOptions{Principal: kindServer()})
+	other := requestsHost(t, HostOptions{Name: "other"})
+	target := bindingsHold(t, worker, remoteTarget, map[string]any{}, nil)
+	ready(t, target)
+	foreign, err := other.Root(func(ctx Ctx) (any, error) {
+		_, err := callMember(target, "hit", nil, ctx)
+		return err, nil
+	}, RootOptions{})
+	if err != nil || !IsChordError(foreign.(error), CodeInvalid) || foreign.(*ChordError).Reason != "foreign_ctx" {
+		t.Fatalf("foreign ctx: %v, %v, want invalid/foreign_ctx", foreign, err)
+	}
+	var chordError *ChordError
+	if _, err := callMember(target, "hit", nil, forgedCtx{signal: context.Background()}); !errors.As(err, &chordError) || chordError.Code != CodeInvalid || chordError.Reason != "foreign_ctx" {
+		t.Fatalf("forged ctx: %v, want invalid/foreign_ctx", err)
+	}
+	reviewQuiet(worker)
+	if got := hits.Load(); got != 0 {
+		t.Fatalf("hits = %d, want 0", got)
+	}
+	if got := link.countSent("call"); got != 0 {
+		t.Fatalf("calls sent = %d, want 0", got)
+	}
+	if _, err := worker.Root(func(ctx Ctx) (any, error) { return callMember(target, "hit", nil, ctx) }, RootOptions{}); err != nil {
+		t.Fatal(err)
+	}
+	if got := hits.Load(); got != 1 {
+		t.Fatalf("hits = %d, want 1", got)
 	}
 }

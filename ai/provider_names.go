@@ -75,7 +75,7 @@ var builtinProviderBaseURLs = sync.OnceValue(func() map[string]string {
 		"google":                     "https://generativelanguage.googleapis.com/v1beta",
 		"groq":                       "https://api.groq.com/openai/v1",
 		"huggingface":                "https://router.huggingface.co/v1",
-		"kimi-coding":                "https://api.kimi.com/coding/v1",
+		"kimi-coding":                "https://api.kimi.com/coding",
 		"meta":                       "https://api.meta.ai/v1",
 		"minimax":                    "https://api.minimax.io/anthropic",
 		"minimax-cn":                 "https://api.minimaxi.com/anthropic",

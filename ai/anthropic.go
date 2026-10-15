@@ -1050,6 +1050,9 @@ type anthropicParams struct {
 	toolDefinitions anthToolDefinitions
 	managedProvider string
 	activeEffort    AnthropicEffort
+	// providerThinkingLevel is the effort of the final effort marker, recorded on the reply so later requests can replay it: the active effort of a
+	// managed-effort model unless thinking is disabled, and empty otherwise (buildParams' providerThinkingLevel).
+	providerThinkingLevel AnthropicEffort
 	// effortMarkers reports that the request sends the mid-conversation output_config markers of activeEffort.
 	effortMarkers bool
 	// disablePreferredStrictTools sends every "prefer" tool without strict: the request the strict tool fallback sends again.
@@ -1098,8 +1101,10 @@ func (p *anthropicProvider) Stream(ctx context.Context, transcript TranscriptCon
 	builder := newObservedProviderBuilder(ctx, outputAPI(p.cfg.ModelMetadata, APIAnthropicMessages), p.cfg.ProviderID, p.cfg.Model)
 	builder.modelCost = opts.ModelCost
 	builder.setProviderEventObserver(opts, model)
-	builder.setResponseMetadata("", "", "", string(anthropicProviderEffort(model, opts)), nil)
-	request, err := p.prepareStream(ctx, transcript, opts, model)
+	// buildParams records the effort of the final effort marker on the reply once it has built the request (anthropic-messages.ts:647), so a failure
+	// before that leaves no providerThinkingLevel.
+	recordLevel := func(level AnthropicEffort) { builder.setResponseMetadata("", "", "", string(level), nil) }
+	request, err := p.prepareStream(ctx, transcript, opts, model, recordLevel)
 	if err != nil {
 		reason := StopReasonError
 		if ctx.Err() != nil {
@@ -1133,7 +1138,7 @@ type anthropicOutgoing struct {
 	params anthropicParamHeaders
 }
 
-func (p *anthropicProvider) prepareStream(ctx context.Context, transcript TranscriptContext, opts StreamOptions, model *Model) (*anthropicStreamRequest, error) {
+func (p *anthropicProvider) prepareStream(ctx context.Context, transcript TranscriptContext, opts StreamOptions, model *Model, recordLevel func(AnthropicEffort)) (*anthropicStreamRequest, error) {
 	// An injected client owns its endpoint and credentials (anthropic-messages.ts:607-609).
 	var baseURL, apiKey string
 	if opts.AnthropicClient == nil {
@@ -1177,6 +1182,7 @@ func (p *anthropicProvider) prepareStream(ctx context.Context, transcript Transc
 		lease.release()
 		return nil, fmt.Errorf("anthropic: build params: %w", err)
 	}
+	recordLevel(params.providerThinkingLevel)
 	prepared := &anthropicStreamRequest{baseURL: baseURL, client: client, params: params}
 	prepared.first, err = p.prepareRequest(ctx, baseURL, client, params.request, model, opts)
 	if err != nil {
@@ -1190,6 +1196,7 @@ func (p *anthropicProvider) prepareStream(ctx context.Context, transcript Transc
 			if err != nil {
 				return nil, err
 			}
+			recordLevel(retryParams.providerThinkingLevel)
 			prepared.params = retryParams
 			return p.prepareRequest(ctx, baseURL, client, retryParams.request, model, opts)
 		}
@@ -1508,9 +1515,6 @@ func (p *anthropicProvider) buildParams(model *Model, transcript TranscriptConte
 	}
 	params.disablePreferredStrictTools, params.preferredStrict = disablePreferredStrictTools, new(bool)
 	params.activeEffort = anthropicProviderEffort(model, opts)
-	if params.activeEffort != "" {
-		params.managedProvider = p.cfg.ProviderID
-	}
 	maxTokens := opts.MaxTokens
 	if maxTokens <= 0 {
 		if model.Capabilities.MaxOutputTokens > 0 {
@@ -1530,6 +1534,15 @@ func (p *anthropicProvider) buildParams(model *Model, transcript TranscriptConte
 	if opts.ThinkingEnabled != nil {
 		thinkingEnabled = *opts.ThinkingEnabled
 	}
+	// Effort cannot change between messages while thinking is disabled, so "off" sends no effort markers (anthropic-messages.ts:1201-1203). Off is
+	// explicit: `options?.thinkingEnabled === false`, or the "off" level of streamSimple; an unset level is neither.
+	explicitOff := opts.ThinkingEnabled != nil && !*opts.ThinkingEnabled || opts.ThinkingEnabled == nil && ModelThinkingLevel(opts.Thinking) == ThinkingOff
+	thinkingDisabled := model.ProviderMeta.Reasoning && explicitOff && !anthThinkingOffIsNull(model)
+	effortMessages := params.activeEffort != "" && !thinkingDisabled
+	if effortMessages {
+		params.managedProvider = p.cfg.ProviderID
+		params.providerThinkingLevel = params.activeEffort
+	}
 	var allowedFallbackModels []AnthropicAllowedFallbackModel
 	if compat := model.ProviderMeta.Compat; compat != nil {
 		allowedFallbackModels = compat.AllowedFallbackModels
@@ -1547,7 +1560,7 @@ func (p *anthropicProvider) buildParams(model *Model, transcript TranscriptConte
 		nativeToolChanges:               params.nativeToolChanges,
 	})
 	// pig divergence (D130): Pi #10759. An explicit anthropic-beta header can drop the managed-effort betas, so each managed body field is sent only with its beta: the mid-conversation output_config markers with mid-conversation-output-config-2026-07-01 and block_binding with thinking-binding-controls-2026-08-01 (applySampling). Pi sends both regardless and the API rejects the request with 400.
-	params.effortMarkers = params.activeEffort != "" && slices.Contains(betas, midConversationEffortBeta)
+	params.effortMarkers = effortMessages && slices.Contains(betas, midConversationEffortBeta)
 	conversation, err := params.convertMessages(params.conversation, isOAuthToken)
 	if err != nil {
 		return anthropicParams{}, err
@@ -1585,7 +1598,7 @@ func (p *anthropicProvider) buildParams(model *Model, transcript TranscriptConte
 	if userID, ok := opts.Metadata["user_id"].(string); ok {
 		req.Metadata = &anthMetadata{UserID: userID}
 	}
-	p.applySampling(&req, model, transcript, maxTokens, thinkingEnabled, ModelThinkingLevel(opts.Thinking), opts.ThinkingBudgets, opts.Temperature, opts.TemperatureSet || opts.Temperature != 0, params.activeEffort, params.effortMarkers, anthropicThinkingDisplay(opts))
+	p.applySampling(&req, model, transcript, maxTokens, thinkingEnabled, ModelThinkingLevel(opts.Thinking), opts.ThinkingBudgets, opts.Temperature, opts.TemperatureSet || opts.Temperature != 0, params.activeEffort, params.effortMarkers, thinkingDisabled, anthropicThinkingDisplay(opts))
 	if opts.ThinkingEnabled != nil && model.ProviderMeta.Reasoning && params.activeEffort == "" {
 		req.Thinking, req.OutputConfig, req.MaxTokens = nil, nil, maxTokens
 		if *opts.ThinkingEnabled {
@@ -1611,16 +1624,21 @@ func (p *anthropicProvider) buildParams(model *Model, transcript TranscriptConte
 
 // applySampling sets thinking, output_config, the thinking-adjusted
 // max_tokens, and temperature.
-func (p *anthropicProvider) applySampling(req *anthRequest, model *Model, transcript TranscriptContext, maxTokens int, thinkingEnabled bool, level ModelThinkingLevel, budgets *ThinkingBudgets, temperature float64, temperatureSet bool, managedEffort AnthropicEffort, effortMarkers bool, display AnthropicThinkingDisplay) {
+func (p *anthropicProvider) applySampling(req *anthRequest, model *Model, transcript TranscriptContext, maxTokens int, thinkingEnabled bool, level ModelThinkingLevel, budgets *ThinkingBudgets, temperature float64, temperatureSet bool, managedEffort AnthropicEffort, effortMarkers, thinkingDisabled bool, display AnthropicThinkingDisplay) {
 	if managedEffort != "" {
-		req.Thinking = &anthThinking{Type: "adaptive", Display: string(display)}
-		// pig divergence (D130): block_binding goes only with its beta, and without the mid-conversation markers the active effort is the top-level effort.
-		if slices.Contains(req.Betas, thinkingBindingControlsBeta) {
-			req.Thinking.BlockBinding = &anthBlockBinding{PrefixMismatchBehavior: "drop_block"}
-		}
-		req.OutputConfig = &anthOutputConfig{Effort: "high"}
-		if !effortMarkers {
-			req.OutputConfig.Effort = managedEffort
+		if thinkingDisabled {
+			// No effort is sent, so the model default applies. Anthropic rejects block_binding with disabled thinking.
+			req.Thinking = &anthThinking{Type: "disabled"}
+		} else {
+			req.Thinking = &anthThinking{Type: "adaptive", Display: string(display)}
+			// pig divergence (D130): block_binding goes only with its beta, and without the mid-conversation markers the active effort is the top-level effort.
+			if slices.Contains(req.Betas, thinkingBindingControlsBeta) {
+				req.Thinking.BlockBinding = &anthBlockBinding{PrefixMismatchBehavior: "drop_block"}
+			}
+			req.OutputConfig = &anthOutputConfig{Effort: "high"}
+			if !effortMarkers {
+				req.OutputConfig.Effort = managedEffort
+			}
 		}
 		// streamSimple adjusts max_tokens for a budget-based level whatever buildParams then sends as thinking, and a managed request carries no temperature.
 		if result := thinkingToAnthropicConfig(model, maxTokens, level, budgets); result != nil && result.MaxTokens > 0 {

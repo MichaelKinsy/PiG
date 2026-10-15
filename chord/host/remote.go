@@ -950,13 +950,18 @@ func (ref *RemoteRef) caller(name string) methodFunc {
 		if inFactory {
 			return nil, NewChordError(CodeNotReady, ref.address()+"."+name+" called inside a factory", ChordErrorOptions{})
 		}
+		// The same checks as a local reference's caller (RefImpl.caller and ObjectImpl.call): a ctx from another host or
+		// one not made by Chord would carry a root this host does not own over its link.
 		impl, isImpl := ctx.(*CtxImpl)
+		if ctx != nil && !isImpl {
+			return nil, Invalid("foreign_ctx", "ctx must come from a Chord host", nil)
+		}
 		if isImpl {
-			if err := impl.check(impl.host); err != nil {
+			if err := impl.check(host); err != nil {
 				return nil, err
 			}
 		}
-		if ctx == nil || (isImpl && impl.holder) {
+		if ctx == nil || impl.holder {
 			var options RootOptions
 			if ctx != nil {
 				options.Signal = ctx.Signal()

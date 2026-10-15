@@ -48,7 +48,8 @@ var retryableProviderErrorPattern = buildProviderErrorPattern([]string{
 	"504",
 	"520",
 	"524",
-	"service.?unavailable",
+	// Also matches "The service is temporarily unavailable" (#10965, utils/retry.ts).
+	"service.?(?:is.?)?(?:temporarily.?)?unavailable",
 	"server.?error",
 	"internal.?error",
 	// Wrapper/provider text for transient upstream failures: "Provider returned error" (#2264) and gateway wording such as

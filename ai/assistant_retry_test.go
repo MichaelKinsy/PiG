@@ -47,6 +47,9 @@ func TestIsRetryableAssistantErrorClassification(t *testing.T) {
 		// .upstream/v1.0.4/packages/ai/test/retry.test.ts:65 (both rows, #10379)
 		{"matches HTTP/2 pending stream cancellation/bare", "The pending stream has been canceled"},
 		{"matches HTTP/2 pending stream cancellation/caused by", "The pending stream has been canceled (caused by: socket closed)"},
+		// Pi 550f1f3e retry.test.ts:73-81 (#10965, both rows): the wording carries no status code and no provider.
+		{"matches service unavailable wording/The service is temporarily unavailable", "The service is temporarily unavailable. Please retry later."},
+		{"matches service unavailable wording/Bedrock ServiceUnavailableException", "Service unavailable: The service is temporarily unavailable."},
 		// .upstream/v0.87.1/packages/ai/test/retry.test.ts:65
 		{"matches OpenAI Responses streams that end before terminal events", "OpenAI Responses stream ended before a terminal response event"},
 		// .upstream/v0.87.1/packages/ai/test/retry.test.ts:73

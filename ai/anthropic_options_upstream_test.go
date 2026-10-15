@@ -50,6 +50,10 @@ func TestAnthropicUpstreamForceAdaptiveThinking(t *testing.T) {
 		{"sends adaptive thinking payload when compat.forceAdaptiveThinking is true", customAdaptiveModel(&ModelCompat{ForceAdaptiveThinking: new(true)}), ThinkingMedium, "adaptive", "medium"},
 		// .upstream/v0.87.1/packages/ai/test/anthropic-force-adaptive-thinking.test.ts:85
 		{"uses adaptive thinking with native xhigh effort for Claude Fable 5", upstreamCatalogModel(t, "anthropic", "claude-fable-5"), ThinkingXHigh, "adaptive", "xhigh"},
+		// Pi 6a1f799b anthropic-force-adaptive-thinking.test.ts:92-105 (all three rows)
+		{"uses adaptive thinking effort without a token budget for Kimi Coding kimi-for-coding", upstreamCatalogModel(t, "kimi-coding", "kimi-for-coding"), ThinkingMedium, "adaptive", "medium"},
+		{"uses adaptive thinking effort without a token budget for Kimi Coding k3", upstreamCatalogModel(t, "kimi-coding", "k3"), ThinkingMax, "adaptive", "max"},
+		{"uses adaptive thinking effort without a token budget for Kimi Coding kimi-for-coding-highspeed", upstreamCatalogModel(t, "kimi-coding", "kimi-for-coding-highspeed"), ThinkingMedium, "adaptive", "medium"},
 		// .upstream/v0.87.1/packages/ai/test/anthropic-force-adaptive-thinking.test.ts:106
 		{"allows built-in adaptive models to opt out with compat.forceAdaptiveThinking false", optOut, ThinkingMedium, "enabled", ""},
 		// .upstream/v0.87.1/packages/ai/test/anthropic-force-adaptive-thinking.test.ts:117 (reasoning omitted, not explicitly off)
