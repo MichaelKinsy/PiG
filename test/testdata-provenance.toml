@@ -73,16 +73,6 @@ owner = "pi"
 generator = "internal/codingagent/testdata/pi104-render-probe/regen.sh"
 
 [[golden]]
-paths = ["internal/experimental/client/testdata/errors-golden.json"]
-owner = "pi"
-generator = "internal/experimental/client/testdata/errors-oracle.mjs"
-
-[[golden]]
-paths = ["internal/experimental/protocol/testdata/errors-golden.json"]
-owner = "pi"
-generator = "internal/experimental/protocol/testdata/errors-oracle.mjs"
-
-[[golden]]
 paths = ["internal/latex/testdata/golden.jsonl"]
 owner = "pi"
 generator = "test/parity/testdata/latex-pi.mjs"
@@ -138,3 +128,22 @@ why = "Pi has no Piglets, so the text of `pig piglet tree` (D170) is PiG's own f
 
 [[input]]
 paths = ["durable/core/probe/testdata/*.events", "durable/core/contracttest/binding/testdata/*.events"]
+
+[[input]]
+paths = ["coding/cli/testdata/*/go.mod", "coding/cli/testdata/*/LICENSE", "coding/cli/testdata/*/Cargo.toml", "coding/cli/testdata/*/Cargo.lock"]
+
+[[golden]]
+paths = ["coding/cli/testdata/d82-w7/rpc-usage-pi.json", "coding/cli/testdata/d82-w7/rpc-usage-extension-pi.json"]
+owner = "pi"
+generator = "coding/cli/testdata/d82-w7/rpc-usage-probe.mjs"
+
+[[golden]]
+paths = ["durable/codemode/testdata/output-golden.json"]
+owner = "pi"
+generator = "durable/codemode/testdata/output-oracle.mjs"
+
+[[golden]]
+paths = ["coding/cli/testdata/piglet-inventory/*.txt"]
+owner = "pig"
+invariant = "TestStripLeakGate"
+why = "Pi has no Piglets, so which tools, commands and extensions each shipped Piglet exposes is PiG's own. TestStripLeakGate asserts that a stripped ID leaves every surface; the inventory adds the reviewed per-Piglet list of which IDs each one strips, regenerated only after review."

@@ -68,9 +68,13 @@ var goldenPathRE = regexp.MustCompile(`(?i)golden|\.snap$|__snapshots__|snapshot
 
 var goldenSkipExt = map[string]bool{".go": true, ".mjs": true, ".js": true, ".ts": true, ".py": true, ".sh": true, ".md": true, ".rs": true, ".cjs": true}
 
+// vendored reports whether a path is in third_party/, vendored upstream code (like node_modules):
+// its fixtures are the upstream library's own, not PiG goldens.
+func vendored(p string) bool { return strings.HasPrefix(p, "third_party/") }
+
 // isGoldenFile reports whether a tracked path is a golden or snapshot data file.
 func isGoldenFile(p string) bool {
-	if strings.Contains(p, "node_modules/") || strings.Contains(p, "/shims/") || strings.HasPrefix(p, "test/parity/scenarios/") || strings.HasPrefix(p, "docs/") {
+	if vendored(p) || strings.Contains(p, "node_modules/") || strings.Contains(p, "/shims/") || strings.HasPrefix(p, "test/parity/scenarios/") || strings.HasPrefix(p, "docs/") {
 		return false
 	}
 	if goldenSkipExt[path.Ext(p)] || !goldenPathRE.MatchString(p) {
@@ -152,7 +156,7 @@ func checkProvenance(root string, tracked []string, prov provenance, hasTest fun
 		return false
 	}
 	for _, f := range tracked {
-		if (isGoldenFile(f) || inWriterDir(f)) && !matched[f] {
+		if !vendored(f) && (isGoldenFile(f) || inWriterDir(f)) && !matched[f] {
 			problems = append(problems, f+": golden or snapshot file without provenance in "+provenanceFile)
 		}
 	}

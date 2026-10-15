@@ -17,16 +17,17 @@ import (
 
 func TestIsGoldenFile(t *testing.T) {
 	for path, want := range map[string]bool{
-		"tui/testdata/goldens/x.txt":                      true,
-		"coding/piglogin/testdata/head-pink.golden":       true,
-		"mcp/testdata/upstream-golden.json":               true,
-		"pkg/testdata/__snapshots__/a.snap":               true,
-		"pkg/golden_test.go":                              false,
-		"pkg/testdata/golden-gen.mjs":                     false,
-		"pkg/golden.json":                                 false,
-		"x/node_modules/y/testdata/golden.json":           false,
-		"test/parity/scenarios/f/01-event-snapshots.toml": false,
-		"pkg/testdata/corpus.txt":                         false,
+		"tui/testdata/goldens/x.txt":                           true,
+		"coding/piglogin/testdata/head-pink.golden":            true,
+		"mcp/testdata/upstream-golden.json":                    true,
+		"pkg/testdata/__snapshots__/a.snap":                    true,
+		"pkg/golden_test.go":                                   false,
+		"pkg/testdata/golden-gen.mjs":                          false,
+		"pkg/golden.json":                                      false,
+		"x/node_modules/y/testdata/golden.json":                false,
+		"test/parity/scenarios/f/01-event-snapshots.toml":      false,
+		"third_party/jsonschema/testdata/lazy_meta_golden.txt": false,
+		"pkg/testdata/corpus.txt":                              false,
 	} {
 		if got := isGoldenFile(path); got != want {
 			t.Errorf("isGoldenFile(%q) = %v, want %v", path, got, want)
