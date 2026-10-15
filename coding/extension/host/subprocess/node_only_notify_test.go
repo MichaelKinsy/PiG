@@ -56,3 +56,17 @@ func TestNodeOnlyNotificationsReachOnlyNodeRuntimes(t *testing.T) {
 		}
 	}
 }
+
+// event_loop_turn asks a Node process for one turn of its own event loop before a tool's result (runtime.mjs); the Go, Python and Rust SDKs have no such loop and neither dispatch on nor name the request, so the host offers Extension.EventLoopTurn, and with it the request, only for a Node runtime.
+func TestEventLoopTurnIsOfferedOnlyForNodeRuntimes(t *testing.T) {
+	h := NewHostWithConfigRoot(t.TempDir(), t.TempDir())
+	for _, runtime := range []struct {
+		name string
+		node bool
+	}{{"node", true}, {"native", false}} {
+		ext := h.buildExtension(&managedExt{config: ExtConfig{Name: runtime.name}, host: h, nodeRuntime: runtime.node}, &RegisterPayload{})
+		if got := ext.EventLoopTurn != nil; got != runtime.node {
+			t.Errorf("%s runtime: EventLoopTurn set = %t, want %t", runtime.name, got, runtime.node)
+		}
+	}
+}

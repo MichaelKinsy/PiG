@@ -162,6 +162,8 @@ var pigOnlyRunnerMethods = map[string]string{
 	// runner-owned scope.
 	"BeginUIPrompt":       "upstream private withUIPrompt, exposed to the subprocess UI bridge",
 	"AwaitUIPromptEvents": "private host injection: upstream runner.ts emitUIPromptEvent queues the emission in a microtask before withUIPrompt settles, so each handler's synchronous part runs before the prompting extension continues; the subprocess UI bridge awaits the queued ui_prompt events before it answers a dialog",
+	// Upstream runs a tool on the extensions' event loop (agent-session.ts:1968-2000), so what a tool_call handler queued runs before tool_result. Pig runs the tool in Go, so the session asks each Node extension that handles tool_call for one turn of its loop first.
+	"AwaitEventLoopTurns": "private host injection (D19): upstream runs a tool on the extensions' event loop, so the immediates a tool_call handler queued run before tool_result (agent-session.ts:1968-2000); Pig runs the tool in Go, so coding.Session asks each Node extension that handles tool_call for one turn of its own loop (Extension.EventLoopTurn) before it emits tool_result. Not an author-facing extension API; no upstream counterpart because Pi's tool already runs on that loop",
 	// Upstream renamed addErrorListener to onError. Pig keeps the older name,
 	// so the method is present on both sides under different spellings rather
 	// than absent; renaming it is a public-surface change to sequence

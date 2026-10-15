@@ -185,6 +185,8 @@ for (const p of input) {
 	const agentDir = path.join(root, "agent");
 	const cwd = path.join(root, "proj");
 	fs.mkdirSync(agentDir); fs.mkdirSync(cwd);
+	// Pi's default credential store is <getAgentDir()>/mcp-auth.json, whatever options.agentDir says: keep it in the probe's directory, as PiG's default is, so login and logout never reach the agent directory of the process running the test.
+	process.env.PIG_CODING_AGENT_DIR = agentDir; process.env.PI_CODING_AGENT_DIR = agentDir;
 	if (p.seed !== "") fs.writeFileSync(path.join(agentDir, "mcp.json"), p.seed);
 	if (p.project !== "") { fs.mkdirSync(path.join(cwd, ".pig")); fs.writeFileSync(path.join(cwd, ".pig", "mcp.json"), p.project); }
 	const runs = [];

@@ -89,9 +89,7 @@ func findScenarios() []map[string]any {
 
 // The find tool (core/tools/find.ts, over fd) against pinned Pi on a real tree of 1600 files with a git repository, nested repositories, .gitignore files, hidden entries, node_modules, unicode and spaced names: 700 seeded requests with basename and path globs, brace and character classes, an absolute or missing search directory, a file as the search directory and limits from zero to 5000 (some at fractional values); the result text, error, result-limit and truncation metadata agree.
 func TestFindToolMatchesPi(t *testing.T) {
-	if _, err := exec.LookPath("fd"); err != nil {
-		t.Fatalf("fd is required: %v", err)
-	}
+	requireFD(t)
 	tree := buildFindTree(t)
 	scenarios := findScenarios()
 	input, err := json.Marshal(map[string]any{"tree": tree, "scenarios": scenarios})

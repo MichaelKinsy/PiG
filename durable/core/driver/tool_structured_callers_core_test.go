@@ -227,6 +227,18 @@ func TestCoreTheModelIsOfferedOnlyToolsItMayCallAndToolsCallOnlyToolsTheyMayCall
 	}
 }
 
+// coreAwaitRunEnd waits until the stream has delivered the run's end event. The core delivers a stream's batches on its own
+// goroutine, so a finished submission and an idle harness do not mean the events are delivered, and Stop ends the batches
+// still queued: stopping first loses the tail of the run.
+func coreAwaitRunEnd(t *testing.T, mu *sync.Mutex, events *[]harness.AgentEvent) {
+	t.Helper()
+	pollUntil(t, "the run_end event", func() bool {
+		mu.Lock()
+		defer mu.Unlock()
+		return slices.ContainsFunc(*events, func(event harness.AgentEvent) bool { return event.EventType() == "run_end" })
+	})
+}
+
 // harness-events.test.ts:106 and :154 over the core: a run streams as lifecycle events, and a tool run reports its start, its
 // output and its result entry before the result message, in two turns.
 func TestCoreStreamsTheLifecycleAndTheToolEventsOfARun(t *testing.T) {
@@ -279,6 +291,7 @@ func TestCoreStreamsTheLifecycleAndTheToolEventsOfARun(t *testing.T) {
 	if err := h.WaitForIdle(t.Context()); err != nil {
 		t.Fatal(err)
 	}
+	coreAwaitRunEnd(t, &mu, &events)
 	if _, err := stream.Stop(); err != nil {
 		t.Fatal(err)
 	}
@@ -384,6 +397,7 @@ func TestCoreEndsACallThatNeverRunsAndAToolAbortedWithItsGeneration(t *testing.T
 	if err := h.WaitForIdle(t.Context()); err != nil {
 		t.Fatal(err)
 	}
+	coreAwaitRunEnd(t, &mu, &events)
 	if _, err := stream.Stop(); err != nil {
 		t.Fatal(err)
 	}

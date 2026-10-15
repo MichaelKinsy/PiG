@@ -19,8 +19,8 @@ func TestFindOnNamesThatAreNotValidUTF8MatchesPi(t *testing.T) {
 	if runtime.GOOS != "linux" {
 		t.Skip("file names are arbitrary bytes only on Linux")
 	}
-	if _, err := exec.LookPath("fd"); err != nil {
-		t.Skip("fd is not installed")
+	if LookupToolPath("fd", "") == "" {
+		t.Skip("neither fd nor fdfind is installed")
 	}
 	for _, name := range []string{"a\xffb.txt", "\xe2\x82", "z\xed\xa0\x80.md", "\xc0\xaf"} {
 		dir := t.TempDir()

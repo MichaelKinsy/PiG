@@ -395,12 +395,28 @@ func TestToolRound(t *testing.T) {
 
 	// harness-tools.test.ts:263 it("runs a round in parallel by default and sequentially when configured or required by a tool")
 	t.Run("runs a round in parallel by default and sequentially when configured or required by a tool", func(t *testing.T) {
-		trace := func(setup *chatState) ([]string, []string) {
+		trace := func(setup *chatState, parallel bool) ([]string, []string) {
 			events := &syncList[string]{}
+			// A parallel round's calls rendezvous: each ends only after both have started, so "both start before either ends"
+			// holds exactly when the round runs them concurrently, however late the scheduler starts the second. A sequential
+			// round gives the next call a 20ms chance to overlap.
+			var begun atomic.Int32
+			bothStarted := make(chan struct{})
 			slow := func(name string) tlExecute {
-				return func(context.Context, any, durable.ToolExecutionApi) (durable.ToolExecutionResult, error) {
+				return func(ctx context.Context, _ any, _ durable.ToolExecutionApi) (durable.ToolExecutionResult, error) {
 					events.add("start " + name)
-					time.Sleep(20 * time.Millisecond)
+					if !parallel {
+						time.Sleep(20 * time.Millisecond)
+					} else {
+						if begun.Add(1) == 2 {
+							close(bothStarted)
+						}
+						select {
+						case <-bothStarted:
+						case <-ctx.Done():
+						case <-time.After(10 * time.Second):
+						}
+					}
 					events.add("end " + name)
 					return durable.ToolExecutionResult{Output: []ai.ToolResultMessageContent{}}, nil
 				}
@@ -427,7 +443,7 @@ func TestToolRound(t *testing.T) {
 		}
 		// pig divergence (D177): the calls of a parallel round start concurrently, so the order of their starts is
 		// unspecified; both start before either ends, and the next request carries the round's results in call order.
-		defaultRound, results := trace(chatSetup(t))
+		defaultRound, results := trace(chatSetup(t), true)
 		if got := defaultRound[:2]; !slices.Equal(got, []string{"start a", "start b"}) && !slices.Equal(got, []string{"start b", "start a"}) {
 			t.Fatalf("default round %v, want both starts before either end", defaultRound)
 		}
@@ -436,7 +452,7 @@ func TestToolRound(t *testing.T) {
 		}
 		configured := chatSetup(t)
 		tlSetExecution(configured, durable.ToolExecutionSequential)
-		if got, _ := trace(configured); !reflect.DeepEqual(got, []string{"start a", "end a", "start b", "end b"}) {
+		if got, _ := trace(configured, false); !reflect.DeepEqual(got, []string{"start a", "end a", "start b", "end b"}) {
 			t.Fatalf("sequential round %v, want [start a end a start b end b]", got)
 		}
 		perTool := chatSetup(t)

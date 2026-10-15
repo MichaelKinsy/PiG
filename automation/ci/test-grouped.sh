@@ -21,6 +21,8 @@ CONFORMANCE_PKG=./test/extension-conformance
 SHARDED_SPEC=(
   ./ai:2
   ./coding:2
+  ./internal/codingagent:8
+  ./test/parity/interface-closure/autobind:4
   ./chord/host:2
   ./codemode:2
   ./durable/codemode:2

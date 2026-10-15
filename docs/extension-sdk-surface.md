@@ -30,7 +30,7 @@ Regenerate with `go run ./test/parity/cmd/sdksurface`; `make sdk-surface-drift` 
 | Rust | 480 | 27 | 11 |
 | Python | 480 | 27 | 11 |
 
-31 PiG additive surfaces:
+31 PiG-only surfaces:
 
 | Runtime | implemented | stand-in/partial | missing (all with a reviewed exception) |
 |---|---|---|---|

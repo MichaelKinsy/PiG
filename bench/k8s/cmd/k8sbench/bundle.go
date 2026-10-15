@@ -107,7 +107,7 @@ var sourceAgentPins = map[string]agentPins{
 	"b06c1f2cf1dea6af8748ddeee18c23587d2cb7c6": {
 		files: map[string]string{
 			"pi-agent/package.json":      "faa5f21540eb7cc1be13d23d0f6ff1491ef6d217fa7111839ba72db48f396ff4",
-			"pi-agent/package-lock.json": "be075041cf0fe5ef466930276bdb15dbe6e43266d6874ab5c43fb05d5fb762b8",
+			"pi-agent/package-lock.json": "ea5b7be656bfcb995140a9fe5e18e53e2867540d3b86ca265a1403fab0ef92a9",
 			piAgentCLI:                   "e79626f2dd6f94aa45d30f3fa63cd84319a6eefcd150b353cfaf274366926774",
 		},
 		tree: "30de7287b09e741d24a4a07ecca610854bb2e96a1f02e88481a70ceab6576bb4",

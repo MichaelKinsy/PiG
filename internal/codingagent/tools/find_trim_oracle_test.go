@@ -18,9 +18,7 @@ import (
 // find.ts trims each fd line with JavaScript's trim(): a name ending in U+FEFF loses it and a name ending in U+0085 (NEL, which Go's
 // strings.TrimSpace removes) keeps it. U+00A0, U+2028 and U+3000 are JavaScript white space as well; a space-only name is dropped.
 func TestFindToolTrimsFdLinesLikePi(t *testing.T) {
-	if _, err := exec.LookPath("fd"); err != nil {
-		t.Fatalf("fd is required: %v", err)
-	}
+	requireFD(t)
 	tree, err := filepath.EvalSymlinks(t.TempDir())
 	if err != nil {
 		t.Fatal(err)

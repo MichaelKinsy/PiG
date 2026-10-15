@@ -155,6 +155,8 @@ func init() {
 		// host.go notifyReloadStarted and EndInput send these only to a connection whose nodeRealm is set: they end the Node runtime's in-place wait for the host's next step and release its command-suspension reports (TestNodeOnlyNotificationsReachOnlyNodeRuntimes).
 		undeliveredHostFrames["notify reload_started by "+sdk] = "sent only to a Node runtime, which waits in place for the host's next step"
 		undeliveredHostFrames["notify runtime_input_end by "+sdk] = "sent only to a Node runtime, which reports command suspension after stdin's end"
+		// host.go buildExtension sets Extension.EventLoopTurn only for a Node runtime: the Node process takes one turn of its own event loop before a tool's result, which Pi runs on that loop; the Go, Python and Rust SDKs have no loop of that kind (TestEventLoopTurnIsOfferedOnlyForNodeRuntimes)
+		undeliveredHostFrames["request event_loop_turn by "+sdk] = "sent only to a Node runtime, which takes one turn of its own event loop before a tool's result"
 	}
 	for _, sdk := range []string{"go", "py", "rust"} {
 		// admitSurface reports a retired surface only when it has an id, which only the Node runtime assigns. Surface ids are Pig transport mechanics for
