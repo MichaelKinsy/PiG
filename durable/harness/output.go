@@ -524,7 +524,8 @@ type ProgressWaiter struct {
 	once sync.Once
 	done chan struct{}
 	err  error
-	// waiting is the goroutine that last called Wait, so settleInOrder can let it run before waking the next.
+	// waiting is the goroutine that queued the waiter or last called Wait on it (the caller of details(), which waits right after queueing), so
+	// the settling code can let it run before it goes on.
 	waiting atomic.Uint64
 }
 
@@ -554,18 +555,35 @@ func (waiter *ProgressWaiter) Wait(ctx context.Context) error {
 	}
 }
 
+// awaitCaller lets the goroutine that waits on waiter, once the waiter settled, run until it waits again or ends: upstream's continuation of
+// a settled promise runs up to its next await before the code after the settlement does. The settling goroutine itself is not waited for.
+func awaitCaller(waiter *ProgressWaiter) {
+	if id := waiter.waiting.Load(); id != 0 && id != goroutineid.Current() {
+		entered.Await(id, nil)
+	}
+}
+
 // settleInOrder settles waiters in order with err. Upstream settles the details() promises of one commit in order and
 // runs each continuation up to its next await before the next one, so each waiter's caller, if one waits, runs until it
-// waits again or ends before the next waiter is settled.
+// waits again or ends before the next waiter is settled. The last waiter's caller is not waited for: what follows the
+// settlement of a progress commit does not depend on it.
 func settleInOrder(waiters []*ProgressWaiter, err error) {
 	for index, waiter := range waiters {
 		waiter.settle(err)
 		if index == len(waiters)-1 {
 			break
 		}
-		if id := waiter.waiting.Load(); id != 0 {
-			entered.Await(id, nil)
-		}
+		awaitCaller(waiter)
+	}
+}
+
+// settleAndAwait is settleInOrder that also lets the last waiter's caller run before it returns. A tool's terminal commit settles the
+// details() still waiting, and their continuations run before the run goes on (harness-tools.test.ts:1019), which the caller of
+// settleAndAwait keeps by not letting the commit's owner take the Session line until this returns.
+func settleAndAwait(waiters []*ProgressWaiter, err error) {
+	for _, waiter := range waiters {
+		waiter.settle(err)
+		awaitCaller(waiter)
 	}
 }
 
@@ -585,6 +603,8 @@ type Progress struct {
 	nextAt    float64
 	dirty     bool
 	stopped   bool
+	// trailing is the last waiter the latest commit settled; its caller was not waited for.
+	trailing *ProgressWaiter
 }
 
 // NewProgress returns a Progress that commits through write, which reports the bytes it wrote; onError receives a failed commit's error. minIntervalMs is the least pause between commits.
@@ -611,6 +631,7 @@ func (progress *Progress) markLocked() {
 // MarkAndWait schedules a commit; the returned waiter settles with the commit that includes this change.
 func (progress *Progress) MarkAndWait() *ProgressWaiter {
 	waiter := newProgressWaiter()
+	waiter.waiting.Store(goroutineid.Current())
 	progress.mu.Lock()
 	defer progress.mu.Unlock()
 	if progress.stopped {
@@ -641,6 +662,14 @@ func (progress *Progress) Stop() []*ProgressWaiter {
 	waiters := progress.waiters
 	progress.waiters = nil
 	return waiters
+}
+
+// trailingWaiter is the last waiter the latest progress commit settled, whose caller settleInOrder did not wait for, or nil. It reads the state Stop
+// left, so the caller of a final commit lets that continuation run before the terminal state is published.
+func (progress *Progress) trailingWaiter() *ProgressWaiter {
+	progress.mu.Lock()
+	defer progress.mu.Unlock()
+	return progress.trailing
 }
 
 func (progress *Progress) scheduleLocked() {
@@ -693,6 +722,9 @@ func (progress *Progress) commit(started float64, waiters []*ProgressWaiter, don
 	settleInOrder(waiters, err)
 	progress.mu.Lock()
 	defer progress.mu.Unlock()
+	if len(waiters) > 0 {
+		progress.trailing = waiters[len(waiters)-1]
+	}
 	progress.inFlight = nil
 	close(done)
 	if progress.dirty {

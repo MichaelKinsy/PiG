@@ -582,11 +582,24 @@ func runTool(ctx context.Context, runtime toolRuntime, input ToolTaskInput, call
 	reported.mu.Unlock()
 	// Details still waiting for a progress commit settle with the terminal commit, the final flush.
 	pending := progress.Stop()
-	settled, err := finalResult(ctx, runtime, input, tool, call, result, reported)
-	if err == nil {
-		err = settleTool(ctx, runtime, input, call, ending, func(*ToolSlot) durable.ToolExecutionResult { return settled }, durationMs)
+	// The caller of the details() the last progress commit settled may still be running; it runs before what follows.
+	if trailing := progress.trailingWaiter(); trailing != nil {
+		awaitCaller(trailing)
 	}
-	settleInOrder(pending, err)
+	settled, err := finalResult(ctx, runtime, input, tool, call, result, reported)
+	commitCtx := ctx
+	if len(pending) > 0 {
+		// Upstream resolves each of them after the terminal commit (tool.ts:420-428) and runs their continuations before the
+		// scheduler pass the commit's publication queued, so they run before the owner's next step (harness-tools.test.ts:1019).
+		// The commit keeps the Session line position behind it until they ran, and the pass and the owner's steps queue behind that.
+		var hold *lineHold
+		commitCtx, hold = withLineHold(ctx)
+		defer hold.release()
+	}
+	if err == nil {
+		err = settleTool(commitCtx, runtime, input, call, ending, func(*ToolSlot) durable.ToolExecutionResult { return settled }, durationMs)
+	}
+	settleAndAwait(pending, err)
 	return err
 }
 
@@ -698,12 +711,15 @@ func (api *toolApi) Details(ctx context.Context, value durable.JsonValue) error 
 	if err != nil {
 		return err
 	}
+	// The value and its waiter are queued in one step, as upstream's details() does (tool.ts:322-327), so a call that saw the
+	// value has its waiter in the final flush.
 	api.reported.mu.Lock()
 	api.reported.details = copied
 	api.reported.hasDetails = true
 	api.reported.detailsVersion++
+	waiter := api.progress.MarkAndWait()
 	api.reported.mu.Unlock()
-	return api.progress.MarkAndWait().Wait(ctx)
+	return waiter.Wait(ctx)
 }
 
 func (api *toolApi) Commit(ctx context.Context, change func(tx durable.Tx) (any, error)) (any, error) {

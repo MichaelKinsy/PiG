@@ -2167,11 +2167,57 @@ func (hooks runtimeHooks) Each(name string, invoke func(handlers any) error) err
 	return nil
 }
 
+// lineHold keeps the Session line position right behind a task's terminal commit for what the invocation's code does once
+// the commit returned. Upstream's code after the commit's await runs from the microtask queue, ahead of the scheduler pass
+// that the commit's publication queued, so what it settles runs before the work the commit made runnable (a joining owner's
+// next step). Here that work takes the line behind the position the commit's own step takes: kick takes the pass's ticket in
+// the publication, and an owner's steps are queued after its reservation. Holding the position until the code ran keeps the
+// upstream order.
+type lineHold struct {
+	mu       sync.Mutex
+	ticket   *session.LineTicket
+	released bool
+}
+
+type lineHoldKey struct{}
+
+// withLineHold returns ctx carrying a hold that the next terminal commit made with it takes; release gives it up.
+func withLineHold(ctx context.Context) (context.Context, *lineHold) {
+	hold := &lineHold{}
+	return context.WithValue(ctx, lineHoldKey{}, hold), hold
+}
+
+// take takes the position on line, on the line itself so it follows the commit's job and precedes the pass the commit queues. A
+// Session that began closing gives none.
+func (hold *lineHold) take(line *session.SessionImpl) {
+	hold.mu.Lock()
+	defer hold.mu.Unlock()
+	if hold.ticket == nil && !hold.released {
+		hold.ticket = line.TakeLineTicket()
+	}
+}
+
+// release gives the position up; it does nothing when none was taken.
+func (hold *lineHold) release() {
+	hold.mu.Lock()
+	ticket := hold.ticket
+	hold.ticket, hold.released = nil, true
+	hold.mu.Unlock()
+	if ticket != nil {
+		ticket.Release()
+	}
+}
+
 func (runtime *taskRuntime) Commit(ctx context.Context, change func(tx durable.Tx, current durable.ErasedRunningTask) (*durable.NextTaskState[durable.JsonValue, durable.JsonValue], error)) error {
 	_, err := gated(ctx, runtime, func(tx *session.Transaction, current anyTaskRecord) (struct{}, error) {
 		next, err := change(tx, current)
 		if err != nil || next == nil {
 			return struct{}{}, err
+		}
+		if next.Status == durable.TaskTerminal {
+			if hold, ok := ctx.Value(lineHoldKey{}).(*lineHold); ok {
+				hold.take(runtime.scheduler.options.Session)
+			}
 		}
 		runtime.scheduler.mu.Lock()
 		defer runtime.scheduler.mu.Unlock()
