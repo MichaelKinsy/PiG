@@ -99,7 +99,14 @@ func (s *Session) extensionToolResultHook(ctx context.Context, toolCallID, toolN
 // upstream: agent-session.ts:_afterToolCall(context, parentToolCallId)
 func (s *Session) toolResultHook(ctx context.Context, toolCallID, parentToolCallID, toolName string, args json.RawMessage, result agent.AgentToolResult) agent.AfterToolCallResult {
 	runner := s.currentRunner()
-	if runner == nil || !runner.HasHandlers(icodingagent.EventToolResult) {
+	if runner == nil {
+		return agent.AfterToolCallResult{}
+	}
+	if runner.HasHandlers(icodingagent.EventToolCall) {
+		// pig additive (D19): Pi runs the tool on the extensions' event loop, so what a tool_call handler queued, such as a sendUserMessage and the input it starts, runs before tool_result (agent-session.ts:1968-2000). The tool ran in Go, so each extension that saw tool_call on a loop of its own takes one turn first.
+		runner.AwaitEventLoopTurns(ctx, icodingagent.EventToolCall)
+	}
+	if !runner.HasHandlers(icodingagent.EventToolResult) {
 		return agent.AfterToolCallResult{}
 	}
 	var input map[string]any

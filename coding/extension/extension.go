@@ -1,6 +1,7 @@
 package extension
 
 import (
+	"context"
 	"maps"
 	"sync"
 )
@@ -135,6 +136,10 @@ type Extension struct {
 	// Hidden omits the extension from the startup Extensions list.
 	// upstream: .upstream/v0.99.1/packages/coding-agent/src/core/extensions/types.ts:2208 (Extension.hidden)
 	Hidden bool
+
+	// EventLoopTurn, when set, returns once the extension's own event loop took one turn and the host applied the calls that turn sent. Pi runs every extension on the event loop its tools run on; a host whose extension runs elsewhere sets it so the callbacks a handler queued run before a tool's result reaches the extensions.
+	// pig additive (D19): only the Node subprocess runtime sets it.
+	EventLoopTurn func(context.Context) error
 }
 
 // HandlerFn is the type-erased storage shape for event handlers.

@@ -4136,6 +4136,13 @@ export class Runtime {
   async handleRequest(id, request, ctx) {
     try {
       switch (request.method) {
+        case "event_loop_turn": {
+          // pig additive (D19): the host's tool ran outside this event loop. One turn runs the immediates the process queued, and the notify reaches the host behind every call they sent, before the response.
+          await new Promise(resolve => setImmediate(resolve));
+          this.notify("event_loop_turned", { turn: request.args?.turn ?? 0 });
+          await this.respond(id, {});
+          return;
+        }
         case "facet": {
           await this.respond(id, await dispatchFacet(this, request, { signal: ctx[requestSignal] }));
           return;

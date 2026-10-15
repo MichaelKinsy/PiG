@@ -1587,6 +1587,18 @@ func (r *Runner) EmitToolCall(ctx context.Context, event extension.ToolCallEvent
 	return result, nil
 }
 
+// AwaitEventLoopTurns gives each extension that handles event and runs on an event loop of its own (Extension.EventLoopTurn) one turn of that loop, concurrently, and returns when every one took it. Pi runs its tools on the extensions' event loop, so the callbacks an event handler queued run before the tool's result; this keeps that order when the tool ran elsewhere.
+// pig additive (D19): a turn that fails is not waited for; the extension's next dispatch reports its connection.
+func (r *Runner) AwaitEventLoopTurns(ctx context.Context, event string) {
+	var turns sync.WaitGroup
+	for _, snapshot := range snapshotEventHandlers(r.extensions, event) {
+		if turn := snapshot.ext.EventLoopTurn; turn != nil {
+			turns.Go(func() { _ = turn(ctx) })
+		}
+	}
+	turns.Wait()
+}
+
 // EmitToolResult dispatches a ToolResultEvent to every "tool_result"
 // handler across all extensions, in load order. Each handler can mutate
 // `content` / `details` / `isError`; mutations chain through subsequent

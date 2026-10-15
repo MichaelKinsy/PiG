@@ -192,6 +192,9 @@ type Conn struct {
 	suspending         map[string]int
 	suspendedRequests  map[string]bool
 	suspensionsSettled chan struct{}
+	// eventLoopTurns holds the channel of each RequestEventLoopTurn awaiting its NotifyEventLoopTurned, by turn number; lastEventLoopTurn numbers them.
+	eventLoopTurns    map[uint64]chan struct{}
+	lastEventLoopTurn uint64
 
 	hostCallMu      sync.Mutex
 	hostCalls       map[string]map[string]context.CancelFunc
@@ -1202,6 +1205,59 @@ func (c *Conn) awaitSuspensions(ctx context.Context, requestID string) {
 		case <-c.done:
 			return
 		}
+	}
+}
+
+// awaitEventLoopTurn asks the Node runtime for one turn of its event loop (RequestEventLoopTurn) and returns once the runtime took it and the host applied the calls the connection sent before NotifyEventLoopTurned. A closed connection takes no turn and is not waited for; a failed request is returned.
+func (c *Conn) awaitEventLoopTurn(ctx context.Context) error {
+	taken := make(chan struct{})
+	c.stateMu.Lock()
+	c.lastEventLoopTurn++
+	turn := c.lastEventLoopTurn
+	if c.eventLoopTurns == nil {
+		c.eventLoopTurns = make(map[uint64]chan struct{})
+	}
+	c.eventLoopTurns[turn] = taken
+	c.stateMu.Unlock()
+	defer func() {
+		c.stateMu.Lock()
+		delete(c.eventLoopTurns, turn)
+		c.stateMu.Unlock()
+	}()
+	args, err := json.Marshal(LoopTurnArgs{Turn: turn})
+	if err != nil {
+		return err
+	}
+	if _, err := c.Request(ctx, &Envelope{Type: MsgRequest, Request: &RequestPayload{Method: RequestEventLoopTurn, Args: args}}); err != nil {
+		select {
+		case <-c.done:
+			return nil
+		default:
+			return err
+		}
+	}
+	select {
+	case <-taken:
+		return nil
+	case <-c.done:
+		return nil
+	case <-ctx.Done():
+		return context.Cause(ctx)
+	}
+}
+
+// settleEventLoopTurn records that the host applied the calls the connection sent before the NotifyEventLoopTurned that carries raw.
+func (c *Conn) settleEventLoopTurn(raw json.RawMessage) {
+	var args LoopTurnArgs
+	if json.Unmarshal(raw, &args) != nil {
+		return
+	}
+	c.stateMu.Lock()
+	taken := c.eventLoopTurns[args.Turn]
+	delete(c.eventLoopTurns, args.Turn)
+	c.stateMu.Unlock()
+	if taken != nil {
+		close(taken)
 	}
 }
 

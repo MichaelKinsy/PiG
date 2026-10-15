@@ -648,10 +648,16 @@ const NotifyLoopTurned = "loop_turned"
 // NotifyLoopTurnTaken (Node runtime→host, then host→the turn's sender) reports that a forwarded NotifyLoopTurned was taken, with the LoopTurnArgs of the copy it answers. A runtime that was waiting for the host's next step takes the turn once the immediates and the timers due that it had queued before the turn have run; any other runtime takes it on arrival. When every connection the host forwarded the turn to took it or closed, the host sends NotifyLoopTurnTaken with the sender's own number to the sender, which then lets its handler resume; a turn with no recipient is taken at once. A request for the sender's process or its connection's close also ends that wait. The host sends it only to a Node runtime.
 const NotifyLoopTurnTaken = "loop_turn_taken"
 
-// LoopTurnArgs numbers one loop turn (NotifyLoopTurned, NotifyLoopTurnTaken).
+// LoopTurnArgs numbers one loop turn (NotifyLoopTurned, NotifyLoopTurnTaken, RequestEventLoopTurn, NotifyEventLoopTurned).
 type LoopTurnArgs struct {
 	Turn uint64 `json:"turn"`
 }
+
+// RequestEventLoopTurn (host→Node runtime) asks a Node process for one turn of its event loop after a tool the host ran outside it. Pi runs the tool on the extensions' event loop, so the immediates a tool_call handler queued, and the input a sendUserMessage among them started, run before tool_result (agent-session.ts:1968-2000). The runtime answers after one setImmediate, sending NotifyEventLoopTurned with the request's LoopTurnArgs first. The host sends it only to a Node runtime.
+const RequestEventLoopTurn = "event_loop_turn"
+
+// NotifyEventLoopTurned (Node runtime→host) reports that the process took the turn RequestEventLoopTurn asked for. The host applies the calls the connection sent before it, as it does for a request_state report, before the turn counts as taken.
+const NotifyEventLoopTurned = "event_loop_turned"
 
 // TerminalInputArgs carries an ordered input and the UI values visible before its listener runs. Data and EditorText preserve UTF-16 units using WTF-8 in Go and surrogate escapes in JSON. Runtimes with synchronous local UI getters refresh those values before invoking the listener; host-query SDKs read the same live UI through their existing calls.
 type TerminalInputArgs struct {

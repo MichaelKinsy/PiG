@@ -3756,6 +3756,16 @@ func (h *Host) buildExtension(me *managedExt, reg *RegisterPayload) *extension.E
 		h := hd // capture
 		ext.AddJSONEventHandler(h.Event, h.HandlerID, me.makeEventHandler(h.Event, h.HandlerID))
 	}
+	if me.hostsNodeRuntime() {
+		// pig additive (D19): Pi runs its tools on the extensions' event loop; a Node process takes one turn of its own before a tool's result reaches it.
+		ext.EventLoopTurn = func(ctx context.Context) error {
+			conn := me.connection()
+			if conn == nil {
+				return nil
+			}
+			return conn.awaitEventLoopTurn(ctx)
+		}
+	}
 
 	ext.InitializeToolRegistry()
 	ext.InitializeDeclarationRegistry()
@@ -4496,6 +4506,15 @@ func (h *Host) handleIncoming(me *managedExt, conn *Conn) {
 				if h.noteRuntimeDrain(me, conn, env.Notify.Method, true) {
 					h.applyRuntimeDrain(me, env.Notify.Method)
 				}
+				continue
+			}
+			if env.Notify.Method == NotifyEventLoopTurned {
+				// pig additive (D19): a turn counts once the calls the runtime sent before it applied their synchronous parts, as for a request_state report. The wait runs off the read loop because those calls can need later frames.
+				args := env.Notify.Args
+				h.goDrainTask(func() {
+					lanes.barrier()
+					conn.settleEventLoopTurn(args)
+				})
 				continue
 			}
 			if env.Notify.Method == notifyOAuthSignalRelease {
