@@ -283,6 +283,7 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/ai/src/utils/model-operations.ts` | `ai/model_types.go (ModelType and the per-type Models operations)`, `ai/model_operations_export.go` | ✅ |
 | `packages/ai/src/utils/models-error.ts` | `ai/auth_resolve.go (ModelsErrorCode, ModelsError, NewModelsError)` | ✅ |
 | `packages/ai/src/utils/oauth-page.ts` | `ai/oauth_page.go (upstream 0.99.1 moved the file unchanged from auth/oauth/oauth-page.ts)` | ✅ |
+| `packages/ai/src/providers/openrouter-api.ts` | `ai/, cmd/gen-models/` | ✅ |
 
 ## `packages/coding-agent/src/`
 
@@ -615,6 +616,8 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/mcp/src/transports/stdio.ts` | `mcp/stdio.go; mcp/stdio_unix.go; mcp/stdio_windows.go` | ✅ |
 | `packages/mcp/src/transports/streamable-http.ts` | `mcp/streamable_http.go; mcp/sse.go` (missing at Pi 1.2.0: `send(message, options?)`'s McpTransportSendOptions, interface gap `StreamableHttpTransport::property:send::call:0` signature-mismatch) | 🟡 |
 | `packages/mcp/src/transports/transport.ts` | `mcp/transport.go` (missing at Pi 1.2.0: the McpTransportSendOptions argument of `McpTransport.send`, interface gap `McpTransport::property:send::call:0` signature-mismatch) | 🟡 |
+| `packages/mcp/src/transports/streamable-http.ts` | `mcp/` | ✅ |
+| `packages/mcp/src/transports/transport.ts` | `mcp/` | ✅ |
 
 ## `packages/codemode/src/`
 
@@ -661,6 +664,17 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/chord/src/connection.ts` | `chord/host/connection.go LinkOptions, AcceptOptions, Connection, RelayRef, RelayCall` | 🟡 |
 | `packages/chord/src/object.ts` | `chord/host/object.go ServeOptions, Factory, Self, SelfImpl, ResourceImpl, CtxImpl, RefImpl, ObjectImpl` | 🟡 |
 | `packages/chord/src/remote.ts` | `chord/host/remote.go RemoteRef, RemoteChannel` | 🟡 |
+| `packages/chord/src/cluster.ts` | `chord/host/` | ✅ |
+| `packages/chord/src/contract.ts` | `chord/host/ (link protocol 2; the protocol 3 and 4 cases are owner exception B, 0.5.1: test/parity/upstream-sync/v1.2.0+b06c1f2c.toml)` | 🟡 |
+| `packages/chord/src/declare.ts` | `chord/host/ (link protocol 2; the protocol 3 and 4 cases are owner exception B, 0.5.1: test/parity/upstream-sync/v1.2.0+b06c1f2c.toml)` | 🟡 |
+| `packages/chord/src/errors.ts` | `chord/host/` | ✅ |
+| `packages/chord/src/host.ts` | `chord/host/ (link protocol 2; the protocol 3 and 4 cases are owner exception B, 0.5.1: test/parity/upstream-sync/v1.2.0+b06c1f2c.toml)` | 🟡 |
+| `packages/chord/src/registry.ts` | `chord/host/` | ✅ |
+| `packages/chord/src/reload.ts` | `chord/host/ (link protocol 2; the protocol 3 and 4 cases are owner exception B, 0.5.1: test/parity/upstream-sync/v1.2.0+b06c1f2c.toml)` | 🟡 |
+| `packages/chord/src/schema.ts` | `chord/host/` | ✅ |
+| `packages/chord/src/state.ts` | `chord/` | ✅ |
+| `packages/chord/src/websocket.ts` | `chord/host/ (link protocol 2; the protocol 3 and 4 cases are owner exception B, 0.5.1: test/parity/upstream-sync/v1.2.0+b06c1f2c.toml)` | 🟡 |
+| `packages/chord/src/wire.ts` | `chord/host/ (link protocol 2; the protocol 3 and 4 cases are owner exception B, 0.5.1: test/parity/upstream-sync/v1.2.0+b06c1f2c.toml)` | 🟡 |
 
 ## `packages/protocol/src/`
 
@@ -754,6 +768,16 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/durable/src/tools/write.ts` | `durable/tools/write.go` | ✅ |
 | `packages/durable/src/truncate.ts` | `durable/truncate.go` | ✅ |
 | `packages/durable/src/types.ts` | `durable/types.go`, `durable/documents.go`, `durable/entries.go`, `durable/tasks.go` | ✅ |
+| `packages/durable/src/codemode/codemode.ts` | `durable/codemode/` | ✅ |
+| `packages/durable/src/codemode/describe.ts` | `durable/codemode/` | ✅ |
+| `packages/durable/src/codemode/index.ts` | `(barrel re-exports; Go has no barrel exports)` | n/a |
+| `packages/durable/src/codemode/models.ts` | `durable/codemode/` | ✅ |
+| `packages/durable/src/codemode/output.ts` | `durable/codemode/` | ✅ |
+| `packages/durable/src/env/index.ts` | `durable/durabletest/, env/` | ✅ |
+| `packages/durable/src/images/node-worker.ts` | `durable/images/node/` | ✅ |
+| `packages/durable/src/search.ts` | `durable/internal/search/` | ✅ |
+| `packages/durable/src/tool-search/index.ts` | `(barrel re-exports; Go has no barrel exports)` | n/a |
+| `packages/durable/src/tool-search/tool-search.ts` | `durable/toolsearch/` | ✅ |
 
 ## `packages/env/src/`
 
@@ -766,6 +790,7 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/env/src/ssh.ts` | `env/ssh.go` | ✅ |
 | `packages/env/src/terminal.ts` | `env/terminal.go` | ✅ |
 | `packages/env/src/watch.ts` | `env/watch.go` | ✅ |
+| `packages/env/src/list-files.ts` | `env/` | ✅ |
 
 ## `packages/env/daemon/`
 
