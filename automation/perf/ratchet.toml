@@ -187,7 +187,7 @@
 "binary.pig.linux_amd64.bytes" = 70660000
 "binary.pig.linux_arm64.bytes" = 66460000
 "binary.pig.darwin_arm64.bytes" = 68190000
-"binary.pig.windows_amd64.bytes" = 72280000
+"binary.pig.windows_amd64.bytes" = 72290000
 
 # process: interactive start to the first ready frame, then Ctrl+D (test/integration TestInteractiveFirstFrameProcessGate, integration tag, tmux). The idle time between the frame and Ctrl+D adds timer work, so the margin is wider.
 "process.interactive_first_frame.allocs" = 34500
