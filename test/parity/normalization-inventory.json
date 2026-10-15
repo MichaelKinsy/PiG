@@ -7,7 +7,7 @@
     },
     {
       "source": "test/parity/runner/changelog_assert.go",
-      "sha256": "e4d748894afb2c6dce8a51ea880458f5358ff45821089c0da4b9c79b6a7e76d6",
+      "sha256": "ce703c70d410d59e79c6f0e1df29268350b47148169f43ac809385659f1a3b4a",
       "reason": "D22: the products ship different changelog documents. Compare every rendered release header, in order, against that binary's independent source document; this does not claim cross-product equality of body text or styling."
     },
     {
