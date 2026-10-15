@@ -1301,6 +1301,7 @@ All notable public changes to PiG will be recorded in this file.
 
 - `models.classify()` keeps the order of the script's questions but not the key order of its `state`: `ai.ClassifierContext.State` is a Go map, so the order is lost for every caller. Nested calls of other tools whose `Execute` reads a map are unordered in Go too (a Pig-wide property of `args any`).
 - The Pig OAuth credential store (D40, `has_credential_store`) is available to Go, Python and Rust extensions but not yet to Node extensions. A Node extension's OAuth provider keeps its credentials in `auth.json`, as in Pi.
+- On Windows, an image that an application puts on the clipboard only as a bitmap (for example .NET's `Clipboard.SetImage`) can paste upside down. Windows synthesizes the `CF_DIBV5` copy with its rows top-down under a bottom-up header. Pig reads the clipboard as Pi does (the `PNG` format first, then `CF_DIBV5`, then `CF_DIB`), so Pi shows the same image. Screenshot tools that also offer `PNG` paste correctly.
 
 ## [0.4.1] - 2026-10-05
 
