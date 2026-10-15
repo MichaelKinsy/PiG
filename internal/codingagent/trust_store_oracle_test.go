@@ -88,7 +88,7 @@ func TestProjectTrustStoreMatchesPi(t *testing.T) {
 			_ = os.MkdirAll(filepath.Join(dir, sub), 0o755)
 		}
 		if s.Initial != nil {
-			_ = os.WriteFile(filepath.Join(agentDir, "trust.json"), []byte(strings.ReplaceAll(*s.Initial, "$BASE", dir)), 0o644)
+			_ = os.WriteFile(filepath.Join(agentDir, "trust.json"), []byte(strings.ReplaceAll(*s.Initial, "$BASE", strings.ReplaceAll(dir, `\`, `\\`))), 0o644)
 		}
 		store := NewProjectTrustStore(agentDir)
 		toDecision := func(v any) ProjectTrustDecision {
@@ -97,7 +97,10 @@ func TestProjectTrustStoreMatchesPi(t *testing.T) {
 			}
 			return nil
 		}
-		fix := func(text string) string { return strings.ReplaceAll(text, dir, "$BASE") }
+		escapedDir := strings.ReplaceAll(dir, `\`, `\\`) // the path as it reads inside trust.json text on Windows
+		fix := func(text string) string {
+			return strings.ReplaceAll(strings.ReplaceAll(text, escapedDir, "$BASE"), dir, "$BASE")
+		}
 		var got []string
 		for _, o := range s.Ops {
 			path := dir + "/" + fmt.Sprint(o["path"])

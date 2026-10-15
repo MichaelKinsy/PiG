@@ -52,6 +52,7 @@ func TestGrepOperationsIsDirectoryErrorIsPathNotFound(t *testing.T) {
 
 // grep.ts: operations.isDirectory receives the resolved absolute search path, and its answer picks the path form of every match line: relative to the searched directory when it says
 // directory, the file's basename when it says file (formatPath). A custom operation can therefore say "file" for a directory, and the output follows it.
+// The relative form always uses '/', also on Windows, where path.relative yields backslashes that grep.ts:141 replaces.
 func TestGrepOperationsIsDirectoryReceivesTheResolvedPathAndItsAnswerPicksThePathForm(t *testing.T) {
 	if _, err := exec.LookPath("rg"); err != nil {
 		t.Skip("ripgrep unavailable")
@@ -68,7 +69,7 @@ func TestGrepOperationsIsDirectoryReceivesTheResolvedPathAndItsAnswerPicksThePat
 		answer bool
 		want   string
 	}{
-		{true, "deep" + string(filepath.Separator) + "a.txt:2: TARGET"},
+		{true, "deep/a.txt:2: TARGET"},
 		{false, "a.txt:2: TARGET"},
 	} {
 		var asked []string

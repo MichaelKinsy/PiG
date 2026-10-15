@@ -174,7 +174,7 @@ func TestLoadSkillsMatchesPi(t *testing.T) {
 	// The text of a YAML syntax error is the YAML library's (see the frontmatter survey test).
 	normalizeYAML := func(got, want *skillOracleResult) {
 		for i := range want.Diagnostics {
-			if i < len(got.Diagnostics) && got.Diagnostics[i].Path == want.Diagnostics[i].Path && strings.HasSuffix(want.Diagnostics[i].Path, "nu/SKILL.md") {
+			if i < len(got.Diagnostics) && got.Diagnostics[i].Path == want.Diagnostics[i].Path && strings.HasSuffix(want.Diagnostics[i].Path, filepath.Join("nu", "SKILL.md")) {
 				got.Diagnostics[i].Message = want.Diagnostics[i].Message
 			}
 		}

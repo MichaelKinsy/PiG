@@ -32,26 +32,12 @@ type nodeRealpathFS struct {
 // win32SplitRootRe is the splitRootRe of lib/fs.js.
 var win32SplitRootRe = lazyregexp.New(`^(?:[a-zA-Z]:|[\\/]{2}[^\\/]+[\\/][^\\/]+)?[\\/]*`)
 
-// win32UNCRootRe matches the leading part of a UNC or device root.
-var win32UNCRootRe = lazyregexp.New(`^[\\/]{2}[^\\/]+[\\/][^\\/]+`)
-
 func isWin32Separator(c byte) bool { return c == '\\' || c == '/' }
 
 func isWin32DeviceRoot(c byte) bool { return c >= 'A' && c <= 'Z' || c >= 'a' && c <= 'z' }
 
 // win32SplitRoot is lib/fs.js splitRoot for Windows.
 func win32SplitRoot(path string) string { return win32SplitRootRe.FindString(path) }
-
-// win32TargetNeedsNodeResolution reports a link target whose resolution differs between Node and filepath.EvalSymlinks: a target rooted without a device (\dir) or naming a drive without a directory (D:dir). Node resolves the first on the device of the path that reached the link and the second on the current directory of that drive.
-func win32TargetNeedsNodeResolution(target string) bool {
-	if target == "" {
-		return false
-	}
-	if isWin32Separator(target[0]) {
-		return !win32UNCRootRe.MatchString(target)
-	}
-	return len(target) >= 2 && isWin32DeviceRoot(target[0]) && target[1] == ':' && (len(target) == 2 || !isWin32Separator(target[2]))
-}
 
 // win32Resolve is path.win32.resolve.
 func win32Resolve(proc win32Process, args ...string) string {
@@ -246,14 +232,14 @@ func win32NormalizeString(path string, allowAboveRoot bool) string {
 	return res
 }
 
-// nodeRealpathWin32 is fs.realpathSync for a Windows path. It reports through the error what Node throws, and reports viaNode when the walk kept a volume mount or followed a link target that filepath.EvalSymlinks resolves differently.
-func nodeRealpathWin32(p string, fsys nodeRealpathFS, proc win32Process) (resolved string, viaNode bool, err error) {
+// nodeRealpathWin32 is fs.realpathSync for a Windows path. It reports through the error what Node throws. Only a symbolic link or junction changes the path: Node's JS walk keeps every other component as the caller spelled it, so the case and any 8.3 short name survive, where realpathSync.native and filepath.EvalSymlinks return the case and long names the filesystem stores.
+func nodeRealpathWin32(p string, fsys nodeRealpathFS, proc win32Process) (string, error) {
 	p = win32Resolve(proc, p)
 	current := win32SplitRoot(p)
 	base := current
 	pos := len(current)
 	if _, _, err := fsys.lstat(base); err != nil {
-		return "", viaNode, err
+		return "", err
 	}
 	for pos < len(p) {
 		next := strings.IndexAny(p[pos:], `\/`)
@@ -271,36 +257,21 @@ func nodeRealpathWin32(p string, fsys nodeRealpathFS, proc win32Process) (resolv
 		}
 		kind, target, err := fsys.lstat(base)
 		if err != nil {
-			return "", viaNode, err
+			return "", err
 		}
 		if kind != nodeEntryLink {
-			if kind == nodeEntryMount {
-				viaNode = true
-			}
 			continue
 		}
-		if win32TargetNeedsNodeResolution(target) {
-			viaNode = true
-		}
 		if err := fsys.stat(base); err != nil {
-			return "", viaNode, err
+			return "", err
 		}
 		p = win32Resolve(proc, win32Resolve(proc, previous, target), p[pos:])
 		current = win32SplitRoot(p)
 		base = current
 		pos = len(current)
 		if _, _, err := fsys.lstat(base); err != nil {
-			return "", viaNode, err
+			return "", err
 		}
 	}
-	return p, viaNode, nil
-}
-
-// evalCanonicalPathWith is the Windows canonicalization decision. The Node walk runs first because only it shows whether a link on the way is rooted or drive-relative. filepath.EvalSymlinks follows such a link on the process drive, and can then end at a path that still has a volume, so its result cannot vouch for the walk. When the walk kept a volume mount or followed such a link its result, or its error, stands. Every other path retains the standard library's resolution.
-func evalCanonicalPathWith(path string, walk func(string) (string, bool, error), eval func(string) (string, error)) (string, error) {
-	resolved, viaNode, err := walk(path)
-	if viaNode {
-		return resolved, err
-	}
-	return eval(path)
+	return p, nil
 }

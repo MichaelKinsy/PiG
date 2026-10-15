@@ -3,7 +3,6 @@ package codingagent
 import (
 	"bytes"
 	"encoding/json"
-	"errors"
 	"os"
 	"os/exec"
 	"strings"
@@ -190,28 +189,25 @@ func TestNodeRealpathWin32MatchesNode(t *testing.T) {
 	const cwd = `C:\work\cwd`
 	env := map[string]string{"=D:": `D:\dcwd`}
 	entries := win32WalkFixture()
-	cases := []struct {
-		name, path, want string
-		viaNode          bool
-	}{
+	cases := []struct{ name, path, want string }{
 		// Sol P1: EvalSymlinks would follow \inner on the process drive and end at a path with a volume.
-		{"rooted link then absolute link on the link's drive", `Y:\outer`, `Y:\right.txt`, true},
-		{"rooted link then rooted link", `Y:\chain`, `Y:\final.txt`, true},
-		{"rooted link", `C:\d\rooted\marker`, `C:\target\marker`, true},
-		{"rooted link with forward slash", `C:\d\fwd\marker`, `C:\target\marker`, true},
-		{"rooted link keeps the input case of the device", `c:\D\ROOTED\marker`, `c:\target\marker`, true},
-		{"mixed separators", `C:/d/rooted/marker`, `C:\target\marker`, true},
-		{"trailing separator", `C:\d\rooted\`, `C:\target`, true},
-		{"absolute link to a rooted link", `C:\d\chain\marker`, `C:\target\marker`, true},
-		{"relative link", `C:\d\rel\marker`, `C:\target\marker`, false},
-		{"no link", `C:\target\marker`, `C:\target\marker`, false},
-		{"dangling rooted link fails", `C:\d\dang\x`, ``, true},
-		{"missing component fails", `C:\d\missing\x`, ``, false},
-		{"drive-relative target uses the drive's current directory", `C:\d\dr\f`, `D:\dcwd\foo\f`, true},
-		{"volume mount stays in the path", `C:\m\x`, `C:\m\x`, true},
-		{"rooted link behind a volume mount", `C:\m\rooted\marker`, `C:\target\marker`, true},
-		{"UNC root", `\\srv\share\l\f`, `\\srv\share\dir\f`, true},
-		{"extended-length prefix resolves a rooted target under the device", `\\?\C:\l\f`, `\\?\dir\f`, true},
+		{"rooted link then absolute link on the link's drive", `Y:\outer`, `Y:\right.txt`},
+		{"rooted link then rooted link", `Y:\chain`, `Y:\final.txt`},
+		{"rooted link", `C:\d\rooted\marker`, `C:\target\marker`},
+		{"rooted link with forward slash", `C:\d\fwd\marker`, `C:\target\marker`},
+		{"rooted link keeps the input case of the device", `c:\D\ROOTED\marker`, `c:\target\marker`},
+		{"mixed separators", `C:/d/rooted/marker`, `C:\target\marker`},
+		{"trailing separator", `C:\d\rooted\`, `C:\target`},
+		{"absolute link to a rooted link", `C:\d\chain\marker`, `C:\target\marker`},
+		{"relative link", `C:\d\rel\marker`, `C:\target\marker`},
+		{"no link", `C:\target\marker`, `C:\target\marker`},
+		{"dangling rooted link fails", `C:\d\dang\x`, ``},
+		{"missing component fails", `C:\d\missing\x`, ``},
+		{"drive-relative target uses the drive's current directory", `C:\d\dr\f`, `D:\dcwd\foo\f`},
+		{"volume mount stays in the path", `C:\m\x`, `C:\m\x`},
+		{"rooted link behind a volume mount", `C:\m\rooted\marker`, `C:\target\marker`},
+		{"UNC root", `\\srv\share\l\f`, `\\srv\share\dir\f`},
+		{"extended-length prefix resolves a rooted target under the device", `\\?\C:\l\f`, `\\?\dir\f`},
 	}
 	calls := make([]win32OracleCall, len(cases))
 	for i, tc := range cases {
@@ -226,66 +222,36 @@ func TestNodeRealpathWin32MatchesNode(t *testing.T) {
 			if want.OK != (tc.want != "") || want.OK && want.Path != tc.want {
 				t.Fatalf("fixture expectation %q disagrees with Node realpathSync (ok=%v path=%q)", tc.want, want.OK, want.Path)
 			}
-			got, viaNode, err := nodeRealpathWin32(tc.path, fsys, proc)
+			got, err := nodeRealpathWin32(tc.path, fsys, proc)
 			if (err == nil) != want.OK || err == nil && got != want.Path {
 				t.Fatalf("nodeRealpathWin32(%q)=%q, %v; Node ok=%v path=%q", tc.path, got, err, want.OK, want.Path)
-			}
-			if viaNode != tc.viaNode {
-				t.Errorf("viaNode=%v; want %v", viaNode, tc.viaNode)
 			}
 		})
 	}
 }
 
-func TestWin32TargetNeedsNodeResolution(t *testing.T) {
-	for target, want := range map[string]bool{
-		``:                 false,
-		`\dir`:             true,
-		`/dir`:             true,
-		`\`:                true,
-		`D:foo`:            true,
-		`D:`:               true,
-		`D:\foo`:           false,
-		`D:/foo`:           false,
-		`\\server\share\x`: false,
-		`\\?\Volume{1}\x`:  false,
-		`foo\bar`:          false,
-		`..\foo`:           false,
-		`C`:                false,
-	} {
-		if got := win32TargetNeedsNodeResolution(target); got != want {
-			t.Errorf("win32TargetNeedsNodeResolution(%q)=%v; want %v", target, got, want)
+// A non-link component keeps the case and the 8.3 short name the caller spelled: Node's JS realpathSync does not ask the filesystem for the stored spelling as realpathSync.native does, so the context-file ancestor walk sees `R` and `r` as two directories (resource-loader.ts findShadowedContextFile compares canonicalizePath results as strings).
+func TestNodeRealpathWin32KeepsComponentSpelling(t *testing.T) {
+	const cwd = `C:\work\cwd`
+	entries := win32WalkFixture()
+	entries[`C:\target\Long Name`] = win32FakeEntry{T: "dir"}
+	entries[`C:\target\Long Name\marker`] = win32FakeEntry{T: "file"}
+	paths := []string{`C:\TARGET\Marker`, `c:\Target\MARKER`, `C:\target\LONG~1\marker`}
+	// The fake filesystem has no short names, so the third path is missing in Node as well; the first two exist under another case.
+	calls := make([]win32OracleCall, len(paths))
+	for i, p := range paths {
+		calls[i] = win32OracleCall{"realpath": p}
+	}
+	oracle := win32OracleRun(t, cwd, nil, entries, calls)
+	fsys := win32FakeFS(entries)
+	proc := win32FakeProcess(cwd, nil)
+	for i, p := range paths {
+		got, err := nodeRealpathWin32(p, fsys, proc)
+		if (err == nil) != oracle[i].OK || err == nil && got != oracle[i].Path {
+			t.Errorf("nodeRealpathWin32(%q)=%q, %v; Node ok=%v path=%q", p, got, err, oracle[i].OK, oracle[i].Path)
 		}
 	}
-}
-
-// Sol P1 at the decision point: EvalSymlinks follows the rooted \inner on the process drive X: and its last absolute link gives it a volume. The result must come from the Node walk, which resolves \inner on Y:.
-func TestEvalCanonicalPathWithPrefersWalkAfterRootedLink(t *testing.T) {
-	entries := win32WalkFixture()
-	fsys := win32FakeFS(entries)
-	proc := win32FakeProcess(`X:\`, nil)
-	walk := func(path string) (string, bool, error) { return nodeRealpathWin32(path, fsys, proc) }
-	evalCalls := 0
-	eval := func(string) (string, error) {
-		evalCalls++
-		return `X:\wrong.txt`, nil
-	}
-	got, err := evalCanonicalPathWith(`Y:\outer`, walk, eval)
-	if err != nil || got != `Y:\right.txt` {
-		t.Fatalf("evalCanonicalPathWith=%q, %v; want Y:\\right.txt", got, err)
-	}
-	if evalCalls != 0 {
-		t.Errorf("filepath.EvalSymlinks was consulted %d times after the walk followed a rooted link", evalCalls)
-	}
-	// A dangling rooted link is an error in Node, so canonicalizePath keeps the raw path; the standard library must not rescue it.
-	got, err = evalCanonicalPathWith(`C:\d\dang\x`, walk, eval)
-	if err == nil {
-		t.Fatalf("dangling rooted link resolved to %q", got)
-	}
-	// An ordinary path keeps the standard library's resolution and its error.
-	sentinel := errors.New("eval failed")
-	got, err = evalCanonicalPathWith(`C:\d\rel\marker`, walk, func(string) (string, error) { return `C:\Case\Normalized`, sentinel })
-	if got != `C:\Case\Normalized` || !errors.Is(err, sentinel) {
-		t.Fatalf("ordinary path=%q, %v; want the standard library's result", got, err)
+	if !oracle[0].OK || oracle[0].Path != paths[0] || !oracle[1].OK || oracle[1].Path != paths[1] {
+		t.Errorf("Node realpathSync did not keep the spelling: %+v", oracle[:2])
 	}
 }

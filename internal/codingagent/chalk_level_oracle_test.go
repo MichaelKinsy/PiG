@@ -3,6 +3,7 @@ package codingagent
 import (
 	"math/rand"
 	"path/filepath"
+	"runtime"
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/internal/pioracle"
@@ -89,7 +90,8 @@ func TestChalkColorLevelMatchesChalk(t *testing.T) {
 	for i, c := range cases {
 		getenv := func(key string) string { return c.Env[key] }
 		lookup := func(key string) (string, bool) { value, ok := c.Env[key]; return value, ok }
-		got := chalkColorLevel(c.Args, getenv, lookup, c.TTY, "linux", [3]int{})
+		// The oracle is real Node on this platform: supports-color answers from process.platform and os.release() on win32.
+		got := chalkColorLevel(c.Args, getenv, lookup, c.TTY, runtime.GOOS, windowsBuild())
 		levels[want[i]]++
 		if got != want[i] {
 			if failures++; failures <= 10 {

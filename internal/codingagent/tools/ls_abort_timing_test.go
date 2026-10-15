@@ -4,7 +4,6 @@ package tools
 
 import (
 	"context"
-	"path/filepath"
 	"testing"
 )
 
@@ -14,7 +13,7 @@ import (
 // mutation-checked: dropping the up-front context check (ls.go, before the path is resolved) fails the first case with Exists called, and dropping the
 // check after the entry loop fails the second case with the listing returned.
 func TestLsAbortIsHonouredBeforeAndDuringTheRead(t *testing.T) {
-	root := filepath.Join(string(filepath.Separator), "virtual")
+	root := virtualPath("/virtual")
 	t.Run("a call cancelled before it starts calls no operation", func(t *testing.T) {
 		calls := 0
 		ops := virtualTree(root, []string{"a"})

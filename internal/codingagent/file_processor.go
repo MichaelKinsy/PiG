@@ -5,12 +5,14 @@ import (
 	"encoding/base64"
 	"fmt"
 	"os"
+	"runtime"
 	"strings"
 
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/internal/codingagent/tools"
 	"github.com/MichaelKinsy/PiG/internal/imageprocessing"
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
+	"github.com/MichaelKinsy/PiG/internal/nodepath"
 	"github.com/MichaelKinsy/PiG/internal/text"
 )
 
@@ -45,14 +47,20 @@ func ProcessCLIFileArguments(fileArgs []string, cwd string, options ...ProcessFi
 		if err != nil {
 			return ProcessedCLIArgs{}, err
 		}
-		info, err := os.Stat(absPath)
+		// upstream: file-processor.ts `access`, `stat` and `readFile` take the path through toNamespacedPath, so on Windows the `\\?\` form reaches the filesystem and `a.txt ` or `a.txt.` is not the file `a.txt`, as the Win32 name normalization would make it. A path that cannot be made absolute fails `access` like a missing file.
+		fsPath, err := nodepath.ToNamespacedPath(absPath)
 		if err != nil {
 			return ProcessedCLIArgs{}, fmt.Errorf("File not found: %s", absPath)
 		}
-		if info.Size() == 0 {
+		info, err := os.Stat(fsPath)
+		if err != nil {
+			return ProcessedCLIArgs{}, fmt.Errorf("File not found: %s", absPath)
+		}
+		// libuv (fs.c fs__stat_assign_statbuf) reports st_size 0 for a Windows directory, so `stats.size === 0` skips it where a POSIX directory fails in detectSupportedImageMimeTypeFromFile.
+		if info.Size() == 0 || info.IsDir() && runtime.GOOS == "windows" {
 			continue
 		}
-		content, err := os.ReadFile(absPath)
+		content, err := os.ReadFile(fsPath)
 		if err != nil {
 			return ProcessedCLIArgs{}, fmt.Errorf("could not read file %s: %w", absPath, err)
 		}

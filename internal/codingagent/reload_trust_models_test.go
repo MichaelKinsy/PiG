@@ -12,7 +12,9 @@ import (
 func reloadTrustMode(t *testing.T, autoTrustCwd string) (*InteractiveMode, string) {
 	t.Helper()
 	cwd, agentDir := t.TempDir(), t.TempDir()
-	t.Setenv("HOME", t.TempDir())
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	t.Setenv("USERPROFILE", home)
 	m := statusBorderMode(t, false)
 	m.opts.CWD, m.opts.AgentDir = cwd, agentDir
 	m.opts.SettingsManager = NewSettingsManagerWithProjectTrust(cwd, agentDir, true)

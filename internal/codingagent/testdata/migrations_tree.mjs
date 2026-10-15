@@ -1,7 +1,7 @@
 // Run the installed Pi's runMigrations over fixture directory trees and report the resulting trees and return values.
 import { mkdtempSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync, realpathSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join, relative } from "node:path";
+import { join, relative, sep } from "node:path";
 import { pathToFileURL } from "node:url";
 const root = realpathSync(new URL("../../../extensions/sdk-ts/node_modules/@earendil-works/pi-coding-agent/", import.meta.url)) + "/";
 if (JSON.parse(readFileSync(root + "package.json", "utf8")).version !== process.argv[2]) throw new Error("Wrong Pi oracle version");
@@ -15,7 +15,7 @@ function snapshot(dir) {
   const walk = (current) => {
     for (const name of readdirSync(current).sort()) {
       const path = join(current, name);
-      const rel = relative(dir, path);
+      const rel = relative(dir, path).split(sep).join("/");
       if (statSync(path).isDirectory()) { out[rel + "/"] = null; walk(path); }
       else out[rel] = readFileSync(path, "latin1") + (rel === "agent/auth.json" ? ` mode=${(statSync(path).mode & 0o777).toString(8)}` : "");
     }

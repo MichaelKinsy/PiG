@@ -12,10 +12,12 @@ for await (const chunk of process.stdin) input += chunk;
 const base = realpathSync(mkdtempSync(join(tmpdir(), "pi-trust-")));
 const results = JSON.parse(input).map((script, index) => {
 	const dir = join(base, `${index}`);
+	const escapedDir = dir.split("\\").join("\\\\"); // the path as it reads inside trust.json text on Windows
+	const unbase = (s) => s.split(escapedDir).join("$BASE").split(dir).join("$BASE");
 	const agentDir = join(dir, "agent");
 	mkdirSync(agentDir, { recursive: true });
 	for (const sub of script.dirs) mkdirSync(join(dir, sub), { recursive: true });
-	if (script.initial !== null) writeFileSync(join(agentDir, "trust.json"), script.initial.split("$BASE").join(dir));
+	if (script.initial !== null) writeFileSync(join(agentDir, "trust.json"), script.initial.split("$BASE").join(escapedDir));
 	const store = new ProjectTrustStore(agentDir);
 	const outcomes = script.ops.map((op) => {
 		try {
@@ -23,18 +25,18 @@ const results = JSON.parse(input).map((script, index) => {
 			if (op.op === "get") return JSON.stringify(store.get(abs(op.path)));
 			if (op.op === "entry") {
 				const entry = store.getEntry(abs(op.path));
-				return JSON.stringify(entry === null ? null : { path: entry.path.split(dir).join("$BASE"), decision: entry.decision });
+				return JSON.stringify(entry === null ? null : { path: unbase(entry.path), decision: entry.decision });
 			}
 			if (op.op === "set") store.set(abs(op.path), op.decision);
 			else store.setMany(op.updates.map((u) => ({ path: abs(u.path), decision: u.decision })));
 			return "ok";
 		} catch (error) {
-			return `error ${error.message.split(dir).join("$BASE")}`;
+			return `error ${unbase(error.message)}`;
 		}
 	});
 	let text = null;
 	try {
-		text = readFileSync(join(agentDir, "trust.json"), "utf8").split(dir).join("$BASE");
+		text = unbase(readFileSync(join(agentDir, "trust.json"), "utf8"));
 	} catch {}
 	return { outcomes, text };
 });

@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -65,7 +66,7 @@ func typeName(v any) string { return reflect.TypeOf(v).Name() }
 // session are the typed members, and an unfamiliar record keeps its place in the rewritten file.
 func TestRewriteOfAMigratedFileKeepsUnnamedMembersAndOrder(t *testing.T) {
 	dir := t.TempDir()
-	header := `{"type":"session","version":2,"id":"old","timestamp":"2026-01-01T00:00:00.000Z","cwd":"` + dir + `","provider":"p","modelId":"m"}`
+	header := `{"type":"session","version":2,"id":"old","timestamp":"2026-01-01T00:00:00.000Z","cwd":` + strconv.Quote(dir) + `,"provider":"p","modelId":"m"}`
 	user := `{"type":"message","id":"aaaaaaaa","parentId":null,"timestamp":"2026-01-01T00:00:01.000Z","extra":{"z":1,"a":2},"message":{"role":"user","content":"hi","timestamp":1}}`
 	hook := `{"type":"message","id":"bbbbbbbb","parentId":"aaaaaaaa","timestamp":"2026-01-01T00:00:02.000Z","message":{"role":"hookMessage","customType":"x","content":"c","display":true,"timestamp":2}}`
 	unknown := `{"type":"from_the_future","id":"cccccccc","parentId":"bbbbbbbb","timestamp":"2026-01-01T00:00:03.000Z","new":{"z":1,"a":2}}`

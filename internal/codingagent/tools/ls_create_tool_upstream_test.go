@@ -43,12 +43,12 @@ func TestCreateLsToolUpstream(t *testing.T) {
 	})
 
 	t.Run("a relative path resolves against the constructor cwd and reaches the configured operations", func(t *testing.T) {
-		root := filepath.Join(string(filepath.Separator), "virtual", "sub")
+		root := filepath.Join(virtualPath("/virtual"), "sub")
 		var asked []string
 		ops := virtualTree(root, []string{"b.txt", "a"}, "a")
 		exists := ops.Exists
 		ops.Exists = func(path string) (bool, error) { asked = append(asked, path); return exists(path) }
-		tool := CreateLsTool(filepath.Join(string(filepath.Separator), "virtual"), &LsToolOptions{Operations: ops})
+		tool := CreateLsTool(virtualPath("/virtual"), &LsToolOptions{Operations: ops})
 		out := runFileTool(t, tool, context.Background(), map[string]any{"path": "sub"}).Text()
 		if out != "a/\nb.txt" || !slices.Equal(asked, []string{root}) {
 			t.Errorf("output = %q asked = %v, want a/\\nb.txt for %s", out, asked, root)
@@ -56,7 +56,7 @@ func TestCreateLsToolUpstream(t *testing.T) {
 	})
 
 	t.Run("an empty directory says so", func(t *testing.T) {
-		root := filepath.Join(string(filepath.Separator), "virtual")
+		root := virtualPath("/virtual")
 		tool := CreateLsTool(root, &LsToolOptions{Operations: virtualTree(root, nil)})
 		if out := runFileTool(t, tool, context.Background(), map[string]any{}).Text(); out != "(empty directory)" {
 			t.Errorf("output = %q", out)
@@ -64,7 +64,7 @@ func TestCreateLsToolUpstream(t *testing.T) {
 	})
 
 	t.Run("the entry limit adds Pi's notice and the details (ls.ts:119-146)", func(t *testing.T) {
-		root := filepath.Join(string(filepath.Separator), "virtual")
+		root := virtualPath("/virtual")
 		tool := CreateLsTool(root, &LsToolOptions{Operations: virtualTree(root, []string{"e", "d", "c", "b", "a"})})
 		res := runFileTool(t, tool, context.Background(), map[string]any{"limit": 2})
 		want := "a\nb\n\n[2 entries limit reached. Use limit=4 for more]"
@@ -78,7 +78,7 @@ func TestCreateLsToolUpstream(t *testing.T) {
 	})
 
 	t.Run("a cancelled call fails with Operation aborted", func(t *testing.T) {
-		root := filepath.Join(string(filepath.Separator), "virtual")
+		root := virtualPath("/virtual")
 		tool := CreateLsTool(root, &LsToolOptions{Operations: virtualTree(root, []string{"a"})})
 		ctx, cancel := context.WithCancel(context.Background())
 		cancel()
@@ -93,7 +93,7 @@ func TestCreateLsToolUpstream(t *testing.T) {
 // byte comparison, so punctuation sorts before digits and letters and an accented letter sits beside its base letter. The expected order is what
 // node v24 prints for the same names (ICU 78.3, en-US).
 func TestLsSortsLikeLocaleCompareUpstream(t *testing.T) {
-	root := filepath.Join(string(filepath.Separator), "virtual")
+	root := virtualPath("/virtual")
 	names := []string{"~tilde", "zeta", "_under", "-dash", "a1", "A2", "file.txt", "File2", "é", "e", "f", "[br", "Ünder", ".dot", "10", "9", "a b", "ab"}
 	tool := CreateLsTool(root, &LsToolOptions{Operations: virtualTree(root, names)})
 	var out string

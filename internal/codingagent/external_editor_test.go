@@ -164,6 +164,14 @@ func TestExternalEditorUpstream(t *testing.T) {
 // fakeEditor names the helper through PATH so Pi's literal-space command splitting also works when the test executable's directory or basename contains spaces.
 func fakeEditor(t *testing.T, mode string) string {
 	t.Helper()
+	name := editorHelperName(t)
+	t.Setenv(editorHelperEnv, "1")
+	return name + " -test.run=TestEditorHelperProcess -- " + mode
+}
+
+// editorHelperName puts the test binary on PATH and returns the name an editor command gives it: the file name when it has no space, else a link or copy without one.
+func editorHelperName(t *testing.T) string {
+	t.Helper()
 	binary, err := os.Executable()
 	if err != nil {
 		t.Fatal(err)
@@ -180,8 +188,7 @@ func fakeEditor(t *testing.T, mode string) string {
 		}
 	}
 	t.Setenv("PATH", dir+string(os.PathListSeparator)+os.Getenv("PATH"))
-	t.Setenv(editorHelperEnv, "1")
-	return name + " -test.run=TestEditorHelperProcess -- " + mode
+	return name
 }
 
 func copyEditorHelper(t *testing.T, source, target string) {
@@ -392,5 +399,20 @@ func TestOpenExternalEditorRunsThroughTheWindowsShell(t *testing.T) {
 	}
 	if got != "edited content from fake editor" {
 		t.Fatalf("got %q, want the editor named through %%PIG_TEST_EDITOR_BINARY%%", got)
+	}
+}
+
+// Pi splits the command on single spaces, so a command with a leading space has an empty first element, and spawn("", args) throws
+// ERR_INVALID_ARG_VALUE before it starts anything, with shell: true on Windows too, where cmd.exe would otherwise trim the space and
+// run the editor that follows.
+func TestOpenExternalEditorRejectsAnEmptyEditorName(t *testing.T) {
+	t.Setenv("VISUAL", "")
+	t.Setenv("EDITOR", "")
+	got, err := OpenExternalEditor(context.Background(), "original", " "+fakeEditor(t, "roundtrip"))
+	if err == nil || !strings.Contains(err.Error(), "The argument 'file' cannot be empty. Received ''") {
+		t.Fatalf("error = %v, want spawn's ERR_INVALID_ARG_VALUE for an empty file", err)
+	}
+	if got != "original" {
+		t.Errorf("result = %q, want the original content", got)
 	}
 }

@@ -26,7 +26,7 @@ func TestParseSkillBlockMatchesPi(t *testing.T) {
 		UserMessage *string `json:"userMessage"`
 	}
 	pioracle.Run(t, `
-const mod = await import(new URL("file://" + root + "/pi-coding-agent/core/agent-session.js").href);
+const mod = await load("pi-coding-agent/core/agent-session.js");
 emit(input.map((t) => mod.parseSkillBlock(t) ?? null));`, texts, &want)
 	for i, text := range texts {
 		got := ParseSkillBlock(text)

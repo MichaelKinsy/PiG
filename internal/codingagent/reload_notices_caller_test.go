@@ -75,7 +75,9 @@ func TestExtensionReloadWhileStreamingWarnsAndResolves(t *testing.T) {
 // then the status naming the saved trust.
 func TestSlashReloadSavesImplicitTrustThenShowsModelsJSONError(t *testing.T) {
 	cwd, agentDir := t.TempDir(), t.TempDir()
-	t.Setenv("HOME", t.TempDir())
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	t.Setenv("USERPROFILE", home)
 	if err := os.WriteFile(filepath.Join(agentDir, "models.json"), []byte("{broken"), 0o600); err != nil {
 		t.Fatal(err)
 	}
@@ -106,7 +108,9 @@ func TestSlashReloadSavesImplicitTrustThenShowsModelsJSONError(t *testing.T) {
 // resources; an unarmed mode never saves.
 func TestSlashReloadWithoutArmedCwdSavesNoTrust(t *testing.T) {
 	cwd, agentDir := t.TempDir(), t.TempDir()
-	t.Setenv("HOME", t.TempDir())
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	t.Setenv("USERPROFILE", home)
 	h := reloadCallerPair(t, cwd, agentDir, "", nil)
 	if err := os.MkdirAll(filepath.Join(icodingagent.ProjectConfigDir(cwd), "prompts"), 0o755); err != nil {
 		t.Fatal(err)
@@ -125,7 +129,9 @@ func TestSlashReloadWithoutArmedCwdSavesNoTrust(t *testing.T) {
 // (interactive-mode.ts:6463-6467), and the status does not name a saved decision.
 func TestSlashReloadTrustSaveFailureWarnsBeforeModelsJSONError(t *testing.T) {
 	cwd, agentDir := t.TempDir(), t.TempDir()
-	t.Setenv("HOME", t.TempDir())
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	t.Setenv("USERPROFILE", home)
 	if err := os.WriteFile(filepath.Join(agentDir, "models.json"), []byte("{broken"), 0o600); err != nil {
 		t.Fatal(err)
 	}

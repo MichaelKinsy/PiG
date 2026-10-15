@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"runtime"
 	"slices"
 	"strings"
 	"testing"
@@ -174,7 +175,11 @@ func TestManagedToolSetupWithoutADownloadReadsNoInput(t *testing.T) {
 				t.Fatal(err)
 			}
 			for _, name := range []string{"fd", "rg"} {
-				if err := os.WriteFile(filepath.Join(tm.BinDir(), name), []byte("#!/bin/sh\n"), 0o755); err != nil {
+				binary := name
+				if runtime.GOOS == "windows" {
+					binary += ".exe" // ToolsManager.GetToolPath looks for <binary>.exe in its bin directory on win32
+				}
+				if err := os.WriteFile(filepath.Join(tm.BinDir(), binary), []byte("#!/bin/sh\n"), 0o755); err != nil {
 					t.Fatal(err)
 				}
 			}

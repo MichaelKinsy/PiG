@@ -97,8 +97,9 @@ func TestCreateLsToolEntryLimitNotice(t *testing.T) {
 //
 // mutation-checked: the mutant "CreateLsTool drops the operations" fails it.
 func TestCreateLsToolUsesOptionOperations(t *testing.T) {
-	tool := CreateLsTool("/virtual", &LsToolOptions{Operations: &LsOperations{
-		Exists:  func(path string) (bool, error) { return path == "/virtual", nil },
+	root := virtualPath("/virtual")
+	tool := CreateLsTool(root, &LsToolOptions{Operations: &LsOperations{
+		Exists:  func(path string) (bool, error) { return path == root, nil },
 		Stat:    func(string) (LsStat, error) { return fakeFileInfo{dir: true}, nil },
 		Readdir: func(string) ([]string, error) { return []string{"only-here"}, nil },
 	}})

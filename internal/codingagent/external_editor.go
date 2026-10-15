@@ -33,6 +33,7 @@ import (
 	"strings"
 
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
+	"github.com/MichaelKinsy/PiG/internal/nodespawn"
 	"github.com/MichaelKinsy/PiG/internal/text"
 )
 
@@ -70,12 +71,18 @@ func OpenExternalEditor(ctx context.Context, initial string, configuredEditor st
 	args := append([]string{}, parts[1:]...)
 	args = append(args, tmpPath)
 
+	_, _ = fmt.Fprintf(os.Stdout, "Launching external editor: %s\nPi will resume when the editor exits.\n", editorCmd)
+
+	// spawn(editor, args) throws before it starts anything when the editor is empty (a command with a leading space splits to an empty
+	// first element) or an argument has a NUL, with or without shell: true; cmd.exe would otherwise run a line whose first word it trims.
+	if err := nodespawn.CheckArguments(parts[0], args); err != nil {
+		return initial, fmt.Errorf("external editor: run %s: %w", parts[0], err)
+	}
+
 	cmd := editorCommand(ctx, parts[0], args)
 	cmd.Stdin = os.Stdin
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
-
-	_, _ = fmt.Fprintf(os.Stdout, "Launching external editor: %s\nPi will resume when the editor exits.\n", editorCmd)
 
 	if err := cmd.Run(); err != nil {
 		// Editor exited non-zero (or failed to spawn). Match upstream:

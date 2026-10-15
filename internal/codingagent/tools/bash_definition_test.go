@@ -6,6 +6,7 @@ package tools
 
 import (
 	"encoding/json"
+	"runtime"
 	"slices"
 	"strings"
 	"testing"
@@ -52,12 +53,24 @@ func TestBashToolDefinitionRunsInTheInvocationContextCWD(t *testing.T) {
 	}
 	dir := t.TempDir()
 	ctx := extension.WithContext(t.Context(), extension.NewContext(dir, nil, func() error { return nil }, extension.ContextActions{}))
-	args, _ := json.Marshal(map[string]any{"command": "pwd"})
+	command := "pwd"
+	if runtime.GOOS == "windows" {
+		// Git Bash's pwd prints an MSYS path (/tmp/...) for the temp directory; -W prints the Windows form (as
+		// TestToolsContextCWDPort does), which may spell it differently (8.3 short names), so it is compared by file identity.
+		command = "pwd -W"
+	}
+	args, _ := json.Marshal(map[string]any{"command": command})
 	result, err := definition.Execute(ctx, "test-bash-ctx-cwd", args, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
 	text := result.Text()
+	if runtime.GOOS == "windows" {
+		if !sameDir(strings.TrimSpace(text), dir) {
+			t.Fatalf("output %q does not name the context cwd %q", text, dir)
+		}
+		return
+	}
 	if !strings.Contains(text, dir) {
 		t.Fatalf("output %q does not contain the context cwd %q", text, dir)
 	}

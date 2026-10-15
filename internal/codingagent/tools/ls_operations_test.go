@@ -5,6 +5,7 @@ package tools
 import (
 	"encoding/json"
 	"errors"
+	"path/filepath"
 	"testing"
 )
 
@@ -16,20 +17,22 @@ func (f fakeFileInfo) IsDirectory() bool { return f.dir }
 // ls.ts:34-41 LsOperations: exists, stat and readdir replace the local filesystem, so a remote or virtual tree lists like a local one.
 func TestLsToolUsesTheConfiguredOperations(t *testing.T) {
 	var statted []string
-	tool := &LsTool{CWD: "/virtual", Operations: &LsOperations{
-		Exists: func(path string) (bool, error) { return path == "/virtual" || path == "/virtual/alpha", nil },
+	root := virtualPath("/virtual")
+	alpha, gone := filepath.Join(root, "alpha"), filepath.Join(root, "gone")
+	tool := &LsTool{CWD: root, Operations: &LsOperations{
+		Exists: func(path string) (bool, error) { return path == root || path == alpha, nil },
 		Stat: func(path string) (LsStat, error) {
 			statted = append(statted, path)
 			switch path {
-			case "/virtual", "/virtual/alpha":
+			case root, alpha:
 				return fakeFileInfo{dir: true}, nil
-			case "/virtual/gone":
+			case gone:
 				return nil, errors.New("broken link")
 			}
 			return fakeFileInfo{}, nil
 		},
 		Readdir: func(path string) ([]string, error) {
-			if path == "/virtual/alpha" {
+			if path == alpha {
 				return []string{"inner.txt"}, nil
 			}
 			names := []string{"zeta.txt", "alpha", "beta.txt", "gone"}
@@ -45,11 +48,11 @@ func TestLsToolUsesTheConfiguredOperations(t *testing.T) {
 		t.Fatalf("listing = %q, want %q", got, want)
 	}
 	missing, err := tool.Execute(t.Context(), "id", json.RawMessage(`{"path":"absent"}`), nil)
-	if err != nil || !missing.IsError || resultText(t, missing) != "Path not found: /virtual/absent" {
+	if err != nil || !missing.IsError || resultText(t, missing) != "Path not found: "+filepath.Join(root, "absent") {
 		t.Fatalf("missing = %+v, %v", missing, err)
 	}
 	notDir, _ := tool.Execute(t.Context(), "id", json.RawMessage(`{"path":"alpha/inner.txt"}`), nil)
-	if resultText(t, notDir) != "Path not found: /virtual/alpha/inner.txt" {
+	if resultText(t, notDir) != "Path not found: "+filepath.Join(alpha, "inner.txt") {
 		t.Fatalf("a path the operations do not know is not found, got %q", resultText(t, notDir))
 	}
 	if len(statted) == 0 {

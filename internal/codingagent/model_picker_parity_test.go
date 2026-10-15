@@ -21,7 +21,9 @@ import (
 func modelPickerTestMode(t *testing.T) *InteractiveMode {
 	t.Helper()
 	clearAllAuthEnv(t)
-	t.Setenv("HOME", t.TempDir())
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	t.Setenv("USERPROFILE", home)
 	dir := t.TempDir()
 	current := &ai.Model{ID: "current", Provider: captureStreamOptionsProvider{}}
 	sm := NewSettingsManager(t.TempDir(), dir)

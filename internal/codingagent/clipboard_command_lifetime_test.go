@@ -18,7 +18,7 @@ import (
 	"time"
 )
 
-// clipboardDescendantEnv names the test's loopback address. This test binary, run with it set, connects and reports "child", starts a grandchild that inherits its stdin and stdout, reports the grandchild's PID, and exits without closing the connection, so the test reads the connection's end as the child's exit.
+// clipboardDescendantEnv names the test's loopback address. This test binary, run with it set, connects and reports "child", starts a grandchild that inherits its stdin and stdout, reports the grandchild's PID, waits for the test's acknowledgement of that report, and exits without closing the connection, so the test reads the connection's end as the child's exit. The acknowledgement matters on Windows, where a process that exits with an open socket resets the connection and the reset discards report bytes the test has not read yet.
 const clipboardDescendantEnv = "PIG_TEST_CLIPBOARD_DESCENDANT"
 
 // clipboardDescendantHoldEnv names the test's loopback address. This test binary, run with it set, connects, reports "grandchild" and holds its inherited stdin and stdout until the connection ends. It neither reads stdin nor writes stdout unless the test sends "write", which writes clipboardDescendantPayload bytes to stdout and reports "wrote".
@@ -50,6 +50,10 @@ func runClipboardDescendantHelper(addr string) int {
 	grandchild.Stdin, grandchild.Stdout = os.Stdin, os.Stdout
 	if err = grandchild.Start(); err == nil {
 		_, err = fmt.Fprintf(conn, "child %d\n", grandchild.Process.Pid)
+		if err == nil {
+			// The test acknowledges once it has read the report; a closed connection ends the wait too.
+			_, _ = conn.Read(make([]byte, 1))
+		}
 	}
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
@@ -90,10 +94,18 @@ func holdClipboardDescendantPipes(addr string) {
 
 // clipboardDescendantFixture makes the next clipboard command, this test binary, leave a running grandchild holding the command's stdin and stdout. Both report over loopback connections, so the test observes the child's exit and drives the grandchild without waiting on the clock.
 type clipboardDescendantFixture struct {
-	conns         chan net.Conn
+	reports       chan clipboardDescendantReport
 	grandchild    net.Conn
 	grandchildIn  *bufio.Reader
 	grandchildPID int
+}
+
+// clipboardDescendantReport is the first line one helper process sent over its connection: its role, or the error that kept it from arriving.
+type clipboardDescendantReport struct {
+	conn net.Conn
+	in   *bufio.Reader
+	role string
+	err  error
 }
 
 func startClipboardDescendantFixture(t *testing.T, failure bool) *clipboardDescendantFixture {
@@ -106,28 +118,42 @@ func startClipboardDescendantFixture(t *testing.T, failure bool) *clipboardDesce
 	if failure {
 		t.Setenv(clipboardDescendantFailureEnv, "1")
 	}
-	f := &clipboardDescendantFixture{conns: make(chan net.Conn, 2)}
-	var accepting sync.WaitGroup
+	f := &clipboardDescendantFixture{reports: make(chan clipboardDescendantReport, 2)}
+	var (
+		accepting sync.WaitGroup
+		mu        sync.Mutex
+		accepted  []net.Conn
+	)
 	accepting.Go(func() {
 		for range 2 {
 			conn, err := listener.Accept()
 			if err != nil {
 				return
 			}
-			f.conns <- conn
+			mu.Lock()
+			accepted = append(accepted, conn)
+			mu.Unlock()
+			// Read each report as soon as it connects, not when the test next looks: the child exits right after reporting, and on Windows the reset its exit sends discards report bytes still unread.
+			accepting.Go(func() {
+				in := bufio.NewReader(conn)
+				role, err := in.ReadString('\n')
+				if err == nil && role != "grandchild\n" {
+					// Release the child, which waits for this before it exits.
+					_, err = io.WriteString(conn, "\n")
+				}
+				f.reports <- clipboardDescendantReport{conn, in, role, err}
+			})
 		}
 	})
 	t.Cleanup(func() {
 		_ = listener.Close()
-		accepting.Wait()
-		close(f.conns)
-		for conn := range f.conns {
+		// Closing a connection ends the grandchild, and unblocks a report that never arrived; the kill covers a grandchild that never connected.
+		mu.Lock()
+		for _, conn := range accepted {
 			_ = conn.Close()
 		}
-		// Closing the connection ends the grandchild; the kill covers a grandchild that never connected.
-		if f.grandchild != nil {
-			_ = f.grandchild.Close()
-		}
+		mu.Unlock()
+		accepting.Wait()
 		if f.grandchildPID != 0 {
 			if process, err := os.FindProcess(f.grandchildPID); err == nil {
 				_ = process.Kill()
@@ -144,18 +170,15 @@ func (f *clipboardDescendantFixture) awaitChildExit(t *testing.T, done <-chan cl
 	childExited := make(chan struct{})
 	for childExited != nil || f.grandchild == nil {
 		select {
-		case conn := <-f.conns:
-			in := bufio.NewReader(conn)
-			role, err := in.ReadString('\n')
+		case report := <-f.reports:
+			conn, in, role := report.conn, report.in, report.role
 			switch {
-			case err != nil:
-				_ = conn.Close()
-				t.Fatalf("descendant connection: %q %v", role, err)
+			case report.err != nil:
+				t.Fatalf("descendant connection: %q %v", role, report.err)
 			case role == "grandchild\n":
 				f.grandchild, f.grandchildIn = conn, in
 			default:
 				if _, err := fmt.Sscanf(role, "child %d\n", &f.grandchildPID); err != nil {
-					_ = conn.Close()
 					t.Fatalf("child report %q: %v", role, err)
 				}
 				// The child never closes its connection, so its end is the child's exit.

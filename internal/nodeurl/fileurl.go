@@ -18,6 +18,14 @@ type Error struct {
 
 func (e *Error) Error() string { return e.Message }
 
+// Thrown is String(e) of the error Node throws: its name, code and message, `TypeError [ERR_INVALID_FILE_URL_PATH]: File URL path must be absolute`, or `URIError: URI malformed` for the decodeURIComponent failure, which has no code. A program that does not catch it reports this headline.
+func (e *Error) Thrown() string {
+	if e.Code == "" {
+		return "URIError: " + e.Message
+	}
+	return "TypeError [" + e.Code + "]: " + e.Message
+}
+
 var (
 	errInvalidURL         = &Error{Code: "ERR_INVALID_URL", Message: "Invalid URL"}
 	errInvalidURLScheme   = &Error{Code: "ERR_INVALID_URL_SCHEME", Message: "The URL must be of scheme file"}

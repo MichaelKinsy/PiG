@@ -108,8 +108,12 @@ for (const c of input) {
 	const agentDir = path.join(root, "agent");
 	const file = path.join(agentDir, "trust.json");
 	const sub = (s) => s.split("{R}").join(root);
-	const unsub = (s) => s.split(root).join("{R}");
-	if (c.initial !== null) { fs.mkdirSync(agentDir, { recursive: true }); fs.writeFileSync(file, sub(c.initial)); }
+	const escapedRoot = root.split("\\").join("\\\\");
+	const subJSON = (s) => s.split("{R}").join(escapedRoot);
+	const unsubValue = (v) => typeof v === "string" ? v.split(escapedRoot).join("{R}").split(root).join("{R}")
+		: Array.isArray(v) ? v.map(unsubValue)
+		: v !== null && typeof v === "object" ? Object.fromEntries(Object.entries(v).map(([k, x]) => [k, unsubValue(x)])) : v;
+	if (c.initial !== null) { fs.mkdirSync(agentDir, { recursive: true }); fs.writeFileSync(file, subJSON(c.initial)); }
 	const store = new ProjectTrustStore(agentDir);
 	const rows = [];
 	for (const op of c.ops) {
@@ -120,7 +124,7 @@ for (const c of input) {
 			else if (op.op === "set") store.set(sub(op.cwd), op.updates[0].decision);
 			else store.setMany(op.updates.map((u) => ({ path: sub(u.path), decision: u.decision })));
 		} catch (e) { row.threw = true; row.error = e.message; }
-		rows.push(JSON.parse(unsub(JSON.stringify({ ...row, file: fs.existsSync(file) ? fs.readFileSync(file, "utf8") : null }))));
+		rows.push(unsubValue(JSON.parse(JSON.stringify({ ...row, file: fs.existsSync(file) ? fs.readFileSync(file, "utf8") : null }))));
 	}
 	out.push(rows);
 	fs.rmSync(root, { recursive: true, force: true });
@@ -154,10 +158,27 @@ emit(out);`, cases, &want)
 		agentDir := filepath.Join(root, "agent")
 		file := filepath.Join(agentDir, "trust.json")
 		sub := func(s string) string { return strings.ReplaceAll(s, "{R}", root) }
-		unsub := func(s string) string { return strings.ReplaceAll(s, root, "{R}") }
+		escapedRoot := strings.ReplaceAll(root, `\`, `\\`)
+		subJSON := func(s string) string { return strings.ReplaceAll(s, "{R}", escapedRoot) }
+		var unsubValue func(v any) any
+		unsubValue = func(v any) any {
+			switch v := v.(type) {
+			case string:
+				return strings.ReplaceAll(strings.ReplaceAll(v, escapedRoot, "{R}"), root, "{R}")
+			case []any:
+				for i := range v {
+					v[i] = unsubValue(v[i])
+				}
+			case map[string]any:
+				for k := range v {
+					v[k] = unsubValue(v[k])
+				}
+			}
+			return v
+		}
 		if c.Initial != nil {
 			_ = os.MkdirAll(agentDir, 0o755)
-			_ = os.WriteFile(file, []byte(sub(*c.Initial)), 0o644)
+			_ = os.WriteFile(file, []byte(subJSON(*c.Initial)), 0o644)
 		}
 		store := NewProjectTrustStore(agentDir)
 		var rows []map[string]any
@@ -198,8 +219,7 @@ emit(out);`, cases, &want)
 			}
 			rows = append(rows, row)
 		}
-		data, _ := json.Marshal(rows)
-		got := asAny(json.RawMessage(unsub(string(data))))
+		got := unsubValue(asAny(rows)) // the root appears backslash-escaped inside trust.json text on Windows, raw elsewhere
 		wantRows := want[i]
 		for _, w := range wantRows {
 			if message, ok := w["error"].(string); ok {

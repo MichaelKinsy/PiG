@@ -61,11 +61,12 @@ func TestSessionForkFromFileMatchesPiOracle(t *testing.T) {
 	pioracle.Run(t, `
 const mod = await load("pi-coding-agent/core/session-manager.js");
 const fs = await import("node:fs");
+const path = await import("node:path");
 const out = {};
 for (const name of input.names) {
-	const source = input.root + "/" + name + ".jsonl";
+	const source = path.join(input.root, name + ".jsonl");
 	try {
-		const sm = mod.SessionManager.forkFrom(source, "/work/target", input.piDir + "/" + name);
+		const sm = mod.SessionManager.forkFrom(source, "/work/target", path.join(input.piDir, name));
 		const lines = fs.readFileSync(sm.getSessionFile(), "utf8").split("\n").filter((l) => l !== "");
 		out[name] = { lines: lines.slice(1) };
 	} catch (e) {

@@ -8,6 +8,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"runtime"
 	"slices"
 	"strings"
 	"testing"
@@ -218,13 +219,22 @@ func TestExportSessionToJsonlFailuresAreNodes(t *testing.T) {
 		{"parent is a file", filepath.Join(file, "x.jsonl"), "ENOTDIR: not a directory, open '" + filepath.Join(file, "x.jsonl") + "'"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			if runtime.GOOS == "windows" {
+				// The rows are Pi's answers on POSIX; Node on Windows reports libuv's translation of the Win32 error (a directory opened for writing, a path below a file), so Node itself gives the message.
+				out, err := exec.CommandContext(t.Context(), "node", "-e", "try { require('node:fs').writeFileSync(process.argv[1], ''); } catch (err) { process.stdout.write(err.message); }", tc.output).Output()
+				if err != nil || len(out) == 0 {
+					t.Fatalf("node writeFileSync(%s) = %q, %v; want a failure", tc.output, out, err)
+				}
+				tc.want = string(out)
+			}
 			_, err := ExportSessionToJsonl(session, tc.output, nil)
 			if err == nil || err.Error() != tc.want {
 				t.Fatalf("error = %v, want %q", err, tc.want)
 			}
 		})
 	}
-	if os.Geteuid() != 0 {
+	// A directory missing from the root of the drive is creatable on Windows (D:\nonexistent-dir-for-export), so there is no refusal to compare.
+	if os.Geteuid() != 0 && runtime.GOOS != "windows" {
 		// session-export.ts:42 mkdirSync(dir, {recursive: true}) on a directory missing from the file-system root fails as the OS
 		// refuses it: EACCES on Linux, ENOENT on macOS's read-only root (MKDirpSync stats after EROFS). Node gives the expected message.
 		const missing = "/nonexistent-dir-for-export"

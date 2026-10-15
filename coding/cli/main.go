@@ -42,6 +42,7 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
 	"github.com/MichaelKinsy/PiG/internal/lazyregexp"
 	"github.com/MichaelKinsy/PiG/internal/nodepath"
+	"github.com/MichaelKinsy/PiG/internal/nodeurl"
 
 	"golang.org/x/term"
 
@@ -941,7 +942,7 @@ func Main(args []string, options *MainOptions) {
 	if err != nil {
 		_, missing := errors.AsType[*sessionNotFoundError](err)
 		_, exists := errors.AsType[*sessionAlreadyExistsError](err)
-		_, fileURL := errors.AsType[*sessionPathURLError](err)
+		_, fileURL := errors.AsType[*thrownURLError](err)
 		if missing || exists || fileURL {
 			color := chalkColorLevel(environMap(os.Environ()), args, term.IsTerminal(int(os.Stdout.Fd()))) > 0
 			fmt.Fprintln(os.Stderr, formatStartupSessionError(err, color))
@@ -1127,7 +1128,12 @@ func Main(args []string, options *MainOptions) {
 	timings.Time("readPipedStdin")
 	initialMessage, initialImages, extraMessages, messageErr := prepareInitialMessage(initialCWD, flags.Messages, flags.FileArgs, stdinContent)
 	if messageErr != nil {
-		printCLIError("%v", messageErr)
+		// processFileArguments does not catch fileURLToPath's throw, so Node reports it as an uncaught error.
+		if urlErr, ok := errors.AsType[*nodeurl.Error](messageErr); ok {
+			fmt.Fprintln(os.Stderr, urlErr.Thrown())
+		} else {
+			printCLIError("%v", messageErr)
+		}
 		exitProcess(1)
 	}
 	timings.Time("prepareInitialMessage")

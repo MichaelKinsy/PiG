@@ -30,8 +30,9 @@ func TestCreateLsToolBindsItsCwdAndOperations(t *testing.T) {
 		t.Fatalf("listing of the created cwd = %q, want the dotfile and the dot-directory with a slash", got)
 	}
 
-	virtual := CreateLsTool("/virtual", &LsToolOptions{Operations: &LsOperations{
-		Exists:  func(path string) (bool, error) { return path == "/virtual", nil },
+	root := virtualPath("/virtual")
+	virtual := CreateLsTool(root, &LsToolOptions{Operations: &LsOperations{
+		Exists:  func(path string) (bool, error) { return path == root, nil },
 		Stat:    func(string) (LsStat, error) { return fakeFileInfo{dir: true}, nil },
 		Readdir: func(string) ([]string, error) { return []string{"only"}, nil },
 	}})

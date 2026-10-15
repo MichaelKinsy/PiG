@@ -186,6 +186,7 @@ func compareMigrationTrees(t *testing.T, fixtures []map[string]*string) {
 		tree := map[string]*string{}
 		_ = filepath.WalkDir(base, func(path string, entry fs.DirEntry, err error) error {
 			rel, _ := filepath.Rel(base, path)
+			rel = filepath.ToSlash(rel)
 			if rel == "." {
 				return nil
 			}

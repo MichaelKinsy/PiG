@@ -21,10 +21,11 @@ import (
 // read.ts:48-57 ReadOperations: readFile and access replace the local filesystem for text files.
 func TestReadToolUsesTheConfiguredOperations(t *testing.T) {
 	var accessed, read []string
-	tool := &ReadTool{CWD: "/remote", Operations: &ReadOperations{
+	root := virtualPath("/remote")
+	tool := &ReadTool{CWD: root, Operations: &ReadOperations{
 		Access: func(path string) error {
 			accessed = append(accessed, path)
-			if path == "/remote/denied.txt" {
+			if path == filepath.Join(root, "denied.txt") {
 				return &fs.PathError{Op: "open", Path: path, Err: fs.ErrPermission}
 			}
 			return nil
@@ -41,7 +42,7 @@ func TestReadToolUsesTheConfiguredOperations(t *testing.T) {
 	if got := resultText(t, result); got != "two\nthree" {
 		t.Fatalf("read = %q, want the remote file from line 2", got)
 	}
-	if len(accessed) != 1 || accessed[0] != "/remote/notes.txt" || len(read) != 1 || read[0] != "/remote/notes.txt" {
+	if notes := filepath.Join(root, "notes.txt"); len(accessed) != 1 || accessed[0] != notes || len(read) != 1 || read[0] != notes {
 		t.Fatalf("access %v, read %v: the operations did not see the resolved path", accessed, read)
 	}
 	denied, _ := tool.Execute(t.Context(), "id", json.RawMessage(`{"path":"denied.txt"}`), nil)
@@ -86,10 +87,12 @@ func TestReadToolOperationsDecideImageDetection(t *testing.T) {
 // grep.ts:53-58 GrepOperations: isDirectory and readFile (context lines) replace the local filesystem.
 func TestGrepToolUsesTheConfiguredOperations(t *testing.T) {
 	var dirs, reads []string
-	tool := &GrepTool{CWD: "/remote", Operations: &GrepOperations{
+	root := virtualPath("/remote")
+	missingPath := filepath.Join(root, "missing")
+	tool := &GrepTool{CWD: root, Operations: &GrepOperations{
 		IsDirectory: func(path string) (bool, error) {
 			dirs = append(dirs, path)
-			if path == "/remote/missing" {
+			if path == missingPath {
 				return false, errors.New("no such file")
 			}
 			return false, nil
@@ -100,10 +103,10 @@ func TestGrepToolUsesTheConfiguredOperations(t *testing.T) {
 		},
 	}}
 	missing, _ := tool.Execute(t.Context(), "id", json.RawMessage(`{"pattern":"needle","path":"missing"}`), nil)
-	if !missing.IsError || resultText(t, missing) != "Path not found: /remote/missing" {
+	if !missing.IsError || resultText(t, missing) != "Path not found: "+missingPath {
 		t.Fatalf("missing = %+v", missing)
 	}
-	if len(dirs) != 1 || dirs[0] != "/remote/missing" {
+	if len(dirs) != 1 || dirs[0] != missingPath {
 		t.Fatalf("isDirectory saw %v", dirs)
 	}
 	_ = reads

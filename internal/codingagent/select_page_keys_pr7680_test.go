@@ -88,11 +88,12 @@ func TestPR7680SessionSelectionStaysValidWhenPagingBeforeTheLoad(t *testing.T) {
 func TestPR7680PackageSelectorsPageWithRemappedKeys(t *testing.T) {
 	useRemappedPageKeyManager(t)
 	var trust *TrustSelection
-	trustSelector := NewTrustSelectorComponent(TrustSelectorOptions{Cwd: "/project", OnSelect: func(s TrustSelection) { trust = &s }, OnCancel: func() {}})
+	project := t.TempDir()
+	trustSelector := NewTrustSelectorComponent(TrustSelectorOptions{Cwd: project, OnSelect: func(s TrustSelection) { trust = &s }, OnCancel: func() {}})
 	trustSelector.HandleInput("\x16")
 	trustSelector.HandleInput("\r")
-	if trust == nil || trust.Trusted || len(trust.Updates) != 1 || trust.Updates[0].Path != "/project" || trust.Updates[0].Decision == nil || *trust.Updates[0].Decision {
-		t.Errorf("trust selection = %+v, want untrusted with /project decided false", trust)
+	if trust == nil || trust.Trusted || len(trust.Updates) != 1 || trust.Updates[0].Path != CanonicalizePath(project) || trust.Updates[0].Decision == nil || *trust.Updates[0].Decision {
+		t.Errorf("trust selection = %+v, want untrusted with %s decided false", trust, project)
 	}
 
 	var previews []string

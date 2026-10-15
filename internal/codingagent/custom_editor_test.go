@@ -6,6 +6,7 @@ package codingagent
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"slices"
 	"testing"
 
@@ -158,9 +159,14 @@ func TestCustomEditorExtensionShortcutThenPasteImageComeFirst(t *testing.T) {
 		return data == "\x10"
 	}
 
-	probe.HandleInput("\x10") // consumed by the extension shortcut before app.model.cycleForward
-	probe.HandleInput("\x16") // Ctrl+V: not an extension shortcut, so the image paste runs
-	if !slices.Equal(calls, []string{"shortcut:\x10", "shortcut:\x16", "paste"}) || len(probe.superKeys) != 0 {
+	// keybindings.ts:143 binds app.clipboard.pasteImage to alt+v with Windows keybindings and to ctrl+v elsewhere.
+	pasteKey := "\x16" // Ctrl+V
+	if runtime.GOOS == "windows" {
+		pasteKey = "\x1bv" // Alt+V
+	}
+	probe.HandleInput("\x10")   // consumed by the extension shortcut before app.model.cycleForward
+	probe.HandleInput(pasteKey) // not an extension shortcut, so the image paste runs
+	if !slices.Equal(calls, []string{"shortcut:\x10", "shortcut:" + pasteKey, "paste"}) || len(probe.superKeys) != 0 {
 		t.Fatalf("calls = %q, editor keys = %q", calls, probe.superKeys)
 	}
 }

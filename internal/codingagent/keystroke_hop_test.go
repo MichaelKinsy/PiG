@@ -47,6 +47,10 @@ func TestKeystrokeReachesTheOwnerInOneHandOff(t *testing.T) {
 			t.Errorf("input loop: %v", err)
 		}
 		cancel()
+		// A Windows pipe is not a terminal: its handle reads as ready once a read has completed, so the reader that cancel woke
+		// is parked in ReadFile and only the end of input frees it (tui/terminal_windows.go; interactive mode itself reads a
+		// console). The context is already cancelled, so the end of input is not reported as a failure.
+		_ = writeEnd.Close()
 		if err := m.stopTerminalInput(); err != nil {
 			t.Errorf("stop input: %v", err)
 		}

@@ -2,6 +2,7 @@ package tools
 
 import (
 	"errors"
+	"path/filepath"
 	"slices"
 	"strings"
 	"testing"
@@ -13,7 +14,8 @@ import (
 // an absent detectImageMimeType makes every file text.
 func TestReadOperationsReplaceTheLocalFilesystem(t *testing.T) {
 	var calls []string
-	tool := &ReadTool{CWD: "/virtual", Operations: &ReadOperations{
+	root := virtualPath("/virtual")
+	tool := &ReadTool{CWD: root, Operations: &ReadOperations{
 		Access:              func(p string) error { calls = append(calls, "access "+p); return nil },
 		DetectImageMimeType: func(p string) (string, error) { calls = append(calls, "detect "+p); return "", nil },
 		ReadFile:            func(p string) ([]byte, error) { calls = append(calls, "read "+p); return []byte("a\nb\nc"), nil },
@@ -22,7 +24,8 @@ func TestReadOperationsReplaceTheLocalFilesystem(t *testing.T) {
 	if result.IsError || result.Text() != "b\nc" {
 		t.Fatalf("result = %+v", result)
 	}
-	want := []string{"access /virtual/dir/file.txt", "detect /virtual/dir/file.txt", "read /virtual/dir/file.txt"}
+	file := filepath.Join(root, "dir", "file.txt")
+	want := []string{"access " + file, "detect " + file, "read " + file}
 	if !slices.Equal(calls, want) {
 		t.Fatalf("calls = %q, want %q", calls, want)
 	}

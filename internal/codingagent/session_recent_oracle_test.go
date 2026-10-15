@@ -24,7 +24,7 @@ type recentCase struct {
 }
 
 func recentHeader(id, cwd string) string {
-	return `{"type":"session","version":3,"id":"` + id + `","timestamp":"2026-01-0` + id[len(id)-1:] + `T00:00:00.000Z","cwd":"` + cwd + `"}` + "\n"
+	return `{"type":"session","version":3,"id":"` + id + `","timestamp":"2026-01-0` + id[len(id)-1:] + `T00:00:00.000Z","cwd":` + strconv.Quote(cwd) + `}` + "\n"
 }
 
 // TestFindMostRecentSessionMatchesPi compares findMostRecentSession of Pi 1.0.4 with the Pig discovery over session directories: ordering by mtime, ties, the header scan (blank and garbage leading lines, a header with no id, an ill-typed cwd), cwd filters, non-sessions and a directory that ends in .jsonl.

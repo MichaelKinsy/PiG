@@ -5,6 +5,7 @@ package codingagent
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -12,6 +13,7 @@ import (
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/internal/coding/pigversion"
+	"github.com/MichaelKinsy/PiG/internal/nodeurl"
 )
 
 // cli/file-processor.ts processFileArguments against pinned Pi, one @file argument at a time: how the argument resolves (cwd-relative,
@@ -80,7 +82,10 @@ func TestProcessCLIFileArgumentsMatchesPi(t *testing.T) {
 	for i, arg := range args {
 		result, err := ProcessCLIFileArguments([]string{arg}, work)
 		got := struct{ Text, Error string }{Text: result.Text}
-		if err != nil {
+		if urlErr, ok := errors.AsType[*nodeurl.Error](err); ok {
+			// fileURLToPath's throw is not caught by processFileArguments, so the oracle reports String(e) without the `Error: ` label console.error carries.
+			got.Error = urlErr.Thrown()
+		} else if err != nil {
 			got.Error = "Error: " + err.Error()
 		}
 		want := expected[i]

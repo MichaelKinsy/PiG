@@ -34,7 +34,9 @@ func promptConflicts(t *testing.T, h *icodingagent.TestHarness) string {
 // [Prompt conflicts] with the error "Prompt template path does not exist".
 func TestSlashReloadReportsAMissingPromptTemplatePath(t *testing.T) {
 	cwd, agentDir := t.TempDir(), t.TempDir()
-	t.Setenv("HOME", t.TempDir())
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	t.Setenv("USERPROFILE", home)
 	missing := filepath.Join(cwd, "nosuch.md")
 	h := reloadCallerPair(t, cwd, agentDir, "", nil, func(opts *icodingagent.InteractiveModeOptions) {
 		opts.CLIPromptTemplatePaths = []string{missing}
@@ -49,7 +51,9 @@ func TestSlashReloadReportsAMissingPromptTemplatePath(t *testing.T) {
 // reports a --prompt-template path that does not exist.
 func TestRebindReportsAMissingPromptTemplatePath(t *testing.T) {
 	cwd, agentDir := t.TempDir(), t.TempDir()
-	t.Setenv("HOME", t.TempDir())
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	t.Setenv("USERPROFILE", home)
 	h := reloadCallerPair(t, cwd, agentDir, "", nil)
 	services, err := coding.CreateAgentSessionServices(coding.CreateAgentSessionServicesOptions{CWD: cwd, AgentDir: agentDir})
 	if err != nil {

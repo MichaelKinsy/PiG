@@ -322,20 +322,15 @@ func (err *sessionNotFoundError) Error() string {
 	return fmt.Sprintf("No session found matching '%s'", err.arg)
 }
 
-// sessionPathURLError is the error Node's fileURLToPath throws from Pi's
-// resolveSessionPath. Pi's main does not catch it, so Node reports it as an
-// uncaught error headed by its name, code and message.
-type sessionPathURLError struct{ err *nodeurl.Error }
+// thrownURLError is the error Node's fileURLToPath throws from Pi's
+// resolveSessionPath or processFileArguments. Pi's main does not catch it, so
+// Node reports it as an uncaught error headed by its name, code and message.
+type thrownURLError struct{ err *nodeurl.Error }
 
-func (err *sessionPathURLError) Error() string {
-	if err.err.Code == "" {
-		return "URIError: " + err.err.Message
-	}
-	return fmt.Sprintf("TypeError [%s]: %s", err.err.Code, err.err.Message)
-}
+func (err *thrownURLError) Error() string { return err.err.Thrown() }
 
 func formatStartupSessionError(err error, color bool) string {
-	if urlErr, ok := errors.AsType[*sessionPathURLError](err); ok {
+	if urlErr, ok := errors.AsType[*thrownURLError](err); ok {
 		return urlErr.Error()
 	}
 	_, missing := errors.AsType[*sessionNotFoundError](err)
@@ -359,7 +354,7 @@ func sessionPathArgument(launchCWD, arg string) (string, bool, error) {
 	}
 	path, err := codingagent.ResolvePath(arg, launchCWD)
 	if urlErr, ok := errors.AsType[*nodeurl.Error](err); ok {
-		return "", true, &sessionPathURLError{err: urlErr}
+		return "", true, &thrownURLError{err: urlErr}
 	}
 	return path, true, err
 }

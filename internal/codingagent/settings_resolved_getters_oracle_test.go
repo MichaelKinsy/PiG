@@ -20,7 +20,9 @@ import (
 // normalizePath (home expansion, file URL), and a theme with "/" is a path, not a name. Not compared: wrong-typed values and fractional numbers other
 // than in the compaction token settings (PiG keeps those as JavaScript numbers), and empty strings (PiG's string cannot tell "" from absent).
 func TestSettingsManagerResolvedGettersMatchPi(t *testing.T) {
-	t.Setenv("HOME", t.TempDir())
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	t.Setenv("USERPROFILE", home)
 	rng := rand.New(rand.NewSource(20261117))
 	pick := func(xs []string) string { return xs[rng.Intn(len(xs))] }
 	fields := []string{

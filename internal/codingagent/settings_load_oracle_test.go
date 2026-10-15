@@ -97,7 +97,7 @@ func TestSettingsLoadMatchesPiOnCorruptedFiles(t *testing.T) {
 		encode := func(s Settings) any { b, _ := json.Marshal(s); return parse(string(b)) }
 		var gotErrors []piErr
 		for _, e := range sm.DrainErrors() {
-			gotErrors = append(gotErrors, piErr{e.Scope, e.Error.Error(), strings.Replace(strings.Replace(e.Path, base, "$BASE", 1), "/.pig/", "/.pi/", 1)})
+			gotErrors = append(gotErrors, piErr{e.Scope, e.Error.Error(), strings.Replace(strings.Replace(e.Path, base, "$BASE", 1), string(filepath.Separator)+".pig"+string(filepath.Separator), string(filepath.Separator)+".pi"+string(filepath.Separator), 1)})
 		}
 		desc := func(name string, got, w any) {
 			// A key Pi holds that Go's typed Settings does not model (a leftover legacy key, null) is not compared.

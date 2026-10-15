@@ -1,10 +1,9 @@
 // Drive Pi 1.1.0's coding-agent KeybindingsManager and keyText with user keybinding configs.
 import { readFileSync } from "node:fs";
-import { pathToFileURL } from "node:url";
 const root = new URL("../../../extensions/sdk-ts/node_modules/@earendil-works/pi-coding-agent/", import.meta.url);
 if (JSON.parse(readFileSync(new URL("package.json", root), "utf8")).version !== process.argv[2]) throw new Error("Wrong Pi oracle version");
 const pi = { ...(await import(new URL("dist/core/keybindings.js", root).href)), ...(await import(new URL("dist/modes/interactive/components/keybinding-hints.js", root).href)) };
-const tui = await import(pathToFileURL(new URL("node_modules/@earendil-works/pi-tui/dist/index.js", root).pathname).href);
+const tui = await import(new URL("node_modules/@earendil-works/pi-tui/dist/index.js", root).href);
 let input = "";
 process.stdin.setEncoding("utf8");
 for await (const chunk of process.stdin) input += chunk;

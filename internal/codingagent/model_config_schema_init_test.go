@@ -47,7 +47,7 @@ func packageInitWork(t *testing.T, importPath string) (int, int) {
 	if err := os.WriteFile(overlayPath, overlay, 0o644); err != nil {
 		t.Fatal(err)
 	}
-	binary := filepath.Join(dir, "initprobe")
+	binary := filepath.Join(dir, "initprobe.exe")
 	build := exec.CommandContext(testbudget.Context(t), "go", "build", "-overlay="+overlayPath, "-o", binary, "./internal/codingagent/initprobe")
 	build.Dir = root
 	if out, err := build.CombinedOutput(); err != nil {
