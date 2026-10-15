@@ -4,12 +4,12 @@
 //! handler uses the handler's own connection ([`crate::Context::parse_frontmatter`], [`crate::Context::parse_date`]).
 
 use std::io;
-use std::os::unix::net::UnixStream;
 use std::sync::{Arc, Mutex, Weak};
 
 use serde_json::{Value, json};
 
 use crate::protocol::Connection;
+use crate::transport::UnixStream;
 
 const CALL_PARSE_FRONTMATTER: &str = "frontmatter.parse";
 const CALL_PARSE_DATE: &str = "date.parse";
@@ -140,9 +140,10 @@ fn add_running(running: &mut Vec<(String, Weak<Connection>)>, conn: &Arc<Connect
     running.push((path.to_string(), Arc::downgrade(conn)));
 }
 
-#[cfg(test)]
+#[cfg(all(test, unix))]
 mod tests {
     use super::*;
+    use std::os::unix::net::UnixStream;
 
     // A packed cell runs several extensions in one process. A helper called with no Context and no socket of its own uses a running extension's connection,
     // and must keep working when the first one to start has stopped.
