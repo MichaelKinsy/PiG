@@ -10,7 +10,7 @@ from __future__ import annotations
 import threading
 from typing import Any
 
-from test_extension_api_099 import _drive, _host
+from test_extension_api_099 import _host
 
 import pig_sdk
 
