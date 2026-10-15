@@ -9,6 +9,7 @@ import (
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/coding/mcpext"
+	"github.com/MichaelKinsy/PiG/coding/mcpext/mcptui"
 	"github.com/MichaelKinsy/PiG/mcp"
 	"github.com/MichaelKinsy/PiG/tui"
 )
@@ -18,7 +19,7 @@ import (
 // each case follows one branch of renderCall or renderResult.
 
 func mcpRenderDefinition() extension.ToolDefinition {
-	return mcpext.CreateMcpToolDefinition(mcpext.McpToolOptions{Server: "docs", Tool: mcp.Tool{Name: "search"}, Name: "mcp__docs__search"})
+	return mcpext.CreateMcpToolDefinition(mcpext.McpToolOptions{Server: "docs", Tool: mcp.Tool{Name: "search"}, Name: "mcp__docs__search", Renderers: mcptui.CreateMcpToolRenderers})
 }
 
 type renderedText interface{ Render(width int) []string }

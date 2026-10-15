@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/MichaelKinsy/PiG/coding/mcpext"
+	"github.com/MichaelKinsy/PiG/coding/mcpext/mcptui"
 	"github.com/MichaelKinsy/PiG/internal/codingagent"
 	"github.com/MichaelKinsy/PiG/internal/pioracle"
 	"github.com/MichaelKinsy/PiG/tui"
@@ -143,12 +144,12 @@ emit(out);
 		}
 		codingagent.NewKeybindingsManagerFromBindings(userBindings, "")
 		bindings := tui.GetTUIKeybindings()
-		view := mcpext.NewMcpManagerView(&renderCounter{}, coloredTheme(t), bindings)
+		view := mcptui.NewMcpManagerView(&renderCounter{}, coloredTheme(t), bindings)
 		switch p.Kind {
 		case "menu":
-			items := make([]tui.SelectItem, len(p.Items))
+			items := make([]mcpext.McpMenuItem, len(p.Items))
 			for j, it := range p.Items {
-				items[j] = tui.SelectItem{Value: it.Value, Label: it.Label, Description: it.Description}
+				items[j] = mcpext.McpMenuItem{Value: it.Value, Label: it.Label, Description: it.Description}
 			}
 			menu := mcpext.McpMenu{Title: p.Title, Details: p.Details, Error: p.Error, Items: items, Selected: p.Selected, ConfirmLabel: p.Confirm, CancelLabel: p.Cancel}
 			if p.Empty != nil {

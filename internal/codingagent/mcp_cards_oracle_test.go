@@ -11,7 +11,7 @@ import (
 	"github.com/MichaelKinsy/PiG/agent"
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/coding/extension"
-	"github.com/MichaelKinsy/PiG/coding/mcpext"
+	"github.com/MichaelKinsy/PiG/coding/mcpext/mcptui"
 	"github.com/MichaelKinsy/PiG/internal/coding/pigversion"
 	"github.com/MichaelKinsy/PiG/tui"
 )
@@ -73,7 +73,7 @@ func TestMcpToolCardsMatchPi(t *testing.T) {
 	tui.SetCapabilities(tui.TerminalCapabilities{TrueColor: true})
 	tui.SetTheme("dark")
 	t.Cleanup(func() { tui.SetAppKeyTextResolver(nil) })
-	renderers := mcpext.CreateMcpToolRenderers("srv/tool")
+	renderers := mcptui.CreateMcpToolRenderers("srv/tool")
 	definition := extension.ToolDefinition{Name: "mcp__srv__tool", RenderCall: renderers.RenderCall, RenderResult: renderers.RenderResult}
 	failures := 0
 	for i, probe := range probes {

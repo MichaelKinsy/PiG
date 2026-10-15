@@ -17,6 +17,7 @@ import (
 
 	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/coding/mcpext"
+	"github.com/MichaelKinsy/PiG/coding/mcpext/mcptui"
 	"github.com/MichaelKinsy/PiG/mcp"
 	"github.com/MichaelKinsy/PiG/tui"
 	"github.com/MichaelKinsy/PiG/tui/widthx"
@@ -31,14 +32,14 @@ type renderCounter struct{ n atomic.Int64 }
 func (r *renderCounter) RequestRender(...bool) { r.n.Add(1) }
 
 type managerHarness struct {
-	view    *mcpext.McpManagerView
+	view    *mcptui.McpManagerView
 	renders *renderCounter
 }
 
 func newManagerHarness(t *testing.T) *managerHarness {
 	t.Helper()
 	h := &managerHarness{renders: &renderCounter{}}
-	h.view = mcpext.NewMcpManagerView(h.renders, coloredTheme(t), tui.GetTUIKeybindings())
+	h.view = mcptui.NewMcpManagerView(h.renders, coloredTheme(t), tui.GetTUIKeybindings())
 	return h
 }
 
@@ -95,7 +96,7 @@ func receive[T any](t *testing.T, ch <-chan T, what string) T {
 func abMenu() mcpext.McpMenu {
 	return mcpext.McpMenu{
 		Title: "Pick", Details: "the details", Error: "the error",
-		Items:        []tui.SelectItem{{Value: "a", Label: "alpha", Description: "first"}, {Value: "b", Label: "beta", Description: "second"}},
+		Items:        []mcpext.McpMenuItem{{Value: "a", Label: "alpha", Description: "first"}, {Value: "b", Label: "beta", Description: "second"}},
 		ConfirmLabel: "manage", CancelLabel: "close",
 	}
 }
@@ -201,7 +202,7 @@ func TestMcpManagerViewEmptyMenu(t *testing.T) {
 func TestMcpManagerViewMenuRebuildsOnChangeKeepingTheSelection(t *testing.T) {
 	h := newManagerHarness(t)
 	var mu sync.Mutex
-	items := []tui.SelectItem{{Value: "a", Label: "alpha"}, {Value: "b", Label: "beta"}}
+	items := []mcpext.McpMenuItem{{Value: "a", Label: "alpha"}, {Value: "b", Label: "beta"}}
 	var listener func()
 	var unsubscribed atomic.Bool
 	build := func() mcpext.McpMenu {
@@ -219,7 +220,7 @@ func TestMcpManagerViewMenuRebuildsOnChangeKeepingTheSelection(t *testing.T) {
 	h.waitForText(t, "beta")
 	h.view.HandleInput("\x1b[B")
 	mu.Lock()
-	items = []tui.SelectItem{{Value: "z", Label: "zeta"}, {Value: "a", Label: "alpha"}, {Value: "b", Label: "beta"}}
+	items = []mcpext.McpMenuItem{{Value: "z", Label: "zeta"}, {Value: "a", Label: "alpha"}, {Value: "b", Label: "beta"}}
 	notify := listener
 	mu.Unlock()
 	notify()
@@ -780,7 +781,7 @@ func TestMcpManagerViewSignInScreenCopiesTheAuthorizationURL(t *testing.T) {
 	tui.SetKeybindings(tui.NewKeybindingsManager(defs, nil))
 	t.Cleanup(func() { tui.SetKeybindings(prev) })
 	h := &managerHarness{renders: &renderCounter{}}
-	h.view = mcpext.NewMcpManagerView(h.renders, coloredTheme(t), tui.GetTUIKeybindings())
+	h.view = mcptui.NewMcpManagerView(h.renders, coloredTheme(t), tui.GetTUIKeybindings())
 	var mu sync.Mutex
 	var copied []string
 	h.view.SetCopyToClipboard(func(text string) error {

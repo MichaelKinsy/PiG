@@ -54,7 +54,7 @@ import (
 // to sign in, reconnect, enable or disable servers, and change their exposure;
 // the last two are saved to the `mcp.json` that defines the server, or apply to
 // the current session for registered servers. [Extension.RunCommand] is that
-// command and [Extension.Manage] its manager, shown in a [McpManagerView].
+// command and [Extension.Manage] its manager, shown in a view the [McpUi] implements (package mcptui).
 
 // Host is the part of the extension API the MCP extension uses. The runner
 // implements it; a Piglet that leaves the extension out never needs it.
@@ -128,6 +128,8 @@ type Options struct {
 	// ClientName and ClientVersion identify this client to servers.
 	ClientName    string
 	ClientVersion string
+	// Terminal adds the terminal presentation (tool renderers, the `/mcp` manager view). Nil is headless.
+	Terminal *Terminal
 }
 
 const (
@@ -583,6 +585,7 @@ func (e *Extension) registerTools(connection *Connection) {
 			Timeout:   int(connection.Timeout().Milliseconds()),
 			GetClient: func(context.Context) (McpToolCaller, error) { return e.currentClient(name, tool.Name) },
 			Lane:      e.lane(name),
+			Renderers: e.renderers(),
 			ReadableResources: func() bool {
 				return slices.ContainsFunc(e.serversWithResources(), func(s *server) bool { return s.entry.Name == name })
 			},
@@ -1874,4 +1877,34 @@ func (e *Extension) lane(server string) *extension.CallLane {
 		e.lanes[server] = lane
 	}
 	return lane
+}
+
+// Terminal is the terminal presentation of the extension: the renderers of MCP tool calls, the resolver for tools of a
+// server that is not connected yet, and the `/mcp` manager view. A nil Terminal (the default of [Options]) leaves the
+// extension headless: tools have no renderers and `/mcp` has no manager view. Package mcptui supplies the terminal one.
+type Terminal struct {
+	// Renderers returns the renderers of calls to the MCP tool labeled `server/tool`.
+	Renderers func(label string) *extension.ToolRenderers
+	// ToolRendererResolver renders calls to MCP tools before their server connected (a resumed session).
+	ToolRendererResolver extension.ToolRendererResolver
+	// ShowManager runs manage in the manager view until it returns.
+	ShowManager func(ctx context.Context, ui extension.UIContext, events EventContext, copyToClipboard func(text string) error, manage func(McpUi) error) error
+}
+
+// renderers is the tool renderer factory of the terminal presentation, or nil when headless.
+func (e *Extension) renderers() func(label string) *extension.ToolRenderers {
+	if e.options.Terminal == nil {
+		return nil
+	}
+	return e.options.Terminal.Renderers
+}
+
+// NewHeadless is the headless entry point: it returns the extension for host with no terminal presentation, whatever
+// options.Terminal says. Connections, discovery, sign-in, tool registration and execution, and the session lifecycle
+// work as in [New]; tools have no renderers and `/mcp` has no manager view. This package imports neither package tui
+// nor mcptui directly. It still links tui through coding/extension (see docs/design/extension-api-tui-split.md), so an
+// embedder that must not link tui at all uses package mcp, which has no such dependency.
+func NewHeadless(host Host, options Options) *Extension {
+	options.Terminal = nil
+	return New(host, options)
 }

@@ -1,4 +1,4 @@
-package mcpext
+package mcptui
 
 // Ports the renderers of packages/coding-agent/src/extensions/mcp/tools.ts (renderCall, renderResult).
 
@@ -9,6 +9,7 @@ import (
 	"unicode"
 
 	"github.com/MichaelKinsy/PiG/coding/extension"
+	"github.com/MichaelKinsy/PiG/coding/mcpext"
 	"github.com/MichaelKinsy/PiG/internal/codingagent/tools"
 	"github.com/MichaelKinsy/PiG/internal/lazyregexp"
 	"github.com/MichaelKinsy/PiG/tui"
@@ -98,12 +99,12 @@ func renderResult(result extension.AgentToolResult, options extension.ToolRender
 	return component
 }
 
-// fullOutputPathOf is `result.details?.fullOutputPath`: the details of a live result are an [McpToolDetails]; those of a reloaded session are the decoded JSON.
+// fullOutputPathOf is `result.details?.fullOutputPath`: the details of a live result are an [mcpext.McpToolDetails]; those of a reloaded session are the decoded JSON.
 func fullOutputPathOf(details any) string {
 	switch d := details.(type) {
-	case McpToolDetails:
+	case mcpext.McpToolDetails:
 		return d.FullOutputPath
-	case *McpToolDetails:
+	case *mcpext.McpToolDetails:
 		if d != nil {
 			return d.FullOutputPath
 		}
@@ -124,4 +125,22 @@ func isJSWhitespace(r rune) bool {
 		return false
 	}
 	return unicode.IsSpace(r)
+}
+
+// ToolRendererResolver renders calls to MCP tools before their server connected (a resumed session), if it ever does.
+// upstream: packages/coding-agent/src/extensions/mcp/index.ts (pi.registerToolRenderer, #10285)
+func ToolRendererResolver(toolName string, next func() *extension.ToolRenderers) *extension.ToolRenderers {
+	if renderers := next(); renderers != nil {
+		return renderers
+	}
+	if match := mcpToolNamePattern.FindStringSubmatch(toolName); match != nil {
+		return CreateMcpToolRenderers(match[1] + "/" + match[2])
+	}
+	return nil
+}
+
+// Terminal is the terminal presentation to set as [mcpext.Options].Terminal: the tool renderers, the resolver and the
+// `/mcp` manager view.
+func Terminal() *mcpext.Terminal {
+	return &mcpext.Terminal{Renderers: CreateMcpToolRenderers, ToolRendererResolver: ToolRendererResolver, ShowManager: ShowManager}
 }

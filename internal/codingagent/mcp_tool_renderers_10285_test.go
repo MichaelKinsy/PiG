@@ -16,6 +16,7 @@ import (
 	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/coding/extension/host/inproc"
 	"github.com/MichaelKinsy/PiG/coding/mcpext"
+	"github.com/MichaelKinsy/PiG/coding/mcpext/mcptui"
 	"github.com/MichaelKinsy/PiG/tui"
 )
 
@@ -25,7 +26,7 @@ import (
 
 func mcpRendererRunner(t *testing.T, extra ...extension.Extension) *inproc.Runner {
 	t.Helper()
-	mcp, err := factoryload.LoadExtensionFromFactory(mcpext.CreateMcpExtension(mcpext.Options{LoadConfig: func(context.Context) mcpext.LoadedMcpConfig { return mcpext.LoadedMcpConfig{} }}), ".", extension.CreateEventBus(), extension.CreateExtensionRuntime(), "builtin:mcp")
+	mcp, err := factoryload.LoadExtensionFromFactory(mcpext.CreateMcpExtension(mcpext.Options{Terminal: mcptui.Terminal(), LoadConfig: func(context.Context) mcpext.LoadedMcpConfig { return mcpext.LoadedMcpConfig{} }}), ".", extension.CreateEventBus(), extension.CreateExtensionRuntime(), "builtin:mcp")
 	if err != nil {
 		t.Fatal(err)
 	}

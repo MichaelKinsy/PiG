@@ -2,10 +2,8 @@ package mcpext
 
 import (
 	"context"
-	"sync"
 
 	"github.com/MichaelKinsy/PiG/coding/extension"
-	"github.com/MichaelKinsy/PiG/tui"
 )
 
 // API is the part of the extension API the built-in extension registers on: the events upstream's index.ts subscribes
@@ -94,17 +92,9 @@ func CreateMcpExtension(options Options) extension.ExtensionFactory {
 func Factory(options Options) func(api API) *Extension {
 	return func(api API) *Extension {
 		e := New(apiHost{api}, options)
-		// A resumed session renders calls to MCP tools before their server connected, if it ever does.
-		// upstream: packages/coding-agent/src/extensions/mcp/index.ts (pi.registerToolRenderer, #10285)
-		api.RegisterToolRenderer(func(toolName string, next func() *extension.ToolRenderers) *extension.ToolRenderers {
-			if renderers := next(); renderers != nil {
-				return renderers
-			}
-			if match := mcpToolNamePattern.FindStringSubmatch(toolName); match != nil {
-				return CreateMcpToolRenderers(match[1] + "/" + match[2])
-			}
-			return nil
-		})
+		if options.Terminal != nil && options.Terminal.ToolRendererResolver != nil {
+			api.RegisterToolRenderer(options.Terminal.ToolRendererResolver)
+		}
 		api.OnSessionStart(func(ctx context.Context, _ extension.SessionStartEvent) error {
 			e.SessionStart(eventContext(ctx))
 			return nil
@@ -134,7 +124,7 @@ func Factory(options Options) func(api API) *Extension {
 				return e.CompleteCommand(prefix), nil
 			},
 			Handler: func(ctx context.Context, args string) error {
-				return e.RunCommand(ctx, args, commandContext(ctx, options.CopyToClipboard))
+				return e.RunCommand(ctx, args, commandContext(ctx, options.CopyToClipboard, options.Terminal))
 			},
 		})
 		api.OnSessionShutdown(func(ctx context.Context, _ extension.SessionShutdownEvent) error {
@@ -146,7 +136,7 @@ func Factory(options Options) func(api API) *Extension {
 }
 
 // commandContext builds the command context from the extension context a runner puts in ctx.
-func commandContext(ctx context.Context, copyToClipboard func(text string) error) CommandContext {
+func commandContext(ctx context.Context, copyToClipboard func(text string) error, terminal *Terminal) CommandContext {
 	c := extension.FromContext(ctx)
 	out := CommandContext{EventContext: eventContext(ctx)}
 	if c == nil {
@@ -170,34 +160,11 @@ func commandContext(ctx context.Context, copyToClipboard func(text string) error
 		value, err := ui.Input(ctx, title, placeholder, extension.ExtensionUIDialogOptions{})
 		return value, err == nil && value != ""
 	}
+	if terminal == nil || terminal.ShowManager == nil {
+		return out
+	}
 	out.ShowManager = func(ctx context.Context, manage func(McpUi) error) error {
-		return showManager(ctx, ui, out.EventContext, copyToClipboard, manage)
+		return terminal.ShowManager(ctx, ui, out.EventContext, copyToClipboard, manage)
 	}
 	return out
-}
-
-// showManager runs manage in the manager view until it returns (showMcpManager).
-// upstream: packages/coding-agent/src/extensions/mcp/ui.ts:showMcpManager
-func showManager(ctx context.Context, ui extension.UIContext, events EventContext, copyToClipboard func(text string) error, manage func(McpUi) error) error {
-	var running sync.WaitGroup
-	defer running.Wait()
-	_, err := ui.Custom(ctx, extension.CustomFactory(func(host extension.TUI, theme *tui.Theme, keybindings extension.KeybindingsManager, done func(any)) (extension.DisposableComponent, error) {
-		view := NewMcpManagerView(host, themeOf(theme), keybindingsOf(keybindings))
-		view.SetCopyToClipboard(copyToClipboard)
-		running.Go(func() {
-			if err := manage(view); err != nil {
-				events.notify(err.Error(), "error")
-			}
-			done(nil)
-		})
-		return view, nil
-	}), nil)
-	return err
-}
-
-func keybindingsOf(keybindings extension.KeybindingsManager) *tui.TUIKeybindingsManager {
-	if keybindings != nil {
-		return keybindings
-	}
-	return tui.GetTUIKeybindings()
 }

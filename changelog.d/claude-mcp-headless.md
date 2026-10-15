@@ -1,0 +1,3 @@
+### Added
+
+- Headless MCP (#214): package `coding/mcpext` no longer imports the terminal UI. The `/mcp` manager view and the tool renderers moved to `coding/mcpext/mcptui`, and the `pig` binary wires them through `mcpext.Options.Terminal` (`mcptui.Terminal()`), so its output is unchanged. `mcpext.NewHeadless` is the headless entry point. Package `mcp` links no terminal UI; `coding/mcpext` still links it through `coding/extension` (see `docs/design/extension-api-tui-split.md`). `mcpext.McpManagerView`, `NewMcpManagerView` and `CreateMcpToolRenderers` moved to `mcptui`; `McpMenu.Items` is now `[]McpMenuItem`.

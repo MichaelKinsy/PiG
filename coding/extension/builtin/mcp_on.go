@@ -4,6 +4,7 @@ package builtin
 
 import (
 	"github.com/MichaelKinsy/PiG/coding/mcpext"
+	"github.com/MichaelKinsy/PiG/coding/mcpext/mcptui"
 	"github.com/MichaelKinsy/PiG/internal/pigstrip"
 )
 
@@ -16,7 +17,11 @@ func mcpEntries(options Options) []Extension {
 	if pigstrip.Has(pigstrip.ListExtensions, "mcp") {
 		return nil
 	}
-	return []Extension{{Name: "mcp", Replaceable: true, Factory: mcpext.CreateMcpExtension(options.Mcp)}}
+	mcp := options.Mcp
+	if mcp.Terminal == nil {
+		mcp.Terminal = mcptui.Terminal() // The pig binary shows MCP in the terminal; embedders that want it headless use mcpext directly.
+	}
+	return []Extension{{Name: "mcp", Replaceable: true, Factory: mcpext.CreateMcpExtension(mcp)}}
 }
 
 // ConfigureMcp sets where the MCP extension reads `mcp.json` and keeps its credentials and log (the agent directory and the

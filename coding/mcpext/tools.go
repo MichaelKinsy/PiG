@@ -461,6 +461,8 @@ type McpToolOptions struct {
 	Lane *extension.CallLane
 	// ReadableResources says whether `read_mcp_resource` can read the server's resources.
 	ReadableResources func() bool
+	// Renderers draws the call and the result in the terminal; nil leaves the tool without renderers (headless).
+	Renderers func(label string) *extension.ToolRenderers
 }
 
 // CreateMcpToolDefinition adapts one MCP tool to a tool definition.
@@ -479,7 +481,16 @@ func CreateMcpToolDefinition(options McpToolOptions) extension.ToolDefinition {
 		description = fmt.Sprintf("MCP tool %s from server %s", tool.Name, server)
 	}
 	namespace := options.Namespace
+	var renderCall extension.ToolRenderCallFunc
+	var renderResult extension.ToolRenderResultFunc
+	if options.Renderers != nil {
+		if renderers := options.Renderers(server + "/" + tool.Name); renderers != nil {
+			renderCall, renderResult = renderers.RenderCall, renderers.RenderResult
+		}
+	}
 	return extension.ToolDefinition{
+		RenderCall:   renderCall,
+		RenderResult: renderResult,
 		Name:         options.Name,
 		Label:        server + "/" + tool.Name,
 		Description:  description,
@@ -488,14 +499,12 @@ func CreateMcpToolDefinition(options McpToolOptions) extension.ToolDefinition {
 		Exposure:     ToToolExposure(options.Exposure),
 		Namespace:    &namespace,
 		Annotations:  toToolAnnotations(tool),
-		RenderCall:   renderCall(server + "/" + tool.Name),
 		ReserveCallOrder: func(json.RawMessage) *extension.CallOrder {
 			if options.Lane == nil {
 				return nil
 			}
 			return options.Lane.Reserve()
 		},
-		RenderResult: renderResult,
 		Execute: func(ctx context.Context, _ string, params json.RawMessage, onUpdate extension.AgentToolUpdateCallback) (extension.AgentToolResult, error) {
 			requestOptions := mcp.RequestOptions{TimeoutMs: options.Timeout}
 			if order, ok := extension.CallOrderFromContext(ctx); ok {
