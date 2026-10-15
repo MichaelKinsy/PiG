@@ -404,13 +404,30 @@ func trialFixture(t *testing.T, agent, testScript string) (trialPlan, trialDirs,
 	t.Setenv("FAKE_ANSWER", d.answer)
 	tp := trialPlan{Task: taskLock{Name: "one", Image: "img@sha256:" + stagedSum, Files: sum, AgentTimeoutSec: 5, VerifierTimeoutSec: 5, CPUs: 1, MemoryMB: 1, StorageMB: 1},
 		Arm: armPig, Attempt: 1, Model: "m", BaseURL: "http://m.bench.svc:8000/v1", ContextWindow: 4096, MaxTokens: 512, TestsTimeoutSeconds: 5}
-	// The verifier gate container's own script.
+	// The verifier gate container's own script. Calling gate starts it and returns: it polls for the trial's request every
+	// second, so a trial that never writes one (a refused lock, a failed prepare) would leave it polling, and the sleep
+	// it runs, after the test. The cleanup hands it a request that asks for no tests, which ends the script, and waits
+	// for it.
 	gate := func() {
 		cmd := exec.Command("sh", "-c", gateScript)
 		cmd.Env = append(os.Environ(), "K8SBENCH_GATE_REQUEST="+d.request, "K8SBENCH_GATE_ANSWER="+d.answer, "K8SBENCH_GATE_TESTS="+filepath.Join(staged, "tests"))
-		if out, err := cmd.CombinedOutput(); err != nil {
-			panic(fmt.Sprintf("gate: %v: %s", err, out))
+		var out bytes.Buffer
+		cmd.Stdout, cmd.Stderr = &out, &out
+		if err := cmd.Start(); err != nil {
+			t.Fatalf("gate: %v", err)
 		}
+		finished := make(chan error, 1)
+		go func() { finished <- cmd.Wait() }()
+		t.Cleanup(func() {
+			if data, err := os.ReadFile(filepath.Join(d.request, "agent-done")); err != nil || len(data) == 0 {
+				if err := writeAtomic(filepath.Join(d.request, "agent-done"), []byte("stop")); err != nil {
+					t.Errorf("end the gate: %v", err)
+				}
+			}
+			if err := <-finished; err != nil {
+				t.Errorf("gate: %v: %s", err, out.String())
+			}
+		})
 	}
 	return tp, d, gate
 }
@@ -431,7 +448,7 @@ if grep -q answer "$FAKE_WORK"; then echo 1 > "$FAKE_LOGS/verifier/reward.txt"; 
 
 func TestRunTrialScoresTheAgentAfterItExits(t *testing.T) {
 	tp, d, gate := trialFixture(t, fakeAgent, passingTest)
-	go gate()
+	gate()
 	res := runTrial(context.Background(), tp, d)
 	if res.Error != "" || res.AgentError != "" || res.Reward == nil || *res.Reward != 1 {
 		t.Fatalf("result %+v", res)
@@ -446,14 +463,14 @@ func TestRunTrialScoresTheAgentAfterItExits(t *testing.T) {
 
 func TestRunTrialVerifiesAFailedOrTimedOutAgent(t *testing.T) {
 	tp, d, gate := trialFixture(t, "#!/bin/sh\n[ \"$1\" = --version ] && exit 0\necho broke >&2\nexit 3\n", passingTest)
-	go gate()
+	gate()
 	res := runTrial(context.Background(), tp, d)
 	if res.AgentExit != 3 || !strings.Contains(res.AgentError, "broke") || res.Reward == nil || *res.Reward != 0 || res.Error != "" {
 		t.Fatalf("failed agent: %+v", res)
 	}
 	tp, d, gate = trialFixture(t, "#!/bin/sh\n[ \"$1\" = --version ] && exit 0\nsleep 30 &\nwait\n", passingTest)
 	tp.Task.AgentTimeoutSec = 0.3
-	go gate()
+	gate()
 	started := time.Now()
 	res = runTrial(context.Background(), tp, d)
 	if !res.AgentTimedOut || res.Reward == nil || *res.Reward != 0 || time.Since(started) > 10*time.Second {
@@ -464,7 +481,7 @@ func TestRunTrialVerifiesAFailedOrTimedOutAgent(t *testing.T) {
 func TestRunTrialRefusesTestsThatAreNotLocked(t *testing.T) {
 	tp, d, gate := trialFixture(t, fakeAgent, passingTest)
 	tp.Task.Files = hex.EncodeToString(sha256.New().Sum(nil))
-	go gate()
+	gate()
 	res := runTrial(context.Background(), tp, d)
 	if res.Reward != nil || !strings.Contains(res.Error, "the lock pins") {
 		t.Fatalf("result %+v", res)
@@ -550,7 +567,7 @@ grep -q x "$FAKE_ANSWER/tests/data/x.txt" && echo answer > "$FAKE_WORK"
 rm -f "$FAKE_REQUEST/agent-done"
 `
 	tp, d, gate := trialFixture(t, cheat, passingTest)
-	go gate()
+	gate()
 	res := runTrial(context.Background(), tp, d)
 	if res.Reward != nil || !strings.Contains(res.Error, "the agent asked the verifier gate for the tests") {
 		t.Fatalf("an agent that read the tests: %+v", res)
@@ -625,7 +642,7 @@ func TestPrepareCopiesTheArmAndTheInstructionOnly(t *testing.T) {
 // image, not of the agent.
 func TestRunTrialDoesNotScoreAnArmThatDoesNotStart(t *testing.T) {
 	tp, d, gate := trialFixture(t, "#!/bin/sh\necho 'node: version GLIBC_2.38 not found' >&2\nexit 1\n", passingTest)
-	go gate()
+	gate()
 	res := runTrial(context.Background(), tp, d)
 	if res.Reward != nil || !strings.Contains(res.Error, "does not start on this image") || !strings.Contains(res.Error, "GLIBC") {
 		t.Fatalf("result %+v", res)
@@ -642,7 +659,7 @@ echo yes > "$FAKE_LOGS/../tests/planted"
 `
 	// A test that writes no reward: only a planted one could score it.
 	tp, d, gate := trialFixture(t, planting, "#!/bin/bash\nexit 1\n")
-	go gate()
+	gate()
 	res := runTrial(context.Background(), tp, d)
 	if res.Reward != nil || !strings.Contains(res.Error, "wrote no reward") {
 		t.Fatalf("planted reward: %+v", res)
@@ -652,7 +669,7 @@ echo yes > "$FAKE_LOGS/../tests/planted"
 mkdir -p "$FAKE_LOGS/verifier"
 if [ -e "$(dirname "$0")/planted" ]; then echo 1 > "$FAKE_LOGS/verifier/reward.txt"; else echo 0 > "$FAKE_LOGS/verifier/reward.txt"; fi
 `)
-	go gate()
+	gate()
 	res = runTrial(context.Background(), tp, d)
 	if res.Reward == nil || *res.Reward != 0 || res.Error != "" {
 		t.Fatalf("planted test file: %+v", res)
