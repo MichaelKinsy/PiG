@@ -265,14 +265,24 @@ def closure_workspaces(source: Path, root: str | None = None) -> list[str]:
 
 
 def pack(source: Path, destination: Path, root: str | None = None) -> dict[str, Path]:
-    """Pack each workspace package the oracle installs (those `root` needs)."""
+    """Pack each workspace package the oracle installs (those `root` needs).
+
+    npm pack records each file's mode, and Windows has no execute bit: the build's chmod +x (coding-agent's dist/cli.js and
+    bundle launchers) made the packs, and so the frozen integrity, differ by OS. Each package is packed from a copy whose
+    files are all 0644, so every OS packs the same bytes; npm marks bin targets executable when it installs them."""
     workspaces = workspace_names(source)
     shutil.rmtree(destination, ignore_errors=True)
     destination.mkdir(parents=True)
     packed: dict[str, Path] = {}
     for name in closure_workspaces(source, root):
         before = set(destination.glob("*.tgz"))
-        npm("pack", *NPM_FLAGS, "--pack-destination", str(destination), cwd=workspaces[name])
+        with tempfile.TemporaryDirectory() as staging:
+            copy = Path(staging) / "package"
+            shutil.copytree(workspaces[name], copy, symlinks=True, ignore=shutil.ignore_patterns("node_modules"))
+            for path in copy.rglob("*"):
+                if path.is_file() and not path.is_symlink():
+                    path.chmod(0o644)
+            npm("pack", *NPM_FLAGS, "--pack-destination", str(destination), cwd=copy)
         (new,) = set(destination.glob("*.tgz")) - before
         packed[name] = new
     return packed
