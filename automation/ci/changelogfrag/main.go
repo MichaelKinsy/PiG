@@ -374,8 +374,8 @@ func main() {
 func gzipChangelog(text []byte) []byte {
 	var buf bytes.Buffer
 	w, _ := gzip.NewWriterLevel(&buf, gzip.BestCompression)
-	w.Write(text)
-	w.Close()
+	_, _ = w.Write(text)
+	_ = w.Close()
 	return buf.Bytes()
 }
 

@@ -8,8 +8,9 @@ import (
 	"syscall"
 	"testing"
 
-	btypes "github.com/MichaelKinsy/PiG/third_party/awssdk/service/bedrockruntime/types"
 	smithyhttp "github.com/aws/smithy-go/transport/http"
+
+	btypes "github.com/MichaelKinsy/PiG/third_party/awssdk/service/bedrockruntime/types"
 )
 
 func TestBedrockRequestTransportFailureMatchesFetchFailure(t *testing.T) {

@@ -101,7 +101,7 @@ func classifierQuestionsOf(specs []llamaOracleQuestion) ClassifierQuestions {
 		case "choice":
 			criteria := []ClassifierChoiceCriterion{}
 			for _, c := range q.Criteria {
-				criteria = append(criteria, ClassifierChoiceCriterion{Key: c.Key, Description: c.Description})
+				criteria = append(criteria, ClassifierChoiceCriterion(c))
 			}
 			questions = append(questions, ClassifierQuestionEntry{ID: q.ID, Question: ClassifierChoiceQuestion{Instructions: q.Instructions, Criteria: criteria}})
 		case "score":

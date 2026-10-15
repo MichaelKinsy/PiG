@@ -9,9 +9,10 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/aws/smithy-go"
+
 	bdoc "github.com/MichaelKinsy/PiG/third_party/awssdk/service/bedrockruntime/document"
 	btypes "github.com/MichaelKinsy/PiG/third_party/awssdk/service/bedrockruntime/types"
-	"github.com/aws/smithy-go"
 )
 
 func TestBedrockResolveRegion(t *testing.T) {

@@ -442,7 +442,8 @@ func (builder *assistantStreamBuilder) endToolCallWith(index int, finalize func(
 		return
 	}
 	block := builder.partial.Content[state.contentIndex].(ToolCall)
-	if block.scratch.customInput {
+	switch {
+	case block.scratch.customInput:
 		input, _ := block.Arguments[block.scratch.property].(string)
 		delta, emit, err := appendGrammarToolInputJSONDelta(&block.scratch.jsonBuffer, block.scratch.property, input, true)
 		if err != nil {
@@ -453,9 +454,9 @@ func (builder *assistantStreamBuilder) endToolCallWith(index int, finalize func(
 		if emit {
 			builder.push(ToolCallDeltaEvent{ContentIndex: state.contentIndex, Delta: delta, Partial: builder.partial})
 		}
-	} else if finalArgumentsAPI(builder.partial.API) {
+	case finalArgumentsAPI(builder.partial.API):
 		block.SetFinalArguments(state.arguments.String())
-	} else {
+	default:
 		block.SetStreamingArguments(state.arguments.String())
 	}
 	if block.ID == "" {

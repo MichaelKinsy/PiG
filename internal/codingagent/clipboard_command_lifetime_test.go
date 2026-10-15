@@ -33,7 +33,7 @@ const clipboardDescendantPayload = 1 << 20
 var clipboardDescendantConn net.Conn
 
 func runClipboardDescendantHelper(addr string) int {
-	conn, err := net.Dial("tcp", addr)
+	conn, err := net.Dial("tcp", addr) //nolint:gosec // G704: the helper subprocess dials the loopback listener address its parent test passed it
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		return 1

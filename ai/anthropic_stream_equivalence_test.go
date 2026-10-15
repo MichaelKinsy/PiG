@@ -145,7 +145,7 @@ func TestAnthropicSSEReaderMatchesReferenceLines(t *testing.T) {
 			}
 			got = append(got, event)
 		}
-		if !reflect.DeepEqual(got, reference.events) && !(len(got) == 0 && len(reference.events) == 0) {
+		if !reflect.DeepEqual(got, reference.events) && (len(got) != 0 || len(reference.events) != 0) {
 			t.Fatalf("stream %q in %d chunks:\n got %q\nwant %q", body, len(chunks), got, reference.events)
 		}
 	}

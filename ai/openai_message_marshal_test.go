@@ -3,8 +3,9 @@ package ai
 import (
 	"bytes"
 	"encoding/json"
-	"github.com/MichaelKinsy/PiG/internal/jsstring"
 	"testing"
+
+	"github.com/MichaelKinsy/PiG/internal/jsstring"
 )
 
 // The request encoder writes each message through MarshalJSONTo; its bytes must be the bytes MarshalJSON gives, under encoding/json's own options: HTML and U+2028 escaping, invalid UTF-8 replaced, raw reasoning details compacted, nil and empty fields as omitempty decides.

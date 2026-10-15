@@ -1,6 +1,7 @@
 package sessionentry
 
 import (
+	"bytes"
 	"math"
 	"testing"
 
@@ -38,7 +39,7 @@ func TestMessageEntryAppendStringifyMatchesMarshalJSON(t *testing.T) {
 		if err != nil || string(appended) != "prefix:"+string(want) {
 			t.Fatalf("%s: AppendStringify = %s, %v\nwant prefix:%s", name, appended, err, want)
 		}
-		if line, err := json.MarshalStringify(entry); err != nil || string(line) != string(want) {
+		if line, err := json.MarshalStringify(entry); err != nil || !bytes.Equal(line, want) {
 			t.Fatalf("%s: MarshalStringify = %s, %v\nwant %s", name, line, err, want)
 		}
 	}

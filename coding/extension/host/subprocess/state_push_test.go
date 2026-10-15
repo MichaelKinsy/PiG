@@ -347,7 +347,7 @@ func TestSnapshotTakesTheHostSettingsEncoding(t *testing.T) {
 	bridge.SetHostAction("getSettingsJSON", func() json.RawMessage { return encoded })
 	reads.Store(0)
 	for range 3 {
-		if got := bridge.Snapshot(nil, 0, false).Settings; unsafe.SliceData(got) != unsafe.SliceData(encoded) {
+		if got := bridge.Snapshot(nil, 0, false).Settings; unsafe.SliceData(got) != unsafe.SliceData(encoded) { //nolint:gosec // G103: compares backing-array addresses to prove the encoding is reused; the pointers are never dereferenced
 			t.Fatalf("settings = %s, want the host's encoding unchanged", got)
 		}
 	}

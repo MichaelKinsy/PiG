@@ -154,7 +154,7 @@ func (message *AssistantMessage) Publication() (cell uintptr, seq uint64) {
 	observed.mu.RLock()
 	seq = observed.seq
 	observed.mu.RUnlock()
-	return uintptr(unsafe.Pointer(observed)), seq
+	return uintptr(unsafe.Pointer(observed)), seq //nolint:gosec // G103: the address is only an identity token for the publication cell; it is never converted back to a pointer or dereferenced
 }
 
 // AssistantContentProjection is what a renderer reads of one content block. Kind is the block's type ("text", "thinking" or "toolCall"); Text, Thinking, ToolCallID, ToolCallName and Arguments are set for the kind that holds them.

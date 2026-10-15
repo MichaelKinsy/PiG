@@ -1729,7 +1729,7 @@ func guardedSet(t types.Type) *types.Map {
 			if set != nil {
 				return nil
 			}
-			if e, isStruct := m.Elem().Underlying().(*types.Struct); !(isStruct && e.NumFields() == 0) && basicInfo(m.Elem())&types.IsBoolean == 0 {
+			if e, isStruct := m.Elem().Underlying().(*types.Struct); (!isStruct || e.NumFields() != 0) && basicInfo(m.Elem())&types.IsBoolean == 0 {
 				return nil
 			}
 			set = m

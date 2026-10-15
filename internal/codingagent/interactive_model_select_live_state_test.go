@@ -31,7 +31,7 @@ func (h *liveModelSessionHandle) BeginModelCycleOnMain(ctx context.Context, dire
 
 func (h *liveModelSessionHandle) SetModelOnMain(_ context.Context, model *ai.Model, options ModelMutationOptions, dispatch func(func() error) error) error {
 	if err := dispatch(func() error {
-		_ = h.recordingCompactHandle.SetModel(model, options)
+		_ = h.SetModel(model, options)
 		h.apply(model)
 		return nil
 	}); err != nil {

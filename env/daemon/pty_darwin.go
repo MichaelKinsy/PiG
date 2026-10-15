@@ -29,7 +29,7 @@ func openPty() (master, slave *os.File, err error) {
 	}{
 		{syscall.TIOCPTYGRANT, nil},
 		{syscall.TIOCPTYUNLK, nil},
-		{syscall.TIOCPTYGNAME, unsafe.Pointer(&name[0])},
+		{syscall.TIOCPTYGNAME, unsafe.Pointer(&name[0])}, //nolint:gosec // G103: TIOCPTYGNAME writes the pty name into the caller's buffer through the ioctl argument; the daemon is built without cgo
 	} {
 		if _, _, errno := syscall.Syscall(syscall.SYS_IOCTL, uintptr(fd), step.request, uintptr(step.argument)); errno != 0 {
 			_ = master.Close()
@@ -78,8 +78,8 @@ func cString(buffer []byte) string {
 // still runs and the system tells. The daemon is built without cgo, so it makes the system call proc_name makes.
 func processName(pid int) (string, bool) {
 	var info [bsdInfoSize]byte
-	read, _, errno := unix.Syscall6(unix.SYS_PROC_INFO, procInfoCallPidInfo, uintptr(pid), procPidTBSDInfo, 0,
-		uintptr(unsafe.Pointer(&info[0])), bsdInfoSize)
+	read, _, errno := unix.Syscall6(unix.SYS_PROC_INFO, procInfoCallPidInfo, uintptr(pid), procPidTBSDInfo, 0, //nolint:staticcheck // SYS_PROC_INFO has no libSystem wrapper reachable without cgo, and the daemon is built without cgo
+		uintptr(unsafe.Pointer(&info[0])), bsdInfoSize) //nolint:gosec // G103: proc_info fills the caller's buffer through the syscall argument; the daemon is built without cgo
 	if errno != 0 || read != bsdInfoSize {
 		return "", false
 	}

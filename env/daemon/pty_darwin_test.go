@@ -19,7 +19,7 @@ func TestProcessNameIsProcNameNotTheSixteenCharacterCommandName(t *testing.T) {
 	if err != nil {
 		t.Skip("no /bin/sleep to copy")
 	}
-	defer source.Close()
+	defer func() { _ = source.Close() }()
 	for _, name := range []string{"sleep", "pi-env-name-over-sixteen", "pi-env-name-of-thirty-one-chars-xx"} {
 		path := filepath.Join(t.TempDir(), name)
 		target, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY, 0o755)

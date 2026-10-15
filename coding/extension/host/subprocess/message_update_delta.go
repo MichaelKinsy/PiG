@@ -82,10 +82,10 @@ func (s *sparse) str(value string) string {
 
 // validUTF8 is utf8.ValidString(value) at the cost of the bytes no validated string covers. A streamed text grows in a buffer whose written bytes never change, so the text of a delta begins with the bytes of the previous delta's text: a validated string whose bytes start value's is a prefix of it, valid and ending on a code point boundary, and only the rest needs checking.
 func (s *sparse) validUTF8(value string) bool {
-	data := unsafe.StringData(value)
+	data := unsafe.StringData(value) //nolint:gosec // G103: compares string data addresses for identity; the pointers are never dereferenced
 	covered := 0
 	for _, known := range s.validated {
-		if len(known) > covered && len(known) <= len(value) && unsafe.StringData(known) == data {
+		if len(known) > covered && len(known) <= len(value) && unsafe.StringData(known) == data { //nolint:gosec // G103: compares string data addresses for identity; the pointers are never dereferenced
 			covered = len(known)
 		}
 	}
@@ -580,7 +580,7 @@ func diffDelta(ops []byte, path []byte, old, next *deltaNode) []byte {
 
 // extends reports whether next begins with old. A streamed text that grew in place shares old's bytes, which no string's owner changes, so the comparison costs nothing; any other string is compared.
 func extends(next, old string) bool {
-	if unsafe.StringData(next) == unsafe.StringData(old) {
+	if unsafe.StringData(next) == unsafe.StringData(old) { //nolint:gosec // G103: compares string data addresses for identity; the pointers are never dereferenced
 		return true
 	}
 	return strings.HasPrefix(next, old)

@@ -27,7 +27,7 @@ func TestExtensionSettingsJSONEncodesOncePerSettingsGeneration(t *testing.T) {
 		if want := map[string]any(sm.ExtensionSettings()); !reflect.DeepEqual(decoded, want) {
 			t.Fatalf("%s: ExtensionSettingsJSON\n got %s\nwant %v", step, got, want)
 		}
-		if again := sm.ExtensionSettingsJSON(); unsafe.SliceData(again) != unsafe.SliceData(got) {
+		if again := sm.ExtensionSettingsJSON(); unsafe.SliceData(again) != unsafe.SliceData(got) { //nolint:gosec // G103: compares backing-array addresses to prove the encoding is reused; the pointers are never dereferenced
 			t.Fatalf("%s: unchanged settings were encoded again", step)
 		}
 		if allocs := testing.AllocsPerRun(50, func() { _ = sm.ExtensionSettingsJSON() }); allocs != 0 {
@@ -49,7 +49,7 @@ func TestExtensionSettingsJSONEncodesOncePerSettingsGeneration(t *testing.T) {
 	for _, w := range writes {
 		w.write()
 		got := check(w.name)
-		if unsafe.SliceData(got) == unsafe.SliceData(previous) {
+		if unsafe.SliceData(got) == unsafe.SliceData(previous) { //nolint:gosec // G103: compares backing-array addresses to prove the encoding was regenerated; the pointers are never dereferenced
 			t.Fatalf("%s: the write kept the previous generation's encoding", w.name)
 		}
 		previous = got

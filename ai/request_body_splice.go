@@ -69,7 +69,7 @@ type stringIdentity struct {
 	size int
 }
 
-func identityOf(s string) stringIdentity { return stringIdentity{unsafe.StringData(s), len(s)} }
+func identityOf(s string) stringIdentity { return stringIdentity{unsafe.StringData(s), len(s)} } //nolint:gosec // G103: the address and length identify a string in a cache key; the pointer is never dereferenced
 
 func newQuotedStringCache(limit int) *quotedStringCache {
 	return &quotedStringCache{seed: maphash.MakeSeed(), limit: limit, entries: map[quotedStringKey]*list.Element{}, bySource: map[stringIdentity]*list.Element{}, byData: map[*byte]*list.Element{}}

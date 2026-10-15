@@ -60,7 +60,7 @@ func keybindingsOracleCandidates() []string {
 		for mod := 2; mod <= 9; mod++ {
 			out = append(out, fmt.Sprintf("\x1b[%d;%du", cp, mod), fmt.Sprintf("\x1b[%d;%d:3u", cp, mod), fmt.Sprintf("\x1b[%d;%d:2u", cp, mod))
 		}
-		out = append(out, fmt.Sprintf("\x1b[%d;5;13~", cp), fmt.Sprintf("\x1b[27;5;%d~", cp), fmt.Sprintf("\x1b[27;2;%d~", cp), fmt.Sprintf("\x1b[%d:%d:%d;5u", cp, cp, cp), fmt.Sprintf("\x1b[1089::99;5u"))
+		out = append(out, fmt.Sprintf("\x1b[%d;5;13~", cp), fmt.Sprintf("\x1b[27;5;%d~", cp), fmt.Sprintf("\x1b[27;2;%d~", cp), fmt.Sprintf("\x1b[%d:%d:%d;5u", cp, cp, cp), "\x1b[1089::99;5u")
 	}
 	return slices.Compact(out)
 }
@@ -143,7 +143,7 @@ func TestKeybindingsManagerMatchesPi(t *testing.T) {
 					t.Errorf("kitty=%v bindings=%v %s: only Pig %v; only Pi %v", probe.Kitty, probe.Bindings, action, diff(got, want.Matches[action]), diff(want.Matches[action], got))
 				}
 			}
-			if keys := manager.GetKeys(action); !slices.Equal(keys, want.Keys[action]) && !(len(keys) == 0 && len(want.Keys[action]) == 0) {
+			if keys := manager.GetKeys(action); !slices.Equal(keys, want.Keys[action]) && (len(keys) != 0 || len(want.Keys[action]) != 0) {
 				failures++
 				if failures <= 6 {
 					t.Errorf("kitty=%v bindings=%v %s keys: Pig %v, Pi %v", probe.Kitty, probe.Bindings, action, keys, want.Keys[action])

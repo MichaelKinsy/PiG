@@ -1,6 +1,7 @@
 package codingagent
 
 import (
+	"bytes"
 	"encoding/json"
 	"testing"
 )
@@ -106,7 +107,7 @@ func TestSettingsReferenceGettersReturnCopies(t *testing.T) {
 	got := sm.Get()
 	wantJSON, _ := json.Marshal(want)
 	gotJSON, _ := json.Marshal(got)
-	if string(wantJSON) != string(gotJSON) {
+	if !bytes.Equal(wantJSON, gotJSON) {
 		t.Fatalf("a getter's result reached the manager:\n got %s\nwant %s", gotJSON, wantJSON)
 	}
 }

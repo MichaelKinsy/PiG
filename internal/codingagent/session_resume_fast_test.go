@@ -19,7 +19,6 @@ func fastTestLines() []string {
 		`{"type":"message","message":{"role":"toolResult","content":"x"},"id":"a"}`,
 		` ` + tr + ` `,
 		tr + "\r" + tr,
-		strings.Replace(tr, `"toolResult"`, `"toolResult"`, 1),
 		strings.Replace(tr, `"type":"message"`, `"type":"message","type":"session_info","name":5`, 1),
 		strings.Replace(tr, `"role":"toolResult"`, `"role":"toolResult","role":"user"`, 1),
 		strings.Replace(tr, `"role":"toolResult"`, `"role":"user","role":"toolResult"`, 1),

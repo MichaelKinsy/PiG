@@ -234,8 +234,8 @@ func (b *AssistantMessageComponent) appendDelta(thinking bool, delta string) {
 // SetContent replaces text/thinking content in message order for streaming or redraw. Blocks are trimmed, empty ones skipped, and consecutive thinking blocks form one run joined by a blank line. An empty text segment preserves an invisible boundary such as a tool call.
 func (b *AssistantMessageComponent) SetContent(content []AssistantSegment) {
 	b.content = append(b.content[:0], content...)
-	previous := append(b.previousSegments[:0], b.segments...)
-	b.previousSegments = previous
+	b.previousSegments = append(b.previousSegments[:0], b.segments...)
+	previous := b.previousSegments
 	b.segments = b.segments[:0]
 	markdown := func(text string, thinking bool) *Markdown {
 		i := len(b.segments)

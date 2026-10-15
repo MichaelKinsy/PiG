@@ -105,7 +105,7 @@ func diffLinesResultToPatch(d *jsdiff.LineDiff, context int) []patchHunk {
 		}
 		if oldRangeStart != 0 {
 			shown := current.Count
-			closes := !(current.Count <= context*2 && i < partCount-2)
+			closes := current.Count > context*2 || i >= partCount-2
 			if closes {
 				shown = min(current.Count, context)
 			}

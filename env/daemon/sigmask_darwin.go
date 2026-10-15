@@ -19,11 +19,11 @@ func withEmptySignalMask(start func() error) error {
 	runtime.LockOSThread()
 	defer runtime.UnlockOSThread()
 	var empty, previous uint32
-	if _, _, errno := syscall.RawSyscall(syscall.SYS_SIGPROCMASK, sigSetMask, uintptr(unsafe.Pointer(&empty)), uintptr(unsafe.Pointer(&previous))); errno != 0 {
+	if _, _, errno := syscall.RawSyscall(syscall.SYS_SIGPROCMASK, sigSetMask, uintptr(unsafe.Pointer(&empty)), uintptr(unsafe.Pointer(&previous))); errno != 0 { //nolint:gosec // G103: sigprocmask reads and writes the caller's signal-set words through the syscall arguments; the daemon is built without cgo
 		return errno
 	}
 	defer func() {
-		_, _, _ = syscall.RawSyscall(syscall.SYS_SIGPROCMASK, sigSetMask, uintptr(unsafe.Pointer(&previous)), 0)
+		_, _, _ = syscall.RawSyscall(syscall.SYS_SIGPROCMASK, sigSetMask, uintptr(unsafe.Pointer(&previous)), 0) //nolint:gosec // G103: sigprocmask restores the signal-set word through the syscall argument; the daemon is built without cgo
 	}()
 	return start()
 }

@@ -3,6 +3,7 @@ package coding
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -163,7 +164,7 @@ func runPiAuthView(t *testing.T) piAuthViewReport {
 	out, err := cmd.Output()
 	if err != nil {
 		var stderr []byte
-		if exit, ok := err.(*exec.ExitError); ok {
+		if exit := (*exec.ExitError)(nil); errors.As(err, &exit) {
 			stderr = exit.Stderr
 		}
 		t.Fatalf("Pi: %v\n%s\n%s", err, out, stderr)

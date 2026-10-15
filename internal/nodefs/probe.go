@@ -27,5 +27,5 @@ func (p *PathProbe) Is(path string) bool { return string(p.buf) == path }
 // Exists is fs.existsSync of the probe's path.
 func (p *PathProbe) Exists() bool {
 	// Exists keeps no reference to its argument, so it can read the buffer in place.
-	return Exists(unsafe.String(unsafe.SliceData(p.buf), len(p.buf)))
+	return Exists(unsafe.String(unsafe.SliceData(p.buf), len(p.buf))) //nolint:gosec // G103: Exists keeps no reference to its argument, so the buffer is read in place without a copy; the bytes are never mutated while the string lives
 }

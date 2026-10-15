@@ -27,7 +27,6 @@ import (
 
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/extensions/sdk/json"
-	"github.com/MichaelKinsy/PiG/internal/jsnumber"
 	"github.com/MichaelKinsy/PiG/internal/jsonstringify"
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
 	"github.com/MichaelKinsy/PiG/tui"
@@ -436,27 +435,6 @@ func strArg(args map[string]any, keys ...string) string {
 		}
 	}
 	return ""
-}
-
-// jsValueNumber mirrors JavaScript Number(value) for a decoded JSON value.
-func jsValueNumber(value any) float64 {
-	switch v := value.(type) {
-	case nil:
-		return 0
-	case float64:
-		return v
-	case bool:
-		if v {
-			return 1
-		}
-		return 0
-	case string:
-		return jsnumber.Parse(v)
-	case []any:
-		return jsnumber.Parse(jsStringValue(v))
-	default:
-		return math.NaN()
-	}
 }
 
 // extractCustomMessageText pulls visible text out of a

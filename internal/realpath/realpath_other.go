@@ -33,7 +33,8 @@ func walk(path string) (string, error) {
 	dest := append(make([]byte, 0, len(path)), vol...)
 	linksWalked := 0
 	var st unix.Stat_t
-	for start, end := volLen, volLen; start < len(path); start = end {
+	var end int
+	for start := volLen; start < len(path); start = end {
 		for start < len(path) && path[start] == '/' {
 			start++
 		}
@@ -119,7 +120,7 @@ func walk(path string) (string, error) {
 // lstatInPlace lstats the path in buf without a path string: unix.Lstat keeps no reference to its argument.
 func lstatInPlace(buf []byte, st *unix.Stat_t) error {
 	for {
-		err := unix.Lstat(unsafe.String(unsafe.SliceData(buf), len(buf)), st)
+		err := unix.Lstat(unsafe.String(unsafe.SliceData(buf), len(buf)), st) //nolint:gosec // G103: unix.Lstat keeps no reference to its argument, so the buffer is read in place without a copy
 		if err != unix.EINTR {
 			return err
 		}

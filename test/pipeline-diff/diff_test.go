@@ -131,8 +131,7 @@ func withD171(messages []any) {
 			if result["type"] != "tool_result" || result["is_error"] != true {
 				continue
 			}
-			switch content := result["content"].(type) {
-			case []any:
+			if content, ok := result["content"].([]any); ok {
 				var lines []string
 				placeholder := len(content) > 1
 				for index, part := range content {

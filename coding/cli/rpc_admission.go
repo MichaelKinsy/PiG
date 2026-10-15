@@ -461,11 +461,12 @@ func (a *rpcAdmission) promptInput(id rpcRequestID, cmd RPCPromptCommand) {
 		if slices.ContainsFunc(a.session.Messages(), func(m agent.AgentMessage) bool { return m.Assistant != nil }) {
 			checked := a.promptCompactionCheck()
 			checked.then(func(_ struct{}, err error) {
-				if err != nil && !a.session.AgentRunAbortRequested() {
+				switch {
+				case err != nil && !a.session.AgentRunAbortRequested():
 					failStarted(err)
-				} else if a.ctx.Err() == nil {
+				case a.ctx.Err() == nil:
 					prepare()
-				} else {
+				default:
 					start.Abandon()
 				}
 			})

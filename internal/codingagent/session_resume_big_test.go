@@ -24,12 +24,12 @@ func TestSessionListingBigSynthetic(t *testing.T) {
 	big := filepath.Join(dir, "big.jsonl")
 	f, _ := os.Create(big)
 	w := bufio.NewWriterSize(f, 1<<20)
-	fmt.Fprintln(w, fastTestHeader)
+	_, _ = fmt.Fprintln(w, fastTestHeader)
 	pad := strings.Repeat("lorem <ipsum> ", 3000)
 	for i := 0; w.Buffered() >= 0 && i < 24000; i++ {
-		fmt.Fprintf(w, `{"type":"message","id":"t%d","message":{"role":"toolResult","content":[{"type":"text","text":"%s"}]}}`+"\n", i, pad)
+		_, _ = fmt.Fprintf(w, `{"type":"message","id":"t%d","message":{"role":"toolResult","content":[{"type":"text","text":"%s"}]}}`+"\n", i, pad)
 		if i%2 == 0 {
-			fmt.Fprintf(w, `{"type":"message","id":"a%d","message":{"role":"assistant","content":[{"type":"text","text":"reply %d %s"}],"timestamp":%d}}`+"\n", i, i, pad, 1700000000000+i)
+			_, _ = fmt.Fprintf(w, `{"type":"message","id":"a%d","message":{"role":"assistant","content":[{"type":"text","text":"reply %d %s"}],"timestamp":%d}}`+"\n", i, i, pad, 1700000000000+i)
 		}
 	}
 	_ = w.Flush()

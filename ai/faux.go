@@ -1010,12 +1010,12 @@ func sameFauxBlock(a, b any) bool {
 
 // sameString reports whether a and b are the same string: the same bytes at the same address.
 func sameString(a, b string) bool {
-	return len(a) == len(b) && (len(a) == 0 || unsafe.StringData(a) == unsafe.StringData(b))
+	return len(a) == len(b) && (len(a) == 0 || unsafe.StringData(a) == unsafe.StringData(b)) //nolint:gosec // G103: compares string data addresses for identity; the pointers are never dereferenced
 }
 
 // sameMap reports whether a and b are the same map.
 func sameMap(a, b JsonObject) bool {
-	return *(*unsafe.Pointer)(unsafe.Pointer(&a)) == *(*unsafe.Pointer)(unsafe.Pointer(&b))
+	return *(*unsafe.Pointer)(unsafe.Pointer(&a)) == *(*unsafe.Pointer)(unsafe.Pointer(&b)) //nolint:gosec // G103: compares map header words for identity; the pointers are never dereferenced
 }
 
 // commonUTF16Prefix is the number of leading UTF-16 units a and b share, counted as utf16.Encode([]rune(string(text))) counts them:

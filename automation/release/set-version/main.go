@@ -175,8 +175,8 @@ func prepare(root string, opt options) (*plan, error) {
 	}
 	var gz bytes.Buffer
 	w, _ := gzip.NewWriterLevel(&gz, gzip.BestCompression)
-	w.Write(p.after["CHANGELOG.md"])
-	w.Close()
+	_, _ = w.Write(p.after["CHANGELOG.md"])
+	_ = w.Close()
 	p.after["CHANGELOG.md.gz"] = gz.Bytes() // embed.go embeds the compressed changelog
 	return p, nil
 }

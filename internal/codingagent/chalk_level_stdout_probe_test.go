@@ -16,7 +16,7 @@ func TestChalkModifiersEnabledProbesStdoutOncePerFile(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		t.Cleanup(func() { reader.Close(); writer.Close() })
+		t.Cleanup(func() { _ = reader.Close(); _ = writer.Close() })
 		// SyscallConn reads the descriptor without Fd's switch to blocking mode.
 		raw, err := writer.SyscallConn()
 		if err != nil {

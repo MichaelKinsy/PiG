@@ -227497,17 +227497,6 @@
       "shapeHash": "sha256:7fc3a4e483ec90092649aade758958558fd3d775430831abbef9bebf2ef6f793"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#jsValueNumber",
-      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
-      "name": "jsValueNumber",
-      "kind": "function",
-      "exported": false,
-      "shape": {
-        "type": "func(value any) float64"
-      },
-      "shapeHash": "sha256:d9051a83e25f38df7be6750c3098c6983620b0d620b588dafb94bb5c4dd756c2"
-    },
-    {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#jsWordClass",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
       "name": "jsWordClass",
@@ -303692,17 +303681,6 @@
         "type": "func(v any) string"
       },
       "shapeHash": "sha256:191a15d930e24f72e35908f3f1785b2665762f179266a58f642f739ad4375487"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/tui#jsToNumber",
-      "package": "github.com/MichaelKinsy/PiG/tui",
-      "name": "jsToNumber",
-      "kind": "function",
-      "exported": false,
-      "shape": {
-        "type": "func(v any) float64"
-      },
-      "shapeHash": "sha256:8454da1fcffd81b61cdac85d4f4c0156a09802a702ec92295415387919a01688"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/tui#jsTruthy",

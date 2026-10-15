@@ -23,7 +23,7 @@ func (h *toolRegisteringModelHandle) refreshFromSubprocess() error {
 }
 func (h *toolRegisteringModelHandle) RefreshTools() error { return nil }
 func (h *toolRegisteringModelHandle) SetModelOnMain(_ context.Context, model *ai.Model, options ModelMutationOptions, dispatch func(func() error) error) error {
-	if err := dispatch(func() error { return h.recordingCompactHandle.SetModel(model, options) }); err != nil {
+	if err := dispatch(func() error { return h.SetModel(model, options) }); err != nil {
 		return err
 	}
 	return h.refreshFromSubprocess()

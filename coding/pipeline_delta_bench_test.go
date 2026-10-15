@@ -321,7 +321,8 @@ func countTraceWakes(t testing.TB, r io.Reader) traceWakes {
 	settle := func(u *unblock, switched bool) {
 		delete(byUnblocker, u.by)
 		delete(byNext, u.next)
-		if switched && (waiters[u.by] || waiters[u.next]) {
+		switch {
+		case switched && (waiters[u.by] || waiters[u.next]):
 			c.waitSwitches++
 			if waiters[u.by] {
 				// The read coroutine was resumed for its wait: the two switches before it, the caller's resume and the yield of pending, were the same wait's.
@@ -330,11 +331,11 @@ func countTraceWakes(t testing.TB, r io.Reader) traceWakes {
 				c.waitSwitches += k
 				recent[u.next] = 0
 			}
-		} else if switched {
+		case switched:
 			c.switches++
 			recent[u.by]++
 			recent[u.next]++
-		} else {
+		default:
 			c.wakes++
 		}
 	}

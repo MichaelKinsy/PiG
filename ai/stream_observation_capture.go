@@ -27,7 +27,7 @@ func (capture *ShallowCapture) Publication() (cell uintptr, seq uint64) {
 	if capture.cell == nil {
 		return 0, 0
 	}
-	return uintptr(unsafe.Pointer(capture.cell)), capture.seq
+	return uintptr(unsafe.Pointer(capture.cell)), capture.seq //nolint:gosec // G103: the address is only an identity token for the publication cell; it is never converted back to a pointer or dereferenced
 }
 
 // ShallowCopy returns what message.ShallowCopy returned at the capture.

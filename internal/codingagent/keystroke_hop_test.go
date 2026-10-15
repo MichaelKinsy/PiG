@@ -35,8 +35,8 @@ func TestKeystrokeReachesTheOwnerInOneHandOff(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer readEnd.Close()
-	defer writeEnd.Close()
+	defer func() { _ = readEnd.Close() }()
+	defer func() { _ = writeEnd.Close() }()
 	ctx, cancel := context.WithCancel(t.Context())
 	m.backgroundCtx = ctx
 	until, done := make(chan struct{}), make(chan error, 1)

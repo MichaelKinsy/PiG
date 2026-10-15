@@ -81,7 +81,7 @@ func (decoder *referenceOpenAIStreamDecoder) Next() bool {
 
 func (decoder *referenceOpenAIStreamDecoder) parse(sse *serverSentEvent) error {
 	// A record that is valid JSON is checked in place; the decode that names the syntax error runs only for one that is not.
-	data := append(decoder.record[:0], sse.Data...)
+	data := append(decoder.record[:0], sse.Data...) //nolint:gocritic // appendAssign: the capacity-capped reuse stores the buffer only when it is small; an oversized record is dropped
 	if cap(data) <= openAIStreamRecordReuse {
 		decoder.record = data
 	}

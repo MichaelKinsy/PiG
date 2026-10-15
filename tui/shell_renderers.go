@@ -16,7 +16,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/MichaelKinsy/PiG/internal/jsnumber"
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
 )
 
@@ -104,27 +103,6 @@ func jsTemplateString(v any) string {
 		return strings.Join(parts, ",")
 	}
 	return "[object Object]"
-}
-
-// jsToNumber mirrors JavaScript ToNumber for a JSON-decoded value; arrays and
-// objects convert through their string form.
-func jsToNumber(v any) float64 {
-	switch x := v.(type) {
-	case nil:
-		return 0
-	case bool:
-		if x {
-			return 1
-		}
-		return 0
-	case float64:
-		return x
-	case string:
-		return jsnumber.Parse(x)
-	case []any:
-		return jsnumber.Parse(jsTemplateString(x))
-	}
-	return math.NaN()
 }
 
 // JSNumberString mirrors JavaScript Number.prototype.toString() for finite

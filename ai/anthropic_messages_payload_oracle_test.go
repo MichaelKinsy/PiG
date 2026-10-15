@@ -296,7 +296,7 @@ func erroredResultsWithoutText(t *testing.T, context json.RawMessage) map[string
 func normalizeAnthropicToolCallID(id string) string {
 	units := utf16.Encode([]rune(id))
 	for i, unit := range units {
-		if !(unit >= 'a' && unit <= 'z' || unit >= 'A' && unit <= 'Z' || unit >= '0' && unit <= '9' || unit == '_' || unit == '-') {
+		if (unit < 'a' || unit > 'z') && (unit < 'A' || unit > 'Z') && (unit < '0' || unit > '9') && unit != '_' && unit != '-' {
 			units[i] = '_'
 		}
 	}

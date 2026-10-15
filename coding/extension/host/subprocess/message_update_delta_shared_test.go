@@ -13,7 +13,7 @@ import (
 
 // unsafeView is the string the bytes of buffer hold now, sharing them as a streamed text shares its accumulator's.
 func unsafeView(buffer []byte) string {
-	return unsafe.String(unsafe.SliceData(buffer), len(buffer))
+	return unsafe.String(unsafe.SliceData(buffer), len(buffer)) //nolint:gosec // G103: the test shares a streamed text's accumulator bytes the way the production sender does
 }
 
 // The UTF-8 check and the prefix comparison of a message_update delta skip the bytes a streamed text shares with the previous payload's (validUTF8, extends). A runtime that applies the deltas of texts grown in place, in a buffer that also reallocates, cut inside code points, rewritten from a fresh buffer or cut back to a prefix of the same bytes, holds after every event the object the whole payload decodes to, and an event that carries an ill-formed string still travels whole.

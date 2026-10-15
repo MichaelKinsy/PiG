@@ -121,5 +121,5 @@ func (s *stringSplice) writeToken(encoder *jsontext.Encoder, quoted []byte) erro
 	token := strconv.AppendInt(append(append(s.tokenText[:0], s.nonce...), '-'), int64(len(s.quoted)), 10)
 	s.tokenText = token[:0]
 	s.quoted = append(s.quoted, quoted)
-	return encoder.WriteToken(jsontext.String(unsafe.String(unsafe.SliceData(token), len(token))))
+	return encoder.WriteToken(jsontext.String(unsafe.String(unsafe.SliceData(token), len(token)))) //nolint:gosec // G103: WriteToken copies the token into the encoder before returning, so the scratch buffer is not retained
 }

@@ -78,7 +78,7 @@ func TestDiffLinesMatchesFullSearch(t *testing.T) {
 		want := referenceDiffLines(pair[0], pair[1])
 		d := DiffLineRuns(pair[0], pair[1])
 		got := DiffLines(pair[0], pair[1])
-		if !reflect.DeepEqual(got, want) && !(len(got) == 0 && len(want) == 0) {
+		if !reflect.DeepEqual(got, want) && (len(got) != 0 || len(want) != 0) {
 			if differences++; differences <= 5 {
 				t.Errorf("DiffLines(%q, %q):\n  got:  %+v\n  want: %+v", pair[0], pair[1], got, want)
 			}

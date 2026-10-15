@@ -1,6 +1,7 @@
 package subprocess
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -43,7 +44,7 @@ func TestMessageUpdatePayloadIsSharedPerPublication(t *testing.T) {
 	deliver := func(index int, event extension.MessageUpdateEvent) {
 		prepared, inStream, err := streams[index].prepareShared(share, conns[index], event)
 		if err != nil || !inStream {
-			fail(fmt.Errorf("message_update was not prepared as a stream frame: %v", err))
+			fail(fmt.Errorf("message_update was not prepared as a stream frame: %w", err))
 			return
 		}
 		whole, err := json.Marshal(event)
@@ -89,7 +90,7 @@ func TestMessageUpdatePayloadIsSharedPerPublication(t *testing.T) {
 					fail(fmt.Errorf("a publication between deliveries: %d payloads prepared, want 2 (before and after it)", share.prepared-before))
 				}
 				last := len(deliveries) - 1
-				if string(deliveries[last-2].whole) == string(deliveries[last].whole) {
+				if bytes.Equal(deliveries[last-2].whole, deliveries[last].whole) {
 					fail(errors.New("the publication did not change the payload"))
 				}
 				return

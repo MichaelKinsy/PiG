@@ -218,7 +218,7 @@ func (reader *anthropicSSEReader) drainLines(final bool) {
 		consumed := reader.scanned + last + 1
 		segment := string(buffer[:consumed])
 		if remainder := buffer[consumed:]; len(remainder) > 0 || cap(buffer) <= anthropicLineBufferReuse {
-			reader.buffer = append(buffer[:0], remainder...)
+			reader.buffer = append(reader.buffer[:0], remainder...)
 		} else {
 			reader.buffer = nil
 		}

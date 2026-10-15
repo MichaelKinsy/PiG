@@ -21,8 +21,8 @@ func BenchmarkKeystrokeToPaint(b *testing.B) {
 	if err != nil {
 		b.Fatal(err)
 	}
-	defer readEnd.Close()
-	defer writeEnd.Close()
+	defer func() { _ = readEnd.Close() }()
+	defer func() { _ = writeEnd.Close() }()
 	ctx, cancel := context.WithCancel(b.Context())
 	m.backgroundCtx = ctx
 	until, done := make(chan struct{}), make(chan error, 1)

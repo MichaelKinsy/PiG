@@ -108,7 +108,7 @@ func (h *liveInputModelHandle) BeginModelCycleOnMain(ctx context.Context, direct
 func (h *liveInputModelHandle) SetModelOnMain(ctx context.Context, model *ai.Model, options ModelMutationOptions, dispatch func(func() error) error) error {
 	if err := dispatch(func() error {
 		h.apply(model)
-		return h.recordingCompactHandle.SetModel(model, options)
+		return h.SetModel(model, options)
 	}); err != nil {
 		return err
 	}

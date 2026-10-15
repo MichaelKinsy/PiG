@@ -1,6 +1,7 @@
 package ai
 
 import (
+	"bytes"
 	"fmt"
 	"math/rand/v2"
 	"reflect"
@@ -83,7 +84,7 @@ func sameArguments(t *testing.T, label string, got, want ToolCall) {
 	}
 	gotJSON, gotErr := got.ArgumentsJSON()
 	wantJSON, wantErr := want.ArgumentsJSON()
-	if string(gotJSON) != string(wantJSON) || (gotErr == nil) != (wantErr == nil) {
+	if !bytes.Equal(gotJSON, wantJSON) || (gotErr == nil) != (wantErr == nil) {
 		t.Fatalf("%s: arguments %s (%v), want %s (%v)", label, gotJSON, gotErr, wantJSON, wantErr)
 	}
 	if got.ArgumentsError != want.ArgumentsError {

@@ -14,6 +14,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"unicode/utf8"
 
 	sdkjson "github.com/MichaelKinsy/PiG/extensions/sdk/json"
 	"github.com/MichaelKinsy/PiG/internal/coding/pigversion"
@@ -123,7 +124,8 @@ func llamaOracleTokenize(mode, content string) any {
 		case llamaOracleAlnum.MatchString(word):
 			ids = append(ids, llamaOracleWordID(word))
 		default:
-			ids = append(ids, int([]rune(word)[0]))
+			first, _ := utf8.DecodeRuneInString(word)
+			ids = append(ids, int(first))
 		}
 	}
 	if mode == "objects" {

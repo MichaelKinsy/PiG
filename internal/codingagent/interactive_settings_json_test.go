@@ -40,7 +40,7 @@ func TestInteractiveBindsSettingsEncodingOncePerGeneration(t *testing.T) {
 			t.Fatalf("%s: getSettingsJSON\n got %s\nwant the members of %s", step, first, want)
 		}
 		for range 5 {
-			if again := getJSON(); unsafe.SliceData(again) != unsafe.SliceData(first) {
+			if again := getJSON(); unsafe.SliceData(again) != unsafe.SliceData(first) { //nolint:gosec // G103: compares backing-array addresses to prove the encoding is reused; the pointers are never dereferenced
 				t.Fatalf("%s: unchanged settings were encoded again", step)
 			}
 		}

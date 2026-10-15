@@ -26,8 +26,8 @@ func SharedCargoTargetDir(pkg string, lockInputs ...string) (string, error) {
 		if err != nil {
 			return "", fmt.Errorf("read Cargo lock input: %w", err)
 		}
-		fmt.Fprintf(sum, "%s\x00%d\x00", filepath.Base(path), len(data))
-		sum.Write(data)
+		_, _ = fmt.Fprintf(sum, "%s\x00%d\x00", filepath.Base(path), len(data))
+		_, _ = sum.Write(data)
 	}
 	dir := filepath.Join(base, pkg+"-"+hex.EncodeToString(sum.Sum(nil))[:16])
 	if err := os.MkdirAll(dir, 0o755); err != nil {

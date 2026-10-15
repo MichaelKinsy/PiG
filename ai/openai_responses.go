@@ -707,7 +707,7 @@ func quotedArgumentsJSON(arguments []byte) json.RawMessage {
 // shared by every later request, and a fresh one is clipped and owned by the caller), so the string is immutable as Go requires, and a
 // later request that sends the same kept arguments sends the same string: the request string cache finds it by identity.
 func keptArgumentsString(arguments []byte) string {
-	return unsafe.String(unsafe.SliceData(arguments), len(arguments))
+	return unsafe.String(unsafe.SliceData(arguments), len(arguments)) //nolint:gosec // G103: the argument bytes are immutable once kept (clipped and owned by the caller), so the aliased string cannot change
 }
 
 // responsesInputText is a ResponseInputText content part with its members in the order openai-responses-shared.ts writes them (:98, :238-241).

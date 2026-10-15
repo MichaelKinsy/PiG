@@ -46,7 +46,6 @@ type typedEmbedded struct {
 	typedEditDetails
 	Lines  []string `json:"lines"`
 	Counts [2]uint8 `json:"counts"`
-	hidden float64
 }
 
 type typedFloat struct {

@@ -59,8 +59,6 @@ func isToolingPath(rel string) bool {
 	return false
 }
 
-func shortQualifier(p *types.Package) string { return p.Name() }
-
 func declarationName(fn *ast.FuncDecl) string {
 	if fn.Recv == nil || len(fn.Recv.List) == 0 {
 		return fn.Name.Name

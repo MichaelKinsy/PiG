@@ -43,14 +43,14 @@ func TestJsonlStoragePoisonKeepsTheFirstFailure(t *testing.T) {
 	first, second := errors.New("first failure"), errors.New("second failure")
 	poisoned := storage.poison(first)
 	again := storage.poison(second)
-	if again != poisoned {
+	if !errors.Is(again, poisoned) {
 		t.Fatalf("a later poison returned %v (%p), want the first error (%p)", again, again, poisoned)
 	}
-	typed, ok := poisoned.(*JsonlStoragePoisonedError)
-	if !ok || typed.Cause != first {
+	var typed *JsonlStoragePoisonedError
+	if !errors.As(poisoned, &typed) || !errors.Is(typed.Cause, first) {
 		t.Fatalf("poisoned error = %#v, want the first failure as its cause", poisoned)
 	}
-	if err := storage.assertUsable(); err != poisoned {
+	if err := storage.assertUsable(); !errors.Is(err, poisoned) {
 		t.Fatalf("assertUsable = %v, want the poisoned error", err)
 	}
 }

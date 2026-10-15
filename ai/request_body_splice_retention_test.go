@@ -1,6 +1,7 @@
 package ai
 
 import (
+	"bytes"
 	"fmt"
 	"strings"
 	"testing"
@@ -21,7 +22,7 @@ func spliceInto(t *testing.T, cache *quotedStringCache, payload []string) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if want, _ := marshalRequestBody(payload); string(body.Bytes()) != string(want) {
+	if want, _ := marshalRequestBody(payload); !bytes.Equal(body.Bytes(), want) {
 		t.Fatal("the spliced body differs from marshalRequestBody")
 	}
 }
