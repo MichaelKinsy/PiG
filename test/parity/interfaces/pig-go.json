@@ -106475,6 +106475,17 @@
       "shapeHash": "sha256:3a64a1387af232cc7111ec8741fc254d6a9440d54c35496e690af6da2dc5f0b6"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/inproc#Runner.AwaitEventLoopTurns",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/inproc",
+      "name": "Runner.AwaitEventLoopTurns",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(ctx context.Context, event string)"
+      },
+      "shapeHash": "sha256:6f5a6dc2446606fe2016144882e0fb0870de503ffe3b7bdcf44eb795fe072fdf"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/inproc#Runner.AwaitUIPromptEvents",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/inproc",
       "name": "Runner.AwaitUIPromptEvents",
@@ -112877,6 +112888,17 @@
       "shapeHash": "sha256:ff6905ed5bb83f8296fba288081d1e3435462bd447a7c21d211a48a9a72b6656"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#Conn.awaitEventLoopTurn",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "Conn.awaitEventLoopTurn",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(ctx context.Context) error"
+      },
+      "shapeHash": "sha256:1308e2e58e033a63ea9692ed75c8c737d1759c4953f8048cc0018fe7148bf370"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#Conn.awaitSuspensions",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
       "name": "Conn.awaitSuspensions",
@@ -113348,6 +113370,17 @@
         "type": "func()"
       },
       "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#Conn.settleEventLoopTurn",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "Conn.settleEventLoopTurn",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(raw github.com/MichaelKinsy/PiG/extensions/sdk/json.RawMessage)"
+      },
+      "shapeHash": "sha256:58921bf8f132f9ca7b9ff0799072bdae79fea971981de215bae1449fc5914a38"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#Conn.settleSuspension",
@@ -117926,6 +117959,17 @@
       "shapeHash": "sha256:7eabd192b9f1c379102c8dc793881875f1f949f6b752e15a20b93080cb0b311d"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#NotifyEventLoopTurned",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "NotifyEventLoopTurned",
+      "kind": "constant",
+      "exported": true,
+      "shape": {
+        "type": "untyped string"
+      },
+      "shapeHash": "sha256:7eabd192b9f1c379102c8dc793881875f1f949f6b752e15a20b93080cb0b311d"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#NotifyHardwareCursor",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
       "name": "NotifyHardwareCursor",
@@ -118864,6 +118908,17 @@
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#RequestCommandArgumentCompletions",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
       "name": "RequestCommandArgumentCompletions",
+      "kind": "constant",
+      "exported": true,
+      "shape": {
+        "type": "untyped string"
+      },
+      "shapeHash": "sha256:7eabd192b9f1c379102c8dc793881875f1f949f6b752e15a20b93080cb0b311d"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#RequestEventLoopTurn",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "RequestEventLoopTurn",
       "kind": "constant",
       "exported": true,
       "shape": {
