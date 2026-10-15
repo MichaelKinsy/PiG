@@ -40,7 +40,8 @@ func writeText() string {
 }
 
 // AppendString skips runs that need no escape eight bytes at a time and copies them whole: on a 200 KB source text (Pi-Bolt write:200) it is
-// at least three times as fast as the byte-at-a-time loop it equals.
+// at least 2.25 times as fast as the byte-at-a-time loop it equals (owner-approved bar 2026-10-15: pinned cores measure 2.68x on AMD
+// EPYC-Milan, 4.0x on Intel Xeon and 5.3x on arm64).
 func TestAppendString200KBudget(t *testing.T) {
 	if testing.Short() {
 		t.Skip("CPU budget")
@@ -55,8 +56,8 @@ func TestAppendString200KBudget(t *testing.T) {
 	ns := fastestNs(func() { buf = AppendString(buf[:0], payload) }, func() { buf = bytewiseAppendString(buf[:0], payload) })
 	scan, bytewise := ns[0], ns[1]
 	t.Logf("AppendString: %d ns/op, byte at a time: %d ns/op", scan, bytewise)
-	if 3*scan > bytewise {
-		t.Errorf("AppendString of a 200 KB text takes %d ns, the byte-at-a-time loop %d ns: want at least 3x faster", scan, bytewise)
+	if 9*scan > 4*bytewise {
+		t.Errorf("AppendString of a 200 KB text takes %d ns, the byte-at-a-time loop %d ns: want at least 2.25x faster", scan, bytewise)
 	}
 }
 

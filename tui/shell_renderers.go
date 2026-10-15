@@ -63,6 +63,7 @@ func renderStr(v any) (string, bool) {
 }
 
 // invalidArgText mirrors upstream render-utils invalidArgText.
+// Ports packages/coding-agent/src/core/tools/render-utils.ts (invalidArgText).
 func invalidArgText() string {
 	return fg(ActiveTheme().Error, "[invalid arg]")
 }

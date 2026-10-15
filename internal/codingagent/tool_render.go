@@ -151,6 +151,7 @@ func renderDiffString(diffText string, width int) []string {
 	return tui.NewDiffComponent(diffText, "").Render(width)
 }
 
+// Ports packages/coding-agent/src/core/tools/render-utils.ts (replaceTabs).
 func replaceTabs(s string) string {
 	return strings.ReplaceAll(s, "\t", "   ")
 }

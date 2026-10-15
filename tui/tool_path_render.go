@@ -14,6 +14,8 @@ import (
 // color, a $HOME-shortened display, and: on terminals that advertise
 // OSC-8 support: a clickable file:// hyperlink.
 
+// Ports packages/coding-agent/src/core/tools/render-utils.ts (shortenPath, linkPath, renderToolPath; private helpers the tool renderers share).
+
 // shortenPath replaces a leading $HOME with "~". Mirrors upstream
 // shortenPath (render-utils.ts:10).
 func shortenPath(path string) string {

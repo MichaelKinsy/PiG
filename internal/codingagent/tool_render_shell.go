@@ -238,6 +238,8 @@ func (view shellResultView) render(width int) []string {
 	return lines
 }
 
+// Ports packages/coding-agent/src/core/tools/render-utils.ts (getTextOutput: shellTextOutput, toolResultTextOutput).
+
 // shellTextOutput mirrors upstream render-utils getTextOutput for a text
 // result: strip ANSI, sanitize binary output, and drop carriage returns.
 func shellTextOutput(content string) string {
