@@ -243,19 +243,17 @@ func TestResumedMarkdownRendersAgainWhenItsInputsChange(t *testing.T) {
 	active := ActiveTheme()
 	t.Cleanup(func() { activeTheme.Store(active) })
 	document := strings.Repeat("A [link](https://a.b) and http://c.d in **bold** `code` text that is long enough to wrap.\n\n- item one\n- item two\n\n", 12)
+	// Each step starts from the built-in dark theme, not from the theme an earlier test left active. The Pi-oracle tests leave the light theme active, and a restore under a terminal without truecolor stores a 256-color copy of it, not the built-in the
+	// change below stores. Telling the change from a no-op by comparing theme pointers then fails, and the light theme replaces itself: no row changes.
+	baseline := builtinDarkTheme()
 	changes := []func(*Markdown){
-		func(*Markdown) {
-			storeActiveTheme(builtinLightTheme())
-			if ActiveTheme() == active {
-				storeActiveTheme(builtinDarkTheme())
-			}
-		},
+		func(*Markdown) { storeActiveTheme(builtinLightTheme()) },
 		func(*Markdown) { SetCapabilities(TerminalCapabilities{TrueColor: true, Hyperlinks: true}) },
 		func(m *Markdown) { m.SetDefaultColor("\x1b[38;5;244m") },
 	}
 	for index, change := range changes {
-		storeActiveTheme(active)
 		SetCapabilities(TerminalCapabilities{TrueColor: true})
+		storeActiveTheme(baseline)
 		streamed := NewMarkdownWithOptions("", 1, 0, nil, nil, nil)
 		var color string
 		fresh := func(text string) []string {

@@ -607,7 +607,8 @@ jobs:
           set -euo pipefail
           go build -trimpath -o bin/pig ./cmd/pig
           ./bin/pig --version
-          go test ./ai ./internal/codingagent/tools ./internal/nativeplatform ./tui
+          # The ai package has about 2700 top-level tests and needs more than go test's default 10 minutes here: Linux splits it in two processes (automation/ci/test-grouped.sh) and Windows runs it alone under this timeout.
+          go test -timeout 30m ./ai ./internal/codingagent/tools ./internal/nativeplatform ./tui
       - name: Test cmd/pig, shard ${{ matrix.shard }} of 8
         # Each cli-N shard is its own job running shard N of automation/ci/test-shard-pattern.sh, as make test-cli runs the shards on Linux: each in its own go test process and timeout.
         if: startsWith(matrix.shard, 'cli-')

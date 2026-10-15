@@ -43,7 +43,7 @@ func TestMacOSShardsTestTheMacOSSensitivePackages(t *testing.T) {
 			steps["python"] = true
 		case step.If == "matrix.shard != 'native'" && strings.Contains(step.Run, `rustup default "$RUST_VERSION"`):
 			steps["rust"] = true
-		case step.If == "matrix.shard == 'native'" && strings.Contains(step.Run, "go test ./ai ./internal/codingagent/tools ./internal/nativeplatform ./tui"):
+		case step.If == "matrix.shard == 'native'" && strings.Contains(step.Run, "go test -timeout 30m ./ai ./internal/codingagent/tools ./internal/nativeplatform ./tui\n"):
 			steps["native"] = true
 		case step.If == "startsWith(matrix.shard, 'cli-')" && cliStep.MatchString(step.Run):
 			if match := cliStep.FindStringSubmatch(step.Run); match[1] != strconv.Itoa(shards) {

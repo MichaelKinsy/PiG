@@ -36,16 +36,29 @@ func TestResolveReadPathTriesTheMacOSVariantsInPiOrder(t *testing.T) {
 		t.Errorf("lower-case pm variant: %q, %v, want %q", got, err, pm)
 	}
 	decomposed := create(nfd + ".txt")
-	if got, err := resolveReadPath(nfc+".txt", cwd); err != nil || got != decomposed {
-		t.Errorf("NFD variant: %q, %v, want %q", got, err, decomposed)
+	// APFS and HFS+ compare names by canonical equivalence, so the NFC spelling already names the NFD file: resolveReadPath's first existence test succeeds and returns the path as given, as Pi's does, and the
+	// NFD and NFD plus curly-quote steps cannot be reached. A file system that keeps the two spellings apart (ext4, NTFS, tmpfs) must reach them, and Linux and Windows runs prove that.
+	_, statErr := os.Stat(filepath.Join(cwd, nfc+".txt"))
+	foldsNormalization := statErr == nil
+	wantDecomposed := decomposed
+	if foldsNormalization {
+		wantDecomposed = filepath.Join(cwd, nfc+".txt")
+	}
+	if got, err := resolveReadPath(nfc+".txt", cwd); err != nil || got != wantDecomposed {
+		t.Errorf("NFD variant (file system folds normalization: %v): %q, %v, want %q", foldsNormalization, got, err, wantDecomposed)
 	}
 	curly := create("Capture d\u2019cran.txt")
 	if got, err := resolveReadPath("Capture d'cran.txt", cwd); err != nil || got != curly {
 		t.Errorf("curly-quote variant: %q, %v, want %q", got, err, curly)
 	}
 	both := create("d\u2019" + nfd + ".txt")
-	if got, err := resolveReadPath("d'"+nfc+".txt", cwd); err != nil || got != both {
-		t.Errorf("NFD plus curly-quote variant: %q, %v, want %q", got, err, both)
+	// With normalization folded, the straight-quote path misses and the curly-quote step finds the file under the NFC spelling the caller wrote.
+	wantBoth := both
+	if foldsNormalization {
+		wantBoth = filepath.Join(cwd, "d\u2019"+nfc+".txt")
+	}
+	if got, err := resolveReadPath("d'"+nfc+".txt", cwd); err != nil || got != wantBoth {
+		t.Errorf("NFD plus curly-quote variant (file system folds normalization: %v): %q, %v, want %q", foldsNormalization, got, err, wantBoth)
 	}
 	// Nothing exists: the resolved path comes back for the caller to report.
 	missing := filepath.Join(cwd, "missing "+"AM.png")
