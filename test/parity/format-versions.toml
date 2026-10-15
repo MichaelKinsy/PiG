@@ -161,13 +161,31 @@ classification = "upstream"
 rationale = "pi-chord RemoteDef.version (packages/chord/src/contract.ts), the version a remote contract definition declares."
 
 [[fields]]
-id = "chord/host/record.go#ServeStateOptions.Version:go:-"
-path = "chord/host/record.go"
-owner = "ServeStateOptions"
+id = "chord/host/declare.go#ResourceDeclaration.Version:go:-"
+path = "chord/host/declare.go"
+owner = "ResourceDeclaration"
 field = "Version"
 wire_name = "-"
 classification = "upstream"
-rationale = "pi-chord ServeOptions.state.version (packages/chord/src/record.ts): the version of the meaning of a record's cells, declared by the service; a bump runs migrate[name](old, fromVersion)."
+rationale = "pi-chord resource declaration version (packages/chord/src/declare.ts:12): declared by the application's object; a bump replaces the resource at the next reload. The application owns it, not Pig."
+
+[[fields]]
+id = "chord/host/object.go#StateOptions.Version:go:-"
+path = "chord/host/object.go"
+owner = "StateOptions"
+field = "Version"
+wire_name = "-"
+classification = "upstream"
+rationale = "pi-chord state cell version (packages/chord/src/object.ts:136, reload.ts:388): the meaning of a cell's value, declared by the application; a reload that raises it runs migrate."
+
+[[fields]]
+id = "chord/host/wire.go#const.ProtocolVersion:go:-"
+path = "chord/host/wire.go"
+owner = "<package>"
+field = "ProtocolVersion"
+wire_name = "-"
+classification = "upstream"
+rationale = "pi-chord PROTOCOL_VERSION (packages/chord/src/wire.ts:24), announced in hello; peers of another version close the link. Pig speaks 2 while the pinned Pi speaks 4: protocols 3 and 4 are the owner-approved 0.5.0 Chord exception finished in 0.5.1."
 
 [[fields]]
 id = "cmd/check-model-data/model_data.go#ModelDataManifest.SchemaVersion:json:schemaVersion"
