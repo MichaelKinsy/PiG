@@ -244129,6 +244129,17 @@
       "shapeHash": "sha256:e464e6de3ad35418f6e6dfe34abdf0de696ea4b2b49704e3c41e4184b74f805f"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#snapshotDir",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "snapshotDir",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(path string) string"
+      },
+      "shapeHash": "sha256:864bd81dd802775a1a082d7f99fe261c8f3185dea2a3f45bbeae79e27ef91e07"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#sortAuthProviders",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
       "name": "sortAuthProviders",
