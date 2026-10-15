@@ -143,7 +143,7 @@ Status `ported`: every exported behavior has a Go counterpart; the upstream test
 | `harness/inbox.ts` | `durable/harness/inbox.go` | ported |
 | `harness/json.ts`, `util.ts` | `durable/harness/json.go`, `util.go` | ported |
 | `harness/live.ts` | `durable/harness/live.go` | ported |
-| `harness/output.ts` | `durable/harness/output.go` | ported |
+| `harness/output.ts` | `chord/output/output.go` (moved to chord/src/output.ts by Pi 4a5d3729) | ported |
 | `harness/prompt.ts` | `durable/harness/prompt.go` | ported |
 | `harness/provider.ts` | `durable/harness/provider.go` | ported |
 | `harness/registry.ts` | `durable/harness/registry.go` | ported |

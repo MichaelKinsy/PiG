@@ -12,11 +12,13 @@ import (
 	"reflect"
 	"strconv"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/chord/delta"
+	"github.com/MichaelKinsy/PiG/chord/output"
 	"github.com/MichaelKinsy/PiG/durable"
 	"github.com/MichaelKinsy/PiG/durable/storage"
 	"github.com/MichaelKinsy/PiG/durable/storage/jsonl"
@@ -77,7 +79,7 @@ func TestToolProgressAndLifetime(t *testing.T) {
 				}
 				// The first change after an idle period commits at once; the second waits for the interval.
 				api.Output("one\n")
-				waitIdle(internal.progress)
+				internal.progress.WaitIdle()
 				api.Output("two\n")
 				var outputs []any
 				for _, ms := range advances {
@@ -501,9 +503,9 @@ func TestToolProgressAndLifetime(t *testing.T) {
 // later one waits on a timer that does not fire, however slow the first commit was.
 type heldProgressClock struct{}
 
-func (heldProgressClock) now() float64 { return 0 }
+func (heldProgressClock) Now() float64 { return 0 }
 
-func (heldProgressClock) afterFunc(float64, func()) func() { return func() {} }
+func (heldProgressClock) AfterFunc(float64, func()) func() { return func() {} }
 
 // awaitDetailsWaiting returns once a details() call has queued its progress waiter.
 func awaitDetailsWaiting(ctx context.Context, api durable.ToolExecutionApi) error {
@@ -512,10 +514,7 @@ func awaitDetailsWaiting(ctx context.Context, api durable.ToolExecutionApi) erro
 		return fmt.Errorf("tool api is %T, not *toolApi", api)
 	}
 	for {
-		internal.progress.mu.Lock()
-		waiting := len(internal.progress.waiters)
-		internal.progress.mu.Unlock()
-		if waiting > 0 {
+		if internal.progress.Waiting() > 0 {
 			return nil
 		}
 		select {
@@ -557,4 +556,61 @@ func plainObject(value any) map[string]any {
 		panic(err)
 	}
 	return object
+}
+
+// fakeProgressClock stands in for vi fake timers: time moves only through advance, which fires due timers in order and lets the commit each one starts settle, as advanceTimersByTimeAsync drains microtasks.
+type fakeProgressClock struct {
+	mu     sync.Mutex
+	at     float64
+	timers []*fakeTimer
+}
+
+type fakeTimer struct {
+	due     float64
+	run     func()
+	stopped bool
+}
+
+func (clock *fakeProgressClock) Now() float64 {
+	clock.mu.Lock()
+	defer clock.mu.Unlock()
+	return clock.at
+}
+
+func (clock *fakeProgressClock) AfterFunc(delay float64, run func()) func() {
+	clock.mu.Lock()
+	defer clock.mu.Unlock()
+	timer := &fakeTimer{due: clock.at + delay, run: run}
+	clock.timers = append(clock.timers, timer)
+	return func() {
+		clock.mu.Lock()
+		defer clock.mu.Unlock()
+		timer.stopped = true
+	}
+}
+
+func (clock *fakeProgressClock) advance(progress *output.Progress, ms float64) {
+	progress.WaitIdle()
+	clock.mu.Lock()
+	target := clock.at + ms
+	clock.mu.Unlock()
+	for {
+		clock.mu.Lock()
+		var next *fakeTimer
+		for _, timer := range clock.timers {
+			if !timer.stopped && timer.due <= target && (next == nil || timer.due < next.due) {
+				next = timer
+			}
+		}
+		if next == nil {
+			clock.at = target
+			clock.mu.Unlock()
+			return
+		}
+		next.stopped = true
+		clock.at = next.due
+		clock.mu.Unlock()
+		next.run()
+		progress.WaitIdle()
+	}
 }

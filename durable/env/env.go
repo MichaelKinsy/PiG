@@ -433,6 +433,7 @@ type ShellOutputWindow struct {
 
 // ShellOutputSkip is output an environment omitted, measured on the decoded text OnOutput would have received: every
 // U+FFFD counts as three bytes, and no sanitizing is applied.
+// It has the shape of output.OutputSkip from chord/output, which OutputBuffer.PushStringSkipping accepts.
 type ShellOutputSkip struct {
 	// Bytes is the UTF-8 byte length of the omitted text.
 	Bytes int

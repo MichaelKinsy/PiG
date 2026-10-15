@@ -14,6 +14,7 @@ import (
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/ai"
+	chordoutput "github.com/MichaelKinsy/PiG/chord/output"
 	"github.com/MichaelKinsy/PiG/durable"
 	"github.com/MichaelKinsy/PiG/durable/session"
 	"github.com/MichaelKinsy/PiG/durable/storage"
@@ -217,7 +218,7 @@ func TestToolResultHelpersMatchPi(t *testing.T) {
 		var gotErr error
 		switch op.Op {
 		case "bound":
-			bounded, droppedBytes, droppedLines := boundContent(decodeContent(op.Content), OutputLimits{MaxBytes: op.Limits.MaxBytes, MaxLines: op.Limits.MaxLines, Retain: op.Limits.Retain})
+			bounded, droppedBytes, droppedLines := boundContent(decodeContent(op.Content), chordoutput.OutputLimits{MaxBytes: op.Limits.MaxBytes, MaxLines: op.Limits.MaxLines, Retain: op.Limits.Retain})
 			got = map[string]any{"content": canonical(bounded), "droppedBytes": droppedBytes, "droppedLines": droppedLines}
 			if droppedBytes > 0 {
 				kinds["bound-truncated"]++

@@ -1,13 +1,11 @@
-// Ports packages/durable/test/harness-output-skip.test.ts.
+// Ports packages/chord/test/output-skip.test.ts.
 
-package harness
+package output
 
 import (
 	"strings"
 	"testing"
 	"unicode/utf8"
-
-	"github.com/MichaelKinsy/PiG/durable/env"
 )
 
 // mulberry32 is the deterministic PRNG of the upstream tests, so a seed builds the same input as there.
@@ -35,8 +33,8 @@ func randomOutputChunk(next func() float64) string {
 	return text.String()
 }
 
-func measureOutput(text string) env.ShellOutputSkip {
-	return env.ShellOutputSkip{Bytes: len(text), Newlines: strings.Count(text, "\n"), EndsWithNewline: strings.HasSuffix(text, "\n")}
+func measureOutput(text string) OutputSkip {
+	return OutputSkip{Bytes: len(text), Newlines: strings.Count(text, "\n"), EndsWithNewline: strings.HasSuffix(text, "\n")}
 }
 
 // exceedsWindow reports whether text proves that everything before it is outside the tail window.
@@ -122,7 +120,7 @@ func TestOutputBufferSkippedOutput(t *testing.T) {
 	// Progress commits snapshot at arbitrary moments; snapshots compact what is stored and must never change the window.
 	// A compaction to exactly the kept window lost the character that decides where a later window's first line starts.
 	t.Run("keeps the same tail whenever progress snapshots happen", func(t *testing.T) {
-		// upstream: packages/durable/test/harness-output-skip.test.ts:100
+		// upstream: packages/chord/test/output-skip.test.ts:99
 		for seed := uint32(1); seed <= 3000; seed++ {
 			next := mulberry32(seed)
 			limits := randomLimits(next)
@@ -144,14 +142,14 @@ func TestOutputBufferSkippedOutput(t *testing.T) {
 	})
 
 	t.Run("matches the full stream for every legal skip pattern", func(t *testing.T) {
-		// upstream: packages/durable/test/harness-output-skip.test.ts:121
+		// upstream: packages/chord/test/output-skip.test.ts:120
 		for seed := uint32(1); seed <= 3000; seed++ {
 			checkSkipSeed(t, seed)
 		}
 	})
 
 	t.Run("counts skipped bytes, lines and the final newline exactly", func(t *testing.T) {
-		// upstream: packages/durable/test/harness-output-skip.test.ts:125
+		// upstream: packages/chord/test/output-skip.test.ts:124
 		limits := OutputLimits{MaxBytes: 1000, MaxLines: 2, Retain: "tail"}
 		full := NewOutputBuffer(limits)
 		skipping := NewOutputBuffer(limits)
@@ -171,9 +169,9 @@ func TestOutputBufferSkippedOutput(t *testing.T) {
 	})
 
 	t.Run("refuses skips for head retention", func(t *testing.T) {
-		// upstream: packages/durable/test/harness-output-skip.test.ts:138
+		// upstream: packages/chord/test/output-skip.test.ts:137
 		buffer := NewOutputBuffer(OutputLimits{MaxBytes: 10, MaxLines: 2, Retain: "head"})
-		_, err := buffer.PushStringSkipping("x\ny\nz\n", env.ShellOutputSkip{Bytes: 3, Newlines: 1, EndsWithNewline: true})
+		_, err := buffer.PushStringSkipping("x\ny\nz\n", OutputSkip{Bytes: 3, Newlines: 1, EndsWithNewline: true})
 		if err == nil || !strings.Contains(err.Error(), "tail retention") {
 			t.Fatalf("error = %v, want one naming tail retention", err)
 		}
@@ -186,7 +184,7 @@ func TestOutputBufferSkippedOutputEndsAnIncompleteCharacterBeforeTheOmission(t *
 	limits := OutputLimits{MaxBytes: 4, MaxLines: 10, Retain: "tail"}
 	buffer := NewOutputBuffer(limits)
 	buffer.PushBytes([]byte{0xe2, 0x82})
-	if _, err := buffer.PushBytesSkipping([]byte("tail!\n"), env.ShellOutputSkip{Bytes: 9, Newlines: 1, EndsWithNewline: true}); err != nil {
+	if _, err := buffer.PushBytesSkipping([]byte("tail!\n"), OutputSkip{Bytes: 9, Newlines: 1, EndsWithNewline: true}); err != nil {
 		t.Fatal(err)
 	}
 	buffer.End()

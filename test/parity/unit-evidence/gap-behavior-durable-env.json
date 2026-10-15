@@ -350,15 +350,15 @@
     "mutation": "durable/harness/context.go:68 `if err != nil {` -> `if err == nil {` (TestExample26CodingAgent FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
   },
   {
-    "upstream": "packages/durable/src/harness/output.ts",
-    "package": "./durable/harness",
+    "upstream": "packages/chord/src/output.ts",
+    "package": "./chord/output",
     "tests": [
       "TestOutputBufferSkippedOutput",
       "TestProgress",
       "TestToolOutputBounds"
     ],
-    "upstream_reference": "packages/durable/src/harness/output.ts:1-342; packages/durable/src/harness/output.ts:63 (tailRange); packages/durable/src/harness/output.ts:100 (lineCount); packages/durable/test/harness-output-skip.test.ts; packages/durable/test/harness-output.test.ts",
-    "mutation": "durable/harness/output.go:669 `if err != nil {` -> `if err == nil {` (TestProgress FAIL); durable/harness/output.go:145 `index = -1` -> `index = -2` (TestOutputBufferSkippedOutput FAIL); durable/harness/output.go:193 `if data[len(data)-1] == outputNewline {` -> `if data[len(data)-1] != outputNewline {` (TestToolOutputBounds FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+    "upstream_reference": "packages/chord/src/output.ts:1-383; packages/chord/src/output.ts:78 (tailRange); packages/chord/src/output.ts:115 (lineCount); packages/chord/test/output-skip.test.ts; packages/chord/test/output.test.ts",
+    "mutation": "chord/output/output.go:725 `if err != nil {` -> `if err == nil {` (TestProgress FAIL); chord/output/output.go:162 `index = -1` -> `index = -2` (TestOutputBufferSkippedOutput FAIL); chord/output/output.go:210 `if data[len(data)-1] == outputNewline {` -> `if data[len(data)-1] != outputNewline {` (TestToolOutputBounds FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
   },
   {
     "upstream": "packages/durable/src/harness/types.ts",

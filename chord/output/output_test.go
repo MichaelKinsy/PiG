@@ -1,18 +1,20 @@
-// Ports packages/durable/test/harness-output.test.ts.
+// Ports packages/chord/test/output.test.ts.
 
-package harness
+package output
 
-// pi: packages/durable/src/harness/output.ts
+// pi: packages/chord/src/output.ts
 
 import (
 	"context"
 	"errors"
 	"fmt"
+	"math"
 	"runtime"
 	"slices"
 	"strings"
 	"sync"
 	"testing"
+	"time"
 	"unicode/utf16"
 )
 
@@ -136,7 +138,7 @@ func TestToolOutputBounds(t *testing.T) {
 		expectBound(t, bound("x\néééé", tailLimits(10, 5)), boundResult{"éé", 6, 1})
 	})
 
-	// upstream: packages/durable/test/harness-output.test.ts "keeps a U+FEFF at the start of a kept slice" (1.0.4)
+	// upstream: packages/chord/test/output.test.ts "keeps a U+FEFF at the start of a kept slice" (1.0.4)
 	t.Run("keeps a U+FEFF at the start of a kept slice", func(t *testing.T) {
 		expectBound(t, bound("x\ufeffa", tailLimits(10, 4)), boundResult{"\ufeffa", 1, 0})
 	})
@@ -213,7 +215,7 @@ func TestOutputBuffer(t *testing.T) {
 		}
 	})
 
-	// upstream: packages/durable/test/harness-output.test.ts "drops a byte-order mark only at the start of the output" (1.0.4)
+	// upstream: packages/chord/test/output.test.ts "drops a byte-order mark only at the start of the output" (1.0.4)
 	t.Run("drops a byte-order mark only at the start of the output", func(t *testing.T) {
 		bom := []byte{0xef, 0xbb, 0xbf}
 		buffer := NewOutputBuffer(tailLimits(10))
@@ -307,13 +309,13 @@ type fakeTimer struct {
 	stopped bool
 }
 
-func (clock *fakeProgressClock) now() float64 {
+func (clock *fakeProgressClock) Now() float64 {
 	clock.mu.Lock()
 	defer clock.mu.Unlock()
 	return clock.at
 }
 
-func (clock *fakeProgressClock) afterFunc(delay float64, run func()) func() {
+func (clock *fakeProgressClock) AfterFunc(delay float64, run func()) func() {
 	clock.mu.Lock()
 	defer clock.mu.Unlock()
 	timer := &fakeTimer{due: clock.at + delay, run: run}
@@ -326,7 +328,7 @@ func (clock *fakeProgressClock) afterFunc(delay float64, run func()) func() {
 }
 
 func (clock *fakeProgressClock) advance(progress *Progress, ms float64) {
-	waitIdle(progress)
+	progress.WaitIdle()
 	clock.mu.Lock()
 	target := clock.at + ms
 	clock.mu.Unlock()
@@ -347,20 +349,7 @@ func (clock *fakeProgressClock) advance(progress *Progress, ms float64) {
 		clock.at = next.due
 		clock.mu.Unlock()
 		next.run()
-		waitIdle(progress)
-	}
-}
-
-// waitIdle waits until no commit is in flight.
-func waitIdle(progress *Progress) {
-	for {
-		progress.mu.Lock()
-		inFlight := progress.inFlight
-		progress.mu.Unlock()
-		if inFlight == nil {
-			return
-		}
-		<-inFlight
+		progress.WaitIdle()
 	}
 }
 
@@ -370,10 +359,10 @@ func TestProgress(t *testing.T) {
 		var mu sync.Mutex
 		var commits []float64
 		size := 50 * 1024
-		progress := newProgressWithClock(func() (int, error) {
+		progress := NewProgressWithClock(func() (int, error) {
 			mu.Lock()
 			defer mu.Unlock()
-			commits = append(commits, clock.now())
+			commits = append(commits, clock.Now())
 			return size, nil
 		}, func(error) {}, 100, clock)
 		expect := func(want ...float64) {
@@ -406,14 +395,14 @@ func TestProgress(t *testing.T) {
 	})
 
 	t.Run("waits the configured minimum interval between small commits", func(t *testing.T) {
-		// upstream: packages/durable/test/harness-output.test.ts:237
+		// upstream: packages/chord/test/output.test.ts:237
 		clock := &fakeProgressClock{}
 		var mu sync.Mutex
 		var commits []float64
-		progress := newProgressWithClock(func() (int, error) {
+		progress := NewProgressWithClock(func() (int, error) {
 			mu.Lock()
 			defer mu.Unlock()
-			commits = append(commits, clock.now())
+			commits = append(commits, clock.Now())
 			return 10, nil
 		}, func(error) {}, 500, clock)
 		expect := func(want ...float64) {
@@ -448,7 +437,7 @@ func TestProgress(t *testing.T) {
 	t.Run("stops: waits for the commit in flight and hands back waiters no commit covered yet", func(t *testing.T) {
 		clock := &fakeProgressClock{}
 		inFlight := make(chan struct{})
-		progress := newProgressWithClock(func() (int, error) {
+		progress := NewProgressWithClock(func() (int, error) {
 			<-inFlight
 			return 0, nil
 		}, func(error) {}, 100, clock)
@@ -479,4 +468,18 @@ func TestProgress(t *testing.T) {
 			t.Fatal(err)
 		}
 	})
+}
+
+// Node's setTimeout runs a delay outside [1 ms, TIMEOUT_MAX], or NaN, after 1 ms, so a Progress whose pause is that long still commits (lib/internal/timers.js Timeout: `if (!(after >= 1 && after <= TIMEOUT_MAX)) after = 1`).
+func TestSystemProgressClockUsesNodesTimerDelayRule(t *testing.T) {
+	for _, delay := range []float64{math.NaN(), math.Inf(1), 1e13, 2147483648, 0, -5} {
+		fired := make(chan struct{})
+		stop := SystemProgressClock{}.AfterFunc(delay, func() { close(fired) })
+		select {
+		case <-fired:
+		case <-time.After(5 * time.Second):
+			t.Errorf("a delay of %v did not run after 1 ms", delay)
+		}
+		stop()
+	}
 }

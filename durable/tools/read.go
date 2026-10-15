@@ -7,9 +7,9 @@ import (
 	"strings"
 
 	"github.com/MichaelKinsy/PiG/ai"
+	"github.com/MichaelKinsy/PiG/chord/output"
 	"github.com/MichaelKinsy/PiG/durable"
 	"github.com/MichaelKinsy/PiG/durable/env"
-	"github.com/MichaelKinsy/PiG/durable/harness"
 	"github.com/MichaelKinsy/PiG/internal/jsnumber"
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
 )
@@ -287,7 +287,7 @@ func readText(ctx context.Context, reader env.BinaryReader, input ReadToolInput)
 			lineBytes = []byte(firstLine)
 			lineSize = int(scan.FirstLineBytes)
 		}
-		end := harness.CharacterEnd(lineBytes, durable.DEFAULT_MAX_BYTES)
+		end := output.CharacterEnd(lineBytes, durable.DEFAULT_MAX_BYTES)
 		outputText = decodeText(lineBytes[:min(end, len(lineBytes))])
 		diagnostics = append(diagnostics, durable.ToolDiagnostic{
 			Severity: durable.SeverityWarn,

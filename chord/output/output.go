@@ -1,6 +1,6 @@
-// Ports packages/durable/src/harness/output.ts.
+// Ports packages/chord/src/output.ts.
 
-package harness
+package output
 
 import (
 	"bytes"
@@ -13,12 +13,11 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/MichaelKinsy/PiG/durable/env"
 	"github.com/MichaelKinsy/PiG/internal/entered"
 	"github.com/MichaelKinsy/PiG/internal/goroutineid"
 )
 
-// OutputLimits are the retention limits of one tool's output. Retain is "head" or "tail".
+// OutputLimits are the retention limits of one output stream. Retain is "head" or "tail".
 type OutputLimits struct {
 	MaxBytes int
 	MaxLines int
@@ -38,6 +37,21 @@ type OutputSlice struct {
 	Bytes        int
 	DroppedBytes int
 	DroppedLines int
+}
+
+// OutputSkip is output a producer omitted before a chunk, measured on the decoded text: every U+FFFD counts as three bytes, and no sanitizing is applied.
+type OutputSkip struct {
+	// Bytes is the UTF-8 byte length of the omitted text.
+	Bytes int
+	// Newlines is the count of newlines (U+000A) in the omitted text.
+	Newlines int
+	// EndsWithNewline reports whether the omitted text ends with a newline.
+	EndsWithNewline bool
+}
+
+// Utf8ByteLength returns the UTF-8 byte length of content. Go strings hold UTF-8 (lone UTF-16 surrogates arrive as U+FFFD or as their 3-byte WTF-8 form), so the length is the byte count, as Node's Buffer.byteLength reports it.
+func Utf8ByteLength(content string) int {
+	return len(content)
 }
 
 const outputNewline = 0x0a
@@ -205,7 +219,7 @@ type outputChunk struct {
 	newlines int
 }
 
-// OutputBuffer is the bounded running output of one tool call. Accepting a chunk costs time proportional to the chunk: head retention stops storing once the window is full, and tail retention drops stored text the window no longer needs when it snapshots. Counts of the whole stream are kept so the dropped totals stay exact. It is not safe for concurrent use.
+// OutputBuffer is the bounded running output of one stream, such as a tool call's or a process's. Accepting a chunk costs time proportional to the chunk: head retention stops storing once the window is full, and tail retention drops stored text the window no longer needs when it snapshots. Counts of the whole stream are kept so the dropped totals stay exact. It is not safe for concurrent use.
 type OutputBuffer struct {
 	limits  OutputLimits
 	decoder utf8StreamDecoder
@@ -261,7 +275,7 @@ func (buffer *OutputBuffer) PushBytes(chunk []byte) bool {
 // PushStringSkipping accepts a text chunk that follows omitted output: skipped is output omitted right before the chunk,
 // which must be more than the tail window by at least one byte or line (ShellOutputInfo.Skipped). Only tail retention
 // accepts it; head retention returns an error. It reports that the chunk was accepted.
-func (buffer *OutputBuffer) PushStringSkipping(chunk string, skipped env.ShellOutputSkip) (bool, error) {
+func (buffer *OutputBuffer) PushStringSkipping(chunk string, skipped OutputSkip) (bool, error) {
 	pending := buffer.decoder.decode(nil, false)
 	buffer.markStarted(pending, chunk, true)
 	return buffer.pushSkipping(pending, chunk, skipped)
@@ -269,12 +283,12 @@ func (buffer *OutputBuffer) PushStringSkipping(chunk string, skipped env.ShellOu
 
 // PushBytesSkipping is PushStringSkipping for a byte chunk, decoding UTF-8 across the omission as upstream does: bytes of
 // an incomplete character before it end as a replacement character.
-func (buffer *OutputBuffer) PushBytesSkipping(chunk []byte, skipped env.ShellOutputSkip) (bool, error) {
+func (buffer *OutputBuffer) PushBytesSkipping(chunk []byte, skipped OutputSkip) (bool, error) {
 	pending := buffer.decoder.decode(nil, false)
 	return buffer.pushSkipping(pending, buffer.decodeBytes(pending, chunk, true), skipped)
 }
 
-func (buffer *OutputBuffer) pushSkipping(pending, text string, skipped env.ShellOutputSkip) (bool, error) {
+func (buffer *OutputBuffer) pushSkipping(pending, text string, skipped OutputSkip) (bool, error) {
 	if buffer.limits.Retain != "tail" {
 		return false, errors.New("Skipped output requires tail retention")
 	}
@@ -285,7 +299,7 @@ func (buffer *OutputBuffer) pushSkipping(pending, text string, skipped env.Shell
 }
 
 // skip counts omitted output; nothing stored before it can be in the window once the text after it arrives.
-func (buffer *OutputBuffer) skip(skipped env.ShellOutputSkip) {
+func (buffer *OutputBuffer) skip(skipped OutputSkip) {
 	if skipped.Bytes == 0 {
 		return
 	}
@@ -500,22 +514,31 @@ func (decoder *utf8StreamDecoder) decode(chunk []byte, stream bool) string {
 
 // Each progress commit also buys a pause proportional to what it wrote (output.ts:250).
 const (
-	progressBytesPerSecond  = 100 * 1024
-	progressMillisPerSecond = 1000
+	ProgressBytesPerSecond  = 100 * 1024
+	ProgressMillisPerSecond = 1000
 )
 
-// progressClock is the time source of Progress: wall-clock milliseconds and one-shot timers.
-type progressClock interface {
-	now() float64
-	afterFunc(delay float64, run func()) (stop func())
+// ProgressClock is the time source of Progress: wall-clock milliseconds and one-shot timers.
+type ProgressClock interface {
+	Now() float64
+	AfterFunc(delay float64, run func()) (stop func())
 }
 
-type systemProgressClock struct{}
+// SystemProgressClock is Date.now and setTimeout.
+type SystemProgressClock struct{}
 
-func (systemProgressClock) now() float64 { return float64(time.Now().UnixMilli()) }
+// nodeTimeoutMax is Node's TIMEOUT_MAX (lib/internal/timers.js), the longest delay a timer honors: 2^31-1 ms.
+const nodeTimeoutMax = 1<<31 - 1
 
-func (systemProgressClock) afterFunc(delay float64, run func()) func() {
-	timer := time.AfterFunc(time.Duration(delay*float64(time.Millisecond)), run)
+// Now is Date.now().
+func (SystemProgressClock) Now() float64 { return float64(time.Now().UnixMilli()) }
+
+// AfterFunc is setTimeout(run, delay) with Node's delay rule: a delay outside [1 ms, TIMEOUT_MAX], or NaN, runs after 1 ms (`if (!(after >= 1 && after <= TIMEOUT_MAX)) after = 1`), and the rest is truncated to whole milliseconds.
+func (SystemProgressClock) AfterFunc(delay float64, run func()) func() {
+	if !(delay >= 1 && delay <= nodeTimeoutMax) {
+		delay = 1
+	}
+	timer := time.AfterFunc(time.Duration(math.Trunc(delay))*time.Millisecond, run) //portlint:allow numbers delay is within [1, 2^31-1] above, so the conversion is exact
 	return func() { timer.Stop() }
 }
 
@@ -555,35 +578,35 @@ func (waiter *ProgressWaiter) Wait(ctx context.Context) error {
 	}
 }
 
-// awaitCaller lets the goroutine that waits on waiter, once the waiter settled, run until it waits again or ends: upstream's continuation of
+// AwaitCaller lets the goroutine that waits on waiter, once the waiter settled, run until it waits again or ends: upstream's continuation of
 // a settled promise runs up to its next await before the code after the settlement does. The settling goroutine itself is not waited for.
-func awaitCaller(waiter *ProgressWaiter) {
+func AwaitCaller(waiter *ProgressWaiter) {
 	if id := waiter.waiting.Load(); id != 0 && id != goroutineid.Current() {
 		entered.Await(id, nil)
 	}
 }
 
-// settleInOrder settles waiters in order with err. Upstream settles the details() promises of one commit in order and
+// SettleInOrder settles waiters in order with err. Upstream settles the details() promises of one commit in order and
 // runs each continuation up to its next await before the next one, so each waiter's caller, if one waits, runs until it
 // waits again or ends before the next waiter is settled. The last waiter's caller is not waited for: what follows the
 // settlement of a progress commit does not depend on it.
-func settleInOrder(waiters []*ProgressWaiter, err error) {
+func SettleInOrder(waiters []*ProgressWaiter, err error) {
 	for index, waiter := range waiters {
 		waiter.settle(err)
 		if index == len(waiters)-1 {
 			break
 		}
-		awaitCaller(waiter)
+		AwaitCaller(waiter)
 	}
 }
 
-// settleAndAwait is settleInOrder that also lets the last waiter's caller run before it returns. A tool's terminal commit settles the
+// SettleAndAwait is SettleInOrder that also lets the last waiter's caller run before it returns. A tool's terminal commit settles the
 // details() still waiting, and their continuations run before the run goes on (harness-tools.test.ts:1019), which the caller of
-// settleAndAwait keeps by not letting the commit's owner take the Session line until this returns.
-func settleAndAwait(waiters []*ProgressWaiter, err error) {
+// SettleAndAwait keeps by not letting the commit's owner take the Session line until this returns.
+func SettleAndAwait(waiters []*ProgressWaiter, err error) {
 	for _, waiter := range waiters {
 		waiter.settle(err)
-		awaitCaller(waiter)
+		AwaitCaller(waiter)
 	}
 }
 
@@ -594,7 +617,7 @@ type Progress struct {
 	write         func() (int, error)
 	onError       func(error)
 	minIntervalMs float64
-	clock         progressClock
+	clock         ProgressClock
 
 	mu        sync.Mutex
 	waiters   []*ProgressWaiter
@@ -609,10 +632,11 @@ type Progress struct {
 
 // NewProgress returns a Progress that commits through write, which reports the bytes it wrote; onError receives a failed commit's error. minIntervalMs is the least pause between commits.
 func NewProgress(write func() (int, error), onError func(error), minIntervalMs float64) *Progress {
-	return newProgressWithClock(write, onError, minIntervalMs, systemProgressClock{})
+	return NewProgressWithClock(write, onError, minIntervalMs, SystemProgressClock{})
 }
 
-func newProgressWithClock(write func() (int, error), onError func(error), minIntervalMs float64, clock progressClock) *Progress {
+// NewProgressWithClock is NewProgress with the time source of the commits, for tests that hold them.
+func NewProgressWithClock(write func() (int, error), onError func(error), minIntervalMs float64, clock ProgressClock) *Progress {
 	return &Progress{write: write, onError: onError, minIntervalMs: minIntervalMs, clock: clock}
 }
 
@@ -644,6 +668,26 @@ func (progress *Progress) MarkAndWait() *ProgressWaiter {
 	return waiter
 }
 
+// WaitIdle waits until no commit is in flight. A test that drives Progress with its own ProgressClock settles each commit it starts with it, as advanceTimersByTimeAsync drains microtasks.
+func (progress *Progress) WaitIdle() {
+	for {
+		progress.mu.Lock()
+		inFlight := progress.inFlight
+		progress.mu.Unlock()
+		if inFlight == nil {
+			return
+		}
+		<-inFlight
+	}
+}
+
+// Waiting is the number of changes whose MarkAndWait has not yet had a commit settle it, for tests that hold Progress's timers.
+func (progress *Progress) Waiting() int {
+	progress.mu.Lock()
+	defer progress.mu.Unlock()
+	return len(progress.waiters)
+}
+
 // Stop stops committing and waits for the commit in flight; it returns the waiters the final commit must settle.
 func (progress *Progress) Stop() []*ProgressWaiter {
 	progress.mu.Lock()
@@ -664,9 +708,9 @@ func (progress *Progress) Stop() []*ProgressWaiter {
 	return waiters
 }
 
-// trailingWaiter is the last waiter the latest progress commit settled, whose caller settleInOrder did not wait for, or nil. It reads the state Stop
+// TrailingWaiter is the last waiter the latest progress commit settled, whose caller SettleInOrder did not wait for, or nil. It reads the state Stop
 // left, so the caller of a final commit lets that continuation run before the terminal state is published.
-func (progress *Progress) trailingWaiter() *ProgressWaiter {
+func (progress *Progress) TrailingWaiter() *ProgressWaiter {
 	progress.mu.Lock()
 	defer progress.mu.Unlock()
 	return progress.trailing
@@ -676,12 +720,12 @@ func (progress *Progress) scheduleLocked() {
 	if progress.stopped || progress.stopTimer != nil || progress.inFlight != nil {
 		return
 	}
-	wait := progress.nextAt - progress.clock.now()
+	wait := progress.nextAt - progress.clock.Now()
 	if wait <= 0 {
 		progress.flushLocked()
 		return
 	}
-	stop := progress.clock.afterFunc(wait, func() {
+	stop := progress.clock.AfterFunc(wait, func() {
 		progress.mu.Lock()
 		defer progress.mu.Unlock()
 		if progress.stopTimer == nil {
@@ -700,17 +744,17 @@ func (progress *Progress) flushLocked() {
 	progress.dirty = false
 	waiters := progress.waiters
 	progress.waiters = nil
-	started := progress.clock.now()
+	started := progress.clock.Now()
 	done := make(chan struct{})
 	progress.inFlight = done
-	go progress.commit(started, waiters, done)
+	go progress.commit(started, waiters, done) //portlint:allow golifetime the commit is owned by inFlight (done): Stop and WaitIdle wait for it, as Pi's Progress awaits its in-flight commit
 }
 
 func (progress *Progress) commit(started float64, waiters []*ProgressWaiter, done chan struct{}) {
 	written, err := progress.write()
 	progress.mu.Lock()
 	if err == nil {
-		progress.nextAt = started + math.Max(progress.minIntervalMs, float64(written)*progressMillisPerSecond/progressBytesPerSecond)
+		progress.nextAt = started + math.Max(progress.minIntervalMs, float64(written)*ProgressMillisPerSecond/ProgressBytesPerSecond)
 	} else {
 		progress.nextAt = started + progress.minIntervalMs
 	}
@@ -719,7 +763,7 @@ func (progress *Progress) commit(started float64, waiters []*ProgressWaiter, don
 	if err != nil {
 		progress.onError(err)
 	}
-	settleInOrder(waiters, err)
+	SettleInOrder(waiters, err)
 	progress.mu.Lock()
 	defer progress.mu.Unlock()
 	if len(waiters) > 0 {

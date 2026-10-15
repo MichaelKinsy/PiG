@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/MichaelKinsy/PiG/chord/output"
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
 	"github.com/MichaelKinsy/PiG/internal/truncate"
 )
@@ -83,10 +84,9 @@ type TruncationOptions struct {
 	MaxBytes *int
 }
 
-// Utf8ByteLength returns the UTF-8 byte length of content. Go strings hold UTF-8 (lone UTF-16 surrogates arrive as
-// U+FFFD or as their 3-byte WTF-8 form), so the length is the byte count, as Node's Buffer.byteLength reports it.
+// Utf8ByteLength is chord/output.Utf8ByteLength, the one implementation shared with the output buffer (truncate.ts re-exports it).
 func Utf8ByteLength(content string) int {
-	return len(content)
+	return output.Utf8ByteLength(content)
 }
 
 // FormatSize formats bytes as a human-readable size.

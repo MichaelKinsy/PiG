@@ -16,6 +16,7 @@ import (
 
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/chord/delta"
+	"github.com/MichaelKinsy/PiG/chord/output"
 	"github.com/MichaelKinsy/PiG/durable"
 	"github.com/MichaelKinsy/PiG/durable/env"
 	"github.com/MichaelKinsy/PiG/durable/session"
@@ -491,8 +492,8 @@ func callTool(run func() error) (err error) {
 // toolReported is what a running tool reported through its api: output, the last details, and diagnostics.
 type toolReported struct {
 	mu          sync.Mutex
-	output      *OutputBuffer
-	limits      OutputLimits
+	output      *output.OutputBuffer
+	limits      output.OutputLimits
 	diagnostics []durable.ToolDiagnostic
 	details     durable.JsonValue
 	hasDetails  bool
@@ -511,8 +512,8 @@ type toolEnding struct {
 var toolCompleted = toolEnding{status: durable.OutcomeCompleted}
 
 // ToolOutputLimits is the bound a tool's retained output keeps: the tool's own limits over the defaults (tool.ts run).
-func ToolOutputLimits(tool *durable.ToolRegistration) OutputLimits {
-	limits := OutputLimits{MaxBytes: durable.DEFAULT_MAX_BYTES, MaxLines: durable.DEFAULT_MAX_LINES, Retain: string(durable.RetainHead)}
+func ToolOutputLimits(tool *durable.ToolRegistration) output.OutputLimits {
+	limits := output.OutputLimits{MaxBytes: durable.DEFAULT_MAX_BYTES, MaxLines: durable.DEFAULT_MAX_LINES, Retain: string(durable.RetainHead)}
 	if tool.OutputLimits != nil {
 		if tool.OutputLimits.MaxBytes != nil {
 			limits.MaxBytes = *tool.OutputLimits.MaxBytes
@@ -530,7 +531,7 @@ func ToolOutputLimits(tool *durable.ToolRegistration) OutputLimits {
 // runTool executes with the resolved implementation, then settles its result (tool.ts:157-262).
 func runTool(ctx context.Context, runtime toolRuntime, input ToolTaskInput, call ai.ToolCall, tool *durable.ToolRegistration, args map[string]any) error {
 	limits := ToolOutputLimits(tool)
-	reported := &toolReported{output: NewOutputBuffer(limits), limits: limits}
+	reported := &toolReported{output: output.NewOutputBuffer(limits), limits: limits}
 	progress := publishProgress(ctx, runtime, reported, input.Kind != ToolTaskNested || input.Progress == nil || *input.Progress)
 	api := &toolApi{runtime: runtime, call: call, tool: tool, reported: reported, progress: progress, nested: NewNestedCalls(call.ID, tool.Replay == durable.ReplaySafe)}
 	if limits.Retain == string(durable.RetainTail) {
@@ -538,7 +539,7 @@ func runTool(ctx context.Context, runtime toolRuntime, input ToolTaskInput, call
 			MaxBytes:       limits.MaxBytes,
 			MaxLines:       limits.MaxLines,
 			MinIntervalMs:  runtime.Settings().Progress.OutputIntervalMs,
-			BytesPerSecond: progressBytesPerSecond,
+			BytesPerSecond: output.ProgressBytesPerSecond,
 		}
 	}
 
@@ -565,7 +566,7 @@ func runTool(ctx context.Context, runtime toolRuntime, input ToolTaskInput, call
 		if runtime.Signal().Err() != nil {
 			api.ended.Store(true)
 			api.nested.End()
-			settleInOrder(progress.Stop(), err)
+			output.SettleInOrder(progress.Stop(), err)
 			return err
 		}
 		isError := true
@@ -583,8 +584,8 @@ func runTool(ctx context.Context, runtime toolRuntime, input ToolTaskInput, call
 	// Details still waiting for a progress commit settle with the terminal commit, the final flush.
 	pending := progress.Stop()
 	// The caller of the details() the last progress commit settled may still be running; it runs before what follows.
-	if trailing := progress.trailingWaiter(); trailing != nil {
-		awaitCaller(trailing)
+	if trailing := progress.TrailingWaiter(); trailing != nil {
+		output.AwaitCaller(trailing)
 	}
 	settled, err := finalResult(ctx, runtime, input, tool, call, result, reported)
 	commitCtx := ctx
@@ -599,7 +600,7 @@ func runTool(ctx context.Context, runtime toolRuntime, input ToolTaskInput, call
 	if err == nil {
 		err = settleTool(commitCtx, runtime, input, call, ending, func(*ToolSlot) durable.ToolExecutionResult { return settled }, durationMs)
 	}
-	settleAndAwait(pending, err)
+	output.SettleAndAwait(pending, err)
 	return err
 }
 
@@ -609,7 +610,7 @@ type toolApi struct {
 	call     ai.ToolCall
 	env      env.ExecutionEnv
 	reported *toolReported
-	progress *Progress
+	progress *output.Progress
 	window   *env.ShellOutputWindow
 	ended    atomic.Bool
 	tool     *durable.ToolRegistration
@@ -671,13 +672,13 @@ func (api *toolApi) output(chunk any, skipped *env.ShellOutputSkip) {
 		if skipped == nil {
 			accepted = api.reported.output.PushString(typed)
 		} else {
-			accepted, err = api.reported.output.PushStringSkipping(typed, *skipped)
+			accepted, err = api.reported.output.PushStringSkipping(typed, output.OutputSkip(*skipped))
 		}
 	case []byte:
 		if skipped == nil {
 			accepted = api.reported.output.PushBytes(typed)
 		} else {
-			accepted, err = api.reported.output.PushBytesSkipping(typed, *skipped)
+			accepted, err = api.reported.output.PushBytesSkipping(typed, output.OutputSkip(*skipped))
 		}
 	default:
 		api.reported.mu.Unlock()
@@ -784,15 +785,15 @@ func (api *toolApi) WatchDocErased(ctx context.Context, token durable.AnyDocToke
 // publishProgress returns throttled commits of what the tool reported into its pi.live.tools slot, each writing only
 // what changed since the last one (tool.ts:268-318).
 // toolProgressClock times tool progress commits; tests replace it to hold the throttled commits.
-var toolProgressClock progressClock = systemProgressClock{}
+var toolProgressClock output.ProgressClock = output.SystemProgressClock{}
 
-func publishProgress(ctx context.Context, runtime toolRuntime, reported *toolReported, enabled bool) *Progress {
+func publishProgress(ctx context.Context, runtime toolRuntime, reported *toolReported, enabled bool) *output.Progress {
 	written := struct {
 		text           string
 		detailsVersion int
 		diagnostics    int
 	}{}
-	return newProgressWithClock(func() (int, error) {
+	return output.NewProgressWithClock(func() (int, error) {
 		if !enabled {
 			return 0, nil
 		}
@@ -887,7 +888,7 @@ func publishProgress(ctx context.Context, runtime toolRuntime, reported *toolRep
 func finalResult(ctx context.Context, runtime toolRuntime, input ToolTaskInput, tool *durable.ToolRegistration, call ai.ToolCall, result durable.ToolExecutionResult, reported *toolReported) (durable.ToolExecutionResult, error) {
 	harness := []durable.ToolDiagnostic{}
 	reported.mu.Lock()
-	var retained *BoundedOutput
+	var retained *output.BoundedOutput
 	if result.Output == nil {
 		snapshot := reported.output.Snapshot()
 		retained = &snapshot
@@ -1152,7 +1153,7 @@ func truncated(droppedLines, droppedBytes int, retain string) durable.ToolDiagno
 // boundContent bounds the text of result content (tool.ts:470-484). When the joined text exceeds the limits, the
 // text items are replaced by one bounded item at the position of the first (head) or last (tail) text item; other
 // content is kept.
-func boundContent(content []ai.ToolResultMessageContent, limits OutputLimits) ([]ai.ToolResultMessageContent, int, int) {
+func boundContent(content []ai.ToolResultMessageContent, limits output.OutputLimits) ([]ai.ToolResultMessageContent, int, int) {
 	var joined strings.Builder
 	keep := -1
 	for index, item := range content {
@@ -1165,7 +1166,7 @@ func boundContent(content []ai.ToolResultMessageContent, limits OutputLimits) ([
 			keep = index
 		}
 	}
-	bounded := BoundOutput(joined.String(), limits)
+	bounded := output.BoundOutput(joined.String(), limits)
 	if bounded.DroppedBytes == 0 {
 		return content, 0, 0
 	}

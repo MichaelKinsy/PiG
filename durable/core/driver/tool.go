@@ -11,6 +11,7 @@ import (
 	"sync/atomic"
 
 	"github.com/MichaelKinsy/PiG/ai"
+	"github.com/MichaelKinsy/PiG/chord/output"
 	"github.com/MichaelKinsy/PiG/durable"
 	"github.com/MichaelKinsy/PiG/durable/core/abi"
 	"github.com/MichaelKinsy/PiG/durable/core/abi/payload"
@@ -96,7 +97,7 @@ func (t *Tools) run(ctx context.Context, call *sqlhost.Call) error {
 		// The core offers a window only for tail retention, with the call's own limits.
 		limits.MaxBytes, limits.MaxLines, limits.Retain = w.MaxBytes, w.MaxLines, string(durable.RetainTail)
 	}
-	api.retained = harness.NewOutputBuffer(limits)
+	api.retained = output.NewOutputBuffer(limits)
 	var result durable.ToolExecutionResult
 	err = callDefinition(func() (err error) { result, err = registration.Execute(ctx, args, api); return err })
 	api.ended.Store(true)
@@ -148,7 +149,7 @@ type toolAPI struct {
 	ended  atomic.Bool
 	// retained mirrors the output buffer the core keeps for the call, so RetainedOutput answers without a round trip.
 	mu       sync.Mutex
-	retained *harness.OutputBuffer
+	retained *output.OutputBuffer
 	waits    *atomic.Uint32 // the host's details wait IDs: nonzero, unique for the life of the handle
 	nested   *harness.NestedCalls
 }
@@ -238,7 +239,7 @@ func (a *toolAPI) retain(data []byte, skipped *env.ShellOutputSkip) {
 	if skipped == nil || skipped.Bytes == 0 {
 		a.retained.PushBytes(data)
 	} else {
-		_, err = a.retained.PushBytesSkipping(data, *skipped)
+		_, err = a.retained.PushBytesSkipping(data, output.OutputSkip(*skipped))
 	}
 	if err != nil {
 		panic(err)

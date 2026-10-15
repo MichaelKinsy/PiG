@@ -1,6 +1,6 @@
-package harness
+package output
 
-// pi: packages/durable/src/harness/output.ts (sanitizeOutput, boundOutput, OutputBuffer)
+// pi: packages/chord/src/output.ts (sanitizeOutput, boundOutput, OutputBuffer)
 
 import (
 	"bytes"
@@ -14,7 +14,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/MichaelKinsy/PiG/durable/env"
 	"github.com/MichaelKinsy/PiG/internal/testenv"
 )
 
@@ -173,7 +172,7 @@ func TestOutputBufferMatchesPi(t *testing.T) {
 				data, _ := base64.StdEncoding.DecodeString(*op.Data)
 				got = buffer.PushBytes(data)
 			case "skip":
-				skipped := env.ShellOutputSkip{Bytes: op.Skipped.Bytes, Newlines: op.Skipped.Newlines, EndsWithNewline: op.Skipped.EndsWithNewline}
+				skipped := OutputSkip{Bytes: op.Skipped.Bytes, Newlines: op.Skipped.Newlines, EndsWithNewline: op.Skipped.EndsWithNewline}
 				if op.Data != nil {
 					data, _ := base64.StdEncoding.DecodeString(*op.Data)
 					got, gotErr = buffer.PushBytesSkipping(data, skipped)

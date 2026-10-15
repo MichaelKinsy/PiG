@@ -1,10 +1,10 @@
-// Run Pi's output bounding (packages/durable/src/harness/output.ts, imported as-is with types stripped) over programs from stdin.
+// Run Pi's output bounding (packages/chord/src/output.ts, imported as-is with types stripped) over programs from stdin.
 // A program is {limits: {maxBytes, maxLines, retain}, ops}: {op: "push", text} | {op: "bytes", data (base64)} | {op: "skip", text | data, skipped: {bytes, newlines, endsWithNewline}} | {op: "end"} | {op: "snapshot"} | {op: "bound", text} | {op: "sanitize", text}.
 // stdout: per program, one {ok, stored} or {err} per op: ok is the push result, the snapshot or the bound slice; stored is storedBytes after the op.
 // usage: node output_oracle.mjs <packages dir>
 import { pathToFileURL } from "node:url";
 const packages = process.argv[2].replace(/\/?$/, "/");
-const { OutputBuffer, boundOutput, sanitizeOutput } = await import(pathToFileURL(`${packages}durable/src/harness/output.ts`).href);
+const { OutputBuffer, boundOutput, sanitizeOutput } = await import(pathToFileURL(`${packages}chord/src/output.ts`).href);
 let input = "";
 process.stdin.setEncoding("utf8");
 for await (const chunk of process.stdin) input += chunk;

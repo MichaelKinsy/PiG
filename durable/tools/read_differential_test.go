@@ -16,9 +16,9 @@ import (
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/ai"
+	"github.com/MichaelKinsy/PiG/chord/output"
 	"github.com/MichaelKinsy/PiG/durable"
 	envnode "github.com/MichaelKinsy/PiG/durable/env/node"
-	"github.com/MichaelKinsy/PiG/durable/harness"
 	"github.com/MichaelKinsy/PiG/internal/jsnumber"
 )
 
@@ -91,7 +91,7 @@ func referenceRead(data []byte, path string, offset, limit *float64) (durable.To
 		if startLine == math.Trunc(startLine) {
 			lineBytes = []byte(allLines[int(startLine)])
 		}
-		end := harness.CharacterEnd(lineBytes, durable.DEFAULT_MAX_BYTES)
+		end := output.CharacterEnd(lineBytes, durable.DEFAULT_MAX_BYTES)
 		outputText = decodeText(lineBytes[:min(end, len(lineBytes))])
 		diagnostics = append(diagnostics, durable.ToolDiagnostic{
 			Severity: durable.SeverityWarn,

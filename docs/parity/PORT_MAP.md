@@ -653,6 +653,7 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/chord/src/delta/draft.ts` | `TypeScript mapped type; the Go draft is chord/delta Object/Array` | n/a |
 | `packages/chord/src/delta/apply-immutable-trusted.ts` | `self-produced-op fast path of the tracker; the Go trackers materialize candidates themselves and ApplyImmutable covers the checked path (apply_immutable_upstream_test.go)` | n/a |
 | `packages/chord/src/delta/revision-validator.ts` | `WeakSet memo of validated JS container identities; a decoded Go revision has no shared identity and is validated by chordjson.Validate (state.go:917)` | n/a |
+| `packages/chord/src/output.ts` | `chord/output/output.go OutputBuffer, Progress, BoundOutput, SanitizeOutput, CharacterEnd, Utf8ByteLength, OutputLimits, OutputSlice, BoundedOutput, OutputSkip` | ✅ |
 | `packages/chord/src/node.ts` | `re-exports manager.ts (chord/host/manager*.go) and nodeLoader (chord/host/loader.go NodeLoader)` | 🟡 |
 | `packages/chord/src/cell.ts` | `chord/host/cell.go NewCell, Cell, Source, Derived, IsSource, NotReady` | 🟡 |
 | `packages/chord/src/publish.ts` | `chord/host/publish.go enqueue, holdPublications` | 🟡 |
@@ -711,7 +712,6 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/durable/src/harness/inbox.ts` | `durable/harness/inbox.go` | ✅ |
 | `packages/durable/src/harness/json.ts` | `durable/harness/json.go` | ✅ |
 | `packages/durable/src/harness/live.ts` | `durable/harness/live.go` | ✅ |
-| `packages/durable/src/harness/output.ts` | `durable/harness/output.go` | ✅ |
 | `packages/durable/src/harness/prompt.ts` | `durable/harness/prompt.go` | ✅ |
 | `packages/durable/src/harness/provider.ts` | `durable/harness/provider.go` | ✅ |
 | `packages/durable/src/harness/registry.ts` | `durable/harness/registry.go` | ✅ |
