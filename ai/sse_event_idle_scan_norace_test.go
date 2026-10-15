@@ -7,6 +7,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/MichaelKinsy/PiG/internal/testenv"
 )
 
 // sseIdleScanStream is a megabyte of what the idle tracker reads during a large write: Chat Completions tool-argument deltas whose text carries escapes, with reasoning deltas and keepalives between them, in 4 KB reads.
@@ -65,9 +67,7 @@ func TestSSEIdleTrackerScanIsNotAPerByteLoop(t *testing.T) {
 	})
 	ratio := float64(scan) / float64(floor)
 	t.Logf("scan %v, line count (%d lines counted) and copy %v: %.1fx", scan, lines, floor, ratio)
-	if ratio > 60 {
-		t.Fatalf("scanning 1 MB of SSE took %v, %.1fx counting its lines and copying it (%v); want at most 60x", scan, ratio, floor)
-	}
+	testenv.TimingGateFatal(t, ratio > 60, "scanning 1 MB of SSE took %v, %.1fx counting its lines and copying it (%v); want at most 60x", scan, ratio, floor)
 }
 
 func BenchmarkSSEIdleTrackerScan(b *testing.B) {

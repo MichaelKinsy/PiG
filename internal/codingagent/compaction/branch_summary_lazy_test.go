@@ -17,6 +17,7 @@ import (
 	"github.com/MichaelKinsy/PiG/bench/sessionscale"
 	"github.com/MichaelKinsy/PiG/internal/codingagent"
 	"github.com/MichaelKinsy/PiG/internal/sessionentry"
+	"github.com/MichaelKinsy/PiG/internal/testenv"
 )
 
 func lazyTestMessage(role, text string) agent.AgentMessage {
@@ -116,9 +117,7 @@ func TestCollectEntriesForBranchSummaryWithinPiTimeOnTheOwnerShape(t *testing.T)
 	if len(collected.Entries) < len(branch)/2 || !slices.ContainsFunc(collected.Entries, sessionentry.IsLazy) {
 		t.Fatalf("collected %d entries of a %d-entry branch", len(collected.Entries), len(branch))
 	}
-	if best > piNavigation {
-		t.Fatalf("collecting the abandoned branch took %v, more than Pi's whole navigation (%v)", best, piNavigation)
-	}
+	testenv.TimingGateFatal(t, best > piNavigation, "collecting the abandoned branch took %v, more than Pi's whole navigation (%v)", best, piNavigation)
 	// A summary prepares the newest entries within its budget (128k window less the 16,384 reserve): it reads only those.
 	start := time.Now()
 	prep, err := PrepareBranchEntries(collected.Entries, 128000-16384)
@@ -132,9 +131,7 @@ func TestCollectEntriesForBranchSummaryWithinPiTimeOnTheOwnerShape(t *testing.T)
 		t.Fatal(err)
 	}
 	t.Logf("summary preparation: %d messages, %d tokens in %v; before_tree decode of %d entries: %v", len(prep.Messages), prep.TotalTokens, prepared, len(collected.Entries), time.Since(start))
-	if prepared > piNavigation {
-		t.Fatalf("preparing the summary took %v, more than Pi's whole navigation (%v)", prepared, piNavigation)
-	}
+	testenv.TimingGateFatal(t, prepared > piNavigation, "preparing the summary took %v, more than Pi's whole navigation (%v)", prepared, piNavigation)
 }
 
 // memRecords serves records from memory and counts the ones read; fail makes every read an error.

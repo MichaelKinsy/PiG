@@ -7,6 +7,8 @@ import (
 	"os"
 	"strings"
 	"testing"
+
+	"github.com/MichaelKinsy/PiG/internal/testenv"
 )
 
 // fastestNs is the lowest ns/op of each run over rounds that alternate between them, so one descheduled run or a slow
@@ -56,9 +58,7 @@ func TestAppendString200KBudget(t *testing.T) {
 	ns := fastestNs(func() { buf = AppendString(buf[:0], payload) }, func() { buf = bytewiseAppendString(buf[:0], payload) })
 	scan, bytewise := ns[0], ns[1]
 	t.Logf("AppendString: %d ns/op, byte at a time: %d ns/op", scan, bytewise)
-	if 9*scan > 4*bytewise {
-		t.Errorf("AppendString of a 200 KB text takes %d ns, the byte-at-a-time loop %d ns: want at least 2.25x faster", scan, bytewise)
-	}
+	testenv.TimingGate(t, 9*scan > 4*bytewise, "AppendString of a 200 KB text takes %d ns, the byte-at-a-time loop %d ns: want at least 2.25x faster", scan, bytewise)
 }
 
 func BenchmarkAppendString200K(b *testing.B) {

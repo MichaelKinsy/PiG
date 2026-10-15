@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/MichaelKinsy/PiG/coding/extension"
+	"github.com/MichaelKinsy/PiG/internal/testenv"
 	"github.com/MichaelKinsy/PiG/tui/widthx"
 )
 
@@ -50,9 +51,7 @@ func TestPushProxy_RenderNeverBlocks(t *testing.T) {
 	elapsed := time.Since(start)
 
 	// 10000 renders should take well under 100ms.
-	if elapsed > 100*time.Millisecond {
-		t.Errorf("10000 renders took %v (too slow for a cache read)", elapsed)
-	}
+	testenv.TimingGate(t, elapsed > 100*time.Millisecond, "10000 renders took %v (too slow for a cache read)", elapsed)
 }
 
 func TestPushProxy_ReturnsCopy(t *testing.T) {

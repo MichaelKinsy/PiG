@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/MichaelKinsy/PiG/bench/sessionscale"
+	"github.com/MichaelKinsy/PiG/internal/testenv"
 )
 
 // The /tree selector over the 300 MB owner-shape session opens and renders its first screen within Pi 1.1.0's time for the same file (0.58 s
@@ -38,9 +39,7 @@ func TestTreeSelectorOpensWithinPiTimeOnTheOwnerShape(t *testing.T) {
 		best = min(best, time.Since(start))
 	}
 	t.Logf("/tree open and first render: %v (Pi 1.1.0: %v)", best, piOpen)
-	if best > piOpen {
-		t.Fatalf("/tree opens in %v, slower than Pi's %v", best, piOpen)
-	}
+	testenv.TimingGateFatal(t, best > piOpen, "/tree opens in %v, slower than Pi's %v", best, piOpen)
 	// Pi types the nine-key query "retry_100" in 2.0-2.5 s on the same file (real binary, reviewer).
 	const piQuery = 2 * time.Second
 	roots, lt := s.lazyTree()
@@ -52,7 +51,5 @@ func TestTreeSelectorOpensWithinPiTimeOnTheOwnerShape(t *testing.T) {
 	}
 	query := time.Since(start)
 	t.Logf("search query typed: %v (Pi 1.1.0: %v)", query, piQuery)
-	if query > piQuery {
-		t.Fatalf("typing the search query takes %v, slower than Pi's %v", query, piQuery)
-	}
+	testenv.TimingGateFatal(t, query > piQuery, "typing the search query takes %v, slower than Pi's %v", query, piQuery)
 }

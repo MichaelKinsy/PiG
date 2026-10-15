@@ -77,9 +77,7 @@ func TestResumeMemoryAndPromptCostFollowTheContext(t *testing.T) {
 	}
 	smallCPU, largeCPU := median(small["prompts-10"].PromptCPUms), median(large["prompts-10"].PromptCPUms)
 	t.Logf("median prompt CPU: 1k entries %d ms, %d entries %d ms", smallCPU, meta.Entries, largeCPU)
-	if largeCPU > max(2*smallCPU, smallCPU+50) {
-		t.Errorf("a prompt costs %d ms at %d entries and %d ms at 1k: per-prompt cost grows with history", largeCPU, meta.Entries, smallCPU)
-	}
+	testenv.TimingGate(t, largeCPU > max(2*smallCPU, smallCPU+50), "a prompt costs %d ms at %d entries and %d ms at 1k: per-prompt cost grows with history", largeCPU, meta.Entries, smallCPU)
 }
 
 // fixtureSearchTextBytes sums, over the message records of a fixture's session file, the bytes of tree-selector.ts getSearchableText without

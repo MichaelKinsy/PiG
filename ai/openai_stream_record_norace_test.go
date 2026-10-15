@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/MichaelKinsy/PiG/internal/testenv"
 	"github.com/MichaelKinsy/PiG/internal/testscaling"
 )
 
@@ -115,9 +116,7 @@ func checkCPULinear(t *testing.T, what string, runs int, small, large func()) {
 	smallCPU, largeCPU := cpuOf(t, 8*runs, small), cpuOf(t, runs, large)
 	ratio := float64(largeCPU) / float64(max(smallCPU, time.Nanosecond))
 	t.Logf("%s: %v CPU, 8x: %v (%.1fx)", what, smallCPU, largeCPU, ratio)
-	if ratio > 20 {
-		t.Errorf("%s: 8x the input took %.1fx the CPU time (%v vs %v); want at most 20x", what, ratio, largeCPU, smallCPU)
-	}
+	testenv.TimingGate(t, ratio > 20, "%s: 8x the input took %.1fx the CPU time (%v vs %v); want at most 20x", what, ratio, largeCPU, smallCPU)
 }
 
 // Records that arrive many to a body value, as a socket read of a fast stream returns them, cost in proportion to their number:

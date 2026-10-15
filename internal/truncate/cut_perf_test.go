@@ -3,6 +3,8 @@ package truncate
 import (
 	"strings"
 	"testing"
+
+	"github.com/MichaelKinsy/PiG/internal/testenv"
 )
 
 // A truncated result is a substring of its input: neither cut builds the lines, so neither allocates however many lines the input has.
@@ -30,9 +32,7 @@ func TestTailWindowAppendCostDoesNotGrowWithTheWindow(t *testing.T) {
 		return float64(result.T.Nanoseconds()) / float64(result.N)
 	}
 	small, large := perAppend(1<<10), perAppend(1<<20)
-	if large > 8*small+50 {
-		t.Fatalf("append to a full 1 MiB window costs %.0f ns, a 1 KiB one %.0f ns: the cost scales with the window", large, small)
-	}
+	testenv.TimingGateFatal(t, large > 8*small+50, "append to a full 1 MiB window costs %.0f ns, a 1 KiB one %.0f ns: the cost scales with the window", large, small)
 }
 
 // Result copies only the kept text, once.

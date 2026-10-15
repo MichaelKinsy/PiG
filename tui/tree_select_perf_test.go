@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"testing"
 	"time"
+
+	"github.com/MichaelKinsy/PiG/internal/testenv"
 )
 
 // TestTreeSelectLargeNavigationFast guards against the O(n^2)/O(n^3)
@@ -38,9 +40,7 @@ func TestTreeSelectLargeNavigationFast(t *testing.T) {
 
 	// The old code took tens of seconds at this size. 5s is generous
 	// enough to never flake yet fails hard on a quadratic regression.
-	if elapsed > 5*time.Second {
-		t.Fatalf("large tree navigation too slow: %v (quadratic regression?)", elapsed)
-	}
+	testenv.TimingGateFatal(t, elapsed > 5*time.Second, "large tree navigation too slow: %v (quadratic regression?)", elapsed)
 }
 
 func branchingTree(branches, depth int) TreeNode {

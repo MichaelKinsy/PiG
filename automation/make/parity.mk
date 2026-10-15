@@ -352,6 +352,13 @@ parity-perf: parity-bin ## Authoritative performance gate: runs only scenarios t
 	@$(MAKE) -s require-parity-ran RESULTS=$(RESULTS)
 	@$(MAKE) -s coverage
 
+# Blocking timing gates: every test that fails on a measured duration, ns/op, CPU time or timing ratio
+# (internal/testenv.TimingGate, listed in automation/perf/timing-gates.json). Pull-request CI sets
+# PIG_PERF_TIMING_REPORT_ONLY=1 and only warns; this target removes it and runs the gates serially, so run it
+# on quiet pinned hardware for the release perf run, not in the dev loop.
+test-timing: ## Blocking wall-clock and speed-ratio gates, serial (release perf run on quiet hardware)
+	@automation/ci/with-isolated-pig-home.sh python3 automation/perf/timing_gates.py
+
 parity-flow-coverage: parity-deps
 	@set -eu; covdir=$$($(MKTEMP_DIR)); trap 'rm -rf "$$covdir"' EXIT; \
 		go build -cover -o "$$covdir/pig" ./cmd/pig; \

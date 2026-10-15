@@ -604,6 +604,7 @@ make schedule-report
 make test-stress
 make parity-stress
 make parity-perf
+make test-timing   # blocking wall-clock/ratio gates (internal/testenv.TimingGate); PR CI only warns (PIG_PERF_TIMING_REPORT_ONLY=1)
 make parity-live
 make release-check
 go tool govulncheck ./...

@@ -5,6 +5,8 @@ package compaction
 import (
 	"strings"
 	"testing"
+
+	"github.com/MichaelKinsy/PiG/internal/testenv"
 )
 
 var jsLengthSink int
@@ -29,7 +31,5 @@ func TestJSLengthCountsASCIIByWord(t *testing.T) {
 	fast := fastest(func() { jsLengthSink += jsLength(text) })
 	slow := fastest(func() { jsLengthSink += jsLengthByRune(text) })
 	t.Logf("jsLength of %d ASCII bytes: %d ns/op; rune loop %d ns/op", len(text), fast, slow)
-	if 3*fast > slow {
-		t.Fatalf("jsLength of %d ASCII bytes takes %d ns, the rune loop %d ns: want at least 3x faster", len(text), fast, slow)
-	}
+	testenv.TimingGateFatal(t, 3*fast > slow, "jsLength of %d ASCII bytes takes %d ns, the rune loop %d ns: want at least 3x faster", len(text), fast, slow)
 }

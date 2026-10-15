@@ -1,0 +1,18 @@
+[
+  {"package": "./ai", "tests": ["TestOpenAICompletionsRecordsAreScannedOnce", "TestSSEIdleTrackerScanIsNotAPerByteLoop", "TestOpenAIStreamRecordsInOneValueAreLinear", "TestOpenAIStreamSplitRecordIsLinear"]},
+  {"package": "./bench/sessionscale/cmd/sessionscale", "tests": ["TestResumeMemoryAndPromptCostFollowTheContext"]},
+  {"package": "./coding/extension/host/subprocess", "tests": ["TestMessageUpdateDeltaCostDoesNotGrowWithTheText", "TestPushProxy_RenderNeverBlocks"]},
+  {"package": "./coding/extension/host/subprocess", "goos": "windows", "tests": ["TestNodeConnectsToExtensionPipeWithoutWaiting"]},
+  {"package": "./durable/codemode", "tests": ["TestJoinAdjacentTextIsLinearAtTheItemLimit"]},
+  {"package": "./durable/core/jv", "tests": ["TestAppendString200KBudget"]},
+  {"package": "./extensions/sdk/json", "tests": ["TestAppendString200KBudget"]},
+  {"package": "./internal/codingagent", "tests": ["TestPiSharedFilesConcurrentWriters", "TestScanToolCallCountSkipsEscapedTextInLinearTime", "TestTreeSelectorOpensWithinPiTimeOnTheOwnerShape"]},
+  {"package": "./internal/codingagent/compaction", "tests": ["TestCollectEntriesForBranchSummaryWithinPiTimeOnTheOwnerShape", "TestJSLengthCountsASCIIByWord"]},
+  {"package": "./internal/jsstring", "tests": ["TestLengthCountsASCIIByWord", "TestStringifyChain200KBudget", "TestMarshalJSONString200KBudget", "TestUnescapeForStringifyCopiesSpans"]},
+  {"package": "./internal/lazyregexp", "tests": ["TestCompilingManyDotsDoesNotWalkTheClasses"]},
+  {"package": "./internal/truncate", "tests": ["TestTailWindowAppendCostDoesNotGrowWithTheWindow"]},
+  {"package": "./mcp", "tests": ["TestStdioSplitterLargeMessageScalesLinearly"]},
+  {"package": "./test/extension-conformance", "tests": ["TestExtensionPayloadScalesLinearly", "TestExtensionRoundTripLatencyOpenLoop", "TestExtensionSoak"]},
+  {"package": "./test/integration", "tags": "integration", "tests": ["TestExt_CachedBinaryUsedOnSecondStartup"]},
+  {"package": "./tui", "tests": ["TestMarkdownUnbrokenLinearScaling", "TestTreeSelectLargeNavigationFast"]}
+]

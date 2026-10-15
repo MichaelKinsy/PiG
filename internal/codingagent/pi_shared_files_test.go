@@ -20,6 +20,7 @@ import (
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/internal/coding/pigversion"
 	"github.com/MichaelKinsy/PiG/internal/pilock"
+	"github.com/MichaelKinsy/PiG/internal/testenv"
 )
 
 func piDirectoryNode(t *testing.T, script string, args ...string) *exec.Cmd {
@@ -316,9 +317,7 @@ console.log('done');
 	}
 	median, slowest := sorted[len(sorted)/2], sorted[len(sorted)-1]
 	t.Logf("PiG settings/trust lock holds: %d, median %v, max %v", len(sorted), median, slowest)
-	if median > 50*time.Millisecond {
-		t.Errorf("PiG's median settings/trust lock hold is %v; Pi gives up after 10 x 20 ms, so a hold this long makes Pi's own writes fail beside PiG", median)
-	}
+	testenv.TimingGate(t, median > 50*time.Millisecond, "PiG's median settings/trust lock hold is %v; Pi gives up after 10 x 20 ms, so a hold this long makes Pi's own writes fail beside PiG", median)
 	creds, err := auth.Load()
 	if err != nil {
 		t.Fatal(err)

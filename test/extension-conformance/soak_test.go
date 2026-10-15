@@ -18,6 +18,7 @@ import (
 	"time"
 
 	"github.com/MichaelKinsy/PiG/coding/extension"
+	"github.com/MichaelKinsy/PiG/internal/testenv"
 	"github.com/MichaelKinsy/PiG/test/extension-conformance/sdkscenarios"
 )
 
@@ -327,9 +328,7 @@ func TestExtensionSoak(t *testing.T) {
 				slices.Sort(sorted)
 				p50, p99 := percentile(sorted, 0.50), percentile(sorted, 0.99)
 				t.Logf("%-10s %6d calls: p50 %7.2f ms, p99 %8.2f ms", op.name, len(sorted), p50, p99)
-				if p99 > soakP99GrossMS {
-					t.Errorf("%s p99 %.2f ms exceeds %.0f ms (seed %d)", op.name, p99, soakP99GrossMS, seed)
-				}
+				testenv.TimingGate(t, p99 > soakP99GrossMS, "%s p99 %.2f ms exceeds %.0f ms (seed %d)", op.name, p99, soakP99GrossMS, seed)
 			}
 
 			// The traffic is over: the host's goroutines and live heap must return to where they were.

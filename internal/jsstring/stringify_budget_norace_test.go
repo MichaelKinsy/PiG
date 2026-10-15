@@ -12,6 +12,7 @@ import (
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/internal/jsparity"
+	"github.com/MichaelKinsy/PiG/internal/testenv"
 )
 
 // budgetPayload mirrors Pi-Bolt bench/fake_model_stress.py write:N: TypeScript lines with one `=>` and one newline each, the text a large
@@ -113,9 +114,7 @@ func TestStringifyChain200KBudget(t *testing.T) {
 	}
 	ns, allocated := fastestRun(func() { _, _ = MarshalJSON(value) })
 	t.Logf("chain: %d ns/op, %d B/op for %d bytes", ns, allocated, len(want))
-	if ns > 500_000 {
-		t.Errorf("MarshalJSON of the 4-level 200 KB chain takes %d ns, budget 500000", ns)
-	}
+	testenv.TimingGate(t, ns > 500_000, "MarshalJSON of the 4-level 200 KB chain takes %d ns, budget 500000", ns)
 	if allocated > 3*int64(len(want)) {
 		t.Errorf("MarshalJSON of the 4-level 200 KB chain allocates %d bytes, budget %d (3x the text)", allocated, 3*len(want))
 	}
@@ -136,9 +135,7 @@ func TestMarshalJSONString200KBudget(t *testing.T) {
 	ns, allocated := fastestRun(func() { _, _ = MarshalJSON(payload) })
 	rewrite, _ := fastestRun(func() { _, _ = referenceMarshalJSON(payload) })
 	t.Logf("string: %d ns/op, %d B/op; encoder plus rewrite: %d ns/op", ns, allocated, rewrite)
-	if 3*ns > rewrite {
-		t.Errorf("MarshalJSON of a 200 KB string takes %d ns, the encoder plus rewrite %d ns: want at least 3x faster", ns, rewrite)
-	}
+	testenv.TimingGate(t, 3*ns > rewrite, "MarshalJSON of a 200 KB string takes %d ns, the encoder plus rewrite %d ns: want at least 3x faster", ns, rewrite)
 	if allocated > 2*int64(len(payload)) {
 		t.Errorf("MarshalJSON of a 200 KB string allocates %d bytes, budget %d", allocated, 2*len(payload))
 	}
@@ -198,7 +195,5 @@ func TestUnescapeForStringifyCopiesSpans(t *testing.T) {
 	ns, _ := fastestRun(func() { _ = UnescapeForStringify(encoded) })
 	loop, _ := fastestRun(func() { _ = referenceUnescapeForStringify(encoded) })
 	t.Logf("%d bytes: %d ns/op; byte loop %d ns/op", len(encoded), ns, loop)
-	if 2*ns > loop {
-		t.Errorf("UnescapeForStringify of a 200 KB body takes %d ns, the byte loop %d ns: want at least 2x faster", ns, loop)
-	}
+	testenv.TimingGate(t, 2*ns > loop, "UnescapeForStringify of a 200 KB body takes %d ns, the byte loop %d ns: want at least 2x faster", ns, loop)
 }

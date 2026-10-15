@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/MichaelKinsy/PiG/internal/testenv"
 	"github.com/MichaelKinsy/PiG/test/extension-conformance/sdkscenarios"
 )
 
@@ -59,12 +60,9 @@ func TestExtensionPayloadScalesLinearly(t *testing.T) {
 			echo(1 << 16)
 			small, large := echo(payloadSmall), echo(payloadLarge)
 			t.Logf("%s: %d MiB in %v, %d MiB in %v (x%.1f for x%d the bytes)", sdk, payloadSmall>>20, small, payloadLarge>>20, large, float64(large)/float64(small), payloadLarge/payloadSmall)
-			if large > payloadCeiling {
-				t.Errorf("echoing %d MiB took %v, over the %v ceiling", payloadLarge>>20, large, payloadCeiling)
-			}
-			if ratio := float64(large) / float64(small); ratio > payloadScalingFactor {
-				t.Errorf("echoing %d times the bytes took %.1f times as long (limit %.0f): a copy in the SDK or host is super-linear", payloadLarge/payloadSmall, ratio, payloadScalingFactor)
-			}
+			testenv.TimingGate(t, large > payloadCeiling, "echoing %d MiB took %v, over the %v ceiling", payloadLarge>>20, large, payloadCeiling)
+			ratio := float64(large) / float64(small)
+			testenv.TimingGate(t, ratio > payloadScalingFactor, "echoing %d times the bytes took %.1f times as long (limit %.0f): a copy in the SDK or host is super-linear", payloadLarge/payloadSmall, ratio, payloadScalingFactor)
 		})
 	}
 }

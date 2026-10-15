@@ -51,9 +51,7 @@ func TestAppendString200KBudget(t *testing.T) {
 	scan := fastestNs(func() { buf = appendString(buf[:0], payload, escapeLineSeparators) })
 	bytewise := fastestNs(func() { buf = appendStringBytewise(buf[:0], payload, escapeLineSeparators) })
 	t.Logf("appendString: %d ns/op, byte at a time: %d ns/op", scan, bytewise)
-	if 2*scan > bytewise {
-		t.Errorf("appendString of a 200 KB text takes %d ns, the byte-at-a-time encoder %d ns: want at least 2x faster", scan, bytewise)
-	}
+	timingGate(t, 2*scan > bytewise, "appendString of a 200 KB text takes %d ns, the byte-at-a-time encoder %d ns: want at least 2x faster", scan, bytewise)
 }
 
 // One large value does not stay pinned in the encode-state pool: a buffer above 64 KiB is dropped on Put (golang/go#23199).

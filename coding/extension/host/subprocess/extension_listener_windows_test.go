@@ -22,6 +22,8 @@ import (
 
 	"github.com/Microsoft/go-winio"
 	"golang.org/x/sys/windows"
+
+	"github.com/MichaelKinsy/PiG/internal/testenv"
 )
 
 // nodePipeClient connects to a named pipe the way Node extensions do and
@@ -83,9 +85,8 @@ func TestNodeConnectsToExtensionPipeWithoutWaiting(t *testing.T) {
 	percentile := func(p float64) float64 { return latencies[int(p*float64(len(latencies)-1))] }
 	t.Logf("node pipe connect latency over %d connects (half failing members): min %.2f ms, median %.2f ms, p99 %.2f ms, max %.2f ms",
 		runs, latencies[0], percentile(0.5), percentile(0.99), latencies[len(latencies)-1])
-	if slowest := latencies[len(latencies)-1]; slowest >= 1000 {
-		t.Fatalf("a Node connect took %.0f ms: libuv waited for a pipe instance instead of connecting at once", slowest)
-	}
+	slowest := latencies[len(latencies)-1]
+	testenv.TimingGateFatal(t, slowest >= 1000, "a Node connect took %.0f ms: libuv waited for a pipe instance instead of connecting at once", slowest)
 }
 
 // The interval review WHF-001 names: a client connects to a pipe instance and

@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/MichaelKinsy/PiG/extensions/sdk/json"
+	"github.com/MichaelKinsy/PiG/internal/testenv"
 )
 
 // decodedToolCallCount is the count the accounting decode gives, the reference scanToolCallCount must equal when it decides.
@@ -116,9 +117,8 @@ func TestScanToolCallCountSkipsEscapedTextInLinearTime(t *testing.T) {
 	data := []byte(`[{"type":"toolResult","text":"` + escaped + `"},{"type":"toolCall","arguments":{"a":"` + escaped + `"}}]`)
 	start := time.Now()
 	count, ok := scanToolCallCount(data)
-	if elapsed := time.Since(start); elapsed > 2*time.Second {
-		t.Fatalf("scanning %d bytes took %v", len(data), elapsed)
-	}
+	elapsed := time.Since(start)
+	testenv.TimingGateFatal(t, elapsed > 2*time.Second, "scanning %d bytes took %v", len(data), elapsed)
 	if want, err := decodedToolCallCount(data); !ok || err != nil || count != want {
 		t.Fatalf("scan = %d, %v; decode = %d, %v", count, ok, want, err)
 	}

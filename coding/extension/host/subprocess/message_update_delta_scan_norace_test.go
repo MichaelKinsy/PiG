@@ -11,6 +11,7 @@ import (
 	"github.com/MichaelKinsy/PiG/agent"
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/coding/extension"
+	"github.com/MichaelKinsy/PiG/internal/testenv"
 )
 
 // streamMessageUpdates prepares and sends n message_update deltas of chunk to one connection's stream, as the provider's accumulator publishes them: each text extends the bytes of the one before, in a buffer that grows by doubling.
@@ -50,7 +51,5 @@ func TestMessageUpdateDeltaCostDoesNotGrowWithTheText(t *testing.T) {
 	shortCost, longCost := perDelta(short), perDelta(long)
 	ratio := float64(longCost) / float64(shortCost)
 	t.Logf("per delta: %d deltas %v, %d deltas %v, ratio %.2f", short, shortCost, long, longCost, ratio)
-	if ratio > 2.5 {
-		t.Errorf("a delta of a %d-delta stream costs %.2fx one of a %d-delta stream, want <= 2.5x: per-delta work grows with the text", long, ratio, short)
-	}
+	testenv.TimingGate(t, ratio > 2.5, "a delta of a %d-delta stream costs %.2fx one of a %d-delta stream, want <= 2.5x: per-delta work grows with the text", long, ratio, short)
 }

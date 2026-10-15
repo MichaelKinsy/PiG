@@ -7,6 +7,8 @@ import (
 	"encoding/json"
 	"strings"
 	"testing"
+
+	"github.com/MichaelKinsy/PiG/internal/testenv"
 )
 
 // openAILargeTextRecords is a completions stream of large text-delta records, in which the record bytes, not the per-record bookkeeping, set the cost.
@@ -60,7 +62,5 @@ func TestOpenAICompletionsRecordsAreScannedOnce(t *testing.T) {
 	})
 	ratio := float64(parsed) / float64(floor)
 	t.Logf("%d records of %d bytes: stream %v, json.Valid and chunk decode of each record %v (%d valid): %.2fx", len(records), len(records[0]), parsed, floor, valid, ratio)
-	if ratio > 2.4 {
-		t.Fatalf("decoding the stream took %v, %.2fx validating each record with json.Valid and decoding it (%v); want at most 2.4x", parsed, ratio, floor)
-	}
+	testenv.TimingGateFatal(t, ratio > 2.4, "decoding the stream took %v, %.2fx validating each record with json.Valid and decoding it (%v); want at most 2.4x", parsed, ratio, floor)
 }

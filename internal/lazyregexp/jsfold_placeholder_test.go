@@ -10,6 +10,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/MichaelKinsy/PiG/internal/testenv"
 )
 
 // spelledJSIgnoreCase is compileJSIgnoreCase with every class written into the tree, the form the placeholders replace.
@@ -77,9 +79,8 @@ func TestCompilingManyDotsDoesNotWalkTheClasses(t *testing.T) {
 	expr += "x"
 	start := time.Now()
 	compileJSIgnoreCase(expr)
-	if elapsed := time.Since(start); elapsed > 20*time.Millisecond {
-		t.Errorf("compiling 40 dots took %v; the classes are being walked again", elapsed)
-	}
+	elapsed := time.Since(start)
+	testenv.TimingGate(t, elapsed > 20*time.Millisecond, "compiling 40 dots took %v; the classes are being walked again", elapsed)
 }
 
 // Random patterns built from dots, negated classes, placeholder-range literals and classes, quantifiers, groups and anchors find the same matches and submatches in the placeholder form as in the spelled form.

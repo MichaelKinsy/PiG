@@ -24,6 +24,8 @@ concurrency:
 env:
   NPM_VERSION: 12.1.0
   RUST_VERSION: 1.97.1
+  # Wall-clock and speed-ratio gates only warn on shared runners (internal/testenv.TimingGate); count, size and allocation gates still block. make test-timing runs them blocking on quiet hardware before a release.
+  PIG_PERF_TIMING_REPORT_ONLY: '1'
 
 jobs:
   changes:

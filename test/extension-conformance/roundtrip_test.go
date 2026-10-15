@@ -12,6 +12,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/MichaelKinsy/PiG/internal/testenv"
 	"github.com/MichaelKinsy/PiG/test/extension-conformance/sdkscenarios"
 )
 
@@ -162,22 +163,15 @@ func TestExtensionRoundTripLatencyOpenLoop(t *testing.T) {
 			if failed != 0 {
 				t.Errorf("%d of %d calls failed", failed, stats.Requests)
 			}
-			if budget := roundTripP50BudgetMS[sdk]; stats.P50 > budget {
-				t.Errorf("p50 round trip %.2f ms exceeds the %.0f ms budget", stats.P50, budget)
-			}
-			if stats.P99 > roundTripP99GrossMS {
-				t.Errorf("p99 round trip %.2f ms exceeds the gross %.0f ms bound: the SDK serializes or blocks requests", stats.P99, roundTripP99GrossMS)
-			}
+			budget := roundTripP50BudgetMS[sdk]
+			testenv.TimingGate(t, stats.P50 > budget, "p50 round trip %.2f ms exceeds the %.0f ms budget", stats.P50, budget)
+			testenv.TimingGate(t, stats.P99 > roundTripP99GrossMS, "p99 round trip %.2f ms exceeds the gross %.0f ms bound: the SDK serializes or blocks requests", stats.P99, roundTripP99GrossMS)
 			if !strict {
 				return
 			}
-			budget := roundTripP99StrictMS[sdk]
-			switch {
-			case stats.P99 > budget:
-				t.Errorf("p99 round trip %.2f ms exceeds the %.0f ms strict budget", stats.P99, budget)
-			case stats.P99 < budget*(1-ratchetSlack):
-				t.Errorf("p99 round trip %.2f ms is under %.0f%% of the %.0f ms strict budget: lower roundTripP99StrictMS[%s]", stats.P99, 100*(1-ratchetSlack), budget, sdk)
-			}
+			budget = roundTripP99StrictMS[sdk]
+			testenv.TimingGate(t, stats.P99 > budget, "p99 round trip %.2f ms exceeds the %.0f ms strict budget", stats.P99, budget)
+			testenv.TimingGate(t, stats.P99 <= budget && stats.P99 < budget*(1-ratchetSlack), "p99 round trip %.2f ms is under %.0f%% of the %.0f ms strict budget: lower roundTripP99StrictMS[%s]", stats.P99, 100*(1-ratchetSlack), budget, sdk)
 		})
 	}
 }

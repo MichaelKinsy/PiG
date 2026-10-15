@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/MichaelKinsy/PiG/ai"
+	"github.com/MichaelKinsy/PiG/internal/testenv"
 )
 
 // joinAdjacentTextQuadratic is the code before Pi f11e50f7: it reads the end of the growing joined text on every item.
@@ -58,9 +59,8 @@ func TestJoinAdjacentTextIsLinearAtTheItemLimit(t *testing.T) {
 	}
 	start := time.Now()
 	joined := joinAdjacentText(items)
-	if elapsed := time.Since(start); elapsed > 2*time.Second {
-		t.Fatalf("joining %d items took %v", len(items), elapsed)
-	}
+	elapsed := time.Since(start)
+	testenv.TimingGateFatal(t, elapsed > 2*time.Second, "joining %d items took %v", len(items), elapsed)
 	if text, ok := joined[0].(ai.TextContent); len(joined) != 1 || !ok || len(text.Text) != 2*len(items)-1 {
 		t.Fatalf("joined = %d items", len(joined))
 	}

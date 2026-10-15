@@ -6,6 +6,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/MichaelKinsy/PiG/internal/testenv"
 )
 
 // The reported input is an unbroken 64 KiB paragraph, not a cached render.
@@ -27,9 +29,7 @@ func TestMarkdownUnbrokenLinearScaling(t *testing.T) {
 		if got := strings.TrimRight(strings.Join(lines, ""), " "); got != text {
 			t.Fatalf("render lost or changed unbroken text: got %d bytes, want %d", len(got), size)
 		}
-		if elapsed >= time.Second {
-			t.Errorf("%d-byte cold render took %s, must finish under 1s", size, elapsed)
-		}
+		testenv.TimingGate(t, elapsed >= time.Second, "%d-byte cold render took %s, must finish under 1s", size, elapsed)
 		// Allocation growth is a deterministic scaling guard, rather than a
 		// wall-clock ratio that would depend on other lanes' CPU scheduling.
 		// Linear work doubles; the old suffix copies grew by approximately 4x.

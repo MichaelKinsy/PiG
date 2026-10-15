@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
+	"github.com/MichaelKinsy/PiG/internal/testenv"
 )
 
 // chunkReader returns at most size bytes per Read, splitting a stream the way
@@ -91,9 +92,7 @@ func TestStdioSplitterLargeMessageScalesLinearly(t *testing.T) {
 	large := timeStdioFrame(t, largeStdioLine(4<<20))
 	ratio := float64(large) / float64(small)
 	t.Logf("400KiB: %v, 4MiB: %v, ratio %.1fx", small, large, ratio)
-	if ratio > 20 {
-		t.Fatalf("10x message cost %.1fx time (quadratic rescan)", ratio)
-	}
+	testenv.TimingGateFatal(t, ratio > 20, "10x message cost %.1fx time (quadratic rescan)", ratio)
 }
 
 type stdioOutcome struct {

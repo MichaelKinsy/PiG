@@ -36,6 +36,7 @@ make parity-family FAMILY=compaction
 make parity-driver DRIVER=cli-mode,print-mode,rpc-mode
 make parity-durable
 make parity-perf
+make test-timing
 make coverage
 make lint-scenarios
 make normalization-inventory
@@ -45,7 +46,10 @@ make schedule-report
 `make parity-fast` runs one PiG/Pi pair for each hermetic scenario. `make
 parity` uses each scenario's declared durability. `make parity-perf` runs the
 performance scenarios serially because parallel CPU contention invalidates
-runtime comparisons.
+runtime comparisons. `make test-timing` is its Go-test counterpart: it runs every wall-clock and speed-ratio gate
+listed in `automation/perf/timing-gates.json` (the tests that call `testenv.TimingGate`) as a blocking, serial gate for the release perf run on quiet
+hardware, with `PIG_PERF_TIMING_REPORT_ONLY` removed. Pull-request CI sets it to `1`, so a missed timing bar there is a warning annotation, not a
+failure; allocation, byte, size, descriptor, goroutine, process and temp-entry gates block everywhere.
 
 Every parity target fails when the run compares no scenario. The runner fails, rather than skips, when it cannot find the pinned Pi or the PiG binary under test, and each target reads the results file through `require-parity-ran`. Set `PIG_PARITY_ALLOW_ZERO=1` to accept a run that compares nothing, for example on a host that has no Pi install. A version mismatch of the comparator has its own opt-out, `PIG_PARITY_ALLOW_VERSION_SKEW=1`.
 

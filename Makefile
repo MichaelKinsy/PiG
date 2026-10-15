@@ -564,7 +564,7 @@ qc: parity-bin ## Build a fresh pig, then run the smoke and focused parity QC
 
 # Release gate. Tighter than `check`: parity-live must pass, coverage
 # must not regress, no new entries in docs/parity/DIVERGENCES.md without justification.
-release-check: parity-live parity-perf ## Release gate: live and perf parity, no new divergences, no coverage loss
+release-check: parity-live parity-perf test-timing ## Release gate: live, perf and timing parity, no new divergences, no coverage loss
 	@./automation/ci/check-divergence-delta.sh
 	@python3 -B -m unittest discover -s automation/ci -p test_check_coverage_delta.py
 	@./automation/ci/check-coverage-delta.sh
