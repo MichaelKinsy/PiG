@@ -77,18 +77,24 @@ func TestCoreAStreamedMessageStartsAtItsFirstPartialAndEndsOnceWithTheConvertedE
 	if err := h.WaitForIdle(ctx); err != nil {
 		t.Fatal(err)
 	}
+	assistantEnds := func() int {
+		mu.Lock()
+		defer mu.Unlock()
+		ends := 0
+		for _, event := range events {
+			if end, ok := event.(harness.MessageEndEvent); ok && end.Entry.Kind == "pi.assistant" {
+				ends++
+			}
+		}
+		return ends
+	}
+	// Pi's drained() lets the deliveries of the commits already published run before it reads the events. The core delivers on
+	// its own goroutine, and Stop ends the frames still queued, so wait for the abort's message_end to arrive before stopping.
+	waitFor(t, "the assistant message_end", func() bool { return assistantEnds() > 0 })
 	if _, err := stream.Stop(); err != nil {
 		t.Fatal(err)
 	}
-	mu.Lock()
-	defer mu.Unlock()
-	ends := 0
-	for _, event := range events {
-		if end, ok := event.(harness.MessageEndEvent); ok && end.Entry.Kind == "pi.assistant" {
-			ends++
-		}
-	}
-	if starts := assistantStartsOf(events); starts != 1 || ends != 1 {
+	if starts, ends := assistantStarts(), assistantEnds(); starts != 1 || ends != 1 {
 		t.Fatalf("assistant starts %d, ends %d, want one of each", starts, ends)
 	}
 }
