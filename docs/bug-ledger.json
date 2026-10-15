@@ -29236,6 +29236,102 @@
         "internal/codingagent/model_reference_upstream_test.go::TestResolveModelReferenceMatchesUpstream",
         "internal/codingagent/model_reference_upstream_test.go::TestResolveModelScopeAmbiguousProvidersMatchesUpstream"
       ]
+    },
+    {
+      "id": "BF-83fea11",
+      "title": "On Windows, a refused connection reads as Node's `connect ECONNREFUSED` and is not retried, as in Pi; it was…",
+      "symptom": "On Windows, a refused connection reads as Node's `connect ECONNREFUSED` and is not retried, as in Pi; it was reported as a retryable `fetch failed`.",
+      "rootCause": "nodeNetErrorMessage accepted only the connect syscall, but Go names the Windows call connectex, so on Windows a refused connect fell through to 'fetch failed' and a retryable Bedrock error where Node reports 'connect ECONNREFUSED 127.0.0.1:N', not retryable (TestNodeNetErrorMessageIsNodesText, TestBedrockRefusedConnectIsNodesErrorLikePi on the release PR's Windows native-2 job).",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "Windows",
+      "class": "own",
+      "fixedIn": "0.5.0",
+      "releaseNote": "On Windows, a refused connection reads as Node's `connect ECONNREFUSED` and is not retried, as in Pi; it was reported as a retryable `fetch failed`.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "83fea11dbf",
+          "date": "2026-10-15"
+        }
+      ],
+      "tests": [
+        "ai/bedrock_error_metadata_upstream_test.go::TestBedrockRefusedConnectIsNodesErrorLikePi",
+        "ai/node_net_error_test.go::TestNodeNetErrorMessageIsNodesText",
+        "ai/oauth_page_corpus_test.go::TestOAuthPageCorpusMatchesThePinnedPackage"
+      ]
+    },
+    {
+      "id": "BF-b8df7eb",
+      "title": "On Windows, a session's private snapshot file is created in the temporary directory instead of the session…",
+      "symptom": "On Windows, a session's private snapshot file is created in the temporary directory instead of the session directory, where it was listed while the session was open.",
+      "rootCause": "Product: - A Windows session snapshot is created in the temporary directory. It is a copy there, never a clone, and an open file beside the session file was listed in the session directory (TestAgentSessionRuntimeMatchesPi). - An image fallback links a slash-rooted path without a drive (/tmp/x.png) as Pi does: nodepath.IsAbsolute, not filepath.IsAbs. - An alt-screen frame reads the WezTerm environment only for the Kitty protocol, the one use of it; each Windows environment read allocated (TestAltScreenStreamingFrameAllocationCeiling).",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong output or ordering",
+      "platform": "Windows",
+      "class": "own",
+      "fixedIn": "0.5.0",
+      "releaseNote": "On Windows, a session's private snapshot file is created in the temporary directory instead of the session directory, where it was listed while the session was open.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "b8df7eb579",
+          "date": "2026-10-15"
+        }
+      ],
+      "tests": [
+        "coding/agent_session_runtime_oracle_test.go::TestAgentSessionRuntimeMatchesPi",
+        "tui/alt_screen_frame_allocs_norace_test.go::TestAltScreenStreamingFrameAllocationCeiling",
+        "tui/terminal_split_reply_test.go::TestTerminalInputConsumesAnOwedReplySplitAcrossSlowReads"
+      ]
+    },
+    {
+      "id": "BF-b8df7eb-2",
+      "title": "On Windows, an image fallback links a path that starts with a slash but no drive (`/tmp/x.png`) as Pi does…",
+      "symptom": "On Windows, an image fallback links a path that starts with a slash but no drive (`/tmp/x.png`) as Pi does, since `path.isAbsolute` counts it absolute.",
+      "rootCause": "Product: - A Windows session snapshot is created in the temporary directory. It is a copy there, never a clone, and an open file beside the session file was listed in the session directory (TestAgentSessionRuntimeMatchesPi). - An image fallback links a slash-rooted path without a drive (/tmp/x.png) as Pi does: nodepath.IsAbsolute, not filepath.IsAbs. - An alt-screen frame reads the WezTerm environment only for the Kitty protocol, the one use of it; each Windows environment read allocated (TestAltScreenStreamingFrameAllocationCeiling).",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "Windows",
+      "class": "own",
+      "fixedIn": "0.5.0",
+      "releaseNote": "On Windows, an image fallback links a path that starts with a slash but no drive (`/tmp/x.png`) as Pi does, since `path.isAbsolute` counts it absolute.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "b8df7eb579",
+          "date": "2026-10-15"
+        }
+      ],
+      "tests": [
+        "coding/agent_session_runtime_oracle_test.go::TestAgentSessionRuntimeMatchesPi",
+        "tui/alt_screen_frame_allocs_norace_test.go::TestAltScreenStreamingFrameAllocationCeiling",
+        "tui/terminal_split_reply_test.go::TestTerminalInputConsumesAnOwedReplySplitAcrossSlowReads"
+      ]
+    },
+    {
+      "id": "BF-b8df7eb-3",
+      "title": "Alt-screen frames outside the Kitty protocol no longer read the environment for WezTerm on every render…",
+      "symptom": "Alt-screen frames outside the Kitty protocol no longer read the environment for WezTerm on every render, which allocated on Windows.",
+      "rootCause": "Product: - A Windows session snapshot is created in the temporary directory. It is a copy there, never a clone, and an open file beside the session file was listed in the session directory (TestAgentSessionRuntimeMatchesPi). - An image fallback links a slash-rooted path without a drive (/tmp/x.png) as Pi does: nodepath.IsAbsolute, not filepath.IsAbs. - An alt-screen frame reads the WezTerm environment only for the Kitty protocol, the one use of it; each Windows environment read allocated (TestAltScreenStreamingFrameAllocationCeiling).",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong display",
+      "platform": "Windows",
+      "class": "own",
+      "fixedIn": "0.5.0",
+      "releaseNote": "Alt-screen frames outside the Kitty protocol no longer read the environment for WezTerm on every render, which allocated on Windows.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "b8df7eb579",
+          "date": "2026-10-15"
+        }
+      ],
+      "tests": [
+        "coding/agent_session_runtime_oracle_test.go::TestAgentSessionRuntimeMatchesPi",
+        "tui/alt_screen_frame_allocs_norace_test.go::TestAltScreenStreamingFrameAllocationCeiling",
+        "tui/terminal_split_reply_test.go::TestTerminalInputConsumesAnOwedReplySplitAcrossSlowReads"
+      ]
     }
   ],
   "divergences": [

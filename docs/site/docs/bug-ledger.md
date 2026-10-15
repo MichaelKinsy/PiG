@@ -15,7 +15,7 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 
 ## Summary
 
-871 bugs. 821 own defects, 31 fixed ahead of Pi, 19 Pi fixes ported. 135 bugs have no recorded test.
+875 bugs. 825 own defects, 31 fixed ahead of Pi, 19 Pi fixes ported. 135 bugs have no recorded test.
 
 | ID | Bug | Source | Platform | Fixed in |
 |---|---|---|---|---|
@@ -890,6 +890,10 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 | [BF-edb73db](#bf-edb73db) | fix(codingagent): one owner-overflow forwarder at a time; the drain test waits for it, not for the flag's… | PiG's own defect | All platforms | Unreleased |
 | [BF-167dae3](#bf-167dae3) | fix(codingagent): the idle collection runs two GC cycles again so pool victims are freed (D172) | PiG's own defect | All platforms | Unreleased |
 | [BF-20718f7](#bf-20718f7) | fix(coding-agent): resolve model references through one provider selection policy (Pi) | PiG's own defect | All platforms | Unreleased |
+| [BF-83fea11](#bf-83fea11) | On Windows, a refused connection reads as Node's `connect ECONNREFUSED` and is not retried, as in Pi; it was… | PiG's own defect | Windows | 0.5.0 |
+| [BF-b8df7eb](#bf-b8df7eb) | On Windows, a session's private snapshot file is created in the temporary directory instead of the session… | PiG's own defect | Windows | 0.5.0 |
+| [BF-b8df7eb-2](#bf-b8df7eb-2) | On Windows, an image fallback links a path that starts with a slash but no drive (`/tmp/x.png`) as Pi does… | PiG's own defect | Windows | 0.5.0 |
+| [BF-b8df7eb-3](#bf-b8df7eb-3) | Alt-screen frames outside the Kitty protocol no longer read the environment for WezTerm on every render… | PiG's own defect | Windows | 0.5.0 |
 
 ## Entries
 
@@ -13031,6 +13035,62 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 - **Fixed in:** Unreleased
 - **Fix commits:** `20718f71ec` (2026-10-14)
 - **Tests:** `coding/cli/credential_print_test.go::TestCredentialPrintModelWithoutProviderUsesCatalogOfConfiguredProviders`, `internal/codingagent/model_reference_upstream_test.go::TestResolveCliModelDuplicateRawIDsMatchesUpstream`, `internal/codingagent/model_reference_upstream_test.go::TestResolveModelReferenceMatchesUpstream`, `internal/codingagent/model_reference_upstream_test.go::TestResolveModelScopeAmbiguousProvidersMatchesUpstream`
+
+### BF-83fea11
+
+**On Windows, a refused connection reads as Node's `connect ECONNREFUSED` and is not retried, as in Pi; it was…**
+
+- **Source:** PiG's own defect
+- **Symptom:** On Windows, a refused connection reads as Node's `connect ECONNREFUSED` and is not retried, as in Pi; it was reported as a retryable `fetch failed`.
+- **Root cause:** nodeNetErrorMessage accepted only the connect syscall, but Go names the Windows call connectex, so on Windows a refused connect fell through to 'fetch failed' and a retryable Bedrock error where Node reports 'connect ECONNREFUSED 127.0.0.1:N', not retryable (TestNodeNetErrorMessageIsNodesText, TestBedrockRefusedConnectIsNodesErrorLikePi on the release PR's Windows native-2 job).
+- **User impact:** An operation failed or was rejected
+- **Platform:** Windows
+- **Fixed in:** 0.5.0
+- **Fix commits:** `83fea11dbf` (2026-10-15)
+- **Tests:** `ai/bedrock_error_metadata_upstream_test.go::TestBedrockRefusedConnectIsNodesErrorLikePi`, `ai/node_net_error_test.go::TestNodeNetErrorMessageIsNodesText`, `ai/oauth_page_corpus_test.go::TestOAuthPageCorpusMatchesThePinnedPackage`
+- **Release note:** On Windows, a refused connection reads as Node's `connect ECONNREFUSED` and is not retried, as in Pi; it was reported as a retryable `fetch failed`.
+
+### BF-b8df7eb
+
+**On Windows, a session's private snapshot file is created in the temporary directory instead of the session…**
+
+- **Source:** PiG's own defect
+- **Symptom:** On Windows, a session's private snapshot file is created in the temporary directory instead of the session directory, where it was listed while the session was open.
+- **Root cause:** Product: - A Windows session snapshot is created in the temporary directory. It is a copy there, never a clone, and an open file beside the session file was listed in the session directory (TestAgentSessionRuntimeMatchesPi). - An image fallback links a slash-rooted path without a drive (/tmp/x.png) as Pi does: nodepath.IsAbsolute, not filepath.IsAbs. - An alt-screen frame reads the WezTerm environment only for the Kitty protocol, the one use of it; each Windows environment read allocated (TestAltScreenStreamingFrameAllocationCeiling).
+- **User impact:** Wrong output or ordering
+- **Platform:** Windows
+- **Fixed in:** 0.5.0
+- **Fix commits:** `b8df7eb579` (2026-10-15)
+- **Tests:** `coding/agent_session_runtime_oracle_test.go::TestAgentSessionRuntimeMatchesPi`, `tui/alt_screen_frame_allocs_norace_test.go::TestAltScreenStreamingFrameAllocationCeiling`, `tui/terminal_split_reply_test.go::TestTerminalInputConsumesAnOwedReplySplitAcrossSlowReads`
+- **Release note:** On Windows, a session's private snapshot file is created in the temporary directory instead of the session directory, where it was listed while the session was open.
+
+### BF-b8df7eb-2
+
+**On Windows, an image fallback links a path that starts with a slash but no drive (`/tmp/x.png`) as Pi does…**
+
+- **Source:** PiG's own defect
+- **Symptom:** On Windows, an image fallback links a path that starts with a slash but no drive (`/tmp/x.png`) as Pi does, since `path.isAbsolute` counts it absolute.
+- **Root cause:** Product: - A Windows session snapshot is created in the temporary directory. It is a copy there, never a clone, and an open file beside the session file was listed in the session directory (TestAgentSessionRuntimeMatchesPi). - An image fallback links a slash-rooted path without a drive (/tmp/x.png) as Pi does: nodepath.IsAbsolute, not filepath.IsAbs. - An alt-screen frame reads the WezTerm environment only for the Kitty protocol, the one use of it; each Windows environment read allocated (TestAltScreenStreamingFrameAllocationCeiling).
+- **User impact:** Behavior differed from Pi
+- **Platform:** Windows
+- **Fixed in:** 0.5.0
+- **Fix commits:** `b8df7eb579` (2026-10-15)
+- **Tests:** `coding/agent_session_runtime_oracle_test.go::TestAgentSessionRuntimeMatchesPi`, `tui/alt_screen_frame_allocs_norace_test.go::TestAltScreenStreamingFrameAllocationCeiling`, `tui/terminal_split_reply_test.go::TestTerminalInputConsumesAnOwedReplySplitAcrossSlowReads`
+- **Release note:** On Windows, an image fallback links a path that starts with a slash but no drive (`/tmp/x.png`) as Pi does, since `path.isAbsolute` counts it absolute.
+
+### BF-b8df7eb-3
+
+**Alt-screen frames outside the Kitty protocol no longer read the environment for WezTerm on every render…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Alt-screen frames outside the Kitty protocol no longer read the environment for WezTerm on every render, which allocated on Windows.
+- **Root cause:** Product: - A Windows session snapshot is created in the temporary directory. It is a copy there, never a clone, and an open file beside the session file was listed in the session directory (TestAgentSessionRuntimeMatchesPi). - An image fallback links a slash-rooted path without a drive (/tmp/x.png) as Pi does: nodepath.IsAbsolute, not filepath.IsAbs. - An alt-screen frame reads the WezTerm environment only for the Kitty protocol, the one use of it; each Windows environment read allocated (TestAltScreenStreamingFrameAllocationCeiling).
+- **User impact:** Wrong display
+- **Platform:** Windows
+- **Fixed in:** 0.5.0
+- **Fix commits:** `b8df7eb579` (2026-10-15)
+- **Tests:** `coding/agent_session_runtime_oracle_test.go::TestAgentSessionRuntimeMatchesPi`, `tui/alt_screen_frame_allocs_norace_test.go::TestAltScreenStreamingFrameAllocationCeiling`, `tui/terminal_split_reply_test.go::TestTerminalInputConsumesAnOwedReplySplitAcrossSlowReads`
+- **Release note:** Alt-screen frames outside the Kitty protocol no longer read the environment for WezTerm on every render, which allocated on Windows.
 
 ## Divergences from Pi added in this release
 
