@@ -54,7 +54,7 @@ TRACKED_ROOTS = load_tracked_roots()
 PORTABLE_STATUSES = {"✅", "🟡", "⬜", "🔴"}
 NON_LIVE_STATUSES = {"n/a", "⏸"}
 # The Go cell is empty or one or more comma-separated code spans (portmap-check -fix-cells writes both).
-ROW_RE = re.compile(r"^\|\s+`(?P<up>packages/[^`]+)`\s+\|\s+(?:`(?P<go>[^`]+(?:`,\s*`[^`]+)*)`)?\s*\|\s*(?P<status>[^|]+?)\s*\|")
+ROW_RE = re.compile(r"^\|\s+`(?P<up>packages/[^`]+)`\s+\|\s+(?:`(?P<go>[^`]+(?:`,\s*`[^`]+)*)`)?[^|]*\|\s*(?P<status>[^|]+?)\s*\|")
 
 
 @dataclass(frozen=True)

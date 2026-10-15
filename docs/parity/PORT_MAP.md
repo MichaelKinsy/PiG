@@ -616,8 +616,6 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/mcp/src/transports/stdio.ts` | `mcp/stdio.go; mcp/stdio_unix.go; mcp/stdio_windows.go` | ✅ |
 | `packages/mcp/src/transports/streamable-http.ts` | `mcp/streamable_http.go; mcp/sse.go` (missing at Pi 1.2.0: `send(message, options?)`'s McpTransportSendOptions, interface gap `StreamableHttpTransport::property:send::call:0` signature-mismatch) | 🟡 |
 | `packages/mcp/src/transports/transport.ts` | `mcp/transport.go` (missing at Pi 1.2.0: the McpTransportSendOptions argument of `McpTransport.send`, interface gap `McpTransport::property:send::call:0` signature-mismatch) | 🟡 |
-| `packages/mcp/src/transports/streamable-http.ts` | `mcp/` | ✅ |
-| `packages/mcp/src/transports/transport.ts` | `mcp/` | ✅ |
 
 ## `packages/codemode/src/`
 
@@ -773,7 +771,6 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/durable/src/codemode/index.ts` | `(barrel re-exports; Go has no barrel exports)` | n/a |
 | `packages/durable/src/codemode/models.ts` | `durable/codemode/` | ✅ |
 | `packages/durable/src/codemode/output.ts` | `durable/codemode/` | ✅ |
-| `packages/durable/src/env/index.ts` | `durable/durabletest/, env/` | ✅ |
 | `packages/durable/src/images/node-worker.ts` | `durable/images/node/` | ✅ |
 | `packages/durable/src/search.ts` | `durable/internal/search/` | ✅ |
 | `packages/durable/src/tool-search/index.ts` | `(barrel re-exports; Go has no barrel exports)` | n/a |
