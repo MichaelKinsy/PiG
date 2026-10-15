@@ -3877,6 +3877,7 @@ mod tests {
 #[path = "handler_dispatch_tests.rs"]
 mod handler_dispatch_tests;
 
-#[cfg(test)]
+// The tests drive the handler_dispatch_tests host over Unix sockets.
+#[cfg(all(test, unix))]
 #[path = "provider_superseded_tests.rs"]
 mod provider_superseded_tests;

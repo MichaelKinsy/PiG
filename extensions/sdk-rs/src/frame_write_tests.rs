@@ -37,6 +37,7 @@ fn an_oversized_frame_is_refused_before_any_write() {
 }
 
 // A response is encoded before the writer lock is taken: encoding hundreds of MiB takes seconds, and the lock also carries the heartbeat's pong.
+#[cfg(unix)]
 #[test]
 fn respond_encodes_its_result_outside_the_writer_lock() {
     use std::sync::mpsc;
