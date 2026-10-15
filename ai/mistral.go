@@ -870,7 +870,7 @@ func (consumer *mistralChunkConsumer) consume(raw json.RawMessage) error {
 	data := jsjson.NormalizeIntegers(raw)
 	if err := json.Unmarshal(data, &chunk); err != nil {
 		normalized, ok := []byte(nil), false
-		if _, ok := errors.AsType[*json.UnmarshalTypeError](err); ok {
+		if _, mismatch := errors.AsType[*json.UnmarshalTypeError](err); mismatch {
 			normalized, ok = normalizeMistralChunkJS(data)
 		}
 		chunk = mistralSSEChunk{}

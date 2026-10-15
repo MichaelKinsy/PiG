@@ -83,7 +83,7 @@ func HostPeerFiles(version string, sources map[string][]byte) ([]noderuntimepack
 			if i > 0 {
 				exports.WriteString(", ") //perf:ok build-time peer codegen, runs once per runtime pack
 			}
-			exports.WriteString(fmt.Sprintf("%q: %q", subpath, "./"+entry)) //perf:ok build-time peer codegen, runs once per runtime pack
+			fmt.Fprintf(&exports, "%q: %q", subpath, "./"+entry) //perf:ok build-time peer codegen, runs once per runtime pack
 		}
 		manifest := fmt.Sprintf("{\n  \"name\": %q,\n  \"version\": %q,\n  \"private\": true,\n  \"type\": \"module\",\n  \"exports\": {%s}\n}\n", name, version, exports.String()) //perf:ok build-time peer codegen, runs once per runtime pack
 		files = append(files, noderuntimepack.File{Name: "runtime-node/" + path.Join(dir, "package.json"), Data: []byte(manifest)})

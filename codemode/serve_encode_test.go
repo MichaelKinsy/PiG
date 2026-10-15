@@ -8,9 +8,6 @@ import (
 	"testing"
 )
 
-//go:fix inline
-func strp(s string) *string { return new(s) }
-
 func serveTestMessages() []RemoteMessage {
 	wire := func(m WorkerToHostMessage) RemoteMessage { return RemoteMessage{WorkerToHostMessage: m} }
 	text := strings.Repeat("é<>&\"\\\n\t\u2028", 50) + "\x00\x1f"
