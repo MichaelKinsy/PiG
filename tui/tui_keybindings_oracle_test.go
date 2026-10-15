@@ -151,7 +151,8 @@ func TestTUIKeybindingsManagerMatchesPi(t *testing.T) {
 	}
 	failures := 0
 	for i, c := range cases {
-		manager := NewKeybindingsManager(TUIKeybindingDefinitionsFor(HostKeybindingPlatform()), tuiKeybindingsToUser(c.First))
+		// The oracle is pi-tui's TUI_KEYBINDINGS, which has no per-platform defaults; coding-agent's Windows and WSL overrides are not part of it.
+		manager := NewKeybindingsManager(TUIKeybindingDefinitionsFor(KeybindingPlatformLinux), tuiKeybindingsToUser(c.First))
 		got := tuiKeybindingsOracleResult{Before: tuiKeybindingsSnapshotOf(manager, expected[i].Inputs)}
 		manager.SetUserBindings(tuiKeybindingsToUser(c.Second))
 		got.After = tuiKeybindingsSnapshotOf(manager, expected[i].Inputs)

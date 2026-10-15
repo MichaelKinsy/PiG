@@ -7,7 +7,6 @@ import (
 	"math"
 	"math/rand/v2"
 	"os"
-	"path/filepath"
 	"runtime"
 	"strings"
 	"sync"
@@ -17,6 +16,7 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
 	"github.com/MichaelKinsy/PiG/internal/linkerexec"
 	"github.com/MichaelKinsy/PiG/internal/nodebase64"
+	"github.com/MichaelKinsy/PiG/internal/nodepath"
 	"github.com/MichaelKinsy/PiG/internal/nodeurl"
 	"github.com/MichaelKinsy/PiG/tui/widthx"
 )
@@ -609,7 +609,7 @@ func ImageFallback(mimeType string, dimensions *ImageDimensions, filename string
 		if home, err := os.UserHomeDir(); err == nil && home != "" && (filename == home || strings.HasPrefix(filename, home+"/") || strings.HasPrefix(filename, home+"\\")) {
 			display = "~" + filename[len(home):]
 		}
-		if GetCapabilities().Hyperlinks && filepath.IsAbs(filename) {
+		if GetCapabilities().Hyperlinks && nodepath.IsAbsolute(filename) {
 			display = Hyperlink(display, nodeurl.PathToFileURL(filename, runtime.GOOS == "windows"))
 		}
 		parts = append(parts, display)

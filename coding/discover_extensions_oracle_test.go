@@ -180,6 +180,7 @@ func TestDiscoverExtensionPathsMatchPi(t *testing.T) {
 			}
 		}
 		t.Setenv("HOME", filepath.Join(base, "home"))
+		t.Setenv("USERPROFILE", filepath.Join(base, "home")) // the home directory is USERPROFILE on Windows
 		t.Chdir(base)
 		configured := make([]string, len(probe.Configured))
 		for j, p := range probe.Configured {
@@ -191,7 +192,8 @@ func TestDiscoverExtensionPathsMatchPi(t *testing.T) {
 		}
 		got := discoverOut{Loaded: []string{}, Failed: []string{}}
 		for _, p := range paths {
-			shown := strings.ReplaceAll(strings.ReplaceAll(p, base, "{S}"), "/"+icodingagent.ConfigDirName()+"/", "/{CFG}/")
+			sep := string(filepath.Separator)
+			shown := strings.ReplaceAll(strings.ReplaceAll(p, base, "{S}"), sep+icodingagent.ConfigDirName()+sep, sep+"{CFG}"+sep)
 			if info, statErr := os.Stat(p); statErr == nil && info.Mode().IsRegular() {
 				got.Loaded = append(got.Loaded, shown)
 			} else {

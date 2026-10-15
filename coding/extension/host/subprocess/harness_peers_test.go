@@ -53,13 +53,16 @@ func TestHarnessProvidesEveryPeerPackagePiListsAsADependency(t *testing.T) {
 			continue
 		}
 		for _, target := range manifest.Exports {
-			imports = append(imports, "file://"+filepath.Join(dir, filepath.FromSlash(target)))
+			imports = append(imports, filepath.Join(dir, filepath.FromSlash(target)))
 		}
 	}
 	// One process imports every export; a module that fails to load is named with its error. Each export must also carry exactly the bindings of the runtime module it serves,
 	// including a default export (`import Type from "typebox"` works next to Pi's install), which `export *` alone drops.
+	// The paths go in a file: Windows caps a command line at 32 KiB, and every export of every peer is listed here. A file path becomes a file URL
+	// through pathToFileURL, as "file://" + a drive path is not a URL.
 	script := `import { readFileSync } from "node:fs";
-const files = JSON.parse(process.argv[1]); const failed = [];
+import { pathToFileURL } from "node:url";
+const files = JSON.parse(readFileSync(process.argv[1], "utf8")).map((p) => pathToFileURL(p).href); const failed = [];
 for (const f of files) {
   try {
     const peer = Object.keys(await import(f)).sort();
@@ -70,7 +73,11 @@ for (const f of files) {
 }
 console.log(JSON.stringify(failed));`
 	encoded, _ := json.Marshal(imports)
-	out, err := exec.Command(node, "--input-type=module", "-e", script, string(encoded)).CombinedOutput()
+	list := filepath.Join(t.TempDir(), "imports.json")
+	if err := os.WriteFile(list, encoded, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	out, err := exec.Command(node, "--input-type=module", "-e", script, list).CombinedOutput()
 	if err != nil {
 		t.Fatalf("node: %v\n%s", err, out)
 	}

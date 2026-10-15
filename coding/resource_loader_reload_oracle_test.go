@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -193,15 +194,19 @@ const os = await import("node:os");
 const path = await import("node:path");
 const out = [];
 for (const c of input) {
+	// realpathSync keeps a Windows 8.3 short name ("RUNNER~1") as given. A path inside a JSON file carries the root JSON-escaped, and so
+	// does the JSON of a result, which is where the root is replaced.
 	const root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), "reloadr-")));
+	const escapedRoot = JSON.stringify(root).slice(1, -1);
 	const sub = (s) => s.split("{CFG}").join(CONFIG_DIR_NAME).split("{root}").join(root);
+	const subContent = (rel, s) => rel.endsWith(".json") ? s.split("{CFG}").join(CONFIG_DIR_NAME).split("{root}").join(escapedRoot) : sub(s);
 	fs.mkdirSync(path.join(root, "home"), { recursive: true });
 	fs.mkdirSync(path.join(root, "proj"), { recursive: true });
 	fs.mkdirSync(path.join(root, "agent"), { recursive: true });
 	for (const [rel, content] of Object.entries(c.files)) {
 		const file = path.join(root, sub(rel));
 		fs.mkdirSync(path.dirname(file), { recursive: true });
-		fs.writeFileSync(file, sub(content));
+		fs.writeFileSync(file, subContent(rel, content));
 	}
 	const cwd = path.join(root, "proj"), agentDir = path.join(root, "agent");
 	process.env.HOME = path.join(root, "home");
@@ -229,7 +234,7 @@ for (const c of input) {
 			agentsFiles: loader.getAgentsFiles().agentsFiles,
 		};
 	} catch (e) { row = { error: e.message }; }
-	out.push(JSON.parse(JSON.stringify(row).split(root).join("{root}")));
+	out.push(JSON.parse(JSON.stringify(row).split(escapedRoot).join("{root}")));
 	fs.rmSync(root, { recursive: true, force: true });
 }
 emit(out);`, cases, &want)
@@ -237,18 +242,26 @@ emit(out);`, cases, &want)
 	failures := 0
 	for i, c := range cases {
 		root := t.TempDir()
-		if resolved, err := filepath.EvalSymlinks(root); err == nil {
+		// Node's realpathSync, which the oracle uses, keeps a Windows 8.3 short name that EvalSymlinks expands.
+		if resolved, err := filepath.EvalSymlinks(root); err == nil && runtime.GOOS != "windows" {
 			root = resolved
 		}
+		escapedRoot := jsonEscaped(root)
 		cfg := filepath.Base(icodingagent.ProjectConfigDir(filepath.Join(root, "proj")))
 		sub := func(s string) string { return strings.NewReplacer("{CFG}", cfg, "{root}", root).Replace(s) }
+		subContent := func(rel, s string) string {
+			if strings.HasSuffix(rel, ".json") {
+				return strings.NewReplacer("{CFG}", cfg, "{root}", escapedRoot).Replace(s)
+			}
+			return sub(s)
+		}
 		for _, dir := range []string{"home", "proj", "agent"} {
 			_ = os.MkdirAll(filepath.Join(root, dir), 0o755)
 		}
 		for rel, content := range c.Files {
 			file := filepath.Join(root, sub(rel))
 			_ = os.MkdirAll(filepath.Dir(file), 0o755)
-			if err := os.WriteFile(file, []byte(sub(content)), 0o644); err != nil {
+			if err := os.WriteFile(file, []byte(subContent(rel, content)), 0o644); err != nil {
 				t.Fatal(err)
 			}
 		}
@@ -268,7 +281,7 @@ emit(out);`, cases, &want)
 		}
 		encoded, _ := json.Marshal(got)
 		var normalized map[string]any
-		_ = json.Unmarshal([]byte(strings.ReplaceAll(string(encoded), root, "{root}")), &normalized)
+		_ = json.Unmarshal([]byte(strings.ReplaceAll(string(encoded), escapedRoot, "{root}")), &normalized)
 		if !reflect.DeepEqual(normalized, want[i]) {
 			failures++
 			if failures <= 5 {
@@ -337,6 +350,12 @@ func reloadSnapshot(t *testing.T, loader *DefaultResourceLoader) map[string]any 
 	}
 	row["agentsFiles"] = agentsFiles
 	return row
+}
+
+// jsonEscaped is text as it appears inside a JSON string, so a path with backslashes can be found in encoded JSON.
+func jsonEscaped(text string) string {
+	encoded, _ := json.Marshal(text)
+	return string(encoded[1 : len(encoded)-1])
 }
 
 func substituted(value *string, sub func(string) string) *string {

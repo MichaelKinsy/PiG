@@ -43,6 +43,7 @@ func TestCombinedAutocompleteMatchesPi(t *testing.T) {
 		}
 	}
 	t.Setenv("HOME", home)
+	t.Setenv("USERPROFILE", home) // the home directory is USERPROFILE on Windows, for Node and for PiG
 	pick := func(items ...string) string { return items[rng.Intn(len(items))] }
 	stem := func() string {
 		return pick("", "\u0130", "i", "\u0130s", "a", "al", "A", "b", "be", "g", "s", "src/", "src/a", "my", "my docs/", "my\\ docs/", ".", "./", "./s", "../", "../b", "~/", "~/d", "~", "docs/", "/", base+"/", base+"/s", home+"/", "日", "e", "é", ".h", ".g", "-", "(", "[", "u", "ü", "zeta", "UP", "a\\", "a b", "a#", "~x", "~/..", "~//", "..", "a//", "src//", "./src/../", "src/./", "//", "/.", "./.", ".//s", "..//", "src\\a", "src\\", "~\\", "~/src/../d")
@@ -114,7 +115,7 @@ for (const c of input.cases) {
 	const applied = provider.applyCompletion(lines, 0, c.before.length, suggestions.items[0], suggestions.prefix);
 	out.push({ items, prefix: suggestions.prefix, null: false, applied: applied.lines, col: applied.cursorCol });
 }
-emit(out);`, map[string]any{"base": base, "cases": cases}, &want, "HOME="+home)
+emit(out);`, map[string]any{"base": base, "cases": cases}, &want, "HOME="+home, "USERPROFILE="+home)
 	commands := []SlashCommand{
 		{Name: "model", Description: "Select model"},
 		{Name: "help", Description: "Show help", ArgumentHint: "[topic]"},
@@ -196,6 +197,7 @@ func TestCombinedAutocompleteAtSearchMatchesPi(t *testing.T) {
 		}
 	}
 	t.Setenv("HOME", home)
+	t.Setenv("USERPROFILE", home) // the home directory is USERPROFILE on Windows, for Node and for PiG
 	pick := func(items ...string) string { return items[rng.Intn(len(items))] }
 	queries := []string{"", "r", "re", "read", "readme", "READ", "m", "ma", "main", "go", ".go", "_test", "test", "app", "but", "button", "comp", "components", "src", "src/", "src/c", "src/comp", "src/components/", "src/components/b", "src/u", "docs/", "docs/g", "docs/guide/", "doc", "guide", "intro", "adv", "my", "my ", "my d", "my docs/", "gamma", "日", "日本", "pkg", "internal/p", "internal/pkg/", "deep", "a/b", "a/b/c/", "node", "lib", "index", ".", ".h", ".env", ".git", "ts", "x", "zzz", "~/", "~/s", "~/src/", "~/src/c", "~/docs/g", "~", "src/../", "./", "./s", "./src/", "src//", "src/../c", "/nonexistent/x", "UPPER", "upper", "P", "pa", "path", "pathx", "s/a", "c/b", "u/p", "t_t", "m.g", "r.m"}
 	type atCase struct {
@@ -252,7 +254,7 @@ for (const c of input.cases) {
 	const applied = provider.applyCompletion(lines, 0, c.before.length, suggestions.items[0], suggestions.prefix);
 	out.push({ items, prefix: suggestions.prefix, null: false, applied: applied.lines, col: applied.cursorCol });
 }
-emit(out);`, map[string]any{"base": base, "fd": fd, "cases": cases}, &want, "HOME="+home)
+emit(out);`, map[string]any{"base": base, "fd": fd, "cases": cases}, &want, "HOME="+home, "USERPROFILE="+home)
 	provider := NewCombinedProvider(nil, base, fd)
 	failures, answered, scoped := 0, 0, 0
 	for i, c := range cases {

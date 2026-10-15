@@ -42,7 +42,9 @@ func TestEditorTabHonoursCombinedProviderShouldTriggerFileCompletion(t *testing.
 		t.Fatal(err)
 	}
 	// Pi joins a typed path onto the base directory unless it starts with a slash, so a Windows drive path ("C:/...") cannot
-	// complete there; the volume-less rooted path resolves on the current drive and keeps its 8.3 short name as typed.
+	// complete there; the volume-less rooted path resolves on the process's current drive (as in Node) and keeps its 8.3
+	// short name as typed, so the working directory must sit on the temp directory's drive.
+	t.Chdir(dir)
 	rooted := filepath.ToSlash(strings.TrimPrefix(dir, filepath.VolumeName(dir)))
 	for _, tc := range []struct{ typed, want string }{
 		{rooted + "/al", rooted + "/al"},

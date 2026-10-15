@@ -889,7 +889,8 @@ func (t *TuiAltScreen) doRender() {
 	}
 	// WezTerm erases the Kitty image cells a row write touches, so a changed row an image covers redraws the images
 	// (upstream tui-alt-screen.ts imageCellsNeedRedraw).
-	isWezTerm := isWezTermSession()
+	// Only a Kitty frame can use the answer, and a Windows environment read allocates, so the streaming frame skips it.
+	isWezTerm := t.imageProtocol == "kitty" && isWezTermSession()
 	imageCellsNeedRedraw := false
 	if !imageAnchorsNeedRedraw && isWezTerm && t.imageProtocol == "kitty" && anyChanged {
 	rows:

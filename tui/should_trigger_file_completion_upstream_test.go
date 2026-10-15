@@ -16,7 +16,9 @@ func TestEditorTabDoesNotFileCompleteInsideLeadingSlashWord(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(dir, "hello.txt"), nil, 0o600); err != nil {
 		t.Fatal(err)
 	}
-	// A path that begins with a slash: on Windows the drive is dropped, which leaves a rooted path on the current drive.
+	// A path that begins with a slash: on Windows the drive is dropped, which leaves a rooted path that resolves on the
+	// process's current drive (as in Node), so the working directory must sit on the temp directory's drive.
+	t.Chdir(dir)
 	rooted := filepath.ToSlash(strings.TrimPrefix(dir, filepath.VolumeName(dir))) + "/"
 	for _, tc := range []struct {
 		name string

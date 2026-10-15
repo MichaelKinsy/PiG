@@ -10,6 +10,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/ai"
@@ -82,6 +83,8 @@ func TestReadStoredCredentialMatchesPi(t *testing.T) {
 	if err := os.Mkdir(filepath.Join(home, "dir.json"), 0o755); err != nil {
 		t.Fatal(err)
 	}
+	// A file URL names a path with forward slashes and a leading one: "file:///C:/dir" on Windows, where "file://C:\dir" has a host.
+	urlPath := func(path string) string { return "/" + strings.TrimPrefix(filepath.ToSlash(path), "/") }
 	pathFor := func(i int) *string {
 		var p string
 		switch rng.IntN(9) {
@@ -92,9 +95,9 @@ func TestReadStoredCredentialMatchesPi(t *testing.T) {
 		case 3:
 			p = fmt.Sprintf("auth%d.json", i)
 		case 4:
-			p = "file://" + filepath.Join(home, fmt.Sprintf("auth%d.json", i))
+			p = "file://" + urlPath(filepath.Join(home, fmt.Sprintf("auth%d.json", i)))
 		case 5:
-			p = "file://" + (&url.URL{Path: filepath.Join(home, "sp ace", fmt.Sprintf("auth%d.json", i))}).EscapedPath()
+			p = "file://" + (&url.URL{Path: urlPath(filepath.Join(home, "sp ace", fmt.Sprintf("auth%d.json", i)))}).EscapedPath()
 		case 6:
 			p = []string{"~", "dir.json", "nowhere.json", "file://bad-host/x", "file:///%zz", "", "~x/auth0.json", "~/sp ace/auth0.json"}[rng.IntN(8)]
 		case 7:

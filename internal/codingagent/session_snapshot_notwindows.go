@@ -2,7 +2,10 @@
 
 package codingagent
 
-import "os"
+import (
+	"os"
+	"path/filepath"
+)
 
 // unlinkedTemp creates a file in dir and removes its name, so it lives only while open.
 func unlinkedTemp(dir string) (*os.File, error) {
@@ -16,3 +19,7 @@ func unlinkedTemp(dir string) (*os.File, error) {
 	}
 	return file, nil
 }
+
+// snapshotDir is where a snapshot of the session file at path is created: beside it, where a clone of it can share its blocks. The
+// snapshot has no name, so the directory never lists it.
+func snapshotDir(path string) string { return filepath.Dir(path) }

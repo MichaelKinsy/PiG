@@ -3,7 +3,6 @@ package codingagent
 import (
 	"io"
 	"os"
-	"path/filepath"
 	"sync"
 )
 
@@ -44,10 +43,11 @@ func (p *sessionSnapshot) add(lines ...[]byte) (int64, error) {
 
 func (p *sessionSnapshot) close() { _ = p.file.Close() }
 
-// newSessionSnapshot creates an empty snapshot for the session file at path: beside it, where a clone of it can share its blocks and its
-// bytes cost no memory, or in the temporary directory when that directory takes no file.
+// newSessionSnapshot creates an empty snapshot for the session file at path in snapshotDir: beside it, where a clone of it can share its
+// blocks and its bytes cost no memory (the temporary directory on Windows, where a snapshot is a copy that its directory would list), or in
+// the temporary directory when that directory takes no file.
 var newSessionSnapshot = func(path string) (*sessionSnapshot, error) {
-	file, err := anonymousFile(filepath.Dir(path))
+	file, err := anonymousFile(snapshotDir(path))
 	if err != nil {
 		if file, err = anonymousFile(os.TempDir()); err != nil {
 			return nil, err

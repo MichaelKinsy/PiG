@@ -3,6 +3,7 @@ package tui
 import (
 	"fmt"
 	"math/rand"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -133,7 +134,9 @@ emit({
 // characters, dots, trailing slashes, backslashes, control characters and non-ASCII text.
 func TestImageFallbackMatchesPi(t *testing.T) {
 	const home = "/home/oracle"
+	// Node's os.homedir() and PiG's os.UserHomeDir() read USERPROFILE on Windows and HOME elsewhere.
 	t.Setenv("HOME", home)
+	t.Setenv("USERPROFILE", home)
 	segments := []string{"a", "b c", "d%e", "f?g", "h#i", "j[k]", "l{m}", "n|o", "p^q", "r\"s", "t'u", "v<w>", "x`y", "z;=,@&+$!*()~", "é", "日本", "😀", "..", ".", "", "a\\b", "tab\there", "line\nbreak", "100%", "%41", "colon:x", "back\u007fdel"}
 	rng := rand.New(rand.NewSource(5))
 	type item struct {
@@ -165,14 +168,20 @@ func TestImageFallbackMatchesPi(t *testing.T) {
 		}
 		items = append(items, item{MIME: []string{"image/png", "image/jpeg", ""}[rng.Intn(3)], Width: rng.Intn(5000), Height: rng.Intn(5000), HasDims: rng.Intn(2) == 0, Filename: name, Hyperlink: rng.Intn(2) == 0})
 	}
-	var want []string
+	// On Windows Pi's pathToFileURL throws ERR_INVALID_URL for a path that resolves to a UNC path with an invalid host
+	// ("//colon:x/..."), which Pi does not catch; the probe reports those as null and PiG, which does not throw, is not compared.
+	var want []*string
 	pioracle.Run(t, `
 const m = await load("pi-tui/terminal-image.js");
 emit(input.map((x) => {
 	m.setCapabilities({ images: null, trueColor: true, hyperlinks: x.Hyperlink });
-	return m.imageFallback(x.MIME, x.HasDims ? { widthPx: x.Width, heightPx: x.Height } : undefined, x.Filename === "" ? undefined : x.Filename);
+	try {
+		return m.imageFallback(x.MIME, x.HasDims ? { widthPx: x.Width, heightPx: x.Height } : undefined, x.Filename === "" ? undefined : x.Filename);
+	} catch (error) {
+		return null;
+	}
 }));
-`, items, &want, "HOME="+home)
+`, items, &want, "HOME="+home, "USERPROFILE="+home)
 	previous := GetCapabilities()
 	t.Cleanup(func() { SetCapabilities(previous) })
 	bad := 0
@@ -182,10 +191,17 @@ emit(input.map((x) => {
 		if x.HasDims {
 			dims = &ImageDimensions{WidthPx: x.Width, HeightPx: x.Height}
 		}
-		if got := ImageFallback(x.MIME, dims, x.Filename); got != want[i] {
+		if want[i] == nil {
+			if runtime.GOOS != "windows" {
+				bad++
+				t.Errorf("Pi threw for ImageFallback(%q, hyperlinks=%v) on %s", x.Filename, x.Hyperlink, runtime.GOOS)
+			}
+			continue
+		}
+		if got := ImageFallback(x.MIME, dims, x.Filename); got != *want[i] {
 			bad++
 			if bad <= 10 {
-				t.Errorf("ImageFallback(%q, hyperlinks=%v):\n got %q\nwant %q", x.Filename, x.Hyperlink, got, want[i])
+				t.Errorf("ImageFallback(%q, hyperlinks=%v):\n got %q\nwant %q", x.Filename, x.Hyperlink, got, *want[i])
 			}
 		}
 	}

@@ -27,3 +27,8 @@ func anonymousFile(dir string) (*os.File, error) {
 
 // cloneFile reports that the snapshot is a copy: block cloning (ReFS) is not used.
 func cloneFile(*os.File, string) (*os.File, bool) { return nil, false }
+
+// snapshotDir is where a snapshot of the session file at path is created. A Windows snapshot is a copy, never a clone, so nothing gains
+// from placing it beside the session file, and the file is listed in its directory while the handle is open: the temporary directory
+// keeps the session directory to the files Pi writes there.
+func snapshotDir(string) string { return os.TempDir() }

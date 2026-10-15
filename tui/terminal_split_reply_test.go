@@ -3,6 +3,7 @@ package tui
 import (
 	"context"
 	"os"
+	"runtime"
 	"slices"
 	"testing"
 	"testing/synctest"
@@ -13,17 +14,48 @@ import (
 // leaked its fragments into the focused component as key input. An `ESC[?` prefix now waits for its final byte, as the issue's reference fix
 // does, so no part of the reply reaches input. A bare `ESC[` is still replayed after the fragment timeout, as Pi's tests require; the terminal
 // then absorbs the rest of the reply it owes and settles it (D143).
+var splitReplyCases = []struct {
+	name   string
+	chunks []string
+	gap    time.Duration
+	want   []string
+}{
+	{"issue's 8-byte reads", []string{"\x1b[?61;6;", "7;22;23;", "24;28;32", ";42c"}, 200 * time.Millisecond, []string{"a"}},
+	{"after ESC[?", []string{"\x1b[?", "61;6;7;22", ";42c"}, 300 * time.Millisecond, []string{"a"}},
+	{"after ESC[", []string{"\x1b[", "?61;6;7;22", ";42c"}, 300 * time.Millisecond, []string{"\x1b[", "a"}},
+}
+
+// TestTerminalInputConsumesAnOwedReplySplitAcrossSlowReads is the same contract on the decoder with a fake clock, so it holds on every platform.
+func TestTerminalInputConsumesAnOwedReplySplitAcrossSlowReads(t *testing.T) {
+	t.Setenv("PI_PROGRAM_STATUS", "")
+	for _, test := range splitReplyCases {
+		t.Run(test.name, func(t *testing.T) {
+			synctest.Test(t, func(t *testing.T) {
+				h := newTerminalNegotiationHarness(t)
+				for _, chunk := range test.chunks {
+					h.send(chunk)
+					time.Sleep(test.gap)
+					synctest.Wait()
+				}
+				h.send("a")
+				if got := h.input(); !slices.Equal(got, test.want) {
+					t.Fatalf("forwarded %q, want %q: part of the reply reached input", got, test.want)
+				}
+				if owed := h.terminal.pendingKeyboardProtocolDeviceAttributes.Load(); owed != 0 {
+					t.Fatalf("%d replies still owed after the reply arrived", owed)
+				}
+			})
+		})
+	}
+}
+
+// The real reader also frames these on a pipe. An anonymous pipe is not a Windows terminal: waiting on its handle signals no
+// readiness, so the reader cannot wake for a framing deadline there (terminal_negotiation_input_windows_test.go).
 func TestForwardTerminalConsumesAnOwedReplySplitAcrossSlowReads(t *testing.T) {
-	for _, test := range []struct {
-		name   string
-		chunks []string
-		gap    time.Duration
-		want   []string
-	}{
-		{"issue's 8-byte reads", []string{"\x1b[?61;6;", "7;22;23;", "24;28;32", ";42c"}, 200 * time.Millisecond, []string{"a"}},
-		{"after ESC[?", []string{"\x1b[?", "61;6;7;22", ";42c"}, 300 * time.Millisecond, []string{"a"}},
-		{"after ESC[", []string{"\x1b[", "?61;6;7;22", ";42c"}, 300 * time.Millisecond, []string{"\x1b[", "a"}},
-	} {
+	if runtime.GOOS == "windows" {
+		t.Skip("an anonymous pipe signals no readiness on Windows, so the reader cannot wake for the 50 ms and 150 ms framing deadlines; TestTerminalInputConsumesAnOwedReplySplitAcrossSlowReads covers them")
+	}
+	for _, test := range splitReplyCases {
 		t.Run(test.name, func(t *testing.T) {
 			preserveKeyboardProtocolState(t)
 			r, w, err := os.Pipe()

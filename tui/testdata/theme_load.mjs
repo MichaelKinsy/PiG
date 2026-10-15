@@ -1,5 +1,6 @@
 // Load theme files with the installed Pi's loadThemeFromPath (theme.ts) in both colour modes: the error message, or every foreground and background escape and the appearance.
 import { readFileSync, readdirSync, realpathSync } from "node:fs";
+import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 const root = realpathSync(new URL("../../extensions/sdk-ts/node_modules/@earendil-works/pi-coding-agent/", import.meta.url)) + "/";
 if (JSON.parse(readFileSync(root + "package.json", "utf8")).version !== process.argv[2]) throw new Error("Wrong Pi oracle version");
@@ -14,7 +15,8 @@ for (const name of readdirSync(dir).sort((a, b) => parseInt(a) - parseInt(b))) {
   const entry = {};
   for (const mode of ["truecolor", "256color"]) {
     try {
-      const theme = loadThemeFromPath(`${dir}/${name}`, mode);
+      // join, not `${dir}/${name}`: the error message names the path, and Go's filepath.Join uses the host separator.
+      const theme = loadThemeFromPath(join(dir, name), mode);
       const fg = {}, bg = {};
       for (const token of theme.fgAnsi.keys()) fg[token] = theme.getFgAnsi(token);
       for (const token of theme.bgAnsi.keys()) bg[token] = theme.getBgAnsi(token);
