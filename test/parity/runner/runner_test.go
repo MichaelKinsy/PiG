@@ -36,6 +36,7 @@ var (
 	flagAllowStale  = flag.Bool("pig-parity.allow-stale", false, "allow running parity against a pig binary older than source files")
 	flagRuns        = flag.Int("pig-parity.runs", 0, "override each scenario's declared run count (0 preserves the scenario)")
 	flagRuntimeOnly = flag.Bool("pig-parity.runtime-ratio-only", false, "run only scenarios with runtime_ratio_max")
+	flagShard       = flag.String("pig-parity.shard", "", "N/M: run only the scenarios whose name hashes to shard N of M (empty = all)")
 )
 
 // TestParity is the single Go test entry point for the parity suite.
@@ -85,6 +86,13 @@ func TestParity(t *testing.T) {
 	scenarios = FilterByDrivers(scenarios, drivers)
 	if *flagRuntimeOnly {
 		scenarios = FilterByRuntimeRatio(scenarios)
+	}
+	if value := strings.TrimSpace(*flagShard); value != "" {
+		shard, shards, err := parseShard(value)
+		if err != nil {
+			t.Fatal(err)
+		}
+		scenarios = FilterByShard(scenarios, shard, shards)
 	}
 	if len(scenarios) == 0 {
 		t.Fatalf("no scenarios match required tags %v and drivers %v", tags, drivers)

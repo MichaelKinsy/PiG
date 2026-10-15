@@ -12,6 +12,13 @@ ci-extensions: typescript-extension-corpus examples-check standard-check
 ci-race: test-race
 ci-integration: test-integration
 ci-parity: parity-fast
+# CI splits the hermetic parity scenarios in two by name hash; each half runs under the same 20-minute limit.
+ci-parity-1: parity-fast-1
+ci-parity-2: parity-fast-2
+parity-fast-1:
+	@$(MAKE) -s parity-fast PARITY_SHARD=1/2
+parity-fast-2:
+	@$(MAKE) -s parity-fast PARITY_SHARD=2/2
 ci-drift: lint-scenarios port-map-drift coverage-drift divergence-consistency divergence-quality divergence-guard port-lint source-hygiene test-provenance docs-drift bug-ledger-check any-trap perf-lint perf-scoreboard-check
 ci-contracts: correspondence-check porter-check interface-inventory interface-inventory-test interface-go-drift interface-recommendations-drift interface-mapping-quality interface-delta interface-gaps portmap-check behavior-contracts test-inventory-drift test-inventory test-porting-release known-gaps-drift format-version-inventory custom-factory-ledger-drift sdk-surface-drift sdk-apidiff piglet-strip-ids-drift piglet-strip-build
 ci-closure: closure-check
@@ -56,4 +63,4 @@ test-expectation-lint: ## Fail on test expectations edited with their code and n
 
 TEST_EXPECT_BASE ?= main
 
-.PHONY: test-provenance test-expectation-lint ci-startup ci-build ci-test-fast ci-test-cli ci-test-subprocess ci-test-conformance ci-sdk ci-extensions ci-race ci-integration ci-parity ci-drift ci-contracts ci-closure test-fast test-cli test-subprocess test-conformance
+.PHONY: test-provenance test-expectation-lint ci-startup ci-build ci-test-fast ci-test-cli ci-test-subprocess ci-test-conformance ci-sdk ci-extensions ci-race ci-integration ci-parity ci-parity-1 ci-parity-2 parity-fast-1 parity-fast-2 ci-drift ci-contracts ci-closure test-fast test-cli test-subprocess test-conformance

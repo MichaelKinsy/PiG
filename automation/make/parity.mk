@@ -252,13 +252,14 @@ parity: parity-bin ## Scenario-driven comparison with resource-sensitive concurr
 # Fast pre-commit gate: identical scenarios, assertions, isolation, and
 # fail-fast behavior as `make parity`, but one Pig/Pi pair per scenario.
 # CI and explicit full verification keep each scenario's declared durability.
-parity-fast: parity-bin ## One strict Pig/Pi pair per hermetic scenario for the pre-commit loop
+parity-fast: parity-bin ## One strict Pig/Pi pair per hermetic scenario for the pre-commit loop (PARITY_SHARD=N/M runs one hash shard)
 	@rm -f "$(RESULTS)"
 	@run_id=$$$$; \
 	  cleanup_tmux() { tmux -L "pig-parity-$$run_id" list-sessions -F '#{session_name}' 2>/dev/null | xargs -I{} tmux -L "pig-parity-$$run_id" kill-session -t {} 2>/dev/null || true; }; \
 	  trap cleanup_tmux EXIT; \
 	  PIG_PARITY_RUN_ID="$$run_id" PIG_PARITY_PIG_BIN="$(PARITY_PIG_BIN)" go test -tags=parity -count=1 -timeout $(PARITY_TIMEOUT) -parallel $(PARITY_PARALLEL) ./test/parity/runner \
-	    -args -pig-parity.tags=hermetic -pig-parity.runs=1 -pig-parity.group-limits=$(PARITY_GROUP_LIMITS) -pig-parity.results=$(RESULTS)
+	    -args -pig-parity.tags=hermetic -pig-parity.runs=1 -pig-parity.group-limits=$(PARITY_GROUP_LIMITS) -pig-parity.results=$(RESULTS) \
+	    $(if $(PARITY_SHARD),-pig-parity.shard=$(PARITY_SHARD))
 	@$(MAKE) -s require-parity-ran RESULTS=$(RESULTS)
 
 # A scoped run writes its results file under this worktree, named for its selection, so a concurrent run in another worktree cannot supply the scenarios this run counts.

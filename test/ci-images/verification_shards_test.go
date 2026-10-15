@@ -87,6 +87,9 @@ func TestLinuxShardsRetainEveryCheck(t *testing.T) {
 		case "check", "check-core", "check-contracts-fast":
 		case "test":
 			return []string{"test-fast", "test-cli", "test-subprocess", "test-conformance"}
+		case "parity-fast":
+			// CI runs the hermetic parity scenarios as two hash shards (PARITY_SHARD), which together are parity-fast.
+			return []string{"parity-fast-1", "parity-fast-2"}
 		default:
 			if !strings.HasPrefix(name, "ci-") {
 				return []string{name}
