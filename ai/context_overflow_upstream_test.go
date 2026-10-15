@@ -34,7 +34,7 @@ func TestContextOverflowMatrixUpstream(t *testing.T) {
 		{"xiaomi-token-plan-ams", "mimo-v2.5-pro", "length", ""}, {"xiaomi-token-plan-sgp", "mimo-v2.5-pro", "length", ""},
 		{"qwen-token-plan", "qwen3.7-max", "qwen", "input length"}, {"qwen-token-plan-individual", "qwen3.8-max", "qwen", "input length"},
 		{"qwen-token-plan-cn", "qwen3.7-max", "qwen", "input length"}, {"kimi-coding", "kimi-for-coding", "kimi", ""},
-		{"vercel-ai-gateway", "google/gemini-2.5-flash", "generic", ""}, {"openrouter", "anthropic/claude-sonnet-4", "completions", `maximum context length is \d+ tokens`},
+		{"vercel-ai-gateway", "google/gemini-2.5-flash", "generic", ""}, {"openrouter", "anthropic/claude-sonnet-4.5", "completions", `maximum context length is \d+ tokens`},
 		{"openrouter", "deepseek/deepseek-v3.2", "completions", `maximum context length is \d+ tokens`}, {"openrouter", "mistralai/mistral-large", "completions", `maximum context length is \d+ tokens`},
 		{"openrouter", "google/gemini-2.5-flash", "completions", `maximum context length is \d+ tokens`}, {"openrouter", "meta-llama/llama-4-scout", "completions", `maximum context length is \d+ tokens`},
 		{"ollama", "gpt-oss:20b", "ollama", ""}, {"lm-studio", "local-model", "lmstudio", ""}, {"llama.cpp", "local-model", "llamacpp", ""},

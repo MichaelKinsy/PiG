@@ -70,7 +70,7 @@ func TestTotalTokensUpstream(t *testing.T) {
 		// .upstream/v0.87.1/packages/ai/test/total-tokens.test.ts:686
 		{"vercel-ai-gateway", "google/gemini-2.5-flash", "", false, false, ""},
 		// .upstream/v0.87.1/packages/ai/test/total-tokens.test.ts:709
-		{"openrouter", "anthropic/claude-sonnet-4", "", false, false, ""},
+		{"openrouter", "anthropic/claude-sonnet-4.5", "", false, false, ""},
 		// .upstream/v0.87.1/packages/ai/test/total-tokens.test.ts:726
 		{"openrouter", "deepseek/deepseek-chat", "", false, false, ""},
 		// .upstream/v0.87.1/packages/ai/test/total-tokens.test.ts:743
