@@ -46,7 +46,7 @@ func bedrockFrames(rng *rand.Rand) [][2]string {
 	// A stream with no messageStart is not drawn: Pi then emits no "start" event and PiG's builder always emits one (open finding, questions/lg-help-4.md).
 	frames = append(frames, [2]string{"messageStart", pick(`{"role":"assistant"}`, `{"role":"assistant"}`, `{"role":"user"}`, `{}`)})
 	blocks := rng.Intn(4)
-	for index := 0; index < blocks; index++ {
+	for index := range blocks {
 		at := index
 		if rng.Intn(10) == 0 {
 			at = rng.Intn(4)

@@ -3,6 +3,7 @@ package subprocess
 import (
 	"bytes"
 	"encoding/json"
+	"maps"
 	"net"
 	"reflect"
 	"strings"
@@ -207,9 +208,7 @@ func TestPushStateToSkipsIdenticalAndOmitsUnchangedCatalogs(t *testing.T) {
 
 	merged := map[string]json.RawMessage{}
 	for _, state := range []map[string]json.RawMessage{first, second, third, fourth} {
-		for key, value := range state {
-			merged[key] = value
-		}
+		maps.Copy(merged, state)
 	}
 	full, err := json.Marshal(map[string]any{"state": rig.bridge.Snapshot(rig.me.flagNames, 0, false)})
 	if err != nil {

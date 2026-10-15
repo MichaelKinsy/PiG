@@ -14,8 +14,7 @@ import (
 // mutation-checked: dropping the name check of the StorageRequestError case makes every foreign name a StorageRequestError and fails it.
 func TestRemoteErrorMapsToATypedErrorOnlyByItsClassName(t *testing.T) {
 	for _, name := range []string{"Error", "ConversationBusy", "ReadAfterWrite", "TypeError", ""} {
-		var rejected *durable.StorageRequestError
-		if errors.As(error(&driver.CoreError{Name: name, Message: "boom"}), &rejected) {
+		if rejected, ok := errors.AsType[*durable.StorageRequestError](error(&driver.CoreError{Name: name, Message: "boom"})); ok {
 			t.Errorf("an error named %q matched *StorageRequestError: %+v", name, rejected)
 		}
 	}

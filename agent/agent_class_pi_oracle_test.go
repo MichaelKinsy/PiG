@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"maps"
 	"math/rand"
 	"os/exec"
 	"path/filepath"
@@ -299,9 +300,7 @@ func TestAgentClassMatchesPi(t *testing.T) {
 			build := func(content []map[string]any, extra map[string]any) *ai.AssistantMessage {
 				wire := map[string]any{"role": "assistant", "content": content, "api": "faux", "provider": "faux", "model": "faux-1", "stopReason": stop, "timestamp": 1000 + index,
 					"usage": map[string]any{"input": 0, "output": 0, "cacheRead": 0, "cacheWrite": 0, "totalTokens": 0, "cost": map[string]any{"input": 0, "output": 0, "cacheRead": 0, "cacheWrite": 0, "total": 0}}}
-				for key, value := range extra {
-					wire[key] = value
-				}
+				maps.Copy(wire, extra)
 				encoded, _ := json.Marshal(wire)
 				var message ai.AssistantMessage
 				if err := json.Unmarshal(encoded, &message); err != nil {

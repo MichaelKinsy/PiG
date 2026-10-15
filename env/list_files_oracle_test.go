@@ -8,6 +8,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"maps"
 	"math/rand/v2"
 	"os"
 	"path/filepath"
@@ -144,9 +145,7 @@ func TestListFilesMatchesPisDaemon(t *testing.T) {
 		tree := writeGenerated(t, random, seed)
 		for _, options := range optionSets {
 			request := Json{"path": tree.inner}
-			for key, value := range options {
-				request[key] = value
-			}
+			maps.Copy(request, options)
 			want, wantErr := theirs.Request(background, "listFiles", request, RequestOptions{})
 			got, gotErr := ours.Request(background, "listFiles", request, RequestOptions{})
 			if (wantErr == nil) != (gotErr == nil) || (wantErr != nil && wantErr.Error() != gotErr.Error()) {
@@ -210,9 +209,7 @@ func TestListFilesIgnoreFilesMatchPisDaemon(t *testing.T) {
 		mustDo(os.WriteFile(filepath.Join(root, ".gitignore"), []byte(content), 0o644))
 		for _, options := range []Json{{}, {"hidden": false}} {
 			request := Json{"path": root}
-			for key, value := range options {
-				request[key] = value
-			}
+			maps.Copy(request, options)
 			want, wantErr := theirs.Request(background, "listFiles", request, RequestOptions{})
 			got, gotErr := ours.Request(background, "listFiles", request, RequestOptions{})
 			if wantErr != nil || gotErr != nil {

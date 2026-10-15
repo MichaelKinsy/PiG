@@ -309,7 +309,7 @@ func PrepareBranchEntries(entries []codingagent.SessionEntry, tokenBudget int) (
 	// window holds entries[lo:] decoded from lo up to the previous window, in runs that double up to 1024 entries.
 	var window []codingagent.SessionEntry
 	lo, run := len(entries), 32
-	for i := len(entries) - 1; i >= 0; i-- {
+	for i := range slices.Backward(entries) {
 		if i < lo {
 			hi := lo
 			lo = max(0, lo-run)

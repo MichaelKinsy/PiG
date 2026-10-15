@@ -3,6 +3,7 @@ package ai
 import (
 	"encoding/json"
 	"fmt"
+	"maps"
 	"math/rand"
 	"strings"
 	"testing"
@@ -116,9 +117,7 @@ func goLlamaRender(doc llamaRenderDoc) llamaRenderResult {
 		questions = append(questions, ClassifierQuestionEntry{ID: q.ID, Question: question})
 	}
 	state := JsonObject{}
-	for key, value := range doc.State {
-		state[key] = value
-	}
+	maps.Copy(state, doc.State)
 	rendered, err := LlamaCppRenderQuestion(ClassifierContext{State: state, Questions: questions}, doc.Ask)
 	if err != nil {
 		return llamaRenderResult{Error: err.Error()}

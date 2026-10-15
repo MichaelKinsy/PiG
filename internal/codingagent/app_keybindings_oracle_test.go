@@ -21,7 +21,7 @@ type appKeybindingsConflict struct {
 
 func appKeybindingsCandidates() []string {
 	var out []string
-	for c := 0; c < 0x20; c++ {
+	for c := range 0x20 {
 		out = append(out, string(rune(c)))
 	}
 	out = append(out, "\x7f", "\x1b\x1b", "\x1b\r", "\x1b\x7f", "\x1b[Z", "\x1b[200~")

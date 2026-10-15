@@ -295,9 +295,9 @@ func markdownIsTextLine(line, before string) bool {
 // markdownStripOuterIndent removes from a lazy line the content indent of the innermost enclosing item that the line reaches: that item's tokenizer cut those spaces (`nextLine.slice(indent)`) before it lexed its content, which holds the nested list. outer lists the enclosing items' content indents, outermost first.
 func markdownStripOuterIndent(line string, outer []int) string {
 	indent := markdownIndent(line)
-	for k := len(outer) - 1; k >= 0; k-- {
-		if outer[k] <= indent {
-			return line[outer[k]:]
+	for _, o := range slices.Backward(outer) {
+		if o <= indent {
+			return line[o:]
 		}
 	}
 	return line

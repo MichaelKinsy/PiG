@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"slices"
 	"strconv"
 	"strings"
 	"sync/atomic"
@@ -167,8 +168,7 @@ func decodeResponsesItem(raw json.RawMessage, done bool, item *respOutputItem) (
 		}
 		return raw, thrown, nil
 	}
-	var mismatch *json.UnmarshalTypeError
-	if !errors.As(err, &mismatch) {
+	if _, ok := errors.AsType[*json.UnmarshalTypeError](err); !ok {
 		return nil, nil, fmt.Errorf("openai-responses: invalid SSE JSON: %w", err)
 	}
 	normalized, thrown, ok := normalizeResponsesItemJS(raw, done)
@@ -522,10 +522,8 @@ func hasEmptyResponsesPart(item *respOutputItem) bool {
 		lists = [][]respOutputContent{item.Summary, item.Content}
 	}
 	for _, parts := range lists {
-		for _, part := range parts {
-			if part == (respOutputContent{}) {
-				return true
-			}
+		if slices.Contains(parts, (respOutputContent{})) {
+			return true
 		}
 	}
 	return false

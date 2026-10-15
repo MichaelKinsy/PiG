@@ -852,12 +852,12 @@ func matchSessionSearch(search *sessionSearch, parsed parsedSearchQuery, queries
 			if phrase == "" {
 				continue
 			}
-			idx := strings.Index(normalizedText, phrase)
-			if idx < 0 {
+			before, _, ok := strings.Cut(normalizedText, phrase)
+			if !ok {
 				return false, 0
 			}
 			// float64() rounds the product before the add: arm64 fuses x*y+z, JS never does (session-selector-search.ts:144).
-			total += float64(float64(jsstring.Length(normalizedText[:idx])) * 0.1)
+			total += float64(float64(jsstring.Length(before)) * 0.1)
 			continue
 		}
 		match := search.fuzzyText().Match(queries[i])

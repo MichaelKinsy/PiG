@@ -497,8 +497,7 @@ func TestResolveFileWithoutLoaderMatchesNode(t *testing.T) {
 		t.Fatal(err)
 	}
 	_, err = Resolve(path)
-	var unknown *UnknownFileExtensionError
-	if !errors.As(err, &unknown) {
+	if _, ok := errors.AsType[*UnknownFileExtensionError](err); !ok {
 		t.Fatalf("Resolve(%s) error = %v, want UnknownFileExtensionError", path, err)
 	}
 	if want := `Unknown file extension ".tgz" for ` + real; err.Error() != want {

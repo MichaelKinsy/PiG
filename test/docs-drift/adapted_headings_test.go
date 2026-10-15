@@ -35,7 +35,7 @@ func normalizeHeading(h string) string {
 func pageHeadings(body string) []string {
 	var out []string
 	fence := ""
-	for _, line := range strings.Split(body, "\n") {
+	for line := range strings.SplitSeq(body, "\n") {
 		trim := strings.TrimSpace(line)
 		if strings.HasPrefix(trim, "```") || strings.HasPrefix(trim, "~~~") {
 			marker := trim[:3]

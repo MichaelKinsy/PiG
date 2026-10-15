@@ -237,9 +237,9 @@ func TestSessionIndexReadsMatchResidentEntries(t *testing.T) {
 
 // newestAssistantWithoutAPI is the id of the newest assistant message whose API is not api: GetBranchSelection's walk with api virtual.
 func newestAssistantWithoutAPI(branch []SessionEntry, api string) string {
-	for i := len(branch) - 1; i >= 0; i-- {
-		if message, ok := branch[i].(MessageEntry); ok && message.Message.Assistant != nil && string(message.Message.Assistant.API) != api {
-			return branch[i].Base().ID
+	for _, b := range slices.Backward(branch) {
+		if message, ok := b.(MessageEntry); ok && message.Message.Assistant != nil && string(message.Message.Assistant.API) != api {
+			return b.Base().ID
 		}
 	}
 	return ""

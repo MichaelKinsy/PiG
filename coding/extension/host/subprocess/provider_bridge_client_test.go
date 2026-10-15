@@ -131,8 +131,7 @@ func TestProviderBridgeClientHonoursTheBridgeWire(t *testing.T) {
 	}
 	if err != nil {
 		var stderr []byte
-		var exit *exec.ExitError
-		if errors.As(err, &exit) {
+		if exit, ok := errors.AsType[*exec.ExitError](err); ok {
 			stderr = exit.Stderr
 		}
 		t.Fatalf("client script: %v\n%s\n%s", err, output, stderr)

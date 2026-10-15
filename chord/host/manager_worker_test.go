@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"maps"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -37,9 +38,7 @@ func managerDriver(t *testing.T, env map[string]string, lock *string) Driver {
 		t.Fatal(err)
 	}
 	merged := map[string]string{"HOST_NAME": "w1", managerWorkerEnv: "1"}
-	for name, value := range env {
-		merged[name] = value
-	}
+	maps.Copy(merged, env)
 	return ForkDriver(ForkDriverOptions{
 		Entry:   entry,
 		Args:    []string{executable, "-test.run=^TestManagerWorkerProcess$"},

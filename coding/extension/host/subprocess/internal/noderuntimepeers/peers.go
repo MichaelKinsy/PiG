@@ -68,7 +68,7 @@ func HostPeerFiles(version string, sources map[string][]byte) ([]noderuntimepack
 			subpaths = append(subpaths, subpath)
 		}
 		sort.Strings(subpaths)
-		exports := ""
+		var exports strings.Builder
 		for i, subpath := range subpaths {
 			target := table[subpath]
 			if !exists(target) {
@@ -81,11 +81,11 @@ func HostPeerFiles(version string, sources map[string][]byte) ([]noderuntimepack
 			}
 			files = append(files, noderuntimepack.File{Name: "runtime-node/" + path.Join(dir, entry), Data: []byte(data)})
 			if i > 0 {
-				exports += ", " //perf:ok build-time peer codegen, runs once per runtime pack
+				exports.WriteString(", ") //perf:ok build-time peer codegen, runs once per runtime pack
 			}
-			exports += fmt.Sprintf("%q: %q", subpath, "./"+entry) //perf:ok build-time peer codegen, runs once per runtime pack
+			exports.WriteString(fmt.Sprintf("%q: %q", subpath, "./"+entry)) //perf:ok build-time peer codegen, runs once per runtime pack
 		}
-		manifest := fmt.Sprintf("{\n  \"name\": %q,\n  \"version\": %q,\n  \"private\": true,\n  \"type\": \"module\",\n  \"exports\": {%s}\n}\n", name, version, exports) //perf:ok build-time peer codegen, runs once per runtime pack
+		manifest := fmt.Sprintf("{\n  \"name\": %q,\n  \"version\": %q,\n  \"private\": true,\n  \"type\": \"module\",\n  \"exports\": {%s}\n}\n", name, version, exports.String()) //perf:ok build-time peer codegen, runs once per runtime pack
 		files = append(files, noderuntimepack.File{Name: "runtime-node/" + path.Join(dir, "package.json"), Data: []byte(manifest)})
 	}
 	return files, nil
@@ -95,8 +95,8 @@ func HostPeerFiles(version string, sources map[string][]byte) ([]noderuntimepack
 func expandPatterns(table map[string]string, sources map[string][]byte) map[string]string {
 	out := map[string]string{}
 	for subpath, target := range table {
-		star := strings.Index(subpath, "*")
-		if star < 0 {
+		before0, after0, ok := strings.Cut(subpath, "*")
+		if !ok {
 			out[subpath] = target
 			continue
 		}
@@ -105,7 +105,7 @@ func expandPatterns(table map[string]string, sources map[string][]byte) map[stri
 		for file := range sources {
 			if strings.HasPrefix(file, before) && strings.HasSuffix(file, after) && len(file) > len(before)+len(after) {
 				match := file[len(before) : len(file)-len(after)]
-				out[subpath[:star]+match+subpath[star+1:]] = file
+				out[before0+match+after0] = file
 			}
 		}
 	}

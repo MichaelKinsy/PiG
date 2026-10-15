@@ -9,6 +9,7 @@ package host
 import (
 	"context"
 	"errors"
+	"maps"
 	"slices"
 	"strings"
 	"sync"
@@ -379,9 +380,7 @@ func TestLinksReview2ARevocationWhileTheRouteIsStillResolvingClosesTheRelay(t *t
 	c.setResolveGate(gate)
 	browser := c.browser(map[string]any{"guest": "g", "revision": float64(1)}, func(principal Principal) (Principal, bool) {
 		next := map[string]any{}
-		for key, value := range principal.(map[string]any) {
-			next[key] = value
-		}
+		maps.Copy(next, principal.(map[string]any))
 		next["revision"] = float64(2)
 		return next, true
 	})

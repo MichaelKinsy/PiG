@@ -190,8 +190,7 @@ func jsonField(structure reflect.Type, name string) (reflect.Type, bool) {
 	if structure.Kind() != reflect.Struct {
 		return nil, false
 	}
-	for i := range structure.NumField() {
-		field := structure.Field(i)
+	for field := range structure.Fields() {
 		tag, _, _ := strings.Cut(field.Tag.Get("json"), ",")
 		if tag == name && field.IsExported() {
 			return field.Type, true

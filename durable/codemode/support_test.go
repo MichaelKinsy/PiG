@@ -6,6 +6,7 @@ package codemode
 import (
 	"context"
 	"encoding/json"
+	"maps"
 	"path/filepath"
 	"regexp"
 	"slices"
@@ -251,9 +252,7 @@ func (f *codemodeFixture) echoCounts() map[string]int {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	counts := map[string]int{}
-	for key, value := range f.echo {
-		counts[key] = value
-	}
+	maps.Copy(counts, f.echo)
 	return counts
 }
 

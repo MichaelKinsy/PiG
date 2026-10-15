@@ -96,8 +96,7 @@ func mustRef(t *testing.T, host *HostImpl, typ *Contract, input any, options *Ge
 }
 
 func asChord(err error) *ChordError {
-	var chordError *ChordError
-	if errors.As(err, &chordError) {
+	if chordError, ok := errors.AsType[*ChordError](err); ok {
 		return chordError
 	}
 	return nil

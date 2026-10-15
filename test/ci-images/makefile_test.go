@@ -28,12 +28,7 @@ func TestComparatorTargetsDependOnTheirInstallers(t *testing.T) {
 				return false
 			}
 			seen[target] = true
-			for _, dep := range prerequisites[target] {
-				if walk(dep) {
-					return true
-				}
-			}
-			return false
+			return slices.ContainsFunc(prerequisites[target], walk)
 		}
 		return walk(from)
 	}

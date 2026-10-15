@@ -1,6 +1,7 @@
 package session_test
 
 import (
+	"slices"
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/durable/core/jv"
@@ -82,10 +83,8 @@ func TestTheReconcileChargesATickForEachChainLoadItAwaits(t *testing.T) {
 	}
 	// Two base awaits, one conversation read, the two #loadChain calls and scanAll.
 	want := 2 + perRead + 2 + 1
-	for _, ticks := range jobs {
-		if ticks == want {
-			return
-		}
+	if slices.Contains(jobs, want) {
+		return
 	}
 	t.Fatalf("transaction ticks of the jobs after reopen %v, want a reconcile of %d (2 awaits, a %d-tick read, 2 #loadChain calls, scanAll)", jobs, want, perRead)
 }

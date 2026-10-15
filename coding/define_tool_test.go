@@ -39,8 +39,8 @@ func TestDefineToolKeepsEveryMemberOfTheDefinition(t *testing.T) {
 		case reflect.Func:
 			field.Set(reflect.MakeFunc(field.Type(), func([]reflect.Value) []reflect.Value {
 				out := make([]reflect.Value, 0, field.Type().NumOut())
-				for j := range field.Type().NumOut() {
-					out = append(out, reflect.Zero(field.Type().Out(j)))
+				for out0 := range field.Type().Outs() {
+					out = append(out, reflect.Zero(out0))
 				}
 				return out
 			}))

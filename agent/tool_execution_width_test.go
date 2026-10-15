@@ -89,7 +89,7 @@ func TestParallelToolBatchRunsAtTheDefaultWidthUnderTheCap(t *testing.T) {
 		if !ok {
 			continue
 		}
-		for _, field := range strings.Fields(rest) {
+		for field := range strings.FieldsSeq(rest) {
 			value, err := strconv.Atoi(field)
 			if err != nil {
 				t.Fatalf("child line %q: %v", line, err)

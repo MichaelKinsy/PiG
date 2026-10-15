@@ -218,7 +218,7 @@ func streamScripts() map[string][]updateStep {
 
 	var mixed []updateStep
 	thinking, answer := "", ""
-	for n := 0; n < 40; n++ {
+	for n := range 40 {
 		message := base
 		blocks := []ai.AssistantContentBlock{}
 		if n < 15 {
@@ -241,7 +241,7 @@ func streamScripts() map[string][]updateStep {
 
 	var tools []updateStep
 	var content strings.Builder
-	for n := 0; n < 40; n++ {
+	for n := range 40 {
 		fmt.Fprintf(&content, "line %d of the file\\n", n)
 		args := fmt.Sprintf(`{"path": "big/source.ts", "content": "%s`, content.String())
 		message := base

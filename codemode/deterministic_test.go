@@ -6,6 +6,7 @@ import (
 	"math"
 	"reflect"
 	"regexp"
+	"slices"
 	"strings"
 	"sync"
 	"testing"
@@ -121,15 +122,13 @@ func startRun(t *testing.T, sandbox *codemode.Sandbox, code string, mutate ...fu
 	ready := make(chan struct{})
 	seq := 0
 	var runs sync.WaitGroup
-	runs.Add(1)
-	go func() {
-		defer runs.Done()
+	runs.Go(func() {
 		<-ready
 		for call := range queue {
 			seq++
 			_ = r.run.Deliver(seq, startedAt+1000*float64(seq), call.ID, answer(call))
 		}
-	}()
+	})
 	run := options.RunOptions
 	run.OnStarted = func(fingerprint string) {
 		r.mu.Lock()
@@ -291,12 +290,7 @@ func TestDeterministicRunsMakeTheSameCallsAndOutputForTheSameStartSeedAndResults
 }
 
 func slicesContains(list []float64, v float64) bool {
-	for _, x := range list {
-		if x == v {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(list, v)
 }
 
 // mustPrefix is the first n elements of a JSON array of mixed values as a JSON array of numbers (the ISO string element is

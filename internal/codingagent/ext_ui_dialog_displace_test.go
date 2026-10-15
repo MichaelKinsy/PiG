@@ -106,8 +106,7 @@ func TestAbortingADisplacedDialogHidesTheShownDialog(t *testing.T) {
 	ui := &ExtUIContext{m: m}
 	ctxA, abortA := context.WithCancel(context.Background())
 	defer abortA()
-	ctxB, abortB := context.WithCancel(context.Background())
-	defer abortB()
+	ctxB := t.Context()
 
 	first := startDialog(t, m, func() (string, error) {
 		return ui.Select(ctxA, "First", []string{"one"}, extension.ExtensionUIDialogOptions{})

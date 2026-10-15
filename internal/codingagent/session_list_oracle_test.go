@@ -2,6 +2,7 @@ package codingagent
 
 import (
 	"fmt"
+	"maps"
 	"math/rand"
 	"os"
 	"path/filepath"
@@ -83,9 +84,7 @@ func TestListSessionsMatchesPi(t *testing.T) {
 		"é-tie-5.jsonl":       hdr("") + msg("user", `"tie"`, t1, `,"timestamp":1767500000000`),
 		"note.txt":            hdr(""),
 	}
-	for name, content := range randomSessionListFiles(cwd) {
-		files[name] = content
-	}
+	maps.Copy(files, randomSessionListFiles(cwd))
 	dirs := [2]string{filepath.Join(work, "pig"), filepath.Join(work, "pi")}
 	for _, d := range dirs {
 		if err := os.MkdirAll(d, 0o755); err != nil {

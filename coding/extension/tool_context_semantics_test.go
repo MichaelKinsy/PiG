@@ -69,8 +69,7 @@ func TestToolContextActionsFollowTheBoundHostActions(t *testing.T) {
 		if err != nil || !outcome.IsError || got.own || got.callID != "call-7" || got.name != "read" || got.raw != `{"path":"a.txt"}` {
 			t.Errorf("default call: outcome %+v, %v, saw %+v", outcome, err, got)
 		}
-		own, cancel := context.WithCancel(context.Background())
-		defer cancel()
+		own := t.Context()
 		if _, err := newContext(active, actions).ExecuteTool("read", nil, &ExecuteToolOptions{Signal: own}); err != nil || !got.own || got.hadSignal {
 			t.Errorf("call with its own signal: err %v, saw %+v, want the own-signal context and no Signal option forwarded", err, got)
 		}

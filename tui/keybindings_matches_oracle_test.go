@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"maps"
 	"os/exec"
 	"reflect"
 	"slices"
@@ -29,7 +30,7 @@ type keybindingsOracleResult struct {
 
 func keybindingsOracleCandidates() []string {
 	var out []string
-	for c := 0; c < 0x20; c++ {
+	for c := range 0x20 {
 		out = append(out, string(rune(c)))
 	}
 	out = append(out, "\x7f", "\x1b\x1b", "\x1b\r", "\x1b\n", "\x1b\x7f", "\x1b\x08", "\x1b[Z", "\x1b[200~")
@@ -112,9 +113,7 @@ func TestKeybindingsManagerMatchesPi(t *testing.T) {
 	for index, probe := range probes {
 		SetKittyProtocolActive(probe.Kitty)
 		user := KeybindingsConfig{}
-		for action, keys := range probe.Bindings {
-			user[action] = keys
-		}
+		maps.Copy(user, probe.Bindings)
 		manager := NewTUIKeybindingsManager(user)
 		want := expected.Results[index]
 		for _, action := range expected.Actions {

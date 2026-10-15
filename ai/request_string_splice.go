@@ -105,8 +105,8 @@ func inert(t reflect.Type) bool {
 		case reflect.Map:
 			return reaches(t.Elem())
 		case reflect.Struct:
-			for i := range t.NumField() {
-				if field := t.Field(i); field.IsExported() && field.Tag.Get(requestStringReadTag) == "" && reaches(field.Type) {
+			for field := range t.Fields() {
+				if field.IsExported() && field.Tag.Get(requestStringReadTag) == "" && reaches(field.Type) {
 					return true
 				}
 			}

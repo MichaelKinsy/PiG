@@ -114,7 +114,7 @@ func TestTheWorkerObjectHasTheSameDefaults(t *testing.T) {
 			t.Fatalf("sandbox-object.ts has no %s", name)
 		}
 		n := 1
-		for _, part := range strings.Split(strings.ReplaceAll(string(m[1]), "_", ""), "*") {
+		for part := range strings.SplitSeq(strings.ReplaceAll(string(m[1]), "_", ""), "*") {
 			v, err := strconv.Atoi(strings.TrimSpace(part))
 			if err != nil {
 				t.Fatal(err)

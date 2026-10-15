@@ -7,6 +7,7 @@ import (
 	"context"
 	"encoding/json"
 	"path/filepath"
+	"slices"
 	"strings"
 	"sync"
 	"testing"
@@ -50,8 +51,8 @@ func entriesOf(t *testing.T, c harness.Conversation) []durable.EntryRecord {
 		t.Fatal(err)
 	}
 	out := make([]durable.EntryRecord, 0, len(page.Items))
-	for i := len(page.Items) - 1; i >= 0; i-- {
-		out = append(out, page.Items[i])
+	for _, v := range slices.Backward(page.Items) {
+		out = append(out, v)
 	}
 	return out
 }

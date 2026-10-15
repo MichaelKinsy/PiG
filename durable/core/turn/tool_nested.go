@@ -5,6 +5,7 @@ package turn
 
 import (
 	"errors"
+	"strings"
 
 	"github.com/MichaelKinsy/PiG/durable/core/internal/delta"
 	"github.com/MichaelKinsy/PiG/durable/core/jv"
@@ -204,14 +205,14 @@ func errorTextOf(nested *jv.Object, content []any) string {
 }
 
 func joinLines(parts []string) string {
-	out := ""
+	var out strings.Builder
 	for i, part := range parts {
 		if i > 0 {
-			out += "\n"
+			out.WriteString("\n")
 		}
-		out += part
+		out.WriteString(part)
 	}
-	return out
+	return out.String()
 }
 
 // finishNestedSlot marks a nested call's slot done with its summary.

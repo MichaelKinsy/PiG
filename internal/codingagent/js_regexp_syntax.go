@@ -247,7 +247,7 @@ var (
 
 func buildCanonicalClasses() {
 	groups := map[rune][]rune{}
-	for r := rune(0); r < 0x10000; r++ {
+	for r := range rune(0x10000) {
 		canon := r
 		if r < 0xD800 || r > 0xDFFF {
 			upper := []rune(jsstring.ToUpper(string(r)))
@@ -666,7 +666,7 @@ func (p *jsRegExpTranslator) legacyOctal() rune {
 		return first
 	}
 	value := 0
-	for count := 0; count < 3; count++ {
+	for range 3 {
 		d := p.peek(0)
 		if d < '0' || d > '7' || value*8+int(d-'0') > 0o377 {
 			break

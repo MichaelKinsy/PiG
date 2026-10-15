@@ -3,6 +3,7 @@ package coding
 import (
 	"encoding/json"
 	"fmt"
+	"maps"
 	"math/rand"
 	"os"
 	"path/filepath"
@@ -47,9 +48,7 @@ func TestDefaultResourceLoaderReloadMatchesPi(t *testing.T) {
 	}
 	themeFile := func(name string) string {
 		copyTheme := map[string]any{}
-		for k, v := range dark {
-			copyTheme[k] = v
-		}
+		maps.Copy(copyTheme, dark)
 		if name == "" {
 			delete(copyTheme, "name")
 		} else {

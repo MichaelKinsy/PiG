@@ -10,6 +10,7 @@ import (
 	"os/user"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"strings"
 	"unicode"
 	"unicode/utf8"
@@ -51,8 +52,8 @@ func (g *gitignore) matched(relative string, isDir bool) matchKind {
 		return matchNone
 	}
 	haystack, mapped := "", false
-	for i := len(g.globs) - 1; i >= 0; i-- {
-		glob := g.globs[i]
+	for _, glob := range slices.Backward(g.globs) {
+
 		if (glob.onlyDir && !isDir) || !strings.Contains(relative, glob.literal) {
 			continue
 		}
@@ -352,8 +353,8 @@ func (c *ignoreChain) matched(path string, isDir bool) matchKind {
 		}
 		sawGit = sawGit || ignore.hasGit
 	}
-	for i := len(c.directories) - 1; i >= 0; i-- {
-		ignore := c.directories[i]
+	for _, ignore := range slices.Backward(c.directories) {
+
 		consult(ignore, strings.TrimPrefix(strings.TrimPrefix(path, ignore.relative), "/"))
 	}
 	for _, parent := range c.parents {

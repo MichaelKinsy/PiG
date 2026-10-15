@@ -5,6 +5,7 @@ package checks
 import (
 	"go/ast"
 	"go/types"
+	"slices"
 )
 
 // regexpCompilers are the constructors that compile a pattern when they are called.
@@ -41,8 +42,8 @@ var RegexpInFunc = newCheck("regexpinfunc",
 // compiledOnce reports whether the innermost function around the top of stack runs once: a package-level initializer, init, or a
 // function literal handed to sync.OnceValue, sync.OnceValues, sync.OnceFunc or (*sync.Once).Do.
 func (p *Pass) compiledOnce(stack []ast.Node) bool {
-	for i := len(stack) - 1; i >= 0; i-- {
-		switch fn := stack[i].(type) {
+	for i, s := range slices.Backward(stack) {
+		switch fn := s.(type) {
 		case *ast.FuncDecl:
 			return fn.Recv == nil && fn.Name.Name == "init"
 		case *ast.FuncLit:
@@ -183,9 +184,9 @@ var CtxBackground = newCheck("ctxbackground",
 // innermostHasContext reports whether the innermost function around the call is init, a package-level initializer, or declares a
 // context.Context or *http.Request parameter (ctxmapping reports those).
 func (p *Pass) innermostHasContext(stack []ast.Node) bool {
-	for i := len(stack) - 1; i >= 0; i-- {
+	for _, s := range slices.Backward(stack) {
 		var typ *ast.FuncType
-		switch fn := stack[i].(type) {
+		switch fn := s.(type) {
 		case *ast.FuncDecl:
 			if fn.Recv == nil && fn.Name.Name == "init" {
 				return true

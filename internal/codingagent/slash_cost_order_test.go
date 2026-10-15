@@ -25,7 +25,7 @@ func TestFormatCostSummaryListsToolsInStableNameOrder(t *testing.T) {
 	slices.Sort(want)
 	for run := range 20 {
 		var got []string
-		for _, line := range strings.Split(formatCostSummary(snap, nil), "\n") {
+		for line := range strings.SplitSeq(formatCostSummary(snap, nil), "\n") {
 			if name, _, ok := strings.Cut(strings.TrimPrefix(line, "    "), ":"); ok && strings.HasPrefix(line, "    tool-") {
 				got = append(got, name)
 			}

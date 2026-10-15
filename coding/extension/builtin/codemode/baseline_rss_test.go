@@ -73,15 +73,13 @@ func runRSSScenario(name string) error {
 	var wg sync.WaitGroup
 	errs := make(chan error, runs)
 	for range runs {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+		wg.Go(func() {
 			res, err := Execute(ctx, "call", params, nil, Options{CacheDir: os.Getenv("RSS_CACHE")})
 			if err == nil && strings.HasPrefix(resultText(res), "Script failed") {
 				err = fmt.Errorf("script failed: %s", resultText(res))
 			}
 			errs <- err
-		}()
+		})
 	}
 	wg.Wait()
 	close(errs)

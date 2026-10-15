@@ -1795,8 +1795,7 @@ func decodeAnthropicDeltaEvent(sse anthropicStreamEvent, ev *anthEventContentBlo
 func decodeAnthropicDeltaEventReflect(sse anthropicStreamEvent, ev *anthEventContentBlockDelta) error {
 	text := sse.JSON
 	err := json.Unmarshal([]byte(text), ev)
-	var mismatch *json.UnmarshalTypeError
-	if errors.As(err, &mismatch) {
+	if _, ok := errors.AsType[*json.UnmarshalTypeError](err); ok {
 		if coerced, ok := coerceAnthropicDelta([]byte(text)); ok {
 			*ev, err = coerced, nil
 		}

@@ -14,8 +14,7 @@ import (
 // fields: each field's json tag name, or its Go name when the tag gives none. A field tagged "-" has no member.
 func JSONNames(t reflect.Type) map[string]struct{} {
 	names := make(map[string]struct{}, t.NumField())
-	for i := range t.NumField() {
-		field := t.Field(i)
+	for field := range t.Fields() {
 		if !field.IsExported() {
 			continue
 		}

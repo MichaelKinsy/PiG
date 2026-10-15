@@ -3,6 +3,7 @@ package codingagent
 // pi: packages/coding-agent/src/utils/clipboard.ts
 
 import (
+	"maps"
 	"slices"
 	"testing"
 )
@@ -46,9 +47,7 @@ func TestCopyToClipboardPIClipboardOSC52ForcesOSC52AfterTheLocalWrite(t *testing
 	} {
 		t.Run(tc.platform, func(t *testing.T) {
 			env := map[string]string{"PI_CLIPBOARD_OSC52": "1"}
-			for k, v := range tc.env {
-				env[k] = v
-			}
+			maps.Copy(env, tc.env)
 			f := newClipboardFixture(t, tc.platform, env)
 			var texts []string
 			f.native = nativeSetTextRecorder(&texts, func() error { return nil })

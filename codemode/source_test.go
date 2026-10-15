@@ -70,8 +70,7 @@ func TestParseCodemodeSourceRejectsAnOptionsLineThatIsNotTheFirstLine(t *testing
 	}
 	for _, c := range cases {
 		_, err := codemode.ParseCodemodeSource(c.input)
-		var sourceErr *codemode.SourceError
-		if !errors.As(err, &sourceErr) {
+		if _, ok := errors.AsType[*codemode.SourceError](err); !ok {
 			t.Errorf("%q: err = %v, want a *SourceError", c.input, err)
 			continue
 		}

@@ -188,8 +188,7 @@ func TestInputEntries(t *testing.T) {
 			t.Fatalf("again = %d, want %d", got.Id(), steer.Id())
 		}
 		_, err := root.Submit(testContext, inputWith("x", mention("x"), durable.WhenBusyReject))
-		var busy *durable.ConversationBusy
-		if !errors.As(err, &busy) {
+		if _, ok := errors.AsType[*durable.ConversationBusy](err); !ok {
 			t.Fatalf("err = %v, want ConversationBusy", err)
 		}
 		if got := len(inboxItemsOf(t, harness, root)); got != 2 {

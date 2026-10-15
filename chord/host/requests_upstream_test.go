@@ -66,8 +66,7 @@ func requestsServe(t *testing.T, serve func(*Contract, Factory, ServeOptions) er
 }
 
 func requestsChordCode(err error) ChordErrorCode {
-	var chordError *ChordError
-	if errors.As(err, &chordError) {
+	if chordError, ok := errors.AsType[*ChordError](err); ok {
 		return chordError.Code
 	}
 	return ""

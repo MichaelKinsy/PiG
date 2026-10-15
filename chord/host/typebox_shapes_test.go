@@ -2,6 +2,8 @@ package host
 
 // The JSON Schema data TypeBox 1.3.27's Type builders emit, for tests (Object writes "required" only when non-empty).
 
+import "maps"
+
 type optional struct{ schema Schema }
 
 func tOptional(schema Schema) optional { return optional{schema} }
@@ -34,9 +36,7 @@ func tObject(pairs ...any) Schema {
 
 func with(schema Schema, options []Schema) Schema {
 	for _, option := range options {
-		for key, value := range option {
-			schema[key] = value
-		}
+		maps.Copy(schema, option)
 	}
 	return schema
 }

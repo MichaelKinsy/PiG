@@ -1952,11 +1952,10 @@ func processResponsesStream(ctx context.Context, decoder providerSSEDecoder, bui
 		} else {
 			text := jsjson.NormalizeIntegers([]byte(data))
 			if err := json.Unmarshal(text, &event); err != nil {
-				var mismatch *json.UnmarshalTypeError
 				normalized, normalizable := []byte(nil), false
 				// mapCodexEvents yields every event but its terminal and error ones unchanged into processResponsesStream (openai-codex-responses.ts:743-788),
 				// so a Codex event reads its members as openai-responses does.
-				if errors.As(err, &mismatch) {
+				if _, ok := errors.AsType[*json.UnmarshalTypeError](err); ok {
 					normalized, read, normalizable = normalizeResponsesEventJS(text)
 				}
 				event = respSSEEvent{}

@@ -1723,8 +1723,8 @@ func guardedSet(t types.Type) *types.Map {
 		return nil
 	}
 	var set *types.Map
-	for i := range st.NumFields() {
-		ft := st.Field(i).Type()
+	for field := range st.Fields() {
+		ft := field.Type()
 		if m, isMap := ft.Underlying().(*types.Map); isMap {
 			if set != nil {
 				return nil

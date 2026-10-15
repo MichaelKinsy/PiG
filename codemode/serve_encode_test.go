@@ -8,23 +8,24 @@ import (
 	"testing"
 )
 
-func strp(s string) *string { return &s }
+//go:fix inline
+func strp(s string) *string { return new(s) }
 
 func serveTestMessages() []RemoteMessage {
 	wire := func(m WorkerToHostMessage) RemoteMessage { return RemoteMessage{WorkerToHostMessage: m} }
 	text := strings.Repeat("é<>&\"\\\n\t\u2028", 50) + "\x00\x1f"
 	return []RemoteMessage{
-		wire(WorkerToHostMessage{Type: MessageCall, ID: 7, Target: "tool", Name: "add", Args: strp(`{"a":1}`)}),
+		wire(WorkerToHostMessage{Type: MessageCall, ID: 7, Target: "tool", Name: "add", Args: new(`{"a":1}`)}),
 		wire(WorkerToHostMessage{Type: MessageCall, ID: 8, Target: "global", Name: "x.y"}),
-		wire(WorkerToHostMessage{Type: MessageCall, ID: 9, Target: "tool", Name: "n", Args: strp("")}),
+		wire(WorkerToHostMessage{Type: MessageCall, ID: 9, Target: "tool", Name: "n", Args: new("")}),
 		wire(WorkerToHostMessage{Type: MessageOutput, Item: &OutputItem{Type: OutputItemText, Text: text}}),
 		wire(WorkerToHostMessage{Type: MessageOutput, Item: &OutputItem{Type: OutputItemText, Text: "", Console: true}}),
 		wire(WorkerToHostMessage{Type: MessageOutput, Item: &OutputItem{Type: OutputItemImage, Data: "iVBOR", MimeType: "image/png"}}),
 		wire(WorkerToHostMessage{Type: MessageOutput, Item: &OutputItem{Type: OutputItemImage}}),
 		wire(WorkerToHostMessage{Type: MessageOutput}),
-		wire(WorkerToHostMessage{Type: MessageDone, Ok: true, Value: strp(`"x"`), Writes: strp("[]")}),
-		wire(WorkerToHostMessage{Type: MessageDone, Ok: true, Writes: strp("[]")}),
-		wire(WorkerToHostMessage{Type: MessageDone, Ok: false, Error: strp(`{"name":"Error","message":"boom"}`)}),
+		wire(WorkerToHostMessage{Type: MessageDone, Ok: true, Value: new(`"x"`), Writes: new("[]")}),
+		wire(WorkerToHostMessage{Type: MessageDone, Ok: true, Writes: new("[]")}),
+		wire(WorkerToHostMessage{Type: MessageDone, Ok: false, Error: new(`{"name":"Error","message":"boom"}`)}),
 		wire(WorkerToHostMessage{Type: MessageCrash, Message: text}),
 		{WorkerToHostMessage: WorkerToHostMessage{Type: MessageFailure}, Failure: &Error{Kind: ErrorTimeout, Message: "Execution exceeded its interrupt budget of 1000"}},
 		{WorkerToHostMessage: WorkerToHostMessage{Type: MessageFailure}, Failure: &Error{Kind: ErrorScript, Name: "RangeError", Message: "m", Stack: "s\n  at x"}},

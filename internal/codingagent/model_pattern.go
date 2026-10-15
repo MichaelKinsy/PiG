@@ -97,12 +97,12 @@ func splitThinkingSuffix(text string) (base, level string, ok bool) {
 }
 
 func splitProviderPrefix(text string, models []RuntimeModel) (provider, modelText string, ok bool) {
-	slash := strings.Index(text, "/")
-	if slash == -1 {
+	before, after, ok := strings.Cut(text, "/")
+	if !ok {
 		return "", "", false
 	}
-	prefix := jsstring.ToLower(jsstring.Trim(text[:slash]))
-	modelText = jsstring.Trim(text[slash+1:])
+	prefix := jsstring.ToLower(jsstring.Trim(before))
+	modelText = jsstring.Trim(after)
 	if prefix == "" || modelText == "" {
 		return "", "", false
 	}

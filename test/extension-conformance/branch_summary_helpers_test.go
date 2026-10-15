@@ -3,6 +3,7 @@ package extensionconformance
 import (
 	"context"
 	"encoding/json"
+	"maps"
 	"math/rand/v2"
 	"reflect"
 	"strconv"
@@ -130,9 +131,7 @@ func branchCases() []branchCase {
 		} else {
 			e["parentId"] = nil
 		}
-		for k, v := range members {
-			e[k] = v
-		}
+		maps.Copy(e, members)
 		return e
 	}
 	user := func(id, parent string, text any) m {

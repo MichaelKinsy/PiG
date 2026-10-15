@@ -1930,9 +1930,8 @@ func (p *openAIProvider) parseSSE(ctx context.Context, r io.Reader, builder *ass
 			chunk = oaiChunk{}
 			text := jsjson.NormalizeIntegers([]byte(data))
 			if err := json.Unmarshal(text, &chunk); err != nil {
-				var mismatch *json.UnmarshalTypeError
 				normalized, read, normalizable := []byte(nil), openAIChunkRead{}, false
-				if errors.As(err, &mismatch) {
+				if _, ok := errors.AsType[*json.UnmarshalTypeError](err); ok {
 					normalized, read, normalizable = normalizeOpenAIChunkJS(text)
 				}
 				chunk = oaiChunk{}

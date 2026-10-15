@@ -556,11 +556,11 @@ func (s *Session) pathToLocked(leafID string) []SessionEntry {
 // contextStartIn returns the index in path of the first entry the active context of path can contain: the latest compaction's first kept
 // entry when it lies before the compaction (buildContextEntries' firstKeptEntryId scan), else the compaction, else 0.
 func (s *Session) contextStartIn(path []int32) int {
-	for c := len(path) - 1; c >= 0; c-- {
-		if s.slots[path[c]].typ() != typeCompaction {
+	for c, p := range slices.Backward(path) {
+		if s.slots[p].typ() != typeCompaction {
 			continue
 		}
-		firstKept := s.firstKept[int(path[c])]
+		firstKept := s.firstKept[int(p)]
 		for i := range path[:c] {
 			if s.slots[path[i]].id == firstKept {
 				return i
@@ -929,8 +929,8 @@ func (s *Session) KeptRangeOnBranch() bool {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	path := s.branch
-	for c := len(path) - 1; c >= 0; c-- {
-		if s.slots[path[c]].typ() == typeCompaction {
+	for c, p := range slices.Backward(path) {
+		if s.slots[p].typ() == typeCompaction {
 			return s.contextStartIn(path) < c
 		}
 	}

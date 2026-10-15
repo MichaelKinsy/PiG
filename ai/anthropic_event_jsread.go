@@ -33,8 +33,7 @@ func decodeAnthropicEventJS(sse anthropicStreamEvent, target any) (anthropicEven
 	var js anthropicEventJS
 	text := jsjson.NormalizeIntegers([]byte(sse.JSON))
 	err := json.Unmarshal(text, target)
-	var mismatch *json.UnmarshalTypeError
-	if errors.As(err, &mismatch) {
+	if _, ok := errors.AsType[*json.UnmarshalTypeError](err); ok {
 		if normalized, read, ok := normalizeAnthropicEventJS(sse.Type, text); ok && json.Unmarshal(normalized, target) == nil {
 			js, err = read, nil
 		}

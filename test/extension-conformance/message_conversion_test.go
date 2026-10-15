@@ -3,6 +3,7 @@ package extensionconformance
 import (
 	"context"
 	"encoding/json"
+	"maps"
 	"math"
 	"math/rand/v2"
 	"reflect"
@@ -137,9 +138,7 @@ func messageConversionCases() []map[string]any {
 	}
 	bash := func(fields map[string]any) map[string]any {
 		m := map[string]any{"role": "bashExecution"}
-		for k, v := range fields {
-			m[k] = v
-		}
+		maps.Copy(m, fields)
 		return m
 	}
 	cases := []map[string]any{

@@ -24,7 +24,7 @@ func referenceParseChangelog(content string) []ChangelogEntry {
 			entries = append(entries, entry)
 		}
 	}
-	for _, line := range strings.Split(content, "\n") {
+	for line := range strings.SplitSeq(content, "\n") {
 		if strings.HasPrefix(line, "## ") {
 			flush()
 			if match := versionHeaderRE.FindStringSubmatch(line); match != nil {

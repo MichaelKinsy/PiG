@@ -214,8 +214,8 @@ func exportedAPI(program *ssa.Program, pkg *ssa.Package) []*ssa.Function {
 				continue
 			}
 			methods := program.MethodSets.MethodSet(types.NewPointer(named))
-			for i := range methods.Len() {
-				if sel := methods.At(i); sel.Obj().Exported() {
+			for sel := range methods.Methods() {
+				if sel.Obj().Exported() {
 					if fn := program.MethodValue(sel); fn != nil {
 						roots = append(roots, fn)
 					}

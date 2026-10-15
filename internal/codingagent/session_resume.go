@@ -604,11 +604,9 @@ func scanParallel(ctx context.Context, f *os.File, p *summaryPartial, start, end
 		if i == 0 {
 			parts[0] = p.fork()
 		}
-		wg.Add(1)
-		go func() { //portlint:allow gorecover parallel split of one sequential scan joined by wg; a panic in scanRange is the same crash the sequential path (scanRange above) raises
-			defer wg.Done()
+		wg.Go(func() { //portlint:allow gorecover parallel split of one sequential scan joined by wg; a panic in scanRange is the same crash the sequential path (scanRange above) raises
 			errs[i] = parts[i].scanRange(ctx, f, bounds[i], bounds[i+1], fast, &names[i])
-		}()
+		})
 	}
 	wg.Wait()
 	for _, err := range errs {

@@ -12,6 +12,7 @@ package typebox
 
 import (
 	"encoding/json"
+	"maps"
 	"regexp"
 	"slices"
 	"sync"
@@ -350,9 +351,7 @@ func evaluateIntersect(schema map[string]any) map[string]any {
 		if m == nil || !isObjectKind(m) {
 			return nil
 		}
-		for key, value := range m["properties"].(map[string]any) {
-			props[key] = value
-		}
+		maps.Copy(props, m["properties"].(map[string]any))
 		if names, ok := m["required"].([]any); ok {
 			required = append(required, names...)
 		}

@@ -176,12 +176,10 @@ func newCall(options ToolOptions, api durable.ToolExecutionApi, ctx context.Cont
 
 // spawn runs f on its own goroutine, which the call waits for before it returns.
 func (c *call) spawn(f func()) {
-	c.spawned.Add(1)
 	//portlint:allow asyncorder spawned joins every spawn before the call returns, and each spawn's effects reach the call through c.post, the call's ordered event queue
-	go func() {
-		defer c.spawned.Done()
+	c.spawned.Go(func() {
 		f()
-	}()
+	})
 }
 
 func (c *call) post(f func()) { c.events.post(f) }

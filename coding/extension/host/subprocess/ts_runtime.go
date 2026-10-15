@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"maps"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -114,9 +115,7 @@ func (h *Host) TypeScriptRuntimeSelections() map[string]tsruntime.Selection {
 	h.tsRuntimes.mu.Lock()
 	defer h.tsRuntimes.mu.Unlock()
 	out := make(map[string]tsruntime.Selection, len(h.tsRuntimes.selections))
-	for label, sel := range h.tsRuntimes.selections {
-		out[label] = sel
-	}
+	maps.Copy(out, h.tsRuntimes.selections)
 	return out
 }
 

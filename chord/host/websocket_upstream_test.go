@@ -442,8 +442,7 @@ func TestWebSocketLinksPackedPayloadsLargeSnapshotsAndResultsReachTheClientAsBin
 	_ = raw.SetReadDeadline(time.Now().Add(5 * time.Second))
 	for {
 		if _, _, err := raw.ReadMessage(); err != nil {
-			var closeError *websocket.CloseError
-			if !errors.As(err, &closeError) {
+			if _, ok := errors.AsType[*websocket.CloseError](err); !ok {
 				t.Fatalf("the server did not close the socket: %v", err)
 			}
 			break

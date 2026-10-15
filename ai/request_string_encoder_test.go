@@ -22,8 +22,7 @@ func TestRequestStringEncoderTypesCarryNoStringFormatOption(t *testing.T) {
 		case reflect.Map:
 			walk(path, typ.Elem())
 		case reflect.Struct:
-			for i := range typ.NumField() {
-				field := typ.Field(i)
+			for field := range typ.Fields() {
 				if !field.IsExported() {
 					continue
 				}

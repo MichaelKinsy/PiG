@@ -79,8 +79,8 @@ type treeRow struct {
 func treeRows(roots []*codingagent.SessionTreeNode) []treeRow {
 	rows := []treeRow{}
 	pending := make([]*codingagent.SessionTreeNode, 0, len(roots))
-	for i := len(roots) - 1; i >= 0; i-- {
-		pending = append(pending, roots[i])
+	for _, root := range slices.Backward(roots) {
+		pending = append(pending, root)
 	}
 	for len(pending) > 0 {
 		node := pending[len(pending)-1]
@@ -96,8 +96,8 @@ func treeRows(roots []*codingagent.SessionTreeNode) []treeRow {
 			row.Children = append(row.Children, child.Entry.Base().ID)
 		}
 		rows = append(rows, row)
-		for i := len(node.Children) - 1; i >= 0; i-- {
-			pending = append(pending, node.Children[i])
+		for _, v := range slices.Backward(node.Children) {
+			pending = append(pending, v)
 		}
 	}
 	return rows

@@ -499,8 +499,8 @@ func TestEXIFOrientation(t *testing.T) {
 	turn := func(grid [][]rgbColor) [][]rgbColor {
 		out := make([][]rgbColor, len(grid[0]))
 		for x := range grid[0] {
-			for y := len(grid) - 1; y >= 0; y-- {
-				out[x] = append(out[x], grid[y][x])
+			for _, g := range slices.Backward(grid) {
+				out[x] = append(out[x], g[x])
 			}
 		}
 		return out

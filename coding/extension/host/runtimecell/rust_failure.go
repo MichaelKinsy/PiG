@@ -72,11 +72,11 @@ func RustBuildFailure(cacheRoot, logKey, dir string, buildErr error, output []by
 func rustProcessCrash(output []byte) string {
 	const marker = "process didn't exit successfully:"
 	text := string(output)
-	at := strings.Index(text, marker)
-	if at < 0 {
+	before, after, ok := strings.Cut(text, marker)
+	if !ok {
 		return ""
 	}
-	line, _, _ := strings.Cut(text[at+len(marker):], "\n")
+	line, _, _ := strings.Cut(after, "\n")
 	line = strings.TrimSpace(line)
 	status := ""
 	if open := strings.LastIndex(line, " ("); open >= 0 && strings.HasSuffix(line, ")") {
@@ -86,7 +86,7 @@ func rustProcessCrash(output []byte) string {
 	program, _, _ := strings.Cut(strings.Trim(strings.TrimSpace(line), "`"), " ")
 	program = filepath.Base(program)
 	crate := ""
-	if before := text[:at]; strings.Contains(before, "could not compile `") {
+	if strings.Contains(before, "could not compile `") {
 		_, rest, _ := strings.Cut(before[strings.LastIndex(before, "could not compile `"):], "`")
 		crate, _, _ = strings.Cut(rest, "`")
 	}

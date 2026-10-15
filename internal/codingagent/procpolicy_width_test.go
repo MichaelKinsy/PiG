@@ -52,7 +52,7 @@ func cappedChild(t *testing.T, test, env, prefix string) []int {
 			continue
 		}
 		var values []int
-		for _, field := range strings.Fields(rest) {
+		for field := range strings.FieldsSeq(rest) {
 			value, err := strconv.Atoi(field)
 			if err != nil {
 				t.Fatalf("child line %q: %v", line, err)

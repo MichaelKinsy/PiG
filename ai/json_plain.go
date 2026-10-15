@@ -238,8 +238,7 @@ func typeAlwaysMarshalsWalk(t reflect.Type, path []reflect.Type) bool {
 		return typeAlwaysMarshalsWalk(t.Elem(), append(path, t))
 	case reflect.Struct:
 		path = append(path, t)
-		for i := range t.NumField() {
-			field := t.Field(i)
+		for field := range t.Fields() {
 			if !field.Anonymous && !field.IsExported() || field.Tag.Get("json") == "-" {
 				continue
 			}

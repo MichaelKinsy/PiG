@@ -195,8 +195,8 @@ func PosixResolve(env Env, paths ...string) (string, error) {
 	}
 	// The rightmost nonempty argument decides the result alone when it is absolute; already normal, it resolves to a
 	// substring of itself.
-	for i := len(paths) - 1; i >= 0; i-- {
-		path := paths[i]
+	for _, path := range slices.Backward(paths) {
+
 		if path == "" {
 			continue
 		}

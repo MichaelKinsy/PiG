@@ -1022,8 +1022,7 @@ func TestReviewAnExpiredCtxAndAForeignCtxAreRefused(t *testing.T) {
 		t.Fatal(err)
 	}
 	reason := func(err error) string {
-		var chordError *ChordError
-		if errors.As(err, &chordError) {
+		if chordError, ok := errors.AsType[*ChordError](err); ok {
 			return string(chordError.Code) + "/" + chordError.Reason
 		}
 		return fmt.Sprint(err)

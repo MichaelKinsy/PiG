@@ -164,8 +164,8 @@ func growable(t types.Type, depth int) bool {
 	case *types.Slice:
 		return true
 	case *types.Struct:
-		for i := range u.NumFields() {
-			if growable(u.Field(i).Type(), depth+1) {
+		for field := range u.Fields() {
+			if growable(field.Type(), depth+1) {
 				return true
 			}
 		}

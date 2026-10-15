@@ -156,11 +156,11 @@ func replaceFakeCursorMarkers(line string) string {
 // end marker (truncation) takes the text to the end of the line (the regexp `(\x1b_pi:c\x07)\x1b_pi:fc\x07(.*?)(?:\x1b_pi:\/fc\x07|$)`
 // with the s flag).
 func dropFocusedFakeCursor(line string) string {
-	at := strings.Index(line, focusedFakeCursor)
-	if at < 0 {
+	before, after0, ok := strings.Cut(line, focusedFakeCursor)
+	if !ok {
 		return line
 	}
-	rest := line[at+len(focusedFakeCursor):]
+	rest := after0
 	text, after, _ := strings.Cut(rest, FakeCursorEnd)
-	return line[:at] + CursorMarker + text + after
+	return before + CursorMarker + text + after
 }

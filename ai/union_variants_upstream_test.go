@@ -27,7 +27,7 @@ func piLiteralList(t *testing.T, file, name string) []string {
 		t.Fatalf("%s: no list named %s", file, name)
 	}
 	var out []string
-	for _, item := range strings.Split(body, ",") {
+	for item := range strings.SplitSeq(body, ",") {
 		item = strings.TrimSpace(item)
 		switch {
 		case strings.HasPrefix(item, "..."):
