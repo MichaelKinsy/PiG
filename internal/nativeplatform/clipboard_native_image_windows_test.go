@@ -10,8 +10,9 @@ import (
 	"testing"
 )
 
-// putImageOnDesktopClipboard copies img to the Windows clipboard through System.Windows.Forms, which stores DIB data, as a
-// screenshot's copy does. Windows PowerShell runs single-threaded-apartment by default, which the clipboard API requires.
+// putImageOnDesktopClipboard copies img to the Windows clipboard through System.Windows.Forms, which stores the registered 'PNG'
+// format, as screenshot tools do. SetImage is avoided on purpose: the CF_DIBV5 Windows synthesizes from it was measured (CI
+// diagnostic) to hold rows top-down under a positive (bottom-up) height, so any header-honouring reader sees the image flipped. Windows PowerShell runs single-threaded-apartment by default, which the clipboard API requires.
 func putImageOnDesktopClipboard(t *testing.T, img image.Image) {
 	t.Helper()
 	bounds := img.Bounds()
@@ -24,7 +25,8 @@ func putImageOnDesktopClipboard(t *testing.T, img image.Image) {
 			fmt.Fprintf(&script, "$b.SetPixel(%d,%d,[System.Drawing.Color]::FromArgb(%d,%d,%d,%d)); ", x-bounds.Min.X, y-bounds.Min.Y, a>>8, r>>8, g>>8, b>>8)
 		}
 	}
-	script.WriteString("[System.Windows.Forms.Clipboard]::SetImage($b)")
+	script.WriteString("$ms = New-Object System.IO.MemoryStream; $b.Save($ms, [System.Drawing.Imaging.ImageFormat]::Png); ")
+	script.WriteString("$d = New-Object System.Windows.Forms.DataObject; $d.SetData('PNG', $false, $ms); [System.Windows.Forms.Clipboard]::SetDataObject($d, $true)")
 	if out, err := exec.CommandContext(t.Context(), "powershell.exe", "-NoProfile", "-NonInteractive", "-STA", "-Command", script.String()).CombinedOutput(); err != nil {
 		t.Fatalf("powershell: %v\n%s", err, out)
 	}
