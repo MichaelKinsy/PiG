@@ -538,7 +538,7 @@ var (
 	pyAssignRE = regexp.MustCompile(`^([A-Za-z_][A-Za-z0-9_]*)\s*(?::[^=]*)?=`)
 	pyMemberRE = regexp.MustCompile(`^    (?:(?:async\s+)?def\s+([A-Za-z_][A-Za-z0-9_]*)|([A-Za-z_][A-Za-z0-9_]*)\s*:)`)
 	pySelfRE   = regexp.MustCompile(`^\s+self\.([A-Za-z_][A-Za-z0-9_]*)\s*(?::[^=]*)?=`)
-	// A signature ends at its colon, or at a one-line stub body (`: ...`).
+	// A signature ends at its colon, or at a one-line elided body (`: ...`).
 	pySigEndRE = regexp.MustCompile(`\)\s*(?:->[^:]*)?:\s*(?:\.\.\.\s*)?(?:#.*)?$`)
 	pyParamRE  = regexp.MustCompile(`^\*{0,2}([A-Za-z_][A-Za-z0-9_]*)`)
 )

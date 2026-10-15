@@ -51,8 +51,8 @@ type rowSpec struct {
 	// "literal:name" (a string or JSON field name the host, its interactive UI or
 	// its RPC/print modes read), or "none".
 	Wire string `toml:"wire"`
-	// Section makes the row a PiG additive surface that Pi has no
-	// counterpart for, listed under "PiG additive: <section>" with Decl as
+	// Section makes the row a PiG-only surface that Pi has no
+	// counterpart for, listed under a heading made from the section name with Decl as
 	// its declaration; its cells need explicit symbols.
 	Section string `toml:"section"`
 	Decl    string `toml:"decl"`
@@ -61,7 +61,7 @@ type rowSpec struct {
 	Implemented bool `toml:"implemented"`
 }
 
-// kindPig is a PiG additive surface named by the map.
+// kindPig is a PiG-only surface named by the map.
 const kindPig = "pig"
 
 func isPigRow(r matrixRow) bool { return r.Kind == kindPig }
@@ -758,7 +758,7 @@ func (m *matrix) render() []byte {
 		w("| %s | %d | %d | %d |\n", sdkTitle[sdk], c[statusImplemented], c[statusPartial], c[statusMissing])
 	}
 	if pig > 0 {
-		w("\n%d PiG additive surfaces:\n\n", pig)
+		w("\n%d PiG-only surfaces:\n\n", pig)
 		w("| Runtime | implemented | stand-in/partial | missing (all with a reviewed exception) |\n|---|---|---|---|\n")
 		counts := m.counts(true)
 		for _, sdk := range sdks {

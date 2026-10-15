@@ -694,7 +694,7 @@ func (c *Run) Open(name string) {
 	}
 }
 
-// WriteFile creates a file under the working directory (for example state read by an Env.Bin stub).
+// WriteFile creates a file under the working directory (for example state read by an Env.Bin fake program).
 func (c *Run) WriteFile(rel, content string) {
 	p := filepath.Join(c.SB.Cwd, rel)
 	if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {

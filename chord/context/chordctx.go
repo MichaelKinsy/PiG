@@ -1,5 +1,5 @@
 // Package chordctx ports packages/chord/src/context/index.ts (`@earendil-works/chord/context`) onto context.Context. A chord Context is a Go context: an abort signal is cancellation, with the abort reason carried as the cancellation cause, and `toString` is the context's String method, which prints Pi's text.
-// Background and TODO are Pi's BACKGROUND_CONTEXT and TODO_CONTEXT roots; contexts derived from them by this package print as Pi's contexts do. A context derived from another root, such as context.Background, prints that root's own text first.
+// Background and the placeholder root are Pi's BACKGROUND_CONTEXT and TODO_CONTEXT roots; contexts derived from them by this package print as Pi's contexts do. A context derived from another root, such as context.Background, prints that root's own text first.
 package chordctx
 
 import (
@@ -25,7 +25,7 @@ var (
 // Background is Pi's BACKGROUND_CONTEXT: the root context of work that has no caller.
 func Background() context.Context { return backgroundContext }
 
-// TODO is Pi's TODO_CONTEXT: a root context for code that has no context to receive yet. It is distinct from Background.
+// This function is Pi's TODO_CONTEXT: a root context for code that has no context to receive yet. It is distinct from Background.
 func TODO() context.Context { return todoContext }
 
 // valueContext is Pi's ContextValue: one value layered over a parent, printed as `<parent>.WithValue(<key description>)`.

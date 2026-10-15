@@ -4,7 +4,7 @@
 // owner is a struct in the repository, it adds one field with a JSON tag. The Go name, type and tag follow fixed rules (see
 // fieldFor); a property whose type has no rule is reported and left for a person: functions, classes, generics, conditional and
 // mapped types, and named types the owner's package does not declare. The tool never edits a method, a function or a field that
-// exists. Run `make go-stub-fields` for a report; `make go-stub-fields APPLY=1` writes the fields.
+// exists. Its make target (see automation/make/parity.mk) reports; with APPLY=1 it writes the fields.
 package main
 
 import (

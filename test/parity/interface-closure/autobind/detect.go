@@ -281,7 +281,7 @@ func (d *detector) exercised(s *sym, keys []string, exclude func(string) bool) (
 	}
 	if (s.Kind == "field" || s.Kind == "method") && !d.testSupportMember(s) {
 		// P1: a field or method closes a row when production code reachable from cmd/pig reads, sets or calls it (a), or through the
-		// library route (b) in library.go; a test alone leaves a caller-free stub looking finished.
+		// library route (b) in library.go; a test alone leaves a caller-free shell looking finished.
 		if info.Call != "" {
 			return info, ""
 		}
@@ -1394,7 +1394,7 @@ func (d *detector) keyRegistry(id string) bool {
 		if tn == nil {
 			return false
 		}
-		// A Go alias of the value type (ai.AzureEndpointOptions = StreamOptions) is the same Go type. A value of any is a stub of the
+		// A Go alias of the value type (ai.AzureEndpointOptions = StreamOptions) is the same Go type. A value of any is a placeholder value of the
 		// upstream value type, not a type the map shares.
 		t := types.Unalias(tn.Type())
 		if isEmptyInterface(t) || value != nil && !types.Identical(t, value) {

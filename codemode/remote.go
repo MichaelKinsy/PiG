@@ -9,7 +9,7 @@ import (
 )
 
 // Remote protocol: the VM runs in another isolate, reached over an RPC boundary such as a Cloudflare Durable Object
-// stub, while tools keep running in the caller. The caller keeps the host role (RemoteSandbox: tools, call records,
+// proxy, while tools keep running in the caller. The caller keeps the host role (RemoteSandbox: tools, call records,
 // deadline, abort) and the remote side only runs the VM (ServeRemote).
 //
 //	client                                        remote

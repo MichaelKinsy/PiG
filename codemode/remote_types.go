@@ -7,20 +7,20 @@ import (
 )
 
 // RemoteExchange is the function the client passes to Remote.Execute; the remote calls it to report what its VM did
-// and to ask for the result of a tool call. Over an RPC boundary it is a stub that calls back into the client.
+// and to ask for the result of a tool call. Over an RPC boundary it is a proxy that calls back into the client.
 //
 // Ports packages/codemode/src/runtime/remote.ts (CodemodeRemoteExchange).
 //
 // Go mapping of a Promise that the caller does not await before going on: upstream runs the delivery of the messages
 // synchronously inside the Promise executor and settles the reply later, and a remote that has several calls in
-// flight depends on it, because "calls on one stub are delivered in order". A blocking Go function cannot deliver in
+// flight depends on it, because "calls on one proxy are delivered in order". A blocking Go function cannot deliver in
 // call order and also return the reply later, so the messages are delivered in order before exchange returns and the
 // reply reaches the remote through reply, which exchange calls exactly once: from a client goroutine, or before
 // exchange returns when there is nothing to wait for. A reply that carries an error is a rejected Promise (the RPC
 // failed). A nil reply is upstream's `null`: the exchange carried no call. reply must not block.
 type RemoteExchange func(ctx context.Context, messages []RemoteMessage, reply func(*RemoteReply, error))
 
-// Remote runs one execution's VM. It is usually a stub for a Durable Object that serves ServeRemote; any value with
+// Remote runs one execution's VM. It is usually a proxy for a Durable Object that serves ServeRemote; any value with
 // this method works, for example an in-process object in tests.
 //
 // Ports packages/codemode/src/runtime/remote.ts (CodemodeRemote).

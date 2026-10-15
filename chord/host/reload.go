@@ -573,7 +573,7 @@ func (r *Reload) prepareAll() error {
 			return nil
 		}
 		// Promise.allSettled: every activation settles; failures are the activation's own.
-		//portlint:allow ctxbackground reload.ts:321 `await Promise.allSettled(todo.map((object) => object.ready))` has no abort
+		//portlint:allow ctxbackground reload.ts:321 awaits Promise.allSettled over every pending object's ready, which has no abort
 		_, _ = promiseAllSettled(&r.host.loop, ready).Await(context.Background())
 		if err := r.section(r.alive); err != nil {
 			return err
