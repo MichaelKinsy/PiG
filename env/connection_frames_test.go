@@ -94,7 +94,7 @@ func TestConnectionFindsASyncLineSplitAcrossTheNoiseCut(t *testing.T) {
 	t.Parallel()
 	var logs []string
 	connection := NewConnection(ConnectionOptions{OnLog: func(text string) { logs = append(logs, text) }})
-	s := &session{token: "0123456789abcdef0123456789abcdef"}
+	s := &session{token: "0123456789abcdef0123456789abcdef"} // gitleaks:allow -- synthetic session token, not a credential
 	marker := "PI-ENV " + s.token + "\n"
 	noise := strings.Repeat("x", 1024*1024+100)
 	chunks := &chunkReader{chunks: []string{noise + marker[:10], marker[10:] + "rest"}}

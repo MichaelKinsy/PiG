@@ -14,8 +14,8 @@ import (
 )
 
 const (
-	keyOne = "AAAAC3NzaC1lZDI1NTE5AAAAIOne"
-	keyTwo = "AAAAC3NzaC1lZDI1NTE5AAAAITwo"
+	keyOne = "AAAAC3NzaC1lZDI1NTE5AAAAIOne" // gitleaks:allow -- truncated public host key fixture, not a credential
+	keyTwo = "AAAAC3NzaC1lZDI1NTE5AAAAITwo" // gitleaks:allow -- truncated public host key fixture, not a credential
 )
 
 // packages/env/src/ssh.ts:258-280 acceptHostKey: only lines for the target's alias count as trusted (:264), so a key another host trusts under the same type
