@@ -20,8 +20,11 @@ parity-fast-1:
 parity-fast-2:
 	@$(MAKE) -s parity-fast PARITY_SHARD=2/2
 ci-drift: lint-scenarios port-map-drift coverage-drift divergence-consistency divergence-quality divergence-guard port-lint source-hygiene test-provenance docs-drift bug-ledger-check any-trap perf-lint perf-scoreboard-check
-ci-contracts: correspondence-check porter-check interface-inventory interface-inventory-test interface-go-drift interface-recommendations-drift interface-mapping-quality interface-delta interface-gaps portmap-check behavior-contracts test-inventory-drift test-inventory test-porting-release known-gaps-drift format-version-inventory custom-factory-ledger-drift sdk-surface-drift sdk-apidiff piglet-strip-ids-drift piglet-strip-build
+ci-contracts: correspondence-check porter-check interface-inventory interface-inventory-test interface-go-drift interface-recommendations-drift interface-mapping-quality interface-delta interface-gaps behavior-contracts test-inventory-drift test-inventory test-porting-release known-gaps-drift format-version-inventory custom-factory-ledger-drift sdk-surface-drift sdk-apidiff piglet-strip-ids-drift piglet-strip-build
 ci-closure: closure-check
+# portmap-check runs the evidence tests of every proven PORT_MAP row under coverage; cold it needs more than an hour on a 4-CPU
+# runner, so it is its own job, warmed by the build/portmap-coverage cache.
+ci-portmap: portmap-check
 
 # Run after upstream-mirror under each selected Node runtime. Do not reinstall
 # npm dependencies here: the qualified npm requires a newer Node than Pi does.
@@ -63,4 +66,4 @@ test-expectation-lint: ## Fail on test expectations edited with their code and n
 
 TEST_EXPECT_BASE ?= main
 
-.PHONY: test-provenance test-expectation-lint ci-startup ci-build ci-test-fast ci-test-cli ci-test-subprocess ci-test-conformance ci-sdk ci-extensions ci-race ci-integration ci-parity ci-parity-1 ci-parity-2 parity-fast-1 parity-fast-2 ci-drift ci-contracts ci-closure test-fast test-cli test-subprocess test-conformance
+.PHONY: test-provenance test-expectation-lint ci-startup ci-build ci-test-fast ci-test-cli ci-test-subprocess ci-test-conformance ci-sdk ci-extensions ci-race ci-integration ci-parity ci-parity-1 ci-parity-2 parity-fast-1 parity-fast-2 ci-drift ci-contracts ci-portmap ci-closure test-fast test-cli test-subprocess test-conformance

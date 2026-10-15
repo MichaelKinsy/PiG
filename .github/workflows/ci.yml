@@ -104,7 +104,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        shard: [startup, build, test-fast, test-cli, test-subprocess, test-conformance, sdk, extensions, race, integration, parity-1, parity-2, drift, contracts, closure]
+        shard: [startup, build, test-fast, test-cli, test-subprocess, test-conformance, sdk, extensions, race, integration, parity-1, parity-2, drift, contracts, portmap, closure]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -126,7 +126,7 @@ jobs:
       # portmap-check runs each proven PORT_MAP row's evidence tests under coverage and keeps the green results in
       # build/portmap-coverage, keyed by the digest of the cited files and tests; restored here so contracts reruns only changed rows.
       - name: Restore the PORT_MAP coverage cache
-        if: matrix.shard == 'contracts'
+        if: matrix.shard == 'portmap'
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: build/portmap-coverage
@@ -212,7 +212,7 @@ jobs:
           SHARD: ${{ matrix.shard }}
         run: make "ci-$SHARD"
       - name: Save the PORT_MAP coverage cache
-        if: always() && matrix.shard == 'contracts'
+        if: always() && matrix.shard == 'portmap'
         uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: build/portmap-coverage
