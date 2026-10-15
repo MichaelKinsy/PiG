@@ -71,7 +71,8 @@ func describeClipboardImage(data []byte) string {
 	if len(data) < 30 || string(data[:2]) != "BM" {
 		return "not a BMP: " + string(data[:min(len(data), 8)])
 	}
-	return fmt.Sprintf("BMP %d bytes, pixel offset %d, header %d, width %d, height %d, planes %d, bpp %d, compression %d",
+	return fmt.Sprintf("BMP %d bytes, pixel offset %d, header %d, width %d, height %d, planes %d, bpp %d, compression %d, masks %x, pixels %x",
 		len(data), binary.LittleEndian.Uint32(data[10:]), binary.LittleEndian.Uint32(data[14:]), int32(binary.LittleEndian.Uint32(data[18:])),
-		int32(binary.LittleEndian.Uint32(data[22:])), binary.LittleEndian.Uint16(data[26:]), binary.LittleEndian.Uint16(data[28:]), binary.LittleEndian.Uint32(data[30:]))
+		int32(binary.LittleEndian.Uint32(data[22:])), binary.LittleEndian.Uint16(data[26:]), binary.LittleEndian.Uint16(data[28:]), binary.LittleEndian.Uint32(data[30:]),
+		data[min(54, len(data)):min(70, len(data))], data[min(int(binary.LittleEndian.Uint32(data[10:])), len(data)):])
 }
