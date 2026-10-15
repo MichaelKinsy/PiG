@@ -11,6 +11,7 @@ import (
 	"math/rand/v2"
 	"os"
 	"path/filepath"
+	"runtime"
 	"slices"
 	"strings"
 	"testing"
@@ -51,10 +52,11 @@ func writeGenerated(t *testing.T, random *rand.Rand, seed int) generatedTree {
 		count := 2 + random.IntN(6)
 		for range count {
 			name := treeNames[random.IntN(len(treeNames))]
-			if random.IntN(40) == 0 {
+			// APFS refuses names that are not UTF-8 (EILSEQ), so macOS trees have none.
+			if random.IntN(40) == 0 && runtime.GOOS != "darwin" {
 				name = "bad\xffname"
 			}
-			if random.IntN(60) == 0 {
+			if random.IntN(60) == 0 && runtime.GOOS != "darwin" {
 				name = "cut\xe2\x82"
 			}
 			path := filepath.Join(dir, name)

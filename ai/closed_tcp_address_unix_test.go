@@ -1,4 +1,4 @@
-//go:build unix
+//go:build unix && !darwin
 
 package ai
 
@@ -8,7 +8,7 @@ import (
 	"testing"
 )
 
-// closedTCPAddress returns a loopback address that refuses connections for the rest of the test. The port stays bound to a socket that never listens, so the kernel answers a connect with a reset and no other process can take the port; a closed listener's port can be reused by a concurrent process before the test dials it.
+// closedTCPAddress returns a loopback address that refuses connections for the rest of the test. (Not on darwin: macOS drops a connect to a bound socket that never listens, so the dial times out instead of being refused.) The port stays bound to a socket that never listens, so the kernel answers a connect with a reset and no other process can take the port; a closed listener's port can be reused by a concurrent process before the test dials it.
 func closedTCPAddress(t *testing.T, network, address string) *net.TCPAddr {
 	t.Helper()
 	resolved, err := net.ResolveTCPAddr(network, address)
