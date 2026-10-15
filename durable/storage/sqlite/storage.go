@@ -281,8 +281,8 @@ type SqliteStorage struct {
 
 var _ durable.Storage = (*SqliteStorage)(nil)
 
-// Options configures a SqliteStorage. Prefix is Pi's SqliteStorageOptions.prefix.
-type Options struct {
+// SqliteStorageOptions configures a SqliteStorage (Pi's SqliteStorageOptions, which has Prefix only; WorkingSetBytes is additive, D104).
+type SqliteStorageOptions struct {
 	// Prefix namespaces every table and index of the durable schema, for a database shared with other tables. It must
 	// be a SQLite identifier and must not use SQLite's reserved `sqlite_` prefix. Existing data is not migrated when it
 	// changes. Nil leaves the names unprefixed; a present empty prefix is invalid.
@@ -294,7 +294,7 @@ type Options struct {
 }
 
 // Open initializes storage over an owned SQLite database facade. A failure closes the database.
-func Open(db SqliteDatabase, options ...Options) (*SqliteStorage, error) {
+func Open(db SqliteDatabase, options ...SqliteStorageOptions) (*SqliteStorage, error) {
 	var prefix *string
 	if len(options) > 0 {
 		prefix = options[0].Prefix

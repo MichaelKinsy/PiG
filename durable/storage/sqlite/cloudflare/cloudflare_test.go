@@ -145,7 +145,7 @@ func (storage *fakeStorage) Transaction(closure func() error) error {
 func TestDurableObjectStorageConformance(t *testing.T) {
 	durabletest.RegisterStorageConformance(t, "SqliteStorage on a prefixed Durable Object", func(use func(durable.Storage) error) error {
 		var objectStorage cloudflare.DurableObjectSqliteStorage = newFakeStorage(t)
-		storage, err := cloudflare.OpenDurableObjectSqliteStorage(objectStorage, durablesqlite.Options{Prefix: new("pi_")})
+		storage, err := cloudflare.OpenDurableObjectSqliteStorage(objectStorage, durablesqlite.SqliteStorageOptions{Prefix: new("pi_")})
 		if err != nil {
 			return err
 		}
@@ -372,7 +372,7 @@ func TestDurableObjectSqliteAdapter(t *testing.T) {
 		database := cloudflare.NewDurableObjectSqliteDatabase(storage)
 		check(t, database.Exec("CREATE TABLE host_notes (text TEXT)"))
 		check(t, database.Exec("CREATE TABLE tasks (text TEXT)"))
-		_, err := cloudflare.OpenDurableObjectSqliteStorage(storage, durablesqlite.Options{Prefix: new("pi_")})
+		_, err := cloudflare.OpenDurableObjectSqliteStorage(storage, durablesqlite.SqliteStorageOptions{Prefix: new("pi_")})
 		check(t, err)
 		names := schemaNames(t, storage)
 		if !slices.Contains(names, "host_notes") || !slices.Contains(names, "tasks") || slices.Contains(names, "pi_host_notes") {
@@ -405,10 +405,10 @@ func TestDurableObjectSqliteAdapter(t *testing.T) {
 		var firstErr, secondErr error
 		var opened sync.WaitGroup
 		opened.Go(func() {
-			first, firstErr = cloudflare.OpenDurableObjectSqliteStorage(objectStorage, durablesqlite.Options{Prefix: new("first_")})
+			first, firstErr = cloudflare.OpenDurableObjectSqliteStorage(objectStorage, durablesqlite.SqliteStorageOptions{Prefix: new("first_")})
 		})
 		opened.Go(func() {
-			second, secondErr = cloudflare.OpenDurableObjectSqliteStorage(objectStorage, durablesqlite.Options{Prefix: new("second_")})
+			second, secondErr = cloudflare.OpenDurableObjectSqliteStorage(objectStorage, durablesqlite.SqliteStorageOptions{Prefix: new("second_")})
 		})
 		opened.Wait()
 		check(t, firstErr)
@@ -441,7 +441,7 @@ func TestDurableObjectSqliteAdapter(t *testing.T) {
 	// Pi f7e3cb54 sqlite-cloudflare.test.ts:141
 	t.Run("rejects invalid and reserved prefixes", func(t *testing.T) {
 		for _, tc := range []struct{ prefix, message string }{{"", `Invalid SQLite schema prefix ""`}, {"bad-prefix", `Invalid SQLite schema prefix "bad-prefix"`}, {"sqlite_pi_", `SQLite schema prefix "sqlite_pi_" is reserved`}} {
-			_, err := cloudflare.OpenDurableObjectSqliteStorage(newFakeStorage(t), durablesqlite.Options{Prefix: new(tc.prefix)})
+			_, err := cloudflare.OpenDurableObjectSqliteStorage(newFakeStorage(t), durablesqlite.SqliteStorageOptions{Prefix: new(tc.prefix)})
 			if err == nil || !strings.Contains(err.Error(), tc.message) {
 				t.Errorf("prefix %q: error %v, want one including %q", tc.prefix, err, tc.message)
 			}

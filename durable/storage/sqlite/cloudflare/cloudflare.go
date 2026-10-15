@@ -296,6 +296,6 @@ func (database *DurableObjectSqliteDatabase) Close() error {
 
 // OpenDurableObjectSqliteStorage opens durable storage on a SQLite-backed Durable Object, optionally under a table
 // prefix (Options.Prefix). Calls given the same storage object share an operation queue.
-func OpenDurableObjectSqliteStorage(storage DurableObjectSqliteStorage, options ...durablesqlite.Options) (*durablesqlite.SqliteStorage, error) {
+func OpenDurableObjectSqliteStorage(storage DurableObjectSqliteStorage, options ...durablesqlite.SqliteStorageOptions) (*durablesqlite.SqliteStorage, error) {
 	return durablesqlite.Open(NewDurableObjectSqliteDatabase(storage), options...)
 }

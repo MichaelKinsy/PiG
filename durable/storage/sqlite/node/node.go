@@ -463,7 +463,7 @@ type NodeSqliteDatabaseOptions struct {
 // SqliteStorageOptions.prefix) and the working set. A nil field selects its default.
 type NodeSqliteStorageOptions struct {
 	NodeSqliteDatabaseOptions
-	// Prefix namespaces every table and index of the durable schema; see sqlite.Options.Prefix.
+	// Prefix namespaces every table and index of the durable schema; see sqlite.SqliteStorageOptions.Prefix.
 	Prefix *string
 	// WorkingSetBytes bounds the decoded entries the storage retains so context reads do not decode the stored history
 	// again. It defaults to sqlite.DefaultWorkingSetBytes; 0 retains nothing.
@@ -522,9 +522,9 @@ func OpenNodeSqliteStorage(path string, options NodeSqliteStorageOptions) (*dura
 	if err != nil {
 		return nil, err
 	}
-	retained := durablesqlite.Options{Prefix: options.Prefix}
+	retained := durablesqlite.SqliteStorageOptions{Prefix: options.Prefix}
 	if options.WorkingSetBytes != nil {
-		// Options.WorkingSetBytes zero selects the default and a negative value retains nothing.
+		// SqliteStorageOptions.WorkingSetBytes zero selects the default and a negative value retains nothing.
 		retained.WorkingSetBytes = *options.WorkingSetBytes
 		if retained.WorkingSetBytes == 0 {
 			retained.WorkingSetBytes = -1
