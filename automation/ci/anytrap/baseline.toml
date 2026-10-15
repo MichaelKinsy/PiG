@@ -509,13 +509,6 @@ dest = "*[]any"
 count = 1
 
 [[hit]]
-file = "durable/core/driver/hook.go"
-func = "decodeToolResult"
-call = "json.Unmarshal"
-dest = "*durable.JsonValue"
-count = 1
-
-[[hit]]
 file = "durable/core/driver/tool.go"
 func = "Tools.run"
 call = "json.Unmarshal"
@@ -962,3 +955,405 @@ func = "decodeToolArgs"
 call = "json.Unmarshal"
 dest = "*map[string]any"
 count = 1
+
+# 0.5.0 release entries (ruling 2026-10-15, tern): each decode below is not a common-path typed-decode miss; the reason is per entry.
+
+# runs only after the typed decode rejected the record (mistyped or legacy member)
+[[hit]]
+file = "agent/message_lax.go"
+func = "AgentMessage.decodeLax"
+call = "sdkjson.Unmarshal"
+dest = "*map[string]any"
+count = 1
+
+# runs only after the typed decode rejected the record (mistyped or legacy member)
+[[hit]]
+file = "agent/message_lax.go"
+func = "holds"
+call = "sdkjson.Unmarshal"
+dest = "any"
+count = 1
+
+# runs only after the typed decode rejected the record (mistyped or legacy member)
+[[hit]]
+file = "ai/anthropic.go"
+func = "coerceAnthropicDelta"
+call = "json.Decode"
+dest = "*any"
+count = 1
+
+# runs only after the typed decode rejected the record (mistyped or legacy member)
+[[hit]]
+file = "ai/anthropic_event_jsread.go"
+func = "anthropicRecord"
+call = "json.Decode"
+dest = "*map[string]any"
+count = 1
+
+# runs only after the typed decode rejected the record (mistyped or legacy member)
+[[hit]]
+file = "ai/anthropic_event_jsread.go"
+func = "decodeAnthropicEventJS"
+call = "json.Unmarshal"
+dest = "any"
+count = 2
+
+# runs only after the typed decode rejected the record (mistyped or legacy member)
+[[hit]]
+file = "ai/anthropic_event_jsread.go"
+func = "normalizeAnthropicEventJS"
+call = "json.Decode"
+dest = "*any"
+count = 1
+
+# runs only after the typed decode rejected the record (mistyped or legacy member)
+[[hit]]
+file = "ai/gemini_chunk_jsread.go"
+func = "normalizeGeminiChunkJS"
+call = "json.Decode"
+dest = "*any"
+count = 1
+
+# runs only after the typed decode rejected the record (mistyped or legacy member)
+[[hit]]
+file = "ai/mistral_chunk_jsread.go"
+func = "jsStringFromRaw"
+call = "json.Decode"
+dest = "*any"
+count = 1
+
+# runs only after the typed decode rejected the record (mistyped or legacy member)
+[[hit]]
+file = "ai/mistral_chunk_jsread.go"
+func = "mistralContentItemJS"
+call = "json.Decode"
+dest = "*any"
+count = 1
+
+# runs only after the typed decode rejected the record (mistyped or legacy member)
+[[hit]]
+file = "ai/mistral_chunk_jsread.go"
+func = "normalizeMistralChunkJS"
+call = "json.Decode"
+dest = "*map[string]any"
+count = 1
+
+# cold path: once per login, catalog load, command or rare API request
+[[hit]]
+file = "ai/models_catalog_codec.go"
+func = "sameJSONValue"
+call = "json.Unmarshal"
+dest = "*any"
+count = 2
+
+# cold path: once per login, catalog load, command or rare API request
+[[hit]]
+file = "ai/oauth_kimi.go"
+func = "readKimiJSON"
+call = "json.Decode"
+dest = "*any"
+count = 1
+
+# cold path: once per login, catalog load, command or rare API request
+[[hit]]
+file = "ai/oauth_xai.go"
+func = "decodeXaiBody"
+call = "json.Decode"
+dest = "*any"
+count = 1
+
+# runs only after the typed decode rejected the record (mistyped or legacy member)
+[[hit]]
+file = "ai/openai_chunk_jsread.go"
+func = "normalizeOpenAIChunkJS"
+call = "json.Decode"
+dest = "*any"
+count = 1
+
+# cold path: once per login, catalog load, command or rare API request
+[[hit]]
+file = "ai/openai_codex_frames.go"
+func = "mapCodexWebSocketEventFrame"
+call = "json.Unmarshal"
+dest = "*any"
+count = 1
+
+# cold path: once per login, catalog load, command or rare API request
+[[hit]]
+file = "ai/openai_codex_websocket.go"
+func = "codexWebSocketMessage"
+call = "json.Unmarshal"
+dest = "*any"
+count = 1
+
+# runs only after the typed decode rejected the record (mistyped or legacy member)
+[[hit]]
+file = "ai/openai_codex_websocket.go"
+func = "readCodexRequest"
+call = "json.Unmarshal"
+dest = "*map[string]any"
+count = 2
+
+# runs only after the typed decode rejected the record (mistyped or legacy member)
+[[hit]]
+file = "ai/openai_responses_jsread.go"
+func = "normalizeResponsesEventJS"
+call = "json.Decode"
+dest = "*any"
+count = 1
+
+# runs only after the typed decode rejected the record (mistyped or legacy member)
+[[hit]]
+file = "ai/openai_responses_jsread.go"
+func = "normalizeResponsesItemJS"
+call = "json.Decode"
+dest = "*any"
+count = 1
+
+# runs only after the typed decode rejected the record (mistyped or legacy member)
+[[hit]]
+file = "ai/openai_responses_jsread.go"
+func = "responsesArgumentsNotString"
+call = "json.Decode"
+dest = "*any"
+count = 1
+
+# cold path: once per login, catalog load, command or rare API request
+[[hit]]
+file = "ai/openrouter_images_chat.go"
+func = "parseOpenRouterImagesBody"
+call = "json.Unmarshal"
+dest = "*any"
+count = 1
+
+# cold path: once per login, catalog load, command or rare API request
+[[hit]]
+file = "ai/provider_stream_event.go"
+func = "assistantStreamBuilder.observeProviderEventJSON"
+call = "json.Unmarshal"
+dest = "*any"
+count = 1
+
+# JSON.parse, whose result is any by definition; non-object/out-of-range branches and partial string/number tokens only (0.5.1: typed string token)
+[[hit]]
+file = "ai/streaming_json.go"
+func = "jsonParseValue"
+call = "sdkjson.Unmarshal"
+dest = "*any"
+count = 1
+
+# dev/bench tooling or one-time schema compile
+[[hit]]
+file = "bench/sessionscale/cmd/sessionscale/k8s.go"
+func = "fixtureFingerprint"
+call = "json.Unmarshal"
+dest = "*map[string]any"
+count = 1
+
+# cold path: once per login, catalog load, command or rare API request
+[[hit]]
+file = "coding/cli/provider_bridge.go"
+func = "decodeBridgeRequest"
+call = "json.Unmarshal"
+dest = "*map[string]any"
+count = 1
+
+# cold path: once per login, catalog load, command or rare API request
+[[hit]]
+file = "coding/extension/host/subprocess/ui_bridge.go"
+func = "UIBridge.handleComplete"
+call = "sdkjson.Unmarshal"
+dest = "*map[string]any"
+count = 1
+
+# once per code-mode call or nested tool result; the value is the tool's arbitrary JSON result
+[[hit]]
+file = "durable/codemode/call.go"
+func = "call.callTool"
+call = "json.Unmarshal"
+dest = "*map[string]any"
+count = 1
+
+# once per code-mode call or nested tool result; the value is the tool's arbitrary JSON result
+[[hit]]
+file = "durable/codemode/call.go"
+func = "call.formatAndStore"
+call = "json.Unmarshal"
+dest = "*any"
+count = 1
+
+# once per code-mode call or nested tool result; the value is the tool's arbitrary JSON result
+[[hit]]
+file = "durable/codemode/call.go"
+func = "sameJSON"
+call = "json.Unmarshal"
+dest = "*any"
+count = 2
+
+# once per code-mode call or nested tool result; the value is the tool's arbitrary JSON result
+[[hit]]
+file = "durable/codemode/models.go"
+func = "modelResult"
+call = "json.Unmarshal"
+dest = "*any"
+count = 1
+
+# once per code-mode call or nested tool result; the value is the tool's arbitrary JSON result
+[[hit]]
+file = "durable/codemode/tool.go"
+func = "outcomeOf"
+call = "json.Unmarshal"
+dest = "*any"
+count = 1
+
+# once per code-mode call or nested tool result; the value is the tool's arbitrary JSON result
+[[hit]]
+file = "durable/codemode/tool.go"
+func = "storedResult.result"
+call = "json.Unmarshal"
+dest = "*any"
+count = 1
+
+# cold path: once per login, catalog load, command or rare API request
+[[hit]]
+file = "durable/core/driver/session.go"
+func = "coreSession.argumentsHook"
+call = "json.Unmarshal"
+dest = "*map[string]any"
+count = 1
+
+# decodes into a concrete type (a type parameter T or durable.JsonValue), not an untyped interface
+[[hit]]
+file = "durable/core/driver/session_api.go"
+func = "invocation.MemoCandidate"
+call = "json.Unmarshal"
+dest = "*durable.JsonValue"
+count = 1
+
+# decodes into a concrete type (a type parameter T or durable.JsonValue), not an untyped interface
+[[hit]]
+file = "durable/core/driver/session_api.go"
+func = "invocation.Memo"
+call = "json.Unmarshal"
+dest = "*durable.JsonValue"
+count = 1
+
+# decodes into a concrete type (a type parameter T or durable.JsonValue), not an untyped interface
+[[hit]]
+file = "durable/core/driver/session_tx.go"
+func = "decodeOptional"
+call = "json.Unmarshal"
+dest = "*T"
+count = 1
+
+# decodes into a concrete type (a type parameter T or durable.JsonValue), not an untyped interface
+[[hit]]
+file = "durable/core/driver/session_tx.go"
+func = "decode"
+call = "json.Unmarshal"
+dest = "*T"
+count = 1
+
+# decodes into a concrete type (a type parameter T or durable.JsonValue), not an untyped interface
+[[hit]]
+file = "durable/core/driver/watch.go"
+func = "typed"
+call = "json.Unmarshal"
+dest = "*T"
+count = 1
+
+# once per code-mode call or nested tool result; the value is the tool's arbitrary JSON result
+[[hit]]
+file = "durable/nested_result.go"
+func = "decodeJsonValue"
+call = "json.Unmarshal"
+dest = "*any"
+count = 1
+
+# once per code-mode call or nested tool result; the value is the tool's arbitrary JSON result
+[[hit]]
+file = "durable/toolsearch/toolsearch.go"
+func = "searchText"
+call = "json.Unmarshal"
+dest = "*any"
+count = 1
+
+# once per boundary preview, only for a handler that reads Go values; each source entry is arbitrary session JSON
+[[hit]]
+file = "internal/boundarywire/boundarywire.go"
+func = "Cache.Deliver"
+call = "sdkjson.Unmarshal"
+dest = "*any"
+count = 1
+
+# once per session entry at resume/load, not per turn
+[[hit]]
+file = "internal/codingagent/session_resume.go"
+func = "summaryContentText"
+call = "sdkjson.Unmarshal"
+dest = "*any"
+count = 1
+
+# once per session entry at resume/load, not per turn
+[[hit]]
+file = "internal/codingagent/session_resume.go"
+func = "summaryPartial.feedDecoded"
+call = "sdkjson.Unmarshal"
+dest = "*any"
+count = 1
+
+# once per session entry at resume/load, not per turn
+[[hit]]
+file = "internal/codingagent/session_resume.go"
+func = "summaryPartial.feedMessageLine"
+call = "sdkjson.Unmarshal"
+dest = "*any"
+count = 1
+
+# once per session entry at resume/load, not per turn
+[[hit]]
+file = "internal/codingagent/session_stats_scan.go"
+func = "walkIndexProbe"
+call = "sdkjson.Unmarshal"
+dest = "any"
+count = 1
+
+# decodes into a concrete type (a type parameter T or durable.JsonValue), not an untyped interface
+[[hit]]
+file = "internal/codingagent/settings.go"
+func = "SettingsManager.extensionSettingsEncoding"
+call = "json.Unmarshal"
+dest = "*extension.Settings"
+count = 1
+
+# runs only after the typed decode rejected the record (mistyped or legacy member)
+[[hit]]
+file = "internal/orderedjson/value.go"
+func = "unmarshalFieldsThreePass"
+call = "sdkjson.Unmarshal"
+dest = "any"
+count = 1
+
+# dev/bench tooling or one-time schema compile
+[[hit]]
+file = "internal/typebox/value.go"
+func = "compile"
+call = "json.Unmarshal"
+dest = "*any"
+count = 1
+
+# dev/bench tooling or one-time schema compile
+[[hit]]
+file = "internal/upstreammirror/upstreammirror.go"
+func = "readJSON"
+call = "json.Unmarshal"
+dest = "any"
+count = 1
+
+# decodes into a concrete type (a type parameter T or durable.JsonValue), not an untyped interface
+[[hit]]
+file = "durable/core/driver/hook.go"
+func = "decodeToolResult"
+call = "json.Unmarshal"
+dest = "*durable.JsonValue"
+count = 2
