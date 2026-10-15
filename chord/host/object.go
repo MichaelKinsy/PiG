@@ -439,13 +439,18 @@ type CtxImpl struct {
 	holder      bool
 	refs        []RefCore
 	closed      bool
+	// closing is cancelled when the ctx closes: awaited Gets give up.
+	closing       context.Context
+	cancelClosing context.CancelCauseFunc
 }
 
 func newCtxImpl(host *HostImpl, fields ctxFields) *CtxImpl {
 	signal, release := linkedSignal(fields.signals)
+	//portlint:allow ctxbackground object.ts CtxImpl `#closing = new AbortController()`: the ctx's own controller, no parent
+	closing, cancelClosing := context.WithCancelCause(context.Background())
 	return &CtxImpl{
 		host: host, signal: signal, release: release, sources: fields.signals, rootID: fields.rootID, codeVersion: fields.codeVersion,
-		principal: fields.principal, holder: fields.holder,
+		principal: fields.principal, holder: fields.holder, closing: closing, cancelClosing: cancelClosing,
 	}
 }
 
@@ -490,7 +495,8 @@ func (ctx *CtxImpl) check(host *HostImpl) error {
 	return nil
 }
 
-// Get holds an object for this call: the hold is released when the call that received this ctx settles.
+// Get holds an object for this call and waits for it to be ready (see awaitReady); the hold is released when the call
+// that received this ctx settles.
 func (ctx *CtxImpl) Get(typ *Contract, input any, options *GetOptions) (Ref, error) {
 	if err := ctx.check(ctx.host); err != nil {
 		return nil, err
@@ -500,6 +506,7 @@ func (ctx *CtxImpl) Get(typ *Contract, input any, options *GetOptions) (Ref, err
 		if options.HasPrincipal {
 			merged.Principal = options.Principal
 		}
+		merged.State = options.State
 	}
 	var ref RefCore
 	var err error
@@ -510,6 +517,9 @@ func (ctx *CtxImpl) Get(typ *Contract, input any, options *GetOptions) (Ref, err
 		}
 	})
 	if err != nil {
+		return nil, err
+	}
+	if err := awaitReady(ctx.host, ref, []context.Context{ctx.signal, ctx.closing}, ctx.host.readyTimeout); err != nil {
 		return nil, err
 	}
 	return ref, nil
@@ -528,6 +538,7 @@ func (ctx *CtxImpl) child(object *ObjectImpl) *CtxImpl {
 
 // close expires the ctx, stops it following its signals, and releases its holds.
 func (ctx *CtxImpl) close() {
+	ctx.cancelClosing(NewChordError(CodeAborted, "ctx expired: its call already settled", ChordErrorOptions{Reason: "expired"}))
 	ctx.host.run(func() {
 		ctx.closed = true
 		ctx.release()
@@ -585,6 +596,43 @@ func linkedSignal(sources []context.Context) (signal context.Context, release fu
 }
 
 // raceSignal awaits promise off the loop unless signal aborts first (object.ts:328-340).
+// awaitReady waits until ref is ready, at most ms and until a signal is cancelled. On failure the reference is
+// released (only it: a binding other references share stays) and the error is returned: the activation error, aborted,
+// or unavailable/ready_timeout. It blocks and is called off the loop (object.ts awaitReady).
+func awaitReady(host *HostImpl, ref RefCore, signals []context.Context, ms time.Duration) error {
+	//portlint:allow ctxbackground object.ts awaitReady `timeout = new AbortController()`: the call's own controller, no parent
+	timeout, cancelTimeout := context.WithCancelCause(context.Background())
+	defer cancelTimeout(nil)
+	var address string
+	var ready *Promise[struct{}]
+	host.run(func() { address, ready = ref.address(), ref.readyPromise() })
+	if ms != neverReady {
+		timer := time.AfterFunc(nodeDelay(ms), func() {
+			cancelTimeout(NewChordError(CodeUnavailable, fmt.Sprintf("%s was not ready after %s ms", address, formatMs(ms)), ChordErrorOptions{Reason: "ready_timeout"}))
+		})
+		defer timer.Stop()
+	}
+	linked, release := linkedSignal(append(slices.Clone(signals), timeout))
+	defer release()
+	if _, err := raceSignal(ready, linked); err != nil {
+		ref.Release()
+		if reason, ok := context.Cause(linked).(*ChordError); ok && reason.Reason == "ready_timeout" { //nolint:errorlint // Pi's instanceof does not unwrap
+			return reason
+		}
+		// A signal that was cancelled released the reference (Ctx.close cancels its closing signal first): that
+		// cancellation came first, as abort listeners run before the release in Pi.
+		if IsChordError(err, CodeReleased) {
+			for _, source := range signals {
+				if source.Err() != nil {
+					return NewChordError(CodeAborted, "call aborted", ChordErrorOptions{Cause: context.Cause(source)})
+				}
+			}
+		}
+		return err
+	}
+	return nil
+}
+
 func raceSignal[T any](promise *Promise[T], signal context.Context) (T, error) {
 	aborted := func() error {
 		return NewChordError(CodeAborted, "call aborted", ChordErrorOptions{Cause: context.Cause(signal)})
@@ -688,51 +736,165 @@ type memberReadable struct {
 	events   *orderedMap[*func(StateEvent[any]), struct{}]
 	source   Readable[any]
 	upstream func()
-	// seen is the value listeners last saw; a first upstream snapshot equal to it is not re-announced.
-	seen any
+	// unseen are the event listeners that have not had their snapshot yet (added while the member was not readable).
+	unseen *orderedMap[*func(StateEvent[any]), struct{}]
+	// seen is the value listeners last saw (nil: none); a first upstream snapshot equal to it is not re-announced.
+	seen *seenValue
 }
+
+type seenValue struct{ value any }
 
 func newMemberReadable(ref *RefImpl, name string) *memberReadable {
 	return &memberReadable{
 		ref: ref, name: name, values: newOrderedMap[*func(any), struct{}](),
-		events: newOrderedMap[*func(StateEvent[any]), struct{}](), upstream: func() {},
+		events: newOrderedMap[*func(StateEvent[any]), struct{}](), unseen: newOrderedMap[*func(StateEvent[any]), struct{}](), upstream: func() {},
 	}
 }
 
 func (readable *memberReadable) host() *HostImpl { return readable.ref.object.host }
 
-func (readable *memberReadable) Value() (value any) {
-	readable.host().run(func() { value = readable.valueOnLoop() })
+// Value is the member's value. It panics with the ChordError Pi's getter throws: the reference's end error once it
+// ended, not_ready until the reference is live, not_in_variant while the variant lacks the member.
+func (readable *memberReadable) Value() any {
+	var value any
+	var err error
+	readable.host().run(func() { value, err = readable.read() })
+	if err != nil {
+		panic(err)
+	}
 	return value
 }
 
-func (readable *memberReadable) valueOnLoop() any {
-	if source := readable.current(); source != nil {
-		return source.Value()
+func (readable *memberReadable) read() (any, error) {
+	ref := readable.ref
+	if ref.status == RefReleased || ref.status == RefGone {
+		return nil, ref.terminalError()
 	}
-	return nil
+	what := ref.addr + "." + readable.name
+	if ref.status != RefLive {
+		return nil, NotReady(what)
+	}
+	view := ref.currentView()
+	if view == nil {
+		return nil, NotReady(what)
+	}
+	source := readable.current()
+	if source == nil {
+		shown := "(local)"
+		if kind, ok := variantOf(view); ok {
+			shown = kind
+		}
+		return nil, NewChordError(CodeNotInVariant, fmt.Sprintf("%s: %s is not a state member of variant %s", ref.addr, readable.name, shown), ChordErrorOptions{})
+	}
+	return readValue(source)
+}
+
+// readValue reads source; a ChordError it panics with (not_ready of a state init, a remote member before its
+// snapshot) is the error, any other panic is not Chord's to catch.
+func readValue(source Readable[any]) (value any, err error) {
+	defer func() {
+		if recovered := recover(); recovered != nil {
+			chordError, ok := recovered.(*ChordError)
+			if !ok {
+				panic(recovered)
+			}
+			value, err = nil, chordError
+		}
+	}()
+	return source.Value(), nil
+}
+
+// hydration: not hydrated while the reference is not live, or while its source (a forwarded remote member) is not.
+func (readable *memberReadable) hydration() *Hydration {
+	ref := readable.ref
+	if ref.status == RefLive {
+		return hydrationOf(readable.current())
+	}
+	return &Hydration{Hydrated: false, WhenHydrated: func() *Promise[struct{}] {
+		hydrated, resolve, reject := newPromise[struct{}](&ref.host().loop)
+		ref.ready.then(func(_ struct{}, err error) {
+			if err != nil {
+				reject(err)
+				return
+			}
+			hydration := hydrationOf(readable.current())
+			if hydration == nil {
+				resolve(struct{}{})
+				return
+			}
+			hydration.WhenHydrated().then(func(_ struct{}, err error) {
+				if err != nil {
+					reject(err)
+					return
+				}
+				resolve(struct{}{})
+			})
+		})
+		return hydrated
+	}}
+}
+
+// readable is the current source if its value can be read now (live, in the variant, hydrated).
+func (readable *memberReadable) readable() Readable[any] {
+	source := readable.current()
+	if source == nil {
+		return nil
+	}
+	if hydration := hydrationOf(source); hydration != nil && !hydration.Hydrated {
+		return nil
+	}
+	return source
 }
 
 func (readable *memberReadable) Subscribe(listener func(value any)) func() {
 	key := &listener
+	var failure error
 	readable.host().run(func() {
 		readable.values.Set(key, struct{}{})
-		readable.seen = readable.valueOnLoop()
-		readable.safe(func() { listener(readable.seen) })
+		if source := readable.readable(); source != nil {
+			value, err := readValue(source)
+			if err != nil {
+				failure = err
+				return
+			}
+			readable.seen = &seenValue{value: value}
+			readable.safe(func() { listener(value) })
+		}
 		readable.bind()
 	})
+	if failure != nil {
+		panic(failure)
+	}
 	return func() { readable.host().run(func() { readable.remove(func() { readable.values.Delete(key) }) }) }
 }
 
 func (readable *memberReadable) Events(listener func(event StateEvent[any])) func() {
 	key := &listener
+	var failure error
 	readable.host().run(func() {
 		readable.events.Set(key, struct{}{})
-		readable.seen = readable.valueOnLoop()
-		readable.safe(func() { listener(StateEvent[any]{Type: StateEventSnap, Value: readable.seen}) })
+		if source := readable.readable(); source != nil {
+			value, err := readValue(source)
+			if err != nil {
+				failure = err
+				return
+			}
+			readable.seen = &seenValue{value: value}
+			readable.safe(func() { listener(StateEvent[any]{Type: StateEventSnap, Value: value}) })
+		} else {
+			readable.unseen.Set(key, struct{}{})
+		}
 		readable.bind()
 	})
-	return func() { readable.host().run(func() { readable.remove(func() { readable.events.Delete(key) }) }) }
+	if failure != nil {
+		panic(failure)
+	}
+	return func() {
+		readable.host().run(func() {
+			readable.unseen.Delete(key)
+			readable.remove(func() { readable.events.Delete(key) })
+		})
+	}
 }
 
 // bind (re)subscribes upstream to the current source; a changed source is announced as a reset.
@@ -754,22 +916,29 @@ func (readable *memberReadable) bind() {
 	readable.upstream = source.Events(func(event StateEvent[any]) {
 		isFirst := first
 		first = false
-		if isFirst && sameValue(event.Value, readable.seen) {
+		if isFirst && readable.unseen.Len() == 0 && readable.seen != nil && sameValue(event.Value, readable.seen.value) {
 			return
 		}
-		readable.seen = event.Value
+		readable.seen = &seenValue{value: event.Value}
 		translated := event
 		if isFirst {
 			translated = StateEvent[any]{Type: StateEventReset, Value: event.Value}
 		}
 		events := readable.events.Keys()
 		values := readable.values.Keys()
+		unseen := readable.unseen.Keys()
+		readable.unseen.Clear()
 		// Queued: a rebind during a commit must not run observers before the commit completes.
 		enqueue(func() {
 			for _, listener := range events {
-				if readable.events.Has(listener) {
-					readable.safe(func() { (*listener)(translated) })
+				if !readable.events.Has(listener) {
+					continue
 				}
+				delivered := translated
+				if slices.Contains(unseen, listener) {
+					delivered = StateEvent[any]{Type: StateEventSnap, Value: event.Value}
+				}
+				readable.safe(func() { (*listener)(delivered) })
 			}
 			for _, listener := range values {
 				if readable.values.Has(listener) {
@@ -783,6 +952,7 @@ func (readable *memberReadable) bind() {
 func (readable *memberReadable) stop() {
 	readable.values.Clear()
 	readable.events.Clear()
+	readable.unseen.Clear()
 	readable.bind()
 }
 
@@ -944,7 +1114,7 @@ func (ref *RefImpl) shape() *Shape {
 			members = append(members, key)
 		}
 	}
-	return &Shape{Variant: variantPointer(view), Members: members, Contract: installed.service.contract.Fingerprint, CodeVersion: installed.codeVersion}
+	return &Shape{Variant: variantPointer(view), Members: members, Contract: installed.service.contract.Fingerprint}
 }
 
 // OnShape calls listener with every new shape; the returned function removes it.
@@ -1427,9 +1597,88 @@ func (object *ObjectImpl) activate(done func(err error)) {
 			settle(object.abandoned())
 			return
 		}
-		// Cells declared with init read their first value after the resources are open and before anything reads them.
-		object.initCellsPromise(run, signal).then(func(_ struct{}, err error) { settle(err) })
+		// A local object goes live only with its state, also where it forwards or derives from a remote reference's member.
+		object.waitHydrated(run).then(func(_ struct{}, err error) {
+			if err != nil {
+				settle(err)
+				return
+			}
+			if signal.Err() != nil {
+				settle(object.abandoned())
+				return
+			}
+			// Cells declared with init read their first value after the resources are open and before anything reads them.
+			object.initCellsPromise(run, signal).then(func(_ struct{}, err error) { settle(err) })
+		})
 	})
+}
+
+// waitHydrated is object.ts waitHydrated, started on the loop: it settles once the state sources a run exposes or
+// derives from have their values.
+func (object *ObjectImpl) waitHydrated(run *Run) *Promise[struct{}] {
+	loop := &object.host.loop
+	type exposure struct {
+		name  string
+		value any
+	}
+	var exposed []exposure
+	var sources []any
+	for _, derived := range run.created.derives {
+		sources = append(sources, derived)
+	}
+	if run.implementation != nil {
+		for name, value := range run.implementation.All() {
+			exposed = append(exposed, exposure{name, value})
+			sources = append(sources, value)
+		}
+	}
+	pending := unhydrated(sources...)
+	if len(pending) == 0 {
+		return resolvedPromise(loop, struct{}{})
+	}
+	waits := make([]*Promise[struct{}], len(pending))
+	for index, hydration := range pending {
+		waits[index] = hydration.WhenHydrated()
+	}
+	return object.withinReadyTimeout(promiseAll(loop, waits), func() []string {
+		var waiting []string
+		for _, entry := range exposed {
+			if hydration := hydrationOf(entry.value); hydration != nil && !hydration.Hydrated {
+				waiting = append(waiting, object.address+"."+entry.name)
+			}
+		}
+		for _, derived := range run.created.derives {
+			if hydrationOf(derived) != nil {
+				waiting = append(waiting, "derive "+derived.Key)
+			}
+		}
+		return waiting
+	})
+}
+
+// withinReadyTimeout is work within the host's readyTimeout; a timeout names what is still awaited.
+func (object *ObjectImpl) withinReadyTimeout(work *Promise[struct{}], waiting func() []string) *Promise[struct{}] {
+	ms := object.host.readyTimeout
+	if ms == neverReady {
+		return work
+	}
+	result, resolve, reject := newPromise[struct{}](&object.host.loop)
+	stop := object.host.after(ms, func() {
+		suffix := ""
+		if list := waiting(); len(list) > 0 {
+			suffix = ", waiting on " + strings.Join(list, ", ")
+		}
+		reject(NewChordError(CodeUnavailable, fmt.Sprintf("%s was not ready after %s ms%s (a reference cycle across hosts?)", object.address, formatMs(ms), suffix), ChordErrorOptions{Reason: "ready_timeout"}))
+	})
+	work.then(func(_ struct{}, err error) {
+		stop()
+		if err != nil {
+			reject(err)
+			return
+		}
+		resolve(struct{}{})
+	})
+	return result
 }
 
 // initCellsPromise is object.ts initCells, started on the loop: it fills the cells run created with Init, each in a
@@ -1672,9 +1921,19 @@ func (object *ObjectImpl) openPromise(resources []*ResourceImpl, refs []RefCore,
 	for _, resource := range resources {
 		all = append(all, openOne(resource))
 	}
-	for _, hold := range refs {
-		all = append(all, hold.readyPromise())
+	readies := make([]*Promise[struct{}], len(refs))
+	for index, hold := range refs {
+		readies[index] = hold.readyPromise()
 	}
+	all = append(all, object.withinReadyTimeout(promiseAll(loop, readies), func() []string {
+		var waiting []string
+		for _, hold := range refs {
+			if hold.Status() == RefLoading {
+				waiting = append(waiting, hold.address())
+			}
+		}
+		return waiting
+	}))
 	opened, resolve, reject := newPromise[struct{}](loop)
 	promiseAllSettled(loop, all).then(func(results []settledResult[struct{}], _ error) {
 		for _, result := range results {

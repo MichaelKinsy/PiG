@@ -319,9 +319,9 @@ rationale = "Removed in Pi 1.2.0 (chord CHANGELOG 1.2.0 Breaking Changes: the ./
 [[files]]
 path = "packages/chord/src/cell.ts"
 change = "added"
-disposition = "deferred"
-evidence = []
-rationale = "Owner-approved release exception for PiG 0.5.0 (owner decision 2026-10-15T02:15Z, option B: pin b06c1f2c with Chord protocol 3 and 4 finished in 0.5.1; recorded in handoffs/release-0.5.0/chord-S3-plan.md). Ported in this file: Pi 2688aba7 (terminology, object variants, link protocol version 2 with onProtocolMismatch, object lifetime), d20c6e96 (declarations by name, per-cell state versions, per-reload derivations, void and no-argument methods), 301617df (lifetime \"host\" refusals at serve), 00d8d049 (reload and retirement correctness, no leaked code generations) 39294a5e (failed IPC writes end the link) and aa9cf15b (protocol 3), with their Pi tests. aa9cf15b state init is ported: chord/host/cell.go NewCellAwaitingInit and Initialize, and a cell without a value fails not_ready on Value, Change and Replace, and chord/host/object.go StateInit, SelfImpl.State and initCellsPromise (the cell is filled in a root of its own after the resources are open and before the object goes live; also at a reload prepare and at the gate), with state_init_upstream_test.go. Not ported (missing cases): b45e0ebc cell hydration (HYDRATION, unhydrated). Pi tests: hydration.test.ts."
+disposition = "ported"
+evidence = ["test:chord/host/hydration_upstream_test.go#TestHydrationAnObjectThatForwardsAndDerivesFromARemoteMemberGoesLiveWithItsValue", "test:chord/host/hydration_upstream_test.go#TestHydrationAMemberReadInsideAFactoryThrowsNotReadyItIsAPlainValueOnceLive", "test:chord/host/state_init_upstream_test.go#TestStateInitAnInitCellCannotBeReadInsideTheFactory", "test:chord/host/requests_upstream_test.go#TestRequests8AHeldRemoteReferenceKeepsItsStateWithoutListeners"]
+rationale = "aa9cf15b state init (NewCellAwaitingInit and Initialize; Value, Change and Replace fail not_ready until the cell has its value, cell.go, with object.go StateInit and initCellsPromise) and b45e0ebc cell hydration: Hydration, hydrating, hydrationOf and unhydrated (cell.go) and Derived.hydration, which is hydrated once every source is. A source that does not implement hydrating always has its value. Derived.Attach runs only after the object's sources are hydrated (object.go waitHydrated), as Pi attaches at install."
 
 [[files]]
 path = "packages/chord/src/cluster.ts"
@@ -333,9 +333,9 @@ rationale = "Pi 3daa2028..b06c1f2c changes this file only in commits PiG ports f
 [[files]]
 path = "packages/chord/src/connection.ts"
 change = "added"
-disposition = "deferred"
-evidence = []
-rationale = "Owner-approved release exception for PiG 0.5.0 (owner decision 2026-10-15T02:15Z, option B: pin b06c1f2c with Chord protocol 3 and 4 finished in 0.5.1; recorded in handoffs/release-0.5.0/chord-S3-plan.md). Ported in this file: Pi 2688aba7 (terminology, object variants, link protocol version 2 with onProtocolMismatch, object lifetime), d20c6e96 (declarations by name, per-cell state versions, per-reload derivations, void and no-argument methods), 301617df (lifetime \"host\" refusals at serve), 00d8d049 (reload and retirement correctness, no leaked code generations) 39294a5e (failed IPC writes end the link) and aa9cf15b (protocol 3), with their Pi tests. aa9cf15b is ported: a hold whose input the token places on another host is invalid/placement (connection.go acquireServed), a relay refuses a hold whose target disagrees with its token (host.go placementError), a parent link acts as the principal given to Connect, and the protocol version is 3, with placement_upstream_test.go, principals_upstream_test.go and link_upstream_test.go. Not ported (missing cases): b45e0ebc protocol 4: holds imply state (state:false, again, origin replacing client), units (shape listing missing members then snapshots), feeds, flow slots and pendingCap with lazy resets, sub/unsub/resync by hold, state frames addressed by hold and member (as: snap|reset|ops|error), relay resync. Pi tests: flow-units.test.ts, provider-cost.test.ts, bindings.test.ts, link.test.ts, links-review.test.ts, flow.test.ts and requests.test.ts protocol 3/4 cases."
+disposition = "ported"
+evidence = ["test:chord/host/flow_units_upstream_test.go#TestFlowUnitsWithLargeStreamsWaitingBehindAFullWindowANewGetResolvesAtOnceAndCallsAreAnswered", "test:chord/host/flow_units_upstream_test.go#TestFlowUnitsWaitingOpsStayUnderThePerLinkCapHoweverManyStreamsStallEachThenGetsOneReset", "test:chord/host/flow_units_upstream_test.go#TestFlowUnitsRelayAStalledTabOverflowsAndGetsAResetWhileAnotherTabKeepsGettingEveryChange", "test:chord/host/flow_units_upstream_test.go#TestFlowUnitsRelayEachOriginHoldIsOneDownstreamHoldNothingIsLeftAfterReleaseCloseOrRevoke", "test:chord/host/flow_upstream_test.go#TestLinkFlowControlCoalescesRelayedStateAndAsksDownstreamForAResetWhenItOverflows", "test:chord/host/bindings_upstream_test.go#TestOriginsARelayedHoldCarriesItsClientConnectionsIdTheServersOwnHoldsCarryNone", "test:chord/host/bindings_upstream_test.go#TestOriginsAnOriginAClientSendsIsIgnoredTheServerStampsItsOwn", "test:chord/host/bindings_upstream_test.go#TestMethodOnlyReferencesTransferNoStateAloneAFullReferenceJoiningStartsItOnceItsReleaseStopsIt", "test:chord/host/links_review_upstream_test.go#TestLinksReview9StateStoppedWhileTheRouteResolvesIsForwardedAsAHoldWithoutState", "test:chord/host/placement_upstream_test.go#TestPlacementAHostRefusesAHoldItsOwnContractPlacesElsewhereAndARelayOneWhoseTargetDisagrees"]
+rationale = "aa9cf15b (a hold whose input the token places on another host is invalid/placement, the parent link acts as the principal given to Connect, protocol version 3) and b45e0ebc (protocol 4): a hold implies the state of its variant (state:false, again, origin replacing client), units (a shape listing the members whose snapshots follow, sendUnit), feeds with delta encoders and the buffer replayed after a snapshot, flow slots and pendingCap with lazy resets (sendState, makeRoom, drop, resetLater, queueUnit, flush), sub, unsub and resync by hold, state frames addressed by hold and member, relay resync and urgent first units, origins stamped by the server (connection.go)."
 
 [[files]]
 path = "packages/chord/src/context/index.ts"
@@ -347,16 +347,16 @@ rationale = "The 1.2.0 change moves the ContextKey<T> interface (token symbol pl
 [[files]]
 path = "packages/chord/src/contract.ts"
 change = "added"
-disposition = "deferred"
-evidence = []
-rationale = "Owner-approved release exception for PiG 0.5.0 (owner decision 2026-10-15T02:15Z, option B: pin b06c1f2c with Chord protocol 3 and 4 finished in 0.5.1; recorded in handoffs/release-0.5.0/chord-S3-plan.md). Ported in this file: Pi 2688aba7 (terminology, object variants, link protocol version 2 with onProtocolMismatch, object lifetime), d20c6e96 (declarations by name, per-cell state versions, per-reload derivations, void and no-argument methods), 301617df (lifetime \"host\" refusals at serve), 00d8d049 (reload and retirement correctness, no leaked code generations) 39294a5e (failed IPC writes end the link) and aa9cf15b (protocol 3), with their Pi tests. aa9cf15b placement is ported: chord/host/contract.go Placement (HostNamed, HostFamily; NewHostNamed, NewHostFamily), resolveHost, placedOn, placementText, a required Host on remote contracts, the placement in the description, its wire form and the fingerprint, the coverage reason \"host\" and the bind refusal across hosts, with contract_upstream_test.go and placement_upstream_test.go; the Pi fingerprint of the chat contract (e8ee3f28594f8426) and of the frame schema (41fdefa9253641bd) are held by tests. Pi tests: contract.test.ts and placement.test.ts at aa9cf15b; their b06c1f2c content is pending with protocol 4 (b45e0ebc changes placement.test.ts)."
+disposition = "ported"
+evidence = ["test:chord/host/placement_upstream_test.go#TestPlacementTheHostComesFromTheNormalizedInputUnknownFieldsAndDefaultsDoNotChangeIt", "test:chord/host/placement_upstream_test.go#TestPlacementIsPartOfTheContractAMovedTypeIsABreakingChangeNeverBridgedByAnAdapter", "test:chord/host/placement_upstream_test.go#TestPlacementTypesAndRemoteContractsNeedAHost", "test:chord/host/variants_upstream_test.go#TestVariantsANewVariantsMembersArriveWithItsShapeAMemberOutsideTheVariantThrowsNotInVariant"]
+rationale = "aa9cf15b placement (HostNamed and HostFamily, resolveHost, the required host of a remote contract, host in the description and so in the fingerprint, a moved type is another type for its consumers and an accepts adapter never bridges it; contract.go) and b45e0ebc, whose contract.ts change is the type of Ref (a union discriminated by variant, whose state members are plain readables): the runtime half is the not_in_variant and not_ready reads of remote.go and object.go."
 
 [[files]]
 path = "packages/chord/src/declare.ts"
 change = "added"
-disposition = "deferred"
-evidence = []
-rationale = "Owner-approved release exception for PiG 0.5.0 (owner decision 2026-10-15T02:15Z, option B: pin b06c1f2c with Chord protocol 3 and 4 finished in 0.5.1; recorded in handoffs/release-0.5.0/chord-S3-plan.md). Ported in this file: Pi 2688aba7 (terminology, object variants, link protocol version 2 with onProtocolMismatch, object lifetime), d20c6e96 (declarations by name, per-cell state versions, per-reload derivations, void and no-argument methods), 301617df (lifetime \"host\" refusals at serve), 00d8d049 (reload and retirement correctness, no leaked code generations) 39294a5e (failed IPC writes end the link) and aa9cf15b (protocol 3), with their Pi tests. aa9cf15b state init declarations are ported: Self.State takes a StateInit as its initial value (EventOf and ValueOf are type-level and have no Go form). Not ported (missing cases): b45e0ebc hydration of derivations. Pi tests: hydration.test.ts."
+disposition = "ported"
+evidence = ["test:chord/host/state_init_upstream_test.go#TestStateInitAnInitCellCannotBeReadInsideTheFactory", "test:chord/host/state_init_upstream_test.go#TestStateInitRunsInARootItCanCallOtherObjects"]
+rationale = "aa9cf15b: the initial value of `self.state` is a StateInit for a cell filled by an init (declare.go and object.go SelfImpl.State), and the host principal parameter of declarations; b45e0ebc does not change the file."
 
 [[files]]
 path = "packages/chord/src/delta/apply-immutable-trusted.ts"
@@ -417,16 +417,16 @@ rationale = "Removed in Pi 1.2.0 (facet loaders are replaced by host.ts FacetLoa
 [[files]]
 path = "packages/chord/src/host.ts"
 change = "added"
-disposition = "deferred"
-evidence = []
-rationale = "Owner-approved release exception for PiG 0.5.0 (owner decision 2026-10-15T02:15Z, option B: pin b06c1f2c with Chord protocol 3 and 4 finished in 0.5.1; recorded in handoffs/release-0.5.0/chord-S3-plan.md). Ported in this file: Pi 2688aba7 (terminology, object variants, link protocol version 2 with onProtocolMismatch, object lifetime), d20c6e96 (declarations by name, per-cell state versions, per-reload derivations, void and no-argument methods), 301617df (lifetime \"host\" refusals at serve), 00d8d049 (reload and retirement correctness, no leaked code generations) 39294a5e (failed IPC writes end the link) and aa9cf15b (protocol 3), with their Pi tests. aa9cf15b is ported: createHost needs Self, Connect needs a principal, Route needs Principal, HostOptions.Upstream is the link with its principal, the host principal is recognized by principalKey (isSelf), GetOptions has no host (the contract places the object; elsewhere, acquireRemote, remoteAddress without a host name), serve refuses a misplaced type, with principals_upstream_test.go and placement_upstream_test.go. Not ported (missing cases): b45e0ebc awaited host.get and synchronous host.hold, readyTimeout, shared remote bindings per host and key, HostOptions.linger, GetOptions.state. Pi tests: principals.test.ts, placement.test.ts, awaiting.test.ts, bindings.test.ts, host.test.ts and cluster.test.ts protocol 3/4 cases."
+disposition = "ported"
+evidence = ["test:chord/host/awaiting_upstream_test.go#TestAwaitingAnAbortedGetRejectsAndReleasesOnlyItsReferenceTheBindingStaysForTheOthers", "test:chord/host/awaiting_upstream_test.go#TestAwaitingAGetTimesOutAfterReadyTimeoutWithReadyTimeoutAndReleasesItsHold", "test:chord/host/bindings_upstream_test.go#TestBindingsNReferencesToOneObjectOneHoldOneSnapshotPerMemberOneFramePerChangeOneRelease", "test:chord/host/bindings_upstream_test.go#TestBindingsLingerAKeepsItsHoldAndStateAReferenceTakenMeanwhileCostsNothingOnTheLink", "test:chord/host/bindings_upstream_test.go#TestBindingsLingerAtMostCapBindingsLingerTheLeastRecentlyReleasedGoesFirst", "test:chord/host/bindings_upstream_test.go#TestBindingsIdentityNormalizedEqualInputsAndEqualPrincipalKeysShareOtherPrincipalsAndFingerprintsDoNot", "test:chord/host/host_test.go#TestRemoteKey", "test:chord/host/principals_upstream_test.go#TestPrincipalsRefusesAHostAParentLinkOrARouteWithoutItsPrincipal"]
+rationale = "aa9cf15b (required self principal, no host named by the caller: GetOptions.At removed, elsewhere and placedOn, Route.Principal required, HostOptions.Upstream) and b45e0ebc: the shared RemoteBinding per host and key (remoteKey with canonical identity, principalPart and the consumer's fingerprint), Get awaiting readiness with GetOptions.Signal and HostOptions.ReadyTimeout, Hold as the synchronous form, GetOptions.State, linger of released bindings (HostOptions.Linger, cap) with bindingIdle and forgetBinding, client origins stamped at Accept, bindings re-held after a reconnect with again (host.go)."
 
 [[files]]
 path = "packages/chord/src/index.ts"
 change = "modified"
-disposition = "deferred"
-evidence = []
-rationale = "Owner-approved release exception for PiG 0.5.0 (owner decision 2026-10-15T02:15Z, option B: pin b06c1f2c with Chord protocol 3 and 4 finished in 0.5.1; recorded in handoffs/release-0.5.0/chord-S3-plan.md). Ported in this file: Pi 2688aba7 (terminology, object variants, link protocol version 2 with onProtocolMismatch, object lifetime), d20c6e96 (declarations by name, per-cell state versions, per-reload derivations, void and no-argument methods), 301617df (lifetime \"host\" refusals at serve), 00d8d049 (reload and retirement correctness, no leaked code generations) 39294a5e (failed IPC writes end the link) and aa9cf15b (protocol 3), with their Pi tests. aa9cf15b exports are ported (NewHostNamed, NewHostFamily, Placement, HostNamed, HostFamily, StateInit, ConnectOptions; PROTOCOL_VERSION is 3; the type-level exports EventOf, ValueOf, PlacementFor and the Principal parameter have no Go form). Not ported (missing cases): PROTOCOL_VERSION 4 (PiG reports 3)."
+disposition = "ported"
+evidence = ["test:chord/host/placement_upstream_test.go#TestPlacementTypesAndRemoteContractsNeedAHost", "test:chord/host/awaiting_upstream_test.go#TestAwaitingCtxGetResolvesHydratedTheCallsReferenceIsReleasedWhenTheCallEnds"]
+rationale = "aa9cf15b exports (HostNamed, HostFamily, Placement) and b45e0ebc, which removes the MembersOf type export (type-only: it has no Go form). The Go API is the exported names of chord/host."
 
 [[files]]
 path = "packages/chord/src/json.ts"
@@ -438,9 +438,9 @@ rationale = "The 1.2.0 change moves two declarations from types.ts into json.ts:
 [[files]]
 path = "packages/chord/src/link.ts"
 change = "added"
-disposition = "deferred"
-evidence = []
-rationale = "Owner-approved release exception for PiG 0.5.0 (owner decision 2026-10-15T02:15Z, option B: pin b06c1f2c with Chord protocol 3 and 4 finished in 0.5.1; recorded in handoffs/release-0.5.0/chord-S3-plan.md). Ported in this file: Pi 2688aba7 (terminology, object variants, link protocol version 2 with onProtocolMismatch, object lifetime), d20c6e96 (declarations by name, per-cell state versions, per-reload derivations, void and no-argument methods), 301617df (lifetime \"host\" refusals at serve), 00d8d049 (reload and retirement correctness, no leaked code generations) 39294a5e (failed IPC writes end the link) and aa9cf15b (protocol 3), with their Pi tests. Not ported (missing cases): b45e0ebc Link.send size reporting for windowed flow control by units and the protocol 4 frame changes. Pi tests: link.test.ts protocol 4 cases."
+disposition = "ported"
+evidence = ["test:chord/host/link_test.go#TestWebSocketLinkPacksLargePayloadsAsBinaryMessages", "test:chord/host/link_upstream_test.go#TestLinksPackedPayloadsOnlyPayloadsAboveTheThresholdArePackedTheReceiverUnpacksThem", "test:chord/host/flow_units_upstream_test.go#TestFlowUnitsALinkThatReportsNoSizesNeverHoldsStateBack"]
+rationale = "b45e0ebc: the payload fields of a packed frame are args and value only (a state frame carries its value in `value`, link.go), and Link.Send reports the size flow control counts (a link that reports none never fills the window)."
 
 [[files]]
 path = "packages/chord/src/loader.ts"
@@ -494,9 +494,9 @@ rationale = "Removed in Pi 1.2.0 together with the facet bundle loaders. PiG rem
 [[files]]
 path = "packages/chord/src/object.ts"
 change = "added"
-disposition = "deferred"
-evidence = []
-rationale = "Owner-approved release exception for PiG 0.5.0 (owner decision 2026-10-15T02:15Z, option B: pin b06c1f2c with Chord protocol 3 and 4 finished in 0.5.1; recorded in handoffs/release-0.5.0/chord-S3-plan.md). Ported in this file: Pi 2688aba7 (terminology, object variants, link protocol version 2 with onProtocolMismatch, object lifetime), d20c6e96 (declarations by name, per-cell state versions, per-reload derivations, void and no-argument methods), 301617df (lifetime \"host\" refusals at serve), 00d8d049 (reload and retirement correctness, no leaked code generations) 39294a5e (failed IPC writes end the link) and aa9cf15b (protocol 3), with their Pi tests. aa9cf15b is ported: state init (ObjectImpl.initCellsPromise: init runs in a root of its own after resources are open and references live, before the object goes live; an added cell runs init during reload prepare) and the principals the app supplies, with state_init_upstream_test.go. Not ported (missing cases): b45e0ebc activation waits for references ready and hydrated within readyTimeout (unavailable/ready_timeout), awaited ctx.get, not_ready and not_in_variant reads. Pi tests: hydration.test.ts, awaiting.test.ts, variants.test.ts."
+disposition = "ported"
+evidence = ["test:chord/host/awaiting_upstream_test.go#TestAwaitingACtxGetStillWaitingWhenItsCallSettlesRejectsAbortedAndReleasesItsReference", "test:chord/host/awaiting_upstream_test.go#TestAwaitingCtxGetResolvesHydratedTheCallsReferenceIsReleasedWhenTheCallEnds", "test:chord/host/hydration_upstream_test.go#TestHydrationAReferenceCycleAcrossHostsFailsAtReadyTimeoutWithACycleHint", "test:chord/host/hydration_upstream_test.go#TestHydrationAHostObjectOfAChildHoldingTheParentsObjectGoesLiveOnceTheParentAdmitsTheChild", "test:chord/host/host_upstream_test.go#TestHostStateMembersAreLateBoundReadablesValuesThenSnapshotResetOpsEvents", "test:chord/host/state_upstream_test.go#TestStatePublishesSnapshotsThenExactOpsDerivationsFollow"]
+rationale = "aa9cf15b (principals, placement checks, state init) and b45e0ebc: awaitReady and Ctx.Get blocking until the reference is ready with the closing signal of the ctx, withinReadyTimeout and waitHydrated after open (an object goes live only with its state), MemberReadable that throws not_ready and not_in_variant, hydrates, and gives a listener added while loading its snapshot once readable (the `unseen` listeners), and a shape without a code version (object.go)."
 
 [[files]]
 path = "packages/chord/src/publish.ts"
@@ -515,16 +515,16 @@ rationale = "Pi 3daa2028..b06c1f2c changes this file only in commits PiG ports f
 [[files]]
 path = "packages/chord/src/reload.ts"
 change = "added"
-disposition = "deferred"
-evidence = []
-rationale = "Owner-approved release exception for PiG 0.5.0 (owner decision 2026-10-15T02:15Z, option B: pin b06c1f2c with Chord protocol 3 and 4 finished in 0.5.1; recorded in handoffs/release-0.5.0/chord-S3-plan.md). Ported in this file: Pi 2688aba7 (terminology, object variants, link protocol version 2 with onProtocolMismatch, object lifetime), d20c6e96 (declarations by name, per-cell state versions, per-reload derivations, void and no-argument methods), 301617df (lifetime \"host\" refusals at serve), 00d8d049 (reload and retirement correctness, no leaked code generations) 39294a5e (failed IPC writes end the link) and aa9cf15b (protocol 3), with their Pi tests. aa9cf15b is ported: init of cells a reload adds (prepareObject, and at the gate) before the derivations are checked, and the placement refusal when a facet is loaded (serveInto), with state_init_upstream_test.go and placement_upstream_test.go. Not ported (missing cases): b45e0ebc dryRun ignoring not_ready/not_in_variant and reload-changed members sent as units. Pi tests: reload.test.ts and state-init.test.ts protocol 3/4 cases."
+disposition = "ported"
+evidence = ["test:chord/host/hydration_upstream_test.go#TestHydrationAReloadPreparesAfterWhatTheChangedObjectForwardsHasItsValue", "test:chord/host/state_init_upstream_test.go#TestStateInitReloadKeepsAnExistingCellWithoutRunningInitACellTheReloadAddsRunsInitWhileItPrepares", "test:chord/host/state_init_upstream_test.go#TestStateInitReloadInAGatedReloadAnAddedCellRunsInitAtTheGate"]
+rationale = "aa9cf15b (state init for the cells a reload adds, at prepare and at the gate) and b45e0ebc: prepare waits for the hydration of what a changed object forwards or derives from (waitHydrated), and the dry run reads a source with candidateValue, which treats not_ready and not_in_variant as no value (reload.go)."
 
 [[files]]
 path = "packages/chord/src/remote.ts"
 change = "added"
-disposition = "deferred"
-evidence = []
-rationale = "Owner-approved release exception for PiG 0.5.0 (owner decision 2026-10-15T02:15Z, option B: pin b06c1f2c with Chord protocol 3 and 4 finished in 0.5.1; recorded in handoffs/release-0.5.0/chord-S3-plan.md). Ported in this file: Pi 2688aba7 (terminology, object variants, link protocol version 2 with onProtocolMismatch, object lifetime), d20c6e96 (declarations by name, per-cell state versions, per-reload derivations, void and no-argument methods), 301617df (lifetime \"host\" refusals at serve), 00d8d049 (reload and retirement correctness, no leaked code generations) 39294a5e (failed IPC writes end the link) and aa9cf15b (protocol 3), with their Pi tests. Not ported (missing cases): b45e0ebc shared bindings and views (RemoteBinding/RemoteRef views with their own status, observers and release), state kept while held, hydration-before-ready, variant-discriminated member access, GetOptions.state:false. Pi tests: bindings.test.ts, hydration.test.ts, variants.test.ts."
+disposition = "ported"
+evidence = ["test:chord/host/bindings_upstream_test.go#TestBindingsNReferencesToOneObjectOneHoldOneSnapshotPerMemberOneFramePerChangeOneRelease", "test:chord/host/bindings_upstream_test.go#TestHydrationOverALinkNullEmptyAndUndefinedValuesHydrateAStateFreeVariantIsReadyAFailedSnapshotRejects", "test:chord/host/bindings_upstream_test.go#TestHydrationOverALinkReadingBeforeTheFirstHydrationThrowsNotReady", "test:chord/host/bindings_upstream_test.go#TestMethodOnlyReferencesTransferNoStateAloneAFullReferenceJoiningStartsItOnceItsReleaseStopsIt", "test:chord/host/variants_upstream_test.go#TestVariantsANewVariantsMembersArriveWithItsShapeAMemberOutsideTheVariantThrowsNotInVariant", "test:chord/host/variants_upstream_test.go#TestReHoldAfterALinkLossKeepsTheLastValuesReadableSendsOneFreshUnitAndAReferenceJoiningMeanwhileWaitsForIt"]
+rationale = "b45e0ebc: RemoteBinding, one per host and key and shared by every reference, with its views (RemoteRef: own owner, status, observers and Release), units applied only once their snapshots are here, state kept while re-holding (detached), hydration before ready, variant-discriminated member reads (not_in_variant, not_ready), method-only views (state:false) and the state wish synced to the provider (sub and unsub), shaped, state, gone, close and call (remote.go)."
 
 [[files]]
 path = "packages/chord/src/schema.ts"
@@ -613,23 +613,23 @@ rationale = "state.ts replaces 1.1.0 services/state.ts. Its 1.2.0 port is chord/
 [[files]]
 path = "packages/chord/src/types.ts"
 change = "modified"
-disposition = "deferred"
-evidence = []
-rationale = "Owner-approved release exception for PiG 0.5.0 (owner decision 2026-10-15T02:15Z, option B: pin b06c1f2c with Chord protocol 3 and 4 finished in 0.5.1; recorded in handoffs/release-0.5.0/chord-S3-plan.md). Ported in this file: Pi 2688aba7 (terminology, object variants, link protocol version 2 with onProtocolMismatch, object lifetime), d20c6e96 (declarations by name, per-cell state versions, per-reload derivations, void and no-argument methods), 301617df (lifetime \"host\" refusals at serve), 00d8d049 (reload and retirement correctness, no leaked code generations) 39294a5e (failed IPC writes end the link) and aa9cf15b (protocol 3), with their Pi tests. aa9cf15b type changes with runtime meaning are ported (GetOptions.at removed, HostOptions.self, ConnectOptions.principal, Route.principal required). Not ported (missing cases): the b45e0ebc ones (GetOptions.state/signal, HostOptions.linger/readyTimeout, Shape.codeVersion removed). Compile-time-only generics (Ctx<P>, ImplementationOf<C,P>, types.test.ts expectTypeOf) have no Go form."
+disposition = "ported"
+evidence = ["test:chord/host/awaiting_upstream_test.go#TestAwaitingCtxGetResolvesHydratedTheCallsReferenceIsReleasedWhenTheCallEnds", "test:chord/host/bindings_upstream_test.go#TestProtocolVersion4AVersion3PeerIsRefusedShapesCarryNoCodeVersion", "test:chord/host/bindings_upstream_test.go#TestMethodOnlyReferencesTransferNoStateAloneAFullReferenceJoiningStartsItOnceItsReleaseStopsIt"]
+rationale = "aa9cf15b typed principals (Principal is any in Go) and b45e0ebc: GetOptions.State and Signal, Ctx.Get blocking until the reference is ready, and Shape without a code version (types.go). The StateSource type is type-only."
 
 [[files]]
 path = "packages/chord/src/websocket.ts"
 change = "added"
-disposition = "deferred"
-evidence = []
-rationale = "Owner-approved release exception for PiG 0.5.0 (owner decision 2026-10-15T02:15Z, option B: pin b06c1f2c with Chord protocol 3 and 4 finished in 0.5.1; recorded in handoffs/release-0.5.0/chord-S3-plan.md). Ported in this file: Pi 2688aba7 (terminology, object variants, link protocol version 2 with onProtocolMismatch, object lifetime), d20c6e96 (declarations by name, per-cell state versions, per-reload derivations, void and no-argument methods), 301617df (lifetime \"host\" refusals at serve), 00d8d049 (reload and retirement correctness, no leaked code generations) 39294a5e (failed IPC writes end the link) and aa9cf15b (protocol 3), with their Pi tests. Not ported (missing cases): b45e0ebc send size reporting for flow control. Pi tests: websocket.test.ts protocol 4 cases."
+disposition = "ported"
+evidence = ["test:chord/host/websocket_upstream_test.go#TestWebSocketLinksPackedPayloadsLargeSnapshotsAndResultsReachTheClientAsBinaryMessagesClientsMayNotSendThem", "test:chord/host/link_test.go#TestWebSocketLinkPacksLargePayloadsAsBinaryMessages"]
+rationale = "aa9cf15b: the principal type is a parameter of AcceptWebSockets and of the host (Principal is any in Go, so the authenticator's principal reaches AcceptOptions unchanged; websocket.go). b45e0ebc does not change the file; the packed state value it changes is link.ts, which this transport sends and receives."
 
 [[files]]
 path = "packages/chord/src/wire.ts"
 change = "added"
-disposition = "deferred"
-evidence = []
-rationale = "Owner-approved release exception for PiG 0.5.0 (owner decision 2026-10-15T02:15Z, option B: pin b06c1f2c with Chord protocol 3 and 4 finished in 0.5.1; recorded in handoffs/release-0.5.0/chord-S3-plan.md). Ported in this file: Pi 2688aba7 (terminology, object variants, link protocol version 2 with onProtocolMismatch, object lifetime), d20c6e96 (declarations by name, per-cell state versions, per-reload derivations, void and no-argument methods), 301617df (lifetime \"host\" refusals at serve), 00d8d049 (reload and retirement correctness, no leaked code generations) 39294a5e (failed IPC writes end the link) and aa9cf15b (protocol 3), with their Pi tests. aa9cf15b is ported: PROTOCOL_VERSION is 3, the remote contract token carries its placement (host) in the frame schema, and the frame schema hash equals Pi aa9cf15b's (41fdefa9253641bd). Not ported (missing cases): PROTOCOL_VERSION 4 frames: hold token/origin/state/again, shape {variant, members, contract, state}, sub/unsub/resync by hold, state {hold, m, as, value}. PiG speaks link protocol 3, so a PiG chord peer and a Pi b06c1f2c chord peer (4) refuse each other with protocol-version."
+disposition = "ported"
+evidence = ["test:chord/host/wire_test.go#TestFrameSchemaIsPiFrameSchema", "test:chord/host/wire_test.go#TestFramesRoundTrip", "test:chord/host/bindings_upstream_test.go#TestProtocolVersion4AVersion3PeerIsRefusedShapesCarryNoCodeVersion"]
+rationale = "aa9cf15b (hold token placement, protocol 3) and b45e0ebc (protocol 4): the hold frame carries origin, state:false and again; the shape frame lists its state members and carries no code version; sub, unsub and resync by hold; the state frame is addressed by hold and member (as: snap, reset, ops or error); the frame schema hashes to 678648a861625402 over 7361 characters, as Pi's (wire.go, ProtocolVersion 4)."
 
 [[files]]
 path = "packages/codemode/src/cloudflare-modules.d.ts"

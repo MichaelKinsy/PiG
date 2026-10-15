@@ -156,6 +156,7 @@ func serveViews(t *testing.T, serve Serve) {
 	}
 }
 
+// mustGetRef is `await host.get(...)` (tutorial.test.ts, b45e0ebc): the reference once it is ready.
 func mustGetRef(t *testing.T, host *HostImpl, typ *Contract, input any, options *GetOptions) Ref {
 	t.Helper()
 	ref, err := host.Get(typ, input, options)
@@ -457,23 +458,19 @@ func TestTutorial06RemoteMethodsAndLiveStateOverAMemoryLink(t *testing.T) {
 	browser := CreateHost(HostOptions{Self: "browser", Name: "browser", Kind: KindClient, Upstream: &UpstreamOptions{Link: up, ConnectOptions: ConnectOptions{Principal: "server"}}})
 	closeHost(t, browser)
 	todos := mustGetRef(t, browser, tutorialTodos, family(), nil)
-	hydrated, updated := newSignal(), newSignal()
+	if variant := todos.Variant(); variant == nil || *variant != "editor" {
+		t.Fatalf("variant %v, want editor", variant)
+	}
 	rows := readable(t, todos, "rows")
+	if got := jsonText(t, rows.Value()); got != "[]" {
+		t.Fatalf("rows = %s", got)
+	}
+	updated := newSignal()
 	stop := rows.Subscribe(func(value any) {
-		if value != nil {
-			hydrated.resolve()
-		}
 		if list, ok := value.([]any); ok && len(list) == 1 {
 			updated.resolve()
 		}
 	})
-	if err := readyErr(t, todos); err != nil {
-		t.Fatal(err)
-	}
-	hydrated.wait(t)
-	if got := jsonText(t, rows.Value()); got != "[]" {
-		t.Fatalf("rows = %s", got)
-	}
 	if _, err := browser.Root(func(ctx Ctx) (any, error) { return callMember(todos, "add", text("Buy milk"), ctx) }, RootOptions{}); err != nil {
 		t.Fatal(err)
 	}
@@ -486,8 +483,9 @@ func TestTutorial06RemoteMethodsAndLiveStateOverAMemoryLink(t *testing.T) {
 		t.Fatalf("malformed add = %v", err)
 	}
 	stop()
-	if value := rows.Value(); value != nil {
-		t.Fatalf("rows after unsubscribe = %s, want undefined", jsonText(t, value))
+	// A held reference keeps its state without listeners.
+	if got := jsonText(t, rows.Value()); got != `[{"text":"Buy milk","done":false}]` {
+		t.Fatalf("rows after unsubscribe = %s", got)
 	}
 	todos.Release()
 }

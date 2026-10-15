@@ -147,7 +147,7 @@ func serverWithWorker(t *testing.T, workerName string) workerPair {
 // mustGet gets the server's counter named name.
 func mustGet(t *testing.T, host *HostImpl, name string) Ref {
 	t.Helper()
-	ref, err := host.Get(linkCounter, map[string]any{"name": name}, nil)
+	ref, err := host.Hold(linkCounter, map[string]any{"name": name}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -157,7 +157,7 @@ func mustGet(t *testing.T, host *HostImpl, name string) Ref {
 // mustGetSession gets the counter named name on session host `session:`+session.
 func mustGetSession(t *testing.T, host *HostImpl, session, name string) Ref {
 	t.Helper()
-	ref, err := host.Get(linkSessionCounter, map[string]any{"session": session, "name": name}, nil)
+	ref, err := host.Hold(linkSessionCounter, map[string]any{"session": session, "name": name}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -258,17 +258,18 @@ func TestLinksStateMembersSnapshotThenDeltaOps(t *testing.T) {
 	waitFor(t, "two ops", func() bool {
 		mu.Lock()
 		defer mu.Unlock()
-		return len(events) == 4
+		return len(events) == 3
 	})
 	if got := jsonText(t, count.Value()); got != `{"n":2}` {
 		t.Fatalf("value = %s", got)
 	}
 	mu.Lock()
 	defer mu.Unlock()
-	if !slices.Equal(events, []string{"snap", "reset", "ops", "ops"}) {
+	// Listeners added before the hydration get the snapshot then (not undefined first).
+	if !slices.Equal(events, []string{"snap", "ops", "ops"}) {
 		t.Fatalf("events = %v", events)
 	}
-	if !slices.Equal(values, []string{"null", `{"n":0}`, `{"n":1}`, `{"n":2}`}) {
+	if !slices.Equal(values, []string{`{"n":0}`, `{"n":1}`, `{"n":2}`}) {
 		t.Fatalf("values = %v", values)
 	}
 }
@@ -673,13 +674,8 @@ func TestLinksAfterAReconnectSubscribersGetAResetAndCallsWork(t *testing.T) {
 	waitFor(t, "n = 1", func() bool { return jsonText(t, count.Value()) == `{"n":1}` })
 	mu.Lock()
 	defer mu.Unlock()
-	resets := 0
-	for _, event := range events {
-		if event == string(StateEventReset) {
-			resets++
-		}
-	}
-	if resets < 2 {
+	// The first hydration is the listener's snapshot; the re-hold's snapshot is a reset.
+	if len(events) == 0 || events[0] != string(StateEventSnap) || !slices.Contains(events, string(StateEventReset)) {
 		t.Fatalf("events = %v", events)
 	}
 }
@@ -734,7 +730,7 @@ func TestLinksMethodsWithoutArgumentsOrResultTravelWithoutArgsAndWithoutAValueAn
 	up := &sendRecorder{Link: upLink}
 	browser := CreateHost(HostOptions{Self: kindHost(), Name: "browser", Kind: "client", Upstream: &UpstreamOptions{Link: up, ConnectOptions: ConnectOptions{Principal: kindServer()}}, OnError: func(error) {}})
 	t.Cleanup(func() { _ = browser.Close() })
-	ref, err := browser.Get(tool, map[string]any{}, nil)
+	ref, err := browser.Hold(tool, map[string]any{}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -936,7 +932,7 @@ func TestLinksPackedPayloadsLargeArgsResultsAndSnapshotsCrossARelayDeflatedAndAr
 	}
 	browser := CreateHost(HostOptions{Self: kindHost(), Name: "browser", Kind: KindClient, Upstream: &UpstreamOptions{Link: up, ConnectOptions: ConnectOptions{Principal: kindServer()}}, OnError: func(error) {}})
 	t.Cleanup(func() { _ = browser.Close() })
-	big, err := browser.Get(linkBig, map[string]any{}, nil)
+	big, err := browser.Hold(linkBig, map[string]any{}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -961,7 +957,7 @@ func TestLinksPackedPayloadsOnlyPayloadsAboveTheThresholdArePackedTheReceiverUnp
 	for _, frame := range []Frame{
 		ResultFrame{ID: 1, Value: large("v"), HasValue: true},
 		ResultFrame{ID: 2, Value: []any{"small"}, HasValue: true},
-		StateFrame{ID: 3, Snap: large("s"), HasSnap: true},
+		StateFrame{Hold: 3, M: "notes", As: "snap", Value: large("s"), HasValue: true},
 	} {
 		if _, err := a.Send(frame); err != nil {
 			t.Fatal(err)
@@ -996,7 +992,7 @@ func TestLinksPackedPayloadsOnlyPayloadsAboveTheThresholdArePackedTheReceiverUnp
 	if !ok {
 		t.Fatalf("third frame %#v", received[2])
 	}
-	unpacked(snap.Snap, large("s"))
+	unpacked(snap.Value, large("s"))
 
 	// A relay forwards the packed bytes as they are.
 	c, d := MemoryLinkPair()

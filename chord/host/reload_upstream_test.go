@@ -101,7 +101,7 @@ func reloadInstall(t *testing.T, host *HostImpl, facet *Facet) {
 
 func reloadGet(t *testing.T, host *HostImpl, typ *Contract, input any) Ref {
 	t.Helper()
-	ref, err := host.Get(typ, input, nil)
+	ref, err := host.Hold(typ, input, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -217,10 +217,10 @@ func TestReloadCompatibleReloadNoGatePinnedRootsKeepOldCodeStatePreservedPreviou
 	})
 	entered.wait()
 	var shapesMu sync.Mutex
-	var shapes []int
+	var shapes []string
 	ref.OnShape(func(shape Shape) {
 		shapesMu.Lock()
-		shapes = append(shapes, shape.CodeVersion)
+		shapes = append(shapes, shape.Contract)
 		shapesMu.Unlock()
 	})
 	report, err := host.Reload(reloadPlugins(reloadGreeterFacet(reloadGreeterSpec{greeting: "hi"})), ReloadOptions{})
@@ -236,8 +236,8 @@ func TestReloadCompatibleReloadNoGatePinnedRootsKeepOldCodeStatePreservedPreviou
 	shapesMu.Lock()
 	gotShapes := slices.Clone(shapes)
 	shapesMu.Unlock()
-	if !slices.Equal(gotShapes, []int{report.CodeVersion}) {
-		t.Fatalf("shapes = %v, want [%d]", gotShapes, report.CodeVersion)
+	if len(gotShapes) != 1 {
+		t.Fatalf("shapes = %v, want one shape push at the commit", gotShapes)
 	}
 	if previous, ok := host.PreviousCodeVersion(); !ok || previous != report.Previous {
 		t.Fatalf("previousCodeVersion = %d %v, want %d", previous, ok, report.Previous)
@@ -1051,7 +1051,7 @@ func TestReloadTheGateRejectsNewObjectsOfAChangedTypeAfterCommitTheyGetTheNewCod
 		return host.Reload(reloadPlugins(reloadGreeterFacet(reloadGreeterSpec{greeting: "hi", state: &StateOptions{Version: 2}})), ReloadOptions{})
 	})
 	reloadUntilUpgradeConflict(t, ref)
-	if _, err := host.Get(reloadGreeter, map[string]any{"id": "late"}, nil); !reloadIsCode(err, CodeUpgradeConflict) || !reloadRetryable(err) {
+	if _, err := host.Hold(reloadGreeter, map[string]any{"id": "late"}, nil); !reloadIsCode(err, CodeUpgradeConflict) || !reloadRetryable(err) {
 		t.Fatalf("get late during the gate: %v", err)
 	}
 	gogo.open()

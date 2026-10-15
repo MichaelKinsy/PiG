@@ -8,6 +8,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math"
 	"math/rand/v2"
 	"os"
 	"reflect"
@@ -110,6 +111,12 @@ type HostOptions struct {
 	// TaskStopDeadline is how long a reload waits for an object's aborted tasks to finish before it starts their
 	// replacements anyway (reported). Nil is Pi's undefined: 5000 ms.
 	TaskStopDeadline *time.Duration
+	// ReadyTimeout is how long an awaited Get waits for its reference to be ready, and an object waits for the
+	// references it holds to be ready and hydrated, before it fails unavailable/ready_timeout. Nil is Pi's undefined:
+	// 60000 ms; math.MaxInt64 is Pi's Infinity (no timeout).
+	ReadyTimeout *time.Duration
+	// Linger keeps a remote reference's binding after its last reference was released (consumer side).
+	Linger *LingerOptions
 	// Loader is needed for Load/Reload with modules.
 	Loader FacetLoader
 	// Kind is KindClient (browser: never a reload participant, never carries roots or code versions) or KindHost (default).
@@ -117,6 +124,14 @@ type HostOptions struct {
 	// Upstream is the link to this host's parent (server) and the principal its own requests act as. It can also be set
 	// later with Connect.
 	Upstream *UpstreamOptions
+}
+
+// LingerOptions are HostOptions.Linger: when the last reference to a remote object is released, its binding stays held
+// for Types[type name] so a quick re-get reuses the hold and its hydrated state. At most Cap bindings (nil: 4) linger;
+// beyond, the least recently released go first. Types not listed do not linger.
+type LingerOptions struct {
+	Types map[string]time.Duration
+	Cap   *int
 }
 
 // UpstreamOptions are HostOptions.Upstream: the link to the parent with Connect's options.
@@ -218,8 +233,14 @@ type HostImpl struct {
 	// connections are the open links, in the order they were added.
 	connections *orderedMap[*Connection, struct{}]
 	upstream    *Connection
-	// remotes are the remote references this host holds (re-held after an upstream reconnect).
-	remotes      *orderedMap[*RemoteRef, struct{}]
+	// bindings are the shared bindings of this host's remote references, by key (re-held after an upstream reconnect).
+	bindings *orderedMap[string, *RemoteBinding]
+	// lingering are the bindings without references that linger, least recently released first.
+	lingering    *orderedMap[string, *RemoteBinding]
+	lingerTypes  map[string]time.Duration
+	lingerCap    int
+	originSeq    int
+	readyTimeout time.Duration
 	routes       map[string]Route
 	childReloads *ChildReloads
 	// remoteModules are child facet modules by host-name prefix, from every committed cluster reload (for reconciling
@@ -282,7 +303,8 @@ func CreateHost(options HostOptions) *HostImpl {
 		facets:             newOrderedMap[string, Facet](),
 		hostObjects:        newOrderedMap[string, RefCore](),
 		connections:        newOrderedMap[*Connection, struct{}](),
-		remotes:            newOrderedMap[*RemoteRef, struct{}](),
+		bindings:           newOrderedMap[string, *RemoteBinding](),
+		lingering:          newOrderedMap[string, *RemoteBinding](),
 		routes:             map[string]Route{},
 		remoteModules:      map[string][]string{},
 		remoteRemoved:      map[string][]string{},
@@ -318,6 +340,17 @@ func CreateHost(options HostOptions) *HostImpl {
 	}
 	host.childReloads = newChildReloads(host)
 	host.taskStopDeadline = deadlineOr(options.TaskStopDeadline)
+	host.readyTimeout = defaultReadyTimeout
+	if options.ReadyTimeout != nil {
+		host.readyTimeout = *options.ReadyTimeout
+	}
+	host.lingerCap = defaultLingerCap
+	if options.Linger != nil {
+		host.lingerTypes = options.Linger.Types
+		if options.Linger.Cap != nil {
+			host.lingerCap = *options.Linger.Cap
+		}
+	}
 	host.current = newCodeVersionState(host.codeVersionSeq, newOrderedMap[string, *Service]())
 	host.codeVersions.Set(host.current.id, host.current)
 	if options.Upstream != nil {
@@ -325,6 +358,15 @@ func CreateHost(options HostOptions) *HostImpl {
 	}
 	return host
 }
+
+const (
+	// defaultReadyTimeout is Pi's `options.readyTimeout ?? 60_000`.
+	defaultReadyTimeout = 60 * time.Second
+	// defaultLingerCap is Pi's `options.linger?.cap ?? 4`.
+	defaultLingerCap = 4
+	// neverReady is a ReadyTimeout that never fires (Pi's Infinity: `Number.isFinite(ms)` is false).
+	neverReady = time.Duration(math.MaxInt64)
+)
 
 // isSelf reports whether principal is the host's own: the same key as Self.
 func (host *HostImpl) isSelf(principal Principal) bool {
@@ -635,7 +677,7 @@ func (host *HostImpl) addressOf(typ *Contract, input any, principal Principal, c
 		return "", err
 	}
 	if elsewhere != nil {
-		return remoteAddress(typ, elsewhere.input, principal, !host.isSelf(principal)), nil
+		return host.remoteKey(typ, elsewhere.input, principal), nil
 	}
 	service := host.bindingService(typ.Name, candidate)
 	if service == nil {
@@ -702,11 +744,22 @@ func (host *HostImpl) locate(service *Service, input any, principal Principal) (
 		}
 		principal = host.principal
 	}
-	key := "host"
-	if !host.isSelf(principal) {
-		key = "p:" + host.principalKey(principal)
+	return located{address: name + "\x00" + identity + "\x00" + host.principalPart(principal), normalized: normalized, principal: principal}, nil
+}
+
+// principalPart is the principal's part of an address: "host" for the host's own.
+func (host *HostImpl) principalPart(principal Principal) string {
+	if host.isSelf(principal) {
+		return "host"
 	}
-	return located{address: name + "\x00" + identity + "\x00" + key, normalized: normalized, principal: principal}, nil
+	return "p:" + host.principalKey(principal)
+}
+
+// remoteKey is the key of a remote binding: type, input identity (fields equal to their defaults omitted, as for local
+// objects), principal key and the consumer's contract fingerprint. No host name: the type and the input decide where it
+// lives.
+func (host *HostImpl) remoteKey(typ *Contract, normalized any, principal Principal) string {
+	return "@" + typ.Name + "\x00" + CanonicalIdentity(typ.Input, normalized) + "\x00" + host.principalPart(principal) + "\x00" + typ.Fingerprint
 }
 
 func (host *HostImpl) acquire(typ *Contract, input any, options *GetOptions, owner RefOwner, from *ObjectImpl, candidate bool) (RefCore, error) {
@@ -1309,8 +1362,26 @@ func recoveredError(recovered any) error {
 
 // ─── public API ───
 
-// Get holds the object of typ for input (options.At: on another host) and returns its reference.
-func (host *HostImpl) Get(typ *Contract, input any, options *GetOptions) (ref Ref, err error) {
+// Get holds the object of typ for input and returns its reference once it is ready: live, with every state member of
+// its variant (unless options.State is false). It fails with the activation error, aborted when options.Signal is
+// cancelled, or unavailable/ready_timeout after HostOptions.ReadyTimeout; the reference is released then.
+func (host *HostImpl) Get(typ *Contract, input any, options *GetOptions) (Ref, error) {
+	ref, err := host.Hold(typ, input, options)
+	if err != nil {
+		return nil, err
+	}
+	var signals []context.Context
+	if options != nil && options.Signal != nil {
+		signals = append(signals, options.Signal)
+	}
+	if err := awaitReady(host, ref.(RefCore), signals, host.readyTimeout); err != nil {
+		return nil, err
+	}
+	return ref, nil
+}
+
+// Hold is the synchronous form of Get: the reference at once, possibly still loading (Ready waits for it).
+func (host *HostImpl) Hold(typ *Contract, input any, options *GetOptions) (ref Ref, err error) {
 	host.run(func() {
 		var hold RefCore
 		if hold, err = host.acquire(typ, input, options, "external", nil, false); err == nil {
@@ -1376,14 +1447,20 @@ func (host *HostImpl) Accept(link Link, options AcceptOptions) error {
 		name = options.Name
 	}
 	host.run(func() {
-		host.addConnection(link, connectionConfig{
+		config := connectionConfig{
 			role:      "downstream",
 			principal: options.Principal,
 			peer:      Peer{kind: kind, name: name},
 			restamp:   options.Restamp,
 			options:   options.LinkOptions,
 			maxCalls:  options.MaxCalls,
-		})
+		}
+		// Holds over a client link carry its id as their origin (also when relayed), so hosts can tell clients apart.
+		if kind == KindClient {
+			host.originSeq++
+			config.originID = host.incarnation + ":" + strconv.Itoa(host.originSeq)
+		}
+		host.addConnection(link, config)
 	})
 	return nil
 }
@@ -1401,10 +1478,10 @@ func (host *HostImpl) Connect(link Link, options ConnectOptions) {
 		}
 		connection := host.addConnection(link, connectionConfig{role: "upstream", principal: options.Principal, peer: Peer{kind: KindHost}, options: options.LinkOptions})
 		host.upstream = connection
-		// Remote references that lost their link re-hold over the new one; state subscribers get a reset.
-		for _, ref := range host.remotes.Keys() {
-			if ref.binding == nil {
-				connection.hold(ref)
+		// Bindings that lost their link re-hold over the new one (again: they keep their values meanwhile).
+		for _, binding := range host.bindings.Values() {
+			if binding.hold == nil && !binding.ended() {
+				connection.hold(binding, binding.applied)
 			}
 		}
 	})
@@ -1516,7 +1593,33 @@ func (host *HostImpl) connectionClosed(connection *Connection) {
 	}
 }
 
-func (host *HostImpl) forgetRemote(ref *RemoteRef) { host.remotes.Delete(ref) }
+// bindingIdle: the last reference to binding was released: it lingers if its type does (HostOptions.Linger), else
+// closes.
+func (host *HostImpl) bindingIdle(binding *RemoteBinding) {
+	ms := host.lingerTypes[binding.contract.Name]
+	// A binding that never had a shape has nothing worth keeping.
+	if ms <= 0 || binding.ended() || !binding.applied || host.lingerCap <= 0 {
+		binding.close()
+		return
+	}
+	binding.lingerStop = host.after(ms, binding.close)
+	host.lingering.Set(binding.key, binding)
+	for _, oldest := range host.lingering.Values() {
+		if host.lingering.Len() <= host.lingerCap {
+			break
+		}
+		oldest.close()
+	}
+}
+
+func (host *HostImpl) forgetBinding(binding *RemoteBinding) {
+	if current, ok := host.bindings.Get(binding.key); ok && current == binding {
+		host.bindings.Delete(binding.key)
+	}
+	if current, ok := host.lingering.Get(binding.key); ok && current == binding {
+		host.lingering.Delete(binding.key)
+	}
+}
 
 // childNamed is a downstream host connection by its configured name (never by what a peer announced).
 func (host *HostImpl) childNamed(name string) *Connection {
@@ -1528,38 +1631,51 @@ func (host *HostImpl) childNamed(name string) *Connection {
 	return nil
 }
 
-// acquireRemote is a reference to an object on host at; input is normalized with typ (the hold carries it so).
+// acquireRemote is a reference to an object on host at: a view onto the binding for its key, created (and held) if
+// there is none. input is normalized with typ (the hold carries it so).
 func (host *HostImpl) acquireRemote(typ *Contract, at string, input any, options *GetOptions, owner RefOwner) (RefCore, error) {
 	var principal Principal
 	hasPrincipal := options != nil && options.HasPrincipal && !host.isSelf(options.Principal)
 	if hasPrincipal {
 		principal = options.Principal
 	}
-	ref := newRemoteRef(host, remoteRefFields{
-		contract:     typ,
-		at:           at,
-		input:        input,
-		principal:    principal,
-		hasPrincipal: hasPrincipal,
-		owner:        owner,
-		address:      remoteAddress(typ, input, principal, hasPrincipal),
-	})
-	host.remotes.Set(ref, struct{}{})
+	keyPrincipal := host.principal
+	if hasPrincipal {
+		keyPrincipal = principal
+	}
+	key := host.remoteKey(typ, input, keyPrincipal)
+	binding, _ := host.bindings.Get(key)
+	fresh := binding == nil || binding.ended()
+	if fresh {
+		binding = newRemoteBinding(host, key, typ, at, input, principal, hasPrincipal)
+		host.bindings.Set(key, binding)
+	}
+	ref := newRemoteRef(binding, owner, options == nil || options.State == nil || *options.State)
+	host.lingering.Delete(key)
+	binding.addView(ref)
+	if fresh {
+		host.hold(binding)
+	}
+	return ref, nil
+}
+
+// hold holds binding over the link to its host: the parent's, a child's, or one a route resolves.
+func (host *HostImpl) hold(binding *RemoteBinding) {
 	bindWhenSynced := func(connection *Promise[*Connection]) {
 		connection.then(func(target *Connection, err error) {
 			if err != nil {
-				ref.gone(err)
+				binding.gone(err)
 				return
 			}
-			if ref.Status() == RefLoading && ref.binding == nil {
-				target.hold(ref)
+			if !binding.ended() && binding.hold == nil {
+				target.hold(binding, false)
 			}
 		})
 	}
-	direct := host.childNamed(at)
+	direct := host.childNamed(binding.at)
 	switch {
 	case host.upstream != nil:
-		host.upstream.hold(ref)
+		host.upstream.hold(binding, false)
 	case direct != nil:
 		synced, resolve, reject := newPromise[*Connection](&host.loop)
 		direct.whenSynced().then(func(_ struct{}, err error) {
@@ -1571,17 +1687,17 @@ func (host *HostImpl) acquireRemote(typ *Contract, at string, input any, options
 		})
 		bindWhenSynced(synced)
 	default:
-		route, ok := host.routeFor(at)
+		route, ok := host.routeFor(binding.at)
 		if !ok {
-			ref.gone(NewChordError(CodeUnavailable, "no route to "+at, ChordErrorOptions{}))
+			binding.gone(NewChordError(CodeUnavailable, "no route to "+binding.at, ChordErrorOptions{}))
 			break
 		}
-		if !hasPrincipal {
-			principal = host.principal
+		principal := host.principal
+		if binding.hasPrincipal {
+			principal = binding.principal
 		}
-		bindWhenSynced(host.resolveRoute(route, at, principal, nil))
+		bindWhenSynced(host.resolveRoute(route, binding.at, principal, nil))
 	}
-	return ref, nil
 }
 
 // routeFor is the route of the longest prefix of hostName.
@@ -1802,6 +1918,9 @@ func (host *HostImpl) peekNextCodeVersion() int { return host.codeVersionSeq + 1
 func (host *HostImpl) Close() error {
 	var objects []*ObjectImpl
 	host.run(func() {
+		for _, binding := range host.lingering.Values() {
+			binding.close()
+		}
 		host.hostObjects.Clear()
 		for _, name := range host.facetRuns.Keys() {
 			host.facetRunChanged(name, nil)
@@ -1971,16 +2090,6 @@ func principalFields(principal Principal) (func(key string) any, bool) {
 		}, true
 	}
 	return nil, false
-}
-
-// remoteAddress is the address of a remote object here: no host name, since the type and its input decide where it
-// lives. hasPrincipal is false for the host's own principal.
-func remoteAddress(typ *Contract, input any, principal Principal, hasPrincipal bool) string {
-	key := "host"
-	if hasPrincipal {
-		key = CanonicalJSON(principal)
-	}
-	return "@" + typ.Name + "\x00" + CanonicalJSON(input) + "\x00" + key
 }
 
 func unknownType(typ, host string) *ChordError {

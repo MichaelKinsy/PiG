@@ -29,6 +29,10 @@ type LinkOptions struct {
 	// 256 KiB). It applies only when both ends acknowledge frames and the link reports sizes; math.MaxInt never holds
 	// state back.
 	Window *int
+	// PendingCap is the bytes of state ops that may wait for the peer on this link (default 4 windows). Beyond, the
+	// oldest waiting streams are replaced by their current value (a reset), so memory stays bounded however long the
+	// peer stalls.
+	PendingCap *int
 	// OnProtocolMismatch is called when the peer speaks another link protocol version (Peer is nil if it did not say): the
 	// link closes, and should not be reconnected with the same code. A browser reloads its page, for instance.
 	OnProtocolMismatch func(versions ProtocolVersions)
@@ -45,18 +49,38 @@ const defaultWindow = 256 * 1024
 // protocolVersionReason is the close reason of a link whose peer speaks another protocol version.
 var protocolVersionReason = regexp.MustCompile(`^protocol-version (\d+)$`)
 
-// pendingWindows: a waiting subscription keeps at most this many windows of ops; beyond, its current value replaces
-// them.
+// pendingWindows is the default cap of waiting state ops per link, in windows.
 const pendingWindows = 4
 
-// pendingState is what waits for one subscription: a snapshot, reset or error (base), then encoded ops to apply after
-// it, in order. Ops stay as they arrived (the receiving decoder validates them).
-type pendingState struct {
+// slot is what waits on a link. A unit slot (flush set) is lazy: the shape and snapshots are built from the current
+// values when it is sent. A state slot keeps a snapshot, reset or error (base) and encoded ops to apply after it, in
+// order (as they arrived; the receiving decoder validates them), or, once lazy, only the promise of a reset built at
+// flush.
+type slot struct {
+	unit  bool
+	hold  int
+	flush func()
+	// state slots
+	m       string
 	base    StateFrame
 	hasBase bool
 	ops     []delta.WireOp
 	size    int
+	lazy    bool
+	// overflow: how the stream recovers when its ops must be dropped: resend (the provider resends the current value
+	// as a reset at flush) or resync (a relay, which has no value, asks downstream for one).
+	resend func()
+	resync func()
 }
+
+// overflow is how a waiting stream recovers when its ops must be dropped.
+type overflow struct {
+	resend func()
+	resync func()
+}
+
+func stateKey(hold int, m string) string { return "s" + strconv.Itoa(hold) + "\x00" + m }
+func unitKey(hold int) string            { return "u" + strconv.Itoa(hold) }
 
 // AcceptOptions are the options of accepting a link.
 type AcceptOptions struct {
@@ -98,51 +122,74 @@ func unavailable(message string) *ChordError {
 	return NewChordError(CodeUnavailable, message, ChordErrorOptions{})
 }
 
-// served is a hold the peer made on this host: served locally or relayed to another link.
+// feed is a state member's stream to the consumer: its subscription and delta encoder.
+type feed struct {
+	unsubscribe func()
+	encoder     *delta.Encoder
+	// buffer holds the events that arrived while a unit or reset was being built (replayed after it is sent); buffering
+	// is false once they were replayed.
+	buffer    []StateEvent[any]
+	buffering bool
+}
+
+// served is a hold the peer made on this host: served locally (local) or relayed to another link.
 type served struct {
-	local     bool
+	local bool
+	relay *RelayRef
+	// the fields below are for a local hold
+	id        int
 	ref       *RefImpl
 	principal Principal
-	feeds     *orderedMap[int, struct{}]
-	relay     *RelayRef
+	// origin is the client connection it comes from (see HoldFrame.Origin); empty for a host's own holds.
+	origin string
+	// wantsState: the consumer wants state (hold without state: false, or sub).
+	wantsState bool
+	// again: the consumer had values before (re-hold): its first unit waits for the window like any other.
+	again bool
+	// unitSent: a unit was sent.
+	unitSent bool
+	// feeds are the members whose snapshot the consumer has, with their streams.
+	feeds *orderedMap[string, *feed]
 }
 
 // ─── relay ───────────────────────────────────────────────────────────────────
-
-type relaySub struct {
-	member string
-	downID int
-	hasID  bool
-}
 
 type relayCloseOptions struct {
 	releaseDown bool
 	notify      bool
 }
 
-// RelayRef is a hold relayed from an origin link to a downstream link. It owns everything done through it:
-// subscriptions and calls queued while the route resolves, and the downstream twins once forwarded. close undoes all
-// of it exactly once (cancels calls downstream, drops subscriptions, releases the downstream hold, rejects waiters).
+// RelayRef is a hold relayed from an origin link to a downstream link. It owns everything done through it: state and
+// calls queued while the route resolves, and the downstream twins once forwarded. close undoes all of it exactly once
+// (cancels calls downstream, drops what waits for the origin, releases the downstream hold, rejects waiters).
 type RelayRef struct {
 	origin    *Connection
 	frame     HoldFrame
 	principal Principal
-	client    bool
+	// originTag is the client connection the hold comes from (forwarded downstream); empty for a host's own holds.
+	originTag string
 	// generation is the origin's authorization generation when the hold arrived; a revocation bumps it.
 	generation int
 	down       *Connection
 	downID     int
 	closed     bool
-	calls      *orderedMap[int, *RelayCall]
-	subs       *orderedMap[int, *relaySub]
-	waiters    []*Promise[*Connection]
-	settle     map[*Promise[*Connection]]pending
+	// stateWanted: the origin wants state (forwarded as state: false, sub, unsub).
+	stateWanted bool
+	// urgent are the members of the first unit, still to forward past the origin's window.
+	urgent map[string]struct{}
+	shaped bool
+	// awaiting are the members whose ops this relay dropped: downstream ops are ignored until their reset arrives.
+	awaiting map[string]struct{}
+	calls    *orderedMap[int, *RelayCall]
+	waiters  []*Promise[*Connection]
+	settle   map[*Promise[*Connection]]pending
 }
 
-func newRelayRef(origin *Connection, frame HoldFrame, principal Principal, client bool) *RelayRef {
+func newRelayRef(origin *Connection, frame HoldFrame, principal Principal, originTag string) *RelayRef {
 	return &RelayRef{
-		origin: origin, frame: frame, principal: principal, client: client, generation: origin.generation,
-		calls: newOrderedMap[int, *RelayCall](), subs: newOrderedMap[int, *relaySub](),
+		origin: origin, frame: frame, principal: principal, originTag: originTag, generation: origin.generation,
+		stateWanted: !frame.NoState, awaiting: map[string]struct{}{},
+		calls:  newOrderedMap[int, *RelayCall](),
 		settle: map[*Promise[*Connection]]pending{},
 	}
 }
@@ -169,7 +216,7 @@ func (relay *RelayRef) ready() *Promise[*Connection] {
 	return promise
 }
 
-// open forwards the hold (and what queued meanwhile) to down.
+// open forwards the hold to down.
 func (relay *RelayRef) open(down *Connection) {
 	if relay.closed {
 		return
@@ -177,16 +224,11 @@ func (relay *RelayRef) open(down *Connection) {
 	relay.down = down
 	relay.downID = down.nextID()
 	down.relayedRefs.Set(relay.downID, relay)
-	frame := relay.frame
-	frame.ID = relay.downID
-	frame.Principal, frame.HasPrincipal = relay.principal, true
-	frame.Client = relay.client || relay.frame.Client
-	down.send(frame)
-	for _, originSubID := range relay.subs.Keys() {
-		if entry, _ := relay.subs.Get(originSubID); !entry.hasID {
-			relay.forwardSub(originSubID, entry)
-		}
-	}
+	down.send(HoldFrame{
+		ID: relay.downID, At: relay.frame.At, Token: relay.frame.Token, Input: relay.frame.Input,
+		Principal: relay.principal, HasPrincipal: true, Origin: relay.originTag, NoState: !relay.stateWanted,
+		Again: relay.frame.Again,
+	})
 	for _, waiter := range relay.waiters {
 		relay.settle[waiter].resolve(down)
 	}
@@ -194,49 +236,74 @@ func (relay *RelayRef) open(down *Connection) {
 	clear(relay.settle)
 }
 
-func (relay *RelayRef) subscribe(originSubID int, member string) {
-	entry := &relaySub{member: member}
-	relay.subs.Set(originSubID, entry)
-	relay.origin.relaySubs.Set(originSubID, relay)
+// wantState: the origin starts or stops the hold's state.
+func (relay *RelayRef) wantState(wanted bool) {
+	if relay.closed || wanted == relay.stateWanted {
+		return
+	}
+	relay.stateWanted = wanted
+	if !wanted {
+		relay.origin.dropHoldState(relay.originID())
+		clear(relay.awaiting)
+	}
 	if relay.down != nil {
-		relay.forwardSub(originSubID, entry)
-	}
-}
-
-func (relay *RelayRef) forwardSub(originSubID int, entry *relaySub) {
-	down := relay.down
-	entry.downID, entry.hasID = down.nextID(), true
-	down.relayedSubs.Set(entry.downID, relayedSub{relay: relay, originSubID: originSubID})
-	down.send(SubFrame{ID: entry.downID, Hold: relay.downID, Member: entry.member})
-}
-
-// resync: the origin could not keep up and dropped what waited for this subscription. It subscribes downstream anew,
-// so the provider's snapshot (a reset for the origin's consumer) replaces the ops that were lost.
-func (relay *RelayRef) resync(originSubID int) {
-	entry, ok := relay.subs.Get(originSubID)
-	relay.origin.dropState(originSubID)
-	if !ok || !entry.hasID || relay.down == nil {
-		return
-	}
-	relay.down.relayedSubs.Delete(entry.downID)
-	relay.down.send(UnsubFrame{ID: entry.downID})
-	relay.forwardSub(originSubID, entry)
-}
-
-func (relay *RelayRef) unsubscribe(originSubID int, forward bool) {
-	entry, ok := relay.subs.Get(originSubID)
-	if !ok {
-		return
-	}
-	relay.subs.Delete(originSubID)
-	relay.origin.relaySubs.Delete(originSubID)
-	relay.origin.dropState(originSubID)
-	if entry.hasID && relay.down != nil {
-		relay.down.relayedSubs.Delete(entry.downID)
-		if forward {
-			relay.down.send(UnsubFrame{ID: entry.downID})
+		if wanted {
+			relay.down.send(SubFrame{Hold: relay.downID})
+		} else {
+			relay.down.send(UnsubFrame{Hold: relay.downID})
 		}
 	}
+}
+
+// resync: the origin could not keep up and dropped what waited for member m (or asked for it again): ask downstream
+// for a reset, and ignore its ops until the reset arrives.
+func (relay *RelayRef) resync(m string) {
+	if relay.closed {
+		return
+	}
+	relay.awaiting[m] = struct{}{}
+	if relay.down != nil {
+		relay.down.send(ResyncFrame{Hold: relay.downID, M: m})
+	}
+}
+
+// shape is a shape from downstream: forwarded at once; the members of the first unit then skip the origin's window.
+func (relay *RelayRef) shape(frame ShapeFrame) {
+	if relay.closed {
+		return
+	}
+	if !relay.shaped {
+		relay.shaped = true
+		if !relay.frame.Again {
+			relay.urgent = map[string]struct{}{}
+			for _, m := range frame.State {
+				relay.urgent[m] = struct{}{}
+			}
+		}
+	}
+	frame.ID = relay.originID()
+	relay.origin.send(frame)
+}
+
+// state is a state frame from downstream.
+func (relay *RelayRef) state(frame StateFrame) {
+	if relay.closed {
+		return
+	}
+	m := frame.M
+	if _, waiting := relay.awaiting[m]; waiting {
+		if frame.As == "ops" {
+			return
+		}
+		delete(relay.awaiting, m)
+	}
+	frame.Hold = relay.originID()
+	if _, first := relay.urgent[m]; first {
+		delete(relay.urgent, m)
+		relay.origin.send(frame)
+		return
+	}
+	relay.origin.sendState(frame, overflow{resync: func() { relay.resync(m) }})
 }
 
 // close closes the relay. releaseDown: the downstream hold is still there (origin released, disconnected, or was
@@ -249,9 +316,7 @@ func (relay *RelayRef) close(err error, options relayCloseOptions) {
 	for _, call := range relay.calls.Values() {
 		call.cancel(err, options.releaseDown)
 	}
-	for _, originSubID := range relay.subs.Keys() {
-		relay.unsubscribe(originSubID, options.releaseDown)
-	}
+	relay.origin.dropHoldState(relay.originID())
 	if current, ok := relay.origin.served.Get(relay.originID()); ok && !current.local {
 		relay.origin.served.Delete(relay.originID())
 	}
@@ -316,14 +381,11 @@ func (call *RelayCall) cancel(err error, forward bool) {
 	call.finish(err, nil)
 }
 
-type relayedSub struct {
-	relay       *RelayRef
-	originSubID int
-}
-
 // ─── connection ──────────────────────────────────────────────────────────────
 
 type connectionConfig struct {
+	// originID is a client connection's opaque id: holds that come over it (directly or relayed) carry it as their origin.
+	originID string
 	// role is "upstream" (the link to this host's parent) or "downstream" (a link this host accepted).
 	role      string
 	principal Principal
@@ -336,6 +398,13 @@ type connectionConfig struct {
 
 // Connection is one end of a link on a host: consumer of remote references, provider for the peer's holds, and relay.
 //
+// # State
+//
+// A hold implies the state of its variant (unless it says state: false). The provider answers with a unit: the shape,
+// then a snapshot of each state member the consumer does not have yet (the shape's State lists them), then the members'
+// ops and resets. A reload or a variant change sends another unit with the members that are new; members that left the
+// variant stop. The consumer applies a shape once its snapshots are here (RemoteBinding).
+//
 // # Flow control
 //
 // Problem: state is pushed as fast as it changes, but a peer may read slowly (a phone behind a relay), and a relay may
@@ -344,25 +413,31 @@ type connectionConfig struct {
 // result sent next waits 2.4 s, and the snapshot of a transcript the user already left is still sent in full.
 //
 // Solution: the peer acknowledges what it processed (AckFrame, a cumulative frame count), and the sender counts the
-// sizes of the frames not yet acknowledged. While they exceed the window, state frames wait here, one slot per
-// subscription: ops are appended to the slot (encoded batches of one stream may be concatenated, see delta's
-// encoder), and a snapshot, reset or error replaces it. Unsubscribing drops the slot. A slot whose ops outgrow
-// pendingWindows windows is replaced by the current value (a reset), or, on a relay, by a fresh downstream
-// subscription (RelayRef.resync), so memory stays bounded however long the peer stalls. Acknowledgements send the
-// slots in the order they were created, as long as the window allows.
+// sizes of the frames not yet acknowledged. While they exceed the window, state waits here in slots, flushed in
+// creation order as acknowledgements come:
+//   - a member's stream has one slot: ops are appended (encoded batches of one stream may be concatenated, see delta's
+//     encoder), a snapshot, reset or error replaces it;
+//   - a hold's unit has one slot, built lazily from the current values when it is sent, so a newer unit merges into it;
+//     while it waits, the members it introduces have no stream yet.
 //
-// Everything else (results, shapes, gone, reload control, pings) is sent at once: it is bounded by the requests the
-// peer makes, and it must not wait behind state. Hence the one ordering exception of a link: while state waits, a
-// result can arrive before state changes made before it. Frames of one subscription stay in order.
+// The first unit of a hold that is not a re-hold (Again) is sent at once, past the window: a Get waits for it, and must
+// not wait behind other holds' state. Results, shapes, gone, reload control and pings are sent at once too: they are
+// bounded by the requests the peer makes. Hence the one ordering exception of a link: while state waits, a result can
+// arrive before state changes made before it. Frames of one stream stay in order.
 //
-// The window bounds what is unacknowledged when a frame is sent, so one frame (a large snapshot) may exceed it. Both
-// hellos must announce acks; with an older peer nothing is acknowledged and nothing waits. Links that do not report
-// sizes (IPC) never fill the window.
+// Waiting ops are capped per link (PendingCap): beyond, the oldest streams are replaced by their current value (a reset
+// built at flush), or, on a relay, by a reset asked of the provider (resync), so memory stays bounded however long the
+// peer stalls. The window bounds what is unacknowledged when a frame is sent, so one frame (a large snapshot) may exceed
+// it. Both hellos must announce acks; with an older peer nothing is acknowledged and nothing waits. Links that do not
+// report sizes (IPC) never fill the window.
 type Connection struct {
-	host      *HostImpl
-	link      Link
-	role      string
-	peer      Peer
+	host *HostImpl
+	link Link
+	role string
+	peer Peer
+	// originID is a client connection's opaque id: holds that come over it (directly or relayed) carry it as their
+	// origin; empty for any other link.
+	originID  string
 	principal Principal
 	restamp   func(principal Principal) (Principal, bool)
 	// generation is bumped when the stamped principal is revoked or re-stamped: relays from before are refused.
@@ -383,7 +458,8 @@ type Connection struct {
 	// maxCalls bounds incoming (math.MaxInt: no limit).
 	maxCalls int
 	// flow control (see the type comment)
-	window int
+	window     int
+	pendingCap int
 	// peerAcks: whether the peer acknowledges frames; until its hello is here (ackUnknown), frames are counted in case
 	// it does.
 	peerAcks peerAcks
@@ -396,23 +472,20 @@ type Connection struct {
 	// unacked are the sizes of the frames sent after the last acknowledged one.
 	unacked      []int
 	unackedBytes int
-	pending      *orderedMap[int, *pendingState]
+	pending      *orderedMap[string, *slot]
+	// pendingBytes are the bytes of ops waiting in pending.
+	pendingBytes int
 	received     int
 	stopAck      func()
 	// consumer side: what this host asked of the peer
-	remotes *orderedMap[int, *RemoteRef]
+	remotes *orderedMap[int, *RemoteBinding]
 	calls   *orderedMap[int, pending]
-	subs    *orderedMap[int, func(frame StateSink)]
 	// provider side: what the peer asked of this host
 	served   *orderedMap[int, *served]
 	incoming *orderedMap[int, context.CancelCauseFunc]
-	feeds    *orderedMap[int, func()]
-	// relaySubs: origin side of relays: the peer's sub ids that are relayed.
-	relaySubs *orderedMap[int, *RelayRef]
 	// downstream side of relays: ids this host used on this link
 	relayedRefs  *orderedMap[int, *RelayRef]
 	relayedCalls *orderedMap[int, *RelayCall]
-	relayedSubs  *orderedMap[int, relayedSub]
 	// votes are reload votes awaited from this (child) peer.
 	votes map[int]votePending
 }
@@ -423,16 +496,19 @@ func newConnection(host *HostImpl, link Link, config connectionConfig) *Connecti
 		host: host, link: link, role: config.role, peer: config.peer, principal: config.principal,
 		restamp: config.restamp, fencedCodeVersions: map[int]struct{}{}, admitted: map[string]int{}, nextIDValue: 1,
 		lastSeen: time.Now(),
-		remotes:  newOrderedMap[int, *RemoteRef](), calls: newOrderedMap[int, pending](),
-		subs: newOrderedMap[int, func(StateSink)](), served: newOrderedMap[int, *served](),
-		incoming: newOrderedMap[int, context.CancelCauseFunc](), feeds: newOrderedMap[int, func()](),
-		relaySubs: newOrderedMap[int, *RelayRef](), relayedRefs: newOrderedMap[int, *RelayRef](),
-		relayedCalls: newOrderedMap[int, *RelayCall](), relayedSubs: newOrderedMap[int, relayedSub](),
-		votes: map[int]votePending{}, pending: newOrderedMap[int, *pendingState](),
+		remotes:  newOrderedMap[int, *RemoteBinding](), calls: newOrderedMap[int, pending](),
+		served:   newOrderedMap[int, *served](),
+		incoming: newOrderedMap[int, context.CancelCauseFunc](), relayedRefs: newOrderedMap[int, *RelayRef](),
+		relayedCalls: newOrderedMap[int, *RelayCall](),
+		votes:        map[int]votePending{}, pending: newOrderedMap[string, *slot](), originID: config.originID,
 		window: defaultWindow, maxCalls: math.MaxInt,
 	}
 	if config.options.Window != nil {
 		connection.window = *config.options.Window
+	}
+	connection.pendingCap = saturatingMul(connection.window, pendingWindows)
+	if config.options.PendingCap != nil {
+		connection.pendingCap = *config.options.PendingCap
 	}
 	if config.maxCalls != nil {
 		connection.maxCalls = *config.maxCalls
@@ -537,33 +613,146 @@ func (connection *Connection) send(frame Frame) {
 	connection.unackedBytes += size
 }
 
-// sendState sends a state frame, or keeps it waiting (see the type comment). False: the slot is full, send a reset.
-func (connection *Connection) sendState(frame StateFrame) bool {
-	slot, ok := connection.pending.Get(frame.ID)
+// sendState sends a state frame, or keeps it waiting (see the type comment).
+func (connection *Connection) sendState(frame StateFrame, fallback overflow) {
+	key := stateKey(frame.Hold, frame.M)
+	waiting, ok := connection.pending.Get(key)
 	if !ok && !connection.full() {
 		connection.send(frame)
-		return true
+		return
+	}
+	if ok && waiting.unit {
+		return
 	}
 	if !ok {
-		slot = &pendingState{}
-		connection.pending.Set(frame.ID, slot)
+		waiting = &slot{hold: frame.Hold, m: frame.M, resend: fallback.resend, resync: fallback.resync}
+		connection.pending.Set(key, waiting)
 	}
-	if frame.Ops == nil {
-		slot.base, slot.hasBase = frame, true
-		slot.ops, slot.size = nil, 0
-		return true
+	if frame.As != "ops" {
+		connection.pendingBytes -= waiting.size
+		waiting.base, waiting.hasBase = frame, true
+		waiting.ops, waiting.size = nil, 0
+		waiting.lazy = false
+		return
+	}
+	// A reset built at flush already covers these ops.
+	if waiting.lazy {
+		return
 	}
 	size, err := opsLength(frame.Ops)
 	if err != nil {
 		connection.host.report(err)
-		return true
+		return
 	}
-	if slot.size+size > connection.pendingLimit() {
-		return false
+	if saturatingAdd(connection.pendingBytes, size) > connection.pendingCap {
+		connection.makeRoom(size, waiting)
 	}
-	slot.ops = append(slot.ops, frame.Ops...)
-	slot.size += size
-	return true
+	if current, ok := connection.pending.Get(key); waiting.lazy || !ok || current != waiting {
+		return
+	}
+	waiting.ops = append(waiting.ops, frame.Ops...)
+	waiting.size += size
+	connection.pendingBytes += size
+}
+
+func saturatingAdd(a, b int) int {
+	if a > math.MaxInt-b {
+		return math.MaxInt
+	}
+	return a + b
+}
+
+// saturatingMul is a * b for a window of math.MaxInt (JavaScript's Infinity) times a count.
+func saturatingMul(a, b int) int {
+	if a > math.MaxInt/b { //portlint:allow numbers an overflow guard for Infinity (math.MaxInt) windows; JS multiplies doubles and Infinity stays Infinity
+		return math.MaxInt
+	}
+	return a * b
+}
+
+// makeRoom replaces the oldest waiting streams by resets until size more bytes fit; current last, if needed.
+func (connection *Connection) makeRoom(size int, current *slot) {
+	for _, waiting := range connection.pending.Values() {
+		if saturatingAdd(connection.pendingBytes, size) <= connection.pendingCap {
+			return
+		}
+		if !waiting.unit && waiting != current && waiting.size > 0 {
+			connection.drop(waiting)
+		}
+	}
+	if saturatingAdd(connection.pendingBytes, size) > connection.pendingCap {
+		connection.drop(current)
+	}
+}
+
+// drop drops what waits for a stream: a lazy reset replaces it (provider), or the relay asks downstream for one.
+func (connection *Connection) drop(waiting *slot) {
+	connection.pendingBytes -= waiting.size
+	waiting.base, waiting.hasBase = StateFrame{}, false
+	waiting.ops, waiting.size = nil, 0
+	if waiting.resend != nil {
+		waiting.lazy = true
+		return
+	}
+	connection.pending.Delete(stateKey(waiting.hold, waiting.m))
+	waiting.resync()
+}
+
+// resetLater sends member m of a served hold again as a reset, through the window (resync).
+func (connection *Connection) resetLater(hold int, m string, resend func()) {
+	key := stateKey(hold, m)
+	waiting, ok := connection.pending.Get(key)
+	if ok && waiting.unit {
+		return
+	}
+	if !ok {
+		connection.pending.Set(key, &slot{hold: hold, m: m, lazy: true, resend: resend})
+	} else {
+		connection.pendingBytes -= waiting.size
+		waiting.base, waiting.hasBase = StateFrame{}, false
+		waiting.ops, waiting.size = nil, 0
+		waiting.lazy = true
+	}
+	connection.flush()
+}
+
+// queueUnit queues a hold's lazy unit (a waiting one already covers this one), and sends what the window allows.
+func (connection *Connection) queueUnit(hold int, flush func()) {
+	key := unitKey(hold)
+	if !connection.pending.Has(key) {
+		connection.pending.Set(key, &slot{unit: true, hold: hold, flush: flush})
+	}
+	connection.flush()
+}
+
+// dropState forgets what waits for a stream that ended.
+func (connection *Connection) dropState(hold int, m string) {
+	key := stateKey(hold, m)
+	waiting, ok := connection.pending.Get(key)
+	if !ok || waiting.unit {
+		return
+	}
+	connection.pendingBytes -= waiting.size
+	connection.pending.Delete(key)
+}
+
+// dropHoldState forgets everything that waits for a hold (released, closed, or its state stopped).
+func (connection *Connection) dropHoldState(hold int) {
+	for _, key := range connection.pending.Keys() {
+		waiting, _ := connection.pending.Get(key)
+		if waiting.hold != hold {
+			continue
+		}
+		if !waiting.unit {
+			connection.pendingBytes -= waiting.size
+		}
+		connection.pending.Delete(key)
+	}
+}
+
+// waiting is what waits for the peer: slots and bytes of ops (for tests and diagnostics).
+func (connection *Connection) waiting() (slots, bytes int) {
+	return connection.pending.Len(), connection.pendingBytes
 }
 
 // opsLength is JSON.stringify(ops).length.
@@ -577,19 +766,6 @@ func opsLength(ops []delta.WireOp) (int, error) {
 		return 0, err
 	}
 	return utf16Length(text), nil
-}
-
-// pendingLimit is the ops one slot may keep: pendingWindows windows (saturating for a window of math.MaxInt).
-func (connection *Connection) pendingLimit() int {
-	if connection.window > math.MaxInt/pendingWindows {
-		return math.MaxInt
-	}
-	return connection.window * pendingWindows
-}
-
-// dropState forgets what waits for a subscription that ended.
-func (connection *Connection) dropState(id int) {
-	connection.pending.Delete(id)
 }
 
 func (connection *Connection) full() bool {
@@ -607,15 +783,31 @@ func (connection *Connection) onAck(n int) {
 	}
 	connection.unacked = connection.unacked[count:]
 	connection.acked = n
+	connection.flush()
+}
+
+// flush sends waiting slots in creation order while the window allows.
+func (connection *Connection) flush() {
 	for connection.pending.Len() > 0 && !connection.full() {
-		id := connection.pending.keys[0]
-		slot, _ := connection.pending.Get(id)
-		connection.pending.Delete(id)
-		if slot.hasBase {
-			connection.send(slot.base)
+		key := connection.pending.keys[0]
+		waiting, _ := connection.pending.Get(key)
+		connection.pending.Delete(key)
+		if waiting.unit {
+			waiting.flush()
+			continue
 		}
-		if len(slot.ops) > 0 {
-			connection.send(StateFrame{ID: id, Ops: slot.ops})
+		connection.pendingBytes -= waiting.size
+		if waiting.lazy {
+			if waiting.resend != nil {
+				waiting.resend()
+			}
+			continue
+		}
+		if waiting.hasBase {
+			connection.send(waiting.base)
+		}
+		if len(waiting.ops) > 0 {
+			connection.send(StateFrame{Hold: waiting.hold, M: waiting.m, As: "ops", Ops: waiting.ops})
 		}
 	}
 }
@@ -709,13 +901,13 @@ func (connection *Connection) violation(reason string) {
 
 // ─── consumer side (RemoteChannel) ───
 
-func (connection *Connection) hold(ref *RemoteRef) int {
+func (connection *Connection) hold(binding *RemoteBinding, again bool) int {
 	id := connection.nextID()
-	connection.remotes.Set(id, ref)
-	ref.bound(connection, id)
+	connection.remotes.Set(id, binding)
+	binding.bound(connection, id)
 	connection.send(HoldFrame{
-		ID: id, At: ref.at, Token: ref.contract.Description, Input: ref.input,
-		Principal: ref.principal, HasPrincipal: ref.hasPrincipal, Client: ref.owner == "client",
+		ID: id, At: binding.at, Token: binding.contract.Description, Input: binding.input,
+		Principal: binding.principal, HasPrincipal: binding.hasPrincipal, NoState: !binding.stateOn, Again: again,
 	})
 	return id
 }
@@ -723,6 +915,17 @@ func (connection *Connection) hold(ref *RemoteRef) int {
 func (connection *Connection) release(id int) {
 	connection.remotes.Delete(id)
 	connection.send(ReleaseFrame{ID: id})
+}
+
+func (connection *Connection) wantState(hold int, wanted bool) {
+	if !connection.remotes.Has(hold) {
+		return
+	}
+	if wanted {
+		connection.send(SubFrame{Hold: hold})
+	} else {
+		connection.send(UnsubFrame{Hold: hold})
+	}
 }
 
 func (connection *Connection) call(hold int, member string, args any, hasArgs bool, root *RootRef, signal context.Context) *Promise[any] {
@@ -770,19 +973,6 @@ func (connection *Connection) call(hold int, member string, args any, hasArgs bo
 	return promise
 }
 
-func (connection *Connection) sub(hold int, member string, sink func(frame StateSink)) int {
-	id := connection.nextID()
-	connection.subs.Set(id, sink)
-	connection.send(SubFrame{ID: id, Hold: hold, Member: member})
-	return id
-}
-
-func (connection *Connection) unsub(id int) {
-	if connection.subs.Delete(id) {
-		connection.send(UnsubFrame{ID: id})
-	}
-}
-
 // ─── receiving (on the loop) ───
 
 func (connection *Connection) receive(frame Frame) {
@@ -827,9 +1017,11 @@ func (connection *Connection) dispatch(frame Frame) error {
 			cancel(NewChordError(CodeAborted, "cancelled by caller", ChordErrorOptions{}))
 		}
 	case SubFrame:
-		connection.onSub(frame)
+		connection.onWantState(frame.Hold, true)
 	case UnsubFrame:
-		connection.onUnsub(frame.ID)
+		connection.onWantState(frame.Hold, false)
+	case ResyncFrame:
+		connection.onResync(frame.Hold, frame.M)
 	case ShapeFrame:
 		connection.onShape(frame)
 	case GoneFrame:
@@ -935,11 +1127,13 @@ func (connection *Connection) principalOf(frame HoldFrame) Principal {
 	return connection.principal
 }
 
-func (connection *Connection) isClient(frame HoldFrame) bool {
+// originOf is the client connection a hold comes from: this link's own id for a client link (whatever the frame says),
+// the id the parent forwarded for a relayed hold, none for a host's own holds.
+func (connection *Connection) originOf(frame HoldFrame) string {
 	if connection.role == "downstream" {
-		return connection.peer.kind == "client"
+		return connection.originID
 	}
-	return frame.Client
+	return frame.Origin
 }
 
 func (connection *Connection) onRef(frame HoldFrame) {
@@ -948,13 +1142,14 @@ func (connection *Connection) onRef(frame HoldFrame) {
 		return
 	}
 	principal := connection.principalOf(frame)
-	client := connection.isClient(frame)
+	origin := connection.originOf(frame)
+	client := origin != ""
 	if frame.At != connection.host.Name() {
 		if connection.role == "upstream" {
 			connection.send(GoneFrame{ID: frame.ID, Error: ToWireError(unavailable(connection.host.Name() + " does not relay"))})
 			return
 		}
-		relay := newRelayRef(connection, frame, principal, client)
+		relay := newRelayRef(connection, frame, principal, origin)
 		connection.served.Set(frame.ID, &served{relay: relay})
 		// Pi: this.host.relay(relay).catch(...) (connection.ts:497): the relay starts here, on the loop.
 		connection.host.relay(relay).then(func(_ struct{}, err error) {
@@ -972,19 +1167,12 @@ func (connection *Connection) onRef(frame HoldFrame) {
 		connection.send(GoneFrame{ID: frame.ID, Error: ToWireError(err)})
 		return
 	}
-	entry := &served{local: true, ref: ref, principal: principal, feeds: newOrderedMap[int, struct{}]()}
-	connection.served.Set(frame.ID, entry)
-	shape := func() {
-		current := ref.shape()
-		if current == nil {
-			return
-		}
-		if now, ok := connection.served.Get(frame.ID); !ok || now != entry {
-			return
-		}
-		connection.send(ShapeFrame{ID: frame.ID, Variant: current.Variant, Members: current.Members, Contract: current.Contract, CodeVersion: current.CodeVersion})
+	entry := &served{
+		local: true, id: frame.ID, ref: ref, principal: principal, origin: origin, wantsState: !frame.NoState,
+		again: frame.Again, feeds: newOrderedMap[string, *feed](),
 	}
-	shapeListener := func(Shape) { shape() }
+	connection.served.Set(frame.ID, entry)
+	shapeListener := func(Shape) { connection.unit(entry) }
 	ref.shapeListeners.Set(&shapeListener, struct{}{})
 	goneListener := func(err error) {
 		if now, ok := connection.served.Get(frame.ID); !ok || now != entry {
@@ -995,8 +1183,218 @@ func (connection *Connection) onRef(frame HoldFrame) {
 	}
 	ref.goneListeners.Set(&goneListener, struct{}{})
 	if ref.status == RefLive {
-		shape()
+		connection.unit(entry)
 	}
+}
+
+// stateMembers are the state members of shape the consumer's contract knows.
+func stateMembers(ref *RefImpl, shape *Shape) []string {
+	var members []string
+	for _, name := range shape.Members {
+		if description, ok := ref.describe(shape.Variant, name); ok && description.Kind == MemberState {
+			members = append(members, name)
+		}
+	}
+	return members
+}
+
+// unit: the shape changed (live, reload, variant) or state was asked for: members that left lose their stream, and a
+// unit goes out with the shape and the members the consumer lacks. The first unit of a hold (not a re-hold) is urgent.
+func (connection *Connection) unit(entry *served) {
+	if now, ok := connection.served.Get(entry.id); !ok || now != entry {
+		return
+	}
+	shape := entry.ref.shape()
+	if shape == nil {
+		return
+	}
+	members := map[string]bool{}
+	if entry.wantsState {
+		for _, name := range stateMembers(entry.ref, shape) {
+			members[name] = true
+		}
+	}
+	for _, name := range entry.feeds.Keys() {
+		if members[name] {
+			continue
+		}
+		feed, _ := entry.feeds.Get(name)
+		feed.unsubscribe()
+		entry.feeds.Delete(name)
+		connection.dropState(entry.id, name)
+	}
+	urgent := entry.feeds.Len() == 0 && (!entry.again || entry.unitSent)
+	if urgent {
+		connection.sendUnit(entry)
+	} else {
+		connection.queueUnit(entry.id, func() { connection.sendUnit(entry) })
+	}
+}
+
+// sendUnit builds and sends a unit from the current shape and values.
+func (connection *Connection) sendUnit(entry *served) {
+	connection.pending.Delete(unitKey(entry.id))
+	if now, ok := connection.served.Get(entry.id); !ok || now != entry {
+		return
+	}
+	shape := entry.ref.shape()
+	if shape == nil {
+		return
+	}
+	entry.unitSent = true
+	var members []string
+	if entry.wantsState {
+		members = stateMembers(entry.ref, shape)
+	}
+	type attached struct {
+		name string
+		feed *feed
+	}
+	var snaps []StateFrame
+	var feeds []attached
+	for _, name := range members {
+		if entry.feeds.Has(name) {
+			continue
+		}
+		frame, feed, ok := connection.attach(entry, name, "snap")
+		if !ok {
+			continue
+		}
+		snaps = append(snaps, frame)
+		feeds = append(feeds, attached{name, feed})
+	}
+	listed := make([]string, len(snaps))
+	for index, frame := range snaps {
+		listed[index] = frame.M
+	}
+	connection.send(ShapeFrame{ID: entry.id, Variant: shape.Variant, Members: shape.Members, Contract: shape.Contract, State: listed})
+	for _, frame := range snaps {
+		connection.send(frame)
+	}
+	for _, attachment := range feeds {
+		connection.replay(entry, attachment.name, attachment.feed)
+	}
+}
+
+// attach subscribes member name for the consumer: its snapshot (as a frame of type as), and a feed whose later events
+// wait in its buffer until the snapshot is sent (replay). False if the member is not readable state.
+func (connection *Connection) attach(entry *served, name, as string) (StateFrame, *feed, bool) {
+	readable, isReadable := entry.ref.member(name).(Readable[any])
+	if !isReadable {
+		return StateFrame{}, nil, false
+	}
+	current := &feed{unsubscribe: func() {}, encoder: delta.NewEncoder(), buffering: true}
+	var first *StateEvent[any]
+	current.unsubscribe = readable.Events(func(event StateEvent[any]) {
+		switch {
+		case first == nil:
+			first = &event
+		case current.buffering:
+			current.buffer = append(current.buffer, event)
+		default:
+			connection.feedEvent(entry, name, current, event)
+		}
+	})
+	entry.feeds.Set(name, current)
+	var value any
+	if first != nil {
+		value = first.Value
+	}
+	return connection.snapshot(entry, name, as, value, first != nil), current, true
+}
+
+// replay sends the events that arrived while the snapshot was built, now that it is sent.
+func (connection *Connection) replay(entry *served, name string, current *feed) {
+	buffered := current.buffer
+	current.buffer, current.buffering = nil, false
+	for _, event := range buffered {
+		connection.feedEvent(entry, name, current, event)
+	}
+}
+
+// snapshot is a member's state frame for a snapshot or reset: validated against the schema the consumer is promised.
+// present is false for a value that is `undefined` (the member produced no event).
+func (connection *Connection) snapshot(entry *served, name, as string, value any, present bool) StateFrame {
+	if err := validateSnapshot(entry.ref, name, value); err != nil {
+		return StateFrame{Hold: entry.id, M: name, As: "error", Error: wireErrorOf(err)}
+	}
+	return StateFrame{Hold: entry.id, M: name, As: as, Value: value, HasValue: present}
+}
+
+// feedEvent is a later event of a member's stream: ops are encoded, a reset starts a new stream.
+func (connection *Connection) feedEvent(entry *served, name string, current *feed, event StateEvent[any]) {
+	if now, _ := entry.feeds.Get(name); now != current {
+		return
+	}
+	fallback := overflow{resend: func() { connection.resend(entry, name) }}
+	if event.Type == StateEventOps {
+		ops, err := current.encoder.Encode(event.Ops)
+		if err != nil {
+			connection.host.report(err)
+			return
+		}
+		connection.sendState(StateFrame{Hold: entry.id, M: name, As: "ops", Ops: ops}, fallback)
+		return
+	}
+	current.encoder = delta.NewEncoder()
+	connection.sendState(connection.snapshot(entry, name, "reset", event.Value, true), fallback)
+}
+
+// resend sends member name again, now, as a reset from its current value (a lazy slot is flushed, or resync).
+func (connection *Connection) resend(entry *served, name string) {
+	current, ok := entry.feeds.Get(name)
+	if now, served := connection.served.Get(entry.id); !ok || !served || now != entry {
+		return
+	}
+	current.unsubscribe()
+	entry.feeds.Delete(name)
+	frame, attached, ok := connection.attach(entry, name, "reset")
+	if !ok {
+		return
+	}
+	connection.send(frame)
+	connection.replay(entry, name, attached)
+}
+
+// onWantState: the consumer starts (sub) or stops (unsub) the state of a hold.
+func (connection *Connection) onWantState(hold int, wanted bool) {
+	entry, ok := connection.served.Get(hold)
+	if !ok {
+		return
+	}
+	if !entry.local {
+		entry.relay.wantState(wanted)
+		return
+	}
+	if entry.wantsState == wanted {
+		return
+	}
+	entry.wantsState = wanted
+	if wanted {
+		connection.unit(entry)
+		return
+	}
+	for _, feed := range entry.feeds.Values() {
+		feed.unsubscribe()
+	}
+	entry.feeds.Clear()
+	connection.dropHoldState(hold)
+}
+
+// onResync: the consumer (a relay that dropped ops) asks for member m again as a reset.
+func (connection *Connection) onResync(hold int, m string) {
+	entry, ok := connection.served.Get(hold)
+	if !ok {
+		return
+	}
+	if !entry.local {
+		entry.relay.resync(m)
+		return
+	}
+	if !entry.feeds.Has(m) {
+		return
+	}
+	connection.resetLater(hold, m, func() { connection.resend(entry, m) })
 }
 
 func (connection *Connection) acquireServed(frame HoldFrame, principal Principal, client bool) (*RefImpl, error) {
@@ -1041,9 +1439,11 @@ func (connection *Connection) dropServed(id int, release bool) {
 		entry.relay.close(NewChordError(CodeReleased, "relayed hold released", ChordErrorOptions{}), relayCloseOptions{releaseDown: release})
 		return
 	}
-	for _, feed := range entry.feeds.Keys() {
-		connection.onUnsub(feed)
+	for _, feed := range entry.feeds.Values() {
+		feed.unsubscribe()
 	}
+	entry.feeds.Clear()
+	connection.dropHoldState(id)
 	if release {
 		entry.ref.Release()
 	}
@@ -1131,85 +1531,16 @@ func (connection *Connection) admitRoot(root *RootRef) *RootRef {
 	return &RootRef{RootID: root.RootID, CodeVersion: codeVersion}
 }
 
-func (connection *Connection) onSub(frame SubFrame) {
-	if connection.feeds.Has(frame.ID) || connection.relaySubs.Has(frame.ID) {
-		connection.violation(fmt.Sprintf("duplicate sub id %d", frame.ID))
-		return
-	}
-	entry, ok := connection.served.Get(frame.Hold)
-	if !ok {
-		connection.send(StateFrame{ID: frame.ID, Error: wireErrorOf(NewChordError(CodeGone, "unknown hold", ChordErrorOptions{}))})
-		return
-	}
-	if !entry.local {
-		entry.relay.subscribe(frame.ID, frame.Member)
-		return
-	}
-	readable, isReadable := entry.ref.member(frame.Member).(Readable[any])
-	if !isReadable {
-		connection.send(StateFrame{ID: frame.ID, Error: wireErrorOf(NewChordError(CodeNotInVariant, frame.Member+" is not state", ChordErrorOptions{}))})
-		return
-	}
-	stream := delta.NewEncoder()
-	send := func(event StateEvent[any]) {
-		if event.Type == StateEventOps {
-			ops, err := stream.Encode(event.Ops)
-			if err != nil {
-				connection.host.report(err)
-				return
-			}
-			if connection.sendState(StateFrame{ID: frame.ID, Ops: ops}) {
-				return
-			}
-			// Too many ops wait for a slow peer: the current value replaces them.
-			event = StateEvent[any]{Type: StateEventReset, Value: event.Value}
-		}
-		// A loading provider reference has nothing yet: the hydrated value follows as a reset.
-		if event.Value == nil {
-			return
-		}
-		// Snapshots are validated against the effective schema once per (re)subscription; ops only in dev mode.
-		if err := validateSnapshot(entry.ref, frame.Member, event.Value); err != nil {
-			connection.sendState(StateFrame{ID: frame.ID, Error: wireErrorOf(err)})
-			return
-		}
-		stream = delta.NewEncoder()
-		if event.Type == StateEventSnap {
-			connection.sendState(StateFrame{ID: frame.ID, Snap: event.Value, HasSnap: true})
-		} else {
-			connection.sendState(StateFrame{ID: frame.ID, Reset: event.Value, HasReset: true})
-		}
-	}
-	unsubscribe := readable.Events(send)
-	connection.feeds.Set(frame.ID, unsubscribe)
-	entry.feeds.Set(frame.ID, struct{}{})
-}
-
-func (connection *Connection) onUnsub(id int) {
-	connection.dropState(id)
-	if unsubscribe, ok := connection.feeds.Get(id); ok {
-		connection.feeds.Delete(id)
-		unsubscribe()
-	}
-	if relay, ok := connection.relaySubs.Get(id); ok {
-		relay.unsubscribe(id, true)
-	}
-}
-
 func (connection *Connection) onShape(frame ShapeFrame) {
 	if relay, ok := connection.relayedRefs.Get(frame.ID); ok {
-		if !relay.closed {
-			forwarded := frame
-			forwarded.ID = relay.originID()
-			relay.origin.send(forwarded)
-		}
+		relay.shape(frame)
 		return
 	}
-	ref, ok := connection.remotes.Get(frame.ID)
+	binding, ok := connection.remotes.Get(frame.ID)
 	if !ok {
 		return
 	}
-	ref.shaped(Shape{Variant: frame.Variant, Members: frame.Members, Contract: frame.Contract, CodeVersion: frame.CodeVersion})
+	binding.shaped(Shape{Variant: frame.Variant, Members: frame.Members, Contract: frame.Contract}, frame.State)
 }
 
 func (connection *Connection) onGone(frame GoneFrame) {
@@ -1217,12 +1548,12 @@ func (connection *Connection) onGone(frame GoneFrame) {
 		relay.close(FromWireError(frame.Error), relayCloseOptions{notify: true})
 		return
 	}
-	ref, ok := connection.remotes.Get(frame.ID)
+	binding, ok := connection.remotes.Get(frame.ID)
 	if !ok {
 		return
 	}
 	connection.remotes.Delete(frame.ID)
-	ref.gone(FromWireError(frame.Error))
+	binding.gone(FromWireError(frame.Error))
 }
 
 func (connection *Connection) onResult(frame ResultFrame) {
@@ -1252,35 +1583,25 @@ func (connection *Connection) onResult(frame ResultFrame) {
 }
 
 func (connection *Connection) onState(frame StateFrame) {
-	if relayed, ok := connection.relayedSubs.Get(frame.ID); ok {
-		forwarded := frame
-		forwarded.ID = relayed.originSubID
-		if !relayed.relay.origin.sendState(forwarded) {
-			relayed.relay.resync(relayed.originSubID)
-		}
+	if relay, ok := connection.relayedRefs.Get(frame.Hold); ok {
+		relay.state(frame)
 		return
 	}
-	sink, ok := connection.subs.Get(frame.ID)
+	binding, ok := connection.remotes.Get(frame.Hold)
 	if !ok {
 		return
 	}
-	_, snapPacked := frame.Snap.(packed)
-	_, resetPacked := frame.Reset.(packed)
-	if !snapPacked && !resetPacked {
-		sink(frame)
+	if _, isPacked := frame.Value.(packed); !isPacked {
+		binding.state(frame.M, frame)
 		return
 	}
-	unpacked := frame
-	var err error
-	if frame.HasSnap {
-		unpacked.Snap, err = unpack(frame.Snap)
-	} else {
-		unpacked.Reset, err = unpack(frame.Reset)
-	}
+	value, err := unpack(frame.Value)
 	if err != nil {
-		unpacked = StateSink{Error: wireErrorOf(err)}
+		binding.state(frame.M, StateFrame{As: "error", Error: wireErrorOf(err)})
+		return
 	}
-	sink(unpacked)
+	frame.Value = value
+	binding.state(frame.M, frame)
 }
 
 // ─── lifetime ───
@@ -1301,6 +1622,7 @@ func (connection *Connection) closed(reason string) {
 		connection.stopAck = nil
 	}
 	connection.pending.Clear()
+	connection.pendingBytes = 0
 	err := unavailable("link to " + connection.displayName() + " closed: " + reason)
 	// As origin: everything the peer held here, relayed or not, is released (downstream calls cancelled).
 	for _, id := range connection.served.Keys() {
@@ -1314,7 +1636,6 @@ func (connection *Connection) closed(reason string) {
 		waiter.reject(err)
 	}
 	connection.calls.Clear()
-	connection.subs.Clear()
 	for _, vote := range connection.votes {
 		vote.reject(err)
 	}
@@ -1329,16 +1650,16 @@ func (connection *Connection) closed(reason string) {
 	}
 	connection.relayedRefs.Clear()
 	connection.relayedCalls.Clear()
-	connection.relayedSubs.Clear()
-	for _, ref := range connection.remotes.Values() {
+	bindings := connection.remotes.Values()
+	connection.remotes.Clear()
+	for _, binding := range bindings {
 		// An upstream link may be replaced (reconnect); a downstream host that went away is gone.
 		if connection.role == "upstream" {
-			ref.detached()
+			binding.detached()
 		} else {
-			ref.gone(err)
+			binding.gone(err)
 		}
 	}
-	connection.remotes.Clear()
 	connection.host.connectionClosed(connection)
 }
 

@@ -25,7 +25,7 @@ import (
 // ProtocolVersion is the link protocol version, announced in hello. Peers of different versions do not talk: the side
 // that notices closes the link with reason `protocol-version <its version>`, so the other side learns it too
 // (LinkOptions.OnProtocolMismatch).
-const ProtocolVersion = 3
+const ProtocolVersion = 4
 
 // RootRef names a root at its origin.
 type RootRef struct {
@@ -88,17 +88,25 @@ type (
 		// Principal is a forwarded principal, honored only on frames from the parent link.
 		Principal    any
 		HasPrincipal bool
-		// Client is set by a relay when the hold originates from a client (browser): not a reload participant.
-		Client bool
+		// Origin is the client connection the hold comes from: an opaque id the server assigned to it, forwarded by
+		// relays and honored only on frames from the parent link; present means the hold is a client's (not a reload
+		// participant). Empty is absent.
+		Origin string
+		// NoState is `state: false`: no state for this hold until a sub (a method-only binding).
+		NoState bool
+		// Again says the consumer already has values (a re-hold after a link loss): its unit is not urgent.
+		Again bool
 	}
 	ReleaseFrame struct{ ID int }
 	ShapeFrame   struct {
 		ID int
 		// Variant is nil for a local contract.
-		Variant     *string
-		Members     []string
-		Contract    string
-		CodeVersion int
+		Variant  *string
+		Members  []string
+		Contract string
+		// State lists the state members whose snapshots follow this frame; the consumer applies the shape once they
+		// are here.
+		State []string
 	}
 	GoneFrame struct {
 		ID    int
@@ -121,19 +129,24 @@ type (
 		Error    *WireError
 	}
 	CancelFrame struct{ ID int }
-	SubFrame    struct {
-		ID     int
-		Hold   int
-		Member string
+	// SubFrame starts the state of a hold opened with NoState (answered with a unit).
+	SubFrame struct{ Hold int }
+	// UnsubFrame stops the state of a hold.
+	UnsubFrame struct{ Hold int }
+	// ResyncFrame sends member M again as a reset (a relay that had to drop what waited for it).
+	ResyncFrame struct {
+		Hold int
+		M    string
 	}
-	UnsubFrame struct{ ID int }
+	// StateFrame is a state member's frame, addressed by hold and member. As is "snap", "reset", "ops" or "error".
 	StateFrame struct {
-		ID       int
-		Snap     any
-		HasSnap  bool
-		Reset    any
-		HasReset bool
-		// Ops are encoded with the subscription's delta encoder; nil is absent.
+		Hold int
+		M    string
+		As   string
+		// Value is a snap or reset's value; HasValue false is `undefined`.
+		Value    any
+		HasValue bool
+		// Ops are encoded with the stream's delta encoder; nil is absent.
 		Ops   []delta.WireOp
 		Error *WireError
 	}
@@ -175,6 +188,7 @@ func (ResultFrame) T() string     { return "result" }
 func (CancelFrame) T() string     { return "cancel" }
 func (SubFrame) T() string        { return "sub" }
 func (UnsubFrame) T() string      { return "unsub" }
+func (ResyncFrame) T() string     { return "resync" }
 func (StateFrame) T() string      { return "state" }
 func (PingFrame) T() string       { return "ping" }
 func (PongFrame) T() string       { return "pong" }
@@ -231,8 +245,14 @@ func (frame HoldFrame) encode() *chordjson.Object {
 	if frame.HasPrincipal {
 		out.Set("principal", frame.Principal)
 	}
-	if frame.Client {
-		out.Set("client", true)
+	if frame.Origin != "" {
+		out.Set("origin", frame.Origin)
+	}
+	if frame.NoState {
+		out.Set("state", false)
+	}
+	if frame.Again {
+		out.Set("again", true)
 	}
 	return out
 }
@@ -248,7 +268,7 @@ func (frame ShapeFrame) encode() *chordjson.Object {
 	}
 	out.Set("members", stringValues(frame.Members))
 	out.Set("contract", frame.Contract)
-	out.Set("codeVersion", float64(frame.CodeVersion))
+	out.Set("state", stringValues(frame.State))
 	return out
 }
 
@@ -283,20 +303,21 @@ func (frame CancelFrame) encode() *chordjson.Object {
 }
 
 func (frame SubFrame) encode() *chordjson.Object {
-	return frameObject(frame.T(), "id", float64(frame.ID), "hold", float64(frame.Hold), "member", frame.Member)
+	return frameObject(frame.T(), "hold", float64(frame.Hold))
 }
 
 func (frame UnsubFrame) encode() *chordjson.Object {
-	return frameObject(frame.T(), "id", float64(frame.ID))
+	return frameObject(frame.T(), "hold", float64(frame.Hold))
+}
+
+func (frame ResyncFrame) encode() *chordjson.Object {
+	return frameObject(frame.T(), "hold", float64(frame.Hold), "m", frame.M)
 }
 
 func (frame StateFrame) encode() *chordjson.Object {
-	out := frameObject(frame.T(), "id", float64(frame.ID))
-	if frame.HasSnap {
-		out.Set("snap", frame.Snap)
-	}
-	if frame.HasReset {
-		out.Set("reset", frame.Reset)
+	out := frameObject(frame.T(), "hold", float64(frame.Hold), "m", frame.M, "as", frame.As)
+	if frame.HasValue {
+		out.Set("value", frame.Value)
 	}
 	if frame.Ops != nil {
 		ops := make([]any, len(frame.Ops))
@@ -460,16 +481,20 @@ var frameSchema = Schema{"anyOf": []any{
 	object([]string{"t", "n"}, "t", literal("ack"), "n", integer(1)),
 	object([]string{"t", "id", "at", "token", "input"}, "t", literal("hold"), "id", wireID, "at", wireName,
 		"token", descriptionSchema,
-		"input", wireUnknown, "principal", wireUnknown, "client", Schema{"type": "boolean"}),
+		"input", wireUnknown, "principal", wireUnknown, "origin", wireName,
+		"state", Schema{"const": false, "type": "boolean"}, "again", Schema{"const": true, "type": "boolean"}),
 	object([]string{"t", "id"}, "t", literal("release"), "id", wireID),
-	object([]string{"t", "id", "members", "contract", "codeVersion"}, "t", literal("shape"), "id", wireID, "variant", wireString, "members", wireStrings, "contract", wireString, "codeVersion", integer()),
+	object([]string{"t", "id", "members", "contract", "state"}, "t", literal("shape"), "id", wireID, "variant", wireString, "members", wireStrings, "contract", wireString, "state", Schema{"type": "array", "items": wireName}),
 	object([]string{"t", "id", "error"}, "t", literal("gone"), "id", wireID, "error", wireErrorShape),
 	object([]string{"t", "id", "hold", "member"}, "t", literal("call"), "id", wireID, "hold", wireID, "member", wireName, "args", wireUnknown, "root", wireRoot),
 	object([]string{"t", "id"}, "t", literal("result"), "id", wireID, "value", wireUnknown, "error", wireErrorShape),
 	object([]string{"t", "id"}, "t", literal("cancel"), "id", wireID),
-	object([]string{"t", "id", "hold", "member"}, "t", literal("sub"), "id", wireID, "hold", wireID, "member", wireName),
-	object([]string{"t", "id"}, "t", literal("unsub"), "id", wireID),
-	object([]string{"t", "id"}, "t", literal("state"), "id", wireID, "snap", wireUnknown, "reset", wireUnknown, "ops", Schema{"type": "array", "items": Schema{"type": "array", "items": wireUnknown}}, "error", wireErrorShape),
+	object([]string{"t", "hold"}, "t", literal("sub"), "hold", wireID),
+	object([]string{"t", "hold"}, "t", literal("unsub"), "hold", wireID),
+	object([]string{"t", "hold", "m"}, "t", literal("resync"), "hold", wireID, "m", wireName),
+	object([]string{"t", "hold", "m", "as"}, "t", literal("state"), "hold", wireID, "m", wireName,
+		"as", Schema{"anyOf": []any{literal("snap"), literal("reset"), literal("ops"), literal("error")}},
+		"value", wireUnknown, "ops", Schema{"type": "array", "items": Schema{"type": "array", "items": wireUnknown}}, "error", wireErrorShape),
 	object([]string{"t", "n"}, "t", literal("ping"), "n", integer()),
 	object([]string{"t", "n"}, "t", literal("pong"), "n", integer()),
 	object([]string{"t"}, "t", literal("bye"), "reason", wireString),
@@ -563,12 +588,13 @@ func frameOf(object *chordjson.Object) (Frame, error) {
 		if err := json.Unmarshal(raw, &token); err != nil { //perf:ok once per hold frame (a contract call opening); the token arrives as chordjson values and Description reads only its JSON text
 			return nil, err
 		}
-		client, _ := f.value("client").(bool)
-		return HoldFrame{ID: f.num("id"), At: f.str("at"), Token: token, Input: f.value("input"), Principal: f.value("principal"), HasPrincipal: f.has("principal"), Client: client}, nil
+		noState := f.has("state")
+		again, _ := f.value("again").(bool)
+		return HoldFrame{ID: f.num("id"), At: f.str("at"), Token: token, Input: f.value("input"), Principal: f.value("principal"), HasPrincipal: f.has("principal"), Origin: f.str("origin"), NoState: noState, Again: again}, nil
 	case "release":
 		return ReleaseFrame{ID: f.num("id")}, nil
 	case "shape":
-		return ShapeFrame{ID: f.num("id"), Variant: f.optionalString("variant"), Members: f.strings("members"), Contract: f.str("contract"), CodeVersion: f.num("codeVersion")}, nil
+		return ShapeFrame{ID: f.num("id"), Variant: f.optionalString("variant"), Members: f.strings("members"), Contract: f.str("contract"), State: f.strings("state")}, nil
 	case "gone":
 		return GoneFrame{ID: f.num("id"), Error: *f.wireError("error")}, nil
 	case "call":
@@ -583,11 +609,13 @@ func frameOf(object *chordjson.Object) (Frame, error) {
 	case "cancel":
 		return CancelFrame{ID: f.num("id")}, nil
 	case "sub":
-		return SubFrame{ID: f.num("id"), Hold: f.num("hold"), Member: f.str("member")}, nil
+		return SubFrame{Hold: f.num("hold")}, nil
 	case "unsub":
-		return UnsubFrame{ID: f.num("id")}, nil
+		return UnsubFrame{Hold: f.num("hold")}, nil
+	case "resync":
+		return ResyncFrame{Hold: f.num("hold"), M: f.str("m")}, nil
 	case "state":
-		frame := StateFrame{ID: f.num("id"), Snap: f.value("snap"), HasSnap: f.has("snap"), Reset: f.value("reset"), HasReset: f.has("reset"), Error: f.wireError("error")}
+		frame := StateFrame{Hold: f.num("hold"), M: f.str("m"), As: f.str("as"), Value: f.value("value"), HasValue: f.has("value"), Error: f.wireError("error")}
 		if f.has("ops") {
 			ops, _ := f.value("ops").([]any)
 			frame.Ops = make([]delta.WireOp, len(ops))

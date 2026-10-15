@@ -200,7 +200,7 @@ func TestPlacementTheHostComesFromTheNormalizedInputUnknownFieldsAndDefaultsDoNo
 	if got := placementGet(t, c.server, doc, map[string]any{}); got != "session:S1" {
 		t.Fatalf("defaulted = %q", got)
 	}
-	_, err := c.server.Get(placementNote, map[string]any{"session": "", "id": "x"}, nil)
+	_, err := c.server.Hold(placementNote, map[string]any{"session": "", "id": "x"}, nil)
 	if err == nil || !strings.Contains(err.Error(), "input field session names no host") {
 		t.Fatalf("empty session: %v", err)
 	}

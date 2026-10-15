@@ -281,7 +281,7 @@ func TestWebSocketLinksServesABrowserStyleClientOverARealSocketStampedByTheAuthe
 		})
 	}
 	getBoard := func(host *HostImpl) Ref {
-		ref, err := host.Get(wsBoard, map[string]any{}, nil)
+		ref, err := host.Hold(wsBoard, map[string]any{}, nil)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -323,7 +323,7 @@ func TestWebSocketLinksServesABrowserStyleClientOverARealSocketStampedByTheAuthe
 	signal, cancel := context.WithTimeout(context.Background(), 150*time.Millisecond)
 	defer cancel()
 	_, err := impostor.Root(func(ctx Ctx) (any, error) {
-		ref, err := impostor.Get(wsBoard, map[string]any{}, nil)
+		ref, err := impostor.Hold(wsBoard, map[string]any{}, nil)
 		if err != nil {
 			return nil, err
 		}
@@ -388,7 +388,7 @@ func TestWebSocketLinksPackedPayloadsLargeSnapshotsAndResultsReachTheClientAsBin
 		}
 	})
 	browser := CreateHost(HostOptions{Self: kindHost(), Name: "browser", Kind: KindClient, Upstream: &UpstreamOptions{Link: NewWebSocketLink(socket, WebSocketLinkOptions{}), ConnectOptions: ConnectOptions{Principal: kindServer()}}, OnError: func(error) {}})
-	board, err := browser.Get(wsBoard, map[string]any{}, nil)
+	board, err := browser.Hold(wsBoard, map[string]any{}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -421,7 +421,7 @@ func TestWebSocketLinksPackedPayloadsLargeSnapshotsAndResultsReachTheClientAsBin
 		case "result":
 			sawResult = sawResult || jsonText(t, object.Value("value")) == want
 		case "state":
-			sawSnap = sawSnap || jsonText(t, object.Value("snap")) == want
+			sawSnap = sawSnap || jsonText(t, object.Value("value")) == want
 		}
 	}
 	if !sawResult || !sawSnap {

@@ -445,7 +445,7 @@ func TestWebSocketLinkPacksLargePayloadsAsBinaryMessages(t *testing.T) {
 		big[index] = strings.Repeat("y", 4000)
 	}
 	_, _ = link.Send(CallFrame{ID: 1, Hold: 2, Member: "m", Args: "x", HasArgs: true, Root: &RootRef{RootID: "r", CodeVersion: 1}})
-	_, _ = link.Send(StateFrame{ID: 3, Snap: big, HasSnap: true})
+	_, _ = link.Send(StateFrame{Hold: 3, M: "notes", As: "snap", Value: big, HasValue: true})
 	if want := []string{`{"t":"call","id":1,"hold":2,"member":"m","root":{"rootId":"r","codeVersion":1},"args":"x"}`}; !slices.Equal(socket.sent, want) {
 		t.Fatalf("text = %q, want %q", socket.sent, want)
 	}
@@ -454,14 +454,14 @@ func TestWebSocketLinkPacksLargePayloadsAsBinaryMessages(t *testing.T) {
 	}
 	message := socket.binary[0]
 	length := int(message[0])<<24 | int(message[1])<<16 | int(message[2])<<8 | int(message[3])
-	if head := string(message[4 : 4+length]); head != `{"t":"state","id":3,"z":"snap"}` {
+	if head := string(message[4 : 4+length]); head != `{"t":"state","hold":3,"m":"notes","as":"snap","z":"value"}` {
 		t.Fatalf("envelope = %s", head)
 	}
 	text, err := InflateMessage(message)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if want := `{"t":"state","id":3,"snap":` + jsonText(t, big) + `}`; text != want {
+	if want := `{"t":"state","hold":3,"m":"notes","as":"snap","value":` + jsonText(t, big) + `}`; text != want {
 		t.Fatalf("inflated message has %d characters, want %d", len(text), len(want))
 	}
 
@@ -475,12 +475,12 @@ func TestWebSocketLinkPacksLargePayloadsAsBinaryMessages(t *testing.T) {
 		t.Fatalf("frames = %#v", frames)
 	}
 	state, ok := frames[0].(StateFrame)
-	if !ok || state.ID != 3 || !state.HasSnap {
+	if !ok || state.Hold != 3 || state.M != "notes" || !state.HasValue {
 		t.Fatalf("frame = %#v", frames[0])
 	}
-	payload, ok := state.Snap.(packed)
+	payload, ok := state.Value.(packed)
 	if !ok {
-		t.Fatalf("snap %T is not packed", state.Snap)
+		t.Fatalf("value %T is not packed", state.Value)
 	}
 	if value, err := unpack(payload); err != nil || jsonText(t, value) != jsonText(t, big) {
 		t.Fatalf("unpacked = %v", err)

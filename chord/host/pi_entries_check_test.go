@@ -23,7 +23,7 @@ func serveFactoryError(t *testing.T, declare func(self Self) error) error {
 	if err := host.Serve(linkCounter, factory, ServeOptions{}); err != nil {
 		t.Fatal(err)
 	}
-	_, err := host.Get(linkCounter, map[string]any{"name": "c"}, nil)
+	_, err := host.Hold(linkCounter, map[string]any{"name": "c"}, nil)
 	return err
 }
 

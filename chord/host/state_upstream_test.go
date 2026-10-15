@@ -133,20 +133,17 @@ func TestStatePublishesSnapshotsThenExactOpsDerivationsFollow(t *testing.T) {
 	})
 	mustCall(t, ref, "push", map[string]any{"id": float64(1), "label": "a"}, nil)
 	mu.Lock()
-	// Subscribed while loading: an empty snapshot, the hydrated value as a reset, then exact ops.
-	if len(events) < 3 {
+	// Subscribed while loading: the snapshot once live, then exact ops (state.test.ts, b45e0ebc).
+	if len(events) < 2 {
 		mu.Unlock()
 		t.Fatalf("events %v", events)
 	}
-	if got := eventText(t, events[0]); got != "snap null" {
+	if got := eventText(t, events[0]); got != `snap {"items":[],"count":0}` {
 		t.Errorf("events[0] = %s", got)
 	}
-	if got := eventText(t, events[1]); got != `reset {"items":[],"count":0}` {
-		t.Errorf("events[1] = %s", got)
-	}
 	var ops []string
-	if events[2].Type == StateEventOps {
-		for _, op := range events[2].Ops {
+	if events[1].Type == StateEventOps {
+		for _, op := range events[1].Ops {
 			ops = append(ops, jsonText(t, op))
 		}
 	}
@@ -154,8 +151,8 @@ func TestStatePublishesSnapshotsThenExactOpsDerivationsFollow(t *testing.T) {
 	if want := []string{`["p",["items"],0,0,[{"id":1,"label":"a"}]]`, `["s",["count"],1]`}; !slices.Equal(ops, want) {
 		t.Errorf("ops %q, want %q", ops, want)
 	}
-	if got := jsonText(t, events[2].Value); got != `{"items":[{"id":1,"label":"a"}],"count":1}` {
-		t.Errorf("events[2].value = %s", got)
+	if got := jsonText(t, events[1].Value); got != `{"items":[{"id":1,"label":"a"}],"count":1}` {
+		t.Errorf("events[1].value = %s", got)
 	}
 	var types []string
 	for _, event := range labels {
@@ -165,7 +162,7 @@ func TestStatePublishesSnapshotsThenExactOpsDerivationsFollow(t *testing.T) {
 	if got := jsonText(t, readable(t, ref, "labels").Value()); got != `["a"]` {
 		t.Fatalf("labels = %s", got)
 	}
-	if !slices.Equal(types, []string{"snap", "reset", "ops"}) {
+	if !slices.Equal(types, []string{"snap", "ops"}) {
 		t.Fatalf("label event types %v", types)
 	}
 	mustCall(t, ref, "set", map[string]any{"items": []any{}, "count": float64(0)}, nil)

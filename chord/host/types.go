@@ -22,6 +22,11 @@ type GetOptions struct {
 	// sends on.
 	Principal    Principal
 	HasPrincipal bool
+	// State is false for a method-only reference (types.ts:11-15): it receives no state unless another reference to
+	// the same object wants it, and is ready once its object is live. Nil is true.
+	State *bool
+	// Signal aborts an awaited Host.Get (Pi's `options.signal`; Ctx.Get ignores it).
+	Signal context.Context
 }
 
 // Ctx is the explicit call context of one root, a short Chord call tree (types.ts:14-24). Calls made with it carry
@@ -32,7 +37,10 @@ type Ctx interface {
 	RootID() string
 	CodeVersion() int
 	Principal() Principal
-	// Get holds the object of contract typ for input; options nil is Pi's undefined. A synchronous throw is the error.
+	// Get holds the object of contract typ for input; options nil is Pi's undefined. It returns once the reference is ready:
+	// live, with every state member of its variant (unless State is false). It fails with the activation error, aborted
+	// when the ctx is aborted or the call settles first, or unavailable/ready_timeout after the host's ReadyTimeout; the
+	// reference is released then.
 	Get(typ *Contract, input any, options *GetOptions) (Ref, error)
 }
 
@@ -83,8 +91,7 @@ type Shape struct {
 	Variant *string
 	Members []string
 	// Contract is the fingerprint of the provider contract.
-	Contract    string
-	CodeVersion int
+	Contract string
 }
 
 // RefBase is the members every reference has (types.ts:63-79). Ref (contract.ts) adds the contract's members.

@@ -88,7 +88,7 @@ func mustServe(t *testing.T, host *HostImpl, typ *Contract, factory Factory, opt
 
 func mustRef(t *testing.T, host *HostImpl, typ *Contract, input any, options *GetOptions) Ref {
 	t.Helper()
-	ref, err := host.Get(typ, input, options)
+	ref, err := host.Hold(typ, input, options)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -185,9 +185,7 @@ func TestHostActivatesGoesLiveBindsMembersLateDisposesAfterRelease(t *testing.T)
 		if ref.Status() != RefLoading {
 			t.Fatalf("status %s", ref.Status())
 		}
-		if value := readable(t, ref, "count").Value(); value != nil {
-			t.Fatalf("count before live = %v", value)
-		}
+		requireNotReady(t, "count before live", func() { readable(t, ref, "count").Value() })
 		pending = asyncCall(ref, "add", float64(2), nil)
 	})
 	if err := readyErr(t, ref); err != nil {
@@ -726,7 +724,7 @@ func TestHostEveryGetReachesTheOneObjectCreatedAtServeForTheHostPrincipalAnother
 	if !DeepEqual(guest.Member("seen"), created.items()[0]) {
 		t.Fatalf("seen = %v, want %v", guest.Member("seen"), created.items()[0])
 	}
-	if _, err := host.Get(hostStore, map[string]any{"scope": "other"}, nil); !IsChordError(err, CodeInvalid) {
+	if _, err := host.Hold(hostStore, map[string]any{"scope": "other"}, nil); !IsChordError(err, CodeInvalid) {
 		t.Fatalf("another input: %v", err)
 	}
 	// References do not change its lifetime: released by everyone else, it stays until the host closes.
@@ -937,16 +935,20 @@ func TestHostStateMembersAreLateBoundReadablesValuesThenSnapshotResetOpsEvents(t
 	if err := readyErr(t, editor); err != nil {
 		t.Fatal(err)
 	}
+	if variant := editor.Variant(); variant == nil || *variant != "editor" {
+		t.Fatalf("variant %v, want editor", variant)
+	}
 	mustCall(t, editor, "edit", map[string]any{"text": "hi"}, nil)
 	mu.Lock()
 	defer mu.Unlock()
 	if !slices.Equal(shapes, []string{"editor"}) {
 		t.Fatalf("shapes %v", shapes)
 	}
-	if want := []string{`snap null`, `reset {"text":""}`, `ops [["r",{"text":"hi"}]]`}; !slices.Equal(events, want) {
+	// Listeners added while loading get their snapshot once the reference is live (host.test.ts, b45e0ebc).
+	if want := []string{`snap {"text":""}`, `ops [["r",{"text":"hi"}]]`}; !slices.Equal(events, want) {
 		t.Fatalf("events %q, want %q", events, want)
 	}
-	if want := []string{`null`, `{"text":""}`, `{"text":"hi"}`}; !slices.Equal(values, want) {
+	if want := []string{`{"text":""}`, `{"text":"hi"}`}; !slices.Equal(values, want) {
 		t.Fatalf("values %q, want %q", values, want)
 	}
 }

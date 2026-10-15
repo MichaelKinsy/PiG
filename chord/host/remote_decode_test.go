@@ -29,7 +29,7 @@ func (link *opsRewriteLink) Receive(handler func(frame Frame)) {
 			link.done = true
 			link.mu.Unlock()
 			if first {
-				decoded, err := DecodeFrame(fmt.Appendf(nil, `{"t":"state","id":%d,"ops":%s}`, state.ID, link.ops))
+				decoded, err := DecodeFrame(fmt.Appendf(nil, `{"t":"state","hold":%d,"m":%q,"as":"ops","ops":%s}`, state.Hold, state.M, link.ops))
 				if err != nil {
 					link.t.Errorf("DecodeFrame: %v", err)
 					return
@@ -50,7 +50,7 @@ func (link *opsRewriteLink) Receive(handler func(frame Frame)) {
 //
 // mutation-checked: removing the AssertValidWireOp call from Decoder.Decode fails it.
 func TestRemoteStateRejectsMalformedWireOpsInTheDecoder(t *testing.T) {
-	for _, text := range []string{`{"t":"state","id":1,"ops":[5]}`, `{"t":"state","id":1,"ops":[null]}`, `{"t":"state","id":1,"ops":5}`} {
+	for _, text := range []string{`{"t":"state","hold":1,"m":"n","as":"ops","ops":[5]}`, `{"t":"state","hold":1,"m":"n","as":"ops","ops":[null]}`, `{"t":"state","hold":1,"m":"n","as":"ops","ops":5}`} {
 		if _, err := DecodeFrame([]byte(text)); err == nil {
 			t.Errorf("DecodeFrame accepted %s; Pi's isFrame refuses it", text)
 		}
@@ -89,10 +89,15 @@ func TestRemoteStateRejectsMalformedWireOpsInTheDecoder(t *testing.T) {
 					mu.Unlock()
 				}})
 			ref := requestsGet(t, browser, counter, requestsEmpty(), nil)
+			if err := readyErr(t, ref); err != nil {
+				t.Fatal(err)
+			}
 			n := requestsReadable(t, ref, "n")
 			stop := n.Subscribe(func(any) {})
 			defer stop()
-			waitFor(t, "the snapshot", func() bool { return n.Value() == float64(0) })
+			if n.Value() != float64(0) {
+				t.Fatalf("the snapshot is %v, want 0", n.Value())
+			}
 			mustCall(t, ref, "set", float64(1), nil)
 			waitFor(t, "the decoder's report", func() bool {
 				mu.Lock()

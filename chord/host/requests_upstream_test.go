@@ -33,7 +33,7 @@ func requestsHost(t *testing.T, options HostOptions) *HostImpl {
 
 func requestsGet(t *testing.T, host *HostImpl, typ *Contract, input any, options *GetOptions) Ref {
 	t.Helper()
-	ref, err := host.Get(typ, input, options)
+	ref, err := host.Hold(typ, input, options)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -140,9 +140,11 @@ func TestRequests1AHeldObjectsStateMemberCanBeReturnedAsThisObjectsStateMember(t
 		t.Fatal(err)
 	}
 	browser := requestsHost(t, HostOptions{Name: "browser", Kind: KindClient, Upstream: &UpstreamOptions{Link: up, ConnectOptions: ConnectOptions{Principal: kindServer()}}})
-	remoteView := requestsReadable(t, requestsGet(t, browser, chat, requestsEmpty(), nil), "view")
-	remoteView.Subscribe(func(any) {})
-	waitFor(t, "the remote snapshot", func() bool { return remoteView.Value() != nil })
+	remoteChat := requestsGet(t, browser, chat, requestsEmpty(), nil)
+	if err := readyErr(t, remoteChat); err != nil {
+		t.Fatal(err)
+	}
+	remoteView := requestsReadable(t, remoteChat, "view")
 	mustCall(t, requestsGet(t, server, conv, requestsEmpty(), nil), "set", "there", nil)
 	waitFor(t, "the remote ops", func() bool { return jsonText(t, remoteView.Value()) == `{"text":"there"}` })
 }
@@ -652,9 +654,9 @@ func TestRequests7AClusterReloadReportsWhatEachChildPrepared(t *testing.T) {
 	}
 }
 
-// requests.test.ts:355-387 "#8 a remote state member forgets its value when nobody listens; the next subscriber sees
-// the fresh value"
-func TestRequests8ARemoteStateMemberForgetsItsValueWhenNobodyListens(t *testing.T) {
+// requests.test.ts:362-396 "#8 a held remote reference keeps its state without listeners; a later subscriber sees the
+// current value"
+func TestRequests8AHeldRemoteReferenceKeepsItsStateWithoutListeners(t *testing.T) {
 	counter := Remote("t.count8", RemoteDef{Version: 1, Input: tObject(), Host: NewHostNamed("server"), Variants: Fields[VariantDef]{{"main", VariantDef{
 		State:   Fields[Schema]{{"n", tNumber()}},
 		Methods: Fields[MethodSpec]{{"set", Method(tNumber(), nil)}},
@@ -675,15 +677,19 @@ func TestRequests8ARemoteStateMemberForgetsItsValueWhenNobodyListens(t *testing.
 	}
 	browser := requestsHost(t, HostOptions{Name: "browser", Kind: KindClient, Upstream: &UpstreamOptions{Link: up, ConnectOptions: ConnectOptions{Principal: kindServer()}}})
 	ref := requestsGet(t, browser, counter, requestsEmpty(), nil)
+	if err := readyErr(t, ref); err != nil {
+		t.Fatal(err)
+	}
 	n := requestsReadable(t, ref, "n")
+	if got := n.Value(); got != float64(0) {
+		t.Fatalf("hydrated value = %v, want 0", got)
+	}
 	stop := n.Subscribe(func(any) {})
 	mustCall(t, ref, "set", float64(1), nil)
 	waitFor(t, "n = 1", func() bool { return n.Value() == float64(1) })
 	stop()
-	if got := n.Value(); got != nil {
-		t.Fatalf("value with nobody listening = %v", got)
-	}
 	mustCall(t, ref, "set", float64(2), nil)
+	waitFor(t, "n = 2", func() bool { return n.Value() == float64(2) })
 	var mu sync.Mutex
 	var seen []any
 	again := n.Subscribe(func(value any) {
@@ -691,13 +697,8 @@ func TestRequests8ARemoteStateMemberForgetsItsValueWhenNobodyListens(t *testing.
 		seen = append(seen, value)
 		mu.Unlock()
 	})
-	waitFor(t, "the fresh value", func() bool {
-		mu.Lock()
-		defer mu.Unlock()
-		return len(seen) > 0 && seen[len(seen)-1] == float64(2)
-	})
 	mu.Lock()
-	if !slices.Equal(seen, []any{nil, float64(2)}) {
+	if !slices.Equal(seen, []any{float64(2)}) {
 		t.Errorf("seen = %v", seen)
 	}
 	mu.Unlock()

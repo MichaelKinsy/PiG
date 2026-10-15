@@ -9,12 +9,12 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/chord/chordjson"
 )
 
-// frameSchema is the JSON Schema TypeBox builds for wire.ts FrameSchema: Pi aa9cf15b gives
-// hash64(canonicalJson(FrameSchema)) = 41fdefa9253641bd over 6965 characters (typebox 1.3.27).
+// frameSchema is the JSON Schema TypeBox builds for wire.ts FrameSchema: Pi b45e0ebc gives
+// hash64(canonicalJson(FrameSchema)) = 678648a861625402 over 7361 characters (typebox 1.3.27).
 func TestFrameSchemaIsPiFrameSchema(t *testing.T) {
 	text := CanonicalJSON(frameSchema)
-	if got := Hash64(text); got != "41fdefa9253641bd" || len(text) != 6965 {
-		t.Fatalf("frame schema hash %s length %d, Pi 41fdefa9253641bd 6965", got, len(text))
+	if got := Hash64(text); got != "678648a861625402" || len(text) != 7361 {
+		t.Fatalf("frame schema hash %s length %d, Pi 678648a861625402 7361", got, len(text))
 	}
 }
 
@@ -70,11 +70,11 @@ func TestFramesRoundTrip(t *testing.T) {
 	frames := []Frame{
 		HelloFrame{Name: "h", Kind: "host", CodeVersion: 0},
 		HelloFrame{Protocol: ProtocolVersion, Name: "h", Kind: "host", CodeVersion: 0, Acks: true},
-		HoldFrame{ID: 1, At: "a", Token: chatV1.Description, Input: chordjson.ObjectOf("session", "s"), Principal: nil, HasPrincipal: true, Client: true},
+		HoldFrame{ID: 1, At: "a", Token: chatV1.Description, Input: chordjson.ObjectOf("session", "s"), Principal: nil, HasPrincipal: true, Origin: "i:1", NoState: true, Again: true},
 		HoldFrame{ID: 2, At: "a", Token: chatV1.Description, Input: nil},
 		ReleaseFrame{ID: 1},
-		ShapeFrame{ID: 1, Variant: &kind, Members: []string{"view"}, Contract: "f", CodeVersion: 1},
-		ShapeFrame{ID: 1, Members: []string{}, Contract: "f", CodeVersion: 1},
+		ShapeFrame{ID: 1, Variant: &kind, Members: []string{"view"}, Contract: "f", State: []string{"view"}},
+		ShapeFrame{ID: 1, Members: []string{}, Contract: "f", State: []string{}},
 		GoneFrame{ID: 1, Error: WireError{Code: CodeGone, Message: "gone: x", Reason: "r"}},
 		CallFrame{ID: 1, Hold: 2, Member: "send", Args: chordjson.ObjectOf("text", "x"), HasArgs: true, Root: &RootRef{RootID: "r1", CodeVersion: 1}},
 		CallFrame{ID: 1, Hold: 2, Member: "ping"},
@@ -82,10 +82,13 @@ func TestFramesRoundTrip(t *testing.T) {
 		ResultFrame{ID: 1, Value: nil, HasValue: true},
 		ResultFrame{ID: 1, Error: &WireError{Code: CodeInvalid, Message: "invalid: x"}},
 		CancelFrame{ID: 1},
-		SubFrame{ID: 1, Hold: 1, Member: "view"},
-		UnsubFrame{ID: 1},
-		StateFrame{ID: 1, Snap: chordjson.ObjectOf("text", "a"), HasSnap: true},
-		StateFrame{ID: 1, Ops: []delta.WireOp{{"r", "x"}}},
+		SubFrame{Hold: 1},
+		UnsubFrame{Hold: 1},
+		ResyncFrame{Hold: 1, M: "view"},
+		StateFrame{Hold: 1, M: "view", As: "snap", Value: chordjson.ObjectOf("text", "a"), HasValue: true},
+		StateFrame{Hold: 1, M: "view", As: "reset", Value: nil, HasValue: true},
+		StateFrame{Hold: 1, M: "view", As: "ops", Ops: []delta.WireOp{{"r", "x"}}},
+		StateFrame{Hold: 1, M: "view", As: "error", Error: &WireError{Code: CodeGone, Message: "gone: x"}},
 		PingFrame{N: 3},
 		PongFrame{N: 3},
 		ByeFrame{Reason: &reason},

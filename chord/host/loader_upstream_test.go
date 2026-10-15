@@ -117,7 +117,7 @@ export default defineFacet((host) => {
 
 func greetOnce(t *testing.T, host *HostImpl, contract *Contract, name string) any {
 	t.Helper()
-	ref, err := host.Get(contract, map[string]any{}, nil)
+	ref, err := host.Hold(contract, map[string]any{}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -144,7 +144,7 @@ func TestNodeLoaderLoadsFacetModulesAndReloadsThemWithFreshCopiesOfTheirRelative
 	if err := host.Load([]PluginRef{ModuleRef(dir + "facet.ts")}, LoadOptions{}); err != nil {
 		t.Fatal(err)
 	}
-	ref, err := host.Get(nodeLoaderHello, map[string]any{}, nil)
+	ref, err := host.Hold(nodeLoaderHello, map[string]any{}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -267,7 +267,7 @@ export default defineFacet((host) => {
 	if err := host.Load([]PluginRef{ModuleRef(dir + "facet.ts")}, LoadOptions{}); err != nil {
 		t.Fatal(err)
 	}
-	ref, err := host.Get(probe, map[string]any{}, nil)
+	ref, err := host.Hold(probe, map[string]any{}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}

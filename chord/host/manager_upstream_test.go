@@ -83,7 +83,7 @@ func TestHostManagerStartsAChildHostLinksItStopsItGracefully(t *testing.T) {
 	if err := server.Accept(instance.Link(), AcceptOptions{Principal: chordjson.ObjectOf("worker", "w1"), Kind: KindHost, Name: new("w1")}); err != nil {
 		t.Fatal(err)
 	}
-	echo, err := server.Get(managerEcho, chordjson.ObjectOf(), nil)
+	echo, err := server.Hold(managerEcho, chordjson.ObjectOf(), nil)
 	if err != nil {
 		t.Fatal(err)
 	}

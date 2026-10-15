@@ -43,7 +43,7 @@ func TestMemoryLinksDeliverWhileAnotherReceiverHostIsBusy(t *testing.T) {
 	browser := requestsHost(t, HostOptions{Name: "browser", Kind: KindClient, Upstream: &UpstreamOptions{Link: up2, ConnectOptions: ConnectOptions{Principal: kindServer()}}})
 	added := make(chan any, 1)
 	go func() {
-		counter, err := browser.Get(linkCounter, map[string]any{"name": "c"}, nil)
+		counter, err := browser.Hold(linkCounter, map[string]any{"name": "c"}, nil)
 		if err != nil {
 			added <- err
 			return

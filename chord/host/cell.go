@@ -182,6 +182,37 @@ func (d *dependents) Len() int {
 	return len(d.set)
 }
 
+// Hydration is cell.ts Hydration: whether a state source has its value. A remote reference's member before its first
+// snapshot has none, and neither has anything derived from or forwarding it. Sources that do not implement hydrating
+// always have their value.
+type Hydration struct {
+	Hydrated bool
+	// WhenHydrated resolves once hydrated and rejects if the source ends first. It runs on the host's loop.
+	WhenHydrated func() *Promise[struct{}]
+}
+
+// hydrating is a state source that may lack its value (cell.ts HYDRATION): a nil Hydration is a source that has it.
+type hydrating interface{ hydration() *Hydration }
+
+// hydrationOf is cell.ts hydrationOf: the hydration of a readable, or nil for a source that always has its value.
+func hydrationOf(value any) *Hydration {
+	if source, ok := value.(hydrating); ok {
+		return source.hydration()
+	}
+	return nil
+}
+
+// unhydrated is cell.ts unhydrated: the hydrations of sources that are not hydrated yet.
+func unhydrated(sources ...any) []*Hydration {
+	var pending []*Hydration
+	for _, source := range sources {
+		if hydration := hydrationOf(source); hydration != nil && !hydration.Hydrated {
+			pending = append(pending, hydration)
+		}
+	}
+	return pending
+}
+
 // Source is cell.ts Source, the abstract object-owned state source (cell or derivation). Cell and Derived embed it.
 type Source[T any] struct {
 	Key string
@@ -660,6 +691,27 @@ func (derived *Derived) Value() any {
 	derived.mu.Lock()
 	defer derived.mu.Unlock()
 	return derived.current
+}
+
+// hydration is hydrated once every source is (a derivation over a remote member waits for its snapshot).
+func (derived *Derived) hydration() *Hydration {
+	sources := make([]any, len(derived.Sources))
+	for index, source := range derived.Sources {
+		sources[index] = source
+	}
+	pending := unhydrated(sources...)
+	if len(pending) == 0 {
+		return nil
+	}
+	return &Hydration{Hydrated: false, WhenHydrated: func() *Promise[struct{}] {
+		waits := make([]*Promise[struct{}], len(pending))
+		var loop *loop
+		for index, hydration := range pending {
+			waits[index] = hydration.WhenHydrated()
+			loop = waits[index].loop
+		}
+		return promiseAll(loop, waits)
+	}}
 }
 
 // Attach computes the first value (or takes it from precomputed, a reload's validated dry run, keyed by derivation)

@@ -188,7 +188,7 @@ func getGreeter(t *testing.T, host *HostImpl, typ *Contract, session string) Ref
 	if session != "" {
 		input = chordjson.ObjectOf("session", session)
 	}
-	ref, err := host.Get(typ, input, nil)
+	ref, err := host.Hold(typ, input, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -244,10 +244,10 @@ func TestCrossHostReloadPreparesEveryHostCommitsTheServerFirstThenTheWorkersCode
 	// Pi's tick lets the pinned root make its first (old-code version) call.
 	entered.waitT(t, "the pinned root's first call")
 	var mu sync.Mutex
-	var shapes []int
+	var shapes []string
 	greeter.OnShape(func(shape Shape) {
 		mu.Lock()
-		shapes = append(shapes, shape.CodeVersion)
+		shapes = append(shapes, shape.Contract)
 		mu.Unlock()
 	})
 	s.modules.set("greeter", greeterFacet("v2", false))
@@ -267,8 +267,8 @@ func TestCrossHostReloadPreparesEveryHostCommitsTheServerFirstThenTheWorkersCode
 		t.Fatalf("pinned = %v, %v", got.value, got.err)
 	}
 	mu.Lock()
-	if !slices.Equal(shapes, []int{report.CodeVersion}) {
-		t.Fatalf("shapes = %v, want [%d]", shapes, report.CodeVersion)
+	if len(shapes) != 1 {
+		t.Fatalf("shapes = %v, want one shape push at the commit", shapes)
 	}
 	mu.Unlock()
 	// The server retires the old code version once its last old root ended, then tells the worker.
@@ -450,10 +450,10 @@ func TestCrossHostReloadBrowsersAreNotParticipantsTheySeeShapeAndResetPushesOrUp
 		t.Fatalf("greet a = %q", got)
 	}
 	var mu sync.Mutex
-	var shapes []int
+	var shapes []string
 	viewer.OnShape(func(shape Shape) {
 		mu.Lock()
-		shapes = append(shapes, shape.CodeVersion)
+		shapes = append(shapes, shape.Contract)
 		mu.Unlock()
 	})
 	shapeCount := func() int {
@@ -462,14 +462,14 @@ func TestCrossHostReloadBrowsersAreNotParticipantsTheySeeShapeAndResetPushesOrUp
 		return len(shapes)
 	}
 	s.modules.set("greeter", greeterFacet("v2", false))
-	report, err := s.server.Reload(nil, ReloadOptions{Remote: sessionRemote("greeter")})
+	_, err := s.server.Reload(nil, ReloadOptions{Remote: sessionRemote("greeter")})
 	if err != nil {
 		t.Fatal(err)
 	}
 	waitFor(t, "the shape push", func() bool { return shapeCount() > 0 })
 	mu.Lock()
-	if !slices.Equal(shapes, []int{report.CodeVersion}) {
-		t.Fatalf("shapes = %v, want [%d]", shapes, report.CodeVersion)
+	if len(shapes) != 1 {
+		t.Fatalf("shapes = %v, want one shape push at the commit", shapes)
 	}
 	mu.Unlock()
 	if got := greet(t, viewer, "b", nil); got != "v2 b" {

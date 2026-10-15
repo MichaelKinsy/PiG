@@ -118,7 +118,7 @@ func dryRun(candidate *candidate) error {
 			if value, ok := values[source]; ok {
 				return value
 			}
-			return source.Value()
+			return candidateValue(source)
 		})
 		if err != nil {
 			return err
@@ -132,6 +132,20 @@ func dryRun(candidate *candidate) error {
 	}
 	candidate.derived = values
 	return nil
+}
+
+// candidateValue is a source's value for a dry run. A reference to a provider this reload upgrades too reads nothing
+// before the commit (its new contract does not bind the old code): the dry run computes without it, the commit with the
+// real value (reload.ts candidateValue).
+func candidateValue(source Readable[any]) any {
+	value, err := readValue(source)
+	if err != nil {
+		if chordError, ok := err.(*ChordError); ok && (chordError.Code == CodeNotReady || chordError.Code == CodeNotInVariant) { //nolint:errorlint // Pi's isChordError does not unwrap
+			return nil
+		}
+		panic(err)
+	}
+	return value
 }
 
 var reloadAbortedPrefix = regexp.MustCompile(`^[^:]*: `)
@@ -672,6 +686,12 @@ func (r *Reload) prepareObject(object *ObjectImpl) error {
 		return err
 	}
 	if err := object.open(open, refs, r.abort); err != nil {
+		return err
+	}
+	var hydrated *Promise[struct{}]
+	object.host.run(func() { hydrated = object.waitHydrated(added.run) })
+	//portlint:allow ctxbackground reload.ts:415 awaits object.waitHydrated(run), which carries no signal; the readyTimeout bounds it
+	if _, err := hydrated.Await(context.Background()); err != nil {
 		return err
 	}
 	// Cells this reload adds read their first value once the new resources are open (gated objects: at the gate); the

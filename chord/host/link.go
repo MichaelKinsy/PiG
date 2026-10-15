@@ -122,7 +122,7 @@ func inflateRaw(data []byte) ([]byte, error) {
 
 // isPayloadField is link.ts PAYLOAD_FIELDS.has(field).
 func isPayloadField(field string) bool {
-	return field == "args" || field == "value" || field == "snap" || field == "reset"
+	return field == "args" || field == "value"
 }
 
 // payloadField is the member of frame that carries its payload; "" for none.
@@ -137,11 +137,8 @@ func payloadField(frame Frame) string {
 			return "value"
 		}
 	case StateFrame:
-		if frame.HasSnap {
-			return "snap"
-		}
-		if frame.HasReset {
-			return "reset"
+		if frame.HasValue {
+			return "value"
 		}
 	}
 	return ""
@@ -294,11 +291,8 @@ func withPacked(frame Frame, field *packedField) Frame {
 		}
 		return typed
 	case StateFrame:
-		switch field.field {
-		case "snap":
-			typed.Snap, typed.HasSnap = field.payload, true
-		case "reset":
-			typed.Reset, typed.HasReset = field.payload, true
+		if field.field == "value" {
+			typed.Value, typed.HasValue = field.payload, true
 		}
 		return typed
 	}

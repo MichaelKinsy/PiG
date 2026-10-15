@@ -54,6 +54,18 @@ func (link *watchedLink) setCloseOn(fn func(frame Frame) bool) {
 	link.mu.Unlock()
 }
 
+// sentHold is the hold frame the link sent, if any.
+func (link *watchedLink) sentHold() (HoldFrame, bool) {
+	link.mu.Lock()
+	defer link.mu.Unlock()
+	for _, frame := range link.sent {
+		if hold, ok := frame.(HoldFrame); ok {
+			return hold, true
+		}
+	}
+	return HoldFrame{}, false
+}
+
 func (link *watchedLink) sentType(t string) bool {
 	link.mu.Lock()
 	defer link.mu.Unlock()
@@ -447,24 +459,27 @@ func TestLinksReview7ABrowserDisconnectCancelsItsCallDownstream(t *testing.T) {
 	}
 }
 
-// links-review.test.ts:260-272 "#9 a subscription dropped while the route resolves is never forwarded"
-func TestLinksReview9ASubscriptionDroppedWhileTheRouteResolvesIsNeverForwarded(t *testing.T) {
+// links-review.test.ts:280-295 "#9 state stopped while the route resolves is forwarded as a hold without state"
+func TestLinksReview9StateStoppedWhileTheRouteResolvesIsForwardedAsAHoldWithoutState(t *testing.T) {
 	c := newReviewCluster(t)
 	gate := newRequestsLatch()
 	c.setResolveGate(gate)
 	raw := c.raw(map[string]any{"guest": "g"})
 	_, _ = raw.raw.Send(HoldFrame{ID: 1, At: "session:S1", Token: reviewCounter.Description, Input: map[string]any{"name": "a"}})
-	_, _ = raw.raw.Send(SubFrame{ID: 2, Hold: 1, Member: "count"})
-	_, _ = raw.raw.Send(UnsubFrame{ID: 2})
+	_, _ = raw.raw.Send(UnsubFrame{Hold: 1})
 	raw.settle(t)
 	gate.open()
 	waitFor(t, "the forwarded hold", func() bool {
 		worker := c.worker("session:S1")
 		return worker != nil && worker.link.sentType("hold")
 	})
-	// A forwarded subscription follows its hold in the same section (RelayRef.open): none was sent with it.
-	if c.worker("session:S1").link.sentType("sub") {
-		t.Fatal("a dropped subscription was forwarded")
+	time.Sleep(10 * time.Millisecond)
+	link := c.worker("session:S1").link
+	if hold, _ := link.sentHold(); !hold.NoState {
+		t.Fatalf("the forwarded hold %+v wants state", hold)
+	}
+	if link.sentType("sub") || link.sentType("unsub") {
+		t.Fatal("a sub or unsub was forwarded")
 	}
 }
 
@@ -507,12 +522,12 @@ func TestLinksReview9AnOriginDisconnectRemovesItsRelayedRefsAndSubscriptionsDown
 	requestsReadable(t, counter, "count").Subscribe(func(any) {})
 	mustCall(t, counter, "add", float64(1), nil)
 	down := reviewConnection(c.server, "session:S1")
-	if got := reviewOnLoop(c.server, down.relayedSubs.Len); got != 1 {
-		t.Fatalf("relayed subs = %d", got)
+	if got := reviewOnLoop(c.server, down.relayedRefs.Len); got != 1 {
+		t.Fatalf("relayed refs = %d", got)
 	}
 	browser.up.Close()
 	waitFor(t, "relays removed", func() bool {
-		return reviewOnLoop(c.server, func() bool { return down.relayedRefs.Len() == 0 && down.relayedSubs.Len() == 0 })
+		return reviewOnLoop(c.server, func() bool { return down.relayedRefs.Len() == 0 })
 	})
 	waitFor(t, "close a", func() bool { return c.count("close a") == 1 })
 }
@@ -597,9 +612,11 @@ func TestLinksReview11SnapshotsThroughAnAcceptsAdapterAreValidatedAgainstTheCons
 		t.Fatal(err)
 	}
 	browser := requestsHost(t, HostOptions{Name: "browser", Kind: KindClient, Upstream: &UpstreamOptions{Link: up, ConnectOptions: ConnectOptions{Principal: kindServer()}}})
-	view := requestsReadable(t, requestsGet(t, browser, docV1, requestsEmpty(), nil), "view")
-	view.Subscribe(func(any) {})
-	waitFor(t, "the snapshot", func() bool { return view.Value() != nil })
+	doc := requestsGet(t, browser, docV1, requestsEmpty(), nil)
+	if err := readyErr(t, doc); err != nil {
+		t.Fatal(err)
+	}
+	view := requestsReadable(t, doc, "view")
 	if got := jsonText(t, view.Value()); got != `{"text":"hi"}` {
 		t.Fatalf("view = %s", got)
 	}

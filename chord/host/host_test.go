@@ -457,16 +457,20 @@ func TestMatchesPattern(t *testing.T) {
 	}
 }
 
-// host.ts remoteAddress (aa9cf15b): a remote hold's address is @type, the canonical input and the principal ("host" for
-// the host's own principal): no host name, since the type and its input decide where the object lives.
-func TestRemoteAddress(t *testing.T) {
+// host.ts remoteKey (b45e0ebc): a remote binding's key is @type, the canonical input identity (fields equal to their
+// defaults omitted), the principal part ("host" for the host's own principal) and the consumer's contract fingerprint: no
+// host name, since the type and its input decide where the object lives.
+func TestRemoteKey(t *testing.T) {
 	typ := testContract("t.a")
+	host := CreateHost(HostOptions{Self: kindHost(), OnError: func(error) {}})
+	t.Cleanup(func() { _ = host.Close() })
 	input := map[string]any{"b": 1.0, "a": "x"}
-	if got := remoteAddress(typ, input, nil, false); got != "@t.a\x00{\"a\":\"x\",\"b\":1}\x00host" {
-		t.Fatalf("host principal: %q", got)
+	if got, want := host.remoteKey(typ, input, host.principal), "@t.a\x00"+CanonicalIdentity(typ.Input, input)+"\x00host\x00"+typ.Fingerprint; got != want {
+		t.Fatalf("host principal: %q, want %q", got, want)
 	}
-	if got := remoteAddress(typ, nil, chordjson.ObjectOf("user", "u1"), true); got != "@t.a\x00null\x00{\"user\":\"u1\"}" {
-		t.Fatalf("user principal: %q", got)
+	user := chordjson.ObjectOf("user", "u1")
+	if got, want := host.remoteKey(typ, input, user), "@t.a\x00"+CanonicalIdentity(typ.Input, input)+"\x00p:"+CanonicalJSON(user)+"\x00"+typ.Fingerprint; got != want {
+		t.Fatalf("user principal: %q, want %q", got, want)
 	}
 }
 
@@ -474,12 +478,12 @@ func TestRemoteAddress(t *testing.T) {
 // no host), so it is looked up here.
 func TestGetErrors(t *testing.T) {
 	host := CreateHost(HostOptions{Self: kindHost()})
-	_, err := host.Get(testContract("t.a"), map[string]any{}, nil)
+	_, err := host.Hold(testContract("t.a"), map[string]any{}, nil)
 	if !IsChordError(err, CodeUnavailable) || messageOf(err) != "unavailable/unknown_type: t.a is not served by host" {
 		t.Fatalf("unknown type: %v", err)
 	}
 	local := Local("t.l", LocalDef{Version: 1, Input: tObject(), Members: Fields[any]{{"ping", Method(tObject(), tObject())}}})
-	_, err = host.Get(local, nil, nil)
+	_, err = host.Hold(local, nil, nil)
 	if messageOf(err) != "unavailable/unknown_type: t.l is not served by host" {
 		t.Fatalf("local: %v", err)
 	}
@@ -739,12 +743,14 @@ func TestAddressesUsePrincipalKey(t *testing.T) {
 	for _, test := range []struct {
 		options HostOptions
 		want    string
+		// remotePrincipal is the principal part of a remote key for the user.
+		remotePrincipal string
 	}{
-		{HostOptions{Self: chordjson.ObjectOf("user", "self")}, "t.a\x00{}\x00p:{\"conn\":\"c1\",\"user\":\"u1\"}"},
+		{HostOptions{Self: chordjson.ObjectOf("user", "self")}, "t.a\x00{}\x00p:{\"conn\":\"c1\",\"user\":\"u1\"}", "p:{\"conn\":\"c1\",\"user\":\"u1\"}"},
 		{HostOptions{Self: chordjson.ObjectOf("user", "self"), PrincipalKey: func(principal Principal) string {
 			value, _ := principal.(*chordjson.Object).Get("user")
 			return value.(string)
-		}}, "t.a\x00{}\x00p:u1"},
+		}}, "t.a\x00{}\x00p:u1", "p:u1"},
 	} {
 		host := CreateHost(test.options)
 		if err := host.Serve(a, noFactory, ServeOptions{}); err != nil {
@@ -758,9 +764,10 @@ func TestAddressesUsePrincipalKey(t *testing.T) {
 			if got, _ := host.addressOf(a, map[string]any{}, host.principal, false); got != "t.a\x00{}\x00host" {
 				t.Errorf("host address %q", got)
 			}
-			// A type placed on another host has a remote address: no host name, the normalized input.
+			// A type placed on another host has a remote key: no host name, the canonical input, the principal part and the
+			// consumer's fingerprint.
 			elsewhere := Remote("t.w", RemoteDef{Version: 1, Input: tObject(), Host: NewHostNamed("w"), Variants: Fields[VariantDef]{{"", VariantDef{Methods: Fields[MethodSpec]{{"ping", Method(tObject(), tObject())}}}}}})
-			if got, _ := host.addressOf(elsewhere, nil, user, false); got != "@t.w\x00{}\x00{\"conn\":\"c1\",\"user\":\"u1\"}" {
+			if got, _ := host.addressOf(elsewhere, nil, user, false); got != "@t.w\x00{}\x00"+test.remotePrincipal+"\x00"+elsewhere.Fingerprint {
 				t.Errorf("remote address %q", got)
 			}
 		})

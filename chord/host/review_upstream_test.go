@@ -142,7 +142,7 @@ func reviewID(input any) string {
 
 func reviewGet(t *testing.T, host *HostImpl, typ *Contract, input any, options *GetOptions) Ref {
 	t.Helper()
-	ref, err := host.Get(typ, input, options)
+	ref, err := host.Hold(typ, input, options)
 	if err != nil {
 		t.Fatal(err)
 	}

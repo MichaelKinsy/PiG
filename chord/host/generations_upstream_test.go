@@ -263,7 +263,7 @@ func TestGenerationGCDisposedObjectsAreNotKeptOnceTheirDisposalFinished(t *testi
 	}
 	// In a function of its own, so no reference outlives the iteration in this frame.
 	use := func(id int) {
-		ref, err := host.Get(item, map[string]any{"id": float64(id)}, nil)
+		ref, err := host.Hold(item, map[string]any{"id": float64(id)}, nil)
 		if err != nil {
 			t.Fatal(err)
 		}

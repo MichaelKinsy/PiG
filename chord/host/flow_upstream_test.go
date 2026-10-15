@@ -260,7 +260,7 @@ func TestLinkFlowControlReplacesOpsThatOutgrowTheirSlotWithTheCurrentValue(t *te
 	gate.release()
 	waitFor(t, "n = 100", func() bool { return values.last() == 100 })
 	sent := stateFrames(gate.frames()[before:])
-	if !slices.ContainsFunc(sent, func(frame StateFrame) bool { return frame.HasReset }) {
+	if !slices.ContainsFunc(sent, func(frame StateFrame) bool { return frame.As == "reset" }) {
 		t.Fatal("a reset replaced the ops")
 	}
 	if len(sent) >= 10 {
@@ -268,32 +268,36 @@ func TestLinkFlowControlReplacesOpsThatOutgrowTheirSlotWithTheCurrentValue(t *te
 	}
 }
 
-// flow.test.ts:162-180
-func TestLinkFlowControlDropsWhatWaitsForASubscriptionThatEnds(t *testing.T) {
+// flow.test.ts:174-193 (b45e0ebc): releasing the references drops what waits for them.
+func TestLinkFlowControlDropsWhatWaitsForAReferenceThatIsReleased(t *testing.T) {
 	server := requestsHost(t, HostOptions{Name: "server"})
 	serveFlowCounter(t, server, flowCounter, nil)
 	host, gate := flowClient(t, server, 64)
 	counter := flowGet(t, host, flowCounter)
-	count := requestsReadable(t, counter, "count")
-	stop := count.Subscribe(func(any) {})
-	waitFor(t, "the first value", func() bool { return count.Value() != nil })
+	if err := readyErr(t, counter); err != nil {
+		t.Fatal(err)
+	}
+	other := flowGet(t, host, flowCounter)
+	if err := readyErr(t, other); err != nil {
+		t.Fatal(err)
+	}
 
 	gate.pause()
 	for range 10 {
 		addOne(t, counter)
 	}
-	stop()
+	counter.Release()
+	other.Release()
 	before := len(gate.frames())
 	gate.release()
-	addOne(t, counter)
 	time.Sleep(10 * time.Millisecond)
 	if got := stateFrames(gate.frames()[before:]); len(got) != 0 {
-		t.Fatalf("state frames after the subscription ended: %v", got)
+		t.Fatalf("state frames after the references were released: %v", got)
 	}
 }
 
-// flow.test.ts:182-222
-func TestLinkFlowControlCoalescesRelayedStateAndResubscribesDownstreamWhenTheSlotOverflows(t *testing.T) {
+// flow.test.ts:195-240 (b45e0ebc)
+func TestLinkFlowControlCoalescesRelayedStateAndAsksDownstreamForAResetWhenItOverflows(t *testing.T) {
 	server := requestsHost(t, HostOptions{Name: "server"})
 	var toWorker *recordingLink
 	var mu sync.Mutex
@@ -319,21 +323,20 @@ func TestLinkFlowControlCoalescesRelayedStateAndResubscribesDownstreamWhenTheSlo
 	mu.Lock()
 	link := toWorker
 	mu.Unlock()
-	if got := link.count("sub"); got != 1 {
-		t.Fatalf("subs = %d, want 1", got)
+	if got := link.count("resync"); got != 0 {
+		t.Fatalf("resyncs = %d, want 0", got)
 	}
 
 	gate.pause()
 	for range 100 {
 		addOne(t, counter)
 	}
-	// Each overflow replaces the slot with a fresh downstream subscription (its snapshot then waits in the slot).
-	subs := link.count("sub")
-	if subs <= 1 {
-		t.Fatal("the overflowing slot was resubscribed downstream")
+	// An overflow drops the waiting ops and asks the worker for a reset (which then waits in the slot).
+	if link.count("resync") < 1 {
+		t.Fatal("the overflowing stream was resynced downstream")
 	}
-	if got := link.count("unsub"); got != subs-1 {
-		t.Fatalf("unsubs = %d, want %d", got, subs-1)
+	if link.count("sub") != 0 || link.count("unsub") != 0 {
+		t.Fatal("the relay sent sub or unsub downstream")
 	}
 	gate.release()
 	waitFor(t, "n = 100", func() bool { return values.last() == 100 })
@@ -352,7 +355,6 @@ func TestLinkFlowControlNeitherWindowsNorAcknowledgesAPeerWithoutAcks(t *testing
 	raw.Receive(frames.add)
 	_, _ = raw.Send(HelloFrame{Protocol: ProtocolVersion, Name: "raw", Kind: KindClient, CodeVersion: 0})
 	_, _ = raw.Send(HoldFrame{ID: 1, At: "server", Token: flowCounter.Description, Input: map[string]any{}})
-	_, _ = raw.Send(SubFrame{ID: 2, Hold: 1, Member: "count"})
 	for i := range 5 {
 		_, _ = raw.Send(CallFrame{ID: 3 + i, Hold: 1, Member: "add", Args: float64(1), HasArgs: true})
 	}
