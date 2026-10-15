@@ -80,5 +80,8 @@
   ],
   "./durable/core/jv": [
     "TestAppendString200KBudget"
+  ],
+  "./extensions/sdk/json": [
+    "TestAppendString200KBudget"
   ]
 }
