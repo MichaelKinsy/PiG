@@ -16,6 +16,7 @@ STRESS_COUNT=${TEST_STRESS_COUNT:-3}
 CLI_SHARDS=8
 CLI_PKG=./coding/cli
 SUBPROCESS_PKG=./coding/extension/host/subprocess
+CONFORMANCE_PKG=./test/extension-conformance
 # Heavy packages that run as several go test processes, each under its own package timeout and each warm from the shared Go and Cargo caches, like cmd/pig: <package>:<shards>. test-shard-pattern.sh partitions each package's tests by name hash, and run_sharded_pkg refuses to run a package unless its shard patterns select every listed test exactly once. changed mode runs these packages whole.
 SHARDED_SPEC=(
   ./ai:2
@@ -24,6 +25,7 @@ SHARDED_SPEC=(
   ./codemode:2
   ./durable/codemode:2
   ./coding/extension/host/subprocess:3
+  ./test/extension-conformance:2
 )
 MODE=${1:-default}
 COUNT_FLAG=()
@@ -52,6 +54,7 @@ heavy_pkgs=$(go list "${HEAVY_PKGS[@]}")
 mapfile -t HEAVY_PKGS <<<"$heavy_pkgs"
 CLI_PKG=$(go list "$CLI_PKG")
 SUBPROCESS_PKG=$(go list "$SUBPROCESS_PKG")
+CONFORMANCE_PKG=$(go list "$CONFORMANCE_PKG")
 if [[ ${#SERIAL_PKGS[@]} -gt 0 ]]; then
   serial_pkgs=$(go list "${SERIAL_PKGS[@]}")
   mapfile -t SERIAL_PKGS <<<"$serial_pkgs"
@@ -294,9 +297,9 @@ case "$MODE" in
     ;;
   fast)
     run_group fast-parallel "$FAST_PARALLEL" "${FAST_PKGS[@]}"
-    # Every sharded package but the extension host, which test-subprocess runs.
+    # Every sharded package but the extension host and the conformance suite, which test-subprocess and test-conformance run.
     fast_sharded=()
-    for pkg in "${!SHARD_COUNT[@]}"; do [[ "$pkg" == "$SUBPROCESS_PKG" ]] || fast_sharded+=("$pkg"); done
+    for pkg in "${!SHARD_COUNT[@]}"; do [[ "$pkg" == "$SUBPROCESS_PKG" || "$pkg" == "$CONFORMANCE_PKG" ]] || fast_sharded+=("$pkg"); done
     [[ ${#fast_sharded[@]} -eq 0 ]] || run_sharded "$SUBPROCESS_PARALLEL" "${fast_sharded[@]}"
     run_fault_group "$SERIAL_PARALLEL"
     run_group serial-exclusive "$SERIAL_PARALLEL" "${SERIAL_PKGS[@]}"
