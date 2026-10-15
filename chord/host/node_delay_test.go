@@ -55,7 +55,7 @@ func TestNodeDelayMatchesNodeTimers(t *testing.T) {
 // cluster.ts:26-37 with a deadline above TIMEOUT_MAX: Node's setTimeout runs it after 1 ms, so the vote rejects at once,
 // with the deadline as given in the message.
 func TestAwaitVoteDeadlineAboveNodeTimeoutMaxRejectsAfterOneMillisecond(t *testing.T) {
-	host := CreateHost(HostOptions{})
+	host := CreateHost(HostOptions{Self: kindHost()})
 	connection, _ := childConnection(t, host, "w")
 	var vote *Promise[*WireReloadReport]
 	host.run(func() { vote = awaitVote(host, connection, 9, nodeTimeoutMax+time.Millisecond) })

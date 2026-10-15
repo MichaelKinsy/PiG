@@ -10,7 +10,7 @@ import (
 // variant is LOCAL_VARIANT "", contract.ts:59) and fingerprint is hash64(canonicalJson(description)) (contract.ts:119).
 func TestContractTokensCarryPiFields(t *testing.T) {
 	input := tObject("session", tString())
-	def := RemoteDef{Version: 3, Input: input, Variants: Fields[VariantDef]{
+	def := RemoteDef{Version: 3, Input: input, Host: NewHostNamed("server"), Variants: Fields[VariantDef]{
 		{"viewer", VariantDef{State: Fields[Schema]{{"view", view}}}},
 		{"writer", VariantDef{State: Fields[Schema]{{"view", view}}, Methods: Fields[MethodSpec]{{"send", Method(tString(), tNumber())}}}},
 	}}
@@ -19,7 +19,7 @@ func TestContractTokensCarryPiFields(t *testing.T) {
 		remote.Local != nil || remote.Remote == nil || !reflect.DeepEqual(*remote.Remote, def) {
 		t.Fatalf("remote token = %+v", remote)
 	}
-	wantRemote := Description{Name: "t.remote", Scope: "remote", Version: 3, Input: input, Variants: Fields[Fields[MemberDescription]]{
+	wantRemote := Description{Name: "t.remote", Scope: "remote", Version: 3, Input: input, Host: HostNamed{Name: "server"}, Variants: Fields[Fields[MemberDescription]]{
 		{"viewer", Fields[MemberDescription]{{"view", MemberDescription{Kind: "state", Schema: view}}}},
 		{"writer", Fields[MemberDescription]{{"view", MemberDescription{Kind: "state", Schema: view}}, {"send", MemberDescription{Kind: "method", Args: tString(), Result: tNumber()}}}},
 	}}

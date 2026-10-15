@@ -140,7 +140,7 @@ func TestNodeLoaderLoadsFacetModulesAndReloadsThemWithFreshCopiesOfTheirRelative
 	writeGreeting := func(text string) { env.write(t, dir+"greeting.ts", "export const greeting = "+jsLiteral(text)+";\n") }
 	env.write(t, dir+"facet.ts", env.facetSource())
 	writeGreeting("v1")
-	host := CreateHost(HostOptions{Loader: loader.Load, OnError: func(error) {}})
+	host := CreateHost(HostOptions{Self: kindHost(), Loader: loader.Load, OnError: func(error) {}})
 	if err := host.Load([]PluginRef{ModuleRef(dir + "facet.ts")}, LoadOptions{}); err != nil {
 		t.Fatal(err)
 	}
@@ -179,7 +179,7 @@ func TestNodeLoaderLoadsFacetModulesAndReloadsThemWithFreshCopiesOfTheirRelative
 		`import { Type } from "typebox";`+"\nimport { defineFacet, local, method } from "+jsLiteral(env.chordJS)+";\nimport { state } from \"../b/state.ts\";\n"+
 			`const Shared = local("t.shared", { version: 1, input: Type.Object({}), members: { same: method(undefined, Type.Boolean()) } });`+"\n"+
 			`export default defineFacet((host) => host.serve(Shared, () => ({ same: async () => (await import(new URL("../b/facet.ts", import.meta.url).href)).own === state })));`+"\n")
-	ordered := CreateHost(HostOptions{Loader: loader.Load, OnError: func(error) {}})
+	ordered := CreateHost(HostOptions{Self: kindHost(), Loader: loader.Load, OnError: func(error) {}})
 	t.Cleanup(func() { _ = ordered.Close() })
 	if err := ordered.Load([]PluginRef{ModuleRef(plugins + "a/facet.ts"), ModuleRef(plugins + "b/facet.ts")}, LoadOptions{}); err != nil {
 		t.Fatal(err)
@@ -200,7 +200,7 @@ func TestNodeLoaderRejectsAModuleWhoseDefaultExportIsNotAFacet(t *testing.T) {
 	env.write(t, dir+"plain.ts", "export default { setup: 1 };\n")
 	loader := env.loader()
 	t.Cleanup(func() { _ = loader.Close() })
-	host := CreateHost(HostOptions{Loader: loader.Load, OnError: func(error) {}})
+	host := CreateHost(HostOptions{Self: kindHost(), Loader: loader.Load, OnError: func(error) {}})
 	t.Cleanup(func() { _ = host.Close() })
 	err := host.Load([]PluginRef{ModuleRef(dir + "plain.ts")}, LoadOptions{})
 	var typeErr *TypeError
@@ -262,7 +262,7 @@ export default defineFacet((host) => {
 	}})
 	loader := env.loader()
 	t.Cleanup(func() { _ = loader.Close() })
-	host := CreateHost(HostOptions{Loader: loader.Load, OnError: func(error) {}})
+	host := CreateHost(HostOptions{Self: kindHost(), Loader: loader.Load, OnError: func(error) {}})
 	t.Cleanup(func() { _ = host.Close() })
 	if err := host.Load([]PluginRef{ModuleRef(dir + "facet.ts")}, LoadOptions{}); err != nil {
 		t.Fatal(err)
@@ -392,7 +392,7 @@ func hostOfFacets(t *testing.T, loader *NodeLoaderImpl) *nodeFacetHost {
 
 // loader.test.ts:17-20 "needs a configured loader for modules".
 func TestNodeLoaderNeedsAConfiguredLoaderForModules(t *testing.T) {
-	host := CreateHost(HostOptions{OnError: func(error) {}})
+	host := CreateHost(HostOptions{Self: kindHost(), OnError: func(error) {}})
 	t.Cleanup(func() { _ = host.Close() })
 	err := host.Load([]PluginRef{ModuleRef("./facet.ts")}, LoadOptions{})
 	if err == nil || !regexp.MustCompile(`createHost\(\{ loader \}\)`).MatchString(err.Error()) {

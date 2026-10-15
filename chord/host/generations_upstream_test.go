@@ -83,7 +83,7 @@ func generationCount(self Self) (Readable[any], error) {
 // generations.test.ts "a reference held across reloads keeps only the current generation alive".
 func TestGenerationGCAReferenceHeldAcrossReloadsKeepsOnlyTheCurrentGenerationAlive(t *testing.T) {
 	generations := newGenerationTracker()
-	host := CreateHost(HostOptions{OnError: func(error) {}})
+	host := CreateHost(HostOptions{Self: kindHost(), OnError: func(error) {}})
 	facet := func(generation int) *Facet {
 		sentinel := trackGeneration(generations, generation, &generationSentinel{generation})
 		return &Facet{Name: "store", FacetDefinition: FacetDefinition{Setup: func(api FacetApi) error {
@@ -126,7 +126,7 @@ func TestGenerationGCAReferenceHeldAcrossReloadsKeepsOnlyTheCurrentGenerationAli
 // registrations keeps only the current generation alive.
 func TestGenerationGCAHostObjectWithStateAKeptResourceAListenerATaskAndRegistrationsKeepsOnlyTheCurrentGenerationAlive(t *testing.T) {
 	generations := newGenerationTracker()
-	host := CreateHost(HostOptions{OnError: func(error) {}})
+	host := CreateHost(HostOptions{Self: kindHost(), OnError: func(error) {}})
 	facet := func(generation int) *Facet {
 		sentinel := trackGeneration(generations, generation, &generationSentinel{generation})
 		return &Facet{Name: "store", FacetDefinition: FacetDefinition{Setup: func(api FacetApi) error {
@@ -189,7 +189,7 @@ func TestGenerationGCAHostObjectWithStateAKeptResourceAListenerATaskAndRegistrat
 // context.AfterFunc on ctx.Signal() is the listener).
 func TestGenerationGCAbortListenersThatCallsAndTasksAddToTheirCtxSignalDoNotOutliveThem(t *testing.T) {
 	generations := newGenerationTracker()
-	host := CreateHost(HostOptions{OnError: func(error) {}})
+	host := CreateHost(HostOptions{Self: kindHost(), OnError: func(error) {}})
 	facet := func(generation int) *Facet {
 		sentinel := trackGeneration(generations, generation, &generationSentinel{generation})
 		return &Facet{Name: "store", FacetDefinition: FacetDefinition{Setup: func(api FacetApi) error {
@@ -247,7 +247,7 @@ func TestGenerationGCDisposedObjectsAreNotKeptOnceTheirDisposalFinished(t *testi
 		Input:   tObject("id", tNumber()),
 		Members: Fields[any]{{"id", Method(tNull(), tNumber())}},
 	})
-	host := CreateHost(HostOptions{OnError: func(error) {}})
+	host := CreateHost(HostOptions{Self: kindHost(), OnError: func(error) {}})
 	if err := host.Serve(item, func(input any, _ Principal, self Self) (Implementation, error) {
 		// Pi tracks the normalized input, which its object holds: it stands for the object. Go's input is a map, which
 		// has no address to track; the object is its object, whose own reachability is what the host must release.

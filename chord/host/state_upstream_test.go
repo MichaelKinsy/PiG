@@ -269,7 +269,7 @@ func TestStateValidatesInitialValuesAlwaysAndWritesOnlyInDevMode(t *testing.T) {
 		t.Fatalf("lax set: %v", err)
 	}
 
-	dev := CreateHost(HostOptions{Dev: true, OnError: func(error) {}})
+	dev := CreateHost(HostOptions{Self: kindHost(), Dev: true, OnError: func(error) {}})
 	t.Cleanup(func() { _ = dev.Close() })
 	stateServeList(t, dev)
 	ref := mustRef(t, dev, stateList, map[string]any{}, nil)

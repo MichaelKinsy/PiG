@@ -153,7 +153,7 @@ func acceptPiWsClient(t *testing.T, server *HostImpl, options WebSocketAcceptOpt
 	listener := &piWsServer{}
 	AcceptWebSockets[string](listener, server, options)
 	serverEnd, clientEnd := piWsPair(t)
-	client := requestsHost(t, HostOptions{Name: "browser", Kind: KindClient, Upstream: NewWebSocketLink(clientEnd, WebSocketLinkOptions{})})
+	client := requestsHost(t, HostOptions{Name: "browser", Kind: KindClient, Upstream: &UpstreamOptions{Link: NewWebSocketLink(clientEnd, WebSocketLinkOptions{}), ConnectOptions: ConnectOptions{Principal: kindServer()}}})
 	listener.connect(serverEnd, "/")
 	waitFor(t, "the server accepted the socket", func() bool {
 		return reviewOnLoop(server, func() bool { return server.connections.Len() == 1 })
@@ -387,10 +387,10 @@ func TestPiWebSocketAcceptOptionsMaxCallsAnswersCallsBeyondItWithTooManyCalls(t 
 	server := requestsHost(t, HostOptions{Name: "server"})
 	waiting := newRequestsLatch()
 	t.Cleanup(waiting.open)
-	serveFlowCounter(t, server, waiting)
+	serveFlowCounter(t, server, flowCounter, waiting)
 	maxCalls := 2
 	client, _ := acceptPiWsClient(t, server, WebSocketAcceptOptions[string]{MaxCalls: &maxCalls})
-	counter := flowGet(t, client, "server")
+	counter := flowGet(t, client, flowCounter)
 	if err := readyErr(t, counter); err != nil {
 		t.Fatal(err)
 	}

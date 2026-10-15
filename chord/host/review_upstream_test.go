@@ -197,7 +197,7 @@ func reviewVersion(version string) Implementation {
 
 // review.test.ts:60 "#1 a failing listener subscription fails prepare; the code version and all objects stay unchanged"
 func TestReviewAFailingListenerSubscriptionFailsPrepareTheCodeVersionAndAllObjectsStayUnchanged(t *testing.T) {
-	host := CreateHost(HostOptions{OnError: func(error) {}})
+	host := CreateHost(HostOptions{Self: kindHost(), OnError: func(error) {}})
 	t.Cleanup(func() { _ = host.Close() })
 	sources := map[string]*reviewEmitter{"a": newReviewEmitter(false), "b": newReviewEmitter(true), "c": newReviewEmitter(false)}
 	facet := func(version string, listen bool) *Facet {
@@ -241,12 +241,12 @@ func TestReviewAFailingListenerSubscriptionFailsPrepareTheCodeVersionAndAllObjec
 
 // review.test.ts:87 "#2 migration is validated against the new remote schemas, not the obsolete ones (dev mode)"
 func TestReviewMigrationIsValidatedAgainstTheNewRemoteSchemasNotTheObsoleteOnes(t *testing.T) {
-	host := CreateHost(HostOptions{Dev: true, OnError: func(error) {}})
+	host := CreateHost(HostOptions{Self: kindHost(), Dev: true, OnError: func(error) {}})
 	t.Cleanup(func() { _ = host.Close() })
 	countV1 := tObject("n", tNumber())
 	countV2 := tObject("total", tNumber())
-	v1 := Remote("t.counted", RemoteDef{Version: 1, Input: reviewEmpty(), Variants: Fields[VariantDef]{{"main", VariantDef{State: Fields[Schema]{{"count", countV1}}}}}})
-	v2 := Remote("t.counted", RemoteDef{Version: 2, Input: reviewEmpty(), Variants: Fields[VariantDef]{{"main", VariantDef{State: Fields[Schema]{{"count", countV2}}}}}})
+	v1 := Remote("t.counted", RemoteDef{Version: 1, Input: reviewEmpty(), Host: NewHostNamed("host"), Variants: Fields[VariantDef]{{"main", VariantDef{State: Fields[Schema]{{"count", countV1}}}}}})
+	v2 := Remote("t.counted", RemoteDef{Version: 2, Input: reviewEmpty(), Host: NewHostNamed("host"), Variants: Fields[VariantDef]{{"main", VariantDef{State: Fields[Schema]{{"count", countV2}}}}}})
 	if err := host.Install(*reviewFacet("counted", func(api FacetApi) error {
 		return api.Serve(v1, func(_ any, _ Principal, self Self) (Implementation, error) {
 			return chordjson.ObjectOf("variant", "main", "count", reviewState(t, self, "count", countV1, delta.JsonObjectOf("n", float64(3)))), nil
@@ -280,7 +280,7 @@ func TestReviewMigrationIsValidatedAgainstTheNewRemoteSchemasNotTheObsoleteOnes(
 // review.test.ts:136 "#1 a commit that still fails midway fails the host terminally (no half-published code version serving
 // work)". Pi replaces every object's startTasks (white box); Go replaces the package's start step.
 func TestReviewACommitThatStillFailsMidwayFailsTheHostTerminally(t *testing.T) {
-	host := CreateHost(HostOptions{OnError: func(error) {}})
+	host := CreateHost(HostOptions{Self: kindHost(), OnError: func(error) {}})
 	t.Cleanup(func() { _ = host.Close() })
 	if err := host.Install(*reviewFacet("item", func(api FacetApi) error {
 		return api.Serve(reviewItem, func(any, Principal, Self) (Implementation, error) { return reviewVersion("v1"), nil }, ServeOptions{})
@@ -308,7 +308,7 @@ func TestReviewACommitThatStillFailsMidwayFailsTheHostTerminally(t *testing.T) {
 
 // review.test.ts:159 "reentrant observers calling another object during a commit see the whole new code version"
 func TestReviewReentrantObserversCallingAnotherObjectDuringACommitSeeTheWholeNewCodeVersion(t *testing.T) {
-	host := CreateHost(HostOptions{OnError: func(error) {}})
+	host := CreateHost(HostOptions{Self: kindHost(), OnError: func(error) {}})
 	t.Cleanup(func() { _ = host.Close() })
 	other := Local("t.other", LocalDef{Version: 1, Input: reviewEmpty(), Members: Fields[any]{{"version", Method(nil, tString())}}})
 	facet := func(version string) *Facet {
@@ -369,7 +369,7 @@ var reviewStore = Local("t.store", LocalDef{Version: 1, Input: reviewEmpty(), Me
 
 // review.test.ts:186 "#4 a running listener holds a lease: the gate waits for it before migrating"
 func TestReviewARunningListenerRefsALeaseTheGateWaitsForItBeforeMigrating(t *testing.T) {
-	host := CreateHost(HostOptions{OnError: func(error) {}})
+	host := CreateHost(HostOptions{Self: kindHost(), OnError: func(error) {}})
 	t.Cleanup(func() { _ = host.Close() })
 	events := newReviewEmitter(false)
 	gate := newReviewLatch()
@@ -429,7 +429,7 @@ func TestReviewDisposalWaitsForRunningMethodsBeforeClosingResources(t *testing.T
 	var goMu sync.Mutex
 	gate := newReviewLatch()
 	currentGate := func() *reviewLatch { goMu.Lock(); defer goMu.Unlock(); return gate }
-	host := CreateHost(HostOptions{OnError: func(error) {}})
+	host := CreateHost(HostOptions{Self: kindHost(), OnError: func(error) {}})
 	t.Cleanup(func() { _ = host.Close() })
 	type conn struct {
 		mu     sync.Mutex
@@ -531,7 +531,7 @@ func TestReviewDisposalWaitsForRunningMethodsBeforeClosingResources(t *testing.T
 func TestReviewARegistryConflictFoundWhileFinalizingActivationUnwindsTheLoserCompletely(t *testing.T) {
 	var errMu sync.Mutex
 	var reported []error
-	host := CreateHost(HostOptions{OnError: func(err error) { errMu.Lock(); reported = append(reported, err); errMu.Unlock() }})
+	host := CreateHost(HostOptions{Self: kindHost(), OnError: func(err error) { errMu.Lock(); reported = append(reported, err); errMu.Unlock() }})
 	t.Cleanup(func() { _ = host.Close() })
 	routes := DefineRegistry[string]("t.review-routes")
 	var log reviewLog
@@ -571,7 +571,7 @@ func TestReviewARegistryConflictFoundWhileFinalizingActivationUnwindsTheLoserCom
 
 // review.test.ts:318 "#6 releasing the last hold while listeners start up does not resurrect the object"
 func TestReviewReleasingTheLastRefWhileListenersStartUpDoesNotResurrectTheObject(t *testing.T) {
-	host := CreateHost(HostOptions{OnError: func(error) {}})
+	host := CreateHost(HostOptions{Self: kindHost(), OnError: func(error) {}})
 	t.Cleanup(func() { _ = host.Close() })
 	var log reviewLog
 	var mu sync.Mutex
@@ -632,7 +632,7 @@ var reviewDb = Local("t.db", LocalDef{Version: 1, Input: reviewEmpty(), Members:
 
 // review.test.ts:351 "#7 a prepare rerun cannot touch retained resources, even open ones"
 func TestReviewAPrepareRerunCannotTouchRetainedResourcesEvenOpenOnes(t *testing.T) {
-	host := CreateHost(HostOptions{OnError: func(error) {}})
+	host := CreateHost(HostOptions{Self: kindHost(), OnError: func(error) {}})
 	t.Cleanup(func() { _ = host.Close() })
 	native := map[string]any{"mutated": false}
 	facet := func(touch bool) *Facet {
@@ -668,7 +668,7 @@ func TestReviewAPrepareRerunCannotTouchRetainedResourcesEvenOpenOnes(t *testing.
 
 // review.test.ts:372 "#7 objects of types a reload adds start listeners and tasks only at commit"
 func TestReviewObjectsOfTypesAReloadAddsStartListenersAndTasksOnlyAtCommit(t *testing.T) {
-	host := CreateHost(HostOptions{OnError: func(error) {}})
+	host := CreateHost(HostOptions{Self: kindHost(), OnError: func(error) {}})
 	t.Cleanup(func() { _ = host.Close() })
 	var log reviewLog
 	fresh := Local("t.fresh", LocalDef{Version: 1, Input: reviewEmpty()})
@@ -720,10 +720,10 @@ func TestReviewObjectsOfTypesAReloadAddsStartListenersAndTasksOnlyAtCommit(t *te
 
 // review.test.ts:411 "#8 a breaking provider change and its updated consumer reload in one batch"
 func TestReviewABreakingProviderChangeAndItsUpdatedConsumerReloadInOneBatch(t *testing.T) {
-	host := CreateHost(HostOptions{OnError: func(error) {}})
+	host := CreateHost(HostOptions{Self: kindHost(), OnError: func(error) {}})
 	t.Cleanup(func() { _ = host.Close() })
-	p1 := Remote("t.provider", RemoteDef{Version: 1, Input: reviewEmpty(), Variants: Fields[VariantDef]{{"main", VariantDef{Methods: Fields[MethodSpec]{{"get", Method(nil, tString())}}}}}})
-	p2 := Remote("t.provider", RemoteDef{Version: 2, Input: reviewEmpty(), Variants: Fields[VariantDef]{{"main", VariantDef{Methods: Fields[MethodSpec]{{"fetch", Method(nil, tString())}}}}}})
+	p1 := Remote("t.provider", RemoteDef{Version: 1, Input: reviewEmpty(), Host: NewHostNamed("host"), Variants: Fields[VariantDef]{{"main", VariantDef{Methods: Fields[MethodSpec]{{"get", Method(nil, tString())}}}}}})
+	p2 := Remote("t.provider", RemoteDef{Version: 2, Input: reviewEmpty(), Host: NewHostNamed("host"), Variants: Fields[VariantDef]{{"main", VariantDef{Methods: Fields[MethodSpec]{{"fetch", Method(nil, tString())}}}}}})
 	consumer := Local("t.consumer", LocalDef{Version: 1, Input: reviewEmpty(), Members: Fields[any]{{"ask", Method(nil, tString())}}})
 	facet := func(provider *Contract, member, answer string) *Facet {
 		return reviewFacet("both", func(api FacetApi) error {
@@ -760,7 +760,7 @@ func TestReviewABreakingProviderChangeAndItsUpdatedConsumerReloadInOneBatch(t *t
 func TestReviewAnExclusiveResourceWhoseCloseFailedIsRestoredOnRollbackOrMarkedUnavailable(t *testing.T) {
 	for _, reopen := range []string{"works", "fails"} {
 		t.Run(reopen, func(t *testing.T) {
-			host := CreateHost(HostOptions{OnError: func(error) {}})
+			host := CreateHost(HostOptions{Self: kindHost(), OnError: func(error) {}})
 			t.Cleanup(func() { _ = host.Close() })
 			var log reviewLog
 			var mu sync.Mutex
@@ -819,7 +819,7 @@ func TestReviewAnExclusiveResourceWhoseCloseFailedIsRestoredOnRollbackOrMarkedUn
 
 // review.test.ts:503 "#10 retirement closes dropped resources before releasing dropped holds"
 func TestReviewRetirementClosesDroppedResourcesBeforeReleasingDroppedRefs(t *testing.T) {
-	host := CreateHost(HostOptions{OnError: func(error) {}})
+	host := CreateHost(HostOptions{Self: kindHost(), OnError: func(error) {}})
 	t.Cleanup(func() { _ = host.Close() })
 	var log reviewLog
 	dep := Local("t.dep", LocalDef{Version: 1, Input: reviewEmpty()})
@@ -929,9 +929,9 @@ func TestReviewFitsHasNoFalsePositivesForUnmodelledKeywords(t *testing.T) {
 
 // review.test.ts:584 "#11 arguments are stripped to what the consumer knows, then to what the provider knows"
 func TestReviewArgumentsAreStrippedToWhatTheConsumerKnowsThenToWhatTheProviderKnows(t *testing.T) {
-	host := CreateHost(HostOptions{OnError: func(error) {}})
+	host := CreateHost(HostOptions{Self: kindHost(), OnError: func(error) {}})
 	t.Cleanup(func() { _ = host.Close() })
-	strict := Remote("t.strict", RemoteDef{Version: 1, Input: reviewEmpty(), Variants: Fields[VariantDef]{{"main", VariantDef{Methods: Fields[MethodSpec]{
+	strict := Remote("t.strict", RemoteDef{Version: 1, Input: reviewEmpty(), Host: NewHostNamed("host"), Variants: Fields[VariantDef]{{"main", VariantDef{Methods: Fields[MethodSpec]{
 		{"echo", Method(tObject("a", tString(), Schema{"additionalProperties": false}), tUnknown())},
 	}}}}})
 	if err := host.Serve(strict, func(any, Principal, Self) (Implementation, error) {
@@ -952,7 +952,7 @@ var reviewTarget = Local("t.target", LocalDef{Version: 1, Input: reviewEmpty(), 
 
 // review.test.ts:608 "an aborted task ctx cannot start fresh calls"
 func TestReviewAnAbortedTaskCtxCannotStartFreshCalls(t *testing.T) {
-	host := CreateHost(HostOptions{OnError: func(error) {}})
+	host := CreateHost(HostOptions{Self: kindHost(), OnError: func(error) {}})
 	t.Cleanup(func() { _ = host.Close() })
 	runner := Local("t.runner", LocalDef{Version: 1, Input: reviewEmpty()})
 	var mu sync.Mutex
@@ -1007,8 +1007,8 @@ func TestReviewAnAbortedTaskCtxCannotStartFreshCalls(t *testing.T) {
 
 // review.test.ts:641 "an expired ctx and a foreign ctx are refused"
 func TestReviewAnExpiredCtxAndAForeignCtxAreRefused(t *testing.T) {
-	host := CreateHost(HostOptions{OnError: func(error) {}})
-	other := CreateHost(HostOptions{OnError: func(error) {}})
+	host := CreateHost(HostOptions{Self: kindHost(), OnError: func(error) {}})
+	other := CreateHost(HostOptions{Self: kindHost(), OnError: func(error) {}})
 	t.Cleanup(func() { _ = host.Close(); _ = other.Close() })
 	if err := host.Serve(reviewTarget, func(any, Principal, Self) (Implementation, error) {
 		return chordjson.ObjectOf("hit", methodFunc(func(any, Ctx) (any, error) { return nil, nil })), nil

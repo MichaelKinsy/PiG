@@ -12,7 +12,7 @@ import (
 // serveFactoryError serves a counter contract whose factory runs declare and returns the factory's error from the first get.
 func serveFactoryError(t *testing.T, declare func(self Self) error) error {
 	t.Helper()
-	host := CreateHost(HostOptions{Name: "h", OnError: func(error) {}})
+	host := CreateHost(HostOptions{Self: kindHost(), Name: "server", OnError: func(error) {}})
 	t.Cleanup(func() { _ = host.Close() })
 	factory := func(_ any, _ Principal, self Self) (Implementation, error) {
 		if err := declare(self); err != nil {

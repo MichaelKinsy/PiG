@@ -9,7 +9,7 @@ import (
 // first await. For a resource close (object.ts:156-163) that is: closed, out of the open order, and its spec close
 // called; only the close's own await is later. So when retireImplementation returns, the first resource is already closed.
 func TestRetireImplementationClosesTheFirstResourceSynchronously(t *testing.T) {
-	host := CreateHost(HostOptions{Name: "h", OnError: func(error) {}})
+	host := CreateHost(HostOptions{Self: kindHost(), Name: "server", OnError: func(error) {}})
 	t.Cleanup(func() { _ = host.Close() })
 	closed := make(chan any, 2)
 	spec := ResourceDeclaration[any]{Version: 1, Close: func(value any) error { closed <- value; return nil }}

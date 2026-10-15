@@ -11,18 +11,17 @@ import (
 )
 
 // Principal is the app-defined, JSON-serializable identity of a caller, mapped to an object key by
-// HostOptions.PrincipalKey (types.ts:4-5, `type Principal = unknown`).
+// HostOptions.PrincipalKey. Pi's principal type is a parameter (`createHost<P>`, default `unknown`); the app supplies
+// every principal and Chord makes none up.
 type Principal = any
 
 // GetOptions are the options of a get (types.ts:7-12).
 type GetOptions struct {
-	// Principal the object is created for. HasPrincipal false is Pi's undefined (the host principal); true with a nil
-	// Principal is an explicit null, which host.ts:392 (`??`) also maps to the host principal but host.ts:811 sends on.
+	// Principal the object is created for. HasPrincipal false is Pi's undefined (the host's own principal); true with a
+	// nil Principal is an explicit null, which host.ts `??` also maps to the host's own principal but acquireRemote
+	// sends on.
 	Principal    Principal
 	HasPrincipal bool
-	// At is the host name; nil is Pi's undefined (the local host). host.ts:387 compares a present value, "" included,
-	// with the host's name.
-	At *string
 }
 
 // Ctx is the explicit call context of one root, a short Chord call tree (types.ts:14-24). Calls made with it carry

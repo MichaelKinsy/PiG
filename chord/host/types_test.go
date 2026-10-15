@@ -28,16 +28,12 @@ func TestRefStatusValues(t *testing.T) {
 	}
 }
 
-// types.ts:7-12, 55-61: the optional members of GetOptions and Shape are undefined in the zero value, distinct from
-// a present empty string.
+// types.ts:55-61: the optional members of GetOptions and Shape are undefined in the zero value (GetOptions has no host
+// since aa9cf15b: the contract's placement says where an object lives).
 func TestOptionalMembersAreUndefinedWhenZero(t *testing.T) {
 	var options GetOptions
-	if options.HasPrincipal || options.Principal != nil || options.At != nil {
+	if options.HasPrincipal || options.Principal != nil {
 		t.Fatalf("zero GetOptions = %+v", options)
-	}
-	empty := ""
-	if at := (GetOptions{At: &empty}).At; at == nil || *at != "" {
-		t.Fatal("an empty at is lost")
 	}
 	if (Shape{}).Variant != nil {
 		t.Fatal("zero Shape has a kind")

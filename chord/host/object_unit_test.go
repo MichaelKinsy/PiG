@@ -95,7 +95,7 @@ func TestObjectResourceOpenCloseLifecycle(t *testing.T) {
 // object.ts:1323-1350: a remote implementation names a known variant and only its members; methods are functions, state
 // members are sources or readables, opaque members are present.
 func TestObjectValidateImplementation(t *testing.T) {
-	remote := Remote("t.v", RemoteDef{Version: 1, Input: Schema{"type": "object"}, Variants: Fields[VariantDef]{
+	remote := Remote("t.v", RemoteDef{Version: 1, Input: Schema{"type": "object"}, Host: NewHostNamed("server"), Variants: Fields[VariantDef]{
 		{"main", VariantDef{State: Fields[Schema]{{"count", Schema{"type": "number"}}}, Methods: Fields[MethodSpec]{{"add", Method(Schema{"type": "number"}, Schema{"type": "number"})}}}},
 	}})
 	local := Local("t.l", LocalDef{Version: 1, Input: Schema{"type": "object"}, Members: Fields[any]{{"native", Opaque("t.native@1")}}})

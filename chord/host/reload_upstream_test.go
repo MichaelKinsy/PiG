@@ -87,7 +87,7 @@ func reloadNumber(value any) float64 {
 // reloadQuiet is reload.test.ts:22 quiet: a host whose background errors are dropped.
 func reloadQuiet(t *testing.T) *HostImpl {
 	t.Helper()
-	host := CreateHost(HostOptions{OnError: func(error) {}})
+	host := CreateHost(HostOptions{Self: kindHost(), OnError: func(error) {}})
 	t.Cleanup(func() { _ = host.Close() })
 	return host
 }
@@ -728,6 +728,7 @@ func reloadDoc(version int, method string, result Schema) *Contract {
 	return Remote("t.rdoc", RemoteDef{
 		Version:  version,
 		Input:    tObject(),
+		Host:     NewHostNamed("host"),
 		Variants: Fields[VariantDef]{{"main", VariantDef{Methods: Fields[MethodSpec]{{method, Method(nil, result)}}}}},
 	})
 }
@@ -1212,7 +1213,7 @@ func TestReloadATaskThatIgnoresItsAbortDelaysItsReplacementAtMostTaskStopDeadlin
 	const deadline = 400 * time.Millisecond
 	var errorsMu sync.Mutex
 	var reported []error
-	host := CreateHost(HostOptions{
+	host := CreateHost(HostOptions{Self: kindHost(),
 		OnError:          func(err error) { errorsMu.Lock(); reported = append(reported, err); errorsMu.Unlock() },
 		TaskStopDeadline: new(deadline),
 	})

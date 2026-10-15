@@ -27,6 +27,7 @@ import (
 var managerEcho = Remote("t.echo", RemoteDef{
 	Version: 1,
 	Input:   tObject(),
+	Host:    NewHostNamed("w1"),
 	Variants: Fields[VariantDef]{
 		{"main", VariantDef{Methods: Fields[MethodSpec]{
 			{"echo", Method(tString(), tString())},
@@ -78,11 +79,11 @@ func TestHostManagerStartsAChildHostLinksItStopsItGracefully(t *testing.T) {
 	if manager.Status() != HostManagerRunning {
 		t.Fatalf("status = %s", manager.Status())
 	}
-	server := CreateHost(HostOptions{Name: "server", OnError: func(error) {}})
+	server := CreateHost(HostOptions{Self: kindHost(), Name: "server", OnError: func(error) {}})
 	if err := server.Accept(instance.Link(), AcceptOptions{Principal: chordjson.ObjectOf("worker", "w1"), Kind: KindHost, Name: new("w1")}); err != nil {
 		t.Fatal(err)
 	}
-	echo, err := server.Get(managerEcho, chordjson.ObjectOf(), at("w1"))
+	echo, err := server.Get(managerEcho, chordjson.ObjectOf(), nil)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -232,6 +232,7 @@ func (s *wsServer) url(query string) string {
 var wsBoard = Remote("t.board", RemoteDef{
 	Version: 1,
 	Input:   tObject(),
+	Host:    NewHostNamed("server"),
 	Variants: Fields[VariantDef]{{"main", VariantDef{
 		State:   Fields[Schema]{{"notes", tArray(tString())}},
 		Methods: Fields[MethodSpec]{{"add", Method(tString(), nil)}, {"who", Method(nil, tUnknown())}},
@@ -240,7 +241,7 @@ var wsBoard = Remote("t.board", RemoteDef{
 
 // websocket.test.ts:29-99
 func TestWebSocketLinksServesABrowserStyleClientOverARealSocketStampedByTheAuthenticator(t *testing.T) {
-	server := CreateHost(HostOptions{Name: "server", OnError: func(error) {}})
+	server := CreateHost(HostOptions{Self: kindHost(), Name: "server", OnError: func(error) {}})
 	t.Cleanup(func() { _ = server.Close() })
 	if err := server.Serve(wsBoard, func(_ any, principal Principal, self Self) (Implementation, error) {
 		notes, err := self.State("notes", tArray(tString()), []any{}, nil)
@@ -272,15 +273,15 @@ func TestWebSocketLinksServesABrowserStyleClientOverARealSocketStampedByTheAuthe
 		},
 	})
 	open := func(token string) *HostImpl {
-		return CreateHost(HostOptions{
+		return CreateHost(HostOptions{Self: kindHost(),
 			Name:     "browser",
 			Kind:     KindClient,
-			Upstream: NewWebSocketLink(dialWebSocket(wss.url("token="+token)), WebSocketLinkOptions{}),
+			Upstream: &UpstreamOptions{Link: NewWebSocketLink(dialWebSocket(wss.url("token="+token)), WebSocketLinkOptions{}), ConnectOptions: ConnectOptions{Principal: kindServer()}},
 			OnError:  func(error) {},
 		})
 	}
 	getBoard := func(host *HostImpl) Ref {
-		ref, err := host.Get(wsBoard, map[string]any{}, at("server"))
+		ref, err := host.Get(wsBoard, map[string]any{}, nil)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -314,15 +315,15 @@ func TestWebSocketLinksServesABrowserStyleClientOverARealSocketStampedByTheAuthe
 	}
 
 	// WebSocket peers are always clients: one announcing itself as a host is cut off.
-	impostor := CreateHost(HostOptions{
+	impostor := CreateHost(HostOptions{Self: kindHost(),
 		Name:     "session:S1",
-		Upstream: NewWebSocketLink(dialWebSocket(wss.url("token=ok")), WebSocketLinkOptions{}),
+		Upstream: &UpstreamOptions{Link: NewWebSocketLink(dialWebSocket(wss.url("token=ok")), WebSocketLinkOptions{}), ConnectOptions: ConnectOptions{Principal: kindServer()}},
 		OnError:  func(error) {},
 	})
 	signal, cancel := context.WithTimeout(context.Background(), 150*time.Millisecond)
 	defer cancel()
 	_, err := impostor.Root(func(ctx Ctx) (any, error) {
-		ref, err := impostor.Get(wsBoard, map[string]any{}, at("server"))
+		ref, err := impostor.Get(wsBoard, map[string]any{}, nil)
 		if err != nil {
 			return nil, err
 		}
@@ -356,7 +357,7 @@ func TestWebSocketLinksPackedPayloadsLargeSnapshotsAndResultsReachTheClientAsBin
 	for index := range notes {
 		notes[index] = strconv.Itoa(index) + ":" + strings.Repeat("x", 4000)
 	}
-	server := CreateHost(HostOptions{Name: "server", OnError: func(error) {}})
+	server := CreateHost(HostOptions{Self: kindHost(), Name: "server", OnError: func(error) {}})
 	t.Cleanup(func() { _ = server.Close() })
 	if err := server.Serve(wsBoard, func(_ any, _ Principal, self Self) (Implementation, error) {
 		state, err := self.State("notes", tArray(tString()), notes, nil)
@@ -386,8 +387,8 @@ func TestWebSocketLinksPackedPayloadsLargeSnapshotsAndResultsReachTheClientAsBin
 			binaryMu.Unlock()
 		}
 	})
-	browser := CreateHost(HostOptions{Name: "browser", Kind: KindClient, Upstream: NewWebSocketLink(socket, WebSocketLinkOptions{}), OnError: func(error) {}})
-	board, err := browser.Get(wsBoard, map[string]any{}, at("server"))
+	browser := CreateHost(HostOptions{Self: kindHost(), Name: "browser", Kind: KindClient, Upstream: &UpstreamOptions{Link: NewWebSocketLink(socket, WebSocketLinkOptions{}), ConnectOptions: ConnectOptions{Principal: kindServer()}}, OnError: func(error) {}})
+	board, err := browser.Get(wsBoard, map[string]any{}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}

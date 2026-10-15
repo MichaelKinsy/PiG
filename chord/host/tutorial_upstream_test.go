@@ -115,6 +115,7 @@ func todoStoreImplementation(options *StateOptions, input any, self Self) (Imple
 var tutorialTodos = Remote("tutorial.todo-view", RemoteDef{
 	Version: 1,
 	Input:   tObject("list", tString()),
+	Host:    NewHostNamed("server"),
 	Variants: Fields[VariantDef]{
 		{"viewer", VariantDef{State: Fields[Schema]{{"rows", tutorialRows}}}},
 		{"editor", VariantDef{
@@ -135,7 +136,7 @@ func serveViews(t *testing.T, serve Serve) {
 		if err != nil {
 			return nil, err
 		}
-		if principal != "owner" && !isHostPrincipal(principal) {
+		if principal == "guest" {
 			return chordjson.ObjectOf("variant", "viewer", "rows", store.Member("rows")), nil
 		}
 		return chordjson.ObjectOf(
@@ -211,7 +212,7 @@ func TestTutorialExamplesMatchTheirRunnableSource(t *testing.T) {
 
 // tutorial.test.ts:143-150 "01: objects live inside hosts".
 func TestTutorial01ObjectsLiveInsideHosts(t *testing.T) {
-	host := CreateHost(HostOptions{Name: "todo-server"})
+	host := CreateHost(HostOptions{Self: "server", Name: "todo-server"})
 	if host.Name() != "todo-server" {
 		t.Fatalf("name = %q", host.Name())
 	}
@@ -222,7 +223,7 @@ func TestTutorial01ObjectsLiveInsideHosts(t *testing.T) {
 
 // tutorial.test.ts:152-164 "02: first contract, factory, reference and root".
 func TestTutorial02FirstContractFactoryRefAndRoot(t *testing.T) {
-	host := CreateHost(HostOptions{})
+	host := CreateHost(HostOptions{Self: "server"})
 	closeHost(t, host)
 	if err := host.Serve(tutorialTodoLabel, func(input any, _ Principal, _ Self) (Implementation, error) {
 		list := field(input, "list").(string)
@@ -244,7 +245,7 @@ func TestTutorial02FirstContractFactoryRefAndRoot(t *testing.T) {
 
 // tutorial.test.ts:166-186 "03: cells publish values and derivations".
 func TestTutorial03CellsPublishValuesAndDerivations(t *testing.T) {
-	host := CreateHost(HostOptions{Dev: true})
+	host := CreateHost(HostOptions{Self: "server", Dev: true})
 	closeHost(t, host)
 	if err := host.Serve(tutorialTodoStore, todoFactory, ServeOptions{}); err != nil {
 		t.Fatal(err)
@@ -300,7 +301,7 @@ func TestTutorial04RefsAsynchronousResourcesAndRelease(t *testing.T) {
 		Input:   tObject("list", tString()),
 		Members: Fields[any]{{"add", Method(tObject("text", tString()), nil)}},
 	})
-	host := CreateHost(HostOptions{})
+	host := CreateHost(HostOptions{Self: "server"})
 	closeHost(t, host)
 	var opens int
 	var opensMu sync.Mutex
@@ -407,7 +408,7 @@ func principalString(principal Principal) string {
 
 // tutorial.test.ts:254-271 "05: principals select views of one shared store".
 func TestTutorial05PrincipalsSelectViewsOfOneSharedStore(t *testing.T) {
-	host := CreateHost(HostOptions{PrincipalKey: principalString})
+	host := CreateHost(HostOptions{Name: "server", Self: "server", PrincipalKey: principalString})
 	closeHost(t, host)
 	if err := host.Serve(tutorialTodoStore, todoFactory, ServeOptions{}); err != nil {
 		t.Fatal(err)
@@ -443,7 +444,7 @@ func TestTutorial05PrincipalsSelectViewsOfOneSharedStore(t *testing.T) {
 
 // tutorial.test.ts:273-303 "06: remote methods and live state over a memory link".
 func TestTutorial06RemoteMethodsAndLiveStateOverAMemoryLink(t *testing.T) {
-	server := CreateHost(HostOptions{Name: "server"})
+	server := CreateHost(HostOptions{Self: "server", Name: "server"})
 	closeHost(t, server)
 	if err := server.Serve(tutorialTodoStore, todoFactory, ServeOptions{}); err != nil {
 		t.Fatal(err)
@@ -453,9 +454,9 @@ func TestTutorial06RemoteMethodsAndLiveStateOverAMemoryLink(t *testing.T) {
 	if err := server.Accept(down, AcceptOptions{Principal: "owner", Kind: KindClient}); err != nil {
 		t.Fatal(err)
 	}
-	browser := CreateHost(HostOptions{Name: "browser", Kind: KindClient, Upstream: up})
+	browser := CreateHost(HostOptions{Self: "browser", Name: "browser", Kind: KindClient, Upstream: &UpstreamOptions{Link: up, ConnectOptions: ConnectOptions{Principal: "server"}}})
 	closeHost(t, browser)
-	todos := mustGetRef(t, browser, tutorialTodos, family(), at("server"))
+	todos := mustGetRef(t, browser, tutorialTodos, family(), nil)
 	hydrated, updated := newSignal(), newSignal()
 	rows := readable(t, todos, "rows")
 	stop := rows.Subscribe(func(value any) {
@@ -494,7 +495,7 @@ func TestTutorial06RemoteMethodsAndLiveStateOverAMemoryLink(t *testing.T) {
 // tutorial.test.ts:305-348 "07: listeners react and tasks start fresh calls".
 func TestTutorial07ListenersReactAndTasksStartFreshCalls(t *testing.T) {
 	activity := Local("tutorial.activity", LocalDef{Version: 1, Input: tObject(), Members: Fields[any]{{"seen", tNumber()}}})
-	host := CreateHost(HostOptions{})
+	host := CreateHost(HostOptions{Self: "server"})
 	closeHost(t, host)
 	if err := host.Serve(tutorialTodoStore, todoFactory, ServeOptions{}); err != nil {
 		t.Fatal(err)
@@ -585,7 +586,7 @@ func TestTutorial08PluginsContributeRegistryEntriesAndExposeCallbacks(t *testing
 		}
 		return nil
 	}, DefineFacetOptions{Uses: []*Contract{tutorialTodoStore}})}
-	host := CreateHost(HostOptions{})
+	host := CreateHost(HostOptions{Self: "server"})
 	closeHost(t, host)
 	if err := host.Load([]PluginRef{&menuFacet, &storeFacet}, LoadOptions{AwaitHostObjects: new(false)}); err != nil {
 		t.Fatal(err)
@@ -617,7 +618,7 @@ func tutorialFacet(label string) Facet {
 
 // tutorial.test.ts:392-481 "09: compatible reload, migration and an old-contract adapter".
 func TestTutorial09CompatibleReloadMigrationAndAnOldContractAdapter(t *testing.T) {
-	host := CreateHost(HostOptions{})
+	host := CreateHost(HostOptions{Self: "server"})
 	closeHost(t, host)
 	original := tutorialFacet("Original")
 	if err := host.Load([]PluginRef{&original}, LoadOptions{}); err != nil {
@@ -756,7 +757,7 @@ func TestTutorial09CompatibleReloadMigrationAndAnOldContractAdapter(t *testing.T
 
 // tutorial.test.ts:483-510 "10: stub a provider with a fake facet and check error codes".
 func TestTutorial10StubAProviderWithAFakeFacetAndCheckErrorCodes(t *testing.T) {
-	host := CreateHost(HostOptions{Dev: true})
+	host := CreateHost(HostOptions{Name: "server", Self: "server", Dev: true})
 	closeHost(t, host)
 	var mu sync.Mutex
 	var received []string
@@ -799,7 +800,7 @@ func TestTutorial10StubAProviderWithAFakeFacetAndCheckErrorCodes(t *testing.T) {
 
 // tutorial.test.ts:512-526 "11: short roots release temporary holds".
 func TestTutorial11ShortRootsReleaseTemporaryRefs(t *testing.T) {
-	host := CreateHost(HostOptions{})
+	host := CreateHost(HostOptions{Self: "server"})
 	closeHost(t, host)
 	if err := host.Serve(tutorialTodoStore, todoFactory, ServeOptions{}); err != nil {
 		t.Fatal(err)

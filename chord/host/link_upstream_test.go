@@ -22,20 +22,33 @@ import (
 
 var linkCountSchema = tObject("n", tNumber())
 
-// linkCounter is link.test.ts Counter.
-var linkCounter = Remote("t.counter", RemoteDef{
-	Version: 1,
-	Input:   tObject("name", tString()),
-	Variants: Fields[VariantDef]{
-		{"main", VariantDef{
-			State: Fields[Schema]{{"count", linkCountSchema}},
-			Methods: Fields[MethodSpec]{
-				{"add", Method(tNumber(), tNumber())},
-				{"who", Method(nil, tUnknown())},
-			},
-		}},
-	},
-})
+// linkCounterVariants is link.test.ts counterVariants.
+var linkCounterVariants = Fields[VariantDef]{
+	{"main", VariantDef{
+		State: Fields[Schema]{{"count", linkCountSchema}},
+		Methods: Fields[MethodSpec]{
+			{"add", Method(tNumber(), tNumber())},
+			{"who", Method(nil, tUnknown())},
+		},
+	}},
+}
+
+var (
+	// linkCounter is link.test.ts Counter: a counter on the server.
+	linkCounter = Remote("t.counter", RemoteDef{
+		Version:  1,
+		Input:    tObject("name", tString()),
+		Host:     NewHostNamed("server"),
+		Variants: linkCounterVariants,
+	})
+	// linkSessionCounter is link.test.ts SessionCounter: a counter on a session host (`session:` + its session field).
+	linkSessionCounter = Remote("t.session-counter", RemoteDef{
+		Version:  1,
+		Input:    tObject("session", tString(), "name", tString()),
+		Host:     NewHostFamily("session:", "session"),
+		Variants: linkCounterVariants,
+	})
+)
 
 type principalLog struct {
 	mu   sync.Mutex
@@ -94,10 +107,15 @@ func countN(value any) float64 {
 	return -1
 }
 
-// serveCounter serves Counter and records the principal of every object it creates.
+// serveCounter serves the counter of the host's kind (Counter on the server, SessionCounter elsewhere) and records the
+// principal of every object it creates.
 func serveCounter(t *testing.T, host *HostImpl, principals *principalLog) {
 	t.Helper()
-	if err := host.Serve(linkCounter, counterFactory(func(_ any, principal Principal, _ Self) error {
+	typ := linkSessionCounter
+	if host.Name() == "server" {
+		typ = linkCounter
+	}
+	if err := host.Serve(typ, counterFactory(func(_ any, principal Principal, _ Self) error {
 		if principals != nil {
 			principals.add(principal)
 		}
@@ -116,21 +134,30 @@ type workerPair struct {
 // { worker: name }.
 func serverWithWorker(t *testing.T, workerName string) workerPair {
 	t.Helper()
-	server := CreateHost(HostOptions{Name: "server", OnError: func(error) {}})
+	server := CreateHost(HostOptions{Self: kindHost(), Name: "server", OnError: func(error) {}})
 	down, up := MemoryLinkPair()
 	if err := server.Accept(down, AcceptOptions{Principal: map[string]any{"worker": workerName}, Kind: "host", Name: &workerName}); err != nil {
 		t.Fatal(err)
 	}
-	worker := CreateHost(HostOptions{Name: workerName, Upstream: up, OnError: func(error) {}})
+	worker := CreateHost(HostOptions{Self: kindHost(), Name: workerName, Upstream: &UpstreamOptions{Link: up, ConnectOptions: ConnectOptions{Principal: kindServer()}}, OnError: func(error) {}})
 	t.Cleanup(func() { _ = worker.Close(); _ = server.Close() })
 	return workerPair{server: server, worker: worker, down: down, up: up}
 }
 
-func at(name string) *GetOptions { return &GetOptions{At: &name} }
-
-func mustGet(t *testing.T, host *HostImpl, input any, options *GetOptions) Ref {
+// mustGet gets the server's counter named name.
+func mustGet(t *testing.T, host *HostImpl, name string) Ref {
 	t.Helper()
-	ref, err := host.Get(linkCounter, input, options)
+	ref, err := host.Get(linkCounter, map[string]any{"name": name}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return ref
+}
+
+// mustGetSession gets the counter named name on session host `session:`+session.
+func mustGetSession(t *testing.T, host *HostImpl, session, name string) Ref {
+	t.Helper()
+	ref, err := host.Get(linkSessionCounter, map[string]any{"session": session, "name": name}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -176,7 +203,7 @@ func TestLinksAChildCallsTheServerStampedWithItsPrincipal(t *testing.T) {
 	var principals principalLog
 	serveCounter(t, pair.server, &principals)
 	result, err := pair.worker.Root(func(ctx Ctx) (any, error) {
-		counter, err := ctx.Get(linkCounter, map[string]any{"name": "c"}, at("server"))
+		counter, err := ctx.Get(linkCounter, map[string]any{"name": "c"}, nil)
 		if err != nil {
 			return nil, err
 		}
@@ -208,7 +235,7 @@ func TestLinksAChildCallsTheServerStampedWithItsPrincipal(t *testing.T) {
 func TestLinksStateMembersSnapshotThenDeltaOps(t *testing.T) {
 	pair := serverWithWorker(t, "session:S1")
 	serveCounter(t, pair.server, nil)
-	counter := mustGet(t, pair.worker, map[string]any{"name": "s"}, at("server"))
+	counter := mustGet(t, pair.worker, "s")
 	count := countReadable(t, counter)
 	var mu sync.Mutex
 	var events []string
@@ -248,15 +275,15 @@ func TestLinksStateMembersSnapshotThenDeltaOps(t *testing.T) {
 
 // link.test.ts:100-109
 func TestLinksTheServerReachesAConnectedChildByName(t *testing.T) {
-	pair := serverWithWorker(t, "w1")
+	pair := serverWithWorker(t, "session:w1")
 	var principals principalLog
 	serveCounter(t, pair.worker, &principals)
-	counter := mustGet(t, pair.server, map[string]any{"name": "x"}, at("w1"))
+	counter := mustGetSession(t, pair.server, "w1", "x")
 	if added := mustCall(t, counter, "add", float64(5), nil); added != float64(5) {
 		t.Fatalf("add = %v", added)
 	}
-	// The parent's own requests act as { host: <parent> } on the child.
-	if got := jsonText(t, principals.items()); got != `[{"host":"server"}]` {
+	// The parent's own requests act as the principal the child gave connect.
+	if got := jsonText(t, principals.items()); got != `[{"kind":"server"}]` {
 		t.Fatalf("principals = %s", got)
 	}
 }
@@ -264,7 +291,7 @@ func TestLinksTheServerReachesAConnectedChildByName(t *testing.T) {
 // link.test.ts:111-115
 func TestLinksRejectUnknownHosts(t *testing.T) {
 	pair := serverWithWorker(t, "session:S1")
-	missing := mustGet(t, pair.worker, map[string]any{"name": "m"}, at("server"))
+	missing := mustGet(t, pair.worker, "m")
 	if err := readyErr(t, missing); !IsChordError(err, CodeUnavailable) {
 		t.Fatalf("ready = %v", err)
 	}
@@ -304,7 +331,7 @@ func (c *linkCluster) browser(principal Principal, restamp func(Principal) (Prin
 	if err := c.server.Accept(down, AcceptOptions{LinkOptions: c.options, Principal: principal, Restamp: restamp}); err != nil {
 		t.Fatal(err)
 	}
-	host := CreateHost(HostOptions{Name: "browser", Kind: "client", Upstream: up, UpstreamOptions: c.options, OnError: func(error) {}})
+	host := CreateHost(HostOptions{Self: kindHost(), Name: "browser", Kind: "client", Upstream: &UpstreamOptions{Link: up, ConnectOptions: ConnectOptions{LinkOptions: c.options, Principal: kindServer()}}, OnError: func(error) {}})
 	t.Cleanup(func() { _ = host.Close() })
 	browser := &browserHost{host: host, up: up}
 	browser.reconnect = func() {
@@ -313,7 +340,7 @@ func (c *linkCluster) browser(principal Principal, restamp func(Principal) (Prin
 			t.Fatal(err)
 		}
 		browser.up = nextUp
-		host.Connect(nextUp, LinkOptions{})
+		host.Connect(nextUp, ConnectOptions{Principal: kindServer()})
 	}
 	return browser
 }
@@ -322,15 +349,16 @@ func (c *linkCluster) browser(principal Principal, restamp func(Principal) (Prin
 func cluster(t *testing.T, options LinkOptions) *linkCluster {
 	c := &linkCluster{t: t, workers: map[string]*HostImpl{}, options: options}
 	c.allow = func(Principal, string) bool { return true }
-	c.server = CreateHost(HostOptions{Name: "server", OnError: func(error) {}})
+	c.server = CreateHost(HostOptions{Self: kindHost(), Name: "server", OnError: func(error) {}})
 	t.Cleanup(func() { _ = c.server.Close() })
 	c.server.Route("session:", Route{
+		Principal: func(name string) Principal { return map[string]any{"host": name} },
 		Authorize: func(principal Principal, host string) (bool, error) { return c.allow(principal, host), nil },
 		Resolve: func(name string) (Link, error) {
 			down, up := MemoryLinkPair()
-			worker := CreateHost(HostOptions{Name: name, Upstream: up, UpstreamOptions: options, OnError: func(error) {}})
+			worker := CreateHost(HostOptions{Self: kindHost(), Name: name, Upstream: &UpstreamOptions{Link: up, ConnectOptions: ConnectOptions{LinkOptions: options, Principal: kindServer()}}, OnError: func(error) {}})
 			t.Cleanup(func() { _ = worker.Close() })
-			err := worker.Serve(linkCounter, counterFactory(func(input any, _ Principal, self Self) error {
+			err := worker.Serve(linkSessionCounter, counterFactory(func(input any, _ Principal, self Self) error {
 				name := inputName(input)
 				_, err := self.Resource("probe", ResourceDeclaration[any]{
 					Version: 1,
@@ -376,7 +404,7 @@ func TestLinksRelayBrowserServerWorkerWithTheStampedPrincipal(t *testing.T) {
 	c := cluster(t, LinkOptions{})
 	guest := map[string]any{"guest": "g1"}
 	browser := c.browser(guest, nil)
-	counter := mustGet(t, browser.host, map[string]any{"name": "a"}, at("session:S1"))
+	counter := mustGetSession(t, browser.host, "S1", "a")
 	if got := mustCall(t, counter, "add", float64(3), nil); got != float64(3) {
 		t.Fatalf("add = %v", got)
 	}
@@ -425,7 +453,7 @@ func TestLinksIgnorePayloadPrincipalsFromClientsAndChildHosts(t *testing.T) {
 	raw.Receive(frames.add)
 	owner := map[string]any{"owner": true}
 	_, _ = raw.Send(HelloFrame{Protocol: ProtocolVersion, Name: "raw", Kind: "client", CodeVersion: 0})
-	_, _ = raw.Send(HoldFrame{ID: 1, At: "session:S1", Token: linkCounter.Description, Input: map[string]any{"name": "f"}, Principal: owner, HasPrincipal: true})
+	_, _ = raw.Send(HoldFrame{ID: 1, At: "session:S1", Token: linkSessionCounter.Description, Input: map[string]any{"session": "S1", "name": "f"}, Principal: owner, HasPrincipal: true})
 	_, _ = raw.Send(CallFrame{ID: 2, Hold: 1, Member: "who", Args: nil})
 	if got := jsonText(t, rawResult(t, &frames)); got != `{"guest":"g1"}` {
 		t.Fatalf("client result = %s", got)
@@ -445,11 +473,12 @@ func TestLinksIgnorePayloadPrincipalsFromClientsAndChildHosts(t *testing.T) {
 
 // link.test.ts (Pi 7f022043) "a route that returns an already closed link does not poison the host name"
 func TestLinksARouteThatReturnsAnAlreadyClosedLinkDoesNotPoisonTheHostName(t *testing.T) {
-	server := CreateHost(HostOptions{Name: "server", OnError: func(error) {}})
+	server := CreateHost(HostOptions{Self: kindHost(), Name: "server", OnError: func(error) {}})
 	t.Cleanup(func() { _ = server.Close() })
 	var mu sync.Mutex
 	attempt := 0
 	server.Route("session:", Route{
+		Principal: func(name string) Principal { return map[string]any{"host": name} },
 		Authorize: func(Principal, string) (bool, error) { return true, nil },
 		Resolve: func(name string) (Link, error) {
 			mu.Lock()
@@ -457,7 +486,7 @@ func TestLinksARouteThatReturnsAnAlreadyClosedLinkDoesNotPoisonTheHostName(t *te
 			first := attempt == 1
 			mu.Unlock()
 			down, up := MemoryLinkPair()
-			worker := CreateHost(HostOptions{Name: name, Upstream: up, OnError: func(error) {}})
+			worker := CreateHost(HostOptions{Self: kindHost(), Name: name, Upstream: &UpstreamOptions{Link: up, ConnectOptions: ConnectOptions{Principal: kindServer()}}, OnError: func(error) {}})
 			t.Cleanup(func() { _ = worker.Close() })
 			serveCounter(t, worker, nil)
 			// The first worker dies before the server wraps its link.
@@ -467,12 +496,12 @@ func TestLinksARouteThatReturnsAnAlreadyClosedLinkDoesNotPoisonTheHostName(t *te
 			return down, nil
 		},
 	})
-	first := mustGet(t, server, map[string]any{"name": "a"}, at("session:S1"))
+	first := mustGetSession(t, server, "S1", "a")
 	if _, err := callMember(first, "add", float64(1), nil); err == nil || !strings.Contains(err.Error(), "closed") {
 		t.Fatalf("first add = %v, want a closed error", err)
 	}
 	// The next call resolves the route again and reaches the new worker.
-	second := mustGet(t, server, map[string]any{"name": "a"}, at("session:S1"))
+	second := mustGetSession(t, server, "S1", "a")
 	if got := mustCall(t, second, "add", float64(2), nil); got != float64(2) {
 		t.Fatalf("second add = %v", got)
 	}
@@ -485,7 +514,7 @@ func TestLinksARouteThatReturnsAnAlreadyClosedLinkDoesNotPoisonTheHostName(t *te
 
 // connection.ts (Pi 7f022043): a connection whose link was already closed is not kept and starts no ping timer.
 func TestLinksAnAlreadyClosedLinkIsNotKeptAndStartsNoPinger(t *testing.T) {
-	server := CreateHost(HostOptions{Name: "server", OnError: func(error) {}})
+	server := CreateHost(HostOptions{Self: kindHost(), Name: "server", OnError: func(error) {}})
 	t.Cleanup(func() { _ = server.Close() })
 	down, _ := MemoryLinkPair()
 	down.Close("gone")
@@ -513,7 +542,7 @@ func TestLinksAuthorizeBeforeResolvingAndAgainAfter(t *testing.T) {
 	c := cluster(t, LinkOptions{})
 	c.allow = func(principal Principal, _ string) bool { return principal.(map[string]any)["guest"] != "blocked" }
 	blocked := c.browser(map[string]any{"guest": "blocked"}, nil)
-	if err := readyErr(t, mustGet(t, blocked.host, map[string]any{"name": "a"}, at("session:S1"))); !IsChordError(err, CodeForbidden) {
+	if err := readyErr(t, mustGetSession(t, blocked.host, "S1", "a")); !IsChordError(err, CodeForbidden) {
 		t.Fatalf("blocked ready = %v", err)
 	}
 	if c.workerCount() != 0 {
@@ -528,7 +557,7 @@ func TestLinksAuthorizeBeforeResolvingAndAgainAfter(t *testing.T) {
 		return calls == 1
 	}
 	flaky := c.browser(map[string]any{"guest": "flaky"}, nil)
-	if err := readyErr(t, mustGet(t, flaky.host, map[string]any{"name": "a"}, at("session:S2"))); !IsChordError(err, CodeForbidden) {
+	if err := readyErr(t, mustGetSession(t, flaky.host, "S2", "a")); !IsChordError(err, CodeForbidden) {
 		t.Fatalf("flaky ready = %v", err)
 	}
 	mu.Lock()
@@ -543,8 +572,8 @@ func TestLinksABrowserDisconnectReleasesExactlyItsRefs(t *testing.T) {
 	c := cluster(t, LinkOptions{})
 	one := c.browser(map[string]any{"guest": "g1"}, nil)
 	two := c.browser(map[string]any{"guest": "g2"}, nil)
-	mustCall(t, mustGet(t, one.host, map[string]any{"name": "a"}, at("session:S1")), "add", float64(1), nil)
-	other := mustGet(t, two.host, map[string]any{"name": "b"}, at("session:S1"))
+	mustCall(t, mustGetSession(t, one.host, "S1", "a"), "add", float64(1), nil)
+	other := mustGetSession(t, two.host, "S1", "b")
 	mustCall(t, other, "add", float64(1), nil)
 	one.up.Close()
 	waitFor(t, "close a", func() bool { return c.logged("close a") })
@@ -564,7 +593,7 @@ func TestLinksADeadLinkIsClosedAndReleasesEverythingHeld(t *testing.T) {
 	interval, timeout := 10*time.Millisecond, time.Second
 	c := cluster(t, LinkOptions{PingInterval: &interval, PingTimeout: &timeout})
 	browser := c.browser(map[string]any{"guest": "g1"}, nil)
-	mustCall(t, mustGet(t, browser.host, map[string]any{"name": "a"}, at("session:S1")), "add", float64(1), nil)
+	mustCall(t, mustGetSession(t, browser.host, "S1", "a"), "add", float64(1), nil)
 	browser.up.Sever()
 	waitFor(t, "close a", func() bool { return c.logged("close a") })
 }
@@ -574,6 +603,7 @@ func TestLinksCheckContractTokensAcrossLinks(t *testing.T) {
 	counterV2 := Remote("t.counter", RemoteDef{
 		Version:  2,
 		Input:    tObject("name", tString()),
+		Host:     NewHostNamed("server"),
 		Variants: Fields[VariantDef]{{"main", VariantDef{Methods: Fields[MethodSpec]{{"inc", Method(nil, tNumber())}}}}},
 	})
 	pair := serverWithWorker(t, "session:S1")
@@ -582,16 +612,16 @@ func TestLinksCheckContractTokensAcrossLinks(t *testing.T) {
 	}, ServeOptions{}); err != nil {
 		t.Fatal(err)
 	}
-	if err := readyErr(t, mustGet(t, pair.worker, map[string]any{"name": "x"}, at("server"))); !IsChordError(err, CodeContractMismatch) {
+	if err := readyErr(t, mustGet(t, pair.worker, "x")); !IsChordError(err, CodeContractMismatch) {
 		t.Fatalf("host ready = %v", err)
 	}
 	down, up := MemoryLinkPair()
 	if err := pair.server.Accept(down, AcceptOptions{Principal: map[string]any{"guest": "g"}}); err != nil {
 		t.Fatal(err)
 	}
-	browser := CreateHost(HostOptions{Name: "browser", Kind: "client", Upstream: up, OnError: func(error) {}})
+	browser := CreateHost(HostOptions{Self: kindHost(), Name: "browser", Kind: "client", Upstream: &UpstreamOptions{Link: up, ConnectOptions: ConnectOptions{Principal: kindServer()}}, OnError: func(error) {}})
 	t.Cleanup(func() { _ = browser.Close() })
-	if err := readyErr(t, mustGet(t, browser, map[string]any{"name": "x"}, at("server"))); !IsChordError(err, CodeUpgradeRequired) {
+	if err := readyErr(t, mustGet(t, browser, "x")); !IsChordError(err, CodeUpgradeRequired) {
 		t.Fatalf("browser ready = %v", err)
 	}
 }
@@ -605,7 +635,7 @@ func TestLinksInvalidatePrincipalRestampsTheLinkAndPropagates(t *testing.T) {
 		next["revision"] = float64(2)
 		return next, true
 	})
-	counter := mustGet(t, browser.host, map[string]any{"name": "a"}, at("session:S1"))
+	counter := mustGetSession(t, browser.host, "S1", "a")
 	mustCall(t, counter, "add", float64(1), nil)
 	if err := c.server.InvalidatePrincipal(PrincipalMatch{Pattern: chordjson.ObjectOf("guest", "g1")}); err != nil {
 		t.Fatal(err)
@@ -613,7 +643,7 @@ func TestLinksInvalidatePrincipalRestampsTheLinkAndPropagates(t *testing.T) {
 	// The relay under the old principal is closed at once; the worker disposes its object after.
 	waitFor(t, "counter gone", func() bool { return counter.Status() == RefGone })
 	waitFor(t, "close a", func() bool { return c.logged("close a") })
-	again := mustGet(t, browser.host, map[string]any{"name": "a"}, at("session:S1"))
+	again := mustGetSession(t, browser.host, "S1", "a")
 	if got := jsonText(t, mustCall(t, again, "who", nil, nil)); got != `{"guest":"g1","revision":2}` {
 		t.Fatalf("who = %s", got)
 	}
@@ -623,7 +653,7 @@ func TestLinksInvalidatePrincipalRestampsTheLinkAndPropagates(t *testing.T) {
 func TestLinksAfterAReconnectSubscribersGetAResetAndCallsWork(t *testing.T) {
 	c := cluster(t, LinkOptions{})
 	browser := c.browser(map[string]any{"guest": "g1"}, nil)
-	counter := mustGet(t, browser.host, map[string]any{"name": "r"}, at("session:S1"))
+	counter := mustGetSession(t, browser.host, "S1", "r")
 	var mu sync.Mutex
 	var events []string
 	count := countReadable(t, counter)
@@ -671,13 +701,14 @@ func TestLinksMethodsWithoutArgumentsOrResultTravelWithoutArgsAndWithoutAValueAn
 	tool := Remote("t.tool", RemoteDef{
 		Version: 1,
 		Input:   tObject(),
+		Host:    NewHostNamed("server"),
 		Variants: Fields[VariantDef]{{"main", VariantDef{Methods: Fields[MethodSpec]{
 			{"ping", Method(nil, nil)},
 			{"count", Method(nil, tNumber())},
 			{"note", Method(tString(), nil)},
 		}}}},
 	})
-	server := CreateHost(HostOptions{Name: "server", OnError: func(error) {}})
+	server := CreateHost(HostOptions{Self: kindHost(), Name: "server", OnError: func(error) {}})
 	t.Cleanup(func() { _ = server.Close() })
 	var mu sync.Mutex
 	var notes []string
@@ -701,9 +732,9 @@ func TestLinksMethodsWithoutArgumentsOrResultTravelWithoutArgsAndWithoutAValueAn
 		t.Fatal(err)
 	}
 	up := &sendRecorder{Link: upLink}
-	browser := CreateHost(HostOptions{Name: "browser", Kind: "client", Upstream: up, OnError: func(error) {}})
+	browser := CreateHost(HostOptions{Self: kindHost(), Name: "browser", Kind: "client", Upstream: &UpstreamOptions{Link: up, ConnectOptions: ConnectOptions{Principal: kindServer()}}, OnError: func(error) {}})
 	t.Cleanup(func() { _ = browser.Close() })
-	ref, err := browser.Get(tool, map[string]any{}, at("server"))
+	ref, err := browser.Get(tool, map[string]any{}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -766,7 +797,7 @@ func wantMismatches(t *testing.T, mismatches *protocolMismatches, peer int) {
 // link.test.ts "links: protocol version" "a peer without a protocol version (an old client) is told and dropped;
 // nothing it sends is served".
 func TestLinksProtocolVersionAPeerWithoutAProtocolVersionAnOldClientIsToldAndDroppedNothingItSendsIsServed(t *testing.T) {
-	server := CreateHost(HostOptions{Name: "server", OnError: func(error) {}})
+	server := CreateHost(HostOptions{Self: kindHost(), Name: "server", OnError: func(error) {}})
 	t.Cleanup(func() { _ = server.Close() })
 	serveCounter(t, server, nil)
 	var accepted protocolMismatches
@@ -811,9 +842,9 @@ func TestLinksProtocolVersionAPeerWithoutAProtocolVersionAnOldClientIsToldAndDro
 func TestLinksProtocolVersionAClientLearnsThatItsServerSpeaksAnotherVersionAndStops(t *testing.T) {
 	var client protocolMismatches
 	down, up := MemoryLinkPair()
-	browser := CreateHost(HostOptions{Name: "browser", Kind: "client", OnError: func(error) {}})
+	browser := CreateHost(HostOptions{Self: kindHost(), Name: "browser", Kind: "client", OnError: func(error) {}})
 	t.Cleanup(func() { _ = browser.Close() })
-	browser.Connect(up, LinkOptions{OnProtocolMismatch: client.report})
+	browser.Connect(up, ConnectOptions{Principal: kindServer(), LinkOptions: LinkOptions{OnProtocolMismatch: client.report}})
 	// A newer server: its hello announces the next version, and it closes the link the same way Chord does.
 	_, _ = down.Send(HelloFrame{Protocol: ProtocolVersion + 1, Name: "server", Kind: "host", CodeVersion: 1})
 	wantMismatches(t, &client, ProtocolVersion+1)
@@ -822,9 +853,9 @@ func TestLinksProtocolVersionAClientLearnsThatItsServerSpeaksAnotherVersionAndSt
 	// Told by the peer (it noticed first): the close reason carries its version.
 	var told protocolMismatches
 	down2, up2 := MemoryLinkPair()
-	other := CreateHost(HostOptions{Name: "browser", Kind: "client", OnError: func(error) {}})
+	other := CreateHost(HostOptions{Self: kindHost(), Name: "browser", Kind: "client", OnError: func(error) {}})
 	t.Cleanup(func() { _ = other.Close() })
-	other.Connect(up2, LinkOptions{OnProtocolMismatch: told.report})
+	other.Connect(up2, ConnectOptions{Principal: kindServer(), LinkOptions: LinkOptions{OnProtocolMismatch: told.report}})
 	down2.Close(fmt.Sprintf("protocol-version %d", ProtocolVersion+1))
 	wantMismatches(t, &told, ProtocolVersion+1)
 }
@@ -832,15 +863,15 @@ func TestLinksProtocolVersionAClientLearnsThatItsServerSpeaksAnotherVersionAndSt
 // link.test.ts "links: protocol version" "peers of the same version talk; an ordinary close is no mismatch".
 func TestLinksProtocolVersionPeersOfTheSameVersionTalkAnOrdinaryCloseIsNoMismatch(t *testing.T) {
 	var both protocolMismatches
-	server := CreateHost(HostOptions{Name: "server", OnError: func(error) {}})
+	server := CreateHost(HostOptions{Self: kindHost(), Name: "server", OnError: func(error) {}})
 	t.Cleanup(func() { _ = server.Close() })
 	down, up := MemoryLinkPair()
 	if err := server.Accept(down, AcceptOptions{Principal: map[string]any{"guest": "g"}, LinkOptions: LinkOptions{OnProtocolMismatch: both.report}}); err != nil {
 		t.Fatal(err)
 	}
-	browser := CreateHost(HostOptions{Name: "browser", Kind: "client", OnError: func(error) {}})
+	browser := CreateHost(HostOptions{Self: kindHost(), Name: "browser", Kind: "client", OnError: func(error) {}})
 	t.Cleanup(func() { _ = browser.Close() })
-	browser.Connect(up, LinkOptions{OnProtocolMismatch: both.report})
+	browser.Connect(up, ConnectOptions{Principal: kindServer(), LinkOptions: LinkOptions{OnProtocolMismatch: both.report}})
 	time.Sleep(20 * time.Millisecond)
 	up.Close("bye")
 	waitFor(t, "the link to close", down.Closed)
@@ -854,6 +885,7 @@ func TestLinksProtocolVersionPeersOfTheSameVersionTalkAnOrdinaryCloseIsNoMismatc
 var linkBig = Remote("t.big", RemoteDef{
 	Version: 1,
 	Input:   tObject(),
+	Host:    NewHostNamed("session:S1"),
 	Variants: Fields[VariantDef]{{"main", VariantDef{
 		State:   Fields[Schema]{{"notes", tArray(tString())}},
 		Methods: Fields[MethodSpec]{{"echo", Method(tArray(tString()), tArray(tString()))}},
@@ -872,13 +904,14 @@ func large(tag string) []any {
 // link.test.ts (Pi 018c87dd) "links: packed payloads" "large args, results and snapshots cross a relay deflated and
 // arrive intact".
 func TestLinksPackedPayloadsLargeArgsResultsAndSnapshotsCrossARelayDeflatedAndArriveIntact(t *testing.T) {
-	server := CreateHost(HostOptions{Name: "server", OnError: func(error) {}})
+	server := CreateHost(HostOptions{Self: kindHost(), Name: "server", OnError: func(error) {}})
 	t.Cleanup(func() { _ = server.Close() })
 	server.Route("session:", Route{
+		Principal: func(name string) Principal { return map[string]any{"host": name} },
 		Authorize: func(Principal, string) (bool, error) { return true, nil },
 		Resolve: func(name string) (Link, error) {
 			down, up := MemoryLinkPair()
-			worker := CreateHost(HostOptions{Name: name, Upstream: up, OnError: func(error) {}})
+			worker := CreateHost(HostOptions{Self: kindHost(), Name: name, Upstream: &UpstreamOptions{Link: up, ConnectOptions: ConnectOptions{Principal: kindServer()}}, OnError: func(error) {}})
 			t.Cleanup(func() { _ = worker.Close() })
 			err := worker.Serve(linkBig, func(_ any, _ Principal, self Self) (Implementation, error) {
 				notes, err := self.State("notes", tArray(tString()), large("a"), nil)
@@ -901,9 +934,9 @@ func TestLinksPackedPayloadsLargeArgsResultsAndSnapshotsCrossARelayDeflatedAndAr
 	if err := server.Accept(down, AcceptOptions{Principal: map[string]any{"owner": true}}); err != nil {
 		t.Fatal(err)
 	}
-	browser := CreateHost(HostOptions{Name: "browser", Kind: KindClient, Upstream: up, OnError: func(error) {}})
+	browser := CreateHost(HostOptions{Self: kindHost(), Name: "browser", Kind: KindClient, Upstream: &UpstreamOptions{Link: up, ConnectOptions: ConnectOptions{Principal: kindServer()}}, OnError: func(error) {}})
 	t.Cleanup(func() { _ = browser.Close() })
-	big, err := browser.Get(linkBig, map[string]any{}, at("session:S1"))
+	big, err := browser.Get(linkBig, map[string]any{}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}

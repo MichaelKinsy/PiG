@@ -113,13 +113,24 @@ type StateOptions struct {
 	Migrate func(old any, from int) (any, error)
 }
 
+// StateInit is object.ts StateInit: a cell's first value from its source. Pass it as the initial value of Self.State.
+// Init runs after the object's resources are open and its references are live, before the object goes live, so no
+// call, listener or subscriber sees a value that is not from the source. It runs in a root of its own (acting as the
+// host's own principal) and may block; the inits of one object run in parallel. Its value is validated against the
+// schema; an error or an invalid value fails the activation. A Go value is never a StateInit unless it is one, as a
+// JSON value never holds a function.
+type StateInit struct {
+	Init func(ctx Ctx) (any, error)
+}
+
 // Self is the factory's `self`: how a factory declares the object's state, references, resources, listeners, tasks,
 // derivations, registrations and exposed resources.
 type Self interface {
-	// State declares a state cell named name: its schema (required: there is no TypeScript at runtime) and initial
-	// value (validated). The name identifies it across reloads: a reload keeps the cell and its value (initial is
-	// ignored), migrates it when its version rises, and refuses a schema change without a version bump. options nil is
-	// Pi's undefined.
+	// State declares a state cell named name: its schema (required: there is no TypeScript at runtime) and its initial
+	// value (validated), or a StateInit to read the first value from its source before the object goes live. The name
+	// identifies the cell across reloads: a reload keeps the cell and its value (initial is ignored, Init does not run),
+	// migrates it when its version rises, and refuses a schema change without a version bump. A cell a reload adds runs
+	// its Init while the reload prepares. options nil is Pi's undefined.
 	State(name string, schema Schema, initial any, options *StateOptions) (*Cell[any], error)
 	// Get makes an object-owned reference, identified by its address.
 	Get(typ *Contract, input any, options *GetOptions) (Ref, error)
@@ -379,6 +390,14 @@ type runCreated struct {
 	refs      []RefCore
 	resources []*ResourceImpl
 	derives   []*Derived
+	// inits are the cells this run created with Init, which fills them before they are used.
+	inits []cellInit
+}
+
+// cellInit is a cell created with Init and the function that fills it.
+type cellInit struct {
+	cell *Cell[any]
+	init func(ctx Ctx) (any, error)
 }
 
 // Run is one factory run: its implementation, declarations and the objects it created.
@@ -481,7 +500,6 @@ func (ctx *CtxImpl) Get(typ *Contract, input any, options *GetOptions) (Ref, err
 		if options.HasPrincipal {
 			merged.Principal = options.Principal
 		}
-		merged.At = options.At
 	}
 	var ref RefCore
 	var err error
@@ -1383,7 +1401,7 @@ func (object *ObjectImpl) activate(done func(err error)) {
 		done(err)
 		return
 	}
-	object.openPromise(run.created.resources, run.created.refs, signal).then(func(_ struct{}, err error) {
+	settle := func(err error) {
 		if err == nil {
 			err = object.finalize(run, signal)
 		}
@@ -1399,7 +1417,76 @@ func (object *ObjectImpl) activate(done func(err error)) {
 				done(err)
 			})
 		})
+	}
+	object.openPromise(run.created.resources, run.created.refs, signal).then(func(_ struct{}, err error) {
+		if err != nil {
+			settle(err)
+			return
+		}
+		if signal.Err() != nil {
+			settle(object.abandoned())
+			return
+		}
+		// Cells declared with init read their first value after the resources are open and before anything reads them.
+		object.initCellsPromise(run, signal).then(func(_ struct{}, err error) { settle(err) })
 	})
+}
+
+// initCellsPromise is object.ts initCells, started on the loop: it fills the cells run created with Init, each in a
+// root of its own, in parallel (each starts once the previously started one entered, as an async arrow runs up to its
+// first await), and settles with the first failure in start order once all settled. Runs after the run's resources
+// are open and its references live, before anything reads the cells.
+func (object *ObjectImpl) initCellsPromise(run *Run, signal context.Context) *Promise[struct{}] {
+	host := object.host
+	loop := &host.loop
+	if len(run.created.inits) == 0 {
+		return resolvedPromise(loop, struct{}{})
+	}
+	var all []*Promise[struct{}]
+	for _, item := range run.created.inits {
+		filled, resolve, reject := newPromise[struct{}](loop)
+		all = append(all, filled)
+		<-host.goEntered(func() {
+			var value any
+			_, err := host.Root(func(ctx Ctx) (any, error) {
+				err := runStep(func() (err error) {
+					value, err = item.init(ctx)
+					return err
+				})
+				return value, err
+			}, RootOptions{Signal: signal})
+			host.post(func() {
+				if err == nil && signal.Err() == nil {
+					err = item.cell.Initialize(value)
+				}
+				if err != nil {
+					reject(err)
+					return
+				}
+				resolve(struct{}{})
+			})
+		})
+	}
+	initialized, resolve, reject := newPromise[struct{}](loop)
+	promiseAllSettled(loop, all).then(func(results []settledResult[struct{}], _ error) {
+		for _, result := range results {
+			if result.err != nil {
+				reject(result.err)
+				return
+			}
+		}
+		resolve(struct{}{})
+	})
+	return initialized
+}
+
+// initCells is initCellsPromise awaited off the loop.
+func (object *ObjectImpl) initCells(run *Run, signal context.Context) error {
+	var initialized *Promise[struct{}]
+	object.host.run(func() { initialized = object.initCellsPromise(run, signal) })
+	//portlint:allow ctxmapping object.ts initCells awaits Promise.allSettled of every init so all settle before failing; signal reaches each init's root
+	_, err := initialized.Await(context.Background())
+	return err
 }
 
 // finalize is activation's synchronous finalization, on the loop.
@@ -2491,6 +2578,19 @@ func unique[V any](s *SelfImpl, existing *orderedMap[string, V], kind, name stri
 	return nil
 }
 
+// stateInit is the initializer of an initial value that is a StateInit with an Init (object.ts isStateInit).
+func stateInit(initial any) (func(ctx Ctx) (any, error), bool) {
+	switch typed := initial.(type) {
+	case StateInit:
+		return typed.Init, typed.Init != nil
+	case *StateInit:
+		if typed != nil {
+			return typed.Init, typed.Init != nil
+		}
+	}
+	return nil, false
+}
+
 // State declares a state cell (on the loop: the factory runs there).
 func (s *SelfImpl) State(name string, schema Schema, initial any, options *StateOptions) (*Cell[any], error) {
 	if err := unique(s, s.decls.cells, "state", name); err != nil {
@@ -2510,7 +2610,15 @@ func (s *SelfImpl) State(name string, schema Schema, initial any, options *State
 	}
 	if cell == nil {
 		var err error
-		cell, err = NewCell[any](name, schema, initial, s.object.guard, SourceOptions{Dev: host.dev, Report: host.report, Exec: host.run})
+		options := SourceOptions{Dev: host.dev, Report: host.report, Exec: host.run}
+		if init, isInit := stateInit(initial); isInit {
+			cell, err = NewCellAwaitingInit[any](name, schema, s.object.guard, options)
+			if err == nil {
+				s.created.inits = append(s.created.inits, cellInit{cell: cell, init: init})
+			}
+		} else {
+			cell, err = NewCell[any](name, schema, initial, s.object.guard, options)
+		}
 		if err != nil {
 			return nil, err
 		}
@@ -2531,14 +2639,10 @@ func (s *SelfImpl) Get(typ *Contract, input any, options *GetOptions) (Ref, erro
 	// change and its updated consumer reload together.
 	candidate := s.previous != nil
 	principal := host.principal
-	var at *string
-	if options != nil {
-		if options.HasPrincipal {
-			principal = options.Principal
-		}
-		at = options.At
+	if options != nil && options.HasPrincipal {
+		principal = options.Principal
 	}
-	address, err := host.addressOf(typ, input, principal, at, candidate)
+	address, err := host.addressOf(typ, input, principal, candidate)
 	if err != nil {
 		return nil, err
 	}

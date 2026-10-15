@@ -63,6 +63,7 @@ func (link *watchedLink) sentType(t string) bool {
 var reviewCounter = Remote("t.counter", RemoteDef{
 	Version: 1,
 	Input:   tObject("name", tString()),
+	Host:    NewHostNamed("session:S1"),
 	Variants: Fields[VariantDef]{{"main", VariantDef{
 		State: Fields[Schema]{{"count", linkCountSchema}},
 		Methods: Fields[MethodSpec]{
@@ -136,7 +137,7 @@ func (c *reviewCluster) browser(principal Principal, restamp func(Principal) (Pr
 	if err := c.server.Accept(down, AcceptOptions{Principal: principal, Restamp: restamp}); err != nil {
 		c.t.Fatal(err)
 	}
-	return &reviewBrowser{host: requestsHost(c.t, HostOptions{Name: "browser", Kind: KindClient, Upstream: up}), up: up}
+	return &reviewBrowser{host: requestsHost(c.t, HostOptions{Name: "browser", Kind: KindClient, Upstream: &UpstreamOptions{Link: up, ConnectOptions: ConnectOptions{Principal: kindServer()}}}), up: up}
 }
 
 type reviewRaw struct {
@@ -173,6 +174,7 @@ func newReviewCluster(t *testing.T) *reviewCluster {
 	c := &reviewCluster{t: t, workers: map[string]*reviewWorker{}, slowGate: newRequestsLatch(), slowStarted: make(chan struct{}, 16)}
 	c.server = requestsHost(t, HostOptions{Name: "server"})
 	c.server.Route("session:", Route{
+		Principal: func(name string) Principal { return map[string]any{"host": name} },
 		Authorize: func(Principal, string) (bool, error) { return true, nil },
 		Resolve: func(name string) (Link, error) {
 			c.mu.Lock()
@@ -189,7 +191,7 @@ func newReviewCluster(t *testing.T) *reviewCluster {
 			}
 			down, up := MemoryLinkPair()
 			link := newWatchedLink(down)
-			worker := requestsHost(t, HostOptions{Name: name, Upstream: up})
+			worker := requestsHost(t, HostOptions{Name: name, Upstream: &UpstreamOptions{Link: up, ConnectOptions: ConnectOptions{Principal: kindServer()}}})
 			// A slow call still waiting must finish before the worker closes (cleanups run last-in, first-out).
 			t.Cleanup(c.slowGate.open)
 			err := worker.Serve(reviewCounter, func(input any, principal Principal, self Self) (Implementation, error) {
@@ -269,9 +271,9 @@ func reviewReloading(host *HostImpl) bool {
 	return reviewOnLoop(host, func() bool { return host.reloading })
 }
 
-func reviewGetCounter(t *testing.T, host *HostImpl, name, at string) Ref {
+func reviewGetCounter(t *testing.T, host *HostImpl, name string) Ref {
 	t.Helper()
-	return requestsGet(t, host, reviewCounter, map[string]any{"name": name}, &GetOptions{At: &at})
+	return requestsGet(t, host, reviewCounter, map[string]any{"name": name}, nil)
 }
 
 // links-review.test.ts:163-172 "#1 the acceptor decides what a peer is: a client announcing itself as a host is cut
@@ -308,7 +310,7 @@ func reviewStateFacet(typ *Contract, version int, implementation func() Implemen
 // links-review.test.ts:174-215 "#1 root_end is honored only from the link the root came over"
 func TestLinksReview1RootEndIsHonoredOnlyFromTheLinkTheRootCameOver(t *testing.T) {
 	server := requestsHost(t, HostOptions{Name: "server"})
-	echo := Remote("t.echo", RemoteDef{Version: 1, Input: tObject(), Variants: Fields[VariantDef]{{"main", VariantDef{
+	echo := Remote("t.echo", RemoteDef{Version: 1, Input: tObject(), Host: NewHostNamed("server"), Variants: Fields[VariantDef]{{"main", VariantDef{
 		Methods: Fields[MethodSpec]{{"root", Method(nil, tString())}},
 	}}}})
 	facet := func(version int) *Facet {
@@ -324,13 +326,13 @@ func TestLinksReview1RootEndIsHonoredOnlyFromTheLinkTheRootCameOver(t *testing.T
 	if err := server.Accept(down, AcceptOptions{Principal: map[string]any{"worker": "w"}, Kind: KindHost, Name: &name}); err != nil {
 		t.Fatal(err)
 	}
-	worker := requestsHost(t, HostOptions{Name: "w", Upstream: up})
+	worker := requestsHost(t, HostOptions{Name: "w", Upstream: &UpstreamOptions{Link: up, ConnectOptions: ConnectOptions{Principal: kindServer()}}})
 	gate := newRequestsLatch()
 	rootIDs := make(chan string, 1)
 	pinned := make(chan error, 1)
 	go func() {
 		_, err := worker.Root(func(ctx Ctx) (any, error) {
-			ref, err := ctx.Get(echo, requestsEmpty(), at("server"))
+			ref, err := ctx.Get(echo, requestsEmpty(), nil)
 			if err != nil {
 				return nil, err
 			}
@@ -384,7 +386,7 @@ func TestLinksReview2ARevocationWhileTheRouteIsStillResolvingClosesTheRelay(t *t
 		next["revision"] = float64(2)
 		return next, true
 	})
-	counter := reviewGetCounter(t, browser.host, "a", "session:S1")
+	counter := reviewGetCounter(t, browser.host, "a")
 	// Pi sleeps 5 ms for the hold to reach the server: wait until the server serves it as a relay.
 	waitFor(t, "the relayed hold", func() bool {
 		return reviewOnLoop(c.server, func() bool {
@@ -408,7 +410,7 @@ func TestLinksReview2ARevocationWhileTheRouteIsStillResolvingClosesTheRelay(t *t
 	if got := c.principalList(); len(got) != 0 {
 		t.Fatalf("principals = %s", jsonText(t, got))
 	}
-	again := reviewGetCounter(t, browser.host, "a", "session:S1")
+	again := reviewGetCounter(t, browser.host, "a")
 	if got := jsonText(t, mustCall(t, again, "who", nil, nil)); got != `{"guest":"g","revision":2}` {
 		t.Fatalf("who = %s", got)
 	}
@@ -431,7 +433,7 @@ func TestLinksReview10MalformedFramesAndDuplicateIDsCloseTheLink(t *testing.T) {
 func TestLinksReview7ABrowserDisconnectCancelsItsCallDownstream(t *testing.T) {
 	c := newReviewCluster(t)
 	browser := c.browser(map[string]any{"guest": "g"}, nil)
-	counter := reviewGetCounter(t, browser.host, "a", "session:S1")
+	counter := reviewGetCounter(t, browser.host, "a")
 	if err := readyErr(t, counter); err != nil {
 		t.Fatal(err)
 	}
@@ -501,7 +503,7 @@ func TestLinksReview9AReleaseWhileTheRouteResolvesSettlesWaitingCallsAndForwards
 func TestLinksReview9AnOriginDisconnectRemovesItsRelayedRefsAndSubscriptionsDownstream(t *testing.T) {
 	c := newReviewCluster(t)
 	browser := c.browser(map[string]any{"guest": "g"}, nil)
-	counter := reviewGetCounter(t, browser.host, "a", "session:S1")
+	counter := reviewGetCounter(t, browser.host, "a")
 	requestsReadable(t, counter, "count").Subscribe(func(any) {})
 	mustCall(t, counter, "add", float64(1), nil)
 	down := reviewConnection(c.server, "session:S1")
@@ -520,8 +522,8 @@ func TestLinksReviewTwoBrowsersShareOneWorkerConnection(t *testing.T) {
 	c := newReviewCluster(t)
 	one := c.browser(map[string]any{"guest": "g1"}, nil)
 	two := c.browser(map[string]any{"guest": "g2"}, nil)
-	a := reviewGetCounter(t, one.host, "same", "session:S1")
-	b := reviewGetCounter(t, two.host, "same", "session:S1")
+	a := reviewGetCounter(t, one.host, "same")
+	b := reviewGetCounter(t, two.host, "same")
 	if got := mustCall(t, a, "add", float64(1), nil); got != float64(1) {
 		t.Fatalf("a.add = %v", got)
 	}
@@ -574,10 +576,10 @@ func (view mappedView) Events(fn func(event StateEvent[any])) func() {
 // links-review.test.ts:322-365 "#11 snapshots through an accepts adapter are validated against the consumer's
 // schema"
 func TestLinksReview11SnapshotsThroughAnAcceptsAdapterAreValidatedAgainstTheConsumersSchema(t *testing.T) {
-	docV1 := Remote("t.doc", RemoteDef{Version: 1, Input: tObject(), Variants: Fields[VariantDef]{{"main", VariantDef{
+	docV1 := Remote("t.doc", RemoteDef{Version: 1, Input: tObject(), Host: NewHostNamed("server"), Variants: Fields[VariantDef]{{"main", VariantDef{
 		State: Fields[Schema]{{"view", tObject("text", tString())}},
 	}}}})
-	docV2 := Remote("t.doc", RemoteDef{Version: 2, Input: tObject(), Variants: Fields[VariantDef]{{"main", VariantDef{
+	docV2 := Remote("t.doc", RemoteDef{Version: 2, Input: tObject(), Host: NewHostNamed("server"), Variants: Fields[VariantDef]{{"main", VariantDef{
 		State: Fields[Schema]{{"view", tObject("body", tString())}},
 	}}}})
 	server := requestsHost(t, HostOptions{Name: "server"})
@@ -594,8 +596,8 @@ func TestLinksReview11SnapshotsThroughAnAcceptsAdapterAreValidatedAgainstTheCons
 	if err := server.Accept(down, AcceptOptions{Principal: map[string]any{"guest": "g"}}); err != nil {
 		t.Fatal(err)
 	}
-	browser := requestsHost(t, HostOptions{Name: "browser", Kind: KindClient, Upstream: up})
-	view := requestsReadable(t, requestsGet(t, browser, docV1, requestsEmpty(), at("server")), "view")
+	browser := requestsHost(t, HostOptions{Name: "browser", Kind: KindClient, Upstream: &UpstreamOptions{Link: up, ConnectOptions: ConnectOptions{Principal: kindServer()}}})
+	view := requestsReadable(t, requestsGet(t, browser, docV1, requestsEmpty(), nil), "view")
 	view.Subscribe(func(any) {})
 	waitFor(t, "the snapshot", func() bool { return view.Value() != nil })
 	if got := jsonText(t, view.Value()); got != `{"text":"hi"}` {
@@ -603,7 +605,7 @@ func TestLinksReview11SnapshotsThroughAnAcceptsAdapterAreValidatedAgainstTheCons
 	}
 }
 
-var reviewGreeter = Remote("t.greeter", RemoteDef{Version: 1, Input: tObject(), Variants: Fields[VariantDef]{{"main", VariantDef{
+var reviewGreeter = Remote("t.greeter", RemoteDef{Version: 1, Input: tObject(), Host: NewHostNamed("session:S1"), Variants: Fields[VariantDef]{{"main", VariantDef{
 	Methods: Fields[MethodSpec]{{"greet", Method(tString(), tString())}},
 }}}})
 
@@ -662,7 +664,7 @@ func newReviewReloadSetup(t *testing.T, slowLoad *requestsLatch) *reviewReloadSe
 	setup.server = requestsHost(t, HostOptions{Name: "server"})
 	link, up := setup.connect(t)
 	setup.link = link
-	setup.worker = requestsHost(t, HostOptions{Name: "session:S1", Upstream: up, Loader: loader})
+	setup.worker = requestsHost(t, HostOptions{Name: "session:S1", Upstream: &UpstreamOptions{Link: up, ConnectOptions: ConnectOptions{Principal: kindServer()}}, Loader: loader})
 	setup.modulesMu.Lock()
 	greeter := setup.modules["greeter"]
 	setup.modulesMu.Unlock()
@@ -700,7 +702,7 @@ func TestLinksReview3AnAbortWhileTheChildIsStillLoadingModulesFreesItsReloadSlot
 	if _, err := setup.server.Reload(nil, ReloadOptions{Remote: reviewRemote}); err != nil {
 		t.Fatal(err)
 	}
-	if got := mustCall(t, requestsGet(t, setup.server, reviewGreeter, requestsEmpty(), at("session:S1")), "greet", "x", nil); got != "v2 x" {
+	if got := mustCall(t, requestsGet(t, setup.server, reviewGreeter, requestsEmpty(), nil), "greet", "x", nil); got != "v2 x" {
 		t.Fatalf("greet = %v", got)
 	}
 }
@@ -739,7 +741,7 @@ func TestLinksReview4TasksTheCommitStartsCannotReachAChildBeforeTheChildsCommit(
 	callerFacet := func(active bool) *Facet {
 		return &Facet{Name: "caller", FacetDefinition: FacetDefinition{Setup: func(api FacetApi) error {
 			return api.Serve(caller, func(_ any, _ Principal, self Self) (Implementation, error) {
-				greeter, err := self.Get(reviewGreeter, requestsEmpty(), at("session:S1"))
+				greeter, err := self.Get(reviewGreeter, requestsEmpty(), nil)
 				if err != nil {
 					return nil, err
 				}
@@ -795,8 +797,8 @@ func TestLinksReview5AChildThatMissedACommitIsReconciledOnReconnect(t *testing.T
 		t.Fatalf("worker code version %d equals the server's", setup.worker.CodeVersion())
 	}
 	_, up := setup.connect(t)
-	setup.worker.Connect(up, LinkOptions{})
-	greeter := requestsGet(t, setup.server, reviewGreeter, requestsEmpty(), at("session:S1"))
+	setup.worker.Connect(up, ConnectOptions{Principal: kindServer()})
+	greeter := requestsGet(t, setup.server, reviewGreeter, requestsEmpty(), nil)
 	if got := mustCall(t, greeter, "greet", "x", nil); got != "v2 x" {
 		t.Fatalf("greet = %v", got)
 	}
@@ -810,10 +812,10 @@ func TestLinksReview5AChildThatMissedACommitIsReconciledOnReconnect(t *testing.T
 func TestLinksReview6AServerRootThatBouncesThroughAWorkerAndBackEndsNormally(t *testing.T) {
 	setup := newReviewReloadSetup(t, nil)
 	reviewSynced(t, setup.server)
-	echo := Remote("t.echo2", RemoteDef{Version: 1, Input: tObject(), Variants: Fields[VariantDef]{{"main", VariantDef{
+	echo := Remote("t.echo2", RemoteDef{Version: 1, Input: tObject(), Host: NewHostNamed("server"), Variants: Fields[VariantDef]{{"main", VariantDef{
 		Methods: Fields[MethodSpec]{{"ping", Method(nil, nil)}},
 	}}}})
-	bouncer := Remote("t.bouncer", RemoteDef{Version: 1, Input: tObject(), Variants: Fields[VariantDef]{{"main", VariantDef{
+	bouncer := Remote("t.bouncer", RemoteDef{Version: 1, Input: tObject(), Host: NewHostNamed("session:S1"), Variants: Fields[VariantDef]{{"main", VariantDef{
 		Methods: Fields[MethodSpec]{{"bounce", Method(nil, nil)}},
 	}}}})
 	echoFacet := func(version int) *Facet {
@@ -832,7 +834,7 @@ func TestLinksReview6AServerRootThatBouncesThroughAWorkerAndBackEndsNormally(t *
 	}
 	requestsServe(t, setup.worker.Serve, bouncer, func(any, Principal, Self) (Implementation, error) {
 		return chordjson.ObjectOf("variant", "main", "bounce", methodFunc(func(_ any, ctx Ctx) (any, error) {
-			ref, err := ctx.Get(echo, requestsEmpty(), at("server"))
+			ref, err := ctx.Get(echo, requestsEmpty(), nil)
 			if err != nil {
 				return nil, err
 			}
@@ -841,7 +843,7 @@ func TestLinksReview6AServerRootThatBouncesThroughAWorkerAndBackEndsNormally(t *
 		})), nil
 	}, ServeOptions{})
 	if _, err := setup.server.Root(func(ctx Ctx) (any, error) {
-		ref, err := ctx.Get(bouncer, requestsEmpty(), at("session:S1"))
+		ref, err := ctx.Get(bouncer, requestsEmpty(), nil)
 		if err != nil {
 			return nil, err
 		}

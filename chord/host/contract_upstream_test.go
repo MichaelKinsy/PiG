@@ -19,6 +19,7 @@ func chatV1Def() RemoteDef {
 	return RemoteDef{
 		Version: 1,
 		Input:   tObject("session", tString(), "conversation", tNumber(Schema{"default": 0})),
+		Host:    NewHostFamily("session:", "session"),
 		Variants: Fields[VariantDef]{
 			{"viewer", VariantDef{State: Fields[Schema]{{"view", view}}}},
 			{"participant", VariantDef{
@@ -75,10 +76,10 @@ func TestContractsFingerprintsAreStableAndDescriptionBased(t *testing.T) {
 	if Remote("t.chat", def).Fingerprint == chatV1.Fingerprint {
 		t.Fatal("version 2 has the version 1 fingerprint")
 	}
-	// The values Pi 301617df computes for the same definitions (remote("t.chat", ...).fingerprint and the local t.idx of
+	// The values Pi aa9cf15b computes for the same definitions (chat has a host placement) (remote("t.chat", ...).fingerprint and the local t.idx of
 	// the opaque test below): the canonical description and hash agree byte for byte.
-	if chatV1.Fingerprint != "921f8e01212075f7" {
-		t.Fatalf("fingerprint %s, Pi 921f8e01212075f7", chatV1.Fingerprint)
+	if chatV1.Fingerprint != "e8ee3f28594f8426" {
+		t.Fatalf("fingerprint %s, Pi e8ee3f28594f8426", chatV1.Fingerprint)
 	}
 	if got := idxContract().Fingerprint; got != "8559ef74b122b5ed" {
 		t.Fatalf("local fingerprint %s, Pi 8559ef74b122b5ed", got)

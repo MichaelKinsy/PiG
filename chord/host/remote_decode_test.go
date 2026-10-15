@@ -62,7 +62,7 @@ func TestRemoteStateRejectsMalformedWireOpsInTheDecoder(t *testing.T) {
 		{`[["q",["n"],1]]`, "unknown op verb: q"},
 	} {
 		t.Run(test.ops, func(t *testing.T) {
-			counter := Remote("t.decodeOps", RemoteDef{Version: 1, Input: tObject(), Variants: Fields[VariantDef]{{"main", VariantDef{
+			counter := Remote("t.decodeOps", RemoteDef{Version: 1, Input: tObject(), Host: NewHostNamed("server"), Variants: Fields[VariantDef]{{"main", VariantDef{
 				State:   Fields[Schema]{{"n", tNumber()}},
 				Methods: Fields[MethodSpec]{{"set", Method(tNumber(), nil)}},
 			}}}})
@@ -82,13 +82,13 @@ func TestRemoteStateRejectsMalformedWireOpsInTheDecoder(t *testing.T) {
 			}
 			var mu sync.Mutex
 			var reported []error
-			browser := requestsHost(t, HostOptions{Name: "browser", Kind: KindClient, Upstream: &opsRewriteLink{Link: up, t: t, ops: test.ops},
+			browser := requestsHost(t, HostOptions{Name: "browser", Kind: KindClient, Upstream: &UpstreamOptions{Link: &opsRewriteLink{Link: up, t: t, ops: test.ops}, ConnectOptions: ConnectOptions{Principal: kindServer()}},
 				OnError: func(err error) {
 					mu.Lock()
 					reported = append(reported, err)
 					mu.Unlock()
 				}})
-			ref := requestsGet(t, browser, counter, requestsEmpty(), at("server"))
+			ref := requestsGet(t, browser, counter, requestsEmpty(), nil)
 			n := requestsReadable(t, ref, "n")
 			stop := n.Subscribe(func(any) {})
 			defer stop()

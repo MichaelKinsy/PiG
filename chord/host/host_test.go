@@ -80,8 +80,11 @@ func framesOf[F Frame](link *fakeLink) []F {
 	return out
 }
 
-func testContract(name string) *Contract {
-	return Remote(name, RemoteDef{Version: 1, Input: tObject(), Variants: Fields[VariantDef]{{"", VariantDef{Methods: Fields[MethodSpec]{{"ping", Method(tObject(), tObject())}}}}}})
+func testContract(name string) *Contract { return testContractOn(name, "host") }
+
+// testContractOn is testContract placed on the host named placedOn.
+func testContractOn(name, placedOn string) *Contract {
+	return Remote(name, RemoteDef{Version: 1, Input: tObject(), Host: NewHostNamed(placedOn), Variants: Fields[VariantDef]{{"", VariantDef{Methods: Fields[MethodSpec]{{"ping", Method(tObject(), tObject())}}}}}})
 }
 
 func noFactory(any, Principal, Self) (Implementation, error) { return chordjson.ObjectOf(), nil }
@@ -112,25 +115,30 @@ func messageOf(err error) string {
 
 // host.ts:233-251: name defaults to "host", the first code version is 1 and there is no previous code version.
 func TestCreateHostDefaults(t *testing.T) {
-	host := CreateHost(HostOptions{})
+	host := CreateHost(HostOptions{Self: kindHost()})
 	if host.Name() != "host" || host.CodeVersion() != 1 {
 		t.Fatalf("name %q code version %d", host.Name(), host.CodeVersion())
 	}
 	if _, ok := host.PreviousCodeVersion(); ok {
 		t.Fatal("a new host has a previous code version")
 	}
-	if named := CreateHost(HostOptions{Name: "server"}); named.Name() != "server" {
+	if named := CreateHost(HostOptions{Self: kindHost(), Name: "server"}); named.Name() != "server" {
 		t.Fatalf("name %q", named.Name())
 	}
 }
 
-// host.ts:37: the host principal is { host: true }, compared by identity.
-func TestHostPrincipalIsFrozenHostObject(t *testing.T) {
-	if got := CanonicalJSON(HostPrincipal); got != `{"host":true}` {
-		t.Fatalf("host principal %s", got)
+// host.ts isSelf (aa9cf15b): the host's own principal is the one given as self and is recognized by principalKey, so an
+// equal object is the host's own and another principal is not.
+func TestHostRecognizesItsOwnPrincipalByKey(t *testing.T) {
+	host := CreateHost(HostOptions{Self: kindHost()})
+	if !host.isSelf(host.principal) || !host.isSelf(kindHost()) || !host.isSelf(chordjson.ObjectOf("kind", "host")) {
+		t.Fatal("an equal principal is the host's own")
 	}
-	if !isHostPrincipal(HostPrincipal) || isHostPrincipal(chordjson.ObjectOf("host", true)) {
-		t.Fatal("the host principal is matched by identity, not by value")
+	if host.isSelf(kindServer()) || host.isSelf(nil) {
+		t.Fatal("another principal is not the host's own")
+	}
+	if host.principal == nil || CanonicalJSON(host.principal) != `{"kind":"host"}` {
+		t.Fatalf("self %s", CanonicalJSON(host.principal))
 	}
 }
 
@@ -153,7 +161,7 @@ func TestDefineFacetKeepsSetupAndUses(t *testing.T) {
 // host.ts:254-259 and 927-930: nextCodeVersionId adopts a newer given code version, refuses one not newer than the current, and
 // otherwise allocates the next; peekNextCodeVersion is the one after the last allocated.
 func TestNextCodeVersionId(t *testing.T) {
-	host := CreateHost(HostOptions{})
+	host := CreateHost(HostOptions{Self: kindHost()})
 	host.run(func() {
 		one := 1
 		if _, err := host.nextCodeVersionId(&one); messageOf(err) != "code version 1 is not newer than 1" {
@@ -174,12 +182,12 @@ func TestNextCodeVersionId(t *testing.T) {
 
 // host.ts:307-316: modules need a loader; the loader gets only the modules, in order, and facets keep their places.
 func TestResolvePluginRefs(t *testing.T) {
-	_, err := CreateHost(HostOptions{}).resolve([]PluginRef{ModuleRef("./a.ts")})
+	_, err := CreateHost(HostOptions{Self: kindHost()}).resolve([]PluginRef{ModuleRef("./a.ts")})
 	if messageOf(err) != "loading modules needs createHost({ loader }), e.g. nodeLoader from @earendil-works/chord/node" {
 		t.Fatalf("without loader: %v", err)
 	}
 	var asked []string
-	host := CreateHost(HostOptions{Loader: func(modules []string) ([]Facet, error) {
+	host := CreateHost(HostOptions{Self: kindHost(), Loader: func(modules []string) ([]Facet, error) {
 		asked = modules
 		facets := make([]Facet, len(modules))
 		for index, module := range modules {
@@ -196,7 +204,7 @@ func TestResolvePluginRefs(t *testing.T) {
 		t.Fatalf("asked %v, facets %v", asked, names)
 	}
 	loaderFailure := errors.New("import failed")
-	failing := CreateHost(HostOptions{Loader: func([]string) ([]Facet, error) { return nil, loaderFailure }})
+	failing := CreateHost(HostOptions{Self: kindHost(), Loader: func([]string) ([]Facet, error) { return nil, loaderFailure }})
 	if _, err := failing.resolve([]PluginRef{ModuleRef("a")}); !errors.Is(err, loaderFailure) {
 		t.Fatalf("loader failure: %v", err)
 	}
@@ -205,8 +213,8 @@ func TestResolvePluginRefs(t *testing.T) {
 // host.ts:267-287 and 318-330: a facet serves through its api into the current code version, the api names the host, a facet
 // name and a type are installed once, lazy types create no object, and serve/install refuse to run during a reload.
 func TestInstallServesThroughFacetApi(t *testing.T) {
-	host := CreateHost(HostOptions{Name: "server"})
-	a := testContract("t.a")
+	host := CreateHost(HostOptions{Self: kindHost(), Name: "server"})
+	a := testContractOn("t.a", "server")
 	var apiName string
 	facet := Facet{Name: "f", FacetDefinition: FacetDefinition{Setup: func(api FacetApi) error {
 		apiName = api.Name
@@ -254,7 +262,7 @@ func TestInstallServesThroughFacetApi(t *testing.T) {
 
 // host.ts:289-293: load installs every facet (no await between installs) and fails with the first install error.
 func TestLoadInstallsInOrder(t *testing.T) {
-	host := CreateHost(HostOptions{})
+	host := CreateHost(HostOptions{Self: kindHost()})
 	var order []string
 	setup := func(name string) Facet {
 		return Facet{Name: name, FacetDefinition: FacetDefinition{Setup: func(FacetApi) error {
@@ -284,12 +292,12 @@ func TestLoadInstallsInOrder(t *testing.T) {
 // principal (or the given one), returns fn's result, and unregisters when it settles; an unretained code version is
 // superseded.
 func TestRootRunsInCodeVersion(t *testing.T) {
-	host := CreateHost(HostOptions{Name: "s"})
+	host := CreateHost(HostOptions{Self: kindHost(), Name: "s"})
 	var ids []string
 	for range 2 {
 		value, err := host.Root(func(ctx Ctx) (any, error) {
 			ids = append(ids, ctx.RootID())
-			if ctx.CodeVersion() != 1 || !isHostPrincipal(ctx.Principal()) || ctx.Signal() == nil {
+			if ctx.CodeVersion() != 1 || !host.isSelf(ctx.Principal()) || ctx.Signal() == nil {
 				t.Errorf("ctx code version %d principal %v", ctx.CodeVersion(), ctx.Principal())
 			}
 			host.run(func() {
@@ -337,7 +345,7 @@ func TestRootRunsInCodeVersion(t *testing.T) {
 
 // host.ts:491-509: a root's end is announced (root_end) on every link its calls went out on.
 func TestRootEndAnnouncedOnLinksItUsed(t *testing.T) {
-	host := CreateHost(HostOptions{})
+	host := CreateHost(HostOptions{Self: kindHost()})
 	connection, link := childConnection(t, host, "w")
 	var rootID string
 	if _, err := host.Root(func(ctx Ctx) (any, error) {
@@ -355,7 +363,7 @@ func TestRootEndAnnouncedOnLinksItUsed(t *testing.T) {
 
 // host.ts:727-736: a host link needs its name.
 func TestAcceptHostNeedsName(t *testing.T) {
-	err := CreateHost(HostOptions{}).Accept(&fakeLink{}, AcceptOptions{Kind: KindHost})
+	err := CreateHost(HostOptions{Self: kindHost()}).Accept(&fakeLink{}, AcceptOptions{Kind: KindHost})
 	var typeError *TypeError
 	if !errors.As(err, &typeError) || typeError.Message != "accepting a host link needs its name" {
 		t.Fatalf("accept: %v", err)
@@ -365,8 +373,8 @@ func TestAcceptHostNeedsName(t *testing.T) {
 // host.ts:738-749: connect replaces an open upstream link, closing it as "replaced".
 func TestConnectReplacesUpstream(t *testing.T) {
 	first, second := &fakeLink{}, &fakeLink{}
-	host := CreateHost(HostOptions{Upstream: first})
-	host.Connect(second, LinkOptions{})
+	host := CreateHost(HostOptions{Self: kindHost(), Upstream: &UpstreamOptions{Link: first, ConnectOptions: ConnectOptions{Principal: kindServer()}}})
+	host.Connect(second, ConnectOptions{Principal: kindServer()})
 	if !first.Closed() || !slices.Equal(first.reasons, []string{"replaced"}) || second.Closed() {
 		t.Fatalf("first closed %v %v, second closed %v", first.Closed(), first.reasons, second.Closed())
 	}
@@ -379,7 +387,7 @@ func TestConnectReplacesUpstream(t *testing.T) {
 
 // host.ts:892-898: a host with a parent does not coordinate reloads.
 func TestReloadRefusedUnderParent(t *testing.T) {
-	host := CreateHost(HostOptions{Upstream: &fakeLink{}})
+	host := CreateHost(HostOptions{Self: kindHost(), Upstream: &UpstreamOptions{Link: &fakeLink{}, ConnectOptions: ConnectOptions{Principal: kindServer()}}})
 	_, err := host.Reload(nil, ReloadOptions{})
 	var chordError *ChordError
 	if !errors.As(err, &chordError) || chordError.Code != CodeUnavailable || chordError.Reason != "not_coordinator" ||
@@ -391,7 +399,7 @@ func TestReloadRefusedUnderParent(t *testing.T) {
 // host.ts:702-718: a pattern propagates to child hosts as an invalidate frame; a predicate stays on this host; clients
 // never get it.
 func TestInvalidatePrincipalPropagatesPatterns(t *testing.T) {
-	host := CreateHost(HostOptions{})
+	host := CreateHost(HostOptions{Self: kindHost()})
 	_, child := childConnection(t, host, "w")
 	client := &fakeLink{}
 	if err := host.Accept(client, AcceptOptions{Principal: chordjson.ObjectOf("user", "u2")}); err != nil {
@@ -449,38 +457,37 @@ func TestMatchesPattern(t *testing.T) {
 	}
 }
 
-// host.ts:988-990: a remote hold's address is @at, the type, the canonical input and the principal ("host" for the
-// host principal).
+// host.ts remoteAddress (aa9cf15b): a remote hold's address is @type, the canonical input and the principal ("host" for
+// the host's own principal): no host name, since the type and its input decide where the object lives.
 func TestRemoteAddress(t *testing.T) {
 	typ := testContract("t.a")
 	input := map[string]any{"b": 1.0, "a": "x"}
-	if got := remoteAddress("w", typ, input, nil, false); got != "@w\x00t.a\x00{\"a\":\"x\",\"b\":1}\x00host" {
+	if got := remoteAddress(typ, input, nil, false); got != "@t.a\x00{\"a\":\"x\",\"b\":1}\x00host" {
 		t.Fatalf("host principal: %q", got)
 	}
-	if got := remoteAddress("w", typ, nil, chordjson.ObjectOf("user", "u1"), true); got != "@w\x00t.a\x00null\x00{\"user\":\"u1\"}" {
+	if got := remoteAddress(typ, nil, chordjson.ObjectOf("user", "u1"), true); got != "@t.a\x00null\x00{\"user\":\"u1\"}" {
 		t.Fatalf("user principal: %q", got)
 	}
 }
 
-// host.ts:807-809 and 992-993: an unserved type is unavailable/unknown_type; a local contract cannot be reached at
-// another host.
+// host.ts:807-809: an unserved type is unavailable/unknown_type. A local contract has no placement (aa9cf15b: get takes
+// no host), so it is looked up here.
 func TestGetErrors(t *testing.T) {
-	host := CreateHost(HostOptions{})
+	host := CreateHost(HostOptions{Self: kindHost()})
 	_, err := host.Get(testContract("t.a"), map[string]any{}, nil)
 	if !IsChordError(err, CodeUnavailable) || messageOf(err) != "unavailable/unknown_type: t.a is not served by host" {
 		t.Fatalf("unknown type: %v", err)
 	}
 	local := Local("t.l", LocalDef{Version: 1, Input: tObject(), Members: Fields[any]{{"ping", Method(tObject(), tObject())}}})
-	at := "w"
-	_, err = host.Get(local, nil, &GetOptions{At: &at})
-	if messageOf(err) != "invalid/local: t.l is local and cannot be reached at w" {
-		t.Fatalf("local at remote: %v", err)
+	_, err = host.Get(local, nil, nil)
+	if messageOf(err) != "unavailable/unknown_type: t.l is not served by host" {
+		t.Fatalf("local: %v", err)
 	}
 }
 
 // host.ts:840-846: the longest matching prefix routes a host name.
 func TestRouteForLongestPrefix(t *testing.T) {
-	host := CreateHost(HostOptions{})
+	host := CreateHost(HostOptions{Self: kindHost()})
 	short := Route{Principal: func(string) Principal { return "short" }}
 	long := Route{Principal: func(string) Principal { return "long" }}
 	host.Route("session:", short)
@@ -501,7 +508,7 @@ func TestRouteForLongestPrefix(t *testing.T) {
 // host.ts:911-925: remembered child modules accumulate per prefix without duplicates; removals tombstone modules and
 // a later re-add clears the tombstone.
 func TestRememberRemoteModules(t *testing.T) {
-	host := CreateHost(HostOptions{})
+	host := CreateHost(HostOptions{Self: kindHost()})
 	host.run(func() {
 		host.rememberRemoteModules(map[string][]string{"session:": {"a", "b", "a"}}, nil)
 		host.rememberRemoteModules(map[string][]string{"session:": {"c"}}, map[string][]string{"session:": {"a"}})
@@ -537,7 +544,7 @@ func TestModulesForLongestPrefix(t *testing.T) {
 
 // cluster.ts:26-37: a missing vote rejects aborted/vote_deadline after the deadline and is forgotten.
 func TestAwaitVoteDeadline(t *testing.T) {
-	host := CreateHost(HostOptions{})
+	host := CreateHost(HostOptions{Self: kindHost()})
 	connection, _ := childConnection(t, host, "w")
 	var vote *Promise[*WireReloadReport]
 	host.run(func() { vote = awaitVote(host, connection, 9, 20*time.Millisecond) })
@@ -554,7 +561,7 @@ func TestAwaitVoteDeadline(t *testing.T) {
 
 // cluster.ts:157-166: a child runs one reload at a time: a second prepare is voted down with unavailable/reload_running.
 func TestChildRejectsSecondPrepare(t *testing.T) {
-	host := CreateHost(HostOptions{})
+	host := CreateHost(HostOptions{Self: kindHost()})
 	connection, link := childConnection(t, host, "w")
 	host.run(func() {
 		_ = host.onReloadFrame(connection, PrepareFrame{Reload: 1, CodeVersion: 2, Plugins: []string{}})
@@ -575,7 +582,7 @@ func TestChildRejectsSecondPrepare(t *testing.T) {
 // host.ts:765-781: a child ahead of this host is reported and closed; one in step is synced.
 func TestPeerHello(t *testing.T) {
 	var reported []error
-	host := CreateHost(HostOptions{OnError: func(err error) { reported = append(reported, err) }})
+	host := CreateHost(HostOptions{Self: kindHost(), OnError: func(err error) { reported = append(reported, err) }})
 	ahead, aheadLink := childConnection(t, host, "w")
 	host.run(func() { host.peerHello(ahead, 5) })
 	if len(reported) != 1 || messageOf(reported[0]) != "invalid: w runs code version 5, ahead of 1" {
@@ -597,7 +604,7 @@ func TestPeerHello(t *testing.T) {
 // and then every changed table of the current code version (all of them when all is set), and a retired code version's table is
 // superseded.
 func TestRegistryViewAndSubscribers(t *testing.T) {
-	host := CreateHost(HostOptions{})
+	host := CreateHost(HostOptions{Self: kindHost()})
 	view := host.Registry(Registry[any]{Name: "tools", Conflict: "error"})
 	type heard struct {
 		keys        []string
@@ -661,7 +668,7 @@ func TestSameTable(t *testing.T) {
 
 // host.ts:936-944: close disposes objects and closes every link as "host closed".
 func TestCloseClosesLinks(t *testing.T) {
-	host := CreateHost(HostOptions{})
+	host := CreateHost(HostOptions{Self: kindHost()})
 	_, child := childConnection(t, host, "w")
 	if err := host.Close(); err != nil {
 		t.Fatal(err)
@@ -674,7 +681,7 @@ func TestCloseClosesLinks(t *testing.T) {
 // The loop runs nested sections inline (a factory's ctx.get inside acquire) and queued callbacks after the section, in
 // order, as upstream's synchronous calls and promise reactions run.
 func TestLoopOrdering(t *testing.T) {
-	host := CreateHost(HostOptions{})
+	host := CreateHost(HostOptions{Self: kindHost()})
 	var order []string
 	host.run(func() {
 		host.post(func() { order = append(order, "posted 1") })
@@ -705,7 +712,7 @@ func TestLoopOrdering(t *testing.T) {
 // host.ts: a type served with lifetime "host" starts the one object for the empty input and the host principal when
 // served, and ready awaits it; a type whose input does not accept {} cannot be of lifetime "host".
 func TestServeLifetimeHostStartsHostObject(t *testing.T) {
-	host := CreateHost(HostOptions{})
+	host := CreateHost(HostOptions{Self: kindHost()})
 	hosted := Local("t.e", LocalDef{Version: 1, Input: tObject(), Members: Fields[any]{}})
 	if err := host.Serve(hosted, noFactory, ServeOptions{Lifetime: LifetimeHost}); err != nil {
 		t.Fatal(err)
@@ -733,8 +740,8 @@ func TestAddressesUsePrincipalKey(t *testing.T) {
 		options HostOptions
 		want    string
 	}{
-		{HostOptions{}, "t.a\x00{}\x00p:{\"conn\":\"c1\",\"user\":\"u1\"}"},
-		{HostOptions{PrincipalKey: func(principal Principal) string {
+		{HostOptions{Self: chordjson.ObjectOf("user", "self")}, "t.a\x00{}\x00p:{\"conn\":\"c1\",\"user\":\"u1\"}"},
+		{HostOptions{Self: chordjson.ObjectOf("user", "self"), PrincipalKey: func(principal Principal) string {
 			value, _ := principal.(*chordjson.Object).Get("user")
 			return value.(string)
 		}}, "t.a\x00{}\x00p:u1"},
@@ -744,15 +751,16 @@ func TestAddressesUsePrincipalKey(t *testing.T) {
 			t.Fatal(err)
 		}
 		host.run(func() {
-			got, err := host.addressOf(a, nil, user, nil, false)
+			got, err := host.addressOf(a, nil, user, false)
 			if err != nil || got != test.want {
 				t.Errorf("address %q %v, want %q", got, err, test.want)
 			}
-			if got, _ := host.addressOf(a, map[string]any{}, host.principal, nil, false); got != "t.a\x00{}\x00host" {
+			if got, _ := host.addressOf(a, map[string]any{}, host.principal, false); got != "t.a\x00{}\x00host" {
 				t.Errorf("host address %q", got)
 			}
-			at := "w"
-			if got, _ := host.addressOf(a, nil, user, &at, false); got != "@w\x00t.a\x00null\x00{\"conn\":\"c1\",\"user\":\"u1\"}" {
+			// A type placed on another host has a remote address: no host name, the normalized input.
+			elsewhere := Remote("t.w", RemoteDef{Version: 1, Input: tObject(), Host: NewHostNamed("w"), Variants: Fields[VariantDef]{{"", VariantDef{Methods: Fields[MethodSpec]{{"ping", Method(tObject(), tObject())}}}}}})
+			if got, _ := host.addressOf(elsewhere, nil, user, false); got != "@t.w\x00{}\x00{\"conn\":\"c1\",\"user\":\"u1\"}" {
 				t.Errorf("remote address %q", got)
 			}
 		})
@@ -761,7 +769,7 @@ func TestAddressesUsePrincipalKey(t *testing.T) {
 
 // host.ts:128-133 and 471-476: a root's ctx carries the given signal.
 func TestRootSignal(t *testing.T) {
-	host := CreateHost(HostOptions{})
+	host := CreateHost(HostOptions{Self: kindHost()})
 	signal, cancel := context.WithCancelCause(context.Background())
 	cause := errors.New("stop")
 	cancel(cause)
@@ -778,7 +786,7 @@ func TestRootSignal(t *testing.T) {
 // host.ts:848-872: a route authorizes before resolving and again after; a refusal is forbidden, and a request no
 // longer current is gone.
 func TestResolveRouteAuthorization(t *testing.T) {
-	host := CreateHost(HostOptions{})
+	host := CreateHost(HostOptions{Self: kindHost()})
 	principal := chordjson.ObjectOf("user", "u1")
 	var authorized []string
 	resolved := 0
@@ -829,7 +837,7 @@ func TestResolveRouteAuthorization(t *testing.T) {
 
 // host.ts:892-898: a client's facet code versions never cross the parent link, so a client reloads under a parent.
 func TestClientReloadsUnderParent(t *testing.T) {
-	host := CreateHost(HostOptions{Kind: KindClient, Upstream: &fakeLink{}})
+	host := CreateHost(HostOptions{Self: kindHost(), Kind: KindClient, Upstream: &UpstreamOptions{Link: &fakeLink{}, ConnectOptions: ConnectOptions{Principal: kindServer()}}})
 	_, err := host.Reload(nil, ReloadOptions{})
 	var chordError *ChordError
 	if errors.As(err, &chordError) && chordError.Reason == "not_coordinator" {
@@ -840,7 +848,7 @@ func TestClientReloadsUnderParent(t *testing.T) {
 // host.ts:58-71 and 318-325: a facet may keep its api and use it after setup: Root runs on the facet's host in its
 // current code version, and Registry is the host's view.
 func TestFacetApiRootAndRegistry(t *testing.T) {
-	host := CreateHost(HostOptions{Name: "s"})
+	host := CreateHost(HostOptions{Self: kindHost(), Name: "s"})
 	var kept FacetApi
 	if err := host.Install(Facet{Name: "f", FacetDefinition: FacetDefinition{Setup: func(api FacetApi) error {
 		kept = api

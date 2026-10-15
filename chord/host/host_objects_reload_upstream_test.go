@@ -167,7 +167,7 @@ func eagerLoad(t *testing.T, host *HostImpl, facets ...*Facet) {
 func TestHostObjectsReloadTheHostsReferenceToAHostObjectFollowsContractBumpsAtCommitWithoutReopeningItsObjectOrResourcesFailuresRetainTheOldReference(t *testing.T) {
 	var errorsMu sync.Mutex
 	var errs []error
-	host := CreateHost(HostOptions{Dev: true, OnError: func(err error) {
+	host := CreateHost(HostOptions{Self: kindHost(), Dev: true, OnError: func(err error) {
 		errorsMu.Lock()
 		errs = append(errs, err)
 		errorsMu.Unlock()
@@ -287,7 +287,7 @@ func eagerReaderV2(adapt bool) *Facet {
 // host-objects-reload.test.ts:201-220
 func TestHostObjectsReloadExternalOldVersionConsumersStillRefuseAHostObjectsUpgradeWithoutAcceptsAndKeepTheirAdapterWhenItIsProvided(t *testing.T) {
 	// Pi's onError rethrows: no background error is expected.
-	host := CreateHost(HostOptions{OnError: func(err error) { t.Errorf("onError: %v", err) }})
+	host := CreateHost(HostOptions{Self: kindHost(), OnError: func(err error) { t.Errorf("onError: %v", err) }})
 	t.Cleanup(func() { _ = host.Close() })
 	eagerLoad(t, host, eagerReaderV1())
 	own := eagerRef(host, eagerReadV1.Name)
@@ -323,7 +323,7 @@ func TestHostObjectsReloadExternalOldVersionConsumersStillRefuseAHostObjectsUpgr
 
 // host-objects-reload.test.ts:222-254
 func TestHostObjectsReloadObjectOwnedOldVersionReferencesStillBlockAHostObjectsUpgradeUnlessTheirConsumerIsReplacedInTheSameBatch(t *testing.T) {
-	host := CreateHost(HostOptions{OnError: func(error) {}})
+	host := CreateHost(HostOptions{Self: kindHost(), OnError: func(error) {}})
 	t.Cleanup(func() { _ = host.Close() })
 	consumerType := Local("t.eager-consumer", LocalDef{Version: 1, Input: tObject(), Members: Fields[any]{{"read", Method(nil, tString())}}})
 	consumerFacet := func(reads *Contract, method string) *Facet {
@@ -365,7 +365,7 @@ func TestHostObjectsReloadObjectOwnedOldVersionReferencesStillBlockAHostObjectsU
 
 // host-objects-reload.test.ts:256-272
 func TestHostObjectsReloadAForgottenContractBumpRemainsRefusedEvenWhenTheOnlyConsumerIsTheHostsOwnReference(t *testing.T) {
-	host := CreateHost(HostOptions{OnError: func(error) {}})
+	host := CreateHost(HostOptions{Self: kindHost(), OnError: func(error) {}})
 	t.Cleanup(func() { _ = host.Close() })
 	eagerLoad(t, host, eagerReaderV1())
 	incompatible := Local(eagerReadV1.Name, LocalDef{Version: 1, Input: tObject(), Members: Fields[any]{{"fetch", Method(nil, tString())}}})
@@ -385,8 +385,8 @@ func TestHostObjectsReloadAClusterContractUpgradeRetokensTheServersAndWorkersRef
 	var log reloadLog
 	facets := eagerSwitchFacets(t, &log)
 	var valid atomic.Bool
-	server := CreateHost(HostOptions{OnError: func(error) {}})
-	worker := CreateHost(HostOptions{Name: "worker", OnError: func(error) {}, Loader: func([]string) ([]Facet, error) {
+	server := CreateHost(HostOptions{Self: kindHost(), OnError: func(error) {}})
+	worker := CreateHost(HostOptions{Self: kindHost(), Name: "worker", OnError: func(error) {}, Loader: func([]string) ([]Facet, error) {
 		return []Facet{*facets.v2(valid.Load())}, nil
 	}})
 	t.Cleanup(func() {
@@ -400,7 +400,7 @@ func TestHostObjectsReloadAClusterContractUpgradeRetokensTheServersAndWorkersRef
 	if err := server.Accept(down, AcceptOptions{Kind: KindHost, Name: &workerName, Principal: map[string]any{"worker": true}}); err != nil {
 		t.Fatal(err)
 	}
-	worker.Connect(up, LinkOptions{})
+	worker.Connect(up, ConnectOptions{Principal: kindServer()})
 	// Pi waits one setImmediate for the hello exchange: wait until the server counts the worker as synced.
 	waitFor(t, "the worker hello", func() bool {
 		synced := false
@@ -448,7 +448,7 @@ func TestHostObjectsReloadAClusterContractUpgradeRetokensTheServersAndWorkersRef
 
 // host-objects-reload.test.ts: a reload that changes a type's lifetime creates its host object, or lets it go.
 func TestHostObjectsReloadAReloadThatChangesATypesLifetimeCreatesItsHostObjectOrLetsItGo(t *testing.T) {
-	host := CreateHost(HostOptions{OnError: func(error) {}})
+	host := CreateHost(HostOptions{Self: kindHost(), OnError: func(error) {}})
 	t.Cleanup(func() { _ = host.Close() })
 	kept := Local("t.lifetime-change", LocalDef{Version: 1, Input: tObject(), Members: Fields[any]{}})
 	var log reloadLog

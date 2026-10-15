@@ -18,7 +18,7 @@ func idleGoroutines(b *testing.B, n int) {
 }
 
 func benchmarkGoEntered(b *testing.B, fn func(host *HostImpl, release <-chan struct{})) {
-	host := CreateHost(HostOptions{OnError: func(error) {}})
+	host := CreateHost(HostOptions{Self: kindHost(), OnError: func(error) {}})
 	idleGoroutines(b, 1000)
 	b.ReportAllocs()
 	b.ResetTimer()

@@ -25,7 +25,7 @@ import (
 // ProtocolVersion is the link protocol version, announced in hello. Peers of different versions do not talk: the side
 // that notices closes the link with reason `protocol-version <its version>`, so the other side learns it too
 // (LinkOptions.OnProtocolMismatch).
-const ProtocolVersion = 2
+const ProtocolVersion = 3
 
 // RootRef names a root at its origin.
 type RootRef struct {
@@ -416,6 +416,12 @@ func object(required []string, properties ...any) Schema {
 	if len(required) > 0 {
 		schema["required"] = stringValues(required)
 	}
+	return schema
+}
+
+// closed is schema with additionalProperties: false ({ additionalProperties: false } in Type.Object's options).
+func closed(schema Schema) Schema {
+	schema["additionalProperties"] = false
 	return schema
 }
 

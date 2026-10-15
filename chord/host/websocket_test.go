@@ -94,7 +94,7 @@ func TestAcceptWebSocketsClosesRefusedAndFailedClientsAfterAuthenticating(t *tes
 	server := &fakeWebSocketServer{}
 	var reported []error
 	var reportedMu sync.Mutex
-	chord := host.CreateHost(host.HostOptions{Name: "server", OnError: func(err error) {
+	chord := host.CreateHost(host.HostOptions{Self: map[string]any{"kind": "host"}, Name: "server", OnError: func(err error) {
 		reportedMu.Lock()
 		reported = append(reported, err)
 		reportedMu.Unlock()

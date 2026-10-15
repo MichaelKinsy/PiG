@@ -21,7 +21,7 @@ var (
 // readinessHost is a host whose background errors fail the test (readiness.test.ts unexpectedError).
 func readinessHost(t *testing.T, name string) *HostImpl {
 	t.Helper()
-	host := CreateHost(HostOptions{Name: name, OnError: func(err error) { t.Errorf("unexpected error: %v", err) }})
+	host := CreateHost(HostOptions{Self: kindHost(), Name: name, OnError: func(err error) { t.Errorf("unexpected error: %v", err) }})
 	t.Cleanup(func() { _ = host.Close() })
 	return host
 }
@@ -105,7 +105,7 @@ func TestReadinessRejectsEagerFailureWithTheActivationError(t *testing.T) {
 		for _, failure := range []string{"factory", "dependency", "resource"} {
 			t.Run(operation+"/"+failure, func(t *testing.T) {
 				errs := &errorLog{}
-				host := CreateHost(HostOptions{OnError: errs.add})
+				host := CreateHost(HostOptions{Self: kindHost(), OnError: errs.add})
 				t.Cleanup(func() { _ = host.Close() })
 				cause := Forbidden(failure + " failed")
 				facet := Facet{Name: "bad", FacetDefinition: FacetDefinition{Setup: func(api FacetApi) error {
@@ -213,9 +213,9 @@ func TestReadinessCanDeferHostObjectReadinessUntilTheParentAdmitsTheWorker(t *te
 		t.Run(operation, func(t *testing.T) {
 			server := readinessHost(t, "server")
 			parent, upstream := MemoryLinkPair()
-			worker := CreateHost(HostOptions{Name: "worker", Upstream: upstream, OnError: func(err error) { t.Errorf("unexpected error: %v", err) }})
+			worker := CreateHost(HostOptions{Self: kindHost(), Name: "worker", Upstream: &UpstreamOptions{Link: upstream, ConnectOptions: ConnectOptions{Principal: kindServer()}}, OnError: func(err error) { t.Errorf("unexpected error: %v", err) }})
 			t.Cleanup(func() { _ = worker.Close() })
-			status := Remote("ready.status", RemoteDef{Version: 1, Input: tObject(), Variants: Fields[VariantDef]{{"default", VariantDef{}}}})
+			status := Remote("ready.status", RemoteDef{Version: 1, Input: tObject(), Host: NewHostNamed("server"), Variants: Fields[VariantDef]{{"default", VariantDef{}}}})
 			mustServe(t, server, status, func(any, Principal, Self) (Implementation, error) {
 				return chordjson.ObjectOf("variant", "default"), nil
 			}, ServeOptions{})
@@ -228,7 +228,7 @@ func TestReadinessCanDeferHostObjectReadinessUntilTheParentAdmitsTheWorker(t *te
 					return err
 				}
 				return api.Serve(readyEager, func(_ any, _ Principal, self Self) (Implementation, error) {
-					hold, err := self.Get(status, map[string]any{}, at("server"))
+					hold, err := self.Get(status, map[string]any{}, nil)
 					if err != nil {
 						return nil, err
 					}

@@ -23,6 +23,9 @@ func requestsHost(t *testing.T, options HostOptions) *HostImpl {
 	if options.OnError == nil {
 		options.OnError = func(error) {}
 	}
+	if options.Self == nil {
+		options.Self = kindHost()
+	}
 	host := CreateHost(options)
 	t.Cleanup(func() { _ = host.Close() })
 	return host
@@ -76,15 +79,15 @@ func requestsChordCode(err error) ChordErrorCode {
 func TestRequests1AHeldObjectsStateMemberCanBeReturnedAsThisObjectsStateMember(t *testing.T) {
 	conv := Remote("t.conv", RemoteDef{
 		Version: 1,
-		Input:   tObject(),
+		Input:   tObject(), Host: NewHostNamed("server"),
 		Variants: Fields[VariantDef]{{"main", VariantDef{
 			State:   Fields[Schema]{{"view", requestsView}},
 			Methods: Fields[MethodSpec]{{"set", Method(tString(), nil)}},
 		}}},
 	})
 	chat := Remote("t.chat", RemoteDef{
-		Version:  1,
-		Input:    tObject(),
+		Version: 1,
+		Input:   tObject(), Host: NewHostNamed("server"),
 		Variants: Fields[VariantDef]{{"viewer", VariantDef{State: Fields[Schema]{{"view", requestsView}}}}},
 	})
 	server := requestsHost(t, HostOptions{Name: "server"})
@@ -136,8 +139,8 @@ func TestRequests1AHeldObjectsStateMemberCanBeReturnedAsThisObjectsStateMember(t
 	if err := server.Accept(down, AcceptOptions{Principal: map[string]any{"guest": "g"}}); err != nil {
 		t.Fatal(err)
 	}
-	browser := requestsHost(t, HostOptions{Name: "browser", Kind: KindClient, Upstream: up})
-	remoteView := requestsReadable(t, requestsGet(t, browser, chat, requestsEmpty(), at("server")), "view")
+	browser := requestsHost(t, HostOptions{Name: "browser", Kind: KindClient, Upstream: &UpstreamOptions{Link: up, ConnectOptions: ConnectOptions{Principal: kindServer()}}})
+	remoteView := requestsReadable(t, requestsGet(t, browser, chat, requestsEmpty(), nil), "view")
 	remoteView.Subscribe(func(any) {})
 	waitFor(t, "the remote snapshot", func() bool { return remoteView.Value() != nil })
 	mustCall(t, requestsGet(t, server, conv, requestsEmpty(), nil), "set", "there", nil)
@@ -480,7 +483,7 @@ func TestRequests4ReplaceDiffsANewRevisionThatSharesStructureUnrelatedValuesRepl
 
 // requests.test.ts:256-293 "#5 roots of a child that connected behind the server are admitted in the server's code version"
 func TestRequests5RootsOfAChildThatConnectedBehindTheServerAreAdmittedInTheServersCodeVersion(t *testing.T) {
-	echo := Remote("t.echo", RemoteDef{Version: 1, Input: tObject(), Variants: Fields[VariantDef]{{"main", VariantDef{
+	echo := Remote("t.echo", RemoteDef{Version: 1, Input: tObject(), Host: NewHostNamed("server"), Variants: Fields[VariantDef]{{"main", VariantDef{
 		Methods: Fields[MethodSpec]{{"codeVersion", Method(nil, tNumber())}},
 	}}}})
 	server := requestsHost(t, HostOptions{Name: "server"})
@@ -514,7 +517,7 @@ func TestRequests5RootsOfAChildThatConnectedBehindTheServerAreAdmittedInTheServe
 	go func() {
 		value, err := worker.Root(func(ctx Ctx) (any, error) {
 			gate.wait()
-			ref, err := ctx.Get(echo, requestsEmpty(), at("server"))
+			ref, err := ctx.Get(echo, requestsEmpty(), nil)
 			if err != nil {
 				return nil, err
 			}
@@ -527,7 +530,7 @@ func TestRequests5RootsOfAChildThatConnectedBehindTheServerAreAdmittedInTheServe
 	if err := server.Accept(down, AcceptOptions{Principal: map[string]any{"worker": "S1"}, Kind: KindHost, Name: &name}); err != nil {
 		t.Fatal(err)
 	}
-	worker.Connect(up, LinkOptions{})
+	worker.Connect(up, ConnectOptions{Principal: kindServer()})
 	gate.open()
 	got := <-result
 	if got.err != nil || got.value != float64(2) {
@@ -596,7 +599,7 @@ func TestRequests6SelfExposeAnOpaqueMemberBackedByAResourceReadableOnceLive(t *t
 
 // requests.test.ts:325-353 "#7 a cluster reload reports what each child prepared"
 func TestRequests7AClusterReloadReportsWhatEachChildPrepared(t *testing.T) {
-	greeterType := Remote("t.greeter", RemoteDef{Version: 1, Input: tObject(), Variants: Fields[VariantDef]{{"main", VariantDef{
+	greeterType := Remote("t.greeter", RemoteDef{Version: 1, Input: tObject(), Host: NewHostNamed("session:S1"), Variants: Fields[VariantDef]{{"main", VariantDef{
 		Methods: Fields[MethodSpec]{{"greet", Method(tString(), tString())}},
 	}}}})
 	greeter := func(text string) Facet {
@@ -625,11 +628,11 @@ func TestRequests7AClusterReloadReportsWhatEachChildPrepared(t *testing.T) {
 	if err := server.Accept(down, AcceptOptions{Principal: map[string]any{"worker": "S1"}, Kind: KindHost, Name: &name}); err != nil {
 		t.Fatal(err)
 	}
-	worker := requestsHost(t, HostOptions{Name: name, Upstream: up, Loader: loader})
+	worker := requestsHost(t, HostOptions{Name: name, Upstream: &UpstreamOptions{Link: up, ConnectOptions: ConnectOptions{Principal: kindServer()}}, Loader: loader})
 	if err := worker.Install(greeter("v1"), LoadOptions{}); err != nil {
 		t.Fatal(err)
 	}
-	ref := requestsGet(t, server, greeterType, requestsEmpty(), at(name))
+	ref := requestsGet(t, server, greeterType, requestsEmpty(), nil)
 	if got := mustCall(t, ref, "greet", "a", nil); got != "v1 a" {
 		t.Fatalf("greet = %v", got)
 	}
@@ -652,7 +655,7 @@ func TestRequests7AClusterReloadReportsWhatEachChildPrepared(t *testing.T) {
 // requests.test.ts:355-387 "#8 a remote state member forgets its value when nobody listens; the next subscriber sees
 // the fresh value"
 func TestRequests8ARemoteStateMemberForgetsItsValueWhenNobodyListens(t *testing.T) {
-	counter := Remote("t.count8", RemoteDef{Version: 1, Input: tObject(), Variants: Fields[VariantDef]{{"main", VariantDef{
+	counter := Remote("t.count8", RemoteDef{Version: 1, Input: tObject(), Host: NewHostNamed("server"), Variants: Fields[VariantDef]{{"main", VariantDef{
 		State:   Fields[Schema]{{"n", tNumber()}},
 		Methods: Fields[MethodSpec]{{"set", Method(tNumber(), nil)}},
 	}}}})
@@ -670,8 +673,8 @@ func TestRequests8ARemoteStateMemberForgetsItsValueWhenNobodyListens(t *testing.
 	if err := server.Accept(down, AcceptOptions{Principal: map[string]any{"guest": "g"}}); err != nil {
 		t.Fatal(err)
 	}
-	browser := requestsHost(t, HostOptions{Name: "browser", Kind: KindClient, Upstream: up})
-	ref := requestsGet(t, browser, counter, requestsEmpty(), at("server"))
+	browser := requestsHost(t, HostOptions{Name: "browser", Kind: KindClient, Upstream: &UpstreamOptions{Link: up, ConnectOptions: ConnectOptions{Principal: kindServer()}}})
+	ref := requestsGet(t, browser, counter, requestsEmpty(), nil)
 	n := requestsReadable(t, ref, "n")
 	stop := n.Subscribe(func(any) {})
 	mustCall(t, ref, "set", float64(1), nil)
@@ -720,7 +723,7 @@ func (log *statusLog) list() []string {
 
 // requests.test.ts:389-422 "#9 references report status changes: live, loading while a link reconnects, gone, released"
 func TestRequests9RefsReportStatusChanges(t *testing.T) {
-	thing := Remote("t.thing9", RemoteDef{Version: 1, Input: tObject(), Variants: Fields[VariantDef]{{"main", VariantDef{}}}})
+	thing := Remote("t.thing9", RemoteDef{Version: 1, Input: tObject(), Host: NewHostNamed("server"), Variants: Fields[VariantDef]{{"main", VariantDef{}}}})
 	server := requestsHost(t, HostOptions{Name: "server"})
 	requestsServe(t, server.Serve, thing, func(any, Principal, Self) (Implementation, error) {
 		return chordjson.ObjectOf("variant", "main"), nil
@@ -755,11 +758,11 @@ func TestRequests9RefsReportStatusChanges(t *testing.T) {
 	if err := server.Accept(down, AcceptOptions{Principal: map[string]any{"guest": "g"}}); err != nil {
 		t.Fatal(err)
 	}
-	browser := requestsHost(t, HostOptions{Name: "browser", Kind: KindClient, Upstream: up})
+	browser := requestsHost(t, HostOptions{Name: "browser", Kind: KindClient, Upstream: &UpstreamOptions{Link: up, ConnectOptions: ConnectOptions{Principal: kindServer()}}})
 	var remoteThing Ref
 	var remote statusLog
 	browser.run(func() {
-		remoteThing = requestsGet(t, browser, thing, requestsEmpty(), at("server"))
+		remoteThing = requestsGet(t, browser, thing, requestsEmpty(), nil)
 		remoteThing.OnStatus(func(status RefStatus, _ error) { remote.add(string(status)) })
 	})
 	if err := readyErr(t, remoteThing); err != nil {
@@ -771,7 +774,7 @@ func TestRequests9RefsReportStatusChanges(t *testing.T) {
 	if err := server.Accept(down2, AcceptOptions{Principal: map[string]any{"guest": "g"}}); err != nil {
 		t.Fatal(err)
 	}
-	browser.Connect(up2, LinkOptions{})
+	browser.Connect(up2, ConnectOptions{Principal: kindServer()})
 	waitFor(t, "live again", func() bool { return len(remote.list()) == 3 })
 	remoteThing.Release()
 	waitFor(t, "released", func() bool { return len(remote.list()) == 4 })
@@ -794,7 +797,7 @@ func TestRequests10HostCloseDisposesHoldersBeforeWhatTheyRefAndBeforeClosingLink
 		log = append(log, entry)
 		logMu.Unlock()
 	}
-	remoteType := Remote("t.remote10", RemoteDef{Version: 1, Input: tObject(), Variants: Fields[VariantDef]{{"main", VariantDef{
+	remoteType := Remote("t.remote10", RemoteDef{Version: 1, Input: tObject(), Host: NewHostNamed("server"), Variants: Fields[VariantDef]{{"main", VariantDef{
 		Methods: Fields[MethodSpec]{{"note", Method(tString(), nil)}},
 	}}}})
 	server := requestsHost(t, HostOptions{Name: "server"})
@@ -811,7 +814,7 @@ func TestRequests10HostCloseDisposesHoldersBeforeWhatTheyRefAndBeforeClosingLink
 	if err := server.Accept(down, AcceptOptions{Principal: map[string]any{"worker": "w"}, Kind: KindHost, Name: &name}); err != nil {
 		t.Fatal(err)
 	}
-	worker := CreateHost(HostOptions{Name: "w", Upstream: up, OnError: func(err error) { push("error: " + err.Error()) }})
+	worker := CreateHost(HostOptions{Self: kindHost(), Name: "w", Upstream: &UpstreamOptions{Link: up, ConnectOptions: ConnectOptions{Principal: kindServer()}}, OnError: func(err error) { push("error: " + err.Error()) }})
 	// Host lifetime: activated (and registered with the host) before the object that holds it.
 	requestsServe(t, worker.Serve, proc, func(_ any, _ Principal, self Self) (Implementation, error) {
 		trackerResource, err := self.Resource("tracker", ResourceDeclaration[any]{
@@ -830,7 +833,7 @@ func TestRequests10HostCloseDisposesHoldersBeforeWhatTheyRefAndBeforeClosingLink
 		if err != nil {
 			return nil, err
 		}
-		upstream, err := self.Get(remoteType, requestsEmpty(), at("server"))
+		upstream, err := self.Get(remoteType, requestsEmpty(), nil)
 		if err != nil {
 			return nil, err
 		}

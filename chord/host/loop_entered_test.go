@@ -19,7 +19,7 @@ func enteredWithin(entered <-chan struct{}, d time.Duration) bool {
 // A task that has to wait for the host loop has entered: the loop may be the one waiting for it (fast path, no
 // polling; a sync.Mutex wait is not a wait for the slow path, so only the fast path can see it).
 func TestGoEnteredWaitingForTheLoopEnters(t *testing.T) {
-	host := CreateHost(HostOptions{})
+	host := CreateHost(HostOptions{Self: kindHost()})
 	t.Cleanup(func() { _ = host.Close() })
 	held, release := make(chan struct{}), make(chan struct{})
 	go host.run(func() {
@@ -38,7 +38,7 @@ func TestGoEnteredWaitingForTheLoopEnters(t *testing.T) {
 // A host call that does not wait (the loop is free) is synchronous work, as upstream's host calls: the task has not
 // entered while it keeps running after it.
 func TestGoEnteredUncontendedHostCallIsWork(t *testing.T) {
-	host := CreateHost(HostOptions{})
+	host := CreateHost(HostOptions{Self: kindHost()})
 	t.Cleanup(func() { _ = host.Close() })
 	var stop atomic.Bool
 	called := make(chan struct{})
@@ -62,7 +62,7 @@ func TestGoEnteredUncontendedHostCallIsWork(t *testing.T) {
 // An upstream function cannot block on a lock, so a sync.Mutex wait is synchronous work, not a wait; a channel wait
 // is (slow path).
 func TestGoEnteredMutexWaitIsWorkChannelWaitIsAWait(t *testing.T) {
-	host := CreateHost(HostOptions{})
+	host := CreateHost(HostOptions{Self: kindHost()})
 	t.Cleanup(func() { _ = host.Close() })
 	var mu sync.Mutex
 	mu.Lock()

@@ -40,12 +40,12 @@ func TestSourceValidateChecksSchemaInDevMode(t *testing.T) {
 
 // packages/chord/src/types.ts:59 (Shape.contract): the provider contract's fingerprint.
 func TestShapeContractIsTheProviderFingerprint(t *testing.T) {
-	host := CreateHost(HostOptions{OnError: func(error) {}})
+	host := CreateHost(HostOptions{Name: "session:S1", Self: kindHost(), OnError: func(error) {}})
 	t.Cleanup(func() { _ = host.Close() })
 	if err := host.Install(greeterFacet("hi", false), LoadOptions{}); err != nil {
 		t.Fatal(err)
 	}
-	ref := getGreeter(t, host, clusterGreeter, nil)
+	ref := getGreeter(t, host, clusterGreeter, "S1")
 	if err := readyErr(t, ref); err != nil {
 		t.Fatal(err)
 	}
@@ -58,7 +58,7 @@ func TestShapeContractIsTheProviderFingerprint(t *testing.T) {
 // packages/chord/src/host.ts:91 (FacetLoader), stored at host.ts:238 and called with the module refs at host.ts:314.
 func TestFacetLoaderLoadsModuleRefs(t *testing.T) {
 	var asked [][]string
-	host := CreateHost(HostOptions{
+	host := CreateHost(HostOptions{Name: "session:S1", Self: kindHost(),
 		Loader: FacetLoader(func(modules []string) ([]Facet, error) {
 			asked = append(asked, slices.Clone(modules))
 			return []Facet{greeterFacet("hi", false)}, nil
@@ -72,7 +72,7 @@ func TestFacetLoaderLoadsModuleRefs(t *testing.T) {
 	if len(asked) != 1 || !slices.Equal(asked[0], []string{"./greeter.ts"}) {
 		t.Fatalf("loader calls %v", asked)
 	}
-	if err := readyErr(t, getGreeter(t, host, clusterGreeter, nil)); err != nil {
+	if err := readyErr(t, getGreeter(t, host, clusterGreeter, "S1")); err != nil {
 		t.Fatalf("loaded facet not served: %v", err)
 	}
 }
@@ -80,7 +80,7 @@ func TestFacetLoaderLoadsModuleRefs(t *testing.T) {
 // packages/chord/src/reload.ts:256 adds every current service the new set lacks to `removed`, and reload.ts:594
 // reports it (`removed: [...this.removed]`).
 func TestReloadReportRemovedListsDroppedServices(t *testing.T) {
-	host := CreateHost(HostOptions{OnError: func(error) {}})
+	host := CreateHost(HostOptions{Name: "server", Self: kindHost(), OnError: func(error) {}})
 	t.Cleanup(func() { _ = host.Close() })
 	if err := host.Install(greeterFacet("hi", false), LoadOptions{}); err != nil {
 		t.Fatal(err)
@@ -89,8 +89,8 @@ func TestReloadReportRemovedListsDroppedServices(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !slices.Equal(report.Removed, []string{clusterGreeter.Name}) {
-		t.Fatalf("removed %v, want [%s]", report.Removed, clusterGreeter.Name)
+	if !slices.Equal(report.Removed, []string{clusterServerGreeter.Name}) {
+		t.Fatalf("removed %v, want [%s]", report.Removed, clusterServerGreeter.Name)
 	}
 	if len(report.Changed) != 0 {
 		t.Fatalf("changed %v", report.Changed)

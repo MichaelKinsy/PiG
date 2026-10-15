@@ -19,18 +19,6 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/chord/chordjson"
 )
 
-// hostPrincipalObject is the identity of the host principal: upstream compares principals with ===.
-var hostPrincipalObject = chordjson.ObjectOf("host", true)
-
-// HostPrincipal is the principal of in-host code ({ host: true }). Upstream freezes it; it must not be mutated.
-var HostPrincipal Principal = hostPrincipalObject
-
-// isHostPrincipal is upstream's `principal === this.principal`.
-func isHostPrincipal(principal Principal) bool {
-	object, ok := principal.(*chordjson.Object)
-	return ok && object == hostPrincipalObject
-}
-
 // Serve registers a factory for a type (Pi's overloaded Serve over remote and local contracts).
 type Serve func(typ *Contract, factory Factory, options ServeOptions) error
 
@@ -101,10 +89,17 @@ const (
 	KindClient = "client"
 )
 
-// HostOptions are CreateHost's options.
+// HostOptions are CreateHost's options. Pi's principal type is a parameter and Chord invents no principals: the app
+// supplies the host's own (Self), the one its parent's own requests act as (Upstream, Connect), the ones links act as
+// (Accept) and the ones routed hosts act as (Route.Principal).
 type HostOptions struct {
 	// Name defaults to "host".
 	Name string
+	// Self is the principal of the host's own code: roots it starts, code inside its objects, and its `lifetime:
+	// "host"` objects. Required: CreateHost panics with a TypeError unless Self is set (HasSelf for an explicit null).
+	// It is compared by PrincipalKey, so an equal principal from elsewhere reaches the same objects.
+	Self    Principal
+	HasSelf bool
 	// PrincipalKey maps a principal to its object key (should include connection provenance and grant revision).
 	// Defaults to CanonicalJSON.
 	PrincipalKey func(principal Principal) string
@@ -119,9 +114,24 @@ type HostOptions struct {
 	Loader FacetLoader
 	// Kind is KindClient (browser: never a reload participant, never carries roots or code versions) or KindHost (default).
 	Kind string
-	// Upstream is the link to this host's parent (server). It can also be set later with Connect.
-	Upstream        Link
-	UpstreamOptions LinkOptions
+	// Upstream is the link to this host's parent (server) and the principal its own requests act as. It can also be set
+	// later with Connect.
+	Upstream *UpstreamOptions
+}
+
+// UpstreamOptions are HostOptions.Upstream: the link to the parent with Connect's options.
+type UpstreamOptions struct {
+	Link Link
+	ConnectOptions
+}
+
+// ConnectOptions are Connect's options: the link's, and the principal its parent's own requests act as.
+type ConnectOptions struct {
+	LinkOptions
+	// Principal is what a request from the parent acts as when the parent does not forward its caller's principal (its
+	// own code). Required: Connect panics with a TypeError unless it is set (HasPrincipal for an explicit null).
+	Principal    Principal
+	HasPrincipal bool
 }
 
 // Route is where requests for hosts named `prefix…` go (on the server).
@@ -130,7 +140,8 @@ type Route struct {
 	Authorize func(principal Principal, hostName string) (bool, error)
 	// Resolve is a link to the host, spawned if needed.
 	Resolve func(hostName string) (Link, error)
-	// Principal is the principal the resolved host acts as when it calls back (nil: { host: hostName }).
+	// Principal is the principal the resolved host acts as when it calls back. Required: Route panics with a TypeError
+	// when it is nil.
 	Principal func(hostName string) Principal
 }
 
@@ -191,9 +202,11 @@ type registryListener struct {
 type HostImpl struct {
 	loop
 
-	name         string
-	dev          bool
-	principal    Principal
+	name      string
+	dev       bool
+	principal Principal
+	// selfKey is principalKey(self): an equal principal is the host's own, whatever object carries it.
+	selfKey      string
 	inFactory    int
 	failed       error
 	objects      *orderedMap[string, *ObjectImpl]
@@ -255,12 +268,15 @@ type HostImpl struct {
 	rootSeq        int
 }
 
-// CreateHost is host.ts createHost.
+// CreateHost is host.ts createHost. It panics with a TypeError, as upstream throws one, unless options carry Self.
 func CreateHost(options HostOptions) *HostImpl {
+	if options.Self == nil && !options.HasSelf {
+		panic(typeError("createHost needs `self`: the principal of the host's own code"))
+	}
 	host := &HostImpl{
 		name:               options.Name,
 		dev:                options.Dev,
-		principal:          HostPrincipal,
+		principal:          options.Self,
 		objects:            newOrderedMap[string, *ObjectImpl](),
 		codeVersions:       newOrderedMap[int, *CodeVersionState](),
 		facets:             newOrderedMap[string, Facet](),
@@ -293,6 +309,7 @@ func CreateHost(options HostOptions) *HostImpl {
 	if host.principalKey == nil {
 		host.principalKey = CanonicalJSON
 	}
+	host.selfKey = host.principalKey(options.Self)
 	if host.onError == nil {
 		host.onError = func(err error) { fmt.Fprintln(os.Stderr, "chord:", err) }
 	}
@@ -304,9 +321,14 @@ func CreateHost(options HostOptions) *HostImpl {
 	host.current = newCodeVersionState(host.codeVersionSeq, newOrderedMap[string, *Service]())
 	host.codeVersions.Set(host.current.id, host.current)
 	if options.Upstream != nil {
-		host.Connect(options.Upstream, options.UpstreamOptions)
+		host.Connect(options.Upstream.Link, options.Upstream.ConnectOptions)
 	}
 	return host
+}
+
+// isSelf reports whether principal is the host's own: the same key as Self.
+func (host *HostImpl) isSelf(principal Principal) bool {
+	return identical(principal, host.principal) || host.principalKey(principal) == host.selfKey
 }
 
 // newIncarnation keeps root ids unique across restarts of a host with the same name (six base-36 digits, as
@@ -546,6 +568,9 @@ func (host *HostImpl) serveInto(services *orderedMap[string, *Service], service 
 	if services.Has(service.contract.Name) {
 		return fmt.Errorf("%s is already served", service.contract.Name)
 	}
+	if placement := service.contract.Description.Host; placement != nil && !placedOn(placement, host.name) {
+		return typeError("%s is declared for %s, but %s serves it", service.contract.Name, placementText(placement), host.name)
+	}
 	services.Set(service.contract.Name, service)
 	return nil
 }
@@ -603,10 +628,14 @@ func (host *HostImpl) service(typeName string) *Service {
 	return nil
 }
 
-// addressOf is the address of a reference to typ with input for principal; at is nil for this host.
-func (host *HostImpl) addressOf(typ *Contract, input any, principal Principal, at *string, candidate bool) (string, error) {
-	if at != nil && *at != host.name {
-		return remoteAddress(*at, typ, input, principal, !isHostPrincipal(principal)), nil
+// addressOf is the address of a reference to typ with input for principal.
+func (host *HostImpl) addressOf(typ *Contract, input any, principal Principal, candidate bool) (string, error) {
+	elsewhere, err := host.elsewhere(typ, input)
+	if err != nil {
+		return "", err
+	}
+	if elsewhere != nil {
+		return remoteAddress(typ, elsewhere.input, principal, !host.isSelf(principal)), nil
 	}
 	service := host.bindingService(typ.Name, candidate)
 	if service == nil {
@@ -617,6 +646,33 @@ func (host *HostImpl) addressOf(typ *Contract, input any, principal Principal, a
 		return "", err
 	}
 	return where.address, nil
+}
+
+// placed is where an object of a remote type lives when that is another host: its name and the input normalized with
+// the caller's contract (the placement is read from it).
+type placed struct {
+	at    string
+	input any
+}
+
+// elsewhere is where an object of typ lives when that is another host; nil is here (and every local type).
+func (host *HostImpl) elsewhere(typ *Contract, input any) (*placed, error) {
+	placement := typ.Description.Host
+	if typ.Scope != ScopeRemote || placement == nil {
+		return nil, nil
+	}
+	normalized, err := Normalize(typ.Input, input, typ.Name+" input")
+	if err != nil {
+		return nil, err
+	}
+	at, err := resolveHost(typ.Name, placement, normalized)
+	if err != nil {
+		return nil, err
+	}
+	if at == host.name {
+		return nil, nil
+	}
+	return &placed{at: at, input: normalized}, nil
 }
 
 // located is where an input of a service lives: its address, the normalized input and the principal the object is
@@ -647,15 +703,19 @@ func (host *HostImpl) locate(service *Service, input any, principal Principal) (
 		principal = host.principal
 	}
 	key := "host"
-	if !isHostPrincipal(principal) {
+	if !host.isSelf(principal) {
 		key = "p:" + host.principalKey(principal)
 	}
 	return located{address: name + "\x00" + identity + "\x00" + key, normalized: normalized, principal: principal}, nil
 }
 
 func (host *HostImpl) acquire(typ *Contract, input any, options *GetOptions, owner RefOwner, from *ObjectImpl, candidate bool) (RefCore, error) {
-	if options != nil && options.At != nil && *options.At != host.name {
-		return host.acquireRemote(typ, input, options, owner)
+	elsewhere, err := host.elsewhere(typ, input)
+	if err != nil {
+		return nil, err
+	}
+	if elsewhere != nil {
+		return host.acquireRemote(typ, elsewhere.at, elsewhere.input, options, owner)
 	}
 	service := host.bindingService(typ.Name, candidate)
 	if service == nil {
@@ -673,6 +733,16 @@ func (host *HostImpl) acquire(typ *Contract, input any, options *GetOptions, own
 		return nil, err
 	}
 	address, normalized, principal := where.address, where.normalized, where.principal
+	// The provider's own placement decides, never where a request says it is going (a client picks that).
+	if placement := service.contract.Description.Host; placement != nil {
+		at, err := resolveHost(typ.Name, placement, normalized)
+		if err != nil {
+			return nil, err
+		}
+		if at != host.name {
+			return nil, Invalid("placement", fmt.Sprintf("%s with this input lives on %s, not %s", typ.Name, at, host.name), nil)
+		}
+	}
 	object, ok := host.objects.Get(address)
 	if from != nil && ok && (object == from || reaches(object, from)) {
 		return nil, Invalid("cycle", fmt.Sprintf("%s -> %s would create a ref cycle", from.address, address), nil)
@@ -1282,7 +1352,7 @@ func (host *HostImpl) InvalidatePrincipal(match PrincipalMatch) error {
 			}
 		}
 		for _, object := range host.objects.Values() {
-			if !isHostPrincipal(object.principal) && matches(object.principal) {
+			if !host.isSelf(object.principal) && matches(object.principal) {
 				matching = append(matching, object)
 			}
 		}
@@ -1319,12 +1389,17 @@ func (host *HostImpl) Accept(link Link, options AcceptOptions) error {
 }
 
 // Connect sets (or replaces, after a reconnect) the link to this host's parent; remote references re-hold over it.
-func (host *HostImpl) Connect(link Link, options LinkOptions) {
+// The parent's own requests act as options.Principal; requests it relays act as the principal it forwards. It panics
+// with a TypeError, as upstream throws one, unless options carry Principal.
+func (host *HostImpl) Connect(link Link, options ConnectOptions) {
+	if options.Principal == nil && !options.HasPrincipal {
+		panic(typeError("connect needs `principal`: what the parent's own requests act as"))
+	}
 	host.run(func() {
 		if host.upstream != nil && host.upstream.open() {
 			host.upstream.link.Close("replaced")
 		}
-		connection := host.addConnection(link, connectionConfig{role: "upstream", peer: Peer{kind: KindHost}, options: options})
+		connection := host.addConnection(link, connectionConfig{role: "upstream", principal: options.Principal, peer: Peer{kind: KindHost}, options: options.LinkOptions})
 		host.upstream = connection
 		// Remote references that lost their link re-hold over the new one; state subscribers get a reset.
 		for _, ref := range host.remotes.Keys() {
@@ -1344,8 +1419,12 @@ func (host *HostImpl) addConnection(link Link, config connectionConfig) *Connect
 	return connection
 }
 
-// Route sends requests for hosts named prefix… to route.
+// Route sends requests for hosts named prefix… to route. It panics with a TypeError, as upstream throws one, when
+// route has no Principal.
 func (host *HostImpl) Route(prefix string, route Route) {
+	if route.Principal == nil {
+		panic(typeError("route %s needs `principal`: what the routed hosts act as when they call back", prefix))
+	}
 	host.run(func() { host.routes[prefix] = route })
 }
 
@@ -1449,13 +1528,10 @@ func (host *HostImpl) childNamed(name string) *Connection {
 	return nil
 }
 
-func (host *HostImpl) acquireRemote(typ *Contract, input any, options *GetOptions, owner RefOwner) (RefCore, error) {
-	at := *options.At
-	if typ.Scope != ScopeRemote {
-		return nil, Invalid("local", fmt.Sprintf("%s is local and cannot be reached at %s", typ.Name, at), nil)
-	}
+// acquireRemote is a reference to an object on host at; input is normalized with typ (the hold carries it so).
+func (host *HostImpl) acquireRemote(typ *Contract, at string, input any, options *GetOptions, owner RefOwner) (RefCore, error) {
 	var principal Principal
-	hasPrincipal := options.HasPrincipal && !isHostPrincipal(options.Principal)
+	hasPrincipal := options != nil && options.HasPrincipal && !host.isSelf(options.Principal)
 	if hasPrincipal {
 		principal = options.Principal
 	}
@@ -1466,7 +1542,7 @@ func (host *HostImpl) acquireRemote(typ *Contract, input any, options *GetOption
 		principal:    principal,
 		hasPrincipal: hasPrincipal,
 		owner:        owner,
-		address:      remoteAddress(at, typ, input, principal, hasPrincipal),
+		address:      remoteAddress(typ, input, principal, hasPrincipal),
 	})
 	host.remotes.Set(ref, struct{}{})
 	bindWhenSynced := func(connection *Promise[*Connection]) {
@@ -1593,14 +1669,7 @@ func (host *HostImpl) resolveRoute(route Route, hostName string, principal Princ
 					}
 				}
 				if connection == nil {
-					var peerPrincipal Principal
-					if route.Principal != nil {
-						peerPrincipal = route.Principal(hostName)
-					}
-					if peerPrincipal == nil {
-						peerPrincipal = chordjson.ObjectOf("host", hostName)
-					}
-					connection = host.addConnection(link, connectionConfig{role: "downstream", principal: peerPrincipal, peer: Peer{kind: KindHost, name: &hostName}})
+					connection = host.addConnection(link, connectionConfig{role: "downstream", principal: route.Principal(hostName), peer: Peer{kind: KindHost, name: &hostName}})
 				}
 				connection.whenSynced().then(func(_ struct{}, err error) {
 					if err == nil && !current() {
@@ -1624,6 +1693,10 @@ func (host *HostImpl) resolveRoute(route Route, hostName string, principal Princ
 // forwarded or the relay gave up.
 func (host *HostImpl) relay(relay *RelayRef) *Promise[struct{}] {
 	at := relay.frame.At
+	// The hold names its target; its contract token says where the type lives. They must agree.
+	if err := placementError(relay.frame, at); err != nil {
+		return rejectedPromise[struct{}](&host.loop, err)
+	}
 	route, ok := host.routeFor(at)
 	if !ok {
 		if host.childNamed(at) == nil {
@@ -1643,6 +1716,24 @@ func (host *HostImpl) relay(relay *RelayRef) *Promise[struct{}] {
 		resolve(struct{}{})
 	})
 	return done
+}
+
+// placementError is invalid/placement unless the placement of frame's contract token puts its input on the host at.
+func placementError(frame HoldFrame, at string) error {
+	token, err := contractFromDescription(frame.Token)
+	if err != nil {
+		return err
+	}
+	if placement := token.Description.Host; placement != nil {
+		resolved, err := resolveHost(frame.Token.Name, placement, frame.Input)
+		if err != nil {
+			return err
+		}
+		if resolved == at {
+			return nil
+		}
+	}
+	return Invalid("placement", fmt.Sprintf("%s with this input does not live on %s", frame.Token.Name, at), nil)
 }
 
 // Reload reloads the given facets (modules are re-imported); facets not listed keep running unchanged.
@@ -1882,14 +1973,14 @@ func principalFields(principal Principal) (func(key string) any, bool) {
 	return nil, false
 }
 
-// remoteAddress is the address of a remote hold, as the consumer sees it (the provider normalizes the input).
-// hasPrincipal is false for the host principal.
-func remoteAddress(at string, typ *Contract, input any, principal Principal, hasPrincipal bool) string {
+// remoteAddress is the address of a remote object here: no host name, since the type and its input decide where it
+// lives. hasPrincipal is false for the host's own principal.
+func remoteAddress(typ *Contract, input any, principal Principal, hasPrincipal bool) string {
 	key := "host"
 	if hasPrincipal {
 		key = CanonicalJSON(principal)
 	}
-	return "@" + at + "\x00" + typ.Name + "\x00" + CanonicalJSON(input) + "\x00" + key
+	return "@" + typ.Name + "\x00" + CanonicalJSON(input) + "\x00" + key
 }
 
 func unknownType(typ, host string) *ChordError {

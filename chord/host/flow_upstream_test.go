@@ -103,19 +103,28 @@ func (link *recordingLink) count(t string) int {
 	return n
 }
 
-var flowCounter = Remote("t.flow-counter", RemoteDef{
-	Version: 1,
-	Input:   tObject(),
-	Variants: Fields[VariantDef]{{"main", VariantDef{
-		State:   Fields[Schema]{{"count", linkCountSchema}},
-		Methods: Fields[MethodSpec]{{"add", Method(tNumber(), tNumber())}, {"wait", Method(nil, nil)}},
-	}}},
-})
+// flowCounterOn is a counter on the server, or (t.flow-worker-counter) on the worker host w (flow.test.ts counterOn).
+func flowCounterOn(name, host string) *Contract {
+	return Remote(name, RemoteDef{
+		Version: 1,
+		Input:   tObject(),
+		Host:    NewHostNamed(host),
+		Variants: Fields[VariantDef]{{"main", VariantDef{
+			State:   Fields[Schema]{{"count", linkCountSchema}},
+			Methods: Fields[MethodSpec]{{"add", Method(tNumber(), tNumber())}, {"wait", Method(nil, nil)}},
+		}}},
+	})
+}
 
-// serveFlowCounter serves flowCounter; its wait method returns once waiting is opened (nil: at once).
-func serveFlowCounter(t *testing.T, host *HostImpl, waiting *requestsLatch) {
+var (
+	flowCounter       = flowCounterOn("t.flow-counter", "server")
+	flowWorkerCounter = flowCounterOn("t.flow-worker-counter", "w")
+)
+
+// serveFlowCounter serves typ; its wait method returns once waiting is opened (nil: at once).
+func serveFlowCounter(t *testing.T, host *HostImpl, typ *Contract, waiting *requestsLatch) {
 	t.Helper()
-	err := host.Serve(flowCounter, func(_ any, _ Principal, self Self) (Implementation, error) {
+	err := host.Serve(typ, func(_ any, _ Principal, self Self) (Implementation, error) {
 		count, err := self.State("count", linkCountSchema, delta.JsonObjectOf("n", float64(0)), nil)
 		if err != nil {
 			return nil, err
@@ -153,7 +162,7 @@ func flowClient(t *testing.T, server *HostImpl, window int) (*HostImpl, *ackGate
 		t.Fatal(err)
 	}
 	gate := &ackGate{inner: up}
-	return requestsHost(t, HostOptions{Name: "browser", Kind: KindClient, Upstream: gate}), gate
+	return requestsHost(t, HostOptions{Name: "browser", Kind: KindClient, Upstream: &UpstreamOptions{Link: gate, ConnectOptions: ConnectOptions{Principal: kindServer()}}}), gate
 }
 
 func stateFrames(frames []Frame) []StateFrame {
@@ -188,9 +197,9 @@ func (values *countValues) last() float64 {
 	return values.values[len(values.values)-1]
 }
 
-func flowGet(t *testing.T, host *HostImpl, name string) Ref {
+func flowGet(t *testing.T, host *HostImpl, typ *Contract) Ref {
 	t.Helper()
-	return requestsGet(t, host, flowCounter, requestsEmpty(), &GetOptions{At: &name})
+	return requestsGet(t, host, typ, requestsEmpty(), nil)
 }
 
 func addOne(t *testing.T, counter Ref) float64 {
@@ -205,9 +214,9 @@ func addOne(t *testing.T, counter Ref) float64 {
 // flow.test.ts:114-136
 func TestLinkFlowControlRefsStateBackWhileTheWindowIsFullAnswersCallsAndSendsOneCoalescedFrame(t *testing.T) {
 	server := requestsHost(t, HostOptions{Name: "server"})
-	serveFlowCounter(t, server, nil)
+	serveFlowCounter(t, server, flowCounter, nil)
 	host, gate := flowClient(t, server, 200)
-	counter := flowGet(t, host, "server")
+	counter := flowGet(t, host, flowCounter)
 	var values countValues
 	requestsReadable(t, counter, "count").Subscribe(values.add)
 	waitFor(t, "the first value", func() bool { return values.last() >= 0 })
@@ -236,9 +245,9 @@ func TestLinkFlowControlRefsStateBackWhileTheWindowIsFullAnswersCallsAndSendsOne
 // flow.test.ts:138-160
 func TestLinkFlowControlReplacesOpsThatOutgrowTheirSlotWithTheCurrentValue(t *testing.T) {
 	server := requestsHost(t, HostOptions{Name: "server"})
-	serveFlowCounter(t, server, nil)
+	serveFlowCounter(t, server, flowCounter, nil)
 	host, gate := flowClient(t, server, 64)
-	counter := flowGet(t, host, "server")
+	counter := flowGet(t, host, flowCounter)
 	var values countValues
 	requestsReadable(t, counter, "count").Subscribe(values.add)
 	waitFor(t, "the first value", func() bool { return values.last() >= 0 })
@@ -262,9 +271,9 @@ func TestLinkFlowControlReplacesOpsThatOutgrowTheirSlotWithTheCurrentValue(t *te
 // flow.test.ts:162-180
 func TestLinkFlowControlDropsWhatWaitsForASubscriptionThatEnds(t *testing.T) {
 	server := requestsHost(t, HostOptions{Name: "server"})
-	serveFlowCounter(t, server, nil)
+	serveFlowCounter(t, server, flowCounter, nil)
 	host, gate := flowClient(t, server, 64)
-	counter := flowGet(t, host, "server")
+	counter := flowGet(t, host, flowCounter)
 	count := requestsReadable(t, counter, "count")
 	stop := count.Subscribe(func(any) {})
 	waitFor(t, "the first value", func() bool { return count.Value() != nil })
@@ -289,11 +298,12 @@ func TestLinkFlowControlCoalescesRelayedStateAndResubscribesDownstreamWhenTheSlo
 	var toWorker *recordingLink
 	var mu sync.Mutex
 	server.Route("w", Route{
+		Principal: func(name string) Principal { return map[string]any{"host": name} },
 		Authorize: func(Principal, string) (bool, error) { return true, nil },
 		Resolve: func(name string) (Link, error) {
 			down, up := MemoryLinkPair()
-			worker := requestsHost(t, HostOptions{Name: name, Upstream: up})
-			serveFlowCounter(t, worker, nil)
+			worker := requestsHost(t, HostOptions{Name: name, Upstream: &UpstreamOptions{Link: up, ConnectOptions: ConnectOptions{Principal: kindServer()}}})
+			serveFlowCounter(t, worker, flowWorkerCounter, nil)
 			link := &recordingLink{inner: down}
 			mu.Lock()
 			toWorker = link
@@ -302,7 +312,7 @@ func TestLinkFlowControlCoalescesRelayedStateAndResubscribesDownstreamWhenTheSlo
 		},
 	})
 	host, gate := flowClient(t, server, 64)
-	counter := flowGet(t, host, "w")
+	counter := flowGet(t, host, flowWorkerCounter)
 	var values countValues
 	requestsReadable(t, counter, "count").Subscribe(values.add)
 	waitFor(t, "the first value", func() bool { return values.last() >= 0 })
@@ -332,7 +342,7 @@ func TestLinkFlowControlCoalescesRelayedStateAndResubscribesDownstreamWhenTheSlo
 // flow.test.ts:224-241
 func TestLinkFlowControlNeitherWindowsNorAcknowledgesAPeerWithoutAcks(t *testing.T) {
 	server := requestsHost(t, HostOptions{Name: "server"})
-	serveFlowCounter(t, server, nil)
+	serveFlowCounter(t, server, flowCounter, nil)
 	down, raw := MemoryLinkPair()
 	window := 1
 	if err := server.Accept(down, AcceptOptions{Principal: map[string]any{"user": "u"}, LinkOptions: LinkOptions{Window: &window}}); err != nil {
@@ -386,14 +396,14 @@ func TestLinkCallLimitAnswersCallsBeyondMaxCallsWithTooManyCallsAndKeepsTheLink(
 	server := requestsHost(t, HostOptions{Name: "server"})
 	waiting := newRequestsLatch()
 	t.Cleanup(waiting.open)
-	serveFlowCounter(t, server, waiting)
+	serveFlowCounter(t, server, flowCounter, waiting)
 	down, up := MemoryLinkPair()
 	maxCalls := 2
 	if err := server.Accept(down, AcceptOptions{Principal: map[string]any{"user": "u"}, MaxCalls: &maxCalls}); err != nil {
 		t.Fatal(err)
 	}
-	host := requestsHost(t, HostOptions{Name: "browser", Kind: KindClient, Upstream: up})
-	counter := flowGet(t, host, "server")
+	host := requestsHost(t, HostOptions{Name: "browser", Kind: KindClient, Upstream: &UpstreamOptions{Link: up, ConnectOptions: ConnectOptions{Principal: kindServer()}}})
+	counter := flowGet(t, host, flowCounter)
 	if err := readyErr(t, counter); err != nil {
 		t.Fatal(err)
 	}

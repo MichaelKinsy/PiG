@@ -278,25 +278,64 @@ type Cell[T any] struct {
 	Schema  Schema
 	tracker *delta.Tracker
 	guard   WriteGuard
+	// initialized is false until Initialize for a cell declared with init: reads and writes fail not_ready.
+	initialized bool
 }
 
 // NewCell is cell.ts new Cell(key, schema, initial, guard, options). initial is always validated against schema;
 // ownership moves to the cell.
 func NewCell[T any](key string, schema Schema, initial T, guard WriteGuard, options SourceOptions) (*Cell[T], error) {
+	return newCell(key, schema, &initial, guard, options)
+}
+
+// NewCellAwaitingInit is cell.ts new Cell(key, schema, undefined, guard, options): a cell without a value until
+// Initialize (a cell declared with init, filled before its object goes live).
+func NewCellAwaitingInit[T any](key string, schema Schema, guard WriteGuard, options SourceOptions) (*Cell[T], error) {
+	return newCell[T](key, schema, nil, guard, options)
+}
+
+// newCell is the Cell constructor: initial nil is cell.ts's `initial: undefined`.
+func newCell[T any](key string, schema Schema, initial *T, guard WriteGuard, options SourceOptions) (*Cell[T], error) {
 	cell := &Cell[T]{}
 	cell.Source = newSource(key, options, cell.Value, func() []Schema { return []Schema{cell.Schema} })
-	if err := assertValid("state", "initial value of state "+key, schema, initial); err != nil {
-		return nil, err
+	var value any
+	if initial != nil {
+		value = *initial
+		if err := assertValid("state", "initial value of state "+key, schema, value); err != nil {
+			return nil, err
+		}
 	}
 	cell.Schema = schema
-	cell.tracker = delta.Track(delta.JsonObjectOf("v", initial))
+	cell.tracker = delta.Track(delta.JsonObjectOf("v", value))
 	cell.guard = guard
+	cell.initialized = initial != nil
 	return cell, nil
 }
 
-// Value is the current value.
+// Initialize sets the first value of a cell declared with init (validated; ownership moves to the cell). It publishes
+// nothing.
+func (cell *Cell[T]) Initialize(value T) error {
+	if cell.initialized {
+		return fmt.Errorf("state %s is already initialized", cell.Key)
+	}
+	if err := assertValid("state", "initial value of state "+cell.Key, cell.Schema, value); err != nil {
+		return err
+	}
+	cell.tracker = delta.Track(delta.JsonObjectOf("v", value))
+	cell.initialized = true
+	return nil
+}
+
+// Value is the current value. A cell declared with init throws (panics with) not_ready until it is initialized.
 func (cell *Cell[T]) Value() T {
+	if !cell.initialized {
+		panic(notReadyInit(cell.Key))
+	}
 	return as[T](cell.tracker.Value().Value("v"))
+}
+
+func notReadyInit(key string) *ChordError {
+	return NotReady("state " + key + " (its init has not run)")
 }
 
 func as[T any](value any) T {
@@ -338,6 +377,9 @@ func (cell *Cell[T]) change(ctx Ctx, fn func(draft any) (any, bool)) error {
 func (cell *Cell[T]) changeNow(ctx Ctx, fn func(draft any) (any, bool)) (err error) {
 	if err := cell.guard(ctx); err != nil {
 		return err
+	}
+	if !cell.initialized {
+		return notReadyInit(cell.Key)
 	}
 	change := cell.tracker.BeginChange()
 	settled := false
@@ -414,6 +456,9 @@ func (cell *Cell[T]) Replace(ctx Ctx, value T, options CellReplaceOptions) error
 func (cell *Cell[T]) replaceNow(ctx Ctx, value T, options CellReplaceOptions) error {
 	if err := cell.guard(ctx); err != nil {
 		return err
+	}
+	if !cell.initialized {
+		return notReadyInit(cell.Key)
 	}
 	before := cell.tracker.Value().Value("v")
 	diff := false

@@ -29,7 +29,7 @@ func rootSeqOf(t *testing.T, rootID string) int {
 // the invocations (host.root, host.ts:438-442) are made, and the listener functions entered, in publication order.
 func TestListenerInvocationsStartInPublicationOrder(t *testing.T) {
 	const events = 64
-	host := CreateHost(HostOptions{Name: "h", OnError: func(error) {}})
+	host := CreateHost(HostOptions{Self: kindHost(), Name: "server", OnError: func(error) {}})
 	t.Cleanup(func() { _ = host.Close() })
 	var mu sync.Mutex
 	var seqs, values []int
@@ -70,7 +70,7 @@ func TestListenerInvocationsStartInPublicationOrder(t *testing.T) {
 	if err := host.Serve(linkCounter, factory, ServeOptions{}); err != nil {
 		t.Fatal(err)
 	}
-	counter := mustGet(t, host, map[string]any{"name": "c"}, nil)
+	counter := mustGet(t, host, "c")
 	mustCall(t, counter, "add", float64(events), nil)
 	wait.Wait()
 	mu.Lock()
@@ -113,7 +113,7 @@ func TestLinkOnCloseCallsAReRegisteredHandlerOnce(t *testing.T) {
 // (JSON.stringify), in which variant describes a member first, in which validation failure is reported, in coverage
 // reasons and in a shape's members. Sorted order differs from declaration order in every case below.
 func TestContractsAndImplementationsKeepDeclarationOrder(t *testing.T) {
-	contract := Remote("t.ord", RemoteDef{Version: 1, Input: tNumber(), Variants: Fields[VariantDef]{
+	contract := Remote("t.ord", RemoteDef{Version: 1, Input: tNumber(), Host: NewHostNamed("server"), Variants: Fields[VariantDef]{
 		{"zeta", VariantDef{State: Fields[Schema]{{"y", tNumber()}}, Methods: Fields[MethodSpec]{{"b", Method(tNull(), tNull())}}}},
 		{"alpha", VariantDef{State: Fields[Schema]{{"b", tString()}}}},
 	}})
@@ -121,7 +121,7 @@ func TestContractsAndImplementationsKeepDeclarationOrder(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := `{"name":"t.ord","scope":"remote","version":1,"input":{"type":"number"},"variants":{` +
+	want := `{"name":"t.ord","scope":"remote","version":1,"input":{"type":"number"},"host":{"name":"server"},"variants":{` +
 		`"zeta":{"y":{"kind":"state","schema":{"type":"number"}},"b":{"kind":"method","args":{"type":"null"},"result":{"type":"null"}}},` +
 		`"alpha":{"b":{"kind":"state","schema":{"type":"string"}}}}}`
 	if string(data) != want {
@@ -150,18 +150,18 @@ func TestContractsAndImplementationsKeepDeclarationOrder(t *testing.T) {
 		t.Fatalf("missing members: %v", err)
 	}
 
-	consumer := Remote("t.ord", RemoteDef{Version: 1, Input: tNumber(), Variants: Fields[VariantDef]{
+	consumer := Remote("t.ord", RemoteDef{Version: 1, Input: tNumber(), Host: NewHostNamed("server"), Variants: Fields[VariantDef]{
 		{"zeta", VariantDef{}}, {"alpha", VariantDef{}},
 	}})
-	provider := Remote("t.ord", RemoteDef{Version: 1, Input: tNumber(), Variants: Fields[VariantDef]{{"other", VariantDef{}}}})
+	provider := Remote("t.ord", RemoteDef{Version: 1, Input: tNumber(), Host: NewHostNamed("server"), Variants: Fields[VariantDef]{{"other", VariantDef{}}}})
 	if reason := Coverage(provider.Description, consumer.Description); reason != "variant zeta missing" {
 		t.Fatalf("coverage reason %q", reason)
 	}
 
-	host := CreateHost(HostOptions{Name: "h", OnError: func(error) {}})
+	host := CreateHost(HostOptions{Self: kindHost(), Name: "server", OnError: func(error) {}})
 	t.Cleanup(func() { _ = host.Close() })
 	serveCounter(t, host, nil)
-	counter := mustGet(t, host, map[string]any{"name": "c"}, nil)
+	counter := mustGet(t, host, "c")
 	if err := counter.Ready(context.Background()); err != nil {
 		t.Fatal(err)
 	}

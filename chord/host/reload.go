@@ -602,6 +602,7 @@ func (r *Reload) prepareAll() error {
 func (r *Reload) prepareObject(object *ObjectImpl) error {
 	var open []*ResourceImpl
 	var refs []RefCore
+	var added *candidate
 	if err := r.section(func() error {
 		service, _ := r.services.Get(object.typeName)
 		run, err := object.run(service, object.decls)
@@ -659,22 +660,29 @@ func (r *Reload) prepareObject(object *ObjectImpl) error {
 		if len(deferredOrder) > 0 {
 			candidate.reasons = append(candidate.reasons, "exclusive resource replaced")
 		}
-		if len(candidate.reasons) == 0 {
-			if err := dryRun(candidate); err != nil {
-				return err
-			}
-		}
 		for _, resource := range run.created.resources {
 			if !deferred[resource] {
 				open = append(open, resource)
 			}
 		}
 		refs = run.created.refs
+		added = candidate
 		return nil
 	}); err != nil {
 		return err
 	}
-	return object.open(open, refs, r.abort)
+	if err := object.open(open, refs, r.abort); err != nil {
+		return err
+	}
+	// Cells this reload adds read their first value once the new resources are open (gated objects: at the gate); the
+	// derivations over them are checked after.
+	if len(added.reasons) == 0 {
+		if err := object.initCells(added.run, r.abort); err != nil {
+			return err
+		}
+		return r.section(func() error { return dryRun(added) })
+	}
+	return nil
 }
 
 // checkRefs: every hold that survives into the new code version must bind to the new provider. Browser holds don't block a
@@ -797,6 +805,12 @@ func (r *Reload) gate() error {
 			}
 		}
 		if err := object.open(candidate.atGate, nil, r.abort); err != nil {
+			return err
+		}
+		if err := r.section(r.alive); err != nil {
+			return err
+		}
+		if err := object.initCells(candidate.run, r.abort); err != nil {
 			return err
 		}
 		if err := r.section(r.alive); err != nil {

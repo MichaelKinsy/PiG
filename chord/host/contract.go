@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"regexp"
+	"strings"
 
 	"github.com/MichaelKinsy/PiG/internal/chord/chordjson"
 )
@@ -104,10 +105,88 @@ type VariantDef struct {
 	Methods Fields[MethodSpec]
 }
 
-// RemoteDef defines a remote contract. Variants are in declaration order.
+// Placement is a remote type's placement (contract.ts Placement = HostNamed | HostFamily): where its objects live, as
+// data, so a description carries it and every host can check it. It is a closed union of HostNamed and HostFamily.
+type Placement interface{ isPlacement() }
+
+// HostNamed places the objects of a remote type on the one host named Name (contract.ts HostNamed).
+type HostNamed struct{ Name string }
+
+// HostFamily places the objects of a remote type on the host Prefix + the value of the input's string field Key
+// (contract.ts HostFamily): `session:` + `session` puts `{ session: "S1", … }` on `session:S1`.
+type HostFamily struct{ Prefix, Key string }
+
+func (HostNamed) isPlacement()  {}
+func (HostFamily) isPlacement() {}
+
+// NewHostNamed is contract.ts hostNamed(name): objects of the type live on the host named name. It panics with a
+// TypeError for an empty name.
+func NewHostNamed(name string) HostNamed {
+	if name == "" {
+		panic(typeError("hostNamed needs a host name"))
+	}
+	return HostNamed{Name: name}
+}
+
+// NewHostFamily is contract.ts hostFamily(prefix, key): objects of the type live on prefix + the value of the input's
+// string field key. The field is required and must be a non-empty string. It panics with a TypeError for an empty prefix
+// or key.
+func NewHostFamily(prefix, key string) HostFamily {
+	if prefix == "" {
+		panic(typeError("hostFamily needs a host-name prefix"))
+	}
+	if key == "" {
+		panic(typeError("hostFamily needs an input field name"))
+	}
+	return HostFamily{Prefix: prefix, Key: key}
+}
+
+// resolveHost is contract.ts resolveHost: the host an object of placement with this (normalized) input lives on. It
+// fails invalid/placement when a family's field names no host.
+func resolveHost(typeName string, placement Placement, input any) (string, error) {
+	switch typed := placement.(type) {
+	case HostNamed:
+		return typed.Name, nil
+	case HostFamily:
+		var value any = absent{}
+		if field, ok := principalFields(input); ok {
+			value = field(typed.Key)
+		}
+		if text, ok := value.(string); ok && text != "" {
+			return typed.Prefix + text, nil
+		}
+		return "", Invalid("placement", fmt.Sprintf("%s: input field %s names no host", typeName, typed.Key), nil)
+	}
+	return "", Invalid("placement", typeName+" has no placement", nil)
+}
+
+// placedOn is contract.ts placedOn: whether the host named hostName may serve a type of placement.
+func placedOn(placement Placement, hostName string) bool {
+	switch typed := placement.(type) {
+	case HostNamed:
+		return typed.Name == hostName
+	case HostFamily:
+		return strings.HasPrefix(hostName, typed.Prefix) && len(hostName) > len(typed.Prefix)
+	}
+	return false
+}
+
+// placementText is contract.ts placementText.
+func placementText(placement Placement) string {
+	switch typed := placement.(type) {
+	case HostNamed:
+		return typed.Name
+	case HostFamily:
+		return typed.Prefix + "<" + typed.Key + ">"
+	}
+	return ""
+}
+
+// RemoteDef defines a remote contract. Variants are in declaration order. Host is required: where its objects live.
 type RemoteDef struct {
 	Version  int
 	Input    Schema
+	Host     Placement
 	Variants Fields[VariantDef]
 }
 
@@ -140,10 +219,12 @@ const LocalVariant = ""
 // Description is a contract's canonical description: what a token carries over a link and what fingerprints hash.
 // Variants and their members are in Pi's order (own-key order of the definition).
 type Description struct {
-	Name     string
-	Scope    ContractScope
-	Version  int
-	Input    Schema
+	Name    string
+	Scope   ContractScope
+	Version int
+	Input   Schema
+	// Host is where the objects of a remote type live (required there); nil for a local type.
+	Host     Placement
 	Variants Fields[Fields[MemberDescription]]
 }
 
@@ -157,11 +238,18 @@ var (
 		object([]string{"kind", "schema"}, "kind", literal(MemberState), "schema", schemaObject),
 		object([]string{"kind", "id"}, "kind", literal(MemberOpaque), "id", Schema{"type": "string"}),
 	}}
+	// contract.ts PlacementSchema: a closed { name } or a closed { prefix, key }.
+	placementSchema = Schema{"anyOf": []any{
+		closed(object([]string{"name"}, "name", Schema{"type": "string", "minLength": 1})),
+		closed(object([]string{"prefix", "key"}, "prefix", Schema{"type": "string", "minLength": 1}, "key", Schema{"type": "string", "minLength": 1})),
+	}}
 	descriptionSchema = object([]string{"name", "scope", "version", "input", "variants"},
 		"name", Schema{"type": "string", "minLength": 1},
 		"scope", Schema{"anyOf": []any{literal(string(ScopeRemote)), literal(string(ScopeLocal))}},
 		"version", integer(),
 		"input", schemaObject,
+		// Remote types only (required there): where their objects live.
+		"host", placementSchema,
 		"variants", record(record(memberDescriptionSchema)),
 	)
 )
@@ -242,6 +330,7 @@ func finish(contract *Contract) *Contract {
 // are described in Pi's order: each variant's state members, then its methods.
 func Remote(name string, def RemoteDef) *Contract {
 	checkHeader(name, def.Version)
+	host := copyPlacement(name, def.Host)
 	if len(def.Variants) == 0 {
 		panic(typeError("remote contract %s has no variants", name))
 	}
@@ -260,9 +349,26 @@ func Remote(name string, def RemoteDef) *Contract {
 		}
 		variants = append(variants, Field[Fields[MemberDescription]]{Name: kind, Value: ownFields(members)})
 	}
-	description := Description{Name: name, Scope: ScopeRemote, Version: def.Version, Input: def.Input, Variants: ownFields(variants)}
+	description := Description{Name: name, Scope: ScopeRemote, Version: def.Version, Input: def.Input, Host: host, Variants: ownFields(variants)}
 	copied := def
+	copied.Host = host
 	return finish(&Contract{Scope: ScopeRemote, Name: name, Version: def.Version, Input: def.Input, Remote: &copied, Description: description})
+}
+
+// copyPlacement is remote()'s check and copy of its `host`: a placement that is not valid by PlacementSchema is a
+// TypeError, and the description carries a copy of it that holds nothing else.
+func copyPlacement(name string, placement Placement) Placement {
+	switch typed := placement.(type) {
+	case HostNamed:
+		if typed.Name != "" {
+			return HostNamed{Name: typed.Name}
+		}
+	case HostFamily:
+		if typed.Prefix != "" && typed.Key != "" {
+			return HostFamily{Prefix: typed.Prefix, Key: typed.Key}
+		}
+	}
+	panic(typeError("remote contract %s needs `host`: hostNamed(…) or hostFamily(…)", name))
 }
 
 // Local is contract.ts local(name, def). It panics with a TypeError on an invalid definition.
@@ -279,7 +385,7 @@ func Local(name string, def LocalDef) *Contract {
 
 // contractFromDescription is a consumer token received over a link (only its description travels).
 func contractFromDescription(description Description) (*Contract, error) {
-	if description.Scope != ScopeRemote && description.Scope != ScopeLocal {
+	if (description.Scope != ScopeRemote && description.Scope != ScopeLocal) || (description.Scope == ScopeRemote) != (description.Host != nil) {
 		return nil, NewChordError(CodeInvalid, "malformed contract token", ChordErrorOptions{Reason: "token"})
 	}
 	return &Contract{
@@ -297,6 +403,9 @@ func contractFromDescription(description Description) (*Contract, error) {
 func Coverage(provider, consumer Description) string {
 	if provider.Name != consumer.Name || provider.Scope != consumer.Scope {
 		return "different type"
+	}
+	if !samePlacement(provider, consumer) {
+		return "host"
 	}
 	if !Fits(consumer.Input, provider.Input) {
 		return "input"
@@ -339,6 +448,30 @@ func Coverage(provider, consumer Description) string {
 	return ""
 }
 
+// samePlacement reports whether two descriptions place their objects equally (canonicalJson(a.host ?? null)).
+func samePlacement(a, b Description) bool {
+	return CanonicalJSON(a.placementValue()) == CanonicalJSON(b.placementValue())
+}
+
+// placementOf is the placement as the bind error names it: "(local)" for a local type.
+func (description Description) placementOf() string {
+	if description.Host == nil {
+		return "(local)"
+	}
+	return placementText(description.Host)
+}
+
+// placementValue is the placement as data for canonicalJson: null when there is none.
+func (description Description) placementValue() any {
+	switch typed := description.Host.(type) {
+	case HostNamed:
+		return map[string]any{"name": typed.Name}
+	case HostFamily:
+		return map[string]any{"prefix": typed.Prefix, "key": typed.Key}
+	}
+	return nil
+}
+
 // Implementation is what a factory returns: members by name (methods, state sources, opaque values) and, for a remote
 // contract, the variant under "kind". It is a JavaScript object: members keep own-key order (Shape.Members, validation
 // order) and the object has identity (accepts views are cached per implementation).
@@ -355,6 +488,10 @@ type Accepts map[int]Adapter
 func Bind(provider *Contract, accepts Accepts, consumer *Contract) (Adapter, error) {
 	if provider.Fingerprint == consumer.Fingerprint {
 		return nil, nil
+	}
+	// A moved type is another type for its consumers: no adapter reaches across hosts.
+	if !samePlacement(provider.Description, consumer.Description) {
+		return nil, NewChordError(CodeContractMismatch, fmt.Sprintf("%s lives on %s, the consumer expects %s", provider.Name, provider.Description.placementOf(), consumer.Description.placementOf()), ChordErrorOptions{})
 	}
 	if provider.Version == consumer.Version {
 		reason := Coverage(provider.Description, consumer.Description)
@@ -408,10 +545,14 @@ func (description Description) jsonValue() any {
 		}
 		variants[variant.Name] = out
 	}
-	return map[string]any{
+	out := map[string]any{
 		"name": description.Name, "scope": string(description.Scope), "version": float64(description.Version),
 		"input": schemaValue(description.Input), "variants": variants,
 	}
+	if description.Host != nil {
+		out["host"] = description.placementValue()
+	}
+	return out
 }
 
 // wireValue is the description as Pi's JSON.stringify writes it on a link (connection.ts:324 sends the description
@@ -421,6 +562,12 @@ func (description Description) jsonValue() any {
 func (description Description) wireValue() *chordjson.Object {
 	out := chordjson.ObjectOf("name", description.Name, "scope", string(description.Scope), "version", float64(description.Version))
 	setSchema(out, "input", description.Input)
+	switch typed := description.Host.(type) {
+	case HostNamed:
+		out.Set("host", chordjson.ObjectOf("name", typed.Name))
+	case HostFamily:
+		out.Set("host", chordjson.ObjectOf("prefix", typed.Prefix, "key", typed.Key))
+	}
 	variants := chordjson.NewObject(len(description.Variants))
 	for _, variant := range description.Variants {
 		members := chordjson.NewObject(len(variant.Value))
@@ -467,6 +614,11 @@ func (description *Description) UnmarshalJSON(data []byte) error {
 		Scope   string `json:"scope"`
 		Version int    `json:"version"`
 		Input   Schema `json:"input"`
+		Host    *struct {
+			Name   *string `json:"name"`
+			Prefix *string `json:"prefix"`
+			Key    *string `json:"key"`
+		} `json:"host"`
 	}
 	if err := json.Unmarshal(data, &wire); err != nil {
 		return err
@@ -476,6 +628,14 @@ func (description *Description) UnmarshalJSON(data []byte) error {
 		return err
 	}
 	*description = Description{Name: wire.Name, Scope: ContractScope(wire.Scope), Version: wire.Version, Input: wire.Input}
+	if wire.Host != nil {
+		switch {
+		case wire.Host.Name != nil:
+			description.Host = HostNamed{Name: *wire.Host.Name}
+		case wire.Host.Prefix != nil && wire.Host.Key != nil:
+			description.Host = HostFamily{Prefix: *wire.Host.Prefix, Key: *wire.Host.Key}
+		}
+	}
 	object, _ := decoded.(*chordjson.Object)
 	if object == nil {
 		return nil

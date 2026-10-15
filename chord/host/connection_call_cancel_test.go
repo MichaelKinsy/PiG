@@ -13,7 +13,7 @@ import (
 // "aborted: call aborted" carrying the signal's reason, sends cancel so the provider's call is aborted (connection.ts
 // :409 incoming abort, "cancelled by caller"), and a result that arrives afterwards is ignored.
 func TestConnectionCallCancelSendsCancelRejectsAndIgnoresTheLateResult(t *testing.T) {
-	slow := Remote("t.slowcall", RemoteDef{Version: 1, Input: tObject(), Variants: Fields[VariantDef]{{"main", VariantDef{
+	slow := Remote("t.slowcall", RemoteDef{Version: 1, Input: tObject(), Host: NewHostNamed("server"), Variants: Fields[VariantDef]{{"main", VariantDef{
 		Methods: Fields[MethodSpec]{{"slow", Method(tNull(), tString())}, {"echo", Method(tString(), tString())}},
 	}}}})
 	entered := make(chan struct{}, 1)
@@ -36,10 +36,10 @@ func TestConnectionCallCancelSendsCancelRejectsAndIgnoresTheLateResult(t *testin
 	if err := server.Accept(down, AcceptOptions{Principal: map[string]any{"guest": "g"}}); err != nil {
 		t.Fatal(err)
 	}
-	browser := requestsHost(t, HostOptions{Name: "browser", Kind: KindClient, Upstream: up})
+	browser := requestsHost(t, HostOptions{Name: "browser", Kind: KindClient, Upstream: &UpstreamOptions{Link: up, ConnectOptions: ConnectOptions{Principal: kindServer()}}})
 	// Opened before the hosts close (cleanups run last-in, first-out): a provider call still waiting must finish.
 	t.Cleanup(gate.open)
-	ref := requestsGet(t, browser, slow, requestsEmpty(), at("server"))
+	ref := requestsGet(t, browser, slow, requestsEmpty(), nil)
 	if err := readyErr(t, ref); err != nil {
 		t.Fatal(err)
 	}

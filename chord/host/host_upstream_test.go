@@ -58,7 +58,7 @@ func (log *errorLog) items() []error {
 // quiet is host.test.ts quiet: a host whose background errors go to errors (dropped when nil).
 func quiet(t *testing.T, errs *errorLog) *HostImpl {
 	t.Helper()
-	host := CreateHost(HostOptions{OnError: func(err error) {
+	host := CreateHost(HostOptions{Self: kindHost(), OnError: func(err error) {
 		if errs != nil {
 			errs.add(err)
 		}
@@ -670,7 +670,7 @@ var hostStore = Local("t.store", LocalDef{
 // compile-time ServeOptionsFor: Pi's @ts-expect-error part has no Go form, the runtime refusals are asserted.
 func TestHostServeRefusesALifetimeHostTheTypeCannotHaveAtCompileTimeAndAtRuntime(t *testing.T) {
 	host := quiet(t, nil)
-	remote := Remote("t.remote-store", RemoteDef{Version: 1, Input: tObject(), Variants: Fields[VariantDef]{{"main", VariantDef{}}}})
+	remote := Remote("t.remote-store", RemoteDef{Version: 1, Input: tObject(), Host: NewHostNamed("host"), Variants: Fields[VariantDef]{{"main", VariantDef{}}}})
 	keyed := Local("t.keyed", LocalDef{Version: 1, Input: tObject("id", tString())})
 	mainVariant := func(any, Principal, Self) (Implementation, error) { return chordjson.ObjectOf("variant", "main"), nil }
 	seenNull := func(any, Principal, Self) (Implementation, error) { return chordjson.ObjectOf("seen", nil), nil }
@@ -702,7 +702,7 @@ func TestHostServeRefusesALifetimeHostTheTypeCannotHaveAtCompileTimeAndAtRuntime
 
 // host.test.ts:389-420 it("every get reaches the one object, created at serve for the host principal; another input is invalid")
 func TestHostEveryGetReachesTheOneObjectCreatedAtServeForTheHostPrincipalAnotherInputIsInvalid(t *testing.T) {
-	host := CreateHost(HostOptions{PrincipalKey: func(principal Principal) string { return jsonText(t, principal) }, OnError: func(error) {}})
+	host := CreateHost(HostOptions{Self: kindHost(), PrincipalKey: func(principal Principal) string { return jsonText(t, principal) }, OnError: func(error) {}})
 	t.Cleanup(func() { _ = host.Close() })
 	var created principalLog
 	mustServe(t, host, hostStore, func(_ any, principal Principal, _ Self) (Implementation, error) {
@@ -723,7 +723,7 @@ func TestHostEveryGetReachesTheOneObjectCreatedAtServeForTheHostPrincipalAnother
 	if len(created.items()) != 1 {
 		t.Fatalf("created %d objects: want the same object for every principal and the default input", len(created.items()))
 	}
-	if guest.Member("seen") != created.items()[0] {
+	if !DeepEqual(guest.Member("seen"), created.items()[0]) {
 		t.Fatalf("seen = %v, want %v", guest.Member("seen"), created.items()[0])
 	}
 	if _, err := host.Get(hostStore, map[string]any{"scope": "other"}, nil); !IsChordError(err, CodeInvalid) {
@@ -754,6 +754,7 @@ var hostViewSchema = tObject("text", tString())
 var hostDoc = Remote("t.doc", RemoteDef{
 	Version: 1,
 	Input:   tObject("id", tString()),
+	Host:    NewHostNamed("host"),
 	Variants: Fields[VariantDef]{
 		{"viewer", VariantDef{State: Fields[Schema]{{"view", hostViewSchema}}}},
 		{"editor", VariantDef{
@@ -796,9 +797,15 @@ func hostServeDoc(t *testing.T, host *HostImpl, principals *principalLog) {
 
 // host.test.ts:325-339 it("keeps objects per principal key and enforces variants")
 func TestHostKeepsObjectsPerPrincipalKeyAndEnforcesVariants(t *testing.T) {
-	host := CreateHost(HostOptions{
-		PrincipalKey: func(principal Principal) string { return inputField(principal, "user").(string) },
-		OnError:      func(error) {},
+	host := CreateHost(HostOptions{Self: kindHost(),
+		// host.test.ts `(principal as { user: string }).user`: a principal without one (the host's own) has the key undefined.
+		PrincipalKey: func(principal Principal) string {
+			if user, ok := inputField(principal, "user").(string); ok {
+				return user
+			}
+			return "undefined"
+		},
+		OnError: func(error) {},
 	})
 	t.Cleanup(func() { _ = host.Close() })
 	var principals principalLog
@@ -1077,7 +1084,7 @@ func TestHostRefStateMembersAreSourcesForListenersAndDerivations(t *testing.T) {
 
 // host.test.ts:508-531 it("ctx.get acts as the root principal at ingress and as the host inside objects")
 func TestHostCtxGetActsAsTheRootPrincipalAtIngressAndAsTheHostInsideObjects(t *testing.T) {
-	host := CreateHost(HostOptions{PrincipalKey: func(principal Principal) string { return jsonText(t, principal) }, OnError: func(error) {}})
+	host := CreateHost(HostOptions{Self: kindHost(), PrincipalKey: func(principal Principal) string { return jsonText(t, principal) }, OnError: func(error) {}})
 	t.Cleanup(func() { _ = host.Close() })
 	var seen principalLog
 	who := Local("t.who", LocalDef{Version: 1, Input: tObject(), Members: Fields[any]{{"ping", Method(nil, nil)}}})
@@ -1105,7 +1112,7 @@ func TestHostCtxGetActsAsTheRootPrincipalAtIngressAndAsTheHostInsideObjects(t *t
 	}, RootOptions{Principal: map[string]any{"user": "guest"}}); err != nil {
 		t.Fatal(err)
 	}
-	if got := jsonText(t, seen.items()); got != `[{"user":"guest"},{"host":true}]` {
+	if got := jsonText(t, seen.items()); got != `[{"user":"guest"},{"kind":"host"}]` {
 		t.Fatalf("seen %s", got)
 	}
 }

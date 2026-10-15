@@ -9,12 +9,12 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/chord/chordjson"
 )
 
-// frameSchema is the JSON Schema TypeBox builds for wire.ts FrameSchema: Pi 301617df gives
-// hash64(canonicalJson(FrameSchema)) = c7528666d9bd71e1 over 6656 characters (typebox 1.3.27).
+// frameSchema is the JSON Schema TypeBox builds for wire.ts FrameSchema: Pi aa9cf15b gives
+// hash64(canonicalJson(FrameSchema)) = 41fdefa9253641bd over 6965 characters (typebox 1.3.27).
 func TestFrameSchemaIsPiFrameSchema(t *testing.T) {
 	text := CanonicalJSON(frameSchema)
-	if got := Hash64(text); got != "c7528666d9bd71e1" || len(text) != 6656 {
-		t.Fatalf("frame schema hash %s length %d, Pi c7528666d9bd71e1 6656", got, len(text))
+	if got := Hash64(text); got != "41fdefa9253641bd" || len(text) != 6965 {
+		t.Fatalf("frame schema hash %s length %d, Pi 41fdefa9253641bd 6965", got, len(text))
 	}
 }
 

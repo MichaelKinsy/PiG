@@ -472,7 +472,7 @@ func nodeContract(description Description) *Contract {
 		}
 		variants = append(variants, Field[VariantDef]{Name: variant.Name, Value: VariantDef{Methods: methods}})
 	}
-	return Remote(description.Name, RemoteDef{Version: description.Version, Input: description.Input, Variants: variants})
+	return Remote(description.Name, RemoteDef{Version: description.Version, Input: description.Input, Host: description.Host, Variants: variants})
 }
 
 // factory serves one contract: the object holds the child's object for its input (a resource, opened before the

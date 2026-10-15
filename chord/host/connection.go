@@ -924,7 +924,7 @@ func (connection *Connection) onHello(frame HelloFrame) {
 }
 
 // principalOf is principal stamping: a downstream link acts as the principal it was accepted with, whatever the
-// frame says. Only the parent may forward a principal (relayed requests); its own requests act as { host: parentName }.
+// frame says. Only the parent may forward a principal (relayed requests); its own requests act as the principal given to Connect.
 func (connection *Connection) principalOf(frame HoldFrame) Principal {
 	if connection.role == "downstream" {
 		return connection.principal
@@ -932,11 +932,7 @@ func (connection *Connection) principalOf(frame HoldFrame) Principal {
 	if frame.HasPrincipal && frame.Principal != nil {
 		return frame.Principal
 	}
-	parent := "parent"
-	if connection.parentName != nil {
-		parent = *connection.parentName
-	}
-	return map[string]any{"host": parent}
+	return connection.principal
 }
 
 func (connection *Connection) isClient(frame HoldFrame) bool {
@@ -1010,6 +1006,14 @@ func (connection *Connection) acquireServed(frame HoldFrame, principal Principal
 	}
 	if token.Scope != ScopeRemote {
 		return nil, Invalid("token", token.Name+" is local; only remote types cross links", nil)
+	}
+	// Addressed here, so the input must place it here (also by this host's contract, checked when acquiring).
+	at, err := resolveHost(token.Name, token.Description.Host, frame.Input)
+	if err != nil {
+		return nil, err
+	}
+	if at != connection.host.Name() {
+		return nil, Invalid("placement", fmt.Sprintf("%s with this input does not live on %s", token.Name, connection.host.Name()), nil)
 	}
 	owner := RefOwner("connection")
 	if client {

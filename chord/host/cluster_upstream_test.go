@@ -59,7 +59,8 @@ var clusterCount = tObject("n", tNumber())
 // clusterGreeter is cluster.test.ts Greeter.
 var clusterGreeter = Remote("t.greeter", RemoteDef{
 	Version: 1,
-	Input:   tObject(),
+	Input:   tObject("session", tString()),
+	Host:    NewHostFamily("session:", "session"),
 	Variants: Fields[VariantDef]{
 		{"main", VariantDef{
 			State:   Fields[Schema]{{"count", clusterCount}},
@@ -71,8 +72,23 @@ var clusterGreeter = Remote("t.greeter", RemoteDef{
 // clusterGreeterV2 is cluster.test.ts GreeterV2.
 var clusterGreeterV2 = Remote("t.greeter", RemoteDef{
 	Version:  2,
-	Input:    tObject(),
+	Input:    tObject("session", tString()),
+	Host:     NewHostFamily("session:", "session"),
 	Variants: Fields[VariantDef]{{"main", VariantDef{Methods: Fields[MethodSpec]{{"hello", Method(tString(), tString())}}}}},
+})
+
+// clusterServerGreeter is the server's own greeter: the greeter facet serves this one on the server, clusterGreeter on
+// session hosts.
+var clusterServerGreeter = Remote("t.server-greeter", RemoteDef{
+	Version: 1,
+	Input:   tObject(),
+	Host:    NewHostNamed("server"),
+	Variants: Fields[VariantDef]{
+		{"main", VariantDef{
+			State:   Fields[Schema]{{"count", clusterCount}},
+			Methods: Fields[MethodSpec]{{"greet", Method(tString(), tString())}},
+		}},
+	},
 })
 
 func greeterImplementation(greeting string, stateVersion int, self Self) (Implementation, error) {
@@ -103,12 +119,16 @@ func greeterFacet(greeting string, fail bool) Facet {
 // greeterFacetVersion is greeterFacet with Pi's stateVersion option (default 1).
 func greeterFacetVersion(greeting string, fail bool, stateVersion int) Facet {
 	return Facet{Name: "greeter", FacetDefinition: FacetDefinition{Setup: func(api FacetApi) error {
-		return api.Serve(clusterGreeter, func(_ any, _ Principal, self Self) (Implementation, error) {
+		greeter := func(_ any, _ Principal, self Self) (Implementation, error) {
 			if fail {
 				return nil, errors.New("worker factory fails")
 			}
 			return greeterImplementation(greeting, stateVersion, self)
-		}, ServeOptions{})
+		}
+		if api.Name == "server" {
+			return api.Serve(clusterServerGreeter, greeter, ServeOptions{})
+		}
+		return api.Serve(clusterGreeter, greeter, ServeOptions{})
 	}}}
 }
 
@@ -145,12 +165,12 @@ type clusterSetup struct {
 func setupCluster(t *testing.T) clusterSetup {
 	t.Helper()
 	modules := &clusterModules{modules: map[string]Facet{"greeter": greeterFacet("v1", false)}}
-	server := CreateHost(HostOptions{Name: "server", OnError: func(error) {}})
+	server := CreateHost(HostOptions{Self: kindHost(), Name: "server", OnError: func(error) {}})
 	down, up := MemoryLinkPair()
 	if err := server.Accept(down, AcceptOptions{Principal: chordjson.ObjectOf("worker", "w"), Kind: KindHost, Name: new("session:S1")}); err != nil {
 		t.Fatal(err)
 	}
-	worker := CreateHost(HostOptions{Name: "session:S1", Upstream: up, Loader: modules.loader, OnError: func(error) {}})
+	worker := CreateHost(HostOptions{Self: kindHost(), Name: "session:S1", Upstream: &UpstreamOptions{Link: up, ConnectOptions: ConnectOptions{Principal: kindServer()}}, Loader: modules.loader, OnError: func(error) {}})
 	t.Cleanup(func() { _ = worker.Close(); _ = server.Close() })
 	modules.mu.Lock()
 	facet := modules.modules["greeter"]
@@ -161,9 +181,14 @@ func setupCluster(t *testing.T) clusterSetup {
 	return clusterSetup{server: server, worker: worker, modules: modules, down: down}
 }
 
-func getGreeter(t *testing.T, host *HostImpl, typ *Contract, options *GetOptions) Ref {
+// getGreeter gets typ for session (empty: the empty input of a type placed on one host).
+func getGreeter(t *testing.T, host *HostImpl, typ *Contract, session string) Ref {
 	t.Helper()
-	ref, err := host.Get(typ, chordjson.ObjectOf(), options)
+	input := chordjson.ObjectOf()
+	if session != "" {
+		input = chordjson.ObjectOf("session", session)
+	}
+	ref, err := host.Get(typ, input, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -194,7 +219,7 @@ func sessionRemote(names ...string) map[string][]string {
 func TestCrossHostReloadPreparesEveryHostCommitsTheServerFirstThenTheWorkersCodeVersionsStayInStep(t *testing.T) {
 	s := setupCluster(t)
 	waitLinked(t, s.server, s.worker)
-	greeter := getGreeter(t, s.server, clusterGreeter, at("session:S1"))
+	greeter := getGreeter(t, s.server, clusterGreeter, "S1")
 	if got := greet(t, greeter, "a", nil); got != "v1 a" {
 		t.Fatalf("greet a = %q", got)
 	}
@@ -257,7 +282,7 @@ func TestCrossHostReloadPreparesEveryHostCommitsTheServerFirstThenTheWorkersCode
 func TestCrossHostReloadAFailingVoteAbortsEveryHostTheErrorKeepsItsCodeAndNamesTheHost(t *testing.T) {
 	s := setupCluster(t)
 	waitLinked(t, s.server, s.worker)
-	greeter := getGreeter(t, s.server, clusterGreeter, at("session:S1"))
+	greeter := getGreeter(t, s.server, clusterGreeter, "S1")
 	greet(t, greeter, "a", nil)
 	before := []int{s.server.CodeVersion(), s.worker.CodeVersion()}
 	s.modules.set("greeter", greeterFacet("v2", true))
@@ -277,7 +302,7 @@ func TestCrossHostReloadAFailingVoteAbortsEveryHostTheErrorKeepsItsCodeAndNamesT
 func TestCrossHostReloadAWorkerGateBlockedPastItsDeadlineAbortsTheWholeReload(t *testing.T) {
 	s := setupCluster(t)
 	waitLinked(t, s.server, s.worker)
-	greeter := getGreeter(t, s.server, clusterGreeter, at("session:S1"))
+	greeter := getGreeter(t, s.server, clusterGreeter, "S1")
 	gate := newClusterLatch()
 	blocker := make(chan error, 1)
 	entered := newClusterLatch()
@@ -323,8 +348,8 @@ func TestCrossHostReloadRemovesFacetsFromServerAndWorkersReconcilesRemovalTombst
 		t.Fatal(err)
 	}
 	waitLinked(t, s.server, s.worker)
-	local := getGreeter(t, s.server, clusterGreeter, nil)
-	child := getGreeter(t, s.server, clusterGreeter, at("session:S1"))
+	local := getGreeter(t, s.server, clusterServerGreeter, "")
+	child := getGreeter(t, s.server, clusterGreeter, "S1")
 	if got := greet(t, local, "a", nil); got != "v1 a" {
 		t.Fatalf("local greet = %q", got)
 	}
@@ -340,7 +365,7 @@ func TestCrossHostReloadRemovesFacetsFromServerAndWorkersReconcilesRemovalTombst
 	}
 
 	// A child starting with the old set must remove it without trying to import its removed module.
-	cold := CreateHost(HostOptions{
+	cold := CreateHost(HostOptions{Self: kindHost(),
 		Name: "session:cold",
 		Loader: func([]string) ([]Facet, error) {
 			t.Error("Removed modules must not be imported")
@@ -352,7 +377,7 @@ func TestCrossHostReloadRemovesFacetsFromServerAndWorkersReconcilesRemovalTombst
 	if err := cold.Install(greeterFacet("v1", false), LoadOptions{}); err != nil {
 		t.Fatal(err)
 	}
-	old := getGreeter(t, cold, clusterGreeter, nil)
+	old := getGreeter(t, cold, clusterGreeter, "cold")
 	if err := readyErr(t, old); err != nil {
 		t.Fatal(err)
 	}
@@ -360,7 +385,7 @@ func TestCrossHostReloadRemovesFacetsFromServerAndWorkersReconcilesRemovalTombst
 	if err := s.server.Accept(down, AcceptOptions{Principal: chordjson.ObjectOf("worker", "cold"), Kind: KindHost, Name: new("session:cold")}); err != nil {
 		t.Fatal(err)
 	}
-	cold.Connect(up, LinkOptions{})
+	cold.Connect(up, ConnectOptions{Principal: kindServer()})
 	waitFor(t, "the cold host's reference to go", func() bool { return old.Status() == RefGone })
 	if old.Status() != RefGone {
 		t.Fatalf("old status = %s", old.Status())
@@ -377,10 +402,10 @@ func TestCrossHostReloadRemovesFacetsFromServerAndWorkersReconcilesRemovalTombst
 	if _, err := s.server.Reload([]PluginRef{&v2}, ReloadOptions{Remote: sessionRemote("greeter")}); err != nil {
 		t.Fatal(err)
 	}
-	if got := greet(t, getGreeter(t, s.server, clusterGreeter, at("session:S1")), "b", nil); got != "v2 b" {
+	if got := greet(t, getGreeter(t, s.server, clusterGreeter, "S1"), "b", nil); got != "v2 b" {
 		t.Fatalf("greet b = %q", got)
 	}
-	fresh := CreateHost(HostOptions{Name: "session:fresh", Loader: s.modules.loader, OnError: func(error) {}})
+	fresh := CreateHost(HostOptions{Self: kindHost(), Name: "session:fresh", Loader: s.modules.loader, OnError: func(error) {}})
 	t.Cleanup(func() { _ = fresh.Close() })
 	if err := fresh.Install(greeterFacet("v1", false), LoadOptions{}); err != nil {
 		t.Fatal(err)
@@ -389,8 +414,8 @@ func TestCrossHostReloadRemovesFacetsFromServerAndWorkersReconcilesRemovalTombst
 	if err := s.server.Accept(freshDown, AcceptOptions{Principal: chordjson.ObjectOf("worker", "fresh"), Kind: KindHost, Name: new("session:fresh")}); err != nil {
 		t.Fatal(err)
 	}
-	fresh.Connect(freshUp, LinkOptions{})
-	if got := greet(t, getGreeter(t, s.server, clusterGreeter, at("session:fresh")), "c", nil); got != "v2 c" {
+	fresh.Connect(freshUp, ConnectOptions{Principal: kindServer()})
+	if got := greet(t, getGreeter(t, s.server, clusterGreeter, "fresh"), "c", nil); got != "v2 c" {
 		t.Fatalf("greet c = %q", got)
 	}
 }
@@ -412,14 +437,15 @@ func TestCrossHostReloadBrowsersAreNotParticipantsTheySeeShapeAndResetPushesOrUp
 	s.server.Route("session:", Route{
 		Authorize: func(Principal, string) (bool, error) { return true, nil },
 		Resolve:   func(string) (Link, error) { return workerLink, nil },
+		Principal: func(name string) Principal { return map[string]any{"host": name} },
 	})
 	down, up := MemoryLinkPair()
 	if err := s.server.Accept(down, AcceptOptions{Principal: chordjson.ObjectOf("guest", "g")}); err != nil {
 		t.Fatal(err)
 	}
-	browser := CreateHost(HostOptions{Name: "browser", Kind: KindClient, Upstream: up, OnError: func(error) {}})
+	browser := CreateHost(HostOptions{Self: kindHost(), Name: "browser", Kind: KindClient, Upstream: &UpstreamOptions{Link: up, ConnectOptions: ConnectOptions{Principal: kindServer()}}, OnError: func(error) {}})
 	t.Cleanup(func() { _ = browser.Close() })
-	viewer := getGreeter(t, browser, clusterGreeter, at("session:S1"))
+	viewer := getGreeter(t, browser, clusterGreeter, "S1")
 	if got := greet(t, viewer, "a", nil); got != "v1 a" {
 		t.Fatalf("greet a = %q", got)
 	}
@@ -471,7 +497,7 @@ func TestCrossHostReloadBrowsersAreNotParticipantsTheySeeShapeAndResetPushesOrUp
 func TestCrossHostReloadAnAbortWhileAWorkerIsStillPreparingALateOpenClosesItselfAndTheWorkerCanReloadAgain(t *testing.T) {
 	s := setupCluster(t)
 	waitLinked(t, s.server, s.worker)
-	greeter := getGreeter(t, s.server, clusterGreeter, at("session:S1"))
+	greeter := getGreeter(t, s.server, clusterGreeter, "S1")
 	greet(t, greeter, "a", nil)
 	var mu sync.Mutex
 	var log []string
@@ -555,6 +581,7 @@ func (link *droppingLink) Close(reason ...string)              { link.inner.Clos
 
 // clusterPing is cluster.test.ts Ping.
 var clusterPing = Remote("t.cluster-ping", RemoteDef{
+	Host:    NewHostNamed("server"),
 	Version: 1,
 	Input:   tObject(),
 	Variants: Fields[VariantDef]{
@@ -594,8 +621,9 @@ func joinWorker(t *testing.T, server *HostImpl, link func(down *MemoryLink) Link
 	if err := server.Accept(accepted, AcceptOptions{Principal: chordjson.ObjectOf("worker", "w"), Kind: KindHost, Name: new("session:S1")}); err != nil {
 		t.Fatal(err)
 	}
+	options.Self = kindHost()
 	options.Name = "session:S1"
-	options.Upstream = up
+	options.Upstream = &UpstreamOptions{Link: up, ConnectOptions: ConnectOptions{Principal: kindServer()}}
 	options.OnError = func(error) {}
 	worker := CreateHost(options)
 	t.Cleanup(func() { _ = worker.Close() })
@@ -617,7 +645,7 @@ func TestCrossHostReloadAChildThatSaysHelloWhileAReloadRunsIsReconciledAfterItNe
 	modules := &clusterModules{modules: map[string]Facet{"greeter": greeterFacet("v1", false)}}
 	loading := newClusterLatch()
 	t.Cleanup(loading.open)
-	server := CreateHost(HostOptions{Name: "server", OnError: func(error) {}, Loader: clusterPluginLoader(loading.wait)})
+	server := CreateHost(HostOptions{Self: kindHost(), Name: "server", OnError: func(error) {}, Loader: clusterPluginLoader(loading.wait)})
 	t.Cleanup(func() { _ = server.Close() })
 	reloading := clusterReloadAsync(server, []PluginRef{ModuleRef("server-plugin")}, ReloadOptions{Remote: sessionRemote("greeter")})
 	waitFor(t, "the reload to load its modules", func() bool { return hostReloading(server) })
@@ -640,7 +668,7 @@ func TestCrossHostReloadAChildThatSaysHelloWhileAReloadRunsIsReconciledAfterItNe
 	if children := outcome.value.(ReloadReport).Children; len(children) != 0 {
 		t.Fatalf("children = %v, want it not to be a participant", children)
 	}
-	greeter := getGreeter(t, server, clusterGreeter, at("session:S1"))
+	greeter := getGreeter(t, server, clusterGreeter, "S1")
 	if got := greet(t, greeter, "a", nil); got != "v2 a" {
 		t.Fatalf("greet a = %q", got)
 	}
@@ -653,7 +681,7 @@ func TestCrossHostReloadAChildThatSaysHelloWhileAReloadRunsIsReconciledAfterItNe
 func TestCrossHostReloadAChildKeepsThePreviousCodeVersionUntilItsParentRetiredItSpec12(t *testing.T) {
 	s := setupCluster(t)
 	waitLinked(t, s.server, s.worker)
-	greeter := getGreeter(t, s.server, clusterGreeter, at("session:S1"))
+	greeter := getGreeter(t, s.server, clusterGreeter, "S1")
 	if got := greet(t, greeter, "a", nil); got != "v1 a" {
 		t.Fatalf("greet a = %q", got)
 	}
@@ -699,7 +727,7 @@ func TestCrossHostReloadAChildKeepsThePreviousCodeVersionUntilItsParentRetiredIt
 // once" (Pi 00d8d049).
 func TestCrossHostReloadAChildReconciledAfterItsParentRetiredOldCodeVersionsMayRetireItsOwnPreviousOneAtOnce(t *testing.T) {
 	modules := &clusterModules{modules: map[string]Facet{"greeter": greeterFacet("v1", false)}}
-	server := CreateHost(HostOptions{Name: "server", OnError: func(error) {}})
+	server := CreateHost(HostOptions{Self: kindHost(), Name: "server", OnError: func(error) {}})
 	t.Cleanup(func() { _ = server.Close() })
 	plugin := clusterPlugin("server-plugin")
 	if err := server.Install(plugin, LoadOptions{}); err != nil {
@@ -742,7 +770,7 @@ func TestCrossHostReloadAReconciliationRunningWhenAReloadStartsSyncsTheChildOnly
 	t.Cleanup(workerLoading.open)
 	var blockServer, blockWorker atomic.Bool
 	blockWorker.Store(true)
-	server := CreateHost(HostOptions{Name: "server", OnError: func(error) {}, Loader: clusterPluginLoader(func() {
+	server := CreateHost(HostOptions{Self: kindHost(), Name: "server", OnError: func(error) {}, Loader: clusterPluginLoader(func() {
 		if blockServer.Load() {
 			serverLoading.wait()
 		}
@@ -783,7 +811,7 @@ func TestCrossHostReloadAReconciliationRunningWhenAReloadStartsSyncsTheChildOnly
 	if len(report.Children) != 0 || report.CodeVersion != 3 {
 		t.Fatalf("report children %v code version %d, want none and 3", report.Children, report.CodeVersion)
 	}
-	greeter := getGreeter(t, server, clusterGreeter, at("session:S1"))
+	greeter := getGreeter(t, server, clusterGreeter, "S1")
 	if got := greet(t, greeter, "a", nil); got != "v2 a" {
 		t.Fatalf("greet a = %q", got)
 	}
@@ -802,7 +830,7 @@ func TestCrossHostReloadAChildBehindWhoseHelloWaitsForARunningReloadIsFencedAtOn
 	}}}
 	loading := newClusterLatch()
 	t.Cleanup(loading.open)
-	server := CreateHost(HostOptions{Name: "server", OnError: func(error) {}, Loader: clusterPluginLoader(loading.wait)})
+	server := CreateHost(HostOptions{Self: kindHost(), Name: "server", OnError: func(error) {}, Loader: clusterPluginLoader(loading.wait)})
 	t.Cleanup(func() { _ = server.Close() })
 	if err := server.Install(pingFacet, LoadOptions{}); err != nil {
 		t.Fatal(err)
@@ -818,7 +846,7 @@ func TestCrossHostReloadAChildBehindWhoseHelloWaitsForARunningReloadIsFencedAtOn
 	worker, _ := joinWorker(t, server, nil, HostOptions{})
 	// While the server's reload still loads its modules, a worker root (code version 1) calls the server.
 	answer, err := worker.Root(func(ctx Ctx) (any, error) {
-		ping, err := ctx.Get(clusterPing, chordjson.ObjectOf(), at("server"))
+		ping, err := ctx.Get(clusterPing, chordjson.ObjectOf(), nil)
 		if err != nil {
 			return nil, err
 		}
@@ -838,7 +866,7 @@ func TestCrossHostReloadAChildBehindWhoseHelloWaitsForARunningReloadIsFencedAtOn
 // without waiting out the retire deadline" (Pi 00d8d049).
 func TestCrossHostReloadAReconnectingChildBehindItsParentStillRetainingItsPreviousCodeVersionReconcilesWithoutWaitingOutTheRetireDeadline(t *testing.T) {
 	modules := &clusterModules{modules: map[string]Facet{"greeter": greeterFacet("v1", false)}}
-	server := CreateHost(HostOptions{Name: "server", OnError: func(error) {}})
+	server := CreateHost(HostOptions{Self: kindHost(), Name: "server", OnError: func(error) {}})
 	t.Cleanup(func() { _ = server.Close() })
 	// The retire frame is lost: the worker keeps code version 1, not permitted to retire it.
 	worker, up := joinWorker(t, server, func(down *MemoryLink) Link {
@@ -873,7 +901,7 @@ func TestCrossHostReloadAReconnectingChildBehindItsParentStillRetainingItsPrevio
 		t.Fatal(err)
 	}
 	started := time.Now()
-	worker.Connect(up2, LinkOptions{})
+	worker.Connect(up2, ConnectOptions{Principal: kindServer()})
 	waitFor(t, "the worker to be reconciled", func() bool { return worker.CodeVersion() == server.CodeVersion() })
 	if elapsed := time.Since(started); elapsed >= 2*time.Second {
 		t.Fatalf("reconciled after %v", elapsed)
@@ -884,16 +912,17 @@ func TestCrossHostReloadAReconnectingChildBehindItsParentStillRetainingItsPrevio
 // code's resources" (Pi 00d8d049).
 func TestCrossHostReloadForcedRetirementCancelsABrowserCallRelayedToAWorkerBeforeTheServerClosesTheOldCodesResources(t *testing.T) {
 	var log reloadLog
-	server := CreateHost(HostOptions{Name: "server", OnError: func(error) {}})
+	server := CreateHost(HostOptions{Self: kindHost(), Name: "server", OnError: func(error) {}})
 	t.Cleanup(func() { _ = server.Close() })
 	down, up := MemoryLinkPair()
-	worker := CreateHost(HostOptions{Name: "session:S1", Upstream: up, OnError: func(error) {}})
+	worker := CreateHost(HostOptions{Self: kindHost(), Name: "session:S1", Upstream: &UpstreamOptions{Link: up, ConnectOptions: ConnectOptions{Principal: kindServer()}}, OnError: func(error) {}})
 	t.Cleanup(func() { _ = worker.Close() })
 	never, waiting := newClusterLatch(), newClusterLatch()
 	t.Cleanup(never.open)
 	slow := Remote("t.cluster-slow", RemoteDef{
 		Version: 1,
 		Input:   tObject(),
+		Host:    NewHostNamed("session:S1"),
 		Variants: Fields[VariantDef]{
 			{"main", VariantDef{Methods: Fields[MethodSpec]{{"wait", Method(tNull(), tUnknown())}}}},
 		},
@@ -918,6 +947,7 @@ func TestCrossHostReloadForcedRetirementCancelsABrowserCallRelayedToAWorkerBefor
 	server.Route("session:", Route{
 		Authorize: func(Principal, string) (bool, error) { return true, nil },
 		Resolve:   func(string) (Link, error) { return watched, nil },
+		Principal: func(name string) Principal { return map[string]any{"host": name} },
 	})
 	store := Local("t.cluster-store", LocalDef{Version: 1, Input: tObject()})
 	storeFacet := func(version int) Facet {
@@ -941,10 +971,10 @@ func TestCrossHostReloadForcedRetirementCancelsABrowserCallRelayedToAWorkerBefor
 	if err := server.Accept(browserDown, AcceptOptions{Principal: chordjson.ObjectOf("guest", "g")}); err != nil {
 		t.Fatal(err)
 	}
-	browser := CreateHost(HostOptions{Name: "browser", Kind: KindClient, Upstream: browserUp, OnError: func(error) {}})
+	browser := CreateHost(HostOptions{Self: kindHost(), Name: "browser", Kind: KindClient, Upstream: &UpstreamOptions{Link: browserUp, ConnectOptions: ConnectOptions{Principal: kindServer()}}, OnError: func(error) {}})
 	t.Cleanup(func() { _ = browser.Close() })
 	// The relayed call's root runs on the server's code version 1.
-	remoteSlow := getGreeter(t, browser, slow, at("session:S1"))
+	remoteSlow := getGreeter(t, browser, slow, "")
 	call := reloadAsync(func() (any, error) { return callMember(remoteSlow, "wait", nil, nil) })
 	waiting.waitT(t, "the relayed call to reach the worker")
 	for _, facet := range []Facet{storeFacet(2)} {

@@ -84,7 +84,7 @@ func runManagerWorker() int {
 	if name == "" {
 		name = "worker"
 	}
-	host := CreateHost(HostOptions{Name: name, Upstream: NewIpcLink(channel), OnError: func(error) {}})
+	host := CreateHost(HostOptions{Self: kindHost(), Name: name, Upstream: &UpstreamOptions{Link: NewIpcLink(channel), ConnectOptions: ConnectOptions{Principal: kindServer()}}, OnError: func(error) {}})
 	init, err := control.Init(context.Background())
 	if err != nil {
 		return 1
