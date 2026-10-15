@@ -8,6 +8,7 @@ package cloudflare
 import (
 	"errors"
 	"fmt"
+	"reflect"
 	"slices"
 	"sync"
 
@@ -23,7 +24,9 @@ type DurableObjectSqlValue = any
 
 // DurableObjectSqlCursor is the result of one statement.
 type DurableObjectSqlCursor interface {
-	// ToArray returns every result row keyed by column name; empty for a statement that returns none.
+	// Next returns the next result row keyed by column name, and false once there are no more. Get reads no further.
+	Next() (row map[string]DurableObjectSqlValue, ok bool, err error)
+	// ToArray returns the result rows not yet read keyed by column name; empty for a statement that returns none.
 	ToArray() ([]map[string]DurableObjectSqlValue, error)
 }
 
@@ -51,10 +54,13 @@ func (err *RangeError) Error() string {
 
 var errTransactionInactive = errors.New("SQLite transaction handle is no longer active")
 
-// serialQueue runs operations one at a time in call order, so a transaction excludes every other operation.
+// serialQueue runs synchronous operations at once while nothing is queued and holds queued calls behind a transaction
+// (cloudflare.ts SerialQueue). An adapter that finds its operation running before its call returns lets a caller see
+// the write without waiting a turn.
 type serialQueue struct {
-	mu   sync.Mutex
-	tail chan struct{}
+	mu      sync.Mutex
+	tail    chan struct{}
+	pending int
 }
 
 func newSerialQueue() *serialQueue {
@@ -63,16 +69,52 @@ func newSerialQueue() *serialQueue {
 	return &serialQueue{tail: ready}
 }
 
-// run takes the next turn, blocks until every earlier turn has finished, and runs operation.
+// run runs a synchronous operation at once when nothing is queued, and otherwise after every queued turn. The queue
+// is idle only between turns, so the operation excludes every other one while it runs.
 func (queue *serialQueue) run(operation func() error) error {
 	queue.mu.Lock()
+	if queue.pending == 0 {
+		defer queue.mu.Unlock()
+		return operation()
+	}
+	return queue.turn(operation)
+}
+
+// hold takes a turn that may span other work, such as a transaction, and keeps every later call behind it until it
+// ends.
+func (queue *serialQueue) hold(operation func() error) error {
+	queue.mu.Lock()
+	return queue.turn(operation)
+}
+
+// turn queues operation behind every earlier turn and runs it. The caller holds mu; turn releases it.
+func (queue *serialQueue) turn(operation func() error) error {
+	queue.pending++
 	previous := queue.tail
-	turn := make(chan struct{})
-	queue.tail = turn
+	done := make(chan struct{})
+	queue.tail = done
 	queue.mu.Unlock()
 	<-previous
-	defer close(turn)
+	defer func() {
+		queue.mu.Lock()
+		queue.pending--
+		queue.mu.Unlock()
+		close(done)
+	}()
 	return operation()
+}
+
+// storageQueues holds the queue of each storage object, so adapters given the same object share one
+// (cloudflare.ts storageQueues, a WeakMap). An adapted storage lives as long as its Durable Object, so the entry is
+// kept for the process; a storage value that is not comparable has no identity and gets a queue of its own.
+var storageQueues sync.Map
+
+func queueFor(storage DurableObjectSqliteStorage) *serialQueue {
+	if !reflect.TypeOf(storage).Comparable() {
+		return newSerialQueue()
+	}
+	queue, _ := storageQueues.LoadOrStore(storage, newSerialQueue())
+	return queue.(*serialQueue)
 }
 
 // bindValue converts a binding for Durable Object SQL: a []byte is copied, and an integer outside the safe integer
@@ -135,12 +177,24 @@ func (executor *durableObjectExecutor) Run(sql string, params ...durablesqlite.S
 	return err
 }
 
+// Get reads only the cursor's first row.
 func (executor *durableObjectExecutor) Get(sql string, params ...durablesqlite.SqliteValue) (durablesqlite.SqliteRow, error) {
-	rows, err := executor.All(sql, params...)
-	if err != nil || len(rows) == 0 {
+	if err := executor.check(); err != nil {
 		return nil, err
 	}
-	return rows[0], nil
+	bindings, err := bind(params)
+	if err != nil {
+		return nil, err
+	}
+	cursor, err := executor.storage.Sql().Exec(sql, bindings...)
+	if err != nil {
+		return nil, err
+	}
+	row, ok, err := cursor.Next()
+	if err != nil || !ok {
+		return nil, err
+	}
+	return row, nil
 }
 
 func (executor *durableObjectExecutor) All(sql string, params ...durablesqlite.SqliteValue) ([]durablesqlite.SqliteRow, error) {
@@ -165,7 +219,8 @@ func (executor *durableObjectExecutor) All(sql string, params ...durablesqlite.S
 }
 
 // DurableObjectSqliteDatabase is the SqliteDatabase adapter for the SQLite storage of a Cloudflare Durable Object.
-// Integers are numbers; binding an integer outside the safe integer range is a RangeError.
+// Adapters given the same storage object share a queue; direct calls to the underlying storage bypass it. Integers are
+// numbers; binding an integer outside the safe integer range is a RangeError.
 type DurableObjectSqliteDatabase struct {
 	durableObjectExecutor
 	queue *serialQueue
@@ -177,7 +232,7 @@ var _ durablesqlite.SqliteDatabase = (*DurableObjectSqliteDatabase)(nil)
 func NewDurableObjectSqliteDatabase(storage DurableObjectSqliteStorage) *DurableObjectSqliteDatabase {
 	return &DurableObjectSqliteDatabase{
 		durableObjectExecutor: durableObjectExecutor{storage: storage, check: func() error { return nil }},
-		queue:                 newSerialQueue(),
+		queue:                 queueFor(storage),
 	}
 }
 
@@ -212,7 +267,7 @@ func (database *DurableObjectSqliteDatabase) All(sql string, params ...durablesq
 // Transaction runs callback in `ctx.storage.Transaction`, which commits when the callback returns nil and rolls back
 // when it fails. The handle the callback receives is invalid once the callback returns.
 func (database *DurableObjectSqliteDatabase) Transaction(callback func(transaction durablesqlite.SqliteExecutor) error) error {
-	return database.queue.run(func() error {
+	return database.queue.hold(func() error {
 		return database.storage.Transaction(func() error {
 			var mu sync.Mutex
 			active := true
@@ -239,7 +294,8 @@ func (database *DurableObjectSqliteDatabase) Close() error {
 	return database.queue.run(func() error { return nil })
 }
 
-// OpenDurableObjectSqliteStorage opens durable storage on a SQLite-backed Durable Object's `ctx.storage`.
-func OpenDurableObjectSqliteStorage(storage DurableObjectSqliteStorage) (*durablesqlite.SqliteStorage, error) {
-	return durablesqlite.Open(NewDurableObjectSqliteDatabase(storage))
+// OpenDurableObjectSqliteStorage opens durable storage on a SQLite-backed Durable Object, optionally under a table
+// prefix (Options.Prefix). Calls given the same storage object share an operation queue.
+func OpenDurableObjectSqliteStorage(storage DurableObjectSqliteStorage, options ...durablesqlite.Options) (*durablesqlite.SqliteStorage, error) {
+	return durablesqlite.Open(NewDurableObjectSqliteDatabase(storage), options...)
 }

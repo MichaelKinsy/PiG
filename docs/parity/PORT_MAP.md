@@ -742,6 +742,7 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/durable/src/storage/sqlite/database.ts` | `durable/storage/sqlite/database.go` | ✅ |
 | `packages/durable/src/storage/sqlite/index.ts` | `(re-export barrel: the exports are the Go package surface)` | n/a |
 | `packages/durable/src/storage/sqlite/migrations.ts` | `durable/storage/sqlite/migrations.go` | ✅ |
+| `packages/durable/src/storage/sqlite/schema.ts` | `durable/storage/sqlite/schema.go` | ✅ |
 | `packages/durable/src/storage/sqlite/node.ts` | `durable/storage/sqlite/node/node.go` | ✅ |
 | `packages/durable/src/storage/sqlite/storage.ts` | `durable/storage/sqlite/storage.go` | ✅ |
 | `packages/durable/src/storage/sqlite/cloudflare.ts` | `durable/storage/sqlite/cloudflare/cloudflare.go` | ✅ |

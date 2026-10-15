@@ -153,7 +153,7 @@ func (result *future[T]) settled() bool {
 
 func mustOpenMemory(t *testing.T) *NodeSqliteDatabase {
 	t.Helper()
-	database, err := OpenNodeSqliteDatabase(":memory:", NodeSqliteStorageOptions{})
+	database, err := OpenNodeSqliteDatabase(":memory:", NodeSqliteDatabaseOptions{})
 	if err != nil {
 		t.Fatal(err)
 	}

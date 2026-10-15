@@ -308,7 +308,7 @@ type plainDatabase struct{ sqlite.SqliteDatabase }
 
 func TestWorkingSetLoadsThroughADatabaseWithoutARowReader(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "plain.sqlite")
-	database := must(node.OpenNodeSqliteDatabase(path, node.NodeSqliteStorageOptions{}))
+	database := must(node.OpenNodeSqliteDatabase(path, node.NodeSqliteDatabaseOptions{}))
 	if _, ok := any(plainDatabase{database}).(sqlite.TextReader); ok {
 		t.Fatal("the wrapper still exposes a row reader")
 	}

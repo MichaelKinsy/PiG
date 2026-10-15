@@ -449,14 +449,22 @@ func (adapter *NodeSqliteDatabase) Close() error {
 	return errors.Join(errs...)
 }
 
-// NodeSqliteStorageOptions configures a file-backed durable storage connection. A nil field selects its default.
-type NodeSqliteStorageOptions struct {
+// NodeSqliteDatabaseOptions configures a file-backed SQLite connection. A nil field selects its default.
+type NodeSqliteDatabaseOptions struct {
 	// WalAutoCheckpointPages is the SQLite WAL auto-checkpoint threshold. SQLite and this adapter default to 1,000
 	// pages; 0 disables it.
 	WalAutoCheckpointPages *int
 	// BusyTimeoutMs is how long SQLite waits for a competing file lock. SQLite defaults to 0; this adapter defaults to
 	// 5,000 ms.
 	BusyTimeoutMs *int
+}
+
+// NodeSqliteStorageOptions is the connection settings plus the durable storage options: the table Prefix (Pi's
+// SqliteStorageOptions.prefix) and the working set. A nil field selects its default.
+type NodeSqliteStorageOptions struct {
+	NodeSqliteDatabaseOptions
+	// Prefix namespaces every table and index of the durable schema; see sqlite.Options.Prefix.
+	Prefix *string
 	// WorkingSetBytes bounds the decoded entries the storage retains so context reads do not decode the stored history
 	// again. It defaults to sqlite.DefaultWorkingSetBytes; 0 retains nothing.
 	// pig additive (D104): the working set of decoded entries has no Pi counterpart.
@@ -469,7 +477,7 @@ const (
 )
 
 // OpenNodeSqliteDatabase opens and configures a native SQLite database facade, creating the parent directory.
-func OpenNodeSqliteDatabase(path string, options NodeSqliteStorageOptions) (*NodeSqliteDatabase, error) {
+func OpenNodeSqliteDatabase(path string, options NodeSqliteDatabaseOptions) (*NodeSqliteDatabase, error) {
 	checkpointPages := defaultWalAutoCheckpointPages
 	if options.WalAutoCheckpointPages != nil {
 		checkpointPages = *options.WalAutoCheckpointPages
@@ -502,13 +510,19 @@ func OpenNodeSqliteDatabase(path string, options NodeSqliteStorageOptions) (*Nod
 	return adapter, nil
 }
 
-// OpenNodeSqliteStorage opens or creates file-backed durable storage.
+// OpenNodeSqliteStorage opens or creates file-backed durable storage, optionally under a table prefix. An invalid
+// prefix fails before the database or its directory is created.
 func OpenNodeSqliteStorage(path string, options NodeSqliteStorageOptions) (*durablesqlite.SqliteStorage, error) {
-	database, err := OpenNodeSqliteDatabase(path, options)
+	if options.Prefix != nil {
+		if err := durablesqlite.ValidateSqliteSchemaPrefix(*options.Prefix); err != nil {
+			return nil, err
+		}
+	}
+	database, err := OpenNodeSqliteDatabase(path, options.NodeSqliteDatabaseOptions)
 	if err != nil {
 		return nil, err
 	}
-	var retained durablesqlite.Options
+	retained := durablesqlite.Options{Prefix: options.Prefix}
 	if options.WorkingSetBytes != nil {
 		// Options.WorkingSetBytes zero selects the default and a negative value retains nothing.
 		retained.WorkingSetBytes = *options.WorkingSetBytes

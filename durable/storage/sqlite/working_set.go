@@ -40,6 +40,7 @@ type retainedWindow struct {
 //
 // mu orders the set before the database: Commit and the reads take it first and then call the database.
 type workingSet struct {
+	schema        SqliteSchema
 	mu            sync.Mutex
 	budget        int64
 	bytes         int64
@@ -50,8 +51,9 @@ type workingSet struct {
 	conversations map[durable.ConversationId]*durable.ConversationRecord
 }
 
-func newWorkingSet(budget int64) *workingSet {
+func newWorkingSet(budget int64, schema SqliteSchema) *workingSet {
 	return &workingSet{
+		schema:        schema,
 		budget:        budget,
 		windows:       map[durable.ConversationId]*retainedWindow{},
 		conversations: map[durable.ConversationId]*durable.ConversationRecord{},
@@ -95,7 +97,7 @@ func (set *workingSet) conversation(db SqliteDatabase, id durable.ConversationId
 	if record := set.conversations[id]; record != nil {
 		return record, nil
 	}
-	record, err := getRecord[durable.ConversationRecord](db, "SELECT record FROM conversations WHERE id = ?", int64(id))
+	record, err := getRecord[durable.ConversationRecord](db, "SELECT record FROM "+set.schema.Tables.Conversations+" WHERE id = ?", int64(id))
 	if err != nil || record == nil {
 		return nil, err
 	}
@@ -120,8 +122,8 @@ func decodeEntry(text []byte) (decodedEntry, error) {
 }
 
 // loadEntries decodes the entries of one conversation with from <= id <= to, oldest first.
-func loadEntries(db SqliteDatabase, id durable.ConversationId, from, to int64) ([]decodedEntry, error) {
-	const query = "SELECT record FROM entries WHERE conversation_id = ? AND id >= ? AND id <= ? ORDER BY id"
+func loadEntries(db SqliteDatabase, entries string, id durable.ConversationId, from, to int64) ([]decodedEntry, error) {
+	query := "SELECT record FROM " + entries + " WHERE conversation_id = ? AND id >= ? AND id <= ? ORDER BY id"
 	if reader, ok := db.(TextReader); ok {
 		var loaded []decodedEntry
 		err := reader.EachText(query, []SqliteValue{int64(id), from, to}, func(text []byte) error {
@@ -186,7 +188,7 @@ func (set *workingSet) segment(db SqliteDatabase, id durable.ConversationId, fro
 	window.used = set.tick
 	if window.floor > from {
 		if window.floor != noEntries && to < window.floor {
-			loaded, err := loadEntries(db, id, from, to)
+			loaded, err := loadEntries(db, set.schema.Tables.Entries, id, from, to)
 			if err != nil {
 				return nil, err
 			}
@@ -196,7 +198,7 @@ func (set *workingSet) segment(db SqliteDatabase, id durable.ConversationId, fro
 			}
 			return records, nil
 		}
-		loaded, err := loadEntries(db, id, from, window.floor-1)
+		loaded, err := loadEntries(db, set.schema.Tables.Entries, id, from, window.floor-1)
 		if err != nil {
 			return nil, err
 		}

@@ -20,7 +20,7 @@ func databasePath(t *testing.T) string {
 
 func openDatabase(t *testing.T, path string) *node.NodeSqliteDatabase {
 	t.Helper()
-	return must(node.OpenNodeSqliteDatabase(path, node.NodeSqliteStorageOptions{}))
+	return must(node.OpenNodeSqliteDatabase(path, node.NodeSqliteDatabaseOptions{}))
 }
 
 func expectRow(t *testing.T, database sqlite.SqliteExecutor, sqlText string, expected sqlite.SqliteRow) {

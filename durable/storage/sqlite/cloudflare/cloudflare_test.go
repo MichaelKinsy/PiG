@@ -30,21 +30,50 @@ type fakeStorage struct {
 	conn *sql.Conn
 	// lastBindings is what the latest statement with bindings received.
 	lastBindings []cloudflare.DurableObjectSqlValue
+	// onCursorOperation, when set, sees every Next and ToArray a cursor serves (sqlite-cloudflare.test.ts onCursorOperation).
+	onCursorOperation func(operation string)
+	// onExec, when set, sees every statement as it runs.
+	onExec func(text string)
 }
 
+// fakeCursor serves its rows once: Next takes one, ToArray the rest.
 type fakeCursor struct {
-	rows []map[string]cloudflare.DurableObjectSqlValue
+	storage *fakeStorage
+	rows    []map[string]cloudflare.DurableObjectSqlValue
+	index   int
 }
 
-func (cursor fakeCursor) ToArray() ([]map[string]cloudflare.DurableObjectSqlValue, error) {
-	return cursor.rows, nil
+func (cursor *fakeCursor) Next() (map[string]cloudflare.DurableObjectSqlValue, bool, error) {
+	if cursor.storage != nil && cursor.storage.onCursorOperation != nil {
+		cursor.storage.onCursorOperation("next")
+	}
+	if cursor.index >= len(cursor.rows) {
+		return nil, false, nil
+	}
+	cursor.index++
+	return cursor.rows[cursor.index-1], true, nil
+}
+
+func (cursor *fakeCursor) ToArray() ([]map[string]cloudflare.DurableObjectSqlValue, error) {
+	if cursor.storage != nil && cursor.storage.onCursorOperation != nil {
+		cursor.storage.onCursorOperation("toArray")
+	}
+	remaining := cursor.rows[cursor.index:]
+	cursor.index = len(cursor.rows)
+	return remaining, nil
 }
 
 type fakeSql struct{ storage *fakeStorage }
 
 func newFakeStorage(t *testing.T) *fakeStorage {
 	t.Helper()
-	db, err := sql.Open("sqlite", ":memory:")
+	return newFakeStorageOn(t, ":memory:")
+}
+
+// newFakeStorageOn is a fake over the SQLite database at dsn.
+func newFakeStorageOn(t *testing.T, dsn string) *fakeStorage {
+	t.Helper()
+	db, err := sql.Open("sqlite", dsn)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -64,9 +93,12 @@ func (query fakeSql) Exec(text string, bindings ...cloudflare.DurableObjectSqlVa
 	if len(bindings) > 0 {
 		query.storage.lastBindings = bindings
 	}
+	if query.storage.onExec != nil {
+		query.storage.onExec(text)
+	}
 	if len(bindings) == 0 && strings.Contains(strings.TrimRight(strings.TrimSpace(text), "; \t\r\n"), ";") {
 		_, err := conn.ExecContext(context.Background(), text)
-		return fakeCursor{}, err
+		return &fakeCursor{storage: query.storage}, err
 	}
 	rows, err := conn.QueryContext(context.Background(), text, bindings...)
 	if err != nil {
@@ -93,7 +125,7 @@ func (query fakeSql) Exec(text string, bindings ...cloudflare.DurableObjectSqlVa
 		}
 		found = append(found, row)
 	}
-	return fakeCursor{rows: found}, rows.Err()
+	return &fakeCursor{storage: query.storage, rows: found}, rows.Err()
 }
 
 func (storage *fakeStorage) Transaction(closure func() error) error {
@@ -109,11 +141,11 @@ func (storage *fakeStorage) Transaction(closure func() error) error {
 	return err
 }
 
-// packages/durable/test/sqlite-cloudflare.test.ts:55
+// packages/durable/test/sqlite-cloudflare.test.ts:76 (Pi f7e3cb54 runs the suite on a prefixed Durable Object)
 func TestDurableObjectStorageConformance(t *testing.T) {
-	durabletest.RegisterStorageConformance(t, "SqliteStorage on a Durable Object", func(use func(durable.Storage) error) error {
+	durabletest.RegisterStorageConformance(t, "SqliteStorage on a prefixed Durable Object", func(use func(durable.Storage) error) error {
 		var objectStorage cloudflare.DurableObjectSqliteStorage = newFakeStorage(t)
-		storage, err := cloudflare.OpenDurableObjectSqliteStorage(objectStorage)
+		storage, err := cloudflare.OpenDurableObjectSqliteStorage(objectStorage, durablesqlite.Options{Prefix: new("pi_")})
 		if err != nil {
 			return err
 		}
@@ -238,51 +270,242 @@ func TestDurableObjectSqliteAdapter(t *testing.T) {
 		}
 	})
 
-	// packages/durable/test/sqlite-cloudflare.test.ts:110
-	t.Run("queues operations behind an active transaction", func(t *testing.T) {
-		database := cloudflare.NewDurableObjectSqliteDatabase(newFakeStorage(t))
+	// Pi f7e3cb54 sqlite-cloudflare.test.ts:217 replaces "queues operations behind an active transaction": the operations
+	// come from another adapter of the same storage object, and the transaction rolls back.
+	t.Run("runs operations from another adapter after a transaction, outside its rollback", func(t *testing.T) {
+		var storage cloudflare.DurableObjectSqliteStorage = newFakeStorage(t)
+		database := cloudflare.NewDurableObjectSqliteDatabase(storage)
+		other := cloudflare.NewDurableObjectSqliteDatabase(storage)
 		check(t, database.Exec("CREATE TABLE items (id INTEGER PRIMARY KEY)"))
-		var mu sync.Mutex
-		var order []string
-		record := func(entry string) { mu.Lock(); order = append(order, entry); mu.Unlock() }
 		gate := make(chan struct{})
 		inside := make(chan struct{})
-		transactionDone := make(chan struct{})
+		abort := errors.New("abort")
+		transactionDone := make(chan error, 1)
 		go func() {
-			defer close(transactionDone)
-			check(t, database.Transaction(func(handle durablesqlite.SqliteExecutor) error {
+			transactionDone <- database.Transaction(func(handle durablesqlite.SqliteExecutor) error {
 				if err := handle.Run("INSERT INTO items (id) VALUES (?)", 1); err != nil {
 					return err
 				}
 				close(inside)
 				<-gate
-				record("transaction")
-				return nil
-			}))
+				return abort
+			})
 		}()
 		<-inside
-		readDone := make(chan []durablesqlite.SqliteRow)
-		reading := make(chan struct{})
+		type outcome struct {
+			outsideErr, readErr error
+			rows                []durablesqlite.SqliteRow
+		}
+		outcomes := make(chan outcome, 1)
 		go func() {
-			close(reading)
-			rows := must(t, func() ([]durablesqlite.SqliteRow, error) { return database.All("SELECT id FROM items") })
-			record("read")
-			readDone <- rows
+			var result outcome
+			result.outsideErr = other.Run("INSERT INTO items (id) VALUES (?)", 2)
+			result.rows, result.readErr = other.All("SELECT id FROM items")
+			outcomes <- result
 		}()
-		<-reading
-		// The read must still be waiting: give an unqueued read every chance to finish first.
+		// The other adapter's calls must still be waiting: give an unqueued call every chance to run first.
 		for range 2000 {
 			runtime.Gosched()
 		}
 		close(gate)
-		<-transactionDone
-		rows := <-readDone
-		if len(rows) != 1 || rows[0]["id"] != int64(1) {
-			t.Fatalf("rows %v, want the committed row", rows)
+		if err := <-transactionDone; !errors.Is(err, abort) {
+			t.Fatalf("transaction error %v, want the callback's", err)
 		}
-		if !slices.Equal(order, []string{"transaction", "read"}) {
-			t.Fatalf("order %v, want the transaction before the read", order)
+		result := <-outcomes
+		check(t, result.outsideErr)
+		check(t, result.readErr)
+		if len(result.rows) != 1 || result.rows[0]["id"] != int64(2) {
+			t.Fatalf("rows %v, want only the other adapter's row", result.rows)
 		}
 		check(t, database.Close())
 	})
+
+	// Pi f7e3cb54 sqlite-cloudflare.test.ts:233: a direct call to the underlying storage bypasses the queue, so a
+	// transaction rolls it back with its own writes.
+	t.Run("includes direct underlying calls in an active transaction", func(t *testing.T) {
+		storage := newFakeStorage(t)
+		database := cloudflare.NewDurableObjectSqliteDatabase(storage)
+		check(t, database.Exec("CREATE TABLE items (id INTEGER PRIMARY KEY)"))
+		gate := make(chan struct{})
+		opened := make(chan struct{})
+		abort := errors.New("abort")
+		transactionDone := make(chan error, 1)
+		go func() {
+			transactionDone <- database.Transaction(func(handle durablesqlite.SqliteExecutor) error {
+				if err := handle.Run("INSERT INTO items (id) VALUES (?)", 1); err != nil {
+					return err
+				}
+				close(opened)
+				<-gate
+				return abort
+			})
+		}()
+		<-opened
+		_, err := storage.Sql().Exec("INSERT INTO items (id) VALUES (?)", 2)
+		check(t, err)
+		close(gate)
+		if err := <-transactionDone; !errors.Is(err, abort) {
+			t.Fatalf("transaction error %v, want the callback's", err)
+		}
+		if ids := queryIds(t, storage, "SELECT id FROM items ORDER BY id"); len(ids) != 0 {
+			t.Fatalf("rows %v remain, want the direct call rolled back with the transaction", ids)
+		}
+	})
+
+	// Pi f7e3cb54 sqlite-cloudflare.test.ts:84
+	t.Run("keeps schema names unprefixed by default", func(t *testing.T) {
+		storage := newFakeStorage(t)
+		_, err := cloudflare.OpenDurableObjectSqliteStorage(storage)
+		check(t, err)
+		names := schemaNames(t, storage)
+		if !slices.Contains(names, "durable_schema") || slices.Contains(names, "pi_durable_schema") {
+			t.Fatalf("names %v, want durable_schema and no pi_ prefix", names)
+		}
+		if version := queryIds(t, storage, "SELECT version FROM durable_schema"); !slices.Equal(version, []int64{1}) {
+			t.Fatalf("schema version %v, want 1", version)
+		}
+	})
+
+	// Pi f7e3cb54 sqlite-cloudflare.test.ts:91
+	t.Run("prefixes pi's tables and indexes without changing host tables", func(t *testing.T) {
+		storage := newFakeStorage(t)
+		database := cloudflare.NewDurableObjectSqliteDatabase(storage)
+		check(t, database.Exec("CREATE TABLE host_notes (text TEXT)"))
+		check(t, database.Exec("CREATE TABLE tasks (text TEXT)"))
+		_, err := cloudflare.OpenDurableObjectSqliteStorage(storage, durablesqlite.Options{Prefix: new("pi_")})
+		check(t, err)
+		names := schemaNames(t, storage)
+		if !slices.Contains(names, "host_notes") || !slices.Contains(names, "tasks") || slices.Contains(names, "pi_host_notes") {
+			t.Fatalf("names %v, want the host tables unchanged", names)
+		}
+		var piNames []string
+		for _, name := range names {
+			if name != "host_notes" && name != "tasks" {
+				piNames = append(piNames, name)
+			}
+		}
+		if len(piNames) <= 10 {
+			t.Fatalf("pi names %v, want more than 10", piNames)
+		}
+		for _, name := range piNames {
+			if !strings.HasPrefix(name, "pi_") {
+				t.Fatalf("name %s is not prefixed", name)
+			}
+		}
+		if !slices.Contains(piNames, "pi_tasks") || !slices.Contains(piNames, "pi_durable_schema") {
+			t.Fatalf("pi names %v lack pi_tasks or pi_durable_schema", piNames)
+		}
+	})
+
+	// Pi f7e3cb54 sqlite-cloudflare.test.ts:112: two storages with their own prefixes open and commit at once on one
+	// storage object; they share one queue, so their transactions never overlap.
+	t.Run("isolates concurrently opened prefixes on one Durable Object", func(t *testing.T) {
+		var objectStorage cloudflare.DurableObjectSqliteStorage = newFakeStorage(t)
+		var first, second *durablesqlite.SqliteStorage
+		var firstErr, secondErr error
+		var opened sync.WaitGroup
+		opened.Go(func() {
+			first, firstErr = cloudflare.OpenDurableObjectSqliteStorage(objectStorage, durablesqlite.Options{Prefix: new("first_")})
+		})
+		opened.Go(func() {
+			second, secondErr = cloudflare.OpenDurableObjectSqliteStorage(objectStorage, durablesqlite.Options{Prefix: new("second_")})
+		})
+		opened.Wait()
+		check(t, firstErr)
+		check(t, secondErr)
+		entryId := durable.IdFromNumber[durable.EntryId](2)
+		commitEntry := func(storage *durablesqlite.SqliteStorage, kind string) error {
+			_, err := storage.Commit(context.Background(), []durable.StorageWrite{
+				durable.ConversationWrite{Value: durable.ConversationRecord{Id: durable.ROOT_CONVERSATION_ID}},
+				durable.EntryWrite{Value: durable.EntryRecord{Id: entryId, ConversationId: durable.ROOT_CONVERSATION_ID, Kind: kind}},
+			})
+			return err
+		}
+		var committed sync.WaitGroup
+		var firstCommit, secondCommit error
+		committed.Go(func() { firstCommit = commitEntry(first, "first") })
+		committed.Go(func() { secondCommit = commitEntry(second, "second") })
+		committed.Wait()
+		check(t, firstCommit)
+		check(t, secondCommit)
+		for storage, kind := range map[*durablesqlite.SqliteStorage]string{first: "first", second: "second"} {
+			found := must(t, func() (*durable.EntryAt, error) { return storage.Entry(context.Background(), entryId) })
+			if found == nil || found.Entry.Kind != kind {
+				t.Fatalf("entry %v, want kind %s", found, kind)
+			}
+		}
+		check(t, first.Close(context.Background()))
+		check(t, second.Close(context.Background()))
+	})
+
+	// Pi f7e3cb54 sqlite-cloudflare.test.ts:141
+	t.Run("rejects invalid and reserved prefixes", func(t *testing.T) {
+		for _, tc := range []struct{ prefix, message string }{{"", `Invalid SQLite schema prefix ""`}, {"bad-prefix", `Invalid SQLite schema prefix "bad-prefix"`}, {"sqlite_pi_", `SQLite schema prefix "sqlite_pi_" is reserved`}} {
+			_, err := cloudflare.OpenDurableObjectSqliteStorage(newFakeStorage(t), durablesqlite.Options{Prefix: new(tc.prefix)})
+			if err == nil || !strings.Contains(err.Error(), tc.message) {
+				t.Errorf("prefix %q: error %v, want one including %q", tc.prefix, err, tc.message)
+			}
+		}
+	})
+
+	// Pi f7e3cb54 sqlite-cloudflare.test.ts:157
+	t.Run("reads only the cursor's first row for get", func(t *testing.T) {
+		storage := newFakeStorage(t)
+		database := cloudflare.NewDurableObjectSqliteDatabase(storage)
+		check(t, database.Exec("CREATE TABLE items (id INTEGER PRIMARY KEY)"))
+		check(t, database.Run("INSERT INTO items (id) VALUES (1), (2)"))
+		var operations []string
+		storage.onCursorOperation = func(operation string) { operations = append(operations, operation) }
+		row := must(t, func() (durablesqlite.SqliteRow, error) { return database.Get("SELECT id FROM items ORDER BY id") })
+		if !reflect.DeepEqual(row, durablesqlite.SqliteRow{"id": int64(1)}) {
+			t.Fatalf("row %v, want id 1", row)
+		}
+		if !slices.Equal(operations, []string{"next"}) {
+			t.Fatalf("cursor operations %v, want [next]", operations)
+		}
+	})
+
+	// Pi f7e3cb54 sqlite-cloudflare.test.ts:193 "runs an uncontended statement before returning its promise". Calls block
+	// in Go, so the statement has run when Run returns; the queue takes no turn for it while it is idle.
+	t.Run("runs an uncontended statement before returning", func(t *testing.T) {
+		storage := newFakeStorage(t)
+		database := cloudflare.NewDurableObjectSqliteDatabase(storage)
+		check(t, database.Exec("CREATE TABLE items (id INTEGER PRIMARY KEY)"))
+		check(t, database.Run("INSERT INTO items (id) VALUES (?)", 1))
+		if ids := queryIds(t, storage, "SELECT id FROM items ORDER BY id"); !slices.Equal(ids, []int64{1}) {
+			t.Fatalf("rows %v, want the written row", ids)
+		}
+	})
+}
+
+// schemaNames lists the tables and indexes of the fake's database, without SQLite's own.
+func schemaNames(t *testing.T, storage *fakeStorage) []string {
+	t.Helper()
+	rows, err := storage.conn.QueryContext(context.Background(), "SELECT name FROM sqlite_master WHERE type IN ('table', 'index') AND name NOT LIKE 'sqlite_%'")
+	check(t, err)
+	defer func() { _ = rows.Close() }()
+	var names []string
+	for rows.Next() {
+		var name string
+		check(t, rows.Scan(&name))
+		names = append(names, name)
+	}
+	check(t, rows.Err())
+	return names
+}
+
+// queryIds reads the one integer column of every row a query returns, bypassing the adapter.
+func queryIds(t *testing.T, storage *fakeStorage, query string) []int64 {
+	t.Helper()
+	rows, err := storage.conn.QueryContext(context.Background(), query)
+	check(t, err)
+	defer func() { _ = rows.Close() }()
+	var values []int64
+	for rows.Next() {
+		var value int64
+		check(t, rows.Scan(&value))
+		values = append(values, value)
+	}
+	check(t, rows.Err())
+	return values
 }

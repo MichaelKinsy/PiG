@@ -83,6 +83,10 @@ func (query failingSql) Exec(string, ...cloudflare.DurableObjectSqlValue) (cloud
 
 type failingCursor struct{ err error }
 
+func (cursor failingCursor) Next() (map[string]cloudflare.DurableObjectSqlValue, bool, error) {
+	return nil, false, cursor.err
+}
+
 func (cursor failingCursor) ToArray() ([]map[string]cloudflare.DurableObjectSqlValue, error) {
 	return nil, cursor.err
 }

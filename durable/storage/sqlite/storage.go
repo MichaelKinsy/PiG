@@ -269,6 +269,7 @@ type SqliteStorage struct {
 
 	retained *workingSet
 
+	schema        SqliteSchema
 	mu            sync.Mutex
 	nextId        int64
 	closed        bool
@@ -280,8 +281,13 @@ type SqliteStorage struct {
 
 var _ durable.Storage = (*SqliteStorage)(nil)
 
-// Options configures a SqliteStorage.
+// Options configures a SqliteStorage. Prefix is Pi's SqliteStorageOptions.prefix.
 type Options struct {
+	// Prefix namespaces every table and index of the durable schema, for a database shared with other tables. It must
+	// be a SQLite identifier and must not use SQLite's reserved `sqlite_` prefix. Existing data is not migrated when it
+	// changes. Nil leaves the names unprefixed; a present empty prefix is invalid.
+	Prefix *string
+
 	// WorkingSetBytes bounds the decoded entries the storage retains for context reads: zero selects
 	// DefaultWorkingSetBytes and a negative value retains nothing.
 	WorkingSetBytes int64
@@ -289,7 +295,11 @@ type Options struct {
 
 // Open initializes storage over an owned SQLite database facade. A failure closes the database.
 func Open(db SqliteDatabase, options ...Options) (*SqliteStorage, error) {
-	storage, err := open(db)
+	var prefix *string
+	if len(options) > 0 {
+		prefix = options[0].Prefix
+	}
+	storage, err := open(db, prefix)
 	if err != nil {
 		// Preserve the initialization failure.
 		_ = db.Close()
@@ -299,15 +309,19 @@ func Open(db SqliteDatabase, options ...Options) (*SqliteStorage, error) {
 	if len(options) > 0 && options[0].WorkingSetBytes != 0 {
 		budget = max(options[0].WorkingSetBytes, 0)
 	}
-	storage.retained = newWorkingSet(budget)
+	storage.retained = newWorkingSet(budget, storage.schema)
 	return storage, nil
 }
 
-func open(db SqliteDatabase) (*SqliteStorage, error) {
-	if err := ApplySqliteMigrations(db, nil); err != nil {
+func open(db SqliteDatabase, prefix *string) (*SqliteStorage, error) {
+	schema, err := CreateSqliteSchema(prefix)
+	if err != nil {
 		return nil, err
 	}
-	metadata, err := db.Get("SELECT next_id, next_seq FROM durable_metadata WHERE singleton = 1")
+	if err := ApplySqliteMigrationsForSchema(db, schema, nil); err != nil {
+		return nil, err
+	}
+	metadata, err := db.Get("SELECT next_id, next_seq FROM " + schema.Tables.DurableMetadata + " WHERE singleton = 1")
 	if err != nil {
 		return nil, err
 	}
@@ -318,7 +332,7 @@ func open(db SqliteDatabase) (*SqliteStorage, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &SqliteStorage{db: db, nextId: nextId}, nil
+	return &SqliteStorage{db: db, schema: schema, nextId: nextId}, nil
 }
 
 func metadataNextId(metadata SqliteRow) (int64, error) {
@@ -354,7 +368,7 @@ func (storage *SqliteStorage) Commit(_ context.Context, batch []durable.StorageW
 		defer storage.retained.mu.Unlock()
 	}
 	err = storage.db.Transaction(func(transaction SqliteExecutor) error {
-		metadata, err := transaction.Get("SELECT next_id, next_seq FROM durable_metadata WHERE singleton = 1")
+		metadata, err := transaction.Get("SELECT next_id, next_seq FROM " + storage.schema.Tables.DurableMetadata + " WHERE singleton = 1")
 		if err != nil {
 			return err
 		}
@@ -370,15 +384,15 @@ func (storage *SqliteStorage) Commit(_ context.Context, batch []durable.StorageW
 			return err
 		}
 		seq := durable.Seq(nextSeq)
-		if err := checkGlobalIds(transaction, batch); err != nil {
+		if err := storage.checkGlobalIds(transaction, batch); err != nil {
 			return err
 		}
-		if err := checkDocumentActions(transaction, actions); err != nil {
+		if err := storage.checkDocumentActions(transaction, actions); err != nil {
 			return err
 		}
 		committedEntries = committedEntries[:0]
 		for _, write := range batch {
-			entryText, err := applyTableWrite(transaction, write, seq)
+			entryText, err := storage.applyTableWrite(transaction, write, seq)
 			if err != nil {
 				return err
 			}
@@ -388,11 +402,11 @@ func (storage *SqliteStorage) Commit(_ context.Context, batch []durable.StorageW
 				})
 			}
 		}
-		if err := applyDocumentActions(transaction, actions, seq); err != nil {
+		if err := storage.applyDocumentActions(transaction, actions, seq); err != nil {
 			return err
 		}
 		if err := transaction.Run(
-			"UPDATE durable_metadata SET next_id = ?, next_seq = ? WHERE singleton = 1",
+			"UPDATE "+storage.schema.Tables.DurableMetadata+" SET next_id = ?, next_seq = ? WHERE singleton = 1",
 			strconv.FormatInt(max(storedNextId, candidateNextId), 10),
 			int64(seq)+1,
 		); err != nil {
@@ -435,7 +449,7 @@ func (storage *SqliteStorage) Conversation(
 	if err := storage.assertOpen(); err != nil {
 		return nil, err
 	}
-	return getRecord[durable.ConversationRecord](storage.db, "SELECT record FROM conversations WHERE id = ?", id)
+	return getRecord[durable.ConversationRecord](storage.db, "SELECT record FROM "+storage.schema.Tables.Conversations+" WHERE id = ?", id)
 }
 
 func getRecord[T any](executor SqliteExecutor, sqlText string, params ...SqliteValue) (*T, error) {
@@ -505,7 +519,7 @@ func (storage *SqliteStorage) ScanConversations(
 	params = append(params, int64(limit)+1)
 	records, err := allRecords[durable.ConversationRecord](
 		storage.db,
-		"SELECT record FROM conversations WHERE "+strings.Join(clauses, " AND ")+" ORDER BY id "+direction+" LIMIT ?",
+		"SELECT record FROM "+storage.schema.Tables.Conversations+" WHERE "+strings.Join(clauses, " AND ")+" ORDER BY id "+direction+" LIMIT ?",
 		params...,
 	)
 	if err != nil {
@@ -575,7 +589,7 @@ func (storage *SqliteStorage) readEntry(
 			return nil, durable.NewStorageRequestError(fmt.Sprintf("Unknown conversation: %d", *conversationId))
 		}
 	}
-	row, err := storage.db.Get("SELECT record, commit_seq FROM entries WHERE id = ?", int64(id))
+	row, err := storage.db.Get("SELECT record, commit_seq FROM "+storage.schema.Tables.Entries+" WHERE id = ?", int64(id))
 	if err != nil || row == nil {
 		return nil, err
 	}
@@ -633,13 +647,13 @@ func (storage *SqliteStorage) readLatestHeadMarker(
 		if upper == nil {
 			marker, err = getRecord[durable.EntryRecord](
 				storage.db,
-				"SELECT record FROM entries WHERE conversation_id = ? AND head IS NOT NULL ORDER BY id DESC LIMIT 1",
+				"SELECT record FROM "+storage.schema.Tables.Entries+" WHERE conversation_id = ? AND head IS NOT NULL ORDER BY id DESC LIMIT 1",
 				int64(conversation.Id),
 			)
 		} else {
 			marker, err = getRecord[durable.EntryRecord](
 				storage.db,
-				"SELECT record FROM entries WHERE conversation_id = ? AND head IS NOT NULL AND id <= ? ORDER BY id DESC LIMIT 1",
+				"SELECT record FROM "+storage.schema.Tables.Entries+" WHERE conversation_id = ? AND head IS NOT NULL AND id <= ? ORDER BY id DESC LIMIT 1",
 				int64(conversation.Id),
 				*upper,
 			)
@@ -711,7 +725,7 @@ func (storage *SqliteStorage) readEntries(
 		params = append(params, int64(limit+1-len(values)))
 		records, err := allRecords[durable.EntryRecord](
 			storage.db,
-			"SELECT record FROM entries WHERE "+strings.Join(clauses, " AND ")+" ORDER BY id DESC LIMIT ?",
+			"SELECT record FROM "+storage.schema.Tables.Entries+" WHERE "+strings.Join(clauses, " AND ")+" ORDER BY id DESC LIMIT ?",
 			params...,
 		)
 		if err != nil {
@@ -809,7 +823,7 @@ func (storage *SqliteStorage) readEntriesAscending(
 		params = append(params, int64(limit+1-len(values)))
 		records, err := allRecords[durable.EntryRecord](
 			storage.db,
-			"SELECT record FROM entries WHERE "+strings.Join(clauses, " AND ")+" ORDER BY id ASC LIMIT ?",
+			"SELECT record FROM "+storage.schema.Tables.Entries+" WHERE "+strings.Join(clauses, " AND ")+" ORDER BY id ASC LIMIT ?",
 			params...,
 		)
 		if err != nil {
@@ -828,7 +842,7 @@ func (storage *SqliteStorage) Task(_ context.Context, id durable.TaskId) (*store
 	if err := storage.assertOpen(); err != nil {
 		return nil, err
 	}
-	return getRecord[storedTask](storage.db, "SELECT record FROM tasks WHERE id = ?", int64(id))
+	return getRecord[storedTask](storage.db, "SELECT record FROM "+storage.schema.Tables.Tasks+" WHERE id = ?", int64(id))
 }
 
 // ScanTasks scans task records matching every supplied filter by ID in query.Order, ascending by default.
@@ -868,7 +882,7 @@ func (storage *SqliteStorage) ScanTasks(
 	params = append(params, int64(limit)+1)
 	records, err := allRecords[storedTask](
 		storage.db,
-		"SELECT record FROM tasks WHERE "+strings.Join(clauses, " AND ")+" ORDER BY id "+direction+" LIMIT ?",
+		"SELECT record FROM "+storage.schema.Tables.Tasks+" WHERE "+strings.Join(clauses, " AND ")+" ORDER BY id "+direction+" LIMIT ?",
 		params...,
 	)
 	if err != nil {
@@ -891,7 +905,7 @@ func (storage *SqliteStorage) Submission(
 	if err := storage.assertOpen(); err != nil {
 		return nil, err
 	}
-	return getRecord[durable.SubmissionRecord](storage.db, "SELECT record FROM submissions WHERE id = ?", int64(id))
+	return getRecord[durable.SubmissionRecord](storage.db, "SELECT record FROM "+storage.schema.Tables.Submissions+" WHERE id = ?", int64(id))
 }
 
 // ScanSubmissions scans submissions matching every supplied filter by ID in query.Order, ascending by default.
@@ -919,7 +933,7 @@ func (storage *SqliteStorage) ScanSubmissions(
 	params = append(params, int64(limit)+1)
 	records, err := allRecords[durable.SubmissionRecord](
 		storage.db,
-		"SELECT record FROM submissions WHERE "+strings.Join(clauses, " AND ")+" ORDER BY id "+direction+" LIMIT ?",
+		"SELECT record FROM "+storage.schema.Tables.Submissions+" WHERE "+strings.Join(clauses, " AND ")+" ORDER BY id "+direction+" LIMIT ?",
 		params...,
 	)
 	if err != nil {
@@ -937,7 +951,7 @@ func (storage *SqliteStorage) SubmissionByRequest(
 	}
 	return getRecord[durable.SubmissionRecord](
 		storage.db,
-		"SELECT record FROM submissions WHERE conversation_id = ? AND request_id = ?",
+		"SELECT record FROM "+storage.schema.Tables.Submissions+" WHERE conversation_id = ? AND request_id = ?",
 		int64(conversationId),
 		encodeIndexedString(requestId),
 	)
@@ -953,12 +967,12 @@ func (storage *SqliteStorage) FindDocument(
 	parts := addressPartsOf(address.Kind, address.Scope, address.Key)
 	params := []SqliteValue{parts.kind, parts.scopeKind, parts.ownerId, parts.family, parts.keyValue}
 	if at.Current {
-		return getRecord[durable.DocumentRecord](storage.db, `SELECT record FROM documents
+		return getRecord[durable.DocumentRecord](storage.db, `SELECT record FROM `+storage.schema.Tables.Documents+`
 					WHERE kind = ? AND scope_kind = ? AND owner_id = ? AND family = ? AND key_value = ?
 					AND retired_at IS NULL ORDER BY created_at DESC LIMIT 1`, params...)
 	}
 	params = append(params, int64(at.Seq), int64(at.Seq))
-	return getRecord[durable.DocumentRecord](storage.db, `SELECT record FROM documents
+	return getRecord[durable.DocumentRecord](storage.db, `SELECT record FROM `+storage.schema.Tables.Documents+`
 					WHERE kind = ? AND scope_kind = ? AND owner_id = ? AND family = ? AND key_value = ?
 					AND created_at <= ? AND (retired_at IS NULL OR retired_at > ?)
 					ORDER BY created_at DESC LIMIT 1`, params...)
@@ -975,7 +989,7 @@ func (storage *SqliteStorage) Document(
 	// The record and revision queries must observe one committed state; a commit between them can replace the base.
 	var stored *durable.StoredDocument
 	err := storage.db.Transaction(func(transaction SqliteExecutor) (err error) {
-		stored, err = materializeDocument(transaction, id, at)
+		stored, err = storage.materializeDocument(transaction, id, at)
 		return err
 	})
 	return stored, err
@@ -1008,7 +1022,7 @@ func (storage *SqliteStorage) ScanDocuments(
 	params = append(params, int64(limit)+1)
 	records, err := allRecords[durable.DocumentRecord](
 		storage.db,
-		"SELECT record FROM documents WHERE "+strings.Join(clauses, " AND ")+" ORDER BY id LIMIT ?",
+		"SELECT record FROM "+storage.schema.Tables.Documents+" WHERE "+strings.Join(clauses, " AND ")+" ORDER BY id LIMIT ?",
 		params...,
 	)
 	if err != nil {
@@ -1068,13 +1082,13 @@ func (storage *SqliteStorage) admitRead(read func() error) error {
 }
 
 func (storage *SqliteStorage) readConversation(id durable.ConversationId) (*durable.ConversationRecord, error) {
-	return getRecord[durable.ConversationRecord](storage.db, "SELECT record FROM conversations WHERE id = ?", int64(id))
+	return getRecord[durable.ConversationRecord](storage.db, "SELECT record FROM "+storage.schema.Tables.Conversations+" WHERE id = ?", int64(id))
 }
 
-func materializeDocument(
+func (storage *SqliteStorage) materializeDocument(
 	executor SqliteExecutor, id durable.DocumentId, at durable.DocumentPoint,
 ) (*durable.StoredDocument, error) {
-	record, err := getRecord[durable.DocumentRecord](executor, "SELECT record FROM documents WHERE id = ?", int64(id))
+	record, err := getRecord[durable.DocumentRecord](executor, "SELECT record FROM "+storage.schema.Tables.Documents+" WHERE id = ?", int64(id))
 	if err != nil || record == nil {
 		return nil, err
 	}
@@ -1088,7 +1102,7 @@ func materializeDocument(
 	if !at.Current {
 		upper = int64(at.Seq)
 	}
-	base, err := executor.Get(`SELECT seq, kind, version, content FROM document_revisions
+	base, err := executor.Get(`SELECT seq, kind, version, content FROM `+storage.schema.Tables.DocumentRevisions+`
 				WHERE document_id = ? AND kind = 'base' AND seq <= ? ORDER BY seq DESC LIMIT 1`, int64(id), upper)
 	if err != nil {
 		return nil, err
@@ -1112,7 +1126,7 @@ func materializeDocument(
 	if err != nil {
 		return nil, err
 	}
-	tail, err := executor.All(`SELECT seq, kind, version, content FROM document_revisions
+	tail, err := executor.All(`SELECT seq, kind, version, content FROM `+storage.schema.Tables.DocumentRevisions+`
 				WHERE document_id = ? AND seq > ? AND seq <= ? ORDER BY seq`, int64(id), baseSeq, upper)
 	if err != nil {
 		return nil, err
@@ -1196,14 +1210,14 @@ func writeTable(write durable.StorageWrite) (int64, tableName, bool) {
 	}
 }
 
-func checkGlobalIds(executor SqliteExecutor, batch []durable.StorageWrite) error {
+func (storage *SqliteStorage) checkGlobalIds(executor SqliteExecutor, batch []durable.StorageWrite) error {
 	claimed := map[int64]tableName{}
 	for _, write := range batch {
 		id, table, ok := writeTable(write)
 		if !ok {
 			continue
 		}
-		row, err := executor.Get("SELECT record_type FROM record_ids WHERE id = ?", id)
+		row, err := executor.Get("SELECT record_type FROM "+storage.schema.Tables.RecordIds+" WHERE id = ?", id)
 		if err != nil {
 			return err
 		}
@@ -1271,7 +1285,7 @@ func prepareDocumentActions(batch []durable.StorageWrite) (*documentActions, err
 	return actions, nil
 }
 
-func checkDocumentActions(executor SqliteExecutor, actions *documentActions) error {
+func (storage *SqliteStorage) checkDocumentActions(executor SqliteExecutor, actions *documentActions) error {
 	liveCounts := map[addressParts]int{}
 	var liveOrder []addressParts
 	for _, id := range actions.order {
@@ -1279,7 +1293,7 @@ func checkDocumentActions(executor SqliteExecutor, actions *documentActions) err
 		if action.copy != nil && actions.has(action.copy.Id) {
 			return fmt.Errorf("Document copy %d source is changed in the copy batch", id)
 		}
-		existing, err := getRecord[durable.DocumentRecord](executor, "SELECT record FROM documents WHERE id = ?", int64(id))
+		existing, err := getRecord[durable.DocumentRecord](executor, "SELECT record FROM "+storage.schema.Tables.Documents+" WHERE id = ?", int64(id))
 		if err != nil {
 			return err
 		}
@@ -1294,7 +1308,7 @@ func checkDocumentActions(executor SqliteExecutor, actions *documentActions) err
 		}
 		if action.content != nil && action.content.Kind == durable.ContentDelta {
 			previous, err := executor.Get(
-				"SELECT version FROM document_revisions WHERE document_id = ? ORDER BY seq DESC LIMIT 1", int64(id),
+				"SELECT version FROM "+storage.schema.Tables.DocumentRevisions+" WHERE document_id = ? ORDER BY seq DESC LIMIT 1", int64(id),
 			)
 			if err != nil {
 				return err
@@ -1319,7 +1333,7 @@ func checkDocumentActions(executor SqliteExecutor, actions *documentActions) err
 		live, counted := liveCounts[parts]
 		if !counted {
 			liveOrder = append(liveOrder, parts)
-			current, err := currentDocumentId(executor, parts)
+			current, err := storage.currentDocumentId(executor, parts)
 			if err != nil {
 				return err
 			}
@@ -1344,15 +1358,15 @@ func checkDocumentActions(executor SqliteExecutor, actions *documentActions) err
 }
 
 // currentDocumentId reports whether an incarnation is current at the address.
-func currentDocumentId(executor SqliteExecutor, parts addressParts) (bool, error) {
-	row, err := executor.Get(`SELECT id FROM documents
+func (storage *SqliteStorage) currentDocumentId(executor SqliteExecutor, parts addressParts) (bool, error) {
+	row, err := executor.Get(`SELECT id FROM `+storage.schema.Tables.Documents+`
 				WHERE kind = ? AND scope_kind = ? AND owner_id = ? AND family = ? AND key_value = ? AND retired_at IS NULL
 				LIMIT 1`, parts.kind, parts.scopeKind, parts.ownerId, parts.family, parts.keyValue)
 	return row != nil, err
 }
 
 // applyTableWrite stores one write. For an entry it also returns the stored JSON text.
-func applyTableWrite(executor SqliteExecutor, write durable.StorageWrite, seq durable.Seq) (entryText string, err error) {
+func (storage *SqliteStorage) applyTableWrite(executor SqliteExecutor, write durable.StorageWrite, seq durable.Seq) (entryText string, err error) {
 	switch typed := write.(type) {
 	case durable.ConversationWrite:
 		value := typed.Value
@@ -1360,7 +1374,7 @@ func applyTableWrite(executor SqliteExecutor, write durable.StorageWrite, seq du
 		if err != nil {
 			return "", err
 		}
-		if err := claimId(executor, int64(value.Id), tableConversation); err != nil {
+		if err := storage.claimId(executor, int64(value.Id), tableConversation); err != nil {
 			return "", err
 		}
 		var ownerConversation, ownerTask SqliteValue
@@ -1369,12 +1383,12 @@ func applyTableWrite(executor SqliteExecutor, write durable.StorageWrite, seq du
 			ownerTask = int64(value.Owner.TaskId)
 		}
 		return "", executor.Run(
-			"INSERT INTO conversations (id, owner_conversation_id, owner_task_id, record) VALUES (?, ?, ?, ?)",
+			"INSERT INTO "+storage.schema.Tables.Conversations+" (id, owner_conversation_id, owner_task_id, record) VALUES (?, ?, ?, ?)",
 			int64(value.Id), ownerConversation, ownerTask, record,
 		)
 	case durable.EntryWrite:
 		value := typed.Value
-		if err := claimId(executor, int64(value.Id), tableEntry); err != nil {
+		if err := storage.claimId(executor, int64(value.Id), tableEntry); err != nil {
 			return "", err
 		}
 		var head SqliteValue
@@ -1386,12 +1400,12 @@ func applyTableWrite(executor SqliteExecutor, write durable.StorageWrite, seq du
 			return "", err
 		}
 		return record, executor.Run(
-			"INSERT INTO entries (id, conversation_id, head, commit_seq, record) VALUES (?, ?, ?, ?, ?)",
+			"INSERT INTO "+storage.schema.Tables.Entries+" (id, conversation_id, head, commit_seq, record) VALUES (?, ?, ?, ?, ?)",
 			int64(value.Id), int64(value.ConversationId), head, int64(seq), record,
 		)
 	case durable.TaskWrite:
 		value := typed.Value
-		if err := claimId(executor, int64(value.Id), tableTask); err != nil {
+		if err := storage.claimId(executor, int64(value.Id), tableTask); err != nil {
 			return "", err
 		}
 		record, err := encodeJSON(value)
@@ -1399,7 +1413,7 @@ func applyTableWrite(executor SqliteExecutor, write durable.StorageWrite, seq du
 			return "", err
 		}
 		return "", executor.Run(
-			`INSERT INTO tasks (id, conversation_id, kind, status, abort_requested, background, record)
+			`INSERT INTO `+storage.schema.Tables.Tasks+` (id, conversation_id, kind, status, abort_requested, background, record)
 						VALUES (?, ?, ?, ?, ?, ?, ?)
 						ON CONFLICT(id) DO UPDATE SET conversation_id = excluded.conversation_id, kind = excluded.kind,
 						status = excluded.status, abort_requested = excluded.abort_requested,
@@ -1414,7 +1428,7 @@ func applyTableWrite(executor SqliteExecutor, write durable.StorageWrite, seq du
 		)
 	case durable.SubmissionWrite:
 		value := typed.Value
-		if err := claimId(executor, int64(value.Id), tableSubmission); err != nil {
+		if err := storage.claimId(executor, int64(value.Id), tableSubmission); err != nil {
 			return "", err
 		}
 		var requestId SqliteValue
@@ -1426,7 +1440,7 @@ func applyTableWrite(executor SqliteExecutor, write durable.StorageWrite, seq du
 			return "", err
 		}
 		return "", executor.Run(
-			`INSERT INTO submissions (id, conversation_id, request_id, status, record) VALUES (?, ?, ?, ?, ?)
+			`INSERT INTO `+storage.schema.Tables.Submissions+` (id, conversation_id, request_id, status, record) VALUES (?, ?, ?, ?, ?)
 						ON CONFLICT(id) DO UPDATE SET conversation_id = excluded.conversation_id,
 						request_id = excluded.request_id, status = excluded.status, record = excluded.record`,
 			int64(value.Id), int64(value.ConversationId), requestId, string(value.Status), record,
@@ -1436,14 +1450,14 @@ func applyTableWrite(executor SqliteExecutor, write durable.StorageWrite, seq du
 	}
 }
 
-func claimId(executor SqliteExecutor, id int64, table tableName) error {
-	return executor.Run("INSERT OR IGNORE INTO record_ids (id, record_type) VALUES (?, ?)", id, string(table))
+func (storage *SqliteStorage) claimId(executor SqliteExecutor, id int64, table tableName) error {
+	return executor.Run("INSERT OR IGNORE INTO "+storage.schema.Tables.RecordIds+" (id, record_type) VALUES (?, ?)", id, string(table))
 }
 
-func resolveCopy(
+func (storage *SqliteStorage) resolveCopy(
 	executor SqliteExecutor, id durable.DocumentId, create durable.DocumentCreate, source durable.DocumentCopySource,
 ) (*durable.DocumentContent, error) {
-	stored, err := materializeDocument(executor, source.Id, source.At)
+	stored, err := storage.materializeDocument(executor, source.Id, source.At)
 	if err == nil && stored == nil {
 		err = fmt.Errorf("Fork source document %d cannot be read", source.Id)
 	}
@@ -1467,13 +1481,13 @@ func copyMatches(source durable.DocumentRecord, create durable.DocumentCreate) b
 		source.Fork == create.Fork
 }
 
-func applyDocumentActions(executor SqliteExecutor, actions *documentActions, seq durable.Seq) error {
+func (storage *SqliteStorage) applyDocumentActions(executor SqliteExecutor, actions *documentActions, seq durable.Seq) error {
 	for _, id := range actions.order {
 		action := actions.actions[id]
 		content := action.content
 		if action.copy != nil {
 			var err error
-			if content, err = resolveCopy(executor, id, *action.create, *action.copy); err != nil {
+			if content, err = storage.resolveCopy(executor, id, *action.create, *action.copy); err != nil {
 				return err
 			}
 		}
@@ -1495,7 +1509,7 @@ func applyDocumentActions(executor SqliteExecutor, actions *documentActions, seq
 				retiredAt = int64(seq)
 			}
 			parts := addressPartsOf(record.Kind, record.Scope, record.Key)
-			if err := claimId(executor, int64(id), tableDocument); err != nil {
+			if err := storage.claimId(executor, int64(id), tableDocument); err != nil {
 				return err
 			}
 			encoded, err := encodeJSON(record)
@@ -1503,7 +1517,7 @@ func applyDocumentActions(executor SqliteExecutor, actions *documentActions, seq
 				return err
 			}
 			if err := executor.Run(
-				`INSERT INTO documents
+				`INSERT INTO `+storage.schema.Tables.Documents+`
 						(id, kind, family, key_value, scope_kind, owner_id, created_at, retired_at, record)
 						VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 				int64(id), parts.kind, parts.family, parts.keyValue, parts.scopeKind, parts.ownerId, int64(seq),
@@ -1513,7 +1527,7 @@ func applyDocumentActions(executor SqliteExecutor, actions *documentActions, seq
 			}
 		} else {
 			existing, err := getRecord[durable.DocumentRecord](
-				executor, "SELECT record FROM documents WHERE id = ?", int64(id),
+				executor, "SELECT record FROM "+storage.schema.Tables.Documents+" WHERE id = ?", int64(id),
 			)
 			if err != nil {
 				return err
@@ -1526,7 +1540,7 @@ func applyDocumentActions(executor SqliteExecutor, actions *documentActions, seq
 
 		if content != nil {
 			if content.Kind == durable.ContentBase && isCurrentOnly(record) {
-				if err := executor.Run("DELETE FROM document_revisions WHERE document_id = ?", int64(id)); err != nil {
+				if err := executor.Run("DELETE FROM "+storage.schema.Tables.DocumentRevisions+" WHERE document_id = ?", int64(id)); err != nil {
 					return err
 				}
 			}
@@ -1541,7 +1555,7 @@ func applyDocumentActions(executor SqliteExecutor, actions *documentActions, seq
 				return err
 			}
 			if err := executor.Run(
-				"INSERT INTO document_revisions (document_id, seq, kind, version, content) VALUES (?, ?, ?, ?, ?)",
+				"INSERT INTO "+storage.schema.Tables.DocumentRevisions+" (document_id, seq, kind, version, content) VALUES (?, ?, ?, ?, ?)",
 				int64(id), int64(seq), string(content.Kind), int64(content.Version), encoded,
 			); err != nil {
 				return err
@@ -1557,13 +1571,13 @@ func applyDocumentActions(executor SqliteExecutor, actions *documentActions, seq
 					return err
 				}
 				if err := executor.Run(
-					"UPDATE documents SET retired_at = ?, record = ? WHERE id = ?", int64(seq), encoded, int64(id),
+					"UPDATE "+storage.schema.Tables.Documents+" SET retired_at = ?, record = ? WHERE id = ?", int64(seq), encoded, int64(id),
 				); err != nil {
 					return err
 				}
 			}
 			if isCurrentOnly(record) {
-				if err := executor.Run("DELETE FROM document_revisions WHERE document_id = ?", int64(id)); err != nil {
+				if err := executor.Run("DELETE FROM "+storage.schema.Tables.DocumentRevisions+" WHERE document_id = ?", int64(id)); err != nil {
 					return err
 				}
 			}

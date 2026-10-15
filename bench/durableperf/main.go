@@ -357,7 +357,7 @@ func open(path string) (*bench, error) {
 	}); err != nil {
 		return nil, err
 	}
-	rawdb, err := sqlitenode.OpenNodeSqliteDatabase(path, sqlitenode.NodeSqliteStorageOptions{})
+	rawdb, err := sqlitenode.OpenNodeSqliteDatabase(path, sqlitenode.NodeSqliteDatabaseOptions{})
 	if err != nil {
 		return nil, err
 	}

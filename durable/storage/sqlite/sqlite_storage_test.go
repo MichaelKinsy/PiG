@@ -11,6 +11,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"slices"
 	"strings"
 	"testing"
 
@@ -291,6 +292,48 @@ func TestPicoSqliteStorage(t *testing.T) {
 		expectError(t, err, "Durable SQLite metadata is missing")
 	})
 
+	// Pi f7e3cb54 sqlite-storage.test.ts:193 "namespaces tables and indexes with a prefix across reopen"
+	t.Run("namespaces tables and indexes with a prefix across reopen", func(t *testing.T) {
+		path := filepath.Join(t.TempDir(), "storage.sqlite")
+		host := openInspector(t, path, false)
+		mustDo(t, host.Exec("CREATE TABLE tasks (text TEXT)"))
+		mustDo(t, host.Close())
+		options := node.NodeSqliteStorageOptions{Prefix: new("pi_")}
+		storage := must(node.OpenNodeSqliteStorage(path, options))
+		if seq := createRoot(t, storage); seq != 1 {
+			t.Fatalf("root seq = %d", seq)
+		}
+		mustDo(t, storage.Close(testContext))
+
+		reopened := must(node.OpenNodeSqliteStorage(path, options))
+		t.Cleanup(func() { _ = reopened.Close(testContext) })
+		expectEqual(t, must(reopened.Conversation(testContext, durable.ROOT_CONVERSATION_ID)), &durable.ConversationRecord{Id: durable.ROOT_CONVERSATION_ID})
+		database := openInspector(t, path, true)
+		defer func() { mustDo(t, database.Close()) }()
+		var names, unprefixed []string
+		for _, row := range must(must(database.Prepare("SELECT name FROM sqlite_master WHERE type IN ('table', 'index') AND name NOT LIKE 'sqlite_%'")).All()) {
+			name := row["name"].(string)
+			names = append(names, name)
+			if !strings.HasPrefix(name, "pi_") {
+				unprefixed = append(unprefixed, name)
+			}
+		}
+		expectEqual(t, unprefixed, []string{"tasks"})
+		if !slices.Contains(names, "pi_tasks") {
+			t.Fatalf("names %v lack pi_tasks", names)
+		}
+	})
+
+	// Pi f7e3cb54 sqlite-storage.test.ts:219 "rejects an invalid prefix before creating the database"
+	t.Run("rejects an invalid prefix before creating the database", func(t *testing.T) {
+		databaseDirectory := filepath.Join(t.TempDir(), "nested")
+		_, err := node.OpenNodeSqliteStorage(filepath.Join(databaseDirectory, "storage.sqlite"), node.NodeSqliteStorageOptions{Prefix: new("bad-prefix")})
+		expectError(t, err, "Invalid SQLite schema prefix")
+		if _, err := os.Stat(databaseDirectory); !os.IsNotExist(err) {
+			t.Fatalf("the invalid prefix created %s: %v", databaseDirectory, err)
+		}
+	})
+
 	t.Run("rejects a document whose required base is missing", func(t *testing.T) {
 		storage, path := createSqliteStorage(t, node.NodeSqliteStorageOptions{})
 		createRoot(t, storage)
@@ -490,7 +533,7 @@ func TestPicoSqliteStorage(t *testing.T) {
 
 	t.Run("auto-checkpoints WAL frames and truncates the WAL on close", func(t *testing.T) {
 		pages := 1
-		storage, path := createSqliteStorage(t, node.NodeSqliteStorageOptions{WalAutoCheckpointPages: &pages})
+		storage, path := createSqliteStorage(t, node.NodeSqliteStorageOptions{NodeSqliteDatabaseOptions: node.NodeSqliteDatabaseOptions{WalAutoCheckpointPages: &pages}})
 		createRoot(t, storage)
 		for index := range 20 {
 			commit(t, storage, durable.EntryWrite{Value: entry(mint[durable.EntryId](t, storage), durable.ROOT_CONVERSATION_ID,
