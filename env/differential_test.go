@@ -451,7 +451,10 @@ func TestRemoteExecutionEnvAgainstNodeExecutionEnv(t *testing.T) {
 			{tools.CreateReadTool(nil), map[string]any{"path": "bom.txt"}},
 			{tools.CreateReadTool(nil), map[string]any{"path": "bad.txt"}},
 			{tools.CreateReadTool(nil), map[string]any{"path": "missing.txt"}},
-			{tools.CreateBashTool(nil), map[string]any{"command": "cat text.txt; echo err >&2; exit 0"}},
+			// Upstream runs "cat text.txt; echo err >&2; exit 0". Output on two pipes has no order across them, in Node as
+			// in PiG: a reader that wakes late on stdout lets the stderr line come first. The pause makes the two
+			// writes far enough apart that the comparison checks the tools and not the scheduler.
+			{tools.CreateBashTool(nil), map[string]any{"command": "cat text.txt; sleep 0.2; echo err >&2; exit 0"}},
 			{tools.CreateBashTool(nil), map[string]any{"command": "exit 3"}},
 			{tools.CreateBashTool(nil), map[string]any{"command": "printf 'a\\nb'; ls"}},
 		}

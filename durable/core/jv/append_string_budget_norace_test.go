@@ -9,16 +9,22 @@ import (
 	"testing"
 )
 
-// fastestNs is the lowest ns/op of run over a few benchmark runs, so one descheduled run on a loaded machine does not decide.
-func fastestNs(run func()) int64 {
-	best := int64(1 << 62)
-	for range 5 {
-		if ns := testing.Benchmark(func(b *testing.B) {
-			for b.Loop() {
-				run()
+// fastestNs is the lowest ns/op of each run over rounds that alternate between them, so one descheduled run or a slow
+// stretch of a shared runner does not decide, and both sides see the same machine state.
+func fastestNs(runs ...func()) []int64 {
+	best := make([]int64, len(runs))
+	for i := range best {
+		best[i] = 1 << 62
+	}
+	for range 7 {
+		for i, run := range runs {
+			if ns := testing.Benchmark(func(b *testing.B) {
+				for b.Loop() {
+					run()
+				}
+			}).NsPerOp(); ns < best[i] {
+				best[i] = ns
 			}
-		}).NsPerOp(); ns < best {
-			best = ns
 		}
 	}
 	return best
@@ -46,8 +52,8 @@ func TestAppendString200KBudget(t *testing.T) {
 	}
 	payload := writeText()
 	buf := make([]byte, 0, 2*len(payload))
-	scan := fastestNs(func() { buf = AppendString(buf[:0], payload) })
-	bytewise := fastestNs(func() { buf = bytewiseAppendString(buf[:0], payload) })
+	ns := fastestNs(func() { buf = AppendString(buf[:0], payload) }, func() { buf = bytewiseAppendString(buf[:0], payload) })
+	scan, bytewise := ns[0], ns[1]
 	t.Logf("AppendString: %d ns/op, byte at a time: %d ns/op", scan, bytewise)
 	if 3*scan > bytewise {
 		t.Errorf("AppendString of a 200 KB text takes %d ns, the byte-at-a-time loop %d ns: want at least 3x faster", scan, bytewise)
