@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"math/rand"
 	"testing"
-	"unicode/utf16"
 
 	"github.com/MichaelKinsy/PiG/ai"
 	sdkjson "github.com/MichaelKinsy/PiG/extensions/sdk/json"
@@ -193,18 +192,4 @@ func joinStrings(items []string) string {
 		out += item
 	}
 	return out
-}
-
-// normalizeAnthropicToolCallID is anthropic-messages.ts normalizeToolCallId: id.replace(/[^a-zA-Z0-9_-]/g, "_").slice(0, 64), over UTF-16 units.
-func normalizeAnthropicToolCallID(id string) string {
-	units := utf16.Encode([]rune(id))
-	for i, unit := range units {
-		if (unit < 'a' || unit > 'z') && (unit < 'A' || unit > 'Z') && (unit < '0' || unit > '9') && unit != '_' && unit != '-' {
-			units[i] = '_'
-		}
-	}
-	if len(units) > 64 {
-		units = units[:64]
-	}
-	return string(utf16.Decode(units))
 }
