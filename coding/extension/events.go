@@ -432,6 +432,7 @@ type AgentBeforeSettleEvent struct {
 
 // MarshalJSON writes the members in Pi's order: type, outcome, then the boundary's entries, continue and context (extensions/runner.ts emitBoundary).
 func (e AgentBeforeSettleEvent) MarshalJSON() ([]byte, error) {
+	//perf:ok once per agent settle, not per delta: the wrapper only fixes Pi's member order
 	return json.Marshal(struct {
 		Type     string                 `json:"type"`
 		Outcome  AgentActivityOutcome   `json:"outcome"`
@@ -648,6 +649,7 @@ func (e TurnEndEvent) MarshalJSON() ([]byte, error) {
 	if state := e.BoundaryState; state != nil {
 		out.Outcome, out.Entries, out.Continue, out.Context = &state.Outcome, &state.Entries, &state.Continue, &state.Context
 	}
+	//perf:ok once per turn end, not per delta: the wrapper only fixes Pi's member order
 	return json.Marshal(out)
 }
 
