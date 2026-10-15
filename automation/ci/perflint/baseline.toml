@@ -3948,6 +3948,14 @@ count = 1
 class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
 
 [[hit]]
+file = "internal/codingagent/env_lookup_other.go"
+func = "envVar.get"
+pattern = "env-stat"
+detail = "os.Getenv"
+count = 1
+class = "hot-kept: the settings getters' per-call PI_CLEAR_ON_SHRINK, PI_HARDWARE_CURSOR, VISUAL and EDITOR reads (Pi reads process.env each call), moved here from the three getters; shrink-only"
+
+[[hit]]
 file = "internal/codingagent/extension_ui_phase.go"
 func = "InteractiveMode.awaitSessionBefore"
 pattern = "json-roundtrip"
@@ -4789,22 +4797,6 @@ class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shr
 
 [[hit]]
 file = "internal/codingagent/settings.go"
-func = "Settings.GetClearOnShrink"
-pattern = "env-stat"
-detail = "os.Getenv"
-count = 1
-class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
-
-[[hit]]
-file = "internal/codingagent/settings.go"
-func = "Settings.GetShowHardwareCursor"
-pattern = "env-stat"
-detail = "os.Getenv"
-count = 1
-class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
-
-[[hit]]
-file = "internal/codingagent/settings.go"
 func = "Settings.MarshalJSON"
 pattern = "nested-marshal"
 detail = "codingagent.MarshalJSON"
@@ -4818,14 +4810,6 @@ pattern = "nested-marshal"
 detail = "json.Marshal"
 count = 1
 class = "hot-kept: a MarshalJSON re-encodes a nested value the outer encoder compacts again; lw-json (S5) and lw-request (S11) move hot encoders to append-style, shrink-only"
-
-[[hit]]
-file = "internal/codingagent/settings.go"
-func = "SettingsManager.GetExternalEditorCommand"
-pattern = "env-stat"
-detail = "os.Getenv"
-count = 2
-class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
 
 [[hit]]
 file = "internal/codingagent/settings.go"

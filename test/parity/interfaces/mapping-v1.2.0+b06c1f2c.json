@@ -176716,7 +176716,7 @@
       "evidence": [
         "test:coding/session_cwd_upstream_test.go#TestSessionCwdHandlingUpstream",
         "test:internal/codingagent/session_custom_id_upstream_test.go#TestCustomSessionIDUpstream",
-        "test:internal/codingagent/session_export_oracle_test.go#TestSerializeSessionBranchMatchesPi"
+        "test:internal/codingagent/session_file_operations_upstream_test.go#TestSessionFileOperationsUpstream"
       ]
     },
     {
@@ -176738,7 +176738,7 @@
       "evidence": [
         "test:coding/session_cwd_upstream_test.go#TestSessionCwdHandlingUpstream",
         "test:internal/codingagent/session_custom_id_upstream_test.go#TestCustomSessionIDUpstream",
-        "test:internal/codingagent/session_export_oracle_test.go#TestSerializeSessionBranchMatchesPi"
+        "test:internal/codingagent/session_file_operations_upstream_test.go#TestSessionFileOperationsUpstream"
       ]
     },
     {

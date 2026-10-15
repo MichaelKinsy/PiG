@@ -193540,6 +193540,17 @@
       "shapeHash": "sha256:6e0dcc77bc5854fbad913bb3ebb1d4d4cb0ed2da81e3cc29ddb480c40af8d94f"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#HandleReads.ExportHeader",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "HandleReads.ExportHeader",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() SessionHeader"
+      },
+      "shapeHash": "sha256:22a066360cc2f09877dc512a2a42445294b55a1d83cba8e4fa74fc858e474b88"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#HandleReads.FooterUsageTotals",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
       "name": "HandleReads.FooterUsageTotals",
@@ -207125,6 +207136,17 @@
       "shapeHash": "sha256:6e0dcc77bc5854fbad913bb3ebb1d4d4cb0ed2da81e3cc29ddb480c40af8d94f"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#Session.ExportHeader",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "Session.ExportHeader",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() SessionHeader"
+      },
+      "shapeHash": "sha256:22a066360cc2f09877dc512a2a42445294b55a1d83cba8e4fa74fc858e474b88"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#Session.FooterUsageTotals",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
       "name": "Session.FooterUsageTotals",
@@ -217630,6 +217652,39 @@
       "shapeHash": "sha256:cda28a58c7f379f3ebf78be04413bded86dbf23e689d1dc90e820c1a64079bb9"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#clearOnShrinkEnv",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "clearOnShrinkEnv",
+      "kind": "variable",
+      "exported": false,
+      "shape": {
+        "type": "envVar"
+      },
+      "shapeHash": "sha256:0b8f44aef823365ae2eaffb7cbe685a79d5bc836c82be49215ba6ed9a66e2ef6"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#clearOnShrinkEnv.get",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "clearOnShrinkEnv.get",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func() string"
+      },
+      "shapeHash": "sha256:31cac5b359d9888bdbe3fe08c486b2e404a728edce6e0aaaa60e59ceafc92fb5"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#clearOnShrinkEnv.isOne",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "clearOnShrinkEnv.isOne",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func() bool"
+      },
+      "shapeHash": "sha256:f632619397f10a7f0e472ad47d2824ec7e080d15ac9eb0994e24800757b3fb96"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#clientWithUpdateTransportCA",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
       "name": "clientWithUpdateTransportCA",
@@ -221964,6 +222019,39 @@
       "shapeHash": "sha256:8ed44f5bf5d9de4a19097512e9109ffb76d0fe6d85deab0161c06b8fbbae88d1"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#editorEnv",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "editorEnv",
+      "kind": "variable",
+      "exported": false,
+      "shape": {
+        "type": "envVar"
+      },
+      "shapeHash": "sha256:0b8f44aef823365ae2eaffb7cbe685a79d5bc836c82be49215ba6ed9a66e2ef6"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#editorEnv.get",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "editorEnv.get",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func() string"
+      },
+      "shapeHash": "sha256:31cac5b359d9888bdbe3fe08c486b2e404a728edce6e0aaaa60e59ceafc92fb5"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#editorEnv.isOne",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "editorEnv.isOne",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func() bool"
+      },
+      "shapeHash": "sha256:f632619397f10a7f0e472ad47d2824ec7e080d15ac9eb0994e24800757b3fb96"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#editorTheme",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
       "name": "editorTheme",
@@ -222479,6 +222567,39 @@
         "type": "func() map[string]bool"
       },
       "shapeHash": "sha256:456763db6d32c7fcce2b26f5770f9d9e6027b9199201c54ff952c6186dad6c53"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#envVar",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "envVar",
+      "kind": "type",
+      "exported": false,
+      "shape": {
+        "type": "envVar"
+      },
+      "shapeHash": "sha256:0b8f44aef823365ae2eaffb7cbe685a79d5bc836c82be49215ba6ed9a66e2ef6"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#envVar.get",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "envVar.get",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func() string"
+      },
+      "shapeHash": "sha256:31cac5b359d9888bdbe3fe08c486b2e404a728edce6e0aaaa60e59ceafc92fb5"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#envVar.isOne",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "envVar.isOne",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func() bool"
+      },
+      "shapeHash": "sha256:f632619397f10a7f0e472ad47d2824ec7e080d15ac9eb0994e24800757b3fb96"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#equalCatalogInput",
@@ -225526,6 +225647,39 @@
         "type": "func(sc *SlashContext) error"
       },
       "shapeHash": "sha256:0cd60dad808b8abf48c43075929dca6f537de910d92da19946937c2b720c7a03"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#hardwareCursorEnv",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "hardwareCursorEnv",
+      "kind": "variable",
+      "exported": false,
+      "shape": {
+        "type": "envVar"
+      },
+      "shapeHash": "sha256:0b8f44aef823365ae2eaffb7cbe685a79d5bc836c82be49215ba6ed9a66e2ef6"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#hardwareCursorEnv.get",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "hardwareCursorEnv.get",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func() string"
+      },
+      "shapeHash": "sha256:31cac5b359d9888bdbe3fe08c486b2e404a728edce6e0aaaa60e59ceafc92fb5"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#hardwareCursorEnv.isOne",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "hardwareCursorEnv.isOne",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func() bool"
+      },
+      "shapeHash": "sha256:f632619397f10a7f0e472ad47d2824ec7e080d15ac9eb0994e24800757b3fb96"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#hasAssistantUsageAfter",
@@ -229741,6 +229895,17 @@
       "shapeHash": "sha256:729ae1a22f74d72e27ee3a3f11460f225d3932cd022d982ff1f6fe731660ab36"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#managerCWD",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "managerCWD",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(cwd string) string"
+      },
+      "shapeHash": "sha256:bd967d6bccf28adb91b5de8d18fba27a27370db99c9bf39b8ee8ed82db0b1709"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#manifestRelease",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
       "name": "manifestRelease",
@@ -233314,6 +233479,17 @@
         "type": "func(rows func() int, options pigLogoAnimationOptions, variant github.com/MichaelKinsy/PiG/coding/piglogin.Variant, model egg3dModel, foreground logoRgb, background logoRgb, now func() time.Time, onDone func()) *pigLogoAnimation"
       },
       "shapeHash": "sha256:521660864e197f7e8f7b381576c499a1986b8837099412639e87cd622b2bf350"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#newEnvVar",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "newEnvVar",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(name string) envVar"
+      },
+      "shapeHash": "sha256:9df6348bbd6dfdaca05608d25215c87da0af8b544370414ce8a86c6c5c0ef25a"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#newExpandableText",
@@ -247680,6 +247856,39 @@
         "type": "*github.com/MichaelKinsy/PiG/internal/lazyregexp.Regexp"
       },
       "shapeHash": "sha256:b2bada16c90e0a1f7a12c5d87c11865788ab6be78d85f83e367aec2254fdade4"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#visualEnv",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "visualEnv",
+      "kind": "variable",
+      "exported": false,
+      "shape": {
+        "type": "envVar"
+      },
+      "shapeHash": "sha256:0b8f44aef823365ae2eaffb7cbe685a79d5bc836c82be49215ba6ed9a66e2ef6"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#visualEnv.get",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "visualEnv.get",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func() string"
+      },
+      "shapeHash": "sha256:31cac5b359d9888bdbe3fe08c486b2e404a728edce6e0aaaa60e59ceafc92fb5"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#visualEnv.isOne",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "visualEnv.isOne",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func() bool"
+      },
+      "shapeHash": "sha256:f632619397f10a7f0e472ad47d2824ec7e080d15ac9eb0994e24800757b3fb96"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#waitForSessionIdle",
