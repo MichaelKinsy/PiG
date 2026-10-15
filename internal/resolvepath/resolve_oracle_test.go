@@ -25,7 +25,7 @@ func TestResolveMatchesPi(t *testing.T) {
 	inputs := []string{
 		"", "~", "~/", "~//", "~/.", "~/./", "~/dir/", "~/file.txt", "~draft.md", "~user/x", "subdir/file.txt", "./a/../b", "/abs/path/x", "/abs/report%2026.md", "/abs/foo%2Fbar",
 		"file:///abs/file%20with%20spaces.txt", "file:///%E0%A4%A", "file:///abs/x%2Fy", "file://host/share/x", "file:///c:/dir/x", "  spaced  ",
-		"\uFEFF rel \uFEFF", "/c/Users/example/project", "/cygdrive/d/work", "/mnt/e/source", "/c", "//server/share/file", `/c/Users\example`, "relative/file",
+		"\uFEFF rel \uFEFF", "/c/Users/example/project", "/a/\u2028b", "/a/\u2029b", "/a/b\nc", "/\u017f/x", "/\u212a/x", "/MNT/c/x", "/cygdrive/d/work", "/mnt/e/source", "/c", "//server/share/file", `/c/Users\example`, "relative/file",
 		"C:/Users/example", `C:\Users\example`, "..", "../x", "a//b///c",
 	}
 	// Strings assembled from the tokens that make these functions branch: tildes, schemes, percent escapes, drive and mount prefixes, separators, dots, Unicode spaces, BOM.

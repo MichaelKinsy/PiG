@@ -190,8 +190,13 @@ func TestSessionManager_CreateAndLoad(t *testing.T) {
 	if loaded.ID() != "roundtrip-1" {
 		t.Errorf("loaded ID = %q, want roundtrip-1", loaded.ID())
 	}
-	if loaded.CWD() != "/tmp/test" {
-		t.Errorf("loaded CWD = %q, want /tmp/test", loaded.CWD())
+	// The manager stores resolvePath(cwd) (session-manager.ts:1008), which on Windows is drive-qualified.
+	wantCWD, err := filepath.Abs("/tmp/test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if loaded.CWD() != wantCWD {
+		t.Errorf("loaded CWD = %q, want %q", loaded.CWD(), wantCWD)
 	}
 }
 
@@ -388,8 +393,13 @@ func TestSessionManager_SessionDir(t *testing.T) {
 
 func TestSessionManager_CWD(t *testing.T) {
 	sm := NewSessionManagerWithDir("/my/cwd", t.TempDir())
-	if sm.CWD() != "/my/cwd" {
-		t.Errorf("CWD = %q, want /my/cwd", sm.CWD())
+	// session-manager.ts:1008 stores resolvePath(cwd); on Windows "/my/cwd" resolves onto the current drive.
+	want, err := filepath.Abs("/my/cwd")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if sm.CWD() != want {
+		t.Errorf("CWD = %q, want %q", sm.CWD(), want)
 	}
 }
 

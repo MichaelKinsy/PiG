@@ -94,7 +94,12 @@ func TestSessionRoundTripUnderNewEncoding(t *testing.T) {
 	if err := json.Unmarshal([]byte(first), &hdr); err != nil {
 		t.Fatal(err)
 	}
-	if hdr["cwd"] != "/tmp/round-trip" {
-		t.Errorf("header cwd=%v", hdr["cwd"])
+	// session-manager.ts:1008 stores resolvePath(cwd); on Windows "/tmp/round-trip" resolves onto the current drive.
+	wantCWD, err := filepath.Abs("/tmp/round-trip")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if hdr["cwd"] != wantCWD {
+		t.Errorf("header cwd=%v, want %q", hdr["cwd"], wantCWD)
 	}
 }

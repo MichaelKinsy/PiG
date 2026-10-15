@@ -85,7 +85,9 @@ func TestNormalizeWindowsShellPathConvertsDrivePathsAndLeavesOthers(t *testing.T
 			t.Errorf("NormalizeWindowsShellPath(%q) = %q, want %q", in, got, want)
 		}
 	}
-	for _, path := range []string{`C:/Users/example`, `C:\Users\example`, "//server/share/file", `/c/Users\example`, "relative/file", "/tmp/file"} {
+	for _, path := range []string{`C:/Users/example`, `C:\Users\example`, "//server/share/file", `/c/Users\example`, "relative/file", "/tmp/file",
+		// paths.ts:70: JS "." excludes line terminators and /i folds ASCII only.
+		"/a/\u2028b", "/a/\u2029b", "/a/b\nc", "/a/b\rc", "/\u017f/x", "/\u212a/x"} {
 		if got := NormalizeWindowsShellPath(path); got != path {
 			t.Errorf("NormalizeWindowsShellPath(%q) = %q, want it unchanged", path, got)
 		}

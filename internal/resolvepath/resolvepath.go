@@ -18,8 +18,9 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/nodeurl"
 )
 
-// windowsShellDrivePath matches /c, /c/rest, /mnt/c/rest and /cygdrive/c/rest.
-var windowsShellDrivePath = lazyregexp.New(`(?i)^/(?:mnt/|cygdrive/)?([a-z])(?:/(.*))?$`)
+// windowsShellDrivePath matches /c, /c/rest, /mnt/c/rest and /cygdrive/c/rest. The JavaScript source is /^\/(?:mnt\/|cygdrive\/)?([a-z])(?:\/(.*))?$/i: its "." does not
+// match a line terminator (\n, \r, U+2028, U+2029), and its /i flag folds ASCII letters only, where Go's (?i) also folds U+017F and U+212A.
+var windowsShellDrivePath = lazyregexp.New(`^/(?:[mM][nN][tT]/|[cC][yY][gG][dD][rR][iI][vV][eE]/)?([a-zA-Z])(?:/([^\n\r\x{2028}\x{2029}]*))?$`)
 
 // NormalizeWindowsShellPath converts a Git Bash, MSYS, Cygwin or WSL drive
 // path to the form native Windows APIs accept.
