@@ -500,6 +500,23 @@ That exemption covers implementation only. An SDK that lacks a capability
 another SDK has, or that answers the same call differently, is drift regardless
 of how faithfully its interface is spelled. Record it and close it.
 
+## Native Windows development
+
+Windows is a first-class target. Windows-only failures are fixed on a Windows machine, not by repeated CI round trips.
+
+Set up the toolchain at the pinned versions:
+- Go from `.go-version`, Node from `.node-version`, Python 3.12, and the Rust toolchain that `ci.yml` names in `RUST_VERSION`.
+- Git for Windows, and run the `make` targets and `automation/` scripts from Git Bash.
+- `fd` and `rg` from `automation/ci/install-windows-tools.ps1`, which verifies each archive against `automation/ci/windows-tools.txt`.
+- The Pi oracle with `automation/ci/install-npm-toolchain.sh`, then `python automation/pin/pin.py install-oracle`, then `python automation/ci/npm-locked.py internal/typebox/testdata/npm` and `python automation/ci/npm-locked.py ai/testdata/sdk`, as the Windows CI job does.
+- `./automation/gen/mirror-upstream.sh` from Git Bash with `MSYS=winsymlinks:nativestrict`.
+
+Reproduce a Windows CI job locally before you change code. Run the same command the job runs (see the `windows` job in `.github/workflows/ci.yml`). Use `go test -v` and a `-timeout` below the job limit, so a stall prints a stack.
+
+Set `PIG_HOME` and `PIG_CODING_AGENT_DIR` to a directory with a space in its path, as CI does. Many Windows bugs are path bugs: separators, drive letters, 8.3 short names, and `D:\work\project` against `/work/project`. Compare with what Pi does on Windows before you change a path rule.
+
+Work on a branch named `team/<name>/<topic>`. Push it to the staging remote, not to the public repository. The integrator stacks verified branches into the release branch. Each commit follows Commit hygiene below: `git commit --signoff -S`.
+
 ## Code and lint policy
 
 Apply [Faithful, general implementations](#faithful-general-implementations) to code review and provider/model literal guard exceptions; each exception requires a Pi source citation.
