@@ -3860,7 +3860,7 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 - **Pi issue:** https://github.com/earendil-works/pi/issues/6167
 - **Removed when Pi fixes it:** Pi replays another model's plain-text thinking as `reasoning_content` for targets that require it.
 - **Fix commits:** `4aa9763e56` (2026-10-09), `607aa4bd5a` (2026-10-10), `6693198f8c` (2026-10-10), `c8aa337c1b` (2026-10-11), `fd4be8683c` (2026-10-11)
-- **Tests:** `agent/transform_test.go::TestNormalizeMessages_ForeignThinkingLeftToChatCompletionsProvider`, `ai/openai_foreign_reasoning_replay_test.go::TestForeignThinkingOnlyTurnKeepsTextReplay`, `ai/openai_foreign_reasoning_replay_test.go::TestForeignThinkingReplaysAsReasoningContentWhenTheTargetRequiresIt`
+- **Tests:** `agent/transform_test.go::TestNormalizeMessages_ForeignThinkingLeftToChatCompletionsProvider`, `ai/openai_foreign_reasoning_replay_test.go::TestForeignThinkingOnlyTurnIsDropped`, `ai/openai_foreign_reasoning_replay_test.go::TestForeignThinkingReplaysAsReasoningContentWhenTheTargetRequiresIt`
 - **Release note:** After a model switch, another model's plain-text reasoning is replayed as `reasoning_content` on reasoning targets that require it, instead of being appended to the assistant text with an empty `reasoning_content` (D126, pi-mono #6167).
 
 ### BF-2c1959c

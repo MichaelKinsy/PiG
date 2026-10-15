@@ -89,7 +89,7 @@ func TransformMessages(messages []Message, model *Model, normalizeToolCallId fun
 	return transformMessages(messages, model, normalizeToolCallId, false)
 }
 
-// transformMessages is TransformMessages. With keepForeignThinking another model's plain-text thinking stays a thinking block
+// transformMessages is TransformMessages. Another model's thinking is dropped, as Pi does (#11000). With keepForeignThinking its plain-text thinking stays a thinking block
 // without its foreign signature, for a target that replays reasoning in its own field.
 func transformMessages(messages []Message, model *Model, normalizeToolCallId func(string, *Model, AssistantMessage) string, keepForeignThinking bool) []Message {
 	transformed := make([]Message, 0, len(messages))
@@ -149,7 +149,7 @@ func transformMessages(messages []Message, model *Model, normalizeToolCallId fun
 				continue
 			}
 			blocks := make([]AssistantContentBlock, 0, len(message.Content))
-			// A thinking-only turn keeps Pi's text replay: its reasoning_content alone would not keep the message in the request.
+			// A thinking-only turn drops its thinking as Pi does (transform-messages.ts:131-137): its reasoning_content alone would not keep the message in the request.
 			keepThinking := keepForeignThinking && slices.ContainsFunc(message.Content, func(block AssistantContentBlock) bool {
 				switch block := block.(type) {
 				case TextContent:
@@ -177,7 +177,8 @@ func transformMessages(messages []Message, model *Model, normalizeToolCallId fun
 						block.ThinkingSignature = ""
 						blocks = append(blocks, block)
 					default:
-						blocks = append(blocks, TextContent{Text: block.Thinking})
+						// Pi drops another model's thinking: signatures and encrypted reasoning only work for the model that produced them, and
+						// readable thinking sent as text makes the new model treat it as part of its reply (transform-messages.ts:129-137, Pi #11000).
 					}
 				case TextContent:
 					if !sameModel {

@@ -25,23 +25,6 @@ func TestTransformMessagesCopilotOpenAIToAnthropicUpstream(t *testing.T) {
 		return AssistantMessage{}
 	}
 
-	// transform-messages-copilot-openai-to-anthropic.test.ts:50
-	t.Run("converts thinking blocks to plain text when source model differs", func(t *testing.T) {
-		source := AssistantMessage{Content: []AssistantContentBlock{ThinkingContent{Thinking: "Let me think about this...", ThinkingSignature: "reasoning_content"}, TextContent{Text: "Hi there!"}}, API: "openai-completions", Provider: "github-copilot", Model: "gpt-4o", StopReason: StopReasonStop, Timestamp: 1}
-		result := findAssistant(t, TransformMessages([]Message{user("hello"), source}, model, normalize))
-		texts, thinking := 0, 0
-		for _, block := range result.Content {
-			switch block.(type) {
-			case TextContent:
-				texts++
-			case ThinkingContent:
-				thinking++
-			}
-		}
-		if thinking != 0 || texts < 2 {
-			t.Fatalf("content = %+v", result.Content)
-		}
-	})
 	// transform-messages-copilot-openai-to-anthropic.test.ts:90
 	t.Run("removes thoughtSignature from tool calls when migrating between models", func(t *testing.T) {
 		call := ToolCall{ID: "call_123", Name: "bash", Arguments: JsonObject{"command": "ls"}, ThoughtSignature: `{"type":"reasoning.encrypted","id":"call_123","data":"encrypted"}`}

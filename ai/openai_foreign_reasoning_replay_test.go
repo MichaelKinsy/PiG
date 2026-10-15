@@ -50,8 +50,8 @@ func TestForeignThinkingReplaysAsReasoningContentWhenTheTargetRequiresIt(t *test
 	}
 }
 
-// A thinking-only foreign turn keeps Pi's text replay: as reasoning_content alone it would no longer be a request message.
-func TestForeignThinkingOnlyTurnKeepsTextReplay(t *testing.T) {
+// A thinking-only foreign turn is dropped as Pi does (#11000): as reasoning_content alone it would not be a request message, and the D126 replay applies only to a turn that also has text or a tool call.
+func TestForeignThinkingOnlyTurnIsDropped(t *testing.T) {
 	foreign := AssistantMessage{Provider: "anthropic", API: APIAnthropicMessages, Model: "claude-x", StopReason: StopReasonStop,
 		Content: []AssistantContentBlock{ThinkingContent{Thinking: "plan A", ThinkingSignature: "EqQBsig"}}}
 	transcript := NormalizeContext(Context{Messages: []Message{UserMessage{Content: UserText("go")}, foreign, UserMessage{Content: UserText("more")}}})
@@ -60,7 +60,12 @@ func TestForeignThinkingOnlyTurnKeepsTextReplay(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(conversion.chat) != 3 || conversion.chat[1].Role != "assistant" || conversion.chat[1].Content != "plan A" {
+	for _, message := range conversion.chat {
+		if message.Role == "assistant" {
+			t.Fatalf("conversation = %+v, want the thinking-only turn dropped", conversion.chat)
+		}
+	}
+	if len(conversion.chat) != 2 {
 		t.Fatalf("conversation = %+v", conversion.chat)
 	}
 }

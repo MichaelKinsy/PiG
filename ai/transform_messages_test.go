@@ -39,8 +39,8 @@ func BenchmarkTransformMessagesHistory(b *testing.B) {
 }
 
 func TestTransformMessagesUsesJavaScriptThinkingWhitespace(t *testing.T) {
-	result := TransformMessages([]Message{AssistantMessage{Model: "foreign", Content: []AssistantContentBlock{ThinkingContent{Thinking: "\ufeff"}, ThinkingContent{Thinking: "\u0085"}}}}, replayTarget(), nil)
-	want := []AssistantContentBlock{TextContent{Text: "\u0085"}}
+	result := TransformMessages([]Message{AssistantMessage{Provider: "openai", API: APIOpenAIResponses, Model: "target", Content: []AssistantContentBlock{ThinkingContent{Thinking: "\ufeff"}, ThinkingContent{Thinking: "\u0085"}}}}, replayTarget(), nil)
+	want := []AssistantContentBlock{ThinkingContent{Thinking: "\u0085"}}
 	if got := result[0].(AssistantMessage).Content; !reflect.DeepEqual(got, want) {
 		t.Fatalf("blocks=%#v want=%#v", got, want)
 	}
@@ -81,7 +81,7 @@ func TestTransformMessagesThinkingIdentityAndIncompleteHistory(t *testing.T) {
 						t.Fatal(got)
 					}
 				} else {
-					want := []AssistantContentBlock{TextContent{Text: "useful"}, TextContent{Text: "answer"}, ToolCall{ID: "call", Name: "tool", Arguments: JsonObject{}}}
+					want := []AssistantContentBlock{TextContent{Text: "answer"}, ToolCall{ID: "call", Name: "tool", Arguments: JsonObject{}}}
 					if !reflect.DeepEqual(got, want) {
 						t.Fatalf("foreign blocks=%#v want=%#v", got, want)
 					}
@@ -155,7 +155,7 @@ func TestTransformMessagesTreatsADifferentAPIAsAForeignModel(t *testing.T) {
 		ToolCall{ID: "call", Name: "tool", ThoughtSignature: "thought-sig", Arguments: JsonObject{}},
 	}}
 	result := TransformMessages([]Message{source, ToolResultMessage{ToolCallID: "call", Content: []ToolResultMessageContent{TextContent{Text: "ok"}}}}, model, nil)
-	want := []AssistantContentBlock{TextContent{Text: "plan"}, TextContent{Text: "answer"}, ToolCall{ID: "call", Name: "tool", Arguments: JsonObject{}}}
+	want := []AssistantContentBlock{TextContent{Text: "answer"}, ToolCall{ID: "call", Name: "tool", Arguments: JsonObject{}}}
 	if got := result[0].(AssistantMessage).Content; !reflect.DeepEqual(got, want) {
 		t.Fatalf("blocks = %#v, want the foreign replay %#v", got, want)
 	}

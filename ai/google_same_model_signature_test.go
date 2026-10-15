@@ -35,7 +35,7 @@ func TestGoogleProviderKeepsItsOwnThinkingSignaturesWithoutCatalogMetadata(t *te
 	if !strings.Contains(body, `"thought":true`) || !strings.Contains(body, `"thoughtSignature":"c2lnbmF0dXJl"`) {
 		t.Fatalf("request body = %s; want the same-model thinking block sent as a thought with its signature", body)
 	}
-	// A turn from another model of the provider becomes plain text.
+	// Another model's thinking is dropped (Pi #11000).
 	body = ""
 	transcript = NormalizeContext(Context{Messages: []Message{
 		AssistantMessage{Provider: "google", API: APIGoogleGenerativeAI, Model: "gemini-2.5-pro", Content: []AssistantContentBlock{
@@ -46,7 +46,7 @@ func TestGoogleProviderKeepsItsOwnThinkingSignaturesWithoutCatalogMetadata(t *te
 	if stream, err = provider.Stream(context.Background(), transcript, StreamOptions{}); err == nil {
 		stream.Result()
 	}
-	if strings.Contains(body, "thoughtSignature") || !strings.Contains(body, `"text":"reasoning"`) {
-		t.Fatalf("request body = %s; want another model's thinking as plain text without a signature", body)
+	if strings.Contains(body, "thoughtSignature") || strings.Contains(body, "reasoning") {
+		t.Fatalf("request body = %s; want another model's thinking dropped", body)
 	}
 }

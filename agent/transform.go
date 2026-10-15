@@ -347,7 +347,7 @@ func normalizeAssistantReplayBlocks(blocks []ai.AssistantContentBlock, isSameMod
 		case isSameModel, leaveForeignThinking:
 			out = append(out, block)
 		default:
-			out = append(out, ai.TextContent{Text: thinking.Thinking})
+			// Another model's thinking is dropped (transform-messages.ts:129-137, Pi #11000).
 			changed = true
 		}
 	}
@@ -355,8 +355,8 @@ func normalizeAssistantReplayBlocks(blocks []ai.AssistantContentBlock, isSameMod
 }
 
 // providerReplaysForeignThinking reports whether the target is a reasoning Chat Completions model. Its provider decides from the
-// resolved compat whether another model's thinking becomes assistant text (Pi) or reasoning_content.
-// pig divergence (D126): Pi inlines the thinking here before that decision (pi-mono #6167).
+// resolved compat whether another model's thinking is dropped (Pi) or replayed as reasoning_content.
+// pig divergence (D126): Pi drops the thinking here before that decision (pi-mono #6167; Pi #11000 changed inlining it as text to dropping it).
 func providerReplaysForeignThinking(model *ai.Model) bool {
 	return model != nil && model.ProviderMeta.API == ai.APIOpenAICompletions && model.ProviderMeta.Reasoning
 }

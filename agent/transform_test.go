@@ -182,12 +182,12 @@ func TestNormalizeMessages_ThinkingNormalization(t *testing.T) {
 		in       []ai.AssistantContentBlock
 		want     []ai.AssistantContentBlock
 	}{
-		{"cross-model JSON-object signature -> text", "static-fake", "gpt-5",
-			[]ai.AssistantContentBlock{think("reasoning", `{"id":"rs_1"}`)}, []ai.AssistantContentBlock{text("reasoning")}},
-		{"cross-model opaque signature -> text", "static-fake", "gpt-5",
-			[]ai.AssistantContentBlock{think("reasoning", "opaque")}, []ai.AssistantContentBlock{text("reasoning")}},
-		{"different provider -> text", "openai", "claude",
-			[]ai.AssistantContentBlock{think("reasoning", "sig")}, []ai.AssistantContentBlock{text("reasoning")}},
+		{"cross-model JSON-object signature dropped", "static-fake", "gpt-5",
+			[]ai.AssistantContentBlock{think("reasoning", `{"id":"rs_1"}`)}, []ai.AssistantContentBlock{}},
+		{"cross-model opaque signature dropped", "static-fake", "gpt-5",
+			[]ai.AssistantContentBlock{think("reasoning", "opaque")}, []ai.AssistantContentBlock{}},
+		{"different provider dropped", "openai", "claude",
+			[]ai.AssistantContentBlock{think("reasoning", "sig")}, []ai.AssistantContentBlock{}},
 		{"same-model signed thinking kept", "static-fake", "claude",
 			[]ai.AssistantContentBlock{think("reasoning", "sig")}, []ai.AssistantContentBlock{think("reasoning", "sig")}},
 		{"same-model empty signed thinking kept", "static-fake", "claude",

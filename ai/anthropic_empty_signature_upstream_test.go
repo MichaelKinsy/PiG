@@ -76,10 +76,4 @@ func TestAnthropicUpstreamEmptyThinkingSignature(t *testing.T) {
 			assertShapeJSON(t, assistantPayloadContent(t, payload), `[{"type":"thinking","thinking":"internal reasoning","signature":""},{"type":"text","text":"answer"}]`)
 		})
 	}
-	// .upstream/v0.99.1/packages/ai/test/anthropic-empty-thinking-signature-compat.test.ts:127
-	t.Run("still converts cross-model Fireworks thinking to text", func(t *testing.T) {
-		model := upstreamCatalogModel(t, "fireworks", "accounts/fireworks/models/deepseek-v4p1-flash")
-		payload := upstreamAnthropicParams(t, model, emptySignatureContext("fireworks", "accounts/fireworks/models/nemotron-3-ultra-nvfp4", "internal reasoning", "", false), StreamOptions{})
-		assertShapeJSON(t, assistantPayloadContent(t, payload), `[{"type":"text","text":"internal reasoning"}]`)
-	})
 }
