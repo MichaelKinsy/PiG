@@ -96,7 +96,7 @@ func parseProxyContentIndex(raw json.RawMessage) (int, bool) {
 	case first == '"':
 		var key string
 		if json.Unmarshal(raw, &key) == nil {
-			if index, err := strconv.ParseUint(key, 10, 32); err == nil && index <= maxProxyArrayIndex && strconv.FormatUint(index, 10) == key {
+			if index, err := strconv.ParseUint(key, 10, 32); err == nil && index <= maxProxyArrayIndex && index <= math.MaxInt && strconv.FormatUint(index, 10) == key {
 				return int(index), false
 			}
 		}

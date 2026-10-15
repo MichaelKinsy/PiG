@@ -469,7 +469,7 @@ func writeStoredModels(path string, entries []storedModels, root modelsRoot) err
 // arrayIndex reports whether key is a JavaScript array index (a canonical decimal below 2^32-1) and its value.
 func arrayIndex(key string) (int, bool) {
 	n, err := strconv.ParseUint(key, 10, 32)
-	if err != nil || n == math.MaxUint32 || strconv.FormatUint(n, 10) != key {
+	if err != nil || n == math.MaxUint32 || n > math.MaxInt || strconv.FormatUint(n, 10) != key {
 		return 0, false
 	}
 	return int(n), true
