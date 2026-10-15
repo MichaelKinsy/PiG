@@ -146,8 +146,8 @@ func TestWindowsShardsTestEverySelectedPackage(t *testing.T) {
 	if !slices.Equal(job.Strategy.Matrix.Shard, wantMatrix) {
 		t.Fatalf("windows shards = %v, want %v", job.Strategy.Matrix.Shard, wantMatrix)
 	}
-	// -v streams the shard's tests as they run, and -timeout 25m puts the alarm, and its stack dump, inside the 60-minute job after about 15 minutes of setup; a shard that wedged under -timeout 30m without -v printed nothing before the job was cancelled. The compile and the listing that selects the shard (it runs TestMain) are outside that alarm, so each is bounded on its own.
-	shardStep := regexp.MustCompile(`(?m)^\s*run=\$\(timeout 5m automation/ci/test-shard-pattern\.sh "\$\{CLI_SHARD#cli-\}" ([0-9]+) \./` + regexp.QuoteMeta(cliPkg) + `\)\n.*\n\s*go test -v -timeout 25m -run "\$run" \./` + regexp.QuoteMeta(cliPkg) + `\n`)
+	// The step lists and runs the prebuilt test binary from the package directory (go test hangs on GitHub's Windows runners before the binary starts, golang/go#81368), streams every test with -test.v, and puts the 25-minute alarm and its stack dump inside the 60-minute job. The compile and the listing (it runs TestMain) are bounded on their own.
+	shardStep := regexp.MustCompile(`(?m)^\s*timeout 10m go test -c -o "\$bin" \./` + regexp.QuoteMeta(cliPkg) + `\n(?:.*\n)?\s*run=\$\(TEST_SHARD_BINARY="\$bin" timeout 5m automation/ci/test-shard-pattern\.sh "\$\{CLI_SHARD#cli-\}" ([0-9]+) \./` + regexp.QuoteMeta(cliPkg) + `\)\n.*\n\s*cd ` + regexp.QuoteMeta(cliPkg) + `\n\s*"\$bin" -test\.paniconexit0 -test\.v -test\.timeout 25m -test\.run "\$run"\n`)
 	cliShardSteps := 0
 	selectLine := ""
 	extensionRuns := ""
