@@ -206,6 +206,43 @@ class FrozenDataTests(unittest.TestCase):
             oracle.FROZEN = saved
 
 
+class TarballTests(unittest.TestCase):
+    def test_the_download_holds_no_descriptor_of_the_file_it_renames(self):
+        # Windows refuses to rename a file the process holds open (WinError 32), so the descriptor mkstemp returns must be
+        # closed before curl writes the file and os.replace moves it.
+        cache = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, cache, True)
+        made = []
+        open_at_download = []
+        real_mkstemp, real_close = tempfile.mkstemp, os.close
+        closed = set()
+
+        def mkstemp(*args, **kwargs):
+            made.append(real_mkstemp(*args, **kwargs))
+            return made[-1]
+
+        def close(descriptor):
+            closed.add(descriptor)
+            real_close(descriptor)
+
+        def curl(argv, **_):
+            open_at_download.extend(descriptor for descriptor, _ in made if descriptor not in closed)
+            Path(argv[argv.index("-o") + 1]).write_bytes(b"tarball")
+
+        with (
+            mock.patch.dict(os.environ, {"XDG_CACHE_HOME": cache}),
+            mock.patch.object(pinlib.tempfile, "mkstemp", mkstemp),
+            mock.patch.object(pinlib.os, "close", close),
+            mock.patch.object(pinlib.subprocess, "run", curl),
+        ):
+            path = pinlib.tarball("c" * 40, False)
+        for descriptor in open_at_download:
+            real_close(descriptor)
+        self.assertEqual(path.read_bytes(), b"tarball")
+        self.assertEqual(len(made), 1)
+        self.assertEqual(open_at_download, [], "the mkstemp descriptor is still open while curl writes and os.replace renames")
+
+
 class SourceBuildTests(unittest.TestCase):
     def source(self):
         root = Path(tempfile.mkdtemp())

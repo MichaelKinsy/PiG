@@ -174,7 +174,10 @@ def tarball(ref_or_commit: str, tag: bool) -> Path:
     if path.exists():
         return path
     url = f"https://codeload.github.com/{UPSTREAM_REPO}/tar.gz/" + ("refs/tags/" if tag else "") + ref_or_commit
-    temporary = Path(tempfile.mkstemp(prefix=path.name + ".", dir=directory)[1])
+    # Close mkstemp's descriptor: curl writes the file by name, and Windows refuses to rename a file this process holds open (WinError 32).
+    descriptor, name = tempfile.mkstemp(prefix=path.name + ".", dir=directory)
+    os.close(descriptor)
+    temporary = Path(name)
     try:
         subprocess.run(["curl", "-sSfL", *_auth_args(), "-o", str(temporary), url], check=True, timeout=600)
         os.replace(temporary, path)
